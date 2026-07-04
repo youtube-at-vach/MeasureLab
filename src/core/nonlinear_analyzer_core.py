@@ -243,11 +243,10 @@ def process_amplitude_responses(
         responses_ref_cal = []
 
         # Build signals for each scanning amplitude
+        coeffs = [a_cal[p] for p in range(P, 0, -1)] + [0.0]
         for amp in amplitudes:
             x_sig = amp * sss_cal
-            y_sig_cal = np.zeros_like(x_sig)
-            for p in range(1, P + 1):
-                y_sig_cal += a_cal[p] * (x_sig**p)
+            y_sig_cal = np.polyval(coeffs, x_sig)
 
             padding = np.zeros(int(0.2 * sample_rate))
             x_sig_padded = np.concatenate([x_sig, padding])
