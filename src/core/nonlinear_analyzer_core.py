@@ -244,13 +244,19 @@ def process_amplitude_responses(
 
         # Build signals for each scanning amplitude
         coeffs = [a_cal[p] for p in range(P, 0, -1)] + [0.0]
+
+        # Pre-allocate padded arrays to avoid repeated concatenation
+        sig_len = len(sss_cal)
+        padded_len = sig_len + int(0.2 * sample_rate)
+        x_sig_padded = np.zeros(padded_len)
+        y_sig_padded = np.zeros(padded_len)
+
         for amp in amplitudes:
             x_sig = amp * sss_cal
             y_sig_cal = np.polyval(coeffs, x_sig)
 
-            padding = np.zeros(int(0.2 * sample_rate))
-            x_sig_padded = np.concatenate([x_sig, padding])
-            y_sig_padded = np.concatenate([y_sig_cal, padding])
+            x_sig_padded[:sig_len] = x_sig
+            y_sig_padded[:sig_len] = y_sig_cal
 
             ir_ref = deconvolve_signal(x_sig_padded, sss_cal)
             ir_meas = deconvolve_signal(y_sig_padded, sss_cal)
