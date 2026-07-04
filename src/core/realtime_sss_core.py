@@ -1,7 +1,8 @@
 import logging
 import threading
 import numpy as np
-import scipy.signal
+from scipy.signal import butter, filtfilt
+from scipy.signal.windows import tukey
 
 from src.core.nonlinear_analyzer_core import (
     generate_sss_and_inverse,
@@ -123,7 +124,7 @@ class RealtimeSSSEngine:
             t = np.arange(self.sweep_samples) / self.sample_rate
             phase = 2.0 * np.pi * self.k_param * np.exp(t / self.L_param)
             sig = self.output_amplitude * np.sin(phase)
-            window = scipy.signal.windows.tukey(self.sweep_samples, alpha=0.02)
+            window = tukey(self.sweep_samples, alpha=0.02)
             self._out_sig_cached = sig * window
         return self._out_sig_cached
 
@@ -264,14 +265,14 @@ class RealtimeSSSEngine:
             nyq = fs / 2.0
 
             # Design 4th-order Butterworth LPF
-            b, a = scipy.signal.butter(4, fc / nyq, btype="low")
+            b, a = butter(4, fc / nyq, btype="low")
 
             # Apply zero-phase filtering
-            sig_win = scipy.signal.filtfilt(b, a, sig_win)
+            sig_win = filtfilt(b, a, sig_win)
             sig_win = sig_win[::D]
             theta_win = theta_win[::D]
             if ref_win is not None:
-                ref_win = scipy.signal.filtfilt(b, a, ref_win)
+                ref_win = filtfilt(b, a, ref_win)
                 ref_win = ref_win[::D]
         elif D > 1:
             # Fallback if window is too short
