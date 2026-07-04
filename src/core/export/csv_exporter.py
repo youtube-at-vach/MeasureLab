@@ -69,10 +69,9 @@ class CsvTraceExporter(BaseTraceExporter):
         x_grid = None
         if ref_id != "union":
             # Use specific trace's X grid
-            for t in traces:
-                if t.id == ref_id:
-                    x_grid = np.array(t.x_data, dtype=float)
-                    break
+            ref_trace = next((t for t in traces if t.id == ref_id), None)
+            if ref_trace is not None:
+                x_grid = np.array(ref_trace.x_data, dtype=float)
 
         if x_grid is None:
             # Union of all X axes
