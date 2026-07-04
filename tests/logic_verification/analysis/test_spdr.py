@@ -145,5 +145,39 @@ class TestSPDRLogic(unittest.TestCase):
         self.assertAlmostEqual(res_narrow["max_spur_freq"], close_freq, delta=self.sr / self.N)
 
 
+
+    def test_spdr_fund_mask_empty(self):
+        """Test SPDR when fund_mask is completely empty."""
+        fund_freq = 1000.0
+        # Manually create freqs array that won't match the fundamental
+        freqs = np.array([5000.0, 6000.0])
+        mag = np.array([1.0, 0.1])
+
+        res = AudioCalc.calculate_spdr(mag, freqs, fund_freq)
+        self.assertEqual(res["spdr_db"], 0.0)
+        self.assertEqual(res["max_spur_freq"], 0.0)
+
+    def test_spdr_search_mask_empty(self):
+        """Test SPDR when search_mask is completely empty."""
+        fund_freq = 1000.0
+        # Only fundamental and DC, nothing else
+        freqs = np.array([0.0, 10.0, fund_freq])
+        mag = np.array([0.1, 0.1, 1.0])
+
+        res = AudioCalc.calculate_spdr(mag, freqs, fund_freq)
+        self.assertEqual(res["spdr_db"], 100.0)
+        self.assertEqual(res["max_spur_freq"], 0.0)
+
+    def test_spdr_spur_amp_zero(self):
+        """Test SPDR when spur amplitude is essentially zero (< 1e-12)."""
+        fund_freq = 1000.0
+
+        freqs = np.array([0.0, fund_freq, 2000.0])
+        # Very small spur
+        mag = np.array([0.0, 1.0, 1e-13])
+
+        res = AudioCalc.calculate_spdr(mag, freqs, fund_freq)
+        self.assertEqual(res["spdr_db"], 140.0)
+
 if __name__ == "__main__":
     unittest.main()
