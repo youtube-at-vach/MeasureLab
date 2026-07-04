@@ -1209,21 +1209,26 @@ class RealtimeSSSAnalyzerWidget(QWidget):
                 f_lookups = sorted_freqs / (p + 1)
 
                 # Polar Interpolation to prevent phase distortion
-                mags = np.abs(H_raw)
                 nan_mask = np.isnan(H_raw)
-                phases = np.zeros_like(H_raw, dtype=float)
-                if not np.all(nan_mask):
-                    phases[~nan_mask] = np.unwrap(np.angle(H_raw[~nan_mask]))
-                phases[nan_mask] = np.nan
-
                 valid_mask = ~nan_mask
+
                 if np.any(valid_mask):
-                    mag_mapped = np.interp(
-                        f_lookups, sorted_freqs[valid_mask], mags[valid_mask], left=np.nan, right=np.nan
-                    )
-                    phase_mapped = np.interp(
-                        f_lookups, sorted_freqs[valid_mask], phases[valid_mask], left=np.nan, right=np.nan
-                    )
+                    valid_H = H_raw[valid_mask]
+                    xp = sorted_freqs[valid_mask]
+
+                    mags_valid = np.abs(valid_H)
+                    phases_valid = np.unwrap(np.angle(valid_H))
+
+                    # Dynamically reduce resolution to improve real-time performance bounds
+                    TARGET_RESOLUTION = 2000
+                    if len(valid_H) > TARGET_RESOLUTION:
+                        step = len(valid_H) // TARGET_RESOLUTION
+                        mags_valid = mags_valid[::step]
+                        phases_valid = phases_valid[::step]
+                        xp = xp[::step]
+
+                    mag_mapped = np.interp(f_lookups, xp, mags_valid, left=np.nan, right=np.nan)
+                    phase_mapped = np.interp(f_lookups, xp, phases_valid, left=np.nan, right=np.nan)
                 else:
                     mag_mapped = np.full_like(f_lookups, np.nan)
                     phase_mapped = np.full_like(f_lookups, np.nan)
