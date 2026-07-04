@@ -616,6 +616,8 @@ class SpectrumAnalyzer(MeasurementModule):
 
 
 class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidgetInterface):
+    _SI_PREFIXES = {-15: "f", -12: "p", -9: "n", -6: "µ", -3: "m", 0: "", 3: "k", 6: "M", 9: "G"}
+
     def __init__(self, module: SpectrumAnalyzer):
         QWidget.__init__(self)
         CompactableWidgetInterface.__init__(self)
@@ -919,9 +921,7 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
 
         scaled_value = value / (10**exponent)
 
-        prefixes = {-15: "f", -12: "p", -9: "n", -6: "µ", -3: "m", 0: "", 3: "k", 6: "M", 9: "G"}
-
-        prefix = prefixes.get(exponent, "")
+        prefix = self._SI_PREFIXES.get(exponent, "")
         return f"{scaled_value:.3g} {prefix}{unit}"
 
     def mouse_moved(self, evt):
