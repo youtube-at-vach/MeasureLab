@@ -54,6 +54,27 @@ class TestMultitoneTDN(unittest.TestCase):
         expected_tdn = np.sqrt(0.01 / 2.0)
         self.assertAlmostEqual(result["tdn"], expected_tdn * 100, places=4)
 
+    def test_calculate_multitone_tdn_three_or_more_tones(self):
+        """
+        Test with 3 or more tones to cover the specific branching logic
+        for calculating max_widths for intermediate tones.
+        """
+        self.mag[200] = 1.0
+        self.mag[500] = 1.0
+        self.mag[800] = 1.0
+
+        # Noise at 350 Hz
+        self.mag[350] = 0.1
+
+        # Tone energy = 1^2 + 1^2 + 1^2 = 3.0
+        # Noise energy = 0.1^2 = 0.01
+        # TDN = sqrt(0.01 / 3.0)
+
+        result = AudioCalc.calculate_multitone_tdn(self.mag, self.freqs, [200, 500, 800])
+
+        expected_tdn = np.sqrt(0.01 / 3.0)
+        self.assertAlmostEqual(result["tdn"], expected_tdn * 100, places=4)
+
     def test_calculate_multitone_tdn_no_noise(self):
         """
         Test with only tones (perfect signal).
