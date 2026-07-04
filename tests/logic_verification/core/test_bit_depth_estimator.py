@@ -183,3 +183,51 @@ def test_bit_depth_robust_to_outliers(estimator):
     assert results is not None
     # Highly robust check: should still report ~16.0 bits, NOT ~37 bits!
     assert abs(results["bit_depth"] - 16.0) < 0.2
+
+def test_buffer_expansion_with_existing_data():
+    """Verify buffer expands correctly and preserves data when capacity is exceeded."""
+    estimator = BitDepthEstimator(capacity=10)
+    # Add initial data
+    estimator.add_samples(np.arange(8))
+    # Add more data exceeding capacity
+    estimator.add_samples(np.arange(8, 13))
+
+    # Capacity should double (10 * 2 = 20) as 13 <= 20
+    assert estimator._capacity == 20
+    assert estimator._write_ptr == 13
+    np.testing.assert_array_equal(estimator._buffer[:13], np.arange(13))
+
+
+def test_buffer_expansion_from_reset():
+    """Verify buffer expands correctly after reset when write pointer is 0."""
+    estimator = BitDepthEstimator(capacity=10)
+    # Initialize the buffer with length 10
+    estimator.add_samples(np.zeros(10))
+    # Reset write pointer
+    estimator.reset()
+    # Add more data exceeding old capacity
+    estimator.add_samples(np.ones(15))
+
+    # Capacity should double (10 * 2 = 20) as 15 <= 20
+    assert estimator._capacity == 20
+    assert estimator._write_ptr == 15
+    np.testing.assert_array_equal(estimator._buffer[:15], np.ones(15))
+
+def test_analyze_no_data(estimator):
+    """Verify analyze returns None when there is no accumulated data."""
+    # Ensure write_ptr is 0
+    assert estimator._write_ptr == 0
+
+    # Analyze should return None
+    assert estimator.analyze() is None
+
+def test_analyze_single_sample(estimator):
+    """Verify analyze returns None when only 1 sample is present."""
+    # Add a single sample
+    estimator.add_samples(np.array([0.5]))
+
+    # write_ptr should be 1
+    assert estimator._write_ptr == 1
+
+    # Analyze should return None
+    assert estimator.analyze() is None
