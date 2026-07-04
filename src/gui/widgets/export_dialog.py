@@ -25,6 +25,8 @@ from src.core.localization import tr
 from src.core.export.manager import ExportManager
 from src.core.comparison_manager import ComparisonTrace
 
+SAFE_NAME_PATTERN = re.compile(r"[^\w \-]")
+
 
 class ExportSettingsDialog(QDialog):
     def __init__(self, traces: List[ComparisonTrace], parent=None):
@@ -305,10 +307,9 @@ class ExportSettingsDialog(QDialog):
                 return
 
             success_count = 0
-            safe_name_pattern = re.compile(r"[^\w \-]")
             for t in traces_to_export:
                 # Safe name logic to remove symbols that are invalid in filenames
-                safe_name = safe_name_pattern.sub("", t.name).rstrip()
+                safe_name = SAFE_NAME_PATTERN.sub("", t.name).rstrip()
                 safe_name = safe_name.replace(" ", "_")
                 filename = f"{safe_name}{exporter.default_extension}"
                 full_path = os.path.join(dest_path, filename)
