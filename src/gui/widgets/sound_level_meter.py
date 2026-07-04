@@ -855,11 +855,14 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface):
             self.disp_leq["label"].setText(leq_text)
 
         # Update Details
+        last_metrics = self._last_metrics
+        last_metrics_get = last_metrics.get
+        vals_get = vals.get
         for key, lbl in self.metric_labels.items():
-            val = vals.get(key, -np.inf)
+            val = vals_get(key, -np.inf)
             text = fmt(val) + " dB"
-            if self._last_metrics.get(key) != text:
-                self._last_metrics[key] = text
+            if last_metrics_get(key) != text:
+                last_metrics[key] = text
                 lbl.setText(text)
 
         # Update Stats (LN)
