@@ -122,9 +122,9 @@ class CsvTraceExporter(BaseTraceExporter):
         cached_orig_x = None
         is_same_as_grid = False
 
+        empty_col = [""] * len(x_grid)
         for t in traces:
             if len(t.x_data) == 0:
-                empty_col = [""] * len(x_grid)
                 cols.append(empty_col)
                 if t.y2_data is not None:
                     cols.append(empty_col)
