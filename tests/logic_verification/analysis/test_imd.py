@@ -79,6 +79,46 @@ class TestIMDAnalysis(unittest.TestCase):
         self.assertEqual(result["imd"], 0.0)
         self.assertEqual(result["imd_db"], -100.0)
 
+    def test_calculate_imd_smpte_aliasing(self):
+        """Test SMPTE IMD calculation with frequencies that alias around Nyquist."""
+        f1 = 60.0
+        f2 = 23900.0
+
+        freqs = np.linspace(0, 24000, 24001)
+        mag = np.zeros_like(freqs)
+
+        # Inject carrier
+        idx_f2 = 23900
+        mag[idx_f2] = 1.0
+
+        # Inject aliased upper sideband (n=2)
+        # n=1 upper sideband: 23900 + 60 = 23960
+        # n=2 upper sideband: 23900 + 120 = 24020
+        # Nyquist is 24000, fs is 48000.
+        # 24020 % 48000 = 24020 -> 48000 - 24020 = 23980
+        # We will inject a peak at 23980.
+        # Note: default width in _find_peak is 20.0, so checking 23960 will look at 23940-23980
+        # checking 23980 looks at 23960-24000
+        # Thus the peak at 23980 will be picked up by BOTH n=1 and n=2 upper sidebands
+        # because the default width (20Hz) spans both 23960 and 23980 search areas.
+        idx_aliased_sb = 23980
+        mag[idx_aliased_sb] = 0.1
+
+        result = AudioCalc.calculate_imd_smpte(mag, freqs, f1, f2, num_sidebands=2)
+
+        # Calculation:
+        # amp_f2 = 1.0
+        # n=1: amp_upper (23960 +/- 20) includes 23980 -> 0.1. amp_lower = 0. sum_sq += 0.01
+        # n=2: amp_upper (23980 +/- 20) includes 23980 -> 0.1. amp_lower = 0. sum_sq += 0.01
+        # Total sum_sq_sidebands = 0.02
+        # imd = sqrt(0.02) / 1.0 = 0.141421356...
+        # IMD % = 14.1421...%
+
+        expected_imd = np.sqrt(0.02)
+
+        self.assertAlmostEqual(result["imd"], expected_imd * 100, places=5)
+        self.assertAlmostEqual(result["imd_db"], 20 * np.log10(expected_imd), places=5)
+
     def test_calculate_imd_ccif_clean(self):
         """Test CCIF IMD calculation with a clean signal (should be ~0)."""
         f1 = 19000.0
