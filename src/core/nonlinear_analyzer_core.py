@@ -191,18 +191,6 @@ def deconvolve_signal(recorded_signal, sss_signal, regularization=1e-4):
     return g
 
 
-def calculate_chebyshev_matrix(num_amplitudes, norm_v, P=5):
-    """
-    Deprecated/Legacy compatibility method.
-    Previously constructed separation matrix M and computed its pseudo-inverse M_pinv.
-    Now we implement Chebyshev transform directly using algebraic equations.
-    """
-    norm_v_arr = np.asarray(norm_v)
-    M = norm_v_arr[:, np.newaxis] ** np.arange(1, P + 1)
-    M_pinv = np.linalg.pinv(M)
-    return M, M_pinv
-
-
 def process_amplitude_responses(
     responses_meas,
     responses_ref,
