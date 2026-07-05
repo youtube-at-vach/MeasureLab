@@ -534,9 +534,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         display_layout.addWidget(self.combo_smoothing)
         display_layout.addStretch()
 
-        # Hide smoothing options initially
-        self.lbl_smoothing.setVisible(False)
-        self.combo_smoothing.setVisible(False)
+
 
         right_layout.addLayout(display_layout)
 
@@ -860,8 +858,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         if label:
             label.setVisible(is_ham)
 
-        self.combo_smoothing.setVisible(is_ham)
-        self.lbl_smoothing.setVisible(is_ham)
+
 
         if hasattr(self, "chk_show_raw"):
             self.chk_show_raw.setChecked(not is_ham)
@@ -1072,8 +1069,13 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             else:
                 y_phase = np.degrees(np.angle(avg_complex))
 
-            self.mag_curves[idx].setData(x_data, y_gain)
-            self.phase_curves[idx].setData(x_data, y_phase)
+            # Apply smoothing
+            smooth_level = self.combo_smoothing.currentData()
+            y_gain_smoothed = self.apply_smoothing(y_gain, smooth_level)
+            y_phase_smoothed = self.apply_smoothing(y_phase, smooth_level)
+
+            self.mag_curves[idx].setData(x_data, y_gain_smoothed)
+            self.phase_curves[idx].setData(x_data, y_phase_smoothed)
 
     def apply_smoothing(self, y_data, level):
         if level == "None" or len(y_data) < 15:
