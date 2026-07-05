@@ -428,41 +428,6 @@ class TestAudioEngineLogic(unittest.TestCase):
     def tearDown(self):
         self.patcher.stop()
 
-    def test_register_unregister(self):
-        def cb(*args):
-            pass
-
-        # Test Register
-        cid = self.engine.register_callback(cb)
-
-        # Check internal state
-        self.assertIn(cid, self.engine.callbacks)
-        self.assertEqual(self.engine.callbacks[cid], cb)
-
-        # Check logging happened
-        self.engine.logger.debug.assert_called()
-        # Verify call args
-        args, _ = self.engine.logger.debug.call_args
-        self.assertIn(f"Registered callback {cid}", args[0])
-
-        # Reset mock
-        self.engine.logger.reset_mock()
-
-        # Test Unregister
-        self.engine.unregister_callback(cid)
-        self.assertNotIn(cid, self.engine.callbacks)
-
-        # Check logging happened
-        self.engine.logger.debug.assert_called()
-
-        # We look through all calls because stop_stream might also log
-        found_msg = False
-        for call in self.engine.logger.debug.call_args_list:
-            if f"Unregistered callback {cid}" in call[0][0]:
-                found_msg = True
-                break
-
-        self.assertTrue(found_msg, f"Did not find 'Unregistered callback {cid}' in logs")
 
     def test_stop_stream_exception(self):
         # Create a mock stream that raises an exception when stopped

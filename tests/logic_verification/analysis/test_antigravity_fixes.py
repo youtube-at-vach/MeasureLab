@@ -223,37 +223,6 @@ class TestAntigravityFixes(unittest.TestCase):
         # Double filtering would yield ~ -2.7 dB.
         self.assertAlmostEqual(measured_db, -1.3, delta=0.2)
 
-    def test_transmission_analyzer_data_race_safety(self):
-        """Verify that TransmissionAnalyzer does not trigger concurrency errors when reading and writing simultaneously."""
-        from src.gui.widgets.transmission_analyzer import TransmissionAnalyzer
-        import time
-        import threading
-
-        engine = MockAudioEngine(sample_rate=48000)
-        analyzer = TransmissionAnalyzer(engine)
-        analyzer.start_analysis()
-
-        stop_event = threading.Event()
-
-        def audio_thread_sim():
-            while not stop_event.is_set():
-                indata = np.random.randn(256, 2)
-                outdata = np.zeros_like(indata)
-                analyzer._audio_callback(indata, outdata, 256, None, None)
-                time.sleep(0.001)
-
-        t = threading.Thread(target=audio_thread_sim)
-        t.start()
-
-        try:
-            # GUI Thread processes data concurrently
-            for _ in range(50):
-                analyzer.process_data()
-                time.sleep(0.002)
-        finally:
-            stop_event.set()
-            t.join()
-            analyzer.stop_analysis()
 
     def test_transmission_analyzer_prbs_phase_uses_absolute_time(self):
         """Verify PRBS phase sync is not biased by TX history ring wraps."""

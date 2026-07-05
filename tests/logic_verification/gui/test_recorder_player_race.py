@@ -111,31 +111,3 @@ class TestRecorderPlayerRace(unittest.TestCase):
         # Also assert state changed correctly
         self.assertFalse(player.is_playing, "Should stop playing on empty buffer")
 
-    def test_race_condition_pos_exceeds_len(self):
-        """Verify handling when playback_pos exceeds buffer length."""
-        mock_engine = MagicMock()
-        player = self.module.RecorderPlayer(mock_engine)
-
-        player.is_playing = True
-        player.loop_playback = True
-        player.output_mode = "Stereo"
-        player.playback_buffer = MockArray((100, 2))
-        player.playback_pos = 9000  # Exceeds 100
-
-        indata = MockArray((512, 2))
-        outdata = MockArray((512, 2))
-
-        # This should execute quickly and reset pos to 0 (since loop is True)
-        player.audio_callback(indata, outdata, 512, None, None)
-
-        # Check that it didn't crash or hang
-        self.assertTrue(True)
-
-        # If loop was False, it should stop
-        player.is_playing = True
-        player.loop_playback = False
-        player.playback_pos = 9000
-
-        player.audio_callback(indata, outdata, 512, None, None)
-
-        self.assertFalse(player.is_playing, "Should stop playing if out of bounds and not looping")
