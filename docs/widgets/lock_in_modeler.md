@@ -1,8 +1,8 @@
-# Realtime SSS Lockin Analyzer
+# Lock-in Modeler
 
 ## 概要
 
-Realtime SSS Lockin Analyzerは、Synchronized Swept Sine (SSS) 信号とデジタルロックイン方式を使用して、リアルタイムに周波数特性と歪みのスイープ測定を行うツールです。指定した周波数範囲での振幅特性と位相特性、さらに高調波の追跡が可能です。
+Lock-in Modelerは、Synchronized Swept Sine (SSS) 信号とデジタルロックイン方式を使用して、リアルタイムに周波数特性と歪みのスイープ測定を行うツールです。指定した周波数範囲での振幅特性と位相特性、さらに高調波の追跡が可能です。将来的にHammersteinモデルなどのシステム同定を行う基盤としての拡張性を備えています。
 
 ## 操作方法
 

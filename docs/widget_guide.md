@@ -17,6 +17,7 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
 | **波形の形をそのまま見たい** | [Oscilloscope](widgets/oscilloscope.md) |
 | **アンプや部品の歪み(THD)を測りたい** | [Distortion Analyzer](widgets/distortion_analyzer.md) |
 | **アンプやスピーカーの歪みをフィードフォワード補正したい** | [Feedforward Compensator](widgets/feedforward_compensator.md) |
+| **リアルタイムに歪みやF特をスイープ計測し、モデルを構築したい** | [Lock-in Modeler](widgets/lock_in_modeler.md) |
 | **アンプ等の周波数特性(F特)を測りたい** | [Network Analyzer](widgets/network_analyzer.md) |
 | **スピーカーのインピーダンスを測りたい** | [Impedance Analyzer](widgets/impedance_analyzer.md) |
 | **超低歪み(THD)を高精度に測りたい** | [Lock-in Harmonic Analyzer](widgets/lockin_harmonic_analyzer.md) |
@@ -82,6 +83,9 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
     - THD (全高調波歪) や THD+N を測定します。基本的な歪み測定はこちらを使用します。
 - **[Nonlinear Analyzer](widgets/nonlinear_analyzer.md)**
     - Hammersteinモデルを用いて、機器の応答から1次（線形）〜5次までの高調波カーネルを分離・抽出する高度な歪み解析ツールです。
+
+- **[Lock-in Modeler](widgets/lock_in_modeler.md)**
+    - SSS (Synchronized Swept Sine) 信号とデジタルロックイン方式を使用して、リアルタイムに周波数特性と歪みのスイープ測定を行い、将来的にHammersteinモデルなどのシステムモデル構築へ活用するツールです。
 
 - **[Feedforward Compensator](widgets/feedforward_compensator.md)**
     - Hammersteinシステムモデルを利用し、音声信号に対してフィードフォワード歪み補正（LICFF: Linear-Inverse Compensated Feedforward）を適用します。

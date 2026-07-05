@@ -2,9 +2,9 @@ import pytest
 from unittest.mock import MagicMock
 import numpy as np
 
-from src.gui.widgets.realtime_sss_analyzer import (
-    RealtimeSSSAnalyzer,
-    RealtimeSSSAnalyzerWidget,
+from src.gui.widgets.lock_in_modeler import (
+    LockInModeler,
+    LockInModelerWidget,
 )
 
 
@@ -17,11 +17,11 @@ def mock_audio_engine():
     return engine
 
 
-def test_realtime_sss_analyzer_averaging_freq_update(qtbot, mock_audio_engine):
+def test_lock_in_modeler_averaging_freq_update(qtbot, mock_audio_engine):
     # 1. Initialize analyzer and widget
-    analyzer = RealtimeSSSAnalyzer(mock_audio_engine)
+    analyzer = LockInModeler(mock_audio_engine)
     analyzer.latency_samples = 100.0  # Set mock latency so Start Sweep button is enabled
-    widget = RealtimeSSSAnalyzerWidget(analyzer)
+    widget = LockInModelerWidget(analyzer)
     qtbot.addWidget(widget)
 
     # Set parameters: start_freq=100.0, end_freq=20000.0, averaging=2
@@ -67,11 +67,11 @@ def test_realtime_sss_analyzer_averaging_freq_update(qtbot, mock_audio_engine):
     assert not analyzer.is_running
 
 
-def test_realtime_sss_analyzer_sweep_kernels_calculation(qtbot, mock_audio_engine):
+def test_lock_in_modeler_sweep_kernels_calculation(qtbot, mock_audio_engine):
     # 1. Initialize analyzer and widget
-    analyzer = RealtimeSSSAnalyzer(mock_audio_engine)
+    analyzer = LockInModeler(mock_audio_engine)
     analyzer.latency_samples = 100.0
-    widget = RealtimeSSSAnalyzerWidget(analyzer)
+    widget = LockInModelerWidget(analyzer)
     qtbot.addWidget(widget)
 
     # Set Sweep Mode to "sweep" (standard sweep mode)
@@ -120,11 +120,11 @@ def test_realtime_sss_analyzer_sweep_kernels_calculation(qtbot, mock_audio_engin
     assert widget.plot_tabs.isTabEnabled(2)
 
 
-def test_realtime_sss_analyzer_hammerstein_curves_not_cleared(qtbot, mock_audio_engine):
+def test_lock_in_modeler_hammerstein_curves_not_cleared(qtbot, mock_audio_engine):
     # 1. Initialize analyzer and widget
-    analyzer = RealtimeSSSAnalyzer(mock_audio_engine)
+    analyzer = LockInModeler(mock_audio_engine)
     analyzer.latency_samples = 100.0
-    widget = RealtimeSSSAnalyzerWidget(analyzer)
+    widget = LockInModelerWidget(analyzer)
     qtbot.addWidget(widget)
 
     # Set Sweep Mode to "hammerstein"
@@ -147,11 +147,11 @@ def test_realtime_sss_analyzer_hammerstein_curves_not_cleared(qtbot, mock_audio_
     widget.btn_toggle.click()
 
 
-def test_realtime_sss_analyzer_relative_mode(qtbot, mock_audio_engine):
+def test_lock_in_modeler_relative_mode(qtbot, mock_audio_engine):
     # 1. Initialize analyzer and widget
-    analyzer = RealtimeSSSAnalyzer(mock_audio_engine)
+    analyzer = LockInModeler(mock_audio_engine)
     analyzer.latency_samples = 100.0
-    widget = RealtimeSSSAnalyzerWidget(analyzer)
+    widget = LockInModelerWidget(analyzer)
     qtbot.addWidget(widget)
 
     # Set Sweep Mode to "sweep" (standard sweep mode)
@@ -215,11 +215,11 @@ def test_realtime_sss_analyzer_relative_mode(qtbot, mock_audio_engine):
     widget.chk_relative.setChecked(False)
 
 
-def test_realtime_sss_analyzer_unwrap_mode(qtbot, mock_audio_engine):
+def test_lock_in_modeler_unwrap_mode(qtbot, mock_audio_engine):
     # 1. Initialize analyzer and widget
-    analyzer = RealtimeSSSAnalyzer(mock_audio_engine)
+    analyzer = LockInModeler(mock_audio_engine)
     analyzer.latency_samples = 100.0
-    widget = RealtimeSSSAnalyzerWidget(analyzer)
+    widget = LockInModelerWidget(analyzer)
     qtbot.addWidget(widget)
 
     # Set Sweep Mode to "sweep" (standard sweep mode)
@@ -265,11 +265,11 @@ def test_realtime_sss_analyzer_unwrap_mode(qtbot, mock_audio_engine):
     assert np.any(np.abs(h1_phase_unwrapped_valid) > 180.0)
 
 
-def test_realtime_sss_analyzer_nan_propagation(qtbot, mock_audio_engine):
+def test_lock_in_modeler_nan_propagation(qtbot, mock_audio_engine):
     # Initialize analyzer and widget
-    analyzer = RealtimeSSSAnalyzer(mock_audio_engine)
+    analyzer = LockInModeler(mock_audio_engine)
     analyzer.latency_samples = 100.0
-    widget = RealtimeSSSAnalyzerWidget(analyzer)
+    widget = LockInModelerWidget(analyzer)
     qtbot.addWidget(widget)
 
     # Set Sweep Mode to "sweep" (standard sweep mode)
@@ -328,11 +328,11 @@ def test_realtime_sss_analyzer_nan_propagation(qtbot, mock_audio_engine):
     assert np.abs(H2[6]) > 0.4
 
 
-def test_realtime_sss_analyzer_smoothing_in_sweep_mode(qtbot, mock_audio_engine):
+def test_lock_in_modeler_smoothing_in_sweep_mode(qtbot, mock_audio_engine):
     # 1. Initialize analyzer and widget
-    analyzer = RealtimeSSSAnalyzer(mock_audio_engine)
+    analyzer = LockInModeler(mock_audio_engine)
     analyzer.latency_samples = 100.0
-    widget = RealtimeSSSAnalyzerWidget(analyzer)
+    widget = LockInModelerWidget(analyzer)
     qtbot.addWidget(widget)
 
     # Sweep mode is set

@@ -17,6 +17,7 @@ Checklist to find the best tool for "what you want to do" quickly.
 | **View original waveform shape** | [Oscilloscope](widgets/oscilloscope.en.md) |
 | **Measure distortion (THD) of amps or components** | [Distortion Analyzer](widgets/distortion_analyzer.en.md) |
 | **Apply feedforward distortion compensation to an audio signal** | [Feedforward Compensator](widgets/feedforward_compensator.en.md) |
+| **Measure real-time distortion / frequency response sweeps and build system models** | [Lock-in Modeler](widgets/lock_in_modeler.en.md) |
 | **Measure frequency response of amps, etc.** | [Network Analyzer](widgets/network_analyzer.en.md) |
 | **Measure impedance of speakers** | [Impedance Analyzer](widgets/impedance_analyzer.en.md) |
 | **Measure ultra-low distortion (THD) with high precision** | [Lock-in Harmonic Analyzer](widgets/lockin_harmonic_analyzer.en.md) |
@@ -76,6 +77,9 @@ Tools for evaluating equipment performance and sound quality.
     - Measures THD (Total Harmonic Distortion) or THD+N. Use this for basic distortion measurements.
 - **[Nonlinear Analyzer](widgets/nonlinear_analyzer.en.md)**
     - An advanced distortion analysis tool that uses the Hammerstein model to separate and extract 1st (linear) to 5th order harmonic kernels from equipment responses.
+
+- **[Lock-in Modeler](widgets/lock_in_modeler.en.md)**
+    - Performs real-time frequency response and distortion sweeps using SSS (Synchronized Swept Sine) and digital Lock-in techniques for building Hammerstein system models.
 
 - **[Feedforward Compensator](widgets/feedforward_compensator.en.md)**
     - Applies feedforward distortion compensation (LICFF) to audio signals using Hammerstein system models.

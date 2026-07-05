@@ -1,8 +1,8 @@
-# Realtime SSS Lockin Analyzer
+# Lock-in Modeler
 
 ## Overview
 
-The Realtime SSS Lockin Analyzer performs real-time frequency response and distortion sweeps using Synchronized Swept Sine (SSS) and digital Lock-in techniques. It allows measuring magnitude and phase responses over a specified frequency range and can track harmonics.
+The Lock-in Modeler performs real-time frequency response and distortion sweeps using Synchronized Swept Sine (SSS) and digital Lock-in techniques. It allows measuring magnitude and phase responses over a specified frequency range, tracking harmonics, and serves as a foundation for constructing Hammerstein system models.
 
 ## Operation
 

@@ -121,7 +121,7 @@ class SSSCalculationThread(QThread):
         self.is_running = False
 
 
-class RealtimeSSSAnalyzer(MeasurementModule):
+class LockInModeler(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
         self.is_running = False
@@ -162,14 +162,14 @@ class RealtimeSSSAnalyzer(MeasurementModule):
 
     @property
     def name(self) -> str:
-        return "Real-time SSS Lockin Analyzer"
+        return "Lock-in Modeler"
 
     @property
     def description(self) -> str:
         return tr("Real-time frequency response and distortion sweep using SSS and digital Lock-in.")
 
     def get_widget(self):
-        return RealtimeSSSAnalyzerWidget(self)
+        return LockInModelerWidget(self)
 
     def start_analysis(self):
         if self.is_running:
@@ -256,8 +256,8 @@ class RealtimeSSSAnalyzer(MeasurementModule):
                 self.engine.reset_filter_states()
 
 
-class RealtimeSSSAnalyzerWidget(QWidget):
-    def __init__(self, module: RealtimeSSSAnalyzer):
+class LockInModelerWidget(QWidget):
+    def __init__(self, module: LockInModeler):
         super().__init__()
         self.module = module
         self.calib_thread = None
