@@ -1575,6 +1575,7 @@
     "Show Instantaneous": "Afficher l'instantané",
     "Show Physical Units (dB/r/°)": "Afficher les unités physiques (dB/r/°)",
     "Show RIAA Curve": "Afficher la courbe RIAA",
+    "Show Raw Lock-in (Unprocessed)": "Afficher le Lock-in non traité",
     "Show Relative to Fundamental": "Afficher par rapport à la fondamentale",
     "Show THD": "Afficher le THD",
     "Show Thermal Limit": "Afficher la limite thermique",

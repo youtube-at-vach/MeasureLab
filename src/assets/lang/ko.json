@@ -1575,6 +1575,7 @@
     "Show Instantaneous": "순시치 표시",
     "Show Physical Units (dB/r/°)": "물리 단위 표시 (dB/r/°)",
     "Show RIAA Curve": "RIAA 곡선 표시",
+    "Show Raw Lock-in (Unprocessed)": "미처리 락인 데이터 표시",
     "Show Relative to Fundamental": "기본파 대비 상대 표시",
     "Show THD": "THD 표시",
     "Show Thermal Limit": "열 잡음 한계 표시",

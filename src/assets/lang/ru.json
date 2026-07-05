@@ -1575,6 +1575,7 @@
     "Show Instantaneous": "Показывать мгновенное значение",
     "Show Physical Units (dB/r/°)": "Показать физические единицы (дБ/r/°)",
     "Show RIAA Curve": "Показать кривую RIAA",
+    "Show Raw Lock-in (Unprocessed)": "Показать необработанный Lock-in",
     "Show Relative to Fundamental": "Показать относительно основной гармоники",
     "Show THD": "Показать THD",
     "Show Thermal Limit": "Показать тепловой предел",

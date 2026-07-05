@@ -1575,6 +1575,7 @@
     "Show Instantaneous": "显示瞬时值",
     "Show Physical Units (dB/r/°)": "显示物理单位 (dB/r/°)",
     "Show RIAA Curve": "显示 RIAA 曲线",
+    "Show Raw Lock-in (Unprocessed)": "显示未处理的锁定数据",
     "Show Relative to Fundamental": "显示与基波的相对值",
     "Show THD": "显示 THD",
     "Show Thermal Limit": "显示热噪声限制",
