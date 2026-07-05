@@ -294,7 +294,7 @@ def main():
     parser.add_argument(
         "--tsa",
         type=int,
-        default=16,
+        default=4,
         help="Number of Time Synchronous Averages (TSA) to perform per run",
     )
     cli_args = parser.parse_args()
