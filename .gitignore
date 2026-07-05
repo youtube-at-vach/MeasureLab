@@ -96,3 +96,5 @@ scripts/variability_results.json
 scripts/sss_hammerstein_verification_results.json
 scripts/sss_repeatability_results.json
 scripts/tsa_study_results.json
+scripts/lock_in_modeler_hammerstein_verification_results.json
+scripts/lock_in_modeler_repeatability_results.json

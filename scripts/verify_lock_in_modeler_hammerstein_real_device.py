@@ -417,7 +417,7 @@ def run_lockin_measurement(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Verify SSS Hammerstein Model vs Lock-in on Real/Virtual Device")
+    parser = argparse.ArgumentParser(description="Verify Lock-in Modeler Hammerstein Model vs Lock-in on Real/Virtual Device")
     parser.add_argument(
         "--virtual", action="store_true", help="Run in virtual simulation loop mode instead of real device"
     )
@@ -498,7 +498,7 @@ def main():
     # ----------------------------------------------------
     # Phase A: SSS Sweep at Multiple Amplitudes
     # ----------------------------------------------------
-    print("\n=== Phase A: SSS Sweeps for Hammerstein Kernel Estimation ===")
+    print("\n=== Phase A: Lock-in Modeler Sweeps for Hammerstein Kernel Estimation ===")
 
     # Sweep configuration
     start_freq = 20.0
@@ -670,7 +670,7 @@ def main():
                 failed = True
 
     # Save results to JSON
-    output_report_path = "/Users/vach/MeasureLab/scripts/sss_hammerstein_verification_results.json"
+    output_report_path = "/Users/vach/MeasureLab/scripts/lock_in_modeler_hammerstein_verification_results.json"
     report_data = {
         "f0": f0,
         "test_amplitude_dbfs": cli_args.amplitude,
@@ -687,10 +687,10 @@ def main():
 
     if cli_args.virtual:
         if failed:
-            print("\n[-] SSS Hammerstein Verification FAILED.")
+            print("\n[-] Lock-in Modeler Hammerstein Verification FAILED.")
             sys.exit(1)
         else:
-            print("\n[+] SSS Hammerstein Verification PASSED.")
+            print("\n[+] Lock-in Modeler Hammerstein Verification PASSED.")
             sys.exit(0)
 
 
