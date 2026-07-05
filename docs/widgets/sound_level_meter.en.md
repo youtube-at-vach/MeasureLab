@@ -6,10 +6,6 @@
 
 The Sound Level Meter is a precision tool for measuring environmental noise and the sound pressure level (SPL) of audio equipment. It features weighting filters and time response characteristics compliant with common sound level meter standards (such as IEC 61672).
 
-## ☕ Coffee Break: What is dB?
-
-Sound level is expressed in "dB (decibels)." The "dB SPL" measured by a sound level meter uses the minimum sound pressure humans can hear as its "0 dB" baseline. Because the human ear can perceive an extremely wide range of sound pressures, a logarithmic scale is used to keep the numerical values manageable.
-
 ## Compact Mode
 
 When the window is detached using the Detachable Wrapper, pressing the "Compact" button enters Compact Mode. Only the primary numerical values, such as SPL and Leq, are displayed largely across the screen, providing visibility similar to dedicated sound level meter hardware.

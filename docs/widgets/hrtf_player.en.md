@@ -7,10 +7,6 @@
 A tool for visualizing data from **SOFA files** containing HRTF (Head-Related Transfer Function) and auditioning it by listening to actual sounds.
 It is useful in spatial audio (3D audio) production and research for intuitively understanding HRTF data characteristics or testing if they match your own ears.
 
-## ☕ Coffee Break: HRTF (Head-Related Transfer Function)
-
-Even with just left and right earphones, sounds can appear to come from behind or above. This is because sounds arriving from different directions change slightly due to reflections on our ears and head. **HRTF** models these acoustic changes, and applying it to ordinary sound tricks the brain into perceiving direction.
-
 ## Features and UI
 
 ### Main Plot (Heatmap)

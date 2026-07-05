@@ -8,10 +8,6 @@ This is the most fundamental tool for measuring the "performance" of audio equip
 It measures how accurately amplifiers, DACs, etc., are outputting the original signal (how much they are distorted).
 It is an important measurement tool to grasp the basic performance indicators of the equipment.
 
-## ☕ Coffee Break: Distortion in Audio
-
-When a pure sine wave is input into equipment such as an amplifier or DAC, components other than the original frequency (harmonics and noise) may be introduced into the output signal. This is called "distortion."
-
 ## Meaning of Key Indicators
 
 This tool measures the following values:

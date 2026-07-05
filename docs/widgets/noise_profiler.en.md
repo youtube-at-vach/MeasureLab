@@ -18,12 +18,6 @@ It is ideal for evaluating the low-noise performance of amplifiers and microphon
 
 When detached via the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, displaying only the correlation scores (percentages) for each noise type in a large, easy-to-read format. This allows you to instantly recognize the noise characteristics at a glance.
 
-## ☕ Coffee Break: What are the "Colors" of Noise?
-
-Noise comes in different types (colors) depending on its cause.
-These include "White Noise" (all frequencies evenly distributed), "1/f Noise" or pink noise (stronger low frequencies), and "Hum Noise" (from AC power).
-This tool separates and analyzes these components.
-
 ## Operation
 
 ### Starting and Stopping Measurement
