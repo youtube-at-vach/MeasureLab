@@ -263,7 +263,7 @@ def measure_sss_averaged(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Verify SSS Repeatability / Phase Variation")
+    parser = argparse.ArgumentParser(description="Verify Lock-in Modeler Repeatability / Phase Variation")
     parser.add_argument("--virtual", action="store_true", help="Run in virtual simulation loop mode")
     parser.add_argument("--no-noise", action="store_true", help="Disable random noise in virtual simulation mode")
     parser.add_argument("--no-jitter", action="store_true", help="Disable random jitter in virtual simulation mode")
@@ -294,7 +294,7 @@ def main():
     parser.add_argument(
         "--tsa",
         type=int,
-        default=16,
+        default=4,
         help="Number of Time Synchronous Averages (TSA) to perform per run",
     )
     cli_args = parser.parse_args()
@@ -572,7 +572,7 @@ def main():
 
     # Compute overall statistics summary
     print("\n" + "=" * 60)
-    print(f" SSS MEASUREMENT REPEATABILITY SUMMARY ({cli_args.runs} Runs)")
+    print(f" LOCK-IN MODELER REPEATABILITY SUMMARY ({cli_args.runs} Runs)")
     print(f" Sweep Duration: {sweep_duration}s | Cycles: {analysis_cycles}")
     print("=" * 60)
 
@@ -609,7 +609,7 @@ def main():
         phase_errors = np.zeros((n_valid, max_harmonic))
 
         print("\n" + "=" * 60)
-        print(" SSS PHASE MEASUREMENT ACCURACY (Compared to Ground Truth)")
+        print(" LOCK-IN MODELER PHASE MEASUREMENT ACCURACY (Compared to Ground Truth)")
         print("=" * 60)
 
         # Mask for inner frequency range (100 Hz to 10 kHz) to avoid Tukey window edge transients
@@ -685,7 +685,7 @@ def main():
         ax1.semilogx(freqs_valid, gain_std[:, h], color=colors[h], label=labels[h])
         ax2.semilogx(freqs_valid, phase_std[:, h], color=colors[h], label=labels[h])
 
-    ax1.set_title(f"SSS Repeatability: Standard Deviation over {cli_args.runs} Runs (Cycles={analysis_cycles})")
+    ax1.set_title(f"Lock-in Modeler Repeatability: Standard Deviation over {cli_args.runs} Runs (Cycles={analysis_cycles})")
     ax1.set_ylabel("Gain Standard Deviation (dB)")
     ax1.grid(True, which="both", ls="-", alpha=0.5)
     ax1.legend()
@@ -695,7 +695,7 @@ def main():
     ax2.grid(True, which="both", ls="-", alpha=0.5)
 
     plt.tight_layout()
-    plot_path = os.path.join(project_root, "scripts", "sss_repeatability_plot.png")
+    plot_path = os.path.join(project_root, "scripts", "lock_in_modeler_repeatability_plot.png")
     plt.savefig(plot_path, dpi=150)
     plt.close()
     print(f"[+] Saved repeatability plot to {plot_path}")
@@ -707,14 +707,14 @@ def main():
         for h in range(max_harmonic):
             ax.semilogx(freqs_valid, phase_errors[:, h], color=colors[h], label=labels[h])
         ax.set_title(
-            f"SSS Demodulator Phase Error vs Ground Truth (Virtual, Noise={not cli_args.no_noise}, Jitter={not cli_args.no_jitter})"
+            f"Lock-in Modeler Phase Error vs Ground Truth (Virtual, Noise={not cli_args.no_noise}, Jitter={not cli_args.no_jitter})"
         )
         ax.set_xlabel("Frequency (Hz)")
         ax.set_ylabel("Phase Error (degrees)")
         ax.grid(True, which="both", ls="-", alpha=0.5)
         ax.legend()
         plt.tight_layout()
-        acc_plot_path = os.path.join(project_root, "scripts", "sss_phase_accuracy_plot.png")
+        acc_plot_path = os.path.join(project_root, "scripts", "lock_in_modeler_phase_accuracy_plot.png")
         plt.savefig(acc_plot_path, dpi=150)
         plt.close()
         print(f"[+] Saved phase accuracy plot to {acc_plot_path}")
@@ -752,7 +752,7 @@ def main():
         if cli_args.virtual:
             report_data["harmonics"][h_name]["phase_error"] = phase_errors[:, h].tolist()
 
-    json_path = os.path.join(project_root, "scripts", "sss_repeatability_results.json")
+    json_path = os.path.join(project_root, "scripts", "lock_in_modeler_repeatability_results.json")
     with open(json_path, "w") as f:
         json.dump(report_data, f, indent=4)
     print(f"[+] Saved raw metrics to {json_path}")

@@ -121,7 +121,7 @@ class SSSCalculationThread(QThread):
         self.is_running = False
 
 
-class RealtimeSSSAnalyzer(MeasurementModule):
+class LockInModeler(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
         self.is_running = False
@@ -162,14 +162,14 @@ class RealtimeSSSAnalyzer(MeasurementModule):
 
     @property
     def name(self) -> str:
-        return "Real-time SSS Lockin Analyzer"
+        return "Lock-in Modeler"
 
     @property
     def description(self) -> str:
         return tr("Real-time frequency response and distortion sweep using SSS and digital Lock-in.")
 
     def get_widget(self):
-        return RealtimeSSSAnalyzerWidget(self)
+        return LockInModelerWidget(self)
 
     def start_analysis(self):
         if self.is_running:
@@ -256,8 +256,8 @@ class RealtimeSSSAnalyzer(MeasurementModule):
                 self.engine.reset_filter_states()
 
 
-class RealtimeSSSAnalyzerWidget(QWidget):
-    def __init__(self, module: RealtimeSSSAnalyzer):
+class LockInModelerWidget(QWidget):
+    def __init__(self, module: LockInModeler):
         super().__init__()
         self.module = module
         self.calib_thread = None
@@ -516,6 +516,11 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         self.chk_unwrap.toggled.connect(self.redraw_plots)
         display_layout.addWidget(self.chk_unwrap)
 
+        self.chk_show_raw = QCheckBox(tr("Show Raw Lock-in (Unprocessed)"))
+        self.chk_show_raw.setChecked(False)
+        self.chk_show_raw.toggled.connect(self.redraw_plots)
+        display_layout.addWidget(self.chk_show_raw)
+
         self.lbl_smoothing = QLabel(tr("Graph Smoothing:"))
         self.combo_smoothing = QComboBox()
         self.combo_smoothing.addItem(tr("None"), "None")
@@ -529,9 +534,7 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         display_layout.addWidget(self.combo_smoothing)
         display_layout.addStretch()
 
-        # Hide smoothing options initially
-        self.lbl_smoothing.setVisible(False)
-        self.combo_smoothing.setVisible(False)
+
 
         right_layout.addLayout(display_layout)
 
@@ -855,8 +858,10 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         if label:
             label.setVisible(is_ham)
 
-        self.combo_smoothing.setVisible(is_ham)
-        self.lbl_smoothing.setVisible(is_ham)
+
+
+        if hasattr(self, "chk_show_raw"):
+            self.chk_show_raw.setChecked(not is_ham)
 
         self.plot_tabs.setTabEnabled(2, True)
         self.redraw_plots()
@@ -1000,48 +1005,50 @@ class RealtimeSSSAnalyzerWidget(QWidget):
         # Check if we should draw the final kernels
         has_kernels = len(getattr(self, "H_freqs", [])) > 0
         is_measuring = self.module.state in {"PLAYING", "WAITING"}
+        show_processed = not self.chk_show_raw.isChecked() if hasattr(self, "chk_show_raw") else True
 
         if has_kernels and not is_measuring:
-            # Draw Kernels (Hammerstein or Sweep)
-            sort_idx = np.argsort(x_data)
-            x_data_sorted = x_data[sort_idx]
-            smooth_level = self.combo_smoothing.currentData()
-
-            H_fundamental = self.H_freqs[0][valid_indices][sort_idx] if len(self.H_freqs) > 0 else 1.0
-
-            for idx in range(len(self.H_freqs)):
-                H_p = self.H_freqs[idx][valid_indices][sort_idx]
-                if self.chk_relative.isChecked():
-                    H_p = H_p / (H_fundamental + 1e-30)
-
-                mag_db = 20 * np.log10(np.abs(H_p) + 1e-12)
-                if self.chk_unwrap.isChecked():
-                    # H_p may contain NaNs from frequency mapping. Unwrap only non-NaN elements.
-                    nan_mask = np.isnan(H_p)
-                    phase_deg = np.zeros_like(H_p, dtype=float)
-                    if not np.all(nan_mask):
-                        phase_deg[~nan_mask] = np.degrees(np.unwrap(np.angle(H_p[~nan_mask])))
-                    phase_deg[nan_mask] = np.nan
-                else:
-                    phase_deg = np.degrees(np.angle(H_p))
-
-                # Apply smoothing
-                mag_smoothed = self.apply_smoothing(mag_db, smooth_level)
-                phase_smoothed = self.apply_smoothing(phase_deg, smooth_level)
-
-                self.mag_curves[idx].setData(x_data_sorted, mag_smoothed)
-                self.phase_curves[idx].setData(x_data_sorted, phase_smoothed)
-
-            if len(self.kernels_time) > 0:
-                ref_max = np.max(np.abs(self.kernels_time[0]))
-                if ref_max < 1e-12:
-                    ref_max = 1.0
-                for idx in range(len(self.kernels_time)):
-                    norm_kernel = self.kernels_time[idx] / ref_max
-                    self.kernel_curves[idx].setData(self.time_ms, norm_kernel)
-
             self.plot_tabs.setTabEnabled(2, True)
-            return
+            if show_processed:
+                # Draw Kernels (Hammerstein or Sweep)
+                sort_idx = np.argsort(x_data)
+                x_data_sorted = x_data[sort_idx]
+                smooth_level = self.combo_smoothing.currentData()
+
+                H_fundamental = self.H_freqs[0][valid_indices][sort_idx] if len(self.H_freqs) > 0 else 1.0
+
+                for idx in range(len(self.H_freqs)):
+                    H_p = self.H_freqs[idx][valid_indices][sort_idx]
+                    if self.chk_relative.isChecked():
+                        H_p = H_p / (H_fundamental + 1e-30)
+
+                    mag_db = 20 * np.log10(np.abs(H_p) + 1e-12)
+                    if self.chk_unwrap.isChecked():
+                        # H_p may contain NaNs from frequency mapping. Unwrap only non-NaN elements.
+                        nan_mask = np.isnan(H_p)
+                        phase_deg = np.zeros_like(H_p, dtype=float)
+                        if not np.all(nan_mask):
+                            phase_deg[~nan_mask] = np.degrees(np.unwrap(np.angle(H_p[~nan_mask])))
+                        phase_deg[nan_mask] = np.nan
+                    else:
+                        phase_deg = np.degrees(np.angle(H_p))
+
+                    # Apply smoothing
+                    mag_smoothed = self.apply_smoothing(mag_db, smooth_level)
+                    phase_smoothed = self.apply_smoothing(phase_deg, smooth_level)
+
+                    self.mag_curves[idx].setData(x_data_sorted, mag_smoothed)
+                    self.phase_curves[idx].setData(x_data_sorted, phase_smoothed)
+
+                if len(self.kernels_time) > 0:
+                    ref_max = np.max(np.abs(self.kernels_time[0]))
+                    if ref_max < 1e-12:
+                        ref_max = 1.0
+                    for idx in range(len(self.kernels_time)):
+                        norm_kernel = self.kernels_time[idx] / ref_max
+                        self.kernel_curves[idx].setData(self.time_ms, norm_kernel)
+
+                return
 
         # Redraw standard real-time sweeps
         for idx in range(self.module.max_harmonic):
@@ -1062,8 +1069,13 @@ class RealtimeSSSAnalyzerWidget(QWidget):
             else:
                 y_phase = np.degrees(np.angle(avg_complex))
 
-            self.mag_curves[idx].setData(x_data, y_gain)
-            self.phase_curves[idx].setData(x_data, y_phase)
+            # Apply smoothing
+            smooth_level = self.combo_smoothing.currentData()
+            y_gain_smoothed = self.apply_smoothing(y_gain, smooth_level)
+            y_phase_smoothed = self.apply_smoothing(y_phase, smooth_level)
+
+            self.mag_curves[idx].setData(x_data, y_gain_smoothed)
+            self.phase_curves[idx].setData(x_data, y_phase_smoothed)
 
     def apply_smoothing(self, y_data, level):
         if level == "None" or len(y_data) < 15:

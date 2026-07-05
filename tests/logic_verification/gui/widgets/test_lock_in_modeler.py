@@ -2,9 +2,9 @@ import pytest
 from unittest.mock import MagicMock
 import numpy as np
 
-from src.gui.widgets.realtime_sss_analyzer import (
-    RealtimeSSSAnalyzer,
-    RealtimeSSSAnalyzerWidget,
+from src.gui.widgets.lock_in_modeler import (
+    LockInModeler,
+    LockInModelerWidget,
 )
 
 
@@ -17,11 +17,11 @@ def mock_audio_engine():
     return engine
 
 
-def test_realtime_sss_analyzer_averaging_freq_update(qtbot, mock_audio_engine):
+def test_lock_in_modeler_averaging_freq_update(qtbot, mock_audio_engine):
     # 1. Initialize analyzer and widget
-    analyzer = RealtimeSSSAnalyzer(mock_audio_engine)
+    analyzer = LockInModeler(mock_audio_engine)
     analyzer.latency_samples = 100.0  # Set mock latency so Start Sweep button is enabled
-    widget = RealtimeSSSAnalyzerWidget(analyzer)
+    widget = LockInModelerWidget(analyzer)
     qtbot.addWidget(widget)
 
     # Set parameters: start_freq=100.0, end_freq=20000.0, averaging=2
@@ -67,11 +67,11 @@ def test_realtime_sss_analyzer_averaging_freq_update(qtbot, mock_audio_engine):
     assert not analyzer.is_running
 
 
-def test_realtime_sss_analyzer_sweep_kernels_calculation(qtbot, mock_audio_engine):
+def test_lock_in_modeler_sweep_kernels_calculation(qtbot, mock_audio_engine):
     # 1. Initialize analyzer and widget
-    analyzer = RealtimeSSSAnalyzer(mock_audio_engine)
+    analyzer = LockInModeler(mock_audio_engine)
     analyzer.latency_samples = 100.0
-    widget = RealtimeSSSAnalyzerWidget(analyzer)
+    widget = LockInModelerWidget(analyzer)
     qtbot.addWidget(widget)
 
     # Set Sweep Mode to "sweep" (standard sweep mode)
@@ -120,11 +120,11 @@ def test_realtime_sss_analyzer_sweep_kernels_calculation(qtbot, mock_audio_engin
     assert widget.plot_tabs.isTabEnabled(2)
 
 
-def test_realtime_sss_analyzer_hammerstein_curves_not_cleared(qtbot, mock_audio_engine):
+def test_lock_in_modeler_hammerstein_curves_not_cleared(qtbot, mock_audio_engine):
     # 1. Initialize analyzer and widget
-    analyzer = RealtimeSSSAnalyzer(mock_audio_engine)
+    analyzer = LockInModeler(mock_audio_engine)
     analyzer.latency_samples = 100.0
-    widget = RealtimeSSSAnalyzerWidget(analyzer)
+    widget = LockInModelerWidget(analyzer)
     qtbot.addWidget(widget)
 
     # Set Sweep Mode to "hammerstein"
@@ -147,11 +147,11 @@ def test_realtime_sss_analyzer_hammerstein_curves_not_cleared(qtbot, mock_audio_
     widget.btn_toggle.click()
 
 
-def test_realtime_sss_analyzer_relative_mode(qtbot, mock_audio_engine):
+def test_lock_in_modeler_relative_mode(qtbot, mock_audio_engine):
     # 1. Initialize analyzer and widget
-    analyzer = RealtimeSSSAnalyzer(mock_audio_engine)
+    analyzer = LockInModeler(mock_audio_engine)
     analyzer.latency_samples = 100.0
-    widget = RealtimeSSSAnalyzerWidget(analyzer)
+    widget = LockInModelerWidget(analyzer)
     qtbot.addWidget(widget)
 
     # Set Sweep Mode to "sweep" (standard sweep mode)
@@ -215,11 +215,11 @@ def test_realtime_sss_analyzer_relative_mode(qtbot, mock_audio_engine):
     widget.chk_relative.setChecked(False)
 
 
-def test_realtime_sss_analyzer_unwrap_mode(qtbot, mock_audio_engine):
+def test_lock_in_modeler_unwrap_mode(qtbot, mock_audio_engine):
     # 1. Initialize analyzer and widget
-    analyzer = RealtimeSSSAnalyzer(mock_audio_engine)
+    analyzer = LockInModeler(mock_audio_engine)
     analyzer.latency_samples = 100.0
-    widget = RealtimeSSSAnalyzerWidget(analyzer)
+    widget = LockInModelerWidget(analyzer)
     qtbot.addWidget(widget)
 
     # Set Sweep Mode to "sweep" (standard sweep mode)
@@ -265,11 +265,11 @@ def test_realtime_sss_analyzer_unwrap_mode(qtbot, mock_audio_engine):
     assert np.any(np.abs(h1_phase_unwrapped_valid) > 180.0)
 
 
-def test_realtime_sss_analyzer_nan_propagation(qtbot, mock_audio_engine):
+def test_lock_in_modeler_nan_propagation(qtbot, mock_audio_engine):
     # Initialize analyzer and widget
-    analyzer = RealtimeSSSAnalyzer(mock_audio_engine)
+    analyzer = LockInModeler(mock_audio_engine)
     analyzer.latency_samples = 100.0
-    widget = RealtimeSSSAnalyzerWidget(analyzer)
+    widget = LockInModelerWidget(analyzer)
     qtbot.addWidget(widget)
 
     # Set Sweep Mode to "sweep" (standard sweep mode)
@@ -326,3 +326,70 @@ def test_realtime_sss_analyzer_nan_propagation(qtbot, mock_audio_engine):
     assert np.abs(H2[4]) > 0.4
     assert np.abs(H2[5]) > 0.4
     assert np.abs(H2[6]) > 0.4
+
+
+def test_lock_in_modeler_smoothing_in_sweep_mode(qtbot, mock_audio_engine):
+    # 1. Initialize analyzer and widget
+    analyzer = LockInModeler(mock_audio_engine)
+    analyzer.latency_samples = 100.0
+    widget = LockInModelerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    # Sweep mode is set
+    widget.combo_meas_mode.setCurrentIndex(0)  # Sweep mode
+
+    # Verify that the smoothing controls are not hidden in sweep mode
+    assert not widget.combo_smoothing.isHidden()
+    assert not widget.lbl_smoothing.isHidden()
+
+    # Start sweep
+    widget.btn_toggle.click()
+    assert analyzer.is_running
+
+    analyzer.engine = MagicMock()
+    analyzer.engine.sweep_samples = 48000 * 5
+    analyzer.engine.sample_rate = 48000
+
+    # Fill accumulated results with a noisy signal
+    widget.max_blocks = 100  # large enough to allow smoothing filter to run (len >= 15)
+    widget.accumulated_results = np.zeros((widget.max_blocks, 5), dtype=complex)
+    widget.block_counts = np.ones(widget.max_blocks, dtype=int)
+    widget.plot_freqs_array = np.linspace(100, 1000, widget.max_blocks)
+
+    # Let's create a noisy step or sine wave in magnitude
+    np.random.seed(42)
+    noise = np.random.normal(0, 5.0, widget.max_blocks)  # 5 dB variation
+    for i in range(widget.max_blocks):
+        # Base gain 0 dB + noise
+        widget.accumulated_results[i, 0] = 10 ** ((noise[i]) / 20.0)
+
+    # 1. Test with "None" smoothing
+    widget.combo_smoothing.setCurrentIndex(0)  # "None"
+    widget.redraw_plots()
+    h1_none = widget.mag_curves[0].yData.copy()
+
+    # 2. Test with "Low Smoothing" (Light)
+    widget.combo_smoothing.setCurrentIndex(1)  # "Light"
+    widget.redraw_plots()
+    h1_light = widget.mag_curves[0].yData.copy()
+
+    # 3. Test with "High Smoothing" (Heavy)
+    widget.combo_smoothing.setCurrentIndex(3)  # "Heavy"
+    widget.redraw_plots()
+    h1_heavy = widget.mag_curves[0].yData.copy()
+
+    # Asserts:
+    # yData should not be identical when smoothed
+    assert not np.allclose(h1_none, h1_light, atol=1e-5)
+    assert not np.allclose(h1_light, h1_heavy, atol=1e-5)
+
+    # The variance (noise) should be reduced by smoothing
+    var_none = np.var(h1_none)
+    var_light = np.var(h1_light)
+    var_heavy = np.var(h1_heavy)
+
+    assert var_light < var_none
+    assert var_heavy < var_light
+
+    # Clean up
+    widget.btn_toggle.click()
