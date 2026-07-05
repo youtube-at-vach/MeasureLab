@@ -831,8 +831,21 @@ class ResponseViewerWidget(QWidget):
         if window_size < 5:
             return y_data
 
+        # Handle NaNs by temporarily interpolating them before passing to savgol_filter
+        nan_mask = np.isnan(y_data)
+        y_clean = np.copy(y_data)
+
+        if np.any(nan_mask):
+            if np.all(nan_mask):
+                return y_data
+            x = np.arange(len(y_clean))
+            y_clean[nan_mask] = np.interp(x[nan_mask], x[~nan_mask], y_clean[~nan_mask])
+
         try:
-            return savgol_filter(y_data, window_size, polyorder=2)
+            smoothed = savgol_filter(y_clean, window_size, polyorder=2)
+            if np.any(nan_mask):
+                smoothed[nan_mask] = np.nan
+            return smoothed
         except Exception as e:
             logger.warning("Smoothing failed: %s", e)
             return y_data
@@ -957,7 +970,12 @@ class ResponseViewerWidget(QWidget):
             if p in H_dict:
                 Hp = H_dict[p]
                 mags = np.abs(Hp)
-                phases = np.unwrap(np.angle(Hp))
+                raw_phases = np.angle(Hp)
+                nan_mask_unwrap = np.isnan(mags) | np.isnan(raw_phases)
+                phases = np.zeros_like(raw_phases)
+                if np.any(~nan_mask_unwrap):
+                    phases[~nan_mask_unwrap] = np.unwrap(raw_phases[~nan_mask_unwrap])
+                phases[nan_mask_unwrap] = np.nan
                 nan_mask = np.isnan(mags) | np.isnan(phases)
                 if np.all(nan_mask):
                     mag_val_all = np.zeros_like(f_all)
@@ -1329,7 +1347,12 @@ class ResponseViewerWidget(QWidget):
             if p in H_dict:
                 Hp = H_dict[p]
                 mags = np.abs(Hp)
-                phases = np.unwrap(np.angle(Hp))
+                raw_phases = np.angle(Hp)
+                nan_mask_unwrap = np.isnan(mags) | np.isnan(raw_phases)
+                phases = np.zeros_like(raw_phases)
+                if np.any(~nan_mask_unwrap):
+                    phases[~nan_mask_unwrap] = np.unwrap(raw_phases[~nan_mask_unwrap])
+                phases[nan_mask_unwrap] = np.nan
                 nan_mask = np.isnan(mags) | np.isnan(phases)
                 if np.all(nan_mask):
                     mag_val_all = np.zeros_like(f_all)
@@ -1472,7 +1495,12 @@ class ResponseViewerWidget(QWidget):
             if p in H_dict:
                 Hp = H_dict[p]
                 mags = np.abs(Hp)
-                phases = np.unwrap(np.angle(Hp))
+                raw_phases = np.angle(Hp)
+                nan_mask_unwrap = np.isnan(mags) | np.isnan(raw_phases)
+                phases = np.zeros_like(raw_phases)
+                if np.any(~nan_mask_unwrap):
+                    phases[~nan_mask_unwrap] = np.unwrap(raw_phases[~nan_mask_unwrap])
+                phases[nan_mask_unwrap] = np.nan
                 nan_mask = np.isnan(mags) | np.isnan(phases)
                 if np.all(nan_mask):
                     mag_vals = np.zeros_like(f_array)
@@ -1612,7 +1640,12 @@ class ResponseViewerWidget(QWidget):
             if p in H_dict:
                 Hp = H_dict[p]
                 mags = np.abs(Hp)
-                phases = np.unwrap(np.angle(Hp))
+                raw_phases = np.angle(Hp)
+                nan_mask_unwrap = np.isnan(mags) | np.isnan(raw_phases)
+                phases = np.zeros_like(raw_phases)
+                if np.any(~nan_mask_unwrap):
+                    phases[~nan_mask_unwrap] = np.unwrap(raw_phases[~nan_mask_unwrap])
+                phases[nan_mask_unwrap] = np.nan
                 nan_mask = np.isnan(mags) | np.isnan(phases)
                 if np.all(nan_mask):
                     mag_vals = np.zeros_like(f_array)
@@ -1759,7 +1792,12 @@ class ResponseViewerWidget(QWidget):
                 continue
             Hp = H_dict[p]
             mags = np.abs(Hp)
-            phases = np.unwrap(np.angle(Hp))
+            raw_phases = np.angle(Hp)
+            nan_mask_unwrap = np.isnan(mags) | np.isnan(raw_phases)
+            phases = np.zeros_like(raw_phases)
+            if np.any(~nan_mask_unwrap):
+                phases[~nan_mask_unwrap] = np.unwrap(raw_phases[~nan_mask_unwrap])
+            phases[nan_mask_unwrap] = np.nan
             nan_mask = np.isnan(mags) | np.isnan(phases)
             if np.all(nan_mask):
                 mag_val = 0.0
