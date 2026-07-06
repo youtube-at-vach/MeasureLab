@@ -33,6 +33,9 @@ def run_sss_sweep(
     input_mode="XFER",
     signal_channel=0,
     ref_channel=1,
+    analysis_cycles=256.0,
+    num_meas_points=500,
+    min_analysis_window=1.0,
 ):
     """
     Runs an SSS sweep at a specific amplitude and returns the averaged harmonic responses.
@@ -44,9 +47,9 @@ def run_sss_sweep(
         end_freq=end_freq,
         output_amplitude=amplitude,
         max_harmonic=max_harmonic,
-        analysis_cycles=256.0,
-        num_meas_points=500,
-        min_analysis_window=1,
+        analysis_cycles=analysis_cycles,
+        num_meas_points=num_meas_points,
+        min_analysis_window=min_analysis_window,
     )
     sss_engine.prepare_sweep()
 
@@ -428,6 +431,11 @@ def main():
         "--amplitude", type=float, default=-6.0, help="Test amplitude in dBFS for single tone response comparison"
     )
     parser.add_argument("--tsa", type=int, default=1, help="Number of TSA (Time Synchronous Averaging) sweep averages")
+    parser.add_argument("--sweep-duration", type=float, default=30.0, help="Duration of SSS sweep in seconds")
+    parser.add_argument("--num-amplitudes", type=int, default=5, help="Number of excitation amplitudes")
+    parser.add_argument("--analysis-cycles", type=float, default=256.0, help="Lock-in integration window size in cycles")
+    parser.add_argument("--num-meas-points", type=int, default=500, help="Number of measurement points")
+    parser.add_argument("--min-analysis-window", type=float, default=1.0, help="Minimum analysis window in seconds")
 
     cli_args = parser.parse_args()
 
@@ -503,11 +511,11 @@ def main():
     # Sweep configuration
     start_freq = 20.0
     end_freq = 20000.0
-    sweep_duration = 30.0  # seconds
+    sweep_duration = cli_args.sweep_duration  # seconds
     max_harmonic = 5
 
     # Range of amplitudes for least-squares kernel separation
-    num_amplitudes = 5
+    num_amplitudes = cli_args.num_amplitudes
     max_amp_db = -6.0
     max_amp_linear = 10 ** (max_amp_db / 20.0)
     amplitudes = np.linspace(0.2, 1.0, num_amplitudes) * max_amp_linear
@@ -534,6 +542,9 @@ def main():
             input_mode="XFER",
             signal_channel=0,  # Ch1 (L)
             ref_channel=1,  # Ch2 (R)
+            analysis_cycles=cli_args.analysis_cycles,
+            num_meas_points=cli_args.num_meas_points,
+            min_analysis_window=cli_args.min_analysis_window,
         )
 
         raw_responses_list.append(averaged_results)

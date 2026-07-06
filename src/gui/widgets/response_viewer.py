@@ -831,8 +831,21 @@ class ResponseViewerWidget(QWidget):
         if window_size < 5:
             return y_data
 
+        # Handle NaNs by temporarily interpolating them before passing to savgol_filter
+        nan_mask = np.isnan(y_data)
+        y_clean = np.copy(y_data)
+
+        if np.any(nan_mask):
+            if np.all(nan_mask):
+                return y_data
+            x = np.arange(len(y_clean))
+            y_clean[nan_mask] = np.interp(x[nan_mask], x[~nan_mask], y_clean[~nan_mask])
+
         try:
-            return savgol_filter(y_data, window_size, polyorder=2)
+            smoothed = savgol_filter(y_clean, window_size, polyorder=2)
+            if np.any(nan_mask):
+                smoothed[nan_mask] = np.nan
+            return smoothed
         except Exception as e:
             logger.warning("Smoothing failed: %s", e)
             return y_data
@@ -957,9 +970,23 @@ class ResponseViewerWidget(QWidget):
             if p in H_dict:
                 Hp = H_dict[p]
                 mags = np.abs(Hp)
-                phases = np.unwrap(np.angle(Hp))
-                mag_val_all = np.interp(f_all, self.cached_freqs, mags)
-                phase_val_all = np.interp(f_all, self.cached_freqs, phases)
+                raw_phases = np.angle(Hp)
+                nan_mask_unwrap = np.isnan(mags) | np.isnan(raw_phases)
+                phases = np.zeros_like(raw_phases)
+                if np.any(~nan_mask_unwrap):
+                    phases[~nan_mask_unwrap] = np.unwrap(raw_phases[~nan_mask_unwrap])
+                phases[nan_mask_unwrap] = np.nan
+                nan_mask = np.isnan(mags) | np.isnan(phases)
+                if np.all(nan_mask):
+                    mag_val_all = np.zeros_like(f_all)
+                    phase_val_all = np.zeros_like(f_all)
+                elif np.any(nan_mask):
+                    valid_freqs = self.cached_freqs[~nan_mask]
+                    mag_val_all = np.interp(f_all, valid_freqs, mags[~nan_mask])
+                    phase_val_all = np.interp(f_all, valid_freqs, phases[~nan_mask])
+                else:
+                    mag_val_all = np.interp(f_all, self.cached_freqs, mags)
+                    phase_val_all = np.interp(f_all, self.cached_freqs, phases)
                 val_all = mag_val_all * np.exp(1j * phase_val_all)
                 val_all[out_of_bounds_all] = 0.0j
                 val_all_reshaped = val_all.reshape(5, N_f)
@@ -1320,9 +1347,23 @@ class ResponseViewerWidget(QWidget):
             if p in H_dict:
                 Hp = H_dict[p]
                 mags = np.abs(Hp)
-                phases = np.unwrap(np.angle(Hp))
-                mag_val_all = np.interp(f_all, self.cached_freqs, mags)
-                phase_val_all = np.interp(f_all, self.cached_freqs, phases)
+                raw_phases = np.angle(Hp)
+                nan_mask_unwrap = np.isnan(mags) | np.isnan(raw_phases)
+                phases = np.zeros_like(raw_phases)
+                if np.any(~nan_mask_unwrap):
+                    phases[~nan_mask_unwrap] = np.unwrap(raw_phases[~nan_mask_unwrap])
+                phases[nan_mask_unwrap] = np.nan
+                nan_mask = np.isnan(mags) | np.isnan(phases)
+                if np.all(nan_mask):
+                    mag_val_all = np.zeros_like(f_all)
+                    phase_val_all = np.zeros_like(f_all)
+                elif np.any(nan_mask):
+                    valid_freqs = self.cached_freqs[~nan_mask]
+                    mag_val_all = np.interp(f_all, valid_freqs, mags[~nan_mask])
+                    phase_val_all = np.interp(f_all, valid_freqs, phases[~nan_mask])
+                else:
+                    mag_val_all = np.interp(f_all, self.cached_freqs, mags)
+                    phase_val_all = np.interp(f_all, self.cached_freqs, phases)
                 val_all = mag_val_all * np.exp(1j * phase_val_all)
                 val_all[out_of_bounds_all] = 0.0j
                 val_all_reshaped = val_all.reshape(5, N_f)
@@ -1454,9 +1495,23 @@ class ResponseViewerWidget(QWidget):
             if p in H_dict:
                 Hp = H_dict[p]
                 mags = np.abs(Hp)
-                phases = np.unwrap(np.angle(Hp))
-                mag_vals = np.interp(f_array, self.cached_freqs, mags)
-                phase_vals = np.interp(f_array, self.cached_freqs, phases)
+                raw_phases = np.angle(Hp)
+                nan_mask_unwrap = np.isnan(mags) | np.isnan(raw_phases)
+                phases = np.zeros_like(raw_phases)
+                if np.any(~nan_mask_unwrap):
+                    phases[~nan_mask_unwrap] = np.unwrap(raw_phases[~nan_mask_unwrap])
+                phases[nan_mask_unwrap] = np.nan
+                nan_mask = np.isnan(mags) | np.isnan(phases)
+                if np.all(nan_mask):
+                    mag_vals = np.zeros_like(f_array)
+                    phase_vals = np.zeros_like(f_array)
+                elif np.any(nan_mask):
+                    valid_freqs = self.cached_freqs[~nan_mask]
+                    mag_vals = np.interp(f_array, valid_freqs, mags[~nan_mask])
+                    phase_vals = np.interp(f_array, valid_freqs, phases[~nan_mask])
+                else:
+                    mag_vals = np.interp(f_array, self.cached_freqs, mags)
+                    phase_vals = np.interp(f_array, self.cached_freqs, phases)
                 for n in range(1, 6):
                     if f_array[n - 1] > nyquist:
                         H_at_f0[n][p] = 0.0 + 0.0j
@@ -1585,9 +1640,23 @@ class ResponseViewerWidget(QWidget):
             if p in H_dict:
                 Hp = H_dict[p]
                 mags = np.abs(Hp)
-                phases = np.unwrap(np.angle(Hp))
-                mag_vals = np.interp(f_array, self.cached_freqs, mags)
-                phase_vals = np.interp(f_array, self.cached_freqs, phases)
+                raw_phases = np.angle(Hp)
+                nan_mask_unwrap = np.isnan(mags) | np.isnan(raw_phases)
+                phases = np.zeros_like(raw_phases)
+                if np.any(~nan_mask_unwrap):
+                    phases[~nan_mask_unwrap] = np.unwrap(raw_phases[~nan_mask_unwrap])
+                phases[nan_mask_unwrap] = np.nan
+                nan_mask = np.isnan(mags) | np.isnan(phases)
+                if np.all(nan_mask):
+                    mag_vals = np.zeros_like(f_array)
+                    phase_vals = np.zeros_like(f_array)
+                elif np.any(nan_mask):
+                    valid_freqs = self.cached_freqs[~nan_mask]
+                    mag_vals = np.interp(f_array, valid_freqs, mags[~nan_mask])
+                    phase_vals = np.interp(f_array, valid_freqs, phases[~nan_mask])
+                else:
+                    mag_vals = np.interp(f_array, self.cached_freqs, mags)
+                    phase_vals = np.interp(f_array, self.cached_freqs, phases)
                 for n in range(1, 6):
                     if f_array[n - 1] > nyquist:
                         H_interp[n][p] = 0.0 + 0.0j
@@ -1628,9 +1697,20 @@ class ResponseViewerWidget(QWidget):
         f_array = np.arange(1, 6) * f0
         if self.ref_loopback_phase_chk.isChecked() and "ref_phase" in self.cached_phases:
             # Unwrap ref_phase before interpolation to avoid linear interpolation errors at wrap boundaries
-            ref_phase_unwrapped = np.degrees(np.unwrap(np.radians(self.cached_phases["ref_phase"])))
-            ref_phase_f0 = np.interp(f0, self.cached_freqs, ref_phase_unwrapped)
-            ref_phase_fn_all = np.interp(f_array, self.cached_freqs, ref_phase_unwrapped)
+            ref_phase_data = self.cached_phases["ref_phase"]
+            nan_mask = np.isnan(ref_phase_data)
+            if np.all(nan_mask):
+                ref_phase_f0 = 0.0
+                ref_phase_fn_all = np.zeros_like(f_array)
+            elif np.any(nan_mask):
+                ref_phase_unwrapped = np.degrees(np.unwrap(np.radians(ref_phase_data[~nan_mask])))
+                valid_freqs = self.cached_freqs[~nan_mask]
+                ref_phase_f0 = np.interp(f0, valid_freqs, ref_phase_unwrapped)
+                ref_phase_fn_all = np.interp(f_array, valid_freqs, ref_phase_unwrapped)
+            else:
+                ref_phase_unwrapped = np.degrees(np.unwrap(np.radians(ref_phase_data)))
+                ref_phase_f0 = np.interp(f0, self.cached_freqs, ref_phase_unwrapped)
+                ref_phase_fn_all = np.interp(f_array, self.cached_freqs, ref_phase_unwrapped)
 
         for n in range(1, 6):
             h_key = f"h{n}"
@@ -1712,9 +1792,23 @@ class ResponseViewerWidget(QWidget):
                 continue
             Hp = H_dict[p]
             mags = np.abs(Hp)
-            phases = np.unwrap(np.angle(Hp))
-            mag_val = np.interp(f0, self.cached_freqs, mags)
-            phase_val = np.interp(f0, self.cached_freqs, phases)
+            raw_phases = np.angle(Hp)
+            nan_mask_unwrap = np.isnan(mags) | np.isnan(raw_phases)
+            phases = np.zeros_like(raw_phases)
+            if np.any(~nan_mask_unwrap):
+                phases[~nan_mask_unwrap] = np.unwrap(raw_phases[~nan_mask_unwrap])
+            phases[nan_mask_unwrap] = np.nan
+            nan_mask = np.isnan(mags) | np.isnan(phases)
+            if np.all(nan_mask):
+                mag_val = 0.0
+                phase_val = 0.0
+            elif np.any(nan_mask):
+                valid_freqs = self.cached_freqs[~nan_mask]
+                mag_val = np.interp(f0, valid_freqs, mags[~nan_mask])
+                phase_val = np.interp(f0, valid_freqs, phases[~nan_mask])
+            else:
+                mag_val = np.interp(f0, self.cached_freqs, mags)
+                phase_val = np.interp(f0, self.cached_freqs, phases)
             H_at_f0[p] = mag_val * np.exp(1j * phase_val)
 
         # Setup amplitudes grid
