@@ -37,9 +37,9 @@ The Lock-in Modeler performs real-time frequency response and distortion sweeps 
 * **Meas Points**: Total number of frequency points measured in the sweep.
 * **Min Window**: Sets the minimum window time (in ms) for digital lock-in analysis, which sets a lower bound on ENBW resolution.
 * **Resolution (ENBW)**: Displays the Equivalent Noise Bandwidth (ENBW) resolution in Hz based on the analysis window size in real-time.
-* **Meas Mode**: Select between Standard Sweep and Hammerstein model measurement mode.
-* **Amp Steps**: Defines the number of amplitude steps (e.g., 5) when using Hammerstein measurement mode.
-* **Prevent Buffer Underrun**: When enabled, automatically pauses data processing during high CPU load to avoid audio dropouts.
+* **Meas Mode**: Select between Standard Sweep and Nonlinear Model measurement mode.
+* **Amp Steps**: Defines the number of amplitude steps (e.g., 5) when using Nonlinear Model measurement mode.
+* **Real-time Display**: When enabled, plots and updates the measurement curves in real-time during the sweep. When disabled (default), pauses the heavy analysis calculations and accumulates data during the sweep, performing a bulk analysis and plotting the curves once the sweep finishes. This reduces CPU load and GIL contention during audio playback, reliably preventing audio buffer underruns (dropouts).
 * **Asynchronous Calculation**: Runs the heavy SSS math in a background thread to keep the UI responsive.
 * **Unwrap Phase**: Toggles phase unwrapping for phase plots. When enabled, phase transitions over ±180 degrees are smoothed out into a continuous curve.
 * **Relative to Fundamental**: When enabled, the magnitude and phase of the harmonics are plotted relative to the fundamental frequency response, rather than as absolute values.

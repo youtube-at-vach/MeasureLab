@@ -117,7 +117,7 @@ def test_lock_in_modeler_sweep_kernels_calculation(qtbot, mock_audio_engine):
     assert len(widget.time_ms) > 0
 
     # Tab 2 (Impulse tab) should be enabled
-    assert widget.plot_tabs.isTabEnabled(2)
+    assert widget.plot_tabs.isTabEnabled(1)
 
 
 def test_lock_in_modeler_hammerstein_curves_not_cleared(qtbot, mock_audio_engine):

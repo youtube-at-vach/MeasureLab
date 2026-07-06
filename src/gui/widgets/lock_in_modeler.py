@@ -135,7 +135,7 @@ class LockInModeler(MeasurementModule):
         self.max_harmonic = 3
         self.averaging_count = 1
         self.current_sweep_idx = 0
-        self.analysis_cycles = 128.0
+        self.analysis_cycles = 250.0
         self.num_meas_points = 500
         self.min_analysis_window = 0.5
 
@@ -156,7 +156,7 @@ class LockInModeler(MeasurementModule):
 
         # Dynamic measurement data queues
         self.measurement_queue = deque()
-        self.prevent_buffer_underrun = False
+        self.prevent_buffer_underrun = True
         self.input_queue = None
         self.state = "IDLE"  # "IDLE", "PLAYING", "WAITING", "FINISHED"
 
@@ -336,8 +336,8 @@ class LockInModelerWidget(QWidget):
         self.settings_form = form
 
         self.combo_meas_mode = QComboBox()
-        self.combo_meas_mode.addItem(tr("Real-time Sweep (Default)"), "sweep")
-        self.combo_meas_mode.addItem(tr("Hammerstein Model"), "hammerstein")
+        self.combo_meas_mode.addItem(tr("Sweep Measurement (Default)"), "sweep")
+        self.combo_meas_mode.addItem(tr("Nonlinear Model"), "hammerstein")
         self.combo_meas_mode.currentIndexChanged.connect(self.on_meas_mode_changed)
         form.addRow(tr("Sweep Mode:"), self.combo_meas_mode)
 
@@ -421,6 +421,7 @@ class LockInModelerWidget(QWidget):
         smoothing_form.setContentsMargins(0, 0, 0, 0)
         smoothing_form.setSpacing(6)
 
+        self.lbl_smoothing = QLabel(tr("Graph Smoothing:"))
         self.combo_smoothing = QComboBox()
         self.combo_smoothing.addItem(tr("None"), "None")
         self.combo_smoothing.addItem(tr("Low Smoothing"), "Light")
@@ -428,7 +429,7 @@ class LockInModelerWidget(QWidget):
         self.combo_smoothing.addItem(tr("High Smoothing"), "Heavy")
         self.combo_smoothing.setCurrentIndex(0)
         self.combo_smoothing.currentIndexChanged.connect(self.redraw_plots)
-        smoothing_form.addRow(tr("Graph Smoothing:"), self.combo_smoothing)
+        smoothing_form.addRow(self.lbl_smoothing, self.combo_smoothing)
 
         display_layout.addLayout(smoothing_form)
         display_layout.addStretch()
@@ -495,9 +496,9 @@ class LockInModelerWidget(QWidget):
         self.spin_min_window.setSuffix(" ms")
         adv_form.addRow(tr("Min Window:"), self.spin_min_window)
 
-        self.chk_prevent_buffer_underrun = QCheckBox(tr("Prevent Buffer Underrun"))
-        self.chk_prevent_buffer_underrun.setChecked(self.module.prevent_buffer_underrun)
-        adv_form.addRow(tr("Prevent Buffer Underrun:"), self.chk_prevent_buffer_underrun)
+        self.chk_realtime_display = QCheckBox(tr("Real-time Display"))
+        self.chk_realtime_display.setChecked(not self.module.prevent_buffer_underrun)
+        adv_form.addRow(tr("Real-time Display:"), self.chk_realtime_display)
 
         advanced_tab.setLayout(adv_form)
         left_tabs.addTab(advanced_tab, tr("Advanced"))
@@ -701,7 +702,7 @@ class LockInModelerWidget(QWidget):
             self.module.analysis_cycles = self.spin_analysis_cycles.value()
             self.module.num_meas_points = self.spin_meas_points.value()
             self.module.min_analysis_window = self.spin_min_window.value() / 1000.0
-            self.module.prevent_buffer_underrun = self.chk_prevent_buffer_underrun.isChecked()
+            self.module.prevent_buffer_underrun = not self.chk_realtime_display.isChecked()
 
             self.module.output_channel = (
                 2 if self.combo_output_ch.currentIndex() == 2 else self.combo_output_ch.currentIndex()
@@ -862,7 +863,7 @@ class LockInModelerWidget(QWidget):
         self.spin_analysis_cycles.setEnabled(enabled)
         self.spin_meas_points.setEnabled(enabled)
         self.spin_min_window.setEnabled(enabled)
-        self.chk_prevent_buffer_underrun.setEnabled(enabled)
+        self.chk_realtime_display.setEnabled(enabled)
 
     def on_meas_mode_changed(self, index):
         is_ham = self.combo_meas_mode.currentData() == "hammerstein"
