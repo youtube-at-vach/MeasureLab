@@ -8,10 +8,6 @@ A simple audio recording and playback tool.
 It allows you to play test signals (such as sweeps or noise) to input into a circuit, or record output results and save them to files.
 It supports loading common audio files such as WAV, MP3, FLAC, and OGG.
 
-## ☕ Coffee Break: Why is "Recording" necessary for measurement?
-
-It is difficult to monitor unpredictable issues, such as occasional popping noises, using only a real-time oscilloscope. By recording the signal over a long period, you can easily review the exact moment an issue occurred and use other tools to analyze the waveform later.
-
 ## Operations
 
 ### Playback

@@ -9,10 +9,6 @@ Also called a "boxcar integrator," it is used for measuring minute signals and h
 
 This widget has both an "Internal mode," which outputs test signals itself to synchronize, and an "External mode," which synchronizes with external trigger signals.
 
-## ☕ Coffee Break: Noise Reduction via Averaging
-
-Signal averaging works by taking multiple synchronized captures of a repeating signal and summing them. Because the target signal is consistent while background noise is random, the noise averages towards zero over time, revealing the underlying signal.
-
 ## Operation
 
 ### Starting and Resetting Measurement

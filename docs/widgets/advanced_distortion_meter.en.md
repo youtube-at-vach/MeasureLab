@@ -9,12 +9,6 @@ Instead of a single pure tone, it uses simultaneous multiple tones or specific c
 
 It is suitable for searching for the cause of phenomena such as "having good numbers in standard THD measurement, but the sound is muddy when actually listening."
 
-## ☕ Coffee Break: Why test with "Complex Sounds"?
-
-While audio equipment is often measured using a single pure sine wave, actual music contains many simultaneous frequencies.
-When multiple frequencies pass through an amplifier simultaneously, they can interfere with each other and generate new, unwanted frequencies (intermodulation distortion).
-By intentionally inputting multiple signals at the same time, this tool can evaluate performance under conditions closer to actual music playback.
-
 ## Operation
 
 ### Starting and Stopping Measurement
