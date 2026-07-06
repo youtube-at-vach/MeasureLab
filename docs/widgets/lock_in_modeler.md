@@ -43,3 +43,5 @@ Lock-in Modelerは、Synchronized Swept Sine (SSS) 信号とデジタルロッ�
 * **Asynchronous Calculation**: 重いSSS計算をバックグラウンドのスレッドで実行し、UIの応答性を保ちます。
 * **Unwrap Phase**: 位相プロットのアンラップ（折り返し解除）を切り替えます。有効にすると、±180度を超える位相の変化が連続的な曲線として滑らかに表示されます。
 * **Relative to Fundamental**: 有効にすると、高調波の振幅と位相が絶対値ではなく、基本波の周波数特性に対する相対値としてプロットされます。
+* **Show Raw Lock-in (Unprocessed)**: 有効にすると、スムージングや補間が適用される前の、ロックインアンプからの生の未処理データポイントを表示します。
+* **Graph Smoothing**: 測定曲線をプロットする際にスムージング（例：None, Low Smoothing, Medium Smoothing, High Smoothing）を適用し、データの傾向を読み取りやすくするオプションを提供します。

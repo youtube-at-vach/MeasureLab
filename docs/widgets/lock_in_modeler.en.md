@@ -43,3 +43,5 @@ The Lock-in Modeler performs real-time frequency response and distortion sweeps 
 * **Asynchronous Calculation**: Runs the heavy SSS math in a background thread to keep the UI responsive.
 * **Unwrap Phase**: Toggles phase unwrapping for phase plots. When enabled, phase transitions over ±180 degrees are smoothed out into a continuous curve.
 * **Relative to Fundamental**: When enabled, the magnitude and phase of the harmonics are plotted relative to the fundamental frequency response, rather than as absolute values.
+* **Show Raw Lock-in (Unprocessed)**: When enabled, displays the raw, unprocessed data points from the lock-in amplifier before any smoothing or interpolation is applied.
+* **Graph Smoothing**: Provides options (e.g., None, Low Smoothing, Medium Smoothing, High Smoothing) to apply smoothing to the plotted measurement curves for easier reading of the data trends.
