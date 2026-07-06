@@ -130,14 +130,14 @@ class LockInModeler(MeasurementModule):
         # Default SSS parameters
         self.start_freq = 20.0
         self.end_freq = 20000.0
-        self.sweep_duration = 30.0
+        self.sweep_duration = 20.0
         self.output_amplitude = 0.5
         self.max_harmonic = 3
         self.averaging_count = 1
         self.current_sweep_idx = 0
-        self.analysis_cycles = 16.0
+        self.analysis_cycles = 128.0
         self.num_meas_points = 500
-        self.min_analysis_window = 0.012
+        self.min_analysis_window = 0.5
 
         # Latency state
         self.latency_samples = 0.0
@@ -440,7 +440,7 @@ class LockInModelerWidget(QWidget):
         adv_form.addRow(tr("Meas Points:"), self.spin_meas_points)
 
         self.spin_min_window = QDoubleSpinBox()
-        self.spin_min_window.setRange(2.0, 1000.0)
+        self.spin_min_window.setRange(2.0, 2000.0)
         self.spin_min_window.setSingleStep(1.0)
         self.spin_min_window.setValue(self.module.min_analysis_window * 1000.0)
         self.spin_min_window.setSuffix(" ms")
