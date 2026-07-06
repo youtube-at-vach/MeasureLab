@@ -21,13 +21,9 @@ First, load the characteristic data to be used as the basis for correction.
 
 Adjust the "strength" and "detail" of the correction filter based on the loaded data.
 
-* **Max Gain (Regularization)**: The "maximum allowable limit" for boosting sound during correction.
+* **Max Gain (Regularization)**: The "maximum allowable limit" for boosting sound during correction. This prevents the inverse filter from infinitely raising the gain in frequency bands the speaker cannot output, which would otherwise cause excessive noise amplification.
 * **FIR Taps**: The resolution of the filter. A larger value (e.g., `8192` or `16384`) allows for more precise correction, but requires more computational power. Usually, around `8192` is recommended.
 * **Smoothing**: Smooths out fine jaggedness (peaks and dips) in the characteristics. This helps prevent the sound from becoming unnatural due to overly sharp corrections.
-
-## ☕ Coffee Break: Why is Max Gain Needed?
-
-If the speaker cannot output certain frequency bands, the inverse filter will try to raise the gain infinitely to flatten it, causing excessive noise amplification. To prevent this, **Max Gain** limits the maximum correction value (e.g., 10dB) to avoid noise generation from extreme amplification.
 
 ## Audio Processing
 
