@@ -111,13 +111,13 @@ def test_lock_in_modeler_sweep_kernels_calculation(qtbot, mock_audio_engine):
 
     assert not analyzer.is_running
     # Verify that kernels are calculated
-    assert len(widget.H_freqs) == 3  # self.module.max_harmonic defaults to 3
-    assert len(widget.kernels_time) == 3
+    assert len(widget.H_freqs) == 5  # self.module.max_harmonic defaults to 5
+    assert len(widget.kernels_time) == 5
     assert widget.time_ms is not None
     assert len(widget.time_ms) > 0
 
     # Tab 2 (Impulse tab) should be enabled
-    assert widget.plot_tabs.isTabEnabled(2)
+    assert widget.plot_tabs.isTabEnabled(1)
 
 
 def test_lock_in_modeler_hammerstein_curves_not_cleared(qtbot, mock_audio_engine):

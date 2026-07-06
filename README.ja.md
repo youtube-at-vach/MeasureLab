@@ -73,6 +73,7 @@
 | 40 | **Nonlinear Analyzer** | SSS (Simultaneous Sweep Sinusoid) 信号とパラレル・ハマーシュタイン（Parallel Hammerstein）モデリングを用いて、真の線形応答と2次〜5次高調波カーネルを抽出・解析するモジュール。 |
 | 41 | **Response Viewer** | Nonlinear Analyzer で抽出された線形および高調波応答特性（最大5次）を可視化、重ね合わせ比較、および解析するビューア。 |
 | 42 | **Feedforward Compensator** | 測定されたハマーシュタインモデルに基づき、高調波歪みを抑制するための補償（デジタルプリディストーション）処理を、オフライン（WAVファイル）およびオンライン（リアルタイム入出力）で適用する補償器。 |
+| 43 | **Lock-in Modeler** | SSS（Simultaneous Sweep Sinusoid）信号とデジタルロックイン検出を用いたリアルタイム周波数特性・歪みスイープ測定。基本波・高調波応答の抽出と並列ハマーシュタイン（Hammerstein）モデルの推定をサポート。 |
 
 ### 🌍 多言語対応
 

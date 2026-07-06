@@ -73,6 +73,7 @@ For details on each function, please refer to the [**Widget Guide**](docs/widget
 | 40 | **Nonlinear Analyzer** | Extracts true linear response and 2nd-5th harmonics using SSS (Simultaneous Sweep Sinusoid) and Parallel Hammerstein modeling. |
 | 41 | **Response Viewer** | Visualizes, overlays, and analyzes linear and harmonic response curves (up to 5th order) extracted by the Nonlinear Analyzer. |
 | 42 | **Feedforward Compensator** | Compiles and applies Hammerstein-based digital pre-distortion/compensation in both offline (WAV file) and online (real-time I/O) modes to suppress harmonic distortion. |
+| 43 | **Lock-in Modeler** | Real-time frequency response and distortion sweep using SSS and digital Lock-in. Extracts fundamental and harmonic responses, and estimates parallel Hammerstein models. |
 
 ### 🌍 Localization
 

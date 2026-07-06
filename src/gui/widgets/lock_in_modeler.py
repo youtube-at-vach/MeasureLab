@@ -132,10 +132,10 @@ class LockInModeler(MeasurementModule):
         self.end_freq = 20000.0
         self.sweep_duration = 20.0
         self.output_amplitude = 0.5
-        self.max_harmonic = 3
+        self.max_harmonic = 5
         self.averaging_count = 1
         self.current_sweep_idx = 0
-        self.analysis_cycles = 128.0
+        self.analysis_cycles = 250.0
         self.num_meas_points = 500
         self.min_analysis_window = 0.5
 
@@ -156,7 +156,7 @@ class LockInModeler(MeasurementModule):
 
         # Dynamic measurement data queues
         self.measurement_queue = deque()
-        self.prevent_buffer_underrun = False
+        self.prevent_buffer_underrun = True
         self.input_queue = None
         self.state = "IDLE"  # "IDLE", "PLAYING", "WAITING", "FINISHED"
 
@@ -310,8 +310,8 @@ class LockInModelerWidget(QWidget):
 
         left_container = QWidget()
         left_panel = QVBoxLayout(left_container)
-        left_panel.setContentsMargins(0, 0, 4, 0)
-        left_panel.setSpacing(6)
+        left_panel.setContentsMargins(4, 4, 8, 4)
+        left_panel.setSpacing(8)
 
         # Start / Stop Control Button
         self.btn_toggle = QPushButton(tr("Start Sweep"))
@@ -332,12 +332,12 @@ class LockInModelerWidget(QWidget):
         settings_tab = QWidget()
         form = QFormLayout()
         form.setContentsMargins(6, 6, 6, 6)
-        form.setSpacing(4)
+        form.setSpacing(6)
         self.settings_form = form
 
         self.combo_meas_mode = QComboBox()
-        self.combo_meas_mode.addItem(tr("Real-time Sweep (Default)"), "sweep")
-        self.combo_meas_mode.addItem(tr("Hammerstein Model"), "hammerstein")
+        self.combo_meas_mode.addItem(tr("Sweep Measurement (Default)"), "sweep")
+        self.combo_meas_mode.addItem(tr("Nonlinear Model"), "hammerstein")
         self.combo_meas_mode.currentIndexChanged.connect(self.on_meas_mode_changed)
         form.addRow(tr("Sweep Mode:"), self.combo_meas_mode)
 
@@ -370,6 +370,7 @@ class LockInModelerWidget(QWidget):
         self.spin_max_harmonic = QSpinBox()
         self.spin_max_harmonic.setRange(1, 5)
         self.spin_max_harmonic.setValue(self.module.max_harmonic)
+        self.spin_max_harmonic.valueChanged.connect(self.update_harmonic_visibility)
         form.addRow(tr("Max Harmonic:"), self.spin_max_harmonic)
 
         self.spin_averaging = QSpinBox()
@@ -386,11 +387,61 @@ class LockInModelerWidget(QWidget):
         settings_tab.setLayout(form)
         left_tabs.addTab(settings_tab, tr("Settings"))
 
-        # 2. Routing Tab
+        # 2. Display Option Tab
+        display_tab = QWidget()
+        display_layout = QVBoxLayout(display_tab)
+        display_layout.setContentsMargins(8, 8, 8, 8)
+        display_layout.setSpacing(10)
+
+        # Group for check boxes
+        options_layout = QVBoxLayout()
+        options_layout.setSpacing(6)
+
+        self.chk_relative = QCheckBox(tr("Show Relative to Fundamental"))
+        self.chk_relative.setChecked(False)
+        self.chk_relative.toggled.connect(self.redraw_plots)
+        options_layout.addWidget(self.chk_relative)
+
+        self.chk_unwrap = QCheckBox(tr("Unwrap Phase"))
+        self.chk_unwrap.setChecked(False)
+        self.chk_unwrap.toggled.connect(self.redraw_plots)
+        options_layout.addWidget(self.chk_unwrap)
+
+        self.chk_show_raw = QCheckBox(tr("Show Raw Lock-in (Unprocessed)"))
+        self.chk_show_raw.setChecked(False)
+        self.chk_show_raw.toggled.connect(self.redraw_plots)
+        options_layout.addWidget(self.chk_show_raw)
+
+        display_layout.addLayout(options_layout)
+
+        # Separator spacing
+        display_layout.addSpacing(4)
+
+        # Form layout for combobox
+        smoothing_form = QFormLayout()
+        smoothing_form.setContentsMargins(0, 0, 0, 0)
+        smoothing_form.setSpacing(6)
+
+        self.lbl_smoothing = QLabel(tr("Graph Smoothing:"))
+        self.combo_smoothing = QComboBox()
+        self.combo_smoothing.addItem(tr("None"), "None")
+        self.combo_smoothing.addItem(tr("Low Smoothing"), "Light")
+        self.combo_smoothing.addItem(tr("Medium Smoothing"), "Medium")
+        self.combo_smoothing.addItem(tr("High Smoothing"), "Heavy")
+        self.combo_smoothing.setCurrentIndex(0)
+        self.combo_smoothing.currentIndexChanged.connect(self.redraw_plots)
+        smoothing_form.addRow(self.lbl_smoothing, self.combo_smoothing)
+
+        display_layout.addLayout(smoothing_form)
+        display_layout.addStretch()
+
+        left_tabs.addTab(display_tab, tr("Display"))
+
+        # 3. Routing Tab
         routing_tab = QWidget()
         r_form = QFormLayout()
         r_form.setContentsMargins(6, 6, 6, 6)
-        r_form.setSpacing(4)
+        r_form.setSpacing(6)
 
         self.combo_output_ch = QComboBox()
         self.combo_output_ch.addItems([tr("Left (Ch 1)"), tr("Right (Ch 2)"), tr("Stereo (Both)")])
@@ -420,11 +471,11 @@ class LockInModelerWidget(QWidget):
         routing_tab.setLayout(r_form)
         left_tabs.addTab(routing_tab, tr("Routing"))
 
-        # 3. Advanced Tab
+        # 4. Advanced Tab
         advanced_tab = QWidget()
         adv_form = QFormLayout()
         adv_form.setContentsMargins(6, 6, 6, 6)
-        adv_form.setSpacing(4)
+        adv_form.setSpacing(6)
 
         self.spin_analysis_cycles = QDoubleSpinBox()
         self.spin_analysis_cycles.setRange(2.0, 2048.0)
@@ -446,9 +497,9 @@ class LockInModelerWidget(QWidget):
         self.spin_min_window.setSuffix(" ms")
         adv_form.addRow(tr("Min Window:"), self.spin_min_window)
 
-        self.chk_prevent_buffer_underrun = QCheckBox(tr("Prevent Buffer Underrun"))
-        self.chk_prevent_buffer_underrun.setChecked(self.module.prevent_buffer_underrun)
-        adv_form.addRow(tr("Prevent Buffer Underrun:"), self.chk_prevent_buffer_underrun)
+        self.chk_realtime_display = QCheckBox(tr("Real-time Display"))
+        self.chk_realtime_display.setChecked(not self.module.prevent_buffer_underrun)
+        adv_form.addRow(tr("Real-time Display:"), self.chk_realtime_display)
 
         advanced_tab.setLayout(adv_form)
         left_tabs.addTab(advanced_tab, tr("Advanced"))
@@ -458,8 +509,8 @@ class LockInModelerWidget(QWidget):
         # Calibration Box
         calib_group = QGroupBox(tr("Latency Calibration"))
         calib_layout = QVBoxLayout()
-        calib_layout.setContentsMargins(6, 6, 6, 6)
-        calib_layout.setSpacing(4)
+        calib_layout.setContentsMargins(8, 8, 8, 8)
+        calib_layout.setSpacing(6)
 
         self.btn_calibrate = QPushButton(tr("Calibrate Latency"))
         self.btn_calibrate.clicked.connect(self.on_calibrate_latency)
@@ -475,7 +526,8 @@ class LockInModelerWidget(QWidget):
         # Overview Stats
         stats_group = QGroupBox(tr("Overview"))
         stats_layout = QVBoxLayout()
-        stats_layout.setContentsMargins(6, 6, 6, 6)
+        stats_layout.setContentsMargins(8, 8, 8, 8)
+        stats_layout.setSpacing(4)
 
         self.lbl_progress = QLabel(tr("Sweep Progress: --"))
         stats_layout.addWidget(self.lbl_progress)
@@ -492,7 +544,7 @@ class LockInModelerWidget(QWidget):
         left_panel.addStretch()
 
         left_scroll.setWidget(left_container)
-        left_scroll.setMinimumHeight(150)  # Allow scroll area to shrink vertically
+        left_scroll.setMinimumHeight(150)
         layout.addWidget(left_scroll)
 
         # RIGHT PANEL: Container & Layout
@@ -501,75 +553,55 @@ class LockInModelerWidget(QWidget):
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(6)
 
-        # Display Options Layout
-        display_layout = QHBoxLayout()
-        display_layout.setContentsMargins(4, 4, 4, 4)
-        display_layout.setSpacing(12)
-
-        self.chk_relative = QCheckBox(tr("Show Relative to Fundamental"))
-        self.chk_relative.setChecked(False)
-        self.chk_relative.toggled.connect(self.redraw_plots)
-        display_layout.addWidget(self.chk_relative)
-
-        self.chk_unwrap = QCheckBox(tr("Unwrap Phase"))
-        self.chk_unwrap.setChecked(False)
-        self.chk_unwrap.toggled.connect(self.redraw_plots)
-        display_layout.addWidget(self.chk_unwrap)
-
-        self.chk_show_raw = QCheckBox(tr("Show Raw Lock-in (Unprocessed)"))
-        self.chk_show_raw.setChecked(False)
-        self.chk_show_raw.toggled.connect(self.redraw_plots)
-        display_layout.addWidget(self.chk_show_raw)
-
-        self.lbl_smoothing = QLabel(tr("Graph Smoothing:"))
-        self.combo_smoothing = QComboBox()
-        self.combo_smoothing.addItem(tr("None"), "None")
-        self.combo_smoothing.addItem(tr("Low Smoothing"), "Light")
-        self.combo_smoothing.addItem(tr("Medium Smoothing"), "Medium")
-        self.combo_smoothing.addItem(tr("High Smoothing"), "Heavy")
-        self.combo_smoothing.setCurrentIndex(0)
-        self.combo_smoothing.currentIndexChanged.connect(self.redraw_plots)
-
-        display_layout.addWidget(self.lbl_smoothing)
-        display_layout.addWidget(self.combo_smoothing)
-        display_layout.addStretch()
-
-
-
-        right_layout.addLayout(display_layout)
-
         # RIGHT PANEL: Tab Widget
         self.plot_tabs = QTabWidget()
         self.plot_tabs.setMinimumHeight(450)
 
-        # Tab 1: Magnitude Response
-        self.mag_tab = QWidget()
-        mag_layout = QVBoxLayout(self.mag_tab)
+        # Tab 1: Frequency Response (Magnitude & Phase stacked)
+        self.freq_tab = QWidget()
+        freq_layout = QVBoxLayout(self.freq_tab)
+        freq_layout.setContentsMargins(4, 4, 4, 4)
+        freq_layout.setSpacing(6)
+
+        # Checkboxes for harmonic visibility control
+        self.chk_harmonics_layout = QHBoxLayout()
+        self.chk_harmonics_layout.setContentsMargins(4, 2, 4, 2)
+        self.chk_harmonics_layout.setSpacing(10)
+
+        self.chk_harmonics = []
+        labels = [tr("Fundamental"), tr("2nd"), tr("3rd"), tr("4th"), tr("5th")]
+        for lbl in labels:
+            chk = QCheckBox(lbl)
+            chk.setChecked(True)
+            chk.toggled.connect(self.update_harmonic_visibility)
+            self.chk_harmonics.append(chk)
+            self.chk_harmonics_layout.addWidget(chk)
+
+        self.chk_harmonics_layout.addStretch()
+        freq_layout.addLayout(self.chk_harmonics_layout)
+
         self.plot_mag = pg.PlotWidget(title=tr("Magnitude Response"))
         self.plot_mag.setMinimumHeight(150)
-        self.plot_mag.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.plot_mag.setLabel("bottom", tr("Frequency (Hz)"))
         self.plot_mag.setLabel("left", tr("Amplitude"), units="dBFS")
         self.plot_mag.setLogMode(x=True, y=False)
         self.plot_mag.showGrid(x=True, y=True)
         self.plot_mag.setYRange(-140, 10)
-        mag_layout.addWidget(self.plot_mag)
-        self.plot_tabs.addTab(self.mag_tab, tr("Magnitude Response"))
+        freq_layout.addWidget(self.plot_mag)
 
-        # Tab 2: Phase Response
-        self.phase_tab = QWidget()
-        phase_layout = QVBoxLayout(self.phase_tab)
         self.plot_phase = pg.PlotWidget(title=tr("Phase Response"))
         self.plot_phase.setMinimumHeight(150)
-        self.plot_phase.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.plot_phase.setLabel("bottom", tr("Frequency (Hz)"))
         self.plot_phase.setLabel("left", tr("Phase"), units="deg")
         self.plot_phase.setLogMode(x=True, y=False)
         self.plot_phase.showGrid(x=True, y=True)
         self.plot_phase.setYRange(-180, 180)
         self.plot_phase.setXLink(self.plot_mag)
-        phase_layout.addWidget(self.plot_phase)
-        self.plot_tabs.addTab(self.phase_tab, tr("Phase Response"))
+        freq_layout.addWidget(self.plot_phase)
 
-        # Tab 3: Impulse Responses (Kernels)
+        self.plot_tabs.addTab(self.freq_tab, tr("Frequency Response"))
+
+        # Tab 2: Impulse Responses (Kernels)
         self.kernel_tab = QWidget()
         kernel_layout = QVBoxLayout(self.kernel_tab)
         self.plot_kernel = pg.PlotWidget(title=tr("Impulse Responses (Kernels)"))
@@ -579,11 +611,11 @@ class LockInModelerWidget(QWidget):
         self.plot_kernel.showGrid(x=True, y=True)
         kernel_layout.addWidget(self.plot_kernel)
         self.plot_tabs.addTab(self.kernel_tab, tr("Impulse Responses (Kernels)"))
-        self.plot_tabs.setTabEnabled(2, False)  # Disabled by default
+        self.plot_tabs.setTabEnabled(1, False)
 
-        # Create Plot Curves with distinct colors
-        # Colors: H1: Cyan, H2: Green, H3: Yellow, H4: Purple, H5: Red
-        self.colors = ["#00ffff", "#00ff00", "#ffff00", "#ff00ff", "#ff3333"]
+        # Create Plot Curves with distinct colors (modernized palette)
+        # 1st: Light Blue, 2nd: Light Green, 3rd: Light Amber, 4th: Purple, 5th: Light Red
+        self.colors = ["#4fc3f7", "#81c784", "#ffd54f", "#ba68c8", "#e57373"]
         self.mag_curves = []
         self.phase_curves = []
         self.kernel_curves = []
@@ -615,6 +647,7 @@ class LockInModelerWidget(QWidget):
 
         # Sync settings on initialization
         self.on_meas_mode_changed(0)
+        self.update_harmonic_visibility()
 
     def on_calibrate_latency(self):
         # Update settings parameters for calibration sweep
@@ -688,7 +721,7 @@ class LockInModelerWidget(QWidget):
             self.module.analysis_cycles = self.spin_analysis_cycles.value()
             self.module.num_meas_points = self.spin_meas_points.value()
             self.module.min_analysis_window = self.spin_min_window.value() / 1000.0
-            self.module.prevent_buffer_underrun = self.chk_prevent_buffer_underrun.isChecked()
+            self.module.prevent_buffer_underrun = not self.chk_realtime_display.isChecked()
 
             self.module.output_channel = (
                 2 if self.combo_output_ch.currentIndex() == 2 else self.combo_output_ch.currentIndex()
@@ -741,7 +774,7 @@ class LockInModelerWidget(QWidget):
                 self.phase_curves[idx].setData([], [])
                 self.kernel_curves[idx].setData([], [])
 
-            self.plot_tabs.setTabEnabled(2, False)
+            self.plot_tabs.setTabEnabled(1, False)
 
             self.btn_toggle.setText(tr("Stop Sweep"))
             self.btn_calibrate.setEnabled(False)
@@ -849,7 +882,7 @@ class LockInModelerWidget(QWidget):
         self.spin_analysis_cycles.setEnabled(enabled)
         self.spin_meas_points.setEnabled(enabled)
         self.spin_min_window.setEnabled(enabled)
-        self.chk_prevent_buffer_underrun.setEnabled(enabled)
+        self.chk_realtime_display.setEnabled(enabled)
 
     def on_meas_mode_changed(self, index):
         is_ham = self.combo_meas_mode.currentData() == "hammerstein"
@@ -863,8 +896,22 @@ class LockInModelerWidget(QWidget):
         if hasattr(self, "chk_show_raw"):
             self.chk_show_raw.setChecked(not is_ham)
 
-        self.plot_tabs.setTabEnabled(2, True)
+        self.plot_tabs.setTabEnabled(1, True)
         self.redraw_plots()
+
+    def update_harmonic_visibility(self):
+        max_h = self.spin_max_harmonic.value()
+        for idx, chk in enumerate(self.chk_harmonics):
+            has_harmonic = (idx + 1) <= max_h
+            chk.setEnabled(has_harmonic)
+            visible = chk.isChecked() and has_harmonic
+
+            if idx < len(self.mag_curves):
+                self.mag_curves[idx].setVisible(visible)
+            if idx < len(self.phase_curves):
+                self.phase_curves[idx].setVisible(visible)
+            if idx < len(self.kernel_curves):
+                self.kernel_curves[idx].setVisible(visible)
 
     def update_plots(self):
         # Retrieve all pending samples from queue
@@ -1008,7 +1055,7 @@ class LockInModelerWidget(QWidget):
         show_processed = not self.chk_show_raw.isChecked() if hasattr(self, "chk_show_raw") else True
 
         if has_kernels and not is_measuring:
-            self.plot_tabs.setTabEnabled(2, True)
+            self.plot_tabs.setTabEnabled(1, True)
             if show_processed:
                 # Draw Kernels (Hammerstein or Sweep)
                 sort_idx = np.argsort(x_data)
@@ -1412,25 +1459,41 @@ class LockInModelerWidget(QWidget):
         checked = self.btn_toggle.isChecked()
 
         if theme_name == "dark":
+            button_style = (
+                "QPushButton { background-color: #3a3a3a; color: white; border: 1px solid #555; border-radius: 4px; font-size: 12px; padding: 5px; }"
+                "QPushButton:hover { background-color: #444444; }"
+                "QPushButton:disabled { background-color: #222222; color: #777777; border: 1px solid #333; }"
+            )
+            self.export_btn.setStyleSheet(button_style)
+            self.btn_calibrate.setStyleSheet(button_style)
+
             if checked:
                 self.btn_toggle.setStyleSheet(
-                    "QPushButton { background-color: #c62828; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton { background-color: #c62828; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 12px; padding: 5px; }"
                     "QPushButton:hover { background-color: #d32f2f; }"
                 )
             else:
                 self.btn_toggle.setStyleSheet(
-                    "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 12px; padding: 5px; }"
                     "QPushButton:hover { background-color: #388e3c; }"
                 )
         else:
+            button_style = (
+                "QPushButton { background-color: #e0e0e0; color: black; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; padding: 5px; }"
+                "QPushButton:hover { background-color: #d5d5d5; }"
+                "QPushButton:disabled { background-color: #f0f0f0; color: #aaaaaa; border: 1px solid #ddd; }"
+            )
+            self.export_btn.setStyleSheet(button_style)
+            self.btn_calibrate.setStyleSheet(button_style)
+
             if checked:
                 self.btn_toggle.setStyleSheet(
-                    "QPushButton { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 12px; padding: 5px; }"
                     "QPushButton:hover { background-color: #ffbbbb; }"
                 )
             else:
                 self.btn_toggle.setStyleSheet(
-                    "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
+                    "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 12px; padding: 5px; }"
                     "QPushButton:hover { background-color: #bbfebb; }"
                 )
 
