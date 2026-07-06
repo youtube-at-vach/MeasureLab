@@ -570,7 +570,7 @@ class LockInModelerWidget(QWidget):
 
         self.chk_harmonics = []
         labels = [tr("Fundamental"), tr("2nd"), tr("3rd"), tr("4th"), tr("5th")]
-        for idx, lbl in enumerate(labels):
+        for lbl in labels:
             chk = QCheckBox(lbl)
             chk.setChecked(True)
             chk.toggled.connect(self.update_harmonic_visibility)
