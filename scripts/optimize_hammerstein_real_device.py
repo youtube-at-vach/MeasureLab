@@ -91,20 +91,21 @@ def main():
     parser.add_argument("--virtual", action="store_true", help="Run in virtual fast simulation mode")
     args = parser.parse_args()
 
-    # Fixed total sweep duration of 80 seconds per amplitude sweep
+    # Total Sweep Time = num_amplitudes * tsa * sweep_duration = 40.0s (across all amplitudes)
     ratios = [
-        {"tsa": 1, "sweep_duration": 80.0},
-        {"tsa": 2, "sweep_duration": 40.0},
-        {"tsa": 4, "sweep_duration": 20.0},
-        {"tsa": 8, "sweep_duration": 10.0},
-        {"tsa": 16, "sweep_duration": 5.0},
-        {"tsa": 32, "sweep_duration": 2.5},
+        {"num_amplitudes": 5, "tsa": 1, "sweep_duration": 8.0},
+        {"num_amplitudes": 5, "tsa": 2, "sweep_duration": 4.0},
+        {"num_amplitudes": 4, "tsa": 1, "sweep_duration": 10.0},
+        {"num_amplitudes": 4, "tsa": 2, "sweep_duration": 5.0},
+        {"num_amplitudes": 3, "tsa": 1, "sweep_duration": 13.33},
+        {"num_amplitudes": 3, "tsa": 2, "sweep_duration": 6.67},
     ]
     
     phase1_results = []
     
     print("[+] Starting Phase 1: Ratio Optimization...")
     for config in ratios:
+        num_amp = config["num_amplitudes"]
         tsa = config["tsa"]
         dur = config["sweep_duration"]
         
@@ -112,7 +113,7 @@ def main():
             virtual=args.virtual,
             tsa=tsa,
             sweep_duration=dur,
-            num_amplitudes=5,
+            num_amplitudes=num_amp,
             analysis_cycles=256.0,
             num_meas_points=500,
             min_analysis_window=1.0
@@ -121,11 +122,12 @@ def main():
         if raw_data:
             metrics = calculate_metrics(raw_data)
             phase1_results.append({
+                "num_amplitudes": num_amp,
                 "tsa": tsa,
                 "sweep_duration": dur,
                 "metrics": metrics
             })
-            print(f"    [Result] H2-H5 RMS Amp Err: {metrics['h2_h5_rms']:.3f} dB, H2-H3 Avg Abs: {metrics['h2_h3_avg_abs']:.3f} dB")
+            print(f"    [Result] Amplitudes={num_amp}, TSA={tsa}, Sweep Duration={dur:.2f}s -> H2-H5 RMS Amp Err: {metrics['h2_h5_rms']:.3f} dB, H2-H3 Avg Abs: {metrics['h2_h3_avg_abs']:.3f} dB")
             
     # Find best ratio from Phase 1 (based on H2-H5 RMS amp error)
     valid_phase1 = [r for r in phase1_results if r["metrics"] is not None]
@@ -134,10 +136,11 @@ def main():
         sys.exit(1)
         
     best_phase1 = min(valid_phase1, key=lambda x: x["metrics"]["h2_h5_rms"])
+    best_num_amp = best_phase1["num_amplitudes"]
     best_tsa = best_phase1["tsa"]
     best_dur = best_phase1["sweep_duration"]
     
-    print(f"\n[+] Best Ratio found: TSA={best_tsa}, Sweep Duration={best_dur}s with H2-H5 RMS Amp Err = {best_phase1['metrics']['h2_h5_rms']:.3f} dB")
+    print(f"\n[+] Best Ratio found: NumAmplitudes={best_num_amp}, TSA={best_tsa}, Sweep Duration={best_dur:.2f}s with H2-H5 RMS Amp Err = {best_phase1['metrics']['h2_h5_rms']:.3f} dB")
     
     # 2. Phase 2: Explore other SSS engine parameters using the best ratio
     print("\n[+] Starting Phase 2: Parameter Tuning...")
@@ -167,7 +170,7 @@ def main():
             virtual=args.virtual,
             tsa=best_tsa,
             sweep_duration=best_dur,
-            num_amplitudes=5,
+            num_amplitudes=best_num_amp,
             analysis_cycles=cfg["cycles"],
             num_meas_points=cfg["points"],
             min_analysis_window=cfg["min_window"]
@@ -190,8 +193,9 @@ def main():
     print("\n=======================================================")
     print("[+] Optimization Completed!")
     print(f"Best configuration:")
+    print(f"  Num Amplitudes: {best_num_amp}")
     print(f"  TSA: {best_tsa}")
-    print(f"  Sweep Duration: {best_dur} s")
+    print(f"  Sweep Duration: {best_dur:.2f} s")
     print(f"  Analysis Cycles: {best_overall['cycles']}")
     print(f"  Num Meas Points: {best_overall['points']}")
     print(f"  Min Analysis Window: {best_overall['min_window']} s")
@@ -204,6 +208,7 @@ def main():
     summary_path = "/Users/vach/MeasureLab/scripts/hammerstein_optimization_summary.json"
     summary_data = {
         "best_config": {
+            "num_amplitudes": best_num_amp,
             "tsa": best_tsa,
             "sweep_duration": best_dur,
             "analysis_cycles": best_overall["cycles"],
@@ -214,6 +219,7 @@ def main():
         },
         "phase1_trials": [
             {
+                "num_amplitudes": p["num_amplitudes"],
                 "tsa": p["tsa"],
                 "sweep_duration": p["sweep_duration"],
                 "h2_h5_rms": p["metrics"]["h2_h5_rms"] if p["metrics"] else None,
