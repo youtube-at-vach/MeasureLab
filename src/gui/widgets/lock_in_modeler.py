@@ -146,7 +146,7 @@ class LockInModeler(MeasurementModule):
         self.output_channel = 2  # Stereo default (copies output to both L and R)
         self.signal_channel = 0  # 0: Left Input
         self.ref_channel = 1  # 1: Right Input
-        self.input_mode = "Single"  # "Single" or "XFER"
+        self.input_mode = "XFER"  # "Single" or "XFER"
 
         # Engine & DSP State
         self.engine = None
@@ -527,7 +527,7 @@ class LockInModelerWidget(QWidget):
         self.combo_smoothing.addItem(tr("Low Smoothing"), "Light")
         self.combo_smoothing.addItem(tr("Medium Smoothing"), "Medium")
         self.combo_smoothing.addItem(tr("High Smoothing"), "Heavy")
-        self.combo_smoothing.setCurrentIndex(1)
+        self.combo_smoothing.setCurrentIndex(0)
         self.combo_smoothing.currentIndexChanged.connect(self.redraw_plots)
 
         display_layout.addWidget(self.lbl_smoothing)
