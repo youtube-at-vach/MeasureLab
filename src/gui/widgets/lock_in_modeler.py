@@ -132,7 +132,7 @@ class LockInModeler(MeasurementModule):
         self.end_freq = 20000.0
         self.sweep_duration = 20.0
         self.output_amplitude = 0.5
-        self.max_harmonic = 3
+        self.max_harmonic = 5
         self.averaging_count = 1
         self.current_sweep_idx = 0
         self.analysis_cycles = 250.0
@@ -370,6 +370,7 @@ class LockInModelerWidget(QWidget):
         self.spin_max_harmonic = QSpinBox()
         self.spin_max_harmonic.setRange(1, 5)
         self.spin_max_harmonic.setValue(self.module.max_harmonic)
+        self.spin_max_harmonic.valueChanged.connect(self.update_harmonic_visibility)
         form.addRow(tr("Max Harmonic:"), self.spin_max_harmonic)
 
         self.spin_averaging = QSpinBox()
@@ -562,6 +563,23 @@ class LockInModelerWidget(QWidget):
         freq_layout.setContentsMargins(4, 4, 4, 4)
         freq_layout.setSpacing(6)
 
+        # Checkboxes for harmonic visibility control
+        self.chk_harmonics_layout = QHBoxLayout()
+        self.chk_harmonics_layout.setContentsMargins(4, 2, 4, 2)
+        self.chk_harmonics_layout.setSpacing(10)
+
+        self.chk_harmonics = []
+        labels = [tr("Fundamental"), tr("2nd"), tr("3rd"), tr("4th"), tr("5th")]
+        for idx, lbl in enumerate(labels):
+            chk = QCheckBox(lbl)
+            chk.setChecked(True)
+            chk.toggled.connect(self.update_harmonic_visibility)
+            self.chk_harmonics.append(chk)
+            self.chk_harmonics_layout.addWidget(chk)
+
+        self.chk_harmonics_layout.addStretch()
+        freq_layout.addLayout(self.chk_harmonics_layout)
+
         self.plot_mag = pg.PlotWidget(title=tr("Magnitude Response"))
         self.plot_mag.setMinimumHeight(150)
         self.plot_mag.setLabel("bottom", tr("Frequency (Hz)"))
@@ -629,6 +647,7 @@ class LockInModelerWidget(QWidget):
 
         # Sync settings on initialization
         self.on_meas_mode_changed(0)
+        self.update_harmonic_visibility()
 
     def on_calibrate_latency(self):
         # Update settings parameters for calibration sweep
@@ -879,6 +898,20 @@ class LockInModelerWidget(QWidget):
 
         self.plot_tabs.setTabEnabled(1, True)
         self.redraw_plots()
+
+    def update_harmonic_visibility(self):
+        max_h = self.spin_max_harmonic.value()
+        for idx, chk in enumerate(self.chk_harmonics):
+            has_harmonic = (idx + 1) <= max_h
+            chk.setEnabled(has_harmonic)
+            visible = chk.isChecked() and has_harmonic
+
+            if idx < len(self.mag_curves):
+                self.mag_curves[idx].setVisible(visible)
+            if idx < len(self.phase_curves):
+                self.phase_curves[idx].setVisible(visible)
+            if idx < len(self.kernel_curves):
+                self.kernel_curves[idx].setVisible(visible)
 
     def update_plots(self):
         # Retrieve all pending samples from queue
