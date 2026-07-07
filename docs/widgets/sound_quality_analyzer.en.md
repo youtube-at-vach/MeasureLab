@@ -6,12 +6,9 @@
 
 This tool is used to quantify how sound is perceived by the human ear ("subjective quantity"). Instead of simply measuring voltage or sound pressure, it uses metrics based on psychoacoustics to objectively evaluate the pleasantness or unpleasantness of a sound.
 
+While conventional measuring instruments measure physical quantities like voltage and frequency, they cannot fully explain the human sensation of a sound being "loud" or "unpleasant." Psychoacoustics models the human auditory mechanism and cognitive characteristics to evaluate these subjective sensations, such as the "Roughness" or "Sharpness" of a sound, as objective numerical values.
+
 This tool is for **offline analysis only**. It analyzes pre-recorded audio files.
-
-## ☕ Coffee Break: Psychoacoustic Metrics
-
-While conventional measuring instruments measure physical quantities like voltage and frequency, they cannot fully explain the human sensation of a sound being "loud" or "unpleasant."
-Psychoacoustics models the human auditory mechanism and cognitive characteristics to evaluate subjective sensations, such as the "Roughness" or "Sharpness" of a sound, as objective numerical values.
 
 ## Metric Descriptions
 

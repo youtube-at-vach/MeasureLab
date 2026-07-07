@@ -1,4 +1,4 @@
-import importlib
+from importlib import import_module
 import logging
 import time
 from typing import Any, Optional
@@ -118,7 +118,7 @@ MODULE_REGISTRY = {
 
 def _load_class(module_path: str, class_name: str):
     """Dynamically load a class from a module."""
-    module = importlib.import_module(module_path)
+    module = import_module(module_path)
     return getattr(module, class_name)
 
 

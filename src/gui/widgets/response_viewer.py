@@ -966,13 +966,16 @@ class ResponseViewerWidget(QWidget):
         f_all = np.concatenate(f_n_list)
         out_of_bounds_all = f_all > nyquist
         zero_arr = np.zeros(N_f, dtype=np.complex128)
+        phases_buffer = None
         for p in range(1, 6):
             if p in H_dict:
                 Hp = H_dict[p]
                 mags = np.abs(Hp)
                 raw_phases = np.angle(Hp)
                 nan_mask_unwrap = np.isnan(mags) | np.isnan(raw_phases)
-                phases = np.zeros_like(raw_phases)
+                if phases_buffer is None:
+                    phases_buffer = np.empty_like(raw_phases)
+                phases = phases_buffer
                 if np.any(~nan_mask_unwrap):
                     phases[~nan_mask_unwrap] = np.unwrap(raw_phases[~nan_mask_unwrap])
                 phases[nan_mask_unwrap] = np.nan
@@ -1343,13 +1346,16 @@ class ResponseViewerWidget(QWidget):
         f_all = np.concatenate(f_n_list)
         out_of_bounds_all = f_all > nyquist
         zero_arr = np.zeros(N_f, dtype=np.complex128)
+        phases_buffer = None
         for p in range(1, 6):
             if p in H_dict:
                 Hp = H_dict[p]
                 mags = np.abs(Hp)
                 raw_phases = np.angle(Hp)
                 nan_mask_unwrap = np.isnan(mags) | np.isnan(raw_phases)
-                phases = np.zeros_like(raw_phases)
+                if phases_buffer is None:
+                    phases_buffer = np.empty_like(raw_phases)
+                phases = phases_buffer
                 if np.any(~nan_mask_unwrap):
                     phases[~nan_mask_unwrap] = np.unwrap(raw_phases[~nan_mask_unwrap])
                 phases[nan_mask_unwrap] = np.nan
@@ -1491,13 +1497,16 @@ class ResponseViewerWidget(QWidget):
         H_at_f0 = {n: {} for n in range(1, 6)}
         f_array = np.arange(1, 6) * self.ref_f0
 
+        phases_buffer = None
         for p in range(1, 6):
             if p in H_dict:
                 Hp = H_dict[p]
                 mags = np.abs(Hp)
                 raw_phases = np.angle(Hp)
                 nan_mask_unwrap = np.isnan(mags) | np.isnan(raw_phases)
-                phases = np.zeros_like(raw_phases)
+                if phases_buffer is None:
+                    phases_buffer = np.empty_like(raw_phases)
+                phases = phases_buffer
                 if np.any(~nan_mask_unwrap):
                     phases[~nan_mask_unwrap] = np.unwrap(raw_phases[~nan_mask_unwrap])
                 phases[nan_mask_unwrap] = np.nan
@@ -1636,13 +1645,16 @@ class ResponseViewerWidget(QWidget):
         nyquist = sample_rate / 2.0
         f_array = np.arange(1, 6) * f0
 
+        phases_buffer = None
         for p in range(1, 6):
             if p in H_dict:
                 Hp = H_dict[p]
                 mags = np.abs(Hp)
                 raw_phases = np.angle(Hp)
                 nan_mask_unwrap = np.isnan(mags) | np.isnan(raw_phases)
-                phases = np.zeros_like(raw_phases)
+                if phases_buffer is None:
+                    phases_buffer = np.empty_like(raw_phases)
+                phases = phases_buffer
                 if np.any(~nan_mask_unwrap):
                     phases[~nan_mask_unwrap] = np.unwrap(raw_phases[~nan_mask_unwrap])
                 phases[nan_mask_unwrap] = np.nan
@@ -1786,6 +1798,7 @@ class ResponseViewerWidget(QWidget):
         nyquist = sample_rate / 2.0
 
         H_at_f0 = {}
+        phases_buffer = None
         for p in [1, 3, 5]:
             if f0 > nyquist or p not in H_dict:
                 H_at_f0[p] = 0.0 + 0.0j
@@ -1794,7 +1807,9 @@ class ResponseViewerWidget(QWidget):
             mags = np.abs(Hp)
             raw_phases = np.angle(Hp)
             nan_mask_unwrap = np.isnan(mags) | np.isnan(raw_phases)
-            phases = np.zeros_like(raw_phases)
+            if phases_buffer is None:
+                phases_buffer = np.empty_like(raw_phases)
+            phases = phases_buffer
             if np.any(~nan_mask_unwrap):
                 phases[~nan_mask_unwrap] = np.unwrap(raw_phases[~nan_mask_unwrap])
             phases[nan_mask_unwrap] = np.nan

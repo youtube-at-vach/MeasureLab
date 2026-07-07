@@ -2,15 +2,11 @@
 
 ![Ultrasound Modulator](../assets/widgets/ultrasound_modulator.png)
 
-## ☕ Coffee Break: Parametric Speakers
-
-When an audible signal is amplitude-modulated onto an ultrasonic carrier wave (beyond human hearing) and emitted, the non-linearity of air causes the audible sound to self-demodulate in mid-air. This realizes a "parametric speaker" that delivers sound only to a highly specific, narrow area.
-
 ## Overview
 
 The Ultrasound Modulator is a widget that amplitude-modulates (AM) audio signals into the ultrasonic range, making them suitable for playback on ultrasonic reference speakers (typically centered at 40kHz).
 
-It is used for experiments with parametric speakers and acoustic measurements in the ultrasonic band.
+When an audible signal is amplitude-modulated onto an ultrasonic carrier wave and emitted, the non-linearity of air causes the sound to self-demodulate in mid-air. This module is used for experiments with such "parametric speakers" that deliver sound only to a highly specific, narrow area, as well as for acoustic measurements in the ultrasonic band.
 
 Key Features:
 
