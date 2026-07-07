@@ -2,14 +2,14 @@
 Common stylesheet definitions for GUI widgets.
 """
 
-import sys
+from sys import platform
 
 # Cross-platform Monospace Font Family
 # "monospace" (lowercase) is the standard CSS generic family name.
 # Qt on some platforms warns if "Monospace" (capital M) is used and not found.
-if sys.platform == "darwin":
+if platform == "darwin":
     MONOSPACE_FONT_FAMILY = "Menlo, Monaco, Courier New"
-elif sys.platform == "win32":
+elif platform == "win32":
     MONOSPACE_FONT_FAMILY = "Consolas, Courier New"
 else:
     # Linux and others: Use widely available monospace fonts first to avoid Qt font-alias search warnings.
