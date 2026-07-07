@@ -9,10 +9,6 @@ It is used in physical experiments and electronic measurements to dramatically i
 
 While general spectrum analyzers "see all frequencies," the lock-in amplifier "monitors only one frequency pinpointed," which allows it to demonstrate overwhelming noise rejection performance.
 
-## ☕ Coffee Break: "Locking In" on a Specific Signal
-
-A lock-in amplifier acts like picking out a specific voice in a noisy environment. By using a "reference signal" with the exact frequency and phase of the signal you want to measure, and multiplying them together, unrelated noise components are mathematically eliminated. This allows the instrument to accurately "pick up (lock in)" incredibly weak signals that are buried far below the noise floor.
-
 ## Principles of Lock-in Measurement
 
 ### Phase Sensitive Detection (PSD)

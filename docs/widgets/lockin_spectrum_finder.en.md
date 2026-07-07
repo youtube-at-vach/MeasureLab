@@ -10,10 +10,6 @@ It is specialized for detecting weak signals at low noise floors or observing sp
     This widget is specialized for "finding" the presence and frequency of weak signals buried in noise.
     Due to the nature of lock-in detection, if the frequency of the actual signal does not perfectly match one of the specified analysis frequencies (Basis Points), the displayed amplitude may be lower than the true value. Therefore, despite long integration times, please treat the amplitude values on the screen as a **rough guide** for locating peak positions. If you need strictly accurate measurements of amplitude and phase at a specific frequency, use this widget to identify the frequency first, and then use the dedicated **Lock-in Amplifier** widget to measure in perfect synchronization with that target frequency.
 
-## ☕ Coffee Break: Lock-in as an Ultra-Narrowband Filter
-
-Standard spectrum analyzers calculate energy across broad frequency bands, obscuring weak signals in the noise floor. Lock-in detection functions as an ultra-narrow bandpass filter, rejecting uncorrelated noise to extract specific frequency components with high precision.
-
 ## Usage Comparison with Other Widgets
 
 This widget is specialized for "finding" weak signals within a specific narrow band. For effective measurement, use it in combination with the following widgets depending on your goals:

@@ -12,11 +12,6 @@ It is ideal for checking the sense of localization and spread of stereo sound im
 
 When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the image map display. This is useful when you only want to monitor the spatial spread.
 
-## ☕ Coffee Break: Perceiving the Direction of Sound
-
-Humans perceive the direction of sound by processing minute differences in time (ITD) and volume (ILD) between their left and right ears.
-The BNIM meter simulates this auditory mechanism to visualize the localization and spatial spread of a signal as a heatmap.
-
 ## How to Read the Screen
 
 ### Main Graph (Neural Map)
