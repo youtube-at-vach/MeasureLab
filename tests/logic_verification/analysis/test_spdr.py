@@ -144,8 +144,6 @@ class TestSPDRLogic(unittest.TestCase):
         self.assertAlmostEqual(res_narrow["spdr_db"], 40.0, delta=1.0)
         self.assertAlmostEqual(res_narrow["max_spur_freq"], close_freq, delta=self.sr / self.N)
 
-
-
     def test_spdr_fund_mask_empty(self):
         """Test SPDR when fund_mask is completely empty."""
         fund_freq = 1000.0
@@ -178,6 +176,7 @@ class TestSPDRLogic(unittest.TestCase):
 
         res = AudioCalc.calculate_spdr(mag, freqs, fund_freq)
         self.assertEqual(res["spdr_db"], 140.0)
+
 
 if __name__ == "__main__":
     unittest.main()

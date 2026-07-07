@@ -39,7 +39,7 @@ def dummy_model_data():
                 "h3": np.array([0.0, 0.0, 0.0]),
                 "h4": np.array([0.0, 0.0, 0.0]),
                 "h5": np.array([0.0, 0.0, 0.0]),
-            }
+            },
         },
         "time_domain": {
             "time_ms": np.array([0.0, 1.0, 2.0]),
@@ -49,8 +49,8 @@ def dummy_model_data():
                 "h3": np.array([0.01, 0.0, 0.0]),
                 "h4": np.array([0.001, 0.0, 0.0]),
                 "h5": np.array([0.0001, 0.0, 0.0]),
-            }
-        }
+            },
+        },
     }
 
 
@@ -103,7 +103,7 @@ def test_wiener_conversion_math(qtbot, mock_audio_engine, dummy_model_data):
     widget.wiener_sigma_spin.setValue(sigma_dbfs)
 
     sigma_linear = 10 ** (sigma_dbfs / 20.0)
-    sigma_sq = sigma_linear ** 2
+    sigma_sq = sigma_linear**2
 
     # Expectation calculations for Time Domain
     h_time = {p: dummy_model_data["time_domain"]["kernels"][f"h{p}"] for p in range(1, 6)}
@@ -114,7 +114,7 @@ def test_wiener_conversion_math(qtbot, mock_audio_engine, dummy_model_data):
     (sigma_linear**5) * h_time[5]
 
     # We can test the slider sync changes update the spin box
-    widget.wiener_sigma_slider.setValue(-200) # -20 dBFS
+    widget.wiener_sigma_slider.setValue(-200)  # -20 dBFS
     assert widget.wiener_sigma_spin.value() == -20.0
 
     # Ensure plots update without errors
@@ -122,5 +122,6 @@ def test_wiener_conversion_math(qtbot, mock_audio_engine, dummy_model_data):
 
     # Verify that energy items were added to wie_energy_plot
     import pyqtgraph as pg
+
     bar_items = [item for item in widget.wie_energy_plot.items() if isinstance(item, pg.BarGraphItem)]
     assert len(bar_items) == 5

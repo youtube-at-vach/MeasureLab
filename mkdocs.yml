@@ -192,7 +192,7 @@ nav:
       - デバイス・システム解析:
           - インピーダンス解析: widgets/impedance_analyzer.md
           - ネットワーク解析: widgets/network_analyzer.md
-          - 逆フィルター: widgets/inverse_filter.md
+
           - HRTFプレイヤー: widgets/hrtf_player.md
           - 空間バイノーラルミキサー: widgets/spatial_binaural_mixer.md
           - 超音波変調器: widgets/ultrasound_modulator.md

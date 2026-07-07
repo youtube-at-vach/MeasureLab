@@ -271,13 +271,7 @@ def test_nonlinear_analyzer_comprehensive():
         for amp in amplitudes:
             x_sig = amp * sss
             # Nonlinear polynomial excitation
-            y_sig = (
-                1.0 * x_sig
-                + 0.1 * (x_sig**2)
-                + 0.08 * (x_sig**3)
-                + 0.04 * (x_sig**4)
-                + 0.02 * (x_sig**5)
-            )
+            y_sig = 1.0 * x_sig + 0.1 * (x_sig**2) + 0.08 * (x_sig**3) + 0.04 * (x_sig**4) + 0.02 * (x_sig**5)
 
             padding = np.zeros(int(0.2 * sample_rate))
             x_sig_padded = np.concatenate([x_sig, padding])
@@ -320,7 +314,7 @@ def test_nonlinear_analyzer_comprehensive():
         kernel = res1[4][p]
         peak_idx = np.argmax(np.abs(kernel))
         peak_time = res1[3][peak_idx]
-        assert np.abs(peak_time) < 0.5, f"Kernel h{p+1} peak is misaligned! Peak at {peak_time:.2f} ms"
+        assert np.abs(peak_time) < 0.5, f"Kernel h{p + 1} peak is misaligned! Peak at {peak_time:.2f} ms"
 
     # 3. Leakage Suppression & Coefficient Recovery
     h1_mag_avg = np.mean(res1[1]["h1"][assert_mask])
@@ -347,7 +341,9 @@ def test_nonlinear_analyzer_comprehensive():
 
     # 4. Phase sanity: Verify that phase response for h1 is stable and doesn't rotate abnormally (linear phase close to 0)
     h1_phase = res1[2]["h1"][assert_mask]
-    assert np.all(np.abs(h1_phase) < 10.0), f"Phase response for h1 is wrapping abnormally: {np.max(np.abs(h1_phase))} deg"
+    assert np.all(np.abs(h1_phase) < 10.0), (
+        f"Phase response for h1 is wrapping abnormally: {np.max(np.abs(h1_phase))} deg"
+    )
 
 
 def test_nonlinear_analyzer_phase_shift():
@@ -370,13 +366,7 @@ def test_nonlinear_analyzer_phase_shift():
     num_amplitudes = 5
     amplitudes = np.linspace(0.2, 1.0, num_amplitudes) * max_amp
 
-    a = {
-        1: 1.0,
-        2: 0.1,
-        3: 0.08,
-        4: 0.04,
-        5: 0.02
-    }
+    a = {1: 1.0, 2: 0.1, 3: 0.08, 4: 0.04, 5: 0.02}
 
     # Frequency domain delay application helper
     def apply_delay(x, delay_samples):
@@ -394,7 +384,7 @@ def test_nonlinear_analyzer_phase_shift():
             y_sig = np.zeros_like(x_sig)
 
             for p in range(1, P + 1):
-                comp = a[p] * (x_sig ** p)
+                comp = a[p] * (x_sig**p)
                 y_sig += apply_delay(comp, delays_dict[p])
 
             padding = np.zeros(int(0.2 * sample_rate))
@@ -435,13 +425,7 @@ def test_nonlinear_analyzer_phase_shift():
         systematic_phase_curves[p] = (meas_baseline + 180) % 360 - 180
 
     # --- Test Simulation (with delays) ---
-    test_delays = {
-        1: 5.0,
-        2: 8.0,
-        3: 12.0,
-        4: 15.0,
-        5: 20.0
-    }
+    test_delays = {1: 5.0, 2: 8.0, 3: 12.0, 4: 15.0, 5: 20.0}
     _, _, phases_meas, _, _ = run_simulation(test_delays)
 
     passband_limits = {
@@ -506,13 +490,7 @@ def test_nonlinear_analyzer_fractional_delay_robustness():
 
     for amp in amplitudes:
         x_sig = amp * sss
-        y_sig = (
-            1.0 * x_sig
-            + 0.1 * (x_sig**2)
-            + 0.08 * (x_sig**3)
-            + 0.04 * (x_sig**4)
-            + 0.02 * (x_sig**5)
-        )
+        y_sig = 1.0 * x_sig + 0.1 * (x_sig**2) + 0.08 * (x_sig**3) + 0.04 * (x_sig**4) + 0.02 * (x_sig**5)
 
         padding = np.zeros(int(0.2 * sample_rate))
         x_sig_padded = np.concatenate([x_sig, padding])
@@ -576,14 +554,15 @@ def test_nonlinear_analyzer_fractional_delay_robustness():
     # because the algorithm aligns them back to the maximum amplitude step.
     for k in ["h1", "h2", "h3", "h4", "h5"]:
         mag_diff = np.abs(mags_clean[k][assert_mask] - mags_delayed[k][assert_mask])
-        assert np.max(mag_diff) < 0.2, f"Magnitude mismatch for {k} under step delays: Max Diff = {np.max(mag_diff):.4f} dB"
+        assert np.max(mag_diff) < 0.2, (
+            f"Magnitude mismatch for {k} under step delays: Max Diff = {np.max(mag_diff):.4f} dB"
+        )
 
         phase_diff = np.abs(phases_clean[k][assert_mask] - phases_delayed[k][assert_mask])
         phase_diff = np.minimum(phase_diff, 360.0 - phase_diff)
-        assert np.max(phase_diff) < 1.0, f"Phase mismatch for {k} under step delays: Max Diff = {np.max(phase_diff):.4f} deg"
-
-
-
+        assert np.max(phase_diff) < 1.0, (
+            f"Phase mismatch for {k} under step delays: Max Diff = {np.max(phase_diff):.4f} deg"
+        )
 
 
 def test_nonlinear_analyzer_module_measurement(qtbot):
@@ -661,13 +640,7 @@ def test_nonlinear_analyzer_descending_sweep():
 
     for amp in amplitudes:
         x_sig = amp * sss
-        y_sig = (
-            1.0 * x_sig
-            + 0.1 * (x_sig**2)
-            + 0.08 * (x_sig**3)
-            + 0.04 * (x_sig**4)
-            + 0.02 * (x_sig**5)
-        )
+        y_sig = 1.0 * x_sig + 0.1 * (x_sig**2) + 0.08 * (x_sig**3) + 0.04 * (x_sig**4) + 0.02 * (x_sig**5)
 
         padding = np.zeros(int(0.2 * sample_rate))
         x_sig_padded = np.concatenate([x_sig, padding])
@@ -700,7 +673,7 @@ def test_nonlinear_analyzer_descending_sweep():
         kernel = separated_kernels_data[p]
         peak_idx = np.argmax(np.abs(kernel))
         peak_time = time_ms[peak_idx]
-        assert np.abs(peak_time) < 0.5, f"Kernel h{p+1} peak is misaligned! Peak at {peak_time:.2f} ms"
+        assert np.abs(peak_time) < 0.5, f"Kernel h{p + 1} peak is misaligned! Peak at {peak_time:.2f} ms"
 
     # 2. Coefficient Recovery
     h1_mag_avg = np.mean(mags["h1"][assert_mask])
@@ -727,7 +700,9 @@ def test_nonlinear_analyzer_descending_sweep():
 
     # 3. Phase sanity: Verify that phase response for h1 is stable and doesn't rotate abnormally (linear phase close to 0)
     h1_phase = phases["h1"][assert_mask]
-    assert np.all(np.abs(h1_phase) < 10.0), f"Phase response for h1 is wrapping abnormally: {np.max(np.abs(h1_phase))} deg"
+    assert np.all(np.abs(h1_phase) < 10.0), (
+        f"Phase response for h1 is wrapping abnormally: {np.max(np.abs(h1_phase))} deg"
+    )
 
 
 def test_nonlinear_analyzer_single_channel_distortion():
@@ -794,5 +769,6 @@ def test_nonlinear_analyzer_single_channel_distortion():
     for p in [3, 4, 5]:
         h_key = f"h{p}"
         max_val = np.max(mags[h_key][assert_mask])
-        assert max_val < -30.0, f"Harmonic {h_key} detected in quadratic system under single-channel mode: {max_val:.2f} dB"
-
+        assert max_val < -30.0, (
+            f"Harmonic {h_key} detected in quadratic system under single-channel mode: {max_val:.2f} dB"
+        )

@@ -49,6 +49,7 @@ class FFTManager:
         # We also use JSON with Base64 encoding instead of pickle for security (prevents arbitrary code execution)
         if os.environ.get("MEASURELAB_TESTING") == "1":
             import tempfile
+
             self.wisdom_dir = Path(tempfile.gettempdir()) / "MeasureLab_test" / "wisdom"
         else:
             xdg_data_home = os.environ.get("XDG_DATA_HOME")

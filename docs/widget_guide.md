@@ -180,8 +180,7 @@ MeasureLab に搭載されている多数のウィジットを、用途ごとに
     - シンプルな録音・再生機能です。
 - **[Waveform Loop Player](widgets/waveform_loop_player.md)**
     - オーディオファイルを読み込み、波形を確認しながら任意の区間を選択してループ再生できるツールです。過渡応答の繰り返し観測などに便利です。
-- **[Inverse Filter](widgets/inverse_filter.md)**
-    - スピーカーや部屋の特性を打ち消すための逆フィルターを作成します。
+
 - **[Detachable Wrapper](widgets/detachable_wrapper.md)**
     - 任意のウィジットを別ウィンドウとして切り離すための枠組みです。
 - **[Plot Comparer](widgets/plot_comparer.md)**

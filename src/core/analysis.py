@@ -309,7 +309,7 @@ class AudioCalc:
             a1 = -2.0 * np.cos(w0)
             a2 = 1.0 - alpha / A
 
-            peaking_sos = np.array([b0/a0, b1/a0, b2/a0, 1.0, a1/a0, a2/a0])
+            peaking_sos = np.array([b0 / a0, b1 / a0, b2 / a0, 1.0, a1 / a0, a2 / a0])
             sos = np.vstack((sos, peaking_sos))
 
         # Normalize at 1kHz
@@ -360,7 +360,7 @@ class AudioCalc:
             a1 = -2.0 * np.cos(w0)
             a2 = 1.0 - alpha / A
 
-            peaking_sos = np.array([b0/a0, b1/a0, b2/a0, 1.0, a1/a0, a2/a0])
+            peaking_sos = np.array([b0 / a0, b1 / a0, b2 / a0, 1.0, a1 / a0, a2 / a0])
             sos = np.vstack((sos, peaking_sos))
 
         # Normalize at 1kHz
@@ -767,7 +767,7 @@ class AudioCalc:
         # 3. Bandwidth Limit Residual with transient bleed mitigation
         pad_len = min(int(sampling_rate * 0.15), len(residual))
         if pad_len > 0:
-            mirror_segment = residual[1:pad_len+1]
+            mirror_segment = residual[1 : pad_len + 1]
             if len(mirror_segment) < pad_len:
                 short_len = len(mirror_segment)
                 prefix = np.zeros(pad_len, dtype=residual.dtype)

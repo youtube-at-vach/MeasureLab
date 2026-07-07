@@ -29,7 +29,7 @@ def test_licff_smoothing_effect():
                 "h4": h4.tolist(),
                 "h5": h5.tolist(),
             }
-        }
+        },
     }
 
     # 1. スムージングなしのエンジン
@@ -40,7 +40,7 @@ def test_licff_smoothing_effect():
         reg_mode="manual_tikhonov",
         reg_val=1e-5,
         out_of_band_mode="cut",
-        linear_smoothing_fraction=0.0
+        linear_smoothing_fraction=0.0,
     )
 
     # 2. スムージングありのエンジン (1/12 オクターブ平滑化)
@@ -51,7 +51,7 @@ def test_licff_smoothing_effect():
         reg_mode="manual_tikhonov",
         reg_val=1e-5,
         out_of_band_mode="cut",
-        linear_smoothing_fraction=12.0
+        linear_smoothing_fraction=12.0,
     )
 
     # バッファの準備と逆フィルターの取得

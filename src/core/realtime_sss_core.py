@@ -13,9 +13,6 @@ from src.core.nonlinear_analyzer_core import (
 logger = logging.getLogger(__name__)
 
 
-
-
-
 class RealtimeSSSEngine:
     def __init__(
         self,
@@ -106,11 +103,7 @@ class RealtimeSSSEngine:
         self._out_sig_cached = None
 
         # Generate logarithmic frequency grid for measurement points
-        self.meas_freqs = np.logspace(
-            np.log10(self.start_freq),
-            np.log10(self.end_freq),
-            self.num_meas_points
-        )
+        self.meas_freqs = np.logspace(np.log10(self.start_freq), np.log10(self.end_freq), self.num_meas_points)
 
         self.reset_filter_states()
 
@@ -232,7 +225,9 @@ class RealtimeSSSEngine:
 
         last_valid_n = hist_n[-1]
         local_freq = self._frequency_at_sample(last_valid_n)
-        window_seconds = np.clip(self.analysis_cycles / max(local_freq, 1.0), self.min_analysis_window, self.max_analysis_window)
+        window_seconds = np.clip(
+            self.analysis_cycles / max(local_freq, 1.0), self.min_analysis_window, self.max_analysis_window
+        )
         window_samples = max(256.0, window_seconds * self.sample_rate)
         start_n = last_valid_n - window_samples
         mask = hist_n >= start_n
@@ -318,7 +313,7 @@ class RealtimeSSSEngine:
         corrected_results = []
         for p, value in enumerate(sig_results):
             k = p + 1
-            ref_u_k = ref_u ** k
+            ref_u_k = ref_u**k
             # Correct the phase rotation of order k using ref_u_k
             # and scale amplitude relative to the fundamental magnitude
             corrected = value * np.conj(ref_u_k) / ref_mag
@@ -379,7 +374,9 @@ class RealtimeSSSEngine:
                 fade_out_mask = n_global >= (self.sweep_samples - width)
                 if np.any(fade_out_mask):
                     n_fade_out = np.clip(n_global[fade_out_mask], 0, self.sweep_samples - 1)
-                    win_chunk[fade_out_mask] = 0.5 * (1.0 - np.cos(np.pi * (self.sweep_samples - 1 - n_fade_out) / width))
+                    win_chunk[fade_out_mask] = 0.5 * (
+                        1.0 - np.cos(np.pi * (self.sweep_samples - 1 - n_fade_out) / width)
+                    )
 
                 sig_chunk *= win_chunk
 

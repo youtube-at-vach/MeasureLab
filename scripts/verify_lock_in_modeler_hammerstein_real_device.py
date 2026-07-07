@@ -420,7 +420,9 @@ def run_lockin_measurement(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Verify Lock-in Modeler Hammerstein Model vs Lock-in on Real/Virtual Device")
+    parser = argparse.ArgumentParser(
+        description="Verify Lock-in Modeler Hammerstein Model vs Lock-in on Real/Virtual Device"
+    )
     parser.add_argument(
         "--virtual", action="store_true", help="Run in virtual simulation loop mode instead of real device"
     )
@@ -433,7 +435,9 @@ def main():
     parser.add_argument("--tsa", type=int, default=1, help="Number of TSA (Time Synchronous Averaging) sweep averages")
     parser.add_argument("--sweep-duration", type=float, default=30.0, help="Duration of SSS sweep in seconds")
     parser.add_argument("--num-amplitudes", type=int, default=5, help="Number of excitation amplitudes")
-    parser.add_argument("--analysis-cycles", type=float, default=256.0, help="Lock-in integration window size in cycles")
+    parser.add_argument(
+        "--analysis-cycles", type=float, default=256.0, help="Lock-in integration window size in cycles"
+    )
     parser.add_argument("--num-meas-points", type=int, default=500, help="Number of measurement points")
     parser.add_argument("--min-analysis-window", type=float, default=1.0, help="Minimum analysis window in seconds")
 

@@ -240,4 +240,3 @@ def test_ltc_encoder_reset():
     assert encoder.samples_generated == 0.0
     assert encoder.total_frames == 0
     assert encoder.phase == 1.0
-

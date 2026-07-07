@@ -174,8 +174,6 @@ def test_noise_thresholding(temp_wav_files):
     assert np.allclose(engine.q5, np.zeros(N))  # zeroed out!
 
 
-
-
 def test_compensate_delay_cancellation_nonlinear(dummy_model_data):
     # Setup model with a known delay of 10 samples
     N = 128
@@ -493,9 +491,3 @@ def test_compensate_bypass_linear_eq(dummy_model_data):
     y_bypass = engine.linear_output(u_comp_bypass)
     # The output amplitude should be around 0.27, definitely less than 0.35
     assert np.max(np.abs(y_bypass)) < 0.35
-
-
-
-
-
-

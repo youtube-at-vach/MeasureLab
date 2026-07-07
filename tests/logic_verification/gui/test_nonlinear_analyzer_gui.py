@@ -83,11 +83,13 @@ def test_nonlinear_analyzer_gui_stop(qtbot, monkeypatch):
 
     # Mock QMessageBox.critical to verify it is NOT called (no error dialogs on user abort)
     critical_called = False
+
     def mock_critical(*args, **kwargs):
         nonlocal critical_called
         critical_called = True
 
     from PyQt6.QtWidgets import QMessageBox
+
     monkeypatch.setattr(QMessageBox, "critical", mock_critical)
 
     # Click start analysis
@@ -105,4 +107,3 @@ def test_nonlinear_analyzer_gui_stop(qtbot, monkeypatch):
 
     # QMessageBox.critical should not have been called
     assert not critical_called
-

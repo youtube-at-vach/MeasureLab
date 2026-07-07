@@ -136,18 +136,18 @@ class LTCEncoder:
             if bit_val == 0:
                 count = bit_end_rel - bit_start_rel
                 if count > 0:
-                    samples[bit_start_rel : bit_end_rel] = current_level
+                    samples[bit_start_rel:bit_end_rel] = current_level
             else:
                 # 1 -> Transition at mid
                 count1 = bit_mid_rel - bit_start_rel
                 if count1 > 0:
-                    samples[bit_start_rel : bit_mid_rel] = current_level
+                    samples[bit_start_rel:bit_mid_rel] = current_level
 
                 current_level = -current_level  # Mid transition
 
                 count2 = bit_end_rel - bit_mid_rel
                 if count2 > 0:
-                    samples[bit_mid_rel : bit_end_rel] = current_level
+                    samples[bit_mid_rel:bit_end_rel] = current_level
 
         # Update phase and global accumulator for next frame
         self.phase = current_level

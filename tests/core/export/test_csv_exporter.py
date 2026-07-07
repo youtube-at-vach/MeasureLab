@@ -253,7 +253,7 @@ def test_export_csv_injection_prevention(tmp_path, sample_traces):
     assert "\n" not in metadata_row_2[0]
     assert "Normal =cmd" in metadata_row_2[0]
 
-    header_idx = 6 # title, t1, t2, t3, t4, empty
+    header_idx = 6  # title, t1, t2, t3, t4, empty
     header = lines[header_idx]
     # Check that the malicious trace name was sanitized by prepending an apostrophe
     assert header[1].startswith("'=")
