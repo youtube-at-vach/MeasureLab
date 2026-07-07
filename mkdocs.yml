@@ -88,6 +88,7 @@ plugins:
             ロックイン周波数カウンター: Lock-in Frequency Counter
             ロックイン高調波解析: Lock-in Harmonic Analyzer
             ロックインスペクトラム検出: Lock-in Spectrum Finder
+            ロックインモデラー: Lock-in Modeler
             周波数カウンター: Frequency Counter
             高度歪みメーター: Advanced Distortion Meter
             歪み解析: Distortion Analyzer
@@ -173,6 +174,7 @@ nav:
           - ロックイン周波数カウンター: widgets/lock_in_frequency_counter.md
           - ロックイン高調波解析: widgets/lockin_harmonic_analyzer.md
           - ロックインスペクトラム検出: widgets/lockin_spectrum_finder.md
+          - ロックインモデラー: widgets/lock_in_modeler.md
           - 周波数カウンター: widgets/frequency_counter.md
           - 高度歪みメーター: widgets/advanced_distortion_meter.md
           - 歪み解析: widgets/distortion_analyzer.md

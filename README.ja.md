@@ -70,10 +70,10 @@
 | 37 | **Settings** | デバイス設定、キャリブレーション、テーマ選択、多言語切り替えなど。 |
 | 38 | **Plot Comparer** | 異なる測定から取得した複数のプロットデータを重ね合わせて比較。ゲインオフセット、軸シフト、標準化（ピーク整列）、Y1/Y2の2軸マッピング、対数スケール切り替え、インタラクティブカーソルによる一括値読み取りに対応。 |
 | 39 | **Transmission Analyzer** | 擬似ランダムノイズ（PRBSシーケンス）を用いて、USB、Bluetooth、アナログ回路などの伝送経路を分析。デジタル完全性（ビットパーフェクト、DSP処理自動検出、ビットエラー）およびアナログ伝送品質（EVM、インパルス応答、周波数特性、伝搬遅延、ジッター）の測定に対応。 |
-| 40 | **Nonlinear Analyzer** | SSS (Simultaneous Sweep Sinusoid) 信号とパラレル・ハマーシュタイン（Parallel Hammerstein）モデリングを用いて、真の線形応答と2次〜5次高調波カーネルを抽出・解析するモジュール。 |
+| 40 | **Nonlinear Analyzer** | SSS (Synchronized Swept Sine) 信号とパラレル・ハマーシュタイン（Parallel Hammerstein）モデリングを用いて、真の線形応答と2次〜5次高調波カーネルを抽出・解析するモジュール。 |
 | 41 | **Response Viewer** | Nonlinear Analyzer で抽出された線形および高調波応答特性（最大5次）を可視化、重ね合わせ比較、および解析するビューア。 |
 | 42 | **Feedforward Compensator** | 測定されたハマーシュタインモデルに基づき、高調波歪みを抑制するための補償（デジタルプリディストーション）処理を、オフライン（WAVファイル）およびオンライン（リアルタイム入出力）で適用する補償器。 |
-| 43 | **Lock-in Modeler** | SSS（Simultaneous Sweep Sinusoid）信号とデジタルロックイン検出を用いたリアルタイム周波数特性・歪みスイープ測定。基本波・高調波応答の抽出と並列ハマーシュタイン（Hammerstein）モデルの推定をサポート。 |
+| 43 | **Lock-in Modeler** | SSS（Synchronized Swept Sine）信号とデジタルロックイン検出を用いたリアルタイム周波数特性・歪みスイープ測定。基本波・高調波応答の抽出と並列ハマーシュタイン（Hammerstein）モデルの推定をサポート。 |
 
 ### 🌍 多言語対応
 
