@@ -36,7 +36,6 @@ from src.core.module_constants import (
     MODULE_GONIOMETER,
     MODULE_HRTF_PLAYER,
     MODULE_IMPEDANCE_ANALYZER,
-    MODULE_INVERSE_FILTER,
     MODULE_LINEARITY_ANALYZER,
     MODULE_LOCK_IN_AMPLIFIER,
     MODULE_LOCK_IN_FREQUENCY_COUNTER,
@@ -96,7 +95,6 @@ MODULE_REGISTRY = {
     MODULE_NOISE_PROFILER: ("src.gui.widgets.noise_profiler", "NoiseProfiler"),
     MODULE_RECORDER_PLAYER: ("src.gui.widgets.recorder_player", "RecorderPlayer"),
     MODULE_WAVEFORM_LOOP_PLAYER: ("src.gui.widgets.waveform_loop_player", "WaveformLoopPlayer"),
-    MODULE_INVERSE_FILTER: ("src.gui.widgets.inverse_filter", "InverseFilter"),
     MODULE_TRANSIENT_ANALYZER: ("src.gui.widgets.transient_analyzer", "TransientAnalyzer"),
     MODULE_SOUND_QUALITY_ANALYZER: ("src.gui.widgets.sound_quality_analyzer", "SoundQualityAnalyzer"),
     MODULE_TIMECODE_MONITOR: ("src.gui.widgets.timecode_monitor", "TimecodeMonitor"),
@@ -873,4 +871,3 @@ class MainWindow(QMainWindow):
                         widget.update_cache_button_state()
                     except Exception as e:
                         self.logger.warning(f"Failed to update cache button state for widget: {e}")
-

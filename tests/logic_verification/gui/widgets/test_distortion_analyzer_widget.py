@@ -15,8 +15,6 @@ def mock_audio_engine():
     return engine
 
 
-
-
 def test_aes17_calibration_button(qtbot, mock_audio_engine):
     analyzer = DistortionAnalyzer(mock_audio_engine)
     analyzer.is_running = True

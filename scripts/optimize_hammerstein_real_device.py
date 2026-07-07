@@ -5,18 +5,33 @@ import subprocess
 import json
 import numpy as np
 
-def run_trial(virtual=False, tsa=1, sweep_duration=80.0, num_amplitudes=5, 
-              analysis_cycles=256.0, num_meas_points=500, min_analysis_window=1.0):
+
+def run_trial(
+    virtual=False,
+    tsa=1,
+    sweep_duration=80.0,
+    num_amplitudes=5,
+    analysis_cycles=256.0,
+    num_meas_points=500,
+    min_analysis_window=1.0,
+):
     cmd = [
         sys.executable,
         "scripts/verify_lock_in_modeler_hammerstein_real_device.py",
-        "--tsa", str(tsa),
-        "--sweep-duration", f"{sweep_duration:.2f}",
-        "--num-amplitudes", str(num_amplitudes),
-        "--analysis-cycles", f"{analysis_cycles:.2f}",
-        "--num-meas-points", str(num_meas_points),
-        "--min-analysis-window", f"{min_analysis_window:.2f}",
-        "--runs", "5"
+        "--tsa",
+        str(tsa),
+        "--sweep-duration",
+        f"{sweep_duration:.2f}",
+        "--num-amplitudes",
+        str(num_amplitudes),
+        "--analysis-cycles",
+        f"{analysis_cycles:.2f}",
+        "--num-meas-points",
+        str(num_meas_points),
+        "--min-analysis-window",
+        f"{min_analysis_window:.2f}",
+        "--runs",
+        "5",
     ]
     if virtual:
         cmd.append("--virtual")
@@ -47,6 +62,7 @@ def run_trial(virtual=False, tsa=1, sweep_duration=80.0, num_amplitudes=5,
         data = json.load(f)
 
     return data
+
 
 def calculate_metrics(trial_data):
     if not trial_data or "results" not in trial_data:
@@ -82,11 +98,13 @@ def calculate_metrics(trial_data):
         "h1_phase_err": h1_phase_err,
         "h2_h5_rms": h2_h5_rms,
         "h2_h3_avg_abs": h2_h3_avg_abs,
-        "raw_results": results
+        "raw_results": results,
     }
+
 
 def main():
     import argparse
+
     parser = argparse.ArgumentParser(description="Optimize Hammerstein parameters on ZOOM UAC-232")
     parser.add_argument("--virtual", action="store_true", help="Run in virtual fast simulation mode")
     args = parser.parse_args()
@@ -116,18 +134,15 @@ def main():
             num_amplitudes=num_amp,
             analysis_cycles=256.0,
             num_meas_points=500,
-            min_analysis_window=1.0
+            min_analysis_window=1.0,
         )
 
         if raw_data:
             metrics = calculate_metrics(raw_data)
-            phase1_results.append({
-                "num_amplitudes": num_amp,
-                "tsa": tsa,
-                "sweep_duration": dur,
-                "metrics": metrics
-            })
-            print(f"    [Result] Amplitudes={num_amp}, TSA={tsa}, Sweep Duration={dur:.2f}s -> H2-H5 RMS Amp Err: {metrics['h2_h5_rms']:.3f} dB, H2-H3 Avg Abs: {metrics['h2_h3_avg_abs']:.3f} dB")
+            phase1_results.append({"num_amplitudes": num_amp, "tsa": tsa, "sweep_duration": dur, "metrics": metrics})
+            print(
+                f"    [Result] Amplitudes={num_amp}, TSA={tsa}, Sweep Duration={dur:.2f}s -> H2-H5 RMS Amp Err: {metrics['h2_h5_rms']:.3f} dB, H2-H3 Avg Abs: {metrics['h2_h3_avg_abs']:.3f} dB"
+            )
 
     # Find best ratio from Phase 1 (based on H2-H5 RMS amp error)
     valid_phase1 = [r for r in phase1_results if r["metrics"] is not None]
@@ -140,7 +155,9 @@ def main():
     best_tsa = best_phase1["tsa"]
     best_dur = best_phase1["sweep_duration"]
 
-    print(f"\n[+] Best Ratio found: NumAmplitudes={best_num_amp}, TSA={best_tsa}, Sweep Duration={best_dur:.2f}s with H2-H5 RMS Amp Err = {best_phase1['metrics']['h2_h5_rms']:.3f} dB")
+    print(
+        f"\n[+] Best Ratio found: NumAmplitudes={best_num_amp}, TSA={best_tsa}, Sweep Duration={best_dur:.2f}s with H2-H5 RMS Amp Err = {best_phase1['metrics']['h2_h5_rms']:.3f} dB"
+    )
 
     # 2. Phase 2: Explore other SSS engine parameters using the best ratio
     print("\n[+] Starting Phase 2: Parameter Tuning...")
@@ -157,12 +174,7 @@ def main():
 
     phase2_results = [
         # Include best phase 1 result as the default configuration baseline
-        {
-            "cycles": 256.0,
-            "points": 500,
-            "min_window": 1.0,
-            "metrics": best_phase1["metrics"]
-        }
+        {"cycles": 256.0, "points": 500, "min_window": 1.0, "metrics": best_phase1["metrics"]}
     ]
 
     for cfg in phase2_configs:
@@ -173,18 +185,17 @@ def main():
             num_amplitudes=best_num_amp,
             analysis_cycles=cfg["cycles"],
             num_meas_points=cfg["points"],
-            min_analysis_window=cfg["min_window"]
+            min_analysis_window=cfg["min_window"],
         )
 
         if raw_data:
             metrics = calculate_metrics(raw_data)
-            phase2_results.append({
-                "cycles": cfg["cycles"],
-                "points": cfg["points"],
-                "min_window": cfg["min_window"],
-                "metrics": metrics
-            })
-            print(f"    [Result] Cycles={cfg['cycles']}, Points={cfg['points']}, MinWindow={cfg['min_window']}s -> H2-H5 RMS: {metrics['h2_h5_rms']:.3f} dB")
+            phase2_results.append(
+                {"cycles": cfg["cycles"], "points": cfg["points"], "min_window": cfg["min_window"], "metrics": metrics}
+            )
+            print(
+                f"    [Result] Cycles={cfg['cycles']}, Points={cfg['points']}, MinWindow={cfg['min_window']}s -> H2-H5 RMS: {metrics['h2_h5_rms']:.3f} dB"
+            )
 
     # Find absolute best configuration
     valid_phase2 = [r for r in phase2_results if r["metrics"] is not None]
@@ -201,7 +212,9 @@ def main():
     print(f"  Min Analysis Window: {best_overall['min_window']} s")
     print(f"  Best H2-H5 RMS Amp Err: {best_overall['metrics']['h2_h5_rms']:.4f} dB")
     print(f"  Best H2-H3 Avg Abs Err: {best_overall['metrics']['h2_h3_avg_abs']:.4f} dB")
-    print(f"  Fundamental Amp Err: {best_overall['metrics']['h1_amp_err']:.4f} dB, Phase Err: {best_overall['metrics']['h1_phase_err']:.4f} deg")
+    print(
+        f"  Fundamental Amp Err: {best_overall['metrics']['h1_amp_err']:.4f} dB, Phase Err: {best_overall['metrics']['h1_phase_err']:.4f} deg"
+    )
     print("=======================================================")
 
     # Save optimization summary to JSON
@@ -215,7 +228,7 @@ def main():
             "num_meas_points": best_overall["points"],
             "min_analysis_window": best_overall["min_window"],
             "h2_h5_rms": best_overall["metrics"]["h2_h5_rms"],
-            "h2_h3_avg_abs": best_overall["metrics"]["h2_h3_avg_abs"]
+            "h2_h3_avg_abs": best_overall["metrics"]["h2_h3_avg_abs"],
         },
         "phase1_trials": [
             {
@@ -224,7 +237,8 @@ def main():
                 "sweep_duration": p["sweep_duration"],
                 "h2_h5_rms": p["metrics"]["h2_h5_rms"] if p["metrics"] else None,
                 "h2_h3_avg_abs": p["metrics"]["h2_h3_avg_abs"] if p["metrics"] else None,
-            } for p in phase1_results
+            }
+            for p in phase1_results
         ],
         "phase2_trials": [
             {
@@ -233,13 +247,15 @@ def main():
                 "min_window": p["min_window"],
                 "h2_h5_rms": p["metrics"]["h2_h5_rms"] if p["metrics"] else None,
                 "h2_h3_avg_abs": p["metrics"]["h2_h3_avg_abs"] if p["metrics"] else None,
-            } for p in phase2_results
-        ]
+            }
+            for p in phase2_results
+        ],
     }
 
     with open(summary_path, "w") as f:
         json.dump(summary_data, f, indent=4)
     print(f"[+] Saved optimization summary to {summary_path}")
+
 
 if __name__ == "__main__":
     main()

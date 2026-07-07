@@ -223,7 +223,6 @@ class TestAntigravityFixes(unittest.TestCase):
         # Double filtering would yield ~ -2.7 dB.
         self.assertAlmostEqual(measured_db, -1.3, delta=0.2)
 
-
     def test_transmission_analyzer_prbs_phase_uses_absolute_time(self):
         """Verify PRBS phase sync is not biased by TX history ring wraps."""
         from src.gui.widgets.transmission_analyzer import TransmissionAnalyzer

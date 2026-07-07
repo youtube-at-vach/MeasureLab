@@ -35,6 +35,7 @@ from src.core.nonlinear_response_analyzer_core import (
 
 logger = logging.getLogger(__name__)
 
+
 class NonlinearResponseAnalyzerSignals(QObject):
     update_plots = pyqtSignal(dict)  # results dictionary containing LTI FR, SNL data, fit info, etc.
     progress = pyqtSignal(int)
@@ -42,8 +43,10 @@ class NonlinearResponseAnalyzerSignals(QObject):
     finished = pyqtSignal()
     error = pyqtSignal(str)
 
+
 class PlayRecSession:
     """Helper to run a synchronous play/record session via AudioEngine."""
+
     def __init__(self, audio_engine, output_data, input_channels=2):
         self.audio_engine = audio_engine
         self.output_data = output_data
@@ -317,15 +320,17 @@ class NonlinearResponseAnalyzer(MeasurementModule):
             latency_samples = nominal_samples
         else:
             latency_samples = lag
-            logger.info(f"Dynamic alignment applied: lag = {latency_samples} samples ({latency_samples/sample_rate*1000:.2f} ms)")
+            logger.info(
+                f"Dynamic alignment applied: lag = {latency_samples} samples ({latency_samples / sample_rate * 1000:.2f} ms)"
+            )
 
         if latency_samples > 0 and latency_samples < len(y_meas):
             y_meas = y_meas[latency_samples : latency_samples + len(u_meas)]
             # Match lengths
             if len(y_meas) < len(u_meas):
-                u_meas = u_meas[:len(y_meas)]
+                u_meas = u_meas[: len(y_meas)]
         else:
-            y_meas = y_meas[:len(u_meas)]
+            y_meas = y_meas[: len(u_meas)]
 
         if len(y_meas) < 256:
             raise ValueError(tr("Acquired signal is too short. Verify connection or sample rate."))
@@ -336,9 +341,13 @@ class NonlinearResponseAnalyzer(MeasurementModule):
             a = np.array([1.0])
             b = g
         elif self.method == "Best Linear Approximation (BLA)":
-            b, a, c, fit_ratio, y_pred, x_est = identify_bla_ls(u_meas, y_meas, self.poly_order, self.na_poles, self.nb_zeros)
-        else: # Two-Stage Method (SVD)
-            b, a, c, fit_ratio, y_pred, x_est = identify_tsa_svd(u_meas, y_meas, self.poly_order, self.na_poles, self.nb_zeros)
+            b, a, c, fit_ratio, y_pred, x_est = identify_bla_ls(
+                u_meas, y_meas, self.poly_order, self.na_poles, self.nb_zeros
+            )
+        else:  # Two-Stage Method (SVD)
+            b, a, c, fit_ratio, y_pred, x_est = identify_tsa_svd(
+                u_meas, y_meas, self.poly_order, self.na_poles, self.nb_zeros
+            )
 
         # 3. Compute Frequency Response of the LTI block
         w, h = freqz(b, a, worN=512, fs=sample_rate)
@@ -351,7 +360,7 @@ class NonlinearResponseAnalyzer(MeasurementModule):
         x_grid = np.linspace(x_min, x_max, 300)
         y_grid = np.zeros_like(x_grid)
         for i, coeff in enumerate(c, start=1):
-            y_grid += coeff * (x_grid ** i)
+            y_grid += coeff * (x_grid**i)
 
         results = {
             "freqs": freqs,
@@ -551,14 +560,14 @@ class NonlinearResponseAnalyzerWidget(QWidget):
         lti_layout.setContentsMargins(2, 2, 2, 2)
 
         self.lti_mag_plot = pg.PlotWidget(title=tr("LTI Block Magnitude Response"))
-        self.lti_mag_plot.setLabel('left', tr("Magnitude"), units='dB')
-        self.lti_mag_plot.setLabel('bottom', tr("Frequency"), units='Hz')
+        self.lti_mag_plot.setLabel("left", tr("Magnitude"), units="dB")
+        self.lti_mag_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.lti_mag_plot.setLogMode(x=True, y=False)
         self.lti_mag_plot.showGrid(x=True, y=True)
 
         self.lti_phase_plot = pg.PlotWidget(title=tr("LTI Block Phase Response"))
-        self.lti_phase_plot.setLabel('left', tr("Phase"), units='degrees')
-        self.lti_phase_plot.setLabel('bottom', tr("Frequency"), units='Hz')
+        self.lti_phase_plot.setLabel("left", tr("Phase"), units="degrees")
+        self.lti_phase_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.lti_phase_plot.setLogMode(x=True, y=False)
         self.lti_phase_plot.showGrid(x=True, y=True)
 
@@ -572,8 +581,8 @@ class NonlinearResponseAnalyzerWidget(QWidget):
         snl_layout.setContentsMargins(2, 2, 2, 2)
 
         self.snl_plot = pg.PlotWidget(title=tr("Static Nonlinearity f(x)"))
-        self.snl_plot.setLabel('left', tr("Output y(t)"))
-        self.snl_plot.setLabel('bottom', tr("Estimated Intermediate x(t)"))
+        self.snl_plot.setLabel("left", tr("Output y(t)"))
+        self.snl_plot.setLabel("bottom", tr("Estimated Intermediate x(t)"))
         self.snl_plot.showGrid(x=True, y=True)
         snl_layout.addWidget(self.snl_plot)
         self.tabs.addTab(self.snl_tab, tr("Static Nonlinearity"))
@@ -584,14 +593,14 @@ class NonlinearResponseAnalyzerWidget(QWidget):
         val_layout.setContentsMargins(2, 2, 2, 2)
 
         self.val_plot = pg.PlotWidget(title=tr("Time Domain Validation"))
-        self.val_plot.setLabel('left', tr("Output"))
-        self.val_plot.setLabel('bottom', tr("Time index"))
+        self.val_plot.setLabel("left", tr("Output"))
+        self.val_plot.setLabel("bottom", tr("Time index"))
         self.val_plot.showGrid(x=True, y=True)
         self.val_plot.addLegend()
 
         self.res_plot = pg.PlotWidget(title=tr("Model Residual Error"))
-        self.res_plot.setLabel('left', tr("Error"))
-        self.res_plot.setLabel('bottom', tr("Time index"))
+        self.res_plot.setLabel("left", tr("Error"))
+        self.res_plot.setLabel("bottom", tr("Time index"))
         self.res_plot.showGrid(x=True, y=True)
 
         val_layout.addWidget(self.val_plot)
@@ -604,8 +613,8 @@ class NonlinearResponseAnalyzerWidget(QWidget):
         dist_layout.setContentsMargins(2, 2, 2, 2)
 
         self.dist_plot = pg.PlotWidget(title=tr("Intermediate Signal Distribution"))
-        self.dist_plot.setLabel('left', tr("Count"))
-        self.dist_plot.setLabel('bottom', tr("Amplitude"))
+        self.dist_plot.setLabel("left", tr("Count"))
+        self.dist_plot.setLabel("bottom", tr("Amplitude"))
         self.dist_plot.showGrid(x=True, y=True)
         dist_layout.addWidget(self.dist_plot)
         self.tabs.addTab(self.dist_tab, tr("Input Distribution"))
@@ -689,10 +698,10 @@ class NonlinearResponseAnalyzerWidget(QWidget):
     def on_update_plots(self, results):
         # 1. Update LTI tab
         self.lti_mag_plot.clear()
-        self.lti_mag_plot.plot(results["freqs"], results["mag_db"], pen=pg.mkPen('c', width=2))
+        self.lti_mag_plot.plot(results["freqs"], results["mag_db"], pen=pg.mkPen("c", width=2))
 
         self.lti_phase_plot.clear()
-        self.lti_phase_plot.plot(results["freqs"], results["phase_deg"], pen=pg.mkPen('c', width=2))
+        self.lti_phase_plot.plot(results["freqs"], results["phase_deg"], pen=pg.mkPen("c", width=2))
 
         # 2. Update SNL tab
         self.snl_plot.clear()
@@ -707,19 +716,21 @@ class NonlinearResponseAnalyzerWidget(QWidget):
             x_scatter = x_est
             y_scatter = y_meas
 
-        self.snl_plot.plot(x_scatter, y_scatter, pen=None, symbol='o', symbolSize=3, symbolBrush=(128, 128, 128, 80))
-        self.snl_plot.plot(results["x_grid"], results["y_grid"], pen=pg.mkPen('y', width=2.5))
+        self.snl_plot.plot(x_scatter, y_scatter, pen=None, symbol="o", symbolSize=3, symbolBrush=(128, 128, 128, 80))
+        self.snl_plot.plot(results["x_grid"], results["y_grid"], pen=pg.mkPen("y", width=2.5))
 
         # 3. Update Validation & Residuals
         self.val_plot.clear()
         y_meas_show = y_meas[:1000]  # Plot first 1000 samples for responsiveness
         y_pred_show = results["y_pred"][:1000]
-        self.val_plot.plot(y_meas_show, pen=pg.mkPen('w', width=1), name=tr("Measured"))
-        self.val_plot.plot(y_pred_show, pen=pg.mkPen('y', width=1.5, style=Qt.PenStyle.DashLine), name=tr("Model Prediction"))
+        self.val_plot.plot(y_meas_show, pen=pg.mkPen("w", width=1), name=tr("Measured"))
+        self.val_plot.plot(
+            y_pred_show, pen=pg.mkPen("y", width=1.5, style=Qt.PenStyle.DashLine), name=tr("Model Prediction")
+        )
 
         self.res_plot.clear()
         res_show = (y_meas - results["y_pred"])[:1000]
-        self.res_plot.plot(res_show, pen=pg.mkPen('r', width=1))
+        self.res_plot.plot(res_show, pen=pg.mkPen("r", width=1))
 
         # Update Fit label
         fit_r2 = results["fit_ratio"]

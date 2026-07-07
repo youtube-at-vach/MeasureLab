@@ -17,7 +17,6 @@ else:
     MONOSPACE_FONT_FAMILY = "DejaVu Sans Mono, Liberation Mono, Courier New, monospace, Courier"
 
 
-
 # Toggle Button Styles (Start/Stop)
 STYLE_TOGGLE_BTN_DARK = (
     "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; padding: 5px; }"

@@ -110,4 +110,3 @@ class TestRecorderPlayerRace(unittest.TestCase):
 
         # Also assert state changed correctly
         self.assertFalse(player.is_playing, "Should stop playing on empty buffer")
-

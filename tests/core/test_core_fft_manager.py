@@ -1,6 +1,7 @@
 import numpy as np
 from src.core.fft_manager import FFTManager
 
+
 def test_fft_manager_rfft_irfft():
     # Setup
     manager = FFTManager()
@@ -16,7 +17,7 @@ def test_fft_manager_rfft_irfft():
     assert fft_result.dtype == np.complex128
 
     # Check frequency peak
-    freqs = manager.rfftfreq(1024, 1/1024)
+    freqs = manager.rfftfreq(1024, 1 / 1024)
     peak_idx = np.argmax(np.abs(fft_result))
     assert freqs[peak_idx] == 10.0
 
@@ -27,6 +28,7 @@ def test_fft_manager_rfft_irfft():
 
     # Compare with original data
     np.testing.assert_allclose(data, reconstructed, atol=1e-10)
+
 
 def test_fft_manager_out_parameter():
     manager = FFTManager()
@@ -47,6 +49,7 @@ def test_fft_manager_out_parameter():
     result2 = manager.irfft(out_fft, n=512, out=out_ifft)
     assert result2 is out_ifft
     np.testing.assert_allclose(data, result2, atol=1e-10)
+
 
 def test_fft_manager_dtypes():
     manager = FFTManager()
@@ -69,12 +72,14 @@ def test_fft_manager_dtypes():
     assert ifft64.dtype == np.float64
     np.testing.assert_allclose(data64, ifft64, atol=1e-10)
 
+
 def test_fft_manager_windows():
     manager = FFTManager()
     windows = manager.get_available_windows()
     assert "hann" in windows
     assert "blackmanharris" in windows
     assert isinstance(windows, list)
+
 
 def test_get_dpss_windows():
     from src.core.fft_manager import get_dpss_windows
@@ -90,6 +95,7 @@ def test_get_dpss_windows():
     windows_cached = get_dpss_windows(N=1024, NW=3)
     assert windows is windows_cached
 
+
 def test_warmup(monkeypatch):
     manager = FFTManager()
 
@@ -99,6 +105,7 @@ def test_warmup(monkeypatch):
     monkeypatch.setattr("src.core.fft_manager.HUGE_SIZES", [2048])
 
     callback_calls = []
+
     def callback(msg):
         callback_calls.append(msg)
 
@@ -113,6 +120,7 @@ def test_warmup(monkeypatch):
     # Size 512
     assert (512, "float32", "FFTW_FORWARD") in manager._plans
     assert (512, "float64", "FFTW_FORWARD") in manager._plans
+
 
 def test_save_load_wisdom(tmp_path):
     manager = FFTManager()
@@ -133,6 +141,7 @@ def test_save_load_wisdom(tmp_path):
     new_manager = FFTManager()
     new_manager.wisdom_path = tmp_path / "wisdom.json"
     new_manager.load_wisdom()
+
 
 def test_fallback_numpy_fft(monkeypatch):
     monkeypatch.setattr("src.core.fft_manager.HAS_PYFFTW", False)
@@ -161,14 +170,16 @@ def test_fallback_numpy_fft(monkeypatch):
 
     # Test get_plan and warmup should gracefully return/do nothing
     assert manager.get_plan(256) is None
-    manager.warmup() # should not raise exception
+    manager.warmup()  # should not raise exception
+
 
 def test_dtype_str_conversion():
     manager = FFTManager()
 
-    assert manager._get_dtype_str(np.dtype('float32')) == 'float32'
-    assert manager._get_dtype_str(np.dtype('float64')) == 'float64'
-    assert manager._get_dtype_str(np.dtype('int32')) == 'float64' # fallback
+    assert manager._get_dtype_str(np.dtype("float32")) == "float32"
+    assert manager._get_dtype_str(np.dtype("float64")) == "float64"
+    assert manager._get_dtype_str(np.dtype("int32")) == "float64"  # fallback
+
 
 def test_rfft_irfft_copy_parameter():
     manager = FFTManager()
@@ -182,6 +193,7 @@ def test_rfft_irfft_copy_parameter():
     ifft_result_no_copy = manager.irfft(fft_result_no_copy, n=256, copy=False)
     assert ifft_result_no_copy.shape == (256,)
 
+
 def test_rfft_irfft_invalid_length():
     manager = FFTManager()
     data = np.random.randn(256).astype(np.float64)
@@ -193,8 +205,10 @@ def test_rfft_irfft_invalid_length():
     result = manager.irfft(truncated_fft, n=256)
     assert result.shape == (256,)
 
+
 def test_upgrade_plan(monkeypatch):
     from unittest.mock import MagicMock
+
     manager = FFTManager()
     # Mock to ensure we can track calls
     spy = MagicMock(side_effect=manager._create_plan)

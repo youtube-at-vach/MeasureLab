@@ -891,8 +891,6 @@ class LockInModelerWidget(QWidget):
         if label:
             label.setVisible(is_ham)
 
-
-
         if hasattr(self, "chk_show_raw"):
             self.chk_show_raw.setChecked(not is_ham)
 

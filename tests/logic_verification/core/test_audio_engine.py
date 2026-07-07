@@ -428,7 +428,6 @@ class TestAudioEngineLogic(unittest.TestCase):
     def tearDown(self):
         self.patcher.stop()
 
-
     def test_stop_stream_exception(self):
         # Create a mock stream that raises an exception when stopped
         mock_stream = MagicMock()

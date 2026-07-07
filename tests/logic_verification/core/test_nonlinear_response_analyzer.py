@@ -9,6 +9,7 @@ from src.core.nonlinear_response_analyzer_core import (
     stabilize_poly,
 )
 
+
 def test_signal_generation():
     sample_rate = 44100
     duration = 1.0
@@ -19,12 +20,13 @@ def test_signal_generation():
     # Test Schroeder multisine
     u_multi = generate_schroeder_multisine(sample_rate, duration, start_freq, end_freq, amp_db)
     assert len(u_multi) == int(sample_rate * duration)
-    assert np.abs(np.max(np.abs(u_multi)) - 10**(amp_db/20.0)) < 1e-3
+    assert np.abs(np.max(np.abs(u_multi)) - 10 ** (amp_db / 20.0)) < 1e-3
 
     # Test Gaussian noise
     u_gauss = generate_gaussian_noise(sample_rate, duration, start_freq, end_freq, amp_db)
     assert len(u_gauss) == int(sample_rate * duration)
-    assert np.abs(np.max(np.abs(u_gauss)) - 10**(amp_db/20.0)) < 1e-3
+    assert np.abs(np.max(np.abs(u_gauss)) - 10 ** (amp_db / 20.0)) < 1e-3
+
 
 def test_simulated_system():
     sample_rate = 16000
@@ -35,6 +37,7 @@ def test_simulated_system():
 
     assert len(y) == len(u)
     assert not np.any(np.isnan(y))
+
 
 def test_identify_bussgang():
     sample_rate = 16000
@@ -53,6 +56,7 @@ def test_identify_bussgang():
     assert len(y_pred) == len(y)
     assert len(x_est) == len(u)
 
+
 def test_identify_bla_ls():
     sample_rate = 16000
     sim = SimulatedNonlinearResponseSystem(sample_rate)
@@ -69,6 +73,7 @@ def test_identify_bla_ls():
     assert fit_ratio > 0.95
     assert len(y_pred) == len(y)
 
+
 def test_identify_tsa_svd():
     sample_rate = 16000
     sim = SimulatedNonlinearResponseSystem(sample_rate)
@@ -84,6 +89,7 @@ def test_identify_tsa_svd():
     assert len(c) == 4
     assert fit_ratio > 0.90
     assert len(y_pred) == len(y)
+
 
 def test_stabilize_poly():
     # 1. Already stable poly (roots inside unit circle)

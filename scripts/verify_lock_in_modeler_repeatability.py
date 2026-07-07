@@ -672,7 +672,9 @@ def main():
             print(f"  Std Dev : Gain = {np.std(gains):.4f} dB, Phase = {np.std(phases_aligned):.4f} deg")
             print("  Run-by-Run values:")
             for r_idx in range(cli_args.runs):
-                print(f"    Run {r_idx+1:2d}: Gain = {gains[r_idx]:8.4f} dB, Phase = {phases_aligned[r_idx]:8.3f} deg")
+                print(
+                    f"    Run {r_idx + 1:2d}: Gain = {gains[r_idx]:8.4f} dB, Phase = {phases_aligned[r_idx]:8.3f} deg"
+                )
 
     # 5. Plotting results
     print("\n[*] Plotting repeatability graphs...")
@@ -685,7 +687,9 @@ def main():
         ax1.semilogx(freqs_valid, gain_std[:, h], color=colors[h], label=labels[h])
         ax2.semilogx(freqs_valid, phase_std[:, h], color=colors[h], label=labels[h])
 
-    ax1.set_title(f"Lock-in Modeler Repeatability: Standard Deviation over {cli_args.runs} Runs (Cycles={analysis_cycles})")
+    ax1.set_title(
+        f"Lock-in Modeler Repeatability: Standard Deviation over {cli_args.runs} Runs (Cycles={analysis_cycles})"
+    )
     ax1.set_ylabel("Gain Standard Deviation (dB)")
     ax1.grid(True, which="both", ls="-", alpha=0.5)
     ax1.legend()

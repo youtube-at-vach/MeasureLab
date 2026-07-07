@@ -207,6 +207,7 @@ class NonlinearAnalyzer(MeasurementModule):
 
     def run_play_rec(self, output_data, input_channels=2, progress_callback=None, check_cancelled=None):
         import time
+
         session = PlayRecSession(self.audio_engine, output_data, input_channels)
         session.start()
         expected_duration = len(output_data) / self.audio_engine.sample_rate
@@ -345,10 +346,7 @@ class NonlinearAnalyzer(MeasurementModule):
         # Execute PlayRec session (Single open/close session)
         try:
             rec_data = self.run_play_rec(
-                out_data,
-                input_channels=2,
-                progress_callback=progress_cb,
-                check_cancelled=lambda: not worker.is_running
+                out_data, input_channels=2, progress_callback=progress_cb, check_cancelled=lambda: not worker.is_running
             )
         except Exception as e:
             if not worker.is_running:
@@ -371,7 +369,7 @@ class NonlinearAnalyzer(MeasurementModule):
             rec_data[:, self.ref_channel_index] = cont_signal
             if getattr(self, "measure_noise_floor", True):
                 noise_start = total_sweeps * block_len
-                noise_sig = np.random.normal(0, 1e-5, noise_samples) # -100 dBFS noise floor
+                noise_sig = np.random.normal(0, 1e-5, noise_samples)  # -100 dBFS noise floor
                 rec_data[noise_start:, self.meas_channel_index] = noise_sig
 
         # Quality Control: Peak Input Level check
@@ -381,11 +379,21 @@ class NonlinearAnalyzer(MeasurementModule):
         meas_peak_db = float(20 * np.log10(meas_peak + 1e-12))
 
         if meas_peak >= 0.99:
-            self.warnings.append(tr("Clipping detected on input signal (Peak: {0:.1f} dBFS). Lower sweep volume or input gain.").format(meas_peak_db))
+            self.warnings.append(
+                tr("Clipping detected on input signal (Peak: {0:.1f} dBFS). Lower sweep volume or input gain.").format(
+                    meas_peak_db
+                )
+            )
         elif meas_peak < 1e-4:
-            self.warnings.append(tr("No input signal detected (Peak: {0:.1f} dBFS). Check cables and routing.").format(meas_peak_db))
+            self.warnings.append(
+                tr("No input signal detected (Peak: {0:.1f} dBFS). Check cables and routing.").format(meas_peak_db)
+            )
         elif meas_peak < 0.0316:  # -30 dBFS
-            self.warnings.append(tr("Low input level (Peak: {0:.1f} dBFS). Consider increasing volume or input gain for better accuracy.").format(meas_peak_db))
+            self.warnings.append(
+                tr(
+                    "Low input level (Peak: {0:.1f} dBFS). Consider increasing volume or input gain for better accuracy."
+                ).format(meas_peak_db)
+            )
 
         # Choose alignment channel: Ref channel in XFER mode, Meas channel otherwise
         if self.input_mode in {"XFER", "XFER_REV"}:
@@ -394,8 +402,8 @@ class NonlinearAnalyzer(MeasurementModule):
             align_ch = self.meas_channel_index if rec_data.shape[1] > 1 else 0
 
         # Estimate and compensate clock drift between sweeps
-        is_same_device = (
-            getattr(self.audio_engine, "input_device", None) == getattr(self.audio_engine, "output_device", None)
+        is_same_device = getattr(self.audio_engine, "input_device", None) == getattr(
+            self.audio_engine, "output_device", None
         )
         if total_sweeps > 1 and not is_same_device:
             try:
@@ -432,9 +440,13 @@ class NonlinearAnalyzer(MeasurementModule):
                         "Estimated clock drift (%.2f ppm) is physically implausible. "
                         "This likely indicates noise interference or peak-finding error. "
                         "Skipping compensation to prevent signal degradation.",
-                        drift_ppm
+                        drift_ppm,
                     )
-                    self.warnings.append(tr("High clock drift or sync failure (Estimated: {0:.1f} ppm). Synchronization may be degraded.").format(drift_ppm))
+                    self.warnings.append(
+                        tr(
+                            "High clock drift or sync failure (Estimated: {0:.1f} ppm). Synchronization may be degraded."
+                        ).format(drift_ppm)
+                    )
             except Exception as e:
                 logger.error("Failed to compensate clock drift: %s", e)
 
@@ -499,11 +511,11 @@ class NonlinearAnalyzer(MeasurementModule):
                 try:
                     # Apply 20Hz-20kHz bandpass filtering
                     nyquist = sample_rate / 2.0
-                    sos_hp = butter(4, 20.0 / nyquist, btype='highpass', output='sos')
+                    sos_hp = butter(4, 20.0 / nyquist, btype="highpass", output="sos")
                     filtered_sig = sosfilt(sos_hp, noise_sig)
 
                     if sample_rate > 44100:
-                        sos_lp = butter(4, 20000.0 / nyquist, btype='lowpass', output='sos')
+                        sos_lp = butter(4, 20000.0 / nyquist, btype="lowpass", output="sos")
                         filtered_sig = sosfilt(sos_lp, filtered_sig)
 
                     # Trim edges to avoid transients
@@ -527,7 +539,11 @@ class NonlinearAnalyzer(MeasurementModule):
             ir_peak_db = float(20 * np.log10(ir_peak + 1e-12))
             snr = ir_peak_db - noise_floor_dbfs
             if snr < 20.0:
-                self.warnings.append(tr("Low SNR ({0:.1f} dB). Harmonic plots may be noisy and unreliable due to background noise.").format(snr))
+                self.warnings.append(
+                    tr(
+                        "Low SNR ({0:.1f} dB). Harmonic plots may be noisy and unreliable due to background noise."
+                    ).format(snr)
+                )
 
         # 3. Parallel Hammerstein Separation and Analysis using Core Module
         (
@@ -555,6 +571,7 @@ class NonlinearAnalyzer(MeasurementModule):
         # Push to active model cache
         try:
             from src.core.hammerstein_model import set_active_model
+
             ref_max = np.max(np.abs(separated_kernels_data[0])) if len(separated_kernels_data) > 0 else 1.0
 
             if self.input_mode in {"XFER", "XFER_REV"} and len(responses_ref) > 0 and len(amplitudes) > 0:
@@ -579,18 +596,12 @@ class NonlinearAnalyzer(MeasurementModule):
                 },
                 "time_domain": {
                     "time_ms": time_ms,
-                    "kernels": {
-                        f"h{p+1}": separated_kernels_data[p] for p in range(len(separated_kernels_data))
-                    },
+                    "kernels": {f"h{p + 1}": separated_kernels_data[p] for p in range(len(separated_kernels_data))},
                 },
                 "frequency_domain": {
                     "freqs": valid_freqs,
-                    "magnitudes_db": {
-                        k: v for k, v in magnitudes_db_dict.items() if k.startswith("h")
-                    },
-                    "phases_deg": {
-                        k: v for k, v in phases_deg_dict.items() if k.startswith("h") or k == "ref_phase"
-                    },
+                    "magnitudes_db": {k: v for k, v in magnitudes_db_dict.items() if k.startswith("h")},
+                    "phases_deg": {k: v for k, v in phases_deg_dict.items() if k.startswith("h") or k == "ref_phase"},
                 },
             }
             set_active_model(cache_data)
@@ -604,13 +615,10 @@ class NonlinearAnalyzer(MeasurementModule):
         self.signals.progress.emit(100)
 
 
-
 class NonlinearAnalyzerWidget(QWidget):
     def __init__(self, module: NonlinearAnalyzer):
         QWidget.__init__(self)
         self.module = module
-
-
 
         self.init_ui()
 
@@ -628,7 +636,6 @@ class NonlinearAnalyzerWidget(QWidget):
         self.cached_phases = {}
         self.cached_kernels = None
         self.cached_time_ms = None
-
 
     def init_ui(self):
         # Premium layout design
@@ -846,8 +853,6 @@ class NonlinearAnalyzerWidget(QWidget):
         kernel_layout.addWidget(self.kernel_plot)
         self.plot_tabs.addTab(self.kernel_tab, tr("Impulse Responses (Kernels)"))
 
-
-
         # Premium Plot Legends
         self.mag_plot.addLegend(offset=(10, 10))
         self.phase_plot.addLegend(offset=(10, 10))
@@ -893,9 +898,7 @@ class NonlinearAnalyzerWidget(QWidget):
                 self.latency_label.setText(tr("0.00 ms (Uncalibrated)"))
                 self.latency_label.setStyleSheet("font-weight: bold; color: #e68c14;")
             else:
-                self.latency_label.setText(
-                    tr("{0:.2f} ms (Calibrated)").format(self.module.latency_sec * 1000)
-                )
+                self.latency_label.setText(tr("{0:.2f} ms (Calibrated)").format(self.module.latency_sec * 1000))
                 self.latency_label.setStyleSheet("font-weight: bold; color: #2b8c56;")
 
     def on_routing_changed(self):
@@ -929,13 +932,10 @@ class NonlinearAnalyzerWidget(QWidget):
         self.progress_bar.setValue(0)
         self.status_label.setText("")
 
-
         # Clear existing plots
         self.mag_plot.clear()
         self.phase_plot.clear()
         self.kernel_plot.clear()
-
-
 
         self.module.start_measurement()
 
@@ -951,6 +951,7 @@ class NonlinearAnalyzerWidget(QWidget):
         # Notify MainWindow that the active model has changed, so other modules (e.g. ResponseViewer) can update their cache buttons
         from PyQt6.QtWidgets import QApplication
         from src.gui.main_window import MainWindow
+
         for widget in QApplication.topLevelWidgets():
             if isinstance(widget, MainWindow):
                 widget.notify_active_model_changed()
@@ -1008,7 +1009,6 @@ class NonlinearAnalyzerWidget(QWidget):
         if self.cached_kernels is not None:
             self.export_btn.setEnabled(True)
 
-
         # Retrieve current display smoothing level
         smooth_level = self.smooth_combo.currentData()
 
@@ -1040,8 +1040,6 @@ class NonlinearAnalyzerWidget(QWidget):
             pen_noise = pg.mkPen(color=(150, 150, 150), width=1.2, style=Qt.PenStyle.DashLine)
             self.mag_plot.plot(freqs, noise_floor_arr, pen=pen_noise, name=tr("Noise Floor"))
 
-
-
         for key in ["h1", "h2", "h3", "h4", "h5"]:
             if key in magnitudes_db_dict:
                 # Apply Savitzky-Golay Smoothing
@@ -1057,8 +1055,6 @@ class NonlinearAnalyzerWidget(QWidget):
                 # Phase Plot
                 pen_phase = pg.mkPen(color=colors[key], width=1.5, style=Qt.PenStyle.SolidLine)
                 self.phase_plot.plot(freqs, phase_smoothed, pen=pen_phase, name=labels[key])
-
-
 
     def on_update_kernels(self, time_ms, separated_kernels_data):
         self.cached_time_ms = time_ms
@@ -1107,12 +1103,7 @@ class NonlinearAnalyzerWidget(QWidget):
         from PyQt6.QtWidgets import QFileDialog
         from src.core.hammerstein_model import save_hammerstein_model
 
-        filepath, _ = QFileDialog.getSaveFileName(
-            self,
-            tr("Export Hammerstein Model"),
-            "",
-            tr("JSON Files (*.json)")
-        )
+        filepath, _ = QFileDialog.getSaveFileName(self, tr("Export Hammerstein Model"), "", tr("JSON Files (*.json)"))
 
         if not filepath:
             return
@@ -1136,15 +1127,11 @@ class NonlinearAnalyzerWidget(QWidget):
                 },
                 "time_domain": {
                     "time_ms": self.cached_time_ms,
-                    "kernels": {
-                        f"h{p+1}": self.cached_kernels[p] for p in range(len(self.cached_kernels))
-                    },
+                    "kernels": {f"h{p + 1}": self.cached_kernels[p] for p in range(len(self.cached_kernels))},
                 },
                 "frequency_domain": {
                     "freqs": self.cached_freqs,
-                    "magnitudes_db": {
-                        k: v for k, v in self.cached_mags.items() if k.startswith("h")
-                    },
+                    "magnitudes_db": {k: v for k, v in self.cached_mags.items() if k.startswith("h")},
                     "phases_deg": {
                         k: v for k, v in self.cached_phases.items() if k.startswith("h") or k == "ref_phase"
                     },
@@ -1152,15 +1139,7 @@ class NonlinearAnalyzerWidget(QWidget):
             }
 
             save_hammerstein_model(filepath, data)
-            QMessageBox.information(
-                self,
-                tr("Export Successful"),
-                tr("Model exported successfully.")
-            )
+            QMessageBox.information(self, tr("Export Successful"), tr("Model exported successfully."))
         except Exception as e:
             logger.error("Failed to export Hammerstein model to %s", filepath, exc_info=True)
-            QMessageBox.critical(
-                self,
-                tr("Export Failed"),
-                tr("Failed to save Hammerstein model: {0}").format(e)
-            )
+            QMessageBox.critical(self, tr("Export Failed"), tr("Failed to save Hammerstein model: {0}").format(e))

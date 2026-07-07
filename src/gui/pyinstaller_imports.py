@@ -15,7 +15,7 @@ if False:
     from src.gui.widgets.goniometer import Goniometer
     from src.gui.widgets.hrtf_player import HRTFPlayer
     from src.gui.widgets.impedance_analyzer import ImpedanceAnalyzer
-    from src.gui.widgets.inverse_filter import InverseFilter
+
     from src.gui.widgets.linearity_analyzer import LinearityAnalyzer
     from src.gui.widgets.lock_in_amplifier import LockInAmplifier
     from src.gui.widgets.lock_in_frequency_counter import LockInFrequencyCounter
@@ -57,7 +57,6 @@ if False:
         Goniometer,
         HRTFPlayer,
         ImpedanceAnalyzer,
-        InverseFilter,
         LinearityAnalyzer,
         LockInAmplifier,
         LockInFrequencyCounter,

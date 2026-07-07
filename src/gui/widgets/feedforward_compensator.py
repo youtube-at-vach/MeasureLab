@@ -373,7 +373,9 @@ class LICFFEngine:
         Y_fft = self.nonlinear_spectrum(x)
         return np.fft.irfft(Y_fft, n=M) + self.q0_sum
 
-    def compensate(self, u_in, iterative=False, iters=3, clip_limit=1.5, linear_only=False, bypass_linear_eq=False, stats=None):
+    def compensate(
+        self, u_in, iterative=False, iters=3, clip_limit=1.5, linear_only=False, bypass_linear_eq=False, stats=None
+    ):
         M = len(u_in)
         _, F_inv_lin, F_inv_nl, bp_filter = self._prepare_buffers_for_length(M)
 
@@ -393,7 +395,11 @@ class LICFFEngine:
             u_comp_linear_clipped = np.clip(u_comp_linear, -clip_limit, clip_limit)
             if stats is not None:
                 stats["clipping_count"] = int(np.sum(np.abs(u_comp_linear) >= clip_limit))
-                if np.any(np.isnan(u_comp_linear)) or np.any(np.isinf(u_comp_linear)) or np.max(np.abs(u_comp_linear)) > 10.0 * clip_limit:
+                if (
+                    np.any(np.isnan(u_comp_linear))
+                    or np.any(np.isinf(u_comp_linear))
+                    or np.max(np.abs(u_comp_linear)) > 10.0 * clip_limit
+                ):
                     stats["instability_detected"] = True
             return u_comp_linear_clipped
 
@@ -414,7 +420,11 @@ class LICFFEngine:
             y_comp_nl = np.fft.irfft(Y_fft * F_inv_nl, n=M)
             u_comp_raw = u_comp_linear - y_comp_nl
 
-            if np.any(np.isnan(u_comp_raw)) or np.any(np.isinf(u_comp_raw)) or np.max(np.abs(u_comp_raw)) > 10.0 * clip_limit:
+            if (
+                np.any(np.isnan(u_comp_raw))
+                or np.any(np.isinf(u_comp_raw))
+                or np.max(np.abs(u_comp_raw)) > 10.0 * clip_limit
+            ):
                 instability = True
 
             u_comp = np.clip(u_comp_raw, -clip_limit, clip_limit)
@@ -426,7 +436,9 @@ class LICFFEngine:
         return u_comp
 
 
-def process_block_task(engine, chunk_padded, iterative, iters, clip_limit, linear_only, bypass_linear_eq, b_idx, L_block, overlap):
+def process_block_task(
+    engine, chunk_padded, iterative, iters, clip_limit, linear_only, bypass_linear_eq, b_idx, L_block, overlap
+):
     """
     Worker function to process a single block across all channels.
     Runs in a separate process.
@@ -456,13 +468,15 @@ def process_block_task(engine, chunk_padded, iterative, iters, clip_limit, linea
         sum_sq_out = float(np.sum(chunk_out_ch**2))
         peak_in = float(np.max(np.abs(x_ch_valid)))
 
-        block_stats_list.append({
-            "clipping_count": ch_clip_count,
-            "instability_detected": bool(stats.get("instability_detected", False)),
-            "sum_sq_in": sum_sq_in,
-            "sum_sq_out": sum_sq_out,
-            "peak_in": peak_in
-        })
+        block_stats_list.append(
+            {
+                "clipping_count": ch_clip_count,
+                "instability_detected": bool(stats.get("instability_detected", False)),
+                "sum_sq_in": sum_sq_in,
+                "sum_sq_out": sum_sq_out,
+                "peak_in": peak_in,
+            }
+        )
 
     return chunk_out, block_stats_list
 
@@ -472,7 +486,17 @@ class OfflineFFCompWorker(QThread):
     finished = pyqtSignal(bool, str)
 
     def __init__(
-        self, input_path, output_path, engine, iterative, iters, clip_limit, linear_only=False, bypass_linear_eq=False, volume_matching="none", abort_on_instability=False
+        self,
+        input_path,
+        output_path,
+        engine,
+        iterative,
+        iters,
+        clip_limit,
+        linear_only=False,
+        bypass_linear_eq=False,
+        volume_matching="none",
+        abort_on_instability=False,
     ):
         super().__init__()
         self.input_path = input_path
@@ -641,7 +665,9 @@ class OfflineFFCompWorker(QThread):
                                     instability_detected[ch] = True
                                     if self.abort_on_instability:
                                         executor.shutdown(wait=False, cancel_futures=True)
-                                        raise ValueError(tr("Instability/runaway detected during compensation. Processing aborted."))
+                                        raise ValueError(
+                                            tr("Instability/runaway detected during compensation. Processing aborted.")
+                                        )
 
                                 sum_sq_in[ch] += block_stats["sum_sq_in"]
                                 sum_sq_out[ch] += block_stats["sum_sq_out"]
@@ -686,7 +712,9 @@ class OfflineFFCompWorker(QThread):
                             if block_stats.get("instability_detected", False):
                                 instability_detected[ch] = True
                                 if self.abort_on_instability:
-                                    raise ValueError(tr("Instability/runaway detected during compensation. Processing aborted."))
+                                    raise ValueError(
+                                        tr("Instability/runaway detected during compensation. Processing aborted.")
+                                    )
 
                             x_ch_valid = chunk_padded[overlap : overlap + L_block, ch]
                             sum_sq_in[ch] += np.sum(x_ch_valid**2)
@@ -1048,7 +1076,7 @@ class FeedforwardCompensatorWidget(QWidget):
         # 0: Linear & Nonlinear
         # 1: Nonlinear Only (No Linear EQ)
         # 2: Linear Only
-        is_linear_only = (index == 2)
+        is_linear_only = index == 2
         self.chk_iterative.setEnabled(not is_linear_only)
         self.spin_iters.setEnabled(not is_linear_only and self.chk_iterative.isChecked())
         if self.module.engine:
@@ -1202,7 +1230,7 @@ class FeedforwardCompensatorWidget(QWidget):
         Q_fft, F_inv_raw, _, bp_filter = engine._prepare_buffers_for_length(M)
 
         comp_mode_idx = self.combo_comp_mode.currentIndex()
-        bypass_linear_eq = (comp_mode_idx == 1)
+        bypass_linear_eq = comp_mode_idx == 1
 
         if bypass_linear_eq:
             # If linear EQ is bypassed, the inverse filter for the linear path is effectively a thru filter (1.0)
@@ -1430,8 +1458,8 @@ class FeedforwardCompensatorWidget(QWidget):
         clip_limit = 2.0
 
         comp_mode_idx = self.combo_comp_mode.currentIndex()
-        linear_only = (comp_mode_idx == 2)
-        bypass_linear_eq = (comp_mode_idx == 1)
+        linear_only = comp_mode_idx == 2
+        bypass_linear_eq = comp_mode_idx == 1
 
         u_comp = engine.compensate(
             u,
@@ -1643,8 +1671,8 @@ class FeedforwardCompensatorWidget(QWidget):
         clip_limit = 2.0
 
         comp_mode_idx = self.combo_comp_mode.currentIndex()
-        linear_only = (comp_mode_idx == 2)
-        bypass_linear_eq = (comp_mode_idx == 1)
+        linear_only = comp_mode_idx == 2
+        bypass_linear_eq = comp_mode_idx == 1
 
         abort_on_instability = self.chk_abort_on_instability.isChecked()
         vol_match = "rms" if self.chk_output_matched_orig.isChecked() else "none"

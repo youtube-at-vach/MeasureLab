@@ -174,8 +174,7 @@ Other useful functions.
     - Simple recording and playback function.
 - **[Waveform Loop Player](widgets/waveform_loop_player.en.md)**
     - A tool that allows you to load an audio file, inspect its waveform, and loop a selected region. Useful for repeatedly observing transient responses.
-- **[Inverse Filter](widgets/inverse_filter.en.md)**
-    - Creates an inverse filter to cancel out the characteristics of speakers and rooms.
+
 - **[Detachable Wrapper](widgets/detachable_wrapper.en.md)**
     - A framework for detaching any widget into a separate window.
 - **[Plot Comparer](widgets/plot_comparer.en.md)**
