@@ -2,15 +2,12 @@
 
 ![Linearity Analyzer](../assets/widgets/linearity_analyzer.png)
 
-## ☕ Coffee Break: Linearity
-
-"Linearity" refers to whether the output is perfectly proportional to the amplitude of the input signal.
-In digital audio equipment, this proportional relationship often breaks down at extremely low signal levels due to quantization errors or the noise floor. This widget measures the precision limits of equipment when handling minute signals.
-
 ## Overview
 
 This tool precisely measures the "proportional relationship (linearity)" between input and output as the signal level changes.
 It is used to verify problems specific to digital equipment (DAC/ADC), such as "loud sounds are output correctly, but errors occur with very quiet sounds (bit truncation or buried in noise)," as well as the dynamic range of analog circuits.
+
+"Linearity" refers to whether the output is perfectly proportional to the amplitude of the input signal. In digital audio equipment, this proportional relationship often breaks down at extremely low signal levels due to quantization errors or the noise floor. This widget measures the precision limits of equipment when handling such minute signals.
 
 ## Meaning of Key Indicators
 
