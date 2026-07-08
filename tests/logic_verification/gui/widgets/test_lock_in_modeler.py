@@ -393,3 +393,219 @@ def test_lock_in_modeler_smoothing_in_sweep_mode(qtbot, mock_audio_engine):
 
     # Clean up
     widget.btn_toggle.click()
+
+
+def test_lock_in_modeler_predistortion_sweep_mode(qtbot, mock_audio_engine):
+    # 1. Initialize analyzer and widget
+    analyzer = LockInModeler(mock_audio_engine)
+    analyzer.latency_samples = 100.0
+    widget = LockInModelerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    # 2. Select Predistortion Sweep mode
+    # Index 2: "Predistortion Sweep"
+    widget.combo_meas_mode.setCurrentIndex(2)
+    assert not widget.spin_predistortion_iterations.isHidden()
+    assert not widget.spin_predistortion_mu.isHidden()
+
+    # Start sweep
+    widget.btn_toggle.click()
+    assert analyzer.is_running
+    assert widget.is_predistortion_sweep_mode
+
+    # Mock engine sweep parameters
+    analyzer.engine = MagicMock()
+    analyzer.engine.sweep_samples = 48000 * 5
+    analyzer.engine.sample_rate = 48000
+    analyzer.engine.meas_freqs = np.linspace(100, 1000, 10)
+
+    # Mock F_corr and results
+    widget.max_blocks = 10
+    widget.accumulated_results = np.zeros((widget.max_blocks, 5), dtype=complex)
+    widget.block_counts = np.ones(widget.max_blocks, dtype=int)
+    widget.plot_freqs_array = np.linspace(100, 1000, widget.max_blocks)
+
+    # Initialize predistortion_manager for test
+    from src.core.predistortion import PredistortionManager
+    widget.predistortion_manager = PredistortionManager(
+        start_freq=100.0, end_freq=1000.0, meas_freqs=analyzer.engine.meas_freqs, max_harmonic=3
+    )
+    # Set mock correction value at harmonic 2 (index 2 in F_corr)
+    # 0.1j gain correction
+    widget.predistortion_manager.F_corr[2][:] = 0.1j
+
+    for i in range(widget.max_blocks):
+        widget.accumulated_results[i, 0] = 0.5  # H1 (fundamental)
+        widget.accumulated_results[i, 1] = 0.01  # H2 (raw suppressed distortion)
+        widget.block_counts[i] = 1
+
+    # 3. Verify with Restore True DUT Response ON
+    widget.chk_show_restored.setChecked(True)
+    widget.redraw_plots()
+    h2_restored = widget.mag_curves[1].yData.copy()
+
+    # 4. Verify with Show Restored OFF
+    widget.chk_show_restored.setChecked(False)
+    widget.redraw_plots()
+    h2_raw = widget.mag_curves[1].yData.copy()
+
+    # The restored response should be different from raw because F_corr was applied
+    assert not np.allclose(h2_restored, h2_raw, atol=1e-5)
+
+    # H2 raw should be around 20*log10(0.01) = -40 dB
+    # H2 restored should be: raw (0.01) - F_corr (0.1j) * H1 (0.5) = 0.01 - 0.05j -> magnitude approx 0.051 -> -25.8 dB
+    np.testing.assert_allclose(h2_raw, 20 * np.log10(0.01), atol=1.0)
+    np.testing.assert_allclose(h2_restored, 20 * np.log10(np.abs(0.01 - 0.05j)), atol=1.0)
+
+    # 5. Finish sweep and test post-sweep toggling
+    analyzer.state = "FINISHED"
+    widget.btn_toggle.click()  # Triggers finishing logic
+
+    # Toggle checkbox to ON post-sweep and assert H_freqs rebuilds
+    widget.chk_show_restored.setChecked(True)
+    h2_post_restored = widget.mag_curves[1].yData.copy()
+    np.testing.assert_allclose(h2_post_restored, 20 * np.log10(np.abs(0.01 - 0.05j)), atol=1.0)
+
+    widget.chk_show_restored.setChecked(False)
+    h2_post_raw = widget.mag_curves[1].yData.copy()
+    np.testing.assert_allclose(h2_post_raw, 20 * np.log10(0.01), atol=1.0)
+
+
+def test_lock_in_modeler_inverse_hammerstein_mode(qtbot, mock_audio_engine):
+    # 1. Initialize analyzer and widget
+    analyzer = LockInModeler(mock_audio_engine)
+    analyzer.latency_samples = 100.0
+    widget = LockInModelerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    # 2. Select Inverse Hammerstein mode
+    # Index 3: "Inverse Hammerstein"
+    widget.combo_meas_mode.setCurrentIndex(3)
+    assert not widget.spin_amp_steps.isHidden()
+    assert not widget.spin_predistortion_iterations.isHidden()
+
+    # Set parameters: 5 amplitudes (minimum allowed is 5), 2 predistortion iterations (3 sweeps per amp, 15 sweeps total)
+    widget.spin_amp_steps.setValue(5)
+    widget.spin_predistortion_iterations.setValue(2)
+
+    # Start sweep
+    widget.btn_toggle.click()
+    assert analyzer.is_running
+    assert widget.is_predistortion_sweep_mode
+    assert widget.is_hammerstein_mode
+    assert widget.is_inverse_hammerstein_mode
+    assert analyzer.averaging_count == 15  # 5 amplitudes * (2 iterations + 1)
+
+    # Use the real engine but patch meas_freqs to match our dummy test sizes
+    analyzer.engine.meas_freqs = np.linspace(100, 1000, 10)
+
+    # Fill accumulated results and simulate the sweeps using widget.max_blocks
+    max_blks = widget.max_blocks
+    widget.accumulated_results = np.zeros((max_blks, 5), dtype=complex)
+    widget.block_counts = np.ones(max_blks, dtype=int)
+    widget.plot_freqs_array = np.linspace(100, 1000, max_blks)
+
+    # We will mock raw_responses structure
+    widget.raw_responses = np.zeros((5, max_blks, 5), dtype=complex)
+    widget.raw_counts = np.zeros((5, max_blks), dtype=int)
+
+    # Initialize predistortion_manager with patched size
+    from src.core.predistortion import PredistortionManager
+    widget.predistortion_manager = PredistortionManager(
+        start_freq=100.0, end_freq=1000.0, meas_freqs=analyzer.engine.meas_freqs, max_harmonic=5
+    )
+    # Set mock correction value at harmonic 2 (index 2 in F_corr) for the first amplitude step
+    widget.predistortion_manager.F_corr[2][:] = 0.1j
+
+    # Feed blocks for sweep_idx=0 (iter_idx=0)
+    # Since iter_idx != 2, raw_responses should not accumulate
+    for block_idx in range(max_blks):
+        widget.on_block_calculated(block_idx, 0, widget.plot_freqs_array[block_idx], np.array([0.5, 0.01, 0.0, 0.0, 0.0]), True)
+    widget.process_remaining_queue()
+    assert np.sum(widget.raw_counts[0]) == 0
+
+    # Simulate sweep_finished for sweep_idx=0 (iter_idx=0) -> moves to sweep_idx=1, same amplitude
+    widget.on_sweep_finished(0)
+    assert analyzer.current_sweep_idx == 1
+    assert np.any(widget.predistortion_manager.F_corr[2] != 0.0j) # F_corr should update inside amplitude step
+
+    # Set F_corr for iteration 1
+    widget.predistortion_manager.F_corr[2][:] = 0.2j
+
+    # Simulate sweep 1 (iter_idx=1) finished
+    widget.on_sweep_finished(1)
+    assert analyzer.current_sweep_idx == 2
+
+    # Set final F_corr for iteration 2 (measurement sweep)
+    widget.predistortion_manager.F_corr[2][:] = 0.3j
+
+    # Feed blocks for sweep_idx=2 (iter_idx=2) -> measurement sweep
+    for block_idx in range(max_blks):
+        widget.on_block_calculated(block_idx, 2, widget.plot_freqs_array[block_idx], np.array([0.5, 0.01, 0.0, 0.0, 0.0]), True)
+    widget.process_remaining_queue()
+    # It should accumulate since iter_idx == N_adapt (2)
+    assert np.all(widget.raw_counts[0] == 1)
+
+    # Simulate sweep_finished for sweep_idx=2 (iter_idx=2) -> transitions to amplitude step 1 (sweep_idx=3)
+    widget.on_sweep_finished(2)
+    assert analyzer.current_sweep_idx == 3
+    # F_corr for amp_idx=0 should be saved
+    assert widget.predistortion_managers[0] is not None
+    assert np.all(widget.predistortion_managers[0].F_corr[2] == 0.3j)
+    # F_corr should be reset to zero for the new amplitude
+    assert np.all(widget.predistortion_manager.F_corr[2] == 0.0j)
+
+    # Simulate finish
+    analyzer.state = "FINISHED"
+    widget.btn_toggle.click()
+    assert not analyzer.is_running
+
+
+def test_lock_in_modeler_change_harmonic_settings_midway(qtbot, mock_audio_engine):
+    # Initialize analyzer and widget
+    analyzer = LockInModeler(mock_audio_engine)
+    analyzer.latency_samples = 100.0
+    widget = LockInModelerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    # 1. Start sweep in predistortion mode
+    widget.combo_meas_mode.setCurrentIndex(2) # Predistortion Sweep
+    widget.spin_max_harmonic.setValue(3)
+    widget.chk_show_restored.setChecked(True)
+    widget.btn_toggle.click()
+    assert analyzer.is_running
+
+    analyzer.engine.meas_freqs = np.linspace(100, 1000, 10)
+    widget.max_blocks = 10
+    widget.accumulated_results = np.zeros((widget.max_blocks, 5), dtype=complex)
+    widget.block_counts = np.ones(widget.max_blocks, dtype=int)
+    widget.plot_freqs_array = np.linspace(100, 1000, widget.max_blocks)
+
+    # Simulate some data measurement and F_corr populating for max_harmonic = 3 (harmonic indices 2, 3)
+    from src.core.predistortion import PredistortionManager
+    widget.predistortion_manager = PredistortionManager(
+        start_freq=100.0, end_freq=1000.0, meas_freqs=analyzer.engine.meas_freqs, max_harmonic=3
+    )
+    widget.predistortion_manager.F_corr[2] = np.ones(10, dtype=complex) * 0.1j
+    widget.predistortion_manager.F_corr[3] = np.ones(10, dtype=complex) * 0.2j
+    for block_idx in range(10):
+        widget.accumulated_results[block_idx, 0] = 0.5
+        widget.accumulated_results[block_idx, 1] = 0.01
+
+    # 2. Stop sweep
+    widget.btn_toggle.click()
+    assert not analyzer.is_running
+
+    # 3. Increase max harmonic settings to 4 (which loops redraw_plots for n=2,3,4)
+    widget.spin_max_harmonic.setValue(4)
+    analyzer.max_harmonic = 4
+
+    # 4. Start sweep again. This calls redraw_plots() first, which accesses F_corr[4] (KeyError risk).
+    # This should not raise KeyError or crash.
+    try:
+        widget.btn_toggle.click()
+        assert analyzer.is_running
+    finally:
+        # Clean up
+        if analyzer.is_running:
+            widget.btn_toggle.click()
