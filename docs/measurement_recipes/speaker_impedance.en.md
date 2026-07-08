@@ -13,11 +13,6 @@ While it is possible to observe the shape of the impedance curve and resonance b
 
 If accurate impedance values or calculation of small-signal parameters is required, please use an external low-output impedance driver stage (such as a buffer or power amplifier).
 
-## ☕ Coffee Break: Why measure speaker impedance?
-
-A speaker's resistance (impedance) fluctuates significantly depending on the frequency.
-By finding the frequency where impedance peaks (the lowest resonant frequency, $f_0$), you can understand the speaker's mechanical resonance characteristics, which is an essential first step in enclosure design.
-
 ## Purpose
 
 * **Identify $f_0$ (Lowest Resonant Frequency)**: Identify the low frequency at which the speaker vibrates most efficiently.
