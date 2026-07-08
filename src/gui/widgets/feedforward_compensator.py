@@ -1580,7 +1580,7 @@ class FeedforwardCompensatorWidget(QWidget):
             sdr = 20 * np.log10(rms_ref / (np.sqrt(np.mean(err**2)) + 1e-12))
             return sdr
 
-        is_multitone = sig_type in [tr("Two-Tone (1.0k + 1.5k)"), tr("Multi-Tone (5 freqs)")]
+        is_multitone = sig_type in {tr("Two-Tone (1.0k + 1.5k)"), tr("Multi-Tone (5 freqs)")}
         is_noise = sig_type == tr("Broadband Noise")
         is_transient = "Step" in sig_type or "Impulse" in sig_type
 
