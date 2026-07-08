@@ -215,34 +215,33 @@ class LockInModeler(MeasurementModule):
                     outdata.fill(0)
                     return
 
-            if self.current_block_idx >= self.max_blocks:
-                with self.lock:
+                if self.current_block_idx >= self.max_blocks:
                     self.state = "WAITING"
-                outdata.fill(0)
-                return
+                    outdata.fill(0)
+                    return
 
-            # Extract target input channel
-            sig_in = np.zeros((frames, 1))
-            if indata.shape[1] > sig_ch:
-                sig_in[:, 0] = indata[:, sig_ch]
-            elif indata.shape[1] > 0:
-                sig_in[:, 0] = indata[:, 0]
-
-            # Extract reference input channel if in XFER mode
-            ref_in = None
-            if input_mode == "XFER":
-                ref_in = np.zeros((frames, 1))
-                if indata.shape[1] > ref_ch:
-                    ref_in[:, 0] = indata[:, ref_ch]
+                # Extract target input channel
+                sig_in = np.zeros((frames, 1))
+                if indata.shape[1] > sig_ch:
+                    sig_in[:, 0] = indata[:, sig_ch]
                 elif indata.shape[1] > 0:
-                    ref_in[:, 0] = indata[:, 0]
+                    sig_in[:, 0] = indata[:, 0]
 
-            # 1. Output Generation (Lightweight)
-            self.engine.generate_output_block(outdata, self.current_block_idx)
-            # 2. Add raw data to background processing queue
-            self.input_queue.put((self.current_block_idx, self.current_sweep_idx, sig_in, ref_in, self.max_blocks))
+                # Extract reference input channel if in XFER mode
+                ref_in = None
+                if input_mode == "XFER":
+                    ref_in = np.zeros((frames, 1))
+                    if indata.shape[1] > ref_ch:
+                        ref_in[:, 0] = indata[:, ref_ch]
+                    elif indata.shape[1] > 0:
+                        ref_in[:, 0] = indata[:, 0]
 
-            self.current_block_idx += 1
+                # 1. Output Generation (Lightweight)
+                self.engine.generate_output_block(outdata, self.current_block_idx)
+                # 2. Add raw data to background processing queue
+                self.input_queue.put((self.current_block_idx, self.current_sweep_idx, sig_in, ref_in, self.max_blocks))
+
+                self.current_block_idx += 1
 
         self.callback_id = self.audio_engine.register_callback(callback)
 
