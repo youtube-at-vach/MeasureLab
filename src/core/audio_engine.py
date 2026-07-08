@@ -195,9 +195,7 @@ class AudioEngine:
         self.coreaudio_conversion_quality = "min"
 
     def _get_dtype(self):
-        """Returns the appropriate numpy dtype based on precision settings or active stream."""
-        if getattr(self, "active_dtype", None) is not None:
-            return self.active_dtype
+        """Returns the appropriate numpy dtype based on precision settings."""
         return "float64" if self.audio_engine_64bit else "float32"
 
     def set_audio_engine_64bit(self, enabled: bool):
