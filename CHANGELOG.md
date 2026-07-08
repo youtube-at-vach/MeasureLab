@@ -1,5 +1,54 @@
 # Changelog
 
+## [v0.7.9] - 2026-07-08
+
+### Added
+
+* **Sweep-Sine SSS Analyzer**:
+    * Added new Real-time SSS Lock-in Analyzer module.
+    * Implemented 2-channel transfer function measurement mode in the core engine and GUI.
+    * Added verification script comparing real-time SSS and offline nonlinear deconvolution analysis.
+    * Implemented sweep averaging and updated UI progress display for the real-time SSS analyzer.
+    * Implemented dynamic signal decimation and filtering in SSS analysis for improved processing efficiency.
+    * Implemented least-squares harmonic extraction mode in the real-time SSS engine.
+    * Extended Sweep-Sine SSS Analyzer with a dynamic reserve and SNR tolerance test script.
+    * Introduced advanced analysis settings and optimized least-squares fitting configuration in the real-time SSS core and GUI.
+
+### Changed
+
+* **Sweep-Sine SSS Analyzer**:
+    * Promoted Real-time SSS Lock-in Analyzer module from experimental to core (removed `MODULE_REALTIME_SSS_LOCKIN_ANALYZER` from `EXPERIMENTAL_MODULE_KEYS`).
+    * Replaced static window/sample settings with dynamic `analysis_cycles` parameterization in core engine and UI.
+    * Refactored and removed legacy LPF extraction mode and `lpf_factor` from `RealtimeSSSEngine` and test scripts.
+    * Increased default sweep duration and analysis cycles in the real-time SSS analyzer.
+    * Increased minimum widget dimensions and side panel width in the real-time analyzer UI.
+
+### Fixed
+
+* **LTC (Linear Timecode) Monitor / LTC Drift & Calibration**:
+    * Resolved LTC drift and optimized calibration manager phase calculations.
+    * Fixed swallowed exception in `timecode_monitor` by logging the exception instead of swallowing in `closeEvent`.
+* **Sweep-Sine SSS Analyzer**:
+    * Aligned least-squares (LS) and IIR extraction phases in `RealtimeSSSEngine`.
+    * Resolved numerical division risk, latency bounds, and clicks in real-time SSS.
+    * Fixed magnitude discontinuity across decimation transitions and LS decimation starvation.
+    * Fixed audio engine cache miss caused by `None` assignment.
+* **General**:
+    * Fixed swallowed exceptions in `loopback_finder.py`.
+
+### Optimized
+
+* **Sound Level Meter (SLM)**:
+    * Optimized GUI updates by caching metrics.
+* **Performance & Core**:
+    * Vectorized the Real-time SSS Lock-in Analyzer algorithm.
+    * Optimized CSV header string generation and sanitization in loops.
+    * Optimized complex number allocations in coarse search.
+    * Optimized device matching by replacing regex with string operations.
+    * Optimized CSV exporter loop to prevent redundant intermediate array allocations.
+    * Optimized trace retrieval loop in `export_to_file` (comparison manager).
+    * Refactored global `_ACTIVE_MODEL_CACHE` to class-based state.
+
 ## [v0.7.8] - 2026-06-24
 
 ### Added
