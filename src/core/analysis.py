@@ -865,8 +865,8 @@ class AudioCalc:
                 p = 0.5 * (alpha - gamma) / denom
                 p = np.clip(p, -0.5, 0.5)
                 max_freq = freqs[peak_idx] + p * (freqs[1] - freqs[0])
-                # Optional: Refine amplitude estimate
-                # max_amplitude = beta - 0.25 * (alpha - gamma) * p
+                # Refine amplitude estimate to correct scalloping loss
+                max_amplitude = beta - 0.25 * (alpha - gamma) * p
 
         return max_freq, max_amplitude
 
@@ -899,6 +899,20 @@ class AudioCalc:
             if is_valid:
                 h_peak_idx = h_min + amplitude_spectrum[h_min:h_max].argmax()
                 h_amp = amplitude_spectrum[h_peak_idx]
+                h_freq_refined = freqs[h_peak_idx]
+
+                # Parabolic Interpolation to refine frequency and amplitude (correcting scalloping loss)
+                if 0 < h_peak_idx < len(amplitude_spectrum) - 1:
+                    alpha = amplitude_spectrum[h_peak_idx - 1]
+                    beta = amplitude_spectrum[h_peak_idx]
+                    gamma = amplitude_spectrum[h_peak_idx + 1]
+
+                    denom = alpha - 2 * beta + gamma
+                    if denom != 0:
+                        p = 0.5 * (alpha - gamma) / denom
+                        p = np.clip(p, -0.5, 0.5)
+                        h_freq_refined = freqs[h_peak_idx] + p * (freqs[1] - freqs[0])
+                        h_amp = beta - 0.25 * (alpha - gamma) * p
 
                 relative_amp = h_amp / max_amplitude if max_amplitude > 0 else 0
                 amp_db = 20 * np.log10(relative_amp + 1e-12)
@@ -906,7 +920,7 @@ class AudioCalc:
                 harmonic_results.append(
                     {
                         "order": int(i),
-                        "frequency": float(freqs[h_peak_idx]),
+                        "frequency": float(h_freq_refined),
                         "amplitude_dbr": float(amp_db),
                         "amplitude_linear": float(h_amp),
                     }
