@@ -1103,7 +1103,7 @@ class NonlinearAnalyzerWidget(QWidget):
         from PyQt6.QtWidgets import QFileDialog
         from src.core.hammerstein_model import save_hammerstein_model
 
-        filepath, _ = QFileDialog.getSaveFileName(self, tr("Export Hammerstein Model"), "", tr("JSON Files (*.json)"))
+        filepath, _ = QFileDialog.getSaveFileName(self, tr("Export Nonlinear Model"), "", tr("JSON Files (*.json)"))
 
         if not filepath:
             return
@@ -1142,4 +1142,4 @@ class NonlinearAnalyzerWidget(QWidget):
             QMessageBox.information(self, tr("Export Successful"), tr("Model exported successfully."))
         except Exception as e:
             logger.error("Failed to export Hammerstein model to %s", filepath, exc_info=True)
-            QMessageBox.critical(self, tr("Export Failed"), tr("Failed to save Hammerstein model: {0}").format(e))
+            QMessageBox.critical(self, tr("Export Failed"), tr("Failed to save nonlinear model: {0}").format(e))

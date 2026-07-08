@@ -359,9 +359,9 @@ class LockInModelerWidget(QWidget):
 
         self.combo_meas_mode = QComboBox()
         self.combo_meas_mode.addItem(tr("Sweep Measurement (Default)"), "sweep")
-        self.combo_meas_mode.addItem(tr("Nonlinear Model"), "hammerstein")
+        self.combo_meas_mode.addItem(tr("Nonlinear Model (Forward)"), "hammerstein")
         self.combo_meas_mode.addItem(tr("Predistortion Sweep"), "predistortion_sweep")
-        self.combo_meas_mode.addItem(tr("Inverse Hammerstein"), "inverse_hammerstein")
+        self.combo_meas_mode.addItem(tr("Nonlinear Model (Inverse)"), "inverse_hammerstein")
         self.combo_meas_mode.currentIndexChanged.connect(self.on_meas_mode_changed)
         form.addRow(tr("Sweep Mode:"), self.combo_meas_mode)
 
@@ -1594,7 +1594,7 @@ class LockInModelerWidget(QWidget):
 
         from PyQt6.QtWidgets import QFileDialog
 
-        filepath, _ = QFileDialog.getSaveFileName(self, tr("Export Hammerstein Model"), "", tr("JSON Files (*.json)"))
+        filepath, _ = QFileDialog.getSaveFileName(self, tr("Export Nonlinear Model"), "", tr("JSON Files (*.json)"))
 
         if not filepath:
             return
@@ -1605,7 +1605,7 @@ class LockInModelerWidget(QWidget):
             QMessageBox.information(self, tr("Export Successful"), tr("Model exported successfully."))
         except Exception as e:
             logger.error("Failed to export Hammerstein model to %s", filepath, exc_info=True)
-            QMessageBox.critical(self, tr("Export Failed"), tr("Failed to save Hammerstein model: {0}").format(e))
+            QMessageBox.critical(self, tr("Export Failed"), tr("Failed to save nonlinear model: {0}").format(e))
 
     def on_block_calculated(self, block_idx, sweep_idx, f_mid, results, is_valid):
         with self.module.lock:

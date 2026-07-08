@@ -1379,7 +1379,7 @@ class FeedforwardCompensatorWidget(QWidget):
                 self.update_linear_response_plot()
                 self.run_simulation()
 
-                QMessageBox.information(self, tr("Success"), tr("Hammerstein model loaded successfully."))
+                QMessageBox.information(self, tr("Success"), tr("Nonlinear model loaded successfully."))
             except Exception as e:
                 self.lbl_status.setText(tr("Error Loading Model"))
                 self.lbl_status.setStyleSheet("font-weight: bold; color: #d9534f;")
