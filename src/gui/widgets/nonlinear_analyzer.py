@@ -593,6 +593,7 @@ class NonlinearAnalyzer(MeasurementModule):
                     "g_ref": g_ref,
                     "P": len(separated_kernels_data),
                     "noise_floor_dbfs": noise_floor_dbfs,
+                    "model_direction": "forward",
                 },
                 "time_domain": {
                     "time_ms": time_ms,

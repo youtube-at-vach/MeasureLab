@@ -127,6 +127,7 @@ class ResponseViewerWidget(QWidget):
         self.lbl_status.setMaximumWidth(180)
         self.lbl_sr = QLabel("SR: -- Hz")
         self.lbl_order = QLabel("Order (P): --")
+        self.lbl_direction = QLabel(tr("Unknown"))
 
         self.smooth_combo = QComboBox()
         self.smooth_combo.addItem(tr("None"), "None")
@@ -141,6 +142,7 @@ class ResponseViewerWidget(QWidget):
         info_layout.addRow(tr("Status:"), self.lbl_status)
         info_layout.addRow(tr("Rate:"), self.lbl_sr)
         info_layout.addRow(tr("Order:"), self.lbl_order)
+        info_layout.addRow(tr("Direction:"), self.lbl_direction)
         info_layout.addRow(tr("Graph Smoothing:"), self.smooth_combo)
         source_form.addLayout(info_layout)
         sidebar_layout.addWidget(source_group)
@@ -768,6 +770,26 @@ class ResponseViewerWidget(QWidget):
         # Update Sidebar stats
         self.lbl_sr.setText(f"{self.model_metadata.get('sample_rate', 48000):g} Hz")
         self.lbl_order.setText(str(self.model_metadata.get("P", 5)))
+
+        # Resolve model direction
+        direction_val = self.model_metadata.get("model_direction")
+        if not direction_val:
+            # Fallback for older formats
+            module_name = self.model_metadata.get("module", "")
+            if "Nonlinear Analyzer" in module_name:
+                direction_val = "forward"
+            else:
+                direction_val = "unknown"
+
+        if direction_val == "forward":
+            self.lbl_direction.setText(tr("Forward"))
+            self.lbl_direction.setStyleSheet("font-weight: bold; color: #2b8c56;")
+        elif direction_val == "inverse":
+            self.lbl_direction.setText(tr("Inverse"))
+            self.lbl_direction.setStyleSheet("font-weight: bold; color: #f0ad4e;")
+        else:
+            self.lbl_direction.setText(tr("Unknown"))
+            self.lbl_direction.setStyleSheet("font-weight: normal; color: gray;")
 
         # Update measured noise floor label and source choices
         measured_val = self.model_metadata.get("noise_floor_dbfs", None)

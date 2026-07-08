@@ -1557,6 +1557,7 @@ class LockInModelerWidget(QWidget):
                 "g_ref": 1.0,
                 "P": len(self.kernels_time),
                 "noise_floor_dbfs": None,
+                "model_direction": "inverse" if getattr(self, "is_inverse_hammerstein_mode", False) else "forward",
             },
             "time_domain": {
                 "time_ms": self.time_ms,
