@@ -408,19 +408,6 @@ class LockInModelerWidget(QWidget):
         form.addRow(tr("Amplitude Steps:"), self.spin_amp_steps)
         self.spin_amp_steps.setVisible(False)
 
-        self.spin_predistortion_iterations = QSpinBox()
-        self.spin_predistortion_iterations.setRange(1, 10)
-        self.spin_predistortion_iterations.setValue(3)
-        form.addRow(tr("Predistortion Iters:"), self.spin_predistortion_iterations)
-        self.spin_predistortion_iterations.setVisible(False)
-
-        self.spin_predistortion_mu = QDoubleSpinBox()
-        self.spin_predistortion_mu.setRange(0.01, 1.0)
-        self.spin_predistortion_mu.setSingleStep(0.05)
-        self.spin_predistortion_mu.setValue(0.5)
-        form.addRow(tr("Learning Rate (mu):"), self.spin_predistortion_mu)
-        self.spin_predistortion_mu.setVisible(False)
-
         settings_tab.setLayout(form)
         left_tabs.addTab(settings_tab, tr("Settings"))
 
@@ -516,8 +503,14 @@ class LockInModelerWidget(QWidget):
 
         # 4. Advanced Tab
         advanced_tab = QWidget()
-        adv_form = QFormLayout()
-        adv_form.setContentsMargins(6, 6, 6, 6)
+        adv_layout = QVBoxLayout(advanced_tab)
+        adv_layout.setContentsMargins(4, 4, 4, 4)
+        adv_layout.setSpacing(6)
+
+        # General Advanced Form
+        adv_form_widget = QWidget()
+        adv_form = QFormLayout(adv_form_widget)
+        adv_form.setContentsMargins(2, 2, 2, 2)
         adv_form.setSpacing(6)
 
         self.spin_analysis_cycles = QDoubleSpinBox()
@@ -544,7 +537,30 @@ class LockInModelerWidget(QWidget):
         self.chk_realtime_display.setChecked(not self.module.prevent_buffer_underrun)
         adv_form.addRow(tr("Real-time Display:"), self.chk_realtime_display)
 
-        advanced_tab.setLayout(adv_form)
+        adv_layout.addWidget(adv_form_widget)
+
+        # Predistortion Settings Group (Hidden by default)
+        self.predist_group = QGroupBox(tr("Predistortion Settings"))
+        predist_form = QFormLayout()
+        predist_form.setContentsMargins(6, 6, 6, 6)
+        predist_form.setSpacing(6)
+
+        self.spin_predistortion_iterations = QSpinBox()
+        self.spin_predistortion_iterations.setRange(1, 10)
+        self.spin_predistortion_iterations.setValue(3)
+        predist_form.addRow(tr("Predistortion Iters:"), self.spin_predistortion_iterations)
+
+        self.spin_predistortion_mu = QDoubleSpinBox()
+        self.spin_predistortion_mu.setRange(0.01, 1.0)
+        self.spin_predistortion_mu.setSingleStep(0.05)
+        self.spin_predistortion_mu.setValue(0.5)
+        predist_form.addRow(tr("Learning Rate (mu):"), self.spin_predistortion_mu)
+
+        self.predist_group.setLayout(predist_form)
+        self.predist_group.setVisible(False)
+        adv_layout.addWidget(self.predist_group)
+
+        adv_layout.addStretch()
         left_tabs.addTab(advanced_tab, tr("Advanced"))
 
         left_panel.addWidget(left_tabs)
@@ -952,15 +968,8 @@ class LockInModelerWidget(QWidget):
         if label:
             label.setVisible(is_ham)
 
-        self.spin_predistortion_iterations.setVisible(is_predist)
-        lbl_iter = self.settings_form.labelForField(self.spin_predistortion_iterations)
-        if lbl_iter:
-            lbl_iter.setVisible(is_predist)
-
-        self.spin_predistortion_mu.setVisible(is_predist)
-        lbl_mu = self.settings_form.labelForField(self.spin_predistortion_mu)
-        if lbl_mu:
-            lbl_mu.setVisible(is_predist)
+        if hasattr(self, "predist_group"):
+            self.predist_group.setVisible(is_predist)
 
         if hasattr(self, "chk_show_raw"):
             self.chk_show_raw.setChecked(not is_ham)

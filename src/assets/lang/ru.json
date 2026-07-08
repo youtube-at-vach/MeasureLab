@@ -1348,6 +1348,7 @@
     "Pre/Post Ratio: {0:+.2f} dB": "Pre/Post Ratio: {0:+.2f} dB",
     "Precision Frequency & Phase Drift Measurement using Lock-in Principle.": "Точное измерение дрейфа частоты и фазы с использованием принципа синхронного детектирования.",
     "Predistortion Iters:": "Predistortion Iters:",
+    "Predistortion Settings": "Predistortion Settings",
     "Predistortion Sweep": "Predistortion Sweep",
     "Prepare a speaker and measurement microphone.": "Подготовьте динамик и измерительный микрофон.",
     "Preview Mode": "Режим предпросмотра",

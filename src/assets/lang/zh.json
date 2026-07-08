@@ -1348,6 +1348,7 @@
     "Pre/Post Ratio: {0:+.2f} dB": "前/后比率: {0:+.2f} dB",
     "Precision Frequency & Phase Drift Measurement using Lock-in Principle.": "使用锁相原理的高精度频率和相位漂移测量。",
     "Predistortion Iters:": "Predistortion Iters:",
+    "Predistortion Settings": "Predistortion Settings",
     "Predistortion Sweep": "Predistortion Sweep",
     "Prepare a speaker and measurement microphone.": "准备好扬声器和测量麦克风。",
     "Preview Mode": "预览模式",
