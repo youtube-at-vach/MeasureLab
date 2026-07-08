@@ -876,6 +876,7 @@ class FeedforwardCompensatorWidget(QWidget):
         self.lbl_n = QLabel("--")
         self.lbl_max_boost = QLabel("-- dB")
         self.lbl_resolved_eps = QLabel("--")
+        self.lbl_direction = QLabel(tr("Unknown"))
 
         info_layout = QFormLayout()
         info_layout.setSpacing(4)
@@ -884,6 +885,7 @@ class FeedforwardCompensatorWidget(QWidget):
         info_layout.addRow(tr("N Samples:"), self.lbl_n)
         info_layout.addRow(tr("Max Filter Boost:"), self.lbl_max_boost)
         info_layout.addRow(tr("Resolved eps_in:"), self.lbl_resolved_eps)
+        info_layout.addRow(tr("Direction:"), self.lbl_direction)
         source_form.addLayout(info_layout)
         tab_model_layout.addWidget(source_group)
         tab_model_layout.addStretch()
@@ -1354,6 +1356,28 @@ class FeedforwardCompensatorWidget(QWidget):
                 with open(path, "r") as f:
                     data = json.load(f)
 
+                # Validation check on direction
+                metadata = data.get("metadata", {})
+                direction_val = metadata.get("model_direction")
+                if not direction_val:
+                    # Fallback
+                    module_name = metadata.get("module", "")
+                    if "Nonlinear Analyzer" in module_name:
+                        direction_val = "forward"
+                    else:
+                        direction_val = "unknown"
+
+                if direction_val == "inverse":
+                    reply = QMessageBox.warning(
+                        self,
+                        tr("Warning"),
+                        tr("Warning: The loaded model is labeled as Inverse (逆方向). A Forward (順方向) model is recommended for feedforward compensation. Do you want to proceed?"),
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                        QMessageBox.StandardButton.No
+                    )
+                    if reply == QMessageBox.StandardButton.No:
+                        return
+
                 reg_mode, reg_val = self.get_reg_params()
                 oob_mode = self.get_oob_mode()
                 self.module.engine = LICFFEngine(
@@ -1374,15 +1398,27 @@ class FeedforwardCompensatorWidget(QWidget):
                 self.lbl_max_boost.setText(f"{self.module.engine.get_max_inverse_filter_boost_db():.2f} dB")
                 self.lbl_resolved_eps.setText(f"{self.module.engine.last_resolved_eps_in:.2e}")
 
+                if direction_val == "forward":
+                    self.lbl_direction.setText(tr("Forward"))
+                    self.lbl_direction.setStyleSheet("font-weight: bold; color: #2b8c56;")
+                elif direction_val == "inverse":
+                    self.lbl_direction.setText(tr("Inverse"))
+                    self.lbl_direction.setStyleSheet("font-weight: bold; color: #f0ad4e;")
+                else:
+                    self.lbl_direction.setText(tr("Unknown"))
+                    self.lbl_direction.setStyleSheet("font-weight: normal; color: gray;")
+
                 self.set_controls_enabled(True)
                 self._update_process_btn()
                 self.update_linear_response_plot()
                 self.run_simulation()
 
-                QMessageBox.information(self, tr("Success"), tr("Hammerstein model loaded successfully."))
+                QMessageBox.information(self, tr("Success"), tr("Nonlinear model loaded successfully."))
             except Exception as e:
                 self.lbl_status.setText(tr("Error Loading Model"))
                 self.lbl_status.setStyleSheet("font-weight: bold; color: #d9534f;")
+                self.lbl_direction.setText(tr("Unknown"))
+                self.lbl_direction.setStyleSheet("font-weight: normal; color: gray;")
                 self.set_controls_enabled(False)
                 self._update_process_btn()
                 QMessageBox.critical(self, tr("Error"), tr("Failed to load model file: {0}").format(e))

@@ -28,6 +28,7 @@ from PyQt6.QtWidgets import (
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.core.predistortion import PredistortionManager
 from src.measurement_modules.base import MeasurementModule
 from src.core.realtime_sss_core import RealtimeSSSEngine, measure_system_latency
 from src.core.hammerstein_model import save_hammerstein_model, set_active_model
@@ -125,7 +126,7 @@ class LockInModeler(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
         self.is_running = False
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
 
         # Default SSS parameters
         self.start_freq = 20.0
@@ -160,6 +161,12 @@ class LockInModeler(MeasurementModule):
         self.input_queue = None
         self.state = "IDLE"  # "IDLE", "PLAYING", "WAITING", "FINISHED"
 
+        # Predistortion state variables
+        self.is_predistortion_sweep_mode = False
+        self.is_inverse_hammerstein_mode = False
+        self.current_x_corr = None
+        self.widget = None
+
     @property
     def name(self) -> str:
         return "Lock-in Modeler"
@@ -169,7 +176,8 @@ class LockInModeler(MeasurementModule):
         return tr("Real-time frequency response and distortion sweep using SSS and digital Lock-in.")
 
     def get_widget(self):
-        return LockInModelerWidget(self)
+        self.widget = LockInModelerWidget(self)
+        return self.widget
 
     def start_analysis(self):
         if self.is_running:
@@ -194,6 +202,9 @@ class LockInModeler(MeasurementModule):
         )
         self.engine.prepare_sweep()
         self.engine.set_latency(self.latency_samples)
+
+        if (getattr(self, "is_predistortion_sweep_mode", False) or getattr(self, "is_inverse_hammerstein_mode", False)) and self.widget:
+            self.widget.init_predistortion_sweep()
 
         frames = self.audio_engine.block_size
         self.max_blocks = int(np.ceil((self.engine.sweep_samples + self.latency_samples) / frames))
@@ -237,7 +248,19 @@ class LockInModeler(MeasurementModule):
                         ref_in[:, 0] = indata[:, 0]
 
                 # 1. Output Generation (Lightweight)
-                self.engine.generate_output_block(outdata, self.current_block_idx)
+                if (getattr(self, "is_predistortion_sweep_mode", False) or getattr(self, "is_inverse_hammerstein_mode", False)) and self.current_x_corr is not None:
+                    start_samp = self.current_block_idx * frames
+                    if start_samp < len(self.current_x_corr):
+                        chunk = min(frames, len(self.current_x_corr) - start_samp)
+                        sig_chunk = self.current_x_corr[start_samp : start_samp + chunk]
+                        for ch in range(outdata.shape[1]):
+                            outdata[:chunk, ch] = sig_chunk
+                        if chunk < frames:
+                            outdata[chunk:, :] = 0.0
+                    else:
+                        outdata.fill(0.0)
+                else:
+                    self.engine.generate_output_block(outdata, self.current_block_idx)
                 # 2. Add raw data to background processing queue
                 self.input_queue.put((self.current_block_idx, self.current_sweep_idx, sig_in, ref_in, self.max_blocks))
 
@@ -336,7 +359,9 @@ class LockInModelerWidget(QWidget):
 
         self.combo_meas_mode = QComboBox()
         self.combo_meas_mode.addItem(tr("Sweep Measurement (Default)"), "sweep")
-        self.combo_meas_mode.addItem(tr("Nonlinear Model"), "hammerstein")
+        self.combo_meas_mode.addItem(tr("Nonlinear Model (Forward)"), "hammerstein")
+        self.combo_meas_mode.addItem(tr("Predistortion Sweep"), "predistortion_sweep")
+        self.combo_meas_mode.addItem(tr("Nonlinear Model (Inverse)"), "inverse_hammerstein")
         self.combo_meas_mode.currentIndexChanged.connect(self.on_meas_mode_changed)
         form.addRow(tr("Sweep Mode:"), self.combo_meas_mode)
 
@@ -411,6 +436,12 @@ class LockInModelerWidget(QWidget):
         self.chk_show_raw.toggled.connect(self.redraw_plots)
         options_layout.addWidget(self.chk_show_raw)
 
+        self.chk_show_restored = QCheckBox(tr("Restore True DUT Response"))
+        self.chk_show_restored.setChecked(False)
+        self.chk_show_restored.toggled.connect(self.redraw_plots)
+        self.chk_show_restored.setVisible(False)
+        options_layout.addWidget(self.chk_show_restored)
+
         display_layout.addLayout(options_layout)
 
         # Separator spacing
@@ -472,8 +503,14 @@ class LockInModelerWidget(QWidget):
 
         # 4. Advanced Tab
         advanced_tab = QWidget()
-        adv_form = QFormLayout()
-        adv_form.setContentsMargins(6, 6, 6, 6)
+        adv_layout = QVBoxLayout(advanced_tab)
+        adv_layout.setContentsMargins(4, 4, 4, 4)
+        adv_layout.setSpacing(6)
+
+        # General Advanced Form
+        adv_form_widget = QWidget()
+        adv_form = QFormLayout(adv_form_widget)
+        adv_form.setContentsMargins(2, 2, 2, 2)
         adv_form.setSpacing(6)
 
         self.spin_analysis_cycles = QDoubleSpinBox()
@@ -500,7 +537,30 @@ class LockInModelerWidget(QWidget):
         self.chk_realtime_display.setChecked(not self.module.prevent_buffer_underrun)
         adv_form.addRow(tr("Real-time Display:"), self.chk_realtime_display)
 
-        advanced_tab.setLayout(adv_form)
+        adv_layout.addWidget(adv_form_widget)
+
+        # Predistortion Settings Group (Hidden by default)
+        self.predist_group = QGroupBox(tr("Predistortion Settings"))
+        predist_form = QFormLayout()
+        predist_form.setContentsMargins(6, 6, 6, 6)
+        predist_form.setSpacing(6)
+
+        self.spin_predistortion_iterations = QSpinBox()
+        self.spin_predistortion_iterations.setRange(1, 10)
+        self.spin_predistortion_iterations.setValue(3)
+        predist_form.addRow(tr("Predistortion Iters:"), self.spin_predistortion_iterations)
+
+        self.spin_predistortion_mu = QDoubleSpinBox()
+        self.spin_predistortion_mu.setRange(0.01, 1.0)
+        self.spin_predistortion_mu.setSingleStep(0.05)
+        self.spin_predistortion_mu.setValue(0.5)
+        predist_form.addRow(tr("Learning Rate (mu):"), self.spin_predistortion_mu)
+
+        self.predist_group.setLayout(predist_form)
+        self.predist_group.setVisible(False)
+        adv_layout.addWidget(self.predist_group)
+
+        adv_layout.addStretch()
         left_tabs.addTab(advanced_tab, tr("Advanced"))
 
         left_panel.addWidget(left_tabs)
@@ -745,7 +805,13 @@ class LockInModelerWidget(QWidget):
                 self.module.ref_channel = 1
                 self.module.signal_channel = 0
 
-            self.is_hammerstein_mode = self.combo_meas_mode.currentData() == "hammerstein"
+            mode = self.combo_meas_mode.currentData()
+            self.is_predistortion_sweep_mode = mode in {"predistortion_sweep", "inverse_hammerstein"}
+            self.module.is_predistortion_sweep_mode = self.is_predistortion_sweep_mode
+            self.is_inverse_hammerstein_mode = mode == "inverse_hammerstein"
+            self.module.is_inverse_hammerstein_mode = self.is_inverse_hammerstein_mode
+
+            self.is_hammerstein_mode = mode in {"hammerstein", "inverse_hammerstein"}
             if self.is_hammerstein_mode:
                 self.num_amplitudes = self.spin_amp_steps.value()
                 max_amp_db = self.spin_amplitude.value()
@@ -755,7 +821,14 @@ class LockInModelerWidget(QWidget):
                 self.current_avg_idx = 0
 
                 self.module.output_amplitude = self.amplitudes[0]
-                self.module.averaging_count = self.num_amplitudes * self.spin_averaging.value()
+                if self.is_inverse_hammerstein_mode:
+                    N_adapt = self.spin_predistortion_iterations.value()
+                    self.module.averaging_count = self.num_amplitudes * (N_adapt + 1)
+                    self.predistortion_managers = [None] * self.num_amplitudes
+                else:
+                    self.module.averaging_count = self.num_amplitudes * self.spin_averaging.value()
+            elif self.is_predistortion_sweep_mode:
+                self.module.averaging_count = self.spin_predistortion_iterations.value() + 1
 
             # Update Plot Labels based on mode
             self.redraw_plots()
@@ -870,6 +943,8 @@ class LockInModelerWidget(QWidget):
     def set_controls_enabled(self, enabled):
         self.combo_meas_mode.setEnabled(enabled)
         self.spin_amp_steps.setEnabled(enabled)
+        self.spin_predistortion_iterations.setEnabled(enabled)
+        self.spin_predistortion_mu.setEnabled(enabled)
         self.spin_start_freq.setEnabled(enabled)
         self.spin_end_freq.setEnabled(enabled)
         self.spin_duration.setEnabled(enabled)
@@ -884,17 +959,66 @@ class LockInModelerWidget(QWidget):
         self.chk_realtime_display.setEnabled(enabled)
 
     def on_meas_mode_changed(self, index):
-        is_ham = self.combo_meas_mode.currentData() == "hammerstein"
+        mode = self.combo_meas_mode.currentData()
+        is_ham = mode in {"hammerstein", "inverse_hammerstein"}
+        is_predist = mode in {"predistortion_sweep", "inverse_hammerstein"}
+
         self.spin_amp_steps.setVisible(is_ham)
         label = self.settings_form.labelForField(self.spin_amp_steps)
         if label:
             label.setVisible(is_ham)
 
+        if hasattr(self, "predist_group"):
+            self.predist_group.setVisible(is_predist)
+
         if hasattr(self, "chk_show_raw"):
             self.chk_show_raw.setChecked(not is_ham)
+            self.chk_show_raw.setVisible(not is_predist)
+
+        if hasattr(self, "chk_show_restored"):
+            self.chk_show_restored.setVisible(is_predist)
 
         self.plot_tabs.setTabEnabled(1, True)
         self.redraw_plots()
+
+    def init_predistortion_sweep(self):
+        self.predistortion_manager = PredistortionManager(
+            start_freq=self.module.start_freq,
+            end_freq=self.module.end_freq,
+            meas_freqs=self.module.engine.meas_freqs,
+            max_harmonic=self.module.max_harmonic
+        )
+        self.module.current_x_corr = self.generate_predistorted_sweep()
+
+    def generate_predistorted_sweep(self):
+        if self.predistortion_manager is None:
+            return None
+        return self.predistortion_manager.generate_predistorted_sweep(
+            sample_rate=self.module.engine.sample_rate,
+            sweep_samples=self.module.engine.sweep_samples,
+            k_param=self.module.engine.k_param,
+            L_param=self.module.engine.L_param,
+            amplitude=self.module.engine.output_amplitude
+        )
+
+    def update_predistortion_correction(self, sweep_idx):
+        valid_indices = np.where(self.block_counts > 0)[0]
+        if len(valid_indices) < 2:
+            logger.warning("Too few valid measurement points for predistortion update.")
+            return
+
+        x_data = self.plot_freqs_array
+        raw_results = self.accumulated_results
+        block_counts = self.block_counts
+        mu = self.spin_predistortion_mu.value()
+
+        self.predistortion_manager.update_correction(
+            iteration=sweep_idx,
+            x_data=x_data,
+            raw_results=raw_results,
+            block_counts=block_counts,
+            mu=mu
+        )
 
     def update_harmonic_visibility(self):
         max_h = self.spin_max_harmonic.value()
@@ -910,14 +1034,15 @@ class LockInModelerWidget(QWidget):
             if idx < len(self.kernel_curves):
                 self.kernel_curves[idx].setVisible(visible)
 
-    def update_plots(self):
-        # Retrieve all pending samples from queue
+    def process_remaining_queue(self):
         items = []
         with self.module.lock:
             while self.module.measurement_queue:
                 items.append(self.module.measurement_queue.popleft())
 
-        # 1. Process new items first to update block_counts and plot_freqs_array
+        if not items:
+            return False
+
         latest_f_mid = None
         f_min = min(self.module.start_freq, self.module.end_freq)
         f_max = max(self.module.start_freq, self.module.end_freq)
@@ -934,11 +1059,25 @@ class LockInModelerWidget(QWidget):
                     self.current_analysis_freq = latest_f_mid
 
                     if getattr(self, "is_hammerstein_mode", False):
-                        N_avg = self.spin_averaging.value()
-                        amp_idx = sweep_idx // N_avg
-                        if amp_idx < self.num_amplitudes:
-                            self.raw_responses[amp_idx, block_idx, :n_harm] += results[:n_harm]
-                            self.raw_counts[amp_idx, block_idx] += 1
+                        if getattr(self, "is_inverse_hammerstein_mode", False):
+                            N_adapt = self.spin_predistortion_iterations.value()
+                            amp_idx = sweep_idx // (N_adapt + 1)
+                            iter_idx = sweep_idx % (N_adapt + 1)
+                            # Only accumulate raw response for the final iteration of each amplitude step
+                            if iter_idx == N_adapt and amp_idx < self.num_amplitudes:
+                                self.raw_responses[amp_idx, block_idx, :n_harm] += results[:n_harm]
+                                self.raw_counts[amp_idx, block_idx] += 1
+                        else:
+                            N_avg = self.spin_averaging.value()
+                            amp_idx = sweep_idx // N_avg
+                            if amp_idx < self.num_amplitudes:
+                                self.raw_responses[amp_idx, block_idx, :n_harm] += results[:n_harm]
+                                self.raw_counts[amp_idx, block_idx] += 1
+        return True
+
+    def update_plots(self):
+        # Retrieve all pending samples from queue
+        has_new_items = self.process_remaining_queue()
 
         # 2. Display progress info (always run to update audio capture progress, even if items is empty)
         if self.module.engine and self.module.engine.sweep_samples > 0:
@@ -1022,7 +1161,7 @@ class LockInModelerWidget(QWidget):
             self.lbl_current_freq.setText(freq_text)
 
         # 3. Redraw curves if there were new items
-        if items:
+        if has_new_items:
             self.redraw_plots()
 
     def redraw_plots(self, *args):
@@ -1099,6 +1238,24 @@ class LockInModelerWidget(QWidget):
             counts = self.block_counts[valid_indices]
             avg_complex = self.accumulated_results[valid_indices, idx] / counts
 
+            if self.is_predistortion_sweep_mode and self.chk_show_restored.isChecked() and idx >= 1:
+                harmonic_order = idx + 1
+                x_data = self.plot_freqs_array[valid_indices]
+                if self.predistortion_manager.H0_1 is not None:
+                    H1_base = self.predistortion_manager.H0_1
+                    freq_base = self.module.engine.meas_freqs
+                else:
+                    H1_base = self.accumulated_results[valid_indices, 0] / counts
+                    freq_base = x_data
+
+                avg_complex = self.predistortion_manager.restore_true_response(
+                    harmonic_order=harmonic_order,
+                    target_freqs=x_data,
+                    measured_complex=avg_complex,
+                    H1_base=H1_base,
+                    freq_base=freq_base
+                )
+
             if self.chk_relative.isChecked():
                 fundamental_complex = self.accumulated_results[valid_indices, 0] / counts
                 avg_complex = avg_complex / (fundamental_complex + 1e-30)
@@ -1171,6 +1328,30 @@ class LockInModelerWidget(QWidget):
                     cnt = self.raw_counts[amp_idx, block_idx]
                     if cnt > 0:
                         avg_responses[amp_idx, block_idx] = self.raw_responses[amp_idx, block_idx] / cnt
+
+            if getattr(self, "is_inverse_hammerstein_mode", False):
+                x_data = self.plot_freqs_array
+                for amp_idx in range(self.num_amplitudes):
+                    predist_mgr = self.predistortion_managers[amp_idx]
+                    if predist_mgr is None:
+                        continue
+                    H1_raw = avg_responses[amp_idx, :, 0]
+                    valid_blocks = self.raw_counts[amp_idx] > 0
+                    if np.sum(valid_blocks) >= 2:
+                        H1_base = H1_raw[valid_blocks]
+                        freq_base = x_data[valid_blocks]
+                    else:
+                        continue
+
+                    for p in range(1, P):
+                        harmonic_order = p + 1
+                        avg_responses[amp_idx, :, p] = predist_mgr.restore_true_response(
+                            harmonic_order=harmonic_order,
+                            target_freqs=x_data,
+                            measured_complex=avg_responses[amp_idx, :, p],
+                            H1_base=H1_base,
+                            freq_base=freq_base
+                        )
 
             # 2. Scale responses by amplitude and apply phase correction
             # To compensate for sine expansion phase offsets:
@@ -1248,6 +1429,25 @@ class LockInModelerWidget(QWidget):
                 if len(valid_indices) > 0:
                     counts = self.block_counts[valid_indices]
                     avg_complex = self.accumulated_results[valid_indices, p] / counts
+
+                    if self.is_predistortion_sweep_mode and self.chk_show_restored.isChecked() and p >= 1:
+                        harmonic_order = p + 1
+                        x_data = self.plot_freqs_array[valid_indices]
+                        if self.predistortion_manager.H0_1 is not None:
+                            H1_base = self.predistortion_manager.H0_1
+                            freq_base = self.module.engine.meas_freqs
+                        else:
+                            H1_base = self.accumulated_results[valid_indices, 0] / counts
+                            freq_base = x_data
+
+                        avg_complex = self.predistortion_manager.restore_true_response(
+                            harmonic_order=harmonic_order,
+                            target_freqs=x_data,
+                            measured_complex=avg_complex,
+                            H1_base=H1_base,
+                            freq_base=freq_base
+                        )
+
                     H_p[valid_indices] = avg_complex * phase_corrections[p]
                 self.H_freqs.append(H_p)
 
@@ -1366,6 +1566,7 @@ class LockInModelerWidget(QWidget):
                 "g_ref": 1.0,
                 "P": len(self.kernels_time),
                 "noise_floor_dbfs": None,
+                "model_direction": "inverse" if getattr(self, "is_inverse_hammerstein_mode", False) else "forward",
             },
             "time_domain": {
                 "time_ms": self.time_ms,
@@ -1403,7 +1604,7 @@ class LockInModelerWidget(QWidget):
 
         from PyQt6.QtWidgets import QFileDialog
 
-        filepath, _ = QFileDialog.getSaveFileName(self, tr("Export Hammerstein Model"), "", tr("JSON Files (*.json)"))
+        filepath, _ = QFileDialog.getSaveFileName(self, tr("Export Nonlinear Model"), "", tr("JSON Files (*.json)"))
 
         if not filepath:
             return
@@ -1414,32 +1615,80 @@ class LockInModelerWidget(QWidget):
             QMessageBox.information(self, tr("Export Successful"), tr("Model exported successfully."))
         except Exception as e:
             logger.error("Failed to export Hammerstein model to %s", filepath, exc_info=True)
-            QMessageBox.critical(self, tr("Export Failed"), tr("Failed to save Hammerstein model: {0}").format(e))
+            QMessageBox.critical(self, tr("Export Failed"), tr("Failed to save nonlinear model: {0}").format(e))
 
     def on_block_calculated(self, block_idx, sweep_idx, f_mid, results, is_valid):
         with self.module.lock:
             self.module.measurement_queue.append((block_idx, sweep_idx, f_mid, results, is_valid))
 
     def on_sweep_finished(self, sweep_idx):
-        with self.module.lock:
-            if sweep_idx + 1 < self.module.averaging_count:
-                # Proceed to next sweep and reset filter states
-                self.module.current_sweep_idx += 1
-                self.module.current_block_idx = 0
+        try:
+            with self.module.lock:
+                if sweep_idx + 1 < self.module.averaging_count:
+                    # Proceed to next sweep and reset filter states
+                    self.module.current_sweep_idx += 1
+                    self.module.current_block_idx = 0
 
-                if getattr(self, "is_hammerstein_mode", False):
-                    N_avg = self.spin_averaging.value()
-                    old_amp_idx = sweep_idx // N_avg
-                    new_amp_idx = (sweep_idx + 1) // N_avg
-                    if new_amp_idx != old_amp_idx:
-                        self.accumulated_results.fill(0.0j)
-                        self.block_counts.fill(0)
-                    self.module.engine.output_amplitude = self.amplitudes[new_amp_idx]
+                    if getattr(self, "is_inverse_hammerstein_mode", False):
+                        N_adapt = self.spin_predistortion_iterations.value()
+                        amp_idx = sweep_idx // (N_adapt + 1)
+                        iter_idx = sweep_idx % (N_adapt + 1)
+                        new_amp_idx = (sweep_idx + 1) // (N_adapt + 1)
 
-                self.module.engine.reset_filter_states()
-                self.module.state = "PLAYING"
-            else:
-                self.module.state = "FINISHED"
+                        if new_amp_idx != amp_idx:
+                            # Proceed to next amplitude step:
+                            # 1. Process remaining queue
+                            self.process_remaining_queue()
+                            # 2. Backup current predistortion manager for this amplitude
+                            import copy
+                            self.predistortion_managers[amp_idx] = copy.deepcopy(self.predistortion_manager)
+                            # 3. Update engine amplitude
+                            self.module.engine.output_amplitude = self.amplitudes[new_amp_idx]
+                            # 4. Re-initialize predistortion sweep for new amplitude
+                            self.init_predistortion_sweep()
+                            # 5. Reset accumulator
+                            self.accumulated_results.fill(0.0j)
+                            self.block_counts.fill(0)
+                        else:
+                            # Same amplitude, just update predistortion and run next iteration
+                            self.process_remaining_queue()
+                            self.update_predistortion_correction(iter_idx)
+                            self.module.current_x_corr = self.generate_predistorted_sweep()
+                            self.accumulated_results.fill(0.0j)
+                            self.block_counts.fill(0)
+                    else:
+                        if getattr(self, "is_hammerstein_mode", False):
+                            N_avg = self.spin_averaging.value()
+                            old_amp_idx = sweep_idx // N_avg
+                            new_amp_idx = (sweep_idx + 1) // N_avg
+                            if new_amp_idx != old_amp_idx:
+                                self.accumulated_results.fill(0.0j)
+                                self.block_counts.fill(0)
+                            self.module.engine.output_amplitude = self.amplitudes[new_amp_idx]
+
+                        if getattr(self, "is_predistortion_sweep_mode", False):
+                            # 1. Process remaining queue
+                            self.process_remaining_queue()
+                            # 2. Update predistortion correction
+                            self.update_predistortion_correction(sweep_idx)
+                            # 3. Generate new predistorted sweep signal
+                            self.module.current_x_corr = self.generate_predistorted_sweep()
+                            # 4. Clear accumulated results
+                            self.accumulated_results.fill(0.0j)
+                            self.block_counts.fill(0)
+
+                    self.module.engine.reset_filter_states()
+                    self.module.state = "PLAYING"
+                else:
+                    # Final sweep finished, backup final predistortion manager if in inverse hammerstein mode
+                    if getattr(self, "is_inverse_hammerstein_mode", False):
+                        self.process_remaining_queue()
+                        import copy
+                        self.predistortion_managers[-1] = copy.deepcopy(self.predistortion_manager)
+                    self.module.state = "FINISHED"
+        except Exception as e:
+            logger.error(f"Error in on_sweep_finished: {e}", exc_info=True)
+            self.module.state = "FINISHED"
 
         if self.module.state == "FINISHED":
             # Deactivate sweep button safely on main UI thread
