@@ -1,5 +1,7 @@
 # Feedforward Compensator
 
+## Overview
+
 The Feedforward Compensator is an advanced signal processing widget designed to apply real-time or offline nonlinear distortion compensation to audio signals based on a Parallel Hammerstein model.
 
 By loading a Hammerstein model (1st to 5th order impulse response kernels) measured and extracted by modules such as the [Nonlinear Analyzer](nonlinear_analyzer.en.md), it generates a compensated signal with inverse distortion to actively cancel (reduce) the distortion of physical audio devices.

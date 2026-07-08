@@ -2,6 +2,8 @@
 
 ![Lock-in Harmonic Analyzer](../assets/widgets/lockin_harmonic_analyzer.png)
 
+## Overview
+
 The **Lock-in Harmonic Analyzer** is a module that utilizes the principles of a lock-in amplifier to measure Total Harmonic Distortion (THD) and THD+N with extremely low noise and high precision.
 
 Unlike conventional FFT-based distortion measurements that rely on window functions, this widget performs **multi-parallel IQ detection (up to 200th order)** simultaneously for the fundamental wave and its harmonics. By strictly tuning into only the target frequency components, it can accurately extract signals buried in noise, enabling measurements in ultra-low distortion regimes (e.g., below -160 dBc) that exceed the limitations of traditional FFT analysis.

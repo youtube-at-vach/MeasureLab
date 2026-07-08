@@ -1,15 +1,10 @@
 # Nonlinear Analyzer
 
+## Overview
+
 The Nonlinear Analyzer is an advanced widget designed for detailed measurement of nonlinear characteristics in audio equipment, amplifiers, and other systems.
 It uses Synchronized Swept Sine (SSS) signals to separate and extract the linear component (fundamental) and higher-order harmonic components (kernels) from the system response, generating Parallel Hammerstein model data.
 Based on the Parallel Hammerstein model, this nonlinear analysis allows for the evaluation of complex distortion characteristics.
-
-## ☕ Coffee Break: What is the Hammerstein Model?
-
-The Hammerstein model represents distortion in audio equipment as a series structure: a "nonlinear element" (the part that distorts) followed by a "linear element" (a filter with frequency characteristics).
-This module uses this model to reverse-calculate and separate distortion components (kernels) from the measured signal.
-
-## Overview
 
 This widget provides the following analysis capabilities:
 
@@ -18,6 +13,11 @@ This widget provides the following analysis capabilities:
 * **Bode Plot (Magnitude/Phase) Display:** Plots the gain frequency response (Magnitude) and phase frequency response (Phase) of each extracted kernel. The X-axis range is now dynamically adjusted based on the input signal's actual length, providing an optimal view for any sweep setting. Phase unwrapping is available to smooth out phase transitions over ±180 degrees into a continuous curve.
 * **Impulse Response Display:** Allows viewing the impulse response of each kernel in the time domain.
 * **Model Caching and Exporting:** Once a measurement is complete, the extracted model is automatically saved to the active model cache. This allows other modules (e.g., [Response Viewer](response_viewer.en.md)) to use it for advanced analysis or simulation. It can also be exported locally as a JSON file.
+
+## ☕ Coffee Break: What is the Hammerstein Model?
+
+The Hammerstein model represents distortion in audio equipment as a series structure: a "nonlinear element" (the part that distorts) followed by a "linear element" (a filter with frequency characteristics).
+This module uses this model to reverse-calculate and separate distortion components (kernels) from the measured signal.
 
 ## Settings
 
