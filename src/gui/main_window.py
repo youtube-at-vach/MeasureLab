@@ -67,6 +67,7 @@ from src.core.module_constants import (
     MODULE_FEEDFORWARD_COMPENSATOR,
     MODULE_NONLINEAR_RESPONSE_ANALYZER,
     MODULE_LOCKIN_MODELER,
+    MODULE_PREDISTORTION_PROCESSOR,
 )
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
@@ -113,6 +114,7 @@ MODULE_REGISTRY = {
     MODULE_FEEDFORWARD_COMPENSATOR: ("src.gui.widgets.feedforward_compensator", "FeedforwardCompensator"),
     MODULE_NONLINEAR_RESPONSE_ANALYZER: ("src.gui.widgets.nonlinear_response_analyzer", "NonlinearResponseAnalyzer"),
     MODULE_LOCKIN_MODELER: ("src.gui.widgets.lock_in_modeler", "LockInModeler"),
+    MODULE_PREDISTORTION_PROCESSOR: ("src.gui.widgets.predistortion_processor", "PredistortionProcessor"),
 }
 
 
