@@ -609,3 +609,75 @@ def test_lock_in_modeler_change_harmonic_settings_midway(qtbot, mock_audio_engin
         # Clean up
         if analyzer.is_running:
             widget.btn_toggle.click()
+
+
+def test_lock_in_modeler_predistortion_sweep_inverse_kernels_calculation(qtbot, mock_audio_engine):
+    # Initialize analyzer and widget
+    analyzer = LockInModeler(mock_audio_engine)
+    analyzer.latency_samples = 100.0
+    widget = LockInModelerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    # Start sweep in predistortion mode
+    widget.combo_meas_mode.setCurrentIndex(2) # Predistortion Sweep
+    widget.btn_toggle.click()
+    assert analyzer.is_running
+
+    analyzer.engine = MagicMock()
+    analyzer.engine.sweep_samples = 48000 * 5
+    analyzer.engine.sample_rate = 48000
+    analyzer.engine.meas_freqs = np.linspace(100, 1000, 10)
+
+    # Set output amplitude
+    analyzer.output_amplitude = 0.5
+    widget.output_amplitude = 0.5
+
+    widget.max_blocks = 10
+    widget.accumulated_results = np.zeros((widget.max_blocks, 5), dtype=complex)
+    widget.block_counts = np.ones(widget.max_blocks, dtype=int)
+    widget.plot_freqs_array = np.linspace(100, 1000, widget.max_blocks)
+
+    # Setup predistortion manager and mock F_corr
+    from src.core.predistortion import PredistortionManager
+    widget.predistortion_manager = PredistortionManager(
+        start_freq=100.0, end_freq=1000.0, meas_freqs=analyzer.engine.meas_freqs, max_harmonic=5
+    )
+    # Set a dummy linear baseline H0_1 response (0.5 for all freqs)
+    widget.predistortion_manager.H0_1 = np.ones(10, dtype=complex) * 0.5
+    # Set a dummy F_corr value (0.1j for 2nd order)
+    widget.predistortion_manager.F_corr[2][:] = 0.1j
+
+    # Setup dummy measurements (H1 measured average complex response = 0.5)
+    for block_idx in range(10):
+        widget.accumulated_results[block_idx, 0] = 0.5
+        widget.accumulated_results[block_idx, 1] = 0.01 # measured H2
+
+    # Set status to FINISHED to trigger calculate_hammerstein_kernels on stop
+    analyzer.state = "FINISHED"
+
+    # Stop sweep to trigger calculate_hammerstein_kernels()
+    widget.btn_toggle.click()
+    assert not analyzer.is_running
+
+    # Retrieve cache data from active model
+    from src.core.hammerstein_model import get_active_model
+    cache_data = get_active_model()
+    assert cache_data is not None
+
+    meta = cache_data.get("metadata", {})
+    assert meta.get("model_direction") == "inverse"
+
+    # Verify G1 and G2 calculations
+    # H1_base = 0.5 (from H0_1) -> G1 = np.conj(H1_base) / (|H1_base|^2 + eps^2)
+    # Since H1_base = 0.5, and eps = 1e-3 * 0.5 = 5e-4
+    # G1 ~ 0.5 / (0.25 + 2.5e-7) ~ 2.0
+    G1_calculated = widget.H_freqs[0]
+    valid_mask_g1 = (widget.block_counts > 0) & (~np.isnan(G1_calculated))
+    assert np.any(valid_mask_g1)
+    assert np.allclose(G1_calculated[valid_mask_g1], 2.0, rtol=1e-2)
+
+    # G2 = 2 * F_corr_2 / R = 2 * 0.1j / 0.5 = 0.4j
+    G2_calculated = widget.H_freqs[1]
+    valid_mask_g2 = (widget.block_counts > 0) & (~np.isnan(G2_calculated))
+    assert np.any(valid_mask_g2)
+    assert np.allclose(G2_calculated[valid_mask_g2], 0.4j, rtol=1e-2)

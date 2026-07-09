@@ -1516,8 +1516,66 @@ class LockInModelerWidget(QWidget):
                 H1 = np.sum(g1_prime * R_array[:, np.newaxis], axis=0) / np.sum(R_array**2)
 
                 self.H_freqs = [H1, H2, H3, H4, H5][:P]
+        elif getattr(self, "is_predistortion_sweep_mode", False):
+            # Calculate inverse model (counter correction model) from F_corr
+            valid_indices = np.where(self.block_counts > 0)[0]
+            self.H_freqs = []
+            
+            # Amplitude R (linear scale)
+            R = self.module.output_amplitude if hasattr(self.module, "output_amplitude") else 1.0
+            if R < 1e-12:
+                R = 1.0
+
+            for p in range(P):
+                H_p = np.zeros(max_blocks, dtype=complex)
+                if len(valid_indices) > 0:
+                    counts = self.block_counts[valid_indices]
+                    avg_complex = self.accumulated_results[valid_indices, p] / counts
+                    x_data = self.plot_freqs_array[valid_indices]
+
+                    if p == 0:
+                        # 1st-order inverse: G1 = 1 / H1
+                        if self.predistortion_manager is not None and self.predistortion_manager.H0_1 is not None:
+                            H1_meas = self.predistortion_manager.H0_1
+                            meas_freqs = self.predistortion_manager.meas_freqs
+                            # Polar interpolation for H1_meas to match x_data
+                            mag_h1 = np.abs(H1_meas)
+                            phase_h1 = np.unwrap(np.angle(H1_meas))
+                            mag_h1_interp = np.interp(x_data, meas_freqs, mag_h1, left=0.0, right=0.0)
+                            phase_h1_interp = np.interp(x_data, meas_freqs, phase_h1, left=0.0, right=0.0)
+                            H1_base = mag_h1_interp * np.exp(1j * phase_h1_interp)
+                        else:
+                            H1_base = avg_complex
+
+                        eps = 1e-3 * np.max(np.abs(H1_base)) if np.any(np.abs(H1_base) > 0) else 1e-3
+                        if eps < 1e-12:
+                            eps = 1e-3
+                        G1 = np.conj(H1_base) / (np.abs(H1_base) ** 2 + eps**2)
+                        H_p[valid_indices] = G1
+                    else:
+                        # Higher-order inverse: Gn(f) = (2^(n-1) * F_corr_n(f)) / R^(n-1)
+                        # We use directly x_data (fundamental frequency grid f0) for interpolation
+                        # since G_n is stored on the fundamental frequency axis before frequency mapping.
+                        n = p + 1
+                        if self.predistortion_manager is not None and n in self.predistortion_manager.F_corr:
+                            F_raw = self.predistortion_manager.F_corr[n]
+                            meas_freqs = self.predistortion_manager.meas_freqs
+
+                            # Polar interpolation for F_raw to match x_data
+                            mag_raw = np.abs(F_raw)
+                            phase_raw = np.unwrap(np.angle(F_raw))
+                            mag_interp = np.interp(x_data, meas_freqs, mag_raw, left=0.0, right=0.0)
+                            phase_interp = np.interp(x_data, meas_freqs, phase_raw, left=0.0, right=0.0)
+                            F_corr_x = mag_interp * np.exp(1j * phase_interp)
+
+                            G_n = (2**p * F_corr_x) / (R**p)
+                            H_p[valid_indices] = G_n
+                        else:
+                            H_p[valid_indices] = 0.0
+
+                self.H_freqs.append(H_p)
         else:
-            # Standard Sweep Mode (Non-Hammerstein)
+            # Standard Sweep Mode (Non-Hammerstein, Non-Predistortion)
             # Directly use accumulated_results and apply phase corrections
             valid_indices = np.where(self.block_counts > 0)[0]
             self.H_freqs = []
@@ -1527,25 +1585,6 @@ class LockInModelerWidget(QWidget):
                 if len(valid_indices) > 0:
                     counts = self.block_counts[valid_indices]
                     avg_complex = self.accumulated_results[valid_indices, p] / counts
-
-                    if self.is_predistortion_sweep_mode and self.chk_show_restored.isChecked() and p >= 1:
-                        harmonic_order = p + 1
-                        x_data = self.plot_freqs_array[valid_indices]
-                        if self.predistortion_manager.H0_1 is not None:
-                            H1_base = self.predistortion_manager.H0_1
-                            freq_base = self.module.engine.meas_freqs
-                        else:
-                            H1_base = self.accumulated_results[valid_indices, 0] / counts
-                            freq_base = x_data
-
-                        avg_complex = self.predistortion_manager.restore_true_response(
-                            harmonic_order=harmonic_order,
-                            target_freqs=x_data,
-                            measured_complex=avg_complex,
-                            H1_base=H1_base,
-                            freq_base=freq_base
-                        )
-
                     H_p[valid_indices] = avg_complex * phase_corrections[p]
                 self.H_freqs.append(H_p)
 
@@ -1668,7 +1707,7 @@ class LockInModelerWidget(QWidget):
                 "g_ref": 1.0,
                 "P": len(self.kernels_time),
                 "noise_floor_dbfs": None,
-                "model_direction": "inverse" if getattr(self, "is_inverse_hammerstein_mode", False) else "forward",
+                "model_direction": "inverse" if (getattr(self, "is_inverse_hammerstein_mode", False) or getattr(self, "is_predistortion_sweep_mode", False)) else "forward",
             },
             "time_domain": {
                 "time_ms": self.time_ms,

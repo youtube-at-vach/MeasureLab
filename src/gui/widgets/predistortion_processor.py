@@ -145,6 +145,10 @@ class PreviewBufferWorker(QThread):
         tone_amp: float,
         audio_file_path: str,
         sample_rate: float,
+        sss_start_freq: float = 20.0,
+        sss_end_freq: float = 20000.0,
+        sss_duration: float = 20.0,
+        sss_amp: float = 0.5,
     ):
         super().__init__()
         self.applicator = applicator
@@ -154,6 +158,10 @@ class PreviewBufferWorker(QThread):
         self.tone_amp = tone_amp
         self.audio_file_path = audio_file_path
         self.sample_rate = sample_rate
+        self.sss_start_freq = sss_start_freq
+        self.sss_end_freq = sss_end_freq
+        self.sss_duration = sss_duration
+        self.sss_amp = sss_amp
         self.is_cancelled = False
 
     def cancel(self):
@@ -178,6 +186,19 @@ class PreviewBufferWorker(QThread):
                     block_in = self.tone_amp * np.random.randn(total_samples).astype(np.float32)
                 else:
                     block_in = np.zeros(total_samples, dtype=np.float32)
+            elif self.source_mode == "sss":
+                from src.core.realtime_sss_core import RealtimeSSSEngine
+                engine = RealtimeSSSEngine(
+                    sample_rate=fs,
+                    sweep_duration=self.sss_duration,
+                    start_freq=self.sss_start_freq,
+                    end_freq=self.sss_end_freq,
+                    output_amplitude=self.sss_amp,
+                )
+                engine.prepare_sweep()
+                block_in = engine.out_sig
+                if block_in is None:
+                    raise ValueError(tr("Failed to generate SSS Sweep signal."))
             else:
                 # File Playback (up to 10 seconds)
                 if not self.audio_file_path or not os.path.exists(self.audio_file_path):
@@ -250,10 +271,16 @@ class PredistortionProcessor(MeasurementModule):
         self.on_playback_finished_callback = None
 
         # UI parameters
-        self.source_mode = "tone"  # "tone" or "file"
+        self.source_mode = "tone"  # "tone", "file", "sss"
         self.tone_freq = 1000.0
         self.tone_amp = 0.5
         self.tone_type = "sine"  # "sine", "pink", "white"
+
+        # SSS parameters
+        self.sss_start_freq = 20.0
+        self.sss_end_freq = 20000.0
+        self.sss_duration = 20.0
+        self.sss_amp = 0.5
 
     @property
     def name(self) -> str:
@@ -395,6 +422,7 @@ class PredistortionProcessorWidget(QWidget):
         self.combo_source = QComboBox()
         self.combo_source.addItem(tr("Tone Generator"), "tone")
         self.combo_source.addItem(tr("Audio File"), "file")
+        self.combo_source.addItem(tr("SSS Sweep"), "sss")
         self.combo_source.currentIndexChanged.connect(self.on_source_changed)
         input_form.addRow(tr("Input Source:"), self.combo_source)
 
@@ -443,6 +471,43 @@ class PredistortionProcessorWidget(QWidget):
 
         input_form.addRow(self.file_widget)
         self.file_widget.setVisible(False)
+
+        # SSS Config Panel
+        self.sss_widget = QWidget()
+        sss_layout = QFormLayout(self.sss_widget)
+        sss_layout.setContentsMargins(0, 0, 0, 0)
+        sss_layout.setSpacing(6)
+
+        self.spin_sss_start_freq = QDoubleSpinBox()
+        self.spin_sss_start_freq.setRange(20.0, 20000.0)
+        self.spin_sss_start_freq.setValue(20.0)
+        self.spin_sss_start_freq.setSuffix(" Hz")
+        self.spin_sss_start_freq.valueChanged.connect(self.on_param_changed)
+        sss_layout.addRow(tr("Start Freq:"), self.spin_sss_start_freq)
+
+        self.spin_sss_end_freq = QDoubleSpinBox()
+        self.spin_sss_end_freq.setRange(20.0, 20000.0)
+        self.spin_sss_end_freq.setValue(20000.0)
+        self.spin_sss_end_freq.setSuffix(" Hz")
+        self.spin_sss_end_freq.valueChanged.connect(self.on_param_changed)
+        sss_layout.addRow(tr("End Freq:"), self.spin_sss_end_freq)
+
+        self.spin_sss_duration = QDoubleSpinBox()
+        self.spin_sss_duration.setRange(2.0, 60.0)
+        self.spin_sss_duration.setValue(20.0)
+        self.spin_sss_duration.setSuffix(" s")
+        self.spin_sss_duration.valueChanged.connect(self.on_param_changed)
+        sss_layout.addRow(tr("Duration:"), self.spin_sss_duration)
+
+        self.spin_sss_amp = QDoubleSpinBox()
+        self.spin_sss_amp.setRange(-100.0, 0.0)
+        self.spin_sss_amp.setValue(-6.0)
+        self.spin_sss_amp.setSuffix(" dBFS")
+        self.spin_sss_amp.valueChanged.connect(self.on_param_changed)
+        sss_layout.addRow(tr("Amplitude:"), self.spin_sss_amp)
+
+        input_form.addRow(self.sss_widget)
+        self.sss_widget.setVisible(False)
 
         # Settings
         self.combo_os = QComboBox()
@@ -617,8 +682,12 @@ class PredistortionProcessorWidget(QWidget):
         self.spin_freq.setEnabled(enabled)
         self.spin_amp.setEnabled(enabled)
         self.btn_select_file.setEnabled(enabled)
+        self.spin_sss_start_freq.setEnabled(enabled)
+        self.spin_sss_end_freq.setEnabled(enabled)
+        self.spin_sss_duration.setEnabled(enabled)
+        self.spin_sss_amp.setEnabled(enabled)
         self.combo_os.setEnabled(enabled)
-        self.btn_run_sim.setEnabled(enabled)
+        self.btn_run_sim.setEnabled(enabled and self.module.source_mode != "sss")
         if not exclude_play_btn:
             self.btn_play_rt.setEnabled(enabled)
         self.btn_export_file.setEnabled(enabled and self.module.source_mode == "file")
@@ -727,8 +796,10 @@ class PredistortionProcessorWidget(QWidget):
         self.module.source_mode = source
         self.tone_widget.setVisible(source == "tone")
         self.file_widget.setVisible(source == "file")
+        self.sss_widget.setVisible(source == "sss")
         self.btn_export_file.setEnabled(source == "file" and getattr(self.module, "audio_file_path", None) is not None)
-        self.btn_play_rt.setEnabled(source == "tone" or getattr(self.module, "audio_file_path", None) is not None)
+        self.btn_play_rt.setEnabled(source == "tone" or source == "sss" or getattr(self.module, "audio_file_path", None) is not None)
+        self.btn_run_sim.setEnabled(self.model_data is not None and source != "sss")
 
     def on_tone_type_changed(self, idx):
         self.module.tone_type = self.combo_tone_type.itemData(idx)
@@ -738,6 +809,10 @@ class PredistortionProcessorWidget(QWidget):
         # Update settings to core module
         self.module.tone_freq = self.spin_freq.value()
         self.module.tone_amp = 10 ** (self.spin_amp.value() / 20.0)
+        self.module.sss_start_freq = self.spin_sss_start_freq.value()
+        self.module.sss_end_freq = self.spin_sss_end_freq.value()
+        self.module.sss_duration = self.spin_sss_duration.value()
+        self.module.sss_amp = 10 ** (self.spin_sss_amp.value() / 20.0)
         self.module.applicator.os_factor = self.combo_os.currentData()
 
     def on_select_file(self):
@@ -750,17 +825,18 @@ class PredistortionProcessorWidget(QWidget):
         self.btn_play_rt.setEnabled(True)
 
     def on_run_simulation(self):
-        if not self.model_data:
+        if not self.model_data or self.module.source_mode == "sss":
             return
 
         self.on_param_changed()
 
         fs = self.module.applicator.sample_rate
+
         # Generate simulation input buffer (0.1 seconds base size)
         sim_samples = int(0.1 * fs)
 
         # Align to the nearest bin center frequency if it's a sine wave
-        is_sine = (self.module.tone_type == "sine")
+        is_sine = (self.module.tone_type == "sine" and self.module.source_mode == "tone")
         if is_sine:
             df = fs / sim_samples
             k = max(1, round(self.module.tone_freq / df))
@@ -775,11 +851,11 @@ class PredistortionProcessorWidget(QWidget):
         block_in_full = np.zeros(total_samples, dtype=np.float32)
         if is_sine:
             block_in_full = self.module.tone_amp * np.sin(2.0 * np.pi * sim_freq * t_full)
-        elif self.module.tone_type == "pink":
+        elif self.module.source_mode == "tone" and self.module.tone_type == "pink":
             from src.core.generators import PinkNoise
             pink = PinkNoise()
             block_in_full = self.module.tone_amp * pink.generate(total_samples)
-        elif self.module.tone_type == "white":
+        elif self.module.source_mode == "tone" and self.module.tone_type == "white":
             block_in_full = self.module.tone_amp * np.random.randn(total_samples).astype(np.float32)
 
         # Run simulation over the full duration
@@ -800,7 +876,7 @@ class PredistortionProcessorWidget(QWidget):
             delay_samples = int(np.argmax(np.abs(h1)))
         delay_ms = (delay_samples / fs) * 1000.0
 
-        # Set plot data (expose full 100ms steady-state so user can scroll/pan freely)
+        # Set plot data (expose full steady-state so user can scroll/pan freely)
         self.curves["in_time"].setData(ms, block_in)
         self.curves["comp_time"].setData(ms, comp_sig)
 
@@ -815,7 +891,7 @@ class PredistortionProcessorWidget(QWidget):
                 mags = np.abs(fft_vals) / (n / 2.0)
                 mags_db = 20 * np.log10(np.maximum(mags, 1e-10))
             else:
-                # Hanning window to prevent leakage for non-periodic signals (e.g. noise)
+                # Hanning window to prevent leakage for non-periodic signals (e.g. noise / sweeps)
                 win = np.hanning(n)
                 sig_w = sig * win
                 fft_vals = np.fft.rfft(sig_w)
@@ -862,6 +938,10 @@ class PredistortionProcessorWidget(QWidget):
                 tone_amp=self.module.tone_amp,
                 audio_file_path=getattr(self.module, "audio_file_path", None),
                 sample_rate=self.module.audio_engine.sample_rate,
+                sss_start_freq=self.module.sss_start_freq,
+                sss_end_freq=self.module.sss_end_freq,
+                sss_duration=self.module.sss_duration,
+                sss_amp=self.module.sss_amp,
             )
             self.preview_worker.progress.connect(self.progress_bar.setValue)
             self.preview_worker.finished.connect(self.on_preview_ready)
