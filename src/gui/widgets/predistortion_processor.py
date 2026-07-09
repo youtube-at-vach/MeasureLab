@@ -563,23 +563,40 @@ class PredistortionProcessorWidget(QWidget):
         self.on_param_changed()
 
         fs = self.module.applicator.sample_rate
-        # Generate simulation input buffer (0.1 seconds)
+        # Generate simulation input buffer (0.1 seconds base size)
         sim_samples = int(0.1 * fs)
-        t = np.arange(sim_samples) / fs
 
-        block_in = np.zeros(sim_samples, dtype=np.float32)
-        if self.module.tone_type == "sine":
-            block_in = self.module.tone_amp * np.sin(2.0 * np.pi * self.module.tone_freq * t)
+        # Align to the nearest bin center frequency if it's a sine wave
+        is_sine = (self.module.tone_type == "sine")
+        if is_sine:
+            df = fs / sim_samples
+            k = max(1, round(self.module.tone_freq / df))
+            sim_freq = k * df
+        else:
+            sim_freq = self.module.tone_freq
+
+        # Generate a longer buffer (2x) to let filter transients settle
+        total_samples = 2 * sim_samples
+        t_full = np.arange(total_samples) / fs
+
+        block_in_full = np.zeros(total_samples, dtype=np.float32)
+        if is_sine:
+            block_in_full = self.module.tone_amp * np.sin(2.0 * np.pi * sim_freq * t_full)
         elif self.module.tone_type == "pink":
             from src.core.generators import PinkNoise
-
             pink = PinkNoise()
-            block_in = self.module.tone_amp * pink.generate(sim_samples)
+            block_in_full = self.module.tone_amp * pink.generate(total_samples)
         elif self.module.tone_type == "white":
-            block_in = self.module.tone_amp * np.random.randn(sim_samples).astype(np.float32)
+            block_in_full = self.module.tone_amp * np.random.randn(total_samples).astype(np.float32)
 
-        # Run simulation
-        comp_sig, raw_dut, comp_dut = self.module.applicator.run_simulation(block_in)
+        # Run simulation over the full duration
+        comp_sig_full, raw_dut_full, comp_dut_full = self.module.applicator.run_simulation(block_in_full)
+
+        # Extract the steady-state portion (the second half)
+        t = np.arange(sim_samples) / fs
+        block_in = block_in_full[sim_samples:]
+        comp_sig = comp_sig_full[sim_samples:]
+        comp_dut = comp_dut_full[sim_samples:]
 
         # Plot Time Domain
         ms = t * 1000.0
@@ -591,7 +608,7 @@ class PredistortionProcessorWidget(QWidget):
             delay_samples = int(np.argmax(np.abs(h1)))
         delay_ms = (delay_samples / fs) * 1000.0
 
-        # Set plot data (expose full 100ms so user can scroll/pan freely)
+        # Set plot data (expose full 100ms steady-state so user can scroll/pan freely)
         self.curves["in_time"].setData(ms, block_in)
         self.curves["comp_time"].setData(ms, comp_sig)
         self.curves["out_time"].setData(ms, comp_dut)
@@ -599,14 +616,22 @@ class PredistortionProcessorWidget(QWidget):
         # Plot FFT Spectrum
         def get_fft(sig):
             n = len(sig)
-            # Hanning window to prevent leakage
-            win = np.hanning(n)
-            sig_w = sig * win
-            fft_vals = np.fft.rfft(sig_w)
-            mags = np.abs(fft_vals) / (n / 2.0)
-            # Coherent gain compensation for Hanning
-            mags *= 2.0
-            mags_db = 20 * np.log10(np.maximum(mags, 1e-10))
+            if is_sine:
+                # Use rectangular window (no window) to achieve zero spectral leakage
+                # because the frequency is aligned to a bin center.
+                sig_w = sig
+                fft_vals = np.fft.rfft(sig_w)
+                mags = np.abs(fft_vals) / (n / 2.0)
+                mags_db = 20 * np.log10(np.maximum(mags, 1e-10))
+            else:
+                # Hanning window to prevent leakage for non-periodic signals (e.g. noise)
+                win = np.hanning(n)
+                sig_w = sig * win
+                fft_vals = np.fft.rfft(sig_w)
+                mags = np.abs(fft_vals) / (n / 2.0)
+                # Coherent gain compensation for Hanning
+                mags *= 2.0
+                mags_db = 20 * np.log10(np.maximum(mags, 1e-10))
             freqs = np.fft.rfftfreq(n, 1.0 / fs)
             return freqs, mags_db
 
