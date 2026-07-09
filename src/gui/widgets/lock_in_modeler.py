@@ -1350,103 +1350,169 @@ class LockInModelerWidget(QWidget):
         max_blocks = self.max_blocks
 
         if getattr(self, "is_hammerstein_mode", False):
-            # 1. Compute averaged responses for each amplitude
-            avg_responses = np.zeros_like(self.raw_responses)
-            for amp_idx in range(self.num_amplitudes):
-                for block_idx in range(max_blocks):
-                    cnt = self.raw_counts[amp_idx, block_idx]
-                    if cnt > 0:
-                        avg_responses[amp_idx, block_idx] = self.raw_responses[amp_idx, block_idx] / cnt
-
             if getattr(self, "is_inverse_hammerstein_mode", False):
+                # 1. Compute averaged responses for linear baseline
+                avg_responses = np.zeros_like(self.raw_responses)
+                for amp_idx in range(self.num_amplitudes):
+                    for block_idx in range(max_blocks):
+                        cnt = self.raw_counts[amp_idx, block_idx]
+                        if cnt > 0:
+                            avg_responses[amp_idx, block_idx] = self.raw_responses[amp_idx, block_idx] / cnt
+
+                H1_raw = avg_responses[:, :, 0]
+                R_array = self.amplitudes
+                H1_base = np.sum(H1_raw * R_array[:, np.newaxis], axis=0) / np.sum(R_array**2)
+
+                # Interpolate and map F_corr to the common physical frequency axis
                 x_data = self.plot_freqs_array
+                F_corr_mapped = np.zeros((self.num_amplitudes, max_blocks, 5), dtype=complex)
+
                 for amp_idx in range(self.num_amplitudes):
                     predist_mgr = self.predistortion_managers[amp_idx]
                     if predist_mgr is None:
                         continue
-                    H1_raw = avg_responses[amp_idx, :, 0]
-                    valid_blocks = self.raw_counts[amp_idx] > 0
-                    if np.sum(valid_blocks) >= 2:
-                        H1_base = H1_raw[valid_blocks]
-                        freq_base = x_data[valid_blocks]
-                    else:
+
+                    meas_freqs = predist_mgr.meas_freqs
+                    if len(meas_freqs) < 2:
                         continue
 
                     for p in range(1, P):
-                        harmonic_order = p + 1
-                        avg_responses[amp_idx, :, p] = predist_mgr.restore_true_response(
-                            harmonic_order=harmonic_order,
-                            target_freqs=x_data,
-                            measured_complex=avg_responses[amp_idx, :, p],
-                            H1_base=H1_base,
-                            freq_base=freq_base
-                        )
+                        n = p + 1
+                        F_raw = predist_mgr.F_corr[n]
 
-            # 2. Scale responses by amplitude and apply phase correction
-            # To compensate for sine expansion phase offsets:
-            # H1: 1.0, H2: 1j, H3: -1.0, H4: -1j, H5: 1.0
-            phase_corrections = [(1j) ** p for p in range(P)]
-            R_array = self.amplitudes
-            g_scaled = np.zeros_like(avg_responses)
-            for amp_idx in range(self.num_amplitudes):
-                amp = R_array[amp_idx]
-                for p in range(P):
-                    val = avg_responses[amp_idx, :, p]
-                    if self.module.input_mode == "XFER":
-                        g_scaled[amp_idx, :, p] = val * amp * phase_corrections[p]
-                    else:
-                        g_scaled[amp_idx, :, p] = val * phase_corrections[p]
+                        # Polar interpolation for high accuracy phase/amplitude interpolation
+                        mag_raw = np.abs(F_raw)
+                        phase_raw = np.unwrap(np.angle(F_raw))
 
-            g1 = g_scaled[:, :, 0]
-            g2 = g_scaled[:, :, 1] if P >= 2 else np.zeros_like(g1)
-            g3 = g_scaled[:, :, 2] if P >= 3 else np.zeros_like(g1)
-            g4 = g_scaled[:, :, 3] if P >= 4 else np.zeros_like(g1)
-            g5 = g_scaled[:, :, 4] if P >= 5 else np.zeros_like(g1)
+                        f_lookups = x_data / n
+                        mag_interp = np.interp(f_lookups, meas_freqs, mag_raw, left=0.0, right=0.0)
+                        phase_interp = np.interp(f_lookups, meas_freqs, phase_raw, left=0.0, right=0.0)
 
-            R2 = R_array**2
-            R3 = R_array**3
-            R4 = R_array**4
-            R5 = R_array**5
+                        F_corr_mapped[amp_idx, :, p] = mag_interp * np.exp(1j * phase_interp)
 
-            H5 = (
-                16 * np.sum(g5 * R5[:, np.newaxis], axis=0) / np.sum(R_array**10)
-                if P >= 5
-                else np.zeros(max_blocks, dtype=complex)
-            )
-            H4 = (
-                8 * np.sum(g4 * R4[:, np.newaxis], axis=0) / np.sum(R_array**8)
-                if P >= 4
-                else np.zeros(max_blocks, dtype=complex)
-            )
+                # 2. Directly solve inverse Hammerstein kernels on physical frequency axis
+                R2 = R_array**2
+                R3 = R_array**3
+                R4 = R_array**4
+                R5 = R_array**5
+                R8 = R_array**8
+                R6 = R_array**6
 
-            if P >= 5:
-                g3_prime = g3 - (5 / 16) * H5[np.newaxis, :] * R5[:, np.newaxis]
+                # 5th-order inverse kernel G5
+                G5 = (
+                    16 * np.sum(F_corr_mapped[:, :, 4] * R4[:, np.newaxis], axis=0) / np.sum(R8)
+                    if P >= 5
+                    else np.zeros(max_blocks, dtype=complex)
+                )
+
+                # 4th-order inverse kernel G4
+                G4 = (
+                    8 * np.sum(F_corr_mapped[:, :, 3] * R3[:, np.newaxis], axis=0) / np.sum(R6)
+                    if P >= 4
+                    else np.zeros(max_blocks, dtype=complex)
+                )
+
+                # 3rd-order inverse kernel G3
+                if P >= 5:
+                    F3_prime = F_corr_mapped[:, :, 2] - (5 / 16) * G5[np.newaxis, :] * R4[:, np.newaxis]
+                else:
+                    F3_prime = F_corr_mapped[:, :, 2]
+                G3 = (
+                    4 * np.sum(F3_prime * R2[:, np.newaxis], axis=0) / np.sum(R4)
+                    if P >= 3
+                    else np.zeros(max_blocks, dtype=complex)
+                )
+
+                # 2nd-order inverse kernel G2
+                if P >= 4:
+                    F2_prime = F_corr_mapped[:, :, 1] - 0.5 * G4[np.newaxis, :] * R3[:, np.newaxis]
+                else:
+                    F2_prime = F_corr_mapped[:, :, 1]
+                G2 = (
+                    2 * np.sum(F2_prime * R_array[:, np.newaxis], axis=0) / np.sum(R2)
+                    if P >= 2
+                    else np.zeros(max_blocks, dtype=complex)
+                )
+
+                # 1st-order inverse kernel G1 (Tikhonov regularization on H1_base)
+                eps = 1e-3 * np.max(np.abs(H1_base))
+                G1 = np.conj(H1_base) / (np.abs(H1_base) ** 2 + eps**2)
+
+                self.H_freqs = [G1, G2, G3, G4, G5][:P]
             else:
-                g3_prime = g3
-            H3 = (
-                4 * np.sum(g3_prime * R3[:, np.newaxis], axis=0) / np.sum(R_array**6)
-                if P >= 3
-                else np.zeros(max_blocks, dtype=complex)
-            )
+                # 1. Compute averaged responses for each amplitude
+                avg_responses = np.zeros_like(self.raw_responses)
+                for amp_idx in range(self.num_amplitudes):
+                    for block_idx in range(max_blocks):
+                        cnt = self.raw_counts[amp_idx, block_idx]
+                        if cnt > 0:
+                            avg_responses[amp_idx, block_idx] = self.raw_responses[amp_idx, block_idx] / cnt
 
-            if P >= 4:
-                g2_prime = g2 - 0.5 * H4[np.newaxis, :] * R4[:, np.newaxis]
-            else:
-                g2_prime = g2
-            H2 = (
-                2 * np.sum(g2_prime * R2[:, np.newaxis], axis=0) / np.sum(R_array**4)
-                if P >= 2
-                else np.zeros(max_blocks, dtype=complex)
-            )
+                # 2. Scale responses by amplitude and apply phase correction
+                # To compensate for sine expansion phase offsets:
+                # H1: 1.0, H2: 1j, H3: -1.0, H4: -1j, H5: 1.0
+                phase_corrections = [(1j) ** p for p in range(P)]
+                R_array = self.amplitudes
+                g_scaled = np.zeros_like(avg_responses)
+                for amp_idx in range(self.num_amplitudes):
+                    amp = R_array[amp_idx]
+                    for p in range(P):
+                        val = avg_responses[amp_idx, :, p]
+                        if self.module.input_mode == "XFER":
+                            g_scaled[amp_idx, :, p] = val * amp * phase_corrections[p]
+                        else:
+                            g_scaled[amp_idx, :, p] = val * phase_corrections[p]
 
-            g1_prime = g1.copy()
-            if P >= 3:
-                g1_prime -= 0.75 * H3[np.newaxis, :] * R3[:, np.newaxis]
-            if P >= 5:
-                g1_prime -= 0.625 * H5[np.newaxis, :] * R5[:, np.newaxis]
-            H1 = np.sum(g1_prime * R_array[:, np.newaxis], axis=0) / np.sum(R_array**2)
+                g1 = g_scaled[:, :, 0]
+                g2 = g_scaled[:, :, 1] if P >= 2 else np.zeros_like(g1)
+                g3 = g_scaled[:, :, 2] if P >= 3 else np.zeros_like(g1)
+                g4 = g_scaled[:, :, 3] if P >= 4 else np.zeros_like(g1)
+                g5 = g_scaled[:, :, 4] if P >= 5 else np.zeros_like(g1)
 
-            self.H_freqs = [H1, H2, H3, H4, H5][:P]
+                R2 = R_array**2
+                R3 = R_array**3
+                R4 = R_array**4
+                R5 = R_array**5
+
+                H5 = (
+                    16 * np.sum(g5 * R5[:, np.newaxis], axis=0) / np.sum(R_array**10)
+                    if P >= 5
+                    else np.zeros(max_blocks, dtype=complex)
+                )
+                H4 = (
+                    8 * np.sum(g4 * R4[:, np.newaxis], axis=0) / np.sum(R_array**8)
+                    if P >= 4
+                    else np.zeros(max_blocks, dtype=complex)
+                )
+
+                if P >= 5:
+                    g3_prime = g3 - (5 / 16) * H5[np.newaxis, :] * R5[:, np.newaxis]
+                else:
+                    g3_prime = g3
+                H3 = (
+                    4 * np.sum(g3_prime * R3[:, np.newaxis], axis=0) / np.sum(R_array**6)
+                    if P >= 3
+                    else np.zeros(max_blocks, dtype=complex)
+                )
+
+                if P >= 4:
+                    g2_prime = g2 - 0.5 * H4[np.newaxis, :] * R4[:, np.newaxis]
+                else:
+                    g2_prime = g2
+                H2 = (
+                    2 * np.sum(g2_prime * R2[:, np.newaxis], axis=0) / np.sum(R_array**4)
+                    if P >= 2
+                    else np.zeros(max_blocks, dtype=complex)
+                )
+
+                g1_prime = g1.copy()
+                if P >= 3:
+                    g1_prime -= 0.75 * H3[np.newaxis, :] * R3[:, np.newaxis]
+                if P >= 5:
+                    g1_prime -= 0.625 * H5[np.newaxis, :] * R5[:, np.newaxis]
+                H1 = np.sum(g1_prime * R_array[:, np.newaxis], axis=0) / np.sum(R_array**2)
+
+                self.H_freqs = [H1, H2, H3, H4, H5][:P]
         else:
             # Standard Sweep Mode (Non-Hammerstein)
             # Directly use accumulated_results and apply phase corrections
@@ -1491,7 +1557,11 @@ class LockInModelerWidget(QWidget):
             H_mapped_list = []
             for p in range(len(self.H_freqs)):
                 H_raw = self.H_freqs[p][valid_idx][sort_idx]
-                f_lookups = sorted_freqs / (p + 1)
+                if getattr(self, "is_inverse_hammerstein_mode", False):
+                    # For direct inverse model estimation, we already solved G_p on the physical frequency axis f
+                    f_lookups = sorted_freqs
+                else:
+                    f_lookups = sorted_freqs / (p + 1)
 
                 # Polar Interpolation to prevent phase distortion
                 nan_mask = np.isnan(H_raw)
