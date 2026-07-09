@@ -434,6 +434,85 @@ class PredistortionProcessorWidget(QWidget):
         spec_layout.addWidget(self.plot_spec)
         self.plot_tabs.addTab(self.tab_spec, tr("Frequency Spectrum"))
 
+        # Tab 3: Parameter Details
+        self.tab_params = QWidget()
+        params_layout = QHBoxLayout(self.tab_params)
+        params_layout.setContentsMargins(4, 4, 4, 4)
+        params_layout.setSpacing(8)
+
+        # Left control panel (Scrollable)
+        params_left_scroll = QScrollArea()
+        params_left_scroll.setWidgetResizable(True)
+        params_left_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        params_left_scroll.setFixedWidth(280)
+
+        params_left_container = QWidget()
+        params_left_layout = QVBoxLayout(params_left_container)
+        params_left_layout.setContentsMargins(0, 0, 4, 0)
+        params_left_layout.setSpacing(8)
+
+        # Group A: Kernel Selection & Metrics
+        kernel_metrics_group = QGroupBox(tr("Kernel Metrics"))
+        kernel_metrics_form = QFormLayout(kernel_metrics_group)
+        kernel_metrics_form.setSpacing(6)
+
+        self.combo_kernel_select = QComboBox()
+        self.combo_kernel_select.currentIndexChanged.connect(self.on_kernel_selection_changed)
+        kernel_metrics_form.addRow(tr("Select Kernel:"), self.combo_kernel_select)
+
+        self.lbl_kernel_taps = QLabel("--")
+        self.lbl_kernel_peak = QLabel("--")
+        self.lbl_kernel_delay = QLabel("--")
+        self.lbl_kernel_rms = QLabel("--")
+
+        kernel_metrics_form.addRow(tr("Taps (Length):"), self.lbl_kernel_taps)
+        kernel_metrics_form.addRow(tr("Peak Value:"), self.lbl_kernel_peak)
+        kernel_metrics_form.addRow(tr("Peak Delay:"), self.lbl_kernel_delay)
+        kernel_metrics_form.addRow(tr("RMS Energy:"), self.lbl_kernel_rms)
+
+        params_left_layout.addWidget(kernel_metrics_group)
+
+        # Group B: Model Metadata (Detailed)
+        metadata_group = QGroupBox(tr("Model Details"))
+        metadata_form = QFormLayout(metadata_group)
+        metadata_form.setSpacing(6)
+
+        self.lbl_meta_direction = QLabel("--")
+        self.lbl_meta_sr = QLabel("-- Hz")
+        self.lbl_meta_order = QLabel("--")
+
+        metadata_form.addRow(tr("Direction:"), self.lbl_meta_direction)
+        metadata_form.addRow(tr("Sample Rate:"), self.lbl_meta_sr)
+        metadata_form.addRow(tr("Max Order:"), self.lbl_meta_order)
+
+        params_left_layout.addWidget(metadata_group)
+        params_left_layout.addStretch()
+
+        params_left_scroll.setWidget(params_left_container)
+        params_layout.addWidget(params_left_scroll)
+
+        # Right plots
+        plots_right_container = QWidget()
+        plots_right_layout = QVBoxLayout(plots_right_container)
+        plots_right_layout.setContentsMargins(0, 0, 0, 0)
+        plots_right_layout.setSpacing(6)
+
+        self.plot_kernel_time = pg.PlotWidget(title=tr("Kernel Impulse Response (Time Domain)"))
+        self.plot_kernel_time.setLabel("bottom", tr("Time"), units="ms")
+        self.plot_kernel_time.setLabel("left", tr("Amplitude"))
+        self.plot_kernel_time.showGrid(x=True, y=True)
+
+        self.plot_kernel_freq = pg.PlotWidget(title=tr("Kernel Magnitude Response (Frequency Domain)"))
+        self.plot_kernel_freq.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.plot_kernel_freq.setLabel("left", tr("Magnitude"), units="dB")
+        self.plot_kernel_freq.showGrid(x=True, y=True)
+
+        plots_right_layout.addWidget(self.plot_kernel_time)
+        plots_right_layout.addWidget(self.plot_kernel_freq)
+
+        params_layout.addWidget(plots_right_container, 2)
+        self.plot_tabs.addTab(self.tab_params, tr("Parameter Details"))
+
         main_layout.addWidget(self.plot_tabs, 2)
 
         # Theme styling
@@ -449,6 +528,8 @@ class PredistortionProcessorWidget(QWidget):
             "comp_time": self.plot_time.plot(pen="#4fc3f7", name=tr("Compensated Output")),
             "in_spec": self.plot_spec.plot(pen="#aaaaaa", name=tr("Input (Linear)")),
             "comp_spec": self.plot_spec.plot(pen="#4fc3f7", name=tr("Compensated Output")),
+            "kernel_time": self.plot_kernel_time.plot(pen="#ff7f0e"),
+            "kernel_freq": self.plot_kernel_freq.plot(pen="#ff7f0e"),
         }
 
     def set_controls_enabled(self, enabled):
@@ -478,12 +559,16 @@ class PredistortionProcessorWidget(QWidget):
         bg_color = "#121212" if is_dark else "#ffffff"
         text_color = "#ffffff" if is_dark else "#000000"
 
-        self.plot_time.setBackground(bg_color)
-        self.plot_spec.setBackground(bg_color)
-        self.plot_time.getAxis("bottom").setPen(text_color)
-        self.plot_time.getAxis("left").setPen(text_color)
-        self.plot_spec.getAxis("bottom").setPen(text_color)
-        self.plot_spec.getAxis("left").setPen(text_color)
+        plots = [self.plot_time, self.plot_spec]
+        if hasattr(self, "plot_kernel_time"):
+            plots.append(self.plot_kernel_time)
+        if hasattr(self, "plot_kernel_freq"):
+            plots.append(self.plot_kernel_freq)
+
+        for p in plots:
+            p.setBackground(bg_color)
+            p.getAxis("bottom").setPen(text_color)
+            p.getAxis("left").setPen(text_color)
 
     def check_active_model(self):
         """Checks if there's an active model in cache on widget initialization."""
@@ -522,10 +607,40 @@ class PredistortionProcessorWidget(QWidget):
         meta = self.model_data.get("metadata", {})
         self.lbl_status.setText(tr("Model Loaded Successfully"))
         self.lbl_status.setStyleSheet("font-weight: bold; color: #5cb85c;")
-        self.lbl_sr.setText(f"{meta.get('sample_rate', 48000)} Hz")
+        sr_val = meta.get("sample_rate", 48000)
+        self.lbl_sr.setText(f"{sr_val} Hz")
         self.lbl_order.setText(f"{self.module.applicator.P} ({tr('Max Harmonic')})")
         dir_val = meta.get("model_direction", "forward")
         self.lbl_direction.setText(tr("Inverse") if dir_val == "inverse" else tr("Forward"))
+
+        # Update metadata details in Parameter Details Tab
+        self.lbl_meta_direction.setText(tr("Inverse") if dir_val == "inverse" else tr("Forward"))
+        self.lbl_meta_sr.setText(f"{sr_val} Hz")
+        self.lbl_meta_order.setText(f"{self.module.applicator.P}")
+
+        # Update kernel selection combo box
+        self.combo_kernel_select.blockSignals(True)
+        self.combo_kernel_select.clear()
+
+        # Populate combo box with the original loaded kernels based on model direction
+        if dir_val == "inverse":
+            for i in range(len(self.module.applicator.g_kernels)):
+                self.combo_kernel_select.addItem(
+                    tr("Inverse Kernel g{0}").format(i + 1),
+                    ("g", i)
+                )
+        else:
+            for i in range(len(self.module.applicator.h_kernels)):
+                self.combo_kernel_select.addItem(
+                    tr("Forward Kernel h{0}").format(i + 1),
+                    ("h", i)
+                )
+
+        self.combo_kernel_select.blockSignals(False)
+
+        if self.combo_kernel_select.count() > 0:
+            self.combo_kernel_select.setCurrentIndex(0)
+            self.update_kernel_plots()
 
     def on_source_changed(self, idx):
         source = self.combo_source.itemData(idx)
@@ -723,3 +838,63 @@ class PredistortionProcessorWidget(QWidget):
                 self.btn_export_file.setEnabled(True)
                 self.btn_play_rt.setEnabled(True)
                 self.combo_source.setCurrentIndex(1)  # switch to file source
+
+    def on_kernel_selection_changed(self, idx):
+        self.update_kernel_plots()
+
+    def update_kernel_plots(self):
+        if not self.model_data:
+            return
+
+        idx = self.combo_kernel_select.currentIndex()
+        if idx < 0:
+            return
+
+        kernel_info = self.combo_kernel_select.itemData(idx)
+        if not kernel_info:
+            return
+
+        k_type, k_idx = kernel_info
+
+        if k_type == "h":
+            if k_idx >= len(self.module.applicator.h_kernels):
+                return
+            kernel = self.module.applicator.h_kernels[k_idx]
+        else:
+            if k_idx >= len(self.module.applicator.g_kernels):
+                return
+            kernel = self.module.applicator.g_kernels[k_idx]
+
+        fs = self.module.applicator.sample_rate
+        n = len(kernel)
+
+        # Calculate statistics
+        peak_val = np.max(np.abs(kernel))
+        peak_pos = np.argmax(np.abs(kernel))
+        peak_ms = (peak_pos / fs) * 1000.0
+        rms_val = np.sqrt(np.mean(kernel**2))
+
+        self.lbl_kernel_taps.setText(str(n))
+        self.lbl_kernel_peak.setText(f"{peak_val:.6f}")
+        self.lbl_kernel_delay.setText(f"{peak_pos} ({peak_ms:.3f} ms)")
+        self.lbl_kernel_rms.setText(f"{rms_val:.6f}")
+
+        # Update Time Domain Plot
+        t = np.arange(n) / fs * 1000.0
+        self.curves["kernel_time"].setData(t, kernel)
+        self.plot_kernel_time.autoRange()
+
+        # Update Frequency Domain Plot (Magnitude Response)
+        n_fft = max(2048, int(2 ** np.ceil(np.log2(n * 2))))
+        H = np.fft.rfft(kernel, n=n_fft)
+        freqs = np.fft.rfftfreq(n_fft, 1.0 / fs)
+        mags_db = 20 * np.log10(np.maximum(np.abs(H), 1e-10))
+
+        self.curves["kernel_freq"].setData(freqs, mags_db)
+        self.plot_kernel_freq.setXRange(20, min(fs / 2, 22000.0))
+
+        # Range margin logic
+        y_min = max(-100.0, np.min(mags_db) - 5)
+        y_max = np.max(mags_db) + 5
+        self.plot_kernel_freq.setYRange(y_min, y_max)
+
