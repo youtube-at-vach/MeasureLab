@@ -276,6 +276,7 @@ class LockInModeler(MeasurementModule):
                 self.callback_id = None
             if self.engine:
                 self.engine.reset_filter_states()
+            self.current_x_corr = None
 
 
 class LockInModelerWidget(QWidget):
@@ -825,10 +826,19 @@ class LockInModelerWidget(QWidget):
                     N_adapt = self.spin_predistortion_iterations.value()
                     self.module.averaging_count = self.num_amplitudes * (N_adapt + 1)
                     self.predistortion_managers = [None] * self.num_amplitudes
+                    self.predistortion_manager = None
                 else:
                     self.module.averaging_count = self.num_amplitudes * self.spin_averaging.value()
+                    self.predistortion_managers = None
+                    self.predistortion_manager = None
+                    self.module.current_x_corr = None
             elif self.is_predistortion_sweep_mode:
                 self.module.averaging_count = self.spin_predistortion_iterations.value() + 1
+                self.predistortion_managers = None
+            else:
+                self.predistortion_managers = None
+                self.predistortion_manager = None
+                self.module.current_x_corr = None
 
             # Update Plot Labels based on mode
             self.redraw_plots()
@@ -963,6 +973,11 @@ class LockInModelerWidget(QWidget):
         is_ham = mode in {"hammerstein", "inverse_hammerstein"}
         is_predist = mode in {"predistortion_sweep", "inverse_hammerstein"}
 
+        self.is_predistortion_sweep_mode = is_predist
+        self.module.is_predistortion_sweep_mode = is_predist
+        self.is_inverse_hammerstein_mode = mode == "inverse_hammerstein"
+        self.module.is_inverse_hammerstein_mode = self.is_inverse_hammerstein_mode
+
         self.spin_amp_steps.setVisible(is_ham)
         label = self.settings_form.labelForField(self.spin_amp_steps)
         if label:
@@ -982,12 +997,26 @@ class LockInModelerWidget(QWidget):
         self.redraw_plots()
 
     def init_predistortion_sweep(self):
-        self.predistortion_manager = PredistortionManager(
-            start_freq=self.module.start_freq,
-            end_freq=self.module.end_freq,
-            meas_freqs=self.module.engine.meas_freqs,
-            max_harmonic=self.module.max_harmonic
+        can_reuse = (
+            getattr(self, "predistortion_manager", None) is not None
+            and self.predistortion_manager.start_freq == self.module.start_freq
+            and self.predistortion_manager.end_freq == self.module.end_freq
+            and self.predistortion_manager.max_harmonic == self.module.max_harmonic
+            and len(self.predistortion_manager.meas_freqs) == len(self.module.engine.meas_freqs)
+            and np.allclose(self.predistortion_manager.meas_freqs, self.module.engine.meas_freqs)
         )
+
+        if not can_reuse:
+            logger.info("Initializing new PredistortionManager.")
+            self.predistortion_manager = PredistortionManager(
+                start_freq=self.module.start_freq,
+                end_freq=self.module.end_freq,
+                meas_freqs=self.module.engine.meas_freqs,
+                max_harmonic=self.module.max_harmonic
+            )
+        else:
+            logger.info("Reusing existing PredistortionManager to preserve accumulated correction.")
+
         self.module.current_x_corr = self.generate_predistorted_sweep()
 
     def generate_predistorted_sweep(self):
@@ -1645,6 +1674,7 @@ class LockInModelerWidget(QWidget):
                             # 3. Update engine amplitude
                             self.module.engine.output_amplitude = self.amplitudes[new_amp_idx]
                             # 4. Re-initialize predistortion sweep for new amplitude
+                            self.predistortion_manager = None
                             self.init_predistortion_sweep()
                             # 5. Reset accumulator
                             self.accumulated_results.fill(0.0j)
