@@ -1,5 +1,7 @@
 # Processor Benchmark (プロセッサ・ベンチマーク)
 
+## 概要
+
 Processor Benchmark は、リアルタイム測定における PC の FFT および UI 描画パフォーマンスをテストし、安全な処理限界を検証するためのツールです。
 
 ## 主な用途

@@ -1,5 +1,7 @@
 # Spatial Binaural Mixer
 
+## Overview
+
 The **Spatial Binaural Mixer** is a high-quality, offline 3D spatial audio rendering module designed for placing multiple independent source tracks in a virtual 3D space using Head-Related Transfer Functions (HRTF / SOFA files).
 
 Unlike real-time HRTF players, this module is specifically engineered for multi-track stem rendering. It employs block-less FFT convolution and high-precision spatial interpolation, ensuring the absolute highest sound quality for mixing and exporting spatial audio.
