@@ -583,11 +583,18 @@ class PredistortionProcessorWidget(QWidget):
 
         # Plot Time Domain
         ms = t * 1000.0
-        # Show first 10ms for visibility of waveform cycles (or full if short)
-        plot_len = min(int(0.01 * fs), len(block_in))
-        self.curves["in_time"].setData(ms[:plot_len], block_in[:plot_len])
-        self.curves["comp_time"].setData(ms[:plot_len], comp_sig[:plot_len])
-        self.curves["out_time"].setData(ms[:plot_len], comp_dut[:plot_len])
+
+        # Calculate pre-delay in milliseconds to adjust initial plot range
+        delay_samples = 0
+        if self.module.applicator.P > 0 and len(self.module.applicator.h_kernels) > 0:
+            h1 = self.module.applicator.h_kernels[0]
+            delay_samples = int(np.argmax(np.abs(h1)))
+        delay_ms = (delay_samples / fs) * 1000.0
+
+        # Set plot data (expose full 100ms so user can scroll/pan freely)
+        self.curves["in_time"].setData(ms, block_in)
+        self.curves["comp_time"].setData(ms, comp_sig)
+        self.curves["out_time"].setData(ms, comp_dut)
 
         # Plot FFT Spectrum
         def get_fft(sig):
@@ -615,6 +622,10 @@ class PredistortionProcessorWidget(QWidget):
         # Auto range plots
         self.plot_time.autoRange()
         self.plot_spec.autoRange()
+
+        # Focus time domain plot starting from twice the pre-delay (where the simulated DUT output starts) for 10ms
+        self.plot_time.setXRange(delay_ms * 2.0, delay_ms * 2.0 + 10.0, padding=0.0)
+
         self.plot_spec.setXRange(20, min(fs / 2, 22000.0))
         self.plot_spec.setYRange(-120, 10)
 

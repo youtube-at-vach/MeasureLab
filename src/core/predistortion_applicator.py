@@ -114,9 +114,10 @@ class PredistortionApplicator:
         """Resets the stateful filter buffers to zero (e.g. at playback start)."""
         self.g_zi = []
         for gk in self.g_kernels:
-            # lfilter_zi requires float64 coefficients or defaults
-            zi = scipy.signal.lfilter_zi(gk, [1.0])
-            self.g_zi.append(zi.astype(np.float32))
+            # Audio streams start from silence, so filter states should be initialized to zero.
+            # The state vector length for lfilter is len(coefficients) - 1.
+            zi = np.zeros(len(gk) - 1, dtype=np.float32)
+            self.g_zi.append(zi)
 
     def apply_predistortion_block(self, block_in: np.ndarray) -> np.ndarray:
         """
