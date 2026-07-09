@@ -189,7 +189,6 @@ class PredistortionProcessor(MeasurementModule):
         self.applicator.reset_states()
 
         fs = self.audio_engine.sample_rate
-        out_ch_count = self.audio_engine.output_channels
 
         def callback(indata, outdata, frames, time, status):
             if not self.is_playing:
@@ -197,6 +196,7 @@ class PredistortionProcessor(MeasurementModule):
                 return
 
             try:
+                out_ch_count = outdata.shape[1]
                 block_in = np.zeros(frames, dtype=np.float32)
 
                 # Generate or load input block
