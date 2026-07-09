@@ -131,6 +131,111 @@ class OfflinePredistortionWorker(QThread):
                 infile.close()
 
 
+
+class PreviewBufferWorker(QThread):
+    progress = pyqtSignal(int)
+    finished = pyqtSignal(bool, np.ndarray, str)
+
+    def __init__(
+        self,
+        applicator: PredistortionApplicator,
+        source_mode: str,
+        tone_type: str,
+        tone_freq: float,
+        tone_amp: float,
+        audio_file_path: str,
+        sample_rate: float,
+    ):
+        super().__init__()
+        self.applicator = applicator
+        self.source_mode = source_mode
+        self.tone_type = tone_type
+        self.tone_freq = tone_freq
+        self.tone_amp = tone_amp
+        self.audio_file_path = audio_file_path
+        self.sample_rate = sample_rate
+        self.is_cancelled = False
+
+    def cancel(self):
+        self.is_cancelled = True
+
+    def run(self):
+        try:
+            fs = self.sample_rate
+            duration = 10.0  # 10 seconds preview limit
+
+            # Generate or load input block
+            if self.source_mode == "tone":
+                total_samples = int(duration * fs)
+                if self.tone_type == "sine":
+                    t = np.arange(total_samples) / fs
+                    block_in = self.tone_amp * np.sin(2.0 * np.pi * self.tone_freq * t)
+                elif self.tone_type == "pink":
+                    from src.core.generators import PinkNoise
+                    pink = PinkNoise()
+                    block_in = self.tone_amp * pink.generate(total_samples)
+                elif self.tone_type == "white":
+                    block_in = self.tone_amp * np.random.randn(total_samples).astype(np.float32)
+                else:
+                    block_in = np.zeros(total_samples, dtype=np.float32)
+            else:
+                # File Playback (up to 10 seconds)
+                if not self.audio_file_path or not os.path.exists(self.audio_file_path):
+                    raise ValueError(tr("Audio file not found."))
+
+                info = sf.info(self.audio_file_path)
+                file_sr = info.samplerate
+                frames_to_read = min(int(duration * file_sr), info.frames)
+
+                with sf.SoundFile(self.audio_file_path, "r") as f:
+                    chunk = f.read(frames_to_read, always_2d=True)
+
+                # Resample if needed
+                if abs(file_sr - fs) > 1.0:
+                    from src.core.analysis import AudioCalc
+                    chunk = AudioCalc.resample(chunk, file_sr, int(fs))
+
+                block_in = np.mean(chunk, axis=1).astype(np.float32)
+
+            if self.is_cancelled:
+                raise InterruptedError("Cancelled")
+
+            # Apply predistortion
+            self.applicator.reset_states()
+
+            M = len(block_in)
+            block_size = 65536
+            num_blocks = (M + block_size - 1) // block_size
+            block_out = np.zeros(M, dtype=np.float32)
+
+            for b_idx in range(num_blocks):
+                if self.is_cancelled:
+                    raise InterruptedError("Cancelled")
+
+                start = b_idx * block_size
+                end = min(start + block_size, M)
+                chunk_in = block_in[start:end]
+
+                # Apply predistortion
+                chunk_out = self.applicator.apply_predistortion_block(chunk_in)
+                block_out[start:end] = chunk_out
+
+                pct = int(((b_idx + 1) / num_blocks) * 100)
+                self.progress.emit(pct)
+
+            # Prevent digital clipping at output
+            peak_out = np.max(np.abs(block_out))
+            if peak_out > 1.0:
+                block_out = block_out / peak_out
+
+            self.finished.emit(True, block_out, "")
+        except InterruptedError:
+            self.finished.emit(False, np.array([], dtype=np.float32), tr("Cancelled"))
+        except Exception as e:
+            logger.exception("Preview buffer generation failed")
+            self.finished.emit(False, np.array([], dtype=np.float32), str(e))
+
+
 class PredistortionProcessor(MeasurementModule):
     def __init__(self, audio_engine):
         self.audio_engine = audio_engine
@@ -140,16 +245,15 @@ class PredistortionProcessor(MeasurementModule):
         # Real-time state
         self.is_playing = False
         self.callback_id = None
-        self.input_file = None
         self.play_index = 0
-        self.tone_phase = 0.0
+        self.preview_buffer = None
+        self.on_playback_finished_callback = None
 
         # UI parameters
         self.source_mode = "tone"  # "tone" or "file"
         self.tone_freq = 1000.0
         self.tone_amp = 0.5
         self.tone_type = "sine"  # "sine", "pink", "white"
-        self.pink_gen = None
 
     @property
     def name(self) -> str:
@@ -163,32 +267,14 @@ class PredistortionProcessor(MeasurementModule):
         self.widget = PredistortionProcessorWidget(self)
         return self.widget
 
-    def start_realtime(self):
+    def start_realtime(self, preview_buffer: np.ndarray):
         if self.is_playing:
             return
         self.is_playing = True
         self.play_index = 0
-        self.tone_phase = 0.0
+        self.preview_buffer = preview_buffer
 
-        if self.tone_type == "pink":
-            from src.core.generators import PinkNoise
-
-            self.pink_gen = PinkNoise()
-
-        # Initialize stream reader for file input
-        self.audio_file_reader = None
-        if self.source_mode == "file" and getattr(self, "audio_file_path", None):
-            try:
-                self.audio_file_reader = sf.SoundFile(self.audio_file_path, "r")
-            except Exception as e:
-                logger.error("Failed to open audio file for playback: %s", e)
-                self.is_playing = False
-                raise
-
-        # Reset filter states
-        self.applicator.reset_states()
-
-        fs = self.audio_engine.sample_rate
+        total_frames = len(self.preview_buffer)
 
         def callback(indata, outdata, frames, time, status):
             if not self.is_playing:
@@ -197,35 +283,24 @@ class PredistortionProcessor(MeasurementModule):
 
             try:
                 out_ch_count = outdata.shape[1]
-                block_in = np.zeros(frames, dtype=np.float32)
+                start = self.play_index
+                end = start + frames
 
-                # Generate or load input block
-                if self.source_mode == "tone":
-                    if self.tone_type == "sine":
-                        t = (self.play_index + np.arange(frames)) / fs
-                        block_in = self.tone_amp * np.sin(2.0 * np.pi * self.tone_freq * t + self.tone_phase)
-                    elif self.tone_type == "pink" and self.pink_gen:
-                        block_in = self.tone_amp * self.pink_gen.generate(frames)
-                    elif self.tone_type == "white":
-                        block_in = self.tone_amp * np.random.randn(frames).astype(np.float32)
+                if start >= total_frames:
+                    outdata.fill(0)
+                    self.is_playing = False
+                    if self.on_playback_finished_callback:
+                        self.on_playback_finished_callback()
+                    return
 
-                    self.play_index += frames
+                if end > total_frames:
+                    chunk = self.preview_buffer[start:total_frames]
+                    block_out = np.zeros(frames, dtype=np.float32)
+                    block_out[:len(chunk)] = chunk
+                    self.play_index = total_frames
                 else:
-                    # File Playback
-                    if self.audio_file_reader:
-                        chunk = self.audio_file_reader.read(frames, always_2d=True)
-                        if len(chunk) < frames:
-                            # Loop back
-                            self.audio_file_reader.seek(0)
-                            extra = self.audio_file_reader.read(frames - len(chunk), always_2d=True)
-                            chunk = np.vstack([chunk, extra])
-                        # Mix down to mono for predistortion processing
-                        block_in = np.mean(chunk, axis=1).astype(np.float32)
-                    else:
-                        block_in.fill(0)
-
-                # Apply Predistortion (mono filter)
-                block_out = self.applicator.apply_predistortion_block(block_in)
+                    block_out = self.preview_buffer[start:end]
+                    self.play_index = end
 
                 # Output mapping to all active channels
                 for ch in range(out_ch_count):
@@ -242,19 +317,23 @@ class PredistortionProcessor(MeasurementModule):
         if self.callback_id is not None:
             self.audio_engine.unregister_callback(self.callback_id)
             self.callback_id = None
-        if getattr(self, "audio_file_reader", None):
-            self.audio_file_reader.close()
-            self.audio_file_reader = None
+        self.preview_buffer = None
 
 
 class PredistortionProcessorWidget(QWidget):
+    playback_finished = pyqtSignal()
+
     def __init__(self, module: PredistortionProcessor):
         super().__init__()
         self.module = module
         self.model_data = None
         self.worker = None
+        self.preview_worker = None
 
         self.init_ui()
+        self.playback_finished.connect(self.on_playback_finished)
+        self.module.on_playback_finished_callback = lambda: self.playback_finished.emit()
+
         self.setAcceptDrops(True)
         self.set_controls_enabled(False)
         self.check_active_model()
@@ -532,7 +611,7 @@ class PredistortionProcessorWidget(QWidget):
             "kernel_freq": self.plot_kernel_freq.plot(pen="#ff7f0e"),
         }
 
-    def set_controls_enabled(self, enabled):
+    def set_controls_enabled(self, enabled, exclude_play_btn=False):
         self.combo_source.setEnabled(enabled)
         self.combo_tone_type.setEnabled(enabled)
         self.spin_freq.setEnabled(enabled)
@@ -540,7 +619,8 @@ class PredistortionProcessorWidget(QWidget):
         self.btn_select_file.setEnabled(enabled)
         self.combo_os.setEnabled(enabled)
         self.btn_run_sim.setEnabled(enabled)
-        self.btn_play_rt.setEnabled(enabled)
+        if not exclude_play_btn:
+            self.btn_play_rt.setEnabled(enabled)
         self.btn_export_file.setEnabled(enabled and self.module.source_mode == "file")
 
     def apply_theme(self, theme=None):
@@ -766,17 +846,63 @@ class PredistortionProcessorWidget(QWidget):
     def on_toggle_realtime(self, checked):
         if checked:
             self.on_param_changed()
+
+            # Start preview buffer preparation worker
+            self.btn_play_rt.setText(tr("Stop (Preparing...)"))
+            self.btn_play_rt.setStyleSheet("background-color: #d9534f; color: white;")
+            self.set_controls_enabled(False, exclude_play_btn=True)
+            self.progress_bar.setVisible(True)
+            self.progress_bar.setValue(0)
+
+            self.preview_worker = PreviewBufferWorker(
+                applicator=self.module.applicator,
+                source_mode=self.module.source_mode,
+                tone_type=self.module.tone_type,
+                tone_freq=self.module.tone_freq,
+                tone_amp=self.module.tone_amp,
+                audio_file_path=getattr(self.module, "audio_file_path", None),
+                sample_rate=self.module.audio_engine.sample_rate,
+            )
+            self.preview_worker.progress.connect(self.progress_bar.setValue)
+            self.preview_worker.finished.connect(self.on_preview_ready)
+            self.preview_worker.start()
+        else:
+            # Cancellation or manual stop
+            if self.preview_worker and self.preview_worker.isRunning():
+                self.preview_worker.cancel()
+                # UI state will be reverted in on_preview_ready
+            else:
+                self.module.stop_realtime()
+                self.btn_play_rt.setText(tr("Play (Real-time Preview)"))
+                self.btn_play_rt.setStyleSheet("")
+                self.set_controls_enabled(True)
+                self.progress_bar.setVisible(False)
+
+    def on_preview_ready(self, success, buffer, message):
+        self.progress_bar.setVisible(False)
+        self.preview_worker = None
+
+        if success:
             try:
-                self.module.start_realtime()
+                self.module.start_realtime(buffer)
                 self.btn_play_rt.setText(tr("Stop (Playback Active)"))
                 self.btn_play_rt.setStyleSheet("background-color: #d9534f; color: white;")
             except Exception as e:
                 self.btn_play_rt.setChecked(False)
                 QMessageBox.critical(self, tr("Error"), tr("Failed to start audio playback:\n{0}").format(e))
+                self.on_playback_finished()
         else:
-            self.module.stop_realtime()
+            self.btn_play_rt.setChecked(False)
             self.btn_play_rt.setText(tr("Play (Real-time Preview)"))
             self.btn_play_rt.setStyleSheet("")
+            self.set_controls_enabled(True)
+            if message and message != tr("Cancelled"):
+                QMessageBox.critical(self, tr("Error"), tr("Failed to generate preview buffer:\n{0}").format(message))
+
+    def on_playback_finished(self):
+        # Stop button was not clicked, so we must uncheck it and clean up
+        self.btn_play_rt.setChecked(False)
+        self.on_toggle_realtime(False)
 
     def on_export_file(self):
         if not getattr(self.module, "audio_file_path", None):
