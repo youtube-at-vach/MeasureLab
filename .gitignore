@@ -84,8 +84,6 @@ report.json
 measurement_report.json
 thd.json
 .vscode/settings.json
-hammerstein_kernel_sample*.json
-inverse_hammerstein_model*.json
 
 # Auto-generated check logs
 docs/daily_check.log
@@ -99,3 +97,4 @@ scripts/tsa_study_results.json
 scripts/lock_in_modeler_hammerstein_verification_results.json
 scripts/lock_in_modeler_repeatability_results.json
 scripts/hammerstein_optimization_summary.json
+kernel_sample_*.json
