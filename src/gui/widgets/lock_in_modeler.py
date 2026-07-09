@@ -1361,7 +1361,10 @@ class LockInModelerWidget(QWidget):
 
                 H1_raw = avg_responses[:, :, 0]
                 R_array = self.amplitudes
-                H1_base = np.sum(H1_raw * R_array[:, np.newaxis], axis=0) / np.sum(R_array**2)
+                if self.module.input_mode == "XFER":
+                    H1_base = np.sum((H1_raw * R_array[:, np.newaxis]) * R_array[:, np.newaxis], axis=0) / np.sum(R_array**2)
+                else:
+                    H1_base = np.sum(H1_raw * R_array[:, np.newaxis], axis=0) / np.sum(R_array**2)
 
                 # Interpolate and map F_corr to the common physical frequency axis
                 x_data = self.plot_freqs_array
