@@ -313,7 +313,6 @@ def main():
                     raw_results=accumulated_results,
                     block_counts=block_counts,
                     mu=mu,
-                    sample_rate=fs,
                 )
             else:
                 # Save the final iteration's measured responses to raw_responses_inv
