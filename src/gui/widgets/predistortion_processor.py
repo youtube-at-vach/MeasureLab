@@ -260,7 +260,7 @@ class PredistortionProcessorWidget(QWidget):
         self.check_active_model()
 
     def minimumSizeHint(self) -> QSize:
-        return QSize(1000, 650)
+        return QSize(1000, 600)
 
     def init_ui(self):
         main_layout = QHBoxLayout(self)
@@ -408,7 +408,7 @@ class PredistortionProcessorWidget(QWidget):
 
         # RIGHT PLOTS TAB
         self.plot_tabs = QTabWidget()
-        self.plot_tabs.setMinimumHeight(450)
+        self.plot_tabs.setMinimumHeight(380)
 
         # Tab 1: Time Domain Plot
         self.tab_time = QWidget()
@@ -467,11 +467,15 @@ class PredistortionProcessorWidget(QWidget):
     def apply_theme(self, theme=None):
         if not hasattr(self, "plot_time") or not hasattr(self, "plot_spec"):
             return
-        is_dark = True
-        if theme and hasattr(theme, "is_dark"):
-            is_dark = theme.is_dark()
-        elif hasattr(self.app, "theme_manager"):
-            is_dark = self.app.theme_manager.get_current_theme().is_dark()
+
+        theme_name = theme
+        if not theme_name and hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_current_theme()
+
+        if theme_name == "system" and hasattr(self.app, "theme_manager"):
+            theme_name = self.app.theme_manager.get_effective_theme()
+
+        is_dark = theme_name == "dark"
 
         bg_color = "#121212" if is_dark else "#ffffff"
         text_color = "#ffffff" if is_dark else "#000000"
