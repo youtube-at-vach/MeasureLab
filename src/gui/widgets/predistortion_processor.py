@@ -443,14 +443,12 @@ class PredistortionProcessorWidget(QWidget):
             self.apply_theme(self.app.theme_manager.get_current_theme())
 
         # Plot curves colors
-        # Input: White/Gray, Compensated: Light Blue, Output: Amber/Red
+        # Input: White/Gray, Compensated: Light Blue
         self.curves = {
             "in_time": self.plot_time.plot(pen="#aaaaaa", name=tr("Input (Linear)")),
             "comp_time": self.plot_time.plot(pen="#4fc3f7", name=tr("Compensated Output")),
-            "out_time": self.plot_time.plot(pen="#ffd54f", name=tr("Simulated DUT Output")),
             "in_spec": self.plot_spec.plot(pen="#aaaaaa", name=tr("Input (Linear)")),
             "comp_spec": self.plot_spec.plot(pen="#4fc3f7", name=tr("Compensated Output")),
-            "out_spec": self.plot_spec.plot(pen="#ffd54f", name=tr("Simulated DUT Output")),
         }
 
     def set_controls_enabled(self, enabled):
@@ -590,13 +588,12 @@ class PredistortionProcessorWidget(QWidget):
             block_in_full = self.module.tone_amp * np.random.randn(total_samples).astype(np.float32)
 
         # Run simulation over the full duration
-        comp_sig_full, raw_dut_full, comp_dut_full = self.module.applicator.run_simulation(block_in_full)
+        comp_sig_full, _, _ = self.module.applicator.run_simulation(block_in_full)
 
         # Extract the steady-state portion (the second half)
         t = np.arange(sim_samples) / fs
         block_in = block_in_full[sim_samples:]
         comp_sig = comp_sig_full[sim_samples:]
-        comp_dut = comp_dut_full[sim_samples:]
 
         # Plot Time Domain
         ms = t * 1000.0
@@ -611,7 +608,6 @@ class PredistortionProcessorWidget(QWidget):
         # Set plot data (expose full 100ms steady-state so user can scroll/pan freely)
         self.curves["in_time"].setData(ms, block_in)
         self.curves["comp_time"].setData(ms, comp_sig)
-        self.curves["out_time"].setData(ms, comp_dut)
 
         # Plot FFT Spectrum
         def get_fft(sig):
@@ -637,18 +633,16 @@ class PredistortionProcessorWidget(QWidget):
 
         f_in, db_in = get_fft(block_in)
         f_comp, db_comp = get_fft(comp_sig)
-        f_out, db_out = get_fft(comp_dut)
 
         # Apply slight smoothing for visualization (same as in modeler)
         self.curves["in_spec"].setData(f_in, db_in)
         self.curves["comp_spec"].setData(f_comp, db_comp)
-        self.curves["out_spec"].setData(f_out, db_out)
 
         # Auto range plots
         self.plot_time.autoRange()
         self.plot_spec.autoRange()
 
-        # Focus time domain plot starting from twice the pre-delay (where the simulated DUT output starts) for 10ms
+        # Focus time domain plot starting from twice the pre-delay for 10ms
         self.plot_time.setXRange(delay_ms * 2.0, delay_ms * 2.0 + 10.0, padding=0.0)
 
         self.plot_spec.setXRange(20, min(fs / 2, 22000.0))
