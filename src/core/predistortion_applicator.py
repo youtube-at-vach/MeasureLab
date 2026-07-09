@@ -50,65 +50,15 @@ class PredistortionApplicator:
             self.P = len(raw_kernels)
             direction = metadata.get("model_direction", "forward")
 
-            if direction == "inverse":
-                self.g_kernels = raw_kernels
-                # Approximate forward kernels from inverse ones for simulation
-                self.h_kernels = self._approximate_inverse_kernels(raw_kernels)
-            else:
-                self.h_kernels = raw_kernels
-                # Approximate inverse kernels from forward ones for predistortion
-                self.g_kernels = self._approximate_inverse_kernels(raw_kernels)
+            # Apply loaded model kernels directly to both forward and inverse representation without approximation
+            self.g_kernels = raw_kernels
+            self.h_kernels = raw_kernels
 
             self.reset_states()
             logger.info("Successfully loaded %d-order %s predistortion model.", self.P, direction)
         except Exception as e:
             logger.error("Failed to load predistortion model: %s", e, exc_info=True)
             raise
-
-    def _approximate_inverse_kernels(self, kernels: List[np.ndarray]) -> List[np.ndarray]:
-        """
-        Approximates the inverse of a set of kernels.
-        - 1st order (linear): Tikhonov regularized inverse filter.
-          Supports kernels with pre-delay by shifting before inversion and restoring after.
-        - Higher orders: Sign inversion of forward kernels (1st order approximation).
-        """
-        if not kernels:
-            return []
-
-        h1 = kernels[0]
-
-        # 1. Detect peak delay to handle pre-delay (e.g. 7ms gate_pre)
-        delay = int(np.argmax(np.abs(h1)))
-
-        # 2. Shift h1 to be causal (remove delay to prevent wrap-around peak discard in IFFT)
-        h1_causal = np.zeros_like(h1)
-        if delay < len(h1):
-            h1_causal[:len(h1) - delay] = h1[delay:]
-        else:
-            h1_causal = h1.copy()
-
-        # Calculate optimal FFT length for FIR inverse filter
-        n_fft = max(2048, int(2 ** np.ceil(np.log2(len(h1_causal) * 2))))
-        H1 = np.fft.rfft(h1_causal, n=n_fft)
-
-        # Regulate to avoid division by zero near notches
-        eps = 1e-3 * np.max(np.abs(H1))
-        G1 = np.conj(H1) / (np.abs(H1) ** 2 + eps**2)
-        g1_causal = np.fft.irfft(G1)[: len(h1)]
-
-        # 3. Restore the peak delay to the inverse filter
-        g1 = np.zeros_like(g1_causal)
-        if delay < len(g1):
-            g1[delay:] = g1_causal[:len(g1) - delay]
-        else:
-            g1 = g1_causal.copy()
-
-        approximated = [g1.astype(np.float32)]
-        for p in range(1, len(kernels)):
-            # Sign inversion serves as first-order approximation for high-order cancellation
-            approximated.append(-kernels[p].copy())
-
-        return approximated
 
     def reset_states(self):
         """Resets the stateful filter buffers to zero (e.g. at playback start)."""

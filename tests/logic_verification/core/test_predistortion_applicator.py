@@ -35,7 +35,13 @@ def test_load_model_and_reset(dummy_model_data):
     assert applicator.sample_rate == 48000
     assert applicator.P == 3
     assert len(applicator.g_kernels) == 3
-    assert len(applicator.h_kernels) == 3  # Reconstructed forward kernels
+    assert len(applicator.h_kernels) == 3
+    # Check that kernels are loaded exactly as raw kernels (no approximation)
+    for idx in range(3):
+        h_key = f"h{idx+1}"
+        expected = np.array(dummy_model_data["time_domain"]["kernels"][h_key], dtype=np.float32)
+        np.testing.assert_array_equal(applicator.g_kernels[idx], expected)
+        np.testing.assert_array_equal(applicator.h_kernels[idx], expected)
     assert len(applicator.g_zi) == 3
 
     # Check reset_states
