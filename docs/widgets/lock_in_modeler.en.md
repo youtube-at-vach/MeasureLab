@@ -29,15 +29,26 @@ Before running any sweep, the round-trip latency of the audio input and output c
 
 ### Settings Tab
 
-* **Sweep Mode**: Choose between two measurement modes:
+* **Sweep Mode**: Choose between three measurement modes:
     * `Sweep Measurement (Default)`: Performs a standard frequency sweep, plotting the magnitude and phase responses for the fundamental and configured harmonics.
     * `Nonlinear Model`: Identifies a Hammerstein nonlinear model by automatically performing multiple sweeps at different test amplitude levels to resolve higher-order kernels.
+    * `Predistortion Sweep`: Performs iterative sweeps while applying a predistortion signal (using an Inverse Hammerstein model) to actively cancel the nonlinear distortion of the system under test.
 * **Start Freq / End Freq (Hz)**: Sets the frequency boundaries for the sweep (20.0 Hz to 20,000.0 Hz).
 * **Duration (s)**: The duration of a single sweep cycle (2.0 s to 600.0 s).
 * **Amplitude (dBFS)**: Sets the output signal level in dBFS (-100.0 dBFS to 0.0 dBFS).
 * **Max Harmonic**: Sets the highest harmonic order to analyze alongside the fundamental (1st to 5th).
 * **Averages**: Sets the number of sweep cycles to average for each amplitude level, which improves the SNR.
 * **Amplitude Steps**: Active only in the Nonlinear Model mode. Specifies the number of amplitude steps (5 to 10) to use for system identification.
+
+### Advanced Settings
+
+* **Advanced Settings**: Opens a dialog to configure advanced algorithm parameters.
+    * **Time-Synchronized Averaging (TSA)**:
+        * **Cycles**: Number of cycles to average (1-100).
+        * **Rejection Threshold**: Standard deviation threshold for outlier rejection.
+    * **Predistortion Settings**:
+        * **Predistortion Iters**: The number of iterative updates (1-10) per amplitude level to refine the inverse distortion filter.
+        * **Learning Rate (mu)**: The step size (0.01 - 1.0) for the predistortion update algorithm. Smaller values increase stability but require more iterations.
 
 ### Display Tab
 
