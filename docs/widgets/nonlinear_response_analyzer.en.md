@@ -12,11 +12,6 @@ This widget provides the following analysis capabilities:
 * **Bode Plot Display:** Plots the frequency response (Magnitude and Phase) of the identified linear filter.
 * **Nonlinear Curve Display:** Visualizes the identified polynomial transfer function mapping the intermediate signal to the final output.
 
-## ☕ Coffee Break: What is the Wiener Model?
-
-The Wiener model is a mathematical approach to represent distortion as a series structure: a "linear element" (a filter with frequency characteristics) followed by a "nonlinear element" (the part that distorts, represented here by a polynomial).
-This module uses this model to separate these components from the measured signal, allowing for accurate modeling of systems where frequency-dependent filtering occurs before amplitude distortion.
-
 ## Settings
 
 ### Test Signal Parameters
