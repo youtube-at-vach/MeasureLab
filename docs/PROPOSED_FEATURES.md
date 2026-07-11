@@ -10,10 +10,10 @@
 
 ## 🔮 Future / Visionary Ideas (Experimental)
 
-* **Bio-Sensory & BCI**: Brain-Computer Interface (BCI) Audiophile Profiler, Bio-feedback Calibrator.
-* **Psycho-Acoustics & AI**: AI-driven Holographic Soundstage Reconstructor, Psychoacoustic Masking Mapper, AI "Golden Ear" Translator.
-* **Physics & Advanced Simulation**: Quantum-inspired Acoustic Metamaterial Simulator, Thermal/Quantum Noise Sonification, Neuromorphic Auditory Nerve Spike Visualizer.
-* **Spatial & Non-Standard**: Non-Euclidean Spatial Audio Mapper.
+* **Bio-Sensory & Psycho-Acoustics**: BCI Audiophile Profiler, AI "Golden Ear", Holographic Soundstage, Psychoacoustic Masking, Synesthetic Harmonic Mapper.
+* **Physics & Advanced Simulation**: Quantum Metamaterial Simulator, Thermal Noise Sonification, Neuromorphic Spike Visualizer.
+* **Spatial & Acoustic Focus**: Non-Euclidean Spatial Mapper, Acoustic Phase Conjugation Analyzer (Time-reversed wave reflection cancellation).
+* **Ultrasonics**: Ultrasonic Micro-Doppler Excursion Mapper (Non-contact speaker cone displacement measurement).
 
 ---
 
@@ -22,22 +22,17 @@
 ### 🆕 New Proposals
 
 * **Automated Suites**: ASRC Benchmark, Test Sequence Automator.
-* **Signal Integrity**: Continuity & Dropout Logger, Lossy Codec Artifact Analyzer, Realtime/Offline Null Comparator.
-* **Device Profiling**: Dynamics Processor Profiler, TIE Jitter & Phase Noise Profiler, Damping Factor Profiler, Volterra Kernel Extractor.
+* **Signal Integrity**: Continuity/Dropout Logger, Lossy Codec Artifact Analyzer, Null Comparator.
+* **Device Profiling**: Dynamics Processor Profiler, TIE Jitter, Damping Factor Profiler, Volterra Kernel Extractor.
+* **Extreme Low Noise**: Dual-ADC Cross-Correlation Noise Measurement (Dropping noise floor below hardware limits).
 
 ### 🛠️ Extensions to Existing Widgets
 
-* **Spectrum Analyzer**: DAC Aliasing, Relay Bounce, Phase Noise Density, OOB/PWM Leakage, Automatic Peak Auto-Marker.
-* **Oscilloscope & SAM**: Digital Protocol Decoder, Inter-Channel Sync Drift Logger, Eye Diagram / Pattern Mode.
-* **Sound Quality Analyzer**: Listener Fatigue Index, PEAQ/ODG Score Estimator.
-* **Distortion Analyzer / Meter**: Thermal/Power Stress, EMI/RFI Fingerprinting, TIM/DIM Mode, **NEW: SMPTE/DIN/CCIF IMD Sweeps**.
-* **Transient Analyzer**: Clipping Recovery Time Automator, Click & Pop Classifier.
-* **Signal Generator**: Jitter/Glitch Injection, Binaural/Isochronic Tone Generator.
-* **Network Analyzer**: **NEW: Group Delay / Phase Delay Plotting**.
-* **Noise Profiler**: **NEW: AES17 Dynamic Range Measurement Automator**.
-* **Nonlinear Analyzer**: Artifact Sonification Engine.
-* **Frequency Counter**: Hardware Clock Signature Fingerprinting.
-* **Goniometer**: Multi-Band 3D Soundstage Width Mapper.
+* **Spectrum Analyzer**: DAC Aliasing, Phase Noise Density, OOB Leakage, Automatic Peak Auto-Marker.
+* **Oscilloscope & SAM**: Digital Protocol Decoder, Inter-Channel Sync Drift Logger, Eye Diagram, Frequency-Dependent Crosstalk/Leakage 3D Plot.
+* **Sound Quality / LUFS**: Listener Fatigue Index, PEAQ/ODG Score Estimator, Inter-Sample Peak Histogram & True Peak Clipping Profiler.
+* **Distortion Analyzer**: Thermal Stress, EMI/RFI Fingerprinting, TIM/DIM Mode, SMPTE/DIN/CCIF IMD Sweeps.
+* **Network Analyzer & Others**: Group/Phase Delay Plot, Click & Pop Classifier, Binaural Tones, AES17 DR Automator, Clock Fingerprinting, Multi-Band Goniometer.
 
 ---
 
@@ -55,15 +50,10 @@
 
 ## ❌ Cancelled / Not Needed (Duplicates & Out of Scope)
 
-* **Phase/Polarity Checker**: Dup (Oscilloscope / Transient).
-* **Multitone THD Analyzer**: Dup (Advanced Distortion Meter).
-* **Step Response / Hot-Tracking / Phase Matrix**: Out of scope / Dup.
-* **Slew Rate Calculator**: Narrow-band sound devices limit meaning.
-* **Wireless Audio Link Tester**: Dup (Continuity + Codec Analyzer).
-* **Multi-band Compressor Profiler**: Dup (Dynamics Processor).
-* **Cable Microphonics Logger**: Dup (Noise Profiler / Transient).
-* **Infinite-Resolution Sub-Noise Floor Excavator**: Dup (Lock-in Spectrum Finder / Boxcar Averager).
-* **4D Holographic Soundstage Time-Machine**: Dup (Waveform Loop Player / Goniometer).
+* **Duplicates of Oscilloscope / Transient**: Phase/Polarity Checker, Cable Microphonics Logger.
+* **Duplicates of Adv. Distortion / Spectrum**: Multitone THD Analyzer, Sub-Noise Floor Excavator.
+* **Duplicates of Transmission / Network**: Wireless Link Tester, Real-time Latency Monitor, Cable Directionality Tester.
+* **Out of Scope / Limited Meaning**: Step Response Matrix, Slew Rate Calculator, Multi-band Compressor Profiler, 4D Holographic Soundstage.
 
 ---
 
