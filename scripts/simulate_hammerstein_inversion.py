@@ -348,20 +348,34 @@ def main():
     R6 = R_array**6
     R8 = R_array**8
 
-    H1_raw_inv = raw_responses_inv[:, :, 0]
-    H1_base = np.sum(H1_raw_inv * R_array[:, np.newaxis], axis=0) / np.sum(R_array**2)
+    f5 = 16 * np.sum(F_corr_mapped[:, :, 4] * R4[:, np.newaxis], axis=0) / np.sum(R8)
+    f4 = 8 * np.sum(F_corr_mapped[:, :, 3] * R3[:, np.newaxis], axis=0) / np.sum(R6)
 
-    eps = 1e-3 * np.max(np.abs(H1_base))
-    G1 = np.conj(H1_base) / (np.abs(H1_base) ** 2 + eps**2)
+    F3_prime = F_corr_mapped[:, :, 2] - (5 / 16) * f5[np.newaxis, :] * R4[:, np.newaxis]
+    f3 = 4 * np.sum(F3_prime * R2[:, np.newaxis], axis=0) / np.sum(R4)
 
-    G5 = 16 * np.sum(F_corr_mapped[:, :, 4] * R4[:, np.newaxis], axis=0) / np.sum(R8)
-    G4 = 8 * np.sum(F_corr_mapped[:, :, 3] * R3[:, np.newaxis], axis=0) / np.sum(R6)
+    F2_prime = F_corr_mapped[:, :, 1] - 0.5 * f4[np.newaxis, :] * R3[:, np.newaxis]
+    f2 = 2 * np.sum(F2_prime * R_array[:, np.newaxis], axis=0) / np.sum(R2)
 
-    F3_prime = F_corr_mapped[:, :, 2] - (5 / 16) * G5[np.newaxis, :] * R4[:, np.newaxis]
-    G3 = 4 * np.sum(F3_prime * R2[:, np.newaxis], axis=0) / np.sum(R4)
+    # For the fundamental, F_corr = 0 (since x_corr = 1.0 * x_base + harmonics).
+    # So the target fundamental for the predistortion polynomial is 1.0!
+    F1_target = 1.0 * R_array[:, np.newaxis]
+    F1_prime = F1_target - 0.75 * f3[np.newaxis, :] * R3[:, np.newaxis] - 0.625 * f5[np.newaxis, :] * R5[:, np.newaxis]
+    f1 = np.sum(F1_prime * R_array[:, np.newaxis], axis=0) / np.sum(R_array**2)
 
-    F2_prime = F_corr_mapped[:, :, 1] - 0.5 * G4[np.newaxis, :] * R3[:, np.newaxis]
-    G2 = 2 * np.sum(F2_prime * R_array[:, np.newaxis], axis=0) / np.sum(R2)
+    # The inverse Hammerstein model G(x) needs to satisfy DUT(G(x)) = x.
+    # Since we found f(x) such that DUT(f(x)) = H1(x),
+    # we can construct G(x) = f( G1_ideal * x ).
+    # Let H1_base be the uncompensated H1 derived from the forward pass.
+    eps_inv = 1e-3 * np.max(np.abs(H1))
+    G1_ideal = np.conj(H1) / (np.abs(H1) ** 2 + eps_inv**2)
+
+    # G(x) = sum f_p * (G1_ideal * x)^p = sum (f_p * G1_ideal^p) x^p.
+    G1 = f1 * G1_ideal
+    G2 = f2 * (G1_ideal**2)
+    G3 = f3 * (G1_ideal**3)
+    G4 = f4 * (G1_ideal**4)
+    G5 = f5 * (G1_ideal**5)
 
     G_freqs = [G1, G2, G3, G4, G5]
     kernels_time_G = []
@@ -372,12 +386,12 @@ def main():
         G_p_clean = G_p.copy()
         G_p_clean[mask_nan] = 0.0
 
-        mags = np.abs(G_p_clean)
-        phases = np.unwrap(np.angle(G_p_clean))
+        import scipy.interpolate as interp
+        G_func_real = interp.interp1d(sorted_freqs, G_p_clean.real, kind="linear", bounds_error=False, fill_value=(G_p_clean.real[0], 0.0))
+        G_func_imag = interp.interp1d(sorted_freqs, G_p_clean.imag, kind="linear", bounds_error=False, fill_value=(0.0, 0.0))
 
-        mag_lin = np.interp(freqs_lin, sorted_freqs, mags, left=0.0, right=0.0)
-        phase_lin = np.interp(freqs_lin, sorted_freqs, phases, left=0.0, right=0.0)
-        G_lin = mag_lin * np.exp(1j * phase_lin)
+        G_lin = G_func_real(freqs_lin) + 1j * G_func_imag(freqs_lin)
+        G_lin[0] = G_lin[0].real
 
         # Apply gate_pre delay to keep inverse kernels causal
         phase_shift = np.exp(-1j * 2 * np.pi * freqs_lin * (gate_pre / fs))
