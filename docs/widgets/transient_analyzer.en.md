@@ -7,10 +7,6 @@
 A tool for detailed analysis of "transient sounds," such as instantaneous impact sounds or sounds whose frequency changes from moment to moment.
 It uses the **Continuous Wavelet Transform (CWT)** to visualize sounds while maintaining temporal resolution—capturing "when and at what pitch a sound occurred"—which is often difficult for standard FFT analysis to achieve.
 
-## ☕ Coffee Break: CWT vs FFT
-
-FFT uses a fixed time window, making it less effective for pinpointing transient sounds. Continuous Wavelet Transform (CWT) uses variable window lengths—short for high frequencies and long for low frequencies—providing optimal time resolution for sudden transients.
-
 ## Operation
 
 ### Recording

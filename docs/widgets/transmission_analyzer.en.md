@@ -12,12 +12,6 @@
 
 It supports both digital and analog signal paths—such as USB cables, Bluetooth connections, or physical analog circuits—measuring sampling synchronization delay, clock jitter, and signal integrity in real-time.
 
-## ☕ Coffee Break: Why Measure Audio with "PRBS"?
-
-While audio is typically measured with sine waves, complex digital issues like "occasional single-bit flips" are extremely difficult to detect with them.
-PRBS (Pseudo-Random Binary Sequence) sounds like white noise, but it's a special deterministic signal where every subsequent value is perfectly predictable.
-By comparing the received signal with the expected sequence, we can instantly and precisely evaluate digital integrity (bit-perfectness) and minute analog distortions.
-
 ## Key Features & Measurement Modes
 
 The Transmission Analyzer offers two distinct measurement modes tailored to different testing objectives.

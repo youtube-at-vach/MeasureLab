@@ -14,11 +14,6 @@ This widget provides the following analysis capabilities:
 * **Impulse Response Display:** Allows viewing the impulse response of each kernel in the time domain.
 * **Model Caching and Exporting:** Once a measurement is complete, the extracted model is automatically saved to the active model cache. This allows other modules (e.g., [Response Viewer](response_viewer.en.md)) to use it for advanced analysis or simulation. It can also be exported locally as a JSON file.
 
-## ☕ Coffee Break: What is the Hammerstein Model?
-
-The Hammerstein model represents distortion in audio equipment as a series structure: a "nonlinear element" (the part that distorts) followed by a "linear element" (a filter with frequency characteristics).
-This module uses this model to reverse-calculate and separate distortion components (kernels) from the measured signal.
-
 ## Settings
 
 ### SSS Parameters
