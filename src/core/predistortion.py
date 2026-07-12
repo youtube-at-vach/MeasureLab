@@ -115,7 +115,13 @@ class PredistortionManager:
             delta_corr = -Hn_vals / H1_nf_vals
             self.F_corr[n] += mu * delta_corr * fade_factors
             avg_dist = 20 * np.log10(np.mean(np.abs(Hn_vals)) + 1e-12)
-            logger.info("  - H%d average distortion level: %.1f dB", n, avg_dist)
+            avg_residual = 20 * np.log10(np.mean(np.abs(delta_corr)) + 1e-12)
+            logger.info(
+                "  - H%d average distortion level: %.1f dB, residual: %.1f dB",
+                n,
+                avg_dist,
+                avg_residual,
+            )
 
     def restore_true_response(
         self,

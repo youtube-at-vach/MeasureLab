@@ -50,13 +50,48 @@ class VirtualDUT:
         self.true_kernels = [self.h1_true, self.h2_true, self.h3_true, self.h4_true, self.h5_true]
 
     def process(self, x):
-        """Processes the input signal x(t) through the parallel Hammerstein system."""
+        """Processes the input signal x(t) through the parallel Hammerstein system.
+        Applies a DC cut filter (5Hz Highpass) to simulate AC coupling of real audio interfaces.
+        """
         y = np.zeros_like(x)
         for p, hp in enumerate(self.true_kernels):
             order = p + 1
             x_p = x**order
             y += scipy.signal.lfilter(hp, [1.0], x_p)
+
+        # 1st order IIR DC block filter (HPF at ~5 Hz)
+        alpha = np.exp(-2.0 * np.pi * 5.0 / self.fs)
+        y = scipy.signal.lfilter([1.0, -1.0], [1.0, -alpha], y)
         return y
+
+
+def calculate_fitted_mse(x_steady, z_steady, fs, f0):
+    """
+    Fits the fundamental components (sine and cosine at f0) and DC offset of z_steady to x_steady,
+    and returns the MSE of the remaining residual (harmonics and noise).
+    """
+    N = len(x_steady)
+    t = np.arange(N) / fs
+
+    # Design matrix for fundamental sine, cosine, and DC offset (constant)
+    A = np.column_stack((np.sin(2 * np.pi * f0 * t), np.cos(2 * np.pi * f0 * t), np.ones(N)))
+
+    # Solve for fundamental + DC coefficients in z_steady
+    coefs, _, _, _ = np.linalg.lstsq(A, z_steady, rcond=None)
+    z_fundamental = A @ coefs
+
+    # The residual is the non-linear distortion (harmonics + noise)
+    z_distortion = z_steady - z_fundamental
+
+    # For x_steady, get the reference residual (should be 0, but to match scaling)
+    coefs_x, _, _, _ = np.linalg.lstsq(A, x_steady, rcond=None)
+    x_fundamental = A @ coefs_x
+    x_distortion = x_steady - x_fundamental
+
+    # Print DC offset values
+    print(f"[DEBUG] DC offset: target={coefs_x[2]:.6f}, actual={coefs[2]:.6f}")
+
+    return np.mean((x_distortion - z_distortion) ** 2)
 
 
 def estimate_thd_and_spectrum(sig, fs, f0):
@@ -242,9 +277,26 @@ def main():
         phase_lin = np.interp(freqs_lin, sorted_freqs, phases, left=0.0, right=0.0)
         H_lin = mag_lin * np.exp(1j * phase_lin)
 
+        # Apply smooth frequency rolloff to avoid Gibbs phenomenon
+        f_hi = 20000.0
+        f_fade_out_start = 17000.0
+        fade_mask_in = (freqs_lin >= 10.0) & (freqs_lin < 20.0)
+        fade_mask_out = (freqs_lin >= f_fade_out_start) & (freqs_lin < f_hi)
+
+        H_lin_smooth = H_lin.copy()
+        if np.any(fade_mask_in):
+            progress_in = (freqs_lin[fade_mask_in] - 10.0) / 10.0
+            H_lin_smooth[fade_mask_in] *= 0.5 * (1.0 - np.cos(np.pi * progress_in))
+        H_lin_smooth[freqs_lin < 10.0] = 0.0
+
+        if np.any(fade_mask_out) and f_hi > f_fade_out_start:
+            progress_out = (freqs_lin[fade_mask_out] - f_fade_out_start) / (f_hi - f_fade_out_start)
+            H_lin_smooth[fade_mask_out] *= 0.5 * (1.0 + np.cos(np.pi * progress_out))
+        H_lin_smooth[freqs_lin >= f_hi] = 0.0
+
         # Shift back by gate_pre to construct a causal FIR kernel centered around gate_pre
         phase_shift = np.exp(-1j * 2 * np.pi * freqs_lin * (gate_pre / fs))
-        H_lin_shifted = H_lin * phase_shift
+        H_lin_shifted = H_lin_smooth * phase_shift
 
         h_full = np.fft.irfft(H_lin_shifted, n=N_fft)
         h_cropped = h_full[:N_kernel]
@@ -393,14 +445,64 @@ def main():
         G_lin = G_func_real(freqs_lin) + 1j * G_func_imag(freqs_lin)
         G_lin[0] = G_lin[0].real
 
+        # G1 low-frequency gain limiting (clamping) to prevent extreme low-frequency boost
+        if p == 0:
+            mag_g1 = np.abs(G_lin)
+            idx_1k = np.argmin(np.abs(freqs_lin - 1000.0))
+            ref_gain = mag_g1[idx_1k]
+            max_allowed_gain = ref_gain * 3.16  # Limit to approx +10 dB above 1kHz gain
+            over_mask = mag_g1 > max_allowed_gain
+            if np.any(over_mask):
+                G_lin[over_mask] = (G_lin[over_mask] / (mag_g1[over_mask] + 1e-12)) * max_allowed_gain
+
+        # Apply smooth frequency rolloff to avoid Gibbs phenomenon
+        n = p + 1
+        f_lo = 20.0 * n
+        f_fade_in_end = f_lo * 1.5
+
+        f_hi = 20000.0
+        f_fade_out_start = 17000.0
+
+        # For fundamental g1, use a fixed lower fade-in to cover very low frequencies
+        if n == 1:
+            f_lo = 10.0
+            f_fade_in_end = 20.0
+
+        fade_mask_in = (freqs_lin >= f_lo) & (freqs_lin < f_fade_in_end)
+        fade_mask_out = (freqs_lin >= f_fade_out_start) & (freqs_lin < f_hi)
+
+        G_lin_smooth = G_lin.copy()
+        if np.any(fade_mask_in) and f_fade_in_end > f_lo:
+            progress_in = (freqs_lin[fade_mask_in] - f_lo) / (f_fade_in_end - f_lo)
+            G_lin_smooth[fade_mask_in] *= 0.5 * (1.0 - np.cos(np.pi * progress_in))
+        G_lin_smooth[freqs_lin < f_lo] = 0.0
+
+        if np.any(fade_mask_out) and f_hi > f_fade_out_start:
+            progress_out = (freqs_lin[fade_mask_out] - f_fade_out_start) / (f_hi - f_fade_out_start)
+            G_lin_smooth[fade_mask_out] *= 0.5 * (1.0 + np.cos(np.pi * progress_out))
+        G_lin_smooth[freqs_lin >= f_hi] = 0.0
+
         # Apply gate_pre delay to keep inverse kernels causal
         phase_shift = np.exp(-1j * 2 * np.pi * freqs_lin * (gate_pre / fs))
-        G_lin_shifted = G_lin * phase_shift
+        G_lin_shifted = G_lin_smooth * phase_shift
 
         g_full = np.fft.irfft(G_lin_shifted, n=N_fft)
         g_cropped = g_full[:N_kernel]
         win = scipy.signal.windows.tukey(N_kernel, alpha=0.1)
         kernels_time_G.append(g_cropped * win)
+
+    # Plot time-domain inverse kernels to check for truncation issues
+    plt.figure(figsize=(10, 8))
+    for p in range(P):
+        plt.plot(kernels_time_G[p], label=f"g{p+1}")
+    plt.title("Time Domain Impulse Response of Inverse Kernels g(t)")
+    plt.xlabel("Samples")
+    plt.ylabel("Amplitude")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(args.output_dir, "g_kernels_time_domain.png"), dpi=150)
+    plt.close()
 
     # ---------------------------------------------------------
     # 4. Simulation Verification of F(G(x(t)))
@@ -424,6 +526,7 @@ def main():
         "time_domain": {"kernels": {f"h{p + 1}": kernels_time_G[p].tolist() for p in range(P)}},
     }
     applicator_G.load_model(model_data_G)
+    applicator_G.os_factor = 1  # Bypass oversampling to eliminate resample_poly transients
 
     # Apply predistortion filter G to test signal: y_predist(t) = G(x(t))
     applicator_G.reset_states()
@@ -434,17 +537,6 @@ def main():
 
     # 2. Output from compensated DUT: z_comp(t) = DUT(y_predist(t)) = DUT(G(x(t)))
     z_comp = dut.process(y_predist)
-
-    # Estimate THD and obtain spectrum
-    thd_raw, freqs_fft, fft_raw, harm_raw = estimate_thd_and_spectrum(z_raw, fs, f0)
-    thd_comp, _, fft_comp, harm_comp = estimate_thd_and_spectrum(z_comp, fs, f0)
-
-    print("\nSimulation Performance Results:")
-    print(f"  - Fundamental Frequency: {f0:.1f} Hz, Input Amplitude: {amp_test:.2f}")
-    print(f"  - THD (Uncompensated DUT): {thd_raw * 100:.4f}%")
-    print(f"  - THD (Compensated DUT):   {thd_comp * 100:.4f}%")
-    thd_improvement_db = 20 * np.log10(thd_raw / thd_comp)
-    print(f"  - Distortion Reduction:    {thd_improvement_db:.2f} dB")
 
     # Total delay should be around: gate_pre + measured_latency
     delay_total = gate_pre + int(np.round(measured_latency))
@@ -465,7 +557,7 @@ def main():
     z_raw_aligned = z_raw[delay_total - gate_pre :]  # Uncompensated only has DUT delay
     z_raw_aligned = z_raw_aligned[: len(x_raw_target)]
 
-    # Use only the steady-state region (excluding initial and final transient samples) to evaluate MSE
+    # Use only the steady-state region (excluding initial and final transient samples) to evaluate MSE & THD
     transient_margin = 2000
     x_comp_steady = x_comp_target[transient_margin:-transient_margin]
     x_raw_steady = x_raw_target[transient_margin:-transient_margin]
@@ -475,10 +567,44 @@ def main():
     mse_raw = np.mean((x_raw_steady - z_raw_steady) ** 2)
     mse_comp = np.mean((x_comp_steady - z_comp_steady) ** 2)
 
+    # Estimate THD and obtain spectrum
+    thd_raw, freqs_fft, fft_raw, harm_raw = estimate_thd_and_spectrum(z_raw_steady, fs, f0)
+    thd_comp, _, fft_comp, harm_comp = estimate_thd_and_spectrum(z_comp_steady, fs, f0)
+
+    # Debug: Check predistorted signal y_predist spectrum
+    y_predist_aligned = y_predist[gate_pre:]
+    y_predist_steady = y_predist_aligned[transient_margin:-transient_margin]
+    thd_predist, freqs_predist, fft_predist, _ = estimate_thd_and_spectrum(y_predist_steady, fs, f0)
+    print(f"[DEBUG] Predistorted signal y_predist THD (steady): {thd_predist * 100:.4f}%")
+    idx_900 = np.argmin(np.abs(freqs_predist - 900.0))
+    idx_1100 = np.argmin(np.abs(freqs_predist - 1100.0))
+    print(f"[DEBUG] y_predist (steady) level at 900Hz: {fft_predist[idx_900]:.1f} dB, 1100Hz: {fft_predist[idx_1100]:.1f} dB")
+
+    # Also check z_comp and z_raw level at 900Hz/1100Hz
+    idx_z_900 = np.argmin(np.abs(freqs_fft - 900.0))
+    idx_z_1100 = np.argmin(np.abs(freqs_fft - 1100.0))
+    print(f"[DEBUG] z_comp (steady) level at 900Hz: {fft_comp[idx_z_900]:.1f} dB, 1100Hz: {fft_comp[idx_z_1100]:.1f} dB")
+    print(f"[DEBUG] z_raw (steady) level at 900Hz: {fft_raw[idx_z_900]:.1f} dB, 1100Hz: {fft_raw[idx_z_1100]:.1f} dB")
+
+    print("\nSimulation Performance Results:")
+    print(f"  - Fundamental Frequency: {f0:.1f} Hz, Input Amplitude: {amp_test:.2f}")
+    print(f"  - THD (Uncompensated DUT): {thd_raw * 100:.4f}%")
+    print(f"  - THD (Compensated DUT):   {thd_comp * 100:.4f}%")
+    thd_improvement_db = 20 * np.log10(thd_raw / thd_comp)
+    print(f"  - Distortion Reduction:    {thd_improvement_db:.2f} dB")
+
     print(f"  - Time Domain Waveform MSE (Uncompensated): {mse_raw:.6f}")
     print(f"  - Time Domain Waveform MSE (Compensated):   {mse_comp:.6f}")
     mse_improvement_db = 10 * np.log10(mse_raw / mse_comp)
     print(f"  - Waveform Error Reduction:                 {mse_improvement_db:.2f} dB")
+
+    # Compute fitted MSE (removing fundamental gain/phase mismatch)
+    mse_raw_fit = calculate_fitted_mse(x_raw_steady, z_raw_steady, fs, f0)
+    mse_comp_fit = calculate_fitted_mse(x_comp_steady, z_comp_steady, fs, f0)
+    print(f"  - Distortion Waveform MSE (Uncompensated, Fitted): {mse_raw_fit:.8f}")
+    print(f"  - Distortion Waveform MSE (Compensated, Fitted):   {mse_comp_fit:.8f}")
+    mse_fit_improvement_db = 10 * np.log10(mse_raw_fit / mse_comp_fit)
+    print(f"  - Distortion Waveform Error Reduction (Fitted):    {mse_fit_improvement_db:.2f} dB")
 
     # ---------------------------------------------------------
     # 5. Generate Verification Plots
@@ -562,6 +688,9 @@ def main():
     print(f"  MSE_RAW={mse_raw:.8f}")
     print(f"  MSE_COMP={mse_comp:.8f}")
     print(f"  MSE_IMPROVEMENT_DB={mse_improvement_db:.2f}")
+    print(f"  MSE_RAW_FIT={mse_raw_fit:.8f}")
+    print(f"  MSE_COMP_FIT={mse_comp_fit:.8f}")
+    print(f"  MSE_FIT_IMPROVEMENT_DB={mse_fit_improvement_db:.2f}")
 
 
 if __name__ == "__main__":

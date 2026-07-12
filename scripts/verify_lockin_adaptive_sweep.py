@@ -364,9 +364,10 @@ class AdaptiveSSSWeeper:
             # Apply update with learning rate mu: F = F + mu * delta_corr
             self.F_corr[n] += self.mu * delta_corr
 
-            # Print average distortion level
+            # Print average distortion level and residual level
             avg_dist = 20 * np.log10(np.mean(np.abs(Hn_vals)) + 1e-12)
-            print(f"    - H{n} Average Level: {avg_dist:.1f} dB")
+            avg_residual = 20 * np.log10(np.mean(np.abs(delta_corr)) + 1e-12)
+            print(f"    - H{n} Average Level: {avg_dist:.1f} dB, residual: {avg_residual:.1f} dB")
 
     def measure_sweep_only(self, is_ascending):
         """Runs a single sweep playback/recording and processes results WITHOUT updating F_corr (offline simulation only)."""
