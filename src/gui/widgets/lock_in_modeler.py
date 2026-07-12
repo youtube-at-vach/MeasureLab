@@ -1520,7 +1520,7 @@ class LockInModelerWidget(QWidget):
             # Calculate inverse model (counter correction model) from F_corr
             valid_indices = np.where(self.block_counts > 0)[0]
             self.H_freqs = []
-            
+
             # Amplitude R (linear scale)
             R = self.module.output_amplitude if hasattr(self.module, "output_amplitude") else 1.0
             if R < 1e-12:
