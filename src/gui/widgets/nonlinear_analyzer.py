@@ -75,6 +75,10 @@ class PlayRecSession:
             self.is_complete = True
             self.completion_event.set()
 
+        if getattr(self.audio_engine, "offline_mode", False):
+            self.is_complete = True
+            self.completion_event.set()
+
     def stop(self):
         if self.callback_id is not None:
             self.audio_engine.unregister_callback(self.callback_id)
