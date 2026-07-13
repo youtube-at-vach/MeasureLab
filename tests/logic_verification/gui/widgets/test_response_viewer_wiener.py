@@ -125,3 +125,56 @@ def test_wiener_conversion_math(qtbot, mock_audio_engine, dummy_model_data):
 
     bar_items = [item for item in widget.wie_energy_plot.items() if isinstance(item, pg.BarGraphItem)]
     assert len(bar_items) == 5
+
+
+def test_model_metadata_details_display_and_fallback(qtbot, mock_audio_engine, dummy_model_data):
+    analyzer = ResponseViewer(mock_audio_engine)
+    widget = ResponseViewerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    # 1. Test older model format (Fallback)
+    # If module is 'Lock-in Modeler' and num_amplitudes > 1 -> classical_hammerstein / complex / als
+    older_lock_in_data = {
+        "metadata": {
+            "module": "Lock-in Modeler",
+            "sample_rate": 48000,
+            "num_amplitudes": 5,
+        },
+        "frequency_domain": dummy_model_data["frequency_domain"],
+        "time_domain": dummy_model_data["time_domain"],
+    }
+    widget.set_model_data(older_lock_in_data)
+    assert widget.lbl_structure.text() == "Classical Hammerstein"
+    assert widget.lbl_domain.text() == "Complex"
+    assert widget.lbl_algorithm.text() == "ALS"
+
+    # 2. Test older 'Nonlinear Analyzer' fallback
+    older_nonlinear_data = {
+        "metadata": {
+            "module": "Nonlinear Analyzer",
+            "sample_rate": 48000,
+        },
+        "frequency_domain": dummy_model_data["frequency_domain"],
+        "time_domain": dummy_model_data["time_domain"],
+    }
+    widget.set_model_data(older_nonlinear_data)
+    assert widget.lbl_structure.text() == "Generalized Hammerstein"
+    assert widget.lbl_domain.text() == "Real"
+    assert widget.lbl_algorithm.text() == "Chebyshev"
+
+    # 3. Test explicit metadata (New format)
+    new_format_data = {
+        "metadata": {
+            "module": "Lock-in Modeler",
+            "sample_rate": 48000,
+            "model_structure": "classical_hammerstein",
+            "model_domain": "complex",
+            "model_algorithm": "als",
+        },
+        "frequency_domain": dummy_model_data["frequency_domain"],
+        "time_domain": dummy_model_data["time_domain"],
+    }
+    widget.set_model_data(new_format_data)
+    assert widget.lbl_structure.text() == "Classical Hammerstein"
+    assert widget.lbl_domain.text() == "Complex"
+    assert widget.lbl_algorithm.text() == "ALS"

@@ -594,6 +594,9 @@ class NonlinearAnalyzer(MeasurementModule):
                     "P": len(separated_kernels_data),
                     "noise_floor_dbfs": noise_floor_dbfs,
                     "model_direction": "forward",
+                    "model_structure": "generalized_hammerstein",
+                    "model_domain": "real",
+                    "model_algorithm": "chebyshev",
                 },
                 "time_domain": {
                     "time_ms": time_ms,

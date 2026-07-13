@@ -1657,11 +1657,12 @@ class LockInModelerWidget(QWidget):
         if ref_max < 1e-12:
             ref_max = 1.0
 
+        is_ham = getattr(self, "is_hammerstein_mode", False)
         cache_data = {
             "metadata": {
                 "module": self.module.name,
                 "sample_rate": sample_rate,
-                "num_amplitudes": self.num_amplitudes if getattr(self, "is_hammerstein_mode", False) else 1,
+                "num_amplitudes": self.num_amplitudes if is_ham else 1,
                 "sweep_duration": self.module.sweep_duration,
                 "start_freq": self.module.start_freq,
                 "end_freq": self.module.end_freq,
@@ -1672,6 +1673,9 @@ class LockInModelerWidget(QWidget):
                 "P": len(self.kernels_time),
                 "noise_floor_dbfs": None,
                 "model_direction": "forward",
+                "model_structure": "classical_hammerstein" if is_ham else "generalized_hammerstein",
+                "model_domain": "complex" if is_ham else "real",
+                "model_algorithm": "als" if is_ham else "chebyshev",
             },
             "time_domain": {
                 "time_ms": self.time_ms,
