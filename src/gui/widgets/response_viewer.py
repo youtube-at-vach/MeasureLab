@@ -804,7 +804,7 @@ class ResponseViewerWidget(QWidget):
 
         # Fallbacks for compatibility with older JSONs or models that don't have these metadata keys
         module_name = self.model_metadata.get("module", "")
-        
+
         if not structure_val:
             if "Lock-in Modeler" in module_name:
                 num_amps = self.model_metadata.get("num_amplitudes", 1)
