@@ -148,7 +148,7 @@ class LockInModeler(MeasurementModule):
         self.signal_channel = 0  # 0: Left Input
         self.ref_channel = 1  # 1: Right Input
         self.input_mode = "XFER"  # "Single" or "XFER"
-        self.ref_phase_only = False
+        self.ref_phase_only = True
 
         # Engine & DSP State
         self.engine = None
@@ -506,7 +506,7 @@ class LockInModelerWidget(QWidget):
                 self.combo_in_mode.setCurrentIndex(1)
         r_form.addRow(tr("Input Mode:"), self.combo_in_mode)
 
-        self.chk_ref_phase_only = QCheckBox(tr("Use REF for Phase Lock Only (Absolute Level)"))
+        self.chk_ref_phase_only = QCheckBox(tr("REF Phase Lock Only (Absolute)"))
         self.chk_ref_phase_only.setChecked(getattr(self.module, "ref_phase_only", False))
         self.chk_ref_phase_only.toggled.connect(self.on_ref_phase_only_toggled)
         r_form.addRow("", self.chk_ref_phase_only)
