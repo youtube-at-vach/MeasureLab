@@ -471,15 +471,15 @@ def test_lock_in_modeler_predistortion_sweep_mode(qtbot, mock_audio_engine):
     np.testing.assert_allclose(h2_post_raw, 20 * np.log10(0.01), atol=1.0)
 
 
-def test_lock_in_modeler_inverse_hammerstein_mode(qtbot, mock_audio_engine):
+def test_lock_in_modeler_predistorted_hammerstein_mode(qtbot, mock_audio_engine):
     # 1. Initialize analyzer and widget
     analyzer = LockInModeler(mock_audio_engine)
     analyzer.latency_samples = 100.0
     widget = LockInModelerWidget(analyzer)
     qtbot.addWidget(widget)
 
-    # 2. Select Inverse Hammerstein mode
-    # Index 3: "Inverse Hammerstein"
+    # 2. Select Predistorted Hammerstein mode
+    # Index 3: "Nonlinear Model (Forward with Predistortion)"
     widget.combo_meas_mode.setCurrentIndex(3)
     assert not widget.spin_amp_steps.isHidden()
     assert not widget.spin_predistortion_iterations.isHidden()
@@ -493,7 +493,7 @@ def test_lock_in_modeler_inverse_hammerstein_mode(qtbot, mock_audio_engine):
     assert analyzer.is_running
     assert widget.is_predistortion_sweep_mode
     assert widget.is_hammerstein_mode
-    assert widget.is_inverse_hammerstein_mode
+    assert widget.is_predistorted_hammerstein_mode
     assert analyzer.averaging_count == 15  # 5 amplitudes * (2 iterations + 1)
 
     # Use the real engine but patch meas_freqs to match our dummy test sizes

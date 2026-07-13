@@ -163,7 +163,7 @@ class LockInModeler(MeasurementModule):
 
         # Predistortion state variables
         self.is_predistortion_sweep_mode = False
-        self.is_inverse_hammerstein_mode = False
+        self.is_predistorted_hammerstein_mode = False
         self.current_x_corr = None
         self.widget = None
 
@@ -203,7 +203,7 @@ class LockInModeler(MeasurementModule):
         self.engine.prepare_sweep()
         self.engine.set_latency(self.latency_samples)
 
-        if (getattr(self, "is_predistortion_sweep_mode", False) or getattr(self, "is_inverse_hammerstein_mode", False)) and self.widget:
+        if (getattr(self, "is_predistortion_sweep_mode", False) or getattr(self, "is_predistorted_hammerstein_mode", False)) and self.widget:
             self.widget.init_predistortion_sweep()
 
         frames = self.audio_engine.block_size
@@ -248,7 +248,7 @@ class LockInModeler(MeasurementModule):
                         ref_in[:, 0] = indata[:, 0]
 
                 # 1. Output Generation (Lightweight)
-                if (getattr(self, "is_predistortion_sweep_mode", False) or getattr(self, "is_inverse_hammerstein_mode", False)) and self.current_x_corr is not None:
+                if (getattr(self, "is_predistortion_sweep_mode", False) or getattr(self, "is_predistorted_hammerstein_mode", False)) and self.current_x_corr is not None:
                     start_samp = self.current_block_idx * frames
                     if start_samp < len(self.current_x_corr):
                         chunk = min(frames, len(self.current_x_corr) - start_samp)
@@ -361,7 +361,7 @@ class LockInModelerWidget(QWidget):
         self.combo_meas_mode.addItem(tr("Sweep Measurement (Default)"), "sweep")
         self.combo_meas_mode.addItem(tr("Nonlinear Model (Forward)"), "hammerstein")
         self.combo_meas_mode.addItem(tr("Predistortion Sweep"), "predistortion_sweep")
-        self.combo_meas_mode.addItem(tr("Nonlinear Model (Inverse)"), "inverse_hammerstein")
+        self.combo_meas_mode.addItem(tr("Nonlinear Model (Forward with Predistortion)"), "predistorted_hammerstein")
         self.combo_meas_mode.currentIndexChanged.connect(self.on_meas_mode_changed)
         form.addRow(tr("Sweep Mode:"), self.combo_meas_mode)
 
@@ -806,12 +806,12 @@ class LockInModelerWidget(QWidget):
                 self.module.signal_channel = 0
 
             mode = self.combo_meas_mode.currentData()
-            self.is_predistortion_sweep_mode = mode in {"predistortion_sweep", "inverse_hammerstein"}
+            self.is_predistortion_sweep_mode = mode in {"predistortion_sweep", "predistorted_hammerstein"}
             self.module.is_predistortion_sweep_mode = self.is_predistortion_sweep_mode
-            self.is_inverse_hammerstein_mode = mode == "inverse_hammerstein"
-            self.module.is_inverse_hammerstein_mode = self.is_inverse_hammerstein_mode
+            self.is_predistorted_hammerstein_mode = mode == "predistorted_hammerstein"
+            self.module.is_predistorted_hammerstein_mode = self.is_predistorted_hammerstein_mode
 
-            self.is_hammerstein_mode = mode in {"hammerstein", "inverse_hammerstein"}
+            self.is_hammerstein_mode = mode in {"hammerstein", "predistorted_hammerstein"}
             if self.is_hammerstein_mode:
                 self.num_amplitudes = self.spin_amp_steps.value()
                 max_amp_db = self.spin_amplitude.value()
@@ -821,7 +821,7 @@ class LockInModelerWidget(QWidget):
                 self.current_avg_idx = 0
 
                 self.module.output_amplitude = self.amplitudes[0]
-                if self.is_inverse_hammerstein_mode:
+                if self.is_predistorted_hammerstein_mode:
                     N_adapt = self.spin_predistortion_iterations.value()
                     self.module.averaging_count = self.num_amplitudes * (N_adapt + 1)
                     self.predistortion_managers = [None] * self.num_amplitudes
@@ -960,8 +960,8 @@ class LockInModelerWidget(QWidget):
 
     def on_meas_mode_changed(self, index):
         mode = self.combo_meas_mode.currentData()
-        is_ham = mode in {"hammerstein", "inverse_hammerstein"}
-        is_predist = mode in {"predistortion_sweep", "inverse_hammerstein"}
+        is_ham = mode in {"hammerstein", "predistorted_hammerstein"}
+        is_predist = mode in {"predistortion_sweep", "predistorted_hammerstein"}
 
         self.spin_amp_steps.setVisible(is_ham)
         label = self.settings_form.labelForField(self.spin_amp_steps)
@@ -1059,7 +1059,7 @@ class LockInModelerWidget(QWidget):
                     self.current_analysis_freq = latest_f_mid
 
                     if getattr(self, "is_hammerstein_mode", False):
-                        if getattr(self, "is_inverse_hammerstein_mode", False):
+                        if getattr(self, "is_predistorted_hammerstein_mode", False):
                             N_adapt = self.spin_predistortion_iterations.value()
                             amp_idx = sweep_idx // (N_adapt + 1)
                             iter_idx = sweep_idx % (N_adapt + 1)
@@ -1329,7 +1329,7 @@ class LockInModelerWidget(QWidget):
                     if cnt > 0:
                         avg_responses[amp_idx, block_idx] = self.raw_responses[amp_idx, block_idx] / cnt
 
-            if getattr(self, "is_inverse_hammerstein_mode", False):
+            if getattr(self, "is_predistorted_hammerstein_mode", False):
                 x_data = self.plot_freqs_array
                 for amp_idx in range(self.num_amplitudes):
                     predist_mgr = self.predistortion_managers[amp_idx]
@@ -1566,7 +1566,7 @@ class LockInModelerWidget(QWidget):
                 "g_ref": 1.0,
                 "P": len(self.kernels_time),
                 "noise_floor_dbfs": None,
-                "model_direction": "inverse" if getattr(self, "is_inverse_hammerstein_mode", False) else "forward",
+                "model_direction": "forward",
             },
             "time_domain": {
                 "time_ms": self.time_ms,
@@ -1629,7 +1629,7 @@ class LockInModelerWidget(QWidget):
                     self.module.current_sweep_idx += 1
                     self.module.current_block_idx = 0
 
-                    if getattr(self, "is_inverse_hammerstein_mode", False):
+                    if getattr(self, "is_predistorted_hammerstein_mode", False):
                         N_adapt = self.spin_predistortion_iterations.value()
                         amp_idx = sweep_idx // (N_adapt + 1)
                         iter_idx = sweep_idx % (N_adapt + 1)
@@ -1681,7 +1681,7 @@ class LockInModelerWidget(QWidget):
                     self.module.state = "PLAYING"
                 else:
                     # Final sweep finished, backup final predistortion manager if in inverse hammerstein mode
-                    if getattr(self, "is_inverse_hammerstein_mode", False):
+                    if getattr(self, "is_predistorted_hammerstein_mode", False):
                         self.process_remaining_queue()
                         import copy
                         self.predistortion_managers[-1] = copy.deepcopy(self.predistortion_manager)
