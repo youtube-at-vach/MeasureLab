@@ -19,7 +19,7 @@ When detached using the Detachable Wrapper, pressing the "Compact" button switch
 ### Reading the Screen
 
 * **Time/Div**: Changes the scale of the time axis (horizontal axis). Larger values display a longer duration (slower changes), while smaller values zoom in to show a shorter duration (faster changes).
-    * 💡 **Key Point**: Even when displaying a long duration, the system continues to record the waveform internally at high resolution. Therefore, you don't have to worry about the waveform becoming 'choppy' or losing its trigger sync.
+    * **Key Point**: Even when displaying a long duration, the system continues to record the waveform internally at high resolution. Therefore, the waveform will not appear coarse, and trigger sync will not be lost.
 * **Scale**: Changes the scale of the voltage axis (vertical axis).
     * **Left Scale / Right Scale**: Allows you to set the display magnification for each of the left and right channels. "1.0x" is the standard; setting it to a larger value, such as "2.0x", will vertically expand the display of the waveform.
 * **Channels**: Check boxes can be used to toggle the display/hide status of each channel (Left/Right).
