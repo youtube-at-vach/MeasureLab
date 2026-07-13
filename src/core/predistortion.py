@@ -18,6 +18,90 @@ class PredistortionManager:
         # Key: harmonic order (int), Value: complex array of size len(meas_freqs)
         self.F_corr = {n: np.zeros(len(meas_freqs), dtype=complex) for n in range(2, max_harmonic + 1)}
         self.H0_1: Optional[np.ndarray] = None  # To store the initial fundamental linear response
+        self.F_interpolators = {}
+        self.prepare_interpolators()
+
+    def prepare_interpolators(self):
+        """Pre-compiles interpolators for each harmonic correction envelope to optimize on-the-fly block generation."""
+        self.F_interpolators = {}
+        for n in range(2, self.max_harmonic + 1):
+            if n not in self.F_corr:
+                continue
+            self.F_interpolators[n] = (
+                interp1d(self.meas_freqs, self.F_corr[n].real, kind="linear", fill_value="extrapolate"),
+                interp1d(self.meas_freqs, self.F_corr[n].imag, kind="linear", fill_value="extrapolate")
+            )
+
+    def generate_predistorted_block(
+        self,
+        block_idx: int,
+        frames: int,
+        sample_rate: float,
+        sweep_samples: int,
+        k_param: float,
+        L_param: float,
+        amplitude: float,
+    ) -> np.ndarray:
+        """Generates a single block of the predistorted excitation sweep signal on-the-fly."""
+        start_samp = block_idx * frames
+        if start_samp >= sweep_samples:
+            return np.zeros(frames)
+
+        chunk = min(frames, sweep_samples - start_samp)
+        t_chunk = np.arange(start_samp, start_samp + chunk) / sample_rate
+        phase_chunk = 2.0 * np.pi * k_param * np.exp(t_chunk / L_param)
+
+        # Calculate instantaneous frequency trajectory for this block
+        if self.start_freq <= self.end_freq:
+            f1 = self.start_freq / 1.3
+        else:
+            f1 = self.start_freq * 1.15
+        f_inst = f1 * np.exp(t_chunk / L_param)
+
+        x_base = np.sin(phase_chunk)
+
+        # On-the-fly Tukey window chunk calculation matching the offline/Novak design
+        alpha = 0.02
+        width = int(np.floor(alpha * (sweep_samples - 1) / 2.0))
+        win_chunk = np.ones(chunk)
+        if width > 0:
+            n_global = np.arange(start_samp, start_samp + chunk)
+            # Fade-in region
+            fade_in_mask = n_global < width
+            if np.any(fade_in_mask):
+                win_chunk[fade_in_mask] = 0.5 * (1.0 - np.cos(np.pi * n_global[fade_in_mask] / width))
+            # Fade-out region
+            fade_out_mask = n_global >= (sweep_samples - width)
+            if np.any(fade_out_mask):
+                n_fade_out = np.clip(n_global[fade_out_mask], 0, sweep_samples - 1)
+                win_chunk[fade_out_mask] = 0.5 * (
+                    1.0 - np.cos(np.pi * (sweep_samples - 1 - n_fade_out) / width)
+                )
+
+        x_corr = x_base.copy()
+
+        # Ensure interpolators are prepared
+        if not hasattr(self, "F_interpolators") or not self.F_interpolators:
+            self.prepare_interpolators()
+
+        for n in range(2, self.max_harmonic + 1):
+            if n not in self.F_interpolators:
+                continue
+            interp_real, interp_imag = self.F_interpolators[n]
+            F_inst_vals = interp_real(f_inst) + 1j * interp_imag(f_inst)
+
+            mag_vals = np.abs(F_inst_vals)
+            phase_vals = np.angle(F_inst_vals)
+            x_corr += mag_vals * np.sin(n * phase_chunk + phase_vals)
+
+        sig_chunk = x_corr * amplitude * win_chunk
+
+        # Pad with silence if the chunk is smaller than frames
+        if chunk < frames:
+            res = np.zeros(frames)
+            res[:chunk] = sig_chunk
+            return res
+        return sig_chunk
 
     def generate_predistorted_sweep(
         self, sample_rate: float, sweep_samples: int, k_param: float, L_param: float, amplitude: float
@@ -116,6 +200,7 @@ class PredistortionManager:
             self.F_corr[n] += mu * delta_corr * fade_factors
             avg_dist = 20 * np.log10(np.mean(np.abs(Hn_vals)) + 1e-12)
             logger.info("  - H%d average distortion level: %.1f dB", n, avg_dist)
+        self.prepare_interpolators()
 
     def restore_true_response(
         self,

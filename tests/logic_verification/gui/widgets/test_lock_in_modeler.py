@@ -479,7 +479,7 @@ def test_lock_in_modeler_predistorted_hammerstein_mode(qtbot, mock_audio_engine)
     qtbot.addWidget(widget)
 
     # 2. Select Predistorted Hammerstein mode
-    # Index 3: "Nonlinear Model (Forward with Predistortion)"
+    # Index 3: "Nonlinear Model (Predistorted)"
     widget.combo_meas_mode.setCurrentIndex(3)
     assert not widget.spin_amp_steps.isHidden()
     assert not widget.spin_predistortion_iterations.isHidden()

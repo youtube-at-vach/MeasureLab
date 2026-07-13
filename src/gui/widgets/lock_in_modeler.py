@@ -248,17 +248,23 @@ class LockInModeler(MeasurementModule):
                         ref_in[:, 0] = indata[:, 0]
 
                 # 1. Output Generation (Lightweight)
-                if (getattr(self, "is_predistortion_sweep_mode", False) or getattr(self, "is_predistorted_hammerstein_mode", False)) and self.current_x_corr is not None:
-                    start_samp = self.current_block_idx * frames
-                    if start_samp < len(self.current_x_corr):
-                        chunk = min(frames, len(self.current_x_corr) - start_samp)
-                        sig_chunk = self.current_x_corr[start_samp : start_samp + chunk]
-                        for ch in range(outdata.shape[1]):
-                            outdata[:chunk, ch] = sig_chunk
-                        if chunk < frames:
-                            outdata[chunk:, :] = 0.0
-                    else:
-                        outdata.fill(0.0)
+                is_predist = (getattr(self, "is_predistortion_sweep_mode", False) or getattr(self, "is_predistorted_hammerstein_mode", False))
+                predist_mgr = None
+                if is_predist and getattr(self, "widget", None) is not None:
+                    predist_mgr = getattr(self.widget, "predistortion_manager", None)
+
+                if is_predist and predist_mgr is not None:
+                    sig_chunk = predist_mgr.generate_predistorted_block(
+                        block_idx=self.current_block_idx,
+                        frames=frames,
+                        sample_rate=self.engine.sample_rate,
+                        sweep_samples=self.engine.sweep_samples,
+                        k_param=self.engine.k_param,
+                        L_param=self.engine.L_param,
+                        amplitude=self.engine.output_amplitude
+                    )
+                    for ch in range(outdata.shape[1]):
+                        outdata[:, ch] = sig_chunk
                 else:
                     self.engine.generate_output_block(outdata, self.current_block_idx)
                 # 2. Add raw data to background processing queue
@@ -361,7 +367,7 @@ class LockInModelerWidget(QWidget):
         self.combo_meas_mode.addItem(tr("Sweep Measurement (Default)"), "sweep")
         self.combo_meas_mode.addItem(tr("Nonlinear Model (Forward)"), "hammerstein")
         self.combo_meas_mode.addItem(tr("Predistortion Sweep"), "predistortion_sweep")
-        self.combo_meas_mode.addItem(tr("Nonlinear Model (Forward with Predistortion)"), "predistorted_hammerstein")
+        self.combo_meas_mode.addItem(tr("Nonlinear Model (Predistorted)"), "predistorted_hammerstein")
         self.combo_meas_mode.currentIndexChanged.connect(self.on_meas_mode_changed)
         form.addRow(tr("Sweep Mode:"), self.combo_meas_mode)
 
@@ -988,7 +994,8 @@ class LockInModelerWidget(QWidget):
             meas_freqs=self.module.engine.meas_freqs,
             max_harmonic=self.module.max_harmonic
         )
-        self.module.current_x_corr = self.generate_predistorted_sweep()
+        self.predistortion_manager.prepare_interpolators()
+        self.module.current_x_corr = None
 
     def generate_predistorted_sweep(self):
         if self.predistortion_manager is None:
@@ -1653,7 +1660,6 @@ class LockInModelerWidget(QWidget):
                             # Same amplitude, just update predistortion and run next iteration
                             self.process_remaining_queue()
                             self.update_predistortion_correction(iter_idx)
-                            self.module.current_x_corr = self.generate_predistorted_sweep()
                             self.accumulated_results.fill(0.0j)
                             self.block_counts.fill(0)
                     else:
@@ -1671,8 +1677,6 @@ class LockInModelerWidget(QWidget):
                             self.process_remaining_queue()
                             # 2. Update predistortion correction
                             self.update_predistortion_correction(sweep_idx)
-                            # 3. Generate new predistorted sweep signal
-                            self.module.current_x_corr = self.generate_predistorted_sweep()
                             # 4. Clear accumulated results
                             self.accumulated_results.fill(0.0j)
                             self.block_counts.fill(0)
