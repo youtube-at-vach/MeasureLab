@@ -985,6 +985,7 @@ class LockInModelerWidget(QWidget):
             self.chk_show_restored.setVisible(is_predist)
 
         self.plot_tabs.setTabEnabled(1, True)
+        self.export_btn.setEnabled(False)
         self.redraw_plots()
 
     def init_predistortion_sweep(self):
@@ -1694,7 +1695,7 @@ class LockInModelerWidget(QWidget):
             },
         }
         set_active_model(cache_data)
-        self.export_btn.setEnabled(True)
+        self.export_btn.setEnabled(getattr(self, "is_hammerstein_mode", False))
 
         from PyQt6.QtWidgets import QApplication
         from src.gui.main_window import MainWindow
@@ -1705,6 +1706,10 @@ class LockInModelerWidget(QWidget):
                 break
 
     def on_export_model(self):
+        if not getattr(self, "is_hammerstein_mode", False):
+            QMessageBox.warning(self, tr("Export Failed"), tr("Model export is only supported for Nonlinear Model modes."))
+            return
+
         from src.core.hammerstein_model import get_active_model, has_active_model
 
         if not has_active_model():
