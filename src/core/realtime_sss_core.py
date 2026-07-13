@@ -27,6 +27,7 @@ class RealtimeSSSEngine:
         max_analysis_window: float | None = None,
         max_fitting_samples: int | None = None,
         min_analysis_window: float = 0.012,
+        ref_phase_only: bool = False,
     ):
         self.sample_rate = float(sample_rate)
         self.sweep_duration = float(sweep_duration)
@@ -37,6 +38,7 @@ class RealtimeSSSEngine:
         self.analysis_cycles = float(analysis_cycles)
         self.num_meas_points = int(num_meas_points)
         self.min_analysis_window = float(min_analysis_window)
+        self.ref_phase_only = bool(ref_phase_only)
 
         # Derive legacy settings dynamically from analysis_cycles if not provided
         min_freq = min(self.start_freq, self.end_freq)
@@ -311,12 +313,16 @@ class RealtimeSSSEngine:
         ref_u = ref_h1 / ref_mag
 
         corrected_results = []
+        ref_phase_only = getattr(self, "ref_phase_only", False)
         for p, value in enumerate(sig_results):
             k = p + 1
             ref_u_k = ref_u**k
             # Correct the phase rotation of order k using ref_u_k
-            # and scale amplitude relative to the fundamental magnitude
-            corrected = value * np.conj(ref_u_k) / ref_mag
+            # and scale amplitude relative to the fundamental magnitude if not ref_phase_only
+            if ref_phase_only:
+                corrected = value * np.conj(ref_u_k)
+            else:
+                corrected = value * np.conj(ref_u_k) / ref_mag
             corrected_results.append(corrected)
 
         return result_freq, corrected_results

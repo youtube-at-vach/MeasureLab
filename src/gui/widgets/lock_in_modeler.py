@@ -148,6 +148,7 @@ class LockInModeler(MeasurementModule):
         self.signal_channel = 0  # 0: Left Input
         self.ref_channel = 1  # 1: Right Input
         self.input_mode = "XFER"  # "Single" or "XFER"
+        self.ref_phase_only = False
 
         # Engine & DSP State
         self.engine = None
@@ -199,6 +200,7 @@ class LockInModeler(MeasurementModule):
             analysis_cycles=self.analysis_cycles,
             num_meas_points=self.num_meas_points,
             min_analysis_window=self.min_analysis_window,
+            ref_phase_only=self.ref_phase_only,
         )
         self.engine.prepare_sweep()
         self.engine.set_latency(self.latency_samples)
@@ -504,6 +506,14 @@ class LockInModelerWidget(QWidget):
                 self.combo_in_mode.setCurrentIndex(1)
         r_form.addRow(tr("Input Mode:"), self.combo_in_mode)
 
+        self.chk_ref_phase_only = QCheckBox(tr("Use REF for Phase Lock Only (Absolute Level)"))
+        self.chk_ref_phase_only.setChecked(getattr(self.module, "ref_phase_only", False))
+        self.chk_ref_phase_only.toggled.connect(self.on_ref_phase_only_toggled)
+        r_form.addRow("", self.chk_ref_phase_only)
+
+        self.combo_in_mode.currentIndexChanged.connect(self.on_in_mode_changed)
+        self.on_in_mode_changed(self.combo_in_mode.currentIndex())
+
         routing_tab.setLayout(r_form)
         left_tabs.addTab(routing_tab, tr("Routing"))
 
@@ -793,6 +803,7 @@ class LockInModelerWidget(QWidget):
             )
 
             # Sync input mode and channels
+            self.module.ref_phase_only = self.chk_ref_phase_only.isChecked()
             in_idx = self.combo_in_mode.currentIndex()
             if in_idx == 0:
                 self.module.input_mode = "Single"
@@ -959,10 +970,19 @@ class LockInModelerWidget(QWidget):
         self.spin_averaging.setEnabled(enabled)
         self.combo_output_ch.setEnabled(enabled)
         self.combo_in_mode.setEnabled(enabled)
+        self.chk_ref_phase_only.setEnabled(enabled and self.combo_in_mode.currentIndex() in {2, 3})
         self.spin_analysis_cycles.setEnabled(enabled)
         self.spin_meas_points.setEnabled(enabled)
         self.spin_min_window.setEnabled(enabled)
         self.chk_realtime_display.setEnabled(enabled)
+
+    def on_in_mode_changed(self, idx):
+        is_xfer = idx in {2, 3}
+        self.chk_ref_phase_only.setEnabled(is_xfer)
+
+    def on_ref_phase_only_toggled(self, checked):
+        self.module.ref_phase_only = checked
+        self.redraw_plots()
 
     def on_meas_mode_changed(self, index):
         mode = self.combo_meas_mode.currentData()
@@ -1178,7 +1198,7 @@ class LockInModelerWidget(QWidget):
             self.plot_mag.setLabel("left", tr("Relative Gain"), units="dB")
             self.plot_phase.setLabel("left", tr("Relative Phase"), units="deg")
         else:
-            if self.module.input_mode == "XFER":
+            if self.module.input_mode == "XFER" and not getattr(self.module, "ref_phase_only", False):
                 self.plot_mag.setLabel("left", tr("Gain"), units="dB")
             else:
                 self.plot_mag.setLabel("left", tr("Amplitude"), units="dBFS")
@@ -1381,7 +1401,7 @@ class LockInModelerWidget(QWidget):
                 amp = self.amplitudes[amp_idx]
                 for p in range(P):
                     val = avg_responses[amp_idx, :, p]
-                    if self.module.input_mode == "XFER":
+                    if self.module.input_mode == "XFER" and not getattr(self.module, "ref_phase_only", False):
                         Y_tilde[amp_idx, :, p] = val * amp * phase_corrections[p]
                     else:
                         Y_tilde[amp_idx, :, p] = val * phase_corrections[p]
@@ -1664,10 +1684,9 @@ class LockInModelerWidget(QWidget):
                 "module": self.module.name,
                 "sample_rate": sample_rate,
                 "num_amplitudes": self.num_amplitudes if is_ham else 1,
-                "sweep_duration": self.module.sweep_duration,
-                "start_freq": self.module.start_freq,
                 "end_freq": self.module.end_freq,
                 "input_mode": self.module.input_mode,
+                "ref_phase_only": getattr(self.module, "ref_phase_only", False),
                 "latency_sec": self.module.latency_samples / sample_rate,
                 "ref_max": float(ref_max),
                 "g_ref": 1.0,
