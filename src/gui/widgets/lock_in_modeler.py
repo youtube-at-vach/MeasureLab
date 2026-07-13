@@ -1692,6 +1692,7 @@ class LockInModelerWidget(QWidget):
                 "g_ref": 1.0,
                 "P": len(self.kernels_time),
                 "noise_floor_dbfs": None,
+                "amplitude_dbfs": self.spin_amplitude.value(),
                 "model_direction": "forward",
                 "model_structure": "classical_hammerstein" if is_ham else "generalized_hammerstein",
                 "model_domain": "complex" if is_ham else "real",

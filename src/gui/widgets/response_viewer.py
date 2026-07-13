@@ -891,6 +891,10 @@ class ResponseViewerWidget(QWidget):
 
         self.update_noise_floor_ui_states()
 
+        measured_amp = self.model_metadata.get("amplitude_dbfs", None)
+        if measured_amp is not None:
+            self.ref_amp = float(measured_amp)
+
         # Enable Groups
         self.map_group.setEnabled(True)
         self.ref_group.setEnabled(True)
@@ -1853,7 +1857,7 @@ class ResponseViewerWidget(QWidget):
             phase_val_deg = (phase_val_deg + 180) % 360 - 180
 
             labels["freq"].setText(f"{f_n:.1f} Hz")
-            labels["amp"].setText(f"{mag_val_db:.1f} dB")
+            labels["amp"].setText(f"{mag_val_db:.1f} dBFS")
             labels["phase"].setText(f"{phase_val_deg:+.1f}°")
 
             # Draw vertical bar for spectrum
