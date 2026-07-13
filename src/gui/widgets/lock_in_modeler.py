@@ -148,6 +148,7 @@ class LockInModeler(MeasurementModule):
         self.signal_channel = 0  # 0: Left Input
         self.ref_channel = 1  # 1: Right Input
         self.input_mode = "XFER"  # "Single" or "XFER"
+        self.ref_phase_only = True
 
         # Engine & DSP State
         self.engine = None
@@ -163,7 +164,7 @@ class LockInModeler(MeasurementModule):
 
         # Predistortion state variables
         self.is_predistortion_sweep_mode = False
-        self.is_inverse_hammerstein_mode = False
+        self.is_predistorted_hammerstein_mode = False
         self.current_x_corr = None
         self.widget = None
 
@@ -199,11 +200,12 @@ class LockInModeler(MeasurementModule):
             analysis_cycles=self.analysis_cycles,
             num_meas_points=self.num_meas_points,
             min_analysis_window=self.min_analysis_window,
+            ref_phase_only=self.ref_phase_only,
         )
         self.engine.prepare_sweep()
         self.engine.set_latency(self.latency_samples)
 
-        if (getattr(self, "is_predistortion_sweep_mode", False) or getattr(self, "is_inverse_hammerstein_mode", False)) and self.widget:
+        if (getattr(self, "is_predistortion_sweep_mode", False) or getattr(self, "is_predistorted_hammerstein_mode", False)) and self.widget:
             self.widget.init_predistortion_sweep()
 
         frames = self.audio_engine.block_size
@@ -248,17 +250,23 @@ class LockInModeler(MeasurementModule):
                         ref_in[:, 0] = indata[:, 0]
 
                 # 1. Output Generation (Lightweight)
-                if (getattr(self, "is_predistortion_sweep_mode", False) or getattr(self, "is_inverse_hammerstein_mode", False)) and self.current_x_corr is not None:
-                    start_samp = self.current_block_idx * frames
-                    if start_samp < len(self.current_x_corr):
-                        chunk = min(frames, len(self.current_x_corr) - start_samp)
-                        sig_chunk = self.current_x_corr[start_samp : start_samp + chunk]
-                        for ch in range(outdata.shape[1]):
-                            outdata[:chunk, ch] = sig_chunk
-                        if chunk < frames:
-                            outdata[chunk:, :] = 0.0
-                    else:
-                        outdata.fill(0.0)
+                is_predist = (getattr(self, "is_predistortion_sweep_mode", False) or getattr(self, "is_predistorted_hammerstein_mode", False))
+                predist_mgr = None
+                if is_predist and getattr(self, "widget", None) is not None:
+                    predist_mgr = getattr(self.widget, "predistortion_manager", None)
+
+                if is_predist and predist_mgr is not None:
+                    sig_chunk = predist_mgr.generate_predistorted_block(
+                        block_idx=self.current_block_idx,
+                        frames=frames,
+                        sample_rate=self.engine.sample_rate,
+                        sweep_samples=self.engine.sweep_samples,
+                        k_param=self.engine.k_param,
+                        L_param=self.engine.L_param,
+                        amplitude=self.engine.output_amplitude
+                    )
+                    for ch in range(outdata.shape[1]):
+                        outdata[:, ch] = sig_chunk
                 else:
                     self.engine.generate_output_block(outdata, self.current_block_idx)
                 # 2. Add raw data to background processing queue
@@ -361,7 +369,7 @@ class LockInModelerWidget(QWidget):
         self.combo_meas_mode.addItem(tr("Sweep Measurement (Default)"), "sweep")
         self.combo_meas_mode.addItem(tr("Nonlinear Model (Forward)"), "hammerstein")
         self.combo_meas_mode.addItem(tr("Predistortion Sweep"), "predistortion_sweep")
-        self.combo_meas_mode.addItem(tr("Nonlinear Model (Inverse)"), "inverse_hammerstein")
+        self.combo_meas_mode.addItem(tr("Nonlinear Model (Predistorted)"), "predistorted_hammerstein")
         self.combo_meas_mode.currentIndexChanged.connect(self.on_meas_mode_changed)
         form.addRow(tr("Sweep Mode:"), self.combo_meas_mode)
 
@@ -497,6 +505,14 @@ class LockInModelerWidget(QWidget):
             else:
                 self.combo_in_mode.setCurrentIndex(1)
         r_form.addRow(tr("Input Mode:"), self.combo_in_mode)
+
+        self.chk_ref_phase_only = QCheckBox(tr("REF Phase Lock Only (Absolute)"))
+        self.chk_ref_phase_only.setChecked(getattr(self.module, "ref_phase_only", False))
+        self.chk_ref_phase_only.toggled.connect(self.on_ref_phase_only_toggled)
+        r_form.addRow("", self.chk_ref_phase_only)
+
+        self.combo_in_mode.currentIndexChanged.connect(self.on_in_mode_changed)
+        self.on_in_mode_changed(self.combo_in_mode.currentIndex())
 
         routing_tab.setLayout(r_form)
         left_tabs.addTab(routing_tab, tr("Routing"))
@@ -787,6 +803,7 @@ class LockInModelerWidget(QWidget):
             )
 
             # Sync input mode and channels
+            self.module.ref_phase_only = self.chk_ref_phase_only.isChecked()
             in_idx = self.combo_in_mode.currentIndex()
             if in_idx == 0:
                 self.module.input_mode = "Single"
@@ -806,12 +823,12 @@ class LockInModelerWidget(QWidget):
                 self.module.signal_channel = 0
 
             mode = self.combo_meas_mode.currentData()
-            self.is_predistortion_sweep_mode = mode in {"predistortion_sweep", "inverse_hammerstein"}
+            self.is_predistortion_sweep_mode = mode in {"predistortion_sweep", "predistorted_hammerstein"}
             self.module.is_predistortion_sweep_mode = self.is_predistortion_sweep_mode
-            self.is_inverse_hammerstein_mode = mode == "inverse_hammerstein"
-            self.module.is_inverse_hammerstein_mode = self.is_inverse_hammerstein_mode
+            self.is_predistorted_hammerstein_mode = mode == "predistorted_hammerstein"
+            self.module.is_predistorted_hammerstein_mode = self.is_predistorted_hammerstein_mode
 
-            self.is_hammerstein_mode = mode in {"hammerstein", "inverse_hammerstein"}
+            self.is_hammerstein_mode = mode in {"hammerstein", "predistorted_hammerstein"}
             if self.is_hammerstein_mode:
                 self.num_amplitudes = self.spin_amp_steps.value()
                 max_amp_db = self.spin_amplitude.value()
@@ -821,7 +838,7 @@ class LockInModelerWidget(QWidget):
                 self.current_avg_idx = 0
 
                 self.module.output_amplitude = self.amplitudes[0]
-                if self.is_inverse_hammerstein_mode:
+                if self.is_predistorted_hammerstein_mode:
                     N_adapt = self.spin_predistortion_iterations.value()
                     self.module.averaging_count = self.num_amplitudes * (N_adapt + 1)
                     self.predistortion_managers = [None] * self.num_amplitudes
@@ -953,15 +970,24 @@ class LockInModelerWidget(QWidget):
         self.spin_averaging.setEnabled(enabled)
         self.combo_output_ch.setEnabled(enabled)
         self.combo_in_mode.setEnabled(enabled)
+        self.chk_ref_phase_only.setEnabled(enabled and self.combo_in_mode.currentIndex() in {2, 3})
         self.spin_analysis_cycles.setEnabled(enabled)
         self.spin_meas_points.setEnabled(enabled)
         self.spin_min_window.setEnabled(enabled)
         self.chk_realtime_display.setEnabled(enabled)
 
+    def on_in_mode_changed(self, idx):
+        is_xfer = idx in {2, 3}
+        self.chk_ref_phase_only.setEnabled(is_xfer)
+
+    def on_ref_phase_only_toggled(self, checked):
+        self.module.ref_phase_only = checked
+        self.redraw_plots()
+
     def on_meas_mode_changed(self, index):
         mode = self.combo_meas_mode.currentData()
-        is_ham = mode in {"hammerstein", "inverse_hammerstein"}
-        is_predist = mode in {"predistortion_sweep", "inverse_hammerstein"}
+        is_ham = mode in {"hammerstein", "predistorted_hammerstein"}
+        is_predist = mode in {"predistortion_sweep", "predistorted_hammerstein"}
 
         self.spin_amp_steps.setVisible(is_ham)
         label = self.settings_form.labelForField(self.spin_amp_steps)
@@ -979,6 +1005,7 @@ class LockInModelerWidget(QWidget):
             self.chk_show_restored.setVisible(is_predist)
 
         self.plot_tabs.setTabEnabled(1, True)
+        self.export_btn.setEnabled(False)
         self.redraw_plots()
 
     def init_predistortion_sweep(self):
@@ -988,7 +1015,8 @@ class LockInModelerWidget(QWidget):
             meas_freqs=self.module.engine.meas_freqs,
             max_harmonic=self.module.max_harmonic
         )
-        self.module.current_x_corr = self.generate_predistorted_sweep()
+        self.predistortion_manager.prepare_interpolators()
+        self.module.current_x_corr = None
 
     def generate_predistorted_sweep(self):
         if self.predistortion_manager is None:
@@ -1059,7 +1087,7 @@ class LockInModelerWidget(QWidget):
                     self.current_analysis_freq = latest_f_mid
 
                     if getattr(self, "is_hammerstein_mode", False):
-                        if getattr(self, "is_inverse_hammerstein_mode", False):
+                        if getattr(self, "is_predistorted_hammerstein_mode", False):
                             N_adapt = self.spin_predistortion_iterations.value()
                             amp_idx = sweep_idx // (N_adapt + 1)
                             iter_idx = sweep_idx % (N_adapt + 1)
@@ -1170,7 +1198,7 @@ class LockInModelerWidget(QWidget):
             self.plot_mag.setLabel("left", tr("Relative Gain"), units="dB")
             self.plot_phase.setLabel("left", tr("Relative Phase"), units="deg")
         else:
-            if self.module.input_mode == "XFER":
+            if self.module.input_mode == "XFER" and not getattr(self.module, "ref_phase_only", False):
                 self.plot_mag.setLabel("left", tr("Gain"), units="dB")
             else:
                 self.plot_mag.setLabel("left", tr("Amplitude"), units="dBFS")
@@ -1320,6 +1348,16 @@ class LockInModelerWidget(QWidget):
         P = self.module.max_harmonic
         max_blocks = self.max_blocks
 
+        plot_freqs = self.plot_freqs_array
+        valid_idx = np.where(plot_freqs > 0)[0]
+        if len(valid_idx) < 2:
+            self.H_freqs = [np.zeros(max_blocks, dtype=complex) for _ in range(P)]
+            self.kernels_time = [np.zeros(int(0.02 * sample_rate)) for _ in range(P)]
+            return
+
+        sort_idx = np.argsort(plot_freqs[valid_idx])
+        sorted_freqs = plot_freqs[valid_idx][sort_idx]
+
         if getattr(self, "is_hammerstein_mode", False):
             # 1. Compute averaged responses for each amplitude
             avg_responses = np.zeros_like(self.raw_responses)
@@ -1329,8 +1367,8 @@ class LockInModelerWidget(QWidget):
                     if cnt > 0:
                         avg_responses[amp_idx, block_idx] = self.raw_responses[amp_idx, block_idx] / cnt
 
-            if getattr(self, "is_inverse_hammerstein_mode", False):
-                x_data = self.plot_freqs_array
+            if getattr(self, "is_predistorted_hammerstein_mode", False):
+                x_data = plot_freqs
                 for amp_idx in range(self.num_amplitudes):
                     predist_mgr = self.predistortion_managers[amp_idx]
                     if predist_mgr is None:
@@ -1353,115 +1391,203 @@ class LockInModelerWidget(QWidget):
                             freq_base=freq_base
                         )
 
-            # 2. Scale responses by amplitude and apply phase correction
-            # To compensate for sine expansion phase offsets:
-            # H1: 1.0, H2: 1j, H3: -1.0, H4: -1j, H5: 1.0
+            # 2. Setup Y_tilde and freqs_valid for ALS fitting
+            freqs_valid = plot_freqs[valid_idx]
+
+            # Align phase offsets and apply scale adjustments
             phase_corrections = [(1j) ** p for p in range(P)]
-            R_array = self.amplitudes
-            g_scaled = np.zeros_like(avg_responses)
+            Y_tilde = np.zeros_like(avg_responses, dtype=complex)
             for amp_idx in range(self.num_amplitudes):
-                amp = R_array[amp_idx]
+                amp = self.amplitudes[amp_idx]
                 for p in range(P):
                     val = avg_responses[amp_idx, :, p]
-                    if self.module.input_mode == "XFER":
-                        g_scaled[amp_idx, :, p] = val * amp * phase_corrections[p]
+                    if self.module.input_mode == "XFER" and not getattr(self.module, "ref_phase_only", False):
+                        Y_tilde[amp_idx, :, p] = val * amp * phase_corrections[p]
                     else:
-                        g_scaled[amp_idx, :, p] = val * phase_corrections[p]
+                        Y_tilde[amp_idx, :, p] = val * phase_corrections[p]
 
-            g1 = g_scaled[:, :, 0]
-            g2 = g_scaled[:, :, 1] if P >= 2 else np.zeros_like(g1)
-            g3 = g_scaled[:, :, 2] if P >= 3 else np.zeros_like(g1)
-            g4 = g_scaled[:, :, 3] if P >= 4 else np.zeros_like(g1)
-            g5 = g_scaled[:, :, 4] if P >= 5 else np.zeros_like(g1)
+            # ALS estimation for complex Hammerstein model
+            K = self.num_amplitudes
+            J = len(valid_idx)
 
-            R2 = R_array**2
-            R3 = R_array**3
-            R4 = R_array**4
-            R5 = R_array**5
+            F_est = np.zeros((K, P))
+            H_est = np.zeros((J, P), dtype=complex)
 
-            H5 = (
-                16 * np.sum(g5 * R5[:, np.newaxis], axis=0) / np.sum(R_array**10)
-                if P >= 5
-                else np.zeros(max_blocks, dtype=complex)
-            )
-            H4 = (
-                8 * np.sum(g4 * R4[:, np.newaxis], axis=0) / np.sum(R_array**8)
-                if P >= 4
-                else np.zeros(max_blocks, dtype=complex)
-            )
+            Y_tilde_valid = Y_tilde[:, valid_idx, :]
 
-            if P >= 5:
-                g3_prime = g3 - (5 / 16) * H5[np.newaxis, :] * R5[:, np.newaxis]
+            for p in range(P):
+                m = p + 1
+                F_m = self.amplitudes ** m
+
+                for _ in range(15):
+                    denom_F = np.sum(F_m ** 2)
+                    if denom_F > 1e-12:
+                        H_m = np.sum(Y_tilde_valid[:, :, p] * F_m[:, np.newaxis], axis=0) / denom_F
+                    else:
+                        H_m = np.zeros(J, dtype=complex)
+
+                    denom_H = np.sum(np.abs(H_m) ** 2)
+                    if denom_H > 1e-12:
+                        F_m = np.real(np.sum(Y_tilde_valid[:, :, p] * np.conj(H_m)[np.newaxis, :], axis=1)) / denom_H
+                    else:
+                        F_m = np.zeros(K)
+
+                    norm = np.sqrt(np.sum(F_m ** 2))
+                    if norm > 1e-12:
+                        F_m = F_m / norm
+                        H_m = H_m * norm
+
+                F_est[:, p] = F_m
+                H_est[:, p] = H_m
+
+            # 3. Align scales (alphas) of different harmonics
+            alphas = np.ones(P)
+            alphas[0] = 1.0
+
+            h1_mags = np.abs(H_est[:, 0])
+            h1_phases = np.unwrap(np.angle(H_est[:, 0]))
+
+            from scipy.interpolate import interp1d
+            interp_mag = interp1d(sorted_freqs, h1_mags[sort_idx], bounds_error=False, fill_value=np.nan)
+            interp_phase = interp1d(sorted_freqs, h1_phases[sort_idx], bounds_error=False, fill_value=np.nan)
+
+            def eval_h1(f):
+                m_val = interp_mag(f)
+                p_val = interp_phase(f)
+                return m_val * np.exp(1j * p_val)
+
+            for p in range(1, P):
+                m = p + 1
+                valid_freq_mask = (freqs_valid * m <= np.max(freqs_valid)) & (freqs_valid * m >= np.min(freqs_valid))
+                if np.any(valid_freq_mask):
+                    f_eval = freqs_valid[valid_freq_mask]
+                    h_m_vals = H_est[valid_freq_mask, p]
+                    h1_ref_vals = eval_h1(f_eval * m)
+
+                    mask = ~np.isnan(h1_ref_vals) & (np.abs(h1_ref_vals) > 1e-10)
+                    if np.any(mask):
+                        ratios = h_m_vals[mask] / h1_ref_vals[mask]
+                        median_ratio = np.median(np.real(ratios))
+                        if not np.isnan(median_ratio) and np.abs(median_ratio) > 1e-12:
+                            alphas[p] = median_ratio
+
+            F_scaled = np.zeros_like(F_est)
+            H_scaled = np.zeros_like(H_est, dtype=complex)
+            for p in range(P):
+                F_scaled[:, p] = F_est[:, p] * alphas[p]
+                H_scaled[:, p] = H_est[:, p] / alphas[p]
+
+            # 4. Extract polynomial coefficients c_n via Chebyshev relation inversion
+            c = np.zeros(P + 1)
+
+            denom5 = np.sum(self.amplitudes**10)
+            denom4 = np.sum(self.amplitudes**8)
+            denom3 = np.sum(self.amplitudes**6)
+            denom2 = np.sum(self.amplitudes**4)
+            denom1 = np.sum(self.amplitudes**2)
+
+            if P >= 5 and denom5 > 1e-12:
+                c[5] = 16.0 * np.sum(F_scaled[:, 4] * (self.amplitudes**5)) / denom5
+            if P >= 4 and denom4 > 1e-12:
+                c[4] = 8.0 * np.sum(F_scaled[:, 3] * (self.amplitudes**4)) / denom4
+            if P >= 3 and denom3 > 1e-12:
+                F3_prime = F_scaled[:, 2] - (5.0/16.0) * c[5] * (self.amplitudes**5) if P >= 5 else F_scaled[:, 2]
+                c[3] = 4.0 * np.sum(F3_prime * (self.amplitudes**3)) / denom3
+            if P >= 2 and denom2 > 1e-12:
+                F2_prime = F_scaled[:, 1] - 0.5 * c[4] * (self.amplitudes**4) if P >= 4 else F_scaled[:, 1]
+                c[2] = 2.0 * np.sum(F2_prime * (self.amplitudes**2)) / denom2
+            if denom1 > 1e-12:
+                F1_prime = F_scaled[:, 0]
+                if P >= 3:
+                    F1_prime = F1_prime - 0.75 * c[3] * (self.amplitudes**3)
+                if P >= 5:
+                    F1_prime = F1_prime - 0.625 * c[5] * (self.amplitudes**5)
+                c[1] = np.sum(F1_prime * self.amplitudes) / denom1
+
+            c_1 = c[1]
+            c_norm = c.copy()
+            if np.abs(c_1) > 1e-12:
+                c_norm = c / c_1
             else:
-                g3_prime = g3
-            H3 = (
-                4 * np.sum(g3_prime * R3[:, np.newaxis], axis=0) / np.sum(R_array**6)
-                if P >= 3
-                else np.zeros(max_blocks, dtype=complex)
-            )
+                c_norm[1] = 1.0
+                c_1 = 1.0
 
-            if P >= 4:
-                g2_prime = g2 - 0.5 * H4[np.newaxis, :] * R4[:, np.newaxis]
-            else:
-                g2_prime = g2
-            H2 = (
-                2 * np.sum(g2_prime * R2[:, np.newaxis], axis=0) / np.sum(R_array**4)
-                if P >= 2
-                else np.zeros(max_blocks, dtype=complex)
-            )
+            # 5. Synthesize single unified H(f)
+            all_freqs = []
+            all_H_vals = []
+            for p in range(P):
+                m = p + 1
+                all_freqs.extend(freqs_valid * m)
+                all_H_vals.extend(H_scaled[:, p] * c_1)
 
-            g1_prime = g1.copy()
-            if P >= 3:
-                g1_prime -= 0.75 * H3[np.newaxis, :] * R3[:, np.newaxis]
-            if P >= 5:
-                g1_prime -= 0.625 * H5[np.newaxis, :] * R5[:, np.newaxis]
-            H1 = np.sum(g1_prime * R_array[:, np.newaxis], axis=0) / np.sum(R_array**2)
+            all_freqs = np.array(all_freqs)
+            all_H_vals = np.array(all_H_vals)
 
-            self.H_freqs = [H1, H2, H3, H4, H5][:P]
+            sort_all = np.argsort(all_freqs)
+            sorted_all_freqs = all_freqs[sort_all]
+            sorted_all_H_vals = all_H_vals[sort_all]
+
+            # 6. Reconstruct the multi-harmonic freqs in self.H_freqs
+            mags = np.abs(sorted_all_H_vals)
+            phases = np.unwrap(np.angle(sorted_all_H_vals))
+
+            self.H_freqs = []
+            for p in range(P):
+                m = p + 1
+                f_target = sorted_freqs * m
+
+                # Polar interpolation to prevent phase wrapping issues
+                mag_mapped = np.interp(f_target, sorted_all_freqs, mags, left=np.nan, right=np.nan)
+                phase_mapped = np.interp(f_target, sorted_all_freqs, phases, left=np.nan, right=np.nan)
+
+                c_p = c_norm[m]
+                H_p = c_p * mag_mapped * np.exp(1j * phase_mapped)
+
+                # Butterworth LPF to higher orders
+                if p >= 1:
+                    f_cut = min(20000.0, 1.15 * sample_rate / 2)
+                    lpf = 1.0 / np.sqrt(1.0 + (sorted_freqs / f_cut) ** 16)
+                    H_p = H_p * lpf
+
+                # Pad back to max_blocks length
+                H_full = np.zeros(max_blocks, dtype=complex)
+                H_full[valid_idx[sort_idx]] = H_p
+                self.H_freqs.append(H_full)
         else:
             # Standard Sweep Mode (Non-Hammerstein)
             # Directly use accumulated_results and apply phase corrections
-            valid_indices = np.where(self.block_counts > 0)[0]
             self.H_freqs = []
             phase_corrections = [(1j) ** p for p in range(P)]
             for p in range(P):
                 H_p = np.zeros(max_blocks, dtype=complex)
-                if len(valid_indices) > 0:
-                    counts = self.block_counts[valid_indices]
-                    avg_complex = self.accumulated_results[valid_indices, p] / counts
+                counts = self.block_counts[valid_idx]
+                avg_complex = self.accumulated_results[valid_idx, p] / counts
 
-                    if self.is_predistortion_sweep_mode and self.chk_show_restored.isChecked() and p >= 1:
-                        harmonic_order = p + 1
-                        x_data = self.plot_freqs_array[valid_indices]
-                        if self.predistortion_manager.H0_1 is not None:
-                            H1_base = self.predistortion_manager.H0_1
-                            freq_base = self.module.engine.meas_freqs
-                        else:
-                            H1_base = self.accumulated_results[valid_indices, 0] / counts
-                            freq_base = x_data
+                if self.is_predistortion_sweep_mode and self.chk_show_restored.isChecked() and p >= 1:
+                    harmonic_order = p + 1
+                    if self.predistortion_manager.H0_1 is not None:
+                        H1_base = self.predistortion_manager.H0_1
+                        freq_base = self.module.engine.meas_freqs
+                    else:
+                        H1_base = self.accumulated_results[valid_idx, 0] / counts
+                        freq_base = sorted_freqs
 
-                        avg_complex = self.predistortion_manager.restore_true_response(
-                            harmonic_order=harmonic_order,
-                            target_freqs=x_data,
-                            measured_complex=avg_complex,
-                            H1_base=H1_base,
-                            freq_base=freq_base
-                        )
+                    avg_complex = self.predistortion_manager.restore_true_response(
+                        harmonic_order=harmonic_order,
+                        target_freqs=sorted_freqs,
+                        measured_complex=avg_complex,
+                        H1_base=H1_base,
+                        freq_base=freq_base
+                    )
 
-                    H_p[valid_indices] = avg_complex * phase_corrections[p]
+                H_p[valid_idx] = avg_complex * phase_corrections[p]
                 self.H_freqs.append(H_p)
 
-        # 3. Apply frequency mapping to map H_p(f_0) measured at fundamental f_0 to physical harmonic frequency p * f_0
-        # H_p_mapped(f) = H_p_raw(f / p)
-        plot_freqs = self.plot_freqs_array
-        valid_idx = np.where(plot_freqs > 0)[0]
-        if len(valid_idx) > 0:
-            sort_idx = np.argsort(plot_freqs[valid_idx])
-            sorted_freqs = plot_freqs[valid_idx][sort_idx]
-
+            # 3. Apply frequency mapping to map H_p(f_0) measured at fundamental f_0 to physical harmonic frequency p * f_0
+            # H_p_mapped(f) = H_p_raw(f / p)
             H_mapped_list = []
             for p in range(len(self.H_freqs)):
-                H_raw = self.H_freqs[p][valid_idx][sort_idx]
+                H_raw = self.H_freqs[p][valid_idx[sort_idx]]
                 f_lookups = sorted_freqs / (p + 1)
 
                 # Polar Interpolation to prevent phase distortion
@@ -1552,21 +1678,25 @@ class LockInModelerWidget(QWidget):
         if ref_max < 1e-12:
             ref_max = 1.0
 
+        is_ham = getattr(self, "is_hammerstein_mode", False)
         cache_data = {
             "metadata": {
                 "module": self.module.name,
                 "sample_rate": sample_rate,
-                "num_amplitudes": self.num_amplitudes if getattr(self, "is_hammerstein_mode", False) else 1,
-                "sweep_duration": self.module.sweep_duration,
-                "start_freq": self.module.start_freq,
+                "num_amplitudes": self.num_amplitudes if is_ham else 1,
                 "end_freq": self.module.end_freq,
                 "input_mode": self.module.input_mode,
+                "ref_phase_only": getattr(self.module, "ref_phase_only", False),
                 "latency_sec": self.module.latency_samples / sample_rate,
                 "ref_max": float(ref_max),
                 "g_ref": 1.0,
                 "P": len(self.kernels_time),
                 "noise_floor_dbfs": None,
-                "model_direction": "inverse" if getattr(self, "is_inverse_hammerstein_mode", False) else "forward",
+                "amplitude_dbfs": self.spin_amplitude.value(),
+                "model_direction": "forward",
+                "model_structure": "classical_hammerstein" if is_ham else "generalized_hammerstein",
+                "model_domain": "complex" if is_ham else "real",
+                "model_algorithm": "als" if is_ham else "chebyshev",
             },
             "time_domain": {
                 "time_ms": self.time_ms,
@@ -1585,7 +1715,7 @@ class LockInModelerWidget(QWidget):
             },
         }
         set_active_model(cache_data)
-        self.export_btn.setEnabled(True)
+        self.export_btn.setEnabled(getattr(self, "is_hammerstein_mode", False))
 
         from PyQt6.QtWidgets import QApplication
         from src.gui.main_window import MainWindow
@@ -1596,6 +1726,10 @@ class LockInModelerWidget(QWidget):
                 break
 
     def on_export_model(self):
+        if not getattr(self, "is_hammerstein_mode", False):
+            QMessageBox.warning(self, tr("Export Failed"), tr("Model export is only supported for Nonlinear Model modes."))
+            return
+
         from src.core.hammerstein_model import get_active_model, has_active_model
 
         if not has_active_model():
@@ -1629,7 +1763,7 @@ class LockInModelerWidget(QWidget):
                     self.module.current_sweep_idx += 1
                     self.module.current_block_idx = 0
 
-                    if getattr(self, "is_inverse_hammerstein_mode", False):
+                    if getattr(self, "is_predistorted_hammerstein_mode", False):
                         N_adapt = self.spin_predistortion_iterations.value()
                         amp_idx = sweep_idx // (N_adapt + 1)
                         iter_idx = sweep_idx % (N_adapt + 1)
@@ -1653,7 +1787,6 @@ class LockInModelerWidget(QWidget):
                             # Same amplitude, just update predistortion and run next iteration
                             self.process_remaining_queue()
                             self.update_predistortion_correction(iter_idx)
-                            self.module.current_x_corr = self.generate_predistorted_sweep()
                             self.accumulated_results.fill(0.0j)
                             self.block_counts.fill(0)
                     else:
@@ -1671,8 +1804,6 @@ class LockInModelerWidget(QWidget):
                             self.process_remaining_queue()
                             # 2. Update predistortion correction
                             self.update_predistortion_correction(sweep_idx)
-                            # 3. Generate new predistorted sweep signal
-                            self.module.current_x_corr = self.generate_predistorted_sweep()
                             # 4. Clear accumulated results
                             self.accumulated_results.fill(0.0j)
                             self.block_counts.fill(0)
@@ -1681,7 +1812,7 @@ class LockInModelerWidget(QWidget):
                     self.module.state = "PLAYING"
                 else:
                     # Final sweep finished, backup final predistortion manager if in inverse hammerstein mode
-                    if getattr(self, "is_inverse_hammerstein_mode", False):
+                    if getattr(self, "is_predistorted_hammerstein_mode", False):
                         self.process_remaining_queue()
                         import copy
                         self.predistortion_managers[-1] = copy.deepcopy(self.predistortion_manager)

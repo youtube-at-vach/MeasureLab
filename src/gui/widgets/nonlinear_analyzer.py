@@ -593,7 +593,11 @@ class NonlinearAnalyzer(MeasurementModule):
                     "g_ref": g_ref,
                     "P": len(separated_kernels_data),
                     "noise_floor_dbfs": noise_floor_dbfs,
+                    "amplitude_dbfs": self.amplitude_db,
                     "model_direction": "forward",
+                    "model_structure": "generalized_hammerstein",
+                    "model_domain": "real",
+                    "model_algorithm": "chebyshev",
                 },
                 "time_domain": {
                     "time_ms": time_ms,
@@ -1125,6 +1129,7 @@ class NonlinearAnalyzerWidget(QWidget):
                     "ref_max": float(ref_max),
                     "P": len(self.cached_kernels),
                     "noise_floor_dbfs": self.module.measured_noise_floor_dbfs,
+                    "amplitude_dbfs": self.module.amplitude_db,
                 },
                 "time_domain": {
                     "time_ms": self.cached_time_ms,

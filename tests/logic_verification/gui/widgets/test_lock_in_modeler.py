@@ -471,15 +471,15 @@ def test_lock_in_modeler_predistortion_sweep_mode(qtbot, mock_audio_engine):
     np.testing.assert_allclose(h2_post_raw, 20 * np.log10(0.01), atol=1.0)
 
 
-def test_lock_in_modeler_inverse_hammerstein_mode(qtbot, mock_audio_engine):
+def test_lock_in_modeler_predistorted_hammerstein_mode(qtbot, mock_audio_engine):
     # 1. Initialize analyzer and widget
     analyzer = LockInModeler(mock_audio_engine)
     analyzer.latency_samples = 100.0
     widget = LockInModelerWidget(analyzer)
     qtbot.addWidget(widget)
 
-    # 2. Select Inverse Hammerstein mode
-    # Index 3: "Inverse Hammerstein"
+    # 2. Select Predistorted Hammerstein mode
+    # Index 3: "Nonlinear Model (Predistorted)"
     widget.combo_meas_mode.setCurrentIndex(3)
     assert not widget.spin_amp_steps.isHidden()
     assert not widget.spin_predistortion_iterations.isHidden()
@@ -493,7 +493,7 @@ def test_lock_in_modeler_inverse_hammerstein_mode(qtbot, mock_audio_engine):
     assert analyzer.is_running
     assert widget.is_predistortion_sweep_mode
     assert widget.is_hammerstein_mode
-    assert widget.is_inverse_hammerstein_mode
+    assert widget.is_predistorted_hammerstein_mode
     assert analyzer.averaging_count == 15  # 5 amplitudes * (2 iterations + 1)
 
     # Use the real engine but patch meas_freqs to match our dummy test sizes
@@ -609,3 +609,91 @@ def test_lock_in_modeler_change_harmonic_settings_midway(qtbot, mock_audio_engin
         # Clean up
         if analyzer.is_running:
             widget.btn_toggle.click()
+
+
+def test_lock_in_modeler_complex_hammerstein_fit(qtbot, mock_audio_engine):
+    # Initialize analyzer and widget
+    analyzer = LockInModeler(mock_audio_engine)
+    analyzer.latency_samples = 100.0
+    widget = LockInModelerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    # Set Sweep Mode to "hammerstein"
+    widget.combo_meas_mode.setCurrentIndex(1)  # Hammerstein mode
+    widget.spin_amp_steps.setValue(5)
+    widget.spin_averaging.setValue(1)
+
+    # Start sweep
+    widget.btn_toggle.click()
+    assert analyzer.is_running
+    assert widget.is_hammerstein_mode
+
+    analyzer.engine = MagicMock()
+    analyzer.engine.sweep_samples = 48000 * 5
+    analyzer.engine.sample_rate = 48000
+
+    # Fill accumulated results and simulate the sweeps using widget.max_blocks
+    widget.max_blocks = 10
+    widget.accumulated_results = np.zeros((widget.max_blocks, 5), dtype=complex)
+    widget.block_counts = np.ones(widget.max_blocks, dtype=int)
+    widget.plot_freqs_array = np.linspace(100, 1000, widget.max_blocks)
+
+    # Populate raw_responses and raw_counts for 5 amplitudes
+    widget.raw_responses = np.zeros((5, widget.max_blocks, 5), dtype=complex)
+    widget.raw_counts = np.ones((5, widget.max_blocks), dtype=int)
+
+    # Generate simulation-like dummy responses
+    # True c = [1.0, 0.5, 0.2, 0.1, 0.05]
+    c_dummy = np.array([1.0, 0.5, 0.2, 0.1, 0.05])
+    phase_corrections = [(1j) ** p for p in range(5)]
+    for amp_idx in range(5):
+        amp = widget.amplitudes[amp_idx]
+        for block_idx in range(widget.max_blocks):
+            f = widget.plot_freqs_array[block_idx]
+            # Simple LPF: H(f) = 1.0 / (1.0 + 1j * f / 1000.0)
+            H_true = 1.0 / (1.0 + 1j * f / 1000.0)
+
+            # Fundamental: A + 0.75 * c3 * A^3 + 0.625 * c5 * A^5
+            f1_nl = amp + 0.75 * c_dummy[2] * (amp**3) + 0.625 * c_dummy[4] * (amp**5)
+            widget.raw_responses[amp_idx, block_idx, 0] = f1_nl * H_true / phase_corrections[0]
+
+            # 2nd harmonic: 0.5 * c2 * A^2 + 0.5 * c4 * A^4
+            f2_nl = 0.5 * c_dummy[1] * (amp**2) + 0.5 * c_dummy[3] * (amp**4)
+            widget.raw_responses[amp_idx, block_idx, 1] = f2_nl * H_true / phase_corrections[1]
+
+            # 3rd harmonic: 0.25 * c3 * A^3 + 0.3125 * c5 * A^5
+            f3_nl = 0.25 * c_dummy[2] * (amp**3) + 0.3125 * c_dummy[4] * (amp**5)
+            widget.raw_responses[amp_idx, block_idx, 2] = f3_nl * H_true / phase_corrections[2]
+
+            # 4th harmonic: 0.125 * c4 * A^4
+            f4_nl = 0.125 * c_dummy[3] * (amp**4)
+            widget.raw_responses[amp_idx, block_idx, 3] = f4_nl * H_true / phase_corrections[3]
+
+            # 5th harmonic: 0.0625 * c5 * A^5
+            f5_nl = 0.0625 * c_dummy[4] * (amp**5)
+            widget.raw_responses[amp_idx, block_idx, 4] = f5_nl * H_true / phase_corrections[4]
+
+    # Simulate finish
+    analyzer.state = "FINISHED"
+    widget.btn_toggle.click()  # Triggers finishing logic and calculate_hammerstein_kernels
+
+    assert not analyzer.is_running
+    # Verify that H_freqs are estimated
+    assert len(widget.H_freqs) == 5
+    assert len(widget.kernels_time) == 5
+    assert widget.time_ms is not None
+    assert len(widget.time_ms) > 0
+
+    # Ensure no NaN remains in time-domain kernels or mapped H_freqs (where valid_idx applies)
+    valid_meas_idx = np.where(widget.plot_freqs_array > 0)[0]
+    for p in range(5):
+        h_p = widget.H_freqs[p][valid_meas_idx]
+        assert np.any(~np.isnan(h_p))
+        assert np.any(np.abs(h_p) > 1e-12)
+
+    # Kernels should have real values
+    for p in range(5):
+        assert not np.all(widget.kernels_time[p] == 0.0)
+        assert not np.any(np.isnan(widget.kernels_time[p]))
+
+
