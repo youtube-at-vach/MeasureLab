@@ -18,7 +18,7 @@ class PredistortionManager:
         # Key: harmonic order (int), Value: complex array of size len(meas_freqs)
         self.F_corr = {n: np.zeros(len(meas_freqs), dtype=complex) for n in range(2, max_harmonic + 1)}
         self.H0_1: Optional[np.ndarray] = None  # To store the initial fundamental linear response
-        self.F_interpolators = {}
+        self.F_interpolators: dict[int, tuple[interp1d, interp1d]] = {}
         self.prepare_interpolators()
 
     def prepare_interpolators(self):
