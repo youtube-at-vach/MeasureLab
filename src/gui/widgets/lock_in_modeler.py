@@ -1484,106 +1484,17 @@ class LockInModelerWidget(QWidget):
                         )
 
             # Parallel Complex Hammerstein Estimation (Chebyshev-based subtraction from estimate_power_kernels)
-            K = self.num_amplitudes
-            J = len(valid_idx)
-            g_scaled = np.zeros((K, J, P), dtype=complex)
-            phase_corrections = [1.0, 1j, -1.0, -1j, 1.0][:P]
-            R_array = self.amplitudes
+            from src.core.hammerstein_model import estimate_hammerstein_kernels
 
-            for amp_idx in range(K):
-                for p_idx in range(P):
-                    val = avg_responses[amp_idx, valid_idx, p_idx]
-                    if self.module.input_mode == "XFER" and not getattr(self.module, "ref_phase_only", False):
-                        g_scaled[amp_idx, :, p_idx] = val * R_array[amp_idx] * phase_corrections[p_idx]
-                    else:
-                        g_scaled[amp_idx, :, p_idx] = val * phase_corrections[p_idx]
-
-            g1 = g_scaled[:, :, 0]
-            g2 = g_scaled[:, :, 1] if P >= 2 else np.zeros_like(g1)
-            g3 = g_scaled[:, :, 2] if P >= 3 else np.zeros_like(g1)
-            g4 = g_scaled[:, :, 3] if P >= 4 else np.zeros_like(g1)
-            g5 = g_scaled[:, :, 4] if P >= 5 else np.zeros_like(g1)
-
-            R2 = R_array**2
-            R3 = R_array**3
-            R4 = R_array**4
-            R5 = R_array**5
-
-            sum_R10 = np.sum(R_array**10)
-            sum_R8 = np.sum(R_array**8)
-            sum_R6 = np.sum(R_array**6)
-            sum_R4 = np.sum(R_array**4)
-            sum_R2 = np.sum(R_array**2)
-
-            H5 = 16.0 * np.sum(g5 * R5[:, np.newaxis], axis=0) / sum_R10 if P >= 5 and sum_R10 > 1e-12 else np.zeros(J, dtype=complex)
-            H4 = 8.0 * np.sum(g4 * R4[:, np.newaxis], axis=0) / sum_R8 if P >= 4 and sum_R8 > 1e-12 else np.zeros(J, dtype=complex)
-
-            if P >= 5:
-                g3_prime = g3 - (5.0/16.0) * H5[np.newaxis, :] * R5[:, np.newaxis]
-            else:
-                g3_prime = g3
-            H3 = 4.0 * np.sum(g3_prime * R3[:, np.newaxis], axis=0) / sum_R6 if P >= 3 and sum_R6 > 1e-12 else np.zeros(J, dtype=complex)
-
-            if P >= 4:
-                g2_prime = g2 - 0.5 * H4[np.newaxis, :] * R4[:, np.newaxis]
-            else:
-                g2_prime = g2
-            H2 = 2.0 * np.sum(g2_prime * R2[:, np.newaxis], axis=0) / sum_R4 if P >= 2 and sum_R4 > 1e-12 else np.zeros(J, dtype=complex)
-
-            g1_prime = g1.copy()
-            if P >= 3:
-                g1_prime -= 0.75 * H3[np.newaxis, :] * R3[:, np.newaxis]
-            if P >= 5:
-                g1_prime -= 0.625 * H5[np.newaxis, :] * R5[:, np.newaxis]
-            H1 = np.sum(g1_prime * R_array[:, np.newaxis], axis=0) / sum_R2 if sum_R2 > 1e-12 else np.zeros(J, dtype=complex)
-
-            H_est_list = [H1, H2, H3, H4, H5][:P]
-
-            # 3. Apply frequency mapping to map H_p(f_0) measured at fundamental f_0 to physical harmonic frequency p * f_0
-            H_mapped_list = []
-            for p in range(P):
-                H_raw = H_est_list[p][sort_idx]
-                f_lookups = sorted_freqs / (p + 1)
-
-                nan_mask = np.isnan(H_raw)
-                valid_mask = ~nan_mask
-
-                if np.any(valid_mask):
-                    valid_H = H_raw[valid_mask]
-                    xp = sorted_freqs[valid_mask]
-
-                    mags_valid = np.abs(valid_H)
-                    phases_valid = np.unwrap(np.angle(valid_H))
-
-                    # Dynamically reduce resolution to improve real-time performance bounds
-                    TARGET_RESOLUTION = 2000
-                    if len(valid_H) > TARGET_RESOLUTION:
-                        step = len(valid_H) // TARGET_RESOLUTION
-                        mags_valid = mags_valid[::step]
-                        phases_valid = phases_valid[::step]
-                        xp = xp[::step]
-
-                    mag_mapped = np.interp(f_lookups, xp, mags_valid, left=np.nan, right=np.nan)
-                    phase_mapped = np.interp(f_lookups, xp, phases_valid, left=np.nan, right=np.nan)
-                else:
-                    mag_mapped = np.full_like(f_lookups, np.nan)
-                    phase_mapped = np.full_like(f_lookups, np.nan)
-
-                H_mapped = mag_mapped * np.exp(1j * phase_mapped)
-                H_mapped_list.append(H_mapped)
-
-            # Apply Butterworth LPF and pad back
-            self.H_freqs = []
-            for p in range(P):
-                H_p = H_mapped_list[p]
-                if p >= 1:
-                    f_cut = min(20000.0, 1.15 * sample_rate / 2)
-                    lpf = 1.0 / np.sqrt(1.0 + (sorted_freqs / f_cut) ** 16)
-                    H_p = H_p * lpf
-
-                H_full = np.zeros(max_blocks, dtype=complex)
-                H_full[valid_idx[sort_idx]] = H_p
-                self.H_freqs.append(H_full)
+            self.H_freqs, sorted_freqs = estimate_hammerstein_kernels(
+                amplitudes=self.amplitudes,
+                avg_responses=avg_responses,
+                plot_freqs=plot_freqs,
+                max_harmonic=P,
+                sample_rate=sample_rate,
+                input_mode=self.module.input_mode,
+                ref_phase_only=getattr(self.module, "ref_phase_only", False),
+            )
         else:
             # Standard Sweep Mode (Non-Hammerstein)
             # Directly use accumulated_results and apply phase corrections
