@@ -8,7 +8,7 @@ Feedforward Compensator（フィードフォワード歪み補正）は、Parall
 
 ---
 
-## 💡 動作原理: LICFF (Linear-Inverse Compensated Feedforward)
+## 動作原理: LICFF (Linear-Inverse Compensated Feedforward)
 
 このモジュールは、Parallel Hammerstein モデルを前提とした **LICFF (Linear-Inverse Compensated Feedforward)** アルゴリズムを採用しています。
 

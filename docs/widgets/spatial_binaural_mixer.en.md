@@ -61,7 +61,7 @@ Because the module is optimized for quality over real-time responsiveness, audio
 * **⏸ Stop Monitor**: Immediately halts playback of the rendered RAM buffer.
 * **Render to WAV**: Processes the mix and opens a dialog to save the result directly to your disk as a 32-bit Float WAV file, locking the peak volume to standard maximum (`0.99 FS` to avoid clipping).
 
-## 💡 Practical Examples
+## Practical Examples
 
 * **Stem Breakdown**: Import vocals, bass, keys and drums separately. Set vocals to Center (`Az 0, El 10`), Drums to bottom rear, and keys off to the wide sides. Render the mix for an immersive binaural song.
 * **ASMR / Narrative**: Import multiple voice tracks and sound effects, spread them across the full 3D sphere to mimic a realistic story scene, and export the unified high-fidelity scene to WAV.

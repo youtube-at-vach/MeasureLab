@@ -7,8 +7,9 @@
 A tool like a "chart recorder" that continuously monitors and records signal changes over long periods.
 While an oscilloscope captures and displays momentary waveforms, Raw Time Series keeps recording signal transitions over long spans (seconds to minutes), making it suitable for observing slow voltage fluctuations, DC offset drift, and the timing of sporadic noise occurrences.
 
-💡 **What is a Chart Recorder?**
-It is an instrument that continuously records signals on a moving roll of paper. Raw Time Series is the digital version of this, allowing you to scroll back and review past events.
+## ☕ Coffee Break: What is a Chart Recorder?
+
+It is an instrument that continuously records signals on a moving roll of paper. This widget is the digital version of this, allowing you to scroll back and review past events.
 
 ## Compact Mode
 
@@ -74,5 +75,5 @@ Wait for and monitor noise that occurs sporadically, such as occasional "popping
 3. When noise occurs, it will be recorded as a spike on the graph.
 4. Quickly press **Pause** when you see noise to examine the waveform. This can be used as a "visual trigger" for irregular phenomena that are difficult to capture with standard oscilloscope trigger settings.
 
-💡 **Difference from an Oscilloscope Trigger**
-An oscilloscope trigger captures a snapshot when a specific voltage condition is met, whereas this approach continuously records a long history, allowing you to review issues later. This is highly effective for discovering noise when the conditions are completely unpredictable.
+**Difference from Oscilloscope Trigger:**
+An oscilloscope trigger captures a snapshot when a specific voltage condition is met, whereas Raw Time Series continuously records a long history, allowing you to review issues later. This is highly effective for discovering noise when the conditions are completely unpredictable.
