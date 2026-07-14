@@ -129,8 +129,6 @@ class ResponseViewerWidget(QWidget):
         self.lbl_order = QLabel("Order (P): --")
         self.lbl_direction = QLabel(tr("Unknown"))
         self.lbl_structure = QLabel("--")
-        self.lbl_domain = QLabel("--")
-        self.lbl_algorithm = QLabel("--")
 
         self.smooth_combo = QComboBox()
         self.smooth_combo.addItem(tr("None"), "None")
@@ -147,8 +145,6 @@ class ResponseViewerWidget(QWidget):
         info_layout.addRow(tr("Order:"), self.lbl_order)
         info_layout.addRow(tr("Direction:"), self.lbl_direction)
         info_layout.addRow(tr("Structure:"), self.lbl_structure)
-        info_layout.addRow(tr("Domain:"), self.lbl_domain)
-        info_layout.addRow(tr("Algorithm:"), self.lbl_algorithm)
         info_layout.addRow(tr("Graph Smoothing:"), self.smooth_combo)
         source_form.addLayout(info_layout)
         sidebar_layout.addWidget(source_group)
@@ -842,38 +838,15 @@ class ResponseViewerWidget(QWidget):
                 algorithm_val = "unknown"
 
         # Update Labels
-        if structure_val == "classical_hammerstein":
-            self.lbl_structure.setText(tr("Classical Hammerstein"))
-            self.lbl_structure.setStyleSheet("font-weight: bold; color: #4ba3e3;")
-        elif structure_val in {"generalized_hammerstein", "parallel_complex_hammerstein"} and domain_val == "complex":
-            self.lbl_structure.setText(tr("Parallel Complex Hammerstein"))
+        if domain_val == "complex" or structure_val == "parallel_complex_hammerstein" or (structure_val == "generalized_hammerstein" and domain_val == "complex") or (structure_val == "classical_hammerstein" and domain_val == "complex"):
+            self.lbl_structure.setText(tr("Parallel Hammerstein (Complex)"))
             self.lbl_structure.setStyleSheet("font-weight: bold; color: #ba68c8;")
-        elif structure_val == "generalized_hammerstein":
-            self.lbl_structure.setText(tr("Generalized Hammerstein"))
+        elif domain_val == "real" or structure_val in {"generalized_hammerstein", "classical_hammerstein", "parallel_hammerstein"}:
+            self.lbl_structure.setText(tr("Parallel Hammerstein (Real)"))
             self.lbl_structure.setStyleSheet("font-weight: bold; color: #2b8c56;")
         else:
             self.lbl_structure.setText(tr("Unknown"))
             self.lbl_structure.setStyleSheet("font-weight: normal; color: gray;")
-
-        if domain_val == "complex":
-            self.lbl_domain.setText(tr("Complex"))
-            self.lbl_domain.setStyleSheet("font-weight: bold; color: #ba68c8;")
-        elif domain_val == "real":
-            self.lbl_domain.setText(tr("Real"))
-            self.lbl_domain.setStyleSheet("font-weight: bold; color: #2b8c56;")
-        else:
-            self.lbl_domain.setText(tr("Unknown"))
-            self.lbl_domain.setStyleSheet("font-weight: normal; color: gray;")
-
-        if algorithm_val == "als":
-            self.lbl_algorithm.setText(tr("ALS"))
-            self.lbl_algorithm.setStyleSheet("font-weight: bold; color: #e68c14;")
-        elif algorithm_val == "chebyshev":
-            self.lbl_algorithm.setText(tr("Chebyshev"))
-            self.lbl_algorithm.setStyleSheet("font-weight: bold; color: #2b8c56;")
-        else:
-            self.lbl_algorithm.setText(tr("Unknown"))
-            self.lbl_algorithm.setStyleSheet("font-weight: normal; color: gray;")
 
         # Update measured noise floor label and source choices
         measured_val = self.model_metadata.get("noise_floor_dbfs", None)

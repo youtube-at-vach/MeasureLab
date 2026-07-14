@@ -1726,9 +1726,9 @@ class LockInModelerWidget(QWidget):
                 "noise_floor_dbfs": None,
                 "amplitude_dbfs": self.spin_amplitude.value(),
                 "model_direction": "forward",
-                "model_structure": "generalized_hammerstein" if is_ham else "generalized_hammerstein",
+                "model_structure": "parallel_complex_hammerstein" if is_ham else "parallel_complex_hammerstein",
                 "model_domain": "complex" if is_ham else "real",
-                "model_algorithm": "chebyshev" if is_ham else "chebyshev",
+                "model_algorithm": "vectorized" if is_ham else "vectorized",
             },
             "time_domain": {
                 "time_ms": self.time_ms,

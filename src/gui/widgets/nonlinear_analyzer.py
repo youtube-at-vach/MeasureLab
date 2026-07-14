@@ -595,9 +595,9 @@ class NonlinearAnalyzer(MeasurementModule):
                     "noise_floor_dbfs": noise_floor_dbfs,
                     "amplitude_dbfs": self.amplitude_db,
                     "model_direction": "forward",
-                    "model_structure": "generalized_hammerstein",
+                    "model_structure": "parallel_hammerstein",
                     "model_domain": "real",
-                    "model_algorithm": "chebyshev",
+                    "model_algorithm": "vectorized",
                 },
                 "time_domain": {
                     "time_ms": time_ms,
