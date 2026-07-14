@@ -8,7 +8,6 @@ import argparse
 import queue
 import threading
 import numpy as np
-from scipy.interpolate import interp1d
 
 # Add project root to sys.path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -477,7 +476,7 @@ def main():
     amp_diffs = []
     phase_diffs = []
 
-    print(f"\n--- Model: Parallel Complex Hammerstein (Chebyshev) ---")
+    print("\n--- Model: Parallel Complex Hammerstein (Chebyshev) ---")
     print(
         f"{'Harmonic':<10} | {'Predicted Amp (dB)':<20} | {'Measured Amp (dB)':<20} | {'Amp Diff (dB)':<15} | {'Predicted Phase':<18} | {'Measured Phase':<18} | {'Phase Diff':<12}"
     )
