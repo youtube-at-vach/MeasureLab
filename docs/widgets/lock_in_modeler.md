@@ -65,6 +65,7 @@ Lock-in Modelerは、同期スイープサイン (Synchronized Swept Sine, SSS) 
     * `Single Ch (Right Input)`: 右入力チャンネルのみを使用して絶対測定を行います。
     * `2-Ch Relative (Ref=Left, Meas=Right)`: 左を入出力監視用のリファレンス、右を測定用として、2チャンネルの比（伝達関数 $H(f)$）を測定します。システム自体の非線形歪みや周波数特性のうねりを相殺できます。
     * `2-Ch Relative (Ref=Right, Meas=Left)`: 右をリファレンス、左を測定用とする伝達関数測定モードです。
+* **REF Phase Lock Only (Absolute) (REF位相同期のみ)**: 2-Ch Relativeモード時のみ有効です。これを有効にすると、リファレンスチャンネルは位相の同期（時間遅れや位相ドリフトの補正）にのみ使用され、振幅特性については相対比ではなく測定チャンネルの絶対レベルとして算出されます。
 
 ### Advanced（詳細設定）タブ
 

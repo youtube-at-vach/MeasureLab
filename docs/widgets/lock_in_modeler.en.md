@@ -65,6 +65,7 @@ Before running any sweep, the round-trip latency of the audio input and output c
     * `Single Ch (Right Input)`: Absolute measurement using the right input channel only.
     * `2-Ch Relative (Ref=Left, Meas=Right)`: Dual-channel Transfer Function (XFER) mode. Measures the ratio between the left channel (reference) and right channel (measurement). This cancels out systemic response variations and nonlinearity in the test gear.
     * `2-Ch Relative (Ref=Right, Meas=Left)`: Dual-channel Transfer Function mode with the right channel as reference and the left as measurement.
+* **REF Phase Lock Only (Absolute)**: Available only in 2-Ch Relative modes. When enabled, the reference channel is used strictly for phase synchronization (correcting time delays/phase drift), while the magnitude response is calculated as an absolute measurement of the measurement channel rather than a relative ratio.
 
 ### Advanced Tab
 
