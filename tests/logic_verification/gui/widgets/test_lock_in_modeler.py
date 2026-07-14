@@ -697,3 +697,61 @@ def test_lock_in_modeler_complex_hammerstein_fit(qtbot, mock_audio_engine):
         assert not np.any(np.isnan(widget.kernels_time[p]))
 
 
+def test_lock_in_modeler_amplitude_switching(qtbot, mock_audio_engine):
+    # Initialize analyzer and widget
+    analyzer = LockInModeler(mock_audio_engine)
+    analyzer.latency_samples = 100.0
+    widget = LockInModelerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    # 1. Non-hammerstein mode by default (combo box should be hidden)
+    widget.combo_meas_mode.setCurrentIndex(0)  # Sweep mode
+    assert widget.combo_amplitude_select.isHidden()
+
+    # 2. Select Hammerstein mode (combo box should become visible)
+    widget.combo_meas_mode.setCurrentIndex(1)  # Hammerstein mode
+    assert not widget.combo_amplitude_select.isHidden()
+
+    # Set steps and start sweep
+    widget.spin_amp_steps.setValue(5)
+    widget.spin_averaging.setValue(1)
+    widget.btn_toggle.click()
+    assert analyzer.is_running
+
+    # Check populated items
+    assert widget.combo_amplitude_select.count() == 6  # 1 combined + 5 amplitudes
+    assert widget.combo_amplitude_select.itemText(0) == "Combined Model (Kernels)"
+
+    # Populate raw_responses and raw_counts with mock values
+    widget.max_blocks = 10
+    widget.accumulated_results = np.zeros((widget.max_blocks, 5), dtype=complex)
+    widget.block_counts = np.ones(widget.max_blocks, dtype=int)
+    widget.plot_freqs_array = np.linspace(100, 1000, widget.max_blocks)
+
+    widget.raw_responses = np.zeros((5, widget.max_blocks, 5), dtype=complex)
+    widget.raw_counts = np.ones((5, widget.max_blocks), dtype=int)
+
+    # Fill amplitude 0 (index 0) with constant gain 0.5 (approx -6 dB)
+    # Fill amplitude 1 (index 1) with constant gain 0.25 (approx -12 dB)
+    widget.raw_responses[0, :, 0] = 0.5
+    widget.raw_responses[1, :, 0] = 0.25
+
+    # Switch to Amplitude 1 (combo index 1 -> amp_idx 0)
+    widget.combo_amplitude_select.setCurrentIndex(1)
+    # Check that magnitude plot data matches the selected amplitude's raw data
+    mag_data = widget.mag_curves[0].yData
+    np.testing.assert_allclose(mag_data[~np.isnan(mag_data)], 20 * np.log10(0.5), atol=1.0)
+    assert not widget.plot_tabs.isTabEnabled(1)  # Impulse tab disabled
+
+    # Switch to Amplitude 2 (combo index 2 -> amp_idx 1)
+    widget.combo_amplitude_select.setCurrentIndex(2)
+    mag_data2 = widget.mag_curves[0].yData
+    np.testing.assert_allclose(mag_data2[~np.isnan(mag_data2)], 20 * np.log10(0.25), atol=1.0)
+    assert not widget.plot_tabs.isTabEnabled(1)  # Impulse tab disabled
+
+    # Switch back to Combined Model (combo index 0)
+    # End sweep to trigger kernel calculation
+    analyzer.state = "FINISHED"
+    widget.btn_toggle.click()  # stop/finish
+    widget.combo_amplitude_select.setCurrentIndex(0)
+    assert widget.plot_tabs.isTabEnabled(1)  # Impulse tab re-enabled

@@ -455,10 +455,18 @@ class LockInModelerWidget(QWidget):
         # Separator spacing
         display_layout.addSpacing(4)
 
-        # Form layout for combobox
-        smoothing_form = QFormLayout()
-        smoothing_form.setContentsMargins(0, 0, 0, 0)
-        smoothing_form.setSpacing(6)
+        # Form layout for display settings
+        display_form = QFormLayout()
+        display_form.setContentsMargins(0, 0, 0, 0)
+        display_form.setSpacing(6)
+
+        self.lbl_amplitude_select = QLabel(tr("Display Data:"))
+        self.combo_amplitude_select = QComboBox()
+        self.combo_amplitude_select.addItem(tr("Combined Model (Kernels)"), "kernels")
+        self.combo_amplitude_select.currentIndexChanged.connect(self.redraw_plots)
+        self.combo_amplitude_select.setVisible(False)
+        self.lbl_amplitude_select.setVisible(False)
+        display_form.addRow(self.lbl_amplitude_select, self.combo_amplitude_select)
 
         self.lbl_smoothing = QLabel(tr("Graph Smoothing:"))
         self.combo_smoothing = QComboBox()
@@ -468,9 +476,9 @@ class LockInModelerWidget(QWidget):
         self.combo_smoothing.addItem(tr("High Smoothing"), "Heavy")
         self.combo_smoothing.setCurrentIndex(0)
         self.combo_smoothing.currentIndexChanged.connect(self.redraw_plots)
-        smoothing_form.addRow(self.lbl_smoothing, self.combo_smoothing)
+        display_form.addRow(self.lbl_smoothing, self.combo_smoothing)
 
-        display_layout.addLayout(smoothing_form)
+        display_layout.addLayout(display_form)
         display_layout.addStretch()
 
         left_tabs.addTab(display_tab, tr("Display"))
@@ -844,6 +852,15 @@ class LockInModelerWidget(QWidget):
                     self.predistortion_managers = [None] * self.num_amplitudes
                 else:
                     self.module.averaging_count = self.num_amplitudes * self.spin_averaging.value()
+
+                if hasattr(self, "combo_amplitude_select"):
+                    self.combo_amplitude_select.blockSignals(True)
+                    self.combo_amplitude_select.clear()
+                    self.combo_amplitude_select.addItem(tr("Combined Model (Kernels)"), "kernels")
+                    for i, amp in enumerate(self.amplitudes):
+                        self.combo_amplitude_select.addItem(tr("Amplitude {0} ({1:.3f} V)").format(i + 1, amp), f"amp_{i}")
+                    self.combo_amplitude_select.blockSignals(False)
+                    self.combo_amplitude_select.setCurrentIndex(0)
             elif self.is_predistortion_sweep_mode:
                 self.module.averaging_count = self.spin_predistortion_iterations.value() + 1
 
@@ -1003,6 +1020,12 @@ class LockInModelerWidget(QWidget):
 
         if hasattr(self, "chk_show_restored"):
             self.chk_show_restored.setVisible(is_predist)
+
+        if hasattr(self, "combo_amplitude_select"):
+            self.combo_amplitude_select.setVisible(is_ham)
+            self.lbl_amplitude_select.setVisible(is_ham)
+            if not is_ham:
+                self.combo_amplitude_select.setCurrentIndex(0)
 
         self.plot_tabs.setTabEnabled(1, True)
         self.export_btn.setEnabled(False)
@@ -1212,6 +1235,75 @@ class LockInModelerWidget(QWidget):
             return
 
         x_data = self.plot_freqs_array[valid_indices]
+
+        # Check if we should display a specific amplitude in Hammerstein mode
+        amp_idx = -1
+        if hasattr(self, "combo_amplitude_select") and self.is_hammerstein_mode:
+            amp_idx = self.combo_amplitude_select.currentIndex() - 1
+
+        if amp_idx >= 0:
+            # We are displaying raw response of a specific amplitude step
+            self.plot_tabs.setTabEnabled(1, False)
+            if self.raw_responses is None or self.raw_counts is None:
+                return
+
+            counts = self.raw_counts[amp_idx, valid_indices]
+            pos = counts > 0
+            if not np.any(pos):
+                # No data yet for this amplitude step
+                for idx in range(self.module.max_harmonic):
+                    self.mag_curves[idx].setData([], [])
+                    self.phase_curves[idx].setData([], [])
+                return
+
+            for idx in range(self.module.max_harmonic):
+                avg_complex = np.zeros(len(valid_indices), dtype=complex)
+                avg_complex[pos] = self.raw_responses[amp_idx, valid_indices[pos], idx] / counts[pos]
+
+                # Apply predistortion restoration if restored mode is active
+                if (getattr(self, "is_predistorted_hammerstein_mode", False)
+                        and self.chk_show_restored.isChecked()
+                        and idx >= 1):
+                    predist_mgr = self.predistortion_managers[amp_idx]
+                    current_predist_mgr = predist_mgr if predist_mgr is not None else getattr(self, "predistortion_manager", None)
+                    if current_predist_mgr is not None:
+                        H1_raw = self.raw_responses[amp_idx, valid_indices, 0] / np.maximum(counts, 1)
+                        valid_blocks = counts > 0
+                        if np.sum(valid_blocks) >= 2:
+                            H1_base = H1_raw[valid_blocks]
+                            freq_base = x_data[valid_blocks]
+                            avg_complex = current_predist_mgr.restore_true_response(
+                                harmonic_order=idx + 1,
+                                target_freqs=x_data,
+                                measured_complex=avg_complex,
+                                H1_base=H1_base,
+                                freq_base=freq_base
+                            )
+
+                if self.chk_relative.isChecked():
+                    fundamental_complex = np.zeros(len(valid_indices), dtype=complex)
+                    fundamental_complex[pos] = self.raw_responses[amp_idx, valid_indices[pos], 0] / counts[pos]
+                    avg_complex = avg_complex / (fundamental_complex + 1e-30)
+
+                # Compute amplitude in dBFS (or dB if relative)
+                amp = np.abs(avg_complex)
+                y_gain = 20 * np.log10(amp + 1e-15)
+
+                # Compute phase in degrees
+                if self.chk_unwrap.isChecked():
+                    y_phase = np.degrees(np.unwrap(np.angle(avg_complex)))
+                else:
+                    y_phase = np.degrees(np.angle(avg_complex))
+
+                # Apply smoothing
+                smooth_level = self.combo_smoothing.currentData()
+                y_gain_smoothed = self.apply_smoothing(y_gain, smooth_level)
+                y_phase_smoothed = self.apply_smoothing(y_phase, smooth_level)
+
+                self.mag_curves[idx].setData(x_data, y_gain_smoothed)
+                self.phase_curves[idx].setData(x_data, y_phase_smoothed)
+
+            return
 
         # Check if we should draw the final kernels
         has_kernels = len(getattr(self, "H_freqs", [])) > 0
