@@ -8,8 +8,6 @@ An experimental tool for monitoring 1PPS (Pulse Per Second) signals and precisel
 
 It inputs a pulse signal output every second from a GPS receiver or high-precision clock source, and analyzes/displays the deviation (PPM: Parts Per Million) from the audio interface's sample rate in real-time.
 
-## ☕ Coffee Break: About 1PPS and PPM
-
 * **1PPS**: A pulse signal output exactly once per second, typically from a high-precision clock source such as GPS.
 * **PPM (Parts Per Million)**: A unit representing one millionth. A deviation of 10 PPM is equivalent to a 10-second difference over 1 million seconds (about 11.5 days).
 

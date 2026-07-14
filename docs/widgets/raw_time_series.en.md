@@ -4,12 +4,8 @@
 
 ## Overview
 
-A tool like a "chart recorder" that continuously monitors and records signal changes over long periods.
-While an oscilloscope captures and displays momentary waveforms, Raw Time Series keeps recording signal transitions over long spans (seconds to minutes), making it suitable for observing slow voltage fluctuations, DC offset drift, and the timing of sporadic noise occurrences.
-
-## ☕ Coffee Break: What is a Chart Recorder?
-
-It is an instrument that continuously records signals on a moving roll of paper. This widget is the digital version of this, allowing you to scroll back and review past events.
+A tool that continuously monitors and records signal changes over long periods.
+While an oscilloscope captures and displays momentary waveforms, Raw Time Series keeps recording signal transitions over long spans (seconds to minutes), making it suitable for observing slow voltage fluctuations, DC offset drift, and the timing of sporadic noise occurrences. It acts as a digital version of a "chart recorder" (an instrument that continuously records signals on a moving roll of paper), allowing you to scroll back and review past events.
 
 ## Compact Mode
 

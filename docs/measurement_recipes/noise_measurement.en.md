@@ -37,8 +37,6 @@ Graphs the strength of noise per frequency (spectrum display). You can see thing
 
 ### How to Read Results
 
-## ☕ Coffee Break: About PSD (Power Spectral Density)
-
 While the normal `Spectrum` mode measures the level of specific frequencies, it is not ideal for signals like noise that are distributed across many frequencies.
 The `PSD` mode shows the "power density per 1Hz" (e.g., V/√Hz), allowing you to accurately evaluate the noise floor independent of the measurement bandwidth.
 
