@@ -580,13 +580,18 @@ def measure_system_latency(
     """
     Executes a brief Novak SSS chirp and computes physical round-trip latency via deconvolution and cross-correlation.
     """
-    calibrator = LatencyCalibrator(audio_engine, start_freq, end_freq, duration, in_ch, out_ch)
+    # Clamp start/end frequencies to reasonable limits for calibration sweep duration stability
+    calib_start_freq = max(20.0, float(start_freq))
+    calib_end_freq = max(100.0, float(end_freq))
+
+    calibrator = LatencyCalibrator(audio_engine, calib_start_freq, calib_end_freq, duration, in_ch, out_ch)
 
     # Register the ephemeral audio callback
     calibrator.callback_id = audio_engine.register_callback(calibrator.callback)
 
-    # Wait for execution to finish (with 1.5s margin)
-    success = calibrator.finished.wait(timeout=duration + 1.5)
+    # Wait for execution to finish (with 1.5s margin) based on actual sweep length
+    actual_duration = calibrator.total_samples / calibrator.sample_rate
+    success = calibrator.finished.wait(timeout=actual_duration + 1.5)
 
     # Unregister callback instantly to free resources
     audio_engine.unregister_callback(calibrator.callback_id)
