@@ -1486,7 +1486,7 @@ class LockInModelerWidget(QWidget):
             # Parallel Complex Hammerstein Estimation (Chebyshev-based subtraction from estimate_power_kernels)
             from src.core.hammerstein_model import estimate_hammerstein_kernels
 
-            self.H_freqs, sorted_freqs = estimate_hammerstein_kernels(
+            H_est, sorted_freqs = estimate_hammerstein_kernels(
                 amplitudes=self.amplitudes,
                 avg_responses=avg_responses,
                 plot_freqs=plot_freqs,
@@ -1495,6 +1495,12 @@ class LockInModelerWidget(QWidget):
                 input_mode=self.module.input_mode,
                 ref_phase_only=getattr(self.module, "ref_phase_only", False),
             )
+
+            self.H_freqs = []
+            for p in range(P):
+                H_full = np.zeros(max_blocks, dtype=complex)
+                H_full[valid_idx[sort_idx]] = H_est[p]
+                self.H_freqs.append(H_full)
         else:
             # Standard Sweep Mode (Non-Hammerstein)
             # Directly use accumulated_results and apply phase corrections

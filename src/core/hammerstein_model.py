@@ -222,7 +222,7 @@ def estimate_hammerstein_kernels(
         H_mapped = mag_mapped * np.exp(1j * phase_mapped)
         H_mapped_list.append(H_mapped)
 
-    # Apply Butterworth LPF and pad back
+    # Apply Butterworth LPF
     H_freqs = []
     for p in range(P):
         H_p = H_mapped_list[p]
@@ -231,9 +231,7 @@ def estimate_hammerstein_kernels(
             lpf = 1.0 / np.sqrt(1.0 + (sorted_freqs / f_cut) ** 16)
             H_p = H_p * lpf
 
-        H_full = np.zeros(max_blocks, dtype=complex)
-        H_full[valid_idx[sort_idx]] = H_p
-        H_freqs.append(H_full)
+        H_freqs.append(H_p)
 
     return H_freqs, sorted_freqs
 
