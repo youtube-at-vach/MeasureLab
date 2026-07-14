@@ -171,21 +171,30 @@ def estimate_hammerstein_kernels(
     amplitudes, raw_responses, plot_freqs_array, block_counts, max_blocks, max_harmonic, sample_rate
 ):
     """
-    Estimates the Hammerstein frequency-domain kernels H1..Hp using least-squares across multiple excitation amplitudes.
+    Estimates the Hammerstein frequency-domain kernels H1..Hp using Parallel Complex Hammerstein method
+    with Chebyshev-based subtraction (matching the GUI's Parallel Complex Hammerstein model).
     """
     P = max_harmonic
     num_amplitudes = len(amplitudes)
 
-    # phase corrections to compensate for sine expansion phase offsets
+    valid_idx = np.where(plot_freqs_array > 0)[0]
+    if len(valid_idx) < 2:
+        raise ValueError("No valid frequency measurement points found.")
+
+    sort_idx = np.argsort(plot_freqs_array[valid_idx])
+    sorted_freqs = plot_freqs_array[valid_idx][sort_idx]
+
+    K = num_amplitudes
+    J = len(valid_idx)
+    g_scaled = np.zeros((K, J, P), dtype=complex)
     phase_corrections = [1.0, 1j, -1.0, -1j, 1.0][:P]
     R_array = amplitudes
-    g_scaled = np.zeros_like(raw_responses)
 
-    for amp_idx in range(num_amplitudes):
-        amp = R_array[amp_idx]
+    for amp_idx in range(K):
         for p in range(P):
-            val = raw_responses[amp_idx, :, p]
-            g_scaled[amp_idx, :, p] = val * amp * phase_corrections[p]
+            val = raw_responses[amp_idx, valid_idx, p]
+            # Since verify script runs in XFER mode, we multiply by amplitude
+            g_scaled[amp_idx, :, p] = val * R_array[amp_idx] * phase_corrections[p]
 
     g1 = g_scaled[:, :, 0]
     g2 = g_scaled[:, :, 1] if P >= 2 else np.zeros_like(g1)
@@ -198,253 +207,62 @@ def estimate_hammerstein_kernels(
     R4 = R_array**4
     R5 = R_array**5
 
-    H5 = (
-        16 * np.sum(g5 * R5[:, np.newaxis], axis=0) / np.sum(R_array**10)
-        if P >= 5
-        else np.zeros(max_blocks, dtype=complex)
-    )
-    H4 = (
-        8 * np.sum(g4 * R4[:, np.newaxis], axis=0) / np.sum(R_array**8)
-        if P >= 4
-        else np.zeros(max_blocks, dtype=complex)
-    )
+    sum_R10 = np.sum(R_array**10)
+    sum_R8 = np.sum(R_array**8)
+    sum_R6 = np.sum(R_array**6)
+    sum_R4 = np.sum(R_array**4)
+    sum_R2 = np.sum(R_array**2)
+
+    H5 = 16.0 * np.sum(g5 * R5[:, np.newaxis], axis=0) / sum_R10 if P >= 5 and sum_R10 > 1e-12 else np.zeros(J, dtype=complex)
+    H4 = 8.0 * np.sum(g4 * R4[:, np.newaxis], axis=0) / sum_R8 if P >= 4 and sum_R8 > 1e-12 else np.zeros(J, dtype=complex)
 
     if P >= 5:
-        g3_prime = g3 - (5 / 16) * H5[np.newaxis, :] * R5[:, np.newaxis]
+        g3_prime = g3 - (5.0/16.0) * H5[np.newaxis, :] * R5[:, np.newaxis]
     else:
         g3_prime = g3
-    H3 = (
-        4 * np.sum(g3_prime * R3[:, np.newaxis], axis=0) / np.sum(R_array**6)
-        if P >= 3
-        else np.zeros(max_blocks, dtype=complex)
-    )
+    H3 = 4.0 * np.sum(g3_prime * R3[:, np.newaxis], axis=0) / sum_R6 if P >= 3 and sum_R6 > 1e-12 else np.zeros(J, dtype=complex)
 
     if P >= 4:
         g2_prime = g2 - 0.5 * H4[np.newaxis, :] * R4[:, np.newaxis]
     else:
         g2_prime = g2
-    H2 = (
-        2 * np.sum(g2_prime * R2[:, np.newaxis], axis=0) / np.sum(R_array**4)
-        if P >= 2
-        else np.zeros(max_blocks, dtype=complex)
-    )
+    H2 = 2.0 * np.sum(g2_prime * R2[:, np.newaxis], axis=0) / sum_R4 if P >= 2 and sum_R4 > 1e-12 else np.zeros(J, dtype=complex)
 
     g1_prime = g1.copy()
     if P >= 3:
         g1_prime -= 0.75 * H3[np.newaxis, :] * R3[:, np.newaxis]
     if P >= 5:
         g1_prime -= 0.625 * H5[np.newaxis, :] * R5[:, np.newaxis]
-    H1 = np.sum(g1_prime * R_array[:, np.newaxis], axis=0) / np.sum(R_array**2)
+    H1 = np.sum(g1_prime * R_array[:, np.newaxis], axis=0) / sum_R2 if sum_R2 > 1e-12 else np.zeros(J, dtype=complex)
 
-    H_freqs = [H1, H2, H3, H4, H5][:P]
+    H_est_list = [H1, H2, H3, H4, H5][:P]
 
-    # Frequency mapping: H_p_mapped(f) = H_p_raw(f / p)
-    valid_idx = np.where(plot_freqs_array > 0)[0]
-    if len(valid_idx) > 0:
-        sort_idx = np.argsort(plot_freqs_array[valid_idx])
-        sorted_freqs = plot_freqs_array[valid_idx][sort_idx]
-
-        H_mapped_list = []
-        for p in range(P):
-            H_raw = H_freqs[p][valid_idx][sort_idx]
-            f_lookups = sorted_freqs / (p + 1)
-
-            # Polar Interpolation to prevent phase distortion
-            mags = np.abs(H_raw)
-            # Handle wrapping smoothly before interpolation
-            phases = np.unwrap(np.angle(H_raw))
-
-            mag_mapped = np.interp(f_lookups, sorted_freqs, mags, left=np.nan, right=np.nan)
-            phase_mapped = np.interp(f_lookups, sorted_freqs, phases, left=np.nan, right=np.nan)
-
-            H_mapped = mag_mapped * np.exp(1j * phase_mapped)
-            H_mapped_list.append(H_mapped)
-
-        # Apply lowpass filter correction
-        for p in range(P):
-            H_p = H_mapped_list[p]
-            if p >= 1:
-                f_cut = min(20000.0, 1.15 * sample_rate / 2)
-                lpf = 1.0 / np.sqrt(1.0 + (sorted_freqs / f_cut) ** 16)
-                H_p = H_p * lpf
-            H_freqs[p] = H_p
-
-        return H_freqs, sorted_freqs
-    else:
-        raise ValueError("No valid frequency measurement points found.")
-
-
-def estimate_hammerstein_kernels_complex(
-    amplitudes, raw_responses, plot_freqs_array, block_counts, max_blocks, max_harmonic, sample_rate
-):
-    """
-    Estimates the Hammerstein frequency-domain kernels H1..Hp using Alternative Least Squares (ALS)
-    and Chebyshev relation inversion (matching the GUI's complex Hammerstein model).
-    """
-    P = max_harmonic
-    num_amplitudes = len(amplitudes)
-
-    valid_idx = np.where(plot_freqs_array > 0)[0]
-    if len(valid_idx) < 2:
-        raise ValueError("No valid frequency measurement points found.")
-
-    sort_idx = np.argsort(plot_freqs_array[valid_idx])
-    sorted_freqs = plot_freqs_array[valid_idx][sort_idx]
-
-    # 1. Setup Y_tilde and freqs_valid for ALS fitting
-    phase_corrections = [(1j) ** p for p in range(P)]
-    Y_tilde = np.zeros_like(raw_responses, dtype=complex)
-    for amp_idx in range(num_amplitudes):
-        amp = amplitudes[amp_idx]
-        for p in range(P):
-            val = raw_responses[amp_idx, :, p]
-            # Since input_mode is XFER, we multiply by amp
-            # (Matches: val * amp * phase_corrections[p] in lock_in_modeler.py)
-            Y_tilde[amp_idx, :, p] = val * amp * phase_corrections[p]
-
-    # ALS estimation
-    K = num_amplitudes
-    J = len(valid_idx)
-
-    F_est = np.zeros((K, P))
-    H_est = np.zeros((J, P), dtype=complex)
-
-    Y_tilde_valid = Y_tilde[:, valid_idx, :]
-
-    for p in range(P):
-        m = p + 1
-        F_m = amplitudes ** m
-
-        for _ in range(15):
-            denom_F = np.sum(F_m ** 2)
-            if denom_F > 1e-12:
-                H_m = np.sum(Y_tilde_valid[:, :, p] * F_m[:, np.newaxis], axis=0) / denom_F
-            else:
-                H_m = np.zeros(J, dtype=complex)
-
-            denom_H = np.sum(np.abs(H_m) ** 2)
-            if denom_H > 1e-12:
-                F_m = np.real(np.sum(Y_tilde_valid[:, :, p] * np.conj(H_m)[np.newaxis, :], axis=1)) / denom_H
-            else:
-                F_m = np.zeros(K)
-
-            norm = np.sqrt(np.sum(F_m ** 2))
-            if norm > 1e-12:
-                F_m = F_m / norm
-                H_m = H_m * norm
-
-        F_est[:, p] = F_m
-        H_est[:, p] = H_m
-
-    # 2. Align scales (alphas) of different harmonics
-    alphas = np.ones(P)
-    alphas[0] = 1.0
-
-    h1_mags = np.abs(H_est[:, 0])
-    h1_phases = np.unwrap(np.angle(H_est[:, 0]))
-
-    interp_mag = interp1d(sorted_freqs, h1_mags[sort_idx], bounds_error=False, fill_value=np.nan)
-    interp_phase = interp1d(sorted_freqs, h1_phases[sort_idx], bounds_error=False, fill_value=np.nan)
-
-    def eval_h1(f):
-        m_val = interp_mag(f)
-        p_val = interp_phase(f)
-        return m_val * np.exp(1j * p_val)
-
-    for p in range(1, P):
-        m = p + 1
-        freqs_valid = plot_freqs_array[valid_idx]
-        valid_freq_mask = (freqs_valid * m <= np.max(freqs_valid)) & (freqs_valid * m >= np.min(freqs_valid))
-        if np.any(valid_freq_mask):
-            f_eval = freqs_valid[valid_freq_mask]
-            h_m_vals = H_est[valid_freq_mask, p]
-            h1_ref_vals = eval_h1(f_eval * m)
-
-            mask = ~np.isnan(h1_ref_vals) & (np.abs(h1_ref_vals) > 1e-10)
-            if np.any(mask):
-                ratios = h_m_vals[mask] / h1_ref_vals[mask]
-                median_ratio = np.median(np.real(ratios))
-                if not np.isnan(median_ratio) and np.abs(median_ratio) > 1e-12:
-                    alphas[p] = median_ratio
-
-    F_scaled = np.zeros_like(F_est)
-    H_scaled = np.zeros_like(H_est, dtype=complex)
-    for p in range(P):
-        F_scaled[:, p] = F_est[:, p] * alphas[p]
-        H_scaled[:, p] = H_est[:, p] / alphas[p]
-
-    # 3. Extract polynomial coefficients c_n via Chebyshev relation inversion
-    c = np.zeros(P + 1)
-
-    denom5 = np.sum(amplitudes**10)
-    denom4 = np.sum(amplitudes**8)
-    denom3 = np.sum(amplitudes**6)
-    denom2 = np.sum(amplitudes**4)
-    denom1 = np.sum(amplitudes**2)
-
-    if P >= 5 and denom5 > 1e-12:
-        c[5] = 16.0 * np.sum(F_scaled[:, 4] * (amplitudes**5)) / denom5
-    if P >= 4 and denom4 > 1e-12:
-        c[4] = 8.0 * np.sum(F_scaled[:, 3] * (amplitudes**4)) / denom4
-    if P >= 3 and denom3 > 1e-12:
-        F3_prime = F_scaled[:, 2] - (5.0/16.0) * c[5] * (amplitudes**5) if P >= 5 else F_scaled[:, 2]
-        c[3] = 4.0 * np.sum(F3_prime * (amplitudes**3)) / denom3
-    if P >= 2 and denom2 > 1e-12:
-        F2_prime = F_scaled[:, 1] - 0.5 * c[4] * (amplitudes**4) if P >= 4 else F_scaled[:, 1]
-        c[2] = 2.0 * np.sum(F2_prime * (amplitudes**2)) / denom2
-    if denom1 > 1e-12:
-        F1_prime = F_scaled[:, 0]
-        if P >= 3:
-            F1_prime = F1_prime - 0.75 * c[3] * (amplitudes**3)
-        if P >= 5:
-            F1_prime = F1_prime - 0.625 * c[5] * (amplitudes**5)
-        c[1] = np.sum(F1_prime * amplitudes) / denom1
-
-    c_1 = c[1]
-    c_norm = c.copy()
-    if np.abs(c_1) > 1e-12:
-        c_norm = c / c_1
-    else:
-        c_norm[1] = 1.0
-        c_1 = 1.0
-
-    # 4. Synthesize single unified H(f)
-    freqs_valid = plot_freqs_array[valid_idx]
-    all_freqs = []
-    all_H_vals = []
-    for p in range(P):
-        m = p + 1
-        all_freqs.extend(freqs_valid * m)
-        all_H_vals.extend(H_scaled[:, p] * c_1)
-
-    all_freqs = np.array(all_freqs)
-    all_H_vals = np.array(all_H_vals)
-
-    sort_all = np.argsort(all_freqs)
-    sorted_all_freqs = all_freqs[sort_all]
-    sorted_all_H_vals = all_H_vals[sort_all]
-
-    # 5. Reconstruct the multi-harmonic freqs in H_freqs
-    mags = np.abs(sorted_all_H_vals)
-    phases = np.unwrap(np.angle(sorted_all_H_vals))
-
+    # Frequency mapping to physical harmonic frequency
     H_mapped_list = []
     for p in range(P):
-        m = p + 1
-        mag_mapped = np.interp(sorted_freqs, sorted_all_freqs, mags, left=np.nan, right=np.nan)
-        phase_mapped = np.interp(sorted_freqs, sorted_all_freqs, phases, left=np.nan, right=np.nan)
+        H_raw = H_est_list[p]
+        f_lookups = sorted_freqs / (p + 1)
 
-        c_p = c_norm[m]
-        H_p = c_p * mag_mapped * np.exp(1j * phase_mapped)
+        mags = np.abs(H_raw)
+        phases = np.unwrap(np.angle(H_raw))
 
+        mag_mapped = np.interp(f_lookups, sorted_freqs, mags, left=np.nan, right=np.nan)
+        phase_mapped = np.interp(f_lookups, sorted_freqs, phases, left=np.nan, right=np.nan)
+
+        H_mapped = mag_mapped * np.exp(1j * phase_mapped)
+        H_mapped_list.append(H_mapped)
+
+    # Apply Butterworth LPF
+    H_freqs_res = []
+    for p in range(P):
+        H_p = H_mapped_list[p]
         if p >= 1:
             f_cut = min(20000.0, 1.15 * sample_rate / 2)
             lpf = 1.0 / np.sqrt(1.0 + (sorted_freqs / f_cut) ** 16)
             H_p = H_p * lpf
+        H_freqs_res.append(H_p)
 
-        H_mapped_list.append(H_p)
-
-    return H_mapped_list, sorted_freqs
+    return H_freqs_res, sorted_freqs
 
 
 def predict_harmonic_response(f0, A_in, H_freqs, sorted_freqs, sample_rate, max_harmonic=5):
@@ -615,7 +433,7 @@ def main():
     parser.add_argument("--num-meas-points", type=int, default=500, help="Number of measurement points")
     parser.add_argument("--min-analysis-window", type=float, default=1.0, help="Minimum analysis window in seconds")
     parser.add_argument(
-        "--model", type=str, choices=["real", "complex"], default="complex", help="Model domain mode ('real' or 'complex')"
+        "--model", type=str, choices=["chebyshev"], default="chebyshev", help="Model domain mode (only 'chebyshev' is supported now)"
     )
 
     cli_args = parser.parse_args()
@@ -736,28 +554,17 @@ def main():
     # ----------------------------------------------------
     # Phase B: Hammerstein Kernel Estimation & Verification
     # ----------------------------------------------------
-    print(f"\n=== Phase B: Estimating Hammerstein Kernels ({cli_args.model} model) ===")
-    if cli_args.model == "complex":
-        H_freqs, sorted_freqs = estimate_hammerstein_kernels_complex(
-            amplitudes=amplitudes,
-            raw_responses=raw_responses,
-            plot_freqs_array=plot_freqs,
-            block_counts=block_counts,
-            max_blocks=max_blocks,
-            max_harmonic=max_harmonic,
-            sample_rate=engine.sample_rate,
-        )
-    else:
-        H_freqs, sorted_freqs = estimate_hammerstein_kernels(
-            amplitudes=amplitudes,
-            raw_responses=raw_responses,
-            plot_freqs_array=plot_freqs,
-            block_counts=block_counts,
-            max_blocks=max_blocks,
-            max_harmonic=max_harmonic,
-            sample_rate=engine.sample_rate,
-        )
-    print(f"[+] Estimated {len(H_freqs)} Hammerstein kernels using {cli_args.model} model.")
+    print("\n=== Phase B: Estimating Hammerstein Kernels ===")
+    H_freqs, sorted_freqs = estimate_hammerstein_kernels(
+        amplitudes=amplitudes,
+        raw_responses=raw_responses,
+        plot_freqs_array=plot_freqs,
+        block_counts=block_counts,
+        max_blocks=max_blocks,
+        max_harmonic=max_harmonic,
+        sample_rate=engine.sample_rate,
+    )
+    print("[+] Estimated Hammerstein kernels (Chebyshev Parallel Complex method).")
 
     # ----------------------------------------------------
     # Phase C: Measuring Single Tone Response via Parallel Lock-in
@@ -812,25 +619,17 @@ def main():
     # Phase E: Comparison and Validation
     # ----------------------------------------------------
     print("\n=== Phase E: Comparison Results ===")
+
+    amp_diffs = []
+    phase_diffs = []
+
+    print(f"\n--- Model: Parallel Complex Hammerstein (Chebyshev) ---")
     print(
         f"{'Harmonic':<10} | {'Predicted Amp (dB)':<20} | {'Measured Amp (dB)':<20} | {'Amp Diff (dB)':<15} | {'Predicted Phase':<18} | {'Measured Phase':<18} | {'Phase Diff':<12}"
     )
     print("-" * 115)
 
-    comparison_results = []
-    failed = False
-
-    # Validation thresholds for Virtual simulation mode
-    # For virtual mode, the prediction should match the measurement almost perfectly.
-    # We enforce strict tolerances to pass the test, but allow slightly larger tolerance
-    # for the complex model due to scaling estimation (median ratio of alphas) limitations.
-    if cli_args.model == "complex":
-        amp_tolerance = 3.5  # dB
-        phase_tolerance = 1.0  # degrees
-    else:
-        amp_tolerance = 0.5  # dB
-        phase_tolerance = 1.0  # degrees
-
+    comp_list = []
     for n in range(1, max_harmonic + 1):
         pred_amp = predictions[n - 1]["amp_db"]
         pred_phase = predictions[n - 1]["phase_deg"]
@@ -844,12 +643,15 @@ def main():
 
         # Skip validation checking for higher harmonics if the level is extremely low (near noise floor)
         level_too_low = (pred_amp < -90.0) and (meas_amp < -90.0)
+        if not level_too_low:
+            amp_diffs.append(amp_diff)
+            phase_diffs.append(phase_diff)
 
         print(
             f"H{n} ({n * f0 / 1000.0:.1f} kHz) | {pred_amp:>18.2f} | {meas_amp:>18.2f} (std={lockin_avg[n - 1]['amp_std']:.3f}) | {amp_diff:>13.2f} | {pred_phase:>14.1f} deg | {meas_phase:>14.1f} deg (std={lockin_avg[n - 1]['phase_std']:.2f}) | {phase_diff:>10.1f} deg"
         )
 
-        comparison_results.append(
+        comp_list.append(
             {
                 "harmonic": n,
                 "frequency_hz": n * f0,
@@ -864,8 +666,33 @@ def main():
             }
         )
 
+    mae_amp = np.mean(amp_diffs) if amp_diffs else 0.0
+    mae_phase = np.mean(phase_diffs) if phase_diffs else 0.0
+    max_amp_err = np.max(amp_diffs) if amp_diffs else 0.0
+    max_phase_err = np.max(phase_diffs) if phase_diffs else 0.0
+
+    print("\n" + "=" * 90)
+    print("=== MODEL ACCURACY SUMMARY ===")
+    print("=" * 90)
+    print(f"MAE Amp: {mae_amp:.4f} dB")
+    print(f"MAE Phase: {mae_phase:.4f} deg")
+    print(f"Max Amp Error: {max_amp_err:.4f} dB")
+    print(f"Max Phase Error: {max_phase_err:.4f} deg")
+    print("=" * 90)
+
+    amp_tolerance = 0.5  # dB
+    phase_tolerance = 1.0  # degrees
+
+    failed = False
+    for item in comp_list:
+        n = item["harmonic"]
+        amp_diff = item["diff"]["amp_db"]
+        phase_diff = item["diff"]["phase_deg"]
+        pred_amp = item["predicted"]["amp_db"]
+        meas_amp = item["measured"]["amp_db"]
+        level_too_low = (pred_amp < -90.0) and (meas_amp < -90.0)
+
         if cli_args.virtual and not level_too_low:
-            # Check thresholds
             if amp_diff > amp_tolerance:
                 print(
                     f"    [-] FAIL: H{n} amplitude difference exceeds threshold ({amp_diff:.2f} > {amp_tolerance} dB)"
@@ -885,8 +712,12 @@ def main():
         "is_virtual": cli_args.virtual,
         "is_fast": cli_args.fast,
         "runs": cli_args.runs,
-        "model": cli_args.model,
-        "results": comparison_results,
+        "target_model": cli_args.model,
+        "mae_amp": mae_amp,
+        "mae_phase": mae_phase,
+        "max_amp_err": max_amp_err,
+        "max_phase_err": max_phase_err,
+        "results": comp_list,
         "success": not failed,
     }
 
@@ -896,10 +727,10 @@ def main():
 
     if cli_args.virtual:
         if failed:
-            print("\n[-] Lock-in Modeler Hammerstein Verification FAILED.")
+            print(f"\n[-] Lock-in Modeler Hammerstein Verification FAILED for target model '{cli_args.model}'.")
             sys.exit(1)
         else:
-            print("\n[+] Lock-in Modeler Hammerstein Verification PASSED.")
+            print(f"\n[+] Lock-in Modeler Hammerstein Verification PASSED for target model '{cli_args.model}'.")
             sys.exit(0)
 
 

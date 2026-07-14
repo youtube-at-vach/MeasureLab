@@ -370,7 +370,6 @@ class LockInModelerWidget(QWidget):
         self.combo_meas_mode.addItem(tr("Nonlinear Model (Forward)"), "hammerstein")
         self.combo_meas_mode.addItem(tr("Predistortion Sweep"), "predistortion_sweep")
         self.combo_meas_mode.addItem(tr("Nonlinear Model (Predistorted)"), "predistorted_hammerstein")
-        self.combo_meas_mode.addItem(tr("Nonlinear Model (Parallel Complex)"), "parallel_complex_hammerstein")
         self.combo_meas_mode.currentIndexChanged.connect(self.on_meas_mode_changed)
         form.addRow(tr("Sweep Mode:"), self.combo_meas_mode)
 
@@ -836,9 +835,8 @@ class LockInModelerWidget(QWidget):
             self.module.is_predistortion_sweep_mode = self.is_predistortion_sweep_mode
             self.is_predistorted_hammerstein_mode = mode == "predistorted_hammerstein"
             self.module.is_predistorted_hammerstein_mode = self.is_predistorted_hammerstein_mode
-            self.is_parallel_complex_mode = mode == "parallel_complex_hammerstein"
 
-            self.is_hammerstein_mode = mode in {"hammerstein", "predistorted_hammerstein", "parallel_complex_hammerstein"}
+            self.is_hammerstein_mode = mode in {"hammerstein", "predistorted_hammerstein"}
             if self.is_hammerstein_mode:
                 self.num_amplitudes = self.spin_amp_steps.value()
                 max_amp_db = self.spin_amplitude.value()
@@ -1005,7 +1003,7 @@ class LockInModelerWidget(QWidget):
 
     def on_meas_mode_changed(self, index):
         mode = self.combo_meas_mode.currentData()
-        is_ham = mode in {"hammerstein", "predistorted_hammerstein", "parallel_complex_hammerstein"}
+        is_ham = mode in {"hammerstein", "predistorted_hammerstein"}
         is_predist = mode in {"predistortion_sweep", "predistorted_hammerstein"}
 
         self.spin_amp_steps.setVisible(is_ham)
@@ -1485,274 +1483,107 @@ class LockInModelerWidget(QWidget):
                             freq_base=freq_base
                         )
 
-            mode = self.combo_meas_mode.currentData()
-            is_parallel_complex = mode == "parallel_complex_hammerstein"
+            # Parallel Complex Hammerstein Estimation (Chebyshev-based subtraction from estimate_power_kernels)
+            K = self.num_amplitudes
+            J = len(valid_idx)
+            g_scaled = np.zeros((K, J, P), dtype=complex)
+            phase_corrections = [1.0, 1j, -1.0, -1j, 1.0][:P]
+            R_array = self.amplitudes
 
-            if is_parallel_complex:
-                # Parallel Complex Hammerstein Estimation (Chebyshev-based subtraction from estimate_power_kernels)
-                K = self.num_amplitudes
-                J = len(valid_idx)
-                g_scaled = np.zeros((K, J, P), dtype=complex)
-                phase_corrections = [1.0, 1j, -1.0, -1j, 1.0][:P]
-                R_array = self.amplitudes
-
-                for amp_idx in range(K):
-                    for p_idx in range(P):
-                        val = avg_responses[amp_idx, valid_idx, p_idx]
-                        if self.module.input_mode == "XFER" and not getattr(self.module, "ref_phase_only", False):
-                            g_scaled[amp_idx, :, p_idx] = val * R_array[amp_idx] * phase_corrections[p_idx]
-                        else:
-                            g_scaled[amp_idx, :, p_idx] = val * phase_corrections[p_idx]
-
-                g1 = g_scaled[:, :, 0]
-                g2 = g_scaled[:, :, 1] if P >= 2 else np.zeros_like(g1)
-                g3 = g_scaled[:, :, 2] if P >= 3 else np.zeros_like(g1)
-                g4 = g_scaled[:, :, 3] if P >= 4 else np.zeros_like(g1)
-                g5 = g_scaled[:, :, 4] if P >= 5 else np.zeros_like(g1)
-
-                R2 = R_array**2
-                R3 = R_array**3
-                R4 = R_array**4
-                R5 = R_array**5
-
-                sum_R10 = np.sum(R_array**10)
-                sum_R8 = np.sum(R_array**8)
-                sum_R6 = np.sum(R_array**6)
-                sum_R4 = np.sum(R_array**4)
-                sum_R2 = np.sum(R_array**2)
-
-                H5 = 16.0 * np.sum(g5 * R5[:, np.newaxis], axis=0) / sum_R10 if P >= 5 and sum_R10 > 1e-12 else np.zeros(J, dtype=complex)
-                H4 = 8.0 * np.sum(g4 * R4[:, np.newaxis], axis=0) / sum_R8 if P >= 4 and sum_R8 > 1e-12 else np.zeros(J, dtype=complex)
-
-                if P >= 5:
-                    g3_prime = g3 - (5.0/16.0) * H5[np.newaxis, :] * R5[:, np.newaxis]
-                else:
-                    g3_prime = g3
-                H3 = 4.0 * np.sum(g3_prime * R3[:, np.newaxis], axis=0) / sum_R6 if P >= 3 and sum_R6 > 1e-12 else np.zeros(J, dtype=complex)
-
-                if P >= 4:
-                    g2_prime = g2 - 0.5 * H4[np.newaxis, :] * R4[:, np.newaxis]
-                else:
-                    g2_prime = g2
-                H2 = 2.0 * np.sum(g2_prime * R2[:, np.newaxis], axis=0) / sum_R4 if P >= 2 and sum_R4 > 1e-12 else np.zeros(J, dtype=complex)
-
-                g1_prime = g1.copy()
-                if P >= 3:
-                    g1_prime -= 0.75 * H3[np.newaxis, :] * R3[:, np.newaxis]
-                if P >= 5:
-                    g1_prime -= 0.625 * H5[np.newaxis, :] * R5[:, np.newaxis]
-                H1 = np.sum(g1_prime * R_array[:, np.newaxis], axis=0) / sum_R2 if sum_R2 > 1e-12 else np.zeros(J, dtype=complex)
-
-                H_est_list = [H1, H2, H3, H4, H5][:P]
-
-                # 3. Apply frequency mapping to map H_p(f_0) measured at fundamental f_0 to physical harmonic frequency p * f_0
-                H_mapped_list = []
-                for p in range(P):
-                    H_raw = H_est_list[p][sort_idx]
-                    f_lookups = sorted_freqs / (p + 1)
-
-                    nan_mask = np.isnan(H_raw)
-                    valid_mask = ~nan_mask
-
-                    if np.any(valid_mask):
-                        valid_H = H_raw[valid_mask]
-                        xp = sorted_freqs[valid_mask]
-
-                        mags_valid = np.abs(valid_H)
-                        phases_valid = np.unwrap(np.angle(valid_H))
-
-                        # Dynamically reduce resolution to improve real-time performance bounds
-                        TARGET_RESOLUTION = 2000
-                        if len(valid_H) > TARGET_RESOLUTION:
-                            step = len(valid_H) // TARGET_RESOLUTION
-                            mags_valid = mags_valid[::step]
-                            phases_valid = phases_valid[::step]
-                            xp = xp[::step]
-
-                        mag_mapped = np.interp(f_lookups, xp, mags_valid, left=np.nan, right=np.nan)
-                        phase_mapped = np.interp(f_lookups, xp, phases_valid, left=np.nan, right=np.nan)
+            for amp_idx in range(K):
+                for p_idx in range(P):
+                    val = avg_responses[amp_idx, valid_idx, p_idx]
+                    if self.module.input_mode == "XFER" and not getattr(self.module, "ref_phase_only", False):
+                        g_scaled[amp_idx, :, p_idx] = val * R_array[amp_idx] * phase_corrections[p_idx]
                     else:
-                        mag_mapped = np.full_like(f_lookups, np.nan)
-                        phase_mapped = np.full_like(f_lookups, np.nan)
+                        g_scaled[amp_idx, :, p_idx] = val * phase_corrections[p_idx]
 
-                    H_mapped = mag_mapped * np.exp(1j * phase_mapped)
-                    H_mapped_list.append(H_mapped)
+            g1 = g_scaled[:, :, 0]
+            g2 = g_scaled[:, :, 1] if P >= 2 else np.zeros_like(g1)
+            g3 = g_scaled[:, :, 2] if P >= 3 else np.zeros_like(g1)
+            g4 = g_scaled[:, :, 3] if P >= 4 else np.zeros_like(g1)
+            g5 = g_scaled[:, :, 4] if P >= 5 else np.zeros_like(g1)
 
-                # Apply Butterworth LPF and pad back
-                self.H_freqs = []
-                for p in range(P):
-                    H_p = H_mapped_list[p]
-                    if p >= 1:
-                        f_cut = min(20000.0, 1.15 * sample_rate / 2)
-                        lpf = 1.0 / np.sqrt(1.0 + (sorted_freqs / f_cut) ** 16)
-                        H_p = H_p * lpf
+            R2 = R_array**2
+            R3 = R_array**3
+            R4 = R_array**4
+            R5 = R_array**5
 
-                    H_full = np.zeros(max_blocks, dtype=complex)
-                    H_full[valid_idx[sort_idx]] = H_p
-                    self.H_freqs.append(H_full)
+            sum_R10 = np.sum(R_array**10)
+            sum_R8 = np.sum(R_array**8)
+            sum_R6 = np.sum(R_array**6)
+            sum_R4 = np.sum(R_array**4)
+            sum_R2 = np.sum(R_array**2)
+
+            H5 = 16.0 * np.sum(g5 * R5[:, np.newaxis], axis=0) / sum_R10 if P >= 5 and sum_R10 > 1e-12 else np.zeros(J, dtype=complex)
+            H4 = 8.0 * np.sum(g4 * R4[:, np.newaxis], axis=0) / sum_R8 if P >= 4 and sum_R8 > 1e-12 else np.zeros(J, dtype=complex)
+
+            if P >= 5:
+                g3_prime = g3 - (5.0/16.0) * H5[np.newaxis, :] * R5[:, np.newaxis]
             else:
-                # 2. Setup Y_tilde and freqs_valid for ALS fitting
-                freqs_valid = plot_freqs[valid_idx]
+                g3_prime = g3
+            H3 = 4.0 * np.sum(g3_prime * R3[:, np.newaxis], axis=0) / sum_R6 if P >= 3 and sum_R6 > 1e-12 else np.zeros(J, dtype=complex)
 
-                # Align phase offsets and apply scale adjustments
-                phase_corrections = [(1j) ** p for p in range(P)]
-                Y_tilde = np.zeros_like(avg_responses, dtype=complex)
-                for amp_idx in range(self.num_amplitudes):
-                    amp = self.amplitudes[amp_idx]
-                    for p in range(P):
-                        val = avg_responses[amp_idx, :, p]
-                        if self.module.input_mode == "XFER" and not getattr(self.module, "ref_phase_only", False):
-                            Y_tilde[amp_idx, :, p] = val * amp * phase_corrections[p]
-                        else:
-                            Y_tilde[amp_idx, :, p] = val * phase_corrections[p]
+            if P >= 4:
+                g2_prime = g2 - 0.5 * H4[np.newaxis, :] * R4[:, np.newaxis]
+            else:
+                g2_prime = g2
+            H2 = 2.0 * np.sum(g2_prime * R2[:, np.newaxis], axis=0) / sum_R4 if P >= 2 and sum_R4 > 1e-12 else np.zeros(J, dtype=complex)
 
-                # ALS estimation for complex Hammerstein model
-                K = self.num_amplitudes
-                J = len(valid_idx)
+            g1_prime = g1.copy()
+            if P >= 3:
+                g1_prime -= 0.75 * H3[np.newaxis, :] * R3[:, np.newaxis]
+            if P >= 5:
+                g1_prime -= 0.625 * H5[np.newaxis, :] * R5[:, np.newaxis]
+            H1 = np.sum(g1_prime * R_array[:, np.newaxis], axis=0) / sum_R2 if sum_R2 > 1e-12 else np.zeros(J, dtype=complex)
 
-                F_est = np.zeros((K, P))
-                H_est = np.zeros((J, P), dtype=complex)
+            H_est_list = [H1, H2, H3, H4, H5][:P]
 
-                Y_tilde_valid = Y_tilde[:, valid_idx, :]
+            # 3. Apply frequency mapping to map H_p(f_0) measured at fundamental f_0 to physical harmonic frequency p * f_0
+            H_mapped_list = []
+            for p in range(P):
+                H_raw = H_est_list[p][sort_idx]
+                f_lookups = sorted_freqs / (p + 1)
 
-                for p in range(P):
-                    m = p + 1
-                    F_m = self.amplitudes ** m
+                nan_mask = np.isnan(H_raw)
+                valid_mask = ~nan_mask
 
-                    for _ in range(15):
-                        denom_F = np.sum(F_m ** 2)
-                        if denom_F > 1e-12:
-                            H_m = np.sum(Y_tilde_valid[:, :, p] * F_m[:, np.newaxis], axis=0) / denom_F
-                        else:
-                            H_m = np.zeros(J, dtype=complex)
+                if np.any(valid_mask):
+                    valid_H = H_raw[valid_mask]
+                    xp = sorted_freqs[valid_mask]
 
-                        denom_H = np.sum(np.abs(H_m) ** 2)
-                        if denom_H > 1e-12:
-                            F_m = np.real(np.sum(Y_tilde_valid[:, :, p] * np.conj(H_m)[np.newaxis, :], axis=1)) / denom_H
-                        else:
-                            F_m = np.zeros(K)
+                    mags_valid = np.abs(valid_H)
+                    phases_valid = np.unwrap(np.angle(valid_H))
 
-                        norm = np.sqrt(np.sum(F_m ** 2))
-                        if norm > 1e-12:
-                            F_m = F_m / norm
-                            H_m = H_m * norm
+                    # Dynamically reduce resolution to improve real-time performance bounds
+                    TARGET_RESOLUTION = 2000
+                    if len(valid_H) > TARGET_RESOLUTION:
+                        step = len(valid_H) // TARGET_RESOLUTION
+                        mags_valid = mags_valid[::step]
+                        phases_valid = phases_valid[::step]
+                        xp = xp[::step]
 
-                    F_est[:, p] = F_m
-                    H_est[:, p] = H_m
-
-                # 3. Align scales (alphas) of different harmonics
-                alphas = np.ones(P)
-                alphas[0] = 1.0
-
-                h1_mags = np.abs(H_est[:, 0])
-                h1_phases = np.unwrap(np.angle(H_est[:, 0]))
-
-                from scipy.interpolate import interp1d
-                interp_mag = interp1d(sorted_freqs, h1_mags[sort_idx], bounds_error=False, fill_value=np.nan)
-                interp_phase = interp1d(sorted_freqs, h1_phases[sort_idx], bounds_error=False, fill_value=np.nan)
-
-                def eval_h1(f):
-                    m_val = interp_mag(f)
-                    p_val = interp_phase(f)
-                    return m_val * np.exp(1j * p_val)
-
-                for p in range(1, P):
-                    m = p + 1
-                    valid_freq_mask = (freqs_valid * m <= np.max(freqs_valid)) & (freqs_valid * m >= np.min(freqs_valid))
-                    if np.any(valid_freq_mask):
-                        f_eval = freqs_valid[valid_freq_mask]
-                        h_m_vals = H_est[valid_freq_mask, p]
-                        h1_ref_vals = eval_h1(f_eval * m)
-
-                        mask = ~np.isnan(h1_ref_vals) & (np.abs(h1_ref_vals) > 1e-10)
-                        if np.any(mask):
-                            ratios = h_m_vals[mask] / h1_ref_vals[mask]
-                            median_ratio = np.median(np.real(ratios))
-                            if not np.isnan(median_ratio) and np.abs(median_ratio) > 1e-12:
-                                alphas[p] = median_ratio
-
-                F_scaled = np.zeros_like(F_est)
-                H_scaled = np.zeros_like(H_est, dtype=complex)
-                for p in range(P):
-                    F_scaled[:, p] = F_est[:, p] * alphas[p]
-                    H_scaled[:, p] = H_est[:, p] / alphas[p]
-
-                # 4. Extract polynomial coefficients c_n via Chebyshev relation inversion
-                c = np.zeros(P + 1)
-
-                denom5 = np.sum(self.amplitudes**10)
-                denom4 = np.sum(self.amplitudes**8)
-                denom3 = np.sum(self.amplitudes**6)
-                denom2 = np.sum(self.amplitudes**4)
-                denom1 = np.sum(self.amplitudes**2)
-
-                if P >= 5 and denom5 > 1e-12:
-                    c[5] = 16.0 * np.sum(F_scaled[:, 4] * (self.amplitudes**5)) / denom5
-                if P >= 4 and denom4 > 1e-12:
-                    c[4] = 8.0 * np.sum(F_scaled[:, 3] * (self.amplitudes**4)) / denom4
-                if P >= 3 and denom3 > 1e-12:
-                    F3_prime = F_scaled[:, 2] - (5.0/16.0) * c[5] * (self.amplitudes**5) if P >= 5 else F_scaled[:, 2]
-                    c[3] = 4.0 * np.sum(F3_prime * (self.amplitudes**3)) / denom3
-                if P >= 2 and denom2 > 1e-12:
-                    F2_prime = F_scaled[:, 1] - 0.5 * c[4] * (self.amplitudes**4) if P >= 4 else F_scaled[:, 1]
-                    c[2] = 2.0 * np.sum(F2_prime * (self.amplitudes**2)) / denom2
-                if denom1 > 1e-12:
-                    F1_prime = F_scaled[:, 0]
-                    if P >= 3:
-                        F1_prime = F1_prime - 0.75 * c[3] * (self.amplitudes**3)
-                    if P >= 5:
-                        F1_prime = F1_prime - 0.625 * c[5] * (self.amplitudes**5)
-                    c[1] = np.sum(F1_prime * self.amplitudes) / denom1
-
-                c_1 = c[1]
-                c_norm = c.copy()
-                if np.abs(c_1) > 1e-12:
-                    c_norm = c / c_1
+                    mag_mapped = np.interp(f_lookups, xp, mags_valid, left=np.nan, right=np.nan)
+                    phase_mapped = np.interp(f_lookups, xp, phases_valid, left=np.nan, right=np.nan)
                 else:
-                    c_norm[1] = 1.0
-                    c_1 = 1.0
+                    mag_mapped = np.full_like(f_lookups, np.nan)
+                    phase_mapped = np.full_like(f_lookups, np.nan)
 
-                # 5. Synthesize single unified H(f)
-                all_freqs = []
-                all_H_vals = []
-                for p in range(P):
-                    m = p + 1
-                    all_freqs.extend(freqs_valid * m)
-                    all_H_vals.extend(H_scaled[:, p] * c_1)
+                H_mapped = mag_mapped * np.exp(1j * phase_mapped)
+                H_mapped_list.append(H_mapped)
 
-                all_freqs = np.array(all_freqs)
-                all_H_vals = np.array(all_H_vals)
+            # Apply Butterworth LPF and pad back
+            self.H_freqs = []
+            for p in range(P):
+                H_p = H_mapped_list[p]
+                if p >= 1:
+                    f_cut = min(20000.0, 1.15 * sample_rate / 2)
+                    lpf = 1.0 / np.sqrt(1.0 + (sorted_freqs / f_cut) ** 16)
+                    H_p = H_p * lpf
 
-                sort_all = np.argsort(all_freqs)
-                sorted_all_freqs = all_freqs[sort_all]
-                sorted_all_H_vals = all_H_vals[sort_all]
-
-                # 6. Reconstruct the multi-harmonic freqs in self.H_freqs
-                mags = np.abs(sorted_all_H_vals)
-                phases = np.unwrap(np.angle(sorted_all_H_vals))
-
-                self.H_freqs = []
-                for p in range(P):
-                    m = p + 1
-                    f_target = sorted_freqs * m
-
-                    # Polar interpolation to prevent phase wrapping issues
-                    mag_mapped = np.interp(f_target, sorted_all_freqs, mags, left=np.nan, right=np.nan)
-                    phase_mapped = np.interp(f_target, sorted_all_freqs, phases, left=np.nan, right=np.nan)
-
-                    c_p = c_norm[m]
-                    H_p = c_p * mag_mapped * np.exp(1j * phase_mapped)
-
-                    # Butterworth LPF to higher orders
-                    if p >= 1:
-                        f_cut = min(20000.0, 1.15 * sample_rate / 2)
-                        lpf = 1.0 / np.sqrt(1.0 + (sorted_freqs / f_cut) ** 16)
-                        H_p = H_p * lpf
-
-                    # Pad back to max_blocks length
-                    H_full = np.zeros(max_blocks, dtype=complex)
-                    H_full[valid_idx[sort_idx]] = H_p
-                    self.H_freqs.append(H_full)
+                H_full = np.zeros(max_blocks, dtype=complex)
+                H_full[valid_idx[sort_idx]] = H_p
+                self.H_freqs.append(H_full)
         else:
             # Standard Sweep Mode (Non-Hammerstein)
             # Directly use accumulated_results and apply phase corrections
@@ -1879,8 +1710,6 @@ class LockInModelerWidget(QWidget):
             ref_max = 1.0
 
         is_ham = getattr(self, "is_hammerstein_mode", False)
-        mode = self.combo_meas_mode.currentData()
-        is_parallel_complex = mode == "parallel_complex_hammerstein"
 
         cache_data = {
             "metadata": {
@@ -1897,9 +1726,9 @@ class LockInModelerWidget(QWidget):
                 "noise_floor_dbfs": None,
                 "amplitude_dbfs": self.spin_amplitude.value(),
                 "model_direction": "forward",
-                "model_structure": "generalized_hammerstein" if is_parallel_complex else ("classical_hammerstein" if is_ham else "generalized_hammerstein"),
-                "model_domain": "complex" if (is_parallel_complex or is_ham) else "real",
-                "model_algorithm": "chebyshev" if is_parallel_complex else ("als" if is_ham else "chebyshev"),
+                "model_structure": "generalized_hammerstein" if is_ham else "generalized_hammerstein",
+                "model_domain": "complex" if is_ham else "real",
+                "model_algorithm": "chebyshev" if is_ham else "chebyshev",
             },
             "time_domain": {
                 "time_ms": self.time_ms,
