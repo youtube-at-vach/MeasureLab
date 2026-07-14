@@ -462,7 +462,7 @@ class LockInModelerWidget(QWidget):
 
         self.lbl_amplitude_select = QLabel(tr("Display Data:"))
         self.combo_amplitude_select = QComboBox()
-        self.combo_amplitude_select.addItem(tr("Combined Model (Kernels)"), "kernels")
+        self.combo_amplitude_select.addItem(tr("Model Kernels"), "kernels")
         self.combo_amplitude_select.currentIndexChanged.connect(self.redraw_plots)
         self.combo_amplitude_select.setVisible(False)
         self.lbl_amplitude_select.setVisible(False)
@@ -856,7 +856,7 @@ class LockInModelerWidget(QWidget):
                 if hasattr(self, "combo_amplitude_select"):
                     self.combo_amplitude_select.blockSignals(True)
                     self.combo_amplitude_select.clear()
-                    self.combo_amplitude_select.addItem(tr("Combined Model (Kernels)"), "kernels")
+                    self.combo_amplitude_select.addItem(tr("Model Kernels"), "kernels")
                     for i, amp in enumerate(self.amplitudes):
                         self.combo_amplitude_select.addItem(tr("Amplitude {0} ({1:.3f} V)").format(i + 1, amp), f"amp_{i}")
                     self.combo_amplitude_select.blockSignals(False)

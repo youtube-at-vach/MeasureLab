@@ -720,7 +720,7 @@ def test_lock_in_modeler_amplitude_switching(qtbot, mock_audio_engine):
 
     # Check populated items
     assert widget.combo_amplitude_select.count() == 6  # 1 combined + 5 amplitudes
-    assert widget.combo_amplitude_select.itemText(0) == "Combined Model (Kernels)"
+    assert widget.combo_amplitude_select.itemText(0) == "Model Kernels"
 
     # Populate raw_responses and raw_counts with mock values
     widget.max_blocks = 10
