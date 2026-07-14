@@ -38,6 +38,7 @@ def run_sss_sweep(
     analysis_cycles=256.0,
     num_meas_points=500,
     min_analysis_window=1.0,
+    ref_phase_only=False,
 ):
     """
     Runs an SSS sweep at a specific amplitude and returns the averaged harmonic responses.
@@ -52,6 +53,7 @@ def run_sss_sweep(
         analysis_cycles=analysis_cycles,
         num_meas_points=num_meas_points,
         min_analysis_window=min_analysis_window,
+        ref_phase_only=ref_phase_only,
     )
     sss_engine.prepare_sweep()
 
@@ -284,8 +286,13 @@ def main():
     parser.add_argument(
         "--model", type=str, choices=["chebyshev"], default="chebyshev", help="Model domain mode (only 'chebyshev' is supported now)"
     )
+    parser.add_argument(
+        "--no-ref-phase-only", action="store_true", help="Disable ref-phase-only mode (use full XFER scaling)"
+    )
 
     cli_args = parser.parse_args()
+
+    ref_phase_only = not cli_args.no_ref_phase_only
 
     if cli_args.fast:
         cli_args.virtual = True
@@ -393,6 +400,7 @@ def main():
             analysis_cycles=cli_args.analysis_cycles,
             num_meas_points=cli_args.num_meas_points,
             min_analysis_window=cli_args.min_analysis_window,
+            ref_phase_only=ref_phase_only,
         )
 
         raw_responses_list.append(averaged_results)
@@ -408,7 +416,7 @@ def main():
         max_harmonic=max_harmonic,
         sample_rate=engine.sample_rate,
         input_mode="XFER",
-        ref_phase_only=False,
+        ref_phase_only=ref_phase_only,
     )
     print("[+] Estimated Hammerstein kernels (Chebyshev Parallel Complex method).")
 
