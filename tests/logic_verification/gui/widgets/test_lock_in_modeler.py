@@ -755,3 +755,48 @@ def test_lock_in_modeler_amplitude_switching(qtbot, mock_audio_engine):
     widget.btn_toggle.click()  # stop/finish
     widget.combo_amplitude_select.setCurrentIndex(0)
     assert widget.plot_tabs.isTabEnabled(1)  # Impulse tab re-enabled
+
+
+def test_lock_in_modeler_parallel_complex_hammerstein_mode(qtbot, mock_audio_engine):
+    # Initialize analyzer and widget
+    analyzer = LockInModeler(mock_audio_engine)
+    analyzer.latency_samples = 100.0
+    widget = LockInModelerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    # Index 4: "Nonlinear Model (Parallel Complex)"
+    widget.combo_meas_mode.setCurrentIndex(4)
+    assert not widget.spin_amp_steps.isHidden()
+    assert not widget.spin_predistortion_iterations.isVisible()
+
+    # Start sweep
+    widget.btn_toggle.click()
+    assert analyzer.is_running
+    assert widget.is_hammerstein_mode
+    assert widget.is_parallel_complex_mode
+
+    # Mock engine sweep parameters
+    analyzer.engine.meas_freqs = np.linspace(100, 1000, 10)
+    max_blks = widget.max_blocks
+    widget.accumulated_results = np.zeros((max_blks, 5), dtype=complex)
+    widget.block_counts = np.ones(max_blks, dtype=int)
+    widget.plot_freqs_array = np.linspace(100, 1000, max_blks)
+
+    widget.raw_responses = np.zeros((5, max_blks, 5), dtype=complex)
+    widget.raw_counts = np.ones((5, max_blks), dtype=int)
+
+    # Fill mock response data (Fundamental & Harmonics)
+    widget.raw_responses[0, :, 0] = 0.5  # Amp 1, fundamental
+    widget.raw_responses[1, :, 0] = 0.4
+    widget.raw_responses[2, :, 0] = 0.3
+    widget.raw_responses[3, :, 0] = 0.2
+    widget.raw_responses[4, :, 0] = 0.1
+
+    # End sweep to trigger kernel calculation (Parallel Complex Hammerstein)
+    analyzer.state = "FINISHED"
+    widget.btn_toggle.click()
+
+    # Assert that H_freqs were calculated
+    assert len(widget.H_freqs) > 0
+    assert widget.export_btn.isEnabled()
+

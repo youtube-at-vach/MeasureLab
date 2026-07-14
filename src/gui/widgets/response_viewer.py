@@ -845,6 +845,9 @@ class ResponseViewerWidget(QWidget):
         if structure_val == "classical_hammerstein":
             self.lbl_structure.setText(tr("Classical Hammerstein"))
             self.lbl_structure.setStyleSheet("font-weight: bold; color: #4ba3e3;")
+        elif structure_val in {"generalized_hammerstein", "parallel_complex_hammerstein"} and domain_val == "complex":
+            self.lbl_structure.setText(tr("Parallel Complex Hammerstein"))
+            self.lbl_structure.setStyleSheet("font-weight: bold; color: #ba68c8;")
         elif structure_val == "generalized_hammerstein":
             self.lbl_structure.setText(tr("Generalized Hammerstein"))
             self.lbl_structure.setStyleSheet("font-weight: bold; color: #2b8c56;")
