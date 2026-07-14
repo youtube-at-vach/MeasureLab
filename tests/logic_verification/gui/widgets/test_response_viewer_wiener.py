@@ -144,9 +144,7 @@ def test_model_metadata_details_display_and_fallback(qtbot, mock_audio_engine, d
         "time_domain": dummy_model_data["time_domain"],
     }
     widget.set_model_data(older_lock_in_data)
-    assert widget.lbl_structure.text() == "Classical Hammerstein"
-    assert widget.lbl_domain.text() == "Complex"
-    assert widget.lbl_algorithm.text() == "ALS"
+    assert widget.lbl_structure.text() == "Parallel Hammerstein (Complex)"
 
     # 2. Test older 'Nonlinear Analyzer' fallback
     older_nonlinear_data = {
@@ -158,9 +156,7 @@ def test_model_metadata_details_display_and_fallback(qtbot, mock_audio_engine, d
         "time_domain": dummy_model_data["time_domain"],
     }
     widget.set_model_data(older_nonlinear_data)
-    assert widget.lbl_structure.text() == "Generalized Hammerstein"
-    assert widget.lbl_domain.text() == "Real"
-    assert widget.lbl_algorithm.text() == "Chebyshev"
+    assert widget.lbl_structure.text() == "Parallel Hammerstein (Real)"
 
     # 3. Test explicit metadata (New format)
     new_format_data = {
@@ -175,6 +171,4 @@ def test_model_metadata_details_display_and_fallback(qtbot, mock_audio_engine, d
         "time_domain": dummy_model_data["time_domain"],
     }
     widget.set_model_data(new_format_data)
-    assert widget.lbl_structure.text() == "Classical Hammerstein"
-    assert widget.lbl_domain.text() == "Complex"
-    assert widget.lbl_algorithm.text() == "ALS"
+    assert widget.lbl_structure.text() == "Parallel Hammerstein (Complex)"
