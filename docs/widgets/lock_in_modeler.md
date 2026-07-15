@@ -31,9 +31,9 @@ Lock-in Modelerは、同期スイープサイン (Synchronized Swept Sine, SSS) 
 
 * **Sweep Mode (スイープモード)**: 3つの測定モードから選択します。
     * `Sweep Measurement (Default)`: 標準のスイープ測定を行い、基本波および設定された高調波の応答をプロットします。
-    * `Nonlinear Model`: ハマーシュタインモデル同定を行います。異なるテスト振幅レベルで自動的に複数回のスイープを実行し、高次カーネルを同定します。
-    * `Predistortion Sweep`: 事前歪み信号（Inverse Hammersteinモデル）を適用しながら反復スイープを行い、測定対象システムの非線形歪みを能動的にキャンセルします。
-* **Start Freq / End Freq (開始/終了周波数)**: スイープする周波数の範囲を 20.0 Hz から 20,000.0 Hz の間で指定します。
+    * `Nonlinear Model (Forward)`: 標準のフォワードモデルを使用し、異なるテスト振幅レベルで自動的に複数回のスイープを実行して高次カーネルを同定します。
+    * `Nonlinear Model (Parallel Complex)`: 複雑な非線形挙動を捉えることができる、並列複素ハマーシュタイン構造（Parallel Complex Hammerstein structure）を用いて非線形モデルを同定します。
+* **Start Freq / End Freq (開始/終了周波数)**: スイープする周波数の範囲を 2.0 Hz からナイキスト周波数（サンプリング周波数の半分）の間で指定します。
 * **Duration (スイープ時間)**: 1回のスイープ時間を秒単位（2.0 s 〜 600.0 s）で設定します。
 * **Amplitude (振幅)**: 出力信号のレベルを dBFS 単位（-100.0 dBFS 〜 0.0 dBFS）で設定します。
 * **Max Harmonic (最大高調波次数)**: 解析する最高高調波次数（1次〜5次）を設定します。
@@ -46,15 +46,13 @@ Lock-in Modelerは、同期スイープサイン (Synchronized Swept Sine, SSS) 
     * **Time-Synchronized Averaging (TSA)**:
         * **Cycles (サイクル数)**: 平均化するサイクル数（1〜100）。
         * **Rejection Threshold (棄却閾値)**: 外れ値を除外するための標準偏差の閾値。
-    * **Predistortion Settings (事前歪み設定)**:
-        * **Predistortion Iters (事前歪み反復回数)**: 各振幅レベルにおいて、逆歪みフィルタを精密化するための反復更新回数（1〜10）。
-        * **Learning Rate (mu) (学習率)**: 事前歪み更新アルゴリズムのステップサイズ（0.01〜1.0）。小さな値は安定性を高めますが、より多くの反復回数を必要とします。
 
 ### Display（表示設定）タブ
 
 * **Show Relative to Fundamental (基本波相対表示)**: 有効にすると、各高調波の振幅および位相が絶対値ではなく、基本波の応答に対する相対値（dB / 度）としてプロットされます。
 * **Unwrap Phase (位相アンラップ)**: 有効にすると、$\pm 180$ 度を超える位相の変化を折り返さずに連続的な曲線として滑らかにプロットします。
 * **Show Raw Lock-in (Unprocessed) (未処理データ表示)**: 有効にすると、平滑化や補間を適用する前の、ロックインアンプから得られた生の測定ブロックデータを表示します（ハマーシュタイン同定モード時は無効化されます）。
+* **Display Data (表示データ)**: ハマーシュタインモードにおいて、全体の「Model Kernels」を表示するか、特定のテスト振幅での個別の応答を表示するかを選択します。
 * **Graph Smoothing (グラフ平滑化)**: 描画するプロット曲線の平滑化レベルを選択します（None, Low, Medium, High）。内部で Savitzky-Golay フィルタが適用されます。
 
 ### Routing（ルーティング）タブ
