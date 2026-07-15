@@ -1,3 +1,6 @@
+import pytest
+from unittest.mock import MagicMock, patch
+from src.core.realtime_sss_core import measure_system_latency
 import numpy as np
 
 from src.core.realtime_sss_core import RealtimeSSSEngine, LatencyCalibrator
@@ -382,3 +385,108 @@ def test_engine_process_block_xfer_mixed_reference():
     # If the bug is present, this will either raise IndexError or return uncorrected 0.4
     assert np.abs(results[0]) > 0.0
     assert np.abs(np.abs(results[0]) - 0.5) < 1e-2
+
+
+def test_measure_system_latency_success():
+    audio_engine = MagicMock()
+    audio_engine.sample_rate = 48000
+    audio_engine.register_callback.return_value = 42
+
+    with (
+        patch("src.core.realtime_sss_core.LatencyCalibrator") as MockCalibrator,
+        patch("src.core.realtime_sss_core.deconvolve_signal") as mock_deconv,
+        patch("src.core.realtime_sss_core.find_subsample_peak") as mock_find_peak,
+    ):
+        mock_calib = MockCalibrator.return_value
+        mock_calib.error = None
+        mock_calib.finished.wait.return_value = True
+        mock_calib.recorded_data = [0, 0, 0]
+        mock_calib.sss = [0, 0, 0]
+        mock_calib.sample_rate = 48000
+        mock_calib.total_samples = 48000
+
+        mock_deconv.return_value = [0, 1, 0]
+        mock_find_peak.return_value = 15.5
+
+        result = measure_system_latency(audio_engine, 30.0, 200.0, duration=0.5, in_ch=1, out_ch=1)
+
+        assert result == 15.5
+        MockCalibrator.assert_called_once_with(audio_engine, 30.0, 200.0, 0.5, 1, 1)
+        audio_engine.register_callback.assert_called_once_with(mock_calib.callback)
+        mock_calib.finished.wait.assert_called_once()
+        audio_engine.unregister_callback.assert_called_once_with(42)
+
+
+def test_measure_system_latency_clamping():
+    audio_engine = MagicMock()
+    audio_engine.sample_rate = 48000
+
+    with (
+        patch("src.core.realtime_sss_core.LatencyCalibrator") as MockCalibrator,
+        patch("src.core.realtime_sss_core.deconvolve_signal"),
+        patch("src.core.realtime_sss_core.find_subsample_peak") as mock_find_peak,
+    ):
+        mock_calib = MockCalibrator.return_value
+        mock_calib.error = None
+        mock_calib.finished.wait.return_value = True
+        mock_calib.sample_rate = 48000
+        mock_calib.total_samples = 48000
+
+        mock_find_peak.return_value = 10.0
+
+        measure_system_latency(audio_engine, 5.0, 50.0)
+
+        MockCalibrator.assert_called_once_with(audio_engine, 20.0, 100.0, 0.25, 0, 0)
+
+
+def test_measure_system_latency_negative_peak():
+    audio_engine = MagicMock()
+    audio_engine.sample_rate = 48000
+
+    with (
+        patch("src.core.realtime_sss_core.LatencyCalibrator") as MockCalibrator,
+        patch("src.core.realtime_sss_core.deconvolve_signal"),
+        patch("src.core.realtime_sss_core.find_subsample_peak") as mock_find_peak,
+    ):
+        mock_calib = MockCalibrator.return_value
+        mock_calib.error = None
+        mock_calib.finished.wait.return_value = True
+        mock_calib.sample_rate = 48000
+        mock_calib.total_samples = 48000
+        mock_find_peak.return_value = -5.0
+
+        result = measure_system_latency(audio_engine, 20.0, 100.0)
+
+        assert result == 0.0
+
+
+def test_measure_system_latency_timeout():
+
+    audio_engine = MagicMock()
+    audio_engine.sample_rate = 48000
+
+    with patch("src.core.realtime_sss_core.LatencyCalibrator") as MockCalibrator:
+        mock_calib = MockCalibrator.return_value
+        mock_calib.error = None
+        mock_calib.finished.wait.return_value = False
+        mock_calib.sample_rate = 48000
+        mock_calib.total_samples = 48000
+
+        with pytest.raises(TimeoutError, match="Latency calibration timed out."):
+            measure_system_latency(audio_engine, 20.0, 100.0)
+
+
+def test_measure_system_latency_error_propagation():
+
+    audio_engine = MagicMock()
+    audio_engine.sample_rate = 48000
+
+    with patch("src.core.realtime_sss_core.LatencyCalibrator") as MockCalibrator:
+        mock_calib = MockCalibrator.return_value
+        mock_calib.error = RuntimeError("Audio device failed")
+        mock_calib.finished.wait.return_value = True
+        mock_calib.sample_rate = 48000
+        mock_calib.total_samples = 48000
+
+        with pytest.raises(RuntimeError, match="Audio device failed"):
+            measure_system_latency(audio_engine, 20.0, 100.0)
