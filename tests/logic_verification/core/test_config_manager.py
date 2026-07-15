@@ -115,6 +115,18 @@ class TestConfigManager(unittest.TestCase):
         cm.set_dithering_bit_depth("24")
         self.assertEqual(cm.get_dithering_bit_depth(), "24")
 
+
+    def test_audio_engine_64bit(self):
+        cm = self.ConfigManager(config_filename=self.config_path)
+
+        self.assertFalse(cm.is_audio_engine_64bit())
+        cm.set_audio_engine_64bit(True)
+        self.assertTrue(cm.is_audio_engine_64bit())
+
+        cm.config.pop("audio", None)
+        cm.set_audio_engine_64bit(False)
+        self.assertFalse(cm.is_audio_engine_64bit())
+
     def test_coreaudio_conversion_quality(self):
         cm = self.ConfigManager(config_filename=self.config_path)
 
