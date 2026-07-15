@@ -212,5 +212,12 @@ class TestConfigManager(unittest.TestCase):
                     )
 
 
+    def test_get_app_root_dir(self):
+        with patch("sys.frozen", True, create=True), patch("sys.executable", "/fake/path/to/app.exe"):
+            self.assertEqual(self.ConfigManager.get_app_root_dir(), "/fake/path/to")
+
+        with patch("sys.frozen", False, create=True), patch("src.core.config_manager.os.path.abspath", return_value="/fake/project/src/core/config_manager.py"):
+            self.assertEqual(self.ConfigManager.get_app_root_dir(), "/fake/project")
+
 if __name__ == "__main__":
     unittest.main()
