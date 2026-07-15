@@ -1438,7 +1438,7 @@ class LockInModelerWidget(QWidget):
         self.time_ms = (np.arange(N_kernel) - gate_pre) / sample_rate * 1000.0
         self.kernels_time = []
 
-        for p, H_freq in enumerate(self.H_freqs):
+        for _, H_freq in enumerate(self.H_freqs):
             H_p = H_freq[valid_idx][sort_idx]
             # Replace NaNs from frequency mapping with 0.0 before IFFT
             mask_nan = np.isnan(H_p)
