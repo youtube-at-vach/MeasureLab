@@ -382,3 +382,81 @@ def test_engine_process_block_xfer_mixed_reference():
     # If the bug is present, this will either raise IndexError or return uncorrected 0.4
     assert np.abs(results[0]) > 0.0
     assert np.abs(np.abs(results[0]) - 0.5) < 1e-2
+
+
+def test_process_input_block_valid():
+    engine = RealtimeSSSEngine(48000, 1.0, 50, 15000, 0.5, 3)
+    engine.prepare_sweep()
+    engine.set_latency(0)
+
+    # Setup state
+    frames = 1024
+    outdata = np.zeros((frames, 1))
+    engine.process_block(np.zeros((frames, 1)), outdata, 0)
+
+    # With reference
+    indata = np.ones((frames, 1))
+    ref_data = np.ones((frames, 1)) * 0.5
+    f_mid, results = engine.process_input_block(indata, 0, ref_in_block=ref_data)
+
+    assert f_mid > 0
+    assert len(results) == 3
+    assert engine.last_block_was_valid
+
+    # Without reference
+    f_mid_no_ref, results_no_ref = engine.process_input_block(indata, 1, ref_in_block=None)
+    assert f_mid_no_ref > 0
+    assert len(results_no_ref) == 3
+
+
+def test_process_input_block_invalid_region():
+    engine = RealtimeSSSEngine(48000, 1.0, 50, 15000, 0.5, 3)
+    engine.prepare_sweep()
+    engine.set_latency(0)
+
+    frames = 1024
+    # Set block index far past sweep_samples
+    block_index = int(48000 / frames) + 10
+
+    indata = np.ones((frames, 1))
+    f_mid, results = engine.process_input_block(indata, block_index)
+
+    assert f_mid > 0
+    assert results == [0.0j, 0.0j, 0.0j]
+    assert not engine.last_block_was_valid
+
+
+def test_process_input_block_2ch():
+    engine = RealtimeSSSEngine(48000, 1.0, 50, 15000, 0.5, 3)
+    engine.prepare_sweep()
+    engine.set_latency(0)
+
+    frames = 1024
+    outdata = np.zeros((frames, 1))
+    engine.process_block(np.zeros((frames, 1)), outdata, 0)
+
+    indata = np.ones((frames, 2))
+    ref_data = np.ones((frames, 2))
+    f_mid, results = engine.process_input_block(indata, 0, ref_in_block=ref_data)
+
+    assert f_mid > 0
+    assert len(results) == 3
+    assert engine.last_block_was_valid
+
+
+def test_process_input_block_empty_ch():
+    engine = RealtimeSSSEngine(48000, 1.0, 50, 15000, 0.5, 3)
+    engine.prepare_sweep()
+    engine.set_latency(0)
+
+    frames = 1024
+    outdata = np.zeros((frames, 1))
+    engine.process_block(np.zeros((frames, 1)), outdata, 0)
+
+    indata = np.zeros((frames, 0))
+    ref_data = np.zeros((frames, 0))
+    f_mid, results = engine.process_input_block(indata, 0, ref_in_block=ref_data)
+
+    assert f_mid > 0
+    assert len(results) == 3
+    assert engine.last_block_was_valid
