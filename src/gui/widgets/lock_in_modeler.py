@@ -1377,8 +1377,8 @@ class LockInModelerWidget(QWidget):
             # 3. Apply frequency mapping to map H_p(f_0) measured at fundamental f_0 to physical harmonic frequency p * f_0
             # H_p_mapped(f) = H_p_raw(f / p)
             H_mapped_list = []
-            for p in range(len(self.H_freqs)):
-                H_raw = self.H_freqs[p][valid_idx[sort_idx]]
+            for p, H_freq_p in enumerate(self.H_freqs):
+                H_raw = H_freq_p[valid_idx[sort_idx]]
                 f_lookups = sorted_freqs / (p + 1)
 
                 # Polar Interpolation to prevent phase distortion
