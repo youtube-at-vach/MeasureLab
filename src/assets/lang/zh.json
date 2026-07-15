@@ -157,7 +157,7 @@
     "Amplitude Steps (Max Order 5):": "幅度步长 (最大阶数 5):",
     "Amplitude Steps:": "幅度步数:",
     "Amplitude Sweep": "幅度扫描",
-    "Amplitude {0} ({1:.3f} V)": "Amplitude {0} ({1:.3f} V)",
+    "Amplitude {0} ({1:.3f} V)": "振幅 {0} ({1:.3f} V)",
     "Amplitude:": "振幅:",
     "Analog Transmission": "模拟传输",
     "Analysis Cycles:": "分析周期:",

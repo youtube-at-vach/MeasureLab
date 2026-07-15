@@ -157,7 +157,7 @@
     "Amplitude Steps (Max Order 5):": "진폭 단계 (최대 차수 5):",
     "Amplitude Steps:": "진폭 단계:",
     "Amplitude Sweep": "진폭 스위프",
-    "Amplitude {0} ({1:.3f} V)": "Amplitude {0} ({1:.3f} V)",
+    "Amplitude {0} ({1:.3f} V)": "진폭 {0} ({1:.3f} V)",
     "Amplitude:": "진폭:",
     "Analog Transmission": "아날로그 전송",
     "Analysis Cycles:": "분석 사이클:",
