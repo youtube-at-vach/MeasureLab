@@ -382,3 +382,29 @@ def test_engine_process_block_xfer_mixed_reference():
     # If the bug is present, this will either raise IndexError or return uncorrected 0.4
     assert np.abs(results[0]) > 0.0
     assert np.abs(np.abs(results[0]) - 0.5) < 1e-2
+
+
+def test_engine_reset_analysis_history():
+    engine = RealtimeSSSEngine(
+        sample_rate=48000,
+        sweep_duration=1.0,
+        start_freq=50,
+        end_freq=15000,
+        output_amplitude=0.5,
+        max_harmonic=3,
+    )
+
+    # Inject mock data
+    engine._hist_n = [np.array([1, 2, 3])]
+    engine._hist_theta = [np.array([0.1, 0.2, 0.3])]
+    engine._hist_signal = [np.array([0.5, 0.6, 0.7])]
+    engine._hist_ref = [np.array([0.8, 0.9, 1.0])]
+
+    # Call the method
+    engine.reset_analysis_history()
+
+    # Verify lists are empty
+    assert engine._hist_n == []
+    assert engine._hist_theta == []
+    assert engine._hist_signal == []
+    assert engine._hist_ref == []
