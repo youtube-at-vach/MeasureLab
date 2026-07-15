@@ -1249,8 +1249,8 @@ class LockInModelerWidget(QWidget):
                     ref_max = np.max(np.abs(self.kernels_time[0]))
                     if ref_max < 1e-12:
                         ref_max = 1.0
-                    for idx in range(len(self.kernels_time)):
-                        norm_kernel = self.kernels_time[idx] / ref_max
+                    for idx, kernel in enumerate(self.kernels_time):
+                        norm_kernel = kernel / ref_max
                         self.kernel_curves[idx].setData(self.time_ms, norm_kernel)
 
                 return
