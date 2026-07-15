@@ -1222,8 +1222,8 @@ class LockInModelerWidget(QWidget):
 
                 H_fundamental = self.H_freqs[0][valid_indices][sort_idx] if len(self.H_freqs) > 0 else 1.0
 
-                for idx in range(len(self.H_freqs)):
-                    H_p = self.H_freqs[idx][valid_indices][sort_idx]
+                for idx, H_freq in enumerate(self.H_freqs):
+                    H_p = H_freq[valid_indices][sort_idx]
                     if self.chk_relative.isChecked():
                         H_p = H_p / (H_fundamental + 1e-30)
 
@@ -1377,8 +1377,8 @@ class LockInModelerWidget(QWidget):
             # 3. Apply frequency mapping to map H_p(f_0) measured at fundamental f_0 to physical harmonic frequency p * f_0
             # H_p_mapped(f) = H_p_raw(f / p)
             H_mapped_list = []
-            for p in range(len(self.H_freqs)):
-                H_raw = self.H_freqs[p][valid_idx[sort_idx]]
+            for p, H_freq in enumerate(self.H_freqs):
+                H_raw = H_freq[valid_idx[sort_idx]]
                 f_lookups = sorted_freqs / (p + 1)
 
                 # Polar Interpolation to prevent phase distortion
@@ -1410,8 +1410,7 @@ class LockInModelerWidget(QWidget):
                 H_mapped_list.append(H_mapped)
 
             # Apply Butterworth lowpass filter to higher order mapped kernels
-            for p in range(len(self.H_freqs)):
-                H_p = H_mapped_list[p]
+            for p, H_p in enumerate(H_mapped_list):
                 if p >= 1:
                     f_cut = min(20000.0, 1.15 * sample_rate / 2)
                     lpf = 1.0 / np.sqrt(1.0 + (sorted_freqs / f_cut) ** 16)
@@ -1439,8 +1438,8 @@ class LockInModelerWidget(QWidget):
         self.time_ms = (np.arange(N_kernel) - gate_pre) / sample_rate * 1000.0
         self.kernels_time = []
 
-        for p in range(len(self.H_freqs)):
-            H_p = self.H_freqs[p][valid_idx][sort_idx]
+        for p, H_freq in enumerate(self.H_freqs):
+            H_p = H_freq[valid_idx][sort_idx]
             # Replace NaNs from frequency mapping with 0.0 before IFFT
             mask_nan = np.isnan(H_p)
             H_p_clean = H_p.copy()
@@ -1497,12 +1496,12 @@ class LockInModelerWidget(QWidget):
             "frequency_domain": {
                 "freqs": sorted_freqs,
                 "magnitudes_db": {
-                    f"h{p + 1}": 20 * np.log10(np.abs(self.H_freqs[p][valid_idx][sort_idx]) + 1e-12)
-                    for p in range(len(self.H_freqs))
+                    f"h{p + 1}": 20 * np.log10(np.abs(H_freq[valid_idx][sort_idx]) + 1e-12)
+                    for p, H_freq in enumerate(self.H_freqs)
                 },
                 "phases_deg": {
-                    f"h{p + 1}": np.degrees(np.angle(self.H_freqs[p][valid_idx][sort_idx]))
-                    for p in range(len(self.H_freqs))
+                    f"h{p + 1}": np.degrees(np.angle(H_freq[valid_idx][sort_idx]))
+                    for p, H_freq in enumerate(self.H_freqs)
                 },
             },
         }
