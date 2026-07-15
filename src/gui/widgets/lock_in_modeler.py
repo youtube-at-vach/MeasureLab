@@ -345,14 +345,17 @@ class LockInModelerWidget(QWidget):
         self.combo_meas_mode.currentIndexChanged.connect(self.on_meas_mode_changed)
         form.addRow(tr("Sweep Mode:"), self.combo_meas_mode)
 
+        sample_rate = self.module.audio_engine.sample_rate
+        nyquist = sample_rate / 2.0
+
         self.spin_start_freq = QDoubleSpinBox()
-        self.spin_start_freq.setRange(20.0, 20000.0)
+        self.spin_start_freq.setRange(2.0, nyquist)
         self.spin_start_freq.setValue(self.module.start_freq)
         self.spin_start_freq.setSuffix(" Hz")
         form.addRow(tr("Start Freq:"), self.spin_start_freq)
 
         self.spin_end_freq = QDoubleSpinBox()
-        self.spin_end_freq.setRange(20.0, 20000.0)
+        self.spin_end_freq.setRange(2.0, nyquist)
         self.spin_end_freq.setValue(self.module.end_freq)
         self.spin_end_freq.setSuffix(" Hz")
         form.addRow(tr("End Freq:"), self.spin_end_freq)
@@ -908,6 +911,28 @@ class LockInModelerWidget(QWidget):
             self.set_controls_enabled(True)
 
         self.apply_theme()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.update_frequency_limits()
+
+    def update_frequency_limits(self):
+        sample_rate = self.module.audio_engine.sample_rate
+        nyquist = sample_rate / 2.0
+
+        self.spin_start_freq.blockSignals(True)
+        self.spin_start_freq.setRange(2.0, nyquist)
+        if self.spin_start_freq.value() > nyquist:
+            self.spin_start_freq.setValue(min(20.0, nyquist))
+            self.module.start_freq = self.spin_start_freq.value()
+        self.spin_start_freq.blockSignals(False)
+
+        self.spin_end_freq.blockSignals(True)
+        self.spin_end_freq.setRange(2.0, nyquist)
+        if self.spin_end_freq.value() > nyquist:
+            self.spin_end_freq.setValue(nyquist)
+            self.module.end_freq = self.spin_end_freq.value()
+        self.spin_end_freq.blockSignals(False)
 
     def set_controls_enabled(self, enabled):
         self.combo_meas_mode.setEnabled(enabled)

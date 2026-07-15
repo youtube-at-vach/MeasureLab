@@ -21,6 +21,9 @@ class MockCalibrationManager:
         self.frequency_calibration = 1.0
         self.lockin_gain_offset = 0.0
         self.spl_offset_db = 0.0
+        self.frequency_calibration_source = "none"
+        self.frequency_calibration_1pps = 1.0
+        self.last_profile = ""
 
     def get_input_offset_db(self):
         return 0.0
@@ -28,14 +31,47 @@ class MockCalibrationManager:
     def get_spl_offset_db(self):
         return 0.0
 
+    def set_spl_calibration(self, val):
+        pass
+
+    def save(self):
+        pass
+
+    def set_frequency_calibration_source(self, source):
+        pass
+
+    def set_input_sensitivity(self, val):
+        pass
+
+    def set_output_gain(self, val):
+        pass
+
+    def get_profiles(self):
+        return {}
+
+    def load_profile(self, name):
+        pass
+
+    def set_last_profile(self, name):
+        pass
+
+    def save_profile(self, name, dev_name, host_api):
+        pass
+
+    def delete_profile(self, name):
+        pass
+
 
 class MockAudioEngine:
     def __init__(self):
         self.sample_rate = 48000
+        self.block_size = 512
         self.callbacks = {}
         self.calibration = MockCalibrationManager()
         self.input_channel_mode = "stereo"
         self.output_channel_mode = "stereo"
+        self.dithering_enabled = False
+        self.dithering_bit_depth = 16
 
     def register_callback(self, cb):
         return 1
@@ -45,6 +81,119 @@ class MockAudioEngine:
 
     def get_status(self):
         return {"active": False, "sample_rate": 48000, "cpu_load": 0.0, "active_clients": 0}
+
+    def list_devices(self):
+        return []
+
+    def get_host_apis(self):
+        return []
+
+    def set_offline_mode(self, mode):
+        pass
+
+    def set_sample_rate(self, rate):
+        pass
+
+    def set_pipewire_jack_resident(self, val):
+        pass
+
+    def set_coreaudio_fail_if_conversion_required(self, val):
+        pass
+
+    def set_coreaudio_change_device_parameters(self, val):
+        pass
+
+    def set_coreaudio_conversion_quality(self, val):
+        pass
+
+    def set_audio_engine_64bit(self, val):
+        pass
+
+    def refresh_backend(self):
+        pass
+
+
+class MockConfigManager:
+    def __init__(self):
+        self.language = "en"
+        self.theme = "dark"
+        self.screenshot_dir = ""
+        self.offline_mode = False
+        self.offline_sample_rate = 48000
+        self.pipewire_jack_resident = False
+        self.dithering_enabled = False
+        self.dithering_bit_depth = 16
+        self.audio_engine_64bit = False
+        self.audio_config = {
+            "sample_rate": 48000,
+            "input_hostapi": "",
+            "output_hostapi": "",
+            "input_device": "",
+            "output_device": "",
+        }
+
+    def get_theme(self):
+        return self.theme
+
+    def set_theme(self, theme):
+        self.theme = theme
+
+    def get_screenshot_output_dir(self):
+        return self.screenshot_dir
+
+    def set_screenshot_output_dir(self, d):
+        self.screenshot_dir = d
+
+    def is_offline_mode(self):
+        return self.offline_mode
+
+    def set_offline_mode(self, mode):
+        self.offline_mode = mode
+
+    def get_offline_sample_rate(self):
+        return self.offline_sample_rate
+
+    def set_offline_sample_rate(self, rate):
+        self.offline_sample_rate = rate
+
+    def get_pipewire_jack_resident(self):
+        return self.pipewire_jack_resident
+
+    def set_pipewire_jack_resident(self, val):
+        self.pipewire_jack_resident = val
+
+    def is_dithering_enabled(self):
+        return self.dithering_enabled
+
+    def set_dithering_enabled(self, val):
+        self.dithering_enabled = val
+
+    def get_dithering_bit_depth(self):
+        return self.dithering_bit_depth
+
+    def set_dithering_bit_depth(self, val):
+        self.dithering_bit_depth = val
+
+    def is_audio_engine_64bit(self):
+        return self.audio_engine_64bit
+
+    def set_audio_engine_64bit(self, val):
+        self.audio_engine_64bit = val
+
+    def get_audio_config(self):
+        return self.audio_config
+
+    def set_audio_config(self, key_or_dict, value=None):
+        if isinstance(key_or_dict, dict):
+            self.audio_config.update(key_or_dict)
+        elif value is not None:
+            self.audio_config[key_or_dict] = value
+
+    def get_language(self):
+        return self.language
+
+    def set_language(self, lang):
+        self.language = lang
 
 
 # --- Main Script ---
@@ -155,7 +304,13 @@ def capture_widgets(targets=None):
                     widget = widget_cls(measure_module)
             else:
                 print(f"  -> Found {widget_cls.__name__} (No module)")
-                widget = widget_cls()
+                if widget_cls.__name__ == "ExportSettingsDialog":
+                    widget = widget_cls(traces=[])
+                elif widget_cls.__name__ == "SettingsWidget":
+                    mock_config = MockConfigManager()
+                    widget = widget_cls(audio_engine=mock_engine, config_manager=mock_config)
+                else:
+                    widget = widget_cls()
 
             # Setup for screenshot
             widget.setWindowTitle(f"Screenshot: {module_name}")
