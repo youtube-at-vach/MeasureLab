@@ -224,5 +224,17 @@ class TestConfigManager(unittest.TestCase):
                     )
 
 
+
+    def test_is_dithering_enabled(self):
+        cm = self.ConfigManager(config_filename=self.config_path)
+
+        self.assertFalse(cm.is_dithering_enabled())
+        cm.set_dithering_enabled(True)
+        self.assertTrue(cm.is_dithering_enabled())
+
+        cm.config.pop("audio", None)
+        cm.set_dithering_enabled(False)
+        self.assertFalse(cm.is_dithering_enabled())
+
 if __name__ == "__main__":
     unittest.main()
