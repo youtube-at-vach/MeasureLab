@@ -838,10 +838,19 @@ class ResponseViewerWidget(QWidget):
                 algorithm_val = "unknown"
 
         # Update Labels
-        if domain_val == "complex" or structure_val == "parallel_complex_hammerstein" or (structure_val == "generalized_hammerstein" and domain_val == "complex") or (structure_val == "classical_hammerstein" and domain_val == "complex"):
+        if (
+            domain_val == "complex"
+            or structure_val == "parallel_complex_hammerstein"
+            or (structure_val == "generalized_hammerstein" and domain_val == "complex")
+            or (structure_val == "classical_hammerstein" and domain_val == "complex")
+        ):
             self.lbl_structure.setText(tr("Parallel Hammerstein (Complex)"))
             self.lbl_structure.setStyleSheet("font-weight: bold; color: #ba68c8;")
-        elif domain_val == "real" or structure_val in {"generalized_hammerstein", "classical_hammerstein", "parallel_hammerstein"}:
+        elif domain_val == "real" or structure_val in {
+            "generalized_hammerstein",
+            "classical_hammerstein",
+            "parallel_hammerstein",
+        }:
             self.lbl_structure.setText(tr("Parallel Hammerstein (Real)"))
             self.lbl_structure.setStyleSheet("font-weight: bold; color: #2b8c56;")
         else:
@@ -1215,10 +1224,10 @@ class ResponseViewerWidget(QWidget):
                 # Right-edge labels: find all crossings of lvl in Z_right
                 Z_right = Z[:, -1]
                 crossings = []
-                for i in range(len(Z_right) - 1):
-                    z_low, z_high = Z_right[i], Z_right[i + 1]
-                    y_low, y_high = amps_db[i], amps_db[i + 1]
-                    if (z_low <= lvl < z_high) or (z_high <= lvl < z_low) or (i == len(Z_right) - 2 and z_high == lvl):
+                last_idx = len(Z_right) - 2
+                for i, (z_low, z_high) in enumerate(zip(Z_right[:-1], Z_right[1:], strict=False)):
+                    if (z_low <= lvl < z_high) or (z_high <= lvl < z_low) or (i == last_idx and z_high == lvl):
+                        y_low, y_high = amps_db[i], amps_db[i + 1]
                         if z_high == z_low:
                             y_pos = y_low
                         else:
