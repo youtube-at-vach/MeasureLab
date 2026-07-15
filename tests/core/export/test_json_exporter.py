@@ -49,3 +49,13 @@ def test_export_traces_success():
     assert parsed_json["traces"][0]["id"] == "test_1"
     assert parsed_json["traces"][0]["x_data"] == [0.0, 1.0, 2.0]
     assert parsed_json["traces"][0]["y_data"] == [1.0, 2.0, 3.0]
+
+def test_format_id():
+    exporter = JsonTraceExporter()
+    assert exporter.format_id == "json"
+
+def test_properties():
+    exporter = JsonTraceExporter()
+    assert exporter.name == "MeasureLab Comparison Files (*.mlcomp)"
+    assert exporter.file_filter == "MeasureLab Comparison Files (*.mlcomp *.json)"
+    assert exporter.default_extension == ".mlcomp"
