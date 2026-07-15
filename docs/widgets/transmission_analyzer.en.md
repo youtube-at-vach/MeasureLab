@@ -1,12 +1,10 @@
 # Transmission Analyzer
 
+## Overview
+
 > [!WARNING]
 > **Experimental Feature**
 > This widget is currently an experimental feature under active development. Its interface, algorithms, and specifications are subject to significant changes in future updates.
-
----
-
-## Overview
 
 **Transmission Analyzer** is a specialized module designed to verify and diagnose the operational integrity of audio transmission paths, audio interfaces, and DAC/ADC systems using pseudo-random binary sequences (PRBS) based on Linear Feedback Shift Registers (LFSR).
 

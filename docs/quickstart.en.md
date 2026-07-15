@@ -1,5 +1,7 @@
 # Quickstart
 
+## Overview
+
 This guide explains the flow from setting up MeasureLab to performing your first measurement.
 
 ---
