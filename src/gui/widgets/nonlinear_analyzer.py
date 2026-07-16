@@ -13,7 +13,6 @@ from PyQt6.QtWidgets import (
     QLabel,
     QProgressBar,
     QPushButton,
-    QScrollArea,
     QSpinBox,
     QTabWidget,
     QVBoxLayout,
@@ -655,17 +654,8 @@ class NonlinearAnalyzerWidget(QWidget):
         sidebar_main_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_main_layout.setSpacing(10)
 
-        # --- Parameter Scroll Area ---
-        parameter_scroll = QScrollArea()
-        parameter_scroll.setWidgetResizable(True)
-        parameter_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        parameter_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        parameter_scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
-
-        scroll_content = QWidget()
-        scroll_layout = QVBoxLayout(scroll_content)
-        scroll_layout.setContentsMargins(0, 0, 4, 0)
-        scroll_layout.setSpacing(10)
+        # --- Parameter Tab Widget (No Scroll Area) ---
+        self.tabs = QTabWidget()
 
         # Group 1: General Sweep Parameters
         sweep_group = QGroupBox(tr("Swept Sine Settings"))
@@ -698,8 +688,6 @@ class NonlinearAnalyzerWidget(QWidget):
         self.tsa_spin.valueChanged.connect(lambda v: setattr(self.module, "averages", v))
         sweep_form.addRow(tr("Averages (Time-Sync):"), self.tsa_spin)
 
-        scroll_layout.addWidget(sweep_group)
-
         # Group 2: Parallel Hammerstein Model Parameters
         phm_group = QGroupBox(tr("Nonlinear Modeling"))
         phm_form = QFormLayout(phm_group)
@@ -731,12 +719,20 @@ class NonlinearAnalyzerWidget(QWidget):
         self.chk_unwrap = QCheckBox(tr("Unwrap Phase"))
         self.chk_unwrap.setChecked(False)
         self.chk_unwrap.toggled.connect(self.refresh_plots_with_smoothing)
-        phm_form.addRow("", self.chk_unwrap)
+        phm_form.addRow(self.chk_unwrap)
 
-        scroll_layout.addWidget(phm_group)
+        # Tab 1: Settings
+        settings_tab = QWidget()
+        settings_layout = QVBoxLayout(settings_tab)
+        settings_layout.setContentsMargins(4, 4, 4, 4)
+        settings_layout.setSpacing(10)
+        settings_layout.addWidget(sweep_group)
+        settings_layout.addWidget(phm_group)
+        settings_layout.addStretch()
+        self.tabs.addTab(settings_tab, tr("Settings"))
 
-        # Group 3: Routing & Calibration
-        route_group = QGroupBox(tr("Routing & Calibration"))
+        # Group 3: Routing
+        route_group = QGroupBox(tr("Routing"))
         route_form = QFormLayout(route_group)
         route_form.setContentsMargins(6, 8, 6, 8)
         route_form.setSpacing(6)
@@ -758,22 +754,34 @@ class NonlinearAnalyzerWidget(QWidget):
         self.in_mode_combo.currentIndexChanged.connect(self.on_routing_changed)
         route_form.addRow(tr("Input Mode:"), self.in_mode_combo)
 
+        # Tab 2: Routing
+        routing_tab = QWidget()
+        routing_layout = QVBoxLayout(routing_tab)
+        routing_layout.setContentsMargins(4, 4, 4, 4)
+        routing_layout.setSpacing(10)
+        routing_layout.addWidget(route_group)
+        routing_layout.addStretch()
+        self.tabs.addTab(routing_tab, tr("Routing"))
+
+        sidebar_main_layout.addWidget(self.tabs)
+
+        # Latency Calibration Box (moved outside tab)
+        calib_group = QGroupBox(tr("Latency Calibration"))
+        calib_form = QFormLayout(calib_group)
+        calib_form.setContentsMargins(6, 8, 6, 8)
+        calib_form.setSpacing(6)
+
         # Latency Display
         self.latency_label = QLabel("0.00 ms")
         self.latency_label.setStyleSheet("font-weight: bold; color: #4ba3e3;")
-        route_form.addRow(tr("Delay Time:"), self.latency_label)
+        calib_form.addRow(tr("Delay Time:"), self.latency_label)
 
         # Calibrate Button
         self.cal_btn = QPushButton(tr("Measure Delay"))
         self.cal_btn.clicked.connect(self.module.start_latency_calibration)
-        route_form.addRow(self.cal_btn)
+        calib_form.addRow(self.cal_btn)
 
-        scroll_layout.addWidget(route_group)
-
-        scroll_layout.addStretch()
-        scroll_content.setLayout(scroll_layout)
-        parameter_scroll.setWidget(scroll_content)
-        sidebar_main_layout.addWidget(parameter_scroll)
+        sidebar_main_layout.addWidget(calib_group)
 
         # --- Fixed Measurement Controls (Bottom) ---
         ctrl_container = QWidget()

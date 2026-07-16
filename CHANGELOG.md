@@ -1,5 +1,44 @@
 # Changelog
 
+## [v0.8.0] - 2026-07-16
+
+### Added
+
+* **Spectrum Analyzer**:
+    * Implemented Real-Time Analyzer (RTA) mode with bar graph visualization and 1/3, 1/6, 1/12, 1/24, 1/48, 1/96 octave smoothing options.
+    * Added "Rectangle" window function option.
+    * Localized window type labels and RTA Mode string across all locales.
+* **Network Analyzer**:
+    * Implemented sub-sample delay estimation (Phase Slope Method) and compensation for ultra-precise phase measurements.
+    * Implemented automatic coarse delay compensation and synchronized UI latency controls.
+    * Added calibration and delay mode UI strings and dynamic Y-axis range adjustment.
+* **Lock-in Modeler**:
+    * Replaced the complex Alternating Least Squares (ALS) Hammerstein kernel estimation with a vectorized Parallel Complex Hammerstein method.
+    * Added support for Parallel Complex Hammerstein measurement mode.
+    * Added "REF Phase Only" configuration toggle to support absolute level measurements.
+    * Added amplitude selection UI (dBFS) to inspect Hammerstein modes at specific levels.
+    * Added model structure metadata and translation support.
+* **Localization**:
+    * Standardized translation keys (e.g. "rectangle" to lowercase) and unified reference file handling terminology.
+    * Translated all remaining UI labels across English, Japanese, French, German, Spanish, Portuguese, Russian, Chinese, and Korean assets to pass strict CI checks.
+
+### Changed
+
+* **Network Analyzer**:
+    * Relocated latency calibration controls outside of routing tabs for improved accessibility.
+* **UI & Layouts**:
+    * Standardized layouts by replacing dynamic QScrollArea containers with static layouts and consolidated tab structures to meet strict UI size constraints.
+* **Lock-in Modeler**:
+    * Relocated sparse-to-dense H-frequency mapping and Hammerstein kernel estimation into core library functions.
+    * Removed legacy predistortion functionality and associated UI elements from the modeler.
+
+### Fixed
+
+* **Network Analyzer**:
+    * Prevented redundant signal triggering and ensured automatic response recalculation when setting delay mode to calibration.
+* **General**:
+    * Fixed translation inconsistencies and resolved layout size constraints across multiple modules.
+
 ## [v0.7.9] - 2026-07-08
 
 ### Added
