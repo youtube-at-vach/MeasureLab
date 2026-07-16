@@ -8,10 +8,12 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDoubleSpinBox,
+    QFileDialog,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QProgressBar,
     QPushButton,
     QSpinBox,
@@ -1099,16 +1101,30 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         cal_tab_layout.addWidget(lat_group)
 
         cal_group = QGroupBox(tr("Reference Trace"))
-        cal_layout = QFormLayout()
-        self.store_ref_btn = QPushButton(tr("Store Reference"))
+        cal_layout = QVBoxLayout()
+        self.store_ref_btn = QPushButton(tr("Store"))
         self.store_ref_btn.clicked.connect(self.on_store_reference)
-        cal_layout.addRow(self.store_ref_btn)
-        self.clear_ref_btn = QPushButton(tr("Clear Reference"))
+        self.clear_ref_btn = QPushButton(tr("Clear"))
         self.clear_ref_btn.clicked.connect(self.on_clear_reference)
-        cal_layout.addRow(self.clear_ref_btn)
-        self.apply_ref_check = QCheckBox(tr("Apply Reference"))
+
+        row1_layout = QHBoxLayout()
+        row1_layout.addWidget(self.store_ref_btn)
+        row1_layout.addWidget(self.clear_ref_btn)
+        cal_layout.addLayout(row1_layout)
+
+        self.save_ref_btn = QPushButton(tr("Save..."))
+        self.save_ref_btn.clicked.connect(self.on_save_reference_to_file)
+        self.load_ref_btn = QPushButton(tr("Load..."))
+        self.load_ref_btn.clicked.connect(self.on_load_reference_from_file)
+
+        row2_layout = QHBoxLayout()
+        row2_layout.addWidget(self.save_ref_btn)
+        row2_layout.addWidget(self.load_ref_btn)
+        cal_layout.addLayout(row2_layout)
+
+        self.apply_ref_check = QCheckBox(tr("Apply"))
         self.apply_ref_check.toggled.connect(self.on_apply_reference_changed)
-        cal_layout.addRow(self.apply_ref_check)
+        cal_layout.addWidget(self.apply_ref_check)
         cal_group.setLayout(cal_layout)
         cal_tab_layout.addWidget(cal_group)
 
@@ -1519,6 +1535,74 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
     def on_apply_reference_changed(self, checked):
         self.refresh_plots()
 
+    def on_save_reference_to_file(self):
+        if self.module.reference_trace is None:
+            QMessageBox.warning(self, tr("Save Reference"), tr("No reference trace stored to save."))
+            return
+
+        file_path, _ = QFileDialog.getSaveFileName(self, tr("Save Reference File"), "", tr("JSON Files (*.json)"))
+        if not file_path:
+            return
+
+        if not file_path.lower().endswith(".json"):
+            file_path += ".json"
+
+        try:
+            ref = self.module.reference_trace
+            ref_data = {
+                "version": "1.0",
+                "type": "network_analyzer_reference",
+                "freqs": ref["freqs"].tolist(),
+                "mags": ref["mags"].tolist(),
+                "phases": ref["phases"].tolist(),
+                "gen_amp": float(ref["gen_amp"]),
+            }
+            with open(file_path, "w", encoding="utf-8") as f:
+                import json
+
+                json.dump(ref_data, f, indent=4)
+            logger.info(f"Reference trace saved to {file_path}")
+        except Exception as e:
+            logger.error(f"Failed to save reference trace to file: {e}")
+            QMessageBox.critical(self, tr("Save Reference"), tr("Failed to save:\n{0}").format(str(e)))
+
+    def on_load_reference_from_file(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, tr("Load Reference File"), "", tr("JSON Files (*.json)"))
+        if not file_path:
+            return
+
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                import json
+
+                ref_data = json.load(f)
+
+            if not isinstance(ref_data, dict) or ref_data.get("type") != "network_analyzer_reference":
+                raise ValueError(tr("Invalid reference file format."))
+
+            required_keys = {"freqs", "mags", "phases", "gen_amp"}
+            if not required_keys.issubset(ref_data.keys()):
+                raise ValueError(tr("Invalid reference file format."))
+
+            freqs = np.array(ref_data["freqs"], dtype=float)
+            mags = np.array(ref_data["mags"], dtype=float)
+            phases = np.array(ref_data["phases"], dtype=float)
+            gen_amp = float(ref_data["gen_amp"])
+
+            self.module.reference_trace = {
+                "freqs": freqs,
+                "mags": mags,
+                "phases": phases,
+                "gen_amp": gen_amp,
+            }
+            logger.info(f"Reference trace loaded from {file_path}")
+
+            self.apply_ref_check.setChecked(True)
+            self.refresh_plots()
+        except Exception as e:
+            logger.error(f"Failed to load reference trace: {e}")
+            QMessageBox.critical(self, tr("Load Reference"), tr("Failed to load reference file: {0}").format(str(e)))
+
     def on_start_stop(self, checked):
         if checked:
             self.update_frequency_limits()
@@ -1673,9 +1757,7 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
     def on_delay_comp_result(self, delay_sec, delay_samples):
         delay_ms = delay_sec * 1000.0
-        self.delay_comp_label.setText(
-            tr("Delay Comp: {0:.3f} ms ({1:.2f} samples)").format(delay_ms, delay_samples)
-        )
+        self.delay_comp_label.setText(tr("Delay Comp: {0:.3f} ms ({1:.2f} samples)").format(delay_ms, delay_samples))
 
     def update_plot(self, freq, mag, phase, coh):
         self.freqs.append(freq)
