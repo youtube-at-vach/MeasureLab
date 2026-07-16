@@ -157,7 +157,7 @@
     "Amplitude Steps (Max Order 5):": "Шаги амплитуды (Макс. порядок 5):",
     "Amplitude Steps:": "Шаги амплитуды:",
     "Amplitude Sweep": "Развертка амплитуды",
-    "Amplitude {0} ({1:.3f} V)": "Amplitude {0} ({1:.3f} V)",
+    "Amplitude {0} ({1:.3f} V)": "Амплитуда {0} ({1:.3f} V)",
     "Amplitude:": "Амплитуда:",
     "Analog Transmission": "Аналоговая передача",
     "Analysis Cycles:": "Циклы анализа:",

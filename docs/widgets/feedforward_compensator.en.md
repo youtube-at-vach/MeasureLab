@@ -8,7 +8,7 @@ By loading a Hammerstein model (1st to 5th order impulse response kernels) measu
 
 ---
 
-## 💡 How It Works: LICFF (Linear-Inverse Compensated Feedforward)
+## How It Works: LICFF (Linear-Inverse Compensated Feedforward)
 
 This module implements the **LICFF (Linear-Inverse Compensated Feedforward)** algorithm, which assumes a Parallel Hammerstein model.
 

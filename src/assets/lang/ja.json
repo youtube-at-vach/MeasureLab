@@ -157,7 +157,7 @@
     "Amplitude Steps (Max Order 5):": "測定音量ステップ数 (最大5次):",
     "Amplitude Steps:": "振幅ステップ数:",
     "Amplitude Sweep": "振幅スイープ",
-    "Amplitude {0} ({1:.3f} V)": "Amplitude {0} ({1:.3f} V)",
+    "Amplitude {0} ({1:.3f} V)": "振幅 {0} ({1:.3f} V)",
     "Amplitude:": "振幅:",
     "Analog Transmission": "アナログ伝送特性",
     "Analysis Cycles:": "解析サイクル数:",
