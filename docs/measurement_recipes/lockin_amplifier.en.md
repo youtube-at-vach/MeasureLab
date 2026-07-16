@@ -1,5 +1,7 @@
 # High-Precision Gain and Phase Measurement (Lock-in Amplifier)
 
+## Overview
+
 One of the standout features of this application is measurement using a **Lock-in Amplifier**.
 
 Generally, an FRA (Frequency Response Analyzer) using FFT (Fast Fourier Transform) is used to measure frequency characteristics (gain and phase), but using a lock-in amplifier allows for measurements with relative precision that far exceeds that.

@@ -1,5 +1,7 @@
 # Calibration
 
+## Overview
+
 MeasureLab features the ability to calibrate the input and output voltages of your audio interface, as well as the sound pressure level (SPL) of microphones and speakers.
 This allows you to associate digital values (dBFS) with physical units (V, dBu, dBV, dB SPL).
 
