@@ -48,6 +48,29 @@ class TestSpectrumAnalyzerRefactor:
         # Should remain roughly -20 dB
         assert np.allclose(smoothed_mags, -20, atol=1.0)
 
+    def test_apply_octave_smoothing_coarse_resolution(self, sa):
+        # With coarse frequency resolution (e.g. 20 Hz spacing), low frequency bands would normally be empty.
+        # Check that they are successfully retained and mapped to the closest bin.
+        freqs = np.arange(0, 1000, 20)  # [0, 20, 40, 60, ...] -> 20 Hz spacing
+        magnitude = -10.0 * np.ones_like(freqs)
+
+        # 1/3 octave smoothing (fraction = 3)
+        smoothed_freqs, smoothed_mags = sa.apply_octave_smoothing(freqs, magnitude, 3)
+
+        # The band at 25 Hz (bounds ~22.4 - 28.3 Hz) has no FFT bins since 20 Hz and 40 Hz are outside.
+        # With our fix, it should be mapped to the closest bin (20 Hz) and not be discarded.
+        expected_center = 20 * (2 ** (1/3))  # 25.198
+        has_25hz_band = any(np.isclose(f, expected_center, rtol=1e-3) for f in smoothed_freqs)
+        assert has_25hz_band, f"Expected center frequency {expected_center} to be retained."
+
+        # Check that we have a center around 20 Hz as well
+        has_20hz_band = any(np.isclose(f, 20.0, rtol=1e-3) for f in smoothed_freqs)
+        assert has_20hz_band, "Expected center frequency 20.0 to be retained."
+
+        assert len(smoothed_freqs) > 0
+        assert len(smoothed_mags) == len(smoothed_freqs)
+        assert np.allclose(smoothed_mags, -10.0, atol=0.1)
+
     def test_get_latest_data_rolling_mode(self, sa):
         # Set small buffer size to trigger rolling mode
         sa.set_buffer_size(100)

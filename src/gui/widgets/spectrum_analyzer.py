@@ -49,6 +49,7 @@ class SpectrumAnalyzer(MeasurementModule):
         self.averaging = 0.0  # 0.0 to 0.95
         self.peak_hold = False
         self.octave_smoothing = "None"  # None, 1/1, 1/3, 1/6, 1/12, 1/24, 1/48, 1/96
+        self.rta_mode = False
         self.analysis_mode = "Spectrum"  # 'Spectrum', 'Cross Spectrum'
         self.channel_mode = "Average"  # 'Left', 'Right', 'Average', 'Dual'
         self.multitaper_enabled = False
@@ -284,9 +285,21 @@ class SpectrumAnalyzer(MeasurementModule):
 
             indices = np.searchsorted(freqs, bounds, side="left")
 
+            starts = indices[0::2].copy()
+            ends = indices[1::2].copy()
+
+            # Adjust empty bands (starts == ends) to include the nearest frequency bin
+            if len(freqs) > 1:
+                bin_width = freqs[1] - freqs[0]
+                if bin_width > 0:
+                    for i in range(len(starts)):
+                        if starts[i] == ends[i]:
+                            closest_idx = int(np.round(centers[i] / bin_width))
+                            closest_idx = max(0, min(len(freqs) - 1, closest_idx))
+                            starts[i] = closest_idx
+                            ends[i] = closest_idx + 1
+
             # Vectorized selection of valid bands
-            starts = indices[0::2]
-            ends = indices[1::2]
             valid = ends > starts
 
             smoothed_freqs = np.array(centers)[valid]
@@ -705,20 +718,21 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
         # Window Selection
         row1_layout.addWidget(QLabel(tr("Window:")))
         self.window_combo = QComboBox()
-        self.window_combo.addItems(fft_manager.get_available_windows())
+        for w in fft_manager.get_available_windows():
+            if w == "boxcar":
+                self.window_combo.addItem(tr("Rectangle"), "boxcar")
+            else:
+                self.window_combo.addItem(w, w)
+        
         # Set initial if valid, else default to hanning (hann)
-        idx = self.window_combo.findText(self.module.window_type)
+        current_w = self.module.window_type
+        if current_w == "hanning":
+            current_w = "hann"
+        idx = self.window_combo.findData(current_w)
         if idx >= 0:
             self.window_combo.setCurrentIndex(idx)
-        else:
-            # Fallback for "hanning" vs "hann" if needed, though get_available_windows uses "hann"
-            # SpectrumAnalyzer init uses "hanning", let's standardise on what's in the list
-            if self.module.window_type == "hanning":
-                idx = self.window_combo.findText("hann")
-                if idx >= 0:
-                    self.window_combo.setCurrentIndex(idx)
 
-        self.window_combo.currentTextChanged.connect(self.on_window_changed)
+        self.window_combo.currentIndexChanged.connect(self.on_window_changed)
         row1_layout.addWidget(self.window_combo)
 
         # Weighting Selection
@@ -779,6 +793,11 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
         self.peak_check = QCheckBox(tr("Peak Hold"))
         self.peak_check.toggled.connect(self.on_peak_changed)
         row2_layout.addWidget(self.peak_check)
+
+        # RTA Mode
+        self.rta_check = QCheckBox(tr("RTA Mode"))
+        self.rta_check.toggled.connect(self.on_rta_mode_changed)
+        row2_layout.addWidget(self.rta_check)
 
         # Clear Peak
         self.clear_peak_btn = QPushButton(tr("Clear Peak"))
@@ -848,6 +867,24 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
         # Let's use: Main (Yellow) for single/avg.
         # For Dual: Left (Green), Right (Red).
         # So we might need to change pen colors dynamically.
+
+        # RTA Bar Graphs
+        self.rta_bar_main = pg.BarGraphItem(x=[], height=[], width=0.1, brush=pg.mkBrush(255, 255, 0, 160))
+        self.rta_bar_left = pg.BarGraphItem(x=[], height=[], width=0.1, brush=pg.mkBrush(0, 255, 0, 120))
+        self.rta_bar_right = pg.BarGraphItem(x=[], height=[], width=0.1, brush=pg.mkBrush(255, 0, 0, 120))
+        
+        # Monkey-patch dummy methods to bypass pyqtgraph's PlotItem downsampling and clipToView update loop bugs
+        dummy_method = lambda *args, **kwargs: None
+        self.rta_bar_main.setDownsampling = dummy_method
+        self.rta_bar_left.setDownsampling = dummy_method
+        self.rta_bar_right.setDownsampling = dummy_method
+        self.rta_bar_main.setClipToView = dummy_method
+        self.rta_bar_left.setClipToView = dummy_method
+        self.rta_bar_right.setClipToView = dummy_method
+
+        self.plot_widget.addItem(self.rta_bar_main)
+        self.plot_widget.addItem(self.rta_bar_left)
+        self.plot_widget.addItem(self.rta_bar_right)
 
         self.plot_widget.setClipToView(True)
 
@@ -1028,8 +1065,56 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
         else:
             self.timer.setInterval(30)  # ~33 fps
 
-    def on_window_changed(self, val):
-        self.module.window_type = val
+    def on_window_changed(self, index):
+        val = self.window_combo.itemData(index)
+        if val:
+            self.module.window_type = val
+
+    def on_rta_mode_changed(self, checked):
+        self.module.rta_mode = checked
+        
+        # If RTA Mode is enabled, octave smoothing is mandatory.
+        # If it was "None", force "1/3 Octave" smoothing.
+        if checked:
+            if self.module.octave_smoothing == "None":
+                idx = self.smooth_combo.findData("1/3 Octave")
+                if idx >= 0:
+                    self.smooth_combo.setCurrentIndex(idx)
+            # RTA Mode cannot use Multitaper
+            if self.multitaper_check.isChecked():
+                self.multitaper_check.setChecked(False)
+            self.multitaper_check.setEnabled(False)
+        else:
+            self.multitaper_check.setEnabled(True)
+            
+        # Toggle logMode and update bar graph visibility
+        if checked:
+            self.plot_widget.setLogMode(x=False, y=False)
+            # Custom Ticks mapping for manual log display in RTA mode
+            axis = self.plot_widget.getPlotItem().getAxis("bottom")
+            ticks = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
+            ticks_log = [(np.log10(t), str(t) if t < 1000 else f"{t / 1000:.0f}k") for t in ticks]
+            axis.setTicks([ticks_log])
+            self.plot_widget.setXRange(np.log10(20), np.log10(20000))
+            self.plot_widget.setYRange(-120, 0)
+            self.plot_widget.enableAutoRange(y=False)
+        else:
+            self.plot_widget.setLogMode(x=True, y=False)
+            axis = self.plot_widget.getPlotItem().getAxis("bottom")
+            ticks = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
+            ticks_log = [(np.log10(t), str(t) if t < 1000 else f"{t / 1000:.0f}k") for t in ticks]
+            axis.setTicks([ticks_log])
+            self.plot_widget.setXRange(np.log10(20), np.log10(20000))
+            self.plot_widget.setYRange(-120, 0)
+
+        # Clear existing curve and peak plots
+        self.plot_curve.clear()
+        self.plot_curve_2.clear()
+        self.peak_curve.clear()
+        self.rta_bar_main.setVisible(checked)
+        if not checked:
+            self.rta_bar_left.setVisible(False)
+            self.rta_bar_right.setVisible(False)
 
     def on_weighting_changed(self, val):
         self.module.weighting = val
@@ -1182,6 +1267,94 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
                     _, peak_mags = self.apply_min_max_envelope(freqs[1:], peak_magnitude[1:], x_range_log, width_px)
                 else:
                     peak_mags = None
+
+        # RTA Mode Handling
+        if self.module.rta_mode:
+            # Force fraction to at least 3 (1/3 Octave) if not defined
+            if not fraction:
+                fraction = 3
+                plot_freqs, plot_mags = self.module.apply_octave_smoothing(freqs, magnitude, fraction)
+                if self.module.peak_hold and peak_magnitude is not None:
+                    _, peak_mags = self.module.apply_octave_smoothing(freqs, peak_magnitude, fraction)
+                else:
+                    peak_mags = None
+
+            x_log = np.log10(plot_freqs + 1e-12)
+            w_log = (1.0 / fraction) * np.log10(2.0)
+
+            self.plot_curve.clear()
+            self.plot_curve_2.clear()
+
+            if peak_mags is not None:
+                if peak_mags.ndim == 2:
+                    peak_mags = peak_mags[:, 0]
+                self.peak_curve.setData(x_log, peak_mags)
+            else:
+                self.peak_curve.clear()
+
+            # Cache variables for plot comparison
+            self.last_freqs = plot_freqs.copy()
+            self.last_mags = plot_mags.copy()
+
+            # Resolve baseline y0 based on current Plot Y range lower limit dynamically
+            try:
+                view_range = self.plot_widget.viewRange()
+                y_min = float(view_range[1][0])
+                if not np.isfinite(y_min):
+                    y_min = -120.0
+            except Exception:
+                y_min = -120.0
+
+            plot_mags_clipped = np.maximum(plot_mags, y_min)
+
+            if self.module.analysis_mode in {"Spectrum", "PSD"} and self.module.channel_mode == "Dual":
+                if plot_mags.ndim == 2 and plot_mags.shape[1] >= 2:
+                    self.rta_bar_main.setVisible(False)
+                    self.rta_bar_left.setVisible(True)
+                    self.rta_bar_right.setVisible(True)
+
+                    self.rta_bar_left.setOpts(
+                        x=x_log - w_log / 4,
+                        height=plot_mags_clipped[:, 0] - y_min,
+                        y0=y_min,
+                        width=w_log / 2 * 0.9
+                    )
+                    self.rta_bar_right.setOpts(
+                        x=x_log + w_log / 4,
+                        height=plot_mags_clipped[:, 1] - y_min,
+                        y0=y_min,
+                        width=w_log / 2 * 0.9
+                    )
+                else:
+                    self.rta_bar_main.setVisible(True)
+                    self.rta_bar_left.setVisible(False)
+                    self.rta_bar_right.setVisible(False)
+                    if plot_mags.ndim == 2:
+                        plot_mags_clipped = plot_mags_clipped[:, 0]
+                    self.rta_bar_main.setOpts(
+                        x=x_log,
+                        height=plot_mags_clipped - y_min,
+                        y0=y_min,
+                        width=w_log * 0.9
+                    )
+            else:
+                self.rta_bar_main.setVisible(True)
+                self.rta_bar_left.setVisible(False)
+                self.rta_bar_right.setVisible(False)
+                if plot_mags.ndim == 2:
+                    plot_mags_clipped = plot_mags_clipped[:, 0]
+                self.rta_bar_main.setOpts(
+                    x=x_log,
+                    height=plot_mags_clipped - y_min,
+                    y0=y_min,
+                    width=w_log * 0.9
+                )
+            return
+
+        # Ensure RTA bars are hidden in non-RTA mode
+        self.rta_bar_main.setVisible(False)
+        self.rta_bar_left.setVisible(False)
+        self.rta_bar_right.setVisible(False)
 
         # Update curves
         # When setLogMode(x=True) is active, we must pass LINEAR x values to setData.
