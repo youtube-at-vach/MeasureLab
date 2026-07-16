@@ -364,51 +364,51 @@ def test_subsample_delay_compensation():
     analyzer.input_mode = "XFER"
 
     sample_rate = 48000
-    
+
     # Generate chirp and filter
     chirp, inv_filter = analyzer._generate_chirp_and_filter(sample_rate)
-    
+
     # Let's simulate a delay of 5.4 samples
     delay_samples = 5.4
-    
+
     # We can create a delay in the frequency domain
     chirp_fft = np.fft.rfft(chirp)
     freqs = np.fft.rfftfreq(len(chirp), 1.0 / sample_rate)
     phase_shift = np.exp(-2j * np.pi * freqs * (delay_samples / sample_rate))
     delayed_chirp = np.fft.irfft(chirp_fft * phase_shift, len(chirp))
-    
+
     # Prepare rec_data (padding added in _record_sweep)
     # _record_sweep adds padding_sec = 1.0
     padding_samples = int(1.0 * sample_rate)
     ref_signal = np.concatenate([chirp, np.zeros(padding_samples)])
     meas_signal = np.concatenate([delayed_chirp, np.zeros(padding_samples)])
-    
+
     rec_data = np.zeros((len(ref_signal), 2), dtype=np.float32)
     rec_data[:, 0] = ref_signal
     rec_data[:, 1] = meas_signal
-    
+
     # We need a dummy worker that is running
     class DummyWorker:
         is_running = True
     worker = DummyWorker()
-    
+
     # Collect signals
     results = []
     analyzer.signals.delay_comp_result.connect(lambda s, samps: results.append((s, samps)))
-    
+
     # We also want to check the phase of update_plot signal
     freqs_emitted = []
     phases = []
     analyzer.signals.update_plot.connect(lambda f, m, p, c: (freqs_emitted.append(f), phases.append(p)))
-    
+
     analyzer._process_sweep_data(rec_data, inv_filter, chirp, sample_rate, worker)
-    
+
     assert len(results) == 1
     est_sec, est_samps = results[0]
-    
+
     # Estimated delay should be close to 5.4 samples
     assert np.isclose(est_samps, delay_samples, atol=0.1)
-    
+
     # The compensated phase response should be very close to 0 degrees
     # Check below 16 kHz (80% of end_freq) to avoid edge artifacts from sweep windowing
     freqs_emitted = np.array(freqs_emitted)
