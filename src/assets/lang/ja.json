@@ -450,6 +450,8 @@
     "Decay:": "減衰:",
     "Default Buffer:": "デフォルトバッファ:",
     "Delay (ms):": "ディレイ (ms):",
+    "Delay Comp: -- ms (-- samples)": "ディレイ補正: -- ms (-- サンプル)",
+    "Delay Comp: {0:.3f} ms ({1:.2f} samples)": "ディレイ補正: {0:.3f} ms ({1:.2f} サンプル)",
     "Delay Time:": "遅延時間:",
     "Delay: -": "ディレイ: -",
     "Delay: {0:d} samples ({1:.2f} ms)": "遅延: {0:d} サンプル ({1:.2f} ms)",
@@ -1965,6 +1967,7 @@
     "na (Poles):": "na (極数):",
     "nb (Zeros):": "nb (零点数):",
     "ppm": "ppm",
+    "rectangle": "rectangle",
     "{0:.1f}": "{0:.1f}",
     "{0:.1f} LU": "{0:.1f} LU",
     "{0:.1f} dBFS": "{0:.1f} dBFS",
@@ -2026,6 +2029,5 @@
     "⬆︎Update available: {0}": "⬆︎アップデートがあります: {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 危険 - 高強度 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 注意 - 超音波放射中 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 安全 - 低強度 🟢",
-    "rectangle": "rectangle"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 安全 - 低強度 🟢"
 }

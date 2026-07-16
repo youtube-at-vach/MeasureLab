@@ -450,6 +450,8 @@
     "Decay:": "Décroissance:",
     "Default Buffer:": "Tampon par défaut :",
     "Delay (ms):": "Retard (ms):",
+    "Delay Comp: -- ms (-- samples)": "Delay Comp: -- ms (-- samples)",
+    "Delay Comp: {0:.3f} ms ({1:.2f} samples)": "Delay Comp: {0:.3f} ms ({1:.2f} samples)",
     "Delay Time:": "Temps de retard :",
     "Delay: -": "Délai : -",
     "Delay: {0:d} samples ({1:.2f} ms)": "Délai : {0:d} échantillons ({1:.2f} ms)",
@@ -1965,6 +1967,7 @@
     "na (Poles):": "na (Pôles) :",
     "nb (Zeros):": "nb (Zéros) :",
     "ppm": "ppm",
+    "rectangle": "rectangle",
     "{0:.1f}": "{0:.1f}",
     "{0:.1f} LU": "{0:.1f} LU",
     "{0:.1f} dBFS": "{0:.1f} dBFS",
@@ -2026,6 +2029,5 @@
     "⬆︎Update available: {0}": "⬆︎Mise à jour disponible : {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 DANGEREUX - HAUTE INTENSITÉ 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 ATTENTION - ULTRASONS ACTIFS 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 SÉCURISÉ - FAIBLE INTENSITÉ 🟢",
-    "rectangle": "rectangle"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 SÉCURISÉ - FAIBLE INTENSITÉ 🟢"
 }

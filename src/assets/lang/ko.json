@@ -450,6 +450,8 @@
     "Decay:": "감쇠:",
     "Default Buffer:": "기본 버퍼:",
     "Delay (ms):": "지연 (ms):",
+    "Delay Comp: -- ms (-- samples)": "Delay Comp: -- ms (-- samples)",
+    "Delay Comp: {0:.3f} ms ({1:.2f} samples)": "Delay Comp: {0:.3f} ms ({1:.2f} samples)",
     "Delay Time:": "지연 시간:",
     "Delay: -": "지연: -",
     "Delay: {0:d} samples ({1:.2f} ms)": "지연: {0:d} 샘플 ({1:.2f} ms)",
@@ -1965,6 +1967,7 @@
     "na (Poles):": "na (극점):",
     "nb (Zeros):": "nb (영점):",
     "ppm": "ppm",
+    "rectangle": "rectangle",
     "{0:.1f}": "{0:.1f}",
     "{0:.1f} LU": "{0:.1f} LU",
     "{0:.1f} dBFS": "{0:.1f} dBFS",
@@ -2026,6 +2029,5 @@
     "⬆︎Update available: {0}": "⬆︎업데이트 가능: {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 위험 - 고강도 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 주의 - 초음파 활성 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 안전 - 저강도 🟢",
-    "rectangle": "rectangle"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 안전 - 저강도 🟢"
 }

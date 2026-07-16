@@ -450,6 +450,8 @@
     "Decay:": "Затухание:",
     "Default Buffer:": "Буфер по умолчанию:",
     "Delay (ms):": "Задержка (мс):",
+    "Delay Comp: -- ms (-- samples)": "Delay Comp: -- ms (-- samples)",
+    "Delay Comp: {0:.3f} ms ({1:.2f} samples)": "Delay Comp: {0:.3f} ms ({1:.2f} samples)",
     "Delay Time:": "Время задержки:",
     "Delay: -": "Задержка: -",
     "Delay: {0:d} samples ({1:.2f} ms)": "Задержка: {0:d} выб. ({1:.2f} мс)",
@@ -1965,6 +1967,7 @@
     "na (Poles):": "na (Полюсы):",
     "nb (Zeros):": "nb (Нули):",
     "ppm": "ppm",
+    "rectangle": "rectangle",
     "{0:.1f}": "{0:.1f}",
     "{0:.1f} LU": "{0:.1f} LU",
     "{0:.1f} dBFS": "{0:.1f} dBFS",
@@ -2026,6 +2029,5 @@
     "⬆︎Update available: {0}": "⬆︎Доступно обновление: {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 ОПАСНО - ВЫСОКАЯ ИНТЕНСИВНОСТЬ 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 ОСТОРОЖНО - УЛЬТРАЗВУК АКТИВЕН 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 БЕЗОПАСНО - НИЗКАЯ ИНТЕНСИВНОСТЬ 🟢",
-    "rectangle": "rectangle"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 БЕЗОПАСНО - НИЗКАЯ ИНТЕНСИВНОСТЬ 🟢"
 }

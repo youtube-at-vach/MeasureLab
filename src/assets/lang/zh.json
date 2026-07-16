@@ -450,6 +450,8 @@
     "Decay:": "衰减:",
     "Default Buffer:": "默认缓冲区:",
     "Delay (ms):": "延迟 (ms):",
+    "Delay Comp: -- ms (-- samples)": "Delay Comp: -- ms (-- samples)",
+    "Delay Comp: {0:.3f} ms ({1:.2f} samples)": "Delay Comp: {0:.3f} ms ({1:.2f} samples)",
     "Delay Time:": "延迟时间:",
     "Delay: -": "延迟: -",
     "Delay: {0:d} samples ({1:.2f} ms)": "延迟: {0:d} 采样 ({1:.2f} 毫秒)",
@@ -1965,6 +1967,7 @@
     "na (Poles):": "na (极点):",
     "nb (Zeros):": "nb (零点):",
     "ppm": "ppm",
+    "rectangle": "rectangle",
     "{0:.1f}": "{0:.1f}",
     "{0:.1f} LU": "{0:.1f} LU",
     "{0:.1f} dBFS": "{0:.1f} dBFS",
@@ -2026,6 +2029,5 @@
     "⬆︎Update available: {0}": "⬆︎有可用更新: {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 危险 - 高强度 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 注意 - 超音波活跃 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 安全 - 低强度 🟢",
-    "rectangle": "rectangle"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 安全 - 低强度 🟢"
 }

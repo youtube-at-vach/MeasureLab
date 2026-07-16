@@ -46,11 +46,13 @@ logger = logging.getLogger(__name__)
 
 class NetworkAnalyzerSignals(QObject):
     update_plot = pyqtSignal(float, float, float, float)  # freq, mag_db, phase_deg, coherence
+    update_all_plots = pyqtSignal(object, object, object, object)  # freqs, mags, phases, cohs
     update_ir_plot = pyqtSignal(object, object)  # time_ms, normalized_ir
     sweep_finished = pyqtSignal()
     progress = pyqtSignal(int)
     latency_result = pyqtSignal(float)
     ir_snr_result = pyqtSignal(float)
+    delay_comp_result = pyqtSignal(float, float)  # delay_sec, delay_samples
     error = pyqtSignal(str)
     harmonics_result = pyqtSignal(dict)  # dict containing harmonics data arrays
 
@@ -165,6 +167,11 @@ class NetworkAnalyzer(MeasurementModule):
         self.amplitude = 0.5
         self.gen_unit = "Amplitude"  # 'Amplitude', 'dBFS', 'dBV', 'dBu', 'Vrms', 'Vpeak'
         self.latency_sec = 0.0
+        self.delay_mode = "Auto"  # 'Auto', 'Calibration', 'None'
+        self.raw_H = None
+        self.raw_freqs = None
+        self.raw_auto_delay_sec = 0.0
+        self.raw_coherence = None
 
         # Routing
         self.output_channel = "STEREO"  # 'L', 'R', 'STEREO'
@@ -523,10 +530,41 @@ class NetworkAnalyzer(MeasurementModule):
             with np.errstate(divide="ignore", invalid="ignore"):
                 H_xfer = H_meas / H_ref
                 H_xfer = np.nan_to_num(H_xfer)
-
+            raw_H_temp = H_xfer.copy()
             relative_ir = fft_manager.irfft(H_xfer, n=len_win)
             relative_peak_idx = np.argmax(np.abs(relative_ir))
             emit_circular_ir(relative_ir, relative_peak_idx, pre, post)
+
+            # Sub-sample delay estimation
+            p = relative_peak_idx
+            alpha = np.abs(relative_ir[(p - 1) % len_win])
+            beta = np.abs(relative_ir[p])
+            gamma = np.abs(relative_ir[(p + 1) % len_win])
+            
+            denom = alpha - 2 * beta + gamma
+            delta = 0.0
+            if np.abs(denom) > 1e-12:
+                delta = 0.5 * (alpha - gamma) / denom
+                delta = np.clip(delta, -0.5, 0.5)
+                
+            p_wrapped = p - len_win if p > len_win // 2 else p
+            auto_delay_samples = p_wrapped + delta
+            auto_delay_sec = auto_delay_samples / sample_rate
+
+            # Select delay based on mode
+            if self.delay_mode == "Calibration":
+                delay_sec = self.latency_sec
+                delay_samples = self.latency_sec * sample_rate
+            elif self.delay_mode == "None":
+                delay_sec = 0.0
+                delay_samples = 0.0
+            else:  # "Auto"
+                delay_sec = auto_delay_sec
+                delay_samples = auto_delay_samples
+
+            # Apply phase compensation
+            phase_correction = np.exp(2j * np.pi * freqs * delay_sec)
+            H_xfer = H_xfer * phase_correction
 
             mask = (freqs >= self.start_freq) & (freqs <= self.end_freq)
             valid_freqs = freqs[mask]
@@ -600,28 +638,77 @@ class NetworkAnalyzer(MeasurementModule):
                 drive_ref_win = drive_win[:len_win]
 
             H = fft_manager.rfft(ir_ref_win)
-            freqs = fft_manager.rfftfreq(len(ir_ref_win), d=1 / sample_rate)
+            freqs = fft_manager.rfftfreq(len_win, d=1 / sample_rate)
             H_norm = None
             if drive_ref_win is not None:
                 H_drive = fft_manager.rfft(drive_ref_win)
                 with np.errstate(divide="ignore", invalid="ignore"):
                     H_norm = np.nan_to_num(H / (H_drive + 1e-12))
+            raw_H_temp = H_norm.copy() if H_norm is not None else H.copy()
 
             mask = (freqs >= self.start_freq) & (freqs <= self.end_freq)
             valid_freqs = freqs[mask]
-            valid_H = H_norm[mask] if H_norm is not None else H[mask]
+            
+            # Sub-sample delay estimation
+            auto_delay_sec = 0.0
+            auto_delay_samples = 0.0
+            if H_norm is not None:
+                # Relative impulse response of H_norm
+                relative_ir = fft_manager.irfft(H_norm, n=len_win)
+                p = np.argmax(np.abs(relative_ir))
+                
+                # Sub-sample peak
+                alpha = np.abs(relative_ir[(p - 1) % len_win])
+                beta = np.abs(relative_ir[p])
+                gamma = np.abs(relative_ir[(p + 1) % len_win])
+                
+                denom = alpha - 2 * beta + gamma
+                delta = 0.0
+                if np.abs(denom) > 1e-12:
+                    delta = 0.5 * (alpha - gamma) / denom
+                    delta = np.clip(delta, -0.5, 0.5)
+                    
+                p_wrapped = p - len_win if p > len_win // 2 else p
+                auto_delay_samples = p_wrapped + delta
+                auto_delay_sec = auto_delay_samples / sample_rate
+            else:
+                delta = 0.0
+                if 0 < peak_idx < len(ir) - 1:
+                    alpha = np.abs(ir[peak_idx - 1])
+                    beta = np.abs(ir[peak_idx])
+                    gamma = np.abs(ir[peak_idx + 1])
+                    denom = alpha - 2 * beta + gamma
+                    if np.abs(denom) > 1e-12:
+                        delta = 0.5 * (alpha - gamma) / denom
+                        delta = np.clip(delta, -0.5, 0.5)
+                        
+                auto_delay_samples = peak_idx + delta - start
+                auto_delay_sec = auto_delay_samples / sample_rate
+
+            # Select delay based on mode
+            if self.delay_mode == "Calibration":
+                delay_sec = self.latency_sec
+                delay_samples = self.latency_sec * sample_rate
+            elif self.delay_mode == "None":
+                delay_sec = 0.0
+                delay_samples = 0.0
+            else:  # "Auto"
+                delay_sec = auto_delay_sec
+                delay_samples = auto_delay_samples
+
+            # Apply phase compensation
+            if H_norm is not None:
+                phase_correction = np.exp(2j * np.pi * freqs * delay_sec)
+                H_norm = H_norm * phase_correction
+                valid_H = H_norm[mask]
+            else:
+                phase_correction = np.exp(2j * np.pi * freqs * delay_sec)
+                H = H * phase_correction
+                valid_H = H[mask]
 
             mag_db = 20 * np.log10(np.abs(valid_H) + 1e-12)
             phase_rad = np.angle(valid_H)
             phase_rad = np.unwrap(phase_rad)
-
-            # Latency compensation is only required when we use the raw transfer
-            # (non-normalized) path. In normalized mode, drive path delay/phase is
-            # already canceled by H/H_drive.
-            if H_norm is None:
-                delay_samples = peak_idx - start
-                phase_rad += 2 * np.pi * valid_freqs * (delay_samples / sample_rate)
-
             phase_deg = np.degrees(phase_rad)
             phase_deg = (phase_deg + 180) % 360 - 180
 
@@ -644,6 +731,9 @@ class NetworkAnalyzer(MeasurementModule):
         if ir_snr_db is not None:
             self.signals.ir_snr_result.emit(ir_snr_db)
 
+        # Emit delay compensation result
+        self.signals.delay_comp_result.emit(delay_sec, delay_samples)
+
         if harmonics and len(valid_freqs) > 0:
             thd_linear = np.zeros_like(valid_freqs)
             for N in range(2, 6):
@@ -654,12 +744,70 @@ class NetworkAnalyzer(MeasurementModule):
             harmonics["thd"] = 20 * np.log10(thd_linear + 1e-12)
             self.signals.harmonics_result.emit(harmonics)
 
+        # Save raw state for recalculation
+        self.raw_H = raw_H_temp
+        self.raw_freqs = freqs
+        self.raw_auto_delay_sec = auto_delay_sec
+        self.raw_coherence = np.interp(freqs, f_coh, coh)
+
         # Emit
         step = max(1, len(valid_freqs) // 500)
         for i in range(0, len(valid_freqs), step):
             if not worker.is_running:
                 break
             self.signals.update_plot.emit(valid_freqs[i], mag_db[i], phase_deg[i], coh_interp[i])
+
+    def recalculate_response(self):
+        """Recalculates magnitude and phase response from raw stored data using current delay settings."""
+        if getattr(self, "raw_H", None) is None or getattr(self, "raw_freqs", None) is None:
+            return
+
+        sample_rate = self.audio_engine.sample_rate
+
+        # 1. Determine the delay to apply
+        if self.delay_mode == "Calibration":
+            delay_sec = self.latency_sec
+            delay_samples = self.latency_sec * sample_rate
+        elif self.delay_mode == "None":
+            delay_sec = 0.0
+            delay_samples = 0.0
+        else:  # "Auto"
+            delay_sec = self.raw_auto_delay_sec
+            delay_samples = delay_sec * sample_rate
+
+        # 2. Apply phase compensation to the raw complex transfer function
+        phase_correction = np.exp(2j * np.pi * self.raw_freqs * delay_sec)
+        H_corrected = self.raw_H * phase_correction
+
+        # 3. Apply frequency limits mask
+        mask = (self.raw_freqs >= self.start_freq) & (self.raw_freqs <= self.end_freq)
+        valid_freqs = self.raw_freqs[mask]
+        valid_H = H_corrected[mask]
+
+        # 4. Calculate mag and phase
+        mag_db = 20 * np.log10(np.abs(valid_H) + 1e-12)
+        phase_rad = np.angle(valid_H)
+        phase_rad = np.unwrap(phase_rad)
+        phase_deg = np.degrees(phase_rad)
+        phase_deg = (phase_deg + 180) % 360 - 180
+
+        # 5. Extract coherence
+        if getattr(self, "raw_coherence", None) is not None:
+            coh_interp = self.raw_coherence[mask]
+        else:
+            coh_interp = np.ones_like(valid_freqs)
+
+        # Emit the recalculated arrays (downsampled to keep UI responsive)
+        step = max(1, len(valid_freqs) // 500)
+        freqs_ds = valid_freqs[::step]
+        mag_db_ds = mag_db[::step]
+        phase_deg_ds = phase_deg[::step]
+        coh_ds = coh_interp[::step]
+
+        self.signals.update_all_plots.emit(freqs_ds, mag_db_ds, phase_deg_ds, coh_ds)
+
+        # Emit updated delay compensation info to update labels
+        self.signals.delay_comp_result.emit(delay_sec, delay_samples)
 
 
 class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
@@ -670,11 +818,13 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.init_ui()
 
         self.module.signals.update_plot.connect(self.update_plot)
+        self.module.signals.update_all_plots.connect(self.on_update_all_plots)
         self.module.signals.update_ir_plot.connect(self.update_ir_plot)
         self.module.signals.sweep_finished.connect(self.on_sweep_finished)
         self.module.signals.progress.connect(self.progress_bar.setValue)
         self.module.signals.latency_result.connect(self.on_latency_result)
         self.module.signals.ir_snr_result.connect(self.on_ir_snr_result)
+        self.module.signals.delay_comp_result.connect(self.on_delay_comp_result)
         self.module.signals.error.connect(self.on_error)
         self.module.signals.harmonics_result.connect(self.on_harmonics_result)
 
@@ -916,6 +1066,23 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         lat_group = QGroupBox(tr("Latency"))
         lat_form = QFormLayout()
+
+        self.delay_mode_combo = QComboBox()
+        self.delay_mode_combo.addItem(tr("Auto (Align to Peak)"), "Auto")
+        self.delay_mode_combo.addItem(tr("Calibration (Fixed Delay)"), "Calibration")
+        self.delay_mode_combo.addItem(tr("None"), "None")
+        self.delay_mode_combo.currentIndexChanged.connect(self.on_delay_mode_changed)
+        lat_form.addRow(tr("Delay Mode:"), self.delay_mode_combo)
+
+        self.lat_val_spin = QDoubleSpinBox()
+        self.lat_val_spin.setRange(0.0, 1000.0)
+        self.lat_val_spin.setDecimals(3)
+        self.lat_val_spin.setSingleStep(0.1)
+        self.lat_val_spin.setSuffix(" ms")
+        self.lat_val_spin.setValue(self.module.latency_sec * 1000.0)
+        self.lat_val_spin.valueChanged.connect(self.on_lat_val_spin_changed)
+        lat_form.addRow(tr("Calibration Delay (ms):"), self.lat_val_spin)
+
         self.lat_btn = QPushButton(tr("Calibrate Latency"))
         self.lat_btn.clicked.connect(self.calibrate)
         lat_form.addRow(self.lat_btn)
@@ -924,6 +1091,9 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         self.ir_snr_label = QLabel(tr("IR SNR: -- dB"))
         lat_form.addRow(self.ir_snr_label)
+
+        self.delay_comp_label = QLabel(tr("Delay Comp: -- ms (-- samples)"))
+        lat_form.addRow(self.delay_comp_label)
 
         lat_group.setLayout(lat_form)
         cal_tab_layout.addWidget(lat_group)
@@ -1293,8 +1463,33 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.lat_label.setText(tr("Calibrating..."))
         self.module.start_calibration()
 
+    def on_delay_mode_changed(self, index):
+        mode = self.delay_mode_combo.currentData()
+        self.module.delay_mode = mode
+        self.module.recalculate_response()
+
+    def on_lat_val_spin_changed(self, val):
+        self.module.latency_sec = val / 1000.0
+        self.module.recalculate_response()
+
+    def on_update_all_plots(self, freqs, mags, phases, cohs):
+        self.freqs = list(freqs)
+        self.mags = list(mags)
+        self.phases = list(phases)
+        self.cohs = list(cohs)
+        self.refresh_plots()
+
     def on_latency_result(self, lat):
-        self.lat_label.setText(tr("Latency: {0:.2f} ms").format(lat * 1000))
+        lat_ms = lat * 1000.0
+        self.lat_label.setText(tr("Latency: {0:.2f} ms").format(lat_ms))
+        self.lat_val_spin.blockSignals(True)
+        self.lat_val_spin.setValue(lat_ms)
+        self.lat_val_spin.blockSignals(False)
+        self.module.latency_sec = lat
+
+        idx = self.delay_mode_combo.findData("Calibration")
+        if idx != -1:
+            self.delay_mode_combo.setCurrentIndex(idx)
         self.lat_btn.setEnabled(True)
 
     def on_error(self, msg):
@@ -1342,6 +1537,7 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
             for curve in self.h_curves.values():
                 curve.clear()
             self.ir_snr_label.setText(tr("IR SNR: -- dB"))
+            self.delay_comp_label.setText(tr("Delay Comp: -- ms (-- samples)"))
             self.start_btn.setText(tr("Stop Sweep"))
             self.update_timer.start(50)
             self.module.start_sweep()
@@ -1425,7 +1621,15 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         except Exception as e:
             logger.debug(f"Error during cleanup: {e}")
         try:
+            self.module.signals.delay_comp_result.disconnect(self.on_delay_comp_result)
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
+        try:
             self.module.signals.harmonics_result.disconnect(self.on_harmonics_result)
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
+        try:
+            self.module.signals.update_all_plots.disconnect(self.on_update_all_plots)
         except Exception as e:
             logger.debug(f"Error during cleanup: {e}")
         super().closeEvent(event)
@@ -1462,6 +1666,12 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
     def on_ir_snr_result(self, snr):
         self.ir_snr_label.setText(tr("IR SNR: {0:.1f} dB").format(snr))
+
+    def on_delay_comp_result(self, delay_sec, delay_samples):
+        delay_ms = delay_sec * 1000.0
+        self.delay_comp_label.setText(
+            tr("Delay Comp: {0:.3f} ms ({1:.2f} samples)").format(delay_ms, delay_samples)
+        )
 
     def update_plot(self, freq, mag, phase, coh):
         self.freqs.append(freq)
