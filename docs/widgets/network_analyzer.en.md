@@ -44,16 +44,11 @@ Customize the graph display in the **"Display"** tab.
 
 * **Magnitude Response**: Displays gain (amplification factor) or absolute level for each frequency. Units can be selected from dBFS, dBV, dBu, Vrms, or Vpeak.
 * **Phase Response**: Displays the phase shift for each frequency.
-* **Group Delay**: Displays the delay time for each frequency, calculated from the slope of the phase (check "Show Group Delay").
-    * 💡 **What is Group Delay?**: Depending on the pitch (frequency) of the sound, the time it takes to travel through a device can slightly differ. For example, a phenomenon where "only the bass comes out slightly delayed." Group delay displays this "time shift per pitch" easily in seconds (or milliseconds).
+* **Group Delay**: Displays the delay time for each frequency, calculated from the slope of the phase (check "Show Group Delay"). It allows intuitive confirmation of arrival time differences across frequency bands in seconds (or milliseconds).
 * **Coherence**: Displays the correlation (reliability) between input and output (valid only in XFER and Crosstalk transfer modes). Values closer to 1.0 indicate high reliability. Low coherence suggests noise, distortion, or timing issues (check "Show Coherence").
-    * 💡 **What is Coherence?**: Imagine a friend talking to you in a noisy room. If you can hear their voice clearly, the "coherence is high" (reliable). But if the background noise is too loud, or if their voice is distorted, you won't be able to understand what they are saying. Coherence is like a "report card" that shows "how cleanly the input sound made it to the output"!
-* **ETC (Energy Time Curve)**: Displays how the energy of the impulse response decays over time (in the "ETC" tab).
-    * 💡 **What is ETC?**: Imagine plucking a heavy weight attached to a stiff spring; it bounces up and down for a long time. In the electrical world of filter circuits and amplifiers, how long a signal "lingers (ringing)" after a sudden input affects the crispness of the sound. ETC is a feature to observe "how quickly that energy vanishes".
-* **Impulse Response**: Displays the impulse response of the measurement target in the time domain (in the "Impulse Response" tab).
-    * 💡 **What is Impulse Response?**: Imagine the sound of a handclap in front of a speaker. The impulse response is a waveform that captures how the system reacts to that instantaneous sound and how the ringing fades away. By looking at this, you can intuitively check things like the damping of a speaker cone or the reflections in a room on a time axis.
-* **Harmonics**: Displays the harmonic components (2nd to 5th, and THD) of the measurement target for each frequency (in the "Harmonics" tab).
-    * 💡 **Farina's Magic**: Normally, measuring distortion across frequencies requires playing and measuring individual tones one by one. However, using the mathematical magic of the Farina method with "Chirp signals" and "Impulse responses", this analyzer can separate and extract the distortion for all frequencies simultaneously with just a single "Pweeeep!" sweep!
+* **ETC (Energy Time Curve)**: Displays how the energy of the impulse response decays over time (in the "ETC" tab). It is suitable for observing energy decay, such as ringing in filters or amplifiers.
+* **Impulse Response**: Displays the impulse response of the measurement target in the time domain (in the "Impulse Response" tab). It allows confirmation of the system\'s transient response and reflections on the time axis.
+* **Harmonics**: Displays the harmonic components (2nd to 5th, and THD) of the measurement target for each frequency (in the "Harmonics" tab). It uses the Farina method, extracting distortion components across all frequencies simultaneously from a single logarithmic chirp measurement.
 
 ### Display Options
 

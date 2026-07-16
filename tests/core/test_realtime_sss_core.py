@@ -382,3 +382,71 @@ def test_engine_process_block_xfer_mixed_reference():
     # If the bug is present, this will either raise IndexError or return uncorrected 0.4
     assert np.abs(results[0]) > 0.0
     assert np.abs(np.abs(results[0]) - 0.5) < 1e-2
+
+
+def test_engine_reset_analysis_history():
+    engine = RealtimeSSSEngine(
+        sample_rate=48000,
+        sweep_duration=1.0,
+        start_freq=50,
+        end_freq=15000,
+        output_amplitude=0.5,
+        max_harmonic=3,
+    )
+
+    # Inject mock data
+    engine._hist_n = [np.array([1, 2, 3])]
+    engine._hist_theta = [np.array([0.1, 0.2, 0.3])]
+    engine._hist_signal = [np.array([0.5, 0.6, 0.7])]
+    engine._hist_ref = [np.array([0.8, 0.9, 1.0])]
+
+    # Call the method
+    engine.reset_analysis_history()
+
+    # Verify lists are empty
+    assert engine._hist_n == []
+    assert engine._hist_theta == []
+    assert engine._hist_signal == []
+    assert engine._hist_ref == []
+
+def test_engine_generate_output_block():
+    engine = RealtimeSSSEngine(
+        sample_rate=48000,
+        sweep_duration=1.0,
+        start_freq=50,
+        end_freq=15000,
+        output_amplitude=0.5,
+        max_harmonic=3,
+    )
+    engine.prepare_sweep()
+    engine.set_latency(0)
+
+    frames = 1024
+    outdata_block = np.zeros((frames, 2))  # 2 channels
+
+    # 1. Early block containing sweep data
+    engine.generate_output_block(outdata_block, 0)
+
+    # Check that outdata_block is not empty
+    assert np.any(np.abs(outdata_block) > 0)
+
+    # Check that it was copied to both channels
+    assert np.array_equal(outdata_block[:, 0], outdata_block[:, 1])
+
+    # 2. Boundary block partially spanning sweep data and silence
+    # block index where the sweep ends
+    boundary_block_index = engine.sweep_samples // frames
+    engine.generate_output_block(outdata_block, boundary_block_index)
+
+    out_samples_written = min(frames, engine.sweep_samples - boundary_block_index * frames)
+
+    if out_samples_written > 0:
+        assert np.any(np.abs(outdata_block[:out_samples_written, :]) > 0)
+    if out_samples_written < frames:
+        assert np.all(outdata_block[out_samples_written:, :] == 0.0)
+
+    # 3. Post-sweep blocks containing only silence
+    post_sweep_index = engine.sweep_samples // frames + 1
+    outdata_block.fill(1.0) # fill with ones so we can see if it was zeroed
+    engine.generate_output_block(outdata_block, post_sweep_index)
+    assert np.all(outdata_block == 0.0)

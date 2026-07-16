@@ -251,8 +251,11 @@ class SoundLevelMeter(MeasurementModule):
 
         # Convert to list for faster iteration and use walrus operator for state accumulation
         sig_list = sig_low.tolist()
-        out_list = [curr := (alpha_rise * s + cr * curr if s > curr else alpha_fall * s + cf * curr) for s in sig_list]
-        out_low = np.array(out_list, dtype=sig_low.dtype)
+        out_low = np.fromiter(
+            (curr := (alpha_rise * s + cr * curr if s > curr else alpha_fall * s + cf * curr) for s in sig_list),
+            dtype=sig_low.dtype,
+            count=len(sig_list),
+        )
 
         # 4. Upsample (Repeat)
         out_high = np.repeat(out_low, factor)

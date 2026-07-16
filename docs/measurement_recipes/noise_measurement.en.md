@@ -1,5 +1,7 @@
 # Noise Measurement
 
+## Overview
+
 This is a comprehensive guide to measuring and analyzing "noise" in audio equipment and circuits. Select the optimal tool (widget) according to your purpose and perform the measurement according to the procedure.
 
 ## Tool Selection Guide by Purpose
@@ -37,9 +39,8 @@ Graphs the strength of noise per frequency (spectrum display). You can see thing
 
 ### How to Read Results
 
-* **💡 Knowledge Boost: What is PSD (Power Spectral Density)?**
-    * The normal `Spectrum mode` is like a simple level meter suitable for measuring the level of a specific sound (like a "beep" sine wave). However, since noise is scattered across various frequencies, a simple level meter can't measure it well.
-    * This is where `PSD mode` comes in. It's a measurement method like **"population density"** that shows how much power is packed into a specific 1Hz width. When measuring noise, using this PSD mode is an ironclad rule for pros! (The unit $/√Hz$ might look a bit intimidating, but for now, just think of it as "the concentration of noise per 1Hz".)
+While the normal `Spectrum` mode measures the level of specific frequencies, it is not ideal for signals like noise that are distributed across many frequencies.
+The `PSD` mode shows the "power density per 1Hz" (e.g., V/√Hz), allowing you to accurately evaluate the noise floor independent of the measurement bandwidth.
 
 * **What Can You See?**
     * **Hum Noise**: If sharp peaks stand at 50Hz or 60Hz (and their harmonics), it is induction noise from the power supply.

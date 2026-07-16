@@ -115,6 +115,18 @@ class TestConfigManager(unittest.TestCase):
         cm.set_dithering_bit_depth("24")
         self.assertEqual(cm.get_dithering_bit_depth(), "24")
 
+
+    def test_audio_engine_64bit(self):
+        cm = self.ConfigManager(config_filename=self.config_path)
+
+        self.assertFalse(cm.is_audio_engine_64bit())
+        cm.set_audio_engine_64bit(True)
+        self.assertTrue(cm.is_audio_engine_64bit())
+
+        cm.config.pop("audio", None)
+        cm.set_audio_engine_64bit(False)
+        self.assertFalse(cm.is_audio_engine_64bit())
+
     def test_coreaudio_conversion_quality(self):
         cm = self.ConfigManager(config_filename=self.config_path)
 
@@ -211,6 +223,54 @@ class TestConfigManager(unittest.TestCase):
                         "Unable to ensure screenshot directory at /default/shot: No perm"
                     )
 
+
+
+    def test_is_dithering_enabled(self):
+        cm = self.ConfigManager(config_filename=self.config_path)
+
+        self.assertFalse(cm.is_dithering_enabled())
+        cm.set_dithering_enabled(True)
+        self.assertTrue(cm.is_dithering_enabled())
+
+        cm.config.pop("audio", None)
+        cm.set_dithering_enabled(False)
+        self.assertFalse(cm.is_dithering_enabled())
+
+
+    def test_save_config(self):
+        cm = self.ConfigManager(config_filename=self.config_path)
+
+        # Test force_sync=True
+        with patch.object(cm, "shutdown") as mock_shutdown:
+            cm.save_config(force_sync=True)
+            mock_shutdown.assert_called_once()
+            self.assertIsNone(cm._save_timer)  # Unchanged
+
+        # Test force_sync=False with no existing timer
+        with patch("src.core.config_manager.threading.Timer") as mock_timer:
+            mock_timer_instance = MagicMock()
+            mock_timer.return_value = mock_timer_instance
+
+            cm.save_config(force_sync=False)
+
+            mock_timer.assert_called_once_with(1.0, cm._flush_config)
+            mock_timer_instance.start.assert_called_once()
+            self.assertEqual(cm._save_timer, mock_timer_instance)
+
+        # Test force_sync=False with existing timer
+        existing_timer = MagicMock()
+        cm._save_timer = existing_timer
+
+        with patch("src.core.config_manager.threading.Timer") as mock_timer:
+            new_timer_instance = MagicMock()
+            mock_timer.return_value = new_timer_instance
+
+            cm.save_config(force_sync=False)
+
+            existing_timer.cancel.assert_called_once()
+            mock_timer.assert_called_once_with(1.0, cm._flush_config)
+            new_timer_instance.start.assert_called_once()
+            self.assertEqual(cm._save_timer, new_timer_instance)
 
 if __name__ == "__main__":
     unittest.main()

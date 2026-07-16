@@ -547,6 +547,7 @@ class LockInModelerWidget(QWidget):
         adv_form.addRow(tr("Real-time Display:"), self.chk_realtime_display)
 
         adv_layout.addWidget(adv_form_widget)
+
         adv_layout.addStretch()
         left_tabs.addTab(advanced_tab, tr("Advanced"))
 
@@ -808,7 +809,9 @@ class LockInModelerWidget(QWidget):
                     self.combo_amplitude_select.clear()
                     self.combo_amplitude_select.addItem(tr("Model Kernels"), "kernels")
                     for i, amp in enumerate(self.amplitudes):
-                        self.combo_amplitude_select.addItem(tr("Amplitude {0} ({1:.3f} V)").format(i + 1, amp), f"amp_{i}")
+                        self.combo_amplitude_select.addItem(
+                            tr("Amplitude {0} ({1:.3f} V)").format(i + 1, amp), f"amp_{i}"
+                        )
                     self.combo_amplitude_select.blockSignals(False)
                     self.combo_amplitude_select.setCurrentIndex(0)
 
@@ -1231,11 +1234,15 @@ class LockInModelerWidget(QWidget):
                 avg_complex[pos] = self.raw_responses[amp_idx, valid_indices[pos], idx] / counts[pos]
 
                 # Apply predistortion restoration if restored mode is active
-                if (getattr(self, "is_predistorted_hammerstein_mode", False)
-                        and self.chk_show_restored.isChecked()
-                        and idx >= 1):
+                if (
+                    getattr(self, "is_predistorted_hammerstein_mode", False)
+                    and self.chk_show_restored.isChecked()
+                    and idx >= 1
+                ):
                     predist_mgr = self.predistortion_managers[amp_idx]
-                    current_predist_mgr = predist_mgr if predist_mgr is not None else getattr(self, "predistortion_manager", None)
+                    current_predist_mgr = (
+                        predist_mgr if predist_mgr is not None else getattr(self, "predistortion_manager", None)
+                    )
                     if current_predist_mgr is not None:
                         H1_raw = self.raw_responses[amp_idx, valid_indices, 0] / np.maximum(counts, 1)
                         valid_blocks = counts > 0
@@ -1247,7 +1254,7 @@ class LockInModelerWidget(QWidget):
                                 target_freqs=x_data,
                                 measured_complex=avg_complex,
                                 H1_base=H1_base,
-                                freq_base=freq_base
+                                freq_base=freq_base,
                             )
 
                 if self.chk_relative.isChecked():
@@ -1317,8 +1324,8 @@ class LockInModelerWidget(QWidget):
                     ref_max = np.max(np.abs(self.kernels_time[0]))
                     if ref_max < 1e-12:
                         ref_max = 1.0
-                    for idx in range(len(self.kernels_time)):
-                        norm_kernel = self.kernels_time[idx] / ref_max
+                    for idx, kernel in enumerate(self.kernels_time):
+                        norm_kernel = kernel / ref_max
                         self.kernel_curves[idx].setData(self.time_ms, norm_kernel)
 
                 return
@@ -1445,8 +1452,8 @@ class LockInModelerWidget(QWidget):
             # 3. Apply frequency mapping to map H_p(f_0) measured at fundamental f_0 to physical harmonic frequency p * f_0
             # H_p_mapped(f) = H_p_raw(f / p)
             H_mapped_list = []
-            for p in range(len(self.H_freqs)):
-                H_raw = self.H_freqs[p][valid_idx[sort_idx]]
+            for p, H_freq_p in enumerate(self.H_freqs):
+                H_raw = H_freq_p[valid_idx[sort_idx]]
                 f_lookups = sorted_freqs / (p + 1)
 
                 # Polar Interpolation to prevent phase distortion
@@ -1478,7 +1485,7 @@ class LockInModelerWidget(QWidget):
                 H_mapped_list.append(H_mapped)
 
             # Apply Butterworth lowpass filter to higher order mapped kernels
-            for p in range(len(self.H_freqs)):
+            for p, _ in enumerate(self.H_freqs):
                 H_p = H_mapped_list[p]
                 if p >= 1:
                     f_cut = min(20000.0, 1.15 * sample_rate / 2)
@@ -1507,8 +1514,8 @@ class LockInModelerWidget(QWidget):
         self.time_ms = (np.arange(N_kernel) - gate_pre) / sample_rate * 1000.0
         self.kernels_time = []
 
-        for p in range(len(self.H_freqs)):
-            H_p = self.H_freqs[p][valid_idx][sort_idx]
+        for _p, H_freq in enumerate(self.H_freqs):
+            H_p = H_freq[valid_idx][sort_idx]
             # Replace NaNs from frequency mapping with 0.0 before IFFT
             mask_nan = np.isnan(H_p)
             H_p_clean = H_p.copy()
@@ -1565,12 +1572,12 @@ class LockInModelerWidget(QWidget):
             "frequency_domain": {
                 "freqs": sorted_freqs,
                 "magnitudes_db": {
-                    f"h{p + 1}": 20 * np.log10(np.abs(self.H_freqs[p][valid_idx][sort_idx]) + 1e-12)
-                    for p in range(len(self.H_freqs))
+                    f"h{p + 1}": 20 * np.log10(np.abs(H_freq[valid_idx][sort_idx]) + 1e-12)
+                    for p, H_freq in enumerate(self.H_freqs)
                 },
                 "phases_deg": {
-                    f"h{p + 1}": np.degrees(np.angle(self.H_freqs[p][valid_idx][sort_idx]))
-                    for p in range(len(self.H_freqs))
+                    f"h{p + 1}": np.degrees(np.angle(H_freq[valid_idx][sort_idx]))
+                    for p, H_freq in enumerate(self.H_freqs)
                 },
             },
         }
@@ -1587,7 +1594,9 @@ class LockInModelerWidget(QWidget):
 
     def on_export_model(self):
         if not getattr(self, "is_hammerstein_mode", False):
-            QMessageBox.warning(self, tr("Export Failed"), tr("Model export is only supported for Nonlinear Model modes."))
+            QMessageBox.warning(
+                self, tr("Export Failed"), tr("Model export is only supported for Nonlinear Model modes.")
+            )
             return
 
         from src.core.hammerstein_model import get_active_model, has_active_model

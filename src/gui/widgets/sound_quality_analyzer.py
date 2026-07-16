@@ -1205,10 +1205,9 @@ class SoundQualityAnalyzerWidget(QWidget):
 
         # Determine which plot was clicked
         target_plot = None
-        plots = [p for p in [self.p1, self.p2, self.p3, self.p4, self.p5, self.p6] if p is not None]
 
-        for p in plots:
-            if p.sceneBoundingRect().contains(event.scenePos()):
+        for p in (self.p1, self.p2, self.p3, self.p4, self.p5, self.p6):
+            if p is not None and p.sceneBoundingRect().contains(event.scenePos()):
                 target_plot = p
                 break
 

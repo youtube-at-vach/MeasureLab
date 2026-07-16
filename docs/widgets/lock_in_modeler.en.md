@@ -31,9 +31,9 @@ Before running any sweep, the round-trip latency of the audio input and output c
 
 * **Sweep Mode**: Choose between three measurement modes:
     * `Sweep Measurement (Default)`: Performs a standard frequency sweep, plotting the magnitude and phase responses for the fundamental and configured harmonics.
-    * `Nonlinear Model`: Identifies a Hammerstein nonlinear model by automatically performing multiple sweeps at different test amplitude levels to resolve higher-order kernels.
-    * `Predistortion Sweep`: Performs iterative sweeps while applying a predistortion signal (using an Inverse Hammerstein model) to actively cancel the nonlinear distortion of the system under test.
-* **Start Freq / End Freq (Hz)**: Sets the frequency boundaries for the sweep (20.0 Hz to 20,000.0 Hz).
+    * `Nonlinear Model (Forward)`: Identifies a Hammerstein nonlinear model by automatically performing multiple sweeps at different test amplitude levels to resolve higher-order kernels using a standard forward model.
+    * `Nonlinear Model (Parallel Complex)`: Identifies a Hammerstein nonlinear model using a Parallel Complex Hammerstein structure, capable of capturing more intricate nonlinear behaviors.
+* **Start Freq / End Freq (Hz)**: Sets the frequency boundaries for the sweep (2.0 Hz up to the Nyquist frequency).
 * **Duration (s)**: The duration of a single sweep cycle (2.0 s to 600.0 s).
 * **Amplitude (dBFS)**: Sets the output signal level in dBFS (-100.0 dBFS to 0.0 dBFS).
 * **Max Harmonic**: Sets the highest harmonic order to analyze alongside the fundamental (1st to 5th).
@@ -46,15 +46,13 @@ Before running any sweep, the round-trip latency of the audio input and output c
     * **Time-Synchronized Averaging (TSA)**:
         * **Cycles**: Number of cycles to average (1-100).
         * **Rejection Threshold**: Standard deviation threshold for outlier rejection.
-    * **Predistortion Settings**:
-        * **Predistortion Iters**: The number of iterative updates (1-10) per amplitude level to refine the inverse distortion filter.
-        * **Learning Rate (mu)**: The step size (0.01 - 1.0) for the predistortion update algorithm. Smaller values increase stability but require more iterations.
 
 ### Display Tab
 
 * **Show Relative to Fundamental**: When enabled, the magnitude and phase of the harmonics are plotted relative to the fundamental frequency response (in dB / degrees) rather than as absolute values.
 * **Unwrap Phase**: When enabled, phase transitions over $\pm 180$ degrees are smoothed out into a continuous curve instead of wrapping.
 * **Show Raw Lock-in (Unprocessed)**: When enabled, displays the raw, unprocessed data points from the lock-in amplifier before any smoothing or interpolation is applied (disabled in Hammerstein mode).
+* **Display Data**: In Hammerstein mode, selects whether to display the overall 'Model Kernels' or the individual response at specific test amplitudes.
 * **Graph Smoothing**: Selects the smoothing level (None, Low, Medium, or Heavy) for the plotted curves, applying a Savitzky-Golay filter.
 
 ### Routing Tab
@@ -65,6 +63,7 @@ Before running any sweep, the round-trip latency of the audio input and output c
     * `Single Ch (Right Input)`: Absolute measurement using the right input channel only.
     * `2-Ch Relative (Ref=Left, Meas=Right)`: Dual-channel Transfer Function (XFER) mode. Measures the ratio between the left channel (reference) and right channel (measurement). This cancels out systemic response variations and nonlinearity in the test gear.
     * `2-Ch Relative (Ref=Right, Meas=Left)`: Dual-channel Transfer Function mode with the right channel as reference and the left as measurement.
+* **REF Phase Lock Only (Absolute)**: Available only in 2-Ch Relative modes. When enabled, the reference channel is used strictly for phase synchronization (correcting time delays/phase drift), while the magnitude response is calculated as an absolute measurement of the measurement channel rather than a relative ratio.
 
 ### Advanced Tab
 

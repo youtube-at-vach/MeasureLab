@@ -46,16 +46,14 @@ When detached using the Detachable Wrapper, pressing the "Compact" button switch
     * Usually, a value between `4096` and `16384` is recommended for a good balance between resolution and response speed.
 
 * **Window (Window Function)**
-    * A process to suppress errors (spectral leakage) that occur during FFT analysis.
-    * 💡 **Why is it necessary?**: FFT assumes that the "sound is repeating the exact same pattern infinitely." However, in reality, we cut out (sample) a certain length of sound and calculate that. The unnaturally cut edges of the waveform (as if cut by scissors) generate "non-existent noise (spectral leakage)" in the calculation results. The window function acts to smoothly fade out the edges of the cut waveform, preventing this noise.
+    * A process that smoothly tapers the edges of the sampled waveform to suppress errors (spectral leakage) caused by discontinuous cutoffs during FFT analysis.
     * **hanning**: The most versatile and common window function. Choose this if you are unsure.
     * **rect (Rectangular)**: No window function is applied. Errors will be large for any signals other than transient signals or signals whose cycles match perfectly.
     * **Multitaper**: When the Multitaper feature (described below) is turned ON, a dedicated window function is automatically applied.
 
 * **Weighting**
     * **Z**: No weighting (flat). Use this when measuring physically accurate voltage or sound pressure.
-    * **A**: **A-weighting**. A filter that matches the sensitivity characteristics of the human ear.
-        * 💡 **The mystery of the human ear**: The human ear does not hear all pitches equally. We are most sensitive to 3kHz-4kHz (the pitch of a baby's cry or a siren), and insensitive to low and very high frequencies (this is said to be an evolutionary advantage for survival). A-weighting converts the physical strength of the sound picked up by the mic into this "loudness perceived by humans" (weighting). This is the standard setting for noise level measurements.
+    * **A**: **A-weighting**. A filter that matches the sensitivity characteristics of the human ear (sensitive to mid-frequencies, less sensitive to low and high frequencies). This is the standard setting for measuring noise levels.
     * **C**: **C-weighting**. Closer to flat than A-weighting, but it cuts out very low and very high frequencies that human ears cannot hear. It is often used to evaluate the sound pressure you "feel" with your body at loud venues like live houses.
 
 * **Unit**

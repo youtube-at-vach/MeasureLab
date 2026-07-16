@@ -806,17 +806,50 @@ class LockInSpectrumFinder(MeasurementModule):
                 # To prevent nearly-identical frequencies (e.g. log grid 200.000...03 vs marker 200.0)
                 # from causing ill-conditioned matrices in the chunk solver (ghost peaks),
                 # we replace existing frequencies that are extremely close to a marker frequency.
-                merged = list(freqs)
+                # Ensure freqs is a sorted numpy array to avoid in-place mutation of caller's array
+                # and to ensure searchsorted works reliably. Also guarantees .size is available.
+                merged = np.sort(np.asarray(freqs))
+                appended = []
+
                 for mf in marker_freqs:
-                    if len(merged) > 0:
-                        idx = int(np.argmin(np.abs(np.array(merged) - mf)))
-                        if np.abs(merged[idx] - mf) < 1e-4:  # 0.1 mHz tolerance
-                            merged[idx] = mf
-                        else:
-                            merged.append(mf)
+                    if merged.size > 0 or len(appended) > 0:
+                        # Find closest match in merged
+                        if merged.size > 0:
+                            idx = np.searchsorted(merged, mf)
+                            closest_idx = idx
+                            if idx == 0:
+                                closest_idx = 0
+                            elif idx == merged.size:
+                                closest_idx = merged.size - 1
+                            else:
+                                if np.abs(merged[idx - 1] - mf) < np.abs(merged[idx] - mf):
+                                    closest_idx = idx - 1
+
+                            if np.abs(merged[closest_idx] - mf) < 1e-4:  # 0.1 mHz tolerance
+                                merged[closest_idx] = mf
+                                continue
+
+                        # If not found in merged, check if it's already in appended
+                        if appended:
+                            # appended is small, so array conversion + argmin is fast enough,
+                            # but we can just use a loop for even faster deduplication of a small list
+                            closest_diff = min((abs(a - mf) for a in appended), default=float('inf'))
+                            if closest_diff < 1e-4:
+                                # We already have it or something very close to it in appended
+                                # Technically original code replaced the existing one if < 1e-4,
+                                # so let's find the index and replace it to be exactly faithful.
+                                min_idx, _ = min(enumerate(abs(a - mf) for a in appended), key=lambda x: x[1])
+                                appended[min_idx] = mf
+                                continue
+
+                        appended.append(mf)
                     else:
-                        merged.append(mf)
-                freqs = np.array(merged)
+                        appended.append(mf)
+
+                if appended:
+                    freqs = np.concatenate((merged, appended))
+                else:
+                    freqs = merged
                 freqs.sort()
                 if freqs.size > 0:
                     freqs = freqs[np.concatenate(([True], freqs[1:] != freqs[:-1]))]

@@ -1,5 +1,7 @@
 # Feature Proposals for MeasureLab
 
+## Overview
+
 > [!IMPORTANT]
 > **Core Principle**
 > Accurate measurement, free of charge, and all features available to everyone.
