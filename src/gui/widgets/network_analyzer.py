@@ -1528,7 +1528,12 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         idx = self.delay_mode_combo.findData("Calibration")
         if idx != -1:
+            self.delay_mode_combo.blockSignals(True)
             self.delay_mode_combo.setCurrentIndex(idx)
+            self.delay_mode_combo.blockSignals(False)
+            self.module.delay_mode = "Calibration"
+
+        self.module.recalculate_response()
         self.lat_btn.setEnabled(True)
 
     def on_error(self, msg):
