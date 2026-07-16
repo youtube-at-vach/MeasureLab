@@ -305,30 +305,25 @@ class LockInModelerWidget(QWidget):
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(8)
 
-        # LEFT PANEL: Controls (compact width, scrollable to prevent height overflow)
-        left_scroll = QScrollArea()
-        left_scroll.setWidgetResizable(True)
-        left_scroll.setFrameShape(QFrame.Shape.NoFrame)
-        left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        left_scroll.setFixedWidth(330)
-
-        left_container = QWidget()
-        left_panel = QVBoxLayout(left_container)
-        left_panel.setContentsMargins(4, 4, 8, 4)
-        left_panel.setSpacing(8)
+        # LEFT PANEL: Controls (static layout without QScrollArea)
+        left_panel = QWidget()
+        left_panel.setFixedWidth(320)
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(8)
 
         # Start / Stop Control Button
         self.btn_toggle = QPushButton(tr("Start Sweep"))
         self.btn_toggle.setCheckable(True)
         self.btn_toggle.clicked.connect(self.on_toggle_sweep)
         self.btn_toggle.setEnabled(self.module.latency_samples > 0.0)
-        left_panel.addWidget(self.btn_toggle)
+        left_layout.addWidget(self.btn_toggle)
 
         # Export Button (visible/enabled after Hammerstein calibration)
         self.export_btn = QPushButton(tr("Export Model..."))
         self.export_btn.setEnabled(False)
         self.export_btn.clicked.connect(self.on_export_model)
-        left_panel.addWidget(self.export_btn)
+        left_layout.addWidget(self.export_btn)
 
         left_tabs = QTabWidget()
 
@@ -452,10 +447,13 @@ class LockInModelerWidget(QWidget):
 
         left_tabs.addTab(display_tab, tr("Display"))
 
-        # 3. Routing Tab
+        # 3. Routing & Cal Tab (Consolidated)
         routing_tab = QWidget()
+        routing_layout = QVBoxLayout(routing_tab)
+        routing_layout.setContentsMargins(6, 6, 6, 6)
+        routing_layout.setSpacing(8)
+
         r_form = QFormLayout()
-        r_form.setContentsMargins(6, 6, 6, 6)
         r_form.setSpacing(6)
 
         self.combo_output_ch = QComboBox()
@@ -491,7 +489,26 @@ class LockInModelerWidget(QWidget):
         self.combo_in_mode.currentIndexChanged.connect(self.on_in_mode_changed)
         self.on_in_mode_changed(self.combo_in_mode.currentIndex())
 
-        routing_tab.setLayout(r_form)
+        routing_layout.addLayout(r_form)
+
+        # Latency Calibration Box (moved inside tab)
+        calib_group = QGroupBox(tr("Latency Calibration"))
+        calib_layout = QVBoxLayout()
+        calib_layout.setContentsMargins(8, 8, 8, 8)
+        calib_layout.setSpacing(6)
+
+        self.btn_calibrate = QPushButton(tr("Calibrate Latency"))
+        self.btn_calibrate.clicked.connect(self.on_calibrate_latency)
+        calib_layout.addWidget(self.btn_calibrate)
+
+        self.lbl_calib_status = QLabel(tr("Uncalibrated (0.0 ms)"))
+        self.lbl_calib_status.setStyleSheet("color: #ffaa00; font-weight: bold;")
+        calib_layout.addWidget(self.lbl_calib_status)
+
+        calib_group.setLayout(calib_layout)
+        routing_layout.addWidget(calib_group)
+        routing_layout.addStretch()
+
         left_tabs.addTab(routing_tab, tr("Routing"))
 
         # 4. Advanced Tab
@@ -546,32 +563,12 @@ class LockInModelerWidget(QWidget):
         adv_form.addRow(tr("Real-time Display:"), self.chk_realtime_display)
 
         adv_layout.addWidget(adv_form_widget)
-
-
-
         adv_layout.addStretch()
         left_tabs.addTab(advanced_tab, tr("Advanced"))
 
-        left_panel.addWidget(left_tabs)
+        left_layout.addWidget(left_tabs)
 
-        # Calibration Box
-        calib_group = QGroupBox(tr("Latency Calibration"))
-        calib_layout = QVBoxLayout()
-        calib_layout.setContentsMargins(8, 8, 8, 8)
-        calib_layout.setSpacing(6)
-
-        self.btn_calibrate = QPushButton(tr("Calibrate Latency"))
-        self.btn_calibrate.clicked.connect(self.on_calibrate_latency)
-        calib_layout.addWidget(self.btn_calibrate)
-
-        self.lbl_calib_status = QLabel(tr("Uncalibrated (0.0 ms)"))
-        self.lbl_calib_status.setStyleSheet("color: #ffaa00; font-weight: bold;")
-        calib_layout.addWidget(self.lbl_calib_status)
-
-        calib_group.setLayout(calib_layout)
-        left_panel.addWidget(calib_group)
-
-        # Overview Stats
+        # Overview Stats (moved outside, kept at the bottom)
         stats_group = QGroupBox(tr("Overview"))
         stats_layout = QVBoxLayout()
         stats_layout.setContentsMargins(8, 8, 8, 8)
@@ -587,13 +584,10 @@ class LockInModelerWidget(QWidget):
         stats_layout.addWidget(self.lbl_resolution)
 
         stats_group.setLayout(stats_layout)
-        left_panel.addWidget(stats_group)
+        left_layout.addWidget(stats_group)
 
-        left_panel.addStretch()
-
-        left_scroll.setWidget(left_container)
-        left_scroll.setMinimumHeight(150)
-        layout.addWidget(left_scroll)
+        left_layout.addStretch()
+        layout.addWidget(left_panel)
 
         # RIGHT PANEL: Container & Layout
         right_container = QWidget()
