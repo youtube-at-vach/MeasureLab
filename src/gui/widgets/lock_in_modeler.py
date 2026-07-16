@@ -491,22 +491,6 @@ class LockInModelerWidget(QWidget):
 
         routing_layout.addLayout(r_form)
 
-        # Latency Calibration Box (moved inside tab)
-        calib_group = QGroupBox(tr("Latency Calibration"))
-        calib_layout = QVBoxLayout()
-        calib_layout.setContentsMargins(8, 8, 8, 8)
-        calib_layout.setSpacing(6)
-
-        self.btn_calibrate = QPushButton(tr("Calibrate Latency"))
-        self.btn_calibrate.clicked.connect(self.on_calibrate_latency)
-        calib_layout.addWidget(self.btn_calibrate)
-
-        self.lbl_calib_status = QLabel(tr("Uncalibrated (0.0 ms)"))
-        self.lbl_calib_status.setStyleSheet("color: #ffaa00; font-weight: bold;")
-        calib_layout.addWidget(self.lbl_calib_status)
-
-        calib_group.setLayout(calib_layout)
-        routing_layout.addWidget(calib_group)
         routing_layout.addStretch()
 
         left_tabs.addTab(routing_tab, tr("Routing"))
@@ -567,6 +551,23 @@ class LockInModelerWidget(QWidget):
         left_tabs.addTab(advanced_tab, tr("Advanced"))
 
         left_layout.addWidget(left_tabs)
+
+        # Latency Calibration Box (moved outside tab)
+        calib_group = QGroupBox(tr("Latency Calibration"))
+        calib_layout = QVBoxLayout()
+        calib_layout.setContentsMargins(8, 8, 8, 8)
+        calib_layout.setSpacing(6)
+
+        self.btn_calibrate = QPushButton(tr("Calibrate Latency"))
+        self.btn_calibrate.clicked.connect(self.on_calibrate_latency)
+        calib_layout.addWidget(self.btn_calibrate)
+
+        self.lbl_calib_status = QLabel(tr("Uncalibrated (0.0 ms)"))
+        self.lbl_calib_status.setStyleSheet("color: #ffaa00; font-weight: bold;")
+        calib_layout.addWidget(self.lbl_calib_status)
+
+        calib_group.setLayout(calib_layout)
+        left_layout.addWidget(calib_group)
 
         # Overview Stats (moved outside, kept at the bottom)
         stats_group = QGroupBox(tr("Overview"))

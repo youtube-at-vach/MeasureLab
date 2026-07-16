@@ -732,8 +732,8 @@ class NonlinearAnalyzerWidget(QWidget):
         settings_layout.addStretch()
         self.tabs.addTab(settings_tab, tr("Settings"))
 
-        # Group 3: Routing & Calibration
-        route_group = QGroupBox(tr("Routing & Calibration"))
+        # Group 3: Routing
+        route_group = QGroupBox(tr("Routing"))
         route_form = QFormLayout(route_group)
         route_form.setContentsMargins(6, 8, 6, 8)
         route_form.setSpacing(6)
@@ -755,26 +755,34 @@ class NonlinearAnalyzerWidget(QWidget):
         self.in_mode_combo.currentIndexChanged.connect(self.on_routing_changed)
         route_form.addRow(tr("Input Mode:"), self.in_mode_combo)
 
-        # Latency Display
-        self.latency_label = QLabel("0.00 ms")
-        self.latency_label.setStyleSheet("font-weight: bold; color: #4ba3e3;")
-        route_form.addRow(tr("Delay Time:"), self.latency_label)
-
-        # Calibrate Button
-        self.cal_btn = QPushButton(tr("Measure Delay"))
-        self.cal_btn.clicked.connect(self.module.start_latency_calibration)
-        route_form.addRow(self.cal_btn)
-
-        # Tab 2: Routing & Calibration
+        # Tab 2: Routing
         routing_tab = QWidget()
         routing_layout = QVBoxLayout(routing_tab)
         routing_layout.setContentsMargins(4, 4, 4, 4)
         routing_layout.setSpacing(10)
         routing_layout.addWidget(route_group)
         routing_layout.addStretch()
-        self.tabs.addTab(routing_tab, tr("Routing & Calibration"))
+        self.tabs.addTab(routing_tab, tr("Routing"))
 
         sidebar_main_layout.addWidget(self.tabs)
+
+        # Latency Calibration Box (moved outside tab)
+        calib_group = QGroupBox(tr("Latency Calibration"))
+        calib_form = QFormLayout(calib_group)
+        calib_form.setContentsMargins(6, 8, 6, 8)
+        calib_form.setSpacing(6)
+
+        # Latency Display
+        self.latency_label = QLabel("0.00 ms")
+        self.latency_label.setStyleSheet("font-weight: bold; color: #4ba3e3;")
+        calib_form.addRow(tr("Delay Time:"), self.latency_label)
+
+        # Calibrate Button
+        self.cal_btn = QPushButton(tr("Measure Delay"))
+        self.cal_btn.clicked.connect(self.module.start_latency_calibration)
+        calib_form.addRow(self.cal_btn)
+
+        sidebar_main_layout.addWidget(calib_group)
 
         # --- Fixed Measurement Controls (Bottom) ---
         ctrl_container = QWidget()
