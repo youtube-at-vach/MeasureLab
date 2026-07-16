@@ -135,7 +135,7 @@ class LockInModeler(MeasurementModule):
         self.max_harmonic = 5
         self.averaging_count = 1
         self.current_sweep_idx = 0
-        self.analysis_cycles = 16.0
+        self.analysis_cycles = 64.0
         self.num_meas_points = 500
         self.min_analysis_window = 0.1
 
