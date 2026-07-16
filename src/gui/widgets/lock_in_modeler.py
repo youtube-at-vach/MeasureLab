@@ -6,19 +6,17 @@ import numpy as np
 import pyqtgraph as pg
 import scipy.signal
 from scipy.signal import savgol_filter
-from PyQt6.QtCore import QTimer, QThread, pyqtSignal, QSize, Qt
+from PyQt6.QtCore import QTimer, QThread, pyqtSignal, QSize
 from PyQt6.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
     QDoubleSpinBox,
     QFormLayout,
-    QFrame,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QScrollArea,
     QSpinBox,
     QTabWidget,
     QVBoxLayout,

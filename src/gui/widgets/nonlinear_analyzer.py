@@ -13,7 +13,6 @@ from PyQt6.QtWidgets import (
     QLabel,
     QProgressBar,
     QPushButton,
-    QScrollArea,
     QSpinBox,
     QTabWidget,
     QVBoxLayout,
