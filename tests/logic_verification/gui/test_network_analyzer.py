@@ -416,3 +416,145 @@ def test_subsample_delay_compensation():
     mask_16k = freqs_emitted <= 16000.0
     assert np.max(np.abs(phases[mask_16k])) < 12.0
 
+
+def test_auto_delay_updates_ui_and_latency_sec(qtbot):
+    widget = _make_widget(qtbot)
+    analyzer = widget.module
+
+    # Set to XFER and Auto mode
+    analyzer.input_mode = "XFER"
+    analyzer.delay_mode = "Auto"
+    widget.in_combo.setCurrentIndex(widget.in_combo.findData("XFER"))
+    widget.delay_mode_combo.setCurrentIndex(widget.delay_mode_combo.findData("Auto"))
+
+    # Verify initial latency values are 0
+    assert analyzer.latency_sec == 0.0
+    assert widget.lat_val_spin.value() == 0.0
+
+    # Process sweep data with a mock delay of 5.0 samples (5 / 48000 = 0.000104167 sec = 0.104167 ms)
+    sample_rate = 48000
+    delay_samples = 5.0
+    chirp, inv_filter = analyzer._generate_chirp_and_filter(sample_rate)
+
+    chirp_fft = np.fft.rfft(chirp)
+    freqs = np.fft.rfftfreq(len(chirp), 1.0 / sample_rate)
+    phase_shift = np.exp(-2j * np.pi * freqs * (delay_samples / sample_rate))
+    delayed_chirp = np.fft.irfft(chirp_fft * phase_shift, len(chirp))
+
+    padding_samples = int(1.0 * sample_rate)
+    ref_signal = np.concatenate([chirp, np.zeros(padding_samples)])
+    meas_signal = np.concatenate([delayed_chirp, np.zeros(padding_samples)])
+
+    rec_data = np.zeros((len(ref_signal), 2), dtype=np.float32)
+    rec_data[:, 0] = ref_signal
+    rec_data[:, 1] = meas_signal
+
+    class DummyWorker:
+        is_running = True
+    worker = DummyWorker()
+
+    # Run data processing (which triggers signals)
+    analyzer._process_sweep_data(rec_data, inv_filter, chirp, sample_rate, worker)
+
+    # Wait for signals to propagate in Qt event loop
+    qtbot.wait(100)
+
+    # Check that latency_sec is updated
+    assert np.isclose(analyzer.latency_sec, delay_samples / sample_rate, atol=1e-5)
+
+    # Check that UI elements got updated with the converted value in ms
+    expected_ms = (delay_samples / sample_rate) * 1000.0
+    assert np.isclose(widget.lat_val_spin.value(), expected_ms, atol=1e-2)
+    assert f"{expected_ms:.2f} ms" in widget.lat_label.text()
+
+    # Verify that changing to Calibration mode retains the latency_sec value
+    widget.delay_mode_combo.setCurrentIndex(widget.delay_mode_combo.findData("Calibration"))
+    assert analyzer.delay_mode == "Calibration"
+    assert np.isclose(analyzer.latency_sec, delay_samples / sample_rate, atol=1e-5)
+    assert np.isclose(widget.lat_val_spin.value(), expected_ms, atol=1e-2)
+
+
+def test_latency_model_modes_and_phase_invariance(qtbot):
+    widget = _make_widget(qtbot)
+    analyzer = widget.module
+
+    # Set to XFER and Auto mode
+    analyzer.input_mode = "XFER"
+    analyzer.delay_mode = "Auto"
+    widget.in_combo.setCurrentIndex(widget.in_combo.findData("XFER"))
+    widget.delay_mode_combo.setCurrentIndex(widget.delay_mode_combo.findData("Auto"))
+
+    sample_rate = 48000
+    ref_delay = 10.0
+    meas_delay = 15.0
+    chirp, inv_filter = analyzer._generate_chirp_and_filter(sample_rate)
+
+    chirp_fft = np.fft.rfft(chirp)
+    freqs = np.fft.rfftfreq(len(chirp), 1.0 / sample_rate)
+
+    # Generate signals with different delays
+    phase_shift_ref = np.exp(-2j * np.pi * freqs * (ref_delay / sample_rate))
+    phase_shift_meas = np.exp(-2j * np.pi * freqs * (meas_delay / sample_rate))
+    delayed_ref = np.fft.irfft(chirp_fft * phase_shift_ref, len(chirp))
+    delayed_meas = np.fft.irfft(chirp_fft * phase_shift_meas, len(chirp))
+
+    padding_samples = int(1.0 * sample_rate)
+    ref_signal = np.concatenate([delayed_ref, np.zeros(padding_samples)])
+    meas_signal = np.concatenate([delayed_meas, np.zeros(padding_samples)])
+
+    rec_data = np.zeros((len(ref_signal), 2), dtype=np.float32)
+    rec_data[:, 0] = ref_signal
+    rec_data[:, 1] = meas_signal
+
+    class DummyWorker:
+        is_running = True
+    worker = DummyWorker()
+
+    # --- 1. Run Sweep in Auto mode ---
+    widget.freqs.clear()
+    widget.mags.clear()
+    widget.phases.clear()
+    analyzer._process_sweep_data(rec_data, inv_filter, chirp, sample_rate, worker)
+    qtbot.wait(100)
+
+    # Absolute latency should be equal to meas_delay
+    expected_latency_sec = meas_delay / sample_rate
+    assert np.isclose(analyzer.latency_sec, expected_latency_sec, atol=1e-5)
+    expected_ms = expected_latency_sec * 1000.0
+    assert np.isclose(widget.lat_val_spin.value(), expected_ms, atol=1e-2)
+
+    # Save the phase response under Auto mode
+    auto_phases = np.array(widget.phases)
+    assert len(auto_phases) > 0
+    # Phase should be near 0 degrees (compensated)
+    # Check below 16 kHz to avoid edge window artifacts
+    freqs_arr = np.array(widget.freqs)
+    mask_16k = freqs_arr <= 16000.0
+    assert np.max(np.abs(auto_phases[mask_16k])) < 12.0
+
+    # --- 2. Change to Calibration mode ---
+    # Phase should NOT change (invariance)
+    widget.delay_mode_combo.setCurrentIndex(widget.delay_mode_combo.findData("Calibration"))
+    qtbot.wait(100)
+
+    cal_phases = np.array(widget.phases)
+    assert np.allclose(cal_phases[mask_16k], auto_phases[mask_16k], atol=1e-2)
+
+    # --- 3. Change to None mode ---
+    # Phase should rotate with meas_delay (15.0 samples)
+    widget.delay_mode_combo.setCurrentIndex(widget.delay_mode_combo.findData("None"))
+    qtbot.wait(100)
+
+    none_phases = np.array(widget.phases)
+    # The phase difference should be equal to the total delay of 15 samples
+    # none_phase = auto_phase - 360 * freq * 15 / fs
+    none_phases_unwrapped = np.unwrap(np.radians(none_phases))
+    auto_phases_unwrapped = np.unwrap(np.radians(auto_phases))
+    phase_diff_rad = none_phases_unwrapped - auto_phases_unwrapped
+    expected_diff_rad = -2.0 * np.pi * freqs_arr * (meas_delay / sample_rate)
+
+    # Check that they match well (allowing minor windowing/interpolation deviation at edges)
+    assert np.allclose(phase_diff_rad[mask_16k], expected_diff_rad[mask_16k], atol=0.2)
+
+
+

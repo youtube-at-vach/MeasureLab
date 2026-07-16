@@ -190,6 +190,7 @@ class NetworkAnalyzer(MeasurementModule):
         self.calibration_worker = None
 
         self.reference_trace = None
+        self.raw_coarse_delay_sec = 0.0
 
         self._dummy_callback_id = None
         self.signals.sweep_finished.connect(self._cleanup_dummy_callback)
@@ -503,6 +504,12 @@ class NetworkAnalyzer(MeasurementModule):
             # Find peak in Ref to align
             peak_idx = np.argmax(np.abs(ir_ref))
 
+            # Calculate absolute coarse delay
+            ir_drive = get_ir(chirp)
+            drive_peak_idx = np.argmax(np.abs(ir_drive))
+            coarse_delay_sec = (peak_idx - drive_peak_idx) / sample_rate
+            self.raw_coarse_delay_sec = coarse_delay_sec
+
             # IR SNR Calculation
             noise_start = max(0, peak_idx - int(0.5 * sample_rate))
             noise_end = max(0, peak_idx - int(0.05 * sample_rate))
@@ -555,14 +562,12 @@ class NetworkAnalyzer(MeasurementModule):
 
             # Select delay based on mode
             if self.delay_mode == "Calibration":
-                delay_sec = self.latency_sec
-                delay_samples = self.latency_sec * sample_rate
+                delay_sec = self.latency_sec - coarse_delay_sec
             elif self.delay_mode == "None":
-                delay_sec = 0.0
-                delay_samples = 0.0
+                delay_sec = -coarse_delay_sec
             else:  # "Auto"
                 delay_sec = auto_delay_sec
-                delay_samples = auto_delay_samples
+                self.latency_sec = coarse_delay_sec + auto_delay_sec
 
             # Apply phase compensation
             phase_correction = np.exp(2j * np.pi * freqs * delay_sec)
@@ -626,6 +631,8 @@ class NetworkAnalyzer(MeasurementModule):
             # loopback is near 0 dB independent of output amplitude.
             ir_drive = get_ir(chirp)
             drive_peak_idx = np.argmax(np.abs(ir_drive))
+            coarse_delay_sec = (peak_idx - drive_peak_idx) / sample_rate
+            self.raw_coarse_delay_sec = coarse_delay_sec
             drive_start = max(0, drive_peak_idx - pre)
             drive_end = min(len(ir_drive), drive_peak_idx + post)
             drive_win = ir_drive[drive_start:drive_end]
@@ -689,14 +696,12 @@ class NetworkAnalyzer(MeasurementModule):
 
             # Select delay based on mode
             if self.delay_mode == "Calibration":
-                delay_sec = self.latency_sec
-                delay_samples = self.latency_sec * sample_rate
+                delay_sec = self.latency_sec - coarse_delay_sec
             elif self.delay_mode == "None":
-                delay_sec = 0.0
-                delay_samples = 0.0
+                delay_sec = -coarse_delay_sec
             else:  # "Auto"
                 delay_sec = auto_delay_sec
-                delay_samples = auto_delay_samples
+                self.latency_sec = coarse_delay_sec + auto_delay_sec
 
             # Apply phase compensation
             if H_norm is not None:
@@ -734,7 +739,15 @@ class NetworkAnalyzer(MeasurementModule):
             self.signals.ir_snr_result.emit(ir_snr_db)
 
         # Emit delay compensation result
-        self.signals.delay_comp_result.emit(delay_sec, delay_samples)
+        coarse_delay_sec = getattr(self, "raw_coarse_delay_sec", 0.0)
+        if self.delay_mode == "Calibration":
+            total_delay_sec = self.latency_sec
+        elif self.delay_mode == "None":
+            total_delay_sec = 0.0
+        else:  # "Auto"
+            total_delay_sec = coarse_delay_sec + auto_delay_sec
+        total_delay_samples = total_delay_sec * sample_rate
+        self.signals.delay_comp_result.emit(total_delay_sec, total_delay_samples)
 
         if harmonics and len(valid_freqs) > 0:
             thd_linear = np.zeros_like(valid_freqs)
@@ -767,15 +780,14 @@ class NetworkAnalyzer(MeasurementModule):
         sample_rate = self.audio_engine.sample_rate
 
         # 1. Determine the delay to apply
+        coarse_delay_sec = getattr(self, "raw_coarse_delay_sec", 0.0)
         if self.delay_mode == "Calibration":
-            delay_sec = self.latency_sec
-            delay_samples = self.latency_sec * sample_rate
+            delay_sec = self.latency_sec - coarse_delay_sec
         elif self.delay_mode == "None":
-            delay_sec = 0.0
-            delay_samples = 0.0
+            delay_sec = -coarse_delay_sec
         else:  # "Auto"
             delay_sec = self.raw_auto_delay_sec
-            delay_samples = delay_sec * sample_rate
+            self.latency_sec = coarse_delay_sec + delay_sec
 
         # 2. Apply phase compensation to the raw complex transfer function
         phase_correction = np.exp(2j * np.pi * self.raw_freqs * delay_sec)
@@ -809,7 +821,14 @@ class NetworkAnalyzer(MeasurementModule):
         self.signals.update_all_plots.emit(freqs_ds, mag_db_ds, phase_deg_ds, coh_ds)
 
         # Emit updated delay compensation info to update labels
-        self.signals.delay_comp_result.emit(delay_sec, delay_samples)
+        if self.delay_mode == "Calibration":
+            total_delay_sec = self.latency_sec
+        elif self.delay_mode == "None":
+            total_delay_sec = 0.0
+        else:  # "Auto"
+            total_delay_sec = coarse_delay_sec + self.raw_auto_delay_sec
+        total_delay_samples = total_delay_sec * sample_rate
+        self.signals.delay_comp_result.emit(total_delay_sec, total_delay_samples)
 
 
 class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
@@ -1077,9 +1096,9 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         lat_form.addRow(tr("Delay Mode:"), self.delay_mode_combo)
 
         self.lat_val_spin = QDoubleSpinBox()
-        self.lat_val_spin.setRange(0.0, 1000.0)
+        self.lat_val_spin.setRange(-1000.0, 1000.0)
         self.lat_val_spin.setDecimals(3)
-        self.lat_val_spin.setSingleStep(0.1)
+        self.lat_val_spin.setSingleStep(0.001)
         self.lat_val_spin.setSuffix(" ms")
         self.lat_val_spin.setValue(self.module.latency_sec * 1000.0)
         self.lat_val_spin.valueChanged.connect(self.on_lat_val_spin_changed)
@@ -1758,6 +1777,11 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
     def on_delay_comp_result(self, delay_sec, delay_samples):
         delay_ms = delay_sec * 1000.0
         self.delay_comp_label.setText(tr("Delay Comp: {0:.3f} ms ({1:.2f} samples)").format(delay_ms, delay_samples))
+        if self.module.delay_mode == "Auto":
+            self.lat_val_spin.blockSignals(True)
+            self.lat_val_spin.setValue(delay_ms)
+            self.lat_val_spin.blockSignals(False)
+            self.lat_label.setText(tr("Latency: {0:.2f} ms").format(delay_ms))
 
     def update_plot(self, freq, mag, phase, coh):
         self.freqs.append(freq)
