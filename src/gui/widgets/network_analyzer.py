@@ -540,13 +540,13 @@ class NetworkAnalyzer(MeasurementModule):
             alpha = np.abs(relative_ir[(p - 1) % len_win])
             beta = np.abs(relative_ir[p])
             gamma = np.abs(relative_ir[(p + 1) % len_win])
-            
+
             denom = alpha - 2 * beta + gamma
             delta = 0.0
             if np.abs(denom) > 1e-12:
                 delta = 0.5 * (alpha - gamma) / denom
                 delta = np.clip(delta, -0.5, 0.5)
-                
+
             p_wrapped = p - len_win if p > len_win // 2 else p
             auto_delay_samples = p_wrapped + delta
             auto_delay_sec = auto_delay_samples / sample_rate
@@ -648,7 +648,7 @@ class NetworkAnalyzer(MeasurementModule):
 
             mask = (freqs >= self.start_freq) & (freqs <= self.end_freq)
             valid_freqs = freqs[mask]
-            
+
             # Sub-sample delay estimation
             auto_delay_sec = 0.0
             auto_delay_samples = 0.0
@@ -656,18 +656,18 @@ class NetworkAnalyzer(MeasurementModule):
                 # Relative impulse response of H_norm
                 relative_ir = fft_manager.irfft(H_norm, n=len_win)
                 p = np.argmax(np.abs(relative_ir))
-                
+
                 # Sub-sample peak
                 alpha = np.abs(relative_ir[(p - 1) % len_win])
                 beta = np.abs(relative_ir[p])
                 gamma = np.abs(relative_ir[(p + 1) % len_win])
-                
+
                 denom = alpha - 2 * beta + gamma
                 delta = 0.0
                 if np.abs(denom) > 1e-12:
                     delta = 0.5 * (alpha - gamma) / denom
                     delta = np.clip(delta, -0.5, 0.5)
-                    
+
                 p_wrapped = p - len_win if p > len_win // 2 else p
                 auto_delay_samples = p_wrapped + delta
                 auto_delay_sec = auto_delay_samples / sample_rate
@@ -681,7 +681,7 @@ class NetworkAnalyzer(MeasurementModule):
                     if np.abs(denom) > 1e-12:
                         delta = 0.5 * (alpha - gamma) / denom
                         delta = np.clip(delta, -0.5, 0.5)
-                        
+
                 auto_delay_samples = peak_idx + delta - start
                 auto_delay_sec = auto_delay_samples / sample_rate
 
@@ -1124,6 +1124,8 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.mag_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.mag_plot.setLogMode(x=True, y=False)
         self.mag_plot.showGrid(x=True, y=True)
+        self.mag_plot.setYRange(-5.0, 5.0)
+        self.mag_plot.enableAutoRange(y=False)
         self.mag_curve = self.mag_plot.plot(pen="g")
 
         self.riaa_curve = self.mag_plot.plot(pen=pg.mkPen("m", style=pg.QtCore.Qt.PenStyle.DashLine))
@@ -1152,6 +1154,8 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.phase_plot.setLogMode(x=True, y=False)
         self.phase_plot.showGrid(x=True, y=True)
         self.phase_plot.setXLink(self.mag_plot)
+        self.phase_plot.setYRange(-180.0, 180.0)
+        self.phase_plot.enableAutoRange(y=False)
         self.phase_curve = self.phase_plot.plot(pen="y")
 
         self.gd_axis = pg.AxisItem("right")
@@ -1902,6 +1906,21 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         self.mag_curve.setData(freqs_to_plot, y_values)
         self.phase_curve.setData(freqs_to_plot, phases_to_plot)
+
+        # Dynamic Y range adjustment to maintain ~10 dB height zoom or auto-range to fit
+        if len(y_values) > 0:
+            if is_effectively_relative or unit in {"dBFS", "dBV", "dBu"}:
+                min_val = float(np.min(y_values))
+                max_val = float(np.max(y_values))
+                span = max_val - min_val
+                if span <= 10.0:
+                    center = (max_val + min_val) / 2.0
+                    self.mag_plot.setYRange(center - 5.0, center + 5.0)
+                    self.mag_plot.enableAutoRange(y=False)
+                else:
+                    self.mag_plot.enableAutoRange(y=True)
+            else:
+                self.mag_plot.enableAutoRange(y=True)
 
         # RIAA Curve Overlay
         if self.riaa_check.isChecked() and len(freqs_to_plot) > 1:
