@@ -506,11 +506,22 @@ class LockInModelerWidget(QWidget):
         adv_form.setContentsMargins(2, 2, 2, 2)
         adv_form.setSpacing(6)
 
+        self.combo_preset = QComboBox()
+        self.combo_preset.addItem(tr("Fast & Dynamic (16 cyc / 30 ms)"), "fast")
+        self.combo_preset.addItem(tr("Normal (64 cyc / 100 ms)"), "normal")
+        self.combo_preset.addItem(tr("High Resolution (128 cyc / 500 ms)"), "high_res")
+        self.combo_preset.addItem(tr("High Stability (256 cyc / 1.0 s)"), "high_stab")
+        self.combo_preset.addItem(tr("Maximum Stability (512 cyc / 2.0 s)"), "max_stab")
+        self.combo_preset.addItem(tr("Custom"), "custom")
+        self.combo_preset.currentIndexChanged.connect(self.on_preset_changed)
+        adv_form.addRow(tr("Preset:"), self.combo_preset)
+
         self.spin_analysis_cycles = QDoubleSpinBox()
         self.spin_analysis_cycles.setRange(2.0, 2048.0)
         self.spin_analysis_cycles.setSingleStep(1.0)
         self.spin_analysis_cycles.setValue(self.module.analysis_cycles)
         self.spin_analysis_cycles.setSuffix(" cycles")
+        self.spin_analysis_cycles.valueChanged.connect(self.on_advanced_spin_changed)
         adv_form.addRow(tr("Analysis Cycles:"), self.spin_analysis_cycles)
 
         self.spin_meas_points = QSpinBox()
@@ -520,11 +531,15 @@ class LockInModelerWidget(QWidget):
         adv_form.addRow(tr("Meas Points:"), self.spin_meas_points)
 
         self.spin_min_window = QDoubleSpinBox()
-        self.spin_min_window.setRange(2.0, 2000.0)
+        self.spin_min_window.setRange(2.0, 5000.0)
         self.spin_min_window.setSingleStep(1.0)
         self.spin_min_window.setValue(self.module.min_analysis_window * 1000.0)
         self.spin_min_window.setSuffix(" ms")
+        self.spin_min_window.valueChanged.connect(self.on_advanced_spin_changed)
         adv_form.addRow(tr("Min Window:"), self.spin_min_window)
+
+        # Sync combo box index on startup based on self.module.analysis_cycles and self.module.min_analysis_window
+        self.sync_preset_from_values()
 
         self.chk_realtime_display = QCheckBox(tr("Real-time Display"))
         self.chk_realtime_display.setChecked(not self.module.prevent_buffer_underrun)
@@ -946,10 +961,68 @@ class LockInModelerWidget(QWidget):
         self.combo_output_ch.setEnabled(enabled)
         self.combo_in_mode.setEnabled(enabled)
         self.chk_ref_phase_only.setEnabled(enabled and self.combo_in_mode.currentIndex() in {2, 3})
+        self.combo_preset.setEnabled(enabled)
         self.spin_analysis_cycles.setEnabled(enabled)
         self.spin_meas_points.setEnabled(enabled)
         self.spin_min_window.setEnabled(enabled)
         self.chk_realtime_display.setEnabled(enabled)
+
+    def sync_preset_from_values(self):
+        cycles = self.spin_analysis_cycles.value()
+        window_ms = self.spin_min_window.value()
+
+        presets = {
+            "fast": (16.0, 30.0),
+            "normal": (64.0, 100.0),
+            "high_res": (128.0, 500.0),
+            "high_stab": (256.0, 1000.0),
+            "max_stab": (512.0, 2000.0),
+        }
+
+        matched_key = "custom"
+        for key, (p_cyc, p_win) in presets.items():
+            if abs(cycles - p_cyc) < 1e-3 and abs(window_ms - p_win) < 1e-3:
+                matched_key = key
+                break
+
+        self.combo_preset.blockSignals(True)
+        idx = self.combo_preset.findData(matched_key)
+        if idx >= 0:
+            self.combo_preset.setCurrentIndex(idx)
+        self.combo_preset.blockSignals(False)
+
+    def on_preset_changed(self, index):
+        key = self.combo_preset.currentData()
+        if key == "custom":
+            return
+
+        presets = {
+            "fast": (16.0, 30.0),
+            "normal": (64.0, 100.0),
+            "high_res": (128.0, 500.0),
+            "high_stab": (256.0, 1000.0),
+            "max_stab": (512.0, 2000.0),
+        }
+
+        if key in presets:
+            cyc, win = presets[key]
+
+            self.spin_analysis_cycles.blockSignals(True)
+            self.spin_min_window.blockSignals(True)
+
+            self.spin_analysis_cycles.setValue(cyc)
+            self.spin_min_window.setValue(win)
+
+            self.spin_analysis_cycles.blockSignals(False)
+            self.spin_min_window.blockSignals(False)
+
+            self.module.analysis_cycles = cyc
+            self.module.min_analysis_window = win / 1000.0
+
+    def on_advanced_spin_changed(self, value):
+        self.sync_preset_from_values()
+        self.module.analysis_cycles = self.spin_analysis_cycles.value()
+        self.module.min_analysis_window = self.spin_min_window.value() / 1000.0
 
     def on_in_mode_changed(self, idx):
         is_xfer = idx in {2, 3}
