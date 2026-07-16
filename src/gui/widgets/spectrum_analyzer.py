@@ -723,7 +723,7 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
                 self.window_combo.addItem(tr("Rectangle"), "boxcar")
             else:
                 self.window_combo.addItem(w, w)
-        
+
         # Set initial if valid, else default to hanning (hann)
         current_w = self.module.window_type
         if current_w == "hanning":
@@ -872,9 +872,9 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
         self.rta_bar_main = pg.BarGraphItem(x=[], height=[], width=0.1, brush=pg.mkBrush(255, 255, 0, 160))
         self.rta_bar_left = pg.BarGraphItem(x=[], height=[], width=0.1, brush=pg.mkBrush(0, 255, 0, 120))
         self.rta_bar_right = pg.BarGraphItem(x=[], height=[], width=0.1, brush=pg.mkBrush(255, 0, 0, 120))
-        
-        # Monkey-patch dummy methods to bypass pyqtgraph's PlotItem downsampling and clipToView update loop bugs
-        dummy_method = lambda *args, **kwargs: None
+
+        def dummy_method(*args, **kwargs):
+            pass
         self.rta_bar_main.setDownsampling = dummy_method
         self.rta_bar_left.setDownsampling = dummy_method
         self.rta_bar_right.setDownsampling = dummy_method
@@ -1072,7 +1072,7 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
 
     def on_rta_mode_changed(self, checked):
         self.module.rta_mode = checked
-        
+
         # If RTA Mode is enabled, octave smoothing is mandatory.
         # If it was "None", force "1/3 Octave" smoothing.
         if checked:
@@ -1086,7 +1086,7 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
             self.multitaper_check.setEnabled(False)
         else:
             self.multitaper_check.setEnabled(True)
-            
+
         # Toggle logMode and update bar graph visibility
         if checked:
             self.plot_widget.setLogMode(x=False, y=False)
