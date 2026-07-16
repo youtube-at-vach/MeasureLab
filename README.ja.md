@@ -33,14 +33,14 @@
 | :--- | :--- | :--- |
 | 1 | **Welcome** | 起動時のウェルカム画面で主要機能を案内。 |
 | 2 | **Signal Generator** | 正弦波、矩形波、三角波、ノコギリ波(立ち上がり/立ち下がり)、ホワイト/ピンクノイズ、周波数スイープ信号を生成。位相制御、振幅制御、ステレオ出力、ビンセンターへのスナップに対応。 |
-| 3 | **Spectrum Analyzer** | 高速FFTによるリアルタイムスペクトル解析。PSD/RMS表示、SI単位表示、周波数範囲制限、メモリ機能、カーソル測定に対応。 |
+| 3 | **Spectrum Analyzer** | 高速FFTによるリアルタイムスペクトル解析。PSD/RMS表示、SI単位表示、周波数範囲制限、メモリ機能、カーソル測定、バーグラフ表示（オクターブ平滑化）によるRTAモード、およびRectangle（長方形）窓関数に対応。 |
 | 4 | **Sound Level Meter** | A/C/Z 周波数重み付け、FAST/SLOW/IMPULSE/10ms 時間重み付け、20Hz–20k/12.5k/8k 帯域選択に対応した高機能騒音計。Lp/Leq/LE/Lmax/Lmin/Lpeak表示、キャリブレーションオフセット適用に対応。 |
 | 5 | **LUFS Meter** | ラウドネス (LUFS/LKFS) のリアルタイム測定。クレストファクター、ダイナミックレンジ表示。 |
 | 6 | **Loopback Finder** | オーディオインターフェースのループバック経路を検出するツール。 |
 | 7 | **Distortion Analyzer** | THD、THD+N、SINAD、IMD (SMPTE/CCIF) の測定。内蔵信号発生器、周波数スイープ、ビンセンターへのスナップ、ハーモニクスバーグラフ、平均化機能搭載。 |
 | 8 | **Linearity Analyzer** | 信号レベルに対するゲインの直線性（AES17 Linearity Deviation）を測定。DACの微小信号再現性やビット精度、ダイナミックレンジの検証に対応。 |
 | 9 | **Advanced Distortion Meter** | MIM (Multi-tone Intermodulation)、SPDR (Spurious-free Dynamic Range)、PIM (Passive Intermodulation) 測定を含む高度な歪み解析。 |
-| 10 | **Network Analyzer** | 周波数特性(ゲイン・位相・群遅延)およびインパルスレスポンスの測定。スイープ測定、複数トレース表示、RIAAカーブ比較、周波数範囲制限対応。 |
+| 10 | **Network Analyzer** | 周波数特性(ゲイン・位相・群遅延)およびインパルスレスポンスの測定。スイープ測定、複数トレース表示、RIAAカーブ比較、周波数範囲制限、サブサンプル精度での遅延推定・補正（分数遅延）、および自動的な粗遅延キャリブレーションに対応。 |
 | 11 | **Oscilloscope** | 2チャンネル波形表示、トリガー機能、カーソル測定、演算波形(A+B, A-B)、リアルタイムローパス/ハイパスフィルタリング対応。 |
 | 12 | **Raw Time Series** | 長時間スパンをリングバッファで保持する2chスクロール波形モニタ。 |
 | 13 | **Transient Analyzer** | トリガ収録＋CWT で過渡解析、解析帯域/スケールを柔軟に指定。 |
