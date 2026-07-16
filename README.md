@@ -33,14 +33,14 @@ For details on each function, please refer to the [**Widget Guide**](docs/widget
 | :--- | :--- | :--- |
 | 1 | **Welcome** | Shows main features at startup. |
 | 2 | **Signal Generator** | Generates sine, square, triangle, sawtooth (rising/falling), white/pink noise, and frequency sweep signals. Supports phase control, amplitude control, stereo output, and snap to bin center. |
-| 3 | **Spectrum Analyzer** | Real-time spectrum analysis using fast FFT. Supports PSD/RMS display, SI unit display, frequency range limiting, memory function, and cursor measurement. |
+| 3 | **Spectrum Analyzer** | Real-time spectrum analysis using fast FFT. Supports PSD/RMS display, SI unit display, frequency range limiting, memory function, cursor measurement, RTA mode with bar graph visualization (octave smoothing), and Rectangle window function. |
 | 4 | **Sound Level Meter** | Advanced sound level meter with A/C/Z frequency weighting and FAST/SLOW/IMPULSE/10ms time weighting. Supports 20Hz–20k/12.5k/8k band selection, Lp/Leq/LE/Lmax/Lmin/Lpeak display, and calibration offset. |
 | 5 | **LUFS Meter** | Real-time loudness (LUFS/LKFS) measurement. Includes crest factor and dynamic range display. |
 | 6 | **Loopback Finder** | Tool to detect loopback paths of audio interfaces. |
 | 7 | **Distortion Analyzer** | Measures THD, THD+N, SINAD, and IMD (SMPTE/CCIF). Includes built-in signal generator, frequency sweep, snap to bin center, harmonic bar graph, and averaging function. |
 | 8 | **Linearity Analyzer** | Measures gain linearity relative to signal level (AES17 Linearity Deviation). Used for verifying DAC low-level signal reproducibility, bit accuracy, and dynamic range. |
 | 9 | **Advanced Distortion Meter** | Advanced distortion analysis including MIM (Multi-tone Intermodulation), SPDR (Spurious-free Dynamic Range), and PIM (Passive Intermodulation) measurement. |
-| 10 | **Network Analyzer** | Measures frequency response (gain, phase, group delay) and impulse response. Supports sweep measurement, multiple trace display, RIAA curve comparison, and frequency range limiting. |
+| 10 | **Network Analyzer** | Measures frequency response (gain, phase, group delay) and impulse response. Supports sweep measurement, multiple trace display, RIAA curve comparison, frequency range limiting, sub-sample delay estimation & compensation (fractional delay), and automatic coarse delay calibration. |
 | 11 | **Oscilloscope** | 2-channel waveform display with trigger function, cursor measurement, math waveforms (A+B, A-B), and real-time low-pass/high-pass filtering. |
 | 12 | **Raw Time Series** | 2-channel scroll waveform monitor that holds long-term spans in a ring buffer. |
 | 13 | **Transient Analyzer** | Transient analysis with trigger recording + CWT, flexible analysis band/scale specification. |
