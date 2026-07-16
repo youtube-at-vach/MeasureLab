@@ -8,10 +8,12 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDoubleSpinBox,
+    QFileDialog,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QProgressBar,
     QPushButton,
     QSpinBox,
@@ -46,11 +48,13 @@ logger = logging.getLogger(__name__)
 
 class NetworkAnalyzerSignals(QObject):
     update_plot = pyqtSignal(float, float, float, float)  # freq, mag_db, phase_deg, coherence
+    update_all_plots = pyqtSignal(object, object, object, object)  # freqs, mags, phases, cohs
     update_ir_plot = pyqtSignal(object, object)  # time_ms, normalized_ir
     sweep_finished = pyqtSignal()
     progress = pyqtSignal(int)
     latency_result = pyqtSignal(float)
     ir_snr_result = pyqtSignal(float)
+    delay_comp_result = pyqtSignal(float, float)  # delay_sec, delay_samples
     error = pyqtSignal(str)
     harmonics_result = pyqtSignal(dict)  # dict containing harmonics data arrays
 
@@ -165,6 +169,11 @@ class NetworkAnalyzer(MeasurementModule):
         self.amplitude = 0.5
         self.gen_unit = "Amplitude"  # 'Amplitude', 'dBFS', 'dBV', 'dBu', 'Vrms', 'Vpeak'
         self.latency_sec = 0.0
+        self.delay_mode = "Auto"  # 'Auto', 'Calibration', 'None'
+        self.raw_H = None
+        self.raw_freqs = None
+        self.raw_auto_delay_sec = 0.0
+        self.raw_coherence = None
 
         # Routing
         self.output_channel = "STEREO"  # 'L', 'R', 'STEREO'
@@ -181,6 +190,7 @@ class NetworkAnalyzer(MeasurementModule):
         self.calibration_worker = None
 
         self.reference_trace = None
+        self.raw_coarse_delay_sec = 0.0
 
         self._dummy_callback_id = None
         self.signals.sweep_finished.connect(self._cleanup_dummy_callback)
@@ -494,6 +504,12 @@ class NetworkAnalyzer(MeasurementModule):
             # Find peak in Ref to align
             peak_idx = np.argmax(np.abs(ir_ref))
 
+            # Calculate absolute coarse delay
+            ir_drive = get_ir(chirp)
+            drive_peak_idx = np.argmax(np.abs(ir_drive))
+            coarse_delay_sec = (peak_idx - drive_peak_idx) / sample_rate
+            self.raw_coarse_delay_sec = coarse_delay_sec
+
             # IR SNR Calculation
             noise_start = max(0, peak_idx - int(0.5 * sample_rate))
             noise_end = max(0, peak_idx - int(0.05 * sample_rate))
@@ -523,10 +539,39 @@ class NetworkAnalyzer(MeasurementModule):
             with np.errstate(divide="ignore", invalid="ignore"):
                 H_xfer = H_meas / H_ref
                 H_xfer = np.nan_to_num(H_xfer)
-
+            raw_H_temp = H_xfer.copy()
             relative_ir = fft_manager.irfft(H_xfer, n=len_win)
             relative_peak_idx = np.argmax(np.abs(relative_ir))
             emit_circular_ir(relative_ir, relative_peak_idx, pre, post)
+
+            # Sub-sample delay estimation
+            p = relative_peak_idx
+            alpha = np.abs(relative_ir[(p - 1) % len_win])
+            beta = np.abs(relative_ir[p])
+            gamma = np.abs(relative_ir[(p + 1) % len_win])
+
+            denom = alpha - 2 * beta + gamma
+            delta = 0.0
+            if np.abs(denom) > 1e-12:
+                delta = 0.5 * (alpha - gamma) / denom
+                delta = np.clip(delta, -0.5, 0.5)
+
+            p_wrapped = p - len_win if p > len_win // 2 else p
+            auto_delay_samples = p_wrapped + delta
+            auto_delay_sec = auto_delay_samples / sample_rate
+
+            # Select delay based on mode
+            if self.delay_mode == "Calibration":
+                delay_sec = self.latency_sec - coarse_delay_sec
+            elif self.delay_mode == "None":
+                delay_sec = -coarse_delay_sec
+            else:  # "Auto"
+                delay_sec = auto_delay_sec
+                self.latency_sec = coarse_delay_sec + auto_delay_sec
+
+            # Apply phase compensation
+            phase_correction = np.exp(2j * np.pi * freqs * delay_sec)
+            H_xfer = H_xfer * phase_correction
 
             mask = (freqs >= self.start_freq) & (freqs <= self.end_freq)
             valid_freqs = freqs[mask]
@@ -586,6 +631,8 @@ class NetworkAnalyzer(MeasurementModule):
             # loopback is near 0 dB independent of output amplitude.
             ir_drive = get_ir(chirp)
             drive_peak_idx = np.argmax(np.abs(ir_drive))
+            coarse_delay_sec = (peak_idx - drive_peak_idx) / sample_rate
+            self.raw_coarse_delay_sec = coarse_delay_sec
             drive_start = max(0, drive_peak_idx - pre)
             drive_end = min(len(ir_drive), drive_peak_idx + post)
             drive_win = ir_drive[drive_start:drive_end]
@@ -600,28 +647,75 @@ class NetworkAnalyzer(MeasurementModule):
                 drive_ref_win = drive_win[:len_win]
 
             H = fft_manager.rfft(ir_ref_win)
-            freqs = fft_manager.rfftfreq(len(ir_ref_win), d=1 / sample_rate)
+            freqs = fft_manager.rfftfreq(len_win, d=1 / sample_rate)
             H_norm = None
             if drive_ref_win is not None:
                 H_drive = fft_manager.rfft(drive_ref_win)
                 with np.errstate(divide="ignore", invalid="ignore"):
                     H_norm = np.nan_to_num(H / (H_drive + 1e-12))
+            raw_H_temp = H_norm.copy() if H_norm is not None else H.copy()
 
             mask = (freqs >= self.start_freq) & (freqs <= self.end_freq)
             valid_freqs = freqs[mask]
-            valid_H = H_norm[mask] if H_norm is not None else H[mask]
+
+            # Sub-sample delay estimation
+            auto_delay_sec = 0.0
+            auto_delay_samples = 0.0
+            if H_norm is not None:
+                # Relative impulse response of H_norm
+                relative_ir = fft_manager.irfft(H_norm, n=len_win)
+                p = np.argmax(np.abs(relative_ir))
+
+                # Sub-sample peak
+                alpha = np.abs(relative_ir[(p - 1) % len_win])
+                beta = np.abs(relative_ir[p])
+                gamma = np.abs(relative_ir[(p + 1) % len_win])
+
+                denom = alpha - 2 * beta + gamma
+                delta = 0.0
+                if np.abs(denom) > 1e-12:
+                    delta = 0.5 * (alpha - gamma) / denom
+                    delta = np.clip(delta, -0.5, 0.5)
+
+                p_wrapped = p - len_win if p > len_win // 2 else p
+                auto_delay_samples = p_wrapped + delta
+                auto_delay_sec = auto_delay_samples / sample_rate
+            else:
+                delta = 0.0
+                if 0 < peak_idx < len(ir) - 1:
+                    alpha = np.abs(ir[peak_idx - 1])
+                    beta = np.abs(ir[peak_idx])
+                    gamma = np.abs(ir[peak_idx + 1])
+                    denom = alpha - 2 * beta + gamma
+                    if np.abs(denom) > 1e-12:
+                        delta = 0.5 * (alpha - gamma) / denom
+                        delta = np.clip(delta, -0.5, 0.5)
+
+                auto_delay_samples = peak_idx + delta - start
+                auto_delay_sec = auto_delay_samples / sample_rate
+
+            # Select delay based on mode
+            if self.delay_mode == "Calibration":
+                delay_sec = self.latency_sec - coarse_delay_sec
+            elif self.delay_mode == "None":
+                delay_sec = -coarse_delay_sec
+            else:  # "Auto"
+                delay_sec = auto_delay_sec
+                self.latency_sec = coarse_delay_sec + auto_delay_sec
+
+            # Apply phase compensation
+            if H_norm is not None:
+                phase_correction = np.exp(2j * np.pi * freqs * delay_sec)
+                H_norm = H_norm * phase_correction
+                valid_H = H_norm[mask]
+            else:
+                phase_correction = np.exp(2j * np.pi * freqs * delay_sec)
+                H = H * phase_correction
+                valid_H = H[mask]
 
             mag_db = 20 * np.log10(np.abs(valid_H) + 1e-12)
             phase_rad = np.angle(valid_H)
             phase_rad = np.unwrap(phase_rad)
-
-            # Latency compensation is only required when we use the raw transfer
-            # (non-normalized) path. In normalized mode, drive path delay/phase is
-            # already canceled by H/H_drive.
-            if H_norm is None:
-                delay_samples = peak_idx - start
-                phase_rad += 2 * np.pi * valid_freqs * (delay_samples / sample_rate)
-
             phase_deg = np.degrees(phase_rad)
             phase_deg = (phase_deg + 180) % 360 - 180
 
@@ -644,6 +738,17 @@ class NetworkAnalyzer(MeasurementModule):
         if ir_snr_db is not None:
             self.signals.ir_snr_result.emit(ir_snr_db)
 
+        # Emit delay compensation result
+        coarse_delay_sec = getattr(self, "raw_coarse_delay_sec", 0.0)
+        if self.delay_mode == "Calibration":
+            total_delay_sec = self.latency_sec
+        elif self.delay_mode == "None":
+            total_delay_sec = 0.0
+        else:  # "Auto"
+            total_delay_sec = coarse_delay_sec + auto_delay_sec
+        total_delay_samples = total_delay_sec * sample_rate
+        self.signals.delay_comp_result.emit(total_delay_sec, total_delay_samples)
+
         if harmonics and len(valid_freqs) > 0:
             thd_linear = np.zeros_like(valid_freqs)
             for N in range(2, 6):
@@ -654,12 +759,76 @@ class NetworkAnalyzer(MeasurementModule):
             harmonics["thd"] = 20 * np.log10(thd_linear + 1e-12)
             self.signals.harmonics_result.emit(harmonics)
 
+        # Save raw state for recalculation
+        self.raw_H = raw_H_temp
+        self.raw_freqs = freqs
+        self.raw_auto_delay_sec = auto_delay_sec
+        self.raw_coherence = np.interp(freqs, f_coh, coh)
+
         # Emit
         step = max(1, len(valid_freqs) // 500)
         for i in range(0, len(valid_freqs), step):
             if not worker.is_running:
                 break
             self.signals.update_plot.emit(valid_freqs[i], mag_db[i], phase_deg[i], coh_interp[i])
+
+    def recalculate_response(self):
+        """Recalculates magnitude and phase response from raw stored data using current delay settings."""
+        if getattr(self, "raw_H", None) is None or getattr(self, "raw_freqs", None) is None:
+            return
+
+        sample_rate = self.audio_engine.sample_rate
+
+        # 1. Determine the delay to apply
+        coarse_delay_sec = getattr(self, "raw_coarse_delay_sec", 0.0)
+        if self.delay_mode == "Calibration":
+            delay_sec = self.latency_sec - coarse_delay_sec
+        elif self.delay_mode == "None":
+            delay_sec = -coarse_delay_sec
+        else:  # "Auto"
+            delay_sec = self.raw_auto_delay_sec
+            self.latency_sec = coarse_delay_sec + delay_sec
+
+        # 2. Apply phase compensation to the raw complex transfer function
+        phase_correction = np.exp(2j * np.pi * self.raw_freqs * delay_sec)
+        H_corrected = self.raw_H * phase_correction
+
+        # 3. Apply frequency limits mask
+        mask = (self.raw_freqs >= self.start_freq) & (self.raw_freqs <= self.end_freq)
+        valid_freqs = self.raw_freqs[mask]
+        valid_H = H_corrected[mask]
+
+        # 4. Calculate mag and phase
+        mag_db = 20 * np.log10(np.abs(valid_H) + 1e-12)
+        phase_rad = np.angle(valid_H)
+        phase_rad = np.unwrap(phase_rad)
+        phase_deg = np.degrees(phase_rad)
+        phase_deg = (phase_deg + 180) % 360 - 180
+
+        # 5. Extract coherence
+        if getattr(self, "raw_coherence", None) is not None:
+            coh_interp = self.raw_coherence[mask]
+        else:
+            coh_interp = np.ones_like(valid_freqs)
+
+        # Emit the recalculated arrays (downsampled to keep UI responsive)
+        step = max(1, len(valid_freqs) // 500)
+        freqs_ds = valid_freqs[::step]
+        mag_db_ds = mag_db[::step]
+        phase_deg_ds = phase_deg[::step]
+        coh_ds = coh_interp[::step]
+
+        self.signals.update_all_plots.emit(freqs_ds, mag_db_ds, phase_deg_ds, coh_ds)
+
+        # Emit updated delay compensation info to update labels
+        if self.delay_mode == "Calibration":
+            total_delay_sec = self.latency_sec
+        elif self.delay_mode == "None":
+            total_delay_sec = 0.0
+        else:  # "Auto"
+            total_delay_sec = coarse_delay_sec + self.raw_auto_delay_sec
+        total_delay_samples = total_delay_sec * sample_rate
+        self.signals.delay_comp_result.emit(total_delay_sec, total_delay_samples)
 
 
 class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
@@ -670,11 +839,13 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.init_ui()
 
         self.module.signals.update_plot.connect(self.update_plot)
+        self.module.signals.update_all_plots.connect(self.on_update_all_plots)
         self.module.signals.update_ir_plot.connect(self.update_ir_plot)
         self.module.signals.sweep_finished.connect(self.on_sweep_finished)
         self.module.signals.progress.connect(self.progress_bar.setValue)
         self.module.signals.latency_result.connect(self.on_latency_result)
         self.module.signals.ir_snr_result.connect(self.on_ir_snr_result)
+        self.module.signals.delay_comp_result.connect(self.on_delay_comp_result)
         self.module.signals.error.connect(self.on_error)
         self.module.signals.harmonics_result.connect(self.on_harmonics_result)
 
@@ -916,6 +1087,23 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         lat_group = QGroupBox(tr("Latency"))
         lat_form = QFormLayout()
+
+        self.delay_mode_combo = QComboBox()
+        self.delay_mode_combo.addItem(tr("Auto (Align to Peak)"), "Auto")
+        self.delay_mode_combo.addItem(tr("Calibration (Fixed Delay)"), "Calibration")
+        self.delay_mode_combo.addItem(tr("None"), "None")
+        self.delay_mode_combo.currentIndexChanged.connect(self.on_delay_mode_changed)
+        lat_form.addRow(tr("Delay Mode:"), self.delay_mode_combo)
+
+        self.lat_val_spin = QDoubleSpinBox()
+        self.lat_val_spin.setRange(-1000.0, 1000.0)
+        self.lat_val_spin.setDecimals(3)
+        self.lat_val_spin.setSingleStep(0.001)
+        self.lat_val_spin.setSuffix(" ms")
+        self.lat_val_spin.setValue(self.module.latency_sec * 1000.0)
+        self.lat_val_spin.valueChanged.connect(self.on_lat_val_spin_changed)
+        lat_form.addRow(tr("Calibration Delay (ms):"), self.lat_val_spin)
+
         self.lat_btn = QPushButton(tr("Calibrate Latency"))
         self.lat_btn.clicked.connect(self.calibrate)
         lat_form.addRow(self.lat_btn)
@@ -925,20 +1113,37 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.ir_snr_label = QLabel(tr("IR SNR: -- dB"))
         lat_form.addRow(self.ir_snr_label)
 
+        self.delay_comp_label = QLabel(tr("Delay Comp: -- ms (-- samples)"))
+        lat_form.addRow(self.delay_comp_label)
+
         lat_group.setLayout(lat_form)
         cal_tab_layout.addWidget(lat_group)
 
         cal_group = QGroupBox(tr("Reference Trace"))
-        cal_layout = QFormLayout()
-        self.store_ref_btn = QPushButton(tr("Store Reference"))
+        cal_layout = QVBoxLayout()
+        self.store_ref_btn = QPushButton(tr("Store"))
         self.store_ref_btn.clicked.connect(self.on_store_reference)
-        cal_layout.addRow(self.store_ref_btn)
-        self.clear_ref_btn = QPushButton(tr("Clear Reference"))
+        self.clear_ref_btn = QPushButton(tr("Clear"))
         self.clear_ref_btn.clicked.connect(self.on_clear_reference)
-        cal_layout.addRow(self.clear_ref_btn)
-        self.apply_ref_check = QCheckBox(tr("Apply Reference"))
+
+        row1_layout = QHBoxLayout()
+        row1_layout.addWidget(self.store_ref_btn)
+        row1_layout.addWidget(self.clear_ref_btn)
+        cal_layout.addLayout(row1_layout)
+
+        self.save_ref_btn = QPushButton(tr("Save..."))
+        self.save_ref_btn.clicked.connect(self.on_save_reference_to_file)
+        self.load_ref_btn = QPushButton(tr("Load..."))
+        self.load_ref_btn.clicked.connect(self.on_load_reference_from_file)
+
+        row2_layout = QHBoxLayout()
+        row2_layout.addWidget(self.save_ref_btn)
+        row2_layout.addWidget(self.load_ref_btn)
+        cal_layout.addLayout(row2_layout)
+
+        self.apply_ref_check = QCheckBox(tr("Apply"))
         self.apply_ref_check.toggled.connect(self.on_apply_reference_changed)
-        cal_layout.addRow(self.apply_ref_check)
+        cal_layout.addWidget(self.apply_ref_check)
         cal_group.setLayout(cal_layout)
         cal_tab_layout.addWidget(cal_group)
 
@@ -954,6 +1159,8 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.mag_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.mag_plot.setLogMode(x=True, y=False)
         self.mag_plot.showGrid(x=True, y=True)
+        self.mag_plot.setYRange(-5.0, 5.0)
+        self.mag_plot.enableAutoRange(y=False)
         self.mag_curve = self.mag_plot.plot(pen="g")
 
         self.riaa_curve = self.mag_plot.plot(pen=pg.mkPen("m", style=pg.QtCore.Qt.PenStyle.DashLine))
@@ -982,6 +1189,8 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.phase_plot.setLogMode(x=True, y=False)
         self.phase_plot.showGrid(x=True, y=True)
         self.phase_plot.setXLink(self.mag_plot)
+        self.phase_plot.setYRange(-180.0, 180.0)
+        self.phase_plot.enableAutoRange(y=False)
         self.phase_curve = self.phase_plot.plot(pen="y")
 
         self.gd_axis = pg.AxisItem("right")
@@ -1293,8 +1502,38 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.lat_label.setText(tr("Calibrating..."))
         self.module.start_calibration()
 
+    def on_delay_mode_changed(self, index):
+        mode = self.delay_mode_combo.currentData()
+        self.module.delay_mode = mode
+        self.module.recalculate_response()
+
+    def on_lat_val_spin_changed(self, val):
+        self.module.latency_sec = val / 1000.0
+        self.module.recalculate_response()
+
+    def on_update_all_plots(self, freqs, mags, phases, cohs):
+        self.freqs = list(freqs)
+        self.mags = list(mags)
+        self.phases = list(phases)
+        self.cohs = list(cohs)
+        self.refresh_plots()
+
     def on_latency_result(self, lat):
-        self.lat_label.setText(tr("Latency: {0:.2f} ms").format(lat * 1000))
+        lat_ms = lat * 1000.0
+        self.lat_label.setText(tr("Latency: {0:.2f} ms").format(lat_ms))
+        self.lat_val_spin.blockSignals(True)
+        self.lat_val_spin.setValue(lat_ms)
+        self.lat_val_spin.blockSignals(False)
+        self.module.latency_sec = lat
+
+        idx = self.delay_mode_combo.findData("Calibration")
+        if idx != -1:
+            self.delay_mode_combo.blockSignals(True)
+            self.delay_mode_combo.setCurrentIndex(idx)
+            self.delay_mode_combo.blockSignals(False)
+            self.module.delay_mode = "Calibration"
+
+        self.module.recalculate_response()
         self.lat_btn.setEnabled(True)
 
     def on_error(self, msg):
@@ -1320,6 +1559,74 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
     def on_apply_reference_changed(self, checked):
         self.refresh_plots()
 
+    def on_save_reference_to_file(self):
+        if self.module.reference_trace is None:
+            QMessageBox.warning(self, tr("Save Reference"), tr("No reference trace stored to save."))
+            return
+
+        file_path, _ = QFileDialog.getSaveFileName(self, tr("Save Reference File"), "", tr("JSON Files (*.json)"))
+        if not file_path:
+            return
+
+        if not file_path.lower().endswith(".json"):
+            file_path += ".json"
+
+        try:
+            ref = self.module.reference_trace
+            ref_data = {
+                "version": "1.0",
+                "type": "network_analyzer_reference",
+                "freqs": ref["freqs"].tolist(),
+                "mags": ref["mags"].tolist(),
+                "phases": ref["phases"].tolist(),
+                "gen_amp": float(ref["gen_amp"]),
+            }
+            with open(file_path, "w", encoding="utf-8") as f:
+                import json
+
+                json.dump(ref_data, f, indent=4)
+            logger.info(f"Reference trace saved to {file_path}")
+        except Exception as e:
+            logger.error(f"Failed to save reference trace to file: {e}")
+            QMessageBox.critical(self, tr("Save Reference"), tr("Failed to save:\n{0}").format(str(e)))
+
+    def on_load_reference_from_file(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, tr("Load Reference File"), "", tr("JSON Files (*.json)"))
+        if not file_path:
+            return
+
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                import json
+
+                ref_data = json.load(f)
+
+            if not isinstance(ref_data, dict) or ref_data.get("type") != "network_analyzer_reference":
+                raise ValueError(tr("Invalid reference file format."))
+
+            required_keys = {"freqs", "mags", "phases", "gen_amp"}
+            if not required_keys.issubset(ref_data.keys()):
+                raise ValueError(tr("Invalid reference file format."))
+
+            freqs = np.array(ref_data["freqs"], dtype=float)
+            mags = np.array(ref_data["mags"], dtype=float)
+            phases = np.array(ref_data["phases"], dtype=float)
+            gen_amp = float(ref_data["gen_amp"])
+
+            self.module.reference_trace = {
+                "freqs": freqs,
+                "mags": mags,
+                "phases": phases,
+                "gen_amp": gen_amp,
+            }
+            logger.info(f"Reference trace loaded from {file_path}")
+
+            self.apply_ref_check.setChecked(True)
+            self.refresh_plots()
+        except Exception as e:
+            logger.error(f"Failed to load reference trace: {e}")
+            QMessageBox.critical(self, tr("Load Reference"), tr("Failed to load reference file: {0}").format(str(e)))
+
     def on_start_stop(self, checked):
         if checked:
             self.update_frequency_limits()
@@ -1342,6 +1649,7 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
             for curve in self.h_curves.values():
                 curve.clear()
             self.ir_snr_label.setText(tr("IR SNR: -- dB"))
+            self.delay_comp_label.setText(tr("Delay Comp: -- ms (-- samples)"))
             self.start_btn.setText(tr("Stop Sweep"))
             self.update_timer.start(50)
             self.module.start_sweep()
@@ -1425,7 +1733,15 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         except Exception as e:
             logger.debug(f"Error during cleanup: {e}")
         try:
+            self.module.signals.delay_comp_result.disconnect(self.on_delay_comp_result)
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
+        try:
             self.module.signals.harmonics_result.disconnect(self.on_harmonics_result)
+        except Exception as e:
+            logger.debug(f"Error during cleanup: {e}")
+        try:
+            self.module.signals.update_all_plots.disconnect(self.on_update_all_plots)
         except Exception as e:
             logger.debug(f"Error during cleanup: {e}")
         super().closeEvent(event)
@@ -1462,6 +1778,15 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
     def on_ir_snr_result(self, snr):
         self.ir_snr_label.setText(tr("IR SNR: {0:.1f} dB").format(snr))
+
+    def on_delay_comp_result(self, delay_sec, delay_samples):
+        delay_ms = delay_sec * 1000.0
+        self.delay_comp_label.setText(tr("Delay Comp: {0:.3f} ms ({1:.2f} samples)").format(delay_ms, delay_samples))
+        if self.module.delay_mode == "Auto":
+            self.lat_val_spin.blockSignals(True)
+            self.lat_val_spin.setValue(delay_ms)
+            self.lat_val_spin.blockSignals(False)
+            self.lat_label.setText(tr("Latency: {0:.2f} ms").format(delay_ms))
 
     def update_plot(self, freq, mag, phase, coh):
         self.freqs.append(freq)
@@ -1692,6 +2017,21 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         self.mag_curve.setData(freqs_to_plot, y_values)
         self.phase_curve.setData(freqs_to_plot, phases_to_plot)
+
+        # Dynamic Y range adjustment to maintain ~10 dB height zoom or auto-range to fit
+        if len(y_values) > 0:
+            if is_effectively_relative or unit in {"dBFS", "dBV", "dBu"}:
+                min_val = float(np.min(y_values))
+                max_val = float(np.max(y_values))
+                span = max_val - min_val
+                if span <= 10.0:
+                    center = (max_val + min_val) / 2.0
+                    self.mag_plot.setYRange(center - 5.0, center + 5.0)
+                    self.mag_plot.enableAutoRange(y=False)
+                else:
+                    self.mag_plot.enableAutoRange(y=True)
+            else:
+                self.mag_plot.enableAutoRange(y=True)
 
         # RIAA Curve Overlay
         if self.riaa_check.isChecked() and len(freqs_to_plot) > 1:
