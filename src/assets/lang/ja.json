@@ -1409,7 +1409,6 @@
     "Recorder / Player": "レコーダー / プレーヤー",
     "Recording": "録音",
     "Recording & Settings": "録音 & 設定",
-    "Rectangle": "Rectangle",
     "Rectified Mains (100Hz)": "Rectified Mains (100Hz)",
     "Rectified Mains (120Hz)": "Rectified Mains (120Hz)",
     "Ref (Hz):": "基準 (Hz):",
@@ -2027,5 +2026,6 @@
     "⬆︎Update available: {0}": "⬆︎アップデートがあります: {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 危険 - 高強度 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 注意 - 超音波放射中 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 安全 - 低強度 🟢"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 安全 - 低強度 🟢",
+    "rectangle": "rectangle"
 }

@@ -720,7 +720,7 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
         self.window_combo = QComboBox()
         for w in fft_manager.get_available_windows():
             if w == "boxcar":
-                self.window_combo.addItem(tr("Rectangle"), "boxcar")
+                self.window_combo.addItem(tr("rectangle"), "boxcar")
             else:
                 self.window_combo.addItem(w, w)
 

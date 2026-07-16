@@ -1409,7 +1409,6 @@
     "Recorder / Player": "Рекордер / Плеер",
     "Recording": "Запись",
     "Recording & Settings": "Запись и настройки",
-    "Rectangle": "Rectangle",
     "Rectified Mains (100Hz)": "Rectified Mains (100Hz)",
     "Rectified Mains (120Hz)": "Rectified Mains (120Hz)",
     "Ref (Hz):": "Опорн. (Гц):",
@@ -2027,5 +2026,6 @@
     "⬆︎Update available: {0}": "⬆︎Доступно обновление: {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 ОПАСНО - ВЫСОКАЯ ИНТЕНСИВНОСТЬ 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 ОСТОРОЖНО - УЛЬТРАЗВУК АКТИВЕН 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 БЕЗОПАСНО - НИЗКАЯ ИНТЕНСИВНОСТЬ 🟢"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 БЕЗОПАСНО - НИЗКАЯ ИНТЕНСИВНОСТЬ 🟢",
+    "rectangle": "rectangle"
 }

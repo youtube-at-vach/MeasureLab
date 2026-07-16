@@ -1409,7 +1409,6 @@
     "Recorder / Player": "녹음기 / 플레이어",
     "Recording": "녹음",
     "Recording & Settings": "녹음 및 설정",
-    "Rectangle": "Rectangle",
     "Rectified Mains (100Hz)": "Rectified Mains (100Hz)",
     "Rectified Mains (120Hz)": "Rectified Mains (120Hz)",
     "Ref (Hz):": "기준 (Hz):",
@@ -2027,5 +2026,6 @@
     "⬆︎Update available: {0}": "⬆︎업데이트 가능: {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 위험 - 고강도 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 주의 - 초음파 활성 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 안전 - 저강도 🟢"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 안전 - 저강도 🟢",
+    "rectangle": "rectangle"
 }

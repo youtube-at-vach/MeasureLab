@@ -1409,7 +1409,6 @@
     "Recorder / Player": "Rekorder / Player",
     "Recording": "Aufnahme",
     "Recording & Settings": "Aufzeichnung & Einstellungen",
-    "Rectangle": "Rectangle",
     "Rectified Mains (100Hz)": "Rectified Mains (100Hz)",
     "Rectified Mains (120Hz)": "Rectified Mains (120Hz)",
     "Ref (Hz):": "Ref (Hz):",
@@ -2027,5 +2026,6 @@
     "⬆︎Update available: {0}": "⬆︎Update verfügbar: {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 GEFÄHRLICH - HOHE INTENSITÄT 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 VORSICHT - ULTRASCHALL AKTIV 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 SICHER - NIEDRIGE INTENSITÄT 🟢"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 SICHER - NIEDRIGE INTENSITÄT 🟢",
+    "rectangle": "rectangle"
 }
