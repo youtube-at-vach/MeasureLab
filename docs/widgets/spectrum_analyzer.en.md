@@ -79,6 +79,10 @@ When detached using the Detachable Wrapper, pressing the "Compact" button switch
     * Convenient for checking loud sounds that occur only momentarily.
     * **Clear Peak button**: Resets the held peak display.
 
+* **RTA Mode**
+    * Changes the graph display from a standard continuous line plot to a Real-Time Analyzer (RTA) bar graph format.
+    * When RTA Mode is enabled, the frequency spectrum is aggregated and visualized as discrete vertical bars according to the selected **Smoothing** resolution (e.g., 1/3 Octave). This provides a more traditional acoustic measurement view.
+
 ## Usage Examples
 
 Below are a few specific usage scenarios for the Spectrum Analyzer.

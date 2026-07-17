@@ -73,6 +73,8 @@ Network Analyzerには、フォノイコライザーの測定に欠かせないR
 ### Latency (レイテンシ) と IR SNR
 
 * **Calibrate Latency**: システムの入出力の遅延時間を測定します。正確な位相測定を行うために、ループバック接続をした状態で事前に実行することを推奨します。
+* **Delay Mode (ディレイモード)**: 測定時のレイテンシ処理方法を設定します。自動的にインパルス応答のピークに合わせる「Auto (Align to Peak)」、Calibrate Latencyで測定した固定遅延値を使用する「Calibration (Fixed Delay)」、または遅延補正を適用しない「None」から選択できます。
+* **Calibration Delay (ms) (キャリブレーション遅延)**: レイテンシ測定時に得られた固定遅延値を表示します。Delay Modeが「Calibration」に設定されている場合、この値が使用されます。
 * **IR SNR**: 最新の測定におけるインパルス応答（Impulse Response）のS/N比を表示します。値が高いほどノイズの少ないクリアな測定ができていることを示します。
 
 ### Reference Trace (リファレンストレース)

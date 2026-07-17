@@ -70,6 +70,7 @@ Before running any sweep, the round-trip latency of the audio input and output c
 * **Analysis Cycles**: Sets the analysis window size in cycles per frequency bin for the digital lock-in calculation (2.0 to 2048.0 cycles). A larger number improves frequency resolution and noise rejection, but increases vulnerability to transient settling time.
 * **Meas Points**: Total number of frequency sample points measured in the sweep (100 to 5000 points).
 * **Min Window (ms)**: The minimum analysis window duration in milliseconds. This prevents the window from becoming excessively short at high frequencies, which would inflate the ENBW.
+* **Preset**: Allows selecting from predefined configurations (e.g., "Fast & Dynamic (16 cyc / 30 ms)", "Normal (64 cyc / 100 ms)", "High Resolution (128 cyc / 500 ms)", "High Stability (256 cyc / 1.0 s)", "Maximum Stability (512 cyc / 2.0 s)") that automatically set the optimal balance of Analysis Cycles and Min Window for specific measurement scenarios. Selecting "Custom" allows manual tuning.
 * **Real-time Display**: When enabled, plots and updates curves in real-time during the sweep. When disabled, analysis calculations are buffered during the sweep and plotted all at once after completion, which reduces CPU load and prevents audio buffer underruns (dropouts).
 
 ---

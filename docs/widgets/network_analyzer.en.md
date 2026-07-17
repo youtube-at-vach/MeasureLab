@@ -73,6 +73,8 @@ The Network Analyzer includes specialized support for RIAA curve comparison, whi
 ### Latency and IR SNR
 
 * **Calibrate Latency**: Measures the total input/output delay of the system. This is crucial for accurate phase measurement.
+* **Delay Mode**: Configures how latency is handled during measurements. Options include "Auto (Align to Peak)" to automatically align the impulse response to its peak, "Calibration (Fixed Delay)" to use the static delay value measured via Calibrate Latency, or "None" to apply no delay compensation.
+* **Calibration Delay (ms)**: Displays the fixed delay value measured during latency calibration. This value is used when Delay Mode is set to Calibration.
 * **IR SNR**: Displays the Signal-to-Noise Ratio of the Impulse Response for the most recent sweep. Higher values indicate a cleaner measurement.
 
 ### Reference Trace
