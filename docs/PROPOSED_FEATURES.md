@@ -12,8 +12,8 @@
 
 ## 🔮 Future / Visionary Ideas (Experimental)
 
-* **Bio-Sensory & Psycho-Acoustics**: BCI Audiophile Profiler, AI "Golden Ear", Holographic Soundstage, Psychoacoustic Masking, Synesthetic Harmonic Mapper.
-* **Physics & Advanced Simulation**: Quantum Metamaterial Simulator, Thermal Noise Sonification, Neuromorphic Spike Visualizer.
+* **Bio-Sensory & Psycho-Acoustics**: BCI Audiophile Profiler, AI "Golden Ear", Holographic Soundstage, Psychoacoustic Masking, Synesthetic Harmonic Mapper, Psycho-Kinetic Impact Visualizer.
+* **Physics & Advanced Simulation**: Quantum Metamaterial Simulator, Thermal Noise Sonification, Neuromorphic Spike Visualizer, Tachyon Phase Analyzer, AC Grid-Symbiosis Mapper.
 * **Spatial & Acoustic Focus**: Non-Euclidean Spatial Mapper, Acoustic Phase Conjugation Analyzer (Time-reversed wave reflection cancellation).
 * **Ultrasonics**: Ultrasonic Micro-Doppler Excursion Mapper (Non-contact speaker cone displacement measurement).
 
@@ -35,6 +35,9 @@
 * **Sound Quality / LUFS**: Listener Fatigue Index, PEAQ/ODG Score Estimator, Inter-Sample Peak Histogram & True Peak Clipping Profiler.
 * **Distortion Analyzer**: Thermal Stress, EMI/RFI Fingerprinting, TIM/DIM Mode, SMPTE/DIN/CCIF IMD Sweeps.
 * **Network Analyzer & Others**: Group/Phase Delay Plot, Click & Pop Classifier, Binaural Tones, AES17 DR Automator, Clock Fingerprinting, Multi-Band Goniometer.
+* **Linearity Analyzer**: Dynamic Burst Linearity Mode (Transient crest factor preservation).
+* **Noise Profiler**: Hum AM/FM Modulation Analysis (Power supply modulation rejection).
+* **Transient Analyzer**: Pre-Ringing & Causality Quantifier.
 
 ---
 
