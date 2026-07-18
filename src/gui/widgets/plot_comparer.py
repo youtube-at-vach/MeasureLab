@@ -1,4 +1,5 @@
 import logging
+import math
 import numpy as np
 import pyqtgraph as pg
 
@@ -1419,11 +1420,7 @@ class PlotComparerWidget(QWidget):
                 base_decades = [10.0, 100.0, 1000.0, 10000.0, 100000.0]
 
             major_ticks = [(np.log10(val), label) for val, label in major_specs]
-            minor_ticks = []
-            for dec in base_decades:
-                for mul in [3, 4, 6, 7, 8, 9]:
-                    val = dec * mul
-                    minor_ticks.append((np.log10(val), ""))
+            minor_ticks = [(math.log10(dec * mul), "") for dec in base_decades for mul in [3, 4, 6, 7, 8, 9]]
             x_axis.setTicks([major_ticks, minor_ticks])
         else:
             # Generic decade ticks for other domains
@@ -1437,8 +1434,7 @@ class PlotComparerWidget(QWidget):
                 elif exp == -3:
                     label = "1m"
                 major_ticks.append((float(exp), label))
-                for mul in [2, 3, 4, 5, 6, 7, 8, 9]:
-                    minor_ticks.append((np.log10(val * mul), ""))
+                minor_ticks.extend([(math.log10(val * mul), "") for mul in [2, 3, 4, 5, 6, 7, 8, 9]])
             x_axis.setTicks([major_ticks, minor_ticks])
 
     def replot(self):
