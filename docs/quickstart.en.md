@@ -112,9 +112,9 @@ When performing high-precision measurements in a Linux environment, we strongly 
 - **Sampling Rate**
     - This determines the "fineness" or resolution of the recorded sound. The larger the number, the higher the definition. As long as your PC specs allow, we recommend selecting a high rate (high-resolution setting) such as **192kHz**.
 - **Buffer Size / Buffer Optimization**
-    - This is the size of the "bucket" that temporarily stores audio data.
+    - This is the size of the buffer that temporarily stores audio data.
     - **We strongly recommend setting it to "Long (STABLE or higher)".**
-    - In music production or gaming, people make this bucket small to avoid "latency" (audio delay). However, MeasureLab is for "measurement." Even if the sound is slightly delayed, please prioritize stable, uninterrupted data processing (data stability) above all else.
+    - Unlike music production or gaming, measurement prioritizes stable data processing over latency.
 
 !!! tip
     **Using Dithering**
@@ -123,7 +123,7 @@ When performing high-precision measurements in a Linux environment, we strongly 
 
 ---
 
-## First Measurement (Hello Loopback!)
+## First Measurement (Loopback Test)
 
 After the settings are finished, let's actually output sound and look at the graph.
 
@@ -137,7 +137,7 @@ After the settings are finished, let's actually output sound and look at the gra
 
 1. Open **Spectrum Analyzer** from the left menu.
 2. Increase the input gain of the interface and confirm that a **"sharp peak at 1000Hz"** appears on the screen.
-3. **If you see the peak, it's a success!** Your PC has now started to function as a proper measurement instrument.
+3. **If the 1000Hz peak is displayed, it is operating normally.**
 
 ---
 

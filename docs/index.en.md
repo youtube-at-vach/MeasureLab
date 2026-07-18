@@ -6,8 +6,7 @@
 
 This documentation summarizes the **operation methods for observing and checking the performance of audio signals and equipment with your own eyes** using MeasureLab.
 
-"I don't have specialized equipment (like an oscilloscope or spectrum analyzer)..." Don't worry!
-The purpose of this tool is to **transform your everyday PC and audio interface into a "high-end measurement instrument."**
+The purpose of this tool is to **utilize your everyday PC and audio interface as a high-end measurement instrument.**
 
 !!! tip
     **MeasureLab allows you to freely build your measurement environment.**
@@ -40,7 +39,7 @@ While built-in audio functions of the PC can be used, we recommend an external a
 
 ### Connection Cables (for Loopback)
 
-We recommend performing an operation check with a **"loopback connection,"** where you output sound from the device and record it back yourself.
+We recommend performing an operation check with a **"loopback connection,"** where the output signal is directly routed back to the input.
 
 - Connect a 3.5mm or 6.3mm standard plug cable from the output (OUT) to the input (IN).
 
