@@ -140,7 +140,7 @@ def test_estimate_hammerstein_kernels_linear():
     # If avg_responses = 1.0 for all R and J, then g1 = 1.0 * R.
     # sum(g1 * R) = sum(R^2). H1 = 1.0.
 
-    for k, r in enumerate(amplitudes):
+    for k, _r in enumerate(amplitudes):
         avg_responses[k, :, 0] = 1.0
 
     H_freqs, sorted_freqs = estimate_hammerstein_kernels(
@@ -198,9 +198,9 @@ def test_estimate_hammerstein_kernels_nonlinear():
 
     # To keep things simpler, let's just assert that the calculation matches expected formula.
 
-    for k, r in enumerate(amplitudes):
-        avg_responses[k, :, 0] = 2.0 / r
-        avg_responses[k, :, 2] = -3.0 / r  # To cancel the -1.0 phase correction
+    for k, _r in enumerate(amplitudes):
+        avg_responses[k, :, 0] = 2.0 / _r
+        avg_responses[k, :, 2] = -3.0 / _r  # To cancel the -1.0 phase correction
 
     H_freqs, sorted_freqs = estimate_hammerstein_kernels(
         amplitudes=amplitudes,
