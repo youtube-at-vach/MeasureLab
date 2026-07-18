@@ -43,7 +43,7 @@ def test_engine_process_block():
     outdata = np.zeros((frames, 1))
     indata = np.zeros((frames, 1))
 
-    f_mid, results = engine.process_block(indata, outdata, 0)
+    f_mid, results, quality = engine.process_block(indata, outdata, 0)
     assert f_mid > 0
     assert len(results) == 3
     # Check output buffer contains SSS signal
@@ -109,7 +109,7 @@ def test_engine_process_block_xfer():
     engine.reset_filter_states()
 
     # Process with XFER reference channel
-    f_mid, results = engine.process_block(sig_block, outdata, 0, ref_in_block=ref_block)
+    f_mid, results, quality = engine.process_block(sig_block, outdata, 0, ref_in_block=ref_block)
 
     assert f_mid > 0
     assert len(results) == 3
@@ -134,14 +134,14 @@ def test_engine_process_block_xfer_zero_ref():
     ref_block_zero = np.zeros((frames, 1))
     sig_block = outdata * 0.4
     engine.reset_filter_states()
-    f_mid, results_zero = engine.process_block(sig_block, outdata, 0, ref_in_block=ref_block_zero)
+    f_mid, results_zero, quality_zero = engine.process_block(sig_block, outdata, 0, ref_in_block=ref_block_zero)
     assert not np.any(np.isnan(results_zero))
     assert not np.any(np.isinf(results_zero))
 
     # 2. Extremely small / phase-cancelling reference input
     ref_block_small = np.ones((frames, 1)) * -1e-12
     engine.reset_filter_states()
-    f_mid, results_small = engine.process_block(sig_block, outdata, 0, ref_in_block=ref_block_small)
+    f_mid, results_small, quality_small = engine.process_block(sig_block, outdata, 0, ref_in_block=ref_block_small)
     assert not np.any(np.isnan(results_small))
     assert not np.any(np.isinf(results_small))
 
@@ -164,7 +164,7 @@ def test_engine_ls_extractor_rejects_linear_loopback_harmonic_artifact():
         if chunk > 0:
             indata[:chunk, 0] = engine.out_sig[start : start + chunk]
 
-        f_mid, results = engine.process_block(indata, outdata, block_index)
+        f_mid, results, quality = engine.process_block(indata, outdata, block_index)
         if 140.0 <= f_mid <= 700.0:
             h2_db.append(20 * np.log10(abs(results[1]) + 1e-15))
             h3_db.append(20 * np.log10(abs(results[2]) + 1e-15))
@@ -205,7 +205,7 @@ def test_engine_ls_extractor_early_samples_zero_check():
     assert engine.out_sig is not None
     indata[:frames, 0] = engine.out_sig[:frames]
 
-    f_mid, results = engine.process_block(indata, outdata, 0)
+    f_mid, results, quality = engine.process_block(indata, outdata, 0)
 
     # Fundamental harmonic (results[0]) should have a valid non-zero amplitude
     assert abs(results[0]) > 0.0, "Result should not be zero; D should have been scaled down to prevent starvation"
@@ -254,7 +254,7 @@ def test_engine_ls_extractor_decimation_continuity():
         D = int(np.clip(max_d, 1, 10))
         d_values.append(D)
 
-        f_mid_ret, results = engine.process_block(indata, outdata, i)
+        f_mid_ret, results, quality = engine.process_block(indata, outdata, i)
         results_list.append(results[0])  # store fundamental
 
     # Filter out initial zeros and limit to active sweep range before Tukey fade-out (first 97%)
@@ -376,7 +376,7 @@ def test_engine_process_block_xfer_mixed_reference():
     # Process second block with reference
     ref_block = outdata * 0.8
     sig_block = outdata * 0.4
-    f_mid, results = engine.process_block(sig_block, outdata, 1, ref_in_block=ref_block)
+    f_mid, results, quality = engine.process_block(sig_block, outdata, 1, ref_in_block=ref_block)
 
     # We expect results to be corrected (0.4 / 0.8 = 0.5)
     # If the bug is present, this will either raise IndexError or return uncorrected 0.4

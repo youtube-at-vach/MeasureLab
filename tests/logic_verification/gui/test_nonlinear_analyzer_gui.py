@@ -8,6 +8,7 @@ def test_nonlinear_analyzer_gui_start(qtbot):
     audio_engine.offline_mode = True
 
     analyzer = NonlinearAnalyzer(audio_engine)
+    analyzer.run_play_rec = lambda out_data, **kwargs: __import__('numpy').zeros((len(out_data), 2), dtype=__import__('numpy').float32)
     # Configure short parameters so the mock measurement runs within timeout limits
     analyzer.sweep_duration = 0.1
     analyzer.averages = 1
@@ -29,6 +30,7 @@ def test_nonlinear_analyzer_gui_start(qtbot):
 def test_nonlinear_analyzer_routing(qtbot):
     audio_engine = AudioEngine()
     analyzer = NonlinearAnalyzer(audio_engine)
+    analyzer.run_play_rec = lambda out_data, **kwargs: __import__('numpy').zeros((len(out_data), 2), dtype=__import__('numpy').float32)
     widget = NonlinearAnalyzerWidget(analyzer)
     qtbot.addWidget(widget)
 
@@ -73,6 +75,7 @@ def test_nonlinear_analyzer_gui_stop(qtbot, monkeypatch):
     audio_engine.offline_mode = True
 
     analyzer = NonlinearAnalyzer(audio_engine)
+    analyzer.run_play_rec = lambda out_data, **kwargs: __import__('numpy').zeros((len(out_data), 2), dtype=__import__('numpy').float32)
     # Set longer parameters to give enough time to click stop
     analyzer.sweep_duration = 2.0
     analyzer.averages = 1
