@@ -95,4 +95,4 @@ The impedance curve is displayed on the graph (Bode Plot).
 
 ---
 
-If you can perform this measurement, you can take the first step in full-scale acoustic design, such as designing crossover networks for DIY speakers and adjusting bass reflex ports (confirming the phenomenon where the mountain splits into two in impedance measurement with the speaker in a box).
+The results of this measurement can be utilized as fundamental data for acoustic design, such as designing crossover networks for DIY speakers and adjusting bass reflex ports.
