@@ -640,10 +640,10 @@ class ImpedanceSweepWorker(QThread):
                 self.module.wait_for_buffer(self._cancel_event)
                 if self.is_cancelled:
                     break
-                self.module.process_data(ignore_calibration=self.cal_mode in ("open", "short", "load"))
+                self.module.process_data(ignore_calibration=self.cal_mode in {"open", "short", "load"})
 
             # During calibration capture, always store the uncalibrated impedance.
-            if self.cal_mode in ("open", "short", "load"):
+            if self.cal_mode in {"open", "short", "load"}:
                 z = self.module.meas_z_raw
             else:
                 z = self.module.meas_z_complex
