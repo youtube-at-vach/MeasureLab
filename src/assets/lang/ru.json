@@ -2041,5 +2041,9 @@
     "⬆︎Update available: {0}": "⬆︎Доступно обновление: {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 ОПАСНО - ВЫСОКАЯ ИНТЕНСИВНОСТЬ 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 ОСТОРОЖНО - УЛЬТРАЗВУК АКТИВЕН 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 БЕЗОПАСНО - НИЗКАЯ ИНТЕНСИВНОСТЬ 🟢"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 БЕЗОПАСНО - НИЗКАЯ ИНТЕНСИВНОСТЬ 🟢",
+    "LS Fit Quality": "Качество подгонки LS",
+    "Lock-in Quality": "Качество Lock-in",
+    "Quality": "Качество",
+    "Quality (R²)": "Качество (R²)"
 }

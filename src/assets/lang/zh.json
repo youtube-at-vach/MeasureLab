@@ -2041,5 +2041,9 @@
     "⬆︎Update available: {0}": "⬆︎有可用更新: {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 危险 - 高强度 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 注意 - 超音波活跃 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 安全 - 低强度 🟢"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 安全 - 低强度 🟢",
+    "LS Fit Quality": "LS拟合质量",
+    "Lock-in Quality": "锁相质量",
+    "Quality": "质量",
+    "Quality (R²)": "质量 (R²)"
 }

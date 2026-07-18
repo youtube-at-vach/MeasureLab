@@ -2041,5 +2041,9 @@
     "⬆︎Update available: {0}": "⬆︎Atualização disponível: {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 PERIGOSO - ALTA INTENSIDADE 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 CUIDADO - ULTRASSOM ATIVO 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 SEGURO - BAIXA INTENSIDADE 🟢"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 SEGURO - BAIXA INTENSIDADE 🟢",
+    "LS Fit Quality": "Qualidade do ajuste LS",
+    "Lock-in Quality": "Qualidade de Lock-in",
+    "Quality": "Qualidade",
+    "Quality (R²)": "Qualidade (R²)"
 }
