@@ -1,5 +1,9 @@
 # Appendix
 
+## Overview
+
+This page is an appendix summarizing the precautions (limitations as a measurement instrument) and common troubleshooting when using MeasureLab.
+
 ## This tool is not a "measurement instrument"
 
 This software is a **simple signal analysis and observation tool** using a PC and an audio interface.
