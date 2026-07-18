@@ -104,9 +104,9 @@ class SSSCalculationThread(QThread):
             else:
                 # Perform the computationally heavy Least-Squares fit in the background
                 try:
-                    f_mid, results = self.engine.process_input_block(sig_in, block_idx, ref_in_block=ref_in)
+                    f_mid, results, quality = self.engine.process_input_block(sig_in, block_idx, ref_in_block=ref_in)
                     is_valid = self.engine.last_block_was_valid
-                    self.block_calculated.emit(block_idx, sweep_idx, f_mid, results, is_valid)
+                    self.block_calculated.emit(block_idx, sweep_idx, f_mid, results, is_valid, quality)
                 except Exception as e:
                     logger.error(f"Error in background computation: {e}", exc_info=True)
 
