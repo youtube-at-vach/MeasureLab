@@ -96,3 +96,40 @@ def test_active_model_cache(sample_hammerstein_data):
     # Clean up state
     set_active_model(None)
     assert has_active_model() is False
+
+
+def test_predict_harmonic_response():
+    from src.core.hammerstein_model import predict_harmonic_response
+    import numpy as np
+
+    f0 = 100.0
+    A_in = 1.0
+    sample_rate = 48000.0
+    sorted_freqs = np.array([50.0, 500.0])
+    H_freqs = [
+        np.array([1.0+0j, 1.0+0j]),  # H1
+        np.array([2.0+0j, 2.0+0j]),  # H2
+        np.array([0.0+0j, 0.0+0j]),  # H3
+        np.array([0.0+0j, 0.0+0j]),  # H4
+        np.array([0.0+0j, 0.0+0j]),  # H5
+    ]
+
+    predictions = predict_harmonic_response(
+        f0=f0, A_in=A_in, H_freqs=H_freqs, sorted_freqs=sorted_freqs, sample_rate=sample_rate, max_harmonic=5
+    )
+
+    assert len(predictions) == 5
+
+    # Y1 = 1.0 * H1 = 1.0
+    np.testing.assert_allclose(predictions[0]["complex"], 1.0 + 0j, atol=1e-7)
+    # Y2 = -1j * 0.5 * H2 = -1j
+    np.testing.assert_allclose(predictions[1]["complex"], 0.0 - 1.0j, atol=1e-7)
+
+    # Test Nyquist cutoff
+    f0_high = 15000.0
+    predictions_high = predict_harmonic_response(
+        f0=f0_high, A_in=A_in, H_freqs=H_freqs, sorted_freqs=sorted_freqs, sample_rate=sample_rate, max_harmonic=5
+    )
+
+    # Y1 (15kHz) is valid, Y2 (30kHz > Nyquist 24kHz) should be 0
+    np.testing.assert_allclose(predictions_high[1]["complex"], 0.0 + 0j, atol=1e-7)
