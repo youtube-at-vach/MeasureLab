@@ -160,6 +160,7 @@ You are free to copy, modify, distribute, and use it for any commercial or non-c
 
 ### 🧑‍💻 Special Thanks (Thanks to everyone who helped improve this software)
 
+- [Major Wong(diyAudio)](https://www.diyaudio.com/community/members/major-wong.345860/)
 - [TNT (diyAudio)](https://www.diyaudio.com/community/members/tnt.4571/)
 - [fantastictaste6171](https://www.youtube.com/@fantastictaste6171)
 - [vach@YouTube](https://www.youtube.com/@va-ch)
