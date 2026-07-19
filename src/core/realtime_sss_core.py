@@ -306,7 +306,7 @@ class RealtimeSSSEngine:
         if has_ref and ref_win is not None and len(ref_win) >= 16:
             N_win = len(ref_win)
             half_len = N_win // 2
-            
+
             # 1. Early half fit
             w_early = np.hanning(half_len)
             theta_early = theta_win[:half_len]
@@ -322,11 +322,11 @@ class RealtimeSSSEngine:
             results_late, _ = self._fit_harmonics(theta_late, ref_late, w_late, active_max_harmonic=1)
             ref_h1_late = results_late[0] * 1j
             phi_late = np.angle(ref_h1_late)
-            
+
             # 3. Calculate measured frequency drift
             delta_phi = np.arctan2(np.sin(phi_late - phi_early), np.cos(phi_late - phi_early))
             delta_t = (N_win - half_len) / (fs / D)
-            
+
             if delta_t > 0:
                 delta_f_meas = delta_phi / (2.0 * np.pi * delta_t)
                 idx_rel = np.arange(N_win) - (N_win - 1) / 2.0
