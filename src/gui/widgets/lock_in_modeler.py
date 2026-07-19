@@ -654,19 +654,19 @@ class LockInModelerWidget(QWidget):
         self.plot_tabs.addTab(self.kernel_tab, tr("Impulse Responses (Kernels)"))
         self.plot_tabs.setTabEnabled(1, False)
 
-        # Tab 3: Lock-in Quality
+        # Tab 3: Lock-in SNR
         self.quality_tab = QWidget()
         quality_layout = QVBoxLayout(self.quality_tab)
-        self.plot_quality = pg.PlotWidget(title=tr("LS Fit Quality"))
+        self.plot_quality = pg.PlotWidget(title=tr("Lock-in SNR"))
         self.plot_quality.setMinimumHeight(150)
         self.plot_quality.setLabel("bottom", tr("Frequency (Hz)"))
-        self.plot_quality.setLabel("left", tr("Quality (R²)"), units="%")
+        self.plot_quality.setLabel("left", tr("SNR"), units="dB")
         self.plot_quality.setLogMode(x=True, y=False)
         self.plot_quality.showGrid(x=True, y=True)
-        self.plot_quality.setYRange(0, 100)
+        self.plot_quality.setYRange(-20, 100)
         self.plot_quality.setXLink(self.plot_mag)
         quality_layout.addWidget(self.plot_quality)
-        self.plot_tabs.addTab(self.quality_tab, tr("Lock-in Quality"))
+        self.plot_tabs.addTab(self.quality_tab, tr("Lock-in SNR"))
 
 
 
@@ -674,7 +674,7 @@ class LockInModelerWidget(QWidget):
         # 1st: Light Blue, 2nd: Light Green, 3rd: Light Amber, 4th: Purple, 5th: Light Red
         self.colors = ["#4fc3f7", "#81c784", "#ffd54f", "#ba68c8", "#e57373"]
         self.mag_curves = []
-        self.quality_curve = self.plot_quality.plot(pen="#ffffff", name=tr("Quality"))
+        self.quality_curve = self.plot_quality.plot(pen="#ffffff", name=tr("SNR"))
         self.phase_curves = []
         self.kernel_curves = []
 
@@ -1302,9 +1302,16 @@ class LockInModelerWidget(QWidget):
             avg_quality = np.zeros(len(valid_indices))
             avg_quality[pos] = self.raw_quality[amp_idx, valid_indices[pos]] / counts[pos]
 
+            # Convert R^2 back to relative residual power, then to SNR dB: -10*log10(1 - R^2)
+            # R^2 = 1 - (ss_res / ss_tot)  =>  ss_res / ss_tot = 1 - R^2
+            # SNR = -10 * log10(ss_res / ss_tot) = -10 * log10(1 - R^2)
+            resid_ratio = 1.0 - avg_quality
+            resid_ratio = np.clip(resid_ratio, 1e-12, 1.0) # avoid log(0)
+            snr_db = -10.0 * np.log10(resid_ratio)
+
             # Use sort_idx to order by frequency when plotting
             sort_idx = np.argsort(x_data)
-            self.quality_curve.setData(x_data[sort_idx], avg_quality[sort_idx] * 100.0)
+            self.quality_curve.setData(x_data[sort_idx], snr_db[sort_idx])
 
             return
 
@@ -1385,8 +1392,13 @@ class LockInModelerWidget(QWidget):
 
         counts = self.block_counts[valid_indices]
         avg_quality = self.accumulated_quality[valid_indices] / counts
+
+        resid_ratio = 1.0 - avg_quality
+        resid_ratio = np.clip(resid_ratio, 1e-12, 1.0)
+        snr_db = -10.0 * np.log10(resid_ratio)
+
         sort_idx = np.argsort(x_data)
-        self.quality_curve.setData(x_data[sort_idx], avg_quality[sort_idx] * 100.0)
+        self.quality_curve.setData(x_data[sort_idx], snr_db[sort_idx])
 
     def apply_smoothing(self, y_data, level):
         if level == "None" or len(y_data) < 15:

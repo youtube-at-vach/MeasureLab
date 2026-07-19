@@ -2042,8 +2042,6 @@
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 DANGEREUX - HAUTE INTENSITÉ 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 ATTENTION - ULTRASONS ACTIFS 🟡",
     "🟢 SAFE - LOW INTENSITY 🟢": "🟢 SÉCURISÉ - FAIBLE INTENSITÉ 🟢",
-    "LS Fit Quality": "Qualité d'ajustement LS",
-    "Lock-in Quality": "Qualité du Lock-in",
-    "Quality": "Qualité",
-    "Quality (R²)": "Qualité (R²)"
+    "Lock-in SNR": "SNR de Lock-in",
+    "SNR": "SNR"
 }

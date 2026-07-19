@@ -2042,8 +2042,6 @@
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 위험 - 고강도 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 주의 - 초음파 활성 🟡",
     "🟢 SAFE - LOW INTENSITY 🟢": "🟢 안전 - 저강도 🟢",
-    "LS Fit Quality": "LS 맞춤 품질",
-    "Lock-in Quality": "록인 품질",
-    "Quality": "품질",
-    "Quality (R²)": "품질 (R²)"
+    "Lock-in SNR": "록인 SNR",
+    "SNR": "SNR"
 }
