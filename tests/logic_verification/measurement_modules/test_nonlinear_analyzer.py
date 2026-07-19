@@ -580,8 +580,6 @@ def test_nonlinear_analyzer_module_measurement(qtbot):
     audio_engine.sample_rate = 44100
 
     analyzer = NonlinearAnalyzer(audio_engine)
-    # Mock run_play_rec to immediately return dummy data in offline mode to avoid PlayRecSession timeouts in tests
-    analyzer.run_play_rec = lambda out_data, **kwargs: np.zeros((len(out_data), 2), dtype=np.float32)
     analyzer.num_amplitudes = 5
     analyzer.sweep_duration = 0.5  # Short sweep for fast test
     analyzer.measure_noise_floor = True
@@ -590,6 +588,10 @@ def test_nonlinear_analyzer_module_measurement(qtbot):
     class DummyWorker:
         def __init__(self):
             self.is_running = True
+
+    # Mock run_play_rec to immediately return dummy data in offline mode to avoid PlayRecSession timeouts in tests
+    import numpy as np
+    analyzer.run_play_rec = lambda out_data, **kwargs: np.zeros((len(out_data), 2), dtype=np.float32)
 
     worker = DummyWorker()
     analyzer._execute_measurement(worker)
