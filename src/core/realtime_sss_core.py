@@ -265,7 +265,7 @@ class RealtimeSSSEngine:
         if D > 1 and len(sig_win) < D * min_samples:
             D = max(1, len(sig_win) // min_samples)
 
-        if D > 1 and len(sig_win) >= 15:
+        if len(sig_win) >= 15:
             # 2. Smooth cutoff frequency independent of discrete step D
             fc = 2.2 * P * max(1.0, local_freq)
             # Cap at 0.45 * fs to prevent Butterworth design errors near Nyquist limit
@@ -277,11 +277,14 @@ class RealtimeSSSEngine:
 
             # Apply zero-phase filtering
             sig_win = filtfilt(b, a, sig_win)
-            sig_win = sig_win[::D]
-            theta_win = theta_win[::D]
             if ref_win is not None:
                 ref_win = filtfilt(b, a, ref_win)
-                ref_win = ref_win[::D]
+
+            if D > 1:
+                sig_win = sig_win[::D]
+                theta_win = theta_win[::D]
+                if ref_win is not None:
+                    ref_win = ref_win[::D]
         elif D > 1:
             # Fallback if window is too short
             sig_win = sig_win[::D]
