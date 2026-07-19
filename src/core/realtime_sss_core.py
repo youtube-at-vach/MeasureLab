@@ -265,7 +265,7 @@ class RealtimeSSSEngine:
         if D > 1 and len(sig_win) < D * min_samples:
             D = max(1, len(sig_win) // min_samples)
 
-        if D > 1 and len(sig_win) >= 15:
+        if len(sig_win) >= 15:
             # 2. Smooth cutoff frequency independent of discrete step D
             fc = 2.2 * P * max(1.0, local_freq)
             # Cap at 0.45 * fs to prevent Butterworth design errors near Nyquist limit
@@ -277,11 +277,14 @@ class RealtimeSSSEngine:
 
             # Apply zero-phase filtering
             sig_win = filtfilt(b, a, sig_win)
-            sig_win = sig_win[::D]
-            theta_win = theta_win[::D]
             if ref_win is not None:
                 ref_win = filtfilt(b, a, ref_win)
-                ref_win = ref_win[::D]
+
+            if D > 1:
+                sig_win = sig_win[::D]
+                theta_win = theta_win[::D]
+                if ref_win is not None:
+                    ref_win = ref_win[::D]
         elif D > 1:
             # Fallback if window is too short
             sig_win = sig_win[::D]
@@ -298,6 +301,36 @@ class RealtimeSSSEngine:
                 active_max_harmonic = k - 1
                 break
         active_max_harmonic = max(1, active_max_harmonic)
+
+        # Adaptive frequency drift correction using reference input (2-Ch XFER mode)
+        if has_ref and ref_win is not None and len(ref_win) >= 16:
+            N_win = len(ref_win)
+            half_len = N_win // 2
+
+            # 1. Early half fit
+            w_early = np.hanning(half_len)
+            theta_early = theta_win[:half_len]
+            ref_early = ref_win[:half_len]
+            results_early, _ = self._fit_harmonics(theta_early, ref_early, w_early, active_max_harmonic=1)
+            ref_h1_early = results_early[0] * 1j
+            phi_early = np.angle(ref_h1_early)
+
+            # 2. Late half fit
+            w_late = np.hanning(half_len)
+            theta_late = theta_win[-half_len:]
+            ref_late = ref_win[-half_len:]
+            results_late, _ = self._fit_harmonics(theta_late, ref_late, w_late, active_max_harmonic=1)
+            ref_h1_late = results_late[0] * 1j
+            phi_late = np.angle(ref_h1_late)
+
+            # 3. Calculate measured frequency drift
+            delta_phi = np.arctan2(np.sin(phi_late - phi_early), np.cos(phi_late - phi_early))
+            delta_t = (N_win - half_len) / (fs / D)
+
+            if delta_t > 0:
+                delta_f_meas = delta_phi / (2.0 * np.pi * delta_t)
+                idx_rel = np.arange(N_win) - (N_win - 1) / 2.0
+                theta_win = theta_win + 2.0 * np.pi * delta_f_meas * idx_rel / (fs / D)
 
         weights = np.hanning(len(sig_win))
         if not np.any(weights > 0):
