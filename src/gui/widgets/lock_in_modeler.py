@@ -62,7 +62,7 @@ class LatencyCalibThread(QThread):
 
 
 class SSSCalculationThread(QThread):
-    block_calculated = pyqtSignal(int, int, float, list, bool)  # block_idx, sweep_idx, f_mid, results, is_valid
+    block_calculated = pyqtSignal(int, int, float, list, bool, float)  # block_idx, sweep_idx, f_mid, results, is_valid
     sweep_finished = pyqtSignal(int)  # sweep_idx
 
     def __init__(self, engine, input_queue, prevent_underrun=False):
@@ -91,11 +91,11 @@ class SSSCalculationThread(QThread):
                             break
                         p_block_idx, p_sweep_idx, p_sig_in, p_ref_in, p_max_blocks = p_item
                         try:
-                            f_mid, results = self.engine.process_input_block(
+                            f_mid, results, quality = self.engine.process_input_block(
                                 p_sig_in, p_block_idx, ref_in_block=p_ref_in
                             )
                             is_valid = self.engine.last_block_was_valid
-                            self.block_calculated.emit(p_block_idx, p_sweep_idx, f_mid, results, is_valid)
+                            self.block_calculated.emit(p_block_idx, p_sweep_idx, f_mid, results, is_valid, quality)
                         except Exception as e:
                             logger.error(f"Error in background computation: {e}", exc_info=True)
                         if p_block_idx == p_max_blocks - 1:
@@ -104,9 +104,9 @@ class SSSCalculationThread(QThread):
             else:
                 # Perform the computationally heavy Least-Squares fit in the background
                 try:
-                    f_mid, results = self.engine.process_input_block(sig_in, block_idx, ref_in_block=ref_in)
+                    f_mid, results, quality = self.engine.process_input_block(sig_in, block_idx, ref_in_block=ref_in)
                     is_valid = self.engine.last_block_was_valid
-                    self.block_calculated.emit(block_idx, sweep_idx, f_mid, results, is_valid)
+                    self.block_calculated.emit(block_idx, sweep_idx, f_mid, results, is_valid, quality)
                 except Exception as e:
                     logger.error(f"Error in background computation: {e}", exc_info=True)
 
@@ -654,10 +654,27 @@ class LockInModelerWidget(QWidget):
         self.plot_tabs.addTab(self.kernel_tab, tr("Impulse Responses (Kernels)"))
         self.plot_tabs.setTabEnabled(1, False)
 
+        # Tab 3: Lock-in SNR
+        self.quality_tab = QWidget()
+        quality_layout = QVBoxLayout(self.quality_tab)
+        self.plot_quality = pg.PlotWidget(title=tr("Lock-in SNR"))
+        self.plot_quality.setMinimumHeight(150)
+        self.plot_quality.setLabel("bottom", tr("Frequency (Hz)"))
+        self.plot_quality.setLabel("left", tr("SNR"), units="dB")
+        self.plot_quality.setLogMode(x=True, y=False)
+        self.plot_quality.showGrid(x=True, y=True)
+        self.plot_quality.setYRange(-20, 100)
+        self.plot_quality.setXLink(self.plot_mag)
+        quality_layout.addWidget(self.plot_quality)
+        self.plot_tabs.addTab(self.quality_tab, tr("Lock-in SNR"))
+
+
+
         # Create Plot Curves with distinct colors (modernized palette)
         # 1st: Light Blue, 2nd: Light Green, 3rd: Light Amber, 4th: Purple, 5th: Light Red
         self.colors = ["#4fc3f7", "#81c784", "#ffd54f", "#ba68c8", "#e57373"]
         self.mag_curves = []
+        self.quality_curve = self.plot_quality.plot(pen="#ffffff", name=tr("SNR"))
         self.phase_curves = []
         self.kernel_curves = []
 
@@ -827,6 +844,7 @@ class LockInModelerWidget(QWidget):
                 self.mag_curves[idx].setData([], [])
                 self.phase_curves[idx].setData([], [])
                 self.kernel_curves[idx].setData([], [])
+            self.quality_curve.setData([], [])
 
             self.plot_tabs.setTabEnabled(1, False)
 
@@ -842,6 +860,7 @@ class LockInModelerWidget(QWidget):
             self.accumulated_results = np.zeros((self.max_blocks, 5), dtype=complex)
             self.block_counts = np.zeros(self.max_blocks, dtype=int)
             self.plot_freqs_array = np.zeros(self.max_blocks)
+            self.accumulated_quality = np.zeros(self.max_blocks)
             self.current_analysis_freq = None
 
             self.H_freqs = []
@@ -853,6 +872,7 @@ class LockInModelerWidget(QWidget):
                     (self.num_amplitudes, self.max_blocks, self.module.max_harmonic), dtype=complex
                 )
                 self.raw_counts = np.zeros((self.num_amplitudes, self.max_blocks), dtype=int)
+                self.raw_quality = np.zeros((self.num_amplitudes, self.max_blocks))
 
             # Spawn calculation thread (always asynchronous)
             self.calc_thread = SSSCalculationThread(
@@ -1077,7 +1097,7 @@ class LockInModelerWidget(QWidget):
         f_min = min(self.module.start_freq, self.module.end_freq)
         f_max = max(self.module.start_freq, self.module.end_freq)
 
-        for block_idx, sweep_idx, f_mid, results, is_valid in items:
+        for block_idx, sweep_idx, f_mid, results, is_valid, quality in items:
             if is_valid and block_idx < self.max_blocks:
                 if f_min <= f_mid <= f_max:
                     n_harm = min(len(results), 5)
@@ -1085,6 +1105,7 @@ class LockInModelerWidget(QWidget):
                     self.accumulated_results[block_idx, :n_harm] += results[:n_harm]
                     self.block_counts[block_idx] += 1
                     self.plot_freqs_array[block_idx] = f_mid
+                    self.accumulated_quality[block_idx] += quality
                     latest_f_mid = f_mid
                     self.current_analysis_freq = latest_f_mid
 
@@ -1094,6 +1115,7 @@ class LockInModelerWidget(QWidget):
                         if amp_idx < self.num_amplitudes:
                             self.raw_responses[amp_idx, block_idx, :n_harm] += results[:n_harm]
                             self.raw_counts[amp_idx, block_idx] += 1
+                            self.raw_quality[amp_idx, block_idx] += quality
         return True
 
     def update_plots(self):
@@ -1277,6 +1299,20 @@ class LockInModelerWidget(QWidget):
                 self.mag_curves[idx].setData(x_data, y_gain_smoothed)
                 self.phase_curves[idx].setData(x_data, y_phase_smoothed)
 
+            avg_quality = np.zeros(len(valid_indices))
+            avg_quality[pos] = self.raw_quality[amp_idx, valid_indices[pos]] / counts[pos]
+
+            # Convert R^2 back to relative residual power, then to SNR dB: -10*log10(1 - R^2)
+            # R^2 = 1 - (ss_res / ss_tot)  =>  ss_res / ss_tot = 1 - R^2
+            # SNR = -10 * log10(ss_res / ss_tot) = -10 * log10(1 - R^2)
+            resid_ratio = 1.0 - avg_quality
+            resid_ratio = np.clip(resid_ratio, 1e-12, 1.0) # avoid log(0)
+            snr_db = -10.0 * np.log10(resid_ratio)
+
+            # Use sort_idx to order by frequency when plotting
+            sort_idx = np.argsort(x_data)
+            self.quality_curve.setData(x_data[sort_idx], snr_db[sort_idx])
+
             return
 
         # Check if we should draw the final kernels
@@ -1353,6 +1389,16 @@ class LockInModelerWidget(QWidget):
 
             self.mag_curves[idx].setData(x_data, y_gain_smoothed)
             self.phase_curves[idx].setData(x_data, y_phase_smoothed)
+
+        counts = self.block_counts[valid_indices]
+        avg_quality = self.accumulated_quality[valid_indices] / counts
+
+        resid_ratio = 1.0 - avg_quality
+        resid_ratio = np.clip(resid_ratio, 1e-12, 1.0)
+        snr_db = -10.0 * np.log10(resid_ratio)
+
+        sort_idx = np.argsort(x_data)
+        self.quality_curve.setData(x_data[sort_idx], snr_db[sort_idx])
 
     def apply_smoothing(self, y_data, level):
         if level == "None" or len(y_data) < 15:
@@ -1617,9 +1663,9 @@ class LockInModelerWidget(QWidget):
             logger.error("Failed to export Hammerstein model to %s", filepath, exc_info=True)
             QMessageBox.critical(self, tr("Export Failed"), tr("Failed to save nonlinear model: {0}").format(e))
 
-    def on_block_calculated(self, block_idx, sweep_idx, f_mid, results, is_valid):
+    def on_block_calculated(self, block_idx, sweep_idx, f_mid, results, is_valid, quality):
         with self.module.lock:
-            self.module.measurement_queue.append((block_idx, sweep_idx, f_mid, results, is_valid))
+            self.module.measurement_queue.append((block_idx, sweep_idx, f_mid, results, is_valid, quality))
 
     def on_sweep_finished(self, sweep_idx):
         try:
@@ -1636,6 +1682,7 @@ class LockInModelerWidget(QWidget):
                         if new_amp_idx != old_amp_idx:
                             self.accumulated_results.fill(0.0j)
                             self.block_counts.fill(0)
+                            self.accumulated_quality.fill(0.0)
                         self.module.engine.output_amplitude = self.amplitudes[new_amp_idx]
 
                     self.module.engine.reset_filter_states()

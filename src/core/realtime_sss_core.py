@@ -62,6 +62,7 @@ class RealtimeSSSEngine:
 
         # Cache for decimation optimization
         self.last_results = [0.0j] * self.max_harmonic
+        self.last_quality = 0.0
         self.meas_freqs = np.zeros(0)
         self.next_meas_idx = 0
         self.is_ascending = True
@@ -128,6 +129,7 @@ class RealtimeSSSEngine:
         self.reset_analysis_history()
         self.next_meas_idx = 0
         self.last_results = [0.0j] * self.max_harmonic
+        self.last_quality = 0.0
         self.last_block_was_valid = False
 
     def reset_analysis_history(self):
@@ -187,12 +189,12 @@ class RealtimeSSSEngine:
 
     def _fit_harmonics(
         self, theta: np.ndarray, y: np.ndarray, weights: np.ndarray, active_max_harmonic: int | None = None
-    ) -> list[complex]:
+    ) -> tuple[list[complex], float]:
         if active_max_harmonic is None:
             active_max_harmonic = self.max_harmonic
 
         if len(y) < max(8, 3 * (2 * active_max_harmonic + 1)):
-            return [0.0j] * self.max_harmonic
+            return [0.0j] * self.max_harmonic, 0.0
 
         N = len(theta)
         p_vals = np.arange(1, active_max_harmonic + 1)
@@ -207,18 +209,27 @@ class RealtimeSSSEngine:
         weighted_y = y * weights
 
         try:
-            coeffs, *_ = np.linalg.lstsq(weighted_design, weighted_y, rcond=None)
+            coeffs, residuals, rank, s = np.linalg.lstsq(weighted_design, weighted_y, rcond=None)
         except np.linalg.LinAlgError:
-            return [0.0j] * self.max_harmonic
+            return [0.0j] * self.max_harmonic, 0.0
+
+        if residuals.size > 0:
+            ss_res = residuals[0]
+        else:
+            fitted = weighted_design @ coeffs
+            ss_res = np.sum((weighted_y - fitted) ** 2)
+
+        ss_tot = np.sum(weighted_y ** 2)
+        quality = 1.0 - (ss_res / ss_tot) if ss_tot > 1e-12 else 0.0
 
         results = [complex(coeffs[1 + 2 * p], -coeffs[2 + 2 * p]) for p in range(active_max_harmonic)]
         if len(results) < self.max_harmonic:
             results.extend([0.0j] * (self.max_harmonic - len(results)))
-        return results
+        return results, quality
 
-    def _execute_ls_fit(self, f_mid: float, has_ref: bool) -> tuple[float, list[complex]]:
+    def _execute_ls_fit(self, f_mid: float, has_ref: bool) -> tuple[float, list[complex], float]:
         if not self._hist_n:
-            return f_mid, [0.0j] * self.max_harmonic
+            return f_mid, [0.0j] * self.max_harmonic, 0.0
 
         hist_n = np.concatenate(self._hist_n)
         hist_theta = np.concatenate(self._hist_theta)
@@ -234,7 +245,7 @@ class RealtimeSSSEngine:
         start_n = last_valid_n - window_samples
         mask = hist_n >= start_n
         if np.count_nonzero(mask) < max(64, 4 * (2 * self.max_harmonic + 1)):
-            return f_mid, [0.0j] * self.max_harmonic
+            return f_mid, [0.0j] * self.max_harmonic, 0.0
 
         theta_win = hist_theta[mask]
         sig_win = hist_signal[mask]
@@ -290,9 +301,9 @@ class RealtimeSSSEngine:
 
         weights = np.hanning(len(sig_win))
         if not np.any(weights > 0):
-            return f_mid, [0.0j] * self.max_harmonic
+            return f_mid, [0.0j] * self.max_harmonic, 0.0
 
-        sig_results = self._fit_harmonics(theta_win, sig_win, weights, active_max_harmonic)
+        sig_results, quality = self._fit_harmonics(theta_win, sig_win, weights, active_max_harmonic)
         result_freq = self._frequency_at_sample(float(np.mean(hist_n[mask])))
 
         # Apply 90-degree phase correction (multiply by 1j) to match sine excitation
@@ -300,15 +311,15 @@ class RealtimeSSSEngine:
         sig_results = [val * 1j for val in sig_results]
 
         if not has_ref or ref_win is None or len(ref_win) != len(sig_win):
-            return result_freq, sig_results
+            return result_freq, sig_results, quality
 
-        ref_results = self._fit_harmonics(theta_win, ref_win, weights, active_max_harmonic)
+        ref_results, _ = self._fit_harmonics(theta_win, ref_win, weights, active_max_harmonic)
         ref_h1 = ref_results[0] if ref_results else 0.0j
         # Also apply 90-degree phase correction to the reference fundamental
         ref_h1 = ref_h1 * 1j
         ref_mag = np.abs(ref_h1)
         if ref_mag <= 1e-24:
-            return result_freq, [0.0j] * self.max_harmonic
+            return result_freq, [0.0j] * self.max_harmonic, 0.0
 
         ref_u = ref_h1 / ref_mag
 
@@ -325,7 +336,7 @@ class RealtimeSSSEngine:
                 corrected = value * np.conj(ref_u_k) / ref_mag
             corrected_results.append(corrected)
 
-        return result_freq, corrected_results
+        return result_freq, corrected_results, quality
 
     def _process_block_ls(
         self,
@@ -335,7 +346,7 @@ class RealtimeSSSEngine:
         f_mid: float,
         valid_mask: np.ndarray,
         ref_in_block: np.ndarray | None,
-    ) -> tuple[float, list[complex]]:
+    ) -> tuple[float, list[complex], float]:
         r_raw = None
         if ref_in_block is not None:
             if ref_in_block.shape[1] >= 1:
@@ -400,7 +411,7 @@ class RealtimeSSSEngine:
         indata_block: np.ndarray,
         block_index: int,
         ref_in_block: np.ndarray | None = None,
-    ) -> tuple[float, list[complex]]:
+    ) -> tuple[float, list[complex], float]:
         """
         Buffers recorded loops and runs lock-in Least-Squares demodulation.
         This can be computationally heavy and is safe to be called in a background thread.
@@ -434,7 +445,7 @@ class RealtimeSSSEngine:
         # We demodulate the signal if there is at least one valid sample in this block
         if not np.any(valid_mask):
             self.last_block_was_valid = False
-            return f_mid, [0.0j] * self.max_harmonic
+            return f_mid, [0.0j] * self.max_harmonic, 0.0
 
         # Construct input signal
         if indata_block.shape[1] >= 1:
@@ -474,11 +485,12 @@ class RealtimeSSSEngine:
                 break
 
         if should_calc:
-            _, results = self._execute_ls_fit(f_mid, ref_in_block is not None)
+            _, results, quality = self._execute_ls_fit(f_mid, ref_in_block is not None)
             self.last_results = results
+            self.last_quality = quality
 
         self.last_block_was_valid = True
-        return f_mid, self.last_results
+        return f_mid, self.last_results, self.last_quality
 
     def process_block(
         self,

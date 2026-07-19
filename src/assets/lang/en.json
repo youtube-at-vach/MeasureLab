@@ -2041,5 +2041,7 @@
     "⬆︎Update available: {0}": "⬆︎Update available: {0}",
     "🔴 DANGEROUS - HIGH INTENSITY 🔴": "🔴 DANGEROUS - HIGH INTENSITY 🔴",
     "🟡 CAUTION - ULTRASOUND ACTIVE 🟡": "🟡 CAUTION - ULTRASOUND ACTIVE 🟡",
-    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 SAFE - LOW INTENSITY 🟢"
+    "🟢 SAFE - LOW INTENSITY 🟢": "🟢 SAFE - LOW INTENSITY 🟢",
+    "Lock-in SNR": "Lock-in SNR",
+    "SNR": "SNR"
 }
