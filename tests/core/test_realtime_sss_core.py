@@ -450,3 +450,80 @@ def test_engine_generate_output_block():
     outdata_block.fill(1.0) # fill with ones so we can see if it was zeroed
     engine.generate_output_block(outdata_block, post_sweep_index)
     assert np.all(outdata_block == 0.0)
+
+
+def test_engine_adaptive_drift_correction():
+    import scipy.signal as signal
+    
+    # 48kHz, 20.0s sweep from 20 to 20000 Hz, output_amplitude=0.5, analysis_cycles=64.0
+    engine = RealtimeSSSEngine(48000, 20.0, 20, 20000, 0.5, 3, analysis_cycles=64.0)
+    engine.prepare_sweep()
+    engine.set_latency(0)
+    
+    # Simulate a low frequency sweep where AC coupling shifts phase
+    # Highpass filter at 10Hz (2nd order butterworth)
+    fc = 10.0
+    fs = 48000.0
+    nyq = fs / 2.0
+    b, a = signal.butter(2, fc / nyq, btype='high')
+    
+    # Generate full SSS signal and apply highpass filter
+    out_sig = engine.out_sig
+    assert out_sig is not None
+    filtered_sig = signal.lfilter(b, a, out_sig)
+    
+    # We will test in the middle of a block containing 100 Hz to avoid startup transients
+    # Let's find where 100Hz occurs
+    f1 = 20.0 / 1.3
+    t_100 = engine.L_param * np.log(100.0 / f1)
+    sample_100 = int(np.round(t_100 * fs))
+    
+    # Analyze a block around 100 Hz
+    frames = 1024
+    block_index = sample_100 // frames
+    
+    # Extract blocks and process in sequence to build history
+    sig_blocks = []
+    ref_blocks = []
+    for idx in range(block_index + 1):
+        start = idx * frames
+        end = start + frames
+        sb = np.zeros((frames, 1))
+        rb = np.zeros((frames, 1))
+        if end <= len(filtered_sig):
+            sb[:, 0] = filtered_sig[start:end]
+            rb[:, 0] = filtered_sig[start:end]
+        sig_blocks.append(sb)
+        ref_blocks.append(rb)
+        
+    # Reset filter states
+    engine.reset_filter_states()
+    
+    # 1. Process with has_ref=True (adaptive correction active)
+    for idx in range(block_index + 1):
+        f_mid, _, _ = engine.process_input_block(
+            sig_blocks[idx], idx, ref_in_block=ref_blocks[idx]
+        )
+    # Directly execute the LS fit at the end to get the exact latest SNR
+    _, results_corr, quality_corr = engine._execute_ls_fit(f_mid, has_ref=True)
+    
+    # 2. Process with ref_in_block=None (no correction)
+    engine.reset_filter_states()
+    for idx in range(block_index + 1):
+        f_mid, _, _ = engine.process_input_block(
+            sig_blocks[idx], idx, ref_in_block=None
+        )
+    # Directly execute the LS fit at the end to get the exact latest SNR
+    _, results_nocorr, quality_nocorr = engine._execute_ls_fit(f_mid, has_ref=False)
+    
+    # Verify that adaptive frequency drift correction improves quality (SNR)
+    snr_corr = -10.0 * np.log10(1.0 - quality_corr) if quality_corr < 1.0 else 120.0
+    snr_nocorr = -10.0 * np.log10(1.0 - quality_nocorr) if quality_nocorr < 1.0 else 120.0
+    
+    print(f"Pytest SNR Comparison - Corrected: {snr_corr:.2f} dB, Uncorrected: {snr_nocorr:.2f} dB")
+    
+    # Expect corrected SNR to be significantly better (at least 10 dB improvement)
+    assert snr_corr > snr_nocorr + 10.0
+    # Also verify quality is valid
+    assert 0.0 <= quality_corr <= 1.0
+
