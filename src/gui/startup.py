@@ -15,12 +15,12 @@ class TopLevelWindowLogger(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.logger = logging.getLogger(__name__)
-        self._trace_enabled = os.environ.get("MEASURELAB_DEBUG_WINDOWS_TRACE", "").strip() not in (
+        self._trace_enabled = os.environ.get("MEASURELAB_DEBUG_WINDOWS_TRACE", "").strip() not in {
             "",
             "0",
             "false",
             "False",
-        )
+        }
         self._traced_ids = set()
 
     def _maybe_trace(self, obj: QWidget) -> None:
