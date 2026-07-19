@@ -188,22 +188,33 @@ class RealtimeSSSEngine:
             self._hist_ref.pop(0)
 
     def _fit_harmonics(
-        self, theta: np.ndarray, y: np.ndarray, weights: np.ndarray, active_max_harmonic: int | None = None
+        self, theta: np.ndarray, y: np.ndarray, weights: np.ndarray, active_max_harmonic: int | None = None,
+        f_win: np.ndarray | None = None
     ) -> tuple[list[complex], float]:
         if active_max_harmonic is None:
             active_max_harmonic = self.max_harmonic
 
-        if len(y) < max(8, 3 * (2 * active_max_harmonic + 1)):
+        # If f_win is provided, we use the augmented model to correct latency drift
+        num_params = 1 + 4 * active_max_harmonic if f_win is not None else 1 + 2 * active_max_harmonic
+
+        if len(y) < max(8, 3 * num_params):
             return [0.0j] * self.max_harmonic, 0.0
 
         N = len(theta)
         p_vals = np.arange(1, active_max_harmonic + 1)
         p_theta = theta[:, None] * p_vals
 
-        design = np.empty((N, 1 + 2 * active_max_harmonic))
+        design = np.empty((N, num_params))
         design[:, 0] = 1.0
-        design[:, 1::2] = np.cos(p_theta)
-        design[:, 2::2] = np.sin(p_theta)
+
+        if f_win is not None:
+            design[:, 1::4] = np.cos(p_theta)
+            design[:, 2::4] = np.sin(p_theta)
+            design[:, 3::4] = np.cos(p_theta) * f_win[:, None]
+            design[:, 4::4] = np.sin(p_theta) * f_win[:, None]
+        else:
+            design[:, 1::2] = np.cos(p_theta)
+            design[:, 2::2] = np.sin(p_theta)
 
         weighted_design = design * weights[:, None]
         weighted_y = y * weights
@@ -222,7 +233,13 @@ class RealtimeSSSEngine:
         ss_tot = np.sum(weighted_y ** 2)
         quality = 1.0 - (ss_res / ss_tot) if ss_tot > 1e-12 else 0.0
 
-        results = [complex(coeffs[1 + 2 * p], -coeffs[2 + 2 * p]) for p in range(active_max_harmonic)]
+        results = []
+        for p in range(active_max_harmonic):
+            if f_win is not None:
+                results.append(complex(coeffs[1 + 4 * p], -coeffs[2 + 4 * p]))
+            else:
+                results.append(complex(coeffs[1 + 2 * p], -coeffs[2 + 2 * p]))
+
         if len(results) < self.max_harmonic:
             results.extend([0.0j] * (self.max_harmonic - len(results)))
         return results, quality
@@ -303,7 +320,15 @@ class RealtimeSSSEngine:
         if not np.any(weights > 0):
             return f_mid, [0.0j] * self.max_harmonic, 0.0
 
-        sig_results, quality = self._fit_harmonics(theta_win, sig_win, weights, active_max_harmonic)
+        # Local frequency centered around f_mid for numerical stability
+        f_win = None
+        if self.L_param > 0:
+            hist_n_win = hist_n[mask]
+            if D > 1:
+                hist_n_win = hist_n_win[::D]
+            f_win = self.start_freq * np.exp((hist_n_win / self.sample_rate) / self.L_param) - f_mid
+
+        sig_results, quality = self._fit_harmonics(theta_win, sig_win, weights, active_max_harmonic, f_win=f_win)
         result_freq = self._frequency_at_sample(float(np.mean(hist_n[mask])))
 
         # Apply 90-degree phase correction (multiply by 1j) to match sine excitation
@@ -313,7 +338,7 @@ class RealtimeSSSEngine:
         if not has_ref or ref_win is None or len(ref_win) != len(sig_win):
             return result_freq, sig_results, quality
 
-        ref_results, _ = self._fit_harmonics(theta_win, ref_win, weights, active_max_harmonic)
+        ref_results, _ = self._fit_harmonics(theta_win, ref_win, weights, active_max_harmonic, f_win=f_win)
         ref_h1 = ref_results[0] if ref_results else 0.0j
         # Also apply 90-degree phase correction to the reference fundamental
         ref_h1 = ref_h1 * 1j
