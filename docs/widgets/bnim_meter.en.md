@@ -18,8 +18,8 @@ When detached using the Detachable Wrapper, pressing the "Compact" button switch
 
 * **Horizontal Axis (ITD - Interaural Time Difference)**: Represents the direction of sound arrival.
     * **Center (0 ms)**: Components localized in the front (center).
-    * **Left side (- ms)**: Components where sound reaches the left ear first, meaning they are heard from the "left."
-    * **Right side (+ ms)**: Components where sound reaches the right ear first, meaning they are heard from the "right."
+    * **Left side (- ms)**: Components where sound reaches the left ear first (heard from the "left").
+    * **Right side (+ ms)**: Components where sound reaches the right ear first (heard from the "right").
 * **Vertical Axis (Frequency)**: Represents the frequency (pitch). Up is high sound, down is low sound.
 * **Color**: Represents the "strength of localization" at that position and height. The brighter (yellow to white) it is, the more strongly the sound is heard from that direction.
 

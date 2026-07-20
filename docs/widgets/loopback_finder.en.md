@@ -38,5 +38,5 @@ Signal Level is a useful clue, but it should not be treated as an exact gain mea
 ## Usage Examples
 
 * **Verifying Wiring**: Check whether your assumption that "sound from Output 3 should reach Input 5" is actually correct, without repeatedly unplugging and reconnecting cables.
-* **Detecting Internal Leaks**: Find signal leakage between channels that should not be connected, such as crosstalk or unintended internal loop paths.
+* **Detecting Internal Leaks**: Find signal leakage between channels that should not be connected (crosstalk or unintended internal loop paths).
 * **Pre-flight Check Before Measurement**: Use it before distortion or transfer-function measurements to make sure the signal path matches your plan.

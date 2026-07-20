@@ -28,7 +28,6 @@ A timecode (LTC) signal contains precise time information (`hour:minute:second:f
 
 * **Start Monitor / Stop Monitor Button**: Starts and stops monitoring (reading) the timecode.
     * When the generator is enabled, monitoring also starts automatically.
-    * In other words, even if you think of it as "output only", the monitor side runs too.
 
 ### How to Read the Screen
 
@@ -95,9 +94,6 @@ Up to 5 slots are saved, which can be referenced later or used as initial values
 * **Slot**: Memory number (1-5)
 * **Captured**: The timecode value at the moment the JAM button was pressed.
 * **Current**: The estimated current timecode value, calculated by adding the elapsed time since capture.
-
-!!! tip
-    Think of **Captured** as "the exact value we stored then" and **Current** as "where that value would be now if it had kept running normally."
 
 ### Calibration
 
