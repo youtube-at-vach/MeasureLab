@@ -527,3 +527,54 @@ def test_engine_adaptive_drift_correction():
     # Also verify quality is valid
     assert 0.0 <= quality_corr <= 1.0
 
+
+def test_engine_weak_reference_guard():
+    # Verify that a weak or absent reference channel does not blow up output amplitudes or SNR calculations.
+    engine = RealtimeSSSEngine(48000, 5.0, 20, 20000, 0.5, 3, analysis_cycles=64.0)
+    engine.prepare_sweep()
+    engine.set_latency(0)
+
+    out_sig = engine.out_sig
+    assert out_sig is not None
+    frames = 1024
+
+    # Analyze a block around 1000 Hz
+    t_1k = engine.L_param * np.log(1000.0 / (20.0 / 1.3))
+    sample_1k = int(np.round(t_1k * engine.sample_rate))
+    block_index = sample_1k // frames
+
+    # 1. Noisy / weak reference input (e.g. noise floor at -100dB, 1e-5)
+    engine.reset_filter_states()
+    for idx in range(block_index + 1):
+        start = idx * frames
+        end = start + frames
+        sb = np.zeros((frames, 1))
+        rb = np.zeros((frames, 1))
+        if end <= len(out_sig):
+            sb[:, 0] = out_sig[start:end]
+            rb[:, 0] = np.random.normal(0, 1e-6, frames) # noisy reference
+
+        f_mid, sig_results, quality = engine.process_input_block(sb, idx, ref_in_block=rb)
+
+    # Check that amplitude is not exploded (since ref_mag <= 1e-6, it should return 0.0)
+    fundamental_amp = np.abs(sig_results[0])
+    assert fundamental_amp == 0.0
+    assert quality == 0.0
+
+    # 2. Pure silent reference input (zeros)
+    engine.reset_filter_states()
+    for idx in range(block_index + 1):
+        start = idx * frames
+        end = start + frames
+        sb = np.zeros((frames, 1))
+        rb = np.zeros((frames, 1)) # silence
+        if end <= len(out_sig):
+            sb[:, 0] = out_sig[start:end]
+
+        f_mid, sig_results, quality = engine.process_input_block(sb, idx, ref_in_block=rb)
+
+    fundamental_amp_silent = np.abs(sig_results[0])
+    assert fundamental_amp_silent == 0.0
+    assert quality == 0.0
+
+

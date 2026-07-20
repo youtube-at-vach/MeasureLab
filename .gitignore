@@ -100,3 +100,4 @@ scripts/lock_in_modeler_hammerstein_verification_results.json
 scripts/lock_in_modeler_repeatability_results.json
 scripts/hammerstein_optimization_summary.json
 kernel_sample*.json
+scripts/lock_in_modeler_hammerstein_sweep_results.json

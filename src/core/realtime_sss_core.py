@@ -220,7 +220,7 @@ class RealtimeSSSEngine:
             ss_res = np.sum((weighted_y - fitted) ** 2)
 
         ss_tot = np.sum(weighted_y ** 2)
-        quality = 1.0 - (ss_res / ss_tot) if ss_tot > 1e-12 else 0.0
+        quality = np.clip(1.0 - (ss_res / ss_tot), 0.0, 1.0) if ss_tot > 1e-12 else 0.0
 
         results = [complex(coeffs[1 + 2 * p], -coeffs[2 + 2 * p]) for p in range(active_max_harmonic)]
         if len(results) < self.max_harmonic:
@@ -265,16 +265,17 @@ class RealtimeSSSEngine:
         if D > 1 and len(sig_win) < D * min_samples:
             D = max(1, len(sig_win) // min_samples)
 
-        if len(sig_win) >= 15:
-            # 2. Smooth cutoff frequency independent of discrete step D
-            fc = 2.2 * P * max(1.0, local_freq)
-            # Cap at 0.45 * fs to prevent Butterworth design errors near Nyquist limit
-            fc = min(fc, 0.45 * fs)
-            nyq = fs / 2.0
+        # 2. Smooth cutoff frequency independent of discrete step D
+        fc = 2.2 * P * max(1.0, local_freq)
+        # Cap at 0.45 * fs to prevent Butterworth design errors near Nyquist limit
+        fc = min(fc, 0.45 * fs)
+        nyq = fs / 2.0
 
-            # Design 4th-order Butterworth LPF
-            b, a = butter(4, fc / nyq, btype="low")
+        # Design 4th-order Butterworth LPF
+        b, a = butter(4, fc / nyq, btype="low")
+        padlen = 3 * max(len(a), len(b))
 
+        if len(sig_win) >= padlen:
             # Apply zero-phase filtering
             sig_win = filtfilt(b, a, sig_win)
             if ref_win is not None:
@@ -311,26 +312,30 @@ class RealtimeSSSEngine:
             w_early = np.hanning(half_len)
             theta_early = theta_win[:half_len]
             ref_early = ref_win[:half_len]
-            results_early, _ = self._fit_harmonics(theta_early, ref_early, w_early, active_max_harmonic=1)
+            results_early, q_early = self._fit_harmonics(theta_early, ref_early, w_early, active_max_harmonic=1)
             ref_h1_early = results_early[0] * 1j
             phi_early = np.angle(ref_h1_early)
+            ref_mag_early = np.abs(ref_h1_early)
 
             # 2. Late half fit
             w_late = np.hanning(half_len)
             theta_late = theta_win[-half_len:]
             ref_late = ref_win[-half_len:]
-            results_late, _ = self._fit_harmonics(theta_late, ref_late, w_late, active_max_harmonic=1)
+            results_late, q_late = self._fit_harmonics(theta_late, ref_late, w_late, active_max_harmonic=1)
             ref_h1_late = results_late[0] * 1j
             phi_late = np.angle(ref_h1_late)
+            ref_mag_late = np.abs(ref_h1_late)
 
-            # 3. Calculate measured frequency drift
-            delta_phi = np.arctan2(np.sin(phi_late - phi_early), np.cos(phi_late - phi_early))
-            delta_t = (N_win - half_len) / (fs / D)
+            # Only apply drift correction if reference signal has sufficient level and lock-in quality
+            if ref_mag_early > 1e-6 and ref_mag_late > 1e-6 and q_early > 0.6 and q_late > 0.6:
+                # 3. Calculate measured frequency drift
+                delta_phi = np.arctan2(np.sin(phi_late - phi_early), np.cos(phi_late - phi_early))
+                delta_t = (N_win - half_len) / (fs / D)
 
-            if delta_t > 0:
-                delta_f_meas = delta_phi / (2.0 * np.pi * delta_t)
-                idx_rel = np.arange(N_win) - (N_win - 1) / 2.0
-                theta_win = theta_win + 2.0 * np.pi * delta_f_meas * idx_rel / (fs / D)
+                if delta_t > 0:
+                    delta_f_meas = delta_phi / (2.0 * np.pi * delta_t)
+                    idx_rel = np.arange(N_win) - (N_win - 1) / 2.0
+                    theta_win = theta_win + 2.0 * np.pi * delta_f_meas * idx_rel / (fs / D)
 
         weights = np.hanning(len(sig_win))
         if not np.any(weights > 0):
@@ -351,7 +356,8 @@ class RealtimeSSSEngine:
         # Also apply 90-degree phase correction to the reference fundamental
         ref_h1 = ref_h1 * 1j
         ref_mag = np.abs(ref_h1)
-        if ref_mag <= 1e-24:
+        # Prevent division by zero or extremely small numbers that amplify noise
+        if ref_mag <= 1e-6:
             return result_freq, [0.0j] * self.max_harmonic, 0.0
 
         ref_u = ref_h1 / ref_mag

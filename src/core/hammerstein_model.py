@@ -112,6 +112,32 @@ def has_active_model():
     return _ActiveModelCache.data is not None
 
 
+def _interpolate_complex_kernel(target_freqs, source_phys_freqs, source_values):
+    """
+    Interpolates complex values along a logarithmic frequency axis.
+    source_phys_freqs and source_values must be sorted by frequency.
+    """
+    mask = ~np.isnan(source_values)
+    if np.sum(mask) < 2:
+        return np.zeros_like(target_freqs, dtype=complex)
+
+    xp = source_phys_freqs[mask]
+    vals = source_values[mask]
+
+    mags = np.abs(vals)
+    phases = np.unwrap(np.angle(vals))
+
+    # Logarithmic frequency interpolation
+    log_xp = np.log10(np.maximum(1e-3, xp))
+    log_target = np.log10(np.maximum(1e-3, target_freqs))
+
+    # Edge clamping for extrapolation safety
+    mag_interp = np.interp(log_target, log_xp, mags, left=mags[0], right=mags[-1])
+    phase_interp = np.interp(log_target, log_xp, phases, left=phases[0], right=phases[-1])
+
+    return mag_interp * np.exp(1j * phase_interp)
+
+
 def estimate_hammerstein_kernels(
     amplitudes,
     avg_responses,
@@ -149,11 +175,12 @@ def estimate_hammerstein_kernels(
             else:
                 g_scaled[amp_idx, :, p] = val * phase_corrections[p]
 
-    g1 = g_scaled[:, :, 0]
-    g2 = g_scaled[:, :, 1] if P >= 2 else np.zeros_like(g1)
-    g3 = g_scaled[:, :, 2] if P >= 3 else np.zeros_like(g1)
-    g4 = g_scaled[:, :, 3] if P >= 4 else np.zeros_like(g1)
-    g5 = g_scaled[:, :, 4] if P >= 5 else np.zeros_like(g1)
+    # Pre-sort responses to align with sorted_freqs
+    g1 = g_scaled[:, sort_idx, 0]
+    g2 = g_scaled[:, sort_idx, 1] if P >= 2 else np.zeros_like(g1)
+    g3 = g_scaled[:, sort_idx, 2] if P >= 3 else np.zeros_like(g1)
+    g4 = g_scaled[:, sort_idx, 3] if P >= 4 else np.zeros_like(g1)
+    g5 = g_scaled[:, sort_idx, 4] if P >= 5 else np.zeros_like(g1)
 
     R2 = R_array**2
     R3 = R_array**3
@@ -166,60 +193,55 @@ def estimate_hammerstein_kernels(
     sum_R4 = np.sum(R_array**4)
     sum_R2 = np.sum(R_array**2)
 
-    H5 = 16.0 * np.sum(g5 * R5[:, np.newaxis], axis=0) / sum_R10 if P >= 5 and sum_R10 > 1e-12 else np.zeros(J, dtype=complex)
-    H4 = 8.0 * np.sum(g4 * R4[:, np.newaxis], axis=0) / sum_R8 if P >= 4 and sum_R8 > 1e-12 else np.zeros(J, dtype=complex)
+    # 5th Harmonic -> H5 (measured at 5 * sorted_freqs)
+    H5_phys_val = 16.0 * np.sum(g5 * R5[:, np.newaxis], axis=0) / sum_R10 if P >= 5 and sum_R10 > 1e-12 else np.zeros(J, dtype=complex)
 
+    # 4th Harmonic -> H4 (measured at 4 * sorted_freqs)
+    H4_phys_val = 8.0 * np.sum(g4 * R4[:, np.newaxis], axis=0) / sum_R8 if P >= 4 and sum_R8 > 1e-12 else np.zeros(J, dtype=complex)
+
+    # 3rd Harmonic -> H3 (measured at 3 * sorted_freqs)
     if P >= 5:
-        g3_prime = g3 - (5.0/16.0) * H5[np.newaxis, :] * R5[:, np.newaxis]
+        # Interpolate H5(5f) to 3f to subtract from g3(f)
+        H5_at_3f = _interpolate_complex_kernel(3.0 * sorted_freqs, 5.0 * sorted_freqs, H5_phys_val)
+        g3_prime = g3 - (5.0/16.0) * H5_at_3f[np.newaxis, :] * R5[:, np.newaxis]
     else:
         g3_prime = g3
-    H3 = 4.0 * np.sum(g3_prime * R3[:, np.newaxis], axis=0) / sum_R6 if P >= 3 and sum_R6 > 1e-12 else np.zeros(J, dtype=complex)
+    H3_phys_val = 4.0 * np.sum(g3_prime * R3[:, np.newaxis], axis=0) / sum_R6 if P >= 3 and sum_R6 > 1e-12 else np.zeros(J, dtype=complex)
 
+    # 2nd Harmonic -> H2 (measured at 2 * sorted_freqs)
     if P >= 4:
-        g2_prime = g2 - 0.5 * H4[np.newaxis, :] * R4[:, np.newaxis]
+        # Interpolate H4(4f) to 2f to subtract from g2(f)
+        H4_at_2f = _interpolate_complex_kernel(2.0 * sorted_freqs, 4.0 * sorted_freqs, H4_phys_val)
+        g2_prime = g2 - 0.5 * H4_at_2f[np.newaxis, :] * R4[:, np.newaxis]
     else:
         g2_prime = g2
-    H2 = 2.0 * np.sum(g2_prime * R2[:, np.newaxis], axis=0) / sum_R4 if P >= 2 and sum_R4 > 1e-12 else np.zeros(J, dtype=complex)
+    H2_phys_val = 2.0 * np.sum(g2_prime * R2[:, np.newaxis], axis=0) / sum_R4 if P >= 2 and sum_R4 > 1e-12 else np.zeros(J, dtype=complex)
 
+    # 1st Harmonic -> H1 (measured at sorted_freqs)
     g1_prime = g1.copy()
     if P >= 3:
-        g1_prime -= 0.75 * H3[np.newaxis, :] * R3[:, np.newaxis]
+        # Interpolate H3(3f) to f to subtract from g1(f)
+        H3_at_f = _interpolate_complex_kernel(sorted_freqs, 3.0 * sorted_freqs, H3_phys_val)
+        g1_prime -= 0.75 * H3_at_f[np.newaxis, :] * R3[:, np.newaxis]
     if P >= 5:
-        g1_prime -= 0.625 * H5[np.newaxis, :] * R5[:, np.newaxis]
-    H1 = np.sum(g1_prime * R_array[:, np.newaxis], axis=0) / sum_R2 if sum_R2 > 1e-12 else np.zeros(J, dtype=complex)
+        # Interpolate H5(5f) to f to subtract from g1(f)
+        H5_at_f = _interpolate_complex_kernel(sorted_freqs, 5.0 * sorted_freqs, H5_phys_val)
+        g1_prime -= 0.625 * H5_at_f[np.newaxis, :] * R5[:, np.newaxis]
+    H1_phys_val = np.sum(g1_prime * R_array[:, np.newaxis], axis=0) / sum_R2 if sum_R2 > 1e-12 else np.zeros(J, dtype=complex)
 
-    H_est_list = [H1, H2, H3, H4, H5][:P]
+    H_est_list = [H1_phys_val, H2_phys_val, H3_phys_val, H4_phys_val, H5_phys_val][:P]
 
-    # Frequency mapping
+    # Frequency mapping to target physical grid (sorted_freqs)
     H_mapped_list = []
     for p in range(P):
-        H_raw = H_est_list[p][sort_idx]
-        f_lookups = sorted_freqs / (p + 1)
-
-        nan_mask = np.isnan(H_raw)
-        valid_mask = ~nan_mask
-
-        if np.any(valid_mask):
-            valid_H = H_raw[valid_mask]
-            xp = sorted_freqs[valid_mask]
-
-            mags_valid = np.abs(valid_H)
-            phases_valid = np.unwrap(np.angle(valid_H))
-
-            TARGET_RESOLUTION = 2000
-            if len(valid_H) > TARGET_RESOLUTION:
-                step = len(valid_H) // TARGET_RESOLUTION
-                mags_valid = mags_valid[::step]
-                phases_valid = phases_valid[::step]
-                xp = xp[::step]
-
-            mag_mapped = np.interp(f_lookups, xp, mags_valid, left=np.nan, right=np.nan)
-            phase_mapped = np.interp(f_lookups, xp, phases_valid, left=np.nan, right=np.nan)
-        else:
-            mag_mapped = np.full_like(f_lookups, np.nan)
-            phase_mapped = np.full_like(f_lookups, np.nan)
-
-        H_mapped = mag_mapped * np.exp(1j * phase_mapped)
+        H_raw = H_est_list[p]
+        # H_raw is estimated at physical frequencies (p+1) * sorted_freqs.
+        # We need to map it to target physical frequencies sorted_freqs.
+        H_mapped = _interpolate_complex_kernel(
+            target_freqs=sorted_freqs,
+            source_phys_freqs=(p + 1) * sorted_freqs,
+            source_values=H_raw
+        )
         H_mapped_list.append(H_mapped)
 
     # Apply Butterworth LPF
@@ -259,8 +281,11 @@ def predict_harmonic_response(f0, A_in, H_freqs, sorted_freqs, sample_rate, max_
                     mags = np.abs(H_raw[mask])
                     phases = np.unwrap(np.angle(H_raw[mask]))
 
-                    mag_val = np.interp(f_n, sorted_freqs[mask], mags, left=0.0, right=0.0)
-                    phase_val = np.interp(f_n, sorted_freqs[mask], phases, left=0.0, right=0.0)
+                    f_n_clamped = max(1e-3, f_n)
+                    sf_clamped = np.maximum(1e-3, sorted_freqs[mask])
+
+                    mag_val = np.interp(np.log10(f_n_clamped), np.log10(sf_clamped), mags, left=0.0, right=0.0)
+                    phase_val = np.interp(np.log10(f_n_clamped), np.log10(sf_clamped), phases, left=0.0, right=0.0)
 
                     H_interp[n][p] = mag_val * np.exp(1j * phase_val)
                 else:
