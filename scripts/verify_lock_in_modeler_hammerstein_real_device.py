@@ -30,7 +30,7 @@ def apply_hardware_non_idealities(sig, sample_rate, noise_dbfs=-85.0, jitter_sam
     fs = sample_rate
     N = len(sig)
     out_sig = sig.copy()
-    
+
     # 1. Hardware Frequency Response (converter AC coupling HPF + AA LPF)
     if apply_filter:
         # HPF at 25 Hz (DC block)
@@ -53,7 +53,7 @@ def apply_hardware_non_idealities(sig, sample_rate, noise_dbfs=-85.0, jitter_sam
         noise_rms = 10 ** (noise_dbfs / 20.0)
         noise = np.random.normal(0.0, noise_rms, N)
         out_sig += noise
-        
+
     return out_sig
 
 
@@ -126,7 +126,7 @@ def run_sss_sweep(
                 # Ch1(L, index 0) is measurement (distorted)
                 sig = out_sig
                 simulated_meas = sig - 0.08 * (sig**2) + 0.12 * (sig**3) - 0.04 * (sig**4) + 0.06 * (sig**5)
-                
+
                 indata[: len(out_sig), 0] = apply_hardware_non_idealities(
                     simulated_meas, audio_engine.sample_rate, noise_dbfs, jitter_samples, apply_filter
                 )
@@ -249,7 +249,7 @@ def run_lockin_measurement(
 
             with lockin.lock:
                 lockin.input_data = np.zeros((N, 2))
-                
+
                 ref_nonideal = apply_hardware_non_idealities(ref_sig, fs, noise_dbfs, jitter_samples, apply_filter)
                 lockin.input_data[:, signal_channel] = ref_nonideal
                 lockin.input_data[:, ref_channel] = ref_nonideal
@@ -318,22 +318,22 @@ def estimate_real_time(sweep_duration, tsa, num_amplitudes, runs, sample_rate, b
     sweep_overhead = 0.5
     single_sweep_time = sweep_duration + sweep_overhead
     total_sweep_time = single_sweep_time * tsa * num_amplitudes
-    
+
     buffer_time = buffer_size / sample_rate
     # In real mode: wait for stabilization (buffer_time), sleep 1.0s, buffer clear & capture (buffer_time)
     single_lockin_time = buffer_time + 1.0 + buffer_time + 0.1
     total_lockin_time = single_lockin_time * runs
-    
+
     return total_sweep_time + total_lockin_time
 
 
 def run_parameter_sweep(engine, cli_args):
     print("\n=== SYSTEMATIC PARAMETER SWEEP FOR ACCURACY OPTIMIZATION ===")
-    
+
     # Save original offline settings
     engine.set_offline_mode(True)
     engine.set_loopback(True)
-    
+
     # Grid search candidate parameters
     sweep_durations = [10.0, 15.0, 20.0, 30.0]
     tsa_averages = [1, 2, 3, 4]
@@ -341,16 +341,16 @@ def run_parameter_sweep(engine, cli_args):
     ref_phase_only_options = [True, False]
     lockin_runs_list = [3, 5]
     lockin_buffer_sizes = [65536, 131072]
-    
+
     max_harmonic = 5
     start_freq = 20.0
     end_freq = 20000.0
     f0 = cli_args.f0
     A_in = 10 ** (cli_args.amplitude / 20.0)
     sample_rate = engine.sample_rate
-    
+
     candidates = []
-    
+
     for sweep_duration in sweep_durations:
         for tsa in tsa_averages:
             for num_amplitudes in num_amps_list:
@@ -370,11 +370,11 @@ def run_parameter_sweep(engine, cli_args):
                                     "ref_phase_only": ref_phase_only,
                                     "estimated_time": total_time
                                 })
-                            
+
     print(f"[+] Found {len(candidates)} valid parameter combinations within the 120-second limit.")
-    
+
     results = []
-    
+
     for idx, cand in enumerate(candidates):
         sdur = cand["sweep_duration"]
         tsa = cand["tsa"]
@@ -382,17 +382,16 @@ def run_parameter_sweep(engine, cli_args):
         runs = cand["runs"]
         ref_phase_only = cand["ref_phase_only"]
         est_t = cand["estimated_time"]
-        
+
         print(f"\n[*] Evaluating candidate {idx+1}/{len(candidates)}: Dur={sdur}s, TSA={tsa}, Amps={namps}, Runs={runs}, RefPhaseOnly={ref_phase_only} (Est Time: {est_t:.1f}s)...")
-        
+
         # 1. SSS Sweep
         max_amp_db = -6.0
         max_amp_linear = 10 ** (max_amp_db / 20.0)
         amplitudes = np.linspace(0.2, 1.0, namps) * max_amp_linear
-        
+
         raw_responses_list = []
         plot_freqs = None
-        max_blocks = 0
         for amp in amplitudes:
             p_freqs, averaged_results, _, m_blocks = run_sss_sweep(
                 engine,
@@ -416,10 +415,9 @@ def run_parameter_sweep(engine, cli_args):
             )
             raw_responses_list.append(averaged_results)
             plot_freqs = p_freqs
-            max_blocks = m_blocks
-            
+
         raw_responses = np.array(raw_responses_list)
-        
+
         # 2. Kernel Estimation
         H_freqs, sorted_freqs = estimate_hammerstein_kernels(
             amplitudes=amplitudes,
@@ -430,7 +428,7 @@ def run_parameter_sweep(engine, cli_args):
             input_mode="XFER",
             ref_phase_only=ref_phase_only,
         )
-        
+
         # 3. Lock-in Measurement
         lockin_results, lockin_measured_freq = run_lockin_measurement(
             engine,
@@ -446,30 +444,30 @@ def run_parameter_sweep(engine, cli_args):
             apply_filter=cli_args.hw_filter,
             lockin_buffer_size=cand["buffer_size"],
         )
-        
+
         # 4. Prediction
         predictions = predict_harmonic_response(
             lockin_measured_freq, A_in, H_freqs, sorted_freqs, engine.sample_rate, max_harmonic
         )
-        
+
         # 5. Statistical averaging of lockin runs
         lockin_avg = []
         for idx_n in range(max_harmonic):
             amps = [run[idx_n]["amp_db"] for run in lockin_results]
             phases = [run[idx_n]["phase_deg"] for run in lockin_results]
-            
+
             # Align phases
             phases_aligned = np.array(phases)
             for idx_p in range(1, len(phases_aligned)):
                 diff = phases_aligned[idx_p] - phases_aligned[0]
                 diff = (diff + 180) % 360 - 180
                 phases_aligned[idx_p] = phases_aligned[0] + diff
-                
+
             lockin_avg.append({
                 "amp_db": np.mean(amps),
                 "phase_deg": (np.mean(phases_aligned) + 180) % 360 - 180,
             })
-            
+
         # 6. Accuracy Evaluation
         amp_diffs = []
         phase_diffs = []
@@ -478,31 +476,31 @@ def run_parameter_sweep(engine, cli_args):
             pred_phase = predictions[n - 1]["phase_deg"]
             meas_amp = lockin_avg[n - 1]["amp_db"]
             meas_phase = lockin_avg[n - 1]["phase_deg"]
-            
+
             amp_diff = np.abs(pred_amp - meas_amp)
             phase_diff = np.abs((pred_phase - meas_phase + 180) % 360 - 180)
-            
+
             # Skip noise floor
             if not (pred_amp < -90.0 and meas_amp < -90.0):
                 amp_diffs.append(amp_diff)
                 phase_diffs.append(phase_diff)
-                
+
         mae_amp = np.mean(amp_diffs) if amp_diffs else 0.0
         mae_phase = np.mean(phase_diffs) if phase_diffs else 0.0
         max_amp_err = np.max(amp_diffs) if amp_diffs else 0.0
         max_phase_err = np.max(phase_diffs) if phase_diffs else 0.0
-        
+
         cand["mae_amp"] = mae_amp
         cand["mae_phase"] = mae_phase
         cand["max_amp_err"] = max_amp_err
         cand["max_phase_err"] = max_phase_err
         results.append(cand)
-        
+
         print(f"      => Max Amp Error: {max_amp_err:.4f} dB, Max Phase Error: {max_phase_err:.4f} deg")
-        
+
     # Sort results by combined error
     results.sort(key=lambda x: x["max_amp_err"] + x["max_phase_err"] / 10.0)
-    
+
     print("\n" + "=" * 115)
     print("=== PARAMETER SWEEP RANKING ===")
     print("=" * 115)
@@ -511,7 +509,7 @@ def run_parameter_sweep(engine, cli_args):
     for rank, r in enumerate(results[:20]):
         print(f"{rank+1:<5} | {r['sweep_duration']:<8.1f} | {r['tsa']:<4} | {r['num_amplitudes']:<5} | {r['runs']:<5} | {r['buffer_size']:<8} | {str(r['ref_phase_only']):<12} | {r['estimated_time']:<12.1f} | {r['max_amp_err']:<16.4f} | {r['max_phase_err']:<19.4f}")
     print("=" * 115)
-    
+
     # Save results to JSON
     sweep_report_path = "/Users/vach/MeasureLab/scripts/lock_in_modeler_hammerstein_sweep_results.json"
     with open(sweep_report_path, "w") as f:

@@ -195,7 +195,7 @@ def estimate_hammerstein_kernels(
 
     # 5th Harmonic -> H5 (measured at 5 * sorted_freqs)
     H5_phys_val = 16.0 * np.sum(g5 * R5[:, np.newaxis], axis=0) / sum_R10 if P >= 5 and sum_R10 > 1e-12 else np.zeros(J, dtype=complex)
-    
+
     # 4th Harmonic -> H4 (measured at 4 * sorted_freqs)
     H4_phys_val = 8.0 * np.sum(g4 * R4[:, np.newaxis], axis=0) / sum_R8 if P >= 4 and sum_R8 > 1e-12 else np.zeros(J, dtype=complex)
 
