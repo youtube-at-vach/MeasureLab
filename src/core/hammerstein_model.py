@@ -213,8 +213,14 @@ def estimate_hammerstein_kernels(
                 phases_valid = phases_valid[::step]
                 xp = xp[::step]
 
-            mag_mapped = np.interp(f_lookups, xp, mags_valid, left=np.nan, right=np.nan)
-            phase_mapped = np.interp(f_lookups, xp, phases_valid, left=np.nan, right=np.nan)
+            xp_clamped = np.maximum(1e-3, xp)
+            f_lookups_clamped = np.maximum(1e-3, f_lookups)
+            
+            log_xp = np.log10(xp_clamped)
+            log_f_lookups = np.log10(f_lookups_clamped)
+
+            mag_mapped = np.interp(log_f_lookups, log_xp, mags_valid, left=np.nan, right=np.nan)
+            phase_mapped = np.interp(log_f_lookups, log_xp, phases_valid, left=np.nan, right=np.nan)
         else:
             mag_mapped = np.full_like(f_lookups, np.nan)
             phase_mapped = np.full_like(f_lookups, np.nan)
@@ -259,8 +265,11 @@ def predict_harmonic_response(f0, A_in, H_freqs, sorted_freqs, sample_rate, max_
                     mags = np.abs(H_raw[mask])
                     phases = np.unwrap(np.angle(H_raw[mask]))
 
-                    mag_val = np.interp(f_n, sorted_freqs[mask], mags, left=0.0, right=0.0)
-                    phase_val = np.interp(f_n, sorted_freqs[mask], phases, left=0.0, right=0.0)
+                    f_n_clamped = max(1e-3, f_n)
+                    sf_clamped = np.maximum(1e-3, sorted_freqs[mask])
+
+                    mag_val = np.interp(np.log10(f_n_clamped), np.log10(sf_clamped), mags, left=0.0, right=0.0)
+                    phase_val = np.interp(np.log10(f_n_clamped), np.log10(sf_clamped), phases, left=0.0, right=0.0)
 
                     H_interp[n][p] = mag_val * np.exp(1j * phase_val)
                 else:
