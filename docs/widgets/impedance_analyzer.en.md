@@ -47,7 +47,7 @@ This is called the "I-V method (Current-Voltage method)."
 1. Send the signal from **Output L** to the device under test (DUT).
 2. Connect it so that after passing through the DUT, it passes through the **Ref Resistor** to ground (GND).
 3. **Input L (Voltage Ch)**: Connect between the DUT and the resistor (the voltage divider point). This measures the "voltage across the resistor," but since the resistance value is known, the "current" can be calculated.
-    * *Note: In the default settings, Input L is for voltage and Input R is for current measurement, but since current is actually calculated from the voltage difference across the shunt resistor, check the settings according to your circuit configuration.*
+    * In the default settings, Input L is for voltage and Input R is for current measurement, but since current is actually calculated from the voltage difference across the shunt resistor, check the settings according to your circuit configuration.
     * **Standard Settings for this App**:
         * **Voltage Ch (Input L)**: Measures the voltage $V$ across the DUT.
         * **Current Ch (Input R)**: Measures the voltage $V_{shunt}$ across the shunt resistor. The current is $I = V_{shunt} / R_{shunt}$.
@@ -85,7 +85,7 @@ Continuously measures values at a specific frequency.
     * **θ (Phase)**: Phase angle.
     * **Ls / Cs**: Equivalent inductance or capacitance value at that frequency.
 
-*Note: Check "Time Series (Manual)" below the plot to graph impedance changes over time instead of frequency.*
+Check "Time Series (Manual)" below the plot to graph impedance changes over time instead of frequency.
 
 ### FRA Sweep
 
@@ -112,7 +112,7 @@ These can be switched via buttons or settings.
     * Used when measuring components with **high** impedance (tens of kΩ or more).
     * Examples: Small-capacity capacitors, high-resistance.
 
-*Note: If unsure, for intermediate values (hundreds of ohms to several kΩ), either mode will yield almost the same value.*
+If unsure, for intermediate values (hundreds of ohms to several kΩ), either mode will yield almost the same value.
 
 ### Parameter Descriptions
 

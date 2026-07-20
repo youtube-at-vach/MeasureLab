@@ -98,7 +98,7 @@ Simulates and visualizes the time-domain transient response (e.g., Step Response
     * **Ideal Linear (Blue):** The ideal, theoretically perfect linear transient response.
     * **Band-Limited Ideal (Cyan):** The ideal reference constrained by the active band filter.
 
-> **Note:** Step transitions cause Gibbs ringing due to the Active Band filter ($f_{min} \sim f_{max}$) required for inverse filter stability.
+> Step transitions cause Gibbs ringing due to the Active Band filter ($f_{min} \sim f_{max}$) required for inverse filter stability.
 
 ### 3. Linear Response
 

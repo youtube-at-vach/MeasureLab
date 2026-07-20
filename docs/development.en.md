@@ -18,7 +18,7 @@ Simply open your terminal and run the following command in the repository root d
 ./scripts/setup_dev_env.sh
 ```
 
-* Note: During execution, you may be prompted to enter your password or confirm default settings for MacPorts.
+During execution, you may be prompted to enter your password or confirm default settings for MacPorts.
 
 Once the setup is complete, activate the virtual environment and launch the application using the following commands:
 

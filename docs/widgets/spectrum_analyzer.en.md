@@ -117,4 +117,4 @@ By playing a test signal (such as pink noise) and picking up the speaker's outpu
 4. Set **Avg** to a high value (`90%` or more).
 5. Set **Weighting** to `Z` (flat).
 6. As the graph approaches flatness, the speaker's characteristic is flat. If the low or high frequencies are drooping, that is the limit of the speaker's reproduction range.
-    * *Note: This is not a rigorous measurement as it also picks up room reflections, but it is effective for knowing trends.*
+    * This is not a rigorous measurement as it also picks up room reflections, but it is effective for knowing trends.

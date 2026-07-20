@@ -29,7 +29,7 @@ Required equipment varies depending on the items being calibrated.
 
 * **Input/Output Voltage Calibration**:
     * **Voltmeter (Multimeter)**: A **TrueRMS** compatible one is best. Cheaper meters may produce errors for non-sine waves or may not be able to read small voltages.
-        * **※ About TrueRMS**: Inexpensive multimeters often measure the average value and calculate assuming a perfect sine wave, which causes errors with complex waveforms. TrueRMS multimeters accurately measure the root mean square regardless of the waveform.
+        * **About TrueRMS**: Inexpensive multimeters often measure the average value and calculate assuming a perfect sine wave, which causes errors with complex waveforms. TrueRMS multimeters accurately measure the root mean square regardless of the waveform.
     * **Audio Cables**: Required to connect the output and input of the audio interface or to apply the voltmeter.
 * **Sound Pressure Level (SPL) Calibration**:
     * **Speaker**: Required to play pink noise.
