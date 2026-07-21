@@ -19,8 +19,7 @@ Since it can monitor timecode on independent left and right channels (L / R), it
 
 A timecode (LTC) signal contains precise time information (`hour:minute:second:frame`). Recording this audio to multiple cameras allows editing software to later use it to automatically synchronize their timelines.
 
-!!! note
-    Because LTC is carried as an audio signal, sending it directly to speakers or headphones will sound unpleasant. In normal use you send it to a camera, recorder, timecode input, or audio input instead.
+Because LTC is carried as an audio signal, sending it directly to speakers or headphones will sound unpleasant. In normal use you send it to a camera, recorder, timecode input, or audio input instead.
 
 ## Operation
 
