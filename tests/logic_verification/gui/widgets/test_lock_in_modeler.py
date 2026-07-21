@@ -302,30 +302,18 @@ def test_lock_in_modeler_nan_propagation(qtbot, mock_audio_engine):
     analyzer.state = "FINISHED"
     widget.btn_toggle.click()  # Triggers finishing logic
 
-    # Verify 2nd harmonic (H2) values.
-    # Due to polar interpolation with NaN:
-    # f_lookups = sorted_freqs / 2 -> [50, 100, 150, 200, 250, 300, 350, 400, 450, 500]
-    # For H2 (p=1), if sorted_freqs[2] = 300 is NaN, then:
-    # - f_lookups=250 (interpolated between 200 and 300) becomes NaN
-    # - f_lookups=300 (at 300) becomes NaN
-    # - f_lookups=350 (interpolated between 300 and 400) becomes NaN
-    # Thus, multiple points in H_mapped become NaN and are cleared to 0.0.
+    # Verify 2nd harmonic (H2) values in sweep mode (without frequency mapping):
+    # - H2[2] should be NaN (since NaN was injected at index 2)
+    # - H2[0] and other valid indices should retain their measured complex values without NaN propagation or frequency-ratio cutoff
     H2 = widget.H_freqs[1]
     assert len(H2) > 0
-
-    # After our fix, NaN propagation is prevented:
-    # - Index 0 (50Hz) remains NaN because it's left of sorted_freqs range (left=np.nan).
-    # - Indices 4, 5, 6 (corresponding to 500Hz, 600Hz, 700Hz in H_full, mapped from f_lookups=250, 300, 350)
-    #   must now be successfully interpolated from the adjacent valid points (200Hz and 400Hz) and should NOT be NaN.
-    assert np.isnan(H2[0])
+    assert not np.isnan(H2[0])
+    assert np.isnan(H2[2])
     assert not np.isnan(H2[4])
-    assert not np.isnan(H2[5])
-    assert not np.isnan(H2[6])
 
-    # Check that magnitude is close to the valid 0.5 value
+    # Check that magnitude for valid indices is close to 0.5
+    assert np.abs(H2[0]) > 0.4
     assert np.abs(H2[4]) > 0.4
-    assert np.abs(H2[5]) > 0.4
-    assert np.abs(H2[6]) > 0.4
 
 
 def test_lock_in_modeler_smoothing_in_sweep_mode(qtbot, mock_audio_engine):
@@ -542,6 +530,41 @@ def test_lock_in_modeler_amplitude_switching(qtbot, mock_audio_engine):
     widget.btn_toggle.click()  # stop/finish
     widget.combo_amplitude_select.setCurrentIndex(0)
     assert widget.plot_tabs.isTabEnabled(1)  # Impulse tab re-enabled
+
+
+def test_lock_in_modeler_sweep_bypasses_harmonic_cutoff(qtbot, mock_audio_engine):
+    # Initialize analyzer and widget in standard sweep mode
+    analyzer = LockInModeler(mock_audio_engine)
+    analyzer.latency_samples = 100.0
+    widget = LockInModelerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    widget.combo_meas_mode.setCurrentIndex(0)  # Standard sweep mode
+    assert not widget.is_hammerstein_mode
+
+    # Prepare frequency grid from 20 Hz to 20000 Hz
+    max_blocks = 100
+    widget.max_blocks = max_blocks
+    widget.plot_freqs_array = np.linspace(20.0, 20000.0, max_blocks)
+    widget.block_counts = np.ones(max_blocks, dtype=int)
+    widget.accumulated_results = np.zeros((max_blocks, 5), dtype=complex)
+
+    # Set non-zero responses for fundamental and 2nd..5th harmonics across all frequencies
+    for p in range(5):
+        widget.accumulated_results[:, p] = (0.1 ** p) * (1.0 + 0.0j)
+
+    # Calculate kernels
+    widget.calculate_hammerstein_kernels()
+
+    # Verify that in standard sweep mode, H_freqs for higher harmonics (e.g. 2nd, 3rd, 5th)
+    # are NOT cut off / set to NaN at higher frequencies (e.g. near 20 kHz)
+    for p in range(5):
+        H_freq = widget.H_freqs[p]
+        # None of the values should be NaN
+        assert not np.any(np.isnan(H_freq)), f"Harmonic order {p+1} contains NaNs unexpectedly in sweep mode"
+        # High frequency end (e.g., block 90-99 near 20kHz) should retain valid non-zero data
+        assert np.all(np.abs(H_freq[90:]) > 0.0), f"Harmonic order {p+1} was cut off at high frequencies"
+
 
 
 

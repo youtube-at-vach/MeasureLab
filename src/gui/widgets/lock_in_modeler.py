@@ -1492,54 +1492,6 @@ class LockInModelerWidget(QWidget):
                 H_p[valid_idx] = avg_complex * phase_corrections[p]
                 self.H_freqs.append(H_p)
 
-            # 3. Apply frequency mapping to map H_p(f_0) measured at fundamental f_0 to physical harmonic frequency p * f_0
-            # H_p_mapped(f) = H_p_raw(f / p)
-            H_mapped_list = []
-            for p, H_freq_p in enumerate(self.H_freqs):
-                H_raw = H_freq_p[valid_idx[sort_idx]]
-                f_lookups = sorted_freqs / (p + 1)
-
-                # Polar Interpolation to prevent phase distortion
-                nan_mask = np.isnan(H_raw)
-                valid_mask = ~nan_mask
-
-                if np.any(valid_mask):
-                    valid_H = H_raw[valid_mask]
-                    xp = sorted_freqs[valid_mask]
-
-                    mags_valid = np.abs(valid_H)
-                    phases_valid = np.unwrap(np.angle(valid_H))
-
-                    # Dynamically reduce resolution to improve real-time performance bounds
-                    TARGET_RESOLUTION = 2000
-                    if len(valid_H) > TARGET_RESOLUTION:
-                        step = len(valid_H) // TARGET_RESOLUTION
-                        mags_valid = mags_valid[::step]
-                        phases_valid = phases_valid[::step]
-                        xp = xp[::step]
-
-                    mag_mapped = np.interp(f_lookups, xp, mags_valid, left=np.nan, right=np.nan)
-                    phase_mapped = np.interp(f_lookups, xp, phases_valid, left=np.nan, right=np.nan)
-                else:
-                    mag_mapped = np.full_like(f_lookups, np.nan)
-                    phase_mapped = np.full_like(f_lookups, np.nan)
-
-                H_mapped = mag_mapped * np.exp(1j * phase_mapped)
-                H_mapped_list.append(H_mapped)
-
-            # Apply Butterworth lowpass filter to higher order mapped kernels
-            for p, _ in enumerate(self.H_freqs):
-                H_p = H_mapped_list[p]
-                if p >= 1:
-                    f_cut = min(20000.0, 1.15 * sample_rate / 2)
-                    lpf = 1.0 / np.sqrt(1.0 + (sorted_freqs / f_cut) ** 16)
-                    H_p = H_p * lpf
-
-                # Pad back to max_blocks length
-                H_full = np.zeros(max_blocks, dtype=complex)
-                H_full[valid_idx[sort_idx]] = H_p
-                self.H_freqs[p] = H_full
-
         # 4. Reconstruct time domain kernels
         if len(valid_idx) == 0:
             return
