@@ -83,6 +83,8 @@ Before running any sweep, the round-trip latency of the audio input and output c
   Displays the magnitude and phase responses for the fundamental and harmonics (up to 5th-order, based on `Max Harmonic`). Harmonic characteristics can be viewed as absolute values or relative to the fundamental.
 * **Impulse Responses (Kernels) Tab**:
   Enabled after a Hammerstein (Nonlinear Model) sweep. Displays the identified 1st-order to maximum 5th-order time-domain impulse response kernels ($h_1(t)$ to $h_5(t)$).
+* **Lock-in SNR Tab**:
+  Displays the signal-to-noise ratio (SNR) in dB for the lock-in estimation, providing a dynamic metric to evaluate the reliability of the measurement data. Higher values (e.g., +40dB / +60dB) represent higher lock-in quality.
 
 ### Saving and Sharing Models
 
