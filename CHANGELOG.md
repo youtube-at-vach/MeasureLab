@@ -4,7 +4,7 @@
 
 ### Added
 
-* **Sweep-Sine SSS Analyzer**:
+* **Lock-in Modeler**:
     * Implemented adaptive frequency drift correction in Sweep-Sine SSS core engine to stabilize tracking under varying clock rates.
 
 ### Changed
@@ -12,7 +12,6 @@
 * **Lock-in Modeler**:
     * Improved measurement and kernel estimation precision by implementing logarithmic frequency interpolation for cross-harmonic compensation.
     * Enhanced drift correction robustness with protective gating to prevent runaway adjustments and noise amplification on weak reference signals.
-* **Sweep-Sine SSS Analyzer**:
     * Gated downsampling operations by the step factor D to prevent potential data corruption in downstream analysis.
 
 ### Optimized
