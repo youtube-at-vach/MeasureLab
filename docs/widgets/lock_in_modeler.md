@@ -83,6 +83,8 @@ Lock-in Modelerは、同期スイープサイン (Synchronized Swept Sine, SSS) 
   設定した `Max Harmonic` に応じて、基本波（Fundamental）および各高調波（2nd 〜 5th）の振幅特性（Magnitude）と位相特性（Phase）が表示されます。表示オプションにより、基本波に対する相対特性として見ることも可能です。
 * **Impulse Responses (Kernels) タブ**:
   非線形モデル（Hammerstein）測定完了後に有効化されます。同定された 1次から最大5次までの時間領域インパルス応答カーネル（$h_1(t)$ 〜 $h_5(t)$）を表示します。
+* **Lock-in SNR タブ**:
+  ロックイン推定のSNR（信号対雑音比）をdB単位で表示し、測定データの信頼性を動的に評価します。値が高いほど（例：+40dB / +60dB）ロックイン品質が高いことを示します。
 
 ### モデルの保存と共有
 
