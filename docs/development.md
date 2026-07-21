@@ -18,7 +18,7 @@ Linux (Ubuntu) および macOS 環境向けに、OSパッケージのインス�
 ./scripts/setup_dev_env.sh
 ```
 
-※ 実行中、パスワードの入力やMacPortsでのデフォルト設定など、いくつかの確認が求められる場合があります。
+実行中、パスワードの入力やMacPortsでのデフォルト設定など、いくつかの確認が求められる場合があります。
 
 セットアップ完了後は、以下のコマンドで仮想環境を有効化してからアプリケーションを起動してください。
 
@@ -61,7 +61,7 @@ python main_gui.py
 
     以降は `python` / `pip` が venv を指します（`sudo pip` は使わないでください）。
 
-    ※ `activate` を使わずに実行したい場合は、常に venv の Python を直接呼び出してもOKです：
+    `activate` を使わずに実行したい場合は、常に venv の Python を直接呼び出してもOKです：
 
     ```bash
     ./.venv/bin/python -m pip install -U pip
@@ -102,7 +102,7 @@ macOS で `pyFFTW` をインストールする場合、パッケージマネー�
     sudo port select --set python3 python312
     ```
 
-    ※ 設定後、ターミナルを再起動してください。
+    設定後、ターミナルを再起動してください。
 
 3. 仮想環境の作成と有効化：
 
@@ -136,7 +136,7 @@ macOS で `pyFFTW` をインストールする場合、パッケージマネー�
     pip install -c constraints.txt -e ".[dev]"
     ```
 
-    ※ zsh を使用している場合は `.[dev]` を `".[dev]"` のように引用符で囲む必要があります。
+    zsh を使用している場合は `.[dev]` を `".[dev]"` のように引用符で囲む必要があります。
 
 * **ドキュメント開発（MkDocs）**:
 

@@ -30,7 +30,7 @@ Graphs the strength of noise per frequency (spectrum display). You can see thing
 1. Launch **Spectrum Analyzer**.
 2. Configure **Analysis Settings** as follows:
     * **Mode**: Select `PSD` (Power Spectral Density).
-        * *Note*: For noise measurement, the `PSD` mode, which is less affected by bandwidth, is recommended over the normal `Spectrum` mode.
+        * For noise measurement, the `PSD` mode, which is less affected by bandwidth, is recommended over the normal `Spectrum` mode.
     * **Window**: Select `hanning` (default) or `Multitaper` (recommended).
         * Turning ON **Multitaper** makes the noise graph smoother and improves reliability.
     * **Avg (Averaging)**: Raise the slider to about `50%` to `90%`.
@@ -44,7 +44,7 @@ The `PSD` mode shows the "power density per 1Hz" (e.g., V/√Hz), allowing you t
 
 * **What Can You See?**
     * **Hum Noise**: If sharp peaks stand at 50Hz or 60Hz (and their harmonics), it is induction noise from the power supply.
-    * **White Noise**: If the graph is upward-sloping (showing higher energy at higher frequencies), it is white noise (equal energy across all bands). *Note: White noise is flat on a linear frequency axis but appears upward-sloping on a logarithmic axis.*
+    * **White Noise**: If the graph is upward-sloping (showing higher energy at higher frequencies), it is white noise (equal energy across all bands). White noise is flat on a linear frequency axis but appears upward-sloping on a logarithmic axis.
     * **Pink Noise (1/f Noise)**: If the graph appears generally flat (decreasing slightly to the right), the 1/f noise component is dominant.
 
 ### Precautions
