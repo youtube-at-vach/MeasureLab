@@ -1,5 +1,24 @@
 # Changelog
 
+## [v0.8.1] - 2026-07-21
+
+### Added
+
+* **Lock-in Modeler**:
+    * Implemented adaptive frequency drift correction in Sweep-Sine SSS core engine to stabilize tracking under varying clock rates.
+
+### Changed
+
+* **Lock-in Modeler**:
+    * Improved measurement and kernel estimation precision by implementing logarithmic frequency interpolation for cross-harmonic compensation.
+    * Enhanced drift correction robustness with protective gating to prevent runaway adjustments and noise amplification on weak reference signals.
+    * Gated downsampling operations by the step factor D to prevent potential data corruption in downstream analysis.
+
+### Optimized
+
+* **Startup & Performance**:
+    * Optimized membership verification loops during application startup using set literals.
+
 ## [v0.8.0] - 2026-07-16
 
 ### Added
