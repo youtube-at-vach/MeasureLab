@@ -60,8 +60,7 @@ You can choose from the following waveforms:
 
 Available parameters vary depending on the waveform.
 
-!!! note
-    Changes to parameters (including buffered waveforms such as Noise and Multitone) are applied immediately in real-time without restarting the output.
+Changes to parameters (including buffered waveforms such as Noise and Multitone) are applied immediately in real-time without restarting the output.
 
 * **Frequency (Hz)**: The frequency of the signal. Can be changed via slider or numeric input. This parameter is not used for sequence-based waveforms such as **MLS**, **Golay**, and **PRBS**.
 * **Snap to Bin Center**: When checked, automatically snaps the frequency to the nearest FFT bin center based on the current FFT Size to prevent spectral leakage. Useful for accurate distortion measurements.
