@@ -16,5 +16,6 @@
     "node_modules/",
     "**/node_modules/**",
     ".venv/",
+    ".github/deepwiki/", // Generated DeepWiki codebase wiki export (verbatim content)
   ],
 }
