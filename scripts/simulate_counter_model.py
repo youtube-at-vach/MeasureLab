@@ -223,8 +223,8 @@ def main():
     print("==========================================================")
 
     fs = 48000
-    start_freq = 1000.0
-    end_freq = 2000.0
+    start_freq = 20.0
+    end_freq = 20000.0
     duration = 4.0
     max_harmonic = 5
     num_points = 300
@@ -286,7 +286,7 @@ def main():
 
     # Phase 3: Validation on a target input signal
     # Single tone excitation: A(t) = R * sin(2*pi*f0*t)
-    f0 = 150.0
+    f0 = 1000.0
     R_val = 0.7
     t_val = np.arange(fs * 2) / fs  # 2 seconds
     A_t = R_val * np.sin(2.0 * np.pi * f0 * t_val)
