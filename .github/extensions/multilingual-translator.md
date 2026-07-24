@@ -60,8 +60,8 @@ python3 scripts/update_translations.py
 
 - ファイル: `scripts/translation_whitelist.json`
 - 除外方法:
-  - **完全一致**: `exact_keys` リストに登録
-  - **パターン**: `regex_patterns` に正規表現を定義
+    - **完全一致**: `exact_keys` リストに登録
+    - **パターン**: `regex_patterns` に正規表現を定義
 
 ### 5. 最終検証 (Verify)
 
