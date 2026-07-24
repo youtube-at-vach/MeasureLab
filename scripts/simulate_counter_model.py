@@ -223,7 +223,7 @@ def main():
     print("==========================================================")
 
     fs = 48000
-    start_freq = 100.0
+    start_freq = 1000.0
     end_freq = 2000.0
     duration = 4.0
     max_harmonic = 5
