@@ -219,7 +219,7 @@ class AdaptiveSSSWeeper:
                 sig_in = indata_block[:, [self.args.ch_sig]]
                 ref_in = indata_block[:, [self.args.ch_ref]]
 
-                f_mid, results = engine.process_input_block(sig_in, b, ref_in_block=ref_in)
+                f_mid, results, _ = engine.process_input_block(sig_in, b, ref_in_block=ref_in)
                 if engine.last_block_was_valid:
                     accumulated_results[b, :] = results[: self.max_harmonic]
                     block_counts[b] += 1
@@ -288,7 +288,7 @@ class AdaptiveSSSWeeper:
                         continue
 
                     b_idx, sig_in, ref_in = item
-                    f_mid, results = engine.process_input_block(sig_in, b_idx, ref_in_block=ref_in)
+                    f_mid, results, _ = engine.process_input_block(sig_in, b_idx, ref_in_block=ref_in)
                     if engine.last_block_was_valid:
                         accumulated_results[b_idx, :] = results[: self.max_harmonic]
                         block_counts[b_idx] += 1
@@ -416,7 +416,7 @@ class AdaptiveSSSWeeper:
             sig_in = indata_block[:, [self.args.ch_sig]]
             ref_in = indata_block[:, [self.args.ch_ref]]
 
-            f_mid, results = engine.process_input_block(sig_in, b, ref_in_block=ref_in)
+            f_mid, results, _ = engine.process_input_block(sig_in, b, ref_in_block=ref_in)
             if engine.last_block_was_valid:
                 accumulated_results[b, :] = results[: self.max_harmonic]
                 block_counts[b] += 1

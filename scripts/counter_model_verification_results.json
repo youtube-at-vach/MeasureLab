@@ -1,0 +1,42 @@
+{
+  "summary": {
+    "H1": {
+      "frequency_hz": 150.0,
+      "uncorrected_db": -3.0119981201159503,
+      "corrected_db": -2.9881882573998126,
+      "reduction_db": 0.0
+    },
+    "H2": {
+      "frequency_hz": 300.0,
+      "uncorrected_db": -39.00110219553928,
+      "corrected_db": -70.3875028084372,
+      "reduction_db": 31.386400612897923
+    },
+    "H3": {
+      "frequency_hz": 450.0,
+      "uncorrected_db": -52.26979051528937,
+      "corrected_db": -94.555964592673,
+      "reduction_db": 42.286174077383635
+    },
+    "H4": {
+      "frequency_hz": 600.0,
+      "uncorrected_db": -69.13213730661838,
+      "corrected_db": -99.53464110304881,
+      "reduction_db": 30.402503796430437
+    },
+    "H5": {
+      "frequency_hz": 750.0,
+      "uncorrected_db": -84.62352053342677,
+      "corrected_db": -117.00340896937809,
+      "reduction_db": 32.379888435951315
+    }
+  },
+  "amplitudes": [
+    0.2,
+    0.4,
+    0.6,
+    0.8,
+    1.0
+  ],
+  "f0": 150.0
+}
