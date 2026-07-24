@@ -14,9 +14,7 @@ It is suitable for observing the long-term stability (drift) of a clock source, 
 
 1. **NCO Frequency**: Sets the reference frequency (e.g., 1000 Hz).
 
-    !!! warning
-        The NCO Frequency represents the value of the internal software numeric oscillator and is unrelated to the device's physical output.
-        Note that locking the NCO frequency merely means the measurement reference is tracking the input; it does not imply that all frequencies used by the audio device are locked to this reference.
+    **Warning**: The NCO Frequency represents the value of the internal software numeric oscillator and is unrelated to the device's physical output. Note that locking the NCO frequency merely means the measurement reference is tracking the input; it does not imply that all frequencies used by the audio device are locked to this reference.
 2. **Reference Mode**:
     * **Internal (NCO)**: Uses an internally generated ideal sine wave as the reference.
     * **Loopback (Ref Out)**: Uses the signal output from the device as the reference (FLL locking is disabled in this mode). Useful when measuring with physical cable loopback or internal loopback.
@@ -50,8 +48,7 @@ This tab visualizes the statistical distribution of the measured frequency devia
 * **Avg Count (KF-Q & Display)**: Sets the process noise (Q) for the Kalman Filter used in NCO frequency estimation, as well as the display averaging count. Increasing this value results in stronger smoothing (lower Q) and a more stable display.
 * **Display Uncertainty (σ)**: Displays the uncertainty (standard deviation) of the current frequency estimate. This indicates the confidence interval estimated by the Kalman Filter. Additionally, the decimal precision of the NCO Frequency setting automatically adjusts based on measurement stability (uncertainty), displaying up to 12 decimal places.
 
-!!! note
-    The internal estimator uses a high-suppression periodic Blackman-Harris window and ignores a few startup estimates after capture begins. In practice, this reduces false phase rotation and the "first point jump" that can otherwise appear immediately after starting a measurement.
+The internal estimator uses a high-suppression periodic Blackman-Harris window and ignores a few startup estimates after capture begins. In practice, this reduces false phase rotation and the "first point jump" that can otherwise appear immediately after starting a measurement.
 
 ### PID Control Loop
 

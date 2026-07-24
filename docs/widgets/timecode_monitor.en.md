@@ -104,8 +104,7 @@ A feature to measure and automatically compensate for the input/output latency (
 4. A short test signal is output, and the number of frames delayed until it is input is measured.
 5. Based on the measurement result, **In Delay** (input compensation) and **Out Delay** (output compensation) are automatically set. This corrects display discrepancies during monitoring and phase discrepancies in generator output.
 
-!!! warning
-    Calibration measures audio path delay. It does not rewrite the timecode content itself. If you change your wiring or interface, it is worth running again.
+**Note**: Calibration measures audio path delay. It does not rewrite the timecode content itself. If you change your wiring or interface, it is worth running again.
 
 ## Usage Examples
 
