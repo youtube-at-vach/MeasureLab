@@ -147,3 +147,14 @@ macOS で `pyFFTW` をインストールする場合、パッケージマネー�
 * Lint: `ruff check src scripts tests`
 * Type check: `mypy src`
 * Tests: `pytest`（ハードウェア/GUI依存テストは環境変数が必要; CIではデフォルトでスキップ）
+
+### 🤖 開発支援スキル拡張 (Skill Extensions)
+
+MeasureLabのプロジェクトでは、開発ワークフローを自動化・支援するためのプロジェクトレベルのスキル拡張機能（Slash Commands）が用意されています。これらはGitHub Copilot CLIなどのMCP対応ツールから利用できます。
+
+* **/ci-prechecker**: PR作成前に、Ruff(Lint)、Mypy(型チェック)、翻訳キー整合性、Markdown Lint、Pytestなどをローカルで一括実行し、CI要件を満たしているか事前検証します。
+* **/multilingual-translator**: プロジェクト全体の翻訳ファイルの整合性をチェックし、不足しているキーの追加から翻訳の最終検証までを自動で行います。
+* **/pr-reviewer**: Pull Requestのコード変更を取得し、ロジックの正確性、スタイル、テスト・ドキュメント、CI/安全性の観点からコードレビューを自動実施します。
+* **/release-manager**: CHANGELOGの更新、ドキュメントの記述確認、バージョン番号の同期、UI変更時のスクリーンショット更新、リリースPRの作成など、リリース準備を支援します。
+
+仕様詳細や各スキルの使い方については、リポジトリ内の `.github/extensions/` 以下のMarkdownファイルを参照してください。
