@@ -147,3 +147,14 @@ If you want to run tests, Lint/type checks, or build the documentation, install 
 * Lint: `ruff check src scripts tests`
 * Type check: `mypy src`
 * Tests: `pytest` (Hardware/GUI dependent tests require environment variables; skipped by default in CI)
+
+### 🤖 Development Skill Extensions
+
+The MeasureLab project provides project-level skill extensions (Slash Commands) to automate and assist with development workflows. These can be used via MCP-compatible tools like GitHub Copilot CLI.
+
+* **/ci-prechecker**: Runs Ruff (Lint), Mypy (Type check), translation key consistency checks, Markdown Lint, and Pytest locally to pre-verify CI requirements before creating a PR.
+* **/multilingual-translator**: Checks the consistency of translation files across the project, automatically adding missing keys and performing final verification of translations.
+* **/pr-reviewer**: Fetches code changes from a Pull Request and automatically performs a code review focusing on logic correctness, style, tests/documentation, and CI/safety.
+* **/release-manager**: Assists with release preparation, including updating the CHANGELOG, checking documentation, synchronizing version numbers, updating screenshots for UI changes, and creating release PRs.
+
+For detailed specifications and usage of each skill, please refer to the Markdown files under the `.github/extensions/` directory in the repository.
