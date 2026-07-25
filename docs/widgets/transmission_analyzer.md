@@ -61,7 +61,7 @@ Transmission Analyzer には、測定対象に応じて切り替え可能な2つ
 * **Reset Statistics (統計リセット)**:
     累積されたビットエラー数やエラーレート、ヒストグラムを初期化し、測定を再スタートします。
 
-### 2. アナロジ設定 (Analyzer Settings)
+### 2. アナライザー設定 (Analyzer Settings)
 
 * **Analysis Mode (測定モード)**:
     * `Digital Integrity`: ビット完全性の検証とDSP・エラー箇所の診断に特化します。
