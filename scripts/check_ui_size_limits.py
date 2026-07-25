@@ -89,24 +89,24 @@ def main():
 
         module_ok = win_w_ok and win_h_ok and widget_w_ok and widget_h_ok
 
-        # Print status line
-        status_str = f"{COLOR_GREEN}[PASS]{COLOR_RESET}" if module_ok else f"{COLOR_RED}[FAIL]{COLOR_RESET}"
-        print(f"{status_str} Row {i:02d}: '{COLOR_BOLD}{module_name}{COLOR_RESET}'")
-        print(
-            f"  - MainWindow Min Hint: {win_min_w}x{win_min_h} px ({COLOR_GREEN}OK{COLOR_RESET}"
-            if (win_w_ok and win_h_ok)
-            else f"({COLOR_RED}OVERFLOW! Max: {MAX_WINDOW_WIDTH}x{MAX_WINDOW_HEIGHT}{COLOR_RESET})"
-        )
-
-        if current_widget:
-            print(
-                f"  - Inner Widget Hint  : {widget_min_w}x{widget_min_h} px ({COLOR_GREEN}OK{COLOR_RESET}"
-                if (widget_w_ok and widget_h_ok)
-                else f"({COLOR_RED}OVERFLOW! Max: {MAX_WIDGET_WIDTH}x{MAX_WIDGET_HEIGHT}{COLOR_RESET})"
-            )
-        print("-" * 65)
-
+        # Print status line only on failure to reduce log context usage
         if not module_ok:
+            status_str = f"{COLOR_RED}[FAIL]{COLOR_RESET}"
+            print(f"{status_str} Row {i:02d}: '{COLOR_BOLD}{module_name}{COLOR_RESET}'")
+            print(
+                f"  - MainWindow Min Hint: {win_min_w}x{win_min_h} px ({COLOR_GREEN}OK{COLOR_RESET}"
+                if (win_w_ok and win_h_ok)
+                else f"({COLOR_RED}OVERFLOW! Max: {MAX_WINDOW_WIDTH}x{MAX_WINDOW_HEIGHT}{COLOR_RESET})"
+            )
+
+            if current_widget:
+                print(
+                    f"  - Inner Widget Hint  : {widget_min_w}x{widget_min_h} px ({COLOR_GREEN}OK{COLOR_RESET}"
+                    if (widget_w_ok and widget_h_ok)
+                    else f"({COLOR_RED}OVERFLOW! Max: {MAX_WIDGET_WIDTH}x{MAX_WIDGET_HEIGHT}{COLOR_RESET})"
+                )
+            print("-" * 65)
+
             failures.append(
                 {
                     "row": i,
