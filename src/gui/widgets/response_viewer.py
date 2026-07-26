@@ -850,16 +850,16 @@ class ResponseViewerWidget(QWidget):
             or (structure_val == "generalized_hammerstein" and domain_val == "complex")
             or (structure_val == "classical_hammerstein" and domain_val == "complex")
         ):
-            self.lbl_structure.setText(tr("Parallel Hammerstein (Complex)"))
-            self.lbl_structure.setToolTip(tr("Parallel Hammerstein (Complex)"))
+            self.lbl_structure.setText(tr("PHM (Complex)"))
+            self.lbl_structure.setToolTip(tr("PHM (Complex)"))
             self.lbl_structure.setStyleSheet("font-weight: bold; color: #ba68c8;")
         elif domain_val == "real" or structure_val in {
             "generalized_hammerstein",
             "classical_hammerstein",
             "parallel_hammerstein",
         }:
-            self.lbl_structure.setText(tr("Parallel Hammerstein (Real)"))
-            self.lbl_structure.setToolTip(tr("Parallel Hammerstein (Real)"))
+            self.lbl_structure.setText(tr("PHM (Real)"))
+            self.lbl_structure.setToolTip(tr("PHM (Real)"))
             self.lbl_structure.setStyleSheet("font-weight: bold; color: #2b8c56;")
         else:
             self.lbl_structure.setText(tr("Unknown"))
