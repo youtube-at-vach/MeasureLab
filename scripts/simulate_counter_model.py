@@ -274,67 +274,6 @@ def weighted_harmonic_cost(levels):
     return sum(weights.get(n, 0.5) * (10.0 ** (levels[n] / 20.0)) for n in range(2, len(levels) + 1))
 
 
-def extract_complex_tone_coefficient(y, fs, f_target):
-    """
-    Estimates complex tone coefficient c where y_tone(t) = Re{c * exp(j*2*pi*f*t)}.
-    """
-    N = len(y)
-    t = np.arange(N) / fs
-    window = np.hanning(N)
-    basis = np.exp(-1j * 2.0 * np.pi * f_target * t)
-    norm = np.sum(window)
-    if norm <= 1e-12:
-        return 0.0 + 0.0j
-    return 2.0 * np.sum(y * window * basis) / norm
-
-
-def synthesize_complex_tone(coeff, fs, f_target, N):
-    """Synthesizes a real tone from complex coefficient representation."""
-    t = np.arange(N) / fs
-    return np.real(coeff * np.exp(1j * 2.0 * np.pi * f_target * t))
-
-
-def refine_residual_harmonics(x_corr_init, fs, f0, max_harmonic, max_iter=2, probe_amp=0.0025):
-    """
-    Hybrid residual correction: estimates local transfer at each harmonic and injects
-    compensating tones in the predistorted input.
-    """
-    x_corr = x_corr_init.copy()
-    N = len(x_corr)
-    step = 0.85
-    max_corr_mag = 0.06
-
-    for _ in range(max_iter):
-        y_base = offline_dut_system(x_corr, fs)
-        delta_total = np.zeros_like(x_corr)
-
-        for n in range(2, max_harmonic + 1):
-            fn = n * f0
-            if fn >= fs / 2.0:
-                continue
-
-            resid_coeff = extract_complex_tone_coefficient(y_base, fs, fn)
-            probe_coeff = probe_amp + 0.0j
-            probe_sig = synthesize_complex_tone(probe_coeff, fs, fn, N)
-            y_probe = offline_dut_system(x_corr + probe_sig, fs)
-            probe_out_coeff = extract_complex_tone_coefficient(y_probe, fs, fn)
-            H_local = (probe_out_coeff - resid_coeff) / probe_coeff
-
-            if np.abs(H_local) < 1e-9:
-                continue
-
-            corr_coeff = -step * resid_coeff / H_local
-            corr_mag = np.abs(corr_coeff)
-            if corr_mag > max_corr_mag:
-                corr_coeff *= max_corr_mag / corr_mag
-
-            delta_total += synthesize_complex_tone(corr_coeff, fs, fn, N)
-
-        x_corr += delta_total
-
-    return x_corr
-
-
 def optimize_counter_kernel_gains(C_freqs, meas_freqs, fs, max_harmonic):
     """
     Tunes nonlinear-order kernel gains in-script to improve cancellation precision.
@@ -531,7 +470,6 @@ def main():
     # 2. Corrected Case
     Mx_A = apply_counter_model(A_t, C_freqs, sorted_freqs, fs)
     x_corr = A_t + Mx_A
-    x_corr = refine_residual_harmonics(x_corr, fs, f0, max_harmonic, max_iter=2, probe_amp=0.0025)
     y_corr = offline_dut_system(x_corr, fs)
 
     # Analyze spectra
