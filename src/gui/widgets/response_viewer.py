@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QGridLayout,
     QCheckBox,
     QFileDialog,
+    QSizePolicy,
 )
 
 from scipy.signal import savgol_filter
@@ -129,6 +130,9 @@ class ResponseViewerWidget(QWidget):
         self.lbl_order = QLabel("Order (P): --")
         self.lbl_direction = QLabel(tr("Unknown"))
         self.lbl_structure = QLabel("--")
+        self.lbl_structure.setWordWrap(True)
+        self.lbl_structure.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.lbl_structure.setMinimumWidth(0)
 
         self.smooth_combo = QComboBox()
         self.smooth_combo.addItem(tr("None"), "None")
@@ -138,15 +142,17 @@ class ResponseViewerWidget(QWidget):
         self.smooth_combo.setCurrentIndex(1)  # Default: Light
         self.smooth_combo.currentIndexChanged.connect(self.refresh_plots_with_smoothing)
 
-        info_layout = QFormLayout()
-        info_layout.setSpacing(4)
-        info_layout.addRow(tr("Status:"), self.lbl_status)
-        info_layout.addRow(tr("Rate:"), self.lbl_sr)
-        info_layout.addRow(tr("Order:"), self.lbl_order)
-        info_layout.addRow(tr("Direction:"), self.lbl_direction)
-        info_layout.addRow(tr("Structure:"), self.lbl_structure)
-        info_layout.addRow(tr("Graph Smoothing:"), self.smooth_combo)
-        source_form.addLayout(info_layout)
+        self.info_layout = QFormLayout()
+        self.info_layout.setSpacing(4)
+        self.info_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        self.info_layout.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
+        self.info_layout.addRow(tr("Status:"), self.lbl_status)
+        self.info_layout.addRow(tr("Rate:"), self.lbl_sr)
+        self.info_layout.addRow(tr("Order:"), self.lbl_order)
+        self.info_layout.addRow(tr("Direction:"), self.lbl_direction)
+        self.info_layout.addRow(tr("Structure:"), self.lbl_structure)
+        self.info_layout.addRow(tr("Graph Smoothing:"), self.smooth_combo)
+        source_form.addLayout(self.info_layout)
         sidebar_layout.addWidget(source_group)
 
         # 2. 2D Map Configuration Group
@@ -844,17 +850,20 @@ class ResponseViewerWidget(QWidget):
             or (structure_val == "generalized_hammerstein" and domain_val == "complex")
             or (structure_val == "classical_hammerstein" and domain_val == "complex")
         ):
-            self.lbl_structure.setText(tr("Parallel Hammerstein (Complex)"))
+            self.lbl_structure.setText(tr("PHM (Complex)"))
+            self.lbl_structure.setToolTip(tr("PHM (Complex)"))
             self.lbl_structure.setStyleSheet("font-weight: bold; color: #ba68c8;")
         elif domain_val == "real" or structure_val in {
             "generalized_hammerstein",
             "classical_hammerstein",
             "parallel_hammerstein",
         }:
-            self.lbl_structure.setText(tr("Parallel Hammerstein (Real)"))
+            self.lbl_structure.setText(tr("PHM (Real)"))
+            self.lbl_structure.setToolTip(tr("PHM (Real)"))
             self.lbl_structure.setStyleSheet("font-weight: bold; color: #2b8c56;")
         else:
             self.lbl_structure.setText(tr("Unknown"))
+            self.lbl_structure.setToolTip(tr("Unknown"))
             self.lbl_structure.setStyleSheet("font-weight: normal; color: gray;")
 
         # Update measured noise floor label and source choices
