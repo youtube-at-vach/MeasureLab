@@ -9,6 +9,14 @@ cd "$(dirname "$0")/.."
 OS="$(uname -s)"
 echo "Detected OS: ${OS}"
 
+print_linux_manual_dependency_guidance() {
+    echo "Please install the equivalent of the following tools/libraries manually for your distro:"
+    echo "- Python: python3, python3-venv, python3-pip"
+    echo "- JavaScript tools: nodejs, npm"
+    echo "- Audio/runtime libs: portaudio, libsndfile"
+    echo "- Build tools/headers (if pip build fails): compiler toolchain, portaudio dev headers, libsndfile dev headers"
+}
+
 # Basic check to ensure we are in the project root
 if [ ! -f "requirements.txt" ] || [ ! -f "constraints.txt" ]; then
     echo "Error: Cannot find requirements.txt or constraints.txt."
@@ -22,14 +30,37 @@ if [ "${OS}" = "Linux" ]; then
     echo "========================================"
     
     if command -v apt > /dev/null; then
-        echo "Installing OS dependencies via apt..."
-        sudo apt update
-        sudo apt install -y python3 python3-venv python3-pip libportaudio2 libsndfile1 build-essential portaudio19-dev libsndfile1-dev nodejs npm
+        echo "apt detected on this Linux system."
+        if [ "${SKIP_OS_DEPS:-0}" = "1" ]; then
+            echo "SKIP_OS_DEPS=1 detected. Skipping apt-based OS dependency installation."
+            print_linux_manual_dependency_guidance
+        elif [ "$(id -u)" -eq 0 ]; then
+            apt_cmd=(apt)
+        elif command -v sudo > /dev/null && sudo -n true > /dev/null 2>&1; then
+            apt_cmd=(sudo apt)
+        else
+            echo "Warning: apt is available, but non-interactive root privileges are not available."
+            echo "Skipping apt-based OS dependency installation and continuing with venv/pip setup."
+            echo "If you want apt auto-install, rerun as root, configure passwordless sudo, or set up packages manually."
+            print_linux_manual_dependency_guidance
+        fi
+
+        if [ "${#apt_cmd[@]}" -gt 0 ]; then
+            echo "Installing OS dependencies via apt..."
+            if ! "${apt_cmd[@]}" update; then
+                echo "Error: 'apt update' failed."
+                echo "Continuing with venv/pip setup. Install OS dependencies manually if needed."
+                print_linux_manual_dependency_guidance
+            elif ! "${apt_cmd[@]}" install -y python3 python3-venv python3-pip libportaudio2 libsndfile1 build-essential portaudio19-dev libsndfile1-dev nodejs npm; then
+                echo "Error: apt package installation failed."
+                echo "Continuing with venv/pip setup. Install missing OS dependencies manually if needed."
+                print_linux_manual_dependency_guidance
+            fi
+        fi
     else
         echo "Warning: 'apt' package manager not found."
-        echo "Please ensure the following are installed manually:"
-        echo "- python3, python3-venv, python3-pip, nodejs, npm"
-        echo "- libportaudio2, libsndfile1, build-essential, portaudio19-dev, libsndfile1-dev"
+        echo "Skipping OS package auto-install and continuing with venv/pip setup."
+        print_linux_manual_dependency_guidance
     fi
 
     echo "Creating virtual environment in .venv..."
