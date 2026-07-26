@@ -12,7 +12,7 @@
 
 ## 🔮 Future / Visionary Ideas (Experimental)
 
-* **Bio-Sensory & Psycho-Acoustics**: BCI Audiophile Profiler, AI "Golden Ear", Holographic Soundstage, Psychoacoustic Masking, Synesthetic Harmonic Mapper, Psycho-Kinetic Impact Visualizer.
+* **Bio-Sensory & Psycho-Acoustics**: BCI Audiophile Profiler, AI "Golden Ear", Holographic Soundstage, Psychoacoustic Masking, Synesthetic Harmonic Mapper, Psycho-Kinetic Impact Visualizer, Holographic Phase-Space Orbit Visualizer, Chronological Wave-Function Collapse Analyzer, Synaptic Audio-Nerve Simulator.
 * **Physics & Advanced Simulation**: Quantum Metamaterial Simulator, Thermal Noise Sonification, Neuromorphic Spike Visualizer, Tachyon Phase Analyzer, AC Grid-Symbiosis Mapper.
 * **Spatial & Acoustic Focus**: Non-Euclidean Spatial Mapper, Acoustic Phase Conjugation Analyzer (Time-reversed wave reflection cancellation).
 * **Ultrasonics**: Ultrasonic Micro-Doppler Excursion Mapper (Non-contact speaker cone displacement measurement).
@@ -33,8 +33,8 @@
 * **Spectrum Analyzer**: DAC Aliasing, Phase Noise Density, OOB Leakage, Automatic Peak Auto-Marker.
 * **Oscilloscope & SAM**: Digital Protocol Decoder, Inter-Channel Sync Drift Logger, Eye Diagram, Frequency-Dependent Crosstalk/Leakage 3D Plot.
 * **Sound Quality / LUFS**: Listener Fatigue Index, PEAQ/ODG Score Estimator, Inter-Sample Peak Histogram & True Peak Clipping Profiler.
-* **Distortion Analyzer**: Thermal Stress, EMI/RFI Fingerprinting, TIM/DIM Mode, SMPTE/DIN/CCIF IMD Sweeps.
-* **Network Analyzer & Others**: Group/Phase Delay Plot, Click & Pop Classifier, Binaural Tones, AES17 DR Automator, Clock Fingerprinting, Multi-Band Goniometer.
+* **Distortion Analyzer**: Thermal Stress, EMI/RFI Fingerprinting, TIM/DIM Mode, SMPTE/DIN/CCIF IMD Sweeps, Long-Term Thermal Drift & Warm-up Logger.
+* **Network Analyzer & Others**: Group/Phase Delay Plot, Click & Pop Classifier, Binaural Tones, AES17 DR Automator, Clock Fingerprinting, Multi-Band Goniometer, DAC Digital Filter Profiler.
 * **Linearity Analyzer**: Dynamic Burst Linearity Mode (Transient crest factor preservation).
 * **Noise Profiler**: Hum AM/FM Modulation Analysis (Power supply modulation rejection).
 * **Transient Analyzer**: Pre-Ringing & Causality Quantifier.
@@ -56,9 +56,9 @@
 ## ❌ Cancelled / Not Needed (Duplicates & Out of Scope)
 
 * **Duplicates of Oscilloscope / Transient**: Phase/Polarity Checker, Cable Microphonics Logger.
-* **Duplicates of Adv. Distortion / Spectrum**: Multitone THD Analyzer, Sub-Noise Floor Excavator.
+* **Duplicates of Adv. Distortion / Spectrum**: Multitone THD Analyzer, Sub-Noise Floor Excavator, Harmonic Phase Signature Analyzer (duplicate of lockin_harmonic_analyzer).
 * **Duplicates of Transmission / Network**: Wireless Link Tester, Real-time Latency Monitor, Cable Directionality Tester.
-* **Out of Scope / Limited Meaning**: Step Response Matrix, Slew Rate Calculator, Multi-band Compressor Profiler, 4D Holographic Soundstage.
+* **Out of Scope / Limited Meaning**: Step Response Matrix, Slew Rate Calculator, Multi-band Compressor Profiler, 4D Holographic Soundstage, Complex Load / Back-EMF Distortion Profiler.
 
 ---
 
