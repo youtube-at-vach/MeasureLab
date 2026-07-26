@@ -9,7 +9,7 @@ import queue
 import threading
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.interpolate import interp1d
+from scipy.interpolate import PchipInterpolator
 from scipy.signal import butter, lfilter, freqz
 from scipy.signal.windows import tukey
 
@@ -39,6 +39,79 @@ def offline_dut_system(x, fs):
     b, a = butter(2, fc_lti / (fs / 2.0), btype="low")
     y = lfilter(b, a, w)
     return y
+
+
+def pchip_complex_interpolate(freqs_in, C_p_in, freqs_target):
+    """
+    Safely interpolates complex transfer functions smoothly using PchipInterpolator.
+    Handles zero-initializations, avoids -inf in log-magnitude, and prevents
+    exponential overflow out-of-bounds extrapolation.
+    """
+    freqs_target_safe = np.clip(freqs_target, freqs_in[0], freqs_in[-1])
+
+    mag_in = np.abs(C_p_in)
+    if np.all(mag_in < 1e-13):
+        return np.zeros_like(freqs_target, dtype=complex)
+
+    mag_clipped = np.maximum(mag_in, 1e-12)
+    mag_log = np.log(mag_clipped)
+
+    phase_in = np.angle(C_p_in)
+    phase_in[mag_in < 1e-10] = 0.0
+    phase_unwrapped = np.unwrap(phase_in)
+
+    f_mag = PchipInterpolator(freqs_in, mag_log)
+    f_phase = PchipInterpolator(freqs_in, phase_unwrapped)
+
+    interp_log_mag = np.clip(f_mag(freqs_target_safe), -27.6, 5.0)
+    mag_interp = np.exp(interp_log_mag)
+    mag_interp[interp_log_mag <= -27.0] = 0.0
+
+    phase_interp = f_phase(freqs_target_safe)
+
+    return mag_interp * np.exp(1j * phase_interp)
+
+
+def smooth_complex_vector(vec, window_size=5):
+    """Smooths a complex vector using a moving average window along the frequency axis."""
+    if len(vec) < window_size or window_size < 2:
+        return vec
+    win = np.hanning(window_size)
+    win /= np.sum(win)
+
+    # Pad vector at boundaries
+    pad_len = window_size // 2
+    padded_real = np.pad(vec.real, pad_len, mode="edge")
+    padded_imag = np.pad(vec.imag, pad_len, mode="edge")
+
+    smooth_real = np.convolve(padded_real, win, mode="valid")
+    smooth_imag = np.convolve(padded_imag, win, mode="valid")
+
+    return smooth_real[: len(vec)] + 1j * smooth_imag[: len(vec)]
+
+
+def calculate_thd_from_H(H_dict, max_harmonic):
+    """
+    Calculates THD array across frequencies and average THD values.
+
+    H_dict: dict mapping harmonic order n (1..max_harmonic) to complex response array across frequencies.
+    Returns:
+        thd_ratio: array of THD values (linear ratio) at each frequency
+        thd_percent_mean: float mean THD in percent (%)
+        thd_db_mean: float mean THD in dB (20*log10(THD))
+    """
+    H1_mag = np.abs(H_dict[1]) + 1e-12
+    harmonic_sq_sum = np.zeros_like(H1_mag)
+
+    for n in range(2, max_harmonic + 1):
+        if n in H_dict:
+            harmonic_sq_sum += np.abs(H_dict[n]) ** 2
+
+    thd_ratio = np.sqrt(harmonic_sq_sum) / H1_mag
+    thd_percent_mean = float(np.mean(thd_ratio) * 100.0)
+    thd_db_mean = float(20.0 * np.log10(np.mean(thd_ratio) + 1e-12))
+
+    return thd_ratio, thd_percent_mean, thd_db_mean
 
 
 def get_analytical_H1(f, fs):
@@ -80,6 +153,9 @@ class AdaptiveSSSWeeper:
 
         # Store results for each iteration to plot/save
         self.iteration_results = []
+        # History tracking for Quasi-Newton / Anderson acceleration algorithms
+        self.F_history = {n: [] for n in range(2, self.max_harmonic + 1)}
+        self.H_history = {n: [] for n in range(2, self.max_harmonic + 1)}
 
     def calibrate_latency(self):
         """Measures system loopback latency."""
@@ -133,10 +209,8 @@ class AdaptiveSSSWeeper:
         x_corr = x_base.copy()
 
         for n in range(2, self.max_harmonic + 1):
-            # Interpolate correction envelope over the sweep instantaneous frequency trajectory
-            # Use linear interpolation and extrapolate with nearest value
-            F_func = interp1d(self.meas_freqs, self.F_corr[n], kind="linear", fill_value="extrapolate")
-            F_inst_vals = F_func(f_inst)
+            # Interpolate correction envelope over the sweep instantaneous frequency trajectory using PCHIP
+            F_inst_vals = pchip_complex_interpolate(self.meas_freqs, self.F_corr[n], f_inst)
 
             # Apply term
             mag_vals = np.abs(F_inst_vals)
@@ -313,15 +387,7 @@ class AdaptiveSSSWeeper:
         # Interpolate results to standard log-grid meas_freqs
         H_meas = {}
         for n in range(1, self.max_harmonic + 1):
-            # Interpolate real and imaginary parts separately to avoid wrapping issues
-            real_func = interp1d(
-                raw_freqs_sorted, raw_results_sorted[:, n - 1].real, kind="linear", fill_value="extrapolate"
-            )
-            imag_func = interp1d(
-                raw_freqs_sorted, raw_results_sorted[:, n - 1].imag, kind="linear", fill_value="extrapolate"
-            )
-
-            H_meas[n] = real_func(self.meas_freqs) + 1j * imag_func(self.meas_freqs)
+            H_meas[n] = pchip_complex_interpolate(raw_freqs_sorted, raw_results_sorted[:, n - 1], self.meas_freqs)
 
         # Save measurement result
         self.iteration_results.append({"iter": iter_idx, "H": H_meas})
@@ -333,17 +399,11 @@ class AdaptiveSSSWeeper:
             self.H0_1 = H_meas[1].copy()
 
         # Helper to interpolate linear transfer function H1(f) at higher frequencies (up to max_harmonic * f_end)
-        # In offline mode, we use analytical. In real-hardware, we extrapolate from H0_1.
         def get_H0_1_interpolated(f_target_array):
             if self.args.offline:
                 return get_analytical_H1(f_target_array, self.fs)
             else:
-                # Extrapolate linear H1 using nearest values or linear logic
-                # To prevent division by zero, clamp minimum magnitude
-                H_func_real = interp1d(self.meas_freqs, self.H0_1.real, kind="linear", fill_value="extrapolate")
-                H_func_imag = interp1d(self.meas_freqs, self.H0_1.imag, kind="linear", fill_value="extrapolate")
-                h_vals = H_func_real(f_target_array) + 1j * H_func_imag(f_target_array)
-                # Safeguard magnitude
+                h_vals = pchip_complex_interpolate(self.meas_freqs, self.H0_1, f_target_array)
                 mag = np.abs(h_vals)
                 min_mag = 1e-4 * np.max(np.abs(self.H0_1))
                 bad_mask = mag < min_mag
@@ -351,22 +411,92 @@ class AdaptiveSSSWeeper:
                     h_vals[bad_mask] = (h_vals[bad_mask] / (mag[bad_mask] + 1e-12)) * min_mag
                 return h_vals
 
-        print(f"[*] Calculating adaptive updates (learning rate mu = {self.mu})...")
+        # Learning rate decay per iteration to ensure convergence without oscillation
+        algo = getattr(self.args, "algorithm", "newton_lm")
+        decay_factor = getattr(self.args, "mu_decay", 0.92)
+        current_mu = self.mu * (decay_factor**iter_idx) if algo == "baseline" else self.mu
+        print(f"[*] Calculating adaptive updates (algorithm = '{algo}', step size mu = {current_mu:.4f})...")
         for n in range(2, self.max_harmonic + 1):
             Hn_vals = H_meas[n]
+
+            # Record history of F_corr and H_meas for history-based updates
+            F_prev = self.F_corr[n].copy()
+            self.F_history[n].append(F_prev)
+            self.H_history[n].append(Hn_vals.copy())
 
             # We need the linear response at the harmonic frequency: n * f
             H1_nf_vals = get_H0_1_interpolated(n * self.meas_freqs)
 
-            # Delta correction: - Hn(f) / H1(n * f)
-            delta_corr = -Hn_vals / H1_nf_vals
+            if algo == "baseline":
+                # Baseline gradient update with decaying step size
+                delta_corr = -Hn_vals / H1_nf_vals
+                delta_corr = smooth_complex_vector(delta_corr, window_size=5)
+                self.F_corr[n] += current_mu * delta_corr
 
-            # Apply update with learning rate mu: F = F + mu * delta_corr
-            self.F_corr[n] += self.mu * delta_corr
+            elif algo in ["newton_lm", "newton"]:
+                # Normalized Newton step with Levenberg-Marquardt regularization
+                # Allows mu = 1.0 (full Newton step) safely
+                h1_mag_sq = np.abs(H1_nf_vals) ** 2
+                lambda_lm = 1e-4 * np.max(h1_mag_sq) + 1e-12
+                delta_corr = -(Hn_vals * np.conj(H1_nf_vals)) / (h1_mag_sq + lambda_lm)
+                delta_corr = smooth_complex_vector(delta_corr, window_size=5)
+                self.F_corr[n] += current_mu * delta_corr
+
+            elif algo in ["secant", "quasi_newton"]:
+                # Secant / Empirical Jacobian method
+                # At iter 0: use Newton-LM step.
+                # At iter >= 1: estimate empirical Jacobian J_n(f) = dH_n / dF_n from previous 2 iterations.
+                if iter_idx == 0 or len(self.F_history[n]) < 2:
+                    h1_mag_sq = np.abs(H1_nf_vals) ** 2
+                    lambda_lm = 1e-4 * np.max(h1_mag_sq) + 1e-12
+                    delta_corr = -(Hn_vals * np.conj(H1_nf_vals)) / (h1_mag_sq + lambda_lm)
+                else:
+                    dF = self.F_history[n][-1] - self.F_history[n][-2]
+                    dH = self.H_history[n][-1] - self.H_history[n][-2]
+
+                    # Empirical derivative J_n = dH / dF
+                    dF_mag = np.abs(dF)
+                    valid_mask = dF_mag > 1e-10
+                    J_emp = np.where(valid_mask, dH / np.where(valid_mask, dF, 1.0), H1_nf_vals)
+
+                    # Fallback to model H1_nf_vals where J_emp is noisy or near zero
+                    j_mag = np.abs(J_emp)
+                    bad_j = (j_mag < 1e-4 * np.max(np.abs(H1_nf_vals))) | np.isnan(j_mag)
+                    J_emp[bad_j] = H1_nf_vals[bad_j]
+
+                    j_mag_sq = np.abs(J_emp) ** 2
+                    lambda_lm = 1e-4 * np.max(j_mag_sq) + 1e-12
+                    delta_corr = -(Hn_vals * np.conj(J_emp)) / (j_mag_sq + lambda_lm)
+
+                delta_corr = smooth_complex_vector(delta_corr, window_size=5)
+                self.F_corr[n] += current_mu * delta_corr
+
+            elif algo == "anderson":
+                # Anderson Acceleration
+                if iter_idx == 0 or len(self.F_history[n]) < 2:
+                    h1_mag_sq = np.abs(H1_nf_vals) ** 2
+                    lambda_lm = 1e-4 * np.max(h1_mag_sq) + 1e-12
+                    delta_corr = -(Hn_vals * np.conj(H1_nf_vals)) / (h1_mag_sq + lambda_lm)
+                    delta_corr = smooth_complex_vector(delta_corr, window_size=5)
+                    self.F_corr[n] += current_mu * delta_corr
+                else:
+                    g_curr = self.F_history[n][-1] - Hn_vals / H1_nf_vals
+                    g_prev = self.F_history[n][-2] - self.H_history[n][-2] / H1_nf_vals
+
+                    dg = g_curr - g_prev
+                    dg_dot_g = np.real(np.sum(np.conj(dg) * g_curr))
+                    dg_norm_sq = np.real(np.sum(np.conj(dg) * dg)) + 1e-12
+                    gamma = np.clip(dg_dot_g / dg_norm_sq, -0.5, 0.5)
+
+                    F_anderson = (1 - gamma) * g_curr + gamma * g_prev
+                    self.F_corr[n] = smooth_complex_vector(F_anderson, window_size=5)
 
             # Print average distortion level
             avg_dist = 20 * np.log10(np.mean(np.abs(Hn_vals)) + 1e-12)
             print(f"    - H{n} Average Level: {avg_dist:.1f} dB")
+
+        _, thd_pct, thd_db = calculate_thd_from_H(H_meas, self.max_harmonic)
+        print(f"    - Overall Mean THD: {thd_pct:.3f}% ({thd_db:.1f} dB)")
 
     def measure_sweep_only(self, is_ascending):
         """Runs a single sweep playback/recording and processes results WITHOUT updating F_corr (offline simulation only)."""
@@ -432,13 +562,7 @@ class AdaptiveSSSWeeper:
 
         H_meas = {}
         for n in range(1, self.max_harmonic + 1):
-            real_func = interp1d(
-                raw_freqs_sorted, raw_results_sorted[:, n - 1].real, kind="linear", fill_value="extrapolate"
-            )
-            imag_func = interp1d(
-                raw_freqs_sorted, raw_results_sorted[:, n - 1].imag, kind="linear", fill_value="extrapolate"
-            )
-            H_meas[n] = real_func(self.meas_freqs) + 1j * imag_func(self.meas_freqs)
+            H_meas[n] = pchip_complex_interpolate(raw_freqs_sorted, raw_results_sorted[:, n - 1], self.meas_freqs)
 
         return H_meas
 
@@ -471,6 +595,13 @@ class AdaptiveSSSWeeper:
                 f"H{n} Distortion: Iteration 0: {db_init:.1f} dB -> Final Iteration: {db_final:.1f} dB | Reduction: {reduction:.1f} dB"
             )
 
+        _, thd_pct_init, thd_db_init = calculate_thd_from_H(initial, self.max_harmonic)
+        _, thd_pct_final, thd_db_final = calculate_thd_from_H(final, self.max_harmonic)
+        thd_reduction_db = thd_db_final - thd_db_init
+        print("----------------------------------------------------")
+        print(
+            f"Overall Mean THD: Iteration 0: {thd_pct_init:.3f}% ({thd_db_init:.1f} dB) -> Final: {thd_pct_final:.3f}% ({thd_db_final:.1f} dB) | Reduction: {thd_reduction_db:.1f} dB"
+        )
         print("====================================================")
 
         # Save plots
@@ -513,7 +644,7 @@ class AdaptiveSSSWeeper:
         plt.legend()
         plt.ylim(-120, 5)
 
-        # Plot Distortion reduction trajectory across iterations
+        # Plot Distortion & THD reduction trajectory across iterations
         plt.subplot(2, 1, 2)
         iters = np.arange(self.args.iterations + 1)
         for n in range(2, self.max_harmonic + 1):
@@ -521,9 +652,20 @@ class AdaptiveSSSWeeper:
             for iter_idx in iters:
                 H_data = self.iteration_results[iter_idx]["H"]
                 traj.append(20 * np.log10(np.mean(np.abs(H_data[n])) + 1e-12))
-            plt.plot(iters, traj, "o-", label=f"H{n} average level")
+            plt.plot(iters, traj, "o-", label=f"H{n} average level (dB)")
 
-        plt.title("Harmonic Distortion Trajectory")
+        # Plot Overall THD Trajectory
+        thd_traj_db = []
+        thd_traj_pct = []
+        for iter_idx in iters:
+            H_data = self.iteration_results[iter_idx]["H"]
+            _, pct, db = calculate_thd_from_H(H_data, self.max_harmonic)
+            thd_traj_pct.append(pct)
+            thd_traj_db.append(db)
+
+        plt.plot(iters, thd_traj_db, "k^-", linewidth=2.5, label="Overall THD (dB)")
+
+        plt.title("Harmonic Distortion & Overall THD Trajectory")
         plt.xlabel("Iteration Index")
         plt.ylabel("Average Level (dB)")
         plt.grid(True)
@@ -537,6 +679,7 @@ class AdaptiveSSSWeeper:
         # Save JSON results
         json_results = {
             "metadata": {
+                "algorithm": getattr(self.args, "algorithm", "baseline"),
                 "start_freq": self.start_freq,
                 "end_freq": self.end_freq,
                 "duration": self.duration,
@@ -552,6 +695,10 @@ class AdaptiveSSSWeeper:
                     for iter_idx in range(self.args.iterations + 1)
                 ]
                 for n in range(2, self.max_harmonic + 1)
+            },
+            "thd_trajectory": {
+                "thd_percent": thd_traj_pct,
+                "thd_db": thd_traj_db,
             },
         }
         json_path = os.path.join(project_root, "scripts", "adaptive_sweep_verification_results.json")
@@ -570,8 +717,16 @@ def main():
     parser.add_argument("--duration", type=float, default=4.0, help="Sweep duration (seconds)")
     parser.add_argument("--amplitude-db", type=float, default=-12.0, help="Sweep amplitude in dBFS")
     parser.add_argument("--max-harmonic", type=int, default=5, help="Maximum harmonic order to correct (up to 5)")
-    parser.add_argument("--iterations", type=int, default=3, help="Number of adaptive correction iterations")
-    parser.add_argument("--mu", type=float, default=0.5, help="Learning rate (0 < mu <= 1.0) to prevent overshoot")
+    parser.add_argument("--iterations", type=int, default=10, help="Number of adaptive correction iterations")
+    parser.add_argument(
+        "--algorithm",
+        type=str,
+        choices=["baseline", "newton_lm", "secant", "anderson"],
+        default="newton_lm",
+        help="Fast convergence algorithm (baseline, newton_lm, secant, anderson)",
+    )
+    parser.add_argument("--mu", type=float, default=1.0, help="Learning rate (0 < mu <= 1.0) to prevent overshoot")
+    parser.add_argument("--mu-decay", type=float, default=0.92, help="Learning rate decay factor per iteration (e.g. 0.85 - 0.95)")
     parser.add_argument("--analysis-cycles", type=float, default=12.0, help="Analysis cycles for lock-in tracking")
     parser.add_argument("--min-window", type=float, default=0.012, help="Minimum analysis window in seconds")
     parser.add_argument("--meas-points", type=int, default=300, help="Number of measurement points")
