@@ -1,11 +1,13 @@
 import pytest
 import numpy as np
 from unittest.mock import MagicMock
+from PyQt6.QtWidgets import QFormLayout
 
 from src.gui.widgets.response_viewer import (
     ResponseViewer,
     ResponseViewerWidget,
 )
+from src.core.localization import tr
 
 
 @pytest.fixture
@@ -144,7 +146,7 @@ def test_model_metadata_details_display_and_fallback(qtbot, mock_audio_engine, d
         "time_domain": dummy_model_data["time_domain"],
     }
     widget.set_model_data(older_lock_in_data)
-    assert widget.lbl_structure.text() == "Parallel Hammerstein (Complex)"
+    assert widget.lbl_structure.text() == tr("Parallel Hammerstein (Complex)")
 
     # 2. Test older 'Nonlinear Analyzer' fallback
     older_nonlinear_data = {
@@ -156,7 +158,7 @@ def test_model_metadata_details_display_and_fallback(qtbot, mock_audio_engine, d
         "time_domain": dummy_model_data["time_domain"],
     }
     widget.set_model_data(older_nonlinear_data)
-    assert widget.lbl_structure.text() == "Parallel Hammerstein (Real)"
+    assert widget.lbl_structure.text() == tr("Parallel Hammerstein (Real)")
 
     # 3. Test explicit metadata (New format)
     new_format_data = {
@@ -171,4 +173,14 @@ def test_model_metadata_details_display_and_fallback(qtbot, mock_audio_engine, d
         "time_domain": dummy_model_data["time_domain"],
     }
     widget.set_model_data(new_format_data)
-    assert widget.lbl_structure.text() == "Parallel Hammerstein (Complex)"
+    assert widget.lbl_structure.text() == tr("Parallel Hammerstein (Complex)")
+
+
+def test_structure_label_uses_layout_safe_policy(qtbot, mock_audio_engine):
+    analyzer = ResponseViewer(mock_audio_engine)
+    widget = ResponseViewerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    assert widget.lbl_structure.wordWrap()
+    assert widget.info_layout.fieldGrowthPolicy() == QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
+    assert widget.info_layout.rowWrapPolicy() == QFormLayout.RowWrapPolicy.WrapLongRows
