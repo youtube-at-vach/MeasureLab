@@ -99,5 +99,7 @@ scripts/tsa_study_results.json
 scripts/lock_in_modeler_hammerstein_verification_results.json
 scripts/lock_in_modeler_repeatability_results.json
 scripts/hammerstein_optimization_summary.json
+scripts/adaptive_sweep_verification_results.json
+scripts/counter_model_verification_results.json
 kernel_sample*.json
 scripts/lock_in_modeler_hammerstein_sweep_results.json
