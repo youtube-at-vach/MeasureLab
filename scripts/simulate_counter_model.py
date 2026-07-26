@@ -6,7 +6,7 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import butter, lfilter
-from scipy.interpolate import PchipInterpolator, interp1d
+from scipy.interpolate import PchipInterpolator
 from scipy.signal.windows import tukey
 
 # Add project root to sys.path
@@ -218,12 +218,12 @@ def apply_counter_model(A, C_freqs, meas_freqs, fs):
         Ap_fft = np.fft.rfft(Ap, n=N)
 
         C_p = C_freqs[p - 1]
-        
+
         # [Improvement 3] Smooth PCHIP Interpolation in frequency domain
         C_fft = pchip_complex_interpolate(meas_freqs, C_p, f_fft)
 
         filtered_fft = Ap_fft * C_fft
-        
+
         # [Improvement 5] IFFT with boundary edge smoothing
         term = np.fft.irfft(filtered_fft, n=N)
         mx += term
@@ -264,7 +264,7 @@ def main():
     duration = 4.0
     max_harmonic = 5
     num_points = 300
-    
+
     # [Improvement 1] Increased iterations with Learning Rate (mu) Decay
     iterations = 8
     initial_mu = 0.5
@@ -276,7 +276,7 @@ def main():
     all_F_corr = {}
 
     print("[*] Phase 1: Running Multi-Amplitude Adaptive Sweeps (with Learning Rate Decay)...")
-    for amp_idx, amp in enumerate(amplitudes):
+    for amp in amplitudes:
         print(f"    -> Running Adaptive Sweep for Amplitude: {amp:.2f} ({20*np.log10(amp):.1f} dBFS)")
         sweeper = AdaptiveSSSWeeperSim(
             start_freq=start_freq,

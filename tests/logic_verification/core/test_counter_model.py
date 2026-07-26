@@ -120,7 +120,7 @@ def simulate_adaptive_sweep(start_freq, end_freq, duration, amplitude, max_harmo
 
         H0_1 = H_meas[1].copy()
 
-        def get_H0_1_interpolated(f_target_array):
+        def get_H0_1_interpolated(f_target_array, H0_1=H0_1):
             H_func_real = interp1d(meas_freqs, H0_1.real, kind="linear", fill_value="extrapolate")
             H_func_imag = interp1d(meas_freqs, H0_1.imag, kind="linear", fill_value="extrapolate")
             h_vals = H_func_real(f_target_array) + 1j * H_func_imag(f_target_array)
