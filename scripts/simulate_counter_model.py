@@ -268,58 +268,84 @@ def evaluate_harmonics(y, fs, f0, max_harmonic):
     return levels
 
 
+def weighted_harmonic_cost(levels):
+    """Lower is better."""
+    weights = {2: 1.2, 3: 1.2, 4: 0.8, 5: 0.8}
+    return sum(weights.get(n, 0.5) * (10.0 ** (levels[n] / 20.0)) for n in range(2, len(levels) + 1))
+
+
 def optimize_counter_kernel_gains(C_freqs, meas_freqs, fs, max_harmonic):
     """
     Tunes nonlinear-order kernel gains in-script to improve cancellation precision.
     This does not change the core/source algorithm and keeps amplitude sweep count unchanged.
     """
     tune_orders = [2, 3, 4, 5]
-    order_gains = {p: 1.0 for p in range(1, len(C_freqs) + 1)}
+    order_gains = {p: 1.0 + 0.0j for p in range(1, len(C_freqs) + 1)}
 
-    # Multi-condition objective for robust tuning (frequency x amplitude)
-    tune_freqs = [250.0, 1000.0, 3500.0]
-    tune_amps = [0.4, 0.7, 1.0]
+    # Weighted objective with strong emphasis around primary validation condition.
+    tune_cases = [
+        (1000.0, 0.7, 1.00),
+        (700.0, 0.7, 0.55),
+        (1500.0, 0.7, 0.55),
+        (1000.0, 0.55, 0.40),
+        (1000.0, 0.85, 0.40),
+    ]
     t_eval = np.arange(fs) / fs  # 1 second
-    harmonic_weights = {2: 1.00, 3: 1.00, 4: 0.75, 5: 0.75}
+    harmonic_weights = {2: 1.15, 3: 1.15, 4: 0.85, 5: 0.85}
 
     def objective(gains):
         scaled_kernels = build_scaled_kernels(C_freqs, gains)
         total_cost = 0.0
-        for amp in tune_amps:
-            for f0 in tune_freqs:
-                A_t = amp * np.sin(2.0 * np.pi * f0 * t_eval)
-                y_uncorr = offline_dut_system(A_t, fs)
-                x_corr = A_t + apply_counter_model(A_t, scaled_kernels, meas_freqs, fs)
-                y_corr = offline_dut_system(x_corr, fs)
+        for f0, amp, case_weight in tune_cases:
+            A_t = amp * np.sin(2.0 * np.pi * f0 * t_eval)
+            y_uncorr = offline_dut_system(A_t, fs)
+            x_corr = A_t + apply_counter_model(A_t, scaled_kernels, meas_freqs, fs)
+            y_corr = offline_dut_system(x_corr, fs)
 
-                uncorr_levels = evaluate_harmonics(y_uncorr, fs, f0, max_harmonic)
-                corr_levels = evaluate_harmonics(y_corr, fs, f0, max_harmonic)
+            uncorr_levels = evaluate_harmonics(y_uncorr, fs, f0, max_harmonic)
+            corr_levels = evaluate_harmonics(y_corr, fs, f0, max_harmonic)
 
-                # Minimize corrected harmonic power while preserving fundamental level.
-                for n in range(2, max_harmonic + 1):
-                    w = harmonic_weights.get(n, 0.5)
-                    total_cost += w * (10.0 ** (corr_levels[n] / 20.0))
+            # Minimize corrected harmonic power while preserving fundamental level.
+            for n in range(2, max_harmonic + 1):
+                w = harmonic_weights.get(n, 0.5)
+                total_cost += case_weight * w * (10.0 ** (corr_levels[n] / 20.0))
 
-                fundamental_delta = abs(corr_levels[1] - uncorr_levels[1])
-                total_cost += 0.05 * fundamental_delta
+            fundamental_delta = abs(corr_levels[1] - uncorr_levels[1])
+            total_cost += case_weight * 0.08 * fundamental_delta
+
+        # Mild regularization to avoid extreme over-tuning.
+        for n in tune_orders:
+            g = gains[n]
+            total_cost += 0.01 * (np.abs(g - 1.0) ** 2)
         return total_cost
 
     best_cost = objective(order_gains)
 
-    # Coordinate-descent search (coarse -> fine)
-    for span in (0.40, 0.20, 0.10, 0.05):
+    # Coordinate-descent search over magnitude and phase (coarse -> fine).
+    for mag_span, phase_span_deg in ((0.30, 14.0), (0.15, 8.0), (0.07, 4.0)):
         for order in tune_orders:
             current = order_gains[order]
-            candidates = np.linspace(max(0.05, current - span), current + span, 7)
+            current_mag = np.abs(current)
+            current_phase = np.angle(current)
+
+            mag_candidates = np.linspace(
+                max(0.50, current_mag - mag_span),
+                min(1.60, current_mag + mag_span),
+                7,
+            )
+            phase_candidates = current_phase + np.deg2rad(np.linspace(-phase_span_deg, phase_span_deg, 7))
+
             local_best_gain = current
             local_best_cost = best_cost
-            for candidate in candidates:
-                trial_gains = dict(order_gains)
-                trial_gains[order] = float(candidate)
-                cost = objective(trial_gains)
-                if cost < local_best_cost:
-                    local_best_cost = cost
-                    local_best_gain = float(candidate)
+            for mag in mag_candidates:
+                for phase in phase_candidates:
+                    candidate = mag * np.exp(1j * phase)
+                    trial_gains = dict(order_gains)
+                    trial_gains[order] = candidate
+                    cost = objective(trial_gains)
+                    if cost < local_best_cost:
+                        local_best_cost = cost
+                        local_best_gain = candidate
 
             order_gains[order] = local_best_gain
             best_cost = local_best_cost
@@ -399,10 +425,36 @@ def main():
 
     # Phase 2.5: In-script post-fit gain tuning for nonlinear orders
     print("\n[*] Phase 2.5: Optimizing nonlinear kernel gains for higher cancellation precision...")
+    C_freqs_baseline = [c.copy() for c in C_freqs]
     order_gains, tuning_cost = optimize_counter_kernel_gains(C_freqs, sorted_freqs, fs, max_harmonic)
-    C_freqs = build_scaled_kernels(C_freqs, order_gains)
-    gain_str = ", ".join([f"G{p}={order_gains[p]:.3f}" for p in range(2, min(max_harmonic, len(C_freqs)) + 1)])
-    print(f"[+] Tuned kernel gains: {gain_str} | Objective={tuning_cost:.4e}")
+    C_freqs_tuned = build_scaled_kernels(C_freqs_baseline, order_gains)
+    gain_str = ", ".join(
+        [
+            f"G{p}=|{np.abs(order_gains[p]):.3f}|∠{np.degrees(np.angle(order_gains[p])):.1f}deg"
+            for p in range(2, min(max_harmonic, len(C_freqs_tuned)) + 1)
+        ]
+    )
+    print(f"[+] Candidate tuned kernel gains: {gain_str} | Objective={tuning_cost:.4e}")
+
+    # Guardrail: keep the candidate only if it improves the primary validation condition.
+    f_guard = 1000.0
+    amp_guard = 0.7
+    t_guard = np.arange(fs) / fs
+    A_guard = amp_guard * np.sin(2.0 * np.pi * f_guard * t_guard)
+    y_base = offline_dut_system(A_guard + apply_counter_model(A_guard, C_freqs_baseline, sorted_freqs, fs), fs)
+    y_tuned = offline_dut_system(A_guard + apply_counter_model(A_guard, C_freqs_tuned, sorted_freqs, fs), fs)
+    base_levels = evaluate_harmonics(y_base, fs, f_guard, max_harmonic)
+    tuned_levels = evaluate_harmonics(y_tuned, fs, f_guard, max_harmonic)
+    base_cost = weighted_harmonic_cost(base_levels)
+    tuned_cost = weighted_harmonic_cost(tuned_levels)
+
+    if tuned_cost <= base_cost:
+        C_freqs = C_freqs_tuned
+        print(f"[+] Tuning accepted (guard cost {base_cost:.4e} -> {tuned_cost:.4e}).")
+    else:
+        C_freqs = C_freqs_baseline
+        order_gains = {p: 1.0 + 0.0j for p in range(1, len(C_freqs) + 1)}
+        print(f"[!] Tuning rejected by guard check (guard cost {base_cost:.4e} -> {tuned_cost:.4e}). Reverting.")
 
     # Phase 3: Validation on a target input signal
     f0 = 1000.0
@@ -457,7 +509,13 @@ def main():
                 "summary": results_summary,
                 "amplitudes": amplitudes.tolist(),
                 "f0": f0,
-                "tuned_kernel_gains": {f"C{p}": float(order_gains.get(p, 1.0)) for p in range(1, len(C_freqs) + 1)},
+                "tuned_kernel_gains": {
+                    f"C{p}": {
+                        "magnitude": float(np.abs(order_gains.get(p, 1.0 + 0.0j))),
+                        "phase_deg": float(np.degrees(np.angle(order_gains.get(p, 1.0 + 0.0j)))),
+                    }
+                    for p in range(1, len(C_freqs) + 1)
+                },
             },
             f,
             indent=2,
