@@ -201,7 +201,7 @@ def analyze_captured_sss(
         sig_in = sig_blocks[b_idx]
         ref_in = ref_blocks[b_idx]
 
-        f_mid, results = sss_engine.process_input_block(sig_in, b_idx, ref_in_block=ref_in)
+        f_mid, results, _ = sss_engine.process_input_block(sig_in, b_idx, ref_in_block=ref_in)
         if sss_engine.last_block_was_valid:
             accumulated_results[b_idx, :] += results[:max_harmonic]
             block_counts[b_idx] += 1
