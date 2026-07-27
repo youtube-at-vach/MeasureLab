@@ -8,7 +8,7 @@ This documentation summarizes the **operation methods for observing and checking
 
 The purpose of this tool is to **utilize your everyday PC and audio interface as a high-end measurement instrument.**
 
-**MeasureLab allows you to freely build your measurement environment.**
+MeasureLab allows you to freely build your measurement environment.
 Arrange the necessary instruments (widgets) on the screen to perform measurements.
 
 ---

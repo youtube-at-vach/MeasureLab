@@ -72,4 +72,4 @@ Allows real-time confirmation of the detected pulse waveform and adjustment of t
 * **Instantaneous (Dotted Line, Yellow)**: Displays the instantaneous deviation for each pulse. Suitable for checking jitter and short-term fluctuations.
 * **Cumulative Avg (Solid Line, Cyan)**: Displays the cumulative average deviation since the start of measurement. Suitable for checking long-term clock drift (frequency offset).
 
-**Calibration Note**: Executing "Calibrate from Current" saves the calculated correction coefficient in the settings. While this value is used for the audio engine's frequency settings, it does not reset the graph display of the monitor itself.
+Executing "Calibrate from Current" saves the calculated correction coefficient in the settings. While this value is used for the audio engine's frequency settings, it does not reset the graph display of the monitor itself.

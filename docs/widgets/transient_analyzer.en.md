@@ -17,7 +17,7 @@ It uses the **Continuous Wavelet Transform (CWT)** to visualize sounds while mai
 ### Analysis
 
 * After recording is complete, press the **Analyze** button to perform the Wavelet Transform.
-    * **Note**: This process is computationally intensive and may take several seconds to show results.
+    * This process is computationally intensive and may take several seconds to show results.
 
 ### Reading the Charts
 
