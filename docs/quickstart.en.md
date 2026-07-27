@@ -54,8 +54,9 @@ Please download the latest version for your OS from the [Releases](https://githu
    - Go to **System Settings > Privacy & Security**. Scroll down to find the message stating "MeasureLab.app was blocked..." and click **"Open Anyway"**.
    - Alternatively, manually remove the quarantine flag via Terminal: `xattr -d com.apple.quarantine /path/to/MeasureLab.app` (You can drag the app icon into the terminal window to paste its path).
 
-**Note for the first launch: FFT Optimization ([WISDOM](glossary.en.md#fft-wisdom-initial-optimization))**
-On the first launch, preparation (WISDOM generation) is performed to speed up measurement calculations. The screen may appear to be frozen for several tens of seconds, but it is not a malfunction. Heavy calculations are being performed in the background. From the next time, the cache will be used, and it will start instantly.
+> [!NOTE]
+> **First launch: FFT Optimization ([WISDOM](glossary.en.md#fft-wisdom-initial-optimization))**
+> On the first launch, preparation (WISDOM generation) is performed to speed up measurement calculations. The screen may appear to be frozen for several tens of seconds, but it is not a malfunction. Heavy calculations are being performed in the background. From the next time, the cache will be used, and it will start instantly.
 
 ---
 

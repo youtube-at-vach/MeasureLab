@@ -71,5 +71,6 @@ Wait for and monitor noise that occurs sporadically, such as occasional "popping
 3. When noise occurs, it will be recorded as a spike on the graph.
 4. Quickly press **Pause** when you see noise to examine the waveform. This can be used as a "visual trigger" for irregular phenomena that are difficult to capture with standard oscilloscope trigger settings.
 
-**Difference from Oscilloscope Trigger:**
+### Difference from Oscilloscope Trigger
+
 An oscilloscope trigger captures a snapshot when a specific voltage condition is met, whereas Raw Time Series continuously records a long history, allowing you to review issues later. This is highly effective for discovering noise when the conditions are completely unpredictable.

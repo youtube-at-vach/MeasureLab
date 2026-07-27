@@ -19,8 +19,6 @@ When a measurement goes wrong, before blaming the FFT settings, filters, or math
 3. The software emits a 440 Hz test tone from each output channel in sequence and checks all input channels.
 4. If you want to cancel partway through, press **Stop**.
 
-**Notes**:
-
 * The normal measurement engine pauses during the scan.
 * If the output is connected to speakers, headphones, or downstream equipment, you will hear short test tones. Lower the volume first, or protect the connected equipment as needed.
 * This tool is for finding where signals return. It is not a precision instrument for frequency-response or exact level calibration.
