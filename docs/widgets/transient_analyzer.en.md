@@ -37,7 +37,7 @@ It uses the **Continuous Wavelet Transform (CWT)** to visualize sounds while mai
     * Options: `cmor1.5-1.0`, `mexh` (Mexican Hat), `morl` (Morlet), `cgau1`, `gaus1`.
     * Generally, the default setting `cmor1.5-1.0` (Complex Morlet wavelet) is the most well-balanced and suitable choice.
 * **Min / Max Freq**: Specifies the frequency range (lower and upper limits) to be analyzed. By narrowing it down to the band you want to see, you can eliminate wasteful calculations and get clearer results.
-* **Record Time**: Sets the recording time (in seconds). The default is 0.5 seconds. Be careful not to make it too long, as the calculation time will become significantly longer.
+* **Record Time**: Sets the recording time (in seconds). The default is 0.5 seconds. Setting it too long will significantly increase the calculation time.
 
 ### Filter Ringing Analysis
 
