@@ -29,6 +29,7 @@ from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.core.realtime_sss_core import RealtimeSSSEngine, measure_system_latency
 from src.core.hammerstein_model import save_hammerstein_model, set_active_model
+from src.core.predistortion import PredistortionManager
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +138,15 @@ class LockInModeler(MeasurementModule):
         self.num_meas_points = 500
         self.min_analysis_window = 0.1
 
+        # Predistortion SSS parameters
+        self.meas_mode = "sweep"  # "sweep", "hammerstein", "predistortion"
+        self.adaptive_algorithm = "secant"
+        self.dpd_iterations = 10
+        self.learning_rate = 1.0
+        self.mu_decay = 0.92
+        self.predistortion_manager = None
+        self.counter_models = None
+
         # Latency state
         self.latency_samples = 0.0
 
@@ -197,6 +207,23 @@ class LockInModeler(MeasurementModule):
         )
         self.engine.prepare_sweep()
         self.engine.set_latency(self.latency_samples)
+
+        mode = getattr(self, "meas_mode", "sweep")
+        if mode == "predistortion":
+            meas_freqs = np.logspace(np.log10(self.start_freq), np.log10(self.end_freq), self.num_meas_points)
+            self.predistortion_manager = PredistortionManager(
+                start_freq=self.start_freq,
+                end_freq=self.end_freq,
+                meas_freqs=meas_freqs,
+                max_harmonic=self.max_harmonic,
+                algorithm=self.adaptive_algorithm,
+                mu_decay=self.mu_decay,
+            )
+            self.engine.set_predistortion_manager(self.predistortion_manager)
+            self.averaging_count = self.dpd_iterations
+        else:
+            self.predistortion_manager = None
+            self.engine.set_predistortion_manager(None)
 
         frames = self.audio_engine.block_size
         self.max_blocks = int(np.ceil((self.engine.sweep_samples + self.latency_samples) / frames))
@@ -335,6 +362,7 @@ class LockInModelerWidget(QWidget):
         self.combo_meas_mode = QComboBox()
         self.combo_meas_mode.addItem(tr("Sweep Measurement (Default)"), "sweep")
         self.combo_meas_mode.addItem(tr("Nonlinear Model (Forward)"), "hammerstein")
+        self.combo_meas_mode.addItem(tr("Predistortion Sweep (Adaptive DPD)"), "predistortion")
         self.combo_meas_mode.currentIndexChanged.connect(self.on_meas_mode_changed)
         form.addRow(tr("Sweep Mode:"), self.combo_meas_mode)
 
@@ -383,6 +411,33 @@ class LockInModelerWidget(QWidget):
         self.spin_amp_steps.setValue(5)
         form.addRow(tr("Amplitude Steps:"), self.spin_amp_steps)
         self.spin_amp_steps.setVisible(False)
+
+        # Adaptive DPD parameters
+        self.combo_adaptive_algo = QComboBox()
+        self.combo_adaptive_algo.addItem(tr("Secant (Empirical Jacobian)"), "secant")
+        self.combo_adaptive_algo.addItem(tr("Newton (LM Regularized)"), "newton")
+        form.addRow(tr("Adaptive Algorithm:"), self.combo_adaptive_algo)
+        self.combo_adaptive_algo.setVisible(False)
+
+        self.spin_dpd_iterations = QSpinBox()
+        self.spin_dpd_iterations.setRange(1, 20)
+        self.spin_dpd_iterations.setValue(10)
+        form.addRow(tr("DPD Iterations:"), self.spin_dpd_iterations)
+        self.spin_dpd_iterations.setVisible(False)
+
+        self.spin_learning_rate = QDoubleSpinBox()
+        self.spin_learning_rate.setRange(0.01, 1.0)
+        self.spin_learning_rate.setSingleStep(0.05)
+        self.spin_learning_rate.setValue(1.0)
+        form.addRow(tr("Learning Rate (mu):"), self.spin_learning_rate)
+        self.spin_learning_rate.setVisible(False)
+
+        self.spin_mu_decay = QDoubleSpinBox()
+        self.spin_mu_decay.setRange(0.50, 1.00)
+        self.spin_mu_decay.setSingleStep(0.02)
+        self.spin_mu_decay.setValue(0.92)
+        form.addRow(tr("Mu Decay:"), self.spin_mu_decay)
+        self.spin_mu_decay.setVisible(False)
 
         settings_tab.setLayout(form)
         left_tabs.addTab(settings_tab, tr("Settings"))
@@ -806,7 +861,16 @@ class LockInModelerWidget(QWidget):
                 self.module.signal_channel = 0
 
             mode = self.combo_meas_mode.currentData()
+            self.module.meas_mode = mode
             self.is_hammerstein_mode = mode == "hammerstein"
+            self.is_predistortion_mode = mode == "predistortion"
+            if self.is_predistortion_mode:
+                self.module.adaptive_algorithm = self.combo_adaptive_algo.currentData()
+                self.module.dpd_iterations = self.spin_dpd_iterations.value()
+                self.module.learning_rate = self.spin_learning_rate.value()
+                self.module.mu_decay = self.spin_mu_decay.value()
+                self.module.averaging_count = self.module.dpd_iterations
+
             if self.is_hammerstein_mode:
                 self.num_amplitudes = self.spin_amp_steps.value()
                 max_amp_db = self.spin_amplitude.value()
@@ -967,6 +1031,10 @@ class LockInModelerWidget(QWidget):
     def set_controls_enabled(self, enabled):
         self.combo_meas_mode.setEnabled(enabled)
         self.spin_amp_steps.setEnabled(enabled)
+        self.combo_adaptive_algo.setEnabled(enabled)
+        self.spin_dpd_iterations.setEnabled(enabled)
+        self.spin_learning_rate.setEnabled(enabled)
+        self.spin_mu_decay.setEnabled(enabled)
         self.spin_start_freq.setEnabled(enabled)
         self.spin_end_freq.setEnabled(enabled)
         self.spin_duration.setEnabled(enabled)
@@ -1050,11 +1118,25 @@ class LockInModelerWidget(QWidget):
     def on_meas_mode_changed(self, index):
         mode = self.combo_meas_mode.currentData()
         is_ham = mode == "hammerstein"
+        is_predist = mode == "predistortion"
 
         self.spin_amp_steps.setVisible(is_ham)
-        label = self.settings_form.labelForField(self.spin_amp_steps)
-        if label:
-            label.setVisible(is_ham)
+        lbl_amp = self.settings_form.labelForField(self.spin_amp_steps)
+        if lbl_amp:
+            lbl_amp.setVisible(is_ham)
+
+        # DPD Controls
+        dpd_controls = [
+            self.combo_adaptive_algo,
+            self.spin_dpd_iterations,
+            self.spin_learning_rate,
+            self.spin_mu_decay,
+        ]
+        for ctrl in dpd_controls:
+            ctrl.setVisible(is_predist)
+            lbl = self.settings_form.labelForField(ctrl)
+            if lbl:
+                lbl.setVisible(is_predist)
 
         if hasattr(self, "chk_show_raw"):
             self.chk_show_raw.setChecked(not is_ham)
@@ -1675,7 +1757,22 @@ class LockInModelerWidget(QWidget):
                     self.module.current_sweep_idx += 1
                     self.module.current_block_idx = 0
 
-                    if getattr(self, "is_hammerstein_mode", False):
+                    if getattr(self, "is_predistortion_mode", False):
+                        self.process_remaining_queue()
+                        if self.module.predistortion_manager is not None:
+                            self.module.predistortion_manager.update_correction(
+                                iteration=sweep_idx,
+                                x_data=self.plot_freqs_array,
+                                raw_results=self.accumulated_results,
+                                block_counts=self.block_counts,
+                                mu=self.module.learning_rate,
+                                algorithm=self.module.adaptive_algorithm,
+                            )
+                        self.accumulated_results.fill(0.0j)
+                        self.block_counts.fill(0)
+                        self.accumulated_quality.fill(0.0)
+
+                    elif getattr(self, "is_hammerstein_mode", False):
                         N_avg = self.spin_averaging.value()
                         old_amp_idx = sweep_idx // N_avg
                         new_amp_idx = (sweep_idx + 1) // N_avg
@@ -1688,6 +1785,17 @@ class LockInModelerWidget(QWidget):
                     self.module.engine.reset_filter_states()
                     self.module.state = "PLAYING"
                 else:
+                    if getattr(self, "is_predistortion_mode", False) and self.module.predistortion_manager is not None:
+                        self.process_remaining_queue()
+                        self.module.predistortion_manager.update_correction(
+                            iteration=sweep_idx,
+                            x_data=self.plot_freqs_array,
+                            raw_results=self.accumulated_results,
+                            block_counts=self.block_counts,
+                            mu=self.module.learning_rate,
+                            algorithm=self.module.adaptive_algorithm,
+                        )
+                        self.module.counter_models = self.module.predistortion_manager.get_counter_models()
                     self.module.state = "FINISHED"
         except Exception as e:
             logger.error(f"Error in on_sweep_finished: {e}", exc_info=True)
