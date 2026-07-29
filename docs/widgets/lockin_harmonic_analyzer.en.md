@@ -35,7 +35,7 @@ Configure basic measurement parameters.
 * **Harmonics**: Specify the maximum harmonic order to analyze (up to 200). Note that this limit is dynamically clamped based on the fundamental frequency and sampling rate to stay within the Nyquist frequency.
 * **Start Analysis / Stop Analysis**: Toggles the measurement on and off. When started, it will display "Buffering..." until the buffer is filled, after which the analysis results will update.
 
-### 2. Compensation Tab [NEW]
+### 2. Compensation Tab
 
 This feature allows you to cancel out the distortion inherent in the measurement system itself (e.g., the output stage of your audio interface).
 
@@ -45,7 +45,7 @@ This feature allows you to cancel out the distortion inherent in the measurement
     * **Procedure**: Press this button while in a loopback configuration. It will automatically run the calibration sequence until THD is minimized. This allows you to generate an extremely clean test signal for subsequent measurements of external devices.
 * **Clear**: Resets the current compensation table to return to a pure sine wave output.
 
-### 3. Compensation Data Tab [NEW]
+### 3. Compensation Data Tab
 
 * **Save as Reference**: Saves the current compensation data as a reference.
 * **Clear Reference**: Clears the saved reference data.
