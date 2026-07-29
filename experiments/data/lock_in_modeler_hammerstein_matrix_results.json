@@ -1,0 +1,4034 @@
+[
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.028861841577329274,
+        "mae_phase_deg": 0.08032821341305407,
+        "max_amp_err_db": 0.0744563919395631,
+        "max_phase_err_deg": 0.3397344397049835
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.05418674428440262,
+        "mae_phase_deg": 0.04654623840516479,
+        "max_amp_err_db": 0.18312117474560807,
+        "max_phase_err_deg": 0.08982892326096703
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.045409130590676125,
+        "mae_phase_deg": 0.12202192692603261,
+        "max_amp_err_db": 0.15824557428587127,
+        "max_phase_err_deg": 0.2943935098776933
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.01818861096363662,
+        "mae_phase_deg": 0.3286673866198953,
+        "max_amp_err_db": 0.05715395151024438,
+        "max_phase_err_deg": 0.6378318942514909
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.01818861096363662,
+        "mae_phase_deg": 0.3286673866198953,
+        "max_amp_err_db": 0.05715395151024438,
+        "max_phase_err_deg": 0.6378318942514909
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.01818861096363662,
+        "mae_phase_deg": 0.3286673866198953,
+        "max_amp_err_db": 0.05715395151024438,
+        "max_phase_err_deg": 0.6378318942514909
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.01818861096363662,
+        "mae_phase_deg": 0.3286673866198953,
+        "max_amp_err_db": 0.05715395151024438,
+        "max_phase_err_deg": 0.6378318942514909
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.01818861096363662,
+        "mae_phase_deg": 0.3286673866198953,
+        "max_amp_err_db": 0.05715395151024438,
+        "max_phase_err_deg": 0.6378318942514909
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.03924306265759405,
+        "mae_phase_deg": 0.040960171201572845,
+        "max_amp_err_db": 0.1007118842642285,
+        "max_phase_err_deg": 0.09156069561208824
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.054086293211959104,
+        "mae_phase_deg": 0.0456974753635734,
+        "max_amp_err_db": 0.18312117474560807,
+        "max_phase_err_deg": 0.086625140664637
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.0454077221135023,
+        "mae_phase_deg": 0.1233232502981707,
+        "max_amp_err_db": 0.15824557428587127,
+        "max_phase_err_deg": 0.2967281114382274
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.01818847736296405,
+        "mae_phase_deg": 0.32866631400074764,
+        "max_amp_err_db": 0.05715395151024438,
+        "max_phase_err_deg": 0.6378318942886381
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.036093643700762,
+        "mae_phase_deg": 0.6094371596562382,
+        "max_amp_err_db": 0.06914489324248052,
+        "max_phase_err_deg": 1.145581213287187
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.036093643700762,
+        "mae_phase_deg": 0.6094371596562382,
+        "max_amp_err_db": 0.06914489324248052,
+        "max_phase_err_deg": 1.145581213287187
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.036093643700762,
+        "mae_phase_deg": 0.6094371596562382,
+        "max_amp_err_db": 0.06914489324248052,
+        "max_phase_err_deg": 1.145581213287187
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.036093643700762,
+        "mae_phase_deg": 0.6094371596562382,
+        "max_amp_err_db": 0.06914489324248052,
+        "max_phase_err_deg": 1.145581213287187
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.038877578761497486,
+        "mae_phase_deg": 0.138802990926024,
+        "max_amp_err_db": 0.12962639151473354,
+        "max_phase_err_deg": 0.35261064725878555
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.038877578761497486,
+        "mae_phase_deg": 0.138802990926024,
+        "max_amp_err_db": 0.12962639151473354,
+        "max_phase_err_deg": 0.35261064725878555
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.038877578761497486,
+        "mae_phase_deg": 0.138802990926024,
+        "max_amp_err_db": 0.12962639151473354,
+        "max_phase_err_deg": 0.35261064725878555
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.018192238834602747,
+        "mae_phase_deg": 0.3283084540704465,
+        "max_amp_err_db": 0.05715395151024438,
+        "max_phase_err_deg": 0.6371928586987963
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.037210547176370665,
+        "mae_phase_deg": 0.7551413546160518,
+        "max_amp_err_db": 0.06865913039507632,
+        "max_phase_err_deg": 1.3620160530168732
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.04375863732676919,
+        "mae_phase_deg": 1.2918955679524118,
+        "max_amp_err_db": 0.0840338756977701,
+        "max_phase_err_deg": 2.460742637472407
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.04375863732676919,
+        "mae_phase_deg": 1.2918955679524118,
+        "max_amp_err_db": 0.0840338756977701,
+        "max_phase_err_deg": 2.460742637472407
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.04375863732676919,
+        "mae_phase_deg": 1.2918955679524118,
+        "max_amp_err_db": 0.0840338756977701,
+        "max_phase_err_deg": 2.460742637472407
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.02245605318173638,
+        "mae_phase_deg": 0.28480111653605605,
+        "max_amp_err_db": 0.05615856054835433,
+        "max_phase_err_deg": 0.7391349836271388
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.02245605318173638,
+        "mae_phase_deg": 0.28480111653605605,
+        "max_amp_err_db": 0.05615856054835433,
+        "max_phase_err_deg": 0.7391349836271388
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.02245605318173638,
+        "mae_phase_deg": 0.28480111653605605,
+        "max_amp_err_db": 0.05615856054835433,
+        "max_phase_err_deg": 0.7391349836271388
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.018130884354008357,
+        "mae_phase_deg": 0.3356696792578816,
+        "max_amp_err_db": 0.05715395151024438,
+        "max_phase_err_deg": 0.6507552906663534
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.0372108698314829,
+        "mae_phase_deg": 0.7551417473834533,
+        "max_amp_err_db": 0.06865913039507632,
+        "max_phase_err_deg": 1.362016754376441
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.04231542590258215,
+        "mae_phase_deg": 1.6597744517549244,
+        "max_amp_err_db": 0.06977729333620175,
+        "max_phase_err_deg": 3.127835713405034
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.03718745412314597,
+        "mae_phase_deg": 2.9123075145746666,
+        "max_amp_err_db": 0.08063815347710346,
+        "max_phase_err_deg": 5.345049655026287
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.03718745412314597,
+        "mae_phase_deg": 2.9123075145746666,
+        "max_amp_err_db": 0.08063815347710346,
+        "max_phase_err_deg": 5.345049655026287
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.02163291313620519,
+        "mae_phase_deg": 0.39894293332875463,
+        "max_amp_err_db": 0.061740211643609655,
+        "max_phase_err_deg": 0.7025846537368352
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.02163291313620519,
+        "mae_phase_deg": 0.39894293332875463,
+        "max_amp_err_db": 0.061740211643609655,
+        "max_phase_err_deg": 0.7025846537368352
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.02163291313620519,
+        "mae_phase_deg": 0.39894293332875463,
+        "max_amp_err_db": 0.061740211643609655,
+        "max_phase_err_deg": 0.7025846537368352
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.02163291313620519,
+        "mae_phase_deg": 0.39894293332875463,
+        "max_amp_err_db": 0.061740211643609655,
+        "max_phase_err_deg": 0.7025846537368352
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.03722978985558036,
+        "mae_phase_deg": 0.7673785326966538,
+        "max_amp_err_db": 0.06865913039507632,
+        "max_phase_err_deg": 1.3839080954134602
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.04231407220206514,
+        "mae_phase_deg": 1.6595712252096804,
+        "max_amp_err_db": 0.06977729333620175,
+        "max_phase_err_deg": 3.1274728088773998
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.03461618053378146,
+        "mae_phase_deg": 3.9730658787136006,
+        "max_amp_err_db": 0.08174316018043015,
+        "max_phase_err_deg": 7.388990614313229
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.027752534262018357,
+        "mae_phase_deg": 8.323278272617108,
+        "max_amp_err_db": 0.07737188322856525,
+        "max_phase_err_deg": 15.672987842849722
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.037021428368181473,
+        "mae_phase_deg": 0.8107404097798678,
+        "max_amp_err_db": 0.06838617318058482,
+        "max_phase_err_deg": 1.4743267146865549
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.037021428368181473,
+        "mae_phase_deg": 0.8107404097798678,
+        "max_amp_err_db": 0.06838617318058482,
+        "max_phase_err_deg": 1.4743267146865549
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.037021428368181473,
+        "mae_phase_deg": 0.8107404097798678,
+        "max_amp_err_db": 0.06838617318058482,
+        "max_phase_err_deg": 1.4743267146865549
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.037021428368181473,
+        "mae_phase_deg": 0.8107404097798678,
+        "max_amp_err_db": 0.06838617318058482,
+        "max_phase_err_deg": 1.4743267146865549
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.03704617680886777,
+        "mae_phase_deg": 0.8121651405235412,
+        "max_amp_err_db": 0.06842905283869527,
+        "max_phase_err_deg": 1.4760840921146325
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.04238134457766733,
+        "mae_phase_deg": 1.6895110683947905,
+        "max_amp_err_db": 0.06977729333620175,
+        "max_phase_err_deg": 3.1810264789142195
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.03460972713802839,
+        "mae_phase_deg": 3.9726515632993937,
+        "max_amp_err_db": 0.0817431607732999,
+        "max_phase_err_deg": 7.388250765876023
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.05422733344868043,
+        "mae_phase_deg": 12.583393942658711,
+        "max_amp_err_db": 0.11659138142867675,
+        "max_phase_err_deg": 23.730151484252247
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.042171089930971205,
+        "mae_phase_deg": 1.8202380502208313,
+        "max_amp_err_db": 0.06901033481959473,
+        "max_phase_err_deg": 3.4413251953768906
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.042171089930971205,
+        "mae_phase_deg": 1.8202380502208313,
+        "max_amp_err_db": 0.06901033481959473,
+        "max_phase_err_deg": 3.4413251953768906
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.042171089930971205,
+        "mae_phase_deg": 1.8202380502208313,
+        "max_amp_err_db": 0.06901033481959473,
+        "max_phase_err_deg": 3.4413251953768906
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.042171089930971205,
+        "mae_phase_deg": 1.8202380502208313,
+        "max_amp_err_db": 0.06901033481959473,
+        "max_phase_err_deg": 3.4413251953768906
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.042171089930971205,
+        "mae_phase_deg": 1.8202380502208313,
+        "max_amp_err_db": 0.06901033481959473,
+        "max_phase_err_deg": 3.4413251953768906
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.04216335060287975,
+        "mae_phase_deg": 1.8238230452607127,
+        "max_amp_err_db": 0.06885261770773354,
+        "max_phase_err_deg": 3.4467105868687895
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.035046180707314176,
+        "mae_phase_deg": 4.067906403677983,
+        "max_amp_err_db": 0.0817431607732999,
+        "max_phase_err_deg": 7.558613033107719
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.054227336520802895,
+        "mae_phase_deg": 12.583394013879461,
+        "max_amp_err_db": 0.11659138142867675,
+        "max_phase_err_deg": 23.73015164683534
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.03620969125723868,
+        "mae_phase_deg": 4.240887387266452,
+        "max_amp_err_db": 0.07245515939082026,
+        "max_phase_err_deg": 7.968138145902373
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.03620969125723868,
+        "mae_phase_deg": 4.240887387266452,
+        "max_amp_err_db": 0.07245515939082026,
+        "max_phase_err_deg": 7.968138145902373
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.03620969125723868,
+        "mae_phase_deg": 4.240887387266452,
+        "max_amp_err_db": 0.07245515939082026,
+        "max_phase_err_deg": 7.968138145902373
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.03620969125723868,
+        "mae_phase_deg": 4.240887387266452,
+        "max_amp_err_db": 0.07245515939082026,
+        "max_phase_err_deg": 7.968138145902373
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.03620969125723868,
+        "mae_phase_deg": 4.240887387266452,
+        "max_amp_err_db": 0.07245515939082026,
+        "max_phase_err_deg": 7.968138145902373
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.03620969125723868,
+        "mae_phase_deg": 4.240887387266452,
+        "max_amp_err_db": 0.07245515939082026,
+        "max_phase_err_deg": 7.968138145902373
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.0361697909250136,
+        "mae_phase_deg": 4.251627346116953,
+        "max_amp_err_db": 0.07250122592787989,
+        "max_phase_err_deg": 7.986289414568205
+    },
+    {
+        "duration_s": 5.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.05501772583236786,
+        "mae_phase_deg": 12.635662319039266,
+        "max_amp_err_db": 0.11659138142867675,
+        "max_phase_err_deg": 23.8245238682465
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.0359290677750483,
+        "mae_phase_deg": 0.05027336078177882,
+        "max_amp_err_db": 0.08904260828359156,
+        "max_phase_err_deg": 0.07057690338479006
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.022620279703445333,
+        "mae_phase_deg": 0.22763897079137224,
+        "max_amp_err_db": 0.04054117417473435,
+        "max_phase_err_deg": 1.0352228742954708
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.038753871699933384,
+        "mae_phase_deg": 0.11607191267544863,
+        "max_amp_err_db": 0.09282997230383216,
+        "max_phase_err_deg": 0.43437778977838093
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.02892023210263872,
+        "mae_phase_deg": 0.1545790210840039,
+        "max_amp_err_db": 0.0683437241203535,
+        "max_phase_err_deg": 0.283418364620843
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.02892023210263872,
+        "mae_phase_deg": 0.1545790210840039,
+        "max_amp_err_db": 0.0683437241203535,
+        "max_phase_err_deg": 0.283418364620843
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.02892023210263872,
+        "mae_phase_deg": 0.1545790210840039,
+        "max_amp_err_db": 0.0683437241203535,
+        "max_phase_err_deg": 0.283418364620843
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.02892023210263872,
+        "mae_phase_deg": 0.1545790210840039,
+        "max_amp_err_db": 0.0683437241203535,
+        "max_phase_err_deg": 0.283418364620843
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.02892023210263872,
+        "mae_phase_deg": 0.1545790210840039,
+        "max_amp_err_db": 0.0683437241203535,
+        "max_phase_err_deg": 0.283418364620843
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.012752652369581341,
+        "mae_phase_deg": 0.3071593161589874,
+        "max_amp_err_db": 0.03666434585202438,
+        "max_phase_err_deg": 1.4512215198307672
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.023461713157601594,
+        "mae_phase_deg": 0.23284329186358832,
+        "max_amp_err_db": 0.04054117417473435,
+        "max_phase_err_deg": 1.0313480758973128
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.03876098187441279,
+        "mae_phase_deg": 0.11556848711315411,
+        "max_amp_err_db": 0.09282997230383216,
+        "max_phase_err_deg": 0.43134659157334454
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.028920217227557644,
+        "mae_phase_deg": 0.1545761865831537,
+        "max_amp_err_db": 0.0683437241203535,
+        "max_phase_err_deg": 0.2834183647261739
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.030336055977299735,
+        "mae_phase_deg": 0.22527754014158177,
+        "max_amp_err_db": 0.0713224077017145,
+        "max_phase_err_deg": 0.4595448448286561
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.030336055977299735,
+        "mae_phase_deg": 0.22527754014158177,
+        "max_amp_err_db": 0.0713224077017145,
+        "max_phase_err_deg": 0.4595448448286561
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.030336055977299735,
+        "mae_phase_deg": 0.22527754014158177,
+        "max_amp_err_db": 0.0713224077017145,
+        "max_phase_err_deg": 0.4595448448286561
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.030336055977299735,
+        "mae_phase_deg": 0.22527754014158177,
+        "max_amp_err_db": 0.0713224077017145,
+        "max_phase_err_deg": 0.4595448448286561
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.04061034957107275,
+        "mae_phase_deg": 0.09209182828984694,
+        "max_amp_err_db": 0.09644734086700169,
+        "max_phase_err_deg": 0.3166110121345014
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.04061034957107275,
+        "mae_phase_deg": 0.09209182828984694,
+        "max_amp_err_db": 0.09644734086700169,
+        "max_phase_err_deg": 0.3166110121345014
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.04061034957107275,
+        "mae_phase_deg": 0.09209182828984694,
+        "max_amp_err_db": 0.09644734086700169,
+        "max_phase_err_deg": 0.3166110121345014
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.028917534037215732,
+        "mae_phase_deg": 0.15426670742789383,
+        "max_amp_err_db": 0.0683437241203535,
+        "max_phase_err_deg": 0.28297625164719875
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.03462266467261692,
+        "mae_phase_deg": 0.27832624117251614,
+        "max_amp_err_db": 0.07716989864334778,
+        "max_phase_err_deg": 0.5442892466858211
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.045082513185113623,
+        "mae_phase_deg": 0.4339782372762329,
+        "max_amp_err_db": 0.08678625720929745,
+        "max_phase_err_deg": 0.7464215246598087
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.045082513185113623,
+        "mae_phase_deg": 0.4339782372762329,
+        "max_amp_err_db": 0.08678625720929745,
+        "max_phase_err_deg": 0.7464215246598087
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.045082513185113623,
+        "mae_phase_deg": 0.4339782372762329,
+        "max_amp_err_db": 0.08678625720929745,
+        "max_phase_err_deg": 0.7464215246598087
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.029355245808041275,
+        "mae_phase_deg": 0.20109504020809937,
+        "max_amp_err_db": 0.05196230546854963,
+        "max_phase_err_deg": 0.6030245497362898
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.029355245808041275,
+        "mae_phase_deg": 0.20109504020809937,
+        "max_amp_err_db": 0.05196230546854963,
+        "max_phase_err_deg": 0.6030245497362898
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.029355245808041275,
+        "mae_phase_deg": 0.20109504020809937,
+        "max_amp_err_db": 0.05196230546854963,
+        "max_phase_err_deg": 0.6030245497362898
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.028889729872230773,
+        "mae_phase_deg": 0.15750844751091791,
+        "max_amp_err_db": 0.0683437241203535,
+        "max_phase_err_deg": 0.2871029827574034
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.034622814023092016,
+        "mae_phase_deg": 0.27832825768155656,
+        "max_amp_err_db": 0.07716989864334778,
+        "max_phase_err_deg": 0.5442921274318451
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.04627778037223642,
+        "mae_phase_deg": 0.5292620444081763,
+        "max_amp_err_db": 0.08623186858535803,
+        "max_phase_err_deg": 0.8955745415620981
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.044364154338557074,
+        "mae_phase_deg": 0.8038115087688084,
+        "max_amp_err_db": 0.09029339491061705,
+        "max_phase_err_deg": 1.408655548095851
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.044364154338557074,
+        "mae_phase_deg": 0.8038115087688084,
+        "max_amp_err_db": 0.09029339491061705,
+        "max_phase_err_deg": 1.408655548095851
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.030704064620942616,
+        "mae_phase_deg": 0.15164098577504886,
+        "max_amp_err_db": 0.07094582543227546,
+        "max_phase_err_deg": 0.38019653999913317
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.030704064620942616,
+        "mae_phase_deg": 0.15164098577504886,
+        "max_amp_err_db": 0.07094582543227546,
+        "max_phase_err_deg": 0.38019653999913317
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.030704064620942616,
+        "mae_phase_deg": 0.15164098577504886,
+        "max_amp_err_db": 0.07094582543227546,
+        "max_phase_err_deg": 0.38019653999913317
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.030704064620942616,
+        "mae_phase_deg": 0.15164098577504886,
+        "max_amp_err_db": 0.07094582543227546,
+        "max_phase_err_deg": 0.38019653999913317
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.03462004708213371,
+        "mae_phase_deg": 0.2821354543003906,
+        "max_amp_err_db": 0.07716989864334778,
+        "max_phase_err_deg": 0.5497367560791417
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.04627802612411749,
+        "mae_phase_deg": 0.5292001846227038,
+        "max_amp_err_db": 0.08623186858535803,
+        "max_phase_err_deg": 0.8954861704229984
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.04644061418606356,
+        "mae_phase_deg": 1.0568259098303485,
+        "max_amp_err_db": 0.09019894467738254,
+        "max_phase_err_deg": 1.7715132929723723
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.04153430839648209,
+        "mae_phase_deg": 1.8818889331374806,
+        "max_amp_err_db": 0.09527377794366032,
+        "max_phase_err_deg": 3.3853947682093235
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.03525162965953825,
+        "mae_phase_deg": 0.29663769450015137,
+        "max_amp_err_db": 0.07802626283212533,
+        "max_phase_err_deg": 0.5748410394541565
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.03525162965953825,
+        "mae_phase_deg": 0.29663769450015137,
+        "max_amp_err_db": 0.07802626283212533,
+        "max_phase_err_deg": 0.5748410394541565
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.03525162965953825,
+        "mae_phase_deg": 0.29663769450015137,
+        "max_amp_err_db": 0.07802626283212533,
+        "max_phase_err_deg": 0.5748410394541565
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.03525162965953825,
+        "mae_phase_deg": 0.29663769450015137,
+        "max_amp_err_db": 0.07802626283212533,
+        "max_phase_err_deg": 0.5748410394541565
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.03525162965953825,
+        "mae_phase_deg": 0.29663769450015137,
+        "max_amp_err_db": 0.07802626283212533,
+        "max_phase_err_deg": 0.5748410394541565
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.04626346768243863,
+        "mae_phase_deg": 0.5371046078018538,
+        "max_amp_err_db": 0.08623186858535803,
+        "max_phase_err_deg": 0.9068148724708749
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.04643960295143046,
+        "mae_phase_deg": 1.056697290873268,
+        "max_amp_err_db": 0.09019894467738254,
+        "max_phase_err_deg": 1.7713295515908953
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.04138073557194595,
+        "mae_phase_deg": 2.491791335545554,
+        "max_amp_err_db": 0.10215866176204003,
+        "max_phase_err_deg": 4.579599250021744
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.04603184335413211,
+        "mae_phase_deg": 0.5689530516063257,
+        "max_amp_err_db": 0.0863104426306478,
+        "max_phase_err_deg": 0.9652941881206516
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.04603184335413211,
+        "mae_phase_deg": 0.5689530516063257,
+        "max_amp_err_db": 0.0863104426306478,
+        "max_phase_err_deg": 0.9652941881206516
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.04603184335413211,
+        "mae_phase_deg": 0.5689530516063257,
+        "max_amp_err_db": 0.0863104426306478,
+        "max_phase_err_deg": 0.9652941881206516
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.04603184335413211,
+        "mae_phase_deg": 0.5689530516063257,
+        "max_amp_err_db": 0.0863104426306478,
+        "max_phase_err_deg": 0.9652941881206516
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.04603184335413211,
+        "mae_phase_deg": 0.5689530516063257,
+        "max_amp_err_db": 0.0863104426306478,
+        "max_phase_err_deg": 0.9652941881206516
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.04603184335413211,
+        "mae_phase_deg": 0.5689530516063257,
+        "max_amp_err_db": 0.0863104426306478,
+        "max_phase_err_deg": 0.9652941881206516
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.046474345300326195,
+        "mae_phase_deg": 1.0754937759232006,
+        "max_amp_err_db": 0.09019894467738254,
+        "max_phase_err_deg": 1.7982474929223144
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.04137776930249189,
+        "mae_phase_deg": 2.4915233703044466,
+        "max_amp_err_db": 0.10215866179634503,
+        "max_phase_err_deg": 4.579120605986333
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.04652387491014487,
+        "mae_phase_deg": 1.1737155057131416,
+        "max_amp_err_db": 0.08971730419818869,
+        "max_phase_err_deg": 1.948513439642511
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.04652387491014487,
+        "mae_phase_deg": 1.1737155057131416,
+        "max_amp_err_db": 0.08971730419818869,
+        "max_phase_err_deg": 1.948513439642511
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.04652387491014487,
+        "mae_phase_deg": 1.1737155057131416,
+        "max_amp_err_db": 0.08971730419818869,
+        "max_phase_err_deg": 1.948513439642511
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.04652387491014487,
+        "mae_phase_deg": 1.1737155057131416,
+        "max_amp_err_db": 0.08971730419818869,
+        "max_phase_err_deg": 1.948513439642511
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.04652387491014487,
+        "mae_phase_deg": 1.1737155057131416,
+        "max_amp_err_db": 0.08971730419818869,
+        "max_phase_err_deg": 1.948513439642511
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.04652387491014487,
+        "mae_phase_deg": 1.1737155057131416,
+        "max_amp_err_db": 0.08971730419818869,
+        "max_phase_err_deg": 1.948513439642511
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.04652387491014487,
+        "mae_phase_deg": 1.1737155057131416,
+        "max_amp_err_db": 0.08971730419818869,
+        "max_phase_err_deg": 1.948513439642511
+    },
+    {
+        "duration_s": 15.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.041529756451303614,
+        "mae_phase_deg": 2.543684916519061,
+        "max_amp_err_db": 0.10215866179634503,
+        "max_phase_err_deg": 4.672484805428809
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.0724065108104746,
+        "mae_phase_deg": 0.09330525707471793,
+        "max_amp_err_db": 0.1862904311094269,
+        "max_phase_err_deg": 0.18261537457630084
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.04339000252963636,
+        "mae_phase_deg": 0.22000380430264385,
+        "max_amp_err_db": 0.07395744053781783,
+        "max_phase_err_deg": 0.6371564958988074
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.0474086600878465,
+        "mae_phase_deg": 0.20683963139028946,
+        "max_amp_err_db": 0.08971645571949693,
+        "max_phase_err_deg": 0.6411569971484141
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.04084482528860676,
+        "mae_phase_deg": 0.12024285139742119,
+        "max_amp_err_db": 0.08591100019367559,
+        "max_phase_err_deg": 0.36144085514422386
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.04084482528860676,
+        "mae_phase_deg": 0.12024285139742119,
+        "max_amp_err_db": 0.08591100019367559,
+        "max_phase_err_deg": 0.36144085514422386
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.04084482528860676,
+        "mae_phase_deg": 0.12024285139742119,
+        "max_amp_err_db": 0.08591100019367559,
+        "max_phase_err_deg": 0.36144085514422386
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.04084482528860676,
+        "mae_phase_deg": 0.12024285139742119,
+        "max_amp_err_db": 0.08591100019367559,
+        "max_phase_err_deg": 0.36144085514422386
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.04084482528860676,
+        "mae_phase_deg": 0.12024285139742119,
+        "max_amp_err_db": 0.08591100019367559,
+        "max_phase_err_deg": 0.36144085514422386
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.039930950728330215,
+        "mae_phase_deg": 0.21801423582629126,
+        "max_amp_err_db": 0.07210079722104012,
+        "max_phase_err_deg": 0.7040306650051491
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.043228501853032245,
+        "mae_phase_deg": 0.2257686188297896,
+        "max_amp_err_db": 0.07317401716848337,
+        "max_phase_err_deg": 0.6386885866891134
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.047415977621614404,
+        "mae_phase_deg": 0.20721128814603845,
+        "max_amp_err_db": 0.08971645571949693,
+        "max_phase_err_deg": 0.6417803937226267
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.04084503082214006,
+        "mae_phase_deg": 0.12024191844507755,
+        "max_amp_err_db": 0.08591100019367559,
+        "max_phase_err_deg": 0.3614408552715531
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.04500353276897293,
+        "mae_phase_deg": 0.22802316587691962,
+        "max_amp_err_db": 0.0934945013941757,
+        "max_phase_err_deg": 0.5222237317229599
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.04500353276897293,
+        "mae_phase_deg": 0.22802316587691962,
+        "max_amp_err_db": 0.0934945013941757,
+        "max_phase_err_deg": 0.5222237317229599
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.04500353276897293,
+        "mae_phase_deg": 0.22802316587691962,
+        "max_amp_err_db": 0.0934945013941757,
+        "max_phase_err_deg": 0.5222237317229599
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.04500353276897293,
+        "mae_phase_deg": 0.22802316587691962,
+        "max_amp_err_db": 0.0934945013941757,
+        "max_phase_err_deg": 0.5222237317229599
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.04545913212713337,
+        "mae_phase_deg": 0.20729564541229592,
+        "max_amp_err_db": 0.08963829988866223,
+        "max_phase_err_deg": 0.7059708281876169
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.04545913212713337,
+        "mae_phase_deg": 0.20729564541229592,
+        "max_amp_err_db": 0.08963829988866223,
+        "max_phase_err_deg": 0.7059708281876169
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.04545913212713337,
+        "mae_phase_deg": 0.20729564541229592,
+        "max_amp_err_db": 0.08963829988866223,
+        "max_phase_err_deg": 0.7059708281876169
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.04084303274658936,
+        "mae_phase_deg": 0.12032300401176599,
+        "max_amp_err_db": 0.08591100019367559,
+        "max_phase_err_deg": 0.36184628310502376
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.04260390266787617,
+        "mae_phase_deg": 0.23147572822962276,
+        "max_amp_err_db": 0.09723919029818262,
+        "max_phase_err_deg": 0.49517381675815386
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.050336091017929976,
+        "mae_phase_deg": 0.33287439875217045,
+        "max_amp_err_db": 0.09772029475013255,
+        "max_phase_err_deg": 0.7854106748431491
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.050336091017929976,
+        "mae_phase_deg": 0.33287439875217045,
+        "max_amp_err_db": 0.09772029475013255,
+        "max_phase_err_deg": 0.7854106748431491
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.050336091017929976,
+        "mae_phase_deg": 0.33287439875217045,
+        "max_amp_err_db": 0.09772029475013255,
+        "max_phase_err_deg": 0.7854106748431491
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.04511867368401816,
+        "mae_phase_deg": 0.10611019169368205,
+        "max_amp_err_db": 0.082219017177934,
+        "max_phase_err_deg": 0.2360459169983642
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.04511867368401816,
+        "mae_phase_deg": 0.10611019169368205,
+        "max_amp_err_db": 0.082219017177934,
+        "max_phase_err_deg": 0.2360459169983642
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.04511867368401816,
+        "mae_phase_deg": 0.10611019169368205,
+        "max_amp_err_db": 0.082219017177934,
+        "max_phase_err_deg": 0.2360459169983642
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.04082422214000374,
+        "mae_phase_deg": 0.11975592445143093,
+        "max_amp_err_db": 0.08591100019367559,
+        "max_phase_err_deg": 0.3634433185929993
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.042605125418861786,
+        "mae_phase_deg": 0.2314395510560928,
+        "max_amp_err_db": 0.09723919029818262,
+        "max_phase_err_deg": 0.49510921465915203
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.05105350875349508,
+        "mae_phase_deg": 0.386776019223106,
+        "max_amp_err_db": 0.09683203258637718,
+        "max_phase_err_deg": 0.8850387686882755
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.05495697695966477,
+        "mae_phase_deg": 0.5165149971102722,
+        "max_amp_err_db": 0.10640427358963223,
+        "max_phase_err_deg": 1.0559205874030795
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.05495697695966477,
+        "mae_phase_deg": 0.5165149971102722,
+        "max_amp_err_db": 0.10640427358963223,
+        "max_phase_err_deg": 1.0559205874030795
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.051780762190747606,
+        "mae_phase_deg": 0.21381096523885504,
+        "max_amp_err_db": 0.09404405061924592,
+        "max_phase_err_deg": 0.46446302438582165
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.051780762190747606,
+        "mae_phase_deg": 0.21381096523885504,
+        "max_amp_err_db": 0.09404405061924592,
+        "max_phase_err_deg": 0.46446302438582165
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.051780762190747606,
+        "mae_phase_deg": 0.21381096523885504,
+        "max_amp_err_db": 0.09404405061924592,
+        "max_phase_err_deg": 0.46446302438582165
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.051780762190747606,
+        "mae_phase_deg": 0.21381096523885504,
+        "max_amp_err_db": 0.09404405061924592,
+        "max_phase_err_deg": 0.46446302438582165
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.04260639119124541,
+        "mae_phase_deg": 0.23361492265741504,
+        "max_amp_err_db": 0.09723919029818262,
+        "max_phase_err_deg": 0.4990056537401699
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.051053674877386615,
+        "mae_phase_deg": 0.38675458688344405,
+        "max_amp_err_db": 0.09683203258637718,
+        "max_phase_err_deg": 0.8850004966197957
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.05581845677362196,
+        "mae_phase_deg": 0.617536228429816,
+        "max_amp_err_db": 0.10973133447612327,
+        "max_phase_err_deg": 1.2160037060103832
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.0579228532176284,
+        "mae_phase_deg": 0.9128633833729907,
+        "max_amp_err_db": 0.11515703838932723,
+        "max_phase_err_deg": 1.627493224236673
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.04359054285333208,
+        "mae_phase_deg": 0.24190001201892528,
+        "max_amp_err_db": 0.09797325646985655,
+        "max_phase_err_deg": 0.5202487712903121
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.04359054285333208,
+        "mae_phase_deg": 0.24190001201892528,
+        "max_amp_err_db": 0.09797325646985655,
+        "max_phase_err_deg": 0.5202487712903121
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.04359054285333208,
+        "mae_phase_deg": 0.24190001201892528,
+        "max_amp_err_db": 0.09797325646985655,
+        "max_phase_err_deg": 0.5202487712903121
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.04359054285333208,
+        "mae_phase_deg": 0.24190001201892528,
+        "max_amp_err_db": 0.09797325646985655,
+        "max_phase_err_deg": 0.5202487712903121
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.04359054285333208,
+        "mae_phase_deg": 0.24190001201892528,
+        "max_amp_err_db": 0.09797325646985655,
+        "max_phase_err_deg": 0.5202487712903121
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.051049001299753274,
+        "mae_phase_deg": 0.3905546226187425,
+        "max_amp_err_db": 0.09683203258637718,
+        "max_phase_err_deg": 0.891813220058566
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.055818747298531333,
+        "mae_phase_deg": 0.6174936511199007,
+        "max_amp_err_db": 0.10973133447612327,
+        "max_phase_err_deg": 1.2159276750923311
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.05661995826690465,
+        "mae_phase_deg": 1.1319229111122013,
+        "max_amp_err_db": 0.11310663476298544,
+        "max_phase_err_deg": 1.9834940095120146
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.0512430182198802,
+        "mae_phase_deg": 0.40747310493513283,
+        "max_amp_err_db": 0.09715413636290293,
+        "max_phase_err_deg": 0.9241094363313778
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.0512430182198802,
+        "mae_phase_deg": 0.40747310493513283,
+        "max_amp_err_db": 0.09715413636290293,
+        "max_phase_err_deg": 0.9241094363313778
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.0512430182198802,
+        "mae_phase_deg": 0.40747310493513283,
+        "max_amp_err_db": 0.09715413636290293,
+        "max_phase_err_deg": 0.9241094363313778
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.0512430182198802,
+        "mae_phase_deg": 0.40747310493513283,
+        "max_amp_err_db": 0.09715413636290293,
+        "max_phase_err_deg": 0.9241094363313778
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.0512430182198802,
+        "mae_phase_deg": 0.40747310493513283,
+        "max_amp_err_db": 0.09715413636290293,
+        "max_phase_err_deg": 0.9241094363313778
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.0512430182198802,
+        "mae_phase_deg": 0.40747310493513283,
+        "max_amp_err_db": 0.09715413636290293,
+        "max_phase_err_deg": 0.9241094363313778
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.05580474605672201,
+        "mae_phase_deg": 0.6257350023361596,
+        "max_amp_err_db": 0.10973133447612327,
+        "max_phase_err_deg": 1.2307192431840122
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.05662077160642518,
+        "mae_phase_deg": 1.1318117989300447,
+        "max_amp_err_db": 0.11310663476298544,
+        "max_phase_err_deg": 1.98329559485461
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.05565080005432854,
+        "mae_phase_deg": 0.6617458551579375,
+        "max_amp_err_db": 0.11011274542354954,
+        "max_phase_err_deg": 1.2997214781306923
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.05565080005432854,
+        "mae_phase_deg": 0.6617458551579375,
+        "max_amp_err_db": 0.11011274542354954,
+        "max_phase_err_deg": 1.2997214781306923
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.05565080005432854,
+        "mae_phase_deg": 0.6617458551579375,
+        "max_amp_err_db": 0.11011274542354954,
+        "max_phase_err_deg": 1.2997214781306923
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.05565080005432854,
+        "mae_phase_deg": 0.6617458551579375,
+        "max_amp_err_db": 0.11011274542354954,
+        "max_phase_err_deg": 1.2997214781306923
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.05565080005432854,
+        "mae_phase_deg": 0.6617458551579375,
+        "max_amp_err_db": 0.11011274542354954,
+        "max_phase_err_deg": 1.2997214781306923
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.05565080005432854,
+        "mae_phase_deg": 0.6617458551579375,
+        "max_amp_err_db": 0.11011274542354954,
+        "max_phase_err_deg": 1.2997214781306923
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.05565080005432854,
+        "mae_phase_deg": 0.6617458551579375,
+        "max_amp_err_db": 0.11011274542354954,
+        "max_phase_err_deg": 1.2997214781306923
+    },
+    {
+        "duration_s": 30.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.056581978444509316,
+        "mae_phase_deg": 1.150871065890999,
+        "max_amp_err_db": 0.11310663476298544,
+        "max_phase_err_deg": 2.017476855213914
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.07923867808886165,
+        "mae_phase_deg": 0.18001265865586902,
+        "max_amp_err_db": 0.13885941679927782,
+        "max_phase_err_deg": 0.3715157519003469
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.071236989322448,
+        "mae_phase_deg": 0.07066496621715715,
+        "max_amp_err_db": 0.15214383558664224,
+        "max_phase_err_deg": 0.13599681188011914
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.07987658433316155,
+        "mae_phase_deg": 0.18202550485499955,
+        "max_amp_err_db": 0.1720697778073088,
+        "max_phase_err_deg": 0.7567858402254046
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.06510494798471704,
+        "mae_phase_deg": 0.2120232425997756,
+        "max_amp_err_db": 0.1457356912921739,
+        "max_phase_err_deg": 0.7519774124475305
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.06510494798471704,
+        "mae_phase_deg": 0.2120232425997756,
+        "max_amp_err_db": 0.1457356912921739,
+        "max_phase_err_deg": 0.7519774124475305
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.06510494798471704,
+        "mae_phase_deg": 0.2120232425997756,
+        "max_amp_err_db": 0.1457356912921739,
+        "max_phase_err_deg": 0.7519774124475305
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.06510494798471704,
+        "mae_phase_deg": 0.2120232425997756,
+        "max_amp_err_db": 0.1457356912921739,
+        "max_phase_err_deg": 0.7519774124475305
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.06510494798471704,
+        "mae_phase_deg": 0.2120232425997756,
+        "max_amp_err_db": 0.1457356912921739,
+        "max_phase_err_deg": 0.7519774124475305
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.07426541917793408,
+        "mae_phase_deg": 0.12413413618315872,
+        "max_amp_err_db": 0.14061213070575462,
+        "max_phase_err_deg": 0.4168567929877156
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.07090867063118793,
+        "mae_phase_deg": 0.06492047727809905,
+        "max_amp_err_db": 0.15214383558664224,
+        "max_phase_err_deg": 0.1376895190584264
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.07987961680406208,
+        "mae_phase_deg": 0.18179751061971955,
+        "max_amp_err_db": 0.1720697778073088,
+        "max_phase_err_deg": 0.7553657678836885
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.06510497438860234,
+        "mae_phase_deg": 0.21202380486734568,
+        "max_amp_err_db": 0.14573582699789966,
+        "max_phase_err_deg": 0.751977412493261
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.07127069568286615,
+        "mae_phase_deg": 0.12263417679865256,
+        "max_amp_err_db": 0.14376867699211715,
+        "max_phase_err_deg": 0.23342659021705003
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.07127069568286615,
+        "mae_phase_deg": 0.12263417679865256,
+        "max_amp_err_db": 0.14376867699211715,
+        "max_phase_err_deg": 0.23342659021705003
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.07127069568286615,
+        "mae_phase_deg": 0.12263417679865256,
+        "max_amp_err_db": 0.14376867699211715,
+        "max_phase_err_deg": 0.23342659021705003
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.07127069568286615,
+        "mae_phase_deg": 0.12263417679865256,
+        "max_amp_err_db": 0.14376867699211715,
+        "max_phase_err_deg": 0.23342659021705003
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.07795390635877801,
+        "mae_phase_deg": 0.14706065779859614,
+        "max_amp_err_db": 0.17255636977330369,
+        "max_phase_err_deg": 0.5841996919107828
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.07795390635877801,
+        "mae_phase_deg": 0.14706065779859614,
+        "max_amp_err_db": 0.17255636977330369,
+        "max_phase_err_deg": 0.5841996919107828
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.07795390635877801,
+        "mae_phase_deg": 0.14706065779859614,
+        "max_amp_err_db": 0.17255636977330369,
+        "max_phase_err_deg": 0.5841996919107828
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.0651046739600197,
+        "mae_phase_deg": 0.21210727498590815,
+        "max_amp_err_db": 0.14573582699789966,
+        "max_phase_err_deg": 0.7521264662764793
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.07130074910671098,
+        "mae_phase_deg": 0.11904771948818507,
+        "max_amp_err_db": 0.14359795894797855,
+        "max_phase_err_deg": 0.26805066184891757
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.06933251981494379,
+        "mae_phase_deg": 0.22082959675269648,
+        "max_amp_err_db": 0.14458376499376868,
+        "max_phase_err_deg": 0.5305484462821539
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.06933251981494379,
+        "mae_phase_deg": 0.22082959675269648,
+        "max_amp_err_db": 0.14458376499376868,
+        "max_phase_err_deg": 0.5305484462821539
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.06933251981494379,
+        "mae_phase_deg": 0.22082959675269648,
+        "max_amp_err_db": 0.14458376499376868,
+        "max_phase_err_deg": 0.5305484462821539
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.08115072085715588,
+        "mae_phase_deg": 0.3243470605409584,
+        "max_amp_err_db": 0.14541194977525151,
+        "max_phase_err_deg": 1.344210173434135
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.08115072085715588,
+        "mae_phase_deg": 0.3243470605409584,
+        "max_amp_err_db": 0.14541194977525151,
+        "max_phase_err_deg": 1.344210173434135
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.08115072085715588,
+        "mae_phase_deg": 0.3243470605409584,
+        "max_amp_err_db": 0.14541194977525151,
+        "max_phase_err_deg": 1.344210173434135
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.06507509866747938,
+        "mae_phase_deg": 0.21291370646727045,
+        "max_amp_err_db": 0.14555296466029688,
+        "max_phase_err_deg": 0.754074599436251
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.07130087016283788,
+        "mae_phase_deg": 0.11904229415241048,
+        "max_amp_err_db": 0.14359795893120264,
+        "max_phase_err_deg": 0.26802353542655055
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.06886446830553154,
+        "mae_phase_deg": 0.2531272560327807,
+        "max_amp_err_db": 0.1466520189198377,
+        "max_phase_err_deg": 0.6105309756193549
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.07250208913751059,
+        "mae_phase_deg": 0.30388733467484597,
+        "max_amp_err_db": 0.15457153256173228,
+        "max_phase_err_deg": 0.6349551927866344
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.07250208913751059,
+        "mae_phase_deg": 0.30388733467484597,
+        "max_amp_err_db": 0.15457153256173228,
+        "max_phase_err_deg": 0.6349551927866344
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.06544804842838622,
+        "mae_phase_deg": 0.1302505505408135,
+        "max_amp_err_db": 0.14449291994001356,
+        "max_phase_err_deg": 0.2963427285509681
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.06544804842838622,
+        "mae_phase_deg": 0.1302505505408135,
+        "max_amp_err_db": 0.14449291994001356,
+        "max_phase_err_deg": 0.2963427285509681
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.06544804842838622,
+        "mae_phase_deg": 0.1302505505408135,
+        "max_amp_err_db": 0.14449291994001356,
+        "max_phase_err_deg": 0.2963427285509681
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.06544804842838622,
+        "mae_phase_deg": 0.1302505505408135,
+        "max_amp_err_db": 0.14449291994001356,
+        "max_phase_err_deg": 0.2963427285509681
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.07130020675341875,
+        "mae_phase_deg": 0.11919937579518773,
+        "max_amp_err_db": 0.14359795893120264,
+        "max_phase_err_deg": 0.2688480432466349
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.06886435173089467,
+        "mae_phase_deg": 0.2531067820879855,
+        "max_amp_err_db": 0.1466520189198377,
+        "max_phase_err_deg": 0.6104944149224139
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.07159071064713593,
+        "mae_phase_deg": 0.33900229057460934,
+        "max_amp_err_db": 0.155227594917136,
+        "max_phase_err_deg": 0.6512205060176086
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.07397399127424151,
+        "mae_phase_deg": 0.4900215143004914,
+        "max_amp_err_db": 0.15782345113365182,
+        "max_phase_err_deg": 0.9104026573657507
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.07103511645125878,
+        "mae_phase_deg": 0.11511546432507772,
+        "max_amp_err_db": 0.14379255293437154,
+        "max_phase_err_deg": 0.27692772649311337
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.07103511645125878,
+        "mae_phase_deg": 0.11511546432507772,
+        "max_amp_err_db": 0.14379255293437154,
+        "max_phase_err_deg": 0.27692772649311337
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.07103511645125878,
+        "mae_phase_deg": 0.11511546432507772,
+        "max_amp_err_db": 0.14379255293437154,
+        "max_phase_err_deg": 0.27692772649311337
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.07103511645125878,
+        "mae_phase_deg": 0.11511546432507772,
+        "max_amp_err_db": 0.14379255293437154,
+        "max_phase_err_deg": 0.27692772649311337
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.07103511645125878,
+        "mae_phase_deg": 0.11511546432507772,
+        "max_amp_err_db": 0.14379255293437154,
+        "max_phase_err_deg": 0.27692772649311337
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.0688614626547885,
+        "mae_phase_deg": 0.2550711080964618,
+        "max_amp_err_db": 0.1466520189198377,
+        "max_phase_err_deg": 0.6140177284304968
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.07159090970541229,
+        "mae_phase_deg": 0.3389647006894393,
+        "max_amp_err_db": 0.155227594917136,
+        "max_phase_err_deg": 0.6511533812148684
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.07541022857493615,
+        "mae_phase_deg": 0.5902491565288756,
+        "max_amp_err_db": 0.1607744647953382,
+        "max_phase_err_deg": 1.0738609790780913
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.06890201543155391,
+        "mae_phase_deg": 0.2623105921174499,
+        "max_amp_err_db": 0.14713277897179466,
+        "max_phase_err_deg": 0.626125056381369
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.06890201543155391,
+        "mae_phase_deg": 0.2623105921174499,
+        "max_amp_err_db": 0.14713277897179466,
+        "max_phase_err_deg": 0.626125056381369
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.06890201543155391,
+        "mae_phase_deg": 0.2623105921174499,
+        "max_amp_err_db": 0.14713277897179466,
+        "max_phase_err_deg": 0.626125056381369
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.06890201543155391,
+        "mae_phase_deg": 0.2623105921174499,
+        "max_amp_err_db": 0.14713277897179466,
+        "max_phase_err_deg": 0.626125056381369
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.06890201543155391,
+        "mae_phase_deg": 0.2623105921174499,
+        "max_amp_err_db": 0.14713277897179466,
+        "max_phase_err_deg": 0.626125056381369
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.06890201543155391,
+        "mae_phase_deg": 0.2623105921174499,
+        "max_amp_err_db": 0.14713277897179466,
+        "max_phase_err_deg": 0.626125056381369
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.07158381018984095,
+        "mae_phase_deg": 0.34264754814934123,
+        "max_amp_err_db": 0.155227594917136,
+        "max_phase_err_deg": 0.6577590837973446
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.07541058056090719,
+        "mae_phase_deg": 0.5901871420275085,
+        "max_amp_err_db": 0.1607744647953382,
+        "max_phase_err_deg": 1.0737502388863902
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.07155189940922106,
+        "mae_phase_deg": 0.3593375409037833,
+        "max_amp_err_db": 0.15520079506116247,
+        "max_phase_err_deg": 0.6878717856930052
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.07155189940922106,
+        "mae_phase_deg": 0.3593375409037833,
+        "max_amp_err_db": 0.15520079506116247,
+        "max_phase_err_deg": 0.6878717856930052
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.07155189940922106,
+        "mae_phase_deg": 0.3593375409037833,
+        "max_amp_err_db": 0.15520079506116247,
+        "max_phase_err_deg": 0.6878717856930052
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.07155189940922106,
+        "mae_phase_deg": 0.3593375409037833,
+        "max_amp_err_db": 0.15520079506116247,
+        "max_phase_err_deg": 0.6878717856930052
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.07155189940922106,
+        "mae_phase_deg": 0.3593375409037833,
+        "max_amp_err_db": 0.15520079506116247,
+        "max_phase_err_deg": 0.6878717856930052
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.07155189940922106,
+        "mae_phase_deg": 0.3593375409037833,
+        "max_amp_err_db": 0.15520079506116247,
+        "max_phase_err_deg": 0.6878717856930052
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.07155189940922106,
+        "mae_phase_deg": 0.3593375409037833,
+        "max_amp_err_db": 0.15520079506116247,
+        "max_phase_err_deg": 0.6878717856930052
+    },
+    {
+        "duration_s": 60.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.07540053119014126,
+        "mae_phase_deg": 0.5983928896643192,
+        "max_amp_err_db": 0.1607744647953382,
+        "max_phase_err_deg": 1.0884766148006406
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.1184350769916442,
+        "mae_phase_deg": 0.2939118208289756,
+        "max_amp_err_db": 0.22640895057250532,
+        "max_phase_err_deg": 1.2770918797756678
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.10503713358535265,
+        "mae_phase_deg": 0.09581159570989825,
+        "max_amp_err_db": 0.2255709388620062,
+        "max_phase_err_deg": 0.2246588290541922
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.13749398896827464,
+        "mae_phase_deg": 0.20108949367451032,
+        "max_amp_err_db": 0.2262544149738801,
+        "max_phase_err_deg": 0.6244602990489909
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.13793899174174165,
+        "mae_phase_deg": 0.08348730066119288,
+        "max_amp_err_db": 0.2209416175335832,
+        "max_phase_err_deg": 0.22202018749902663
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.13793899174174165,
+        "mae_phase_deg": 0.08348730066119288,
+        "max_amp_err_db": 0.2209416175335832,
+        "max_phase_err_deg": 0.22202018749902663
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.13793899174174165,
+        "mae_phase_deg": 0.08348730066119288,
+        "max_amp_err_db": 0.2209416175335832,
+        "max_phase_err_deg": 0.22202018749902663
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.13793899174174165,
+        "mae_phase_deg": 0.08348730066119288,
+        "max_amp_err_db": 0.2209416175335832,
+        "max_phase_err_deg": 0.22202018749902663
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.13793899174174165,
+        "mae_phase_deg": 0.08348730066119288,
+        "max_amp_err_db": 0.2209416175335832,
+        "max_phase_err_deg": 0.22202018749902663
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.11009188309564415,
+        "mae_phase_deg": 0.09791808519057099,
+        "max_amp_err_db": 0.2243196997543535,
+        "max_phase_err_deg": 0.2694702865471186
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.10476038397602103,
+        "mae_phase_deg": 0.0960744423597589,
+        "max_amp_err_db": 0.2255709388620062,
+        "max_phase_err_deg": 0.22422929222335597
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.13748378108952614,
+        "mae_phase_deg": 0.2013644316479713,
+        "max_amp_err_db": 0.2262544149738801,
+        "max_phase_err_deg": 0.6248889419099442
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.13793889174429808,
+        "mae_phase_deg": 0.0834869510366957,
+        "max_amp_err_db": 0.22094111441313657,
+        "max_phase_err_deg": 0.22202018733236173
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.12176549023850533,
+        "mae_phase_deg": 0.11161667518425133,
+        "max_amp_err_db": 0.22243600811646047,
+        "max_phase_err_deg": 0.22912671055985356
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.12176549023850533,
+        "mae_phase_deg": 0.11161667518425133,
+        "max_amp_err_db": 0.22243600811646047,
+        "max_phase_err_deg": 0.22912671055985356
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.12176549023850533,
+        "mae_phase_deg": 0.11161667518425133,
+        "max_amp_err_db": 0.22243600811646047,
+        "max_phase_err_deg": 0.22912671055985356
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.12176549023850533,
+        "mae_phase_deg": 0.11161667518425133,
+        "max_amp_err_db": 0.22243600811646047,
+        "max_phase_err_deg": 0.22912671055985356
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.14005743179148206,
+        "mae_phase_deg": 0.23137763047755583,
+        "max_amp_err_db": 0.22453232825679947,
+        "max_phase_err_deg": 0.734307168568165
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.14005743179148206,
+        "mae_phase_deg": 0.23137763047755583,
+        "max_amp_err_db": 0.22453232825679947,
+        "max_phase_err_deg": 0.734307168568165
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.14005743179148206,
+        "mae_phase_deg": 0.23137763047755583,
+        "max_amp_err_db": 0.22453232825679947,
+        "max_phase_err_deg": 0.734307168568165
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.1379381085853691,
+        "mae_phase_deg": 0.0834616642895071,
+        "max_amp_err_db": 0.22094111441313657,
+        "max_phase_err_deg": 0.2219840634077741
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.12085455681436592,
+        "mae_phase_deg": 0.120543583056957,
+        "max_amp_err_db": 0.22374014900820782,
+        "max_phase_err_deg": 0.23307301429429117
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.11748862697348379,
+        "mae_phase_deg": 0.13413047418234783,
+        "max_amp_err_db": 0.22492952791694876,
+        "max_phase_err_deg": 0.2791288411307278
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.11748862697348379,
+        "mae_phase_deg": 0.13413047418234783,
+        "max_amp_err_db": 0.22492952791694876,
+        "max_phase_err_deg": 0.2791288411307278
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.11748862697348379,
+        "mae_phase_deg": 0.13413047418234783,
+        "max_amp_err_db": 0.22492952791694876,
+        "max_phase_err_deg": 0.2791288411307278
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.1334955140291978,
+        "mae_phase_deg": 0.14340640318954456,
+        "max_amp_err_db": 0.22287733475063476,
+        "max_phase_err_deg": 0.33526846647629327
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.1334955140291978,
+        "mae_phase_deg": 0.14340640318954456,
+        "max_amp_err_db": 0.22287733475063476,
+        "max_phase_err_deg": 0.33526846647629327
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.1334955140291978,
+        "mae_phase_deg": 0.14340640318954456,
+        "max_amp_err_db": 0.22287733475063476,
+        "max_phase_err_deg": 0.33526846647629327
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.13793638243447823,
+        "mae_phase_deg": 0.08350343262774232,
+        "max_amp_err_db": 0.2208902183320447,
+        "max_phase_err_deg": 0.22215864066743052
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.1208543307692235,
+        "mae_phase_deg": 0.12054312576640883,
+        "max_amp_err_db": 0.22374014905391704,
+        "max_phase_err_deg": 0.23307236111156726
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.11354416107201075,
+        "mae_phase_deg": 0.1358726522161419,
+        "max_amp_err_db": 0.22513970049193688,
+        "max_phase_err_deg": 0.3184720050358578
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.11295201596010855,
+        "mae_phase_deg": 0.19854721086418864,
+        "max_amp_err_db": 0.22586405816716848,
+        "max_phase_err_deg": 0.38195997976131935
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.11295201596010855,
+        "mae_phase_deg": 0.19854721086418864,
+        "max_amp_err_db": 0.22586405816716848,
+        "max_phase_err_deg": 0.38195997976131935
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.13371887539304161,
+        "mae_phase_deg": 0.07674437527805367,
+        "max_amp_err_db": 0.22194071407006533,
+        "max_phase_err_deg": 0.22345822577892704
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.13371887539304161,
+        "mae_phase_deg": 0.07674437527805367,
+        "max_amp_err_db": 0.22194071407006533,
+        "max_phase_err_deg": 0.22345822577892704
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.13371887539304161,
+        "mae_phase_deg": 0.07674437527805367,
+        "max_amp_err_db": 0.22194071407006533,
+        "max_phase_err_deg": 0.22345822577892704
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.13371887539304161,
+        "mae_phase_deg": 0.07674437527805367,
+        "max_amp_err_db": 0.22194071407006533,
+        "max_phase_err_deg": 0.22345822577892704
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.12085609691834556,
+        "mae_phase_deg": 0.12094508562353781,
+        "max_amp_err_db": 0.22374014905391704,
+        "max_phase_err_deg": 0.2336474417376735
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.11354434084426224,
+        "mae_phase_deg": 0.13586106058644987,
+        "max_amp_err_db": 0.22513970046576048,
+        "max_phase_err_deg": 0.3184554455831403
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.11504333520566198,
+        "mae_phase_deg": 0.22973332957193976,
+        "max_amp_err_db": 0.2262807577710788,
+        "max_phase_err_deg": 0.4794784896101021
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.11417275922738242,
+        "mae_phase_deg": 0.2640088947527886,
+        "max_amp_err_db": 0.22797591052117383,
+        "max_phase_err_deg": 0.4620141996161351
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.12100262659011918,
+        "mae_phase_deg": 0.12494680792427175,
+        "max_amp_err_db": 0.22314643955867552,
+        "max_phase_err_deg": 0.23586613235829645
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.12100262659011918,
+        "mae_phase_deg": 0.12494680792427175,
+        "max_amp_err_db": 0.22314643955867552,
+        "max_phase_err_deg": 0.23586613235829645
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.12100262659011918,
+        "mae_phase_deg": 0.12494680792427175,
+        "max_amp_err_db": 0.22314643955867552,
+        "max_phase_err_deg": 0.23586613235829645
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.12100262659011918,
+        "mae_phase_deg": 0.12494680792427175,
+        "max_amp_err_db": 0.22314643955867552,
+        "max_phase_err_deg": 0.23586613235829645
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.12100262659011918,
+        "mae_phase_deg": 0.12494680792427175,
+        "max_amp_err_db": 0.22314643955867552,
+        "max_phase_err_deg": 0.23586613235829645
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.11354284440535914,
+        "mae_phase_deg": 0.13674334094145593,
+        "max_amp_err_db": 0.22513970046576048,
+        "max_phase_err_deg": 0.31972214426423307
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.1150433077044557,
+        "mae_phase_deg": 0.2297256334183487,
+        "max_amp_err_db": 0.22628075777809897,
+        "max_phase_err_deg": 0.4794647465333526
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.11440973209329464,
+        "mae_phase_deg": 0.3168919394786315,
+        "max_amp_err_db": 0.22959847154558588,
+        "max_phase_err_deg": 0.5461590345923923
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.1133046212334758,
+        "mae_phase_deg": 0.1399727568305309,
+        "max_amp_err_db": 0.22526771866032647,
+        "max_phase_err_deg": 0.3270676433188555
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.1133046212334758,
+        "mae_phase_deg": 0.1399727568305309,
+        "max_amp_err_db": 0.22526771866032647,
+        "max_phase_err_deg": 0.3270676433188555
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.1133046212334758,
+        "mae_phase_deg": 0.1399727568305309,
+        "max_amp_err_db": 0.22526771866032647,
+        "max_phase_err_deg": 0.3270676433188555
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.1133046212334758,
+        "mae_phase_deg": 0.1399727568305309,
+        "max_amp_err_db": 0.22526771866032647,
+        "max_phase_err_deg": 0.3270676433188555
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.1133046212334758,
+        "mae_phase_deg": 0.1399727568305309,
+        "max_amp_err_db": 0.22526771866032647,
+        "max_phase_err_deg": 0.3270676433188555
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.1133046212334758,
+        "mae_phase_deg": 0.1399727568305309,
+        "max_amp_err_db": 0.22526771866032647,
+        "max_phase_err_deg": 0.3270676433188555
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.11504082843802728,
+        "mae_phase_deg": 0.231621618833384,
+        "max_amp_err_db": 0.22628075777809897,
+        "max_phase_err_deg": 0.48286367797848584
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.1144099013779023,
+        "mae_phase_deg": 0.3168582235459951,
+        "max_amp_err_db": 0.22959847157409286,
+        "max_phase_err_deg": 0.5461108690556671
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.11516451468820961,
+        "mae_phase_deg": 0.23818422708587264,
+        "max_amp_err_db": 0.2261449883636928,
+        "max_phase_err_deg": 0.492897338182928
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.11516451468820961,
+        "mae_phase_deg": 0.23818422708587264,
+        "max_amp_err_db": 0.2261449883636928,
+        "max_phase_err_deg": 0.492897338182928
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.11516451468820961,
+        "mae_phase_deg": 0.23818422708587264,
+        "max_amp_err_db": 0.2261449883636928,
+        "max_phase_err_deg": 0.492897338182928
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.11516451468820961,
+        "mae_phase_deg": 0.23818422708587264,
+        "max_amp_err_db": 0.2261449883636928,
+        "max_phase_err_deg": 0.492897338182928
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.11516451468820961,
+        "mae_phase_deg": 0.23818422708587264,
+        "max_amp_err_db": 0.2261449883636928,
+        "max_phase_err_deg": 0.492897338182928
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.11516451468820961,
+        "mae_phase_deg": 0.23818422708587264,
+        "max_amp_err_db": 0.2261449883636928,
+        "max_phase_err_deg": 0.492897338182928
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.11516451468820961,
+        "mae_phase_deg": 0.23818422708587264,
+        "max_amp_err_db": 0.2261449883636928,
+        "max_phase_err_deg": 0.492897338182928
+    },
+    {
+        "duration_s": 120.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.11440519715271727,
+        "mae_phase_deg": 0.3207053833843361,
+        "max_amp_err_db": 0.22959847157409286,
+        "max_phase_err_deg": 0.5516350510841335
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.18321612701364529,
+        "mae_phase_deg": 0.30323712164740185,
+        "max_amp_err_db": 0.37920832772255153,
+        "max_phase_err_deg": 1.1155176636238195
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.18972772424388468,
+        "mae_phase_deg": 0.3272144870631507,
+        "max_amp_err_db": 0.3660057812389397,
+        "max_phase_err_deg": 1.2836953606914108
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.18706654813066237,
+        "mae_phase_deg": 0.16995269317518477,
+        "max_amp_err_db": 0.36563583261423105,
+        "max_phase_err_deg": 0.45639816234208297
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.19280193171897117,
+        "mae_phase_deg": 0.1918185418759947,
+        "max_amp_err_db": 0.36605859112764705,
+        "max_phase_err_deg": 0.6165072233147839
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.19280193171897117,
+        "mae_phase_deg": 0.1918185418759947,
+        "max_amp_err_db": 0.36605859112764705,
+        "max_phase_err_deg": 0.6165072233147839
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.19280193171897117,
+        "mae_phase_deg": 0.1918185418759947,
+        "max_amp_err_db": 0.36605859112764705,
+        "max_phase_err_deg": 0.6165072233147839
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.19280193171897117,
+        "mae_phase_deg": 0.1918185418759947,
+        "max_amp_err_db": 0.36605859112764705,
+        "max_phase_err_deg": 0.6165072233147839
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.19280193171897117,
+        "mae_phase_deg": 0.1918185418759947,
+        "max_amp_err_db": 0.36605859112764705,
+        "max_phase_err_deg": 0.6165072233147839
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.17809016164420122,
+        "mae_phase_deg": 0.36862076498707663,
+        "max_amp_err_db": 0.3676138716466326,
+        "max_phase_err_deg": 1.3352021639659029
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.1898472729082485,
+        "mae_phase_deg": 0.3279107638807147,
+        "max_amp_err_db": 0.36658334496441114,
+        "max_phase_err_deg": 1.2816378944653195
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.1870766033713469,
+        "mae_phase_deg": 0.17022522513485683,
+        "max_amp_err_db": 0.36563583261425237,
+        "max_phase_err_deg": 0.4546490539124193
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.1928018018123158,
+        "mae_phase_deg": 0.19181966330668274,
+        "max_amp_err_db": 0.366057943434285,
+        "max_phase_err_deg": 0.6165072234571198
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.18224621608634095,
+        "mae_phase_deg": 0.15678197177096537,
+        "max_amp_err_db": 0.3668460830898965,
+        "max_phase_err_deg": 0.43730475150695725
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.18224621608634095,
+        "mae_phase_deg": 0.15678197177096537,
+        "max_amp_err_db": 0.3668460830898965,
+        "max_phase_err_deg": 0.43730475150695725
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.18224621608634095,
+        "mae_phase_deg": 0.15678197177096537,
+        "max_amp_err_db": 0.3668460830898965,
+        "max_phase_err_deg": 0.43730475150695725
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.18224621608634095,
+        "mae_phase_deg": 0.15678197177096537,
+        "max_amp_err_db": 0.3668460830898965,
+        "max_phase_err_deg": 0.43730475150695725
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.18314165212471636,
+        "mae_phase_deg": 0.1403209947790515,
+        "max_amp_err_db": 0.36328045441037915,
+        "max_phase_err_deg": 0.2807944077295019
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.18314165212471636,
+        "mae_phase_deg": 0.1403209947790515,
+        "max_amp_err_db": 0.36328045441037915,
+        "max_phase_err_deg": 0.2807944077295019
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.18314165212471636,
+        "mae_phase_deg": 0.1403209947790515,
+        "max_amp_err_db": 0.36328045441037915,
+        "max_phase_err_deg": 0.2807944077295019
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.1928016490816983,
+        "mae_phase_deg": 0.19171912718898057,
+        "max_amp_err_db": 0.366057943434285,
+        "max_phase_err_deg": 0.6163276946754763
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.18617287549750472,
+        "mae_phase_deg": 0.14223318379707733,
+        "max_amp_err_db": 0.3671015692300088,
+        "max_phase_err_deg": 0.3518678730807778
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.19319658357509226,
+        "mae_phase_deg": 0.1523592394862078,
+        "max_amp_err_db": 0.3676751489215633,
+        "max_phase_err_deg": 0.37288671475641877
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.19319658357509226,
+        "mae_phase_deg": 0.1523592394862078,
+        "max_amp_err_db": 0.3676751489215633,
+        "max_phase_err_deg": 0.37288671475641877
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.19319658357509226,
+        "mae_phase_deg": 0.1523592394862078,
+        "max_amp_err_db": 0.3676751489215633,
+        "max_phase_err_deg": 0.37288671475641877
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.18860906285932302,
+        "mae_phase_deg": 0.18982226866072552,
+        "max_amp_err_db": 0.36586052733774466,
+        "max_phase_err_deg": 0.6002565743293928
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.18860906285932302,
+        "mae_phase_deg": 0.18982226866072552,
+        "max_amp_err_db": 0.36586052733774466,
+        "max_phase_err_deg": 0.6002565743293928
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.18860906285932302,
+        "mae_phase_deg": 0.18982226866072552,
+        "max_amp_err_db": 0.36586052733774466,
+        "max_phase_err_deg": 0.6002565743293928
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.1928318903042264,
+        "mae_phase_deg": 0.1918630739846378,
+        "max_amp_err_db": 0.3662201710122588,
+        "max_phase_err_deg": 0.6166452669743592
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.1861728151955692,
+        "mae_phase_deg": 0.142244060967829,
+        "max_amp_err_db": 0.3671015693430064,
+        "max_phase_err_deg": 0.3518872969834774
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.19026415060777388,
+        "mae_phase_deg": 0.13884705535444936,
+        "max_amp_err_db": 0.3682541856664727,
+        "max_phase_err_deg": 0.31011536969614895
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.18386501423168192,
+        "mae_phase_deg": 0.12576046839737387,
+        "max_amp_err_db": 0.36871738364619944,
+        "max_phase_err_deg": 0.21836696203087058
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.18386501423168192,
+        "mae_phase_deg": 0.12576046839737387,
+        "max_amp_err_db": 0.36871738364619944,
+        "max_phase_err_deg": 0.21836696203087058
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.18951702937118356,
+        "mae_phase_deg": 0.19430027817967357,
+        "max_amp_err_db": 0.36593110489016567,
+        "max_phase_err_deg": 0.6275022447939875
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.18951702937118356,
+        "mae_phase_deg": 0.19430027817967357,
+        "max_amp_err_db": 0.36593110489016567,
+        "max_phase_err_deg": 0.6275022447939875
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.18951702937118356,
+        "mae_phase_deg": 0.19430027817967357,
+        "max_amp_err_db": 0.36593110489016567,
+        "max_phase_err_deg": 0.6275022447939875
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.18951702937118356,
+        "mae_phase_deg": 0.19430027817967357,
+        "max_amp_err_db": 0.36593110489016567,
+        "max_phase_err_deg": 0.6275022447939875
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.1861737230529709,
+        "mae_phase_deg": 0.1425497305706415,
+        "max_amp_err_db": 0.3671015693430064,
+        "max_phase_err_deg": 0.352430989022281
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.19026466456939595,
+        "mae_phase_deg": 0.13882782807929744,
+        "max_amp_err_db": 0.3682541856919741,
+        "max_phase_err_deg": 0.3100810353606107
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.18567677024948637,
+        "mae_phase_deg": 0.15174128914624702,
+        "max_amp_err_db": 0.3692405778767949,
+        "max_phase_err_deg": 0.28216174692437335
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.18836653346998275,
+        "mae_phase_deg": 0.21192820484002936,
+        "max_amp_err_db": 0.3708875258956823,
+        "max_phase_err_deg": 0.380864033509539
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.18691659078918582,
+        "mae_phase_deg": 0.14218090015514803,
+        "max_amp_err_db": 0.3676231303978099,
+        "max_phase_err_deg": 0.34731593664457705
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.18691659078918582,
+        "mae_phase_deg": 0.14218090015514803,
+        "max_amp_err_db": 0.3676231303978099,
+        "max_phase_err_deg": 0.34731593664457705
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.18691659078918582,
+        "mae_phase_deg": 0.14218090015514803,
+        "max_amp_err_db": 0.3676231303978099,
+        "max_phase_err_deg": 0.34731593664457705
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.18691659078918582,
+        "mae_phase_deg": 0.14218090015514803,
+        "max_amp_err_db": 0.3676231303978099,
+        "max_phase_err_deg": 0.34731593664457705
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.18691659078918582,
+        "mae_phase_deg": 0.14218090015514803,
+        "max_amp_err_db": 0.3676231303978099,
+        "max_phase_err_deg": 0.34731593664457705
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.1902660765074767,
+        "mae_phase_deg": 0.13963957238601096,
+        "max_amp_err_db": 0.3682541856919741,
+        "max_phase_err_deg": 0.3115426035421649
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.18567652286220165,
+        "mae_phase_deg": 0.15174168465389926,
+        "max_amp_err_db": 0.36924057792482756,
+        "max_phase_err_deg": 0.28216231207863984
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.19204901329890198,
+        "mae_phase_deg": 0.2503965851224791,
+        "max_amp_err_db": 0.3718520709383526,
+        "max_phase_err_deg": 0.4735255289565714
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.18945854545666485,
+        "mae_phase_deg": 0.13598830376020601,
+        "max_amp_err_db": 0.3685834179614105,
+        "max_phase_err_deg": 0.29479590796256616
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.18945854545666485,
+        "mae_phase_deg": 0.13598830376020601,
+        "max_amp_err_db": 0.3685834179614105,
+        "max_phase_err_deg": 0.29479590796256616
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.18945854545666485,
+        "mae_phase_deg": 0.13598830376020601,
+        "max_amp_err_db": 0.3685834179614105,
+        "max_phase_err_deg": 0.29479590796256616
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.18945854545666485,
+        "mae_phase_deg": 0.13598830376020601,
+        "max_amp_err_db": 0.3685834179614105,
+        "max_phase_err_deg": 0.29479590796256616
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.18945854545666485,
+        "mae_phase_deg": 0.13598830376020601,
+        "max_amp_err_db": 0.3685834179614105,
+        "max_phase_err_deg": 0.29479590796256616
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.18945854545666485,
+        "mae_phase_deg": 0.13598830376020601,
+        "max_amp_err_db": 0.3685834179614105,
+        "max_phase_err_deg": 0.29479590796256616
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.18567237591381983,
+        "mae_phase_deg": 0.15274512580443228,
+        "max_amp_err_db": 0.36924057792482756,
+        "max_phase_err_deg": 0.28359985009581123
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.19204906245779405,
+        "mae_phase_deg": 0.2503742366395215,
+        "max_amp_err_db": 0.3718520709660922,
+        "max_phase_err_deg": 0.47348562108919623
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.18572767709286317,
+        "mae_phase_deg": 0.15984877353806723,
+        "max_amp_err_db": 0.369030244125895,
+        "max_phase_err_deg": 0.2959912550798549
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.18572767709286317,
+        "mae_phase_deg": 0.15984877353806723,
+        "max_amp_err_db": 0.369030244125895,
+        "max_phase_err_deg": 0.2959912550798549
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.18572767709286317,
+        "mae_phase_deg": 0.15984877353806723,
+        "max_amp_err_db": 0.369030244125895,
+        "max_phase_err_deg": 0.2959912550798549
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.18572767709286317,
+        "mae_phase_deg": 0.15984877353806723,
+        "max_amp_err_db": 0.369030244125895,
+        "max_phase_err_deg": 0.2959912550798549
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.18572767709286317,
+        "mae_phase_deg": 0.15984877353806723,
+        "max_amp_err_db": 0.369030244125895,
+        "max_phase_err_deg": 0.2959912550798549
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.18572767709286317,
+        "mae_phase_deg": 0.15984877353806723,
+        "max_amp_err_db": 0.369030244125895,
+        "max_phase_err_deg": 0.2959912550798549
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.18572767709286317,
+        "mae_phase_deg": 0.15984877353806723,
+        "max_amp_err_db": 0.369030244125895,
+        "max_phase_err_deg": 0.2959912550798549
+    },
+    {
+        "duration_s": 180.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.19204646929564612,
+        "mae_phase_deg": 0.2527786185206537,
+        "max_amp_err_db": 0.3718520709660922,
+        "max_phase_err_deg": 0.47780065620344203
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.35467017351853725,
+        "mae_phase_deg": 0.2813817927441164,
+        "max_amp_err_db": 0.6047630702561406,
+        "max_phase_err_deg": 1.0259680710430814
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.31233668385290053,
+        "mae_phase_deg": 0.24931300416500335,
+        "max_amp_err_db": 0.5682893999379885,
+        "max_phase_err_deg": 0.8997496217964169
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.2901382632633126,
+        "mae_phase_deg": 0.12682733785769643,
+        "max_amp_err_db": 0.569189539610889,
+        "max_phase_err_deg": 0.4313016439251953
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.3045059185083591,
+        "mae_phase_deg": 0.07315017020363257,
+        "max_amp_err_db": 0.5632610034710268,
+        "max_phase_err_deg": 0.18244154348053598
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.3045059185083591,
+        "mae_phase_deg": 0.07315017020363257,
+        "max_amp_err_db": 0.5632610034710268,
+        "max_phase_err_deg": 0.18244154348053598
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.3045059185083591,
+        "mae_phase_deg": 0.07315017020363257,
+        "max_amp_err_db": 0.5632610034710268,
+        "max_phase_err_deg": 0.18244154348053598
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.3045059185083591,
+        "mae_phase_deg": 0.07315017020363257,
+        "max_amp_err_db": 0.5632610034710268,
+        "max_phase_err_deg": 0.18244154348053598
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 8.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.3045059185083591,
+        "mae_phase_deg": 0.07315017020363257,
+        "max_amp_err_db": 0.5632610034710268,
+        "max_phase_err_deg": 0.18244154348053598
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.3307519992900755,
+        "mae_phase_deg": 0.21444510185828564,
+        "max_amp_err_db": 0.5655993651862872,
+        "max_phase_err_deg": 0.6408164684898452
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.3124365549427818,
+        "mae_phase_deg": 0.24664364768708538,
+        "max_amp_err_db": 0.5689104824409981,
+        "max_phase_err_deg": 0.9018261648997736
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.29013232529482347,
+        "mae_phase_deg": 0.12656620659047918,
+        "max_amp_err_db": 0.5691895396109459,
+        "max_phase_err_deg": 0.43285050772692557
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.3045058879743358,
+        "mae_phase_deg": 0.0731514298399361,
+        "max_amp_err_db": 0.5632608495934193,
+        "max_phase_err_deg": 0.18244154361195797
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.2958233198005896,
+        "mae_phase_deg": 0.12603525221414885,
+        "max_amp_err_db": 0.5651010091174413,
+        "max_phase_err_deg": 0.3651701540034935
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.2958233198005896,
+        "mae_phase_deg": 0.12603525221414885,
+        "max_amp_err_db": 0.5651010091174413,
+        "max_phase_err_deg": 0.3651701540034935
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.2958233198005896,
+        "mae_phase_deg": 0.12603525221414885,
+        "max_amp_err_db": 0.5651010091174413,
+        "max_phase_err_deg": 0.3651701540034935
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 16.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.2958233198005896,
+        "mae_phase_deg": 0.12603525221414885,
+        "max_amp_err_db": 0.5651010091174413,
+        "max_phase_err_deg": 0.3651701540034935
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.28578553684822305,
+        "mae_phase_deg": 0.07622055874838907,
+        "max_amp_err_db": 0.5670406066591127,
+        "max_phase_err_deg": 0.14623666565029225
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.28578553684822305,
+        "mae_phase_deg": 0.07622055874838907,
+        "max_amp_err_db": 0.5670406066591127,
+        "max_phase_err_deg": 0.14623666565029225
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.28578553684822305,
+        "mae_phase_deg": 0.07622055874838907,
+        "max_amp_err_db": 0.5670406066591127,
+        "max_phase_err_deg": 0.14623666565029225
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.3045062119513126,
+        "mae_phase_deg": 0.07315674321920937,
+        "max_amp_err_db": 0.5632608495934193,
+        "max_phase_err_deg": 0.18246811050829592
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.29337231322147694,
+        "mae_phase_deg": 0.12745403841458938,
+        "max_amp_err_db": 0.5645565312220597,
+        "max_phase_err_deg": 0.37085034060092426
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.2932560278201162,
+        "mae_phase_deg": 0.07923179790833501,
+        "max_amp_err_db": 0.5645208850224606,
+        "max_phase_err_deg": 0.17916369160997192
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.2932560278201162,
+        "mae_phase_deg": 0.07923179790833501,
+        "max_amp_err_db": 0.5645208850224606,
+        "max_phase_err_deg": 0.17916369160997192
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 32.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.2932560278201162,
+        "mae_phase_deg": 0.07923179790833501,
+        "max_amp_err_db": 0.5645208850224606,
+        "max_phase_err_deg": 0.17916369160997192
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.30569413947286994,
+        "mae_phase_deg": 0.2086026827969306,
+        "max_amp_err_db": 0.5646194534714084,
+        "max_phase_err_deg": 0.7517921506967014
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.30569413947286994,
+        "mae_phase_deg": 0.2086026827969306,
+        "max_amp_err_db": 0.5646194534714084,
+        "max_phase_err_deg": 0.7517921506967014
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.30569413947286994,
+        "mae_phase_deg": 0.2086026827969306,
+        "max_amp_err_db": 0.5646194534714084,
+        "max_phase_err_deg": 0.7517921506967014
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.3045318968350969,
+        "mae_phase_deg": 0.0732891000026541,
+        "max_amp_err_db": 0.563373707611845,
+        "max_phase_err_deg": 0.1822293999618978
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.29337237660562676,
+        "mae_phase_deg": 0.12745593323789423,
+        "max_amp_err_db": 0.5645565312043033,
+        "max_phase_err_deg": 0.3708537243624619
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.2912258028145057,
+        "mae_phase_deg": 0.08189933160917348,
+        "max_amp_err_db": 0.5644887936067917,
+        "max_phase_err_deg": 0.20565234136194022
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.2961495593928184,
+        "mae_phase_deg": 0.11249026476616564,
+        "max_amp_err_db": 0.5653449969241819,
+        "max_phase_err_deg": 0.23430980344056707
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 64.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.2961495593928184,
+        "mae_phase_deg": 0.11249026476616564,
+        "max_amp_err_db": 0.5653449969241819,
+        "max_phase_err_deg": 0.23430980344056707
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.3008941624365285,
+        "mae_phase_deg": 0.08627983513346749,
+        "max_amp_err_db": 0.5637805127404789,
+        "max_phase_err_deg": 0.16653169272359492
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.3008941624365285,
+        "mae_phase_deg": 0.08627983513346749,
+        "max_amp_err_db": 0.5637805127404789,
+        "max_phase_err_deg": 0.16653169272359492
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.3008941624365285,
+        "mae_phase_deg": 0.08627983513346749,
+        "max_amp_err_db": 0.5637805127404789,
+        "max_phase_err_deg": 0.16653169272359492
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.3008941624365285,
+        "mae_phase_deg": 0.08627983513346749,
+        "max_amp_err_db": 0.5637805127404789,
+        "max_phase_err_deg": 0.16653169272359492
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.2933727432955028,
+        "mae_phase_deg": 0.12769309906440754,
+        "max_amp_err_db": 0.5645565312043033,
+        "max_phase_err_deg": 0.3712853294912293
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.2912257191704647,
+        "mae_phase_deg": 0.08190111641952172,
+        "max_amp_err_db": 0.5644887935325755,
+        "max_phase_err_deg": 0.20565489119462654
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.30384807020388005,
+        "mae_phase_deg": 0.11909499753227237,
+        "max_amp_err_db": 0.5663636600182897,
+        "max_phase_err_deg": 0.22086895895449743
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 128.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.3048374727284223,
+        "mae_phase_deg": 0.15126623683040635,
+        "max_amp_err_db": 0.5669921666510334,
+        "max_phase_err_deg": 0.28066185400626864
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.2932608127583382,
+        "mae_phase_deg": 0.12445773417163082,
+        "max_amp_err_db": 0.5640406702530356,
+        "max_phase_err_deg": 0.3542162372046107
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.2932608127583382,
+        "mae_phase_deg": 0.12445773417163082,
+        "max_amp_err_db": 0.5640406702530356,
+        "max_phase_err_deg": 0.3542162372046107
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.2932608127583382,
+        "mae_phase_deg": 0.12445773417163082,
+        "max_amp_err_db": 0.5640406702530356,
+        "max_phase_err_deg": 0.3542162372046107
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.2932608127583382,
+        "mae_phase_deg": 0.12445773417163082,
+        "max_amp_err_db": 0.5640406702530356,
+        "max_phase_err_deg": 0.3542162372046107
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.2932608127583382,
+        "mae_phase_deg": 0.12445773417163082,
+        "max_amp_err_db": 0.5640406702530356,
+        "max_phase_err_deg": 0.3542162372046107
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.29122525916628206,
+        "mae_phase_deg": 0.08226208961349926,
+        "max_amp_err_db": 0.5644887935325755,
+        "max_phase_err_deg": 0.20616936467126834
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.303848372800913,
+        "mae_phase_deg": 0.11906694218069447,
+        "max_amp_err_db": 0.5663636600432085,
+        "max_phase_err_deg": 0.22082887992553424
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 256.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.3033156706863561,
+        "mae_phase_deg": 0.16277041860377608,
+        "max_amp_err_db": 0.5673301341171495,
+        "max_phase_err_deg": 0.31590310803926513
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.2911510892720329,
+        "mae_phase_deg": 0.08408851016940844,
+        "max_amp_err_db": 0.5646448491624199,
+        "max_phase_err_deg": 0.21093679860234715
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.2911510892720329,
+        "mae_phase_deg": 0.08408851016940844,
+        "max_amp_err_db": 0.5646448491624199,
+        "max_phase_err_deg": 0.21093679860234715
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.2911510892720329,
+        "mae_phase_deg": 0.08408851016940844,
+        "max_amp_err_db": 0.5646448491624199,
+        "max_phase_err_deg": 0.21093679860234715
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.2911510892720329,
+        "mae_phase_deg": 0.08408851016940844,
+        "max_amp_err_db": 0.5646448491624199,
+        "max_phase_err_deg": 0.21093679860234715
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.2911510892720329,
+        "mae_phase_deg": 0.08408851016940844,
+        "max_amp_err_db": 0.5646448491624199,
+        "max_phase_err_deg": 0.21093679860234715
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.2911510892720329,
+        "mae_phase_deg": 0.08408851016940844,
+        "max_amp_err_db": 0.5646448491624199,
+        "max_phase_err_deg": 0.21093679860234715
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.3038462150644623,
+        "mae_phase_deg": 0.11982935694608159,
+        "max_amp_err_db": 0.5663636600432085,
+        "max_phase_err_deg": 0.2219236548003778
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 512.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.30331559338789627,
+        "mae_phase_deg": 0.16276437482254097,
+        "max_amp_err_db": 0.5673301340625798,
+        "max_phase_err_deg": 0.31589447403632676
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 10,
+        "mae_amp_db": 0.3046774709146355,
+        "mae_phase_deg": 0.12226653450034633,
+        "max_amp_err_db": 0.5666504279670335,
+        "max_phase_err_deg": 0.2246868304754912
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 20,
+        "mae_amp_db": 0.3046774709146355,
+        "mae_phase_deg": 0.12226653450034633,
+        "max_amp_err_db": 0.5666504279670335,
+        "max_phase_err_deg": 0.2246868304754912
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 30,
+        "mae_amp_db": 0.3046774709146355,
+        "mae_phase_deg": 0.12226653450034633,
+        "max_amp_err_db": 0.5666504279670335,
+        "max_phase_err_deg": 0.2246868304754912
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 100,
+        "mae_amp_db": 0.3046774709146355,
+        "mae_phase_deg": 0.12226653450034633,
+        "max_amp_err_db": 0.5666504279670335,
+        "max_phase_err_deg": 0.2246868304754912
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 250,
+        "mae_amp_db": 0.3046774709146355,
+        "mae_phase_deg": 0.12226653450034633,
+        "max_amp_err_db": 0.5666504279670335,
+        "max_phase_err_deg": 0.2246868304754912
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 500,
+        "mae_amp_db": 0.3046774709146355,
+        "mae_phase_deg": 0.12226653450034633,
+        "max_amp_err_db": 0.5666504279670335,
+        "max_phase_err_deg": 0.2246868304754912
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 1000,
+        "mae_amp_db": 0.3046774709146355,
+        "mae_phase_deg": 0.12226653450034633,
+        "max_amp_err_db": 0.5666504279670335,
+        "max_phase_err_deg": 0.2246868304754912
+    },
+    {
+        "duration_s": 300.0,
+        "analysis_cycle": 1024.0,
+        "min_window_ms": 2000,
+        "mae_amp_db": 0.30331540291405973,
+        "mae_phase_deg": 0.16408419667697557,
+        "max_amp_err_db": 0.5673301340625798,
+        "max_phase_err_deg": 0.3177921778824384
+    }
+]
