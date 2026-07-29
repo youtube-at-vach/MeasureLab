@@ -75,7 +75,7 @@ class PredistortionManager:
         # Initialize correction envelopes F_corr for each harmonic (2 to max_harmonic)
         self.F_corr = {n: np.zeros(len(self.meas_freqs), dtype=complex) for n in range(2, self.max_harmonic + 1)}
         self.H0_1: Optional[np.ndarray] = None  # Initial fundamental linear response
-        
+
         # History tracking for Secant / Quasi-Newton algorithms
         self.F_history = {n: [] for n in range(2, self.max_harmonic + 1)}
         self.H_history = {n: [] for n in range(2, self.max_harmonic + 1)}
@@ -199,16 +199,24 @@ class PredistortionManager:
         block_counts: np.ndarray,
         mu: float,
         algorithm: Optional[str] = None,
+        quality_data: Optional[np.ndarray] = None,
+        min_quality: float = 0.3,
     ) -> dict[int, np.ndarray]:
         """
         Updates the predistortion correction envelopes F_corr based on measurement results.
 
         raw_results: shape (num_blocks, max_harmonic), complex values
         block_counts: shape (num_blocks,), int values
+        quality_data: optional shape (num_blocks,), float values (e.g. R² per block).
+            When provided, only blocks with quality >= min_quality are used.
+        min_quality: minimum quality threshold for including a block (default 0.3).
         Returns: H_meas dict mapping harmonic order n -> complex response array
         """
         algo = algorithm or self.algorithm
         valid_indices = np.where(block_counts > 0)[0]
+        if quality_data is not None and len(valid_indices) > 0:
+            quality_mask = quality_data[valid_indices] >= min_quality
+            valid_indices = valid_indices[quality_mask]
         if len(valid_indices) < 2:
             logger.warning("Too few valid measurement points for predistortion update.")
             return {}
@@ -242,7 +250,7 @@ class PredistortionManager:
         # Fade-out factor for low frequencies to prevent low-frequency measurement leakage divergence
         fade_factors = np.ones_like(self.meas_freqs)
         low_cutoff = 40.0
-        low_transition = 80.0
+        low_transition = 200.0
         fade_mask = self.meas_freqs < low_transition
         if np.any(fade_mask):
             fade_factors[fade_mask] = np.clip(

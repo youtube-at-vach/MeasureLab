@@ -1767,6 +1767,7 @@ class LockInModelerWidget(QWidget):
                                 block_counts=self.block_counts,
                                 mu=self.module.learning_rate,
                                 algorithm=self.module.adaptive_algorithm,
+                                quality_data=self.accumulated_quality / np.maximum(self.block_counts, 1),
                             )
                         self.accumulated_results.fill(0.0j)
                         self.block_counts.fill(0)
@@ -1794,6 +1795,7 @@ class LockInModelerWidget(QWidget):
                             block_counts=self.block_counts,
                             mu=self.module.learning_rate,
                             algorithm=self.module.adaptive_algorithm,
+                            quality_data=self.accumulated_quality / np.maximum(self.block_counts, 1),
                         )
                         self.module.counter_models = self.module.predistortion_manager.get_counter_models()
                     self.module.state = "FINISHED"

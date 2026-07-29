@@ -575,6 +575,7 @@ def test_lock_in_modeler_predistortion_sweep_mode(qtbot, mock_audio_engine):
     widget.accumulated_results[:, 0] = 1.0
     widget.accumulated_results[:, 1] = 0.1
     widget.block_counts = np.ones(widget.max_blocks, dtype=int)
+    widget.accumulated_quality = np.ones(widget.max_blocks)
     widget.plot_freqs_array = np.linspace(100, 1000, widget.max_blocks)
 
     widget.on_sweep_finished(0)
@@ -584,6 +585,7 @@ def test_lock_in_modeler_predistortion_sweep_mode(qtbot, mock_audio_engine):
     widget.accumulated_results[:, 0] = 1.0
     widget.accumulated_results[:, 1] = 0.02
     widget.block_counts = np.ones(widget.max_blocks, dtype=int)
+    widget.accumulated_quality = np.ones(widget.max_blocks)
 
     widget.on_sweep_finished(1)
     assert analyzer.state in {"FINISHED", "IDLE"}
