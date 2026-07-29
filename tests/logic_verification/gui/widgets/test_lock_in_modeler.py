@@ -544,5 +544,55 @@ def test_lock_in_modeler_amplitude_switching(qtbot, mock_audio_engine):
     assert widget.plot_tabs.isTabEnabled(1)  # Impulse tab re-enabled
 
 
+def test_lock_in_modeler_predistortion_sweep_mode(qtbot, mock_audio_engine):
+    analyzer = LockInModeler(mock_audio_engine)
+    analyzer.latency_samples = 100.0
+    widget = LockInModelerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    # Set mode to Predistortion Sweep
+    widget.combo_meas_mode.setCurrentIndex(2)  # Predistortion mode
+    assert not widget.combo_adaptive_algo.isHidden()
+    assert not widget.spin_dpd_iterations.isHidden()
+
+    # Configure DPD settings
+    widget.combo_adaptive_algo.setCurrentIndex(0)  # Secant
+    widget.spin_dpd_iterations.setValue(2)
+    widget.spin_learning_rate.setValue(0.8)
+
+    # Start sweep
+    widget.btn_toggle.click()
+    assert analyzer.is_running
+    assert analyzer.meas_mode == "predistortion"
+    assert analyzer.predistortion_manager is not None
+    assert analyzer.averaging_count == 2
+
+    # Simulate iteration 0 finish
+    analyzer.engine = MagicMock()
+    analyzer.engine.sweep_samples = 48000 * 2
+    widget.max_blocks = 10
+    widget.accumulated_results = np.zeros((widget.max_blocks, 5), dtype=complex)
+    widget.accumulated_results[:, 0] = 1.0
+    widget.accumulated_results[:, 1] = 0.1
+    widget.block_counts = np.ones(widget.max_blocks, dtype=int)
+    widget.accumulated_quality = np.ones(widget.max_blocks)
+    widget.plot_freqs_array = np.linspace(100, 1000, widget.max_blocks)
+
+    widget.on_sweep_finished(0)
+    assert analyzer.current_sweep_idx == 1
+
+    # Simulate iteration 1 finish (final)
+    widget.accumulated_results[:, 0] = 1.0
+    widget.accumulated_results[:, 1] = 0.02
+    widget.block_counts = np.ones(widget.max_blocks, dtype=int)
+    widget.accumulated_quality = np.ones(widget.max_blocks)
+
+    widget.on_sweep_finished(1)
+    assert analyzer.state in {"FINISHED", "IDLE"}
+    assert analyzer.counter_models is not None
+    assert "F_corr" in analyzer.counter_models
+
+
+
 
 
