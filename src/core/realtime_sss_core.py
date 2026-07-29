@@ -1,9 +1,11 @@
 import logging
 import threading
+from typing import Optional
 import numpy as np
 from scipy.signal import butter, filtfilt
 from scipy.signal.windows import tukey
 
+from src.core.predistortion import PredistortionManager
 from src.core.nonlinear_analyzer_core import (
     generate_sss_and_inverse,
     deconvolve_signal,
@@ -68,7 +70,12 @@ class RealtimeSSSEngine:
         self.is_ascending = True
 
         # Reset engine variables
+        self.predistortion_manager: Optional[PredistortionManager] = None
         self.reset_filter_states()
+
+    def set_predistortion_manager(self, predist_mgr):
+        """Sets an optional PredistortionManager for on-the-fly DPD excitation signal generation."""
+        self.predistortion_manager = predist_mgr
 
     def prepare_sweep(self):
         """
@@ -403,6 +410,29 @@ class RealtimeSSSEngine:
         """
         frames = len(outdata_block)
         fs = self.sample_rate
+
+        if self.predistortion_manager is not None:
+            gen_ref = outdata_block.shape[1] >= 2
+            sig_chunk, ref_chunk = self.predistortion_manager.generate_predistorted_block(
+                block_idx=block_index,
+                frames=frames,
+                sample_rate=fs,
+                sweep_samples=self.sweep_samples,
+                k_param=self.k_param,
+                L_param=self.L_param,
+                amplitude=self.output_amplitude,
+                generate_ref=gen_ref,
+            )
+            outdata_block[:frames, 0] = sig_chunk
+            if gen_ref and ref_chunk is not None:
+                outdata_block[:frames, 1] = ref_chunk
+                for ch in range(2, outdata_block.shape[1]):
+                    outdata_block[:frames, ch] = sig_chunk
+            else:
+                for ch in range(1, outdata_block.shape[1]):
+                    outdata_block[:frames, ch] = sig_chunk
+            return
+
         start_samp = block_index * frames
 
         out_samples_written = 0

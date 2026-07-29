@@ -5,7 +5,7 @@ import os
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.signal import butter, lfilter
+from scipy.signal import butter, freqz, lfilter
 from scipy.interpolate import PchipInterpolator
 from scipy.signal.windows import tukey
 
@@ -78,11 +78,51 @@ def pchip_complex_interpolate(freqs_in, C_p_in, freqs_target):
     phase_interp = f_phase(freqs_target_safe)
 
     return mag_interp * np.exp(1j * phase_interp)
+
+
+def smooth_complex_vector(vec, window_size=5):
+    """Smooths a complex vector using a moving average window along the frequency axis."""
+    if len(vec) < window_size or window_size < 2:
+        return vec
+
+    win = np.hanning(window_size)
+    win /= np.sum(win)
+
+    pad_len = window_size // 2
+    padded_real = np.pad(vec.real, pad_len, mode="edge")
+    padded_imag = np.pad(vec.imag, pad_len, mode="edge")
+
+    smooth_real = np.convolve(padded_real, win, mode="valid")
+    smooth_imag = np.convolve(padded_imag, win, mode="valid")
+
+    return smooth_real[: len(vec)] + 1j * smooth_imag[: len(vec)]
+
+
+def get_analytical_H1(f, fs):
+    """Returns the analytical linear transfer function value at frequency f."""
+    b, a = butter(2, fc_lti / (fs / 2.0), btype="low")
+    _, h = freqz(b, a, np.atleast_1d(f), fs=fs)
+    return h * d_coeffs[1]
+
+
 # ----------------------------------------------------
 # Simulator for Multi-Amplitude Adaptive Sweep
 # ----------------------------------------------------
 class AdaptiveSSSWeeperSim:
-    def __init__(self, start_freq, end_freq, duration, amplitude, max_harmonic, num_points, initial_mu, fs=48000):
+    def __init__(
+        self,
+        start_freq,
+        end_freq,
+        duration,
+        amplitude,
+        max_harmonic,
+        num_points,
+        initial_mu,
+        fs=48000,
+        algorithm="newton_lm",
+        mu_decay=0.92,
+        sweep_mode="forward",
+    ):
         self.start_freq = start_freq
         self.end_freq = end_freq
         self.duration = duration
@@ -90,16 +130,29 @@ class AdaptiveSSSWeeperSim:
         self.max_harmonic = max_harmonic
         self.num_points = num_points
         self.mu = initial_mu
+        self.algorithm = algorithm
+        self.mu_decay = mu_decay
+        self.sweep_mode = sweep_mode
         self.fs = fs
         self.meas_freqs = np.logspace(np.log10(start_freq + 5.0), np.log10(end_freq - 10.0), num_points)
         self.F_corr = {n: np.zeros(num_points, dtype=complex) for n in range(2, max_harmonic + 1)}
+        self.F_history = {n: [] for n in range(2, max_harmonic + 1)}
+        self.H_history = {n: [] for n in range(2, max_harmonic + 1)}
         self.latency = 64.2
         self.analysis_cycles = 12.0
         self.min_analysis_window = 0.012
 
-    def generate_predistorted_sweep(self):
-        f1 = self.start_freq / 1.3
-        f2 = self.end_freq * 1.15
+    def generate_predistorted_sweep(self, f_start=None, f_end=None):
+        f_start = self.start_freq if f_start is None else f_start
+        f_end = self.end_freq if f_end is None else f_end
+
+        if f_start <= f_end:
+            f1 = f_start / 1.3
+            f2 = f_end * 1.15
+        else:
+            f1 = f_start * 1.15
+            f2 = f_end / 1.3
+
         ln_ratio = np.log(f2 / f1)
         k_param = int(np.round((f1 / ln_ratio) * self.duration))
         L_param = k_param / f1
@@ -125,14 +178,21 @@ class AdaptiveSSSWeeperSim:
         x_base_win = x_base_win * self.amplitude
         return x_corr_win, x_base_win, f_inst, phase, num_samples, k_param, L_param
 
-    def run_iteration(self, current_mu):
-        self.mu = current_mu
-        x_corr, x_base, f_inst, phase, num_samples, k_param, L_param = self.generate_predistorted_sweep()
+    def run_iteration(self, iter_idx):
+        if self.sweep_mode == "reverse":
+            f_start, f_end = self.end_freq, self.start_freq
+        elif self.sweep_mode == "bidirectional" and iter_idx % 2:
+            f_start, f_end = self.end_freq, self.start_freq
+        else:
+            f_start, f_end = self.start_freq, self.end_freq
+
+        current_mu = self.mu * (self.mu_decay**iter_idx) if self.algorithm == "baseline" else self.mu
+        x_corr, x_base, f_inst, phase, num_samples, k_param, L_param = self.generate_predistorted_sweep(f_start, f_end)
         engine = RealtimeSSSEngine(
             sample_rate=self.fs,
             sweep_duration=self.duration,
-            start_freq=self.start_freq,
-            end_freq=self.end_freq,
+            start_freq=f_start,
+            end_freq=f_end,
             output_amplitude=self.amplitude,
             max_harmonic=self.max_harmonic,
             analysis_cycles=self.analysis_cycles,
@@ -186,19 +246,62 @@ class AdaptiveSSSWeeperSim:
             self.H0_1 = H_meas[1].copy()
 
         def get_H0_1_interpolated(f_target_array):
-            h_vals = pchip_complex_interpolate(self.meas_freqs, self.H0_1, f_target_array)
-            mag = np.abs(h_vals)
-            min_mag = 1e-4 * np.max(np.abs(self.H0_1))
-            bad_mask = mag < min_mag
-            if np.any(bad_mask):
-                h_vals[bad_mask] = (h_vals[bad_mask] / (mag[bad_mask] + 1e-12)) * min_mag
-            return h_vals
+            return get_analytical_H1(f_target_array, self.fs)
 
         for n in range(2, self.max_harmonic + 1):
             Hn_vals = H_meas[n]
+            F_prev = self.F_corr[n].copy()
+            self.F_history[n].append(F_prev)
+            self.H_history[n].append(Hn_vals.copy())
+
             H1_nf_vals = get_H0_1_interpolated(n * self.meas_freqs)
-            delta_corr = -Hn_vals / H1_nf_vals
-            self.F_corr[n] += self.mu * delta_corr
+
+            if self.algorithm == "baseline":
+                delta_corr = -Hn_vals / H1_nf_vals
+                delta_corr = smooth_complex_vector(delta_corr, window_size=5)
+                self.F_corr[n] += current_mu * delta_corr
+            elif self.algorithm in ("newton_lm", "newton"):
+                h1_mag_sq = np.abs(H1_nf_vals) ** 2
+                lambda_lm = 1e-4 * np.max(h1_mag_sq) + 1e-12
+                delta_corr = -(Hn_vals * np.conj(H1_nf_vals)) / (h1_mag_sq + lambda_lm)
+                delta_corr = smooth_complex_vector(delta_corr, window_size=5)
+                self.F_corr[n] += current_mu * delta_corr
+            elif self.algorithm in ("secant", "quasi_newton"):
+                if iter_idx == 0 or len(self.F_history[n]) < 2:
+                    h1_mag_sq = np.abs(H1_nf_vals) ** 2
+                    lambda_lm = 1e-4 * np.max(h1_mag_sq) + 1e-12
+                    delta_corr = -(Hn_vals * np.conj(H1_nf_vals)) / (h1_mag_sq + lambda_lm)
+                else:
+                    dF = self.F_history[n][-1] - self.F_history[n][-2]
+                    dH = self.H_history[n][-1] - self.H_history[n][-2]
+                    dF_mag = np.abs(dF)
+                    valid_mask = dF_mag > 1e-10
+                    J_emp = np.where(valid_mask, dH / np.where(valid_mask, dF, 1.0), H1_nf_vals)
+                    j_mag = np.abs(J_emp)
+                    bad_j = (j_mag < 1e-4 * np.max(np.abs(H1_nf_vals))) | np.isnan(j_mag)
+                    J_emp[bad_j] = H1_nf_vals[bad_j]
+                    j_mag_sq = np.abs(J_emp) ** 2
+                    lambda_lm = 1e-4 * np.max(j_mag_sq) + 1e-12
+                    delta_corr = -(Hn_vals * np.conj(J_emp)) / (j_mag_sq + lambda_lm)
+                delta_corr = smooth_complex_vector(delta_corr, window_size=5)
+                self.F_corr[n] += current_mu * delta_corr
+            elif self.algorithm == "anderson":
+                if iter_idx == 0 or len(self.F_history[n]) < 2:
+                    h1_mag_sq = np.abs(H1_nf_vals) ** 2
+                    lambda_lm = 1e-4 * np.max(h1_mag_sq) + 1e-12
+                    delta_corr = -(Hn_vals * np.conj(H1_nf_vals)) / (h1_mag_sq + lambda_lm)
+                    delta_corr = smooth_complex_vector(delta_corr, window_size=5)
+                    self.F_corr[n] += current_mu * delta_corr
+                else:
+                    g_curr = self.F_history[n][-1] - Hn_vals / H1_nf_vals
+                    g_prev = self.F_history[n][-2] - self.H_history[n][-2] / H1_nf_vals
+                    dg = g_curr - g_prev
+                    dg_dot_g = np.real(np.sum(np.conj(dg) * g_curr))
+                    dg_norm_sq = np.real(np.sum(np.conj(dg) * dg)) + 1e-12
+                    gamma = np.clip(dg_dot_g / dg_norm_sq, -0.5, 0.5)
+                    self.F_corr[n] = smooth_complex_vector((1 - gamma) * g_curr + gamma * g_prev, window_size=5)
+            else:
+                raise ValueError(f"Unknown adaptive sweep algorithm: {self.algorithm}")
 
 
 # ----------------------------------------------------
@@ -368,9 +471,12 @@ def main():
     max_harmonic = 5
     num_points = 300
 
-    # [Improvement 1] Increased iterations with Learning Rate (mu) Decay
-    iterations = 8
-    initial_mu = 0.5
+    # Adaptive sweep settings mirrored from verify_lockin_adaptive_sweep.py.
+    adaptive_algorithm = "newton_lm"
+    sweep_mode = "forward"
+    iterations = 6
+    initial_mu = 1.0
+    mu_decay = 0.92
 
     # [Improvement 4] Extended amplitude grid (7 points including small signal region 0.1)
     amplitudes = np.array([0.1, 0.25, 0.4, 0.55, 0.7, 0.85, 1.0])
@@ -378,7 +484,7 @@ def main():
 
     all_F_corr = {}
 
-    print("[*] Phase 1: Running Multi-Amplitude Adaptive Sweeps (with Learning Rate Decay)...")
+    print(f"[*] Phase 1: Running Multi-Amplitude Adaptive Sweeps ({adaptive_algorithm}, {sweep_mode})...")
     for amp in amplitudes:
         print(f"    -> Running Adaptive Sweep for Amplitude: {amp:.2f} ({20*np.log10(amp):.1f} dBFS)")
         sweeper = AdaptiveSSSWeeperSim(
@@ -390,12 +496,13 @@ def main():
             num_points=num_points,
             initial_mu=initial_mu,
             fs=fs,
+            algorithm=adaptive_algorithm,
+            mu_decay=mu_decay,
+            sweep_mode=sweep_mode,
         )
 
         for i in range(iterations):
-            # Decay learning rate per iteration to fine-tune convergence
-            current_mu = initial_mu * (0.85**i)
-            sweeper.run_iteration(current_mu)
+            sweeper.run_iteration(i)
 
         all_F_corr[amp] = sweeper.F_corr
         print("       Completed adaptive sweep optimization.")
@@ -509,6 +616,15 @@ def main():
                 "summary": results_summary,
                 "amplitudes": amplitudes.tolist(),
                 "f0": f0,
+                "adaptive_sweep": {
+                    "algorithm": adaptive_algorithm,
+                    "sweep_mode": sweep_mode,
+                    "iterations": iterations,
+                    "mu": initial_mu,
+                    "mu_decay": mu_decay,
+                    "duration": duration,
+                    "num_points": num_points,
+                },
                 "tuned_kernel_gains": {
                     f"C{p}": {
                         "magnitude": float(np.abs(order_gains.get(p, 1.0 + 0.0j))),

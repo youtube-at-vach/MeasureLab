@@ -14,7 +14,8 @@ It is suitable for observing the long-term stability (drift) of a clock source, 
 
 1. **NCO Frequency**: Sets the reference frequency (e.g., 1000 Hz).
 
-    **Warning**: The NCO Frequency represents the value of the internal software numeric oscillator and is unrelated to the device's physical output. Note that locking the NCO frequency merely means the measurement reference is tracking the input; it does not imply that all frequencies used by the audio device are locked to this reference.
+    > [!WARNING]
+    > The NCO Frequency represents the value of the internal software numeric oscillator and is unrelated to the device's physical output. Locking the NCO frequency merely means the measurement reference is tracking the input; it does not imply that all frequencies used by the audio device are locked to this reference.
 2. **Reference Mode**:
     * **Internal (NCO)**: Uses an internally generated ideal sine wave as the reference.
     * **Loopback (Ref Out)**: Uses the signal output from the device as the reference (FLL locking is disabled in this mode). Useful when measuring with physical cable loopback or internal loopback.
