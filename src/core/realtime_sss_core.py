@@ -1,9 +1,11 @@
 import logging
 import threading
+from typing import Optional
 import numpy as np
 from scipy.signal import butter, filtfilt
 from scipy.signal.windows import tukey
 
+from src.core.predistortion import PredistortionManager
 from src.core.nonlinear_analyzer_core import (
     generate_sss_and_inverse,
     deconvolve_signal,
@@ -68,7 +70,7 @@ class RealtimeSSSEngine:
         self.is_ascending = True
 
         # Reset engine variables
-        self.predistortion_manager = None
+        self.predistortion_manager: Optional[PredistortionManager] = None
         self.reset_filter_states()
 
     def set_predistortion_manager(self, predist_mgr):

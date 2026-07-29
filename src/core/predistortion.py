@@ -77,8 +77,8 @@ class PredistortionManager:
         self.H0_1: Optional[np.ndarray] = None  # Initial fundamental linear response
 
         # History tracking for Secant / Quasi-Newton algorithms
-        self.F_history = {n: [] for n in range(2, self.max_harmonic + 1)}
-        self.H_history = {n: [] for n in range(2, self.max_harmonic + 1)}
+        self.F_history: dict[int, list] = {n: [] for n in range(2, self.max_harmonic + 1)}
+        self.H_history: dict[int, list] = {n: [] for n in range(2, self.max_harmonic + 1)}
 
     def reset(self):
         """Resets correction envelopes and history."""
@@ -238,10 +238,13 @@ class PredistortionManager:
             logger.warning("Base linear response H0_1 is not initialized.")
             return H_meas
 
+        assert self.H0_1 is not None  # checked above
+        H0_1 = self.H0_1
+
         def get_H0_1_interpolated(f_target_array: np.ndarray) -> np.ndarray:
-            h_vals = pchip_complex_interpolate(self.meas_freqs, self.H0_1, f_target_array)
+            h_vals = pchip_complex_interpolate(self.meas_freqs, H0_1, f_target_array)
             mag = np.abs(h_vals)
-            min_mag = 1e-4 * np.max(np.abs(self.H0_1))
+            min_mag = 1e-4 * np.max(np.abs(H0_1))
             bad_mask = mag < min_mag
             if np.any(bad_mask):
                 h_vals[bad_mask] = (h_vals[bad_mask] / (mag[bad_mask] + 1e-12)) * min_mag
