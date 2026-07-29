@@ -561,12 +561,11 @@ class LockInModelerWidget(QWidget):
         adv_form.setSpacing(6)
 
         self.combo_preset = QComboBox()
-        self.combo_preset.addItem(tr("Fast & Dynamic (16 cyc / 30 ms)"), "fast")
-        self.combo_preset.addItem(tr("Normal (64 cyc / 100 ms)"), "normal")
-        self.combo_preset.addItem(tr("High Resolution (128 cyc / 500 ms)"), "high_res")
-        self.combo_preset.addItem(tr("High Stability (256 cyc / 1.0 s)"), "high_stab")
-        self.combo_preset.addItem(tr("Maximum Stability (512 cyc / 2.0 s)"), "max_stab")
-        self.combo_preset.addItem(tr("Custom"), "custom")
+        self.combo_preset.addItem(tr("Fast (16 cyc / 20 ms)"), "fast")
+        self.combo_preset.addItem(tr("Normal (Recommended) (64 cyc / 100 ms)"), "normal")
+        self.combo_preset.addItem(tr("High Precision (256 cyc / 250 ms)"), "high_precision")
+        self.combo_preset.addItem(tr("Ultra High Precision (256 cyc / 500 ms)"), "ultra_high")
+        self.combo_preset.addItem(tr("Custom Preset"), "custom")
         self.combo_preset.currentIndexChanged.connect(self.on_preset_changed)
         adv_form.addRow(tr("Preset:"), self.combo_preset)
 
@@ -1055,11 +1054,10 @@ class LockInModelerWidget(QWidget):
         window_ms = self.spin_min_window.value()
 
         presets = {
-            "fast": (16.0, 30.0),
+            "fast": (16.0, 20.0),
             "normal": (64.0, 100.0),
-            "high_res": (128.0, 500.0),
-            "high_stab": (256.0, 1000.0),
-            "max_stab": (512.0, 2000.0),
+            "high_precision": (256.0, 250.0),
+            "ultra_high": (256.0, 500.0),
         }
 
         matched_key = "custom"
@@ -1080,11 +1078,10 @@ class LockInModelerWidget(QWidget):
             return
 
         presets = {
-            "fast": (16.0, 30.0),
+            "fast": (16.0, 20.0),
             "normal": (64.0, 100.0),
-            "high_res": (128.0, 500.0),
-            "high_stab": (256.0, 1000.0),
-            "max_stab": (512.0, 2000.0),
+            "high_precision": (256.0, 250.0),
+            "ultra_high": (256.0, 500.0),
         }
 
         if key in presets:
