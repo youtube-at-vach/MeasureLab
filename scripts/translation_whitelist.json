@@ -1,5 +1,10 @@
 {
     "exact_keys": [
+        "Custom Preset",
+        "Fast (16 cyc / 20 ms)",
+        "High Precision (256 cyc / 250 ms)",
+        "Normal (Recommended) (64 cyc / 100 ms)",
+        "Ultra High Precision (256 cyc / 500 ms)",
         " s",
         " (CLIP!)",
         " (OK - Optimal)",
