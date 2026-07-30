@@ -216,9 +216,9 @@ class DetachableWidgetWrapper(QWidget):
         self._placeholder_info_label = QLabel(tr("Widget is detached in a separate window."))
         self._placeholder_info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        reattach_btn = QPushButton(tr("Reattach"))
-        reattach_btn.clicked.connect(self.reattach)
-        reattach_btn.setFixedSize(150, 40)
+        self._reattach_btn = QPushButton(tr("Reattach"))
+        self._reattach_btn.clicked.connect(self.reattach)
+        self._reattach_btn.setFixedSize(150, 40)
 
         self._reattach_all_btn = QPushButton(tr("Reattach All"))
         self._reattach_all_btn.clicked.connect(self.reattach_all)
@@ -227,7 +227,7 @@ class DetachableWidgetWrapper(QWidget):
 
         placeholder_layout.addStretch()
         placeholder_layout.addWidget(self._placeholder_info_label, alignment=Qt.AlignmentFlag.AlignCenter)
-        placeholder_layout.addWidget(reattach_btn, alignment=Qt.AlignmentFlag.AlignCenter)
+        placeholder_layout.addWidget(self._reattach_btn, alignment=Qt.AlignmentFlag.AlignCenter)
         placeholder_layout.addWidget(self._reattach_all_btn, alignment=Qt.AlignmentFlag.AlignCenter)
         placeholder_layout.addStretch()
 
@@ -434,6 +434,7 @@ class DetachableWidgetWrapper(QWidget):
         # 4. Update UI state
         self.content_container.hide()
         self._placeholder_info_label.setText(tr("Widget is split into display and control windows."))
+        self._reattach_btn.hide()
         self._reattach_all_btn.show()
         self.placeholder_widget.show()
         self.detach_btn.setEnabled(False)
@@ -490,6 +491,7 @@ class DetachableWidgetWrapper(QWidget):
 
         # 4. Update UI state
         self.placeholder_widget.hide()
+        self._reattach_btn.show()
         self._reattach_all_btn.hide()
         self.content_container.show()
         self.detach_btn.setEnabled(True)
