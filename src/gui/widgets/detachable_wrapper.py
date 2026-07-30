@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
 from src.core.localization import tr
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.comparable_interface import ComparableWidgetInterface
+from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 from src.core.comparison_manager import ComparisonManager
 
 
@@ -94,6 +95,7 @@ class DetachableWidgetWrapper(QWidget):
     """
     Wraps a widget to allow it to be detached into a separate window.
     Supports compact mode if the content widget implements CompactableWidgetInterface.
+    Supports split mode (State C) if the content widget implements SplittableWidgetInterface.
     """
 
     def __init__(self, widget: QWidget, title: str, config_manager=None):
@@ -104,11 +106,21 @@ class DetachableWidgetWrapper(QWidget):
         self.is_detached = False
         self.independent_window = None
 
+        # State C: Split (display window + control window)
+        self.is_split = False
+        self.split_display_window = None
+        self.split_control_window = None
+
         # Check if the content widget supports compact mode
         self.is_compactable = isinstance(widget, CompactableWidgetInterface) or hasattr(widget, "set_compact_mode")
 
         # Check if the content widget supports plot comparison
         self.is_comparable = isinstance(widget, ComparableWidgetInterface) or hasattr(widget, "get_comparable_data")
+
+        # Check if the content widget supports split mode
+        self.is_splittable = isinstance(widget, SplittableWidgetInterface) or (
+            hasattr(widget, "get_display_widget") and hasattr(widget, "get_control_widget")
+        )
 
         self.init_ui()
 
@@ -168,6 +180,12 @@ class DetachableWidgetWrapper(QWidget):
             self.compare_btn.clicked.connect(self.send_to_comparer)
             self.compare_btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
 
+        self.split_btn = None
+        if self.is_splittable:
+            self.split_btn = QPushButton(tr("Split Window"))
+            self.split_btn.clicked.connect(self.split)
+            self.split_btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+
         header_layout.addWidget(self.title_label)
         header_layout.addStretch()
         header_layout.addWidget(self.logs_btn)
@@ -176,6 +194,8 @@ class DetachableWidgetWrapper(QWidget):
             header_layout.addWidget(self.compare_btn)
         if self.compact_btn:
             header_layout.addWidget(self.compact_btn)
+        if self.split_btn:
+            header_layout.addWidget(self.split_btn)
         header_layout.addWidget(self.detach_btn)
 
         self.layout.addWidget(self.header)
@@ -189,20 +209,26 @@ class DetachableWidgetWrapper(QWidget):
         self.content_container_layout.addWidget(self.content_widget)
         self.layout.addWidget(self.content_container)
 
-        # --- Placeholder (shown when detached) ---
+        # --- Placeholder (shown when detached or split) ---
         self.placeholder_widget = QWidget()
         placeholder_layout = QVBoxLayout(self.placeholder_widget)
 
-        info_label = QLabel(tr("Widget is detached in a separate window."))
-        info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._placeholder_info_label = QLabel(tr("Widget is detached in a separate window."))
+        self._placeholder_info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         reattach_btn = QPushButton(tr("Reattach"))
         reattach_btn.clicked.connect(self.reattach)
         reattach_btn.setFixedSize(150, 40)
 
+        self._reattach_all_btn = QPushButton(tr("Reattach All"))
+        self._reattach_all_btn.clicked.connect(self.reattach_all)
+        self._reattach_all_btn.setFixedSize(150, 40)
+        self._reattach_all_btn.hide()
+
         placeholder_layout.addStretch()
-        placeholder_layout.addWidget(info_label, alignment=Qt.AlignmentFlag.AlignCenter)
+        placeholder_layout.addWidget(self._placeholder_info_label, alignment=Qt.AlignmentFlag.AlignCenter)
         placeholder_layout.addWidget(reattach_btn, alignment=Qt.AlignmentFlag.AlignCenter)
+        placeholder_layout.addWidget(self._reattach_all_btn, alignment=Qt.AlignmentFlag.AlignCenter)
         placeholder_layout.addStretch()
 
         self.placeholder_widget.hide()
@@ -320,11 +346,15 @@ class DetachableWidgetWrapper(QWidget):
 
         # 3. Update UI state
         self.content_container.hide()
+        self._placeholder_info_label.setText(tr("Widget is detached in a separate window."))
+        self._reattach_all_btn.hide()
         self.placeholder_widget.show()
         self.detach_btn.setText(tr("Reattach"))
         self.detach_btn.setEnabled(False)  # Use the big reattach button in placeholder or window close
         if self.compact_btn:
             self.compact_btn.setEnabled(True)
+        if self.split_btn:
+            self.split_btn.setEnabled(False)
         self.is_detached = True
 
     def reattach(self):
@@ -362,7 +392,112 @@ class DetachableWidgetWrapper(QWidget):
         if self.compact_btn:
             self.toggle_compact(False)
             self.compact_btn.setEnabled(False)
+        if self.split_btn:
+            self.split_btn.setEnabled(True)
         self.is_detached = False
+
+    def split(self):
+        """
+        State C: Separate display widget and control widget into two independent windows.
+        Can be called from State A or State B. If called from State B, reattaches first.
+        """
+        if self.is_split:
+            return
+
+        # If currently detached (State B), reattach first to restore content_widget hierarchy
+        if self.is_detached:
+            self.reattach()
+
+        display_widget = self.content_widget.get_display_widget()
+        control_widget = self.content_widget.get_control_widget()
+
+        # 1. Remove content_widget from container; orphan display and control sub-widgets
+        self.content_container_layout.removeWidget(self.content_widget)
+        self.content_widget.setParent(None)
+
+        # 2. Create independent window for display part
+        display_title = self.title + " — " + tr("Display")
+        self.split_display_window = IndependentWindow(display_title, display_widget, self)
+        self.split_display_window.closed.connect(self.reattach_all)
+        self.split_display_window.toggle_compact_requested.connect(self.toggle_compact_from_window)
+        self.split_display_window.reattach_requested.connect(self.reattach_all)
+        self.split_display_window.show()
+
+        # 3. Create independent window for control part
+        control_title = self.title + " — " + tr("Controls")
+        self.split_control_window = IndependentWindow(control_title, control_widget, self)
+        self.split_control_window.closed.connect(self.reattach_all)
+        self.split_control_window.reattach_requested.connect(self.reattach_all)
+        self.split_control_window.show()
+
+        # 4. Update UI state
+        self.content_container.hide()
+        self._placeholder_info_label.setText(tr("Widget is split into display and control windows."))
+        self._reattach_all_btn.show()
+        self.placeholder_widget.show()
+        self.detach_btn.setEnabled(False)
+        if self.split_btn:
+            self.split_btn.setEnabled(False)
+        if self.compact_btn:
+            self.compact_btn.setEnabled(True)
+        self.is_split = True
+
+    def reattach_all(self):
+        """
+        Return from State C (Split) to State A (normal).
+        Closes both split windows and restores content_widget to the container.
+        """
+        if not self.is_split:
+            return
+
+        display_widget = self.content_widget.get_display_widget()
+        control_widget = self.content_widget.get_control_widget()
+
+        # 1. Close display window and reclaim display_widget
+        if self.split_display_window:
+            try:
+                self.split_display_window.closed.disconnect(self.reattach_all)
+            except TypeError:
+                pass
+            if self.split_display_window.isVisible():
+                self.split_display_window.close()
+            # Reparent display_widget back into content_widget before window is deleted
+            display_widget.setParent(self.content_widget)
+            self.split_display_window.deleteLater()
+            self.split_display_window = None
+
+        # 2. Close control window and reclaim control_widget
+        if self.split_control_window:
+            try:
+                self.split_control_window.closed.disconnect(self.reattach_all)
+            except TypeError:
+                pass
+            if self.split_control_window.isVisible():
+                self.split_control_window.close()
+            # Reparent control_widget back into content_widget before window is deleted
+            control_widget.setParent(self.content_widget)
+            self.split_control_window.deleteLater()
+            self.split_control_window = None
+
+        # 3. Restore content_widget to container
+        self.content_widget.setParent(self.content_container)
+        self.content_container_layout.addWidget(self.content_widget)
+        # Let the content_widget restore its internal layout (re-insert display + control panels)
+        if hasattr(self.content_widget, "restore_split_panels"):
+            self.content_widget.restore_split_panels()
+        self.content_widget.show()
+
+        # 4. Update UI state
+        self.placeholder_widget.hide()
+        self._reattach_all_btn.hide()
+        self.content_container.show()
+        self.detach_btn.setEnabled(True)
+        if self.split_btn:
+            self.split_btn.setEnabled(True)
+        if self.compact_btn:
+            self.toggle_compact(False)
+            self.compact_btn.setEnabled(False)
+        self.is_split = False
 
     def send_to_comparer(self):
         if not self.is_comparable:
