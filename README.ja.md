@@ -161,6 +161,7 @@ Linux ではそのまま **PortAudio** バックエンドでも通常利用で�
 
 ### 🧑‍💻 スペシャルサンクス
 
+- [Dominique Michel](https://github.com/domichel)
 - [Major Wong(diyAudio)](https://www.diyaudio.com/community/members/major-wong.345860/)
 - [TNT (diyAudio)](https://www.diyaudio.com/community/members/tnt.4571/)
 - [fantastictaste6171](https://www.youtube.com/@fantastictaste6171)
