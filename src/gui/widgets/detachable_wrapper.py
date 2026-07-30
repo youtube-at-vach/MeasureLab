@@ -429,6 +429,7 @@ class DetachableWidgetWrapper(QWidget):
         self.split_control_window.closed.connect(self.reattach_all)
         self.split_control_window.reattach_requested.connect(self.reattach_all)
         self.split_control_window.show()
+        self.split_control_window.adjustSize()
 
         # 4. Update UI state
         self.content_container.hide()

@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSizePolicy,
     QSlider,
     QStackedWidget,
     QTabWidget,
@@ -694,6 +695,7 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
     def _setup_right_panel(self):
         right_widget = QWidget()
         right_widget.setFixedWidth(250)  # Fixed width for controls
+        right_widget.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Maximum)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -1499,8 +1501,12 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
 
     def update_compact_layout(self):
         compact = self.is_compact_mode()
+        # In split mode right_widget lives in its own window (parent != self).
+        # Only hide it when it is still embedded in this widget.
         if hasattr(self, "right_widget"):
-            self.right_widget.setHidden(compact)
+            is_split = self.right_widget.parent() is not self
+            if not is_split:
+                self.right_widget.setHidden(compact)
         if hasattr(self, "meas_group"):
             self.meas_group.setHidden(compact)
         if hasattr(self, "cursor_info_label"):
