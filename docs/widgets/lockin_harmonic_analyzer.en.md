@@ -58,7 +58,7 @@ This feature allows you to cancel out the distortion inherent in the measurement
 
 ## Viewing Results
 
-### Overview
+### Results Overview
 
 * **THD**: Displays the measured Total Harmonic Distortion value (in dB and %).
 * **THD+N**: Displays the measured total of THD plus residual noise value (in dB and %).
