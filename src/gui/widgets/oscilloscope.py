@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSizePolicy,
     QSlider,
     QStackedWidget,
     QTabWidget,
@@ -30,6 +31,7 @@ from src.measurement_modules.base import MeasurementModule
 from typing import List
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.comparable_interface import ComparableWidgetInterface
+from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 from src.core.comparison_manager import ComparisonTrace, AxisMetadata, CalibrationInfo
 from src.gui.styles import (
     STYLE_TOGGLE_BTN_DARK,
@@ -548,7 +550,7 @@ class Oscilloscope(MeasurementModule):
         return (rise_time, fall_time, low_level, high_level)
 
 
-class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetInterface):
+class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetInterface, SplittableWidgetInterface):
     # View constants
     VIEW_Y_MIN = -1.1
     VIEW_Y_MAX = 1.1
@@ -557,6 +559,7 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         QWidget.__init__(self)
         CompactableWidgetInterface.__init__(self)
         ComparableWidgetInterface.__init__(self)
+        SplittableWidgetInterface.__init__(self)
         self.module = module
         self._rgba_buffer = None
         self._clip_buffer = None
@@ -578,12 +581,32 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         self.module.stop_analysis()
         super().closeEvent(event)
 
+    def get_display_widget(self) -> QWidget:
+        """Returns the display sub-widget (plot + measurements area)."""
+        return self.display_widget
+
+    def get_control_widget(self) -> QWidget:
+        """Returns the controls sub-widget (settings panel)."""
+        return self.right_widget
+
+    def restore_split_panels(self) -> None:
+        """Re-inserts display_widget and right_widget into the main layout after split reattach."""
+        layout = self.layout()
+        if layout is None:
+            return
+        # Both sub-widgets were reparented back to self; re-add them to the layout
+        # in the original order (display first with stretch, then controls fixed-width).
+        layout.addWidget(self.display_widget, stretch=1)
+        layout.addWidget(self.right_widget)
+        self.display_widget.show()
+        self.right_widget.show()
+
     def init_ui(self):
         main_layout = QHBoxLayout()
 
         # --- Left Panel (Display) ---
-        left_layout = self._setup_left_panel()
-        main_layout.addLayout(left_layout, stretch=1)  # Give priority to plot
+        self.display_widget = self._setup_left_panel()
+        main_layout.addWidget(self.display_widget, stretch=1)  # Give priority to plot
 
         # --- Right Panel (Controls) ---
         self.right_widget = self._setup_right_panel()
@@ -594,8 +617,10 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         main_layout.addWidget(self.right_widget)
         self.setLayout(main_layout)
 
-    def _setup_left_panel(self):
-        left_layout = QVBoxLayout()
+    def _setup_left_panel(self) -> QWidget:
+        display_widget = QWidget()
+        left_layout = QVBoxLayout(display_widget)
+        left_layout.setContentsMargins(0, 0, 0, 0)
 
         # Measurements
         self.meas_group = QGroupBox(tr("Measurements"))
@@ -665,11 +690,12 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         self.persistence_img.setZValue(0)  # Behind cursors
 
         left_layout.addWidget(self.plot_widget)
-        return left_layout
+        return display_widget
 
     def _setup_right_panel(self):
         right_widget = QWidget()
         right_widget.setFixedWidth(250)  # Fixed width for controls
+        right_widget.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Maximum)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -1475,8 +1501,12 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
 
     def update_compact_layout(self):
         compact = self.is_compact_mode()
+        # In split mode right_widget lives in its own window (parent != self).
+        # Only hide it when it is still embedded in this widget.
         if hasattr(self, "right_widget"):
-            self.right_widget.setHidden(compact)
+            is_split = self.right_widget.parent() is not self
+            if not is_split:
+                self.right_widget.setHidden(compact)
         if hasattr(self, "meas_group"):
             self.meas_group.setHidden(compact)
         if hasattr(self, "cursor_info_label"):
