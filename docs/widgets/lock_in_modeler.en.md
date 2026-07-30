@@ -33,12 +33,17 @@ Before running any sweep, the round-trip latency of the audio input and output c
     * `Sweep Measurement (Default)`: Performs a standard frequency sweep, plotting the magnitude and phase responses for the fundamental and configured harmonics.
     * `Nonlinear Model (Forward)`: Identifies a Hammerstein nonlinear model by automatically performing multiple sweeps at different test amplitude levels to resolve higher-order kernels using a standard forward model.
     * `Nonlinear Model (Parallel Complex)`: Identifies a Hammerstein nonlinear model using a Parallel Complex Hammerstein structure, capable of capturing more intricate nonlinear behaviors.
+    * `Predistortion Sweep (Adaptive DPD)`: Performs an adaptive digital predistortion (DPD) sweep, adjusting the inverse compensation iteratively to minimize harmonic distortion.
 * **Start Freq / End Freq (Hz)**: Sets the frequency boundaries for the sweep (2.0 Hz up to the Nyquist frequency).
 * **Duration (s)**: The duration of a single sweep cycle (2.0 s to 600.0 s).
 * **Amplitude (dBFS)**: Sets the output signal level in dBFS (-100.0 dBFS to 0.0 dBFS).
 * **Max Harmonic**: Sets the highest harmonic order to analyze alongside the fundamental (1st to 5th).
 * **Averages**: Sets the number of sweep cycles to average for each amplitude level, which improves the SNR.
 * **Amplitude Steps**: Active only in the Nonlinear Model mode. Specifies the number of amplitude steps (5 to 10) to use for system identification.
+* **Adaptive Algorithm**: Active only in the Predistortion Sweep mode. Selects the optimization algorithm (`Secant (Empirical Jacobian)` or `Newton (LM Regularized)`) to use for iteratively updating the predistortion model.
+* **DPD Iterations**: Active only in the Predistortion Sweep mode. Specifies the number of iteration sweeps (1 to 20) for the adaptive algorithm to converge.
+* **Learning Rate (mu)**: Active only in the Predistortion Sweep mode. Sets the step size for each DPD update (0.01 to 1.0).
+* **Mu Decay**: Active only in the Predistortion Sweep mode. Sets the decay factor for the learning rate (0.50 to 1.00) to ensure stable convergence over multiple iterations.
 
 ### Advanced Settings
 

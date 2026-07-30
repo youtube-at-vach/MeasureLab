@@ -33,12 +33,17 @@ Lock-in Modelerは、同期スイープサイン (Synchronized Swept Sine, SSS) 
     * `Sweep Measurement (Default)`: 標準のスイープ測定を行い、基本波および設定された高調波の応答をプロットします。
     * `Nonlinear Model (Forward)`: 標準のフォワードモデルを使用し、異なるテスト振幅レベルで自動的に複数回のスイープを実行して高次カーネルを同定します。
     * `Nonlinear Model (Parallel Complex)`: 複雑な非線形挙動を捉えることができる、並列複素ハマーシュタイン構造（Parallel Complex Hammerstein structure）を用いて非線形モデルを同定します。
+    * `Predistortion Sweep (Adaptive DPD)`: 適応型デジタルプレディストーション（DPD）スイープを実行し、高調波歪みを最小化するように逆補償を反復的に調整します。
 * **Start Freq / End Freq (開始/終了周波数)**: スイープする周波数の範囲を 2.0 Hz からナイキスト周波数（サンプリング周波数の半分）の間で指定します。
 * **Duration (スイープ時間)**: 1回のスイープ時間を秒単位（2.0 s 〜 600.0 s）で設定します。
 * **Amplitude (振幅)**: 出力信号のレベルを dBFS 単位（-100.0 dBFS 〜 0.0 dBFS）で設定します。
 * **Max Harmonic (最大高調波次数)**: 解析する最高高調波次数（1次〜5次）を設定します。
 * **Averages (アベレージング回数)**: 各振幅レベルにおけるスイープの平均化回数を設定します。値を増やすとランダムノイズが低減され、SNRが向上します。
 * **Amplitude Steps (振幅ステップ数)**: 非線形モデルモード選択時に有効になり、同定に使用する振幅測定ポイントの数（5 〜 10ステップ）を設定します。
+* **Adaptive Algorithm (適応アルゴリズム)**: Predistortion Sweepモード選択時に有効になり、プレディストーションモデルを反復的に更新するために使用する最適化アルゴリズム（`Secant (Empirical Jacobian)` または `Newton (LM Regularized)`）を選択します。
+* **DPD Iterations (DPD反復回数)**: Predistortion Sweepモード選択時に有効になり、適応アルゴリズムが収束するための反復スイープ回数（1 〜 20）を設定します。
+* **Learning Rate (mu) (学習率)**: Predistortion Sweepモード選択時に有効になり、各DPD更新のステップサイズ（0.01 〜 1.0）を設定します。
+* **Mu Decay (学習率減衰)**: Predistortion Sweepモード選択時に有効になり、複数回の反復にわたって安定した収束を確保するための学習率の減衰係数（0.50 〜 1.00）を設定します。
 
 ### Advanced Settings（高度な設定）
 
