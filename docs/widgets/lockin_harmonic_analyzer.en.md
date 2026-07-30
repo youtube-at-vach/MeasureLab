@@ -32,7 +32,7 @@ Configure basic measurement parameters.
 * **Buffer (Integ. Time)**: Select the length of data capture used for analysis. A larger buffer size means a longer integration time, which averages out random noise and improves the Signal-to-Noise Ratio (SNR) of the measurement. Large buffers (e.g., 262,144 or 524,288) are recommended for ultra-low distortion measurements.
 * **Frequency**: Specify the fundamental frequency of the output test sine wave in Hz.
 * **Amplitude**: Specify the output level of the test sine wave in dBFS. Set an appropriate level (e.g., -6.0 dBFS to -1.0 dBFS) to avoid clipping.
-* **Harmonics**: Specify the maximum harmonic order to analyze (up to 200). Note that this limit is dynamically clamped based on the fundamental frequency and sampling rate to stay within the Nyquist frequency.
+* **Harmonics**: Specify the maximum harmonic order to analyze (up to 200). This limit is dynamically clamped based on the fundamental frequency and sampling rate to stay within the Nyquist frequency.
 * **Start Analysis / Stop Analysis**: Toggles the measurement on and off. When started, it will display "Buffering..." until the buffer is filled, after which the analysis results will update.
 
 ### 2. Compensation Tab
@@ -40,7 +40,7 @@ Configure basic measurement parameters.
 This feature allows you to cancel out the distortion inherent in the measurement system itself (e.g., the output stage of your audio interface).
 
 * **Enable Compensation**: When checked, the module injects anti-phase harmonic components into the output signal based on currently stored compensation data (amplitude and phase) to minimize overall system loop distortion.
-* **Comp. Max Harmonic**: Specifies the maximum harmonic order to be compensated. Note that this limit cannot exceed the analysis harmonic order limit or 50.
+* **Comp. Max Harmonic**: Specifies the maximum harmonic order to be compensated. This limit cannot exceed the analysis harmonic order limit or 50.
 * **Auto-Calibrate**: Automatically captures and updates the compensation coefficients.
     * **Procedure**: Press this button while in a loopback configuration. It will automatically run the calibration sequence until THD is minimized. This allows you to generate an extremely clean test signal for subsequent measurements of external devices.
 * **Clear**: Resets the current compensation table to return to a pure sine wave output.
