@@ -68,7 +68,7 @@ This vertical bar on the right side of the graph is a **"correspondence table be
 - **Speed (Flow Rate)**
     - Adjusts the speed at which the graph scrolls.
     - **Fast (Realtime)**: Flows in real-time. Suitable for viewing short-term changes.
-    - **Medium / Slow / Meteor**: Flows slowly. Used for monitoring environmental sounds or observing changes over a long period (displaying several to 10 minutes of history on one screen). Note that these slow modes use a "Max Hold" mechanism to capture transient peaks within the time interval.
+    - **Medium / Slow / Meteor**: Flows slowly. Used for monitoring environmental sounds or observing changes over a long period (displaying several to 10 minutes of history on one screen). These slow modes use a "Max Hold" mechanism to capture transient peaks within the time interval.
 
 - **Min Freq / Max Freq**
     - Narrows down the display range of the vertical axis (frequency).
