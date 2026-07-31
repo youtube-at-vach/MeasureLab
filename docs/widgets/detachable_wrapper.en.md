@@ -24,6 +24,13 @@ Pressing the **"Logs"** button in the upper right of the widget opens the log vi
 * **Use Cases**: Used to check warnings or errors during measurements, and to obtain debugging information.
 * **Features**: You can filter the level of logs to display, such as all logs, info, warnings, or errors only.
 
+### Splitting Windows (Split Window)
+
+By pressing the **"Split Window"** button (available only for widgets that support this feature), the widget is split into two independent windows: a "display section" (such as waveforms) and a "control section" for settings.
+
+* **Usage**: This is convenient when you want to monitor the display section in full screen while keeping the control section on a different monitor for operation.
+* **How to Restore**: Closing either of the split windows or pressing the **"Reattach All"** button in the original location will restore the widget to its original single-window state.
+
 ### Window Separation (Detach Window)
 
 Pressing the **"Detach Window"** button makes only that widget pop out into an independent individual window.
