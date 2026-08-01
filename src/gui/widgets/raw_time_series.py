@@ -19,6 +19,7 @@ from src.core.localization import tr
 from src.core.utils import format_si
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
+from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 
 
 class RawTimeSeries(MeasurementModule):
@@ -156,10 +157,11 @@ class RawTimeSeries(MeasurementModule):
         return t, data
 
 
-class RawTimeSeriesWidget(QWidget, CompactableWidgetInterface):
+class RawTimeSeriesWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInterface):
     def __init__(self, module: RawTimeSeries):
         QWidget.__init__(self)
         CompactableWidgetInterface.__init__(self)
+        SplittableWidgetInterface.__init__(self)
         self.module = module
 
         self._last_frame = None  # (t, data)
@@ -170,11 +172,31 @@ class RawTimeSeriesWidget(QWidget, CompactableWidgetInterface):
         self.timer.timeout.connect(self._update_plot)
         self.timer.setInterval(100)  # ~10 fps is enough for multi-minute scrolling
 
+    def get_display_widget(self) -> QWidget:
+        """Returns the display sub-widget (plot area)."""
+        return self.display_widget
+
+    def get_control_widget(self) -> QWidget:
+        """Returns the controls sub-widget (settings panel)."""
+        return self.right_widget
+
+    def restore_split_panels(self) -> None:
+        """Re-inserts display_widget and right_widget into the main layout after split reattach."""
+        layout = self.layout()
+        if layout is None:
+            return
+        layout.addWidget(self.display_widget, stretch=1)
+        layout.addWidget(self.right_widget)
+        self.display_widget.show()
+        self.right_widget.show()
+
     def _init_ui(self):
         root = QHBoxLayout(self)
 
         # Left: plots
-        left = QVBoxLayout()
+        self.display_widget = QWidget()
+        left = QVBoxLayout(self.display_widget)
+        left.setContentsMargins(0, 0, 0, 0)
 
         self.plots = pg.GraphicsLayoutWidget()
 
@@ -214,7 +236,7 @@ class RawTimeSeriesWidget(QWidget, CompactableWidgetInterface):
             p.setDownsampling(mode="peak")
 
         left.addWidget(self.plots)
-        root.addLayout(left, stretch=1)
+        root.addWidget(self.display_widget, stretch=1)
 
         # Right: controls
         self.right_widget = QWidget()
@@ -434,4 +456,6 @@ class RawTimeSeriesWidget(QWidget, CompactableWidgetInterface):
     def update_compact_layout(self):
         compact = self.is_compact_mode()
         if hasattr(self, "right_widget"):
-            self.right_widget.setHidden(compact)
+            is_split = self.right_widget.parent() is not self
+            if not is_split:
+                self.right_widget.setHidden(compact)
