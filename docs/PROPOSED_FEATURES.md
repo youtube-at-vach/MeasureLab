@@ -13,8 +13,8 @@
 ## 🔮 Future / Visionary Ideas (Experimental)
 
 * **Bio-Sensory & Psycho-Acoustics**: BCI Audiophile Profiler, AI "Golden Ear", Holographic Soundstage, Psychoacoustic Masking, Synesthetic Harmonic Mapper, Psycho-Kinetic Impact Visualizer, Holographic Phase-Space Orbit Visualizer, Chronological Wave-Function Collapse Analyzer, Synaptic Audio-Nerve Simulator.
-* **Physics & Advanced Simulation**: Quantum Metamaterial Simulator, Thermal Noise Sonification, Neuromorphic Spike Visualizer, Tachyon Phase Analyzer, AC Grid-Symbiosis Mapper.
-* **Spatial & Acoustic Focus**: Non-Euclidean Spatial Mapper, Acoustic Phase Conjugation Analyzer (Time-reversed wave reflection cancellation).
+* **Physics & Advanced Simulation**: Quantum Metamaterial Simulator, Thermal Noise Sonification, Neuromorphic Spike Visualizer, Tachyon Phase Analyzer, AC Grid-Symbiosis Mapper, Quantum Noise Floor Excavator.
+* **Spatial & Acoustic Focus**: Non-Euclidean Spatial Mapper, Acoustic Phase Conjugation Analyzer (Time-reversed wave reflection cancellation), Holographic Acoustic Metamaterial Profiler, Neuromorphic Room De-reverberator.
 * **Ultrasonics**: Ultrasonic Micro-Doppler Excursion Mapper (Non-contact speaker cone displacement measurement).
 
 ---
@@ -35,9 +35,11 @@
 * **Sound Quality / LUFS**: Listener Fatigue Index, PEAQ/ODG Score Estimator, Inter-Sample Peak Histogram & True Peak Clipping Profiler.
 * **Distortion Analyzer**: Thermal Stress, EMI/RFI Fingerprinting, TIM/DIM Mode, SMPTE/DIN/CCIF IMD Sweeps, Long-Term Thermal Drift & Warm-up Logger.
 * **Network Analyzer & Others**: Group/Phase Delay Plot, Click & Pop Classifier, Binaural Tones, AES17 DR Automator, Clock Fingerprinting, Multi-Band Goniometer, DAC Digital Filter Profiler.
+* **Impedance Analyzer**: Thiele/Small (T/S) Parameter Extraction (Added-Mass/Known-Volume).
+* **Plot Comparer**: Polar Pattern / Directivity Mapper (angular-tagged frequency response traces).
 * **Linearity Analyzer**: Dynamic Burst Linearity Mode (Transient crest factor preservation).
 * **Noise Profiler**: Hum AM/FM Modulation Analysis (Power supply modulation rejection).
-* **Transient Analyzer**: Pre-Ringing & Causality Quantifier.
+* **Transient Analyzer**: Pre-Ringing & Causality Quantifier, Cumulative Spectral Decay (CSD) / Waterfall Plot.
 
 ---
 
@@ -49,7 +51,7 @@
 
 ## ⏸️ Under Review / On Hold
 
-* 3D Spectral Waterfall, Plugin System, AI Circuit Reverse Engineer, Multimeter, Cepstrum Analysis.
+* Plugin System, AI Circuit Reverse Engineer, Multimeter, Cepstrum Analysis.
 
 ---
 
