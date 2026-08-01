@@ -60,7 +60,7 @@ Conversely, if the value is the same as during loopback, the performance of the 
 
 ---
 
-## Limits and Points to Note for This Instrument
+## Limitations of This Instrument
 
 ### Regarding the Measurement Method
 
