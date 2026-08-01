@@ -47,7 +47,7 @@ This is called the "I-V method (Current-Voltage method)."
 1. Send the signal from **Output L** to the device under test (DUT).
 2. Connect it so that after passing through the DUT, it passes through the **Ref Resistor** to ground (GND).
 3. **Input L (Voltage Ch)**: Connect between the DUT and the resistor (the voltage divider point). This measures the "voltage across the resistor," but since the resistance value is known, the "current" can be calculated.
-    * In the default settings, Input L is for voltage and Input R is for current measurement, but since current is actually calculated from the voltage difference across the shunt resistor, check the settings according to your circuit configuration.
+    * **Note**: In the default settings, Input L is for voltage and Input R is for current measurement, but since current is actually calculated from the voltage difference across the shunt resistor, check the settings according to your circuit configuration.
     * **Standard Settings for this App**:
         * **Voltage Ch (Input L)**: Measures the voltage $V$ across the DUT.
         * **Current Ch (Input R)**: Measures the voltage $V_{shunt}$ across the shunt resistor. The current is $I = V_{shunt} / R_{shunt}$.
