@@ -6,6 +6,10 @@
 
 The Oscilloscope is a measurement tool that displays the waveform of the input signal on a time axis in real-time. It is used to visually confirm the shape, amplitude, and period of a signal. It also includes trigger functions, automatic measurement capabilities, and arithmetic (math) functions.
 
+## Split Window Mode
+
+This widget supports the **Split Window** feature. By pressing the "Split Window" button in the Detachable Wrapper header, you can detach the waveform display section and the settings control section into separate independent windows.
+
 ## Compact Mode
 
 When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the waveform graph. This is useful when you want to hide the complex control panel and purely monitor the waveform.
