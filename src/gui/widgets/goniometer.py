@@ -23,6 +23,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
+from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 
 
 logger = logging.getLogger(__name__)
@@ -121,10 +122,11 @@ class Goniometer(MeasurementModule):
         outdata.fill(0)
 
 
-class GoniometerWidget(QWidget, CompactableWidgetInterface):
+class GoniometerWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInterface):
     def __init__(self, module: Goniometer):
         QWidget.__init__(self)
         CompactableWidgetInterface.__init__(self)
+        SplittableWidgetInterface.__init__(self)
         self.module = module
         self.init_ui()
 
@@ -138,7 +140,9 @@ class GoniometerWidget(QWidget, CompactableWidgetInterface):
         layout = QHBoxLayout()
 
         # --- Left: Display ---
-        display_layout = QVBoxLayout()
+        self.display_widget = QWidget()
+        display_layout = QVBoxLayout(self.display_widget)
+        display_layout.setContentsMargins(0, 0, 0, 0)
 
         # 1. Goniometer Plot
         self.plot_widget = pg.PlotWidget()
@@ -185,7 +189,7 @@ class GoniometerWidget(QWidget, CompactableWidgetInterface):
         corr_layout.addWidget(QLabel("+1"))
         display_layout.addWidget(self.corr_container)
 
-        layout.addLayout(display_layout, stretch=3)
+        layout.addWidget(self.display_widget, stretch=3)
 
         # --- Right: Controls ---
         self.controls_group = QGroupBox(tr("Controls"))
@@ -609,9 +613,29 @@ class GoniometerWidget(QWidget, CompactableWidgetInterface):
                 "QPushButton:checked:hover { background-color: #ffbbbb; }"
             )
 
+    def get_display_widget(self) -> QWidget:
+        """Returns the display sub-widget (plot area and correlation meter)."""
+        return self.display_widget
+
+    def get_control_widget(self) -> QWidget:
+        """Returns the controls sub-widget (settings panel)."""
+        return self.controls_group
+
+    def restore_split_panels(self) -> None:
+        """Re-inserts display_widget and controls_group into the main layout after split reattach."""
+        layout = self.layout()
+        if layout is None:
+            return
+        layout.addWidget(self.display_widget, stretch=3)
+        layout.addWidget(self.controls_group, stretch=1)
+        self.display_widget.show()
+        self.controls_group.show()
+
     def update_compact_layout(self):
         compact = self.is_compact_mode()
         if hasattr(self, "controls_group"):
-            self.controls_group.setHidden(compact)
+            is_split = self.controls_group.parent() is not self
+            if not is_split:
+                self.controls_group.setHidden(compact)
         if hasattr(self, "corr_container"):
             self.corr_container.setHidden(compact)
