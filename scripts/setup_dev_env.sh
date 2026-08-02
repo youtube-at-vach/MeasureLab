@@ -74,7 +74,7 @@ if [ "${OS}" = "Linux" ]; then
 
         if [ "${#emerge_cmd[@]}" -gt 0 ]; then
             echo "Installing OS dependencies via emerge..."
-            if ! "${emerge_cmd[@]}" --ask=n --noreplace dev-lang/python dev-python/pip media-libs/portaudio media-libs/libsndfile dev-libs/glib; then
+            if ! "${emerge_cmd[@]}" --ask=n --noreplace dev-lang/python dev-python/pip media-libs/portaudio media-libs/libsndfile dev-libs/glib media-libs/mesa; then
                 echo "Error: emerge package installation failed."
                 echo "Continuing with venv/pip setup. Install missing OS dependencies manually if needed."
                 print_linux_manual_dependency_guidance
