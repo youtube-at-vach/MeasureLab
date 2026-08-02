@@ -6,7 +6,8 @@ Instructions for running from source code and setting up the development environ
 
 ## 🐍 Running from Source Code
 
-**Prerequisites**: Python 3.12 or higher
+> [!IMPORTANT]
+> Python 3.12 or higher
 
 ### 🚀 Automated Setup Script (Recommended)
 

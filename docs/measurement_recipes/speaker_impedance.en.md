@@ -2,7 +2,8 @@
 
 ## Overview
 
-**Warning (Unverified Guide)**: This guide was created based on AI inference. Please be sure to read [**Appendix: This tool is not a "measuring instrument"**](../appendix.en.md) regarding the reliability of measurement results and the limitations of this tool.
+> [!WARNING]
+> This guide was created based on AI inference. Please be sure to read [**Appendix: This tool is not a "measuring instrument"**](../appendix.en.md) regarding the reliability of measurement results and the limitations of this tool.
 
 This guide measures the electrical characteristics (impedance) of speaker units.
 By plotting the impedance curve, you can obtain clues for identifying the speaker's lowest resonant frequency ($f_0$) and parameters necessary for enclosure (box) design.
