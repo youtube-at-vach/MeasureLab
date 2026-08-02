@@ -12,7 +12,6 @@ echo "Detected OS: ${OS}"
 print_linux_manual_dependency_guidance() {
     echo "Please install the equivalent of the following tools/libraries manually for your distro:"
     echo "- Python: python3, python3-venv, python3-pip"
-    echo "- JavaScript tools: nodejs, npm"
     echo "- Audio/runtime libs: portaudio, libsndfile"
     echo "- Build tools/headers (if pip build fails): compiler toolchain, portaudio dev headers, libsndfile dev headers"
 }
@@ -51,7 +50,7 @@ if [ "${OS}" = "Linux" ]; then
                 echo "Error: 'apt update' failed."
                 echo "Continuing with venv/pip setup. Install OS dependencies manually if needed."
                 print_linux_manual_dependency_guidance
-            elif ! "${apt_cmd[@]}" install -y python3 python3-venv python3-pip libportaudio2 libsndfile1 build-essential portaudio19-dev libsndfile1-dev nodejs npm; then
+            elif ! "${apt_cmd[@]}" install -y python3 python3-venv python3-pip libportaudio2 libsndfile1 build-essential portaudio19-dev libsndfile1-dev; then
                 echo "Error: apt package installation failed."
                 echo "Continuing with venv/pip setup. Install missing OS dependencies manually if needed."
                 print_linux_manual_dependency_guidance
@@ -75,7 +74,7 @@ if [ "${OS}" = "Linux" ]; then
 
         if [ "${#emerge_cmd[@]}" -gt 0 ]; then
             echo "Installing OS dependencies via emerge..."
-            if ! "${emerge_cmd[@]}" --ask=n --noreplace dev-lang/python dev-python/pip media-libs/portaudio media-libs/libsndfile net-libs/nodejs; then
+            if ! "${emerge_cmd[@]}" --ask=n --noreplace dev-lang/python dev-python/pip media-libs/portaudio media-libs/libsndfile; then
                 echo "Error: emerge package installation failed."
                 echo "Continuing with venv/pip setup. Install missing OS dependencies manually if needed."
                 print_linux_manual_dependency_guidance
@@ -105,20 +104,16 @@ elif [ "${OS}" = "Darwin" ]; then
         echo "Updating MacPorts..."
         sudo port selfupdate
         
-        echo "Installing Python 3.12, pip, FFTW3, and Node.js via MacPorts..."
-        sudo port install python312 py312-pip fftw-3 fftw-3-single nodejs22 npm10
+        echo "Installing Python 3.12, pip, and FFTW3 via MacPorts..."
+        sudo port install python312 py312-pip fftw-3 fftw-3-single
         
-        read -p "Do you want to set Python 3.12 and Node.js 22 as system defaults via 'port select'? (y/N): " set_default
+        read -p "Do you want to set Python 3.12 as system default via 'port select'? (y/N): " set_default
         if [[ "$set_default" =~ ^[Yy]$ ]]; then
             echo "Setting default python to python312..."
             sudo port select --set python python312
             sudo port select --set python3 python312
-            
-            echo "Setting default node and npm..."
-            sudo port select --set node nodejs22
-            sudo port select --set npm npm10
         else
-            echo "Skipping 'port select'. If not set, you may need to call python3.12 and node/npm explicitly."
+            echo "Skipping 'port select'. If not set, you may need to call python3.12 explicitly."
         fi
     else
         echo "Warning: MacPorts ('port') not found."
