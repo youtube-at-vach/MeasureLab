@@ -10,7 +10,7 @@ Instructions for running from source code and setting up the development environ
 
 ### 🚀 Automated Setup Script (Recommended)
 
-For Linux (with apt) and macOS environments, we provide a convenient script that automates everything from installing OS packages to creating a virtual environment (`.venv`) and installing necessary Python dependencies, Node.js, and other development tools.
+For Linux (with apt or emerge) and macOS environments, we provide a convenient script that automates everything from installing OS packages to creating a virtual environment (`.venv`) and installing necessary Python dependencies, Node.js, and other development tools.
 
 Simply open your terminal and run the following command in the repository root directory:
 
@@ -18,7 +18,7 @@ Simply open your terminal and run the following command in the repository root d
 ./scripts/setup_dev_env.sh
 ```
 
-On Linux systems without `apt` (for example, Gentoo) or where admin privileges are unavailable, the script skips OS package auto-install, prints manual dependency guidance, and continues with venv/pip setup.
+On Linux systems with unsupported package managers or where admin privileges are unavailable, the script skips OS package auto-install, prints manual dependency guidance, and continues with venv/pip setup.
 During execution on macOS, you may be prompted to confirm default settings for MacPorts.
 
 Once the setup is complete, activate the virtual environment and launch the application using the following commands:

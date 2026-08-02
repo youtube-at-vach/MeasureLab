@@ -57,8 +57,32 @@ if [ "${OS}" = "Linux" ]; then
                 print_linux_manual_dependency_guidance
             fi
         fi
+    elif command -v emerge > /dev/null; then
+        echo "emerge detected on this Gentoo Linux system."
+        if [ "${SKIP_OS_DEPS:-0}" = "1" ]; then
+            echo "SKIP_OS_DEPS=1 detected. Skipping emerge-based OS dependency installation."
+            print_linux_manual_dependency_guidance
+        elif [ "$(id -u)" -eq 0 ]; then
+            emerge_cmd=(emerge)
+        elif command -v sudo > /dev/null && sudo -n true > /dev/null 2>&1; then
+            emerge_cmd=(sudo emerge)
+        else
+            echo "Warning: emerge is available, but non-interactive root privileges are not available."
+            echo "Skipping emerge-based OS dependency installation and continuing with venv/pip setup."
+            echo "If you want emerge auto-install, rerun as root, configure passwordless sudo, or set up packages manually."
+            print_linux_manual_dependency_guidance
+        fi
+
+        if [ "${#emerge_cmd[@]}" -gt 0 ]; then
+            echo "Installing OS dependencies via emerge..."
+            if ! "${emerge_cmd[@]}" --ask=n --noreplace dev-lang/python dev-python/pip media-libs/portaudio media-libs/libsndfile net-libs/nodejs; then
+                echo "Error: emerge package installation failed."
+                echo "Continuing with venv/pip setup. Install missing OS dependencies manually if needed."
+                print_linux_manual_dependency_guidance
+            fi
+        fi
     else
-        echo "Warning: 'apt' package manager not found."
+        echo "Warning: No supported package manager ('apt', 'emerge') found."
         echo "Skipping OS package auto-install and continuing with venv/pip setup."
         print_linux_manual_dependency_guidance
     fi
