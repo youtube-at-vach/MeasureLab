@@ -570,6 +570,9 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         self._time_array_cache = None
         self._time_array_cache_params = (None, None)  # (window_duration, length)
 
+        # Math auto-fit flag (one-shot scale fitting on mode change / reset button)
+        self._math_autofit_pending = False
+
         self.init_ui()
 
         self.timer = QTimer()
@@ -902,6 +905,7 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         trig_layout.addLayout(hbox_lvl)
 
     def _setup_tools_controls(self, tools_layout):
+        vbox_math = QVBoxLayout()
         hbox_math = QHBoxLayout()
         hbox_math.addWidget(QLabel(tr("Math:")))
         self.math_combo = QComboBox()
@@ -910,7 +914,14 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         )
         self.math_combo.currentTextChanged.connect(self.on_math_changed)
         hbox_math.addWidget(self.math_combo)
-        tools_layout.addLayout(hbox_math)
+        vbox_math.addLayout(hbox_math)
+
+        self.btn_math_reset_scale = QPushButton(tr("Fit Scale"))
+        self.btn_math_reset_scale.setToolTip(tr("Auto-fit and fix Math Y-axis scale"))
+        self.btn_math_reset_scale.clicked.connect(self.on_math_reset_scale_clicked)
+        vbox_math.addWidget(self.btn_math_reset_scale)
+
+        tools_layout.addLayout(vbox_math)
 
         self.chk_cursors = QCheckBox(tr("Enable Cursors"))
         self.chk_cursors.toggled.connect(self.on_cursors_toggled)
@@ -1118,14 +1129,35 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
 
         self.module.trigger_level = val
 
-    def on_math_changed(self, val):
+    def on_math_changed(self, text):
+        math_mode_map = {
+            tr("Off"): "Off",
+            tr("A + B"): "A + B",
+            tr("A - B"): "A - B",
+            tr("A * B"): "A * B",
+            tr("A / B"): "A / B",
+            tr("Derivative"): "Derivative",
+            tr("Integral"): "Integral",
+            "Off": "Off",
+            "A + B": "A + B",
+            "A - B": "A - B",
+            "A * B": "A * B",
+            "A / B": "A / B",
+            "Derivative": "Derivative",
+            "Integral": "Integral",
+        }
+        val = math_mode_map.get(text, text)
         self.module.math_mode = val
         if val == "Off":
             self.axis_math.hide()
             self.curve_math.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead  # Clear math curve when off
         else:
             self.axis_math.show()
-            self.axis_math.setLabel(tr("Math ({0})").format(val), color="#ffffff")
+            self.axis_math.setLabel(tr("Math ({0})").format(text), color="#ffffff")
+            self._math_autofit_pending = True
+
+    def on_math_reset_scale_clicked(self):
+        self._math_autofit_pending = True
 
     def on_cursors_toggled(self, checked):
         self.cursor_1.setVisible(checked)
@@ -1441,21 +1473,34 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
                         math_data[~np.isfinite(math_data)] = 0  # Replace inf/nan with 0
                 elif mode == "Derivative":  # Derivative of A (Left)
                     dt = t[1] - t[0] if len(t) > 1 else 1e-6
-                    math_data = np.gradient(A, dt)
+                    # Use edge padding with 5-point moving average to avoid zero-padding edge distortion
+                    if len(A) >= 5:
+                        padded = np.pad(A, (2, 2), mode="edge")
+                        kernel = np.ones(5) / 5.0
+                        A_smooth = np.convolve(padded, kernel, mode="valid")
+                    else:
+                        A_smooth = A
+                    math_data = np.gradient(A_smooth, dt)
                 elif mode == "Integral":  # Integral of A (Left)
                     dt = t[1] - t[0] if len(t) > 1 else 1e-6
-                    math_data = np.cumsum(A) * dt
+                    # Remove input DC component to avoid constant drift
+                    A_no_dc = A - np.mean(A)
+                    # Trapezoidal cumulative integration for high numerical accuracy
+                    math_data = np.cumsum(A_no_dc) * dt - 0.5 * (A_no_dc - A_no_dc[0]) * dt
+                    # Remove output DC offset
                     math_data = math_data - np.mean(math_data)
 
                 if math_data is not None and math_data.size > 0:
                     self.curve_math.setData(plot_t, math_data[::display_step])
-                    # Auto-scale Math View
-                    mn, mx = np.min(math_data), np.max(math_data)
-                    if mn == mx:
-                        mn -= 0.1
-                        mx += 0.1
-                    padding = (mx - mn) * 0.1
-                    self.math_view.setYRange(mn - padding, mx + padding)
+                    # Auto-scale Math View only once on mode change or when "Fit Scale" button is clicked
+                    if getattr(self, "_math_autofit_pending", False):
+                        self._math_autofit_pending = False
+                        mn, mx = np.min(math_data), np.max(math_data)
+                        if mn == mx:
+                            mn -= 0.1
+                            mx += 0.1
+                        padding = (mx - mn) * 0.15
+                        self.math_view.setYRange(mn - padding, mx + padding)
                 else:
                     self.curve_math.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
             else:
