@@ -69,6 +69,63 @@ class TestOscilloscopeMath(unittest.TestCase):
         # Verify that get_display_data was actually called and we didn't crash before it
         self.module.get_display_data.assert_called_once()
 
+    def test_derivative_calculation(self):
+        self.module.math_mode = "Derivative"
+        self.module.is_running = True
+        self.module.process_queue = MagicMock()
+
+        # Create dummy 1kHz sine wave data
+        sr = 48000
+        t = np.linspace(0, 0.01, int(sr * 0.01))
+        sine_data = np.sin(2 * np.pi * 1000 * t)
+        mock_data = np.column_stack((sine_data, sine_data))
+        self.module.get_display_data = MagicMock(return_value=mock_data)
+
+        self.widget.update_plot()
+        self.module.get_display_data.assert_called_once()
+
+    def test_integral_calculation(self):
+        self.module.math_mode = "Integral"
+        self.module.is_running = True
+        self.module.process_queue = MagicMock()
+
+        sr = 48000
+        t = np.linspace(0, 0.01, int(sr * 0.01))
+        sine_data = np.sin(2 * np.pi * 1000 * t)
+        mock_data = np.column_stack((sine_data, sine_data))
+        self.module.get_display_data = MagicMock(return_value=mock_data)
+
+        self.widget.update_plot()
+        self.module.get_display_data.assert_called_once()
+
+    def test_math_scale_autofit_and_fixed(self):
+        # Test mode change triggers autofit flag
+        self.widget.on_math_changed("A + B")
+        self.assertTrue(self.widget._math_autofit_pending)
+
+        self.module.is_running = True
+        self.module.process_queue = MagicMock()
+        mock_data = np.ones((100, 2))
+        self.module.get_display_data = MagicMock(return_value=mock_data)
+
+        # First update_plot should process autofit and clear flag
+        self.widget.update_plot()
+        self.assertFalse(self.widget._math_autofit_pending)
+
+        # Test reset scale button triggers autofit flag again
+        self.widget.on_math_reset_scale_clicked()
+        self.assertTrue(self.widget._math_autofit_pending)
+
+    def test_math_i18n_mode_mapping(self):
+        from src.core.localization import tr
+        translated_derivative = tr("Derivative")
+        self.widget.on_math_changed(translated_derivative)
+        self.assertEqual(self.module.math_mode, "Derivative")
+
+        translated_integral = tr("Integral")
+        self.widget.on_math_changed(translated_integral)
+        self.assertEqual(self.module.math_mode, "Integral")
+
 
 if __name__ == "__main__":
     unittest.main()
