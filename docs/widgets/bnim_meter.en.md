@@ -8,6 +8,10 @@ This is a unique meter that simulates and visualizes how the human "hearing (bra
 More intuitively than a standard phase meter (Lissajous waveform), it displays "which frequency of sound is heard from which direction (left or right)" in a heat map like a thermogram.
 It is ideal for checking the sense of localization and spread of stereo sound images, and for checking binaural recordings.
 
+## Split Window Mode
+
+This widget supports the **Split Window** feature. By pressing the "Split Window" button in the Detachable Wrapper header, you can detach the image map display section and the settings control section into separate independent windows.
+
 ## Compact Mode
 
 When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the image map display. This is useful when you only want to monitor the spatial spread.
