@@ -2,6 +2,10 @@
 
 ![Lufs Meter](../assets/widgets/lufs_meter.png)
 
+## ウィンドウ分割 (Split Window) モード
+
+このウィジェットは **Split Window**（ウィンドウ分割）機能に対応しています。Detachable Wrapper のヘッダーにある「Split Window」ボタンを押すことで、メーター表示部と設定コントロール部を別々のウィンドウに切り離して配置することができます。
+
 ## 概要
 
 LUFS Meterは、放送や配信サービス（YouTube, Spotify, Netflixなど）で標準的に使用される「ラウドネス（人が感じる音の大きさ）」を測定するメーターです。国際規格 ITU-R BS.1770-4 に準拠したアルゴリズムを使用しています。同時に通常のピークメーターやRMSメーターも表示します。
