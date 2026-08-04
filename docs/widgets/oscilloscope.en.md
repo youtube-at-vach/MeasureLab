@@ -82,6 +82,10 @@ Displays the results of calculations performed on two channels or signals as a "
 * **Derivative**: Differentiated waveform of the Left channel.
 * **Integral**: Integrated waveform of the Left channel.
 
+### Fit Scale
+
+Auto-fits and fixes the Math Y-axis scale. The scale is also auto-fitted when the Math mode is changed.
+
 ### Filter
 
 Applies a simple filter to the input signal for display. Convenient for checking noise, etc.
