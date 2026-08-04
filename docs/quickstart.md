@@ -22,13 +22,13 @@
 MeasureLab は Windows および Linux で動作します。
 [Releases](https://github.com/youtube-at-vach/MeasureLab/releases) ページから、お使いの OS に合わせた最新バージョンをダウンロードしてください。
 
-### Windows の場合
+### Windows
 
 1. `MeasureLab-<version>-windows-x64-onefile.zip`（または `onedir.zip`）をダウンロードします。
 2. ZIP ファイルを解凍します。
 3. フォルダ内の `MeasureLab.exe` をダブルクリックして実行します。
 
-### Linux の場合
+### Linux
 
 1. `MeasureLab-<version>-linux-x86_64.AppImage` をダウンロードします。
 2. ファイルに実行権限を付与します。
@@ -43,7 +43,7 @@ MeasureLab は Windows および Linux で動作します。
    ./MeasureLab-*-linux-x86_64.AppImage
    ```
 
-### macOS の場合 (Apple Silicon / Intel)
+### macOS
 
 1. Apple Silicon の場合は `MeasureLab-<version>-macos-arm64.dmg`、Intel Mac の場合は `MeasureLab-<version>-macos-x64.dmg` をダウンロードします。
 2. **ゲートキーパーの回避**:
@@ -83,7 +83,7 @@ Settings ウィジットでは、使いやすいように UI の言語や配色�
 起動したら、まずはオーディオ入出力の設定を行います。
 左側のメニューから **Settings** ウィジット（歯車アイコン）を開いてください。
 
-### Windows の場合
+### Windows
 
 デバイスリストから使用するオーディオインターフェースなどを選択します。
 
@@ -91,7 +91,7 @@ Settings ウィジットでは、使いやすいように UI の言語や配色�
 - **WASAPI**: 専用ドライバがない場合や、Windows 標準の機能を使う場合の推奨設定です。
 - **MME / DirectSound**: 遅延が大きく、測定にはあまり向きません。
 
-### Linux の場合
+### Linux
 
 Linux 環境で高精度な測定を行う場合、**JACK** または **PipeWire** の使用を強く推奨します。
 

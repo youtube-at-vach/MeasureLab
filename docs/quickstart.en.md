@@ -22,13 +22,13 @@ Using this loopback connection first allows you to test whether the basic input 
 MeasureLab works on Windows and Linux.
 Please download the latest version for your OS from the [Releases](https://github.com/youtube-at-vach/MeasureLab/releases) page.
 
-### For Windows
+### Windows
 
 1. Download `MeasureLab-<version>-windows-x64-onefile.zip` (or `onedir.zip`).
 2. Extract the ZIP file.
 3. Double-click `MeasureLab.exe` in the folder to run it.
 
-### For Linux
+### Linux
 
 1. Download `MeasureLab-<version>-linux-x86_64.AppImage`.
 2. Grant execution permission to the file.
@@ -43,7 +43,7 @@ Please download the latest version for your OS from the [Releases](https://githu
    ./MeasureLab-*-linux-x86_64.AppImage
    ```
 
-### For macOS (Apple Silicon / Intel)
+### macOS
 
 1. Download `MeasureLab-<version>-macos-arm64.dmg` for Apple Silicon or `MeasureLab-<version>-macos-x64.dmg` for Intel Macs.
 2. **Gatekeeper Bypass**:
@@ -83,7 +83,7 @@ Please select from the **Themes** combo box.
 After starting, first configure the audio input/output settings.
 Open the **Settings** widget (gear icon) from the left menu.
 
-### For Windows
+### Windows
 
 Select the audio interface you want to use from the device list.
 
@@ -91,7 +91,7 @@ Select the audio interface you want to use from the device list.
 - **WASAPI**: Recommended setting if there is no dedicated driver or when using standard Windows functions.
 - **MME / DirectSound**: Large latency, not very suitable for measurement.
 
-### For Linux
+### Linux
 
 When performing high-precision measurements in a Linux environment, we strongly recommend using **JACK** or **PipeWire**.
 
