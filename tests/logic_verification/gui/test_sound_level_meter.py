@@ -2,7 +2,8 @@ import numpy as np
 import scipy.signal
 import pytest
 from unittest.mock import MagicMock
-from src.gui.widgets.sound_level_meter import SoundLevelMeter
+from src.gui.widgets.sound_level_meter import SoundLevelMeter, SoundLevelMeterWidget
+from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 
 
 class MockAudioEngine:
@@ -249,3 +250,25 @@ class TestSoundLevelMeterWeighting:
         assert abs(diff - 19.1) < 1.5, (
             f"Callback A-weighting check failed. 1kHz: {level_1k_db}, 100Hz: {level_100_db}, Diff: {diff}"
         )
+
+
+class TestSoundLevelMeterSplittable:
+    def test_splittable_interface(self, qapp):
+        engine = MockAudioEngine()
+        slm = SoundLevelMeter(engine)
+        widget = SoundLevelMeterWidget(slm)
+
+        assert isinstance(widget, SplittableWidgetInterface)
+        display_w = widget.get_display_widget()
+        control_w = widget.get_control_widget()
+
+        assert display_w is not None
+        assert control_w is not None
+        assert display_w == widget.display_widget
+        assert control_w == widget.control_widget
+
+        # Test restore_split_panels execution
+        widget.restore_split_panels()
+        assert not display_w.isHidden()
+        assert not control_w.isHidden()
+
