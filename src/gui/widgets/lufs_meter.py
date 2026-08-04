@@ -1109,10 +1109,18 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         if hasattr(self, "tabs"):
             self.tabs.setHidden(compact)
 
-        # Trigger parent window size adjustment to prevent vertical stretching
-        win = self.window()
-        if win:
-            from PyQt6 import sip
-            from PyQt6.QtCore import QTimer
+        # Trigger size adjustment on the window that actually contains the display widget.
+        # In split mode content_widget is reparented to None so self.window() == self;
+        # instead adjust the window hosting display_widget (split_display_window).
+        from PyQt6 import sip
+        from PyQt6.QtCore import QTimer
 
+        if hasattr(self, "display_widget"):
+            disp_win = self.display_widget.window()
+            if disp_win and disp_win is not self and not sip.isdeleted(disp_win):
+                QTimer.singleShot(50, lambda: disp_win.adjustSize() if not sip.isdeleted(disp_win) else None)
+                return
+
+        win = self.window()
+        if win and not sip.isdeleted(win):
             QTimer.singleShot(50, lambda: win.adjustSize() if not sip.isdeleted(win) else None)
