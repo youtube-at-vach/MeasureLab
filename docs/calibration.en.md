@@ -17,8 +17,7 @@ MeasureLab supports the following units.
 
 * **dBFS**: Relative level to digital full scale. Always available without calibration. The maximum value is 0 dBFS.
 * **dBV**: Unit of voltage where 1 Vrms is the reference (0 dBV). ($20 \log_{10}(V / 1.0)$) This is a standard commonly used in consumer (home) audio equipment.
-* **dBu**: Unit of voltage where 0.775 Vrms is the reference (0 dBu). ($20 \log_{10}(V / 0.775)$)
-  (* 0.775 V originates from old telephone line standards, where it represents the voltage required to deliver 1 mW of power into a 600 Ω load. It remains the standard in professional audio equipment.)
+* **dBu**: Unit of voltage where 0.775 Vrms is the reference (0 dBu). ($20 \log_{10}(V / 0.775)$) This is the standard commonly used in professional audio equipment.
 * **dB SPL**: Sound Pressure Level. A unit of sound pressure where the reference extremely tiny pressure of $20 \mu Pa$ is set as 0 dB SPL. It becomes available after performing microphone input calibration (SPL calibration).
 
 To perform displays and measurements in these units, **Input Sensitivity** and **Output Gain** calibration are required.
@@ -28,8 +27,7 @@ To perform displays and measurements in these units, **Input Sensitivity** and *
 Required equipment varies depending on the items being calibrated.
 
 * **Input/Output Voltage Calibration**:
-    * **Voltmeter (Multimeter)**: A **TrueRMS** compatible one is best. Cheaper meters may produce errors for non-sine waves or may not be able to read small voltages.
-        * **About TrueRMS**: Inexpensive multimeters often measure the average value and calculate assuming a perfect sine wave, which causes errors with complex waveforms. TrueRMS multimeters accurately measure the root mean square regardless of the waveform.
+    * **Voltmeter (Multimeter)**: A **TrueRMS** compatible one is best. Inexpensive multimeters often measure the average value and calculate assuming a perfect sine wave, causing errors with complex waveforms. TrueRMS multimeters accurately measure the root mean square regardless of the waveform.
     * **Audio Cables**: Required to connect the output and input of the audio interface or to apply the voltmeter.
 * **Sound Pressure Level (SPL) Calibration**:
     * **Speaker**: Required to play pink noise.
