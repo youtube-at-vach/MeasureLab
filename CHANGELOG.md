@@ -1,5 +1,40 @@
 # Changelog
 
+## [v0.8.2] - 2026-07-28
+
+### Added
+
+* **LUFS Meter**:
+    * Added Split Window (State C) support to display meter view and control panel in separate independent windows.
+* **Sound Level Meter**:
+    * Added Split Window (State C) support to display meter view and control panel in separate independent windows.
+* **BNIM Meter**:
+    * Added Split Window (State C) support to separate the image map display and settings controls into independent windows.
+* **Goniometer**:
+    * Added Split Window (State C) support to separate the plot display and settings controls into independent windows.
+* **Raw Time Series**:
+    * Added Split Window (State C) support to separate the waveform display and settings controls into independent windows.
+* **Lock-in Modeler**:
+    * Added adaptive predistortion (DPD) algorithm support.
+    * Optimized adaptive sweep convergence algorithm with PCHIP complex interpolation.
+    * Added Hammerstein matrix model simulation results for varying cycle and window parameters.
+* **Oscilloscope**:
+    * Added Fit Scale button to automatically adjust the vertical scale to fit the current signal.
+
+### Fixed
+
+* **Oscilloscope**:
+    * Fixed math channel scaling, i18n key mapping, and calculation accuracy.
+* **Lock-in Modeler**:
+    * Resolved mypy type errors in predistortion and realtime_sss_core modules.
+
+### Changed
+
+* **Lock-in Modeler**:
+    * Updated `process_input_block` return signature to include additional output parameter.
+    * Migrated experimental scripts from `/scripts` to `/experiments` directory.
+    * Renamed PHM translation keys for English parity.
+
 ## [v0.8.1] - 2026-07-21
 
 ### Added
