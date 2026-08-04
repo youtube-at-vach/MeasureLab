@@ -23,6 +23,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
+from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 from src.gui.styles import MONOSPACE_FONT_FAMILY
 
 
@@ -383,10 +384,11 @@ class LufsMeter(MeasurementModule):
         return self._i_sample_count / float(self.sample_rate)
 
 
-class LufsMeterWidget(QWidget, CompactableWidgetInterface):
+class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInterface):
     def __init__(self, module: LufsMeter):
         QWidget.__init__(self)
         CompactableWidgetInterface.__init__(self)
+        SplittableWidgetInterface.__init__(self)
         self.module = module
 
         # History for plotting
@@ -424,6 +426,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
         # --- Left Sidebar ---
         self.sidebar = QWidget()
         self.sidebar.setFixedWidth(240)
+        self.control_widget = self.sidebar
         sidebar_layout = QVBoxLayout()
         sidebar_layout.setContentsMargins(10, 10, 10, 10)
         sidebar_layout.setSpacing(10)
@@ -476,6 +479,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
 
         # --- Right Main Content Area ---
         content_area = QWidget()
+        self.display_widget = content_area
         content_layout = QVBoxLayout()
         content_layout.setContentsMargins(10, 10, 10, 10)
         content_layout.setSpacing(8)
@@ -1078,17 +1082,45 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface):
                 }}
             """)
 
+    def get_display_widget(self) -> QWidget:
+        """Returns the display sub-widget (digital displays, level meters, and tabs)."""
+        return self.display_widget
+
+    def get_control_widget(self) -> QWidget:
+        """Returns the controls sub-widget (sidebar settings panel)."""
+        return self.control_widget
+
+    def restore_split_panels(self) -> None:
+        """Re-inserts display_widget and control_widget into the main layout after split reattach."""
+        layout = self.layout()
+        if layout is None:
+            return
+        layout.addWidget(self.control_widget)
+        layout.addWidget(self.display_widget)
+        self.control_widget.show()
+        self.display_widget.show()
+
     def update_compact_layout(self):
         compact = self.is_compact_mode()
         if hasattr(self, "sidebar"):
-            self.sidebar.setHidden(compact)
+            is_split = self.sidebar.parent() is not self
+            if not is_split:
+                self.sidebar.setHidden(compact)
         if hasattr(self, "tabs"):
             self.tabs.setHidden(compact)
 
-        # Trigger parent window size adjustment to prevent vertical stretching
-        win = self.window()
-        if win:
-            from PyQt6 import sip
-            from PyQt6.QtCore import QTimer
+        # Trigger size adjustment on the window that actually contains the display widget.
+        # In split mode content_widget is reparented to None so self.window() == self;
+        # instead adjust the window hosting display_widget (split_display_window).
+        from PyQt6 import sip
+        from PyQt6.QtCore import QTimer
 
+        if hasattr(self, "display_widget"):
+            disp_win = self.display_widget.window()
+            if disp_win and disp_win is not self and not sip.isdeleted(disp_win):
+                QTimer.singleShot(50, lambda: disp_win.adjustSize() if not sip.isdeleted(disp_win) else None)
+                return
+
+        win = self.window()
+        if win and not sip.isdeleted(win):
             QTimer.singleShot(50, lambda: win.adjustSize() if not sip.isdeleted(win) else None)
