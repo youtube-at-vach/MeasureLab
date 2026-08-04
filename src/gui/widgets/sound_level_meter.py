@@ -24,6 +24,7 @@ from src.core.localization import tr
 from src.core.analysis import AudioCalc
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
+from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 
 
 logger = logging.getLogger(__name__)
@@ -535,10 +536,11 @@ class SoundLevelMeter(MeasurementModule):
         return centers, probs
 
 
-class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface):
+class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInterface):
     def __init__(self, module: SoundLevelMeter):
         QWidget.__init__(self)
         CompactableWidgetInterface.__init__(self)
+        SplittableWidgetInterface.__init__(self)
         self.module = module
 
         # State tracking for optimization
@@ -565,6 +567,7 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface):
         # --- Sidebar ---
         self.sidebar = QWidget()
         self.sidebar.setFixedWidth(250)
+        self.control_widget = self.sidebar
         sidebar_layout = QVBoxLayout()
         sidebar_layout.setContentsMargins(10, 10, 10, 10)
 
@@ -634,6 +637,7 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface):
 
         # --- Main Content Area ---
         content_area = QWidget()
+        self.display_widget = content_area
         content_layout = QVBoxLayout()
         content_layout.setContentsMargins(10, 10, 10, 10)
 
@@ -758,6 +762,24 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface):
         main_layout.addWidget(self.sidebar)
         main_layout.addWidget(content_area)
         self.setLayout(main_layout)
+
+    def get_display_widget(self) -> QWidget:
+        """Returns the display sub-widget (main display and tabs area)."""
+        return self.display_widget
+
+    def get_control_widget(self) -> QWidget:
+        """Returns the controls sub-widget (sidebar settings panel)."""
+        return self.control_widget
+
+    def restore_split_panels(self) -> None:
+        """Re-inserts display_widget and control_widget into the main layout after split reattach."""
+        layout = self.layout()
+        if layout is None:
+            return
+        layout.addWidget(self.control_widget)
+        layout.addWidget(self.display_widget)
+        self.control_widget.show()
+        self.display_widget.show()
 
     def _create_big_display(self, title, color):
         container = QWidget()
@@ -902,8 +924,12 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface):
 
     def update_compact_layout(self):
         compact = self.is_compact_mode()
+        # In split mode sidebar/control_widget lives in its own window (parent != self).
+        # Only hide it when it is still embedded in this widget.
         if hasattr(self, "sidebar"):
-            self.sidebar.setHidden(compact)
+            is_split = self.sidebar.parent() is not self
+            if not is_split:
+                self.sidebar.setHidden(compact)
         if hasattr(self, "tabs"):
             self.tabs.setHidden(compact)
 
