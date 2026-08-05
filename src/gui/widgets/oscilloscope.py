@@ -74,6 +74,7 @@ class Oscilloscope(MeasurementModule):
         self.trigger_level = 0.0
         self.show_left = True
         self.show_right = True
+        self.show_x_axis = False
 
         # Per-channel vertical display scale (multiplier)
         self.vscale_left = 1.0
@@ -666,6 +667,13 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         self.plot_widget.setLabel("bottom", tr("Time"), units="s")
         self.plot_widget.setYRange(self.VIEW_Y_MIN, self.VIEW_Y_MAX, padding=0)
         self.plot_widget.showGrid(x=True, y=True)
+        # Keep the bottom axis visible so vertical grid lines are always drawn;
+        # only hide the tick labels/values when show_x_axis is False.
+        bottom_axis = self.plot_widget.getPlotItem().getAxis("bottom")
+        bottom_axis.setStyle(showValues=self.module.show_x_axis)
+        if not self.module.show_x_axis:
+            bottom_axis.setLabel("")
+            bottom_axis.setHeight(0)
 
         self.curve_l = self.plot_widget.plot(pen=pg.mkPen("#00ff00", width=2), name=tr("Left"))
         self.curve_r = self.plot_widget.plot(pen=pg.mkPen("#ff0000", width=2), name=tr("Right"))
@@ -801,6 +809,12 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         if "10 ms" in self.timebase_keys:
             self.timebase_slider.setValue(self.timebase_keys.index("10 ms"))
         gen_layout.addWidget(self.timebase_slider)
+
+        # Show X-Axis Label Checkbox
+        self.chk_show_x_axis = QCheckBox(tr("Show X-Axis Label"))
+        self.chk_show_x_axis.setChecked(self.module.show_x_axis)
+        self.chk_show_x_axis.toggled.connect(self.on_show_x_axis_toggled)
+        gen_layout.addWidget(self.chk_show_x_axis)
 
     def _setup_vertical_controls(self, vert_layout):
         self.vscale_options = {
@@ -1047,6 +1061,18 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
             self.module.stop_analysis()
             self.timer.stop()
             self.toggle_btn.setText(tr("Start"))
+
+    def on_show_x_axis_toggled(self, checked):
+        self.module.show_x_axis = checked
+        if not self.is_compact_mode():
+            bottom_axis = self.plot_widget.getPlotItem().getAxis("bottom")
+            bottom_axis.setStyle(showValues=checked)
+            if checked:
+                bottom_axis.setLabel(tr("Time"), units="s")
+                bottom_axis.setHeight(None)
+            else:
+                bottom_axis.setLabel("")
+                bottom_axis.setHeight(0)
 
     def on_timebase_changed(self, text):
         val = self.timebase_options[text]
@@ -1575,13 +1601,26 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
             self.cursor_info_label.setHidden(compact)
 
         if hasattr(self, "plot_widget"):
+            bottom_axis = self.plot_widget.getPlotItem().getAxis("bottom")
             if compact:
                 self.plot_widget.setFrameShape(QFrame.Shape.NoFrame)
                 self.plot_widget.setStyleSheet("border: none;")
                 self.plot_widget.getPlotItem().layout.setContentsMargins(0, 0, 0, 0)
+                # In compact mode hide tick labels/values but keep axis visible for grid lines.
+                bottom_axis.setStyle(showValues=False)
+                bottom_axis.setLabel("")
+                bottom_axis.setHeight(0)
             else:
                 self.plot_widget.setFrameShape(QFrame.Shape.StyledPanel)
                 self.plot_widget.setStyleSheet("")
+                show = getattr(self.module, "show_x_axis", False)
+                bottom_axis.setStyle(showValues=show)
+                if show:
+                    bottom_axis.setLabel(tr("Time"), units="s")
+                    bottom_axis.setHeight(None)
+                else:
+                    bottom_axis.setLabel("")
+                    bottom_axis.setHeight(0)
 
     def get_comparable_data(self) -> List[ComparisonTrace]:
         if self.last_display_data is None or self.last_display_time is None:
