@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
     QFormLayout,
+    QFrame,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -663,7 +664,7 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         # Hide Y-axis labels as they are confusing (showing raw FS instead of calibrated Volts)
         self.plot_widget.getPlotItem().getAxis("left").setStyle(showValues=False)
         self.plot_widget.setLabel("bottom", tr("Time"), units="s")
-        self.plot_widget.setYRange(self.VIEW_Y_MIN, self.VIEW_Y_MAX)
+        self.plot_widget.setYRange(self.VIEW_Y_MIN, self.VIEW_Y_MAX, padding=0)
         self.plot_widget.showGrid(x=True, y=True)
 
         self.curve_l = self.plot_widget.plot(pen=pg.mkPen("#00ff00", width=2), name=tr("Left"))
@@ -1051,7 +1052,7 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         val = self.timebase_options[text]
         # We display 10 divisions usually. So window is 10 * val
         self.module.timebase = val * 10
-        self.plot_widget.setXRange(0, self.module.timebase)
+        self.plot_widget.setXRange(0, self.module.timebase, padding=0)
         if self.module.persistence_mode:
             self.module.reset_persistence()
 
@@ -1546,6 +1547,22 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
 
     def update_compact_layout(self):
         compact = self.is_compact_mode()
+        layout = self.layout()
+        if layout is not None:
+            if compact:
+                if not hasattr(self, "_orig_margins"):
+                    self._orig_margins = layout.contentsMargins()
+                if not hasattr(self, "_orig_spacing"):
+                    self._orig_spacing = layout.spacing()
+                layout.setContentsMargins(0, 0, 0, 0)
+                layout.setSpacing(0)
+            else:
+                if hasattr(self, "_orig_margins"):
+                    m = self._orig_margins
+                    layout.setContentsMargins(m.left(), m.top(), m.right(), m.bottom())
+                if hasattr(self, "_orig_spacing"):
+                    layout.setSpacing(self._orig_spacing)
+
         # In split mode right_widget lives in its own window (parent != self).
         # Only hide it when it is still embedded in this widget.
         if hasattr(self, "right_widget"):
@@ -1556,6 +1573,15 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
             self.meas_group.setHidden(compact)
         if hasattr(self, "cursor_info_label"):
             self.cursor_info_label.setHidden(compact)
+
+        if hasattr(self, "plot_widget"):
+            if compact:
+                self.plot_widget.setFrameShape(QFrame.Shape.NoFrame)
+                self.plot_widget.setStyleSheet("border: none;")
+                self.plot_widget.getPlotItem().layout.setContentsMargins(0, 0, 0, 0)
+            else:
+                self.plot_widget.setFrameShape(QFrame.Shape.StyledPanel)
+                self.plot_widget.setStyleSheet("")
 
     def get_comparable_data(self) -> List[ComparisonTrace]:
         if self.last_display_data is None or self.last_display_time is None:
