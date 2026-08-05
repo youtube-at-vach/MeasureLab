@@ -2,13 +2,13 @@
 
 ![Lufs Meter](../assets/widgets/lufs_meter.png)
 
-## Split Window Mode
-
-This widget supports the **Split Window** feature. By pressing the "Split Window" button in the Detachable Wrapper header, you can detach the meter display section and the settings control section into separate independent windows.
-
 ## Overview
 
 The LUFS Meter is a tool for measuring "Loudness" (the perceived volume by humans), which is the standard used in broadcasting and streaming services (YouTube, Spotify, Netflix, etc.). It uses an algorithm compliant with the international standard ITU-R BS.1770-4. It also simultaneously displays standard peak and RMS meters.
+
+## Split Window Mode
+
+This widget supports the **Split Window** feature. By pressing the "Split Window" button in the Detachable Wrapper header, you can detach the meter display section and the settings control section into separate independent windows.
 
 ## Key Indicators
 
