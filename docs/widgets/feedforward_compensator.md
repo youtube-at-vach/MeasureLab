@@ -2,7 +2,7 @@
 
 ## 概要
 
-Feedforward Compensator（フィードフォワード歪み補正）は、Parallel Hammersteinモデルに基づいて、オーディオ信号に対してリアルタイムまたはオフラインで非線形歪み補正を適用するための高度な信号処理ウィジットです。
+Feedforward Compensator（フィードフォワード歪み補正）は、Parallel Hammersteinモデルに基づいて、オーディオ信号に対してリアルタイムまたはオフラインで非線形歪み補正を適用するための高度な信号処理ウィジェットです。
 
 [Nonlinear Analyzer](nonlinear_analyzer.md) などで測定・抽出した機器 of Hammerstein モデル（1次〜5次のインパルス応答カーネル）をロードし、逆歪みを付加した補正信号を生成することで、実機の歪みを能動的にキャンセル（低減）します。
 
