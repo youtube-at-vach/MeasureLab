@@ -36,13 +36,13 @@ MeasureLab では以下の単位をサポートしています。
 
 ## 基本手順
 
-すべての設定は、ウィジット画面にある **Settings** ウィジットの **Calibration** タブから行います。
+すべての設定は、ウィジェット画面にある **Settings** ウィジェットの **Calibration** タブから行います。
 
 ### 入力感度 (Input Sensitivity) の校正
 
 外部からの入力信号の電圧レベルを正しく測定できるようにします。
 
-1. **Settings** ウィジットを開き、**Calibration** タブを選択します。
+1. **Settings** ウィジェットを開き、**Calibration** タブを選択します。
 2. Input Sensitivity の横にある **[Wizard]** ボタンを押します。
 3. **Step 1**: 既知の電圧を持つ信号源（発振器など、あるいは既知の電圧を出力する別のプレイヤー）を入力端子に接続します。
     * もしくは、MeasureLab の Signal Generator (出力校正済み) を使い、Loopback で入力する方法もありますが、最初は外部の基準電圧を使うのが確実です。
@@ -54,7 +54,7 @@ MeasureLab では以下の単位をサポートしています。
 
 MeasureLab から特定の電圧を出力できるようにします。
 
-1. **Settings** ウィジットの **Calibration** タブで、Output Gain の **[Wizard]** ボタンを押します。
+1. **Settings** ウィジェットの **Calibration** タブで、Output Gain の **[Wizard]** ボタンを押します。
 2. **Step 1**: オーディオインターフェースの出力端子に電圧計（テスター）を接続します。
 3. **Step 2**: テスト信号の周波数（通常 1000Hz）とレベル（例えば -12 dBFS）を設定します。クリップしない程度の大きめの音量が適しています。
 4. **Step 3**: **[Start Tone]** を押し、信号を出力します。
@@ -66,7 +66,7 @@ MeasureLab から特定の電圧を出力できるようにします。
 マイク入力を音圧レベル (dB SPL) で表示できるようにします。
 
 1. 測定用マイクとスピーカーをセッティングします。
-2. **Settings** ウィジットの **Calibration** タブで、SPL Offset の **[Wizard]** ボタンを押します。
+2. **Settings** ウィジェットの **Calibration** タブで、SPL Offset の **[Wizard]** ボタンを押します。
 3. 画面の指示に従い設定を行います：
     * **Test Signal Band**: スピーカーの再生能力に合わせて選びます（通常は Speaker 500-2000Hz）。
     * **Output Level**: テスト信号（バンド制限されたピンクノイズ）の音量を設定します。

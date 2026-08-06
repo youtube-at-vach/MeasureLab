@@ -50,7 +50,7 @@ FFT（高速フーリエ変換）の処理速度を向上させるための最�
 
 ### Audio Configuration (オーディオ構成)
 
-* **PipeWire / JACK Mode (Resident)**: Linux 環境で PipeWire や JACK を使用する場合に有効にします。チェックを入れると、ウィジットをすべて閉じてもオーディオエンジンが動作し続け、外部接続が維持されます。
+* **PipeWire / JACK Mode (Resident)**: Linux 環境で PipeWire や JACK を使用する場合に有効にします。チェックを入れると、ウィジェットをすべて閉じてもオーディオエンジンが動作し続け、外部接続が維持されます。
 * **Sample Rate**: サンプリング周波数を選択します。
 * **Buffer Optimization**: 用途に合わせたバッファサイズの最適化レベルを選択します。
 * **Buffer Size**: 実際のオーディオバッファのサイズです。

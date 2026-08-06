@@ -47,7 +47,7 @@ MeasureLab の **Impedance Analyzer** は、電流-電圧法（I-V法）を使�
 
 ### 1. アプリの設定
 
-1. **Impedance Analyzer** ウィジットを開きます。
+1. **Impedance Analyzer** ウィジェットを開きます。
 2. **Settings** パネル（左側）で構成を設定します。
     * **Voltage Ch**: `Left` (Ch 1)
     * **Current Ch**: `Right` (Ch 2)
