@@ -1607,6 +1607,7 @@
     "Show THD": "THD 표시",
     "Show Thermal Limit": "열 잡음 한계 표시",
     "Show Volts": "전압 표시",
+    "Show X-Axis Label": "X축 라벨 표시",
     "Show as Percent (%)": "백분율로 표시 (%)",
     "Show as Resistance (Ω)": "저항으로 표시 (Ω)",
     "Show stored calibration values": "저장된 교정 값 표시",

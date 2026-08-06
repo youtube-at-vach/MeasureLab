@@ -1607,6 +1607,7 @@
     "Show THD": "THDを表示",
     "Show Thermal Limit": "熱雑音限界を表示",
     "Show Volts": "電圧表示",
+    "Show X-Axis Label": "X軸ラベル表示",
     "Show as Percent (%)": "パーセント表示 (%)",
     "Show as Resistance (Ω)": "抵抗値で表示 (Ω)",
     "Show stored calibration values": "保存された校正値を表示",
