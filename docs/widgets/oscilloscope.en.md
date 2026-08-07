@@ -14,6 +14,10 @@ This widget supports the **Split Window** feature. By pressing the "Split Window
 
 When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the waveform graph. This is useful when you want to hide the complex control panel and purely monitor the waveform.
 
+## Display Settings
+
+* **Show X-Axis Label**: Toggles the display of the time axis label and values at the bottom of the graph.
+
 ## Basic Operation
 
 ### Starting and Stopping Measurement
