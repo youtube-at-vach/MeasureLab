@@ -34,6 +34,31 @@ from src.core.predistortion import PredistortionManager
 logger = logging.getLogger(__name__)
 
 
+def _frequency_ticks_125(start_freq: float, end_freq: float) -> list[tuple[float, str]]:
+    """Return log-domain frequency ticks using the instrument-standard 1-2-5 series."""
+    lower = min(start_freq, end_freq)
+    upper = max(start_freq, end_freq)
+    if not np.isfinite(lower) or not np.isfinite(upper) or lower <= 0.0:
+        return []
+
+    first_decade = int(np.floor(np.log10(lower)))
+    last_decade = int(np.ceil(np.log10(upper)))
+    ticks = []
+    for decade in range(first_decade, last_decade + 1):
+        decade_scale = 10.0**decade
+        for multiplier in (1.0, 2.0, 5.0):
+            frequency = multiplier * decade_scale
+            if lower <= frequency <= upper:
+                if frequency >= 1_000_000.0:
+                    label = f"{frequency / 1_000_000.0:g}M"
+                elif frequency >= 1_000.0:
+                    label = f"{frequency / 1_000.0:g}k"
+                else:
+                    label = f"{frequency:g}"
+                ticks.append((float(np.log10(frequency)), label))
+    return ticks
+
+
 class LatencyCalibThread(QThread):
     finished_sig = pyqtSignal(float)
     error_sig = pyqtSignal(str)
@@ -722,8 +747,6 @@ class LockInModelerWidget(QWidget):
         quality_layout.addWidget(self.plot_quality)
         self.plot_tabs.addTab(self.quality_tab, tr("Lock-in SNR"))
 
-
-
         # Create Plot Curves with distinct colors (modernized palette)
         # 1st: Light Blue, 2nd: Light Green, 3rd: Light Amber, 4th: Purple, 5th: Light Red
         self.colors = ["#4fc3f7", "#81c784", "#ffd54f", "#ba68c8", "#e57373"]
@@ -752,10 +775,10 @@ class LockInModelerWidget(QWidget):
         self.setLayout(layout)
         self.setMinimumSize(990, 620)
 
-        # Set initial X range based on default sweep params
-        x_min = min(self.module.start_freq, self.module.end_freq)
-        x_max = max(self.module.start_freq, self.module.end_freq)
-        self.plot_mag.setXRange(np.log10(x_min), np.log10(x_max), padding=0)
+        # Use the traditional instrument 1-2-5 graticule on the shared log-frequency axis.
+        self._update_frequency_axis_scale()
+        self.spin_start_freq.valueChanged.connect(self._update_frequency_axis_scale)
+        self.spin_end_freq.valueChanged.connect(self._update_frequency_axis_scale)
 
         # Sync settings on initialization
         self.on_meas_mode_changed(0)
@@ -895,12 +918,8 @@ class LockInModelerWidget(QWidget):
             # Update Plot Labels based on mode
             self.redraw_plots()
 
-            # Set X range based on current sweep params
-            start_val = self.module.start_freq
-            end_val = self.module.end_freq
-            x_min = min(start_val, end_val)
-            x_max = max(start_val, end_val)
-            self.plot_mag.setXRange(np.log10(x_min), np.log10(x_max), padding=0)
+            # Set the shared 1-2-5 log-frequency scale from the active sweep limits.
+            self._update_frequency_axis_scale()
 
             # Clear plot curves
             for idx in range(5):
@@ -1009,6 +1028,26 @@ class LockInModelerWidget(QWidget):
         super().showEvent(event)
         self.update_frequency_limits()
 
+    def _update_frequency_axis_scale(self, *args):
+        """Apply one deterministic frequency scale to all linked response plots."""
+        start_freq = self.spin_start_freq.value()
+        end_freq = self.spin_end_freq.value()
+        lower = min(start_freq, end_freq)
+        upper = max(start_freq, end_freq)
+
+        # A zero-width logarithmic view is unusable; keep a small, symmetric fallback span.
+        if np.isclose(lower, upper):
+            lower /= np.sqrt(10.0)
+            upper *= np.sqrt(10.0)
+
+        ticks = _frequency_ticks_125(lower, upper)
+        for plot in (self.plot_mag, self.plot_phase, self.plot_quality):
+            plot.getPlotItem().getAxis("bottom").setTicks([ticks])
+
+        # setLogMode expects view coordinates in log10 while curve data remains linear Hz.
+        # A small margin keeps the sweep-limit tick labels visible at both plot edges.
+        self.plot_mag.setXRange(np.log10(lower), np.log10(upper), padding=0.02)
+
     def update_frequency_limits(self):
         sample_rate = self.module.audio_engine.sample_rate
         nyquist = sample_rate / 2.0
@@ -1026,6 +1065,7 @@ class LockInModelerWidget(QWidget):
             self.spin_end_freq.setValue(nyquist)
             self.module.end_freq = self.spin_end_freq.value()
         self.spin_end_freq.blockSignals(False)
+        self._update_frequency_axis_scale()
 
     def set_controls_enabled(self, enabled):
         self.combo_meas_mode.setEnabled(enabled)
@@ -1385,7 +1425,7 @@ class LockInModelerWidget(QWidget):
             # R^2 = 1 - (ss_res / ss_tot)  =>  ss_res / ss_tot = 1 - R^2
             # SNR = -10 * log10(ss_res / ss_tot) = -10 * log10(1 - R^2)
             resid_ratio = 1.0 - avg_quality
-            resid_ratio = np.clip(resid_ratio, 1e-12, 1.0) # avoid log(0)
+            resid_ratio = np.clip(resid_ratio, 1e-12, 1.0)  # avoid log(0)
             snr_db = -10.0 * np.log10(resid_ratio)
 
             # Use sort_idx to order by frequency when plotting

@@ -5,6 +5,7 @@ import numpy as np
 from src.gui.widgets.lock_in_modeler import (
     LockInModeler,
     LockInModelerWidget,
+    _frequency_ticks_125,
 )
 
 
@@ -15,6 +16,35 @@ def mock_audio_engine():
     engine.block_size = 512
     engine.calibration.output_gain = 1.0
     return engine
+
+
+def test_lock_in_modeler_frequency_axis_uses_125_scale(qtbot, mock_audio_engine):
+    analyzer = LockInModeler(mock_audio_engine)
+    widget = LockInModelerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    expected_ticks = [
+        (np.log10(frequency), label)
+        for frequency, label in (
+            (20.0, "20"),
+            (50.0, "50"),
+            (100.0, "100"),
+            (200.0, "200"),
+            (500.0, "500"),
+            (1_000.0, "1k"),
+            (2_000.0, "2k"),
+            (5_000.0, "5k"),
+            (10_000.0, "10k"),
+            (20_000.0, "20k"),
+        )
+    ]
+    assert _frequency_ticks_125(20.0, 20_000.0) == expected_ticks
+
+    widget.spin_start_freq.setValue(50.0)
+    widget.spin_end_freq.setValue(5_000.0)
+    x_range = widget.plot_mag.getPlotItem().viewRange()[0]
+    assert x_range[0] < np.log10(50.0)
+    assert x_range[1] > np.log10(5_000.0)
 
 
 def test_lock_in_modeler_averaging_freq_update(qtbot, mock_audio_engine):
@@ -395,9 +425,6 @@ def test_lock_in_modeler_smoothing_in_sweep_mode(qtbot, mock_audio_engine):
     widget.btn_toggle.click()
 
 
-
-
-
 def test_lock_in_modeler_complex_hammerstein_fit(qtbot, mock_audio_engine):
     # Initialize analyzer and widget
     analyzer = LockInModeler(mock_audio_engine)
@@ -591,8 +618,3 @@ def test_lock_in_modeler_predistortion_sweep_mode(qtbot, mock_audio_engine):
     assert analyzer.state in {"FINISHED", "IDLE"}
     assert analyzer.counter_models is not None
     assert "F_corr" in analyzer.counter_models
-
-
-
-
-
