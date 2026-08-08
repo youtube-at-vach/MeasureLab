@@ -26,6 +26,7 @@ from typing import List
 from src.core.comparison_manager import ComparisonTrace
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.comparable_interface import ComparableWidgetInterface
+from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 
 
 logger = logging.getLogger(__name__)
@@ -628,13 +629,19 @@ class SpectrumAnalyzer(MeasurementModule):
         }
 
 
-class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidgetInterface):
+class SpectrumAnalyzerWidget(
+    QWidget,
+    CompactableWidgetInterface,
+    ComparableWidgetInterface,
+    SplittableWidgetInterface,
+):
     _SI_PREFIXES = {-15: "f", -12: "p", -9: "n", -6: "µ", -3: "m", 0: "", 3: "k", 6: "M", 9: "G"}
 
     def __init__(self, module: SpectrumAnalyzer):
         QWidget.__init__(self)
         CompactableWidgetInterface.__init__(self)
         ComparableWidgetInterface.__init__(self)
+        SplittableWidgetInterface.__init__(self)
         self.module = module
 
         # Cache variables for plot comparison
@@ -646,6 +653,25 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_plot)
         self.timer.setInterval(30)
+
+    def get_display_widget(self) -> QWidget:
+        """Return the information labels and spectrum plot for split mode."""
+        return self.display_widget
+
+    def get_control_widget(self) -> QWidget:
+        """Return the analysis settings panel for split mode."""
+        return self.controls_group
+
+    def restore_split_panels(self) -> None:
+        """Restore the normal top-controls, bottom-display layout after reattachment."""
+        layout = self.layout()
+        if layout is None:
+            return
+
+        layout.addWidget(self.controls_group)
+        layout.addWidget(self.display_widget, stretch=1)
+        self.controls_group.show()
+        self.display_widget.show()
 
     def init_ui(self):
         layout = QVBoxLayout()
@@ -814,6 +840,10 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
         self.controls_group.setLayout(main_controls_layout)
         layout.addWidget(self.controls_group)
 
+        self.display_widget = QWidget()
+        display_layout = QVBoxLayout(self.display_widget)
+        display_layout.setContentsMargins(0, 0, 0, 0)
+
         # --- Info Display ---
         info_layout = QHBoxLayout()
 
@@ -828,7 +858,7 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
         info_layout.addWidget(self.cursor_label)
 
         info_layout.addStretch()
-        layout.addLayout(info_layout)
+        display_layout.addLayout(info_layout)
 
         # --- Plot ---
         self.plot_widget = pg.PlotWidget()
@@ -888,7 +918,8 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
 
         self.plot_widget.setClipToView(True)
 
-        layout.addWidget(self.plot_widget)
+        display_layout.addWidget(self.plot_widget)
+        layout.addWidget(self.display_widget, stretch=1)
         self.setLayout(layout)
 
     def apply_min_max_envelope(self, freqs, magnitude, x_range_log, width_px):
@@ -1434,7 +1465,9 @@ class SpectrumAnalyzerWidget(QWidget, CompactableWidgetInterface, ComparableWidg
     def update_compact_layout(self):
         compact = self.is_compact_mode()
         if hasattr(self, "controls_group"):
-            self.controls_group.setHidden(compact)
+            is_split = self.controls_group.parent() is not self
+            if not is_split:
+                self.controls_group.setHidden(compact)
         if hasattr(self, "overall_label"):
             self.overall_label.setHidden(compact)
         if hasattr(self, "cursor_label"):
