@@ -22,6 +22,7 @@ from src.core.analysis import get_cached_window
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
+from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 from src.core.fft_manager import fft_manager, WARMUP_SIZES
 from src.gui.styles import STYLE_TOGGLE_BTN_DARK, STYLE_TOGGLE_BTN_LIGHT
 
@@ -223,10 +224,11 @@ class Spectrogram(MeasurementModule):
         outdata.fill(0)
 
 
-class SpectrogramWidget(QWidget, CompactableWidgetInterface):
+class SpectrogramWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInterface):
     def __init__(self, module: Spectrogram):
         QWidget.__init__(self)
         CompactableWidgetInterface.__init__(self)
+        SplittableWidgetInterface.__init__(self)
         self.module = module
         self.log_spectrogram_buffer = None
         self._last_raw_buffer_id = None
@@ -243,11 +245,31 @@ class SpectrogramWidget(QWidget, CompactableWidgetInterface):
         self.module.stop_analysis()
         super().closeEvent(event)
 
+    def get_display_widget(self) -> QWidget:
+        """Return the spectrogram plot and histogram panel for split mode."""
+        return self.display_widget
+
+    def get_control_widget(self) -> QWidget:
+        """Return the settings panel for split mode."""
+        return self.controls_group
+
+    def restore_split_panels(self) -> None:
+        """Restore the normal top-controls, bottom-display layout after reattachment."""
+        layout = self.layout()
+        if layout is None:
+            return
+
+        layout.addWidget(self.controls_group)
+        layout.addWidget(self.display_widget)
+        self.controls_group.show()
+        self.display_widget.show()
+
     def init_ui(self):
         layout = QVBoxLayout()
         self.controls_group = self._init_controls()
+        self.display_widget = self._init_plot()
         layout.addWidget(self.controls_group)
-        layout.addWidget(self._init_plot())
+        layout.addWidget(self.display_widget)
         self.setLayout(layout)
 
     def _init_controls(self) -> QGroupBox:
@@ -699,6 +721,10 @@ class SpectrogramWidget(QWidget, CompactableWidgetInterface):
     def update_compact_layout(self):
         compact = self.is_compact_mode()
         if hasattr(self, "controls_group"):
-            self.controls_group.setHidden(compact)
+            # In split mode the controls live in their own window. Compact mode applies
+            # only to the display window, so do not hide the detached controls.
+            is_split = self.controls_group.parent() is not self
+            if not is_split:
+                self.controls_group.setHidden(compact)
         if hasattr(self, "hist"):
             self.hist.setVisible(not compact)
