@@ -1,110 +1,93 @@
-# システムレイテンシーの推定と測定精度検証
+# System Latency Estimation and Measurement Precision
 
-本ドキュメントでは、MeasureLab におけるオーディオ入出力系統の物理的な遅延（ラウンドトリップレイテンシー）の測定手法、その数学的原理、および異なるスイープ信号を用いた実機検証で得られた知見についてまとめます。
+This document describes the latency-estimation paths currently implemented in MeasureLab, the sub-sample peak detector they share, and how the resulting delay is used by the nonlinear analyzer.
 
----
+## 1. Why latency estimation matters
 
-## 1. レイテンシー推定の必要性
+The recorded response is delayed relative to the generated excitation by the audio I/O path, device buffering, and any physical loopback wiring. A delay error becomes a frequency-dependent phase error:
 
-同期正弦波スイープ（SSS: Synchronized Sine Sweep）を用いた非線形システム測定（Hammerstein モデルなどの同定）において、再生信号と録音信号の間の物理的な遅延（レイテンシー）をサンプル未満（サブサンプル）の精度で同定・補正することは極めて重要です。
+$$
+\Delta\phi(f) = -2\pi f\,\Delta t.
+$$
 
-遅延補正が不十分な場合、以下の問題が発生します。
+The error therefore becomes increasingly visible at high frequencies. In a swept-sine measurement, the reference and measured channels must also remain aligned when harmonic impulse responses are gated and separated.
 
-- **位相特性の歪み**: わずかな遅延のズレが周波数の高域において巨大な位相回転（グループ遅延の誤差）として現れます。
-- **高調波成分の分離失敗**: 位相の同期が崩れるため、 Novak の手法に基づく線形応答と高調波応答（$h_1 \sim h_5$）の分離境界が設計値からズレて重なり合い、正確な歪み同定ができなくなります。
+## 2. Implemented calibration paths
 
----
+MeasureLab currently contains two related latency-calibration implementations. They should not be conflated.
 
-## 2. レイテンシー測定のアルゴリズム
+### 2.1 Nonlinear Analyzer calibration
 
-### 2.1. 測定手順
+`NonlinearAnalyzer.calibrate_latency()` in [`src/gui/widgets/nonlinear_analyzer.py`](../../src/gui/widgets/nonlinear_analyzer.py) uses a short logarithmic chirp:
 
-レイテンシー測定は以下の手順で実行されます。
+1. Generate a 0.5 s logarithmic chirp from 20 Hz to 10 kHz at amplitude 0.3.
+2. Append 0.5 s of zeros so that delayed samples can still be recorded.
+3. Play and record the signal in one audio session.
+4. Cross-correlate the selected measurement channel with the time-reversed chirp:
 
-1. **測定用スイープ信号 $s(t)$ の出力**:
-   極めて短時間（デフォルトでは 0.25 秒、位相同期により実際は約 0.475 秒）の Novak SSS スイープを再生します。
-2. **ループバック録音信号 $y(t)$ の取得**:
-   再生と同時に、入力チャンネルからループバックされた音声信号を録音します。
-3. **インパルス応答（IR）の抽出**:
-   録音信号 $y(t)$ と送信信号 $s(t)$ の間で周波数領域デコンボリューションを実行し、システムのインパルス応答 $h(t)$ を抽出します。
-4. **サブサンプルピークの検出**:
-   インパルス応答 $h(t)$ のピーク位置を、FFT アップサンプリング（補間）を用いてサンプル間の小数点以下（サブサンプル精度）まで求めます。
+   $$
+   c[n] = y[n] * \operatorname{reverse}(s)[n].
+   $$
 
-### 2.2. デコンボリューションの数理
+   The implementation computes this with `scipy.signal.fftconvolve(..., mode="full")`.
+5. Detect the correlation peak with `find_subsample_peak()` and convert the lag to seconds. Negative results are clamped to zero.
 
-デコンボリューションは、窓関数の影響や有限長スイープに伴うスペクトルの脈動（Gibbs 振動）をキャンセルするため、周波数領域で正則化（Regularization）を用いて実行します。
+This path uses cross-correlation directly; it does not call `deconvolve_signal()`.
 
-$$H(f) = \frac{Y(f) S^*(f)}{|S(f)|^2 + \epsilon}$$
+### 2.2 Realtime SSS latency measurement
 
-ここで：
+`measure_system_latency()` in [`src/core/realtime_sss_core.py`](../../src/core/realtime_sss_core.py) uses the Novak-style SSS generator from [`src/core/nonlinear_analyzer_core.py`](../../src/core/nonlinear_analyzer_core.py):
 
-- $Y(f)$ は録音信号のFFT
-- $S(f)$ は送信スイープのFFT
-- $S^*(f)$ は $S(f)$ の複素共役
-- $\epsilon$ は正則化パラメータ。分母のゼロ除算を防ぎノイズ増幅を抑制するため、送信信号 of パワースペクトルの最大値に比例して動的に決定します（$\epsilon = 10^{-4} \times \max(|S(f)|^2)$）。
+1. Clamp the calibration band to a start frequency of at least 20 Hz and an end frequency of at least 100 Hz.
+2. Generate an SSS and its analytical inverse filter. The default requested sweep duration is 0.25 s, and the recorder adds a 0.3 s margin.
+3. Play the sweep and record the selected input channel through a temporary audio callback.
+4. Deconvolve the recording with the SSS, then locate the impulse-response peak.
+5. Clamp a negative peak to zero and return the result in samples.
 
-得られた $H(f)$ を逆高速フーリエ変換（IFFT）することで、時間領域のインパルス応答 $h(t)$ を得ます。
+The SSS deconvolution is:
 
-### 2.3. サブサンプルピーク検出の原理
+$$
+H(f) = \frac{Y(f)S^*(f)}{|S(f)|^2 + \epsilon},
+\qquad
+\epsilon = 10^{-4}\max_f |S(f)|^2 + 10^{-12}.
+$$
 
-インパルス応答 $h(t)$ の単純な離散最大値のインデックスでは、サンプリング周期（48 kHz の場合約 20.8 μs）単位の解像度しか得られません。さらなる高精度化のため、以下の手法でサブサンプルピークを検出します。
+The FFT length is the next power of two that is at least the recorded length plus the SSS length.
 
-1. **粗検出**: 離散インパルス応答の絶対値が最大となる整数インデックス $n_{\text{peak}}$ を探索します。
-2. **信号のシフトとクロップ**: ピーク周辺の境界効果を避けるため、ピークが中央（$N/2$）に来るようにロール（循環シフト）し、ピークの前後 16 サンプル（計 32 サンプル）を切り出します。切り出した信号に対して Tukey 窓を乗算し、急激な遮断を滑らかにします。
-3. **DFT アップサンプリング（100倍）**: クロップした 32 サンプルのフーリエ変換 $X(f)$ を計算し、周波数領域で 100 倍のゼロパディング（高域にゼロを挿入）を行って逆変換（IFFT）します。これにより、時間解像度が 100 倍に補間された波形が得られます。
-4. **精密検出**: 補間された波形の最大値インデックスを求め、シフト量を差し戻すことで、$0.01$ サンプル精度の遅延時間（実数値）を同定します。
+## 3. Sub-sample peak detection
 
----
+Both paths use `find_subsample_peak(ir)`:
 
-## 3. スイープ信号による測定性能の比較検証
+1. Find the integer index of the largest absolute impulse-response sample.
+2. Circularly shift the response so that this peak is at the center of the buffer.
+3. Extract a 32-sample window centered on the peak and apply a Tukey window with `alpha=0.25`.
+4. Compute a 32-point DFT, zero-pad it to 100 times the length, and take the inverse DFT.
+5. Locate the maximum of the interpolated magnitude and map it back to the original circular index.
 
-スイープ信号の特性が測定精度と安定性に与える影響を検証するため、全長（22,780 サンプル、0.475 秒）を完全に統一した 3 種類のスイープ波形について、実機（ZOOM UAC-232 アナログ物理ループバック）を用いて繰り返し測定テストを実施しました。
+The returned value is a floating-point sample index with a nominal 0.01-sample grid. This is an interpolation result, not a guarantee of 0.01-sample physical accuracy; noise, bandwidth, and peak shape still determine the actual uncertainty.
 
-### 3.1. 検証結果サマリー
+At 48 kHz, one sample is approximately 20.83 microseconds. The sub-sample result is used to avoid throwing away useful timing information during alignment.
 
-| ノイズレベル (RMS) | スイープの種類 | 平均遅延 (samples) | 標準偏差 $\sigma$ (samples) | 平均 PNR (dB) |
-| :--- | :--- | :--- | :--- | :--- |
-| **0.0 (クリア環境)** | **linear** | 8698.9000 | 0.000000 | 63.46 |
-| | **log (Novak SSS)** | **8698.9800** | **0.000000** | **71.02** |
-| | **hyperbolic** | 8698.5900 | 0.000000 | 52.94 |
-| **0.01 (弱ノイズ)** | **linear** | 8698.8965 | 0.004770 | 62.43 |
-| | **log (Novak SSS)** | **8698.9800** | **0.000000** | **70.05** |
-| | **hyperbolic** | 8698.5880 | 0.004000 | 52.81 |
-| **0.05 (強ノイズ)** | **linear** | 8698.8950 | 0.005000 | 54.74 |
-| | **log (Novak SSS)** | **8698.9765** | **0.004770** | **62.40** |
-| | **hyperbolic** | 8698.5830 | 0.012689 | 50.54 |
+## 4. Applying the calibrated delay
 
-> [!NOTE]
-> **PNR (Peak-to-Noise Ratio)** は、インパルス応答ピークのシャープさを示します。値が高いほどピーク位置が明瞭であることを意味します。
+For single-channel nonlinear measurements, `process_amplitude_responses()` applies the stored delay to every frequency bin:
 
----
+$$
+H_{\mathrm{corr}}(f)
+ = H_{\mathrm{meas}}(f)
+   \exp\left(j2\pi f\frac{\Delta t\,f_s}{f_s}\right)
+ = H_{\mathrm{meas}}(f)\exp(j2\pi f\Delta t).
+$$
 
-## 4. 調査から判明した知見
+Here, `latency_sec` is converted to samples by `latency_sec * sample_rate`. In the two-channel `XFER` and `XFER_REV` modes, the measured response is divided by the reference fundamental, so an independent latency calibration is not required for the relative transfer function.
 
-### 4.1. 双曲線スイープ（Hyperbolic Sweep）の精度低下要因
+## 5. Verification status
 
-当初、「周波数の変化率を非線形にした双曲線スイープがレイテンシー測定精度を向上させないか」という仮説が立てられました。しかし、実証実験の結果、**双曲線スイープは対数スイープやリニアスイープよりも測定精度および安定性が著しく低下する**ことが判明しました。
+The repository contains automated simulations for fractional-sample latency and peak recovery in [`tests/core/test_realtime_sss_core.py`](../../tests/core/test_realtime_sss_core.py). The current source does not contain the linear/logarithmic/hyperbolic sweep experiment or the ZOOM UAC-232 result table that appeared in an earlier version of this document. Those historical values are therefore not presented as current implementation guarantees.
 
-その物理的な原因は以下の通りです。
+## 6. Related source files
 
-1. **高周波帯域におけるエネルギー密度の低下**:
-   双曲線スイープでは、周波数の瞬時遷移速度 $df/dt$ が周波数の 2 乗（$f^2$）に比例します。そのため、高域（特に 10 kHz 以上）を通過する速度が極めて速くなり、高域の信号エネルギー密度が極端に低くなります。
-2. **デコンボリューション時のノイズ増幅**:
-   周波数領域でのデコンボリューション時、分母となる送信信号スペクトル $|S(f)|^2$ の高域ゲインが著しく小さいため、逆フィルタの特性が高域を持ち上げるスロープになります。これにより、物理測定時のアンプやAD/DAコンバーターの背景ノイズ（ホワイトノイズなど）の高域成分が大きく増幅されてしまいます。
-3. **IR波形の歪みによるジッター**:
-   高域ノイズの増幅の結果、インパルス応答のベースライン（背景ノイズ）が激しくうねり、ピーク対ノイズ比（PNR）が対数スイープ比で約 18 dB も悪化します。これがサブサンプル補間時の微小なピーク検出ジッターを誘発し、強ノイズ環境における遅延測定の標準偏差 $\sigma$ が、対数スイープの約 2.7 倍に悪化しました。
-
-### 4.2. 対数スイープ（Novak SSS）が最適である理由
-
-検証結果より、現行 of **対数スイープ（Novak SSS）** は、レイテンシー測定において最も優れた安定性を持つことが確認されました。
-
-1. **SN比の全帯域平滑化**:
-   対数スイープは周波数の対数に比例して遷移するため、エネルギー密度が周波数に反比例する（ピンクノイズと同様の）特性を持ちます。これに対する逆フィルタはオクターブあたり +3 dB（高域を持ち上げるピンクスロープ）となり、元の伝達関数のSN比特性を完璧に等化し、最もシャープなインパルス応答を得ることができます（PNR 71 dB を達成）。
-2. **高調波歪みの分離**:
-   実機の非線形歪み（アンプやスピーカーの歪みなど）成分が、インパルス応答上で線形応答の左側（時間軸における過去方向）に完全に分離されるため、歪み成分が遅延測定用のメインピーク位置に干渉することがありません。
-3. **ノイズ環境下での再現性**:
-   強ノイズ環境下（RMS 0.05）でも、遅延測定値の標準偏差は僅か **0.0048 サンプル**（48 kHz サンプリング時、時間換算で約 **100 ナノ秒**）であり、他の手法を圧倒する測定安定性を示しました。
-
-### 4.3. まとめ
-
-実機検証を通じて、再生時間が等しい場合であっても、対数スイープ（Novak SSS）がインパルス応答の PNR を最大化し、ノイズ環境下での時間方向のジッターを極限まで抑えるために最も合理的かつ数学的に最適化された波形であることが実証されました。よって、現行のレイテンシー測定システムは変更の必要がなく、最高水準の精度が維持されていると言えます。
+- [`src/gui/widgets/nonlinear_analyzer.py`](../../src/gui/widgets/nonlinear_analyzer.py): GUI calibration path and single-channel latency usage.
+- [`src/core/realtime_sss_core.py`](../../src/core/realtime_sss_core.py): realtime SSS latency calibrator.
+- [`src/core/nonlinear_analyzer_core.py`](../../src/core/nonlinear_analyzer_core.py): SSS generation, deconvolution, sub-sample peak detection, and frequency-domain delay correction.
+- [`tests/core/test_realtime_sss_core.py`](../../tests/core/test_realtime_sss_core.py): automated latency and fractional-delay tests.

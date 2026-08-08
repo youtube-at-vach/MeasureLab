@@ -1,125 +1,183 @@
-# Hammerstein Feedforward Distortion Compensation (Iterative LICFF)
+# Hammerstein Feedforward Compensation (LICFF)
 
-This document details the feedforward distortion compensation algorithm based on the Hammerstein model. It is designed to linearize a nonlinear system (such as an audio power amplifier or speaker transducer) by applying a predistorted compensation signal at the system's input. The implementation details are based on `scratch/test_ff_compensation_simulation.py`.
+This document describes the current `LICFFEngine` implementation used by the Feedforward Compensator. LICFF means Linear-Inverse Compensated Feedforward: the engine first compensates the linear model response, then iteratively subtracts an input-referred estimate of the modeled nonlinear output.
 
-## Overview
+The implementation is in [`src/gui/widgets/feedforward_compensator.py`](../../src/gui/widgets/feedforward_compensator.py). It operates on a loaded forward Parallel Hammerstein model, such as the JSON exported by the Nonlinear Analyzer.
 
-A Hammerstein system consists of a static nonlinearity followed by a linear dynamic system. In many physical systems, the dominant distortion is well-approximated by this structure.
+## 1. Model representation
 
-To linearize such a system, we inject a compensation signal $u_{comp}$ such that the system output $y$ is as close as possible to the target linear response $y_{ref} = L(u_{in})$.
+The loader requires five time-domain kernels: `h1` through `h5`. In the current implementation they are used directly as power-series kernels:
 
-The **Iterative Linear-Inverse Compensated Feedforward (Iterative LICFF)** algorithm achieves this by iteratively estimating the nonlinear distortion components and projecting them back to the input side through a regularized linear inverse filter.
+$$
+q_0=0,
+\qquad
+q_p=h_p\quad (p=1,\ldots,5).
+$$
 
----
+There is no Chebyshev-to-power-series conversion in `LICFFEngine`. This is an important distinction from the amplitude-separation mathematics used by the Nonlinear Analyzer: the feedforward engine expects the exported kernels in the representation already used by its forward model.
 
-## 1. Model Representation
+An optional relative threshold can zero high-order kernels whose peak is below the selected fraction of the `h1` peak. The threshold is applied before scaling.
 
-The system is characterized using a **Parallel Hammerstein model** with kernels up to the 5th order ($h_1$ to $h_5$), typically measured using methods like Synchronized Swept-Sine (SSS).
+### Kernel normalization
 
-### Chebyshev to Power Series Conversion
+The engine computes the peak magnitude of the linear kernel spectrum:
 
-The measured kernels $h_1 \dots h_5$ represent coefficients of Chebyshev polynomials (which are orthogonal under sinusoidal excitation). To facilitate arbitrary signal simulation, we convert these Chebyshev coefficients into standard power series kernels $q_0 \dots q_5$:
+$$
+G_{\mathrm{scale}}=\max_f|Q_1(f)|.
+$$
 
-$$ q_0 = -0.5 h_2 + 0.125 h_4 $$
-$$ q_1 = h_1 - 0.75 h_3 + 0.3125 h_5 $$
-$$ q_2 = h_2 - h_4 $$
-$$ q_3 = h_3 - 1.25 h_5 $$
-$$ q_4 = h_4 $$
-$$ q_5 = h_5 $$
+If that value is near zero, it falls back to 1. All kernels are divided by this scale before the FFT buffers are built:
 
-Here:
+$$
+q_{p,\mathrm{sc}}=q_p/G_{\mathrm{scale}}.
+$$
 
-* $q_1(t)$ represents the **true linear dynamic response** (impulse response).
-* $q_2 \dots q_5$ represent the nonlinear power series kernels.
-* $q_0$ represents the static DC offset kernel.
+The scaled `q0` sum is retained as a constant output offset. For models exported by the current Nonlinear Analyzer, `q0` is initialized to zero.
 
-### Normalization
+## 2. Frequency-domain model and anti-aliasing
 
-To prevent numerical instability and ensure consistent scaling, the kernels are normalized by the peak frequency response magnitude of the linear kernel $q_1$:
+For an input block $x$, the forward model forms the linear term directly and evaluates powers $x^2$ through $x^5$ after oversampling by $L=8$ through frequency-domain zero-padding:
 
-$$ G_{scale} = \max_f |Q_1(f)| $$
-$$ q_{p, sc} = \frac{q_p}{G_{scale}} \quad (p = 0 \dots 5) $$
+$$
+Y(f)=X(f)Q_1(f)+
+\sum_{p=2}^{5}\mathcal{F}\{x(t)^p\}_{\mathrm{dealiased}}Q_p(f).
+$$
 
-All subsequent calculations are performed on these scaled kernels.
+The oversampled signal is transformed to the time domain, raised to the required power, transformed back, and truncated to the original positive-frequency bins. The modeled output is:
 
----
+$$
+y_{\mathrm{model}}(t)=\mathcal{F}^{-1}\{Y(f)\}+\sum_nq_{0,\mathrm{sc}}[n].
+$$
 
-## 2. Forward Model Simulation
+The `nonlinear_spectrum()` helper omits the linear term and returns only orders 2–5 plus the constant offset when converted back to time domain. The Nyquist bin is forced to be real before inverse transformation.
 
-The output $y(t)$ of the Hammerstein model for a given input $x(t)$ is computed in the frequency domain as:
+## 3. Inverse-filter design
 
-$$ y(t) = \mathcal{F}^{-1} \left\{ \sum_{p=0}^{5} \mathcal{F}\{x(t)^p\} \cdot Q_p(f) \right\} $$
+The engine builds length-dependent FFT buffers for the model kernels and an active-band filter. The active band defaults to 60 Hz–17 kHz and has cosine transitions:
 
-### Anti-Aliasing (Oversampled Power Evaluation)
+- Below `f_min`, the transition runs from 0 at 10 Hz to 1 at `f_min`.
+- Above `f_max`, the transition runs to 0 at `min(0.95 * Nyquist, 1.2 * f_max)`.
 
-Calculating $x(t)^p$ in discrete time generates high-frequency components that can cause aliasing if they exceed the Nyquist frequency ($f_s / 2$). To prevent this:
+Let $B(f)$ be this band filter and $A_1(f)=|Q_1(f)|$. Optional octave smoothing changes the magnitude used for inversion but preserves the phase of $Q_1$:
 
-1. The input signal $x(t)$ is oversampled by a factor $L = 8$ via zero-padding in the frequency domain.
-2. The power $x_{up}(t)^p$ is computed in the oversampled time domain.
-3. The spectrum is filtered and downsampled back to the original sample rate before multiplying with the kernel frequency response $Q_p(f)$.
+$$
+\widetilde{A}_1(f)=
+\begin{cases}
+\text{smoothed magnitude of }Q_1(f), & \text{if smoothing is enabled},\\
+A_1(f), & \text{otherwise}.
+\end{cases}
+$$
 
----
+The regularized raw inverse is:
 
-## 3. Linear Inverse Filter ($F_{inv}$) Design
+$$
+F_{\mathrm{raw}}(f)=
+\frac{Q_1^*(f)}{|Q_1(f)|}
+\frac{\widetilde{A}_1(f)}{\widetilde{A}_1(f)^2+\epsilon_f(f)},
+$$
 
-The linear inverse filter $F_{inv}$ maps an output-referred distortion signal back to the input. It is the regularized inverse of the linear kernel $Q_1(f)$:
+where the first factor preserves the conjugate phase and $\epsilon_f$ is:
 
-$$ F_{inv}(f) = \frac{Q_1^*(f)}{|Q_1(f)|^2 + \epsilon_f(f)} \cdot H_{bp}(f) $$
+$$
+\epsilon_f(f)=\epsilon_{\mathrm{in}}+
+(0.5-\epsilon_{\mathrm{in}})(1-B(f)).
+$$
 
-Where:
+The regularization mode determines $\epsilon_{\mathrm{in}}$:
 
-* $Q_1^*(f)$ is the complex conjugate of $Q_1(f)$.
-* $H_{bp}(f)$ is a bandpass filter (`bp_filter`) restricting the inversion to the active band of the transducer (e.g., 60 Hz to 17 kHz). Inversion outside this band is restricted to avoid amplifying noise or out-of-band signals.
-* $\epsilon_f(f)$ is a frequency-dependent regularization parameter (Tikhonov regularization) that prevents extreme gains at frequencies where the response is weak (e.g., notches or band edges):
-  $$ \epsilon_f(f) = \epsilon_{in} + (\epsilon_{out} - \epsilon_{in}) \cdot (1 - H_{bp}(f)) $$
-  With $\epsilon_{in} = 10^{-6}$ inside the passband, and $\epsilon_{out} = 0.5$ in the transition/stopbands.
+- `auto_broadband`: solve for a 3 dB maximum passband boost.
+- `auto_tones`: solve for a 20 dB maximum passband boost.
+- `manual_boost`: solve for the user-selected maximum boost in dB.
+- `manual_tikhonov`: use the user-selected Tikhonov value directly.
 
----
+The nonlinear feedback filter is active only inside the band:
 
-## 4. Compensation Algorithm (Iterative LICFF)
+$$
+F_{\mathrm{inv,nl}}(f)=F_{\mathrm{raw}}(f)B(f).
+$$
 
-Instead of using a complex analytical inverse of the Hammerstein nonlinearity (which is mathematically difficult and prone to instability), the algorithm uses an iterative feedback-like structure to compute the predistorted input $u_{comp}$.
+The linear filter has a selectable out-of-band policy:
 
-Let the target linear output be:
-$$ y_{ref} = L(u_{in}) = \mathcal{F}^{-1}\{ \mathcal{F}\{u_{in}\} \cdot Q_1 \} $$
+$$
+F_{\mathrm{inv,lin}}(f)=
+\begin{cases}
+F_{\mathrm{raw}}(f)B(f)+F_{\mathrm{thru}}(f)(1-B(f)), & \texttt{bypass\_aligned},\\
+F_{\mathrm{raw}}(f)B(f)+1\cdot(1-B(f)), & \texttt{bypass\_pure},\\
+F_{\mathrm{raw}}(f)B(f), & \texttt{cut},
+\end{cases}
+$$
 
-### Step-by-Step Iterative Loop
+where:
 
-1. **Initialization ($k=0$):**
-   Initialize the compensated signal as the bandpass-filtered target input:
-   $$ u_{comp}^{(0)} = u_{in} * h_{bp} $$
+$$
+F_{\mathrm{thru}}(f)=\frac{Q_1^*(f)}{|Q_1(f)|}
+$$
 
-2. **Iteration ($k = 1 \dots N_{iters}$):**
-   For each iteration (typically $N_{iters} = 3$ is sufficient):
+is the unit-gain, phase-aligned bypass.
 
-   a. **Estimate Nonlinear Distortion:**
-      Compute the nonlinear distortion components $y_{nl}$ produced by the current compensated input $u_{comp}^{(k-1)}$:
-      $$ y_{nl} = \text{NonlinearForwardModel}(u_{comp}^{(k-1)}) $$
-      $$ y_{nl}(t) = \mathcal{F}^{-1} \left\{ \mathcal{F}\{1\} \cdot Q_0(f) + \sum_{p=2}^{5} \mathcal{F}\{(u_{comp}^{(k-1)})^p\} \cdot Q_p(f) \right\} $$
+## 4. LICFF compensation algorithm
 
-   b. **Project Distortion to Input:**
-      Filter the output-referred distortion $y_{nl}$ through the linear inverse filter $F_{inv}$ to estimate the input-referred compensation signal $y_{comp\_nl}$:
-      $$ y_{comp\_nl} = \mathcal{F}^{-1} \left\{ \mathcal{F}\{y_{nl}\} \cdot F_{inv} \right\} $$
+Given an input block $u_{\mathrm{in}}$, the engine first computes the base linear compensation:
 
-   c. **Update Compensated Signal:**
-      Subtract the compensation signal from the target input to pre-compensate for the upcoming distortion:
-      $$ u_{comp}^{(k)} = u_{in} * h_{bp} - y_{comp\_nl} $$
+$$
+u_{\mathrm{comp,lin}}=
+\mathcal{F}^{-1}\{\mathcal{F}\{u_{\mathrm{in}}\}F_{\mathrm{inv,lin}}\}.
+$$
 
-   d. **Stability Limiter (Clipping):**
-      To prevent the iteration from running into positive feedback and causing numerical blowup, the output is clipped to a safe range:
-      $$ u_{comp}^{(k)} = \max(-V_{limit}, \min(V_{limit}, u_{comp}^{(k)})) $$
-      *(Typically $V_{limit} \approx 1.5$ in simulation)*
+When `bypass_linear_eq=True`, the base is simply $u_{\mathrm{in}}$. This is the GUI's “Nonlinear Only (No Linear EQ)” mode.
 
-3. **Output Generation:**
-   The final predistorted signal $u_{comp}^{(N_{iters})}$ is sent to the physical system.
+For the ordinary nonlinear path:
 
----
+1. Initialize $u_{\mathrm{comp}}$ with $u_{\mathrm{comp,lin}}$ and clip it to $[-V_{\mathrm{limit}},V_{\mathrm{limit}}]$.
+2. Evaluate the nonlinear spectrum for the current $u_{\mathrm{comp}}$:
 
-## 5. Performance Metrics
+   $$
+   Y_{\mathrm{nl}}(f)=
+   \sum_{p=2}^{5}\mathcal{F}\{u_{\mathrm{comp}}^p\}_{\mathrm{dealiased}}Q_p(f).
+   $$
 
-To evaluate the compensation performance, two primary metrics are used:
+3. Project the output-referred nonlinear component back to the input with the nonlinear inverse:
 
-* **Total Harmonic Distortion (THD)**: Measures the suppression of specific harmonics (e.g., 2nd to 5th) under single-tone excitation.
-* **Signal-to-Distortion Ratio (SDR)**: Measures the alignment between the compensated system output and the ideal linear response for arbitrary signals (e.g., multi-tone or broadband noise). Calculated as:
-  $$ \text{SDR} = 20 \log_{10} \frac{\text{RMS}(y_{ref})}{\text{RMS}(y_{out, scaled} - y_{ref})} $$
-  Where $y_{out, scaled}$ is time-aligned and gain-normalized relative to $y_{ref}$ to ensure linear gains/delays do not penalize the metric.
+   $$
+   y_{\mathrm{comp,nl}}=
+   \mathcal{F}^{-1}\{Y_{\mathrm{nl}}F_{\mathrm{inv,nl}}\}.
+   $$
+
+4. Update and clip:
+
+   $$
+   u_{\mathrm{comp,raw}}=u_{\mathrm{comp,lin}}-y_{\mathrm{comp,nl}},
+   \qquad
+   u_{\mathrm{comp}}=\operatorname{clip}(u_{\mathrm{comp,raw}},-V_{\mathrm{limit}},V_{\mathrm{limit}}).
+   $$
+
+If `iterative=False`, the implementation performs one nonlinear update. If `iterative=True`, it repeats the update `iters` times. The compensation function's default clip limit is 1.5, while the current GUI simulation and WAV-export paths pass a clip limit of 2.0.
+
+The `linear_only=True` path returns the base linear compensation after clipping and performs no nonlinear update. The GUI exposes three modes:
+
+- `Linear & Nonlinear`: use the linear inverse and nonlinear correction.
+- `Nonlinear Only (No Linear EQ)`: bypass linear equalization but retain nonlinear correction.
+- `Linear Only`: apply only the linear inverse.
+
+## 5. Stability and processing details
+
+The engine marks a block as unstable when an intermediate result contains NaN or infinity, or exceeds ten times the clip limit in magnitude. The caller may either report this condition or abort export using the GUI's instability option. Clipping counts are also tracked per channel.
+
+Offline WAV processing uses 65536-sample blocks with 4096 samples of overlap. Input audio is resampled to the model sample rate when the rates differ by more than 1 Hz. The output is written at the model rate, and the exporter can optionally RMS-match the output to the original.
+
+The GUI defaults are an active band of 60 Hz–17 kHz, no linear smoothing, automatic 3 dB broadband regularization, iterative compensation disabled, and three iterations when iterative mode is enabled. These are UI defaults; the engine API accepts other values.
+
+## 6. What the current UI measures
+
+The simulation tab compares three forward-model spectra:
+
+- the uncompensated input,
+- the compensated input,
+- the ideal linear output from `linear_output()`.
+
+The current LICFF implementation does not calculate the THD and SDR metrics described in older versions of this document. Those metrics should not be treated as values produced by the current Feedforward Compensator.
+
+## 7. Related tests and source files
+
+- [`src/gui/widgets/feedforward_compensator.py`](../../src/gui/widgets/feedforward_compensator.py): `LICFFEngine`, GUI settings, simulation, and offline processing.
+- [`tests/logic_verification/gui/widgets/test_feedforward_compensator.py`](../../tests/logic_verification/gui/widgets/test_feedforward_compensator.py): direct kernel mapping, inverse behavior, regularization modes, clipping, instability handling, and export behavior.

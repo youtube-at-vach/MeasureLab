@@ -1,80 +1,106 @@
 # Lock-in Frequency Counter: Kalman Filter Implementation
 
-This document details the Kalman Filter implementation used in the Lock-in Frequency Counter module (`src/gui/widgets/lock_in_frequency_counter.py`) to estimate the NCO (Numerically Controlled Oscillator) frequency and its uncertainty.
+This document describes the one-dimensional Kalman filter used by [`src/gui/widgets/lock_in_frequency_counter.py`](../../src/gui/widgets/lock_in_frequency_counter.py) to smooth the NCO frequency while the frequency-locked loop (FLL) is enabled.
 
-## Overview
+## 1. Role of the filter
 
-The goal is to provide a precise and stable frequency readout from a noisy feedback loop (FLL). To achieve this, we use a 1-Dimensional Kalman Filter to estimate the "true" frequency state from the noisy updates provided by the PID controller.
+The frequency counter estimates a frequency deviation from a block of input samples. When FLL lock is enabled, a PID controller converts that deviation into a new NCO-frequency command. The Kalman filter smooths those commands and provides an internal covariance estimate.
 
-We further enhance the visual stability of the readout using a post-filter moving average.
+The filter is not used to produce the unlocked display value: while FLL lock is disabled, the module reports the configured NCO frequency and sets the displayed uncertainty to zero.
 
-## 1. Kalman Filter Model
+## 2. One-dimensional constant-value model
 
-We use a simple **Constant Value Model** (0th order derivative). We assume the true frequency is constant (or slowly varying) and that any rapid changes are due to measurement noise (jitter in the loop).
+The state contains only the NCO frequency:
 
-### State Vector
+$$
+x_k=[f_k].
+$$
 
-$$ x_k = [f_k] $$
-Where $f_k$ is the frequency at time $k$.
+The constant-value prediction is:
 
-### System Model (Prediction)
+$$
+x_{k|k-1}=x_{k-1|k-1},
+\qquad
+P_{k|k-1}=P_{k-1|k-1}+Q.
+$$
 
-We assume the frequency does not change by itself between steps, except for some small process noise (drift).
-$$ x_{k|k-1} = x_{k-1|k-1} $$
-$$ P_{k|k-1} = P_{k-1|k-1} + Q $$
+The PID-updated NCO command is the measurement:
 
-* $P$: Estimation Error Covariance (Uncertainty squared).
-* $Q$: Process Noise Covariance (How much we think the true frequency wanders).
+$$
+z_k=f_{\mathrm{NCO,command}}.
+$$
 
-### Measurement Model (Update)
+The scalar update is:
 
-The PID loop gives us a "new frequency" update, which we treat as a noisy measurement of the true state.
-$$ z_k = f_{PID} $$
-$$ x_k = x_{k|k-1} + K_k (z_k - x_{k|k-1}) $$
-$$ P_k = (1 - K_k) P_{k|k-1} $$
+$$
+K_k=\frac{P_{k|k-1}}{P_{k|k-1}+R},
+$$
 
-Where Kalman Gain $K_k$ is:
-$$ K_k = \frac{P_{k|k-1}}{P_{k|k-1} + R} $$
+$$
+x_k=x_{k|k-1}+K_k(z_k-x_{k|k-1}),
+\qquad
+P_k=(1-K_k)P_{k|k-1}.
+$$
 
-* $R$: Measurement Noise Covariance (How noisy the PID loop is).
+On the first update after construction or reset, the implementation initializes `x` directly from the measurement and sets `P` to `R`. A reset sets the first-run flag and restores `P` to 1.0.
 
-## 2. Adaptive Parameter Estimation
+## 3. Process-noise schedule (`Q`)
 
-To make the filter robust without requiring manual tuning of variance values, we implement adaptive estimation for $Q$ and $R$.
+The UI setting `Avg Count (KF-Q & Display)` controls both the process-noise schedule and the display-history length. With count $N$:
 
-### Q (Process Noise) - "Stiffness"
+$$
+Q=\frac{10^{-6}}{N^2}.
+$$
 
-The Process Noise $Q$ determines how "stiff" the filter is.
+The default count is 10, which gives $Q=10^{-8}$. A count of 100 gives $Q=10^{-10}$. A larger count therefore assumes a more stable NCO, produces stronger Kalman smoothing, and also retains a longer display history. A smaller count responds more quickly to new commands.
 
-* **High Q**: The filter expects the frequency to change rapidly. It trusts new measurements more. Fast response, low smoothing.
-* **Low Q**: The filter expects the frequency to be constant. It ignores short-term fluctuations. Slow response, high smoothing.
+This is a deterministic mapping from the user setting, not an online estimate of process noise.
 
-We map the user-facing **"Avg Count"** setting to $Q$:
-$$ Q \propto \frac{1}{(\text{Avg Count})^2} $$
-Increasing the "Avg Count" makes the filter "stiffer" (smoother).
+## 4. Adaptive measurement noise (`R`)
 
-### R (Measurement Noise) - "Confidence"
+While the FLL is locked, the controller performs the following steps for each valid frequency estimate:
 
-The Measurement Noise $R$ represents the actual jitter in the system. If we assume a fixed $R$ that is too high or too low, our uncertainty estimate ($P$, and thus the displayed digits) will be wrong.
+1. Compute the PID correction from the measured frequency deviation.
+2. Add the correction to the current NCO frequency.
+3. Clamp the command to 20–20,000 Hz.
+4. Append the clamped command to a history buffer with a maximum length of 20.
 
-We estimate $R$ dynamically using the variance of the recent input history (buffer of $N=20$ samples):
-$$ R_k \approx \text{Var}(z_{k-N}...z_k) $$
+After at least two commands are available, the measurement-noise covariance is updated as:
 
-This ensures that:
+$$
+R=\operatorname{Var}(f_{\mathrm{NCO,command,history}})+10^{-12}.
+$$
 
-1. When the loop is unstable/hunting, $R$ increases $\rightarrow$ Filter trusts measurements less $\rightarrow$ Uncertainty ($P$) increases $\rightarrow$ Display shows fewer digits.
-2. When the loop is locked and stable, $R$ decreases $\rightarrow$ Filter tightens $\rightarrow$ Uncertainty ($P$) decreases $\rightarrow$ Display shows more digits.
+Thus, the code estimates the jitter of recent PID/NCO commands, not the variance of the raw audio samples. A hunting loop normally increases `R`, so the Kalman gain decreases. A stable loop normally decreases `R`, so the filter can follow the command more closely.
 
-## 3. Display Smoothing
+## 5. Display averaging and uncertainty
 
-While the Kalman Filter provides the optimal estimate of the state, the raw state estimate $x_k$ can still jitter slightly, which can be annoying for a human reading a digital display.
+The instantaneous Kalman estimate is stored in a second history buffer whose maximum length is the current Avg Count. The UI uses this post-Kalman history for the displayed frequency:
 
-To solve this ("Scientifically Valid Smoothing"), we interpret the text display not as the *instantaneous* state, but as the **statistical mean of the recent state**.
+$$
+f_{\mathrm{display}}=\operatorname{mean}(x_{k-N+1},\ldots,x_k),
+$$
 
-We maintain a history buffer of the Kalman Filter estimates (length = Avg Count):
+$$
+\sigma_{\mathrm{display}}
+ =\operatorname{std}(x_{k-N+1},\ldots,x_k).
+$$
 
-1. **Displayed Value**: $\mu = \text{Mean}(History)$
-2. **Displayed Uncertainty**: $\sigma = \text{StdDev}(History)$
-3. **Decimal Places**: Calculated from $\sigma$ (e.g., if $\sigma = 10^{-4}$, we show roughly 4-5 decimal places).
+The displayed uncertainty label uses $\sigma_{\mathrm{display}}$, the standard deviation of the filtered history. The raw Kalman standard deviation $\sqrt{P_k}$ is also retained internally as `nco_std`, but it is not the value shown in that label.
 
-This provides a readout that is both statistically grounded and visually stable.
+The frequency spin box chooses decimal places from the displayed standard deviation:
+
+$$
+\text{places}=-\lfloor\log_{10}(\sigma_{\mathrm{display}})\rfloor,
+$$
+
+bounded by 0–12 places, with a default of 5 when the standard deviation is zero or unavailable.
+
+## 6. Related smoothing in the plots
+
+The frequency-deviation plot has a separate exponential moving average controlled by a fixed two-second time constant. The plot smoothing slider then optionally applies a simple moving average to the stored plot data. These plot operations are separate from the Kalman filter and from the NCO display-history average.
+
+## 7. Related source and tests
+
+- [`src/gui/widgets/lock_in_frequency_counter.py`](../../src/gui/widgets/lock_in_frequency_counter.py): `KalmanFilter1D`, PID/FLL update path, adaptive `R`, display averaging, and formatting.
+- [`tests/logic_verification/gui/widgets/test_kalman_filter_1d.py`](../../tests/logic_verification/gui/widgets/test_kalman_filter_1d.py): first update, reset, and uncertainty behavior.

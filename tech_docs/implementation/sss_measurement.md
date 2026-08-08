@@ -1,176 +1,216 @@
-# 同期スイープサイン（SSS）法および平行ハマーシュタインモデル（PHM）測定の技術仕様
+# Synchronized Swept-Sine (SSS) and Parallel Hammerstein Measurement
 
-本ドキュメントでは、MeasureLab の `Nonlinear Analyzer` において実装されている、**同期スイープサイン（Synchronized Swept Sine: SSS）法**および**平行ハマーシュタインモデル（Parallel Hammerstein Model: PHM）**を用いた非線形システム測定とカーネル分離のアルゴリズムおよび実装仕様について解説します。
+This document describes the Synchronized Swept-Sine (SSS) measurement and Parallel Hammerstein Model (PHM) kernel-separation pipeline implemented by MeasureLab's `Nonlinear Analyzer`.
 
----
+## 1. Overview
 
-## 1. 概要
+The analyzer uses a logarithmic SSS together with a stepped excitation-amplitude scan. It extracts a fundamental kernel (`h1`) and nonlinear kernels through the fifth order (`h2` through `h5`). The amplitude scan separates the kernels from the amplitude-dependent harmonic responses; the resulting frequency responses are reported over the requested measurement band.
 
-非線形音響・電気音響システムの伝達特性を同定するため、本システムでは指数スイープ（Logarithmic Swept Sine）を用いた SSS 法と、入力振幅を段階的に走査する PHM を組み合わせています。
-これにより、システムが持つ線形応答（基本波応答 $h_1$）だけでなく、2次から5次までの高調波歪み応答（非線形カーネル $h_2$ 〜 $h_5$）を、励起振幅に依存しない純粋な時間領域のインパルス応答（および周波数領域の伝達関数）として個別に分離・抽出します。
+The implementation is split between the measurement controller and the signal-processing core:
 
----
+- [`src/gui/widgets/nonlinear_analyzer.py`](../../src/gui/widgets/nonlinear_analyzer.py) builds the playback sequence, records one continuous session, aligns and averages each amplitude step, and invokes the core processor.
+- [`src/core/nonlinear_analyzer_core.py`](../../src/core/nonlinear_analyzer_core.py) generates the SSS, deconvolves the responses, gates the harmonic impulse responses, applies phase/fractional-delay correction, separates the kernels, and applies calibration.
 
-## 2. 測定・処理の全体フロー
-
-測定処理は大きく分けて、以下の7つのステップで実行されます。
+## 2. Processing flow
 
 ```mermaid
 graph TD
-    A[Step 1: 励起信号生成と振幅スキャンの設定] --> B[Step 2: 同期再生・録音とジッターアライメント TSA]
-    B --> C[Step 3: インパルス応答のデコンボリューション]
-    C --> D[Step 4: 各次数高調波応答の切り出しと分数遅延・位相補正]
-    D --> E[Step 5: 周波数ドメイン Chebyshev 逆変換と最小二乗カーネル分離]
-    E --> F[Step 6: 系統的スイープ位相キャリブレーション]
-    F --> G[Step 7: XFER相対伝達関数補正または遅延補正と出力]
+    A[Step 1: Generate SSS and amplitude schedule] --> B[Step 2: Play, record, and align TSA repetitions]
+    B --> C[Step 3: Regularized frequency-domain deconvolution]
+    C --> D[Step 4: Gate harmonic impulse responses and correct phase]
+    D --> E[Step 5: Frequency-domain Chebyshev separation]
+    E --> F[Step 6: Systematic complex calibration]
+    F --> G[Step 7: XFER or latency correction and output]
 ```
 
-### Step 1: 励起信号生成と振幅スキャンの設定
+### Step 1: SSS generation and amplitude schedule
 
-1. **周波数帯域の設定**:
-   測定帯域 $f_{\text{start}}$ から $f_{\text{end}}$ に対し、過渡応答の歪みを避けるため以下のガードバンド（マージン）を設けてスイープパラメータを算出します。
-   * 開始マージン: $f_{\text{start\_margin}} = \max(2.0, f_{\text{start}} / 1.3)$
-   * 終了マージン: $f_{\text{end\_margin}} = \min(f_{\text{nyquist}} \times 0.95, f_{\text{end}} \times 1.15)$
+#### Frequency margins
 
-2. **指数スイープの設計**:
-   スイープ時間 $T$ に対し、位相特性 $\theta(t)$ を以下のように設計します。
-   $$\theta(t) = \frac{2\pi f_{\text{start\_margin}} T}{L} \left( e^{\frac{t L}{T}} - 1 \right) \quad \text{where} \quad L = \ln\left( \frac{f_{\text{end\_margin}}}{f_{\text{start\_margin}}} \right)$$
-   スイープ波形 $s(t) = \sin(\theta(t))$ に対し、両端のクリックノイズを防止するため、立ち上がり・立ち下がりに $2\%$ 幅の Tukey 窓を適用します。
+For an ascending sweep, the core uses:
 
-3. **振幅スキャンの設定**:
-   ユーザーが設定した最大振幅 $\text{Amp}_{\text{max}}$ (dBFS) から、線形スケールで $0.2 \times \text{Amp}_{\text{max}}$ から $1.0 \times \text{Amp}_{\text{max}}$ までを等間隔に走査する $N_{\text{amps}}$ 段階（デフォルトで5〜10段階）の振幅 $R_j$ を設定します。
+$$
+f_1 = \max(2.0, f_{\mathrm{start}}/1.3),
+\qquad
+f_2 = \min(0.95f_{\mathrm{Nyquist}}, 1.15f_{\mathrm{end}}).
+$$
 
-### Step 2: 同期再生・録音とジッターアライメント (TSA)
+For a descending sweep, the margins are reversed:
 
-各振幅ステップ $R_j$ について、設定された加算平均回数（TSA Averages）分だけ再生・録音を同期して行います。
+$$
+f_1 = \min(0.95f_{\mathrm{Nyquist}}, 1.15f_{\mathrm{start}}),
+\qquad
+f_2 = \max(2.0, f_{\mathrm{end}}/1.3).
+$$
 
-1. **サブサンプル精度アライメント（独自実装）**:
-   オーディオデバイスのバッファリングに起因するジッターによる高域の減衰を防ぐため、1回目の測定波形を基準に、2回目以降の測定波形とのジッター遅延を算出し、周波数領域で分数サンプルレベルの補正をかけてから加算平均化を行います。
+The margins keep the requested sweep away from the extreme band edges. The code supports both sweep directions.
 
-2. **平均化された応答の取得**:
-   アライメント済みの信号を加算平均して、S/N 比を高めた録音信号 $y_j(t)$ および参照用ループバック信号 $x_j(t)$ を得ます。
+#### Phase-synchronized logarithmic sweep
 
-### Step 3: インパルス応答のデコンボリューション
+Let the requested duration be $\widetilde{T}$ and define:
 
-録音信号 $y_j(t)$ と、元のスイープ信号 $s(t)$ （振幅 1.0）を用いて、周波数ドメインで正則化（Regularization）を適用したデコンボリューションを行い、生のインパルス応答 $g_j(t)$ を抽出します。
+$$
+L = \frac{k}{f_1},
+\qquad
+k = \operatorname{round}\left(\frac{f_1\widetilde{T}}{\ln(f_2/f_1)}\right),
+\qquad
+T = L\ln(f_2/f_1).
+$$
 
-$$G_j(f) = \frac{Y_j(f) \cdot S^*(f)}{|S(f)|^2 + \epsilon}$$
+The integer $k$ is forced away from zero when necessary. The generated phase is:
 
-$$g_j(t) = \text{IFFT}(G_j(f))$$
+$$
+\theta(t) = 2\pi k\exp(t/L),
+\qquad
+s(t) = \sin(\theta(t)),
+\qquad 0 \leq t < T.
+$$
 
-ここで $\epsilon$ は SSS 信号の自己相関パワースペクトルの最大値に対する正則化係数（デフォルト: $10^{-4}$）です。
+The actual sample count is `round(sample_rate * T)`. A Tukey window with `alpha=0.02` is applied to the SSS and to the analytical inverse filter. The inverse-filter envelope is proportional to $\exp(t/(2L))$, giving the intended +3 dB-per-octave slope, and the inverse filter is time-reversed and normalized using the peak of its direct convolution with the SSS.
 
-### Step 4: 各次数高調波応答の切り出しと補正 (Gating)
+#### Amplitude schedule
 
-指数スイープの性質により、非線形歪み（$k$ 次高調波応答）のインパルス応答は、基本波（1次）のピーク位置 $t_1$ から時間軸の負の方向（過去方向）に向かって、次の予測位置 $t_{k,\text{exact}}$ に分離して現れます。
-$$t_{k,\text{exact}} = t_1 - L \ln(k) \cdot f_s \quad (\text{samples})$$
+The GUI treats the maximum amplitude as a peak dBFS value:
 
-1. **時間ゲートの適用**:
-   予測位置を中心にプリ 10 ms、ポスト 20 ms（合計 30 ms）の区間を modular wrap-around（巡回境界）を考慮しつつ切り出し、Tukey 窓（alpha=0.1）を乗算します。
+$$
+A_{\max} = 10^{\mathrm{amplitude\_dBFS}/20},
+\qquad
+R_j = \operatorname{linspace}(0.2, 1.0, N_{\mathrm{amps}})_j A_{\max}.
+$$
 
-2. **分数遅延・位相補正（独自実装）**:
-   予測されたピーク位置 $t_{k,\text{exact}}$ と、実際に切り出した整数インデックス $t_k = \text{round}(t_{k,\text{exact}})$ の間の微小な分数遅延差 $\Delta t_k = t_{k,\text{exact}} - t_k$ を、周波数ドメインで位相シフトすることでキャンセルします。また、SSS 法の理論に基づく各次数固有の位相回転（$k=2$ は $+90^\circ$、$k=3$ は $+180^\circ$、$k=4$ は $-90^\circ$）を補正します。
+The module defaults are a maximum level of -6 dBFS, five amplitude steps, and three time-synchronized averages per step. The GUI permits 5–10 amplitude steps and 1–20 averages.
 
-### Step 5: Chebyshev 逆変換と最小二乗カーネル分離（独自実装）
+### Step 2: Playback, recording, and time-synchronized averaging
 
-各振幅ステップ $R_j$ における $k$ 次高調波応答 $g_{j,k}(t)$ は、システムが持つハマーシュタインカーネル $H_p(f)$ の非線形結合によって構成されます。
-これを周波数領域において、振幅 $R_j$ に基づく最小二乗推定（Chebyshev 逆展開）を用いて解き、振幅依存性のない純粋なハマーシュタインカーネル $H_1(f) \dots H_5(f)$ に分離します。高次の歪み成分から順に、低次へ与える高次高調波の影響を差し引きながら再帰的に算出されます。
+The controller creates one continuous playback buffer. For each amplitude step, it places `averages` copies of the sweep back-to-back, with 0.5 s of zero padding after each sweep. An optional 1 s silent tail is appended for noise-floor measurement.
 
-### Step 6: 系統的スイープ位相キャリブレーション（独自実装）
+For each repetition, the alignment channel is deconvolved with the analytical inverse filter and its sub-sample peak is measured. The first repetition at that amplitude is the reference. Later repetitions are shifted in the frequency domain by the measured fractional delay before all channels are accumulated and divided by the number of averages.
 
-SSS 法および窓関数、FFT 処理に伴って必然的に発生する、系統的な位相特性のズレを完全に相殺するためのキャリブレーションを行います。
+The alignment channel is the reference input in `XFER` and `XFER_REV` modes, and the measurement input in single-channel modes. When input and output devices differ, the controller also estimates clock drift from the first and last sweep blocks. It applies windowed-sinc resampling only when the estimated drift is greater than 1 ppm and less than 1000 ppm in magnitude.
 
-1. **シミュレーションによる基準測定**:
-   あらかじめ決定された多項式非線形システムモデルに対し、遅延ゼロの理想的なデジタルループバックシミュレーションを実行し、同様のカーネル分離処理から系統的位相誤差 $\theta_{\text{cal}, k}(f)$ を取得します。
+### Step 3: Regularized deconvolution
 
-2. **測定位相からの減算**:
-   実測された各カーネルの位相応答から $\theta_{\text{cal}, k}(f)$ を減算し、平坦な位相を持つ理想的な分離応答を復元します。
+For each amplitude step, the averaged reference and measurement signals are deconvolved with the unit-amplitude SSS:
 
-> [!NOTE]
-> **キャリブレーション用多項式係数（a_cal）と測定精度に関する技術的補足**
->
-> * **次数間リークによる位相の残留誤差:**  
->   指数スイープ信号の有限長スイープおよびインパルス応答切り出し時の時間ゲート（Tukey窓）処理に伴い、Chebyshev次数分離（バックサブスティテューション）の際に各次数間で微小な相互干渉（リーク）が発生します。キャリブレーション系のダミーモデル係数 `a_cal`（デフォルトはすべて正値）と測定対象の実特性（符号反転や振幅比率）が異なる場合、このリークの現れ方に非対称性が生じるため、補正後にも数分の1度〜1度未満の微小な位相差（例：2次高調波で約 $0.11^\circ$）が残留します。もし `a_cal` を対象の実特性と完全に一致させれば、この位相誤差は理論上 $0.00^\circ$ に収束します。
-> * **振幅誤差の残留:**  
->   本キャリブレーション処理は「位相」のみを補正対象としており、「振幅」は補正しません。そのため、有限長スイープに起因するスペクトルリップル（定常位相近似の誤差）や時間ゲート窓によるスペクトル漏れ込みが、振幅に微小な誤差（約 $0.08$ dB 程度）として残留します。
-> * **実機測定における物理的意義:**  
->   $2 \text{ kHz}$ における $0.11^\circ$ の位相誤差は、時間遅延に換算すると **約 0.15 マイクロ秒（150ナノ秒）** にすぎず、実機ハードウェアのAD/DAクロックジッターやアナログノイズ揺らぎよりもはるかに小さい値です。したがって、実歪み特性が事前には未知である実機測定において、この固定の `a_cal` による補正は極めて頑健かつ実用十分な精度を担保しています。
+$$
+G_j(f) = \frac{Y_j(f)S^*(f)}{|S(f)|^2+\epsilon},
+\qquad
+\epsilon = 10^{-4}\max_f |S(f)|^2 + 10^{-12}.
+$$
 
-### Step 7: XFER 相対伝達関数補正または遅延補正
+The FFT length is the next power of two that is at least the recorded length plus the SSS length. The inverse FFT produces the raw impulse response used by the gating stage.
 
-1. **2チャンネル伝達関数モード (XFER / XFER_REV)**:
-   参照チャンネルの 1次カーネル応答 $H_{\text{ref}, 1}(f)$ を基準として、測定チャンネルの各カーネル $H_{\text{meas}, p}(f)$ とのクロススペクトル伝達関数を計算します。これにより、サウンドカード自体の不要な周波数特性やジッターが完全にキャンセルされます。
-   $$H_{\text{xfer}, p}(f) = \frac{H_{\text{meas}, p}(f) \cdot H_{\text{ref}, 1}^*(f)}{|H_{\text{ref}, 1}(f)|^2 + \alpha}$$
+### Step 4: Harmonic gating and phase correction
 
-2. **シングルチャンネルモード**:
-   事前に測定したループバックレイテンシ（`calibrate_latency`）を用いて、周波数領域で直線位相を減算することにより、伝達関数の位相を補正します。
+After deconvolution, the predicted location for order $k$ is based on the fundamental peak $t_1$:
 
----
+$$
+t_{k,\mathrm{exact}} = t_1 - L\ln(k)f_s.
+$$
 
-## 3. 独自実装・重要アルゴリズムの詳細
+The baseline peak is taken from the maximum-amplitude reference response in XFER modes and from the maximum-amplitude measurement response in single-channel modes. For each order:
 
-### 3.1 FFT アップサンプリングによるサブサンプル精度アライメント
+1. Round the predicted location to $t_k$ and compute $\Delta t_k=t_{k,\mathrm{exact}}-t_k$.
+2. Extract indices from $t_k-0.007f_s$ through $t_k+0.013f_s$, using modular wrap-around. The gate is therefore 7 ms before and 13 ms after the predicted peak, for a total of 20 ms.
+3. Apply the order-dependent sweep phase correction in the frequency domain.
+4. Apply the fractional-delay correction:
 
-`find_subsample_peak(ir)` では、インパルス応答 `ir` のピークインデックスを単なる整数値ではなく、サブサンプル（$1/100$ サンプル）精度で検出します。
+   $$
+   G_{k,\mathrm{corr}}(f)
+   =G_k(f)\exp\left(j2\pi f\frac{\Delta t_k}{f_s}\right).
+   $$
+5. Apply a Tukey window with `alpha=0.1` after the fractional-delay correction.
 
-1. インパルス応答 `ir` の最大絶対値の整数インデックス $idx_{\text{int}}$ を探索。
-2. 境界の回り込みを考慮し、ピークがバッファ中央（$N_{\text{total}} / 2$）に来るようにロールシフト。
-3. ピーク周辺 32 サンプルを切り出し、FFT を実行。
-4. 周波数領域で 100 倍のゼロパディングを行い、IFFT を実行することで時間領域での 100 倍のアップサンプリング（補間）を実現。
-5. アップサンプルされた信号のピーク位置から、元のスケールにおけるサブサンプル精度ピーク位置 $t_{\text{peak}}$ を復元。
+For an ascending sweep, the additional phase factors are $k=2\Rightarrow +j$, $k=3\Rightarrow -1$, and $k=4\Rightarrow -j$. For a descending sweep, the $k=2$ and $k=4$ factors are conjugated: $-j$, $-1$, and $+j$, respectively.
 
-この処理により、加算平均の際にジッターによって生じる超高域（10 kHz 以上）での干渉や位相の乱れを極限まで低減しています。
+### Step 5: Frequency-domain Chebyshev separation
 
-### 3.2 高調波ピークの分数遅延・位相補正
+The gated response for each order and amplitude is transformed to the frequency domain. For each frequency bin, the implementation projects the amplitude-dependent responses onto the corresponding powers of $R_j$ and subtracts higher-order leakage recursively:
 
-高調波 $k$ のピーク予測時間 $t_{k,\text{exact}}$ は通常小数になります。これを整数サンプル位置 $t_k$ で切り出すと、サンプリング周期の端数分だけ波形がずれます。
+$$
+H_5(f)=\frac{16\sum_jG_{j,5}(f)R_j^5}{\sum_jR_j^{10}},
+$$
 
-`apply_phase_correction_and_frac_delay` では、切り出した信号 $g_k(t)$ の FFT 応答 $G_k(f)$ に対して以下を適用します。
+$$
+H_4(f)=\frac{8\sum_jG_{j,4}(f)R_j^4}{\sum_jR_j^8},
+$$
 
-1. **分数サンプル遅延補正**:
-   $$G_{k,\text{corr}}(f) = G_k(f) \cdot e^{j 2 \pi f \frac{\Delta t_k}{f_s}}$$
-   （$\Delta t_k = t_{k,\text{exact}} - t_k$）
+$$
+G'_{j,3}(f)=G_{j,3}(f)-\frac{5}{16}H_5(f)R_j^5,
+\qquad
+H_3(f)=\frac{4\sum_jG'_{j,3}(f)R_j^3}{\sum_jR_j^6},
+$$
 
-2. **スイープ特有の位相復調**:
-   SSS の理論的位相シフトに対抗するため、次数 $k$ に応じて $180^\circ$ や $\pm 90^\circ$ の位相回転を加えます。
-   $$k = 2 \implies \times j, \quad k = 3 \implies \times (-1), \quad k = 4 \implies \times (-j)$$
+$$
+G'_{j,2}(f)=G_{j,2}(f)-\frac{1}{2}H_4(f)R_j^4,
+\qquad
+H_2(f)=\frac{2\sum_jG'_{j,2}(f)R_j^2}{\sum_jR_j^4},
+$$
 
-### 3.3 周波数ドメイン最小二乗法による Chebyshev 逆変換
+$$
+G'_{j,1}(f)=G_{j,1}(f)-\frac{3}{4}H_3(f)R_j^3-\frac{5}{8}H_5(f)R_j^5,
+\qquad
+H_1(f)=\frac{\sum_jG'_{j,1}(f)R_j}{\sum_jR_j^2}.
+$$
 
-平行ハマーシュタインモデルは、励起振幅 $R_j$ に対する各多項式次数の応答としてモデル化されます。
-本実装では、周波数ビンごとに各振幅ステップの応答ベクトルを最小二乗法で解き、Chebyshev カーネル $H_1(f) \dots H_5(f)$ を分離します。
+The same separation is performed independently for the measurement and reference channels. These formulas are designed to remove the modeled cross-order terms; residual leakage still depends on sweep length, gating, noise, and the system response.
 
-具体的には、最高次の 5次から順に以下のように代数的に推定します。
+### Step 6: Systematic complex calibration
 
-* **5次カーネル $H_5(f)$**:
-  $$H_5(f) = \frac{16 \sum_j G_{j,5}(f) \cdot R_j^5}{\sum_j R_j^{10}}$$
+When `calibrate_systematic=True` (the analyzer's default), the core runs the same pipeline recursively on an ideal zero-delay polynomial model with:
 
-* **4次カーネル $H_4(f)$**:
-  $$H_4(f) = \frac{8 \sum_j G_{j,4}(f) \cdot R_j^4}{\sum_j R_j^8}$$
+$$
+a_1=1.0,\quad a_2=0.1,\quad a_3=0.08,\quad a_4=0.04,\quad a_5=0.02.
+$$
 
-* **3次カーネル $H_3(f)$**:
-  $$G'_{j,3}(f) = G_{j,3}(f) - \frac{5}{16} H_5(f) R_j^5$$
-  $$H_3(f) = \frac{4 \sum_j G'_{j,3}(f) \cdot R_j^3}{\sum_j R_j^6}$$
+For each order, it compares the recovered complex response with the ideal coefficient and builds a complex calibration factor:
 
-* **2次カーネル $H_2(f)$**:
-  $$G'_{j,2}(f) = G_{j,2}(f) - \frac{1}{2} H_4(f) R_j^4$$
-  $$H_2(f) = \frac{2 \sum_j G'_{j,2}(f) \cdot R_j^2}{\sum_j R_j^4}$$
+$$
+C_p(f)=\frac{a_p}{H_{p,\mathrm{cal}}(f)+10^{-12}}.
+$$
 
-* **1次（線形）カーネル $H_1(f)$**:
-  $$G'_{j,1}(f) = G_{j,1}(f) - \frac{3}{4} H_3(f) R_j^3 - \frac{5}{8} H_5(f) R_j^5$$
-  $$H_1(f) = \frac{\sum_j G'_{j,1}(f) \cdot R_j}{\sum_j R_j^2}$$
+The factor corrects both gain and phase. It is applied to the reported frequency response, while the time-domain kernel used for display is kept separately so that the physical delay is not removed from that representation. The reference fundamental phase is calibrated separately.
 
-この再帰的な差引処理と重み付き最小二乗法により、各次数の非線形カーネルが他の次数の漏れ込み（リーケージ）なく、非常にクリーンに分離されます。
+### Step 7: XFER or single-channel correction
 
----
+In `XFER` and `XFER_REV` modes, the measurement response is converted to a relative response against the reference fundamental:
 
-## 4. 関連ソースファイル
+$$
+H_{\mathrm{xfer},p}(f)=
+\frac{H_{\mathrm{meas},p}(f)H_{\mathrm{ref},1}^*(f)}
+{|H_{\mathrm{ref},1}(f)|^2+\alpha},
+\qquad
+\alpha=10^{-7}\max_f|H_{\mathrm{ref},1}(f)|^2+10^{-12}.
+$$
 
-本ドキュメントのアルゴリズムは、以下のファイルで実装されています。
+This reduces common-path interface effects; it does not imply that every hardware imperfection is perfectly canceled. The gate offset is restored for time-domain display. For nonlinear orders (`p >= 1`), the top-level result also receives an order-dependent low-pass filter with:
 
-* **UI / 測定シーケンス制御**:
-  [nonlinear_analyzer.py](file:///Users/vach/MeasureLab/src/gui/widgets/nonlinear_analyzer.py)
-  （TSAループ、再生録音スレッド制御、測定結果のプロット更新）
-* **信号処理コアロジック**:
-  [nonlinear_analyzer_core.py](file:///Users/vach/MeasureLab/src/core/nonlinear_analyzer_core.py)
-  （アップサンプリングアライメント、ゲート処理、Chebyshev分離、系統的位相補正）
+$$
+f_{\mathrm{cut}}=\min\left(20\,\mathrm{kHz},\frac{1.15f_s}{2(p+1)}\right).
+$$
+
+In single-channel mode, the stored latency is applied as a positive phase advance:
+
+$$
+H_{\mathrm{corr}}(f)=H_{\mathrm{meas}}(f)\exp(j2\pi f\,\mathrm{latency\_sec}).
+$$
+
+The reported frequency arrays are restricted to the requested frequency band. The time-domain display uses the gate peak as time zero.
+
+## 3. Sub-sample peak detector
+
+`find_subsample_peak(ir)` uses the following implementation:
+
+1. Locate the largest absolute sample.
+2. Roll the response so the peak is at the buffer center.
+3. Extract 32 samples and apply a Tukey window with `alpha=0.25`.
+4. Zero-pad the DFT by a factor of 100 and inverse-transform it.
+5. Map the interpolated peak back to the original circular index.
+
+The result is used for both repetition alignment and harmonic peak placement. It provides a 0.01-sample interpolation grid, but the physical accuracy remains dependent on SNR and peak shape.
+
+## 4. Related tests and source files
+
+- [`src/gui/widgets/nonlinear_analyzer.py`](../../src/gui/widgets/nonlinear_analyzer.py): measurement sequence, TSA alignment, clock-drift handling, and model export.
+- [`src/core/nonlinear_analyzer_core.py`](../../src/core/nonlinear_analyzer_core.py): SSS generation, deconvolution, gating, separation, calibration, and transfer-function correction.
+- [`tests/logic_verification/measurement_modules/test_nonlinear_analyzer.py`](../../tests/logic_verification/measurement_modules/test_nonlinear_analyzer.py): kernel separation, amplitude invariance, phase, delay, and fractional-delay verification.
