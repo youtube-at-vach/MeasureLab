@@ -1,94 +1,120 @@
-# Lock-in Amplifier: Measurement Principles & Limitations
+# Lock-in Amplifier: Measurement Principle and Reference Requirements
 
-This document describes the operating principles of the software Lock-in Amplifier (`src/gui/widgets/lock_in_amplifier.py`) and explains why a hardware reference loopback is strictly required for accurate phase measurements.
+This document describes the software Lock-in Amplifier implemented in [`src/gui/widgets/lock_in_amplifier.py`](../../src/gui/widgets/lock_in_amplifier.py), including its phase reference, demodulation path, and operating modes.
 
-## 1. Measurement Principle
+## 1. Measurement principle
 
-The Lock-in Amplifier extracts the amplitude and phase of a signal at a specific frequency by mixing the input signal with a reference sine wave (Local Oscillator) and integrating the result.
+For a sinusoidal signal
 
-### Dual-Phase Demodulation
+$$
+V_{\mathrm{sig}}(t)=A_{\mathrm{sig}}\cos(\omega t+\phi_{\mathrm{sig}}),
+$$
 
-We use "Dual-Phase" demodulation to recover both magnitude and phase independent of the signal's alignment with the reference.
+the lock-in detector projects the signal onto an orthogonal complex oscillator:
 
-Given an input signal $V_{sig}(t) = A_{sig} \sin(\omega t + \phi_{sig})$ and a reference frequency $\omega$, we generate two orthogonal reference signals:
+$$
+z_{\mathrm{sig}}=2\,\operatorname{mean}\left(V_{\mathrm{sig}}(t)w(t)e^{-j\omega t}\right)/\operatorname{mean}(w),
+$$
 
-* **In-Phase Reference (I):** $\sin(\omega t + \phi_{ref})$
-* **Quadrature Reference (Q):** $\cos(\omega t + \phi_{ref})$
+where the implementation uses a Hann window $w(t)$. The complex result encodes the in-phase and quadrature components:
 
-The mixing process involves multiplying the signal by these references and applying a Low-Pass Filter (LPF) (or averaging over integer cycles):
+$$
+X=\operatorname{Re}(z_{\mathrm{sig}}),
+\qquad
+Y=\operatorname{Im}(z_{\mathrm{sig}}),
+$$
 
-$$ X = \text{Mean}( V_{sig}(t) \cdot \sin(\omega t + \phi_{ref}) ) \propto A_{sig} \cos(\phi_{sig} - \phi_{ref}) $$
-$$ Y = \text{Mean}( V_{sig}(t) \cdot \cos(\omega t + \phi_{ref}) ) \propto A_{sig} \sin(\phi_{sig} - \phi_{ref}) $$
+$$
+R=\sqrt{X^2+Y^2},
+\qquad
+\theta=\operatorname{atan2}(Y,X).
+$$
 
-From $X$ and $Y$, we calculate:
+`R` is the estimated sinusoidal peak magnitude. `theta` is meaningful only relative to the phase reference used to rotate the signal phasor.
 
-* **Magnitude:** $R = \sqrt{X^2 + Y^2} \propto A_{sig}$
-* **Phase:** $\theta = \arctan(Y / X) = \phi_{sig} - \phi_{ref}$
+The detector supports a harmonic ratio $n/d$. The signal is demodulated at:
 
-Ideally, if $\phi_{ref}$ is known and constant (e.g., $\phi_{ref} = 0$), then $\theta$ gives us $\phi_{sig}$.
+$$
+f_{\mathrm{demod}}=f_{\mathrm{ref}}\frac{n}{d}.
+$$
 
-## 2. The "Undefined Phase" Problem
+The GUI permits numerator and denominator values from 1 to 63.
 
-In a standard PC audio environment, the Operating System and Audio Driver (ALSA/PulseAudio/WASAPI) manage the input and output streams. Crucially, **there is no guaranteed fixed phase relationship between the Output Buffer (DAC) and the Input Buffer (ADC).**
+## 2. Reference-channel processing
 
-### Why this happens
+The module always reads a signal channel and a reference channel from its input ring buffer. The default channels are signal = Left (Ch 1) and reference = Right (Ch 2). A reference RMS level below 0.001 (approximately -60 dBFS for a full-scale reference) is treated as no reference: the displayed magnitude, phase, X, Y, and reference frequency are cleared and the averaging history is discarded.
 
-1. **Buffered I/O:** Audio is processed in blocks. The exact time $t_{generate}$ when a sample is written to the output buffer is separated from the time $t_{capture}$ when a corresponding sample is read from the input buffer by a variable system latency $\Delta t_{latency}$.
-2. **Undefined Latency:** $\Delta t_{latency}$ depends on buffer sizes, driver state, and OS scheduling. It varies every time the stream is started and potentially drifts or jitters during operation.
+When a reference is present, the implementation:
 
-### Impact on Measurement
+1. Estimates the reference frequency with an AR(2) single-tone estimator.
+2. Projects the fundamental reference component with the same Hann-windowed complex projection.
+3. Tracks the reference phase across ring-buffer updates using the absolute sample index and phase unwrapping.
+4. Scales the tracked phase by $n/d$ to construct the requested fractional-harmonic reference phasor.
+5. Rotates the measured signal phasor by the conjugate of that reference phasor.
 
-In "Internal Mode", the software generates the output sine wave mathematically:
-$$ V_{out}(t) = \sin(\omega t_{software}) $$
+In simplified form, the final rotation is:
 
-And it demodulates the input using the same software timebase:
-$$ Ref(t) = \sin(\omega t_{software}) $$
+$$
+z_{\mathrm{result}}=z_{\mathrm{sig}}\,e^{-j\phi_{\mathrm{ref}}n/d}.
+$$
 
-However, the physical signal arriving at the ADC is:
-$$ V_{in}(t) = \sin(\omega (t_{software} - \Delta t_{latency}) + \phi_{DUT}) $$
+For the fundamental, the code also compensates the projection's Hann-window scalloping loss using the time-domain reference RMS estimate.
 
-The measured phase becomes:
-$$ \theta_{measured} = \phi_{DUT} - \omega \cdot \Delta t_{latency} $$
+## 3. Internal and external modes
 
-Since $\Delta t_{latency}$ is unknown and undefined, **the measured phase is effectively random**. It will change every time you restart the measurement.
+The UI labels external mode as `External Mode (No Output)`. The difference is how the output is handled:
 
-> **Note:** Magnitude accuracy is generally preserved because latency only affects the phase term $\omega \cdot \Delta t_{latency}$, not the amplitude $A_{sig}$, provided the sampling rates are locked (which they are on a single audio interface).
+- **Internal mode:** the audio callback generates a continuous cosine at the configured frequency and amplitude on the selected output channel(s). The input reference channel is still analyzed and its measured phasor is still used for phase correction. In this mode, the code forces the reference frequency to the configured generator frequency and sets the displayed coherence to 1.0.
+- **External mode:** the callback does not generate output. The user supplies the excitation and a reference signal externally, and the input reference channel is analyzed normally.
 
-## 3. Solution: External Reference Loopback
+The current implementation does not provide a software-only phase fallback when the reference input is absent. A nonzero reference input is required for any result. For an absolute phase measurement of a physical DUT, the reference input should be a physical copy of the excitation delivered to the DUT, for example:
 
-To solve this, we must measure the **actual physical phase** of the excitation signal.
+1. Split the excitation output.
+2. Connect one branch to the DUT input.
+3. Connect the other branch to the reference input.
+4. Connect the DUT output to the signal input.
 
-**Configuration:**
+If both paths share the same excitation-path delay, the measured phase is approximately:
 
-1. **Output (Ch 1):** Connect to DUT Input.
-2. **Output (Ch 1) Split:** Connect also to **Reference Input (Ch 2)**.
-3. **Input (Ch 1):** Connect to DUT Output.
+$$
+\theta_{\mathrm{result}}
+ = (\phi_{\mathrm{latency}}+\phi_{\mathrm{DUT}})
+   -\phi_{\mathrm{latency}}
+ =\phi_{\mathrm{DUT}}.
+$$
 
-The Lock-in Amplifier then analyzes the Reference Input (Ch 2) to establish the reference phasor.
+Without a physical reference that represents the excitation at the DUT, the phase is only relative to whatever waveform is present on the selected reference channel. It should not be interpreted as an absolute DUT phase.
 
-* **Ref Input sees:** $A_{ref} \sin(\omega t + \phi_{latency})$
-* **Sig Input sees:** $A_{sig} \sin(\omega t + \phi_{latency} + \phi_{DUT})$
+## 4. Filtering and averaging
 
-By locking to the Ref Input (calculating $\phi_{ref} = \phi_{latency}$), the demodulation cancels out the latency:
+The default integration buffer contains 65,536 samples. After demodulation, the complex baseband result can pass through a cascaded one-pole IIR low-pass filter. The order is selectable from 0 (off) to 8 and defaults to 4. Its time constant defaults to the buffer duration, or can be set explicitly.
 
-$$ \theta_{result} = (\phi_{latency} + \phi_{DUT}) - \phi_{latency} = \phi_{DUT} $$
+The filtered complex result is appended to a history buffer. The displayed result is the complex mean of the most recent `averaging_count` values, with a GUI range of 1–300:
 
-### Code Implementation Details
+$$
+z_{\mathrm{display}}=\operatorname{mean}(z_1,\ldots,z_N),
+\qquad
+R_{\mathrm{display}}=|z_{\mathrm{display}}|,
+\qquad
+\theta_{\mathrm{display}}=\arg(z_{\mathrm{display}}).
+$$
 
-In `src/gui/widgets/lock_in_amplifier.py`:
+The module also reports the standard deviation of the magnitudes and an unwrapped phase standard deviation over the averaging history.
 
-* **Internal Mode (No Ref Loopback):**
-    * The code detects low signal on the Reference channel.
-    * This forces the reference phase to be 0 relative to the *current software buffer*.
-    * **Result:** Magnitude is correct. Phase is unstable/undefined relative to the DUT.
+## 5. Calibration and frequency sweeps
 
-* **External Mode (With Ref Loopback):**
-    * The code calculates the fundamental phasor of the Reference channel.
-    * `ref_unit = ref_c_fund / |ref_c_fund|`
-    * The Signal is multiplied by the conjugate of this phasor (`sig_c * conj(ref_unit)`).
-    * **Result:** Accurate Phase and Magnitude relative to the excitation signal.
+When calibration is enabled, the audio calibration map supplies a magnitude correction and phase correction at the generator frequency. The engine applies the magnitude correction in linear scale and subtracts the phase correction from the displayed phase.
 
-## 4. Summary
+The frequency-response sweep reuses the same lock-in processing for each configured test frequency. It therefore inherits the reference-channel requirement and the distinction between absolute and relative phase described above.
 
-* **Without REF Loopback:** You are measuring "Signal vs Software Timer". Phase includes arbitrary system latency. **Not suitable for Impedance or Phase measurements.**
-* **With REF Loopback:** You are measuring "Signal vs Excitation". Latency cancels out. **Required for accurate measurement.**
+## 6. Implementation notes
+
+- Output generation uses a continuous phase accumulator to avoid discontinuities between audio blocks.
+- A Hann window reduces spectral leakage when the buffer does not contain an integer number of cycles.
+- Reference frequency is estimated with the relation $r[n-1]+r[n+1]=2\cos(\omega)r[n]$ rather than a Hilbert transform.
+- If the reference is lost, stale averaged values are cleared instead of being held on screen.
+
+## 7. Related source files
+
+- [`src/gui/widgets/lock_in_amplifier.py`](../../src/gui/widgets/lock_in_amplifier.py): output generation, reference estimation, demodulation, filtering, averaging, and calibration.
+- [`src/gui/widgets/lock_in_frequency_counter.py`](../../src/gui/widgets/lock_in_frequency_counter.py): separate lock-in frequency-counter implementation and FLL/Kalman processing.
