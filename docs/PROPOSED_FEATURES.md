@@ -12,10 +12,10 @@
 
 ## 🔮 Future / Visionary Ideas (Experimental)
 
-* **Bio-Sensory & Psycho-Acoustics**: BCI Audiophile Profiler, AI "Golden Ear", Holographic Soundstage, Psychoacoustic Masking, Synesthetic Harmonic Mapper, Psycho-Kinetic Impact Visualizer, Holographic Phase-Space Orbit Visualizer, Chronological Wave-Function Collapse Analyzer, Synaptic Audio-Nerve Simulator.
-* **Physics & Advanced Simulation**: Quantum Metamaterial Simulator, Thermal Noise Sonification, Neuromorphic Spike Visualizer, Tachyon Phase Analyzer, AC Grid-Symbiosis Mapper, Quantum Noise Floor Excavator.
-* **Spatial & Acoustic Focus**: Non-Euclidean Spatial Mapper, Acoustic Phase Conjugation Analyzer (Time-reversed wave reflection cancellation), Holographic Acoustic Metamaterial Profiler, Neuromorphic Room De-reverberator.
-* **Ultrasonics**: Ultrasonic Micro-Doppler Excursion Mapper (Non-contact speaker cone displacement measurement).
+* **Bio-Sensory & Psycho-Acoustics**: BCI Audiophile Profiler, AI "Golden Ear", Holographic Soundstage, Psychoacoustic Masking, Synesthetic Harmonic Mapper, Psycho-Kinetic Impact Visualizer.
+* **Physics & Advanced Simulation**: Quantum Metamaterial Simulator, Thermal Noise Sonification, Neuromorphic Spike Visualizer, Tachyon Phase Analyzer, AC Grid-Symbiosis Mapper.
+* **Spatial & Acoustic Focus**: Non-Euclidean Spatial Mapper, Acoustic Phase Conjugation Analyzer, Acoustic Material Fingerprinter (AI-driven).
+* **Ultrasonics**: Ultrasonic Micro-Doppler Excursion Mapper, Acoustic Levitation Stability Profiler.
 
 ---
 
@@ -23,47 +23,28 @@
 
 ### 🆕 New Proposals
 
-* **Automated Suites**: ASRC Benchmark, Test Sequence Automator.
+* **Automated Suites**: ASRC Benchmark, Test Sequence Automator, Acoustic Feedback Margin Tester.
 * **Signal Integrity**: Continuity/Dropout Logger, Lossy Codec Artifact Analyzer, Null Comparator.
 * **Device Profiling**: Dynamics Processor Profiler, TIE Jitter, Damping Factor Profiler, Volterra Kernel Extractor.
-* **Extreme Low Noise**: Dual-ADC Cross-Correlation Noise Measurement (Dropping noise floor below hardware limits).
+* **Extreme Low Noise**: Dual-ADC Cross-Correlation Noise Measurement.
 
 ### 🛠️ Extensions to Existing Widgets
 
 * **Spectrum Analyzer**: DAC Aliasing, Phase Noise Density, OOB Leakage, Automatic Peak Auto-Marker.
-* **Oscilloscope & SAM**: Digital Protocol Decoder, Inter-Channel Sync Drift Logger, Eye Diagram, Frequency-Dependent Crosstalk/Leakage 3D Plot.
-* **Sound Quality / LUFS**: Listener Fatigue Index, PEAQ/ODG Score Estimator, Inter-Sample Peak Histogram & True Peak Clipping Profiler.
-* **Distortion Analyzer**: Thermal Stress, EMI/RFI Fingerprinting, TIM/DIM Mode, SMPTE/DIN/CCIF IMD Sweeps, Long-Term Thermal Drift & Warm-up Logger.
-* **Network Analyzer & Others**: Group/Phase Delay Plot, Click & Pop Classifier, Binaural Tones, AES17 DR Automator, Clock Fingerprinting, Multi-Band Goniometer, DAC Digital Filter Profiler.
-* **Impedance Analyzer**: Thiele/Small (T/S) Parameter Extraction (Added-Mass/Known-Volume).
-* **Plot Comparer**: Polar Pattern / Directivity Mapper (angular-tagged frequency response traces).
-* **Linearity Analyzer**: Dynamic Burst Linearity Mode (Transient crest factor preservation).
-* **Noise Profiler**: Hum AM/FM Modulation Analysis (Power supply modulation rejection).
-* **Transient Analyzer**: Pre-Ringing & Causality Quantifier, Cumulative Spectral Decay (CSD) / Waterfall Plot.
+* **Oscilloscope & SAM**: Digital Protocol Decoder, Inter-Channel Sync Drift Logger, Eye Diagram, Frequency-Dependent Crosstalk 3D Plot.
+* **Sound Quality / LUFS**: Listener Fatigue Index, PEAQ/ODG Score Estimator, True Peak Profiler, Speech Transmission Index (STI/STIPA).
+* **Distortion Analyzer**: Thermal Stress, EMI/RFI Fingerprinting, TIM/DIM/IMD Sweeps, IMD 3D Surface Plot.
+* **Network Analyzer & Others**: Group/Phase Delay Plot, Click & Pop Classifier, Binaural Tones, AES17 DR Automator, Multi-Band Goniometer.
+* **Impedance Analyzer**: Thiele/Small (T/S) Parameter Extraction.
+* **Plot Comparer**: Polar Pattern / Directivity Mapper.
+* **Linearity Analyzer**: Dynamic Burst Linearity Mode.
+* **Noise Profiler**: Hum AM/FM Modulation Analysis.
+* **Transient Analyzer**: CSD / Waterfall Plot, Pre-Ringing Quantifier.
 
 ---
 
-## ✅ Already Implemented
+## ⏸️ Deferred / On Hold / Cancelled
 
-* Transmission Analyzer (PRBS), DAC Ringing (Transient), Allan Deviation, Bit Depth, Crosstalk, Oscilloscope Persistence, Linearity, J-Test, RIAA EQ, IR, LUFS, Amplitude Sweep.
-
----
-
-## ⏸️ Under Review / On Hold
-
-* Plugin System, AI Circuit Reverse Engineer, Multimeter, Cepstrum Analysis.
-
----
-
-## ❌ Cancelled / Not Needed (Duplicates & Out of Scope)
-
-* **Duplicates of Oscilloscope / Transient**: Phase/Polarity Checker, Cable Microphonics Logger.
-* **Duplicates of Adv. Distortion / Spectrum**: Multitone THD Analyzer, Sub-Noise Floor Excavator, Harmonic Phase Signature Analyzer (duplicate of lockin_harmonic_analyzer).
-* **Duplicates of Transmission / Network**: Wireless Link Tester, Real-time Latency Monitor, Cable Directionality Tester.
-* **Out of Scope / Limited Meaning**: Step Response Matrix, Slew Rate Calculator, Multi-band Compressor Profiler, 4D Holographic Soundstage, Complex Load / Back-EMF Distortion Profiler.
-
----
-
-## 💤 Deferred / Reference
-
-* DC Stability, Wow & Flutter, Room Acoustics (RT60), EQ Designer, AI Anomaly Detection.
+* **Done**: Transmission Analyzer, LUFS, Linearity, Oscilloscope Persistence, etc.
+* **Deferred / On Hold**: Plugin System, Multimeter, Cepstrum Analysis, Room Acoustics (RT60), Wow & Flutter, EQ Designer.
+* **Cancelled (Duplicates/Out of Scope)**: Phase/Polarity Checker (Dup: Scope), Cable Microphonics Logger (Dup: Transient), Multitone THD (Dup: Distortion), Slew Rate Calculator (Out of Scope), Wireless Link Tester.
