@@ -6,7 +6,7 @@
 
 [![オンライン・マニュアル](https://img.shields.io/badge/📖_オンライン・マニュアル-Click_Here-blue?style=for-the-badge&logo=gitbook&logoColor=white)](https://youtube-at-vach.github.io/MeasureLab/)
 
-[![MeasureLab Screenshot](screenshot.png)](https://youtu.be/9fkJLfK5v0M)
+[![MeasureLab Screenshot](docs/assets/measurelab_screenshot.png)](https://youtu.be/9fkJLfK5v0M)
 
 <blockquote>
   <h3>📖 MeasureLab 公式オンライン・マニュアルを公開中！</h3>
