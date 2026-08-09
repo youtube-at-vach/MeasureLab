@@ -124,6 +124,11 @@ class AudioEngine:
     MODE_LEFT = 1
     MODE_RIGHT = 2
 
+    _XRUN_INPUT_UNDERFLOW = 1 << 0
+    _XRUN_INPUT_OVERFLOW = 1 << 1
+    _XRUN_OUTPUT_UNDERFLOW = 1 << 2
+    _XRUN_OUTPUT_OVERFLOW = 1 << 3
+
     def __init__(self):
         self.input_device = None
         self.output_device = None
@@ -168,6 +173,13 @@ class AudioEngine:
 
         # Accumulate callback status flags between UI polls.
         self.accumulated_status = sd.CallbackFlags()
+
+        # Latched XRUN state. This deliberately uses a small integer mask
+        # instead of another CallbackFlags instance so status snapshots cannot
+        # mutate the audio thread's state. It is cleared only by explicit user
+        # acknowledgement (or naturally when the process exits).
+        self._latched_xrun_mask = 0
+        self._latched_xrun_count = 0
 
         # Pre-allocated buffers to reduce GC pressure
         self._mix_buffer = None
@@ -584,8 +596,14 @@ class AudioEngine:
 
     def _master_callback(self, indata, outdata, frames, time, status):
         if status:
+            # This branch runs only when PortAudio reports a status condition.
+            # Keep the normal callback path unchanged and allocation-free.
+            xrun_mask = self._status_to_xrun_mask(status)
             with self._status_lock:
                 self.accumulated_status |= status
+                if xrun_mask:
+                    self._latched_xrun_mask |= xrun_mask
+                    self._latched_xrun_count += 1
 
         # Zero out master output buffer first
         outdata.fill(0)
@@ -797,6 +815,29 @@ class AudioEngine:
         """Returns True if the stream is active."""
         return self.stream is not None and self.stream.active
 
+    @classmethod
+    def _status_to_xrun_mask(cls, status):
+        """Convert PortAudio XRUN flags to the engine's compact status mask."""
+        mask = 0
+        if getattr(status, "input_underflow", False):
+            mask |= cls._XRUN_INPUT_UNDERFLOW
+        if getattr(status, "input_overflow", False):
+            mask |= cls._XRUN_INPUT_OVERFLOW
+        if getattr(status, "output_underflow", False):
+            mask |= cls._XRUN_OUTPUT_UNDERFLOW
+        if getattr(status, "output_overflow", False):
+            mask |= cls._XRUN_OUTPUT_OVERFLOW
+        return mask
+
+    def clear_latched_audio_status(self):
+        """Acknowledge and clear all audio I/O buffer errors seen so far."""
+        with self._status_lock:
+            # Clear the transient snapshot too, otherwise a pre-acknowledgement
+            # error could reappear on the next UI poll.
+            self.accumulated_status = sd.CallbackFlags()
+            self._latched_xrun_mask = 0
+            self._latched_xrun_count = 0
+
     def get_status(self):
         """Returns a dictionary containing current engine status."""
         active = self.is_active()
@@ -817,6 +858,9 @@ class AudioEngine:
             self.callback_error_count = 0
             self.last_callback_error = None
 
+            latched_xrun_mask = self._latched_xrun_mask
+            latched_xrun_count = self._latched_xrun_count
+
         return {
             "active": active,
             "offline_mode": self.offline_mode,
@@ -828,6 +872,13 @@ class AudioEngine:
             "input_device": self.input_device,
             "output_device": self.output_device,
             "status_flags": current_status_flags,
+            "latched_xrun_status": {
+                "input_underflow": bool(latched_xrun_mask & self._XRUN_INPUT_UNDERFLOW),
+                "input_overflow": bool(latched_xrun_mask & self._XRUN_INPUT_OVERFLOW),
+                "output_underflow": bool(latched_xrun_mask & self._XRUN_OUTPUT_UNDERFLOW),
+                "output_overflow": bool(latched_xrun_mask & self._XRUN_OUTPUT_OVERFLOW),
+            },
+            "latched_xrun_count": latched_xrun_count,
             "error_count": error_count,
             "last_error": last_error,
         }

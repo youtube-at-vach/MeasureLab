@@ -12,6 +12,28 @@ sys.modules["sounddevice"] = MagicMock()
 from src.core.audio_engine import AudioEngine, VirtualStream, _DummyTime  # noqa: E402
 
 
+class _FakeCallbackFlags:
+    _FLAG_NAMES = (
+        "input_underflow",
+        "input_overflow",
+        "output_underflow",
+        "output_overflow",
+        "priming_output",
+    )
+
+    def __init__(self, **values):
+        for name in self._FLAG_NAMES:
+            setattr(self, name, bool(values.get(name, False)))
+
+    def __bool__(self):
+        return any(getattr(self, name) for name in self._FLAG_NAMES)
+
+    def __ior__(self, other):
+        for name in self._FLAG_NAMES:
+            setattr(self, name, getattr(self, name) or bool(getattr(other, name, False)))
+        return self
+
+
 class TestDummyTime(unittest.TestCase):
     def test_dummy_time_initialization(self):
         t = 100.0
@@ -200,6 +222,54 @@ class TestAudioEngineBasicSettings(unittest.TestCase):
         # Verify stats are reset after get_status
         self.assertEqual(self.engine.callback_error_count, 0)
         self.assertIsNone(self.engine.last_callback_error)
+
+    def test_xrun_status_is_latched_until_explicitly_cleared(self):
+        self.engine.accumulated_status = _FakeCallbackFlags()
+        indata = np.zeros((8, 2), dtype=np.float32)
+        outdata = np.zeros((8, 2), dtype=np.float32)
+        xrun = _FakeCallbackFlags(input_overflow=True, output_underflow=True)
+
+        with patch("src.core.audio_engine.sd.CallbackFlags", side_effect=_FakeCallbackFlags):
+            self.engine._master_callback(indata, outdata, 8, MagicMock(), xrun)
+
+            first_status = self.engine.get_status()
+            second_status = self.engine.get_status()
+
+            for status in (first_status, second_status):
+                self.assertTrue(status["latched_xrun_status"]["input_overflow"])
+                self.assertTrue(status["latched_xrun_status"]["output_underflow"])
+                self.assertFalse(status["latched_xrun_status"]["input_underflow"])
+                self.assertFalse(status["latched_xrun_status"]["output_overflow"])
+                self.assertEqual(status["latched_xrun_count"], 1)
+
+            # Stream lifecycle operations do not acknowledge a measurement error.
+            self.engine.stop_stream()
+            self.engine._restart_stream()
+            self.assertTrue(self.engine.get_status()["latched_xrun_status"]["input_overflow"])
+
+            self.engine.clear_latched_audio_status()
+            cleared_status = self.engine.get_status()
+            self.assertFalse(any(cleared_status["latched_xrun_status"].values()))
+            self.assertEqual(cleared_status["latched_xrun_count"], 0)
+
+            # A new error after acknowledgement must latch again.
+            self.engine._master_callback(indata, outdata, 8, MagicMock(), xrun)
+            relatched_status = self.engine.get_status()
+            self.assertTrue(relatched_status["latched_xrun_status"]["input_overflow"])
+            self.assertEqual(relatched_status["latched_xrun_count"], 1)
+
+    def test_priming_output_is_not_latched_as_xrun(self):
+        self.engine.accumulated_status = _FakeCallbackFlags()
+        indata = np.zeros((8, 2), dtype=np.float32)
+        outdata = np.zeros((8, 2), dtype=np.float32)
+        priming = _FakeCallbackFlags(priming_output=True)
+
+        with patch("src.core.audio_engine.sd.CallbackFlags", side_effect=_FakeCallbackFlags):
+            self.engine._master_callback(indata, outdata, 8, MagicMock(), priming)
+            status = self.engine.get_status()
+
+        self.assertFalse(any(status["latched_xrun_status"].values()))
+        self.assertEqual(status["latched_xrun_count"], 0)
 
     def test_get_input_latency(self):
         # Test with no stream
