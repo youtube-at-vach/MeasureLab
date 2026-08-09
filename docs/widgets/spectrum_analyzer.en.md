@@ -12,6 +12,10 @@ In addition to general FFT (Fast Fourier Transformation) analysis, it also featu
 
 When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the graph display. This is ideal for monitoring just the waveform on a large screen in a multi-monitor setup.
 
+## Split Window Mode
+
+This widget supports the **Split Window** feature. By pressing the "Split Window" button in the Detachable Wrapper header, you can detach the graph display section and the settings control section into separate independent windows.
+
 ## Operation
 
 ### Starting and Stopping Measurement

@@ -8,6 +8,10 @@ A tool that displays sound components in three dimensions: "Time (horizontal axi
 While a spectrum analyzer displays the "frequency distribution at the current moment," a spectrogram visualizes the ever-changing "audio signature (voiceprint)".
 It is ideal for observing the "transitions" of sound, such as voice intonation analysis, time-based changes in instrument overtones, bird call analysis, and discovering intermittent noise.
 
+## Split Window Mode
+
+This widget supports the **Split Window** feature. By pressing the "Split Window" button in the Detachable Wrapper header, you can detach the heatmap display section and the settings control section into separate independent windows.
+
 ## Compact Mode
 
 When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the heatmap display.
