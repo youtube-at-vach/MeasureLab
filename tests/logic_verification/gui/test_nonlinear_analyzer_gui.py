@@ -1,3 +1,4 @@
+import numpy as np
 from src.core.audio_engine import AudioEngine
 from src.gui.widgets.nonlinear_analyzer import NonlinearAnalyzer, NonlinearAnalyzerWidget
 
@@ -12,6 +13,9 @@ def test_nonlinear_analyzer_gui_start(qtbot):
     analyzer.sweep_duration = 0.1
     analyzer.averages = 1
     analyzer.num_amplitudes = 5
+
+    # Mock play_rec directly to avoid audio driver timeout issues
+    analyzer.run_play_rec = lambda out_data, **kwargs: np.zeros((len(out_data), 2), dtype=np.float32)
 
     widget = NonlinearAnalyzerWidget(analyzer)
     qtbot.addWidget(widget)
@@ -77,6 +81,9 @@ def test_nonlinear_analyzer_gui_stop(qtbot, monkeypatch):
     analyzer.sweep_duration = 2.0
     analyzer.averages = 1
     analyzer.num_amplitudes = 5
+
+    # Mock play_rec directly to avoid audio driver timeout issues
+    analyzer.run_play_rec = lambda out_data, **kwargs: np.zeros((len(out_data), 2), dtype=np.float32)
 
     widget = NonlinearAnalyzerWidget(analyzer)
     qtbot.addWidget(widget)
