@@ -1519,6 +1519,7 @@
     "SNR Limit:": "SNR Limit:",
     "SPDR": "SPDR",
     "SPL Calibration Wizard": "SPL Calibration Wizard",
+    "SPL calibration is not set. Values are shown in dBFS.": "SPL calibration is not set. Values are shown in dBFS.",
     "SPL Offset:": "SPL Offset:",
     "SPL calibration saved. Offset = {0:.2f} dB (SPL = dBFS + offset)": "SPL calibration saved. Offset = {0:.2f} dB (SPL = dBFS + offset)",
     "SR: -": "SR: -",

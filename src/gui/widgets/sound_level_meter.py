@@ -641,6 +641,18 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidge
         content_layout = QVBoxLayout()
         content_layout.setContentsMargins(10, 10, 10, 10)
 
+        self.calibration_warning = QLabel(
+            "⚠ " + tr("SPL calibration is not set. Values are shown in dBFS.")
+        )
+        self.calibration_warning.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.calibration_warning.setWordWrap(True)
+        self.calibration_warning.setStyleSheet(
+            "background-color: #fff3cd; color: #664d03; "
+            "border: 1px solid #ffca2c; border-radius: 6px; "
+            "font-weight: bold; padding: 8px;"
+        )
+        content_layout.addWidget(self.calibration_warning)
+
         # 1. Main Display (Big Numbers)
         display_frame = QWidget()
         display_frame.setStyleSheet("background-color: #000; border-radius: 8px; margin-bottom: 10px;")
@@ -762,6 +774,7 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidge
         main_layout.addWidget(self.sidebar)
         main_layout.addWidget(content_area)
         self.setLayout(main_layout)
+        self._update_calibration_display()
 
     def get_display_widget(self) -> QWidget:
         """Returns the display sub-widget (main display and tabs area)."""
@@ -801,7 +814,31 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidge
         layout.addWidget(lbl_val)
         layout.addWidget(lbl_unit)
         container.setLayout(layout)
-        return {"container": container, "label": lbl_val}
+        return {"container": container, "label": lbl_val, "unit": lbl_unit}
+
+    def _get_spl_calibration_offset(self):
+        """Return a finite SPL offset, or None when absolute SPL is unavailable."""
+        try:
+            calibration = self.module.audio_engine.calibration
+            offset = calibration.get_spl_offset_db()
+            if offset is not None and np.isfinite(float(offset)):
+                return float(offset)
+        except (AttributeError, TypeError, ValueError):
+            pass
+        return None
+
+    def _update_calibration_display(self):
+        """Keep the warning banner and displayed units consistent with calibration."""
+        spl_offset = self._get_spl_calibration_offset()
+        spl_calibrated = spl_offset is not None
+        level_unit = "dB SPL" if spl_calibrated else "dBFS"
+
+        self.calibration_warning.setVisible(not spl_calibrated and not self.is_compact_mode())
+        if self.disp_lp["unit"].text() != level_unit:
+            self.disp_lp["unit"].setText(level_unit)
+            self.disp_leq["unit"].setText(level_unit)
+
+        return (spl_offset if spl_calibrated else 0.0), level_unit
 
     def on_start_toggle(self, checked):
         if checked:
@@ -850,15 +887,12 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidge
             self.btn_start.setChecked(False)
             self.on_start_toggle(False)
 
+        # Refresh even while stopped so calibration changes in Settings are
+        # reflected immediately in the always-running UI timer.
+        cal_db, level_unit = self._update_calibration_display()
+
         if not self.module.is_running:
             return
-
-        # Get calibration offset
-        cal_db = 0.0
-        if hasattr(self.module.audio_engine, "calibration"):
-            cal_ptr = self.module.audio_engine.calibration
-            if hasattr(cal_ptr, "get_spl_offset_db"):
-                cal_db = cal_ptr.get_spl_offset_db() or 0.0
 
         vals = self.module.results
 
@@ -885,7 +919,7 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidge
         vals_get = vals.get
         for key, lbl in self.metric_labels.items():
             val = vals_get(key, -np.inf)
-            text = fmt(val) + " dB"
+            text = f"{fmt(val)} {level_unit}"
             if last_metrics_get(key) != text:
                 last_metrics[key] = text
                 lbl.setText(text)
@@ -909,7 +943,7 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidge
                     ln_stats = self.module.calculate_ln_statistics()
                     for key, lbl in self.ln_labels.items():
                         val = ln_stats.get(key, -np.inf)
-                        lbl.setText(fmt(val) + " dB")
+                        lbl.setText(f"{fmt(val)} {level_unit}")
 
                 # For Histogram tab
                 if is_hist_tab:
@@ -932,6 +966,8 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidge
                 self.sidebar.setHidden(compact)
         if hasattr(self, "tabs"):
             self.tabs.setHidden(compact)
+        if hasattr(self, "calibration_warning"):
+            self._update_calibration_display()
 
         # Trigger parent window size adjustment to prevent vertical stretching
         win = self.window()

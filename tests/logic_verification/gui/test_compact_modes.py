@@ -109,11 +109,17 @@ def test_sound_level_meter_compact_mode(qtbot):
     assert not widget.is_compact_mode()
     assert not widget.sidebar.isHidden()
     assert not widget.tabs.isHidden()
+    assert not widget.calibration_warning.isHidden()
 
     widget.set_compact_mode(True)
     assert widget.is_compact_mode()
     assert widget.sidebar.isHidden()
     assert widget.tabs.isHidden()
+    assert widget.calibration_warning.isHidden()
+
+    # The periodic display refresh must not re-show it in compact mode.
+    widget.update_display()
+    assert widget.calibration_warning.isHidden()
 
     # Wait for the singleShot timer of 50ms to fire and check if adjustSize was called
     qtbot.wait(100)
@@ -125,6 +131,7 @@ def test_sound_level_meter_compact_mode(qtbot):
     assert not widget.is_compact_mode()
     assert not widget.sidebar.isHidden()
     assert not widget.tabs.isHidden()
+    assert not widget.calibration_warning.isHidden()
 
     # Wait for singleShot timer
     qtbot.wait(100)

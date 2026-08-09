@@ -1519,6 +1519,7 @@
     "SNR Limit:": "Предел SNR:",
     "SPDR": "SPDR",
     "SPL Calibration Wizard": "Мастер калибровки SPL",
+    "SPL calibration is not set. Values are shown in dBFS.": "Калибровка SPL не настроена. Значения отображаются в dBFS.",
     "SPL Offset:": "Смещение SPL:",
     "SPL calibration saved. Offset = {0:.2f} dB (SPL = dBFS + offset)": "Калибровка SPL сохранена. Смещение = {0:.2f} дБ (SPL = dBFS + смещение)",
     "SR: -": "SR: -",

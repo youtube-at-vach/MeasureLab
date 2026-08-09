@@ -1519,6 +1519,7 @@
     "SNR Limit:": "信噪比限制:",
     "SPDR": "SPDR",
     "SPL Calibration Wizard": "SPL 校准向导",
+    "SPL calibration is not set. Values are shown in dBFS.": "未设置 SPL 校准。数值以 dBFS 显示。",
     "SPL Offset:": "SPL 偏移：",
     "SPL calibration saved. Offset = {0:.2f} dB (SPL = dBFS + offset)": "SPL 校准已保存。偏移 = {0:.2f} dB（SPL = dBFS + 偏移）",
     "SR: -": "SR: -",

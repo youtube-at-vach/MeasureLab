@@ -137,6 +137,26 @@ def test_split_live_update_and_reattach_preserve_rendering_objects(spectrum_widg
     assert not spectrum_widget.cursor_label.isHidden()
 
 
+def test_split_compact_resizes_display_window(spectrum_widget, spectrum_wrapper, qtbot):
+    wrapper = spectrum_wrapper
+    wrapper.split()
+    qtbot.wait(1)
+
+    display_window = wrapper.split_display_window
+    display_window.resize(800, 600)
+    qtbot.wait(1)
+    size_before = display_window.size()
+    adjust_size = MagicMock(wraps=display_window.adjustSize)
+    display_window.adjustSize = adjust_size
+
+    wrapper.toggle_compact(True)
+    qtbot.wait(10)
+
+    assert spectrum_widget.is_compact_mode()
+    adjust_size.assert_called()
+    assert display_window.width() < size_before.width() or display_window.height() < size_before.height()
+
+
 def test_closing_one_split_window_restores_state_a(spectrum_widget, spectrum_wrapper, qtbot):
     wrapper = spectrum_wrapper
     wrapper.split()

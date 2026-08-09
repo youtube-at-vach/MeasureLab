@@ -28,6 +28,54 @@ def slm():
 
 
 class TestSoundLevelMeterLogic:
+    def test_uncalibrated_display_uses_dbfs(self, qtbot):
+        engine = MockAudioEngine()
+        engine.calibration.get_spl_offset_db.return_value = None
+        module = SoundLevelMeter(engine)
+        widget = SoundLevelMeterWidget(module)
+        qtbot.addWidget(widget)
+        module.is_running = True
+        module.results.update({"Lp": -20.0, "Leq": -21.0, "Lmax": -18.0})
+
+        widget.update_display()
+
+        assert widget.disp_lp["unit"].text() == "dBFS"
+        assert widget.disp_leq["unit"].text() == "dBFS"
+        assert widget.metric_labels["Lmax"].text().endswith(" dBFS")
+        assert not widget.calibration_warning.isHidden()
+        assert "dBFS" in widget.calibration_warning.text()
+
+    def test_calibrated_display_uses_db_spl(self, qtbot):
+        engine = MockAudioEngine()
+        engine.calibration.get_spl_offset_db.return_value = 94.0
+        module = SoundLevelMeter(engine)
+        widget = SoundLevelMeterWidget(module)
+        qtbot.addWidget(widget)
+        module.is_running = True
+        module.results.update({"Lp": -20.0, "Leq": -21.0, "Lmax": -18.0})
+
+        widget.update_display()
+
+        assert widget.disp_lp["unit"].text() == "dB SPL"
+        assert widget.disp_lp["label"].text() == "74.0"
+        assert widget.metric_labels["Lmax"].text() == "76.0 dB SPL"
+        assert widget.calibration_warning.isHidden()
+
+    def test_calibration_warning_updates_while_stopped(self, qtbot):
+        engine = MockAudioEngine()
+        engine.calibration.get_spl_offset_db.return_value = None
+        module = SoundLevelMeter(engine)
+        widget = SoundLevelMeterWidget(module)
+        qtbot.addWidget(widget)
+
+        assert not widget.calibration_warning.isHidden()
+
+        engine.calibration.get_spl_offset_db.return_value = 94.0
+        widget.update_display()
+
+        assert widget.calibration_warning.isHidden()
+        assert widget.disp_lp["unit"].text() == "dB SPL"
+
     def test_sound_level_meter_impulse_logic(self):
         engine = MockAudioEngine()
         slm = SoundLevelMeter(engine)
@@ -271,4 +319,3 @@ class TestSoundLevelMeterSplittable:
         widget.restore_split_panels()
         assert not display_w.isHidden()
         assert not control_w.isHidden()
-

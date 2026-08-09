@@ -647,6 +647,7 @@ class SpectrumAnalyzerWidget(
         # Cache variables for plot comparison
         self.last_freqs = None
         self.last_mags = None
+        self._spl_calibration_available = None
 
         self.init_ui()
 
@@ -771,9 +772,8 @@ class SpectrumAnalyzerWidget(
         # Unit Selection (Replaces Physical Units Checkbox)
         row1_layout.addWidget(QLabel(tr("Unit:")))
         self.unit_combo = QComboBox()
-        self.unit_combo.addItems(["dBFS", "dBV", "dB SPL"])
-        self.unit_combo.setCurrentText(self.module.display_unit)
         self.unit_combo.currentTextChanged.connect(self.on_unit_changed)
+        self._refresh_unit_options(force=True)
         row1_layout.addWidget(self.unit_combo)
 
         main_controls_layout.addLayout(row1_layout)
@@ -864,6 +864,7 @@ class SpectrumAnalyzerWidget(
         self.plot_widget = pg.PlotWidget()
         self.plot_widget.setLabel("left", tr("Magnitude"), units="dB")
         self.plot_widget.setLabel("bottom", tr("Frequency"), units="Hz")
+        self._update_plot_unit_label()
         self.plot_widget.setLogMode(x=True, y=False)
         self.plot_widget.setYRange(-120, 0)
         self.plot_widget.showGrid(x=True, y=True)
@@ -1180,15 +1181,59 @@ class SpectrumAnalyzerWidget(
 
     def on_unit_changed(self, val):
         self.module.display_unit = val
-        unit = val
-        if self.module.analysis_mode == "PSD":
-            unit += "/√Hz"
-        self.plot_widget.setLabel("left", "Magnitude", units=unit)
+        if hasattr(self, "plot_widget"):
+            self._update_plot_unit_label()
         # Reset peak to avoid mixing units
         self.module._peak_magnitude = None
         self.peak_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
 
+    def _has_spl_calibration(self):
+        """Return whether an absolute SPL offset is available and usable."""
+        try:
+            offset = self.module.audio_engine.calibration.get_spl_offset_db()
+            return offset is not None and np.isfinite(float(offset))
+        except (AttributeError, TypeError, ValueError):
+            return False
+
+    def _update_plot_unit_label(self):
+        unit = self.module.display_unit
+        if self.module.analysis_mode == "PSD":
+            unit += "/√Hz"
+        self.plot_widget.setLabel("left", tr("Magnitude"), units=unit)
+
+    def _refresh_unit_options(self, force=False):
+        """Expose absolute SPL units only while a valid SPL calibration exists."""
+        calibrated = self._has_spl_calibration()
+
+        if not calibrated and self.module.display_unit == "dB SPL":
+            self.module.display_unit = "dBFS"
+            self.module._peak_magnitude = None
+
+        if force or calibrated != self._spl_calibration_available:
+            options = ["dBFS", "dBV"]
+            if calibrated:
+                options.append("dB SPL")
+
+            self.unit_combo.blockSignals(True)
+            self.unit_combo.clear()
+            self.unit_combo.addItems(options)
+            self.unit_combo.setCurrentText(self.module.display_unit)
+            self.unit_combo.blockSignals(False)
+            self._spl_calibration_available = calibrated
+
+        if self.unit_combo.currentText() != self.module.display_unit:
+            self.unit_combo.blockSignals(True)
+            self.unit_combo.setCurrentText(self.module.display_unit)
+            self.unit_combo.blockSignals(False)
+
+        if hasattr(self, "plot_widget"):
+            self._update_plot_unit_label()
+
     def update_plot(self):
+        # Calibration can be changed from Settings while this widget remains open.
+        # Normalize the selected unit before any spectrum values are calculated.
+        self._refresh_unit_options()
+
         if not self.module.is_running:
             return
 
