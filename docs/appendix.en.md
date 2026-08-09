@@ -39,6 +39,7 @@ If you have trouble, please check the following items.
 
 * **Buffer Size**: Change **Buffer Optimization** to `STABLE` or `ULTRA` in the Settings widget.
 * **CPU Load**: Close other heavy applications.
+* **I/O Buffer Warning**: Measurements made while the red "I/O BUFFER ERROR" indicator is present may contain dropped or repeated samples. Correct the buffer settings or CPU load, click the warning to acknowledge it, and repeat the measurement. The warning will reappear if the problem continues.
 
 ### ❓ Screen appears to be frozen at startup
 

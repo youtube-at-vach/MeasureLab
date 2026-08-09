@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QStackedWidget,
     QStatusBar,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -385,6 +386,13 @@ class MainWindow(QMainWindow):
         self.compact_status_label = QLabel(tr("Idle") + " • -")
         self.compact_status_label.setStyleSheet("color: gray;")
         self.compact_status_label.setToolTip(tr("Audio status summary."))
+        self._io_error_latched = False
+        self.io_error_button = QToolButton()
+        self.io_error_button.setText(tr("I/O BUFFER ERROR"))
+        self.io_error_button.setAutoRaise(True)
+        self.io_error_button.setStyleSheet("color: red; font-weight: bold;")
+        self.io_error_button.clicked.connect(self._acknowledge_audio_io_error)
+        self.io_error_button.hide()
         self.output_dest_label = QLabel(tr("Output:"))
         self.output_dest_combo = QComboBox()
         self.output_dest_combo.addItem(tr("Physical Output"), "physical")
@@ -399,6 +407,7 @@ class MainWindow(QMainWindow):
             self.io_label,
             self.sr_label,
             self.cpu_label,
+            self.io_error_button,
             self.clients_label,
             self.output_dest_label,
             self.output_dest_combo,
@@ -429,8 +438,10 @@ class MainWindow(QMainWindow):
             widget.hide()
 
         self.sidebar_footer_layout.addWidget(self.compact_status_label)
+        self.sidebar_footer_layout.addWidget(self.io_error_button)
         self.sidebar_footer_layout.addWidget(self.output_dest_combo)
         self.compact_status_label.show()
+        self.io_error_button.setVisible(self._io_error_latched)
         self.output_dest_combo.show()
 
     def _move_status_widgets_to_status_bar(self):
@@ -441,6 +452,7 @@ class MainWindow(QMainWindow):
         for widget in self._status_widgets:
             self.status_bar.addPermanentWidget(widget)
             widget.show()
+        self.io_error_button.setVisible(self._io_error_latched)
 
     def _init_state(self):
         """Initial state synchronization (output destination, offline mode)."""
@@ -636,16 +648,11 @@ class MainWindow(QMainWindow):
 
         # CPU Load
         cpu = status["cpu_load"] * 100
-        flags = status.get("status_flags")
 
-        if flags:
-            self.cpu_label.setText(tr("CPU: {0:.1f}% [{1}]").format(cpu, flags))
-            self.cpu_label.setStyleSheet("color: red; font-weight: bold;")
-            self.cpu_label.setToolTip(tr("Audio Buffer Error: {0}").format(flags))
-        else:
-            self.cpu_label.setText(tr("CPU: {0:.1f}%").format(cpu))
-            self.cpu_label.setStyleSheet("")
-            self.cpu_label.setToolTip(tr("CPU Load of Audio Thread"))
+        self.cpu_label.setText(tr("CPU: {0:.1f}%").format(cpu))
+        self.cpu_label.setStyleSheet("")
+        self.cpu_label.setToolTip(tr("CPU Load of Audio Thread"))
+        self._update_audio_io_error_indicator(status)
 
         # Clients
         self.clients_label.setText(tr("Clients: {0}").format(status["active_clients"]))
@@ -668,6 +675,38 @@ class MainWindow(QMainWindow):
         if is_offline != self._last_offline_mode:
             self._update_output_destination_ui_for_mode(is_offline)
             self._last_offline_mode = is_offline
+
+    def _update_audio_io_error_indicator(self, status):
+        xrun_status = status.get("latched_xrun_status", {})
+        details = []
+        if xrun_status.get("input_overflow", False):
+            details.append(tr("Input overflow"))
+        if xrun_status.get("input_underflow", False):
+            details.append(tr("Input underflow"))
+        if xrun_status.get("output_overflow", False):
+            details.append(tr("Output overflow"))
+        if xrun_status.get("output_underflow", False):
+            details.append(tr("Output underflow"))
+        self._io_error_latched = bool(details)
+
+        if self._io_error_latched:
+            count = status.get("latched_xrun_count", 0)
+            self.io_error_button.setToolTip(
+                tr("Audio I/O buffer error: {0}\nOccurrences: {1}\nClick to acknowledge and clear.").format(
+                    ", ".join(details),
+                    count,
+                )
+            )
+        else:
+            self.io_error_button.setToolTip("")
+
+        self.io_error_button.setVisible(self._io_error_latched)
+
+    def _acknowledge_audio_io_error(self):
+        self.audio_engine.clear_latched_audio_status()
+        self.logger.info("Audio I/O buffer error status acknowledged and cleared")
+        self._io_error_latched = False
+        self.io_error_button.hide()
 
     def _module_is_active(self, module) -> bool:
         if module is None:
