@@ -173,6 +173,28 @@ class TestSpectrumAnalyzer:
         assert val_spl_a == pytest.approx(val_spl, abs=0.2)
         assert "dB SPL(A)" in sa_widget.overall_label.text()
 
+    def test_uncalibrated_spl_falls_back_to_dbfs(self, sa_module, sa_widget, mock_engine):
+        """An unavailable SPL offset must never leave dBFS values labelled as dB SPL."""
+        mock_engine.calibration.get_spl_offset_db.return_value = None
+        sa_module.display_unit = "dB SPL"
+        sa_module.is_running = True
+
+        sa_widget.update_plot()
+
+        assert sa_module.display_unit == "dBFS"
+        assert sa_widget.unit_combo.findText("dB SPL") == -1
+        assert "dBFS" in sa_widget.overall_label.text()
+        assert "dB SPL" not in sa_widget.overall_label.text()
+
+    def test_spl_option_appears_after_calibration(self, sa_module, sa_widget, mock_engine):
+        """The SPL unit becomes available without recreating the analyzer widget."""
+        assert sa_widget.unit_combo.findText("dB SPL") == -1
+
+        mock_engine.calibration.get_spl_offset_db.return_value = 94.0
+        sa_widget.update_plot()
+
+        assert sa_widget.unit_combo.findText("dB SPL") >= 0
+
     def test_apply_min_max_envelope(self, sa_widget):
         """Verify that apply_min_max_envelope correctly downsamples single/dual channel magnitudes."""
         # 1. Single Channel test

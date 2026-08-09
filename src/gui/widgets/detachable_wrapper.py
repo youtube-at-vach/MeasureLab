@@ -2,7 +2,7 @@ import os
 import re
 from datetime import datetime
 
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -308,12 +308,33 @@ class DetachableWidgetWrapper(QWidget):
             return
 
         self.content_widget.set_compact_mode(checked)
+        self._schedule_compact_window_adjustment()
 
         if self.compact_btn:
             self.compact_btn.blockSignals(True)
             self.compact_btn.setChecked(checked)
             self.compact_btn.setText(tr("Full Mode") if checked else tr("Compact"))
             self.compact_btn.blockSignals(False)
+
+    @staticmethod
+    def _adjust_window_if_alive(window):
+        from PyQt6 import sip
+
+        if window is not None and not sip.isdeleted(window):
+            window.adjustSize()
+
+    def _schedule_compact_window_adjustment(self):
+        """Resize the actual top-level window after compact layout changes settle."""
+        window = None
+        if self.is_split:
+            # In split mode content_widget itself is orphaned, so its window()
+            # is not the IndependentWindow that owns the display panel.
+            window = self.split_display_window
+        elif self.is_detached:
+            window = self.independent_window
+
+        if window is not None:
+            QTimer.singleShot(0, lambda target=window: self._adjust_window_if_alive(target))
 
     def toggle_compact_from_window(self):
         if not self.is_compactable:

@@ -1519,6 +1519,7 @@
     "SNR Limit:": "SNR制限:",
     "SPDR": "SPDR",
     "SPL Calibration Wizard": "SPLキャリブレーションウィザード",
+    "SPL calibration is not set. Values are shown in dBFS.": "SPL校正が設定されていません。値はdBFSで表示されます。",
     "SPL Offset:": "SPLオフセット:",
     "SPL calibration saved. Offset = {0:.2f} dB (SPL = dBFS + offset)": "SPLキャリブレーションを保存しました。オフセット = {0:.2f} dB (SPL = dBFS + offset)",
     "SR: -": "SR: -",

@@ -1519,6 +1519,7 @@
     "SNR Limit:": "SNR 제한:",
     "SPDR": "SPDR",
     "SPL Calibration Wizard": "SPL 보정 마법사",
+    "SPL calibration is not set. Values are shown in dBFS.": "SPL 보정이 설정되지 않았습니다. 값은 dBFS로 표시됩니다.",
     "SPL Offset:": "SPL 오프셋:",
     "SPL calibration saved. Offset = {0:.2f} dB (SPL = dBFS + offset)": "SPL 보정이 저장되었습니다. 오프셋 = {0:.2f} dB (SPL = dBFS + 오프셋)",
     "SR: -": "SR: -",
