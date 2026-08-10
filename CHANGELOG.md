@@ -1,5 +1,35 @@
 # Changelog
 
+## [v0.8.3] - 2026-08-10
+
+### Added
+
+* **Spectrum Analyzer**:
+    * Added Split Window support to separate the spectrum display and analysis controls into independent windows.
+* **Spectrogram**:
+    * Added Split Window support to separate the heatmap display and settings controls into independent windows.
+* **Audio I/O Monitoring**:
+    * Added a persistent I/O buffer error indicator that records XRUN occurrences until explicitly acknowledged.
+* **Documentation**:
+    * Added measurement-instrument design guidelines and expanded the user and implementation documentation.
+
+### Changed
+
+* **Lock-in Modeler**:
+    * Unified the response plots on a sweep-aware 1-2-5 logarithmic frequency scale.
+* **Dependencies & Maintenance**:
+    * Updated Ruff and GitHub CodeQL Action dependencies, refreshed technical documentation, and streamlined low-value tests.
+
+### Fixed
+
+* **Calibration & Units**:
+    * Prevented the Oscilloscope from displaying physical voltage units until input sensitivity is explicitly calibrated.
+    * Made Sound Level Meter and Spectrum Analyzer fall back to dBFS when SPL calibration is unavailable.
+* **Oscilloscope**:
+    * Kept vertical grid lines visible when X-axis labels are hidden and improved compact-mode sizing.
+* **Detachable Windows**:
+    * Corrected top-level window resizing after compact-mode layout changes.
+
 ## [v0.8.2] - 2026-08-04
 
 ### Added
