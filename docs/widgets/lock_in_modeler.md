@@ -85,7 +85,7 @@ Lock-in Modelerは、同期スイープサイン (Synchronized Swept Sine, SSS) 
 ### プロットの表示
 
 * **Frequency Response タブ**:
-  設定した `Max Harmonic` に応じて、基本波（Fundamental）および各高調波（2nd 〜 5th）の振幅特性（Magnitude）と位相特性（Phase）が表示されます。表示オプションにより、基本波に対する相対特性として見ることも可能です。
+  設定した `Max Harmonic` に応じて、基本波（Fundamental）および各高調波（2nd 〜 5th）の振幅特性（Magnitude）と位相特性（Phase）が表示されます。表示オプションにより、基本波に対する相対特性として見ることも可能です。振幅・位相・品質の各プロットは、設定したスイープ範囲に連動する共通の1-2-5対数周波数軸を使用します。
 * **Impulse Responses (Kernels) タブ**:
   非線形モデル（Hammerstein）測定完了後に有効化されます。同定された 1次から最大5次までの時間領域インパルス応答カーネル（$h_1(t)$ 〜 $h_5(t)$）を表示します。
 * **Lock-in SNR タブ**:

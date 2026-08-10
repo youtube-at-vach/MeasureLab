@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "MeasureLab"
-version = "0.8.2"
+version = "0.8.3"
 description = "DIY audio measurement and analysis suite"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -68,5 +68,4 @@ ignore_errors = true
 [[tool.mypy.overrides]]
 module = "src.core.update_checker"
 disable_error_code = ["import-untyped"]
-
 
