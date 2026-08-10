@@ -14,9 +14,9 @@ It goes beyond simply displaying the spectrum and quantifies noise by decomposin
 In addition, based on the temperature and impedance settings, it displays the "Thermal Noise" line, which is the physical limit, allowing comparison with the performance limit of the measurement system.
 It is ideal for evaluating the low-noise performance of amplifiers and microphone preamplifiers, and for identifying noise sources in circuits.
 
-## Compact Mode
+## Common Features
 
-When detached via the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, displaying only the correlation scores (percentages) for each noise type in a large, easy-to-read format. This allows you to instantly recognize the noise characteristics at a glance.
+This widget supports common features of the Detachable Wrapper (such as **Split Window** and **Compact Mode**). Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
 
 ## Operation
 

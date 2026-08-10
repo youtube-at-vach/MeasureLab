@@ -7,13 +7,9 @@
 A tool that continuously monitors and records signal changes over long periods.
 While an oscilloscope captures and displays momentary waveforms, Raw Time Series keeps recording signal transitions over long spans (seconds to minutes), making it suitable for observing slow voltage fluctuations, DC offset drift, and the timing of sporadic noise occurrences. It acts as a digital version of a "chart recorder" (an instrument that continuously records signals on a moving roll of paper), allowing you to scroll back and review past events.
 
-## Split Window Mode
+## Common Features
 
-This widget supports the **Split Window** feature. By pressing the "Split Window" button in the Detachable Wrapper header, you can detach the waveform display section and the settings control section into separate independent windows.
-
-## Compact Mode
-
-When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the waveform display.
+This widget supports common features of the Detachable Wrapper (such as **Split Window** and **Compact Mode**). Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
 
 ## Operations
 

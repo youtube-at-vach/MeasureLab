@@ -8,13 +8,9 @@ This is a tool for visualizing the "spread" and "phase" of stereo audio.
 It plots the relationship between the left and right channels (L/R) as a Lissajous figure, and is used to check the localization of the sound image, stereo width, and mono compatibility.
 It is an essential tool for discovering phase cancellation problems in mixdown and mastering.
 
-## Split Window Mode
+## Common Features
 
-This widget supports the **Split Window** feature. By pressing the "Split Window" button in the Detachable Wrapper header, you can detach the Lissajous figure display section and the settings control section into separate independent windows.
-
-## Compact Mode
-
-When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the Lissajous figure. This is ideal when you want to keep it constantly displayed as a meter.
+This widget supports common features of the Detachable Wrapper (such as **Split Window** and **Compact Mode**). Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
 
 ## What are Lissajous Figures?
 

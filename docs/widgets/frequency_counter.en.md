@@ -9,9 +9,9 @@ It achieves extremely high measurement accuracy through the adoption of the Blac
 In addition to simply showing the "current frequency," it allows for detailed analysis of frequency fluctuations (jitter) and variations over time (drift).
 It can be used for measuring the stability of crystal oscillators, instrument tuning, rotation speed measurement, and more.
 
-## Compact Mode
+## Common Features
 
-When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, displaying only the frequency and statistical values in an extra-large font. This is highly useful for monitoring values from a distance.
+This widget supports common features of the Detachable Wrapper (such as **Split Window** and **Compact Mode**). Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
 
 ## Operation
 

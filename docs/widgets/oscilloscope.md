@@ -8,8 +8,7 @@ Oscilloscope（オシロスコープ）は、入力信号の波形をリアル�
 
 ## 共通機能
 
-* **Split Window (ウィンドウ分割)**: Detachable Wrapper のヘッダーにある「Split Window」ボタンを押すことで、波形ディスプレイ部と設定コントロール部を別々のウィンドウに切り離して配置することができます。
-* **Compact Mode (コンパクトモード)**: Detachable Wrapperの分離ウィンドウ時に「Compact」ボタンを押すことで、波形グラフのみを最大化します。複雑なコントロールパネルを隠して純粋に波形だけを監視したい場合に便利です。
+このウィジェットは Detachable Wrapper の共通機能（**ウィンドウ分割**や**コンパクトモード**など）に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
 
 ## 操作方法
 

@@ -6,13 +6,9 @@
 
 The Sound Level Meter is a precision tool for measuring environmental noise and the sound pressure level (SPL) of audio equipment. It features weighting filters and time response characteristics compliant with common sound level meter standards (such as IEC 61672).
 
-## Split Window Mode
+## Common Features
 
-This widget supports the **Split Window** feature. By pressing the "Split Window" button in the Detachable Wrapper header, you can detach the meter display section and the settings control section into separate independent windows.
-
-## Compact Mode
-
-When the window is detached using the Detachable Wrapper, pressing the "Compact" button enters Compact Mode. Only the primary numerical values, such as SPL and Leq, are displayed largely across the screen, providing visibility similar to dedicated sound level meter hardware. Note that the uncalibrated warning banner is hidden in Compact Mode.
+This widget supports common features of the Detachable Wrapper (such as **Split Window** and **Compact Mode**). Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
 
 ## Basic Operation
 
