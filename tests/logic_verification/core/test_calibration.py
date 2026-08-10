@@ -1,3 +1,4 @@
+import json
 import os
 import pytest
 import numpy as np
@@ -23,6 +24,7 @@ def calibration_manager(temp_config_path):
 def test_save_and_load(calibration_manager, temp_config_path):
     """Test saving and loading basic attributes."""
     calibration_manager.input_sensitivity = 2.0
+    calibration_manager.input_sensitivity_is_calibrated = True
     calibration_manager.output_gain = 0.5
     calibration_manager.output_gain_is_calibrated = True
     calibration_manager.frequency_calibration = 1.05
@@ -35,6 +37,8 @@ def test_save_and_load(calibration_manager, temp_config_path):
 
     new_cm = CalibrationManager(config_filename=temp_config_path)
     assert new_cm.input_sensitivity == 2.0
+    assert new_cm.input_sensitivity_is_calibrated is True
+    assert new_cm.is_calibrated is True
     assert new_cm.output_gain == 0.5
     assert new_cm.output_gain_is_calibrated is True
     assert new_cm.frequency_calibration == 1.05
@@ -61,6 +65,7 @@ def test_set_sensitivities(calibration_manager):
     """Test setting sensitivity and gain."""
     calibration_manager.set_input_sensitivity(2.5)
     assert calibration_manager.input_sensitivity == 2.5
+    assert calibration_manager.input_sensitivity_is_calibrated is True
 
     calibration_manager.set_output_gain(3.0)
     assert calibration_manager.output_gain == 3.0
@@ -68,6 +73,21 @@ def test_set_sensitivities(calibration_manager):
 
     with pytest.raises(ValueError):
         calibration_manager.set_output_gain(-1.0)
+
+
+@pytest.mark.parametrize(
+    ("legacy_sensitivity", "expected_calibrated"),
+    [(1.0, False), (2.0, True)],
+)
+def test_legacy_input_calibration_state_migration(
+    temp_config_path, legacy_sensitivity, expected_calibrated
+):
+    with open(temp_config_path, "w", encoding="utf-8") as f:
+        json.dump({"input_sensitivity": legacy_sensitivity}, f)
+
+    manager = CalibrationManager(config_filename=temp_config_path)
+
+    assert manager.input_sensitivity_is_calibrated is expected_calibrated
 
 
 def test_frequency_calibration_methods(calibration_manager):
@@ -105,6 +125,7 @@ def test_profile_management(calibration_manager):
     profiles = calibration_manager.get_profiles()
     assert "Prof1" in profiles
     assert profiles["Prof1"]["input_sensitivity"] == 4.0
+    assert profiles["Prof1"]["input_sensitivity_is_calibrated"] is False
 
     # Change current values. Note: set_last_profile triggers a save() which synchronize current values to the profile if last_profile is set
     # We clear the last_profile before changing values to avoid overwriting the saved profile
@@ -114,6 +135,7 @@ def test_profile_management(calibration_manager):
     # Load profile restores values
     calibration_manager.load_profile("Prof1")
     assert calibration_manager.input_sensitivity == 4.0
+    assert calibration_manager.input_sensitivity_is_calibrated is False
 
     calibration_manager.delete_profile("Prof1")
     assert "Prof1" not in calibration_manager.get_profiles()

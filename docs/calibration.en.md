@@ -11,6 +11,8 @@ In digital audio, signal magnitude is typically expressed in **dBFS (Decibels re
 
 Calibration is the process of measuring and setting the relationship between the digital 0 dBFS and its corresponding real-world physical value (Volts or Pascals). By doing this, you can read waveforms directly in actual physical units like "Voltage (V)" or "Sound Pressure (dB SPL)."
 
+When input sensitivity is uncalibrated, oscilloscope amplitude is shown as `FS`, relative to digital full scale. MeasureLab does not display `V` until the relationship to physical voltage is known. After input sensitivity calibration, measurement and cursor readouts switch to voltage units.
+
 ## Relationship between dBFS / dBV / dBu
 
 MeasureLab supports the following units.
