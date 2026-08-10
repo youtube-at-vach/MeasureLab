@@ -196,12 +196,14 @@ def test_set_input_sensitivity(cal_manager):
         # Test valid float
         cal_manager.set_input_sensitivity(5.5)
         assert cal_manager.input_sensitivity == 5.5
+        assert cal_manager.input_sensitivity_is_calibrated is True
         mock_save.assert_called_once()
         mock_save.reset_mock()
 
         # Test valid int
         cal_manager.set_input_sensitivity(10)
         assert cal_manager.input_sensitivity == 10
+        assert cal_manager.input_sensitivity_is_calibrated is True
         mock_save.assert_called_once()
         mock_save.reset_mock()
 

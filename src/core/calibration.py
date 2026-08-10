@@ -31,6 +31,9 @@ class CalibrationManager:
 
         self.logger = logging.getLogger(self.__class__.__name__)
         self.input_sensitivity = 1.0  # Volts per Full Scale (V/FS) (Peak)
+        # Whether the input sensitivity was explicitly calibrated by the user.
+        # Physical voltage units must not be exposed while this is false.
+        self.input_sensitivity_is_calibrated = False
         self.output_gain = 1.0  # Volts per Full Scale (V/FS) (Peak)
         # Whether the output gain was explicitly calibrated by the user.
         # Used to decide when to offer voltage-based UI controls.
@@ -58,6 +61,21 @@ class CalibrationManager:
                 with open(self.config_path, "r") as f:
                     data = json.load(f)
                     self.input_sensitivity = data.get("input_sensitivity", 1.0)
+                    if "input_sensitivity_is_calibrated" in data:
+                        self.input_sensitivity_is_calibrated = bool(
+                            data.get("input_sensitivity_is_calibrated")
+                        )
+                    else:
+                        # Legacy files did not record this state. A non-default
+                        # sensitivity could only be entered through calibration
+                        # settings, so preserve it as calibrated. The ambiguous
+                        # 1.0 V/FS case intentionally fails closed.
+                        try:
+                            self.input_sensitivity_is_calibrated = (
+                                abs(float(self.input_sensitivity) - 1.0) > 1e-12
+                            )
+                        except Exception:
+                            self.input_sensitivity_is_calibrated = False
                     self.output_gain = data.get("output_gain", 1.0)
                     # New flag (backward compatible)
                     if "output_gain_is_calibrated" in data:
@@ -106,6 +124,9 @@ class CalibrationManager:
         if self.last_profile and self.last_profile in self.profiles:
             p = self.profiles[self.last_profile]
             p["input_sensitivity"] = self.input_sensitivity
+            p["input_sensitivity_is_calibrated"] = bool(
+                self.input_sensitivity_is_calibrated
+            )
             p["output_gain"] = self.output_gain
             p["output_gain_is_calibrated"] = bool(self.output_gain_is_calibrated)
             p["frequency_calibration"] = self.frequency_calibration
@@ -116,6 +137,9 @@ class CalibrationManager:
 
         data = {
             "input_sensitivity": self.input_sensitivity,
+            "input_sensitivity_is_calibrated": bool(
+                self.input_sensitivity_is_calibrated
+            ),
             "output_gain": self.output_gain,
             "output_gain_is_calibrated": bool(self.output_gain_is_calibrated),
             "frequency_calibration": self.frequency_calibration,
@@ -182,7 +206,13 @@ class CalibrationManager:
             raise ValueError("Invalid input sensitivity")
 
         self.input_sensitivity = v_per_fs
+        self.input_sensitivity_is_calibrated = True
         self.save()
+
+    @property
+    def is_calibrated(self):
+        """Backward-compatible alias for input sensitivity calibration state."""
+        return bool(self.input_sensitivity_is_calibrated)
 
     def set_output_gain(self, v_per_fs):
         """Sets output gain in Volts (Peak) corresponding to 1.0 FS."""
@@ -243,6 +273,7 @@ class CalibrationManager:
             "device_name": device_name,
             "host_api": host_api,
             "input_sensitivity": self.input_sensitivity,
+            "input_sensitivity_is_calibrated": self.input_sensitivity_is_calibrated,
             "output_gain": self.output_gain,
             "output_gain_is_calibrated": self.output_gain_is_calibrated,
             "frequency_calibration": self.frequency_calibration,
@@ -260,6 +291,17 @@ class CalibrationManager:
 
         p = self.profiles[name]
         self.input_sensitivity = p.get("input_sensitivity", 1.0)
+        if "input_sensitivity_is_calibrated" in p:
+            self.input_sensitivity_is_calibrated = bool(
+                p.get("input_sensitivity_is_calibrated")
+            )
+        else:
+            try:
+                self.input_sensitivity_is_calibrated = (
+                    abs(float(self.input_sensitivity) - 1.0) > 1e-12
+                )
+            except Exception:
+                self.input_sensitivity_is_calibrated = False
         self.output_gain = p.get("output_gain", 1.0)
         self.output_gain_is_calibrated = p.get("output_gain_is_calibrated", False)
         self.frequency_calibration = p.get("frequency_calibration", 1.0)

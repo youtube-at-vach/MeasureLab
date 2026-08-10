@@ -282,31 +282,47 @@ class Oscilloscope(MeasurementModule):
 
     def get_measurements(self, data):
         """
-        Calculate measurements (RMS, Vpp) for the given data, applying calibration.
+        Calculate RMS and peak-to-peak amplitude in the active display unit.
+
+        Calibrated inputs are returned in volts. Uncalibrated inputs remain in
+        full-scale units so an assumed sensitivity can never appear as a
+        physical voltage.
         Returns a dict with 'l_rms', 'l_vpp', 'r_rms', 'r_vpp'.
         """
+        _is_calibrated, amplitude_factor, _unit = self.get_amplitude_display_state()
+
         if data is None or len(data) == 0:
             return {"l_rms": 0.0, "l_vpp": 0.0, "r_rms": 0.0, "r_vpp": 0.0}
-
-        # Apply Input Sensitivity (Calibration)
-        # raw data is -1.0 to 1.0 (FS).
-        # sensitivity is Volts per FS (Peak).
-        sensitivity = self.audio_engine.calibration.input_sensitivity
 
         l_data = data[:, 0]
         r_data = data[:, 1]
 
-        # RMS calculation
-        # RMS(Volts) = RMS(FS) * Sensitivity
-        l_rms = np.sqrt(np.mean(l_data**2)) * sensitivity
-        r_rms = np.sqrt(np.mean(r_data**2)) * sensitivity
+        l_rms = np.sqrt(np.mean(l_data**2)) * amplitude_factor
+        r_rms = np.sqrt(np.mean(r_data**2)) * amplitude_factor
 
-        # Vpp calculation
-        # Vpp(Volts) = (Max(FS) - Min(FS)) * Sensitivity
-        l_vpp = (np.max(l_data) - np.min(l_data)) * sensitivity
-        r_vpp = (np.max(r_data) - np.min(r_data)) * sensitivity
+        l_vpp = (np.max(l_data) - np.min(l_data)) * amplitude_factor
+        r_vpp = (np.max(r_data) - np.min(r_data)) * amplitude_factor
 
         return {"l_rms": l_rms, "l_vpp": l_vpp, "r_rms": r_rms, "r_vpp": r_vpp}
+
+    def get_amplitude_display_state(self):
+        """Return (is_calibrated, scale_factor, unit) for amplitude readouts."""
+        try:
+            calibration = self.audio_engine.calibration
+            calibrated_flag = getattr(calibration, "input_sensitivity_is_calibrated", None)
+            if not isinstance(calibrated_flag, (bool, np.bool_)):
+                calibrated_flag = getattr(calibration, "is_calibrated", False)
+
+            is_calibrated = isinstance(calibrated_flag, (bool, np.bool_)) and bool(calibrated_flag)
+            sensitivity = float(calibration.input_sensitivity)
+            if not np.isfinite(sensitivity) or sensitivity <= 0:
+                raise ValueError("Invalid input sensitivity")
+        except Exception:
+            return False, 1.0, "FS"
+
+        if not is_calibrated:
+            return False, 1.0, "FS"
+        return True, sensitivity, "V"
 
     def stop_analysis(self):
         if self.is_running:
@@ -586,6 +602,15 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         self.module.stop_analysis()
         super().closeEvent(event)
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        if hasattr(self, "calibration_status_label"):
+            self._update_calibration_status()
+        if hasattr(self, "latest_data") and self.latest_data is not None:
+            self._set_measurement_labels(self.module.get_measurements(self.latest_data))
+            if self.chk_cursors.isChecked():
+                self.update_cursor_info()
+
     def get_display_widget(self) -> QWidget:
         """Returns the display sub-widget (plot + measurements area)."""
         return self.display_widget
@@ -631,12 +656,24 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         self.meas_group = QGroupBox(tr("Measurements"))
         meas_layout = QVBoxLayout()
 
+        self.calibration_status_label = QLabel()
+        self.calibration_status_label.setStyleSheet("font-weight: bold;")
+        meas_layout.addWidget(self.calibration_status_label)
+
+        initial_is_calibrated, _factor, _unit = self.module.get_amplitude_display_state()
+        if initial_is_calibrated:
+            initial_l_text = tr("L: Vrms: 0.000 V  Vpp: 0.000 V")
+            initial_r_text = tr("R: Vrms: 0.000 V  Vpp: 0.000 V")
+        else:
+            initial_l_text = tr("L: RMS: 0.000 FS  Pk-Pk: 0.000 FS")
+            initial_r_text = tr("R: RMS: 0.000 FS  Pk-Pk: 0.000 FS")
+
         meas_row_1 = QHBoxLayout()
-        self.meas_l_label = QLabel(tr("L: Vrms: 0.000 V  Vpp: 0.000 V"))
+        self.meas_l_label = QLabel(initial_l_text)
         self.meas_l_label.setStyleSheet(STYLE_LABEL_LEFT_CH_DARK)
         meas_row_1.addWidget(self.meas_l_label)
 
-        self.meas_r_label = QLabel(tr("R: Vrms: 0.000 V  Vpp: 0.000 V"))
+        self.meas_r_label = QLabel(initial_r_text)
         self.meas_r_label.setStyleSheet(STYLE_LABEL_RIGHT_CH_DARK)
         meas_row_1.addWidget(self.meas_r_label)
         meas_row_1.addStretch()
@@ -654,6 +691,7 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
 
         self.meas_group.setLayout(meas_layout)
         left_layout.addWidget(self.meas_group)
+        self._update_calibration_status()
 
         # Cursor Info
         self.cursor_info_label = QLabel(tr("Cursors: Off"))
@@ -703,6 +741,40 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
 
         left_layout.addWidget(self.plot_widget)
         return display_widget
+
+    def _update_calibration_status(self):
+        is_calibrated, sensitivity, _unit = self.module.get_amplitude_display_state()
+        if is_calibrated:
+            self.calibration_status_label.setText(
+                tr("Input: Calibrated ({0:.4g} V/FS)").format(sensitivity)
+            )
+        else:
+            self.calibration_status_label.setText(tr("Input: Uncalibrated (FS)"))
+
+    def _set_measurement_labels(self, measurements):
+        is_calibrated, _factor, _unit = self.module.get_amplitude_display_state()
+        if is_calibrated:
+            self.meas_l_label.setText(
+                tr("L: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(
+                    measurements["l_rms"], measurements["l_vpp"]
+                )
+            )
+            self.meas_r_label.setText(
+                tr("R: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(
+                    measurements["r_rms"], measurements["r_vpp"]
+                )
+            )
+        else:
+            self.meas_l_label.setText(
+                tr("L: RMS: {0:.3f} FS  Pk-Pk: {1:.3f} FS").format(
+                    measurements["l_rms"], measurements["l_vpp"]
+                )
+            )
+            self.meas_r_label.setText(
+                tr("R: RMS: {0:.3f} FS  Pk-Pk: {1:.3f} FS").format(
+                    measurements["r_rms"], measurements["r_vpp"]
+                )
+            )
 
     def _setup_right_panel(self):
         right_widget = QWidget()
@@ -1242,12 +1314,18 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
                 target_data = data[:, 1]
 
             if target_data is not None:
-                v1 = np.interp(t1, t, target_data)
-                v2 = np.interp(t2, t, target_data)
-                dv = v2 - v1
-                v1_str = tr("V1: {0:.3f}V").format(v1)
-                v2_str = tr("V2: {0:.3f}V").format(v2)
-                dv_str = tr("dV: {0:.3f}V").format(dv)
+                is_calibrated, amplitude_factor, _unit = self.module.get_amplitude_display_state()
+                amplitude_1 = np.interp(t1, t, target_data) * amplitude_factor
+                amplitude_2 = np.interp(t2, t, target_data) * amplitude_factor
+                delta_amplitude = amplitude_2 - amplitude_1
+                if is_calibrated:
+                    v1_str = tr("V1: {0:.3f}V").format(amplitude_1)
+                    v2_str = tr("V2: {0:.3f}V").format(amplitude_2)
+                    dv_str = tr("dV: {0:.3f}V").format(delta_amplitude)
+                else:
+                    v1_str = tr("A1: {0:.3f} FS").format(amplitude_1)
+                    v2_str = tr("A2: {0:.3f} FS").format(amplitude_2)
+                    dv_str = tr("dA: {0:.3f} FS").format(delta_amplitude)
 
         self.cursor_info_label.setText(
             tr("T1: {0:.2f}ms {1} | T2: {2:.2f}ms {3} | dT: {4:.2f}ms ({5:.1f}Hz) | {6}").format(
@@ -1333,8 +1411,8 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
 
             meas = self.module.get_measurements(data)
 
-            self.meas_l_label.setText(tr("L: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(meas["l_rms"], meas["l_vpp"]))
-            self.meas_r_label.setText(tr("R: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(meas["r_rms"], meas["r_vpp"]))
+            self._update_calibration_status()
+            self._set_measurement_labels(meas)
 
             # Waveform-derived measurements (optional)
             wave_meas_enabled = hasattr(self, "chk_wave_meas") and self.chk_wave_meas.isChecked()
@@ -1632,12 +1710,7 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         data = self.last_display_data
         t = self.last_display_time
 
-        try:
-            input_sensitivity = self.module.audio_engine.calibration.input_sensitivity
-            is_calibrated = self.module.audio_engine.calibration.is_calibrated
-        except Exception:
-            input_sensitivity = 1.0
-            is_calibrated = False
+        is_calibrated, input_sensitivity, _unit = self.module.get_amplitude_display_state()
 
         timestamp = datetime.now().isoformat()
         traces = []

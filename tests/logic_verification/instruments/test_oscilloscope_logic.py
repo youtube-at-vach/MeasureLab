@@ -22,6 +22,7 @@ class MockAudioEngine:
         self.sample_rate = 48000
         self.calibration = MagicMock()
         self.calibration.input_sensitivity = 1.0
+        self.calibration.input_sensitivity_is_calibrated = False
         self.callbacks = {}
 
     def register_callback(self, callback):
@@ -277,7 +278,7 @@ class TestOscilloscopeLogic(unittest.TestCase):
         self.assertEqual(data[0, 0], 0.5)
 
     def test_measurements_apply_calibration(self):
-        # 1. Test with default sensitivity (1.0)
+        # 1. Uncalibrated values remain in full-scale units.
         t = np.linspace(0, 1, 1000)
         data = np.zeros((1000, 2))
         data[:, 0] = 0.5 * np.sin(2 * np.pi * 50 * t)  # Left
@@ -289,16 +290,32 @@ class TestOscilloscopeLogic(unittest.TestCase):
         expected_r_rms = 0.2 / np.sqrt(2)
 
         self.assertAlmostEqual(meas["l_rms"], expected_l_rms, places=3)
-        self.assertAlmostEqual(meas["l_vpp"], 1.0, places=3)  # 0.5 to -0.5 -> 1.0 Vpp
+        self.assertAlmostEqual(meas["l_vpp"], 1.0, places=3)
         self.assertAlmostEqual(meas["r_rms"], expected_r_rms, places=3)
 
-        # 2. Test with sensitivity = 2.0 (1.0 FS = 2.0 Volts)
+        # A stored sensitivity must not be treated as volts without calibration.
         self.engine.calibration.input_sensitivity = 2.0
+        meas_uncal = self.scope.get_measurements(data)
+        self.assertAlmostEqual(meas_uncal["l_rms"], expected_l_rms, places=3)
+        self.assertAlmostEqual(meas_uncal["l_vpp"], 1.0, places=3)
+
+        # 2. Calibrated sensitivity = 2.0 V/FS.
+        self.engine.calibration.input_sensitivity_is_calibrated = True
         meas_cal = self.scope.get_measurements(data)
 
         # RMS should double
         self.assertAlmostEqual(meas_cal["l_rms"], expected_l_rms * 2.0, places=3)
         self.assertAlmostEqual(meas_cal["l_vpp"], 2.0, places=3)
+
+    def test_amplitude_display_state_fails_closed(self):
+        self.assertEqual(self.scope.get_amplitude_display_state(), (False, 1.0, "FS"))
+
+        self.engine.calibration.input_sensitivity = 2.5
+        self.engine.calibration.input_sensitivity_is_calibrated = True
+        self.assertEqual(self.scope.get_amplitude_display_state(), (True, 2.5, "V"))
+
+        self.engine.calibration.input_sensitivity = float("nan")
+        self.assertEqual(self.scope.get_amplitude_display_state(), (False, 1.0, "FS"))
 
     def test_measurements_none_data(self):
         meas = self.scope.get_measurements(None)
