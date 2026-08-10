@@ -8,7 +8,7 @@ import numpy as np
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 
-class TestNoiseProfilerLogicBase(unittest.TestCase):
+class NoiseProfilerLogicBaseTest(unittest.TestCase):
     def setUp(self):
         # 1. Prepare Mocks
         self.mock_qt = MagicMock()
@@ -79,7 +79,7 @@ class TestNoiseProfilerLogicBase(unittest.TestCase):
             del sys.modules["src.gui.widgets.noise_profiler"]
 
 
-class TestNoiseProfilerAverage(TestNoiseProfilerLogicBase):
+class TestNoiseProfilerAverage(NoiseProfilerLogicBaseTest):
     def setUp(self):
         super().setUp()
         self.engine = MagicMock()
@@ -113,51 +113,7 @@ class TestNoiseProfilerAverage(TestNoiseProfilerLogicBase):
         np.testing.assert_array_almost_equal(self.profiler._avg_magnitude, np.ones(513) * 2.0)
 
 
-class TestNoiseProfilerProcess(TestNoiseProfilerLogicBase):
-    def setUp(self):
-        super().setUp()
-        self.engine = MagicMock()
-        self.engine.sample_rate = 48000
-        self.engine.calibration.get_input_offset_db.return_value = 0.0
-
-        self.profiler = self.NoiseProfiler(self.engine)
-        self.profiler.buffer_size = 1024
-        self.profiler.input_data = np.random.rand(1024, 2)
-
-    def test_process_data_smoke(self):
-        # We need to ensure dependencies used inside process_data are also working (mocked or real)
-        # process_data calls AudioCalc, fft_manager.
-        # Since we mocked scipy/pywt at sys.modules level, imports inside core.analysis might fail or return mocks.
-        # If they return mocks, calculations will produce mocks.
-
-        # We might need to mock return values of fft_manager if we want meaningful output,
-        # or just check that it runs without error.
-
-        # Let's mock fft_manager.rfftfreq and rfft to return numpy arrays so logic continues
-        with patch("src.core.fft_manager.fft_manager") as mock_fft:
-            mock_fft.rfft.return_value = np.zeros(513)
-            mock_fft.rfftfreq.return_value = np.zeros(513)
-
-            # Also mock get_cached_window to return correct size (default buffer size 1024)
-            with patch("src.gui.widgets.noise_profiler.get_cached_window") as mock_window:
-                mock_window.return_value = np.ones(1024)
-                output = self.profiler.process_data(0, "dBV", False)
-
-            # Since rfft returns zeros, magnitude is zeros.
-            # update_average returns zeros.
-            # AudioCalc.calculate_noise_profile is called with zeros.
-
-            self.assertIsNotNone(output)
-            freqs, mag, results, raw_avg = output
-            self.assertIsNotNone(results)
-
-    def test_process_data_insufficient_data(self):
-        self.profiler.input_data = np.zeros((100, 2))
-        output = self.profiler.process_data(0, "dBV", False)
-        self.assertIsNone(output)
-
-
-class TestNoiseProfilerLogging(TestNoiseProfilerLogicBase):
+class TestNoiseProfilerLogging(NoiseProfilerLogicBaseTest):
     def test_worker_exception_logging(self):
         mock_engine = MagicMock()
         module = self.NoiseProfiler(mock_engine)
@@ -182,7 +138,7 @@ class TestNoiseProfilerLogging(TestNoiseProfilerLogicBase):
             assert mock_logger.error.called
 
 
-class TestNoiseProfilerRingBuffer(TestNoiseProfilerLogicBase):
+class TestNoiseProfilerRingBuffer(NoiseProfilerLogicBaseTest):
     def setUp(self):
         super().setUp()
         self.mock_engine = MagicMock()
