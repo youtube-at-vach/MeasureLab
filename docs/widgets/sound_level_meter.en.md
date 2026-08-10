@@ -12,7 +12,7 @@ This widget supports the **Split Window** feature. By pressing the "Split Window
 
 ## Compact Mode
 
-When the window is detached using the Detachable Wrapper, pressing the "Compact" button enters Compact Mode. Only the primary numerical values, such as SPL and Leq, are displayed largely across the screen, providing visibility similar to dedicated sound level meter hardware.
+When the window is detached using the Detachable Wrapper, pressing the "Compact" button enters Compact Mode. Only the primary numerical values, such as SPL and Leq, are displayed largely across the screen, providing visibility similar to dedicated sound level meter hardware. Note that the uncalibrated warning banner is hidden in Compact Mode.
 
 ## Basic Operation
 
@@ -76,4 +76,4 @@ Sets the sampling interval of the instantaneous value (Lp) used for calculating 
 
 ## About Calibration
 
-To display accurate "dB SPL" values, please calibrate the "SPL Offset" in the "Calibration" tab of the **Settings widget** beforehand. If not calibrated, the values displayed are relative to the digital full scale (dBFS).
+To display accurate "dB SPL" values, please calibrate the "SPL Offset" in the "Calibration" tab of the **Settings widget** beforehand. If not calibrated, a warning message is displayed and the unit automatically falls back to digital full scale (dBFS).

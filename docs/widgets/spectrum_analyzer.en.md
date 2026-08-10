@@ -63,7 +63,7 @@ This widget supports the **Split Window** feature. By pressing the "Split Window
 * **Unit**
     * **dBFS**: A relative value with 0 dB as the digital full scale. It is the level relative to the input limit of the audio interface.
     * **dBV**: Voltage level with 1 V as 0 dB (requires calibration settings).
-    * **dB SPL**: Sound pressure level (requires calibration settings such as microphone sensitivity correction).
+    * **dB SPL**: Sound pressure level (requires calibration settings such as microphone sensitivity correction. If uncalibrated, it automatically falls back to dBFS).
 
 ### Advanced Controls
 
