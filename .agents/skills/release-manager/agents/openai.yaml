@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release Manager"
+  short_description: "リリース準備、検証、PR作成を進めます"
+  default_prompt: "$release-manager を使って、このリポジトリのリリース準備を行ってください。"

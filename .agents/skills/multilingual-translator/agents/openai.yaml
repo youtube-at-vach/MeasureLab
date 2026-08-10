@@ -1,0 +1,4 @@
+interface:
+  display_name: "Multilingual Translator"
+  short_description: "翻訳漏れを検出・修正します"
+  default_prompt: "$multilingual-translator を使って、翻訳キーの整合性を確認し、翻訳漏れを修正してください。"
