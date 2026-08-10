@@ -1,0 +1,4 @@
+interface:
+  display_name: "CI Pre-checker"
+  short_description: "PR前のCI相当チェックを実行します"
+  default_prompt: "$ci-prechecker を使って、PR送信前のCI相当チェックを実行してください。"
