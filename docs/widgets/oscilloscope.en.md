@@ -6,19 +6,12 @@
 
 The Oscilloscope is a measurement tool that displays the waveform of the input signal on a time axis in real-time. It is used to visually confirm the shape, amplitude, and period of a signal. It also includes trigger functions, automatic measurement capabilities, and arithmetic (math) functions.
 
-## Split Window Mode
+## Common Features
 
-This widget supports the **Split Window** feature. By pressing the "Split Window" button in the Detachable Wrapper header, you can detach the waveform display section and the settings control section into separate independent windows.
+* **Split Window**: By pressing the "Split Window" button in the Detachable Wrapper header, you can detach the waveform display section and the settings control section into separate independent windows.
+* **Compact Mode**: When detached using the Detachable Wrapper, pressing the "Compact" button maximizes only the waveform graph. This is useful when you want to hide the complex control panel and purely monitor the waveform.
 
-## Compact Mode
-
-When detached using the Detachable Wrapper, pressing the "Compact" button switches the widget to Compact Mode, maximizing only the waveform graph. This is useful when you want to hide the complex control panel and purely monitor the waveform.
-
-## Display Settings
-
-* **Show X-Axis Label**: Toggles the display of the time axis label and values at the bottom of the graph.
-
-## Basic Operation
+## Operation
 
 ### Starting and Stopping Measurement
 
@@ -26,6 +19,7 @@ When detached using the Detachable Wrapper, pressing the "Compact" button switch
 
 ### Reading the Screen
 
+* **Show X-Axis Label**: Toggles the display of the time axis label and values at the bottom of the graph.
 * **Time/Div**: Changes the scale of the time axis (horizontal axis). Larger values display a longer duration (slower changes), while smaller values zoom in to show a shorter duration (faster changes).
     * **Key Point**: Even when displaying a long duration, the system continues to record the waveform internally at high resolution. Therefore, the waveform will not appear coarse, and trigger sync will not be lost.
 * **Scale**: Changes the scale of the voltage axis (vertical axis).
@@ -34,8 +28,7 @@ When detached using the Detachable Wrapper, pressing the "Compact" button switch
 
 ## Trigger Settings
 
-A function to stop (stabilize) the waveform for easier observation.
-By updating the screen the moment the signal crosses a specific voltage level (Level), the high-speed waveform appears frozen.
+A function that updates the screen the moment the signal crosses a specific voltage level (Level), causing high-speed waveforms to appear frozen.
 
 * **Source**: Selects the signal source for the trigger (Left or Right).
 * **Slope**: Selects the direction in which the signal crosses the trigger level.
@@ -50,7 +43,7 @@ By updating the screen the moment the signal crosses a specific voltage level (L
 ## Persistence Settings
 
 A feature to display an "afterimage" of past waveforms on the screen.
-This makes it much easier to visually spot rare, abnormal noise or subtle waveform shaking (jitter) by observing how the light overlaps over time.
+This makes it easier to visually spot rare, abnormal noise or subtle waveform shaking (jitter) by observing how the light overlaps over time.
 
 * **Enable Persistence**: Enables the persistence display.
 * **Decay**: Adjusts the time until the afterimage disappears (decay rate). Moving it to the right makes it last longer.
