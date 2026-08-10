@@ -8,8 +8,7 @@ The Oscilloscope is a measurement tool that displays the waveform of the input s
 
 ## Common Features
 
-* **Split Window**: By pressing the "Split Window" button in the Detachable Wrapper header, you can detach the waveform display section and the settings control section into separate independent windows.
-* **Compact Mode**: When detached using the Detachable Wrapper, pressing the "Compact" button maximizes only the waveform graph. This is useful when you want to hide the complex control panel and purely monitor the waveform.
+This widget supports common features of the Detachable Wrapper (such as **Split Window** and **Compact Mode**). Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
 
 ## Operation
 
