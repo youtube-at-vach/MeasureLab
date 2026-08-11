@@ -262,6 +262,14 @@ class DetachableWidgetWrapper(QWidget):
                 return candidate
         return base
 
+    def _get_screenshot_target(self) -> QWidget:
+        """Return the panel that currently represents the module's display."""
+        if self.is_split and self.split_display_window is not None:
+            display_widget = self.split_display_window.centralWidget()
+            if display_widget is not None:
+                return display_widget
+        return self.content_widget
+
     def save_screenshot(self):
         out_dir = self._get_screenshot_output_dir()
         try:
@@ -271,7 +279,7 @@ class DetachableWidgetWrapper(QWidget):
             return
 
         try:
-            pixmap = self.content_widget.grab()
+            pixmap = self._get_screenshot_target().grab()
         except Exception as e:
             QMessageBox.warning(self, tr("Error"), tr("Failed to capture screenshot: {0}").format(str(e)))
             return
@@ -349,7 +357,7 @@ class DetachableWidgetWrapper(QWidget):
             self.detach()
 
     def detach(self):
-        if self.is_detached:
+        if self.is_detached or self.is_split:
             return
 
         # 1. Remove widget from local layout
@@ -375,7 +383,8 @@ class DetachableWidgetWrapper(QWidget):
         if self.compact_btn:
             self.compact_btn.setEnabled(True)
         if self.split_btn:
-            self.split_btn.setEnabled(False)
+            # State B can transition directly to State C.
+            self.split_btn.setEnabled(True)
         self.is_detached = True
 
     def reattach(self):
