@@ -607,6 +607,7 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         super().__init__()
         self.module = module
         self.sweep_worker = None
+        self._realtime_output_mode_index = 1
         self.init_ui()
 
         # Theme handling
@@ -1174,12 +1175,15 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self._update_sweep_x_controls()
 
         if idx == 0:  # Real-time
+            self.out_mode_combo.setEnabled(True)
+            self.set_meters_mode("thd")
+            self.out_mode_combo.setCurrentIndex(self._realtime_output_mode_index)
             self.settings_tabs.setCurrentIndex(0)
             self.meters_group.setVisible(True)
-            self.set_meters_mode("thd")
             self.tabs.setCurrentIndex(0)
             self.sync_module_with_gui()
         else:
+            self._use_sine_for_sweep()
             self.settings_tabs.setCurrentIndex(1)
             self.meters_group.setVisible(False)
             self.tabs.setCurrentIndex(2)
@@ -1199,8 +1203,18 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
             self._update_sweep_y_axis_format()
 
+    def _use_sine_for_sweep(self):
+        """Enforce the single-tone signal expected by the sweep analysis."""
+        self.out_mode_combo.setCurrentIndex(1)
+        self.out_mode_combo.setEnabled(False)
+        self.module.output_enabled = True
+        self.module.signal_type = "sine"
+
     def on_out_mode_changed(self, idx):
         # 0: Off, 1: Sine, 2: SMPTE, 3: CCIF
+        if self.mode_combo.currentIndex() == 0:
+            self._realtime_output_mode_index = idx
+
         # Ensure calibration is reset when changing modes
         if idx != 4:
             if hasattr(self, "aes17_cal_btn"):
@@ -1352,7 +1366,11 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
             self.imd_row_widget.setVisible(True)
 
     def start_sweep(self, mode_idx):
-        self.module.start_analysis()  # Ensure audio is running
+        # SweepWorker always performs single-tone harmonic analysis. Keep this
+        # invariant here as well as in the UI in case this method is called
+        # directly or the module state was changed programmatically.
+        self._use_sine_for_sweep()
+        self.sync_module_with_gui()
         self.action_btn.setText(tr("Stop Sweep"))
         self.module.sweep_results = []
         self.sweep_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
@@ -1382,6 +1400,7 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
                 self.action_btn.setText(tr("Start Measurement"))
                 return
 
+        self.module.start_analysis()  # Ensure audio is running
         self.mode_combo.setEnabled(False)
         self.sweep_worker = SweepWorker(self.module, sweep_type, start, end, steps)
         self.sweep_worker.result_ready.connect(self.on_sweep_result)
