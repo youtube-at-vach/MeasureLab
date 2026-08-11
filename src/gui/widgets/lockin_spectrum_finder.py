@@ -37,6 +37,7 @@ from src.core.localization import tr
 from src.core.sonifier import Sonifier
 from src.measurement_modules.base import MeasurementModule
 from src.gui.styles import MONOSPACE_FONT_FAMILY
+from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 
 logger = logging.getLogger(__name__)
 
@@ -983,9 +984,10 @@ class LockInSpectrumFinder(MeasurementModule):
             self.signals.result_ready.emit((freqs, mags_db_all))
 
 
-class LockInSpectrumFinderWidget(QWidget):
+class LockInSpectrumFinderWidget(QWidget, SplittableWidgetInterface):
     def __init__(self, module: LockInSpectrumFinder):
-        super().__init__()
+        QWidget.__init__(self)
+        SplittableWidgetInterface.__init__(self)
         self.module = module
         self.init_ui()
 
@@ -997,11 +999,31 @@ class LockInSpectrumFinderWidget(QWidget):
         self.timer.timeout.connect(self.check_calculation)
         self.timer.setInterval(100)  # Check every 100ms
 
+    def get_display_widget(self) -> QWidget:
+        """Return the spectrum plot panel for split mode."""
+        return self.display_widget
+
+    def get_control_widget(self) -> QWidget:
+        """Return the settings, targets, sonification, and status panel for split mode."""
+        return self.controls_widget
+
+    def restore_split_panels(self) -> None:
+        """Restore the normal left-controls, right-display layout after reattachment."""
+        layout = self.layout()
+        if layout is None:
+            return
+
+        layout.addWidget(self.controls_widget, stretch=1)
+        layout.addWidget(self.display_widget, stretch=3)
+        self.controls_widget.show()
+        self.display_widget.show()
+
     def init_ui(self):
         layout = QHBoxLayout()
 
         # LEFT: Controls
-        left_panel = QVBoxLayout()
+        self.controls_widget = QWidget()
+        left_panel = QVBoxLayout(self.controls_widget)
         settings_group = QGroupBox(tr("Settings"))
         form = QFormLayout()
 
@@ -1357,10 +1379,11 @@ class LockInSpectrumFinderWidget(QWidget):
         left_panel.addWidget(ov_group)
 
         left_panel.addStretch()
-        layout.addLayout(left_panel, 1)
+        layout.addWidget(self.controls_widget, stretch=1)
 
         # RIGHT: Plot
-        right_panel = QVBoxLayout()
+        self.display_widget = QWidget()
+        right_panel = QVBoxLayout(self.display_widget)
         self.plot = pg.PlotWidget(title=tr("Lock-in Spectrum"))
         self.plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.plot.setLabel("left", tr("Amplitude"), units=self.module.display_unit)
@@ -1383,7 +1406,7 @@ class LockInSpectrumFinderWidget(QWidget):
         self._update_plot_log_mode()
 
         right_panel.addWidget(self.plot)
-        layout.addLayout(right_panel, 3)
+        layout.addWidget(self.display_widget, stretch=3)
 
         self.setLayout(layout)
 

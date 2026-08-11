@@ -1,0 +1,258 @@
+# Lock-in Spectrum Finder Split State Plan
+
+## Top-Level Overview
+
+### 目標
+
+`LockInSpectrumFinderWidget` を既存の Split Mode（State C）へ対応させる。
+
+State C では、通常表示で左右に並んでいる以下の2領域を、それぞれ独立した
+`IndependentWindow` に分離する。
+
+- コントロール部: Settings / Scan Targets / Target Generators / Audio Sonification の各タブと Status
+- ディスプレイ部: Lock-in Spectrum のプロット
+
+### 既存の共通基盤
+
+以下は Oscilloscope などの対応時に実装済みであり、今回もそのまま利用する。
+
+- `SplittableWidgetInterface`
+- `DetachableWidgetWrapper.split()` / `reattach_all()`
+- Split ボタン、プレースホルダー、2つの `IndependentWindow`
+- 片方の Split ウィンドウを閉じた場合の State A への復帰
+- State B（Detached）から State C へ移る際の内部的な再接続処理
+- Split 関連の翻訳キー
+
+### 状態遷移
+
+```text
+A (Normal) -- Split ------------------------> C (Split)
+A (Normal) -- Detach -----------------------> B (Detached)
+B (Detached) -- wrapper.split() ------------> C (Split)
+C (Split) -- Reattach All / window close ---> A (Normal)
+B (Detached) -- Reattach / window close ----> A (Normal)
+```
+
+### 今回の表示領域マッピング
+
+```text
+State A: LockInSpectrumFinderWidget
+  QHBoxLayout (stretch 1:3)
+    controls_widget
+      tabs
+      status group
+    display_widget
+      plot
+
+State C:
+  Controls window -> controls_widget
+  Display window  -> display_widget
+```
+
+コントロール部には Status も含める。解析の開始・設定変更・進捗確認を1つの
+ウィンドウ内で完結させ、ディスプレイウィンドウをプロット専用にするためである。
+
+### スコープ
+
+- 対象:
+  - `src/gui/widgets/lockin_spectrum_finder.py`
+  - 新規 Split 回帰テスト
+- 原則として変更しない:
+  - `src/gui/widgets/detachable_wrapper.py`
+  - `src/gui/widgets/splittable_interface.py`
+  - `src/assets/lang/*.json`
+- スコープ外:
+  - Lock-in Spectrum Finder への Compact Mode 追加
+  - 解析ロジック、音声コールバック、スキャン条件の意味論変更
+  - Split ウィンドウの共通サイズ・位置保存機能の追加
+
+---
+
+## 設計方針
+
+### レイアウトを2つの再親子化可能な QWidget にする
+
+現状は左右領域が `QVBoxLayout` のままルート `QHBoxLayout` に追加されている。
+`QMainWindow.setCentralWidget()` で個別に移動できるよう、各領域を `QWidget` に
+ラップする。
+
+- 左側の `left_panel` を `self.controls_widget` のレイアウトにする
+- 右側の `right_panel` を `self.display_widget` のレイアウトにする
+- ルートには `addWidget()` で `controls_widget`、`display_widget` の順に追加する
+- 現在の stretch 比率 1:3 を維持する
+- 既存の `tabs`、`lbl_status`、`plot`、`curve`、`scatter` などは再生成しない
+
+### SplittableWidgetInterface を実装する
+
+`LockInSpectrumFinderWidget` に `SplittableWidgetInterface` を追加し、次の3メソッドを
+実装する。
+
+```python
+def get_display_widget(self) -> QWidget:
+    return self.display_widget
+
+def get_control_widget(self) -> QWidget:
+    return self.controls_widget
+
+def restore_split_panels(self) -> None:
+    ...
+```
+
+`restore_split_panels()` は共通ラッパーの `reattach_all()` から呼ばれ、元のルート
+レイアウトへ以下の順番で戻す。
+
+1. `controls_widget`（stretch=1）
+2. `display_widget`（stretch=3）
+
+最後に両ウィジェットを明示的に `show()` し、State A の可視状態を保証する。
+
+### 実行中オブジェクトを維持する
+
+Split / Reattach は既存 QWidget の再親子化だけで行う。次のオブジェクトは作り直さず、
+同一性と接続を維持する。
+
+- `timer`
+- `plot`, `curve`, `scatter`, `sweep_line`（作成済みの場合）
+- module signal と GUI slot の接続
+- 入力フォーム、タブ選択、対象テーブル、Status 表示
+- averaging と現在の sweep/result 表示状態
+
+これにより解析中の State A -> C -> A でも、更新処理やユーザー設定を中断・初期化しない。
+
+---
+
+## Sub-Tasks
+
+### Sub-Task 1: Split インターフェースを追加する
+
+**Status:** `[x] done`
+
+**変更対象:** `src/gui/widgets/lockin_spectrum_finder.py`
+
+**Todo:**
+
+1. `SplittableWidgetInterface` を import する
+2. `LockInSpectrumFinderWidget` の継承クラスへ追加する
+3. `__init__()` で `QWidget` と `SplittableWidgetInterface` を明示的に初期化する
+4. `get_display_widget()` と `get_control_widget()` を実装する
+5. `restore_split_panels()` を実装する
+
+**完了条件:**
+
+- `DetachableWidgetWrapper` が対象を `is_splittable=True` と判定する
+- ラッパーヘッダーに既存の翻訳済み Split ボタンが表示される
+- getter が常に同じパネルインスタンスを返す
+
+### Sub-Task 2: コントロール部と表示部を QWidget 化する
+
+**Status:** `[x] done`
+
+**変更対象:** `src/gui/widgets/lockin_spectrum_finder.py`
+
+**Todo:**
+
+1. `init_ui()` のルート `QHBoxLayout` は維持する
+2. `self.controls_widget = QWidget()` を作成する
+3. 現在の `left_panel` を `QVBoxLayout(self.controls_widget)` に変更する
+4. tabs と Status を従来どおり `controls_widget` 内へ追加する
+5. `self.display_widget = QWidget()` を作成する
+6. 現在の `right_panel` を `QVBoxLayout(self.display_widget)` に変更する
+7. plot を従来どおり `display_widget` 内へ追加する
+8. ルートへ controls=1、display=3 の stretch で追加する
+
+**完了条件:**
+
+- State A の見た目と操作順が変更前と同等である
+- controls と display がそれぞれ単独で `IndependentWindow` の central widget になれる
+- plot や各コントロールの signal 接続が維持される
+
+### Sub-Task 3: Split / Reattach の状態復元を検証する
+
+**Status:** `[x] done`
+
+**新規テスト候補:**
+`tests/logic_verification/gui/test_lockin_spectrum_finder_split.py`
+
+**テストケース:**
+
+1. Interface / getter
+   - `SplittableWidgetInterface` のインスタンスである
+   - getter が `display_widget` / `controls_widget` を返す
+2. State A -> C -> A
+   - Split 後に display と controls の親がそれぞれ対応ウィンドウになる
+   - Reattach 後に両方の親が `LockInSpectrumFinderWidget` に戻る
+   - ルート上の順序が controls -> display に戻る
+   - stretch 1:3 が復元される
+3. 実行状態とオブジェクト同一性
+   - timer、plot、curve、scatter、tabs、Status が Split 前後で同一インスタンスである
+   - Split 中もコントロール変更が module に反映される
+   - Split 中の result/progress 更新が既存 plot と Status に反映される
+4. 片方の Split ウィンドウを閉じる
+   - 自動的に `reattach_all()` が実行される
+   - 2つの Split ウィンドウ参照が `None` になる
+   - State A の親子関係とレイアウトが復元される
+5. State B -> C の回帰
+   - Detach 後に `wrapper.split()` を呼ぶと Detached が解除され Split になる
+   - その後の Reattach All で State A に戻る
+6. テスト後のクリーンアップ
+   - timer を停止する
+   - Split / Detached の場合は先に再接続する
+   - Qt オブジェクトを `deleteLater()` し、イベントを処理する
+
+音声 I/O は開始せず、`MagicMock` の AudioEngine と直接的な GUI signal/slot 呼び出しで
+テストを完結させる。
+
+### Sub-Task 4: 静的検証と回帰確認を行う
+
+**Status:** `[x] done`
+
+**実行コマンド:**
+
+```bash
+./.venv/bin/python -m pytest -q tests/logic_verification/gui/test_lockin_spectrum_finder_split.py
+./.venv/bin/python -m pytest -q tests/logic_verification/instruments/test_lockin_spectrum_finder_sonification.py
+./.venv/bin/ruff check src/gui/widgets/lockin_spectrum_finder.py tests/logic_verification/gui/test_lockin_spectrum_finder_split.py
+./.venv/bin/python scripts/check_ui_size_limits.py
+```
+
+必要に応じて、共通 Split 機構の代表回帰として以下も実行する。
+
+```bash
+./.venv/bin/python -m pytest -q tests/logic_verification/gui/test_spectrum_analyzer_split.py
+```
+
+**完了条件:**
+
+- 新規 Split テストがすべて成功する
+- Lock-in Spectrum Finder の既存ロジックテストが成功する
+- Ruff が成功する
+- UI サイズ上限チェックが `Verification Passed!` になる
+- 新しい GUI 文字列を追加していないため翻訳ファイル変更が発生しない
+
+---
+
+## 想定変更ファイル
+
+```text
+src/gui/widgets/lockin_spectrum_finder.py
+tests/logic_verification/gui/test_lockin_spectrum_finder_split.py  # new
+```
+
+共通 Split 基盤に不具合が見つからない限り、`detachable_wrapper.py` と
+`splittable_interface.py` は変更しない。
+
+## 実装完了時の受け入れ条件
+
+- 通常状態で従来どおり左に controls、右に plot が 1:3 で表示される
+- Split ボタンで controls と plot が2つの独立ウィンドウへ分離される
+- Split 中も解析タイマー、表示更新、設定変更、Status 更新が継続する
+- Reattach All または片方のウィンドウ close で State A に完全復帰する
+- 復帰後にウィジェットの重複、欠落、非表示、signal の二重接続がない
+- 既存の Detach 動作と Lock-in Spectrum Finder の解析ロジックに回帰がない
+
+## 実装結果
+
+- 専用 Split テスト: 4 passed
+- Lock-in Spectrum Finder 既存テスト + 共通 Split 回帰: 8 passed
+- Ruff: passed
+- UI サイズ上限検証: `Verification Passed!`
