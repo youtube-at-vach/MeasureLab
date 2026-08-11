@@ -1,5 +1,6 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock
 
 from src.gui.widgets.distortion_analyzer import (
     DistortionAnalyzer,
@@ -118,3 +119,54 @@ def test_aes17_calibration_button(qtbot, mock_audio_engine):
     }
     widget.on_worker_result(results_normal)
     assert widget.thdn_db_label.styleSheet() == ""
+
+
+@pytest.mark.parametrize(
+    ("imd_index", "sweep_index", "imd_signal_type"),
+    [
+        (2, 1, "smpte"),
+        (3, 2, "ccif"),
+    ],
+)
+def test_sweep_mode_uses_sine_and_restores_realtime_imd(
+    qtbot, mock_audio_engine, imd_index, sweep_index, imd_signal_type
+):
+    analyzer = DistortionAnalyzer(mock_audio_engine)
+    widget = DistortionAnalyzerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    widget.out_mode_combo.setCurrentIndex(imd_index)
+    assert analyzer.signal_type == imd_signal_type
+
+    widget.mode_combo.setCurrentIndex(sweep_index)
+
+    assert widget.out_mode_combo.currentIndex() == 1
+    assert not widget.out_mode_combo.isEnabled()
+    assert analyzer.output_enabled
+    assert analyzer.signal_type == "sine"
+
+    widget.mode_combo.setCurrentIndex(0)
+
+    assert widget.out_mode_combo.isEnabled()
+    assert widget.out_mode_combo.currentIndex() == imd_index
+    assert analyzer.signal_type == imd_signal_type
+
+
+def test_start_sweep_defensively_restores_sine_state(qtbot, mock_audio_engine):
+    analyzer = DistortionAnalyzer(mock_audio_engine)
+    analyzer.start_analysis = MagicMock()
+    widget = DistortionAnalyzerWidget(analyzer)
+    qtbot.addWidget(widget)
+    widget.mode_combo.setCurrentIndex(1)
+
+    analyzer.signal_type = "smpte"
+    analyzer.output_enabled = False
+
+    with patch("src.gui.widgets.distortion_analyzer.SweepWorker") as worker_class:
+        widget.start_sweep(1)
+
+    assert analyzer.signal_type == "sine"
+    assert analyzer.output_enabled
+    analyzer.start_analysis.assert_called_once_with()
+    worker_class.assert_called_once()
+    worker_class.return_value.start.assert_called_once_with()
