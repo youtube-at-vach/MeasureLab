@@ -1838,6 +1838,7 @@
     "The file sample rate ({0} Hz) differs from the engine rate ({1} Hz).\nResampling is required to play correctly.\n\nDo you want to proceed? (This may take a moment for large files)": "Le taux d'échantillonnage du fichier ({0} Hz) diffère du taux du moteur ({1} Hz).\nLe rééchantillonnage est nécessaire pour lire correctement.\n\nVoulez-vous continuer? (Cela peut prendre un moment pour les gros fichiers)",
     "Theme": "Thème",
     "Thermal Limit": "Limite thermique",
+    "Theoretical THD: {0:.4f} %": "THD théorique : {0:.4f} %",
     "This tool plays a test tone on each output channel and checks all input channels for the signal.": "Cet outil joue un ton de test sur chaque canal de sortie et vérifie tous les canaux d'entrée pour le signal.",
     "This will stop the main audio engine temporarily.": "Cela arrêtera temporairement le moteur audio principal.",
     "Thresh": "Seuil",

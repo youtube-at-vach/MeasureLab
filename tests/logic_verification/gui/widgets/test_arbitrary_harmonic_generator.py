@@ -33,9 +33,30 @@ def test_initialization(generator_widget):
     assert widget.freq_spin.value() == 1000.0
     assert widget.amp_spin.value() == pytest.approx(-6.02, abs=1e-2)
     assert widget.phase_spin.value() == 0.0
-    assert widget.spin_max_harm.value() == 20
-    assert widget.table.rowCount() == 19  # Max 20 harmonics means rows for 2nd to 20th
+    assert widget.spin_max_harm.value() == 10
+    assert widget.table.rowCount() == 9  # Max 10 harmonics means rows for 2nd to 10th
     assert not widget.chk_comp_enable.isEnabled()
+
+
+def test_theoretical_thd_display_includes_compensation(generator_widget):
+    widget, module, _engine = generator_widget
+
+    module.gen_amplitude = 0.5
+    module.max_harmonic = 3
+    module.harmonics_amps[1] = 0.03
+    module.harmonics_phases_deg[1] = 0.0
+    module.harmonics_amps[2] = 0.04
+    module.harmonics_phases_deg[2] = 90.0
+
+    # Add an in-phase 0.01 component to the 2nd harmonic.
+    module.compensation_enabled = True
+    module.adjusted_compensation_coeffs[1] = 0.0 + 0.01j
+
+    widget.update_plots()
+
+    # Combined harmonic amplitudes are 0.04 and 0.04, so THD is
+    # sqrt(0.04^2 + 0.04^2) / 0.5 * 100 = 11.3137... %.
+    assert "11.3137 %" in widget.lbl_theoretical_thd.text()
 
 
 def test_fundamental_and_harmonics_signal_generation(generator_widget):

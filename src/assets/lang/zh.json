@@ -1838,6 +1838,7 @@
     "The file sample rate ({0} Hz) differs from the engine rate ({1} Hz).\nResampling is required to play correctly.\n\nDo you want to proceed? (This may take a moment for large files)": "文件采样率 ({0} Hz) 与引擎速率 ({1} Hz) 不同。\n需要重采样才能正确播放。\n\n是否继续? (大文件可能需要一些时间)",
     "Theme": "主题",
     "Thermal Limit": "热噪声限制",
+    "Theoretical THD: {0:.4f} %": "理论 THD：{0:.4f} %",
     "This tool plays a test tone on each output channel and checks all input channels for the signal.": "此工具在每个输出通道播放测试音调，并检查所有输入通道的信号。",
     "This will stop the main audio engine temporarily.": "这将临时停止主音频引擎。",
     "Thresh": "阈值",

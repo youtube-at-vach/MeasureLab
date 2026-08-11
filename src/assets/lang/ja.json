@@ -1838,6 +1838,7 @@
     "The file sample rate ({0} Hz) differs from the engine rate ({1} Hz).\nResampling is required to play correctly.\n\nDo you want to proceed? (This may take a moment for large files)": "ファイルのサンプルレート ({0} Hz) がエンジンのレート ({1} Hz) と異なります。\n正しく再生するにはリサンプリングが必要です。\n\n続行しますか？ (大きなファイルの場合、時間がかかることがあります)",
     "Theme": "テーマ",
     "Thermal Limit": "熱雑音限界",
+    "Theoretical THD: {0:.4f} %": "理論THD: {0:.4f} %",
     "This tool plays a test tone on each output channel and checks all input channels for the signal.": "このツールは各出力チャンネルでテストトーンを再生し、全ての入力チャンネルで信号をチェックします。",
     "This will stop the main audio engine temporarily.": "これによりメインオーディオエンジンが一時的に停止します。",
     "Thresh": "しきい値",
