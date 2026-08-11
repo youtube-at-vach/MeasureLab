@@ -1838,6 +1838,7 @@
     "The file sample rate ({0} Hz) differs from the engine rate ({1} Hz).\nResampling is required to play correctly.\n\nDo you want to proceed? (This may take a moment for large files)": "Частота дискретизации файла ({0} Гц) отличается от частоты движка ({1} Гц).\nДля правильного воспроизведения требуется передискретизация.\n\nПродолжить? (Это может занять время для больших файлов)",
     "Theme": "Тема",
     "Thermal Limit": "Тепловой предел",
+    "Theoretical THD: {0:.4f} %": "Теоретический THD: {0:.4f} %",
     "This tool plays a test tone on each output channel and checks all input channels for the signal.": "Этот инструмент воспроизводит тестовый тон на каждом выходном канале и проверяет все входные каналы на наличие сигнала.",
     "This will stop the main audio engine temporarily.": "Это временно остановит основной аудиодвигатель.",
     "Thresh": "Порог",

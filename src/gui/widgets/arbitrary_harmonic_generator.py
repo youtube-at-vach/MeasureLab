@@ -47,7 +47,7 @@ class ArbitraryHarmonicGenerator(MeasurementModule):
         self.output_enabled = True
 
         # Harmonics
-        self.max_harmonic = 20
+        self.max_harmonic = 10
         self.harmonics_amps = np.zeros(MAX_HARMONICS)  # Linear amplitude (0.0 means OFF)
         self.harmonics_phases_deg = np.zeros(MAX_HARMONICS)
 
@@ -343,13 +343,22 @@ class ArbitraryHarmonicWidget(QWidget):
         tabs = QTabWidget()
 
         # 1. Preview Waveform Plot
+        waveform_tab = QWidget()
+        waveform_layout = QVBoxLayout(waveform_tab)
+        waveform_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.lbl_theoretical_thd = QLabel()
+        self.lbl_theoretical_thd.setAlignment(Qt.AlignmentFlag.AlignRight)
+        waveform_layout.addWidget(self.lbl_theoretical_thd)
+
         self.plot_wave = pg.PlotWidget(title=tr("Synthesized Waveform Preview"))
         self.plot_wave.setLabel("bottom", tr("Time"), units="s")
         self.plot_wave.setLabel("left", tr("Amplitude"))
         self.plot_wave.showGrid(x=True, y=True)
         self.plot_wave.setYRange(-1.5, 1.5)
         self.curve_wave = self.plot_wave.plot(pen="y")
-        tabs.addTab(self.plot_wave, tr("Waveform Preview"))
+        waveform_layout.addWidget(self.plot_wave)
+        tabs.addTab(waveform_tab, tr("Waveform Preview"))
 
         # 2. Spectrum Plot
         self.plot_spec = pg.PlotWidget(title=tr("Synthesized Spectrum Preview"))
@@ -771,6 +780,10 @@ class ArbitraryHarmonicWidget(QWidget):
         sig = sin_coeffs @ np.sin(wt_matrix) + cos_coeffs @ np.cos(wt_matrix)
 
         self.curve_wave.setData(t_preview, sig)
+
+        harmonic_power = np.sum(sin_coeffs[1:] ** 2 + cos_coeffs[1:] ** 2)
+        theoretical_thd = 100.0 * np.sqrt(harmonic_power) / abs(a1)
+        self.lbl_theoretical_thd.setText(tr("Theoretical THD: {0:.4f} %").format(theoretical_thd))
 
         # 2. Spectrum Preview
         heights = np.full(max_h, -140.0)
