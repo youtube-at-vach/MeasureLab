@@ -210,8 +210,8 @@ class MainWindow(QMainWindow):
         last_out = audio_cfg.get("output_device")
         last_out_hostapi = audio_cfg.get("output_hostapi")
 
-        # Default IDs
-        in_id, out_id = 3, 3  # Fallback
+        # Let PortAudio resolve the system defaults unless saved devices can be restored.
+        in_id, out_id = None, None
 
         if last_in or last_out:
             # Find IDs by name
@@ -389,6 +389,9 @@ class MainWindow(QMainWindow):
         self.compact_status_label.setStyleSheet("color: gray;")
         self.compact_status_label.setToolTip(tr("Audio status summary."))
         self._io_error_latched = False
+        self._callback_error_latched = False
+        self._callback_error_count = 0
+        self._last_callback_error = None
         self.io_error_button = QToolButton()
         self.io_error_button.setText(tr("I/O BUFFER ERROR"))
         self.io_error_button.setAutoRaise(True)
@@ -689,25 +692,48 @@ class MainWindow(QMainWindow):
             details.append(tr("Output overflow"))
         if xrun_status.get("output_underflow", False):
             details.append(tr("Output underflow"))
-        self._io_error_latched = bool(details)
+
+        callback_error_count = int(status.get("error_count", 0) or 0)
+        if callback_error_count:
+            self._callback_error_latched = True
+            self._callback_error_count += callback_error_count
+            self._last_callback_error = status.get("last_error") or tr("Error")
+
+        self._io_error_latched = bool(details) or self._callback_error_latched
 
         if self._io_error_latched:
-            count = status.get("latched_xrun_count", 0)
-            self.io_error_button.setToolTip(
-                tr("Audio I/O buffer error: {0}\nOccurrences: {1}\nClick to acknowledge and clear.").format(
-                    ", ".join(details),
-                    count,
+            tooltip_sections = []
+            if details:
+                count = status.get("latched_xrun_count", 0)
+                tooltip_sections.append(
+                    tr("Audio I/O buffer error: {0}\nOccurrences: {1}\nClick to acknowledge and clear.").format(
+                        ", ".join(details),
+                        count,
+                    )
                 )
+            if self._callback_error_latched:
+                tooltip_sections.append(
+                    f"{tr('Error')}: {self._last_callback_error}\n"
+                    f"{tr('Error Count')}: {self._callback_error_count}"
+                )
+
+            self.io_error_button.setText(
+                tr("I/O BUFFER ERROR") if details and not self._callback_error_latched else tr("Error")
             )
+            self.io_error_button.setToolTip("\n\n".join(tooltip_sections))
         else:
+            self.io_error_button.setText(tr("I/O BUFFER ERROR"))
             self.io_error_button.setToolTip("")
 
         self.io_error_button.setVisible(self._io_error_latched)
 
     def _acknowledge_audio_io_error(self):
         self.audio_engine.clear_latched_audio_status()
-        self.logger.info("Audio I/O buffer error status acknowledged and cleared")
+        self.logger.info("Audio error status acknowledged and cleared")
         self._io_error_latched = False
+        self._callback_error_latched = False
+        self._callback_error_count = 0
+        self._last_callback_error = None
         self.io_error_button.hide()
 
     def _module_is_active(self, module) -> bool:

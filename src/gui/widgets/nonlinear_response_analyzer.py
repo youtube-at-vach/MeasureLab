@@ -199,8 +199,10 @@ class NonlinearResponseAnalyzer(MeasurementModule):
         session = PlayRecSession(self.audio_engine, output_data, input_channels)
         session.start()
         expected_duration = len(output_data) / self.audio_engine.sample_rate
-        session.wait(timeout=expected_duration + 3.0)
-        session.stop()
+        try:
+            session.wait(timeout=expected_duration + 3.0)
+        finally:
+            session.stop()
         return session.input_data
 
     def start_measurement(self):

@@ -425,7 +425,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
 
         # --- Left Sidebar ---
         self.sidebar = QWidget()
-        self.sidebar.setFixedWidth(240)
+        self.sidebar.setFixedWidth(220)
         self.control_widget = self.sidebar
         sidebar_layout = QVBoxLayout()
         sidebar_layout.setContentsMargins(10, 10, 10, 10)
