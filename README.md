@@ -43,36 +43,37 @@ For details on each function, please refer to the [**Widget Guide**](docs/widget
 | 10 | **Network Analyzer** | Measures frequency response (gain, phase, group delay) and impulse response. Supports sweep measurement, multiple trace display, RIAA curve comparison, frequency range limiting, sub-sample delay estimation & compensation (fractional delay), and automatic coarse delay calibration. |
 | 11 | **Oscilloscope** | 2-channel waveform display with trigger function, cursor measurement, math waveforms (A+B, A-B), and real-time low-pass/high-pass filtering. |
 | 12 | **Raw Time Series** | 2-channel scroll waveform monitor that holds long-term spans in a ring buffer. |
-| 13 | **Transient Analyzer** | Transient analysis with trigger recording + CWT, flexible analysis band/scale specification. |
-| 14 | **Lock-in Amplifier** | Small signal measurement using Phase Sensitive Detection (PSD). Includes Frequency Response Analysis (FRA) mode, harmonic demodulation (2nd-10th order), and calibration function. |
-| 15 | **Lock-in Harmonic Analyzer** | Ultra-low distortion measurement module utilizing the principle of a lock-in amplifier. It performs multi-parallel IQ detection (up to 200th order) strictly tuned to the fundamental and harmonics to extract minute distortion with high precision. |
-| 16 | **Arbitrary Harmonic Generator** | Synthesizes complex waveforms by precisely defining the fundamental frequency and the amplitude/phase of multiple harmonic components (up to the 50th order). |
-| 17 | **Lock-in Spectrum Finder** | High-resolution spectrum finder using parallel lock-in detection (matrix projection). |
-| 18 | **Impedance Analyzer** | Impedance measurement and OSL (Open/Short/Load) calibration. Supports multiple plot modes (Z/θ, R/X, Q, C/L, Nyquist, Smith Chart), sweep measurement, and calibration interpolation. |
-| 19 | **Frequency Counter** | High-precision frequency and period measurement. Includes Allan variance plot, jitter histogram and statistics, and calibration function. |
-| 20 | **Lock-in Frequency Counter** | High-precision frequency/phase deviation tracking using lock-in detection (PSD). Capable of visualizing minute deviations and evaluating stability. |
-| 21 | **1PPS Monitor** | Monitors 1PPS signal intervals and measures sampling rate deviation with high precision. Supports statistical display of jitter and cumulative drift. |
-| 22 | **Spectrogram** | Time-frequency spectrogram display. Supports frequency range limiting and colormap selection. |
-| 23 | **Boxcar Averager** | Noise reduction and transient response analysis using boxcar averaging. Supports internal pulse/step generation and external reference synchronization (rising/falling edge). |
-| 24 | **Goniometer** | Visualizes stereo signal phase correlation and spatial distribution. Supports Lissajous display, phosphor display mode (afterimage effect), and custom color palette. |
-| 25 | **Noise Profiler** | Detailed noise characteristic analysis tool. Automatic detection and quantification of 1/f noise, hum noise, and white noise. Supports averaging mode, LNA gain correction, thermal noise limit display, and equivalent resistance display. |
-| 26 | **Recorder & Player** | Recording and playback of audio files (WAV/MP3/FLAC/OGG, etc.). Includes resampling, loop playback, and software loopback function. |
-| 27 | **Sound Quality Analyzer** | Numeric and graphical display of sound quality metrics (Integrated/Momentary Loudness, Zwicker Sharpness, Roughness, Tonality). |
-| 28 | **Timecode Monitor & Generator** | LTC timecode encoding/decoding and real-time monitoring. Features frame-based calculation, drop frame rate, multiple FPS display, timezone/offset, and generator with JAM memory. |
-| 29 | **BNIM Meter** | Meter that visualizes "neural map" of ITD/ILD from stereo input and observes binaural localization tendencies. |
-| 30 | **HRTF Player** | Reads and visualizes SOFA files. Supports heatmap display of HRTF metrics (ITD/ILD/high-frequency energy/envelope peak), sound source position specification by click, and real-time rotation playback (spatial localization by convolution) using arbitrary music files. |
-| 31 | **Ultrasound AM Modulator** | Amplitude modulates (AM) audio signal and outputs as ultrasound on a carrier wave (40kHz). Can be used for parametric speaker experiments, etc. |
-| 32 | **Detachable Wrapper** | UI utility that allows detaching and reconnecting any widget as an independent window. |
-| 33 | **Stereo Alignment Monitor** | Analyzes stereo consistency (alignment). Real-time monitoring of L/R balance, frequency response match, center focus (M/S ratio), and phase issues. |
-| 34 | **Spatial Binaural Mixer** | Offline high-quality HRTF multitrack spatial renderer. Supports loading multiple audio tracks, setting position (azimuth/elevation), and rendering with SOFA files. |
-| 35 | **Waveform Loop Player** | Loads an audio file, visualizes the waveform, and loops a selected region. Useful for repeated observation of transient responses or analyzing specific phrases. |
-| 36 | **Settings** | Device settings, calibration, theme selection, language switching, etc. |
-| 37 | **Plot Comparer** | Overlay and compare multiple plot traces from different measurements. Supports gain offset, axis shift, normalization (align peaks), dual Y-axis mapping (Y1/Y2), log scaling, and interactive cursor readout. |
-| 38 | **Transmission Analyzer** | Analyzes transmission paths (USB, Bluetooth, Analog) using multi-pattern PRBS sequences. Performs digital integrity diagnostics (bit-perfect test, bit errors, DSP detection) and analog path analysis (EVM, impulse/frequency response, propagation delay, clock jitter). |
-| 39 | **Nonlinear Analyzer** | Extracts true linear response and 2nd-5th harmonics using SSS (Synchronized Swept Sine) and Parallel Hammerstein modeling. |
-| 40 | **Response Viewer** | Visualizes, overlays, and analyzes linear and harmonic response curves (up to 5th order) extracted by the Nonlinear Analyzer. |
-| 41 | **Feedforward Compensator** | Compiles and applies Hammerstein-based digital pre-distortion/compensation in both offline (WAV file) and online (real-time I/O) modes to suppress harmonic distortion. |
-| 42 | **Lock-in Modeler** | Real-time frequency response and distortion sweep using SSS (Synchronized Swept Sine) and digital Lock-in. Extracts fundamental and harmonic responses, and estimates parallel Hammerstein models. |
+| 13 | **Event Detector** | Records rare threshold events with statistics, histograms, time-binned rate trends, CSV/JSON export, and latched measurement-quality warnings. |
+| 14 | **Transient Analyzer** | Transient analysis with trigger recording + CWT, flexible analysis band/scale specification. |
+| 15 | **Lock-in Amplifier** | Small signal measurement using Phase Sensitive Detection (PSD). Includes Frequency Response Analysis (FRA) mode, harmonic demodulation (2nd-10th order), and calibration function. |
+| 16 | **Lock-in Harmonic Analyzer** | Ultra-low distortion measurement module utilizing the principle of a lock-in amplifier. It performs multi-parallel IQ detection (up to 200th order) strictly tuned to the fundamental and harmonics to extract minute distortion with high precision. |
+| 17 | **Arbitrary Harmonic Generator** | Synthesizes complex waveforms by precisely defining the fundamental frequency and the amplitude/phase of multiple harmonic components (up to the 50th order). |
+| 18 | **Lock-in Spectrum Finder** | High-resolution spectrum finder using parallel lock-in detection (matrix projection). |
+| 19 | **Impedance Analyzer** | Impedance measurement and OSL (Open/Short/Load) calibration. Supports multiple plot modes (Z/θ, R/X, Q, C/L, Nyquist, Smith Chart), sweep measurement, and calibration interpolation. |
+| 20 | **Frequency Counter** | High-precision frequency and period measurement. Includes Allan variance plot, jitter histogram and statistics, and calibration function. |
+| 21 | **Lock-in Frequency Counter** | High-precision frequency/phase deviation tracking using lock-in detection (PSD). Capable of visualizing minute deviations and evaluating stability. |
+| 22 | **1PPS Monitor** | Monitors 1PPS signal intervals and measures sampling rate deviation with high precision. Supports statistical display of jitter and cumulative drift. |
+| 23 | **Spectrogram** | Time-frequency spectrogram display. Supports frequency range limiting and colormap selection. |
+| 24 | **Boxcar Averager** | Noise reduction and transient response analysis using boxcar averaging. Supports internal pulse/step generation and external reference synchronization (rising/falling edge). |
+| 25 | **Goniometer** | Visualizes stereo signal phase correlation and spatial distribution. Supports Lissajous display, phosphor display mode (afterimage effect), and custom color palette. |
+| 26 | **Noise Profiler** | Detailed noise characteristic analysis tool. Automatic detection and quantification of 1/f noise, hum noise, and white noise. Supports averaging mode, LNA gain correction, thermal noise limit display, and equivalent resistance display. |
+| 27 | **Recorder & Player** | Recording and playback of audio files (WAV/MP3/FLAC/OGG, etc.). Includes resampling, loop playback, and software loopback function. |
+| 28 | **Sound Quality Analyzer** | Numeric and graphical display of sound quality metrics (Integrated/Momentary Loudness, Zwicker Sharpness, Roughness, Tonality). |
+| 29 | **Timecode Monitor & Generator** | LTC timecode encoding/decoding and real-time monitoring. Features frame-based calculation, drop frame rate, multiple FPS display, timezone/offset, and generator with JAM memory. |
+| 30 | **BNIM Meter** | Meter that visualizes "neural map" of ITD/ILD from stereo input and observes binaural localization tendencies. |
+| 31 | **HRTF Player** | Reads and visualizes SOFA files. Supports heatmap display of HRTF metrics (ITD/ILD/high-frequency energy/envelope peak), sound source position specification by click, and real-time rotation playback (spatial localization by convolution) using arbitrary music files. |
+| 32 | **Ultrasound AM Modulator** | Amplitude modulates (AM) audio signal and outputs as ultrasound on a carrier wave (40kHz). Can be used for parametric speaker experiments, etc. |
+| 33 | **Detachable Wrapper** | UI utility that allows detaching and reconnecting any widget as an independent window. |
+| 34 | **Stereo Alignment Monitor** | Analyzes stereo consistency (alignment). Real-time monitoring of L/R balance, frequency response match, center focus (M/S ratio), and phase issues. |
+| 35 | **Spatial Binaural Mixer** | Offline high-quality HRTF multitrack spatial renderer. Supports loading multiple audio tracks, setting position (azimuth/elevation), and rendering with SOFA files. |
+| 36 | **Waveform Loop Player** | Loads an audio file, visualizes the waveform, and loops a selected region. Useful for repeated observation of transient responses or analyzing specific phrases. |
+| 37 | **Settings** | Device settings, calibration, theme selection, language switching, etc. |
+| 38 | **Plot Comparer** | Overlay and compare multiple plot traces from different measurements. Supports gain offset, axis shift, normalization (align peaks), dual Y-axis mapping (Y1/Y2), log scaling, and interactive cursor readout. |
+| 39 | **Transmission Analyzer** | Analyzes transmission paths (USB, Bluetooth, Analog) using multi-pattern PRBS sequences. Performs digital integrity diagnostics (bit-perfect test, bit errors, DSP detection) and analog path analysis (EVM, impulse/frequency response, propagation delay, clock jitter). |
+| 40 | **Nonlinear Analyzer** | Extracts true linear response and 2nd-5th harmonics using SSS (Synchronized Swept Sine) and Parallel Hammerstein modeling. |
+| 41 | **Response Viewer** | Visualizes, overlays, and analyzes linear and harmonic response curves (up to 5th order) extracted by the Nonlinear Analyzer. |
+| 42 | **Feedforward Compensator** | Compiles and applies Hammerstein-based digital pre-distortion/compensation in both offline (WAV file) and online (real-time I/O) modes to suppress harmonic distortion. |
+| 43 | **Lock-in Modeler** | Real-time frequency response and distortion sweep using SSS (Synchronized Swept Sine) and digital Lock-in. Extracts fundamental and harmonic responses, and estimates parallel Hammerstein models. |
 
 ### 🌍 Localization
 

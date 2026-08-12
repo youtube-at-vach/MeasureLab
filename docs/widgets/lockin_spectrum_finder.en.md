@@ -107,6 +107,10 @@ The **Audio Sonification** tab provides an audio output corresponding to detecte
 * **Resolution (RBW & Step)**
     * Displayed only in Zoom mode. You can check the actual Resolution Bandwidth (RBW) and the frequency step between points in real-time (in Hz), calculated based on the current settings (sample rate, buffer size, window function, and basis points).
 
+### Common Features
+
+* **Split Mode**: You can split the control panel and spectrum plot into separate windows. This is useful for detailed spectrum analysis in dual-monitor setups.
+
 ## How to Read the Graph
 
 * **Horizontal Axis (Frequency)**: Represents the frequency (Hz).

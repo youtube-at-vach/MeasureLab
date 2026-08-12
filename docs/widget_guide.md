@@ -26,6 +26,7 @@ MeasureLab に搭載されている多数のウィジェットを、用途ごと
 | **音の大きさ(LUFS)を管理したい** | [LUFS Meter](widgets/lufs_meter.md) |
 | **周囲の騒音レベル(SPL)を知りたい** | [Sound Level Meter](widgets/sound_level_meter.md) |
 | **ノイズの種類(1/f等)を分析したい** | [Noise Profiler](widgets/noise_profiler.md) |
+| **ポップコーンノイズなど、まれな異常の発生回数を測りたい** | [Event Detector](widgets/event_detector.md) |
 | **左右の音響特性のズレを精密に整えたい** | [Stereo Alignment Monitor](widgets/stereo_alignment_monitor.md) |
 | **異なる測定から取得した複数のプロットを重ね合わせて比較したい** | [Plot Comparer](widgets/plot_comparer.md) |
 | **デジタル/アナログ伝送路の品質、遅延、完全性を総合的に評価したい** | [Transmission Analyzer (試験的)](widgets/transmission_analyzer.md) |
@@ -144,6 +145,9 @@ MeasureLab に搭載されている多数のウィジェットを、用途ごと
 
 - **[Raw Time Series](widgets/raw_time_series.md)**
     - 長い時間の波形を記録し、スクロールして確認できるチャートレコーダーのようなツールです。
+
+- **[Event Detector](widgets/event_detector.md)**
+    - 閾値を横切るまれなイベントを連続監視し、発生回数と1分あたりの発生レートを測定します。
 
 - **[Transient Analyzer](widgets/transient_analyzer.md)**
     - インパルス応答などの過渡現象をトリガーして解析します。ウェーブレット変換表示も可能です。
