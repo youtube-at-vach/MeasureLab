@@ -101,6 +101,7 @@ plugins:
             LUFSメーター: LUFS Meter
             音質解析: Sound Quality Analyzer
             ノイズプロファイラー: Noise Profiler
+            イベント検出器: Event Detector
             過渡解析: Transient Analyzer
             BNIMメーター: BNIM Meter
             デバイス・システム解析: Device & System Analysis
@@ -187,6 +188,7 @@ nav:
           - LUFSメーター: widgets/lufs_meter.md
           - 音質解析: widgets/sound_quality_analyzer.md
           - ノイズプロファイラー: widgets/noise_profiler.md
+          - イベント検出器: widgets/event_detector.md
           - 過渡解析: widgets/transient_analyzer.md
           - BNIMメーター: widgets/bnim_meter.md
       - デバイス・システム解析:

@@ -11,6 +11,7 @@ if False:
     from src.gui.widgets.bnim_meter import BNIMMeter
     from src.gui.widgets.boxcar_averager import BoxcarAverager
     from src.gui.widgets.distortion_analyzer import DistortionAnalyzer
+    from src.gui.widgets.event_detector import EventDetector
     from src.gui.widgets.frequency_counter import FrequencyCounter
     from src.gui.widgets.goniometer import Goniometer
     from src.gui.widgets.hrtf_player import HRTFPlayer
@@ -53,6 +54,7 @@ if False:
         BNIMMeter,
         BoxcarAverager,
         DistortionAnalyzer,
+        EventDetector,
         FrequencyCounter,
         Goniometer,
         HRTFPlayer,

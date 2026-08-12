@@ -26,6 +26,7 @@ Checklist to find the best tool for "what you want to do" quickly.
 | **Manage loudness (LUFS)** | [LUFS Meter](widgets/lufs_meter.en.md) |
 | **Know ambient noise level (SPL)** | [Sound Level Meter](widgets/sound_level_meter.en.md) |
 | **Analyze noise types (1/f, etc.)** | [Noise Profiler](widgets/noise_profiler.en.md) |
+| **Count rare anomalies such as popcorn noise** | [Event Detector](widgets/event_detector.en.md) |
 | **Precisely align L/R acoustic characteristics** | [Stereo Alignment Monitor](widgets/stereo_alignment_monitor.en.md) |
 | **Overlay and compare multiple plot traces from different measurements** | [Plot Comparer](widgets/plot_comparer.en.md) |
 | **Evaluate digital/analog transmission path quality, latency, and integrity** | [Transmission Analyzer (Experimental)](widgets/transmission_analyzer.en.md) |
@@ -138,6 +139,9 @@ Observes waveform shapes and transient changes on the time axis.
 
 - **[Raw Time Series](widgets/raw_time_series.en.md)**
     - A tool like a chart recorder that records waveforms over a long period and allows you to check them by scrolling.
+
+- **[Event Detector](widgets/event_detector.en.md)**
+    - Continuously monitors rare threshold events and measures their count and rate per minute.
 
 - **[Transient Analyzer](widgets/transient_analyzer.en.md)**
     - Triggers and analyzes transient phenomena such as impulse responses. Wavelet transform display is also possible.

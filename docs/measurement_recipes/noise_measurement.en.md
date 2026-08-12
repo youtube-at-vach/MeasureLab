@@ -13,6 +13,7 @@ The widget to use depends on what kind of noise you want to see.
 | **View noise spectrum** | [Spectrum Analyzer](../widgets/spectrum_analyzer.en.md) | Confirm at which frequencies and how much noise is included (distribution). This is the most common measurement. |
 | **Analyze noise types** | [Noise Profiler](../widgets/noise_profiler.en.md) | Decompose into components such as "hiss (white noise)" and "hum," and quantify their respective contributions. |
 | **View time-series changes in noise** | [Raw Time Series](../widgets/raw_time_series.en.md) | Monitor changes over time, such as "occasional pop noise" or "fluctuation of DC offset." |
+| **Count rare abnormal noise** | [Event Detector](../widgets/event_detector.en.md) | Measure the count and rate of popcorn-noise or RTN events. |
 
 ---
 
@@ -83,6 +84,27 @@ Automatically decomposes noise into three elements: "white noise," "1/f noise," 
 ### Precautions
 
 * **Convergence Time**: Until averaging progresses, the numbers may vary. Wait for the count value to be reached (until the progress bar is full) before reading the value.
+
+---
+
+## Count Rare Abnormal Noise
+
+Compare popcorn noise or RTN from JFETs and operational amplifiers as an event count over a fixed measurement time.
+
+### Measurement Procedure
+
+1. Use **Raw Time Series** or **Oscilloscope** to estimate normal-noise and abnormal-event amplitudes.
+2. Launch **Event Detector** and select the input channel.
+3. Set **Threshold** above normal noise but below the abnormal-event amplitude.
+4. Configure **Polarity**, **Hysteresis**, and **Holdoff** as required.
+5. Press **Start** and measure every component for the same duration.
+6. Compare **Event Count** and **Event Rate**.
+
+### Comparison Precautions
+
+* Keep input gain, sample rate, Threshold, Hysteresis, Holdoff, and measurement time identical.
+* Keeping DUT temperature and warm-up time consistent improves reproducibility.
+* Do not use a result showing `CLIPPING` or `I/O BUFFER ERROR` for comparison.
 
 ---
 
