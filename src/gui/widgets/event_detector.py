@@ -63,6 +63,8 @@ logger = logging.getLogger(__name__)
 class EventDetector(MeasurementModule):
     """AudioEngine adapter for the sample-accurate event detector core."""
 
+    THRESHOLD_UNITS = ("FS", "mV", "V")
+
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
         self.is_running = False
@@ -71,6 +73,7 @@ class EventDetector(MeasurementModule):
 
         self.input_channel = 0
         self.threshold = 0.01
+        self.threshold_unit = "FS"
         self.polarity = EventPolarity.BOTH
         self.hysteresis = 0.001
         self.holdoff_ms = 10.0
@@ -160,9 +163,12 @@ class EventDetector(MeasurementModule):
     def _utc_now() -> str:
         return datetime.now(timezone.utc).isoformat(timespec="milliseconds")
 
-    def _capture_run_metadata(self, config: DetectorConfig) -> None:
+    def get_input_calibration_state(self) -> tuple[bool, float]:
+        """Return whether input volts are calibrated and the Vpeak/FS scale."""
         calibration = getattr(self.audio_engine, "calibration", None)
-        calibrated_flag = getattr(calibration, "input_sensitivity_is_calibrated", False)
+        calibrated_flag = getattr(calibration, "input_sensitivity_is_calibrated", None)
+        if not isinstance(calibrated_flag, (bool, np.bool_)):
+            calibrated_flag = getattr(calibration, "is_calibrated", False)
         is_calibrated = isinstance(calibrated_flag, (bool, np.bool_)) and bool(calibrated_flag)
         try:
             sensitivity = float(getattr(calibration, "input_sensitivity", 1.0))
@@ -172,6 +178,41 @@ class EventDetector(MeasurementModule):
         if not math.isfinite(sensitivity) or sensitivity <= 0:
             sensitivity = 1.0
             is_calibrated = False
+        return is_calibrated, sensitivity
+
+    def get_threshold_display_scale(self, unit: str, *, sensitivity: float | None = None) -> float:
+        """Return the display-unit value corresponding to one peak FS."""
+        if unit == "FS":
+            return 1.0
+        if unit not in self.THRESHOLD_UNITS:
+            raise ValueError(f"Unsupported threshold unit: {unit!r}")
+
+        is_calibrated, current_sensitivity = self.get_input_calibration_state()
+        if sensitivity is None:
+            if not is_calibrated:
+                raise ValueError("Input calibration is required for voltage thresholds")
+            sensitivity = current_sensitivity
+        if not math.isfinite(float(sensitivity)) or float(sensitivity) <= 0:
+            raise ValueError("Invalid input sensitivity")
+        return float(sensitivity) * (1000.0 if unit == "mV" else 1.0)
+
+    def threshold_to_display(self, value_fs: float, unit: str, *, sensitivity: float | None = None) -> float:
+        """Convert a peak full-scale threshold to the selected display unit."""
+        return float(value_fs) * self.get_threshold_display_scale(unit, sensitivity=sensitivity)
+
+    def threshold_from_display(self, value: float, unit: str, *, sensitivity: float | None = None) -> float:
+        """Convert a threshold display value to peak full-scale units."""
+        return float(value) / self.get_threshold_display_scale(unit, sensitivity=sensitivity)
+
+    def _capture_run_metadata(self, config: DetectorConfig) -> None:
+        is_calibrated, sensitivity = self.get_input_calibration_state()
+        threshold_unit = self.threshold_unit
+        if threshold_unit not in self.THRESHOLD_UNITS or (threshold_unit != "FS" and not is_calibrated):
+            threshold_unit = "FS"
+        threshold_scale = self.get_threshold_display_scale(
+            threshold_unit,
+            sensitivity=sensitivity if threshold_unit != "FS" else None,
+        )
 
         input_device = getattr(self.audio_engine, "input_device", None)
         if not isinstance(input_device, (str, int, float, bool)) and input_device is not None:
@@ -189,6 +230,10 @@ class EventDetector(MeasurementModule):
             "threshold_fs_peak": float(config.threshold),
             "hysteresis_fs_peak": float(config.hysteresis),
             "release_level_fs_peak": float(config.threshold - config.hysteresis),
+            "threshold_display_unit": threshold_unit,
+            "threshold_display_value": float(config.threshold * threshold_scale),
+            "hysteresis_display_value": float(config.hysteresis * threshold_scale),
+            "release_level_display_value": float((config.threshold - config.hysteresis) * threshold_scale),
             "polarity": config.polarity.value,
             "holdoff_seconds": float(config.holdoff_seconds),
             "clip_level_fs_peak": float(config.clip_level),
@@ -643,7 +688,12 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             value=self.module.threshold,
         )
         self.spin_threshold.valueChanged.connect(self._on_threshold_changed)
-        detection_form.addRow(tr("Threshold:"), self.spin_threshold)
+        self.combo_threshold_unit = QComboBox()
+        threshold_row = QHBoxLayout()
+        threshold_row.setContentsMargins(0, 0, 0, 0)
+        threshold_row.addWidget(self.spin_threshold, stretch=1)
+        threshold_row.addWidget(self.combo_threshold_unit)
+        detection_form.addRow(tr("Threshold:"), threshold_row)
 
         self.combo_polarity = QComboBox()
         self.combo_polarity.addItem(tr("Positive"), EventPolarity.POSITIVE)
@@ -662,6 +712,9 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         )
         self.spin_hysteresis.valueChanged.connect(self._on_hysteresis_changed)
         detection_form.addRow(tr("Hysteresis:"), self.spin_hysteresis)
+
+        self._threshold_calibration_state: tuple[bool, float] | None = None
+        self.combo_threshold_unit.currentIndexChanged.connect(self._on_threshold_unit_changed)
 
         self.spin_holdoff = QDoubleSpinBox()
         self.spin_holdoff.setDecimals(3)
@@ -690,6 +743,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self._settings_controls = [
             self.combo_channel,
             self.spin_threshold,
+            self.combo_threshold_unit,
             self.combo_polarity,
             self.spin_hysteresis,
             self.spin_holdoff,
@@ -698,6 +752,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self._rate_view_run_id: str | None = None
         self._rate_view_bin_seconds: float | None = None
         self._rate_view_y_max = 1.0
+        self._refresh_threshold_unit_options(force=True)
         self._update_release_label()
 
     @staticmethod
@@ -706,13 +761,79 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         spin.setDecimals(9)
         spin.setRange(minimum, maximum)
         spin.setSingleStep(0.001)
-        spin.setSuffix(" FS")
         spin.setValue(value)
         spin.setKeyboardTracking(False)
         return spin
 
+    def _current_threshold_unit(self) -> str:
+        unit = self.combo_threshold_unit.currentData()
+        return str(unit) if unit in self.module.THRESHOLD_UNITS else "FS"
+
+    def _configure_threshold_spins(self) -> None:
+        unit = self._current_threshold_unit()
+        scale = self.module.get_threshold_display_scale(unit)
+        decimals = 9
+        display_resolution = 10.0**-decimals
+        minimum = max(scale * 1e-9, display_resolution)
+        maximum = scale - max(scale * 1e-9, display_resolution)
+        threshold_value = self.module.threshold_to_display(self.module.threshold, unit)
+        hysteresis_value = self.module.threshold_to_display(self.module.hysteresis, unit)
+        hysteresis_maximum = max(
+            0.0,
+            threshold_value - max(scale * 1e-9, display_resolution),
+        )
+
+        self.spin_threshold.blockSignals(True)
+        self.spin_hysteresis.blockSignals(True)
+        try:
+            self.spin_threshold.setDecimals(decimals)
+            self.spin_threshold.setRange(minimum, maximum)
+            self.spin_threshold.setSingleStep(max(scale * 0.001, display_resolution))
+            self.spin_threshold.setSuffix("")
+            self.spin_threshold.setValue(threshold_value)
+
+            self.spin_hysteresis.setDecimals(decimals)
+            self.spin_hysteresis.setRange(0.0, hysteresis_maximum)
+            self.spin_hysteresis.setSingleStep(max(scale * 0.001, display_resolution))
+            self.spin_hysteresis.setSuffix(f" {unit}")
+            self.spin_hysteresis.setValue(min(hysteresis_value, hysteresis_maximum))
+        finally:
+            self.spin_threshold.blockSignals(False)
+            self.spin_hysteresis.blockSignals(False)
+
+    def _refresh_threshold_unit_options(self, *, force: bool = False) -> None:
+        calibration_state = self.module.get_input_calibration_state()
+        if not force and calibration_state == self._threshold_calibration_state:
+            return
+
+        is_calibrated, _sensitivity = calibration_state
+        available_units = ["FS", "mV", "V"] if is_calibrated else ["FS"]
+        selected_unit = self.module.threshold_unit
+        if selected_unit not in available_units:
+            selected_unit = "FS"
+
+        self.combo_threshold_unit.blockSignals(True)
+        try:
+            self.combo_threshold_unit.clear()
+            for unit in available_units:
+                self.combo_threshold_unit.addItem(unit, unit)
+            self.combo_threshold_unit.setCurrentIndex(self.combo_threshold_unit.findData(selected_unit))
+        finally:
+            self.combo_threshold_unit.blockSignals(False)
+
+        self.module.threshold_unit = selected_unit
+        self._threshold_calibration_state = calibration_state
+        self._configure_threshold_spins()
+
+    def _on_threshold_unit_changed(self) -> None:
+        self.module.threshold_unit = self._current_threshold_unit()
+        self._configure_threshold_spins()
+        self._update_release_label()
+        self._update_condition_label()
+
     def _on_start_toggled(self, checked: bool) -> None:
         if checked:
+            self._refresh_threshold_unit_options()
             try:
                 self.module.start_analysis()
             except Exception as exc:
@@ -744,11 +865,16 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self._update_condition_label()
 
     def _on_threshold_changed(self, value: float) -> None:
-        self.module.threshold = float(value)
-        maximum = max(0.0, float(value) - 1e-9)
-        self.spin_hysteresis.setMaximum(maximum)
-        if self.module.hysteresis > maximum:
-            self.module.hysteresis = maximum
+        unit = self._current_threshold_unit()
+        self.module.threshold = self.module.threshold_from_display(value, unit)
+        maximum_fs = max(0.0, self.module.threshold - 1e-9)
+        maximum_display = self.module.threshold_to_display(maximum_fs, unit)
+        self.spin_hysteresis.setMaximum(maximum_display)
+        if self.module.hysteresis > maximum_fs:
+            self.module.hysteresis = maximum_fs
+            self.spin_hysteresis.blockSignals(True)
+            self.spin_hysteresis.setValue(maximum_display)
+            self.spin_hysteresis.blockSignals(False)
         self._update_release_label()
         self._update_condition_label()
 
@@ -758,7 +884,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self._update_condition_label()
 
     def _on_hysteresis_changed(self, value: float) -> None:
-        self.module.hysteresis = float(value)
+        self.module.hysteresis = self.module.threshold_from_display(value, self._current_threshold_unit())
         self._update_release_label()
 
     def _on_holdoff_changed(self, value: float) -> None:
@@ -766,13 +892,15 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
 
     def _update_release_label(self) -> None:
         release = max(0.0, float(self.module.threshold) - float(self.module.hysteresis))
+        unit = self._current_threshold_unit()
+        release_display = self.module.threshold_to_display(release, unit)
         polarity = EventPolarity(self.module.polarity)
         if polarity == EventPolarity.POSITIVE:
-            text = tr("Release level: +{0:.9g} FS").format(release)
+            text = tr("Release level: +{0:.9g} {1}").format(release_display, unit)
         elif polarity == EventPolarity.NEGATIVE:
-            text = tr("Release level: -{0:.9g} FS").format(release)
+            text = tr("Release level: -{0:.9g} {1}").format(release_display, unit)
         else:
-            text = tr("Release levels: ±{0:.9g} FS").format(release)
+            text = tr("Release levels: ±{0:.9g} {1}").format(release_display, unit)
         self.lbl_release.setText(text)
 
     def _set_settings_enabled(self, enabled: bool) -> None:
@@ -784,12 +912,14 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         if metadata is None:
             channel = tr("CH1") if self.module.input_channel == 0 else tr("CH2")
             sample_rate = float(self.module.audio_engine.sample_rate)
-            threshold = float(self.module.threshold)
+            threshold_unit = self._current_threshold_unit()
+            threshold = self.module.threshold_to_display(self.module.threshold, threshold_unit)
             polarity = EventPolarity(self.module.polarity)
         else:
             channel = str(metadata["input_channel"])
             sample_rate = float(metadata["sample_rate_hz"])
-            threshold = float(metadata["threshold_fs_peak"])
+            threshold_unit = str(metadata.get("threshold_display_unit", "FS"))
+            threshold = float(metadata.get("threshold_display_value", metadata["threshold_fs_peak"]))
             polarity = EventPolarity(str(metadata["polarity"]))
 
         polarity_symbol = {
@@ -798,7 +928,10 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             EventPolarity.BOTH: "±",
         }[polarity]
         rate_text = tr("{0:g} kHz").format(sample_rate / 1000.0)
-        threshold_text = tr("{0} FS").format(f"{polarity_symbol}{threshold:.9g}")
+        if threshold_unit == "FS":
+            threshold_text = tr("{0} FS").format(f"{polarity_symbol}{threshold:.9g}")
+        else:
+            threshold_text = f"{polarity_symbol}{threshold:.9g} {threshold_unit}"
         self.lbl_conditions.setText(f"{channel}  •  {threshold_text}  •  {rate_text}")
 
     @staticmethod
@@ -998,6 +1131,8 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         return tr("{0:,.1f} events/min").format(rate)
 
     def _update_results(self) -> None:
+        if not self.module.is_running:
+            self._refresh_threshold_unit_options()
         snapshot = self.module.get_snapshot()
         self.lbl_count.setText(f"{snapshot.event_count:,}")
         self.lbl_rate.setText(

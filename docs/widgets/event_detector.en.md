@@ -23,7 +23,7 @@ Select CH1 or CH2 as the detector input. If the selected channel is not present 
 
 ### Threshold
 
-Sets the event-start threshold as a positive full-scale (FS) peak value below the clipping level.
+Sets the event-start threshold in `FS`, `mV`, or `V`. The `mV` and `V` options are available only with valid input calibration and represent peak voltage for the instantaneous input samples. The detector converts the selected value to a full-scale (FS) peak value internally, and the maximum setting remains below the clipping level.
 
 ### Polarity
 
@@ -33,7 +33,7 @@ Sets the event-start threshold as a positive full-scale (FS) peak value below th
 
 ### Hysteresis
 
-Sets the return margin that prevents small fluctuations near the threshold from becoming multiple events.
+Sets the return margin that prevents small fluctuations near the threshold from becoming multiple events. It uses the same unit selected for Threshold.
 
 For positive polarity, an event starts when the signal crosses `+Threshold` and ends when it returns to or below `Threshold - Hysteresis`. Negative polarity uses the sign-reversed conditions. With both polarities selected, the event ends when the signal magnitude returns to or below the release level.
 

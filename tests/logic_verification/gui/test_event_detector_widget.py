@@ -15,10 +15,12 @@ from src.gui.widgets.event_detector import EventDetector, EventDetectorWidget
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 
 
-def make_module(sample_rate=1000):
+def make_module(sample_rate=1000, *, input_sensitivity=1.0, input_calibrated=False):
     callbacks = []
     engine = MagicMock()
     engine.sample_rate = sample_rate
+    engine.calibration.input_sensitivity = input_sensitivity
+    engine.calibration.input_sensitivity_is_calibrated = input_calibrated
 
     def register(callback):
         callbacks.append(callback)
@@ -116,6 +118,83 @@ def test_widget_start_reset_stop_and_result_refresh(qtbot):
     assert not widget.timer.isActive()
     assert widget.spin_threshold.isEnabled()
     assert widget.lbl_state.text() == "STOPPED"
+
+
+def test_widget_threshold_units_use_input_calibration_and_preserve_fs_values(qtbot):
+    module, _callbacks = make_module(input_sensitivity=2.0, input_calibrated=True)
+    widget = EventDetectorWidget(module)
+    qtbot.addWidget(widget)
+
+    assert [widget.combo_threshold_unit.itemData(i) for i in range(widget.combo_threshold_unit.count())] == [
+        "FS",
+        "mV",
+        "V",
+    ]
+
+    widget.combo_threshold_unit.setCurrentIndex(widget.combo_threshold_unit.findData("V"))
+    assert widget.spin_threshold.value() == pytest.approx(0.02)
+    assert widget.spin_hysteresis.value() == pytest.approx(0.002)
+    assert widget.spin_hysteresis.suffix() == " V"
+
+    widget.spin_threshold.setValue(1.0)
+    widget.spin_hysteresis.setValue(0.2)
+    assert module.threshold == pytest.approx(0.5)
+    assert module.hysteresis == pytest.approx(0.1)
+    assert widget.lbl_conditions.text() == "CH1  •  ±1 V  •  1 kHz"
+    assert widget.lbl_release.text() == "Release levels: ±0.8 V"
+
+    widget.combo_threshold_unit.setCurrentIndex(widget.combo_threshold_unit.findData("mV"))
+    assert widget.spin_threshold.value() == pytest.approx(1000.0)
+    assert widget.spin_hysteresis.value() == pytest.approx(200.0)
+    assert module.threshold == pytest.approx(0.5)
+    assert module.hysteresis == pytest.approx(0.1)
+
+
+def test_widget_hides_voltage_threshold_units_without_input_calibration(qtbot):
+    module, _callbacks = make_module(input_sensitivity=2.0, input_calibrated=False)
+    widget = EventDetectorWidget(module)
+    qtbot.addWidget(widget)
+
+    assert [widget.combo_threshold_unit.itemData(i) for i in range(widget.combo_threshold_unit.count())] == ["FS"]
+
+    module.audio_engine.calibration.input_sensitivity_is_calibrated = True
+    widget._update_results()
+    assert [widget.combo_threshold_unit.itemData(i) for i in range(widget.combo_threshold_unit.count())] == [
+        "FS",
+        "mV",
+        "V",
+    ]
+
+
+def test_voltage_threshold_is_normalized_to_fs_and_frozen_in_run_metadata(qtbot):
+    module, callbacks = make_module(input_sensitivity=2.0, input_calibrated=True)
+    widget = EventDetectorWidget(module)
+    qtbot.addWidget(widget)
+    widget.combo_threshold_unit.setCurrentIndex(widget.combo_threshold_unit.findData("mV"))
+    widget.spin_threshold.setValue(1000.0)
+    widget.spin_hysteresis.setValue(200.0)
+    widget.spin_holdoff.setValue(0.0)
+    widget.btn_start.click()
+
+    callbacks[0](
+        np.array([[0.0, 0.0], [0.7, 0.0], [0.3, 0.0]]),
+        np.zeros((3, 2)),
+        3,
+        None,
+        False,
+    )
+    metadata = module.get_run_metadata()
+    assert metadata is not None
+    assert metadata["threshold_fs_peak"] == pytest.approx(0.5)
+    assert metadata["hysteresis_fs_peak"] == pytest.approx(0.1)
+    assert metadata["threshold_display_unit"] == "mV"
+    assert metadata["threshold_display_value"] == pytest.approx(1000.0)
+    assert metadata["hysteresis_display_value"] == pytest.approx(200.0)
+    assert module.get_snapshot().event_count == 1
+
+    module.audio_engine.calibration.input_sensitivity = 4.0
+    widget._update_results()
+    assert widget.lbl_conditions.text() == "CH1  •  ±1000 mV  •  1 kHz"
 
 
 def test_widget_summary_keeps_only_primary_measurement_information(qtbot):
