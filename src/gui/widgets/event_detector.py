@@ -376,19 +376,19 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         display.setContentsMargins(8, 8, 8, 8)
         display.setSpacing(8)
 
-        self.lbl_conditions = QLabel(tr("No active measurement run."))
-        self.lbl_conditions.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_conditions.setWordWrap(True)
-        self.lbl_conditions.setStyleSheet("font-weight: bold; padding: 4px;")
-        display.addWidget(self.lbl_conditions)
-
-        state_group = QGroupBox(tr("Detector State"))
-        state_layout = QVBoxLayout(state_group)
+        status_row = QHBoxLayout()
+        status_row.setSpacing(8)
         self.lbl_state = QLabel(tr("STOPPED"))
         self.lbl_state.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_state.setStyleSheet("font-size: 18px; font-weight: bold; color: #888888;")
-        state_layout.addWidget(self.lbl_state)
-        display.addWidget(state_group)
+        self.lbl_state.setMinimumWidth(160)
+        status_row.addWidget(self.lbl_state)
+        status_row.addStretch(1)
+
+        self.lbl_conditions = QLabel()
+        self.lbl_conditions.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.lbl_conditions.setStyleSheet("padding: 6px 2px;")
+        status_row.addWidget(self.lbl_conditions)
+        display.addLayout(status_row)
 
         self.tabs = QTabWidget()
 
@@ -396,6 +396,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         summary_layout = QVBoxLayout(summary_tab)
         summary_layout.setContentsMargins(6, 6, 6, 6)
         result_row = QHBoxLayout()
+        result_row.setSpacing(8)
         count_group = QGroupBox(tr("Event Count"))
         count_layout = QVBoxLayout(count_group)
         self.lbl_count = QLabel("0")
@@ -411,7 +412,6 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self.lbl_rate.setStyleSheet("font-size: 26px; font-weight: bold;")
         rate_layout.addWidget(self.lbl_rate)
         result_row.addWidget(rate_group, stretch=1)
-        summary_layout.addLayout(result_row, stretch=1)
 
         time_group = QGroupBox(tr("Measurement Time"))
         time_layout = QVBoxLayout(time_group)
@@ -419,23 +419,14 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self.lbl_elapsed.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_elapsed.setStyleSheet("font-size: 22px; font-family: monospace;")
         time_layout.addWidget(self.lbl_elapsed)
-        summary_layout.addWidget(time_group)
-
-        self.lbl_polarity_counts = QLabel(tr("Valid: 0  •  Positive: 0  •  Negative: 0  •  Censored: 0"))
-        self.lbl_polarity_counts.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        summary_layout.addWidget(self.lbl_polarity_counts)
+        result_row.addWidget(time_group, stretch=1)
+        summary_layout.addLayout(result_row, stretch=1)
 
         self.lbl_last_event = QLabel(tr("Last event: —"))
         self.lbl_last_event.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_last_event.setWordWrap(True)
+        self.lbl_last_event.setStyleSheet("padding: 6px;")
         summary_layout.addWidget(self.lbl_last_event)
-
-        self.lbl_definition = QLabel(
-            tr("An event is counted after the signal returns to the release band and crosses the threshold.")
-        )
-        self.lbl_definition.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_definition.setWordWrap(True)
-        summary_layout.addWidget(self.lbl_definition)
         self.tabs.addTab(summary_tab, tr("Summary"))
 
         distributions_tab = QWidget()
@@ -685,6 +676,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
 
     def _on_channel_changed(self) -> None:
         self.module.input_channel = int(self.combo_channel.currentData())
+        self._update_condition_label()
 
     def _on_threshold_changed(self, value: float) -> None:
         self.module.threshold = float(value)
@@ -693,10 +685,12 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         if self.module.hysteresis > maximum:
             self.module.hysteresis = maximum
         self._update_release_label()
+        self._update_condition_label()
 
     def _on_polarity_changed(self) -> None:
         self.module.polarity = EventPolarity(self.combo_polarity.currentData())
         self._update_release_label()
+        self._update_condition_label()
 
     def _on_hysteresis_changed(self, value: float) -> None:
         self.module.hysteresis = float(value)
@@ -723,25 +717,24 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
     def _update_condition_label(self) -> None:
         metadata = self.module.get_run_metadata()
         if metadata is None:
-            self.lbl_conditions.setText(tr("No active measurement run."))
-            return
-        calibrated = tr("calibrated") if metadata["input_calibrated"] else tr("uncalibrated")
-        polarity = (
-            tr("Both polarities")
-            if metadata["polarity"] == EventPolarity.BOTH.value
-            else tr(str(metadata["polarity"]).capitalize())
-        )
-        self.lbl_conditions.setText(
-            tr("{0} • {1:g} Hz • Threshold {2:.9g} FS • Release {3:.9g} FS • {4} • Holdoff {5:g} ms • {6}").format(
-                metadata["input_channel"],
-                float(metadata["sample_rate_hz"]),
-                float(metadata["threshold_fs_peak"]),
-                float(metadata["release_level_fs_peak"]),
-                polarity,
-                float(metadata["holdoff_seconds"]) * 1000.0,
-                calibrated,
-            )
-        )
+            channel = tr("CH1") if self.module.input_channel == 0 else tr("CH2")
+            sample_rate = float(self.module.audio_engine.sample_rate)
+            threshold = float(self.module.threshold)
+            polarity = EventPolarity(self.module.polarity)
+        else:
+            channel = str(metadata["input_channel"])
+            sample_rate = float(metadata["sample_rate_hz"])
+            threshold = float(metadata["threshold_fs_peak"])
+            polarity = EventPolarity(str(metadata["polarity"]))
+
+        polarity_symbol = {
+            EventPolarity.POSITIVE: "+",
+            EventPolarity.NEGATIVE: "−",
+            EventPolarity.BOTH: "±",
+        }[polarity]
+        rate_text = tr("{0:g} kHz").format(sample_rate / 1000.0)
+        threshold_text = tr("{0} FS").format(f"{polarity_symbol}{threshold:.9g}")
+        self.lbl_conditions.setText(f"{channel}  •  {threshold_text}  •  {rate_text}")
 
     @staticmethod
     def _format_optional(value: float | None, factor: float = 1.0) -> str:
@@ -781,15 +774,6 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         events = self.module.get_events()
         amplitude_scale, amplitude_unit = self.module.get_amplitude_display()
         statistics = summarize_events(events, amplitude_scale=amplitude_scale)
-        self.lbl_polarity_counts.setText(
-            tr("Valid: {0}  •  Positive: {1}  •  Negative: {2}  •  Censored: {3}").format(
-                statistics.valid_event_count,
-                statistics.positive_event_count,
-                statistics.negative_event_count,
-                statistics.censored_event_count,
-            )
-        )
-
         metric = EventMetric(self.combo_distribution_metric.currentData())
         metric_summary = {
             EventMetric.AMPLITUDE: statistics.amplitude,
@@ -937,15 +921,15 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             self.lbl_last_event.setText(tr("Last event: —"))
         else:
             event = snapshot.last_event
-            self.lbl_last_event.setText(
-                tr("Last event: #{0} • {1:.6g} {2} • {3:.6g} ms • {4}").format(
-                    event.sequence_number,
-                    event.peak * amplitude_scale,
-                    amplitude_unit,
-                    event.duration_seconds * 1000.0,
-                    tr("Valid") if event.completion == EventCompletion.VALID else tr("Censored"),
-                )
+            last_event_text = tr("Last event: #{0} • {1:.6g} {2} • {3:.6g} ms").format(
+                event.sequence_number,
+                event.peak * amplitude_scale,
+                amplitude_unit,
+                event.duration_seconds * 1000.0,
             )
+            if event.completion != EventCompletion.VALID:
+                last_event_text = f"{last_event_text}  •  {tr('Censored')}"
+            self.lbl_last_event.setText(last_event_text)
 
         state_text = {
             DetectorState.STOPPED: tr("STOPPED"),
@@ -962,7 +946,10 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             DetectorState.HOLDOFF: "#ff9f1a",
         }[snapshot.state]
         self.lbl_state.setText(state_text)
-        self.lbl_state.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {state_color};")
+        self.lbl_state.setStyleSheet(
+            f"font-size: 16px; font-weight: bold; color: {state_color}; "
+            "background-color: rgba(128, 128, 128, 28); border-radius: 4px; padding: 6px 12px;"
+        )
         self._refresh_analysis_views()
 
     def update_compact_layout(self) -> None:

@@ -116,6 +116,36 @@ def test_widget_start_reset_stop_and_result_refresh(qtbot):
     assert widget.lbl_state.text() == "STOPPED"
 
 
+def test_widget_summary_keeps_only_primary_measurement_information(qtbot):
+    module, callbacks = make_module(sample_rate=48_000)
+    widget = EventDetectorWidget(module)
+    qtbot.addWidget(widget)
+
+    assert widget.lbl_conditions.text() == "CH1  •  ±0.01 FS  •  48 kHz"
+    assert not hasattr(widget, "lbl_definition")
+    assert not hasattr(widget, "lbl_polarity_counts")
+
+    widget.combo_channel.setCurrentIndex(widget.combo_channel.findData(1))
+    widget.spin_threshold.setValue(0.5)
+    widget.combo_polarity.setCurrentIndex(widget.combo_polarity.findData(EventPolarity.POSITIVE))
+    assert widget.lbl_conditions.text() == "CH2  •  +0.5 FS  •  48 kHz"
+
+    widget.spin_hysteresis.setValue(0.1)
+    widget.spin_holdoff.setValue(0.0)
+    widget.btn_start.click()
+    callbacks[0](
+        np.array([[0.0, 0.0], [0.0, 0.7], [0.0, 0.3]]),
+        np.zeros((3, 2)),
+        3,
+        None,
+        False,
+    )
+    widget._update_results()
+
+    assert widget.lbl_last_event.text().startswith("Last event: #1 • 0.7 FS peak •")
+    assert "Valid" not in widget.lbl_last_event.text()
+
+
 def test_widget_exposes_compact_and_split_panels(qtbot):
     module, _callbacks = make_module()
     widget = EventDetectorWidget(module)
