@@ -150,6 +150,19 @@ def test_widget_threshold_units_use_input_calibration_and_preserve_fs_values(qtb
     assert module.hysteresis == pytest.approx(0.1)
 
 
+def test_widget_amplitude_inputs_use_compact_display_precision(qtbot):
+    module, _callbacks = make_module(input_sensitivity=0.25, input_calibrated=True)
+    widget = EventDetectorWidget(module)
+    qtbot.addWidget(widget)
+
+    widget.combo_threshold_unit.setCurrentIndex(widget.combo_threshold_unit.findData("mV"))
+
+    assert widget.spin_threshold.decimals() == 3
+    assert widget.spin_hysteresis.decimals() == 3
+    assert widget.spin_threshold.text() == "2.500"
+    assert widget.spin_hysteresis.text() == "0.250 mV"
+
+
 def test_widget_hides_voltage_threshold_units_without_input_calibration(qtbot):
     module, _callbacks = make_module(input_sensitivity=2.0, input_calibrated=False)
     widget = EventDetectorWidget(module)

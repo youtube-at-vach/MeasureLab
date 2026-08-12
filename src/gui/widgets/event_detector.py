@@ -391,6 +391,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
     """Statistics-first UI without duplicating the Raw Time Series display."""
 
     RATE_VIEW_BLOCK_BINS = 10
+    AMPLITUDE_DISPLAY_DECIMALS = 3
 
     def __init__(self, module: EventDetector):
         QWidget.__init__(self)
@@ -758,7 +759,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
     @staticmethod
     def _make_amplitude_spinbox(*, minimum: float, maximum: float, value: float) -> QDoubleSpinBox:
         spin = QDoubleSpinBox()
-        spin.setDecimals(9)
+        spin.setDecimals(EventDetectorWidget.AMPLITUDE_DISPLAY_DECIMALS)
         spin.setRange(minimum, maximum)
         spin.setSingleStep(0.001)
         spin.setValue(value)
@@ -772,7 +773,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
     def _configure_threshold_spins(self) -> None:
         unit = self._current_threshold_unit()
         scale = self.module.get_threshold_display_scale(unit)
-        decimals = 9
+        decimals = self.AMPLITUDE_DISPLAY_DECIMALS
         display_resolution = 10.0**-decimals
         minimum = max(scale * 1e-9, display_resolution)
         maximum = scale - max(scale * 1e-9, display_resolution)
