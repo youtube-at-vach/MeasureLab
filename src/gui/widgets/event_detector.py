@@ -309,12 +309,32 @@ class EventDetector(MeasurementModule):
         return metadata
 
     def get_amplitude_display(self) -> tuple[float, str]:
+        """Return the frozen run scale and unit used for peak-amplitude results.
+
+        Event peaks and thresholds describe the same instantaneous sample
+        quantity.  Keeping their display unit together prevents calibrated
+        voltage from appearing when the operator selected FS, and prevents an
+        assumed voltage scale from appearing for an uncalibrated input.
+        """
         metadata = self._run_metadata
-        if metadata is not None and bool(metadata.get("input_calibrated", False)):
+        if metadata is None:
+            is_calibrated, sensitivity = self.get_input_calibration_state()
+            unit = self.threshold_unit
+        else:
+            is_calibrated = bool(metadata.get("input_calibrated", False))
             sensitivity = metadata.get("input_sensitivity_v_peak_per_fs")
-            if isinstance(sensitivity, (int, float)) and math.isfinite(float(sensitivity)) and sensitivity > 0:
-                return float(sensitivity), "Vpeak"
-        return 1.0, "FS peak"
+            unit = str(metadata.get("threshold_display_unit", "FS"))
+
+        if unit == "FS":
+            return 1.0, "FS"
+        if unit not in {"mV", "V"} or not is_calibrated:
+            return 1.0, "FS"
+        if not isinstance(sensitivity, (int, float)):
+            return 1.0, "FS"
+        sensitivity = float(sensitivity)
+        if not math.isfinite(sensitivity) or sensitivity <= 0:
+            return 1.0, "FS"
+        return sensitivity * (1000.0 if unit == "mV" else 1.0), unit
 
     @staticmethod
     def _event_to_dict(event: EventRecord, sample_rate: float, amplitude_scale: float) -> dict[str, object]:
@@ -495,6 +515,11 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self.lbl_conditions.setStyleSheet("padding: 6px 2px;")
         status_row.addWidget(self.lbl_conditions)
         display.addLayout(status_row)
+
+        self.lbl_calibration_status = QLabel()
+        self.lbl_calibration_status.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.lbl_calibration_status.setStyleSheet("padding: 0 2px 4px 2px; color: #9aa0a6;")
+        display.addWidget(self.lbl_calibration_status)
 
         self.tabs = QTabWidget()
 
@@ -1004,6 +1029,27 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             threshold_text = f"{polarity_symbol}{threshold:.9g} {threshold_unit}"
         self.lbl_conditions.setText(f"{channel}  •  {threshold_text}  •  {rate_text}")
 
+    def _update_calibration_status(self) -> None:
+        metadata = self.module.get_run_metadata()
+        if metadata is None:
+            is_calibrated, sensitivity = self.module.get_input_calibration_state()
+        else:
+            is_calibrated = bool(metadata.get("input_calibrated", False))
+            stored_sensitivity = metadata.get("input_sensitivity_v_peak_per_fs")
+            if isinstance(stored_sensitivity, (int, float)):
+                sensitivity = float(stored_sensitivity)
+                is_calibrated = is_calibrated and math.isfinite(sensitivity) and sensitivity > 0
+            else:
+                sensitivity = 1.0
+                is_calibrated = False
+
+        if is_calibrated:
+            self.lbl_calibration_status.setText(
+                tr("Input: Calibrated ({0:.4g} Vpeak/FS)").format(sensitivity)
+            )
+        else:
+            self.lbl_calibration_status.setText(tr("Input: Uncalibrated (FS)"))
+
     @staticmethod
     def _format_optional(value: float | None, factor: float = 1.0) -> str:
         return "—" if value is None else f"{value * factor:.6g}"
@@ -1226,6 +1272,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self.btn_export_csv.setEnabled(self.module.get_run_metadata() is not None)
         self.btn_export_json.setEnabled(self.module.get_run_metadata() is not None)
         self._update_condition_label()
+        self._update_calibration_status()
 
         amplitude_scale, amplitude_unit = self.module.get_amplitude_display()
         if snapshot.last_event is None:

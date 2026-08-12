@@ -894,6 +894,7 @@
     "Input-Output Transfer Curve": "输入-输出传输曲线",
     "Input:": "输入:",
     "Input: Calibrated ({0:.4g} V/FS)": "输入: 已校准 ({0:.4g} V/FS)",
+    "Input: Calibrated ({0:.4g} Vpeak/FS)": "输入: 已校准 ({0:.4g} Vpeak/FS)",
     "Input: Uncalibrated (FS)": "输入: 未校准 (FS)",
     "Inst": "瞬时",
     "Instability/runaway detected during compensation. Processing aborted.": "补偿过程中检测到不稳定/失控。处理已中止。",

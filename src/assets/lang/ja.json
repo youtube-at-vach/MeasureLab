@@ -894,6 +894,7 @@
     "Input-Output Transfer Curve": "入出力特性曲線",
     "Input:": "入力:",
     "Input: Calibrated ({0:.4g} V/FS)": "入力: 校正済み ({0:.4g} V/FS)",
+    "Input: Calibrated ({0:.4g} Vpeak/FS)": "入力: 校正済み ({0:.4g} Vpeak/FS)",
     "Input: Uncalibrated (FS)": "入力: 未校正 (FS)",
     "Inst": "瞬間",
     "Instability/runaway detected during compensation. Processing aborted.": "歪み補正処理中にフィルターの暴走（不安定性）を検知したため、処理を中止しました。",

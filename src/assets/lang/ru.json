@@ -894,6 +894,7 @@
     "Input-Output Transfer Curve": "Передаточная характеристика входа-выхода",
     "Input:": "Вход:",
     "Input: Calibrated ({0:.4g} V/FS)": "Вход: Откалиброван ({0:.4g} V/FS)",
+    "Input: Calibrated ({0:.4g} Vpeak/FS)": "Вход: Откалиброван ({0:.4g} Vpeak/FS)",
     "Input: Uncalibrated (FS)": "Вход: Не откалиброван (FS)",
     "Inst": "Мгн",
     "Instability/runaway detected during compensation. Processing aborted.": "Во время компенсации обнаружена нестабильность/разгон. Обработка прервана.",

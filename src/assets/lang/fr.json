@@ -894,6 +894,7 @@
     "Input-Output Transfer Curve": "Courbe de transfert entrée-sortie",
     "Input:": "Entrée :",
     "Input: Calibrated ({0:.4g} V/FS)": "Entrée : Étalonnée ({0:.4g} V/FS)",
+    "Input: Calibrated ({0:.4g} Vpeak/FS)": "Entrée : Étalonnée ({0:.4g} Vpeak/FS)",
     "Input: Uncalibrated (FS)": "Entrée : Non étalonnée (FS)",
     "Inst": "Inst",
     "Instability/runaway detected during compensation. Processing aborted.": "Instabilité/emballement détecté pendant la compensation. Traitement abandonné.",

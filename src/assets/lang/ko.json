@@ -894,6 +894,7 @@
     "Input-Output Transfer Curve": "입출력 전달 곡선",
     "Input:": "입력:",
     "Input: Calibrated ({0:.4g} V/FS)": "입력: 교정됨 ({0:.4g} V/FS)",
+    "Input: Calibrated ({0:.4g} Vpeak/FS)": "입력: 교정됨 ({0:.4g} Vpeak/FS)",
     "Input: Uncalibrated (FS)": "입력: 미교정 (FS)",
     "Inst": "순간",
     "Instability/runaway detected during compensation. Processing aborted.": "보정 중 불안정/폭주가 감지되었습니다. 처리가 중단되었습니다.",

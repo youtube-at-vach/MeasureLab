@@ -894,6 +894,7 @@
     "Input-Output Transfer Curve": "Curva de transferência entrada-saída",
     "Input:": "Entrada:",
     "Input: Calibrated ({0:.4g} V/FS)": "Entrada: Calibrada ({0:.4g} V/FS)",
+    "Input: Calibrated ({0:.4g} Vpeak/FS)": "Entrada: Calibrada ({0:.4g} Vpeak/FS)",
     "Input: Uncalibrated (FS)": "Entrada: Não calibrada (FS)",
     "Inst": "Inst",
     "Instability/runaway detected during compensation. Processing aborted.": "Instabilidade/descontrole detectado durante a compensação. Processamento abortado.",

@@ -187,6 +187,7 @@ def test_widget_threshold_units_use_input_calibration_and_preserve_fs_values(qtb
     assert widget.spin_threshold.value() == pytest.approx(0.02)
     assert widget.spin_hysteresis.value() == pytest.approx(0.002)
     assert widget.spin_hysteresis.suffix() == " V"
+    assert module.get_amplitude_display() == (2.0, "V")
 
     widget.spin_threshold.setValue(1.0)
     widget.spin_hysteresis.setValue(0.2)
@@ -200,6 +201,7 @@ def test_widget_threshold_units_use_input_calibration_and_preserve_fs_values(qtb
     assert widget.spin_hysteresis.value() == pytest.approx(200.0)
     assert module.threshold == pytest.approx(0.5)
     assert module.hysteresis == pytest.approx(0.1)
+    assert module.get_amplitude_display() == (2000.0, "mV")
 
 
 def test_widget_amplitude_inputs_use_compact_display_precision(qtbot):
@@ -221,6 +223,8 @@ def test_widget_hides_voltage_threshold_units_without_input_calibration(qtbot):
     qtbot.addWidget(widget)
 
     assert [widget.combo_threshold_unit.itemData(i) for i in range(widget.combo_threshold_unit.count())] == ["FS"]
+    assert module.get_amplitude_display() == (1.0, "FS")
+    assert widget.lbl_calibration_status.text() == "Input: Uncalibrated (FS)"
 
     module.audio_engine.calibration.input_sensitivity_is_calibrated = True
     widget._update_results()
@@ -256,10 +260,15 @@ def test_voltage_threshold_is_normalized_to_fs_and_frozen_in_run_metadata(qtbot)
     assert metadata["threshold_display_value"] == pytest.approx(1000.0)
     assert metadata["hysteresis_display_value"] == pytest.approx(200.0)
     assert module.get_snapshot().event_count == 1
+    assert module.get_amplitude_display() == (2000.0, "mV")
 
     module.audio_engine.calibration.input_sensitivity = 4.0
     widget._update_results()
     assert widget.lbl_conditions.text() == "CH1  •  ±1000 mV  •  1 kHz"
+    assert widget.lbl_calibration_status.text() == "Input: Calibrated (2 Vpeak/FS)"
+    assert widget.lbl_distribution_unit.text() == "Unit: mV"
+    assert widget.lbl_last_event.text().startswith("Last event: #1 • 1400 mV •")
+    assert widget.events_table.item(0, 4).text() == "1400 mV"
 
 
 def test_widget_summary_keeps_only_primary_measurement_information(qtbot):
@@ -288,7 +297,7 @@ def test_widget_summary_keeps_only_primary_measurement_information(qtbot):
     )
     widget._update_results()
 
-    assert widget.lbl_last_event.text().startswith("Last event: #1 • 0.7 FS peak •")
+    assert widget.lbl_last_event.text().startswith("Last event: #1 • 0.7 FS •")
     assert "Valid" not in widget.lbl_last_event.text()
 
 
@@ -420,6 +429,8 @@ def test_module_exports_auditable_csv_and_json_records(tmp_path):
     assert payload["run"]["measurement_valid"] is True
     assert payload["events"][0]["completion"] == "valid"
     assert payload["events"][0]["peak_fs"] == 0.7
+    assert payload["amplitude_display_unit"] == "FS"
+    assert payload["events"][0]["peak_display"] == 0.7
 
 
 def test_widget_shows_invalid_rate_after_input_gap(qtbot):
