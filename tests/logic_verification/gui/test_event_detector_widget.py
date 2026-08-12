@@ -3,6 +3,7 @@ import json
 from unittest.mock import MagicMock
 
 import numpy as np
+import pytest
 from PyQt6.QtWidgets import QWidget
 
 from src.core.event_detector import DetectorState, EventPolarity
@@ -185,6 +186,38 @@ def test_widget_summary_frames_do_not_move_with_display_digits(qtbot):
     ) == initial_geometries
 
 
+def test_widget_distribution_metrics_keep_fixed_cells_for_long_values(qtbot):
+    module, _callbacks = make_module(sample_rate=48_000)
+    widget = EventDetectorWidget(module)
+    qtbot.addWidget(widget)
+    widget.resize(1200, 700)
+    widget.tabs.setCurrentIndex(1)
+    widget.show()
+    qtbot.wait(10)
+
+    assert list(widget.distribution_stat_labels) == [
+        "count",
+        "minimum",
+        "median",
+        "mean",
+        "standard_deviation",
+        "percentile_95",
+        "percentile_99",
+        "maximum",
+    ]
+    initial_geometries = {key: cell.geometry() for key, cell in widget.distribution_stat_cells.items()}
+    first_row_widths = {initial_geometries[key].width() for key in ("count", "minimum", "median", "mean")}
+    assert len(first_row_widths) == 1
+    assert initial_geometries["standard_deviation"].top() > initial_geometries["count"].bottom()
+
+    for label in widget.distribution_stat_labels.values():
+        label.setText("-999999999.999999")
+    widget.tabs.currentWidget().layout().activate()
+    qtbot.wait(10)
+
+    assert {key: cell.geometry() for key, cell in widget.distribution_stat_cells.items()} == initial_geometries
+
+
 def test_widget_exposes_compact_and_split_panels(qtbot):
     module, _callbacks = make_module()
     widget = EventDetectorWidget(module)
@@ -258,6 +291,44 @@ def test_widget_shows_invalid_rate_after_input_gap(qtbot):
 
     assert widget.lbl_rate.text() == "INVALID"
     assert not widget.lbl_data_gap.isHidden()
+
+
+def test_widget_plots_rate_bins_as_time_spans_instead_of_center_points(qtbot):
+    module, callbacks = make_module(sample_rate=1000)
+    widget = EventDetectorWidget(module)
+    qtbot.addWidget(widget)
+    widget.combo_rate_bin.setCurrentIndex(widget.combo_rate_bin.findData(10.0))
+    widget.spin_threshold.setValue(0.5)
+    widget.spin_hysteresis.setValue(0.1)
+    widget.spin_holdoff.setValue(0.0)
+    widget.btn_start.click()
+
+    samples = np.zeros((12_000, 2))
+    for start_sample in (1_000, 6_000, 11_000):
+        samples[start_sample, 0] = 0.7
+        samples[start_sample + 1, 0] = 0.3
+    callbacks[0](samples, np.zeros_like(samples), len(samples), None, False)
+    widget._refresh_analysis_views()
+
+    x_data, y_data = widget.rate_curve.getData()
+    assert widget.rate_curve.opts["stepMode"] == "center"
+    assert x_data == pytest.approx([0.0, 10.0, 12.0])
+    assert y_data == pytest.approx([12.0, 30.0])
+    x_range, y_range = widget.plot_rate_trend.getViewBox().viewRange()
+    assert x_range == pytest.approx([0.0, 100.0])
+    assert y_range == pytest.approx([0.0, 50.0])
+
+    callbacks[0](np.zeros((8_000, 2)), np.zeros((8_000, 2)), 8_000, None, False)
+    widget._refresh_analysis_views()
+
+    stable_x_range, stable_y_range = widget.plot_rate_trend.getViewBox().viewRange()
+    assert stable_x_range == pytest.approx(x_range)
+    assert stable_y_range == pytest.approx(y_range)
+
+    widget.btn_reset.click()
+    reset_x_range, reset_y_range = widget.plot_rate_trend.getViewBox().viewRange()
+    assert reset_x_range == pytest.approx([0.0, 100.0])
+    assert reset_y_range == pytest.approx([0.0, 1.0])
 
 
 def test_sample_rate_change_invalidates_active_run():

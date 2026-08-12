@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
     QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
+    QFrame,
     QGridLayout,
     QGroupBox,
     QHeaderView,
@@ -344,6 +345,8 @@ class EventDetector(MeasurementModule):
 class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInterface):
     """Statistics-first UI without duplicating the Raw Time Series display."""
 
+    RATE_VIEW_BLOCK_BINS = 10
+
     def __init__(self, module: EventDetector):
         QWidget.__init__(self)
         CompactableWidgetInterface.__init__(self)
@@ -454,12 +457,59 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self.combo_distribution_metric.addItem(tr("Quiet Time"), EventMetric.QUIET_TIME)
         self.combo_distribution_metric.currentIndexChanged.connect(self._refresh_analysis_views)
         distribution_controls.addWidget(self.combo_distribution_metric)
+        distribution_controls.addSpacing(12)
+        self.lbl_distribution_unit = QLabel()
+        distribution_controls.addWidget(self.lbl_distribution_unit)
         distribution_controls.addStretch(1)
         distributions_layout.addLayout(distribution_controls)
-        self.lbl_distribution_stats = QLabel(tr("No valid completed events."))
-        self.lbl_distribution_stats.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_distribution_stats.setWordWrap(True)
-        distributions_layout.addWidget(self.lbl_distribution_stats)
+
+        distribution_stats_grid = QGridLayout()
+        distribution_stats_grid.setContentsMargins(0, 0, 0, 4)
+        distribution_stats_grid.setHorizontalSpacing(6)
+        distribution_stats_grid.setVerticalSpacing(6)
+        self.distribution_stat_cells: dict[str, QFrame] = {}
+        self.distribution_stat_labels: dict[str, QLabel] = {}
+        stat_specs = (
+            ("count", tr("Samples")),
+            ("minimum", tr("Min")),
+            ("median", tr("Median")),
+            ("mean", tr("Mean")),
+            ("standard_deviation", tr("Std Dev")),
+            ("percentile_95", tr("P95")),
+            ("percentile_99", tr("P99")),
+            ("maximum", tr("Max")),
+        )
+        for index, (key, title_text) in enumerate(stat_specs):
+            row, column = divmod(index, 4)
+            cell = QFrame()
+            cell.setFrameShape(QFrame.Shape.StyledPanel)
+            cell.setFrameShadow(QFrame.Shadow.Sunken)
+            cell.setMinimumWidth(0)
+            cell.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+            cell_layout = QVBoxLayout(cell)
+            cell_layout.setContentsMargins(6, 4, 6, 5)
+            cell_layout.setSpacing(2)
+
+            title = QLabel(title_text)
+            title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            title.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+            title.setStyleSheet("font-size: 11px; font-weight: bold;")
+            cell_layout.addWidget(title)
+
+            value = QLabel("—")
+            value.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            value.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+            value.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            value.setStyleSheet(f"font-family: {MONOSPACE_FONT_FAMILY}; font-size: 15px; font-weight: bold;")
+            cell_layout.addWidget(value)
+
+            distribution_stats_grid.addWidget(cell, row, column)
+            self.distribution_stat_cells[key] = cell
+            self.distribution_stat_labels[key] = value
+        for column in range(4):
+            distribution_stats_grid.setColumnStretch(column, 1)
+        distributions_layout.addLayout(distribution_stats_grid)
+
         self.plot_distribution = pg.PlotWidget()
         self.plot_distribution.showGrid(x=True, y=True, alpha=0.25)
         self.plot_distribution.setLabel("left", tr("Event Count"))
@@ -495,9 +545,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self.plot_rate_trend.setLabel("left", tr("Event Rate"), units=tr("events/min"))
         self.rate_curve = self.plot_rate_trend.plot(
             pen=pg.mkPen("#e67e22", width=2.0),
-            symbol="o",
-            symbolSize=6,
-            symbolBrush=pg.mkBrush("#e67e22"),
+            stepMode="center",
             connect="finite",
         )
         rate_layout.addWidget(self.plot_rate_trend, stretch=1)
@@ -647,6 +695,9 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             self.spin_holdoff,
         ]
         self._last_analysis_key: tuple[int, int, int] | None = None
+        self._rate_view_run_id: str | None = None
+        self._rate_view_bin_seconds: float | None = None
+        self._rate_view_y_max = 1.0
         self._update_release_label()
 
     @staticmethod
@@ -754,9 +805,23 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
     def _format_optional(value: float | None, factor: float = 1.0) -> str:
         return "—" if value is None else f"{value * factor:.6g}"
 
-    def _format_metric_summary(self, summary: MetricSummary, metric: EventMetric, amplitude_unit: str) -> str:
-        if summary.count == 0:
-            return tr("No valid completed events.")
+    @staticmethod
+    def _nice_rate_ceiling(rate: float) -> float:
+        """Return a stable 1/2/5 ceiling with headroom for a non-negative rate."""
+        target = max(1.0, float(rate) * 1.1)
+        magnitude = 10.0 ** math.floor(math.log10(target))
+        for multiple in (1.0, 2.0, 5.0, 10.0):
+            ceiling = multiple * magnitude
+            if target <= ceiling:
+                return ceiling
+        return 10.0 * magnitude
+
+    def _update_distribution_stats(
+        self,
+        summary: MetricSummary,
+        metric: EventMetric,
+        amplitude_unit: str,
+    ) -> None:
         factor = 1000.0 if metric == EventMetric.DURATION else 1.0
         if metric == EventMetric.AMPLITUDE:
             unit = amplitude_unit
@@ -764,17 +829,19 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             unit = "ms"
         else:
             unit = "s"
-        return tr("N={0} • Min {1} • Median {2} • Mean {3} • Std {4} • P95 {5} • P99 {6} • Max {7} {8}").format(
-            summary.count,
-            self._format_optional(summary.minimum, factor),
-            self._format_optional(summary.median, factor),
-            self._format_optional(summary.mean, factor),
-            self._format_optional(summary.standard_deviation, factor),
-            self._format_optional(summary.percentile_95, factor),
-            self._format_optional(summary.percentile_99, factor),
-            self._format_optional(summary.maximum, factor),
-            unit,
-        )
+        self.lbl_distribution_unit.setText(f"{tr('Unit:')} {unit}")
+        values = {
+            "count": str(summary.count),
+            "minimum": self._format_optional(summary.minimum, factor),
+            "median": self._format_optional(summary.median, factor),
+            "mean": self._format_optional(summary.mean, factor),
+            "standard_deviation": self._format_optional(summary.standard_deviation, factor),
+            "percentile_95": self._format_optional(summary.percentile_95, factor),
+            "percentile_99": self._format_optional(summary.percentile_99, factor),
+            "maximum": self._format_optional(summary.maximum, factor),
+        }
+        for key, text in values.items():
+            self.distribution_stat_labels[key].setText(text)
 
     def _refresh_analysis_views(self, *_args) -> None:
         if _args:
@@ -795,7 +862,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             EventMetric.INTERARRIVAL: statistics.interarrival,
             EventMetric.QUIET_TIME: statistics.quiet_time,
         }[metric]
-        self.lbl_distribution_stats.setText(self._format_metric_summary(metric_summary, metric, amplitude_unit))
+        self._update_distribution_stats(metric_summary, metric, amplitude_unit)
         histogram = build_histogram(events, metric, amplitude_scale=amplitude_scale)
         if histogram.counts:
             edges = np.asarray(histogram.edges, dtype=np.float64)
@@ -822,6 +889,13 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             self.plot_distribution.setLabel("bottom", tr("Quiet Time"), units="s")
 
         bin_seconds = float(self.combo_rate_bin.currentData())
+        metadata = self.module.get_run_metadata()
+        run_id = str(metadata["run_id"]) if metadata is not None else None
+        if run_id != self._rate_view_run_id or bin_seconds != self._rate_view_bin_seconds:
+            self._rate_view_run_id = run_id
+            self._rate_view_bin_seconds = bin_seconds
+            self._rate_view_y_max = 1.0
+
         trend = build_rate_trend(
             events,
             elapsed_seconds=snapshot.elapsed_seconds,
@@ -832,9 +906,9 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         if trend.event_counts:
             starts = np.asarray(trend.bin_starts_seconds, dtype=np.float64)
             ends = np.asarray(trend.bin_ends_seconds, dtype=np.float64)
-            centers = (starts + ends) / 2.0
+            boundaries = np.concatenate((starts[:1], ends))
             rates = np.asarray(trend.rates_per_minute, dtype=np.float64)
-            self.rate_curve.setData(centers, rates, connect="finite")
+            self.rate_curve.setData(boundaries, rates, connect="finite")
             invalid_count = sum(not valid for valid in trend.valid_bins)
             partial_text = tr(" • current bin is partial") if trend.partial_bins[-1] else ""
             self.lbl_rate_trend_info.setText(
@@ -844,10 +918,18 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
                     partial_text,
                 )
             )
-            self.plot_rate_trend.enableAutoRange()
+            finite_rates = rates[np.isfinite(rates)]
+            rate_max = float(np.max(finite_rates)) if finite_rates.size else 0.0
+            if rate_max * 1.1 > self._rate_view_y_max:
+                self._rate_view_y_max = self._nice_rate_ceiling(rate_max)
         else:
             self.rate_curve.setData([], [])
             self.lbl_rate_trend_info.setText(tr("No rate bins are available."))
+
+        x_block_seconds = bin_seconds * self.RATE_VIEW_BLOCK_BINS
+        x_block_count = max(1, math.ceil(snapshot.elapsed_seconds / x_block_seconds))
+        self.plot_rate_trend.setXRange(0.0, x_block_count * x_block_seconds, padding=0.0)
+        self.plot_rate_trend.setYRange(0.0, self._rate_view_y_max, padding=0.0)
 
         visible_events = events[-500:]
         self.events_table.setRowCount(len(visible_events))
