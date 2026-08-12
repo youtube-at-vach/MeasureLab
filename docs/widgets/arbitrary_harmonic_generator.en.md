@@ -24,6 +24,10 @@ The core feature of this module is the ability to adjust individual harmonics.
 * **Phase Adjustments (deg)**: Adjust the phase offset of each harmonic.
 * **Enable/Disable**: You can toggle specific harmonics on or off using checkboxes.
 
+### Preview
+
+The synthesized waveform preview graph also displays the **Theoretical THD (Total Harmonic Distortion)** based on the configured harmonic components.
+
 ### Data Management
 
 * **Export/Import**: You can export the current harmonic compensation profile to a JSON file and import it later. This is seamlessly integrated with the [Lock-in Harmonic Analyzer](lockin_harmonic_analyzer.en.md), allowing you to measure a system's distortion profile and then load that profile into the generator to create a pre-distorted or compensated signal.
