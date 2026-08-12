@@ -61,6 +61,7 @@ A signal already beyond the threshold when measurement starts is not counted. De
 
 ### Summary
 
+- `Event` indicator: Flashes red for 250 ms when an event is detected. If multiple events arrive between display updates, the increment is shown as `+N` for 600 ms.
 - `Event Count`: Number of event starts observed in the run. A started event that is censored when acquisition stops remains part of this count.
 - `Event Rate`: Event Count per minute, normalized by actual elapsed time.
 - `Measurement Time`: Time calculated from the number of received samples.

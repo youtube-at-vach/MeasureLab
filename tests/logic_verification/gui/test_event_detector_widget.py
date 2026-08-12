@@ -154,6 +154,81 @@ def test_widget_start_reset_stop_and_result_refresh(qtbot):
     assert widget.lbl_state.text() == "STOPPED"
 
 
+def test_widget_flashes_event_activity_for_count_increase(qtbot):
+    module, callbacks = make_module()
+    widget = EventDetectorWidget(module)
+    qtbot.addWidget(widget)
+
+    widget.spin_threshold.setValue(0.5)
+    widget.spin_hysteresis.setValue(0.1)
+    widget.spin_holdoff.setValue(0.0)
+    widget.combo_polarity.setCurrentIndex(widget.combo_polarity.findData(EventPolarity.POSITIVE))
+    widget.btn_start.click()
+
+    callbacks[0](
+        np.array([[0.0, 0.0], [0.7, 0.0], [0.3, 0.0], [0.8, 0.0], [0.2, 0.0]]),
+        np.zeros((5, 2)),
+        5,
+        None,
+        False,
+    )
+    widget._update_results()
+
+    assert widget.lbl_event_indicator.property("active") is True
+    assert widget.lbl_event_delta.text() == "+2"
+    assert widget.event_indicator_timer.isActive()
+    assert widget.event_delta_timer.isActive()
+
+    widget._turn_off_event_indicator()
+    widget.event_indicator_timer.stop()
+    widget._update_results()
+    assert widget.lbl_event_indicator.property("active") is False
+
+    widget._clear_event_delta()
+    assert widget.lbl_event_delta.text() == ""
+
+
+def test_widget_reset_and_manual_stop_clear_event_activity(qtbot):
+    module, callbacks = make_module()
+    widget = EventDetectorWidget(module)
+    qtbot.addWidget(widget)
+    widget.spin_threshold.setValue(0.5)
+    widget.spin_hysteresis.setValue(0.1)
+    widget.spin_holdoff.setValue(0.0)
+    widget.btn_start.click()
+
+    callbacks[0](
+        np.array([[0.0, 0.0], [0.7, 0.0], [0.3, 0.0]]),
+        np.zeros((3, 2)),
+        3,
+        None,
+        False,
+    )
+    widget._update_results()
+    assert widget.lbl_event_indicator.property("active") is True
+
+    widget.btn_reset.click()
+    assert widget.lbl_event_indicator.property("active") is False
+    assert widget.lbl_event_delta.text() == ""
+    assert widget._last_event_count == 0
+
+    callbacks[0](
+        np.array([[0.0, 0.0], [0.7, 0.0], [0.3, 0.0]]),
+        np.zeros((3, 2)),
+        3,
+        None,
+        False,
+    )
+    widget._update_results()
+    assert widget.lbl_event_indicator.property("active") is True
+
+    widget.btn_start.click()
+    assert widget.lbl_event_indicator.property("active") is False
+    assert widget.lbl_event_delta.text() == ""
+    assert not widget.event_indicator_timer.isActive()
+    assert not widget.event_delta_timer.isActive()
+
+
 def test_widget_returns_to_idle_when_fixed_duration_completes(qtbot):
     module, callbacks = make_module(sample_rate=1000)
     widget = EventDetectorWidget(module)

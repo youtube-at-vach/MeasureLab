@@ -466,6 +466,8 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
 
     RATE_VIEW_BLOCK_BINS = 10
     AMPLITUDE_DISPLAY_DECIMALS = 3
+    EVENT_INDICATOR_ON_MS = 250
+    EVENT_DELTA_VISIBLE_MS = 600
 
     def __init__(self, module: EventDetector):
         QWidget.__init__(self)
@@ -477,6 +479,16 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self.timer = QTimer(self)
         self.timer.setInterval(100)
         self.timer.timeout.connect(self._update_results)
+
+        self._last_event_count = int(self.module.get_snapshot().event_count)
+        self.event_indicator_timer = QTimer(self)
+        self.event_indicator_timer.setSingleShot(True)
+        self.event_indicator_timer.setInterval(self.EVENT_INDICATOR_ON_MS)
+        self.event_indicator_timer.timeout.connect(self._turn_off_event_indicator)
+        self.event_delta_timer = QTimer(self)
+        self.event_delta_timer.setSingleShot(True)
+        self.event_delta_timer.setInterval(self.EVENT_DELTA_VISIBLE_MS)
+        self.event_delta_timer.timeout.connect(self._clear_event_delta)
         self._update_results()
 
     def get_display_widget(self) -> QWidget:
@@ -508,6 +520,22 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self.lbl_state.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_state.setMinimumWidth(160)
         status_row.addWidget(self.lbl_state)
+
+        self.lbl_event_activity = QLabel(tr("Event:"))
+        self.lbl_event_activity.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        status_row.addWidget(self.lbl_event_activity)
+
+        self.lbl_event_indicator = QLabel()
+        self.lbl_event_indicator.setAccessibleName(tr("Event:"))
+        self.lbl_event_indicator.setFixedSize(18, 18)
+        self._set_event_indicator(False)
+        status_row.addWidget(self.lbl_event_indicator)
+
+        self.lbl_event_delta = QLabel()
+        self.lbl_event_delta.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        self.lbl_event_delta.setFixedWidth(60)
+        self.lbl_event_delta.setStyleSheet("font-size: 13px; font-weight: bold; color: #ff4040;")
+        status_row.addWidget(self.lbl_event_delta)
         status_row.addStretch(1)
 
         self.lbl_conditions = QLabel()
@@ -935,12 +963,14 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
                 QMessageBox.critical(self, tr("Error"), tr("Failed to start measurement: {0}").format(str(exc)))
                 return
 
+            self._reset_event_activity(0)
             self.btn_start.setText(tr("Stop"))
             self._set_settings_enabled(False)
             self._last_analysis_key = None
             self.timer.start()
         else:
             self.module.stop_analysis()
+            self._reset_event_activity(self.module.get_snapshot().event_count)
             self.btn_start.setText(tr("Start"))
             self._set_settings_enabled(True)
             self.timer.stop()
@@ -948,6 +978,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
 
     def _on_reset(self) -> None:
         self.module.reset_measurement()
+        self._reset_event_activity(0)
         self._last_analysis_key = None
         self._update_results()
 
@@ -1044,9 +1075,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
                 is_calibrated = False
 
         if is_calibrated:
-            self.lbl_calibration_status.setText(
-                tr("Input: Calibrated ({0:.4g} Vpeak/FS)").format(sensitivity)
-            )
+            self.lbl_calibration_status.setText(tr("Input: Calibrated ({0:.4g} Vpeak/FS)").format(sensitivity))
         else:
             self.lbl_calibration_status.setText(tr("Input: Uncalibrated (FS)"))
 
@@ -1246,6 +1275,43 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             return tr("{0:.3f} events/min").format(rate)
         return tr("{0:,.1f} events/min").format(rate)
 
+    def _set_event_indicator(self, active: bool) -> None:
+        self.lbl_event_indicator.setProperty("active", active)
+        if active:
+            self.lbl_event_indicator.setStyleSheet(
+                "background-color: #ff4040; border-radius: 9px; border: 1px solid #ffb3b3;"
+            )
+        else:
+            self.lbl_event_indicator.setStyleSheet(
+                "background-color: #666666; border-radius: 9px; border: 1px solid #444444;"
+            )
+
+    def _turn_off_event_indicator(self) -> None:
+        self._set_event_indicator(False)
+
+    def _clear_event_delta(self) -> None:
+        self.lbl_event_delta.clear()
+
+    def _reset_event_activity(self, event_count: int) -> None:
+        self.event_indicator_timer.stop()
+        self.event_delta_timer.stop()
+        self._turn_off_event_indicator()
+        self._clear_event_delta()
+        self._last_event_count = int(event_count)
+
+    def _update_event_activity(self, event_count: int) -> None:
+        event_count = int(event_count)
+        delta = event_count - self._last_event_count
+        if delta < 0:
+            self._reset_event_activity(event_count)
+            return
+        if delta > 0:
+            self._set_event_indicator(True)
+            self.event_indicator_timer.start()
+            self.lbl_event_delta.setText(f"+{delta:,}")
+            self.event_delta_timer.start()
+        self._last_event_count = event_count
+
     def _update_results(self) -> None:
         if self.btn_start.isChecked() and not self.module.is_running:
             # A fixed-duration run has stopped in the audio callback. Complete
@@ -1260,6 +1326,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         if not self.module.is_running:
             self._refresh_threshold_unit_options()
         snapshot = self.module.get_snapshot()
+        self._update_event_activity(snapshot.event_count)
         self.lbl_count.setText(f"{snapshot.event_count:,}")
         self.lbl_rate.setText(
             self._format_rate(snapshot.event_rate_per_minute) if snapshot.measurement_valid else tr("INVALID")
@@ -1319,5 +1386,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
 
     def closeEvent(self, event) -> None:
         self.timer.stop()
+        self.event_indicator_timer.stop()
+        self.event_delta_timer.stop()
         self.module.stop_analysis()
         super().closeEvent(event)
