@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import QWidget
 from src.core.event_detector import DetectorState, EventPolarity
 from src.core.module_constants import ALL_MODULE_KEYS, MODULE_EVENT_DETECTOR, MODULE_RAW_TIME_SERIES
 from src.gui.main_window import MODULE_REGISTRY, _load_module_class
+from src.gui.styles import MONOSPACE_FONT_FAMILY
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 from src.gui.widgets.event_detector import EventDetector, EventDetectorWidget
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
@@ -144,6 +145,15 @@ def test_widget_summary_keeps_only_primary_measurement_information(qtbot):
 
     assert widget.lbl_last_event.text().startswith("Last event: #1 • 0.7 FS peak •")
     assert "Valid" not in widget.lbl_last_event.text()
+
+
+def test_widget_elapsed_time_uses_platform_monospace_fonts(qtbot):
+    module, _callbacks = make_module()
+    widget = EventDetectorWidget(module)
+    qtbot.addWidget(widget)
+
+    assert f"font-family: {MONOSPACE_FONT_FAMILY};" in widget.lbl_elapsed.styleSheet()
+    assert "font-family: monospace;" not in widget.lbl_elapsed.styleSheet()
 
 
 def test_widget_summary_frames_do_not_move_with_display_digits(qtbot):

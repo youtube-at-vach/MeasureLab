@@ -51,6 +51,7 @@ from src.core.event_statistics import (
     summarize_events,
 )
 from src.core.localization import tr
+from src.gui.styles import MONOSPACE_FONT_FAMILY
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 from src.measurement_modules.base import MeasurementModule
@@ -430,7 +431,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self.lbl_elapsed = QLabel("00:00:00.0")
         self.lbl_elapsed.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_elapsed.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
-        self.lbl_elapsed.setStyleSheet("font-size: 22px; font-family: monospace;")
+        self.lbl_elapsed.setStyleSheet(f"font-size: 22px; font-family: {MONOSPACE_FONT_FAMILY};")
         time_layout.addWidget(self.lbl_elapsed)
         result_grid.addWidget(self.time_group, 1, 0, 1, 2)
         summary_layout.addLayout(result_grid, stretch=1)
