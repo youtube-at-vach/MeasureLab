@@ -163,6 +163,9 @@ jobs:
         run: |
           python scripts/check_trn_keys.py --strict
 
+      - name: Check UI size limits
+        run: |
+          python scripts/check_ui_size_limits.py
 
       - name: Tests (pytest)
         run: |

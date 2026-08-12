@@ -101,7 +101,7 @@ def test_build_module_activity_tooltip(qtbot):
     assert tr("Widget is detached in a separate window.") in tooltip3
 
 
-def _audio_status(*, latched=None, count=0, active=True):
+def _audio_status(*, latched=None, count=0, active=True, error_count=0, last_error=None):
     return {
         "active": active,
         "offline_mode": False,
@@ -115,8 +115,8 @@ def _audio_status(*, latched=None, count=0, active=True):
         "status_flags": 0,
         "latched_xrun_status": latched or {},
         "latched_xrun_count": count,
-        "error_count": 0,
-        "last_error": None,
+        "error_count": error_count,
+        "last_error": last_error,
     }
 
 
@@ -164,3 +164,35 @@ def test_audio_io_error_indicator_stays_hidden_without_xrun(qtbot):
 
     assert window.io_error_button.isHidden()
     assert not window._io_error_latched
+
+
+def test_audio_callback_error_is_latched_until_acknowledged(qtbot):
+    window = _build_window_stub(qtbot)
+    window.audio_engine.get_status = MagicMock(
+        side_effect=[
+            _audio_status(error_count=2, last_error="processing failed"),
+            _audio_status(),
+        ]
+    )
+
+    window.update_status()
+
+    assert not window.io_error_button.isHidden()
+    assert "processing failed" in window.io_error_button.toolTip()
+    assert tr("Error Count") in window.io_error_button.toolTip()
+
+    window.update_status()
+    assert not window.io_error_button.isHidden()
+
+    window.io_error_button.click()
+    assert window.io_error_button.isHidden()
+    assert not window._callback_error_latched
+
+
+def test_init_audio_uses_portaudio_defaults_without_saved_devices():
+    window = MagicMock()
+    window.config_manager.get_audio_config.return_value = {}
+
+    MainWindow._init_audio(window)
+
+    window.audio_engine.set_devices.assert_called_once_with(None, None)

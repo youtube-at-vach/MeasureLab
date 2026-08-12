@@ -1,6 +1,8 @@
 import ast
 from pathlib import Path
 
+from src.gui.main_window import MODULE_REGISTRY
+
 
 def test_pyinstaller_imports_syntax_and_existence():
     """
@@ -61,3 +63,17 @@ def test_pyinstaller_imports_syntax_and_existence():
         assert exists, (
             f"Module {module_name} imported in pyinstaller_imports.py does not exist at {file_path_py} or {dir_path}"
         )
+
+
+def test_pyinstaller_imports_cover_every_registered_module():
+    file_path = Path("src/gui/pyinstaller_imports.py")
+    tree = ast.parse(file_path.read_text(encoding="utf-8"), filename=str(file_path))
+    imported_class_names = {
+        alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom)
+        for alias in node.names
+    }
+    registered_class_names = {class_name for _, class_name in MODULE_REGISTRY.values()}
+
+    assert registered_class_names <= imported_class_names
