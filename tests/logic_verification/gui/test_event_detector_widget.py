@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from PyQt6.QtWidgets import QWidget
 
-from src.core.event_detector import DetectorState, EventPolarity
+from src.core.event_detector import DetectorState, EventDetectionMode, EventPolarity
 from src.core.module_constants import ALL_MODULE_KEYS, MODULE_EVENT_DETECTOR, MODULE_RAW_TIME_SERIES
 from src.gui.main_window import MODULE_REGISTRY, _load_module_class
 from src.gui.styles import MONOSPACE_FONT_FAMILY
@@ -15,7 +15,13 @@ from src.gui.widgets.event_detector import EventDetector, EventDetectorWidget
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 
 
-def make_module(sample_rate=1000, *, input_sensitivity=1.0, input_calibrated=False):
+def make_module(
+    sample_rate=1000,
+    *,
+    input_sensitivity=1.0,
+    input_calibrated=False,
+    detection_mode=EventDetectionMode.THRESHOLD_EVENTS,
+):
     callbacks = []
     engine = MagicMock()
     engine.sample_rate = sample_rate
@@ -27,7 +33,10 @@ def make_module(sample_rate=1000, *, input_sensitivity=1.0, input_calibrated=Fal
         return 23
 
     engine.register_callback.side_effect = register
-    return EventDetector(engine), callbacks
+    module = EventDetector(engine)
+    if detection_mode is not None:
+        module.set_detection_mode(detection_mode)
+    return module, callbacks
 
 
 def test_event_detector_is_registered_after_raw_time_series():
@@ -38,6 +47,74 @@ def test_event_detector_is_registered_after_raw_time_series():
         "EventDetector",
     )
     assert _load_module_class(MODULE_EVENT_DETECTOR) is EventDetector
+
+
+def test_module_defaults_to_practical_clip_event_detection():
+    module, callbacks = make_module(detection_mode=None)
+
+    assert module.detection_mode == EventDetectionMode.CLIP_EVENTS
+    assert module.fs_to_dbfs(module.threshold) == pytest.approx(-0.1)
+    assert module.fs_to_dbfs(module.threshold - module.hysteresis) == pytest.approx(-1.0)
+    assert module.polarity == EventPolarity.BOTH
+    assert module.holdoff_ms == pytest.approx(10.0)
+
+    module.start_analysis()
+    samples = np.array([0.0, 0.99, 0.8, *([0.0] * 11), -1.0, -0.8])
+    callbacks[0](samples, np.zeros_like(samples), len(samples), None, False)
+    snapshot = module.get_snapshot()
+    metadata = module.get_run_metadata()
+
+    assert snapshot.event_count == 2
+    assert snapshot.clipping_detected
+    assert snapshot.measurement_valid
+    assert metadata is not None
+    assert metadata["detection_mode"] == "clip_events"
+    assert metadata["clip_threshold_dbfs"] == pytest.approx(-0.1)
+    assert metadata["clip_rearm_dbfs"] == pytest.approx(-1.0)
+    assert metadata["clipping_invalidates_measurement"] is False
+
+
+def test_widget_defaults_to_clip_mode_and_preserves_each_mode_profile(qtbot):
+    module, _callbacks = make_module(detection_mode=None)
+    widget = EventDetectorWidget(module)
+    qtbot.addWidget(widget)
+
+    assert widget.combo_mode.currentData() == EventDetectionMode.CLIP_EVENTS
+    assert widget.spin_threshold.value() == pytest.approx(-0.1)
+    assert widget.spin_hysteresis.value() == pytest.approx(-1.0)
+    assert widget.combo_threshold_unit.isHidden()
+    assert widget.combo_polarity.isHidden()
+    assert widget.count_group.title() == "Clip Event Count"
+    assert widget.rate_group.title() == "Clip Event Rate"
+    assert widget.lbl_conditions.text() == "CH1  •  Clip ≥ -0.10 dBFS  •  1 kHz"
+
+    widget.combo_mode.setCurrentIndex(widget.combo_mode.findData(EventDetectionMode.THRESHOLD_EVENTS))
+    assert widget.spin_threshold.value() == pytest.approx(0.01)
+    assert widget.spin_hysteresis.value() == pytest.approx(0.001)
+    assert not widget.combo_threshold_unit.isHidden()
+    assert not widget.combo_polarity.isHidden()
+    widget.spin_threshold.setValue(0.5)
+
+    widget.combo_mode.setCurrentIndex(widget.combo_mode.findData(EventDetectionMode.CLIP_EVENTS))
+    assert widget.spin_threshold.value() == pytest.approx(-0.1)
+    widget.combo_mode.setCurrentIndex(widget.combo_mode.findData(EventDetectionMode.THRESHOLD_EVENTS))
+    assert widget.spin_threshold.value() == pytest.approx(0.5)
+
+
+def test_widget_reports_detected_clips_without_invalidating_clip_measurement(qtbot):
+    module, callbacks = make_module(detection_mode=None)
+    widget = EventDetectorWidget(module)
+    qtbot.addWidget(widget)
+    widget.btn_start.click()
+
+    samples = np.array([0.0, 1.0, 0.8])
+    callbacks[0](samples, np.zeros_like(samples), len(samples), None, False)
+    widget._update_results()
+
+    assert widget.lbl_count.text() == "1"
+    assert widget.lbl_rate.text().endswith(" clips/min")
+    assert widget.lbl_clipping.isHidden()
+    assert widget.lbl_last_event.text().startswith("Last clip event: #1")
 
 
 def test_module_registers_callback_detects_selected_channel_and_stops():

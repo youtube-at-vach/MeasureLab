@@ -39,6 +39,7 @@ from src.core.event_detector import (
     DetectorConfig,
     DetectorSnapshot,
     DetectorState,
+    EventDetectionMode,
     EventDetectorCore,
     EventCompletion,
     EventPolarity,
@@ -64,6 +65,8 @@ class EventDetector(MeasurementModule):
     """AudioEngine adapter for the sample-accurate event detector core."""
 
     THRESHOLD_UNITS = ("FS", "mV", "V")
+    DEFAULT_CLIP_THRESHOLD_DBFS = -0.1
+    DEFAULT_CLIP_RELEASE_DBFS = -1.0
 
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
@@ -72,12 +75,26 @@ class EventDetector(MeasurementModule):
         self.widget: EventDetectorWidget | None = None
 
         self.input_channel = 0
-        self.threshold = 0.01
+        self.detection_mode = EventDetectionMode.CLIP_EVENTS
+        clip_threshold = self.dbfs_to_fs(self.DEFAULT_CLIP_THRESHOLD_DBFS)
+        clip_release = self.dbfs_to_fs(self.DEFAULT_CLIP_RELEASE_DBFS)
+        self.threshold = clip_threshold
         self.threshold_unit = "FS"
         self.polarity = EventPolarity.BOTH
-        self.hysteresis = 0.001
+        self.hysteresis = clip_threshold - clip_release
         self.holdoff_ms = 10.0
         self.target_duration: float | None = None
+
+        self._mode_profiles: dict[EventDetectionMode, dict[str, object]] = {
+            EventDetectionMode.CLIP_EVENTS: self._current_detection_settings(),
+            EventDetectionMode.THRESHOLD_EVENTS: {
+                "threshold": 0.01,
+                "threshold_unit": "FS",
+                "polarity": EventPolarity.BOTH,
+                "hysteresis": 0.001,
+                "holdoff_ms": 10.0,
+            },
+        }
 
         self._core = EventDetectorCore(self._build_config())
         self._run_metadata: dict[str, object] | None = None
@@ -91,7 +108,7 @@ class EventDetector(MeasurementModule):
 
     @property
     def description(self) -> str:
-        return "Counts and measures rare threshold-crossing events."
+        return "Counts clipping incidents and configurable threshold-crossing events."
 
     def get_widget(self):
         if self.widget is None:
@@ -105,7 +122,50 @@ class EventDetector(MeasurementModule):
             polarity=EventPolarity(self.polarity),
             hysteresis=float(self.hysteresis),
             holdoff_seconds=float(self.holdoff_ms) / 1000.0,
+            clipping_invalidates_measurement=self.detection_mode == EventDetectionMode.THRESHOLD_EVENTS,
         )
+
+    @staticmethod
+    def dbfs_to_fs(value_dbfs: float) -> float:
+        """Convert a peak dBFS value to a positive full-scale amplitude."""
+        value = float(value_dbfs)
+        if not math.isfinite(value):
+            raise ValueError("dBFS value must be finite")
+        return 10.0 ** (value / 20.0)
+
+    @staticmethod
+    def fs_to_dbfs(value_fs: float) -> float:
+        """Convert a positive peak full-scale amplitude to dBFS."""
+        value = float(value_fs)
+        if not math.isfinite(value) or value <= 0:
+            raise ValueError("full-scale value must be positive and finite")
+        return 20.0 * math.log10(value)
+
+    def _current_detection_settings(self) -> dict[str, object]:
+        return {
+            "threshold": float(self.threshold),
+            "threshold_unit": str(self.threshold_unit),
+            "polarity": EventPolarity(self.polarity),
+            "hysteresis": float(self.hysteresis),
+            "holdoff_ms": float(self.holdoff_ms),
+        }
+
+    def set_detection_mode(self, mode: EventDetectionMode) -> None:
+        """Switch measurement profiles while retaining each mode's settings."""
+        new_mode = EventDetectionMode(mode)
+        if new_mode == self.detection_mode:
+            return
+        if self.is_running:
+            raise RuntimeError("detection mode cannot be changed while measurement is running")
+
+        self._mode_profiles[self.detection_mode] = self._current_detection_settings()
+        settings = self._mode_profiles[new_mode]
+        self.detection_mode = new_mode
+        self.threshold = float(settings["threshold"])
+        self.threshold_unit = str(settings["threshold_unit"])
+        self.polarity = EventPolarity(settings["polarity"])
+        self.hysteresis = float(settings["hysteresis"])
+        self.holdoff_ms = float(settings["holdoff_ms"])
 
     def set_target_duration(self, duration: float | None) -> None:
         """Set the duration for the next run, or ``None`` for continuous measurement."""
@@ -266,6 +326,7 @@ class EventDetector(MeasurementModule):
             "input_channel": f"CH{self.input_channel + 1}",
             "input_channel_mode": str(getattr(self.audio_engine, "input_channel_mode", "unknown")),
             "input_device_id": input_device,
+            "detection_mode": self.detection_mode.value,
             "threshold_fs_peak": float(config.threshold),
             "hysteresis_fs_peak": float(config.hysteresis),
             "release_level_fs_peak": float(config.threshold - config.hysteresis),
@@ -273,9 +334,18 @@ class EventDetector(MeasurementModule):
             "threshold_display_value": float(config.threshold * threshold_scale),
             "hysteresis_display_value": float(config.hysteresis * threshold_scale),
             "release_level_display_value": float((config.threshold - config.hysteresis) * threshold_scale),
+            "clip_threshold_dbfs": (
+                self.fs_to_dbfs(config.threshold) if self.detection_mode == EventDetectionMode.CLIP_EVENTS else None
+            ),
+            "clip_rearm_dbfs": (
+                self.fs_to_dbfs(config.threshold - config.hysteresis)
+                if self.detection_mode == EventDetectionMode.CLIP_EVENTS
+                else None
+            ),
             "polarity": config.polarity.value,
             "holdoff_seconds": float(config.holdoff_seconds),
             "clip_level_fs_peak": float(config.clip_level),
+            "clipping_invalidates_measurement": config.clipping_invalidates_measurement,
             "target_duration_seconds": self.target_duration,
             "target_sample_count": self._target_samples,
             "input_calibrated": is_calibrated,
@@ -521,12 +591,12 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self.lbl_state.setMinimumWidth(160)
         status_row.addWidget(self.lbl_state)
 
-        self.lbl_event_activity = QLabel(tr("Event:"))
+        self.lbl_event_activity = QLabel()
         self.lbl_event_activity.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         status_row.addWidget(self.lbl_event_activity)
 
         self.lbl_event_indicator = QLabel()
-        self.lbl_event_indicator.setAccessibleName(tr("Event:"))
+        self.lbl_event_indicator.setAccessibleName(tr("Clip event:"))
         self.lbl_event_indicator.setFixedSize(18, 18)
         self._set_event_indicator(False)
         status_row.addWidget(self.lbl_event_indicator)
@@ -561,7 +631,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         result_grid.setRowStretch(0, 3)
         result_grid.setRowStretch(1, 1)
 
-        self.count_group = QGroupBox(tr("Event Count"))
+        self.count_group = QGroupBox()
         self.count_group.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding)
         count_layout = QVBoxLayout(self.count_group)
         self.lbl_count = QLabel("0")
@@ -571,7 +641,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         count_layout.addWidget(self.lbl_count)
         result_grid.addWidget(self.count_group, 0, 0)
 
-        self.rate_group = QGroupBox(tr("Event Rate"))
+        self.rate_group = QGroupBox()
         self.rate_group.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding)
         rate_layout = QVBoxLayout(self.rate_group)
         self.lbl_rate = QLabel(tr("0.000 events/min"))
@@ -794,6 +864,14 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         detection_group = QGroupBox(tr("Detection"))
         detection_form = QFormLayout(detection_group)
 
+        self.combo_mode = QComboBox()
+        self.combo_mode.addItem(tr("Clip Event Detection"), EventDetectionMode.CLIP_EVENTS)
+        self.combo_mode.addItem(tr("Threshold Event Detection"), EventDetectionMode.THRESHOLD_EVENTS)
+        mode_index = self.combo_mode.findData(self.module.detection_mode)
+        self.combo_mode.setCurrentIndex(max(0, mode_index))
+        self.combo_mode.currentIndexChanged.connect(self._on_mode_changed)
+        detection_form.addRow(tr("Mode:"), self.combo_mode)
+
         self.combo_channel = QComboBox()
         self.combo_channel.addItem(tr("CH1"), 0)
         self.combo_channel.addItem(tr("CH2"), 1)
@@ -811,7 +889,8 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         threshold_row.setContentsMargins(0, 0, 0, 0)
         threshold_row.addWidget(self.spin_threshold, stretch=1)
         threshold_row.addWidget(self.combo_threshold_unit)
-        detection_form.addRow(tr("Threshold:"), threshold_row)
+        self.lbl_threshold_field = QLabel()
+        detection_form.addRow(self.lbl_threshold_field, threshold_row)
 
         self.combo_polarity = QComboBox()
         self.combo_polarity.addItem(tr("Positive"), EventPolarity.POSITIVE)
@@ -820,7 +899,8 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         polarity_index = self.combo_polarity.findData(self.module.polarity)
         self.combo_polarity.setCurrentIndex(max(0, polarity_index))
         self.combo_polarity.currentIndexChanged.connect(self._on_polarity_changed)
-        detection_form.addRow(tr("Polarity:"), self.combo_polarity)
+        self.lbl_polarity_field = QLabel(tr("Polarity:"))
+        detection_form.addRow(self.lbl_polarity_field, self.combo_polarity)
 
         hysteresis_max = max(0.0, self.module.threshold - 1e-9)
         self.spin_hysteresis = self._make_amplitude_spinbox(
@@ -829,7 +909,8 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             value=self.module.hysteresis,
         )
         self.spin_hysteresis.valueChanged.connect(self._on_hysteresis_changed)
-        detection_form.addRow(tr("Hysteresis:"), self.spin_hysteresis)
+        self.lbl_hysteresis_field = QLabel()
+        detection_form.addRow(self.lbl_hysteresis_field, self.spin_hysteresis)
 
         self._threshold_calibration_state: tuple[bool, float] | None = None
         self.combo_threshold_unit.currentIndexChanged.connect(self._on_threshold_unit_changed)
@@ -859,6 +940,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
 
         root.addWidget(self.control_widget)
         self._settings_controls = [
+            self.combo_mode,
             self.combo_channel,
             self.spin_threshold,
             self.combo_threshold_unit,
@@ -871,8 +953,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self._rate_view_run_id: str | None = None
         self._rate_view_bin_seconds: float | None = None
         self._rate_view_y_max = 1.0
-        self._refresh_threshold_unit_options(force=True)
-        self._update_release_label()
+        self._refresh_mode_controls()
 
     @staticmethod
     def _make_amplitude_spinbox(*, minimum: float, maximum: float, value: float) -> QDoubleSpinBox:
@@ -889,6 +970,30 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         return str(unit) if unit in self.module.THRESHOLD_UNITS else "FS"
 
     def _configure_threshold_spins(self) -> None:
+        if self.module.detection_mode == EventDetectionMode.CLIP_EVENTS:
+            threshold_dbfs = self.module.fs_to_dbfs(self.module.threshold)
+            release_fs = max(1e-12, self.module.threshold - self.module.hysteresis)
+            release_dbfs = self.module.fs_to_dbfs(release_fs)
+
+            self.spin_threshold.blockSignals(True)
+            self.spin_hysteresis.blockSignals(True)
+            try:
+                self.spin_threshold.setDecimals(2)
+                self.spin_threshold.setRange(-20.0, -0.001)
+                self.spin_threshold.setSingleStep(0.1)
+                self.spin_threshold.setSuffix(" dBFS")
+                self.spin_threshold.setValue(threshold_dbfs)
+
+                self.spin_hysteresis.setDecimals(2)
+                self.spin_hysteresis.setRange(-80.0, threshold_dbfs - 0.01)
+                self.spin_hysteresis.setSingleStep(0.1)
+                self.spin_hysteresis.setSuffix(" dBFS")
+                self.spin_hysteresis.setValue(min(release_dbfs, threshold_dbfs - 0.01))
+            finally:
+                self.spin_threshold.blockSignals(False)
+                self.spin_hysteresis.blockSignals(False)
+            return
+
         unit = self._current_threshold_unit()
         scale = self.module.get_threshold_display_scale(unit)
         decimals = self.AMPLITUDE_DISPLAY_DECIMALS
@@ -925,6 +1030,18 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         if not force and calibration_state == self._threshold_calibration_state:
             return
 
+        if self.module.detection_mode == EventDetectionMode.CLIP_EVENTS:
+            self.combo_threshold_unit.blockSignals(True)
+            try:
+                self.combo_threshold_unit.clear()
+                self.combo_threshold_unit.addItem("dBFS", "dBFS")
+            finally:
+                self.combo_threshold_unit.blockSignals(False)
+            self.module.threshold_unit = "FS"
+            self._threshold_calibration_state = calibration_state
+            self._configure_threshold_spins()
+            return
+
         is_calibrated, _sensitivity = calibration_state
         available_units = ["FS", "mV", "V"] if is_calibrated else ["FS"]
         selected_unit = self.module.threshold_unit
@@ -945,10 +1062,55 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self._configure_threshold_spins()
 
     def _on_threshold_unit_changed(self) -> None:
+        if self.module.detection_mode == EventDetectionMode.CLIP_EVENTS:
+            return
         self.module.threshold_unit = self._current_threshold_unit()
         self._configure_threshold_spins()
         self._update_release_label()
         self._update_condition_label()
+
+    def _on_mode_changed(self) -> None:
+        mode = EventDetectionMode(self.combo_mode.currentData())
+        self.module.set_detection_mode(mode)
+        self.module.reset_measurement()
+        self._reset_event_activity(0)
+        self._last_analysis_key = None
+        self._refresh_mode_controls()
+        self._update_results()
+
+    def _refresh_mode_controls(self) -> None:
+        is_clip_mode = self.module.detection_mode == EventDetectionMode.CLIP_EVENTS
+        self.lbl_threshold_field.setText(tr("Clip level:") if is_clip_mode else tr("Threshold:"))
+        self.lbl_hysteresis_field.setText(tr("Rearm level:") if is_clip_mode else tr("Hysteresis:"))
+        self.combo_threshold_unit.setVisible(not is_clip_mode)
+        self.lbl_polarity_field.setVisible(not is_clip_mode)
+        self.combo_polarity.setVisible(not is_clip_mode)
+
+        self.combo_polarity.blockSignals(True)
+        try:
+            polarity_index = self.combo_polarity.findData(self.module.polarity)
+            self.combo_polarity.setCurrentIndex(max(0, polarity_index))
+        finally:
+            self.combo_polarity.blockSignals(False)
+        self.spin_holdoff.blockSignals(True)
+        try:
+            self.spin_holdoff.setValue(self.module.holdoff_ms)
+        finally:
+            self.spin_holdoff.blockSignals(False)
+
+        self._threshold_calibration_state = None
+        self._refresh_threshold_unit_options(force=True)
+        self._update_mode_labels()
+        self._update_release_label()
+        self._update_condition_label()
+
+    def _update_mode_labels(self) -> None:
+        is_clip_mode = self.module.detection_mode == EventDetectionMode.CLIP_EVENTS
+        self.count_group.setTitle(tr("Clip Event Count") if is_clip_mode else tr("Event Count"))
+        self.rate_group.setTitle(tr("Clip Event Rate") if is_clip_mode else tr("Event Rate"))
+        activity_text = tr("Clip event:") if is_clip_mode else tr("Event:")
+        self.lbl_event_activity.setText(activity_text)
+        self.lbl_event_indicator.setAccessibleName(activity_text)
 
     def _on_start_toggled(self, checked: bool) -> None:
         if checked:
@@ -991,6 +1153,23 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self._update_condition_label()
 
     def _on_threshold_changed(self, value: float) -> None:
+        if self.module.detection_mode == EventDetectionMode.CLIP_EVENTS:
+            threshold_fs = self.module.dbfs_to_fs(value)
+            release_fs = max(1e-12, self.module.threshold - self.module.hysteresis)
+            release_dbfs = min(self.module.fs_to_dbfs(release_fs), value - 0.01)
+            release_fs = self.module.dbfs_to_fs(release_dbfs)
+            self.module.threshold = threshold_fs
+            self.module.hysteresis = threshold_fs - release_fs
+            self.spin_hysteresis.blockSignals(True)
+            try:
+                self.spin_hysteresis.setMaximum(value - 0.01)
+                self.spin_hysteresis.setValue(release_dbfs)
+            finally:
+                self.spin_hysteresis.blockSignals(False)
+            self._update_release_label()
+            self._update_condition_label()
+            return
+
         unit = self._current_threshold_unit()
         self.module.threshold = self.module.threshold_from_display(value, unit)
         maximum_fs = max(0.0, self.module.threshold - 1e-9)
@@ -1010,6 +1189,11 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self._update_condition_label()
 
     def _on_hysteresis_changed(self, value: float) -> None:
+        if self.module.detection_mode == EventDetectionMode.CLIP_EVENTS:
+            release_fs = self.module.dbfs_to_fs(value)
+            self.module.hysteresis = max(0.0, self.module.threshold - release_fs)
+            self._update_release_label()
+            return
         self.module.hysteresis = self.module.threshold_from_display(value, self._current_threshold_unit())
         self._update_release_label()
 
@@ -1018,6 +1202,16 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
 
     def _update_release_label(self) -> None:
         release = max(0.0, float(self.module.threshold) - float(self.module.hysteresis))
+        if self.module.detection_mode == EventDetectionMode.CLIP_EVENTS:
+            threshold_dbfs = self.module.fs_to_dbfs(self.module.threshold)
+            release_dbfs = self.module.fs_to_dbfs(max(1e-12, release))
+            self.lbl_release.setText(
+                tr("Clip starts at ≥ {0:.2f} dBFS and rearms below {1:.2f} dBFS.").format(
+                    threshold_dbfs,
+                    release_dbfs,
+                )
+            )
+            return
         unit = self._current_threshold_unit()
         release_display = self.module.threshold_to_display(release, unit)
         polarity = EventPolarity(self.module.polarity)
@@ -1038,30 +1232,44 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         if metadata is None:
             channel = tr("CH1") if self.module.input_channel == 0 else tr("CH2")
             sample_rate = float(self.module.audio_engine.sample_rate)
+            detection_mode = self.module.detection_mode
             threshold_unit = self._current_threshold_unit()
             threshold = self.module.threshold_to_display(self.module.threshold, threshold_unit)
             polarity = EventPolarity(self.module.polarity)
         else:
             channel = str(metadata["input_channel"])
             sample_rate = float(metadata["sample_rate_hz"])
+            detection_mode = EventDetectionMode(str(metadata["detection_mode"]))
             threshold_unit = str(metadata.get("threshold_display_unit", "FS"))
             threshold = float(metadata.get("threshold_display_value", metadata["threshold_fs_peak"]))
             polarity = EventPolarity(str(metadata["polarity"]))
 
-        polarity_symbol = {
-            EventPolarity.POSITIVE: "+",
-            EventPolarity.NEGATIVE: "−",
-            EventPolarity.BOTH: "±",
-        }[polarity]
         rate_text = tr("{0:g} kHz").format(sample_rate / 1000.0)
-        if threshold_unit == "FS":
-            threshold_text = tr("{0} FS").format(f"{polarity_symbol}{threshold:.9g}")
+        if detection_mode == EventDetectionMode.CLIP_EVENTS:
+            threshold_fs = self.module.threshold if metadata is None else float(metadata["threshold_fs_peak"])
+            threshold_dbfs = self.module.fs_to_dbfs(threshold_fs)
+            threshold_text = tr("Clip ≥ {0:.2f} dBFS").format(threshold_dbfs)
         else:
-            threshold_text = f"{polarity_symbol}{threshold:.9g} {threshold_unit}"
+            polarity_symbol = {
+                EventPolarity.POSITIVE: "+",
+                EventPolarity.NEGATIVE: "−",
+                EventPolarity.BOTH: "±",
+            }[polarity]
+            if threshold_unit == "FS":
+                threshold_text = tr("{0} FS").format(f"{polarity_symbol}{threshold:.9g}")
+            else:
+                threshold_text = f"{polarity_symbol}{threshold:.9g} {threshold_unit}"
         self.lbl_conditions.setText(f"{channel}  •  {threshold_text}  •  {rate_text}")
 
     def _update_calibration_status(self) -> None:
         metadata = self.module.get_run_metadata()
+        detection_mode = (
+            self.module.detection_mode if metadata is None else EventDetectionMode(str(metadata["detection_mode"]))
+        )
+        if detection_mode == EventDetectionMode.CLIP_EVENTS:
+            self.lbl_calibration_status.hide()
+            return
+        self.lbl_calibration_status.show()
         if metadata is None:
             is_calibrated, sensitivity = self.module.get_input_calibration_state()
         else:
@@ -1269,8 +1477,11 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         secs, tenth = divmod(remainder, 10)
         return f"{hours:02d}:{minutes:02d}:{secs:02d}.{tenth}"
 
-    @staticmethod
-    def _format_rate(rate: float) -> str:
+    def _format_rate(self, rate: float) -> str:
+        if self.module.detection_mode == EventDetectionMode.CLIP_EVENTS:
+            if rate < 1000.0:
+                return tr("{0:.3f} clips/min").format(rate)
+            return tr("{0:,.1f} clips/min").format(rate)
         if rate < 1000.0:
             return tr("{0:.3f} events/min").format(rate)
         return tr("{0:,.1f} events/min").format(rate)
@@ -1332,7 +1543,9 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             self._format_rate(snapshot.event_rate_per_minute) if snapshot.measurement_valid else tr("INVALID")
         )
         self.lbl_elapsed.setText(self._format_elapsed(snapshot.elapsed_seconds))
-        self.lbl_clipping.setVisible(snapshot.clipping_detected)
+        self.lbl_clipping.setVisible(
+            snapshot.clipping_detected and self.module.detection_mode == EventDetectionMode.THRESHOLD_EVENTS
+        )
         self.lbl_data_gap.setVisible(snapshot.data_gap_detected)
         self.lbl_config_change.setVisible(snapshot.configuration_changed_detected)
         self.lbl_record_limit.setVisible(snapshot.dropped_record_count > 0)
@@ -1343,10 +1556,19 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
 
         amplitude_scale, amplitude_unit = self.module.get_amplitude_display()
         if snapshot.last_event is None:
-            self.lbl_last_event.setText(tr("Last event: —"))
+            self.lbl_last_event.setText(
+                tr("Last clip event: —")
+                if self.module.detection_mode == EventDetectionMode.CLIP_EVENTS
+                else tr("Last event: —")
+            )
         else:
             event = snapshot.last_event
-            last_event_text = tr("Last event: #{0} • {1:.6g} {2} • {3:.6g} ms").format(
+            last_event_template = (
+                tr("Last clip event: #{0} • {1:.6g} {2} • {3:.6g} ms")
+                if self.module.detection_mode == EventDetectionMode.CLIP_EVENTS
+                else tr("Last event: #{0} • {1:.6g} {2} • {3:.6g} ms")
+            )
+            last_event_text = last_event_template.format(
                 event.sequence_number,
                 event.peak * amplitude_scale,
                 amplitude_unit,
@@ -1360,7 +1582,9 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             DetectorState.STOPPED: tr("STOPPED"),
             DetectorState.WAITING_FOR_RELEASE: tr("WAITING FOR RELEASE"),
             DetectorState.ARMED: tr("ARMED"),
-            DetectorState.EVENT: tr("EVENT"),
+            DetectorState.EVENT: (
+                tr("CLIP EVENT") if self.module.detection_mode == EventDetectionMode.CLIP_EVENTS else tr("EVENT")
+            ),
             DetectorState.HOLDOFF: tr("HOLDOFF"),
         }[snapshot.state]
         state_color = {

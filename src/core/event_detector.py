@@ -19,6 +19,13 @@ class EventPolarity(StrEnum):
     BOTH = "both"
 
 
+class EventDetectionMode(StrEnum):
+    """Measurement profiles exposed by the Event Detector widget."""
+
+    CLIP_EVENTS = "clip_events"
+    THRESHOLD_EVENTS = "threshold_events"
+
+
 class DetectorState(StrEnum):
     """Externally visible detector states."""
 
@@ -48,6 +55,7 @@ class DetectorConfig:
     hysteresis: float = 0.0
     holdoff_seconds: float = 0.0
     clip_level: float = 1.0
+    clipping_invalidates_measurement: bool = True
 
     def __post_init__(self) -> None:
         try:
@@ -81,6 +89,8 @@ class DetectorConfig:
             raise ValueError("clip_level must be greater than zero")
         if self.threshold >= self.clip_level:
             raise ValueError("threshold must be smaller than clip_level")
+        if not isinstance(self.clipping_invalidates_measurement, bool):
+            raise ValueError("clipping_invalidates_measurement must be a boolean")
 
     @property
     def holdoff_samples(self) -> int:
@@ -564,7 +574,7 @@ class EventDetectorCore:
                 data_gap_count=self._data_gap_count,
                 configuration_changed_detected=self._configuration_changed_detected,
                 measurement_valid=(
-                    not self._clipping_detected
+                    (not self._clipping_detected or not self._config.clipping_invalidates_measurement)
                     and not self._data_gap_detected
                     and not self._configuration_changed_detected
                     and self._dropped_record_count == 0

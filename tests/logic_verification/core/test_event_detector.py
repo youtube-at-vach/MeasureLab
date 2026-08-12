@@ -41,6 +41,10 @@ def make_detector(
         ({"sample_rate": 1000, "threshold": 0.5, "holdoff_seconds": -0.1}, "holdoff"),
         ({"sample_rate": 1000, "threshold": np.nan}, "finite"),
         ({"sample_rate": 1000, "threshold": 1.0, "clip_level": 1.0}, "clip_level"),
+        (
+            {"sample_rate": 1000, "threshold": 0.5, "clipping_invalidates_measurement": 1},
+            "boolean",
+        ),
     ],
 )
 def test_config_rejects_invalid_settings(kwargs, message):
@@ -180,6 +184,28 @@ def test_stop_preserves_results_and_reset_clears_them():
 
     detector.process(np.array([0.0]), data_gap=True)
     assert not detector.snapshot().data_gap_detected
+
+
+def test_clipping_quality_policy_can_be_disabled_for_clip_measurements():
+    invalidating = EventDetectorCore(DetectorConfig(sample_rate=1000, threshold=0.5))
+    clip_measurement = EventDetectorCore(
+        DetectorConfig(
+            sample_rate=1000,
+            threshold=0.5,
+            clipping_invalidates_measurement=False,
+        )
+    )
+    invalidating.start()
+    clip_measurement.start()
+
+    samples = np.array([0.0, 1.0, 0.0])
+    invalidating.process(samples)
+    clip_measurement.process(samples)
+
+    assert invalidating.snapshot().clipping_detected
+    assert not invalidating.snapshot().measurement_valid
+    assert clip_measurement.snapshot().clipping_detected
+    assert clip_measurement.snapshot().measurement_valid
 
 
 def test_non_finite_input_latches_data_gap_and_breaks_crossing_continuity():
