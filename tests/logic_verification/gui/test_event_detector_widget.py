@@ -71,6 +71,40 @@ def test_module_registers_callback_detects_selected_channel_and_stops():
     module.audio_engine.unregister_callback.assert_called_once()
 
 
+def test_module_fixed_duration_stops_at_an_exact_sample_count():
+    module, callbacks = make_module(sample_rate=1000)
+    module.set_target_duration(0.005)
+    module.start_analysis()
+
+    callbacks[0](np.zeros((3, 2)), np.zeros((3, 2)), 3, None, False)
+    assert module.is_running
+    assert module.get_snapshot().elapsed_seconds == pytest.approx(0.003)
+
+    callbacks[0](np.zeros((5, 2)), np.zeros((5, 2)), 5, None, False)
+    snapshot = module.get_snapshot()
+    metadata = module.get_run_metadata()
+
+    assert not module.is_running
+    assert snapshot.state == DetectorState.STOPPED
+    assert snapshot.processed_samples == 5
+    assert snapshot.elapsed_seconds == pytest.approx(0.005)
+    assert metadata is not None
+    assert metadata["target_duration_seconds"] == pytest.approx(0.005)
+    assert metadata["target_sample_count"] == 5
+    assert metadata["stop_reason"] == "target_duration_reached"
+
+    # Cleanup is intentionally completed outside the audio callback.
+    module.stop_analysis()
+    module.audio_engine.unregister_callback.assert_called_once_with(23)
+
+
+def test_module_rejects_invalid_fixed_duration():
+    module, _callbacks = make_module()
+
+    with pytest.raises(ValueError, match="target duration"):
+        module.set_target_duration(0)
+
+
 def test_callback_processes_mono_ch1_and_latches_quality_warnings():
     module, callbacks = make_module()
     module.threshold = 0.5
@@ -118,6 +152,24 @@ def test_widget_start_reset_stop_and_result_refresh(qtbot):
     assert not widget.timer.isActive()
     assert widget.spin_threshold.isEnabled()
     assert widget.lbl_state.text() == "STOPPED"
+
+
+def test_widget_returns_to_idle_when_fixed_duration_completes(qtbot):
+    module, callbacks = make_module(sample_rate=1000)
+    widget = EventDetectorWidget(module)
+    qtbot.addWidget(widget)
+    widget.combo_duration.setCurrentIndex(widget.combo_duration.findData(1.0))
+    widget.btn_start.click()
+
+    callbacks[0](np.zeros((1000, 2)), np.zeros((1000, 2)), 1000, None, False)
+    widget._update_results()
+
+    assert not module.is_running
+    assert not widget.btn_start.isChecked()
+    assert widget.btn_start.text() == "Start"
+    assert widget.spin_threshold.isEnabled()
+    assert not widget.timer.isActive()
+    module.audio_engine.unregister_callback.assert_called_once_with(23)
 
 
 def test_widget_threshold_units_use_input_calibration_and_preserve_fs_values(qtbot):

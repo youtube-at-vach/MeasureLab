@@ -77,10 +77,13 @@ class EventDetector(MeasurementModule):
         self.polarity = EventPolarity.BOTH
         self.hysteresis = 0.001
         self.holdoff_ms = 10.0
+        self.target_duration: float | None = None
 
         self._core = EventDetectorCore(self._build_config())
         self._run_metadata: dict[str, object] | None = None
         self._run_stopped_at_utc: str | None = None
+        self._run_stop_reason: str | None = None
+        self._target_samples: int | None = None
 
     @property
     def name(self) -> str:
@@ -104,12 +107,30 @@ class EventDetector(MeasurementModule):
             holdoff_seconds=float(self.holdoff_ms) / 1000.0,
         )
 
+    def set_target_duration(self, duration: float | None) -> None:
+        """Set the duration for the next run, or ``None`` for continuous measurement."""
+        if duration is None:
+            self.target_duration = None
+            return
+
+        value = float(duration)
+        if not math.isfinite(value) or value <= 0:
+            raise ValueError("target duration must be a positive finite number of seconds")
+        self.target_duration = value
+
+    @staticmethod
+    def _duration_to_samples(duration: float | None, sample_rate: float) -> int | None:
+        if duration is None:
+            return None
+        return max(1, int(round(duration * sample_rate)))
+
     def start_analysis(self) -> None:
         if self.is_running:
             return
 
         config = self._build_config()
         self._core.start(config)
+        self._target_samples = self._duration_to_samples(self.target_duration, config.sample_rate)
         self._capture_run_metadata(config)
         self.is_running = True
 
@@ -121,6 +142,8 @@ class EventDetector(MeasurementModule):
             self._core.stop()
             self._run_metadata = None
             self._run_stopped_at_utc = None
+            self._run_stop_reason = None
+            self._target_samples = None
             raise
 
     def stop_analysis(self) -> None:
@@ -136,15 +159,31 @@ class EventDetector(MeasurementModule):
                 self.audio_engine.unregister_callback(callback_id)
         finally:
             self._core.stop()
-            self._run_stopped_at_utc = self._utc_now()
+            if self._run_stopped_at_utc is None:
+                self._run_stopped_at_utc = self._utc_now()
+            if self._run_stop_reason is None:
+                self._run_stop_reason = "manual_stop"
+
+    def _complete_target_duration(self) -> None:
+        """Finish an exact sample-count run from the audio callback.
+
+        Callback unregistration is left to ``stop_analysis`` on the GUI thread,
+        so a final callback never attempts to stop the underlying audio stream.
+        """
+        self.is_running = False
+        self._core.stop()
+        self._run_stopped_at_utc = self._utc_now()
+        self._run_stop_reason = "target_duration_reached"
 
     def reset_measurement(self) -> None:
         self._core.reset()
         if self.is_running:
+            self._target_samples = self._duration_to_samples(self.target_duration, self._core.config.sample_rate)
             self._capture_run_metadata(self._core.config)
         else:
             self._run_metadata = None
             self._run_stopped_at_utc = None
+            self._run_stop_reason = None
 
     def get_snapshot(self) -> DetectorSnapshot:
         return self._core.snapshot()
@@ -237,16 +276,20 @@ class EventDetector(MeasurementModule):
             "polarity": config.polarity.value,
             "holdoff_seconds": float(config.holdoff_seconds),
             "clip_level_fs_peak": float(config.clip_level),
+            "target_duration_seconds": self.target_duration,
+            "target_sample_count": self._target_samples,
             "input_calibrated": is_calibrated,
             "input_sensitivity_v_peak_per_fs": sensitivity if is_calibrated else None,
         }
         self._run_stopped_at_utc = None
+        self._run_stop_reason = None
 
     def get_run_metadata(self) -> dict[str, object] | None:
         if self._run_metadata is None:
             return None
         metadata = dict(self._run_metadata)
         metadata["stopped_at_utc"] = self._run_stopped_at_utc
+        metadata["stop_reason"] = self._run_stop_reason
         snapshot = self.get_snapshot()
         metadata.update(
             {
@@ -384,7 +427,18 @@ class EventDetector(MeasurementModule):
             for name in ("input_overflow", "input_underflow", "output_overflow", "output_underflow")
         ):
             input_status = True
+        target_samples = self._target_samples
+        if target_samples is not None:
+            remaining = target_samples - self._core.snapshot().processed_samples
+            if remaining <= 0:
+                self._complete_target_duration()
+                return
+            samples = samples[:remaining]
+
         self._core.process(samples, data_gap=input_status)
+
+        if target_samples is not None and self._core.snapshot().processed_samples >= target_samples:
+            self._complete_target_duration()
 
 
 class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInterface):
@@ -672,6 +726,16 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self.btn_reset = QPushButton(tr("Reset"))
         self.btn_reset.clicked.connect(self._on_reset)
         measurement_layout.addWidget(self.btn_reset)
+
+        self.combo_duration = QComboBox()
+        self.combo_duration.addItem(tr("Continuous"), None)
+        for seconds in (1, 3, 5, 10, 20, 30):
+            self.combo_duration.addItem(tr("{0} s").format(seconds), float(seconds))
+        for minutes in (1, 2, 5, 10, 15, 30):
+            self.combo_duration.addItem(tr("{0} min").format(minutes), float(minutes * 60))
+        self.combo_duration.currentIndexChanged.connect(self._on_duration_changed)
+        measurement_layout.addWidget(QLabel(tr("Duration:")))
+        measurement_layout.addWidget(self.combo_duration)
         controls.addWidget(measurement_group)
 
         detection_group = QGroupBox(tr("Detection"))
@@ -748,6 +812,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             self.combo_polarity,
             self.spin_hysteresis,
             self.spin_holdoff,
+            self.combo_duration,
         ]
         self._last_analysis_key: tuple[int, int, int] | None = None
         self._rate_view_run_id: str | None = None
@@ -860,6 +925,10 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self.module.reset_measurement()
         self._last_analysis_key = None
         self._update_results()
+
+    def _on_duration_changed(self) -> None:
+        duration = self.combo_duration.currentData()
+        self.module.set_target_duration(None if duration is None else float(duration))
 
     def _on_channel_changed(self) -> None:
         self.module.input_channel = int(self.combo_channel.currentData())
@@ -1132,6 +1201,16 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         return tr("{0:,.1f} events/min").format(rate)
 
     def _update_results(self) -> None:
+        if self.btn_start.isChecked() and not self.module.is_running:
+            # A fixed-duration run has stopped in the audio callback. Complete
+            # its cleanup from the GUI thread and restore the control state.
+            self.module.stop_analysis()
+            self.btn_start.blockSignals(True)
+            self.btn_start.setChecked(False)
+            self.btn_start.blockSignals(False)
+            self.btn_start.setText(tr("Start"))
+            self._set_settings_enabled(True)
+            self.timer.stop()
         if not self.module.is_running:
             self._refresh_threshold_unit_options()
         snapshot = self.module.get_snapshot()
