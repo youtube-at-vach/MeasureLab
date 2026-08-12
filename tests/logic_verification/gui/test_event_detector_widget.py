@@ -1,3 +1,5 @@
+import csv
+import json
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -65,7 +67,7 @@ def test_module_registers_callback_detects_selected_channel_and_stops():
     module.audio_engine.unregister_callback.assert_called_once()
 
 
-def test_callback_falls_back_to_mono_and_latches_quality_warnings():
+def test_callback_processes_mono_ch1_and_latches_quality_warnings():
     module, callbacks = make_module()
     module.threshold = 0.5
     module.hysteresis = 0.1
@@ -139,3 +141,63 @@ def test_widget_exposes_compact_and_split_panels(qtbot):
     assert not wrapper.is_split
     assert widget.display_widget.parent() is widget
     assert widget.control_widget.parent() is widget
+
+
+def test_module_exports_auditable_csv_and_json_records(tmp_path):
+    module, callbacks = make_module()
+    module.threshold = 0.5
+    module.hysteresis = 0.1
+    module.holdoff_ms = 0
+    module.polarity = EventPolarity.POSITIVE
+    module.start_analysis()
+    callbacks[0](
+        np.array([[0.0, 0.0], [0.7, 0.0], [0.3, 0.0]]),
+        np.zeros((3, 2)),
+        3,
+        None,
+        False,
+    )
+    module.stop_analysis()
+
+    csv_path = tmp_path / "events.csv"
+    json_path = tmp_path / "events.json"
+    module.export_events(str(csv_path))
+    module.export_events(str(json_path))
+
+    with csv_path.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.reader(handle))
+    assert ["# MeasureLab Event Detector Export"] in rows
+    assert any(row and row[0] == "sequence_number" for row in rows)
+
+    payload = json.loads(json_path.read_text(encoding="utf-8"))
+    assert payload["schema"] == "measurelab.event_detector"
+    assert payload["run"]["measurement_valid"] is True
+    assert payload["events"][0]["completion"] == "valid"
+    assert payload["events"][0]["peak_fs"] == 0.7
+
+
+def test_widget_shows_invalid_rate_after_input_gap(qtbot):
+    module, callbacks = make_module()
+    widget = EventDetectorWidget(module)
+    qtbot.addWidget(widget)
+    widget.spin_threshold.setValue(0.5)
+    widget.spin_hysteresis.setValue(0.1)
+    widget.btn_start.click()
+
+    callbacks[0](np.zeros((3, 2)), np.zeros((3, 2)), 3, None, True)
+    widget._update_results()
+
+    assert widget.lbl_rate.text() == "INVALID"
+    assert not widget.lbl_data_gap.isHidden()
+
+
+def test_sample_rate_change_invalidates_active_run():
+    module, callbacks = make_module(sample_rate=1000)
+    module.start_analysis()
+    module.audio_engine.sample_rate = 2000
+
+    callbacks[0](np.zeros((3, 2)), np.zeros((3, 2)), 3, None, False)
+
+    snapshot = module.get_snapshot()
+    assert snapshot.configuration_changed_detected
+    assert not snapshot.measurement_valid

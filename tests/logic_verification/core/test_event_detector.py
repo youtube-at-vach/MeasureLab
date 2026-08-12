@@ -5,6 +5,7 @@ from src.core.event_detector import (
     DetectorConfig,
     DetectorState,
     EventDetectorCore,
+    EventCompletion,
     EventPolarity,
 )
 
@@ -39,6 +40,7 @@ def make_detector(
         ({"sample_rate": 1000, "threshold": 0.5, "hysteresis": 0.5}, "hysteresis"),
         ({"sample_rate": 1000, "threshold": 0.5, "holdoff_seconds": -0.1}, "holdoff"),
         ({"sample_rate": 1000, "threshold": np.nan}, "finite"),
+        ({"sample_rate": 1000, "threshold": 1.0, "clip_level": 1.0}, "clip_level"),
     ],
 )
 def test_config_rejects_invalid_settings(kwargs, message):
@@ -188,3 +190,103 @@ def test_non_finite_input_latches_data_gap_and_breaks_crossing_continuity():
 
     assert detector.snapshot().data_gap_detected
     assert detector.snapshot().event_count == 1
+
+
+def test_detector_waits_for_release_band_before_first_event():
+    detector = make_detector(polarity=EventPolarity.POSITIVE)
+
+    detector.process(np.array([0.45, 0.6, 0.3]))
+
+    assert detector.snapshot().event_count == 0
+    assert detector.snapshot().state == DetectorState.ARMED
+
+    detector.process(np.array([0.6, 0.3]))
+    assert detector.snapshot().event_count == 1
+
+
+def test_data_gap_does_not_invent_crossing_at_next_block_boundary():
+    detector = make_detector(polarity=EventPolarity.POSITIVE)
+    detector.process(np.array([0.0]))
+
+    detector.process(np.array([0.6, 0.3]), data_gap=True)
+
+    snapshot = detector.snapshot()
+    assert snapshot.event_count == 0
+    assert snapshot.data_gap_detected
+    assert not snapshot.measurement_valid
+
+
+def test_data_gap_censors_active_event_and_rearms_from_release_band():
+    detector = make_detector(polarity=EventPolarity.POSITIVE)
+    detector.process(np.array([0.0, 0.6]))
+
+    detector.process(np.array([0.3]), data_gap=True)
+
+    snapshot = detector.snapshot()
+    events = detector.get_events()
+    assert snapshot.event_count == 1
+    assert snapshot.completed_event_count == 0
+    assert snapshot.censored_event_count == 1
+    assert snapshot.state == DetectorState.ARMED
+    assert events[0].completion == EventCompletion.CENSORED_GAP
+
+
+def test_gap_breaks_interarrival_and_quiet_time_continuity():
+    detector = make_detector(polarity=EventPolarity.POSITIVE)
+    detector.process(np.array([0.0, 0.6, 0.3]))
+    detector.process(np.array([0.0]), data_gap=True)
+    detector.process(np.array([0.6, 0.3]))
+
+    second = detector.get_events()[1]
+    assert second.interval_seconds is None
+    assert second.quiet_time_seconds is None
+
+
+def test_stop_censors_active_event_without_losing_start_count():
+    detector = make_detector(polarity=EventPolarity.POSITIVE)
+    detector.process(np.array([0.0, 0.6]))
+
+    detector.stop()
+
+    snapshot = detector.snapshot()
+    assert snapshot.event_count == 1
+    assert snapshot.censored_event_count == 1
+    assert detector.get_events()[0].completion == EventCompletion.CENSORED_STOP
+
+
+def test_both_polarity_direct_reversal_is_one_bipolar_excursion():
+    detector = make_detector(polarity=EventPolarity.BOTH)
+
+    detector.process(np.array([0.0, 0.6, -0.8, 0.0]))
+
+    event = detector.get_events()[0]
+    assert detector.snapshot().event_count == 1
+    assert event.trigger_polarity == EventPolarity.POSITIVE
+    assert event.peak_polarity == EventPolarity.NEGATIVE
+    assert event.positive_peak == pytest.approx(0.6)
+    assert event.negative_peak == pytest.approx(-0.8)
+    assert event.peak == pytest.approx(-0.8)
+
+
+def test_unobserved_opposite_polarity_peak_is_none():
+    detector = make_detector(polarity=EventPolarity.BOTH)
+    detector.process(np.array([0.0, 0.6, 0.3]))
+
+    event = detector.get_events()[0]
+    assert event.positive_peak == pytest.approx(0.6)
+    assert event.negative_peak is None
+
+
+def test_record_retention_limit_is_reported():
+    detector = EventDetectorCore(
+        DetectorConfig(sample_rate=1000, threshold=0.5, hysteresis=0.1),
+        max_records=2,
+    )
+    detector.start()
+    detector.process(np.array([0.0, 0.6, 0.3, 0.6, 0.3, 0.6, 0.3]))
+
+    snapshot = detector.snapshot()
+    assert snapshot.event_count == 3
+    assert snapshot.retained_event_count == 2
+    assert snapshot.dropped_record_count == 1
+    assert not snapshot.measurement_valid

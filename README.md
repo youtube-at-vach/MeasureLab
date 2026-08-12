@@ -43,7 +43,7 @@ For details on each function, please refer to the [**Widget Guide**](docs/widget
 | 10 | **Network Analyzer** | Measures frequency response (gain, phase, group delay) and impulse response. Supports sweep measurement, multiple trace display, RIAA curve comparison, frequency range limiting, sub-sample delay estimation & compensation (fractional delay), and automatic coarse delay calibration. |
 | 11 | **Oscilloscope** | 2-channel waveform display with trigger function, cursor measurement, math waveforms (A+B, A-B), and real-time low-pass/high-pass filtering. |
 | 12 | **Raw Time Series** | 2-channel scroll waveform monitor that holds long-term spans in a ring buffer. |
-| 13 | **Event Detector** | Continuously counts rare threshold-crossing events and displays their rate. Supports polarity, hysteresis, holdoff, and latched measurement-quality warnings. |
+| 13 | **Event Detector** | Records rare threshold events with statistics, histograms, time-binned rate trends, CSV/JSON export, and latched measurement-quality warnings. |
 | 14 | **Transient Analyzer** | Transient analysis with trigger recording + CWT, flexible analysis band/scale specification. |
 | 15 | **Lock-in Amplifier** | Small signal measurement using Phase Sensitive Detection (PSD). Includes Frequency Response Analysis (FRA) mode, harmonic demodulation (2nd-10th order), and calibration function. |
 | 16 | **Lock-in Harmonic Analyzer** | Ultra-low distortion measurement module utilizing the principle of a lock-in amplifier. It performs multi-parallel IQ detection (up to 200th order) strictly tuned to the fundamental and harmonics to extract minute distortion with high precision. |
