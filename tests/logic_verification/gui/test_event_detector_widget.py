@@ -146,6 +146,35 @@ def test_widget_summary_keeps_only_primary_measurement_information(qtbot):
     assert "Valid" not in widget.lbl_last_event.text()
 
 
+def test_widget_summary_frames_do_not_move_with_display_digits(qtbot):
+    module, _callbacks = make_module(sample_rate=48_000)
+    widget = EventDetectorWidget(module)
+    qtbot.addWidget(widget)
+    widget.resize(1200, 700)
+    widget.show()
+    qtbot.wait(10)
+
+    initial_geometries = (
+        widget.count_group.geometry(),
+        widget.rate_group.geometry(),
+        widget.time_group.geometry(),
+    )
+    assert initial_geometries[0].width() == initial_geometries[1].width()
+    assert initial_geometries[2].top() > initial_geometries[0].bottom()
+
+    widget.lbl_count.setText("999,999,999,999")
+    widget.lbl_rate.setText("999,999,999.9 events/min")
+    widget.lbl_elapsed.setText("999999:59:59.9")
+    widget.tabs.currentWidget().layout().activate()
+    qtbot.wait(10)
+
+    assert (
+        widget.count_group.geometry(),
+        widget.rate_group.geometry(),
+        widget.time_group.geometry(),
+    ) == initial_geometries
+
+
 def test_widget_exposes_compact_and_split_panels(qtbot):
     module, _callbacks = make_module()
     widget = EventDetectorWidget(module)

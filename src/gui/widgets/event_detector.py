@@ -18,12 +18,14 @@ from PyQt6.QtWidgets import (
     QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
+    QGridLayout,
     QGroupBox,
     QHeaderView,
     QHBoxLayout,
     QLabel,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
     QTabWidget,
@@ -395,32 +397,43 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         summary_tab = QWidget()
         summary_layout = QVBoxLayout(summary_tab)
         summary_layout.setContentsMargins(6, 6, 6, 6)
-        result_row = QHBoxLayout()
-        result_row.setSpacing(8)
-        count_group = QGroupBox(tr("Event Count"))
-        count_layout = QVBoxLayout(count_group)
+        result_grid = QGridLayout()
+        result_grid.setSpacing(8)
+        result_grid.setColumnStretch(0, 1)
+        result_grid.setColumnStretch(1, 1)
+        result_grid.setRowStretch(0, 3)
+        result_grid.setRowStretch(1, 1)
+
+        self.count_group = QGroupBox(tr("Event Count"))
+        self.count_group.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding)
+        count_layout = QVBoxLayout(self.count_group)
         self.lbl_count = QLabel("0")
         self.lbl_count.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_count.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.lbl_count.setStyleSheet("font-size: 42px; font-weight: bold;")
         count_layout.addWidget(self.lbl_count)
-        result_row.addWidget(count_group, stretch=1)
+        result_grid.addWidget(self.count_group, 0, 0)
 
-        rate_group = QGroupBox(tr("Event Rate"))
-        rate_layout = QVBoxLayout(rate_group)
+        self.rate_group = QGroupBox(tr("Event Rate"))
+        self.rate_group.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding)
+        rate_layout = QVBoxLayout(self.rate_group)
         self.lbl_rate = QLabel(tr("0.000 events/min"))
         self.lbl_rate.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_rate.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.lbl_rate.setStyleSheet("font-size: 26px; font-weight: bold;")
         rate_layout.addWidget(self.lbl_rate)
-        result_row.addWidget(rate_group, stretch=1)
+        result_grid.addWidget(self.rate_group, 0, 1)
 
-        time_group = QGroupBox(tr("Measurement Time"))
-        time_layout = QVBoxLayout(time_group)
+        self.time_group = QGroupBox(tr("Measurement Time"))
+        self.time_group.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding)
+        time_layout = QVBoxLayout(self.time_group)
         self.lbl_elapsed = QLabel("00:00:00.0")
         self.lbl_elapsed.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_elapsed.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.lbl_elapsed.setStyleSheet("font-size: 22px; font-family: monospace;")
         time_layout.addWidget(self.lbl_elapsed)
-        result_row.addWidget(time_group, stretch=1)
-        summary_layout.addLayout(result_row, stretch=1)
+        result_grid.addWidget(self.time_group, 1, 0, 1, 2)
+        summary_layout.addLayout(result_grid, stretch=1)
 
         self.lbl_last_event = QLabel(tr("Last event: —"))
         self.lbl_last_event.setAlignment(Qt.AlignmentFlag.AlignCenter)
