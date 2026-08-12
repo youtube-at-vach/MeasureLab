@@ -81,9 +81,9 @@ GUI メインウィンドウ周辺のみを確認する場合:
 
 ### サイズ上限基準 (Size Constraints)
 
-- **MainWindow 最小サイズ (minimumSizeHint)**: 最大 **1290x740** px
-- **各モジュールコンテンツ (Widget minimumSizeHint)**: 最大 **1070x690** px
-    - ※現在の最大要求サイズ（`Spectrum Analyzer` 幅1058px、`LUFS Meter` 高さ676px）に基づき、微小なプラットフォーム差分を含めたバッファ（+10〜15px）を追加した上限値です。
+- **MainWindow 最小サイズ (minimumSizeHint)**: 最大 **1320x740** px
+- **各モジュールコンテンツ (Widget minimumSizeHint)**: 最大 **1100x690** px
+    - ※Linux CI と macOS で生じるフォントメトリクス差を考慮し、幅には約30pxのプラットフォーム差分バッファを含めています。高さ上限は従来どおり維持します。
 
 ### 検証スクリプト (Check Script)
 
