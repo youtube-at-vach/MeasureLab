@@ -258,6 +258,16 @@ class TestAudioEngineBasicSettings(unittest.TestCase):
             self.assertTrue(relatched_status["latched_xrun_status"]["input_overflow"])
             self.assertEqual(relatched_status["latched_xrun_count"], 1)
 
+    def test_register_callback_rolls_back_when_stream_start_fails(self):
+        self.engine._start_master_stream = MagicMock()
+
+        with self.assertRaisesRegex(RuntimeError, "Audio stream failed to start"):
+            self.engine.register_callback(MagicMock())
+
+        self.assertEqual(self.engine.callbacks, {})
+        self.assertEqual(self.engine._cached_callbacks, [])
+        self.assertIsNone(self.engine.stream)
+
     def test_priming_output_is_not_latched_as_xrun(self):
         self.engine.accumulated_status = _FakeCallbackFlags()
         indata = np.zeros((8, 2), dtype=np.float32)

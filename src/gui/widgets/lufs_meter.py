@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QProgressBar,
     QPushButton,
     QTabWidget,
@@ -71,14 +72,20 @@ class LufsMeter(MeasurementModule):
         self._i_started_at = None
         self._i_sample_count = 0
         self._i_block_step = 0
-        self._i_since_last_block = 0
+        self._i_next_block_sample = 0
         self._i_block_ms = []  # per-block mean-square (Lk^2+Rk^2), 400 ms blocks, 75% overlap
         self._i_abs_gate_ms = float(10 ** ((-70.0 + 0.691) / 10.0))
         self._i_dirty = False
         self._i_lock = threading.Lock()
 
         self._lra_blocks = []
-        self._lra_step_frames = 0
+        self._lra_next_block_sample = 0
+
+        # Measurement-quality latches. Loudness accumulated across an input
+        # discontinuity or acquisition-rate change must never look valid.
+        self.measurement_valid = True
+        self.data_gap_detected = False
+        self.configuration_changed_detected = False
 
         # Stereo RMS & Peak
         self.rms_l = self._db_floor
@@ -104,20 +111,113 @@ class LufsMeter(MeasurementModule):
         return LufsMeterWidget(self)
 
     def _init_filters(self):
-        # K-weighting filter coefficients (ITU-R BS.1770-4)
-        # Keep float32 to avoid per-block float64 upcasts in the audio callback.
-        self.b0_shelf = np.array([1.53512485958697, -2.69169618940638, 1.19839281085285], dtype=np.float32)
-        self.a0_shelf = np.array([1.0, -1.69065929318241, 0.73248077421585], dtype=np.float32)
-        self.b1_hp = np.array([1.0, -2.0, 1.0], dtype=np.float32)
-        self.a1_hp = np.array([1.0, -1.99004745483398, 0.99007225036621], dtype=np.float32)
+        # ITU-R BS.1770 publishes coefficients for 48 kHz and explicitly
+        # requires different values at other sample rates. These equations are
+        # the reverse-engineered analogue specification from De Man (2018),
+        # bilinear-transformed for the active acquisition rate. At 48 kHz they
+        # reproduce the published coefficient tables.
+        sample_rate = float(self.sample_rate)
+        shelf_frequency = 1681.974450955533
+        shelf_gain_db = 3.999843853973347
+        shelf_q = 0.7071752369554196
+        shelf_exponent = 0.4996667741545416
+        high_pass_frequency = 38.13547087602444
+        high_pass_q = 0.5003270373238773
 
-        # Initial filter states (per-channel)
-        zi_shelf = signal.lfilter_zi(self.b0_shelf, self.a0_shelf).astype(np.float32, copy=False)
-        zi_hp = signal.lfilter_zi(self.b1_hp, self.a1_hp).astype(np.float32, copy=False)
+        if not np.isfinite(sample_rate) or sample_rate <= 2.0 * shelf_frequency:
+            raise ValueError("sample rate is too low for BS.1770 K-weighting")
+
+        shelf_k = np.tan(np.pi * shelf_frequency / sample_rate)
+        shelf_vh = 10.0 ** (shelf_gain_db / 20.0)
+        shelf_vb = shelf_vh**shelf_exponent
+        shelf_a0 = 1.0 + shelf_k / shelf_q + shelf_k**2
+        self.b0_shelf = np.asarray(
+            [
+                (shelf_vh + shelf_vb * shelf_k / shelf_q + shelf_k**2) / shelf_a0,
+                2.0 * (shelf_k**2 - shelf_vh) / shelf_a0,
+                (shelf_vh - shelf_vb * shelf_k / shelf_q + shelf_k**2) / shelf_a0,
+            ],
+            dtype=np.float32,
+        )
+        self.a0_shelf = np.asarray(
+            [
+                1.0,
+                2.0 * (shelf_k**2 - 1.0) / shelf_a0,
+                (1.0 - shelf_k / shelf_q + shelf_k**2) / shelf_a0,
+            ],
+            dtype=np.float32,
+        )
+
+        high_pass_k = np.tan(np.pi * high_pass_frequency / sample_rate)
+        high_pass_a0 = 1.0 + high_pass_k / high_pass_q + high_pass_k**2
+        self.b1_hp = np.asarray([1.0, -2.0, 1.0], dtype=np.float32)
+        self.a1_hp = np.asarray(
+            [
+                1.0,
+                2.0 * (high_pass_k**2 - 1.0) / high_pass_a0,
+                (1.0 - high_pass_k / high_pass_q + high_pass_k**2) / high_pass_a0,
+            ],
+            dtype=np.float32,
+        )
+
+        # A meter has no justified pre-start signal history. lfilter_zi() is a
+        # unit-step steady-state and injects a large phantom transient when it
+        # is passed unscaled, even when the actual input starts with silence.
+        zi_shelf = np.zeros(2, dtype=np.float32)
+        zi_hp = np.zeros(2, dtype=np.float32)
         self.zi_shelf_l = zi_shelf.copy()
         self.zi_shelf_r = zi_shelf.copy()
         self.zi_hp_l = zi_hp.copy()
         self.zi_hp_r = zi_hp.copy()
+
+    @staticmethod
+    def _ring_update_power(
+        ring: np.ndarray,
+        pos: int,
+        filled: int,
+        sum_p: float,
+        p_chunk: np.ndarray,
+    ) -> tuple[int, int, float]:
+        """Write a power chunk into a ring without imposing a block-size limit."""
+        n = int(ring.shape[0])
+        m = int(p_chunk.shape[0])
+        if m <= 0:
+            return pos, filled, sum_p
+        if n <= 0:
+            raise ValueError("power ring must not be empty")
+
+        if m >= n:
+            tail = np.asarray(p_chunk[-n:], dtype=ring.dtype)
+            new_pos = (pos + m) % n
+            split = n - new_pos
+            ring[new_pos:] = tail[:split]
+            ring[:new_pos] = tail[split:]
+            return new_pos, n, float(np.sum(tail, dtype=np.float64))
+
+        end = pos + m
+        chunk_sum = float(np.sum(p_chunk, dtype=np.float64))
+        if end <= n:
+            sum_p -= float(np.sum(ring[pos:end], dtype=np.float64))
+            ring[pos:end] = p_chunk
+        else:
+            first = n - pos
+            wrapped = end - n
+            sum_p -= float(np.sum(ring[pos:], dtype=np.float64))
+            sum_p -= float(np.sum(ring[:wrapped], dtype=np.float64))
+            ring[pos:] = p_chunk[:first]
+            ring[:wrapped] = p_chunk[first:]
+        return end % n, min(n, filled + m), sum_p + chunk_sum
+
+    def _reset_power_rings(self) -> None:
+        for ring in (self._p_ring_m, self._p_ring_s):
+            if ring is not None:
+                ring.fill(0)
+        self._p_pos_m = 0
+        self._p_pos_s = 0
+        self._p_filled_m = 0
+        self._p_filled_s = 0
+        self._p_sum_m = 0.0
+        self._p_sum_s = 0.0
 
     def reset_peaks(self):
         self.peak_hold_l = self._db_floor
@@ -129,10 +229,11 @@ class LufsMeter(MeasurementModule):
         self.lra = 0.0
         self._i_started_at = time.perf_counter()
         self._i_sample_count = 0
-        self._i_since_last_block = 0
         # 400 ms block with 75% overlap -> 100 ms step
-        self._i_block_step = int(round(0.1 * float(self.sample_rate)))
-        self._lra_step_frames = 0
+        self._i_block_step = max(1, int(round(0.1 * float(self.sample_rate))))
+        self._i_next_block_sample = max(1, int(round(self.momentary_window * float(self.sample_rate))))
+        self._lra_next_block_sample = max(1, int(round(self.short_term_window * float(self.sample_rate))))
+        self._reset_power_rings()
         with self._i_lock:
             self._i_block_ms = []
             self._lra_blocks = []
@@ -198,75 +299,77 @@ class LufsMeter(MeasurementModule):
         if self.is_running:
             return
 
-        self.is_running = True
-        self.sample_rate = self.audio_engine.sample_rate
+        self.sample_rate = float(self.audio_engine.sample_rate)
         self._init_filters()
 
-        # Reset session accumulators
-        self.reset_integration()
-
         # Initialize buffers (ring of per-sample power)
-        self.buffer_size_m = int(round(self.momentary_window * float(self.sample_rate)))
-        self.buffer_size_s = int(round(self.short_term_window * float(self.sample_rate)))
+        self.buffer_size_m = max(1, int(round(self.momentary_window * self.sample_rate)))
+        self.buffer_size_s = max(1, int(round(self.short_term_window * self.sample_rate)))
         self._p_ring_m = np.zeros(self.buffer_size_m, dtype=np.float32)
         self._p_ring_s = np.zeros(self.buffer_size_s, dtype=np.float32)
-        self._p_pos_m = 0
-        self._p_pos_s = 0
-        self._p_filled_m = 0
-        self._p_filled_s = 0
-        self._p_sum_m = 0.0
-        self._p_sum_s = 0.0
+
+        self.measurement_valid = True
+        self.data_gap_detected = False
+        self.configuration_changed_detected = False
+
+        # Reset session accumulators after the rings have been allocated so a
+        # reset cannot retain pre-reset samples in the first gating block.
+        self.reset_integration()
 
         abs_gate_ms = self._i_abs_gate_ms
 
-        def ring_update_power(ring: np.ndarray, pos: int, filled: int, sum_p: float, p_chunk: np.ndarray):
-            """Write p_chunk into ring (overwrite) and update running sum in O(len(p_chunk))."""
-            n = int(ring.shape[0])
-            m = int(p_chunk.shape[0])
-            if m <= 0:
-                return pos, filled, sum_p
-
-            p_chunk_sum = float(np.sum(p_chunk, dtype=np.float64))
-
-            end = pos + m
-            if end <= n:
-                sum_p -= float(np.sum(ring[pos:end], dtype=np.float64))
-                ring[pos:end] = p_chunk
-                sum_p += p_chunk_sum
-            else:
-                first = n - pos
-                sum_p -= float(np.sum(ring[pos:], dtype=np.float64))
-                sum_p -= float(np.sum(ring[: (end - n)], dtype=np.float64))
-
-                ring[pos:] = p_chunk[:first]
-                ring[: (end - n)] = p_chunk[first:]
-                sum_p += p_chunk_sum
-
-            pos = end % n
-            filled = min(n, filled + m)
-            return pos, filled, sum_p
-
         def callback(indata, outdata, frames, time, status):
+            del outdata, time
+            if not self.is_running:
+                return
+            if float(self.audio_engine.sample_rate) != self.sample_rate:
+                self.configuration_changed_detected = True
+                self.measurement_valid = False
+                return
+
+            input_status = bool(getattr(status, "input_overflow", False) or getattr(status, "input_underflow", False))
+            if status and not any(
+                hasattr(status, name)
+                for name in ("input_overflow", "input_underflow", "output_overflow", "output_underflow")
+            ):
+                input_status = True
+            if input_status:
+                self.data_gap_detected = True
+                self.measurement_valid = False
+
+            data = np.asarray(indata)
+            if data.ndim != 2 or data.shape[0] == 0 or data.shape[1] == 0 or not np.isrealobj(data):
+                self.data_gap_detected = True
+                self.measurement_valid = False
+                return
+            if not bool(np.all(np.isfinite(data))):
+                self.data_gap_detected = True
+                self.measurement_valid = False
+                return
+
+            actual_frames = int(data.shape[0])
+            if int(frames) != actual_frames:
+                self.data_gap_detected = True
+                self.measurement_valid = False
+
             # --- Stereo RMS & Peak Calculation ---
-            # indata is (frames, channels)
-            num_channels = indata.shape[1]
+            # data is (frames, channels)
+            num_channels = data.shape[1]
 
             if num_channels >= 2:
-                l_channel = indata[:, 0]
-                r_channel = indata[:, 1]
+                l_channel = data[:, 0]
+                r_channel = data[:, 1]
             elif num_channels == 1:
-                l_channel = indata[:, 0]
-                r_channel = indata[:, 0]  # Duplicate mono
+                l_channel = data[:, 0]
+                r_channel = data[:, 0]  # Duplicate mono
             else:
-                # Should not happen if stream is active
-                l_channel = np.zeros(frames)
-                r_channel = np.zeros(frames)
+                return
 
             # RMS (Instantaneous for this block)
             # Use dot for low-allocation sumsq
-            if frames > 0:
-                rms_l_linear = float(np.sqrt(np.dot(l_channel, l_channel) / float(frames)))
-                rms_r_linear = float(np.sqrt(np.dot(r_channel, r_channel) / float(frames)))
+            if actual_frames > 0:
+                rms_l_linear = float(np.sqrt(np.dot(l_channel, l_channel) / float(actual_frames)))
+                rms_r_linear = float(np.sqrt(np.dot(r_channel, r_channel) / float(actual_frames)))
             else:
                 rms_l_linear = 0.0
                 rms_r_linear = 0.0
@@ -274,7 +377,7 @@ class LufsMeter(MeasurementModule):
             self.rms_r = self._to_db(rms_r_linear)
 
             # True Peak (Instantaneous)
-            if frames > 0:
+            if actual_frames > 0:
                 l_up = signal.resample_poly(l_channel, 4, 1)
                 r_up = signal.resample_poly(r_channel, 4, 1)
                 peak_l_linear = float(np.max(np.abs(l_up)))
@@ -313,15 +416,42 @@ class LufsMeter(MeasurementModule):
 
             # Per-sample power (avoid rolling full windows)
             p_chunk = (l_k * l_k) + (r_k * r_k)
-            self._p_pos_m, self._p_filled_m, self._p_sum_m = ring_update_power(
-                self._p_ring_m, self._p_pos_m, self._p_filled_m, self._p_sum_m, p_chunk
-            )
-            self._p_pos_s, self._p_filled_s, self._p_sum_s = ring_update_power(
-                self._p_ring_s, self._p_pos_s, self._p_filled_s, self._p_sum_s, p_chunk
-            )
+            chunk_pos = 0
+            while chunk_pos < actual_frames:
+                next_boundary = min(self._i_next_block_sample, self._lra_next_block_sample)
+                samples_to_boundary = max(1, next_boundary - self._i_sample_count)
+                segment_end = min(actual_frames, chunk_pos + samples_to_boundary)
+                segment = p_chunk[chunk_pos:segment_end]
+                self._p_pos_m, self._p_filled_m, self._p_sum_m = self._ring_update_power(
+                    self._p_ring_m, self._p_pos_m, self._p_filled_m, self._p_sum_m, segment
+                )
+                self._p_pos_s, self._p_filled_s, self._p_sum_s = self._ring_update_power(
+                    self._p_ring_s, self._p_pos_s, self._p_filled_s, self._p_sum_s, segment
+                )
+                consumed = int(segment.shape[0])
+                chunk_pos = segment_end
+                self._i_sample_count += consumed
 
-            # Track session time
-            self._i_sample_count += int(frames)
+                if self._i_sample_count == self._i_next_block_sample:
+                    if self._p_filled_m >= self.buffer_size_m:
+                        # Re-anchor the running sum at each standards-defined
+                        # boundary so round-off cannot drift over long runs.
+                        self._p_sum_m = float(np.sum(self._p_ring_m, dtype=np.float64))
+                        block_ms = self._p_sum_m / float(self.buffer_size_m)
+                        if block_ms > abs_gate_ms:
+                            with self._i_lock:
+                                self._i_block_ms.append(block_ms)
+                                self._i_dirty = True
+                    self._i_next_block_sample += self._i_block_step
+
+                if self._i_sample_count == self._lra_next_block_sample:
+                    if self._p_filled_s >= self.buffer_size_s:
+                        self._p_sum_s = float(np.sum(self._p_ring_s, dtype=np.float64))
+                        block_s_ms = self._p_sum_s / float(self.buffer_size_s)
+                        with self._i_lock:
+                            self._lra_blocks.append(block_s_ms)
+                            self._i_dirty = True
+                    self._lra_next_block_sample += max(1, int(round(self.sample_rate)))
 
             # Momentary (400 ms) and Short-term (3 s)
             n_m = float(max(1, self._p_filled_m))
@@ -331,33 +461,15 @@ class LufsMeter(MeasurementModule):
             self.momentary_lufs = self._to_lufs(ms_m)
             self.short_term_lufs = self._to_lufs(ms_s)
 
-            # Integrated loudness with gating (400 ms blocks, 75% overlap)
-            # Start once we have a full 400 ms window.
-            if self._p_filled_m >= self.buffer_size_m and self._i_block_step > 0:
-                self._i_since_last_block += int(frames)
-                while self._i_since_last_block >= self._i_block_step:
-                    self._i_since_last_block -= self._i_block_step
-                    block_ms = float(self._p_sum_m / float(self.buffer_size_m))
-                    if block_ms > abs_gate_ms:
-                        with self._i_lock:
-                            self._i_block_ms.append(block_ms)
-                            self._i_dirty = True
-            else:
-                self._i_since_last_block += int(frames)
-
-            # LRA collection (3s short-term blocks, 1s step)
-            self._lra_step_frames += int(frames)
-            while self._lra_step_frames >= self.sample_rate:
-                self._lra_step_frames -= self.sample_rate
-                if self._p_filled_s >= self.buffer_size_s:
-                    block_s_ms = float(self._p_sum_s / float(self.buffer_size_s))
-                    with self._i_lock:
-                        self._lra_blocks.append(block_s_ms)
-                        self._i_dirty = True
-
             # No output (meter is analysis-only). AudioEngine provides a fresh zeroed buffer.
 
-        self.callback_id = self.audio_engine.register_callback(callback)
+        self.is_running = True
+        try:
+            self.callback_id = self.audio_engine.register_callback(callback)
+        except Exception:
+            self.callback_id = None
+            self.is_running = False
+            raise
 
     def stop_meter(self):
         if self.is_running:
@@ -842,7 +954,17 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
 
     def on_toggle(self, checked):
         if checked:
-            self.module.start_meter()
+            try:
+                self.module.start_meter()
+            except Exception as exc:
+                self.toggle_btn.blockSignals(True)
+                self.toggle_btn.setChecked(False)
+                self.toggle_btn.blockSignals(False)
+                self.timer.stop()
+                self.toggle_btn.setText(tr("Start Metering"))
+                QMessageBox.critical(self, tr("Error"), tr("Failed to start measurement: {0}").format(str(exc)))
+                self.apply_theme()
+                return
             self.timer.start()
             self.toggle_btn.setText(tr("Stop Metering"))
         else:
@@ -924,6 +1046,29 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
 
         self.l_cf_label.setText(tr("CF: {0:.1f}").format(crest_l))
         self.r_cf_label.setText(tr("CF: {0:.1f}").format(crest_r))
+
+        if not self.module.measurement_valid:
+            invalid = tr("INVALID")
+            self.m_val_label.setText(invalid)
+            self.s_val_label.setText(invalid)
+            self.disp_i["label"].setText(invalid)
+            self.disp_s["label"].setText(invalid)
+            for card in (
+                self.card_lra,
+                self.card_offset,
+                self.card_threshold,
+                self.card_m_cur,
+                self.card_m_min,
+                self.card_m_max,
+                self.card_m_avg,
+                self.card_s_cur,
+                self.card_s_min,
+                self.card_s_max,
+                self.card_s_avg,
+            ):
+                card["label"].setText(invalid)
+            self.card_time["label"].setText(self._format_seconds(self.module.get_integrated_seconds()))
+            return
 
         # Update LUFS
         m_lufs = self.module.momentary_lufs
