@@ -1,5 +1,7 @@
 # Event Detector
 
+## Overview
+
 ![Event Detector](../assets/widgets/event_detector.png)
 
 Event Detector continuously monitors every input sample and records the count, amplitude, duration, interval, and rate of threshold events. It is intended for rare phenomena such as popcorn noise, random telegraph noise (RTN) in JFETs or operational amplifiers, and intermittent contact clicks.
