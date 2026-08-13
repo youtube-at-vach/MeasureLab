@@ -404,6 +404,14 @@ class AudioEngine:
             # Start stream if not running
             if self.stream is None:
                 self._start_master_stream()
+                if self.stream is None:
+                    # _start_master_stream logs backend details and keeps its
+                    # legacy non-raising API for resident-stream callers. A
+                    # client registration, however, must not report success
+                    # when no callback can ever run.
+                    del self.callbacks[cid]
+                    self._cached_callbacks = list(self.callbacks.values())
+                    raise RuntimeError("Audio stream failed to start")
 
         self.logger.debug(f"Registered callback {cid}")
         return cid
