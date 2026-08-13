@@ -1,5 +1,6 @@
 import csv
 import json
+import threading
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -25,6 +26,16 @@ def make_module(
     callbacks = []
     engine = MagicMock()
     engine.sample_rate = sample_rate
+    engine.block_size = 1024
+    engine.input_device = 1
+    engine.output_device = 2
+    engine.input_channel_mode = "stereo"
+    engine.output_channel_mode = "stereo"
+    engine.offline_mode = False
+    engine.loopback = False
+    engine.audio_engine_64bit = False
+    engine.active_dtype = "float32"
+    engine.is_active.return_value = True
     engine.calibration.input_sensitivity = input_sensitivity
     engine.calibration.input_sensitivity_is_calibrated = input_calibrated
 
@@ -148,6 +159,21 @@ def test_module_registers_callback_detects_selected_channel_and_stops():
     module.audio_engine.unregister_callback.assert_called_once()
 
 
+def test_module_rejects_a_callback_registration_when_stream_is_inactive():
+    module, callbacks = make_module()
+    module.audio_engine.is_active.return_value = False
+
+    with pytest.raises(RuntimeError, match="Audio stream failed to start"):
+        module.start_analysis()
+
+    assert len(callbacks) == 1
+    assert not module.is_running
+    assert module.callback_id is None
+    assert module.get_run_metadata() is None
+    assert module.get_snapshot().state == DetectorState.STOPPED
+    module.audio_engine.unregister_callback.assert_called_once_with(23)
+
+
 def test_module_fixed_duration_stops_at_an_exact_sample_count():
     module, callbacks = make_module(sample_rate=1000)
     module.set_target_duration(0.005)
@@ -196,6 +222,97 @@ def test_callback_processes_mono_ch1_and_latches_quality_warnings():
     assert snapshot.event_count == 1
     assert snapshot.clipping_detected
     assert snapshot.data_gap_detected
+
+
+def test_callback_latches_a_gap_when_reported_frame_count_disagrees_with_input():
+    module, callbacks = make_module()
+    module.start_analysis()
+
+    callbacks[0](np.zeros((3, 2)), np.zeros((3, 2)), 4, None, False)
+
+    snapshot = module.get_snapshot()
+    assert snapshot.processed_samples == 3
+    assert snapshot.data_gap_detected
+    assert not snapshot.measurement_valid
+
+
+@pytest.mark.parametrize(
+    "invalid_input",
+    [
+        np.array([0.0 + 0.0j, 0.7 + 0.1j, 0.0 + 0.0j]),
+        np.array(["0.0", "0.7", "0.0"], dtype=object),
+    ],
+)
+def test_callback_invalidates_unsupported_sample_types_without_escaping(invalid_input):
+    module, callbacks = make_module()
+    module.start_analysis()
+
+    callbacks[0](invalid_input, np.zeros(3), len(invalid_input), None, False)
+
+    snapshot = module.get_snapshot()
+    assert snapshot.processed_samples == 0
+    assert snapshot.data_gap_detected
+    assert not snapshot.measurement_valid
+
+
+def test_callback_invalidates_unreadable_sample_rate_instead_of_raising():
+    module, callbacks = make_module()
+    module.start_analysis()
+    module.audio_engine.sample_rate = None
+
+    callbacks[0](np.zeros((3, 2)), np.zeros((3, 2)), 3, None, False)
+
+    snapshot = module.get_snapshot()
+    assert snapshot.configuration_changed_detected
+    assert not snapshot.measurement_valid
+
+
+def test_running_measurement_keeps_its_frozen_input_channel():
+    module, callbacks = make_module()
+    module.threshold = 0.5
+    module.hysteresis = 0.1
+    module.holdoff_ms = 0
+    module.polarity = EventPolarity.POSITIVE
+    module.start_analysis()
+    module.input_channel = 1
+
+    callbacks[0](
+        np.array([[0.0, 0.0], [0.0, 0.7], [0.0, 0.3]]),
+        np.zeros((3, 2)),
+        3,
+        None,
+        False,
+    )
+
+    assert module.get_snapshot().event_count == 0
+    metadata = module.get_run_metadata()
+    assert metadata is not None
+    assert metadata["input_channel_index"] == 0
+    assert metadata["input_channel"] == "CH1"
+
+
+@pytest.mark.parametrize(
+    ("attribute", "changed_value"),
+    [
+        ("input_device", 9),
+        ("input_channel_mode", "left"),
+        ("offline_mode", True),
+        ("loopback", True),
+        ("audio_engine_64bit", True),
+        ("block_size", 256),
+    ],
+)
+def test_stream_reroute_or_restart_invalidates_active_run(attribute, changed_value):
+    module, callbacks = make_module()
+    module.start_analysis()
+    setattr(module.audio_engine, attribute, changed_value)
+
+    callbacks[0](np.zeros((3, 2)), np.zeros((3, 2)), 3, None, False)
+
+    snapshot = module.get_snapshot()
+    assert snapshot.processed_samples == 0
+    assert snapshot.configuration_changed_detected
+    assert not snapshot.measurement_valid
 
 
 def test_widget_start_reset_stop_and_result_refresh(qtbot):
@@ -324,6 +441,29 @@ def test_widget_returns_to_idle_when_fixed_duration_completes(qtbot):
     module.audio_engine.unregister_callback.assert_called_once_with(23)
 
 
+def test_widget_invalidates_and_stops_when_audio_stream_disappears(qtbot):
+    module, _callbacks = make_module()
+    widget = EventDetectorWidget(module)
+    qtbot.addWidget(widget)
+    widget.btn_start.click()
+    module.audio_engine.is_active.return_value = False
+
+    widget._update_results()
+
+    snapshot = module.get_snapshot()
+    metadata = module.get_run_metadata()
+    assert not module.is_running
+    assert not widget.btn_start.isChecked()
+    assert not widget.timer.isActive()
+    assert snapshot.data_gap_detected
+    assert not snapshot.measurement_valid
+    assert widget.lbl_count.text() == "INVALID"
+    assert not widget.lbl_data_gap.isHidden()
+    assert metadata is not None
+    assert metadata["stop_reason"] == "audio_stream_inactive"
+    module.audio_engine.unregister_callback.assert_called_once_with(23)
+
+
 def test_widget_threshold_units_use_input_calibration_and_preserve_fs_values(qtbot):
     module, _callbacks = make_module(input_sensitivity=2.0, input_calibrated=True)
     widget = EventDetectorWidget(module)
@@ -413,6 +553,10 @@ def test_voltage_threshold_is_normalized_to_fs_and_frozen_in_run_metadata(qtbot)
     assert metadata["hysteresis_display_value"] == pytest.approx(200.0)
     assert module.get_snapshot().event_count == 1
     assert module.get_amplitude_display() == (2000.0, "mV")
+    assert metadata["input_source"] == "hardware"
+    assert metadata["audio_block_size_frames"] == 1024
+    assert metadata["audio_engine_64bit_requested"] is False
+    assert metadata["audio_stream_dtype"] == "float32"
 
     module.audio_engine.calibration.input_sensitivity = 4.0
     widget._update_results()
@@ -585,6 +729,68 @@ def test_module_exports_auditable_csv_and_json_records(tmp_path):
     assert payload["events"][0]["peak_display"] == 0.7
 
 
+def test_export_captures_metadata_and_events_at_one_acquisition_boundary(tmp_path):
+    module, callbacks = make_module()
+    module.threshold = 0.5
+    module.hysteresis = 0.1
+    module.holdoff_ms = 0
+    module.polarity = EventPolarity.POSITIVE
+    module.start_analysis()
+
+    export_reached_events = threading.Event()
+    release_export = threading.Event()
+    callback_started = threading.Event()
+    callback_finished = threading.Event()
+    original_get_events = module.get_events
+
+    def delayed_get_events():
+        export_reached_events.set()
+        assert release_export.wait(timeout=2.0)
+        return original_get_events()
+
+    module.get_events = delayed_get_events
+    export_errors = []
+    export_path = tmp_path / "atomic-events.json"
+
+    def run_export():
+        try:
+            module.export_events(str(export_path))
+        except Exception as exc:  # pragma: no cover - asserted below
+            export_errors.append(exc)
+
+    def run_callback():
+        callback_started.set()
+        callbacks[0](
+            np.array([[0.0, 0.0], [0.7, 0.0], [0.3, 0.0]]),
+            np.zeros((3, 2)),
+            3,
+            None,
+            False,
+        )
+        callback_finished.set()
+
+    export_thread = threading.Thread(target=run_export)
+    export_thread.start()
+    assert export_reached_events.wait(timeout=2.0)
+
+    callback_thread = threading.Thread(target=run_callback)
+    callback_thread.start()
+    assert callback_started.wait(timeout=2.0)
+    callback_finished.wait(timeout=0.05)
+    release_export.set()
+
+    export_thread.join(timeout=2.0)
+    callback_thread.join(timeout=2.0)
+    assert not export_thread.is_alive()
+    assert not callback_thread.is_alive()
+    assert not export_errors
+
+    payload = json.loads(export_path.read_text(encoding="utf-8"))
+    recorded_count = payload["run"]["completed_event_count"] + payload["run"]["censored_event_count"]
+    assert payload["run"]["retained_event_count"] == len(payload["events"])
+    assert recorded_count == len(payload["events"])
+
+
 def test_widget_shows_invalid_rate_after_input_gap(qtbot):
     module, callbacks = make_module()
     widget = EventDetectorWidget(module)
@@ -596,6 +802,7 @@ def test_widget_shows_invalid_rate_after_input_gap(qtbot):
     callbacks[0](np.zeros((3, 2)), np.zeros((3, 2)), 3, None, True)
     widget._update_results()
 
+    assert widget.lbl_count.text() == "INVALID"
     assert widget.lbl_rate.text() == "INVALID"
     assert not widget.lbl_data_gap.isHidden()
 
