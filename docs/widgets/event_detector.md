@@ -1,5 +1,7 @@
 # Event Detector（異常イベント検出）
 
+## 概要
+
 ![Event Detector](../assets/widgets/event_detector.png)
 
 Event Detectorは、全入力サンプルを連続監視し、閾値イベントの回数、振幅、継続時間、間隔、発生レートを記録するウィジェットです。JFETやオペアンプのポップコーンノイズ、RTN（Random Telegraph Noise）、接点不良によるクリックなど、まれに発生する現象の定量化に使用します。
