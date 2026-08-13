@@ -326,6 +326,162 @@ class TestSignalGeneratorFilter(unittest.TestCase):
         self.assertGreater(rms_pass, 0.5)
         self.assertLess(rms_stop, rms_pass * 0.1)
 
+    def test_enabled_filters_are_applied_as_one_equivalent_sos_cascade(self):
+        engine = self.MockAudioEngine()
+        sg = SignalGenerator(engine)
+        params = sg.params_L
+        params.lpf_enabled = True
+        params.lpf_freq = 18000.0
+        params.hpf_enabled = True
+        params.hpf_freq = 20.0
+        params.notch_enabled = True
+        params.notch_freq = 1000.0
+
+        sections = [
+            sg._get_filter_sos(params, "low", engine.sample_rate),
+            sg._get_filter_sos(params, "high", engine.sample_rate),
+            sg._get_filter_sos(params, "notch", engine.sample_rate),
+        ]
+        states = [np.zeros((sos.shape[0], 2)) for sos in sections]
+        blocks = np.random.default_rng(7).standard_normal((3, 1024))
+
+        for block in blocks:
+            expected = block
+            for index, sos in enumerate(sections):
+                expected, states[index] = scipy.signal.sosfilt(sos, expected, zi=states[index])
+
+            with patch("scipy.signal.sosfilt", wraps=scipy.signal.sosfilt) as mock_sosfilt:
+                actual = sg._apply_filters(block, params, engine.sample_rate)
+
+            mock_sosfilt.assert_called_once()
+            np.testing.assert_array_equal(actual, expected)
+
+
+class TestSignalGeneratorRealtimeOptimizations(unittest.TestCase):
+    class MockAudioEngine:
+        def __init__(self):
+            self.sample_rate = 48000
+            self.callback = None
+            self.calibration = MagicMock()
+            self.calibration.output_gain = 1.0
+
+        def register_callback(self, callback):
+            self.callback = callback
+            return 1
+
+        def unregister_callback(self, _callback_id):
+            self.callback = None
+
+    def test_buffer_is_reused_when_starting_after_waveform_selection(self):
+        engine = self.MockAudioEngine()
+        sg = SignalGenerator(engine)
+        sg.output_mode = "L"
+
+        with patch.object(sg, "_generate_noise_buffer", wraps=sg._generate_noise_buffer) as generate:
+            sg.update_waveform(sg.params_L, "noise", engine.sample_rate)
+            selected_buffer = sg.params_L._buffer
+            sg.start_generation()
+
+        generate.assert_called_once()
+        self.assertIs(sg.params_L._buffer, selected_buffer)
+
+    def test_inactive_buffer_is_prepared_only_when_routing_activates_it(self):
+        engine = self.MockAudioEngine()
+        sg = SignalGenerator(engine)
+        sg.output_mode = "L"
+        sg.params_R.waveform = "prbs"
+        sg.params_R.prbs_order = 10
+
+        with patch.object(sg, "_generate_prbs", wraps=sg._generate_prbs) as generate:
+            sg.start_generation()
+            generate.assert_not_called()
+
+            sg.output_mode = "R"
+            generate.assert_called_once()
+
+        self.assertIsNotNone(sg.params_R._buffer)
+
+    def test_deterministic_stereo_buffers_share_immutable_samples(self):
+        engine = self.MockAudioEngine()
+        sg = SignalGenerator(engine)
+        for params in (sg.params_L, sg.params_R):
+            params.waveform = "prbs"
+            params.prbs_order = 10
+            params.prbs_seed = 17
+
+        sg.start_generation()
+
+        self.assertIs(sg.params_L._buffer, sg.params_R._buffer)
+        self.assertEqual(sg.params_L._buffer_index, 0)
+        self.assertEqual(sg.params_R._buffer_index, 0)
+
+    def test_stereo_noise_buffers_remain_independent(self):
+        engine = self.MockAudioEngine()
+        sg = SignalGenerator(engine)
+        sg.params_L.waveform = "noise"
+        sg.params_R.waveform = "noise"
+
+        sg.start_generation()
+
+        self.assertIsNot(sg.params_L._buffer, sg.params_R._buffer)
+        self.assertFalse(np.array_equal(sg.params_L._buffer, sg.params_R._buffer))
+
+    def test_prbs_seed_does_not_reset_process_random_state(self):
+        engine = self.MockAudioEngine()
+        sg = SignalGenerator(engine)
+        params = SignalParameters(waveform="prbs", prbs_order=10, prbs_seed=17)
+
+        np.random.seed(12345)
+        state_before = np.random.get_state()
+        sg._generate_prbs(params, engine.sample_rate)
+        observed = np.random.random(8)
+
+        np.random.set_state(state_before)
+        expected = np.random.random(8)
+        np.testing.assert_array_equal(observed, expected)
+
+    def test_short_buffer_read_matches_modular_reference_across_blocks(self):
+        engine = self.MockAudioEngine()
+        sg = SignalGenerator(engine)
+        params = SignalParameters(waveform="golay", amplitude=0.25)
+        params._buffer = np.array([1.0, -1.0, 0.5, -0.5])
+
+        expected_index = 0
+        for frames in (37, 37, 5):
+            indices = (expected_index + np.arange(frames)) % len(params._buffer)
+            expected = params._buffer[indices] * params.amplitude
+            actual = sg._generate_buffered_signal(params, frames, engine.sample_rate, np.empty(0), engine.sample_rate)
+            np.testing.assert_array_equal(actual, expected)
+            expected_index = int((expected_index + frames) % len(params._buffer))
+
+        self.assertEqual(params._buffer_index, expected_index)
+
+    def test_direct_periodic_path_matches_general_generator(self):
+        engine = self.MockAudioEngine()
+        for waveform in SignalGenerator.PERIODIC_WAVEFORMS:
+            direct = SignalGenerator(engine)
+            reference = SignalGenerator(engine)
+            for generator in (direct, reference):
+                params = generator.params_L
+                params.waveform = waveform
+                params.frequency = 1234.5
+                params.amplitude = 0.37
+                params.phase_offset = 27.0
+                params.pulse_width = 31.0
+                params.sawtooth_type = "Falling"
+
+            if waveform == "tone_noise":
+                np.random.seed(123)
+            actual = np.empty(1024)
+            t = direct._get_block_time(len(actual), engine.sample_rate)
+            direct._generate_channel_into(direct.params_L, len(actual), t, engine.sample_rate, actual)
+
+            if waveform == "tone_noise":
+                np.random.seed(123)
+            expected = reference._generate_channel_signal(reference.params_L, len(actual), t, engine.sample_rate)
+
+            np.testing.assert_allclose(actual, expected, rtol=0.0, atol=1e-14, err_msg=waveform)
+
 
 class TestSignalGeneratorMLS(unittest.TestCase):
     """Tests for MLS generation, including fallback logic."""

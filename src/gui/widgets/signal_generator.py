@@ -126,17 +126,15 @@ class SignalParameters:
     _amp_sweep_time: float = 0.0
     _buffer: Optional[np.ndarray] = None
     _buffer_index: int = 0
+    _buffer_cache_key: Optional[Tuple] = None
+    _buffer_read_cache: Optional[np.ndarray] = None
+    _buffer_read_cache_key: Optional[Tuple] = None
 
     # FM/phase-accumulator state (radians)
     _carrier_phase_rad: float = 0.0
     _fm_phase_rad: float = 0.0
     _pm_phase_rad: float = 0.0
     _am_phase_rad: float = 0.0
-
-    # Filter state
-    _lpf_zi: Optional[np.ndarray] = None
-    _hpf_zi: Optional[np.ndarray] = None
-    _notch_zi: Optional[np.ndarray] = None
 
     # Filter cache
     _lpf_sos: Optional[np.ndarray] = None
@@ -146,9 +144,19 @@ class SignalParameters:
     _notch_sos: Optional[np.ndarray] = None
     _notch_cache_key: Optional[Tuple] = None
 
+    # Combined filter cache. Keeping the cascade in one SOS array avoids
+    # repeating scipy's validation/axis setup once per enabled filter.
+    _combined_sos: Optional[np.ndarray] = None
+    _combined_filter_cache_key: Optional[Tuple] = None
+    _combined_zi: Optional[np.ndarray] = None
+
+    # Reused fixed-frequency phase work area for the real-time callback.
+    _phase_work: Optional[np.ndarray] = None
+
 
 class SignalGenerator(MeasurementModule):
     BUFFERED_WAVEFORMS = ["noise", "multitone", "mls", "golay", "burst", "prbs"]
+    SHAREABLE_BUFFERED_WAVEFORMS = {"multitone", "mls", "golay", "burst", "prbs"}
     PERIODIC_WAVEFORMS = {"sine", "square", "triangle", "sawtooth", "pulse", "tone_noise"}
 
     def __init__(self, audio_engine: AudioEngine):
@@ -157,12 +165,56 @@ class SignalGenerator(MeasurementModule):
         self.params_L = SignalParameters()
         self.params_R = SignalParameters()
         self._golay_cache: dict[tuple[int, str], np.ndarray] = {}
+        self._sample_offsets: Optional[np.ndarray] = None
+        self._sample_offsets_frames = 0
+        self._block_time: Optional[np.ndarray] = None
+        self._block_time_key: Optional[tuple[int, float]] = None
 
         # Output Routing: 'L', 'R', 'STEREO'
-        self.output_mode = "STEREO"
+        self._output_mode = "STEREO"
 
         self.is_playing = False
         self.callback_id = None
+
+    @property
+    def output_mode(self) -> str:
+        return self._output_mode
+
+    @output_mode.setter
+    def output_mode(self, mode: str):
+        if mode not in {"L", "R", "STEREO"}:
+            raise ValueError(f"Unsupported signal generator output mode: {mode}")
+
+        if self.is_playing and mode != self._output_mode:
+            sample_rate = float(self.audio_engine.sample_rate)
+            for params in self._params_for_output_mode(mode):
+                if params.waveform in self.BUFFERED_WAVEFORMS:
+                    self._prepare_buffer(params, sample_rate)
+
+        self._output_mode = mode
+
+    def _params_for_output_mode(self, mode: Optional[str] = None) -> tuple[SignalParameters, ...]:
+        mode = self._output_mode if mode is None else mode
+        if mode == "L":
+            return (self.params_L,)
+        if mode == "R":
+            return (self.params_R,)
+        return (self.params_L, self.params_R)
+
+    def _get_sample_offsets(self, frames: int) -> np.ndarray:
+        if self._sample_offsets is None or self._sample_offsets_frames != frames:
+            self._sample_offsets = np.arange(frames, dtype=np.float64)
+            self._sample_offsets_frames = frames
+            self._block_time = None
+            self._block_time_key = None
+        return self._sample_offsets
+
+    def _get_block_time(self, frames: int, sample_rate: float) -> np.ndarray:
+        key = (frames, float(sample_rate))
+        if self._block_time is None or self._block_time_key != key:
+            self._block_time = self._get_sample_offsets(frames) / sample_rate
+            self._block_time_key = key
+        return self._block_time
 
     @property
     def name(self) -> str:
@@ -411,9 +463,11 @@ class SignalGenerator(MeasurementModule):
                 # Let's ensure we have a valid state.
                 state = np.ones(order, dtype=np.int8)
             else:
-                np.random.seed(params.prbs_seed)
+                # Keep PRBS generation deterministic without resetting NumPy's
+                # process-wide RNG, which may be in use by another audio client.
+                rng = np.random.RandomState(params.prbs_seed)
                 # Ensure at least one non-zero
-                state = np.random.randint(0, 2, size=order, dtype=np.int8)
+                state = rng.randint(0, 2, size=order, dtype=np.int8)
                 if np.sum(state) == 0:
                     state[0] = 1
 
@@ -428,22 +482,82 @@ class SignalGenerator(MeasurementModule):
             logger.error(f"Error generating PRBS: {e}")
             return np.zeros(100)
 
+    def _get_buffer_cache_key(self, params: SignalParameters, sample_rate: float) -> Optional[Tuple]:
+        """Return every input that can change the selected buffered waveform."""
+        waveform = params.waveform
+        sample_rate = float(sample_rate)
+
+        if waveform == "noise":
+            return (waveform, params.noise_color, sample_rate, self._get_cal_factor(params))
+        if waveform == "multitone":
+            return (
+                waveform,
+                params.multitone_count,
+                params.start_freq,
+                params.end_freq,
+                sample_rate,
+                self._get_cal_factor(params),
+            )
+        if waveform == "mls":
+            return (waveform, params.mls_order)
+        if waveform == "golay":
+            return (waveform, params.golay_order, params.golay_pair)
+        if waveform == "burst":
+            return (
+                waveform,
+                params.frequency,
+                params.burst_on_cycles,
+                params.burst_off_cycles,
+                params.burst_windowed,
+                sample_rate,
+                self._get_cal_factor(params),
+            )
+        if waveform == "prbs":
+            return (waveform, params.prbs_order, params.prbs_seed)
+        return None
+
     def _prepare_buffer(self, params: SignalParameters, sample_rate):
+        cache_key = self._get_buffer_cache_key(params, sample_rate)
+
+        # Deterministic buffers are immutable after construction. Identical L/R
+        # settings can therefore share their samples while retaining independent
+        # read indices and modulation/filter state. Noise intentionally remains
+        # independent between channels.
+        if params.waveform in self.SHAREABLE_BUFFERED_WAVEFORMS:
+            for other in (self.params_L, self.params_R):
+                if other is params:
+                    continue
+                if other._buffer is not None and other._buffer_cache_key == cache_key:
+                    params._buffer = other._buffer
+                    params._buffer_cache_key = cache_key
+                    params._buffer_index = 0
+                    params._buffer_read_cache = None
+                    params._buffer_read_cache_key = None
+                    return
+
+        if params._buffer is not None and params._buffer_cache_key == cache_key:
+            params._buffer_index = 0
+            return
+
+        buffer = None
         if params.waveform == "noise":
-            params._buffer = self._generate_noise_buffer(params, sample_rate)
+            buffer = self._generate_noise_buffer(params, sample_rate)
         elif params.waveform == "multitone":
-            params._buffer = self._generate_multitone(params, sample_rate)
+            buffer = self._generate_multitone(params, sample_rate)
         elif params.waveform == "mls":
-            params._buffer = self._generate_mls(params, sample_rate)
+            buffer = self._generate_mls(params, sample_rate)
         elif params.waveform == "golay":
-            params._buffer = self._generate_golay(params, sample_rate)
+            buffer = self._generate_golay(params, sample_rate)
         elif params.waveform == "burst":
-            params._buffer = self._generate_burst(params, sample_rate)
+            buffer = self._generate_burst(params, sample_rate)
         elif params.waveform == "prbs":
-            params._buffer = self._generate_prbs(params, sample_rate)
-        else:
-            params._buffer = None
+            buffer = self._generate_prbs(params, sample_rate)
+
+        params._buffer = buffer
+        params._buffer_cache_key = cache_key
         params._buffer_index = 0
+        params._buffer_read_cache = None
+        params._buffer_read_cache_key = None
 
     def _get_filter_sos(self, params: SignalParameters, filter_type: str, sample_rate: float):
         """Calculates SOS coefficients for LPF or HPF."""
@@ -519,6 +633,41 @@ class SignalGenerator(MeasurementModule):
             # logger.warning(f"Filter calculation failed: {e}")
             return None
 
+    def _get_combined_filter_sos(self, params: SignalParameters, sample_rate: float):
+        """Build one cached SOS cascade for every enabled output filter."""
+        cache_key = (
+            bool(params.lpf_enabled),
+            params.lpf_order if params.lpf_enabled else None,
+            params.lpf_freq if params.lpf_enabled else None,
+            bool(params.hpf_enabled),
+            params.hpf_order if params.hpf_enabled else None,
+            params.hpf_freq if params.hpf_enabled else None,
+            bool(params.notch_enabled),
+            params.notch_freq if params.notch_enabled else None,
+            params.notch_q if params.notch_enabled else None,
+            float(sample_rate),
+        )
+        if params._combined_filter_cache_key == cache_key:
+            return params._combined_sos
+
+        sections = []
+        if params.lpf_enabled:
+            sos = self._get_filter_sos(params, "low", sample_rate)
+            if sos is not None:
+                sections.append(sos)
+        if params.hpf_enabled:
+            sos = self._get_filter_sos(params, "high", sample_rate)
+            if sos is not None:
+                sections.append(sos)
+        if params.notch_enabled:
+            sos = self._get_filter_sos(params, "notch", sample_rate)
+            if sos is not None:
+                sections.append(sos)
+
+        params._combined_sos = np.concatenate(sections, axis=0) if sections else None
+        params._combined_filter_cache_key = cache_key
+        return params._combined_sos
+
     def _generate_wave_from_phase(self, params: SignalParameters, phase_rad: np.ndarray) -> np.ndarray:
         """
         Helper to generate waveform samples from a phase array (in radians).
@@ -527,13 +676,22 @@ class SignalGenerator(MeasurementModule):
         offset_rad = np.radians(params.phase_offset)
 
         if params.waveform == "sine":
-            return params.amplitude * np.sin(phase_rad + offset_rad)
+            signal = np.add(phase_rad, offset_rad)
+            np.sin(signal, out=signal)
+            signal *= params.amplitude
+            return signal
 
         elif params.waveform == "square":
-            return params.amplitude * np.sign(np.sin(phase_rad + offset_rad))
+            signal = np.add(phase_rad, offset_rad)
+            np.sin(signal, out=signal)
+            np.sign(signal, out=signal)
+            signal *= params.amplitude
+            return signal
 
         elif params.waveform == "tone_noise":
-            signal = params.amplitude * np.sin(phase_rad + offset_rad)
+            signal = np.add(phase_rad, offset_rad)
+            np.sin(signal, out=signal)
+            signal *= params.amplitude
             # Use size of phase_rad for noise generation
             noise = params.noise_amplitude * np.random.uniform(-1, 1, size=phase_rad.size)
             signal += noise
@@ -561,6 +719,67 @@ class SignalGenerator(MeasurementModule):
 
         return np.zeros_like(phase_rad)
 
+    def _get_phase_work(self, params: SignalParameters, frames: int) -> np.ndarray:
+        if params._phase_work is None or params._phase_work.size != frames:
+            params._phase_work = np.empty(frames, dtype=np.float64)
+        return params._phase_work
+
+    def _write_fixed_periodic_signal(
+        self,
+        params: SignalParameters,
+        frames: int,
+        sample_rate_eff: float,
+        destination: np.ndarray,
+    ):
+        """Write an unmodulated periodic waveform directly to an output channel."""
+        phase_step = 2.0 * np.pi * params.frequency / sample_rate_eff
+        phase = self._get_phase_work(params, frames)
+        np.multiply(self._get_sample_offsets(frames), phase_step, out=phase)
+        phase += params._carrier_phase_rad + np.radians(params.phase_offset)
+
+        params._phase += frames
+        params._carrier_phase_rad = float(np.fmod(params._carrier_phase_rad + frames * phase_step, 2.0 * np.pi))
+
+        if params.waveform == "sine":
+            np.sin(phase, out=destination)
+            destination *= params.amplitude
+            return
+
+        if params.waveform == "square":
+            np.sin(phase, out=destination)
+            np.sign(destination, out=destination)
+            destination *= params.amplitude
+            return
+
+        if params.waveform == "tone_noise":
+            np.sin(phase, out=destination)
+            destination *= params.amplitude
+            destination += params.noise_amplitude * np.random.uniform(-1, 1, size=frames)
+            return
+
+        # The remaining periodic waveforms operate on cycle position. The phase
+        # work area is disposable for this block, so all transformations can be
+        # done in place before the final cast into the audio-engine destination.
+        phase /= 2.0 * np.pi
+        np.remainder(phase, 1.0, out=phase)
+
+        if params.waveform == "triangle":
+            phase *= 2.0
+            phase -= 1.0
+            np.abs(phase, out=phase)
+            phase *= 2.0
+            phase -= 1.0
+            np.multiply(phase, params.amplitude, out=destination)
+        elif params.waveform == "sawtooth":
+            phase *= 2.0
+            phase -= 1.0
+            if params.sawtooth_type == "Falling":
+                phase *= -1.0
+            np.multiply(phase, params.amplitude, out=destination)
+        elif params.waveform == "pulse":
+            destination.fill(-params.amplitude)
+            destination[phase < params.pulse_width / 100.0] = params.amplitude
+
     def _generate_impulse_signal(self, params: SignalParameters, frames: int, sample_rate_eff: float) -> np.ndarray:
         """Generate a periodic impulse train while preserving the requested fractional frequency."""
         if params.frequency <= 0 or sample_rate_eff <= 0:
@@ -570,7 +789,7 @@ class SignalGenerator(MeasurementModule):
         impulse_samples = max(1.0, min(float(params.impulse_samples), period_samples))
         phase_offset_samples = (params.phase_offset / 360.0) * period_samples
         sample_positions = (
-            params._impulse_phase_samples + np.arange(frames, dtype=float) + phase_offset_samples
+            params._impulse_phase_samples + self._get_sample_offsets(frames) + phase_offset_samples
         ) % period_samples
         params._impulse_phase_samples = float((params._impulse_phase_samples + frames) % period_samples)
         return params.amplitude * np.where(sample_positions < impulse_samples, 1.0, 0.0)
@@ -582,15 +801,17 @@ class SignalGenerator(MeasurementModule):
         if f_inst_hz.size == 0:
             return np.zeros(0, dtype=float)
 
-        f_safe = np.maximum(f_inst_hz, 0.0)
-        dphi = (2.0 * np.pi * f_safe) / sample_rate
+        dphi = np.maximum(f_inst_hz, 0.0)
+        dphi *= (2.0 * np.pi) / sample_rate
 
         # phase[0] should start at current carrier phase.
         phase0 = float(params._carrier_phase_rad)
-        phase = phase0 + np.cumsum(dphi) - dphi[0]
+        phase = np.cumsum(dphi)
+        total_phase_advance = float(phase[-1])
+        phase += phase0 - dphi[0]
 
         # Advance phase accumulator for next block.
-        params._carrier_phase_rad = float(phase0 + np.sum(dphi))
+        params._carrier_phase_rad = phase0 + total_phase_advance
         # Keep bounded to avoid numerical growth.
         params._carrier_phase_rad = float(np.fmod(params._carrier_phase_rad, 2.0 * np.pi))
         return phase
@@ -620,89 +841,76 @@ class SignalGenerator(MeasurementModule):
         return x * env
 
     def _apply_filters(self, x: np.ndarray, params: SignalParameters, sample_rate_eff: float) -> np.ndarray:
-        """Apply LPF/HPF if enabled."""
-        if scipy is None:
+        """Apply every enabled filter as one cached SOS cascade."""
+        if scipy is None or not (params.lpf_enabled or params.hpf_enabled or params.notch_enabled):
             return x
 
-        y = x
+        sos = self._get_combined_filter_sos(params, sample_rate_eff)
+        if sos is None:
+            return x
 
-        # Apply LPF
-        if params.lpf_enabled:
-            sos = self._get_filter_sos(params, "low", sample_rate_eff)
-            if sos is not None:
-                if params._lpf_zi is None or params._lpf_zi.shape != (sos.shape[0], 2):
-                    params._lpf_zi = scipy.signal.sosfilt_zi(sos) * 0.0  # Start from 0
+        state_shape = (sos.shape[0], 2)
+        if params._combined_zi is None or params._combined_zi.shape != state_shape:
+            params._combined_zi = np.zeros(state_shape, dtype=np.result_type(sos.dtype, x.dtype))
 
-                y, params._lpf_zi = scipy.signal.sosfilt(sos, y, zi=params._lpf_zi)
-
-        # Apply HPF
-        if params.hpf_enabled:
-            sos = self._get_filter_sos(params, "high", sample_rate_eff)
-            if sos is not None:
-                if params._hpf_zi is None or params._hpf_zi.shape != (sos.shape[0], 2):
-                    params._hpf_zi = scipy.signal.sosfilt_zi(sos) * 0.0
-
-                y, params._hpf_zi = scipy.signal.sosfilt(sos, y, zi=params._hpf_zi)
-
-        # Apply Notch
-        if params.notch_enabled:
-            sos = self._get_filter_sos(params, "notch", sample_rate_eff)
-            if sos is not None:
-                if params._notch_zi is None or params._notch_zi.shape != (sos.shape[0], 2):
-                    params._notch_zi = scipy.signal.sosfilt_zi(sos) * 0.0
-
-                y, params._notch_zi = scipy.signal.sosfilt(sos, y, zi=params._notch_zi)
-
+        y, params._combined_zi = scipy.signal.sosfilt(sos, x, zi=params._combined_zi)
         return y
 
     def _generate_buffered_signal(
         self, params: SignalParameters, frames, base_sample_rate, t_global_eff, sample_rate_eff
     ):
-        signal = np.zeros(frames)
+        del t_global_eff, sample_rate_eff
+        buf = params._buffer
+        if buf is None or len(buf) == 0:
+            return np.zeros(frames)
+
         # For burst, support per-channel fractional delay at readout time.
         # This avoids rebuilding buffers and lets users adjust delay live.
         if params.waveform == "burst" and getattr(params, "delay_ms", 0.0) != 0.0:
-            buf = params._buffer
             buf_len = len(buf)
-            if buf_len > 0:
-                delay_samples = float(params.delay_ms) * float(base_sample_rate) / 1000.0
-                # Use remainder + explicit wrapping to avoid rare float edge cases
-                # where floor(idx) can equal buf_len.
-                idx = np.remainder(
-                    (float(params._buffer_index) + np.arange(frames, dtype=float) - delay_samples),
-                    float(buf_len),
-                )
+            delay_samples = float(params.delay_ms) * float(base_sample_rate) / 1000.0
+            # Use remainder + explicit wrapping to avoid rare float edge cases
+            # where floor(idx) can equal buf_len.
+            idx = np.remainder(
+                float(params._buffer_index) + self._get_sample_offsets(frames) - delay_samples,
+                float(buf_len),
+            )
 
-                floor_idx = np.floor(idx)
-                i0 = np.mod(floor_idx.astype(np.int64, copy=False), buf_len)
-                frac = (idx - floor_idx).astype(float, copy=False)
-                i1 = (i0 + 1) % buf_len
+            floor_idx = np.floor(idx)
+            i0 = np.mod(floor_idx.astype(np.int64, copy=False), buf_len)
+            frac = idx - floor_idx
+            i1 = (i0 + 1) % buf_len
 
-                signal = (1.0 - frac) * buf[i0] + frac * buf[i1]
-                params._buffer_index = int((params._buffer_index + frames) % buf_len)
-                return signal * params.amplitude
+            signal = (1.0 - frac) * buf[i0] + frac * buf[i1]
+            params._buffer_index = int((params._buffer_index + frames) % buf_len)
+            signal *= params.amplitude
+            return signal
 
-        # Buffer based generation
-        chunk_size = frames
-        buf_len = len(params._buffer)
-        current_idx = 0
+        buf_len = len(buf)
+        start = params._buffer_index
+        params._buffer_index = int((start + frames) % buf_len)
 
-        while current_idx < chunk_size:
-            remaining = chunk_size - current_idx
-            available = buf_len - params._buffer_index
+        if buf_len < frames:
+            # Small MLS/Golay/PRBS orders may wrap dozens of times in one audio
+            # block. Expand one cached read window so the real-time path becomes
+            # a single slice instead of a Python loop per wrap.
+            cache_key = (id(buf), frames)
+            if params._buffer_read_cache is None or params._buffer_read_cache_key != cache_key:
+                params._buffer_read_cache = np.resize(buf, frames + buf_len - 1)
+                params._buffer_read_cache_key = cache_key
+            chunk = params._buffer_read_cache[start : start + frames]
+        elif start + frames <= buf_len:
+            chunk = buf[start : start + frames]
+        else:
+            first = buf_len - start
+            signal = np.empty(frames, dtype=buf.dtype)
+            signal[:first] = buf[start:]
+            signal[first:] = buf[: frames - first]
+            chunk = signal
 
-            to_copy = min(remaining, available)
-            signal[current_idx : current_idx + to_copy] = params._buffer[
-                params._buffer_index : params._buffer_index + to_copy
-            ]
-
-            params._buffer_index += to_copy
-            current_idx += to_copy
-
-            if params._buffer_index >= buf_len:
-                params._buffer_index = 0
-
-        return signal * params.amplitude
+        if params.amplitude == 1.0:
+            return chunk
+        return chunk * params.amplitude
 
     def _generate_sweep_signal(self, params: SignalParameters, frames, t_global_eff, sample_rate_eff):
         # Sweep generation
@@ -833,14 +1041,18 @@ class SignalGenerator(MeasurementModule):
                 beta = float(np.radians(params.pm_deviation_deg))
 
                 # Base phase is built continuously using phase_step
-                base_phase = params._carrier_phase_rad + np.arange(frames) * phase_step
+                base_phase = self._get_phase_work(params, frames)
+                np.multiply(self._get_sample_offsets(frames), phase_step, out=base_phase)
+                base_phase += params._carrier_phase_rad
                 params._carrier_phase_rad = float(np.fmod(params._carrier_phase_rad + frames * phase_step, 2.0 * np.pi))
 
                 phase = base_phase + beta * np.sin(pm_phase)
                 signal = self._generate_wave_from_phase(params, phase)
                 return signal
 
-            phase_rad = params._carrier_phase_rad + np.arange(frames) * phase_step
+            phase_rad = self._get_phase_work(params, frames)
+            np.multiply(self._get_sample_offsets(frames), phase_step, out=phase_rad)
+            phase_rad += params._carrier_phase_rad
             params._carrier_phase_rad = float(np.fmod(params._carrier_phase_rad + frames * phase_step, 2.0 * np.pi))
             signal = self._generate_wave_from_phase(params, phase_rad)
 
@@ -851,9 +1063,7 @@ class SignalGenerator(MeasurementModule):
 
         # Use effective parameters for clean continuous generation
         sample_rate_eff = base_sample_rate / cal_factor if cal_factor > 0 else base_sample_rate
-        t_global_eff = t_global * cal_factor
-
-        signal = np.zeros(frames)
+        t_global_eff = t_global if cal_factor == 1.0 else t_global * cal_factor
 
         if params._buffer is not None:
             signal = self._generate_buffered_signal(params, frames, base_sample_rate, t_global_eff, sample_rate_eff)
@@ -864,7 +1074,7 @@ class SignalGenerator(MeasurementModule):
 
         # Amplitude Sweep
         if params.amp_sweep_enabled:
-            t_block = params._amp_sweep_time + np.arange(frames) / sample_rate_eff
+            t_block = params._amp_sweep_time + self._get_sample_offsets(frames) / sample_rate_eff
             t_mod = np.mod(t_block, params.amp_sweep_duration)
 
             if params.log_amp_sweep:
@@ -894,6 +1104,38 @@ class SignalGenerator(MeasurementModule):
 
         return signal
 
+    def _can_write_standard_signal_directly(self, params: SignalParameters) -> bool:
+        if params.waveform not in self.PERIODIC_WAVEFORMS:
+            return False
+        if params.sweep_enabled or params.amp_sweep_enabled:
+            return False
+        if params.lpf_enabled or params.hpf_enabled or params.notch_enabled:
+            return False
+        if params.am_enabled and params.am_frequency > 0 and params.am_depth != 0:
+            return False
+        if params.fm_enabled and params.fm_frequency > 0 and params.fm_deviation != 0:
+            return False
+        if params.pm_enabled and params.pm_frequency > 0 and params.pm_deviation_deg != 0:
+            return False
+        return True
+
+    def _generate_channel_into(
+        self,
+        params: SignalParameters,
+        frames: int,
+        t_global: np.ndarray,
+        base_sample_rate: float,
+        destination: np.ndarray,
+    ):
+        if params._buffer is None and self._can_write_standard_signal_directly(params):
+            cal_factor = self._get_cal_factor(params)
+            sample_rate_eff = base_sample_rate / cal_factor if cal_factor > 0 else base_sample_rate
+            self._write_fixed_periodic_signal(params, frames, sample_rate_eff, destination)
+            return
+
+        signal = self._generate_channel_signal(params, frames, t_global, base_sample_rate)
+        np.copyto(destination, signal, casting="unsafe")
+
     def start_generation(self):
         if self.is_playing:
             return
@@ -911,33 +1153,32 @@ class SignalGenerator(MeasurementModule):
             params._fm_phase_rad = 0.0
             params._pm_phase_rad = 0.0
             params._am_phase_rad = 0.0
-            params._lpf_zi = None
-            params._hpf_zi = None
-            params._notch_zi = None
+            params._combined_zi = None
+
+        # Prepare only channels that can currently reach the output. Switching
+        # routing during playback prepares the newly activated channel in the
+        # output_mode setter, outside the real-time callback.
+        for params in self._params_for_output_mode():
             self._prepare_buffer(params, base_sample_rate)
 
         def callback(indata, outdata, frames, time, status):
             if status:
                 logger.debug(status)
 
-            t = np.arange(frames) / base_sample_rate
+            t = self._get_block_time(frames, base_sample_rate)
             outdata.fill(0)
 
             # Left Channel
-            if self.output_mode in {"L", "STEREO"}:
-                sig_l = self._generate_channel_signal(self.params_L, frames, t, base_sample_rate)
-                if outdata.shape[1] >= 1:
-                    outdata[:, 0] = sig_l
+            if self.output_mode in {"L", "STEREO"} and outdata.shape[1] >= 1:
+                self._generate_channel_into(self.params_L, frames, t, base_sample_rate, outdata[:, 0])
 
             # Right Channel
-            if self.output_mode in {"R", "STEREO"}:
+            if self.output_mode in {"R", "STEREO"} and outdata.shape[1] >= 2:
                 # If we are in STEREO but want to output the SAME signal if linked?
                 # The user requirement says "L and R separate signals".
                 # So we always use params_R for Right channel.
                 # If the user wants them same, they copy settings in UI.
-                sig_r = self._generate_channel_signal(self.params_R, frames, t, base_sample_rate)
-                if outdata.shape[1] >= 2:
-                    outdata[:, 1] = sig_r
+                self._generate_channel_into(self.params_R, frames, t, base_sample_rate, outdata[:, 1])
 
         self.callback_id = self.audio_engine.register_callback(callback)
 
@@ -959,6 +1200,9 @@ class SignalGenerator(MeasurementModule):
             # Clear buffer so that standard generation logic is used
             params._buffer = None
             params._buffer_index = 0
+            params._buffer_cache_key = None
+            params._buffer_read_cache = None
+            params._buffer_read_cache_key = None
 
     def update_param(self, params: SignalParameters, name: str, value: Any):
         """Updates a parameter and triggers buffer regeneration if necessary."""
@@ -975,13 +1219,18 @@ class SignalGenerator(MeasurementModule):
             # Check if the changed parameter affects buffer generation for this waveform
             needs_update = False
 
-            if params.waveform == "noise" and name == "noise_color":
+            if params.waveform == "noise" and name in {
+                "noise_color",
+                "use_freq_cal",
+                "freq_cal_manual_ppm",
+            }:
                 needs_update = True
             elif params.waveform == "multitone" and name in {
                 "multitone_count",
                 "start_freq",
                 "end_freq",
                 "use_freq_cal",
+                "freq_cal_manual_ppm",
             }:
                 needs_update = True
             elif params.waveform == "mls" and name == "mls_order":
@@ -994,6 +1243,7 @@ class SignalGenerator(MeasurementModule):
                 "burst_off_cycles",
                 "burst_windowed",
                 "use_freq_cal",
+                "freq_cal_manual_ppm",
             }:
                 needs_update = True
             elif params.waveform == "prbs" and name in {"prbs_order", "prbs_seed"}:
