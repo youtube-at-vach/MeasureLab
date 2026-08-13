@@ -6,6 +6,7 @@ import csv
 import json
 import logging
 import math
+import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -101,6 +102,12 @@ class EventDetector(MeasurementModule):
         self._run_stopped_at_utc: str | None = None
         self._run_stop_reason: str | None = None
         self._target_samples: int | None = None
+        self._run_input_channel: int | None = None
+        self._run_stream_signature: tuple[tuple[str, str], ...] | None = None
+        # Keep multi-call captures consistent without holding the lock during
+        # file I/O.  The audio callback only contends with short in-memory
+        # snapshot copies.
+        self._acquisition_lock = threading.RLock()
 
     @property
     def name(self) -> str:
@@ -124,6 +131,44 @@ class EventDetector(MeasurementModule):
             holdoff_seconds=float(self.holdoff_ms) / 1000.0,
             clipping_invalidates_measurement=self.detection_mode == EventDetectionMode.THRESHOLD_EVENTS,
         )
+
+    @staticmethod
+    def _signature_value(value: object) -> str:
+        """Return a stable, comparison-only representation of engine state."""
+        try:
+            if isinstance(value, np.generic):
+                value = value.item()
+        except (TypeError, ValueError):
+            pass
+        return f"{type(value).__module__}.{type(value).__qualname__}:{value!r}"
+
+    def _stream_signature(self) -> tuple[tuple[str, str], ...]:
+        """Capture settings whose mutation can restart or reroute input."""
+        names = (
+            "block_size",
+            "input_device",
+            "output_device",
+            "input_channel_mode",
+            "output_channel_mode",
+            "offline_mode",
+            "loopback",
+            "audio_engine_64bit",
+        )
+        return tuple(
+            (name, self._signature_value(getattr(self.audio_engine, name, None)))
+            for name in names
+        )
+
+    @staticmethod
+    def _metadata_scalar(value: object) -> object:
+        """Return a JSON-safe scalar while preserving ordinary device IDs."""
+        if isinstance(value, np.generic):
+            value = value.item()
+        if value is None or isinstance(value, (str, int, bool)):
+            return value
+        if isinstance(value, float) and math.isfinite(value):
+            return value
+        return str(value)
 
     @staticmethod
     def dbfs_to_fs(value_dbfs: float) -> float:
@@ -187,42 +232,103 @@ class EventDetector(MeasurementModule):
     def start_analysis(self) -> None:
         if self.is_running:
             return
+        if self.callback_id is not None:
+            raise RuntimeError(tr("Audio stream failed to start. Please check audio device settings."))
+
+        channel_error = tr("Audio stream failed to start. Please check audio device settings.")
+        try:
+            run_input_channel = int(self.input_channel)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(channel_error) from exc
+        if run_input_channel not in (0, 1):
+            raise ValueError(channel_error)
 
         config = self._build_config()
-        self._core.start(config)
-        self._target_samples = self._duration_to_samples(self.target_duration, config.sample_rate)
-        self._capture_run_metadata(config)
-        self.is_running = True
+        with self._acquisition_lock:
+            self._core.start(config)
+            self._target_samples = self._duration_to_samples(self.target_duration, config.sample_rate)
+            self._run_input_channel = run_input_channel
+            self._run_stream_signature = self._stream_signature()
+            self._capture_run_metadata(config)
+            self.is_running = True
 
         try:
             self.callback_id = self.audio_engine.register_callback(self._audio_callback)
+            is_active = getattr(self.audio_engine, "is_active", None)
+            if callable(is_active) and not bool(is_active()):
+                raise RuntimeError(tr("Audio stream failed to start. Please check audio device settings."))
+            with self._acquisition_lock:
+                if self._run_metadata is not None:
+                    self._run_metadata["audio_stream_dtype"] = self._metadata_scalar(
+                        getattr(self.audio_engine, "active_dtype", None)
+                    )
         except Exception:
+            callback_id = self.callback_id
             self.callback_id = None
-            self.is_running = False
-            self._core.stop()
-            self._run_metadata = None
-            self._run_stopped_at_utc = None
-            self._run_stop_reason = None
-            self._target_samples = None
+            if callback_id is not None:
+                try:
+                    self.audio_engine.unregister_callback(callback_id)
+                except Exception:
+                    logger.exception("Failed to unregister Event Detector after a start failure")
+            with self._acquisition_lock:
+                self.is_running = False
+                self._core.stop()
+                self._run_metadata = None
+                self._run_stopped_at_utc = None
+                self._run_stop_reason = None
+                self._target_samples = None
+                self._run_input_channel = None
+                self._run_stream_signature = None
             raise
 
     def stop_analysis(self) -> None:
         if not self.is_running and self.callback_id is None:
             return
 
-        self.is_running = False
-        callback_id = self.callback_id
-        self.callback_id = None
-
-        try:
-            if callback_id is not None:
-                self.audio_engine.unregister_callback(callback_id)
-        finally:
+        with self._acquisition_lock:
+            self.is_running = False
+            callback_id = self.callback_id
+            self.callback_id = None
             self._core.stop()
             if self._run_stopped_at_utc is None:
                 self._run_stopped_at_utc = self._utc_now()
             if self._run_stop_reason is None:
                 self._run_stop_reason = "manual_stop"
+
+        try:
+            if callback_id is not None:
+                self.audio_engine.unregister_callback(callback_id)
+        except Exception:
+            # Keep the ID so a later stop/close can retry instead of leaking an
+            # analysis callback whose registration has become unreachable.
+            with self._acquisition_lock:
+                if self.callback_id is None:
+                    self.callback_id = callback_id
+            raise
+
+    def check_acquisition_health(self) -> bool:
+        """Invalidate a run when an active audio stream disappears silently."""
+        if not self.is_running:
+            return False
+        is_active = getattr(self.audio_engine, "is_active", None)
+        if not callable(is_active):
+            return True
+        try:
+            stream_active = bool(is_active())
+        except Exception:
+            stream_active = False
+        if stream_active:
+            return True
+
+        with self._acquisition_lock:
+            if not self.is_running:
+                return False
+            self._core.mark_data_gap()
+            self.is_running = False
+            self._core.stop()
+            self._run_stopped_at_utc = self._utc_now()
+            self._run_stop_reason = "audio_stream_inactive"
+        return False
 
     def _complete_target_duration(self) -> None:
         """Finish an exact sample-count run from the audio callback.
@@ -236,24 +342,30 @@ class EventDetector(MeasurementModule):
         self._run_stop_reason = "target_duration_reached"
 
     def reset_measurement(self) -> None:
-        self._core.reset()
-        if self.is_running:
-            self._target_samples = self._duration_to_samples(self.target_duration, self._core.config.sample_rate)
-            self._capture_run_metadata(self._core.config)
-        else:
-            self._run_metadata = None
-            self._run_stopped_at_utc = None
-            self._run_stop_reason = None
+        with self._acquisition_lock:
+            self._core.reset()
+            if self.is_running:
+                self._target_samples = self._duration_to_samples(self.target_duration, self._core.config.sample_rate)
+                self._capture_run_metadata(self._core.config)
+            else:
+                self._run_metadata = None
+                self._run_stopped_at_utc = None
+                self._run_stop_reason = None
+                self._run_input_channel = None
+                self._run_stream_signature = None
 
     def get_snapshot(self) -> DetectorSnapshot:
-        return self._core.snapshot()
+        with self._acquisition_lock:
+            return self._core.snapshot()
 
     def get_events(self):
         """Expose completed event records for future statistics/export views."""
-        return self._core.get_events()
+        with self._acquisition_lock:
+            return self._core.get_events()
 
     def get_data_gap_samples(self) -> tuple[int, ...]:
-        return self._core.get_data_gap_samples()
+        with self._acquisition_lock:
+            return self._core.get_data_gap_samples()
 
     def get_run_sample_rate(self) -> float:
         return float(self._core.config.sample_rate)
@@ -313,19 +425,29 @@ class EventDetector(MeasurementModule):
             sensitivity=sensitivity if threshold_unit != "FS" else None,
         )
 
-        input_device = getattr(self.audio_engine, "input_device", None)
-        if not isinstance(input_device, (str, int, float, bool)) and input_device is not None:
-            input_device = str(input_device)
+        input_device = self._metadata_scalar(getattr(self.audio_engine, "input_device", None))
+        run_input_channel = self._run_input_channel
+        if run_input_channel is None:
+            run_input_channel = int(self.input_channel)
 
         self._run_metadata = {
             "schema_version": "1.0",
             "run_id": str(uuid.uuid4()),
             "started_at_utc": self._utc_now(),
             "sample_rate_hz": float(config.sample_rate),
-            "input_channel_index": int(self.input_channel),
-            "input_channel": f"CH{self.input_channel + 1}",
+            "input_channel_index": run_input_channel,
+            "input_channel": f"CH{run_input_channel + 1}",
             "input_channel_mode": str(getattr(self.audio_engine, "input_channel_mode", "unknown")),
             "input_device_id": input_device,
+            "input_source": (
+                "internal_loopback"
+                if bool(getattr(self.audio_engine, "offline_mode", False))
+                or bool(getattr(self.audio_engine, "loopback", False))
+                else "hardware"
+            ),
+            "audio_block_size_frames": self._metadata_scalar(getattr(self.audio_engine, "block_size", None)),
+            "audio_engine_64bit_requested": bool(getattr(self.audio_engine, "audio_engine_64bit", False)),
+            "audio_stream_dtype": self._metadata_scalar(getattr(self.audio_engine, "active_dtype", None)),
             "detection_mode": self.detection_mode.value,
             "threshold_fs_peak": float(config.threshold),
             "hysteresis_fs_peak": float(config.hysteresis),
@@ -354,13 +476,14 @@ class EventDetector(MeasurementModule):
         self._run_stopped_at_utc = None
         self._run_stop_reason = None
 
-    def get_run_metadata(self) -> dict[str, object] | None:
+    def _get_run_metadata_locked(self, snapshot: DetectorSnapshot | None = None) -> dict[str, object] | None:
         if self._run_metadata is None:
             return None
         metadata = dict(self._run_metadata)
         metadata["stopped_at_utc"] = self._run_stopped_at_utc
         metadata["stop_reason"] = self._run_stop_reason
-        snapshot = self.get_snapshot()
+        if snapshot is None:
+            snapshot = self._core.snapshot()
         metadata.update(
             {
                 "processed_samples": snapshot.processed_samples,
@@ -368,6 +491,10 @@ class EventDetector(MeasurementModule):
                 "event_start_count": snapshot.event_count,
                 "completed_event_count": snapshot.completed_event_count,
                 "censored_event_count": snapshot.censored_event_count,
+                "active_event_count": (
+                    snapshot.event_count - snapshot.completed_event_count - snapshot.censored_event_count
+                ),
+                "retained_event_count": snapshot.retained_event_count,
                 "clipping_detected": snapshot.clipping_detected,
                 "data_gap_detected": snapshot.data_gap_detected,
                 "data_gap_count": snapshot.data_gap_count,
@@ -377,6 +504,10 @@ class EventDetector(MeasurementModule):
             }
         )
         return metadata
+
+    def get_run_metadata(self) -> dict[str, object] | None:
+        with self._acquisition_lock:
+            return self._get_run_metadata_locked()
 
     def get_amplitude_display(self) -> tuple[float, str]:
         """Return the frozen run scale and unit used for peak-amplitude results.
@@ -441,12 +572,14 @@ class EventDetector(MeasurementModule):
     def export_events(self, filepath: str) -> None:
         """Export the current run and all retained event records to CSV or JSON."""
         path = Path(filepath)
-        metadata = self.get_run_metadata()
-        if metadata is None:
-            raise ValueError("No Event Detector run is available for export")
-        events = self.get_events()
+        with self._acquisition_lock:
+            snapshot = self._core.snapshot()
+            metadata = self._get_run_metadata_locked(snapshot)
+            if metadata is None:
+                raise ValueError("No Event Detector run is available for export")
+            events = self.get_events()
+            amplitude_scale, amplitude_unit = self.get_amplitude_display()
         sample_rate = float(metadata["sample_rate_hz"])
-        amplitude_scale, amplitude_unit = self.get_amplitude_display()
         event_rows = [self._event_to_dict(event, sample_rate, amplitude_scale) for event in events]
 
         if path.suffix.lower() == ".json":
@@ -483,52 +616,94 @@ class EventDetector(MeasurementModule):
             writer.writerows([self._sanitize_csv_field(row[key]) for key in headers] for row in event_rows)
 
     def _audio_callback(self, indata, outdata, frames, time_info, status) -> None:
-        del frames, time_info
+        del time_info
         outdata.fill(0)
         if not self.is_running:
             return
-        if float(self.audio_engine.sample_rate) != float(self._core.config.sample_rate):
-            self._core.mark_configuration_change()
-            return
-        if indata is None:
-            self._core.mark_data_gap()
-            return
-
-        data = np.asarray(indata)
-        if data.size == 0:
-            return
-        if data.ndim == 1:
-            if self.input_channel != 0:
+        with self._acquisition_lock:
+            # stop_analysis may have won the race after the cheap outer check.
+            if not self.is_running:
+                return
+            try:
+                current_sample_rate = float(self.audio_engine.sample_rate)
+            except (TypeError, ValueError, OverflowError):
                 self._core.mark_configuration_change()
                 return
-            samples = data
-        elif data.ndim == 2:
-            if self.input_channel >= data.shape[1]:
+            if (
+                not math.isfinite(current_sample_rate)
+                or current_sample_rate != float(self._core.config.sample_rate)
+                or self._run_stream_signature != self._stream_signature()
+            ):
                 self._core.mark_configuration_change()
                 return
-            samples = data[:, self.input_channel]
-        else:
-            self._core.mark_data_gap()
-            return
+            if indata is None:
+                self._core.mark_data_gap()
+                return
 
-        input_status = bool(getattr(status, "input_overflow", False) or getattr(status, "input_underflow", False))
-        if status and not any(
-            hasattr(status, name)
-            for name in ("input_overflow", "input_underflow", "output_overflow", "output_underflow")
-        ):
-            input_status = True
-        target_samples = self._target_samples
-        if target_samples is not None:
-            remaining = target_samples - self._core.snapshot().processed_samples
-            if remaining <= 0:
+            try:
+                data = np.asarray(indata)
+            except Exception:
+                self._core.mark_data_gap()
+                return
+            if data.ndim not in (1, 2):
+                self._core.mark_data_gap()
+                return
+
+            actual_frames = int(data.shape[0])
+            try:
+                reported_frames = int(frames)
+            except (TypeError, ValueError, OverflowError):
+                reported_frames = -1
+            frame_mismatch = (
+                isinstance(frames, (bool, np.bool_))
+                or reported_frames != actual_frames
+                or reported_frames < 0
+                or frames != reported_frames
+            )
+            if actual_frames == 0:
+                if frame_mismatch:
+                    self._core.mark_data_gap()
+                return
+            if not np.issubdtype(data.dtype, np.number) or not np.isrealobj(data):
+                self._core.mark_data_gap()
+                return
+
+            run_input_channel = self._run_input_channel
+            if run_input_channel is None:
+                self._core.mark_configuration_change()
+                return
+            if data.ndim == 1:
+                if run_input_channel != 0:
+                    self._core.mark_configuration_change()
+                    return
+                samples = data
+            else:
+                if run_input_channel >= data.shape[1]:
+                    self._core.mark_configuration_change()
+                    return
+                samples = data[:, run_input_channel]
+
+            input_status = bool(
+                getattr(status, "input_overflow", False) or getattr(status, "input_underflow", False)
+            )
+            if status and not any(
+                hasattr(status, name)
+                for name in ("input_overflow", "input_underflow", "output_overflow", "output_underflow")
+            ):
+                input_status = True
+            input_status = input_status or frame_mismatch
+            target_samples = self._target_samples
+            if target_samples is not None:
+                remaining = target_samples - self._core.snapshot().processed_samples
+                if remaining <= 0:
+                    self._complete_target_duration()
+                    return
+                samples = samples[:remaining]
+
+            self._core.process(samples, data_gap=input_status)
+
+            if target_samples is not None and self._core.snapshot().processed_samples >= target_samples:
                 self._complete_target_duration()
-                return
-            samples = samples[:remaining]
-
-        self._core.process(samples, data_gap=input_status)
-
-        if target_samples is not None and self._core.snapshot().processed_samples >= target_samples:
-            self._complete_target_duration()
 
 
 class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInterface):
@@ -949,7 +1124,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             self.spin_holdoff,
             self.combo_duration,
         ]
-        self._last_analysis_key: tuple[int, int, int] | None = None
+        self._last_analysis_key: tuple[int, int, int, int] | None = None
         self._rate_view_run_id: str | None = None
         self._rate_view_bin_seconds: float | None = None
         self._rate_view_y_max = 1.0
@@ -1333,7 +1508,12 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         if _args:
             self._last_analysis_key = None
         snapshot = self.module.get_snapshot()
-        key = (snapshot.retained_event_count, snapshot.dropped_record_count, int(snapshot.elapsed_seconds))
+        key = (
+            snapshot.retained_event_count,
+            snapshot.dropped_record_count,
+            snapshot.data_gap_count,
+            int(snapshot.elapsed_seconds),
+        )
         if key == self._last_analysis_key:
             return
         self._last_analysis_key = key
@@ -1524,6 +1704,8 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self._last_event_count = event_count
 
     def _update_results(self) -> None:
+        if self.module.is_running:
+            self.module.check_acquisition_health()
         if self.btn_start.isChecked() and not self.module.is_running:
             # A fixed-duration run has stopped in the audio callback. Complete
             # its cleanup from the GUI thread and restore the control state.
@@ -1538,7 +1720,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             self._refresh_threshold_unit_options()
         snapshot = self.module.get_snapshot()
         self._update_event_activity(snapshot.event_count)
-        self.lbl_count.setText(f"{snapshot.event_count:,}")
+        self.lbl_count.setText(f"{snapshot.event_count:,}" if snapshot.measurement_valid else tr("INVALID"))
         self.lbl_rate.setText(
             self._format_rate(snapshot.event_rate_per_minute) if snapshot.measurement_valid else tr("INVALID")
         )
