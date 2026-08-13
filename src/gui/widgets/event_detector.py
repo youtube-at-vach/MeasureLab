@@ -66,8 +66,10 @@ class EventDetector(MeasurementModule):
     """AudioEngine adapter for the sample-accurate event detector core."""
 
     THRESHOLD_UNITS = ("FS", "mV", "V")
-    DEFAULT_CLIP_THRESHOLD_DBFS = -0.1
+    DEFAULT_CLIP_THRESHOLD_DBFS = 0.0
     DEFAULT_CLIP_RELEASE_DBFS = -1.0
+    MIN_CLIP_THRESHOLD_DBFS = -20.0
+    MAX_CLIP_THRESHOLD_DBFS = 100.0
 
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
@@ -154,10 +156,7 @@ class EventDetector(MeasurementModule):
             "loopback",
             "audio_engine_64bit",
         )
-        return tuple(
-            (name, self._signature_value(getattr(self.audio_engine, name, None)))
-            for name in names
-        )
+        return tuple((name, self._signature_value(getattr(self.audio_engine, name, None))) for name in names)
 
     @staticmethod
     def _metadata_scalar(value: object) -> object:
@@ -683,9 +682,7 @@ class EventDetector(MeasurementModule):
                     return
                 samples = data[:, run_input_channel]
 
-            input_status = bool(
-                getattr(status, "input_overflow", False) or getattr(status, "input_underflow", False)
-            )
+            input_status = bool(getattr(status, "input_overflow", False) or getattr(status, "input_underflow", False))
             if status and not any(
                 hasattr(status, name)
                 for name in ("input_overflow", "input_underflow", "output_overflow", "output_underflow")
@@ -1154,7 +1151,10 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             self.spin_hysteresis.blockSignals(True)
             try:
                 self.spin_threshold.setDecimals(2)
-                self.spin_threshold.setRange(-20.0, -0.001)
+                self.spin_threshold.setRange(
+                    self.module.MIN_CLIP_THRESHOLD_DBFS,
+                    self.module.MAX_CLIP_THRESHOLD_DBFS,
+                )
                 self.spin_threshold.setSingleStep(0.1)
                 self.spin_threshold.setSuffix(" dBFS")
                 self.spin_threshold.setValue(threshold_dbfs)
