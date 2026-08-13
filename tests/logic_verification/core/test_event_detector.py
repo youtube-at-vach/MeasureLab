@@ -52,6 +52,17 @@ def test_config_rejects_invalid_settings(kwargs, message):
         DetectorConfig(**kwargs)
 
 
+def test_config_allows_clip_event_threshold_above_full_scale():
+    config = DetectorConfig(
+        sample_rate=1000,
+        threshold=1000.0,
+        hysteresis=999.0,
+        clipping_invalidates_measurement=False,
+    )
+
+    assert config.threshold == pytest.approx(1000.0)
+
+
 def test_positive_events_record_count_peak_duration_and_interval():
     detector = make_detector(polarity=EventPolarity.POSITIVE)
 

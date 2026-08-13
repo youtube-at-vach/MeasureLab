@@ -64,13 +64,13 @@ def test_module_defaults_to_practical_clip_event_detection():
     module, callbacks = make_module(detection_mode=None)
 
     assert module.detection_mode == EventDetectionMode.CLIP_EVENTS
-    assert module.fs_to_dbfs(module.threshold) == pytest.approx(-0.1)
+    assert module.fs_to_dbfs(module.threshold) == pytest.approx(0.0)
     assert module.fs_to_dbfs(module.threshold - module.hysteresis) == pytest.approx(-1.0)
     assert module.polarity == EventPolarity.BOTH
     assert module.holdoff_ms == pytest.approx(10.0)
 
     module.start_analysis()
-    samples = np.array([0.0, 0.99, 0.8, *([0.0] * 11), -1.0, -0.8])
+    samples = np.array([0.0, 1.0, 0.8, *([0.0] * 11), -1.0, -0.8])
     callbacks[0](samples, np.zeros_like(samples), len(samples), None, False)
     snapshot = module.get_snapshot()
     metadata = module.get_run_metadata()
@@ -80,7 +80,7 @@ def test_module_defaults_to_practical_clip_event_detection():
     assert snapshot.measurement_valid
     assert metadata is not None
     assert metadata["detection_mode"] == "clip_events"
-    assert metadata["clip_threshold_dbfs"] == pytest.approx(-0.1)
+    assert metadata["clip_threshold_dbfs"] == pytest.approx(0.0)
     assert metadata["clip_rearm_dbfs"] == pytest.approx(-1.0)
     assert metadata["clipping_invalidates_measurement"] is False
 
@@ -91,13 +91,13 @@ def test_widget_defaults_to_clip_mode_and_preserves_each_mode_profile(qtbot):
     qtbot.addWidget(widget)
 
     assert widget.combo_mode.currentData() == EventDetectionMode.CLIP_EVENTS
-    assert widget.spin_threshold.value() == pytest.approx(-0.1)
+    assert widget.spin_threshold.value() == pytest.approx(0.0)
     assert widget.spin_hysteresis.value() == pytest.approx(-1.0)
     assert widget.combo_threshold_unit.isHidden()
     assert widget.combo_polarity.isHidden()
     assert widget.count_group.title() == "Clip Event Count"
     assert widget.rate_group.title() == "Clip Event Rate"
-    assert widget.lbl_conditions.text() == "CH1  •  Clip ≥ -0.10 dBFS  •  1 kHz"
+    assert widget.lbl_conditions.text() == "CH1  •  Clip ≥ 0.00 dBFS  •  1 kHz"
 
     widget.combo_mode.setCurrentIndex(widget.combo_mode.findData(EventDetectionMode.THRESHOLD_EVENTS))
     assert widget.spin_threshold.value() == pytest.approx(0.01)
@@ -107,9 +107,26 @@ def test_widget_defaults_to_clip_mode_and_preserves_each_mode_profile(qtbot):
     widget.spin_threshold.setValue(0.5)
 
     widget.combo_mode.setCurrentIndex(widget.combo_mode.findData(EventDetectionMode.CLIP_EVENTS))
-    assert widget.spin_threshold.value() == pytest.approx(-0.1)
+    assert widget.spin_threshold.value() == pytest.approx(0.0)
     widget.combo_mode.setCurrentIndex(widget.combo_mode.findData(EventDetectionMode.THRESHOLD_EVENTS))
     assert widget.spin_threshold.value() == pytest.approx(0.5)
+
+
+def test_clip_level_accepts_large_positive_dbfs_values(qtbot):
+    module, callbacks = make_module(detection_mode=None)
+    widget = EventDetectorWidget(module)
+    qtbot.addWidget(widget)
+
+    assert widget.spin_threshold.maximum() == pytest.approx(100.0)
+    widget.spin_threshold.setValue(60.0)
+
+    assert module.fs_to_dbfs(module.threshold) == pytest.approx(60.0)
+    widget.btn_start.click()
+    samples = np.array([0.0, 1000.0, 1001.0, 0.0], dtype=np.float32)
+    callbacks[0](samples, np.zeros_like(samples), len(samples), None, False)
+
+    assert module.get_snapshot().event_count == 1
+    assert module.get_run_metadata()["clip_threshold_dbfs"] == pytest.approx(60.0)
 
 
 def test_widget_reports_detected_clips_without_invalidating_clip_measurement(qtbot):

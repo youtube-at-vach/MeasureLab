@@ -87,10 +87,10 @@ class DetectorConfig:
             raise ValueError("holdoff_seconds must not be negative")
         if self.clip_level <= 0:
             raise ValueError("clip_level must be greater than zero")
-        if self.threshold >= self.clip_level:
-            raise ValueError("threshold must be smaller than clip_level")
         if not isinstance(self.clipping_invalidates_measurement, bool):
             raise ValueError("clipping_invalidates_measurement must be a boolean")
+        if self.clipping_invalidates_measurement and self.threshold >= self.clip_level:
+            raise ValueError("threshold must be smaller than clip_level")
 
     @property
     def holdoff_samples(self) -> int:
