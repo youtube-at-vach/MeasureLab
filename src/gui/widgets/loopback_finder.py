@@ -10,6 +10,7 @@ import sounddevice as sd
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
+    QBoxLayout,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
@@ -32,7 +33,6 @@ logger = logging.getLogger(__name__)
 
 class PairVerdict(Enum):
     DETECTED = "detected"
-    UNCERTAIN = "uncertain"
     NOT_DETECTED = "not_detected"
     INVALID = "invalid"
 
@@ -52,7 +52,7 @@ class ScanProfile:
     tone_duration_s: float = 0.1
     tail_duration_s: float = 0.2
     settle_duration_s: float = 0.8
-    absolute_threshold_dbfs: float = -40.0
+    absolute_threshold_dbfs: float = -80.0
     minimum_margin_db: float = 12.0
     clip_level: float = 0.999999
 
@@ -262,8 +262,6 @@ class LoopbackFinder(MeasurementModule):
             above_baseline = margin_db >= profile.minimum_margin_db
             if above_absolute and above_baseline:
                 verdict = PairVerdict.DETECTED
-            elif above_absolute or above_baseline:
-                verdict = PairVerdict.UNCERTAIN
             else:
                 verdict = PairVerdict.NOT_DETECTED
 
@@ -492,9 +490,10 @@ class LoopbackFinderWidget(QWidget):
 
     def init_ui(self) -> None:
         root = QHBoxLayout(self)
+        root.setDirection(QBoxLayout.Direction.LeftToRight)
 
-        results_group = QGroupBox(tr("Connection Matrix"))
-        results_layout = QVBoxLayout(results_group)
+        self.results_group = QGroupBox(tr("Connection Matrix"))
+        results_layout = QVBoxLayout(self.results_group)
         result_header = QHBoxLayout()
         self.summary_label = QLabel(tr("No scan results."))
         self.summary_label.setStyleSheet("font-weight: bold;")
@@ -511,14 +510,19 @@ class LoopbackFinderWidget(QWidget):
         self.results_table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         results_layout.addWidget(self.results_table, stretch=1)
 
-        legend = QLabel(tr("✓ detected   ? review   — not detected   ! invalid"))
+        legend = QLabel(tr("✓ detected   value only: not detected   ! invalid"))
         legend.setWordWrap(True)
         results_layout.addWidget(legend)
-        root.addWidget(results_group, stretch=4)
 
-        control_panel = QWidget()
-        control_panel.setMaximumWidth(240)
-        controls = QVBoxLayout(control_panel)
+        self.control_panel = QWidget()
+        self.control_panel.setMinimumWidth(360)
+        self.control_panel.setMaximumWidth(400)
+        controls = QVBoxLayout(self.control_panel)
+
+        caution = QLabel(tr("An active measurement is paused during the scan and restored when it finishes."))
+        caution.setWordWrap(True)
+        caution.setStyleSheet("font-weight: bold;")
+        controls.addWidget(caution)
 
         measurement_group = QGroupBox(tr("Scan"))
         measurement_layout = QVBoxLayout(measurement_group)
@@ -530,35 +534,33 @@ class LoopbackFinderWidget(QWidget):
         self.stop_btn.setEnabled(False)
         measurement_layout.addWidget(self.stop_btn)
         self.status_label = QLabel(tr("Ready"))
-        self.status_label.setWordWrap(True)
-        self.status_label.hide()
+        self.status_label.setWordWrap(False)
         measurement_layout.addWidget(self.status_label)
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(0)
-        self.progress_bar.hide()
         measurement_layout.addWidget(self.progress_bar)
         controls.addWidget(measurement_group)
 
         conditions_group = QGroupBox(tr("Scan Conditions"))
-        conditions_layout = QFormLayout(conditions_group)
-        self.device_label = QLabel("—")
-        self.device_label.setWordWrap(True)
+        self.conditions_layout = QFormLayout(conditions_group)
+        self.conditions_layout.setRowWrapPolicy(QFormLayout.RowWrapPolicy.DontWrapRows)
+        self.conditions_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        self.input_device_label = QLabel("—")
+        self.input_device_label.setWordWrap(False)
+        self.output_device_label = QLabel("—")
+        self.output_device_label.setWordWrap(False)
         self.sample_rate_label = QLabel("—")
         self.stimulus_label = QLabel(
             tr("{0:g} Hz at {1:.2f} dBFS").format(
                 self.module.profile.frequency_hz, self.module.profile.output_level_dbfs
             )
         )
-        conditions_group.setToolTip(
-            tr("≥ {0:g} dBFS and ≥ {1:g} dB above baseline").format(
-                self.module.profile.absolute_threshold_dbfs,
-                self.module.profile.minimum_margin_db,
-            )
-        )
-        conditions_layout.addRow(f"{tr('I/O')}:", self.device_label)
-        conditions_layout.addRow(tr("Rate:"), self.sample_rate_label)
-        conditions_layout.addRow(tr("Test Signal:"), self.stimulus_label)
+        self.stimulus_label.setWordWrap(False)
+        self.conditions_layout.addRow(tr("Input Device:"), self.input_device_label)
+        self.conditions_layout.addRow(tr("Output Device:"), self.output_device_label)
+        self.conditions_layout.addRow(tr("Rate:"), self.sample_rate_label)
+        self.conditions_layout.addRow(tr("Test Signal:"), self.stimulus_label)
         controls.addWidget(conditions_group)
 
         self.clipping_warning = QLabel(tr("ADC CLIPPING — affected input results are invalid."))
@@ -580,7 +582,8 @@ class LoopbackFinderWidget(QWidget):
         controls.addWidget(self.restore_warning)
 
         controls.addStretch(1)
-        root.addWidget(control_panel, stretch=1)
+        root.addWidget(self.control_panel, stretch=1)
+        root.addWidget(self.results_group, stretch=4)
         self._refresh_conditions()
         self._update_availability()
 
@@ -598,11 +601,10 @@ class LoopbackFinderWidget(QWidget):
         engine = self.module.audio_engine
         input_text = self._format_device(engine.input_device)
         output_text = self._format_device(engine.output_device)
-        device_text = input_text if input_text == output_text else f"{input_text} → {output_text}"
-        self.device_label.setText(device_text)
-        self.device_label.setToolTip(
-            f"{tr('Input Device:')} {input_text}\n{tr('Output Device:')} {output_text}"
-        )
+        self.input_device_label.setText(input_text)
+        self.input_device_label.setToolTip(input_text)
+        self.output_device_label.setText(output_text)
+        self.output_device_label.setToolTip(output_text)
         self.sample_rate_label.setText(tr("{0:g} Hz").format(float(engine.sample_rate)))
 
     def _update_availability(self) -> None:
@@ -620,9 +622,8 @@ class LoopbackFinderWidget(QWidget):
         self.start_btn.setEnabled(self._scan_available and not running)
         if reason and not running:
             self.status_label.setText(reason)
-            self.status_label.show()
         elif not running:
-            self.status_label.hide()
+            self.status_label.setText(tr("Ready"))
 
     def showEvent(self, event) -> None:
         self._refresh_conditions()
@@ -644,9 +645,7 @@ class LoopbackFinderWidget(QWidget):
         self.results_table.setRowCount(0)
         self.results_table.setColumnCount(0)
         self.progress_bar.setValue(0)
-        self.progress_bar.show()
         self.status_label.setText(tr("Starting connection..."))
-        self.status_label.show()
         self.start_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
 
@@ -673,14 +672,11 @@ class LoopbackFinderWidget(QWidget):
             return
         self.stop_btn.setEnabled(False)
         self.status_label.setText(tr("Stopping scan..."))
-        self.status_label.show()
         worker.stop()
 
     def update_progress(self, value: int, message: str) -> None:
         self.progress_bar.setValue(value)
-        self.progress_bar.show()
         self.status_label.setText(message)
-        self.status_label.show()
 
     def _restore_audio_engine(self) -> bool:
         if self._engine_restored:
@@ -731,20 +727,17 @@ class LoopbackFinderWidget(QWidget):
             self.validity_label.setStyleSheet("color: #ff4040; font-weight: bold;")
             self.summary_label.setText(tr("Scan failed: {0}").format(result.error_message))
 
-        self.status_label.hide()
-        self.progress_bar.hide()
+        self.status_label.setText(tr("Ready"))
         self.clipping_warning.setVisible(bool(result.clipped_inputs))
         self.io_warning.setVisible(bool(result.io_errors))
 
     def _update_conditions_from_result(self, result: ScanResult) -> None:
-        if result.input_device_name or result.output_device_name:
-            input_text = result.input_device_name or tr("Not selected")
-            output_text = result.output_device_name or tr("Not selected")
-            device_text = input_text if input_text == output_text else f"{input_text} → {output_text}"
-            self.device_label.setText(device_text)
-            self.device_label.setToolTip(
-                f"{tr('Input Device:')} {input_text}\n{tr('Output Device:')} {output_text}"
-            )
+        if result.input_device_name:
+            self.input_device_label.setText(result.input_device_name)
+            self.input_device_label.setToolTip(result.input_device_name)
+        if result.output_device_name:
+            self.output_device_label.setText(result.output_device_name)
+            self.output_device_label.setToolTip(result.output_device_name)
         if result.sample_rate:
             self.sample_rate_label.setText(tr("{0:g} Hz").format(result.sample_rate))
 
@@ -765,10 +758,8 @@ class LoopbackFinderWidget(QWidget):
                 item = self._measurement_item(measurement)
                 self.results_table.setItem(output_channel - 1, input_channel - 1, item)
 
-        if result.detected_count:
-            self.summary_label.setText(tr("Found {} loopback paths.").format(result.detected_count))
-        elif result.measurements:
-            self.summary_label.setText(tr("No loopback paths found."))
+        if result.measurements:
+            self.summary_label.setText(tr("Detected paths: {0}").format(result.detected_count))
         else:
             self.summary_label.setText(tr("No scan results."))
 
@@ -781,14 +772,11 @@ class LoopbackFinderWidget(QWidget):
         if measurement.verdict == PairVerdict.DETECTED:
             text = f"✓ {measurement.level_dbfs:.1f}"
             color = "#2e7d32"
-        elif measurement.verdict == PairVerdict.UNCERTAIN:
-            text = f"? {measurement.level_dbfs:.1f}"
-            color = "#d17b00"
         elif measurement.verdict == PairVerdict.INVALID:
             text = "!"
             color = "#d32f2f"
         else:
-            text = "—"
+            text = f"{measurement.level_dbfs:.1f}" if measurement.level_dbfs > -180.0 else "—"
             color = "#777777"
 
         item = QTableWidgetItem(text)

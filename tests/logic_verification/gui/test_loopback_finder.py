@@ -166,7 +166,11 @@ def test_steady_tone_present_in_baseline_is_not_accepted_as_a_route():
 
     assert measurements[0].level_dbfs > profile.absolute_threshold_dbfs
     assert measurements[0].margin_db < profile.minimum_margin_db
-    assert measurements[0].verdict == loopback_module.PairVerdict.UNCERTAIN
+    assert measurements[0].verdict == loopback_module.PairVerdict.NOT_DETECTED
+
+
+def test_fixed_detection_threshold_is_minus_80_dbfs():
+    assert loopback_module.ScanProfile().absolute_threshold_dbfs == -80.0
 
 
 def test_clipping_invalidates_the_affected_input_column(monkeypatch):
@@ -263,6 +267,57 @@ def test_connection_matrix_uses_text_and_color_independent_symbols(qtbot):
     assert widget.results_table.item(0, 0).text() == "—"
     assert widget.validity_label.text() == "VALID"
     assert "1" in widget.summary_label.text()
+    assert widget.status_label.text() == "Ready"
+    assert not widget.status_label.isHidden()
+    assert not widget.progress_bar.isHidden()
+    assert widget.progress_bar.value() == 100
+
+
+def test_controls_are_left_and_devices_are_listed_separately(qtbot):
+    engine = _device_engine()
+    finder = loopback_module.LoopbackFinder(engine)
+    widget = loopback_module.LoopbackFinderWidget(finder)
+    qtbot.addWidget(widget)
+
+    assert widget.layout().itemAt(0).widget() is widget.control_panel
+    assert widget.layout().itemAt(1).widget() is widget.results_group
+    assert widget.input_device_label.text() == "Test Input"
+    assert widget.output_device_label.text() == "Test Output"
+
+
+def test_scan_conditions_do_not_wrap_and_progress_area_is_always_present(qtbot):
+    engine = _device_engine()
+    finder = loopback_module.LoopbackFinder(engine)
+    widget = loopback_module.LoopbackFinderWidget(finder)
+    qtbot.addWidget(widget)
+
+    assert widget.control_panel.minimumWidth() >= 360
+    assert widget.conditions_layout.rowWrapPolicy() == loopback_module.QFormLayout.RowWrapPolicy.DontWrapRows
+    assert not widget.input_device_label.wordWrap()
+    assert not widget.output_device_label.wordWrap()
+    assert not widget.stimulus_label.wordWrap()
+    assert not widget.status_label.isHidden()
+    assert not widget.progress_bar.isHidden()
+
+
+def test_subthreshold_level_is_shown_without_a_question_mark(qtbot):
+    engine = _device_engine()
+    finder = loopback_module.LoopbackFinder(engine)
+    widget = loopback_module.LoopbackFinderWidget(finder)
+    qtbot.addWidget(widget)
+    measurement = loopback_module.PairMeasurement(
+        output_channel=1,
+        input_channel=1,
+        level_dbfs=-114.1,
+        baseline_dbfs=-130.0,
+        margin_db=15.9,
+        verdict=loopback_module.PairVerdict.NOT_DETECTED,
+    )
+
+    item = widget._measurement_item(measurement)
+
+    assert item.text() == "-114.1"
+    assert "?" not in item.text()
 
 
 def test_virtual_mode_disables_physical_scan(qtbot):
