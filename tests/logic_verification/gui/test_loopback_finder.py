@@ -169,8 +169,8 @@ def test_steady_tone_present_in_baseline_is_not_accepted_as_a_route():
     assert measurements[0].verdict == loopback_module.PairVerdict.NOT_DETECTED
 
 
-def test_fixed_detection_threshold_is_minus_80_dbfs():
-    assert loopback_module.ScanProfile().absolute_threshold_dbfs == -80.0
+def test_fixed_detection_threshold_is_minus_40_dbfs():
+    assert loopback_module.ScanProfile().absolute_threshold_dbfs == -40.0
 
 
 def test_clipping_invalidates_the_affected_input_column(monkeypatch):

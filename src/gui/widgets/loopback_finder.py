@@ -52,7 +52,7 @@ class ScanProfile:
     tone_duration_s: float = 0.1
     tail_duration_s: float = 0.2
     settle_duration_s: float = 0.8
-    absolute_threshold_dbfs: float = -80.0
+    absolute_threshold_dbfs: float = -40.0
     minimum_margin_db: float = 12.0
     clip_level: float = 0.999999
 
