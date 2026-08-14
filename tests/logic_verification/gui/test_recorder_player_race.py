@@ -60,6 +60,7 @@ class TestRecorderPlayerRace(unittest.TestCase):
             "scipy.optimize": MagicMock(),
             "sounddevice": MagicMock(),
             "soundfile": MagicMock(),
+            "src.core.analysis": MagicMock(),
             "src.core.calibration": MagicMock(),
             "PyQt6": MagicMock(),
             "PyQt6.QtCore": MagicMock(),
@@ -79,6 +80,10 @@ class TestRecorderPlayerRace(unittest.TestCase):
 
     def tearDown(self):
         self.patcher.stop()
+        # Restore the real Qt-backed module so later GUI contract tests do not
+        # inherit the MagicMock classes loaded by this isolated race test.
+        sys.modules.pop("src.gui.widgets.recorder_player", None)
+        importlib.import_module("src.gui.widgets.recorder_player")
 
     def test_infinite_loop_hang_empty_buffer(self):
         """Verify that an empty buffer doesn't cause an infinite loop."""

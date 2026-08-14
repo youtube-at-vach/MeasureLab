@@ -14,9 +14,9 @@ Nonlinear Response Analyzer は実験的モジュールですが、実装漏れ�
 判定は次のコード上の事実に基づきます。
 
 - 全モジュール共通機能: `DetachableWidgetWrapper` から常に提供されるか
-- コンパクトモード: `CompactableWidgetInterface` とレイアウト更新処理があるか
-- 2 窓分割: `SplittableWidgetInterface` と表示、操作、復元の 3 処理があるか
-- 比較送信: `ComparableWidgetInterface` と比較データ生成処理があるか
+- コンパクトモード: `WidgetCapabilities` の宣言と `CompactableWidgetInterface`、レイアウト更新処理が一致するか
+- 2 窓分割: `WidgetCapabilities` の宣言と `SplittableWidgetInterface`、表示、操作、復元の 3 処理が一致するか
+- 比較送信: `WidgetCapabilities` の宣言と `ComparableWidgetInterface`、比較データ生成処理が一致するか
 - テスト: 対象機能を直接操作する自動テストが存在し、今回の調査で成功したか
 
 ## ステータスの見方
@@ -142,20 +142,28 @@ Logs はモジュール固有ログではなく、共通のシングルトンロ
 - Menu Only: コンテンツ領域と通常ステータスバーを隠し、サイドバー幅まで縮小
 - Menu Only からの分離起動: モジュールをダブルクリックすると State B で開く
 - グローバル出力先: Physical、Internal Loopback、Loopback + Physical を共通選択
-- 遅延ロード: 選択時にモジュールとウィジェットを生成し、同じ共通ラッパーで包む
+- モジュール生成: 通常起動ではスプラッシュ表示中に全対象モジュールを事前ロードし、未生成の場合は
+  選択時に遅延ロードする。どちらの経路でも同じ共通ラッパーで包む
 - アクティビティ表示: 実行中モジュールをサイドバーで強調し、分離状態をツールチップへ表示
 
 ## 実装漏れ防止の観点で見つかった課題
 
-### 優先度高: 自動検出できない実装・資料のずれ
+### 対応済み: 機能宣言と実装の自動照合
 
-1. 機能対応表の正本がありません。現在はラッパーが `isinstance()` または `hasattr()` で
-   実行時に機能を推定します。そのため、新規ウィジェットでインターフェースや必要メソッドを
-   一つ実装し忘れても、ボタンが表示されないだけで気付きにくい構造です。
-2. `MODULE_REGISTRY` の全モジュールに対して、期待する機能宣言と実装を照合する契約テストがありません。
-3. Transmission Analyzer のコンパクトモード、Distortion Analyzer と Lock-in Amplifier の比較送信には
+1. `src/gui/module_registry.py` の `WidgetCapabilities` を機能対応の正本とし、ラッパーのボタン表示と
+   独立ウィンドウのコンパクト操作は宣言だけから決定するようにしました。`hasattr()` による推定経路は
+   使用しません。
+2. `MODULE_REGISTRY` の全 42 モジュールを実際に生成し、宣言、インターフェース、必須メソッドの
+   オーバーライドを照合する契約テストを追加しました。宣言と実装が異なる場合は、ラッパー初期化時にも
+   明確なエラーとして検出します。
+
+### 優先度高: 直接テストと資料同期の残課題
+
+1. Transmission Analyzer のコンパクトモード、Distortion Analyzer と Lock-in Amplifier の比較送信には
    直接テストが見当たりません。
-4. Logs ボタンからログビューアを開く共通操作には直接テストが見当たりません。
+2. Logs ボタンからログビューアを開く共通操作には直接テストが見当たりません。
+3. この表はまだ手書きです。実装状態と対象外理由を `WidgetCapabilities` から生成しなければ、
+   コードの正本と資料が将来ずれる可能性は残ります。
 
 ### 優先度中: ウィンドウ状態の扱い
 
@@ -184,16 +192,14 @@ Logs はモジュール固有ログではなく、共通のシングルトンロ
 
 ## 次に追加すると効果が高い仕組み
 
-1. モジュールごとの期待機能と対象外理由を宣言する `WidgetCapabilities` を一か所に置く
-2. `MODULE_REGISTRY` の全クラスを走査し、対象機能の宣言とインターフェース実装を照合するテストを追加する
-3. この表の実装状態、`要`、対象外理由を宣言データから自動生成し、手書きの表とコードの乖離をなくす
-4. 未テストの 7 個別機能と Logs 共通操作へテストを追加する
-5. State C をサイドバー表示と Menu Only の前面化処理へ追加する
-6. 個別マニュアルでは曖昧な「など」を避け、対応機能を明示する
+1. この表の実装状態、`要`、対象外理由を宣言データから自動生成し、手書きの表とコードの乖離をなくす
+2. 未テストの 3 個別機能と Logs 共通操作へテストを追加する
+3. State C をサイドバー表示と Menu Only の前面化処理へ追加する
+4. 個別マニュアルでは曖昧な「など」を避け、対応機能を明示する
 
 ## 検証記録
 
-今回、共通機能に関連する GUI テスト 17 ファイルをまとめて実行し、`113 passed` を確認しました。
+今回、共通機能に関連する GUI テスト 18 ファイルをまとめて実行し、`115 passed` を確認しました。
 静的確認だけでなく、コンパクト切り替え、分割と再接続、State B から State C への遷移、
 分割中のスクリーンショット、比較データ生成を含みます。
 
@@ -203,8 +209,10 @@ Logs はモジュール固有ログではなく、共通のシングルトンロ
 ## 主な根拠コード
 
 - モジュール一覧とラッパー適用: `src/gui/main_window.py`
+- モジュール機能宣言の正本: `src/gui/module_registry.py`
 - モジュール名の正本: `src/core/module_constants.py`
 - 分離、分割、撮影、ログ、比較送信: `src/gui/widgets/detachable_wrapper.py`
+- 全モジュール契約テスト: `tests/logic_verification/gui/test_widget_capabilities.py`
 - コンパクト契約: `src/gui/widgets/compactable_interface.py`
 - 2 窓分割契約: `src/gui/widgets/splittable_interface.py`
 - 比較送信契約: `src/gui/widgets/comparable_interface.py`

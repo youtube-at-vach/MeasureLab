@@ -12,6 +12,8 @@ if "sounddevice" not in sys.modules:
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 from PyQt6.QtWidgets import QApplication, QWidget
+from src.core.module_constants import MODULE_RAW_TIME_SERIES
+from src.gui.module_registry import MODULE_REGISTRY
 from src.gui.widgets.raw_time_series import RawTimeSeries, RawTimeSeriesWidget
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
@@ -43,7 +45,11 @@ class TestRawTimeSeriesSplit(unittest.TestCase):
         self.assertEqual(control_widget, self.widget.right_widget)
 
     def test_detachable_wrapper_split_flow(self):
-        wrapper = DetachableWidgetWrapper(self.widget, "Raw Time Series")
+        wrapper = DetachableWidgetWrapper(
+            self.widget,
+            "Raw Time Series",
+            capabilities=MODULE_REGISTRY[MODULE_RAW_TIME_SERIES].capabilities,
+        )
         self.assertTrue(wrapper.is_splittable)
         self.assertIsNotNone(wrapper.split_btn)
         self.assertTrue(wrapper.split_btn.isEnabled())

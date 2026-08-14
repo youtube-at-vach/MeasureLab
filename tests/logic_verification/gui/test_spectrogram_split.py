@@ -14,6 +14,8 @@ os.environ["QT_QPA_PLATFORM"] = "offscreen"
 from PyQt6.QtWidgets import QApplication, QWidget
 from PyQt6 import sip
 
+from src.core.module_constants import MODULE_SPECTROGRAM
+from src.gui.module_registry import MODULE_REGISTRY
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 from src.gui.widgets.spectrogram import Spectrogram, SpectrogramWidget
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
@@ -45,7 +47,11 @@ def test_spectrogram_implements_split_interface(spectrogram_widget):
 
 
 def test_spectrogram_split_and_reattach_restores_vertical_layout(spectrogram_widget):
-    wrapper = DetachableWidgetWrapper(spectrogram_widget, "Spectrogram")
+    wrapper = DetachableWidgetWrapper(
+        spectrogram_widget,
+        "Spectrogram",
+        capabilities=MODULE_REGISTRY[MODULE_SPECTROGRAM].capabilities,
+    )
 
     assert wrapper.is_splittable
     assert wrapper.split_btn is not None

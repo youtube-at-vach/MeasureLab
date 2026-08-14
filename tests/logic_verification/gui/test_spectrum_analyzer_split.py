@@ -7,6 +7,8 @@ import pytest
 from PyQt6 import sip
 from PyQt6.QtWidgets import QWidget
 
+from src.core.module_constants import MODULE_SPECTRUM_ANALYZER
+from src.gui.module_registry import MODULE_REGISTRY
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer, SpectrumAnalyzerWidget
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
@@ -34,7 +36,11 @@ def spectrum_widget(qapp):
 
 @pytest.fixture
 def spectrum_wrapper(spectrum_widget, qapp):
-    wrapper = DetachableWidgetWrapper(spectrum_widget, "Spectrum Analyzer")
+    wrapper = DetachableWidgetWrapper(
+        spectrum_widget,
+        "Spectrum Analyzer",
+        capabilities=MODULE_REGISTRY[MODULE_SPECTRUM_ANALYZER].capabilities,
+    )
     wrapper.show()
     yield wrapper
     if not sip.isdeleted(wrapper):

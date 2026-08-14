@@ -7,6 +7,12 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QWidget
 
+from src.gui.module_registry import (
+    COMPACT_DEFERRED,
+    COMPARISON_DEFERRED,
+    SUPPORTED,
+    WidgetCapabilities,
+)
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 
@@ -47,7 +53,12 @@ class _SplittableContent(_TrackingPanel, SplittableWidgetInterface):
 @pytest.fixture
 def split_wrapper(qapp, qtbot):
     content = _SplittableContent()
-    wrapper = DetachableWidgetWrapper(content, "Split Actions")
+    capabilities = WidgetCapabilities(
+        split_window=SUPPORTED,
+        compact_mode=COMPACT_DEFERRED,
+        comparison=COMPARISON_DEFERRED,
+    )
+    wrapper = DetachableWidgetWrapper(content, "Split Actions", capabilities=capabilities)
     qtbot.addWidget(wrapper)
     wrapper.show()
     yield wrapper, content

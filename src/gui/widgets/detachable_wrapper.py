@@ -16,10 +16,54 @@ from PyQt6.QtWidgets import (
 )
 
 from src.core.localization import tr
+from src.gui.module_registry import WidgetCapabilities
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.comparable_interface import ComparableWidgetInterface
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 from src.core.comparison_manager import ComparisonManager
+
+
+def validate_widget_capabilities(widget: QWidget, capabilities: WidgetCapabilities) -> None:
+    """Fail fast when a widget implementation disagrees with its declaration."""
+
+    contracts = (
+        (
+            "compact mode",
+            capabilities.compact_mode.is_supported,
+            CompactableWidgetInterface,
+            ("update_compact_layout",),
+        ),
+        (
+            "split window",
+            capabilities.split_window.is_supported,
+            SplittableWidgetInterface,
+            ("get_display_widget", "get_control_widget", "restore_split_panels"),
+        ),
+        (
+            "comparison",
+            capabilities.comparison.is_supported,
+            ComparableWidgetInterface,
+            ("get_comparable_data",),
+        ),
+    )
+    widget_type = type(widget)
+    for feature_name, declared_supported, interface_type, required_methods in contracts:
+        implemented = isinstance(widget, interface_type)
+        if implemented != declared_supported:
+            declared_text = "supported" if declared_supported else "excluded"
+            implemented_text = "implements" if implemented else "does not implement"
+            raise ValueError(
+                f"{widget_type.__name__} declares {feature_name} as {declared_text} "
+                f"but {implemented_text} {interface_type.__name__}"
+            )
+        if not declared_supported:
+            continue
+        for method_name in required_methods:
+            if getattr(widget_type, method_name) is getattr(interface_type, method_name):
+                raise ValueError(
+                    f"{widget_type.__name__} declares {feature_name} as supported "
+                    f"but does not override {method_name}()"
+                )
 
 
 class IndependentWindow(QMainWindow):
@@ -32,12 +76,22 @@ class IndependentWindow(QMainWindow):
     toggle_compact_requested = pyqtSignal()
     reattach_requested = pyqtSignal()
 
-    def __init__(self, title, widget, parent=None):
+    def __init__(
+        self,
+        title,
+        widget,
+        parent=None,
+        *,
+        supports_compact_mode: bool = False,
+        compact_target=None,
+    ):
         super().__init__(parent)
         self.setWindowTitle(title)
         self.resize(800, 600)
         self.setCentralWidget(widget)
         self.content_widget = widget
+        self.supports_compact_mode = supports_compact_mode
+        self.compact_target = compact_target
 
     def closeEvent(self, event):
         self.closed.emit()
@@ -45,7 +99,7 @@ class IndependentWindow(QMainWindow):
 
     def keyPressEvent(self, event):
         # 'C' key toggles compact mode
-        if event.key() == Qt.Key.Key_C:
+        if event.key() == Qt.Key.Key_C and self.supports_compact_mode:
             self.toggle_compact_requested.emit()
             event.accept()
         else:
@@ -73,11 +127,8 @@ class IndependentWindow(QMainWindow):
 
         menu = QMenu(self)
 
-        is_compactable = isinstance(self.content_widget, CompactableWidgetInterface) or hasattr(
-            self.content_widget, "set_compact_mode"
-        )
-        if is_compactable:
-            is_compact = getattr(self.content_widget, "is_compact_mode", lambda: False)()
+        if self.supports_compact_mode:
+            is_compact = self.compact_target.is_compact_mode() if self.compact_target is not None else False
             toggle_action = QAction(tr("Toggle Compact Mode"), self)
             toggle_action.setCheckable(True)
             toggle_action.setChecked(is_compact)
@@ -98,11 +149,20 @@ class DetachableWidgetWrapper(QWidget):
     Supports split mode (State C) if the content widget implements SplittableWidgetInterface.
     """
 
-    def __init__(self, widget: QWidget, title: str, config_manager=None):
+    def __init__(
+        self,
+        widget: QWidget,
+        title: str,
+        config_manager=None,
+        *,
+        capabilities: WidgetCapabilities,
+    ):
         super().__init__()
+        validate_widget_capabilities(widget, capabilities)
         self.content_widget = widget
         self.title = title
         self.config_manager = config_manager
+        self.capabilities = capabilities
         self.is_detached = False
         self.independent_window = None
 
@@ -111,16 +171,9 @@ class DetachableWidgetWrapper(QWidget):
         self.split_display_window = None
         self.split_control_window = None
 
-        # Check if the content widget supports compact mode
-        self.is_compactable = isinstance(widget, CompactableWidgetInterface) or hasattr(widget, "set_compact_mode")
-
-        # Check if the content widget supports plot comparison
-        self.is_comparable = isinstance(widget, ComparableWidgetInterface) or hasattr(widget, "get_comparable_data")
-
-        # Check if the content widget supports split mode
-        self.is_splittable = isinstance(widget, SplittableWidgetInterface) or (
-            hasattr(widget, "get_display_widget") and hasattr(widget, "get_control_widget")
-        )
+        self.is_compactable = capabilities.compact_mode.is_supported
+        self.is_comparable = capabilities.comparison.is_supported
+        self.is_splittable = capabilities.split_window.is_supported
 
         self.init_ui()
 
@@ -367,7 +420,13 @@ class DetachableWidgetWrapper(QWidget):
         self.content_widget.show()
 
         # 2. Create independent window
-        self.independent_window = IndependentWindow(self.title, self.content_widget, self)
+        self.independent_window = IndependentWindow(
+            self.title,
+            self.content_widget,
+            self,
+            supports_compact_mode=self.is_compactable,
+            compact_target=self.content_widget,
+        )
         self.independent_window.closed.connect(self.reattach)
         self.independent_window.toggle_compact_requested.connect(self.toggle_compact_from_window)
         self.independent_window.reattach_requested.connect(self.reattach)
@@ -447,7 +506,13 @@ class DetachableWidgetWrapper(QWidget):
 
         # 2. Create independent window for display part
         display_title = self.title + " — " + tr("Display")
-        self.split_display_window = IndependentWindow(display_title, display_widget, self)
+        self.split_display_window = IndependentWindow(
+            display_title,
+            display_widget,
+            self,
+            supports_compact_mode=self.is_compactable,
+            compact_target=self.content_widget,
+        )
         self.split_display_window.closed.connect(self.reattach_all)
         self.split_display_window.toggle_compact_requested.connect(self.toggle_compact_from_window)
         self.split_display_window.reattach_requested.connect(self.reattach_all)
