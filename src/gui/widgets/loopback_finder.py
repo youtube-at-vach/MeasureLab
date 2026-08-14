@@ -221,6 +221,28 @@ class LoopbackFinder(MeasurementModule):
             return 0.0
         return float(2.0 * np.abs(np.dot(samples, reference)) / samples.size)
 
+    @classmethod
+    def _maximum_coherent_amplitude(
+        cls,
+        samples: np.ndarray,
+        reference: np.ndarray,
+        window_frames: int,
+    ) -> float:
+        if window_frames <= 0 or samples.size < window_frames or reference.size < window_frames:
+            return 0.0
+
+        analysis_reference = reference[:window_frames]
+        hop = max(1, window_frames // 4)
+        final_start = samples.size - window_frames
+        window_starts = list(range(0, final_start + 1, hop))
+        if window_starts[-1] != final_start:
+            window_starts.append(final_start)
+
+        return max(
+            cls._coherent_amplitude(samples[start : start + window_frames], analysis_reference)
+            for start in window_starts
+        )
+
     def _analyze_output_buffer(
         self,
         buffer: np.ndarray,
@@ -234,11 +256,9 @@ class LoopbackFinder(MeasurementModule):
         measurements: list[PairMeasurement] = []
         clipped_inputs: set[int] = set()
         response = buffer[baseline_frames:]
-        hop = max(1, tone_frames // 4)
-        final_start = max(0, response.shape[0] - tone_frames)
-        window_starts = list(range(0, final_start + 1, hop))
-        if not window_starts or window_starts[-1] != final_start:
-            window_starts.append(final_start)
+        # Use a window shorter than the emitted tone so a device's stream latency
+        # does not dilute the estimate with silence at either edge of the window.
+        analysis_frames = max(1, min(tone_frames * 3 // 4, baseline_frames, response.shape[0]))
 
         for input_index in range(buffer.shape[1]):
             input_channel = input_index + 1
@@ -246,13 +266,15 @@ class LoopbackFinder(MeasurementModule):
             if samples.size and float(np.max(np.abs(samples))) >= profile.clip_level:
                 clipped_inputs.add(input_channel)
 
-            baseline_amplitude = self._coherent_amplitude(samples[:baseline_frames], reference)
-            response_amplitude = max(
-                (
-                    self._coherent_amplitude(response[start : start + tone_frames, input_index], reference)
-                    for start in window_starts
-                ),
-                default=0.0,
+            baseline_amplitude = self._maximum_coherent_amplitude(
+                samples[:baseline_frames],
+                reference,
+                analysis_frames,
+            )
+            response_amplitude = self._maximum_coherent_amplitude(
+                response[:, input_index],
+                reference,
+                analysis_frames,
             )
             baseline_dbfs = 20.0 * np.log10(max(baseline_amplitude, 1e-12))
             level_dbfs = 20.0 * np.log10(max(response_amplitude, 1e-12))

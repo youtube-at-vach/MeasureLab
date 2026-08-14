@@ -169,6 +169,35 @@ def test_steady_tone_present_in_baseline_is_not_accepted_as_a_route():
     assert measurements[0].verdict == loopback_module.PairVerdict.NOT_DETECTED
 
 
+def test_delayed_loopback_reports_the_generated_peak_level():
+    engine = _device_engine()
+    finder = loopback_module.LoopbackFinder(engine)
+    profile = finder.profile
+    sample_rate = 192_000
+    baseline_frames = int(sample_rate * profile.baseline_duration_s)
+    tone_frames = int(sample_rate * profile.tone_duration_s)
+    tail_frames = int(sample_rate * profile.tail_duration_s)
+    delay_frames = int(sample_rate * 0.01)
+    phase = np.arange(tone_frames)
+    tone = profile.output_peak * np.sin(2 * np.pi * profile.frequency_hz * phase / sample_rate)
+    buffer = np.zeros((baseline_frames + tone_frames + tail_frames, 1), dtype=np.float32)
+    tone_start = baseline_frames + delay_frames
+    buffer[tone_start : tone_start + tone_frames, 0] = tone
+    reference = np.exp(-2j * np.pi * profile.frequency_hz * phase / sample_rate)
+
+    measurements, _ = finder._analyze_output_buffer(
+        buffer,
+        1,
+        sample_rate,
+        profile,
+        reference,
+        baseline_frames,
+        tone_frames,
+    )
+
+    assert measurements[0].level_dbfs == pytest.approx(profile.output_level_dbfs, abs=0.05)
+
+
 def test_fixed_detection_threshold_is_minus_40_dbfs():
     assert loopback_module.ScanProfile().absolute_threshold_dbfs == -40.0
 
