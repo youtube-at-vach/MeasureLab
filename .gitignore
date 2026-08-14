@@ -78,6 +78,9 @@ wisdom/pyfftw_wisdom
 # Documentation build artifacts
 site/
 
+# Local documentation viewer
+.obsidian/
+
 # Agent Local Rules
 .agent/rules/*
 report.json
