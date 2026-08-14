@@ -1770,16 +1770,16 @@ class SignalGeneratorWidget(QWidget):
         return target_layout
 
     def _create_signal_params_group(self):
-        basic_group = QGroupBox(tr("Signal Parameters"))
-        basic_layout = QFormLayout()
+        basic_controls = QWidget()
+        basic_layout = QFormLayout(basic_controls)
+        basic_layout.setContentsMargins(0, 0, 0, 0)
 
         self._init_waveform_selector(basic_layout)
         self._init_param_stack(basic_layout)
         self._init_frequency_controls(basic_layout)
         self._init_amplitude_controls(basic_layout)
 
-        basic_group.setLayout(basic_layout)
-        return basic_group
+        return basic_controls
 
     def _create_advanced_controls(self):
         wrapper = QWidget()
