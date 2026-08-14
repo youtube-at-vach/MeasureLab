@@ -133,5 +133,12 @@ README にもある通り、JACK / PipeWire の利用が推奨される場合が
 npx markdownlint-cli2 "**/*.md" "#node_modules"
 ```
 
+## Pull Request 運用
+
+- PR は常に Ready for review（`draft=false`）で作成する。
+- ユーザーが明示的にドラフトを指定した場合に限り、Draft PR を作成する。
+- `gh pr create` を使用する場合は `--draft` を付けない。
+- PR 作成後、Draft ではないことを確認する。
+
 ---
 このファイルは「確認できた事実」に基づき、常に最新の状態に保つようにしてください。
