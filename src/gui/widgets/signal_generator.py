@@ -1,5 +1,6 @@
 import logging
-from dataclasses import dataclass
+import math
+from dataclasses import dataclass, fields
 from typing import Any, Optional, Tuple
 
 import numpy as np
@@ -17,9 +18,11 @@ from PyQt6.QtWidgets import (
     QLabel,
     QPushButton,
     QRadioButton,
+    QScrollArea,
     QSlider,
     QSpinBox,
     QTabWidget,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -32,11 +35,55 @@ except ImportError:
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.core.fft_manager import WARMUP_SIZES, MEDIUM_SIZES
-from src.core.utils import amplitude_to_linear, linear_to_amplitude
+from src.core.utils import amplitude_to_linear, format_si, linear_to_amplitude
 from src.measurement_modules.base import MeasurementModule
 
 
 logger = logging.getLogger(__name__)
+
+
+class PreferredNumberSpinBox(QDoubleSpinBox):
+    """Numeric input whose step keys follow the instrument-standard 1-2-5 series."""
+
+    _MANTISSAS = (1.0, 2.0, 5.0)
+
+    @classmethod
+    def _preferred_values_around(cls, value: float) -> list[float]:
+        reference = max(abs(float(value)), 1e-12)
+        exponent = int(math.floor(math.log10(reference)))
+        return sorted(
+            mantissa * (10.0**candidate_exponent)
+            for candidate_exponent in range(exponent - 2, exponent + 3)
+            for mantissa in cls._MANTISSAS
+        )
+
+    def _step_once(self, value: float, direction: int) -> float:
+        if value <= 0.0:
+            if direction < 0:
+                return value
+            smallest_visible = 10.0 ** (-self.decimals())
+            seed = max(self.minimum(), self.singleStep(), smallest_visible)
+            candidates = self._preferred_values_around(seed)
+            return next(candidate for candidate in candidates if candidate >= seed)
+
+        epsilon = max(abs(value), 1.0) * 1e-12
+        candidates = self._preferred_values_around(value)
+        if direction > 0:
+            next_values = [candidate for candidate in candidates if candidate > value + epsilon]
+            return next_values[0] if next_values else value
+
+        previous_values = [candidate for candidate in candidates if candidate < value - epsilon]
+        return previous_values[-1] if previous_values else value
+
+    def stepBy(self, steps: int):  # noqa: N802 - Qt virtual method name
+        if steps == 0:
+            return
+
+        value = self.value()
+        direction = 1 if steps > 0 else -1
+        for _ in range(abs(steps)):
+            value = self._step_once(value, direction)
+        self.setValue(float(np.clip(value, self.minimum(), self.maximum())))
 
 
 @dataclass
@@ -175,6 +222,8 @@ class SignalGenerator(MeasurementModule):
 
         self.is_playing = False
         self.callback_id = None
+        self.output_overload_latched = {"L": False, "R": False}
+        self.output_peak = {"L": 0.0, "R": 0.0}
 
     @property
     def output_mode(self) -> str:
@@ -1140,8 +1189,9 @@ class SignalGenerator(MeasurementModule):
         if self.is_playing:
             return
 
-        self.is_playing = True
         base_sample_rate = self.audio_engine.sample_rate
+        self.output_overload_latched = {"L": False, "R": False}
+        self.output_peak = {"L": 0.0, "R": 0.0}
 
         # Reset states
         for params in (self.params_L, self.params_R):
@@ -1171,6 +1221,7 @@ class SignalGenerator(MeasurementModule):
             # Left Channel
             if self.output_mode in {"L", "STEREO"} and outdata.shape[1] >= 1:
                 self._generate_channel_into(self.params_L, frames, t, base_sample_rate, outdata[:, 0])
+                self._limit_channel_output(outdata[:, 0], "L")
 
             # Right Channel
             if self.output_mode in {"R", "STEREO"} and outdata.shape[1] >= 2:
@@ -1179,18 +1230,54 @@ class SignalGenerator(MeasurementModule):
                 # So we always use params_R for Right channel.
                 # If the user wants them same, they copy settings in UI.
                 self._generate_channel_into(self.params_R, frames, t, base_sample_rate, outdata[:, 1])
+                self._limit_channel_output(outdata[:, 1], "R")
 
-        self.callback_id = self.audio_engine.register_callback(callback)
+        try:
+            callback_id = self.audio_engine.register_callback(callback)
+        except Exception:
+            self.callback_id = None
+            self.is_playing = False
+            raise
+
+        self.callback_id = callback_id
+        self.is_playing = True
+
+    def _limit_channel_output(self, samples: np.ndarray, channel: str):
+        """Latch generator overloads and keep this client's output inside full scale."""
+        if samples.size == 0:
+            return
+
+        maximum = float(np.max(samples))
+        minimum = float(np.min(samples))
+        peak = max(abs(maximum), abs(minimum))
+        if not math.isfinite(peak):
+            self.output_overload_latched[channel] = True
+            np.nan_to_num(samples, copy=False, nan=0.0, posinf=1.0, neginf=-1.0)
+            maximum = float(np.max(samples))
+            minimum = float(np.min(samples))
+            peak = max(abs(maximum), abs(minimum))
+
+        self.output_peak[channel] = max(self.output_peak[channel], peak)
+        if peak > 1.0:
+            self.output_overload_latched[channel] = True
+            np.clip(samples, -1.0, 1.0, out=samples)
 
     def stop_generation(self):
-        if self.is_playing:
+        try:
             if self.callback_id is not None:
-                self.audio_engine.unregister_callback(self.callback_id)
+                callback_id = self.callback_id
                 self.callback_id = None
+                self.audio_engine.unregister_callback(callback_id)
+        finally:
             self.is_playing = False
 
     def update_waveform(self, params: SignalParameters, waveform: str, sample_rate: float):
         """Updates the waveform type and regenerates/clears buffer if needed."""
+        if params.sweep_enabled and waveform != "sine":
+            waveform = "sine"
+        if waveform not in self.PERIODIC_WAVEFORMS:
+            params.fm_enabled = False
+            params.pm_enabled = False
         params.waveform = waveform
 
         # Check if new waveform uses buffer
@@ -1206,6 +1293,9 @@ class SignalGenerator(MeasurementModule):
 
     def update_param(self, params: SignalParameters, name: str, value: Any):
         """Updates a parameter and triggers buffer regeneration if necessary."""
+        if name == "sweep_enabled" and bool(value) and params.waveform != "sine":
+            self.update_waveform(params, "sine", self.audio_engine.sample_rate)
+
         # Check if value actually changed
         current_value = getattr(params, name)
         if current_value == value:
@@ -1271,8 +1361,27 @@ class SignalGeneratorWidget(QWidget):
     def __init__(self, module: SignalGenerator):
         super().__init__()
         self.module = module
+        self.waveform_labels = {
+            "sine": tr("Sine"),
+            "square": tr("Square"),
+            "triangle": tr("Triangle"),
+            "sawtooth": tr("Sawtooth"),
+            "pulse": tr("Pulse"),
+            "impulse": tr("Impulse"),
+            "tone_noise": tr("Tone + Noise"),
+            "noise": tr("Noise"),
+            "multitone": tr("Multitone"),
+            "mls": tr("MLS"),
+            "golay": tr("Golay"),
+            "burst": tr("Burst"),
+            "burst_windowed": tr("Burst (windowed)"),
+            "prbs": tr("PRBS"),
+        }
         self.current_target = "L"  # 'L', 'R', 'LINK'
         self._last_nyquist_freq: float | None = None
+        self._last_output_calibration_signature: tuple[bool, float] | None = None
+        self._output_error_message = ""
+        self._current_theme_name = "light"
         self.init_ui()
 
         # Theme handling
@@ -1285,6 +1394,11 @@ class SignalGeneratorWidget(QWidget):
         self.frequency_limit_timer.setInterval(1000)
         self.frequency_limit_timer.timeout.connect(self._refresh_frequency_limits)
         self.frequency_limit_timer.start()
+
+        self.output_state_timer = QTimer(self)
+        self.output_state_timer.setInterval(100)
+        self.output_state_timer.timeout.connect(self._refresh_output_state)
+        self.output_state_timer.start()
 
     def _set_wave_combo_key(self, key: str):
         idx = self.wave_combo.findData(key)
@@ -1359,33 +1473,228 @@ class SignalGeneratorWidget(QWidget):
         self.delay_spin.setVisible(show_delay)
         self.delay_slider.setVisible(show_delay)
 
+        if hasattr(self, "fm_group"):
+            self._refresh_waveform_compatibility(key)
+        if hasattr(self, "left_condition_badge"):
+            self._refresh_condition_badges()
+
+    def _refresh_waveform_compatibility(self, waveform_key: str):
+        supports_frequency_modulation = waveform_key in self.module.PERIODIC_WAVEFORMS
+        unavailable_tip = tr("Unavailable for the selected waveform.")
+
+        for group, param_name in (
+            (self.fm_group, "fm_enabled"),
+            (self.pm_group, "pm_enabled"),
+        ):
+            if not supports_frequency_modulation and group.isChecked():
+                group.blockSignals(True)
+                group.setChecked(False)
+                group.blockSignals(False)
+                for params in self.get_active_params_list():
+                    self.module.update_param(params, param_name, False)
+            group.setEnabled(supports_frequency_modulation)
+            group.setToolTip("" if supports_frequency_modulation else unavailable_tip)
+
+        filters_available = scipy is not None
+        filter_tip = "" if filters_available else tr("Filters require SciPy, which is not available.")
+        for group, param_name in (
+            (self.lpf_group, "lpf_enabled"),
+            (self.hpf_group, "hpf_enabled"),
+            (self.notch_group, "notch_enabled"),
+        ):
+            if not filters_available:
+                if group.isChecked():
+                    group.blockSignals(True)
+                    group.setChecked(False)
+                    group.blockSignals(False)
+                for params in (self.module.params_L, self.module.params_R):
+                    if getattr(params, param_name):
+                        self.module.update_param(params, param_name, False)
+            group.setEnabled(filters_available)
+            group.setToolTip(filter_tip)
+
+        self.wave_combo.setEnabled(not self.sweep_group.isChecked())
+
+    def _current_level_unit(self) -> str:
+        return str(self.unit_combo.currentData() or "dBFS")
+
+    def _refresh_calibration_ui(self, force: bool = False):
+        calibration = self.module.audio_engine.calibration
+        calibrated = bool(getattr(calibration, "output_gain_is_calibrated", False))
+        output_gain = float(getattr(calibration, "output_gain", 1.0) or 1.0)
+        signature = (calibrated, output_gain)
+        if not force and signature == self._last_output_calibration_signature:
+            return
+
+        current_unit = self._current_level_unit() if self.unit_combo.count() else "dBFS"
+        physical_units = {"dBV", "dBu", "Vrms", "Vpeak"}
+        if not calibrated and current_unit in physical_units:
+            current_unit = "dBFS"
+
+        self.unit_combo.blockSignals(True)
+        self.unit_combo.clear()
+        self.unit_combo.addItem(tr("Full Scale (Peak)"), "Linear (0-1)")
+        self.unit_combo.addItem("dBFS", "dBFS")
+        if calibrated:
+            for unit in ("dBV", "dBu", "Vrms", "Vpeak"):
+                self.unit_combo.addItem(unit, unit)
+
+        index = self.unit_combo.findData(current_unit)
+        if index < 0:
+            index = self.unit_combo.findData("dBFS")
+        self.unit_combo.setCurrentIndex(index)
+        self.unit_combo.blockSignals(False)
+        self._last_output_calibration_signature = signature
+
+        params = self.get_active_params_list()
+        if params:
+            self.update_amp_display_value(params[0].amplitude)
+        self._refresh_condition_badges()
+
+    def _format_output_level(self, params: SignalParameters) -> str:
+        unit = self._current_level_unit()
+        gain = float(getattr(self.module.audio_engine.calibration, "output_gain", 1.0) or 1.0)
+        value = linear_to_amplitude(params.amplitude, unit, gain, self._crest_factor_for_params(params))
+        if unit == "Linear (0-1)":
+            return tr("{0:.3f} FS peak").format(value)
+        if unit in {"dBFS", "dBV", "dBu"}:
+            return f"{value:.2f} {unit}"
+        return f"{value:.3f} {unit}"
+
+    def _crest_factor_for_params(self, params: SignalParameters) -> float:
+        waveform = params.waveform
+        if waveform in {"square", "pulse", "mls", "golay", "prbs"}:
+            return 1.0
+        if waveform in {"triangle", "sawtooth"}:
+            return float(np.sqrt(3.0))
+        return float(np.sqrt(2.0))
+
+    def _format_channel_condition(self, channel: str, params: SignalParameters) -> str:
+        routed = self.module.output_mode == "STEREO" or self.module.output_mode == channel
+        route_text = tr("Routed") if routed else tr("Not routed")
+        waveform_key = "burst_windowed" if params.waveform == "burst" and params.burst_windowed else params.waveform
+        waveform_text = self.waveform_labels.get(waveform_key, waveform_key)
+
+        if params.sweep_enabled:
+            frequency_text = tr("{0} to {1}").format(
+                format_si(params.start_freq, "Hz"),
+                format_si(params.end_freq, "Hz"),
+            )
+        elif params.waveform in {"noise", "mls", "golay", "prbs"}:
+            frequency_text = tr("Broadband")
+        else:
+            frequency_text = format_si(params.frequency, "Hz")
+
+        channel_name = tr("Left") if channel == "L" else tr("Right")
+        return (
+            f"<b>{channel_name} · {route_text}</b><br>"
+            f"{waveform_text} · {frequency_text} · {self._format_output_level(params)}"
+        )
+
+    def _refresh_condition_badges(self):
+        if not hasattr(self, "left_condition_badge") or not self.unit_combo.count():
+            return
+
+        self.left_condition_badge.setText(self._format_channel_condition("L", self.module.params_L))
+        self.right_condition_badge.setText(self._format_channel_condition("R", self.module.params_R))
+
+        calibration = self.module.audio_engine.calibration
+        calibrated = bool(getattr(calibration, "output_gain_is_calibrated", False))
+        if calibrated:
+            gain = float(getattr(calibration, "output_gain", 1.0) or 1.0)
+            self.calibration_condition_badge.setText(tr("Output calibrated<br>{0:.4g} Vpeak/FS").format(gain))
+        else:
+            self.calibration_condition_badge.setText(tr("Output uncalibrated<br>Relative units only"))
+
+        dark = self._current_theme_name == "dark"
+        active_bg = "#244b36" if dark else "#dff3e6"
+        inactive_bg = "#333333" if dark else "#eeeeee"
+        border = "#6c8f78" if dark else "#8bb99a"
+        muted_border = "#666666" if dark else "#bdbdbd"
+        text_color = "#f0f0f0" if dark else "#202020"
+        for channel, badge in (("L", self.left_condition_badge), ("R", self.right_condition_badge)):
+            routed = self.module.output_mode == "STEREO" or self.module.output_mode == channel
+            badge.setStyleSheet(
+                f"background: {active_bg if routed else inactive_bg}; color: {text_color}; "
+                f"border: 1px solid {border if routed else muted_border}; border-radius: 4px;"
+            )
+        self.calibration_condition_badge.setStyleSheet(
+            f"background: {inactive_bg}; color: {text_color}; border: 1px solid {muted_border}; border-radius: 4px;"
+        )
+
+    def _refresh_output_state(self):
+        self._refresh_calibration_ui()
+        expected_checked = bool(self.module.is_playing)
+        if self.toggle_btn.isChecked() != expected_checked:
+            self.toggle_btn.blockSignals(True)
+            self.toggle_btn.setChecked(expected_checked)
+            self.toggle_btn.blockSignals(False)
+        self.toggle_btn.setText(tr("Stop Output") if expected_checked else tr("Start Output"))
+
+        overload_channels = [channel for channel in ("L", "R") if self.module.output_overload_latched[channel]]
+        if overload_channels:
+            channel_text = ", ".join(overload_channels)
+            message = tr("OUTPUT OVERLOAD ({0}) — generated signal was limited to 0 dBFS.").format(channel_text)
+            self.output_message_label.setText(message)
+            self.output_message_label.setStyleSheet(
+                "background: #7f1d1d; color: white; border-radius: 4px; padding: 6px; font-weight: bold;"
+            )
+            self.output_message_label.show()
+        elif self._output_error_message:
+            self.output_message_label.setText(self._output_error_message)
+            self.output_message_label.setStyleSheet(
+                "background: #7f1d1d; color: white; border-radius: 4px; padding: 6px; font-weight: bold;"
+            )
+            self.output_message_label.show()
+        else:
+            self.output_message_label.hide()
+        self._refresh_condition_badges()
+
     def init_ui(self):
         layout = QVBoxLayout()
 
         # --- Top Control Bar ---
         layout.addLayout(self._create_top_control_bar())
+        layout.addLayout(self._create_output_condition_bar())
+
+        self.output_message_label = QLabel()
+        self.output_message_label.setWordWrap(True)
+        self.output_message_label.hide()
+        layout.addWidget(self.output_message_label)
+
+        self.settings_scroll = QScrollArea()
+        self.settings_scroll.setWidgetResizable(True)
+        self.settings_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.settings_scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        settings_body = QWidget()
+        settings_layout = QVBoxLayout(settings_body)
+        settings_layout.setContentsMargins(0, 0, 0, 0)
 
         # --- Target Selector ---
-        layout.addLayout(self._create_target_selector())
+        settings_layout.addLayout(self._create_target_selector())
 
         # Separator
         line = QFrame()
         line.setFrameShape(QFrame.Shape.HLine)
         line.setFrameShadow(QFrame.Shadow.Sunken)
-        layout.addWidget(line)
+        settings_layout.addWidget(line)
 
         # --- Main Controls ---
-        layout.addWidget(self._create_signal_params_group())
+        settings_layout.addWidget(self._create_signal_params_group())
 
-        # --- Options Tabs ---
-        layout.addWidget(self._create_options_tabs())
+        # --- Advanced Controls ---
+        settings_layout.addWidget(self._create_advanced_controls())
 
-        layout.addStretch()
+        settings_layout.addStretch()
+        self.settings_scroll.setWidget(settings_body)
+        layout.addWidget(self.settings_scroll, 1)
         self.setLayout(layout)
 
         # Initialize UI with current target (L)
         self._refresh_frequency_limits(force=True)
         self.load_params_to_ui(self.module.params_L)
+        self._refresh_calibration_ui(force=True)
+        self._refresh_output_state()
 
     def _create_top_control_bar(self):
         top_bar = QHBoxLayout()
@@ -1420,6 +1729,24 @@ class SignalGeneratorWidget(QWidget):
 
         return top_bar
 
+    def _create_output_condition_bar(self):
+        condition_bar = QHBoxLayout()
+        self.left_condition_badge = QLabel()
+        self.right_condition_badge = QLabel()
+        self.calibration_condition_badge = QLabel()
+        for badge in (
+            self.left_condition_badge,
+            self.right_condition_badge,
+            self.calibration_condition_badge,
+        ):
+            badge.setWordWrap(True)
+            badge.setMargin(6)
+
+        condition_bar.addWidget(self.left_condition_badge, 2)
+        condition_bar.addWidget(self.right_condition_badge, 2)
+        condition_bar.addWidget(self.calibration_condition_badge, 1)
+        return condition_bar
+
     def _create_target_selector(self):
         target_layout = QHBoxLayout()
         target_layout.addWidget(QLabel(f"<b>{tr('Edit Settings For:')}</b>"))
@@ -1449,33 +1776,48 @@ class SignalGeneratorWidget(QWidget):
         self._init_waveform_selector(basic_layout)
         self._init_param_stack(basic_layout)
         self._init_frequency_controls(basic_layout)
-        self._init_phase_controls(basic_layout)
-        self._init_delay_controls(basic_layout)
         self._init_amplitude_controls(basic_layout)
-        self._init_bin_snap_controls(basic_layout)
 
         basic_group.setLayout(basic_layout)
         return basic_group
 
+    def _create_advanced_controls(self):
+        wrapper = QWidget()
+        wrapper_layout = QVBoxLayout(wrapper)
+        wrapper_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.advanced_toggle = QToolButton()
+        self.advanced_toggle.setText(tr("Advanced Settings"))
+        self.advanced_toggle.setCheckable(True)
+        self.advanced_toggle.setChecked(False)
+        self.advanced_toggle.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.advanced_toggle.setArrowType(Qt.ArrowType.RightArrow)
+        wrapper_layout.addWidget(self.advanced_toggle)
+
+        self.advanced_panel = QWidget()
+        advanced_layout = QVBoxLayout(self.advanced_panel)
+        advanced_layout.setContentsMargins(0, 0, 0, 0)
+
+        direct_group = QGroupBox(tr("Timing and Calibration"))
+        direct_form = QFormLayout(direct_group)
+        self._init_phase_controls(direct_form)
+        self._init_delay_controls(direct_form)
+        self._init_bin_snap_controls(direct_form)
+        advanced_layout.addWidget(direct_group)
+        advanced_layout.addWidget(self._create_options_tabs())
+
+        self.advanced_panel.hide()
+        self.advanced_toggle.toggled.connect(self._on_advanced_toggled)
+        wrapper_layout.addWidget(self.advanced_panel)
+        return wrapper
+
+    def _on_advanced_toggled(self, checked: bool):
+        self.advanced_panel.setVisible(checked)
+        self.advanced_toggle.setArrowType(Qt.ArrowType.DownArrow if checked else Qt.ArrowType.RightArrow)
+
     def _init_waveform_selector(self, layout):
         self.wave_combo = QComboBox()
-        waveform_items = [
-            (tr("Sine"), "sine"),
-            (tr("Square"), "square"),
-            (tr("Triangle"), "triangle"),
-            (tr("Sawtooth"), "sawtooth"),
-            (tr("Pulse"), "pulse"),
-            (tr("Impulse"), "impulse"),
-            (tr("Tone + Noise"), "tone_noise"),
-            (tr("Noise"), "noise"),
-            (tr("Multitone"), "multitone"),
-            (tr("MLS"), "mls"),
-            (tr("Golay"), "golay"),
-            (tr("Burst"), "burst"),
-            (tr("Burst (windowed)"), "burst_windowed"),
-            (tr("PRBS"), "prbs"),
-        ]
-        for label, key in waveform_items:
+        for key, label in self.waveform_labels.items():
             self.wave_combo.addItem(label, key)
         self.wave_combo.currentIndexChanged.connect(self.on_wave_changed)
         layout.addRow(tr("Waveform:"), self.wave_combo)
@@ -1489,8 +1831,18 @@ class SignalGeneratorWidget(QWidget):
         self.noise_widget = QWidget()
         noise_form = QFormLayout(self.noise_widget)
         self.noise_combo = QComboBox()
-        self.noise_combo.addItems(["white", "pink", "brown", "blue", "violet", "grey"])
-        self.noise_combo.currentTextChanged.connect(lambda v: self.update_param("noise_color", v))
+        for label, key in (
+            (tr("White"), "white"),
+            (tr("Pink"), "pink"),
+            (tr("Brown"), "brown"),
+            (tr("Blue"), "blue"),
+            (tr("Violet"), "violet"),
+            (tr("Grey"), "grey"),
+        ):
+            self.noise_combo.addItem(label, key)
+        self.noise_combo.currentIndexChanged.connect(
+            lambda _index: self.update_param("noise_color", self.noise_combo.currentData())
+        )
         noise_form.addRow(tr("Color:"), self.noise_combo)
 
         # 2. Multitone Params
@@ -1578,8 +1930,11 @@ class SignalGeneratorWidget(QWidget):
         self.sawtooth_widget = QWidget()
         saw_form = QFormLayout(self.sawtooth_widget)
         self.saw_type_combo = QComboBox()
-        self.saw_type_combo.addItems(["Raising", "Falling"])
-        self.saw_type_combo.currentTextChanged.connect(lambda v: self.update_param("sawtooth_type", v))
+        self.saw_type_combo.addItem(tr("Rising"), "Raising")
+        self.saw_type_combo.addItem(tr("Falling"), "Falling")
+        self.saw_type_combo.currentIndexChanged.connect(
+            lambda _index: self.update_param("sawtooth_type", self.saw_type_combo.currentData())
+        )
         saw_form.addRow(tr("Type:"), self.saw_type_combo)
 
         # 10. PRBS Params
@@ -1624,8 +1979,10 @@ class SignalGeneratorWidget(QWidget):
 
     def _init_frequency_controls(self, layout):
         freq_layout = QHBoxLayout()
-        self.freq_spin = QDoubleSpinBox()
+        self.freq_spin = PreferredNumberSpinBox()
         self.freq_spin.setRange(1, self._get_nyquist_frequency())
+        self.freq_spin.setDecimals(3)
+        self.freq_spin.setGroupSeparatorShown(True)
         self.freq_spin.setValue(1000)
         self.freq_spin.valueChanged.connect(self.on_freq_spin_changed)
 
@@ -1735,8 +2092,7 @@ class SignalGeneratorWidget(QWidget):
         self.amp_spin.valueChanged.connect(self.on_amp_spin_changed)
 
         self.unit_combo = QComboBox()
-        self.unit_combo.addItems(["Linear (0-1)", "dBFS", "dBV", "dBu", "Vrms", "Vpeak"])
-        self.unit_combo.currentTextChanged.connect(self.on_unit_changed)
+        self.unit_combo.currentIndexChanged.connect(self.on_unit_changed)
 
         self.amp_slider = QSlider(Qt.Orientation.Horizontal)
         self.amp_slider.setRange(0, 100)
@@ -1745,7 +2101,7 @@ class SignalGeneratorWidget(QWidget):
         amp_layout.addWidget(self.amp_spin)
         amp_layout.addWidget(self.unit_combo)
         amp_layout.addWidget(self.amp_slider)
-        layout.addRow(tr("Amplitude:"), amp_layout)
+        layout.addRow(tr("Output Level:"), amp_layout)
 
     def _init_bin_snap_controls(self, layout):
         snap_layout = QHBoxLayout()
@@ -1777,7 +2133,7 @@ class SignalGeneratorWidget(QWidget):
         self.fft_size_combo.setEnabled(False)
 
         snap_layout.addWidget(self.snap_check)
-        snap_layout.addWidget(QLabel(tr("Window Width:")))
+        snap_layout.addWidget(QLabel(tr("FFT Size:")))
         snap_layout.addWidget(self.fft_size_combo, 1)  # Stretch
 
         # We assume the user wants this associated with "Frequency Snap" label or similar?
@@ -1810,14 +2166,27 @@ class SignalGeneratorWidget(QWidget):
 
     def _create_options_tabs(self):
         tabs = QTabWidget()
-        tabs.addTab(self._create_freq_sweep_tab(), tr("Freq Sweep"))
-        tabs.addTab(self._create_amp_sweep_tab(), tr("Amp Sweep"))
-        tabs.addTab(self._create_am_tab(), tr("AM"))
-        tabs.addTab(self._create_fm_tab(), tr("FM"))
-        tabs.addTab(self._create_pm_tab(), tr("ΦM"))
-        tabs.addTab(self._create_lpf_tab(), tr("LPF"))
-        tabs.addTab(self._create_hpf_tab(), tr("HPF"))
-        tabs.addTab(self._create_notch_tab(), tr("Notch"))
+        self.options_tabs = tabs
+
+        sweep_page = QWidget()
+        sweep_layout = QHBoxLayout(sweep_page)
+        sweep_layout.addWidget(self._create_freq_sweep_tab())
+        sweep_layout.addWidget(self._create_amp_sweep_tab())
+        tabs.addTab(sweep_page, tr("Sweep"))
+
+        modulation_page = QWidget()
+        modulation_layout = QHBoxLayout(modulation_page)
+        modulation_layout.addWidget(self._create_am_tab())
+        modulation_layout.addWidget(self._create_fm_tab())
+        modulation_layout.addWidget(self._create_pm_tab())
+        tabs.addTab(modulation_page, tr("Modulation"))
+
+        filter_page = QWidget()
+        filter_layout = QHBoxLayout(filter_page)
+        filter_layout.addWidget(self._create_lpf_tab())
+        filter_layout.addWidget(self._create_hpf_tab())
+        filter_layout.addWidget(self._create_notch_tab())
+        tabs.addTab(filter_page, tr("Filters"))
         return tabs
 
     def _create_filter_tab(self, prefix: str, title: str, default_freq: float) -> QWidget:
@@ -1833,7 +2202,7 @@ class SignalGeneratorWidget(QWidget):
 
         form_layout = QFormLayout()
 
-        freq_spin = QDoubleSpinBox()
+        freq_spin = PreferredNumberSpinBox()
         freq_spin.setRange(1, self._get_filter_frequency_max())
         freq_spin.setValue(default_freq)
         freq_spin.setGroupSeparatorShown(True)
@@ -1873,7 +2242,7 @@ class SignalGeneratorWidget(QWidget):
 
         form_layout = QFormLayout()
 
-        freq_spin = QDoubleSpinBox()
+        freq_spin = PreferredNumberSpinBox()
         freq_spin.setRange(1, self._get_filter_frequency_max())
         freq_spin.setValue(1000.0)
         freq_spin.setGroupSeparatorShown(True)
@@ -1899,17 +2268,17 @@ class SignalGeneratorWidget(QWidget):
         sweep_group = QGroupBox(tr("Frequency Sweep (Sine Only)"))
         sweep_group.setCheckable(True)
         sweep_group.setChecked(False)
-        sweep_group.toggled.connect(lambda v: self.update_param("sweep_enabled", v))
+        sweep_group.toggled.connect(self.on_sweep_toggled)
         self.sweep_group = sweep_group
 
         sweep_layout = QFormLayout()
 
-        self.start_freq_spin = QDoubleSpinBox()
+        self.start_freq_spin = PreferredNumberSpinBox()
         self.start_freq_spin.setRange(1, self._get_nyquist_frequency())
         self.start_freq_spin.valueChanged.connect(lambda v: self.update_param("start_freq", v))
         sweep_layout.addRow(tr("Start Freq:"), self.start_freq_spin)
 
-        self.end_freq_spin = QDoubleSpinBox()
+        self.end_freq_spin = PreferredNumberSpinBox()
         self.end_freq_spin.setRange(1, self._get_nyquist_frequency())
         self.end_freq_spin.valueChanged.connect(lambda v: self.update_param("end_freq", v))
         sweep_layout.addRow(tr("End Freq:"), self.end_freq_spin)
@@ -1971,7 +2340,7 @@ class SignalGeneratorWidget(QWidget):
 
         am_layout = QFormLayout()
 
-        self.am_freq_spin = QDoubleSpinBox()
+        self.am_freq_spin = PreferredNumberSpinBox()
         self.am_freq_spin.setRange(0.01, self._get_nyquist_frequency())
         self.am_freq_spin.setDecimals(3)
         self.am_freq_spin.setValue(5.0)
@@ -1985,7 +2354,7 @@ class SignalGeneratorWidget(QWidget):
         self.am_depth_spin.setValue(50.0)
         self.am_depth_spin.setSuffix("%")
         self.am_depth_spin.valueChanged.connect(lambda v: self.update_param("am_depth", v))
-        am_layout.addRow(tr("Depth (m):"), self.am_depth_spin)
+        am_layout.addRow(tr("Depth:"), self.am_depth_spin)
 
         am_group.setLayout(am_layout)
         return am_group
@@ -1999,14 +2368,14 @@ class SignalGeneratorWidget(QWidget):
 
         fm_layout = QFormLayout()
 
-        self.fm_freq_spin = QDoubleSpinBox()
+        self.fm_freq_spin = PreferredNumberSpinBox()
         self.fm_freq_spin.setRange(0.01, self._get_nyquist_frequency())
         self.fm_freq_spin.setDecimals(3)
         self.fm_freq_spin.setValue(5.0)
         self.fm_freq_spin.valueChanged.connect(lambda v: self.update_param("fm_frequency", v))
         fm_layout.addRow(tr("Mod Freq (Hz):"), self.fm_freq_spin)
 
-        self.fm_dev_spin = QDoubleSpinBox()
+        self.fm_dev_spin = PreferredNumberSpinBox()
         self.fm_dev_spin.setRange(0.0, 20000.0)
         self.fm_dev_spin.setDecimals(3)
         self.fm_dev_spin.setValue(100.0)
@@ -2025,7 +2394,7 @@ class SignalGeneratorWidget(QWidget):
 
         pm_layout = QFormLayout()
 
-        self.pm_freq_spin = QDoubleSpinBox()
+        self.pm_freq_spin = PreferredNumberSpinBox()
         self.pm_freq_spin.setRange(0.01, self._get_nyquist_frequency())
         self.pm_freq_spin.setDecimals(3)
         self.pm_freq_spin.setValue(5.0)
@@ -2059,12 +2428,13 @@ class SignalGeneratorWidget(QWidget):
 
         for p in self.get_active_params_list():
             self.module.update_param(p, name, value)
-
-        # If linked, we might need to refresh UI if we just set both?
-        # No, UI reflects the state. If linked, we assume they are now same.
+        self._refresh_condition_badges()
 
     def load_params_to_ui(self, params: SignalParameters):
         self._refresh_frequency_limits()
+
+        if params.sweep_enabled and params.waveform != "sine":
+            self.module.update_waveform(params, "sine", self.module.audio_engine.sample_rate)
 
         # Block signals to prevent feedback loops
         self.block_all_signals(True)
@@ -2073,7 +2443,7 @@ class SignalGeneratorWidget(QWidget):
         if params.waveform == "burst" and bool(getattr(params, "burst_windowed", False)):
             waveform_key = "burst_windowed"
         self._set_wave_combo_key(waveform_key)
-        self.noise_combo.setCurrentText(params.noise_color)
+        self.noise_combo.setCurrentIndex(self.noise_combo.findData(params.noise_color))
         self.mt_count_spin.setValue(params.multitone_count)
         self.mls_order_combo.setCurrentText(str(params.mls_order))
         self.golay_pair_combo.setCurrentIndex(self.golay_pair_combo.findData(getattr(params, "golay_pair", "A")))
@@ -2082,7 +2452,7 @@ class SignalGeneratorWidget(QWidget):
         self.burst_off_spin.setValue(params.burst_off_cycles)
         self.pulse_width_spin.setValue(params.pulse_width)
         self.impulse_samples_spin.setValue(getattr(params, "impulse_samples", 1))
-        self.saw_type_combo.setCurrentText(params.sawtooth_type)
+        self.saw_type_combo.setCurrentIndex(self.saw_type_combo.findData(params.sawtooth_type))
         self.noise_amp_spin.setValue(params.noise_amplitude)
         self.prbs_order_combo.setCurrentText(str(params.prbs_order))
         if hasattr(self, "prbs_seed_spin"):
@@ -2148,6 +2518,8 @@ class SignalGeneratorWidget(QWidget):
         self._apply_waveform_key(waveform_key, update_params=False)  # Update visibility
 
         self.block_all_signals(False)
+        self._refresh_waveform_compatibility(waveform_key)
+        self._refresh_condition_badges()
 
     def block_all_signals(self, block):
         widgets = [
@@ -2175,6 +2547,7 @@ class SignalGeneratorWidget(QWidget):
             self.delay_slider,
             self.amp_spin,
             self.amp_slider,
+            self.unit_combo,
             self.sweep_group,
             self.start_freq_spin,
             self.end_freq_spin,
@@ -2223,59 +2596,12 @@ class SignalGeneratorWidget(QWidget):
             # Let's copy L to R immediately to ensure consistency
             self.copy_params(self.module.params_L, self.module.params_R)
             self.load_params_to_ui(self.module.params_L)
+        self._refresh_condition_badges()
 
     def copy_params(self, src, dst):
-        dst.waveform = src.waveform
-        dst.frequency = src.frequency
-        dst.use_freq_cal = getattr(src, "use_freq_cal", False)
-        dst.freq_cal_manual_ppm = getattr(src, "freq_cal_manual_ppm", 0.0)
-        dst.amplitude = src.amplitude
-        dst.noise_color = src.noise_color
-        dst.fm_enabled = src.fm_enabled
-        dst.fm_frequency = src.fm_frequency
-        dst.fm_deviation = src.fm_deviation
-        dst.pm_enabled = src.pm_enabled
-        dst.pm_frequency = src.pm_frequency
-        dst.pm_deviation_deg = src.pm_deviation_deg
-        dst.am_enabled = src.am_enabled
-        dst.am_frequency = src.am_frequency
-        dst.am_depth = src.am_depth
-        dst.sweep_enabled = src.sweep_enabled
-        dst.start_freq = src.start_freq
-        dst.end_freq = src.end_freq
-        dst.sweep_duration = src.sweep_duration
-        dst.log_sweep = src.log_sweep
-        dst.amp_sweep_enabled = src.amp_sweep_enabled
-        dst.start_amp = src.start_amp
-        dst.end_amp = src.end_amp
-        dst.amp_sweep_duration = src.amp_sweep_duration
-        dst.log_amp_sweep = src.log_amp_sweep
-        dst.lpf_enabled = src.lpf_enabled
-        dst.lpf_freq = src.lpf_freq
-        dst.lpf_order = src.lpf_order
-        dst.hpf_enabled = src.hpf_enabled
-        dst.hpf_freq = src.hpf_freq
-        dst.hpf_order = src.hpf_order
-        dst.notch_enabled = getattr(src, "notch_enabled", False)
-        dst.notch_freq = getattr(src, "notch_freq", 1000.0)
-        dst.notch_q = getattr(src, "notch_q", 30.0)
-        dst.multitone_count = src.multitone_count
-        dst.mls_order = src.mls_order
-        dst.golay_order = src.golay_order
-        dst.golay_pair = src.golay_pair
-        dst.burst_on_cycles = src.burst_on_cycles
-        dst.burst_off_cycles = src.burst_off_cycles
-        dst.burst_windowed = src.burst_windowed
-        dst.pulse_width = src.pulse_width
-        dst.impulse_samples = src.impulse_samples
-        dst.sawtooth_type = src.sawtooth_type
-        dst.noise_amplitude = src.noise_amplitude
-        dst.phase_offset = src.phase_offset
-        dst.delay_ms = src.delay_ms
-        dst.prbs_order = src.prbs_order
-        dst.prbs_seed = src.prbs_seed
-        dst.bin_center_snap = src.bin_center_snap
-        dst.fft_size = src.fft_size
+        for field in fields(SignalParameters):
+            if not field.name.startswith("_"):
+                setattr(dst, field.name, getattr(src, field.name))
 
     def on_route_changed(self, btn):
         if self.route_l.isChecked():
@@ -2284,6 +2610,7 @@ class SignalGeneratorWidget(QWidget):
             self.module.output_mode = "R"
         elif self.route_stereo.isChecked():
             self.module.output_mode = "STEREO"
+        self._refresh_condition_badges()
 
     def on_cal_toggled(self, checked):
         self.update_param("use_freq_cal", checked)
@@ -2329,13 +2656,22 @@ class SignalGeneratorWidget(QWidget):
         except ValueError:
             logger.warning(f"Invalid FFT size provided: {text}")
 
+    def on_sweep_toggled(self, checked: bool):
+        if checked:
+            self._set_wave_combo_key("sine")
+            for params in self.get_active_params_list():
+                self.module.update_waveform(params, "sine", self.module.audio_engine.sample_rate)
+        self.update_param("sweep_enabled", checked)
+        self.wave_combo.setEnabled(not checked)
+        self._refresh_condition_badges()
+
     def on_wave_changed(self, _index):
         self._refresh_frequency_limits()
         key = self.wave_combo.currentData() or self.wave_combo.currentText()
         self._apply_waveform_key(str(key), update_params=True)
 
         # Refix RMS if unit is maintaining RMS
-        unit = self.unit_combo.currentText()
+        unit = self._current_level_unit()
         if unit in {"Vrms", "dBu", "dBV"}:
             # Value in spinner is the desired RMS.
             # We must update peak amplitude to match this RMS with new crest factor.
@@ -2446,12 +2782,13 @@ class SignalGeneratorWidget(QWidget):
         self.delay_spin.blockSignals(False)
 
     # --- Amplitude Helpers ---
-    def on_unit_changed(self, unit):
+    def on_unit_changed(self, _index):
         # Refresh display with current amplitude in new unit
         # We need to know the current amplitude.
         # Since we might be in LINK mode, we take from L (assuming synced) or just the first active.
         params = self.get_active_params_list()[0]
         self.update_amp_display_value(params.amplitude)
+        self._refresh_condition_badges()
 
     def _set_spin_range_by_unit(self, spin, unit):
         if unit == "Linear (0-1)":
@@ -2474,7 +2811,7 @@ class SignalGeneratorWidget(QWidget):
             spin.setSingleStep(0.1)
 
     def update_amp_display_value(self, amp_0_1):
-        unit = self.unit_combo.currentText()
+        unit = self._current_level_unit()
         gain = self.module.audio_engine.calibration.output_gain
         cf = self._get_current_crest_factor()
 
@@ -2506,7 +2843,7 @@ class SignalGeneratorWidget(QWidget):
                 self.end_amp_spin.blockSignals(False)
 
     def on_amp_spin_changed(self, val):
-        unit = self.unit_combo.currentText()
+        unit = self._current_level_unit()
         gain = self.module.audio_engine.calibration.output_gain
 
         cf = self._get_current_crest_factor()
@@ -2524,14 +2861,14 @@ class SignalGeneratorWidget(QWidget):
         self.update_amp_display_value(amp)
 
     def on_start_amp_changed(self, val):
-        unit = self.unit_combo.currentText()
+        unit = self._current_level_unit()
         gain = self.module.audio_engine.calibration.output_gain
         cf = self._get_current_crest_factor()
         amp_0_1 = amplitude_to_linear(val, unit, gain, cf)
         self.update_param("start_amp", amp_0_1)
 
     def on_end_amp_changed(self, val):
-        unit = self.unit_combo.currentText()
+        unit = self._current_level_unit()
         gain = self.module.audio_engine.calibration.output_gain
         cf = self._get_current_crest_factor()
         amp_0_1 = amplitude_to_linear(val, unit, gain, cf)
@@ -2539,11 +2876,22 @@ class SignalGeneratorWidget(QWidget):
 
     def on_toggle(self, checked):
         if checked:
-            self.module.start_generation()
-            self.toggle_btn.setText(tr("Stop Output"))
+            self._output_error_message = ""
+            try:
+                self.module.start_generation()
+            except Exception as exc:
+                logger.exception("Failed to start signal generator output")
+                self._output_error_message = tr("Unable to start output: {0}").format(str(exc))
+                self.toggle_btn.blockSignals(True)
+                self.toggle_btn.setChecked(False)
+                self.toggle_btn.blockSignals(False)
+                self.toggle_btn.setText(tr("Start Output"))
+            else:
+                self.toggle_btn.setText(tr("Stop Output"))
         else:
             self.module.stop_generation()
             self.toggle_btn.setText(tr("Start Output"))
+        self._refresh_output_state()
 
     def apply_theme(self, theme_name=None):
         if not theme_name and hasattr(self.app, "theme_manager"):
@@ -2551,6 +2899,8 @@ class SignalGeneratorWidget(QWidget):
 
         if theme_name == "system" and hasattr(self.app, "theme_manager"):
             theme_name = self.app.theme_manager.get_effective_theme()
+
+        self._current_theme_name = theme_name or "light"
 
         if theme_name == "dark":
             self.toggle_btn.setStyleSheet(
@@ -2566,20 +2916,9 @@ class SignalGeneratorWidget(QWidget):
                 "QPushButton:hover { background-color: #eeeeee; }"
                 "QPushButton:checked:hover { background-color: #ffbbbb; }"
             )
+        self._refresh_condition_badges()
 
     def _get_current_crest_factor(self):
         """Returns the Crest Factor (Peak / RMS) for the current waveform."""
-        key = self.wave_combo.currentData() or self.wave_combo.currentText()
-        # Square-like binary sequences have Signal Power = Peak Power => CF=1
-        if key in {"square", "pulse", "mls", "golay", "prbs"}:
-            return 1.0
-        # Triangle, Sawtooth have CF = sqrt(3)
-        if key in {"triangle", "sawtooth"}:
-            import numpy as np
-
-            return np.sqrt(3.0)
-
-        # Sine, Noise (approx), etc. default to standard sine convention (sqrt(2))
-        import numpy as np
-
-        return np.sqrt(2.0)
+        params = self.get_active_params_list()[0]
+        return self._crest_factor_for_params(params)
