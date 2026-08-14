@@ -1798,12 +1798,13 @@ class SignalGeneratorWidget(QWidget):
         advanced_layout = QVBoxLayout(self.advanced_panel)
         advanced_layout.setContentsMargins(0, 0, 0, 0)
 
-        direct_group = QGroupBox(tr("Timing and Calibration"))
-        direct_form = QFormLayout(direct_group)
+        direct_controls = QWidget()
+        direct_form = QFormLayout(direct_controls)
+        direct_form.setContentsMargins(0, 0, 0, 0)
         self._init_phase_controls(direct_form)
         self._init_delay_controls(direct_form)
         self._init_bin_snap_controls(direct_form)
-        advanced_layout.addWidget(direct_group)
+        advanced_layout.addWidget(direct_controls)
         advanced_layout.addWidget(self._create_options_tabs())
 
         self.advanced_panel.hide()

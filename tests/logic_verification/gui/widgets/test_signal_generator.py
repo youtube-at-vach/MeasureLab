@@ -184,6 +184,7 @@ def test_filters_are_disabled_when_scipy_is_unavailable(qtbot, monkeypatch):
 
 def test_advanced_settings_fit_without_outer_scrolling(signal_generator_widget, qtbot):
     widget, _module, _engine = signal_generator_widget
+    widget.setStyleSheet("font-size: 14px;")
     widget.resize(1100, 690)
     widget.show()
     widget.advanced_toggle.setChecked(True)
