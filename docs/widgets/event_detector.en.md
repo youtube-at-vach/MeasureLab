@@ -25,7 +25,7 @@ Select CH1 or CH2 as the detector input. If the selected channel is not present 
 
 ### Threshold
 
-Sets the event-start threshold in `FS`, `mV`, or `V`. The `mV` and `V` options are available only with valid input calibration and represent peak voltage for the instantaneous input samples. The detector converts the selected value to a full-scale (FS) peak value internally, and the maximum setting remains below the clipping level.
+Sets the event-start threshold in `FS`, `mV`, or `V`. The `mV` and `V` options are available only with valid input calibration and represent peak voltage for the instantaneous input samples. The detector converts the selected value to a full-scale (FS) peak value internally, and it is possible to set a threshold up to 100 dBFS (or equivalent value), allowing for detection above full scale depending on the input scale.
 
 ### Polarity
 
