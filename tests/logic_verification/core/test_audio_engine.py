@@ -116,6 +116,21 @@ class TestAudioEngineBasicSettings(unittest.TestCase):
         self.engine._restart_stream = MagicMock()
         self.engine._start_master_stream = MagicMock()
 
+    def test_ensure_stream_running_starts_a_missing_stream(self):
+        def start_stream():
+            self.engine.stream = MagicMock(active=True)
+
+        self.engine._start_master_stream.side_effect = start_stream
+
+        self.assertTrue(self.engine.ensure_stream_running())
+        self.engine._start_master_stream.assert_called_once_with()
+
+    def test_ensure_stream_running_preserves_an_active_stream(self):
+        self.engine.stream = MagicMock(active=True)
+
+        self.assertTrue(self.engine.ensure_stream_running())
+        self.engine._start_master_stream.assert_not_called()
+
     def test_set_loopback(self):
         self.assertFalse(self.engine.loopback)
         self.engine.set_loopback(True)

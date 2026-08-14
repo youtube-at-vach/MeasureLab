@@ -1,345 +1,360 @@
-import sys
-import unittest
+import os
+import threading
 from unittest.mock import MagicMock
+
 import numpy as np
-import importlib
+import pytest
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+from src.gui.widgets import loopback_finder as loopback_module  # noqa: E402
 
 
-class TestLoopbackFinder(unittest.TestCase):
-    def setUp(self):
-        # Patch modules
-        self._patched_modules = ["PyQt6.QtCore", "PyQt6.QtWidgets", "sounddevice"]
-        self._original_modules = {}
+class _CallbackStop(Exception):
+    pass
 
-        for mod in self._patched_modules:
-            if mod in sys.modules:
-                self._original_modules[mod] = sys.modules[mod]
-            sys.modules[mod] = MagicMock()
 
-        # Specific mocks for PyQt6 to support class definitions
-        mock_qt_core = sys.modules["PyQt6.QtCore"]
+class _CallbackAbort(Exception):
+    pass
 
-        # Robust base class mock that accepts any arguments in __init__
-        class MockBase:
-            def __init__(self, *args, **kwargs):
-                pass
 
-        # Make QThread a type so it can be inherited
-        mock_qt_core.QThread = type("QThread", (MockBase,), {})
-        # pyqtSignal can be a function returning a mock
-        mock_qt_core.pyqtSignal = MagicMock(return_value=MagicMock())
+@pytest.fixture(autouse=True)
+def _restore_sounddevice_callback_exceptions(monkeypatch):
+    """Keep these tests independent of AudioEngine's module-level sd mock."""
+    monkeypatch.setattr(loopback_module.sd, "CallbackStop", _CallbackStop)
+    monkeypatch.setattr(loopback_module.sd, "CallbackAbort", _CallbackAbort)
 
-        # Mock QWidget
-        mock_qt_widgets = sys.modules["PyQt6.QtWidgets"]
-        mock_qt_widgets.QWidget = type("QWidget", (MockBase,), {})
 
-        # Import/Reload module under test
-        if "src.gui.widgets.loopback_finder" in sys.modules:
-            importlib.reload(sys.modules["src.gui.widgets.loopback_finder"])
-        else:
-            importlib.import_module("src.gui.widgets.loopback_finder")
+def _device_engine():
+    engine = MagicMock()
+    engine.input_device = 0
+    engine.output_device = 1
+    engine.sample_rate = 48_000
+    engine.offline_mode = False
+    engine.is_active.return_value = False
+    devices = [
+        {"name": "Test Input", "max_input_channels": 2, "max_output_channels": 0},
+        {"name": "Test Output", "max_input_channels": 0, "max_output_channels": 2},
+    ]
+    engine._get_cached_audio_info.return_value = (devices, ())
+    return engine
 
-        self.module_under_test = sys.modules["src.gui.widgets.loopback_finder"]
 
-        # Instantiate LoopbackFinder
-        self.mock_audio_engine = MagicMock()
-        self.finder = self.module_under_test.LoopbackFinder(self.mock_audio_engine)
+class _Status:
+    input_underflow = False
+    input_overflow = False
+    output_underflow = False
+    output_overflow = False
 
-    def tearDown(self):
-        # Restore modules
-        for mod in self._patched_modules:
-            if mod in self._original_modules:
-                sys.modules[mod] = self._original_modules[mod]
-            else:
-                if mod in sys.modules:
-                    del sys.modules[mod]
 
-        # Remove module under test to ensure clean slate
-        if "src.gui.widgets.loopback_finder" in sys.modules:
-            del sys.modules["src.gui.widgets.loopback_finder"]
+class _SimulatedStream:
+    def __init__(self, *, loopbacks=None, clip=False, input_overflow=False, **kwargs):
+        self.callback = kwargs["callback"]
+        self.finished_callback = kwargs["finished_callback"]
+        self.input_channels, self.output_channels = kwargs["channels"]
+        self.sample_rate = int(kwargs["samplerate"])
+        self.loopbacks = loopbacks or {}
+        self.clip = clip
+        self.input_overflow = input_overflow
+        self.active = True
 
-    def _run_prepared_scan(self, ctx, check_stop=None):
-        stream = ctx["stream"]
-        stream_finished = ctx["stream_finished"]
-        stream_error = ctx["stream_error"]
-
+    def __enter__(self):
+        frames = 480
+        previous_output = np.zeros((frames, self.output_channels), dtype=np.float32)
+        status = _Status()
+        status.input_overflow = self.input_overflow
         try:
-            with stream:
-                while stream.active:
-                    if stream_finished.wait(0.1):
-                        break
-                    if check_stop and check_stop():
-                        stream.abort()
-                        break
-        except Exception:
-            pass
-
-        if stream_error[0]:
-            raise Exception(f"Callback error: {stream_error[0]}")
-
-        return ctx["found_paths"]
-
-    def test_perform_scan_success(self):
-        # Setup mocks
-        sd = sys.modules["sounddevice"]
-        sd.query_devices.return_value = {"max_output_channels": 2, "max_input_channels": 2}
-
-        # Create a test signal that matches what the finder expects
-        # The finder sends 440Hz sine wave.
-        sample_rate = 48000
-        duration = 0.1
-        t = np.linspace(0, duration, int(sample_rate * duration), False)
-        test_signal = 0.5 * np.sin(2 * np.pi * 440 * t)
-
-        class MockStream:
-            def __init__(self, *args, **kwargs):
-                self.callback = kwargs.get("callback")
-                self.active = True
-                self.calls = 0
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc_val, exc_tb):
-                pass
-
-            def abort(self):
-                self.active = False
-
-        def stream_side_effect(*args, **kwargs):
-            stream = MockStream(*args, **kwargs)
-
-            # We must simulate the callback being called until it raises CallbackStop
-            def run_stream():
-                frames = 4800  # 0.1s block
-                try:
-                    while stream.active and stream.calls < 100:  # Prevent infinite loop in test
-                        indata = np.zeros((frames, 2), dtype=np.float32)
-                        outdata = np.zeros((frames, 2), dtype=np.float32)
-
-                        # Simulate loopback: if outdata channel 0 has signal, put it in indata channel 0
-                        # But wait, outdata is written BY the callback.
-                        # So we have to call it first, then next block we'll feedback?
-                        # Actually, our finder sends outdata and records indata at the SAME time in the real world
-                        # For testing, we can pre-fill indata based on expected timing.
-                        # The finder tests ch0 then ch1.
-                        # Let's just inject the test signal into indata 0 continuously, it will trigger when finder is listening to ch0.
-                        indata[:, 0] = test_signal[:frames]
-
-                        stream.callback(indata, outdata, frames, None, None)
-                        stream.calls += 1
-                except sd.CallbackStop:
-                    stream.active = False
-                except Exception as e:
-                    stream.active = False
-                    raise e
-
-            # In real life the callback is in a background thread.
-            # Here we just run it synchronously or rely on the main thread loop.
-            # But the main thread does `while stream.active: time.sleep(0.1)`
-            # We need to run it in a thread or mock the sleep.
-            import threading
-
-            t = threading.Thread(target=run_stream)
-            t.start()
-            return stream
-
-        sd.Stream.side_effect = stream_side_effect
-        sd.CallbackStop = Exception
-
-        ctx = self.finder.prepare_scan(device_id=0, sample_rate=sample_rate)
-        results = self._run_prepared_scan(ctx)
-
-        # Expect loopback: Out 1 -> In 1 (indices 0->0)
-        # Because we continuously injected signal into input 0!
-        # It should detect it for output 1, and also output 2 (since it's continuously there)
-        # We need a better mock if we want to test exact channel isolation.
-        self.assertTrue(len(results) > 0)
-
-    def test_perform_scan_no_signal(self):
-        sd = sys.modules["sounddevice"]
-        sd.query_devices.return_value = {"max_output_channels": 2, "max_input_channels": 2}
-
-        class MockStream:
-            def __init__(self, *args, **kwargs):
-                self.callback = kwargs.get("callback")
-                self.active = True
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc_val, exc_tb):
-                pass
-
-            def abort(self):
-                self.active = False
-
-        def stream_side_effect(*args, **kwargs):
-            stream = MockStream(*args, **kwargs)
-
-            def run_stream():
-                frames = 4800
-                import time
-
-                try:
-                    for _ in range(20):  # Run for a bit and stop
-                        indata = np.zeros((frames, 2), dtype=np.float32)
-                        outdata = np.zeros((frames, 2), dtype=np.float32)
-                        stream.callback(indata, outdata, frames, None, None)
-                        time.sleep(0.01)
-                except Exception:
-                    stream.active = False
-
-            import threading
-
-            t = threading.Thread(target=run_stream)
-            t.start()
-            return stream
-
-        sd.Stream.side_effect = stream_side_effect
-        sd.CallbackStop = Exception
-
-        ctx = self.finder.prepare_scan(device_id=0, sample_rate=48000)
-        results = self._run_prepared_scan(ctx)
-
-        self.assertEqual(len(results), 0)
-
-    def test_perform_scan_device_error(self):
-        sd = sys.modules["sounddevice"]
-        # Simulate device with 0 inputs
-        sd.query_devices.return_value = {"max_output_channels": 2, "max_input_channels": 0}
-
-        with self.assertRaises(Exception) as cm:
-            self.finder.prepare_scan(device_id=0, sample_rate=48000)
-        self.assertIn("does not support both input and output", str(cm.exception))
-
-    def test_perform_scan_playrec_error(self):
-        sd = sys.modules["sounddevice"]
-        sd.query_devices.return_value = {"max_output_channels": 2, "max_input_channels": 2}
-
-        # Make the stream raise an error on creation
-        sd.Stream.side_effect = Exception("Audio Error")
-
-        with self.assertRaises(Exception) as cm:
-            self.finder.prepare_scan(device_id=0, sample_rate=48000)
-        self.assertIn("Stream error", str(cm.exception))
-
-    def test_perform_scan_stop(self):
-        sd = sys.modules["sounddevice"]
-        sd.query_devices.return_value = {"max_output_channels": 10, "max_input_channels": 2}
-
-        class MockStream:
-            def __init__(self, *args, **kwargs):
-                self.active = True
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc_val, exc_tb):
-                pass
-
-            def abort(self):
-                self.active = False
-
-        sd.Stream.return_value = MockStream()
-
-        # Stop immediately
-        check_stop = MagicMock(return_value=True)
-
-        ctx = self.finder.prepare_scan(device_id=0, sample_rate=48000)
-        results = self._run_prepared_scan(ctx, check_stop=check_stop)
-
-        # Should break immediately, so no results
-        self.assertEqual(len(results), 0)
-
-    def test_perform_scan_progress(self):
-        sd = sys.modules["sounddevice"]
-        sd.query_devices.return_value = {"max_output_channels": 2, "max_input_channels": 2}
-
-        class MockStream:
-            def __init__(self, *args, **kwargs):
-                self.callback = kwargs.get("callback")
-                self.active = True
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc_val, exc_tb):
-                pass
-
-            def abort(self):
-                self.active = False
-
-        def stream_side_effect(*args, **kwargs):
-            stream = MockStream(*args, **kwargs)
-
-            def run_stream():
-                frames = 4800
-                try:
-                    while stream.active:
-                        indata = np.zeros((frames, 2), dtype=np.float32)
-                        outdata = np.zeros((frames, 2), dtype=np.float32)
-                        stream.callback(indata, outdata, frames, None, None)
-                except Exception:
-                    stream.active = False
-
-            import threading
-
-            t = threading.Thread(target=run_stream)
-            t.start()
-            return stream
-
-        sd.Stream.side_effect = stream_side_effect
-        sd.CallbackStop = Exception
-
-        progress_cb = MagicMock()
-
-        ctx = self.finder.prepare_scan(device_id=0, sample_rate=48000, progress_callback=progress_cb)
-        self._run_prepared_scan(ctx)
-
-        # Connection message + 2 channels = 3 calls
-        self.assertEqual(progress_cb.call_count, 3)
-
-    def test_perform_scan_tuple_device_id(self):
-        sd = sys.modules["sounddevice"]
-
-        # Configure side effect to simulate sd.query_devices failing on tuple
-        def query_devices_side_effect(device=None, kind=None):
-            if isinstance(device, tuple):
-                raise TypeError("Invalid device ID: tuple not allowed")
-            if isinstance(device, int):
-                if device == 1:  # Input
-                    return {"max_output_channels": 0, "max_input_channels": 2}
-                if device == 2:  # Output
-                    return {"max_output_channels": 2, "max_input_channels": 0}
-            return {"max_output_channels": 2, "max_input_channels": 2}
-
-        sd.query_devices.side_effect = query_devices_side_effect
-
-        class MockStream:
-            def __init__(self, *args, **kwargs):
-                self.active = False  # Stop immediately
-
-            def __enter__(self):
-                return self
-
-            def __exit__(self, exc_type, exc_val, exc_tb):
-                pass
-
-        sd.Stream.return_value = MockStream()
-        sd.CallbackStop = Exception
-
-        device_id = (1, 2)
-        sample_rate = 48000
-
-        # Should not raise
-        ctx = self.finder.prepare_scan(device_id, sample_rate)
-        self._run_prepared_scan(ctx)
-
-        # Verify calls
-        sd.query_devices.assert_any_call(1)
-        sd.query_devices.assert_any_call(2)
-
-
-if __name__ == "__main__":
-    unittest.main()
+            for _ in range(1000):
+                if not self.active:
+                    break
+                indata = np.zeros((frames, self.input_channels), dtype=np.float32)
+                for output_index, input_index in self.loopbacks.items():
+                    indata[:, input_index] += previous_output[:, output_index]
+                if self.clip:
+                    indata[:, 0] = 1.0
+                outdata = np.zeros((frames, self.output_channels), dtype=np.float32)
+                self.callback(indata, outdata, frames, None, status)
+                previous_output = outdata.copy()
+        except loopback_module.sd.CallbackStop:
+            self.active = False
+        except loopback_module.sd.CallbackAbort:
+            self.active = False
+        self.finished_callback()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.active = False
+
+    def abort(self):
+        self.active = False
+        self.finished_callback()
+
+
+def _run_scan(monkeypatch, *, loopbacks=None, clip=False, input_overflow=False, cancelled=False):
+    engine = _device_engine()
+    finder = loopback_module.LoopbackFinder(engine)
+
+    def stream_factory(**kwargs):
+        return _SimulatedStream(
+            loopbacks=loopbacks,
+            clip=clip,
+            input_overflow=input_overflow,
+            **kwargs,
+        )
+
+    monkeypatch.setattr(loopback_module.sd, "Stream", stream_factory)
+    cancel_event = threading.Event()
+    if cancelled:
+        cancel_event.set()
+    progress = MagicMock()
+    result = finder.perform_scan(
+        (0, 1),
+        engine.sample_rate,
+        finder.profile,
+        cancel_event,
+        progress,
+    )
+    return finder, result, progress
+
+
+def test_scan_detects_only_the_simulated_routes(monkeypatch):
+    _, result, progress = _run_scan(monkeypatch, loopbacks={0: 0, 1: 1})
+
+    assert result.state == loopback_module.ScanTerminalState.COMPLETED
+    assert result.detected_count == 2
+    detected_pairs = {
+        (item.output_channel, item.input_channel)
+        for item in result.measurements
+        if item.verdict == loopback_module.PairVerdict.DETECTED
+    }
+    assert detected_pairs == {(1, 1), (2, 2)}
+    assert progress.call_count == 3
+
+
+def test_scan_reports_a_valid_no_path_result(monkeypatch):
+    _, result, _ = _run_scan(monkeypatch)
+
+    assert result.state == loopback_module.ScanTerminalState.COMPLETED
+    assert result.detected_count == 0
+    assert all(item.verdict == loopback_module.PairVerdict.NOT_DETECTED for item in result.measurements)
+
+
+def test_steady_tone_present_in_baseline_is_not_accepted_as_a_route():
+    engine = _device_engine()
+    finder = loopback_module.LoopbackFinder(engine)
+    profile = finder.profile
+    sample_rate = 48_000
+    baseline_frames = int(sample_rate * profile.baseline_duration_s)
+    tone_frames = int(sample_rate * profile.tone_duration_s)
+    step_frames = int(
+        sample_rate * (profile.baseline_duration_s + profile.tone_duration_s + profile.tail_duration_s)
+    )
+    phase = np.arange(step_frames)
+    ambient = 0.1 * np.sin(2 * np.pi * profile.frequency_hz * phase / sample_rate)
+    buffer = ambient.astype(np.float32)[:, np.newaxis]
+    reference = np.exp(-2j * np.pi * profile.frequency_hz * np.arange(tone_frames) / sample_rate)
+
+    measurements, _ = finder._analyze_output_buffer(
+        buffer,
+        1,
+        sample_rate,
+        profile,
+        reference,
+        baseline_frames,
+        tone_frames,
+    )
+
+    assert measurements[0].level_dbfs > profile.absolute_threshold_dbfs
+    assert measurements[0].margin_db < profile.minimum_margin_db
+    assert measurements[0].verdict == loopback_module.PairVerdict.NOT_DETECTED
+
+
+def test_delayed_loopback_reports_the_generated_peak_level():
+    engine = _device_engine()
+    finder = loopback_module.LoopbackFinder(engine)
+    profile = finder.profile
+    sample_rate = 192_000
+    baseline_frames = int(sample_rate * profile.baseline_duration_s)
+    tone_frames = int(sample_rate * profile.tone_duration_s)
+    tail_frames = int(sample_rate * profile.tail_duration_s)
+    delay_frames = int(sample_rate * 0.01)
+    phase = np.arange(tone_frames)
+    tone = profile.output_peak * np.sin(2 * np.pi * profile.frequency_hz * phase / sample_rate)
+    buffer = np.zeros((baseline_frames + tone_frames + tail_frames, 1), dtype=np.float32)
+    tone_start = baseline_frames + delay_frames
+    buffer[tone_start : tone_start + tone_frames, 0] = tone
+    reference = np.exp(-2j * np.pi * profile.frequency_hz * phase / sample_rate)
+
+    measurements, _ = finder._analyze_output_buffer(
+        buffer,
+        1,
+        sample_rate,
+        profile,
+        reference,
+        baseline_frames,
+        tone_frames,
+    )
+
+    assert measurements[0].level_dbfs == pytest.approx(profile.output_level_dbfs, abs=0.05)
+
+
+def test_fixed_detection_threshold_is_minus_40_dbfs():
+    assert loopback_module.ScanProfile().absolute_threshold_dbfs == -40.0
+
+
+def test_clipping_invalidates_the_affected_input_column(monkeypatch):
+    _, result, _ = _run_scan(monkeypatch, loopbacks={1: 1}, clip=True)
+
+    assert result.state == loopback_module.ScanTerminalState.INVALID
+    assert result.clipped_inputs == (1,)
+    assert all(
+        item.verdict == loopback_module.PairVerdict.INVALID
+        for item in result.measurements
+        if item.input_channel == 1
+    )
+    assert any(
+        item.verdict == loopback_module.PairVerdict.DETECTED
+        for item in result.measurements
+        if item.input_channel == 2
+    )
+
+
+def test_xrun_invalidates_all_measurements(monkeypatch):
+    _, result, _ = _run_scan(monkeypatch, loopbacks={0: 0}, input_overflow=True)
+
+    assert result.state == loopback_module.ScanTerminalState.INVALID
+    assert result.io_errors == ("input_overflow",)
+    assert all(item.verdict == loopback_module.PairVerdict.INVALID for item in result.measurements)
+
+
+def test_analysis_queue_overrun_is_reported_as_invalid_io(monkeypatch):
+    engine = _device_engine()
+    engine._get_cached_audio_info.return_value[0][1]["max_output_channels"] = 4
+    finder = loopback_module.LoopbackFinder(engine)
+    monkeypatch.setattr(loopback_module.sd, "Stream", lambda **kwargs: _SimulatedStream(**kwargs))
+
+    result = finder.perform_scan((0, 1), 48_000, finder.profile, threading.Event())
+
+    assert result.state == loopback_module.ScanTerminalState.INVALID
+    assert result.completed_outputs == 3
+    assert result.io_errors == ("analysis_buffer_overrun",)
+
+
+def test_cancelled_scan_does_not_report_partial_data_as_complete(monkeypatch):
+    _, result, _ = _run_scan(monkeypatch, loopbacks={0: 0}, cancelled=True)
+
+    assert result.state == loopback_module.ScanTerminalState.CANCELLED
+    assert result.completed_outputs == 0
+    assert result.detected_count == 0
+
+
+def test_invalid_device_configuration_is_rejected(monkeypatch):
+    engine = _device_engine()
+    engine._get_cached_audio_info.return_value = (
+        [
+            {"name": "Output only", "max_input_channels": 0, "max_output_channels": 2},
+            {"name": "Output", "max_input_channels": 0, "max_output_channels": 2},
+        ],
+        (),
+    )
+    finder = loopback_module.LoopbackFinder(engine)
+
+    with np.testing.assert_raises_regex(ValueError, "at least one input"):
+        finder.perform_scan((0, 1), 48_000, finder.profile, threading.Event())
+
+
+def test_connection_matrix_uses_text_and_color_independent_symbols(qtbot):
+    engine = _device_engine()
+    finder = loopback_module.LoopbackFinder(engine)
+    widget = loopback_module.LoopbackFinderWidget(finder)
+    qtbot.addWidget(widget)
+    measurement = loopback_module.PairMeasurement(
+        output_channel=1,
+        input_channel=2,
+        level_dbfs=-6.1,
+        baseline_dbfs=-90.0,
+        margin_db=83.9,
+        verdict=loopback_module.PairVerdict.DETECTED,
+    )
+    result = loopback_module.ScanResult(
+        state=loopback_module.ScanTerminalState.COMPLETED,
+        measurements=(measurement,),
+        profile=finder.profile,
+        input_device_name="Test Input",
+        output_device_name="Test Output",
+        sample_rate=48_000,
+        input_channels=2,
+        output_channels=2,
+        completed_outputs=2,
+    )
+
+    widget._on_scan_completed(result)
+
+    assert widget.results_table.rowCount() == 2
+    assert widget.results_table.columnCount() == 2
+    assert widget.results_table.item(0, 1).text().startswith("✓")
+    assert widget.results_table.item(0, 0).text() == "—"
+    assert widget.validity_label.text() == "VALID"
+    assert "1" in widget.summary_label.text()
+    assert widget.status_label.text() == "Ready"
+    assert not widget.status_label.isHidden()
+    assert not widget.progress_bar.isHidden()
+    assert widget.progress_bar.value() == 100
+
+
+def test_controls_are_left_and_devices_are_listed_separately(qtbot):
+    engine = _device_engine()
+    finder = loopback_module.LoopbackFinder(engine)
+    widget = loopback_module.LoopbackFinderWidget(finder)
+    qtbot.addWidget(widget)
+
+    assert widget.layout().itemAt(0).widget() is widget.control_panel
+    assert widget.layout().itemAt(1).widget() is widget.results_group
+    assert widget.input_device_label.text() == "Test Input"
+    assert widget.output_device_label.text() == "Test Output"
+
+
+def test_scan_conditions_do_not_wrap_and_progress_area_is_always_present(qtbot):
+    engine = _device_engine()
+    finder = loopback_module.LoopbackFinder(engine)
+    widget = loopback_module.LoopbackFinderWidget(finder)
+    qtbot.addWidget(widget)
+
+    assert widget.control_panel.minimumWidth() >= 360
+    assert widget.conditions_layout.rowWrapPolicy() == loopback_module.QFormLayout.RowWrapPolicy.DontWrapRows
+    assert not widget.input_device_label.wordWrap()
+    assert not widget.output_device_label.wordWrap()
+    assert not widget.stimulus_label.wordWrap()
+    assert not widget.status_label.isHidden()
+    assert not widget.progress_bar.isHidden()
+
+
+def test_subthreshold_level_is_shown_without_a_question_mark(qtbot):
+    engine = _device_engine()
+    finder = loopback_module.LoopbackFinder(engine)
+    widget = loopback_module.LoopbackFinderWidget(finder)
+    qtbot.addWidget(widget)
+    measurement = loopback_module.PairMeasurement(
+        output_channel=1,
+        input_channel=1,
+        level_dbfs=-114.1,
+        baseline_dbfs=-130.0,
+        margin_db=15.9,
+        verdict=loopback_module.PairVerdict.NOT_DETECTED,
+    )
+
+    item = widget._measurement_item(measurement)
+
+    assert item.text() == "-114.1"
+    assert "?" not in item.text()
+
+
+def test_virtual_mode_disables_physical_scan(qtbot):
+    engine = _device_engine()
+    engine.offline_mode = True
+    finder = loopback_module.LoopbackFinder(engine)
+    widget = loopback_module.LoopbackFinderWidget(finder)
+    qtbot.addWidget(widget)
+
+    assert not widget.start_btn.isEnabled()
+    assert "Virtual" in widget.status_label.text()
