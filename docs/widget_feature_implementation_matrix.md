@@ -60,60 +60,60 @@ Nonlinear Response Analyzer は実験的モジュールですが、実装漏れ�
 | 単一ウィンドウ分離（State B）    |           42 / 42 | 100.0% |      0 |      0 | 共通経路を確認 | 共通ラッパー     |
 | スクリーンショット               |           42 / 42 | 100.0% |      0 |      0 | 共通経路を確認 | 共通ラッパー     |
 | ログビューア表示                 |           42 / 42 | 100.0% |      0 |      0 |         0 / 42 | 共通ラッパー     |
-| コンパクトモード                 |           14 / 18 |  77.8% |      4 |     24 |        13 / 14 | ウィジェット個別 |
-| 表示／操作の 2 窓分割（State C） |           10 / 17 |  58.8% |      7 |     25 |        10 / 10 | ウィジェット個別 |
-| Plot Comparer への送信           |             5 / 9 |  55.6% |      4 |     33 |          3 / 5 | ウィジェット個別 |
+| コンパクトモード                 |           14 / 14 | 100.0% |      0 |     28 |        13 / 14 | ウィジェット個別 |
+| 表示／操作の 2 窓分割（State C） |           10 / 11 |  90.9% |      1 |     31 |        10 / 10 | ウィジェット個別 |
+| Plot Comparer への送信           |             5 / 5 | 100.0% |      0 |     37 |          3 / 5 | ウィジェット個別 |
 
 個別機能のいずれか一つ以上に対応するモジュールは 18 / 42 です。残り 24 モジュールは、
 分離、スクリーンショット、ログ表示という共通ラッパー機能のみを使用します。
-個別機能に `要` が残っていない完了モジュールは 31 / 42 です。
+個別機能に `要` が残っていない完了モジュールは 41 / 42 です。
 
 ## モジュール別マトリクス
 
-| 完了  | ウィジェット                       | 単一窓分離 | 2 窓分割 | コンパクト | 比較送信 | 撮影  | ログ  | 備考                                     |
-| :-: | ---------------------------- | :---: | :---: | :---: | :--: | :-: | :-: | -------------------------------------- |
-|  ✓  | Signal Generator             |  共✓   |  外A   |  外A   |  外A  | 共✓  | 共△  | 独立表示部のない信号生成・出力操作画面                    |
-|  ✓  | Spectrum Analyzer            |  共✓   |  個✓   |  個✓   |  個✓  | 共✓  | 共△  | 個別機能 3 種すべてに対応                         |
-|  ✓  | Sound Level Meter            |  共✓   |  個✓   |  個✓   |  外D  | 共✓  | 共△  |                                        |
-|  ✓  | LUFS Meter                   |  共✓   |  個✓   |  個✓   |  外D  | 共✓  | 共△  |                                        |
-|  ✓  | Loopback Finder              |  共✓   |  外F   |  外E   |  外B  | 共✓  | 共△  | 比較対象は接続マトリクス表。結果表の表示専用化はレビューによりひとまず対象外 |
-|     | Distortion Analyzer          |  共✓   |  外F   |  外E   |  個△  | 共✓  | 共△  | 比較送信の直接テストなし                           |
-|  ✓  | Advanced Distortion Meter    |  共✓   |  外F   |  外E   |  外D  | 共✓  | 共△  |                                        |
-|  ✓  | Network Analyzer             |  共✓   |  外F   |  外E   |  個✓  | 共✓  | 共△  |                                        |
-|  ✓  | Oscilloscope                 |  共✓   |  個✓   |  個✓   |  個✓  | 共✓  | 共△  | 個別機能 3 種すべてに対応                         |
-|     | Raw Time Series              |  共✓   |  個✓   |  個✓   |  要   | 共✓  | 共△  |                                        |
-|  ✓  | Event Detector               |  共✓   |  個✓   |  個✓   |  外D  | 共✓  | 共△  | 実装済みだが個別マニュアルの記載なし                     |
-|  ✓  | Lock-in Amplifier            |  共✓   |  外F   |  外E   |  個△  | 共✓  | 共△  | 比較送信の直接テストなし                           |
-|     | Lock-in Harmonic Analyzer    |  共✓   |  外F   |  外E   |  外D  | 共✓  | 共△  |                                        |
-|  ✓  | Arbitrary Harmonic Generator |  共✓   |  外F   |  外E   |  外D  | 共✓  | 共△  | 生成プレビューの比較価値はレビューによりひとまず対象外            |
-|     | Lock-in Spectrum Finder      |  共✓   |  個✓   |  外E   |  外D  | 共✓  | 共△  | マニュアルはコンパクト対応とも読める                     |
-|     | Frequency Counter            |  共✓   |  外F   |  個✓   |  外D  | 共✓  | 共△  | マニュアルは 2 窓分割対応とも読める                    |
-|     | Lock-in Frequency Counter    |  共✓   |  外F   |  外E   |  外D  | 共✓  | 共△  |                                        |
-|  ✓  | Spectrogram                  |  共✓   |  個✓   |  個✓   |  外B  | 共✓  | 共△  | 比較対象は時間×周波数の 2D 画像                     |
-|     | Boxcar Averager              |  共✓   |  外F   |  外E   |  外D  | 共✓  | 共△  |                                        |
-|     | Goniometer                   |  共✓   |  個✓   |  個✓   |  外D  | 共✓  | 共△  |                                        |
-|  ✓  | Impedance Analyzer           |  共✓   |  外F   |  外E   |  外D  | 共✓  | 共△  |                                        |
-|     | Noise Profiler               |  共✓   |   要   |  個✓   |  要   | 共✓  | 共△  | マニュアルは 2 窓分割対応とも読める                    |
-|  ✓  | Recorder / Player            |  共✓   |  外A   |  外A   |  外A  | 共✓  | 共△  | 独立表示部のない録音・再生操作画面                      |
-|  ✓  | Waveform Loop Player         |  共✓   |  外F   |  外E   |  外D  | 共✓  | 共△  | 波形は選択・再生操作にも使うため、分離はレビューによりひとまず対象外     |
-|  ✓  | Transient Analyzer           |  共✓   |  外F   |  外E   |  外D  | 共✓  | 共△  |                                        |
-|  ✓  | Sound Quality Analyzer       |  共✓   |  外F   |  外E   |  外D  | 共✓  | 共△  |                                        |
-|     | Timecode Monitor & Generator |  共✓   |  外F   |  個✓   |  外B  | 共✓  | 共△  | 比較対象は時刻・同期状態の数値表示。コンパクトは実装済み           |
-|  ✓  | BNIM Meter                   |  共✓   |  個✓   |  個✓   |  外D  | 共✓  | 共△  |                                        |
-|  ✓  | HRTF Player                  |  共✓   |  外F   |  外E   |  外B  | 共✓  | 共△  | 比較対象は方向×指標の 2D ヒートマップ                  |
-|  ✓  | Ultrasound AM Modulator      |  共✓   |  外A   |  外A   |  外A  | 共✓  | 共△  | 独立表示部のない変調・出力操作画面                      |
-|     | Linearity Analyzer           |  共✓   |  外F   |  外E   |  要   | 共✓  | 共△  |                                        |
-|  ✓  | 1PPS Monitor                 |  共✓   |  外F   |  外E   |  外D  | 共✓  | 共△  |                                        |
-|  ✓  | Stereo Alignment Monitor     |  共✓   |  外F   |  個✓   |  外D  | 共✓  | 共△  | 実装済みだが個別マニュアルの記載なし                     |
-|  ✓  | Processor Benchmark          |  共✓   |  外F   |  外E   |  外D  | 共✓  | 共△  |                                        |
-|  ✓  | Spatial Binaural Mixer       |  共✓   |  外A   |  外A   |  外A  | 共✓  | 共△  | 独立表示部のないオフライン・レンダリング操作画面               |
-|  ✓  | Plot Comparer                |  共✓   |  外F   |  外E   |  外C  | 共✓  | 共△  | 比較データの受信・表示側                           |
-|  ✓  | Transmission Analyzer        |  共✓   |  外F   |  個△   |  外D  | 共✓  | 共△  | コンパクトモードの直接テストなし、マニュアル記載なし             |
-|  ✓  | Nonlinear Analyzer           |  共✓   |  外F   |  外E   |  外D  | 共✓  | 共△  |                                        |
-|  ✓  | Lock-in Modeler              |  共✓   |  外F   |  外E   |  外D  | 共✓  | 共△  |                                        |
-|  ✓  | Response Viewer              |  共✓   |  外F   |  外E   |  外D  | 共✓  | 共△  |                                        |
-|  ✓  | Feedforward Compensator      |  共✓   |  外F   |  外E   |  外D  | 共✓  | 共△  |                                        |
-|  ✓  | Nonlinear Response Analyzer  |  共✓   |  外F   |  外E   |  外D  | 共✓  | 共△  | 実験的モジュール                               |
+| 完了 | ウィジェット                 | 単一窓分離 | 2 窓分割 | コンパクト | 比較送信 | 撮影 | ログ | 備考                                                                         |
+| :--: | ---------------------------- | :--------: | :------: | :--------: | :------: | :--: | :--: | ---------------------------------------------------------------------------- |
+|  ✓   | Signal Generator             |    共✓     |   外A    |    外A     |   外A    | 共✓  | 共△  | 独立表示部のない信号生成・出力操作画面                                       |
+|  ✓   | Spectrum Analyzer            |    共✓     |   個✓    |    個✓     |   個✓    | 共✓  | 共△  | 個別機能 3 種すべてに対応                                                    |
+|  ✓   | Sound Level Meter            |    共✓     |   個✓    |    個✓     |   外D    | 共✓  | 共△  |                                                                              |
+|  ✓   | LUFS Meter                   |    共✓     |   個✓    |    個✓     |   外D    | 共✓  | 共△  |                                                                              |
+|  ✓   | Loopback Finder              |    共✓     |   外F    |    外E     |   外B    | 共✓  | 共△  | 比較対象は接続マトリクス表。結果表の表示専用化はレビューによりひとまず対象外 |
+|  ✓   | Distortion Analyzer          |    共✓     |   外F    |    外E     |   個△    | 共✓  | 共△  | 比較送信の直接テストなし                                                     |
+|  ✓   | Advanced Distortion Meter    |    共✓     |   外F    |    外E     |   外D    | 共✓  | 共△  |                                                                              |
+|  ✓   | Network Analyzer             |    共✓     |   外F    |    外E     |   個✓    | 共✓  | 共△  |                                                                              |
+|  ✓   | Oscilloscope                 |    共✓     |   個✓    |    個✓     |   個✓    | 共✓  | 共△  | 個別機能 3 種すべてに対応                                                    |
+|  ✓   | Raw Time Series              |    共✓     |   個✓    |    個✓     |   外D    | 共✓  | 共△  |                                                                              |
+|  ✓   | Event Detector               |    共✓     |   個✓    |    個✓     |   外D    | 共✓  | 共△  | 実装済みだが個別マニュアルの記載なし                                         |
+|  ✓   | Lock-in Amplifier            |    共✓     |   外F    |    外E     |   個△    | 共✓  | 共△  | 比較送信の直接テストなし                                                     |
+|  ✓   | Lock-in Harmonic Analyzer    |    共✓     |   外F    |    外E     |   外D    | 共✓  | 共△  |                                                                              |
+|  ✓   | Arbitrary Harmonic Generator |    共✓     |   外F    |    外E     |   外D    | 共✓  | 共△  | 生成プレビューの比較価値はレビューによりひとまず対象外                       |
+|  ✓   | Lock-in Spectrum Finder      |    共✓     |   個✓    |    外E     |   外D    | 共✓  | 共△  | マニュアルはコンパクト対応とも読めるが、レビューによりひとまず対象外         |
+|  ✓   | Frequency Counter            |    共✓     |   外F    |    個✓     |   外D    | 共✓  | 共△  | マニュアルは 2 窓分割対応とも読めるが、レビューによりひとまず対象外          |
+|  ✓   | Lock-in Frequency Counter    |    共✓     |   外F    |    外E     |   外D    | 共✓  | 共△  |                                                                              |
+|  ✓   | Spectrogram                  |    共✓     |   個✓    |    個✓     |   外B    | 共✓  | 共△  | 比較対象は時間×周波数の 2D 画像                                              |
+|  ✓   | Boxcar Averager              |    共✓     |   外F    |    外E     |   外D    | 共✓  | 共△  |                                                                              |
+|  ✓   | Goniometer                   |    共✓     |   個✓    |    個✓     |   外D    | 共✓  | 共△  |                                                                              |
+|  ✓   | Impedance Analyzer           |    共✓     |   外F    |    外E     |   外D    | 共✓  | 共△  |                                                                              |
+|      | Noise Profiler               |    共✓     |    要    |    個✓     |   外D    | 共✓  | 共△  | マニュアルは 2 窓分割対応とも読める                                          |
+|  ✓   | Recorder / Player            |    共✓     |   外A    |    外A     |   外A    | 共✓  | 共△  | 独立表示部のない録音・再生操作画面                                           |
+|  ✓   | Waveform Loop Player         |    共✓     |   外F    |    外E     |   外D    | 共✓  | 共△  | 波形は選択・再生操作にも使うため、分離はレビューによりひとまず対象外         |
+|  ✓   | Transient Analyzer           |    共✓     |   外F    |    外E     |   外D    | 共✓  | 共△  |                                                                              |
+|  ✓   | Sound Quality Analyzer       |    共✓     |   外F    |    外E     |   外D    | 共✓  | 共△  |                                                                              |
+|  ✓   | Timecode Monitor & Generator |    共✓     |   外F    |    個✓     |   外B    | 共✓  | 共△  | 比較対象は時刻・同期状態の数値表示。コンパクトは実装済み                     |
+|  ✓   | BNIM Meter                   |    共✓     |   個✓    |    個✓     |   外D    | 共✓  | 共△  |                                                                              |
+|  ✓   | HRTF Player                  |    共✓     |   外F    |    外E     |   外B    | 共✓  | 共△  | 比較対象は方向×指標の 2D ヒートマップ                                        |
+|  ✓   | Ultrasound AM Modulator      |    共✓     |   外A    |    外A     |   外A    | 共✓  | 共△  | 独立表示部のない変調・出力操作画面                                           |
+|  ✓   | Linearity Analyzer           |    共✓     |   外F    |    外E     |   外D    | 共✓  | 共△  |                                                                              |
+|  ✓   | 1PPS Monitor                 |    共✓     |   外F    |    外E     |   外D    | 共✓  | 共△  |                                                                              |
+|  ✓   | Stereo Alignment Monitor     |    共✓     |   外F    |    個✓     |   外D    | 共✓  | 共△  | 実装済みだが個別マニュアルの記載なし                                         |
+|  ✓   | Processor Benchmark          |    共✓     |   外F    |    外E     |   外D    | 共✓  | 共△  |                                                                              |
+|  ✓   | Spatial Binaural Mixer       |    共✓     |   外A    |    外A     |   外A    | 共✓  | 共△  | 独立表示部のないオフライン・レンダリング操作画面                             |
+|  ✓   | Plot Comparer                |    共✓     |   外F    |    外E     |   外C    | 共✓  | 共△  | 比較データの受信・表示側                                                     |
+|  ✓   | Transmission Analyzer        |    共✓     |   外F    |    個△     |   外D    | 共✓  | 共△  | コンパクトモードの直接テストなし、マニュアル記載なし                         |
+|  ✓   | Nonlinear Analyzer           |    共✓     |   外F    |    外E     |   外D    | 共✓  | 共△  |                                                                              |
+|  ✓   | Lock-in Modeler              |    共✓     |   外F    |    外E     |   外D    | 共✓  | 共△  |                                                                              |
+|  ✓   | Response Viewer              |    共✓     |   外F    |    外E     |   外D    | 共✓  | 共△  |                                                                              |
+|  ✓   | Feedforward Compensator      |    共✓     |   外F    |    外E     |   外D    | 共✓  | 共△  |                                                                              |
+|  ✓   | Nonlinear Response Analyzer  |    共✓     |   外F    |    外E     |   外D    | 共✓  | 共△  | 実験的モジュール                                                             |
 
 ## ウィンドウ状態と操作仕様
 
