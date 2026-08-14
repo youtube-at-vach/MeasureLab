@@ -813,6 +813,17 @@ class AudioEngine:
                     self.active_dtype = None
                 self.logger.debug("Master audio stream stopped")
 
+    def ensure_stream_running(self) -> bool:
+        """Start the master stream when needed and report whether it is active.
+
+        This is the public counterpart to ``_start_master_stream`` for tools
+        that temporarily need exclusive access to the configured audio device.
+        """
+        with self.lock:
+            if self.stream is None:
+                self._start_master_stream()
+            return self.stream is not None and bool(self.stream.active)
+
     def _restart_stream(self):
         self.stop_stream()
         with self.lock:
