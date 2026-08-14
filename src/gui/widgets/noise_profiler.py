@@ -23,8 +23,9 @@ from src.core.audio_engine import AudioEngine
 from src.core.fft_manager import fft_manager
 from src.core.localization import tr
 from src.gui.styles import MONOSPACE_FONT_FAMILY
-from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
+from src.gui.widgets.splittable_interface import SplittableWidgetInterface
+from src.measurement_modules.base import MeasurementModule
 
 logger = logging.getLogger(__name__)
 
@@ -265,10 +266,11 @@ class NoiseAnalysisWorker(QRunnable):
             self.signals.finished.emit()
 
 
-class NoiseProfilerWidget(QWidget, CompactableWidgetInterface):
+class NoiseProfilerWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInterface):
     def __init__(self, module: NoiseProfiler):
         QWidget.__init__(self)
         CompactableWidgetInterface.__init__(self)
+        SplittableWidgetInterface.__init__(self)
         self.module = module
         self.init_ui()
 
@@ -278,6 +280,25 @@ class NoiseProfilerWidget(QWidget, CompactableWidgetInterface):
 
         self.thread_pool = QThreadPool()
         self.analysis_active = False
+
+    def get_display_widget(self) -> QWidget:
+        """Return the plots and noise report for split mode."""
+        return self.display_widget
+
+    def get_control_widget(self) -> QWidget:
+        """Return the measurement and display settings for split mode."""
+        return self.sidebar
+
+    def restore_split_panels(self) -> None:
+        """Restore the normal controls, visualization, and report layout."""
+        layout = self.layout()
+        if layout is None:
+            return
+
+        layout.addWidget(self.sidebar, stretch=1)
+        layout.addWidget(self.display_widget, stretch=4)
+        self.sidebar.show()
+        self.display_widget.show()
 
     def init_ui(self):
         layout = QHBoxLayout()
@@ -419,6 +440,11 @@ class NoiseProfilerWidget(QWidget, CompactableWidgetInterface):
         left_panel.addWidget(self.settings_tabs)
         layout.addWidget(self.sidebar, 1)
 
+        # --- Display Panel: Visualization and Report ---
+        self.display_widget = QWidget()
+        display_layout = QHBoxLayout(self.display_widget)
+        display_layout.setContentsMargins(0, 0, 0, 0)
+
         # --- Center Panel: Visualization ---
         center_panel = QVBoxLayout()
 
@@ -486,7 +512,7 @@ class NoiseProfilerWidget(QWidget, CompactableWidgetInterface):
 
         center_panel.addWidget(self.stack_widget, 1)
 
-        layout.addLayout(center_panel, 3)
+        display_layout.addLayout(center_panel, 3)
 
         # --- Right Panel: Report ---
         right_panel = QVBoxLayout()
@@ -501,7 +527,8 @@ class NoiseProfilerWidget(QWidget, CompactableWidgetInterface):
         report_group.setLayout(report_layout)
 
         right_panel.addWidget(report_group)
-        layout.addLayout(right_panel, 1)
+        display_layout.addLayout(right_panel, 1)
+        layout.addWidget(self.display_widget, 4)
 
         self.setLayout(layout)
 
@@ -952,4 +979,6 @@ class NoiseProfilerWidget(QWidget, CompactableWidgetInterface):
     def update_compact_layout(self):
         compact = self.is_compact_mode()
         if hasattr(self, "sidebar"):
-            self.sidebar.setHidden(compact)
+            is_split = self.sidebar.parent() is not self
+            if not is_split:
+                self.sidebar.setHidden(compact)
