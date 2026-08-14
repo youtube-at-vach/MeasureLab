@@ -14,6 +14,8 @@ os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 from PyQt6.QtWidgets import QApplication, QWidget
 
+from src.core.module_constants import MODULE_NOISE_PROFILER
+from src.gui.module_registry import MODULE_REGISTRY
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 from src.gui.widgets.noise_profiler import NoiseProfiler, NoiseProfilerWidget
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
@@ -44,7 +46,11 @@ class TestNoiseProfilerSplit(unittest.TestCase):
         self.assertEqual(control_widget, self.widget.sidebar)
 
     def test_detachable_wrapper_split_flow(self):
-        wrapper = DetachableWidgetWrapper(self.widget, "Noise Profiler")
+        wrapper = DetachableWidgetWrapper(
+            self.widget,
+            "Noise Profiler",
+            capabilities=MODULE_REGISTRY[MODULE_NOISE_PROFILER].capabilities,
+        )
         self.assertTrue(wrapper.is_splittable)
         self.assertIsNotNone(wrapper.split_btn)
         self.assertTrue(wrapper.split_btn.isEnabled())

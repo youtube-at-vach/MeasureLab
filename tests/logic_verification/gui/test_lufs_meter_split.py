@@ -12,6 +12,8 @@ if "sounddevice" not in sys.modules:
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 from PyQt6.QtWidgets import QApplication, QWidget
+from src.core.module_constants import MODULE_LUFS_METER
+from src.gui.module_registry import MODULE_REGISTRY
 from src.gui.widgets.lufs_meter import LufsMeter, LufsMeterWidget
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
@@ -41,7 +43,11 @@ class TestLufsMeterSplit(unittest.TestCase):
         self.assertEqual(control_widget, self.widget.sidebar)
 
     def test_detachable_wrapper_split_flow(self):
-        wrapper = DetachableWidgetWrapper(self.widget, "LUFS Meter")
+        wrapper = DetachableWidgetWrapper(
+            self.widget,
+            "LUFS Meter",
+            capabilities=MODULE_REGISTRY[MODULE_LUFS_METER].capabilities,
+        )
         self.assertTrue(wrapper.is_splittable)
         self.assertIsNotNone(wrapper.split_btn)
         self.assertTrue(wrapper.split_btn.isEnabled())

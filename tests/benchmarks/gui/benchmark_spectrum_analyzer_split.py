@@ -21,6 +21,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 import numpy as np
 from PyQt6.QtWidgets import QApplication
 
+from src.core.module_constants import MODULE_SPECTRUM_ANALYZER
+from src.gui.module_registry import MODULE_REGISTRY
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 from src.gui.widgets.spectrum_analyzer import SpectrumAnalyzer, SpectrumAnalyzerWidget
 
@@ -223,7 +225,11 @@ def main() -> None:
     app = QApplication.instance() or QApplication([])
     module = SpectrumAnalyzer(_make_engine())
     widget = SpectrumAnalyzerWidget(module)
-    wrapper = DetachableWidgetWrapper(widget, "Spectrum Analyzer Benchmark")
+    wrapper = DetachableWidgetWrapper(
+        widget,
+        "Spectrum Analyzer Benchmark",
+        capabilities=MODULE_REGISTRY[MODULE_SPECTRUM_ANALYZER].capabilities,
+    )
     identities = _object_identities(widget)
 
     results = [_measure_case(app, wrapper, widget, "A", case) for case in CASES]

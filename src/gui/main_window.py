@@ -24,99 +24,9 @@ from PyQt6.QtWidgets import (
 from src.core.audio_engine import AudioEngine
 from src.core.config_manager import ConfigManager
 from src.core.localization import get_manager, tr
-from src.core.module_constants import (
-    ALL_MODULE_KEYS,
-    EXPERIMENTAL_MODULE_KEYS,
-    MODULE_1PPS_MONITOR,
-    MODULE_ADVANCED_DISTORTION_METER,
-    MODULE_TRANSMISSION_ANALYZER,
-    MODULE_BNIM_METER,
-    MODULE_BOXCAR_AVERAGER,
-    MODULE_DISTORTION_ANALYZER,
-    MODULE_FREQUENCY_COUNTER,
-    MODULE_GONIOMETER,
-    MODULE_HRTF_PLAYER,
-    MODULE_IMPEDANCE_ANALYZER,
-    MODULE_LINEARITY_ANALYZER,
-    MODULE_LOCK_IN_AMPLIFIER,
-    MODULE_LOCK_IN_FREQUENCY_COUNTER,
-    MODULE_LOCK_IN_HARMONIC_ANALYZER,
-    MODULE_ARBITRARY_HARMONIC_GENERATOR,
-    MODULE_LOCKIN_SPECTRUM_FINDER,
-    MODULE_LOOPBACK_FINDER,
-    MODULE_LUFS_METER,
-    MODULE_NETWORK_ANALYZER,
-    MODULE_NOISE_PROFILER,
-    MODULE_OSCILLOSCOPE,
-    MODULE_PROCESSOR_BENCHMARK,
-    MODULE_RAW_TIME_SERIES,
-    MODULE_EVENT_DETECTOR,
-    MODULE_PLOT_COMPARER,
-    MODULE_RECORDER_PLAYER,
-    MODULE_SIGNAL_GENERATOR,
-    MODULE_SOUND_LEVEL_METER,
-    MODULE_SOUND_QUALITY_ANALYZER,
-    MODULE_SPATIAL_BINAURAL_MIXER,
-    MODULE_SPECTROGRAM,
-    MODULE_SPECTRUM_ANALYZER,
-    MODULE_STEREO_ALIGNMENT_MONITOR,
-    MODULE_TIMECODE_MONITOR,
-    MODULE_TRANSIENT_ANALYZER,
-    MODULE_ULTRASOUND_MODULATOR,
-    MODULE_WAVEFORM_LOOP_PLAYER,
-    MODULE_NONLINEAR_ANALYZER,
-    MODULE_RESPONSE_VIEWER,
-    MODULE_FEEDFORWARD_COMPENSATOR,
-    MODULE_NONLINEAR_RESPONSE_ANALYZER,
-    MODULE_LOCKIN_MODELER,
-)
+from src.core.module_constants import ALL_MODULE_KEYS, EXPERIMENTAL_MODULE_KEYS
+from src.gui.module_registry import MODULE_REGISTRY
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
-
-# Registry mapping module key -> (module_path, class_name)
-MODULE_REGISTRY = {
-    MODULE_SIGNAL_GENERATOR: ("src.gui.widgets.signal_generator", "SignalGenerator"),
-    MODULE_SPECTRUM_ANALYZER: ("src.gui.widgets.spectrum_analyzer", "SpectrumAnalyzer"),
-    MODULE_SOUND_LEVEL_METER: ("src.gui.widgets.sound_level_meter", "SoundLevelMeter"),
-    MODULE_LUFS_METER: ("src.gui.widgets.lufs_meter", "LufsMeter"),
-    MODULE_LOOPBACK_FINDER: ("src.gui.widgets.loopback_finder", "LoopbackFinder"),
-    MODULE_DISTORTION_ANALYZER: ("src.gui.widgets.distortion_analyzer", "DistortionAnalyzer"),
-    MODULE_ADVANCED_DISTORTION_METER: ("src.gui.widgets.advanced_distortion_meter", "AdvancedDistortionMeter"),
-    MODULE_NETWORK_ANALYZER: ("src.gui.widgets.network_analyzer", "NetworkAnalyzer"),
-    MODULE_OSCILLOSCOPE: ("src.gui.widgets.oscilloscope", "Oscilloscope"),
-    MODULE_RAW_TIME_SERIES: ("src.gui.widgets.raw_time_series", "RawTimeSeries"),
-    MODULE_EVENT_DETECTOR: ("src.gui.widgets.event_detector", "EventDetector"),
-    MODULE_LOCK_IN_AMPLIFIER: ("src.gui.widgets.lock_in_amplifier", "LockInAmplifier"),
-    MODULE_LOCK_IN_HARMONIC_ANALYZER: ("src.gui.widgets.lockin_harmonic_analyzer", "LockInHarmonicAnalyzer"),
-    MODULE_ARBITRARY_HARMONIC_GENERATOR: ("src.gui.widgets.arbitrary_harmonic_generator", "ArbitraryHarmonicGenerator"),
-    MODULE_LOCKIN_SPECTRUM_FINDER: ("src.gui.widgets.lockin_spectrum_finder", "LockInSpectrumFinder"),
-    MODULE_FREQUENCY_COUNTER: ("src.gui.widgets.frequency_counter", "FrequencyCounter"),
-    MODULE_LOCK_IN_FREQUENCY_COUNTER: ("src.gui.widgets.lock_in_frequency_counter", "LockInFrequencyCounter"),
-    MODULE_SPECTROGRAM: ("src.gui.widgets.spectrogram", "Spectrogram"),
-    MODULE_BOXCAR_AVERAGER: ("src.gui.widgets.boxcar_averager", "BoxcarAverager"),
-    MODULE_GONIOMETER: ("src.gui.widgets.goniometer", "Goniometer"),
-    MODULE_IMPEDANCE_ANALYZER: ("src.gui.widgets.impedance_analyzer", "ImpedanceAnalyzer"),
-    MODULE_NOISE_PROFILER: ("src.gui.widgets.noise_profiler", "NoiseProfiler"),
-    MODULE_RECORDER_PLAYER: ("src.gui.widgets.recorder_player", "RecorderPlayer"),
-    MODULE_WAVEFORM_LOOP_PLAYER: ("src.gui.widgets.waveform_loop_player", "WaveformLoopPlayer"),
-    MODULE_TRANSIENT_ANALYZER: ("src.gui.widgets.transient_analyzer", "TransientAnalyzer"),
-    MODULE_SOUND_QUALITY_ANALYZER: ("src.gui.widgets.sound_quality_analyzer", "SoundQualityAnalyzer"),
-    MODULE_TIMECODE_MONITOR: ("src.gui.widgets.timecode_monitor", "TimecodeMonitor"),
-    MODULE_BNIM_METER: ("src.gui.widgets.bnim_meter", "BNIMMeter"),
-    MODULE_HRTF_PLAYER: ("src.gui.widgets.hrtf_player", "HRTFPlayer"),
-    MODULE_ULTRASOUND_MODULATOR: ("src.gui.widgets.ultrasound_modulator", "UltrasoundModulator"),
-    MODULE_LINEARITY_ANALYZER: ("src.gui.widgets.linearity_analyzer", "LinearityAnalyzer"),
-    MODULE_1PPS_MONITOR: ("src.gui.widgets.one_pps_monitor", "OnePPSMonitor"),
-    MODULE_STEREO_ALIGNMENT_MONITOR: ("src.gui.widgets.stereo_alignment_monitor", "StereoAlignmentMonitor"),
-    MODULE_PROCESSOR_BENCHMARK: ("src.gui.widgets.processor_benchmark", "ProcessorBenchmark"),
-    MODULE_SPATIAL_BINAURAL_MIXER: ("src.gui.widgets.spatial_binaural_mixer", "SpatialBinauralMixer"),
-    MODULE_PLOT_COMPARER: ("src.gui.widgets.plot_comparer", "PlotComparer"),
-    MODULE_TRANSMISSION_ANALYZER: ("src.gui.widgets.transmission_analyzer", "TransmissionAnalyzer"),
-    MODULE_NONLINEAR_ANALYZER: ("src.gui.widgets.nonlinear_analyzer", "NonlinearAnalyzer"),
-    MODULE_RESPONSE_VIEWER: ("src.gui.widgets.response_viewer", "ResponseViewer"),
-    MODULE_FEEDFORWARD_COMPENSATOR: ("src.gui.widgets.feedforward_compensator", "FeedforwardCompensator"),
-    MODULE_NONLINEAR_RESPONSE_ANALYZER: ("src.gui.widgets.nonlinear_response_analyzer", "NonlinearResponseAnalyzer"),
-    MODULE_LOCKIN_MODELER: ("src.gui.widgets.lock_in_modeler", "LockInModeler"),
-}
 
 
 def _load_class(module_path: str, class_name: str):
@@ -134,7 +44,8 @@ def _load_module_class(module_key: str):
     if module_key not in MODULE_REGISTRY:
         raise KeyError(f"Unknown module key: {module_key}")
 
-    return _load_class(*MODULE_REGISTRY[module_key])
+    registration = MODULE_REGISTRY[module_key]
+    return _load_class(registration.module_path, registration.class_name)
 
 
 if False:
@@ -539,13 +450,19 @@ class MainWindow(QMainWindow):
         key = self._module_keys[module_index]
         container = self._module_containers[module_index]
         try:
+            registration = MODULE_REGISTRY[key]
             cls = _load_module_class(key)
             module = cls(self.audio_engine)
             self.modules[module_index] = module
 
             widget = module.get_widget()
             if widget:
-                wrapper = DetachableWidgetWrapper(widget, tr(key), self.config_manager)
+                wrapper = DetachableWidgetWrapper(
+                    widget,
+                    tr(key),
+                    self.config_manager,
+                    capabilities=registration.capabilities,
+                )
                 self.module_widgets[module_index] = wrapper
                 self._replace_container_contents(container, wrapper)
 
