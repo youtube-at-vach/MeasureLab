@@ -29,7 +29,7 @@ The detected paths are shown in the **Results Table**.
 
 * **Output Channel**: The output channel that emitted the test tone.
 * **Input Channel**: The input channel where that tone was detected.
-* **Signal Level**: A rough indication of how strongly the tone was detected on that path. Larger values mean the path was detected more clearly.
+* **Signal Level**: The signal level detected on that path, displayed in dBFS. A checkmark (✓) indicates a confidently detected loopback path. An exclamation mark (!) indicates that the measurement is invalid due to clipping. A dash (—) is shown when no significant signal is detected. Larger values mean the path was detected more clearly.
 
 Signal Level is a useful clue, but it should not be treated as an exact gain measurement. A good workflow is to use Loopback Finder to confirm the path first, then move to a dedicated measurement widget for detailed analysis.
 
