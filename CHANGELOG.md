@@ -1,5 +1,38 @@
 # Changelog
 
+## [v0.8.4] - 2026-08-15
+
+### Added
+
+* **Event Detector**:
+    * Added a new event-detection module with event statistics, rate trends, fixed-duration measurements, activity indication, and calibrated voltage thresholds.
+    * Added clip-event detection, localization, automated logic tests, and user documentation.
+* **Split Window**:
+    * Added split-window support to Lock-in Spectrum Finder and Noise Profiler.
+* **Widget Capability Contracts**:
+    * Added explicit module capability declarations and contract validation for compact mode, split windows, comparison output, and common widget behavior.
+* **Harmonic Generator**:
+    * Added theoretical THD calculation.
+
+### Changed
+
+* **Signal Generator**:
+    * Improved control safety, simplified the advanced layout, and optimized real-time signal processing.
+* **Loopback Finder**:
+    * Improved the UI and guidance, added latency-aware level measurement, and adjusted the detection threshold to -40 dBFS.
+* **UI & Documentation**:
+    * Refined module loading and audio lifecycle handling, expanded widget feature documentation, and added a generated implementation matrix for common widget capabilities.
+    * Updated measurement-instrument design guidance and localized the new Event Detector and widget capability strings.
+
+### Fixed
+
+* **Event Detector**:
+    * Hardened measurement integrity, summary display, amplitude units, and positive clip-detection thresholds.
+* **Audio & Measurements**:
+    * Improved LUFS measurement integrity across audio environments and stabilized recorder/player cleanup and audio session lifecycle handling.
+* **Analysis & Windowing**:
+    * Prevented unintended IMD signals during distortion sweeps and corrected split-window actions and compact-mode behavior.
+
 ## [v0.8.3] - 2026-08-10
 
 ### Added
