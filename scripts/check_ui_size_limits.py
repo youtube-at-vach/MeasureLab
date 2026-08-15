@@ -33,10 +33,6 @@ MAX_WINDOW_WIDTH = 1320
 MAX_WINDOW_HEIGHT = 740
 MAX_WIDGET_WIDTH = 1100
 MAX_WIDGET_HEIGHT = 690
-# Exercise every translation with a comfortably readable desktop UI font.
-# 16 px made the fixed 1100 px content-width contract stricter than the app's
-# supported layouts and forced controls into unnecessarily tall arrangements.
-LAYOUT_AUDIT_FONT_PX = 14
 
 SCROLL_ROLE_PROPERTY = "measurelabScrollRole"
 AUDIT_EXPAND_PROPERTY = "measurelabLayoutAuditExpand"
@@ -260,7 +256,11 @@ def _audit_profile(app: QApplication, profile: AuditProfile, base_font: QFont) -
 
 def _profiles() -> list[AuditProfile]:
     languages = sorted(get_manager().available_languages)
-    return [AuditProfile("en", None), *(AuditProfile(language, LAYOUT_AUDIT_FONT_PX) for language in languages)]
+    # Pixel-sized fonts have substantially different metrics across Qt's
+    # platform backends. Audit every translation with the platform's real
+    # application default; explicit font sizes remain available through the
+    # single-profile CLI for targeted diagnostics.
+    return [AuditProfile(language, None) for language in languages]
 
 
 def _run_single_profile(language: str, font_arg: str) -> None:
