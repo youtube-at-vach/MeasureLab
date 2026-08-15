@@ -24,12 +24,8 @@ from PyQt6.QtWidgets import (
 from src.core.audio_engine import AudioEngine
 from src.core.config_manager import ConfigManager
 from src.core.localization import get_manager, tr
-from src.core.module_constants import (
-    ALL_MODULE_KEYS,
-    EXPERIMENTAL_MODULE_KEYS,
-)
-from src.gui.module_registry import MODULE_REGISTRY as MODULE_REGISTRY
-from src.gui.module_registry import get_module_spec
+from src.core.module_constants import ALL_MODULE_KEYS, EXPERIMENTAL_MODULE_KEYS
+from src.gui.module_registry import MODULE_REGISTRY
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
 
@@ -45,8 +41,11 @@ def _load_module_class(module_key: str):
     Uses _load_class to avoid importing heavy GUI modules at application startup.
     Explicit imports for PyInstaller discovery are handled in src.gui.pyinstaller_imports.
     """
-    spec = get_module_spec(module_key)
-    return _load_class(spec.module_path, spec.module_class_name)
+    if module_key not in MODULE_REGISTRY:
+        raise KeyError(f"Unknown module key: {module_key}")
+
+    registration = MODULE_REGISTRY[module_key]
+    return _load_class(registration.module_path, registration.class_name)
 
 
 if False:
@@ -451,7 +450,7 @@ class MainWindow(QMainWindow):
         key = self._module_keys[module_index]
         container = self._module_containers[module_index]
         try:
-            spec = get_module_spec(key)
+            registration = MODULE_REGISTRY[key]
             cls = _load_module_class(key)
             module = cls(self.audio_engine)
             self.modules[module_index] = module
@@ -462,7 +461,7 @@ class MainWindow(QMainWindow):
                     widget,
                     tr(key),
                     self.config_manager,
-                    capabilities=spec.capabilities,
+                    capabilities=registration.capabilities,
                 )
                 self.module_widgets[module_index] = wrapper
                 self._replace_container_contents(container, wrapper)

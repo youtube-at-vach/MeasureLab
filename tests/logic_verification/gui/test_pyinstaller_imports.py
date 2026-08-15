@@ -74,6 +74,6 @@ def test_pyinstaller_imports_cover_every_registered_module():
         if isinstance(node, ast.ImportFrom)
         for alias in node.names
     }
-    registered_class_names = {spec.module_class_name for spec in MODULE_REGISTRY.values()}
+    registered_class_names = {registration.class_name for registration in MODULE_REGISTRY.values()}
 
     assert registered_class_names <= imported_class_names

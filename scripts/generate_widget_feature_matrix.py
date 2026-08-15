@@ -11,10 +11,58 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.gui.module_registry import MODULE_REGISTRY  # noqa: E402
+from src.gui.module_registry import (  # noqa: E402
+    MODULE_REGISTRY,
+    CapabilityExclusionReason,
+    FeatureCapability,
+)
 
 
 MATRIX_PATH = ROOT / "docs" / "widget_feature_implementation_matrix.md"
+
+CAPABILITY_FIELDS = {
+    "compact": "compact_mode",
+    "split": "split_window",
+    "compare": "comparison",
+}
+EXCLUSION_LABELS = {
+    CapabilityExclusionReason.NO_INDEPENDENT_DISPLAY: "外A",
+    CapabilityExclusionReason.NON_TRACE_COMPARISON: "外B",
+    CapabilityExclusionReason.COMPARISON_RECEIVER: "外C",
+    CapabilityExclusionReason.COMPARISON_DEFERRED: "外D",
+    CapabilityExclusionReason.COMPACT_DEFERRED: "外E",
+    CapabilityExclusionReason.SPLIT_DEFERRED: "外F",
+}
+EXCLUSION_NOTES = {
+    CapabilityExclusionReason.NO_INDEPENDENT_DISPLAY: "独立表示部なし",
+    CapabilityExclusionReason.NON_TRACE_COMPARISON: "比較対象がトレースではない",
+    CapabilityExclusionReason.COMPARISON_RECEIVER: "比較データの受信・表示側",
+    CapabilityExclusionReason.COMPARISON_DEFERRED: "比較送信は未実装",
+    CapabilityExclusionReason.COMPACT_DEFERRED: "コンパクトは未実装",
+    CapabilityExclusionReason.SPLIT_DEFERRED: "2 窓分割は未実装",
+}
+
+
+def _matrix_label(capability: FeatureCapability) -> str:
+    if capability.is_supported:
+        return "個✓"
+    reason = capability.exclusion_reason
+    if reason is None:
+        raise ValueError("Excluded capabilities must declare a reason")
+    return EXCLUSION_LABELS[reason]
+
+
+def _module_note(capabilities) -> str:
+    reasons = {
+        capability.exclusion_reason
+        for capability in (
+            capabilities.split_window,
+            capabilities.compact_mode,
+            capabilities.comparison,
+        )
+        if capability.exclusion_reason is not None
+    }
+    return "、".join(EXCLUSION_NOTES[reason] for reason in EXCLUSION_NOTES if reason in reasons)
 
 
 def _table(headers: list[str], rows: list[list[str]], alignments: list[str]) -> str:
@@ -46,8 +94,9 @@ def render_summary() -> str:
         "compare": ("Plot Comparer への送信", "ウィジェット個別"),
     }
     for capability_name in ("compact", "split", "compare"):
+        field_name = CAPABILITY_FIELDS[capability_name]
         supported = sum(
-            getattr(spec.capabilities, capability_name).is_supported for spec in MODULE_REGISTRY.values()
+            getattr(spec.capabilities, field_name).is_supported for spec in MODULE_REGISTRY.values()
         )
         label, provider = labels[capability_name]
         feature_rows.append(
@@ -77,12 +126,12 @@ def render_modules() -> str:
                 "✓",
                 module_key,
                 "共✓",
-                spec.capabilities.split.matrix_label,
-                spec.capabilities.compact.matrix_label,
-                spec.capabilities.compare.matrix_label,
+                _matrix_label(spec.capabilities.split_window),
+                _matrix_label(spec.capabilities.compact_mode),
+                _matrix_label(spec.capabilities.comparison),
                 "共✓",
                 "共✓",
-                spec.note,
+                _module_note(spec.capabilities),
             ]
         )
     return _table(

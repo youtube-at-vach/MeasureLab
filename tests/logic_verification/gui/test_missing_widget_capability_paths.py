@@ -4,6 +4,8 @@ from unittest.mock import MagicMock
 import numpy as np
 from PyQt6.QtWidgets import QWidget
 
+from src.core.module_constants import MODULE_TRANSMISSION_ANALYZER
+from src.gui.module_registry import MODULE_REGISTRY
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 from src.gui.widgets.distortion_analyzer import DistortionAnalyzerWidget
@@ -16,7 +18,11 @@ def test_transmission_analyzer_compact_mode_through_wrapper(qtbot):
     QWidget.__init__(widget)
     CompactableWidgetInterface.__init__(widget)
     widget.left_panel = QWidget(widget)
-    wrapper = DetachableWidgetWrapper(widget, "Transmission Analyzer")
+    wrapper = DetachableWidgetWrapper(
+        widget,
+        "Transmission Analyzer",
+        capabilities=MODULE_REGISTRY[MODULE_TRANSMISSION_ANALYZER].capabilities,
+    )
     qtbot.addWidget(wrapper)
 
     wrapper.detach()

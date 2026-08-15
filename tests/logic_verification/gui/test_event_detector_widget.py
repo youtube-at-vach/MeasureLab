@@ -53,10 +53,9 @@ def make_module(
 def test_event_detector_is_registered_after_raw_time_series():
     raw_index = ALL_MODULE_KEYS.index(MODULE_RAW_TIME_SERIES)
     assert ALL_MODULE_KEYS[raw_index + 1] == MODULE_EVENT_DETECTOR
-    spec = MODULE_REGISTRY[MODULE_EVENT_DETECTOR]
-    assert spec.module_path == "src.gui.widgets.event_detector"
-    assert spec.module_class_name == "EventDetector"
-    assert spec.widget_class_name == "EventDetectorWidget"
+    registration = MODULE_REGISTRY[MODULE_EVENT_DETECTOR]
+    assert registration.module_path == "src.gui.widgets.event_detector"
+    assert registration.class_name == "EventDetector"
     assert _load_module_class(MODULE_EVENT_DETECTOR) is EventDetector
 
 
@@ -698,7 +697,11 @@ def test_widget_exposes_compact_and_split_panels(qtbot):
     widget.set_compact_mode(False)
     assert not widget.control_widget.isHidden()
 
-    wrapper = DetachableWidgetWrapper(widget, "Event Detector")
+    wrapper = DetachableWidgetWrapper(
+        widget,
+        "Event Detector",
+        capabilities=MODULE_REGISTRY[MODULE_EVENT_DETECTOR].capabilities,
+    )
     qtbot.addWidget(wrapper)
     wrapper.split()
     assert wrapper.is_split

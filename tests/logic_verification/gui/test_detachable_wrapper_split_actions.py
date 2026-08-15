@@ -7,8 +7,22 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QWidget
 
+from src.gui.module_registry import (
+    COMPACT_DEFERRED,
+    COMPARISON_DEFERRED,
+    NO_INDEPENDENT_DISPLAY,
+    SUPPORTED,
+    WidgetCapabilities,
+)
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
+
+
+NO_CAPABILITIES = WidgetCapabilities(
+    split_window=NO_INDEPENDENT_DISPLAY,
+    compact_mode=NO_INDEPENDENT_DISPLAY,
+    comparison=NO_INDEPENDENT_DISPLAY,
+)
 
 
 class _TrackingPanel(QWidget):
@@ -47,7 +61,12 @@ class _SplittableContent(_TrackingPanel, SplittableWidgetInterface):
 @pytest.fixture
 def split_wrapper(qapp, qtbot):
     content = _SplittableContent()
-    wrapper = DetachableWidgetWrapper(content, "Split Actions")
+    capabilities = WidgetCapabilities(
+        split_window=SUPPORTED,
+        compact_mode=COMPACT_DEFERRED,
+        comparison=COMPARISON_DEFERRED,
+    )
+    wrapper = DetachableWidgetWrapper(content, "Split Actions", capabilities=capabilities)
     qtbot.addWidget(wrapper)
     wrapper.show()
     yield wrapper, content
@@ -114,7 +133,7 @@ def test_detach_request_does_not_corrupt_split_state(split_wrapper, qtbot):
 
 
 def test_activate_external_windows_raises_both_split_windows(qtbot):
-    wrapper = DetachableWidgetWrapper(QWidget(), "Split Activation")
+    wrapper = DetachableWidgetWrapper(QWidget(), "Split Activation", capabilities=NO_CAPABILITIES)
     qtbot.addWidget(wrapper)
     display_window = MagicMock()
     control_window = MagicMock()
@@ -135,7 +154,7 @@ def test_activate_external_windows_raises_both_split_windows(qtbot):
 
 
 def test_logs_button_opens_and_activates_shared_viewer(qtbot):
-    wrapper = DetachableWidgetWrapper(QWidget(), "Logs Test")
+    wrapper = DetachableWidgetWrapper(QWidget(), "Logs Test", capabilities=NO_CAPABILITIES)
     qtbot.addWidget(wrapper)
     viewer = MagicMock()
 

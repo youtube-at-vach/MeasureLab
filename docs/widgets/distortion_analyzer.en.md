@@ -35,8 +35,7 @@ This tool measures the following values:
 
 ### Measurement Modes (Mode)
 
-> [!NOTE]
-> During sweep measurements, the system is automatically locked to a single-tone (sine wave) harmonic analysis mode to prevent IMD (Intermodulation Distortion) signals.
+**Note**: During sweep measurements, the system is automatically locked to a single-tone (sine wave) harmonic analysis mode to prevent IMD (Intermodulation Distortion) signals.
 
 #### Real-time
 

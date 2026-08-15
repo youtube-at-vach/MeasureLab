@@ -1,283 +1,475 @@
-"""Lazy-loaded module registrations and their widget capability declarations."""
+"""Module loading metadata and widget feature declarations.
 
-from __future__ import annotations
+This module intentionally avoids importing PyQt or widget implementations so it
+can act as the lightweight source of truth for both runtime loading and tests.
+"""
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
-from src.core import module_constants as module_keys
+from src.core.module_constants import (
+    MODULE_1PPS_MONITOR,
+    MODULE_ADVANCED_DISTORTION_METER,
+    MODULE_ARBITRARY_HARMONIC_GENERATOR,
+    MODULE_BNIM_METER,
+    MODULE_BOXCAR_AVERAGER,
+    MODULE_DISTORTION_ANALYZER,
+    MODULE_EVENT_DETECTOR,
+    MODULE_FEEDFORWARD_COMPENSATOR,
+    MODULE_FREQUENCY_COUNTER,
+    MODULE_GONIOMETER,
+    MODULE_HRTF_PLAYER,
+    MODULE_IMPEDANCE_ANALYZER,
+    MODULE_LINEARITY_ANALYZER,
+    MODULE_LOCK_IN_AMPLIFIER,
+    MODULE_LOCK_IN_FREQUENCY_COUNTER,
+    MODULE_LOCK_IN_HARMONIC_ANALYZER,
+    MODULE_LOCKIN_MODELER,
+    MODULE_LOCKIN_SPECTRUM_FINDER,
+    MODULE_LOOPBACK_FINDER,
+    MODULE_LUFS_METER,
+    MODULE_NETWORK_ANALYZER,
+    MODULE_NOISE_PROFILER,
+    MODULE_NONLINEAR_ANALYZER,
+    MODULE_NONLINEAR_RESPONSE_ANALYZER,
+    MODULE_OSCILLOSCOPE,
+    MODULE_PLOT_COMPARER,
+    MODULE_PROCESSOR_BENCHMARK,
+    MODULE_RAW_TIME_SERIES,
+    MODULE_RECORDER_PLAYER,
+    MODULE_RESPONSE_VIEWER,
+    MODULE_SIGNAL_GENERATOR,
+    MODULE_SOUND_LEVEL_METER,
+    MODULE_SOUND_QUALITY_ANALYZER,
+    MODULE_SPATIAL_BINAURAL_MIXER,
+    MODULE_SPECTROGRAM,
+    MODULE_SPECTRUM_ANALYZER,
+    MODULE_STEREO_ALIGNMENT_MONITOR,
+    MODULE_TIMECODE_MONITOR,
+    MODULE_TRANSIENT_ANALYZER,
+    MODULE_TRANSMISSION_ANALYZER,
+    MODULE_ULTRASOUND_MODULATOR,
+    MODULE_WAVEFORM_LOOP_PLAYER,
+)
 
 
-class CapabilityStatus(Enum):
-    """Implementation status used by the widget capability matrix."""
+class CapabilityStatus(StrEnum):
+    """Whether a widget feature is part of the module's supported contract."""
 
     SUPPORTED = "supported"
-    EXCLUDED_A = "outside_a"
-    EXCLUDED_B = "outside_b"
-    EXCLUDED_C = "outside_c"
-    EXCLUDED_D = "outside_d"
-    EXCLUDED_E = "outside_e"
-    EXCLUDED_F = "outside_f"
+    EXCLUDED = "excluded"
+
+
+class CapabilityExclusionReason(StrEnum):
+    """Reviewed reasons why a widget feature is intentionally unavailable."""
+
+    NO_INDEPENDENT_DISPLAY = "no_independent_display"  # Matrix: 外A
+    NON_TRACE_COMPARISON = "non_trace_comparison"  # Matrix: 外B
+    COMPARISON_RECEIVER = "comparison_receiver"  # Matrix: 外C
+    COMPARISON_DEFERRED = "comparison_deferred"  # Matrix: 外D
+    COMPACT_DEFERRED = "compact_deferred"  # Matrix: 外E
+    SPLIT_DEFERRED = "split_deferred"  # Matrix: 外F
+
+
+@dataclass(frozen=True, slots=True)
+class FeatureCapability:
+    """One explicit supported/excluded decision for a widget feature."""
+
+    status: CapabilityStatus
+    exclusion_reason: CapabilityExclusionReason | None = None
+
+    def __post_init__(self) -> None:
+        if self.status is CapabilityStatus.SUPPORTED and self.exclusion_reason is not None:
+            raise ValueError("Supported capabilities cannot have an exclusion reason")
+        if self.status is CapabilityStatus.EXCLUDED and self.exclusion_reason is None:
+            raise ValueError("Excluded capabilities must have an exclusion reason")
 
     @property
     def is_supported(self) -> bool:
-        return self is CapabilityStatus.SUPPORTED
-
-    @property
-    def matrix_label(self) -> str:
-        if self.is_supported:
-            return "個✓"
-        return {
-            CapabilityStatus.EXCLUDED_A: "外A",
-            CapabilityStatus.EXCLUDED_B: "外B",
-            CapabilityStatus.EXCLUDED_C: "外C",
-            CapabilityStatus.EXCLUDED_D: "外D",
-            CapabilityStatus.EXCLUDED_E: "外E",
-            CapabilityStatus.EXCLUDED_F: "外F",
-        }[self]
+        return self.status is CapabilityStatus.SUPPORTED
 
 
-@dataclass(frozen=True)
+SUPPORTED = FeatureCapability(CapabilityStatus.SUPPORTED)
+NO_INDEPENDENT_DISPLAY = FeatureCapability(
+    CapabilityStatus.EXCLUDED,
+    CapabilityExclusionReason.NO_INDEPENDENT_DISPLAY,
+)
+NON_TRACE_COMPARISON = FeatureCapability(
+    CapabilityStatus.EXCLUDED,
+    CapabilityExclusionReason.NON_TRACE_COMPARISON,
+)
+COMPARISON_RECEIVER = FeatureCapability(
+    CapabilityStatus.EXCLUDED,
+    CapabilityExclusionReason.COMPARISON_RECEIVER,
+)
+COMPARISON_DEFERRED = FeatureCapability(
+    CapabilityStatus.EXCLUDED,
+    CapabilityExclusionReason.COMPARISON_DEFERRED,
+)
+COMPACT_DEFERRED = FeatureCapability(
+    CapabilityStatus.EXCLUDED,
+    CapabilityExclusionReason.COMPACT_DEFERRED,
+)
+SPLIT_DEFERRED = FeatureCapability(
+    CapabilityStatus.EXCLUDED,
+    CapabilityExclusionReason.SPLIT_DEFERRED,
+)
+
+
+@dataclass(frozen=True, slots=True)
 class WidgetCapabilities:
-    """Expected optional UI capabilities for one registered widget."""
+    """Authoritative feature contract for one registered module widget."""
 
-    split: CapabilityStatus
-    compact: CapabilityStatus
-    compare: CapabilityStatus
+    split_window: FeatureCapability
+    compact_mode: FeatureCapability
+    comparison: FeatureCapability
+
+    def __post_init__(self) -> None:
+        allowed_reasons = {
+            "split_window": {
+                CapabilityExclusionReason.NO_INDEPENDENT_DISPLAY,
+                CapabilityExclusionReason.SPLIT_DEFERRED,
+            },
+            "compact_mode": {
+                CapabilityExclusionReason.NO_INDEPENDENT_DISPLAY,
+                CapabilityExclusionReason.COMPACT_DEFERRED,
+            },
+            "comparison": {
+                CapabilityExclusionReason.NO_INDEPENDENT_DISPLAY,
+                CapabilityExclusionReason.NON_TRACE_COMPARISON,
+                CapabilityExclusionReason.COMPARISON_RECEIVER,
+                CapabilityExclusionReason.COMPARISON_DEFERRED,
+            },
+        }
+        for feature_name, allowed in allowed_reasons.items():
+            capability = getattr(self, feature_name)
+            reason = capability.exclusion_reason
+            if reason is not None and reason not in allowed:
+                raise ValueError(f"{reason.value!r} is not a valid exclusion reason for {feature_name}")
 
 
-@dataclass(frozen=True)
-class ModuleSpec:
-    """A lazily imported measurement module and the widget it creates."""
+@dataclass(frozen=True, slots=True)
+class ModuleRegistration:
+    """Lazy-loading metadata plus the widget contract for one module."""
 
     module_path: str
-    module_class_name: str
-    widget_class_name: str
+    class_name: str
     capabilities: WidgetCapabilities
-    note: str = ""
 
 
-S = CapabilityStatus.SUPPORTED
-A = CapabilityStatus.EXCLUDED_A
-B = CapabilityStatus.EXCLUDED_B
-C = CapabilityStatus.EXCLUDED_C
-D = CapabilityStatus.EXCLUDED_D
-E = CapabilityStatus.EXCLUDED_E
-F = CapabilityStatus.EXCLUDED_F
+def _caps(
+    *,
+    split: FeatureCapability,
+    compact: FeatureCapability,
+    comparison: FeatureCapability,
+) -> WidgetCapabilities:
+    return WidgetCapabilities(split_window=split, compact_mode=compact, comparison=comparison)
 
 
-def _spec(
+def _registration(
     module_path: str,
-    module_class_name: str,
-    widget_class_name: str,
-    split: CapabilityStatus,
-    compact: CapabilityStatus,
-    compare: CapabilityStatus,
-    note: str = "",
-) -> ModuleSpec:
-    return ModuleSpec(
-        module_path=module_path,
-        module_class_name=module_class_name,
-        widget_class_name=widget_class_name,
-        capabilities=WidgetCapabilities(split=split, compact=compact, compare=compare),
-        note=note,
-    )
+    class_name: str,
+    *,
+    split: FeatureCapability,
+    compact: FeatureCapability,
+    comparison: FeatureCapability,
+) -> ModuleRegistration:
+    return ModuleRegistration(module_path, class_name, _caps(split=split, compact=compact, comparison=comparison))
 
 
-# Keep this mapping in the same order as ALL_MODULE_KEYS. Besides driving lazy
-# imports, this is the source of truth for optional wrapper capabilities and the
-# generated implementation matrix.
-MODULE_REGISTRY: dict[str, ModuleSpec] = {
-    module_keys.MODULE_SIGNAL_GENERATOR: _spec(
-        "src.gui.widgets.signal_generator", "SignalGenerator", "SignalGeneratorWidget", A, A, A,
-        "独立表示部のない信号生成・出力操作画面",
+MODULE_REGISTRY: dict[str, ModuleRegistration] = {
+    MODULE_SIGNAL_GENERATOR: _registration(
+        "src.gui.widgets.signal_generator",
+        "SignalGenerator",
+        split=NO_INDEPENDENT_DISPLAY,
+        compact=NO_INDEPENDENT_DISPLAY,
+        comparison=NO_INDEPENDENT_DISPLAY,
     ),
-    module_keys.MODULE_SPECTRUM_ANALYZER: _spec(
-        "src.gui.widgets.spectrum_analyzer", "SpectrumAnalyzer", "SpectrumAnalyzerWidget", S, S, S,
-        "個別機能 3 種すべてに対応",
+    MODULE_SPECTRUM_ANALYZER: _registration(
+        "src.gui.widgets.spectrum_analyzer",
+        "SpectrumAnalyzer",
+        split=SUPPORTED,
+        compact=SUPPORTED,
+        comparison=SUPPORTED,
     ),
-    module_keys.MODULE_SOUND_LEVEL_METER: _spec(
-        "src.gui.widgets.sound_level_meter", "SoundLevelMeter", "SoundLevelMeterWidget", S, S, D
+    MODULE_SOUND_LEVEL_METER: _registration(
+        "src.gui.widgets.sound_level_meter",
+        "SoundLevelMeter",
+        split=SUPPORTED,
+        compact=SUPPORTED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_LUFS_METER: _spec(
-        "src.gui.widgets.lufs_meter", "LufsMeter", "LufsMeterWidget", S, S, D
+    MODULE_LUFS_METER: _registration(
+        "src.gui.widgets.lufs_meter",
+        "LufsMeter",
+        split=SUPPORTED,
+        compact=SUPPORTED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_LOOPBACK_FINDER: _spec(
-        "src.gui.widgets.loopback_finder", "LoopbackFinder", "LoopbackFinderWidget", F, E, B,
-        "比較対象は接続マトリクス表。結果表の表示専用化はレビューによりひとまず対象外",
+    MODULE_LOOPBACK_FINDER: _registration(
+        "src.gui.widgets.loopback_finder",
+        "LoopbackFinder",
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=NON_TRACE_COMPARISON,
     ),
-    module_keys.MODULE_DISTORTION_ANALYZER: _spec(
-        "src.gui.widgets.distortion_analyzer", "DistortionAnalyzer", "DistortionAnalyzerWidget", F, E, S
+    MODULE_DISTORTION_ANALYZER: _registration(
+        "src.gui.widgets.distortion_analyzer",
+        "DistortionAnalyzer",
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=SUPPORTED,
     ),
-    module_keys.MODULE_ADVANCED_DISTORTION_METER: _spec(
+    MODULE_ADVANCED_DISTORTION_METER: _registration(
         "src.gui.widgets.advanced_distortion_meter",
         "AdvancedDistortionMeter",
-        "AdvancedDistortionMeterWidget",
-        F,
-        E,
-        D,
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_NETWORK_ANALYZER: _spec(
-        "src.gui.widgets.network_analyzer", "NetworkAnalyzer", "NetworkAnalyzerWidget", F, E, S
+    MODULE_NETWORK_ANALYZER: _registration(
+        "src.gui.widgets.network_analyzer",
+        "NetworkAnalyzer",
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=SUPPORTED,
     ),
-    module_keys.MODULE_OSCILLOSCOPE: _spec(
-        "src.gui.widgets.oscilloscope", "Oscilloscope", "OscilloscopeWidget", S, S, S,
-        "個別機能 3 種すべてに対応",
+    MODULE_OSCILLOSCOPE: _registration(
+        "src.gui.widgets.oscilloscope",
+        "Oscilloscope",
+        split=SUPPORTED,
+        compact=SUPPORTED,
+        comparison=SUPPORTED,
     ),
-    module_keys.MODULE_RAW_TIME_SERIES: _spec(
-        "src.gui.widgets.raw_time_series", "RawTimeSeries", "RawTimeSeriesWidget", S, S, D
+    MODULE_RAW_TIME_SERIES: _registration(
+        "src.gui.widgets.raw_time_series",
+        "RawTimeSeries",
+        split=SUPPORTED,
+        compact=SUPPORTED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_EVENT_DETECTOR: _spec(
-        "src.gui.widgets.event_detector", "EventDetector", "EventDetectorWidget", S, S, D
+    MODULE_EVENT_DETECTOR: _registration(
+        "src.gui.widgets.event_detector",
+        "EventDetector",
+        split=SUPPORTED,
+        compact=SUPPORTED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_LOCK_IN_AMPLIFIER: _spec(
-        "src.gui.widgets.lock_in_amplifier", "LockInAmplifier", "LockInAmplifierWidget", F, E, S
+    MODULE_LOCK_IN_AMPLIFIER: _registration(
+        "src.gui.widgets.lock_in_amplifier",
+        "LockInAmplifier",
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=SUPPORTED,
     ),
-    module_keys.MODULE_LOCK_IN_HARMONIC_ANALYZER: _spec(
+    MODULE_LOCK_IN_HARMONIC_ANALYZER: _registration(
         "src.gui.widgets.lockin_harmonic_analyzer",
         "LockInHarmonicAnalyzer",
-        "LockInHarmonicWidget",
-        F,
-        E,
-        D,
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_ARBITRARY_HARMONIC_GENERATOR: _spec(
+    MODULE_ARBITRARY_HARMONIC_GENERATOR: _registration(
         "src.gui.widgets.arbitrary_harmonic_generator",
         "ArbitraryHarmonicGenerator",
-        "ArbitraryHarmonicWidget",
-        F,
-        E,
-        D,
-        "生成プレビューの比較価値はレビューによりひとまず対象外",
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_LOCKIN_SPECTRUM_FINDER: _spec(
-        "src.gui.widgets.lockin_spectrum_finder", "LockInSpectrumFinder", "LockInSpectrumFinderWidget", S, E, D
+    MODULE_LOCKIN_SPECTRUM_FINDER: _registration(
+        "src.gui.widgets.lockin_spectrum_finder",
+        "LockInSpectrumFinder",
+        split=SUPPORTED,
+        compact=COMPACT_DEFERRED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_FREQUENCY_COUNTER: _spec(
-        "src.gui.widgets.frequency_counter", "FrequencyCounter", "FrequencyCounterWidget", F, S, D
+    MODULE_FREQUENCY_COUNTER: _registration(
+        "src.gui.widgets.frequency_counter",
+        "FrequencyCounter",
+        split=SPLIT_DEFERRED,
+        compact=SUPPORTED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_LOCK_IN_FREQUENCY_COUNTER: _spec(
+    MODULE_LOCK_IN_FREQUENCY_COUNTER: _registration(
         "src.gui.widgets.lock_in_frequency_counter",
         "LockInFrequencyCounter",
-        "LockInFrequencyCounterWidget",
-        F,
-        E,
-        D,
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_SPECTROGRAM: _spec(
-        "src.gui.widgets.spectrogram", "Spectrogram", "SpectrogramWidget", S, S, B,
-        "比較対象は時間×周波数の 2D 画像",
+    MODULE_SPECTROGRAM: _registration(
+        "src.gui.widgets.spectrogram",
+        "Spectrogram",
+        split=SUPPORTED,
+        compact=SUPPORTED,
+        comparison=NON_TRACE_COMPARISON,
     ),
-    module_keys.MODULE_BOXCAR_AVERAGER: _spec(
-        "src.gui.widgets.boxcar_averager", "BoxcarAverager", "BoxcarAveragerWidget", F, E, D
+    MODULE_BOXCAR_AVERAGER: _registration(
+        "src.gui.widgets.boxcar_averager",
+        "BoxcarAverager",
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_GONIOMETER: _spec(
-        "src.gui.widgets.goniometer", "Goniometer", "GoniometerWidget", S, S, D
+    MODULE_GONIOMETER: _registration(
+        "src.gui.widgets.goniometer",
+        "Goniometer",
+        split=SUPPORTED,
+        compact=SUPPORTED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_IMPEDANCE_ANALYZER: _spec(
-        "src.gui.widgets.impedance_analyzer", "ImpedanceAnalyzer", "ImpedanceAnalyzerWidget", F, E, D
+    MODULE_IMPEDANCE_ANALYZER: _registration(
+        "src.gui.widgets.impedance_analyzer",
+        "ImpedanceAnalyzer",
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_NOISE_PROFILER: _spec(
-        "src.gui.widgets.noise_profiler", "NoiseProfiler", "NoiseProfilerWidget", S, S, D
+    MODULE_NOISE_PROFILER: _registration(
+        "src.gui.widgets.noise_profiler",
+        "NoiseProfiler",
+        split=SUPPORTED,
+        compact=SUPPORTED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_RECORDER_PLAYER: _spec(
-        "src.gui.widgets.recorder_player", "RecorderPlayer", "RecorderPlayerWidget", A, A, A,
-        "独立表示部のない録音・再生操作画面",
+    MODULE_RECORDER_PLAYER: _registration(
+        "src.gui.widgets.recorder_player",
+        "RecorderPlayer",
+        split=NO_INDEPENDENT_DISPLAY,
+        compact=NO_INDEPENDENT_DISPLAY,
+        comparison=NO_INDEPENDENT_DISPLAY,
     ),
-    module_keys.MODULE_WAVEFORM_LOOP_PLAYER: _spec(
-        "src.gui.widgets.waveform_loop_player", "WaveformLoopPlayer", "WaveformLoopPlayerWidget", F, E, D,
-        "波形は選択・再生操作にも使うため、分離はレビューによりひとまず対象外",
+    MODULE_WAVEFORM_LOOP_PLAYER: _registration(
+        "src.gui.widgets.waveform_loop_player",
+        "WaveformLoopPlayer",
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_TRANSIENT_ANALYZER: _spec(
-        "src.gui.widgets.transient_analyzer", "TransientAnalyzer", "TransientAnalyzerWidget", F, E, D
+    MODULE_TRANSIENT_ANALYZER: _registration(
+        "src.gui.widgets.transient_analyzer",
+        "TransientAnalyzer",
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_SOUND_QUALITY_ANALYZER: _spec(
-        "src.gui.widgets.sound_quality_analyzer", "SoundQualityAnalyzer", "SoundQualityAnalyzerWidget", F, E, D
+    MODULE_SOUND_QUALITY_ANALYZER: _registration(
+        "src.gui.widgets.sound_quality_analyzer",
+        "SoundQualityAnalyzer",
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_TIMECODE_MONITOR: _spec(
-        "src.gui.widgets.timecode_monitor", "TimecodeMonitor", "TimecodeMonitorWidget", F, S, B,
-        "比較対象は時刻・同期状態の数値表示",
+    MODULE_TIMECODE_MONITOR: _registration(
+        "src.gui.widgets.timecode_monitor",
+        "TimecodeMonitor",
+        split=SPLIT_DEFERRED,
+        compact=SUPPORTED,
+        comparison=NON_TRACE_COMPARISON,
     ),
-    module_keys.MODULE_BNIM_METER: _spec(
-        "src.gui.widgets.bnim_meter", "BNIMMeter", "BNIMMeterWidget", S, S, D
+    MODULE_BNIM_METER: _registration(
+        "src.gui.widgets.bnim_meter",
+        "BNIMMeter",
+        split=SUPPORTED,
+        compact=SUPPORTED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_HRTF_PLAYER: _spec(
-        "src.gui.widgets.hrtf_player", "HRTFPlayer", "HRTFPlayerWidget", F, E, B,
-        "比較対象は方向×指標の 2D ヒートマップ",
+    MODULE_HRTF_PLAYER: _registration(
+        "src.gui.widgets.hrtf_player",
+        "HRTFPlayer",
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=NON_TRACE_COMPARISON,
     ),
-    module_keys.MODULE_ULTRASOUND_MODULATOR: _spec(
-        "src.gui.widgets.ultrasound_modulator", "UltrasoundModulator", "UltrasoundModulatorWidget", A, A, A,
-        "独立表示部のない変調・出力操作画面",
+    MODULE_ULTRASOUND_MODULATOR: _registration(
+        "src.gui.widgets.ultrasound_modulator",
+        "UltrasoundModulator",
+        split=NO_INDEPENDENT_DISPLAY,
+        compact=NO_INDEPENDENT_DISPLAY,
+        comparison=NO_INDEPENDENT_DISPLAY,
     ),
-    module_keys.MODULE_LINEARITY_ANALYZER: _spec(
-        "src.gui.widgets.linearity_analyzer", "LinearityAnalyzer", "LinearityAnalyzerWidget", F, E, D
+    MODULE_LINEARITY_ANALYZER: _registration(
+        "src.gui.widgets.linearity_analyzer",
+        "LinearityAnalyzer",
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_1PPS_MONITOR: _spec(
-        "src.gui.widgets.one_pps_monitor", "OnePPSMonitor", "OnePPSMonitorWidget", F, E, D
+    MODULE_1PPS_MONITOR: _registration(
+        "src.gui.widgets.one_pps_monitor",
+        "OnePPSMonitor",
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_STEREO_ALIGNMENT_MONITOR: _spec(
+    MODULE_STEREO_ALIGNMENT_MONITOR: _registration(
         "src.gui.widgets.stereo_alignment_monitor",
         "StereoAlignmentMonitor",
-        "StereoAlignmentMonitorWidget",
-        F,
-        S,
-        D,
+        split=SPLIT_DEFERRED,
+        compact=SUPPORTED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_SPATIAL_BINAURAL_MIXER: _spec(
+    MODULE_SPATIAL_BINAURAL_MIXER: _registration(
         "src.gui.widgets.spatial_binaural_mixer",
         "SpatialBinauralMixer",
-        "SpatialBinauralMixerWidget",
-        A,
-        A,
-        A,
-        "独立表示部のないオフライン・レンダリング操作画面",
+        split=NO_INDEPENDENT_DISPLAY,
+        compact=NO_INDEPENDENT_DISPLAY,
+        comparison=NO_INDEPENDENT_DISPLAY,
     ),
-    module_keys.MODULE_PROCESSOR_BENCHMARK: _spec(
-        "src.gui.widgets.processor_benchmark", "ProcessorBenchmark", "ProcessorBenchmarkWidget", F, E, D
+    MODULE_PROCESSOR_BENCHMARK: _registration(
+        "src.gui.widgets.processor_benchmark",
+        "ProcessorBenchmark",
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_PLOT_COMPARER: _spec(
-        "src.gui.widgets.plot_comparer", "PlotComparer", "PlotComparerWidget", F, E, C,
-        "比較データの受信・表示側",
+    MODULE_PLOT_COMPARER: _registration(
+        "src.gui.widgets.plot_comparer",
+        "PlotComparer",
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=COMPARISON_RECEIVER,
     ),
-    module_keys.MODULE_TRANSMISSION_ANALYZER: _spec(
+    MODULE_TRANSMISSION_ANALYZER: _registration(
         "src.gui.widgets.transmission_analyzer",
         "TransmissionAnalyzer",
-        "TransmissionAnalyzerWidget",
-        F,
-        S,
-        D,
+        split=SPLIT_DEFERRED,
+        compact=SUPPORTED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_NONLINEAR_ANALYZER: _spec(
-        "src.gui.widgets.nonlinear_analyzer", "NonlinearAnalyzer", "NonlinearAnalyzerWidget", F, E, D
+    MODULE_NONLINEAR_ANALYZER: _registration(
+        "src.gui.widgets.nonlinear_analyzer",
+        "NonlinearAnalyzer",
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_LOCKIN_MODELER: _spec(
-        "src.gui.widgets.lock_in_modeler", "LockInModeler", "LockInModelerWidget", F, E, D
+    MODULE_LOCKIN_MODELER: _registration(
+        "src.gui.widgets.lock_in_modeler",
+        "LockInModeler",
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_RESPONSE_VIEWER: _spec(
-        "src.gui.widgets.response_viewer", "ResponseViewer", "ResponseViewerWidget", F, E, D
+    MODULE_RESPONSE_VIEWER: _registration(
+        "src.gui.widgets.response_viewer",
+        "ResponseViewer",
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_FEEDFORWARD_COMPENSATOR: _spec(
+    MODULE_FEEDFORWARD_COMPENSATOR: _registration(
         "src.gui.widgets.feedforward_compensator",
         "FeedforwardCompensator",
-        "FeedforwardCompensatorWidget",
-        F,
-        E,
-        D,
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=COMPARISON_DEFERRED,
     ),
-    module_keys.MODULE_NONLINEAR_RESPONSE_ANALYZER: _spec(
+    MODULE_NONLINEAR_RESPONSE_ANALYZER: _registration(
         "src.gui.widgets.nonlinear_response_analyzer",
         "NonlinearResponseAnalyzer",
-        "NonlinearResponseAnalyzerWidget",
-        F,
-        E,
-        D,
-        "実験的モジュール",
+        split=SPLIT_DEFERRED,
+        compact=COMPACT_DEFERRED,
+        comparison=COMPARISON_DEFERRED,
     ),
 }
-
-
-def get_module_spec(module_key: str) -> ModuleSpec:
-    try:
-        return MODULE_REGISTRY[module_key]
-    except KeyError as exc:
-        raise KeyError(f"Unknown module key: {module_key}") from exc

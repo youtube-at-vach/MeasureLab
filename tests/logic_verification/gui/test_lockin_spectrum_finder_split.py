@@ -8,6 +8,8 @@ from PyQt6 import sip
 from PyQt6.QtWidgets import QWidget
 
 from src.core.config_manager import ConfigManager
+from src.core.module_constants import MODULE_LOCKIN_SPECTRUM_FINDER
+from src.gui.module_registry import MODULE_REGISTRY
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 from src.gui.widgets.lockin_spectrum_finder import LockInSpectrumFinder, LockInSpectrumFinderWidget
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
@@ -40,7 +42,11 @@ def lockin_widget(qapp, tmp_path, monkeypatch):
 
 @pytest.fixture
 def lockin_wrapper(lockin_widget, qapp):
-    wrapper = DetachableWidgetWrapper(lockin_widget, "Lock-in Spectrum Finder")
+    wrapper = DetachableWidgetWrapper(
+        lockin_widget,
+        "Lock-in Spectrum Finder",
+        capabilities=MODULE_REGISTRY[MODULE_LOCKIN_SPECTRUM_FINDER].capabilities,
+    )
     wrapper.show()
     yield wrapper
 

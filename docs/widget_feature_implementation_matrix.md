@@ -14,9 +14,9 @@ Nonlinear Response Analyzer は実験的モジュールですが、実装漏れ�
 判定は次のコード上の事実に基づきます。
 
 - 全モジュール共通機能: `DetachableWidgetWrapper` から常に提供されるか
-- コンパクトモード: `CompactableWidgetInterface` とレイアウト更新処理があるか
-- 2 窓分割: `SplittableWidgetInterface` と表示、操作、復元の 3 処理があるか
-- 比較送信: `ComparableWidgetInterface` と比較データ生成処理があるか
+- コンパクトモード: `WidgetCapabilities` の宣言と `CompactableWidgetInterface`、レイアウト更新処理が一致するか
+- 2 窓分割: `WidgetCapabilities` の宣言と `SplittableWidgetInterface`、表示、操作、復元の 3 処理が一致するか
+- 比較送信: `WidgetCapabilities` の宣言と `ComparableWidgetInterface`、比較データ生成処理が一致するか
 - テスト: 対象機能を直接操作する自動テストが存在し、今回の調査で成功したか
 
 ## ステータスの見方
@@ -78,48 +78,48 @@ Nonlinear Response Analyzer は実験的モジュールですが、実装漏れ�
 
 |完了|ウィジェット|単一窓分離|2 窓分割|コンパクト|比較送信|撮影|ログ|備考|
 |:---:|---|:---:|:---:|:---:|:---:|:---:|:---:|---|
-|✓|Signal Generator|共✓|外A|外A|外A|共✓|共✓|独立表示部のない信号生成・出力操作画面|
-|✓|Spectrum Analyzer|共✓|個✓|個✓|個✓|共✓|共✓|個別機能 3 種すべてに対応|
-|✓|Sound Level Meter|共✓|個✓|個✓|外D|共✓|共✓||
-|✓|LUFS Meter|共✓|個✓|個✓|外D|共✓|共✓||
-|✓|Loopback Finder|共✓|外F|外E|外B|共✓|共✓|比較対象は接続マトリクス表。結果表の表示専用化はレビューによりひとまず対象外|
-|✓|Distortion Analyzer|共✓|外F|外E|個✓|共✓|共✓||
-|✓|Advanced Distortion Meter|共✓|外F|外E|外D|共✓|共✓||
-|✓|Network Analyzer|共✓|外F|外E|個✓|共✓|共✓||
-|✓|Oscilloscope|共✓|個✓|個✓|個✓|共✓|共✓|個別機能 3 種すべてに対応|
-|✓|Raw Time Series|共✓|個✓|個✓|外D|共✓|共✓||
-|✓|Event Detector|共✓|個✓|個✓|外D|共✓|共✓||
-|✓|Lock-in Amplifier|共✓|外F|外E|個✓|共✓|共✓||
-|✓|Lock-in Harmonic Analyzer|共✓|外F|外E|外D|共✓|共✓||
-|✓|Arbitrary Harmonic Generator|共✓|外F|外E|外D|共✓|共✓|生成プレビューの比較価値はレビューによりひとまず対象外|
-|✓|Lock-in Spectrum Finder|共✓|個✓|外E|外D|共✓|共✓||
-|✓|Frequency Counter|共✓|外F|個✓|外D|共✓|共✓||
-|✓|Lock-in Frequency Counter|共✓|外F|外E|外D|共✓|共✓||
-|✓|Spectrogram|共✓|個✓|個✓|外B|共✓|共✓|比較対象は時間×周波数の 2D 画像|
-|✓|Boxcar Averager|共✓|外F|外E|外D|共✓|共✓||
-|✓|Goniometer|共✓|個✓|個✓|外D|共✓|共✓||
-|✓|Impedance Analyzer|共✓|外F|外E|外D|共✓|共✓||
-|✓|Noise Profiler|共✓|個✓|個✓|外D|共✓|共✓||
-|✓|Recorder / Player|共✓|外A|外A|外A|共✓|共✓|独立表示部のない録音・再生操作画面|
-|✓|Waveform Loop Player|共✓|外F|外E|外D|共✓|共✓|波形は選択・再生操作にも使うため、分離はレビューによりひとまず対象外|
-|✓|Transient Analyzer|共✓|外F|外E|外D|共✓|共✓||
-|✓|Sound Quality Analyzer|共✓|外F|外E|外D|共✓|共✓||
-|✓|Timecode Monitor & Generator|共✓|外F|個✓|外B|共✓|共✓|比較対象は時刻・同期状態の数値表示|
-|✓|BNIM Meter|共✓|個✓|個✓|外D|共✓|共✓||
-|✓|HRTF Player|共✓|外F|外E|外B|共✓|共✓|比較対象は方向×指標の 2D ヒートマップ|
-|✓|Ultrasound AM Modulator|共✓|外A|外A|外A|共✓|共✓|独立表示部のない変調・出力操作画面|
-|✓|Linearity Analyzer|共✓|外F|外E|外D|共✓|共✓||
-|✓|1PPS Monitor|共✓|外F|外E|外D|共✓|共✓||
-|✓|Stereo Alignment Monitor|共✓|外F|個✓|外D|共✓|共✓||
-|✓|Spatial Binaural Mixer|共✓|外A|外A|外A|共✓|共✓|独立表示部のないオフライン・レンダリング操作画面|
-|✓|Processor Benchmark|共✓|外F|外E|外D|共✓|共✓||
-|✓|Plot Comparer|共✓|外F|外E|外C|共✓|共✓|比較データの受信・表示側|
-|✓|Transmission Analyzer|共✓|外F|個✓|外D|共✓|共✓||
-|✓|Nonlinear Analyzer|共✓|外F|外E|外D|共✓|共✓||
-|✓|Lock-in Modeler|共✓|外F|外E|外D|共✓|共✓||
-|✓|Response Viewer|共✓|外F|外E|外D|共✓|共✓||
-|✓|Feedforward Compensator|共✓|外F|外E|外D|共✓|共✓||
-|✓|Nonlinear Response Analyzer|共✓|外F|外E|外D|共✓|共✓|実験的モジュール|
+|✓|Signal Generator|共✓|外A|外A|外A|共✓|共✓|独立表示部なし|
+|✓|Spectrum Analyzer|共✓|個✓|個✓|個✓|共✓|共✓||
+|✓|Sound Level Meter|共✓|個✓|個✓|外D|共✓|共✓|比較送信は未実装|
+|✓|LUFS Meter|共✓|個✓|個✓|外D|共✓|共✓|比較送信は未実装|
+|✓|Loopback Finder|共✓|外F|外E|外B|共✓|共✓|比較対象がトレースではない、コンパクトは未実装、2 窓分割は未実装|
+|✓|Distortion Analyzer|共✓|外F|外E|個✓|共✓|共✓|コンパクトは未実装、2 窓分割は未実装|
+|✓|Advanced Distortion Meter|共✓|外F|外E|外D|共✓|共✓|比較送信は未実装、コンパクトは未実装、2 窓分割は未実装|
+|✓|Network Analyzer|共✓|外F|外E|個✓|共✓|共✓|コンパクトは未実装、2 窓分割は未実装|
+|✓|Oscilloscope|共✓|個✓|個✓|個✓|共✓|共✓||
+|✓|Raw Time Series|共✓|個✓|個✓|外D|共✓|共✓|比較送信は未実装|
+|✓|Event Detector|共✓|個✓|個✓|外D|共✓|共✓|比較送信は未実装|
+|✓|Lock-in Amplifier|共✓|外F|外E|個✓|共✓|共✓|コンパクトは未実装、2 窓分割は未実装|
+|✓|Lock-in Harmonic Analyzer|共✓|外F|外E|外D|共✓|共✓|比較送信は未実装、コンパクトは未実装、2 窓分割は未実装|
+|✓|Arbitrary Harmonic Generator|共✓|外F|外E|外D|共✓|共✓|比較送信は未実装、コンパクトは未実装、2 窓分割は未実装|
+|✓|Lock-in Spectrum Finder|共✓|個✓|外E|外D|共✓|共✓|比較送信は未実装、コンパクトは未実装|
+|✓|Frequency Counter|共✓|外F|個✓|外D|共✓|共✓|比較送信は未実装、2 窓分割は未実装|
+|✓|Lock-in Frequency Counter|共✓|外F|外E|外D|共✓|共✓|比較送信は未実装、コンパクトは未実装、2 窓分割は未実装|
+|✓|Spectrogram|共✓|個✓|個✓|外B|共✓|共✓|比較対象がトレースではない|
+|✓|Boxcar Averager|共✓|外F|外E|外D|共✓|共✓|比較送信は未実装、コンパクトは未実装、2 窓分割は未実装|
+|✓|Goniometer|共✓|個✓|個✓|外D|共✓|共✓|比較送信は未実装|
+|✓|Impedance Analyzer|共✓|外F|外E|外D|共✓|共✓|比較送信は未実装、コンパクトは未実装、2 窓分割は未実装|
+|✓|Noise Profiler|共✓|個✓|個✓|外D|共✓|共✓|比較送信は未実装|
+|✓|Recorder / Player|共✓|外A|外A|外A|共✓|共✓|独立表示部なし|
+|✓|Waveform Loop Player|共✓|外F|外E|外D|共✓|共✓|比較送信は未実装、コンパクトは未実装、2 窓分割は未実装|
+|✓|Transient Analyzer|共✓|外F|外E|外D|共✓|共✓|比較送信は未実装、コンパクトは未実装、2 窓分割は未実装|
+|✓|Sound Quality Analyzer|共✓|外F|外E|外D|共✓|共✓|比較送信は未実装、コンパクトは未実装、2 窓分割は未実装|
+|✓|Timecode Monitor & Generator|共✓|外F|個✓|外B|共✓|共✓|比較対象がトレースではない、2 窓分割は未実装|
+|✓|BNIM Meter|共✓|個✓|個✓|外D|共✓|共✓|比較送信は未実装|
+|✓|HRTF Player|共✓|外F|外E|外B|共✓|共✓|比較対象がトレースではない、コンパクトは未実装、2 窓分割は未実装|
+|✓|Ultrasound AM Modulator|共✓|外A|外A|外A|共✓|共✓|独立表示部なし|
+|✓|Linearity Analyzer|共✓|外F|外E|外D|共✓|共✓|比較送信は未実装、コンパクトは未実装、2 窓分割は未実装|
+|✓|1PPS Monitor|共✓|外F|外E|外D|共✓|共✓|比較送信は未実装、コンパクトは未実装、2 窓分割は未実装|
+|✓|Stereo Alignment Monitor|共✓|外F|個✓|外D|共✓|共✓|比較送信は未実装、2 窓分割は未実装|
+|✓|Spatial Binaural Mixer|共✓|外A|外A|外A|共✓|共✓|独立表示部なし|
+|✓|Processor Benchmark|共✓|外F|外E|外D|共✓|共✓|比較送信は未実装、コンパクトは未実装、2 窓分割は未実装|
+|✓|Plot Comparer|共✓|外F|外E|外C|共✓|共✓|比較データの受信・表示側、コンパクトは未実装、2 窓分割は未実装|
+|✓|Transmission Analyzer|共✓|外F|個✓|外D|共✓|共✓|比較送信は未実装、2 窓分割は未実装|
+|✓|Nonlinear Analyzer|共✓|外F|外E|外D|共✓|共✓|比較送信は未実装、コンパクトは未実装、2 窓分割は未実装|
+|✓|Lock-in Modeler|共✓|外F|外E|外D|共✓|共✓|比較送信は未実装、コンパクトは未実装、2 窓分割は未実装|
+|✓|Response Viewer|共✓|外F|外E|外D|共✓|共✓|比較送信は未実装、コンパクトは未実装、2 窓分割は未実装|
+|✓|Feedforward Compensator|共✓|外F|外E|外D|共✓|共✓|比較送信は未実装、コンパクトは未実装、2 窓分割は未実装|
+|✓|Nonlinear Response Analyzer|共✓|外F|外E|外D|共✓|共✓|比較送信は未実装、コンパクトは未実装、2 窓分割は未実装|
 
 <!-- END GENERATED: MODULES -->
 
@@ -151,18 +151,19 @@ Logs はモジュール固有ログではなく、共通のシングルトンロ
 - Menu Only からの分離起動: 未分離のモジュールをダブルクリックすると State B で開く
 - Menu Only からの再表示: State B は独立ウィンドウ、State C は表示・操作の両ウィンドウを前面化
 - グローバル出力先: Physical、Internal Loopback、Loopback + Physical を共通選択
-- 遅延ロード: 選択時にモジュールとウィジェットを生成し、同じ共通ラッパーで包む
+- モジュール生成: 通常起動ではスプラッシュ表示中に全対象モジュールを事前ロードし、未生成の場合は
+  選択時に遅延ロードする。どちらの経路でも同じ共通ラッパーで包む
 - アクティビティ表示: 実行中モジュールをサイドバーで強調し、State B／State C をツールチップへ表示
 
 ## 実装漏れ防止の仕組み
 
 ### 能力宣言の正本
 
-- `src/gui/module_registry.py` の `ModuleSpec` と `WidgetCapabilities` が、遅延ロード情報、
+- `src/gui/module_registry.py` の `ModuleRegistration` と `WidgetCapabilities` が、遅延ロード情報、
   対応機能、対象外理由の正本です。
 - 共通ラッパーはメインアプリから能力宣言を受け取り、宣言とインターフェース実装が異なる場合は
   明示的なエラーにします。`hasattr()` による暗黙の機能推定は使用しません。
-- 契約テストは `ALL_MODULE_KEYS` の全42モジュールについて、登録漏れ、対応数、インターフェース、
+- 契約テストは `ALL_MODULE_KEYS` の全 42 モジュールについて、登録漏れ、対応数、インターフェース、
   必須メソッドのオーバーライドを検査します。
 - 本文書のサマリーとモジュール別マトリクスは `scripts/generate_widget_feature_matrix.py` で生成します。
   `--check` により宣言と文書のずれを検出できます。
@@ -205,8 +206,8 @@ Ruff、Mypy、翻訳キー、Markdown lint、UI サイズ上限、マトリク�
 - モジュール登録と能力宣言の正本: `src/gui/module_registry.py`
 - モジュール名の正本: `src/core/module_constants.py`
 - 分離、分割、撮影、ログ、比較送信: `src/gui/widgets/detachable_wrapper.py`
+- 全モジュール契約テスト: `tests/logic_verification/gui/test_widget_capabilities.py`
 - コンパクト契約: `src/gui/widgets/compactable_interface.py`
 - 2 窓分割契約: `src/gui/widgets/splittable_interface.py`
 - 比較送信契約: `src/gui/widgets/comparable_interface.py`
 - マトリクス生成: `scripts/generate_widget_feature_matrix.py`
-- 能力宣言の契約テスト: `tests/logic_verification/gui/test_widget_capabilities.py`

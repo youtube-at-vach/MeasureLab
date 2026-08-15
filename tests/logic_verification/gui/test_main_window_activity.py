@@ -4,7 +4,15 @@ from unittest.mock import MagicMock
 
 from src.core.localization import tr
 from src.gui.main_window import MainWindow
+from src.gui.module_registry import NO_INDEPENDENT_DISPLAY, WidgetCapabilities
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
+
+
+NO_CAPABILITIES = WidgetCapabilities(
+    split_window=NO_INDEPENDENT_DISPLAY,
+    compact_mode=NO_INDEPENDENT_DISPLAY,
+    comparison=NO_INDEPENDENT_DISPLAY,
+)
 
 
 class _DummyModule:
@@ -111,7 +119,7 @@ def test_build_module_activity_tooltip(qtbot):
 
 def test_menu_only_double_click_raises_both_split_windows(qtbot):
     window = _build_window_stub(qtbot)
-    wrapper = DetachableWidgetWrapper(QWidget(), "Split Module")
+    wrapper = DetachableWidgetWrapper(QWidget(), "Split Module", capabilities=NO_CAPABILITIES)
     qtbot.addWidget(wrapper)
     display_window = MagicMock()
     control_window = MagicMock()

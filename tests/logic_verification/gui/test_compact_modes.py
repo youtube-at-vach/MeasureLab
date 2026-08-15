@@ -10,6 +10,8 @@ from src.gui.widgets.raw_time_series import RawTimeSeries, RawTimeSeriesWidget
 from src.gui.widgets.bnim_meter import BNIMMeter, BNIMMeterWidget
 from src.gui.widgets.sound_level_meter import SoundLevelMeter, SoundLevelMeterWidget
 from src.gui.widgets.noise_profiler import NoiseProfiler, NoiseProfilerWidget
+from src.core.module_constants import MODULE_SOUND_LEVEL_METER
+from src.gui.module_registry import MODULE_REGISTRY
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
@@ -163,7 +165,11 @@ def test_detachable_wrapper_compact_btn(qtbot):
     engine = MockAudioEngine()
     module = SoundLevelMeter(engine)
     widget = SoundLevelMeterWidget(module)
-    wrapper = DetachableWidgetWrapper(widget, "Test Widget")
+    wrapper = DetachableWidgetWrapper(
+        widget,
+        "Test Widget",
+        capabilities=MODULE_REGISTRY[MODULE_SOUND_LEVEL_METER].capabilities,
+    )
     qtbot.addWidget(wrapper)
 
     # Initially, it is not detached, so compact button should be disabled
