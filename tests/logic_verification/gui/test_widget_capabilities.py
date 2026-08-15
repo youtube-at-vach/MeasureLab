@@ -147,7 +147,7 @@ def test_wrapper_uses_declarations_instead_of_duck_typing(qtbot):
 
     assert wrapper.compact_btn is None
     assert wrapper.split_btn is None
-    assert wrapper.compare_btn is None
+    assert wrapper.compare_action is None
 
     wrapper.detach()
     assert wrapper.independent_window is not None
@@ -161,7 +161,7 @@ def test_supported_declarations_drive_wrapper_and_independent_window(qtbot):
 
     assert wrapper.compact_btn is not None
     assert wrapper.split_btn is not None
-    assert wrapper.compare_btn is not None
+    assert wrapper.compare_action is not None
 
     wrapper.detach()
     assert wrapper.independent_window is not None

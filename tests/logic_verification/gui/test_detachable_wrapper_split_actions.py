@@ -3,7 +3,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QWidget
 
@@ -153,15 +153,64 @@ def test_activate_external_windows_raises_both_split_windows(qtbot):
         wrapper.split_control_window = None
 
 
-def test_logs_button_opens_and_activates_shared_viewer(qtbot):
+def test_logs_action_opens_and_activates_shared_viewer(qtbot):
     wrapper = DetachableWidgetWrapper(QWidget(), "Logs Test", capabilities=NO_CAPABILITIES)
     qtbot.addWidget(wrapper)
     viewer = MagicMock()
 
     with patch("src.gui.widgets.log_viewer.LogViewerWindow.get_instance", return_value=viewer) as get_instance:
-        wrapper.logs_btn.click()
+        wrapper.logs_action.trigger()
 
     get_instance.assert_called_once_with()
     viewer.show.assert_called_once_with()
     viewer.raise_.assert_called_once_with()
     viewer.activateWindow.assert_called_once_with()
+
+
+def test_more_menu_contains_comparison_only_when_supported(qtbot):
+    plain_wrapper = DetachableWidgetWrapper(QWidget(), "Plain", capabilities=NO_CAPABILITIES)
+    qtbot.addWidget(plain_wrapper)
+    assert plain_wrapper.logs_action in plain_wrapper.more_menu.actions()
+    assert plain_wrapper.compare_action is None
+
+    comparable_capabilities = WidgetCapabilities(
+        split_window=NO_INDEPENDENT_DISPLAY,
+        compact_mode=NO_INDEPENDENT_DISPLAY,
+        comparison=SUPPORTED,
+    )
+
+    from src.gui.widgets.comparable_interface import ComparableWidgetInterface
+
+    class _ComparableContent(QWidget, ComparableWidgetInterface):
+        def get_comparable_data(self):
+            return []
+
+    comparable_wrapper = DetachableWidgetWrapper(
+        _ComparableContent(),
+        "Comparable",
+        capabilities=comparable_capabilities,
+    )
+    qtbot.addWidget(comparable_wrapper)
+
+    assert comparable_wrapper.compare_action is not None
+    assert comparable_wrapper.compare_action in comparable_wrapper.more_menu.actions()
+
+
+def test_header_buttons_use_clear_custom_icons_and_accessible_labels(split_wrapper):
+    wrapper, _ = split_wrapper
+
+    expected_icons = {
+        wrapper.more_btn: ("more", "More"),
+        wrapper.screenshot_btn: ("screenshot", "Screenshot"),
+        wrapper.split_btn: ("split", "Split Window"),
+        wrapper.detach_btn: ("detach", "Detach Window"),
+    }
+
+    for button, (icon_name, label) in expected_icons.items():
+        assert button is not None
+        assert button.property("headerIcon") == icon_name
+        assert button.accessibleName() == label
+        assert button.toolTip() == label
+        assert not button.icon().isNull()
+        assert button.iconSize() == QSize(22, 22)
+        assert button.size() == QSize(34, 28)

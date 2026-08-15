@@ -8,10 +8,12 @@ from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
     QFormLayout,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
     QTabWidget,
@@ -833,7 +835,7 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
 
         # ================= Left Panel: Controls =================
         self.left_panel = QWidget()
-        self.left_panel.setFixedWidth(260)
+        self.left_panel.setFixedWidth(240)
         controls_layout = QVBoxLayout(self.left_panel)
         controls_layout.setContentsMargins(0, 0, 0, 0)
         controls_layout.setSpacing(8)
@@ -863,6 +865,8 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         settings_group = QGroupBox(tr("Analyzer Settings"))
         form_layout = QFormLayout()
         form_layout.setVerticalSpacing(6)
+        form_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        form_layout.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
 
         self.combo_mode = QComboBox()
         self.combo_mode.addItem(tr("Digital Integrity"), "Digital")
@@ -959,6 +963,10 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
 
         # 2. Tabs for Plots (To fit comfortably within size limitations)
         self.tabs = QTabWidget()
+        self.tabs.setUsesScrollButtons(True)
+        self.tabs.tabBar().setExpanding(False)
+        self.tabs.tabBar().setElideMode(Qt.TextElideMode.ElideRight)
+        self.tabs.tabBar().setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         self.tabs.setStyleSheet("QTabWidget::pane { border: 1px solid #7f8c8d; border-radius: 4px; padding: 4px; }")
 
         # Tab 1: Digital Report and Histogram
@@ -1064,21 +1072,21 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         tab_trend_layout.setContentsMargins(5, 5, 5, 5)
         tab_trend_layout.setSpacing(5)
 
-        trend_ctrl_row = QHBoxLayout()
-        trend_ctrl_row.addWidget(QLabel(tr("Select Trend Chart:")))
+        trend_ctrl_row = QGridLayout()
+        trend_ctrl_row.addWidget(QLabel(tr("Select Trend Chart:")), 0, 0)
         self.combo_trend = QComboBox()
         self.combo_trend.currentIndexChanged.connect(self.on_trend_changed)
-        trend_ctrl_row.addWidget(self.combo_trend)
+        trend_ctrl_row.addWidget(self.combo_trend, 0, 1)
 
-        trend_ctrl_row.addWidget(QLabel(tr("Smoothing:")))
+        trend_ctrl_row.addWidget(QLabel(tr("Smoothing:")), 1, 0)
         self.combo_smooth = QComboBox()
         self.combo_smooth.addItem(tr("None"), "none")
         self.combo_smooth.addItem(tr("Light (EMA)"), "light")
         self.combo_smooth.addItem(tr("Strong (EMA)"), "strong")
         self.combo_smooth.currentIndexChanged.connect(self.on_trend_changed)
-        trend_ctrl_row.addWidget(self.combo_smooth)
+        trend_ctrl_row.addWidget(self.combo_smooth, 1, 1)
 
-        trend_ctrl_row.addStretch()
+        trend_ctrl_row.setColumnStretch(1, 1)
         tab_trend_layout.addLayout(trend_ctrl_row)
 
         self.plot_trend = pg.PlotWidget()

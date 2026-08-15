@@ -368,26 +368,27 @@ class SpectrogramWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInt
         self.speed_combo.currentIndexChanged.connect(self.on_speed_changed)
         settings_layout.addWidget(self.speed_combo, 1, 3)
 
-        # Frequency Range
+        # Frequency Range uses its own shallow row. Keeping all four pairs on
+        # row 2 overflows with longer translations at the accessibility font.
         # Min Freq
-        settings_layout.addWidget(QLabel(tr("Min Freq:")), 1, 4)
+        settings_layout.addWidget(QLabel(tr("Min Freq:")), 2, 0)
         self.min_freq_spin = QSpinBox()
         self.min_freq_spin.setRange(0, 96000)
         self.min_freq_spin.setValue(int(self.module.min_freq))
         self.min_freq_spin.setSuffix(" Hz")
         self.min_freq_spin.setFixedWidth(100)
         self.min_freq_spin.valueChanged.connect(self.on_freq_range_changed)
-        settings_layout.addWidget(self.min_freq_spin, 1, 5)
+        settings_layout.addWidget(self.min_freq_spin, 2, 1)
 
         # Max Freq
-        settings_layout.addWidget(QLabel(tr("Max Freq:")), 1, 6)
+        settings_layout.addWidget(QLabel(tr("Max Freq:")), 2, 2)
         self.max_freq_spin = QSpinBox()
         self.max_freq_spin.setRange(0, 96000)
         self.max_freq_spin.setValue(int(self.module.max_freq))
         self.max_freq_spin.setSuffix(" Hz")
         self.max_freq_spin.setFixedWidth(100)
         self.max_freq_spin.valueChanged.connect(self.on_freq_range_changed)
-        settings_layout.addWidget(self.max_freq_spin, 1, 7)
+        settings_layout.addWidget(self.max_freq_spin, 2, 3)
 
         # Add stretch to compact the layout to the left
         settings_layout.setColumnStretch(8, 1)

@@ -46,8 +46,8 @@ Nonlinear Response Analyzer は実験的モジュールですが、実装漏れ�
 再評価せず、実装状況をそのまま記録しています。
 
 モジュール別マトリクスの「完了」は、2 窓分割、コンパクト、比較送信のすべてが実装済みまたは
-対象外となり、`要` が残っていないことを示します。全モジュール共通のログに直接テストがないことは、
-個別ウィジェットの完了判定には含めません。内部ペインはウィジェット固有のレイアウト実装であるため、
+対象外となり、`要` が残っていないことを示します。全モジュール共通のログは More メニューから開く
+共通経路の直接テストで確認します。内部ペインはウィジェット固有のレイアウト実装であるため、
 共通機能の評価対象から除外しています。
 
 ## 全体サマリー
@@ -172,14 +172,14 @@ Logs はモジュール固有ログではなく、共通のシングルトンロ
 
 - Transmission Analyzer のコンパクト切り替えを共通ラッパー経由で確認します。
 - Distortion Analyzer と Lock-in Amplifier の比較データ生成を確認します。
-- Logs ボタンが共通ログビューアを表示し、前面化することを確認します。
+- More メニューの Logs アクションが共通ログビューアを表示し、前面化することを確認します。
 - State C の2ウィンドウ前面化とサイドバー表示を確認します。
 
 ### マニュアル同期
 
 - Frequency Counter、Lock-in Spectrum Finder、Event Detector、Timecode Monitor、
   Stereo Alignment Monitor、Transmission Analyzer は、対応する共通機能を日英両版で明記します。
-- Detachable Wrapper は Compact ボタンの有効条件、Send to Comparer、プラットフォーム別の
+- Detachable Wrapper は Compact ボタンの有効条件、More メニュー内の Send to Comparer、プラットフォーム別の
   スクリーンショット既定保存先、State C の再表示方法を日英両版で説明します。
 
 ## 残る検討事項

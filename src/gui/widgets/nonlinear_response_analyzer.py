@@ -12,7 +12,6 @@ from PyQt6.QtWidgets import (
     QLabel,
     QProgressBar,
     QPushButton,
-    QScrollArea,
     QSpinBox,
     QTabWidget,
     QVBoxLayout,
@@ -400,21 +399,33 @@ class NonlinearResponseAnalyzerWidget(QWidget):
         main_layout.setContentsMargins(4, 4, 4, 4)
         main_layout.setSpacing(6)
 
-        # Left panel: Scroll area for controls
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setFixedWidth(320)
+        # Left panel: shallow, purpose-based control tabs
+        self.control_tabs = QTabWidget()
+        self.control_tabs.setMinimumWidth(300)
+        self.control_tabs.setMaximumWidth(360)
 
-        scroll_content = QWidget()
-        scroll_layout = QVBoxLayout(scroll_content)
-        scroll_layout.setContentsMargins(6, 6, 6, 6)
-        scroll_layout.setSpacing(8)
+        stimulus_page = QWidget()
+        stimulus_page_layout = QVBoxLayout(stimulus_page)
+        stimulus_page_layout.setContentsMargins(6, 6, 6, 6)
+        stimulus_page_layout.setSpacing(8)
+
+        model_page = QWidget()
+        model_page_layout = QVBoxLayout(model_page)
+        model_page_layout.setContentsMargins(6, 6, 6, 6)
+        model_page_layout.setSpacing(8)
+
+        run_page = QWidget()
+        run_page_layout = QVBoxLayout(run_page)
+        run_page_layout.setContentsMargins(6, 6, 6, 6)
+        run_page_layout.setSpacing(8)
 
         # 1. Stimulus Parameters Group
         stim_group = QGroupBox(tr("Stimulus Parameters"))
         stim_layout = QFormLayout(stim_group)
         stim_layout.setContentsMargins(6, 6, 6, 6)
         stim_layout.setSpacing(4)
+        stim_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        stim_layout.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
 
         self.stim_type_combo = QComboBox()
         stim_types = [
@@ -449,13 +460,15 @@ class NonlinearResponseAnalyzerWidget(QWidget):
         self.avg_spin.valueChanged.connect(self.on_avg_changed)
         stim_layout.addRow(tr("Averages:"), self.avg_spin)
 
-        scroll_layout.addWidget(stim_group)
+        stimulus_page_layout.addWidget(stim_group)
 
         # 2. Model Structure Group
         model_group = QGroupBox(tr("Model Architecture"))
         model_layout = QFormLayout(model_group)
         model_layout.setContentsMargins(6, 6, 6, 6)
         model_layout.setSpacing(4)
+        model_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        model_layout.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
 
         self.method_combo = QComboBox()
         methods = [
@@ -495,13 +508,16 @@ class NonlinearResponseAnalyzerWidget(QWidget):
         self.nb_spin.valueChanged.connect(self.on_nb_changed)
         model_layout.addRow(tr("nb (Zeros):"), self.nb_spin)
 
-        scroll_layout.addWidget(model_group)
+        model_page_layout.addWidget(model_group)
+        model_page_layout.addStretch()
 
         # 3. Routing parameters Group
         route_group = QGroupBox(tr("Audio Routing"))
         route_layout = QFormLayout(route_group)
         route_layout.setContentsMargins(6, 6, 6, 6)
         route_layout.setSpacing(4)
+        route_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        route_layout.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
 
         self.out_ch_combo = QComboBox()
         self.out_ch_combo.addItems(["L", "R", "STEREO"])
@@ -513,7 +529,8 @@ class NonlinearResponseAnalyzerWidget(QWidget):
         self.in_ch_combo.currentIndexChanged.connect(self.on_in_ch_changed)
         route_layout.addRow(tr("In Channel:"), self.in_ch_combo)
 
-        scroll_layout.addWidget(route_group)
+        stimulus_page_layout.addWidget(route_group)
+        stimulus_page_layout.addStretch()
 
         # 4. Identification Controls Group
         ctrl_group = QGroupBox(tr("Estimation Run"))
@@ -546,11 +563,13 @@ class NonlinearResponseAnalyzerWidget(QWidget):
         self.fit_label.setStyleSheet("font-weight: bold;")
         ctrl_layout.addWidget(self.fit_label)
 
-        scroll_layout.addWidget(ctrl_group)
-        scroll_layout.addStretch()
+        run_page_layout.addWidget(ctrl_group)
+        run_page_layout.addStretch()
 
-        scroll_area.setWidget(scroll_content)
-        main_layout.addWidget(scroll_area)
+        self.control_tabs.addTab(stimulus_page, tr("Stimulus"))
+        self.control_tabs.addTab(model_page, tr("Model"))
+        self.control_tabs.addTab(run_page, tr("Run"))
+        main_layout.addWidget(self.control_tabs)
 
         # Right panel: Plot tab widget
         self.tabs = QTabWidget()

@@ -11,7 +11,7 @@ Whether you are using tools such as the Spectrogram or Spectrum Analyzer, you ca
 
 ### Saving Screenshots (Screenshot)
 
-Pressing the **"Screenshot"** button in the upper right of the widget instantly saves the current content of that widget (the graph or just the graph part) as an image file (PNG format).
+Pressing the **"Screenshot"** icon in the upper right of the widget (identified by its tooltip) instantly saves the current content of that widget (the graph or just the graph part) as an image file (PNG format).
 
 * **Save Location**: By default, screenshots are saved to `~/Pictures/MeasureLab` on macOS and the application root's `screenshots` folder on Windows/Linux. You can change this in Settings.
 * **File Name**: Automatically named in the format `[Tool Name]_[Date]_[Time].png`.
@@ -19,15 +19,15 @@ Pressing the **"Screenshot"** button in the upper right of the widget instantly 
 
 ### Viewing Logs (Logs)
 
-Pressing the **"Logs"** button in the upper right of the widget opens the log viewer that displays application errors and information.
+Choose **"Logs"** from the **"More"** menu in the upper right of the widget to open the log viewer that displays application errors and information.
 
 * **Use Cases**: Used to check warnings or errors during measurements, and to obtain debugging information.
 * **Features**: You can filter the level of logs to display, such as all logs, info, warnings, or errors only.
 
 ### Sending to Plot Comparer (Send to Comparer)
 
-The **"Send to Comparer"** button appears only for widgets that can export 1D/XY traces.
-It adds the current measurement traces to Plot Comparer so they can be overlaid with other results.
+The **"Send to Comparer"** action appears in the **"More"** menu only for widgets that can export 1D/XY traces.
+Selecting it adds the current measurement traces to Plot Comparer so they can be overlaid with other results.
 A warning is shown when there is no data available to send.
 
 ### Splitting Windows (Split Window)
@@ -58,7 +58,7 @@ For supported widgets, the **"Compact"** button is always present in the common 
 Each widget, such as the Spectrogram, consists of the following three areas:
 
 1. **Common Header**:
-    An area where the title, logs, screenshot, and separation buttons are lined up.
+    An area containing the title and direct icons for More, screenshot, compact, split, and detach actions. The More menu contains Logs and, for supported widgets, Send to Comparer.
 2. **Main Display Area**:
     The most important area where waveforms, graphs, and numerical values are displayed.
 3. **Control Area**:

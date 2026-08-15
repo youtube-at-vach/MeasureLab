@@ -3,15 +3,18 @@ import re
 from datetime import datetime
 from enum import Enum
 
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import QPointF, QRectF, QSize, Qt, QTimer, pyqtSignal
+from PyQt6.QtGui import QAction, QColor, QIcon, QPainter, QPalette, QPen, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
     QHBoxLayout,
     QLabel,
     QMainWindow,
+    QMenu,
     QMessageBox,
     QPushButton,
     QSizePolicy,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -151,6 +154,81 @@ class WidgetWindowState(Enum):
     SPLIT = "C"
 
 
+class HeaderIcon(Enum):
+    """Platform-independent symbols used by the widget header controls."""
+
+    MORE = "more"
+    SCREENSHOT = "screenshot"
+    COMPACT = "compact"
+    FULL_MODE = "full_mode"
+    SPLIT = "split"
+    DETACH = "detach"
+    REATTACH = "reattach"
+
+
+def _draw_header_icon(icon: HeaderIcon, color: QColor, size: int) -> QPixmap:
+    """Draw one crisp, high-contrast header glyph at the requested size."""
+    pixmap = QPixmap(size, size)
+    pixmap.fill(Qt.GlobalColor.transparent)
+
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.scale(size / 24.0, size / 24.0)
+
+    pen = QPen(color, 1.8)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+    painter.setPen(pen)
+    painter.setBrush(Qt.BrushStyle.NoBrush)
+
+    if icon is HeaderIcon.MORE:
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(color)
+        for x in (6.0, 12.0, 18.0):
+            painter.drawEllipse(QPointF(x, 12.0), 1.7, 1.7)
+    elif icon is HeaderIcon.SCREENSHOT:
+        painter.drawRoundedRect(QRectF(3.0, 7.0, 18.0, 13.0), 2.0, 2.0)
+        painter.drawEllipse(QPointF(12.0, 13.5), 3.5, 3.5)
+        painter.drawPolyline(QPointF(7.0, 7.0), QPointF(8.5, 4.5), QPointF(13.0, 4.5), QPointF(14.5, 7.0))
+    elif icon is HeaderIcon.COMPACT:
+        painter.drawLine(QPointF(4.0, 4.0), QPointF(10.0, 10.0))
+        painter.drawPolyline(QPointF(10.0, 6.5), QPointF(10.0, 10.0), QPointF(6.5, 10.0))
+        painter.drawLine(QPointF(20.0, 20.0), QPointF(14.0, 14.0))
+        painter.drawPolyline(QPointF(14.0, 17.5), QPointF(14.0, 14.0), QPointF(17.5, 14.0))
+    elif icon is HeaderIcon.FULL_MODE:
+        painter.drawLine(QPointF(10.0, 10.0), QPointF(4.0, 4.0))
+        painter.drawPolyline(QPointF(4.0, 8.0), QPointF(4.0, 4.0), QPointF(8.0, 4.0))
+        painter.drawLine(QPointF(14.0, 14.0), QPointF(20.0, 20.0))
+        painter.drawPolyline(QPointF(20.0, 16.0), QPointF(20.0, 20.0), QPointF(16.0, 20.0))
+    elif icon is HeaderIcon.SPLIT:
+        painter.drawRoundedRect(QRectF(3.0, 4.0, 18.0, 16.0), 1.5, 1.5)
+        painter.drawLine(QPointF(12.0, 4.0), QPointF(12.0, 20.0))
+        painter.drawLine(QPointF(15.0, 9.0), QPointF(18.0, 9.0))
+        painter.drawLine(QPointF(15.0, 13.0), QPointF(18.0, 13.0))
+    elif icon is HeaderIcon.DETACH:
+        painter.drawRoundedRect(QRectF(3.0, 7.0, 13.0, 13.0), 1.5, 1.5)
+        painter.drawLine(QPointF(10.0, 14.0), QPointF(20.0, 4.0))
+        painter.drawPolyline(QPointF(14.0, 4.0), QPointF(20.0, 4.0), QPointF(20.0, 10.0))
+    elif icon is HeaderIcon.REATTACH:
+        painter.drawRoundedRect(QRectF(8.0, 4.0, 13.0, 13.0), 1.5, 1.5)
+        painter.drawLine(QPointF(14.0, 10.0), QPointF(4.0, 20.0))
+        painter.drawPolyline(QPointF(4.0, 14.0), QPointF(4.0, 20.0), QPointF(10.0, 20.0))
+
+    painter.end()
+    return pixmap
+
+
+def _make_header_icon(icon: HeaderIcon, color: QColor) -> QIcon:
+    """Build normal and disabled pixmaps, including a Retina-sized variant."""
+    result = QIcon()
+    disabled_color = QColor(color)
+    disabled_color.setAlpha(165)
+    for size in (24, 48):
+        result.addPixmap(_draw_header_icon(icon, color, size), QIcon.Mode.Normal)
+        result.addPixmap(_draw_header_icon(icon, disabled_color, size), QIcon.Mode.Disabled)
+    return result
+
+
 class DetachableWidgetWrapper(QWidget):
     """
     Wraps a widget to allow it to be detached into a separate window.
@@ -232,6 +310,43 @@ class DetachableWidgetWrapper(QWidget):
         else:
             self.title_label.setStyleSheet("color: black; font-weight: bold; font-size: 14px;")
 
+        self._refresh_header_icons()
+
+    def _create_header_button(self, label: str, icon: HeaderIcon) -> QToolButton:
+        button = QToolButton()
+        button.setText(label)
+        button.setAccessibleName(label)
+        button.setToolTip(label)
+        button.setProperty("headerIcon", icon.value)
+        button.setIcon(_make_header_icon(icon, button.palette().color(QPalette.ColorRole.ButtonText)))
+        button.setIconSize(QSize(22, 22))
+        button.setFixedSize(QSize(34, 28))
+        button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+        button.setAutoRaise(True)
+        button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        button.setStyleSheet(
+            "QToolButton { border: 1px solid transparent; border-radius: 5px; padding: 2px; }"
+            "QToolButton:hover { border-color: palette(mid); background: palette(midlight); }"
+            "QToolButton:pressed, QToolButton:checked { background: palette(mid); }"
+            "QToolButton::menu-indicator { image: none; }"
+        )
+        return button
+
+    def _set_header_button_state(self, button: QToolButton, label: str, icon: HeaderIcon) -> None:
+        button.setText(label)
+        button.setAccessibleName(label)
+        button.setToolTip(label)
+        button.setProperty("headerIcon", icon.value)
+        button.setIcon(_make_header_icon(icon, button.palette().color(QPalette.ColorRole.ButtonText)))
+
+    def _refresh_header_icons(self) -> None:
+        for button in self.header.findChildren(QToolButton):
+            icon_name = button.property("headerIcon")
+            if not icon_name:
+                continue
+            color = button.palette().color(QPalette.ColorRole.ButtonText)
+            button.setIcon(_make_header_icon(HeaderIcon(icon_name), color))
+
     def init_ui(self):
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -239,49 +354,49 @@ class DetachableWidgetWrapper(QWidget):
         # --- Header ---
         self.header = QWidget()
         header_layout = QHBoxLayout(self.header)
-        header_layout.setContentsMargins(5, 5, 5, 5)
+        header_layout.setContentsMargins(5, 5, 10, 5)
+        header_layout.setSpacing(4)
 
         self.title_label = QLabel(self.title)
         self.title_label.setStyleSheet("font-weight: bold; font-size: 14px;")
 
-        self.detach_btn = QPushButton(tr("Detach Window"))
+        self.detach_btn = self._create_header_button(tr("Detach Window"), HeaderIcon.DETACH)
         self.detach_btn.clicked.connect(self.toggle_detach)
-        self.detach_btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
 
-        self.screenshot_btn = QPushButton(tr("Screenshot"))
+        self.screenshot_btn = self._create_header_button(tr("Screenshot"), HeaderIcon.SCREENSHOT)
         self.screenshot_btn.clicked.connect(self.save_screenshot)
-        self.screenshot_btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
 
-        self.logs_btn = QPushButton(tr("Logs"))
-        self.logs_btn.clicked.connect(self.show_logs)
-        self.logs_btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+        self.more_btn = self._create_header_button(tr("More"), HeaderIcon.MORE)
+        self.more_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+
+        self.more_menu = QMenu(self.more_btn)
+        self.logs_action = QAction(tr("Logs"), self.more_menu)
+        self.logs_action.triggered.connect(self.show_logs)
+        self.more_menu.addAction(self.logs_action)
+        self.more_btn.setMenu(self.more_menu)
 
         self.compact_btn = None
         if self.is_compactable:
-            self.compact_btn = QPushButton(tr("Compact"))
+            self.compact_btn = self._create_header_button(tr("Compact"), HeaderIcon.COMPACT)
             self.compact_btn.setCheckable(True)
             self.compact_btn.clicked.connect(self.toggle_compact)
-            self.compact_btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
             self.compact_btn.setEnabled(False)
 
-        self.compare_btn = None
+        self.compare_action = None
         if self.is_comparable:
-            self.compare_btn = QPushButton(tr("Send to Comparer"))
-            self.compare_btn.clicked.connect(self.send_to_comparer)
-            self.compare_btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+            self.compare_action = QAction(tr("Send to Comparer"), self.more_menu)
+            self.compare_action.triggered.connect(self.send_to_comparer)
+            self.more_menu.addAction(self.compare_action)
 
         self.split_btn = None
         if self.is_splittable:
-            self.split_btn = QPushButton(tr("Split Window"))
+            self.split_btn = self._create_header_button(tr("Split Window"), HeaderIcon.SPLIT)
             self.split_btn.clicked.connect(self.split)
-            self.split_btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
 
         header_layout.addWidget(self.title_label)
         header_layout.addStretch()
-        header_layout.addWidget(self.logs_btn)
+        header_layout.addWidget(self.more_btn)
         header_layout.addWidget(self.screenshot_btn)
-        if self.compare_btn:
-            header_layout.addWidget(self.compare_btn)
         if self.compact_btn:
             header_layout.addWidget(self.compact_btn)
         if self.split_btn:
@@ -411,7 +526,11 @@ class DetachableWidgetWrapper(QWidget):
         if self.compact_btn:
             self.compact_btn.blockSignals(True)
             self.compact_btn.setChecked(checked)
-            self.compact_btn.setText(tr("Full Mode") if checked else tr("Compact"))
+            self._set_header_button_state(
+                self.compact_btn,
+                tr("Full Mode") if checked else tr("Compact"),
+                HeaderIcon.FULL_MODE if checked else HeaderIcon.COMPACT,
+            )
             self.compact_btn.blockSignals(False)
 
     @staticmethod
@@ -474,7 +593,7 @@ class DetachableWidgetWrapper(QWidget):
         self._placeholder_info_label.setText(tr("Widget is detached in a separate window."))
         self._reattach_all_btn.hide()
         self.placeholder_widget.show()
-        self.detach_btn.setText(tr("Reattach"))
+        self._set_header_button_state(self.detach_btn, tr("Reattach"), HeaderIcon.REATTACH)
         self.detach_btn.setEnabled(False)  # Use the big reattach button in placeholder or window close
         if self.compact_btn:
             self.compact_btn.setEnabled(True)
@@ -513,7 +632,7 @@ class DetachableWidgetWrapper(QWidget):
         self.placeholder_widget.hide()
         self.content_container.show()
 
-        self.detach_btn.setText(tr("Detach Window"))
+        self._set_header_button_state(self.detach_btn, tr("Detach Window"), HeaderIcon.DETACH)
         self.detach_btn.setEnabled(True)
         if self.compact_btn:
             self.toggle_compact(False)
