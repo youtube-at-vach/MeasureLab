@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDoubleSpinBox,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QMessageBox,
@@ -413,10 +414,10 @@ class TransientAnalyzerWidget(QWidget):
 
         # --- Tab 1: Recording & Settings ---
         tab_record = QWidget()
-        rec_layout = QHBoxLayout(tab_record)
+        rec_layout = QGridLayout(tab_record)
 
         # Channel
-        rec_layout.addWidget(QLabel(tr("Channel:")))
+        rec_layout.addWidget(QLabel(tr("Channel:")), 0, 0)
         self.chan_combo = QComboBox()
         self.chan_combo.addItem(tr("Left"), "Left")
         self.chan_combo.addItem(tr("Right"), "Right")
@@ -425,36 +426,36 @@ class TransientAnalyzerWidget(QWidget):
         if chan_idx >= 0:
             self.chan_combo.setCurrentIndex(chan_idx)
         self.chan_combo.currentIndexChanged.connect(self.on_channel_changed)
-        rec_layout.addWidget(self.chan_combo)
+        rec_layout.addWidget(self.chan_combo, 0, 1)
 
         # Wavelet
-        rec_layout.addWidget(QLabel(tr("Wavelet:")))
+        rec_layout.addWidget(QLabel(tr("Wavelet:")), 0, 2)
         self.wavelet_combo = QComboBox()
         self.wavelet_combo.addItems(["cmor1.5-1.0", "mexh", "morl", "cgau1", "gaus1"])
         self.wavelet_combo.setEditable(True)
         self.wavelet_combo.currentTextChanged.connect(self.on_wavelet_changed)
-        rec_layout.addWidget(self.wavelet_combo)
+        rec_layout.addWidget(self.wavelet_combo, 0, 3)
 
         # Min Freq
-        rec_layout.addWidget(QLabel(tr("Min Freq:")))
+        rec_layout.addWidget(QLabel(tr("Min Freq:")), 0, 4)
         self.min_freq_spin = QSpinBox()
         self.min_freq_spin.setRange(1, 96000)
         self.min_freq_spin.setValue(self.module.min_anal_freq)
         self.min_freq_spin.setSuffix(" Hz")
         self.min_freq_spin.valueChanged.connect(self.on_min_freq_changed)
-        rec_layout.addWidget(self.min_freq_spin)
+        rec_layout.addWidget(self.min_freq_spin, 0, 5)
 
         # Max Freq
-        rec_layout.addWidget(QLabel(tr("Max Freq:")))
+        rec_layout.addWidget(QLabel(tr("Max Freq:")), 1, 0)
         self.max_freq_spin = QSpinBox()
         self.max_freq_spin.setRange(1, 96000)
         self.max_freq_spin.setValue(self.module.max_anal_freq)
         self.max_freq_spin.setSuffix(" Hz")
         self.max_freq_spin.valueChanged.connect(self.on_max_freq_changed)
-        rec_layout.addWidget(self.max_freq_spin)
+        rec_layout.addWidget(self.max_freq_spin, 1, 1)
 
         # Record Duration
-        rec_layout.addWidget(QLabel(tr("Record Time:")))
+        rec_layout.addWidget(QLabel(tr("Record Time:")), 1, 2)
         self.rec_time_spin = QDoubleSpinBox()
         self.rec_time_spin.setRange(0.1, 3.0)
         self.rec_time_spin.setDecimals(2)
@@ -462,13 +463,13 @@ class TransientAnalyzerWidget(QWidget):
         self.rec_time_spin.setValue(float(self.module.record_duration_s))
         self.rec_time_spin.setSuffix(" s")
         self.rec_time_spin.valueChanged.connect(self.on_record_time_changed)
-        rec_layout.addWidget(self.rec_time_spin)
+        rec_layout.addWidget(self.rec_time_spin, 1, 3)
 
         # Record Button
         self.rec_btn = QPushButton(tr("Record"))
         self.rec_btn.setCheckable(True)
         self.rec_btn.clicked.connect(self.on_record_toggle)
-        rec_layout.addWidget(self.rec_btn)
+        rec_layout.addWidget(self.rec_btn, 1, 4)
 
         # Analyze Button
         self.analyze_btn = QPushButton(tr("Analyze"))
@@ -477,7 +478,7 @@ class TransientAnalyzerWidget(QWidget):
         self.analyze_btn.setToolTip(
             tr("Warning: Analysis can be slow for long recordings.\nComplexity ~ O(N * Scales).")
         )
-        rec_layout.addWidget(self.analyze_btn)
+        rec_layout.addWidget(self.analyze_btn, 1, 5)
 
         self.control_tabs.addTab(tab_record, tr("Recording & Settings"))
 
@@ -566,6 +567,7 @@ class TransientAnalyzerWidget(QWidget):
         # Complexity Note
         note_label = QLabel(tr("Note: CWT analysis is computationally intensive. Long recordings may take time."))
         note_label.setStyleSheet("color: gray; font-style: italic;")
+        note_label.setWordWrap(True)
         layout.addWidget(note_label)
 
         # --- Visualization ---

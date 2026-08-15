@@ -1663,6 +1663,8 @@ class SignalGeneratorWidget(QWidget):
         layout.addWidget(self.output_message_label)
 
         self.settings_scroll = QScrollArea()
+        self.settings_scroll.setObjectName("signalGeneratorSettingsScroll")
+        self.settings_scroll.setProperty("measurelabScrollRole", "outer-controls")
         self.settings_scroll.setWidgetResizable(True)
         self.settings_scroll.setFrameShape(QFrame.Shape.NoFrame)
         self.settings_scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
@@ -1790,6 +1792,7 @@ class SignalGeneratorWidget(QWidget):
         self.advanced_toggle.setText(tr("Advanced Settings"))
         self.advanced_toggle.setCheckable(True)
         self.advanced_toggle.setChecked(False)
+        self.advanced_toggle.setProperty("measurelabLayoutAuditExpand", True)
         self.advanced_toggle.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.advanced_toggle.setArrowType(Qt.ArrowType.RightArrow)
         wrapper_layout.addWidget(self.advanced_toggle)
@@ -1798,13 +1801,6 @@ class SignalGeneratorWidget(QWidget):
         advanced_layout = QVBoxLayout(self.advanced_panel)
         advanced_layout.setContentsMargins(0, 0, 0, 0)
 
-        direct_controls = QWidget()
-        direct_form = QFormLayout(direct_controls)
-        direct_form.setContentsMargins(0, 0, 0, 0)
-        self._init_phase_controls(direct_form)
-        self._init_delay_controls(direct_form)
-        self._init_bin_snap_controls(direct_form)
-        advanced_layout.addWidget(direct_controls)
         advanced_layout.addWidget(self._create_options_tabs())
 
         self.advanced_panel.hide()
@@ -2169,14 +2165,23 @@ class SignalGeneratorWidget(QWidget):
         tabs = QTabWidget()
         self.options_tabs = tabs
 
+        general_page = QWidget()
+        general_form = QFormLayout(general_page)
+        self._init_phase_controls(general_form)
+        self._init_delay_controls(general_form)
+        self._init_bin_snap_controls(general_form)
+        tabs.addTab(general_page, tr("General"))
+
         sweep_page = QWidget()
         sweep_layout = QHBoxLayout(sweep_page)
+        sweep_layout.setContentsMargins(4, 4, 4, 4)
         sweep_layout.addWidget(self._create_freq_sweep_tab())
         sweep_layout.addWidget(self._create_amp_sweep_tab())
         tabs.addTab(sweep_page, tr("Sweep"))
 
         modulation_page = QWidget()
         modulation_layout = QHBoxLayout(modulation_page)
+        modulation_layout.setContentsMargins(4, 4, 4, 4)
         modulation_layout.addWidget(self._create_am_tab())
         modulation_layout.addWidget(self._create_fm_tab())
         modulation_layout.addWidget(self._create_pm_tab())
@@ -2184,6 +2189,7 @@ class SignalGeneratorWidget(QWidget):
 
         filter_page = QWidget()
         filter_layout = QHBoxLayout(filter_page)
+        filter_layout.setContentsMargins(4, 4, 4, 4)
         filter_layout.addWidget(self._create_lpf_tab())
         filter_layout.addWidget(self._create_hpf_tab())
         filter_layout.addWidget(self._create_notch_tab())

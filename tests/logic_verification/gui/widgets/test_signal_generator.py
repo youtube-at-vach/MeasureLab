@@ -184,13 +184,14 @@ def test_filters_are_disabled_when_scipy_is_unavailable(qtbot, monkeypatch):
 
 def test_advanced_settings_fit_without_outer_scrolling(signal_generator_widget, qtbot):
     widget, _module, _engine = signal_generator_widget
-    widget.setStyleSheet("font-size: 14px;")
+    widget.setStyleSheet("font-size: 16px;")
     widget.resize(1100, 690)
     widget.show()
     widget.advanced_toggle.setChecked(True)
     qtbot.wait(1)
 
     assert widget.settings_scroll.verticalScrollBar().maximum() == 0
+    assert widget.settings_scroll.horizontalScrollBar().maximum() == 0
 
 
 def test_routing_is_reflected_in_channel_badges(signal_generator_widget):

@@ -301,6 +301,8 @@ class SpatialBinauralMixerWidget(QWidget):
         tracks_layout = QVBoxLayout()
 
         self.tracks_area = QScrollArea()
+        self.tracks_area.setObjectName("spatialMixerTracksScroll")
+        self.tracks_area.setProperty("measurelabScrollRole", "dynamic-content")
         self.tracks_area.setWidgetResizable(True)
         self.tracks_container = QWidget()
         self.tracks_inner_layout = QVBoxLayout()

@@ -11,7 +11,7 @@ if "sounddevice" not in sys.modules:
 
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
-from PyQt6.QtWidgets import QApplication, QWidget
+from PyQt6.QtWidgets import QApplication, QGridLayout, QWidget
 from PyQt6 import sip
 
 from src.core.module_constants import MODULE_SPECTROGRAM
@@ -44,6 +44,14 @@ def test_spectrogram_implements_split_interface(spectrogram_widget):
     assert isinstance(spectrogram_widget.get_control_widget(), QWidget)
     assert spectrogram_widget.get_display_widget() is spectrogram_widget.display_widget
     assert spectrogram_widget.get_control_widget() is spectrogram_widget.controls_group
+
+
+def test_spectrogram_controls_use_two_rows(spectrogram_widget):
+    controls_layout = spectrogram_widget.controls_group.layout()
+    settings_layout = controls_layout.itemAt(1).layout()
+
+    assert isinstance(settings_layout, QGridLayout)
+    assert settings_layout.rowCount() == 2
 
 
 def test_spectrogram_split_and_reattach_restores_vertical_layout(spectrogram_widget):

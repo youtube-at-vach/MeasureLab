@@ -6,11 +6,9 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
     QFormLayout,
-    QGroupBox,
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QScrollArea,
     QTabWidget,
     QVBoxLayout,
     QWidget,
@@ -94,21 +92,14 @@ class ResponseViewerWidget(QWidget):
         main_layout.setContentsMargins(5, 5, 5, 5)
         main_layout.setSpacing(5)
 
-        # --- Left Panel: Sidebar (Fixed Width, Wrapped in Scroll Area) ---
-        sidebar_scroll = QScrollArea()
-        sidebar_scroll.setFixedWidth(330)
-        sidebar_scroll.setWidgetResizable(True)
-        sidebar_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        sidebar_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        sidebar_scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
-
-        sidebar_content = QWidget()
-        sidebar_layout = QVBoxLayout(sidebar_content)
-        sidebar_layout.setContentsMargins(0, 0, 4, 0)
-        sidebar_layout.setSpacing(8)
+        # --- Left Panel: Shallow, purpose-based control tabs ---
+        self.sidebar_tabs = QTabWidget()
+        self.sidebar_tabs.setMinimumWidth(300)
+        self.sidebar_tabs.setMaximumWidth(360)
 
         # 1. Model Source Group
-        source_group = QGroupBox(tr("Model Source"))
+        source_group = QWidget()
+        source_group.setAccessibleName(tr("Model Source"))
         source_form = QVBoxLayout(source_group)
         source_form.setSpacing(6)
 
@@ -125,7 +116,6 @@ class ResponseViewerWidget(QWidget):
         # Info Labels
         self.lbl_status = QLabel(tr("No Model Loaded"))
         self.lbl_status.setStyleSheet("font-weight: bold; color: #d9534f;")
-        self.lbl_status.setMaximumWidth(180)
         self.lbl_sr = QLabel("SR: -- Hz")
         self.lbl_order = QLabel("Order (P): --")
         self.lbl_direction = QLabel(tr("Unknown"))
@@ -153,12 +143,16 @@ class ResponseViewerWidget(QWidget):
         self.info_layout.addRow(tr("Structure:"), self.lbl_structure)
         self.info_layout.addRow(tr("Graph Smoothing:"), self.smooth_combo)
         source_form.addLayout(self.info_layout)
-        sidebar_layout.addWidget(source_group)
+        source_form.addStretch()
+        self.sidebar_tabs.addTab(source_group, tr("Source"))
 
         # 2. 2D Map Configuration Group
-        self.map_group = QGroupBox(tr("2D Map Settings"))
+        self.map_group = QWidget()
+        self.map_group.setAccessibleName(tr("2D Map Settings"))
         map_form = QFormLayout(self.map_group)
         map_form.setSpacing(6)
+        map_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        map_form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
 
         self.map_type_combo = QComboBox()
         self.map_type_combo.addItem(tr("THD Map"), "THD")
@@ -249,10 +243,11 @@ class ResponseViewerWidget(QWidget):
         map_form.addRow(tr("Manual Noise Floor:"), self.noise_floor_spin)
 
         self.map_group.setEnabled(False)
-        sidebar_layout.addWidget(self.map_group)
+        self.sidebar_tabs.addTab(self.map_group, tr("Map"))
 
         # 3. Reference Tone Settings Group
-        self.ref_group = QGroupBox(tr("Reference Tone Settings"))
+        self.ref_group = QWidget()
+        self.ref_group.setAccessibleName(tr("Reference Tone Settings"))
         ref_form = QVBoxLayout(self.ref_group)
         ref_form.setSpacing(6)
 
@@ -295,10 +290,12 @@ class ResponseViewerWidget(QWidget):
         ref_form.addWidget(self.ref_loopback_phase_chk)
 
         self.ref_group.setEnabled(False)
-        sidebar_layout.addWidget(self.ref_group)
+        ref_form.addStretch()
+        self.sidebar_tabs.addTab(self.ref_group, tr("Reference"))
 
         # 4. Wiener Settings Group
-        self.wiener_group = QGroupBox(tr("Wiener Settings"))
+        self.wiener_group = QWidget()
+        self.wiener_group.setAccessibleName(tr("Wiener Settings"))
         wiener_form = QVBoxLayout(self.wiener_group)
         wiener_form.setSpacing(6)
 
@@ -318,12 +315,9 @@ class ResponseViewerWidget(QWidget):
         wiener_form.addWidget(self.wiener_sigma_slider)
 
         self.wiener_group.setEnabled(False)
-        sidebar_layout.addWidget(self.wiener_group)
-
-        sidebar_layout.addStretch()
-        sidebar_content.setLayout(sidebar_layout)
-        sidebar_scroll.setWidget(sidebar_content)
-        main_layout.addWidget(sidebar_scroll)
+        wiener_form.addStretch()
+        self.sidebar_tabs.addTab(self.wiener_group, tr("Wiener"))
+        main_layout.addWidget(self.sidebar_tabs)
 
         # --- Right Panel: Tab Content Area ---
         self.tabs = QTabWidget()

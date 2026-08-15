@@ -683,6 +683,7 @@ class SpectrumAnalyzerWidget(
 
         # Row 1: Basic Controls
         row1_layout = QHBoxLayout()
+        row1_layout.setSpacing(4)
 
         # Start/Stop
         self.toggle_btn = QPushButton(tr("Start Analysis"))

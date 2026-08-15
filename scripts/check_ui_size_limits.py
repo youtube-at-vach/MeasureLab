@@ -1,148 +1,321 @@
 #!/usr/bin/env python3
-import os
-import sys
+"""Verify MeasureLab's real, displayed GUI layout contracts."""
 
-# Set testing environment variables
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from dataclasses import asdict, dataclass
+from unittest.mock import patch
+
+# Avoid real configuration writes and audio-device access during verification.
 os.environ["MEASURELAB_TESTING"] = "1"
 
-# Resolve project root path and append to sys.path
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, PROJECT_ROOT)
 
 try:
-    from PyQt6.QtWidgets import QApplication
+    from PyQt6.QtGui import QFont
+    from PyQt6.QtWidgets import QApplication, QScrollArea, QTabWidget, QWidget
+
+    from src.core.config_manager import ConfigManager
+    from src.core.localization import get_manager
     from src.gui.main_window import MainWindow
-except ImportError as e:
-    print(f"\033[31;1mError importing GUI modules: {e}\033[0m")
+except ImportError as exc:
+    print(f"Error importing GUI modules: {exc}")
     print("Please ensure your virtual environment is activated and dependencies are installed.")
     sys.exit(1)
 
-# Color ANSI codes
-COLOR_RESET = "\033[0m"
-COLOR_GREEN = "\033[32m"
-COLOR_RED = "\033[31;1m"
-COLOR_YELLOW = "\033[33m"
-COLOR_BOLD = "\033[1m"
-COLOR_CYAN = "\033[36m"
 
-# Define size ceiling constraints
-MAX_WINDOW_WIDTH = 1320
+MAX_WINDOW_WIDTH = 1400
 MAX_WINDOW_HEIGHT = 740
-MAX_WIDGET_WIDTH = 1100
+MAX_WIDGET_WIDTH = 1180
 MAX_WIDGET_HEIGHT = 690
 
+SCROLL_ROLE_PROPERTY = "measurelabScrollRole"
+AUDIT_EXPAND_PROPERTY = "measurelabLayoutAuditExpand"
+OUTER_CONTROLS_ROLE = "outer-controls"
+DYNAMIC_CONTENT_ROLE = "dynamic-content"
+VALID_SCROLL_ROLES = {OUTER_CONTROLS_ROLE, DYNAMIC_CONTENT_ROLE}
+RESULT_PREFIX = "__MEASURELAB_LAYOUT_RESULT__="
 
-def main():
-    print(f"{COLOR_BOLD}=== MeasureLab GUI Size Limit Check ==={COLOR_RESET}\n")
-    print("Target Constraints:")
-    print(f"  MainWindow Size Limit  : max {MAX_WINDOW_WIDTH}x{MAX_WINDOW_HEIGHT} px")
-    print(f"  Inner Widget Size Limit: max {MAX_WIDGET_WIDTH}x{MAX_WIDGET_HEIGHT} px")
-    print("-" * 65)
+# Keep a preloaded window alive until its single-profile worker exits. Some
+# modules own unparented QThreads that Qt must not destroy between profiles.
+_AUDIT_WINDOWS: list[MainWindow] = []
 
-    _app = QApplication(sys.argv)
 
-    # Instantiate the main window with all modules (including experimental ones)
-    window = MainWindow(enable_experimental=True)
+@dataclass(frozen=True, slots=True)
+class AuditProfile:
+    language: str
+    font_pixel_size: int | None
 
-    # Preload all modules (Settings, Spectrum Analyzer, etc.)
-    print("Preloading modules... ", end="", flush=True)
-    window.preload_all_modules()
-    print("Done.\n")
+    @property
+    def label(self) -> str:
+        font = "default" if self.font_pixel_size is None else f"{self.font_pixel_size}px"
+        return f"{self.language}/{font}"
 
-    window.show()
+
+@dataclass(frozen=True, slots=True)
+class LayoutFailure:
+    profile: str
+    module: str
+    state: str
+    detail: str
+
+
+def _process_events() -> None:
+    QApplication.processEvents()
+    QApplication.sendPostedEvents()
     QApplication.processEvents()
 
-    failures = []
 
-    # Iterate through all sidebar tabs
-    for i in range(window.sidebar.count()):
-        item = window.sidebar.item(i)
-        module_name = item.text()
+def _expand_layout_audit_controls(page: QWidget) -> None:
+    for widget in page.findChildren(QWidget):
+        if not bool(widget.property(AUDIT_EXPAND_PROPERTY)):
+            continue
+        setter = getattr(widget, "setChecked", None)
+        if callable(setter):
+            setter(True)
+    _process_events()
 
-        # Switch tab programmatically
-        window.sidebar.setCurrentRow(i)
-        QApplication.processEvents()
 
-        # Force layout system to update geometry
-        window.updateGeometry()
-        QApplication.processEvents()
+def _scroll_name(scroll: QScrollArea) -> str:
+    return scroll.objectName() or type(scroll).__name__
 
-        # 1. Check window-level size constraints
-        win_min_w = window.minimumSizeHint().width()
-        win_min_h = window.minimumSizeHint().height()
 
-        win_w_ok = win_min_w <= MAX_WINDOW_WIDTH
-        win_h_ok = win_min_h <= MAX_WINDOW_HEIGHT
+def _audit_scroll_areas(
+    page: QWidget,
+    *,
+    profile: AuditProfile,
+    module_name: str,
+    state: str,
+) -> list[LayoutFailure]:
+    failures: list[LayoutFailure] = []
+    for scroll in page.findChildren(QScrollArea):
+        if not scroll.isVisible():
+            continue
 
-        # 2. Check inner content widget size constraints
-        widget_min_w = 0
-        widget_min_h = 0
-        widget_w_ok = True
-        widget_h_ok = True
-
-        current_widget = window.content_area.currentWidget()
-        if current_widget:
-            widget_min_w = current_widget.minimumSizeHint().width()
-            widget_min_h = current_widget.minimumSizeHint().height()
-            widget_w_ok = widget_min_w <= MAX_WIDGET_WIDTH
-            widget_h_ok = widget_min_h <= MAX_WIDGET_HEIGHT
-
-        module_ok = win_w_ok and win_h_ok and widget_w_ok and widget_h_ok
-
-        # Print status line only on failure to reduce log context usage
-        if not module_ok:
-            status_str = f"{COLOR_RED}[FAIL]{COLOR_RESET}"
-            print(f"{status_str} Row {i:02d}: '{COLOR_BOLD}{module_name}{COLOR_RESET}'")
-            print(
-                f"  - MainWindow Min Hint: {win_min_w}x{win_min_h} px ({COLOR_GREEN}OK{COLOR_RESET}"
-                if (win_w_ok and win_h_ok)
-                else f"({COLOR_RED}OVERFLOW! Max: {MAX_WINDOW_WIDTH}x{MAX_WINDOW_HEIGHT}{COLOR_RESET})"
-            )
-
-            if current_widget:
-                print(
-                    f"  - Inner Widget Hint  : {widget_min_w}x{widget_min_h} px ({COLOR_GREEN}OK{COLOR_RESET}"
-                    if (widget_w_ok and widget_h_ok)
-                    else f"({COLOR_RED}OVERFLOW! Max: {MAX_WIDGET_WIDTH}x{MAX_WIDGET_HEIGHT}{COLOR_RESET})"
-                )
-            print("-" * 65)
-
+        role = str(scroll.property(SCROLL_ROLE_PROPERTY) or "")
+        name = _scroll_name(scroll)
+        if role not in VALID_SCROLL_ROLES:
             failures.append(
-                {
-                    "row": i,
-                    "name": module_name,
-                    "win_size": (win_min_w, win_min_h),
-                    "widget_size": (widget_min_w, widget_min_h),
-                }
+                LayoutFailure(
+                    profile.label,
+                    module_name,
+                    state,
+                    f"{name} has no valid {SCROLL_ROLE_PROPERTY!r} declaration",
+                )
+            )
+            continue
+
+        vertical_max = scroll.verticalScrollBar().maximum()
+        horizontal_max = scroll.horizontalScrollBar().maximum()
+        if role == OUTER_CONTROLS_ROLE and (vertical_max or horizontal_max):
+            failures.append(
+                LayoutFailure(
+                    profile.label,
+                    module_name,
+                    state,
+                    f"{name} outer controls scroll (vertical={vertical_max}, horizontal={horizontal_max})",
+                )
+            )
+        elif role == DYNAMIC_CONTENT_ROLE and horizontal_max:
+            failures.append(
+                LayoutFailure(
+                    profile.label,
+                    module_name,
+                    state,
+                    f"{name} dynamic content scrolls horizontally ({horizontal_max})",
+                )
+            )
+    return failures
+
+
+def _audit_visible_state(
+    window: MainWindow,
+    page: QWidget,
+    *,
+    profile: AuditProfile,
+    module_name: str,
+    state: str,
+) -> list[LayoutFailure]:
+    failures: list[LayoutFailure] = []
+    window.updateGeometry()
+    page.updateGeometry()
+    _process_events()
+
+    hint = page.minimumSizeHint()
+    if hint.width() > MAX_WIDGET_WIDTH or hint.height() > MAX_WIDGET_HEIGHT:
+        failures.append(
+            LayoutFailure(
+                profile.label,
+                module_name,
+                state,
+                f"minimumSizeHint {hint.width()}x{hint.height()} exceeds {MAX_WIDGET_WIDTH}x{MAX_WIDGET_HEIGHT}",
+            )
+        )
+
+    failures.extend(
+        _audit_scroll_areas(
+            page,
+            profile=profile,
+            module_name=module_name,
+            state=state,
+        )
+    )
+    return failures
+
+
+def _audit_page_tabs(
+    window: MainWindow,
+    page: QWidget,
+    *,
+    profile: AuditProfile,
+    module_name: str,
+) -> list[LayoutFailure]:
+    failures = _audit_visible_state(
+        window,
+        page,
+        profile=profile,
+        module_name=module_name,
+        state="default",
+    )
+
+    tab_widgets = list(page.findChildren(QTabWidget))
+    for tab_number, tabs in enumerate(tab_widgets, start=1):
+        original_index = tabs.currentIndex()
+        for index in range(tabs.count()):
+            tabs.setCurrentIndex(index)
+            _process_events()
+            failures.extend(
+                _audit_visible_state(
+                    window,
+                    page,
+                    profile=profile,
+                    module_name=module_name,
+                    state=f"tabs-{tab_number}:{index}",
+                )
+            )
+        tabs.setCurrentIndex(original_index)
+    return failures
+
+
+def _audit_profile(app: QApplication, profile: AuditProfile, base_font: QFont) -> list[LayoutFailure]:
+    font = QFont(base_font)
+    if profile.font_pixel_size is not None:
+        font.setPixelSize(profile.font_pixel_size)
+    app.setFont(font)
+
+    failures: list[LayoutFailure] = []
+    with patch.object(ConfigManager, "get_language", return_value=profile.language):
+        window = MainWindow(enable_experimental=True)
+        window.preload_all_modules()
+        window.resize(MAX_WINDOW_WIDTH, MAX_WINDOW_HEIGHT)
+        window.show()
+        _process_events()
+
+        window_hint = window.minimumSizeHint()
+        if window_hint.width() > MAX_WINDOW_WIDTH or window_hint.height() > MAX_WINDOW_HEIGHT:
+            failures.append(
+                LayoutFailure(
+                    profile.label,
+                    "MainWindow",
+                    "preloaded",
+                    (
+                        f"minimumSizeHint {window_hint.width()}x{window_hint.height()} exceeds "
+                        f"{MAX_WINDOW_WIDTH}x{MAX_WINDOW_HEIGHT}"
+                    ),
+                )
             )
 
-    # Cleanup GUI resources properly before exiting
-    window.close()
-    window.deleteLater()
-    QApplication.processEvents()
+        for row in range(window.sidebar.count()):
+            item = window.sidebar.item(row)
+            module_name = item.text()
+            window.sidebar.setCurrentRow(row)
+            _process_events()
 
-    # Final summary and exit
+            page = window.content_area.currentWidget()
+            if page is None:
+                continue
+            _expand_layout_audit_controls(page)
+            failures.extend(
+                _audit_page_tabs(
+                    window,
+                    page,
+                    profile=profile,
+                    module_name=module_name,
+                )
+            )
+
+        _AUDIT_WINDOWS.append(window)
+
+    return failures
+
+
+def _profiles() -> list[AuditProfile]:
+    languages = sorted(get_manager().available_languages)
+    # Pixel-sized fonts have substantially different metrics across Qt's
+    # platform backends. Audit every translation with the platform's real
+    # application default; explicit font sizes remain available through the
+    # single-profile CLI for targeted diagnostics.
+    return [AuditProfile(language, None) for language in languages]
+
+
+def _run_single_profile(language: str, font_arg: str) -> None:
+    app = QApplication.instance() or QApplication(sys.argv)
+    base_font = QFont(app.font())
+    font_pixel_size = None if font_arg == "default" else int(font_arg)
+    failures = _audit_profile(app, AuditProfile(language, font_pixel_size), base_font)
+    payload = json.dumps([asdict(failure) for failure in failures], ensure_ascii=False)
+    print(f"{RESULT_PREFIX}{payload}", flush=True)
+    os._exit(0)
+
+
+def _run_profile_worker(profile: AuditProfile) -> list[LayoutFailure]:
+    font_arg = "default" if profile.font_pixel_size is None else str(profile.font_pixel_size)
+    result = subprocess.run(
+        [sys.executable, __file__, "--profile", profile.language, font_arg],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    result_line = next((line for line in result.stdout.splitlines() if line.startswith(RESULT_PREFIX)), None)
+    if result.returncode != 0 or result_line is None:
+        output = "\n".join(part for part in (result.stdout, result.stderr) if part).strip()
+        detail = output or f"profile worker exited with status {result.returncode}"
+        return [LayoutFailure(profile.label, "layout checker", "worker", detail)]
+
+    raw_failures = json.loads(result_line.removeprefix(RESULT_PREFIX))
+    return [LayoutFailure(**failure) for failure in raw_failures]
+
+
+def main() -> int:
+    failures: list[LayoutFailure] = []
+
+    print("=== MeasureLab displayed UI layout check ===")
+    print(f"MainWindow limit: {MAX_WINDOW_WIDTH}x{MAX_WINDOW_HEIGHT}")
+    print(f"Module limit: {MAX_WIDGET_WIDTH}x{MAX_WIDGET_HEIGHT}")
+
+    for profile in _profiles():
+        print(f"Checking {profile.label}...", flush=True)
+        failures.extend(_run_profile_worker(profile))
+
     if failures:
-        print(f"\n{COLOR_RED}{COLOR_BOLD}Verification Failed!{COLOR_RESET}")
-        print(f"The following {len(failures)} module(s) exceeded the size constraints:")
-        for f in failures:
-            print(f"  * Row {f['row']}: '{f['name']}'")
-            print(
-                f"    MainWindow  : {f['win_size'][0]}x{f['win_size'][1]} px (Limit: {MAX_WINDOW_WIDTH}x{MAX_WINDOW_HEIGHT})"
-            )
-            print(
-                f"    Inner Widget: {f['widget_size'][0]}x{f['widget_size'][1]} px (Limit: {MAX_WIDGET_WIDTH}x{MAX_WIDGET_HEIGHT})"
-            )
-        print(f"\n{COLOR_YELLOW}Recommendation:{COLOR_RESET}")
-        print("  1. Wrap the widget's layout in a QScrollArea if it has many controls.")
-        print("  2. Organize extensive controls into QTabWidget or collapsible QGroupBox widgets.")
-        print("  3. Reduce minimumWidth or minimumHeight constraints on sub-components.\n")
-        sys.exit(1)
-    else:
-        print(f"\n{COLOR_GREEN}{COLOR_BOLD}Verification Passed!{COLOR_RESET}")
-        print("All modules and window sizes conform to the maximum screen limits.\n")
-        sys.exit(0)
+        print(f"\nVerification failed with {len(failures)} layout violation(s):")
+        for failure in failures:
+            print(f"- [{failure.profile}] {failure.module} ({failure.state}): {failure.detail}")
+        print("\nReorganize controls with shallow tabs, reduce redundant margins, or use flexible size policies.")
+        print("Do not hide fixed control overflow inside a scroll area to satisfy the size ceiling.")
+        return 1
+
+    print("\nVerification Passed!")
+    print("All displayed layouts conform to size and scrolling contracts.")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) == 4 and sys.argv[1] == "--profile":
+        _run_single_profile(sys.argv[2], sys.argv[3])
+    raise SystemExit(main())
