@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 from PyQt6 import sip
-from PyQt6.QtWidgets import QWidget
+from PyQt6.QtWidgets import QHBoxLayout, QWidget
 
 from src.core.module_constants import MODULE_SPECTRUM_ANALYZER
 from src.gui.module_registry import MODULE_REGISTRY
@@ -94,6 +94,14 @@ def test_spectrum_analyzer_implements_split_interface(spectrum_widget):
     assert isinstance(spectrum_widget.get_control_widget(), QWidget)
     assert spectrum_widget.get_display_widget() is spectrum_widget.display_widget
     assert spectrum_widget.get_control_widget() is spectrum_widget.controls_group
+
+
+def test_spectrum_analyzer_controls_use_two_rows(spectrum_widget):
+    controls_layout = spectrum_widget.controls_group.layout()
+
+    assert controls_layout.count() == 2
+    assert isinstance(controls_layout.itemAt(0).layout(), QHBoxLayout)
+    assert isinstance(controls_layout.itemAt(1).layout(), QHBoxLayout)
 
 
 def test_split_live_update_and_reattach_preserve_rendering_objects(spectrum_widget, spectrum_wrapper, qtbot):

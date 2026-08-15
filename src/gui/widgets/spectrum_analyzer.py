@@ -681,13 +681,9 @@ class SpectrumAnalyzerWidget(
         self.controls_group = QGroupBox(tr("Analysis Settings"))
         main_controls_layout = QVBoxLayout()
 
-        # Basic controls use two shallow rows so translated labels do not force
-        # the module beyond the standard 1100 px content width.
-        row1_layout = QVBoxLayout()
-        primary_controls = QHBoxLayout()
-        secondary_controls = QHBoxLayout()
-        row1_layout.addLayout(primary_controls)
-        row1_layout.addLayout(secondary_controls)
+        # Row 1: Basic Controls
+        row1_layout = QHBoxLayout()
+        row1_layout.setSpacing(4)
 
         # Start/Stop
         self.toggle_btn = QPushButton(tr("Start Analysis"))
@@ -698,10 +694,10 @@ class SpectrumAnalyzerWidget(
             "QPushButton { background-color: #ccffcc; color: black; } QPushButton:checked { background-color: #ffcccc; color: black; }"
         )
 
-        primary_controls.addWidget(self.toggle_btn)
+        row1_layout.addWidget(self.toggle_btn)
 
         # Mode Selection
-        primary_controls.addWidget(QLabel(tr("Mode:")))
+        row1_layout.addWidget(QLabel(tr("Mode:")))
         self.mode_combo = QComboBox()
         self.mode_combo.addItem(tr("Spectrum"), "Spectrum")
         self.mode_combo.addItem(tr("PSD"), "PSD")
@@ -713,18 +709,18 @@ class SpectrumAnalyzerWidget(
             self.mode_combo.setCurrentIndex(index)
 
         self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
-        primary_controls.addWidget(self.mode_combo)
+        row1_layout.addWidget(self.mode_combo)
 
         # Channel Selection
-        primary_controls.addWidget(QLabel(tr("Channel:")))
+        row1_layout.addWidget(QLabel(tr("Channel:")))
         self.channel_combo = QComboBox()
         self.channel_combo.addItems(["Left", "Right", "Average", "Dual"])
         self.channel_combo.setCurrentText(self.module.channel_mode)
         self.channel_combo.currentTextChanged.connect(self.on_channel_changed)
-        primary_controls.addWidget(self.channel_combo)
+        row1_layout.addWidget(self.channel_combo)
 
         # FFT Size
-        primary_controls.addWidget(QLabel(tr("FFT Size:")))
+        row1_layout.addWidget(QLabel(tr("FFT Size:")))
         self.fft_combo = QComboBox()
         self.fft_combo.addItems(
             [
@@ -745,10 +741,10 @@ class SpectrumAnalyzerWidget(
         )
         self.fft_combo.setCurrentText(str(self.module.buffer_size))
         self.fft_combo.currentTextChanged.connect(self.on_fft_size_changed)
-        primary_controls.addWidget(self.fft_combo)
+        row1_layout.addWidget(self.fft_combo)
 
         # Window Selection
-        secondary_controls.addWidget(QLabel(tr("Window:")))
+        row1_layout.addWidget(QLabel(tr("Window:")))
         self.window_combo = QComboBox()
         for w in fft_manager.get_available_windows():
             if w == "boxcar":
@@ -765,22 +761,21 @@ class SpectrumAnalyzerWidget(
             self.window_combo.setCurrentIndex(idx)
 
         self.window_combo.currentIndexChanged.connect(self.on_window_changed)
-        secondary_controls.addWidget(self.window_combo)
+        row1_layout.addWidget(self.window_combo)
 
         # Weighting Selection
-        secondary_controls.addWidget(QLabel(tr("Weighting:")))
+        row1_layout.addWidget(QLabel(tr("Weighting:")))
         self.weighting_combo = QComboBox()
         self.weighting_combo.addItems(["Z", "A", "C"])
         self.weighting_combo.currentTextChanged.connect(self.on_weighting_changed)
-        secondary_controls.addWidget(self.weighting_combo)
+        row1_layout.addWidget(self.weighting_combo)
 
         # Unit Selection (Replaces Physical Units Checkbox)
-        secondary_controls.addWidget(QLabel(tr("Unit:")))
+        row1_layout.addWidget(QLabel(tr("Unit:")))
         self.unit_combo = QComboBox()
         self.unit_combo.currentTextChanged.connect(self.on_unit_changed)
         self._refresh_unit_options(force=True)
-        secondary_controls.addWidget(self.unit_combo)
-        secondary_controls.addStretch()
+        row1_layout.addWidget(self.unit_combo)
 
         main_controls_layout.addLayout(row1_layout)
 
