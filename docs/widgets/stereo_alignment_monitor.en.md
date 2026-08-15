@@ -7,6 +7,12 @@
 A comprehensive tool for analyzing the alignment and consistency between L/R channels.  
 It monitors L/R balance, frequency response match, center focus, and phase issues in real-time, providing both quantitative and visual evaluations. Extremely useful for verifying speaker setups and measuring channel imbalances in audio equipment.
 
+## Common Features
+
+This widget supports **Detach Window**, **Screenshot**, **Logs**, and **Compact Mode**.
+It does not support **Split Window** or **Send to Comparer**.
+See [Detachable Wrapper](detachable_wrapper.en.md) for details about each operation.
+
 ## What is Stereo Alignment?
 
 In stereo playback, when the sound from the left and right speakers reaches the listener in a perfectly matched state, it is said to be in "alignment". Poor alignment typically causes the following issues:

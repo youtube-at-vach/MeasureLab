@@ -53,10 +53,10 @@ def make_module(
 def test_event_detector_is_registered_after_raw_time_series():
     raw_index = ALL_MODULE_KEYS.index(MODULE_RAW_TIME_SERIES)
     assert ALL_MODULE_KEYS[raw_index + 1] == MODULE_EVENT_DETECTOR
-    assert MODULE_REGISTRY[MODULE_EVENT_DETECTOR] == (
-        "src.gui.widgets.event_detector",
-        "EventDetector",
-    )
+    spec = MODULE_REGISTRY[MODULE_EVENT_DETECTOR]
+    assert spec.module_path == "src.gui.widgets.event_detector"
+    assert spec.module_class_name == "EventDetector"
+    assert spec.widget_class_name == "EventDetectorWidget"
     assert _load_module_class(MODULE_EVENT_DETECTOR) is EventDetector
 
 

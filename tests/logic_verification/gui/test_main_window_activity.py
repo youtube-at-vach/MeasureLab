@@ -1,9 +1,10 @@
 from PyQt6.QtGui import QPalette
-from PyQt6.QtWidgets import QListWidget
+from PyQt6.QtWidgets import QListWidget, QWidget
 from unittest.mock import MagicMock
 
 from src.core.localization import tr
 from src.gui.main_window import MainWindow
+from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
 
 class _DummyModule:
@@ -13,8 +14,9 @@ class _DummyModule:
 
 
 class _DummyWrapper:
-    def __init__(self, is_detached=False):
+    def __init__(self, is_detached=False, is_split=False):
         self.is_detached = is_detached
+        self.is_split = is_split
 
 
 def _build_window_stub(qtbot):
@@ -99,6 +101,37 @@ def test_build_module_activity_tooltip(qtbot):
     assert tr("Recorder / Player") in tooltip3
     assert tr("ACTIVE") in tooltip3
     assert tr("Widget is detached in a separate window.") in tooltip3
+
+    # Test case 4: Split state takes precedence over detached wording
+    window.module_widgets[1] = _DummyWrapper(is_split=True)
+    tooltip4 = window._build_module_activity_tooltip(1)
+    assert tr("Widget is split into display and control windows.") in tooltip4
+    assert tr("Widget is detached in a separate window.") not in tooltip4
+
+
+def test_menu_only_double_click_raises_both_split_windows(qtbot):
+    window = _build_window_stub(qtbot)
+    wrapper = DetachableWidgetWrapper(QWidget(), "Split Module")
+    qtbot.addWidget(wrapper)
+    display_window = MagicMock()
+    control_window = MagicMock()
+    wrapper.is_split = True
+    wrapper.split_display_window = display_window
+    wrapper.split_control_window = control_window
+    window._menu_only_mode = True
+    window.modules[0] = _DummyModule()
+    window.module_widgets[0] = wrapper
+
+    try:
+        window.on_sidebar_item_double_clicked(window.sidebar.item(2))
+        for external_window in (display_window, control_window):
+            external_window.show.assert_called_once_with()
+            external_window.raise_.assert_called_once_with()
+            external_window.activateWindow.assert_called_once_with()
+    finally:
+        wrapper.is_split = False
+        wrapper.split_display_window = None
+        wrapper.split_control_window = None
 
 
 def _audio_status(*, latched=None, count=0, active=True, error_count=0, last_error=None):

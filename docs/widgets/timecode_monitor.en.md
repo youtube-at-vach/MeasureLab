@@ -106,6 +106,12 @@ A feature to measure and automatically compensate for the input/output latency (
 
 Calibration measures audio path delay. It does not rewrite the timecode content itself. If you change your wiring or interface, it is worth running again.
 
+## Common Features
+
+This widget supports **Detach Window**, **Screenshot**, **Logs**, and **Compact Mode**.
+It does not support **Split Window** or **Send to Comparer**.
+See [Detachable Wrapper](detachable_wrapper.en.md) for details about each operation.
+
 ## Usage Examples
 
 ### Checking Timecode

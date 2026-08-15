@@ -106,6 +106,12 @@ MeasureLabからタイムコード信号を出力する機能です。このタ�
 
 校正は「音の遅れ」を測る作業です。タイムコードそのものの内容を直すわけではありません。配線やオーディオインターフェースが変わったら、必要に応じて再実行してください。
 
+## 共通機能
+
+このウィジェットは **Detach Window**、**Screenshot**、**Logs**、**Compact Mode** に対応しています。
+**Split Window** および **Send to Comparer** には対応していません。
+各操作の詳細は [Detachable Wrapper](detachable_wrapper.md) を参照してください。
+
 ## 使用例
 
 ### タイムコードの確認

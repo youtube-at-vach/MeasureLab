@@ -1,6 +1,7 @@
 import os
 import re
 from datetime import datetime
+from enum import Enum
 
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
@@ -16,6 +17,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src.core.localization import tr
+from src.gui.module_registry import WidgetCapabilities
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.comparable_interface import ComparableWidgetInterface
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
@@ -73,9 +75,7 @@ class IndependentWindow(QMainWindow):
 
         menu = QMenu(self)
 
-        is_compactable = isinstance(self.content_widget, CompactableWidgetInterface) or hasattr(
-            self.content_widget, "set_compact_mode"
-        )
+        is_compactable = isinstance(self.content_widget, CompactableWidgetInterface)
         if is_compactable:
             is_compact = getattr(self.content_widget, "is_compact_mode", lambda: False)()
             toggle_action = QAction(tr("Toggle Compact Mode"), self)
@@ -91,6 +91,14 @@ class IndependentWindow(QMainWindow):
         menu.exec(event.globalPos())
 
 
+class WidgetWindowState(Enum):
+    """Mutually exclusive window layouts exposed by the common wrapper."""
+
+    ATTACHED = "A"
+    DETACHED = "B"
+    SPLIT = "C"
+
+
 class DetachableWidgetWrapper(QWidget):
     """
     Wraps a widget to allow it to be detached into a separate window.
@@ -98,7 +106,14 @@ class DetachableWidgetWrapper(QWidget):
     Supports split mode (State C) if the content widget implements SplittableWidgetInterface.
     """
 
-    def __init__(self, widget: QWidget, title: str, config_manager=None):
+    def __init__(
+        self,
+        widget: QWidget,
+        title: str,
+        config_manager=None,
+        *,
+        capabilities: WidgetCapabilities | None = None,
+    ):
         super().__init__()
         self.content_widget = widget
         self.title = title
@@ -111,16 +126,30 @@ class DetachableWidgetWrapper(QWidget):
         self.split_display_window = None
         self.split_control_window = None
 
-        # Check if the content widget supports compact mode
-        self.is_compactable = isinstance(widget, CompactableWidgetInterface) or hasattr(widget, "set_compact_mode")
+        runtime_capabilities = {
+            "compact": isinstance(widget, CompactableWidgetInterface),
+            "compare": isinstance(widget, ComparableWidgetInterface),
+            "split": isinstance(widget, SplittableWidgetInterface),
+        }
+        if capabilities is not None:
+            declared_capabilities = {
+                "compact": capabilities.compact.is_supported,
+                "compare": capabilities.compare.is_supported,
+                "split": capabilities.split.is_supported,
+            }
+            mismatches = [
+                name
+                for name, declared in declared_capabilities.items()
+                if runtime_capabilities[name] != declared
+            ]
+            if mismatches:
+                joined = ", ".join(sorted(mismatches))
+                raise TypeError(f"{title}: declared widget capabilities do not match implementation: {joined}")
+            runtime_capabilities = declared_capabilities
 
-        # Check if the content widget supports plot comparison
-        self.is_comparable = isinstance(widget, ComparableWidgetInterface) or hasattr(widget, "get_comparable_data")
-
-        # Check if the content widget supports split mode
-        self.is_splittable = isinstance(widget, SplittableWidgetInterface) or (
-            hasattr(widget, "get_display_widget") and hasattr(widget, "get_control_widget")
-        )
+        self.is_compactable = runtime_capabilities["compact"]
+        self.is_comparable = runtime_capabilities["compare"]
+        self.is_splittable = runtime_capabilities["split"]
 
         self.init_ui()
 
@@ -129,6 +158,34 @@ class DetachableWidgetWrapper(QWidget):
         if hasattr(self.app, "theme_manager"):
             self.app.theme_manager.theme_changed.connect(self.apply_theme)
             self.apply_theme(self.app.theme_manager.get_current_theme())
+
+    @property
+    def window_state(self) -> WidgetWindowState:
+        if self.is_split:
+            return WidgetWindowState.SPLIT
+        if self.is_detached:
+            return WidgetWindowState.DETACHED
+        return WidgetWindowState.ATTACHED
+
+    @staticmethod
+    def _activate_window(window) -> None:
+        if window is None:
+            return
+        window.show()
+        window.raise_()
+        window.activateWindow()
+
+    def activate_external_windows(self) -> bool:
+        """Bring detached windows forward and report whether the widget is external."""
+        state = self.window_state
+        if state is WidgetWindowState.ATTACHED:
+            return False
+        if state is WidgetWindowState.SPLIT:
+            self._activate_window(self.split_display_window)
+            self._activate_window(self.split_control_window)
+        else:
+            self._activate_window(self.independent_window)
+        return True
 
     def apply_theme(self, theme_name=None):
         if not theme_name and hasattr(self.app, "theme_manager"):

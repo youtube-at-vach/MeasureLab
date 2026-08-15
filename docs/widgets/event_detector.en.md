@@ -100,6 +100,12 @@ The table shows the most recent 500 records. CSV and JSON exports include every 
 - CSV writes run conditions as comment rows followed by the event table.
 - Peaks are always retained in FS units, with a converted display value also included when calibrated.
 
+## Common Features
+
+This widget supports **Detach Window**, **Screenshot**, **Logs**, **Split Window**, and
+**Compact Mode**. It does not support **Send to Comparer**.
+See [Detachable Wrapper](detachable_wrapper.en.md) for details about each operation.
+
 ## Basic Measurement Procedure
 
 1. Connect the DUT to the audio interface, using a low-noise preamplifier when required.
