@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from PyQt6.QtCore import Qt
@@ -10,11 +10,19 @@ from PyQt6.QtWidgets import QHBoxLayout, QWidget
 from src.gui.module_registry import (
     COMPACT_DEFERRED,
     COMPARISON_DEFERRED,
+    NO_INDEPENDENT_DISPLAY,
     SUPPORTED,
     WidgetCapabilities,
 )
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
+
+
+NO_CAPABILITIES = WidgetCapabilities(
+    split_window=NO_INDEPENDENT_DISPLAY,
+    compact_mode=NO_INDEPENDENT_DISPLAY,
+    comparison=NO_INDEPENDENT_DISPLAY,
+)
 
 
 class _TrackingPanel(QWidget):
@@ -122,3 +130,38 @@ def test_detach_request_does_not_corrupt_split_state(split_wrapper, qtbot):
     assert wrapper.split_control_window is control_window
     assert content.display_widget.parent() is display_window
     assert content.control_widget.parent() is control_window
+
+
+def test_activate_external_windows_raises_both_split_windows(qtbot):
+    wrapper = DetachableWidgetWrapper(QWidget(), "Split Activation", capabilities=NO_CAPABILITIES)
+    qtbot.addWidget(wrapper)
+    display_window = MagicMock()
+    control_window = MagicMock()
+    wrapper.is_split = True
+    wrapper.split_display_window = display_window
+    wrapper.split_control_window = control_window
+
+    try:
+        assert wrapper.activate_external_windows()
+        for window in (display_window, control_window):
+            window.show.assert_called_once_with()
+            window.raise_.assert_called_once_with()
+            window.activateWindow.assert_called_once_with()
+    finally:
+        wrapper.is_split = False
+        wrapper.split_display_window = None
+        wrapper.split_control_window = None
+
+
+def test_logs_button_opens_and_activates_shared_viewer(qtbot):
+    wrapper = DetachableWidgetWrapper(QWidget(), "Logs Test", capabilities=NO_CAPABILITIES)
+    qtbot.addWidget(wrapper)
+    viewer = MagicMock()
+
+    with patch("src.gui.widgets.log_viewer.LogViewerWindow.get_instance", return_value=viewer) as get_instance:
+        wrapper.logs_btn.click()
+
+    get_instance.assert_called_once_with()
+    viewer.show.assert_called_once_with()
+    viewer.raise_.assert_called_once_with()
+    viewer.activateWindow.assert_called_once_with()

@@ -100,6 +100,12 @@ Event Rate = Event Count × 60 / Measurement Time [seconds]
 - CSVは先頭にRun条件をコメント行として記録し、その後にイベント表を記録します。
 - ピークは常にFS値を保持し、校正済みの場合は表示単位へ換算した値も併記します。
 
+## 共通機能
+
+このウィジェットは **Detach Window**、**Screenshot**、**Logs**、**Split Window**、
+**Compact Mode** に対応しています。**Send to Comparer** には対応していません。
+各操作の詳細は [Detachable Wrapper](detachable_wrapper.md) を参照してください。
+
 ## 基本的な測定手順
 
 1. DUTを低雑音プリアンプなどを介してオーディオインターフェースへ接続します。

@@ -1,6 +1,7 @@
 import os
 import re
 from datetime import datetime
+from enum import Enum
 
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
@@ -142,6 +143,14 @@ class IndependentWindow(QMainWindow):
         menu.exec(event.globalPos())
 
 
+class WidgetWindowState(Enum):
+    """Mutually exclusive window layouts exposed by the common wrapper."""
+
+    ATTACHED = "A"
+    DETACHED = "B"
+    SPLIT = "C"
+
+
 class DetachableWidgetWrapper(QWidget):
     """
     Wraps a widget to allow it to be detached into a separate window.
@@ -182,6 +191,34 @@ class DetachableWidgetWrapper(QWidget):
         if hasattr(self.app, "theme_manager"):
             self.app.theme_manager.theme_changed.connect(self.apply_theme)
             self.apply_theme(self.app.theme_manager.get_current_theme())
+
+    @property
+    def window_state(self) -> WidgetWindowState:
+        if self.is_split:
+            return WidgetWindowState.SPLIT
+        if self.is_detached:
+            return WidgetWindowState.DETACHED
+        return WidgetWindowState.ATTACHED
+
+    @staticmethod
+    def _activate_window(window) -> None:
+        if window is None:
+            return
+        window.show()
+        window.raise_()
+        window.activateWindow()
+
+    def activate_external_windows(self) -> bool:
+        """Bring detached windows forward and report whether the widget is external."""
+        state = self.window_state
+        if state is WidgetWindowState.ATTACHED:
+            return False
+        if state is WidgetWindowState.SPLIT:
+            self._activate_window(self.split_display_window)
+            self._activate_window(self.split_control_window)
+        else:
+            self._activate_window(self.independent_window)
+        return True
 
     def apply_theme(self, theme_name=None):
         if not theme_name and hasattr(self.app, "theme_manager"):

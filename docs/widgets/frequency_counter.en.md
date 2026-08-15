@@ -11,7 +11,9 @@ It can be used for measuring the stability of crystal oscillators, instrument tu
 
 ## Common Features
 
-This widget supports common features of the Detachable Wrapper (such as **Split Window** and **Compact Mode**). Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+This widget supports **Detach Window**, **Screenshot**, **Logs**, and **Compact Mode**.
+It does not support **Split Window** or **Send to Comparer**.
+See [Detachable Wrapper](detachable_wrapper.en.md) for details about each operation.
 
 ## Operation
 

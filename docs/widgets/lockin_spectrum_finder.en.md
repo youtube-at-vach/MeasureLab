@@ -109,7 +109,9 @@ The **Audio Sonification** tab provides an audio output corresponding to detecte
 
 ## Common Features
 
-This widget supports common features of the Detachable Wrapper (such as **Split Window** and **Compact Mode**). Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+This widget supports **Detach Window**, **Screenshot**, **Logs**, and **Split Window**.
+It does not support **Compact Mode** or **Send to Comparer**.
+See [Detachable Wrapper](detachable_wrapper.en.md) for details about each operation.
 
 ## How to Read the Graph
 

@@ -13,7 +13,7 @@ Whether you are using tools such as the Spectrogram or Spectrum Analyzer, you ca
 
 Pressing the **"Screenshot"** button in the upper right of the widget instantly saves the current content of that widget (the graph or just the graph part) as an image file (PNG format).
 
-* **Save Location**: By default, it is saved in the `screenshots` folder in the same directory as the executable file.
+* **Save Location**: By default, screenshots are saved to `~/Pictures/MeasureLab` on macOS and the application root's `screenshots` folder on Windows/Linux. You can change this in Settings.
 * **File Name**: Automatically named in the format `[Tool Name]_[Date]_[Time].png`.
 * **Use Cases**: Ideal for creating experiment reports, posting to SNS, and recording evidence of measurement results.
 
@@ -24,12 +24,19 @@ Pressing the **"Logs"** button in the upper right of the widget opens the log vi
 * **Use Cases**: Used to check warnings or errors during measurements, and to obtain debugging information.
 * **Features**: You can filter the level of logs to display, such as all logs, info, warnings, or errors only.
 
+### Sending to Plot Comparer (Send to Comparer)
+
+The **"Send to Comparer"** button appears only for widgets that can export 1D/XY traces.
+It adds the current measurement traces to Plot Comparer so they can be overlaid with other results.
+A warning is shown when there is no data available to send.
+
 ### Splitting Windows (Split Window)
 
 By pressing the **"Split Window"** button (available only for widgets that support this feature), the widget is split into two independent windows: a "display section" (such as waveforms) and a "control section" for settings.
 
 * **Usage**: This is convenient when you want to monitor the display section in full screen while keeping the control section on a different monitor for operation.
 * **How to Restore**: Closing either of the split windows or pressing the **"Reattach All"** button in the original location will restore the widget to its original single-window state.
+* **Opening from Menu Only**: Double-clicking an already split tool in the sidebar brings both its display and control windows to the front.
 
 ### Window Separation (Detach Window)
 
@@ -40,7 +47,7 @@ Pressing the **"Detach Window"** button makes only that widget pop out into an i
 
 ### Compact Mode
 
-When a widget window is detached, a **"Compact"** button appears in the common header.
+For supported widgets, the **"Compact"** button is always present in the common header. It is disabled in the normal main-window layout and becomes enabled while detached or split. In split mode, compact layout applies only to the display window.
 
 * **Space-Saving Display**: Clicking this button minimizes the widget's footprint, displaying only critical numerical parameters (e.g., SPL values in Sound Level Meter, frequency counts in Frequency Counter) in a bold, easy-to-read format.
 * **Auto-Reset on Reattach**: Reattaching the window back to the main layout automatically exits compact mode and restores the standard detailed layout.

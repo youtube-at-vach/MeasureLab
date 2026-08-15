@@ -10,6 +10,12 @@
 
 USBケーブル、Bluetooth接続、あるいは物理的なアナログ回路など、あらゆる伝送経路（デジタル・アナログ双方）に対応し、サンプリング同期遅延や信号の完全性をリアルタイムで測定します。
 
+## Detachable Wrapper 共通機能
+
+このウィジェットは **Detach Window**、**Screenshot**、**Logs**、**Compact Mode** に対応しています。
+**Split Window** および **Send to Comparer** には対応していません。
+各操作の詳細は [Detachable Wrapper](detachable_wrapper.md) を参照してください。
+
 ## 主な機能と測定モード
 
 Transmission Analyzer には、測定対象に応じて切り替え可能な2つのメインモードがあります。

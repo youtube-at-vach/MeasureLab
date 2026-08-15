@@ -475,7 +475,7 @@ class MainWindow(QMainWindow):
                         self.logger.warning(f"Failed to sync output destination for {key}: {e}")
             else:
                 self._replace_container_contents(container, QLabel(tr("No GUI for {0}").format(key)))
-        except (ImportError, AttributeError, RuntimeError, ValueError, KeyError) as e:
+        except (ImportError, AttributeError, RuntimeError, TypeError, ValueError, KeyError) as e:
             self._replace_container_contents(
                 container,
                 QLabel(tr("Error loading {0}: {1}").format(key, e)),
@@ -671,8 +671,11 @@ class MainWindow(QMainWindow):
             parts.append(tr("ACTIVE"))
 
         wrapper = self.module_widgets[module_index]
-        if wrapper is not None and getattr(wrapper, "is_detached", False):
-            parts.append(tr("Widget is detached in a separate window."))
+        if wrapper is not None:
+            if getattr(wrapper, "is_split", False):
+                parts.append(tr("Widget is split into display and control windows."))
+            elif getattr(wrapper, "is_detached", False):
+                parts.append(tr("Widget is detached in a separate window."))
 
         return "\n".join(parts)
 
@@ -820,13 +823,7 @@ class MainWindow(QMainWindow):
             self._ensure_module_loaded(module_index)
             wrapper = self.module_widgets[module_index]
             if isinstance(wrapper, DetachableWidgetWrapper):
-                if wrapper.is_detached:
-                    window = wrapper.independent_window
-                    if window is not None:
-                        window.show()
-                        window.raise_()
-                        window.activateWindow()
-                else:
+                if not wrapper.activate_external_windows():
                     wrapper.detach()
                 return
 
