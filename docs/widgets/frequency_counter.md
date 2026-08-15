@@ -11,9 +11,7 @@
 
 ## 共通機能
 
-このウィジェットは **Detach Window**、**Screenshot**、**Logs**、**Compact Mode** に対応しています。
-表示部と操作部を分ける **Split Window** および **Send to Comparer** には対応していません。
-各操作の詳細は [Detachable Wrapper](detachable_wrapper.md) を参照してください。
+このウィジェットは Detachable Wrapper の共通機能（**コンパクトモード**など）に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
 
 ## 操作方法
 

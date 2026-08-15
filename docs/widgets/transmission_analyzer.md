@@ -12,9 +12,7 @@ USBケーブル、Bluetooth接続、あるいは物理的なアナログ回路�
 
 ## Detachable Wrapper 共通機能
 
-このウィジェットは **Detach Window**、**Screenshot**、**Logs**、**Compact Mode** に対応しています。
-**Split Window** および **Send to Comparer** には対応していません。
-各操作の詳細は [Detachable Wrapper](detachable_wrapper.md) を参照してください。
+このウィジェットは Detachable Wrapper の共通機能（**コンパクトモード**など）に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
 
 ## 主な機能と測定モード
 
