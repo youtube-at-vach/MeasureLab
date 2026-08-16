@@ -10,7 +10,9 @@ It is ideal for checking the sense of localization and spread of stereo sound im
 
 ## Common Features
 
-This widget supports common features of the Detachable Wrapper (such as **Split Window** and **Compact Mode**). Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+This widget supports **Detach Window**, **Screenshot**, **Logs**, **Split Window**, and
+**Compact Mode**. It does not support **Send to Comparer**.
+See [Detachable Wrapper](detachable_wrapper.en.md) for details about each operation.
 
 ## How to Read the Screen
 
