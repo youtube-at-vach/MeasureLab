@@ -8,9 +8,7 @@ Sound Level Meter（騒音計）は、環境騒音やオーディオ機器の音
 
 ## 共通機能
 
-このウィジェットは **Detach Window**、**Screenshot**、**Logs**、**Split Window**、
-**Compact Mode** に対応しています。**Send to Comparer** には対応していません。
-各操作の詳細は [Detachable Wrapper](detachable_wrapper.md) を参照してください。
+このウィジェットは Detachable Wrapper の共通機能に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
 
 ## 基本操作
 

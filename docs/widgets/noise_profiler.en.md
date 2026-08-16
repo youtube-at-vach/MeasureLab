@@ -16,9 +16,7 @@ It is ideal for evaluating the low-noise performance of amplifiers and microphon
 
 ## Common Features
 
-This widget supports **Detach Window**, **Screenshot**, **Logs**, **Split Window**, and
-**Compact Mode**. It does not support **Send to Comparer**.
-See [Detachable Wrapper](detachable_wrapper.en.md) for details about each operation.
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
 
 ## Operation
 
