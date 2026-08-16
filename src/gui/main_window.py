@@ -29,8 +29,16 @@ from src.gui.module_registry import MODULE_REGISTRY
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
 
+_ALLOWED_MODULE_PATHS = frozenset(
+    [reg.module_path for reg in MODULE_REGISTRY.values()]
+    + ["src.gui.widgets.settings", "src.gui.widgets.welcome"]
+)
+
+
 def _load_class(module_path: str, class_name: str):
     """Dynamically load a class from a module."""
+    if module_path not in _ALLOWED_MODULE_PATHS:
+        raise ValueError(f"Module path not in allowlist: {module_path}")
     module = import_module(module_path)
     return getattr(module, class_name)
 
