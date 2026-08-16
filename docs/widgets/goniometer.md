@@ -10,7 +10,9 @@
 
 ## 共通機能
 
-このウィジェットは Detachable Wrapper の共通機能（**ウィンドウ分割**や**コンパクトモード**など）に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
+このウィジェットは **Detach Window**、**Screenshot**、**Logs**、**Split Window**、
+**Compact Mode** に対応しています。**Send to Comparer** には対応していません。
+各操作の詳細は [Detachable Wrapper](detachable_wrapper.md) を参照してください。
 
 ## リサージュ図形とは
 

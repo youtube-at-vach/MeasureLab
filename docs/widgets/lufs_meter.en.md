@@ -8,7 +8,9 @@ The LUFS Meter is a tool for measuring "Loudness" (the perceived volume by human
 
 ## Common Features
 
-This widget supports common features of the Detachable Wrapper (such as **Split Window** and **Compact Mode**). Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+This widget supports **Detach Window**, **Screenshot**, **Logs**, **Split Window**, and
+**Compact Mode**. It does not support **Send to Comparer**.
+See [Detachable Wrapper](detachable_wrapper.en.md) for details about each operation.
 
 ## Key Indicators
 

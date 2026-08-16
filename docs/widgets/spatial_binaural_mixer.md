@@ -16,6 +16,12 @@
 
 ---
 
+## 共通機能
+
+このウィジェットは **Detach Window**、**Screenshot**、**Logs**、**Split Window**、
+**Compact Mode** に対応しています。**Send to Comparer** には対応していません。
+各操作の詳細は [Detachable Wrapper](detachable_wrapper.md) を参照してください。
+
 ## 🎛️ 使用方法
 
 ### 1. 空間設定 (SOFA)
