@@ -1,6 +1,8 @@
 import logging
 import math
+from copy import copy
 from dataclasses import dataclass, fields
+from time import monotonic
 from typing import Any, Optional, Tuple
 
 import numpy as np
@@ -201,6 +203,22 @@ class SignalParameters:
     _phase_work: Optional[np.ndarray] = None
 
 
+@dataclass
+class _ChannelPlaybackState:
+    """Audio-thread render and transition state for one output channel."""
+
+    current: Optional[SignalParameters] = None
+    next: Optional[SignalParameters] = None
+    pending: Optional[SignalParameters] = None
+    transition_position: int = 0
+    transition_samples: int = 0
+    route_gain: float = 0.0
+    route_start_gain: float = 0.0
+    route_target_gain: float = 0.0
+    route_position: int = 0
+    route_samples: int = 0
+
+
 class SignalGenerator(MeasurementModule):
     BUFFERED_WAVEFORMS = ["noise", "multitone", "mls", "golay", "burst", "prbs"]
     SHAREABLE_BUFFERED_WAVEFORMS = {"multitone", "mls", "golay", "burst", "prbs"}
@@ -216,11 +234,21 @@ class SignalGenerator(MeasurementModule):
         self._sample_offsets_frames = 0
         self._block_time: Optional[np.ndarray] = None
         self._block_time_key: Optional[tuple[int, float]] = None
+        self.transition_ms = 10.0
+        self._playback_states = {
+            "L": _ChannelPlaybackState(),
+            "R": _ChannelPlaybackState(),
+        }
+        self._transition_scratch: dict[str, Optional[np.ndarray]] = {"L": None, "R": None}
+        self._transition_work: dict[str, Optional[np.ndarray]] = {"L": None, "R": None}
 
         # Output Routing: 'L', 'R', 'STEREO'
         self._output_mode = "STEREO"
 
         self.is_playing = False
+        self.is_stopping = False
+        self._stop_fade_complete = False
+        self._stop_force_deadline = 0.0
         self.callback_id = None
         self.output_overload_latched = {"L": False, "R": False}
         self.output_peak = {"L": 0.0, "R": 0.0}
@@ -236,11 +264,17 @@ class SignalGenerator(MeasurementModule):
 
         if self.is_playing and mode != self._output_mode:
             sample_rate = float(self.audio_engine.sample_rate)
-            for params in self._params_for_output_mode(mode):
+            old_channels = {"L", "R"} if self._output_mode == "STEREO" else {self._output_mode}
+            new_channels = {"L", "R"} if mode == "STEREO" else {mode}
+            for channel in new_channels - old_channels:
+                params = self.params_L if channel == "L" else self.params_R
                 if params.waveform in self.BUFFERED_WAVEFORMS:
                     self._prepare_buffer(params, sample_rate)
+                self._queue_render_snapshot(params)
 
         self._output_mode = mode
+        if self.is_playing and not self.is_stopping:
+            self._set_route_targets(mode)
 
     def _params_for_output_mode(self, mode: Optional[str] = None) -> tuple[SignalParameters, ...]:
         mode = self._output_mode if mode is None else mode
@@ -1185,6 +1219,256 @@ class SignalGenerator(MeasurementModule):
         signal = self._generate_channel_signal(params, frames, t_global, base_sample_rate)
         np.copyto(destination, signal, casting="unsafe")
 
+    def _transition_sample_count(self, sample_rate: float) -> int:
+        if self.transition_ms <= 0.0:
+            return 0
+        return max(2, int(round(float(sample_rate) * self.transition_ms / 1000.0)))
+
+    @staticmethod
+    def _filter_runtime_signature(params: SignalParameters, sample_rate: float) -> tuple:
+        return (
+            bool(params.lpf_enabled),
+            params.lpf_order,
+            params.lpf_freq,
+            bool(params.hpf_enabled),
+            params.hpf_order,
+            params.hpf_freq,
+            bool(params.notch_enabled),
+            params.notch_freq,
+            params.notch_q,
+            float(sample_rate),
+        )
+
+    @staticmethod
+    def _snapshot_params(params: SignalParameters) -> SignalParameters:
+        """Make a shallow render snapshot while sharing immutable signal buffers."""
+        snapshot = copy(params)
+        snapshot._phase_work = None
+        return snapshot
+
+    @staticmethod
+    def _reset_render_runtime(params: SignalParameters):
+        params._phase = 0.0
+        params._impulse_phase_samples = 0.0
+        params._sweep_time = 0.0
+        params._amp_sweep_time = 0.0
+        params._buffer_index = 0
+        params._carrier_phase_rad = 0.0
+        params._fm_phase_rad = 0.0
+        params._pm_phase_rad = 0.0
+        params._am_phase_rad = 0.0
+        params._combined_zi = None
+        params._phase_work = None
+
+    def _seed_transition_target(
+        self,
+        target: SignalParameters,
+        source: Optional[SignalParameters],
+        sample_rate: float,
+    ):
+        """Start a prepared target at the source's current time and phase."""
+        if source is None:
+            self._reset_render_runtime(target)
+            return
+
+        target._phase = source._phase
+        target._impulse_phase_samples = source._impulse_phase_samples
+        target._sweep_time = source._sweep_time
+        target._amp_sweep_time = source._amp_sweep_time
+        target._carrier_phase_rad = source._carrier_phase_rad
+        target._fm_phase_rad = source._fm_phase_rad
+        target._pm_phase_rad = source._pm_phase_rad
+        target._am_phase_rad = source._am_phase_rad
+        target._phase_work = None
+
+        if target._buffer is source._buffer:
+            target._buffer_index = source._buffer_index
+        else:
+            target._buffer_index = 0
+
+        if self._filter_runtime_signature(target, sample_rate) == self._filter_runtime_signature(
+            source, sample_rate
+        ):
+            target._combined_zi = None if source._combined_zi is None else source._combined_zi.copy()
+        else:
+            target._combined_zi = None
+
+    def _params_channel(self, params: SignalParameters) -> Optional[str]:
+        if params is self.params_L:
+            return "L"
+        if params is self.params_R:
+            return "R"
+        return None
+
+    def _queue_render_snapshot(self, params: SignalParameters):
+        """Publish the latest fully prepared settings for an audio-block handoff."""
+        if not self.is_playing or self.is_stopping:
+            return
+        channel = self._params_channel(params)
+        if channel is not None:
+            self._playback_states[channel].pending = self._snapshot_params(params)
+
+    def sync_render_params(self, params: SignalParameters):
+        """Queue settings changed in bulk, such as Linked-channel copying."""
+        if params.waveform in self.BUFFERED_WAVEFORMS:
+            self._prepare_buffer(params, float(self.audio_engine.sample_rate))
+        self._queue_render_snapshot(params)
+
+    def _activate_pending_transition(self, state: _ChannelPlaybackState, sample_rate: float):
+        if state.next is not None or state.pending is None:
+            return
+
+        target = state.pending
+        state.pending = None
+        self._seed_transition_target(target, state.current, sample_rate)
+        transition_samples = self._transition_sample_count(sample_rate)
+        if state.current is None or transition_samples == 0 or state.route_gain == 0.0:
+            state.current = target
+            state.next = None
+            state.transition_position = 0
+            state.transition_samples = 0
+            return
+
+        state.next = target
+        state.transition_position = 0
+        state.transition_samples = transition_samples
+
+    def _get_transition_scratch(self, channel: str, frames: int) -> np.ndarray:
+        scratch = self._transition_scratch[channel]
+        if scratch is None or scratch.size != frames:
+            scratch = np.empty(frames, dtype=np.float64)
+            self._transition_scratch[channel] = scratch
+        return scratch
+
+    def _fill_raised_cosine(
+        self,
+        channel: str,
+        frames: int,
+        position: int,
+        total_samples: int,
+    ) -> np.ndarray:
+        work = self._transition_work[channel]
+        if work is None or work.size != frames:
+            work = np.empty(frames, dtype=np.float64)
+            self._transition_work[channel] = work
+
+        np.add(self._get_sample_offsets(frames), float(position), out=work)
+        work /= float(max(total_samples - 1, 1))
+        np.clip(work, 0.0, 1.0, out=work)
+        work *= np.pi
+        np.cos(work, out=work)
+        work *= -0.5
+        work += 0.5
+        return work
+
+    def _render_channel_with_transition(
+        self,
+        channel: str,
+        frames: int,
+        t_global: np.ndarray,
+        sample_rate: float,
+        destination: np.ndarray,
+    ):
+        state = self._playback_states[channel]
+        self._activate_pending_transition(state, sample_rate)
+        if state.current is None:
+            destination.fill(0.0)
+            return
+
+        if state.next is None:
+            self._generate_channel_into(state.current, frames, t_global, sample_rate, destination)
+            return
+
+        scratch = self._get_transition_scratch(channel, frames)
+        self._generate_channel_into(state.current, frames, t_global, sample_rate, scratch)
+        self._generate_channel_into(state.next, frames, t_global, sample_rate, destination)
+
+        new_gain = self._fill_raised_cosine(
+            channel,
+            frames,
+            state.transition_position,
+            state.transition_samples,
+        )
+        destination *= new_gain
+        np.subtract(1.0, new_gain, out=new_gain)
+        scratch *= new_gain
+        destination += scratch
+
+        state.transition_position += frames
+        if state.transition_position >= state.transition_samples:
+            state.current = state.next
+            state.next = None
+            state.transition_position = 0
+            state.transition_samples = 0
+
+    def _set_route_target(self, channel: str, target: float):
+        state = self._playback_states[channel]
+        target = float(np.clip(target, 0.0, 1.0))
+        if state.route_target_gain == target and state.route_position < state.route_samples:
+            return
+        if state.route_target_gain == target and state.route_gain == target:
+            return
+        if state.route_gain == target:
+            state.route_start_gain = target
+            state.route_target_gain = target
+            state.route_position = 0
+            state.route_samples = 0
+            return
+
+        state.route_start_gain = state.route_gain
+        state.route_target_gain = target
+        state.route_position = 0
+        state.route_samples = self._transition_sample_count(float(self.audio_engine.sample_rate))
+        if state.route_samples == 0:
+            state.route_gain = target
+
+    def _set_route_targets(self, mode: str):
+        self._set_route_target("L", 1.0 if mode in {"L", "STEREO"} else 0.0)
+        self._set_route_target("R", 1.0 if mode in {"R", "STEREO"} else 0.0)
+
+    def _channel_needs_render(self, channel: str) -> bool:
+        state = self._playback_states[channel]
+        return bool(
+            state.route_gain > 0.0
+            or state.route_target_gain > 0.0
+            or state.route_position < state.route_samples
+        )
+
+    def _apply_route_transition(self, channel: str, samples: np.ndarray):
+        state = self._playback_states[channel]
+        if state.route_position >= state.route_samples:
+            state.route_gain = state.route_target_gain
+            if state.route_gain == 0.0:
+                samples.fill(0.0)
+            elif state.route_gain != 1.0:
+                samples *= state.route_gain
+            return
+
+        gain = self._fill_raised_cosine(
+            channel,
+            len(samples),
+            state.route_position,
+            state.route_samples,
+        )
+        gain *= state.route_target_gain - state.route_start_gain
+        gain += state.route_start_gain
+        samples *= gain
+
+        state.route_position += len(samples)
+        if state.route_position >= state.route_samples:
+            state.route_gain = state.route_target_gain
+            state.route_position = state.route_samples
+        elif len(samples):
+            state.route_gain = float(gain[-1])
+
+    def _stop_routes_are_silent(self) -> bool:
+        return all(
+            state.route_target_gain == 0.0
+            and state.route_gain == 0.0
+            and state.route_position >= state.route_samples
+            for state in self._playback_states.values()
+        )
+
     def start_generation(self):
         if self.is_playing:
             return
@@ -1192,24 +1476,23 @@ class SignalGenerator(MeasurementModule):
         base_sample_rate = self.audio_engine.sample_rate
         self.output_overload_latched = {"L": False, "R": False}
         self.output_peak = {"L": 0.0, "R": 0.0}
+        self.is_stopping = False
+        self._stop_fade_complete = False
 
         # Reset states
         for params in (self.params_L, self.params_R):
-            params._phase = 0
-            params._impulse_phase_samples = 0.0
-            params._sweep_time = 0
-            params._amp_sweep_time = 0.0
-            params._carrier_phase_rad = 0.0
-            params._fm_phase_rad = 0.0
-            params._pm_phase_rad = 0.0
-            params._am_phase_rad = 0.0
-            params._combined_zi = None
+            self._reset_render_runtime(params)
 
         # Prepare only channels that can currently reach the output. Switching
         # routing during playback prepares the newly activated channel in the
         # output_mode setter, outside the real-time callback.
         for params in self._params_for_output_mode():
             self._prepare_buffer(params, base_sample_rate)
+
+        for channel, params in (("L", self.params_L), ("R", self.params_R)):
+            render_params = self._snapshot_params(params)
+            self._reset_render_runtime(render_params)
+            self._playback_states[channel] = _ChannelPlaybackState(current=render_params)
 
         def callback(indata, outdata, frames, time, status):
             if status:
@@ -1219,18 +1502,27 @@ class SignalGenerator(MeasurementModule):
             outdata.fill(0)
 
             # Left Channel
-            if self.output_mode in {"L", "STEREO"} and outdata.shape[1] >= 1:
-                self._generate_channel_into(self.params_L, frames, t, base_sample_rate, outdata[:, 0])
+            if self._channel_needs_render("L") and outdata.shape[1] >= 1:
+                self._render_channel_with_transition("L", frames, t, base_sample_rate, outdata[:, 0])
+                self._apply_route_transition("L", outdata[:, 0])
                 self._limit_channel_output(outdata[:, 0], "L")
 
             # Right Channel
-            if self.output_mode in {"R", "STEREO"} and outdata.shape[1] >= 2:
-                # If we are in STEREO but want to output the SAME signal if linked?
-                # The user requirement says "L and R separate signals".
-                # So we always use params_R for Right channel.
-                # If the user wants them same, they copy settings in UI.
-                self._generate_channel_into(self.params_R, frames, t, base_sample_rate, outdata[:, 1])
+            if self._channel_needs_render("R") and outdata.shape[1] >= 2:
+                self._render_channel_with_transition("R", frames, t, base_sample_rate, outdata[:, 1])
+                self._apply_route_transition("R", outdata[:, 1])
                 self._limit_channel_output(outdata[:, 1], "R")
+
+            if self.is_stopping:
+                for channel, output_index in (("L", 0), ("R", 1)):
+                    if outdata.shape[1] <= output_index:
+                        state = self._playback_states[channel]
+                        state.route_gain = 0.0
+                        state.route_target_gain = 0.0
+                        state.route_position = state.route_samples
+
+            if self.is_stopping and self._stop_routes_are_silent():
+                self._stop_fade_complete = True
 
         try:
             callback_id = self.audio_engine.register_callback(callback)
@@ -1241,6 +1533,7 @@ class SignalGenerator(MeasurementModule):
 
         self.callback_id = callback_id
         self.is_playing = True
+        self._set_route_targets(self.output_mode)
 
     def _limit_channel_output(self, samples: np.ndarray, channel: str):
         """Latch generator overloads and keep this client's output inside full scale."""
@@ -1262,7 +1555,28 @@ class SignalGenerator(MeasurementModule):
             self.output_overload_latched[channel] = True
             np.clip(samples, -1.0, 1.0, out=samples)
 
+    def request_stop_generation(self):
+        """Begin a click-free stop; the UI later unregisters the silent callback."""
+        if not self.is_playing or self.is_stopping:
+            return
+        self.is_stopping = True
+        self._stop_fade_complete = False
+        self._stop_force_deadline = monotonic() + max(0.25, self.transition_ms / 1000.0 + 0.1)
+        self._set_route_target("L", 0.0)
+        self._set_route_target("R", 0.0)
+        if self._transition_sample_count(float(self.audio_engine.sample_rate)) == 0:
+            self._stop_fade_complete = True
+
+    def complete_stop_if_ready(self, *, force: bool = False) -> bool:
+        """Unregister after a requested fade has reached silence."""
+        timed_out = self.is_stopping and monotonic() >= self._stop_force_deadline
+        if not self.is_stopping or (not force and not timed_out and not self._stop_fade_complete):
+            return False
+        self.stop_generation()
+        return True
+
     def stop_generation(self):
+        """Immediately unregister output for cleanup and headless callers."""
         try:
             if self.callback_id is not None:
                 callback_id = self.callback_id
@@ -1270,6 +1584,9 @@ class SignalGenerator(MeasurementModule):
                 self.audio_engine.unregister_callback(callback_id)
         finally:
             self.is_playing = False
+            self.is_stopping = False
+            self._stop_fade_complete = False
+            self._stop_force_deadline = 0.0
 
     def update_waveform(self, params: SignalParameters, waveform: str, sample_rate: float):
         """Updates the waveform type and regenerates/clears buffer if needed."""
@@ -1290,6 +1607,7 @@ class SignalGenerator(MeasurementModule):
             params._buffer_cache_key = None
             params._buffer_read_cache = None
             params._buffer_read_cache_key = None
+        self._queue_render_snapshot(params)
 
     def update_param(self, params: SignalParameters, name: str, value: Any):
         """Updates a parameter and triggers buffer regeneration if necessary."""
@@ -1342,6 +1660,9 @@ class SignalGenerator(MeasurementModule):
             if needs_update:
                 sample_rate = self.audio_engine.sample_rate
                 self._prepare_buffer(params, sample_rate)
+
+        if name not in {"bin_center_snap", "fft_size"}:
+            self._queue_render_snapshot(params)
 
 
 class SignalGeneratorWidget(QWidget):
@@ -1624,12 +1945,19 @@ class SignalGeneratorWidget(QWidget):
 
     def _refresh_output_state(self):
         self._refresh_calibration_ui()
+        if self.module.is_stopping:
+            self.module.complete_stop_if_ready()
         expected_checked = bool(self.module.is_playing)
         if self.toggle_btn.isChecked() != expected_checked:
             self.toggle_btn.blockSignals(True)
             self.toggle_btn.setChecked(expected_checked)
             self.toggle_btn.blockSignals(False)
-        self.toggle_btn.setText(tr("Stop Output") if expected_checked else tr("Start Output"))
+        if self.module.is_stopping:
+            self.toggle_btn.setText(tr("Stopping…"))
+            self.toggle_btn.setEnabled(False)
+        else:
+            self.toggle_btn.setText(tr("Stop Output") if expected_checked else tr("Start Output"))
+            self.toggle_btn.setEnabled(True)
 
         overload_channels = [channel for channel in ("L", "R") if self.module.output_overload_latched[channel]]
         if overload_channels:
@@ -2081,6 +2409,17 @@ class SignalGeneratorWidget(QWidget):
         delay_layout.addWidget(self.delay_slider)
         layout.addRow(self.delay_label, delay_layout)
 
+    def _init_transition_controls(self, layout):
+        self.transition_spin = QDoubleSpinBox()
+        self.transition_spin.setRange(0.0, 1000.0)
+        self.transition_spin.setDecimals(1)
+        self.transition_spin.setSingleStep(1.0)
+        self.transition_spin.setValue(self.module.transition_ms)
+        self.transition_spin.setSuffix(" ms")
+        self.transition_spin.setToolTip(tr("Set to 0 ms to disable output transitions."))
+        self.transition_spin.valueChanged.connect(self.on_transition_time_changed)
+        layout.addRow(tr("Transition Time:"), self.transition_spin)
+
     def _init_amplitude_controls(self, layout):
         amp_layout = QHBoxLayout()
         self.amp_spin = QDoubleSpinBox()
@@ -2169,6 +2508,7 @@ class SignalGeneratorWidget(QWidget):
         general_form = QFormLayout(general_page)
         self._init_phase_controls(general_form)
         self._init_delay_controls(general_form)
+        self._init_transition_controls(general_form)
         self._init_bin_snap_controls(general_form)
         tabs.addTab(general_page, tr("General"))
 
@@ -2479,6 +2819,7 @@ class SignalGeneratorWidget(QWidget):
 
         self.delay_spin.setValue(float(getattr(params, "delay_ms", 0.0)))
         self.delay_slider.setValue(int(round(float(getattr(params, "delay_ms", 0.0)) * 1000.0)))
+        self.transition_spin.setValue(self.module.transition_ms)
 
         self.update_amp_display_value(params.amplitude)
 
@@ -2552,6 +2893,7 @@ class SignalGeneratorWidget(QWidget):
             self.phase_slider,
             self.delay_spin,
             self.delay_slider,
+            self.transition_spin,
             self.amp_spin,
             self.amp_slider,
             self.unit_combo,
@@ -2609,6 +2951,7 @@ class SignalGeneratorWidget(QWidget):
         for field in fields(SignalParameters):
             if not field.name.startswith("_"):
                 setattr(dst, field.name, getattr(src, field.name))
+        self.module.sync_render_params(dst)
 
     def on_route_changed(self, btn):
         if self.route_l.isChecked():
@@ -2788,6 +3131,9 @@ class SignalGeneratorWidget(QWidget):
         self.delay_spin.setValue(ms)
         self.delay_spin.blockSignals(False)
 
+    def on_transition_time_changed(self, value):
+        self.module.transition_ms = float(value)
+
     # --- Amplitude Helpers ---
     def on_unit_changed(self, _index):
         # Refresh display with current amplitude in new unit
@@ -2896,8 +3242,8 @@ class SignalGeneratorWidget(QWidget):
             else:
                 self.toggle_btn.setText(tr("Stop Output"))
         else:
-            self.module.stop_generation()
-            self.toggle_btn.setText(tr("Start Output"))
+            self.module.request_stop_generation()
+            self.toggle_btn.setText(tr("Stopping…"))
         self._refresh_output_state()
 
     def apply_theme(self, theme_name=None):
