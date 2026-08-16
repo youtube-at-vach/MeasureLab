@@ -108,7 +108,7 @@ MeasureLabからタイムコード信号を出力する機能です。このタ�
 
 ## 共通機能
 
-このウィジェットは Detachable Wrapper の共通機能（**コンパクトモード**など）に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
+このウィジェットは Detachable Wrapper の共通機能に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
 
 ## 使用例
 

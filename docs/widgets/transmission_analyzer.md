@@ -10,9 +10,9 @@
 
 USBケーブル、Bluetooth接続、あるいは物理的なアナログ回路など、あらゆる伝送経路（デジタル・アナログ双方）に対応し、サンプリング同期遅延や信号の完全性をリアルタイムで測定します。
 
-## Detachable Wrapper 共通機能
+## 共通機能
 
-このウィジェットは Detachable Wrapper の共通機能（**コンパクトモード**など）に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
+このウィジェットは Detachable Wrapper の共通機能に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
 
 ## 主な機能と測定モード
 

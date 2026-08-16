@@ -109,7 +109,7 @@
 
 ## 共通機能
 
-このウィジェットは Detachable Wrapper の共通機能（**ウィンドウ分割**など）に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
+このウィジェットは Detachable Wrapper の共通機能に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
 
 ## グラフの読み方
 
