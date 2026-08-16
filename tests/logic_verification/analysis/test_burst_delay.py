@@ -16,6 +16,9 @@ def test_burst_delay_ms_integer_samples_aligns_channels():
     mock_engine.calibration.output_gain = 1.0
 
     sg = SignalGenerator(mock_engine)
+    # Preserve the exact delayed sample relationship under test; output
+    # transitions intentionally apply a time-based envelope after delay.
+    sg.transition_ms = 0.0
 
     # Use a long "burst" with no off time so it behaves like a continuous sine
     # within the tested window (avoids envelope edge effects).

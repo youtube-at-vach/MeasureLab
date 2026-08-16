@@ -25,6 +25,17 @@ class TestSignalGeneratorChannels(unittest.TestCase):
         mock_engine.calibration.output_gain = 1.0
 
         sg = SignalGenerator(mock_engine)
+        sg.transition_ms = 0.0
+
+        sg.params_L.waveform = "sine"
+        sg.params_L.frequency = 1000
+        sg.params_L.amplitude = 1.0
+        sg.params_L.phase_offset = 0.0
+
+        sg.params_R.waveform = "sine"
+        sg.params_R.frequency = 1000
+        sg.params_R.amplitude = 1.0
+        sg.params_R.phase_offset = 90.0
 
         # Start generation to register callback
         sg.start_generation()
@@ -37,18 +48,6 @@ class TestSignalGeneratorChannels(unittest.TestCase):
         outdata = np.zeros((frames, 2))
 
         # Case 1: 0 vs 90 degrees (Orthogonal)
-        sg.params_L.waveform = "sine"
-        sg.params_L.frequency = 1000
-        sg.params_L.amplitude = 1.0
-        sg.params_L.phase_offset = 0.0
-        sg.params_L._phase = 0  # Internal reset
-
-        sg.params_R.waveform = "sine"
-        sg.params_R.frequency = 1000
-        sg.params_R.amplitude = 1.0
-        sg.params_R.phase_offset = 90.0
-        sg.params_R._phase = 0  # Internal reset
-
         sg.output_mode = "STEREO"
 
         callback(None, outdata, frames, None, None)
@@ -61,10 +60,7 @@ class TestSignalGeneratorChannels(unittest.TestCase):
         self.assertLess(abs(corr), 0.01, "Correlation of 0 vs 90 deg should be ~0")
 
         # Case 2: 0 vs 180 degrees (Anti-phase)
-        sg.params_R.phase_offset = 180.0
-        # Manually reset phases for test determinism
-        sg.params_L._phase = 0
-        sg.params_R._phase = 0
+        sg.update_param(sg.params_R, "phase_offset", 180.0)
 
         outdata.fill(0)
         callback(None, outdata, frames, None, None)
@@ -82,6 +78,7 @@ class TestSignalGeneratorChannels(unittest.TestCase):
         mock_engine.calibration.output_gain = 1.0
 
         sg = SignalGenerator(mock_engine)
+        sg.transition_ms = 0.0
 
         # Configure L: Sine 1000Hz
         sg.params_L.waveform = "sine"
@@ -481,6 +478,125 @@ class TestSignalGeneratorRealtimeOptimizations(unittest.TestCase):
             expected = reference._generate_channel_signal(reference.params_L, len(actual), t, engine.sample_rate)
 
             np.testing.assert_allclose(actual, expected, rtol=0.0, atol=1e-14, err_msg=waveform)
+
+
+class TestSignalGeneratorOutputTransitions(unittest.TestCase):
+    class MockAudioEngine:
+        def __init__(self):
+            self.sample_rate = 48000
+            self.callback = None
+            self.calibration = MagicMock()
+            self.calibration.output_gain = 1.0
+
+        def register_callback(self, callback):
+            self.callback = callback
+            return 1
+
+        def unregister_callback(self, _callback_id):
+            self.callback = None
+
+    @staticmethod
+    def _raised_cosine(samples):
+        position = np.arange(samples, dtype=float) / (samples - 1)
+        return 0.5 - 0.5 * np.cos(np.pi * position)
+
+    def _generator(self, mode="L"):
+        engine = self.MockAudioEngine()
+        generator = SignalGenerator(engine)
+        generator.output_mode = mode
+        generator.transition_ms = 10.0
+        for params in (generator.params_L, generator.params_R):
+            params.waveform = "pulse"
+            params.frequency = 1.0
+            params.amplitude = 1.0
+            params.pulse_width = 99.9
+        return generator, engine
+
+    def test_start_ramp_is_continuous_across_audio_blocks(self):
+        generator, engine = self._generator()
+        generator.start_generation()
+
+        blocks = []
+        for frames in (173, 307):
+            outdata = np.zeros((frames, 2))
+            engine.callback(None, outdata, frames, None, None)
+            blocks.append(outdata[:, 0].copy())
+
+        actual = np.concatenate(blocks)
+        expected = self._raised_cosine(480)
+        np.testing.assert_allclose(actual, expected, rtol=0.0, atol=1e-12)
+
+    def test_live_amplitude_change_crossfades_without_gain_bump(self):
+        generator, engine = self._generator()
+        generator.start_generation()
+        engine.callback(None, np.zeros((480, 2)), 480, None, None)
+
+        generator.update_param(generator.params_L, "amplitude", 0.25)
+        outdata = np.zeros((480, 2))
+        engine.callback(None, outdata, 480, None, None)
+
+        new_gain = self._raised_cosine(480)
+        expected = 1.0 - 0.75 * new_gain
+        np.testing.assert_allclose(outdata[:, 0], expected, rtol=0.0, atol=1e-12)
+        self.assertLessEqual(float(np.max(np.abs(outdata[:, 0]))), 1.0)
+
+    def test_rapid_updates_coalesce_to_latest_settings(self):
+        generator, engine = self._generator()
+        generator.start_generation()
+        engine.callback(None, np.zeros((480, 2)), 480, None, None)
+
+        generator.update_param(generator.params_L, "amplitude", 0.8)
+        generator.update_param(generator.params_L, "amplitude", 0.2)
+        outdata = np.zeros((480, 2))
+        engine.callback(None, outdata, 480, None, None)
+
+        state = generator._playback_states["L"]
+        self.assertIsNone(state.pending)
+        self.assertIsNone(state.next)
+        self.assertAlmostEqual(state.current.amplitude, 0.2)
+        self.assertAlmostEqual(outdata[-1, 0], 0.2)
+
+    def test_route_change_fades_removed_channel_only(self):
+        generator, engine = self._generator(mode="STEREO")
+        generator.start_generation()
+        engine.callback(None, np.zeros((480, 2)), 480, None, None)
+
+        generator.output_mode = "L"
+        outdata = np.zeros((480, 2))
+        engine.callback(None, outdata, 480, None, None)
+
+        np.testing.assert_allclose(outdata[:, 0], 1.0, rtol=0.0, atol=1e-12)
+        np.testing.assert_allclose(outdata[:, 1], 1.0 - self._raised_cosine(480), rtol=0.0, atol=1e-12)
+
+        outdata.fill(1.0)
+        engine.callback(None, outdata, 480, None, None)
+        np.testing.assert_array_equal(outdata[:, 1], 0.0)
+
+    def test_requested_stop_fades_before_callback_is_unregistered(self):
+        generator, engine = self._generator()
+        generator.start_generation()
+        engine.callback(None, np.zeros((480, 2)), 480, None, None)
+
+        generator.request_stop_generation()
+        self.assertTrue(generator.is_stopping)
+        self.assertIsNotNone(engine.callback)
+
+        outdata = np.zeros((480, 2))
+        engine.callback(None, outdata, 480, None, None)
+        np.testing.assert_allclose(outdata[:, 0], 1.0 - self._raised_cosine(480), rtol=0.0, atol=1e-12)
+        self.assertTrue(generator._stop_fade_complete)
+        self.assertTrue(generator.complete_stop_if_ready())
+        self.assertFalse(generator.is_playing)
+        self.assertIsNone(engine.callback)
+
+    def test_zero_transition_time_preserves_sample_exact_output(self):
+        generator, engine = self._generator()
+        generator.transition_ms = 0.0
+        generator.start_generation()
+
+        outdata = np.zeros((128, 2))
+        engine.callback(None, outdata, 128, None, None)
+        np.testing.assert_array_equal(outdata[:, 0], 1.0)
 
 
 class TestSignalGeneratorMLS(unittest.TestCase):

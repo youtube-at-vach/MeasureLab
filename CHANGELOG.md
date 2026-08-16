@@ -18,6 +18,7 @@
 
 * **Signal Generator**:
     * Improved control safety, simplified the advanced layout, and optimized real-time signal processing.
+    * Added configurable click-free transitions for output start, stop, routing, and live parameter changes, with a 0 ms bypass for sample-exact sequence output.
 * **Loopback Finder**:
     * Improved the UI and guidance, added latency-aware level measurement, and adjusted the detection threshold to -40 dBFS.
 * **UI & Documentation**:
