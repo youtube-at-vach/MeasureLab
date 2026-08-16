@@ -44,271 +44,102 @@ current implementation.
 
 **Target:** Event Detector and AudioEngine.
 
-**Status:** Selected; continuity monitoring is partially implemented.
-
-The current AudioEngine latches input/output underflow and overflow conditions.
-Event Detector detects input data gaps, invalidates affected measurements, and
-exports event records to CSV or JSON.
-
-Remaining scope:
-
-* Record an input/output XRUN timeline with timestamps and category.
-* Distinguish backend XRUNs from signal-level silence or discontinuity.
-* Add signal dropout, click, and pop classification.
-* Retain a short waveform around each detected incident.
-* Export integrity incidents together with the existing event records.
-
-This is directly useful when comparing devices, drivers, host APIs, sample
-rates, and buffer sizes.
+**Scope:** Record XRUN timeline with categories, distinguish backend XRUNs from signal discontinuity, add dropout/click/pop classification, and export integrity incidents.
 
 ### 2. SMPTE, DIN, and CCIF IMD Sweeps
 
 **Target:** Distortion Analyzer.
 
-**Status:** Selected; real-time SMPTE and CCIF IMD are implemented.
-
-The Distortion Analyzer already generates and measures SMPTE and CCIF dual-tone
-signals. Its current frequency and amplitude sweep paths deliberately force a
-single sine wave, so they do not perform IMD sweeps.
-
-Remaining scope:
-
-* Add amplitude sweeps for SMPTE, DIN, and CCIF modes.
-* Add the DIN preset and its product calculation.
-* Store IMD percentage, IMD dB, and individual product levels per step.
-* Warn when CCIF tones approach the measured DAC/ADC bandwidth limit.
-
-SMPTE and DIN are suitable for common audio devices. CCIF remains useful, but
-results near 19 kHz and 20 kHz must be interpreted with the interface response
-and Nyquist margin in mind.
+**Scope:** Add amplitude sweeps for SMPTE, DIN, and CCIF modes, store IMD percentages/levels per step, and warn when approaching bandwidth limits.
 
 ### 3. True-Peak Histogram and Clipping Profiler
 
 **Target:** LUFS Meter.
 
-**Status:** Selected; True Peak and peak hold are implemented.
-
-The LUFS Meter already calculates a four-times-oversampled True Peak for both
-channels and maintains peak hold values.
-
-Remaining scope:
-
-* Add per-channel True-Peak histograms.
-* Count threshold and 0 dBTP exceedances.
-* Measure the longest continuous exceedance.
-* Add a Sample Peak versus True Peak comparison and event timeline.
-* Use continuous, stateful oversampling across audio callback boundaries.
-
-For captured hardware signals, the result describes the ADC-observed waveform.
-It must not be presented as proof of clipping inside a DAC before its analog
-output stage.
+**Scope:** Add per-channel True-Peak histograms, count threshold exceedances, measure longest continuous exceedances, and compare Sample Peak vs True Peak.
 
 ### 4. Automatic Peak Markers
 
 **Target:** Spectrum Analyzer.
 
-**Status:** Selected.
-
-The Spectrum Analyzer already provides FFT data, smoothing, peak hold, and raw
-or display-downsampled traces. It does not currently create automatic labeled
-peak markers.
-
-Remaining scope:
-
-* Mark the highest configurable number of peaks.
-* Apply minimum prominence, minimum spacing, and noise-floor thresholds.
-* Allow analysis of raw FFT data or smoothed display data.
-* Optionally classify harmonics and sidebands around a selected fundamental.
-
-This is a post-processing feature and therefore has low device dependence.
+**Scope:** Mark the highest configurable number of peaks applying prominence and noise-floor thresholds.
 
 ### 5. AES17 Dynamic Range Automator
 
 **Target:** Distortion Analyzer.
 
-**Status:** Selected as a workflow improvement; the measurement is implemented.
-
-The existing analyzer provides the 997 Hz at -60 dBFS signal, 0 dBFS
-calibration mode, AES17 20 kHz low-pass filter, and dynamic-range result.
-
-Remaining scope:
-
-* Combine calibration, clipping validation, settling, averaging, measurement,
-  and report generation into a guided sequence.
-* Record validation failures and calibration state in the result.
-
-This item must not be implemented as a second AES17 measurement engine.
+**Scope:** Combine calibration, validation, settling, averaging, measurement, and report generation into a guided sequence.
 
 ### 6. Long-Term Warm-up and Stability Logger
 
 **Target:** Distortion Analyzer.
 
-**Status:** Selected with renamed scope.
+**Scope:** Report gain, THD, THD+N, noise, and frequency as warm-up or stability trends.
 
-The original proposal called this a thermal drift logger. Without a temperature
-sensor, MeasureLab cannot attribute a change to temperature. The feature should
-therefore report gain, THD, THD+N, noise, and frequency as warm-up or stability
-trends.
+### 7. Real-time Psychoacoustic Masking Overlay
 
-Where possible, a second reference channel should be used to separate DUT drift
-from drift in the measurement interface.
+**Target:** Spectrum Analyzer.
+
+**Scope:** Visualize human auditory perception by overlaying simultaneous and temporal masking curves in real-time, showing what is audible versus raw FFT data. (Extended from visionary concepts).
+
+### 8. Haptic Audio Synchronization Profiler
+
+**Target:** Network Analyzer.
+
+**Scope:** Add a "Subwoofer/Haptic Mode" with ultra-low frequency logarithmic sweeps (1-100Hz) and specialized group delay alignment visualization to measure tactile transducer latency. (Extended from visionary concepts).
+
+### 9. Spatial 3D Soundstage Mapper
+
+**Target:** Stereo Alignment Monitor.
+
+**Scope:** Add a 3D soundstage visualization tab using Mid/Side analysis and HRTF deconvolution to map the perceived spatial position of sound sources in real-time. (Extended from visionary concepts).
+
+## Future / Visionary Ideas
+
+These ideas explore adventurous, next-generation concepts beyond standard audio measurement. They are currently brainstormed without constraints to expand future possibilities.
+
+* **AI-Driven Automated Measurement Recipe Generator:** Use AI to listen to a brief sweep and automatically configure the optimal distortion, impedance, and alignment measurements for the connected DUT.
+* **Brain-Computer Interface (BCI) Audiophile Profiler:** Measure human brainwave responses to different DACs/Amps to quantify perceptual audio quality directly from the listener.
+* **Quantum Audio Entropy Analyzer:** Analyze the true randomness of analog noise floors using quantum mechanics models to classify analog noise sources versus digital dithering artifacts.
+* **Holographic Soundstage Visualizer:** A fully immersive VR/AR holographic representation of sound topology.
 
 ## Confirmed Implemented or Covered Features
 
-The following proposals must not be treated as new features.
-
 | Original proposal | Current implementation | Audit result |
 | --- | --- | --- |
-| Group/Phase Delay Plot | Network Analyzer has a `Show Group Delay` control, a linked group-delay axis, and calculates `-dPhi / (2*pi*dF)` from the displayed phase. Bode phase is also present. | Implemented. A separate phase-delay curve is not present, but the original group-delay request is satisfied. |
-| Frequency-Dependent Crosstalk/Leakage | Network Analyzer provides L-to-R and R-to-L crosstalk transfer sweeps. | Implemented as a more readable 2D frequency plot; a 3D plot is unnecessary. |
-| Pre-Ringing and Causality Quantifier | Transient Analyzer measures pre/post impulse energy, their ratio, crest-factor validity, and estimates minimum-, linear-, or mixed-phase behavior. | Implemented as DAC Ringing analysis. Do not claim proof of physical causality. |
-| True Peak | LUFS Meter performs four-times oversampling and peak hold. | Implemented; only the histogram and clipping profile remain. |
-| SMPTE and CCIF IMD | Distortion Analyzer generates and measures both standards in real time. | Implemented; IMD sweeps and DIN remain. |
-| AES17 Dynamic Range | Distortion Analyzer includes calibration, the -60 dBFS test signal, AES17 filtering, and the DR result. | Implemented; only guided automation remains. |
-| Continuity/Data-Gap Detection | AudioEngine tracks XRUN categories and count. Event Detector records data-gap validity and exports measurement metadata and events. | Partially implemented; a unified integrity timeline and signal-dropout classifier remain. |
-| Volterra Kernel Extractor | Nonlinear Analyzer extracts first- through fifth-order Parallel Hammerstein kernels and exports the model. Response Viewer provides gain-compression analysis. | Covered by a practical diagonal/Parallel Hammerstein model. A full Volterra model with cross-kernels is not implemented. |
-| Inter-Channel Phase Analysis | Stereo Alignment Monitor displays band-specific correlation, phase issues, frequency matching, and a volume gang-error logger. | Implemented for phase/balance analysis; this is not an independent-clock sync-drift logger. |
-| Binaural Tones | Signal Generator has independent left and right channel signal parameters. | Covered by existing routing and per-channel frequency settings; a preset would be UI convenience only. |
-| DAC Digital Filter Classification | Transient Analyzer measures DAC ringing and estimates minimum-, linear-, or mixed-phase behavior. | Partially covers the proposal. A general high-bandwidth alias/OOB profiler is not implemented. |
-| Cumulative Spectral Visualization | Transient Analyzer provides a CWT wavelet scalogram. | Related visualization exists, but it is not a CSD waterfall. |
-
-Other features already present include Transmission Analyzer PRBS, Allan
-Deviation, Bit Depth estimation, Oscilloscope Persistence, Linearity analysis,
-J-Test, RIAA EQ comparison, impulse response, LUFS, amplitude sweeps, and
-frequency-response comparison.
-
-Primary implementation references used for this audit:
-
-* `src/gui/widgets/network_analyzer.py`: group delay, Bode phase, delay
-  compensation, coherence, and crosstalk routing.
-* `src/gui/widgets/distortion_analyzer.py`: SMPTE/CCIF IMD, sine-only sweeps,
-  AES17 calibration, filtering, and dynamic range.
-* `src/gui/widgets/lufs_meter.py`: four-times-oversampled True Peak and peak
-  hold.
-* `src/core/audio_engine.py` and `src/gui/widgets/event_detector.py`: XRUN
-  status, data-gap handling, measurement validity, and event export.
-* `src/gui/widgets/transient_analyzer.py`: pre/post-ringing energy and wavelet
-  scalogram.
-* `src/gui/widgets/nonlinear_analyzer.py` and
-  `src/core/nonlinear_analyzer_core.py`: Parallel Hammerstein kernel extraction.
+| Group/Phase Delay Plot | Network Analyzer calculates `-dPhi / (2*pi*dF)`. | Implemented. |
+| Frequency-Dependent Crosstalk/Leakage | Network Analyzer provides L-to-R/R-to-L sweeps. | Implemented. |
+| Pre-Ringing and Causality Quantifier | Transient Analyzer measures DAC Ringing. | Implemented. |
+| True Peak | LUFS Meter performs oversampling and peak hold. | Implemented (histogram remains). |
+| SMPTE and CCIF IMD | Distortion Analyzer handles both in real time. | Implemented (sweeps remain). |
+| AES17 Dynamic Range | Distortion Analyzer includes calibration and filter. | Implemented (automation remains). |
+| Continuity/Data-Gap Detection | AudioEngine tracks XRUNs; Event Detector records validity. | Partially implemented. |
+| Volterra Kernel Extractor | Nonlinear Analyzer extracts Parallel Hammerstein kernels. | Covered. |
+| Inter-Channel Phase Analysis | Stereo Alignment Monitor displays correlation and phase. | Implemented. |
+| Binaural Tones | Signal Generator has independent L/R settings. | Covered. |
+| DAC Digital Filter Classification | Transient Analyzer measures DAC ringing. | Partially covered. |
+| Cumulative Spectral Visualization | Transient Analyzer provides CWT scalogram. | Covered. |
 
 ## Conditional Candidates
 
-These proposals can produce useful results, but only after their measurement
-conditions are explicitly defined.
+Useful only when measurement conditions are explicitly defined:
 
-### Thiele/Small Parameter Extraction
+* **Thiele/Small Parameter Extraction** (Target: Impedance Analyzer)
+* **Hum AM/FM Modulation Analysis** (Target: Noise Profiler)
+* **Dynamic Burst Linearity** (Target: Linearity Analyzer)
+* **Null Comparator** (Target: Recorder/Player / Transmission Analyzer)
+* **Dynamics Processor Profiler** (Static gain compression available in Response Viewer)
 
-**Target:** Impedance Analyzer.
+## On Hold or Not Suitable
 
-Added-Mass and Known-Volume extraction are feasible at ordinary sample rates.
-They require a known series resistor, calibrated two-channel routing, a suitable
-low-output-impedance driver, wiring guidance, and fit-quality reporting. The
-audio interface output must not be assumed to be an ideal voltage source.
-
-### Hum AM/FM Modulation Analysis
-
-**Target:** Noise Profiler.
-
-Noise Profiler already detects hum fundamentals and harmonics. AM/FM analysis
-would require long, phase-continuous capture and demodulation. The result is
-conditional because hum from the interface, grounding, and environment can be
-indistinguishable from DUT behavior without a reference measurement.
-
-### Dynamic Burst Linearity
-
-**Target:** Linearity Analyzer.
-
-Burst testing is valid in the audio band, but requires triggered alignment,
-defined on/off windows, settling rules, crest-factor validation, and explicit
-detection of limiting in the measurement interface.
-
-### Null Comparator
-
-**Target:** Recorder/Player or Transmission Analyzer.
-
-A null test is useful when both signals share a clock or when sample alignment,
-gain, polarity, fractional delay, and clock drift are corrected. Without these
-conditions, the residual is dominated by synchronization error.
-
-### Dynamics Processor Profiler
-
-Static gain compression is already available from the measured Parallel
-Hammerstein model in Response Viewer. A time-domain profiler for threshold,
-ratio, attack, release, and look-ahead remains conditional because it requires
-carefully specified burst and envelope tests. The cancelled multi-band
-compressor proposal is not revived by this item.
-
-### Other Conditional or Lower-Priority Items
-
-* Test Sequence Automator, after individual measurements have stable result and
-  validation schemas.
-* Multi-Band Goniometer, as a display-oriented extension rather than a new
-  measurement.
-* CSD/Waterfall, mainly for speaker, room, and decay analysis rather than
-  DAC/amplifier signal measurement.
-* Polar Pattern/Directivity Mapper, which belongs to angular acoustic capture
-  and is outside the primary signal-only focus.
-
-## On Hold or Not Suitable for General Sound-Device Measurement
-
-### Bandwidth- and Slew-Limited Measurements
-
-* TIM/DIM Mode.
-* Slew Rate Calculator.
-* Eye Diagram.
-* Digital Protocol Decoder.
-* DAC Aliasing and OOB Leakage as general-purpose measurements.
-* Ultrasonic Micro-Doppler excursion measurement.
-
-These require bandwidth, edge rate, or analog front-end behavior that common
-audio DAC/ADC paths do not preserve reliably. High sample-rate selection alone
-does not make the measurement valid.
-
-### Clock and Jitter Attribution
-
-* TIE Jitter as an absolute product measurement.
-* Phase Noise Density.
-* Clock Fingerprinting.
-* Inter-Channel Sync Drift Logger across unrelated devices.
-
-Frequency Counter and Transmission Analyzer already expose frequency stability,
-Allan deviation, jitter histograms, and sample-alignment drift. A sound-device
-loopback cannot generally separate source-clock, DAC-clock, ADC-clock, and
-algorithmic timing error. TIE logic also exists in hardware validation tests,
-but not as a general user-facing measurement.
-
-### Fixture- or Hardware-Dominated Measurements
-
-* Damping Factor Profiler.
-* Dual-ADC Cross-Correlation Noise Measurement as a promise to exceed hardware
-  limits.
-* Thermal Stress testing.
-* EMI/RFI Fingerprinting.
-* Complex Load/Back-EMF Distortion Profiler.
-
-These require controlled loads, independent low-noise channels, temperature or
-power sensing, RF instrumentation, or protection hardware. Implementing the DSP
-alone would not make the result safe or attributable to the DUT.
-
-### Outside the Current Signal-Measurement Focus
-
-* Lossy Codec Artifact Analyzer.
-* Listener Fatigue Index.
-* PEAQ/ODG Score Estimator.
-* AI Circuit Reverse Engineer.
-* BCI Audiophile Profiler and AI "Golden Ear" concepts.
-* Holographic, psycho-kinetic, tachyon, quantum, and synesthetic concepts.
-* Room de-reverberation and acoustic metamaterial simulation.
-
-Lossy codec and perceptual quality tools may be valid offline software-analysis
-projects, but they are not measurements of a DAC or amplifier through a general
-sound device.
+* **Bandwidth- and Slew-Limited Measurements:** TIM/DIM Mode, Slew Rate Calculator, Eye Diagram, Digital Protocol Decoder, DAC Aliasing and OOB Leakage, Ultrasonic Micro-Doppler.
+* **Clock and Jitter Attribution:** TIE Jitter, Phase Noise Density, Clock Fingerprinting, Inter-Channel Sync Drift Logger.
+* **Fixture- or Hardware-Dominated:** Damping Factor Profiler, Dual-ADC Cross-Correlation Noise, Thermal Stress, EMI/RFI Fingerprinting, Complex Load Distortion.
+* **Outside Current Focus:** Lossy Codec Analyzer, Listener Fatigue Index, PEAQ/ODG Estimator, AI Circuit Reverse Engineer, Acoustic Metamaterial Simulator.
 
 ## Deferred Reference Topics
 
-The following remain reference topics rather than active implementation
-proposals:
+The following remain reference topics rather than active implementation proposals:
 
 * ASRC Benchmark.
 * DC Stability.
