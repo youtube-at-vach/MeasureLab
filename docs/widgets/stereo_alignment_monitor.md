@@ -9,9 +9,7 @@ L/Rチャンネル間の整合性（アライメント）を詳細に解析す�
 
 ## 共通機能
 
-このウィジェットは **Detach Window**、**Screenshot**、**Logs**、**Compact Mode** に対応しています。
-**Split Window** および **Send to Comparer** には対応していません。
-各操作の詳細は [Detachable Wrapper](detachable_wrapper.md) を参照してください。
+このウィジェットは Detachable Wrapper の共通機能（**コンパクトモード**など）に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
 
 ## ステレオ・アライメントとは
 
