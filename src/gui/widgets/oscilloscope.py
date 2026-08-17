@@ -126,6 +126,8 @@ class Oscilloscope(MeasurementModule):
         self.show_left = True
         self.show_right = True
         self.show_x_axis = False
+        self.show_y_axis = False
+        self.show_trigger_line = False
 
         # Vertical sensitivity per channel (units per division)
         self.vdiv_left = 0.25
@@ -855,6 +857,12 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
             bottom_axis.setLabel("")
             bottom_axis.setHeight(0)
 
+        left_axis = self.plot_widget.getPlotItem().getAxis("left")
+        left_axis.setStyle(showValues=self.module.show_y_axis)
+        if not self.module.show_y_axis:
+            left_axis.setLabel("")
+            left_axis.setWidth(0)
+
         self.curve_l = self.plot_widget.plot(pen=pg.mkPen("#00ff00", width=2), name=tr("Left"))
         self.curve_r = self.plot_widget.plot(pen=pg.mkPen("#ff5555", width=2), name=tr("Right"))
 
@@ -883,6 +891,8 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         self.trig_line.sigPositionChanged.connect(self.on_trig_line_dragged)
         self.plot_widget.addItem(self.trig_line)
         self.trig_line.setPos(0.0)
+        self.trig_line.setVisible(self.module.show_trigger_line)
+        self.trig_line.setMovable(self.module.show_trigger_line)
 
         # Persistence Images
         self.persistence_img = pg.ImageItem()
@@ -998,6 +1008,11 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         self.chk_show_x_axis.toggled.connect(self.on_show_x_axis_toggled)
         gen_layout.addWidget(self.chk_show_x_axis)
 
+        self.chk_show_y_axis = QCheckBox(tr("Show Y-Axis Label"))
+        self.chk_show_y_axis.setChecked(self.module.show_y_axis)
+        self.chk_show_y_axis.toggled.connect(self.on_show_y_axis_toggled)
+        gen_layout.addWidget(self.chk_show_y_axis)
+
     def _get_active_vdiv_options(self):
         is_calibrated, _, _ = self.module.get_amplitude_display_state()
         return self.module.VDIV_OPTIONS_CALIBRATED if is_calibrated else self.module.VDIV_OPTIONS_UNCALIBRATED
@@ -1109,6 +1124,11 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         self.trig_level_spin.valueChanged.connect(self.on_trig_level_changed)
         hbox_lvl.addWidget(self.trig_level_spin)
         trig_layout.addLayout(hbox_lvl)
+
+        self.chk_show_trig_line = QCheckBox(tr("Show Trigger Line"))
+        self.chk_show_trig_line.setChecked(self.module.show_trigger_line)
+        self.chk_show_trig_line.toggled.connect(self.on_show_trigger_line_toggled)
+        trig_layout.addWidget(self.chk_show_trig_line)
 
     def _setup_tools_controls(self, tools_layout):
         vbox_math = QVBoxLayout()
@@ -1273,6 +1293,23 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
             else:
                 bottom_axis.setLabel("")
                 bottom_axis.setHeight(0)
+
+    def on_show_y_axis_toggled(self, checked):
+        self.module.show_y_axis = checked
+        if not self.is_compact_mode():
+            left_axis = self.plot_widget.getPlotItem().getAxis("left")
+            left_axis.setStyle(showValues=checked)
+            if checked:
+                left_axis.setLabel(tr("Divisions"), units="div")
+                left_axis.setWidth(None)
+            else:
+                left_axis.setLabel("")
+                left_axis.setWidth(0)
+
+    def on_show_trigger_line_toggled(self, checked):
+        self.module.show_trigger_line = checked
+        self.trig_line.setVisible(checked)
+        self.trig_line.setMovable(checked)
 
     def on_timebase_changed(self, text):
         options_dict = dict(self.module.TIME_DIV_OPTIONS)
@@ -1862,9 +1899,14 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
                 else:
                     bottom_axis.setLabel("")
                     bottom_axis.setHeight(0)
-                left_axis.setStyle(showValues=True)
-                left_axis.setLabel(tr("Divisions"), units="div")
-                left_axis.setWidth(None)
+                show_y = getattr(self.module, "show_y_axis", False)
+                left_axis.setStyle(showValues=show_y)
+                if show_y:
+                    left_axis.setLabel(tr("Divisions"), units="div")
+                    left_axis.setWidth(None)
+                else:
+                    left_axis.setLabel("")
+                    left_axis.setWidth(0)
 
     def get_comparable_data(self) -> List[ComparisonTrace]:
         if self.last_display_data is None or self.last_display_time is None:
