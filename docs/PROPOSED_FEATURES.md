@@ -1,5 +1,7 @@
 # Feature Proposals and Implementation Audit
 
+## Overview
+
 Last audited against the current implementation: 2026-08-13.
 
 ## Scope and Selection Policy
