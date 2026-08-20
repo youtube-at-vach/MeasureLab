@@ -194,6 +194,39 @@ def test_advanced_settings_fit_without_outer_scrolling(signal_generator_widget, 
     assert widget.settings_scroll.horizontalScrollBar().maximum() == 0
 
 
+def test_transition_time_control_updates_global_generator_setting(signal_generator_widget):
+    widget, module, _engine = signal_generator_widget
+
+    assert widget.transition_spin.value() == pytest.approx(10.0)
+    assert widget.transition_spin.minimum() == pytest.approx(0.0)
+    assert widget.transition_spin.maximum() == pytest.approx(1000.0)
+
+    widget.transition_spin.setValue(25.0)
+    assert module.transition_ms == pytest.approx(25.0)
+
+
+def test_output_button_waits_for_stop_fade(signal_generator_widget):
+    import numpy as np
+
+    widget, module, engine = signal_generator_widget
+    engine.register_callback.return_value = "generator"
+
+    widget.toggle_btn.click()
+    callback = engine.register_callback.call_args.args[0]
+    callback(None, np.zeros((960, 2)), 960, None, None)
+
+    widget.toggle_btn.click()
+    assert module.is_stopping is True
+    assert widget.toggle_btn.isEnabled() is False
+
+    callback(None, np.zeros((960, 2)), 960, None, None)
+    widget._refresh_output_state()
+
+    assert module.is_playing is False
+    assert widget.toggle_btn.isChecked() is False
+    assert widget.toggle_btn.isEnabled() is True
+
+
 def test_routing_is_reflected_in_channel_badges(signal_generator_widget):
     widget, module, _engine = signal_generator_widget
     left_before = widget.left_condition_badge.text()

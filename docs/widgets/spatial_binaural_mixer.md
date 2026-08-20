@@ -16,6 +16,10 @@
 
 ---
 
+## 共通機能
+
+このウィジェットは Detachable Wrapper の共通機能に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
+
 ## 🎛️ 使用方法
 
 ### 1. 空間設定 (SOFA)

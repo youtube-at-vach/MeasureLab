@@ -66,6 +66,7 @@ Changes to parameters (including buffered waveforms such as Noise and Multitone)
 * **Snap to Bin Center**: When checked, automatically snaps the frequency to the nearest FFT bin center based on the current FFT Size to prevent spectral leakage. Useful for accurate distortion measurements.
 * **Phase Offset (deg)**: The initial phase of the signal. Used when you want to create a phase difference between the left and right channels.
 * **Delay (ms)**: The delay time of the signal. Useful for adjusting timing in burst signals, etc.
+* **Transition Time (ms)**: Applies a raised-cosine fade when output starts, stops, changes routing, or adopts live parameter changes. The default is 10 ms. Set it to 0 ms when an MLS, Golay, PRBS, or externally triggered measurement requires an unmodified sample sequence.
 * **Amplitude**: The amplitude (volume) of the signal. You can select from the following units:
     * **Linear (0-1)**: Linear scale from 0.0 to 1.0.
     * **dBFS**: Decibel value relative to digital full scale. The maximum value is 0 dBFS.

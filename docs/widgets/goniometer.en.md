@@ -10,7 +10,7 @@ It is an essential tool for discovering phase cancellation problems in mixdown a
 
 ## Common Features
 
-This widget supports common features of the Detachable Wrapper (such as **Split Window** and **Compact Mode**). Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
 
 ## What are Lissajous Figures?
 

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import subprocess
@@ -40,6 +41,7 @@ OUTER_CONTROLS_ROLE = "outer-controls"
 DYNAMIC_CONTENT_ROLE = "dynamic-content"
 VALID_SCROLL_ROLES = {OUTER_CONTROLS_ROLE, DYNAMIC_CONTENT_ROLE}
 RESULT_PREFIX = "__MEASURELAB_LAYOUT_RESULT__="
+QUICK_LANGUAGE = "en"
 
 # Keep a preloaded window alive until its single-profile worker exits. Some
 # modules own unparented QThreads that Qt must not destroy between profiles.
@@ -254,7 +256,10 @@ def _audit_profile(app: QApplication, profile: AuditProfile, base_font: QFont) -
     return failures
 
 
-def _profiles() -> list[AuditProfile]:
+def _profiles(*, quick: bool = False) -> list[AuditProfile]:
+    if quick:
+        return [AuditProfile(QUICK_LANGUAGE, None)]
+
     languages = sorted(get_manager().available_languages)
     # Pixel-sized fonts have substantially different metrics across Qt's
     # platform backends. Audit every translation with the platform's real
@@ -291,14 +296,33 @@ def _run_profile_worker(profile: AuditProfile) -> list[LayoutFailure]:
     return [LayoutFailure(**failure) for failure in raw_failures]
 
 
-def main() -> int:
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--quick",
+        action="store_true",
+        help="Check the English UI only for a fast local development pass",
+    )
+    parser.add_argument(
+        "--profile",
+        nargs=2,
+        metavar=("LANGUAGE", "FONT"),
+        help=argparse.SUPPRESS,
+    )
+    return parser.parse_args()
+
+
+def main(*, quick: bool = False) -> int:
     failures: list[LayoutFailure] = []
 
     print("=== MeasureLab displayed UI layout check ===")
     print(f"MainWindow limit: {MAX_WINDOW_WIDTH}x{MAX_WINDOW_HEIGHT}")
     print(f"Module limit: {MAX_WIDGET_WIDTH}x{MAX_WIDGET_HEIGHT}")
 
-    for profile in _profiles():
+    if quick:
+        print("Quick mode: checking English only.")
+
+    for profile in _profiles(quick=quick):
         print(f"Checking {profile.label}...", flush=True)
         failures.extend(_run_profile_worker(profile))
 
@@ -316,6 +340,7 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 4 and sys.argv[1] == "--profile":
-        _run_single_profile(sys.argv[2], sys.argv[3])
-    raise SystemExit(main())
+    args = _parse_args()
+    if args.profile is not None:
+        _run_single_profile(*args.profile)
+    raise SystemExit(main(quick=args.quick))

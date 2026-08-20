@@ -102,9 +102,7 @@ The table shows the most recent 500 records. CSV and JSON exports include every 
 
 ## Common Features
 
-This widget supports **Detach Window**, **Screenshot**, **Logs**, **Split Window**, and
-**Compact Mode**. It does not support **Send to Comparer**.
-See [Detachable Wrapper](detachable_wrapper.en.md) for details about each operation.
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
 
 ## Basic Measurement Procedure
 

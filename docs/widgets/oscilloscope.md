@@ -8,7 +8,7 @@ Oscilloscope（オシロスコープ）は、入力信号の波形をリアル�
 
 ## 共通機能
 
-このウィジェットは Detachable Wrapper の共通機能（**ウィンドウ分割**や**コンパクトモード**など）に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
+このウィジェットは Detachable Wrapper の共通機能に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
 
 ## 操作方法
 
