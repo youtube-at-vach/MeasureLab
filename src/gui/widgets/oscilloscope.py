@@ -1,4 +1,5 @@
 import logging
+from typing import List, Optional
 
 import numpy as np
 import pyqtgraph as pg
@@ -25,26 +26,24 @@ from PyQt6.QtWidgets import (
 
 from src.core.analysis import AudioCalc
 from src.core.audio_engine import AudioEngine
-from src.core.ring_buffer import RingBuffer
+from src.core.comparison_manager import AxisMetadata, CalibrationInfo, ComparisonTrace
 from src.core.localization import tr
+from src.core.ring_buffer import RingBuffer
 from src.core.utils import format_si
-from src.measurement_modules.base import MeasurementModule
-from typing import List
+from src.gui.styles import (
+    STYLE_LABEL_CURSOR_DARK,
+    STYLE_LABEL_CURSOR_LIGHT,
+    STYLE_LABEL_LEFT_CH_DARK,
+    STYLE_LABEL_LEFT_CH_LIGHT,
+    STYLE_LABEL_RIGHT_CH_DARK,
+    STYLE_LABEL_RIGHT_CH_LIGHT,
+    STYLE_TOGGLE_BTN_DARK,
+    STYLE_TOGGLE_BTN_LIGHT,
+)
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.comparable_interface import ComparableWidgetInterface
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
-from src.core.comparison_manager import ComparisonTrace, AxisMetadata, CalibrationInfo
-from src.gui.styles import (
-    STYLE_TOGGLE_BTN_DARK,
-    STYLE_TOGGLE_BTN_LIGHT,
-    STYLE_LABEL_LEFT_CH_DARK,
-    STYLE_LABEL_RIGHT_CH_DARK,
-    STYLE_LABEL_CURSOR_DARK,
-    STYLE_LABEL_LEFT_CH_LIGHT,
-    STYLE_LABEL_RIGHT_CH_LIGHT,
-    STYLE_LABEL_CURSOR_LIGHT,
-)
-
+from src.measurement_modules.base import MeasurementModule
 
 logger = logging.getLogger(__name__)
 
@@ -56,14 +55,66 @@ class Oscilloscope(MeasurementModule):
     TRIGGER_SEARCH_FRACTION = 0.25
     MAX_TRIGGER_SEARCH_WINDOW_SIZE = 8192
 
+    # Standard 1-2-5 step sequences for Time/Div and Vertical Scale (per division)
+    TIME_DIV_OPTIONS = [
+        ("10 us", 0.00001),
+        ("20 us", 0.00002),
+        ("50 us", 0.00005),
+        ("100 us", 0.0001),
+        ("200 us", 0.0002),
+        ("500 us", 0.0005),
+        ("1 ms", 0.001),
+        ("2 ms", 0.002),
+        ("5 ms", 0.005),
+        ("10 ms", 0.01),
+        ("20 ms", 0.02),
+        ("50 ms", 0.05),
+        ("100 ms", 0.1),
+        ("200 ms", 0.2),
+        ("500 ms", 0.5),
+    ]
+
+    VDIV_OPTIONS_UNCALIBRATED = [
+        ("1 mFS", 0.001),
+        ("2 mFS", 0.002),
+        ("5 mFS", 0.005),
+        ("10 mFS", 0.01),
+        ("20 mFS", 0.02),
+        ("50 mFS", 0.05),
+        ("100 mFS", 0.1),
+        ("200 mFS", 0.2),
+        ("250 mFS", 0.25),
+        ("500 mFS", 0.5),
+        ("1 FS", 1.0),
+    ]
+
+    VDIV_OPTIONS_CALIBRATED = [
+        ("1 mV", 0.001),
+        ("2 mV", 0.002),
+        ("5 mV", 0.005),
+        ("10 mV", 0.01),
+        ("20 mV", 0.02),
+        ("50 mV", 0.05),
+        ("100 mV", 0.1),
+        ("200 mV", 0.2),
+        ("500 mV", 0.5),
+        ("1 V", 1.0),
+        ("2 V", 2.0),
+        ("5 V", 5.0),
+        ("10 V", 10.0),
+        ("20 V", 20.0),
+    ]
+
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
         self.is_running = False
-        # Settings
-        self.timebase = 0.01  # Seconds per division (approx) -> Total view window
-        # Buffer enough for low frequency analysis, but we'll display a subset
+
+        # Horizontal timebase (Total view duration = 10 * time_div)
+        self.time_div = 0.001  # 1 ms/div (default 10 ms window)
+        self.timebase = self.time_div * 10.0  # Seconds total window
+
+        # Buffer allocation
         self.buffer_size = self._recommended_buffer_size(self.timebase)
-        # Double the buffer size to avoid wrap-around concatenation
         self.input_data = np.zeros((self.buffer_size * 2, 2))
         self.write_index = 0
 
@@ -71,21 +122,29 @@ class Oscilloscope(MeasurementModule):
         self.trigger_source = 0  # 0: Left, 1: Right
         self.trigger_mode = "Auto"  # 'Auto', 'Normal', 'Single'
         self.trigger_slope = "Rising"  # 'Rising', 'Falling'
-        self.trigger_level = 0.0
+        self.trigger_level = 0.0  # Trigger level in active units (FS or Volts)
         self.show_left = True
         self.show_right = True
         self.show_x_axis = False
+        self.show_y_axis = False
+        self.show_trigger_line = False
 
-        # Per-channel vertical display scale (multiplier)
-        self.vscale_left = 1.0
-        self.vscale_right = 1.0
+        # Vertical sensitivity per channel (units per division)
+        self.vdiv_left = 0.25
+        self.vdiv_right = 0.25
+
+        # Overload / Clipping detection & latching (T&M Failsafe)
+        self.clipping_detected_l = False
+        self.clipping_detected_r = False
+        self.clipping_latched_l = False
+        self.clipping_latched_r = False
 
         # Single-shot trigger state
         self.single_shot_armed = False
         self.single_shot_fired = False
 
         # Math Mode
-        self.math_mode = "Off"  # 'Off', 'Derivative', 'Integral'
+        self.math_mode = "Off"  # 'Off', 'A + B', 'A - B', 'A * B', 'A / B', 'Derivative', 'Integral'
 
         # Filter Settings
         self.filter_type = "None"  # 'None', 'LPF', 'HPF', 'BPF'
@@ -97,17 +156,39 @@ class Oscilloscope(MeasurementModule):
         self.persistence_mode = False
         self.persistence_decay = 0.90
         self.persistence_intensity = 0.5
-        # Buffers for persistence (initially None, created on demand)
         self.heatmap_l = None
         self.heatmap_r = None
-        self.heatmap_size = (600, 400)  # Width, Height (pixels/bins)
+        self.heatmap_size = (600, 400)
 
         # High-performance transfer buffer (Ring Buffer)
-        # Replaces queue to avoid allocation in audio callback
         self.transfer_buffer_size = 65536
         self.transfer_buffer = RingBuffer(self.transfer_buffer_size, 2, dtype=np.float32)
 
         self.callback_id = None
+
+    @property
+    def vscale_left(self) -> float:
+        """Multiplier representation of vertical scale for backward compatibility."""
+        if self.vdiv_left <= 0:
+            return 1.0
+        return 0.25 / self.vdiv_left
+
+    @vscale_left.setter
+    def vscale_left(self, val: float):
+        if val > 0:
+            self.vdiv_left = 0.25 / val
+
+    @property
+    def vscale_right(self) -> float:
+        """Multiplier representation of vertical scale for backward compatibility."""
+        if self.vdiv_right <= 0:
+            return 1.0
+        return 0.25 / self.vdiv_right
+
+    @vscale_right.setter
+    def vscale_right(self, val: float):
+        if val > 0:
+            self.vdiv_right = 0.25 / val
 
     @property
     def name(self) -> str:
@@ -127,11 +208,9 @@ class Oscilloscope(MeasurementModule):
         if x_max <= x_min or y_max <= y_min:
             return
 
-        # Pre-compute scales
         x_scale = w / (x_max - x_min)
         y_scale = h / (y_max - y_min)
 
-        # Filter valid Y data
         mask = (y >= y_min) & (y <= y_max)
         if not np.any(mask):
             return
@@ -139,19 +218,15 @@ class Oscilloscope(MeasurementModule):
         y_valid = y[mask]
         t_valid = t[mask]
 
-        # Map to indices
         x_idx = ((t_valid - x_min) * x_scale).astype(np.int32)
         y_idx = ((y_valid - y_min) * y_scale).astype(np.int32)
 
-        # Handle edge cases (values exactly at max map to index N, should be N-1)
         x_idx[x_idx == w] = w - 1
         y_idx[y_idx == h] = h - 1
 
-        # Clamp for safety
         np.clip(x_idx, 0, w - 1, out=x_idx)
         np.clip(y_idx, 0, h - 1, out=y_idx)
 
-        # Accumulate
         np.add.at(heatmap, (x_idx, y_idx), intensity * 100)
 
     def get_widget(self):
@@ -161,6 +236,34 @@ class Oscilloscope(MeasurementModule):
         w, h = self.heatmap_size
         self.heatmap_l = np.zeros((w, h))
         self.heatmap_r = np.zeros((w, h))
+
+    def reset_clipping_latch(self):
+        """Reset the overload/clipping latch for new measurement runs."""
+        self.clipping_detected_l = False
+        self.clipping_detected_r = False
+        self.clipping_latched_l = False
+        self.clipping_latched_r = False
+
+    def check_clipping(self, data: np.ndarray) -> None:
+        """Check if incoming audio data reached full-scale (0 dBFS) or contains non-finite values."""
+        if data is None or len(data) == 0:
+            self.clipping_detected_l = False
+            self.clipping_detected_r = False
+            return
+
+        l_data = data[:, 0]
+        r_data = data[:, 1]
+
+        clip_l = bool(np.any(np.abs(l_data) >= 0.999) or not np.all(np.isfinite(l_data)))
+        clip_r = bool(np.any(np.abs(r_data) >= 0.999) or not np.all(np.isfinite(r_data)))
+
+        self.clipping_detected_l = clip_l
+        self.clipping_detected_r = clip_r
+
+        if clip_l:
+            self.clipping_latched_l = True
+        if clip_r:
+            self.clipping_latched_r = True
 
     def _recommended_trigger_search_window(self, required_samples):
         adaptive_window = int(required_samples * self.TRIGGER_SEARCH_FRACTION)
@@ -196,8 +299,6 @@ class Oscilloscope(MeasurementModule):
         old_data = self.input_data
         old_write_index = self.write_index
 
-        # Reallocate only on the UI thread. Keep the ring-buffer invariant that
-        # write_index is the logical origin (oldest sample) for _get_data_slice().
         self.buffer_size = required_size
         self.input_data = np.zeros((self.buffer_size * 2, 2), dtype=old_data.dtype)
         old_available = min(old_buffer_size, self.buffer_size)
@@ -218,14 +319,13 @@ class Oscilloscope(MeasurementModule):
             return
 
         self.is_running = True
+        self.reset_clipping_latch()
         self._ensure_buffer_capacity(self.timebase)
         self.input_data = np.zeros((self.buffer_size * 2, 2))
         self.write_index = 0
 
-        # Reset transfer buffer
         self.transfer_buffer.reset()
 
-        # Reset heatmaps
         if self.persistence_mode:
             self.reset_persistence()
 
@@ -236,44 +336,36 @@ class Oscilloscope(MeasurementModule):
         def callback(indata, outdata, frames, time, status):
             if status:
                 logger.debug(status)
-
-            # Write to transfer buffer (RingBuffer handles lock and wrapping)
             self.transfer_buffer.write(indata)
-
             outdata.fill(0)
 
         self.callback_id = self.audio_engine.register_callback(callback)
 
     def process_queue(self):
-        # Poll transfer buffer
         new_data = self.transfer_buffer.read()
         n_frames = len(new_data)
         if n_frames == 0:
             return
 
-        # Now process new_data into input_data (display buffer)
+        # Check clipping on streaming input
+        self.check_clipping(new_data)
+
         if n_frames > self.buffer_size:
-            # Just take the last part
             last_part = new_data[-self.buffer_size :]
             self.input_data[: self.buffer_size] = last_part
             self.input_data[self.buffer_size :] = last_part
             self.write_index = 0
         else:
-            # Wrapped write
             idx = self.write_index
             end_idx = idx + n_frames
             if end_idx <= self.buffer_size:
                 self.input_data[idx:end_idx] = new_data
                 self.input_data[idx + self.buffer_size : end_idx + self.buffer_size] = new_data
             else:
-                # Split
                 part1_len = self.buffer_size - idx
-
-                # Write to end of primary buffer and start of mirror buffer
                 self.input_data[idx : self.buffer_size] = new_data[:part1_len]
                 self.input_data[idx + self.buffer_size :] = new_data[:part1_len]
 
-                # Write to start of primary buffer and start of mirror buffer
                 part2_len = n_frames - part1_len
                 self.input_data[:part2_len] = new_data[part1_len:]
                 self.input_data[self.buffer_size : self.buffer_size + part2_len] = new_data[part1_len:]
@@ -281,14 +373,7 @@ class Oscilloscope(MeasurementModule):
             self.write_index = (idx + n_frames) % self.buffer_size
 
     def get_measurements(self, data):
-        """
-        Calculate RMS and peak-to-peak amplitude in the active display unit.
-
-        Calibrated inputs are returned in volts. Uncalibrated inputs remain in
-        full-scale units so an assumed sensitivity can never appear as a
-        physical voltage.
-        Returns a dict with 'l_rms', 'l_vpp', 'r_rms', 'r_vpp'.
-        """
+        """Calculate RMS and peak-to-peak amplitude in the active display unit."""
         _is_calibrated, amplitude_factor, _unit = self.get_amplitude_display_state()
 
         if data is None or len(data) == 0:
@@ -332,7 +417,7 @@ class Oscilloscope(MeasurementModule):
             self.is_running = False
 
     def _get_data_slice(self, start_offset, length):
-        """Returns a contiguous array of length samples starting at logical offset start_offset (0 = oldest)."""
+        """Returns a contiguous array of length samples starting at logical offset start_offset."""
         if length <= 0:
             return np.empty((0, 2))
 
@@ -342,10 +427,7 @@ class Oscilloscope(MeasurementModule):
         return self.input_data[idx:end_idx].copy()
 
     def get_display_data(self, window_duration):
-        """
-        Get triggered data for display.
-        window_duration: float, seconds of data to display
-        """
+        """Get triggered data for display."""
         self._ensure_buffer_capacity(window_duration)
         sample_rate = self._sample_rate_hz()
         required_samples = int(window_duration * sample_rate)
@@ -356,43 +438,28 @@ class Oscilloscope(MeasurementModule):
         if self.trigger_mode == "Single" and not self.single_shot_armed:
             return None
 
-        # Simple Trigger Search
-        # Look for crossing of trigger_level with correct slope
-        # We search in the range [0, buffer_size - required_samples] to ensure we have enough data after trigger
-
         search_end = self.buffer_size - required_samples
         if search_end <= 0:
-            # Buffer too small for requested window, just return what we have (the last required_samples)
             start_offset = max(0, self.buffer_size - required_samples)
             return self._get_data_slice(start_offset, required_samples)
 
-        # Limit search to recent history to be responsive (e.g. last 50% of possible range)
-        # But we need enough pre-trigger data?
-        # Usually oscilloscope shows trigger point at center or left. Let's put it at the left for now.
-
-        # We search backwards from the end-required_samples to find the most recent trigger event
-        # Or search forwards?
-        # Let's search in the last 'search_window' samples
-        search_window = self._recommended_trigger_search_window(required_samples)  # Limit search to avoid high CPU
+        search_window = self._recommended_trigger_search_window(required_samples)
         start_idx = max(0, search_end - search_window)
 
-        # Extract only the search window subset
         search_length = search_end - start_idx
         subset_data = self._get_data_slice(start_idx, search_length)
         subset = subset_data[:, self.trigger_source]
 
-        # Find crossings
-        # Rising: previous < level <= current
-        # Falling: previous > level >= current
+        _is_calibrated, factor, _ = self.get_amplitude_display_state()
+        threshold_fs = self.trigger_level / factor if _is_calibrated and factor > 0 else self.trigger_level
 
         if self.trigger_slope == "Rising":
-            crossings = np.where((subset[:-1] < self.trigger_level) & (subset[1:] >= self.trigger_level))[0]
+            crossings = np.where((subset[:-1] < threshold_fs) & (subset[1:] >= threshold_fs))[0]
         else:
-            crossings = np.where((subset[:-1] > self.trigger_level) & (subset[1:] <= self.trigger_level))[0]
+            crossings = np.where((subset[:-1] > threshold_fs) & (subset[1:] <= threshold_fs))[0]
 
         if len(crossings) > 0:
-            # Pick the last one for most recent update
-            trigger_offset_in_subset = crossings[-1] + 1  # +1 because crossing is between i and i+1
+            trigger_offset_in_subset = crossings[-1] + 1
             trigger_idx = start_idx + trigger_offset_in_subset
 
             if self.trigger_mode == "Single":
@@ -401,18 +468,14 @@ class Oscilloscope(MeasurementModule):
 
             return self._get_data_slice(trigger_idx, required_samples)
         else:
-            # No trigger found
             if self.trigger_mode == "Auto":
-                # Return latest data
-                # Corresponds to last required_samples
                 start_offset = self.buffer_size - required_samples
                 return self._get_data_slice(start_offset, required_samples)
             else:
-                # Normal mode: return None (keep last frame)
                 return None
 
     @staticmethod
-    def estimate_frequency_hz(t: np.ndarray, y: np.ndarray):
+    def estimate_frequency_hz(t: np.ndarray, y: np.ndarray) -> Optional[float]:
         """Estimate frequency from rising zero-crossings (DC-removed)."""
         if t is None or y is None or len(t) < 4:
             return None
@@ -426,9 +489,6 @@ class Oscilloscope(MeasurementModule):
         if len(crossings) < 2:
             return None
 
-        # Vectorized interpolation
-        # Since crossings are defined as y[i] < 0 and y[i+1] >= 0,
-        # denom = y[i+1] - y[i] is strictly positive.
         idx = crossings
         y0 = yy[idx]
         y1 = yy[idx + 1]
@@ -454,13 +514,7 @@ class Oscilloscope(MeasurementModule):
 
     @staticmethod
     def estimate_rise_fall_times_s(t: np.ndarray, y: np.ndarray):
-        """Estimate 10-90% rise time and 90-10% fall time for step-like waveforms.
-
-        This implementation measures *within a single edge neighborhood* to avoid accidentally
-        spanning multiple periods (a common failure mode on square waves).
-
-        Returns (rise_time_s, fall_time_s, low_level, high_level) where times can be None.
-        """
+        """Estimate 10-90% rise time and 90-10% fall time for step-like waveforms."""
         if t is None or y is None or len(t) < 4:
             return (None, None, None, None)
 
@@ -469,7 +523,6 @@ class Oscilloscope(MeasurementModule):
         if yy.size != tt.size:
             return (None, None, None, None)
 
-        # Robust low/high estimates from quantiles.
         low_q = float(np.percentile(yy, 10))
         high_q = float(np.percentile(yy, 90))
         if not np.isfinite(low_q) or not np.isfinite(high_q):
@@ -481,7 +534,6 @@ class Oscilloscope(MeasurementModule):
         if amp <= 1e-9:
             return (None, None, low_level, high_level)
 
-        # Heuristic: only attempt rise/fall when waveform looks step-like.
         near_low = np.mean(yy <= (low_level + 0.2 * amp))
         near_high = np.mean(yy >= (high_level - 0.2 * amp))
         if not (near_low > 0.05 and near_high > 0.05):
@@ -567,11 +619,71 @@ class Oscilloscope(MeasurementModule):
 
         return (rise_time, fall_time, low_level, high_level)
 
+    def auto_scale(self, data: Optional[np.ndarray] = None) -> bool:
+        """
+        Auto Scale (Auto Set) engine for Oscilloscope.
+        Analyzes the current signal amplitude and frequency to automatically select
+        optimal Time/Div, Vertical Scale (V/div or FS/div), and Trigger parameters.
+        """
+        if data is None or len(data) == 0:
+            window_duration = self.timebase
+            data = self._get_data_slice(0, min(self.buffer_size, int(window_duration * self._sample_rate_hz())))
+
+        if data is None or len(data) < 16:
+            return False
+
+        sr = self._sample_rate_hz()
+        t = np.arange(len(data)) / sr
+
+        l_data = data[:, 0]
+        r_data = data[:, 1]
+
+        l_vpp_fs = float(np.max(l_data) - np.min(l_data))
+        r_vpp_fs = float(np.max(r_data) - np.min(r_data))
+
+        primary_ch = 0 if l_vpp_fs >= r_vpp_fs else 1
+        self.trigger_source = primary_ch
+        primary_data = l_data if primary_ch == 0 else r_data
+
+        is_calibrated, factor, _ = self.get_amplitude_display_state()
+
+        target_div = 5.0
+        vdiv_options = [val for _, val in (self.VDIV_OPTIONS_CALIBRATED if is_calibrated else self.VDIV_OPTIONS_UNCALIBRATED)]
+
+        for _ch_idx, (vpp_fs, attr_name) in enumerate([(l_vpp_fs, "vdiv_left"), (r_vpp_fs, "vdiv_right")]):
+            vpp = vpp_fs * factor if is_calibrated else vpp_fs
+            if vpp < 1e-4:
+                best_vdiv = 0.2 if not is_calibrated else 0.5
+            else:
+                desired_vdiv = vpp / target_div
+                candidates = [opt for opt in vdiv_options if opt >= desired_vdiv * 0.9]
+                best_vdiv = candidates[0] if candidates else vdiv_options[-1]
+            setattr(self, attr_name, best_vdiv)
+
+        freq = self.estimate_frequency_hz(t, primary_data)
+        time_div_options = [val for _, val in self.TIME_DIV_OPTIONS]
+
+        if freq is not None and freq > 5.0:
+            period = 1.0 / freq
+            desired_time_div = (3.0 * period) / 10.0
+            candidates = [opt for opt in time_div_options if opt >= desired_time_div * 0.8]
+            best_time_div = candidates[0] if candidates else time_div_options[-1]
+        else:
+            best_time_div = 0.001
+
+        self.time_div = best_time_div
+        self.timebase = best_time_div * 10.0
+
+        self.trigger_mode = "Auto"
+        self.trigger_slope = "Rising"
+        self.trigger_level = 0.0
+
+        return True
+
 
 class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetInterface, SplittableWidgetInterface):
-    # View constants
-    VIEW_Y_MIN = -1.1
-    VIEW_Y_MAX = 1.1
+    VIEW_Y_MIN = -4.0
+    VIEW_Y_MAX = 4.0
 
     def __init__(self, module: Oscilloscope):
         QWidget.__init__(self)
@@ -583,19 +695,38 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         self._clip_buffer = None
         self.last_display_data = None
         self.last_display_time = None
+        self._updating_trigger_line = False
 
-        # Optimization: Time array cache
         self._time_array_cache = None
-        self._time_array_cache_params = (None, None)  # (window_duration, length)
+        self._time_array_cache_params = (None, None)
 
-        # Math auto-fit flag (one-shot scale fitting on mode change / reset button)
         self._math_autofit_pending = False
 
         self.init_ui()
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_plot)
-        self.timer.setInterval(30)  # 30ms refresh
+        self.timer.setInterval(30)
+
+    @property
+    def timebase_options(self):
+        """Dictionary of timebase options for backward compatibility."""
+        return dict(self.module.TIME_DIV_OPTIONS)
+
+    @property
+    def timebase_keys(self):
+        """List of timebase option keys for backward compatibility."""
+        return [lbl for lbl, _ in self.module.TIME_DIV_OPTIONS]
+
+    @property
+    def vscale_options(self):
+        """Dictionary of vertical scale options for backward compatibility."""
+        return dict(self._get_active_vdiv_options())
+
+    @property
+    def vscale_keys(self):
+        """List of vertical scale option keys for backward compatibility."""
+        return [lbl for lbl, _ in self._get_active_vdiv_options()]
 
     def closeEvent(self, event: QCloseEvent):
         self.timer.stop()
@@ -604,28 +735,23 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
 
     def showEvent(self, event):
         super().showEvent(event)
-        if hasattr(self, "calibration_status_label"):
-            self._update_calibration_status()
+        self._refresh_scale_combos()
+        self._update_calibration_status()
         if hasattr(self, "latest_data") and self.latest_data is not None:
             self._set_measurement_labels(self.module.get_measurements(self.latest_data))
             if self.chk_cursors.isChecked():
                 self.update_cursor_info()
 
     def get_display_widget(self) -> QWidget:
-        """Returns the display sub-widget (plot + measurements area)."""
         return self.display_widget
 
     def get_control_widget(self) -> QWidget:
-        """Returns the controls sub-widget (settings panel)."""
         return self.right_widget
 
     def restore_split_panels(self) -> None:
-        """Re-inserts display_widget and right_widget into the main layout after split reattach."""
         layout = self.layout()
         if layout is None:
             return
-        # Both sub-widgets were reparented back to self; re-add them to the layout
-        # in the original order (display first with stretch, then controls fixed-width).
         layout.addWidget(self.display_widget, stretch=1)
         layout.addWidget(self.right_widget)
         self.display_widget.show()
@@ -634,14 +760,11 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
     def init_ui(self):
         main_layout = QHBoxLayout()
 
-        # --- Left Panel (Display) ---
         self.display_widget = self._setup_left_panel()
-        main_layout.addWidget(self.display_widget, stretch=1)  # Give priority to plot
+        main_layout.addWidget(self.display_widget, stretch=1)
 
-        # --- Right Panel (Controls) ---
         self.right_widget = self._setup_right_panel()
 
-        # Math Curve
         self._setup_math_view()
 
         main_layout.addWidget(self.right_widget)
@@ -651,29 +774,53 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         display_widget = QWidget()
         left_layout = QVBoxLayout(display_widget)
         left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(4)
 
-        # Measurements
-        self.meas_group = QGroupBox(tr("Measurements"))
-        meas_layout = QVBoxLayout()
+        # Badge & Status Header
+        self.badge_group = QGroupBox()
+        self.badge_group.setStyleSheet("QGroupBox { border: 1px solid #3d4450; border-radius: 4px; margin-top: 0px; padding: 2px; }")
+        badge_layout = QHBoxLayout(self.badge_group)
+        badge_layout.setContentsMargins(4, 2, 4, 2)
+        badge_layout.setSpacing(4)
+
+        self.badge_l_label = QLabel()
+        self.badge_l_label.setStyleSheet("QLabel { color: #00ff00; font-weight: bold; background: #16241a; padding: 2px 4px; border-radius: 3px; border: 1px solid #00aa00; font-size: 11px; }")
+        badge_layout.addWidget(self.badge_l_label)
+
+        self.badge_r_label = QLabel()
+        self.badge_r_label.setStyleSheet("QLabel { color: #ff5555; font-weight: bold; background: #2b1818; padding: 2px 4px; border-radius: 3px; border: 1px solid #aa0000; font-size: 11px; }")
+        badge_layout.addWidget(self.badge_r_label)
+
+        self.badge_status_label = QLabel()
+        self.badge_status_label.setStyleSheet("QLabel { color: #d0d7de; font-weight: normal; padding: 2px 4px; font-size: 11px; }")
+        badge_layout.addWidget(self.badge_status_label)
+
+        badge_layout.addStretch()
 
         self.calibration_status_label = QLabel()
-        self.calibration_status_label.setStyleSheet("font-weight: bold;")
-        meas_layout.addWidget(self.calibration_status_label)
+        self.calibration_status_label.setStyleSheet("QLabel { color: #8b949e; font-size: 10px; }")
+        badge_layout.addWidget(self.calibration_status_label)
 
-        initial_is_calibrated, _factor, _unit = self.module.get_amplitude_display_state()
-        if initial_is_calibrated:
-            initial_l_text = tr("L: Vrms: 0.000 V  Vpp: 0.000 V")
-            initial_r_text = tr("R: Vrms: 0.000 V  Vpp: 0.000 V")
-        else:
-            initial_l_text = tr("L: RMS: 0.000 FS  Pk-Pk: 0.000 FS")
-            initial_r_text = tr("R: RMS: 0.000 FS  Pk-Pk: 0.000 FS")
+        self.clipping_warning_badge = QLabel(tr("CLIPPING"))
+        self.clipping_warning_badge.setStyleSheet(
+            "QLabel { color: #ffffff; background-color: #d73a49; font-weight: bold; padding: 2px 6px; border-radius: 3px; font-size: 10px; }"
+        )
+        self.clipping_warning_badge.setVisible(False)
+        badge_layout.addWidget(self.clipping_warning_badge)
+
+        left_layout.addWidget(self.badge_group)
+
+        # Measurements Panel
+        self.meas_group = QGroupBox(tr("Measurements"))
+        meas_layout = QVBoxLayout()
+        meas_layout.setContentsMargins(4, 2, 4, 2)
 
         meas_row_1 = QHBoxLayout()
-        self.meas_l_label = QLabel(initial_l_text)
+        self.meas_l_label = QLabel()
         self.meas_l_label.setStyleSheet(STYLE_LABEL_LEFT_CH_DARK)
         meas_row_1.addWidget(self.meas_l_label)
 
-        self.meas_r_label = QLabel(initial_r_text)
+        self.meas_r_label = QLabel()
         self.meas_r_label.setStyleSheet(STYLE_LABEL_RIGHT_CH_DARK)
         meas_row_1.addWidget(self.meas_r_label)
         meas_row_1.addStretch()
@@ -691,30 +838,29 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
 
         self.meas_group.setLayout(meas_layout)
         left_layout.addWidget(self.meas_group)
-        self._update_calibration_status()
 
         # Cursor Info
         self.cursor_info_label = QLabel(tr("Cursors: Off"))
         self.cursor_info_label.setStyleSheet(STYLE_LABEL_CURSOR_DARK)
         left_layout.addWidget(self.cursor_info_label)
 
-        # Plot
+        # Plot Widget
         self.plot_widget = pg.PlotWidget()
-        # Hide Y-axis labels as they are confusing (showing raw FS instead of calibrated Volts)
-        self.plot_widget.getPlotItem().getAxis("left").setStyle(showValues=False)
         self.plot_widget.setLabel("bottom", tr("Time"), units="s")
+        self.plot_widget.setLabel("left", tr("Divisions"), units="div")
         self.plot_widget.setYRange(self.VIEW_Y_MIN, self.VIEW_Y_MAX, padding=0)
-        self.plot_widget.showGrid(x=True, y=True)
-        # Keep the bottom axis visible so vertical grid lines are always drawn;
-        # only hide the tick labels/values when show_x_axis is False.
+        self.plot_widget.showGrid(x=True, y=True, alpha=0.3)
+
         bottom_axis = self.plot_widget.getPlotItem().getAxis("bottom")
         bottom_axis.setStyle(showValues=self.module.show_x_axis)
         if not self.module.show_x_axis:
             bottom_axis.setLabel("")
             bottom_axis.setHeight(0)
 
+        self._update_y_axis_display(self.module.show_y_axis)
+
         self.curve_l = self.plot_widget.plot(pen=pg.mkPen("#00ff00", width=2), name=tr("Left"))
-        self.curve_r = self.plot_widget.plot(pen=pg.mkPen("#ff0000", width=2), name=tr("Right"))
+        self.curve_r = self.plot_widget.plot(pen=pg.mkPen("#ff5555", width=2), name=tr("Right"))
 
         # Cursors
         self.cursor_1 = pg.InfiniteLine(
@@ -723,65 +869,66 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         self.cursor_2 = pg.InfiniteLine(
             angle=90, movable=True, pen=pg.mkPen("m", width=1), label="C2", labelOpts={"position": 0.1}
         )
-
         self.cursor_1.sigPositionChanged.connect(self.update_cursor_info)
         self.cursor_2.sigPositionChanged.connect(self.update_cursor_info)
-
         self.plot_widget.addItem(self.cursor_1)
         self.plot_widget.addItem(self.cursor_2)
         self.cursor_1.setVisible(False)
         self.cursor_2.setVisible(False)
 
+        # Direct Manipulation: Dragable Trigger Level Line
+        self.trig_line = pg.InfiniteLine(
+            angle=0,
+            movable=True,
+            pen=pg.mkPen("#e0af00", width=1.5, style=Qt.PenStyle.DashLine),
+            label=tr("Trig: {value:.2f} div"),
+            labelOpts={"position": 0.9, "color": "#e0af00"},
+        )
+        self.trig_line.sigPositionChanged.connect(self.on_trig_line_dragged)
+        self.plot_widget.addItem(self.trig_line)
+        self.trig_line.setPos(0.0)
+        self.trig_line.setVisible(self.module.show_trigger_line)
+        self.trig_line.setMovable(self.module.show_trigger_line)
+
         # Persistence Images
-        # Let's start with one RGB ImageItem for simplicity of display, we'll compose the heatmap in update_plot.
         self.persistence_img = pg.ImageItem()
         self.plot_widget.addItem(self.persistence_img)
         self.persistence_img.setVisible(False)
-        self.persistence_img.setZValue(0)  # Behind cursors
+        self.persistence_img.setZValue(0)
 
         left_layout.addWidget(self.plot_widget)
+
+        self._update_badges()
+        self._update_calibration_status()
         return display_widget
-
-    def _update_calibration_status(self):
-        is_calibrated, sensitivity, _unit = self.module.get_amplitude_display_state()
-        if is_calibrated:
-            self.calibration_status_label.setText(
-                tr("Input: Calibrated ({0:.4g} V/FS)").format(sensitivity)
-            )
-        else:
-            self.calibration_status_label.setText(tr("Input: Uncalibrated (FS)"))
-
-    def _set_measurement_labels(self, measurements):
-        is_calibrated, _factor, _unit = self.module.get_amplitude_display_state()
-        if is_calibrated:
-            self.meas_l_label.setText(
-                tr("L: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(
-                    measurements["l_rms"], measurements["l_vpp"]
-                )
-            )
-            self.meas_r_label.setText(
-                tr("R: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(
-                    measurements["r_rms"], measurements["r_vpp"]
-                )
-            )
-        else:
-            self.meas_l_label.setText(
-                tr("L: RMS: {0:.3f} FS  Pk-Pk: {1:.3f} FS").format(
-                    measurements["l_rms"], measurements["l_vpp"]
-                )
-            )
-            self.meas_r_label.setText(
-                tr("R: RMS: {0:.3f} FS  Pk-Pk: {1:.3f} FS").format(
-                    measurements["r_rms"], measurements["r_vpp"]
-                )
-            )
 
     def _setup_right_panel(self):
         right_widget = QWidget()
-        right_widget.setFixedWidth(250)  # Fixed width for controls
-        right_widget.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Maximum)
+        right_widget.setFixedWidth(240)
+        right_widget.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         right_layout = QVBoxLayout(right_widget)
         right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(4)
+
+        btn_header = QHBoxLayout()
+        self.toggle_btn = QPushButton(tr("Start"))
+        self.toggle_btn.setCheckable(True)
+        self.toggle_btn.clicked.connect(self.on_toggle)
+
+        self.btn_auto_scale = QPushButton(tr("Auto Scale"))
+        self.btn_auto_scale.setToolTip(tr("Automatically optimize timebase, vertical scale, and trigger"))
+        self.btn_auto_scale.clicked.connect(self.on_auto_scale)
+
+        btn_header.addWidget(self.toggle_btn, stretch=1)
+        btn_header.addWidget(self.btn_auto_scale, stretch=1)
+        right_layout.addLayout(btn_header)
+
+        self.app = QApplication.instance()
+        if hasattr(self.app, "theme_manager"):
+            self.app.theme_manager.theme_changed.connect(self.apply_theme)
+            self.apply_theme(self.app.theme_manager.get_current_theme())
+        else:
+            self.toggle_btn.setStyleSheet(STYLE_TOGGLE_BTN_LIGHT)
 
         tabs = QTabWidget()
         right_layout.addWidget(tabs)
@@ -793,9 +940,11 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         tabs.addTab(tab_tools_filter, tr("Tools"))
 
         controls_layout = QVBoxLayout(tab_controls)
+        controls_layout.setContentsMargins(4, 6, 4, 6)
         tools_tab_layout = QVBoxLayout(tab_tools_filter)
+        tools_tab_layout.setContentsMargins(4, 6, 4, 6)
 
-        gen_group = QGroupBox(tr("General"))
+        gen_group = QGroupBox(tr("Timebase"))
         gen_layout = QVBoxLayout()
         gen_group.setLayout(gen_layout)
         controls_layout.addWidget(gen_group)
@@ -833,128 +982,108 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         return right_widget
 
     def _setup_general_controls(self, gen_layout):
-        # Start/Stop
-        self.toggle_btn = QPushButton(tr("Start"))
-        self.toggle_btn.setCheckable(True)
-        self.toggle_btn.clicked.connect(self.on_toggle)
-
-        # Theme handling
-        self.app = QApplication.instance()
-        if hasattr(self.app, "theme_manager"):
-            self.app.theme_manager.theme_changed.connect(self.apply_theme)
-            self.apply_theme(self.app.theme_manager.get_current_theme())
-        else:
-            self.toggle_btn.setStyleSheet(STYLE_TOGGLE_BTN_LIGHT)
-
-        gen_layout.addWidget(self.toggle_btn)
-
-        # Timebase
         hbox_tb = QHBoxLayout()
         hbox_tb.addWidget(QLabel(tr("Time/Div:")))
         self.timebase_combo = QComboBox()
-        self.timebase_options = {
-            "10 us": 0.00001,
-            "20 us": 0.00002,
-            "50 us": 0.00005,
-            "100 us": 0.0001,
-            "200 us": 0.0002,
-            "500 us": 0.0005,
-            "1 ms": 0.001,
-            "2 ms": 0.002,
-            "5 ms": 0.005,
-            "10 ms": 0.01,
-            "20 ms": 0.02,
-            "50 ms": 0.05,
-            "100 ms": 0.1,
-        }
-        self.timebase_keys = list(self.timebase_options.keys())
-        self.timebase_combo.addItems(self.timebase_keys)
-        self.timebase_combo.setCurrentText("10 ms")
+        for label, _ in self.module.TIME_DIV_OPTIONS:
+            self.timebase_combo.addItem(label)
+        self.timebase_combo.setCurrentText("1 ms")
         self.timebase_combo.currentTextChanged.connect(self.on_timebase_changed)
         hbox_tb.addWidget(self.timebase_combo)
         gen_layout.addLayout(hbox_tb)
 
-        # Timebase Slider
         self.timebase_slider = QSlider(Qt.Orientation.Horizontal)
-        self.timebase_slider.setRange(0, len(self.timebase_keys) - 1)
+        self.timebase_slider.setRange(0, len(self.module.TIME_DIV_OPTIONS) - 1)
         self.timebase_slider.valueChanged.connect(self.on_timebase_slider_changed)
-        if "10 ms" in self.timebase_keys:
-            self.timebase_slider.setValue(self.timebase_keys.index("10 ms"))
+        idx_1ms = [lbl for lbl, _ in self.module.TIME_DIV_OPTIONS].index("1 ms")
+        self.timebase_slider.setValue(idx_1ms)
         gen_layout.addWidget(self.timebase_slider)
 
-        # Show X-Axis Label Checkbox
         self.chk_show_x_axis = QCheckBox(tr("Show X-Axis Label"))
         self.chk_show_x_axis.setChecked(self.module.show_x_axis)
         self.chk_show_x_axis.toggled.connect(self.on_show_x_axis_toggled)
         gen_layout.addWidget(self.chk_show_x_axis)
 
-    def _setup_vertical_controls(self, vert_layout):
-        self.vscale_options = {
-            "0.01x": 0.01,
-            "0.02x": 0.02,
-            "0.05x": 0.05,
-            "0.1x": 0.1,
-            "0.2x": 0.2,
-            "0.5x": 0.5,
-            "1.0x": 1.0,
-            "2.0x": 2.0,
-            "5.0x": 5.0,
-            "10.0x": 10.0,
-            "20.0x": 20.0,
-            "50.0x": 50.0,
-            "100.0x": 100.0,
-            "200.0x": 200.0,
-            "500.0x": 500.0,
-            "1000.0x": 1000.0,
-            "2000.0x": 2000.0,
-            "5000.0x": 5000.0,
-            "10000.0x": 10000.0,
-        }
-        self.vscale_keys = list(self.vscale_options.keys())
+        self.chk_show_y_axis = QCheckBox(tr("Show Y-Axis Label"))
+        self.chk_show_y_axis.setChecked(self.module.show_y_axis)
+        self.chk_show_y_axis.toggled.connect(self.on_show_y_axis_toggled)
+        gen_layout.addWidget(self.chk_show_y_axis)
 
+    def _get_active_vdiv_options(self):
+        is_calibrated, _, _ = self.module.get_amplitude_display_state()
+        return self.module.VDIV_OPTIONS_CALIBRATED if is_calibrated else self.module.VDIV_OPTIONS_UNCALIBRATED
+
+    def _setup_vertical_controls(self, vert_layout):
+        hbox_ch = QHBoxLayout()
+        self.chk_left = QCheckBox(tr("Left Ch"))
+        self.chk_left.setChecked(True)
+        self.chk_left.toggled.connect(self.on_ch_left_toggled)
+        hbox_ch.addWidget(self.chk_left)
+
+        self.chk_right = QCheckBox(tr("Right Ch"))
+        self.chk_right.setChecked(True)
+        self.chk_right.toggled.connect(self.on_ch_right_toggled)
+        hbox_ch.addWidget(self.chk_right)
+        vert_layout.addLayout(hbox_ch)
+
+        # Left Scale
         hbox_scale_l = QHBoxLayout()
-        hbox_scale_l.addWidget(QLabel(tr("Left") + " " + tr("Scale:")))
+        self.lbl_scale_l = QLabel(tr("Left") + " " + tr("Scale:"))
+        hbox_scale_l.addWidget(self.lbl_scale_l)
         self.vscale_combo_l = QComboBox()
-        self.vscale_combo_l.addItems(self.vscale_keys)
-        self.vscale_combo_l.setCurrentText("1.0x")
         self.vscale_combo_l.currentTextChanged.connect(self.on_vscale_left_changed)
         hbox_scale_l.addWidget(self.vscale_combo_l)
         vert_layout.addLayout(hbox_scale_l)
 
         self.vscale_slider_l = QSlider(Qt.Orientation.Horizontal)
-        self.vscale_slider_l.setRange(0, len(self.vscale_keys) - 1)
         self.vscale_slider_l.valueChanged.connect(self.on_vscale_left_slider_changed)
-        if "1.0x" in self.vscale_keys:
-            self.vscale_slider_l.setValue(self.vscale_keys.index("1.0x"))
         vert_layout.addWidget(self.vscale_slider_l)
 
+        # Right Scale
         hbox_scale_r = QHBoxLayout()
-        hbox_scale_r.addWidget(QLabel(tr("Right") + " " + tr("Scale:")))
+        self.lbl_scale_r = QLabel(tr("Right") + " " + tr("Scale:"))
+        hbox_scale_r.addWidget(self.lbl_scale_r)
         self.vscale_combo_r = QComboBox()
-        self.vscale_combo_r.addItems(self.vscale_keys)
-        self.vscale_combo_r.setCurrentText("1.0x")
         self.vscale_combo_r.currentTextChanged.connect(self.on_vscale_right_changed)
         hbox_scale_r.addWidget(self.vscale_combo_r)
         vert_layout.addLayout(hbox_scale_r)
 
         self.vscale_slider_r = QSlider(Qt.Orientation.Horizontal)
-        self.vscale_slider_r.setRange(0, len(self.vscale_keys) - 1)
         self.vscale_slider_r.valueChanged.connect(self.on_vscale_right_slider_changed)
-        if "1.0x" in self.vscale_keys:
-            self.vscale_slider_r.setValue(self.vscale_keys.index("1.0x"))
         vert_layout.addWidget(self.vscale_slider_r)
 
-        hbox_ch = QHBoxLayout()
-        self.chk_left = QCheckBox(tr("Left Ch"))
-        self.chk_left.setChecked(True)
-        self.chk_left.toggled.connect(lambda x: setattr(self.module, "show_left", x))
-        hbox_ch.addWidget(self.chk_left)
+        self._refresh_scale_combos()
 
-        self.chk_right = QCheckBox(tr("Right Ch"))
-        self.chk_right.setChecked(True)
-        self.chk_right.toggled.connect(lambda x: setattr(self.module, "show_right", x))
-        hbox_ch.addWidget(self.chk_right)
-        vert_layout.addLayout(hbox_ch)
+    def _refresh_scale_combos(self):
+        options = self._get_active_vdiv_options()
+        labels = [lbl for lbl, _ in options]
+
+        self.vscale_combo_l.blockSignals(True)
+        self.vscale_combo_r.blockSignals(True)
+        self.vscale_slider_l.blockSignals(True)
+        self.vscale_slider_r.blockSignals(True)
+
+        self.vscale_combo_l.clear()
+        self.vscale_combo_r.clear()
+        self.vscale_combo_l.addItems(labels)
+        self.vscale_combo_r.addItems(labels)
+
+        self.vscale_slider_l.setRange(0, len(options) - 1)
+        self.vscale_slider_r.setRange(0, len(options) - 1)
+
+        self._select_closest_vdiv(self.module.vdiv_left, self.vscale_combo_l, self.vscale_slider_l, options)
+        self._select_closest_vdiv(self.module.vdiv_right, self.vscale_combo_r, self.vscale_slider_r, options)
+
+        self.vscale_combo_l.blockSignals(False)
+        self.vscale_combo_r.blockSignals(False)
+        self.vscale_slider_l.blockSignals(False)
+        self.vscale_slider_r.blockSignals(False)
+
+    def _select_closest_vdiv(self, current_val, combo, slider, options):
+        vals = [v for _, v in options]
+        closest_idx = int(np.argmin([abs(v - current_val) for v in vals]))
+        combo.setCurrentIndex(closest_idx)
+        slider.setValue(closest_idx)
 
     def _setup_trigger_controls(self, trig_layout):
         hbox_src = QHBoxLayout()
@@ -982,14 +1111,20 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         trig_layout.addLayout(hbox_mode)
 
         hbox_lvl = QHBoxLayout()
-        hbox_lvl.addWidget(QLabel(tr("Level:")))
+        self.lbl_trig_lvl = QLabel(tr("Level (div):"))
+        hbox_lvl.addWidget(self.lbl_trig_lvl)
         self.trig_level_spin = QDoubleSpinBox()
-        self.trig_level_spin.setRange(-1.0, 1.0)
+        self.trig_level_spin.setRange(-4.0, 4.0)
         self.trig_level_spin.setSingleStep(0.1)
         self.trig_level_spin.setValue(0.0)
         self.trig_level_spin.valueChanged.connect(self.on_trig_level_changed)
         hbox_lvl.addWidget(self.trig_level_spin)
         trig_layout.addLayout(hbox_lvl)
+
+        self.chk_show_trig_line = QCheckBox(tr("Show Trigger Line"))
+        self.chk_show_trig_line.setChecked(self.module.show_trigger_line)
+        self.chk_show_trig_line.toggled.connect(self.on_show_trigger_line_toggled)
+        trig_layout.addWidget(self.chk_show_trig_line)
 
     def _setup_tools_controls(self, tools_layout):
         vbox_math = QVBoxLayout()
@@ -1018,7 +1153,6 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         self.chk_wave_meas.toggled.connect(self.on_wave_meas_toggled)
         tools_layout.addWidget(self.chk_wave_meas)
 
-        # Persistence Controls
         persist_group = QGroupBox(tr("Persistence"))
         persist_layout = QVBoxLayout()
 
@@ -1033,7 +1167,6 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         self.decay_slider.setRange(0, 99)
         self.decay_slider.setValue(int(self.module.persistence_decay * 100))
         self.decay_slider.valueChanged.connect(self.on_decay_changed)
-        hbox_decay.addWidget(self.decay_slider)
         persist_layout.addLayout(hbox_decay)
 
         hbox_intensity = QHBoxLayout()
@@ -1042,7 +1175,6 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         self.intensity_slider.setRange(1, 100)
         self.intensity_slider.setValue(int(self.module.persistence_intensity * 100))
         self.intensity_slider.valueChanged.connect(self.on_intensity_changed)
-        hbox_intensity.addWidget(self.intensity_slider)
         persist_layout.addLayout(hbox_intensity)
 
         persist_group.setLayout(persist_layout)
@@ -1059,10 +1191,8 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
 
         self.filter_stack = QStackedWidget()
 
-        # None Page
         self.filter_stack.addWidget(QWidget())
 
-        # LPF/HPF Page
         lpf_widget = QWidget()
         lpf_layout = QFormLayout()
         lpf_layout.setContentsMargins(0, 0, 0, 0)
@@ -1074,7 +1204,6 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         lpf_widget.setLayout(lpf_layout)
         self.filter_stack.addWidget(lpf_widget)
 
-        # BPF Page
         bpf_widget = QWidget()
         bpf_layout = QFormLayout()
         bpf_layout.setContentsMargins(0, 0, 0, 0)
@@ -1095,33 +1224,25 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         filter_layout.addWidget(self.filter_stack)
 
     def _setup_math_view(self):
-        # Create a new ViewBox for Math
         self.math_view = pg.ViewBox()
         self.plot_widget.plotItem.scene().addItem(self.math_view)
-        # Link X axis
         self.math_view.setXLink(self.plot_widget.plotItem)
 
-        # Add Right Axis
-        # Remove default right axis if it exists, then add our custom one
         if self.plot_widget.plotItem.getAxis("right") is not None:
             self.plot_widget.plotItem.layout.removeItem(self.plot_widget.plotItem.getAxis("right"))
         self.axis_math = pg.AxisItem("right")
         self.axis_math.linkToView(self.math_view)
         self.axis_math.setLabel(tr("Math"), color="#ffffff")
-        self.plot_widget.plotItem.layout.addItem(self.axis_math, 2, 2)  # Row 2, Col 2 for right axis
-        self.axis_math.hide()  # Hide by default
+        self.plot_widget.plotItem.layout.addItem(self.axis_math, 2, 2)
+        self.axis_math.hide()
 
-        # Update View Geometry on resize
         self.plot_widget.plotItem.vb.sigResized.connect(self.update_math_view_geometry)
 
         self.curve_math = pg.PlotCurveItem(pen=pg.mkPen("w", width=2, style=Qt.PenStyle.DotLine), name=tr("Math"))
         self.math_view.addItem(self.curve_math)
 
     def update_math_view_geometry(self):
-        # This function ensures the math_view's geometry matches the main plot's viewbox
-        # so that the linked X-axis works correctly and the math curve overlays properly.
         self.math_view.setGeometry(self.plot_widget.plotItem.vb.sceneBoundingRect())
-        # This line is crucial for the linked X-axis to update its range when the main plot's X-axis changes.
         self.math_view.linkedViewChanged(self.plot_widget.plotItem.vb, self.math_view.XAxis)
 
     def on_toggle(self, checked):
@@ -1129,10 +1250,33 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
             self.module.start_analysis()
             self.timer.start()
             self.toggle_btn.setText(tr("Stop"))
+            self.clipping_warning_badge.setVisible(False)
         else:
             self.module.stop_analysis()
             self.timer.stop()
             self.toggle_btn.setText(tr("Start"))
+
+        self._update_badges()
+
+    def on_auto_scale(self):
+        """Perform automatic scaling of timebase, vertical ranges, and trigger."""
+        success = self.module.auto_scale()
+        if success:
+            time_div_vals = [v for _, v in self.module.TIME_DIV_OPTIONS]
+            closest_tb_idx = int(np.argmin([abs(v - self.module.time_div) for v in time_div_vals]))
+            self.timebase_combo.setCurrentIndex(closest_tb_idx)
+            self.timebase_slider.setValue(closest_tb_idx)
+
+            self._refresh_scale_combos()
+
+            self.trig_source_combo.setCurrentIndex(self.module.trigger_source)
+            self.trig_mode_combo.setCurrentText(tr(self.module.trigger_mode))
+            self.trig_slope_combo.setCurrentText(tr(self.module.trigger_slope))
+            self.trig_level_spin.setValue(0.0)
+            self.trig_line.setPos(0.0)
+
+            self.plot_widget.setXRange(0, self.module.timebase, padding=0)
+            self._update_badges()
 
     def on_show_x_axis_toggled(self, checked):
         self.module.show_x_axis = checked
@@ -1146,62 +1290,108 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
                 bottom_axis.setLabel("")
                 bottom_axis.setHeight(0)
 
+    def _update_y_axis_display(self, show_labels: bool) -> None:
+        left_axis = self.plot_widget.getPlotItem().getAxis("left")
+        left_axis.setStyle(showValues=show_labels)
+        if show_labels:
+            left_axis.setPen()
+            left_axis.setTickPen()
+            left_axis.setLabel(tr("Divisions"), units="div")
+            left_axis.setWidth(None)
+        else:
+            # Keep the tick pen for horizontal grid lines, but suppress the axis
+            # pen itself. setWidth(0) alone still leaves a one-pixel line visible.
+            left_axis.setTickPen(pg.getConfigOption("foreground"))
+            left_axis.setPen(None)
+            left_axis.setLabel("")
+            left_axis.setWidth(0)
+
+    def on_show_y_axis_toggled(self, checked):
+        self.module.show_y_axis = checked
+        if not self.is_compact_mode():
+            self._update_y_axis_display(checked)
+
+    def on_show_trigger_line_toggled(self, checked):
+        self.module.show_trigger_line = checked
+        self.trig_line.setVisible(checked)
+        self.trig_line.setMovable(checked)
+
     def on_timebase_changed(self, text):
-        val = self.timebase_options[text]
-        # We display 10 divisions usually. So window is 10 * val
-        self.module.timebase = val * 10
-        self.plot_widget.setXRange(0, self.module.timebase, padding=0)
-        if self.module.persistence_mode:
-            self.module.reset_persistence()
+        options_dict = dict(self.module.TIME_DIV_OPTIONS)
+        if text in options_dict:
+            val = options_dict[text]
+            self.module.time_div = val
+            self.module.timebase = val * 10.0
+            self.plot_widget.setXRange(0, self.module.timebase, padding=0)
+            if self.module.persistence_mode:
+                self.module.reset_persistence()
 
-        # Sync slider
-        self._sync_slider_from_combo(text, self.timebase_keys, self.timebase_slider)
+            labels = [lbl for lbl, _ in self.module.TIME_DIV_OPTIONS]
+            if text in labels:
+                self.timebase_slider.blockSignals(True)
+                self.timebase_slider.setValue(labels.index(text))
+                self.timebase_slider.blockSignals(False)
 
-    def _sync_combo_from_slider(self, idx, keys, combo):
-        """Helper to sync combo box when slider changes."""
-        if 0 <= idx < len(keys):
-            key = keys[idx]
-            if combo.currentText() != key:
-                combo.setCurrentText(key)
-
-    def _sync_slider_from_combo(self, text, keys, slider):
-        """Helper to sync slider when combo box changes."""
-        if text in keys:
-            idx = keys.index(text)
-            if slider.value() != idx:
-                slider.setValue(idx)
-
-    def _handle_vscale_changed(self, text, attr_name, slider):
-        """Helper to handle vertical scale changes."""
-        if text not in self.vscale_options:
-            return
-        scale = float(self.vscale_options[text])
-        setattr(self.module, attr_name, scale)
-        if self.module.persistence_mode:
-            self.module.reset_persistence()
-
-        self._sync_slider_from_combo(text, self.vscale_keys, slider)
+        self._update_badges()
 
     def on_timebase_slider_changed(self, idx):
-        self._sync_combo_from_slider(idx, self.timebase_keys, self.timebase_combo)
-
-    def on_vscale_left_slider_changed(self, idx):
-        self._sync_combo_from_slider(idx, self.vscale_keys, self.vscale_combo_l)
+        labels = [lbl for lbl, _ in self.module.TIME_DIV_OPTIONS]
+        if 0 <= idx < len(labels):
+            self.timebase_combo.setCurrentText(labels[idx])
 
     def on_vscale_left_changed(self, text):
-        self._handle_vscale_changed(text, "vscale_left", self.vscale_slider_l)
+        options = dict(self._get_active_vdiv_options())
+        if text in options:
+            self.module.vdiv_left = options[text]
+            labels = [lbl for lbl, _ in self._get_active_vdiv_options()]
+            if text in labels:
+                self.vscale_slider_l.blockSignals(True)
+                self.vscale_slider_l.setValue(labels.index(text))
+                self.vscale_slider_l.blockSignals(False)
+            if self.module.persistence_mode:
+                self.module.reset_persistence()
+        self._update_badges()
 
-    def on_vscale_right_slider_changed(self, idx):
-        self._sync_combo_from_slider(idx, self.vscale_keys, self.vscale_combo_r)
+    def on_vscale_left_slider_changed(self, idx):
+        labels = [lbl for lbl, _ in self._get_active_vdiv_options()]
+        if 0 <= idx < len(labels):
+            self.vscale_combo_l.setCurrentText(labels[idx])
 
     def on_vscale_right_changed(self, text):
-        self._handle_vscale_changed(text, "vscale_right", self.vscale_slider_r)
+        options = dict(self._get_active_vdiv_options())
+        if text in options:
+            self.module.vdiv_right = options[text]
+            labels = [lbl for lbl, _ in self._get_active_vdiv_options()]
+            if text in labels:
+                self.vscale_slider_r.blockSignals(True)
+                self.vscale_slider_r.setValue(labels.index(text))
+                self.vscale_slider_r.blockSignals(False)
+            if self.module.persistence_mode:
+                self.module.reset_persistence()
+        self._update_badges()
+
+    def on_vscale_right_slider_changed(self, idx):
+        labels = [lbl for lbl, _ in self._get_active_vdiv_options()]
+        if 0 <= idx < len(labels):
+            self.vscale_combo_r.setCurrentText(labels[idx])
+
+    def on_ch_left_toggled(self, checked):
+        self.module.show_left = checked
+        self.curve_l.setVisible(checked and not self.module.persistence_mode)
+        self._update_badges()
+
+    def on_ch_right_toggled(self, checked):
+        self.module.show_right = checked
+        self.curve_r.setVisible(checked and not self.module.persistence_mode)
+        self._update_badges()
 
     def on_trig_source_changed(self, index):
         self.module.trigger_source = index
+        self._update_badges()
 
     def on_trig_slope_changed(self, text):
-        self.module.trigger_slope = text
+        self.module.trigger_slope = "Falling" if "Fall" in text else "Rising"
+        self._update_badges()
 
     def on_trig_mode_changed(self, text):
         text_to_mode = {
@@ -1212,7 +1402,7 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
             "Normal": "Normal",
             "Single": "Single",
         }
-        mode = text_to_mode.get(text, text)
+        mode = text_to_mode.get(text, "Auto")
         self.module.trigger_mode = mode
 
         if mode == "Single":
@@ -1222,11 +1412,64 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
             self.module.single_shot_armed = False
             self.module.single_shot_fired = False
 
-    def on_trig_level_changed(self, val):
-        self.module.trigger_level = val
-        # self.trig_line.setPos(val)
+        self._update_badges()
 
-        self.module.trigger_level = val
+    def on_trig_level_changed(self, div_val):
+        """Trigger level spinbox changed in divisions (-4.0 to +4.0 div)."""
+        active_vdiv = self.module.vdiv_left if self.module.trigger_source == 0 else self.module.vdiv_right
+        physical_level = div_val * active_vdiv
+        self.module.trigger_level = physical_level
+
+        if not self._updating_trigger_line:
+            self._updating_trigger_line = True
+            self.trig_line.setPos(div_val)
+            self._updating_trigger_line = False
+
+        self._update_badges()
+
+    def on_trig_line_dragged(self):
+        """Direct manipulation: User dragged the trigger line on the plot."""
+        if not self._updating_trigger_line:
+            self._updating_trigger_line = True
+            div_val = float(self.trig_line.value())
+            div_val = max(self.VIEW_Y_MIN, min(self.VIEW_Y_MAX, div_val))
+            self.trig_level_spin.setValue(div_val)
+
+            active_vdiv = self.module.vdiv_left if self.module.trigger_source == 0 else self.module.vdiv_right
+            self.module.trigger_level = div_val * active_vdiv
+            self._updating_trigger_line = False
+            self._update_badges()
+
+    def _update_badges(self):
+        is_calibrated, _, unit = self.module.get_amplitude_display_state()
+        scale_unit = "V/div" if is_calibrated else "FS/div"
+
+        l_status = tr("ON") if self.module.show_left else tr("OFF")
+        self.badge_l_label.setText(
+            f"CH1: {format_si(self.module.vdiv_left, scale_unit, sig_figs=3)} [{l_status}]"
+        )
+        self.badge_l_label.setStyleSheet(
+            "QLabel { color: #00ff00; font-weight: bold; background: #16241a; padding: 3px 6px; border-radius: 3px; border: 1px solid #00aa00; }"
+            if self.module.show_left
+            else "QLabel { color: #555555; background: #111111; padding: 3px 6px; border-radius: 3px; border: 1px solid #333333; }"
+        )
+
+        r_status = tr("ON") if self.module.show_right else tr("OFF")
+        self.badge_r_label.setText(
+            f"CH2: {format_si(self.module.vdiv_right, scale_unit, sig_figs=3)} [{r_status}]"
+        )
+        self.badge_r_label.setStyleSheet(
+            "QLabel { color: #ff5555; font-weight: bold; background: #2b1818; padding: 3px 6px; border-radius: 3px; border: 1px solid #aa0000; }"
+            if self.module.show_right
+            else "QLabel { color: #555555; background: #111111; padding: 3px 6px; border-radius: 3px; border: 1px solid #333333; }"
+        )
+
+        slope_sym = "↑" if self.module.trigger_slope == "Rising" else "↓"
+        src_str = "CH1" if self.module.trigger_source == 0 else "CH2"
+        trig_info = f"{tr(self.module.trigger_mode)} {src_str} {slope_sym}"
+        tb_str = format_si(self.module.time_div, "s/div", sig_figs=3)
+
+        self.badge_status_label.setText(f"TIME: {tb_str}  |  TRIG: {trig_info}")
 
     def on_math_changed(self, text):
         math_mode_map = {
@@ -1245,11 +1488,11 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
             "Derivative": "Derivative",
             "Integral": "Integral",
         }
-        val = math_mode_map.get(text, text)
+        val = math_mode_map.get(text, "Off")
         self.module.math_mode = val
         if val == "Off":
             self.axis_math.hide()
-            self.curve_math.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead  # Clear math curve when off
+            self.curve_math.clear()
         else:
             self.axis_math.show()
             self.axis_math.setLabel(tr("Math ({0})").format(text), color="#ffffff")
@@ -1262,7 +1505,6 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         self.cursor_1.setVisible(checked)
         self.cursor_2.setVisible(checked)
         if checked:
-            # Initialize positions if needed
             if self.cursor_1.value() == 0 and self.cursor_2.value() == 0:
                 x_range = self.plot_widget.viewRange()[0]
                 center = (x_range[1] + x_range[0]) / 2
@@ -1289,11 +1531,6 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         dt = t2 - t1
         freq = 1.0 / abs(dt) if dt != 0 else 0.0
 
-        # Get Voltage at cursors (Interpolate)
-        # We need the current data to do this.
-        # Since this is called on move, we might not have the exact latest data object here easily
-        # without storing it. Let's store the latest displayed data in self.latest_data
-
         v1_str = ""
         v2_str = ""
         dv_str = ""
@@ -1301,11 +1538,6 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         if hasattr(self, "latest_data") and self.latest_data is not None:
             data = self.latest_data
             t = self.latest_t
-
-            # Interpolate
-            # Assuming Channel 0 (Left) is primary for cursor measurement if both active,
-            # or use Trigger Source? Let's use Trigger Source or just Left.
-            # Let's use the first visible channel.
 
             target_data = None
             if self.module.show_left:
@@ -1340,7 +1572,7 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         elif text == "BPF":
             self.filter_stack.setCurrentIndex(2)
         else:
-            self.filter_stack.setCurrentIndex(1)  # LPF/HPF share same widget
+            self.filter_stack.setCurrentIndex(1)
 
     def on_persist_toggled(self, checked):
         self.module.persistence_mode = checked
@@ -1360,19 +1592,53 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
     def on_intensity_changed(self, val):
         self.module.persistence_intensity = val / 100.0
 
+    def _update_calibration_status(self):
+        is_calibrated, sensitivity, _unit = self.module.get_amplitude_display_state()
+        if is_calibrated:
+            self.calibration_status_label.setText(
+                tr("Input: Calibrated ({0:.4g} V/FS)").format(sensitivity)
+            )
+        else:
+            self.calibration_status_label.setText(tr("Input: Uncalibrated (FS)"))
+
+    def _set_measurement_labels(self, measurements):
+        is_calibrated, _factor, _unit = self.module.get_amplitude_display_state()
+        if is_calibrated:
+            self.meas_l_label.setText(
+                tr("L: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(
+                    measurements["l_rms"], measurements["l_vpp"]
+                )
+            )
+            self.meas_r_label.setText(
+                tr("R: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(
+                    measurements["r_rms"], measurements["r_vpp"]
+                )
+            )
+        else:
+            self.meas_l_label.setText(
+                tr("L: RMS: {0:.3f} FS  Pk-Pk: {1:.3f} FS").format(
+                    measurements["l_rms"], measurements["l_vpp"]
+                )
+            )
+            self.meas_r_label.setText(
+                tr("R: RMS: {0:.3f} FS  Pk-Pk: {1:.3f} FS").format(
+                    measurements["r_rms"], measurements["r_vpp"]
+                )
+            )
+
     def update_plot(self):
         if not self.module.is_running:
             return
 
-        # Process audio queue first
         self.module.process_queue()
 
         window_duration = self.module.timebase
         data = self.module.get_display_data(window_duration)
 
+        is_clipped = self.module.clipping_latched_l or self.module.clipping_latched_r
+        self.clipping_warning_badge.setVisible(is_clipped)
+
         if data is not None and len(data) > 0:
-            # Create time axis
-            # Optimization: Cache time array
             current_len = len(data)
             cached_duration, cached_len = self._time_array_cache_params
 
@@ -1388,7 +1654,6 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
 
             display_step = max(1, int(np.ceil(current_len / self.module.MAX_DISPLAY_SAMPLES)))
 
-            # Apply Filter if enabled
             sr = self.module.audio_engine.sample_rate
             if self.module.filter_type != "None":
                 if self.module.filter_type == "LPF":
@@ -1405,16 +1670,13 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
                         data[:, 1], sr, self.module.filter_low, self.module.filter_high
                     )
 
-            # Measurements
             l_data = data[:, 0]
             r_data = data[:, 1]
 
             meas = self.module.get_measurements(data)
-
             self._update_calibration_status()
             self._set_measurement_labels(meas)
 
-            # Waveform-derived measurements (optional)
             wave_meas_enabled = hasattr(self, "chk_wave_meas") and self.chk_wave_meas.isChecked()
             self.meas_l_auto_label.setVisible(wave_meas_enabled and self.module.show_left)
             self.meas_r_auto_label.setVisible(wave_meas_enabled and self.module.show_right)
@@ -1423,107 +1685,59 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
                 if self.module.show_left:
                     freq_hz = self.module.estimate_frequency_hz(t, l_data)
                     rise_s, fall_s, _low, _high = self.module.estimate_rise_fall_times_s(t, l_data)
-
                     freq_str = format_si(freq_hz, "Hz", sig_figs=5) if freq_hz is not None and freq_hz > 0 else "--"
                     rise_str = format_si(rise_s, "s", sig_figs=5) if rise_s is not None and rise_s > 0 else "--"
                     fall_str = format_si(fall_s, "s", sig_figs=5) if fall_s is not None and fall_s > 0 else "--"
-
                     self.meas_l_auto_label.setText(
                         tr("Freq") + f": {freq_str}  " + tr("Rise") + f": {rise_str}  " + tr("Fall") + f": {fall_str}"
                     )
                 if self.module.show_right:
                     freq_hz = self.module.estimate_frequency_hz(t, r_data)
                     rise_s, fall_s, _low, _high = self.module.estimate_rise_fall_times_s(t, r_data)
-
                     freq_str = format_si(freq_hz, "Hz", sig_figs=5) if freq_hz is not None and freq_hz > 0 else "--"
                     rise_str = format_si(rise_s, "s", sig_figs=5) if rise_s is not None and rise_s > 0 else "--"
                     fall_str = format_si(fall_s, "s", sig_figs=5) if fall_s is not None and fall_s > 0 else "--"
-
                     self.meas_r_auto_label.setText(
                         tr("Freq") + f": {freq_str}  " + tr("Rise") + f": {rise_str}  " + tr("Fall") + f": {fall_str}"
                     )
 
-            # Store for cursor interpolation
             self.latest_data = data
             self.latest_t = t
 
             plot_t = t[::display_step]
             plot_data = data[::display_step]
-            scaled_l = plot_data[:, 0] * float(getattr(self.module, "vscale_left", 1.0))
-            scaled_r = plot_data[:, 1] * float(getattr(self.module, "vscale_right", 1.0))
+
+            is_calibrated, factor, _ = self.module.get_amplitude_display_state()
+            amp_factor = factor if is_calibrated else 1.0
+
+            scaled_l = (plot_data[:, 0] * amp_factor) / max(1e-9, self.module.vdiv_left)
+            scaled_r = (plot_data[:, 1] * amp_factor) / max(1e-9, self.module.vdiv_right)
 
             if self.module.persistence_mode:
-                # Update Persistence
                 decay = self.module.persistence_decay
                 intensity = self.module.persistence_intensity
 
-                # Decay
                 self.module.heatmap_l *= decay
                 self.module.heatmap_r *= decay
 
-                # Binning
                 w, h = self.module.heatmap_size
-                # X Range: 0 to window_duration
-                # Y Range: Fixed (Plot View)
-                # Note: We bin SCALED data.
-
                 rng = [[0, window_duration], [self.VIEW_Y_MIN, self.VIEW_Y_MAX]]
 
                 if self.module.show_left:
                     self.module._accumulate_heatmap(plot_t, scaled_l, self.module.heatmap_l, [w, h], rng, intensity)
-
                 if self.module.show_right:
                     self.module._accumulate_heatmap(plot_t, scaled_r, self.module.heatmap_r, [w, h], rng, intensity)
 
-                # Compose Image
-                # L = Green, R = Red
-                # Output shape (h, w, 4) (RGBA) or (w, h, 4)?
-                # pg.ImageItem takes (w, h) or (h, w) depending on axisOrder.
-                # Default is col-major (w, h)?
-                # histogram2d returns (nx, ny). T -> (ny, nx) i.e. (h, w).
-                # ImageItem expects (width, height) usually if axisOrder='col-major'.
-                # Let's check Goniometer: self.img_item.setImage(self.module.heatmap.T)
-                # It transposes.
-                # If we construct RGBA, we can match direct dimensions.
-
-                # Let's construct RGBA image of shape (w, h, 4)
-                # heatmap_l is (h, w) due to Transpose above?
-                # heatmap_l shape is (w, h) init.
-                # histogram2d(x, y, bins=[w, h]) -> shape (w, h).
-                # So hist_l is (w, h).
-                # We added hist_l.T -> (h, w)?
-                # If we want to map X(time) to X(screen), and Y(amp) to Y(screen).
-                # ImageItem:
-                # "image data is interpreted as a row-major array (shape=(height, width))" IF axisOrder='row-major'.
-                # Default is 'col-major' (width, height).
-                # Let's stick to (w, h) if default.
-
-                # Reset buffers to not Transpose if we want (w, h).
-                # self.module.heatmap_l is initialized as (w, h).
-                # hist_l is (w, h).
-                # So: self.module.heatmap_l += hist_l * intensity.
-
-                # But wait, y axis in numpy is usually index 0 or 1?
-                # histogram2d returns H[x, y].
-                # So H[0,0] is x=min, y=min.
-                # If ImageItem expects data[x, y], then we are good.
-
-                w, h = self.module.heatmap_size
                 if self._rgba_buffer is None or self._rgba_buffer.shape[:2] != (w, h):
                     self._rgba_buffer = np.zeros((w, h, 4), dtype=np.ubyte)
                     self._clip_buffer = np.empty((w, h), dtype=self.module.heatmap_l.dtype)
 
-                # Clip and map to 0-255
-                # Green (Left)
                 np.clip(self.module.heatmap_l, 0, 255, out=self._clip_buffer)
                 self._rgba_buffer[..., 1] = self._clip_buffer.astype(np.ubyte)
 
-                # Red (Right)
                 np.clip(self.module.heatmap_r, 0, 255, out=self._clip_buffer)
                 self._rgba_buffer[..., 0] = self._clip_buffer.astype(np.ubyte)
 
-                # B is 0 (untouched from init)
-                # Alpha: Max of L/R
                 np.maximum(
                     self._rgba_buffer[..., 1],
                     self._rgba_buffer[..., 0],
@@ -1535,12 +1749,9 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
                     pg.QtCore.QRectF(0, self.VIEW_Y_MIN, window_duration, self.VIEW_Y_MAX - self.VIEW_Y_MIN)
                 )
 
-                # Hide curves
                 self.curve_l.setVisible(False)
                 self.curve_r.setVisible(False)
-
             else:
-                # Normal Mode
                 if self.module.show_left:
                     self.curve_l.setData(plot_t, scaled_l)
                     self.curve_l.setVisible(True)
@@ -1555,14 +1766,10 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
 
                 self.persistence_img.setVisible(False)
 
-            # Math Processing
             if self.module.math_mode != "Off":
                 math_data = None
-
-                # A = Left, B = Right
                 A = data[:, 0]
                 B = data[:, 1]
-
                 mode = self.module.math_mode
 
                 if mode == "A + B":
@@ -1572,13 +1779,11 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
                 elif mode == "A * B":
                     math_data = A * B
                 elif mode == "A / B":
-                    # Avoid division by zero
                     with np.errstate(divide="ignore", invalid="ignore"):
                         math_data = np.divide(A, B)
-                        math_data[~np.isfinite(math_data)] = 0  # Replace inf/nan with 0
-                elif mode == "Derivative":  # Derivative of A (Left)
+                        math_data[~np.isfinite(math_data)] = 0
+                elif mode == "Derivative":
                     dt = t[1] - t[0] if len(t) > 1 else 1e-6
-                    # Use edge padding with 5-point moving average to avoid zero-padding edge distortion
                     if len(A) >= 5:
                         padded = np.pad(A, (2, 2), mode="edge")
                         kernel = np.ones(5) / 5.0
@@ -1586,18 +1791,14 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
                     else:
                         A_smooth = A
                     math_data = np.gradient(A_smooth, dt)
-                elif mode == "Integral":  # Integral of A (Left)
+                elif mode == "Integral":
                     dt = t[1] - t[0] if len(t) > 1 else 1e-6
-                    # Remove input DC component to avoid constant drift
                     A_no_dc = A - np.mean(A)
-                    # Trapezoidal cumulative integration for high numerical accuracy
                     math_data = np.cumsum(A_no_dc) * dt - 0.5 * (A_no_dc - A_no_dc[0]) * dt
-                    # Remove output DC offset
                     math_data = math_data - np.mean(math_data)
 
                 if math_data is not None and math_data.size > 0:
                     self.curve_math.setData(plot_t, math_data[::display_step])
-                    # Auto-scale Math View only once on mode change or when "Fit Scale" button is clicked
                     if getattr(self, "_math_autofit_pending", False):
                         self._math_autofit_pending = False
                         mn, mx = np.min(math_data), np.max(math_data)
@@ -1607,15 +1808,13 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
                         padding = (mx - mn) * 0.15
                         self.math_view.setYRange(mn - padding, mx + padding)
                 else:
-                    self.curve_math.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
+                    self.curve_math.clear()
             else:
-                self.curve_math.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
+                self.curve_math.clear()
 
-            # Update cursor info if they are on (to update voltage readings)
             if self.chk_cursors.isChecked():
                 self.update_cursor_info()
 
-            # Single-shot mode: stop updates immediately after the first trigger capture.
             if self.module.trigger_mode == "Single" and self.module.single_shot_fired:
                 self.timer.stop()
                 self.module.stop_analysis()
@@ -1629,7 +1828,6 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
             theme_name = self.app.theme_manager.get_effective_theme()
 
         if theme_name == "dark":
-            # Dark Theme
             self.toggle_btn.setStyleSheet(STYLE_TOGGLE_BTN_DARK)
             self.meas_l_label.setStyleSheet(STYLE_LABEL_LEFT_CH_DARK)
             self.meas_r_label.setStyleSheet(STYLE_LABEL_RIGHT_CH_DARK)
@@ -1639,7 +1837,6 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
                 self.meas_r_auto_label.setStyleSheet(STYLE_LABEL_RIGHT_CH_DARK)
             self.cursor_info_label.setStyleSheet(STYLE_LABEL_CURSOR_DARK)
         else:
-            # Light Theme
             self.toggle_btn.setStyleSheet(STYLE_TOGGLE_BTN_LIGHT)
             self.meas_l_label.setStyleSheet(STYLE_LABEL_LEFT_CH_LIGHT)
             self.meas_r_label.setStyleSheet(STYLE_LABEL_RIGHT_CH_LIGHT)
@@ -1667,12 +1864,12 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
                 if hasattr(self, "_orig_spacing"):
                     layout.setSpacing(self._orig_spacing)
 
-        # In split mode right_widget lives in its own window (parent != self).
-        # Only hide it when it is still embedded in this widget.
         if hasattr(self, "right_widget"):
             is_split = self.right_widget.parent() is not self
             if not is_split:
                 self.right_widget.setHidden(compact)
+        if hasattr(self, "badge_group"):
+            self.badge_group.setHidden(compact)
         if hasattr(self, "meas_group"):
             self.meas_group.setHidden(compact)
         if hasattr(self, "cursor_info_label"):
@@ -1680,17 +1877,22 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
 
         if hasattr(self, "plot_widget"):
             bottom_axis = self.plot_widget.getPlotItem().getAxis("bottom")
+            plot_item_layout = self.plot_widget.getPlotItem().layout
             if compact:
+                if not hasattr(self, "_orig_plot_margins"):
+                    self._orig_plot_margins = plot_item_layout.getContentsMargins()
                 self.plot_widget.setFrameShape(QFrame.Shape.NoFrame)
                 self.plot_widget.setStyleSheet("border: none;")
-                self.plot_widget.getPlotItem().layout.setContentsMargins(0, 0, 0, 0)
-                # In compact mode hide tick labels/values but keep axis visible for grid lines.
+                plot_item_layout.setContentsMargins(0, 0, 0, 0)
                 bottom_axis.setStyle(showValues=False)
                 bottom_axis.setLabel("")
                 bottom_axis.setHeight(0)
+                self._update_y_axis_display(False)
             else:
                 self.plot_widget.setFrameShape(QFrame.Shape.StyledPanel)
                 self.plot_widget.setStyleSheet("")
+                if hasattr(self, "_orig_plot_margins"):
+                    plot_item_layout.setContentsMargins(*self._orig_plot_margins)
                 show = getattr(self.module, "show_x_axis", False)
                 bottom_axis.setStyle(showValues=show)
                 if show:
@@ -1699,6 +1901,8 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
                 else:
                     bottom_axis.setLabel("")
                     bottom_axis.setHeight(0)
+                show_y = getattr(self.module, "show_y_axis", False)
+                self._update_y_axis_display(show_y)
 
     def get_comparable_data(self) -> List[ComparisonTrace]:
         if self.last_display_data is None or self.last_display_time is None:
@@ -1709,17 +1913,13 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
 
         data = self.last_display_data
         t = self.last_display_time
-
         is_calibrated, input_sensitivity, _unit = self.module.get_amplitude_display_state()
-
         timestamp = datetime.now().isoformat()
         traces = []
 
-        # Left channel
         if self.module.show_left:
             trace_id = str(uuid.uuid4())
             trace_name = f"{tr('Oscilloscope')} - L ({datetime.now().strftime('%H:%M:%S')})"
-
             x_axis = AxisMetadata(dimension="time", base_unit="s", display_unit="s", is_log=False)
 
             if is_calibrated:
@@ -1754,11 +1954,9 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
             )
             traces.append(trace_l)
 
-        # Right channel
         if self.module.show_right:
             trace_id = str(uuid.uuid4())
             trace_name = f"{tr('Oscilloscope')} - R ({datetime.now().strftime('%H:%M:%S')})"
-
             x_axis = AxisMetadata(dimension="time", base_unit="s", display_unit="s", is_log=False)
 
             if is_calibrated:

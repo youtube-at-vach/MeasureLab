@@ -516,9 +516,10 @@ class TestOscilloscopeWidgetLogic(unittest.TestCase):
         widget.update_plot()
 
         # Verify setRect
-        # args: x, y, w, h. y=-1.1, h=2.2 (from VIEW_Y_MIN/MAX in widget code)
-        # We expect (0, -1.1, 0.01, 2.2)
-        widget.persistence_img.setRect.assert_called_with((0, -1.1, 0.01, 2.2))
+        # args: x, y, w, h from VIEW_Y_MIN/MAX in widget code
+        widget.persistence_img.setRect.assert_called_with(
+            (0, widget.VIEW_Y_MIN, 0.01, widget.VIEW_Y_MAX - widget.VIEW_Y_MIN)
+        )
 
     def test_update_plot_measures_full_resolution_but_plots_decimated_data(self):
         from src.gui.widgets.oscilloscope import Oscilloscope, OscilloscopeWidget
