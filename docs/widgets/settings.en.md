@@ -65,11 +65,15 @@ Performs calibration to improve measurement accuracy. Pressing the "Wizard" butt
 
 ### Calibration Profiles
 
-You can save the current calibration settings as a named profile.
+Calibration profiles recall all input, output, SPL, frequency, 1PPS, and lock-in calibration values as one state. Selecting a profile applies it immediately, and subsequent calibration changes are saved automatically to the active profile.
 
-* **Select Profile**: Select a saved profile.
-* **Delete**: Deletes the selected profile.
-* **Duplicate Profile**: Saves (duplicates) the current settings with a new name. Entering an existing name overwrites it.
+* **Current calibration (no profile)**: Keeps the current values without assigning them to a named profile.
+* **New**: Creates and activates a safe, uncalibrated profile for the current input and output devices.
+* **Duplicate**: Copies the current calibration values to a new named profile and activates it.
+* **Rename**: Changes the active profile name without changing its values or device information.
+* **Delete**: Deletes the active profile after confirmation. The current values remain active as an unnamed calibration.
+
+The registered input and output devices are shown below the selector. If they differ from the active audio devices, a warning is displayed. Recalling a profile does not change the selected audio devices.
 
 ### Current Settings
 
