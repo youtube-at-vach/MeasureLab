@@ -8,6 +8,10 @@ Arbitrary Harmonic Generator は、基本周波数と複数（最大50次まで�
 
 特定の歪みプロファイルを持つテスト信号の生成や、測定系に存在する高調波歪みを打ち消すための逆補償信号の作成などに非常に有用です。
 
+## 共通機能
+
+このウィジェットは Detachable Wrapper の共通機能に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
+
 ## 操作方法
 
 ### 基本設定

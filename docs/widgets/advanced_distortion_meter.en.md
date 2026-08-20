@@ -9,6 +9,10 @@ Instead of a single pure tone, it uses simultaneous multiple tones or specific c
 
 It is suitable for searching for the cause of phenomena such as "having good numbers in standard THD measurement, but the sound is muddy when actually listening."
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Operation
 
 ### Starting and Stopping Measurement

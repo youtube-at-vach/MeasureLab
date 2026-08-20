@@ -15,6 +15,10 @@ Impedance Analyzer (インピーダンスアナライザ) は、スピーカー�
 * **品質係数 ($Q$)**: Quality Factor
 * **損失係数 ($D$)**: Dissipation Factor
 
+## 共通機能
+
+このウィジェットは Detachable Wrapper の共通機能に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
+
 ## 初心者のための基礎知識
 
 ### インピーダンスとは？

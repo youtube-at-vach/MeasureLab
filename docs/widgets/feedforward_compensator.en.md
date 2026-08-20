@@ -8,6 +8,10 @@ By loading a Hammerstein model (1st to 5th order impulse response kernels) measu
 
 ---
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## How It Works: LICFF (Linear-Inverse Compensated Feedforward)
 
 This module implements the **LICFF (Linear-Inverse Compensated Feedforward)** algorithm, which assumes a Parallel Hammerstein model.

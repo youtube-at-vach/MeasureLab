@@ -8,6 +8,10 @@ The **Lock-in Harmonic Analyzer** is a module that utilizes the principles of a 
 
 Unlike conventional FFT-based distortion measurements that rely on window functions, this widget performs **multi-parallel IQ detection (up to 200th order)** simultaneously for the fundamental wave and its harmonics. By strictly tuning into only the target frequency components, it can accurately extract signals buried in noise, enabling measurements in ultra-low distortion regimes (e.g., below -160 dBc) that exceed the limitations of traditional FFT analysis.
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ### Unique Measurement Principle
 
 The most significant feature of this widget is its **multi-parallel lock-in detection** analysis approach (mathematically implemented as matrix projection).

@@ -6,6 +6,10 @@
 
 Response Viewerは、[Nonlinear Analyzer](nonlinear_analyzer.md) によって抽出された線形および高調波応答特性（最大5次）を可視化、重ね合わせ比較、および解析する高度なビューアです。測定されたハマーシュタインモデルの周波数応答や、任意の周波数・振幅におけるシステムの出力挙動（ゲインコンプレッションなど）をシミュレーションによって詳細に評価することができます。
 
+## 共通機能
+
+このウィジェットは Detachable Wrapper の共通機能に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
+
 ## 主な機能と操作方法
 
 ### モデルの読み込み (Model Source)

@@ -7,6 +7,10 @@
 The Log Viewer is a monitoring window that displays real-time messages about what is happening behind the scenes of the application (events, warnings, errors, etc.).
 While you don't normally need to keep it open, it is highly useful for diagnosing issues when something goes wrong or for checking the status of background operations.
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Key Features
 
 - **Real-time Display**: Log messages appear immediately as they are generated.

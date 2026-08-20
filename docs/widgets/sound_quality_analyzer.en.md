@@ -10,6 +10,10 @@ While conventional measuring instruments measure physical quantities like voltag
 
 This tool is for **offline analysis only**. It analyzes pre-recorded audio files.
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Metric Descriptions
 
 - **Integrated Loudness**: An average value of "sound volume" that takes into account the sensitivity characteristics of the human ear (BS.1770 K-weighting). The unit is `LUFS`.

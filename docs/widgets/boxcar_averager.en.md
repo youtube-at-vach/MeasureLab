@@ -9,6 +9,10 @@ Also called a "boxcar integrator," it is used for measuring minute signals and h
 
 This widget has both an "Internal mode," which outputs test signals itself to synchronize, and an "External mode," which synchronizes with external trigger signals.
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Operation
 
 ### Starting and Resetting Measurement

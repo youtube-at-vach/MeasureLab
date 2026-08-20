@@ -6,6 +6,10 @@ The Lock-in Modeler performs real-time frequency response and distortion sweeps 
 
 In addition to standard frequency sweep measurements (tracking the fundamental and up to 5th-order harmonics simultaneously), this tool features a **nonlinear Hammerstein model identification capability** and allows exporting identified models to JSON files.
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Operation Procedure
 
 ### 1. Latency Calibration (Mandatory)

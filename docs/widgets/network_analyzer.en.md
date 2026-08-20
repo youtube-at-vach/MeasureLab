@@ -15,6 +15,10 @@ Primary uses:
 * Measuring characteristics of speakers and headphones.
 * Measuring phase difference and delay between two signals.
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Basic Operation
 
 ### Starting Measurement

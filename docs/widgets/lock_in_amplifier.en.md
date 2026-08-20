@@ -9,6 +9,10 @@ It is used in physical experiments and electronic measurements to dramatically i
 
 While general spectrum analyzers "see all frequencies," the lock-in amplifier "monitors only one frequency pinpointed," which allows it to demonstrate overwhelming noise rejection performance.
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Principles of Lock-in Measurement
 
 ### Phase Sensitive Detection (PSD)

@@ -12,6 +12,10 @@ Main features:
 * **Flexible Output Control**: Supports independent L/R output, phase inversion, and delay settings.
 * **Advanced Modulation**: Supports sweep (frequency sweep), AM (amplitude modulation), FM (frequency modulation), and ΦM (phase modulation).
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Basic Operation
 
 ### Starting and Stopping Output

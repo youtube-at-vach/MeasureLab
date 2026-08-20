@@ -7,6 +7,10 @@
 A tool for detailed analysis of "transient sounds," such as instantaneous impact sounds or sounds whose frequency changes from moment to moment.
 It uses the **Continuous Wavelet Transform (CWT)** to visualize sounds while maintaining temporal resolution—capturing "when and at what pitch a sound occurred"—which is often difficult for standard FFT analysis to achieve.
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Operation
 
 ### Recording

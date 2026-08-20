@@ -4,6 +4,10 @@
 
 In the Settings widget, you manage settings related to the operation of the entire application. Audio device selection, calibration, changing display language and themes, etc., are performed here.
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## General
 
 ### Language

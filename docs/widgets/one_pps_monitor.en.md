@@ -11,6 +11,10 @@ It inputs a pulse signal output every second from a GPS receiver or high-precisi
 * **1PPS**: A pulse signal output exactly once per second, typically from a high-precision clock source such as GPS.
 * **PPM (Parts Per Million)**: A unit representing one millionth. A deviation of 10 PPM is equivalent to a 10-second difference over 1 million seconds (about 11.5 days).
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Features
 
 * **Sample PPM Deviation Measurement**: Measures the number of samples between the rising edges of pulses and displays the deviation by comparing it with the nominal rate.

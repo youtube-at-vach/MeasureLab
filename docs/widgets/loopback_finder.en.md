@@ -12,6 +12,10 @@ With multi-channel interfaces, it is easy to end up in situations like "I though
 
 When a measurement goes wrong, before blaming the FFT settings, filters, or math, it is important to first isolate routing issues and confirm the signal is taking the expected path.
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Operations
 
 1. Make sure the input and output devices you want to test are selected in the main MeasureLab window.

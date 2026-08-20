@@ -4,6 +4,10 @@
 
 Processor Benchmark は、リアルタイム測定における PC の FFT および UI 描画パフォーマンスをテストし、安全な処理限界を検証するためのツールです。
 
+## 共通機能
+
+このウィジェットは Detachable Wrapper の共通機能に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
+
 ## 主な用途
 
 * 使用している PC がどの程度の FFT サイズまでリアルタイム処理可能かを評価します。

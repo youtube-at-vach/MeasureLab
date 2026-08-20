@@ -8,6 +8,10 @@ The Arbitrary Harmonic Generator is an advanced signal generation module that al
 
 This is particularly useful for generating test signals with specific distortion profiles or for creating inverse compensation signals to cancel out existing harmonic distortion in a measurement setup.
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Operation
 
 ### Fundamental Settings
