@@ -257,6 +257,7 @@ class DetachableWidgetWrapper(QWidget):
         self.is_split = False
         self.split_display_window = None
         self.split_control_window = None
+        self._pre_compact_window_size = None
 
         self.is_compactable = capabilities.compact_mode.is_supported
         self.is_comparable = capabilities.comparison.is_supported
@@ -520,8 +521,13 @@ class DetachableWidgetWrapper(QWidget):
         if not self.is_compactable:
             return
 
+        window = self._compact_window()
+        was_compact = self.content_widget.is_compact_mode()
+        if checked and not was_compact and window is not None:
+            self._pre_compact_window_size = QSize(window.size())
+
         self.content_widget.set_compact_mode(checked)
-        self._schedule_compact_window_adjustment()
+        self._schedule_compact_window_adjustment(checked, window)
 
         if self.compact_btn:
             self.compact_btn.blockSignals(True)
@@ -540,18 +546,42 @@ class DetachableWidgetWrapper(QWidget):
         if window is not None and not sip.isdeleted(window):
             window.adjustSize()
 
-    def _schedule_compact_window_adjustment(self):
-        """Resize the actual top-level window after compact layout changes settle."""
-        window = None
+    @staticmethod
+    def _resize_window_if_alive(window, size):
+        from PyQt6 import sip
+
+        if window is not None and not sip.isdeleted(window):
+            window.resize(size)
+
+    def _compact_window(self):
         if self.is_split:
             # In split mode content_widget itself is orphaned, so its window()
             # is not the IndependentWindow that owns the display panel.
-            window = self.split_display_window
-        elif self.is_detached:
-            window = self.independent_window
+            return self.split_display_window
+        if self.is_detached:
+            return self.independent_window
+        return None
 
-        if window is not None:
+    def _schedule_compact_window_adjustment(self, compact, window=None):
+        """Resize the actual top-level window after compact layout changes settle."""
+        if window is None:
+            window = self._compact_window()
+
+        if window is None:
+            if not compact:
+                self._pre_compact_window_size = None
+            return
+
+        if compact or self._pre_compact_window_size is None:
             QTimer.singleShot(0, lambda target=window: self._adjust_window_if_alive(target))
+            return
+
+        restore_size = QSize(self._pre_compact_window_size)
+        self._pre_compact_window_size = None
+        QTimer.singleShot(
+            0,
+            lambda target=window, size=restore_size: self._resize_window_if_alive(target, size),
+        )
 
     def toggle_compact_from_window(self):
         if not self.is_compactable:
