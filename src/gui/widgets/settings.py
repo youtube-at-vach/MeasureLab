@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -948,7 +949,9 @@ class SettingsWidget(QWidget):
         self.tabs.addTab(self._create_audio_tab(), tr("Audio"))
 
         # --- Tab 3: Calibration ---
-        self.tabs.addTab(self._create_calibration_tab(), tr("Calibration"))
+        self.calibration_tab = self._create_calibration_tab()
+        self.tabs.addTab(self.calibration_tab, tr("Calibration"))
+        self.tabs.currentChanged.connect(self._on_settings_tab_changed)
 
         self.setLayout(main_layout)
 
@@ -1236,35 +1239,47 @@ class SettingsWidget(QWidget):
         prof_group = QGroupBox(tr("Calibration Profiles"))
         prof_layout = QVBoxLayout()
 
-        # Row 1: Profile Selection
+        # Row 1: Active profile and direct management actions
         prof_sel_layout = QHBoxLayout()
         self.cal_profile_combo = QComboBox()
         self.cal_profile_combo.currentIndexChanged.connect(self.on_profile_selected)
-        prof_sel_layout.addWidget(QLabel(tr("Select Profile:")))
+        prof_sel_layout.addWidget(QLabel(tr("Active Profile:")))
         prof_sel_layout.addWidget(self.cal_profile_combo, 1)
-        prof_layout.addLayout(prof_sel_layout)
 
-        # Device Label
-        self.cal_profile_device_label = QLabel("")
-        self.cal_profile_device_label.setStyleSheet("color: #666; font-style: italic; margin-left: 20px;")
-        prof_layout.addWidget(self.cal_profile_device_label)
+        self.new_prof_btn = QPushButton(tr("New..."))
+        self.new_prof_btn.clicked.connect(self.on_new_profile)
+        prof_sel_layout.addWidget(self.new_prof_btn)
 
-        # Row 2: Actions
-        prof_act_layout = QHBoxLayout()
+        self.duplicate_prof_btn = QPushButton(tr("Duplicate..."))
+        self.duplicate_prof_btn.clicked.connect(self.on_duplicate_profile)
+        prof_sel_layout.addWidget(self.duplicate_prof_btn)
+
+        self.rename_prof_btn = QPushButton(tr("Rename..."))
+        self.rename_prof_btn.clicked.connect(self.on_rename_profile)
+        prof_sel_layout.addWidget(self.rename_prof_btn)
+
         self.del_prof_btn = QPushButton(tr("Delete"))
         self.del_prof_btn.clicked.connect(self.on_delete_profile)
-        prof_act_layout.addWidget(self.del_prof_btn)
-        prof_layout.addLayout(prof_act_layout)
+        prof_sel_layout.addWidget(self.del_prof_btn)
+        prof_layout.addLayout(prof_sel_layout)
 
-        # Row 3: Save New
-        prof_save_layout = QHBoxLayout()
-        self.cal_profile_name_edit = QLineEdit()
-        self.cal_profile_name_edit.setPlaceholderText(tr("New Profile Name"))
-        self.save_prof_btn = QPushButton(tr("Duplicate Profile"))
-        self.save_prof_btn.clicked.connect(self.on_save_profile)
-        prof_save_layout.addWidget(self.cal_profile_name_edit, 1)
-        prof_save_layout.addWidget(self.save_prof_btn)
-        prof_layout.addLayout(prof_save_layout)
+        self.cal_profile_status_label = QLabel("")
+        self.cal_profile_status_label.setWordWrap(True)
+        self.cal_profile_status_label.setStyleSheet("margin-left: 20px;")
+        prof_layout.addWidget(self.cal_profile_status_label)
+
+        self.cal_profile_device_label = QLabel("")
+        self.cal_profile_device_label.setWordWrap(True)
+        self.cal_profile_device_label.setStyleSheet("margin-left: 20px;")
+        prof_layout.addWidget(self.cal_profile_device_label)
+
+        self.cal_profile_warning_label = QLabel("")
+        self.cal_profile_warning_label.setWordWrap(True)
+        self.cal_profile_warning_label.setStyleSheet(
+            "background: #7f1d1d; color: white; border-radius: 4px; padding: 5px;"
+        )
+        self.cal_profile_warning_label.hide()
+        prof_layout.addWidget(self.cal_profile_warning_label)
 
         prof_group.setLayout(prof_layout)
         calibration_layout.addWidget(prof_group)
@@ -1825,6 +1840,8 @@ class SettingsWidget(QWidget):
                     "output_hostapi": host_api_name,
                 }
             )
+            if hasattr(self, "cal_profile_combo"):
+                self._update_profile_management_ui()
 
         except Exception as e:
             QMessageBox.critical(self, tr("Error"), f"{tr('Failed to set devices:')} {e}")
@@ -2020,103 +2037,261 @@ class SettingsWidget(QWidget):
 
     # --- Calibration Profiles ---
 
-    def refresh_cal_profiles(self):
+    def _on_settings_tab_changed(self, index):
+        if self.tabs.widget(index) is self.calibration_tab:
+            self.refresh_cal_profiles()
+            self._refresh_all_calibration_displays()
+
+    def _current_profile_device_metadata(self):
+        """Return current input/output device names and host APIs."""
+        devices = self.audio_engine.list_devices()
+
+        def details(device_id):
+            try:
+                index = int(device_id)
+                if 0 <= index < len(devices):
+                    info = devices[index]
+                    name = str(info.get("name", "") or "")
+                    host_api = str(
+                        info.get("hostapi_name", "") or info.get("hostapi", "") or ""
+                    )
+                    return name, host_api
+            except (TypeError, ValueError, IndexError):
+                pass
+            return "", ""
+
+        input_name, input_host_api = details(self.audio_engine.input_device)
+        output_name, output_host_api = details(self.audio_engine.output_device)
+        return input_name, input_host_api, output_name, output_host_api
+
+    @staticmethod
+    def _format_profile_device(name, host_api):
+        if name and host_api:
+            return f"{name} ({host_api})"
+        return name or host_api
+
+    def _update_profile_management_ui(self):
+        name = self.cal_profile_combo.currentData()
+        if not isinstance(name, str):
+            name = None
+
+        profiles = self.audio_engine.calibration.get_profiles()
+        profile = profiles.get(name, {}) if name else {}
+        has_profile = bool(name and name in profiles)
+        self.rename_prof_btn.setEnabled(has_profile)
+        self.del_prof_btn.setEnabled(has_profile)
+
+        try:
+            current_devices = self._current_profile_device_metadata()
+        except Exception as e:
+            self.logger.warning("Failed to get active calibration device info: %s", e)
+            current_devices = ("", "", "", "")
+
+        current_input, current_input_api, current_output, current_output_api = current_devices
+        current_input_text = self._format_profile_device(current_input, current_input_api)
+        current_output_text = self._format_profile_device(current_output, current_output_api)
+        unavailable = tr("Not available")
+
+        if has_profile:
+            self.cal_profile_status_label.setText(
+                tr("Changes are saved automatically to '{0}'.").format(name)
+            )
+            stored_input = str(
+                profile.get("input_device_name", profile.get("device_name", "")) or ""
+            )
+            stored_input_api = str(
+                profile.get("input_host_api", profile.get("host_api", "")) or ""
+            )
+            stored_output = str(profile.get("output_device_name", "") or "")
+            stored_output_api = str(profile.get("output_host_api", "") or "")
+            stored_input_text = self._format_profile_device(
+                stored_input, stored_input_api
+            )
+            stored_output_text = self._format_profile_device(
+                stored_output, stored_output_api
+            )
+            self.cal_profile_device_label.setText(
+                tr("Profile devices — Input: {0} | Output: {1}").format(
+                    stored_input_text or unavailable,
+                    stored_output_text or unavailable,
+                )
+            )
+
+            input_mismatch = bool(
+                stored_input
+                and current_input
+                and (
+                    stored_input != current_input
+                    or bool(
+                        stored_input_api
+                        and current_input_api
+                        and stored_input_api != current_input_api
+                    )
+                )
+            )
+            output_mismatch = bool(
+                stored_output
+                and current_output
+                and (
+                    stored_output != current_output
+                    or bool(
+                        stored_output_api
+                        and current_output_api
+                        and stored_output_api != current_output_api
+                    )
+                )
+            )
+            if input_mismatch or output_mismatch:
+                self.cal_profile_warning_label.setText(
+                    tr(
+                        "The active audio devices do not match this profile. "
+                        "Calibration values were applied without changing devices."
+                    )
+                )
+                self.cal_profile_warning_label.show()
+            else:
+                self.cal_profile_warning_label.hide()
+        else:
+            self.cal_profile_status_label.setText(
+                tr("Current calibration is not assigned to a named profile.")
+            )
+            self.cal_profile_device_label.setText(
+                tr("Current devices — Input: {0} | Output: {1}").format(
+                    current_input_text or unavailable,
+                    current_output_text or unavailable,
+                )
+            )
+            self.cal_profile_warning_label.hide()
+
+    def _refresh_all_calibration_displays(self):
+        self.update_in_sens_display()
+        self.update_out_gain_display()
+        self.update_spl_display()
+
+        source = self.audio_engine.calibration.frequency_calibration_source
+        index = self.freq_cal_source_combo.findData(source)
+        if index >= 0 and index != self.freq_cal_source_combo.currentIndex():
+            self.freq_cal_source_combo.blockSignals(True)
+            self.freq_cal_source_combo.setCurrentIndex(index)
+            self.freq_cal_source_combo.blockSignals(False)
+        self.update_adv_cal_display()
+        self._update_profile_management_ui()
+
+    def refresh_cal_profiles(self, selected_name=None):
         self.cal_profile_combo.blockSignals(True)
         self.cal_profile_combo.clear()
+        self.cal_profile_combo.addItem(tr("Current calibration (no profile)"), None)
 
         profiles = self.audio_engine.calibration.get_profiles()
         for name in sorted(profiles.keys()):
-            self.cal_profile_combo.addItem(name)
+            self.cal_profile_combo.addItem(name, name)
 
+        if selected_name is None:
+            last = self.audio_engine.calibration.last_profile
+            selected_name = last if isinstance(last, str) and last in profiles else None
+        index = self.cal_profile_combo.findData(selected_name)
+        self.cal_profile_combo.setCurrentIndex(max(0, index))
         self.cal_profile_combo.blockSignals(False)
-
-        # Auto-restore last profile
-        last = self.audio_engine.calibration.last_profile
-        if last and last in profiles:
-            idx = self.cal_profile_combo.findText(last)
-            if idx >= 0:
-                self.cal_profile_combo.setCurrentIndex(idx)
-
-        self.on_profile_selected()
+        self._update_profile_management_ui()
 
     def on_profile_selected(self):
-        name = self.cal_profile_combo.currentText()
-        profiles = self.audio_engine.calibration.get_profiles()
-        if name in profiles:
-            dev_name = profiles[name].get("device_name", "")
-            host_api = profiles[name].get("host_api", "")
-            if host_api:
-                self.cal_profile_device_label.setText(tr("Device: {0} ({1})").format(dev_name, host_api))
-            else:
-                self.cal_profile_device_label.setText(tr("Device: {0}").format(dev_name))
-            self.del_prof_btn.setEnabled(True)
+        name = self.cal_profile_combo.currentData()
+        if not isinstance(name, str):
+            name = None
+        try:
+            self.audio_engine.calibration.activate_profile(name)
+            self._refresh_all_calibration_displays()
+        except Exception as e:
+            active = self.audio_engine.calibration.last_profile
+            self.refresh_cal_profiles(
+                active if isinstance(active, str) else None
+            )
+            QMessageBox.critical(
+                self, tr("Error"), tr("Failed to load profile: {0}").format(e)
+            )
 
-            # Instant Apply
-            try:
-                self.audio_engine.calibration.load_profile(name)
-                self.audio_engine.calibration.set_last_profile(name)
-                # Refresh displays
-                self.update_in_sens_display()
-                self.update_out_gain_display()
-                self.update_spl_display()
-            except Exception as e:
-                QMessageBox.critical(self, tr("Error"), tr("Failed to load profile: {0}").format(e))
+    def _prompt_profile_name(self, title, label, initial=""):
+        name, accepted = QInputDialog.getText(
+            self,
+            title,
+            label,
+            QLineEdit.EchoMode.Normal,
+            initial,
+        )
+        if not accepted:
+            return None
 
-        else:
-            self.cal_profile_device_label.setText("")
-            self.del_prof_btn.setEnabled(False)
-
-    def on_save_profile(self):
-        name = self.cal_profile_name_edit.text().strip()
+        name = name.strip()
         if not name:
-            QMessageBox.warning(self, tr("Warning"), tr("Please enter a profile name."))
+            QMessageBox.warning(
+                self, tr("Warning"), tr("Profile name cannot be empty.")
+            )
+            return None
+        if name in self.audio_engine.calibration.get_profiles() and name != initial:
+            QMessageBox.warning(
+                self,
+                tr("Profile Name In Use"),
+                tr("A profile named '{0}' already exists. Choose a different name.").format(
+                    name
+                ),
+            )
+            return None
+        return name
+
+    def on_new_profile(self):
+        name = self._prompt_profile_name(
+            tr("New Calibration Profile"),
+            tr("Name for the new uncalibrated profile:"),
+        )
+        if name is None:
             return
 
-        # Get active device name to store with profile
-        dev_name = "Unknown"
-        host_api = ""
         try:
-            # Try to get input device name
-            devices = self.audio_engine.list_devices()
-            in_dev_id = self.audio_engine.input_device
-            if in_dev_id is not None and 0 <= int(in_dev_id) < len(devices):
-                dev_info = devices[int(in_dev_id)]
-                dev_name = dev_info.get("name", "Unknown")
-                # Prioritize human-readable name populated by AudioEngine.list_devices()
-                host_api = dev_info.get("hostapi_name", "")
-                if not host_api:
-                    # Fallback to index if name missing (shouldn't happen usually)
-                    host_api = str(dev_info.get("hostapi", ""))
+            metadata = self._current_profile_device_metadata()
+            self.audio_engine.calibration.create_profile(name, *metadata)
+            self.refresh_cal_profiles(name)
+            self._refresh_all_calibration_displays()
         except Exception as e:
-            self.logger.warning(f"Failed to get active device info for profile: {e}")
-            dev_name = "Unknown"
-            host_api = ""
+            QMessageBox.critical(self, tr("Error"), str(e))
 
-        if name in self.audio_engine.calibration.get_profiles():
-            ret = QMessageBox.question(
-                self,
-                tr("Confirm Overwrite"),
-                tr("Profile '{0}' already exists. Overwrite?").format(name),
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            )
-            if ret != QMessageBox.StandardButton.Yes:
-                return
+    def on_duplicate_profile(self):
+        name = self._prompt_profile_name(
+            tr("Duplicate Calibration Profile"),
+            tr("Name for the copy of the current calibration:"),
+        )
+        if name is None:
+            return
 
         try:
-            self.audio_engine.calibration.save_profile(name, dev_name, host_api)
-            self.refresh_cal_profiles()
-            # Select the saved profile
-            idx = self.cal_profile_combo.findText(name)
-            if idx >= 0:
-                self.cal_profile_combo.setCurrentIndex(idx)
-            self.cal_profile_name_edit.clear()
-            QMessageBox.information(self, tr("Success"), tr("Profile saved."))
+            metadata = self._current_profile_device_metadata()
+            self.audio_engine.calibration.duplicate_profile(name, *metadata)
+            self.refresh_cal_profiles(name)
+            self._refresh_all_calibration_displays()
+        except Exception as e:
+            QMessageBox.critical(self, tr("Error"), str(e))
+
+    def on_rename_profile(self):
+        old_name = self.cal_profile_combo.currentData()
+        if not isinstance(old_name, str):
+            return
+        new_name = self._prompt_profile_name(
+            tr("Rename Calibration Profile"),
+            tr("New profile name:"),
+            old_name,
+        )
+        if new_name is None or new_name == old_name:
+            return
+
+        try:
+            self.audio_engine.calibration.rename_profile(old_name, new_name)
+            self.refresh_cal_profiles(new_name)
+            self._refresh_all_calibration_displays()
         except Exception as e:
             QMessageBox.critical(self, tr("Error"), str(e))
 
     def on_delete_profile(self):
-        name = self.cal_profile_combo.currentText()
-        if not name:
+        name = self.cal_profile_combo.currentData()
+        if not isinstance(name, str):
             return
 
         ret = QMessageBox.question(
@@ -2129,5 +2304,6 @@ class SettingsWidget(QWidget):
             try:
                 self.audio_engine.calibration.delete_profile(name)
                 self.refresh_cal_profiles()
+                self._refresh_all_calibration_displays()
             except Exception as e:
                 QMessageBox.critical(self, tr("Error"), str(e))

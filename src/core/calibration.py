@@ -1,6 +1,7 @@
 import json
 import os
 import logging
+from copy import deepcopy
 
 import numpy as np
 
@@ -114,8 +115,15 @@ class CalibrationManager:
                                 except Exception:
                                     self.spl_offset_db = None
 
-                    self.profiles = data.get("profiles", {})
-                    self.last_profile = data.get("last_profile")
+                    stored_profiles = data.get("profiles", {})
+                    self.profiles = stored_profiles if isinstance(stored_profiles, dict) else {}
+                    stored_last_profile = data.get("last_profile")
+                    self.last_profile = (
+                        stored_last_profile
+                        if isinstance(stored_last_profile, str)
+                        and stored_last_profile in self.profiles
+                        else None
+                    )
             except Exception as e:
                 self.logger.error("Failed to load calibration: %s", e)
 
@@ -166,8 +174,10 @@ class CalibrationManager:
 
             with os.fdopen(fd, "w") as f:
                 json.dump(data, f, indent=4)
+            return True
         except Exception as e:
             self.logger.error("Failed to save calibration: %s", e)
+            return False
 
     # --- SPL Calibration ---
 
@@ -258,42 +268,61 @@ class CalibrationManager:
             self.logger.warning("Invalid lock-in gain offset provided: %s", e)
 
     def set_last_profile(self, name):
-        """Sets the last selected profile name."""
+        """Sets the last selected profile name without changing calibration values."""
+        if name is not None and name not in self.profiles:
+            raise ValueError(f"Profile '{name}' not found")
         self.last_profile = name
         self.save()
 
     # --- Profile Management ---
 
-    def save_profile(self, name, device_name, host_api=None):
-        """Saves current settings as a named profile."""
-        if not hasattr(self, "profiles"):
-            self.profiles = {}
+    @staticmethod
+    def _normalize_profile_name(name):
+        """Return a storage-safe profile name or raise a user-correctable error."""
+        name = str(name).strip()
+        if not name:
+            raise ValueError("Profile name cannot be empty")
+        if any(ord(char) < 32 for char in name):
+            raise ValueError("Profile name contains invalid characters")
+        return name
 
-        self.profiles[name] = {
-            "device_name": device_name,
-            "host_api": host_api,
+    @staticmethod
+    def _default_calibration_snapshot():
+        """Return the safe, explicitly uncalibrated state for a new profile."""
+        return {
+            "input_sensitivity": 1.0,
+            "input_sensitivity_is_calibrated": False,
+            "output_gain": 1.0,
+            "output_gain_is_calibrated": False,
+            "frequency_calibration": 1.0,
+            "frequency_calibration_1pps": 1.0,
+            "frequency_calibration_source": "basic",
+            "lockin_gain_offset": 0.0,
+            "spl_offset_db": None,
+        }
+
+    def _snapshot_current_calibration(self):
+        """Capture all values owned by a calibration profile."""
+        return {
             "input_sensitivity": self.input_sensitivity,
-            "input_sensitivity_is_calibrated": self.input_sensitivity_is_calibrated,
+            "input_sensitivity_is_calibrated": bool(
+                self.input_sensitivity_is_calibrated
+            ),
             "output_gain": self.output_gain,
-            "output_gain_is_calibrated": self.output_gain_is_calibrated,
+            "output_gain_is_calibrated": bool(self.output_gain_is_calibrated),
             "frequency_calibration": self.frequency_calibration,
             "frequency_calibration_1pps": self.frequency_calibration_1pps,
             "frequency_calibration_source": self.frequency_calibration_source,
             "lockin_gain_offset": self.lockin_gain_offset,
             "spl_offset_db": self.spl_offset_db,
         }
-        self.save()
 
-    def load_profile(self, name):
-        """Loads settings from a named profile."""
-        if not hasattr(self, "profiles") or name not in self.profiles:
-            raise ValueError(f"Profile '{name}' not found")
-
-        p = self.profiles[name]
-        self.input_sensitivity = p.get("input_sensitivity", 1.0)
-        if "input_sensitivity_is_calibrated" in p:
+    def _apply_calibration_snapshot(self, snapshot):
+        """Apply a complete profile snapshot while preserving legacy defaults."""
+        self.input_sensitivity = snapshot.get("input_sensitivity", 1.0)
+        if "input_sensitivity_is_calibrated" in snapshot:
             self.input_sensitivity_is_calibrated = bool(
-                p.get("input_sensitivity_is_calibrated")
+                snapshot.get("input_sensitivity_is_calibrated")
             )
         else:
             try:
@@ -302,22 +331,216 @@ class CalibrationManager:
                 )
             except Exception:
                 self.input_sensitivity_is_calibrated = False
-        self.output_gain = p.get("output_gain", 1.0)
-        self.output_gain_is_calibrated = p.get("output_gain_is_calibrated", False)
-        self.frequency_calibration = p.get("frequency_calibration", 1.0)
-        self.frequency_calibration_1pps = p.get("frequency_calibration_1pps", 1.0)
-        self.frequency_calibration_source = p.get("frequency_calibration_source", "basic")
-        self.lockin_gain_offset = p.get("lockin_gain_offset", 0.0)
-        self.spl_offset_db = p.get("spl_offset_db", None)
 
+        self.output_gain = snapshot.get("output_gain", 1.0)
+        self.output_gain_is_calibrated = bool(
+            snapshot.get("output_gain_is_calibrated", False)
+        )
+        self.frequency_calibration = snapshot.get("frequency_calibration", 1.0)
+        self.frequency_calibration_1pps = snapshot.get(
+            "frequency_calibration_1pps", 1.0
+        )
+        self.frequency_calibration_source = snapshot.get(
+            "frequency_calibration_source", "basic"
+        )
+        self.lockin_gain_offset = snapshot.get("lockin_gain_offset", 0.0)
+        self.spl_offset_db = snapshot.get("spl_offset_db", None)
+
+    @staticmethod
+    def _profile_device_metadata(
+        device_name,
+        host_api=None,
+        output_device_name="",
+        output_host_api=None,
+    ):
+        """Build device metadata while retaining the legacy input-device keys."""
+        input_name = str(device_name or "")
+        input_api = str(host_api or "")
+        return {
+            "device_name": input_name,
+            "host_api": input_api,
+            "input_device_name": input_name,
+            "input_host_api": input_api,
+            "output_device_name": str(output_device_name or ""),
+            "output_host_api": str(output_host_api or ""),
+        }
+
+    def _restore_profile_mutation(self, profiles, last_profile, snapshot):
+        self.profiles = profiles
+        self.last_profile = last_profile
+        self._apply_calibration_snapshot(snapshot)
+
+    def _save_profile_mutation_or_raise(self, profiles, last_profile, snapshot):
+        if self.save():
+            return
+        self._restore_profile_mutation(profiles, last_profile, snapshot)
+        raise OSError("Failed to save calibration profiles")
+
+    def create_profile(
+        self,
+        name,
+        device_name="",
+        host_api=None,
+        output_device_name="",
+        output_host_api=None,
+    ):
+        """Create and activate an explicitly uncalibrated profile."""
+        name = self._normalize_profile_name(name)
+        if name in self.profiles:
+            raise ValueError(f"Profile '{name}' already exists")
+
+        old_profiles = deepcopy(self.profiles)
+        old_last_profile = self.last_profile
+        old_snapshot = self._snapshot_current_calibration()
+        if not self.save():
+            raise OSError("Failed to save the active calibration profile")
+
+        snapshot = self._default_calibration_snapshot()
+        profile = self._profile_device_metadata(
+            device_name,
+            host_api,
+            output_device_name,
+            output_host_api,
+        )
+        profile.update(snapshot)
+        self.profiles[name] = profile
+        self._apply_calibration_snapshot(snapshot)
+        self.last_profile = name
+        self._save_profile_mutation_or_raise(
+            old_profiles, old_last_profile, old_snapshot
+        )
+
+    def duplicate_profile(
+        self,
+        name,
+        device_name="",
+        host_api=None,
+        output_device_name="",
+        output_host_api=None,
+    ):
+        """Save the current calibration state under a new name and activate it."""
+        name = self._normalize_profile_name(name)
+        if name in self.profiles:
+            raise ValueError(f"Profile '{name}' already exists")
+
+        old_profiles = deepcopy(self.profiles)
+        old_last_profile = self.last_profile
+        snapshot = self._snapshot_current_calibration()
+        if not self.save():
+            raise OSError("Failed to save the active calibration profile")
+
+        profile = self._profile_device_metadata(
+            device_name,
+            host_api,
+            output_device_name,
+            output_host_api,
+        )
+        profile.update(snapshot)
+        self.profiles[name] = profile
+        self.last_profile = name
+        self._save_profile_mutation_or_raise(
+            old_profiles, old_last_profile, snapshot
+        )
+
+    def rename_profile(self, old_name, new_name):
+        """Rename a profile without changing its calibration or device metadata."""
+        old_name = self._normalize_profile_name(old_name)
+        new_name = self._normalize_profile_name(new_name)
+        if old_name not in self.profiles:
+            raise ValueError(f"Profile '{old_name}' not found")
+        if old_name == new_name:
+            return
+        if new_name in self.profiles:
+            raise ValueError(f"Profile '{new_name}' already exists")
+
+        old_profiles = deepcopy(self.profiles)
+        old_last_profile = self.last_profile
+        snapshot = self._snapshot_current_calibration()
+        if not self.save():
+            raise OSError("Failed to save the active calibration profile")
+
+        self.profiles[new_name] = self.profiles.pop(old_name)
+        if self.last_profile == old_name:
+            self.last_profile = new_name
+        self._save_profile_mutation_or_raise(
+            old_profiles, old_last_profile, snapshot
+        )
+
+    def save_profile(
+        self,
+        name,
+        device_name,
+        host_api=None,
+        output_device_name="",
+        output_host_api=None,
+    ):
+        """Saves current settings as a named profile."""
+        if not hasattr(self, "profiles"):
+            self.profiles = {}
+
+        name = self._normalize_profile_name(name)
+        profile = self._profile_device_metadata(
+            device_name,
+            host_api,
+            output_device_name,
+            output_host_api,
+        )
+        profile.update(self._snapshot_current_calibration())
+        self.profiles[name] = profile
+        self.save()
+
+    def load_profile(self, name):
+        """Loads settings from a named profile."""
+        name = self._normalize_profile_name(name)
+        if not hasattr(self, "profiles") or name not in self.profiles:
+            raise ValueError(f"Profile '{name}' not found")
+
+        old_snapshot = self._snapshot_current_calibration()
+        old_last_profile = self.last_profile
+        if not self.save():
+            raise OSError("Failed to save the active calibration profile")
+
+        p = self.profiles[name]
+        self._apply_calibration_snapshot(p)
         self.last_profile = name  # Update current profile name before saving
-        self.save()  # Persist as current
+        if not self.save():
+            self.last_profile = old_last_profile
+            self._apply_calibration_snapshot(old_snapshot)
+            raise OSError("Failed to activate calibration profile")
+
+    def activate_profile(self, name):
+        """Activate a named profile, or detach while preserving current values."""
+        if name is None:
+            old_last_profile = self.last_profile
+            if old_last_profile is None:
+                return
+            if not self.save():
+                raise OSError("Failed to save the active calibration profile")
+            self.last_profile = None
+            if not self.save():
+                self.last_profile = old_last_profile
+                raise OSError("Failed to clear the active calibration profile")
+            return
+        self.load_profile(name)
 
     def delete_profile(self, name):
         """Deletes a named profile."""
-        if name in self.profiles:
-            del self.profiles[name]
-            self.save()
+        name = self._normalize_profile_name(name)
+        if name not in self.profiles:
+            return
+
+        old_profiles = deepcopy(self.profiles)
+        old_last_profile = self.last_profile
+        snapshot = self._snapshot_current_calibration()
+        if not self.save():
+            raise OSError("Failed to save the active calibration profile")
+
+        del self.profiles[name]
+        if self.last_profile == name:
+            self.last_profile = None
+        self._save_profile_mutation_or_raise(
+            old_profiles, old_last_profile, snapshot
+        )
 
     def get_profiles(self):
         """Returns the dictionary of profiles."""
