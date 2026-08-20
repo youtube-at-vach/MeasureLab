@@ -857,11 +857,7 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
             bottom_axis.setLabel("")
             bottom_axis.setHeight(0)
 
-        left_axis = self.plot_widget.getPlotItem().getAxis("left")
-        left_axis.setStyle(showValues=self.module.show_y_axis)
-        if not self.module.show_y_axis:
-            left_axis.setLabel("")
-            left_axis.setWidth(0)
+        self._update_y_axis_display(self.module.show_y_axis)
 
         self.curve_l = self.plot_widget.plot(pen=pg.mkPen("#00ff00", width=2), name=tr("Left"))
         self.curve_r = self.plot_widget.plot(pen=pg.mkPen("#ff5555", width=2), name=tr("Right"))
@@ -1294,17 +1290,26 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
                 bottom_axis.setLabel("")
                 bottom_axis.setHeight(0)
 
+    def _update_y_axis_display(self, show_labels: bool) -> None:
+        left_axis = self.plot_widget.getPlotItem().getAxis("left")
+        left_axis.setStyle(showValues=show_labels)
+        if show_labels:
+            left_axis.setPen()
+            left_axis.setTickPen()
+            left_axis.setLabel(tr("Divisions"), units="div")
+            left_axis.setWidth(None)
+        else:
+            # Keep the tick pen for horizontal grid lines, but suppress the axis
+            # pen itself. setWidth(0) alone still leaves a one-pixel line visible.
+            left_axis.setTickPen(pg.getConfigOption("foreground"))
+            left_axis.setPen(None)
+            left_axis.setLabel("")
+            left_axis.setWidth(0)
+
     def on_show_y_axis_toggled(self, checked):
         self.module.show_y_axis = checked
         if not self.is_compact_mode():
-            left_axis = self.plot_widget.getPlotItem().getAxis("left")
-            left_axis.setStyle(showValues=checked)
-            if checked:
-                left_axis.setLabel(tr("Divisions"), units="div")
-                left_axis.setWidth(None)
-            else:
-                left_axis.setLabel("")
-                left_axis.setWidth(0)
+            self._update_y_axis_display(checked)
 
     def on_show_trigger_line_toggled(self, checked):
         self.module.show_trigger_line = checked
@@ -1872,7 +1877,6 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
 
         if hasattr(self, "plot_widget"):
             bottom_axis = self.plot_widget.getPlotItem().getAxis("bottom")
-            left_axis = self.plot_widget.getPlotItem().getAxis("left")
             plot_item_layout = self.plot_widget.getPlotItem().layout
             if compact:
                 if not hasattr(self, "_orig_plot_margins"):
@@ -1883,9 +1887,7 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
                 bottom_axis.setStyle(showValues=False)
                 bottom_axis.setLabel("")
                 bottom_axis.setHeight(0)
-                left_axis.setStyle(showValues=False)
-                left_axis.setLabel("")
-                left_axis.setWidth(0)
+                self._update_y_axis_display(False)
             else:
                 self.plot_widget.setFrameShape(QFrame.Shape.StyledPanel)
                 self.plot_widget.setStyleSheet("")
@@ -1900,13 +1902,7 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
                     bottom_axis.setLabel("")
                     bottom_axis.setHeight(0)
                 show_y = getattr(self.module, "show_y_axis", False)
-                left_axis.setStyle(showValues=show_y)
-                if show_y:
-                    left_axis.setLabel(tr("Divisions"), units="div")
-                    left_axis.setWidth(None)
-                else:
-                    left_axis.setLabel("")
-                    left_axis.setWidth(0)
+                self._update_y_axis_display(show_y)
 
     def get_comparable_data(self) -> List[ComparisonTrace]:
         if self.last_display_data is None or self.last_display_time is None:
