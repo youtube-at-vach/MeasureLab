@@ -19,6 +19,7 @@ This widget supports the common features of the Detachable Wrapper. Please refer
 ### Reading the Screen
 
 * **Show X-Axis Label**: Toggles the display of the time axis label and values at the bottom of the graph.
+* **Show Y-Axis Label**: Toggles the display of the voltage axis label, values, and grid lines on the left side of the graph.
 * **Time/Div**: Changes the scale of the time axis (horizontal axis). Larger values display a longer duration (slower changes), while smaller values zoom in to show a shorter duration (faster changes).
     * **Key Point**: Even when displaying a long duration, the system continues to record the waveform internally at high resolution. Therefore, the waveform will not appear coarse, and trigger sync will not be lost.
 * **Scale**: Changes the scale of the voltage axis (vertical axis).
