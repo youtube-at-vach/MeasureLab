@@ -14,6 +14,10 @@ This widget provides the following analysis capabilities:
 * **Impulse Response Display:** Allows viewing the impulse response of each kernel in the time domain.
 * **Model Caching and Exporting:** Once a measurement is complete, the extracted model is automatically saved to the active model cache. This allows other modules (e.g., [Response Viewer](response_viewer.en.md)) to use it for advanced analysis or simulation. It can also be exported locally as a JSON file.
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Settings
 
 ### SSS Parameters

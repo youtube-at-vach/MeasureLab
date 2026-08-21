@@ -6,6 +6,10 @@ Lock-in Modelerは、同期スイープサイン (Synchronized Swept Sine, SSS) 
 
 本ツールは通常の周波数スイープ測定（基本波および最大5次の高調波の同時追跡）に加え、**非線形モデル（ハマーシュタインモデル）同定機能**を備えており、同定したモデルをJSONファイルとしてエクスポートできます。
 
+## 共通機能
+
+このウィジェットは Detachable Wrapper の共通機能に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
+
 ## 測定手順
 
 ### 1. 遅延キャリブレーション（必須）

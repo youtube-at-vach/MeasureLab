@@ -7,6 +7,10 @@
 A tool for visualizing data from **SOFA files** containing HRTF (Head-Related Transfer Function) and auditioning it by listening to actual sounds.
 It is useful in spatial audio (3D audio) production and research for intuitively understanding HRTF data characteristics or testing if they match your own ears.
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Features and UI
 
 ### Main Plot (Heatmap)

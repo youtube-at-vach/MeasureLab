@@ -8,6 +8,10 @@ While a standard frequency counter captures "signal fluctuations" broadly, the L
 
 It is suitable for observing the long-term stability (drift) of a clock source, wow and flutter in tape decks and record players, or minute frequency changes such as Doppler shifts. Recent estimation improvements also make the display more resistant to startup bias and better aligned with the actual elapsed sample time, which helps long-running measurements feel steadier and more trustworthy.
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Operation
 
 ### Preparation

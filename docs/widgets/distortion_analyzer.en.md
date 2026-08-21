@@ -8,6 +8,10 @@ This is the most fundamental tool for measuring the "performance" of audio equip
 It measures how accurately amplifiers, DACs, etc., are outputting the original signal (how much they are distorted).
 It is an important measurement tool to grasp the basic performance indicators of the equipment.
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Meaning of Key Indicators
 
 This tool measures the following values:

@@ -4,6 +4,10 @@
 
 Settings（設定）ウィジェットでは、アプリケーション全体の動作に関わる設定を管理します。オーディオデバイスの選択、キャリブレーション（校正）、表示言語やテーマの変更などはここで行います。
 
+## 共通機能
+
+このウィジェットは Detachable Wrapper の共通機能に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
+
 ## General (一般設定)
 
 ### Language (言語)

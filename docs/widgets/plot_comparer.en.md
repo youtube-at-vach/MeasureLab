@@ -6,6 +6,10 @@ The `Plot Comparer` is a utility designed to plot and overlay multiple data trac
 
 To help visualize differences between measurements, it features powerful comparison-assist tools, including manual gain offset adjustments (in dB), dynamic X-axis shifts (for frequency or time), dual Y-axis mapping (Y1/Y2), logarithmic scale toggles (Log X/Log Y), and a "Normalize" function to align peaks automatically.
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Key Features
 
 * **Hierarchical Trace Management (Tree View)**

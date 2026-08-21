@@ -9,6 +9,10 @@
 
 このウィジェットは、自らテスト信号を出力して同期する「Internalモード」と、外部からのトリガー信号に同期する「Externalモード」の両方を備えています。
 
+## 共通機能
+
+このウィジェットは Detachable Wrapper の共通機能に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
+
 ## 操作方法
 
 ### 測定の開始とリセット

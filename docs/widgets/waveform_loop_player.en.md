@@ -7,6 +7,10 @@
 A tool that allows you to load an audio file, inspect its waveform, and loop a selected region.
 It is highly useful when you want to repeatedly play back a specific audio signal or a transient waveform and observe it in detail using an oscilloscope or a spectrum analyzer.
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Operations
 
 ### Waveform Display & Region Selection

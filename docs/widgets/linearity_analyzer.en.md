@@ -9,6 +9,10 @@ It is used to verify problems specific to digital equipment (DAC/ADC), such as "
 
 "Linearity" refers to whether the output is perfectly proportional to the amplitude of the input signal. In digital audio equipment, this proportional relationship often breaks down at extremely low signal levels due to quantization errors or the noise floor. This widget measures the precision limits of equipment when handling such minute signals.
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Meaning of Key Indicators
 
 This tool measures the following values:

@@ -15,6 +15,10 @@ Network Analyzer（ネットワークアナライザ）は、機器やシステ�
 * スピーカーやヘッドホンの特性測定。
 * 2つの信号間の位相差や遅延の測定。
 
+## 共通機能
+
+このウィジェットは Detachable Wrapper の共通機能に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
+
 ## 基本操作
 
 ### 測定の開始

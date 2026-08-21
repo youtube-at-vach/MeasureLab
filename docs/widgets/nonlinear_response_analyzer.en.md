@@ -12,6 +12,10 @@ This widget provides the following analysis capabilities:
 * **Bode Plot Display:** Plots the frequency response (Magnitude and Phase) of the identified linear filter.
 * **Nonlinear Curve Display:** Visualizes the identified polynomial transfer function mapping the intermediate signal to the final output.
 
+## Common Features
+
+This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Settings
 
 ### Test Signal Parameters

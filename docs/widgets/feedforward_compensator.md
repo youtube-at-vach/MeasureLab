@@ -8,6 +8,10 @@ Feedforward Compensator（フィードフォワード歪み補正）は、Parall
 
 ---
 
+## 共通機能
+
+このウィジェットは Detachable Wrapper の共通機能に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
+
 ## 動作原理: LICFF (Linear-Inverse Compensated Feedforward)
 
 このモジュールは、Parallel Hammerstein モデルを前提とした **LICFF (Linear-Inverse Compensated Feedforward)** アルゴリズムを採用しています。
