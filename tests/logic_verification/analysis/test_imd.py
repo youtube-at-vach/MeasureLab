@@ -79,6 +79,21 @@ class TestIMDAnalysis(unittest.TestCase):
         self.assertEqual(result["imd"], 0.0)
         self.assertEqual(result["imd_db"], -100.0)
 
+    def test_calculate_imd_din_reports_five_sideband_orders(self):
+        """DIN 45403 uses 250 Hz/8 kHz and reports five sideband orders."""
+        freqs = np.linspace(0, 24000, 24001)
+        mag = np.zeros_like(freqs)
+        mag[8000] = 1.0
+        mag[7750] = 0.01
+        mag[8250] = 0.01
+
+        result = AudioCalc.calculate_imd_din(mag, freqs)
+
+        self.assertEqual(result["standard"], "DIN 45403")
+        self.assertEqual(len(result["products"]), 10)
+        self.assertAlmostEqual(result["imd"], np.sqrt(2) * 100 * 0.01, places=5)
+        self.assertEqual({product["order"] for product in result["products"]}, set(range(1, 6)))
+
     def test_calculate_imd_smpte_aliasing(self):
         """Test SMPTE IMD calculation with frequencies that alias around Nyquist."""
         f1 = 60.0

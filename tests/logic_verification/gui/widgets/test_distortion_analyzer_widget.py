@@ -13,6 +13,9 @@ def mock_audio_engine():
     engine = MagicMock()
     engine.sample_rate = 48000
     engine.calibration.output_gain = 1.0
+    engine.calibration.output_gain_is_calibrated = False
+    engine.calibration.input_sensitivity_is_calibrated = False
+    engine.is_active.return_value = True
     return engine
 
 
@@ -170,3 +173,186 @@ def test_start_sweep_defensively_restores_sine_state(qtbot, mock_audio_engine):
     analyzer.start_analysis.assert_called_once_with()
     worker_class.assert_called_once()
     worker_class.return_value.start.assert_called_once_with()
+
+
+def test_uncalibrated_output_forces_dbfs_and_reports_conditions(qtbot, mock_audio_engine):
+    analyzer = DistortionAnalyzer(mock_audio_engine)
+    widget = DistortionAnalyzerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    widget._refresh_calibration_controls()
+
+    assert widget.unit_combo.currentText() == "dBFS"
+    for index in range(1, widget.unit_combo.count()):
+        assert not widget.unit_combo.model().item(index).isEnabled()
+    assert "UNCAL" in widget.status_conditions_label.text()
+
+    mock_audio_engine.calibration.output_gain_is_calibrated = True
+    mock_audio_engine.calibration.input_sensitivity_is_calibrated = True
+    widget._refresh_calibration_controls()
+    widget._update_status_display()
+
+    for index in range(widget.unit_combo.count()):
+        assert widget.unit_combo.model().item(index).isEnabled()
+    assert "CAL" in widget.status_conditions_label.text()
+    assert "UNCAL" not in widget.status_conditions_label.text()
+
+
+def test_invalid_acquisition_clears_measurement_displays(qtbot, mock_audio_engine):
+    analyzer = DistortionAnalyzer(mock_audio_engine)
+    analyzer.is_running = True
+    analyzer.invalidate_measurement("Input clipping detected", flag="input_clipping")
+    widget = DistortionAnalyzerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    widget.on_worker_result(
+        {
+            "type": "harmonics",
+            "basic_wave": {"amplitude_dbfs": -1.0, "frequency": 1000.0},
+            "thd_percent": 0.01,
+            "thdn_percent": 0.02,
+            "thdn_db": -74.0,
+            "sinad_db": 74.0,
+            "harmonics": [],
+        }
+    )
+
+    assert widget.thdn_label.text() == "INVALID"
+    assert not widget.integrity_warning_label.isHidden()
+    assert "Input clipping detected" in widget.integrity_warning_label.text()
+    assert analyzer.current_result["measurement_valid"] is False
+
+
+@pytest.mark.parametrize(
+    ("measurement", "f1", "f2", "ratio"),
+    [
+        ("smpte", 60.0, 7000.0, 4.0),
+        ("din", 250.0, 8000.0, 4.0),
+        ("ccif", 19000.0, 20000.0, 1.0),
+    ],
+)
+def test_amplitude_sweep_selects_requested_imd_standard(
+    qtbot, mock_audio_engine, measurement, f1, f2, ratio
+):
+    analyzer = DistortionAnalyzer(mock_audio_engine)
+    analyzer.start_analysis = MagicMock()
+    widget = DistortionAnalyzerWidget(analyzer)
+    qtbot.addWidget(widget)
+    widget.mode_combo.setCurrentIndex(2)
+    widget.sweep_measurement_combo.setCurrentIndex(
+        widget.sweep_measurement_combo.findData(measurement)
+    )
+
+    with patch("src.gui.widgets.distortion_analyzer.SweepWorker") as worker_class:
+        worker_class.return_value.isRunning.return_value = False
+        widget.start_sweep(2)
+
+    assert analyzer.signal_type == measurement
+    assert analyzer.imd_f1 == f1
+    assert analyzer.imd_f2 == f2
+    assert analyzer.imd_ratio == ratio
+
+
+def test_guided_aes17_builds_machine_readable_report(qtbot, mock_audio_engine):
+    analyzer = DistortionAnalyzer(mock_audio_engine)
+    analyzer.is_running = True
+    widget = DistortionAnalyzerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    widget.on_aes17_guide_toggled(True)
+    widget._aes17_deadline = 0.0
+    widget._advance_aes17_workflow(
+        {"basic_wave": {"amplitude_dbfs": -1.5}, "thdn_db": -50.0}
+    )
+    assert widget._aes17_workflow_state == "measurement_wait"
+
+    widget._aes17_deadline = 0.0
+    widget._advance_aes17_workflow(
+        {"basic_wave": {"amplitude_dbfs": -60.0}, "thdn_db": -55.0}
+    )
+
+    assert widget._aes17_workflow_state == "idle"
+    assert analyzer.aes17_report is not None
+    assert analyzer.aes17_report["schema"] == "measurelab.aes17_dynamic_range.v1"
+    assert analyzer.aes17_report["dynamic_range_db"] == pytest.approx(115.0)
+    assert analyzer.aes17_report["measurement_valid"] is True
+    assert widget.aes17_save_btn.isEnabled()
+
+
+def test_stability_log_records_validity_and_metrics(qtbot, mock_audio_engine):
+    analyzer = DistortionAnalyzer(mock_audio_engine)
+    widget = DistortionAnalyzerWidget(analyzer)
+    qtbot.addWidget(widget)
+    widget.stability_logging = True
+    widget.stability_started_at = 1.0
+
+    result = {
+        "type": "harmonics",
+        "basic_wave": {"amplitude_dbfs": -6.0, "frequency": 1000.0},
+        "thd_db": -90.0,
+        "thdn_db": -80.0,
+        "sinad_db": 80.0,
+    }
+    widget._record_stability_sample(result)
+
+    assert len(widget.stability_records) == 1
+    assert widget.stability_records[0]["measurement_valid"] is True
+    assert widget.stability_records[0]["noise_db"] < -80.0
+    _, frequency_data = widget.stability_frequency_curve.getData()
+    assert frequency_data.tolist() == [1000.0]
+
+    analyzer.invalidate_measurement("Audio stream XRUN", flag="xrun")
+    widget.stability_last_recorded_at = 0.0
+    widget._record_stability_sample(result)
+
+    assert len(widget.stability_records) == 2
+    assert widget.stability_records[1]["measurement_valid"] is False
+    assert widget.stability_records[1]["invalid_reasons"] == "Audio stream XRUN"
+
+
+def test_comparison_excludes_invalid_sweep_points(qtbot, mock_audio_engine):
+    analyzer = DistortionAnalyzer(mock_audio_engine)
+    widget = DistortionAnalyzerWidget(analyzer)
+    qtbot.addWidget(widget)
+    widget.mode_combo.setCurrentIndex(2)
+    analyzer.sweep_results = [
+        {
+            "sweep_param": -30.0,
+            "thdn_db": -80.0,
+            "measurement_valid": True,
+        },
+        {
+            "sweep_param": -20.0,
+            "thdn_db": -10.0,
+            "measurement_valid": False,
+        },
+    ]
+
+    traces = widget.get_comparable_data()
+
+    assert len(traces) == 1
+    assert traces[0].x_data == [-30.0]
+    assert traces[0].y_data == [-80.0]
+    assert traces[0].metadata["invalid_point_count"] == 1
+
+
+def test_measurement_first_layout_keeps_controls_narrow(qtbot, mock_audio_engine):
+    analyzer = DistortionAnalyzer(mock_audio_engine)
+    widget = DistortionAnalyzerWidget(analyzer)
+    qtbot.addWidget(widget)
+
+    assert widget.control_widget.maximumWidth() == 340
+    assert widget.layout().stretch(0) == 1
+    assert widget.layout().stretch(1) == 4
+
+
+def test_amplitude_sweep_negative_db_uses_linear_step(qtbot, mock_audio_engine):
+    analyzer = DistortionAnalyzer(mock_audio_engine)
+    widget = DistortionAnalyzerWidget(analyzer)
+    qtbot.addWidget(widget)
+    widget.mode_combo.setCurrentIndex(2)
+    widget.sweep_start_spin.setValue(-60.0)
+
+    widget.sweep_start_spin.stepBy(1)
+
+    assert widget.sweep_start_spin.value() == -59.0

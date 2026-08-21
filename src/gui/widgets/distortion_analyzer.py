@@ -1,6 +1,12 @@
+import csv
+import json
 import logging
 import threading
+import time
 from collections import deque
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
 
 import numpy as np
 import pyqtgraph as pg
@@ -32,10 +38,34 @@ from src.measurement_modules.base import MeasurementModule
 from src.core.fft_manager import fft_manager
 from src.core.utils import amplitude_to_linear, linear_to_amplitude
 from src.gui.widgets.comparable_interface import ComparableWidgetInterface
+from src.gui.widgets.instrument_controls import PreferredNumberSpinBox
 from src.core.comparison_manager import ComparisonTrace, AxisMetadata, CalibrationInfo
 
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class DistortionRunIntegrity:
+    """Latched acquisition health for one measurement run."""
+
+    measurement_valid: bool = True
+    input_clipping: bool = False
+    output_overload: bool = False
+    xrun: bool = False
+    data_gap: bool = False
+    nonfinite_data: bool = False
+    reasons: list[str] = field(default_factory=list)
+
+    def invalidate(self, reason: str, *, flag: str | None = None) -> None:
+        self.measurement_valid = False
+        if flag is not None:
+            setattr(self, flag, True)
+        if reason not in self.reasons:
+            self.reasons.append(reason)
+
+    def snapshot(self) -> dict:
+        return asdict(self)
 
 
 class DistortionAnalyzer(MeasurementModule):
@@ -93,6 +123,26 @@ class DistortionAnalyzer(MeasurementModule):
 
         self.callback_id = None
         self.lock = threading.Lock()
+        self.integrity = DistortionRunIntegrity()
+        self.input_clip_threshold = float(10 ** (-0.1 / 20.0))
+        self.aes17_report: dict | None = None
+
+    @property
+    def measurement_valid(self) -> bool:
+        with self.lock:
+            return bool(self.integrity.measurement_valid)
+
+    def reset_run_integrity(self) -> None:
+        with self.lock:
+            self.integrity = DistortionRunIntegrity()
+
+    def invalidate_measurement(self, reason: str, *, flag: str | None = None) -> None:
+        with self.lock:
+            self.integrity.invalidate(reason, flag=flag)
+
+    def get_integrity_snapshot(self) -> dict:
+        with self.lock:
+            return self.integrity.snapshot()
 
     def reset_averaging_state(self):
         """Clear cached averaging state when settings change."""
@@ -278,13 +328,13 @@ class DistortionAnalyzer(MeasurementModule):
 
     @gen_amplitude.setter
     def gen_amplitude(self, value):
-        # Clamp to prevent overflow (e.g. if user enters Hz in dB field)
-        # Max 10.0 (20dB headroom above 0dBFS) is plenty.
-        if value > 10.0:
-            value = 10.0
-        elif value < 0.0:
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
             value = 0.0
-        self._gen_amplitude = value
+        if not np.isfinite(value):
+            value = 0.0
+        self._gen_amplitude = float(np.clip(value, 0.0, 1.0))
 
     @property
     def name(self) -> str:
@@ -300,25 +350,66 @@ class DistortionAnalyzer(MeasurementModule):
     def start_analysis(self):
         if self.is_running:
             return
+        if self.callback_id is not None:
+            raise RuntimeError(tr("Audio stream failed to start. Please check audio device settings."))
 
-        self.is_running = True
         self.reset_averaging_state()
         self.input_data = np.zeros(self.buffer_size)
         self.current_result = None
+        self.reset_run_integrity()
 
         sample_rate = self.audio_engine.sample_rate
 
         def callback(indata, outdata, frames, time, status):
-            # Generate Signal
-            outdata.fill(0)
-            if self.output_enabled:
+            status_fields = ("input_overflow", "input_underflow", "output_overflow", "output_underflow")
+            has_structured_status = any(hasattr(status, name) for name in status_fields) if status else False
+            input_xrun = bool(
+                status
+                and (
+                    getattr(status, "input_overflow", False)
+                    or getattr(status, "input_underflow", False)
+                    or not has_structured_status
+                )
+            )
+            output_xrun = bool(
+                self.output_enabled
+                and status
+                and (
+                    getattr(status, "output_overflow", False)
+                    or getattr(status, "output_underflow", False)
+                    or not has_structured_status
+                )
+            )
+            if input_xrun or output_xrun:
+                self.invalidate_measurement("Audio stream XRUN", flag="xrun")
+
+            # Generate Signal. Use the actual output-buffer length so a malformed
+            # callback cannot turn a frame-count mismatch into an uncaught error.
+            output_array = None
+            if outdata is not None:
+                try:
+                    output_array = np.asarray(outdata)
+                    if output_array.ndim != 2 or output_array.shape[0] == 0:
+                        output_array = None
+                    else:
+                        output_array.fill(0)
+                except Exception:
+                    output_array = None
+            if self.output_enabled and output_array is not None:
+                output_frames = output_array.shape[0]
+                try:
+                    output_frame_mismatch = isinstance(frames, (bool, np.bool_)) or int(frames) != output_frames
+                except (TypeError, ValueError, OverflowError):
+                    output_frame_mismatch = True
+                if output_frame_mismatch:
+                    self.invalidate_measurement("Output frame count mismatch", flag="data_gap")
                 # Check signal type
-                if self.signal_type == "smpte" or self.signal_type == "ccif":
-                    sine_wave = self._generate_dual_tone(frames, sample_rate)
+                if self.signal_type in {"smpte", "din", "ccif"}:
+                    sine_wave = self._generate_dual_tone(output_frames, sample_rate)
                 else:
                     # Phase Accumulator Logic for continuity
                     phase_inc = 2 * np.pi * self.gen_frequency / sample_rate
-                    phases = self._phase_accumulator + phase_inc * (np.arange(frames) + 1)
+                    phases = self._phase_accumulator + phase_inc * (np.arange(output_frames) + 1)
                     phases %= 2 * np.pi
                     self._phase_accumulator = phases[-1]
 
@@ -329,21 +420,47 @@ class DistortionAnalyzer(MeasurementModule):
 
                     sine_wave = amp * np.sin(phases)
 
-                if self.output_channel == 0:
-                    outdata[:, 0] = sine_wave
-                elif self.output_channel == 1:
-                    if outdata.shape[1] > 1:
-                        outdata[:, 1] = sine_wave
-            else:
-                pass
+                finite_output = np.isfinite(sine_wave)
+                if not np.all(finite_output):
+                    self.invalidate_measurement("Non-finite output samples", flag="nonfinite_data")
+                    sine_wave = np.nan_to_num(sine_wave, nan=0.0, posinf=1.0, neginf=-1.0)
+                if np.max(np.abs(sine_wave), initial=0.0) > 1.0:
+                    self.invalidate_measurement("Generated output exceeded full scale", flag="output_overload")
+                    sine_wave = np.clip(sine_wave, -1.0, 1.0)
+
+                if 0 <= self.output_channel < output_array.shape[1]:
+                    output_array[:, self.output_channel] = sine_wave
+                else:
+                    self.invalidate_measurement("Configured output channel is unavailable", flag="data_gap")
+            elif self.output_enabled:
+                self.invalidate_measurement("Output buffer is unavailable", flag="data_gap")
 
             # Capture Input
             capture_ch = self.input_channel
+            try:
+                input_array = np.asarray(indata)
+            except Exception:
+                self.invalidate_measurement("Input buffer is unavailable", flag="data_gap")
+                return
+            if input_array.ndim != 2 or input_array.shape[0] == 0:
+                self.invalidate_measurement("Input buffer shape is invalid", flag="data_gap")
+                return
+            try:
+                reported_frames = int(frames)
+            except (TypeError, ValueError, OverflowError):
+                reported_frames = -1
+            if isinstance(frames, (bool, np.bool_)) or reported_frames != input_array.shape[0]:
+                self.invalidate_measurement("Input frame count mismatch", flag="data_gap")
+            if capture_ch < 0 or capture_ch >= input_array.shape[1]:
+                self.invalidate_measurement("Configured input channel is unavailable", flag="data_gap")
+                return
 
-            if indata.shape[1] > capture_ch:
-                new_data = indata[:, capture_ch]
-            else:
-                new_data = indata[:, 0]
+            new_data = np.asarray(input_array[:, capture_ch], dtype=float)
+            if not np.all(np.isfinite(new_data)):
+                self.invalidate_measurement("Non-finite input samples", flag="nonfinite_data")
+                new_data = np.nan_to_num(new_data, nan=0.0, posinf=1.0, neginf=-1.0)
+            if np.max(np.abs(new_data), initial=0.0) >= self.input_clip_threshold:
+                self.invalidate_measurement("Input clipping detected", flag="input_clipping")
 
             # Ring buffer update
             with self.lock:
@@ -359,13 +476,28 @@ class DistortionAnalyzer(MeasurementModule):
                     self.capture_requested = False
                     self.capture_ready = True
 
-        self.callback_id = self.audio_engine.register_callback(callback)
+        try:
+            self.callback_id = self.audio_engine.register_callback(callback)
+            is_active = getattr(self.audio_engine, "is_active", None)
+            if callable(is_active) and not bool(is_active()):
+                raise RuntimeError(tr("Audio stream failed to start. Please check audio device settings."))
+        except Exception:
+            callback_id = self.callback_id
+            self.callback_id = None
+            self.is_running = False
+            if callback_id is not None:
+                try:
+                    self.audio_engine.unregister_callback(callback_id)
+                except Exception:
+                    logger.exception("Failed to unregister Distortion Analyzer after a start failure")
+            raise
+        self.is_running = True
 
     def _generate_dual_tone(self, frames, sample_rate):
         # Calculate amplitudes based on ratio
         # Total amplitude should not exceed self.gen_amplitude
 
-        if self.imd_standard == "smpte":
+        if self.imd_standard in {"smpte", "din"}:
             # ratio = amp_f1 / amp_f2
             # amp_f2 * (ratio + 1) = self.gen_amplitude
             amp_f2 = self.gen_amplitude / (self.imd_ratio + 1)
@@ -412,7 +544,7 @@ class DistortionAnalyzer(MeasurementModule):
         sample_rate = settings.get("sample_rate", 48000)
         window_type = settings.get("window_type", "blackmanharris")
 
-        if signal_type in {"smpte", "ccif"}:
+        if signal_type in {"smpte", "din", "ccif"}:
             window = get_cached_window(window_type, len(data), dtype=data.dtype)
             fft_data = fft_manager.rfft(data * window)
             mag_linear = np.abs(fft_data) * (2 / np.sum(window))
@@ -423,6 +555,8 @@ class DistortionAnalyzer(MeasurementModule):
 
             if signal_type == "smpte":
                 res = AudioCalc.calculate_imd_smpte(mag_linear, freqs, imd_f1, imd_f2)
+            elif signal_type == "din":
+                res = AudioCalc.calculate_imd_din(mag_linear, freqs, imd_f1, imd_f2)
             else:
                 res = AudioCalc.calculate_imd_ccif(mag_linear, freqs, imd_f1, imd_f2)
 
@@ -431,6 +565,7 @@ class DistortionAnalyzer(MeasurementModule):
             res["fft_data"] = fft_data
             res["mag_linear"] = mag_linear  # Pass linear mag for averaging
             res["input_rms_db"] = 20 * np.log10(np.sqrt(np.mean(data**2)) + 1e-12)
+            res["standard"] = signal_type
             return res
         else:
             gen_frequency = settings.get("gen_frequency", 1000.0)
@@ -538,23 +673,30 @@ class SweepWorker(QThread):
 
                 sample_rate = self.module.audio_engine.sample_rate
 
-                # In sweep mode, gen_frequency is already set to the actual frequency (snapped or not)
-                # But we want to preserve the sweep parameter 'val' as the target
-                results = AudioCalc.analyze_harmonics(
-                    data,
-                    self.module.gen_frequency,
-                    self.module.window_type,
-                    sample_rate,
-                    filter_type=self.module.filter_type,
-                )
+                settings = {
+                    "signal_type": self.module.signal_type,
+                    "window_type": self.module.window_type,
+                    "sample_rate": sample_rate,
+                    "gen_frequency": self.module.gen_frequency,
+                    "target_frequency": val if self.sweep_type == "frequency" else self.module.gen_frequency,
+                    "imd_f1": self.module.imd_f1,
+                    "imd_f2": self.module.imd_f2,
+                    "filter_type": self.module.filter_type,
+                }
+                results = self.module.calculate_metrics(data, settings)
 
                 # Add target frequency to results if we are snapping
-                if self.module.snap_to_bin_center and self.sweep_type == "frequency":
+                if results.get("type") == "harmonics" and self.module.snap_to_bin_center and self.sweep_type == "frequency":
                     results["basic_wave"]["target_frequency"] = val
-                else:
+                elif results.get("type") == "harmonics":
                     results["basic_wave"]["target_frequency"] = self.module.gen_frequency
 
-                final_result = self.module._apply_result_averaging(results)
+                if results.get("type") == "imd":
+                    averaged = self.module._apply_imd_averaging(results)
+                    results.update(averaged)
+                    final_result = results
+                else:
+                    final_result = self.module._apply_result_averaging(results)
 
             if results is None:
                 continue
@@ -564,6 +706,9 @@ class SweepWorker(QThread):
 
             # Add sweep parameter to results
             results["sweep_param"] = val
+            integrity = self.module.get_integrity_snapshot()
+            results["measurement_valid"] = integrity["measurement_valid"]
+            results["invalid_reasons"] = list(integrity["reasons"])
             self.result_ready.emit(results)
             self.progress.emit(i + 1, self.steps)
 
@@ -608,6 +753,13 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.module = module
         self.sweep_worker = None
         self._realtime_output_mode_index = 1
+        self._aes17_workflow_state = "idle"
+        self._aes17_deadline = 0.0
+        self._aes17_calibration_level: float | None = None
+        self.stability_logging = False
+        self.stability_started_at = 0.0
+        self.stability_last_recorded_at = 0.0
+        self.stability_records: list[dict] = []
         self.init_ui()
 
         # Theme handling
@@ -622,25 +774,31 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.worker.moveToThread(self.analysis_thread)
         self.start_analysis_signal.connect(self.worker.process)
         self.worker.result_ready.connect(self.on_worker_result)
-        self.analysis_thread.start()
 
         self.analysis_pending = False
 
-        self.timer = QTimer()
+        self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_realtime_analysis)
         self.timer.setInterval(100)  # 10Hz update
 
+    def _ensure_analysis_thread(self) -> None:
+        if not self.analysis_thread.isRunning():
+            self.analysis_thread.start()
+
     def init_ui(self):
-        """Initialize the UI by creating left and right panels."""
+        """Create a perimeter control panel and a measurement-first display."""
         layout = QHBoxLayout()
+        layout.setContentsMargins(6, 6, 6, 6)
+        layout.setSpacing(8)
 
-        # Create Left Panel
-        left_panel = self._create_left_panel()
-        layout.addLayout(left_panel, 1)
+        self.control_widget = QWidget()
+        self.control_widget.setLayout(self._create_left_panel())
+        self.control_widget.setMaximumWidth(340)
+        layout.addWidget(self.control_widget, 1)
 
-        # Create Right Panel
-        right_panel = self._create_right_panel()
-        layout.addLayout(right_panel, 3)
+        self.display_widget = QWidget()
+        self.display_widget.setLayout(self._create_right_panel())
+        layout.addWidget(self.display_widget, 4)
 
         # Initial update of Actual Frequency
         self.update_actual_frequency()
@@ -651,6 +809,8 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.on_unit_changed(self.unit_combo.currentText())
         self.out_mode_combo.setCurrentIndex(1)  # Default to Sine Wave
         self._update_sweep_x_controls()
+        self._refresh_calibration_controls()
+        self._update_status_display()
 
     def _create_left_panel(self) -> QVBoxLayout:
         """Creates the left control panel."""
@@ -666,10 +826,6 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         # Action Buttons
         left_panel.addLayout(self._create_action_buttons())
-
-        # 3. Meters (Real-time only)
-        self.meters_group = self._create_meters_group()
-        left_panel.addWidget(self.meters_group)
 
         left_panel.addStretch()
         return left_panel
@@ -700,15 +856,15 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         # Output Mode
         self.out_mode_combo = QComboBox()
-        self.out_mode_combo.addItems(
-            [
-                tr("Off (External Source)"),
-                tr("Sine Wave"),
-                tr("SMPTE IMD"),
-                tr("CCIF IMD"),
-                tr("AES17 Dynamic Range (-60dBFS)"),
-            ]
-        )
+        for label, key in (
+            (tr("Off (External Source)"), "external"),
+            (tr("Sine Wave"), "sine"),
+            (tr("SMPTE IMD"), "smpte"),
+            (tr("CCIF IMD"), "ccif"),
+            (tr("AES17 Dynamic Range (-60dBFS)"), "aes17"),
+            (tr("DIN IMD"), "din"),
+        ):
+            self.out_mode_combo.addItem(label, key)
         self.out_mode_combo.currentIndexChanged.connect(self.on_out_mode_changed)
         rt_layout.addRow(tr("Signal Generator:"), self.out_mode_combo)
 
@@ -720,7 +876,7 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         sine_layout = QFormLayout()
         sine_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.freq_spin = QDoubleSpinBox()
+        self.freq_spin = PreferredNumberSpinBox()
         self.freq_spin.setRange(20, 20000)
         self.freq_spin.setValue(1000)
         self.freq_spin.setSuffix(" Hz")
@@ -746,22 +902,22 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         imd_gen_layout = QFormLayout()
         imd_gen_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.imd_f1_spin = QDoubleSpinBox()
+        self.imd_f1_spin = PreferredNumberSpinBox()
         self.imd_f1_spin.setRange(10, 20000)
         self.imd_f1_spin.setValue(self.module.imd_f1)
-        self.imd_f1_spin.valueChanged.connect(lambda v: setattr(self.module, "imd_f1", v))
+        self.imd_f1_spin.valueChanged.connect(self.on_imd_f1_changed)
         imd_gen_layout.addRow(tr("Freq 1 (Hz):"), self.imd_f1_spin)
 
-        self.imd_f2_spin = QDoubleSpinBox()
+        self.imd_f2_spin = PreferredNumberSpinBox()
         self.imd_f2_spin.setRange(10, 24000)
         self.imd_f2_spin.setValue(self.module.imd_f2)
-        self.imd_f2_spin.valueChanged.connect(lambda v: setattr(self.module, "imd_f2", v))
+        self.imd_f2_spin.valueChanged.connect(self.on_imd_f2_changed)
         imd_gen_layout.addRow(tr("Freq 2 (Hz):"), self.imd_f2_spin)
 
         self.imd_ratio_spin = QDoubleSpinBox()
         self.imd_ratio_spin.setRange(1, 10)
         self.imd_ratio_spin.setValue(self.module.imd_ratio)
-        self.imd_ratio_spin.valueChanged.connect(lambda v: setattr(self.module, "imd_ratio", v))
+        self.imd_ratio_spin.valueChanged.connect(self.on_imd_ratio_changed)
         imd_gen_layout.addRow(tr("Ratio (F1:F2):"), self.imd_ratio_spin)
 
         imd_gen_widget.setLayout(imd_gen_layout)
@@ -775,10 +931,29 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.aes17_cal_btn.setCheckable(True)
         self.aes17_cal_btn.clicked.connect(self.on_aes17_cal_toggled)
         aes17_layout.addRow(self.aes17_cal_btn)
+        self.aes17_guide_btn = QPushButton(tr("Run Guided AES17"))
+        self.aes17_guide_btn.setCheckable(True)
+        self.aes17_guide_btn.clicked.connect(self.on_aes17_guide_toggled)
+        aes17_layout.addRow(self.aes17_guide_btn)
+        self.aes17_report_label = QLabel(tr("No AES17 report available."))
+        self.aes17_report_label.setWordWrap(True)
+        aes17_layout.addRow(self.aes17_report_label)
+        self.aes17_save_btn = QPushButton(tr("Save AES17 Report..."))
+        self.aes17_save_btn.setEnabled(False)
+        self.aes17_save_btn.clicked.connect(self.on_save_aes17_report)
+        aes17_layout.addRow(self.aes17_save_btn)
         aes17_widget.setLayout(aes17_layout)
         self.gen_stack.addWidget(aes17_widget)
 
         rt_layout.addRow(self.gen_stack)
+
+        self.ccif_warning_label = QLabel(
+            tr("CCIF tones are close to the interface bandwidth limit; verify the Nyquist margin and calibration.")
+        )
+        self.ccif_warning_label.setWordWrap(True)
+        self.ccif_warning_label.setStyleSheet("color: #d97706; font-weight: 600;")
+        self.ccif_warning_label.hide()
+        rt_layout.addRow(self.ccif_warning_label)
 
         # Amplitude (Shared)
         amp_layout = QHBoxLayout()
@@ -803,12 +978,24 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         sweep_widget = QWidget()
         sweep_layout = QFormLayout()
 
-        self.sweep_start_spin = QDoubleSpinBox()
+        self.sweep_measurement_combo = QComboBox()
+        for label, key in (
+            (tr("THD+N (Sine)"), "sine"),
+            (tr("SMPTE IMD"), "smpte"),
+            (tr("DIN IMD"), "din"),
+            (tr("CCIF IMD"), "ccif"),
+        ):
+            self.sweep_measurement_combo.addItem(label, key)
+        self.sweep_measurement_combo.currentIndexChanged.connect(self._on_sweep_measurement_changed)
+        self.sweep_measurement_label = QLabel(tr("Measurement:"))
+        sweep_layout.addRow(self.sweep_measurement_label, self.sweep_measurement_combo)
+
+        self.sweep_start_spin = PreferredNumberSpinBox()
         self.sweep_start_spin.setRange(-120, 20000)
         self.sweep_start_spin.setValue(20)
         sweep_layout.addRow(tr("Start:"), self.sweep_start_spin)
 
-        self.sweep_end_spin = QDoubleSpinBox()
+        self.sweep_end_spin = PreferredNumberSpinBox()
         self.sweep_end_spin.setRange(-120, 20000)
         self.sweep_end_spin.setValue(20000)
         sweep_layout.addRow(tr("End:"), self.sweep_end_spin)
@@ -901,6 +1088,7 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         elif idx == 3:
             self.module.filter_type = "c_weighting"
         self.module.reset_averaging_state()
+        self._update_status_display()
 
     def on_aes17_cal_toggled(self, checked):
         self.module.aes17_calibrating = checked
@@ -999,13 +1187,34 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
     def _create_right_panel(self) -> QVBoxLayout:
         """Creates the right panel with plots."""
         right_panel = QVBoxLayout()
+        right_panel.setContentsMargins(0, 0, 0, 0)
+        right_panel.setSpacing(5)
+
+        self.status_conditions_label = QLabel()
+        self.status_conditions_label.setWordWrap(True)
+        self.status_conditions_label.setStyleSheet("font-weight: 600; padding: 2px 4px;")
+        right_panel.addWidget(self.status_conditions_label)
+
+        self.integrity_warning_label = QLabel()
+        self.integrity_warning_label.setWordWrap(True)
+        self.integrity_warning_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.integrity_warning_label.setStyleSheet(
+            "color: #ffffff; background-color: #b71c1c; font-weight: bold; padding: 5px; border-radius: 3px;"
+        )
+        self.integrity_warning_label.hide()
+        right_panel.addWidget(self.integrity_warning_label)
+
+        self.meters_group = self._create_meters_group()
+        right_panel.addWidget(self.meters_group)
+
         self.tabs = QTabWidget()
 
         self.tabs.addTab(self._create_spectrum_tab(), tr("Spectrum"))
         self.tabs.addTab(self._create_harmonics_tab(), tr("Harmonics"))
         self.tabs.addTab(self._create_sweep_result_tab(), tr("Sweep Results"))
+        self.tabs.addTab(self._create_stability_tab(), tr("Stability"))
 
-        right_panel.addWidget(self.tabs)
+        right_panel.addWidget(self.tabs, 1)
         return right_panel
 
     def _create_spectrum_tab(self) -> pg.PlotWidget:
@@ -1082,9 +1291,10 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
     def _update_sweep_y_axis_format(self):
         y_axis = self.sweep_plot.getPlotItem().getAxis("left")
+        metric_label = tr("IMD") if self._sweep_is_imd() else tr("THD+N")
 
         if self.sweep_y_unit_combo.currentText() == "Percent (%)":
-            self.sweep_plot.setLabel("left", tr("THD+N"), units="%")
+            self.sweep_plot.setLabel("left", metric_label, units="%")
             # We must maintain x-axis log mode based on the current mode
             x_log = self._is_sweep_x_log()
             self.sweep_plot.setLogMode(x=x_log, y=True)
@@ -1095,11 +1305,16 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
             ticks_log = [(np.log10(t), f"{t:g}%") for t in percent_ticks]
             y_axis.setTicks([ticks_log])
         else:
-            self.sweep_plot.setLabel("left", tr("THD+N"), units="dB")
+            self.sweep_plot.setLabel("left", metric_label, units="dB")
             x_log = self._is_sweep_x_log()
             self.sweep_plot.setLogMode(x=x_log, y=False)
             self.sweep_plot.setYRange(-140, 0)
             y_axis.setTicks(None)  # Reset to standard ticks
+
+    def _sweep_is_imd(self) -> bool:
+        return self.mode_combo.currentIndex() == 2 and (
+            self.sweep_measurement_combo.currentData() in {"smpte", "din", "ccif"}
+        )
 
     def _create_sweep_result_tab(self) -> pg.PlotWidget:
         """Creates the Sweep Results tab content."""
@@ -1124,6 +1339,59 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self._update_sweep_y_axis_format()
         return self.sweep_plot
 
+    def _create_stability_tab(self) -> QWidget:
+        stability_widget = QWidget()
+        layout = QVBoxLayout(stability_widget)
+        controls = QHBoxLayout()
+        self.stability_toggle_btn = QPushButton(tr("Start Stability Log"))
+        self.stability_toggle_btn.setCheckable(True)
+        self.stability_toggle_btn.clicked.connect(self.on_stability_toggled)
+        self.stability_clear_btn = QPushButton(tr("Clear Stability Log"))
+        self.stability_clear_btn.clicked.connect(self.clear_stability_log)
+        self.stability_save_btn = QPushButton(tr("Save Stability CSV..."))
+        self.stability_save_btn.clicked.connect(self.on_save_stability_csv)
+        self.stability_save_btn.setEnabled(False)
+        self.stability_status_label = QLabel(tr("No stability samples."))
+        self.stability_status_label.setWordWrap(True)
+        controls.addWidget(self.stability_toggle_btn)
+        controls.addWidget(self.stability_clear_btn)
+        controls.addWidget(self.stability_save_btn)
+        controls.addStretch(1)
+        layout.addLayout(controls)
+        layout.addWidget(self.stability_status_label)
+
+        self.stability_plot = pg.PlotWidget()
+        self.stability_plot.setLabel("bottom", tr("Elapsed Time"), units="s")
+        self.stability_plot.setLabel("left", tr("Level"), units="dB")
+        self.stability_plot.showGrid(x=True, y=True)
+        stability_plot_item = self.stability_plot.getPlotItem()
+        self.stability_legend = self.stability_plot.addLegend()
+        self.stability_thdn_curve = self.stability_plot.plot(pen=pg.mkPen("#ff5555", width=2), name="THD+N")
+        self.stability_thd_curve = self.stability_plot.plot(pen=pg.mkPen("#ffaa55", width=2), name="THD")
+        self.stability_gain_curve = self.stability_plot.plot(pen=pg.mkPen("#55ffff", width=2), name="Gain")
+        self.stability_noise_curve = self.stability_plot.plot(pen=pg.mkPen("#bb99ff", width=2), name="Noise")
+        self.stability_frequency_view = pg.ViewBox()
+        stability_plot_item.showAxis("right")
+        stability_plot_item.setLabel("right", tr("Frequency"), units="Hz")
+        stability_plot_item.scene().addItem(self.stability_frequency_view)
+        stability_plot_item.getAxis("right").linkToView(self.stability_frequency_view)
+        self.stability_frequency_view.setXLink(stability_plot_item)
+        stability_plot_item.vb.sigResized.connect(self._sync_stability_frequency_view)
+        self.stability_frequency_curve = pg.PlotCurveItem(pen=pg.mkPen("#66dd88", width=2))
+        self.stability_frequency_view.addItem(self.stability_frequency_curve)
+        self.stability_legend.addItem(self.stability_frequency_curve, tr("Frequency"))
+        self._sync_stability_frequency_view()
+        layout.addWidget(self.stability_plot, 1)
+        return stability_widget
+
+    def _sync_stability_frequency_view(self) -> None:
+        plot_item = self.stability_plot.getPlotItem()
+        self.stability_frequency_view.setGeometry(plot_item.vb.sceneBoundingRect())
+        self.stability_frequency_view.linkedViewChanged(
+            plot_item.vb,
+            self.stability_frequency_view.XAxis,
+        )
+
     def sync_module_with_gui(self):
         """Synchronize the measurement module state with current GUI values."""
         # 1. Generator Settings
@@ -1133,21 +1401,14 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.module.snap_to_bin_center = self.snap_check.isChecked()
 
         # 2. Signal Type (from out_mode_combo)
-        out_idx = self.out_mode_combo.currentIndex()
-        if out_idx == 0:
+        signal_key = self.out_mode_combo.currentData() or "sine"
+        if signal_key == "external":
             self.module.output_enabled = False
         else:
             self.module.output_enabled = True
-            if out_idx == 1:
-                self.module.signal_type = "sine"
-            elif out_idx == 2:
-                self.module.signal_type = "smpte"
-                self.module.imd_standard = "smpte"
-            elif out_idx == 3:
-                self.module.signal_type = "ccif"
-                self.module.imd_standard = "ccif"
-            elif out_idx == 4:
-                self.module.signal_type = "aes17"
+            self.module.signal_type = signal_key
+            if signal_key in {"smpte", "din", "ccif"}:
+                self.module.imd_standard = signal_key
 
         # 3. IMD Settings
         self.module.imd_f1 = self.imd_f1_spin.value()
@@ -1189,6 +1450,7 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
             self.tabs.setCurrentIndex(2)
 
             if idx == 1:  # Frequency Sweep
+                self.sweep_measurement_combo.setCurrentIndex(0)
                 self.sweep_start_spin.setSuffix(" Hz")
                 self.sweep_end_spin.setSuffix(" Hz")
                 self.sweep_start_spin.setValue(20)
@@ -1210,19 +1472,38 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.module.output_enabled = True
         self.module.signal_type = "sine"
 
+    def _prepare_sweep_signal(self, mode_idx: int) -> None:
+        signal_key = "sine" if mode_idx == 1 else (self.sweep_measurement_combo.currentData() or "sine")
+        self.module.output_enabled = True
+        self.module.signal_type = signal_key
+        if signal_key == "smpte":
+            self.module.imd_standard = "smpte"
+            self.module.imd_f1, self.module.imd_f2, self.module.imd_ratio = 60.0, 7000.0, 4.0
+        elif signal_key == "din":
+            self.module.imd_standard = "din"
+            self.module.imd_f1, self.module.imd_f2, self.module.imd_ratio = 250.0, 8000.0, 4.0
+        elif signal_key == "ccif":
+            self.module.imd_standard = "ccif"
+            self.module.imd_f1, self.module.imd_f2, self.module.imd_ratio = 19000.0, 20000.0, 1.0
+        self._update_ccif_warning()
+
+    def _on_sweep_measurement_changed(self, _index: int) -> None:
+        self._update_sweep_y_axis_format()
+        self._update_ccif_warning()
+
     def on_out_mode_changed(self, idx):
-        # 0: Off, 1: Sine, 2: SMPTE, 3: CCIF
+        signal_key = self.out_mode_combo.itemData(idx) or "sine"
         if self.mode_combo.currentIndex() == 0:
             self._realtime_output_mode_index = idx
 
         # Ensure calibration is reset when changing modes
-        if idx != 4:
+        if signal_key != "aes17":
             if hasattr(self, "aes17_cal_btn"):
                 self.aes17_cal_btn.setChecked(False)
                 self.aes17_cal_btn.setText(tr("Calibrate (0 dBFS)"))
             self.module.aes17_calibrating = False
 
-        if idx == 0:  # Off
+        if signal_key == "external":
             self.module.output_enabled = False
             self.gen_stack.setVisible(False)
             self.amp_spin.setEnabled(False)
@@ -1234,36 +1515,29 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
             self.amp_spin.setEnabled(True)
             self.unit_combo.setEnabled(True)
 
-            if idx == 1:  # Sine
+            if signal_key == "sine":
                 self.module.signal_type = "sine"
                 self.gen_stack.setCurrentIndex(0)
                 self.set_meters_mode("thd")
                 self.module.reset_averaging_state()
-            elif idx == 2:  # SMPTE
-                self.module.signal_type = "smpte"
-                self.module.imd_standard = "smpte"
+            elif signal_key in {"smpte", "din", "ccif"}:
+                self.module.signal_type = signal_key
+                self.module.imd_standard = signal_key
                 self.gen_stack.setCurrentIndex(1)
                 self.set_meters_mode("imd")
-                # Update IMD params
-                self.module.imd_f1 = 60.0
-                self.module.imd_f2 = 7000.0
-                self.imd_f1_spin.setValue(60.0)
-                self.imd_f2_spin.setValue(7000.0)
-                self.imd_ratio_spin.setEnabled(True)
+                presets = {
+                    "smpte": (60.0, 7000.0, 4.0),
+                    "din": (250.0, 8000.0, 4.0),
+                    "ccif": (19000.0, 20000.0, 1.0),
+                }
+                f1, f2, ratio = presets[signal_key]
+                self.module.imd_f1, self.module.imd_f2, self.module.imd_ratio = f1, f2, ratio
+                self.imd_f1_spin.setValue(f1)
+                self.imd_f2_spin.setValue(f2)
+                self.imd_ratio_spin.setValue(ratio)
+                self.imd_ratio_spin.setEnabled(signal_key != "ccif")
                 self.module.reset_averaging_state()
-            elif idx == 3:  # CCIF
-                self.module.signal_type = "ccif"
-                self.module.imd_standard = "ccif"
-                self.gen_stack.setCurrentIndex(1)
-                self.set_meters_mode("imd")
-                # Update IMD params
-                self.module.imd_f1 = 19000.0
-                self.module.imd_f2 = 20000.0
-                self.imd_f1_spin.setValue(19000.0)
-                self.imd_f2_spin.setValue(20000.0)
-                self.imd_ratio_spin.setEnabled(False)
-                self.module.reset_averaging_state()
-            elif idx == 4:  # AES17 Dynamic Range
+            elif signal_key == "aes17":
                 self.module.signal_type = "aes17"
                 self.gen_stack.setCurrentIndex(2)
                 self.set_meters_mode("aes17")
@@ -1277,30 +1551,63 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
                 self.amp_spin.setEnabled(False)
                 self.unit_combo.setEnabled(False)
                 self.module.reset_averaging_state()
+        self._refresh_calibration_controls()
+        self._update_ccif_warning()
+        self._update_status_display()
+
+    def _output_is_calibrated(self) -> bool:
+        calibration = getattr(self.module.audio_engine, "calibration", None)
+        return bool(calibration and getattr(calibration, "output_gain_is_calibrated", False))
+
+    def _input_is_calibrated(self) -> bool:
+        calibration = getattr(self.module.audio_engine, "calibration", None)
+        return bool(calibration and getattr(calibration, "input_sensitivity_is_calibrated", False))
+
+    def _refresh_calibration_controls(self) -> None:
+        calibrated = self._output_is_calibrated()
+        for combo in (self.unit_combo, self.sweep_x_unit_combo):
+            item_getter = getattr(combo.model(), "item", None)
+            for index in range(combo.count()):
+                unit = combo.itemData(index) or combo.itemText(index)
+                item = item_getter(index) if callable(item_getter) else None
+                if item is not None:
+                    item.setEnabled(calibrated or unit == "dBFS")
+
+        if not calibrated and self.unit_combo.currentText() != "dBFS":
+            self.unit_combo.setCurrentText("dBFS")
+        if not calibrated and self._get_sweep_x_unit() != "dBFS":
+            index = self.sweep_x_unit_combo.findData("dBFS")
+            if index >= 0:
+                self.sweep_x_unit_combo.setCurrentIndex(index)
+        self._update_sweep_x_controls()
 
     def on_unit_changed(self, unit):
-        # Update spin box range/value based on current amplitude
-        # Current amplitude is stored in module as Linear (0-1)
-        # But we need to convert it.
-        # Actually, let's just update the display value.
+        if unit != "dBFS" and not self._output_is_calibrated():
+            self.unit_combo.setCurrentText("dBFS")
+            return
 
         amp_linear = self.module.gen_amplitude
-        gain = self.module.audio_engine.calibration.output_gain
-
+        gain = float(getattr(self.module.audio_engine.calibration, "output_gain", 1.0) or 1.0)
         self.amp_spin.blockSignals(True)
-
-        val = linear_to_amplitude(amp_linear, unit, gain)
-
-        self.amp_spin.setValue(val)
+        if unit == "Vrms":
+            self.amp_spin.setRange(0.0, max(gain / np.sqrt(2.0), 1e-6))
+            self.amp_spin.setDecimals(6)
+        elif unit == "dBFS":
+            self.amp_spin.setRange(-120.0, 0.0)
+            self.amp_spin.setDecimals(2)
+        else:
+            self.amp_spin.setRange(-120.0, 60.0)
+            self.amp_spin.setDecimals(2)
+        self.amp_spin.setValue(linear_to_amplitude(amp_linear, unit, gain))
         self.amp_spin.blockSignals(False)
-
-        self.amp_spin.setValue(val)
-        self.amp_spin.blockSignals(False)
+        self._update_status_display()
 
     def get_linear_amplitude(self):
         val = self.amp_spin.value()
         unit = self.unit_combo.currentText()
-        gain = self.module.audio_engine.calibration.output_gain
+        if unit != "dBFS" and not self._output_is_calibrated():
+            unit = "dBFS"
+        gain = float(getattr(self.module.audio_engine.calibration, "output_gain", 1.0) or 1.0)
 
         return amplitude_to_linear(val, unit, gain)
 
@@ -1319,10 +1626,29 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
                 self.stop_sweep()
 
     def on_toggle_realtime(self, checked):
+        from PyQt6.QtWidgets import QMessageBox
+
         if checked:
             self.mode_combo.setEnabled(False)
+            self._refresh_calibration_controls()
             self.sync_module_with_gui()
-            self.module.start_analysis()
+            self._ensure_analysis_thread()
+            try:
+                self.module.start_analysis()
+            except Exception as exc:
+                logger.exception("Failed to start Distortion Analyzer")
+                self.action_btn.setChecked(False)
+                self.action_btn.setText(tr("Start Measurement"))
+                self.mode_combo.setEnabled(True)
+                self.timer.stop()
+                QMessageBox.critical(
+                    self,
+                    tr("Measurement Error"),
+                    tr("Audio stream failed to start. Please check audio device settings.") + f"\n{exc}",
+                )
+                self.apply_theme()
+                self._update_status_display()
+                return
             self.timer.start()
             self.action_btn.setText(tr("Stop Measurement"))
         else:
@@ -1331,6 +1657,7 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
             self.action_btn.setText(tr("Start Measurement"))
             self.mode_combo.setEnabled(True)
         self.apply_theme()
+        self._update_status_display()
 
     def set_meters_mode(self, mode):
         if mode == "thd" or mode == "aes17":
@@ -1366,11 +1693,10 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
             self.imd_row_widget.setVisible(True)
 
     def start_sweep(self, mode_idx):
-        # SweepWorker always performs single-tone harmonic analysis. Keep this
-        # invariant here as well as in the UI in case this method is called
-        # directly or the module state was changed programmatically.
-        self._use_sine_for_sweep()
+        from PyQt6.QtWidgets import QMessageBox
+
         self.sync_module_with_gui()
+        self._prepare_sweep_signal(mode_idx)
         self.action_btn.setText(tr("Stop Sweep"))
         self.module.sweep_results = []
         self.sweep_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
@@ -1395,18 +1721,43 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         if sweep_type == "frequency":
             if start <= 0 or end <= 0:
-                print("Error: Frequency sweep range must be positive.")
                 self.action_btn.setChecked(False)
                 self.action_btn.setText(tr("Start Measurement"))
+                QMessageBox.warning(self, tr("Measurement Error"), tr("Frequency sweep range must be positive."))
                 return
 
-        self.module.start_analysis()  # Ensure audio is running
+        if self.module.signal_type == "ccif" and self.module.imd_f2 >= self.module.audio_engine.sample_rate / 2.0:
+            self.action_btn.setChecked(False)
+            self.action_btn.setText(tr("Start Measurement"))
+            QMessageBox.warning(
+                self,
+                tr("Measurement Error"),
+                tr("CCIF tones must remain below the Nyquist frequency."),
+            )
+            return
+
+        try:
+            self._ensure_analysis_thread()
+            self.module.start_analysis()  # Ensure audio is running
+        except Exception as exc:
+            logger.exception("Failed to start Distortion Analyzer sweep")
+            self.action_btn.setChecked(False)
+            self.action_btn.setText(tr("Start Measurement"))
+            self.mode_combo.setEnabled(True)
+            QMessageBox.critical(
+                self,
+                tr("Measurement Error"),
+                tr("Audio stream failed to start. Please check audio device settings.") + f"\n{exc}",
+            )
+            self._update_status_display()
+            return
         self.mode_combo.setEnabled(False)
         self.sweep_worker = SweepWorker(self.module, sweep_type, start, end, steps)
         self.sweep_worker.result_ready.connect(self.on_sweep_result)
         self.sweep_worker.finished.connect(self.on_sweep_finished)
         self.sweep_worker.start()
         self.apply_theme()
+        self._update_status_display()
 
     def _update_sweep_chart(self):
         if not self.sweep_data:
@@ -1425,6 +1776,7 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.action_btn.setChecked(False)
         self.mode_combo.setEnabled(True)
         self.apply_theme()
+        self._update_status_display()
 
     def on_toggle_view(self, checked):
         if checked:
@@ -1437,17 +1789,26 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
     def on_sweep_result(self, result):
         if result is not None:
             self.module.sweep_results.append(result)
+            self._update_status_display()
 
         if not self.module.sweep_results:
             return
 
+        valid_results = [r for r in self.module.sweep_results if r.get("measurement_valid", True)]
+        if not valid_results:
+            self.sweep_curve.clear()
+            return
+
         # Update Plot
-        x_data = [self._convert_sweep_x_value(r["sweep_param"]) for r in self.module.sweep_results]
+        x_data = [self._convert_sweep_x_value(r["sweep_param"]) for r in valid_results]
+        is_imd = any(result.get("type") == "imd" or "imd" in result for result in valid_results)
 
         if self.sweep_y_unit_combo.currentText() == "Percent (%)":
-            y_data = [max(r["thdn_percent"], 1e-6) for r in self.module.sweep_results]
+            key = "imd" if is_imd else "thdn_percent"
+            y_data = [max(float(r[key]), 1e-6) for r in valid_results]
         else:
-            y_data = [r["thdn_db"] for r in self.module.sweep_results]
+            key = "imd_db" if is_imd else "thdn_db"
+            y_data = [r[key] for r in valid_results]
 
         x_plot = np.array(x_data, dtype=float)
         y_plot = np.array(y_data, dtype=float)
@@ -1570,22 +1931,103 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.update_actual_frequency()
         self.module.reset_averaging_state()
 
+    def on_imd_f1_changed(self, value):
+        self.module.imd_f1 = value
+        self.module.reset_averaging_state()
+        self._update_ccif_warning()
+
+    def on_imd_f2_changed(self, value):
+        self.module.imd_f2 = value
+        self.module.reset_averaging_state()
+        self._update_ccif_warning()
+
+    def on_imd_ratio_changed(self, value):
+        self.module.imd_ratio = value
+        self.module.reset_averaging_state()
+
     def on_channel_changed(self, idx):
         self.module.output_channel = idx
         self.module.reset_averaging_state()
+        self._update_status_display()
 
     def on_in_channel_changed(self, idx):
         self.module.input_channel = idx
         self.module.reset_averaging_state()
+        self._update_status_display()
 
     def on_avg_changed(self, val):
         self.module.average_count = val
         self.module.reset_averaging_state()
+        self._update_status_display()
+
+    def _translated_integrity_reason(self, reason: str) -> str:
+        translations = {
+            "Audio stream XRUN": tr("Audio stream XRUN"),
+            "Non-finite output samples": tr("Non-finite output samples"),
+            "Generated output exceeded full scale": tr("Generated output exceeded full scale"),
+            "Configured output channel is unavailable": tr("Configured output channel is unavailable"),
+            "Output buffer is unavailable": tr("Output buffer is unavailable"),
+            "Input buffer is unavailable": tr("Input buffer is unavailable"),
+            "Input buffer shape is invalid": tr("Input buffer shape is invalid"),
+            "Input frame count mismatch": tr("Input frame count mismatch"),
+            "Output frame count mismatch": tr("Output frame count mismatch"),
+            "Configured input channel is unavailable": tr("Configured input channel is unavailable"),
+            "Non-finite input samples": tr("Non-finite input samples"),
+            "Input clipping detected": tr("Input clipping detected"),
+        }
+        return translations.get(reason, tr("Unknown acquisition error"))
+
+    def _update_status_display(self) -> None:
+        if not hasattr(self, "status_conditions_label"):
+            return
+        input_channel = tr("Left (Ch 1)") if self.module.input_channel == 0 else tr("Right (Ch 2)")
+        output_channel = tr("Left (Ch 1)") if self.module.output_channel == 0 else tr("Right (Ch 2)")
+        input_cal = tr("CAL") if self._input_is_calibrated() else tr("UNCAL")
+        output_cal = tr("CAL") if self._output_is_calibrated() else tr("UNCAL")
+        filter_name = self.filter_combo.currentText() if hasattr(self, "filter_combo") else tr("None")
+        self.status_conditions_label.setText(
+            tr("Input {0} [{1}] | Output {2} [{3}] | {4} Hz | FFT {5} | {6} | Avg {7}").format(
+                input_channel,
+                input_cal,
+                output_channel,
+                output_cal,
+                int(self.module.audio_engine.sample_rate),
+                self.module.buffer_size,
+                filter_name,
+                self.module.average_count,
+            )
+        )
+
+        integrity = self.module.get_integrity_snapshot()
+        reasons = [self._translated_integrity_reason(reason) for reason in integrity["reasons"]]
+        self.integrity_warning_label.setVisible(not integrity["measurement_valid"])
+        if reasons:
+            self.integrity_warning_label.setText(tr("INVALID — {0}").format("; ".join(reasons)))
+
+    def _update_ccif_warning(self) -> None:
+        if not hasattr(self, "ccif_warning_label"):
+            return
+        if self.mode_combo.currentIndex() == 0:
+            is_ccif = self.out_mode_combo.currentData() == "ccif"
+            tone = self.imd_f2_spin.value()
+        else:
+            is_ccif = self.mode_combo.currentIndex() == 2 and self.sweep_measurement_combo.currentData() == "ccif"
+            tone = 20000.0
+        nyquist = float(self.module.audio_engine.sample_rate) / 2.0
+        self.ccif_warning_label.setVisible(is_ccif and tone >= 0.8 * nyquist)
+
+    def showEvent(self, event):
+        self._refresh_calibration_controls()
+        self._update_status_display()
+        self._update_ccif_warning()
+        super().showEvent(event)
 
     def _update_sweep_x_controls(self):
         is_amplitude = self.mode_combo.currentIndex() == 2
         unit = self._get_sweep_x_unit()
 
+        self.sweep_measurement_label.setVisible(is_amplitude)
+        self.sweep_measurement_combo.setVisible(is_amplitude)
         self.sweep_x_unit_label.setVisible(is_amplitude)
         self.sweep_x_unit_combo.setVisible(is_amplitude)
         self.dummy_load_label.setVisible(is_amplitude)
@@ -1593,8 +2035,7 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.dummy_load_spin.setEnabled(is_amplitude and unit in ("W", "dBW"))
 
         # Warning Visibility
-        needs_cal = unit in ("dBV", "Vrms", "W", "dBW")
-        self.x_unit_warning_label.setVisible(is_amplitude and needs_cal)
+        self.x_unit_warning_label.setVisible(is_amplitude and not self._output_is_calibrated())
 
         # Tooltips
         if is_amplitude:
@@ -1607,7 +2048,10 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
     def _get_sweep_x_unit(self) -> str:
         if self.mode_combo.currentIndex() == 1:
             return "Hz"
-        return self.sweep_x_unit_combo.currentData() or self.sweep_x_unit_combo.currentText()
+        unit = self.sweep_x_unit_combo.currentData() or self.sweep_x_unit_combo.currentText()
+        if unit != "dBFS" and not self._output_is_calibrated():
+            return "dBFS"
+        return unit
 
     def _is_sweep_x_log(self) -> bool:
         if self.mode_combo.currentIndex() == 1:
@@ -1615,21 +2059,29 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         unit = self._get_sweep_x_unit()
         return unit in ("W", "Vrms")
 
+    def _calibrated_output_gain(self) -> float:
+        if not self._output_is_calibrated():
+            raise RuntimeError("Output calibration is required for physical units")
+        gain = float(getattr(self.module.audio_engine.calibration, "output_gain", 0.0) or 0.0)
+        if not np.isfinite(gain) or gain <= 0.0:
+            raise RuntimeError("Output calibration is invalid")
+        return gain
+
     def _dbfs_to_dbv(self, dbfs: float) -> float:
-        gain = self.module.audio_engine.calibration.output_gain or 1.0
+        gain = self._calibrated_output_gain()
         amp_linear = 10 ** (dbfs / 20)
         return linear_to_amplitude(amp_linear, "dBV", gain)
 
     def _dbfs_to_power_w(self, dbfs: float) -> float:
         resistance = max(self.dummy_load_spin.value(), 1e-6)
-        gain = self.module.audio_engine.calibration.output_gain or 1.0
+        gain = self._calibrated_output_gain()
         amp_linear = 10 ** (dbfs / 20)
         v_peak = amp_linear * gain
         v_rms = v_peak / np.sqrt(2)
         return (v_rms * v_rms) / resistance
 
     def _dbfs_to_vrms(self, dbfs: float) -> float:
-        gain = self.module.audio_engine.calibration.output_gain or 1.0
+        gain = self._calibrated_output_gain()
         amp_linear = 10 ** (dbfs / 20)
         v_peak = amp_linear * gain
         return v_peak / np.sqrt(2)
@@ -1718,6 +2170,23 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         if not self.module.is_running:
             return
 
+        is_active = getattr(self.module.audio_engine, "is_active", None)
+        if callable(is_active):
+            try:
+                stream_active = bool(is_active())
+            except Exception:
+                stream_active = False
+            if not stream_active:
+                self.module.invalidate_measurement("Audio stream XRUN", flag="xrun")
+                self.module.stop_analysis()
+                self.timer.stop()
+                self.action_btn.setChecked(False)
+                self.action_btn.setText(tr("Start Measurement"))
+                self.mode_combo.setEnabled(True)
+                self._update_status_display()
+                self.apply_theme()
+                return
+
         if self.analysis_pending:
             return
 
@@ -1744,6 +2213,16 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         if not self.module.is_running:
             return
 
+        integrity = self.module.get_integrity_snapshot()
+        results["measurement_valid"] = integrity["measurement_valid"]
+        results["invalid_reasons"] = list(integrity["reasons"])
+        self._update_status_display()
+        if not integrity["measurement_valid"]:
+            self.module.current_result = results
+            self._set_invalid_measurement_display()
+            self._record_stability_sample(results)
+            return
+
         res_type = results.get("type", "harmonics")
         sample_rate = self.module.audio_engine.sample_rate
         # Buffer length can be inferred from fft_data or mag_linear if passed, but easiest if consistent
@@ -1761,7 +2240,9 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
             res = self.module._apply_imd_averaging(results)
 
             self.imd_label.setText(self._format_percent(res["imd"]))
-            self.imd_db_label.setText(tr("{0:.3f} dB").format(res["imd_db"]))
+            self.imd_db_label.setText(
+                tr("{0:.3f} dB").format(res.get("imd_db", -100.0))
+            )
 
             # Update Detailed Label for IMD
             window_name = self.module.window_type.capitalize()
@@ -1775,7 +2256,7 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
                 f"{tr('Bandwidth:'):<15} {'20 kHz':>10}\n"
                 "--------------------------------\n"
                 f"{tr('IMD:'):<15} {res['imd']:>10.5f} %\n"
-                f"{tr('IMD (dB):'):<15} {res['imd_db']:>10.1f} dB\n"
+                f"{tr('IMD (dB):'):<15} {res.get('imd_db', -100.0):>10.1f} dB\n"
                 "--------------------------------"
             )
             self.detailed_label.setText(detailed_text)
@@ -1902,8 +2383,248 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
                 freqs = fft_manager.rfftfreq(n_fft, 1 / sample_rate)
                 self.spectrum_curve.setData(freqs[1:], mag[1:])
 
+            self._advance_aes17_workflow(results)
+            self._record_stability_sample(results)
+
+    def _set_invalid_measurement_display(self) -> None:
+        invalid = tr("INVALID")
+        self.thdn_label.setText(invalid)
+        self.thdn_db_label.setText(invalid)
+        self.thd_label.setText(invalid)
+        self.sinad_label.setText(invalid)
+        self.imd_label.setText(invalid)
+        self.imd_db_label.setText(invalid)
+        self.detailed_label.setText(tr("Measurement invalid. Start a new run after resolving the acquisition warning."))
+        self.spectrum_curve.clear()
+        self.harmonics_table.setRowCount(0)
+        self.harmonics_bar_item.setOpts(x=[], height=[])
+        if self._aes17_workflow_state != "idle":
+            self._finish_aes17_workflow(False, tr("AES17 validation failed because the acquisition became invalid."))
+
+    def on_aes17_guide_toggled(self, checked: bool) -> None:
+        if not checked:
+            if self._aes17_workflow_state != "idle":
+                self._finish_aes17_workflow(False, tr("Guided AES17 was cancelled."), stop_measurement=False)
+            return
+
+        self.mode_combo.setCurrentIndex(0)
+        aes_index = self.out_mode_combo.findData("aes17")
+        if aes_index >= 0:
+            self.out_mode_combo.setCurrentIndex(aes_index)
+        self.module.aes17_report = None
+        self.module.aes17_calibrating = True
+        self.module.reset_averaging_state()
+        self.aes17_cal_btn.setChecked(True)
+        self.aes17_cal_btn.setText(tr("Calibrating (0 dBFS)..."))
+        self.aes17_report_label.setText(tr("AES17: validating the 0 dBFS calibration level..."))
+        self.aes17_save_btn.setEnabled(False)
+        self._aes17_workflow_state = "calibration_wait"
+        self._aes17_deadline = time.monotonic() + 0.5
+        self._aes17_calibration_level = None
+
+        if not self.module.is_running:
+            self.action_btn.setChecked(True)
+            self.on_toggle_realtime(True)
+        if not self.module.is_running:
+            self._finish_aes17_workflow(False, tr("AES17 could not start the audio stream."), stop_measurement=False)
+
+    def _advance_aes17_workflow(self, results: dict) -> None:
+        if self._aes17_workflow_state == "idle" or time.monotonic() < self._aes17_deadline:
+            return
+
+        input_level = float(results.get("basic_wave", {}).get("amplitude_dbfs", -240.0))
+        if self._aes17_workflow_state == "calibration_wait":
+            if input_level >= -0.1:
+                self._finish_aes17_workflow(False, tr("AES17 calibration input clipped."))
+                return
+            if input_level < -6.0:
+                self._finish_aes17_workflow(False, tr("AES17 calibration input is too low."))
+                return
+            self._aes17_calibration_level = input_level
+            self.module.aes17_calibrating = False
+            self.module.reset_averaging_state()
+            self.aes17_cal_btn.setChecked(False)
+            self.aes17_cal_btn.setText(tr("Calibrate (0 dBFS)"))
+            self.thdn_title_label.setText(tr("Dyn Range:"))
+            self.aes17_report_label.setText(tr("AES17: settling at -60 dBFS before measurement..."))
+            self._aes17_workflow_state = "measurement_wait"
+            self._aes17_deadline = time.monotonic() + max(1.0, self.module.average_count * 0.1)
+            return
+
+        if self._aes17_workflow_state == "measurement_wait":
+            dynamic_range = -float(results["thdn_db"]) + 60.0
+            integrity = self.module.get_integrity_snapshot()
+            self.module.aes17_report = {
+                "schema": "measurelab.aes17_dynamic_range.v1",
+                "created_at_utc": datetime.now(timezone.utc).isoformat(),
+                "calibration_input_dbfs": self._aes17_calibration_level,
+                "measurement_input_dbfs": input_level,
+                "dynamic_range_db": dynamic_range,
+                "thdn_db": float(results["thdn_db"]),
+                "filter": "AES17 20 kHz",
+                "frequency_hz": 997.0,
+                "test_level_dbfs": -60.0,
+                "average_count": self.module.average_count,
+                "sample_rate_hz": float(self.module.audio_engine.sample_rate),
+                "input_calibrated": self._input_is_calibrated(),
+                "output_calibrated": self._output_is_calibrated(),
+                "measurement_valid": bool(integrity["measurement_valid"]),
+                "validation_failures": list(integrity["reasons"]),
+            }
+            self._finish_aes17_workflow(
+                True,
+                tr("AES17 complete: {0:.2f} dB dynamic range.").format(dynamic_range),
+            )
+
+    def _finish_aes17_workflow(self, success: bool, message: str, *, stop_measurement: bool = True) -> None:
+        self._aes17_workflow_state = "idle"
+        self.module.aes17_calibrating = False
+        self.aes17_cal_btn.setChecked(False)
+        self.aes17_cal_btn.setText(tr("Calibrate (0 dBFS)"))
+        self.aes17_guide_btn.blockSignals(True)
+        self.aes17_guide_btn.setChecked(False)
+        self.aes17_guide_btn.blockSignals(False)
+        self.aes17_report_label.setText(message)
+        self.aes17_save_btn.setEnabled(success and self.module.aes17_report is not None)
+        if stop_measurement and self.module.is_running:
+            self.action_btn.setChecked(False)
+            self.on_toggle_realtime(False)
+
+    def on_save_aes17_report(self) -> None:
+        from PyQt6.QtWidgets import QFileDialog
+
+        report = self.module.aes17_report
+        if not report:
+            return
+        file_path, selected_filter = QFileDialog.getSaveFileName(
+            self,
+            tr("Save AES17 Report"),
+            "aes17_dynamic_range.json",
+            tr("JSON Files (*.json);;CSV Files (*.csv)"),
+        )
+        if not file_path:
+            return
+        path = Path(file_path)
+        if "CSV" in selected_filter or path.suffix.lower() == ".csv":
+            with path.open("w", encoding="utf-8", newline="") as handle:
+                writer = csv.writer(handle)
+                writer.writerow(["field", "value"])
+                writer.writerows(report.items())
+        else:
+            if path.suffix.lower() != ".json":
+                path = path.with_suffix(".json")
+            with path.open("w", encoding="utf-8") as handle:
+                json.dump(report, handle, ensure_ascii=False, indent=2)
+
+    def on_stability_toggled(self, checked: bool) -> None:
+        if checked and not self.module.is_running:
+            self.action_btn.setChecked(True)
+            self.on_toggle_realtime(True)
+        if checked and not self.module.is_running:
+            self.stability_toggle_btn.setChecked(False)
+            return
+        self.stability_logging = checked
+        if checked:
+            if not self.stability_records:
+                self.stability_started_at = time.monotonic()
+            self.stability_last_recorded_at = 0.0
+            self.stability_toggle_btn.setText(tr("Stop Stability Log"))
+        else:
+            self.stability_toggle_btn.setText(tr("Start Stability Log"))
+
+    def clear_stability_log(self) -> None:
+        self.stability_records.clear()
+        self.stability_started_at = time.monotonic()
+        self.stability_last_recorded_at = 0.0
+        for curve in (
+            self.stability_thdn_curve,
+            self.stability_thd_curve,
+            self.stability_gain_curve,
+            self.stability_noise_curve,
+            self.stability_frequency_curve,
+        ):
+            curve.clear()
+        self.stability_status_label.setText(tr("No stability samples."))
+        self.stability_save_btn.setEnabled(False)
+
+    def _record_stability_sample(self, results: dict) -> None:
+        if not self.stability_logging or results.get("type", "harmonics") != "harmonics":
+            return
+        now = time.monotonic()
+        if self.stability_last_recorded_at and now - self.stability_last_recorded_at < 1.0:
+            return
+        self.stability_last_recorded_at = now
+        if not self.stability_started_at:
+            self.stability_started_at = now
+
+        basic_wave = results.get("basic_wave", {})
+        thdn_db = float(results.get("thdn_db", np.nan))
+        thd_db = float(results.get("thd_db", np.nan))
+        input_level = float(basic_wave.get("amplitude_dbfs", np.nan))
+        output_level = 20.0 * np.log10(max(self.module.gen_amplitude, 1e-12))
+        gain_db = input_level - output_level if self.module.output_enabled else np.nan
+        thdn_linear = 10.0 ** (thdn_db / 20.0) if np.isfinite(thdn_db) else np.nan
+        thd_linear = 10.0 ** (thd_db / 20.0) if np.isfinite(thd_db) else np.nan
+        noise_linear = np.sqrt(max(thdn_linear**2 - thd_linear**2, 0.0)) if np.isfinite(thdn_linear) else np.nan
+        noise_db = 20.0 * np.log10(max(noise_linear, 1e-12)) if np.isfinite(noise_linear) else np.nan
+        integrity = self.module.get_integrity_snapshot()
+        self.stability_records.append(
+            {
+                "elapsed_s": now - self.stability_started_at,
+                "frequency_hz": float(basic_wave.get("frequency", np.nan)),
+                "input_level_dbfs": input_level,
+                "gain_db": gain_db,
+                "thd_db": thd_db,
+                "thdn_db": thdn_db,
+                "noise_db": noise_db,
+                "sinad_db": float(results.get("sinad_db", np.nan)),
+                "measurement_valid": bool(integrity["measurement_valid"]),
+                "invalid_reasons": "; ".join(integrity["reasons"]),
+            }
+        )
+        self._refresh_stability_plot()
+
+    def _refresh_stability_plot(self) -> None:
+        valid_records = [record for record in self.stability_records if record["measurement_valid"]]
+        if valid_records:
+            elapsed = [record["elapsed_s"] for record in valid_records]
+            self.stability_thdn_curve.setData(elapsed, [record["thdn_db"] for record in valid_records])
+            self.stability_thd_curve.setData(elapsed, [record["thd_db"] for record in valid_records])
+            self.stability_gain_curve.setData(elapsed, [record["gain_db"] for record in valid_records])
+            self.stability_noise_curve.setData(elapsed, [record["noise_db"] for record in valid_records])
+            self.stability_frequency_curve.setData(
+                elapsed,
+                [record["frequency_hz"] for record in valid_records],
+            )
+        self.stability_status_label.setText(
+            tr("{0} stability samples ({1} valid)").format(len(self.stability_records), len(valid_records))
+        )
+        self.stability_save_btn.setEnabled(bool(self.stability_records))
+
+    def on_save_stability_csv(self) -> None:
+        from PyQt6.QtWidgets import QFileDialog
+
+        if not self.stability_records:
+            return
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            tr("Save Stability CSV"),
+            "distortion_stability.csv",
+            tr("CSV Files (*.csv)"),
+        )
+        if not file_path:
+            return
+        path = Path(file_path)
+        if path.suffix.lower() != ".csv":
+            path = path.with_suffix(".csv")
+        with path.open("w", encoding="utf-8", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=list(self.stability_records[0]))
+            writer.writeheader()
+            writer.writerows(self.stability_records)
+
     def get_comparable_data(self) -> list[ComparisonTrace]:
-        if not self.module.sweep_results:
+        valid_results = [r for r in self.module.sweep_results if r.get("measurement_valid", True)]
+        if not valid_results:
             return []
 
         import uuid
@@ -1937,16 +2658,18 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
             else:
                 x_axis = AxisMetadata(dimension="amplitude", base_unit="dBFS", display_unit="dBFS", is_log=False)
 
-        x_data = [self._convert_sweep_x_value(r["sweep_param"]) for r in self.module.sweep_results]
+        x_data = [self._convert_sweep_x_value(r["sweep_param"]) for r in valid_results]
 
-        # Y-Axis configuration (THD+N only)
+        is_imd = any(result.get("type") == "imd" or "imd" in result for result in valid_results)
         y_unit = self.sweep_y_unit_combo.currentText()
         if y_unit == "Percent (%)":
             y_axis = AxisMetadata(dimension="distortion", base_unit="%", display_unit="%", is_log=True)
-            y_data = [r["thdn_percent"] for r in self.module.sweep_results]
+            key = "imd" if is_imd else "thdn_percent"
+            y_data = [r[key] for r in valid_results]
         else:
             y_axis = AxisMetadata(dimension="distortion", base_unit="dB", display_unit="dB", is_log=False)
-            y_data = [r["thdn_db"] for r in self.module.sweep_results]
+            key = "imd_db" if is_imd else "thdn_db"
+            y_data = [r[key] for r in valid_results]
 
         try:
             input_sensitivity = self.module.audio_engine.calibration.input_sensitivity
@@ -1977,8 +2700,10 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
             calibration=calibration,
             metadata={
                 "sweep_type": "frequency" if is_freq_sweep else "amplitude",
+                "measurement": self.sweep_measurement_combo.currentData() if not is_freq_sweep else "sine",
                 "y_unit": y_unit,
                 "filter_type": str(self.module.filter_type),
+                "invalid_point_count": len(self.module.sweep_results) - len(valid_results),
             },
         )
 

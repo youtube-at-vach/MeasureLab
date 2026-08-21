@@ -755,13 +755,15 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         is_calibrated, _factor, _unit = self.module.get_amplitude_display_state()
         if is_calibrated:
             self.meas_l_label.setText(
-                tr("L: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(
-                    measurements["l_rms"], measurements["l_vpp"]
+                tr("L: Vrms: {0}  Vpp: {1}").format(
+                    format_si(measurements["l_rms"], "V"),
+                    format_si(measurements["l_vpp"], "V"),
                 )
             )
             self.meas_r_label.setText(
-                tr("R: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(
-                    measurements["r_rms"], measurements["r_vpp"]
+                tr("R: Vrms: {0}  Vpp: {1}").format(
+                    format_si(measurements["r_rms"], "V"),
+                    format_si(measurements["r_vpp"], "V"),
                 )
             )
         else:

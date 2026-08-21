@@ -67,8 +67,8 @@ class TestOscilloscopeCalibrationDisplay(unittest.TestCase):
         self.widget._set_measurement_labels(measurements)
 
         self.assertEqual(self.widget.calibration_status_label.text(), "Input: Calibrated (2 V/FS)")
-        self.assertIn("0.816 V", self.widget.meas_l_label.text())
-        self.assertIn("2.000 V", self.widget.meas_l_label.text())
+        self.assertIn("816.5 mV", self.widget.meas_l_label.text())
+        self.assertIn("2 V", self.widget.meas_l_label.text())
 
         self.widget.latest_t = np.array([0.0, 1.0])
         self.widget.latest_data = np.array([[0.0, 0.0], [0.5, 0.0]])
@@ -80,6 +80,15 @@ class TestOscilloscopeCalibrationDisplay(unittest.TestCase):
         cursor_text = self.widget.cursor_info_label.text()
         self.assertIn("V1: 0.000V", cursor_text)
         self.assertIn("V2: 1.000V", cursor_text)
+
+    def test_calibrated_measurements_use_si_voltage_prefixes(self):
+        self.engine.calibration.input_sensitivity_is_calibrated = True
+        self.widget._set_measurement_labels(
+            {"l_rms": 0.00125, "l_vpp": 0.0000025, "r_rms": 1.25, "r_vpp": 2500.0}
+        )
+
+        self.assertEqual(self.widget.meas_l_label.text(), "L: Vrms: 1.25 mV  Vpp: 2.5 µV")
+        self.assertEqual(self.widget.meas_r_label.text(), "R: Vrms: 1.25 V  Vpp: 2.5 kV")
 
     def test_comparison_trace_unit_matches_calibration_state(self):
         self.module.show_right = False

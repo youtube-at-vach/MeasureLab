@@ -27,7 +27,7 @@ def test_amplitude_clamping():
     huge_val = 1e100  # Fits in float64, but huge for amplitude
     da.gen_amplitude = huge_val
     print(f"Set 1e100 -> {da.gen_amplitude}")
-    assert da.gen_amplitude <= 10.0
+    assert da.gen_amplitude == 1.0
 
     # Test Negative
     da.gen_amplitude = -1.0

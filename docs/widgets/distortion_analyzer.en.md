@@ -35,7 +35,7 @@ This tool measures the following values:
 
 ### Measurement Modes (Mode)
 
-**Note**: During sweep measurements, the system is automatically locked to a single-tone (sine wave) harmonic analysis mode to prevent IMD (Intermodulation Distortion) signals.
+**Note**: Frequency sweeps use a single sine tone for THD+N analysis. Amplitude sweeps can measure sine THD+N or SMPTE, DIN, and CCIF IMD.
 
 #### Real-time
 
@@ -63,8 +63,15 @@ Measures by continuously changing the frequency from low to high tones, like swe
 Measures by changing the volume from small to large.
 
 * **Use Case**: Ideal for finding the maximum output of an amplifier (how far you can raise it before it starts to distort = clipping point).
-* **Settings**: Set Start (starting volume) and End (ending volume) in dBFS units.
+* **Settings**: Set Start and End levels, then select `THD+N (Sine)`, `SMPTE IMD`, `DIN IMD`, or `CCIF IMD`.
 * **Sweep Results**: Results are plotted on a graph. The Y-axis unit can be selected from `dB` or `Percent (%)`, and when displayed in percent, it automatically scales to an approximately logarithmic view.
+* Invalid measurement points are excluded from the plot and comparison traces.
+
+#### Stability
+
+For long-term warm-up and stability checks, the logger records frequency, input level, gain, THD, THD+N, noise, SINAD, and measurement validity once per second. The dB metrics and frequency use separate Y axes, and all records can be exported to CSV.
+
+Without a temperature sensor, these trends alone cannot be attributed specifically to thermal drift.
 
 ## Settings
 
@@ -74,8 +81,8 @@ Settings for the test signal used for measurement.
 
 * **Signal Generator**:
     * **Sine Wave**: A basic sine wave. Used for THD measurement.
-    * **SMPTE / CCIF**: Special pair signals for IMD measurement.
-    * **AES17 Dynamic Range (-60dBFS)**: Special signal and measurement mode for testing Dynamic Range using a standard 1kHz tone at -60dBFS.
+    * **SMPTE / DIN / CCIF**: Dual-tone signals for IMD measurement. CCIF uses tones near 19 kHz and 20 kHz, so check the interface-bandwidth and Nyquist-margin warning.
+    * **AES17 Dynamic Range (-60dBFS)**: Measures dynamic range with a 997 Hz tone at -60 dBFS and the AES17 20 kHz filter. **Run Guided AES17** sequences full-scale level validation, clipping checks, settling, measurement, and report generation.
 * **Frequency**: Frequency of the sine wave. Standard is `1000 Hz`.
 * **Bin Center**: When checked, automatically snaps the frequency to the nearest FFT bin center based on the current FFT settings (buffer size) to prevent spectral leakage. Useful for accurate distortion measurements.
 * **Actual Freq**: Displays the exact frequency being generated when the Bin Center feature is enabled.
@@ -84,6 +91,7 @@ Settings for the test signal used for measurement.
     * **dBV**: Relative to 1Vrms.
     * **dBu**: Relative to 0.775Vrms.
     * **Vrms**: Voltage RMS.
+    * Without output calibration, physical units are disabled and the control falls back to safe `dBFS` operation.
     * When measuring an amplifier, do not set it to maximum volume immediately; raise it gradually from a low value.
 * **Signal Generator Mode**: Select `Off (External Source)` when using an external CD player or similar as the sound source.
 
@@ -101,6 +109,12 @@ Settings for the test signal used for measurement.
 * **Averaging**
     * **Avg Count**: Sets how many measurements to average to stabilize the values.
     * Increasing the value stabilizes the display, but reaction to changes becomes slower.
+
+## Measurement Integrity and Calibration Status
+
+The status line always shows the input and output channels, `CAL` / `UNCAL`, sample rate, FFT size, filter, and averaging count.
+
+Input clipping, XRUNs, frame gaps, non-finite data, and generated output above full scale latch the current run as `INVALID`. Results are not presented or exported as valid until the condition is resolved and a new measurement is started.
 
 ## Usage Examples
 

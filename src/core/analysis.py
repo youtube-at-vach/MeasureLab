@@ -1085,6 +1085,7 @@ class AudioCalc:
             return f_mod
 
         sum_sq_sidebands = 0.0
+        products = []
         for n in range(1, num_sidebands + 1):
             sb_upper = _get_aliased_frequency(f2 + n * f1, f_nyq)
             sb_lower = _get_aliased_frequency(f2 - n * f1, f_nyq)
@@ -1093,9 +1094,34 @@ class AudioCalc:
             amp_lower = AudioCalc._find_peak(mag, freqs, sb_lower)
 
             sum_sq_sidebands += amp_upper**2 + amp_lower**2
+            for side, frequency, amplitude in (
+                ("lower", sb_lower, amp_lower),
+                ("upper", sb_upper, amp_upper),
+            ):
+                ratio = amplitude / amp_f2 if amp_f2 > 0 else 0.0
+                products.append(
+                    {
+                        "order": n,
+                        "side": side,
+                        "frequency": float(frequency),
+                        "amplitude_linear": float(amplitude),
+                        "amplitude_dbr": float(20 * np.log10(ratio)) if ratio > 1e-12 else -240.0,
+                    }
+                )
 
         imd = np.sqrt(sum_sq_sidebands) / amp_f2
-        return {"imd": imd * 100, "imd_db": 20 * np.log10(imd) if imd > 1e-9 else -100.0}
+        return {
+            "imd": imd * 100,
+            "imd_db": 20 * np.log10(imd) if imd > 1e-9 else -100.0,
+            "products": products,
+        }
+
+    @staticmethod
+    def calculate_imd_din(mag, freqs, f1=250.0, f2=8000.0):
+        """Calculate DIN 45403 IMD products using the standard 250 Hz/8 kHz pair."""
+        result = AudioCalc.calculate_imd_smpte(mag, freqs, f1, f2, num_sidebands=5)
+        result["standard"] = "DIN 45403"
+        return result
 
     @staticmethod
     def calculate_imd_ccif(mag, freqs, f1, f2):
@@ -1134,8 +1160,27 @@ class AudioCalc:
 
         distortion_sum_sq = amp_d2**2 + amp_d3_low**2 + amp_d3_high**2
         imd = np.sqrt(distortion_sum_sq) / total_amp
+        products = []
+        for name, frequency, amplitude in (
+            ("d2", d2_freq, amp_d2),
+            ("d3_low", d3_low, amp_d3_low),
+            ("d3_high", d3_high, amp_d3_high),
+        ):
+            ratio = amplitude / total_amp if total_amp > 0 else 0.0
+            products.append(
+                {
+                    "name": name,
+                    "frequency": float(frequency),
+                    "amplitude_linear": float(amplitude),
+                    "amplitude_dbr": float(20 * np.log10(ratio)) if ratio > 1e-12 else -240.0,
+                }
+            )
 
-        return {"imd": imd * 100, "imd_db": 20 * np.log10(imd) if imd > 1e-9 else -100.0}
+        return {
+            "imd": imd * 100,
+            "imd_db": 20 * np.log10(imd) if imd > 1e-9 else -100.0,
+            "products": products,
+        }
 
     @staticmethod
     def calculate_multitone_tdn(mag, freqs, tone_freqs, window_width_pct=0.05):

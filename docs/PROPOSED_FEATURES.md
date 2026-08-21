@@ -65,18 +65,12 @@ rates, and buffer sizes.
 
 **Target:** Distortion Analyzer.
 
-**Status:** Selected; real-time SMPTE and CCIF IMD are implemented.
+**Status:** Implemented.
 
-The Distortion Analyzer already generates and measures SMPTE and CCIF dual-tone
-signals. Its current frequency and amplitude sweep paths deliberately force a
-single sine wave, so they do not perform IMD sweeps.
-
-Remaining scope:
-
-* Add amplitude sweeps for SMPTE, DIN, and CCIF modes.
-* Add the DIN preset and its product calculation.
-* Store IMD percentage, IMD dB, and individual product levels per step.
-* Warn when CCIF tones approach the measured DAC/ADC bandwidth limit.
+The Distortion Analyzer generates and measures SMPTE, DIN, and CCIF dual-tone
+signals. Amplitude sweeps store IMD percentage, IMD dB, individual product
+levels, and measurement validity at every step. The UI warns when CCIF tones
+approach the interface bandwidth or Nyquist limit.
 
 SMPTE and DIN are suitable for common audio devices. CCIF remains useful, but
 results near 19 kHz and 20 kHz must be interpreted with the interface response
@@ -126,16 +120,12 @@ This is a post-processing feature and therefore has low device dependence.
 
 **Target:** Distortion Analyzer.
 
-**Status:** Selected as a workflow improvement; the measurement is implemented.
+**Status:** Implemented.
 
-The existing analyzer provides the 997 Hz at -60 dBFS signal, 0 dBFS
-calibration mode, AES17 20 kHz low-pass filter, and dynamic-range result.
-
-Remaining scope:
-
-* Combine calibration, clipping validation, settling, averaging, measurement,
-  and report generation into a guided sequence.
-* Record validation failures and calibration state in the result.
+The analyzer provides a guided sequence for the 0 dBFS level check, clipping
+validation, settling, the 997 Hz at -60 dBFS measurement with AES17 20 kHz
+filtering, and JSON/CSV report generation. Reports include calibration state,
+measurement validity, and validation failures.
 
 This item must not be implemented as a second AES17 measurement engine.
 
@@ -143,12 +133,12 @@ This item must not be implemented as a second AES17 measurement engine.
 
 **Target:** Distortion Analyzer.
 
-**Status:** Selected with renamed scope.
+**Status:** Implemented with renamed scope.
 
 The original proposal called this a thermal drift logger. Without a temperature
-sensor, MeasureLab cannot attribute a change to temperature. The feature should
-therefore report gain, THD, THD+N, noise, and frequency as warm-up or stability
-trends.
+sensor, MeasureLab cannot attribute a change to temperature. The Stability tab
+therefore plots gain, THD, THD+N, noise, and frequency as warm-up or stability
+trends and exports samples with measurement-validity metadata to CSV.
 
 Where possible, a second reference channel should be used to separate DUT drift
 from drift in the measurement interface.
@@ -163,8 +153,8 @@ The following proposals must not be treated as new features.
 | Frequency-Dependent Crosstalk/Leakage | Network Analyzer provides L-to-R and R-to-L crosstalk transfer sweeps. | Implemented as a more readable 2D frequency plot; a 3D plot is unnecessary. |
 | Pre-Ringing and Causality Quantifier | Transient Analyzer measures pre/post impulse energy, their ratio, crest-factor validity, and estimates minimum-, linear-, or mixed-phase behavior. | Implemented as DAC Ringing analysis. Do not claim proof of physical causality. |
 | True Peak | LUFS Meter performs four-times oversampling and peak hold. | Implemented; only the histogram and clipping profile remain. |
-| SMPTE and CCIF IMD | Distortion Analyzer generates and measures both standards in real time. | Implemented; IMD sweeps and DIN remain. |
-| AES17 Dynamic Range | Distortion Analyzer includes calibration, the -60 dBFS test signal, AES17 filtering, and the DR result. | Implemented; only guided automation remains. |
+| SMPTE, DIN, and CCIF IMD | Distortion Analyzer generates and measures all three modes in real time and supports amplitude sweeps with product-level results. | Implemented. |
+| AES17 Dynamic Range | Distortion Analyzer includes guided calibration validation, the -60 dBFS test signal, AES17 filtering, the DR result, and JSON/CSV reports. | Implemented. |
 | Continuity/Data-Gap Detection | AudioEngine tracks XRUN categories and count. Event Detector records data-gap validity and exports measurement metadata and events. | Partially implemented; a unified integrity timeline and signal-dropout classifier remain. |
 | Volterra Kernel Extractor | Nonlinear Analyzer extracts first- through fifth-order Parallel Hammerstein kernels and exports the model. Response Viewer provides gain-compression analysis. | Covered by a practical diagonal/Parallel Hammerstein model. A full Volterra model with cross-kernels is not implemented. |
 | Inter-Channel Phase Analysis | Stereo Alignment Monitor displays band-specific correlation, phase issues, frequency matching, and a volume gang-error logger. | Implemented for phase/balance analysis; this is not an independent-clock sync-drift logger. |
@@ -181,8 +171,9 @@ Primary implementation references used for this audit:
 
 * `src/gui/widgets/network_analyzer.py`: group delay, Bode phase, delay
   compensation, coherence, and crosstalk routing.
-* `src/gui/widgets/distortion_analyzer.py`: SMPTE/CCIF IMD, sine-only sweeps,
-  AES17 calibration, filtering, and dynamic range.
+* `src/gui/widgets/distortion_analyzer.py`: SMPTE/DIN/CCIF IMD amplitude
+  sweeps, guided AES17 dynamic range, measurement integrity, and stability
+  logging.
 * `src/gui/widgets/lufs_meter.py`: four-times-oversampled True Peak and peak
   hold.
 * `src/core/audio_engine.py` and `src/gui/widgets/event_detector.py`: XRUN
