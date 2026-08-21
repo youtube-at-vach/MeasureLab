@@ -1,0 +1,4 @@
+interface:
+  display_name: "エージェント：プロポーサルBacklog Issue化"
+  short_description: "提案を選定してGitHub Issue化しBacklogへ登録"
+  default_prompt: "Use $agent-proposal-backlog-issue to select the next proposal and register it as a GitHub Backlog issue."
