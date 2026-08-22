@@ -10,7 +10,7 @@ It supports loading common audio files such as WAV, MP3, FLAC, and OGG.
 
 ## Common Features
 
-This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
 
 ## Operations
 

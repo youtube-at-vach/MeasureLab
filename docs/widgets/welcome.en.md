@@ -8,7 +8,7 @@ If you are using this tool for the first time, grasp the overall picture of each
 
 ## Common Features
 
-This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
 
 ## Operation
 

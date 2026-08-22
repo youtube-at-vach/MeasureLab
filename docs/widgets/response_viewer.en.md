@@ -8,7 +8,7 @@ The Response Viewer is an advanced visualization tool for analyzing linear and h
 
 ## Common Features
 
-This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
 
 ## Key Features and Operation
 

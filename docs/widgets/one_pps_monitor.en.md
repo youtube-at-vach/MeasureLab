@@ -13,7 +13,7 @@ It inputs a pulse signal output every second from a GPS receiver or high-precisi
 
 ## Common Features
 
-This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
 
 ## Features
 

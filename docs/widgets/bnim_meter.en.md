@@ -10,7 +10,7 @@ It is ideal for checking the sense of localization and spread of stereo sound im
 
 ## Common Features
 
-This widget supports the common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
 
 ## How to Read the Screen
 
