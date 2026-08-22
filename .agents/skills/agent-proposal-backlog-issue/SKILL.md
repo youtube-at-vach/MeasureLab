@@ -18,14 +18,13 @@ MeasureLab の「次に実装するもの」を、測定器設計の原則と既
 
 リポジトリのルートを確認し、次の資料を読む。
 
-1. `MEASUREMENT_INSTRUMENT_DESIGN_GUIDELINES.md` は省略せず全文を読む。
-2. `docs/PROPOSED_FEATURES.md` の Overview、Status Legend、Selected Additions、Implemented/Covered、Conditional、On hold の各区分を読む。
-3. `CURRENT_DIRECTION.md`、対象ウィジェットのコード・テスト・ドキュメントが存在する場合は、提案がすでに実装済みでないか確認する。
+1. `guide/MEASUREMENT_INSTRUMENT_DESIGN_GUIDELINES.md` は省略せず全文を読む。
+2. `guide/PROPOSED_FEATURES.md` の Overview、Status Legend、Selected Additions、Implemented/Covered、Conditional、On hold の各区分を読む。
+3. `guide/CURRENT_DIRECTION.md`、対象ウィジェットのコード・テスト・ドキュメントが存在する場合は、提案がすでに実装済みでないか確認する。
 4. `git status --short --branch` を読み取り、作業ツリーを変更しない。
 
-GitHub の現状も読み取る。
+GitHub の現状も、次の最小確認で読み取る。認証・スコープの確認は省略してよい。
 
-- `gh auth status` でアカウントとスコープを確認する。
 - `gh repo view --json nameWithOwner,owner,url` で対象リポジトリを確定する。
 - `gh project list --owner <owner> --format json` で対象 Project を確認する。MeasureLab では通常 `Agents: MeasureLab` を優先するが、存在を再確認してから使う。
 - `gh project item-list <number> --owner <owner> --format json` と Issue 検索で、同じ提案や同じ目的の Issue が既にないか調べる。
@@ -48,7 +47,7 @@ GitHub の現状も読み取る。
 タイトルは、既存の MeasureLab の慣例に合わせて簡潔な英語の `[Feature] ...` とする。本文は日本語またはプロジェクトで通用する言語で、少なくとも次を含める。
 
 - `背景`: 現状の実装と不足している測定上の問題。
-- `選定理由`: 設計指針のどの原則と `PROPOSED_FEATURES.md` のどの提案に基づくか。他候補より先にする理由。
+- `選定理由`: 設計指針のどの原則と `guide/PROPOSED_FEATURES.md` のどの提案に基づくか。他候補より先にする理由。
 - `実装範囲`: 対象モジュール、データモデル、UI、エクスポート、異常時の挙動。
 - `完了条件`: 正常系、失敗系、停止後の状態、リセット、回帰テスト、翻訳、UI サイズを含む検証可能な条件。
 - `参照`: 設計指針、プロポーサル、対象コード、関連テストへのパスまたは URL。
@@ -57,7 +56,7 @@ GUI の表示文字列を含む候補では、`tr()` による翻訳管理、全
 
 ## GitHub への登録手順
 
-書き込み直前に対象を再確認する。`read:project` は閲覧用であり、Project への追加・編集には `project` スコープが必要である。
+書き込み直前に、既存 Issue の重複と対象 Project を再確認する。認証・スコープの確認は必要な場合だけ行う。
 
 1. 既存 Issue のタイトル・目的が重複していないことを確認する。
 2. `gh issue create --repo <owner>/<repo> --title ... --body ... --label enhancement` で Issue を作成する。Project の `--project` オプションに依存せず、Issue 作成と Project 追加を分離して検証する。
@@ -66,7 +65,7 @@ GUI の表示文字列を含む候補では、`tr()` による翻訳管理、全
 5. Priority フィールドがあり、候補が測定基盤・安全性に関わる最優先候補である場合は `P1` を設定してよい。ユーザーが優先度を指定した場合はそれを優先する。
 6. `gh project item-list ... --jq` と `gh issue view ... --json` で、Issue URL、Project 名、Status、必要な Priority、ラベルを再確認する。
 
-Issue 作成後に Project 追加だけが失敗した場合は、同じタイトルで再作成しない。作成済み Issue の URL を報告し、`gh auth refresh -s project` による権限更新後に Project 追加を再開する。
+Issue 作成後に Project 追加だけが失敗した場合は、同じタイトルで再作成しない。作成済み Issue の URL を報告し、権限不足が原因なら必要に応じて `gh auth refresh -s project` を案内したうえで、Project 追加を再開する。
 
 ## 完了報告
 
