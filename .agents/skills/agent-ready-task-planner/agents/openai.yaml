@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ready Task Planner"
+  short_description: "Plan Ready Issues and update Project status"
+  default_prompt: "Use $agent-ready-task-planner to plan the current Ready Project task from the codebase."
