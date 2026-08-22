@@ -6,6 +6,10 @@
 
 Event Detectorは、全入力サンプルを連続監視し、閾値イベントの回数、振幅、継続時間、間隔、発生レートを記録するウィジェットです。JFETやオペアンプのポップコーンノイズ、RTN（Random Telegraph Noise）、接点不良によるクリックなど、まれに発生する現象の定量化に使用します。
 
+## 共通機能
+
+このウィジェットは Detachable Wrapper の共通機能に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
+
 ## 他の時間領域ウィジェットとの違い
 
 | ウィジェット | 主な目的 |
@@ -99,10 +103,6 @@ Event Rate = Event Count × 60 / Measurement Time [seconds]
 - JSONは`measurelab.event_detector`スキーマ名とバージョンを含みます。
 - CSVは先頭にRun条件をコメント行として記録し、その後にイベント表を記録します。
 - ピークは常にFS値を保持し、校正済みの場合は表示単位へ換算した値も併記します。
-
-## 共通機能
-
-このウィジェットは Detachable Wrapper の共通機能に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
 
 ## 基本的な測定手順
 

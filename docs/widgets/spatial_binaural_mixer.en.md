@@ -6,6 +6,10 @@ The **Spatial Binaural Mixer** is a high-quality, offline 3D spatial audio rende
 
 Unlike real-time HRTF players, this module is specifically engineered for multi-track stem rendering. It employs block-less FFT convolution and high-precision spatial interpolation, ensuring the absolute highest sound quality for mixing and exporting spatial audio.
 
+## Common Features
+
+This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## 🌟 Key Features
 
 * **Multitrack Support**: Load multiple audio files (WAV, FLAC, MP3, etc.) and independently control their spatial position (Azimuth, Elevation), volume (Gain), and mute/solo states.
@@ -15,10 +19,6 @@ Unlike real-time HRTF players, this module is specifically engineered for multi-
 * **Highest Quality Resampling**: Synchronizes mixed sample rates natively using Polyphase Sinc interpolation (`resample_poly`).
 
 ---
-
-## Common Features
-
-This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
 
 ## 🎛️ Usage Guide
 
