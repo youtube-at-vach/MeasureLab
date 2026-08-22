@@ -10,7 +10,7 @@ description: PR送信前にCI相当のローカル検証を行うときに使用
 ## 事前準備
 
 開発用ツールがプロジェクトの仮想環境にインストールされていることを確認してください。
-詳細は [tool usage guide](../../../.agent/workflows/tool_usage.md) を参照してください。
+詳細は [tool usage guide](../../workflows/tool_usage.md) を参照してください。
 
 ## 実行手順
 
