@@ -1,7 +1,7 @@
 from importlib import import_module
 import logging
 import time
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QPalette
@@ -29,18 +29,135 @@ from src.gui.module_registry import MODULE_REGISTRY
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
 
-_ALLOWED_MODULE_PATHS = frozenset(
-    [reg.module_path for reg in MODULE_REGISTRY.values()]
-    + ["src.gui.widgets.settings", "src.gui.widgets.welcome"]
-)
+_CLASS_LOADERS: dict[tuple[str, str], Callable[[], type[Any]]] = {
+    ("src.gui.widgets.signal_generator", "SignalGenerator"): lambda: (
+        import_module("src.gui.widgets.signal_generator").SignalGenerator
+    ),
+    ("src.gui.widgets.spectrum_analyzer", "SpectrumAnalyzer"): lambda: (
+        import_module("src.gui.widgets.spectrum_analyzer").SpectrumAnalyzer
+    ),
+    ("src.gui.widgets.sound_level_meter", "SoundLevelMeter"): lambda: (
+        import_module("src.gui.widgets.sound_level_meter").SoundLevelMeter
+    ),
+    ("src.gui.widgets.lufs_meter", "LufsMeter"): lambda: import_module("src.gui.widgets.lufs_meter").LufsMeter,
+    ("src.gui.widgets.loopback_finder", "LoopbackFinder"): lambda: (
+        import_module("src.gui.widgets.loopback_finder").LoopbackFinder
+    ),
+    ("src.gui.widgets.distortion_analyzer", "DistortionAnalyzer"): lambda: (
+        import_module("src.gui.widgets.distortion_analyzer").DistortionAnalyzer
+    ),
+    ("src.gui.widgets.advanced_distortion_meter", "AdvancedDistortionMeter"): lambda: (
+        import_module("src.gui.widgets.advanced_distortion_meter").AdvancedDistortionMeter
+    ),
+    ("src.gui.widgets.network_analyzer", "NetworkAnalyzer"): lambda: (
+        import_module("src.gui.widgets.network_analyzer").NetworkAnalyzer
+    ),
+    ("src.gui.widgets.oscilloscope", "Oscilloscope"): lambda: (
+        import_module("src.gui.widgets.oscilloscope").Oscilloscope
+    ),
+    ("src.gui.widgets.raw_time_series", "RawTimeSeries"): lambda: (
+        import_module("src.gui.widgets.raw_time_series").RawTimeSeries
+    ),
+    ("src.gui.widgets.event_detector", "EventDetector"): lambda: (
+        import_module("src.gui.widgets.event_detector").EventDetector
+    ),
+    ("src.gui.widgets.lock_in_amplifier", "LockInAmplifier"): lambda: (
+        import_module("src.gui.widgets.lock_in_amplifier").LockInAmplifier
+    ),
+    ("src.gui.widgets.lockin_harmonic_analyzer", "LockInHarmonicAnalyzer"): lambda: (
+        import_module("src.gui.widgets.lockin_harmonic_analyzer").LockInHarmonicAnalyzer
+    ),
+    ("src.gui.widgets.arbitrary_harmonic_generator", "ArbitraryHarmonicGenerator"): lambda: (
+        import_module("src.gui.widgets.arbitrary_harmonic_generator").ArbitraryHarmonicGenerator
+    ),
+    ("src.gui.widgets.lockin_spectrum_finder", "LockInSpectrumFinder"): lambda: (
+        import_module("src.gui.widgets.lockin_spectrum_finder").LockInSpectrumFinder
+    ),
+    ("src.gui.widgets.frequency_counter", "FrequencyCounter"): lambda: (
+        import_module("src.gui.widgets.frequency_counter").FrequencyCounter
+    ),
+    ("src.gui.widgets.lock_in_frequency_counter", "LockInFrequencyCounter"): lambda: (
+        import_module("src.gui.widgets.lock_in_frequency_counter").LockInFrequencyCounter
+    ),
+    ("src.gui.widgets.spectrogram", "Spectrogram"): lambda: import_module("src.gui.widgets.spectrogram").Spectrogram,
+    ("src.gui.widgets.boxcar_averager", "BoxcarAverager"): lambda: (
+        import_module("src.gui.widgets.boxcar_averager").BoxcarAverager
+    ),
+    ("src.gui.widgets.goniometer", "Goniometer"): lambda: import_module("src.gui.widgets.goniometer").Goniometer,
+    ("src.gui.widgets.impedance_analyzer", "ImpedanceAnalyzer"): lambda: (
+        import_module("src.gui.widgets.impedance_analyzer").ImpedanceAnalyzer
+    ),
+    ("src.gui.widgets.noise_profiler", "NoiseProfiler"): lambda: (
+        import_module("src.gui.widgets.noise_profiler").NoiseProfiler
+    ),
+    ("src.gui.widgets.recorder_player", "RecorderPlayer"): lambda: (
+        import_module("src.gui.widgets.recorder_player").RecorderPlayer
+    ),
+    ("src.gui.widgets.waveform_loop_player", "WaveformLoopPlayer"): lambda: (
+        import_module("src.gui.widgets.waveform_loop_player").WaveformLoopPlayer
+    ),
+    ("src.gui.widgets.transient_analyzer", "TransientAnalyzer"): lambda: (
+        import_module("src.gui.widgets.transient_analyzer").TransientAnalyzer
+    ),
+    ("src.gui.widgets.sound_quality_analyzer", "SoundQualityAnalyzer"): lambda: (
+        import_module("src.gui.widgets.sound_quality_analyzer").SoundQualityAnalyzer
+    ),
+    ("src.gui.widgets.timecode_monitor", "TimecodeMonitor"): lambda: (
+        import_module("src.gui.widgets.timecode_monitor").TimecodeMonitor
+    ),
+    ("src.gui.widgets.bnim_meter", "BNIMMeter"): lambda: import_module("src.gui.widgets.bnim_meter").BNIMMeter,
+    ("src.gui.widgets.hrtf_player", "HRTFPlayer"): lambda: import_module("src.gui.widgets.hrtf_player").HRTFPlayer,
+    ("src.gui.widgets.ultrasound_modulator", "UltrasoundModulator"): lambda: (
+        import_module("src.gui.widgets.ultrasound_modulator").UltrasoundModulator
+    ),
+    ("src.gui.widgets.linearity_analyzer", "LinearityAnalyzer"): lambda: (
+        import_module("src.gui.widgets.linearity_analyzer").LinearityAnalyzer
+    ),
+    ("src.gui.widgets.one_pps_monitor", "OnePPSMonitor"): lambda: (
+        import_module("src.gui.widgets.one_pps_monitor").OnePPSMonitor
+    ),
+    ("src.gui.widgets.stereo_alignment_monitor", "StereoAlignmentMonitor"): lambda: (
+        import_module("src.gui.widgets.stereo_alignment_monitor").StereoAlignmentMonitor
+    ),
+    ("src.gui.widgets.spatial_binaural_mixer", "SpatialBinauralMixer"): lambda: (
+        import_module("src.gui.widgets.spatial_binaural_mixer").SpatialBinauralMixer
+    ),
+    ("src.gui.widgets.processor_benchmark", "ProcessorBenchmark"): lambda: (
+        import_module("src.gui.widgets.processor_benchmark").ProcessorBenchmark
+    ),
+    ("src.gui.widgets.plot_comparer", "PlotComparer"): lambda: (
+        import_module("src.gui.widgets.plot_comparer").PlotComparer
+    ),
+    ("src.gui.widgets.transmission_analyzer", "TransmissionAnalyzer"): lambda: (
+        import_module("src.gui.widgets.transmission_analyzer").TransmissionAnalyzer
+    ),
+    ("src.gui.widgets.nonlinear_analyzer", "NonlinearAnalyzer"): lambda: (
+        import_module("src.gui.widgets.nonlinear_analyzer").NonlinearAnalyzer
+    ),
+    ("src.gui.widgets.lock_in_modeler", "LockInModeler"): lambda: (
+        import_module("src.gui.widgets.lock_in_modeler").LockInModeler
+    ),
+    ("src.gui.widgets.response_viewer", "ResponseViewer"): lambda: (
+        import_module("src.gui.widgets.response_viewer").ResponseViewer
+    ),
+    ("src.gui.widgets.feedforward_compensator", "FeedforwardCompensator"): lambda: (
+        import_module("src.gui.widgets.feedforward_compensator").FeedforwardCompensator
+    ),
+    ("src.gui.widgets.nonlinear_response_analyzer", "NonlinearResponseAnalyzer"): lambda: (
+        import_module("src.gui.widgets.nonlinear_response_analyzer").NonlinearResponseAnalyzer
+    ),
+    ("src.gui.widgets.settings", "SettingsWidget"): lambda: import_module("src.gui.widgets.settings").SettingsWidget,
+    ("src.gui.widgets.welcome", "WelcomeWidget"): lambda: import_module("src.gui.widgets.welcome").WelcomeWidget,
+}
 
 
 def _load_class(module_path: str, class_name: str):
-    """Dynamically load a class from a module."""
-    if module_path not in _ALLOWED_MODULE_PATHS:
-        raise ValueError(f"Module path not in allowlist: {module_path}")
-    module = import_module(module_path)
-    return getattr(module, class_name)
+    """Load an explicitly registered class without importing user-controlled paths."""
+    try:
+        loader = _CLASS_LOADERS[(module_path, class_name)]
+    except KeyError as exc:
+        raise ValueError(f"Class not in allowlist: {module_path}.{class_name}") from exc
+    return loader()
 
 
 def _load_module_class(module_key: str):
