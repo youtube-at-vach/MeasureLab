@@ -96,6 +96,18 @@ current implementation.
 
 **Scope:** Add a 3D soundstage visualization tab using Mid/Side analysis and HRTF deconvolution to map the perceived spatial position of sound sources in real-time. (Extended from visionary concepts).
 
+### 10. Multi-Tone Distortion (TD+N) Profiler
+
+**Target:** Distortion Analyzer.
+
+**Scope:** Add multi-tone generation and automated bin-notching DSP to measure total distortion and noise (TD+N) across the entire spectrum simultaneously.
+
+### 11. Burst Envelope Dynamics Profiler
+
+**Target:** Transient Analyzer.
+
+**Scope:** Measure the attack and release envelopes of dynamic processors or amplifiers when subjected to sudden tone bursts, plotting the gain reduction recovery curve.
+
 ## Future / Visionary Ideas
 
 These ideas explore adventurous, next-generation concepts beyond standard audio measurement. They are currently brainstormed without constraints to expand future possibilities.
@@ -104,51 +116,16 @@ These ideas explore adventurous, next-generation concepts beyond standard audio 
 * **Brain-Computer Interface (BCI) Audiophile Profiler:** Measure human brainwave responses to different DACs/Amps to quantify perceptual audio quality directly from the listener.
 * **Quantum Audio Entropy Analyzer:** Analyze the true randomness of analog noise floors using quantum mechanics models to classify analog noise sources versus digital dithering artifacts.
 * **Holographic Soundstage Visualizer:** A fully immersive VR/AR holographic representation of sound topology.
+* **Augmented Reality (AR) Acoustic Mode Mapper:** Project visual room modes and nulls onto a physical space using AR glasses to optimize speaker placement.
+* **AI Golden Ear Component Fingerprinter:** Identify specific op-amps, capacitors, or vacuum tube models in a circuit strictly by analyzing the micro-nonlinearities and harmonic signature.
+* **Interactive Psychoacoustic Audiogram Profiler:** Create a personalized hearing profile of the user and dynamically adjust test signals to compensate for their specific hearing loss during subjective evaluations.
 
-## Confirmed Implemented or Covered Features
+## Previously Audited / Rejected / On Hold
 
-| Original proposal | Current implementation | Audit result |
-| --- | --- | --- |
-| Group/Phase Delay Plot | Network Analyzer calculates `-dPhi / (2*pi*dF)`. | Implemented. |
-| Frequency-Dependent Crosstalk/Leakage | Network Analyzer provides L-to-R/R-to-L sweeps. | Implemented. |
-| Pre-Ringing and Causality Quantifier | Transient Analyzer measures DAC Ringing. | Implemented. |
-| True Peak | LUFS Meter performs oversampling and peak hold. | Implemented (histogram remains). |
-| SMPTE and CCIF IMD | Distortion Analyzer handles both in real time. | Implemented (sweeps remain). |
-| AES17 Dynamic Range | Distortion Analyzer includes calibration and filter. | Implemented (automation remains). |
-| Continuity/Data-Gap Detection | AudioEngine tracks XRUNs; Event Detector records validity. | Partially implemented. |
-| Volterra Kernel Extractor | Nonlinear Analyzer extracts Parallel Hammerstein kernels. | Covered. |
-| Inter-Channel Phase Analysis | Stereo Alignment Monitor displays correlation and phase. | Implemented. |
-| Binaural Tones | Signal Generator has independent L/R settings. | Covered. |
-| DAC Digital Filter Classification | Transient Analyzer measures DAC ringing. | Partially covered. |
-| Cumulative Spectral Visualization | Transient Analyzer provides CWT scalogram. | Covered. |
+The following items have been reviewed and either implemented, conditionally approved, put on hold, or deemed not suitable for the current focus. They remain here for historical context.
 
-## Conditional Candidates
-
-Useful only when measurement conditions are explicitly defined:
-
-* **Thiele/Small Parameter Extraction** (Target: Impedance Analyzer)
-* **Hum AM/FM Modulation Analysis** (Target: Noise Profiler)
-* **Dynamic Burst Linearity** (Target: Linearity Analyzer)
-* **Null Comparator** (Target: Recorder/Player / Transmission Analyzer)
-* **Dynamics Processor Profiler** (Static gain compression available in Response Viewer)
-
-## On Hold or Not Suitable
-
-* **Bandwidth- and Slew-Limited Measurements:** TIM/DIM Mode, Slew Rate Calculator, Eye Diagram, Digital Protocol Decoder, DAC Aliasing and OOB Leakage, Ultrasonic Micro-Doppler.
-* **Clock and Jitter Attribution:** TIE Jitter, Phase Noise Density, Clock Fingerprinting, Inter-Channel Sync Drift Logger.
-* **Fixture- or Hardware-Dominated:** Damping Factor Profiler, Dual-ADC Cross-Correlation Noise, Thermal Stress, EMI/RFI Fingerprinting, Complex Load Distortion.
-* **Outside Current Focus:** Lossy Codec Analyzer, Listener Fatigue Index, PEAQ/ODG Estimator, AI Circuit Reverse Engineer, Acoustic Metamaterial Simulator.
-
-## Deferred Reference Topics
-
-The following remain reference topics rather than active implementation proposals:
-
-* ASRC Benchmark.
-* DC Stability.
-* Wow and Flutter.
-* Room Acoustics and RT60.
-* EQ Designer.
-* AI Anomaly Detection.
-* Plugin System.
-* Multimeter.
-* Cepstrum Analysis.
+* **Implemented/Covered:** Group/Phase Delay Plot, Frequency-Dependent Crosstalk/Leakage, Pre-Ringing and Causality Quantifier, True Peak, SMPTE and CCIF IMD, AES17 Dynamic Range, Volterra Kernel Extractor, Inter-Channel Phase Analysis, Binaural Tones, DAC Digital Filter Classification, Cumulative Spectral Visualization.
+* **Partially Implemented:** Continuity/Data-Gap Detection.
+* **Conditional Candidates:** Thiele/Small Parameter Extraction, Hum AM/FM Modulation Analysis, Dynamic Burst Linearity, Null Comparator, Dynamics Processor Profiler.
+* **On Hold / Not Suitable:** Bandwidth- and Slew-Limited Measurements, Clock and Jitter Attribution, Fixture- or Hardware-Dominated tests, Lossy Codec Analyzer, Listener Fatigue Index, PEAQ/ODG Estimator, AI Circuit Reverse Engineer, Acoustic Metamaterial Simulator.
+* **Deferred Reference Topics:** ASRC Benchmark, DC Stability, Wow and Flutter, Room Acoustics and RT60, EQ Designer, AI Anomaly Detection, Plugin System, Multimeter, Cepstrum Analysis.
