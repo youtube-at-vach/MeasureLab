@@ -69,6 +69,20 @@ def validate_widget_capabilities(widget: QWidget, capabilities: WidgetCapabiliti
                     f"{widget_type.__name__} declares {feature_name} as supported but does not override {method_name}()"
                 )
 
+    console_action = capabilities.console_primary_action
+    if console_action.is_supported:
+        button_attribute = console_action.button_attribute
+        assert button_attribute is not None
+        action = getattr(widget, button_attribute, None)
+        if not isinstance(action, QAbstractButton):
+            raise ValueError(
+                f"{widget_type.__name__} declares console primary action {button_attribute!r} but it is not a button"
+            )
+        if not action.isCheckable():
+            raise ValueError(
+                f"{widget_type.__name__} declares console primary action {button_attribute!r} but it is not checkable"
+            )
+
 
 class IndependentWindow(QMainWindow):
     """
@@ -314,11 +328,14 @@ class DetachableWidgetWrapper(QWidget):
             self.compact_btn.setEnabled(hosted or self.is_detached or self.is_split)
 
     def console_primary_action(self) -> QAbstractButton | None:
-        """Return the instrument's conventional start/stop control, if available."""
-        action = getattr(self.content_widget, "toggle_btn", None)
-        if isinstance(action, QAbstractButton) and action.isCheckable():
-            return action
-        return None
+        """Return the explicitly declared start/stop control for console use."""
+        declaration = self.capabilities.console_primary_action
+        if not declaration.is_supported:
+            return None
+        button_attribute = declaration.button_attribute
+        assert button_attribute is not None
+        action = getattr(self.content_widget, button_attribute, None)
+        return action if isinstance(action, QAbstractButton) and action.isCheckable() else None
 
     def take_hosted_title_bar(self) -> QWidget:
         """Release the common header so an outer host can use it as its title bar."""

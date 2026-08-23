@@ -20,7 +20,7 @@ from src.core.module_constants import (
 )
 from src.gui.main_window import MainWindow
 from src.gui.measurement_console import DEFAULT_CONSOLE_MODULES, MeasurementConsoleWindow
-from src.gui.module_registry import NO_INDEPENDENT_DISPLAY, WidgetCapabilities
+from src.gui.module_registry import NO_INDEPENDENT_DISPLAY, WidgetCapabilities, console_action
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
 
@@ -28,6 +28,12 @@ NO_CAPABILITIES = WidgetCapabilities(
     split_window=NO_INDEPENDENT_DISPLAY,
     compact_mode=NO_INDEPENDENT_DISPLAY,
     comparison=NO_INDEPENDENT_DISPLAY,
+)
+PRIMARY_ACTION_CAPABILITIES = WidgetCapabilities(
+    split_window=NO_INDEPENDENT_DISPLAY,
+    compact_mode=NO_INDEPENDENT_DISPLAY,
+    comparison=NO_INDEPENDENT_DISPLAY,
+    console_primary_action=console_action("toggle_btn"),
 )
 
 
@@ -304,7 +310,7 @@ def test_console_merges_wrapper_header_and_dock_controls(qtbot):
     wrapper = DetachableWidgetWrapper(
         content,
         "Instrument 0",
-        capabilities=NO_CAPABILITIES,
+        capabilities=PRIMARY_ACTION_CAPABILITIES,
     )
     host = _ConsoleHostStub([wrapper])
     console = MeasurementConsoleWindow(host)

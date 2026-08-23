@@ -122,3 +122,29 @@ def test_frequency_counter_compact_mode(qapp, qtbot, frequency_counter):
     widget.deleteLater()
     parent_win.deleteLater()
     qapp.processEvents()
+
+
+def test_frequency_counter_exposes_run_button_to_measurement_console(qapp, qtbot, frequency_counter):
+    from src.core.module_constants import MODULE_FREQUENCY_COUNTER
+    from src.gui.module_registry import MODULE_REGISTRY
+    from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
+
+    widget = FrequencyCounterWidget(frequency_counter)
+    wrapper = DetachableWidgetWrapper(
+        widget,
+        "Frequency Counter",
+        capabilities=MODULE_REGISTRY[MODULE_FREQUENCY_COUNTER].capabilities,
+    )
+    qtbot.addWidget(wrapper)
+
+    assert wrapper.console_primary_action() is widget.run_btn
+
+    frequency_counter.start_analysis = MagicMock()
+    frequency_counter.stop_analysis = MagicMock()
+    wrapper.console_primary_action().click()
+    assert widget.run_btn.isChecked()
+    assert frequency_counter.start_analysis.called
+
+    wrapper.console_primary_action().click()
+    assert not widget.run_btn.isChecked()
+    assert frequency_counter.stop_analysis.called

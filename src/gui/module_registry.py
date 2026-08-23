@@ -71,6 +71,46 @@ class CapabilityExclusionReason(StrEnum):
     SPLIT_DEFERRED = "split_deferred"  # Matrix: 外F
 
 
+class ConsoleActionStatus(StrEnum):
+    """Whether the console can expose a module's primary start/stop action."""
+
+    SUPPORTED = "supported"
+    DEFERRED = "deferred"
+    NOT_APPLICABLE = "not_applicable"
+
+
+@dataclass(frozen=True, slots=True)
+class ConsolePrimaryActionCapability:
+    """Console title-bar action declaration for one module widget."""
+
+    status: ConsoleActionStatus
+    button_attribute: str | None = None
+
+    def __post_init__(self) -> None:
+        has_attribute = bool(self.button_attribute)
+        if self.status is ConsoleActionStatus.SUPPORTED and not has_attribute:
+            raise ValueError("Supported console actions must declare a button attribute")
+        if self.status is not ConsoleActionStatus.SUPPORTED and has_attribute:
+            raise ValueError("Unavailable console actions cannot declare a button attribute")
+
+    @property
+    def is_supported(self) -> bool:
+        return self.status is ConsoleActionStatus.SUPPORTED
+
+    @property
+    def is_deferred(self) -> bool:
+        return self.status is ConsoleActionStatus.DEFERRED
+
+
+def console_action(button_attribute: str) -> ConsolePrimaryActionCapability:
+    """Declare a checkable widget button as the console's primary action."""
+    return ConsolePrimaryActionCapability(ConsoleActionStatus.SUPPORTED, button_attribute)
+
+
+CONSOLE_ACTION_DEFERRED = ConsolePrimaryActionCapability(ConsoleActionStatus.DEFERRED)
+NO_CONSOLE_ACTION = ConsolePrimaryActionCapability(ConsoleActionStatus.NOT_APPLICABLE)
+
+
 @dataclass(frozen=True, slots=True)
 class FeatureCapability:
     """One explicit supported/excluded decision for a widget feature."""
@@ -123,6 +163,7 @@ class WidgetCapabilities:
     split_window: FeatureCapability
     compact_mode: FeatureCapability
     comparison: FeatureCapability
+    console_primary_action: ConsolePrimaryActionCapability = NO_CONSOLE_ACTION
 
     def __post_init__(self) -> None:
         allowed_reasons = {
@@ -162,8 +203,14 @@ def _caps(
     split: FeatureCapability,
     compact: FeatureCapability,
     comparison: FeatureCapability,
+    console_primary_action: ConsolePrimaryActionCapability,
 ) -> WidgetCapabilities:
-    return WidgetCapabilities(split_window=split, compact_mode=compact, comparison=comparison)
+    return WidgetCapabilities(
+        split_window=split,
+        compact_mode=compact,
+        comparison=comparison,
+        console_primary_action=console_primary_action,
+    )
 
 
 def _registration(
@@ -173,8 +220,18 @@ def _registration(
     split: FeatureCapability,
     compact: FeatureCapability,
     comparison: FeatureCapability,
+    console_primary_action: ConsolePrimaryActionCapability,
 ) -> ModuleRegistration:
-    return ModuleRegistration(module_path, class_name, _caps(split=split, compact=compact, comparison=comparison))
+    return ModuleRegistration(
+        module_path,
+        class_name,
+        _caps(
+            split=split,
+            compact=compact,
+            comparison=comparison,
+            console_primary_action=console_primary_action,
+        ),
+    )
 
 
 MODULE_REGISTRY: dict[str, ModuleRegistration] = {
@@ -184,6 +241,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=NO_INDEPENDENT_DISPLAY,
         compact=SUPPORTED,
         comparison=NO_INDEPENDENT_DISPLAY,
+        console_primary_action=console_action("toggle_btn"),
     ),
     MODULE_SPECTRUM_ANALYZER: _registration(
         "src.gui.widgets.spectrum_analyzer",
@@ -191,6 +249,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SUPPORTED,
         compact=SUPPORTED,
         comparison=SUPPORTED,
+        console_primary_action=console_action("toggle_btn"),
     ),
     MODULE_SOUND_LEVEL_METER: _registration(
         "src.gui.widgets.sound_level_meter",
@@ -198,6 +257,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SUPPORTED,
         compact=SUPPORTED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=CONSOLE_ACTION_DEFERRED,
     ),
     MODULE_LUFS_METER: _registration(
         "src.gui.widgets.lufs_meter",
@@ -205,6 +265,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SUPPORTED,
         compact=SUPPORTED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=console_action("toggle_btn"),
     ),
     MODULE_LOOPBACK_FINDER: _registration(
         "src.gui.widgets.loopback_finder",
@@ -212,6 +273,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=NON_TRACE_COMPARISON,
+        console_primary_action=CONSOLE_ACTION_DEFERRED,
     ),
     MODULE_DISTORTION_ANALYZER: _registration(
         "src.gui.widgets.distortion_analyzer",
@@ -219,6 +281,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=SUPPORTED,
+        console_primary_action=CONSOLE_ACTION_DEFERRED,
     ),
     MODULE_ADVANCED_DISTORTION_METER: _registration(
         "src.gui.widgets.advanced_distortion_meter",
@@ -226,6 +289,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=CONSOLE_ACTION_DEFERRED,
     ),
     MODULE_NETWORK_ANALYZER: _registration(
         "src.gui.widgets.network_analyzer",
@@ -233,6 +297,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=SUPPORTED,
+        console_primary_action=CONSOLE_ACTION_DEFERRED,
     ),
     MODULE_OSCILLOSCOPE: _registration(
         "src.gui.widgets.oscilloscope",
@@ -240,6 +305,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SUPPORTED,
         compact=SUPPORTED,
         comparison=SUPPORTED,
+        console_primary_action=console_action("toggle_btn"),
     ),
     MODULE_RAW_TIME_SERIES: _registration(
         "src.gui.widgets.raw_time_series",
@@ -247,6 +313,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SUPPORTED,
         compact=SUPPORTED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=CONSOLE_ACTION_DEFERRED,
     ),
     MODULE_EVENT_DETECTOR: _registration(
         "src.gui.widgets.event_detector",
@@ -254,6 +321,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SUPPORTED,
         compact=SUPPORTED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=CONSOLE_ACTION_DEFERRED,
     ),
     MODULE_LOCK_IN_AMPLIFIER: _registration(
         "src.gui.widgets.lock_in_amplifier",
@@ -261,6 +329,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=SUPPORTED,
+        console_primary_action=console_action("toggle_btn"),
     ),
     MODULE_LOCK_IN_HARMONIC_ANALYZER: _registration(
         "src.gui.widgets.lockin_harmonic_analyzer",
@@ -268,6 +337,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=CONSOLE_ACTION_DEFERRED,
     ),
     MODULE_ARBITRARY_HARMONIC_GENERATOR: _registration(
         "src.gui.widgets.arbitrary_harmonic_generator",
@@ -275,6 +345,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=CONSOLE_ACTION_DEFERRED,
     ),
     MODULE_LOCKIN_SPECTRUM_FINDER: _registration(
         "src.gui.widgets.lockin_spectrum_finder",
@@ -282,6 +353,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SUPPORTED,
         compact=COMPACT_DEFERRED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=CONSOLE_ACTION_DEFERRED,
     ),
     MODULE_FREQUENCY_COUNTER: _registration(
         "src.gui.widgets.frequency_counter",
@@ -289,6 +361,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=SUPPORTED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=console_action("run_btn"),
     ),
     MODULE_LOCK_IN_FREQUENCY_COUNTER: _registration(
         "src.gui.widgets.lock_in_frequency_counter",
@@ -296,6 +369,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=CONSOLE_ACTION_DEFERRED,
     ),
     MODULE_SPECTROGRAM: _registration(
         "src.gui.widgets.spectrogram",
@@ -303,6 +377,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SUPPORTED,
         compact=SUPPORTED,
         comparison=NON_TRACE_COMPARISON,
+        console_primary_action=console_action("toggle_btn"),
     ),
     MODULE_BOXCAR_AVERAGER: _registration(
         "src.gui.widgets.boxcar_averager",
@@ -310,6 +385,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=console_action("toggle_btn"),
     ),
     MODULE_GONIOMETER: _registration(
         "src.gui.widgets.goniometer",
@@ -317,6 +393,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SUPPORTED,
         compact=SUPPORTED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=console_action("toggle_btn"),
     ),
     MODULE_IMPEDANCE_ANALYZER: _registration(
         "src.gui.widgets.impedance_analyzer",
@@ -324,6 +401,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=console_action("toggle_btn"),
     ),
     MODULE_NOISE_PROFILER: _registration(
         "src.gui.widgets.noise_profiler",
@@ -331,6 +409,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SUPPORTED,
         compact=SUPPORTED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=console_action("toggle_btn"),
     ),
     MODULE_RECORDER_PLAYER: _registration(
         "src.gui.widgets.recorder_player",
@@ -338,6 +417,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=NO_INDEPENDENT_DISPLAY,
         compact=NO_INDEPENDENT_DISPLAY,
         comparison=NO_INDEPENDENT_DISPLAY,
+        console_primary_action=CONSOLE_ACTION_DEFERRED,
     ),
     MODULE_WAVEFORM_LOOP_PLAYER: _registration(
         "src.gui.widgets.waveform_loop_player",
@@ -345,6 +425,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=NO_CONSOLE_ACTION,
     ),
     MODULE_TRANSIENT_ANALYZER: _registration(
         "src.gui.widgets.transient_analyzer",
@@ -352,6 +433,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=CONSOLE_ACTION_DEFERRED,
     ),
     MODULE_SOUND_QUALITY_ANALYZER: _registration(
         "src.gui.widgets.sound_quality_analyzer",
@@ -359,6 +441,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=NO_CONSOLE_ACTION,
     ),
     MODULE_TIMECODE_MONITOR: _registration(
         "src.gui.widgets.timecode_monitor",
@@ -366,6 +449,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=SUPPORTED,
         comparison=NON_TRACE_COMPARISON,
+        console_primary_action=CONSOLE_ACTION_DEFERRED,
     ),
     MODULE_BNIM_METER: _registration(
         "src.gui.widgets.bnim_meter",
@@ -373,6 +457,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SUPPORTED,
         compact=SUPPORTED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=console_action("toggle_btn"),
     ),
     MODULE_HRTF_PLAYER: _registration(
         "src.gui.widgets.hrtf_player",
@@ -380,6 +465,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=NON_TRACE_COMPARISON,
+        console_primary_action=NO_CONSOLE_ACTION,
     ),
     MODULE_ULTRASOUND_MODULATOR: _registration(
         "src.gui.widgets.ultrasound_modulator",
@@ -387,6 +473,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=NO_INDEPENDENT_DISPLAY,
         compact=NO_INDEPENDENT_DISPLAY,
         comparison=NO_INDEPENDENT_DISPLAY,
+        console_primary_action=CONSOLE_ACTION_DEFERRED,
     ),
     MODULE_LINEARITY_ANALYZER: _registration(
         "src.gui.widgets.linearity_analyzer",
@@ -394,6 +481,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=CONSOLE_ACTION_DEFERRED,
     ),
     MODULE_1PPS_MONITOR: _registration(
         "src.gui.widgets.one_pps_monitor",
@@ -401,6 +489,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=CONSOLE_ACTION_DEFERRED,
     ),
     MODULE_STEREO_ALIGNMENT_MONITOR: _registration(
         "src.gui.widgets.stereo_alignment_monitor",
@@ -408,6 +497,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=SUPPORTED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=CONSOLE_ACTION_DEFERRED,
     ),
     MODULE_SPATIAL_BINAURAL_MIXER: _registration(
         "src.gui.widgets.spatial_binaural_mixer",
@@ -415,6 +505,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=NO_INDEPENDENT_DISPLAY,
         compact=NO_INDEPENDENT_DISPLAY,
         comparison=NO_INDEPENDENT_DISPLAY,
+        console_primary_action=NO_CONSOLE_ACTION,
     ),
     MODULE_PROCESSOR_BENCHMARK: _registration(
         "src.gui.widgets.processor_benchmark",
@@ -422,6 +513,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=NO_CONSOLE_ACTION,
     ),
     MODULE_PLOT_COMPARER: _registration(
         "src.gui.widgets.plot_comparer",
@@ -429,6 +521,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=COMPARISON_RECEIVER,
+        console_primary_action=NO_CONSOLE_ACTION,
     ),
     MODULE_TRANSMISSION_ANALYZER: _registration(
         "src.gui.widgets.transmission_analyzer",
@@ -436,6 +529,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=SUPPORTED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=CONSOLE_ACTION_DEFERRED,
     ),
     MODULE_NONLINEAR_ANALYZER: _registration(
         "src.gui.widgets.nonlinear_analyzer",
@@ -443,6 +537,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=CONSOLE_ACTION_DEFERRED,
     ),
     MODULE_LOCKIN_MODELER: _registration(
         "src.gui.widgets.lock_in_modeler",
@@ -450,6 +545,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=CONSOLE_ACTION_DEFERRED,
     ),
     MODULE_RESPONSE_VIEWER: _registration(
         "src.gui.widgets.response_viewer",
@@ -457,6 +553,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=NO_CONSOLE_ACTION,
     ),
     MODULE_FEEDFORWARD_COMPENSATOR: _registration(
         "src.gui.widgets.feedforward_compensator",
@@ -464,6 +561,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=NO_CONSOLE_ACTION,
     ),
     MODULE_NONLINEAR_RESPONSE_ANALYZER: _registration(
         "src.gui.widgets.nonlinear_response_analyzer",
@@ -471,5 +569,6 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         split=SPLIT_DEFERRED,
         compact=COMPACT_DEFERRED,
         comparison=COMPARISON_DEFERRED,
+        console_primary_action=CONSOLE_ACTION_DEFERRED,
     ),
 }
