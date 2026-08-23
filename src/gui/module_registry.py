@@ -182,7 +182,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         "src.gui.widgets.signal_generator",
         "SignalGenerator",
         split=NO_INDEPENDENT_DISPLAY,
-        compact=NO_INDEPENDENT_DISPLAY,
+        compact=SUPPORTED,
         comparison=NO_INDEPENDENT_DISPLAY,
     ),
     MODULE_SPECTRUM_ANALYZER: _registration(

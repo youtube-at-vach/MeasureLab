@@ -127,6 +127,36 @@ def test_console_hosts_compact_widgets_in_two_columns(qtbot):
     assert sorted(host.returned) == [0, 1, 2, 3]
 
 
+def test_adding_fifth_instrument_preserves_grid_and_tabs_from_left(qtbot, monkeypatch):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(5)])
+    console = MeasurementConsoleWindow(host)
+    for index in range(4):
+        console.add_module(index, arrange=False)
+    console.arrange_two_by_two()
+    console.show()
+    qtbot.waitUntil(lambda: all(dock.isVisible() for dock in console._docks.values()))
+
+    unaffected_geometry = {index: console._docks[index].geometry() for index in (1, 2, 3)}
+    preset_calls = 0
+
+    def record_preset_call() -> None:
+        nonlocal preset_calls
+        preset_calls += 1
+
+    monkeypatch.setattr(console, "arrange_two_by_two", record_preset_call)
+
+    console.add_module(4)
+    qtbot.waitUntil(lambda: console.tabifiedDockWidgets(console._docks[0]) == [console._docks[4]])
+    qtbot.waitUntil(
+        lambda: all(console._docks[index].geometry() == geometry for index, geometry in unaffected_geometry.items())
+    )
+
+    assert preset_calls == 0
+    assert console.tabifiedDockWidgets(console._docks[0]) == [console._docks[4]]
+    assert console._docks[4].isVisible()
+    console.close()
+
+
 def test_console_lock_disables_mutating_dock_features(qtbot):
     host = _ConsoleHostStub([_DummyWrapper()])
     console = MeasurementConsoleWindow(host)

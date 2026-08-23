@@ -38,6 +38,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.core.fft_manager import WARMUP_SIZES, MEDIUM_SIZES
 from src.core.utils import amplitude_to_linear, format_si, linear_to_amplitude
+from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.measurement_modules.base import MeasurementModule
 
 
@@ -1665,7 +1666,7 @@ class SignalGenerator(MeasurementModule):
             self._queue_render_snapshot(params)
 
 
-class SignalGeneratorWidget(QWidget):
+class SignalGeneratorWidget(QWidget, CompactableWidgetInterface):
     FREQUENCY_PARAM_NAMES = (
         "frequency",
         "start_freq",
@@ -1680,7 +1681,8 @@ class SignalGeneratorWidget(QWidget):
     FILTER_FREQUENCY_PARAM_NAMES = ("lpf_freq", "hpf_freq", "notch_freq")
 
     def __init__(self, module: SignalGenerator):
-        super().__init__()
+        QWidget.__init__(self)
+        CompactableWidgetInterface.__init__(self)
         self.module = module
         self.waveform_labels = {
             "sine": tr("Sine"),
@@ -1720,6 +1722,11 @@ class SignalGeneratorWidget(QWidget):
         self.output_state_timer.setInterval(100)
         self.output_state_timer.timeout.connect(self._refresh_output_state)
         self.output_state_timer.start()
+
+    def update_compact_layout(self) -> None:
+        """Keep output operation and status visible while hiding detailed settings."""
+        self.settings_scroll.setHidden(self.is_compact_mode())
+        self.updateGeometry()
 
     def _set_wave_combo_key(self, key: str):
         idx = self.wave_combo.findData(key)

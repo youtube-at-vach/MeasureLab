@@ -6,6 +6,7 @@ from PyQt6.QtCore import Qt
 
 import src.gui.widgets.signal_generator as signal_generator_module
 from src.gui.widgets.signal_generator import PreferredNumberSpinBox, SignalGenerator, SignalParameters
+from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 
 
 @pytest.fixture
@@ -192,6 +193,34 @@ def test_advanced_settings_fit_without_outer_scrolling(signal_generator_widget, 
 
     assert widget.settings_scroll.verticalScrollBar().maximum() == 0
     assert widget.settings_scroll.horizontalScrollBar().maximum() == 0
+
+
+def test_compact_mode_keeps_output_controls_and_status(signal_generator_widget):
+    widget, _module, _engine = signal_generator_widget
+
+    assert isinstance(widget, CompactableWidgetInterface)
+    assert not widget.is_compact_mode()
+    assert not widget.settings_scroll.isHidden()
+
+    widget.set_compact_mode(True)
+
+    assert widget.is_compact_mode()
+    assert widget.settings_scroll.isHidden()
+    assert not widget.toggle_btn.isHidden()
+    assert not widget.route_stereo.isHidden()
+    assert not widget.left_condition_badge.isHidden()
+    assert not widget.right_condition_badge.isHidden()
+    assert not widget.calibration_condition_badge.isHidden()
+    assert widget.output_message_label.isHidden()
+
+    widget._output_error_message = "device unavailable"
+    widget._refresh_output_state()
+    assert not widget.output_message_label.isHidden()
+
+    widget.set_compact_mode(False)
+
+    assert not widget.is_compact_mode()
+    assert not widget.settings_scroll.isHidden()
 
 
 def test_transition_time_control_updates_global_generator_setting(signal_generator_widget):

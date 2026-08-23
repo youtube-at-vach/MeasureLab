@@ -486,6 +486,7 @@ class MeasurementConsoleWindow(QMainWindow):
         if wrapper.is_compactable:
             wrapper.toggle_compact(True)
 
+        existing_docks = list(self._docks.values())
         dock = InstrumentDockWidget(tr(module_key), module_index, module_key, self)
         dock.remove_requested.connect(self.remove_module)
         dock.dockLocationChanged.connect(lambda _area: self._schedule_visible_state_snapshot())
@@ -493,16 +494,61 @@ class MeasurementConsoleWindow(QMainWindow):
         dock.visibilityChanged.connect(lambda _visible: self._schedule_visible_state_snapshot())
         dock.set_instrument_widget(wrapper)
         self._docks[module_index] = dock
-        initial_area = (
-            Qt.DockWidgetArea.LeftDockWidgetArea if len(self._docks) % 2 else Qt.DockWidgetArea.RightDockWidgetArea
-        )
-        self.addDockWidget(initial_area, dock)
+        if arrange:
+            self._insert_dock_preserving_layout(dock, existing_docks)
+        else:
+            initial_area = (
+                Qt.DockWidgetArea.LeftDockWidgetArea if len(self._docks) % 2 else Qt.DockWidgetArea.RightDockWidgetArea
+            )
+            self.addDockWidget(initial_area, dock)
         dock.show()
+        if arrange and len(existing_docks) >= 4:
+            # tabifyDockWidget() runs before the dock is shown so Qt never lays
+            # it out as a temporary fifth split.  Raise it only after show().
+            dock.raise_()
 
         self._rebuild_add_menu()
         self.statusBar().showMessage(tr("{0} instruments in the console.").format(len(self._docks)))
-        if arrange:
-            QTimer.singleShot(0, self.arrange_two_by_two)
+
+    def _insert_dock_preserving_layout(
+        self,
+        dock: InstrumentDockWidget,
+        existing_docks: list[InstrumentDockWidget],
+    ) -> None:
+        """Place one instrument without rebuilding the existing dock tree.
+
+        Reapplying the full 2 x 2 preset made Qt recalculate every splitter from
+        the new instrument's size hint.  A wide instrument could consequently
+        collapse the other row or column.  Build the first four cells
+        incrementally, then add further instruments as tabs from the top-left
+        cell onward so the established splitter sizes remain intact.
+        """
+        if not existing_docks:
+            self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, dock)
+            return
+
+        if len(existing_docks) == 1:
+            self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
+            return
+
+        if len(existing_docks) < 4:
+            anchor = existing_docks[len(existing_docks) - 2]
+            area = self.dockWidgetArea(anchor)
+            if area is Qt.DockWidgetArea.NoDockWidgetArea:
+                area = Qt.DockWidgetArea.LeftDockWidgetArea
+            self.addDockWidget(area, dock)
+            self.splitDockWidget(anchor, dock, Qt.Orientation.Vertical)
+            return
+
+        # Additional instruments share the four established cells in visual
+        # row-major order: top-left, top-right, bottom-left, bottom-right.
+        anchor = existing_docks[(len(existing_docks) - 4) % 4]
+        area = self.dockWidgetArea(anchor)
+        if area is Qt.DockWidgetArea.NoDockWidgetArea:
+            area = Qt.DockWidgetArea.LeftDockWidgetArea
+        self.addDockWidget(area, dock)
+        self.tabifyDockWidget(anchor, dock)
+        self._schedule_visible_state_snapshot()
 
     def remove_module(self, module_index: int) -> None:
         dock = self._docks.pop(module_index, None)
