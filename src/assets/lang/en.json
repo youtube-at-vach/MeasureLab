@@ -2226,5 +2226,17 @@
     "Level (div):": "Level (div):",
     "ON": "ON",
     "Timebase": "Timebase",
-    "Trig: {value:.2f} div": "Trig: {value:.2f} div"
+    "Trig: {value:.2f} div": "Trig: {value:.2f} div",
+    "2 x 2 Grid": "2 x 2 Grid",
+    "Add Instrument": "Add Instrument",
+    "Default Console": "Default Console",
+    "Layout": "Layout",
+    "Lock Layout": "Lock Layout",
+    "Measurement Console": "Measurement Console",
+    "No instruments in the console.": "No instruments in the console.",
+    "Open the multi-instrument measurement console.": "Open the multi-instrument measurement console.",
+    "Show in Console": "Show in Console",
+    "Single Row": "Single Row",
+    "{0} instruments in the console.": "{0} instruments in the console.",
+    "{0} is displayed in Measurement Console.": "{0} is displayed in Measurement Console."
 }
