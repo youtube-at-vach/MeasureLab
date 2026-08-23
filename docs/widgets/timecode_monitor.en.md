@@ -15,6 +15,10 @@ Since it can monitor timecode on independent left and right channels (L / R), it
 * **Generator**: Output LTC from MeasureLab
 * **Compare**: Check how far the left and right channels are apart
 
+## Common Features
+
+This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## What is Timecode (LTC)?
 
 A timecode (LTC) signal contains precise time information (`hour:minute:second:frame`). Recording this audio to multiple cameras allows editing software to later use it to automatically synchronize their timelines.
@@ -105,10 +109,6 @@ A feature to measure and automatically compensate for the input/output latency (
 5. Based on the measurement result, **In Delay** (input compensation) and **Out Delay** (output compensation) are automatically set. This corrects display discrepancies during monitoring and phase discrepancies in generator output.
 
 Calibration measures audio path delay. It does not rewrite the timecode content itself. If you change your wiring or interface, it is worth running again.
-
-## Common Features
-
-This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
 
 ## Usage Examples
 

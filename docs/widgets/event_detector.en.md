@@ -6,6 +6,10 @@
 
 Event Detector continuously monitors every input sample and records the count, amplitude, duration, interval, and rate of threshold events. It is intended for rare phenomena such as popcorn noise, random telegraph noise (RTN) in JFETs or operational amplifiers, and intermittent contact clicks.
 
+## Common Features
+
+This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Relationship to Other Time-Domain Widgets
 
 | Widget | Primary purpose |
@@ -99,10 +103,6 @@ The table shows the most recent 500 records. CSV and JSON exports include every 
 - JSON includes the `measurelab.event_detector` schema name and version.
 - CSV writes run conditions as comment rows followed by the event table.
 - Peaks are always retained in FS units, with a converted display value also included when calibrated.
-
-## Common Features
-
-This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
 
 ## Basic Measurement Procedure
 

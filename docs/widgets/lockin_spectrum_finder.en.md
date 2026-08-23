@@ -7,6 +7,10 @@ It is specialized for detecting weak signals at low noise floors or observing sp
 
 This widget is specialized for "finding" the presence and frequency of weak signals buried in noise. Due to the nature of lock-in detection, if the frequency of the actual signal does not perfectly match one of the specified analysis frequencies (Basis Points), the displayed amplitude may be lower than the true value. Therefore, despite long integration times, please treat the amplitude values on the screen as a rough guide for locating peak positions. If you need strictly accurate measurements of amplitude and phase at a specific frequency, use this widget to identify the frequency first, and then use the dedicated **Lock-in Amplifier** widget to measure in perfect synchronization with that target frequency.
 
+## Common Features
+
+This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Usage Comparison with Other Widgets
 
 This widget is specialized for "finding" weak signals within a specific narrow band. For effective measurement, use it in combination with the following widgets depending on your goals:
@@ -106,10 +110,6 @@ The **Audio Sonification** tab provides an audio output corresponding to detecte
     * Specifies the analysis width (±Hz) from the center frequency. (e.g., if Center=1000Hz and Span=10Hz, it analyzes the range from 990Hz to 1010Hz).
 * **Resolution (RBW & Step)**
     * Displayed only in Zoom mode. You can check the actual Resolution Bandwidth (RBW) and the frequency step between points in real-time (in Hz), calculated based on the current settings (sample rate, buffer size, window function, and basis points).
-
-## Common Features
-
-This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
 
 ## How to Read the Graph
 
