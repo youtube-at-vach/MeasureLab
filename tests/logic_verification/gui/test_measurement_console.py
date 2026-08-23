@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import base64
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QSize, Qt
 from PyQt6.QtWidgets import (
     QApplication,
     QDockWidget,
@@ -121,7 +121,14 @@ def test_console_hosts_compact_widgets_in_two_columns(qtbot):
     assert all(wrapper.console_hosted and wrapper.compact for wrapper in host.wrappers)
     assert len({dock.objectName() for dock in console._docks.values()}) == 4
     assert console.dockWidgetArea(console._docks[0]) is Qt.DockWidgetArea.LeftDockWidgetArea
-    assert console.dockWidgetArea(console._docks[1]) is Qt.DockWidgetArea.RightDockWidgetArea
+    if console._requires_compact_screen_layout(QApplication.primaryScreen().availableGeometry()):
+        assert console.tabifiedDockWidgets(console._docks[0]) == [
+            console._docks[1],
+            console._docks[2],
+            console._docks[3],
+        ]
+    else:
+        assert console.dockWidgetArea(console._docks[1]) is Qt.DockWidgetArea.RightDockWidgetArea
 
     console.close()
     assert sorted(host.returned) == [0, 1, 2, 3]
@@ -141,6 +148,81 @@ def test_side_by_side_uses_two_tabbed_columns_for_four_instruments(qtbot):
     assert console.dockWidgetArea(console._docks[1]) is Qt.DockWidgetArea.RightDockWidgetArea
     assert console.tabifiedDockWidgets(console._docks[0]) == [console._docks[2]]
     assert console.tabifiedDockWidgets(console._docks[1]) == [console._docks[3]]
+    console.close()
+
+
+def test_single_pane_tabs_all_instruments_for_constrained_screens(qtbot):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(4)])
+    console = MeasurementConsoleWindow(host)
+    for index in range(4):
+        console.add_module(index, arrange=False)
+
+    console.arrange_single_pane()
+    console.show()
+    qtbot.waitUntil(lambda: all(dock.isVisible() for dock in console._docks.values()))
+
+    assert console.tabifiedDockWidgets(console._docks[0]) == [
+        console._docks[1],
+        console._docks[2],
+        console._docks[3],
+    ]
+    assert console.dockWidgetArea(console._docks[0]) is Qt.DockWidgetArea.LeftDockWidgetArea
+    console.close()
+
+
+def test_responsive_layout_uses_single_pane_below_grid_size(qtbot):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(4)])
+    console = MeasurementConsoleWindow(host)
+    for index in range(4):
+        console.add_module(index, arrange=False)
+    console.arrange_two_by_two()
+    console.show()
+
+    console._apply_responsive_layout(QSize(console.GRID_MIN_WIDTH - 1, console.GRID_MIN_HEIGHT))
+    qtbot.waitUntil(lambda: bool(console.tabifiedDockWidgets(console._docks[0])))
+
+    assert console._compact_screen_layout_active
+    assert console.tabifiedDockWidgets(console._docks[0]) == [
+        console._docks[1],
+        console._docks[2],
+        console._docks[3],
+    ]
+    console.close()
+
+
+def test_responsive_layout_restores_previous_layout_after_returning_to_large_screen(qtbot):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(4)])
+    console = MeasurementConsoleWindow(host)
+    for index in range(4):
+        console.add_module(index, arrange=False)
+    console.arrange_two_by_two()
+    console.show()
+
+    console._apply_responsive_layout(QSize(800, 700))
+    qtbot.waitUntil(lambda: console._compact_screen_layout_active)
+    console._apply_responsive_layout(QSize(console.GRID_MIN_WIDTH, console.GRID_MIN_HEIGHT))
+    qtbot.waitUntil(lambda: not console._compact_screen_layout_active)
+
+    assert console.dockWidgetArea(console._docks[0]) is Qt.DockWidgetArea.LeftDockWidgetArea
+    assert console.dockWidgetArea(console._docks[1]) is Qt.DockWidgetArea.RightDockWidgetArea
+    console.close()
+
+
+def test_console_clamps_an_oversized_window_to_the_available_screen(qtbot):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(4)])
+    console = MeasurementConsoleWindow(host)
+    for index in range(4):
+        console.add_module(index, arrange=False)
+    console.show()
+    qtbot.waitUntil(console.isVisible)
+
+    available = QApplication.primaryScreen().availableGeometry()
+    console.resize(available.width() * 2, available.height() * 2)
+    console._ensure_visible_on_screen()
+
+    frame = console.frameGeometry()
+    assert frame.width() <= available.width()
+    assert frame.height() <= available.height()
     console.close()
 
 
@@ -325,12 +407,21 @@ def test_console_recovers_hidden_docks_and_tiny_saved_geometry(qtbot):
     available = QApplication.primaryScreen().availableGeometry()
     qtbot.waitUntil(
         lambda: (
-            second.width() >= min(second.RECOVERY_MIN_WIDTH, available.width())
-            and second.height() >= min(second.RECOVERY_MIN_HEIGHT, available.height())
+            second.frameGeometry().width() <= available.width()
+            and second.frameGeometry().height() <= available.height()
         )
     )
-    assert second.tabifiedDockWidgets(second._docks[0]) == [second._docks[4]]
-    assert second.tabifiedDockWidgets(second._docks[1]) == [second._docks[5]]
+    if second._requires_compact_screen_layout(available):
+        assert second.tabifiedDockWidgets(second._docks[0]) == [
+            second._docks[1],
+            second._docks[2],
+            second._docks[3],
+            second._docks[4],
+            second._docks[5],
+        ]
+    else:
+        assert second.tabifiedDockWidgets(second._docks[0]) == [second._docks[4]]
+        assert second.tabifiedDockWidgets(second._docks[1]) == [second._docks[5]]
     second.close()
 
 

@@ -232,6 +232,8 @@ class MeasurementConsoleWindow(QMainWindow):
     DEFAULT_HEIGHT = 900
     RECOVERY_MIN_WIDTH = 900
     RECOVERY_MIN_HEIGHT = 650
+    GRID_MIN_WIDTH = 1400
+    GRID_MIN_HEIGHT = 740
 
     _UNLOCKED_FEATURES = (
         QDockWidget.DockWidgetFeature.DockWidgetClosable | QDockWidget.DockWidgetFeature.DockWidgetMovable
@@ -245,6 +247,9 @@ class MeasurementConsoleWindow(QMainWindow):
         self._layout_locked = False
         self._last_visible_dock_state: bytes | None = None
         self._validate_docks_after_show = False
+        self._compact_screen_layout_active = False
+        self._pre_compact_screen_dock_state: bytes | None = None
+        self._screen_change_connected = False
 
         self.setWindowTitle(tr("Measurement Console"))
         self.setObjectName("measurement_console_window")
@@ -347,7 +352,14 @@ class MeasurementConsoleWindow(QMainWindow):
         for module_index in default_indices:
             self.add_module(module_index, arrange=False)
 
-        QTimer.singleShot(0, self.arrange_two_by_two)
+        self._compact_screen_layout_active = False
+        self._pre_compact_screen_dock_state = None
+        QTimer.singleShot(0, self._arrange_default_console_for_current_screen)
+
+    def _arrange_default_console_for_current_screen(self) -> None:
+        """Apply the regular preset, then constrain it to the actual screen."""
+        self.arrange_two_by_two()
+        self._ensure_visible_on_screen()
 
     def restore_workspace(self) -> bool:
         """Restore the last console layout, falling back to the four-instrument preset."""
@@ -448,13 +460,22 @@ class MeasurementConsoleWindow(QMainWindow):
         was_too_small = len(self._docks) >= 2 and (
             self.width() < self.RECOVERY_MIN_WIDTH or self.height() < self.RECOVERY_MIN_HEIGHT
         )
-        if was_off_screen or was_too_small:
-            target_width = min(self.DEFAULT_WIDTH, available.width())
-            target_height = min(self.DEFAULT_HEIGHT, available.height())
+        frame_width = max(0, frame.width() - self.width())
+        frame_height = max(0, frame.height() - self.height())
+        max_content_width = max(1, available.width() - frame_width)
+        max_content_height = max(1, available.height() - frame_height)
+        is_too_large = self.width() > max_content_width or self.height() > max_content_height
+        if was_off_screen or was_too_small or is_too_large:
+            min_width = min(self.RECOVERY_MIN_WIDTH, max_content_width)
+            min_height = min(self.RECOVERY_MIN_HEIGHT, max_content_height)
+            target_width = min(max(self.width(), min_width), max_content_width)
+            target_height = min(max(self.height(), min_height), max_content_height)
             self.resize(target_width, target_height)
             recovered = self.frameGeometry()
             recovered.moveCenter(available.center())
             self.move(recovered.topLeft())
+
+        self._apply_responsive_layout(available)
 
         for dock in self._docks.values():
             if dock.isFloating() and not any(
@@ -465,6 +486,51 @@ class MeasurementConsoleWindow(QMainWindow):
     def _schedule_geometry_recovery(self) -> None:
         """Run after both Qt and the native window system commit restored geometry."""
         QTimer.singleShot(0, self._ensure_visible_on_screen)
+
+    def _requires_compact_screen_layout(self, available) -> bool:
+        """Return whether the available work area cannot safely show a 2 x 2 grid."""
+        return available.width() < self.GRID_MIN_WIDTH or available.height() < self.GRID_MIN_HEIGHT
+
+    def _apply_responsive_layout(self, available) -> None:
+        """Use one tabbed pane when the current screen is too small for four panes.
+
+        The console deliberately applies this safety layout even when layout lock
+        is enabled. Locking prevents user-initiated rearrangement; it must not
+        leave a restored instrument beyond the physical screen.
+        """
+        if not self._docks:
+            return
+
+        compact_screen = self._requires_compact_screen_layout(available)
+        if compact_screen:
+            if self._compact_screen_layout_active:
+                return
+            self._pre_compact_screen_dock_state = bytes(self.saveState(1))
+            self._apply_layout_while_locked(self.arrange_single_pane)
+            self._compact_screen_layout_active = True
+            return
+
+        if not self._compact_screen_layout_active:
+            return
+
+        state = self._pre_compact_screen_dock_state
+        self._compact_screen_layout_active = False
+        self._pre_compact_screen_dock_state = None
+        if state and self.restoreState(QByteArray(state), 1):
+            for dock in self._docks.values():
+                dock.show()
+            self._schedule_visible_state_snapshot()
+        else:
+            self._apply_layout_while_locked(self.arrange_two_by_two)
+
+    def _apply_layout_while_locked(self, arrange) -> None:
+        """Apply a safety preset without changing the user's lock setting."""
+        was_locked = self._layout_locked
+        self._layout_locked = False
+        try:
+            arrange()
+        finally:
+            self._layout_locked = was_locked
 
     def add_module(self, module_index: int, *, arrange: bool = True) -> None:
         if module_index in self._docks:
@@ -494,7 +560,11 @@ class MeasurementConsoleWindow(QMainWindow):
         dock.visibilityChanged.connect(lambda _visible: self._schedule_visible_state_snapshot())
         dock.set_instrument_widget(wrapper)
         self._docks[module_index] = dock
-        if arrange:
+        if arrange and self._compact_screen_layout_active and existing_docks:
+            anchor = existing_docks[0]
+            self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, dock)
+            self.tabifyDockWidget(anchor, dock)
+        elif arrange:
             self._insert_dock_preserving_layout(dock, existing_docks)
         else:
             initial_area = (
@@ -619,6 +689,28 @@ class MeasurementConsoleWindow(QMainWindow):
             anchor.raise_()
         self._schedule_visible_state_snapshot()
 
+    def arrange_single_pane(self) -> None:
+        """Arrange all instruments as tabs in one reachable pane.
+
+        This is the safe fallback for screens smaller than the main window's
+        supported 2 x 2 workspace.  Each instrument still has its own scroll
+        area, while tabs keep every instrument reachable without shrinking its
+        controls below a usable size.
+        """
+        if self._layout_locked or not self._docks:
+            return
+        docks = self._prepare_for_preset()
+        anchor = docks[0]
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, anchor)
+        for dock in docks[1:]:
+            self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, dock)
+            self.tabifyDockWidget(anchor, dock)
+
+        for dock in docks:
+            dock.show()
+        anchor.raise_()
+        self._schedule_visible_state_snapshot()
+
     def arrange_two_by_two(self) -> None:
         if self._layout_locked or not self._docks:
             return
@@ -652,11 +744,15 @@ class MeasurementConsoleWindow(QMainWindow):
         self._schedule_visible_state_snapshot()
 
     def _schedule_visible_state_snapshot(self) -> None:
-        if not self._closing:
+        from PyQt6 import sip
+
+        if not sip.isdeleted(self) and not self._closing:
             QTimer.singleShot(0, self._cache_visible_dock_state)
 
     def _cache_visible_dock_state(self) -> None:
-        if self._closing or not self._docks:
+        from PyQt6 import sip
+
+        if sip.isdeleted(self) or self._closing or not self._docks:
             return
         if all(dock.toggleViewAction().isChecked() for dock in self._docks.values()):
             self._last_visible_dock_state = bytes(self.saveState(1))
@@ -687,6 +783,9 @@ class MeasurementConsoleWindow(QMainWindow):
 
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
+        if not self._screen_change_connected and self.windowHandle() is not None:
+            self.windowHandle().screenChanged.connect(self._on_screen_changed)
+            self._screen_change_connected = True
         QTimer.singleShot(0, self._recover_hidden_restored_docks)
         # restoreGeometry() may only be committed by the window system during
         # showEvent.  Defer recovery until after that commit so a stale tiny
@@ -695,6 +794,10 @@ class MeasurementConsoleWindow(QMainWindow):
         # second turn corrects the final committed top-level geometry.
         QTimer.singleShot(0, self._schedule_geometry_recovery)
         self._schedule_visible_state_snapshot()
+
+    def _on_screen_changed(self, _screen) -> None:
+        if not self._closing:
+            self._schedule_geometry_recovery()
 
     def closeEvent(self, event: QCloseEvent) -> None:
         if self._closing:
