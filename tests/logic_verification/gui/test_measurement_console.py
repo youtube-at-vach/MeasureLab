@@ -127,6 +127,34 @@ def test_console_hosts_compact_widgets_in_two_columns(qtbot):
     assert sorted(host.returned) == [0, 1, 2, 3]
 
 
+def test_side_by_side_uses_two_tabbed_columns_for_four_instruments(qtbot):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(4)])
+    console = MeasurementConsoleWindow(host)
+    for index in range(4):
+        console.add_module(index, arrange=False)
+
+    console.arrange_side_by_side()
+    console.show()
+    qtbot.waitUntil(lambda: all(dock.isVisible() for dock in console._docks.values()))
+
+    assert console.dockWidgetArea(console._docks[0]) is Qt.DockWidgetArea.LeftDockWidgetArea
+    assert console.dockWidgetArea(console._docks[1]) is Qt.DockWidgetArea.RightDockWidgetArea
+    assert console.tabifiedDockWidgets(console._docks[0]) == [console._docks[2]]
+    assert console.tabifiedDockWidgets(console._docks[1]) == [console._docks[3]]
+    console.close()
+
+
+def test_layout_menu_replaces_single_row_with_side_by_side(qapp):
+    host = _ConsoleHostStub([_DummyWrapper()])
+    console = MeasurementConsoleWindow(host)
+
+    action_labels = [action.text() for action in console.layout_button.menu().actions()]
+
+    assert "Side by Side" in action_labels
+    assert "Single Row" not in action_labels
+    console.close()
+
+
 def test_adding_fifth_instrument_preserves_grid_and_tabs_from_left(qtbot, monkeypatch):
     host = _ConsoleHostStub([_DummyWrapper() for _ in range(5)])
     console = MeasurementConsoleWindow(host)

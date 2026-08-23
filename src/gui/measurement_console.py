@@ -293,9 +293,9 @@ class MeasurementConsoleWindow(QMainWindow):
         self.layout_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         layout_menu = QMenu(self.layout_button)
 
-        row_action = QAction(tr("Single Row"), layout_menu)
-        row_action.triggered.connect(self.arrange_single_row)
-        layout_menu.addAction(row_action)
+        side_by_side_action = QAction(tr("Side by Side"), layout_menu)
+        side_by_side_action.triggered.connect(self.arrange_side_by_side)
+        layout_menu.addAction(side_by_side_action)
 
         grid_action = QAction(tr("2 x 2 Grid"), layout_menu)
         grid_action.triggered.connect(self.arrange_two_by_two)
@@ -590,16 +590,34 @@ class MeasurementConsoleWindow(QMainWindow):
             self.removeDockWidget(dock)
         return docks
 
-    def arrange_single_row(self) -> None:
+    def arrange_side_by_side(self) -> None:
+        """Arrange instruments in two columns, using tabs beyond two instruments.
+
+        A horizontal split per instrument quickly becomes unusable because each
+        hosted widget contributes its own minimum width.  Keep only two stable
+        comparison panes and distribute further instruments between their tab
+        groups instead (four instruments become two tabs on each side).
+        """
         if self._layout_locked or not self._docks:
             return
         docks = self._prepare_for_preset()
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, docks[0])
-        previous = docks[0]
-        for dock in docks[1:]:
-            self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, dock)
-            self.splitDockWidget(previous, dock, Qt.Orientation.Horizontal)
-            previous = dock
+
+        if len(docks) >= 2:
+            self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, docks[1])
+
+        column_anchors = docks[:2]
+        for index, dock in enumerate(docks[2:]):
+            anchor = column_anchors[index % len(column_anchors)]
+            area = self.dockWidgetArea(anchor)
+            self.addDockWidget(area, dock)
+            self.tabifyDockWidget(anchor, dock)
+
+        for dock in docks:
+            dock.show()
+        for anchor in column_anchors:
+            anchor.raise_()
+        self._schedule_visible_state_snapshot()
 
     def arrange_two_by_two(self) -> None:
         if self._layout_locked or not self._docks:
