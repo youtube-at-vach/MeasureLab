@@ -34,16 +34,16 @@ def apply_hardware_non_idealities(sig, sample_rate, noise_dbfs=-85.0, jitter_sam
     # 1. Hardware Frequency Response (converter AC coupling HPF + AA LPF)
     if apply_filter:
         # HPF at 25 Hz (DC block)
-        b_hp, a_hp = butter(1, 25.0 / (fs / 2.0), btype='high')
+        b_hp, a_hp = butter(1, 25.0 / (fs / 2.0), btype="high")
         out_sig = lfilter(b_hp, a_hp, out_sig)
         # LPF at 21500 Hz (converter roll-off)
-        b_lp, a_lp = butter(2, 21500.0 / (fs / 2.0), btype='low')
+        b_lp, a_lp = butter(2, 21500.0 / (fs / 2.0), btype="low")
         out_sig = lfilter(b_lp, a_lp, out_sig)
 
     # 2. Clock Jitter / Fractional Delay
     if jitter_samples > 0:
         delay = np.random.normal(0.0, jitter_samples)
-        freqs = np.fft.rfftfreq(N, d=1.0/fs)
+        freqs = np.fft.rfftfreq(N, d=1.0 / fs)
         phase_shift = np.exp(-1j * 2.0 * np.pi * freqs * (delay / fs))
         sig_fft = np.fft.rfft(out_sig)
         out_sig = np.fft.irfft(sig_fft * phase_shift, n=N)
@@ -217,11 +217,19 @@ def run_sss_sweep(
     return plot_freqs, averaged_results, block_counts, max_blocks
 
 
-
-
 def run_lockin_measurement(
-    audio_engine, f0, A_in, num_runs=5, max_harmonic=5, fast_mode=False, signal_channel=0, ref_channel=1,
-    noise_dbfs=-85.0, jitter_samples=0.02, apply_filter=True, lockin_buffer_size=131072
+    audio_engine,
+    f0,
+    A_in,
+    num_runs=5,
+    max_harmonic=5,
+    fast_mode=False,
+    signal_channel=0,
+    ref_channel=1,
+    noise_dbfs=-85.0,
+    jitter_samples=0.02,
+    apply_filter=True,
+    lockin_buffer_size=131072,
 ):
     """
     Measures the harmonic components under a single-tone excitation using the LockInHarmonicAnalyzer.
@@ -258,7 +266,9 @@ def run_lockin_measurement(
                 if audio_engine.offline_mode:
                     sig = ref_sig
                     simulated_meas = sig - 0.08 * (sig**2) + 0.12 * (sig**3) - 0.04 * (sig**4) + 0.06 * (sig**5)
-                    meas_nonideal = apply_hardware_non_idealities(simulated_meas, fs, noise_dbfs, jitter_samples, apply_filter)
+                    meas_nonideal = apply_hardware_non_idealities(
+                        simulated_meas, fs, noise_dbfs, jitter_samples, apply_filter
+                    )
                     lockin.input_data[:, signal_channel] = meas_nonideal
                     lockin.input_data[:, ref_channel] = ref_nonideal
 
@@ -361,15 +371,17 @@ def run_parameter_sweep(engine, cli_args):
                                 sweep_duration, tsa, num_amplitudes, runs, sample_rate, buf_size
                             )
                             if total_time <= 120.0:
-                                candidates.append({
-                                    "sweep_duration": sweep_duration,
-                                    "tsa": tsa,
-                                    "num_amplitudes": num_amplitudes,
-                                    "runs": runs,
-                                    "buffer_size": buf_size,
-                                    "ref_phase_only": ref_phase_only,
-                                    "estimated_time": total_time
-                                })
+                                candidates.append(
+                                    {
+                                        "sweep_duration": sweep_duration,
+                                        "tsa": tsa,
+                                        "num_amplitudes": num_amplitudes,
+                                        "runs": runs,
+                                        "buffer_size": buf_size,
+                                        "ref_phase_only": ref_phase_only,
+                                        "estimated_time": total_time,
+                                    }
+                                )
 
     print(f"[+] Found {len(candidates)} valid parameter combinations within the 120-second limit.")
 
@@ -383,7 +395,9 @@ def run_parameter_sweep(engine, cli_args):
         ref_phase_only = cand["ref_phase_only"]
         est_t = cand["estimated_time"]
 
-        print(f"\n[*] Evaluating candidate {idx+1}/{len(candidates)}: Dur={sdur}s, TSA={tsa}, Amps={namps}, Runs={runs}, RefPhaseOnly={ref_phase_only} (Est Time: {est_t:.1f}s)...")
+        print(
+            f"\n[*] Evaluating candidate {idx + 1}/{len(candidates)}: Dur={sdur}s, TSA={tsa}, Amps={namps}, Runs={runs}, RefPhaseOnly={ref_phase_only} (Est Time: {est_t:.1f}s)..."
+        )
 
         # 1. SSS Sweep
         max_amp_db = -6.0
@@ -463,10 +477,12 @@ def run_parameter_sweep(engine, cli_args):
                 diff = (diff + 180) % 360 - 180
                 phases_aligned[idx_p] = phases_aligned[0] + diff
 
-            lockin_avg.append({
-                "amp_db": np.mean(amps),
-                "phase_deg": (np.mean(phases_aligned) + 180) % 360 - 180,
-            })
+            lockin_avg.append(
+                {
+                    "amp_db": np.mean(amps),
+                    "phase_deg": (np.mean(phases_aligned) + 180) % 360 - 180,
+                }
+            )
 
         # 6. Accuracy Evaluation
         amp_diffs = []
@@ -504,10 +520,14 @@ def run_parameter_sweep(engine, cli_args):
     print("\n" + "=" * 115)
     print("=== PARAMETER SWEEP RANKING ===")
     print("=" * 115)
-    print(f"{'Rank':<5} | {'Dur (s)':<8} | {'TSA':<4} | {'Amps':<5} | {'Runs':<5} | {'BufSize':<8} | {'RefPhaseOnly':<12} | {'Est Time (s)':<12} | {'Max Amp Err (dB)':<16} | {'Max Phase Err (deg)':<19}")
+    print(
+        f"{'Rank':<5} | {'Dur (s)':<8} | {'TSA':<4} | {'Amps':<5} | {'Runs':<5} | {'BufSize':<8} | {'RefPhaseOnly':<12} | {'Est Time (s)':<12} | {'Max Amp Err (dB)':<16} | {'Max Phase Err (deg)':<19}"
+    )
     print("-" * 115)
     for rank, r in enumerate(results[:20]):
-        print(f"{rank+1:<5} | {r['sweep_duration']:<8.1f} | {r['tsa']:<4} | {r['num_amplitudes']:<5} | {r['runs']:<5} | {r['buffer_size']:<8} | {str(r['ref_phase_only']):<12} | {r['estimated_time']:<12.1f} | {r['max_amp_err']:<16.4f} | {r['max_phase_err']:<19.4f}")
+        print(
+            f"{rank + 1:<5} | {r['sweep_duration']:<8.1f} | {r['tsa']:<4} | {r['num_amplitudes']:<5} | {r['runs']:<5} | {r['buffer_size']:<8} | {str(r['ref_phase_only']):<12} | {r['estimated_time']:<12.1f} | {r['max_amp_err']:<16.4f} | {r['max_phase_err']:<19.4f}"
+        )
     print("=" * 115)
 
     # Save results to JSON
@@ -525,10 +545,21 @@ def main():
         "--virtual", action="store_true", help="Run in virtual simulation loop mode instead of real device"
     )
     parser.add_argument("--fast", action="store_true", help="Run fast simulation without time delays")
-    parser.add_argument("--noise-dbfs", type=float, default=-85.0, help="Simulated noise floor in dBFS (default: -85.0)")
-    parser.add_argument("--jitter-samples", type=float, default=0.02, help="Simulated clock jitter in samples (default: 0.02)")
-    parser.add_argument("--hw-filter", action="store_true", default=True, help="Apply simulated hardware frequency response (default: True)")
-    parser.add_argument("--no-hw-filter", action="store_false", dest="hw_filter", help="Disable simulated hardware frequency response")
+    parser.add_argument(
+        "--noise-dbfs", type=float, default=-85.0, help="Simulated noise floor in dBFS (default: -85.0)"
+    )
+    parser.add_argument(
+        "--jitter-samples", type=float, default=0.02, help="Simulated clock jitter in samples (default: 0.02)"
+    )
+    parser.add_argument(
+        "--hw-filter",
+        action="store_true",
+        default=True,
+        help="Apply simulated hardware frequency response (default: True)",
+    )
+    parser.add_argument(
+        "--no-hw-filter", action="store_false", dest="hw_filter", help="Disable simulated hardware frequency response"
+    )
     parser.add_argument("--sweep-params", action="store_true", help="Sweep parameters to optimize accuracy")
     parser.add_argument("--runs", type=int, default=5, help="Number of runs for statistics and stability")
     parser.add_argument("--f0", type=float, default=1000.0, help="Test frequency for lock-in vs prediction comparison")
@@ -544,7 +575,11 @@ def main():
     parser.add_argument("--num-meas-points", type=int, default=500, help="Number of measurement points")
     parser.add_argument("--min-analysis-window", type=float, default=1.0, help="Minimum analysis window in seconds")
     parser.add_argument(
-        "--model", type=str, choices=["chebyshev"], default="chebyshev", help="Model domain mode (only 'chebyshev' is supported now)"
+        "--model",
+        type=str,
+        choices=["chebyshev"],
+        default="chebyshev",
+        help="Model domain mode (only 'chebyshev' is supported now)",
     )
     parser.add_argument(
         "--no-ref-phase-only", action="store_true", help="Disable ref-phase-only mode (use full XFER scaling)"
@@ -621,32 +656,36 @@ def main():
                 sig = logical_in[:, 0]
                 simulated_meas = sig - 0.08 * (sig**2) + 0.12 * (sig**3) - 0.04 * (sig**4) + 0.06 * (sig**5)
                 logical_in[:, 0] = apply_hardware_non_idealities(
-                    simulated_meas, engine.sample_rate,
+                    simulated_meas,
+                    engine.sample_rate,
                     noise_dbfs=cli_args.noise_dbfs,
                     jitter_samples=cli_args.jitter_samples,
-                    apply_filter=cli_args.hw_filter
+                    apply_filter=cli_args.hw_filter,
                 )
                 logical_in[:, 1] = apply_hardware_non_idealities(
-                    sig, engine.sample_rate,
+                    sig,
+                    engine.sample_rate,
                     noise_dbfs=cli_args.noise_dbfs,
                     jitter_samples=cli_args.jitter_samples,
-                    apply_filter=cli_args.hw_filter
+                    apply_filter=cli_args.hw_filter,
                 )
             else:
                 # Stereo sweep or default case
                 sig = logical_in[:, 1]
                 simulated_meas = sig - 0.08 * (sig**2) + 0.12 * (sig**3) - 0.04 * (sig**4) + 0.06 * (sig**5)
                 logical_in[:, 0] = apply_hardware_non_idealities(
-                    simulated_meas, engine.sample_rate,
+                    simulated_meas,
+                    engine.sample_rate,
                     noise_dbfs=cli_args.noise_dbfs,
                     jitter_samples=cli_args.jitter_samples,
-                    apply_filter=cli_args.hw_filter
+                    apply_filter=cli_args.hw_filter,
                 )
                 logical_in[:, 1] = apply_hardware_non_idealities(
-                    sig, engine.sample_rate,
+                    sig,
+                    engine.sample_rate,
                     noise_dbfs=cli_args.noise_dbfs,
                     jitter_samples=cli_args.jitter_samples,
-                    apply_filter=cli_args.hw_filter
+                    apply_filter=cli_args.hw_filter,
                 )
         return logical_in
 

@@ -859,8 +859,7 @@ class MainWindow(QMainWindow):
                 )
             if self._callback_error_latched:
                 tooltip_sections.append(
-                    f"{tr('Error')}: {self._last_callback_error}\n"
-                    f"{tr('Error Count')}: {self._callback_error_count}"
+                    f"{tr('Error')}: {self._last_callback_error}\n{tr('Error Count')}: {self._callback_error_count}"
                 )
 
             self.io_error_button.setText(

@@ -490,6 +490,12 @@ class MeasurementConsoleWindow(QMainWindow):
         if not self._closing:
             QTimer.singleShot(0, self._cache_usable_geometry)
 
+    def adjustSize(self) -> None:
+        """Keep hosted widgets from auto-fitting the whole dock workspace."""
+        if self._docks:
+            return
+        super().adjustSize()
+
     def _cache_usable_geometry(self) -> None:
         """Remember a stable geometry that cannot collapse the restored console."""
         from PyQt6 import sip

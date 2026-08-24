@@ -146,9 +146,7 @@ def test_steady_tone_present_in_baseline_is_not_accepted_as_a_route():
     sample_rate = 48_000
     baseline_frames = int(sample_rate * profile.baseline_duration_s)
     tone_frames = int(sample_rate * profile.tone_duration_s)
-    step_frames = int(
-        sample_rate * (profile.baseline_duration_s + profile.tone_duration_s + profile.tail_duration_s)
-    )
+    step_frames = int(sample_rate * (profile.baseline_duration_s + profile.tone_duration_s + profile.tail_duration_s))
     phase = np.arange(step_frames)
     ambient = 0.1 * np.sin(2 * np.pi * profile.frequency_hz * phase / sample_rate)
     buffer = ambient.astype(np.float32)[:, np.newaxis]
@@ -208,14 +206,10 @@ def test_clipping_invalidates_the_affected_input_column(monkeypatch):
     assert result.state == loopback_module.ScanTerminalState.INVALID
     assert result.clipped_inputs == (1,)
     assert all(
-        item.verdict == loopback_module.PairVerdict.INVALID
-        for item in result.measurements
-        if item.input_channel == 1
+        item.verdict == loopback_module.PairVerdict.INVALID for item in result.measurements if item.input_channel == 1
     )
     assert any(
-        item.verdict == loopback_module.PairVerdict.DETECTED
-        for item in result.measurements
-        if item.input_channel == 2
+        item.verdict == loopback_module.PairVerdict.DETECTED for item in result.measurements if item.input_channel == 2
     )
 
 

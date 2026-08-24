@@ -63,18 +63,14 @@ class CalibrationManager:
                     data = json.load(f)
                     self.input_sensitivity = data.get("input_sensitivity", 1.0)
                     if "input_sensitivity_is_calibrated" in data:
-                        self.input_sensitivity_is_calibrated = bool(
-                            data.get("input_sensitivity_is_calibrated")
-                        )
+                        self.input_sensitivity_is_calibrated = bool(data.get("input_sensitivity_is_calibrated"))
                     else:
                         # Legacy files did not record this state. A non-default
                         # sensitivity could only be entered through calibration
                         # settings, so preserve it as calibrated. The ambiguous
                         # 1.0 V/FS case intentionally fails closed.
                         try:
-                            self.input_sensitivity_is_calibrated = (
-                                abs(float(self.input_sensitivity) - 1.0) > 1e-12
-                            )
+                            self.input_sensitivity_is_calibrated = abs(float(self.input_sensitivity) - 1.0) > 1e-12
                         except Exception:
                             self.input_sensitivity_is_calibrated = False
                     self.output_gain = data.get("output_gain", 1.0)
@@ -120,8 +116,7 @@ class CalibrationManager:
                     stored_last_profile = data.get("last_profile")
                     self.last_profile = (
                         stored_last_profile
-                        if isinstance(stored_last_profile, str)
-                        and stored_last_profile in self.profiles
+                        if isinstance(stored_last_profile, str) and stored_last_profile in self.profiles
                         else None
                     )
             except Exception as e:
@@ -132,9 +127,7 @@ class CalibrationManager:
         if self.last_profile and self.last_profile in self.profiles:
             p = self.profiles[self.last_profile]
             p["input_sensitivity"] = self.input_sensitivity
-            p["input_sensitivity_is_calibrated"] = bool(
-                self.input_sensitivity_is_calibrated
-            )
+            p["input_sensitivity_is_calibrated"] = bool(self.input_sensitivity_is_calibrated)
             p["output_gain"] = self.output_gain
             p["output_gain_is_calibrated"] = bool(self.output_gain_is_calibrated)
             p["frequency_calibration"] = self.frequency_calibration
@@ -145,9 +138,7 @@ class CalibrationManager:
 
         data = {
             "input_sensitivity": self.input_sensitivity,
-            "input_sensitivity_is_calibrated": bool(
-                self.input_sensitivity_is_calibrated
-            ),
+            "input_sensitivity_is_calibrated": bool(self.input_sensitivity_is_calibrated),
             "output_gain": self.output_gain,
             "output_gain_is_calibrated": bool(self.output_gain_is_calibrated),
             "frequency_calibration": self.frequency_calibration,
@@ -305,9 +296,7 @@ class CalibrationManager:
         """Capture all values owned by a calibration profile."""
         return {
             "input_sensitivity": self.input_sensitivity,
-            "input_sensitivity_is_calibrated": bool(
-                self.input_sensitivity_is_calibrated
-            ),
+            "input_sensitivity_is_calibrated": bool(self.input_sensitivity_is_calibrated),
             "output_gain": self.output_gain,
             "output_gain_is_calibrated": bool(self.output_gain_is_calibrated),
             "frequency_calibration": self.frequency_calibration,
@@ -321,28 +310,18 @@ class CalibrationManager:
         """Apply a complete profile snapshot while preserving legacy defaults."""
         self.input_sensitivity = snapshot.get("input_sensitivity", 1.0)
         if "input_sensitivity_is_calibrated" in snapshot:
-            self.input_sensitivity_is_calibrated = bool(
-                snapshot.get("input_sensitivity_is_calibrated")
-            )
+            self.input_sensitivity_is_calibrated = bool(snapshot.get("input_sensitivity_is_calibrated"))
         else:
             try:
-                self.input_sensitivity_is_calibrated = (
-                    abs(float(self.input_sensitivity) - 1.0) > 1e-12
-                )
+                self.input_sensitivity_is_calibrated = abs(float(self.input_sensitivity) - 1.0) > 1e-12
             except Exception:
                 self.input_sensitivity_is_calibrated = False
 
         self.output_gain = snapshot.get("output_gain", 1.0)
-        self.output_gain_is_calibrated = bool(
-            snapshot.get("output_gain_is_calibrated", False)
-        )
+        self.output_gain_is_calibrated = bool(snapshot.get("output_gain_is_calibrated", False))
         self.frequency_calibration = snapshot.get("frequency_calibration", 1.0)
-        self.frequency_calibration_1pps = snapshot.get(
-            "frequency_calibration_1pps", 1.0
-        )
-        self.frequency_calibration_source = snapshot.get(
-            "frequency_calibration_source", "basic"
-        )
+        self.frequency_calibration_1pps = snapshot.get("frequency_calibration_1pps", 1.0)
+        self.frequency_calibration_source = snapshot.get("frequency_calibration_source", "basic")
         self.lockin_gain_offset = snapshot.get("lockin_gain_offset", 0.0)
         self.spl_offset_db = snapshot.get("spl_offset_db", None)
 
@@ -406,9 +385,7 @@ class CalibrationManager:
         self.profiles[name] = profile
         self._apply_calibration_snapshot(snapshot)
         self.last_profile = name
-        self._save_profile_mutation_or_raise(
-            old_profiles, old_last_profile, old_snapshot
-        )
+        self._save_profile_mutation_or_raise(old_profiles, old_last_profile, old_snapshot)
 
     def duplicate_profile(
         self,
@@ -438,9 +415,7 @@ class CalibrationManager:
         profile.update(snapshot)
         self.profiles[name] = profile
         self.last_profile = name
-        self._save_profile_mutation_or_raise(
-            old_profiles, old_last_profile, snapshot
-        )
+        self._save_profile_mutation_or_raise(old_profiles, old_last_profile, snapshot)
 
     def rename_profile(self, old_name, new_name):
         """Rename a profile without changing its calibration or device metadata."""
@@ -462,9 +437,7 @@ class CalibrationManager:
         self.profiles[new_name] = self.profiles.pop(old_name)
         if self.last_profile == old_name:
             self.last_profile = new_name
-        self._save_profile_mutation_or_raise(
-            old_profiles, old_last_profile, snapshot
-        )
+        self._save_profile_mutation_or_raise(old_profiles, old_last_profile, snapshot)
 
     def save_profile(
         self,
@@ -538,9 +511,7 @@ class CalibrationManager:
         del self.profiles[name]
         if self.last_profile == name:
             self.last_profile = None
-        self._save_profile_mutation_or_raise(
-            old_profiles, old_last_profile, snapshot
-        )
+        self._save_profile_mutation_or_raise(old_profiles, old_last_profile, snapshot)
 
     def get_profiles(self):
         """Returns the dictionary of profiles."""

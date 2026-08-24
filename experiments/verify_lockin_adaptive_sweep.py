@@ -726,7 +726,9 @@ def main():
         help="Fast convergence algorithm (baseline, newton_lm, secant, anderson)",
     )
     parser.add_argument("--mu", type=float, default=1.0, help="Learning rate (0 < mu <= 1.0) to prevent overshoot")
-    parser.add_argument("--mu-decay", type=float, default=0.92, help="Learning rate decay factor per iteration (e.g. 0.85 - 0.95)")
+    parser.add_argument(
+        "--mu-decay", type=float, default=0.92, help="Learning rate decay factor per iteration (e.g. 0.85 - 0.95)"
+    )
     parser.add_argument("--analysis-cycles", type=float, default=12.0, help="Analysis cycles for lock-in tracking")
     parser.add_argument("--min-window", type=float, default=0.012, help="Minimum analysis window in seconds")
     parser.add_argument("--meas-points", type=int, default=300, help="Number of measurement points")

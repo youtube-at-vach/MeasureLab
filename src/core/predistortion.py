@@ -132,9 +132,7 @@ class PredistortionManager:
             fade_out_mask = n_global >= (sweep_samples - width)
             if np.any(fade_out_mask):
                 n_fade_out = np.clip(n_global[fade_out_mask], 0, sweep_samples - 1)
-                win_chunk[fade_out_mask] = 0.5 * (
-                    1.0 - np.cos(np.pi * (sweep_samples - 1 - n_fade_out) / width)
-                )
+                win_chunk[fade_out_mask] = 0.5 * (1.0 - np.cos(np.pi * (sweep_samples - 1 - n_fade_out) / width))
 
         x_corr = x_base.copy()
 
@@ -260,7 +258,7 @@ class PredistortionManager:
                 (self.meas_freqs[fade_mask] - low_cutoff) / (low_transition - low_cutoff), 0.0, 1.0
             )
 
-        current_mu = mu * (self.mu_decay ** iteration) if algo == "baseline" else mu
+        current_mu = mu * (self.mu_decay**iteration) if algo == "baseline" else mu
         logger.info(
             "Updating predistortion correction for iteration %d (algo='%s', learning rate mu=%.4f):",
             iteration,

@@ -69,10 +69,7 @@ def test_pyinstaller_imports_cover_every_registered_module():
     file_path = Path("src/gui/pyinstaller_imports.py")
     tree = ast.parse(file_path.read_text(encoding="utf-8"), filename=str(file_path))
     imported_class_names = {
-        alias.name
-        for node in ast.walk(tree)
-        if isinstance(node, ast.ImportFrom)
-        for alias in node.names
+        alias.name for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) for alias in node.names
     }
     registered_class_names = {registration.class_name for registration in MODULE_REGISTRY.values()}
 

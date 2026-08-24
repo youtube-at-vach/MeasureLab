@@ -1371,9 +1371,11 @@ class FeedforwardCompensatorWidget(QWidget):
                     reply = QMessageBox.warning(
                         self,
                         tr("Warning"),
-                        tr("Warning: The loaded model is labeled as Inverse (逆方向). A Forward (順方向) model is recommended for feedforward compensation. Do you want to proceed?"),
+                        tr(
+                            "Warning: The loaded model is labeled as Inverse (逆方向). A Forward (順方向) model is recommended for feedforward compensation. Do you want to proceed?"
+                        ),
                         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                        QMessageBox.StandardButton.No
+                        QMessageBox.StandardButton.No,
                     )
                     if reply == QMessageBox.StandardButton.No:
                         return

@@ -1,9 +1,11 @@
 import pytest
 from src.core.session_manager import SessionManager
 
+
 @pytest.fixture
 def session_manager():
     return SessionManager()
+
 
 def test_session_manager_lifecycle(session_manager):
     # Default state

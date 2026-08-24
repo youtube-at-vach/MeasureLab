@@ -390,6 +390,7 @@ def test_subsample_delay_compensation():
     # We need a dummy worker that is running
     class DummyWorker:
         is_running = True
+
     worker = DummyWorker()
 
     # Collect signals
@@ -451,6 +452,7 @@ def test_auto_delay_updates_ui_and_latency_sec(qtbot):
 
     class DummyWorker:
         is_running = True
+
     worker = DummyWorker()
 
     # Run data processing (which triggers signals)
@@ -508,6 +510,7 @@ def test_latency_model_modes_and_phase_invariance(qtbot):
 
     class DummyWorker:
         is_running = True
+
     worker = DummyWorker()
 
     # --- 1. Run Sweep in Auto mode ---
@@ -555,6 +558,3 @@ def test_latency_model_modes_and_phase_invariance(qtbot):
 
     # Check that they match well (allowing minor windowing/interpolation deviation at edges)
     assert np.allclose(phase_diff_rad[mask_16k], expected_diff_rad[mask_16k], atol=0.2)
-
-
-

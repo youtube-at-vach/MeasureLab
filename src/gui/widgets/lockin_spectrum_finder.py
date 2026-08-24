@@ -834,7 +834,7 @@ class LockInSpectrumFinder(MeasurementModule):
                         if appended:
                             # appended is small, so array conversion + argmin is fast enough,
                             # but we can just use a loop for even faster deduplication of a small list
-                            closest_diff = min((abs(a - mf) for a in appended), default=float('inf'))
+                            closest_diff = min((abs(a - mf) for a in appended), default=float("inf"))
                             if closest_diff < 1e-4:
                                 # We already have it or something very close to it in appended
                                 # Technically original code replaced the existing one if < 1e-4,

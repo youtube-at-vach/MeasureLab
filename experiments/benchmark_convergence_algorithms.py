@@ -3,6 +3,7 @@
 """
 Benchmark script comparing convergence speed across different adaptive predistortion algorithms.
 """
+
 import sys
 import os
 import numpy as np
@@ -14,6 +15,7 @@ if project_root not in sys.path:
 from PyQt6.QtWidgets import QApplication
 from src.core.audio_engine import AudioEngine
 from scripts.verify_lockin_adaptive_sweep import AdaptiveSSSWeeper
+
 
 def run_benchmark():
     algorithms = ["baseline", "newton_lm", "secant", "anderson"]
@@ -75,18 +77,18 @@ def run_benchmark():
         results[algo] = thd_db_traj
 
     # Print Summary Comparison Table
-    print("\n\n" + "="*80)
+    print("\n\n" + "=" * 80)
     print("                 ALGORITHM CONVERGENCE SPEED COMPARISON TABLE")
-    print("="*80)
+    print("=" * 80)
     header = f"| {'Iteration':<10} | {'Baseline (mu=0.7)':<18} | {'Newton-LM (mu=1.0)':<18} | {'Secant Method':<18} | {'Anderson Accel.':<18} |"
     print(header)
-    print("|" + "-"*12 + "|" + "-"*20 + "|" + "-"*20 + "|" + "-"*20 + "|" + "-"*20 + "|")
+    print("|" + "-" * 12 + "|" + "-" * 20 + "|" + "-" * 20 + "|" + "-" * 20 + "|" + "-" * 20 + "|")
 
     for i in range(num_iterations + 1):
         row = f"| Iter {i:<5} | {results['baseline'][i]:>15.1f} dB | {results['newton_lm'][i]:>15.1f} dB | {results['secant'][i]:>15.1f} dB | {results['anderson'][i]:>15.1f} dB |"
         print(row)
 
-    print("="*80)
+    print("=" * 80)
 
     # Calculate iterations to reach target cancellation levels
     targets = [-70.0, -80.0, -90.0, -100.0, -110.0]
@@ -101,6 +103,7 @@ def run_benchmark():
                     break
             status_str = f"{iters_needed} iteration(s)" if iters_needed is not None else "Not reached within test"
             print(f"  - {algo:<12}: {status_str}")
+
 
 if __name__ == "__main__":
     run_benchmark()

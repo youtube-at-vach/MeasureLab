@@ -27,15 +27,10 @@ fc_lti = 1200.0  # Cutoff for LTI Lowpass Filter
 
 def offline_dut_system(x, fs):
     """Simulates the forward Hammerstein system (Nonlinearity + LPF)."""
-    w = (
-        d_coeffs[1] * x
-        + d_coeffs[2] * (x**2)
-        + d_coeffs[3] * (x**3)
-        + d_coeffs[4] * (x**4)
-        + d_coeffs[5] * (x**5)
-    )
+    w = d_coeffs[1] * x + d_coeffs[2] * (x**2) + d_coeffs[3] * (x**3) + d_coeffs[4] * (x**4) + d_coeffs[5] * (x**5)
     b, a = butter(2, fc_lti / (fs / 2.0), btype="low")
     return lfilter(b, a, w)
+
 
 # ----------------------------------------------------
 # Dynamic & Safe Complex Interpolation Helper (PCHIP)
@@ -486,7 +481,7 @@ def main():
 
     print(f"[*] Phase 1: Running Multi-Amplitude Adaptive Sweeps ({adaptive_algorithm}, {sweep_mode})...")
     for amp in amplitudes:
-        print(f"    -> Running Adaptive Sweep for Amplitude: {amp:.2f} ({20*np.log10(amp):.1f} dBFS)")
+        print(f"    -> Running Adaptive Sweep for Amplitude: {amp:.2f} ({20 * np.log10(amp):.1f} dBFS)")
         sweeper = AdaptiveSSSWeeperSim(
             start_freq=start_freq,
             end_freq=end_freq,
@@ -646,8 +641,20 @@ def main():
     num_cycles_to_show = 5
     samples_to_show = int(num_cycles_to_show * fs / f0)
     plt.plot(t_val[:samples_to_show] * 1000.0, A_t[:samples_to_show], label="Original Input A(t)", color="black")
-    plt.plot(t_val[:samples_to_show] * 1000.0, Mx_A[:samples_to_show], label="Counter Correction Mx(A)(t)", color="red", linestyle="--")
-    plt.plot(t_val[:samples_to_show] * 1000.0, x_corr[:samples_to_show], label="Predistorted Input A(t) + Mx(A)(t)", color="blue", alpha=0.7)
+    plt.plot(
+        t_val[:samples_to_show] * 1000.0,
+        Mx_A[:samples_to_show],
+        label="Counter Correction Mx(A)(t)",
+        color="red",
+        linestyle="--",
+    )
+    plt.plot(
+        t_val[:samples_to_show] * 1000.0,
+        x_corr[:samples_to_show],
+        label="Predistorted Input A(t) + Mx(A)(t)",
+        color="blue",
+        alpha=0.7,
+    )
     plt.title("Time-Domain Waveforms (First 5 Cycles)")
     plt.xlabel("Time (ms)")
     plt.ylabel("Amplitude")
