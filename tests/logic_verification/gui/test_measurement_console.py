@@ -377,6 +377,33 @@ def test_console_workspace_round_trip_restores_modules_compact_mode_and_lock(qtb
     second.close()
 
 
+def test_console_close_preserves_last_usable_geometry_during_transient_shrink(qtbot):
+    first_host = _ConsoleHostStub([_DummyWrapper() for _ in range(6)])
+    first = MeasurementConsoleWindow(first_host)
+    for index in range(6):
+        first.add_module(index, arrange=False)
+    first.arrange_two_by_two()
+    first.resize(1200, 800)
+    first.show()
+    qtbot.waitUntil(lambda: first._last_usable_geometry is not None)
+
+    # Reproduce the native close sequence: the top-level window is resized to
+    # its tiny dock-layout minimum and closes before the queued resize snapshot.
+    first.resize(254, 100)
+    first.close()
+
+    second_host = _ConsoleHostStub([_DummyWrapper() for _ in range(6)])
+    second_host.config_manager = first_host.config_manager
+    second = MeasurementConsoleWindow(second_host)
+
+    assert second.restore_workspace()
+    assert second.width() > 254
+    assert second.height() > 100
+    second.show()
+    qtbot.waitUntil(second._has_usable_window_size)
+    second.close()
+
+
 def test_console_recovers_hidden_docks_and_tiny_saved_geometry(qtbot):
     first_host = _ConsoleHostStub([_DummyWrapper() for _ in range(6)])
     first = MeasurementConsoleWindow(first_host)
@@ -413,7 +440,8 @@ def test_console_recovers_hidden_docks_and_tiny_saved_geometry(qtbot):
     available = QApplication.primaryScreen().availableGeometry()
     qtbot.waitUntil(
         lambda: (
-            second.frameGeometry().width() <= available.width()
+            second._has_usable_window_size()
+            and second.frameGeometry().width() <= available.width()
             and second.frameGeometry().height() <= available.height()
         )
     )

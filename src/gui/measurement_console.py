@@ -15,7 +15,7 @@ import re
 from typing import TYPE_CHECKING
 
 from PyQt6.QtCore import QByteArray, QSize, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QAction, QCloseEvent, QShowEvent
+from PyQt6.QtGui import QAction, QCloseEvent, QMoveEvent, QResizeEvent, QShowEvent
 from PyQt6.QtWidgets import (
     QAbstractButton,
     QApplication,
@@ -246,6 +246,7 @@ class MeasurementConsoleWindow(QMainWindow):
         self._closing = False
         self._layout_locked = False
         self._last_visible_dock_state: bytes | None = None
+        self._last_usable_geometry: bytes | None = None
         self._validate_docks_after_show = False
         self._compact_screen_layout_active = False
         self._pre_compact_screen_dock_state: bytes | None = None
@@ -435,15 +436,60 @@ class MeasurementConsoleWindow(QMainWindow):
         else:
             self._last_visible_dock_state = dock_state
 
+        geometry = bytes(self.saveGeometry())
+        if self._docks and not self._has_usable_window_size():
+            # On macOS, closing a dock-heavy QMainWindow can briefly collapse
+            # its native window to the layout's minimum size before closeEvent
+            # runs.  Persist the last stable on-screen geometry instead of that
+            # transient shutdown size.
+            geometry = self._last_usable_geometry or geometry
+        else:
+            self._last_usable_geometry = geometry
+
         config = {
             "version": 1,
             "module_keys": [self.main_window._module_keys[index] for index in self._docks],
             "compact_module_keys": compact_keys,
-            "geometry": base64.b64encode(bytes(self.saveGeometry())).decode("ascii"),
+            "geometry": base64.b64encode(geometry).decode("ascii"),
             "dock_state": base64.b64encode(dock_state).decode("ascii"),
             "layout_locked": self._layout_locked,
         }
         self.main_window.config_manager.set_measurement_console_config(config)
+
+    def _has_usable_window_size(self) -> bool:
+        """Return whether the current size is safe to persist for this workspace."""
+        if len(self._docks) < 2:
+            return self.width() > 0 and self.height() > 0
+
+        screens = QApplication.screens()
+        if not screens:
+            return self.width() >= self.RECOVERY_MIN_WIDTH and self.height() >= self.RECOVERY_MIN_HEIGHT
+
+        frame = self.frameGeometry()
+        matching_screen = next(
+            (screen for screen in screens if screen.availableGeometry().intersects(frame)),
+            QApplication.primaryScreen() or screens[0],
+        )
+        available = matching_screen.availableGeometry()
+        frame_width = max(0, frame.width() - self.width())
+        frame_height = max(0, frame.height() - self.height())
+        minimum_width = min(self.RECOVERY_MIN_WIDTH, max(1, available.width() - frame_width))
+        minimum_height = min(self.RECOVERY_MIN_HEIGHT, max(1, available.height() - frame_height))
+        return self.width() >= minimum_width and self.height() >= minimum_height
+
+    def _schedule_geometry_snapshot(self) -> None:
+        """Cache geometry after native move/resize processing has settled."""
+        if not self._closing:
+            QTimer.singleShot(0, self._cache_usable_geometry)
+
+    def _cache_usable_geometry(self) -> None:
+        """Remember a stable geometry that cannot collapse the restored console."""
+        from PyQt6 import sip
+
+        if sip.isdeleted(self) or self._closing or not self.isVisible():
+            return
+        if self._has_usable_window_size():
+            self._last_usable_geometry = bytes(self.saveGeometry())
 
     def _ensure_visible_on_screen(self) -> None:
         screens = QApplication.screens()
@@ -794,6 +840,15 @@ class MeasurementConsoleWindow(QMainWindow):
         # second turn corrects the final committed top-level geometry.
         QTimer.singleShot(0, self._schedule_geometry_recovery)
         self._schedule_visible_state_snapshot()
+        self._schedule_geometry_snapshot()
+
+    def moveEvent(self, event: QMoveEvent) -> None:
+        super().moveEvent(event)
+        self._schedule_geometry_snapshot()
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        super().resizeEvent(event)
+        self._schedule_geometry_snapshot()
 
     def _on_screen_changed(self, _screen) -> None:
         if not self._closing:
