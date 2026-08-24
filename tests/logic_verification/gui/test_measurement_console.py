@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import base64
 
-from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtCore import QSize, Qt, QTimer
 from PyQt6.QtWidgets import (
     QApplication,
     QDockWidget,
@@ -427,6 +427,28 @@ def test_console_close_preserves_last_usable_geometry_during_transient_shrink(qt
     second.show()
     qtbot.waitUntil(second._has_usable_window_size)
     second.close()
+
+
+def test_console_ignores_delayed_auto_fit_from_hosted_compact_widget(qtbot):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(4)])
+    console = MeasurementConsoleWindow(host)
+    for index in range(4):
+        console.add_module(index, arrange=False)
+    console.arrange_two_by_two()
+    console.resize(1200, 800)
+    console.show()
+    qtbot.waitUntil(lambda: console.isVisible())
+    qtbot.wait(100)
+    expected_size = QSize(console.size())
+
+    # Some compact widgets defer ``self.window().adjustSize()``. During
+    # workspace restoration self.window() is the console, so that legacy
+    # callback must not collapse the user-managed dock workspace.
+    QTimer.singleShot(0, console.adjustSize)
+    qtbot.wait(10)
+
+    assert console.size() == expected_size
+    console.close()
 
 
 def test_console_recovers_hidden_docks_and_tiny_saved_geometry(qtbot):
