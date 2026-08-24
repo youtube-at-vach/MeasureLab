@@ -239,9 +239,7 @@ def main() -> None:
         app.processEvents()
         if identities != _object_identities(widget):
             raise AssertionError("Split recreated a performance-sensitive object")
-        results.extend(
-            _measure_case(app, wrapper.split_display_window, widget, "C", case) for case in CASES
-        )
+        results.extend(_measure_case(app, wrapper.split_display_window, widget, "C", case) for case in CASES)
 
         wrapper.reattach_all()
         app.processEvents()

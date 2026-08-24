@@ -118,6 +118,7 @@ class TestOscilloscopeMath(unittest.TestCase):
 
     def test_math_i18n_mode_mapping(self):
         from src.core.localization import tr
+
         translated_derivative = tr("Derivative")
         self.widget.on_math_changed(translated_derivative)
         self.assertEqual(self.module.math_mode, "Derivative")

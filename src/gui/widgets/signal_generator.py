@@ -1287,9 +1287,7 @@ class SignalGenerator(MeasurementModule):
         else:
             target._buffer_index = 0
 
-        if self._filter_runtime_signature(target, sample_rate) == self._filter_runtime_signature(
-            source, sample_rate
-        ):
+        if self._filter_runtime_signature(target, sample_rate) == self._filter_runtime_signature(source, sample_rate):
             target._combined_zi = None if source._combined_zi is None else source._combined_zi.copy()
         else:
             target._combined_zi = None
@@ -1430,9 +1428,7 @@ class SignalGenerator(MeasurementModule):
     def _channel_needs_render(self, channel: str) -> bool:
         state = self._playback_states[channel]
         return bool(
-            state.route_gain > 0.0
-            or state.route_target_gain > 0.0
-            or state.route_position < state.route_samples
+            state.route_gain > 0.0 or state.route_target_gain > 0.0 or state.route_position < state.route_samples
         )
 
     def _apply_route_transition(self, channel: str, samples: np.ndarray):
@@ -1464,9 +1460,7 @@ class SignalGenerator(MeasurementModule):
 
     def _stop_routes_are_silent(self) -> bool:
         return all(
-            state.route_target_gain == 0.0
-            and state.route_gain == 0.0
-            and state.route_position >= state.route_samples
+            state.route_target_gain == 0.0 and state.route_gain == 0.0 and state.route_position >= state.route_samples
             for state in self._playback_states.values()
         )
 

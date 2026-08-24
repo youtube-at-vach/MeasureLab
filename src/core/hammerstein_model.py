@@ -194,19 +194,31 @@ def estimate_hammerstein_kernels(
     sum_R2 = np.sum(R_array**2)
 
     # 5th Harmonic -> H5 (measured at 5 * sorted_freqs)
-    H5_phys_val = 16.0 * np.sum(g5 * R5[:, np.newaxis], axis=0) / sum_R10 if P >= 5 and sum_R10 > 1e-12 else np.zeros(J, dtype=complex)
+    H5_phys_val = (
+        16.0 * np.sum(g5 * R5[:, np.newaxis], axis=0) / sum_R10
+        if P >= 5 and sum_R10 > 1e-12
+        else np.zeros(J, dtype=complex)
+    )
 
     # 4th Harmonic -> H4 (measured at 4 * sorted_freqs)
-    H4_phys_val = 8.0 * np.sum(g4 * R4[:, np.newaxis], axis=0) / sum_R8 if P >= 4 and sum_R8 > 1e-12 else np.zeros(J, dtype=complex)
+    H4_phys_val = (
+        8.0 * np.sum(g4 * R4[:, np.newaxis], axis=0) / sum_R8
+        if P >= 4 and sum_R8 > 1e-12
+        else np.zeros(J, dtype=complex)
+    )
 
     # 3rd Harmonic -> H3 (measured at 3 * sorted_freqs)
     if P >= 5:
         # Interpolate H5(5f) to 3f to subtract from g3(f)
         H5_at_3f = _interpolate_complex_kernel(3.0 * sorted_freqs, 5.0 * sorted_freqs, H5_phys_val)
-        g3_prime = g3 - (5.0/16.0) * H5_at_3f[np.newaxis, :] * R5[:, np.newaxis]
+        g3_prime = g3 - (5.0 / 16.0) * H5_at_3f[np.newaxis, :] * R5[:, np.newaxis]
     else:
         g3_prime = g3
-    H3_phys_val = 4.0 * np.sum(g3_prime * R3[:, np.newaxis], axis=0) / sum_R6 if P >= 3 and sum_R6 > 1e-12 else np.zeros(J, dtype=complex)
+    H3_phys_val = (
+        4.0 * np.sum(g3_prime * R3[:, np.newaxis], axis=0) / sum_R6
+        if P >= 3 and sum_R6 > 1e-12
+        else np.zeros(J, dtype=complex)
+    )
 
     # 2nd Harmonic -> H2 (measured at 2 * sorted_freqs)
     if P >= 4:
@@ -215,7 +227,11 @@ def estimate_hammerstein_kernels(
         g2_prime = g2 - 0.5 * H4_at_2f[np.newaxis, :] * R4[:, np.newaxis]
     else:
         g2_prime = g2
-    H2_phys_val = 2.0 * np.sum(g2_prime * R2[:, np.newaxis], axis=0) / sum_R4 if P >= 2 and sum_R4 > 1e-12 else np.zeros(J, dtype=complex)
+    H2_phys_val = (
+        2.0 * np.sum(g2_prime * R2[:, np.newaxis], axis=0) / sum_R4
+        if P >= 2 and sum_R4 > 1e-12
+        else np.zeros(J, dtype=complex)
+    )
 
     # 1st Harmonic -> H1 (measured at sorted_freqs)
     g1_prime = g1.copy()
@@ -227,7 +243,9 @@ def estimate_hammerstein_kernels(
         # Interpolate H5(5f) to f to subtract from g1(f)
         H5_at_f = _interpolate_complex_kernel(sorted_freqs, 5.0 * sorted_freqs, H5_phys_val)
         g1_prime -= 0.625 * H5_at_f[np.newaxis, :] * R5[:, np.newaxis]
-    H1_phys_val = np.sum(g1_prime * R_array[:, np.newaxis], axis=0) / sum_R2 if sum_R2 > 1e-12 else np.zeros(J, dtype=complex)
+    H1_phys_val = (
+        np.sum(g1_prime * R_array[:, np.newaxis], axis=0) / sum_R2 if sum_R2 > 1e-12 else np.zeros(J, dtype=complex)
+    )
 
     H_est_list = [H1_phys_val, H2_phys_val, H3_phys_val, H4_phys_val, H5_phys_val][:P]
 
@@ -238,9 +256,7 @@ def estimate_hammerstein_kernels(
         # H_raw is estimated at physical frequencies (p+1) * sorted_freqs.
         # We need to map it to target physical frequencies sorted_freqs.
         H_mapped = _interpolate_complex_kernel(
-            target_freqs=sorted_freqs,
-            source_phys_freqs=(p + 1) * sorted_freqs,
-            source_values=H_raw
+            target_freqs=sorted_freqs, source_phys_freqs=(p + 1) * sorted_freqs, source_values=H_raw
         )
         H_mapped_list.append(H_mapped)
 

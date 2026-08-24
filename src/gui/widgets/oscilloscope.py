@@ -648,7 +648,9 @@ class Oscilloscope(MeasurementModule):
         is_calibrated, factor, _ = self.get_amplitude_display_state()
 
         target_div = 5.0
-        vdiv_options = [val for _, val in (self.VDIV_OPTIONS_CALIBRATED if is_calibrated else self.VDIV_OPTIONS_UNCALIBRATED)]
+        vdiv_options = [
+            val for _, val in (self.VDIV_OPTIONS_CALIBRATED if is_calibrated else self.VDIV_OPTIONS_UNCALIBRATED)
+        ]
 
         for _ch_idx, (vpp_fs, attr_name) in enumerate([(l_vpp_fs, "vdiv_left"), (r_vpp_fs, "vdiv_right")]):
             vpp = vpp_fs * factor if is_calibrated else vpp_fs
@@ -778,21 +780,29 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
 
         # Badge & Status Header
         self.badge_group = QGroupBox()
-        self.badge_group.setStyleSheet("QGroupBox { border: 1px solid #3d4450; border-radius: 4px; margin-top: 0px; padding: 2px; }")
+        self.badge_group.setStyleSheet(
+            "QGroupBox { border: 1px solid #3d4450; border-radius: 4px; margin-top: 0px; padding: 2px; }"
+        )
         badge_layout = QHBoxLayout(self.badge_group)
         badge_layout.setContentsMargins(4, 2, 4, 2)
         badge_layout.setSpacing(4)
 
         self.badge_l_label = QLabel()
-        self.badge_l_label.setStyleSheet("QLabel { color: #00ff00; font-weight: bold; background: #16241a; padding: 2px 4px; border-radius: 3px; border: 1px solid #00aa00; font-size: 11px; }")
+        self.badge_l_label.setStyleSheet(
+            "QLabel { color: #00ff00; font-weight: bold; background: #16241a; padding: 2px 4px; border-radius: 3px; border: 1px solid #00aa00; font-size: 11px; }"
+        )
         badge_layout.addWidget(self.badge_l_label)
 
         self.badge_r_label = QLabel()
-        self.badge_r_label.setStyleSheet("QLabel { color: #ff5555; font-weight: bold; background: #2b1818; padding: 2px 4px; border-radius: 3px; border: 1px solid #aa0000; font-size: 11px; }")
+        self.badge_r_label.setStyleSheet(
+            "QLabel { color: #ff5555; font-weight: bold; background: #2b1818; padding: 2px 4px; border-radius: 3px; border: 1px solid #aa0000; font-size: 11px; }"
+        )
         badge_layout.addWidget(self.badge_r_label)
 
         self.badge_status_label = QLabel()
-        self.badge_status_label.setStyleSheet("QLabel { color: #d0d7de; font-weight: normal; padding: 2px 4px; font-size: 11px; }")
+        self.badge_status_label.setStyleSheet(
+            "QLabel { color: #d0d7de; font-weight: normal; padding: 2px 4px; font-size: 11px; }"
+        )
         badge_layout.addWidget(self.badge_status_label)
 
         badge_layout.addStretch()
@@ -1445,9 +1455,7 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         scale_unit = "V/div" if is_calibrated else "FS/div"
 
         l_status = tr("ON") if self.module.show_left else tr("OFF")
-        self.badge_l_label.setText(
-            f"CH1: {format_si(self.module.vdiv_left, scale_unit, sig_figs=3)} [{l_status}]"
-        )
+        self.badge_l_label.setText(f"CH1: {format_si(self.module.vdiv_left, scale_unit, sig_figs=3)} [{l_status}]")
         self.badge_l_label.setStyleSheet(
             "QLabel { color: #00ff00; font-weight: bold; background: #16241a; padding: 3px 6px; border-radius: 3px; border: 1px solid #00aa00; }"
             if self.module.show_left
@@ -1455,9 +1463,7 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         )
 
         r_status = tr("ON") if self.module.show_right else tr("OFF")
-        self.badge_r_label.setText(
-            f"CH2: {format_si(self.module.vdiv_right, scale_unit, sig_figs=3)} [{r_status}]"
-        )
+        self.badge_r_label.setText(f"CH2: {format_si(self.module.vdiv_right, scale_unit, sig_figs=3)} [{r_status}]")
         self.badge_r_label.setStyleSheet(
             "QLabel { color: #ff5555; font-weight: bold; background: #2b1818; padding: 3px 6px; border-radius: 3px; border: 1px solid #aa0000; }"
             if self.module.show_right
@@ -1595,9 +1601,7 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
     def _update_calibration_status(self):
         is_calibrated, sensitivity, _unit = self.module.get_amplitude_display_state()
         if is_calibrated:
-            self.calibration_status_label.setText(
-                tr("Input: Calibrated ({0:.4g} V/FS)").format(sensitivity)
-            )
+            self.calibration_status_label.setText(tr("Input: Calibrated ({0:.4g} V/FS)").format(sensitivity))
         else:
             self.calibration_status_label.setText(tr("Input: Uncalibrated (FS)"))
 
@@ -1605,25 +1609,17 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         is_calibrated, _factor, _unit = self.module.get_amplitude_display_state()
         if is_calibrated:
             self.meas_l_label.setText(
-                tr("L: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(
-                    measurements["l_rms"], measurements["l_vpp"]
-                )
+                tr("L: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(measurements["l_rms"], measurements["l_vpp"])
             )
             self.meas_r_label.setText(
-                tr("R: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(
-                    measurements["r_rms"], measurements["r_vpp"]
-                )
+                tr("R: Vrms: {0:.3f} V  Vpp: {1:.3f} V").format(measurements["r_rms"], measurements["r_vpp"])
             )
         else:
             self.meas_l_label.setText(
-                tr("L: RMS: {0:.3f} FS  Pk-Pk: {1:.3f} FS").format(
-                    measurements["l_rms"], measurements["l_vpp"]
-                )
+                tr("L: RMS: {0:.3f} FS  Pk-Pk: {1:.3f} FS").format(measurements["l_rms"], measurements["l_vpp"])
             )
             self.meas_r_label.setText(
-                tr("R: RMS: {0:.3f} FS  Pk-Pk: {1:.3f} FS").format(
-                    measurements["r_rms"], measurements["r_vpp"]
-                )
+                tr("R: RMS: {0:.3f} FS  Pk-Pk: {1:.3f} FS").format(measurements["r_rms"], measurements["r_vpp"])
             )
 
     def update_plot(self):

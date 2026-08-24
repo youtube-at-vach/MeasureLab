@@ -115,7 +115,6 @@ class TestConfigManager(unittest.TestCase):
         cm.set_dithering_bit_depth("24")
         self.assertEqual(cm.get_dithering_bit_depth(), "24")
 
-
     def test_audio_engine_64bit(self):
         cm = self.ConfigManager(config_filename=self.config_path)
 
@@ -250,8 +249,6 @@ class TestConfigManager(unittest.TestCase):
                         "Unable to ensure screenshot directory at /default/shot: No perm"
                     )
 
-
-
     def test_is_dithering_enabled(self):
         cm = self.ConfigManager(config_filename=self.config_path)
 
@@ -262,7 +259,6 @@ class TestConfigManager(unittest.TestCase):
         cm.config.pop("audio", None)
         cm.set_dithering_enabled(False)
         self.assertFalse(cm.is_dithering_enabled())
-
 
     def test_save_config(self):
         cm = self.ConfigManager(config_filename=self.config_path)
@@ -298,6 +294,7 @@ class TestConfigManager(unittest.TestCase):
             mock_timer.assert_called_once_with(1.0, cm._flush_config)
             new_timer_instance.start.assert_called_once()
             self.assertEqual(cm._save_timer, new_timer_instance)
+
 
 if __name__ == "__main__":
     unittest.main()

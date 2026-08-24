@@ -907,6 +907,7 @@ class SpectrumAnalyzerWidget(
 
         def dummy_method(*args, **kwargs):
             pass
+
         self.rta_bar_main.setDownsampling = dummy_method
         self.rta_bar_left.setDownsampling = dummy_method
         self.rta_bar_right.setDownsampling = dummy_method
@@ -1391,16 +1392,10 @@ class SpectrumAnalyzerWidget(
                     self.rta_bar_right.setVisible(True)
 
                     self.rta_bar_left.setOpts(
-                        x=x_log - w_log / 4,
-                        height=plot_mags_clipped[:, 0] - y_min,
-                        y0=y_min,
-                        width=w_log / 2 * 0.9
+                        x=x_log - w_log / 4, height=plot_mags_clipped[:, 0] - y_min, y0=y_min, width=w_log / 2 * 0.9
                     )
                     self.rta_bar_right.setOpts(
-                        x=x_log + w_log / 4,
-                        height=plot_mags_clipped[:, 1] - y_min,
-                        y0=y_min,
-                        width=w_log / 2 * 0.9
+                        x=x_log + w_log / 4, height=plot_mags_clipped[:, 1] - y_min, y0=y_min, width=w_log / 2 * 0.9
                     )
                 else:
                     self.rta_bar_main.setVisible(True)
@@ -1408,24 +1403,14 @@ class SpectrumAnalyzerWidget(
                     self.rta_bar_right.setVisible(False)
                     if plot_mags.ndim == 2:
                         plot_mags_clipped = plot_mags_clipped[:, 0]
-                    self.rta_bar_main.setOpts(
-                        x=x_log,
-                        height=plot_mags_clipped - y_min,
-                        y0=y_min,
-                        width=w_log * 0.9
-                    )
+                    self.rta_bar_main.setOpts(x=x_log, height=plot_mags_clipped - y_min, y0=y_min, width=w_log * 0.9)
             else:
                 self.rta_bar_main.setVisible(True)
                 self.rta_bar_left.setVisible(False)
                 self.rta_bar_right.setVisible(False)
                 if plot_mags.ndim == 2:
                     plot_mags_clipped = plot_mags_clipped[:, 0]
-                self.rta_bar_main.setOpts(
-                    x=x_log,
-                    height=plot_mags_clipped - y_min,
-                    y0=y_min,
-                    width=w_log * 0.9
-                )
+                self.rta_bar_main.setOpts(x=x_log, height=plot_mags_clipped - y_min, y0=y_min, width=w_log * 0.9)
             return
 
         # Ensure RTA bars are hidden in non-RTA mode

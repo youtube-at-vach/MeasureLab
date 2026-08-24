@@ -70,24 +70,32 @@ def test_update_correction_secant_and_newton():
     block_counts = np.ones(num_blocks, dtype=int)
 
     raw_results = np.zeros((num_blocks, 3), dtype=complex)
-    raw_results[:, 0] = 1.0   # H1
-    raw_results[:, 1] = 0.1   # H2
+    raw_results[:, 0] = 1.0  # H1
+    raw_results[:, 1] = 0.1  # H2
     raw_results[:, 2] = 0.05  # H3
 
     # Iteration 0
-    manager_newton.update_correction(iteration=0, x_data=x_data, raw_results=raw_results, block_counts=block_counts, mu=0.5)
+    manager_newton.update_correction(
+        iteration=0, x_data=x_data, raw_results=raw_results, block_counts=block_counts, mu=0.5
+    )
     assert manager_newton.H0_1 is not None
 
     # Iteration 1
-    manager_newton.update_correction(iteration=1, x_data=x_data, raw_results=raw_results, block_counts=block_counts, mu=0.5)
+    manager_newton.update_correction(
+        iteration=1, x_data=x_data, raw_results=raw_results, block_counts=block_counts, mu=0.5
+    )
     assert np.all(manager_newton.F_corr[2][meas_freqs > 80.0] < 0.0)
 
     # Test Secant algorithm
     manager_secant = PredistortionManager(
         start_freq=20.0, end_freq=20000.0, meas_freqs=meas_freqs, max_harmonic=3, algorithm="secant"
     )
-    manager_secant.update_correction(iteration=0, x_data=x_data, raw_results=raw_results, block_counts=block_counts, mu=1.0)
-    manager_secant.update_correction(iteration=1, x_data=x_data, raw_results=raw_results, block_counts=block_counts, mu=1.0)
+    manager_secant.update_correction(
+        iteration=0, x_data=x_data, raw_results=raw_results, block_counts=block_counts, mu=1.0
+    )
+    manager_secant.update_correction(
+        iteration=1, x_data=x_data, raw_results=raw_results, block_counts=block_counts, mu=1.0
+    )
     assert len(manager_secant.F_history[2]) == 2
     assert len(manager_secant.H_history[2]) == 2
 

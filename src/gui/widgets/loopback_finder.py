@@ -636,7 +636,10 @@ class LoopbackFinderWidget(QWidget):
             reason = tr("Virtual mode cannot scan physical loopback paths.")
         elif engine.input_device is None or engine.output_device is None:
             reason = tr("Select both an input and output device.")
-        elif not np.isfinite(float(engine.sample_rate)) or float(engine.sample_rate) <= 2 * self.module.profile.frequency_hz:
+        elif (
+            not np.isfinite(float(engine.sample_rate))
+            or float(engine.sample_rate) <= 2 * self.module.profile.frequency_hz
+        ):
             reason = tr("The sample rate is not valid for the loopback test signal.")
 
         self._scan_available = not reason
@@ -740,7 +743,9 @@ class LoopbackFinderWidget(QWidget):
                 )
             )
         elif result.state == ScanTerminalState.INVALID:
-            self.progress_bar.setValue(100 if result.completed_outputs == result.output_channels else self.progress_bar.value())
+            self.progress_bar.setValue(
+                100 if result.completed_outputs == result.output_channels else self.progress_bar.value()
+            )
             self.validity_label.setText(tr("INVALID"))
             self.validity_label.setStyleSheet("color: #ff4040; font-weight: bold;")
             self.summary_label.setText(tr("Scan invalid — review the warnings below."))

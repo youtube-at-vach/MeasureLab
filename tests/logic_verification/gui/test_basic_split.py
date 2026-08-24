@@ -37,13 +37,15 @@ def qapp():
     yield app
 
 
-@pytest.fixture(params=[
-    (BNIMMeter, BNIMMeterWidget, MODULE_BNIM_METER, "BNIM Meter"),
-    (Goniometer, GoniometerWidget, MODULE_GONIOMETER, "Goniometer"),
-    (LufsMeter, LufsMeterWidget, MODULE_LUFS_METER, "LUFS Meter"),
-    (NoiseProfiler, NoiseProfilerWidget, MODULE_NOISE_PROFILER, "Noise Profiler"),
-    (RawTimeSeries, RawTimeSeriesWidget, MODULE_RAW_TIME_SERIES, "Raw Time Series"),
-])
+@pytest.fixture(
+    params=[
+        (BNIMMeter, BNIMMeterWidget, MODULE_BNIM_METER, "BNIM Meter"),
+        (Goniometer, GoniometerWidget, MODULE_GONIOMETER, "Goniometer"),
+        (LufsMeter, LufsMeterWidget, MODULE_LUFS_METER, "LUFS Meter"),
+        (NoiseProfiler, NoiseProfilerWidget, MODULE_NOISE_PROFILER, "Noise Profiler"),
+        (RawTimeSeries, RawTimeSeriesWidget, MODULE_RAW_TIME_SERIES, "Raw Time Series"),
+    ]
+)
 def module_setup(request, qapp):
     ModuleClass, WidgetClass, module_constant, title = request.param
 
@@ -71,7 +73,11 @@ def test_splittable_interface_implementation(module_setup):
     assert display_widget is widget.display_widget
 
     # Some widgets use 'sidebar', some use 'controls_group'
-    actual_control = getattr(widget, 'sidebar', None) or getattr(widget, 'controls_group', None) or getattr(widget, 'right_widget', None)
+    actual_control = (
+        getattr(widget, "sidebar", None)
+        or getattr(widget, "controls_group", None)
+        or getattr(widget, "right_widget", None)
+    )
     assert control_widget is actual_control
 
 
@@ -103,5 +109,9 @@ def test_detachable_wrapper_split_flow(module_setup):
     wrapper.reattach_all()
     assert not wrapper.is_split
     assert widget.display_widget.parent() is widget
-    actual_control = getattr(widget, 'sidebar', None) or getattr(widget, 'controls_group', None) or getattr(widget, 'right_widget', None)
+    actual_control = (
+        getattr(widget, "sidebar", None)
+        or getattr(widget, "controls_group", None)
+        or getattr(widget, "right_widget", None)
+    )
     assert actual_control.parent() is widget

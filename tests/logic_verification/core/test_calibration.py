@@ -79,9 +79,7 @@ def test_set_sensitivities(calibration_manager):
     ("legacy_sensitivity", "expected_calibrated"),
     [(1.0, False), (2.0, True)],
 )
-def test_legacy_input_calibration_state_migration(
-    temp_config_path, legacy_sensitivity, expected_calibrated
-):
+def test_legacy_input_calibration_state_migration(temp_config_path, legacy_sensitivity, expected_calibrated):
     with open(temp_config_path, "w", encoding="utf-8") as f:
         json.dump({"input_sensitivity": legacy_sensitivity}, f)
 

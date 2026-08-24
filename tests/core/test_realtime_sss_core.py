@@ -409,6 +409,7 @@ def test_engine_reset_analysis_history():
     assert engine._hist_signal == []
     assert engine._hist_ref == []
 
+
 def test_engine_generate_output_block():
     engine = RealtimeSSSEngine(
         sample_rate=48000,
@@ -447,7 +448,7 @@ def test_engine_generate_output_block():
 
     # 3. Post-sweep blocks containing only silence
     post_sweep_index = engine.sweep_samples // frames + 1
-    outdata_block.fill(1.0) # fill with ones so we can see if it was zeroed
+    outdata_block.fill(1.0)  # fill with ones so we can see if it was zeroed
     engine.generate_output_block(outdata_block, post_sweep_index)
     assert np.all(outdata_block == 0.0)
 
@@ -465,7 +466,7 @@ def test_engine_adaptive_drift_correction():
     fc = 10.0
     fs = 48000.0
     nyq = fs / 2.0
-    b, a = signal.butter(2, fc / nyq, btype='high')
+    b, a = signal.butter(2, fc / nyq, btype="high")
 
     # Generate full SSS signal and apply highpass filter
     out_sig = engine.out_sig
@@ -501,18 +502,14 @@ def test_engine_adaptive_drift_correction():
 
     # 1. Process with has_ref=True (adaptive correction active)
     for idx in range(block_index + 1):
-        f_mid, _, _ = engine.process_input_block(
-            sig_blocks[idx], idx, ref_in_block=ref_blocks[idx]
-        )
+        f_mid, _, _ = engine.process_input_block(sig_blocks[idx], idx, ref_in_block=ref_blocks[idx])
     # Directly execute the LS fit at the end to get the exact latest SNR
     _, results_corr, quality_corr = engine._execute_ls_fit(f_mid, has_ref=True)
 
     # 2. Process with ref_in_block=None (no correction)
     engine.reset_filter_states()
     for idx in range(block_index + 1):
-        f_mid, _, _ = engine.process_input_block(
-            sig_blocks[idx], idx, ref_in_block=None
-        )
+        f_mid, _, _ = engine.process_input_block(sig_blocks[idx], idx, ref_in_block=None)
     # Directly execute the LS fit at the end to get the exact latest SNR
     _, results_nocorr, quality_nocorr = engine._execute_ls_fit(f_mid, has_ref=False)
 
@@ -552,7 +549,7 @@ def test_engine_weak_reference_guard():
         rb = np.zeros((frames, 1))
         if end <= len(out_sig):
             sb[:, 0] = out_sig[start:end]
-            rb[:, 0] = np.random.normal(0, 1e-6, frames) # noisy reference
+            rb[:, 0] = np.random.normal(0, 1e-6, frames)  # noisy reference
 
         f_mid, sig_results, quality = engine.process_input_block(sb, idx, ref_in_block=rb)
 
@@ -567,7 +564,7 @@ def test_engine_weak_reference_guard():
         start = idx * frames
         end = start + frames
         sb = np.zeros((frames, 1))
-        rb = np.zeros((frames, 1)) # silence
+        rb = np.zeros((frames, 1))  # silence
         if end <= len(out_sig):
             sb[:, 0] = out_sig[start:end]
 
@@ -576,5 +573,3 @@ def test_engine_weak_reference_guard():
     fundamental_amp_silent = np.abs(sig_results[0])
     assert fundamental_amp_silent == 0.0
     assert quality == 0.0
-
-

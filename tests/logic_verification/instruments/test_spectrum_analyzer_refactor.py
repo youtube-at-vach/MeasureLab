@@ -59,7 +59,7 @@ class TestSpectrumAnalyzerRefactor:
 
         # The band at 25 Hz (bounds ~22.4 - 28.3 Hz) has no FFT bins since 20 Hz and 40 Hz are outside.
         # With our fix, it should be mapped to the closest bin (20 Hz) and not be discarded.
-        expected_center = 20 * (2 ** (1/3))  # 25.198
+        expected_center = 20 * (2 ** (1 / 3))  # 25.198
         has_25hz_band = any(np.isclose(f, expected_center, rtol=1e-3) for f in smoothed_freqs)
         assert has_25hz_band, f"Expected center frequency {expected_center} to be retained."
 

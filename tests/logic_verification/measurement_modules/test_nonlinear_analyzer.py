@@ -591,6 +591,7 @@ def test_nonlinear_analyzer_module_measurement(qtbot):
 
     # Mock run_play_rec to immediately return dummy data in offline mode to avoid PlayRecSession timeouts in tests
     import numpy as np
+
     analyzer.run_play_rec = lambda out_data, **kwargs: np.zeros((len(out_data), 2), dtype=np.float32)
 
     worker = DummyWorker()

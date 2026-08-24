@@ -226,7 +226,7 @@ class RealtimeSSSEngine:
             fitted = weighted_design @ coeffs
             ss_res = np.sum((weighted_y - fitted) ** 2)
 
-        ss_tot = np.sum(weighted_y ** 2)
+        ss_tot = np.sum(weighted_y**2)
         quality = np.clip(1.0 - (ss_res / ss_tot), 0.0, 1.0) if ss_tot > 1e-12 else 0.0
 
         results = [complex(coeffs[1 + 2 * p], -coeffs[2 + 2 * p]) for p in range(active_max_harmonic)]

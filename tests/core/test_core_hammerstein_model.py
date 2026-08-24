@@ -107,11 +107,11 @@ def test_predict_harmonic_response():
     sample_rate = 48000.0
     sorted_freqs = np.array([50.0, 500.0])
     H_freqs = [
-        np.array([1.0+0j, 1.0+0j]),  # H1
-        np.array([2.0+0j, 2.0+0j]),  # H2
-        np.array([0.0+0j, 0.0+0j]),  # H3
-        np.array([0.0+0j, 0.0+0j]),  # H4
-        np.array([0.0+0j, 0.0+0j]),  # H5
+        np.array([1.0 + 0j, 1.0 + 0j]),  # H1
+        np.array([2.0 + 0j, 2.0 + 0j]),  # H2
+        np.array([0.0 + 0j, 0.0 + 0j]),  # H3
+        np.array([0.0 + 0j, 0.0 + 0j]),  # H4
+        np.array([0.0 + 0j, 0.0 + 0j]),  # H5
     ]
 
     predictions = predict_harmonic_response(

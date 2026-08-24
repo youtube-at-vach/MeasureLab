@@ -2052,9 +2052,7 @@ class SettingsWidget(QWidget):
                 if 0 <= index < len(devices):
                     info = devices[index]
                     name = str(info.get("name", "") or "")
-                    host_api = str(
-                        info.get("hostapi_name", "") or info.get("hostapi", "") or ""
-                    )
+                    host_api = str(info.get("hostapi_name", "") or info.get("hostapi", "") or "")
                     return name, host_api
             except (TypeError, ValueError, IndexError):
                 pass
@@ -2093,23 +2091,13 @@ class SettingsWidget(QWidget):
         unavailable = tr("Not available")
 
         if has_profile:
-            self.cal_profile_status_label.setText(
-                tr("Changes are saved automatically to '{0}'.").format(name)
-            )
-            stored_input = str(
-                profile.get("input_device_name", profile.get("device_name", "")) or ""
-            )
-            stored_input_api = str(
-                profile.get("input_host_api", profile.get("host_api", "")) or ""
-            )
+            self.cal_profile_status_label.setText(tr("Changes are saved automatically to '{0}'.").format(name))
+            stored_input = str(profile.get("input_device_name", profile.get("device_name", "")) or "")
+            stored_input_api = str(profile.get("input_host_api", profile.get("host_api", "")) or "")
             stored_output = str(profile.get("output_device_name", "") or "")
             stored_output_api = str(profile.get("output_host_api", "") or "")
-            stored_input_text = self._format_profile_device(
-                stored_input, stored_input_api
-            )
-            stored_output_text = self._format_profile_device(
-                stored_output, stored_output_api
-            )
+            stored_input_text = self._format_profile_device(stored_input, stored_input_api)
+            stored_output_text = self._format_profile_device(stored_output, stored_output_api)
             self.cal_profile_device_label.setText(
                 tr("Profile devices — Input: {0} | Output: {1}").format(
                     stored_input_text or unavailable,
@@ -2122,11 +2110,7 @@ class SettingsWidget(QWidget):
                 and current_input
                 and (
                     stored_input != current_input
-                    or bool(
-                        stored_input_api
-                        and current_input_api
-                        and stored_input_api != current_input_api
-                    )
+                    or bool(stored_input_api and current_input_api and stored_input_api != current_input_api)
                 )
             )
             output_mismatch = bool(
@@ -2134,11 +2118,7 @@ class SettingsWidget(QWidget):
                 and current_output
                 and (
                     stored_output != current_output
-                    or bool(
-                        stored_output_api
-                        and current_output_api
-                        and stored_output_api != current_output_api
-                    )
+                    or bool(stored_output_api and current_output_api and stored_output_api != current_output_api)
                 )
             )
             if input_mismatch or output_mismatch:
@@ -2152,9 +2132,7 @@ class SettingsWidget(QWidget):
             else:
                 self.cal_profile_warning_label.hide()
         else:
-            self.cal_profile_status_label.setText(
-                tr("Current calibration is not assigned to a named profile.")
-            )
+            self.cal_profile_status_label.setText(tr("Current calibration is not assigned to a named profile."))
             self.cal_profile_device_label.setText(
                 tr("Current devices — Input: {0} | Output: {1}").format(
                     current_input_text or unavailable,
@@ -2203,12 +2181,8 @@ class SettingsWidget(QWidget):
             self._refresh_all_calibration_displays()
         except Exception as e:
             active = self.audio_engine.calibration.last_profile
-            self.refresh_cal_profiles(
-                active if isinstance(active, str) else None
-            )
-            QMessageBox.critical(
-                self, tr("Error"), tr("Failed to load profile: {0}").format(e)
-            )
+            self.refresh_cal_profiles(active if isinstance(active, str) else None)
+            QMessageBox.critical(self, tr("Error"), tr("Failed to load profile: {0}").format(e))
 
     def _prompt_profile_name(self, title, label, initial=""):
         name, accepted = QInputDialog.getText(
@@ -2223,17 +2197,13 @@ class SettingsWidget(QWidget):
 
         name = name.strip()
         if not name:
-            QMessageBox.warning(
-                self, tr("Warning"), tr("Profile name cannot be empty.")
-            )
+            QMessageBox.warning(self, tr("Warning"), tr("Profile name cannot be empty."))
             return None
         if name in self.audio_engine.calibration.get_profiles() and name != initial:
             QMessageBox.warning(
                 self,
                 tr("Profile Name In Use"),
-                tr("A profile named '{0}' already exists. Choose a different name.").format(
-                    name
-                ),
+                tr("A profile named '{0}' already exists. Choose a different name.").format(name),
             )
             return None
         return name

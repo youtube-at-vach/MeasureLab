@@ -320,9 +320,7 @@ def main():
     )
     parser.add_argument("--num-amplitudes", type=int, default=5, help="Number of excitation amplitudes for sweep")
     parser.add_argument("--num-meas-points", type=int, default=500, help="Number of measurement points")
-    parser.add_argument(
-        "--model", type=str, choices=["chebyshev"], default="chebyshev", help="Model domain mode"
-    )
+    parser.add_argument("--model", type=str, choices=["chebyshev"], default="chebyshev", help="Model domain mode")
     parser.add_argument(
         "--no-ref-phase-only", action="store_true", help="Disable ref-phase-only mode (use full XFER scaling)"
     )
@@ -382,7 +380,10 @@ def main():
                 break
 
         if uac_idx is None:
-            print("[-] Error: ZOOM UAC-232 not found. Run with --virtual or --test-run if no real hardware is connected.", flush=True)
+            print(
+                "[-] Error: ZOOM UAC-232 not found. Run with --virtual or --test-run if no real hardware is connected.",
+                flush=True,
+            )
             sys.exit(1)
 
         print(f"[+] Found ZOOM UAC-232 at index {uac_idx}", flush=True)
@@ -460,7 +461,10 @@ def main():
 
     print("\n[+] Determined Reference Single-Tone Response:", flush=True)
     for n in range(1, max_harmonic + 1):
-        print(f"  H{n}: Amp = {lockin_ref_avg[n-1]['amp_db']:.2f} dB (std={lockin_ref_avg[n-1]['amp_std']:.3f}), Phase = {lockin_ref_avg[n-1]['phase_deg']:.1f} deg (std={lockin_ref_avg[n-1]['phase_std']:.2f})", flush=True)
+        print(
+            f"  H{n}: Amp = {lockin_ref_avg[n - 1]['amp_db']:.2f} dB (std={lockin_ref_avg[n - 1]['amp_std']:.3f}), Phase = {lockin_ref_avg[n - 1]['phase_deg']:.1f} deg (std={lockin_ref_avg[n - 1]['phase_std']:.2f})",
+            flush=True,
+        )
 
     # ----------------------------------------------------
     # Phase B: SSS Sweep Captures (Once per Duration/Amplitude)
@@ -495,12 +499,14 @@ def main():
                 ref_channel=1,
             )
 
-            captured_sweeps[dur].append({
-                "amplitude": amp,
-                "sig_blocks": sig_blocks,
-                "ref_blocks": ref_blocks,
-                "latency": latency,
-            })
+            captured_sweeps[dur].append(
+                {
+                    "amplitude": amp,
+                    "sig_blocks": sig_blocks,
+                    "ref_blocks": ref_blocks,
+                    "latency": latency,
+                }
+            )
 
     engine.unregister_callback(dummy_cb_id)
     print("\n[+] SSS Sweep capturing completed.", flush=True)
@@ -579,26 +585,34 @@ def main():
                 max_amp_err = np.max(amp_diffs) if amp_diffs else 0.0
                 max_phase_err = np.max(phase_diffs) if phase_diffs else 0.0
 
-                results_matrix.append({
-                    "duration_s": dur,
-                    "analysis_cycle": cyc,
-                    "min_window_ms": int(win * 1000),
-                    "mae_amp_db": mae_amp,
-                    "mae_phase_deg": mae_phase,
-                    "max_amp_err_db": max_amp_err,
-                    "max_phase_err_deg": max_phase_err,
-                })
+                results_matrix.append(
+                    {
+                        "duration_s": dur,
+                        "analysis_cycle": cyc,
+                        "min_window_ms": int(win * 1000),
+                        "mae_amp_db": mae_amp,
+                        "mae_phase_deg": mae_phase,
+                        "max_amp_err_db": max_amp_err,
+                        "max_phase_err_deg": max_phase_err,
+                    }
+                )
 
         # Print results table for this duration
         print("\n=========================================================================================", flush=True)
         print(f" MATRIX EVALUATION SUMMARY: Duration = {dur}s", flush=True)
         print("=========================================================================================", flush=True)
-        print(" Cycles     | Min Window   | MAE Amp (dB)   | MAE Phase (deg)  | Max Amp Err (dB)  | Max Phase Err (deg)", flush=True)
+        print(
+            " Cycles     | Min Window   | MAE Amp (dB)   | MAE Phase (deg)  | Max Amp Err (dB)  | Max Phase Err (deg)",
+            flush=True,
+        )
         print("-" * 105, flush=True)
         dur_results = [r for r in results_matrix if r["duration_s"] == dur]
         for r in dur_results:
             win_str = f"{r['min_window_ms']} ms"
-            print(f" {r['analysis_cycle']:<10.1f} | {win_str:<12} | {r['mae_amp_db']:>14.4f} | {r['mae_phase_deg']:>16.4f} | {r['max_amp_err_db']:>17.4f} | {r['max_phase_err_deg']:>20.4f}", flush=True)
+            print(
+                f" {r['analysis_cycle']:<10.1f} | {win_str:<12} | {r['mae_amp_db']:>14.4f} | {r['mae_phase_deg']:>16.4f} | {r['max_amp_err_db']:>17.4f} | {r['max_phase_err_deg']:>20.4f}",
+                flush=True,
+            )
         print("=========================================================================================", flush=True)
 
     # ----------------------------------------------------
@@ -615,17 +629,29 @@ def main():
     # Export to CSV
     with open(output_csv_path, "w", encoding="utf-8", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["duration_s", "analysis_cycle", "min_window_ms", "mae_amp_db", "mae_phase_deg", "max_amp_err_db", "max_phase_err_deg"])
+        writer.writerow(
+            [
+                "duration_s",
+                "analysis_cycle",
+                "min_window_ms",
+                "mae_amp_db",
+                "mae_phase_deg",
+                "max_amp_err_db",
+                "max_phase_err_deg",
+            ]
+        )
         for r in results_matrix:
-            writer.writerow([
-                r["duration_s"],
-                r["analysis_cycle"],
-                r["min_window_ms"],
-                r["mae_amp_db"],
-                r["mae_phase_deg"],
-                r["max_amp_err_db"],
-                r["max_phase_err_deg"]
-            ])
+            writer.writerow(
+                [
+                    r["duration_s"],
+                    r["analysis_cycle"],
+                    r["min_window_ms"],
+                    r["mae_amp_db"],
+                    r["mae_phase_deg"],
+                    r["max_amp_err_db"],
+                    r["max_phase_err_deg"],
+                ]
+            )
     print(f"[+] Saved matrix CSV results to {output_csv_path}", flush=True)
     print("\n[+] Verification run completed successfully.", flush=True)
 
