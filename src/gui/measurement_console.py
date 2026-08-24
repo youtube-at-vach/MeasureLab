@@ -14,7 +14,7 @@ import logging
 import re
 from typing import TYPE_CHECKING
 
-from PyQt6.QtCore import QByteArray, QSize, Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import QByteArray, QEvent, QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QCloseEvent, QMoveEvent, QResizeEvent, QShowEvent
 from PyQt6.QtWidgets import (
     QAbstractButton,
@@ -144,6 +144,7 @@ class InstrumentDockWidget(QDockWidget):
                 self._primary_button = self._create_title_bar_button(primary_action.text())
                 self._primary_button.clicked.connect(self._trigger_primary_action)
                 self._primary_action.toggled.connect(self._schedule_primary_action_sync)
+                self._primary_action.installEventFilter(self)
                 title_bar_layout.addWidget(self._primary_button)
 
         self._close_button = self._create_title_bar_button(tr("Close"))
@@ -162,6 +163,7 @@ class InstrumentDockWidget(QDockWidget):
                 self._primary_action.toggled.disconnect(self._schedule_primary_action_sync)
             except (RuntimeError, TypeError):
                 pass
+            self._primary_action.removeEventFilter(self)
 
         for button in (self._primary_button, self._close_button):
             if button is None:
@@ -189,6 +191,12 @@ class InstrumentDockWidget(QDockWidget):
 
     def _schedule_primary_action_sync(self, *_args) -> None:
         QTimer.singleShot(0, self._sync_primary_action)
+
+    def eventFilter(self, watched, event) -> bool:
+        """Keep the title-bar proxy usable when the source action is enabled later."""
+        if watched is self._primary_action and event.type() == QEvent.Type.EnabledChange:
+            self._schedule_primary_action_sync()
+        return super().eventFilter(watched, event)
 
     def _sync_primary_action(self) -> None:
         if self._primary_action is None or self._primary_button is None:

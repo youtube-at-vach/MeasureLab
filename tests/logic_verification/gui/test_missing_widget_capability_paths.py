@@ -2,7 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import numpy as np
-from PyQt6.QtWidgets import QWidget
+from PyQt6.QtWidgets import QPushButton, QWidget
 
 from src.core.module_constants import MODULE_TRANSMISSION_ANALYZER
 from src.gui.module_registry import MODULE_REGISTRY
@@ -18,6 +18,8 @@ def test_transmission_analyzer_compact_mode_through_wrapper(qtbot):
     QWidget.__init__(widget)
     CompactableWidgetInterface.__init__(widget)
     widget.left_panel = QWidget(widget)
+    widget.btn_toggle = QPushButton(widget)
+    widget.btn_toggle.setCheckable(True)
     wrapper = DetachableWidgetWrapper(
         widget,
         "Transmission Analyzer",

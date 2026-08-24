@@ -128,6 +128,7 @@ def test_console_hosts_compact_widgets_in_two_columns(qtbot):
     assert len({dock.objectName() for dock in console._docks.values()}) == 4
     assert console.dockWidgetArea(console._docks[0]) is Qt.DockWidgetArea.LeftDockWidgetArea
     if console._requires_compact_screen_layout(QApplication.primaryScreen().availableGeometry()):
+        qtbot.waitUntil(lambda: bool(console.tabifiedDockWidgets(console._docks[0])))
         assert console.tabifiedDockWidgets(console._docks[0]) == [
             console._docks[1],
             console._docks[2],
@@ -348,6 +349,30 @@ def test_console_merges_wrapper_header_and_dock_controls(qtbot):
     assert wrapper.header.layout().contentsMargins().top() == 5
     assert wrapper.screenshot_btn.height() == 28
     assert host.returned == [0]
+    console.close()
+
+
+def test_console_primary_action_tracks_source_enabled_state(qtbot):
+    content = _PrimaryActionContent()
+    content.toggle_btn.setEnabled(False)
+    wrapper = DetachableWidgetWrapper(
+        content,
+        "Instrument 0",
+        capabilities=PRIMARY_ACTION_CAPABILITIES,
+    )
+    host = _ConsoleHostStub([wrapper])
+    console = MeasurementConsoleWindow(host)
+    console.add_module(0)
+
+    dock = console._docks[0]
+    assert dock._primary_button is not None
+    assert not dock._primary_button.isEnabled()
+
+    content.toggle_btn.setEnabled(True)
+    qtbot.waitUntil(dock._primary_button.isEnabled)
+
+    content.toggle_btn.setEnabled(False)
+    qtbot.waitUntil(lambda: not dock._primary_button.isEnabled())
     console.close()
 
 
