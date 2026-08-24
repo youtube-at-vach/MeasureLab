@@ -98,8 +98,11 @@ Before submitting a PR, ensure your changes meet the project's standards.
 - **Linting:**
 
   ```bash
-  ruff check src scripts tests
+  ruff check .
+  ruff format --check .
   ```
+
+  `ruff format .` による全体フォーマットは通常実行しません。フォーマット確認が失敗した場合は、まず今回変更したファイルが原因か確認し、必要なら変更したファイルだけをフォーマットしてください。全体フォーマットが必要な場合は、機能変更と分けた専用PRで実施します。
 
 - **Type Checking:**
 

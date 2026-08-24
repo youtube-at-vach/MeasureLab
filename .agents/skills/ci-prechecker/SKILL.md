@@ -24,13 +24,23 @@ Pythonコードのスタイルとエラーをチェックします。
 ./.venv/bin/ruff check .
 ```
 
-必要に応じて自動修正を行ってください。
+必要に応じてLintの自動修正を行ってください。
 
 ```bash
 ./.venv/bin/ruff check --fix .
 ```
 
-### 2. 型チェック (Mypy)
+### 2. フォーマット確認 (Ruff)
+
+フォーマット済みかどうかを確認します。
+
+```bash
+./.venv/bin/ruff format --check .
+```
+
+失敗した場合は、まず今回変更したファイルが原因か確認してください。必要な場合に限り、変更したファイルだけを対象に`./.venv/bin/ruff format <変更したファイル>`を実行します。`./.venv/bin/ruff format .`による全体フォーマットは自動的に実行しません。
+
+### 3. 型チェック (Mypy)
 
 Pythonの静的型チェックを実行します。
 
@@ -38,7 +48,7 @@ Pythonの静的型チェックを実行します。
 ./.venv/bin/mypy src main_gui.py
 ```
 
-### 3. 翻訳キーの整合性チェック
+### 4. 翻訳キーの整合性チェック
 
 多言語対応の翻訳キーに不足がないか確認します。
 
@@ -46,7 +56,7 @@ Pythonの静的型チェックを実行します。
 ./.venv/bin/python scripts/check_trn_keys.py
 ```
 
-### 4. ドキュメントのリンティング (Markdown lint)
+### 5. ドキュメントのリンティング (Markdown lint)
 
 Markdownファイルのフォーマットをチェックします。
 
@@ -54,7 +64,7 @@ Markdownファイルのフォーマットをチェックします。
 npx markdownlint-cli2 "**/*.md" "#node_modules"
 ```
 
-### 5. ユニットテストの実行 (Pytest)
+### 6. ユニットテストの実行 (Pytest)
 
 すべてのユニットテストを実行し、機能が壊れていないか確認します。
 

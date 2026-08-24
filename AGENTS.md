@@ -38,6 +38,19 @@ description: Instructions for running development tools (pytest, ruff, mypy)
 - `ruff`   -> `./.venv/bin/ruff` (リンター/フォーマッター)
 - `mypy`   -> `./.venv/bin/mypy` (型チェック)
 
+### Ruff format の運用
+
+エージェントの作業終了時には、次の2つを毎回実行します。
+
+```bash
+./.venv/bin/ruff check .
+./.venv/bin/ruff format --check .
+```
+
+`ruff format .` による全体フォーマットは、不要な大量差分を避けるため通常の作業では実行しません。
+`ruff format --check .` が失敗した場合は、まず今回変更したファイルが原因か確認し、必要な場合に限り変更したファイルだけをフォーマットします。
+全体フォーマットが必要な場合は、機能変更と分けた専用PRで実施します。
+
 ### VS Code タスク
 
 VS Code から `pytest (venv)` タスクを利用可能です。
