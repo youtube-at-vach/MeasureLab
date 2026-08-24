@@ -2,20 +2,10 @@ import os
 import json
 import unittest
 import tempfile
-from unittest.mock import MagicMock
-import sys
 
 import pytest
 
-# Patch numpy if missing, before importing logic modules
-if "numpy" not in sys.modules:
-    sys.modules["numpy"] = MagicMock()
-
-try:
-    from src.core.calibration import CalibrationManager
-except ImportError:
-    # Fallback if other dependencies (e.g. logging?) fail, though unlikely for core
-    pass
+from src.core.calibration import CalibrationManager
 
 
 class TestCalibrationProfiles(unittest.TestCase):

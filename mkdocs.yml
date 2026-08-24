@@ -205,6 +205,7 @@ nav:
           - ボックスカー平均器: widgets/boxcar_averager.md
       - ユーティリティ:
           - 分離ウィンドウラッパー: widgets/detachable_wrapper.md
+          - 計測コンソール（試験的機能）: widgets/measurement_console.md
           - プロット比較器: widgets/plot_comparer.md
           - プロセッサーベンチマーク: widgets/processor_benchmark.md
           - 波形ループプレイヤー: widgets/waveform_loop_player.md

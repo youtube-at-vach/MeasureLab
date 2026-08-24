@@ -189,6 +189,8 @@ MeasureLab に搭載されている多数のウィジェットを、用途ごと
 
 - **[Detachable Wrapper](widgets/detachable_wrapper.md)**
     - 任意のウィジェットを別ウィンドウとして切り離すための枠組みです。
+- **[計測コンソール（試験的機能）](widgets/measurement_console.md)**
+    - 既存の測定ウィジェットを、音声処理を重複させずにドッキング可能なワークスペースへ配置します。
 - **[Plot Comparer](widgets/plot_comparer.md)**
     - 異なる測定モジュール（スペクトラムアナライザ、ネットワークアナライザ、オシロスコープなど）から保存・エクスポートした測定データをインポートし、ゲインオフセットや軸シフトなどを調整しながら重ね合わせて詳細に比較できます。
 - **[Processor Benchmark](widgets/processor_benchmark.md)**

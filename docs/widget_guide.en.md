@@ -183,6 +183,8 @@ Other useful functions.
 
 - **[Detachable Wrapper](widgets/detachable_wrapper.en.md)**
     - A framework for detaching any widget into a separate window.
+- **[Measurement Console (Experimental)](widgets/measurement_console.en.md)**
+    - Arranges multiple existing measurement widgets in a dockable workspace without duplicating audio processing.
 - **[Plot Comparer](widgets/plot_comparer.en.md)**
     - Imports measurement traces saved/exported from other modules (Spectrum Analyzer, Network Analyzer, Oscilloscope, etc.) and allows detailed comparison by overlaying them with adjustable gain offsets, axis shifts, and peak alignment.
 - **[Processor Benchmark](widgets/processor_benchmark.en.md)**

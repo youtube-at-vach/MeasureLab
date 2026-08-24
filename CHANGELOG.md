@@ -1,5 +1,34 @@
 # Changelog
 
+## [v0.8.5] - 2026-08-24
+
+### Added
+
+* **Measurement Console (Experimental)**:
+    * Added a dockable multi-instrument workspace that reuses existing module instances, avoiding duplicate real-time audio processing.
+    * Added default four-instrument, side-by-side, and 2 x 2 grid layouts, layout locking, workspace restoration, compact-mode support, and safe small-screen layout handling.
+    * Added synchronized title-bar start/stop controls for the 30 modules that declare a console primary action, including Frequency Counter support.
+* **Calibration**:
+    * Added named calibration profiles for input, output, SPL, frequency, 1PPS, and lock-in settings, including create, duplicate, rename, delete, automatic saving, and device-mismatch warnings.
+* **Documentation**:
+    * Added a Measurement Console guide and linked it from the widget guide and documentation navigation.
+
+### Changed
+
+* **Signal Generator**:
+    * Added configurable click-free transitions for output start, stop, routing, and live parameter changes, with a 0 ms bypass for sample-exact sequence output.
+* **Widget Capabilities**:
+    * Expanded capability declarations, validation, tests, and the generated implementation matrix to cover Measurement Console primary actions across all modules.
+
+### Fixed
+
+* **Frequency Counter**:
+    * Retained measurement workers until completion to prevent interrupted runs and stale reset behavior.
+* **Oscilloscope & Detached Windows**:
+    * Restored split-display sizing after compact mode and kept the Y-axis label and grid lines visible when enabled.
+* **Measurement Console**:
+    * Preserved usable window geometry when closing and recovering a saved workspace.
+
 ## [v0.8.4] - 2026-08-15
 
 ### Added
