@@ -38,6 +38,7 @@ class AllanWorkerSignals(QObject):
     """Signals for the AllanWorker."""
 
     result = pyqtSignal(list, list)  # taus, devs
+    finished = pyqtSignal(object)  # worker
 
 
 class AllanWorker(QRunnable):
@@ -55,7 +56,7 @@ class AllanWorker(QRunnable):
     def run(self):
         try:
             if len(self.freq_history) < 10:
-                self.signals.result.emit([], [])
+                self._emit_result([], [])
                 return
 
             dt_seconds = self.update_interval_ms / 1000.0
@@ -68,7 +69,7 @@ class AllanWorker(QRunnable):
                 valid_mask = (np.isfinite(data)) & (data > 0)
                 data = data[valid_mask]
                 if len(data) < 10:
-                    self.signals.result.emit([], [])
+                    self._emit_result([], [])
                     return
                 # Convert to period
                 data = 1.0 / data
@@ -76,24 +77,40 @@ class AllanWorker(QRunnable):
                 # Frequency mode
                 data = data[np.isfinite(data)]
                 if len(data) < 10:
-                    self.signals.result.emit([], [])
+                    self._emit_result([], [])
                     return
 
             # --- Allan Deviation Calculation ---
             taus, devs = calculate_allan_deviation(data, dt_seconds)
 
-            self.signals.result.emit(taus, devs)
+            self._emit_result(taus, devs)
 
         except Exception as e:
             # On error, just emit empty
             logger.error(f"Allan calc error: {e}")
-            self.signals.result.emit([], [])
+            self._emit_result([], [])
+        finally:
+            self._emit_finished()
+
+    def _emit_result(self, taus, devs):
+        try:
+            self.signals.result.emit(taus, devs)
+        except RuntimeError as e:
+            logger.debug("Allan worker result discarded during shutdown: %s", e)
+
+    def _emit_finished(self):
+        try:
+            self.signals.finished.emit(self)
+        except RuntimeError:
+            # The owner is already being torn down; no cleanup callback remains.
+            pass
 
 
 class FrequencyWorkerSignals(QObject):
     """Signals for the FrequencyWorker."""
 
     result = pyqtSignal(object, float)  # freq (float or None), amp_db
+    finished = pyqtSignal(object)  # worker
 
 
 class FrequencyWorker(QRunnable):
@@ -112,11 +129,21 @@ class FrequencyWorker(QRunnable):
     def run(self):
         try:
             freq, db = calculate_frequency_metrics(self.data, self.sr, self.gate_threshold_db, self.calibration_factor)
-            self.signals.result.emit(freq, db)
         except Exception as e:
             # On error, we should probably emit something safe or just log
             logger.error(f"Freq worker error: {e}")
-            self.signals.result.emit(None, -140.0)
+            freq, db = None, -140.0
+
+        try:
+            self.signals.result.emit(freq, db)
+        except RuntimeError as e:
+            logger.debug("Frequency worker result discarded during shutdown: %s", e)
+        finally:
+            try:
+                self.signals.finished.emit(self)
+            except RuntimeError:
+                # The owner is already being torn down; no cleanup callback remains.
+                pass
 
 
 class FrequencyCounter(MeasurementModule):
@@ -445,9 +472,21 @@ class FrequencyCounterWidget(QWidget, CompactableWidgetInterface):
         self.module.start_time = time.time()
 
         # Async Allan Calculation
-        self.threadpool = QThreadPool()
+        # Keep both the pool and each runnable alive until its completion signal is
+        # delivered. QRunnable ownership otherwise lives only on the C++ side after
+        # start(), which can let its Python-owned signals be collected prematurely.
+        self.threadpool = QThreadPool(self)
+        self._active_workers: set[QRunnable] = set()
         self.is_allan_calculating = False
         self.is_calculating_freq = False
+
+    def _start_worker(self, worker: AllanWorker | FrequencyWorker) -> None:
+        self._active_workers.add(worker)
+        worker.signals.finished.connect(self._on_worker_finished)
+        self.threadpool.start(worker)
+
+    def _on_worker_finished(self, worker: QRunnable) -> None:
+        self._active_workers.discard(worker)
 
     def init_ui(self):
         layout = QVBoxLayout()
@@ -1010,7 +1049,7 @@ class FrequencyCounterWidget(QWidget, CompactableWidgetInterface):
 
                     worker = AllanWorker(history_snapshot, self.module.update_interval_ms, self.display_mode)
                     worker.signals.result.connect(self.on_allan_results)
-                    self.threadpool.start(worker)
+                    self._start_worker(worker)
 
             elif current_tab == 2:  # Jitter Histogram (Modulation Domain)
                 # Throttle histogram updates slightly to reduce UI churn.
@@ -1096,7 +1135,7 @@ class FrequencyCounterWidget(QWidget, CompactableWidgetInterface):
         self.is_calculating_freq = True
         worker = FrequencyWorker(data, sr, self.module.gate_threshold_db, cal_factor)
         worker.signals.result.connect(self.on_freq_calculation_result)
-        self.threadpool.start(worker)
+        self._start_worker(worker)
 
     def update_compact_layout(self):
         compact = self.is_compact_mode()

@@ -6,7 +6,7 @@ import pytest
 pytest.importorskip("PyQt6")
 
 try:
-    from src.gui.widgets.frequency_counter import FrequencyCounter, FrequencyCounterWidget
+    from src.gui.widgets.frequency_counter import FrequencyCounter, FrequencyCounterWidget, FrequencyWorker
 except ImportError:
     pytest.skip("Skipping GUI test due to missing dependencies", allow_module_level=True)
 
@@ -59,6 +59,35 @@ def test_widget_channel_change_resets_history(qapp, frequency_counter):
     # Cleanup properly to avoid segfaults and "pure virtual method called"
     widget.deleteLater()
     qapp.processEvents()
+
+
+def test_widget_retains_worker_until_finished(qapp, qtbot, monkeypatch, frequency_counter):
+    monkeypatch.setattr(
+        "src.gui.widgets.frequency_counter.calculate_frequency_metrics",
+        lambda *_args: (1000.0, -20.0),
+    )
+    widget = FrequencyCounterWidget(frequency_counter)
+    worker = FrequencyWorker([], 48000, -60.0, 1.0)
+
+    widget._start_worker(worker)
+
+    assert worker in widget._active_workers
+    qtbot.waitUntil(lambda: worker not in widget._active_workers, timeout=1000)
+    widget.deleteLater()
+    qapp.processEvents()
+
+
+def test_frequency_worker_ignores_deleted_signals(monkeypatch):
+    from PyQt6 import sip
+
+    monkeypatch.setattr(
+        "src.gui.widgets.frequency_counter.calculate_frequency_metrics",
+        lambda *_args: (1000.0, -20.0),
+    )
+    worker = FrequencyWorker([], 48000, -60.0, 1.0)
+    sip.delete(worker.signals)
+
+    worker.run()
 
 
 def test_frequency_counter_compact_mode(qapp, qtbot, frequency_counter):
