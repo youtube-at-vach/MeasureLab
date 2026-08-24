@@ -14,6 +14,7 @@ if str(ROOT) not in sys.path:
 from src.gui.module_registry import (  # noqa: E402
     MODULE_REGISTRY,
     CapabilityExclusionReason,
+    ConsoleActionStatus,
     FeatureCapability,
 )
 
@@ -52,6 +53,14 @@ def _matrix_label(capability: FeatureCapability) -> str:
     return EXCLUSION_LABELS[reason]
 
 
+def _console_action_label(status: ConsoleActionStatus) -> str:
+    if status is ConsoleActionStatus.SUPPORTED:
+        return "共✓"
+    if status is ConsoleActionStatus.DEFERRED:
+        return "要"
+    return "外G"
+
+
 def _module_note(capabilities) -> str:
     reasons = {
         capability.exclusion_reason
@@ -62,7 +71,13 @@ def _module_note(capabilities) -> str:
         )
         if capability.exclusion_reason is not None
     }
-    return "、".join(EXCLUSION_NOTES[reason] for reason in EXCLUSION_NOTES if reason in reasons)
+    notes = [EXCLUSION_NOTES[reason] for reason in EXCLUSION_NOTES if reason in reasons]
+    console_status = capabilities.console_primary_action.status
+    if console_status is ConsoleActionStatus.DEFERRED:
+        notes.append("コンソール主操作は未対応")
+    elif console_status is ConsoleActionStatus.NOT_APPLICABLE:
+        notes.append("単一の開始／停止主操作なし")
+    return "、".join(notes)
 
 
 def _table(headers: list[str], rows: list[list[str]], alignments: list[str]) -> str:
@@ -84,10 +99,41 @@ def _table(headers: list[str], rows: list[list[str]], alignments: list[str]) -> 
 def render_summary() -> str:
     module_count = len(MODULE_REGISTRY)
     feature_rows = [
-        ["単一ウィンドウ分離（State B）", f"{module_count} / {module_count}", "100.0%", "0", "0", "共通経路を確認", "共通ラッパー"],
-        ["スクリーンショット", f"{module_count} / {module_count}", "100.0%", "0", "0", "共通経路を確認", "共通ラッパー"],
+        [
+            "単一ウィンドウ分離（State B）",
+            f"{module_count} / {module_count}",
+            "100.0%",
+            "0",
+            "0",
+            "共通経路を確認",
+            "共通ラッパー",
+        ],
+        [
+            "スクリーンショット",
+            f"{module_count} / {module_count}",
+            "100.0%",
+            "0",
+            "0",
+            "共通経路を確認",
+            "共通ラッパー",
+        ],
         ["ログビューア表示", f"{module_count} / {module_count}", "100.0%", "0", "0", "共通経路を確認", "共通ラッパー"],
     ]
+    console_actions = [spec.capabilities.console_primary_action for spec in MODULE_REGISTRY.values()]
+    console_supported = sum(action.status is ConsoleActionStatus.SUPPORTED for action in console_actions)
+    console_deferred = sum(action.status is ConsoleActionStatus.DEFERRED for action in console_actions)
+    console_applicable = console_supported + console_deferred
+    feature_rows.append(
+        [
+            "コンソール主操作（開始／停止）",
+            f"{console_supported} / {console_applicable}",
+            f"{console_supported / console_applicable:.1%}",
+            str(console_deferred),
+            str(module_count - console_applicable),
+            "共通経路＋Frequency Counter",
+            "共通ラッパー＋個別宣言",
+        ]
+    )
     labels = {
         "compact": ("コンパクトモード", "ウィジェット個別"),
         "split": ("表示／操作の 2 窓分割（State C）", "ウィジェット個別"),
@@ -95,9 +141,7 @@ def render_summary() -> str:
     }
     for capability_name in ("compact", "split", "compare"):
         field_name = CAPABILITY_FIELDS[capability_name]
-        supported = sum(
-            getattr(spec.capabilities, field_name).is_supported for spec in MODULE_REGISTRY.values()
-        )
+        supported = sum(getattr(spec.capabilities, field_name).is_supported for spec in MODULE_REGISTRY.values())
         label, provider = labels[capability_name]
         feature_rows.append(
             [
@@ -121,23 +165,36 @@ def render_summary() -> str:
 def render_modules() -> str:
     rows = []
     for module_key, spec in MODULE_REGISTRY.items():
+        console_action = spec.capabilities.console_primary_action
         rows.append(
             [
-                "✓",
+                "" if console_action.is_deferred else "✓",
                 module_key,
                 "共✓",
                 _matrix_label(spec.capabilities.split_window),
                 _matrix_label(spec.capabilities.compact_mode),
                 _matrix_label(spec.capabilities.comparison),
+                _console_action_label(console_action.status),
                 "共✓",
                 "共✓",
                 _module_note(spec.capabilities),
             ]
         )
     return _table(
-        ["完了", "ウィジェット", "単一窓分離", "2 窓分割", "コンパクト", "比較送信", "撮影", "ログ", "備考"],
+        [
+            "完了",
+            "ウィジェット",
+            "単一窓分離",
+            "2 窓分割",
+            "コンパクト",
+            "比較送信",
+            "コンソール主操作",
+            "撮影",
+            "ログ",
+            "備考",
+        ],
         rows,
-        ["center", "left", "center", "center", "center", "center", "center", "center", "left"],
+        ["center", "left", "center", "center", "center", "center", "center", "center", "center", "left"],
     )
 
 

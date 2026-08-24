@@ -3,7 +3,7 @@ import logging
 import time
 from typing import Any, Callable, Optional
 
-from PyQt6.QtCore import QTimer
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QPalette
 from PyQt6.QtWidgets import (
     QApplication,
@@ -338,6 +338,8 @@ class MainWindow(QMainWindow):
         ]
         self.modules: list[Any | None] = [None] * len(self._module_keys)
         self.module_widgets: list[DetachableWidgetWrapper | None] = [None] * len(self._module_keys)
+        self._measurement_console = None
+        self._module_console_hosts: dict[int, Any] = {}
 
     def _init_main_layout(self):
         """Initialize the main widget and layout."""
@@ -360,6 +362,11 @@ class MainWindow(QMainWindow):
         self.menu_only_btn.setToolTip(tr("Toggle menu-only mode."))
         self.menu_only_btn.toggled.connect(self.set_menu_only_mode)
         sidebar_layout.addWidget(self.menu_only_btn)
+
+        self.measurement_console_btn = QPushButton(tr("Measurement Console"))
+        self.measurement_console_btn.setToolTip(tr("Open the multi-instrument measurement console."))
+        self.measurement_console_btn.clicked.connect(self.open_measurement_console)
+        sidebar_layout.addWidget(self.measurement_console_btn)
 
         self.sidebar = QListWidget()
         self.sidebar.addItem(tr("Welcome"))
@@ -647,12 +654,109 @@ class MainWindow(QMainWindow):
                 last_event_time = current_time
 
     def closeEvent(self, event):
+        console = getattr(self, "_measurement_console", None)
+        if console is not None:
+            try:
+                console.close()
+            except RuntimeError:
+                self._measurement_console = None
+
         # Ensure PortAudio stream is closed (important in resident mode).
         try:
             self.audio_engine.stop_stream()
         except Exception:
             self.logger.exception("Failed to stop audio stream on close")
         super().closeEvent(event)
+
+    def open_measurement_console(self):
+        """Show the experimental dock-based multi-instrument console."""
+        console = self._measurement_console
+        if console is None:
+            from src.gui.measurement_console import MeasurementConsoleWindow
+
+            console = MeasurementConsoleWindow(self)
+            console.closed.connect(self._on_measurement_console_closed)
+            self._measurement_console = console
+            console.restore_workspace()
+
+        console.show()
+        console.raise_()
+        console.activateWindow()
+
+    def _on_measurement_console_closed(self):
+        self._measurement_console = None
+
+    def move_module_to_console(self, module_index: int, console):
+        """Transfer one existing module wrapper into the measurement console."""
+        if module_index < 0 or module_index >= len(self._module_keys):
+            return None
+
+        self._ensure_module_loaded(module_index)
+        wrapper = self.module_widgets[module_index]
+        if wrapper is None:
+            return None
+
+        current_host = self._module_console_hosts.get(module_index)
+        if current_host is console:
+            return wrapper
+        if current_host is not None:
+            current_host.activate_module(module_index)
+            return None
+
+        # Normalize legacy independent-window states before changing the owner
+        # of the wrapper itself.
+        if wrapper.is_split:
+            wrapper.reattach_all()
+        elif wrapper.is_detached:
+            wrapper.reattach()
+
+        container = self._module_containers[module_index]
+        layout = container.layout()
+        if layout is None:
+            layout = QVBoxLayout(container)
+        layout.removeWidget(wrapper)
+        wrapper.setParent(None)
+
+        placeholder = QWidget(container)
+        placeholder_layout = QVBoxLayout(placeholder)
+        placeholder_label = QLabel(
+            tr("{0} is displayed in Measurement Console.").format(tr(self._module_keys[module_index]))
+        )
+        placeholder_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        show_button = QPushButton(tr("Show in Console"))
+        show_button.clicked.connect(lambda: console.activate_module(module_index))
+        placeholder_layout.addStretch()
+        placeholder_layout.addWidget(placeholder_label)
+        placeholder_layout.addWidget(show_button)
+        placeholder_layout.addStretch()
+        layout.addWidget(placeholder)
+
+        self._module_console_hosts[module_index] = console
+        return wrapper
+
+    def return_module_from_console(self, module_index: int, console) -> None:
+        """Return a console-hosted wrapper to its original stacked page."""
+        if self._module_console_hosts.get(module_index) is not console:
+            return
+        self._module_console_hosts.pop(module_index, None)
+
+        wrapper = self.module_widgets[module_index]
+        if wrapper is None:
+            return
+        wrapper.set_console_hosted(False)
+
+        container = self._module_containers[module_index]
+        layout = container.layout()
+        if layout is None:
+            layout = QVBoxLayout(container)
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget() if item is not None else None
+            if widget is not None and widget is not wrapper:
+                widget.deleteLater()
+        wrapper.setParent(container)
+        layout.addWidget(wrapper)
+        wrapper.show()
 
     def _format_compact_sample_rate(self, sample_rate) -> str:
         try:

@@ -8,7 +8,7 @@ import atexit
 import weakref
 from copy import deepcopy
 from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, cast
 
 # Use QLocale for robust language detection on all platforms, including macOS
 from PyQt6.QtCore import QLocale
@@ -25,6 +25,15 @@ class AudioConfigDict(TypedDict, total=False):
     block_size: int
     input_channels: str
     output_channels: str
+
+
+class MeasurementConsoleConfigDict(TypedDict, total=False):
+    version: int
+    module_keys: list[str]
+    compact_module_keys: list[str]
+    geometry: str
+    dock_state: str
+    layout_locked: bool
 
 
 # Default configuration used for initialization and validation
@@ -52,6 +61,14 @@ DEFAULT_CONFIG = {
     "theme": "system",
     "screenshot": {
         "output_dir": "screenshots",
+    },
+    "measurement_console": {
+        "version": 0,
+        "module_keys": [],
+        "compact_module_keys": [],
+        "geometry": "",
+        "dock_state": "",
+        "layout_locked": False,
     },
 }
 
@@ -293,6 +310,34 @@ class ConfigManager:
         else:
             self.logger.warning("'screenshot' section is missing or invalid; using defaults.")
 
+    def _merge_measurement_console_config(self, config: dict, loaded_config: dict) -> None:
+        """Merge a small, validated Qt dock-layout snapshot."""
+        loaded = loaded_config.get("measurement_console", {})
+        if not isinstance(loaded, dict):
+            self.logger.warning("'measurement_console' section is invalid; using defaults.")
+            return
+
+        target = config["measurement_console"]
+        version = loaded.get("version")
+        if isinstance(version, int) and not isinstance(version, bool):
+            target["version"] = version
+
+        for key in ("module_keys", "compact_module_keys"):
+            values = loaded.get(key)
+            if isinstance(values, list):
+                target[key] = list(dict.fromkeys(value for value in values if isinstance(value, str) and value))
+
+        # Qt state blobs are base64 text.  Cap their accepted size so a damaged
+        # config cannot cause unbounded allocations during application startup.
+        for key in ("geometry", "dock_state"):
+            value = loaded.get(key)
+            if isinstance(value, str) and len(value) <= 1_000_000:
+                target[key] = value
+
+        locked = loaded.get("layout_locked")
+        if isinstance(locked, bool):
+            target["layout_locked"] = locked
+
     def _merge_with_defaults(self, loaded_config):
         if not isinstance(loaded_config, dict):
             self.logger.warning("Config file root is not a dict; falling back to defaults.")
@@ -311,6 +356,7 @@ class ConfigManager:
             config["theme"] = theme
 
         self._merge_screenshot_config(config, loaded_config)
+        self._merge_measurement_console_config(config, loaded_config)
 
         return config
 
@@ -481,6 +527,18 @@ class ConfigManager:
     def set_theme(self, theme_name):
         """Updates the theme setting."""
         self.config["theme"] = theme_name
+        self.save_config()
+
+    def get_measurement_console_config(self) -> MeasurementConsoleConfigDict:
+        value = self.config.get("measurement_console")
+        if not isinstance(value, dict):
+            return cast(MeasurementConsoleConfigDict, deepcopy(self._default_config()["measurement_console"]))
+        return cast(MeasurementConsoleConfigDict, deepcopy(value))
+
+    def set_measurement_console_config(self, console_config: MeasurementConsoleConfigDict) -> None:
+        staged = self._default_config()
+        self._merge_measurement_console_config(staged, {"measurement_console": console_config})
+        self.config["measurement_console"] = staged["measurement_console"]
         self.save_config()
 
     def get_screenshot_output_dir(self) -> str:

@@ -145,6 +145,33 @@ class TestConfigManager(unittest.TestCase):
         cm.set_theme("dark")
         self.assertEqual(cm.get_theme(), "dark")
 
+    def test_measurement_console_config_is_validated_and_persisted(self):
+        cm = self.ConfigManager(config_filename=self.config_path)
+
+        cm.set_measurement_console_config(
+            {
+                "version": 1,
+                "module_keys": ["Oscilloscope", "Oscilloscope", "Spectrogram"],
+                "compact_module_keys": ["Oscilloscope"],
+                "geometry": "Z2VvbWV0cnk=",
+                "dock_state": "c3RhdGU=",
+                "layout_locked": True,
+            }
+        )
+
+        value = cm.get_measurement_console_config()
+        self.assertEqual(value["version"], 1)
+        self.assertEqual(value["module_keys"], ["Oscilloscope", "Spectrogram"])
+        self.assertEqual(value["compact_module_keys"], ["Oscilloscope"])
+        self.assertTrue(value["layout_locked"])
+
+        # Returned values are copies and cannot mutate the manager implicitly.
+        value["module_keys"].append("Spectrum Analyzer")
+        self.assertEqual(
+            cm.get_measurement_console_config()["module_keys"],
+            ["Oscilloscope", "Spectrogram"],
+        )
+
     def test_screenshot_output_dir_getters(self):
         cm = self.ConfigManager(config_filename=self.config_path)
 

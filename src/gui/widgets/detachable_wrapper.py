@@ -6,6 +6,7 @@ from enum import Enum
 from PyQt6.QtCore import QPointF, QRectF, QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QColor, QIcon, QPainter, QPalette, QPen, QPixmap
 from PyQt6.QtWidgets import (
+    QAbstractButton,
     QApplication,
     QHBoxLayout,
     QLabel,
@@ -65,9 +66,22 @@ def validate_widget_capabilities(widget: QWidget, capabilities: WidgetCapabiliti
         for method_name in required_methods:
             if getattr(widget_type, method_name) is getattr(interface_type, method_name):
                 raise ValueError(
-                    f"{widget_type.__name__} declares {feature_name} as supported "
-                    f"but does not override {method_name}()"
+                    f"{widget_type.__name__} declares {feature_name} as supported but does not override {method_name}()"
                 )
+
+    console_action = capabilities.console_primary_action
+    if console_action.is_supported:
+        button_attribute = console_action.button_attribute
+        assert button_attribute is not None
+        action = getattr(widget, button_attribute, None)
+        if not isinstance(action, QAbstractButton):
+            raise ValueError(
+                f"{widget_type.__name__} declares console primary action {button_attribute!r} but it is not a button"
+            )
+        if not action.isCheckable():
+            raise ValueError(
+                f"{widget_type.__name__} declares console primary action {button_attribute!r} but it is not checkable"
+            )
 
 
 class IndependentWindow(QMainWindow):
@@ -252,6 +266,7 @@ class DetachableWidgetWrapper(QWidget):
         self.capabilities = capabilities
         self.is_detached = False
         self.independent_window = None
+        self._console_hosted = False
 
         # State C: Split (display window + control window)
         self.is_split = False
@@ -270,6 +285,72 @@ class DetachableWidgetWrapper(QWidget):
         if hasattr(self.app, "theme_manager"):
             self.app.theme_manager.theme_changed.connect(self.apply_theme)
             self.apply_theme(self.app.theme_manager.get_current_theme())
+
+    def set_console_hosted(self, hosted: bool) -> None:
+        """Adapt common window controls while this wrapper lives in a console dock.
+
+        A QDockWidget already owns moving and closing. Leaving the wrapper's
+        independent-window controls active would create two nested management
+        models and ambiguous reattachment behavior.
+        """
+        hosted = bool(hosted)
+        if self._console_hosted == hosted:
+            return
+
+        self._console_hosted = hosted
+        self.detach_btn.setVisible(not hosted)
+        self.more_btn.setVisible(not hosted)
+        self.logs_action.setVisible(not hosted)
+        if self.compare_action is not None:
+            self.compare_action.setVisible(not hosted)
+        if self.split_btn is not None:
+            self.split_btn.setVisible(not hosted)
+
+        header_layout = self.header.layout()
+        if header_layout is not None:
+            if hosted:
+                header_layout.setContentsMargins(4, 1, 4, 1)
+                header_layout.setSpacing(2)
+            else:
+                header_layout.setContentsMargins(5, 5, 10, 5)
+                header_layout.setSpacing(4)
+
+        icon_size = QSize(16, 16) if hosted else QSize(22, 22)
+        button_size = QSize(26, 22) if hosted else QSize(34, 28)
+        for button in self.header.findChildren(QToolButton):
+            button.setIconSize(icon_size)
+            button.setFixedSize(button_size)
+        self.apply_theme()
+
+        if self.compact_btn is not None:
+            if not hosted and self.content_widget.is_compact_mode():
+                self.toggle_compact(False)
+            self.compact_btn.setEnabled(hosted or self.is_detached or self.is_split)
+
+    def console_primary_action(self) -> QAbstractButton | None:
+        """Return the explicitly declared start/stop control for console use."""
+        declaration = self.capabilities.console_primary_action
+        if not declaration.is_supported:
+            return None
+        button_attribute = declaration.button_attribute
+        assert button_attribute is not None
+        action = getattr(self.content_widget, button_attribute, None)
+        return action if isinstance(action, QAbstractButton) and action.isCheckable() else None
+
+    def take_hosted_title_bar(self) -> QWidget:
+        """Release the common header so an outer host can use it as its title bar."""
+        self.layout.removeWidget(self.header)
+        self.header.setParent(None)
+        return self.header
+
+    def restore_hosted_title_bar(self, title_bar: QWidget) -> None:
+        """Restore a header previously released by :meth:`take_hosted_title_bar`."""
+        if title_bar is not self.header:
+            raise ValueError("The supplied title bar does not belong to this wrapper")
+        if self.layout.indexOf(self.header) < 0:
+            self.header.setParent(self)
+            self.layout.insertWidget(0, self.header)
+        self.header.show()
 
     @property
     def window_state(self) -> WidgetWindowState:
@@ -306,10 +387,9 @@ class DetachableWidgetWrapper(QWidget):
         if theme_name == "system" and hasattr(self.app, "theme_manager"):
             theme_name = self.app.theme_manager.get_effective_theme()
 
-        if theme_name == "dark":
-            self.title_label.setStyleSheet("color: white; font-weight: bold; font-size: 14px;")
-        else:
-            self.title_label.setStyleSheet("color: black; font-weight: bold; font-size: 14px;")
+        title_size = 12 if self._console_hosted else 14
+        title_color = "white" if theme_name == "dark" else "black"
+        self.title_label.setStyleSheet(f"color: {title_color}; font-weight: bold; font-size: {title_size}px;")
 
         self._refresh_header_icons()
 
