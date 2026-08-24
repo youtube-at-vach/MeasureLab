@@ -146,7 +146,9 @@ macOS で `pyFFTW` をインストールする場合、パッケージマネー�
     pip install -c constraints.txt -r requirements-docs.txt
     ```
 
-* Lint: `ruff check src scripts tests`
+* Lint: `ruff check .`
+* Format check: `ruff format --check .`
+  `ruff format .` による全体フォーマットは通常実行せず、確認に失敗した場合も変更したファイルだけを必要に応じてフォーマットします。
 * Type check: `mypy src`
 * Tests: `pytest`（ハードウェア/GUI依存テストは環境変数が必要; CIではデフォルトでスキップ）
 

@@ -15,6 +15,7 @@ CI Pre-checker スキルは、Pull Request を送信する前に、ローカル�
 
 ```bash
 .venv/bin/ruff check .
+.venv/bin/ruff format --check .
 .venv/bin/mypy src main_gui.py
 python3 scripts/check_trn_keys.py
 npx markdownlint-cli2 "**/*.md" "#node_modules"
@@ -32,7 +33,8 @@ npx markdownlint-cli2 "**/*.md" "#node_modules"
 
 1. **Ruff (コードリンティング)**
    - Pythonコードのスタイルとエラー
-   - 必要に応じて自動修正
+   - フォーマット済みかどうかの確認
+   - Lint違反は必要に応じて自動修正
 
 2. **Mypy (型チェック)**
    - Pythonの静的型チェック
@@ -45,6 +47,8 @@ npx markdownlint-cli2 "**/*.md" "#node_modules"
 
 5. **Pytest (ユニットテスト)**
    - すべてのテストの実行と検証
+
+フォーマット確認が失敗した場合は、まず今回変更したファイルが原因か確認し、必要なら変更したファイルだけをフォーマットします。`ruff format .`による全体フォーマットは自動的に実行しません。
 
 ## 前提条件
 

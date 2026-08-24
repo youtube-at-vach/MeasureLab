@@ -8,7 +8,7 @@
       "program": "${workspaceFolder}/main_gui.py",
       "console": "integratedTerminal",
       "python": "${workspaceFolder}/.venv/bin/python",
-      "preLaunchTask": "Full CI Validation (Ruff + Mypy + Translation + Size Limits + Pytest)",
+    "preLaunchTask": "Full CI Validation (Ruff + Format + Mypy + Translation + Size Limits + Pytest)",
       "justMyCode": true
     },
     {

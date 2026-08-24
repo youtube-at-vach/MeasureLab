@@ -13,6 +13,17 @@
       }
     },
     {
+      "label": "Ruff Format Check",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/ruff format --check .",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "echo": true
+      }
+    },
+    {
       "label": "Mypy Typecheck",
       "type": "shell",
       "command": "${workspaceFolder}/.venv/bin/mypy src main_gui.py",
@@ -68,9 +79,9 @@
       }
     },
     {
-      "label": "Full CI Validation (Ruff + Mypy + Translation + Size Limits + Pytest)",
+      "label": "Full CI Validation (Ruff + Format + Mypy + Translation + Size Limits + Pytest)",
       "type": "shell",
-      "command": "${workspaceFolder}/.venv/bin/ruff check . && ${workspaceFolder}/.venv/bin/mypy src main_gui.py && ${workspaceFolder}/.venv/bin/python scripts/check_trn_keys.py --strict && ${workspaceFolder}/.venv/bin/python scripts/check_ui_size_limits.py && ${workspaceFolder}/.venv/bin/pytest",
+      "command": "${workspaceFolder}/.venv/bin/ruff check . && ${workspaceFolder}/.venv/bin/ruff format --check . && ${workspaceFolder}/.venv/bin/mypy src main_gui.py && ${workspaceFolder}/.venv/bin/python scripts/check_trn_keys.py --strict && ${workspaceFolder}/.venv/bin/python scripts/check_ui_size_limits.py && ${workspaceFolder}/.venv/bin/pytest",
       "problemMatcher": [],
       "group": {
         "kind": "test",

@@ -34,6 +34,10 @@ python3 -m venv .venv
 ./.venv/bin/pytest -q
 ```
 
+Ruffの`format`は、作業終了時とCI相当の確認では`--check`でフォーマット済みかを確認します。
+`./.venv/bin/ruff format .`による全体フォーマットは通常実行しません。チェックに失敗した場合は、今回変更したファイルが原因かを先に確認し、必要なら変更したファイルだけを`ruff format`で整形します。
+全体フォーマットが必要な場合は、機能変更と分けた専用PRで実施します。
+
 Markdownを変更した場合は、Markdown lintも実行します。
 
 ```bash

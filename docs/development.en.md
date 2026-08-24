@@ -146,7 +146,9 @@ If you want to run tests, Lint/type checks, or build the documentation, install 
     pip install -c constraints.txt -r requirements-docs.txt
     ```
 
-* Lint: `ruff check src scripts tests`
+* Lint: `ruff check .`
+* Format check: `ruff format --check .`
+  Do not normally run `ruff format .` across the repository. If the check fails, first verify whether the failure is in a file changed by the current work, then format only the necessary changed files.
 * Type check: `mypy src`
 * Tests: `pytest` (Hardware/GUI dependent tests require environment variables; skipped by default in CI)
 

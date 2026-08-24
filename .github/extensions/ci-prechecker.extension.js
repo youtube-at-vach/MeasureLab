@@ -11,7 +11,7 @@ const SKILL_MANIFEST = {
   // スラッシュコマンド登録
   commands: {
     'ci-prechecker': {
-      description: 'CIチェック（Ruff, Mypy, 翻訳キー, Markdown lint, Pytest）を実行します',
+      description: 'CIチェック（Ruff lint/format, Mypy, 翻訳キー, Markdown lint, Pytest）を実行します',
       usage: '/ci-prechecker [--fix] [--strict]',
       options: [
         {
@@ -49,6 +49,13 @@ const SKILL_MANIFEST = {
       description: 'Pythonコードのリンティング',
       tool: 'bash',
       command: '.venv/bin/ruff check .',
+      critical: true
+    },
+    {
+      step: 'ruff-format-check',
+      description: 'Pythonコードのフォーマット確認',
+      tool: 'bash',
+      command: '.venv/bin/ruff format --check .',
       critical: true
     },
     {
