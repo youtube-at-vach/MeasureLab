@@ -26,6 +26,11 @@ from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 from src.core.fft_manager import fft_manager, WARMUP_SIZES
 from src.gui.styles import STYLE_TOGGLE_BTN_DARK, STYLE_TOGGLE_BTN_LIGHT
 
+ORIENTATION_TIME_X = "time_x"
+ORIENTATION_FREQUENCY_X = "frequency_x"
+SPECTROGRAM_DTYPE = np.float32
+SPECTROGRAM_LUT_SIZE = 256
+
 
 class SpectrogramWorkerSignals(QObject):
     result = pyqtSignal(object)
@@ -34,7 +39,11 @@ class SpectrogramWorkerSignals(QObject):
 class SpectrogramWorker(QRunnable):
     def __init__(self, raw_data, window_type, channel_mode):
         super().__init__()
-        self.raw_data = raw_data
+        # The spectrogram is a visualisation with a 120 dB display range. Single
+        # precision is amply accurate here and keeps the complete FFT/rendering
+        # path on the faster, lower-memory dtype even when the audio engine runs
+        # in its optional 64-bit mode.
+        self.raw_data = np.asarray(raw_data, dtype=SPECTROGRAM_DTYPE)
         self.window_type = window_type
         self.channel_mode = channel_mode
         self.signals = SpectrogramWorkerSignals()
@@ -46,20 +55,22 @@ class SpectrogramWorker(QRunnable):
         elif self.channel_mode == "Right":
             sig = self.raw_data[:, 1]
         else:
-            sig = np.mean(self.raw_data, axis=1)
+            sig = np.mean(self.raw_data, axis=1, dtype=SPECTROGRAM_DTYPE)
 
         # Windowing
-        window = get_cached_window(self.window_type, len(sig))
+        window = get_cached_window(self.window_type, len(sig), dtype=SPECTROGRAM_DTYPE)
         sig_win = sig * window
 
         # Window Correction Factor (Coherent Gain)
-        win_correction = 1.0 / np.mean(window)
+        win_correction = 1.0 / np.mean(window, dtype=SPECTROGRAM_DTYPE)
 
         # FFT
         fft_res = fft_manager.rfft(sig_win)
 
         # Mag
-        mag = np.abs(fft_res)
+        # NumPy's fallback FFT returns complex128 for float32 input, whereas
+        # pyFFTW returns complex64. Normalize both backends to the display dtype.
+        mag = np.abs(fft_res).astype(SPECTROGRAM_DTYPE, copy=False)
 
         # Normalize
         # Optimized in-place normalization
@@ -90,10 +101,15 @@ class Spectrogram(MeasurementModule):
         self.sweep_speed_index = 0  # 0: Fast, 1: Medium, 2: Slow, 3: Meteor
         self.min_freq = 20
         self.max_freq = 20000  # Default, will be updated by UI or sample rate
+        self.display_orientation = ORIENTATION_TIME_X
 
         # State
-        self.input_buffer = np.zeros(self.fft_size)  # For overlap processing
-        self.spectrogram_buffer = np.full((self.history_length, self.fft_size // 2 + 1), -120.0)
+        self.input_buffer = np.zeros(self.fft_size, dtype=SPECTROGRAM_DTYPE)  # For overlap processing
+        self.spectrogram_buffer = np.full(
+            (self.history_length, self.fft_size // 2 + 1),
+            -120.0,
+            dtype=SPECTROGRAM_DTYPE,
+        )
         self.spectrogram_ptr = 0
         self.callback_id = None
 
@@ -103,7 +119,10 @@ class Spectrogram(MeasurementModule):
         self.mag_buffer = None
 
         # Ring buffer for incoming audio
-        self.audio_buffer = np.zeros((self.fft_size * 2, 2))  # Keep enough for overlap
+        self.audio_buffer = np.zeros(
+            (self.fft_size * 2, 2),
+            dtype=SPECTROGRAM_DTYPE,
+        )  # Keep enough for overlap
         self.audio_buffer_pos = 0
         self.output_buffer = None
         self.buffer_lock = threading.Lock()
@@ -125,9 +144,13 @@ class Spectrogram(MeasurementModule):
 
     def reset_buffers(self):
         with self.buffer_lock:
-            self.spectrogram_buffer = np.full((self.history_length, self.fft_size // 2 + 1), -120.0)
+            self.spectrogram_buffer = np.full(
+                (self.history_length, self.fft_size // 2 + 1),
+                -120.0,
+                dtype=SPECTROGRAM_DTYPE,
+            )
             self.spectrogram_ptr = 0
-            self.audio_buffer = np.zeros((self.fft_size * 2, 2))
+            self.audio_buffer = np.zeros((self.fft_size * 2, 2), dtype=SPECTROGRAM_DTYPE)
             self.audio_buffer_pos = 0
             self.accumulator = None
             self.acc_count = 0
@@ -160,7 +183,7 @@ class Spectrogram(MeasurementModule):
 
             # Always use output_buffer to ensure thread safety (avoid returning a view)
             if self.output_buffer is None or self.output_buffer.shape[0] != n_samples:
-                self.output_buffer = np.zeros((n_samples, 2))
+                self.output_buffer = np.zeros((n_samples, 2), dtype=SPECTROGRAM_DTYPE)
 
             if start_pos >= 0:
                 self.output_buffer[:] = self.audio_buffer[start_pos:end_pos]
@@ -304,7 +327,7 @@ class SpectrogramWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInt
         # --- Right: Settings Column ---
         settings_layout = QGridLayout()
         settings_layout.setContentsMargins(0, 0, 0, 0)
-        settings_layout.setHorizontalSpacing(10)
+        settings_layout.setHorizontalSpacing(8)
         settings_layout.setVerticalSpacing(5)
 
         # Row 1: Channel, FFT Size, Window
@@ -337,6 +360,18 @@ class SpectrogramWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInt
         self.scale_combo.addItems(["Log", "Linear", "Mel"])
         self.scale_combo.currentTextChanged.connect(self.on_scale_changed)
         settings_layout.addWidget(self.scale_combo, 0, 7)
+
+        # Display Orientation
+        self.direction_combo = QComboBox()
+        self.direction_combo.addItem(f"X: {tr('Time')}", ORIENTATION_TIME_X)
+        self.direction_combo.addItem(f"X: {tr('Frequency')}", ORIENTATION_FREQUENCY_X)
+        self.direction_combo.setAccessibleName(tr("Direction:"))
+        self.direction_combo.setToolTip(tr("Direction:"))
+        self.direction_combo.setFixedWidth(105)
+        direction_index = 1 if self.module.display_orientation == ORIENTATION_FREQUENCY_X else 0
+        self.direction_combo.setCurrentIndex(direction_index)
+        self.direction_combo.currentIndexChanged.connect(self.on_direction_changed)
+        settings_layout.addWidget(self.direction_combo, 0, 8)
 
         # Row 2: Colormap, Speed, Frequency Range
         # Colormap
@@ -390,7 +425,7 @@ class SpectrogramWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInt
         settings_layout.addWidget(self.max_freq_spin, 1, 7)
 
         # Add stretch to compact the layout to the left
-        settings_layout.setColumnStretch(8, 1)
+        settings_layout.setColumnStretch(9, 1)
 
         main_layout.addLayout(settings_layout)
         controls_group.setLayout(main_layout)
@@ -408,8 +443,9 @@ class SpectrogramWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInt
 
         # Image Item
         # We use two images to render the circular buffer without copying
-        self.img_old = pg.ImageItem()  # Older data (right side of pointer in buffer)
-        self.img_new = pg.ImageItem()  # Newer data (left side of pointer in buffer)
+        axis_order = self._image_axis_order()
+        self.img_old = pg.ImageItem(axisOrder=axis_order)  # Older data
+        self.img_new = pg.ImageItem(axisOrder=axis_order)  # Newer data
         self.plot.addItem(self.img_old)
         self.plot.addItem(self.img_new)
 
@@ -420,15 +456,20 @@ class SpectrogramWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInt
 
         # Sync second image
         self.hist.sigLevelsChanged.connect(lambda: self.img_new.setLevels(self.hist.getLevels()))
-        self.hist.sigLookupTableChanged.connect(
-            lambda: self.img_new.setLookupTable(self.hist.gradient.getLookupTable(512))
-        )
+        self.hist.sigLookupTableChanged.connect(self._sync_image_lookup_tables)
 
         # Set default colormap
         self.hist.gradient.loadPreset("turbo")
         self.hist.setLevels(-120, 0)  # Default dB range
+        self._sync_image_lookup_tables()
 
         return self.win
+
+    def _sync_image_lookup_tables(self) -> None:
+        """Keep both image halves on pyqtgraph's fast <=256-entry LUT path."""
+        lookup_table = self.hist.gradient.getLookupTable(SPECTROGRAM_LUT_SIZE)
+        self.img_old.setLookupTable(lookup_table)
+        self.img_new.setLookupTable(lookup_table)
 
     def update_available_fft_sizes(self, speed_index):
         current_text = self.fft_combo.currentText()
@@ -487,6 +528,15 @@ class SpectrogramWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInt
     def on_cmap_changed(self, val):
         self.hist.gradient.loadPreset(val)
 
+    def on_direction_changed(self, idx):
+        orientation = self.direction_combo.itemData(idx)
+        if orientation not in (ORIENTATION_TIME_X, ORIENTATION_FREQUENCY_X):
+            return
+
+        self.module.display_orientation = orientation
+        self._set_image_axis_order(self._image_axis_order())
+        self._render_current_spectrogram()
+
     def on_speed_changed(self, idx):
         self.update_available_fft_sizes(idx)
         self.module.sweep_speed_index = idx
@@ -502,39 +552,11 @@ class SpectrogramWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInt
         self.module.min_freq = self.min_freq_spin.value()
         self.module.max_freq = self.max_freq_spin.value()
 
-        min_f = float(self.module.min_freq)
-        max_f = float(self.module.max_freq)
-
-        scale_type = self.scale_combo.currentText()
-
-        if scale_type == "Log":
-            # Avoid log(0) or negative
-            if min_f <= 0:
-                min_f = 1.0  # 1Hz minimum for log scale
-            if max_f <= min_f:
-                max_f = min_f + 10.0  # Valid range
-
-            self.plot.setYRange(np.log10(min_f), np.log10(max_f))
-        elif scale_type == "Mel":
-            if max_f <= min_f:
-                max_f = min_f + 10.0
-            mel_min = 2595.0 * np.log10(1.0 + min_f / 700.0)
-            mel_max = 2595.0 * np.log10(1.0 + max_f / 700.0)
-            self.plot.setYRange(mel_min, mel_max)
-        else:
-            self.plot.setYRange(min_f, max_f)
+        if hasattr(self, "plot"):
+            self._render_current_spectrogram()
 
     def on_scale_changed(self, val):
-        is_log = val == "Log"
-        is_mel = val == "Mel"
-        self.plot.setLogMode(False, is_log)
-
-        if is_mel:
-            self.plot.setLabel("left", tr("Frequency"), units="Mel")
-        else:
-            self.plot.setLabel("left", tr("Frequency"), units="Hz")
-
-        self.on_freq_range_changed()  # Re-apply limits safely
+        self._render_current_spectrogram()
 
     def update_spectrogram(self):
         if not self.module.is_running or self.processing:
@@ -554,6 +576,8 @@ class SpectrogramWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInt
         self.processing = False
         if not self.module.is_running:
             return
+
+        mag_db = np.asarray(mag_db, dtype=SPECTROGRAM_DTYPE)
 
         # Determine Target Frames based on Speed
         # Update rate is 30ms.
@@ -593,11 +617,28 @@ class SpectrogramWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInt
         # Update Spectrogram Data
         self.module.add_spectrum(final_mag_db)
 
+        self._render_current_spectrogram(final_mag_db)
+
+    def _image_axis_order(self) -> str:
+        if self.module.display_orientation == ORIENTATION_FREQUENCY_X:
+            return "row-major"
+        return "col-major"
+
+    def _set_image_axis_order(self, axis_order: str) -> None:
+        """Change image ordering while forcing pyqtgraph to refresh its bounds."""
+        for image in (self.img_old, self.img_new):
+            if image.axisOrder == axis_order:
+                continue
+            image.clear()
+            image.setOpts(axisOrder=axis_order, update=False)
+
+    def _render_current_spectrogram(self, latest_mag_db=None) -> None:
+        if not hasattr(self, "plot"):
+            return
+
         # Update Image (Circular Buffer Visualization)
         # buffer: [ 0 1 2 ... ptr-1 | ptr ... N ]
         # Time order: ptr (Oldest) -> ... -> N -> 0 -> ... -> ptr-1 (Newest)
-        # We render [ptr:] at X=0 (Oldest part)
-        # We render [:ptr] at X=len(ptr:) (Newer part)
 
         ptr = self.module.spectrogram_ptr
         buffer = self.module.spectrogram_buffer
@@ -662,38 +703,53 @@ class SpectrogramWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInt
                 # Incremental update: Update only the latest row
                 # The latest row was written at (ptr - 1)
                 idx = (ptr - 1 + self.module.history_length) % self.module.history_length
-                self.log_spectrogram_buffer[idx] = final_mag_db[indices]
+                if latest_mag_db is not None:
+                    self.log_spectrogram_buffer[idx] = latest_mag_db[indices]
 
             display_buffer = self.log_spectrogram_buffer
 
-            # Transform for Target Mode
+            # Frequency coordinates for the target scale.
             if scale_mode == "Log":
-                y_min = np.log10(min_f)
-                y_max = np.log10(max_f)
+                freq_axis_min = np.log10(min_f)
+                freq_axis_max = np.log10(max_f)
+                freq_units = "Hz"
+                is_log = True
             else:
-                y_min = 2595.0 * np.log10(1.0 + min_f / 700.0)
-                y_max = 2595.0 * np.log10(1.0 + max_f / 700.0)
+                freq_axis_min = 2595.0 * np.log10(1.0 + min_f / 700.0)
+                freq_axis_max = 2595.0 * np.log10(1.0 + max_f / 700.0)
+                freq_units = "Mel"
+                is_log = False
 
-            y_scale = (y_max - y_min) / display_buffer.shape[1]
-
-            transform = QTransform().translate(0, y_min).scale(1, y_scale)
-
-            # Limits in Target Domain
-            self.plot.setLimits(yMin=y_min, yMax=y_max)
-            self.plot.setYRange(y_min, y_max)
+            freq_view_min = freq_axis_min
+            freq_view_max = freq_axis_max
 
         else:
             # Linear Scale
             display_buffer = buffer
             self.log_spectrogram_buffer = None  # Free memory when not used
 
-            # Transform for Linear Mode
-            # Image Y: 0..Height -> 0..Nyquist
-            y_scale = nyquist / (buffer.shape[1])
-            transform = QTransform().scale(1, y_scale)
+            freq_axis_min = 0.0
+            freq_axis_max = nyquist
+            freq_view_min = float(self.module.min_freq)
+            freq_view_max = float(self.module.max_freq)
+            freq_units = "Hz"
+            is_log = False
 
-            self.plot.setLimits(yMin=0, yMax=nyquist)
-            self.plot.setYRange(self.module.min_freq, self.module.max_freq)
+        self._configure_plot_axes(
+            freq_axis_min,
+            freq_axis_max,
+            freq_view_min,
+            freq_view_max,
+            freq_units,
+            is_log,
+        )
+
+        freq_scale = (freq_axis_max - freq_axis_min) / display_buffer.shape[1]
+        is_waterfall = self.module.display_orientation == ORIENTATION_FREQUENCY_X
+        if is_waterfall:
+            transform = QTransform().translate(freq_axis_min, 0).scale(freq_scale, 1)
+        else:
+            transform = QTransform().translate(0, freq_axis_min).scale(1, freq_scale)
 
         # Part 1: Oldest data (buffer[ptr:])
         part1 = display_buffer[ptr:]
@@ -704,8 +760,47 @@ class SpectrogramWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInt
         # Part 2: Newer data (buffer[:ptr])
         part2 = display_buffer[:ptr]
         self.img_new.setImage(part2, autoLevels=False)
-        self.img_new.setPos(len(part1), 0)
+        if is_waterfall:
+            self.img_new.setPos(0, len(part1))
+        else:
+            self.img_new.setPos(len(part1), 0)
         self.img_new.setTransform(transform)
+
+    def _configure_plot_axes(
+        self,
+        freq_axis_min: float,
+        freq_axis_max: float,
+        freq_view_min: float,
+        freq_view_max: float,
+        freq_units: str,
+        is_log: bool,
+    ) -> None:
+        history_length = self.module.history_length
+
+        if self.module.display_orientation == ORIENTATION_FREQUENCY_X:
+            self.plot.setLabel("bottom", tr("Frequency"), units=freq_units)
+            self.plot.setLabel("left", tr("Time"), units="frames")
+            self.plot.setLogMode(is_log, False)
+            self.plot.setLimits(
+                xMin=freq_axis_min,
+                xMax=freq_axis_max,
+                yMin=0,
+                yMax=history_length,
+            )
+            self.plot.setXRange(freq_view_min, freq_view_max, padding=0)
+            self.plot.setYRange(0, history_length, padding=0)
+        else:
+            self.plot.setLabel("bottom", tr("Time"), units="frames")
+            self.plot.setLabel("left", tr("Frequency"), units=freq_units)
+            self.plot.setLogMode(False, is_log)
+            self.plot.setLimits(
+                xMin=0,
+                xMax=history_length,
+                yMin=freq_axis_min,
+                yMax=freq_axis_max,
+            )
+            self.plot.setXRange(0, history_length, padding=0)
+            self.plot.setYRange(freq_view_min, freq_view_max, padding=0)
 
     def apply_theme(self, theme_name):
         if theme_name == "system" and hasattr(self.app, "theme_manager"):
