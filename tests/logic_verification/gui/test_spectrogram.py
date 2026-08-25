@@ -10,8 +10,15 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 # Mock sounddevice to avoid import errors or audio device initialization
 sys.modules["sounddevice"] = MagicMock()
 
-from src.gui.widgets.spectrogram import Spectrogram, SpectrogramWorker, SpectrogramWidget  # noqa: E402
+from src.gui.widgets.spectrogram import (  # noqa: E402
+    ORIENTATION_FREQUENCY_X,
+    ORIENTATION_TIME_X,
+    Spectrogram,
+    SpectrogramWidget,
+    SpectrogramWorker,
+)
 from src.core.fft_manager import WARMUP_SIZES  # noqa: E402
+from src.core.localization import tr  # noqa: E402
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients  # noqa: E402
 from PyQt6.QtWidgets import QApplication  # noqa: E402
 
@@ -181,6 +188,96 @@ class TestSpectrogramProcessing(unittest.TestCase):
 
         # Total writes: 6. Buffer 5. Ptr -> 1.
         self.assertEqual(self.spec.spectrogram_ptr, 1)
+
+
+class TestSpectrogramOrientation(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not QApplication.instance():
+            cls.app = QApplication(sys.argv + ["-platform", "offscreen"])
+        else:
+            cls.app = QApplication.instance()
+
+    def setUp(self):
+        self.engine = MockAudioEngine()
+        self.module = Spectrogram(self.engine)
+        self.widget = SpectrogramWidget(self.module)
+        self.widget.timer.stop()
+        self.module.fft_size = 6
+        self.module.history_length = 4
+        self.module.reset_buffers()
+        self.widget.scale_combo.setCurrentText("Linear")
+        self.module.is_running = True
+
+    def tearDown(self):
+        self.widget.close()
+
+    def _set_orientation(self, orientation):
+        index = self.widget.direction_combo.findData(orientation)
+        self.assertGreaterEqual(index, 0)
+        self.widget.direction_combo.setCurrentIndex(index)
+
+    def test_default_orientation_preserves_existing_time_x_layout(self):
+        self.assertEqual(self.module.display_orientation, ORIENTATION_TIME_X)
+        self.assertEqual(self.widget.direction_combo.currentData(), ORIENTATION_TIME_X)
+        self.assertEqual(self.widget.img_old.axisOrder, "col-major")
+        self.assertEqual(self.widget.img_new.axisOrder, "col-major")
+        self.assertEqual(self.widget.plot.getAxis("bottom").labelText, tr("Time"))
+        self.assertEqual(self.widget.plot.getAxis("left").labelText, tr("Frequency"))
+
+    def test_waterfall_uses_frequency_x_and_places_latest_frame_at_top(self):
+        self._set_orientation(ORIENTATION_FREQUENCY_X)
+
+        for value in range(1, 6):
+            spectrum = np.full(4, float(value))
+            self.widget.on_worker_result(spectrum)
+
+        self.assertEqual(self.module.spectrogram_ptr, 1)
+        self.assertEqual(self.widget.img_old.axisOrder, "row-major")
+        self.assertEqual(self.widget.img_new.axisOrder, "row-major")
+        self.assertEqual(self.widget.img_old.width(), 4)
+        self.assertEqual(self.widget.img_old.height(), 3)
+        self.assertEqual(self.widget.img_new.pos().x(), 0)
+        self.assertEqual(self.widget.img_new.pos().y(), 3)
+        np.testing.assert_array_equal(self.widget.img_old.image[:, 0], [2.0, 3.0, 4.0])
+        np.testing.assert_array_equal(self.widget.img_new.image[:, 0], [5.0])
+        self.assertTrue(np.shares_memory(self.widget.img_old.image, self.module.spectrogram_buffer))
+        self.assertTrue(np.shares_memory(self.widget.img_new.image, self.module.spectrogram_buffer))
+        self.assertEqual(self.widget.plot.getAxis("bottom").labelText, tr("Frequency"))
+        self.assertEqual(self.widget.plot.getAxis("left").labelText, tr("Time"))
+
+    def test_switching_orientation_keeps_history_and_accumulator(self):
+        self.widget.on_worker_result(np.arange(4, dtype=float))
+        self.module.accumulator = np.arange(4, dtype=float) + 10
+        self.module.acc_count = 2
+        buffer_before = self.module.spectrogram_buffer.copy()
+        accumulator_before = self.module.accumulator.copy()
+        ptr_before = self.module.spectrogram_ptr
+
+        self._set_orientation(ORIENTATION_FREQUENCY_X)
+        self._set_orientation(ORIENTATION_TIME_X)
+
+        np.testing.assert_array_equal(self.module.spectrogram_buffer, buffer_before)
+        np.testing.assert_array_equal(self.module.accumulator, accumulator_before)
+        self.assertEqual(self.module.acc_count, 2)
+        self.assertEqual(self.module.spectrogram_ptr, ptr_before)
+
+    def test_frequency_log_mode_follows_the_selected_axis(self):
+        self._set_orientation(ORIENTATION_FREQUENCY_X)
+        self.widget.scale_combo.setCurrentText("Log")
+
+        self.assertTrue(self.widget.plot.getAxis("bottom").logMode)
+        self.assertFalse(self.widget.plot.getAxis("left").logMode)
+
+        self.widget.scale_combo.setCurrentText("Mel")
+        self.assertFalse(self.widget.plot.getAxis("bottom").logMode)
+        self.assertFalse(self.widget.plot.getAxis("left").logMode)
+        self.assertEqual(self.widget.plot.getAxis("bottom").labelUnits, "Mel")
+
+        self._set_orientation(ORIENTATION_TIME_X)
+        self.widget.scale_combo.setCurrentText("Log")
+        self.assertFalse(self.widget.plot.getAxis("bottom").logMode)
+        self.assertTrue(self.widget.plot.getAxis("left").logMode)
 
 
 # Mock Qt for Optimization and Style tests
