@@ -351,7 +351,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         "src.gui.widgets.lockin_spectrum_finder",
         "LockInSpectrumFinder",
         split=SUPPORTED,
-        compact=COMPACT_DEFERRED,
+        compact=SUPPORTED,
         comparison=COMPARISON_DEFERRED,
         console_primary_action=console_action("btn_toggle"),
     ),

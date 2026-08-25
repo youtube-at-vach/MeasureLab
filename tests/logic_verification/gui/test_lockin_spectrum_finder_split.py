@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import QWidget
 from src.core.config_manager import ConfigManager
 from src.core.module_constants import MODULE_LOCKIN_SPECTRUM_FINDER
 from src.gui.module_registry import MODULE_REGISTRY
+from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 from src.gui.widgets.lockin_spectrum_finder import LockInSpectrumFinder, LockInSpectrumFinderWidget
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
@@ -83,6 +84,35 @@ def test_lockin_finder_implements_split_interface(lockin_widget):
     assert isinstance(lockin_widget.get_control_widget(), QWidget)
     assert lockin_widget.get_display_widget() is lockin_widget.display_widget
     assert lockin_widget.get_control_widget() is lockin_widget.controls_widget
+
+
+def test_compact_mode_keeps_only_right_plot_zone(lockin_widget):
+    assert isinstance(lockin_widget, CompactableWidgetInterface)
+    assert not lockin_widget.controls_widget.isHidden()
+    assert not lockin_widget.display_widget.isHidden()
+
+    lockin_widget.set_compact_mode(True)
+
+    assert lockin_widget.is_compact_mode()
+    assert lockin_widget.controls_widget.isHidden()
+    assert not lockin_widget.display_widget.isHidden()
+
+    lockin_widget.set_compact_mode(False)
+
+    assert not lockin_widget.is_compact_mode()
+    assert not lockin_widget.controls_widget.isHidden()
+    assert not lockin_widget.display_widget.isHidden()
+
+
+def test_split_compact_mode_leaves_control_window_available(lockin_widget, lockin_wrapper, qtbot):
+    lockin_wrapper.split()
+    qtbot.wait(1)
+
+    lockin_wrapper.toggle_compact(True)
+
+    assert lockin_widget.is_compact_mode()
+    assert not lockin_widget.controls_widget.isHidden()
+    assert not lockin_widget.display_widget.isHidden()
 
 
 def test_split_live_update_and_reattach_preserve_state(lockin_widget, lockin_wrapper, qtbot):
