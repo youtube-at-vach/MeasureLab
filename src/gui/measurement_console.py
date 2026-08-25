@@ -12,6 +12,7 @@ import base64
 import binascii
 import logging
 import re
+from enum import Enum
 from typing import TYPE_CHECKING
 
 from PyQt6.QtCore import QByteArray, QEvent, QSize, Qt, QTimer, pyqtSignal
@@ -63,6 +64,7 @@ class InstrumentDockWidget(QDockWidget):
     """A dock whose close button returns the instrument to its normal page."""
 
     remove_requested = pyqtSignal(int)
+    primary_action_state_changed = pyqtSignal()
 
     def __init__(
         self,
@@ -189,6 +191,29 @@ class InstrumentDockWidget(QDockWidget):
         self._primary_action.click()
         self._schedule_primary_action_sync()
 
+    def primary_action_is_running(self) -> bool:
+        """Return whether this instrument exposes a checked primary action."""
+        return self._primary_action is not None and self._primary_action.isChecked()
+
+    def stop_primary_action(self) -> PrimaryActionStopResult:
+        """Request a normal button-driven stop without bypassing widget cleanup."""
+        action = self._primary_action
+        if action is None:
+            return PrimaryActionStopResult.UNAVAILABLE
+        if not action.isChecked():
+            return PrimaryActionStopResult.ALREADY_STOPPED
+        if not action.isEnabled():
+            return PrimaryActionStopResult.BLOCKED
+
+        try:
+            action.click()
+        except RuntimeError:
+            logger.exception("Failed to stop console primary action")
+            return PrimaryActionStopResult.FAILED
+
+        self._schedule_primary_action_sync()
+        return PrimaryActionStopResult.STOPPED if not action.isChecked() else PrimaryActionStopResult.FAILED
+
     def _schedule_primary_action_sync(self, *_args) -> None:
         QTimer.singleShot(0, self._sync_primary_action)
 
@@ -200,6 +225,7 @@ class InstrumentDockWidget(QDockWidget):
 
     def _sync_primary_action(self) -> None:
         if self._primary_action is None or self._primary_button is None:
+            self.primary_action_state_changed.emit()
             return
         running = self._primary_action.isChecked()
         label = self._primary_action.text() or (tr("Stop") if running else tr("Start"))
@@ -209,6 +235,7 @@ class InstrumentDockWidget(QDockWidget):
         self._primary_button.setToolTip(label)
         self._primary_button.setEnabled(self._primary_action.isEnabled())
         self._primary_button.setIcon(self.style().standardIcon(icon))
+        self.primary_action_state_changed.emit()
 
     def _sync_title_bar_controls(self, *_args) -> None:
         if self._close_button is None:
@@ -229,6 +256,16 @@ class InstrumentDockWidget(QDockWidget):
         # native close-button event.
         event.ignore()
         QTimer.singleShot(0, lambda: self.remove_requested.emit(self.module_index))
+
+
+class PrimaryActionStopResult(Enum):
+    """Outcome of requesting a stop through one instrument's primary action."""
+
+    STOPPED = "stopped"
+    ALREADY_STOPPED = "already_stopped"
+    UNAVAILABLE = "unavailable"
+    BLOCKED = "blocked"
+    FAILED = "failed"
 
 
 class MeasurementConsoleWindow(QMainWindow):
@@ -259,6 +296,11 @@ class MeasurementConsoleWindow(QMainWindow):
         self._compact_screen_layout_active = False
         self._pre_compact_screen_dock_state: bytes | None = None
         self._screen_change_connected = False
+        self._stop_all_generation = 0
+        self._stop_all_queue: list[int] = []
+        self._stop_all_active = False
+        self._stop_all_stopped_count = 0
+        self._stop_all_failed_count = 0
 
         self.setWindowTitle(tr("Measurement Console"))
         self.setObjectName("measurement_console_window")
@@ -321,6 +363,13 @@ class MeasurementConsoleWindow(QMainWindow):
 
         self.layout_button.setMenu(layout_menu)
         toolbar.addWidget(self.layout_button)
+
+        self.stop_all_action = QAction(tr("Stop All"), toolbar)
+        self.stop_all_action.setToolTip(tr("Stop all running instruments in the console."))
+        self.stop_all_action.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaStop))
+        self.stop_all_action.setEnabled(False)
+        self.stop_all_action.triggered.connect(self.stop_all_instruments)
+        toolbar.addAction(self.stop_all_action)
 
         self.lock_action = QAction(tr("Lock Layout"), toolbar)
         self.lock_action.setCheckable(True)
@@ -615,6 +664,7 @@ class MeasurementConsoleWindow(QMainWindow):
         existing_docks = list(self._docks.values())
         dock = InstrumentDockWidget(tr(module_key), module_index, module_key, self)
         dock.remove_requested.connect(self.remove_module)
+        dock.primary_action_state_changed.connect(self._refresh_stop_all_action)
         dock.dockLocationChanged.connect(lambda _area: self._schedule_visible_state_snapshot())
         dock.topLevelChanged.connect(lambda _floating: self._schedule_visible_state_snapshot())
         dock.visibilityChanged.connect(lambda _visible: self._schedule_visible_state_snapshot())
@@ -639,6 +689,74 @@ class MeasurementConsoleWindow(QMainWindow):
 
         self._rebuild_add_menu()
         self.statusBar().showMessage(tr("{0} instruments in the console.").format(len(self._docks)))
+        self._refresh_stop_all_action()
+
+    def stop_all_instruments(self) -> None:
+        """Stop every running primary action currently hosted by the console."""
+        if self._closing or self._stop_all_active:
+            return
+
+        targets = [module_index for module_index, dock in self._docks.items() if dock.primary_action_is_running()]
+        if not targets:
+            self._refresh_stop_all_action()
+            return
+
+        self._stop_all_generation += 1
+        generation = self._stop_all_generation
+        self._stop_all_queue = targets
+        self._stop_all_active = True
+        self._stop_all_stopped_count = 0
+        self._stop_all_failed_count = 0
+        self.stop_all_action.setEnabled(False)
+        self._process_next_stop(generation)
+
+    def _process_next_stop(self, generation: int) -> None:
+        """Process one stop per event-loop turn to keep the console responsive."""
+        if generation != self._stop_all_generation or self._closing:
+            return
+
+        while self._stop_all_queue:
+            module_index = self._stop_all_queue.pop(0)
+            dock = self._docks.get(module_index)
+            if dock is None:
+                continue
+
+            result = dock.stop_primary_action()
+            if result is PrimaryActionStopResult.STOPPED:
+                self._stop_all_stopped_count += 1
+            elif result in (PrimaryActionStopResult.BLOCKED, PrimaryActionStopResult.FAILED):
+                self._stop_all_failed_count += 1
+
+            QTimer.singleShot(0, lambda g=generation: self._process_next_stop(g))
+            return
+
+        self._finish_stop_all(generation)
+
+    def _finish_stop_all(self, generation: int) -> None:
+        if generation != self._stop_all_generation or self._closing:
+            return
+
+        self._stop_all_active = False
+        if self._stop_all_failed_count:
+            message = tr("Stopped {0} instruments; {1} could not be stopped.").format(
+                self._stop_all_stopped_count,
+                self._stop_all_failed_count,
+            )
+        else:
+            message = tr("Stopped {0} instruments.").format(self._stop_all_stopped_count)
+        self.statusBar().showMessage(message)
+        self._refresh_stop_all_action()
+
+    def _refresh_stop_all_action(self) -> None:
+        if not hasattr(self, "stop_all_action"):
+            return
+        has_running_action = any(dock.primary_action_is_running() for dock in self._docks.values())
+        self.stop_all_action.setEnabled(has_running_action and not self._stop_all_active and not self._closing)
+
+    def _cancel_stop_all(self) -> None:
+        self._stop_all_generation += 1
+        self._stop_all_queue.clear()
+        self._stop_all_active = False
 
     def _insert_dock_preserving_layout(
         self,
@@ -698,6 +816,7 @@ class MeasurementConsoleWindow(QMainWindow):
             self.statusBar().showMessage(tr("{0} instruments in the console.").format(len(self._docks)))
         else:
             self.statusBar().showMessage(tr("No instruments in the console."))
+        self._refresh_stop_all_action()
 
     def activate_module(self, module_index: int) -> bool:
         dock = self._docks.get(module_index)
@@ -873,6 +992,7 @@ class MeasurementConsoleWindow(QMainWindow):
             event.accept()
             return
         self._closing = True
+        self._cancel_stop_all()
         self.save_workspace()
         for module_index in list(self._docks):
             self.remove_module(module_index)
