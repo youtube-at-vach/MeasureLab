@@ -376,6 +376,107 @@ def test_console_primary_action_tracks_source_enabled_state(qtbot):
     console.close()
 
 
+def test_console_stop_all_stops_every_running_primary_action(qtbot):
+    contents = [_PrimaryActionContent() for _ in range(3)]
+    wrappers = [
+        DetachableWidgetWrapper(
+            content,
+            f"Instrument {index}",
+            capabilities=PRIMARY_ACTION_CAPABILITIES,
+        )
+        for index, content in enumerate(contents)
+    ]
+    host = _ConsoleHostStub(wrappers)
+    console = MeasurementConsoleWindow(host)
+    for index in range(3):
+        console.add_module(index, arrange=False)
+
+    contents[0].toggle_btn.click()
+    contents[2].toggle_btn.click()
+    qtbot.waitUntil(console.stop_all_action.isEnabled)
+
+    console.stop_all_action.trigger()
+    qtbot.waitUntil(lambda: not console._stop_all_active)
+
+    assert not contents[0].toggle_btn.isChecked()
+    assert not contents[1].toggle_btn.isChecked()
+    assert not contents[2].toggle_btn.isChecked()
+    assert "2" in console.statusBar().currentMessage()
+    assert not console.stop_all_action.isEnabled()
+    console.close()
+
+
+def test_console_stop_all_reports_running_actions_that_are_disabled(qtbot):
+    content = _PrimaryActionContent()
+    wrapper = DetachableWidgetWrapper(
+        content,
+        "Instrument 0",
+        capabilities=PRIMARY_ACTION_CAPABILITIES,
+    )
+    host = _ConsoleHostStub([wrapper])
+    console = MeasurementConsoleWindow(host)
+    console.add_module(0)
+
+    content.toggle_btn.click()
+    content.toggle_btn.setEnabled(False)
+    qtbot.waitUntil(console.stop_all_action.isEnabled)
+
+    console.stop_all_action.trigger()
+    qtbot.waitUntil(lambda: not console._stop_all_active)
+
+    assert content.toggle_btn.isChecked()
+    assert "1" in console.statusBar().currentMessage()
+    assert console.stop_all_action.isEnabled()
+    console.close()
+
+
+def test_console_close_cancels_pending_stop_all_actions(qtbot):
+    contents = [_PrimaryActionContent() for _ in range(2)]
+    wrappers = [
+        DetachableWidgetWrapper(
+            content,
+            f"Instrument {index}",
+            capabilities=PRIMARY_ACTION_CAPABILITIES,
+        )
+        for index, content in enumerate(contents)
+    ]
+    host = _ConsoleHostStub(wrappers)
+    console = MeasurementConsoleWindow(host)
+    for index in range(2):
+        console.add_module(index, arrange=False)
+        contents[index].toggle_btn.click()
+
+    console.stop_all_instruments()
+    assert not contents[0].toggle_btn.isChecked()
+    assert contents[1].toggle_btn.isChecked()
+
+    console.close()
+    qtbot.wait(10)
+
+    assert contents[1].toggle_btn.isChecked()
+
+
+def test_console_layout_lock_does_not_disable_stop_all(qtbot):
+    content = _PrimaryActionContent()
+    wrapper = DetachableWidgetWrapper(
+        content,
+        "Instrument 0",
+        capabilities=PRIMARY_ACTION_CAPABILITIES,
+    )
+    host = _ConsoleHostStub([wrapper])
+    console = MeasurementConsoleWindow(host)
+    console.add_module(0)
+    content.toggle_btn.click()
+    console.set_layout_locked(True)
+
+    qtbot.waitUntil(console.stop_all_action.isEnabled)
+    console.stop_all_action.trigger()
+    qtbot.waitUntil(lambda: not content.toggle_btn.isChecked())
+
+    assert console._layout_locked
+    console.close()
+
+
 def test_console_workspace_round_trip_restores_modules_compact_mode_and_lock(qtbot):
     first_host = _ConsoleHostStub([_DummyWrapper() for _ in range(2)])
     first = MeasurementConsoleWindow(first_host)

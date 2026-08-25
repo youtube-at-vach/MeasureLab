@@ -17,6 +17,8 @@ Open it with **Measurement Console** at the top of the main-window sidebar.
   its state and current measurement are retained.
 * **Show in Console**: On a widget page that is currently hosted in the console, use this
   button to bring its dock to the front.
+* **Stop All**: Stops every compatible instrument currently running in the console. It does
+  not affect instruments that are already stopped or have no single primary start/stop action.
 
 The initial preset contains Oscilloscope, Spectrum Analyzer, Spectrogram, and Goniometer.
 Use **Layout → Default Console** to restore that set deliberately.
@@ -35,7 +37,7 @@ prevent accidental additions or layout changes.
 For compatible modules, the dock title bar shows the module's main start/stop action. Its
 label, icon, enabled state, and running state stay synchronized with the original control.
 The console does not show a primary action for modules that do not have one safe,
-single-button start/stop operation.
+single-button start/stop operation, and **Stop All** does not include those modules.
 
 ## Restoring a Workspace
 
