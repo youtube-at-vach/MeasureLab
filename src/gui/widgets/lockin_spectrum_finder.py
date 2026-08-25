@@ -37,6 +37,7 @@ from src.core.localization import tr
 from src.core.sonifier import Sonifier
 from src.measurement_modules.base import MeasurementModule
 from src.gui.styles import MONOSPACE_FONT_FAMILY
+from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 
 logger = logging.getLogger(__name__)
@@ -984,9 +985,10 @@ class LockInSpectrumFinder(MeasurementModule):
             self.signals.result_ready.emit((freqs, mags_db_all))
 
 
-class LockInSpectrumFinderWidget(QWidget, SplittableWidgetInterface):
+class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInterface):
     def __init__(self, module: LockInSpectrumFinder):
         QWidget.__init__(self)
+        CompactableWidgetInterface.__init__(self)
         SplittableWidgetInterface.__init__(self)
         self.module = module
         self.init_ui()
@@ -1017,6 +1019,15 @@ class LockInSpectrumFinderWidget(QWidget, SplittableWidgetInterface):
         layout.addWidget(self.display_widget, stretch=3)
         self.controls_widget.show()
         self.display_widget.show()
+
+    def update_compact_layout(self) -> None:
+        """Keep only the right-hand spectrum plot visible in compact mode."""
+        if not hasattr(self, "controls_widget"):
+            return
+
+        controls_are_split = self.controls_widget.parent() is not self
+        if not controls_are_split:
+            self.controls_widget.setHidden(self.is_compact_mode())
 
     def init_ui(self):
         layout = QHBoxLayout()
