@@ -28,6 +28,8 @@ from src.gui.styles import STYLE_TOGGLE_BTN_DARK, STYLE_TOGGLE_BTN_LIGHT
 
 ORIENTATION_TIME_X = "time_x"
 ORIENTATION_FREQUENCY_X = "frequency_x"
+SPECTROGRAM_DTYPE = np.float32
+SPECTROGRAM_LUT_SIZE = 256
 
 
 class SpectrogramWorkerSignals(QObject):
@@ -37,7 +39,11 @@ class SpectrogramWorkerSignals(QObject):
 class SpectrogramWorker(QRunnable):
     def __init__(self, raw_data, window_type, channel_mode):
         super().__init__()
-        self.raw_data = raw_data
+        # The spectrogram is a visualisation with a 120 dB display range. Single
+        # precision is amply accurate here and keeps the complete FFT/rendering
+        # path on the faster, lower-memory dtype even when the audio engine runs
+        # in its optional 64-bit mode.
+        self.raw_data = np.asarray(raw_data, dtype=SPECTROGRAM_DTYPE)
         self.window_type = window_type
         self.channel_mode = channel_mode
         self.signals = SpectrogramWorkerSignals()
@@ -49,20 +55,22 @@ class SpectrogramWorker(QRunnable):
         elif self.channel_mode == "Right":
             sig = self.raw_data[:, 1]
         else:
-            sig = np.mean(self.raw_data, axis=1)
+            sig = np.mean(self.raw_data, axis=1, dtype=SPECTROGRAM_DTYPE)
 
         # Windowing
-        window = get_cached_window(self.window_type, len(sig))
+        window = get_cached_window(self.window_type, len(sig), dtype=SPECTROGRAM_DTYPE)
         sig_win = sig * window
 
         # Window Correction Factor (Coherent Gain)
-        win_correction = 1.0 / np.mean(window)
+        win_correction = 1.0 / np.mean(window, dtype=SPECTROGRAM_DTYPE)
 
         # FFT
         fft_res = fft_manager.rfft(sig_win)
 
         # Mag
-        mag = np.abs(fft_res)
+        # NumPy's fallback FFT returns complex128 for float32 input, whereas
+        # pyFFTW returns complex64. Normalize both backends to the display dtype.
+        mag = np.abs(fft_res).astype(SPECTROGRAM_DTYPE, copy=False)
 
         # Normalize
         # Optimized in-place normalization
@@ -96,8 +104,12 @@ class Spectrogram(MeasurementModule):
         self.display_orientation = ORIENTATION_TIME_X
 
         # State
-        self.input_buffer = np.zeros(self.fft_size)  # For overlap processing
-        self.spectrogram_buffer = np.full((self.history_length, self.fft_size // 2 + 1), -120.0)
+        self.input_buffer = np.zeros(self.fft_size, dtype=SPECTROGRAM_DTYPE)  # For overlap processing
+        self.spectrogram_buffer = np.full(
+            (self.history_length, self.fft_size // 2 + 1),
+            -120.0,
+            dtype=SPECTROGRAM_DTYPE,
+        )
         self.spectrogram_ptr = 0
         self.callback_id = None
 
@@ -107,7 +119,10 @@ class Spectrogram(MeasurementModule):
         self.mag_buffer = None
 
         # Ring buffer for incoming audio
-        self.audio_buffer = np.zeros((self.fft_size * 2, 2))  # Keep enough for overlap
+        self.audio_buffer = np.zeros(
+            (self.fft_size * 2, 2),
+            dtype=SPECTROGRAM_DTYPE,
+        )  # Keep enough for overlap
         self.audio_buffer_pos = 0
         self.output_buffer = None
         self.buffer_lock = threading.Lock()
@@ -129,9 +144,13 @@ class Spectrogram(MeasurementModule):
 
     def reset_buffers(self):
         with self.buffer_lock:
-            self.spectrogram_buffer = np.full((self.history_length, self.fft_size // 2 + 1), -120.0)
+            self.spectrogram_buffer = np.full(
+                (self.history_length, self.fft_size // 2 + 1),
+                -120.0,
+                dtype=SPECTROGRAM_DTYPE,
+            )
             self.spectrogram_ptr = 0
-            self.audio_buffer = np.zeros((self.fft_size * 2, 2))
+            self.audio_buffer = np.zeros((self.fft_size * 2, 2), dtype=SPECTROGRAM_DTYPE)
             self.audio_buffer_pos = 0
             self.accumulator = None
             self.acc_count = 0
@@ -164,7 +183,7 @@ class Spectrogram(MeasurementModule):
 
             # Always use output_buffer to ensure thread safety (avoid returning a view)
             if self.output_buffer is None or self.output_buffer.shape[0] != n_samples:
-                self.output_buffer = np.zeros((n_samples, 2))
+                self.output_buffer = np.zeros((n_samples, 2), dtype=SPECTROGRAM_DTYPE)
 
             if start_pos >= 0:
                 self.output_buffer[:] = self.audio_buffer[start_pos:end_pos]
@@ -348,7 +367,7 @@ class SpectrogramWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInt
         self.direction_combo.addItem(f"X: {tr('Frequency')}", ORIENTATION_FREQUENCY_X)
         self.direction_combo.setAccessibleName(tr("Direction:"))
         self.direction_combo.setToolTip(tr("Direction:"))
-        self.direction_combo.setFixedWidth(110)
+        self.direction_combo.setFixedWidth(105)
         direction_index = 1 if self.module.display_orientation == ORIENTATION_FREQUENCY_X else 0
         self.direction_combo.setCurrentIndex(direction_index)
         self.direction_combo.currentIndexChanged.connect(self.on_direction_changed)
@@ -437,15 +456,20 @@ class SpectrogramWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInt
 
         # Sync second image
         self.hist.sigLevelsChanged.connect(lambda: self.img_new.setLevels(self.hist.getLevels()))
-        self.hist.sigLookupTableChanged.connect(
-            lambda: self.img_new.setLookupTable(self.hist.gradient.getLookupTable(512))
-        )
+        self.hist.sigLookupTableChanged.connect(self._sync_image_lookup_tables)
 
         # Set default colormap
         self.hist.gradient.loadPreset("turbo")
         self.hist.setLevels(-120, 0)  # Default dB range
+        self._sync_image_lookup_tables()
 
         return self.win
+
+    def _sync_image_lookup_tables(self) -> None:
+        """Keep both image halves on pyqtgraph's fast <=256-entry LUT path."""
+        lookup_table = self.hist.gradient.getLookupTable(SPECTROGRAM_LUT_SIZE)
+        self.img_old.setLookupTable(lookup_table)
+        self.img_new.setLookupTable(lookup_table)
 
     def update_available_fft_sizes(self, speed_index):
         current_text = self.fft_combo.currentText()
@@ -552,6 +576,8 @@ class SpectrogramWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInt
         self.processing = False
         if not self.module.is_running:
             return
+
+        mag_db = np.asarray(mag_db, dtype=SPECTROGRAM_DTYPE)
 
         # Determine Target Frames based on Speed
         # Update rate is 30ms.

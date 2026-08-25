@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import QApplication  # noqa: E402
 from src.gui.widgets.spectrogram import (  # noqa: E402
     ORIENTATION_FREQUENCY_X,
     ORIENTATION_TIME_X,
+    SPECTROGRAM_LUT_SIZE,
     Spectrogram,
     SpectrogramWidget,
 )
@@ -115,7 +116,7 @@ def main() -> None:
         "--lut-size",
         type=int,
         choices=(256, 512),
-        default=512,
+        default=SPECTROGRAM_LUT_SIZE,
         help="Force a LUT size so the pyqtgraph fast path can be compared.",
     )
     args = parser.parse_args()

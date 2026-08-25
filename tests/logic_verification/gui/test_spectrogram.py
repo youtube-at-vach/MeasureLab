@@ -2,6 +2,7 @@ import sys
 import os
 import unittest
 import numpy as np
+import pyqtgraph as pg
 from unittest.mock import MagicMock, patch
 
 # Add project root to sys.path
@@ -13,11 +14,14 @@ sys.modules["sounddevice"] = MagicMock()
 from src.gui.widgets.spectrogram import (  # noqa: E402
     ORIENTATION_FREQUENCY_X,
     ORIENTATION_TIME_X,
+    SPECTROGRAM_DTYPE,
+    SPECTROGRAM_LUT_SIZE,
     Spectrogram,
     SpectrogramWidget,
     SpectrogramWorker,
 )
 from src.core.fft_manager import WARMUP_SIZES  # noqa: E402
+from src.core.analysis import get_cached_window  # noqa: E402
 from src.core.localization import tr  # noqa: E402
 from pyqtgraph.graphicsItems.GradientEditorItem import Gradients  # noqa: E402
 from PyQt6.QtWidgets import QApplication  # noqa: E402
@@ -167,6 +171,28 @@ class TestSpectrogramProcessing(unittest.TestCase):
         mag_db = result_container[0]
         self.assertGreater(mag_db[0], -10.0)
 
+    def test_float32_processing_matches_float64_reference(self):
+        """Single precision must not cause a visible dB-level difference."""
+        rng = np.random.default_rng(20260825)
+        raw_data = rng.normal(0.0, 0.1, (8192, 2))
+        raw_data[:, 0] += 0.5 * np.sin(2 * np.pi * 997 * np.arange(8192) / 48000)
+
+        worker = SpectrogramWorker(raw_data, "blackmanharris", "Average")
+        result_container = []
+        worker.signals.result = MagicMock()
+        worker.signals.result.emit = result_container.append
+        worker.run()
+        actual = result_container[0]
+
+        signal = np.mean(raw_data, axis=1)
+        window = get_cached_window("blackmanharris", len(signal), dtype=np.float64)
+        reference = np.abs(np.fft.rfft(signal * window))
+        reference *= (2.0 / np.mean(window)) / len(signal)
+        reference = 20.0 * np.log10(reference + 1e-12)
+
+        self.assertEqual(actual.dtype, SPECTROGRAM_DTYPE)
+        np.testing.assert_allclose(actual, reference, rtol=0.0, atol=0.001)
+
     def test_buffer_update(self):
         """Verify that add_spectrum updates the ring buffer correctly."""
         self.spec.history_length = 5
@@ -188,6 +214,13 @@ class TestSpectrogramProcessing(unittest.TestCase):
 
         # Total writes: 6. Buffer 5. Ptr -> 1.
         self.assertEqual(self.spec.spectrogram_ptr, 1)
+
+    def test_rendering_buffers_use_float32(self):
+        self.assertEqual(self.spec.audio_buffer.dtype, SPECTROGRAM_DTYPE)
+        self.assertEqual(self.spec.spectrogram_buffer.dtype, SPECTROGRAM_DTYPE)
+
+        self.spec.add_spectrum(np.zeros(self.spec.fft_size // 2 + 1, dtype=np.float64))
+        self.assertEqual(self.spec.spectrogram_buffer.dtype, SPECTROGRAM_DTYPE)
 
 
 class TestSpectrogramOrientation(unittest.TestCase):
@@ -476,6 +509,62 @@ class TestSpectrogramColormaps(unittest.TestCase):
                 missing_colormaps.append(cmap)
 
         assert not missing_colormaps, f"The following colormaps are missing in pyqtgraph: {missing_colormaps}"
+
+
+class TestSpectrogramLookupTable(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not QApplication.instance():
+            cls.app = QApplication(sys.argv + ["-platform", "offscreen"])
+        else:
+            cls.app = QApplication.instance()
+
+    def setUp(self):
+        self.widget = SpectrogramWidget(Spectrogram(MockAudioEngine()))
+        self.widget.timer.stop()
+
+    def tearDown(self):
+        self.widget.close()
+
+    @staticmethod
+    def _render_pixels(lookup_table):
+        values = np.linspace(-120.0, 0.0, 4096, dtype=np.float32).reshape(64, 64)
+        image = pg.ImageItem(axisOrder="row-major")
+        image.setLookupTable(lookup_table)
+        image.setImage(values, levels=(-120.0, 0.0), autoLevels=False)
+        image.render()
+        qimage = image.qimage.convertToFormat(image.qimage.Format.Format_RGBA8888)
+        pixels = np.frombuffer(qimage.bits().asstring(qimage.sizeInBytes()), dtype=np.uint8)
+        return pixels.reshape(qimage.height(), qimage.bytesPerLine())[:, : qimage.width() * 4].reshape(
+            qimage.height(), qimage.width(), 4
+        )
+
+    def test_all_colormaps_keep_both_images_on_fast_lut_path(self):
+        for colormap in (
+            "viridis",
+            "plasma",
+            "inferno",
+            "magma",
+            "turbo",
+            "thermal",
+            "flame",
+            "yellowy",
+            "bipolar",
+            "spectrum",
+            "cyclic",
+        ):
+            self.widget.cmap_combo.setCurrentText(colormap)
+            self.assertEqual(self.widget.img_old.lut.shape[0], SPECTROGRAM_LUT_SIZE)
+            self.assertEqual(self.widget.img_new.lut.shape[0], SPECTROGRAM_LUT_SIZE)
+            np.testing.assert_array_equal(self.widget.img_old.lut, self.widget.img_new.lut)
+
+            optimized = self._render_pixels(self.widget.img_old.lut)
+            legacy = self._render_pixels(self.widget.hist.gradient.getLookupTable(512))
+            rgb_delta = np.abs(optimized[..., :3].astype(np.int16) - legacy[..., :3].astype(np.int16))
+
+            # The faster LUT differs by at most a few values on an 8-bit colour
+            # channel, even for the steepest bundled gradients.
+            self.assertLessEqual(int(rgb_delta.max()), 8, colormap)
 
 
 class TestSpectrogramLogBuffer(unittest.TestCase):
