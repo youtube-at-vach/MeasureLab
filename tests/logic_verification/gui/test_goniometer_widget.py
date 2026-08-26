@@ -50,7 +50,8 @@ def test_widget_restores_model_settings(qtbot):
     module.auto_gain = True
     module.trace_mode = "Density"
     module.persistence_seconds = 1.25
-    module.show_direction_guides = False
+    module.show_center_crosshair = False
+    module.show_direction_guides = True
     module.show_axes = True
     module.show_grid = False
 
@@ -63,7 +64,10 @@ def test_widget_restores_model_settings(qtbot):
     assert not widget.gain_slider.isEnabled()
     assert widget.trace_combo.currentData() == "Density"
     assert widget.persistence_label.text() == "1.25 s"
-    assert not widget.direction_guides_chk.isChecked()
+    assert not widget.center_crosshair_chk.isChecked()
+    assert widget.direction_guides_chk.isChecked()
+    assert not widget.ref_line_a.isVisible()
+    assert not widget.ref_line_b.isVisible()
     assert widget.axes_chk.isChecked()
     assert not widget.grid_chk.isChecked()
 
@@ -73,8 +77,11 @@ def test_plot_guides_axes_and_grid_defaults_and_toggles(widget):
     bottom_axis = plot_item.getAxis("bottom")
     left_axis = plot_item.getAxis("left")
 
-    assert widget.direction_guides_chk.isChecked()
-    assert len(widget._direction_labels) == 4
+    assert widget.center_crosshair_chk.isChecked()
+    assert widget.ref_line_a.isVisible()
+    assert widget.ref_line_b.isVisible()
+    assert not widget.direction_guides_chk.isChecked()
+    assert widget._direction_labels == []
     assert not widget.axes_chk.isChecked()
     assert not bottom_axis.style["showValues"]
     assert not left_axis.style["showValues"]
@@ -84,11 +91,14 @@ def test_plot_guides_axes_and_grid_defaults_and_toggles(widget):
     assert bottom_axis.grid
     assert left_axis.grid
 
-    widget.direction_guides_chk.setChecked(False)
+    widget.center_crosshair_chk.setChecked(False)
+    widget.direction_guides_chk.setChecked(True)
     widget.axes_chk.setChecked(True)
     widget.grid_chk.setChecked(False)
 
-    assert widget._direction_labels == []
+    assert not widget.ref_line_a.isVisible()
+    assert not widget.ref_line_b.isVisible()
+    assert len(widget._direction_labels) == 4
     assert bottom_axis.style["showValues"]
     assert left_axis.style["showValues"]
     assert bottom_axis.labelText == ""
