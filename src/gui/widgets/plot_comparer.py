@@ -31,6 +31,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.core.comparison_manager import ComparisonManager
 from src.gui.styles import MONOSPACE_FONT_FAMILY
+from src.gui.widgets.instrument_plot import logarithmic_ticks_125
 
 logger = logging.getLogger(__name__)
 
@@ -1681,9 +1682,7 @@ class PlotComparerWidget(QWidget):
         if getattr(self, "is_log_y", False):
             # If the primary visible trace uses percent, set log ticks
             if first_trace.y_axis and first_trace.y_axis.display_unit == "%":
-                percent_ticks = [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
-                ticks_log = [(np.log10(t), f"{t:g}%") for t in percent_ticks]
-                y1_axis.setTicks([ticks_log])
+                y1_axis.setTicks([logarithmic_ticks_125(0.0001, 100, suffix="%")])
                 # Set range from 0.0001% to 100%
                 self.plot_widget.setYRange(np.log10(0.0001), np.log10(100))
 

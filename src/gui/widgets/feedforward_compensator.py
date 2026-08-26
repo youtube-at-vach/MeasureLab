@@ -29,6 +29,7 @@ from src.measurement_modules.base import MeasurementModule
 from src.core.analysis import AudioCalc
 from src.gui.styles import MONOSPACE_FONT_FAMILY
 from src.core.transmission_logic import apply_octave_smoothing
+from src.gui.widgets.instrument_plot import InstrumentPlotWidget
 
 logger = logging.getLogger(__name__)
 
@@ -1096,7 +1097,7 @@ class FeedforwardCompensatorWidget(QWidget):
         sim_layout.addWidget(self.lbl_sim_results)
 
         # Plot Widget
-        self.plot_sim = pg.PlotWidget(title=tr("Spectrum Comparison"))
+        self.plot_sim = InstrumentPlotWidget(title=tr("Spectrum Comparison"))
         self.plot_sim.setLabel("bottom", "Frequency", units="Hz")
         self.plot_sim.setLabel("left", "Magnitude", units="dBr")
         self.plot_sim.showGrid(x=True, y=True, alpha=0.3)
@@ -1194,7 +1195,7 @@ class FeedforwardCompensatorWidget(QWidget):
         lin_layout.setSpacing(5)
 
         # Magnitude Plot
-        self.plot_lin_mag = pg.PlotWidget(title=tr("Magnitude Response"))
+        self.plot_lin_mag = InstrumentPlotWidget(title=tr("Magnitude Response"))
         self.plot_lin_mag.setLabel("bottom", tr("Frequency"), units="Hz")
         self.plot_lin_mag.setLabel("left", tr("Magnitude"), units="dB")
         self.plot_lin_mag.showGrid(x=True, y=True, alpha=0.3)
@@ -1207,7 +1208,7 @@ class FeedforwardCompensatorWidget(QWidget):
         lin_layout.addWidget(self.plot_lin_mag, stretch=1)
 
         # Phase Plot
-        self.plot_lin_phase = pg.PlotWidget(title=tr("Phase Response"))
+        self.plot_lin_phase = InstrumentPlotWidget(title=tr("Phase Response"))
         self.plot_lin_phase.setLabel("bottom", tr("Frequency"), units="Hz")
         self.plot_lin_phase.setLabel("left", tr("Phase"), units="deg")
         self.plot_lin_phase.showGrid(x=True, y=True, alpha=0.3)

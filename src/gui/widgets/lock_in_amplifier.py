@@ -32,6 +32,7 @@ from typing import List
 from src.gui.widgets.comparable_interface import ComparableWidgetInterface
 from src.core.comparison_manager import ComparisonTrace, AxisMetadata, CalibrationInfo
 from src.core.utils import amplitude_to_linear, linear_to_amplitude
+from src.gui.widgets.instrument_plot import InstrumentPlotWidget
 
 
 logger = logging.getLogger(__name__)
@@ -1174,7 +1175,7 @@ class LockInAmplifierWidget(QWidget, ComparableWidgetInterface):
         cal_layout.addWidget(cal_settings, stretch=1)
 
         # Plot
-        self.cal_plot = pg.PlotWidget(title=tr("Calibration Map"))
+        self.cal_plot = InstrumentPlotWidget(title=tr("Calibration Map"))
         self.cal_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.cal_plot.setLabel("left", tr("Correction"), units="dB")
         self.cal_plot.showGrid(x=True, y=True, alpha=0.3)

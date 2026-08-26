@@ -37,6 +37,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.core.utils import format_si, resource_path
 from src.measurement_modules.base import MeasurementModule
+from src.gui.widgets.instrument_plot import InstrumentPlotWidget
 
 logger = logging.getLogger(__name__)
 
@@ -1244,7 +1245,7 @@ class ImpedanceAnalyzerWidget(QWidget):
         right_layout = QVBoxLayout(right_panel)
 
         # 1. Plot
-        self.plot_widget = pg.PlotWidget(title=tr("Impedance Z(f)"))
+        self.plot_widget = InstrumentPlotWidget(title=tr("Impedance Z(f)"))
         self.plot_widget.setLabel("bottom", tr("Frequency"), units="Hz")
         self.plot_widget.setLabel("left", tr("|Z|"), units="Ohm")
         self.plot_widget.showGrid(x=True, y=True, alpha=0.3)

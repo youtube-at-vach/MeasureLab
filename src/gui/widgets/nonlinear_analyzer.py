@@ -30,6 +30,7 @@ from scipy.signal import (
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+from src.gui.widgets.instrument_plot import InstrumentPlotWidget
 from src.core.nonlinear_analyzer_core import (
     generate_sss_and_inverse,
     process_amplitude_responses,
@@ -837,7 +838,7 @@ class NonlinearAnalyzerWidget(QWidget):
         # Tab 1: Magnitude Response (Bode Plot)
         self.mag_tab = QWidget()
         mag_layout = QVBoxLayout(self.mag_tab)
-        self.mag_plot = pg.PlotWidget(title=tr("Bode Magnitude Response"))
+        self.mag_plot = InstrumentPlotWidget(title=tr("Bode Magnitude Response"))
         self.mag_plot.setLabel("left", tr("Gain"), units="dB")
         self.mag_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.mag_plot.setLogMode(True, False)
@@ -848,7 +849,7 @@ class NonlinearAnalyzerWidget(QWidget):
         # Tab 2: Phase Response
         self.phase_tab = QWidget()
         phase_layout = QVBoxLayout(self.phase_tab)
-        self.phase_plot = pg.PlotWidget(title=tr("Bode Phase Response"))
+        self.phase_plot = InstrumentPlotWidget(title=tr("Bode Phase Response"))
         self.phase_plot.setLabel("left", tr("Phase"), units="deg")
         self.phase_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.phase_plot.setLogMode(True, False)
