@@ -97,14 +97,18 @@ def test_plot_guides_axes_and_grid_defaults_and_toggles(widget):
     assert not left_axis.grid
 
 
-def test_measurement_actions_belong_to_control_panel(widget):
-    assert widget.measurement_group.isAncestorOf(widget.toggle_btn)
-    assert widget.measurement_group.isAncestorOf(widget.hold_btn)
-    assert widget.measurement_group.isAncestorOf(widget.clear_btn)
-    assert widget.controls_group.isAncestorOf(widget.measurement_group)
+def test_measurement_actions_are_large_and_belong_to_control_panel(widget):
+    assert not hasattr(widget, "measurement_group")
+    assert widget.controls_group.isAncestorOf(widget.toggle_btn)
+    assert widget.controls_group.isAncestorOf(widget.hold_btn)
+    assert widget.controls_group.isAncestorOf(widget.clear_btn)
     assert not widget.display_widget.isAncestorOf(widget.toggle_btn)
     assert not widget.display_widget.isAncestorOf(widget.hold_btn)
     assert not widget.display_widget.isAncestorOf(widget.clear_btn)
+    assert widget.toggle_btn.minimumHeight() == 48
+    assert widget.hold_btn.minimumHeight() == 36
+    assert widget.clear_btn.minimumHeight() == 36
+    assert widget.toggle_btn.font().bold()
 
 
 def test_ms_mapping_is_bounded_and_inversion_is_exact(widget):
@@ -142,7 +146,7 @@ def test_start_failure_returns_button_to_idle(qtbot):
     widget.toggle_btn.click()
 
     assert not widget.toggle_btn.isChecked()
-    assert widget.toggle_btn.text() == "Start"
+    assert widget.toggle_btn.text() == "Start Measurement"
     assert "device unavailable" in widget.status_label.text()
     assert not widget.timer.isActive()
 
@@ -162,6 +166,79 @@ def test_hold_freezes_display_but_consumes_live_input(widget):
     np.testing.assert_array_equal(widget.line_trace.xData, before_x)
     assert widget._last_consumed_total > first_total
     assert widget.status_label.text() == "Held — acquisition running"
+
+
+def test_lines_render_detuned_tones_as_bounded_cycle_trails(widget):
+    widget.toggle_btn.click()
+    sample_time = np.arange(widget.module.buffer_size, dtype=np.float64) / 48000.0
+    left = 0.5 * np.sin(2.0 * np.pi * 1000.0 * sample_time)
+    right = 0.5 * np.sin(2.0 * np.pi * 1001.0 * sample_time + 0.2)
+    _invoke(widget.module, _audio(left, right))
+
+    widget.update_display()
+
+    active_traces = [trace for trace in widget.line_traces if trace.xData is not None and len(trace.xData)]
+    assert len(active_traces) == len(widget.line_traces)
+    assert sum(len(trace.xData) for trace in active_traces) <= (
+        widget.line_cycle_count * widget.line_trace_max_points_per_gate
+    )
+    assert sum(len(trace.xData) for trace in active_traces) < widget.module.buffer_size
+    assert all(len(trace.xData) < 128 for trace in active_traces)
+    alphas = [trace.opts["pen"].color().alpha() for trace in widget.line_traces]
+    assert alphas == sorted(alphas)
+
+
+@pytest.mark.parametrize(
+    ("left_frequency", "right_frequency", "expected_gate_samples"),
+    [
+        (1999.0, 1000.0, 49),
+        (1000.0, 1999.0, 49),
+        (1500.0, 1000.0, 97),
+        (1250.0, 1000.0, 193),
+    ],
+)
+def test_lines_choose_a_common_gate_for_small_integer_frequency_ratios(
+    widget,
+    left_frequency,
+    right_frequency,
+    expected_gate_samples,
+):
+    sample_time = np.arange(widget.module.buffer_size, dtype=np.float64) / 48000.0
+    left = 0.5 * np.sin(2.0 * np.pi * left_frequency * sample_time)
+    right = 0.5 * np.sin(2.0 * np.pi * right_frequency * sample_time)
+
+    ranges = widget._periodic_trace_ranges(left, right)
+
+    assert len(ranges) == widget.line_cycle_count
+    assert all(abs((stop - start) - expected_gate_samples) <= 1 for start, stop in ranges)
+
+
+def test_lines_use_a_short_faded_fallback_for_nonperiodic_input(widget):
+    rng = np.random.default_rng(42)
+    left = rng.normal(0.0, 0.1, widget.module.buffer_size)
+    right = rng.normal(0.0, 0.1, widget.module.buffer_size)
+    x, y = widget._compute_xy(left, right)
+
+    assert widget._periodic_trace_ranges(left, right) == []
+    segments = widget._line_segments(left, right, x, y)
+
+    assert len(segments) == len(widget.line_traces)
+    assert segments[0][0][0] == pytest.approx(x[-widget.line_trace_fallback_samples])
+    assert segments[-1][0][-1] == pytest.approx(x[-1])
+    assert sum(len(segment_x) for segment_x, _segment_y in segments) <= (
+        widget.line_trace_fallback_samples + len(widget.line_traces) - 1
+    )
+
+
+def test_cycle_trails_cap_points_for_low_frequency_tones(widget):
+    sample_time = np.arange(widget.module.buffer_size, dtype=np.float64) / 48000.0
+    tone = 0.5 * np.sin(2.0 * np.pi * 20.0 * sample_time)
+    x, y = widget._compute_xy(tone, tone)
+
+    segments = widget._line_segments(tone, tone, x, y)
+
+    assert segments
+    assert all(len(segment_x) <= widget.line_trace_max_points_per_gate for segment_x, _segment_y in segments)
 
 
 def test_density_consumes_each_audio_block_once(widget):

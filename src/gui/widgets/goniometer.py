@@ -6,6 +6,7 @@ import time
 from collections import deque
 from dataclasses import dataclass
 from enum import IntFlag, StrEnum
+from fractions import Fraction
 
 import numpy as np
 import pyqtgraph as pg
@@ -29,6 +30,7 @@ from scipy.ndimage import gaussian_filter
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.gui.styles import STYLE_TOGGLE_BTN_DARK, STYLE_TOGGLE_BTN_LIGHT
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 from src.measurement_modules.base import MeasurementModule
@@ -559,6 +561,13 @@ class CorrelationMeter(QWidget):
 
 class GoniometerWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInterface):
     min_max_hold_seconds = 3.0
+    line_cycle_count = 3
+    line_trace_fallback_samples = 1024
+    line_trace_max_points_per_gate = 384
+    line_trace_period_tolerance = 0.20
+    line_trace_ratio_max_denominator = 8
+    line_trace_ratio_tolerance = 0.02
+    line_trace_alphas = (72, 255)
 
     def __init__(self, module: Goniometer):
         QWidget.__init__(self)
@@ -621,7 +630,9 @@ class GoniometerWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInte
         self.plot_widget.addItem(self.ref_line_a)
         self.plot_widget.addItem(self.ref_line_b)
 
-        self.line_trace = self.plot_widget.plot(pen=pg.mkPen("#00cc66", width=1))
+        self.line_traces = [self.plot_widget.plot(pen=pg.mkPen("#00cc66", width=1)) for _ in self.line_trace_alphas]
+        # Compatibility alias for callers and tests that inspect the newest trace.
+        self.line_trace = self.line_traces[-1]
         self.point_trace = pg.ScatterPlotItem(size=2.5, pen=None, brush=pg.mkBrush("#00cc66"))
         self.plot_widget.addItem(self.point_trace)
 
@@ -658,24 +669,31 @@ class GoniometerWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInte
         tab = QWidget()
         layout = QVBoxLayout(tab)
 
-        self.measurement_group = QGroupBox(tr("Measurement"), tab)
-        measurement_layout = QVBoxLayout(self.measurement_group)
-
-        self.toggle_btn = QPushButton(tr("Start"), self.measurement_group)
+        self.toggle_btn = QPushButton(tr("Start Measurement"), tab)
         self.toggle_btn.setCheckable(True)
+        self.toggle_btn.setMinimumHeight(48)
+        toggle_font = self.toggle_btn.font()
+        toggle_font.setBold(True)
+        toggle_font.setPointSize(toggle_font.pointSize() + 1)
+        self.toggle_btn.setFont(toggle_font)
+        self.toggle_btn.setStyleSheet(STYLE_TOGGLE_BTN_LIGHT)
         self.toggle_btn.clicked.connect(self.on_toggle)
-        measurement_layout.addWidget(self.toggle_btn)
+        layout.addWidget(self.toggle_btn)
 
-        self.hold_btn = QPushButton(tr("Hold Display"), self.measurement_group)
+        secondary_actions = QHBoxLayout()
+        secondary_actions.setContentsMargins(0, 0, 0, 0)
+
+        self.hold_btn = QPushButton(tr("Hold Display"), tab)
         self.hold_btn.setCheckable(True)
+        self.hold_btn.setMinimumHeight(36)
         self.hold_btn.toggled.connect(self.on_hold_changed)
-        measurement_layout.addWidget(self.hold_btn)
+        secondary_actions.addWidget(self.hold_btn)
 
-        self.clear_btn = QPushButton(tr("Clear"), self.measurement_group)
+        self.clear_btn = QPushButton(tr("Clear"), tab)
+        self.clear_btn.setMinimumHeight(36)
         self.clear_btn.clicked.connect(self.on_clear)
-        measurement_layout.addWidget(self.clear_btn)
-
-        layout.addWidget(self.measurement_group)
+        secondary_actions.addWidget(self.clear_btn)
+        layout.addLayout(secondary_actions)
 
         layout.addWidget(QLabel(tr("Mapping:")))
         self.mapping_combo = QComboBox()
@@ -906,17 +924,17 @@ class GoniometerWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInte
             self._clear_display_state()
             if self.module.start_analysis():
                 self.timer.start()
-                self.toggle_btn.setText(tr("Stop"))
+                self.toggle_btn.setText(tr("Stop Measurement"))
             else:
                 self.toggle_btn.blockSignals(True)
                 self.toggle_btn.setChecked(False)
                 self.toggle_btn.blockSignals(False)
-                self.toggle_btn.setText(tr("Start"))
+                self.toggle_btn.setText(tr("Start Measurement"))
                 self.timer.stop()
         else:
             self.module.stop_analysis()
             self.timer.stop()
-            self.toggle_btn.setText(tr("Start"))
+            self.toggle_btn.setText(tr("Start Measurement"))
         self._update_status(self.module.get_snapshot(self._last_consumed_total))
 
     def on_hold_changed(self, checked: bool) -> None:
@@ -933,7 +951,8 @@ class GoniometerWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInte
         self._recent_valid.clear()
         self._last_consumed_total = 0
         self._last_display_time = time.monotonic()
-        self.line_trace.setData([], [])
+        for trace in self.line_traces:
+            trace.setData([], [])
         self.point_trace.setData([], [])
         self.corr_meter.set_reading(None, None, None, tr("Waiting for audio"))
         self._reset_density()
@@ -977,9 +996,11 @@ class GoniometerWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInte
     def _update_control_states(self) -> None:
         self.gain_slider.setEnabled(not self.module.auto_gain)
         density = self.module.trace_mode == "Density"
+        lines = self.module.trace_mode == "Lines"
         self.persistence_slider.setEnabled(density)
         self.glow_slider.setEnabled(density)
-        self.line_trace.setVisible(self.module.trace_mode == "Lines")
+        for trace in self.line_traces:
+            trace.setVisible(lines)
         self.point_trace.setVisible(self.module.trace_mode == "Points")
         self.img_item.setVisible(density)
 
@@ -1011,7 +1032,11 @@ class GoniometerWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInte
             "Viridis": "#2a9d8f",
         }
         color = trace_colors[self.module.color_palette]
-        self.line_trace.setPen(pg.mkPen(color, width=1.2))
+        for trace, alpha in zip(self.line_traces, self.line_trace_alphas, strict=True):
+            trace_color = QColor(color)
+            trace_color.setAlpha(alpha)
+            width = 1.2 if alpha == 255 else 1.0
+            trace.setPen(pg.mkPen(trace_color, width=width))
         self.point_trace.setBrush(pg.mkBrush(color))
 
     def _update_auto_gain(self, x: np.ndarray, y: np.ndarray, elapsed: float) -> float:
@@ -1102,6 +1127,139 @@ class GoniometerWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInte
         values = [item[1] for item in self._recent_valid]
         return min(values), max(values)
 
+    def _stable_period(self, signal: np.ndarray) -> tuple[np.ndarray, float] | None:
+        if len(signal) < 3:
+            return None
+
+        reference = signal - float(np.mean(signal))
+        if float(np.max(reference) - np.min(reference)) <= 1e-9:
+            return None
+
+        crossings = np.flatnonzero((reference[:-1] <= 0.0) & (reference[1:] > 0.0)) + 1
+        if len(crossings) < 2:
+            return None
+
+        periods = np.diff(crossings)
+        stability_window = self.line_trace_ratio_max_denominator + 3
+        recent_periods = periods[-min(len(periods), stability_window) :]
+        median_period = float(np.median(recent_periods))
+        if median_period < 3.0:
+            return None
+        if len(recent_periods) >= 3:
+            relative_error = np.max(np.abs(recent_periods - median_period)) / median_period
+            if relative_error > self.line_trace_period_tolerance:
+                return None
+        return crossings, median_period
+
+    def _ranges_from_crossings(self, crossings: np.ndarray, cycles_per_gate: int) -> list[tuple[int, int]]:
+        available_gates = (len(crossings) - 1) // cycles_per_gate
+        gate_count = min(self.line_cycle_count, available_gates)
+        if gate_count <= 0:
+            return []
+
+        final_crossing = len(crossings) - 1
+        first_crossing = final_crossing - gate_count * cycles_per_gate
+        boundary_indices = range(first_crossing, final_crossing + 1, cycles_per_gate)
+        boundaries = crossings[list(boundary_indices)]
+        return [(int(start), int(stop) + 1) for start, stop in zip(boundaries[:-1], boundaries[1:], strict=True)]
+
+    def _periodic_trace_ranges(self, left: np.ndarray, right: np.ndarray) -> list[tuple[int, int]]:
+        """Return gates that cover the short common period of both inputs."""
+        left_period = self._stable_period(left)
+        right_period = self._stable_period(right)
+        if left_period is None and right_period is None:
+            return []
+
+        cycles_per_gate = 1
+        if left_period is None:
+            crossings, _period = right_period
+        elif right_period is None:
+            crossings, _period = left_period
+        else:
+            left_crossings, left_samples = left_period
+            right_crossings, right_samples = right_period
+            if left_samples >= right_samples:
+                crossings = left_crossings
+                slower_period = left_samples
+                faster_period = right_samples
+            else:
+                crossings = right_crossings
+                slower_period = right_samples
+                faster_period = left_samples
+
+            frequency_ratio = slower_period / faster_period
+            approximate_ratio = Fraction(frequency_ratio).limit_denominator(self.line_trace_ratio_max_denominator)
+            ratio_error = abs(float(approximate_ratio) - frequency_ratio) / frequency_ratio
+            if ratio_error <= self.line_trace_ratio_tolerance:
+                cycles_per_gate = approximate_ratio.denominator
+
+        ranges = self._ranges_from_crossings(crossings, cycles_per_gate)
+        if ranges or cycles_per_gate == 1:
+            return ranges
+        return self._ranges_from_crossings(crossings, 1)
+
+    def _limit_gate_points(self, x: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        if len(x) <= self.line_trace_max_points_per_gate:
+            return x, y
+        indices = np.linspace(
+            0,
+            len(x) - 1,
+            self.line_trace_max_points_per_gate,
+            dtype=np.intp,
+        )
+        return x[indices], y[indices]
+
+    def _fallback_line_segments(self, x: np.ndarray, y: np.ndarray) -> list[tuple[np.ndarray, np.ndarray]]:
+        sample_count = min(len(x), self.line_trace_fallback_samples)
+        if sample_count == 0:
+            return []
+
+        start = len(x) - sample_count
+        segment_count = min(len(self.line_traces), sample_count)
+        edges = np.linspace(start, len(x), segment_count + 1, dtype=np.intp)
+        segments: list[tuple[np.ndarray, np.ndarray]] = []
+        for index in range(segment_count):
+            segment_start = int(edges[index])
+            if index > 0:
+                segment_start -= 1
+            segment_stop = int(edges[index + 1])
+            segments.append((x[segment_start:segment_stop], y[segment_start:segment_stop]))
+        return segments
+
+    def _line_segments(
+        self,
+        left: np.ndarray,
+        right: np.ndarray,
+        x: np.ndarray,
+        y: np.ndarray,
+    ) -> list[tuple[np.ndarray, np.ndarray]]:
+        ranges = self._periodic_trace_ranges(left, right)
+        if not ranges:
+            return self._fallback_line_segments(x, y)
+        return [self._limit_gate_points(x[start:stop], y[start:stop]) for start, stop in ranges]
+
+    def _update_line_trail(
+        self,
+        left: np.ndarray,
+        right: np.ndarray,
+        x: np.ndarray,
+        y: np.ndarray,
+    ) -> None:
+        segments = self._line_segments(left, right, x, y)
+        if len(segments) > len(self.line_traces):
+            older_x = np.concatenate([segment_x for segment_x, _segment_y in segments[:-1]])
+            older_y = np.concatenate([segment_y for _segment_x, segment_y in segments[:-1]])
+            segments = [(older_x, older_y), segments[-1]]
+
+        padding = len(self.line_traces) - len(segments)
+        padded_segments: list[tuple[np.ndarray, np.ndarray] | None] = [None] * padding + segments
+        for trace, segment in zip(self.line_traces, padded_segments, strict=True):
+            if segment is None:
+                trace.setData([], [])
+            else:
+                segment_x, segment_y = segment
+                trace.setData(segment_x, segment_y, skipFiniteCheck=True)
+
     def _update_density(self, x: np.ndarray, y: np.ndarray, elapsed: float) -> None:
         decay = math.exp(-max(elapsed, 0.0) / max(self.module.persistence_seconds, 0.05))
         self.module.heatmap *= decay
@@ -1148,7 +1306,7 @@ class GoniometerWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInte
             display_out_of_range = bool(np.any((np.abs(x) > 1.1) | (np.abs(y) > 1.1)))
 
             if self.module.trace_mode == "Lines":
-                self.line_trace.setData(x, y)
+                self._update_line_trail(audio[:, 0], audio[:, 1], x, y)
             elif self.module.trace_mode == "Points":
                 self.point_trace.setData(x=x, y=y)
             else:
@@ -1173,6 +1331,7 @@ class GoniometerWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInte
             theme_name = self.app.theme_manager.get_effective_theme()
         background = "#111111" if theme_name == "dark" else "#fafafa"
         self.plot_widget.setBackground(background)
+        self.toggle_btn.setStyleSheet(STYLE_TOGGLE_BTN_DARK if theme_name == "dark" else STYLE_TOGGLE_BTN_LIGHT)
         label_color = "#bbbbbb" if theme_name == "dark" else "#444444"
         for label in self._direction_labels:
             label.setColor(label_color)

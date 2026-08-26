@@ -38,6 +38,7 @@ from src.core.module_constants import (
     MODULE_SPECTROGRAM,
     MODULE_SPECTRUM_ANALYZER,
 )
+from src.gui.widgets.detachable_wrapper import HeaderIcon, application_button_text_color, make_header_icon
 
 if TYPE_CHECKING:
     from src.gui.main_window import MainWindow
@@ -229,13 +230,20 @@ class InstrumentDockWidget(QDockWidget):
             return
         running = self._primary_action.isChecked()
         label = self._primary_action.text() or (tr("Stop") if running else tr("Start"))
-        icon = QStyle.StandardPixmap.SP_MediaStop if running else QStyle.StandardPixmap.SP_MediaPlay
+        icon = HeaderIcon.STOP if running else HeaderIcon.PLAY
         self._primary_button.setText(label)
         self._primary_button.setAccessibleName(label)
         self._primary_button.setToolTip(label)
         self._primary_button.setEnabled(self._primary_action.isEnabled())
-        self._primary_button.setIcon(self.style().standardIcon(icon))
+        self._primary_button.setProperty("headerIcon", icon.value)
+        self._primary_button.setIcon(make_header_icon(icon, application_button_text_color()))
         self.primary_action_state_changed.emit()
+
+    def changeEvent(self, event) -> None:
+        """Recolor console controls whenever the application palette changes."""
+        super().changeEvent(event)
+        if event.type() in (QEvent.Type.PaletteChange, QEvent.Type.ApplicationPaletteChange):
+            self._sync_title_bar_controls()
 
     def _sync_title_bar_controls(self, *_args) -> None:
         if self._close_button is None:
@@ -366,7 +374,7 @@ class MeasurementConsoleWindow(QMainWindow):
 
         self.stop_all_action = QAction(tr("Stop All"), toolbar)
         self.stop_all_action.setToolTip(tr("Stop all running instruments in the console."))
-        self.stop_all_action.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaStop))
+        self._refresh_stop_all_icon()
         self.stop_all_action.setEnabled(False)
         self.stop_all_action.triggered.connect(self.stop_all_instruments)
         toolbar.addAction(self.stop_all_action)
@@ -377,6 +385,17 @@ class MeasurementConsoleWindow(QMainWindow):
         toolbar.addAction(self.lock_action)
 
         self._rebuild_add_menu()
+
+    def _refresh_stop_all_icon(self) -> None:
+        self.stop_all_action.setIcon(make_header_icon(HeaderIcon.STOP, application_button_text_color()))
+
+    def changeEvent(self, event) -> None:
+        """Keep toolbar icons legible after a live light/dark theme switch."""
+        super().changeEvent(event)
+        if event.type() in (QEvent.Type.PaletteChange, QEvent.Type.ApplicationPaletteChange) and hasattr(
+            self, "stop_all_action"
+        ):
+            self._refresh_stop_all_icon()
 
     def _rebuild_add_menu(self) -> None:
         self.add_menu.clear()

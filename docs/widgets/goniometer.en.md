@@ -72,7 +72,7 @@ The meter displays `—` and a reason instead of confusing an unavailable result
 ## Appearance
 
 - **Points**: Draws each sample as a point.
-- **Lines**: Connects samples in time order.
+- **Lines**: Detects a short common period between stable channel signals and draws up to three recent gates with older gates dimmed. Ratios such as 2:1 and 3:2 use a gate long enough to close the figure, while small frequency offsets appear as moving contours. If no stable period can be detected, it automatically uses a short trail of up to 1024 recent samples.
 - **Density**: Accumulates only newly captured samples into a phosphor-like density view.
 - **Persistence**: Sets the Density decay time from 0.05 to 5.0 seconds. The decay is independent of display FPS.
 - **Glow**: Applies display-only blur to Density mode.
