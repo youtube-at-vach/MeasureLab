@@ -141,6 +141,29 @@ def test_ring_buffer_wraps_chronologically_and_reports_display_drop():
     np.testing.assert_allclose(snapshot.audio[:, 1], -sample_numbers[-module.buffer_size :])
 
 
+def test_ring_buffer_history_duration_scales_for_192khz():
+    module = Goniometer(MockAudioEngine(sample_rate=192000))
+
+    assert module.buffer_size == 16384
+    assert module.buffer_size / 192000 == pytest.approx(4096 / 48000)
+
+
+def test_192khz_display_intervals_do_not_report_dropped_samples():
+    sample_rate = 192000
+    module = Goniometer(MockAudioEngine(sample_rate=sample_rate))
+    frames_per_display = math.ceil(sample_rate * 0.033)
+    silence = np.zeros((frames_per_display, 2), dtype=np.float64)
+    consumed = 0
+
+    for _ in range(4):
+        _invoke(module, silence)
+        snapshot = module.get_snapshot(since_total_samples=consumed)
+
+        assert snapshot is not None
+        assert snapshot.display_dropped_samples == 0
+        consumed = snapshot.total_samples
+
+
 def _correlation_after_transition(block_size: int) -> float:
     sample_rate = 48000
     module = Goniometer(MockAudioEngine(sample_rate))

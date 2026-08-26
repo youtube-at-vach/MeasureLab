@@ -87,12 +87,15 @@ class Goniometer(MeasurementModule):
 
     silence_threshold_dbfs = -80.0
     clip_threshold = 1.0
+    reference_sample_rate = 48000.0
+    reference_buffer_size = 4096
 
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
 
         # User settings
-        self.buffer_size = 4096
+        sample_rate = self._sample_rate()
+        self.buffer_size = self._buffer_size_for_sample_rate(sample_rate)
         self.manual_gain = 1.0
         self.auto_gain = False
         self.effective_gain = 1.0
@@ -104,7 +107,8 @@ class Goniometer(MeasurementModule):
         self.mapping_mode = "ms"
         self.invert_x = False
         self.invert_y = False
-        self.show_direction_guides = True
+        self.show_center_crosshair = True
+        self.show_direction_guides = False
         self.show_axes = False
         self.show_grid = True
 
@@ -116,6 +120,7 @@ class Goniometer(MeasurementModule):
 
         # Single-producer ring buffer. The callback writes; the GUI only copies.
         self._ring = np.zeros((self.buffer_size, 2), dtype=np.float64)
+        self._ring_sample_rate = sample_rate
         self._write_index = 0
         self._ring_count = 0
         self._total_samples = 0
@@ -203,12 +208,27 @@ class Goniometer(MeasurementModule):
         try:
             rate = float(self.audio_engine.sample_rate)
         except (AttributeError, TypeError, ValueError):
-            return 48000.0
-        return rate if rate > 0.0 else 48000.0
+            return self.reference_sample_rate
+        return rate if math.isfinite(rate) and rate > 0.0 else self.reference_sample_rate
 
-    def _reset_realtime_state(self) -> None:
+    @classmethod
+    def _buffer_size_for_sample_rate(cls, sample_rate: float, minimum_size: int = 0) -> int:
+        """Keep the ring's history duration constant across sample rates."""
+        scaled_size = math.ceil(cls.reference_buffer_size * sample_rate / cls.reference_sample_rate)
+        return max(cls.reference_buffer_size, scaled_size, int(minimum_size))
+
+    def _reset_realtime_state(self, sample_rate: float | None = None, minimum_buffer_size: int = 0) -> None:
         self._generation += 1
-        self._ring.fill(0.0)
+        if sample_rate is not None:
+            target_size = self._buffer_size_for_sample_rate(sample_rate, minimum_buffer_size)
+            if target_size != self.buffer_size:
+                self.buffer_size = target_size
+                self._ring = np.zeros((self.buffer_size, 2), dtype=np.float64)
+            else:
+                self._ring.fill(0.0)
+            self._ring_sample_rate = sample_rate
+        else:
+            self._ring.fill(0.0)
         self._write_index = 0
         self._ring_count = 0
         self._total_samples = 0
@@ -230,7 +250,7 @@ class Goniometer(MeasurementModule):
         if self.is_running:
             self._reset_requested = True
         else:
-            self._reset_realtime_state()
+            self._reset_realtime_state(self._sample_rate())
 
     def start_analysis(self) -> bool:
         if self.is_running:
@@ -238,7 +258,7 @@ class Goniometer(MeasurementModule):
 
         self.run_state = GoniometerRunState.STARTING
         self.error_message = None
-        self._reset_realtime_state()
+        self._reset_realtime_state(self._sample_rate())
         self.heatmap.fill(0.0)
 
         try:
@@ -305,15 +325,22 @@ class Goniometer(MeasurementModule):
         del time_info
         outdata.fill(0)
 
-        if self._reset_requested:
-            self._reset_realtime_state()
+        sample_rate = self._sample_rate()
+        sample_rate_changed = sample_rate != self._ring_sample_rate
 
         if indata.ndim != 2 or indata.shape[0] == 0 or indata.shape[1] == 0:
+            if self._reset_requested or sample_rate_changed:
+                self._reset_realtime_state(sample_rate)
             return
 
         sample_count = min(int(frames), int(indata.shape[0]))
         if sample_count <= 0:
+            if self._reset_requested or sample_rate_changed:
+                self._reset_realtime_state(sample_rate)
             return
+
+        if self._reset_requested or sample_rate_changed or sample_count > self.buffer_size:
+            self._reset_realtime_state(sample_rate, sample_count)
 
         left = indata[:sample_count, 0]
         mono_input = indata.shape[1] < 2
@@ -357,14 +384,14 @@ class Goniometer(MeasurementModule):
             self.quality_flags |= GoniometerQualityFlag.IO_ERROR
 
         if clipped_left or clipped_right or io_invalid:
-            invalid_samples = max(1, int(self.correlation_response_seconds * self._sample_rate()))
+            invalid_samples = max(1, int(self.correlation_response_seconds * sample_rate))
             self._invalid_until_sample = max(
                 self._invalid_until_sample,
                 self._total_samples + invalid_samples,
             )
 
         tau = max(self.correlation_response_seconds, 0.001)
-        alpha = math.exp(-sample_count / (self._sample_rate() * tau))
+        alpha = math.exp(-sample_count / (sample_rate * tau))
         one_minus_alpha = 1.0 - alpha
         self._energy_left = alpha * self._energy_left + one_minus_alpha * energy_left
         self._energy_right = alpha * self._energy_right + one_minus_alpha * energy_right
@@ -791,6 +818,11 @@ class GoniometerWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInte
         self.invert_y_chk.toggled.connect(self.on_invert_y_changed)
         layout.addWidget(self.invert_y_chk)
 
+        self.center_crosshair_chk = QCheckBox(tr("Show Center Crosshair"))
+        self.center_crosshair_chk.setChecked(self.module.show_center_crosshair)
+        self.center_crosshair_chk.toggled.connect(self.on_center_crosshair_changed)
+        layout.addWidget(self.center_crosshair_chk)
+
         self.direction_guides_chk = QCheckBox(tr("Show Direction Guides"))
         self.direction_guides_chk.setChecked(self.module.show_direction_guides)
         self.direction_guides_chk.toggled.connect(self.on_direction_guides_changed)
@@ -853,6 +885,10 @@ class GoniometerWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInte
         self.module.show_direction_guides = bool(checked)
         self._update_reference_lines()
 
+    def on_center_crosshair_changed(self, checked: bool) -> None:
+        self.module.show_center_crosshair = bool(checked)
+        self._update_reference_lines()
+
     def on_axes_changed(self, checked: bool) -> None:
         self.module.show_axes = bool(checked)
         self._update_axis_display()
@@ -883,6 +919,8 @@ class GoniometerWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInte
 
     def _update_reference_lines(self) -> None:
         self._clear_direction_labels()
+        self.ref_line_a.setVisible(self.module.show_center_crosshair)
+        self.ref_line_b.setVisible(self.module.show_center_crosshair)
         if self.module.mapping_mode == "lr":
             sx = -1 if self.module.invert_x else 1
             sy = -1 if self.module.invert_y else 1
