@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 
 from PyQt6.QtCore import QSize, Qt, QTimer
+from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import (
     QApplication,
     QDockWidget,
@@ -35,6 +36,11 @@ PRIMARY_ACTION_CAPABILITIES = WidgetCapabilities(
     comparison=NO_INDEPENDENT_DISPLAY,
     console_primary_action=console_action("toggle_btn"),
 )
+
+
+def _icon_contains_color(icon, color: QColor) -> bool:
+    image = icon.pixmap(QSize(16, 16)).toImage()
+    return any(image.pixelColor(x, y) == color for y in range(image.height()) for x in range(image.width()))
 
 
 def test_default_console_uses_goniometer() -> None:
@@ -373,6 +379,43 @@ def test_console_primary_action_tracks_source_enabled_state(qtbot):
 
     content.toggle_btn.setEnabled(False)
     qtbot.waitUntil(lambda: not dock._primary_button.isEnabled())
+    console.close()
+
+
+def test_console_media_icons_follow_button_text_palette(qtbot):
+    content = _PrimaryActionContent()
+    wrapper = DetachableWidgetWrapper(
+        content,
+        "Instrument 0",
+        capabilities=PRIMARY_ACTION_CAPABILITIES,
+    )
+    host = _ConsoleHostStub([wrapper])
+    console = MeasurementConsoleWindow(host)
+    console.add_module(0)
+    console.show()
+    qtbot.waitUntil(console.isVisible)
+    dock = console._docks[0]
+    assert dock._primary_button is not None
+
+    app = QApplication.instance()
+    original_palette = QPalette(app.palette())
+    expected_color = QColor(245, 235, 225)
+    test_palette = QPalette(original_palette)
+    test_palette.setColor(QPalette.ColorRole.ButtonText, expected_color)
+
+    try:
+        app.setPalette(test_palette)
+        QApplication.processEvents()
+        qtbot.waitUntil(lambda: _icon_contains_color(dock._primary_button.icon(), expected_color))
+
+        assert _icon_contains_color(console.stop_all_action.icon(), expected_color)
+
+        content.toggle_btn.click()
+        qtbot.waitUntil(lambda: dock._primary_button.property("headerIcon") == "stop")
+        assert _icon_contains_color(dock._primary_button.icon(), expected_color)
+    finally:
+        app.setPalette(original_palette)
+
     console.close()
 
 

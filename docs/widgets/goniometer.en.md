@@ -4,88 +4,85 @@
 
 ## Overview
 
-This is a tool for visualizing the "spread" and "phase" of stereo audio.
-It plots the relationship between the left and right channels (L/R) as a Lissajous figure, and is used to check the localization of the sound image, stereo width, and mono compatibility.
-It is an essential tool for discovering phase cancellation problems in mixdown and mastering.
+The Goniometer is a live meter that plots the left and right stereo inputs on an XY plane. Use it to monitor stereo spread, left/right bias, polarity inversion, and mono compatibility. It combines an XY display with a time-smoothed correlation coefficient from -1 to +1.
+
+Correlation is not a single score for stereo quality. Sustained negative correlation can indicate cancellation when summed to mono, but the intended sound and listening result still matter.
 
 ## Common Features
 
-This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+The widget supports the Detachable Wrapper's detached, split, and compact states. See [Detachable Wrapper](detachable_wrapper.en.md) for details.
 
-## What are Lissajous Figures?
+Measurement actions, including Start, Hold, and Clear, are grouped in the right control panel. Split mode can place the XY scope and correlation display independently from that control panel.
 
-The waveforms displayed on the Goniometer screen are known as "Lissajous figures."
-By plotting the left channel signal on the Y-axis (vertical) and the right channel signal on the X-axis (horizontal) simultaneously, it visually represents the spread and phase difference of the stereo signal.
+Compact mode maximizes the monitoring area by showing only the XY scope without outer margins. The correlation meter, acquisition state, action buttons, and detailed settings return in normal mode.
 
-When exactly the same sound is input from both left and right, it draws a straight line. As phase or volume differences occur between the left and right signals, the figure changes into circles or complex curves.
+## Reading the XY Scope
 
-## How to Read the Screen
+### Mid/Side (M/S)
 
-### Main Display (Lissajous Waveform)
+This is the default mapping. Input samples are converted to display coordinates as follows:
 
-The shape of the waveform spreading from the center represents the stereo image of the sound.
+```text
+Side = (Right - Left) / 2
+Mid  = (Left + Right) / 2
+```
 
-* **Vertically stretching line**: Represents mono components (L and R are the same). If it is a completely vertical straight line, it is a mono sound source.
-* **Horizontally spreading line**: Represents out-of-phase components (L and R are opposite). If this is strong, there is a risk that the sound will disappear (phase cancellation) during mono playback.
-* **Circular/soft spreading**: Represents a rich stereo feel.
-* **45-degree (upper right) line**: Only the right channel is sounding.
-* **135-degree (upper left) line**: Only the left channel is sounding.
+- A narrow vertical shape means that L and R are similar and the mono component is strong.
+- A horizontal shape indicates strong Side energy and warrants checking polarity and mono compatibility.
+- The upper-left and upper-right directions represent Left-only and Right-only input.
+- A tilted shape can indicate a level or phase difference between the channels.
 
-### Correlation Meter
+The sum and difference are divided by two so that any input within ±1 FS fits the default display range. Raising Gain can still exceed that range; this is reported as `Display out of range`, separately from input clipping.
 
-The bar at the bottom of the screen represents the correlation coefficient (-1 to +1) of the left and right channels.
+### Left/Right (L/R)
 
-* **+1 (right end, green)**: Complete correlation (mono). The phases match.
-* **0 (center)**: No correlation. Left and right are completely independent, or there is a 90-degree phase difference. General stereo music moves back and forth between 0 and +1.
-* **-1 (left end, red)**: Inverse correlation. Left and right waveforms are inverted. If this state continues for a long time, suspect a cable connection error or phase trouble due to excessive effects.
+This mapping assigns Left to the X axis and Right to the Y axis like an XY oscilloscope. An in-phase signal forms an ascending diagonal and an inverted signal forms a descending diagonal. Invert X/Y only changes the display orientation; it does not modify the captured samples.
 
-## Operation and Settings
+### Interpreting Shapes
 
-### Basic Operation
+A circle or ellipse represents an amplitude and phase relationship, but a circular shape is not inherently an "ideal stereo" or high-quality result. For a single sine wave, equal amplitudes with approximately 90° phase offset approach a circle. Complex audio combines frequency content, delay, reverberation, and panning into more intricate shapes.
 
-* **Start / Stop**: Switches between starting and stopping the analysis.
+## Correlation Meter
 
-### Display Controls
+Correlation is calculated from the left/right product normalized by the energy in each channel. It uses a 300 ms time response by default.
 
-* **Display Mode**: You can choose the waveform drawing method.
-    * **Line**: Draws with a simple line. CPU load is low, making it suitable for seeing instantaneous movements.
-    * **Phosphor**: Simulates the afterimage (phosphorescence) of an analog oscilloscope. Since the "density" and "frequency" of the sound are expressed in color, it is easier to grasp the overall trend.
-* **Color Palette**: You can change the graph color (Green / Fire / Ice / Rainbow).
-* **Persistence**: Adjusts the length of the afterimage. When lengthened, past sounds remain on the screen, making it easier to see the average distribution of the sound image.
-* **Glow**: Blurs the lines and makes them glow, improving visibility.
-* **Smooth Lines**: Interpolates the jaggedness of the lines to make them smooth.
+- `+1`: Both channels have the same waveform and polarity.
+- `0`: There is little linear correlation between the channels.
+- `-1`: The channels have the same waveform with one polarity inverted.
 
-### Signal Controls
+The triangle is the current value. Short markers at the top and bottom show the recent three-second minimum and maximum. Use the Stereo Alignment Monitor for time history and more detailed stereo analysis.
 
-* **Mapping**: Changes how the axes are taken.
-    * **Mid/Side (M/S)**: Standard goniometer display. The vertical axis corresponds to Mid (mono component) and the horizontal axis to Side (stereo component).
-    * **Left/Right (L/R)**: Display as an XY oscilloscope. The X-axis is left and the Y-axis is right (or vice versa).
-* **Gain**: Adjusts the display size of the input signal.
-    * **Auto Gain**: When checked, the size is automatically adjusted so that the waveform fits on the screen.
-* **Invert X / Y**: Inverts the X-axis or Y-axis. Used to match the coordinate system with other measuring instruments when used as an oscilloscope in "L/R" mode.
+The meter displays `—` and a reason instead of confusing an unavailable result with a valid zero when:
 
-## Usage Examples
+- Both channels are below -80 dBFS RMS.
+- Only one channel is above the signal threshold.
+- A mono input has been duplicated internally.
+- Input clipping, an audio I/O error, NaN, or infinity is detected.
 
-### Finding Phase Trouble
+## Basic Controls
 
-If a phenomenon occurs in which the mixed sound source "has spread when listening with speakers, but the vocals disappear when listening on a smartphone or radio (mono)," the phase may be inverted.
+- **Start / Stop**: Starts or stops audio acquisition. After Stop, the final value remains visible and is labeled as no longer live.
+- **Hold Display / Resume Display**: Freezes only the display while acquisition continues.
+- **Clear**: Resets Density, recent correlation minimum and maximum, and latched quality warnings.
+- **Mapping**: Selects the M/S or L/R coordinate system.
+- **Gain**: Applies only to the XY display. It does not affect input data or correlation.
+- **Auto Gain**: Targets about 90% of the display range. It reduces gain immediately to prevent overflow and increases it slowly for a stable view.
+- **Correlation Response**: Sets the correlation response from 50 to 2000 ms.
 
-1. Look at the **Correlation Meter**.
-2. If the needle is always swinging toward the **-1 (red)** side, the phase is inverted.
-3. Check if the "Phase Invert" button is pressed on any of the tracks, or if effects such as a stereo imager are over-applied.
+## Appearance
 
-### Checking Stereo Width
+- **Points**: Draws each sample as a point.
+- **Lines**: Detects a short common period between stable channel signals and draws up to three recent gates with older gates dimmed. Ratios such as 2:1 and 3:2 use a gate long enough to close the figure, while small frequency offsets appear as moving contours. If no stable period can be detected, it automatically uses a short trail of up to 1024 recent samples.
+- **Density**: Accumulates only newly captured samples into a phosphor-like density view.
+- **Persistence**: Sets the Density decay time from 0.05 to 5.0 seconds. The decay is independent of display FPS.
+- **Glow**: Applies display-only blur to Density mode.
+- **Color Palette**: Selects Green, Fire, Ice, or Viridis, each with ordered luminance.
+- **Show Direction Guides**: Shows the Mono, Anti-phase, Left, and Right direction guides. It is on by default.
+- **Show Axes**: Shows numeric ticks and axis lines without coordinate-name labels. It is off by default.
+- **Show Grid**: Shows the plot grid. It is on by default.
 
-1. Set **Display Mode** to **Phosphor** and slightly increase **Persistence**.
-2. Look at the spreading of the waveform.
-    * **Thin vertical line**: Stereo feel is narrow (close to mono).
-    * **Close to a perfect circle**: Ideal stereo feel.
-    * **Horizontally squashed ellipse**: Stereo feel is too strong (there is a possibility of a hole in the middle).
+## Quality Indications
 
-### Checking Microphone Setting (XY method, etc.)
+Input clipping, audio I/O errors, and non-finite input are latched even if they occurred only briefly. They remain visible until Clear or the next Start.
 
-When recording with stereo microphones, you can check if the microphone angle and distance are appropriate.
-
-1. Set **Mapping** to **L/R**.
-2. Confirm that when the sound is heard from the right, it stretches in the X-axis (or Y-axis) direction, and when heard from the left, it stretches in the Y-axis (or X-axis) direction.
-3. If the phase is correct, the center sound will be a 45-degree line (upper right). If it is a 135-degree line (upper left), there is a possibility that one of the microphone cables is out of phase.
+`Display skipped ... samples` means that the GUI could not consume all Density samples before they left the display ring. It is distinct from an audio-device XRUN; `Audio I/O error` indicates a capture-level data loss.

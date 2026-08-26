@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 
 from PyQt6.QtCore import QPointF, QRectF, QSize, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QAction, QColor, QIcon, QPainter, QPalette, QPen, QPixmap
+from PyQt6.QtGui import QAction, QColor, QIcon, QPainter, QPalette, QPen, QPixmap, QPolygonF
 from PyQt6.QtWidgets import (
     QAbstractButton,
     QApplication,
@@ -178,6 +178,8 @@ class HeaderIcon(Enum):
     SPLIT = "split"
     DETACH = "detach"
     REATTACH = "reattach"
+    PLAY = "play"
+    STOP = "stop"
 
 
 def _draw_header_icon(icon: HeaderIcon, color: QColor, size: int) -> QPixmap:
@@ -227,13 +229,21 @@ def _draw_header_icon(icon: HeaderIcon, color: QColor, size: int) -> QPixmap:
         painter.drawRoundedRect(QRectF(8.0, 4.0, 13.0, 13.0), 1.5, 1.5)
         painter.drawLine(QPointF(14.0, 10.0), QPointF(4.0, 20.0))
         painter.drawPolyline(QPointF(4.0, 14.0), QPointF(4.0, 20.0), QPointF(10.0, 20.0))
+    elif icon is HeaderIcon.PLAY:
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(color)
+        painter.drawPolygon(QPolygonF([QPointF(7.0, 4.5), QPointF(19.0, 12.0), QPointF(7.0, 19.5)]))
+    elif icon is HeaderIcon.STOP:
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(color)
+        painter.drawRoundedRect(QRectF(6.0, 6.0, 12.0, 12.0), 1.2, 1.2)
 
     painter.end()
     return pixmap
 
 
-def _make_header_icon(icon: HeaderIcon, color: QColor) -> QIcon:
-    """Build normal and disabled pixmaps, including a Retina-sized variant."""
+def make_header_icon(icon: HeaderIcon, color: QColor) -> QIcon:
+    """Build a palette-colored icon with normal, disabled, and Retina pixmaps."""
     result = QIcon()
     disabled_color = QColor(color)
     disabled_color.setAlpha(165)
@@ -241,6 +251,12 @@ def _make_header_icon(icon: HeaderIcon, color: QColor) -> QIcon:
         result.addPixmap(_draw_header_icon(icon, color, size), QIcon.Mode.Normal)
         result.addPixmap(_draw_header_icon(icon, disabled_color, size), QIcon.Mode.Disabled)
     return result
+
+
+def application_button_text_color() -> QColor:
+    """Return the active application foreground used for theme-aware icons."""
+    app = QApplication.instance()
+    return app.palette().color(QPalette.ColorRole.ButtonText)
 
 
 class DetachableWidgetWrapper(QWidget):
@@ -399,7 +415,7 @@ class DetachableWidgetWrapper(QWidget):
         button.setAccessibleName(label)
         button.setToolTip(label)
         button.setProperty("headerIcon", icon.value)
-        button.setIcon(_make_header_icon(icon, button.palette().color(QPalette.ColorRole.ButtonText)))
+        button.setIcon(make_header_icon(icon, application_button_text_color()))
         button.setIconSize(QSize(22, 22))
         button.setFixedSize(QSize(34, 28))
         button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
@@ -418,15 +434,14 @@ class DetachableWidgetWrapper(QWidget):
         button.setAccessibleName(label)
         button.setToolTip(label)
         button.setProperty("headerIcon", icon.value)
-        button.setIcon(_make_header_icon(icon, button.palette().color(QPalette.ColorRole.ButtonText)))
+        button.setIcon(make_header_icon(icon, application_button_text_color()))
 
     def _refresh_header_icons(self) -> None:
         for button in self.header.findChildren(QToolButton):
             icon_name = button.property("headerIcon")
             if not icon_name:
                 continue
-            color = button.palette().color(QPalette.ColorRole.ButtonText)
-            button.setIcon(_make_header_icon(HeaderIcon(icon_name), color))
+            button.setIcon(make_header_icon(HeaderIcon(icon_name), application_button_text_color()))
 
     def init_ui(self):
         self.layout = QVBoxLayout(self)
