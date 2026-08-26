@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from PyQt6.QtWidgets import QWidget
 
-from src.core.event_detector import DetectorState, EventDetectionMode, EventPolarity
+from src.core.event_detector import DetectorState, EventDetectionMode, EventPolarity, EventProcessingMode
 from src.core.module_constants import ALL_MODULE_KEYS, MODULE_EVENT_DETECTOR, MODULE_RAW_TIME_SERIES
 from src.gui.main_window import MODULE_REGISTRY, _load_module_class
 from src.gui.styles import MONOSPACE_FONT_FAMILY
@@ -22,6 +22,7 @@ def make_module(
     input_sensitivity=1.0,
     input_calibrated=False,
     detection_mode=EventDetectionMode.THRESHOLD_EVENTS,
+    processing_mode=EventProcessingMode.STATISTICS_HISTORY,
 ):
     callbacks = []
     engine = MagicMock()
@@ -47,6 +48,8 @@ def make_module(
     module = EventDetector(engine)
     if detection_mode is not None:
         module.set_detection_mode(detection_mode)
+    if processing_mode is not None:
+        module.set_processing_mode(processing_mode)
     return module, callbacks
 
 
@@ -60,9 +63,10 @@ def test_event_detector_is_registered_after_raw_time_series():
 
 
 def test_module_defaults_to_practical_clip_event_detection():
-    module, callbacks = make_module(detection_mode=None)
+    module, callbacks = make_module(detection_mode=None, processing_mode=None)
 
     assert module.detection_mode == EventDetectionMode.CLIP_EVENTS
+    assert module.processing_mode == EventProcessingMode.HIGH_SPEED_COUNTER
     assert module.fs_to_dbfs(module.threshold) == pytest.approx(0.0)
     assert module.fs_to_dbfs(module.threshold - module.hysteresis) == pytest.approx(-1.0)
     assert module.polarity == EventPolarity.BOTH
@@ -82,6 +86,9 @@ def test_module_defaults_to_practical_clip_event_detection():
     assert metadata["clip_threshold_dbfs"] == pytest.approx(0.0)
     assert metadata["clip_rearm_dbfs"] == pytest.approx(-1.0)
     assert metadata["clipping_invalidates_measurement"] is False
+    assert metadata["processing_mode"] == "high_speed_counter"
+    assert metadata["event_records_enabled"] is False
+    assert module.get_events() == ()
 
 
 def test_widget_defaults_to_clip_mode_and_preserves_each_mode_profile(qtbot):
@@ -109,6 +116,40 @@ def test_widget_defaults_to_clip_mode_and_preserves_each_mode_profile(qtbot):
     assert widget.spin_threshold.value() == pytest.approx(0.0)
     widget.combo_mode.setCurrentIndex(widget.combo_mode.findData(EventDetectionMode.THRESHOLD_EVENTS))
     assert widget.spin_threshold.value() == pytest.approx(0.5)
+
+
+def test_widget_defaults_to_high_speed_counter_and_requires_opt_in_for_history(qtbot):
+    module, callbacks = make_module(detection_mode=None, processing_mode=None)
+    widget = EventDetectorWidget(module)
+    qtbot.addWidget(widget)
+
+    assert widget.combo_processing_mode.currentData() == EventProcessingMode.HIGH_SPEED_COUNTER
+    assert not widget.tabs.isTabVisible(widget.DISTRIBUTION_TAB_INDEX)
+    assert not widget.tabs.isTabVisible(widget.RATE_TAB_INDEX)
+    assert not widget.tabs.isTabVisible(widget.EVENTS_TAB_INDEX)
+    assert widget.lbl_last_event.isHidden()
+
+    widget.spin_holdoff.setValue(0.0)
+    widget.btn_start.click()
+    samples = np.resize(np.array([0.0, 1.0, 0.0]), 900)
+    callbacks[0](samples, np.zeros_like(samples), len(samples), None, False)
+    widget._update_results()
+
+    assert module.get_snapshot().event_count == 300
+    assert module.get_snapshot().retained_event_count == 0
+    assert module.get_events() == ()
+    assert widget.lbl_count.text() == "300"
+    assert not hasattr(widget, "analysis_timer")
+
+    widget.btn_start.click()
+    widget.combo_processing_mode.setCurrentIndex(
+        widget.combo_processing_mode.findData(EventProcessingMode.STATISTICS_HISTORY)
+    )
+    assert module.processing_mode == EventProcessingMode.STATISTICS_HISTORY
+    assert widget.tabs.isTabVisible(widget.DISTRIBUTION_TAB_INDEX)
+    assert widget.tabs.isTabVisible(widget.RATE_TAB_INDEX)
+    assert widget.tabs.isTabVisible(widget.EVENTS_TAB_INDEX)
+    assert not widget.lbl_last_event.isHidden()
 
 
 def test_clip_level_accepts_large_positive_dbfs_values(qtbot):
@@ -578,8 +619,10 @@ def test_voltage_threshold_is_normalized_to_fs_and_frozen_in_run_metadata(qtbot)
     widget._update_results()
     assert widget.lbl_conditions.text() == "CH1  •  ±1000 mV  •  1 kHz"
     assert widget.lbl_calibration_status.text() == "Input: Calibrated (2 Vpeak/FS)"
+    widget.tabs.setCurrentIndex(widget.DISTRIBUTION_TAB_INDEX)
     assert widget.lbl_distribution_unit.text() == "Unit: mV"
     assert widget.lbl_last_event.text().startswith("Last event: #1 • 1400 mV •")
+    widget.tabs.setCurrentIndex(widget.EVENTS_TAB_INDEX)
     assert widget.events_table.item(0, 4).text() == "1400 mV"
 
 
@@ -827,6 +870,47 @@ def test_widget_shows_invalid_rate_after_input_gap(qtbot):
     assert not widget.lbl_data_gap.isHidden()
 
 
+def test_high_speed_counter_keeps_received_count_visible_after_input_gap(qtbot):
+    module, callbacks = make_module(processing_mode=EventProcessingMode.HIGH_SPEED_COUNTER)
+    widget = EventDetectorWidget(module)
+    qtbot.addWidget(widget)
+    widget.spin_threshold.setValue(0.5)
+    widget.spin_hysteresis.setValue(0.1)
+    widget.spin_holdoff.setValue(0.0)
+    widget.btn_start.click()
+
+    callbacks[0](
+        np.array([[0.0, 0.0], [0.7, 0.0], [0.3, 0.0]]),
+        np.zeros((3, 2)),
+        3,
+        None,
+        True,
+    )
+    widget._update_results()
+
+    assert module.get_snapshot().event_count == 1
+    assert not module.get_snapshot().measurement_valid
+    assert widget.lbl_count.text() == "1"
+    assert widget.lbl_rate.text().endswith(" events/min")
+    assert not widget.lbl_data_gap.isHidden()
+
+
+def test_statistics_views_refresh_once_per_second_instead_of_every_status_tick(qtbot):
+    module, _callbacks = make_module()
+    widget = EventDetectorWidget(module)
+    qtbot.addWidget(widget)
+    widget.btn_start.click()
+    widget._analysis_refresh_ticks = 0
+    widget._refresh_analysis_views = MagicMock()
+
+    for _ in range(9):
+        widget._update_results()
+    widget._refresh_analysis_views.assert_not_called()
+
+    widget._update_results()
+    widget._refresh_analysis_views.assert_called_once_with()
+
+
 def test_widget_plots_rate_bins_as_time_spans_instead_of_center_points(qtbot):
     module, callbacks = make_module(sample_rate=1000)
     widget = EventDetectorWidget(module)
@@ -842,6 +926,7 @@ def test_widget_plots_rate_bins_as_time_spans_instead_of_center_points(qtbot):
         samples[start_sample, 0] = 0.7
         samples[start_sample + 1, 0] = 0.3
     callbacks[0](samples, np.zeros_like(samples), len(samples), None, False)
+    widget.tabs.setCurrentIndex(widget.RATE_TAB_INDEX)
     widget._refresh_analysis_views()
 
     x_data, y_data = widget.rate_curve.getData()

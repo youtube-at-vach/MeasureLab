@@ -26,6 +26,13 @@ class EventDetectionMode(StrEnum):
     THRESHOLD_EVENTS = "threshold_events"
 
 
+class EventProcessingMode(StrEnum):
+    """How much per-event detail is retained during a measurement."""
+
+    HIGH_SPEED_COUNTER = "high_speed_counter"
+    STATISTICS_HISTORY = "statistics_history"
+
+
 class DetectorState(StrEnum):
     """Externally visible detector states."""
 
@@ -56,6 +63,7 @@ class DetectorConfig:
     holdoff_seconds: float = 0.0
     clip_level: float = 1.0
     clipping_invalidates_measurement: bool = True
+    record_events: bool = True
 
     def __post_init__(self) -> None:
         try:
@@ -89,6 +97,8 @@ class DetectorConfig:
             raise ValueError("clip_level must be greater than zero")
         if not isinstance(self.clipping_invalidates_measurement, bool):
             raise ValueError("clipping_invalidates_measurement must be a boolean")
+        if not isinstance(self.record_events, bool):
+            raise ValueError("record_events must be a boolean")
         if self.clipping_invalidates_measurement and self.threshold >= self.clip_level:
             raise ValueError("threshold must be smaller than clip_level")
 
@@ -316,6 +326,10 @@ class EventDetectorCore:
             self._clipping_detected = True
 
     def _process_finite_block(self, data: np.ndarray) -> None:
+        if not self._config.record_events:
+            self._process_count_only_block(data)
+            return
+
         block_start = self._processed_samples
         pos = 0
         size = int(data.size)
@@ -375,6 +389,108 @@ class EventDetectorCore:
             pos = crossing_index + 1
 
         self._processed_samples += size
+
+    def _process_count_only_block(self, data: np.ndarray) -> None:
+        """Count state transitions without building per-event records.
+
+        Trigger and release candidates are calculated once for the complete
+        block.  The small state loop then advances between candidate indices
+        with ``searchsorted`` instead of repeatedly scanning block suffixes.
+        """
+        size = int(data.size)
+        trigger_indices = self._count_only_trigger_indices(data)
+        release_indices = self._count_only_release_indices(data)
+        pos = 0
+
+        while pos < size:
+            if self._state == DetectorState.WAITING_FOR_RELEASE:
+                previous = float(data[pos - 1]) if pos > 0 else self._previous_sample
+                if previous is not None and self._sample_is_released(previous):
+                    self._state = DetectorState.ARMED
+                    continue
+                release_index = self._next_candidate(release_indices, pos)
+                if release_index is None:
+                    pos = size
+                    continue
+                self._state = DetectorState.ARMED
+                pos = release_index + 1
+                continue
+
+            if self._state == DetectorState.HOLDOFF:
+                skipped = min(self._holdoff_remaining, size - pos)
+                pos += skipped
+                self._holdoff_remaining -= skipped
+                if self._holdoff_remaining == 0:
+                    self._state = DetectorState.WAITING_FOR_RELEASE
+                continue
+
+            if self._state == DetectorState.EVENT:
+                release_index = self._next_candidate(release_indices, pos)
+                if release_index is None:
+                    pos = size
+                    continue
+                self._finish_event(self._processed_samples + release_index, EventCompletion.VALID)
+                pos = release_index + 1
+                self._holdoff_remaining = self._config.holdoff_samples
+                self._state = DetectorState.HOLDOFF if self._holdoff_remaining > 0 else DetectorState.ARMED
+                continue
+
+            crossing_index = self._next_candidate(trigger_indices, pos)
+            if crossing_index is None:
+                pos = size
+                continue
+            if self._config.polarity == EventPolarity.POSITIVE:
+                polarity = EventPolarity.POSITIVE
+            elif self._config.polarity == EventPolarity.NEGATIVE:
+                polarity = EventPolarity.NEGATIVE
+            else:
+                polarity = EventPolarity.POSITIVE if float(data[crossing_index]) >= 0 else EventPolarity.NEGATIVE
+            self._start_count_only_event(self._processed_samples + crossing_index, polarity)
+            pos = crossing_index + 1
+
+        self._previous_sample = float(data[-1])
+        self._processed_samples += size
+
+    @staticmethod
+    def _next_candidate(indices: np.ndarray, pos: int) -> int | None:
+        candidate = int(np.searchsorted(indices, pos, side="left"))
+        if candidate >= int(indices.size):
+            return None
+        return int(indices[candidate])
+
+    def _count_only_trigger_indices(self, data: np.ndarray) -> np.ndarray:
+        threshold = float(self._config.threshold)
+        triggers = np.zeros(int(data.size), dtype=np.bool_)
+        previous = self._previous_sample
+        polarity = self._config.polarity
+
+        if polarity in (EventPolarity.POSITIVE, EventPolarity.BOTH):
+            if previous is not None:
+                triggers[0] = previous < threshold <= float(data[0])
+            if data.size > 1:
+                triggers[1:] |= (data[:-1] < threshold) & (data[1:] >= threshold)
+        if polarity in (EventPolarity.NEGATIVE, EventPolarity.BOTH):
+            if previous is not None:
+                triggers[0] |= previous > -threshold >= float(data[0])
+            if data.size > 1:
+                triggers[1:] |= (data[:-1] > -threshold) & (data[1:] <= -threshold)
+        return np.flatnonzero(triggers)
+
+    def _count_only_release_indices(self, data: np.ndarray) -> np.ndarray:
+        release_level = float(self._config.threshold - self._config.hysteresis)
+        if self._config.polarity == EventPolarity.POSITIVE:
+            released = data <= release_level
+        elif self._config.polarity == EventPolarity.NEGATIVE:
+            released = data >= -release_level
+        else:
+            released = np.abs(data) <= release_level
+        return np.flatnonzero(released)
+
+    def _start_count_only_event(self, start_sample: int, polarity: EventPolarity) -> None:
+        self._event_count += 1
+        self._state = DetectorState.EVENT
+        self._active_polarity = polarity
+        self._active_start_sample = start_sample
 
     def _find_first_crossing(self, data: np.ndarray, pos: int) -> tuple[int, EventPolarity] | None:
         threshold = float(self._config.threshold)
@@ -510,6 +626,15 @@ class EventDetectorCore:
 
     def _finish_event(self, end_sample: int, completion: EventCompletion) -> None:
         if self._active_start_sample is None or self._active_polarity is None:
+            return
+
+        if not self._config.record_events:
+            if completion == EventCompletion.VALID:
+                self._completed_event_count += 1
+            else:
+                self._censored_event_count += 1
+            self._active_polarity = None
+            self._active_start_sample = None
             return
 
         peak = self._active_peak

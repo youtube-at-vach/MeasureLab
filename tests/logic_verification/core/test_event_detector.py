@@ -45,6 +45,7 @@ def make_detector(
             {"sample_rate": 1000, "threshold": 0.5, "clipping_invalidates_measurement": 1},
             "boolean",
         ),
+        ({"sample_rate": 1000, "threshold": 0.5, "record_events": 1}, "boolean"),
     ],
 )
 def test_config_rejects_invalid_settings(kwargs, message):
@@ -327,3 +328,63 @@ def test_record_retention_limit_is_reported():
     assert snapshot.retained_event_count == 2
     assert snapshot.dropped_record_count == 1
     assert not snapshot.measurement_valid
+
+
+@pytest.mark.parametrize("polarity", list(EventPolarity))
+@pytest.mark.parametrize("holdoff_seconds", [0.0, 0.003])
+def test_count_only_mode_matches_recording_detector_across_blocks(polarity, holdoff_seconds):
+    signal = np.array(
+        [0.0, 0.6, 0.45, 0.3, -0.7, -0.45, -0.2, 0.8, -0.9, 0.0, 0.7, 0.3],
+        dtype=np.float32,
+    )
+    common = {
+        "sample_rate": 1000,
+        "threshold": 0.5,
+        "polarity": polarity,
+        "hysteresis": 0.1,
+        "holdoff_seconds": holdoff_seconds,
+        "clipping_invalidates_measurement": False,
+    }
+    recording = EventDetectorCore(DetectorConfig(**common, record_events=True))
+    count_only = EventDetectorCore(DetectorConfig(**common, record_events=False))
+    recording.start()
+    count_only.start()
+
+    for chunk in np.array_split(signal, [1, 4, 5, 8, 10]):
+        recording.process(chunk)
+        count_only.process(chunk)
+
+    recorded_snapshot = recording.snapshot()
+    count_snapshot = count_only.snapshot()
+    assert count_snapshot.state == recorded_snapshot.state
+    assert count_snapshot.event_count == recorded_snapshot.event_count
+    assert count_snapshot.processed_samples == recorded_snapshot.processed_samples
+    assert count_snapshot.completed_event_count == recorded_snapshot.completed_event_count
+    assert count_snapshot.censored_event_count == recorded_snapshot.censored_event_count
+    assert count_snapshot.retained_event_count == 0
+    assert count_snapshot.dropped_record_count == 0
+    assert count_snapshot.last_event is None
+    assert count_only.get_events() == ()
+
+
+def test_count_only_mode_censors_active_event_without_creating_a_record():
+    detector = EventDetectorCore(
+        DetectorConfig(
+            sample_rate=1000,
+            threshold=0.5,
+            polarity=EventPolarity.POSITIVE,
+            hysteresis=0.1,
+            record_events=False,
+        )
+    )
+    detector.start()
+    detector.process(np.array([0.0, 0.7]))
+
+    detector.mark_data_gap()
+
+    snapshot = detector.snapshot()
+    assert snapshot.event_count == 1
+    assert snapshot.completed_event_count == 0
+    assert snapshot.censored_event_count == 1
+    assert snapshot.retained_event_count == 0
+    assert detector.get_events() == ()
