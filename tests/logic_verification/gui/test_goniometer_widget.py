@@ -97,6 +97,16 @@ def test_plot_guides_axes_and_grid_defaults_and_toggles(widget):
     assert not left_axis.grid
 
 
+def test_measurement_actions_belong_to_control_panel(widget):
+    assert widget.measurement_group.isAncestorOf(widget.toggle_btn)
+    assert widget.measurement_group.isAncestorOf(widget.hold_btn)
+    assert widget.measurement_group.isAncestorOf(widget.clear_btn)
+    assert widget.controls_group.isAncestorOf(widget.measurement_group)
+    assert not widget.display_widget.isAncestorOf(widget.toggle_btn)
+    assert not widget.display_widget.isAncestorOf(widget.hold_btn)
+    assert not widget.display_widget.isAncestorOf(widget.clear_btn)
+
+
 def test_ms_mapping_is_bounded_and_inversion_is_exact(widget):
     left = np.array([-1.0, -1.0, 1.0, 1.0])
     right = np.array([-1.0, 1.0, -1.0, 1.0])

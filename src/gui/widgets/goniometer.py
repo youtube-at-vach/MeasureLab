@@ -590,26 +590,12 @@ class GoniometerWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInte
         display_layout.setContentsMargins(0, 0, 0, 0)
 
         self.status_container = QWidget(self.display_widget)
-        status_row = QHBoxLayout(self.status_container)
-        status_row.setContentsMargins(0, 0, 0, 0)
+        status_layout = QHBoxLayout(self.status_container)
+        status_layout.setContentsMargins(0, 0, 0, 0)
         self.status_label = QLabel(tr("Idle"))
         self.status_label.setWordWrap(True)
         self.status_label.setAccessibleName(tr("Status"))
-        status_row.addWidget(self.status_label, stretch=1)
-
-        self.toggle_btn = QPushButton(tr("Start"))
-        self.toggle_btn.setCheckable(True)
-        self.toggle_btn.clicked.connect(self.on_toggle)
-        status_row.addWidget(self.toggle_btn)
-
-        self.hold_btn = QPushButton(tr("Hold Display"))
-        self.hold_btn.setCheckable(True)
-        self.hold_btn.toggled.connect(self.on_hold_changed)
-        status_row.addWidget(self.hold_btn)
-
-        self.clear_btn = QPushButton(tr("Clear"))
-        self.clear_btn.clicked.connect(self.on_clear)
-        status_row.addWidget(self.clear_btn)
+        status_layout.addWidget(self.status_label)
         display_layout.addWidget(self.status_container)
 
         self.plot_widget = pg.PlotWidget()
@@ -671,6 +657,25 @@ class GoniometerWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInte
     def _create_basic_tab(self) -> QWidget:
         tab = QWidget()
         layout = QVBoxLayout(tab)
+
+        self.measurement_group = QGroupBox(tr("Measurement"), tab)
+        measurement_layout = QVBoxLayout(self.measurement_group)
+
+        self.toggle_btn = QPushButton(tr("Start"), self.measurement_group)
+        self.toggle_btn.setCheckable(True)
+        self.toggle_btn.clicked.connect(self.on_toggle)
+        measurement_layout.addWidget(self.toggle_btn)
+
+        self.hold_btn = QPushButton(tr("Hold Display"), self.measurement_group)
+        self.hold_btn.setCheckable(True)
+        self.hold_btn.toggled.connect(self.on_hold_changed)
+        measurement_layout.addWidget(self.hold_btn)
+
+        self.clear_btn = QPushButton(tr("Clear"), self.measurement_group)
+        self.clear_btn.clicked.connect(self.on_clear)
+        measurement_layout.addWidget(self.clear_btn)
+
+        layout.addWidget(self.measurement_group)
 
         layout.addWidget(QLabel(tr("Mapping:")))
         self.mapping_combo = QComboBox()
