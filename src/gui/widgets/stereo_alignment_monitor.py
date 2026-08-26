@@ -23,6 +23,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
+from src.gui.widgets.instrument_plot import InstrumentPlotWidget
 
 
 class StereoAlignmentMonitor(MeasurementModule):
@@ -276,7 +277,7 @@ class StereoAlignmentMonitorWidget(QWidget, CompactableWidgetInterface):
         viz_layout = QVBoxLayout()
 
         # 1. FFT Difference Plot
-        self.fft_plot = pg.PlotWidget(title=tr("L/R Difference FFT (Tone Color Shift)"))
+        self.fft_plot = InstrumentPlotWidget(title=tr("L/R Difference FFT (Tone Color Shift)"))
         self.fft_plot.setLogMode(x=True, y=False)
         self.fft_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.fft_plot.setLabel("left", tr("Magnitude"), units="dBFS")
@@ -294,7 +295,7 @@ class StereoAlignmentMonitorWidget(QWidget, CompactableWidgetInterface):
         viz_layout.addWidget(self.fft_plot, stretch=2)
 
         # 2. Band-specific Correlation Plot
-        self.corr_plot = pg.PlotWidget(title=tr("Band-specific Phase Correlation"))
+        self.corr_plot = InstrumentPlotWidget(title=tr("Band-specific Phase Correlation"))
         self.corr_plot.setLogMode(x=True, y=False)
         self.corr_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.corr_plot.setLabel("left", tr("Correlation"))

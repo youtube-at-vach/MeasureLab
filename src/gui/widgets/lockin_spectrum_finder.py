@@ -39,6 +39,7 @@ from src.measurement_modules.base import MeasurementModule
 from src.gui.styles import MONOSPACE_FONT_FAMILY
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
+from src.gui.widgets.instrument_plot import InstrumentPlotWidget
 
 logger = logging.getLogger(__name__)
 
@@ -1395,7 +1396,7 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
         # RIGHT: Plot
         self.display_widget = QWidget()
         right_panel = QVBoxLayout(self.display_widget)
-        self.plot = pg.PlotWidget(title=tr("Lock-in Spectrum"))
+        self.plot = InstrumentPlotWidget(title=tr("Lock-in Spectrum"))
         self.plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.plot.setLabel("left", tr("Amplitude"), units=self.module.display_unit)
         self.plot.showGrid(x=True, y=True)

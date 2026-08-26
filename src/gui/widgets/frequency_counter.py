@@ -29,6 +29,7 @@ from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.gui.styles import MONOSPACE_FONT_FAMILY
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
+from src.gui.widgets.instrument_plot import InstrumentPlotWidget
 
 
 logger = logging.getLogger(__name__)
@@ -604,7 +605,7 @@ class FrequencyCounterWidget(QWidget, CompactableWidgetInterface):
         self.tab_widget.addTab(self.plot_widget, tr("Frequency Drift"))
 
         # Tab 2: Allan Deviation
-        self.allan_plot = pg.PlotWidget(title=tr("Allan Deviation"))
+        self.allan_plot = InstrumentPlotWidget(title=tr("Allan Deviation"))
         self.allan_plot.setLabel("left", tr("Sigma_y(tau)"))
         self.allan_plot.setLabel("bottom", tr("Tau"), units="s")
         self.allan_plot.showGrid(x=True, y=True)

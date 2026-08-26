@@ -41,6 +41,7 @@ from src.core.utils import amplitude_to_linear, linear_to_amplitude
 from src.measurement_modules.base import MeasurementModule
 from typing import List
 from src.gui.widgets.comparable_interface import ComparableWidgetInterface
+from src.gui.widgets.instrument_plot import InstrumentPlotWidget, logarithmic_ticks_125
 from src.core.comparison_manager import ComparisonTrace, AxisMetadata, CalibrationInfo
 
 logger = logging.getLogger(__name__)
@@ -1156,7 +1157,7 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
     def _create_bode_tab(self) -> QWidget:
         bode_tab = QWidget()
         plot_layout = QVBoxLayout(bode_tab)
-        self.mag_plot = pg.PlotWidget(title=tr("Magnitude Response"))
+        self.mag_plot = InstrumentPlotWidget(title=tr("Magnitude Response"))
         self.mag_plot.setLabel("left", tr("Magnitude"), units="dB")
         self.mag_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.mag_plot.setLogMode(x=True, y=False)
@@ -1185,7 +1186,7 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         plot_layout.addWidget(self.mag_plot)
 
-        self.phase_plot = pg.PlotWidget(title=tr("Phase Response"))
+        self.phase_plot = InstrumentPlotWidget(title=tr("Phase Response"))
         self.phase_plot.setLabel("left", tr("Phase"), units="deg")
         self.phase_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.phase_plot.setLogMode(x=True, y=False)
@@ -1250,7 +1251,7 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
     def _create_harmonics_tab(self) -> QWidget:
         harmonics_tab = QWidget()
         harmonics_layout = QVBoxLayout(harmonics_tab)
-        self.harmonics_plot = pg.PlotWidget(title=tr("Harmonic Distortion"))
+        self.harmonics_plot = InstrumentPlotWidget(title=tr("Harmonic Distortion"))
         self.harmonics_plot.setLabel("left", tr("Level"), units="dB")
         self.harmonics_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.harmonics_plot.setLogMode(x=True, y=False)
@@ -2157,9 +2158,7 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         if checked:
             self.harmonics_plot.setLogMode(x=True, y=True)
             self.harmonics_plot.setYRange(np.log10(0.0001), np.log10(100))
-            percent_ticks = [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
-            ticks_log = [(np.log10(t), f"{t:g}%") for t in percent_ticks]
-            y_axis.setTicks([ticks_log])
+            y_axis.setTicks([logarithmic_ticks_125(0.0001, 100, suffix="%")])
         else:
             self.harmonics_plot.setLogMode(x=True, y=False)
             y_axis.setTicks(None)

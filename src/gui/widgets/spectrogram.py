@@ -25,6 +25,7 @@ from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 from src.core.fft_manager import fft_manager, WARMUP_SIZES
 from src.gui.styles import STYLE_TOGGLE_BTN_DARK, STYLE_TOGGLE_BTN_LIGHT
+from src.gui.widgets.instrument_plot import InstrumentAxisItem
 
 ORIENTATION_TIME_X = "time_x"
 ORIENTATION_FREQUENCY_X = "frequency_x"
@@ -436,7 +437,10 @@ class SpectrogramWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInt
         self.win = pg.GraphicsLayoutWidget()
 
         # Plot Item
-        self.plot = self.win.addPlot(title=tr("Spectrogram"))
+        self.plot = self.win.addPlot(
+            title=tr("Spectrogram"),
+            axisItems={orientation: InstrumentAxisItem(orientation) for orientation in ("left", "bottom")},
+        )
         self.plot.setLabel("left", tr("Frequency"), units="Hz")
         self.plot.setLabel("bottom", tr("Time"), units="frames")
         self.plot.setLogMode(False, True)  # Default: Log Y-axis

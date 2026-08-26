@@ -25,6 +25,7 @@ from scipy.signal import savgol_filter
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.core.hammerstein_model import load_hammerstein_model, get_active_model, has_active_model
+from src.gui.widgets.instrument_plot import InstrumentAxisItem, InstrumentPlotWidget
 
 logger = logging.getLogger(__name__)
 
@@ -328,7 +329,7 @@ class ResponseViewerWidget(QWidget):
         bode_layout = QVBoxLayout(self.tab_bode)
         bode_layout.setContentsMargins(2, 2, 2, 2)
 
-        self.mag_plot = pg.PlotWidget(title=tr("Bode Magnitude Response (PHM Separation)"))
+        self.mag_plot = InstrumentPlotWidget(title=tr("Bode Magnitude Response (PHM Separation)"))
         self.mag_plot.setLabel("left", tr("Gain"), units="dB")
         self.mag_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.mag_plot.setLogMode(True, False)
@@ -336,7 +337,7 @@ class ResponseViewerWidget(QWidget):
         self.mag_plot.addLegend(offset=(10, 10))
         bode_layout.addWidget(self.mag_plot)
 
-        self.phase_plot = pg.PlotWidget(title=tr("Bode Phase Response (PHM Separation)"))
+        self.phase_plot = InstrumentPlotWidget(title=tr("Bode Phase Response (PHM Separation)"))
         self.phase_plot.setLabel("left", tr("Phase"), units="deg")
         self.phase_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.phase_plot.setLogMode(True, False)
@@ -364,7 +365,10 @@ class ResponseViewerWidget(QWidget):
         map_layout.setContentsMargins(2, 2, 2, 2)
 
         self.map_graphics_widget = pg.GraphicsLayoutWidget()
-        self.map_plot_item = self.map_graphics_widget.addPlot(title=tr("Nonlinear Distortion Map"))
+        self.map_plot_item = self.map_graphics_widget.addPlot(
+            title=tr("Nonlinear Distortion Map"),
+            axisItems={orientation: InstrumentAxisItem(orientation) for orientation in ("left", "bottom")},
+        )
         self.map_plot_item.setLabel("left", tr("Input Amplitude"), units="dBFS")
         self.map_plot_item.setLabel("bottom", tr("Frequency"), units="Hz")
         self.map_plot_item.setLogMode(True, False)
@@ -414,7 +418,7 @@ class ResponseViewerWidget(QWidget):
         curves_layout.setSpacing(5)
 
         # Left plot: Distortion vs Frequency (at fixed amplitude ref_amp)
-        self.curve_freq_plot = pg.PlotWidget(title=tr("Distortion vs Frequency (at Reference Amplitude)"))
+        self.curve_freq_plot = InstrumentPlotWidget(title=tr("Distortion vs Frequency (at Reference Amplitude)"))
         self.curve_freq_plot.setLabel("left", tr("Level"), units="dB")
         self.curve_freq_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.curve_freq_plot.setLogMode(True, False)
@@ -512,7 +516,7 @@ class ResponseViewerWidget(QWidget):
         sim_layout.addWidget(sim_left_panel)
 
         # Simulator plot (right side of simulator tab)
-        self.sim_plot = pg.PlotWidget(title=tr("Output Prediction Spectrum"))
+        self.sim_plot = InstrumentPlotWidget(title=tr("Output Prediction Spectrum"))
         self.sim_plot.setLabel("left", tr("Amplitude"), units="dBFS")
         self.sim_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.sim_plot.setLogMode(True, False)
@@ -632,7 +636,7 @@ class ResponseViewerWidget(QWidget):
         bode_col_layout.setContentsMargins(0, 0, 0, 0)
         bode_col_layout.setSpacing(5)
 
-        self.wie_mag_plot = pg.PlotWidget(title=tr("Wiener Kernel Magnitude Response"))
+        self.wie_mag_plot = InstrumentPlotWidget(title=tr("Wiener Kernel Magnitude Response"))
         self.wie_mag_plot.setLabel("left", tr("Gain"), units="dB")
         self.wie_mag_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.wie_mag_plot.setLogMode(True, False)
@@ -640,7 +644,7 @@ class ResponseViewerWidget(QWidget):
         self.wie_mag_plot.addLegend(offset=(10, 10))
         bode_col_layout.addWidget(self.wie_mag_plot)
 
-        self.wie_phase_plot = pg.PlotWidget(title=tr("Wiener Kernel Phase Response"))
+        self.wie_phase_plot = InstrumentPlotWidget(title=tr("Wiener Kernel Phase Response"))
         self.wie_phase_plot.setLabel("left", tr("Phase"), units="deg")
         self.wie_phase_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.wie_phase_plot.setLogMode(True, False)

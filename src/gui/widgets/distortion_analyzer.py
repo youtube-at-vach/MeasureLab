@@ -32,6 +32,7 @@ from src.measurement_modules.base import MeasurementModule
 from src.core.fft_manager import fft_manager
 from src.core.utils import amplitude_to_linear, linear_to_amplitude
 from src.gui.widgets.comparable_interface import ComparableWidgetInterface
+from src.gui.widgets.instrument_plot import logarithmic_ticks_125
 from src.core.comparison_manager import ComparisonTrace, AxisMetadata, CalibrationInfo
 
 
@@ -1091,9 +1092,7 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
             self.sweep_plot.setYRange(np.log10(0.0001), np.log10(100))
 
             # Setup log ticks for Percent
-            percent_ticks = [100, 10, 1, 0.1, 0.01, 0.001, 0.0001]
-            ticks_log = [(np.log10(t), f"{t:g}%") for t in percent_ticks]
-            y_axis.setTicks([ticks_log])
+            y_axis.setTicks([logarithmic_ticks_125(0.0001, 100, suffix="%")])
         else:
             self.sweep_plot.setLabel("left", tr("THD+N"), units="dB")
             x_log = self._is_sweep_x_log()

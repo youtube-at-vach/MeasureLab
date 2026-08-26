@@ -23,6 +23,7 @@ from scipy.signal import freqz, fftconvolve, chirp as signal_chirp
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+from src.gui.widgets.instrument_plot import InstrumentPlotWidget
 from src.core.nonlinear_response_analyzer_core import (
     generate_schroeder_multisine,
     generate_gaussian_noise,
@@ -580,13 +581,13 @@ class NonlinearResponseAnalyzerWidget(QWidget):
         lti_layout = QVBoxLayout(self.lti_tab)
         lti_layout.setContentsMargins(2, 2, 2, 2)
 
-        self.lti_mag_plot = pg.PlotWidget(title=tr("LTI Block Magnitude Response"))
+        self.lti_mag_plot = InstrumentPlotWidget(title=tr("LTI Block Magnitude Response"))
         self.lti_mag_plot.setLabel("left", tr("Magnitude"), units="dB")
         self.lti_mag_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.lti_mag_plot.setLogMode(x=True, y=False)
         self.lti_mag_plot.showGrid(x=True, y=True)
 
-        self.lti_phase_plot = pg.PlotWidget(title=tr("LTI Block Phase Response"))
+        self.lti_phase_plot = InstrumentPlotWidget(title=tr("LTI Block Phase Response"))
         self.lti_phase_plot.setLabel("left", tr("Phase"), units="degrees")
         self.lti_phase_plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.lti_phase_plot.setLogMode(x=True, y=False)
