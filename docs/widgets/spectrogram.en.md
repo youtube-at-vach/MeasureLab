@@ -17,12 +17,12 @@ This widget supports common features of the Detachable Wrapper. Please refer to 
 ### Starting and Stopping Measurements
 
 - **Start / Stop Button**: Toggles the measurement on and off.
-    - When started, new data appears from the right edge of the graph, and old data flows to the left (waterfall display).
+    - When started, new data appears at the origin (top or right edge, depending on the orientation), and old data flows outward (waterfall display).
 
 ### Understanding the Graph
 
-- **Horizontal Axis (Time)**: Represents the passage of time. The current time is at the right edge, and going left represents past sounds.
-- **Vertical Axis (Frequency)**: Represents frequency (pitch). Higher up means higher frequency.
+- **Time Axis**: Represents the passage of time. Depending on the orientation, the current time is either at the right edge (flowing left) or at the top edge (flowing down).
+- **Frequency Axis**: Represents frequency (pitch). Higher values indicate higher pitch.
 - **Color**: Represents the "strength" of the sound at that moment and frequency.
     - **Bright colors (yellow, red, etc.)**: Strong sounds
     - **Dark colors (blue, purple, black, etc.)**: Weak sounds or silence
@@ -55,11 +55,15 @@ This vertical bar on the right side of the graph is a **"correspondence table be
     - `hann` (standard) or `blackman` are suitable for noise analysis.
 
 - **Scale**
-    - Switches the display scale of the vertical axis (frequency).
+    - Switches the display scale of the frequency axis.
     - **Linear**: Evenly spaced markings like a ruler. Suitable for observing high-frequency harmonics in detail.
     - **Log**: Logarithmic scale. Like a piano keyboard, the lower frequency range is displayed wider. Ideal when you want to see musical pitches.
     - **Mel**: Mel scale. A slightly magical scale where intervals that the human ear perceives as "twice as high" are evenly spaced. Often used for voice analysis.
 
+- **Direction**
+    - Selects the display orientation (waterfall direction) of the spectrogram.
+    - **X: Time**: Time flows along the horizontal axis, and frequency is on the vertical axis.
+    - **X: Frequency**: Frequency is on the horizontal axis, and time flows downwards along the vertical axis.
 - **Colormap**
     - Changes the color scheme of the graph.
     - **viridis / plasma / inferno / magma / cividis**: Scientifically common color schemes where changes in brightness are uniform and easy to see.
@@ -71,7 +75,7 @@ This vertical bar on the right side of the graph is a **"correspondence table be
     - **Medium / Slow / Meteor**: Flows slowly. Used for monitoring environmental sounds or observing changes over a long period (displaying several to 10 minutes of history on one screen). These slow modes use a "Max Hold" mechanism to capture transient peaks within the time interval.
 
 - **Min Freq / Max Freq**
-    - Narrows down the display range of the vertical axis (frequency).
+    - Narrows down the display range of the frequency axis.
     - For example, if you want to see low frequencies in detail, set Max Freq to `1000 Hz`.
 
 ## Usage Examples
@@ -92,8 +96,8 @@ Identify annoying sound components such as "whine" (high-frequency noise) or "hu
 1. Set **FFT Size** to a large value (`4096` to `8192`).
 2. Set **Speed** to about `Medium`.
 3. Observe the screen while the noise is occurring.
-4. **A line extending horizontally**: Constant noise such as a fan, motor, or power hum. You can identify the frequency by looking at the vertical axis.
-5. **A line running vertically**: Impact sounds or click noise.
+4. **A continuous straight line along the time axis**: Constant noise such as a fan, motor, or power hum. You can identify the frequency by looking at the frequency axis.
+5. **A line running across the frequency axis**: Impact sounds or click noise.
 6. **Hazy fog**: Wind noise from air conditioning (white noise), etc.
 
 ### Checking High-Res Audio Sources (High-Res Audio Check)
