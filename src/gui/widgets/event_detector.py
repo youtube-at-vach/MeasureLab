@@ -44,6 +44,7 @@ from src.core.event_detector import (
     EventDetectorCore,
     EventCompletion,
     EventPolarity,
+    EventProcessingMode,
     EventRecord,
 )
 from src.core.event_statistics import (
@@ -79,6 +80,7 @@ class EventDetector(MeasurementModule):
 
         self.input_channel = 0
         self.detection_mode = EventDetectionMode.CLIP_EVENTS
+        self.processing_mode = EventProcessingMode.HIGH_SPEED_COUNTER
         clip_threshold = self.dbfs_to_fs(self.DEFAULT_CLIP_THRESHOLD_DBFS)
         clip_release = self.dbfs_to_fs(self.DEFAULT_CLIP_RELEASE_DBFS)
         self.threshold = clip_threshold
@@ -132,6 +134,7 @@ class EventDetector(MeasurementModule):
             hysteresis=float(self.hysteresis),
             holdoff_seconds=float(self.holdoff_ms) / 1000.0,
             clipping_invalidates_measurement=self.detection_mode == EventDetectionMode.THRESHOLD_EVENTS,
+            record_events=self.processing_mode == EventProcessingMode.STATISTICS_HISTORY,
         )
 
     @staticmethod
@@ -210,6 +213,15 @@ class EventDetector(MeasurementModule):
         self.polarity = EventPolarity(settings["polarity"])
         self.hysteresis = float(settings["hysteresis"])
         self.holdoff_ms = float(settings["holdoff_ms"])
+
+    def set_processing_mode(self, mode: EventProcessingMode) -> None:
+        """Select counter-only or retained-event processing for the next run."""
+        new_mode = EventProcessingMode(mode)
+        if new_mode == self.processing_mode:
+            return
+        if self.is_running:
+            raise RuntimeError("processing mode cannot be changed while measurement is running")
+        self.processing_mode = new_mode
 
     def set_target_duration(self, duration: float | None) -> None:
         """Set the duration for the next run, or ``None`` for continuous measurement."""
@@ -448,6 +460,8 @@ class EventDetector(MeasurementModule):
             "audio_engine_64bit_requested": bool(getattr(self.audio_engine, "audio_engine_64bit", False)),
             "audio_stream_dtype": self._metadata_scalar(getattr(self.audio_engine, "active_dtype", None)),
             "detection_mode": self.detection_mode.value,
+            "processing_mode": self.processing_mode.value,
+            "event_records_enabled": config.record_events,
             "threshold_fs_peak": float(config.threshold),
             "hysteresis_fs_peak": float(config.hysteresis),
             "release_level_fs_peak": float(config.threshold - config.hysteresis),
@@ -704,12 +718,17 @@ class EventDetector(MeasurementModule):
 
 
 class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInterface):
-    """Statistics-first UI without duplicating the Raw Time Series display."""
+    """Counter-first UI with opt-in event statistics and history views."""
 
     RATE_VIEW_BLOCK_BINS = 10
     AMPLITUDE_DISPLAY_DECIMALS = 3
     EVENT_INDICATOR_ON_MS = 250
     EVENT_DELTA_VISIBLE_MS = 600
+    ANALYSIS_REFRESH_INTERVAL_MS = 1000
+    SUMMARY_TAB_INDEX = 0
+    DISTRIBUTION_TAB_INDEX = 1
+    RATE_TAB_INDEX = 2
+    EVENTS_TAB_INDEX = 3
 
     def __init__(self, module: EventDetector):
         QWidget.__init__(self)
@@ -731,7 +750,12 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self.event_delta_timer.setSingleShot(True)
         self.event_delta_timer.setInterval(self.EVENT_DELTA_VISIBLE_MS)
         self.event_delta_timer.timeout.connect(self._clear_event_delta)
+        self._analysis_refresh_ticks = 0
+        self.tabs.currentChanged.connect(self._on_analysis_tab_changed)
+        self._refresh_processing_mode_controls()
         self._update_results()
+        if self.module.processing_mode == EventProcessingMode.STATISTICS_HISTORY:
+            self._refresh_analysis_views(force=True)
 
     def get_display_widget(self) -> QWidget:
         return self.display_widget
@@ -963,7 +987,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self.events_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.events_table.verticalHeader().setVisible(False)
         header = self.events_table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         header.setStretchLastSection(True)
         events_layout.addWidget(self.events_table, stretch=1)
         export_row = QHBoxLayout()
@@ -1021,6 +1045,15 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self.btn_reset = QPushButton(tr("Reset"))
         self.btn_reset.clicked.connect(self._on_reset)
         measurement_layout.addWidget(self.btn_reset)
+
+        self.combo_processing_mode = QComboBox()
+        self.combo_processing_mode.addItem(tr("High-speed Counter"), EventProcessingMode.HIGH_SPEED_COUNTER)
+        self.combo_processing_mode.addItem(tr("Statistics & History"), EventProcessingMode.STATISTICS_HISTORY)
+        processing_mode_index = self.combo_processing_mode.findData(self.module.processing_mode)
+        self.combo_processing_mode.setCurrentIndex(max(0, processing_mode_index))
+        self.combo_processing_mode.currentIndexChanged.connect(self._on_processing_mode_changed)
+        measurement_layout.addWidget(QLabel(tr("Measurement Mode")))
+        measurement_layout.addWidget(self.combo_processing_mode)
 
         self.combo_duration = QComboBox()
         self.combo_duration.addItem(tr("Continuous"), None)
@@ -1112,6 +1145,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
 
         root.addWidget(self.control_widget)
         self._settings_controls = [
+            self.combo_processing_mode,
             self.combo_mode,
             self.combo_channel,
             self.spin_threshold,
@@ -1121,7 +1155,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             self.spin_holdoff,
             self.combo_duration,
         ]
-        self._last_analysis_key: tuple[int, int, int, int] | None = None
+        self._last_analysis_key: tuple[object, ...] | None = None
         self._rate_view_run_id: str | None = None
         self._rate_view_bin_seconds: float | None = None
         self._rate_view_y_max = 1.0
@@ -1253,6 +1287,33 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self._refresh_mode_controls()
         self._update_results()
 
+    def _on_processing_mode_changed(self) -> None:
+        mode = EventProcessingMode(self.combo_processing_mode.currentData())
+        self.module.set_processing_mode(mode)
+        self.module.reset_measurement()
+        self._reset_event_activity(0)
+        self._last_analysis_key = None
+        self._refresh_processing_mode_controls()
+        self._update_results()
+        if mode == EventProcessingMode.STATISTICS_HISTORY:
+            self._refresh_analysis_views(force=True)
+
+    def _refresh_processing_mode_controls(self) -> None:
+        statistics_enabled = self.module.processing_mode == EventProcessingMode.STATISTICS_HISTORY
+        if not statistics_enabled:
+            self.tabs.setCurrentIndex(self.SUMMARY_TAB_INDEX)
+        for index in (self.DISTRIBUTION_TAB_INDEX, self.RATE_TAB_INDEX, self.EVENTS_TAB_INDEX):
+            self.tabs.setTabVisible(index, statistics_enabled)
+        self.lbl_last_event.setVisible(statistics_enabled)
+        if not statistics_enabled:
+            self.lbl_record_limit.hide()
+        self._analysis_refresh_ticks = 0
+
+    def _on_analysis_tab_changed(self, _index: int) -> None:
+        self._last_analysis_key = None
+        if self.module.processing_mode == EventProcessingMode.STATISTICS_HISTORY:
+            self._refresh_analysis_views(force=True)
+
     def _refresh_mode_controls(self) -> None:
         is_clip_mode = self.module.detection_mode == EventDetectionMode.CLIP_EVENTS
         self.lbl_threshold_field.setText(tr("Clip level:") if is_clip_mode else tr("Threshold:"))
@@ -1304,13 +1365,18 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             self.btn_start.setText(tr("Stop"))
             self._set_settings_enabled(False)
             self._last_analysis_key = None
+            self._analysis_refresh_ticks = 0
             self.timer.start()
+            if self.module.processing_mode == EventProcessingMode.STATISTICS_HISTORY:
+                self._refresh_analysis_views(force=True)
         else:
             self.module.stop_analysis()
             self._reset_event_activity(self.module.get_snapshot().event_count)
             self.btn_start.setText(tr("Start"))
             self._set_settings_enabled(True)
             self.timer.stop()
+            if self.module.processing_mode == EventProcessingMode.STATISTICS_HISTORY:
+                self._refresh_analysis_views(force=True)
         self._update_results()
 
     def _on_reset(self) -> None:
@@ -1318,6 +1384,8 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self._reset_event_activity(0)
         self._last_analysis_key = None
         self._update_results()
+        if self.module.processing_mode == EventProcessingMode.STATISTICS_HISTORY:
+            self._refresh_analysis_views(force=True)
 
     def _on_duration_changed(self) -> None:
         duration = self.combo_duration.currentData()
@@ -1504,22 +1572,58 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         for key, text in values.items():
             self.distribution_stat_labels[key].setText(text)
 
-    def _refresh_analysis_views(self, *_args) -> None:
-        if _args:
-            self._last_analysis_key = None
+    def _refresh_analysis_views(self, *_args, force: bool = False) -> None:
+        if self.module.processing_mode != EventProcessingMode.STATISTICS_HISTORY:
+            return
+        force = force or bool(_args)
         snapshot = self.module.get_snapshot()
-        key = (
-            snapshot.retained_event_count,
-            snapshot.dropped_record_count,
-            snapshot.data_gap_count,
-            int(snapshot.elapsed_seconds),
-        )
-        if key == self._last_analysis_key:
+        tab_index = self.tabs.currentIndex()
+        if tab_index == self.SUMMARY_TAB_INDEX:
+            self._last_analysis_key = (tab_index, snapshot.event_count)
+            return
+
+        if tab_index == self.DISTRIBUTION_TAB_INDEX:
+            view_setting: object = EventMetric(self.combo_distribution_metric.currentData())
+            key = (tab_index, snapshot.retained_event_count, snapshot.dropped_record_count, view_setting)
+        elif tab_index == self.RATE_TAB_INDEX:
+            view_setting = float(self.combo_rate_bin.currentData())
+            key = (
+                tab_index,
+                snapshot.retained_event_count,
+                snapshot.dropped_record_count,
+                snapshot.data_gap_count,
+                int(snapshot.elapsed_seconds),
+                view_setting,
+            )
+        else:
+            view_setting = None
+            last_sequence = snapshot.last_event.sequence_number if snapshot.last_event is not None else 0
+            key = (
+                tab_index,
+                snapshot.retained_event_count,
+                snapshot.dropped_record_count,
+                last_sequence,
+            )
+        if not force and key == self._last_analysis_key:
             return
         self._last_analysis_key = key
 
         events = self.module.get_events()
         amplitude_scale, amplitude_unit = self.module.get_amplitude_display()
+
+        if tab_index == self.DISTRIBUTION_TAB_INDEX:
+            self._refresh_distribution_view(events, amplitude_scale, amplitude_unit)
+        elif tab_index == self.RATE_TAB_INDEX:
+            self._refresh_rate_view(events, snapshot)
+        elif tab_index == self.EVENTS_TAB_INDEX:
+            self._refresh_event_table(events, amplitude_scale, amplitude_unit)
+
+    def _refresh_distribution_view(
+        self,
+        events: tuple[EventRecord, ...],
+        amplitude_scale: float,
+        amplitude_unit: str,
+    ) -> None:
         statistics = summarize_events(events, amplitude_scale=amplitude_scale)
         metric = EventMetric(self.combo_distribution_metric.currentData())
         metric_summary = {
@@ -1554,6 +1658,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         else:
             self.plot_distribution.setLabel("bottom", tr("Quiet Time"), units="s")
 
+    def _refresh_rate_view(self, events: tuple[EventRecord, ...], snapshot: DetectorSnapshot) -> None:
         bin_seconds = float(self.combo_rate_bin.currentData())
         metadata = self.module.get_run_metadata()
         run_id = str(metadata["run_id"]) if metadata is not None else None
@@ -1597,32 +1702,43 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self.plot_rate_trend.setXRange(0.0, x_block_count * x_block_seconds, padding=0.0)
         self.plot_rate_trend.setYRange(0.0, self._rate_view_y_max, padding=0.0)
 
+    def _refresh_event_table(
+        self,
+        events: tuple[EventRecord, ...],
+        amplitude_scale: float,
+        amplitude_unit: str,
+    ) -> None:
         visible_events = events[-500:]
-        self.events_table.setRowCount(len(visible_events))
-        for row_index, event in enumerate(visible_events):
-            peak_value = event.peak * amplitude_scale
-            interval_text = "—" if event.interval_seconds is None else f"{event.interval_seconds:.6g}"
-            polarity_text = tr("Positive") if event.peak >= 0 else tr("Negative")
-            completion_text = {
-                EventCompletion.VALID: tr("Valid"),
-                EventCompletion.CENSORED_STOP: tr("Censored at stop"),
-                EventCompletion.CENSORED_GAP: tr("Censored by data gap"),
-                EventCompletion.CENSORED_CONFIG_CHANGE: tr("Censored by configuration change"),
-            }[event.completion]
-            values = (
-                str(event.sequence_number),
-                f"{event.start_sample / self.module.get_run_sample_rate():.6f}",
-                f"{event.duration_seconds * 1000.0:.6g}",
-                polarity_text,
-                f"{peak_value:.6g} {amplitude_unit}",
-                interval_text,
-                completion_text,
-            )
-            for column, value in enumerate(values):
-                item = QTableWidgetItem(value)
-                if column != 6:
-                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                self.events_table.setItem(row_index, column, item)
+        self.events_table.setUpdatesEnabled(False)
+        try:
+            self.events_table.setRowCount(len(visible_events))
+            for row_index, event in enumerate(visible_events):
+                peak_value = event.peak * amplitude_scale
+                interval_text = "—" if event.interval_seconds is None else f"{event.interval_seconds:.6g}"
+                polarity_text = tr("Positive") if event.peak >= 0 else tr("Negative")
+                completion_text = {
+                    EventCompletion.VALID: tr("Valid"),
+                    EventCompletion.CENSORED_STOP: tr("Censored at stop"),
+                    EventCompletion.CENSORED_GAP: tr("Censored by data gap"),
+                    EventCompletion.CENSORED_CONFIG_CHANGE: tr("Censored by configuration change"),
+                }[event.completion]
+                values = (
+                    str(event.sequence_number),
+                    f"{event.start_sample / self.module.get_run_sample_rate():.6f}",
+                    f"{event.duration_seconds * 1000.0:.6g}",
+                    polarity_text,
+                    f"{peak_value:.6g} {amplitude_unit}",
+                    interval_text,
+                    completion_text,
+                )
+                for column, value in enumerate(values):
+                    item = QTableWidgetItem(value)
+                    if column != 6:
+                        item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                    self.events_table.setItem(row_index, column, item)
+            self.events_table.resizeColumnsToContents()
+        finally:
+            self.events_table.setUpdatesEnabled(True)
         self.lbl_event_table_info.setText(
             tr("Showing {0} of {1} retained events.").format(len(visible_events), len(events))
         )
@@ -1716,13 +1832,17 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             self.btn_start.setText(tr("Start"))
             self._set_settings_enabled(True)
             self.timer.stop()
+            if self.module.processing_mode == EventProcessingMode.STATISTICS_HISTORY:
+                self._refresh_analysis_views(force=True)
         if not self.module.is_running:
             self._refresh_threshold_unit_options()
         snapshot = self.module.get_snapshot()
         self._update_event_activity(snapshot.event_count)
-        self.lbl_count.setText(f"{snapshot.event_count:,}" if snapshot.measurement_valid else tr("INVALID"))
+        counter_only = self.module.processing_mode == EventProcessingMode.HIGH_SPEED_COUNTER
+        show_numeric_result = counter_only or snapshot.measurement_valid
+        self.lbl_count.setText(f"{snapshot.event_count:,}" if show_numeric_result else tr("INVALID"))
         self.lbl_rate.setText(
-            self._format_rate(snapshot.event_rate_per_minute) if snapshot.measurement_valid else tr("INVALID")
+            self._format_rate(snapshot.event_rate_per_minute) if show_numeric_result else tr("INVALID")
         )
         self.lbl_elapsed.setText(self._format_elapsed(snapshot.elapsed_seconds))
         self.lbl_clipping.setVisible(
@@ -1730,9 +1850,11 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         )
         self.lbl_data_gap.setVisible(snapshot.data_gap_detected)
         self.lbl_config_change.setVisible(snapshot.configuration_changed_detected)
-        self.lbl_record_limit.setVisible(snapshot.dropped_record_count > 0)
-        self.btn_export_csv.setEnabled(self.module.get_run_metadata() is not None)
-        self.btn_export_json.setEnabled(self.module.get_run_metadata() is not None)
+        statistics_enabled = self.module.processing_mode == EventProcessingMode.STATISTICS_HISTORY
+        self.lbl_record_limit.setVisible(statistics_enabled and snapshot.dropped_record_count > 0)
+        export_enabled = statistics_enabled and self.module.get_run_metadata() is not None
+        self.btn_export_csv.setEnabled(export_enabled)
+        self.btn_export_json.setEnabled(export_enabled)
         self._update_condition_label()
         self._update_calibration_status()
 
@@ -1781,7 +1903,12 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             f"font-size: 16px; font-weight: bold; color: {state_color}; "
             "background-color: rgba(128, 128, 128, 28); border-radius: 4px; padding: 6px 12px;"
         )
-        self._refresh_analysis_views()
+        if statistics_enabled and self.module.is_running:
+            self._analysis_refresh_ticks += 1
+            refresh_ticks = max(1, self.ANALYSIS_REFRESH_INTERVAL_MS // self.timer.interval())
+            if self._analysis_refresh_ticks >= refresh_ticks:
+                self._analysis_refresh_ticks = 0
+                self._refresh_analysis_views()
 
     def update_compact_layout(self) -> None:
         if not hasattr(self, "control_widget"):
