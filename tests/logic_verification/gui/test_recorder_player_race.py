@@ -53,6 +53,8 @@ class TestRecorderPlayerRace(unittest.TestCase):
         self.mock_np.array.side_effect = lambda data, dtype=None: MockArray((len(data), len(data[0]) if data else 0))
         self.mock_np.mean.return_value = MockArray((1,))
 
+        qtwidgets = MagicMock()
+        qtwidgets.QWidget = type("QWidget", (), {})
         self.mock_modules = {
             "numpy": self.mock_np,
             "scipy": MagicMock(),
@@ -64,10 +66,13 @@ class TestRecorderPlayerRace(unittest.TestCase):
             "src.core.calibration": MagicMock(),
             "PyQt6": MagicMock(),
             "PyQt6.QtCore": MagicMock(),
-            "PyQt6.QtWidgets": MagicMock(),
+            "PyQt6.QtWidgets": qtwidgets,
             "src.core.audio_engine": MagicMock(),
             "src.core.localization": MagicMock(),
         }
+        compactable_module = MagicMock()
+        compactable_module.CompactableWidgetInterface = type("CompactableWidgetInterface", (), {})
+        self.mock_modules["src.gui.widgets.compactable_interface"] = compactable_module
 
         self.patcher = patch.dict(sys.modules, self.mock_modules)
         self.patcher.start()
@@ -80,10 +85,10 @@ class TestRecorderPlayerRace(unittest.TestCase):
 
     def tearDown(self):
         self.patcher.stop()
-        # Restore the real Qt-backed module so later GUI contract tests do not
-        # inherit the MagicMock classes loaded by this isolated race test.
-        sys.modules.pop("src.gui.widgets.recorder_player", None)
-        importlib.import_module("src.gui.widgets.recorder_player")
+        # Reload the same module object with real dependencies. Existing class
+        # references in already-collected GUI tests share this module globals
+        # dictionary and must not retain MagicMock Qt classes.
+        importlib.reload(self.module)
 
     def test_infinite_loop_hang_empty_buffer(self):
         """Verify that an empty buffer doesn't cause an infinite loop."""

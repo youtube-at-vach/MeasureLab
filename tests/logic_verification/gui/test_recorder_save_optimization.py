@@ -9,9 +9,16 @@ import tempfile
 
 class TestRecorderSaveOptimization(unittest.TestCase):
     def setUp(self):
+        qt_widgets = MagicMock()
+        qt_widgets.QWidget = type("QWidget", (), {})
         # Patch sys.modules to mock sounddevice and PyQt6
         self.modules_patcher = patch.dict(
-            sys.modules, {"sounddevice": MagicMock(), "PyQt6.QtCore": MagicMock(), "PyQt6.QtWidgets": MagicMock()}
+            sys.modules,
+            {
+                "sounddevice": MagicMock(),
+                "PyQt6.QtCore": MagicMock(),
+                "PyQt6.QtWidgets": qt_widgets,
+            },
         )
         self.modules_patcher.start()
 

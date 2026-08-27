@@ -415,7 +415,7 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         "src.gui.widgets.recorder_player",
         "RecorderPlayer",
         split=NO_INDEPENDENT_DISPLAY,
-        compact=NO_INDEPENDENT_DISPLAY,
+        compact=SUPPORTED,
         comparison=NO_INDEPENDENT_DISPLAY,
         console_primary_action=NO_CONSOLE_ACTION,
     ),

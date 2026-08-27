@@ -288,10 +288,10 @@ Qtの標準入力、スピンボックス、コンボボックス、ワーカー
 
 ### 23. Recorder / Player
 
-- **対応:** 録音、再生、ファイル読込／保存を別ワーカーとキューで扱い、再生／録音のStop、ファイル上書き確認、レース条件のテストがあります。出力を一つのトグルへ無理に集約していません。
-- **未対応／要確認:** Save workerはコードコメント上、保存途中のCancelを提供していません（`STATE-02`）。録音ファイルへサンプルレート、入力デバイス、ルーティング、校正、欠損、実行時刻を正式な測定メタデータとして付加しません（`DATA-01`、`DATA-02`）。`A11Y-01`、`THEME-01`、全操作のフォーカス順も未完了です。
-- **対象外:** Split、Compact、Comparisonは独立した測定結果表示部を持たないため `NO_INDEPENDENT_DISPLAY`。コンソール主操作は録音と再生を一つへ安全に集約できないため対象外です。
-- **根拠:** `src/gui/widgets/recorder_player.py`、`MODULE_RECORDER_PLAYER`、`tests/logic_verification/gui/test_recorder_player_logic.py`、`tests/logic_verification/gui/test_recorder_player_race.py`、`tests/logic_verification/gui/test_recorder_save_optimization.py`
+- **対応:** 録音、再生、ファイル読込／保存を別ワーカーとキューで扱い、再生／録音のStop、未保存録音の置換確認、開始失敗時のロールバック、レース条件のテストがあります。通常表示は再生／録音カードへ整理し、状態、時間、I/O条件、数値入力付き再生ゲインを示します。実行状態と停止操作を残すCompact、主要コントロールのaccessible name／description、ラベルbuddy、フォーカス順を実装しています。出力を一つのトグルへ無理に集約していません。
+- **未対応／要確認:** Save workerは保存途中のCancelを提供していません（`STATE-02`）。録音ファイルへサンプルレート、入力デバイス、ルーティング、校正、欠損、実行時刻を正式な測定メタデータとして付加しません（`DATA-01`、`DATA-02`）。OS High Contrastを含む支援技術の実機確認は継続課題です。
+- **対象外:** SplitとComparisonは独立した測定結果表示部を持たないため `NO_INDEPENDENT_DISPLAY`。コンソール主操作は録音と再生を一つへ安全に集約できないため対象外です。
+- **根拠:** `src/gui/widgets/recorder_player.py`、`MODULE_RECORDER_PLAYER`、`tests/logic_verification/gui/test_recorder_player_logic.py`、`tests/logic_verification/gui/test_recorder_player_compact.py`、`tests/logic_verification/gui/test_recorder_player_race.py`、`tests/logic_verification/gui/test_recorder_save_optimization.py`
 
 ### 24. Waveform Loop Player
 

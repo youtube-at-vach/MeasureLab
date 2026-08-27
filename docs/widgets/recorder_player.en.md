@@ -12,6 +12,8 @@ It supports loading common audio files such as WAV, MP3, FLAC, and OGG.
 
 This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
 
+After detaching the widget into an independent window, you can enable **Compact** mode. Compact mode retains the file name, playback and recording states, elapsed time, seek control, Loop, Sync, unsaved state, input/output modes, and playback gain. Return to the full view to load a file or edit detailed settings. Switching Compact mode or returning to the full view does not stop active playback or recording.
+
 ## Operations
 
 ### Playback
@@ -30,19 +32,20 @@ Load and play files.
     * **Left / Right**: Outputs only the specified single channel.
     * **Mono**: If the file is stereo, it mixes the left and right channels to mono and outputs the same sound from both output channels.
 
-* **Playback Gain**: Adjusts playback volume digitally (-60dB to +12dB).
+* **Playback Gain**: Adjusts playback volume digitally (-60dB to +12dB). Use either the slider or the synchronized numeric field for direct entry.
 
 ### Recording
 
-Records input signals to memory and exports them as files.
+Streams input signals to a temporary file and exports that recording to a selected file. Long recordings are not retained entirely in memory.
 
 * **Record / Stop Recording**: Starts and stops recording.
 * **Save Recording**: Saves recorded data to a file. This can only be pressed when recording is stopped. Saving is performed in the background with a progress dialog, preventing the interface from freezing even with large files.
+    * After recording stops, the state is shown as **Unsaved**. Starting another recording requires choosing whether to save, discard, or cancel.
 * **Input Mode**
     * **Stereo**: Records both L/R channels.
     * **Left / Right**: Records only the specified single channel.
 
-* **Recorded Info**: Displays the current recording duration in seconds.
+* **Recorded Info**: Displays the current recording duration and states such as Recording, Unsaved, Saving, and Saved.
 
 ## Usage Examples
 
