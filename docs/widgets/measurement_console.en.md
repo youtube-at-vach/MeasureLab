@@ -46,7 +46,7 @@ compact-mode selections. When a saved layout cannot be restored safely, MeasureL
 back to a visible default layout. On small displays, the default arrangement is adjusted to
 remain usable.
 
-## Notes
+## Limitations
 
 This is an experimental workspace feature. It is designed for one main MeasureLab window:
 an instrument can be either on its normal page or in the console, not in both locations at

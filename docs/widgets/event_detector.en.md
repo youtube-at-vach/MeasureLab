@@ -114,7 +114,7 @@ The table shows the most recent 500 records. CSV and JSON exports include every 
 6. Save CSV or JSON from the Events tab when an auditable record is needed.
 7. Replace the DUT and repeat with the same gain, threshold, sample rate, and measurement time.
 
-## Measurement Quality and Notes
+## Measurement Quality and Limitations
 
 - An event spanning multiple audio blocks is counted only once.
 - `CLIPPING` means the input reached full scale, so the recorded peak amplitude may be inaccurate.
@@ -122,7 +122,3 @@ The table shows the most recent 500 records. CSV and JSON exports include every 
 - A sample-rate or channel-configuration change during acquisition invalidates the run. Restart measurement under the new conditions.
 - The detector retains the most recent 10,000 event records. If older records are discarded, it warns that statistics and export are incomplete.
 - DC and very-low-frequency measurement capability depends on the input coupling of the audio interface.
-
-## Current Limitations
-
-Automatic Pass/Fail evaluation is not yet implemented. It remains a future extension after acceptance limits, minimum duration, minimum event count, and invalid-run policy are defined.
