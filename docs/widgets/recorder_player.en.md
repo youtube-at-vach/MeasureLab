@@ -14,7 +14,7 @@ This widget supports common features of the Detachable Wrapper. Please refer to 
 
 After detaching the widget into an independent window, you can enable **Compact** mode. Compact mode retains the file name, playback and recording states, elapsed time, seek control, Loop, Sync, unsaved state, input/output modes, and playback gain. Return to the full view to load a file or edit detailed settings. Switching Compact mode or returning to the full view does not stop active playback or recording.
 
-## Operations
+## Operation
 
 ### Playback
 

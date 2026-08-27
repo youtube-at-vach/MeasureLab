@@ -30,7 +30,7 @@ This widget supports common features of the Detachable Wrapper. Please refer to 
     * Hovering your mouse over the plot dynamically overlays red dashed vertical and horizontal cursor lines.
     * Automatically interpolates Y-values (Y1 and Y2) for all active traces at the current cursor X-position, displaying a clear list of values in the status panel below the plot.
 
-## How to Use
+## Operation
 
 ### Importing and Managing Data
 

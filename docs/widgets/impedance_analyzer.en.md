@@ -58,7 +58,7 @@ This is called the "I-V method (Current-Voltage method)."
 
 Click the "Show Connection Diagram" button at the bottom left to view this diagram in a separate window.
 
-## Operation Procedures
+## Operation
 
 ### Initial Setup
 

@@ -58,7 +58,7 @@ Impedance Analyzer (インピーダンスアナライザ) は、スピーカー�
 
 画面左下の「Show Connection Diagram」ボタンをクリックすると、この配線図を別ウィンドウで確認できます。
 
-## 操作手順
+## 操作方法
 
 ### Initial Setup (初期設定)
 

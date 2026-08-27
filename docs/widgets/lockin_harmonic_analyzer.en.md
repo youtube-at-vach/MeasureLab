@@ -24,7 +24,7 @@ The most significant feature of this widget is its **multi-parallel lock-in dete
 
 Thanks to the lock-in amplifier's characteristic of acting as an extremely narrow bandpass filter tailored only for the target frequencies, this method fundamentally avoids the spectral leakage caused by window functions. It allows for the accurate separation and extraction of minuscule distortion components from the surrounding background noise floor.
 
-## How to Use
+## Operation
 
 The control panel on the left is organized into tabs, allowing you to switch between different functional groups.
 

@@ -16,7 +16,7 @@ When a measurement goes wrong, before blaming the FFT settings, filters, or math
 
 This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
 
-## Operations
+## Operation
 
 1. Make sure the input and output devices you want to test are selected in the main MeasureLab window.
 2. Press **Start Scan**.
