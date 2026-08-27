@@ -63,6 +63,40 @@ class TestUltrasoundModulator(unittest.TestCase):
                     np.all(self.modulator._hilbert_coeffs == 0), "Fallback coefficients should not be all zeros"
                 )
 
+    def test_configuration_rejects_carrier_above_nyquist(self):
+        self.mock_audio_engine.sample_rate = 48000
+
+        issue = self.modulator.get_configuration_issue()
+
+        self.assertEqual(issue, ("carrier_above_nyquist", 24000.0))
+
+    def test_configuration_accepts_default_band_at_192khz(self):
+        self.mock_audio_engine.sample_rate = 192000
+
+        self.assertIsNone(self.modulator.get_configuration_issue())
+
+    def test_output_limiter_latches_and_clears_overload(self):
+        limited = self.modulator._limit_output(np.array([0.25, 1.5, -2.0]))
+
+        np.testing.assert_allclose(limited, np.array([0.25, 1.0, -1.0]))
+        self.assertTrue(self.modulator.output_overload_latched)
+        self.assertEqual(self.modulator.output_peak, 2.0)
+
+        self.modulator.clear_output_warning()
+
+        self.assertFalse(self.modulator.output_overload_latched)
+        self.assertEqual(self.modulator.output_peak, 0.0)
+
+    def test_registration_failure_restores_stopped_state(self):
+        self.mock_audio_engine.sample_rate = 192000
+        self.mock_audio_engine.register_callback.side_effect = RuntimeError("device unavailable")
+
+        with self.assertRaisesRegex(RuntimeError, "device unavailable"):
+            self.modulator.start()
+
+        self.assertFalse(self.modulator.is_running)
+        self.assertIsNone(self.modulator.callback_id)
+
 
 class TestUltrasoundSSB(unittest.TestCase):
     def setUp(self):
@@ -218,6 +252,41 @@ class TestUltrasoundModulatorLogic(unittest.TestCase):
             self.assertTrue(f > 0, "Frequency must be positive")
         except (ValueError, OverflowError, RuntimeWarning) as e:
             self.fail(f"Zero min_f caused crash: {e}")
+
+    def test_widget_explains_invalid_sample_rate_and_disables_start(self):
+        mod = self._create_mock_module()
+        widget = UltrasoundModulatorWidget(mod)
+
+        widget.update_safety_status()
+
+        self.assertEqual(widget.safety_label.text(), "UNAVAILABLE")
+        self.assertIn("Nyquist", widget.safety_detail_label.text())
+        self.assertFalse(widget.start_btn.isEnabled())
+
+    def test_widget_shows_persistent_output_conditions(self):
+        mod = self._create_mock_module()
+        mod.audio_engine.sample_rate = 192000
+        widget = UltrasoundModulatorWidget(mod)
+
+        widget.update_safety_status()
+
+        self.assertEqual(widget.safety_label.text(), "STANDBY")
+        self.assertTrue(widget.start_btn.isEnabled())
+        self.assertIn("L", widget.route_condition_label.text())
+        self.assertIn("R", widget.route_condition_label.text())
+        self.assertIn("40.00 kHz", widget.carrier_condition_label.text())
+
+    def test_widget_displays_rms_values_in_dbfs(self):
+        mod = self._create_mock_module()
+        mod.audio_engine.sample_rate = 192000
+        mod.input_level = 0.5
+        mod.output_level = 0.25
+        widget = UltrasoundModulatorWidget(mod)
+
+        widget.update_ui_state()
+
+        self.assertEqual(widget.in_value_label.text(), "-6.0 dBFS")
+        self.assertEqual(widget.out_value_label.text(), "-12.0 dBFS")
 
 
 if __name__ == "__main__":

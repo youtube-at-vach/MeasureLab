@@ -11,7 +11,7 @@ When an audible signal is amplitude-modulated onto an ultrasonic carrier wave an
 Key Features:
 
 * **Real-time AM Modulation**: Modulates a carrier wave (default 40kHz) using the input audio signal.
-* **Safety Features**: Displays safety status (SAFE, CAUTION, DANGEROUS) based on output gain and warns if levels are high.
+* **Safety Features**: Keeps the actual output state, routing, carrier conditions, and calibration status visible, and latches warnings for invalid signals and output above 0 dBFS.
 * **Flexible Routing**: Supports arbitrary selection of input/output channels (L/R/Stereo).
 * **Pre-distortion**: Supports square-root processing to reduce distortion caused by demodulation.
 
@@ -23,10 +23,14 @@ This widget supports common features of the Detachable Wrapper. Please refer to 
 
 ### Starting and Stopping Modulation
 
-Click the **"Start Modulation"** button at the bottom of the screen to start the modulation process.
+Click **"Start Modulation"** at the top of the screen to start modulation. While output is active, the same control becomes **"Stop Modulation"**, so output can be stopped from either settings tab.
+
+The persistent status area distinguishes stopped, unavailable, ultrasound output, passthrough output, and limited-output states. Input-to-output routing, carrier frequency and mode, and output calibration status remain visible outside the tabs.
 
 > [!WARNING]
 > Although ultrasound is inaudible, high-intensity emission can be dangerous to hearing and pets. Always start with a low gain and use appropriate protection. A safety confirmation dialog will appear upon starting.
+
+If the carrier or its sidebands exceed Nyquist at the current sample rate, the status changes to **"UNAVAILABLE"** and the start control is disabled. Follow the displayed explanation and adjust the sample rate, carrier frequency, or Audio LPF. The default 40 kHz carrier with 8 kHz bandwidth requires a sample rate above 96 kHz.
 
 ### Parameter Settings
 
@@ -61,7 +65,9 @@ Select the input source and output destination.
 
 ## Signal Meters
 
-The Input Level and Output Level are displayed at the bottom of the screen. You can verify if the signal is input correctly or if the output is saturating.
+The **"Output Monitor"** on the right shows input and output RMS levels in dBFS. Use it to verify that a signal is present and that the output is not saturating.
 
-* **Input Level**: The audio signal level before modulation.
-* **Output Level**: The ultrasonic signal level after modulation.
+* **Input RMS**: The audio level after input gain and before modulation.
+* **Output RMS**: The signal level after digital output limiting.
+
+If the output exceeds 0 dBFS, it is limited to digital full scale and the warning is latched. Lower the gain, then use **"Clear Peak"** to acknowledge the warning. When output is uncalibrated, these are relative digital levels and do not represent the transducer's physical sound pressure or voltage.
