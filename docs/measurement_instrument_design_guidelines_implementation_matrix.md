@@ -2,11 +2,14 @@
 
 ## 概要
 
-更新日: 2026-08-26  
+更新日: 2026-08-27
 基準文書: [`guide/MEASUREMENT_INSTRUMENT_DESIGN_GUIDELINES.md`](../guide/MEASUREMENT_INSTRUMENT_DESIGN_GUIDELINES.md)  
 対象コード: `src/gui/`、`src/measurement_modules/`、関連テスト
 
-この文書は、MeasureLab GUI Design Guideline v2 に対する現在の実装状況を、ウィジェットごとに記録する監査台帳です。実装を直すための設計書ではなく、対応している点、対応していない点、コード上の根拠、未検証の点を明文化することを目的とします。
+この文書は、MeasureLab GUI Design Guideline v2.1 に対する現在の実装状況を、ウィジェットごとに記録する監査台帳です。実装を直すための設計書ではなく、対応している点、対応していない点、コード上の根拠、未検証の点を明文化することを目的とします。
+
+> [!IMPORTANT]
+> 「未対応／要確認」は、その機能を各モジュールへ追加する実装指示ではありません。特にクリッピング、I/O 異常、入力品質などは、必要性、既存の共通状態、リアルタイム負荷をガイドライン 1.5 節に従って評価してください。同じ監視を各 callback へ追加することは禁止され、共通監視も実利用先と性能予算が確認できるまでは導入しません。
 
 このタスクの完了条件は、次のすべてです。
 
@@ -264,6 +267,7 @@ Qtの標準入力、スピンボックス、コンボボックス、ワーカー
 ### 20. Goniometer
 
 - **対応:** L/RのXY表示、相関係数、M/S、平滑化、Hold、クリア、Compact、Splitを実装し、相関ウィジェットの accessible name／description と状態ラベルがあります。`GoniometerSnapshot` に品質状態を持つ経路があります。
+- **再評価:** v0.8.5 後に module callback 内へ追加された入力 overflow／underflow 判定は、AudioEngine と MainWindow の既存の集約・ラッチ経路と重複します。L/R peak／clip 判定は相関値の無効化に利用されていますが、他モジュールへ展開せず、callback コストとユーザー価値を測ってから維持、削除、共通化を判断します。
 - **未対応／要確認:** `A11Y-01` は主要コントロール全体では未完了です。直接指定色によるL/R・相関・Holdの識別があり、線種・マーカー・ラベルとテーマトークンが不足します（`THEME-01`、`PLOT-01`）。Snapshotは存在しますが、標準エクスポート／比較基盤へ取得条件、サンプルレート、校正を一体で渡していません（`DATA-01`、`DATA-02`）。
 - **対象外／保留:** Comparisonは `COMPARISON_DEFERRED` です。XYデータを比較送信する仕様は未決定です。
 - **根拠:** `src/gui/widgets/goniometer.py`、`MODULE_GONIOMETER`、`tests/logic_verification/gui/test_goniometer_widget.py`
