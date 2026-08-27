@@ -273,6 +273,10 @@ def capture_widgets(targets=None):
         if targets and module_name not in targets:
             continue
 
+        # Some instruments require a representative high-rate configuration
+        # to reach their normal ready state in documentation captures.
+        mock_engine.sample_rate = 192000 if module_name == "ultrasound_modulator" else 48000
+
         if module_name == "detachable_wrapper":
             continue
 

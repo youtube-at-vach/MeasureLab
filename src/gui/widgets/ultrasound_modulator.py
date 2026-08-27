@@ -129,6 +129,9 @@ class UltrasoundModulator(MeasurementModule):
         self._delay_zi = None
         self.input_level = 0.0
         self.output_level = 0.0
+        self.output_peak = 0.0
+        self.output_overload_latched = False
+        self.output_invalid_latched = False
 
     @property
     def name(self) -> str:
@@ -140,6 +143,59 @@ class UltrasoundModulator(MeasurementModule):
 
     def get_widget(self):
         return UltrasoundModulatorWidget(self)
+
+    def get_configuration_issue(self) -> tuple[str, float | None] | None:
+        """Return a stable issue code when the current modulation cannot be emitted safely."""
+        if self.bypass:
+            return None
+
+        sample_rate = float(getattr(self.audio_engine, "sample_rate", 0.0) or 0.0)
+        if not np.isfinite(sample_rate) or sample_rate <= 0.0:
+            return ("invalid_sample_rate", None)
+
+        nyquist = sample_rate / 2.0
+        carrier = float(self.carrier_freq)
+        bandwidth = float(self.lpf_cutoff)
+        if not np.isfinite(carrier) or carrier <= 0.0:
+            return ("invalid_carrier", None)
+        if not np.isfinite(bandwidth) or bandwidth <= 0.0:
+            return ("invalid_bandwidth", None)
+        if carrier >= nyquist:
+            return ("carrier_above_nyquist", nyquist)
+        if self.modulation_mode in {"DSB", "USB"} and carrier + bandwidth >= nyquist:
+            return ("upper_sideband_above_nyquist", nyquist)
+        if self.modulation_mode in {"DSB", "LSB"} and carrier - bandwidth <= 0.0:
+            return ("lower_sideband_below_zero", None)
+        return None
+
+    def _update_input_meter(self, signal: np.ndarray) -> None:
+        if not np.all(np.isfinite(signal)):
+            self.output_invalid_latched = True
+            self.input_level = 0.0
+            return
+        rms = float(np.sqrt(np.mean(np.square(signal, dtype=np.float64))))
+        self.input_level = self.input_level * 0.8 + rms * 0.2
+
+    def _limit_output(self, signal: np.ndarray) -> np.ndarray:
+        if not np.all(np.isfinite(signal)):
+            self.output_invalid_latched = True
+            self.output_level = 0.0
+            return np.zeros_like(signal)
+
+        peak = float(np.max(np.abs(signal), initial=0.0))
+        self.output_peak = max(self.output_peak, peak)
+        if peak > 1.0:
+            self.output_overload_latched = True
+
+        limited = np.clip(signal, -1.0, 1.0)
+        rms = float(np.sqrt(np.mean(np.square(limited, dtype=np.float64))))
+        self.output_level = self.output_level * 0.8 + rms * 0.2
+        return limited
+
+    def clear_output_warning(self) -> None:
+        self.output_peak = 0.0
+        self.output_overload_latched = False
+        self.output_invalid_latched = False
 
     def _update_filter(self, fs):
         if fs != self._prev_fs or self.lpf_cutoff != self._prev_cutoff:
@@ -190,6 +246,10 @@ class UltrasoundModulator(MeasurementModule):
         if self.is_running:
             return
 
+        issue = self.get_configuration_issue()
+        if issue is not None:
+            raise ValueError(f"Ultrasound modulation configuration is invalid: {issue[0]}")
+
         self.is_running = True
         self._phase = 0.0
         self._filter_sos = None
@@ -200,6 +260,7 @@ class UltrasoundModulator(MeasurementModule):
         self._delay_zi = None
         self.input_level = 0.0
         self.output_level = 0.0
+        self.clear_output_warning()
 
         def callback(indata, outdata, frames, time, status):
             if status:
@@ -244,8 +305,10 @@ class UltrasoundModulator(MeasurementModule):
                 # Apply input gain (manual normalize/boost)
                 src = src * self.input_gain
 
-                # Apply output gain
-                src = src * self.output_gain
+                self._update_input_meter(src)
+
+                # Apply output gain and enforce the digital full-scale boundary.
+                src = self._limit_output(src * self.output_gain)
 
                 # Map to Output
                 if self.output_mode == "L":
@@ -299,15 +362,7 @@ class UltrasoundModulator(MeasurementModule):
             # Apply input gain
             signal_in = signal_in * self.input_gain
 
-            # Measure Input Level (Max RMS across channels)
-            if signal_in.ndim == 2:  # Stereo
-                rms_in = np.sqrt(np.mean(np.mean(signal_in**2, axis=1)))  # Average power of L/R? Or Max?
-                # Let's take global RMS
-                rms_in = np.sqrt(np.mean(signal_in**2))
-            else:
-                rms_in = np.sqrt(np.mean(signal_in**2))
-
-            self.input_level = self.input_level * 0.8 + rms_in * 0.2
+            self._update_input_meter(signal_in)
 
             # 3. LPF
             m = signal_in
@@ -465,8 +520,7 @@ class UltrasoundModulator(MeasurementModule):
                     modulated = carrier + k * sb
 
             # 6. Gain & Limit
-            output_sig = modulated * self.output_gain
-            output_sig = np.clip(output_sig, -1.0, 1.0)
+            output_sig = self._limit_output(modulated * self.output_gain)
 
             # 7. Route Output
             if self.output_mode == "L":
@@ -498,14 +552,12 @@ class UltrasoundModulator(MeasurementModule):
                     if outdata.shape[1] >= 2:
                         outdata[:, 1] = output_sig
 
-            # Measure Output Level
-            if output_sig.ndim == 2:
-                rms_out = np.sqrt(np.mean(output_sig**2))
-            else:
-                rms_out = np.sqrt(np.mean(output_sig**2))
-            self.output_level = self.output_level * 0.8 + rms_out * 0.2
-
-        self.callback_id = self.audio_engine.register_callback(callback)
+        try:
+            self.callback_id = self.audio_engine.register_callback(callback)
+        except Exception:
+            self.callback_id = None
+            self.is_running = False
+            raise
 
     def stop(self):
         if self.is_running:
@@ -519,6 +571,7 @@ class UltrasoundModulatorWidget(QWidget):
     def __init__(self, module: UltrasoundModulator):
         super().__init__()
         self.module = module
+        self._current_theme_name = "light"
         self.init_ui()
 
         # Theme handling
@@ -533,28 +586,62 @@ class UltrasoundModulatorWidget(QWidget):
         self.timer.start(200)
 
     def init_ui(self):
-        layout = QVBoxLayout()
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(8)
 
-        # Header
-        header = QLabel(f"<h3>{tr('Ultrasound AM Modulator')}</h3>")
-        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(header)
-
-        # Safety Status Indicator
+        # Persistent output state and the one-click safety action remain visible
+        # regardless of the selected settings tab.
         self.safety_frame = QFrame()
+        self.safety_frame.setAccessibleName(tr("Ultrasound output status"))
         self.safety_frame.setFrameShape(QFrame.Shape.StyledPanel)
         self.safety_frame.setLineWidth(2)
-        self.safety_frame.setStyleSheet("background-color: #444; border-radius: 5px;")
         safety_layout = QVBoxLayout(self.safety_frame)
+        safety_layout.setContentsMargins(12, 10, 12, 10)
+        safety_layout.setSpacing(8)
+
+        state_row = QHBoxLayout()
+        state_text_layout = QVBoxLayout()
+        state_text_layout.setSpacing(2)
         self.safety_label = QLabel(tr("STANDBY"))
-        self.safety_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: white;")
-        safety_layout.addWidget(self.safety_label)
+        self.safety_label.setStyleSheet("font-weight: bold; font-size: 16px;")
+        self.safety_detail_label = QLabel(tr("No signal is being sent by this module."))
+        self.safety_detail_label.setWordWrap(True)
+        state_text_layout.addWidget(self.safety_label)
+        state_text_layout.addWidget(self.safety_detail_label)
+        state_row.addLayout(state_text_layout, 1)
+
+        self.start_btn = QPushButton(tr("Start Modulation"))
+        self.start_btn.setAccessibleName(tr("Start or stop ultrasound output"))
+        self.start_btn.setCheckable(True)
+        self.start_btn.setMinimumHeight(44)
+        self.start_btn.setMinimumWidth(190)
+        self.start_btn.clicked.connect(self.on_toggle_start)
+        state_row.addWidget(self.start_btn)
+        safety_layout.addLayout(state_row)
+
+        self.condition_bar = QHBoxLayout()
+        self.condition_bar.setSpacing(6)
+        self.route_condition_label = QLabel()
+        self.carrier_condition_label = QLabel()
+        self.calibration_condition_label = QLabel()
+        for badge in (
+            self.route_condition_label,
+            self.carrier_condition_label,
+            self.calibration_condition_label,
+        ):
+            badge.setWordWrap(True)
+            badge.setMargin(6)
+            self.condition_bar.addWidget(badge, 1)
+        safety_layout.addLayout(self.condition_bar)
         layout.addWidget(self.safety_frame)
 
-        # Tab Widget
+        content_layout = QHBoxLayout()
+        content_layout.setSpacing(8)
+
+        # Purpose-based control tabs.
         self.tabs = QTabWidget()
-        layout.addWidget(self.tabs)
+        content_layout.addWidget(self.tabs, 3)
 
         # Tab 1: Modulation Controls
         tab1 = QWidget()
@@ -738,49 +825,91 @@ class UltrasoundModulatorWidget(QWidget):
         tab2_layout.addStretch()
         self.tabs.addTab(tab2, tr("Settings"))
 
-        # Main Toggle
-        self.start_btn = QPushButton(tr("Start Modulation"))
-        self.start_btn.setCheckable(True)
-        self.start_btn.clicked.connect(self.on_toggle_start)
-        layout.addWidget(self.start_btn)
-
-        layout.addStretch()
-        self.setLayout(layout)
-
-        # Meters - Add to bottom (outside tabs) but above button?
-        meter_group = QGroupBox(tr("Signal Levels"))
+        # Live monitor: values, overload history, and units are kept together.
+        meter_group = QGroupBox(tr("Output Monitor"))
+        meter_group.setAccessibleName(tr("Output Monitor"))
         meter_layout = QVBoxLayout()
-        in_label = QLabel(tr("Input Level"))
+        meter_layout.setSpacing(8)
+
+        self.monitor_state_label = QLabel(tr("Stopped"))
+        self.monitor_state_label.setStyleSheet("font-size: 15px; font-weight: bold;")
+        meter_layout.addWidget(self.monitor_state_label)
+
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setFrameShadow(QFrame.Shadow.Sunken)
+        meter_layout.addWidget(separator)
+
+        in_level_row = QHBoxLayout()
+        in_label = QLabel(tr("Input RMS"))
+        self.in_value_label = QLabel("−∞ dBFS")
+        self.in_value_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.in_value_label.setStyleSheet("font-weight: bold;")
+        in_level_row.addWidget(in_label)
+        in_level_row.addStretch()
+        in_level_row.addWidget(self.in_value_label)
+        meter_layout.addLayout(in_level_row)
+
         self.in_bar = QProgressBar()
-        self.in_bar.setRange(0, 100)
+        self.in_bar.setRange(-60, 0)
+        self.in_bar.setValue(-60)
         self.in_bar.setTextVisible(False)
-        self.in_bar.setStyleSheet("QProgressBar::chunk { background-color: #4CAF50; }")
-        meter_layout.addWidget(in_label)
+        self.in_bar.setMinimumHeight(22)
         meter_layout.addWidget(self.in_bar)
 
-        out_label = QLabel(tr("Output Level (40kHz)"))
+        out_level_row = QHBoxLayout()
+        out_label = QLabel(tr("Output RMS"))
+        self.out_value_label = QLabel("−∞ dBFS")
+        self.out_value_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.out_value_label.setStyleSheet("font-weight: bold;")
+        out_level_row.addWidget(out_label)
+        out_level_row.addStretch()
+        out_level_row.addWidget(self.out_value_label)
+        meter_layout.addLayout(out_level_row)
+
         self.out_bar = QProgressBar()
-        self.out_bar.setRange(0, 100)
+        self.out_bar.setRange(-60, 0)
+        self.out_bar.setValue(-60)
         self.out_bar.setTextVisible(False)
-        self.out_bar.setStyleSheet("QProgressBar::chunk { background-color: #2196F3; }")
-        meter_layout.addWidget(out_label)
+        self.out_bar.setMinimumHeight(22)
         meter_layout.addWidget(self.out_bar)
 
-        meter_group.setLayout(meter_layout)
+        self.overload_label = QLabel(tr("Output was limited to 0 dBFS."))
+        self.overload_label.setWordWrap(True)
+        self.overload_label.hide()
+        meter_layout.addWidget(self.overload_label)
 
-        layout.insertWidget(layout.indexOf(self.start_btn), meter_group)
+        self.clear_peak_btn = QPushButton(tr("Clear Peak"))
+        self.clear_peak_btn.clicked.connect(self.on_clear_output_warning)
+        self.clear_peak_btn.hide()
+        meter_layout.addWidget(self.clear_peak_btn)
+
+        level_note = QLabel(tr("Levels are RMS values in dBFS."))
+        level_note.setWordWrap(True)
+        level_note.setStyleSheet("font-size: 11px;")
+        meter_layout.addWidget(level_note)
+        meter_layout.addStretch()
+
+        meter_group.setLayout(meter_layout)
+        content_layout.addWidget(meter_group, 1)
+        layout.addLayout(content_layout, 1)
+
+        self.update_safety_status()
 
     def on_in_mode_id_clicked(self, id):
         modes = {0: "L", 1: "R", 2: "Stereo"}
         self.module.input_mode = modes.get(id, "L")
+        self.update_safety_status()
 
     def on_out_mode_id_clicked(self, id):
         modes = {0: "L", 1: "R", 2: "Stereo"}
         self.module.output_mode = modes.get(id, "R")
+        self.update_safety_status()
 
     def on_mode_rb_id_clicked(self, id):
         modes = {0: "DSB", 1: "USB", 2: "LSB"}
         self.module.modulation_mode = modes.get(id, "DSB")
+        self.update_safety_status()
 
     def _lin2db(self, val):
         if val <= 0:
@@ -832,6 +961,7 @@ class UltrasoundModulatorWidget(QWidget):
         self.freq_slider.blockSignals(True)
         self.freq_slider.setValue(self._freq_to_slider(val, 2000.0, 96000.0))
         self.freq_slider.blockSignals(False)
+        self.update_safety_status()
 
     def on_freq_slider_changed(self, val):
         freq = self._slider_to_freq(val, 2000.0, 96000.0)
@@ -839,12 +969,14 @@ class UltrasoundModulatorWidget(QWidget):
         self.freq_spin.blockSignals(True)
         self.freq_spin.setValue(freq)
         self.freq_spin.blockSignals(False)
+        self.update_safety_status()
 
     def on_lpf_changed(self, val):
         self.module.lpf_cutoff = val
         self.lpf_slider.blockSignals(True)
         self.lpf_slider.setValue(self._freq_to_slider(val, 100.0, 20000.0))
         self.lpf_slider.blockSignals(False)
+        self.update_safety_status()
 
     def on_lpf_slider_changed(self, val):
         freq = self._slider_to_freq(val, 100.0, 20000.0)
@@ -852,6 +984,7 @@ class UltrasoundModulatorWidget(QWidget):
         self.lpf_spin.blockSignals(True)
         self.lpf_spin.setValue(freq)
         self.lpf_spin.blockSignals(False)
+        self.update_safety_status()
 
     def on_depth_changed(self, val):
         self.module.modulation_depth = val
@@ -881,80 +1014,139 @@ class UltrasoundModulatorWidget(QWidget):
         self.gain_spin.blockSignals(False)
         self.update_safety_status()
 
+    def _configuration_issue_text(self, issue: tuple[str, float | None] | None) -> str:
+        if issue is None:
+            return ""
+        code, value = issue
+        if code == "invalid_sample_rate":
+            return tr("The audio sample rate is invalid.")
+        if code == "invalid_carrier":
+            return tr("The carrier frequency is invalid.")
+        if code == "invalid_bandwidth":
+            return tr("The audio bandwidth is invalid.")
+        if code == "carrier_above_nyquist":
+            return tr("Carrier frequency must be below Nyquist ({0:.1f} kHz).").format((value or 0.0) / 1000.0)
+        if code == "upper_sideband_above_nyquist":
+            return tr("Carrier plus audio bandwidth must stay below Nyquist ({0:.1f} kHz).").format(
+                (value or 0.0) / 1000.0
+            )
+        return tr("Carrier minus audio bandwidth must stay above 0 Hz.")
+
+    def _set_status_style(self, kind: str) -> None:
+        dark = self._current_theme_name == "dark"
+        palettes = {
+            "idle": (("#30343a", "#656d78", "#f0f0f0") if dark else ("#f2f4f7", "#b8bec7", "#30343a")),
+            "active": (("#4d3f00", "#fbc02d", "#fff9c4") if dark else ("#fff8d8", "#d59b00", "#6a4b00")),
+            "error": (("#4c1c1c", "#ef5350", "#ffebee") if dark else ("#ffebee", "#d32f2f", "#7f1d1d")),
+        }
+        background, border, text_color = palettes[kind]
+        self.safety_frame.setStyleSheet(
+            f"QFrame {{ background-color: {background}; border: 2px solid {border}; border-radius: 6px; }}"
+            "QLabel { border: none; background: transparent; }"
+        )
+        self.safety_label.setStyleSheet(
+            f"font-weight: bold; font-size: 16px; color: {text_color}; border: none; background: transparent;"
+        )
+        self.safety_detail_label.setStyleSheet(
+            f"font-size: 11px; color: {text_color}; border: none; background: transparent;"
+        )
+
+    def _update_condition_badges(self) -> None:
+        input_name = tr("Stereo") if self.module.input_mode == "Stereo" else self.module.input_mode
+        output_name = tr("Stereo") if self.module.output_mode == "Stereo" else self.module.output_mode
+        self.route_condition_label.setText(
+            f"<b>{tr('Routing')}</b><br>{tr('Input:')} {input_name} → {tr('Output:')} {output_name}"
+        )
+
+        gain_db = self._lin2db(self.module.output_gain)
+        self.carrier_condition_label.setText(
+            f"<b>{tr('Carrier Freq:')}</b><br>{self.module.carrier_freq / 1000.0:.2f} kHz · "
+            f"{self.module.modulation_mode} · {gain_db:.1f} dB"
+        )
+
+        calibration = getattr(self.module.audio_engine, "calibration", None)
+        calibrated = bool(getattr(calibration, "output_gain_is_calibrated", False))
+        calibration_text = tr("Calibrated") if calibrated else tr("Uncalibrated — relative levels only")
+        self.calibration_condition_label.setText(f"<b>{tr('Calibration')}</b><br>{calibration_text}")
+
+        dark = self._current_theme_name == "dark"
+        background = "#25282d" if dark else "#ffffff"
+        border = "#606770" if dark else "#c4c9d0"
+        text_color = "#f2f2f2" if dark else "#25282d"
+        badge_style = f"background: {background}; color: {text_color}; border: 1px solid {border}; border-radius: 4px;"
+        for badge in (
+            self.route_condition_label,
+            self.carrier_condition_label,
+            self.calibration_condition_label,
+        ):
+            badge.setStyleSheet(badge_style)
+
     def update_safety_status(self):
-        theme_name = "dark"
-        if hasattr(self.app, "theme_manager"):
-            theme_name = self.app.theme_manager.get_current_theme()
-            if theme_name == "system":
-                theme_name = self.app.theme_manager.get_effective_theme()
+        issue = self.module.get_configuration_issue()
+        if self.module.is_running and issue is not None:
+            self.module.stop()
+            self.start_btn.blockSignals(True)
+            self.start_btn.setChecked(False)
+            self.start_btn.blockSignals(False)
+            self.start_btn.setText(tr("Start Modulation"))
 
-        if not self.module.is_running:
-            if theme_name == "dark":
-                self.safety_frame.setStyleSheet("background-color: #333; border-radius: 5px; border: 2px solid #555;")
-                self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #BBB;")
-            else:
-                self.safety_frame.setStyleSheet(
-                    "background-color: #F0F0F0; border-radius: 5px; border: 2px solid #CCC;"
-                )
-                self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #666;")
+        self._update_condition_badges()
+        self.start_btn.setEnabled(self.module.is_running or issue is None)
+
+        if issue is not None:
+            self.safety_label.setText(tr("UNAVAILABLE"))
+            self.safety_detail_label.setText(self._configuration_issue_text(issue))
+            self.monitor_state_label.setText(tr("Stopped"))
+            self._set_status_style("error")
+        elif not self.module.is_running:
             self.safety_label.setText(tr("STANDBY"))
-            return
-
-        # Check Output Gain (dB)
-        # We need the current dB value.
-        # Since we store linear in module, convert back or use spinbox value?
-        # Safest is module value.
-        gain_lin = self.module.output_gain
-        gain_db = self._lin2db(gain_lin)
-
-        if gain_db > 0.0:
-            # Dangerous
-            if theme_name == "dark":
-                self.safety_frame.setStyleSheet(
-                    "background-color: #4C1C1C; border-radius: 5px; border: 2px solid #F44336;"
-                )
-                self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #FFCDD2;")
-            else:
-                self.safety_frame.setStyleSheet(
-                    "background-color: #FFCDD2; border-radius: 5px; border: 2px solid #F44336;"
-                )
-                self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #B71C1C;")
-            self.safety_label.setText(tr("🔴 DANGEROUS - HIGH INTENSITY 🔴"))
-        elif gain_db > -10.0:
-            # Caution
-            if theme_name == "dark":
-                self.safety_frame.setStyleSheet(
-                    "background-color: #4D3F00; border-radius: 5px; border: 2px solid #FBC02D;"
-                )
-                self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #FFF9C4;")
-            else:
-                self.safety_frame.setStyleSheet(
-                    "background-color: #FFF9C4; border-radius: 5px; border: 2px solid #FBC02D;"
-                )
-                self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #F57F17;")
-            self.safety_label.setText(tr("🟡 CAUTION - ULTRASOUND ACTIVE 🟡"))
+            self.safety_detail_label.setText(tr("No signal is being sent by this module."))
+            self.monitor_state_label.setText(tr("Stopped"))
+            self._set_status_style("idle")
+        elif self.module.output_invalid_latched:
+            self.safety_label.setText(tr("OUTPUT SUPPRESSED — INVALID SIGNAL"))
+            self.safety_detail_label.setText(tr("Non-finite output was suppressed. Stop and check the settings."))
+            self.monitor_state_label.setText(tr("Warning"))
+            self._set_status_style("error")
+        elif self.module.output_overload_latched:
+            self.safety_label.setText(tr("OUTPUT LIMITED — LOWER GAIN"))
+            self.safety_detail_label.setText(tr("Output was limited to 0 dBFS."))
+            self.monitor_state_label.setText(tr("Warning"))
+            self._set_status_style("error")
+        elif self.module.bypass:
+            self.safety_label.setText(tr("PASSTHROUGH OUTPUT ACTIVE"))
+            self.safety_detail_label.setText(tr("Audio is being sent without ultrasound modulation."))
+            self.monitor_state_label.setText(tr("Running"))
+            self._set_status_style("active")
         else:
-            # Safe
-            if theme_name == "dark":
-                self.safety_frame.setStyleSheet(
-                    "background-color: #1B3D22; border-radius: 5px; border: 2px solid #4CAF50;"
-                )
-                self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #C8E6C9;")
-            else:
-                self.safety_frame.setStyleSheet(
-                    "background-color: #C8E6C9; border-radius: 5px; border: 2px solid #4CAF50;"
-                )
-                self.safety_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #1B5E20;")
-            self.safety_label.setText(tr("🟢 SAFE - LOW INTENSITY 🟢"))
+            self.safety_label.setText(tr("ULTRASOUND OUTPUT ACTIVE"))
+            self.safety_detail_label.setText(tr("Ultrasound may be hazardous even when it is inaudible."))
+            self.monitor_state_label.setText(tr("Running"))
+            self._set_status_style("active")
+
+        warning_visible = self.module.output_overload_latched or self.module.output_invalid_latched
+        self.overload_label.setVisible(warning_visible)
+        self.clear_peak_btn.setVisible(warning_visible)
 
     def on_predist_toggled(self, checked):
         self.module.enable_predistortion = checked
 
     def on_bypass_toggled(self, checked):
         self.module.bypass = checked
+        self.update_safety_status()
+
+    def on_clear_output_warning(self):
+        self.module.clear_output_warning()
+        self.update_safety_status()
 
     def on_toggle_start(self, checked):
         if checked:
+            issue = self.module.get_configuration_issue()
+            if issue is not None:
+                self.start_btn.setChecked(False)
+                self.update_safety_status()
+                return
+
             # Safety Confirmation
             dlg = QMessageBox(self)
             dlg.setWindowTitle(tr("Safety Warning"))
@@ -969,10 +1161,17 @@ class UltrasoundModulatorWidget(QWidget):
 
             if dlg.exec() != QMessageBox.StandardButton.Yes:
                 self.start_btn.setChecked(False)
+                self.update_safety_status()
                 return
 
-            self.module.start()
-            self.start_btn.setText(tr("Stop Modulation"))
+            try:
+                self.module.start()
+            except Exception as exc:
+                logger.error("Failed to start ultrasound modulation: %s", exc, exc_info=True)
+                self.start_btn.setChecked(False)
+                QMessageBox.critical(self, tr("Error"), str(exc))
+            else:
+                self.start_btn.setText(tr("Stop Modulation"))
         else:
             self.module.stop()
             self.start_btn.setText(tr("Start Modulation"))
@@ -986,6 +1185,8 @@ class UltrasoundModulatorWidget(QWidget):
 
         if theme_name == "system" and hasattr(self.app, "theme_manager"):
             theme_name = self.app.theme_manager.get_effective_theme()
+
+        self._current_theme_name = theme_name or "light"
 
         checked = self.start_btn.isChecked()
 
@@ -1011,6 +1212,18 @@ class UltrasoundModulatorWidget(QWidget):
                     "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
                     "QPushButton:hover { background-color: #bbfebb; }"
                 )
+        dark = self._current_theme_name == "dark"
+        meter_background = "#26292e" if dark else "#e4e7eb"
+        meter_border = "#5f6670" if dark else "#aab0b8"
+        self.in_bar.setStyleSheet(
+            f"QProgressBar {{ background: {meter_background}; border: 1px solid {meter_border}; border-radius: 3px; }}"
+            "QProgressBar::chunk { background-color: #43a047; border-radius: 2px; }"
+        )
+        self.out_bar.setStyleSheet(
+            f"QProgressBar {{ background: {meter_background}; border: 1px solid {meter_border}; border-radius: 3px; }}"
+            "QProgressBar::chunk { background-color: #1e88e5; border-radius: 2px; }"
+        )
+        self.overload_label.setStyleSheet("color: #d32f2f; font-weight: bold;")
         self.update_safety_status()
 
     def update_ui_state(self):
@@ -1020,9 +1233,11 @@ class UltrasoundModulatorWidget(QWidget):
             self.start_btn.setText(tr("Stop Modulation") if self.module.is_running else tr("Start Modulation"))
             self.apply_theme()
 
-        # Update Meters
-        in_val = int(np.clip(self.module.input_level * 100, 0, 100))
-        out_val = int(np.clip(self.module.output_level * 100, 0, 100))
-
-        self.in_bar.setValue(in_val)
-        self.out_bar.setValue(out_val)
+        # Update RMS meters while keeping the unit and held state explicit.
+        in_db = self._lin2db(self.module.input_level)
+        out_db = self._lin2db(self.module.output_level)
+        self.in_bar.setValue(int(np.clip(round(in_db), -60, 0)))
+        self.out_bar.setValue(int(np.clip(round(out_db), -60, 0)))
+        self.in_value_label.setText("−∞ dBFS" if in_db <= -60.0 else f"{in_db:.1f} dBFS")
+        self.out_value_label.setText("−∞ dBFS" if out_db <= -60.0 else f"{out_db:.1f} dBFS")
+        self.update_safety_status()
