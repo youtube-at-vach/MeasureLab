@@ -77,7 +77,8 @@ The meter displays `—` and a reason instead of confusing an unavailable result
 - **Persistence**: Sets the Density decay time from 0.05 to 5.0 seconds. The decay is independent of display FPS.
 - **Glow**: Applies display-only blur to Density mode.
 - **Color Palette**: Selects Green, Fire, Ice, or Viridis, each with ordered luminance.
-- **Show Direction Guides**: Shows the Mono, Anti-phase, Left, and Right direction guides. It is on by default.
+- **Show Center Crosshair**: Shows a crosshair intersecting the center of the display. It is on by default.
+- **Show Direction Guides**: Shows the Mono, Anti-phase, Left, and Right direction guides. It is off by default.
 - **Show Axes**: Shows numeric ticks and axis lines without coordinate-name labels. It is off by default.
 - **Show Grid**: Shows the plot grid. It is on by default.
 
