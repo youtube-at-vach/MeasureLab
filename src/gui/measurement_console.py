@@ -12,6 +12,7 @@ import base64
 import binascii
 import logging
 import re
+from collections.abc import Sequence
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -304,6 +305,7 @@ class MeasurementConsoleWindow(QMainWindow):
         self._compact_screen_layout_active = False
         self._pre_compact_screen_dock_state: bytes | None = None
         self._screen_change_connected = False
+        self._preset_layout_generation = 0
         self._stop_all_generation = 0
         self._stop_all_queue: list[int] = []
         self._stop_all_active = False
@@ -851,6 +853,7 @@ class MeasurementConsoleWindow(QMainWindow):
         return True
 
     def _prepare_for_preset(self) -> list[InstrumentDockWidget]:
+        self._preset_layout_generation += 1
         docks = list(self._docks.values())
         for dock in docks:
             if dock.isFloating():
@@ -939,7 +942,36 @@ class MeasurementConsoleWindow(QMainWindow):
             dock.show()
         for dock in docks[:4]:
             dock.raise_()
+        generation = self._preset_layout_generation
+        self._equalize_two_by_two(docks, generation)
+        # QMainWindow performs another dock-layout pass after newly inserted
+        # docks become visible.  Reapply the ratios on the next event-loop turn
+        # so instrument-specific size hints cannot collapse either grid row.
+        QTimer.singleShot(
+            0,
+            lambda arranged=tuple(docks), current=generation: self._equalize_two_by_two(arranged, current),
+        )
         self._schedule_visible_state_snapshot()
+
+    def _equalize_two_by_two(self, docks: Sequence[InstrumentDockWidget], generation: int) -> None:
+        """Give the preset's columns and rows equal shares of the workspace."""
+        if (
+            self._closing
+            or generation != self._preset_layout_generation
+            or not docks
+            or any(dock not in self._docks.values() for dock in docks)
+        ):
+            return
+
+        column_width = max(1, self.width() // 2)
+        row_height = max(1, self.height() // 2)
+
+        if len(docks) >= 2:
+            self.resizeDocks(docks[:2], [column_width, column_width], Qt.Orientation.Horizontal)
+        if len(docks) >= 3:
+            self.resizeDocks([docks[0], docks[2]], [row_height, row_height], Qt.Orientation.Vertical)
+        if len(docks) >= 4:
+            self.resizeDocks([docks[1], docks[3]], [row_height, row_height], Qt.Orientation.Vertical)
 
     def _schedule_visible_state_snapshot(self) -> None:
         from PyQt6 import sip

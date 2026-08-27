@@ -147,6 +147,36 @@ def test_console_hosts_compact_widgets_in_two_columns(qtbot):
     assert sorted(host.returned) == [0, 1, 2, 3]
 
 
+def test_two_by_two_grid_equalizes_columns_and_rows(qtbot, monkeypatch):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(4)])
+    console = MeasurementConsoleWindow(host)
+    for index in range(4):
+        console.add_module(index, arrange=False)
+
+    resize_calls = []
+    original_resize_docks = console.resizeDocks
+
+    def record_resize(docks, sizes, orientation) -> None:
+        resize_calls.append((tuple(docks), tuple(sizes), orientation))
+        original_resize_docks(docks, sizes, orientation)
+
+    monkeypatch.setattr(console, "resizeDocks", record_resize)
+    console.arrange_two_by_two()
+    qtbot.waitUntil(lambda: len(resize_calls) >= 6)
+
+    first_pass = resize_calls[:3]
+    assert first_pass[0][0] == (console._docks[0], console._docks[1])
+    assert first_pass[0][1][0] == first_pass[0][1][1]
+    assert first_pass[0][2] is Qt.Orientation.Horizontal
+    assert first_pass[1][0] == (console._docks[0], console._docks[2])
+    assert first_pass[1][1][0] == first_pass[1][1][1]
+    assert first_pass[1][2] is Qt.Orientation.Vertical
+    assert first_pass[2][0] == (console._docks[1], console._docks[3])
+    assert first_pass[2][1][0] == first_pass[2][1][1]
+    assert first_pass[2][2] is Qt.Orientation.Vertical
+    console.close()
+
+
 def test_side_by_side_uses_two_tabbed_columns_for_four_instruments(qtbot):
     host = _ConsoleHostStub([_DummyWrapper() for _ in range(4)])
     console = MeasurementConsoleWindow(host)
