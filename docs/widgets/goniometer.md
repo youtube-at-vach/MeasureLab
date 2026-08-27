@@ -77,7 +77,8 @@ X軸へLeft、Y軸へRightをそのまま割り当てるXYオシロスコープ�
 - **Persistence**: Densityの残光時定数を0.05～5.0秒で設定します。描画FPSには依存しません。
 - **Glow**: Density表示だけに適用するぼかし量です。解析データには影響しません。
 - **Color Palette**: Green、Fire、Ice、Viridisから、明度が順序を持つ配色を選択します。
-- **Show Direction Guides**: Mono、Anti-phase、Left、Rightの方向案内を表示します。既定はONです。
+- **Show Center Crosshair**: 画面中心を交差する十字線を表示します。既定はONです。
+- **Show Direction Guides**: Mono、Anti-phase、Left、Rightの方向案内を表示します。既定はOFFです。
 - **Show Axes**: 数値目盛りと軸線を表示します。座標名ラベルは表示しません。既定はOFFです。
 - **Show Grid**: プロットのグリッドを表示します。既定はONです。
 
