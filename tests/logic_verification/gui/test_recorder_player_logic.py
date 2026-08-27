@@ -258,10 +258,31 @@ class TestRecorderPlayerLogic(unittest.TestCase):
 
         # Should be all zeros
         np.testing.assert_array_equal(outdata, np.zeros((frames, channels), dtype=np.float32))
-        # Record buffer should be empty
+
+    def test_playback_start_failure_rolls_back_running_state(self):
+        self.player.playback_buffer = np.zeros((100, 2), dtype=np.float32)
+        self.audio_engine.register_callback.side_effect = RuntimeError("device unavailable")
+
+        success, message = self.player.start_playback()
+
+        self.assertFalse(success)
+        self.assertIn("device unavailable", message)
+        self.assertFalse(self.player.is_playing)
+        self.assertIsNone(self.player.callback_id)
+
+    def test_recording_start_failure_releases_writer_and_temp_file(self):
+        self.audio_engine.register_callback.side_effect = RuntimeError("stream failed")
+
+        success, message = self.player.start_recording()
+
+        self.assertFalse(success)
+        self.assertIn("stream failed", message)
+        self.assertFalse(self.player.is_recording)
+        self.assertIsNone(self.player.callback_id)
+        self.assertIsNone(self.player._writer_thread)
+        self.assertIsNone(self.player._write_queue)
+        self.assertIsNone(self.player._temp_record_file)
         self.assertEqual(len(self.player.record_buffer), 0)
-        # Queue should be empty (or None, but we inited it in setUp)
-        self.assertTrue(self.player._write_queue.empty())
 
 
 if __name__ == "__main__":
