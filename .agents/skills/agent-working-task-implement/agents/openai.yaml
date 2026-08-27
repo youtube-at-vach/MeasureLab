@@ -1,0 +1,4 @@
+interface:
+  display_name: "Working Task Implementer"
+  short_description: "Implement Working Issues and move PRs to Review"
+  default_prompt: "Use $agent-working-task-implement to implement the current Working Project task and prepare its PR for review."
