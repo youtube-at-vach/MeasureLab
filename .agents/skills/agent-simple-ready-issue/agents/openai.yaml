@@ -1,0 +1,4 @@
+interface:
+  display_name: "Simple Ready Issue"
+  short_description: "Turn small fixes into Ready Project Issues"
+  default_prompt: "Use $agent-simple-ready-issue to turn this small fix into a Ready Project Issue."
