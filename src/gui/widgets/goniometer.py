@@ -639,7 +639,7 @@ class GoniometerWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInte
         self.plot_widget.setXRange(-1.1, 1.1, padding=0.0)
         self.plot_widget.setYRange(-1.1, 1.1, padding=0.0)
         self.plot_widget.setMouseEnabled(x=False, y=False)
-        self.plot_widget.setBackground("#111111")
+        self.plot_widget.setBackground("#000000")
         self.plot_widget.setFrameShape(QFrame.Shape.NoFrame)
         self.plot_widget.setStyleSheet("border: none;")
         self.plot_widget.getPlotItem().layout.setContentsMargins(0, 0, 0, 0)
@@ -1367,7 +1367,7 @@ class GoniometerWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInte
     def apply_theme(self, theme_name: str) -> None:
         if theme_name == "system" and self.app is not None and hasattr(self.app, "theme_manager"):
             theme_name = self.app.theme_manager.get_effective_theme()
-        background = "#111111" if theme_name == "dark" else "#fafafa"
+        background = "#000000" if theme_name == "dark" else "#fafafa"
         self.plot_widget.setBackground(background)
         self.toggle_btn.setStyleSheet(STYLE_TOGGLE_BTN_DARK if theme_name == "dark" else STYLE_TOGGLE_BTN_LIGHT)
         label_color = "#bbbbbb" if theme_name == "dark" else "#444444"
