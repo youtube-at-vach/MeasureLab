@@ -61,9 +61,13 @@ class CalibrationManager:
             try:
                 with open(self.config_path, "r") as f:
                     data = json.load(f)
-                    self.input_sensitivity = data.get("input_sensitivity", 1.0)
+                    self.input_sensitivity, input_sensitivity_valid = self._validated_float(
+                        data.get("input_sensitivity", 1.0), 1.0, positive=True
+                    )
                     if "input_sensitivity_is_calibrated" in data:
-                        self.input_sensitivity_is_calibrated = bool(data.get("input_sensitivity_is_calibrated"))
+                        self.input_sensitivity_is_calibrated = input_sensitivity_valid and bool(
+                            data.get("input_sensitivity_is_calibrated")
+                        )
                     else:
                         # Legacy files did not record this state. A non-default
                         # sensitivity could only be entered through calibration
@@ -73,25 +77,35 @@ class CalibrationManager:
                             self.input_sensitivity_is_calibrated = abs(float(self.input_sensitivity) - 1.0) > 1e-12
                         except Exception:
                             self.input_sensitivity_is_calibrated = False
-                    self.output_gain = data.get("output_gain", 1.0)
+                    self.output_gain, output_gain_valid = self._validated_float(
+                        data.get("output_gain", 1.0), 1.0, positive=True
+                    )
                     # New flag (backward compatible)
                     if "output_gain_is_calibrated" in data:
-                        self.output_gain_is_calibrated = bool(data.get("output_gain_is_calibrated"))
+                        self.output_gain_is_calibrated = output_gain_valid and bool(
+                            data.get("output_gain_is_calibrated")
+                        )
                     else:
                         # Heuristic for older files: treat non-default values as calibrated.
                         try:
                             self.output_gain_is_calibrated = abs(float(self.output_gain) - 1.0) > 1e-12
                         except Exception:
                             self.output_gain_is_calibrated = False
-                    self.frequency_calibration = data.get("frequency_calibration", 1.0)
-                    self.frequency_calibration_1pps = data.get("frequency_calibration_1pps", 1.0)
-                    self.frequency_calibration_source = data.get("frequency_calibration_source", "basic")
-                    self.lockin_gain_offset = data.get("lockin_gain_offset", 0.0)
+                    self.frequency_calibration, _ = self._validated_float(
+                        data.get("frequency_calibration", 1.0), 1.0, positive=True
+                    )
+                    self.frequency_calibration_1pps, _ = self._validated_float(
+                        data.get("frequency_calibration_1pps", 1.0), 1.0, positive=True
+                    )
+                    source = data.get("frequency_calibration_source", "basic")
+                    self.frequency_calibration_source = source if source in ("basic", "1pps") else "basic"
+                    self.lockin_gain_offset, _ = self._validated_float(data.get("lockin_gain_offset", 0.0), 0.0)
 
                     # New format
                     if "spl_offset_db" in data:
                         try:
-                            self.spl_offset_db = float(data.get("spl_offset_db"))
+                            value = float(data.get("spl_offset_db"))
+                            self.spl_offset_db = value if np.isfinite(value) else None
                         except Exception:
                             self.spl_offset_db = None
 
@@ -107,7 +121,8 @@ class CalibrationManager:
                                     entry = None
                             if isinstance(entry, dict) and "offset_db" in entry:
                                 try:
-                                    self.spl_offset_db = float(entry.get("offset_db"))
+                                    value = float(entry.get("offset_db"))
+                                    self.spl_offset_db = value if np.isfinite(value) else None
                                 except Exception:
                                     self.spl_offset_db = None
 
@@ -121,6 +136,17 @@ class CalibrationManager:
                     )
             except Exception as e:
                 self.logger.error("Failed to load calibration: %s", e)
+
+    @staticmethod
+    def _validated_float(value, default, *, positive=False):
+        """Return a finite calibration value and whether the input was valid."""
+        try:
+            result = float(value)
+        except (TypeError, ValueError, OverflowError):
+            return float(default), False
+        if not np.isfinite(result) or (positive and result <= 0):
+            return float(default), False
+        return result, True
 
     def save(self):
         # Synchronize current settings to the active profile if one is selected
@@ -180,13 +206,19 @@ class CalibrationManager:
         except Exception:
             raise ValueError("Invalid SPL calibration values") from None
 
+        if not np.isfinite(measured_dbfs_c) or not np.isfinite(measured_spl_db):
+            raise ValueError("Invalid SPL calibration values")
+
         offset_db = measured_spl_db - measured_dbfs_c
         self.spl_offset_db = float(offset_db)
         self.save()
 
     def get_spl_offset_db(self):
         try:
-            return None if self.spl_offset_db is None else float(self.spl_offset_db)
+            if self.spl_offset_db is None:
+                return None
+            offset = float(self.spl_offset_db)
+            return offset if np.isfinite(offset) else None
         except Exception:
             return None
 
@@ -195,7 +227,10 @@ class CalibrationManager:
         off = self.get_spl_offset_db()
         if off is None:
             return None
-        return float(dbfs_c) + off
+        dbfs_c = float(dbfs_c)
+        if not np.isfinite(dbfs_c):
+            raise ValueError("Invalid dBFS value")
+        return dbfs_c + off
 
     def set_input_sensitivity(self, v_per_fs):
         """Sets input sensitivity in Volts (Peak) corresponding to 1.0 FS."""
@@ -230,11 +265,17 @@ class CalibrationManager:
 
     def set_frequency_calibration(self, factor):
         """Sets the frequency calibration factor (multiplier)."""
+        factor, valid = self._validated_float(factor, 1.0, positive=True)
+        if not valid:
+            raise ValueError("Invalid frequency calibration factor")
         self.frequency_calibration = factor
         self.save()
 
     def set_frequency_calibration_1pps(self, factor):
         """Sets the 1PPS-derived frequency calibration factor (multiplier)."""
+        factor, valid = self._validated_float(factor, 1.0, positive=True)
+        if not valid:
+            raise ValueError("Invalid 1PPS frequency calibration factor")
         self.frequency_calibration_1pps = factor
         self.save()
 
@@ -253,7 +294,10 @@ class CalibrationManager:
     def set_lockin_gain_offset(self, offset):
         """Sets the gain offset for the lock-in amplifier in dB."""
         try:
-            self.lockin_gain_offset = float(offset)
+            value = float(offset)
+            if not np.isfinite(value):
+                raise ValueError("gain offset must be finite")
+            self.lockin_gain_offset = value
             self.save()
         except (ValueError, TypeError) as e:
             self.logger.warning("Invalid lock-in gain offset provided: %s", e)
@@ -308,22 +352,39 @@ class CalibrationManager:
 
     def _apply_calibration_snapshot(self, snapshot):
         """Apply a complete profile snapshot while preserving legacy defaults."""
-        self.input_sensitivity = snapshot.get("input_sensitivity", 1.0)
+        self.input_sensitivity, input_sensitivity_valid = self._validated_float(
+            snapshot.get("input_sensitivity", 1.0), 1.0, positive=True
+        )
         if "input_sensitivity_is_calibrated" in snapshot:
-            self.input_sensitivity_is_calibrated = bool(snapshot.get("input_sensitivity_is_calibrated"))
+            self.input_sensitivity_is_calibrated = input_sensitivity_valid and bool(
+                snapshot.get("input_sensitivity_is_calibrated")
+            )
         else:
             try:
                 self.input_sensitivity_is_calibrated = abs(float(self.input_sensitivity) - 1.0) > 1e-12
             except Exception:
                 self.input_sensitivity_is_calibrated = False
 
-        self.output_gain = snapshot.get("output_gain", 1.0)
-        self.output_gain_is_calibrated = bool(snapshot.get("output_gain_is_calibrated", False))
-        self.frequency_calibration = snapshot.get("frequency_calibration", 1.0)
-        self.frequency_calibration_1pps = snapshot.get("frequency_calibration_1pps", 1.0)
-        self.frequency_calibration_source = snapshot.get("frequency_calibration_source", "basic")
-        self.lockin_gain_offset = snapshot.get("lockin_gain_offset", 0.0)
-        self.spl_offset_db = snapshot.get("spl_offset_db", None)
+        self.output_gain, output_gain_valid = self._validated_float(
+            snapshot.get("output_gain", 1.0), 1.0, positive=True
+        )
+        self.output_gain_is_calibrated = output_gain_valid and bool(snapshot.get("output_gain_is_calibrated", False))
+        self.frequency_calibration, _ = self._validated_float(
+            snapshot.get("frequency_calibration", 1.0), 1.0, positive=True
+        )
+        self.frequency_calibration_1pps, _ = self._validated_float(
+            snapshot.get("frequency_calibration_1pps", 1.0), 1.0, positive=True
+        )
+        source = snapshot.get("frequency_calibration_source", "basic")
+        self.frequency_calibration_source = source if source in ("basic", "1pps") else "basic"
+        self.lockin_gain_offset, _ = self._validated_float(snapshot.get("lockin_gain_offset", 0.0), 0.0)
+        spl_offset = snapshot.get("spl_offset_db", None)
+        if spl_offset is None:
+            self.spl_offset_db = None
+        else:
+            self.spl_offset_db, spl_offset_valid = self._validated_float(spl_offset, 0.0)
+            if not spl_offset_valid:
+                self.spl_offset_db = None
 
     @staticmethod
     def _profile_device_metadata(

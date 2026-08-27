@@ -75,6 +75,84 @@ def test_set_sensitivities(calibration_manager):
         calibration_manager.set_output_gain(-1.0)
 
 
+def test_invalid_persisted_calibration_values_fail_closed(temp_config_path):
+    """Corrupt calibration data must not silently contaminate measurements."""
+    with open(temp_config_path, "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "input_sensitivity": -2.0,
+                "input_sensitivity_is_calibrated": True,
+                "output_gain": "invalid",
+                "output_gain_is_calibrated": True,
+                "frequency_calibration": float("nan"),
+                "frequency_calibration_1pps": -1.0,
+                "frequency_calibration_source": "invalid",
+                "lockin_gain_offset": float("inf"),
+                "spl_offset_db": float("inf"),
+            },
+            f,
+        )
+
+    manager = CalibrationManager(config_filename=temp_config_path)
+
+    assert manager.input_sensitivity == 1.0
+    assert manager.input_sensitivity_is_calibrated is False
+    assert manager.output_gain == 1.0
+    assert manager.output_gain_is_calibrated is False
+    assert manager.frequency_calibration == 1.0
+    assert manager.frequency_calibration_1pps == 1.0
+    assert manager.frequency_calibration_source == "basic"
+    assert manager.lockin_gain_offset == 0.0
+    assert manager.get_spl_offset_db() is None
+
+
+@pytest.mark.parametrize("invalid_factor", [0.0, -1.0, float("nan"), float("inf"), "invalid"])
+def test_frequency_calibration_setters_reject_invalid_values(calibration_manager, invalid_factor):
+    with pytest.raises(ValueError):
+        calibration_manager.set_frequency_calibration(invalid_factor)
+    with pytest.raises(ValueError):
+        calibration_manager.set_frequency_calibration_1pps(invalid_factor)
+
+    assert calibration_manager.frequency_calibration == 1.0
+    assert calibration_manager.frequency_calibration_1pps == 1.0
+
+
+@pytest.mark.parametrize("invalid_value", [float("nan"), float("inf"), float("-inf")])
+def test_spl_calibration_rejects_non_finite_values(calibration_manager, invalid_value):
+    with pytest.raises(ValueError):
+        calibration_manager.set_spl_calibration(invalid_value, 94.0)
+    with pytest.raises(ValueError):
+        calibration_manager.set_spl_calibration(-20.0, invalid_value)
+
+    assert calibration_manager.get_spl_offset_db() is None
+
+
+def test_invalid_profile_values_fail_closed(calibration_manager):
+    calibration_manager.profiles["Corrupt"] = {
+        "input_sensitivity": float("nan"),
+        "input_sensitivity_is_calibrated": True,
+        "output_gain": -1.0,
+        "output_gain_is_calibrated": True,
+        "frequency_calibration": float("inf"),
+        "frequency_calibration_1pps": 0.0,
+        "frequency_calibration_source": "invalid",
+        "lockin_gain_offset": "invalid",
+        "spl_offset_db": float("nan"),
+    }
+
+    calibration_manager.load_profile("Corrupt")
+
+    assert calibration_manager.input_sensitivity == 1.0
+    assert calibration_manager.input_sensitivity_is_calibrated is False
+    assert calibration_manager.output_gain == 1.0
+    assert calibration_manager.output_gain_is_calibrated is False
+    assert calibration_manager.frequency_calibration == 1.0
+    assert calibration_manager.frequency_calibration_1pps == 1.0
+    assert calibration_manager.frequency_calibration_source == "basic"
+    assert calibration_manager.lockin_gain_offset == 0.0
+    assert calibration_manager.get_spl_offset_db() is None
+
+
 @pytest.mark.parametrize(
     ("legacy_sensitivity", "expected_calibrated"),
     [(1.0, False), (2.0, True)],

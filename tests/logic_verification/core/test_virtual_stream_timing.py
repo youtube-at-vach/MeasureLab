@@ -53,21 +53,19 @@ class TestVirtualStreamTiming(unittest.TestCase):
         # 2. Loop 1: t = t0 + 0.01. to_sleep = t0 - (t0+0.01) = -0.01. No sleep. next_call_time += 0.1 -> 1000.1.
         # 3. Loop 2: t = t0 + 0.02. to_sleep = 1000.1 - 1000.02 = 0.08. Sleep(0.08). next_call_time += 0.1 -> 1000.2.
 
-        mock_time.time.side_effect = [
+        mock_time.monotonic.side_effect = [
             t0,  # init next_call_time
             t0 + 0.01,  # 1st loop t
             t0 + 0.02,  # 2nd loop t
         ]
+        mock_time.time.side_effect = [2000.01, 2000.10]
 
-        # Stop loop after 2nd iteration (when wait is called)
-        self.stream._stop_event.wait = MagicMock()
-
-        def wait_side_effect(duration):
-            if self.stream._stop_event.wait.call_count >= 1:
+        def callback_side_effect(*_args):
+            if self.callback.call_count == 2:
                 self.stream.active = False
-            return True
 
-        self.stream._stop_event.wait.side_effect = wait_side_effect
+        self.callback.side_effect = callback_side_effect
+        self.stream._stop_event.wait = MagicMock(return_value=False)
 
         self.stream.active = True
         self.stream._run_loop()
@@ -97,19 +95,19 @@ class TestVirtualStreamTiming(unittest.TestCase):
         # 3. Loop 2: t = 1000.51.
         #    to_sleep = 1000.6 - 1000.51 = 0.09. Sleep(0.09).
 
-        mock_time.time.side_effect = [
+        mock_time.monotonic.side_effect = [
             t0,  # init
             t0 + 0.5,  # 1st loop t (lag)
             t0 + 0.51,  # 2nd loop t
         ]
+        mock_time.time.side_effect = [2000.5, 2000.6]
 
-        self.stream._stop_event.wait = MagicMock()
+        def callback_side_effect(*_args):
+            if self.callback.call_count == 2:
+                self.stream.active = False
 
-        def wait_side_effect(duration):
-            self.stream.active = False
-            return True
-
-        self.stream._stop_event.wait.side_effect = wait_side_effect
+        self.callback.side_effect = callback_side_effect
+        self.stream._stop_event.wait = MagicMock(return_value=False)
 
         self.stream.active = True
         self.stream._run_loop()
@@ -125,24 +123,16 @@ class TestVirtualStreamTiming(unittest.TestCase):
     def test_run_loop_callback_exception(self, mock_time):
         """Verify loop continues after callback exception."""
         t0 = 1000.0
-        mock_time.time.return_value = t0
+        mock_time.monotonic.return_value = t0
+        mock_time.time.return_value = 2000.0
 
-        # Callback raises exception on first call, succeeds on second
-        self.callback.side_effect = [ValueError("Test Error"), None]
+        def callback_side_effect(*_args):
+            if self.callback.call_count == 1:
+                raise ValueError("Test Error")
+            self.stream.active = False
 
-        # Stop loop after 2 iterations
-        # logic:
-        # Loop 1: sleep not called (init). callback called (1).
-        # Loop 2: sleep called. call_count is 1. Set active=False. callback called (2).
-        # Loop terminates.
-        self.stream._stop_event.wait = MagicMock()
-
-        def wait_side_effect(duration):
-            if self.callback.call_count >= 1:
-                self.stream.active = False
-            return True
-
-        self.stream._stop_event.wait.side_effect = wait_side_effect
+        self.callback.side_effect = callback_side_effect
+        self.stream._stop_event.wait = MagicMock(return_value=False)
 
         self.stream.active = True
         self.stream._run_loop()
@@ -156,7 +146,9 @@ class TestVirtualStreamTiming(unittest.TestCase):
     def test_callback_arguments(self, mock_time):
         """Verify callback arguments."""
         t0 = 1000.0
-        mock_time.time.return_value = t0
+        wall_time = 2000.0
+        mock_time.monotonic.return_value = t0
+        mock_time.time.return_value = wall_time
 
         # Stop after 1 iteration
         def callback_side_effect(indata, outdata, frames, time_info, status):
@@ -170,9 +162,9 @@ class TestVirtualStreamTiming(unittest.TestCase):
             self.assertTrue(np.all(outdata == 0))
 
             # Verify time info
-            self.assertEqual(time_info.currentTime, t0)
-            self.assertEqual(time_info.inputBufferAdcTime, t0)
-            self.assertEqual(time_info.outputBufferDacTime, t0 + self.interval)
+            self.assertEqual(time_info.currentTime, wall_time)
+            self.assertEqual(time_info.inputBufferAdcTime, wall_time)
+            self.assertEqual(time_info.outputBufferDacTime, wall_time + self.interval)
 
         self.callback.side_effect = callback_side_effect
 
@@ -180,6 +172,46 @@ class TestVirtualStreamTiming(unittest.TestCase):
         self.stream._run_loop()
 
         self.assertEqual(self.callback.call_count, 1)
+
+    @patch("src.core.audio_engine.time")
+    def test_stop_during_wait_does_not_emit_stale_callback(self, mock_time):
+        """A stop request while sleeping must cancel the pending audio block."""
+        t0 = 1000.0
+        mock_time.monotonic.side_effect = [t0, t0 + 0.01, t0 + 0.02]
+        mock_time.time.return_value = 2000.0
+
+        def stop_on_wait(_duration):
+            self.stream.active = False
+            self.stream._stop_event.set()
+            return True
+
+        self.stream._stop_event.wait = MagicMock(side_effect=stop_on_wait)
+        self.callback.side_effect = lambda *_args: None
+        self.stream.active = True
+        self.stream._run_loop()
+
+        self.assertEqual(self.callback.call_count, 1)
+
+    @patch("src.core.audio_engine.time")
+    def test_wall_clock_adjustment_does_not_change_pacing(self, mock_time):
+        """Wall-clock jumps affect timestamps, not callback scheduling."""
+        t0 = 1000.0
+        mock_time.monotonic.side_effect = [t0, t0, t0 + 0.02]
+        mock_time.time.side_effect = [2000.0, 1000.0]
+        self.stream._stop_event.wait = MagicMock(return_value=False)
+
+        def callback_side_effect(*_args):
+            if self.callback.call_count == 2:
+                self.stream.active = False
+
+        self.callback.side_effect = callback_side_effect
+        self.stream.active = True
+        self.stream._run_loop()
+
+        self.assertEqual(self.callback.call_count, 2)
+        self.stream._stop_event.wait.assert_called_once()
+        wait_seconds = self.stream._stop_event.wait.call_args.args[0]
+        self.assertAlmostEqual(wait_seconds, 0.08, places=9)
 
 
 if __name__ == "__main__":

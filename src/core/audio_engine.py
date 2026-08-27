@@ -65,18 +65,26 @@ class VirtualStream:
         indata = np.zeros((self.blocksize, self.channels[0]), dtype="float32")
         outdata = np.zeros((self.blocksize, self.channels[1]), dtype="float32")
 
-        next_call_time = time.time()
+        # Pace the stream with a monotonic clock so NTP/manual wall-clock
+        # adjustments cannot stall it or create a callback burst.
+        next_call_time = time.monotonic()
 
         while self.active and not self._stop_event.is_set():
-            t = time.time()
+            now = time.monotonic()
             # Drift correction: if we are falling behind, catch up just a bit, but don't spiral
-            if t > next_call_time + 0.1:
-                next_call_time = t
+            if now > next_call_time + 0.1:
+                next_call_time = now
 
             # Sleep until next Tick
-            to_sleep = next_call_time - t
+            to_sleep = next_call_time - now
             if to_sleep > 0:
-                self._stop_event.wait(to_sleep)
+                # Event.wait() returns true when stop() interrupts the sleep.
+                # Never emit one final stale block after shutdown was requested.
+                if self._stop_event.wait(to_sleep):
+                    break
+
+            if not self.active or self._stop_event.is_set():
+                break
 
             next_call_time += interval
 
@@ -95,7 +103,8 @@ class VirtualStream:
 
                 status = sd.CallbackFlags()
 
-                self.callback(indata, outdata, self.blocksize, _DummyTime(t, interval), status)
+                callback_time = time.time()
+                self.callback(indata, outdata, self.blocksize, _DummyTime(callback_time, interval), status)
 
                 # In Virtual Mode, `indata` is usually zeros, UNLESS the callback filled it?
                 # master_callback expects indata from "Hardware".
