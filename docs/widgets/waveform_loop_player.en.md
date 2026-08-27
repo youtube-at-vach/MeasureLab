@@ -11,7 +11,7 @@ It is highly useful when you want to repeatedly play back a specific audio signa
 
 This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
 
-## Operations
+## Operation
 
 ### Waveform Display & Region Selection
 

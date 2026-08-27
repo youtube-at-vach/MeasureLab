@@ -13,7 +13,7 @@ This widget supports common features of the Detachable Wrapper. Please refer to 
 * Evaluate the maximum FFT size your PC can process in real-time.
 * Identify the recommended maximum FFT size for different sampling rates.
 
-## How to Use
+## Operation
 
 1. **Safety Factor**: Sets the fraction of total buffer time allowed for processing. Default is `0.8` (80%).
     * **Why not 100%?**: If the processor operates at 100% capacity, any slight interruption (like a background app) will cause audio dropouts. Setting it to 80% provides a 20% safety margin.
