@@ -70,6 +70,8 @@ class MockAudioEngine:
         self.calibration = MockCalibrationManager()
         self.input_channel_mode = "stereo"
         self.output_channel_mode = "stereo"
+        self.input_device = None
+        self.output_device = None
         self.dithering_enabled = False
         self.dithering_bit_depth = 16
 
