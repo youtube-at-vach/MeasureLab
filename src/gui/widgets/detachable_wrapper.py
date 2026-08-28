@@ -2,6 +2,7 @@ import os
 import re
 from datetime import datetime
 from enum import Enum
+from functools import lru_cache
 
 from PyQt6.QtCore import QPointF, QRectF, QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QColor, QIcon, QPainter, QPalette, QPen, QPixmap, QPolygonF
@@ -242,8 +243,10 @@ def _draw_header_icon(icon: HeaderIcon, color: QColor, size: int) -> QPixmap:
     return pixmap
 
 
-def make_header_icon(icon: HeaderIcon, color: QColor) -> QIcon:
-    """Build a palette-colored icon with normal, disabled, and Retina pixmaps."""
+@lru_cache(maxsize=64)
+def _cached_header_icon(icon: HeaderIcon, rgba: int) -> QIcon:
+    """Render one reusable palette/icon combination."""
+    color = QColor.fromRgba(rgba)
     result = QIcon()
     disabled_color = QColor(color)
     disabled_color.setAlpha(165)
@@ -251,6 +254,11 @@ def make_header_icon(icon: HeaderIcon, color: QColor) -> QIcon:
         result.addPixmap(_draw_header_icon(icon, color, size), QIcon.Mode.Normal)
         result.addPixmap(_draw_header_icon(icon, disabled_color, size), QIcon.Mode.Disabled)
     return result
+
+
+def make_header_icon(icon: HeaderIcon, color: QColor) -> QIcon:
+    """Build a palette-colored icon with normal, disabled, and Retina pixmaps."""
+    return QIcon(_cached_header_icon(icon, color.rgba()))
 
 
 def application_button_text_color() -> QColor:

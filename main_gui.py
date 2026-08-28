@@ -125,10 +125,23 @@ def _preload_dependencies():
         import scipy.signal  # noqa: F401
         import scipy.special  # noqa: F401
         import scipy.fft  # noqa: F401
+        import scipy.interpolate  # noqa: F401
         import scipy.linalg  # noqa: F401
+        import netCDF4  # noqa: F401
         import pywt  # noqa: F401
+        import soundfile  # noqa: F401
     except Exception:  # noqa: S110
         # Preload failures should never crash application startup
+        pass
+
+    # HistogramLUTItem asks Matplotlib for optional color maps while the first
+    # spectrogram-like widget is constructed. Warm pyplot here so that work is
+    # overlapped with the rest of startup and the complete color-map menu stays
+    # immediately responsive. Matplotlib is optional from MeasureLab's point of
+    # view, so its absence must not abort the core dependency preload above.
+    try:
+        import matplotlib.pyplot  # noqa: F401
+    except Exception:  # noqa: S110
         pass
 
 

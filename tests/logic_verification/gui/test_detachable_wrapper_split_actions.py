@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from PyQt6.QtCore import QSize, Qt
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtGui import QColor, QPixmap
 from PyQt6.QtWidgets import QHBoxLayout, QWidget
 
 from src.gui.module_registry import (
@@ -14,7 +14,8 @@ from src.gui.module_registry import (
     SUPPORTED,
     WidgetCapabilities,
 )
-from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
+from src.gui.widgets import detachable_wrapper
+from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper, HeaderIcon
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 
 
@@ -214,3 +215,20 @@ def test_header_buttons_use_clear_custom_icons_and_accessible_labels(split_wrapp
         assert not button.icon().isNull()
         assert button.iconSize() == QSize(22, 22)
         assert button.size() == QSize(34, 28)
+
+
+def test_header_icon_rendering_is_reused_for_matching_palette_color():
+    detachable_wrapper._cached_header_icon.cache_clear()
+    color = QColor("#123456")
+
+    with patch.object(
+        detachable_wrapper,
+        "_draw_header_icon",
+        wraps=detachable_wrapper._draw_header_icon,
+    ) as draw_header_icon:
+        first = detachable_wrapper.make_header_icon(HeaderIcon.DETACH, color)
+        second = detachable_wrapper.make_header_icon(HeaderIcon.DETACH, color)
+
+    assert not first.isNull()
+    assert not second.isNull()
+    assert draw_header_icon.call_count == 4
