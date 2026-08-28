@@ -178,33 +178,43 @@ class TrackControlUI(QFrame):
         self.load_btn.clicked.connect(self.on_load)
         self.name_label = QLabel(tr("No file"))
         self.name_label.setFixedWidth(150)
+        self.name_label.setAccessibleName(tr("Loaded audio file"))
 
         layout.addWidget(self.load_btn)
         layout.addWidget(self.name_label)
 
-        layout.addWidget(QLabel(tr("Azimuth:")))
+        self.az_label = QLabel(tr("Azimuth:"))
         self.az_spin = QSpinBox()
         self.az_spin.setRange(-180, 180)
         self.az_spin.setSuffix("°")
         self.az_spin.setSingleStep(1)
         self.az_spin.setValue(0)
+        self.az_label.setBuddy(self.az_spin)
+        self.az_spin.setAccessibleName(tr("Azimuth:"))
+        layout.addWidget(self.az_label)
         layout.addWidget(self.az_spin)
 
-        layout.addWidget(QLabel(tr("Elevation:")))
+        self.el_label = QLabel(tr("Elevation:"))
         self.el_spin = QSpinBox()
         self.el_spin.setRange(-90, 90)
         self.el_spin.setSuffix("°")
         self.el_spin.setSingleStep(1)
         self.el_spin.setValue(0)
+        self.el_label.setBuddy(self.el_spin)
+        self.el_spin.setAccessibleName(tr("Elevation:"))
+        layout.addWidget(self.el_label)
         layout.addWidget(self.el_spin)
 
-        layout.addWidget(QLabel(tr("Gain:")))
+        self.gain_label = QLabel(tr("Gain:"))
         self.gain_spin = QDoubleSpinBox()
         self.gain_spin.setRange(-60.0, 12.0)
         self.gain_spin.setSuffix(" dB")
         self.gain_spin.setSingleStep(1.0)
         self.gain_spin.setDecimals(1)
         self.gain_spin.setValue(0.0)
+        self.gain_label.setBuddy(self.gain_spin)
+        self.gain_spin.setAccessibleName(tr("Gain:"))
+        layout.addWidget(self.gain_label)
         layout.addWidget(self.gain_spin)
 
         self.mute_btn = QPushButton(tr("Mute"))
@@ -216,10 +226,19 @@ class TrackControlUI(QFrame):
         layout.addWidget(self.solo_btn)
 
         self.remove_btn = QPushButton("X")
+        self.remove_btn.setAccessibleName(tr("Remove Track"))
+        self.remove_btn.setToolTip(tr("Remove Track"))
         self.remove_btn.clicked.connect(lambda: self.removed.emit(self))
         layout.addWidget(self.remove_btn)
 
         self.setLayout(layout)
+
+        QWidget.setTabOrder(self.load_btn, self.az_spin)
+        QWidget.setTabOrder(self.az_spin, self.el_spin)
+        QWidget.setTabOrder(self.el_spin, self.gain_spin)
+        QWidget.setTabOrder(self.gain_spin, self.mute_btn)
+        QWidget.setTabOrder(self.mute_btn, self.solo_btn)
+        QWidget.setTabOrder(self.solo_btn, self.remove_btn)
 
     def on_load(self):
         fname, _ = QFileDialog.getOpenFileName(
@@ -304,6 +323,7 @@ class SpatialBinauralMixerWidget(QWidget):
         self.tracks_area.setObjectName("spatialMixerTracksScroll")
         self.tracks_area.setProperty("measurelabScrollRole", "dynamic-content")
         self.tracks_area.setWidgetResizable(True)
+        self.tracks_area.setAccessibleName(tr("Tracks"))
         self.tracks_container = QWidget()
         self.tracks_inner_layout = QVBoxLayout()
         self.tracks_inner_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -326,7 +346,7 @@ class SpatialBinauralMixerWidget(QWidget):
         self.preview_cb.stateChanged.connect(self.on_preview_cb_changed)
 
         preview_layout.addWidget(self.preview_cb)
-        preview_layout.addWidget(QLabel(tr("Start:")))
+        self.start_label = QLabel(tr("Start:"))
         self.start_sec_spin = QDoubleSpinBox()
         self.start_sec_spin.setRange(0.0, 3600.0)
         self.start_sec_spin.setSingleStep(1.0)
@@ -334,21 +354,28 @@ class SpatialBinauralMixerWidget(QWidget):
         self.start_sec_spin.setDecimals(1)
         self.start_sec_spin.setValue(0.0)
         self.start_sec_spin.setEnabled(False)
+        self.start_label.setBuddy(self.start_sec_spin)
+        self.start_sec_spin.setAccessibleName(tr("Start:"))
+        preview_layout.addWidget(self.start_label)
         preview_layout.addWidget(self.start_sec_spin)
 
         self.prev_btn = QPushButton("◀")
         self.prev_btn.setFixedWidth(24)
+        self.prev_btn.setAccessibleName(tr("Previous Preview Segment"))
+        self.prev_btn.setToolTip(tr("Previous Preview Segment"))
         self.prev_btn.setEnabled(False)
         self.prev_btn.clicked.connect(self.on_prev_preview)
         preview_layout.addWidget(self.prev_btn)
 
         self.next_btn = QPushButton("▶")
         self.next_btn.setFixedWidth(24)
+        self.next_btn.setAccessibleName(tr("Next Preview Segment"))
+        self.next_btn.setToolTip(tr("Next Preview Segment"))
         self.next_btn.setEnabled(False)
         self.next_btn.clicked.connect(self.on_next_preview)
         preview_layout.addWidget(self.next_btn)
 
-        preview_layout.addWidget(QLabel(tr("Duration:")))
+        self.duration_label = QLabel(tr("Duration:"))
         self.duration_sec_spin = QDoubleSpinBox()
         self.duration_sec_spin.setRange(0.1, 600.0)
         self.duration_sec_spin.setSingleStep(1.0)
@@ -356,6 +383,9 @@ class SpatialBinauralMixerWidget(QWidget):
         self.duration_sec_spin.setDecimals(1)
         self.duration_sec_spin.setValue(10.0)
         self.duration_sec_spin.setEnabled(False)
+        self.duration_label.setBuddy(self.duration_sec_spin)
+        self.duration_sec_spin.setAccessibleName(tr("Duration:"))
+        preview_layout.addWidget(self.duration_label)
         preview_layout.addWidget(self.duration_sec_spin)
         preview_layout.addStretch()
         preview_group.setLayout(preview_layout)
@@ -366,11 +396,14 @@ class SpatialBinauralMixerWidget(QWidget):
         actions_layout = QHBoxLayout()
 
         self.play_btn = QPushButton(tr("▶ Render & Monitor"))
+        self.play_btn.setAccessibleName(tr("Render & Monitor"))
         self.play_btn.clicked.connect(self.on_render_play)
         self.stop_btn = QPushButton(tr("⏸ Stop Monitor"))
+        self.stop_btn.setAccessibleName(tr("Stop Monitor"))
         self.stop_btn.clicked.connect(self.on_stop_play)
 
         self.export_btn = QPushButton(tr("Render to WAV"))
+        self.export_btn.setAccessibleName(tr("Render to WAV"))
         self.export_btn.clicked.connect(self.on_export)
 
         actions_layout.addWidget(self.play_btn)
@@ -381,6 +414,16 @@ class SpatialBinauralMixerWidget(QWidget):
         layout.addWidget(actions_group)
 
         self.setLayout(layout)
+
+        QWidget.setTabOrder(self.load_sofa_btn, self.add_track_btn)
+        QWidget.setTabOrder(self.add_track_btn, self.preview_cb)
+        QWidget.setTabOrder(self.preview_cb, self.start_sec_spin)
+        QWidget.setTabOrder(self.start_sec_spin, self.prev_btn)
+        QWidget.setTabOrder(self.prev_btn, self.next_btn)
+        QWidget.setTabOrder(self.next_btn, self.duration_sec_spin)
+        QWidget.setTabOrder(self.duration_sec_spin, self.play_btn)
+        QWidget.setTabOrder(self.play_btn, self.stop_btn)
+        QWidget.setTabOrder(self.stop_btn, self.export_btn)
 
     def on_preview_cb_changed(self, state):
         is_checked = self.preview_cb.isChecked()
@@ -419,11 +462,20 @@ class SpatialBinauralMixerWidget(QWidget):
         track.removed.connect(self.remove_track)
         self.tracks.append(track)
         self.tracks_inner_layout.addWidget(track)
+        self._update_track_tab_order()
 
     def remove_track(self, track):
         self.tracks.remove(track)
         self.tracks_inner_layout.removeWidget(track)
         track.deleteLater()
+        self._update_track_tab_order()
+
+    def _update_track_tab_order(self):
+        previous = self.add_track_btn
+        for track in self.tracks:
+            QWidget.setTabOrder(previous, track.load_btn)
+            previous = track.remove_btn
+        QWidget.setTabOrder(previous, self.preview_cb)
 
     def _collect_track_configs(self):
         solo_active = any(t.solo_btn.isChecked() for t in self.tracks)

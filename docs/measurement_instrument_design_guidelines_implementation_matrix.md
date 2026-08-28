@@ -365,8 +365,8 @@ Qtの標準入力、スピンボックス、コンボボックス、ワーカー
 
 ### 34. Spatial Binaural Mixer
 
-- **対応:** 複数トラック、SOFA、空間配置、レンダリングワーカー、WAVエクスポートを扱います。長いトラックリストにはスクロール領域を使用し、レンダリング結果の失敗を通知します。
-- **未対応／要確認:** `X`、`◀`、`▶` のアイコン操作に accessible name がなく、`A11Y-01` が明確です。SOFA、トラック設定、ゲイン、位置、サンプルレート、レンダリング条件をWAVへ添付するsidecar／レポートがありません（`DATA-02`）。レンダリング中のCancel、処理中と完了、出力先と危険出力の状態が未固定です（`STATE-01`、`STATE-02`、`THEME-01`）。
+- **対応:** 複数トラック、SOFA、空間配置、レンダリングワーカー、WAVエクスポートを扱います。長いトラックリストにはスクロール領域を使用し、レンダリング結果の失敗を通知します。動的トラック行の方位角、仰角、ゲインはラベルと入力を関連付け、`X`、`◀`、`▶` を含む操作には翻訳済みの accessible name とキーボード順序があります。
+- **未対応／要確認:** SOFA、トラック設定、ゲイン、位置、サンプルレート、レンダリング条件をWAVへ添付するsidecar／レポートがありません（`DATA-02`）。レンダリング中のCancel、処理中と完了、出力先と危険出力の状態が未固定です（`STATE-01`、`STATE-02`、`THEME-01`）。ライブ状態の読み上げとフォント拡大時の操作は手動確認が残ります（`A11Y-01`）。
 - **対象外:** 独立した測定結果表示部を持たないためSplit、Compact、Comparisonは `NO_INDEPENDENT_DISPLAY`。複数トラック操作を単一コンソール主操作へ集約しないため対象外です。
 - **根拠:** `src/gui/widgets/spatial_binaural_mixer.py`、`MODULE_SPATIAL_BINAURAL_MIXER`、`tests/logic_verification/gui/widgets/test_spatial_binaural_mixer.py`
 
