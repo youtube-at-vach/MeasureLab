@@ -70,6 +70,8 @@ class MockAudioEngine:
         self.calibration = MockCalibrationManager()
         self.input_channel_mode = "stereo"
         self.output_channel_mode = "stereo"
+        self.input_device = None
+        self.output_device = None
         self.dithering_enabled = False
         self.dithering_bit_depth = 16
 
@@ -277,7 +279,7 @@ def capture_widgets(targets=None):
         # to reach their normal ready state in documentation captures.
         mock_engine.sample_rate = 192000 if module_name == "ultrasound_modulator" else 48000
 
-        if module_name == "detachable_wrapper":
+        if module_name in {"detachable_wrapper", "instrument_plot"}:
             continue
 
         file_path = os.path.join(widgets_dir, filename)
