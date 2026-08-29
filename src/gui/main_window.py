@@ -147,6 +147,9 @@ _CLASS_LOADERS: dict[tuple[str, str], Callable[[], type[Any]]] = {
         import_module("src.gui.widgets.nonlinear_response_analyzer").NonlinearResponseAnalyzer
     ),
     ("src.gui.widgets.settings", "SettingsWidget"): lambda: import_module("src.gui.widgets.settings").SettingsWidget,
+    ("src.gui.widgets.remote_audio_io", "RemoteAudioIOWidget"): lambda: (
+        import_module("src.gui.widgets.remote_audio_io").RemoteAudioIOWidget
+    ),
     ("src.gui.widgets.welcome", "WelcomeWidget"): lambda: import_module("src.gui.widgets.welcome").WelcomeWidget,
 }
 
@@ -187,7 +190,12 @@ def _load_welcome_widget_class():
     return _load_class("src.gui.widgets.welcome", "WelcomeWidget")
 
 
+def _load_remote_audio_widget_class():
+    return _load_class("src.gui.widgets.remote_audio_io", "RemoteAudioIOWidget")
+
+
 class MainWindow(QMainWindow):
+    _MODULE_PAGE_OFFSET = 3
     _ACTIVE_STATE_ATTRS = (
         "is_running",
         "is_playing",
@@ -371,6 +379,7 @@ class MainWindow(QMainWindow):
         self.sidebar = QListWidget()
         self.sidebar.addItem(tr("Welcome"))
         self.sidebar.addItem(tr("Settings"))  # Add Settings item
+        self.sidebar.addItem(tr("Remote Audio I/O"))
 
         for key in self._module_keys:
             self.sidebar.addItem(tr(key))
@@ -407,7 +416,15 @@ class MainWindow(QMainWindow):
         settings_layout.addWidget(QLabel(tr("Select Settings to load.")))
         self.content_area.addWidget(self._settings_container)
 
-        # Add module pages (Index 2+) - lazy loaded per selection
+        # Remote Audio I/O is an infrastructure page, not a measurement module.
+        self._remote_audio_loaded = False
+        self._remote_audio_container = QWidget()
+        remote_layout = QVBoxLayout(self._remote_audio_container)
+        remote_layout.setContentsMargins(12, 12, 12, 12)
+        remote_layout.addWidget(QLabel(tr("Select Remote Audio I/O to load.")))
+        self.content_area.addWidget(self._remote_audio_container)
+
+        # Add module pages (Index 3+) - lazy loaded per selection
         self._module_containers: list[QWidget] = []
         for _key in self._module_keys:
             container = QWidget()
@@ -573,6 +590,21 @@ class MainWindow(QMainWindow):
                 QLabel(tr("Failed to load Settings: {0}").format(str(e))),
             )
 
+    def _ensure_remote_audio_loaded(self):
+        if self._remote_audio_loaded:
+            return
+        try:
+            RemoteAudioIOWidget = _load_remote_audio_widget_class()
+            self.remote_audio_widget = RemoteAudioIOWidget(self.audio_engine, self.config_manager)
+            self._replace_container_contents(self._remote_audio_container, self.remote_audio_widget)
+            self._remote_audio_loaded = True
+        except Exception as e:
+            self._replace_container_contents(
+                self._remote_audio_container,
+                QLabel(tr("Failed to load Remote Audio I/O: {0}").format(str(e))),
+            )
+            self.logger.error("Failed to load Remote Audio I/O: %s", e, exc_info=True)
+
     def _ensure_module_loaded(self, module_index: int):
         if module_index < 0 or module_index >= len(self._module_keys):
             return
@@ -636,6 +668,10 @@ class MainWindow(QMainWindow):
         self._ensure_settings_loaded()
         QApplication.processEvents()
 
+        report(tr("Loading Remote Audio I/O..."))
+        self._ensure_remote_audio_loaded()
+        QApplication.processEvents()
+
         total = len(self._module_keys)
         last_event_time = time.monotonic()
         for i, key in enumerate(self._module_keys, start=1):
@@ -654,6 +690,13 @@ class MainWindow(QMainWindow):
                 last_event_time = current_time
 
     def closeEvent(self, event):
+        remote_audio = getattr(self, "remote_audio_widget", None)
+        if remote_audio is not None:
+            try:
+                remote_audio.shutdown()
+            except Exception:
+                self.logger.exception("Failed to stop Remote Audio I/O on close")
+
         console = getattr(self, "_measurement_console", None)
         if console is not None:
             try:
@@ -830,6 +873,15 @@ class MainWindow(QMainWindow):
     def _update_audio_io_error_indicator(self, status):
         xrun_status = status.get("latched_xrun_status", {})
         details = []
+        network_status = status.get("network") or {}
+        if network_status.get("state") == "error":
+            details.append(tr("Network audio connection error"))
+        network_lost_frames = int(network_status.get("lost_frames", 0) or 0)
+        if network_lost_frames:
+            details.append(tr("Network audio data loss: {0} frames").format(network_lost_frames))
+        corrupt_packets = int(network_status.get("corrupt_packets", 0) or 0)
+        if corrupt_packets:
+            details.append(tr("Corrupt network audio packets: {0}").format(corrupt_packets))
         if xrun_status.get("input_overflow", False):
             details.append(tr("Input overflow"))
         if xrun_status.get("input_underflow", False):
@@ -850,7 +902,11 @@ class MainWindow(QMainWindow):
         if self._io_error_latched:
             tooltip_sections = []
             if details:
-                count = status.get("latched_xrun_count", 0)
+                count = (
+                    int(status.get("latched_xrun_count", 0) or 0)
+                    + int(network_status.get("lost_packets", 0) or 0)
+                    + corrupt_packets
+                )
                 tooltip_sections.append(
                     tr("Audio I/O buffer error: {0}\nOccurrences: {1}\nClick to acknowledge and clear.").format(
                         ", ".join(details),
@@ -915,7 +971,7 @@ class MainWindow(QMainWindow):
         active_brush = self.sidebar.palette().brush(QPalette.ColorRole.Highlight)
 
         for module_index, key in enumerate(self._module_keys):
-            item = self.sidebar.item(module_index + 2)
+            item = self.sidebar.item(module_index + self._MODULE_PAGE_OFFSET)
             if item is None:
                 continue
 
@@ -1046,8 +1102,14 @@ class MainWindow(QMainWindow):
             self.on_tool_selected(index)
             return
 
-        if index >= 2:
-            module_index = index - 2
+        if index == 2:
+            self.set_menu_only_mode(False)
+            self._ensure_remote_audio_loaded()
+            self.on_tool_selected(index)
+            return
+
+        if index >= self._MODULE_PAGE_OFFSET:
+            module_index = index - self._MODULE_PAGE_OFFSET
             self._ensure_module_loaded(module_index)
             wrapper = self.module_widgets[module_index]
             if isinstance(wrapper, DetachableWidgetWrapper):
@@ -1065,8 +1127,12 @@ class MainWindow(QMainWindow):
             return
         if index == 1:
             self._ensure_settings_loaded()
-        elif index >= 2:
-            self._ensure_module_loaded(index - 2)
+            if self._settings_loaded:
+                self.settings_widget.refresh_backend_mode_state()
+        elif index == 2:
+            self._ensure_remote_audio_loaded()
+        elif index >= self._MODULE_PAGE_OFFSET:
+            self._ensure_module_loaded(index - self._MODULE_PAGE_OFFSET)
         self.content_area.setCurrentIndex(index)
 
     def notify_active_model_changed(self):

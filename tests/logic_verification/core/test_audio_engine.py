@@ -151,6 +151,71 @@ class TestAudioEngineBasicSettings(unittest.TestCase):
         self.assertFalse(self.engine.mute_output)
         self.engine.logger.debug.assert_called_with("Set mute output: False")
 
+    def test_network_client_configuration_restores_local_audio_state(self):
+        self.engine.input_device = 1
+        self.engine.output_device = 2
+        self.engine.sample_rate = 48000
+        self.engine.block_size = 1024
+        client = MagicMock()
+        client.connected = True
+        client.sample_rate = 96000
+        client.block_size = 256
+        client.input_channels = 2
+        client.output_channels = 1
+        client.provider_name = "Room PC"
+        client.input_device_name = "Remote ADC"
+        client.output_device_name = "Remote DAC"
+
+        self.engine.configure_network_client(client)
+
+        self.assertTrue(self.engine.network_mode)
+        self.assertIs(self.engine.network_client, client)
+        self.assertEqual(self.engine.sample_rate, 96000)
+        self.assertEqual(self.engine.block_size, 256)
+        self.assertEqual(self.engine.input_device, "network:Room PC:Remote ADC")
+        self.assertEqual(self.engine.output_channel_mode, "left")
+
+        self.engine.disconnect_network_client()
+
+        self.assertFalse(self.engine.network_mode)
+        self.assertIsNone(self.engine.network_client)
+        self.assertEqual(self.engine.input_device, 1)
+        self.assertEqual(self.engine.output_device, 2)
+        self.assertEqual(self.engine.sample_rate, 48000)
+        self.assertEqual(self.engine.block_size, 1024)
+        client.close.assert_called_once_with()
+
+    def test_local_format_changes_are_rejected_in_network_mode(self):
+        self.engine.network_mode = True
+
+        with self.assertRaisesRegex(RuntimeError, "controlled by the remote"):
+            self.engine.set_sample_rate(96000)
+        with self.assertRaisesRegex(RuntimeError, "controlled by the remote"):
+            self.engine.set_block_size(256)
+        with self.assertRaisesRegex(RuntimeError, "controlled by the remote"):
+            self.engine.set_channel_mode("left", "right")
+        with self.assertRaisesRegex(RuntimeError, "Local devices cannot be changed"):
+            self.engine.set_devices(3, 4)
+
+    def test_network_disconnect_is_rejected_while_measurement_callbacks_are_registered(self):
+        self.engine.network_mode = True
+        self.engine.callbacks[1] = MagicMock()
+
+        with self.assertRaisesRegex(RuntimeError, "Stop active audio measurements"):
+            self.engine.disconnect_network_client()
+
+    def test_exclusive_audio_owner_blocks_measurement_callbacks(self):
+        owner = object()
+        self.engine.acquire_exclusive_audio(owner)
+
+        with self.assertRaisesRegex(RuntimeError, "reserved"):
+            self.engine.register_callback(MagicMock())
+
+        self.engine.release_exclusive_audio(owner)
+        self.engine.stream = MagicMock(active=True)
+        callback_id = self.engine.register_callback(MagicMock())
+        self.assertIn(callback_id, self.engine.callbacks)
+
     def test_set_offline_mode(self):
         self.assertFalse(self.engine.offline_mode)
 

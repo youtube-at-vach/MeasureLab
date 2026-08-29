@@ -158,6 +158,7 @@ nav:
       - 基本:
           - ようこそ: widgets/welcome.md
           - 設定: widgets/settings.md
+          - リモート音声I/O: widgets/remote_audio_io.md
       - 信号生成と入出力:
           - 信号発生器: widgets/signal_generator.md
           - 任意高調波ジェネレーター: widgets/arbitrary_harmonic_generator.md

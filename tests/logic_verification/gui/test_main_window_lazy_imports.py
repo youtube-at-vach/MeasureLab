@@ -29,6 +29,7 @@ def test_lazy_class_loaders_match_registry():
         (registration.module_path, registration.class_name) for registration in MODULE_REGISTRY.values()
     }
     utility_classes = {
+        ("src.gui.widgets.remote_audio_io", "RemoteAudioIOWidget"),
         ("src.gui.widgets.settings", "SettingsWidget"),
         ("src.gui.widgets.welcome", "WelcomeWidget"),
     }

@@ -36,6 +36,14 @@ class MeasurementConsoleConfigDict(TypedDict, total=False):
     layout_locked: bool
 
 
+class NetworkAudioConfigDict(TypedDict, total=False):
+    host: str
+    port: int
+    jitter_ms: int
+    duplex: bool
+    bind_host: str
+
+
 # Default configuration used for initialization and validation
 DEFAULT_CONFIG = {
     "audio": {
@@ -69,6 +77,13 @@ DEFAULT_CONFIG = {
         "geometry": "",
         "dock_state": "",
         "layout_locked": False,
+    },
+    "network_audio": {
+        "host": "",
+        "port": 40100,
+        "jitter_ms": 100,
+        "duplex": True,
+        "bind_host": "0.0.0.0",
     },
 }
 
@@ -338,6 +353,29 @@ class ConfigManager:
         if isinstance(locked, bool):
             target["layout_locked"] = locked
 
+    def _merge_network_audio_config(self, config: dict, loaded_config: dict) -> None:
+        """Merge bounded, non-secret network endpoint preferences."""
+        loaded = loaded_config.get("network_audio", {})
+        if not isinstance(loaded, dict):
+            self.logger.warning("'network_audio' section is invalid; using defaults.")
+            return
+        target = config["network_audio"]
+        host = loaded.get("host")
+        if isinstance(host, str) and len(host) <= 253:
+            target["host"] = host.strip()
+        bind_host = loaded.get("bind_host")
+        if isinstance(bind_host, str) and len(bind_host) <= 253:
+            target["bind_host"] = bind_host.strip() or "0.0.0.0"
+        port = loaded.get("port")
+        if isinstance(port, int) and not isinstance(port, bool) and 1 <= port <= 65535:
+            target["port"] = port
+        jitter_ms = loaded.get("jitter_ms")
+        if isinstance(jitter_ms, int) and not isinstance(jitter_ms, bool) and 20 <= jitter_ms <= 2000:
+            target["jitter_ms"] = jitter_ms
+        duplex = loaded.get("duplex")
+        if isinstance(duplex, bool):
+            target["duplex"] = duplex
+
     def _merge_with_defaults(self, loaded_config):
         if not isinstance(loaded_config, dict):
             self.logger.warning("Config file root is not a dict; falling back to defaults.")
@@ -357,6 +395,7 @@ class ConfigManager:
 
         self._merge_screenshot_config(config, loaded_config)
         self._merge_measurement_console_config(config, loaded_config)
+        self._merge_network_audio_config(config, loaded_config)
 
         return config
 
@@ -401,6 +440,19 @@ class ConfigManager:
         for key, value in audio_config.items():
             self.config["audio"][key] = value
 
+        self.save_config()
+
+    def get_network_audio_config(self) -> NetworkAudioConfigDict:
+        """Return saved Remote Audio I/O endpoint preferences."""
+        config = self.config.get("network_audio", {})
+        return cast(NetworkAudioConfigDict, deepcopy(config if isinstance(config, dict) else {}))
+
+    def set_network_audio_config(self, network_config: NetworkAudioConfigDict) -> None:
+        """Validate and save Remote Audio I/O endpoint preferences."""
+        candidate = {"network_audio": dict(network_config)}
+        merged = self._default_config()
+        self._merge_network_audio_config(merged, candidate)
+        self.config["network_audio"] = merged["network_audio"]
         self.save_config()
 
     def get_pipewire_jack_resident(self) -> bool:
