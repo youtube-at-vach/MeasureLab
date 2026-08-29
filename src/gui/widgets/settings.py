@@ -1414,15 +1414,18 @@ class SettingsWidget(QWidget):
     def _update_offline_ui_state(self):
         is_offline = self.offline_check.isChecked()
         is_network = getattr(self.audio_engine, "network_mode", False) is True
+        reserved = self.audio_engine.is_audio_reserved()
+        is_reserved = reserved is True
+        backend_locked = is_network or is_reserved
         is_jack = self._is_jack_available()
 
         # Remote format/device selection belongs to the provider.  Do not let
         # Settings accidentally restart or reroute a connected session.
-        local_hardware_enabled = not is_offline and not is_network
+        local_hardware_enabled = not is_offline and not backend_locked
         self.hostapi_combo.setEnabled(local_hardware_enabled)
         self.input_combo.setEnabled(local_hardware_enabled)
         self.output_combo.setEnabled(local_hardware_enabled)
-        self.offline_check.setEnabled(not is_network)
+        self.offline_check.setEnabled(not backend_locked)
 
         # Disable refresh button if offline OR if JACK is present
         self.refresh_btn.setEnabled(local_hardware_enabled and not is_jack)
@@ -1434,34 +1437,36 @@ class SettingsWidget(QWidget):
             self.refresh_btn.setToolTip("")
 
         # Enable simulation controls when offline
-        self.offline_rate_spin.setEnabled(is_offline and not is_network)
+        self.offline_rate_spin.setEnabled(is_offline and not backend_locked)
 
         # Sample Rate Combo is for Hardware
         self.sr_combo.setEnabled(local_hardware_enabled)
-        self.bs_combo.setEnabled(not is_network)
-        self.buffer_level_combo.setEnabled(not is_network)
-        self.in_ch_combo.setEnabled(not is_network)
-        self.out_ch_combo.setEnabled(not is_network)
+        self.bs_combo.setEnabled(not backend_locked)
+        self.buffer_level_combo.setEnabled(not backend_locked)
+        self.in_ch_combo.setEnabled(not backend_locked)
+        self.out_ch_combo.setEnabled(not backend_locked)
+        self.pipewire_jack_resident_check.setEnabled(not backend_locked)
+        self.audio_engine_64bit_check.setEnabled(not backend_locked)
 
     def refresh_backend_mode_state(self) -> None:
         """Refresh controls after Remote Audio I/O changes backend."""
-        if getattr(self.audio_engine, "network_mode", False) is True:
-            self.sr_combo.blockSignals(True)
-            self.sr_combo.setCurrentText(str(self.audio_engine.sample_rate))
-            self.sr_combo.blockSignals(False)
-            self.bs_combo.blockSignals(True)
-            self.bs_combo.setCurrentText(str(self.audio_engine.block_size))
-            self.bs_combo.blockSignals(False)
-            for combo, value in (
-                (self.in_ch_combo, self.audio_engine.input_channel_mode),
-                (self.out_ch_combo, self.audio_engine.output_channel_mode),
-            ):
-                combo.blockSignals(True)
-                index = combo.findData(value)
-                if index >= 0:
-                    combo.setCurrentIndex(index)
-                combo.blockSignals(False)
-            self.update_buffer_duration()
+        self.sr_combo.blockSignals(True)
+        self.sr_combo.setCurrentText(str(self.audio_engine.sample_rate))
+        self.sr_combo.blockSignals(False)
+        self.bs_combo.blockSignals(True)
+        self.bs_combo.setCurrentText(str(self.audio_engine.block_size))
+        self.bs_combo.blockSignals(False)
+        for combo, value in (
+            (self.in_ch_combo, self.audio_engine.input_channel_mode),
+            (self.out_ch_combo, self.audio_engine.output_channel_mode),
+        ):
+            combo.blockSignals(True)
+            index = combo.findData(value)
+            if index >= 0:
+                combo.setCurrentIndex(index)
+            combo.blockSignals(False)
+        self._sync_buffer_level_from_size(self.audio_engine.block_size, self.audio_engine.sample_rate)
+        self.update_buffer_duration()
         self._update_offline_ui_state()
 
     def on_offline_toggled(self, checked: bool):

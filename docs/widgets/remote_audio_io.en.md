@@ -46,6 +46,7 @@ Do not treat a measurement interval showing `DATA LOSS DETECTED` as complete dat
 ## Transport and safety
 
 - TCP carries control messages and UDP carries uncompressed float32 PCM.
+- The control channel uses an application heartbeat so an unresponsive client cannot reserve the provider indefinitely.
 - UDP packets include a session ID, sequence number, absolute sample position, and CRC.
 - The remote audio device clock is the sample-time authority for the session.
 - Playback uses a fixed look-ahead buffer. Its delay is not adjusted while streaming.

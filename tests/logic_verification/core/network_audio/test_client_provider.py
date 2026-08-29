@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import threading
 import time
+import socket
 
 import numpy as np
 
+import src.core.network_audio.client as client_module
+import src.core.network_audio.provider as provider_module
 from src.core.network_audio.client import NetworkAudioClient, NetworkClientStream
+from src.core.network_audio.indexed_buffer import IndexedAudioBuffer
 from src.core.network_audio.provider import NetworkAudioProvider
 
 
@@ -26,6 +30,7 @@ class _FakeEngine:
         self.input_device = None
         self.output_device = None
         self.network_mode = False
+        self.offline_mode = False
         self._callback = None
         self._owner = None
 
@@ -197,4 +202,86 @@ def test_localhost_duplex_plays_client_output_at_a_future_sample_position():
     finally:
         stream.close()
         client.close()
+        provider.stop()
+
+
+def test_network_stream_stop_cancels_capture_priming_without_late_error():
+    client = NetworkAudioClient("127.0.0.1", 40100, jitter_ms=20, duplex=False)
+    client.sample_rate = 8000
+    client.block_size = 128
+    client.input_channels = 2
+    client.output_channels = 2
+    client.jitter_frames = 256
+    client.playout_delay_frames = 512
+    client._capture_buffer = IndexedAudioBuffer(capacity_frames=4096, channels=2)
+    client._stop_event.clear()
+    client._connected = True
+    stream = NetworkClientStream(client, lambda *_args: None)
+
+    stream.start()
+    assert _wait_until(lambda: client.status_snapshot()["state"] == "priming")
+    started = time.monotonic()
+    stream.stop()
+
+    assert time.monotonic() - started < 0.5
+    assert stream._thread is None
+    assert client.status_snapshot()["state"] == "connected"
+    client.close()
+
+
+def test_provider_rejects_virtual_audio_as_a_local_hardware_endpoint():
+    engine = _FakeEngine()
+    engine.offline_mode = True
+    provider = NetworkAudioProvider(engine, "127.0.0.1", 0)
+
+    try:
+        try:
+            provider.start()
+        except RuntimeError as exc:
+            assert "offline mode" in str(exc)
+        else:
+            raise AssertionError("provider unexpectedly started with offline audio")
+    finally:
+        provider.stop()
+
+
+def test_provider_releases_session_when_connected_client_stops_answering_heartbeats(monkeypatch):
+    monkeypatch.setattr(client_module, "CONTROL_HEARTBEAT_INTERVAL", 0.02)
+    monkeypatch.setattr(client_module, "CONTROL_HEARTBEAT_TIMEOUT", 0.15)
+    monkeypatch.setattr(provider_module, "CONTROL_HEARTBEAT_INTERVAL", 0.02)
+    monkeypatch.setattr(provider_module, "CONTROL_HEARTBEAT_TIMEOUT", 0.15)
+    engine = _FakeEngine()
+    provider = NetworkAudioProvider(engine, "127.0.0.1", 0)
+    provider.start()
+    client = NetworkAudioClient("127.0.0.1", provider.port, jitter_ms=20, duplex=False)
+    client.connect()
+
+    try:
+        assert _wait_until(lambda: engine._callback is not None)
+        client._stop_event.set()
+
+        assert _wait_until(
+            lambda: engine._callback is None and provider.status_snapshot()["state"] == "listening",
+            timeout=1.0,
+        )
+    finally:
+        client.close()
+        provider.stop()
+
+
+def test_provider_stop_interrupts_a_client_stalled_during_negotiation():
+    engine = _FakeEngine()
+    provider = NetworkAudioProvider(engine, "127.0.0.1", 0)
+    provider.start()
+    stalled_client = socket.create_connection(("127.0.0.1", provider.port), timeout=1.0)
+
+    try:
+        assert _wait_until(lambda: provider._control_socket is not None)
+        started = time.monotonic()
+        provider.stop()
+
+        assert time.monotonic() - started < 0.75
+        assert provider._accept_thread is None or not provider._accept_thread.is_alive()
+    finally:
+        stalled_client.close()
         provider.stop()

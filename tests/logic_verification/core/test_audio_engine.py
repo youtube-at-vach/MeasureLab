@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch
+import threading
 import time
 import numpy as np
 
@@ -215,6 +216,51 @@ class TestAudioEngineBasicSettings(unittest.TestCase):
         self.engine.stream = MagicMock(active=True)
         callback_id = self.engine.register_callback(MagicMock())
         self.assertIn(callback_id, self.engine.callbacks)
+
+    def test_network_configuration_blocks_callback_registration_during_transition(self):
+        client = MagicMock()
+        client.connected = True
+        client.sample_rate = 48000
+        client.block_size = 128
+        client.input_channels = 2
+        client.output_channels = 2
+        client.provider_name = "Room PC"
+        client.input_device_name = "Remote ADC"
+        client.output_device_name = "Remote DAC"
+        transition_started = threading.Event()
+        allow_transition = threading.Event()
+
+        def blocking_stop_stream():
+            transition_started.set()
+            allow_transition.wait(1.0)
+
+        self.engine.stop_stream = blocking_stop_stream
+        worker = threading.Thread(target=self.engine.configure_network_client, args=(client,))
+        worker.start()
+        self.assertTrue(transition_started.wait(1.0))
+
+        with self.assertRaisesRegex(RuntimeError, "backend is changing"):
+            self.engine.register_callback(MagicMock())
+
+        allow_transition.set()
+        worker.join(timeout=1.0)
+        self.assertFalse(worker.is_alive())
+        self.assertTrue(self.engine.network_mode)
+
+    def test_exclusive_owner_blocks_direct_stream_stop_and_restart(self):
+        owner = object()
+        self.engine.acquire_exclusive_audio(owner)
+        self.engine.stream = MagicMock(active=True)
+
+        with self.assertRaisesRegex(RuntimeError, "reserved"):
+            self.engine.stop_stream()
+        with self.assertRaisesRegex(RuntimeError, "reserved"):
+            self.engine.ensure_stream_running()
+        with self.assertRaisesRegex(RuntimeError, "reserved"):
+            self.engine.set_sample_rate(96000)
+
+        self.engine.stop_stream(owner=owner)
+        self.assertIsNone(self.engine.stream)
 
     def test_set_offline_mode(self):
         self.assertFalse(self.engine.offline_mode)

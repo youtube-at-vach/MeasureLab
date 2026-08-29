@@ -56,6 +56,20 @@ def test_packetizer_preserves_absolute_sample_positions():
     assert np.array_equal(np.vstack([chunk for _, chunk in decoded]), data)
 
 
+def test_packetizer_reports_callback_status_once_per_fragmented_block():
+    data = np.zeros((PACKET_FRAMES * 2 + 1, 1), dtype=np.float32)
+    packets = packetize_audio(
+        data,
+        direction=DIRECTION_CAPTURE,
+        flags=3,
+        session_id=10,
+        first_sequence=20,
+        sample_index=1000,
+    )
+
+    assert [decode_audio_packet(packet)[0]["flags"] for packet in packets] == [3, 0, 0]
+
+
 def test_corrupt_payload_is_rejected():
     packet = bytearray(
         encode_audio_packet(

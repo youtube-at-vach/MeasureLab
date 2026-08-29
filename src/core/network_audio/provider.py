@@ -5,9 +5,11 @@ from __future__ import annotations
 import logging
 import platform
 import queue
+import select
 import secrets
 import socket
 import threading
+import time
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -17,6 +19,8 @@ from src.core.network_audio.models import NetworkAudioStats
 from src.core.network_audio.protocol import (
     DIRECTION_CAPTURE,
     DIRECTION_PLAYBACK,
+    CONTROL_HEARTBEAT_INTERVAL,
+    CONTROL_HEARTBEAT_TIMEOUT,
     FLAG_INPUT_XRUN,
     FLAG_OUTPUT_XRUN,
     PROTOCOL_VERSION,
@@ -67,6 +71,8 @@ class NetworkAudioProvider:
         self._playback_buffer: IndexedAudioBuffer | None = None
         self._playback_started_at: int | None = None
         self._stop_event = threading.Event()
+        self._state_lock = threading.Lock()
+        self._control_send_lock = threading.Lock()
         self._accept_thread: threading.Thread | None = None
         self._receive_thread: threading.Thread | None = None
         self._send_thread: threading.Thread | None = None
@@ -78,6 +84,8 @@ class NetworkAudioProvider:
             raise ValueError("invalid provider port")
         if getattr(self.audio_engine, "network_mode", False):
             raise RuntimeError("a network client cannot also provide local audio")
+        if getattr(self.audio_engine, "offline_mode", False):
+            raise RuntimeError("disable offline mode before providing local audio")
         if self.audio_engine.get_status().get("active_clients", 0):
             raise RuntimeError("stop active audio measurements before starting the provider")
 
@@ -115,9 +123,13 @@ class NetworkAudioProvider:
                 continue
             except OSError:
                 return
-            if self._control_socket is not None:
+            with self._state_lock:
+                accepted = self.running and not self._stop_event.is_set() and self._control_socket is None
+                if accepted:
+                    self._control_socket = control
+            if not accepted:
                 try:
-                    send_control(control, {"type": "error", "error": "provider is already in use"})
+                    self._send_control(control, {"type": "error", "error": "provider is already in use"})
                 except OSError:
                     pass
                 control.close()
@@ -127,14 +139,16 @@ class NetworkAudioProvider:
             except (OSError, ValueError, ProtocolError, RuntimeError) as exc:
                 self.logger.warning("Network audio client rejected: %s", exc)
                 try:
-                    send_control(control, {"type": "error", "error": str(exc)[:500]})
+                    self._send_control(control, {"type": "error", "error": str(exc)[:500]})
                 except OSError:
                     pass
                 control.close()
                 self._end_session()
 
     def _serve_client(self, control: socket.socket, address: tuple[str, int]) -> None:
-        control.settimeout(5.0)
+        # Keep negotiation bounded so stop() cannot leave the accept thread
+        # parked in a peer that connected but never sent a hello message.
+        control.settimeout(0.5)
         hello = recv_control(control)
         if hello.get("type") != "hello" or control_int(hello, "protocol", -1) != PROTOCOL_VERSION:
             raise ProtocolError("unsupported client protocol")
@@ -148,7 +162,6 @@ class NetworkAudioProvider:
         self._client_requested_duplex = control_bool(hello, "duplex", False)
         self._duplex_negotiated = self._client_requested_duplex and self.allow_output
         self._duplex = self._duplex_negotiated
-        self._control_socket = control
         self._client_udp = (address[0], client_udp_port)
         self.client_address = address[0]
         in_channels, out_channels = self.audio_engine._update_channel_modes()
@@ -159,7 +172,7 @@ class NetworkAudioProvider:
         udp_socket = self._udp_socket
         if udp_socket is None:
             raise RuntimeError("provider UDP socket is unavailable")
-        send_control(
+        self._send_control(
             control,
             {
                 "type": "offer",
@@ -179,6 +192,8 @@ class NetworkAudioProvider:
         start = recv_control(control)
         if start.get("type") != "start" or control_int(start, "session_id", 0) != self._session_id:
             raise ProtocolError("client did not start negotiated session")
+        if self._stop_event.is_set() or not self.running or self._control_socket is not control:
+            raise RuntimeError("provider stopped during session negotiation")
 
         control.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
         control.settimeout(None)
@@ -202,18 +217,37 @@ class NetworkAudioProvider:
         self._receive_thread.start()
         self._send_thread.start()
 
+        last_received = time.monotonic()
         while not self._stop_event.is_set() and self._control_socket is control:
             try:
+                readable, _, _ = select.select([control], [], [], CONTROL_HEARTBEAT_INTERVAL)
+                if not readable:
+                    if time.monotonic() - last_received >= CONTROL_HEARTBEAT_TIMEOUT:
+                        raise ConnectionError("control heartbeat timed out")
+                    self._send_control(control, {"type": "ping"})
+                    continue
                 message = recv_control(control)
-            except TimeoutError:
+                last_received = time.monotonic()
+            except (OSError, ValueError) as exc:
+                if self._stop_event.is_set() or self._control_socket is not control:
+                    break
+                raise ConnectionError(f"control connection lost: {exc}") from exc
+            if message.get("type") == "ping":
+                self._send_control(control, {"type": "pong"})
+                continue
+            if message.get("type") == "pong":
                 continue
             if message.get("type") == "stop":
                 try:
-                    send_control(control, {"type": "stopped"})
+                    self._send_control(control, {"type": "stopped"})
                 except OSError:
                     pass
                 break
         self._end_session()
+
+    def _send_control(self, control_socket: socket.socket, message: dict[str, object]) -> None:
+        with self._control_send_lock:
+            send_control(control_socket, message)
 
     def _device_name(self, device_id, is_input: bool) -> str:
         try:
@@ -242,8 +276,9 @@ class NetworkAudioProvider:
             flags |= FLAG_OUTPUT_XRUN
 
         outdata.fill(0)
-        if self._duplex and self._playback_buffer is not None:
-            playback, missing = self._playback_buffer.read(sample_index, frames)
+        playback_buffer = self._playback_buffer
+        if self._duplex and playback_buffer is not None:
+            playback, missing = playback_buffer.read(sample_index, frames)
             if self._playback_started_at is not None and sample_index >= self._playback_started_at and missing:
                 flags |= FLAG_OUTPUT_XRUN
                 for missing_start, missing_frames in missing:
@@ -328,12 +363,13 @@ class NetworkAudioProvider:
                 return
 
     def _end_session(self) -> None:
-        callback_id = self._callback_id
-        self._callback_id = None
+        with self._state_lock:
+            callback_id = self._callback_id
+            self._callback_id = None
+            control = self._control_socket
+            self._control_socket = None
         if callback_id is not None:
             self.audio_engine.unregister_callback(callback_id)
-        control = self._control_socket
-        self._control_socket = None
         if control is not None:
             try:
                 control.close()
@@ -356,16 +392,22 @@ class NetworkAudioProvider:
             self.stats.set_state("listening")
 
     def stop(self) -> None:
-        self.running = False
-        self._stop_event.set()
-        control = self._control_socket
+        with self._state_lock:
+            self.running = False
+            self._stop_event.set()
+            control = self._control_socket
         if control is not None:
             try:
-                send_control(control, {"type": "stopped"})
+                self._send_control(control, {"type": "stopped"})
             except (OSError, ProtocolError):
                 pass
         for sock in (control, self._tcp_socket, self._udp_socket):
             if sock is not None:
+                try:
+                    if sock is control:
+                        sock.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
                 try:
                     sock.close()
                 except OSError:

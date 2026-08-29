@@ -47,35 +47,54 @@ class IndexedAudioBuffer:
             self._condition.notify_all()
             return "accepted"
 
-    def first_sample(self, timeout: float) -> int | None:
+    def first_sample(self, timeout: float, cancel_event: threading.Event | None = None) -> int | None:
         deadline = time.monotonic() + max(0.0, float(timeout))
         with self._condition:
             while not self._packets:
+                if cancel_event is not None and cancel_event.is_set():
+                    return None
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     return None
-                self._condition.wait(remaining)
+                self._condition.wait(min(remaining, 0.05) if cancel_event is not None else remaining)
+            if cancel_event is not None and cancel_event.is_set():
+                return None
             return min(self._packets)
 
-    def stream_start_sample(self, jitter_frames: int, block_size: int, timeout: float) -> int | None:
+    def stream_start_sample(
+        self,
+        jitter_frames: int,
+        block_size: int,
+        timeout: float,
+        cancel_event: threading.Event | None = None,
+    ) -> int | None:
         """Choose a block-aligned start near live data after connection idle time."""
-        first = self.first_sample(timeout)
+        first = self.first_sample(timeout, cancel_event)
         if first is None:
             return None
         with self._condition:
+            if cancel_event is not None and cancel_event.is_set():
+                return None
             near_live = max(0, self._highest_end - max(0, int(jitter_frames)) - int(block_size))
             aligned = near_live - near_live % int(block_size)
             return max(0, aligned)
 
-    def wait_until_buffered(self, sample_end: int, timeout: float) -> bool:
+    def wait_until_buffered(
+        self,
+        sample_end: int,
+        timeout: float,
+        cancel_event: threading.Event | None = None,
+    ) -> bool:
         deadline = time.monotonic() + max(0.0, float(timeout))
         with self._condition:
             while self._highest_end < sample_end:
+                if cancel_event is not None and cancel_event.is_set():
+                    return False
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     return False
-                self._condition.wait(remaining)
-            return True
+                self._condition.wait(min(remaining, 0.05) if cancel_event is not None else remaining)
+            return cancel_event is None or not cancel_event.is_set()
 
     def read(self, sample_index: int, frames: int) -> tuple[np.ndarray, list[tuple[int, int]]]:
         """Return exact-position data plus missing ``(start, frames)`` ranges."""

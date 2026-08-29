@@ -22,6 +22,8 @@ MAX_DATAGRAM = 1200
 PACKET_FRAMES = 128
 MAX_CONTROL_MESSAGE = 64 * 1024
 MAX_CHANNELS = 2
+CONTROL_HEARTBEAT_INTERVAL = 1.0
+CONTROL_HEARTBEAT_TIMEOUT = 5.0
 
 # magic, version, direction, flags, session, sequence, first sample,
 # frames, channels, payload crc32
@@ -140,7 +142,10 @@ def packetize_audio(
             encode_audio_packet(
                 chunk,
                 direction=direction,
-                flags=flags,
+                # Status flags describe the source callback block, not every
+                # UDP fragment. The first fragment is sufficient because loss
+                # of that fragment is itself reported as missing audio.
+                flags=flags if offset == 0 else 0,
                 session_id=session_id,
                 sequence=sequence,
                 sample_index=sample_index + offset,

@@ -45,6 +45,7 @@ class RemoteAudioIOWidget(QWidget):
         self.client: NetworkAudioClient | None = None
         self.provider: NetworkAudioProvider | None = None
         self._connecting = False
+        self._connect_cancel = threading.Event()
         self._shutting_down = False
         self._signals = _RemoteAudioSignals(self)
         self._signals.connected.connect(self._on_client_connected)
@@ -200,6 +201,7 @@ class RemoteAudioIOWidget(QWidget):
             return
         self._save_config()
         self._connecting = True
+        self._connect_cancel.clear()
         self.connect_button.setEnabled(False)
         self.integrity_label.setText(tr("Connecting..."))
         port = self.client_port_spin.value()
@@ -217,7 +219,11 @@ class RemoteAudioIOWidget(QWidget):
                 client.connect()
             except Exception as exc:
                 client.close()
-                self._signals.failed.emit(str(exc))
+                if not self._connect_cancel.is_set():
+                    self._signals.failed.emit(str(exc))
+                return
+            if self._connect_cancel.is_set():
+                client.close()
                 return
             self._signals.connected.emit(client)
 
@@ -269,7 +275,15 @@ class RemoteAudioIOWidget(QWidget):
                 tr("Stop active audio measurements before disconnecting remote audio."),
             )
             return
-        self.audio_engine.disconnect_network_client()
+        try:
+            self.audio_engine.disconnect_network_client()
+        except RuntimeError:
+            QMessageBox.warning(
+                self,
+                tr("Remote Audio I/O"),
+                tr("Stop active audio measurements before disconnecting remote audio."),
+            )
+            return
         self.client = None
         self.remote_details_label.setText(tr("No remote provider connected."))
         self.connect_button.setEnabled(True)
@@ -384,6 +398,7 @@ class RemoteAudioIOWidget(QWidget):
 
     def shutdown(self) -> None:
         self._shutting_down = True
+        self._connect_cancel.set()
         self._timer.stop()
         if self.provider is not None:
             self.provider.stop()

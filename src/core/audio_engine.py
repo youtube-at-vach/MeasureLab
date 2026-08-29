@@ -177,11 +177,13 @@ class AudioEngine:
 
         # Mixer State
         self.callbacks = {}  # id -> callback
+        self._callback_owners = {}  # id -> infrastructure owner or None
         self._cached_callbacks = []  # Cached list of values(self.callbacks)
         self.next_callback_id = 0
         self.lock = threading.Lock()
         self._status_lock = threading.Lock()
         self._exclusive_owner = None
+        self._backend_transition = False
 
         # Status Monitoring
         # Loopback State
@@ -228,62 +230,100 @@ class AudioEngine:
         """Returns the appropriate numpy dtype based on precision settings."""
         return "float64" if self.audio_engine_64bit else "float32"
 
+    def _begin_local_backend_change(self, network_error: str) -> None:
+        """Serialize local backend changes against provider/client transitions."""
+        with self.lock:
+            if self._backend_transition:
+                raise RuntimeError("Audio backend is already changing")
+            if self._exclusive_owner is not None:
+                raise RuntimeError("Audio engine is reserved by Remote Audio I/O")
+            if self.network_mode:
+                raise RuntimeError(network_error)
+            self._backend_transition = True
+
+    def _end_backend_change(self) -> None:
+        with self.lock:
+            self._backend_transition = False
+
     def set_audio_engine_64bit(self, enabled: bool):
         """Enable/disable 64-bit precision."""
-        self.audio_engine_64bit = enabled
-        self.logger.debug(f"64-bit Audio Engine (float64) setting changed to: {enabled}")
-        # Apply instantly by restarting active stream
-        self._restart_stream()
+        self._begin_local_backend_change("Disconnect remote audio before changing processing precision")
+        try:
+            self.audio_engine_64bit = enabled
+            self.logger.debug(f"64-bit Audio Engine (float64) setting changed to: {enabled}")
+            # Apply instantly by restarting active stream
+            self._restart_stream()
+        finally:
+            self._end_backend_change()
 
     def set_coreaudio_fail_if_conversion_required(self, enabled: bool):
         """Sets whether sample rate conversion failures are enforced on macOS."""
-        self.coreaudio_fail_if_conversion_required = bool(enabled)
-        self.logger.debug(f"CoreAudio fail_if_conversion_required set to: {enabled}")
-        self._restart_stream()
+        self._begin_local_backend_change("Disconnect remote audio before changing Core Audio settings")
+        try:
+            self.coreaudio_fail_if_conversion_required = bool(enabled)
+            self.logger.debug(f"CoreAudio fail_if_conversion_required set to: {enabled}")
+            self._restart_stream()
+        finally:
+            self._end_backend_change()
 
     def set_coreaudio_change_device_parameters(self, enabled: bool):
         """Sets whether CoreAudio device parameters can be modified for latency optimization."""
-        self.coreaudio_change_device_parameters = bool(enabled)
-        self.logger.debug(f"CoreAudio change_device_parameters set to: {enabled}")
-        self._restart_stream()
+        self._begin_local_backend_change("Disconnect remote audio before changing Core Audio settings")
+        try:
+            self.coreaudio_change_device_parameters = bool(enabled)
+            self.logger.debug(f"CoreAudio change_device_parameters set to: {enabled}")
+            self._restart_stream()
+        finally:
+            self._end_backend_change()
 
     def set_coreaudio_conversion_quality(self, quality: str):
         """Sets sample rate conversion quality for CoreAudio streams."""
-        self.coreaudio_conversion_quality = str(quality)
-        self.logger.debug(f"CoreAudio conversion_quality set to: {quality}")
-        self._restart_stream()
+        self._begin_local_backend_change("Disconnect remote audio before changing Core Audio settings")
+        try:
+            self.coreaudio_conversion_quality = str(quality)
+            self.logger.debug(f"CoreAudio conversion_quality set to: {quality}")
+            self._restart_stream()
+        finally:
+            self._end_backend_change()
 
     def set_pipewire_jack_resident(self, enabled: bool):
         """Enable/disable resident stream mode (useful for PipeWire/JACK routing persistence)."""
-        enabled = bool(enabled)
-        self.pipewire_jack_resident = enabled
-        self.logger.debug(f"Set PipeWire/JACK resident mode: {enabled}")
+        self._begin_local_backend_change("Disconnect remote audio before changing resident stream mode")
+        try:
+            enabled = bool(enabled)
+            self.pipewire_jack_resident = enabled
+            self.logger.debug(f"Set PipeWire/JACK resident mode: {enabled}")
 
-        if enabled:
-            # Ensure master stream is open even with zero clients.
+            if enabled:
+                # Ensure master stream is open even with zero clients.
+                with self.lock:
+                    self._start_master_stream()
+                return
+
+            # Disabled: revert to legacy behavior (only keep stream open while clients exist).
             with self.lock:
-                self._start_master_stream()
-            return
-
-        # Disabled: revert to legacy behavior (only keep stream open while clients exist).
-        with self.lock:
-            has_clients = bool(self.callbacks)
-        if not has_clients:
-            self.stop_stream()
+                has_clients = bool(self.callbacks)
+            if not has_clients:
+                self.stop_stream()
+        finally:
+            self._end_backend_change()
 
     def set_offline_mode(self, enabled: bool):
         """Enable/disable offline (virtual) mode."""
-        if enabled and self.network_mode:
-            raise RuntimeError("Disconnect remote audio before enabling offline mode")
-        if self.offline_mode == enabled:
-            return
+        enabled = bool(enabled)
+        with self.lock:
+            if self.offline_mode == enabled:
+                return
+        self._begin_local_backend_change("Disconnect remote audio before enabling offline mode")
+        try:
+            self.offline_mode = enabled
+            self.logger.debug(f"Set offline mode: {enabled}")
 
-        self.offline_mode = enabled
-        self.logger.debug(f"Set offline mode: {enabled}")
-
-        # Restart stream if active to switch backend
-        if self.is_active():
-            self._restart_stream()
+            # Restart stream if active to switch backend
+            if self.is_active():
+                self._restart_stream()
+        finally:
+            self._end_backend_change()
 
     def set_loopback(self, enabled):
         self.loopback = enabled
@@ -298,28 +338,30 @@ class AudioEngine:
         Forces a re-initialization of the PortAudio backend.
         This is useful on Linux/ALSA where device lists are cached.
         """
-        if self.network_mode:
-            raise RuntimeError("Disconnect remote audio before refreshing local devices")
-        self.logger.debug("Refreshing audio backend...")
-
-        # Stop everything first
-        self.stop_stream()
-
-        # Terminate PortAudio
+        self._begin_local_backend_change("Disconnect remote audio before refreshing local devices")
         try:
-            sd._terminate()
-        except Exception as e:
-            self.logger.warning(f"Error terminating PortAudio: {e}")
+            self.logger.debug("Refreshing audio backend...")
 
-        # Re-initialize PortAudio
-        try:
-            sd._initialize()
-            self._device_list_cache = None
-            self._host_apis_cache = None
-            self._last_cache_time = 0
-            self.logger.debug("Audio backend refreshed successfully.")
-        except Exception as e:
-            self.logger.error(f"Error re-initializing PortAudio: {e}")
+            # Stop everything first
+            self.stop_stream()
+
+            # Terminate PortAudio
+            try:
+                sd._terminate()
+            except Exception as e:
+                self.logger.warning(f"Error terminating PortAudio: {e}")
+
+            # Re-initialize PortAudio
+            try:
+                sd._initialize()
+                self._device_list_cache = None
+                self._host_apis_cache = None
+                self._last_cache_time = 0
+                self.logger.debug("Audio backend refreshed successfully.")
+            except Exception as e:
+                self.logger.error(f"Error re-initializing PortAudio: {e}")
+        finally:
+            self._end_backend_change()
 
     def _get_cached_audio_info(self):
         now = time.time()
@@ -383,104 +425,137 @@ class AudioEngine:
 
     def set_devices(self, input_device_id, output_device_id):
         """Sets the input and output devices."""
-        if self.network_mode:
-            raise RuntimeError("Local devices cannot be changed while remote audio is connected")
-        self.input_device = input_device_id
-        self.output_device = output_device_id
-        self.logger.debug(f"Set devices: Input={input_device_id}, Output={output_device_id}")
-        # Restart stream if running to apply changes
-        if self.is_active():
-            self._restart_stream()
+        self._begin_local_backend_change("Local devices cannot be changed while remote audio is connected")
+        try:
+            self.input_device = input_device_id
+            self.output_device = output_device_id
+            self.logger.debug(f"Set devices: Input={input_device_id}, Output={output_device_id}")
+            # Restart stream if running to apply changes
+            if self.is_active():
+                self._restart_stream()
+        finally:
+            self._end_backend_change()
 
     def set_sample_rate(self, rate):
-        if self.network_mode:
-            raise RuntimeError("Sample rate is controlled by the remote audio provider")
-        self.sample_rate = rate
-        self.logger.debug(f"Set sample rate: {rate}")
-        if self.is_active():
-            self._restart_stream()
+        self._begin_local_backend_change("Sample rate is controlled by the remote audio provider")
+        try:
+            self.sample_rate = rate
+            self.logger.debug(f"Set sample rate: {rate}")
+            if self.is_active():
+                self._restart_stream()
+        finally:
+            self._end_backend_change()
 
     def set_block_size(self, size):
-        if self.network_mode:
-            raise RuntimeError("Buffer size is controlled by the remote audio provider")
-        self.block_size = size
-        self.logger.debug(f"Set block size: {size}")
-        if self.is_active():
-            self._restart_stream()
+        self._begin_local_backend_change("Buffer size is controlled by the remote audio provider")
+        try:
+            self.block_size = size
+            self.logger.debug(f"Set block size: {size}")
+            if self.is_active():
+                self._restart_stream()
+        finally:
+            self._end_backend_change()
 
     def set_channel_mode(self, input_mode, output_mode):
-        if self.network_mode:
-            raise RuntimeError("Channel mode is controlled by the remote audio provider")
-        self.input_channel_mode = input_mode
-        self.output_channel_mode = output_mode
-        self.logger.debug(f"Set channel modes: Input={input_mode}, Output={output_mode}")
-        # Note: Changing channel mode might affect active callbacks if they expect specific mapping.
-        # For now, we assume global mode applies to the master stream.
-        if self.is_active():
-            self._restart_stream()
+        self._begin_local_backend_change("Channel mode is controlled by the remote audio provider")
+        try:
+            self.input_channel_mode = input_mode
+            self.output_channel_mode = output_mode
+            self.logger.debug(f"Set channel modes: Input={input_mode}, Output={output_mode}")
+            # Note: Changing channel mode might affect active callbacks if they expect specific mapping.
+            # For now, we assume global mode applies to the master stream.
+            if self.is_active():
+                self._restart_stream()
+        finally:
+            self._end_backend_change()
 
     def configure_network_client(self, client: NetworkAudioClient) -> None:
         """Switch the engine to an already-connected remote audio session."""
-        if not client.connected:
-            raise RuntimeError("Remote audio client is not connected")
         with self.lock:
+            if not client.connected:
+                raise RuntimeError("Remote audio client is not connected")
+            if self._backend_transition:
+                raise RuntimeError("Audio backend is already changing")
             if self._exclusive_owner is not None:
                 raise RuntimeError("Stop the local audio provider before connecting remote audio")
             if self.callbacks:
                 raise RuntimeError("Stop active audio measurements before connecting remote audio")
-        self.stop_stream()
-        if self.network_client is not None and self.network_client is not client:
-            self.network_client.close()
-        if not self.network_mode:
-            self._local_audio_state = (
-                self.input_device,
-                self.output_device,
-                self.sample_rate,
-                self.block_size,
-                self.input_channel_mode,
-                self.output_channel_mode,
-                self.offline_mode,
-            )
-        self.network_client = client
-        self.network_mode = True
-        self.offline_mode = False
-        self.sample_rate = client.sample_rate
-        self.block_size = client.block_size
-        self.input_channel_mode = "stereo" if client.input_channels >= 2 else "left"
-        self.output_channel_mode = "stereo" if client.output_channels >= 2 else "left"
-        self.input_device = f"network:{client.provider_name}:{client.input_device_name}"
-        self.output_device = f"network:{client.provider_name}:{client.output_device_name}"
-        self.logger.info("Configured remote audio provider %s", client.provider_name)
+            self._backend_transition = True
+        try:
+            self.stop_stream()
+            if not client.connected:
+                raise RuntimeError("Remote audio client disconnected while changing the audio backend")
+            previous_client = self.network_client
+            if previous_client is not None and previous_client is not client:
+                previous_client.close()
+            with self.lock:
+                if not self.network_mode:
+                    self._local_audio_state = (
+                        self.input_device,
+                        self.output_device,
+                        self.sample_rate,
+                        self.block_size,
+                        self.input_channel_mode,
+                        self.output_channel_mode,
+                        self.offline_mode,
+                    )
+                self.network_client = client
+                self.network_mode = True
+                self.offline_mode = False
+                self.sample_rate = client.sample_rate
+                self.block_size = client.block_size
+                self.input_channel_mode = "stereo" if client.input_channels >= 2 else "left"
+                self.output_channel_mode = "stereo" if client.output_channels >= 2 else "left"
+                self.input_device = f"network:{client.provider_name}:{client.input_device_name}"
+                self.output_device = f"network:{client.provider_name}:{client.output_device_name}"
+            self.logger.info("Configured remote audio provider %s", client.provider_name)
+        finally:
+            with self.lock:
+                self._backend_transition = False
 
     def disconnect_network_client(self, *, force: bool = False) -> None:
         """Disconnect remote audio and restore the previous local settings."""
         with self.lock:
+            if self._backend_transition:
+                raise RuntimeError("Audio backend is already changing")
             if self.callbacks and not force:
                 raise RuntimeError("Stop active audio measurements before disconnecting remote audio")
-        self.stop_stream()
-        client = self.network_client
-        self.network_client = None
-        self.network_mode = False
-        if client is not None:
-            client.close()
-        if self._local_audio_state is not None:
-            (
-                self.input_device,
-                self.output_device,
-                self.sample_rate,
-                self.block_size,
-                self.input_channel_mode,
-                self.output_channel_mode,
-                self.offline_mode,
-            ) = self._local_audio_state
-        self._local_audio_state = None
-        self.logger.info("Disconnected remote audio provider")
+            self._backend_transition = True
+        try:
+            self.stop_stream()
+            with self.lock:
+                client = self.network_client
+                self.network_client = None
+                self.network_mode = False
+                if self._local_audio_state is not None:
+                    (
+                        self.input_device,
+                        self.output_device,
+                        self.sample_rate,
+                        self.block_size,
+                        self.input_channel_mode,
+                        self.output_channel_mode,
+                        self.offline_mode,
+                    ) = self._local_audio_state
+                self._local_audio_state = None
+            if client is not None:
+                client.close()
+            self.logger.info("Disconnected remote audio provider")
+        finally:
+            with self.lock:
+                self._backend_transition = False
 
     def acquire_exclusive_audio(self, owner) -> None:
         """Reserve the engine for an infrastructure client such as a provider."""
         if owner is None:
             raise ValueError("exclusive audio owner is required")
         with self.lock:
+            if self._backend_transition:
+                raise RuntimeError("Audio backend is changing")
+            if self.network_mode:
+                raise RuntimeError("Disconnect remote audio before reserving the local audio engine")
+            if self.offline_mode:
+                raise RuntimeError("Disable offline mode before reserving the local audio engine")
             if self._exclusive_owner not in (None, owner):
                 raise RuntimeError("Audio engine is already reserved")
             if self.callbacks:
@@ -492,6 +567,11 @@ class AudioEngine:
             if self._exclusive_owner is owner:
                 self._exclusive_owner = None
 
+    def is_audio_reserved(self) -> bool:
+        """Return whether an infrastructure owner or backend transition blocks local changes."""
+        with self.lock:
+            return self._exclusive_owner is not None or self._backend_transition
+
     def register_callback(self, callback, *, owner=None):
         """
         Registers a callback for audio processing.
@@ -499,11 +579,14 @@ class AudioEngine:
         Callback signature: callback(indata, outdata, frames, time, status)
         """
         with self.lock:
+            if self._backend_transition:
+                raise RuntimeError("Audio backend is changing")
             if self._exclusive_owner is not None and owner is not self._exclusive_owner:
                 raise RuntimeError("Audio engine is reserved by Remote Audio I/O")
             cid = self.next_callback_id
             self.next_callback_id += 1
             self.callbacks[cid] = callback
+            self._callback_owners[cid] = owner
             self._cached_callbacks = list(self.callbacks.values())
 
             # Start stream if not running
@@ -515,6 +598,7 @@ class AudioEngine:
                     # client registration, however, must not report success
                     # when no callback can ever run.
                     del self.callbacks[cid]
+                    del self._callback_owners[cid]
                     self._cached_callbacks = list(self.callbacks.values())
                     raise RuntimeError("Audio stream failed to start")
 
@@ -525,9 +609,11 @@ class AudioEngine:
         """Unregisters a callback by ID."""
         should_stop = False
         unregistered = False
+        owner = None
         with self.lock:
             if callback_id in self.callbacks:
                 del self.callbacks[callback_id]
+                owner = self._callback_owners.pop(callback_id, None)
                 self._cached_callbacks = list(self.callbacks.values())
                 unregistered = True
 
@@ -540,7 +626,7 @@ class AudioEngine:
 
         # Stop stream outside the lock to avoid deadlock with callback
         if should_stop:
-            self.stop_stream()
+            self.stop_stream(owner=owner)
 
     def _prepare_logical_input(self, indata, frames, use_loopback):
         """Prepares logical input buffer from hardware input or loopback."""
@@ -923,9 +1009,11 @@ class AudioEngine:
             self.stream = None
             self.active_dtype = None
 
-    def stop_stream(self):
+    def stop_stream(self, *, owner=None, force: bool = False):
         """Stops the master audio stream."""
         with self.lock:
+            if not force and self._exclusive_owner is not None and owner is not self._exclusive_owner:
+                raise RuntimeError("Audio engine is reserved by Remote Audio I/O")
             if self.stream is not None:
                 try:
                     self.stream.stop()
@@ -937,13 +1025,17 @@ class AudioEngine:
                     self.active_dtype = None
                 self.logger.debug("Master audio stream stopped")
 
-    def ensure_stream_running(self) -> bool:
+    def ensure_stream_running(self, *, owner=None) -> bool:
         """Start the master stream when needed and report whether it is active.
 
         This is the public counterpart to ``_start_master_stream`` for tools
         that temporarily need exclusive access to the configured audio device.
         """
         with self.lock:
+            if self._exclusive_owner is not None and owner is not self._exclusive_owner:
+                raise RuntimeError("Audio engine is reserved by Remote Audio I/O")
+            if self._backend_transition:
+                raise RuntimeError("Audio backend is changing")
             if self.stream is None:
                 self._start_master_stream()
             return self.stream is not None and bool(self.stream.active)
@@ -992,6 +1084,7 @@ class AudioEngine:
 
         with self.lock:
             client_count = len(self.callbacks)
+            audio_reserved = self._exclusive_owner is not None or self._backend_transition
 
         # Get and reset accumulated status and error stats thread-safely
         with self._status_lock:
@@ -1010,6 +1103,7 @@ class AudioEngine:
             "active": active,
             "offline_mode": self.offline_mode,
             "network_mode": self.network_mode,
+            "audio_reserved": audio_reserved,
             "network": self.network_client.status_snapshot() if self.network_client is not None else None,
             "input_channels": self.input_channel_mode,
             "output_channels": self.output_channel_mode,

@@ -1,3 +1,6 @@
+import threading
+import time
+
 import numpy as np
 
 from src.core.network_audio.indexed_buffer import IndexedAudioBuffer
@@ -52,3 +55,20 @@ def test_stream_start_skips_old_connection_idle_history():
     start = buffer.stream_start_sample(jitter_frames=256, block_size=128, timeout=0.0)
 
     assert start == 1664
+
+
+def test_buffer_wait_can_be_cancelled_without_waiting_for_the_full_timeout():
+    buffer = IndexedAudioBuffer(capacity_frames=64, channels=1)
+    cancel_event = threading.Event()
+    result = []
+
+    waiter = threading.Thread(
+        target=lambda: result.append(buffer.wait_until_buffered(64, 30.0, cancel_event)),
+    )
+    waiter.start()
+    time.sleep(0.05)
+    cancel_event.set()
+    waiter.join(timeout=0.5)
+
+    assert not waiter.is_alive()
+    assert result == [False]

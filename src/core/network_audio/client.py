@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import queue
+import select
 import socket
 import threading
 import time
@@ -16,6 +17,8 @@ from src.core.network_audio.models import NetworkAudioStats, NetworkStatusFlags,
 from src.core.network_audio.protocol import (
     DIRECTION_CAPTURE,
     DIRECTION_PLAYBACK,
+    CONTROL_HEARTBEAT_INTERVAL,
+    CONTROL_HEARTBEAT_TIMEOUT,
     FLAG_INPUT_XRUN,
     FLAG_OUTPUT_XRUN,
     PROTOCOL_VERSION,
@@ -56,6 +59,7 @@ class NetworkAudioClient:
         self._provider_udp: tuple[str, int] | None = None
         self._capture_buffer: IndexedAudioBuffer | None = None
         self._stop_event = threading.Event()
+        self._control_send_lock = threading.Lock()
         self._receiver_thread: threading.Thread | None = None
         self._control_thread: threading.Thread | None = None
         self._sender_thread: threading.Thread | None = None
@@ -230,21 +234,42 @@ class NetworkAudioClient:
         control_socket = self._control_socket
         if control_socket is None:
             return
+        last_received = time.monotonic()
         while not self._stop_event.is_set():
             try:
+                readable, _, _ = select.select([control_socket], [], [], CONTROL_HEARTBEAT_INTERVAL)
+                if not readable:
+                    if time.monotonic() - last_received >= CONTROL_HEARTBEAT_TIMEOUT:
+                        self._fail("control heartbeat timed out")
+                        return
+                    self._send_control(control_socket, {"type": "ping"})
+                    continue
                 message = recv_control(control_socket)
-            except TimeoutError:
-                continue
-            except (ConnectionError, OSError, ProtocolError) as exc:
+                last_received = time.monotonic()
+            except (ConnectionError, OSError, ProtocolError, ValueError) as exc:
                 if not self._stop_event.is_set():
                     self._fail(f"control connection lost: {exc}")
                 return
+            if message.get("type") == "ping":
+                try:
+                    self._send_control(control_socket, {"type": "pong"})
+                except (OSError, ProtocolError) as exc:
+                    if not self._stop_event.is_set():
+                        self._fail(f"control connection lost: {exc}")
+                    return
+                continue
+            if message.get("type") == "pong":
+                continue
             if message.get("type") == "error":
                 self._fail(str(message.get("message", "remote provider error")))
                 return
             if message.get("type") == "stopped":
                 self._fail("remote provider stopped the session")
                 return
+
+    def _send_control(self, control_socket: socket.socket, message: dict[str, object]) -> None:
+        with self._control_send_lock:
+            send_control(control_socket, message)
 
     def enqueue_playback(self, sample_index: int, block: np.ndarray, flags: int = 0) -> None:
         if not self.duplex or not self.connected:
@@ -254,18 +279,29 @@ class NetworkAudioClient:
         except queue.Full:
             self.stats.record_queue_overflow("playback", sample_index, len(block))
 
-    def first_capture_sample(self, timeout: float) -> int | None:
+    def first_capture_sample(self, timeout: float, cancel_event: threading.Event | None = None) -> int | None:
         buffer = self._capture_buffer
         if buffer is None:
             return None
-        return buffer.stream_start_sample(self.jitter_frames, self.block_size, timeout)
+        return buffer.stream_start_sample(self.jitter_frames, self.block_size, timeout, cancel_event)
 
-    def read_capture(self, sample_index: int, frames: int) -> tuple[np.ndarray, NetworkStatusFlags]:
+    def read_capture(
+        self,
+        sample_index: int,
+        frames: int,
+        cancel_event: threading.Event | None = None,
+    ) -> tuple[np.ndarray, NetworkStatusFlags] | None:
         buffer = self._capture_buffer
         if buffer is None:
             raise RuntimeError("network capture buffer is unavailable")
         target = sample_index + frames + self.jitter_frames
-        buffer.wait_until_buffered(target, max(0.25, frames / self.sample_rate * 4.0))
+        buffer.wait_until_buffered(
+            target,
+            max(0.25, frames / self.sample_rate * 4.0),
+            cancel_event,
+        )
+        if cancel_event is not None and cancel_event.is_set():
+            return None
         data, missing = buffer.read(sample_index, frames)
         status = NetworkStatusFlags()
         for missing_start, missing_frames in missing:
@@ -285,17 +321,33 @@ class NetworkAudioClient:
         self.stats.set_state("error", message)
         self._connected = False
         self._stop_event.set()
+        control_socket = self._control_socket
+        if control_socket is not None:
+            try:
+                control_socket.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
 
     def close(self) -> None:
-        if self._control_socket is not None and self._connected:
-            try:
-                send_control(self._control_socket, {"type": "stop", "session_id": self.session_id})
-            except (OSError, ProtocolError):
-                pass
+        control_socket = self._control_socket
+        send_stop = control_socket is not None and self.connected
+        # Publish the local terminal state before the peer can answer "stopped"
+        # so the control thread does not turn an intentional close into an
+        # error transition.
         self._connected = False
         self._stop_event.set()
+        if control_socket is not None and send_stop:
+            try:
+                self._send_control(control_socket, {"type": "stop", "session_id": self.session_id})
+            except (OSError, ProtocolError):
+                pass
         for sock in (self._control_socket, self._udp_socket):
             if sock is not None:
+                try:
+                    if sock is self._control_socket:
+                        sock.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
                 try:
                     sock.close()
                 except OSError:
@@ -357,16 +409,20 @@ class NetworkClientStream:
         self._thread.start()
 
     def _run(self) -> None:
-        expected = self.client.first_capture_sample(timeout=5.0)
+        expected = self.client.first_capture_sample(timeout=5.0, cancel_event=self._stop_event)
         if expected is None:
-            self.client._fail("timed out waiting for remote audio")
+            if not self._stop_event.is_set() and self.client.connected:
+                self.client._fail("timed out waiting for remote audio")
             self.active = False
             return
         self.client.stats.set_state("streaming")
         interval = self.blocksize / self.samplerate
         while self.active and not self._stop_event.is_set() and self.client.connected:
             started = time.perf_counter()
-            indata, status = self.client.read_capture(expected, self.blocksize)
+            capture = self.client.read_capture(expected, self.blocksize, cancel_event=self._stop_event)
+            if capture is None or not self.active or self._stop_event.is_set():
+                break
+            indata, status = capture
             outdata = np.zeros((self.blocksize, self.channels[1]), dtype=np.float32)
             current_time = self._time_origin + expected / self.samplerate
             time_info = NetworkStreamTime(
@@ -393,6 +449,8 @@ class NetworkClientStream:
         if self._thread is not None and self._thread is not threading.current_thread():
             self._thread.join(timeout=1.0)
         self._thread = None
+        if self.client.connected:
+            self.client.stats.set_state("connected")
 
     def close(self) -> None:
         self.stop()
