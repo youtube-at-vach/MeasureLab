@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+from src.core.localization import tr
 from src.gui.widgets.remote_audio_io import RemoteAudioIOWidget
 
 
@@ -42,29 +43,36 @@ def test_remote_audio_widget_loads_endpoint_and_starts_safe(qtbot):
     assert not widget.stop_provider_button.isEnabled()
 
 
-def test_remote_audio_widget_displays_latched_integrity_loss(qtbot):
+def test_remote_audio_widget_displays_whether_integrity_loss_is_still_increasing(qtbot):
     widget = RemoteAudioIOWidget(_engine(), _Config())
     qtbot.addWidget(widget)
     snapshot = {
         "state": "streaming",
         "rx_packets": 10,
         "tx_packets": 9,
-        "lost_frames": 128,
+        "lost_packets": 0,
+        "lost_frames": 0,
         "late_packets": 1,
         "duplicate_packets": 0,
         "corrupt_packets": 0,
         "buffered_frames": 512,
         "local_queue_overflows": 0,
-        "incidents": [{"direction": "capture", "sample_index": 1024, "frames": 128, "reason": "packet loss"}],
     }
     widget.client = SimpleNamespace(status_snapshot=lambda: snapshot, connected=True)
 
     widget.refresh_status()
+    assert widget.integrity_label.text() == tr("No data loss ({0})").format("streaming")
 
-    assert "DATA LOSS" in widget.integrity_label.text()
+    snapshot["lost_packets"] = 1
+    snapshot["lost_frames"] = 128
+    widget.refresh_status()
+    assert widget.integrity_label.text() == tr("Data loss is increasing")
     assert "128" in widget.stats_label.text()
-    assert widget.incident_table.rowCount() == 1
-    assert widget.incident_table.item(0, 1).text() == "1024"
+
+    widget.refresh_status()
+    assert widget.integrity_label.text() == tr("Data loss is not increasing")
+    assert "128" in widget.stats_label.text()
+    assert not hasattr(widget, "incident_table")
 
 
 def test_remote_audio_widget_saves_preferences(qtbot):

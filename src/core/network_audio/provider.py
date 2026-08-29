@@ -63,12 +63,14 @@ class NetworkAudioProvider:
         self._client_udp: tuple[str, int] | None = None
         self._session_id = 0
         self._client_requested_duplex = False
+        self._client_playback_active = False
         self._duplex_negotiated = False
         self._duplex = False
         self._callback_id: int | None = None
         self._sample_index = 0
         self._capture_queue: queue.Queue[tuple[int, np.ndarray, int]] = queue.Queue(maxsize=64)
         self._playback_buffer: IndexedAudioBuffer | None = None
+        self._playback_active = threading.Event()
         self._playback_started_at: int | None = None
         self._stop_event = threading.Event()
         self._state_lock = threading.Lock()
@@ -199,6 +201,8 @@ class NetworkAudioProvider:
         control.settimeout(None)
         self._sample_index = 0
         self._capture_queue = queue.Queue(maxsize=64)
+        self._client_playback_active = False
+        self._playback_active.clear()
         self._playback_started_at = None
         self._callback_id = self.audio_engine.register_callback(self._audio_callback, owner=self)
         self.stats.set_state("streaming")
@@ -237,6 +241,9 @@ class NetworkAudioProvider:
                 continue
             if message.get("type") == "pong":
                 continue
+            if message.get("type") == "playback_state":
+                self._set_client_playback_active(control_bool(message, "active", False))
+                continue
             if message.get("type") == "stop":
                 try:
                     self._send_control(control, {"type": "stopped"})
@@ -265,6 +272,27 @@ class NetworkAudioProvider:
         """Arm or immediately mute remote playback."""
         self.allow_output = bool(enabled)
         self._duplex = self._duplex_negotiated and self.allow_output
+        self._set_playback_active(self._client_playback_active)
+
+    def _set_client_playback_active(self, active: bool) -> None:
+        self._client_playback_active = bool(active)
+        self._set_playback_active(self._client_playback_active)
+
+    def _set_playback_active(self, active: bool) -> None:
+        playback_buffer = self._playback_buffer
+        active = bool(active and self._duplex)
+        if active:
+            if self._playback_active.is_set():
+                return
+            if playback_buffer is not None:
+                playback_buffer.clear()
+            self._playback_started_at = None
+            self._playback_active.set()
+            return
+        self._playback_active.clear()
+        self._playback_started_at = None
+        if playback_buffer is not None:
+            playback_buffer.clear()
 
     def _audio_callback(self, indata, outdata, frames, time_info, status) -> None:
         del time_info
@@ -277,12 +305,12 @@ class NetworkAudioProvider:
 
         outdata.fill(0)
         playback_buffer = self._playback_buffer
-        if self._duplex and playback_buffer is not None:
+        if self._duplex and self._playback_active.is_set() and playback_buffer is not None:
             playback, missing = playback_buffer.read(sample_index, frames)
             if self._playback_started_at is not None and sample_index >= self._playback_started_at and missing:
                 flags |= FLAG_OUTPUT_XRUN
-                for missing_start, missing_frames in missing:
-                    self.stats.record_loss("playback", missing_start, missing_frames)
+                for _missing_start, missing_frames in missing:
+                    self.stats.record_loss(missing_frames)
             channels = min(outdata.shape[1], playback.shape[1])
             outdata[:, :channels] = playback[:, :channels]
 
@@ -290,7 +318,7 @@ class NetworkAudioProvider:
         try:
             self._capture_queue.put_nowait((sample_index, capture.copy(), flags))
         except queue.Full:
-            self.stats.record_queue_overflow("capture", sample_index, frames)
+            self.stats.record_queue_overflow(frames)
         self._sample_index += frames
 
     def _receive_loop(
@@ -315,6 +343,11 @@ class NetworkAudioProvider:
             try:
                 header, data = decode_audio_packet(packet)
                 if header["session_id"] != session_id or header["direction"] != DIRECTION_PLAYBACK:
+                    continue
+                if not self._playback_active.is_set():
+                    continue
+                if header["sample_index"] + len(data) <= self._sample_index:
+                    self.stats.record_late()
                     continue
                 result = playback.put(header["sample_index"], data)
                 if result == "duplicate":
@@ -384,8 +417,10 @@ class NetworkAudioProvider:
         self._client_udp = None
         self.client_address = ""
         self._client_requested_duplex = False
+        self._client_playback_active = False
         self._duplex_negotiated = False
         self._duplex = False
+        self._playback_active.clear()
         self._playback_buffer = None
         self._playback_started_at = None
         if self.running:

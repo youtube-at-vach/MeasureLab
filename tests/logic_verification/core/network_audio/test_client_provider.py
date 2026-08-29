@@ -10,6 +10,7 @@ import src.core.network_audio.client as client_module
 import src.core.network_audio.provider as provider_module
 from src.core.network_audio.client import NetworkAudioClient, NetworkClientStream
 from src.core.network_audio.indexed_buffer import IndexedAudioBuffer
+from src.core.network_audio.models import NetworkAudioStats
 from src.core.network_audio.provider import NetworkAudioProvider
 
 
@@ -205,6 +206,52 @@ def test_localhost_duplex_plays_client_output_at_a_future_sample_position():
         stream.close()
         client.close()
         provider.stop()
+
+
+def test_stopping_client_playback_does_not_create_unbounded_provider_loss():
+    engine = _FakeEngine()
+    provider = NetworkAudioProvider(engine, "127.0.0.1", 0, allow_output=True)
+    provider.start()
+    client = NetworkAudioClient("127.0.0.1", provider.port, jitter_ms=20, duplex=True)
+    client.connect()
+    stream = NetworkClientStream(client, lambda _indata, outdata, *_args: outdata.fill(0.25))
+    stream.start()
+
+    try:
+        assert _wait_until(lambda: engine._callback is not None)
+        for _block_index in range(16):
+            indata = np.zeros((128, 2), dtype=np.float32)
+            outdata = np.empty((128, 2), dtype=np.float32)
+            engine._callback(indata, outdata, 128, None, _Status())
+            time.sleep(0.02)
+        assert _wait_until(lambda: provider._playback_started_at is not None)
+
+        stream.stop()
+        assert _wait_until(lambda: not provider._playback_active.is_set())
+        lost_at_stop = provider.status_snapshot()["lost_frames"]
+        for _block_index in range(16):
+            indata = np.zeros((128, 2), dtype=np.float32)
+            outdata = np.empty((128, 2), dtype=np.float32)
+            engine._callback(indata, outdata, 128, None, _Status())
+
+        assert provider.status_snapshot()["lost_frames"] == lost_at_stop
+    finally:
+        stream.close()
+        client.close()
+        provider.stop()
+
+
+def test_network_stats_do_not_retain_incident_details():
+    stats = NetworkAudioStats()
+
+    stats.record_loss(128)
+    stats.record_queue_overflow(64)
+    snapshot = stats.snapshot()
+
+    assert snapshot["lost_frames"] == 192
+    assert snapshot["lost_packets"] == 1
+    assert snapshot["local_queue_overflows"] == 1
+    assert "incidents" not in snapshot
 
 
 def test_network_stream_stop_cancels_capture_priming_without_late_error():

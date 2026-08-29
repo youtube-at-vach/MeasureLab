@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass
 import threading
-import time
 
 
 @dataclass(slots=True)
@@ -57,19 +56,8 @@ class NetworkStreamTime:
     currentTime: float
 
 
-@dataclass(slots=True)
-class IntegrityIncident:
-    direction: str
-    sample_index: int
-    frames: int
-    reason: str
-    occurred_at: float = field(default_factory=time.time)
-
-
 class NetworkAudioStats:
-    """Thread-safe bounded network health counters."""
-
-    _MAX_INCIDENTS = 100
+    """Thread-safe network health counters."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -89,7 +77,6 @@ class NetworkAudioStats:
         self.jitter_frames = 0
         self.buffered_frames = 0
         self.last_error: str | None = None
-        self.incidents: list[IntegrityIncident] = []
 
     def set_state(self, state: str, error: str | None = None) -> None:
         with self._lock:
@@ -120,16 +107,15 @@ class NetworkAudioStats:
             self.corrupt_packets += 1
             self.last_error = str(error)
 
-    def record_queue_overflow(self, direction: str, sample_index: int, frames: int) -> None:
+    def record_queue_overflow(self, frames: int) -> None:
         with self._lock:
             self.local_queue_overflows += 1
-            self._append_incident_locked(direction, sample_index, frames, "queue overflow")
+            self.lost_frames += max(0, int(frames))
 
-    def record_loss(self, direction: str, sample_index: int, frames: int, reason: str = "packet loss") -> None:
+    def record_loss(self, frames: int) -> None:
         with self._lock:
             self.lost_packets += 1
             self.lost_frames += max(0, int(frames))
-            self._append_incident_locked(direction, sample_index, frames, reason)
 
     def record_remote_xrun(self, *, input_xrun: bool = False, output_xrun: bool = False) -> None:
         with self._lock:
@@ -139,18 +125,6 @@ class NetworkAudioStats:
     def set_buffered_frames(self, frames: int) -> None:
         with self._lock:
             self.buffered_frames = max(0, int(frames))
-
-    def _append_incident_locked(self, direction: str, sample_index: int, frames: int, reason: str) -> None:
-        self.incidents.append(
-            IntegrityIncident(
-                direction=str(direction),
-                sample_index=max(0, int(sample_index)),
-                frames=max(0, int(frames)),
-                reason=str(reason),
-            )
-        )
-        if len(self.incidents) > self._MAX_INCIDENTS:
-            del self.incidents[: len(self.incidents) - self._MAX_INCIDENTS]
 
     def snapshot(self) -> dict[str, object]:
         with self._lock:
@@ -171,7 +145,6 @@ class NetworkAudioStats:
                 "jitter_frames": self.jitter_frames,
                 "buffered_frames": self.buffered_frames,
                 "last_error": self.last_error,
-                "incidents": [asdict(incident) for incident in self.incidents],
             }
 
     def acknowledge_integrity_errors(self) -> None:
@@ -185,6 +158,5 @@ class NetworkAudioStats:
             self.remote_input_xruns = 0
             self.remote_output_xruns = 0
             self.local_queue_overflows = 0
-            self.incidents.clear()
             if self.state != "error":
                 self.last_error = None

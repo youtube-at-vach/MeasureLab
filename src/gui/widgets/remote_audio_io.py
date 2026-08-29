@@ -17,8 +17,6 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QSpinBox,
     QTabWidget,
-    QTableWidget,
-    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
@@ -47,6 +45,8 @@ class RemoteAudioIOWidget(QWidget):
         self._connecting = False
         self._connect_cancel = threading.Event()
         self._shutting_down = False
+        self._integrity_source: object | None = None
+        self._last_damage_events: int | None = None
         self._signals = _RemoteAudioSignals(self)
         self._signals.connected.connect(self._on_client_connected)
         self._signals.failed.connect(self._on_client_failed)
@@ -84,10 +84,6 @@ class RemoteAudioIOWidget(QWidget):
         self.stats_label.setWordWrap(True)
         monitor_layout.addWidget(self.integrity_label)
         monitor_layout.addWidget(self.stats_label)
-        self.incident_table = QTableWidget(0, 4)
-        self.incident_table.setHorizontalHeaderLabels([tr("Direction"), tr("Sample"), tr("Frames"), tr("Reason")])
-        self.incident_table.setMaximumHeight(180)
-        monitor_layout.addWidget(self.incident_table)
         layout.addWidget(monitor)
 
     def _build_client_tab(self) -> QWidget:
@@ -329,12 +325,15 @@ class RemoteAudioIOWidget(QWidget):
 
     def refresh_status(self) -> None:
         snapshot: dict[str, object] | None = None
+        source: object | None = None
         if self.client is not None:
+            source = self.client
             snapshot = self.client.status_snapshot()
             if not self.client.connected and getattr(self.audio_engine, "network_mode", False):
                 self.connect_button.setEnabled(False)
                 self.disconnect_button.setEnabled(True)
         elif self.provider is not None:
+            source = self.provider
             snapshot = self.provider.status_snapshot()
             address = str(snapshot.get("client_address") or tr("waiting"))
             output_active = (
@@ -351,7 +350,8 @@ class RemoteAudioIOWidget(QWidget):
             self.integrity_label.setText(tr("Disconnected"))
             self.integrity_label.setStyleSheet("font-weight: bold; color: #888;")
             self.stats_label.setText("")
-            self._set_incidents([])
+            self._integrity_source = None
+            self._last_damage_events = None
             self.disconnect_button.setEnabled(False)
             self.stop_provider_button.setEnabled(False)
             return
@@ -359,42 +359,34 @@ class RemoteAudioIOWidget(QWidget):
         loss = int(snapshot.get("lost_frames", 0) or 0)
         corrupt = int(snapshot.get("corrupt_packets", 0) or 0)
         queue_overflows = int(snapshot.get("local_queue_overflows", 0) or 0)
+        loss_events = int(snapshot.get("lost_packets", 0) or 0) + corrupt + queue_overflows
         state = str(snapshot.get("state", "disconnected"))
-        damaged = loss > 0 or corrupt > 0 or queue_overflows > 0 or state == "error"
-        if damaged:
-            self.integrity_label.setText(tr("DATA LOSS DETECTED"))
+        loss_increasing = (
+            source is self._integrity_source
+            and self._last_damage_events is not None
+            and loss_events > self._last_damage_events
+        )
+        self._integrity_source = source
+        self._last_damage_events = loss_events
+
+        if state == "error":
+            self.integrity_label.setText(tr("Connection failed"))
             self.integrity_label.setStyleSheet("font-weight: bold; color: red;")
+        elif loss_increasing:
+            self.integrity_label.setText(tr("Data loss is increasing"))
+            self.integrity_label.setStyleSheet("font-weight: bold; color: red;")
+        elif loss_events:
+            self.integrity_label.setText(tr("Data loss is not increasing"))
+            self.integrity_label.setStyleSheet("font-weight: bold; color: #d18b00;")
         else:
-            self.integrity_label.setText(tr("Integrity OK ({0})").format(state))
+            self.integrity_label.setText(tr("No data loss ({0})").format(state))
             self.integrity_label.setStyleSheet("font-weight: bold; color: green;")
         self.stats_label.setText(
-            tr(
-                "Rx: {0} packets / Tx: {1} packets | Lost: {2} frames | Late: {3} | "
-                "Duplicate: {4} | Corrupt: {5} | Buffered: {6} frames"
-            ).format(
-                snapshot.get("rx_packets", 0),
-                snapshot.get("tx_packets", 0),
+            tr("Dropped: {0} frames ({1} events)").format(
                 loss,
-                snapshot.get("late_packets", 0),
-                snapshot.get("duplicate_packets", 0),
-                corrupt,
-                snapshot.get("buffered_frames", 0),
+                loss_events,
             )
         )
-        self._set_incidents(list(snapshot.get("incidents", [])))
-
-    def _set_incidents(self, incidents: list[object]) -> None:
-        recent = [item for item in incidents[-20:] if isinstance(item, dict)]
-        self.incident_table.setRowCount(len(recent))
-        for row, incident in enumerate(reversed(recent)):
-            values = (
-                incident.get("direction", ""),
-                incident.get("sample_index", ""),
-                incident.get("frames", ""),
-                incident.get("reason", ""),
-            )
-            for column, value in enumerate(values):
-                self.incident_table.setItem(row, column, QTableWidgetItem(str(value)))
 
     def shutdown(self) -> None:
         self._shutting_down = True

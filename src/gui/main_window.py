@@ -906,6 +906,7 @@ class MainWindow(QMainWindow):
                     int(status.get("latched_xrun_count", 0) or 0)
                     + int(network_status.get("lost_packets", 0) or 0)
                     + corrupt_packets
+                    + int(network_status.get("local_queue_overflows", 0) or 0)
                 )
                 tooltip_sections.append(
                     tr("Audio I/O buffer error: {0}\nOccurrences: {1}\nClick to acknowledge and clear.").format(

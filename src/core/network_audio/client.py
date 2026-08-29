@@ -67,6 +67,7 @@ class NetworkAudioClient:
         self._send_sequence = 0
         self._pending_remote_input_xrun = False
         self._pending_remote_output_xrun = False
+        self._playback_active = False
         self._connected = False
 
     @property
@@ -121,6 +122,7 @@ class NetworkAudioClient:
             self._send_sequence = 0
             self._pending_remote_input_xrun = False
             self._pending_remote_output_xrun = False
+            self._playback_active = False
             self.stats.jitter_frames = self.jitter_frames
             self.stats.set_state("connected")
             self._receiver_thread = threading.Thread(target=self._receive_loop, name="NetworkAudioRx", daemon=True)
@@ -280,7 +282,23 @@ class NetworkAudioClient:
         try:
             self._playback_queue.put_nowait((int(sample_index), np.asarray(block, dtype=np.float32).copy(), int(flags)))
         except queue.Full:
-            self.stats.record_queue_overflow("playback", sample_index, len(block))
+            self.stats.record_queue_overflow(len(block))
+
+    def set_playback_active(self, active: bool) -> None:
+        """Tell the provider whether playback packets are currently expected."""
+        active = bool(active and self.duplex)
+        if active == self._playback_active:
+            return
+        control_socket = self._control_socket
+        if control_socket is None or not self.connected:
+            self._playback_active = False
+            return
+        try:
+            self._send_control(control_socket, {"type": "playback_state", "active": active})
+        except (OSError, ProtocolError) as exc:
+            self._fail(f"control connection lost: {exc}")
+            return
+        self._playback_active = active
 
     def first_capture_sample(self, timeout: float, cancel_event: threading.Event | None = None) -> int | None:
         buffer = self._capture_buffer
@@ -307,9 +325,9 @@ class NetworkAudioClient:
             return None
         data, missing = buffer.read(sample_index, frames)
         status = NetworkStatusFlags()
-        for missing_start, missing_frames in missing:
+        for _missing_start, missing_frames in missing:
             status.input_overflow = True
-            self.stats.record_loss("capture", missing_start, missing_frames)
+            self.stats.record_loss(missing_frames)
         if self._pending_remote_input_xrun:
             status.input_overflow = True
             self._pending_remote_input_xrun = False
@@ -324,6 +342,7 @@ class NetworkAudioClient:
         self.stats.set_state("error", message)
         self._connected = False
         self._stop_event.set()
+        self._playback_active = False
         control_socket = self._control_socket
         if control_socket is not None:
             try:
@@ -408,6 +427,7 @@ class NetworkClientStream:
         self.active = True
         self._stop_event.clear()
         self.client.stats.set_state("priming")
+        self.client.set_playback_active(True)
         self._thread = threading.Thread(target=self._run, name="NetworkAudioCallback", daemon=True)
         self._thread.start()
 
@@ -452,6 +472,7 @@ class NetworkClientStream:
         if self._thread is not None and self._thread is not threading.current_thread():
             self._thread.join(timeout=1.0)
         self._thread = None
+        self.client.set_playback_active(False)
         if self.client.connected:
             self.client.stats.set_state("connected")
 
