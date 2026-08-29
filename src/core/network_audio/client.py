@@ -84,10 +84,13 @@ class NetworkAudioClient:
         udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         control_socket: socket.socket | None = None
         try:
-            udp_socket.bind(("0.0.0.0", 0))
-            udp_socket.settimeout(0.5)
             control_socket = socket.create_connection((self.host, self.port), timeout=max(0.1, float(timeout)))
             control_socket.settimeout(max(0.1, float(timeout)))
+            # Bind UDP only to the interface selected for the TCP route. The
+            # provider sends media back to this address, so listening on every
+            # local interface is unnecessary.
+            udp_socket.bind((str(control_socket.getsockname()[0]), 0))
+            udp_socket.settimeout(0.5)
             send_control(
                 control_socket,
                 {

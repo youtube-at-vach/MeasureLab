@@ -76,6 +76,8 @@ def test_localhost_capture_paces_network_stream_and_preserves_samples():
     provider.start()
     client = NetworkAudioClient("127.0.0.1", provider.port, jitter_ms=20, duplex=False)
     client.connect()
+    assert client._udp_socket is not None
+    assert client._udp_socket.getsockname()[0] == "127.0.0.1"
     received = []
     callback_event = threading.Event()
 
