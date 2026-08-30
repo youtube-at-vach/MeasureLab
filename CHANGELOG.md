@@ -1,5 +1,33 @@
 # Changelog
 
+## [v0.8.6] - 2026-08-30
+
+### Added
+
+* **Remote Audio I/O**:
+    * Added LAN-based remote audio input and optional duplex output, allowing a MeasureLab computer to provide its local audio device to one trusted-LAN client.
+    * Added transport-integrity monitoring for missing, late, duplicate, and corrupt frames, with visible data-loss reporting.
+* **Spectrogram**:
+    * Added selectable waterfall orientation.
+* **Measurement Console**:
+    * Added a Stop All control for synchronized stopping of active instruments.
+
+### Changed
+
+* **Goniometer**:
+    * Improved trace quality, display controls, theme-aware icons, and high-rate display handling.
+* **Recorder / Player & Analysis Tools**:
+    * Improved Recorder / Player compact mode, Lock-in Spectrum Finder compact-mode support, Spatial Binaural Mixer accessibility, and Ultrasound Modulator safety controls.
+* **Performance & Documentation**:
+    * Reduced widget preload bottlenecks, optimized spectrogram rendering, refreshed widget screenshots, and expanded measurement-instrument guidance.
+
+### Fixed
+
+* **Audio & Calibration**:
+    * Hardened calibration integrity, virtual-stream timing, and Remote Audio I/O state transitions and provider reservation handling.
+* **Displays & Measurements**:
+    * Corrected Measurement Console grid sizing, Goniometer rendering and buffering behavior, Event Detector high-speed counting, and logarithmic plot-axis tick selection.
+
 ## [v0.8.5] - 2026-08-24
 
 ### Added
