@@ -41,6 +41,17 @@ def test_remote_audio_widget_loads_endpoint_and_starts_safe(qtbot):
     assert not widget.allow_output_check.isChecked()
     assert not widget.disconnect_button.isEnabled()
     assert not widget.stop_provider_button.isEnabled()
+    assert widget.activity_label.text() == tr("Disconnected")
+    assert widget.integrity_label.text() == tr("Disconnected")
+    assert widget.tabs.tabText(0) == tr("Connect to another computer")
+    assert widget.tabs.tabText(1) == tr("Share this computer's audio")
+    assert widget.provider_button.text() == tr("Start sharing")
+    assert widget.stop_provider_button.text() == tr("Stop sharing")
+
+    widget.tabs.setCurrentIndex(1)
+    assert widget.activity_details_label.text() == tr(
+        "Set where this computer listens for connections, then start the provider."
+    )
 
 
 def test_remote_audio_widget_displays_whether_integrity_loss_is_still_increasing(qtbot):
@@ -62,6 +73,9 @@ def test_remote_audio_widget_displays_whether_integrity_loss_is_still_increasing
 
     widget.refresh_status()
     assert widget.integrity_label.text() == tr("No data loss ({0})").format("streaming")
+    assert not widget.host_edit.isEnabled()
+    assert not widget.provider_button.isEnabled()
+    assert widget.disconnect_button.isEnabled()
 
     snapshot["lost_packets"] = 1
     snapshot["lost_frames"] = 128
@@ -104,3 +118,60 @@ def test_remote_audio_widget_keeps_client_and_provider_ports_in_sync(qtbot):
 
     widget.provider_port_spin.setValue(44000)
     assert widget.client_port_spin.value() == 44000
+
+
+def test_remote_audio_widget_provider_waiting_is_not_reported_as_healthy_connection(qtbot):
+    widget = RemoteAudioIOWidget(_engine(), _Config())
+    qtbot.addWidget(widget)
+    widget.provider = SimpleNamespace(
+        running=True,
+        status_snapshot=lambda: {
+            "state": "listening",
+            "bind_host": "0.0.0.0",
+            "port": 41000,
+            "client_address": None,
+            "duplex": False,
+        },
+    )
+
+    widget.refresh_status()
+
+    assert widget.activity_label.text() == tr("Provide Local I/O")
+    assert widget.integrity_label.text() == tr("waiting")
+    assert "0.0.0.0:41000" in widget.provider_details_label.text()
+    assert not widget.provider_port_spin.isEnabled()
+    assert widget.stop_provider_button.isEnabled()
+
+
+def test_remote_audio_widget_can_cancel_connection_attempt(qtbot):
+    widget = RemoteAudioIOWidget(_engine(), _Config())
+    qtbot.addWidget(widget)
+    widget._connecting = True
+    widget._connect_cancel.clear()
+
+    widget.refresh_status()
+
+    assert widget.activity_label.text() == tr("Connecting...")
+    assert widget.disconnect_button.text() == tr("Cancel")
+    assert widget.disconnect_button.isEnabled()
+    assert not widget.host_edit.isEnabled()
+
+    widget.disconnect_client()
+
+    assert widget._connect_cancel.is_set()
+    assert not widget._connecting
+    assert widget.activity_label.text() == tr("Disconnected")
+
+
+def test_remote_audio_widget_ignores_connection_that_finishes_after_cancel(qtbot):
+    engine = _engine()
+    widget = RemoteAudioIOWidget(engine, _Config())
+    qtbot.addWidget(widget)
+    client = MagicMock()
+    widget._connect_cancel.set()
+
+    widget._on_client_connected(client)
+
+    client.close.assert_called_once_with()
+    engine.configure_network_client.assert_not_called()
+    assert widget.client is None
