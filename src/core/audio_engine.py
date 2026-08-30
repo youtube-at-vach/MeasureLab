@@ -183,6 +183,8 @@ class AudioEngine:
         self.lock = threading.Lock()
         self._status_lock = threading.Lock()
         self._exclusive_owner = None
+        self._exclusive_audio_role = None
+        self._exclusive_status_provider = None
         self._backend_transition = False
 
         # Status Monitoring
@@ -545,7 +547,7 @@ class AudioEngine:
             with self.lock:
                 self._backend_transition = False
 
-    def acquire_exclusive_audio(self, owner) -> None:
+    def acquire_exclusive_audio(self, owner, *, role: str = "reserved", status_provider=None) -> None:
         """Reserve the engine for an infrastructure client such as a provider."""
         if owner is None:
             raise ValueError("exclusive audio owner is required")
@@ -561,11 +563,15 @@ class AudioEngine:
             if self.callbacks:
                 raise RuntimeError("Stop active audio measurements before reserving the audio engine")
             self._exclusive_owner = owner
+            self._exclusive_audio_role = str(role)
+            self._exclusive_status_provider = status_provider
 
     def release_exclusive_audio(self, owner) -> None:
         with self.lock:
             if self._exclusive_owner is owner:
                 self._exclusive_owner = None
+                self._exclusive_audio_role = None
+                self._exclusive_status_provider = None
 
     def is_audio_reserved(self) -> bool:
         """Return whether an infrastructure owner or backend transition blocks local changes."""
@@ -1085,6 +1091,24 @@ class AudioEngine:
         with self.lock:
             client_count = len(self.callbacks)
             audio_reserved = self._exclusive_owner is not None or self._backend_transition
+            exclusive_audio_role = self._exclusive_audio_role
+            exclusive_status_provider = self._exclusive_status_provider
+
+        if self.offline_mode:
+            io_role = "virtual"
+        elif self.network_mode:
+            io_role = "remote_client"
+        elif exclusive_audio_role is not None:
+            io_role = exclusive_audio_role
+        else:
+            io_role = "local"
+
+        remote_provider_status = None
+        if io_role == "remote_provider" and exclusive_status_provider is not None:
+            try:
+                remote_provider_status = exclusive_status_provider()
+            except Exception as exc:
+                self.logger.warning("Failed to read Remote Audio I/O provider status: %s", exc)
 
         # Get and reset accumulated status and error stats thread-safely
         with self._status_lock:
@@ -1103,8 +1127,10 @@ class AudioEngine:
             "active": active,
             "offline_mode": self.offline_mode,
             "network_mode": self.network_mode,
+            "io_role": io_role,
             "audio_reserved": audio_reserved,
             "network": self.network_client.status_snapshot() if self.network_client is not None else None,
+            "remote_provider": remote_provider_status,
             "input_channels": self.input_channel_mode,
             "output_channels": self.output_channel_mode,
             "sample_rate": self.sample_rate,

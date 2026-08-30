@@ -78,6 +78,9 @@ class NetworkAudioProvider:
         self._accept_thread: threading.Thread | None = None
         self._receive_thread: threading.Thread | None = None
         self._send_thread: threading.Thread | None = None
+        self._provider_name = platform.node() or "MeasureLab"
+        self._input_device_name = "-"
+        self._output_device_name = "-"
 
     def start(self) -> None:
         if self.running:
@@ -100,7 +103,13 @@ class NetworkAudioProvider:
             tcp_socket.settimeout(0.5)
             udp_socket.bind((self.bind_host, 0))
             udp_socket.settimeout(0.5)
-            self.audio_engine.acquire_exclusive_audio(self)
+            self._input_device_name = self._device_name(self.audio_engine.input_device, True)
+            self._output_device_name = self._device_name(self.audio_engine.output_device, False)
+            self.audio_engine.acquire_exclusive_audio(
+                self,
+                role="remote_provider",
+                status_provider=self.status_snapshot,
+            )
         except Exception:
             tcp_socket.close()
             udp_socket.close()
@@ -185,9 +194,9 @@ class NetworkAudioProvider:
                 "block_size": int(self.audio_engine.block_size),
                 "input_channels": in_channels,
                 "output_channels": out_channels,
-                "provider_name": platform.node() or "MeasureLab",
-                "input_device_name": self._device_name(self.audio_engine.input_device, True),
-                "output_device_name": self._device_name(self.audio_engine.output_device, False),
+                "provider_name": self._provider_name,
+                "input_device_name": self._input_device_name,
+                "output_device_name": self._output_device_name,
                 "duplex": self._duplex,
             },
         )
@@ -466,6 +475,13 @@ class NetworkAudioProvider:
                 "port": self.port,
                 "client_address": self.client_address,
                 "duplex": self._duplex,
+                "allow_output": self.allow_output,
+                "playback_active": self._playback_active.is_set(),
+                "provider_name": self._provider_name,
+                "input_device_name": self._input_device_name,
+                "output_device_name": self._output_device_name,
+                "sample_rate": int(self.audio_engine.sample_rate),
+                "block_size": int(self.audio_engine.block_size),
             }
         )
         return snapshot

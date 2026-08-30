@@ -34,6 +34,8 @@ class _FakeEngine:
         self.offline_mode = False
         self._callback = None
         self._owner = None
+        self._role = None
+        self._status_provider = None
 
     def get_status(self):
         return {"active_clients": int(self._callback is not None)}
@@ -44,13 +46,17 @@ class _FakeEngine:
     def list_devices(self):
         return []
 
-    def acquire_exclusive_audio(self, owner):
+    def acquire_exclusive_audio(self, owner, *, role="reserved", status_provider=None):
         assert self._owner is None
         self._owner = owner
+        self._role = role
+        self._status_provider = status_provider
 
     def release_exclusive_audio(self, owner):
         if self._owner is owner:
             self._owner = None
+            self._role = None
+            self._status_provider = None
 
     def register_callback(self, callback, *, owner=None):
         assert owner is self._owner
@@ -129,8 +135,18 @@ def test_provider_holds_audio_exclusivity_until_provider_is_stopped():
     client = NetworkAudioClient("127.0.0.1", provider.port, jitter_ms=20, duplex=False)
     try:
         assert engine._owner is provider
+        assert engine._role == "remote_provider"
+        assert engine._status_provider is not None
+        waiting_status = engine._status_provider()
+        assert waiting_status["state"] == "listening"
+        assert waiting_status["provider_name"]
+        assert waiting_status["sample_rate"] == engine.sample_rate
+        assert waiting_status["block_size"] == engine.block_size
         client.connect()
         assert _wait_until(lambda: engine._callback is not None)
+        streaming_status = engine._status_provider()
+        assert streaming_status["client_address"] == "127.0.0.1"
+        assert not streaming_status["duplex"]
         client.close()
         assert _wait_until(lambda: engine._callback is None)
         assert engine._owner is provider
@@ -139,6 +155,8 @@ def test_provider_holds_audio_exclusivity_until_provider_is_stopped():
         provider.stop()
 
     assert engine._owner is None
+    assert engine._role is None
+    assert engine._status_provider is None
 
 
 def test_provider_accepts_a_second_session_without_reusing_first_session_threads():

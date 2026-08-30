@@ -529,12 +529,14 @@ class MainWindow(QMainWindow):
         network_client = getattr(self.audio_engine, "network_client", None)
         remote_output_available = bool(is_network and getattr(network_client, "duplex", False))
         network_status = network_client.status_snapshot() if network_client is not None else None
-        self._last_output_backend_state = (is_offline, is_network, remote_output_available)
+        io_role = "virtual" if is_offline else "remote_client" if is_network else "local"
+        self._last_output_backend_state = (is_offline, is_network, remote_output_available, io_role, None)
         self._update_output_destination_ui_for_mode(
             is_offline,
             is_network=is_network,
             remote_output_available=remote_output_available,
             network_status=network_status,
+            io_role=io_role,
         )
 
     def _find_device_id(self, devices: list, name: str, hostapi: str, is_input: bool) -> Optional[int]:
@@ -822,13 +824,30 @@ class MainWindow(QMainWindow):
 
     def update_status(self):
         status = self.audio_engine.get_status()
+        io_role = str(status.get("io_role") or "local")
+        provider_status = status.get("remote_provider") or {}
+        provider_mode, _provider_route, provider_tooltip, provider_connected = self._remote_provider_ui_details(
+            provider_status
+        )
 
         # Keep global output selector in sync if a widget changed it
         current_mode = self._get_engine_output_destination()
         self._sync_output_destination_ui(current_mode, propagate=True)
 
         # Active State
-        if status["active"]:
+        if io_role == "remote_provider":
+            provider_error = str(provider_status.get("state") or "") == "error"
+            state_text = tr("Error") if provider_error else provider_mode
+            status_style = (
+                "color: red; font-weight: bold;"
+                if provider_error
+                else "color: green; font-weight: bold;"
+                if provider_connected
+                else "color: #2d7dd2; font-weight: bold;"
+            )
+            self.status_label.setText(tr("I/O Provider"))
+            self.status_label.setStyleSheet(status_style)
+        elif status["active"]:
             state_text = tr("ACTIVE").capitalize()
             status_style = "color: green; font-weight: bold;"
             self.status_label.setText(tr("ACTIVE"))
@@ -842,7 +861,10 @@ class MainWindow(QMainWindow):
         # I/O Mode
         in_mode = status["input_channels"].capitalize()
         out_mode = status["output_channels"].capitalize()
-        self.io_label.setText(tr("In: {0} | Out: {1}").format(in_mode, out_mode))
+        if io_role == "remote_provider":
+            self.io_label.setText(f"{tr('Mode:')} {provider_mode}")
+        else:
+            self.io_label.setText(tr("In: {0} | Out: {1}").format(in_mode, out_mode))
 
         # Sample Rate
         self.sr_label.setText(tr("SR: {0}").format(status["sample_rate"]))
@@ -856,19 +878,26 @@ class MainWindow(QMainWindow):
         self._update_audio_io_error_indicator(status)
 
         # Clients
-        self.clients_label.setText(tr("Clients: {0}").format(status["active_clients"]))
+        visible_clients = int(provider_connected) if io_role == "remote_provider" else status["active_clients"]
+        self.clients_label.setText(tr("Clients: {0}").format(visible_clients))
 
         compact_sr = self._format_compact_sample_rate(status["sample_rate"])
-        self.compact_status_label.setText(f"{state_text} • {compact_sr}")
+        if io_role == "remote_provider":
+            self.compact_status_label.setText(f"{tr('I/O Provider')} • {state_text} • {compact_sr}")
+        else:
+            self.compact_status_label.setText(f"{state_text} • {compact_sr}")
         self.compact_status_label.setStyleSheet(status_style)
-        self.compact_status_label.setToolTip(
-            tr("In: {0} | Out: {1}\nCPU: {2:.1f}%\nClients: {3}").format(
-                in_mode,
-                out_mode,
-                cpu,
-                status["active_clients"],
+        if io_role == "remote_provider":
+            self.compact_status_label.setToolTip(provider_tooltip)
+        else:
+            self.compact_status_label.setToolTip(
+                tr("In: {0} | Out: {1}\nCPU: {2:.1f}%\nClients: {3}").format(
+                    in_mode,
+                    out_mode,
+                    cpu,
+                    status["active_clients"],
+                )
             )
-        )
         self._refresh_sidebar_activity_indicators()
 
         # Keep routing labels aligned with the backend that actually owns I/O.
@@ -876,13 +905,24 @@ class MainWindow(QMainWindow):
         is_network = bool(status.get("network_mode", False))
         network_status = status.get("network") or {}
         remote_output_available = bool(is_network and network_status.get("duplex", False))
-        output_backend_state = (is_offline, is_network, remote_output_available)
+        provider_state = None
+        if io_role == "remote_provider":
+            provider_state = (
+                provider_status.get("state"),
+                provider_status.get("client_address"),
+                bool(provider_status.get("duplex")),
+                bool(provider_status.get("allow_output")),
+                provider_status.get("last_error"),
+            )
+        output_backend_state = (is_offline, is_network, remote_output_available, io_role, provider_state)
         if output_backend_state != self._last_output_backend_state:
             self._update_output_destination_ui_for_mode(
                 is_offline,
                 is_network=is_network,
                 remote_output_available=remote_output_available,
                 network_status=network_status,
+                io_role=io_role,
+                provider_status=provider_status,
             )
             self._last_output_backend_state = output_backend_state
 
@@ -1005,6 +1045,46 @@ class MainWindow(QMainWindow):
             return "loopback_silent" if self.audio_engine.mute_output else "loopback_mix"
         return "physical"
 
+    def _remote_provider_ui_details(self, provider_status: dict[str, object] | None):
+        details = provider_status or {}
+        state = str(details.get("state") or "")
+        client_address = str(details.get("client_address") or "")
+        connected = bool(client_address)
+        duplex = connected and bool(details.get("duplex"))
+
+        if state == "error":
+            mode = tr("Error")
+            route = tr("Connection failed")
+        elif not connected:
+            mode = tr("waiting")
+            route = tr("Remote I/O provider — waiting for client")
+        elif duplex:
+            mode = tr("Duplex")
+            route = tr("Physical input → Remote client · Remote client → Physical output")
+        else:
+            mode = tr("Input only")
+            route = tr("Physical input → Remote client · Physical output muted")
+
+        provider_name = str(details.get("provider_name") or "MeasureLab")
+        input_device_name = str(details.get("input_device_name") or "-")
+        output_device_name = str(details.get("output_device_name") or "-")
+        sample_rate = int(details.get("sample_rate") or self.audio_engine.sample_rate)
+        block_size = int(details.get("block_size") or self.audio_engine.block_size)
+        tooltip = tr("Provider: {0}\nInput: {1}\nOutput: {2}\nFormat: {3} Hz, {4} frames, {5}").format(
+            provider_name,
+            input_device_name,
+            output_device_name,
+            sample_rate,
+            block_size,
+            mode,
+        )
+        if connected:
+            tooltip = f"{tooltip}\n{tr('Client:')} {client_address}"
+        if state == "error" and details.get("last_error"):
+            tooltip = f"{tooltip}\n{tr('Error')}: {details['last_error']}"
+        tooltip = f"{tooltip}\n{tr('Local measurement modules cannot use the audio engine while sharing is active.')}"
+        return mode, route, tooltip, connected
+
     def _update_output_destination_ui_for_mode(
         self,
         is_offline: bool,
@@ -1012,10 +1092,13 @@ class MainWindow(QMainWindow):
         is_network: bool = False,
         remote_output_available: bool = False,
         network_status: dict[str, object] | None = None,
+        io_role: str = "local",
+        provider_status: dict[str, object] | None = None,
     ):
         """Update output routing labels without changing their engine values."""
         self.output_dest_combo.blockSignals(True)
         self.output_dest_combo.clear()
+        self.output_dest_combo.setStyleSheet("")
         self.output_dest_label.setText(tr("Output:"))
         self.output_dest_label.setToolTip("")
 
@@ -1025,6 +1108,17 @@ class MainWindow(QMainWindow):
             self.output_dest_combo.setCurrentIndex(0)
             self.output_dest_combo.setEnabled(False)
             self.output_dest_combo.setToolTip(tr("In Virtual Mode, audio is always looped back."))
+        elif io_role == "remote_provider":
+            _mode, route, tooltip, _connected = self._remote_provider_ui_details(provider_status)
+            self.output_dest_label.setText(f"{tr('I/O Routing')}:")
+            self.output_dest_combo.addItem(route, "remote_provider")
+            self.output_dest_combo.setCurrentIndex(0)
+            self.output_dest_combo.setEnabled(False)
+            self.output_dest_combo.setStyleSheet(
+                "QComboBox:disabled { color: palette(text); background-color: palette(window); }"
+            )
+            self.output_dest_label.setToolTip(tooltip)
+            self.output_dest_combo.setToolTip(tooltip)
         elif is_network:
             self.output_dest_label.setText(tr("Output (Remote I/O):"))
             if remote_output_available:

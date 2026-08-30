@@ -153,6 +153,8 @@ def _audio_status(
     offline_mode=False,
     network_mode=False,
     duplex=False,
+    io_role=None,
+    remote_provider=None,
 ):
     network = None
     if network_mode:
@@ -167,7 +169,9 @@ def _audio_status(
         "active": active,
         "offline_mode": offline_mode,
         "network_mode": network_mode,
+        "io_role": io_role or ("virtual" if offline_mode else "remote_client" if network_mode else "local"),
         "network": network,
+        "remote_provider": remote_provider,
         "input_channels": "stereo",
         "output_channels": "stereo",
         "sample_rate": 48000,
@@ -214,6 +218,77 @@ def test_output_routing_labels_show_remote_input_only(qtbot):
     assert window.output_dest_combo.itemData(2) == "loopback_mix"
     assert window.output_dest_combo.itemText(2) == tr("Internal Loopback (Remote Output Unavailable)")
     assert tr("Input only") in window.output_dest_combo.toolTip()
+
+
+def _provider_status(*, client_address="", duplex=False, state="listening"):
+    return {
+        "state": state,
+        "client_address": client_address,
+        "duplex": duplex,
+        "allow_output": duplex,
+        "provider_name": "Room PC",
+        "input_device_name": "Local ADC",
+        "output_device_name": "Local DAC",
+        "sample_rate": 48000,
+        "block_size": 256,
+    }
+
+
+def test_output_routing_labels_show_remote_provider_waiting(qtbot):
+    window = _build_window_stub(qtbot)
+    provider = _provider_status()
+    window.audio_engine.get_status = MagicMock(
+        return_value=_audio_status(
+            active=False,
+            io_role="remote_provider",
+            remote_provider=provider,
+        )
+    )
+
+    window.update_status()
+
+    assert window.status_label.text() == tr("I/O Provider")
+    assert window.io_label.text() == f"{tr('Mode:')} {tr('waiting')}"
+    assert window.clients_label.text() == tr("Clients: {0}").format(0)
+    assert window.output_dest_label.text() == f"{tr('I/O Routing')}:"
+    assert window.output_dest_combo.currentData() == "remote_provider"
+    assert window.output_dest_combo.currentText() == tr("Remote I/O provider — waiting for client")
+    assert not window.output_dest_combo.isEnabled()
+    assert tr("I/O Provider") in window.compact_status_label.text()
+    assert "Local ADC" in window.output_dest_combo.toolTip()
+    assert tr("Local measurement modules cannot use the audio engine while sharing is active.") in (
+        window.output_dest_combo.toolTip()
+    )
+
+
+def test_output_routing_labels_follow_remote_provider_stream_mode(qtbot):
+    window = _build_window_stub(qtbot)
+    window.audio_engine.get_status = MagicMock(
+        side_effect=[
+            _audio_status(
+                io_role="remote_provider",
+                remote_provider=_provider_status(client_address="192.168.1.20"),
+            ),
+            _audio_status(
+                io_role="remote_provider",
+                remote_provider=_provider_status(client_address="192.168.1.20", duplex=True),
+            ),
+        ]
+    )
+
+    window.update_status()
+
+    assert window.io_label.text() == f"{tr('Mode:')} {tr('Input only')}"
+    assert window.clients_label.text() == tr("Clients: {0}").format(1)
+    assert window.output_dest_combo.currentText() == tr("Physical input → Remote client · Physical output muted")
+    assert "192.168.1.20" in window.output_dest_combo.toolTip()
+
+    window.update_status()
+
+    assert window.io_label.text() == f"{tr('Mode:')} {tr('Duplex')}"
+    assert window.output_dest_combo.currentText() == tr(
+        "Physical input → Remote client · Remote client → Physical output"
+    )
 
 
 def test_output_routing_labels_restore_local_backend(qtbot):

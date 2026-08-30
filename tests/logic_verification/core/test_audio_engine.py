@@ -217,6 +217,31 @@ class TestAudioEngineBasicSettings(unittest.TestCase):
         callback_id = self.engine.register_callback(MagicMock())
         self.assertIn(callback_id, self.engine.callbacks)
 
+    def test_exclusive_audio_role_and_status_are_reported_and_cleared(self):
+        owner = object()
+        provider_status = {
+            "state": "listening",
+            "client_address": "",
+            "duplex": False,
+        }
+        self.engine.acquire_exclusive_audio(
+            owner,
+            role="remote_provider",
+            status_provider=lambda: provider_status.copy(),
+        )
+
+        status = self.engine.get_status()
+
+        self.assertTrue(status["audio_reserved"])
+        self.assertEqual(status["io_role"], "remote_provider")
+        self.assertEqual(status["remote_provider"], provider_status)
+
+        self.engine.release_exclusive_audio(owner)
+        released_status = self.engine.get_status()
+        self.assertFalse(released_status["audio_reserved"])
+        self.assertEqual(released_status["io_role"], "local")
+        self.assertIsNone(released_status["remote_provider"])
+
     def test_network_configuration_blocks_callback_registration_during_transition(self):
         client = MagicMock()
         client.connected = True
