@@ -13,20 +13,24 @@ from src.core.utils import resource_path
 from src.core.fft_manager import fft_manager
 
 
-def _install_expected_exception_logger() -> None:
-    """Log expected GUI-operation rejections without printing a traceback."""
-    previous_hook = sys.excepthook
-    if getattr(previous_hook, "_measurelab_expected_exception_logger", False) is True:
-        return
+class _ExpectedExceptionLogger:
+    def __init__(self, previous_hook):
+        self.previous_hook = previous_hook
 
-    def exception_hook(exc_type, exc_value, exc_traceback):
+    def __call__(self, exc_type, exc_value, exc_traceback):
         if isinstance(exc_value, AudioEngineReservedError):
             logging.getLogger(__name__).warning("Audio operation rejected: %s", exc_value)
             return
-        previous_hook(exc_type, exc_value, exc_traceback)
+        self.previous_hook(exc_type, exc_value, exc_traceback)
 
-    exception_hook._measurelab_expected_exception_logger = True
-    sys.excepthook = exception_hook
+
+def _install_expected_exception_logger() -> None:
+    """Log expected GUI-operation rejections without printing a traceback."""
+    previous_hook = sys.excepthook
+    if isinstance(previous_hook, _ExpectedExceptionLogger):
+        return
+
+    sys.excepthook = _ExpectedExceptionLogger(previous_hook)
 
 
 def setup_app():
