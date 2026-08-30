@@ -11,6 +11,7 @@ import importlib
 sys.modules["sounddevice"] = MagicMock()
 
 from src.core.audio_engine import AudioEngine, VirtualStream, _DummyTime  # noqa: E402
+from src.core.errors import AudioEngineReservedError  # noqa: E402
 
 
 class _FakeCallbackFlags:
@@ -209,7 +210,7 @@ class TestAudioEngineBasicSettings(unittest.TestCase):
         owner = object()
         self.engine.acquire_exclusive_audio(owner)
 
-        with self.assertRaisesRegex(RuntimeError, "reserved"):
+        with self.assertRaisesRegex(AudioEngineReservedError, "reserved"):
             self.engine.register_callback(MagicMock())
 
         self.engine.release_exclusive_audio(owner)

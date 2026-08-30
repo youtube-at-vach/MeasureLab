@@ -7,9 +7,26 @@ import signal
 import sys
 
 from src.core.config_manager import ConfigManager
+from src.core.errors import AudioEngineReservedError
 from src.core.localization import get_manager, tr
 from src.core.utils import resource_path
 from src.core.fft_manager import fft_manager
+
+
+def _install_expected_exception_logger() -> None:
+    """Log expected GUI-operation rejections without printing a traceback."""
+    previous_hook = sys.excepthook
+    if getattr(previous_hook, "_measurelab_expected_exception_logger", False) is True:
+        return
+
+    def exception_hook(exc_type, exc_value, exc_traceback):
+        if isinstance(exc_value, AudioEngineReservedError):
+            logging.getLogger(__name__).warning("Audio operation rejected: %s", exc_value)
+            return
+        previous_hook(exc_type, exc_value, exc_traceback)
+
+    exception_hook._measurelab_expected_exception_logger = True
+    sys.excepthook = exception_hook
 
 
 def setup_app():
@@ -61,6 +78,11 @@ def setup_app():
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(formatter)
     root_logger.addHandler(console_handler)
+
+    # PyQt forwards exceptions raised by signal handlers to sys.excepthook.
+    # Expected Remote Audio I/O ownership conflicts should be visible in the
+    # log, but they do not need a full traceback on stderr.
+    _install_expected_exception_logger()
 
     # File handler (5MB, 2 backups)
     if os.environ.get("MEASURELAB_TESTING") == "1":

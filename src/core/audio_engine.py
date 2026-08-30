@@ -5,6 +5,7 @@ import numpy as np
 import sounddevice as sd
 
 from src.core.calibration import CalibrationManager
+from src.core.errors import AudioEngineReservedError
 from src.core.network_audio.client import NetworkAudioClient, NetworkClientStream
 
 
@@ -238,7 +239,7 @@ class AudioEngine:
             if self._backend_transition:
                 raise RuntimeError("Audio backend is already changing")
             if self._exclusive_owner is not None:
-                raise RuntimeError("Audio engine is reserved by Remote Audio I/O")
+                raise AudioEngineReservedError("Audio engine is reserved by Remote Audio I/O")
             if self.network_mode:
                 raise RuntimeError(network_error)
             self._backend_transition = True
@@ -588,7 +589,7 @@ class AudioEngine:
             if self._backend_transition:
                 raise RuntimeError("Audio backend is changing")
             if self._exclusive_owner is not None and owner is not self._exclusive_owner:
-                raise RuntimeError("Audio engine is reserved by Remote Audio I/O")
+                raise AudioEngineReservedError("Audio engine is reserved by Remote Audio I/O")
             cid = self.next_callback_id
             self.next_callback_id += 1
             self.callbacks[cid] = callback
@@ -1019,7 +1020,7 @@ class AudioEngine:
         """Stops the master audio stream."""
         with self.lock:
             if not force and self._exclusive_owner is not None and owner is not self._exclusive_owner:
-                raise RuntimeError("Audio engine is reserved by Remote Audio I/O")
+                raise AudioEngineReservedError("Audio engine is reserved by Remote Audio I/O")
             if self.stream is not None:
                 try:
                     self.stream.stop()
@@ -1039,7 +1040,7 @@ class AudioEngine:
         """
         with self.lock:
             if self._exclusive_owner is not None and owner is not self._exclusive_owner:
-                raise RuntimeError("Audio engine is reserved by Remote Audio I/O")
+                raise AudioEngineReservedError("Audio engine is reserved by Remote Audio I/O")
             if self._backend_transition:
                 raise RuntimeError("Audio backend is changing")
             if self.stream is None:
