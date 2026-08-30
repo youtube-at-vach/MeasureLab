@@ -98,12 +98,12 @@ class NetworkAudioProvider:
         udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
             tcp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            # codeql[py/bind-socket-all-network-interfaces] -- Starting the provider explicitly opts into LAN sharing.
-            tcp_socket.bind((self.bind_host, self.port))
+            # Starting the provider explicitly opts into LAN sharing.
+            tcp_socket.bind((self.bind_host, self.port))  # lgtm[py/bind-socket-all-network-interfaces]
             tcp_socket.listen(1)
             tcp_socket.settimeout(0.5)
-            # codeql[py/bind-socket-all-network-interfaces] -- Audio UDP must use the same user-selected LAN scope.
-            udp_socket.bind((self.bind_host, 0))
+            # Audio UDP must use the same user-selected LAN scope.
+            udp_socket.bind((self.bind_host, 0))  # lgtm[py/bind-socket-all-network-interfaces]
             udp_socket.settimeout(0.5)
             self._input_device_name = self._device_name(self.audio_engine.input_device, True)
             self._output_device_name = self._device_name(self.audio_engine.output_device, False)
