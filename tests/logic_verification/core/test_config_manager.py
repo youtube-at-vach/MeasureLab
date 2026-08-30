@@ -126,6 +126,33 @@ class TestConfigManager(unittest.TestCase):
         cm.set_audio_engine_64bit(False)
         self.assertFalse(cm.is_audio_engine_64bit())
 
+    def test_network_audio_config_is_validated_and_persisted(self):
+        cm = self.ConfigManager(config_filename=self.config_path)
+
+        self.assertEqual(cm.get_network_audio_config()["port"], 40100)
+        cm.set_network_audio_config(
+            {
+                "host": "room-pc.local",
+                "port": 42000,
+                "jitter_ms": 250,
+                "duplex": False,
+                "bind_host": "127.0.0.1",
+            }
+        )
+
+        assert cm.get_network_audio_config() == {
+            "host": "room-pc.local",
+            "port": 42000,
+            "jitter_ms": 250,
+            "duplex": False,
+            "bind_host": "127.0.0.1",
+        }
+
+        cm.set_network_audio_config({"port": 0, "jitter_ms": 1})
+        invalid = cm.get_network_audio_config()
+        self.assertEqual(invalid["port"], 40100)
+        self.assertEqual(invalid["jitter_ms"], 100)
+
     def test_coreaudio_conversion_quality(self):
         cm = self.ConfigManager(config_filename=self.config_path)
 

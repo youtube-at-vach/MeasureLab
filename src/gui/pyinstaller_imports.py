@@ -33,6 +33,7 @@ if False:
     from src.gui.widgets.plot_comparer import PlotComparer
     from src.gui.widgets.processor_benchmark import ProcessorBenchmark
     from src.gui.widgets.raw_time_series import RawTimeSeries
+    from src.gui.widgets.remote_audio_io import RemoteAudioIOWidget
     from src.gui.widgets.recorder_player import RecorderPlayer
     from src.gui.widgets.signal_generator import SignalGenerator
     from src.gui.widgets.sound_level_meter import SoundLevelMeter
@@ -80,6 +81,7 @@ if False:
         PlotComparer,
         ProcessorBenchmark,
         RawTimeSeries,
+        RemoteAudioIOWidget,
         RecorderPlayer,
         SignalGenerator,
         SoundLevelMeter,

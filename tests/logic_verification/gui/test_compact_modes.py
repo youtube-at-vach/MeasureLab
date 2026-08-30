@@ -201,8 +201,6 @@ def test_independent_window_context_menu_plot_bypass(qtbot):
     from src.gui.widgets.detachable_wrapper import IndependentWindow
 
     plot_widget = pg.PlotWidget()
-    qtbot.addWidget(plot_widget)
-
     win = IndependentWindow("Test Window", plot_widget)
     qtbot.addWidget(win)
     win.show()
