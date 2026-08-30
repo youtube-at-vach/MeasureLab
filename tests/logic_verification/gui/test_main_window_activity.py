@@ -143,10 +143,31 @@ def test_menu_only_double_click_raises_both_split_windows(qtbot):
         wrapper.split_control_window = None
 
 
-def _audio_status(*, latched=None, count=0, active=True, error_count=0, last_error=None):
+def _audio_status(
+    *,
+    latched=None,
+    count=0,
+    active=True,
+    error_count=0,
+    last_error=None,
+    offline_mode=False,
+    network_mode=False,
+    duplex=False,
+):
+    network = None
+    if network_mode:
+        network = {
+            "state": "streaming",
+            "provider_name": "Room PC",
+            "input_device_name": "Remote ADC",
+            "output_device_name": "Remote DAC",
+            "duplex": duplex,
+        }
     return {
         "active": active,
-        "offline_mode": False,
+        "offline_mode": offline_mode,
+        "network_mode": network_mode,
+        "network": network,
         "input_channels": "stereo",
         "output_channels": "stereo",
         "sample_rate": 48000,
@@ -160,6 +181,71 @@ def _audio_status(*, latched=None, count=0, active=True, error_count=0, last_err
         "error_count": error_count,
         "last_error": last_error,
     }
+
+
+def test_output_routing_labels_follow_remote_duplex_backend(qtbot):
+    window = _build_window_stub(qtbot)
+    window.audio_engine.loopback = True
+    window.audio_engine.mute_output = False
+    window.audio_engine.get_status = MagicMock(return_value=_audio_status(network_mode=True, duplex=True))
+
+    window.update_status()
+
+    assert window.output_dest_label.text() == tr("Output (Remote I/O):")
+    assert window.output_dest_combo.currentData() == "loopback_mix"
+    assert window.output_dest_combo.currentText() == tr("Loopback + Remote I/O Output")
+    assert window.output_dest_combo.itemText(0) == tr("Remote I/O Output")
+    assert "Room PC" in window.output_dest_combo.toolTip()
+    assert "Remote DAC" in window.output_dest_combo.toolTip()
+
+    window.set_menu_only_mode(True)
+    assert window.sidebar_footer_layout.indexOf(window.output_dest_combo) >= 0
+    assert tr("Remote I/O Output") in window.output_dest_combo.currentText()
+
+
+def test_output_routing_labels_show_remote_input_only(qtbot):
+    window = _build_window_stub(qtbot)
+    window.audio_engine.get_status = MagicMock(return_value=_audio_status(network_mode=True, duplex=False))
+
+    window.update_status()
+
+    assert window.output_dest_combo.itemData(0) == "physical"
+    assert window.output_dest_combo.itemText(0) == tr("No Remote Output (Input Only)")
+    assert window.output_dest_combo.itemData(2) == "loopback_mix"
+    assert window.output_dest_combo.itemText(2) == tr("Internal Loopback (Remote Output Unavailable)")
+    assert tr("Input only") in window.output_dest_combo.toolTip()
+
+
+def test_output_routing_labels_restore_local_backend(qtbot):
+    window = _build_window_stub(qtbot)
+    window.audio_engine.get_status = MagicMock(
+        side_effect=[
+            _audio_status(network_mode=True, duplex=True),
+            _audio_status(),
+        ]
+    )
+
+    window.update_status()
+    window.update_status()
+
+    assert window.output_dest_label.text() == tr("Output:")
+    assert window.output_dest_combo.itemText(0) == tr("Physical Output")
+    assert window.output_dest_combo.itemText(2) == tr("Loopback + Physical")
+    assert window.output_dest_combo.toolTip() == tr("Global output destination for all modules.")
+
+
+def test_virtual_output_routing_takes_precedence_over_remote_labels(qtbot):
+    window = _build_window_stub(qtbot)
+    window.audio_engine.get_status = MagicMock(
+        return_value=_audio_status(offline_mode=True, network_mode=True, duplex=True)
+    )
+
+    window.update_status()
+
+    assert window.output_dest_combo.count() == 1
+    assert window.output_dest_combo.currentData() == "virtual_loopback"
+    assert window.output_dest_combo.currentText() == tr("Virtual Loopback (Always On)")
+    assert not window.output_dest_combo.isEnabled()
 
 
 def test_audio_io_error_is_latched_in_full_and_menu_only_status(qtbot):

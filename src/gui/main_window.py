@@ -520,15 +520,22 @@ class MainWindow(QMainWindow):
         self.io_error_button.setVisible(self._io_error_latched)
 
     def _init_state(self):
-        """Initial state synchronization (output destination, offline mode)."""
+        """Synchronize the output destination with the active audio backend."""
         # Sync output destination control with engine state on startup
         self._sync_output_destination_ui(self._get_engine_output_destination(), propagate=True)
 
-        # Track offline mode state to update UI dynamically
-        self._last_offline_mode = False
-        # Initial check
-        self._update_output_destination_ui_for_mode(self.audio_engine.offline_mode)
-        self._last_offline_mode = self.audio_engine.offline_mode
+        is_offline = bool(self.audio_engine.offline_mode)
+        is_network = bool(getattr(self.audio_engine, "network_mode", False))
+        network_client = getattr(self.audio_engine, "network_client", None)
+        remote_output_available = bool(is_network and getattr(network_client, "duplex", False))
+        network_status = network_client.status_snapshot() if network_client is not None else None
+        self._last_output_backend_state = (is_offline, is_network, remote_output_available)
+        self._update_output_destination_ui_for_mode(
+            is_offline,
+            is_network=is_network,
+            remote_output_available=remote_output_available,
+            network_status=network_status,
+        )
 
     def _find_device_id(self, devices: list, name: str, hostapi: str, is_input: bool) -> Optional[int]:
         """Find device ID by name and hostapi, with fallback to name only."""
@@ -864,11 +871,20 @@ class MainWindow(QMainWindow):
         )
         self._refresh_sidebar_activity_indicators()
 
-        # Check for Offline Mode change
-        is_offline = status["offline_mode"]
-        if is_offline != self._last_offline_mode:
-            self._update_output_destination_ui_for_mode(is_offline)
-            self._last_offline_mode = is_offline
+        # Keep routing labels aligned with the backend that actually owns I/O.
+        is_offline = bool(status["offline_mode"])
+        is_network = bool(status.get("network_mode", False))
+        network_status = status.get("network") or {}
+        remote_output_available = bool(is_network and network_status.get("duplex", False))
+        output_backend_state = (is_offline, is_network, remote_output_available)
+        if output_backend_state != self._last_output_backend_state:
+            self._update_output_destination_ui_for_mode(
+                is_offline,
+                is_network=is_network,
+                remote_output_available=remote_output_available,
+                network_status=network_status,
+            )
+            self._last_output_backend_state = output_backend_state
 
     def _update_audio_io_error_indicator(self, status):
         xrun_status = status.get("latched_xrun_status", {})
@@ -989,10 +1005,19 @@ class MainWindow(QMainWindow):
             return "loopback_silent" if self.audio_engine.mute_output else "loopback_mix"
         return "physical"
 
-    def _update_output_destination_ui_for_mode(self, is_offline: bool):
-        """Update the output destination combobox based on offline/online mode."""
+    def _update_output_destination_ui_for_mode(
+        self,
+        is_offline: bool,
+        *,
+        is_network: bool = False,
+        remote_output_available: bool = False,
+        network_status: dict[str, object] | None = None,
+    ):
+        """Update output routing labels without changing their engine values."""
         self.output_dest_combo.blockSignals(True)
         self.output_dest_combo.clear()
+        self.output_dest_label.setText(tr("Output:"))
+        self.output_dest_label.setToolTip("")
 
         if is_offline:
             # unique item for offline mode
@@ -1000,6 +1025,42 @@ class MainWindow(QMainWindow):
             self.output_dest_combo.setCurrentIndex(0)
             self.output_dest_combo.setEnabled(False)
             self.output_dest_combo.setToolTip(tr("In Virtual Mode, audio is always looped back."))
+        elif is_network:
+            self.output_dest_label.setText(tr("Output (Remote I/O):"))
+            if remote_output_available:
+                self.output_dest_combo.addItem(tr("Remote I/O Output"), "physical")
+                self.output_dest_combo.addItem(tr("Internal Loopback (Silent)"), "loopback_silent")
+                self.output_dest_combo.addItem(tr("Loopback + Remote I/O Output"), "loopback_mix")
+                routing_tooltip = tr("Audio output is sent to the connected Remote Audio I/O provider.")
+            else:
+                self.output_dest_combo.addItem(tr("No Remote Output (Input Only)"), "physical")
+                self.output_dest_combo.addItem(tr("Internal Loopback (Silent)"), "loopback_silent")
+                self.output_dest_combo.addItem(
+                    tr("Internal Loopback (Remote Output Unavailable)"),
+                    "loopback_mix",
+                )
+                routing_tooltip = tr(
+                    "Remote Audio I/O is connected for input only; audio output is not sent to the provider."
+                )
+
+            details = network_status or {}
+            provider_name = str(details.get("provider_name") or "-")
+            output_device_name = str(details.get("output_device_name") or "-")
+            remote_mode = tr("Duplex") if remote_output_available else tr("Input only")
+            remote_details = tr("Remote I/O provider: {0}\nOutput device: {1}\nMode: {2}").format(
+                provider_name,
+                output_device_name,
+                remote_mode,
+            )
+            tooltip = f"{routing_tooltip}\n{remote_details}"
+            self.output_dest_label.setToolTip(tooltip)
+            self.output_dest_combo.setToolTip(tooltip)
+            self.output_dest_combo.setEnabled(True)
+
+            current_mode = self._get_engine_output_destination()
+            idx = self.output_dest_combo.findData(current_mode)
+            if idx != -1:
+                self.output_dest_combo.setCurrentIndex(idx)
         else:
             # Restore standard items
             self.output_dest_combo.addItem(tr("Physical Output"), "physical")
