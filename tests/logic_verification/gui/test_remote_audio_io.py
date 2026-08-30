@@ -81,6 +81,35 @@ def test_remote_audio_widget_keeps_controls_stable_when_status_grows(qtbot):
     assert widget.provider_button.mapTo(widget, widget.provider_button.rect().topLeft()).y() == initial_button_y
 
 
+def test_remote_audio_widget_reserves_room_for_wrapped_provider_status(qtbot):
+    widget = RemoteAudioIOWidget(_engine(), _Config())
+    qtbot.addWidget(widget)
+    widget.resize(700, 690)
+    widget.tabs.setCurrentIndex(1)
+    widget.show()
+    widget.provider = SimpleNamespace(
+        running=True,
+        status_snapshot=lambda: {
+            "state": "listening",
+            "bind_host": "0.0.0.0",
+            "port": 41000,
+            "client_address": None,
+            "duplex": False,
+        },
+    )
+
+    with patch.object(
+        widget,
+        "_lan_ipv4_addresses",
+        return_value=("10.0.0.2", "192.168.1.10"),
+    ):
+        widget.refresh_status()
+    widget.layout().activate()
+
+    label = widget.activity_details_label
+    assert label.height() >= label.heightForWidth(label.width())
+
+
 def test_remote_audio_widget_displays_whether_integrity_loss_is_still_increasing(qtbot):
     widget = RemoteAudioIOWidget(_engine(), _Config())
     qtbot.addWidget(widget)

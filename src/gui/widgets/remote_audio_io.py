@@ -268,8 +268,8 @@ class RemoteAudioIOWidget(QWidget):
         label.setPixmap(self.style().standardIcon(icon).pixmap(18, 18))
 
     @staticmethod
-    def _reserve_status_lines(label: QLabel, lines: int = 4) -> None:
-        """Keep the status panel stable while its text changes."""
+    def _reserve_status_lines(label: QLabel, lines: int = 5) -> None:
+        """Keep the status panel stable and leave room for one wrapped line."""
         label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         label.setFixedHeight(label.fontMetrics().lineSpacing() * lines)
 
