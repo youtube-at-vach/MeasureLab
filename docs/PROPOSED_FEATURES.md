@@ -42,83 +42,48 @@ and related analog paths. Feature selection follows these rules:
 These are the highest-value remaining additions after comparison with the
 current implementation.
 
-### 1. Signal Integrity Logger
+### 1. Distortion Analyzer Extensions
 
-**Target:** Event Detector and AudioEngine.
+* **SMPTE, DIN, and CCIF IMD Sweeps:** Add amplitude sweeps and store IMD percentages/levels.
+* **AES17 Dynamic Range Automator:** Combine calibration, validation, and measurement into a sequence.
+* **Long-Term Warm-up and Stability Logger:** Report gain and THD trends over time.
+* **Multi-Tone Distortion (TD+N) Profiler:** Measure total distortion and noise simultaneously across the spectrum.
+* **Doppler Distortion (Phase IMD) Profiler:** Demodulate high-frequency carriers modulated by low-frequency driver excursion to measure Doppler distortion.
 
-**Scope:** Record XRUN timeline with categories, distinguish backend XRUNs from signal discontinuity, add dropout/click/pop classification, and export integrity incidents.
+### 2. LUFS & Sound Level Meter Extensions
 
-### 2. SMPTE, DIN, and CCIF IMD Sweeps
+* **True-Peak Histogram and Clipping Profiler:** Add True-Peak histograms and count threshold exceedances (LUFS Meter).
+* **Percentile Noise Statistics (L10/L50/L90):** Track environmental noise percentiles over time (Sound Level Meter).
 
-**Target:** Distortion Analyzer.
+### 3. Spectrum & Transient Analyzer Extensions
 
-**Scope:** Add amplitude sweeps for SMPTE, DIN, and CCIF modes, store IMD percentages/levels per step, and warn when approaching bandwidth limits.
+* **Automatic Peak Markers:** Mark peaks applying prominence and noise-floor thresholds.
+* **Real-time Psychoacoustic Masking Overlay:** Visualize human auditory perception masking curves.
+* **Burst Envelope Dynamics Profiler:** Measure attack/release envelopes and gain reduction recovery curves.
 
-### 3. True-Peak Histogram and Clipping Profiler
+### 4. Network & Impedance Analyzer Extensions
 
-**Target:** LUFS Meter.
+* **Haptic Audio Synchronization Profiler:** Low-frequency sweeps to measure tactile transducer latency.
+* **Thermal Power Compression Logger:** Track DC resistance (Re) drift over long sweeps to estimate voice coil temperature.
 
-**Scope:** Add per-channel True-Peak histograms, count threshold exceedances, measure longest continuous exceedances, and compare Sample Peak vs True Peak.
+### 5. Integrity & Spatial Visualization
 
-### 4. Automatic Peak Markers
-
-**Target:** Spectrum Analyzer.
-
-**Scope:** Mark the highest configurable number of peaks applying prominence and noise-floor thresholds.
-
-### 5. AES17 Dynamic Range Automator
-
-**Target:** Distortion Analyzer.
-
-**Scope:** Combine calibration, validation, settling, averaging, measurement, and report generation into a guided sequence.
-
-### 6. Long-Term Warm-up and Stability Logger
-
-**Target:** Distortion Analyzer.
-
-**Scope:** Report gain, THD, THD+N, noise, and frequency as warm-up or stability trends.
-
-### 7. Real-time Psychoacoustic Masking Overlay
-
-**Target:** Spectrum Analyzer.
-
-**Scope:** Visualize human auditory perception by overlaying simultaneous and temporal masking curves in real-time, showing what is audible versus raw FFT data. (Extended from visionary concepts).
-
-### 8. Haptic Audio Synchronization Profiler
-
-**Target:** Network Analyzer.
-
-**Scope:** Add a "Subwoofer/Haptic Mode" with ultra-low frequency logarithmic sweeps (1-100Hz) and specialized group delay alignment visualization to measure tactile transducer latency. (Extended from visionary concepts).
-
-### 9. Spatial 3D Soundstage Mapper
-
-**Target:** Stereo Alignment Monitor.
-
-**Scope:** Add a 3D soundstage visualization tab using Mid/Side analysis and HRTF deconvolution to map the perceived spatial position of sound sources in real-time. (Extended from visionary concepts).
-
-### 10. Multi-Tone Distortion (TD+N) Profiler
-
-**Target:** Distortion Analyzer.
-
-**Scope:** Add multi-tone generation and automated bin-notching DSP to measure total distortion and noise (TD+N) across the entire spectrum simultaneously.
-
-### 11. Burst Envelope Dynamics Profiler
-
-**Target:** Transient Analyzer.
-
-**Scope:** Measure the attack and release envelopes of dynamic processors or amplifiers when subjected to sudden tone bursts, plotting the gain reduction recovery curve.
+* **Signal Integrity Logger:** Record XRUN timeline, categorize discontinuities (Event Detector).
+* **Spatial 3D Soundstage Mapper:** HRTF deconvolution to map perceived spatial positions (Stereo Alignment Monitor).
+* **Interactive Psychoacoustic Audiogram:** Apply personalized equal-loudness contours to analysis (Sound Quality Analyzer).
 
 ## Future / Visionary Ideas
 
 These ideas explore adventurous, next-generation concepts beyond standard audio measurement. They are currently brainstormed without constraints to expand future possibilities.
 
+* **Ultrasonic Acoustic Levitation Calibrator:** Phase-aligning 40kHz ultrasonic channels to create 3D acoustic levitation focal points in mid-air.
+* **Bio-Acoustic Impedance Sonifier:** Measuring micro-fluctuations in organic subjects (e.g., plants) and sonifying them via high-resolution parameter mapping.
 * **AI-Driven Automated Measurement Recipe Generator:** Use AI to listen to a brief sweep and automatically configure the optimal distortion, impedance, and alignment measurements for the connected DUT.
 * **Brain-Computer Interface (BCI) Audiophile Profiler:** Measure human brainwave responses to different DACs/Amps to quantify perceptual audio quality directly from the listener.
 * **Quantum Audio Entropy Analyzer:** Analyze the true randomness of analog noise floors using quantum mechanics models to classify analog noise sources versus digital dithering artifacts.
 * **Holographic Soundstage Visualizer:** A fully immersive VR/AR holographic representation of sound topology.
 * **Augmented Reality (AR) Acoustic Mode Mapper:** Project visual room modes and nulls onto a physical space using AR glasses to optimize speaker placement.
 * **AI Golden Ear Component Fingerprinter:** Identify specific op-amps, capacitors, or vacuum tube models in a circuit strictly by analyzing the micro-nonlinearities and harmonic signature.
-* **Interactive Psychoacoustic Audiogram Profiler:** Create a personalized hearing profile of the user and dynamically adjust test signals to compensate for their specific hearing loss during subjective evaluations.
 
 ## Previously Audited / Rejected / On Hold
 
