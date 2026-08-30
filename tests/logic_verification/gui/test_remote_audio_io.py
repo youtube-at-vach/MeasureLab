@@ -49,9 +49,35 @@ def test_remote_audio_widget_loads_endpoint_and_starts_safe(qtbot):
     assert widget.stop_provider_button.text() == tr("Stop sharing")
 
     widget.tabs.setCurrentIndex(1)
-    assert widget.activity_details_label.text() == tr(
-        "Set where this computer listens for connections, then start the provider."
+    assert widget.activity_details_label.text() == tr("Choose a listen address and start sharing.")
+
+
+def test_remote_audio_widget_keeps_controls_stable_when_status_grows(qtbot):
+    widget = RemoteAudioIOWidget(_engine(), _Config())
+    qtbot.addWidget(widget)
+    widget.resize(1180, 690)
+    widget.tabs.setCurrentIndex(1)
+    widget.show()
+    qtbot.wait(10)
+    initial_button_y = widget.provider_button.mapTo(widget, widget.provider_button.rect().topLeft()).y()
+    initial_status_height = widget.activity_details_label.height()
+
+    widget.provider = SimpleNamespace(
+        running=True,
+        status_snapshot=lambda: {
+            "state": "listening",
+            "bind_host": "0.0.0.0",
+            "port": 41000,
+            "client_address": None,
+            "duplex": False,
+        },
     )
+    widget.refresh_status()
+    widget.layout().activate()
+
+    assert widget.activity_details_label.text().count("\n") == 2
+    assert widget.activity_details_label.height() == initial_status_height
+    assert widget.provider_button.mapTo(widget, widget.provider_button.rect().topLeft()).y() == initial_button_y
 
 
 def test_remote_audio_widget_displays_whether_integrity_loss_is_still_increasing(qtbot):

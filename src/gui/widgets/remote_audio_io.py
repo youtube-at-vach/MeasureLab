@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import threading
 
-from PyQt6.QtCore import QObject, QTimer, pyqtSignal
+from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QCheckBox,
     QFormLayout,
@@ -70,12 +70,7 @@ class RemoteAudioIOWidget(QWidget):
         heading_font.setPointSizeF(heading_font.pointSizeF() * 1.35)
         heading.setFont(heading_font)
         layout.addWidget(heading)
-        description = QLabel(
-            tr(
-                "Use another MeasureLab computer's audio device as a measurement input/output. "
-                "Remote audio uses unencrypted LAN transport; enable the provider only on trusted networks."
-            )
-        )
+        description = QLabel(tr("Use another MeasureLab computer's audio device over a trusted LAN."))
         description.setWordWrap(True)
         layout.addWidget(description)
 
@@ -101,8 +96,9 @@ class RemoteAudioIOWidget(QWidget):
         activity_state_layout.addWidget(self.activity_icon)
         activity_state_layout.addWidget(self.activity_label, 1)
         activity_layout.addLayout(activity_state_layout)
-        self.activity_details_label = QLabel(tr("Enter the other computer's address, then connect."))
+        self.activity_details_label = QLabel(tr("Enter the remote computer's address and connect."))
         self.activity_details_label.setWordWrap(True)
+        self._reserve_status_lines(self.activity_details_label)
         activity_layout.addWidget(self.activity_details_label)
         status_layout.addLayout(activity_layout, 3)
 
@@ -129,8 +125,9 @@ class RemoteAudioIOWidget(QWidget):
         integrity_state_layout.addWidget(self.integrity_icon)
         integrity_state_layout.addWidget(self.integrity_label, 1)
         integrity_layout.addLayout(integrity_state_layout)
-        self.stats_label = QLabel(tr("Integrity monitoring starts after a connection is established."))
+        self.stats_label = QLabel(tr("Monitoring starts after connection."))
         self.stats_label.setWordWrap(True)
+        self._reserve_status_lines(self.stats_label)
         integrity_layout.addWidget(self.stats_label)
         status_layout.addLayout(integrity_layout, 2)
         layout.addWidget(status_panel)
@@ -148,7 +145,7 @@ class RemoteAudioIOWidget(QWidget):
         page_layout = QVBoxLayout(page)
         page_layout.setSpacing(10)
 
-        summary = QLabel(tr("Enter the other computer's address, then connect."))
+        summary = QLabel(tr("Enter the remote computer's address and connect."))
         summary.setWordWrap(True)
         page_layout.addWidget(summary)
 
@@ -209,7 +206,7 @@ class RemoteAudioIOWidget(QWidget):
         page_layout = QVBoxLayout(page)
         page_layout.setSpacing(10)
 
-        summary = QLabel(tr("Set where this computer listens for connections, then start the provider."))
+        summary = QLabel(tr("Choose a listen address and start sharing."))
         summary.setWordWrap(True)
         page_layout.addWidget(summary)
 
@@ -238,14 +235,9 @@ class RemoteAudioIOWidget(QWidget):
         self.allow_output_check.setToolTip(tr("Keep disabled unless the remote computer is trusted."))
         self.allow_output_check.toggled.connect(self._on_allow_output_changed)
         playback_layout.addWidget(self.allow_output_check)
-        playback_help = QLabel(
-            tr("Remote playback lets the connected computer play audio through this computer's output.")
-        )
+        playback_help = QLabel(tr("Allows a trusted remote computer to use this computer's audio output."))
         playback_help.setWordWrap(True)
         playback_layout.addWidget(playback_help)
-        trust_help = QLabel(tr("Keep disabled unless the remote computer is trusted."))
-        trust_help.setWordWrap(True)
-        playback_layout.addWidget(trust_help)
         playback_layout.addStretch(1)
         settings_layout.addWidget(playback_group, 2)
         page_layout.addLayout(settings_layout)
@@ -272,6 +264,12 @@ class RemoteAudioIOWidget(QWidget):
 
     def _set_status_icon(self, label: QLabel, icon: QStyle.StandardPixmap) -> None:
         label.setPixmap(self.style().standardIcon(icon).pixmap(18, 18))
+
+    @staticmethod
+    def _reserve_status_lines(label: QLabel, lines: int = 4) -> None:
+        """Keep the status panel stable while its text changes."""
+        label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        label.setFixedHeight(label.fontMetrics().lineSpacing() * lines)
 
     def _sync_provider_port(self, value: int) -> None:
         if self.provider_port_spin.value() != value:
@@ -554,15 +552,13 @@ class RemoteAudioIOWidget(QWidget):
             else:
                 self.activity_label.setText(tr("Disconnected"))
                 if self.tabs.currentIndex() == 0:
-                    self.activity_details_label.setText(tr("Enter the other computer's address, then connect."))
+                    self.activity_details_label.setText(tr("Enter the remote computer's address and connect."))
                 else:
-                    self.activity_details_label.setText(
-                        tr("Set where this computer listens for connections, then start the provider.")
-                    )
+                    self.activity_details_label.setText(tr("Choose a listen address and start sharing."))
                 self._set_status_icon(self.activity_icon, QStyle.StandardPixmap.SP_MessageBoxInformation)
             self.integrity_label.setText(tr("Disconnected"))
             self._set_status_icon(self.integrity_icon, QStyle.StandardPixmap.SP_MessageBoxInformation)
-            self.stats_label.setText(tr("Integrity monitoring starts after a connection is established."))
+            self.stats_label.setText(tr("Monitoring starts after connection."))
             self._integrity_source = None
             self._last_damage_events = None
             self._refresh_control_states()
@@ -571,7 +567,7 @@ class RemoteAudioIOWidget(QWidget):
         if source is self.provider and snapshot.get("state") != "error" and not snapshot.get("client_address"):
             self.integrity_label.setText(tr("waiting"))
             self._set_status_icon(self.integrity_icon, QStyle.StandardPixmap.SP_MessageBoxInformation)
-            self.stats_label.setText(tr("Integrity monitoring starts after a connection is established."))
+            self.stats_label.setText(tr("Monitoring starts after connection."))
             self._integrity_source = None
             self._last_damage_events = None
             self._refresh_control_states()
