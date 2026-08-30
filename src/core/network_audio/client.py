@@ -440,13 +440,21 @@ class NetworkClientStream:
             return
         self.client.stats.set_state("streaming")
         interval = self.blocksize / self.samplerate
+        # Match PortAudio's reusable callback-buffer behavior and avoid one
+        # allocation for every network audio block.
+        outdata = np.empty((self.blocksize, self.channels[1]), dtype=np.float32)
         while self.active and not self._stop_event.is_set() and self.client.connected:
-            started = time.perf_counter()
+            # Remote capture paces this thread, so read_capture() normally
+            # spends almost one block interval asleep.  Wall-clock timing would
+            # therefore report ~100% even when the thread did almost no work.
+            # Thread CPU time excludes that wait while still accounting for
+            # packet assembly, callbacks, and playback queueing.
+            started = time.thread_time()
             capture = self.client.read_capture(expected, self.blocksize, cancel_event=self._stop_event)
             if capture is None or not self.active or self._stop_event.is_set():
                 break
             indata, status = capture
-            outdata = np.zeros((self.blocksize, self.channels[1]), dtype=np.float32)
+            outdata.fill(0)
             current_time = self._time_origin + expected / self.samplerate
             time_info = NetworkStreamTime(
                 inputBufferAdcTime=current_time,
@@ -460,7 +468,7 @@ class NetworkClientStream:
                 break
             if self.client.duplex:
                 self.client.enqueue_playback(expected + self.client.playout_delay_frames, outdata)
-            elapsed = time.perf_counter() - started
+            elapsed = time.thread_time() - started
             load = elapsed / interval if interval > 0 else 0.0
             self.cpu_load = 0.9 * self.cpu_load + 0.1 * load
             expected += self.blocksize

@@ -278,6 +278,43 @@ def test_network_stream_stop_cancels_capture_priming_without_late_error():
     client.close()
 
 
+def test_network_stream_cpu_load_excludes_remote_capture_wait():
+    client = NetworkAudioClient("127.0.0.1", 40100, jitter_ms=20, duplex=False)
+    client.sample_rate = 6400
+    client.block_size = 128
+    client.input_channels = 2
+    client.output_channels = 2
+    client.jitter_frames = 256
+    client.playout_delay_frames = 512
+    client._stop_event.clear()
+    client._connected = True
+    callback_count = 0
+
+    client.first_capture_sample = lambda **_kwargs: 0
+
+    def paced_capture(_sample_index, frames, cancel_event=None):
+        del cancel_event
+        time.sleep(frames / client.sample_rate)
+        return np.zeros((frames, client.input_channels), dtype=np.float32), _Status()
+
+    client.read_capture = paced_capture
+
+    def callback(*_args):
+        nonlocal callback_count
+        callback_count += 1
+
+    stream = NetworkClientStream(client, callback)
+    stream.start()
+    try:
+        assert _wait_until(lambda: callback_count >= 20)
+        # The 20 ms network pacing wait is the whole block interval.  It must
+        # not be presented as audio processing work.
+        assert stream.cpu_load < 0.25
+    finally:
+        stream.close()
+        client.close()
+
+
 def test_provider_rejects_virtual_audio_as_a_local_hardware_endpoint():
     engine = _FakeEngine()
     engine.offline_mode = True
