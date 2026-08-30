@@ -1123,7 +1123,7 @@
     "Linked (Both)": "연결됨 (양쪽)",
     "List Only Scale:": "리스트 전용 스케일:",
     "Listen address:": "수신 주소:",
-    "Listening on {0}:{1}\nClient: {2}\nRemote output: {3}": "{0}:{1}에서 수신 중\n클라이언트: {2}\n원격 출력: {3}",
+    "Listening on {0}:{1}\nConnect from another computer: {2}\nClient: {3}\nRemote output: {4}": "{0}:{1}에서 수신 중\n다른 컴퓨터에서 연결: {2}\n클라이언트: {3}\n원격 출력: {4}",
     "Live Cache Loaded": "라이브 캐시 로드됨",
     "Load": "로드",
     "Load Audio": "오디오 로드",

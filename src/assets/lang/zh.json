@@ -1123,7 +1123,7 @@
     "Linked (Both)": "链接 (两者)",
     "List Only Scale:": "仅列表缩放：",
     "Listen address:": "监听地址：",
-    "Listening on {0}:{1}\nClient: {2}\nRemote output: {3}": "正在监听 {0}:{1}\n客户端：{2}\n远程输出：{3}",
+    "Listening on {0}:{1}\nConnect from another computer: {2}\nClient: {3}\nRemote output: {4}": "正在监听 {0}:{1}\n从其他计算机连接：{2}\n客户端：{3}\n远程输出：{4}",
     "Live Cache Loaded": "实时缓存已加载",
     "Load": "加载",
     "Load Audio": "加载音频",

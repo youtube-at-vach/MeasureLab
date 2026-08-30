@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import threading
 
 from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSignal
+from PyQt6.QtNetwork import QAbstractSocket, QNetworkInterface
 from PyQt6.QtWidgets import (
     QCheckBox,
     QFormLayout,
@@ -279,6 +281,25 @@ class RemoteAudioIOWidget(QWidget):
         if self.client_port_spin.value() != value:
             self.client_port_spin.setValue(value)
 
+    @staticmethod
+    def _lan_ipv4_addresses() -> tuple[str, ...]:
+        """Return IPv4 addresses that another computer may use to connect."""
+        addresses: set[str] = set()
+        for interface in QNetworkInterface.allInterfaces():
+            flags = interface.flags()
+            if not flags & QNetworkInterface.InterfaceFlag.IsUp:
+                continue
+            if flags & QNetworkInterface.InterfaceFlag.IsLoopBack:
+                continue
+            for entry in interface.addressEntries():
+                address = entry.ip()
+                if address.protocol() != QAbstractSocket.NetworkLayerProtocol.IPv4Protocol:
+                    continue
+                value = address.toString()
+                if value and not address.isLoopback() and value != "0.0.0.0":
+                    addresses.add(value)
+        return tuple(sorted(addresses, key=ipaddress.IPv4Address))
+
     def _load_config(self) -> None:
         config = self.config_manager.get_network_audio_config()
         self.host_edit.setText(str(config.get("host", "")))
@@ -515,13 +536,24 @@ class RemoteAudioIOWidget(QWidget):
             source = self.provider
             snapshot = self.provider.status_snapshot()
             address = str(snapshot.get("client_address") or tr("waiting"))
+            bind_host = str(snapshot.get("bind_host") or "0.0.0.0")
+            port = int(snapshot.get("port") or self.provider_port_spin.value())
+            if bind_host == "0.0.0.0":
+                endpoints = ", ".join(f"{host}:{port}" for host in self._lan_ipv4_addresses())
+                remote_endpoint = endpoints or tr("Not available")
+            else:
+                remote_endpoint = f"{bind_host}:{port}"
             output_active = (
                 bool(snapshot.get("duplex")) if snapshot.get("client_address") else self.allow_output_check.isChecked()
             )
             output_state = tr("armed") if output_active else tr("muted")
             self.provider_details_label.setText(
-                tr("Listening on {0}:{1}\nClient: {2}\nRemote output: {3}").format(
-                    snapshot.get("bind_host"), snapshot.get("port"), address, output_state
+                tr("Listening on {0}:{1}\nConnect from another computer: {2}\nClient: {3}\nRemote output: {4}").format(
+                    bind_host,
+                    port,
+                    remote_endpoint,
+                    address,
+                    output_state,
                 )
             )
             if snapshot.get("state") == "error":

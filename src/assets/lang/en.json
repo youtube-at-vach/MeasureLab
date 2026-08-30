@@ -1123,7 +1123,7 @@
     "Linked (Both)": "Linked (Both)",
     "List Only Scale:": "List Only Scale:",
     "Listen address:": "Listen address:",
-    "Listening on {0}:{1}\nClient: {2}\nRemote output: {3}": "Listening on {0}:{1}\nClient: {2}\nRemote output: {3}",
+    "Listening on {0}:{1}\nConnect from another computer: {2}\nClient: {3}\nRemote output: {4}": "Listening on {0}:{1}\nConnect from another computer: {2}\nClient: {3}\nRemote output: {4}",
     "Live Cache Loaded": "Live Cache Loaded",
     "Load": "Load",
     "Load Audio": "Load Audio",

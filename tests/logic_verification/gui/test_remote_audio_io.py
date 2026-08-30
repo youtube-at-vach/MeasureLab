@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from src.core.localization import tr
 from src.gui.widgets.remote_audio_io import RemoteAudioIOWidget
@@ -72,10 +72,11 @@ def test_remote_audio_widget_keeps_controls_stable_when_status_grows(qtbot):
             "duplex": False,
         },
     )
-    widget.refresh_status()
+    with patch.object(widget, "_lan_ipv4_addresses", return_value=("192.168.1.10",)):
+        widget.refresh_status()
     widget.layout().activate()
 
-    assert widget.activity_details_label.text().count("\n") == 2
+    assert widget.activity_details_label.text().count("\n") == 3
     assert widget.activity_details_label.height() == initial_status_height
     assert widget.provider_button.mapTo(widget, widget.provider_button.rect().topLeft()).y() == initial_button_y
 
@@ -160,13 +161,39 @@ def test_remote_audio_widget_provider_waiting_is_not_reported_as_healthy_connect
         },
     )
 
-    widget.refresh_status()
+    with patch.object(
+        widget,
+        "_lan_ipv4_addresses",
+        return_value=("10.0.0.2", "192.168.1.10"),
+    ):
+        widget.refresh_status()
 
     assert widget.activity_label.text() == tr("Provide Local I/O")
     assert widget.integrity_label.text() == tr("waiting")
     assert "0.0.0.0:41000" in widget.provider_details_label.text()
+    assert "10.0.0.2:41000, 192.168.1.10:41000" in widget.provider_details_label.text()
     assert not widget.provider_port_spin.isEnabled()
     assert widget.stop_provider_button.isEnabled()
+
+
+def test_remote_audio_widget_reports_when_no_lan_address_is_available(qtbot):
+    widget = RemoteAudioIOWidget(_engine(), _Config())
+    qtbot.addWidget(widget)
+    widget.provider = SimpleNamespace(
+        running=True,
+        status_snapshot=lambda: {
+            "state": "listening",
+            "bind_host": "0.0.0.0",
+            "port": 41000,
+            "client_address": None,
+            "duplex": False,
+        },
+    )
+
+    with patch.object(widget, "_lan_ipv4_addresses", return_value=()):
+        widget.refresh_status()
+
+    assert tr("Not available") in widget.provider_details_label.text()
 
 
 def test_remote_audio_widget_can_cancel_connection_attempt(qtbot):

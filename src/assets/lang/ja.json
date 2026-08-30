@@ -1123,7 +1123,7 @@
     "Linked (Both)": "リンク (両方)",
     "List Only Scale:": "リストのみの場合のスケール:",
     "Listen address:": "待受アドレス:",
-    "Listening on {0}:{1}\nClient: {2}\nRemote output: {3}": "{0}:{1} で待受中\nクライアント: {2}\nリモート出力: {3}",
+    "Listening on {0}:{1}\nConnect from another computer: {2}\nClient: {3}\nRemote output: {4}": "{0}:{1} で待受中\n別のPCからの接続先: {2}\nクライアント: {3}\nリモート出力: {4}",
     "Live Cache Loaded": "キャッシュ読込完了",
     "Load": "負荷",
     "Load Audio": "音声ロード",
