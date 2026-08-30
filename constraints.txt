@@ -5,7 +5,7 @@
 # Keep pinned to 2.2.6 until the issue is resolved.
 numpy==2.2.6
 scipy==1.17.0
-sounddevice==0.5.5
+sounddevice==0.5.6
 PyQt6==6.11.0
 PyQt6-Qt6==6.11.1
 pyqtgraph==0.14.0
@@ -13,6 +13,6 @@ soundfile==0.14.0
 PyWavelets==1.9.0
 inquirer==3.4.1
 pytest==9.1.1
-ruff==0.16.3
+ruff==0.16.4
 mypy==2.3.1
 pyfftw==0.15.1
