@@ -44,7 +44,7 @@ Evaluates the signal quality of physical analog transmission paths, including ca
     * Integrates the impulse response to visualize the step response, automatically calculating transient metrics like Overshoot (%), Settling Time (ms), and Droop (%).
     * Computes group delay to reveal phase non-linearities and time-alignment issues across the frequency spectrum.
 
-### Shared Capabilities (Sync, Delay, and Jitter)
+### Common Features (Sync, Delay, and Jitter)
 
 The widget automatically establishes and tracks synchronization at the sample level.
 
