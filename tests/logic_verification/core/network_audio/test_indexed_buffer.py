@@ -47,6 +47,76 @@ def test_partial_packet_overlap_is_copied_at_the_correct_position():
     assert np.array_equal(data[:, 0], [8, 9, 10, 11])
 
 
+def test_partial_read_preserves_the_unread_packet_tail():
+    buffer = IndexedAudioBuffer(capacity_frames=16, channels=1)
+    buffer.put(4, np.arange(4, 12, dtype=np.float32)[:, None])
+
+    first, first_missing = buffer.read(4, 4)
+    second, second_missing = buffer.read(8, 4)
+
+    assert first_missing == []
+    assert second_missing == []
+    assert np.array_equal(first[:, 0], [4, 5, 6, 7])
+    assert np.array_equal(second[:, 0], [8, 9, 10, 11])
+
+
+def test_reordered_packets_survive_ring_wrap():
+    buffer = IndexedAudioBuffer(capacity_frames=16, channels=1)
+    buffer.put(16, np.arange(16, 24, dtype=np.float32)[:, None])
+    buffer.put(8, np.arange(8, 16, dtype=np.float32)[:, None])
+
+    data, missing = buffer.read(8, 16)
+
+    assert missing == []
+    assert np.array_equal(data[:, 0], np.arange(8, 24, dtype=np.float32))
+
+
+def test_expired_ring_data_is_not_replayed_after_wrap():
+    buffer = IndexedAudioBuffer(capacity_frames=16, channels=1)
+    buffer.put(0, np.ones((8, 1), dtype=np.float32))
+    buffer.put(24, np.full((8, 1), 2.0, dtype=np.float32))
+
+    data, missing = buffer.read(16, 16)
+
+    assert missing == [(16, 8)]
+    assert np.array_equal(data[:, 0], [0] * 8 + [2] * 8)
+
+
+def test_gap_after_ring_wrap_does_not_expose_stale_samples():
+    buffer = IndexedAudioBuffer(capacity_frames=16, channels=1)
+    buffer.put(0, np.ones((8, 1), dtype=np.float32))
+    buffer.put(16, np.full((4, 1), 2.0, dtype=np.float32))
+
+    data, missing = buffer.read(8, 12)
+
+    assert missing == [(8, 8)]
+    assert np.array_equal(data[:, 0], [0] * 8 + [2] * 4)
+
+
+def test_packet_larger_than_ring_capacity_is_rejected():
+    buffer = IndexedAudioBuffer(capacity_frames=4, channels=1)
+
+    try:
+        buffer.put(0, np.ones((8, 1), dtype=np.float32))
+    except ValueError as exc:
+        assert "capacity" in str(exc)
+    else:
+        raise AssertionError("oversized packet was accepted")
+
+
+def test_clear_removes_ring_validity_and_resets_sample_origin():
+    buffer = IndexedAudioBuffer(capacity_frames=16, channels=1)
+    buffer.put(16, np.ones((8, 1), dtype=np.float32))
+
+    buffer.clear()
+    assert buffer.first_sample(timeout=0.0) is None
+    assert buffer.put(0, np.full((4, 1), 3.0, dtype=np.float32)) == "accepted"
+    data, missing = buffer.read(0, 4)
+
+    assert missing == []
+    assert np.array_equal(data[:, 0], [3, 3, 3, 3])
+
+
 def test_stream_start_skips_old_connection_idle_history():
     buffer = IndexedAudioBuffer(capacity_frames=4096, channels=1)
     for start in range(0, 2048, 128):
