@@ -10,11 +10,10 @@ Sample position and measurement integrity take priority over concealment. Missin
 
 1. In Settings, select the physical input/output devices, sample rate, buffer size, and channels used for remote measurement.
 2. Open Remote Audio I/O.
-3. Select **Provide Local I/O**.
-4. Set the listen address and UDP port. Use `0.0.0.0` to listen on every IPv4 LAN interface.
-5. Enable **Allow automatic discovery** to make the provider available in the connection list.
-6. Enable **Allow remote playback** only when remote output is required.
-7. Select **Start sharing**.
+3. Select **Share this computer's audio**.
+4. Enable **Allow remote playback** only when remote output is required.
+5. Select **Start sharing**. By default, MeasureLab listens on every IPv4 LAN interface and enables automatic discovery.
+6. Open **Advanced** before sharing when you need to change the listen address, UDP port, or discovery setting.
 
 On Windows, allow inbound UDP connections to the selected port in Windows Defender Firewall before sharing (default: `40100`). An inbound TCP rule is not required. Because the main computer sends the UDP request first, it normally needs no additional inbound rule. Allow local-network access if macOS prompts for it. When a firewall is enabled on Linux, allow the same inbound UDP port on the provider.
 
@@ -22,12 +21,11 @@ While the provider is running, other measurement modules on the same computer ca
 
 ## Connecting from the main computer
 
-1. Open **Use Remote I/O** in Remote Audio I/O.
+1. Open **Connect to another computer** in Remote Audio I/O.
 2. Select the remote computer under **Available MeasureLab computers**, then select **Connect selected**. No address or port entry is required.
-3. If discovery is unavailable, enter an IPv4 address or host name and UDP port under **Manual connection**, then select **Connect by address**. Manual connections use the same UDP protocol as discovered connections.
-4. Adjust the fixed network buffer when necessary. Start with 100 ms for a typical LAN.
-5. Enable **Request remote output (duplex)** when output is required.
-6. Start an ordinary measurement module after the connection is established.
+3. If discovery is unavailable, open **Advanced**, enter an IPv4 address or host name and UDP port, then select **Connect by address**. Manual connections use the same UDP protocol as discovered connections.
+4. The fixed network buffer and duplex request are also under **Advanced**. Start with 100 ms for a typical LAN.
+5. Start an ordinary measurement module after the connection is established.
 
 Discovery sends an IPv4 broadcast query from the main computer to the selected UDP port and lists only providers that reply. Normally, use the default port `40100` on both computers. Discovery does not cross subnets and can be blocked by Wi-Fi client isolation, VPNs, or firewalls that filter broadcasts. Manual connection remains available when the provider address is otherwise reachable.
 
@@ -38,14 +36,15 @@ Calibration profiles are not transferred over the network. For measurements in p
 
 ## Data-integrity monitoring
 
-Connection Integrity displays:
+The **Connection quality** area at the top displays the following while connected:
 
-- Transmitted and received packet counts
 - Missing frame count
-- Late, duplicate, and corrupt packet counts
-- Current buffered frame count
+- Event count combining missing packets, corrupt packets, and local queue overflows
+- Whether data loss is still increasing or has stopped increasing
 
-Do not treat a measurement interval showing `DATA LOSS DETECTED` as complete data. Increase the buffer or move to a wired LAN, then repeat the measurement.
+Open **Advanced** in the relevant tab to see the connected device and format, or the listening endpoints and connected client.
+
+Do not treat a measurement interval showing **Data loss is increasing** as complete data. Increase the buffer or move to a wired LAN, then repeat the measurement.
 
 ## Transport and safety
 

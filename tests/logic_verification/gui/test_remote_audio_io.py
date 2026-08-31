@@ -2,6 +2,8 @@ import time
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+from PyQt6.QtCore import Qt
+
 from src.core.localization import tr
 from src.core.network_audio import DiscoveredProvider
 from src.gui.widgets.remote_audio_io import RemoteAudioIOWidget
@@ -51,12 +53,38 @@ def test_remote_audio_widget_loads_endpoint_and_starts_safe(qtbot):
     assert widget.tabs.tabText(1) == tr("Share this computer's audio")
     assert widget.provider_button.text() == tr("Start sharing")
     assert widget.stop_provider_button.text() == tr("Stop sharing")
+    assert widget.client_options_panel.isHidden()
+    assert widget.provider_options_panel.isHidden()
+    assert widget.integrity_panel.isHidden()
+    assert widget.activity_details_label.isHidden()
 
     widget.tabs.setCurrentIndex(1)
-    assert widget.activity_details_label.text() == tr("Choose a listen address and start sharing.")
+    assert widget.activity_details_label.text() == ""
 
 
-def test_remote_audio_widget_keeps_controls_stable_when_status_grows(qtbot):
+def test_remote_audio_widget_reveals_advanced_settings_on_request(qtbot):
+    widget = RemoteAudioIOWidget(_engine(), _Config())
+    qtbot.addWidget(widget)
+    widget.resize(1180, 690)
+    widget.show()
+
+    assert widget.client_options_panel.isHidden()
+    assert not widget.host_edit.isVisible()
+    widget.client_options_button.click()
+    assert widget.client_options_button.arrowType() == Qt.ArrowType.DownArrow
+    assert widget.client_options_panel.isVisible()
+    assert widget.host_edit.isVisible()
+
+    widget.tabs.setCurrentIndex(1)
+    assert widget.provider_options_panel.isHidden()
+    assert not widget.bind_edit.isVisible()
+    widget.provider_options_button.click()
+    assert widget.provider_options_button.arrowType() == Qt.ArrowType.DownArrow
+    assert widget.provider_options_panel.isVisible()
+    assert widget.bind_edit.isVisible()
+
+
+def test_remote_audio_widget_keeps_provider_details_out_of_primary_status(qtbot):
     widget = RemoteAudioIOWidget(_engine(), _Config())
     qtbot.addWidget(widget)
     widget.resize(1180, 690)
@@ -64,7 +92,6 @@ def test_remote_audio_widget_keeps_controls_stable_when_status_grows(qtbot):
     widget.show()
     qtbot.wait(10)
     initial_button_y = widget.provider_button.mapTo(widget, widget.provider_button.rect().topLeft()).y()
-    initial_status_height = widget.activity_details_label.height()
 
     widget.provider = SimpleNamespace(
         running=True,
@@ -81,12 +108,13 @@ def test_remote_audio_widget_keeps_controls_stable_when_status_grows(qtbot):
         widget.refresh_status()
     widget.layout().activate()
 
-    assert widget.activity_details_label.text().count("\n") == 3
-    assert widget.activity_details_label.height() == initial_status_height
+    assert widget.provider_details_label.text().count("\n") == 3
+    assert widget.activity_details_label.isHidden()
+    assert widget.provider_options_panel.isHidden()
     assert widget.provider_button.mapTo(widget, widget.provider_button.rect().topLeft()).y() == initial_button_y
 
 
-def test_remote_audio_widget_reserves_room_for_wrapped_provider_status(qtbot):
+def test_remote_audio_widget_shows_provider_endpoints_in_advanced_details(qtbot):
     widget = RemoteAudioIOWidget(_engine(), _Config())
     qtbot.addWidget(widget)
     widget.resize(700, 690)
@@ -112,8 +140,11 @@ def test_remote_audio_widget_reserves_room_for_wrapped_provider_status(qtbot):
         widget.refresh_status()
     widget.layout().activate()
 
-    label = widget.activity_details_label
-    assert label.height() >= label.heightForWidth(label.width())
+    assert widget.provider_options_panel.isHidden()
+    assert "10.0.0.2:41000" in widget.provider_details_label.text()
+    assert "192.168.1.10:41000" in widget.provider_details_label.text()
+    widget.provider_options_button.click()
+    assert widget.provider_options_panel.isVisible()
 
 
 def test_remote_audio_widget_displays_whether_integrity_loss_is_still_increasing(qtbot):

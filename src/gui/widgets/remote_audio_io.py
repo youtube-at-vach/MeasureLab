@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QFormLayout,
     QFrame,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -25,6 +26,7 @@ from PyQt6.QtWidgets import (
     QSpinBox,
     QStyle,
     QTabWidget,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -80,22 +82,13 @@ class RemoteAudioIOWidget(QWidget):
         heading_font.setPointSizeF(heading_font.pointSizeF() * 1.35)
         heading.setFont(heading_font)
         layout.addWidget(heading)
-        description = QLabel(tr("Use another MeasureLab computer's audio device over a trusted LAN."))
+        description = QLabel(tr("Use or share audio devices with another MeasureLab computer on a trusted LAN."))
         description.setWordWrap(True)
         layout.addWidget(description)
 
         status_panel = QFrame()
         status_panel.setFrameShape(QFrame.Shape.StyledPanel)
-        status_layout = QHBoxLayout(status_panel)
-
-        activity_layout = QVBoxLayout()
-        activity_heading = QLabel(tr("Status"))
-        activity_heading_font = activity_heading.font()
-        activity_heading_font.setBold(True)
-        activity_heading.setFont(activity_heading_font)
-        activity_layout.addWidget(activity_heading)
-
-        activity_state_layout = QHBoxLayout()
+        status_layout = QGridLayout(status_panel)
         self.activity_icon = QLabel()
         self.activity_icon.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.activity_label = QLabel(tr("Disconnected"))
@@ -103,43 +96,36 @@ class RemoteAudioIOWidget(QWidget):
         activity_font.setBold(True)
         self.activity_label.setFont(activity_font)
         self.activity_label.setAccessibleName(tr("Status"))
-        activity_state_layout.addWidget(self.activity_icon)
-        activity_state_layout.addWidget(self.activity_label, 1)
-        activity_layout.addLayout(activity_state_layout)
-        self.activity_details_label = QLabel(tr("Enter the remote computer's address and connect."))
-        self.activity_details_label.setWordWrap(True)
-        self._reserve_status_lines(self.activity_details_label)
-        activity_layout.addWidget(self.activity_details_label)
-        status_layout.addLayout(activity_layout, 3)
+        status_layout.addWidget(self.activity_icon, 0, 0)
+        status_layout.addWidget(self.activity_label, 0, 1)
+        status_layout.setColumnStretch(2, 1)
 
-        divider = QFrame()
-        divider.setFrameShape(QFrame.Shape.VLine)
-        divider.setFrameShadow(QFrame.Shadow.Sunken)
-        status_layout.addWidget(divider)
-
-        integrity_layout = QVBoxLayout()
+        self.integrity_panel = QWidget()
+        integrity_layout = QHBoxLayout(self.integrity_panel)
+        integrity_layout.setContentsMargins(0, 0, 0, 0)
         integrity_heading = QLabel(tr("Connection quality"))
-        integrity_heading_font = integrity_heading.font()
-        integrity_heading_font.setBold(True)
-        integrity_heading.setFont(integrity_heading_font)
         integrity_layout.addWidget(integrity_heading)
-
-        integrity_state_layout = QHBoxLayout()
         self.integrity_icon = QLabel()
         self.integrity_icon.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        integrity_layout.addWidget(self.integrity_icon)
         self.integrity_label = QLabel(tr("Disconnected"))
         integrity_font = self.integrity_label.font()
         integrity_font.setBold(True)
         self.integrity_label.setFont(integrity_font)
         self.integrity_label.setAccessibleName(tr("Connection quality"))
-        integrity_state_layout.addWidget(self.integrity_icon)
-        integrity_state_layout.addWidget(self.integrity_label, 1)
-        integrity_layout.addLayout(integrity_state_layout)
-        self.stats_label = QLabel(tr("Monitoring starts after connection."))
+        integrity_layout.addWidget(self.integrity_label)
+        status_layout.addWidget(self.integrity_panel, 0, 3)
+
+        self.activity_details_label = QLabel()
+        self.activity_details_label.setWordWrap(True)
+        status_layout.addWidget(self.activity_details_label, 1, 1, 1, 2)
+        self.stats_label = QLabel()
         self.stats_label.setWordWrap(True)
-        self._reserve_status_lines(self.stats_label)
-        integrity_layout.addWidget(self.stats_label)
-        status_layout.addLayout(integrity_layout, 2)
+        self.stats_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+        status_layout.addWidget(self.stats_label, 1, 3)
+        self.integrity_panel.hide()
+        self.activity_details_label.hide()
+        self.stats_label.hide()
         layout.addWidget(status_panel)
 
         self.tabs = QTabWidget()
@@ -155,31 +141,39 @@ class RemoteAudioIOWidget(QWidget):
         page_layout = QVBoxLayout(page)
         page_layout.setSpacing(10)
 
-        summary = QLabel(tr("Select an available MeasureLab computer or connect by address."))
-        summary.setWordWrap(True)
-        page_layout.addWidget(summary)
-
         discovery_group = QGroupBox(tr("Available MeasureLab computers"))
         discovery_layout = QVBoxLayout(discovery_group)
-        discovery_actions = QHBoxLayout()
         self.discovery_status_label = QLabel(tr("Searching this LAN..."))
         self.discovery_status_label.setWordWrap(True)
-        discovery_actions.addWidget(self.discovery_status_label, 1)
-        self.discovered_connect_button = QPushButton(tr("Connect selected"))
-        self.discovered_connect_button.clicked.connect(self.connect_selected_provider)
-        discovery_actions.addWidget(self.discovered_connect_button)
-        discovery_layout.addLayout(discovery_actions)
+        discovery_layout.addWidget(self.discovery_status_label)
         self.discovery_list = QListWidget()
         self.discovery_list.setAccessibleName(tr("Available MeasureLab computers"))
-        self.discovery_list.setMaximumHeight(120)
+        self.discovery_list.setMinimumHeight(160)
+        self.discovery_list.setMaximumHeight(240)
         self.discovery_list.currentItemChanged.connect(self._on_discovery_selection_changed)
         self.discovery_list.itemDoubleClicked.connect(lambda _item: self.connect_selected_provider())
         discovery_layout.addWidget(self.discovery_list)
         page_layout.addWidget(discovery_group)
 
-        settings_layout = QHBoxLayout()
-        connection_group = QGroupBox(tr("Manual connection"))
-        form = QFormLayout(connection_group)
+        buttons_layout = QHBoxLayout()
+        self.discovered_connect_button = QPushButton(tr("Connect selected"))
+        self.discovered_connect_button.clicked.connect(self.connect_selected_provider)
+        self.disconnect_button = QPushButton(tr("Disconnect"))
+        self.disconnect_button.clicked.connect(self.disconnect_client)
+        buttons_layout.addWidget(self.discovered_connect_button)
+        buttons_layout.addWidget(self.disconnect_button)
+        buttons_layout.addStretch()
+        self.client_options_button = QToolButton()
+        self.client_options_button.setText(tr("Advanced"))
+        self.client_options_button.setCheckable(True)
+        self.client_options_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.client_options_button.setArrowType(Qt.ArrowType.RightArrow)
+        buttons_layout.addWidget(self.client_options_button)
+        page_layout.addLayout(buttons_layout)
+
+        self.client_options_panel = QFrame()
+        self.client_options_panel.setFrameShape(QFrame.Shape.StyledPanel)
+        form = QFormLayout(self.client_options_panel)
         self.host_edit = QLineEdit()
         self.host_edit.setPlaceholderText("192.168.1.10")
         self.host_edit.setAccessibleName(tr("Remote host:"))
@@ -193,39 +187,31 @@ class RemoteAudioIOWidget(QWidget):
         port_label = QLabel(tr("UDP port:"))
         port_label.setBuddy(self.client_port_spin)
         form.addRow(port_label, self.client_port_spin)
-        settings_layout.addWidget(connection_group, 3)
-
-        options_group = QGroupBox(tr("Advanced"))
-        options_form = QFormLayout(options_group)
         self.jitter_spin = QSpinBox()
         self.jitter_spin.setRange(20, 2000)
         self.jitter_spin.setSuffix(" ms")
         self.jitter_spin.setAccessibleName(tr("Fixed network buffer:"))
         buffer_label = QLabel(tr("Fixed network buffer:"))
         buffer_label.setBuddy(self.jitter_spin)
-        options_form.addRow(buffer_label, self.jitter_spin)
+        form.addRow(buffer_label, self.jitter_spin)
         self.duplex_check = QCheckBox(tr("Request remote output (duplex)"))
-        options_form.addRow(self.duplex_check)
-        settings_layout.addWidget(options_group, 2)
-        page_layout.addLayout(settings_layout)
-
-        buttons_layout = QHBoxLayout()
+        form.addRow(self.duplex_check)
         self.connect_button = QPushButton(tr("Connect by address"))
-        self.disconnect_button = QPushButton(tr("Disconnect"))
         self.connect_button.clicked.connect(self.connect_client)
-        self.disconnect_button.clicked.connect(self.disconnect_client)
-        buttons_layout.addWidget(self.connect_button)
-        buttons_layout.addWidget(self.disconnect_button)
-        buttons_layout.addStretch()
-        page_layout.addLayout(buttons_layout)
-
-        details_group = QGroupBox(tr("Details"))
-        details_layout = QVBoxLayout(details_group)
+        form.addRow(self.connect_button)
         self.remote_details_label = QLabel(tr("No remote provider connected."))
         self.remote_details_label.setWordWrap(True)
         self.remote_details_label.setAccessibleName(tr("Details"))
-        details_layout.addWidget(self.remote_details_label)
-        page_layout.addWidget(details_group)
+        form.addRow(QLabel(tr("Details")), self.remote_details_label)
+        self.client_options_button.toggled.connect(
+            lambda visible: self._set_options_visible(
+                self.client_options_button,
+                self.client_options_panel,
+                visible,
+            )
+        )
+        self.client_options_panel.hide()
+        page_layout.addWidget(self.client_options_panel)
         page_layout.addStretch(1)
         return page
 
@@ -234,18 +220,36 @@ class RemoteAudioIOWidget(QWidget):
         page_layout = QVBoxLayout(page)
         page_layout.setSpacing(10)
 
-        summary = QLabel(tr("Choose a listen address and start sharing."))
-        summary.setWordWrap(True)
-        page_layout.addWidget(summary)
-
         self.windows_firewall_notice = QLabel()
         self.windows_firewall_notice.setWordWrap(True)
         self.windows_firewall_notice.setVisible(sys.platform == "win32")
         page_layout.addWidget(self.windows_firewall_notice)
 
-        settings_layout = QHBoxLayout()
-        access_group = QGroupBox(tr("Configuration"))
-        form = QFormLayout(access_group)
+        self.allow_output_check = QCheckBox(tr("Allow remote playback"))
+        self.allow_output_check.setChecked(False)
+        self.allow_output_check.setToolTip(tr("Keep disabled unless the remote computer is trusted."))
+        self.allow_output_check.toggled.connect(self._on_allow_output_changed)
+        page_layout.addWidget(self.allow_output_check)
+
+        buttons_layout = QHBoxLayout()
+        self.provider_button = QPushButton(tr("Start sharing"))
+        self.stop_provider_button = QPushButton(tr("Stop sharing"))
+        self.provider_button.clicked.connect(self.start_provider)
+        self.stop_provider_button.clicked.connect(self.stop_provider)
+        buttons_layout.addWidget(self.provider_button)
+        buttons_layout.addWidget(self.stop_provider_button)
+        buttons_layout.addStretch()
+        self.provider_options_button = QToolButton()
+        self.provider_options_button.setText(tr("Advanced"))
+        self.provider_options_button.setCheckable(True)
+        self.provider_options_button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.provider_options_button.setArrowType(Qt.ArrowType.RightArrow)
+        buttons_layout.addWidget(self.provider_options_button)
+        page_layout.addLayout(buttons_layout)
+
+        self.provider_options_panel = QFrame()
+        self.provider_options_panel.setFrameShape(QFrame.Shape.StyledPanel)
+        form = QFormLayout(self.provider_options_panel)
         self.bind_edit = QLineEdit()
         self.bind_edit.setPlaceholderText("0.0.0.0")
         self.bind_edit.setAccessibleName(tr("Listen address:"))
@@ -264,39 +268,19 @@ class RemoteAudioIOWidget(QWidget):
         self.discoverable_check.setToolTip(tr("Other MeasureLab computers can find this provider automatically."))
         self.discoverable_check.toggled.connect(self._on_discoverable_changed)
         form.addRow(self.discoverable_check)
-        settings_layout.addWidget(access_group, 3)
-
-        playback_group = QGroupBox(tr("Playback"))
-        playback_layout = QVBoxLayout(playback_group)
-        self.allow_output_check = QCheckBox(tr("Allow remote playback"))
-        self.allow_output_check.setChecked(False)
-        self.allow_output_check.setToolTip(tr("Keep disabled unless the remote computer is trusted."))
-        self.allow_output_check.toggled.connect(self._on_allow_output_changed)
-        playback_layout.addWidget(self.allow_output_check)
-        playback_help = QLabel(tr("Allows a trusted remote computer to use this computer's audio output."))
-        playback_help.setWordWrap(True)
-        playback_layout.addWidget(playback_help)
-        playback_layout.addStretch(1)
-        settings_layout.addWidget(playback_group, 2)
-        page_layout.addLayout(settings_layout)
-
-        buttons_layout = QHBoxLayout()
-        self.provider_button = QPushButton(tr("Start sharing"))
-        self.stop_provider_button = QPushButton(tr("Stop sharing"))
-        self.provider_button.clicked.connect(self.start_provider)
-        self.stop_provider_button.clicked.connect(self.stop_provider)
-        buttons_layout.addWidget(self.provider_button)
-        buttons_layout.addWidget(self.stop_provider_button)
-        buttons_layout.addStretch()
-        page_layout.addLayout(buttons_layout)
-
-        details_group = QGroupBox(tr("Details"))
-        details_layout = QVBoxLayout(details_group)
         self.provider_details_label = QLabel(tr("Provider is stopped."))
         self.provider_details_label.setWordWrap(True)
         self.provider_details_label.setAccessibleName(tr("Details"))
-        details_layout.addWidget(self.provider_details_label)
-        page_layout.addWidget(details_group)
+        form.addRow(QLabel(tr("Details")), self.provider_details_label)
+        self.provider_options_button.toggled.connect(
+            lambda visible: self._set_options_visible(
+                self.provider_options_button,
+                self.provider_options_panel,
+                visible,
+            )
+        )
+        self.provider_options_panel.hide()
+        page_layout.addWidget(self.provider_options_panel)
         page_layout.addStretch(1)
         self._update_windows_firewall_notice(self.provider_port_spin.value())
         return page
@@ -305,10 +289,14 @@ class RemoteAudioIOWidget(QWidget):
         label.setPixmap(self.style().standardIcon(icon).pixmap(18, 18))
 
     @staticmethod
-    def _reserve_status_lines(label: QLabel, lines: int = 5) -> None:
-        """Keep the status panel stable and leave room for one wrapped line."""
-        label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
-        label.setFixedHeight(label.fontMetrics().lineSpacing() * lines)
+    def _set_options_visible(button: QToolButton, panel: QWidget, visible: bool) -> None:
+        panel.setVisible(visible)
+        button.setArrowType(Qt.ArrowType.DownArrow if visible else Qt.ArrowType.RightArrow)
+
+    @staticmethod
+    def _set_optional_text(label: QLabel, text: str) -> None:
+        label.setText(text)
+        label.setVisible(bool(text))
 
     def _sync_provider_port(self, value: int) -> None:
         if self.provider_port_spin.value() != value:
@@ -702,6 +690,9 @@ class RemoteAudioIOWidget(QWidget):
 
     def refresh_status(self) -> None:
         self._refresh_discovery_list()
+        self._set_optional_text(self.activity_details_label, "")
+        self._set_optional_text(self.stats_label, "")
+        self.integrity_panel.hide()
         snapshot: dict[str, object] | None = None
         source: object | None = None
         if self.client is not None:
@@ -712,13 +703,12 @@ class RemoteAudioIOWidget(QWidget):
             if client_state == "error" or not client_connected:
                 error = str(snapshot.get("last_error") or tr("Disconnected"))
                 self.activity_label.setText(tr("Connection failed"))
-                self.activity_details_label.setText(
-                    tr("Connection error: {0}. Disconnect and reconnect.").format(error)
+                self._set_optional_text(
+                    self.activity_details_label, tr("Connection error: {0}. Disconnect and reconnect.").format(error)
                 )
                 self._set_status_icon(self.activity_icon, QStyle.StandardPixmap.SP_MessageBoxCritical)
             else:
                 self.activity_label.setText(tr("Use Remote I/O"))
-                self.activity_details_label.setText(self.remote_details_label.text())
                 self._set_status_icon(self.activity_icon, QStyle.StandardPixmap.SP_DialogApplyButton)
         elif self.provider is not None:
             source = self.provider
@@ -747,49 +737,44 @@ class RemoteAudioIOWidget(QWidget):
             if snapshot.get("state") == "error":
                 error = str(snapshot.get("last_error") or tr("Disconnected"))
                 self.activity_label.setText(tr("Connection failed"))
-                self.activity_details_label.setText(tr("Check the settings and try again. Details: {0}").format(error))
+                self._set_optional_text(
+                    self.activity_details_label,
+                    tr("Check the settings and try again. Details: {0}").format(error),
+                )
                 self._set_status_icon(self.activity_icon, QStyle.StandardPixmap.SP_MessageBoxCritical)
             elif snapshot.get("client_address"):
                 self.activity_label.setText(tr("Provide Local I/O"))
-                self.activity_details_label.setText(self.provider_details_label.text())
                 self._set_status_icon(self.activity_icon, QStyle.StandardPixmap.SP_DialogApplyButton)
             else:
                 self.activity_label.setText(tr("Provide Local I/O"))
-                self.activity_details_label.setText(self.provider_details_label.text())
                 self._set_status_icon(self.activity_icon, QStyle.StandardPixmap.SP_MessageBoxInformation)
 
         if snapshot is None:
             if self._connecting:
                 self.activity_label.setText(tr("Connecting..."))
-                self.activity_details_label.setText(self._connecting_target_label)
+                self._set_optional_text(self.activity_details_label, self._connecting_target_label)
                 self._set_status_icon(self.activity_icon, QStyle.StandardPixmap.SP_BrowserReload)
             elif self._last_error:
                 self.activity_label.setText(tr("Connection failed"))
-                self.activity_details_label.setText(
-                    tr("Check the settings and try again. Details: {0}").format(self._last_error)
+                self._set_optional_text(
+                    self.activity_details_label,
+                    tr("Check the settings and try again. Details: {0}").format(self._last_error),
                 )
                 self._set_status_icon(self.activity_icon, QStyle.StandardPixmap.SP_MessageBoxCritical)
             else:
                 self.activity_label.setText(tr("Disconnected"))
-                if self.tabs.currentIndex() == 0:
-                    self.activity_details_label.setText(
-                        tr("Select an available MeasureLab computer or connect by address.")
-                    )
-                else:
-                    self.activity_details_label.setText(tr("Choose a listen address and start sharing."))
                 self._set_status_icon(self.activity_icon, QStyle.StandardPixmap.SP_MessageBoxInformation)
             self.integrity_label.setText(tr("Disconnected"))
             self._set_status_icon(self.integrity_icon, QStyle.StandardPixmap.SP_MessageBoxInformation)
-            self.stats_label.setText(tr("Monitoring starts after connection."))
             self._integrity_source = None
             self._last_damage_events = None
             self._refresh_control_states()
             return
 
+        self.integrity_panel.show()
         if source is self.provider and snapshot.get("state") != "error" and not snapshot.get("client_address"):
             self.integrity_label.setText(tr("waiting"))
             self._set_status_icon(self.integrity_icon, QStyle.StandardPixmap.SP_MessageBoxInformation)
-            self.stats_label.setText(tr("Monitoring starts after connection."))
             self._integrity_source = None
             self._last_damage_events = None
             self._refresh_control_states()
@@ -820,16 +805,13 @@ class RemoteAudioIOWidget(QWidget):
         else:
             self.integrity_label.setText(tr("No data loss ({0})").format(state))
             self._set_status_icon(self.integrity_icon, QStyle.StandardPixmap.SP_DialogApplyButton)
-        if state == "error" and snapshot.get("last_error"):
-            self.stats_label.setText(
-                tr("Connection error: {0}. Disconnect and reconnect.").format(snapshot["last_error"])
-            )
-        else:
-            self.stats_label.setText(
+        if state != "error":
+            self._set_optional_text(
+                self.stats_label,
                 tr("Dropped: {0} frames ({1} events)").format(
                     loss,
                     loss_events,
-                )
+                ),
             )
         self._refresh_control_states()
 
