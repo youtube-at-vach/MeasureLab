@@ -76,6 +76,7 @@ app = BUNDLE(
         'CFBundleShortVersionString': version,
         'CFBundleVersion': version_bundle,
         'LSMinimumSystemVersion': '13.0',
-        'NSMicrophoneUsageDescription': 'Microphone access is required for audio measurement.'
+        'NSMicrophoneUsageDescription': 'Microphone access is required for audio measurement.',
+        'NSLocalNetworkUsageDescription': 'Local network access is required to discover and connect to MeasureLab Remote Audio I/O providers.'
     },
 )

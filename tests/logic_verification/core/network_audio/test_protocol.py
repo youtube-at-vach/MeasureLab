@@ -3,11 +3,17 @@ import pytest
 
 from src.core.network_audio.protocol import (
     DIRECTION_CAPTURE,
+    MAX_DATAGRAM,
+    PACKET_CONNECT_REQUEST,
     PACKET_FRAMES,
     ProtocolError,
+    bounded_control_text,
     control_bool,
     control_int,
+    datagram_kind,
     decode_audio_packet,
+    decode_control_datagram,
+    encode_control_datagram,
     encode_audio_packet,
     packetize_audio,
 )
@@ -97,6 +103,41 @@ def test_control_scalars_do_not_accept_python_bool_integer_coercions():
         control_int({"value": True}, "value")
     with pytest.raises(ProtocolError, match="value"):
         control_bool({"value": 1}, "value")
+
+
+def test_udp_control_datagram_round_trip_preserves_envelope_and_json():
+    packet = encode_control_datagram(
+        PACKET_CONNECT_REQUEST,
+        {"protocol": 2, "duplex": True},
+        session_id=12,
+        message_id=34,
+    )
+
+    header, message = decode_control_datagram(packet)
+
+    assert datagram_kind(packet) == PACKET_CONNECT_REQUEST
+    assert header == {"kind": PACKET_CONNECT_REQUEST, "session_id": 12, "message_id": 34}
+    assert message == {"protocol": 2, "duplex": True}
+
+
+def test_udp_control_datagram_preserves_bounded_unicode_text():
+    value = bounded_control_text("測定🎧" * 200, limit=280)
+
+    packet = encode_control_datagram(PACKET_CONNECT_REQUEST, {"name": value}, message_id=1)
+    _header, message = decode_control_datagram(packet)
+
+    assert message == {"name": value}
+    assert len(value.encode("utf-8")) <= 280
+
+
+def test_udp_control_datagram_rejects_corruption_and_fragment_sized_payloads():
+    packet = bytearray(encode_control_datagram(PACKET_CONNECT_REQUEST, {"nonce": "valid"}, message_id=1))
+    packet[-1] ^= 0xFF
+    with pytest.raises(ProtocolError, match="checksum"):
+        decode_control_datagram(bytes(packet))
+
+    with pytest.raises(ProtocolError, match="datagram limit"):
+        encode_control_datagram(PACKET_CONNECT_REQUEST, {"value": "x" * MAX_DATAGRAM}, message_id=1)
 
 
 @pytest.mark.parametrize(

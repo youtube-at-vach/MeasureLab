@@ -1,10 +1,11 @@
-"""Client session and AudioEngine-compatible stream for remote audio I/O."""
+"""Client session and AudioEngine-compatible stream for UDP remote audio I/O."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 import logging
 import queue
-import select
+import secrets
 import socket
 import threading
 import time
@@ -15,25 +16,46 @@ import numpy as np
 from src.core.network_audio.indexed_buffer import IndexedAudioBuffer
 from src.core.network_audio.models import NetworkAudioStats, NetworkStatusFlags, NetworkStreamTime
 from src.core.network_audio.protocol import (
-    DIRECTION_CAPTURE,
-    DIRECTION_PLAYBACK,
     CONTROL_HEARTBEAT_INTERVAL,
     CONTROL_HEARTBEAT_TIMEOUT,
+    DIRECTION_CAPTURE,
+    DIRECTION_PLAYBACK,
     FLAG_INPUT_XRUN,
     FLAG_OUTPUT_XRUN,
+    PACKET_CONNECT_OFFER,
+    PACKET_CONNECT_REQUEST,
+    PACKET_CONTROL_ACK,
+    PACKET_ERROR,
+    PACKET_KEEPALIVE,
+    PACKET_PLAYBACK_STATE,
+    PACKET_START,
+    PACKET_START_ACK,
+    PACKET_STOP,
+    PACKET_STOPPED,
     PROTOCOL_VERSION,
     ProtocolError,
     control_bool,
     control_int,
+    control_str,
+    datagram_kind,
     decode_audio_packet,
+    decode_control_datagram,
+    encode_control_datagram,
     packetize_audio,
-    recv_control,
-    send_control,
 )
 
 
+@dataclass(slots=True)
+class _PendingControl:
+    expected_kind: int
+    event: threading.Event = field(default_factory=threading.Event)
+    header: dict[str, int] | None = None
+    message: dict[str, object] | None = None
+    error: str = ""
+
+
 class NetworkAudioClient:
-    """Connected control/data session to one MeasureLab provider."""
+    """Connected UDP control/data session to one MeasureLab provider."""
 
     def __init__(self, host: str, port: int, *, jitter_ms: int = 100, duplex: bool = True) -> None:
         self.host = str(host).strip()
@@ -54,20 +76,23 @@ class NetworkAudioClient:
         self.jitter_frames = 0
         self.playout_delay_frames = 0
 
-        self._control_socket: socket.socket | None = None
         self._udp_socket: socket.socket | None = None
         self._provider_udp: tuple[str, int] | None = None
         self._capture_buffer: IndexedAudioBuffer | None = None
         self._stop_event = threading.Event()
-        self._control_send_lock = threading.Lock()
+        self._send_lock = threading.Lock()
+        self._pending_lock = threading.Lock()
+        self._pending: dict[int, _PendingControl] = {}
         self._receiver_thread: threading.Thread | None = None
-        self._control_thread: threading.Thread | None = None
+        self._heartbeat_thread: threading.Thread | None = None
         self._sender_thread: threading.Thread | None = None
         self._playback_queue: queue.Queue[tuple[int, np.ndarray, int]] = queue.Queue(maxsize=64)
         self._send_sequence = 0
         self._pending_remote_input_xrun = False
         self._pending_remote_output_xrun = False
         self._playback_active = False
+        self._last_control_received = 0.0
+        self._closing = False
         self._connected = False
 
     @property
@@ -79,76 +104,139 @@ class NetworkAudioClient:
             return
         if not self.host or not 1 <= self.port <= 65535:
             raise ValueError("invalid network audio endpoint")
-        if self._control_socket is not None or self._udp_socket is not None:
+        if self._udp_socket is not None:
             self.close()
 
+        addresses = socket.getaddrinfo(self.host, self.port, socket.AF_INET, socket.SOCK_DGRAM)
+        if not addresses:
+            raise OSError("remote provider address was not found")
+        provider = (str(addresses[0][4][0]), int(addresses[0][4][1]))
         udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        control_socket: socket.socket | None = None
+        client_nonce = secrets.token_hex(16)
         try:
-            control_socket = socket.create_connection((self.host, self.port), timeout=max(0.1, float(timeout)))
-            control_socket.settimeout(max(0.1, float(timeout)))
-            # Bind UDP only to the interface selected for the TCP route. The
-            # provider sends media back to this address, so listening on every
-            # local interface is unnecessary.
-            udp_socket.bind((str(control_socket.getsockname()[0]), 0))
-            udp_socket.settimeout(0.5)
-            send_control(
-                control_socket,
+            udp_socket.connect(provider)
+            udp_socket.settimeout(min(0.5, max(0.1, float(timeout))))
+            offer_header, offer = self._exchange_before_start(
+                udp_socket,
+                PACKET_CONNECT_REQUEST,
                 {
-                    "type": "hello",
                     "protocol": PROTOCOL_VERSION,
-                    "udp_port": udp_socket.getsockname()[1],
+                    "client_nonce": client_nonce,
                     "duplex": self.duplex,
                 },
+                PACKET_CONNECT_OFFER,
+                session_id=0,
+                timeout=timeout,
             )
-            offer = recv_control(control_socket)
-            if offer.get("type") != "offer" or control_int(offer, "protocol", -1) != PROTOCOL_VERSION:
-                raise ProtocolError(str(offer.get("error", "provider rejected connection")))
-            self._apply_offer(offer)
-            provider_ip = control_socket.getpeername()[0]
-            provider_udp_port = control_int(offer, "udp_port")
-            if not 1 <= provider_udp_port <= 65535:
-                raise ProtocolError("provider UDP port is invalid")
-            self._provider_udp = (provider_ip, provider_udp_port)
+            self._apply_offer(offer_header, offer, client_nonce)
             self._capture_buffer = IndexedAudioBuffer(
                 capacity_frames=max(self.sample_rate * 4, self.block_size * 16),
                 channels=self.input_channels,
             )
-            self._control_socket = control_socket
+            self._exchange_before_start(
+                udp_socket,
+                PACKET_START,
+                {},
+                PACKET_START_ACK,
+                session_id=self.session_id,
+                timeout=timeout,
+            )
+            udp_socket.settimeout(0.2)
+            self._provider_udp = provider
             self._udp_socket = udp_socket
             self._stop_event.clear()
+            self._closing = False
             self._connected = True
             self._playback_queue = queue.Queue(maxsize=64)
             self._send_sequence = 0
             self._pending_remote_input_xrun = False
             self._pending_remote_output_xrun = False
             self._playback_active = False
+            self._last_control_received = time.monotonic()
             self.stats.jitter_frames = self.jitter_frames
             self.stats.set_state("connected")
             self._receiver_thread = threading.Thread(target=self._receive_loop, name="NetworkAudioRx", daemon=True)
             self._sender_thread = threading.Thread(target=self._send_loop, name="NetworkAudioTx", daemon=True)
+            self._heartbeat_thread = threading.Thread(
+                target=self._heartbeat_loop,
+                name="NetworkAudioHeartbeat",
+                daemon=True,
+            )
             self._receiver_thread.start()
             self._sender_thread.start()
-            send_control(control_socket, {"type": "start", "session_id": self.session_id})
+            self._heartbeat_thread.start()
         except Exception:
-            if self._control_socket is None:
-                if control_socket is not None:
-                    control_socket.close()
-                udp_socket.close()
-            else:
-                self.close()
+            if self.session_id:
+                try:
+                    udp_socket.send(
+                        encode_control_datagram(
+                            PACKET_STOP,
+                            {},
+                            session_id=self.session_id,
+                            message_id=secrets.randbits(63) or 1,
+                        )
+                    )
+                except (OSError, ProtocolError):
+                    pass
+            udp_socket.close()
+            self._capture_buffer = None
+            self.session_id = 0
             raise
 
-        assert control_socket is not None
-        control_socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-        control_socket.settimeout(None)
-        self._control_thread = threading.Thread(target=self._control_loop, name="NetworkAudioControl", daemon=True)
-        self._control_thread.start()
+    def _exchange_before_start(
+        self,
+        udp_socket: socket.socket,
+        request_kind: int,
+        message: dict[str, object],
+        expected_kind: int,
+        *,
+        session_id: int,
+        timeout: float,
+    ) -> tuple[dict[str, int], dict[str, object]]:
+        message_id = secrets.randbits(63) or 1
+        packet = encode_control_datagram(
+            request_kind,
+            message,
+            session_id=session_id,
+            message_id=message_id,
+        )
+        deadline = time.monotonic() + max(0.2, float(timeout))
+        wait = 0.2
+        while time.monotonic() < deadline:
+            udp_socket.send(packet)
+            attempt_deadline = min(deadline, time.monotonic() + wait)
+            while time.monotonic() < attempt_deadline:
+                udp_socket.settimeout(max(0.01, attempt_deadline - time.monotonic()))
+                try:
+                    response = udp_socket.recv(2048)
+                except TimeoutError:
+                    break
+                try:
+                    kind = datagram_kind(response)
+                    if kind in (DIRECTION_CAPTURE, DIRECTION_PLAYBACK):
+                        continue
+                    header, payload = decode_control_datagram(response)
+                except ProtocolError:
+                    continue
+                if header["message_id"] != message_id:
+                    continue
+                if request_kind != PACKET_CONNECT_REQUEST and header["session_id"] != session_id:
+                    continue
+                if kind == PACKET_ERROR:
+                    raise ProtocolError(control_str(payload, "error", "provider rejected connection", limit=500))
+                if kind == expected_kind:
+                    return header, payload
+            wait = min(wait * 2.0, 1.0)
+        raise TimeoutError("remote provider did not answer UDP control request")
 
-    def _apply_offer(self, offer: dict[str, object]) -> None:
+    def _apply_offer(self, header: dict[str, int], offer: dict[str, object], client_nonce: str) -> None:
         self.session_id = control_int(offer, "session_id")
-        if not 1 <= self.session_id <= 0xFFFFFFFFFFFFFFFF:
+        if self.session_id != header["session_id"] or not 1 <= self.session_id <= 0xFFFFFFFFFFFFFFFF:
             raise ProtocolError("provider session ID is invalid")
+        if control_int(offer, "protocol", -1) != PROTOCOL_VERSION:
+            raise ProtocolError("provider protocol is unsupported")
+        if control_str(offer, "client_nonce", "", limit=64) != client_nonce:
+            raise ProtocolError("provider returned an invalid client nonce")
         self.sample_rate = control_int(offer, "sample_rate")
         self.block_size = control_int(offer, "block_size")
         self.input_channels = control_int(offer, "input_channels")
@@ -159,9 +247,9 @@ class NetworkAudioClient:
             raise ProtocolError("provider block size is invalid")
         if self.input_channels not in (1, 2) or self.output_channels not in (1, 2):
             raise ProtocolError("provider channel count is unsupported")
-        self.provider_name = str(offer.get("provider_name", "Remote MeasureLab"))[:200]
-        self.input_device_name = str(offer.get("input_device_name", "Remote Input"))[:500]
-        self.output_device_name = str(offer.get("output_device_name", "Remote Output"))[:500]
+        self.provider_name = control_str(offer, "provider_name", "Remote MeasureLab", limit=200)
+        self.input_device_name = control_str(offer, "input_device_name", "Remote Input", limit=500)
+        self.output_device_name = control_str(offer, "output_device_name", "Remote Output", limit=500)
         self.duplex = self.duplex and control_bool(offer, "duplex", False)
         self.jitter_frames = max(
             self.block_size * 2,
@@ -176,36 +264,60 @@ class NetworkAudioClient:
             return
         while not self._stop_event.is_set():
             try:
-                packet, address = udp_socket.recvfrom(2048)
+                packet = udp_socket.recv(2048)
             except TimeoutError:
                 continue
             except OSError as exc:
                 if not self._stop_event.is_set():
                     self._fail(f"audio receive failed: {exc}")
                 return
-            if self._provider_udp is None or address != self._provider_udp:
-                continue
             try:
-                header, data = decode_audio_packet(packet)
-                if header["session_id"] != self.session_id or header["direction"] != DIRECTION_CAPTURE:
-                    continue
-                result = capture_buffer.put(header["sample_index"], data)
-                if result == "duplicate":
-                    self.stats.record_duplicate()
-                elif result == "late":
-                    self.stats.record_late()
-                else:
-                    self.stats.record_rx(len(packet))
-                    self.stats.set_buffered_frames(capture_buffer.buffered_frames())
-                flags = header["flags"]
-                if flags & FLAG_INPUT_XRUN:
-                    self.stats.record_remote_xrun(input_xrun=True)
-                    self._pending_remote_input_xrun = True
-                if flags & FLAG_OUTPUT_XRUN:
-                    self.stats.record_remote_xrun(output_xrun=True)
-                    self._pending_remote_output_xrun = True
+                kind = datagram_kind(packet)
+                if kind == DIRECTION_CAPTURE:
+                    self._accept_capture_audio(packet, capture_buffer)
+                elif kind != DIRECTION_PLAYBACK:
+                    header, message = decode_control_datagram(packet)
+                    self._accept_control(header, message)
             except (ProtocolError, ValueError) as exc:
                 self.stats.record_corrupt(str(exc))
+
+    def _accept_capture_audio(self, packet: bytes, capture_buffer: IndexedAudioBuffer) -> None:
+        header, data = decode_audio_packet(packet)
+        if header["session_id"] != self.session_id or header["direction"] != DIRECTION_CAPTURE:
+            return
+        result = capture_buffer.put(header["sample_index"], data)
+        if result == "duplicate":
+            self.stats.record_duplicate()
+        elif result == "late":
+            self.stats.record_late()
+        else:
+            self.stats.record_rx(len(packet))
+            self.stats.set_buffered_frames(capture_buffer.buffered_frames())
+        flags = header["flags"]
+        if flags & FLAG_INPUT_XRUN:
+            self.stats.record_remote_xrun(input_xrun=True)
+            self._pending_remote_input_xrun = True
+        if flags & FLAG_OUTPUT_XRUN:
+            self.stats.record_remote_xrun(output_xrun=True)
+            self._pending_remote_output_xrun = True
+
+    def _accept_control(self, header: dict[str, int], message: dict[str, object]) -> None:
+        if header["session_id"] != self.session_id:
+            return
+        self._last_control_received = time.monotonic()
+        with self._pending_lock:
+            pending = self._pending.get(header["message_id"])
+            if pending is not None and (header["kind"] == pending.expected_kind or header["kind"] == PACKET_ERROR):
+                pending.header = header
+                pending.message = message
+                if header["kind"] == PACKET_ERROR:
+                    pending.error = control_str(message, "error", "remote provider error", limit=500)
+                pending.event.set()
+                return
+        if header["kind"] == PACKET_ERROR:
+            self._fail(control_str(message, "error", "remote provider error", limit=500))
+        elif header["kind"] == PACKET_STOPPED and not self._closing:
+            self._fail(control_str(message, "reason", "remote provider stopped the session", limit=500))
 
     def _send_loop(self) -> None:
         while not self._stop_event.is_set():
@@ -214,8 +326,7 @@ class NetworkAudioClient:
             except queue.Empty:
                 continue
             udp_socket = self._udp_socket
-            provider = self._provider_udp
-            if udp_socket is None or provider is None:
+            if udp_socket is None:
                 continue
             try:
                 packets = packetize_audio(
@@ -228,53 +339,72 @@ class NetworkAudioClient:
                 )
                 self._send_sequence += len(packets)
                 for packet in packets:
-                    udp_socket.sendto(packet, provider)
+                    self._send_packet(packet)
                     self.stats.record_tx(len(packet))
             except (OSError, ProtocolError) as exc:
                 if not self._stop_event.is_set():
                     self._fail(f"audio send failed: {exc}")
                 return
 
-    def _control_loop(self) -> None:
-        control_socket = self._control_socket
-        if control_socket is None:
-            return
-        last_received = time.monotonic()
-        while not self._stop_event.is_set():
+    def _heartbeat_loop(self) -> None:
+        while not self._stop_event.wait(CONTROL_HEARTBEAT_INTERVAL):
+            if time.monotonic() - self._last_control_received >= CONTROL_HEARTBEAT_TIMEOUT:
+                self._fail("control heartbeat timed out")
+                return
             try:
-                readable, _, _ = select.select([control_socket], [], [], CONTROL_HEARTBEAT_INTERVAL)
-                if not readable:
-                    if time.monotonic() - last_received >= CONTROL_HEARTBEAT_TIMEOUT:
-                        self._fail("control heartbeat timed out")
-                        return
-                    self._send_control(control_socket, {"type": "ping"})
-                    continue
-                message = recv_control(control_socket)
-                last_received = time.monotonic()
-            except (ConnectionError, OSError, ProtocolError, ValueError) as exc:
+                self._send_control_once(PACKET_KEEPALIVE, {})
+            except (OSError, ProtocolError) as exc:
                 if not self._stop_event.is_set():
                     self._fail(f"control connection lost: {exc}")
                 return
-            if message.get("type") == "ping":
-                try:
-                    self._send_control(control_socket, {"type": "pong"})
-                except (OSError, ProtocolError) as exc:
-                    if not self._stop_event.is_set():
-                        self._fail(f"control connection lost: {exc}")
-                    return
-                continue
-            if message.get("type") == "pong":
-                continue
-            if message.get("type") == "error":
-                self._fail(str(message.get("message", "remote provider error")))
-                return
-            if message.get("type") == "stopped":
-                self._fail("remote provider stopped the session")
-                return
 
-    def _send_control(self, control_socket: socket.socket, message: dict[str, object]) -> None:
-        with self._control_send_lock:
-            send_control(control_socket, message)
+    def _send_control_once(self, kind: int, message: dict[str, object]) -> None:
+        packet = encode_control_datagram(
+            kind,
+            message,
+            session_id=self.session_id,
+            message_id=secrets.randbits(63) or 1,
+        )
+        self._send_packet(packet)
+
+    def _request_control(
+        self,
+        kind: int,
+        message: dict[str, object],
+        expected_kind: int,
+        *,
+        timeout: float = 3.0,
+    ) -> tuple[dict[str, int], dict[str, object]]:
+        if self._udp_socket is None or not self.connected:
+            raise ConnectionError("network audio client is disconnected")
+        message_id = secrets.randbits(63) or 1
+        pending = _PendingControl(expected_kind)
+        with self._pending_lock:
+            self._pending[message_id] = pending
+        packet = encode_control_datagram(kind, message, session_id=self.session_id, message_id=message_id)
+        deadline = time.monotonic() + max(0.2, timeout)
+        wait = 0.2
+        try:
+            while time.monotonic() < deadline and not self._stop_event.is_set():
+                self._send_packet(packet)
+                if pending.event.wait(min(wait, max(0.0, deadline - time.monotonic()))):
+                    if pending.error:
+                        raise ProtocolError(pending.error)
+                    if pending.header is None or pending.message is None:
+                        raise ConnectionError("empty control response")
+                    return pending.header, pending.message
+                wait = min(wait * 2.0, 1.0)
+            raise TimeoutError("remote provider did not acknowledge UDP control request")
+        finally:
+            with self._pending_lock:
+                self._pending.pop(message_id, None)
+
+    def _send_packet(self, packet: bytes) -> None:
+        udp_socket = self._udp_socket
+        if udp_socket is None:
+            raise OSError("client UDP socket is unavailable")
+        with self._send_lock:
+            udp_socket.send(packet)
 
     def enqueue_playback(self, sample_index: int, block: np.ndarray, flags: int = 0) -> None:
         if not self.duplex or not self.connected:
@@ -285,17 +415,20 @@ class NetworkAudioClient:
             self.stats.record_queue_overflow(len(block))
 
     def set_playback_active(self, active: bool) -> None:
-        """Tell the provider whether playback packets are currently expected."""
+        """Reliably tell the provider whether playback packets are expected."""
         active = bool(active and self.duplex)
         if active == self._playback_active:
             return
-        control_socket = self._control_socket
-        if control_socket is None or not self.connected:
+        if not self.connected:
             self._playback_active = False
             return
         try:
-            self._send_control(control_socket, {"type": "playback_state", "active": active})
-        except (OSError, ProtocolError) as exc:
+            self._request_control(
+                PACKET_PLAYBACK_STATE,
+                {"active": active},
+                PACKET_CONTROL_ACK,
+            )
+        except (ConnectionError, OSError, ProtocolError, TimeoutError) as exc:
             self._fail(f"control connection lost: {exc}")
             return
         self._playback_active = active
@@ -338,48 +471,46 @@ class NetworkAudioClient:
         return data, status
 
     def _fail(self, message: str) -> None:
+        if self._stop_event.is_set():
+            return
         self.logger.warning(message)
         self.stats.set_state("error", message)
         self._connected = False
         self._stop_event.set()
         self._playback_active = False
-        control_socket = self._control_socket
-        if control_socket is not None:
-            try:
-                control_socket.shutdown(socket.SHUT_RDWR)
-            except OSError:
-                pass
+        with self._pending_lock:
+            for pending in self._pending.values():
+                pending.error = message
+                pending.event.set()
 
     def close(self) -> None:
-        control_socket = self._control_socket
-        send_stop = control_socket is not None and self.connected
-        # Publish the local terminal state before the peer can answer "stopped"
-        # so the control thread does not turn an intentional close into an
-        # error transition.
+        send_stop = self.connected
+        self._closing = True
+        if send_stop:
+            try:
+                self._request_control(PACKET_STOP, {}, PACKET_STOPPED, timeout=1.5)
+            except (ConnectionError, OSError, ProtocolError, TimeoutError):
+                pass
         self._connected = False
         self._stop_event.set()
-        if control_socket is not None and send_stop:
+        udp_socket = self._udp_socket
+        self._udp_socket = None
+        if udp_socket is not None:
             try:
-                self._send_control(control_socket, {"type": "stop", "session_id": self.session_id})
-            except (OSError, ProtocolError):
+                udp_socket.close()
+            except OSError:
                 pass
-        for sock in (self._control_socket, self._udp_socket):
-            if sock is not None:
-                try:
-                    if sock is self._control_socket:
-                        sock.shutdown(socket.SHUT_RDWR)
-                except OSError:
-                    pass
-                try:
-                    sock.close()
-                except OSError:
-                    pass
         current = threading.current_thread()
-        for thread in (self._receiver_thread, self._sender_thread, self._control_thread):
+        for thread in (self._receiver_thread, self._sender_thread, self._heartbeat_thread):
             if thread is not None and thread is not current:
                 thread.join(timeout=1.0)
-        self._control_socket = None
-        self._udp_socket = None
+        self._receiver_thread = None
+        self._sender_thread = None
+        self._heartbeat_thread = None
+        with self._pending_lock:
+            self._pending.clear()
+        self._provider_udp = None
+        self._closing = False
         self.stats.set_state("disconnected")
 
     def status_snapshot(self) -> dict[str, object]:
@@ -392,6 +523,7 @@ class NetworkAudioClient:
                 "duplex": self.duplex,
                 "jitter_ms": self.jitter_ms,
                 "playout_delay_frames": self.playout_delay_frames,
+                "protocol": PROTOCOL_VERSION,
             }
         )
         return snapshot
@@ -440,15 +572,8 @@ class NetworkClientStream:
             return
         self.client.stats.set_state("streaming")
         interval = self.blocksize / self.samplerate
-        # Match PortAudio's reusable callback-buffer behavior and avoid one
-        # allocation for every network audio block.
         outdata = np.empty((self.blocksize, self.channels[1]), dtype=np.float32)
         while self.active and not self._stop_event.is_set() and self.client.connected:
-            # Remote capture paces this thread, so read_capture() normally
-            # spends almost one block interval asleep.  Wall-clock timing would
-            # therefore report ~100% even when the thread did almost no work.
-            # Thread CPU time excludes that wait while still accounting for
-            # packet assembly, callbacks, and playback queueing.
             started = time.thread_time()
             capture = self.client.read_capture(expected, self.blocksize, cancel_event=self._stop_event)
             if capture is None or not self.active or self._stop_event.is_set():

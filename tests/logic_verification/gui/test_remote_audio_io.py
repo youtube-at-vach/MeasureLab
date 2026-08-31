@@ -1,7 +1,9 @@
+import time
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from src.core.localization import tr
+from src.core.network_audio import DiscoveredProvider
 from src.gui.widgets.remote_audio_io import RemoteAudioIOWidget
 
 
@@ -16,6 +18,7 @@ class _Config:
             "jitter_ms": 120,
             "duplex": True,
             "bind_host": "0.0.0.0",
+            "discoverable": True,
         }
 
     def set_network_audio_config(self, value):
@@ -38,6 +41,7 @@ def test_remote_audio_widget_loads_endpoint_and_starts_safe(qtbot):
     assert widget.client_port_spin.value() == 41000
     assert widget.jitter_spin.value() == 120
     assert widget.duplex_check.isChecked()
+    assert widget.discoverable_check.isChecked()
     assert not widget.allow_output_check.isChecked()
     assert not widget.disconnect_button.isEnabled()
     assert not widget.stop_provider_button.isEnabled()
@@ -71,6 +75,7 @@ def test_remote_audio_widget_keeps_controls_stable_when_status_grows(qtbot):
             "client_address": None,
             "duplex": False,
         },
+        stop=lambda: None,
     )
     with patch.object(widget, "_lan_ipv4_addresses", return_value=("192.168.1.10",)):
         widget.refresh_status()
@@ -96,6 +101,7 @@ def test_remote_audio_widget_reserves_room_for_wrapped_provider_status(qtbot):
             "client_address": None,
             "duplex": False,
         },
+        stop=lambda: None,
     )
 
     with patch.object(
@@ -125,7 +131,7 @@ def test_remote_audio_widget_displays_whether_integrity_loss_is_still_increasing
         "buffered_frames": 512,
         "local_queue_overflows": 0,
     }
-    widget.client = SimpleNamespace(status_snapshot=lambda: snapshot, connected=True)
+    widget.client = SimpleNamespace(status_snapshot=lambda: snapshot, connected=True, close=lambda: None)
 
     widget.refresh_status()
     assert widget.integrity_label.text() == tr("No data loss ({0})").format("streaming")
@@ -162,6 +168,7 @@ def test_remote_audio_widget_saves_preferences(qtbot):
         "jitter_ms": 200,
         "duplex": False,
         "bind_host": "0.0.0.0",
+        "discoverable": True,
     }
 
 
@@ -174,6 +181,44 @@ def test_remote_audio_widget_keeps_client_and_provider_ports_in_sync(qtbot):
 
     widget.provider_port_spin.setValue(44000)
     assert widget.client_port_spin.value() == 44000
+
+
+def test_remote_audio_widget_connects_to_discovered_provider_without_showing_address(qtbot):
+    widget = RemoteAudioIOWidget(_engine(), _Config())
+    qtbot.addWidget(widget)
+    found = DiscoveredProvider(
+        instance_id="provider-1",
+        host="192.168.1.25",
+        port=41000,
+        provider_name="Studio MeasureLab",
+        input_device_name="USB Input",
+        output_device_name="USB Output",
+        sample_rate=48000,
+        block_size=256,
+        input_channels=2,
+        output_channels=2,
+        duplex=True,
+        busy=False,
+        last_seen=time.monotonic(),
+    )
+    widget.discovery = SimpleNamespace(
+        port=41000,
+        snapshot=lambda: (found,),
+        stop=lambda: None,
+    )
+    widget._discovery_signature = None
+
+    widget.refresh_status()
+
+    assert widget.discovery_list.count() == 1
+    item = widget.discovery_list.item(0)
+    assert "Studio MeasureLab" in item.text()
+    assert "192.168.1.25" not in item.text()
+    assert "41000" not in item.text()
+    widget.discovery_list.setCurrentRow(0)
+    with patch.object(widget, "_begin_connect") as begin_connect:
+        widget.connect_selected_provider()
+    begin_connect.assert_called_once_with("192.168.1.25", 41000, "Studio MeasureLab")
 
 
 def test_remote_audio_widget_shows_current_firewall_port_on_windows(qtbot):
@@ -211,6 +256,7 @@ def test_remote_audio_widget_provider_waiting_is_not_reported_as_healthy_connect
             "client_address": None,
             "duplex": False,
         },
+        stop=lambda: None,
     )
 
     with patch.object(
@@ -240,6 +286,7 @@ def test_remote_audio_widget_reports_when_no_lan_address_is_available(qtbot):
             "client_address": None,
             "duplex": False,
         },
+        stop=lambda: None,
     )
 
     with patch.object(widget, "_lan_ipv4_addresses", return_value=()):

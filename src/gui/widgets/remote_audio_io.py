@@ -17,6 +17,8 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QMessageBox,
     QPushButton,
     QSizePolicy,
@@ -30,7 +32,7 @@ from PyQt6.QtWidgets import (
 from src.core.audio_engine import AudioEngine
 from src.core.config_manager import ConfigManager
 from src.core.localization import tr
-from src.core.network_audio import NetworkAudioClient, NetworkAudioProvider
+from src.core.network_audio import DiscoveredProvider, NetworkAudioClient, NetworkAudioDiscovery, NetworkAudioProvider
 
 
 class _RemoteAudioSignals(QObject):
@@ -49,16 +51,21 @@ class RemoteAudioIOWidget(QWidget):
         self.client: NetworkAudioClient | None = None
         self.provider: NetworkAudioProvider | None = None
         self._connecting = False
+        self._connecting_target_label = ""
         self._connect_cancel = threading.Event()
         self._shutting_down = False
         self._last_error: str | None = None
         self._integrity_source: object | None = None
         self._last_damage_events: int | None = None
+        self.discovery: NetworkAudioDiscovery | None = None
+        self._discovery_started = False
+        self._discovery_signature: tuple[object, ...] | None = None
         self._signals = _RemoteAudioSignals(self)
         self._signals.connected.connect(self._on_client_connected)
         self._signals.failed.connect(self._on_client_failed)
         self._build_ui()
         self._load_config()
+        self.discovery = self._new_discovery()
         self._timer = QTimer(self)
         self._timer.timeout.connect(self.refresh_status)
         self._timer.start(500)
@@ -66,7 +73,7 @@ class RemoteAudioIOWidget(QWidget):
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setSpacing(12)
+        layout.setSpacing(8)
         heading = QLabel(tr("Remote Audio I/O"))
         heading_font = heading.font()
         heading_font.setBold(True)
@@ -148,12 +155,30 @@ class RemoteAudioIOWidget(QWidget):
         page_layout = QVBoxLayout(page)
         page_layout.setSpacing(10)
 
-        summary = QLabel(tr("Enter the remote computer's address and connect."))
+        summary = QLabel(tr("Select an available MeasureLab computer or connect by address."))
         summary.setWordWrap(True)
         page_layout.addWidget(summary)
 
+        discovery_group = QGroupBox(tr("Available MeasureLab computers"))
+        discovery_layout = QVBoxLayout(discovery_group)
+        discovery_actions = QHBoxLayout()
+        self.discovery_status_label = QLabel(tr("Searching this LAN..."))
+        self.discovery_status_label.setWordWrap(True)
+        discovery_actions.addWidget(self.discovery_status_label, 1)
+        self.discovered_connect_button = QPushButton(tr("Connect selected"))
+        self.discovered_connect_button.clicked.connect(self.connect_selected_provider)
+        discovery_actions.addWidget(self.discovered_connect_button)
+        discovery_layout.addLayout(discovery_actions)
+        self.discovery_list = QListWidget()
+        self.discovery_list.setAccessibleName(tr("Available MeasureLab computers"))
+        self.discovery_list.setMaximumHeight(120)
+        self.discovery_list.currentItemChanged.connect(self._on_discovery_selection_changed)
+        self.discovery_list.itemDoubleClicked.connect(lambda _item: self.connect_selected_provider())
+        discovery_layout.addWidget(self.discovery_list)
+        page_layout.addWidget(discovery_group)
+
         settings_layout = QHBoxLayout()
-        connection_group = QGroupBox(tr("Configuration"))
+        connection_group = QGroupBox(tr("Manual connection"))
         form = QFormLayout(connection_group)
         self.host_edit = QLineEdit()
         self.host_edit.setPlaceholderText("192.168.1.10")
@@ -164,8 +189,8 @@ class RemoteAudioIOWidget(QWidget):
         self.client_port_spin = QSpinBox()
         self.client_port_spin.setRange(1, 65535)
         self.client_port_spin.valueChanged.connect(self._sync_provider_port)
-        self.client_port_spin.setAccessibleName(tr("Control port:"))
-        port_label = QLabel(tr("Control port:"))
+        self.client_port_spin.setAccessibleName(tr("UDP port:"))
+        port_label = QLabel(tr("UDP port:"))
         port_label.setBuddy(self.client_port_spin)
         form.addRow(port_label, self.client_port_spin)
         settings_layout.addWidget(connection_group, 3)
@@ -185,7 +210,7 @@ class RemoteAudioIOWidget(QWidget):
         page_layout.addLayout(settings_layout)
 
         buttons_layout = QHBoxLayout()
-        self.connect_button = QPushButton(tr("Connect"))
+        self.connect_button = QPushButton(tr("Connect by address"))
         self.disconnect_button = QPushButton(tr("Disconnect"))
         self.connect_button.clicked.connect(self.connect_client)
         self.disconnect_button.clicked.connect(self.disconnect_client)
@@ -231,10 +256,14 @@ class RemoteAudioIOWidget(QWidget):
         self.provider_port_spin.setRange(1, 65535)
         self.provider_port_spin.valueChanged.connect(self._sync_client_port)
         self.provider_port_spin.valueChanged.connect(self._update_windows_firewall_notice)
-        self.provider_port_spin.setAccessibleName(tr("Control port:"))
-        port_label = QLabel(tr("Control port:"))
+        self.provider_port_spin.setAccessibleName(tr("UDP port:"))
+        port_label = QLabel(tr("UDP port:"))
         port_label.setBuddy(self.provider_port_spin)
         form.addRow(port_label, self.provider_port_spin)
+        self.discoverable_check = QCheckBox(tr("Allow automatic discovery"))
+        self.discoverable_check.setToolTip(tr("Other MeasureLab computers can find this provider automatically."))
+        self.discoverable_check.toggled.connect(self._on_discoverable_changed)
+        form.addRow(self.discoverable_check)
         settings_layout.addWidget(access_group, 3)
 
         playback_group = QGroupBox(tr("Playback"))
@@ -284,6 +313,9 @@ class RemoteAudioIOWidget(QWidget):
     def _sync_provider_port(self, value: int) -> None:
         if self.provider_port_spin.value() != value:
             self.provider_port_spin.setValue(value)
+        discovery = getattr(self, "discovery", None)
+        if discovery is not None and discovery.port != value:
+            self._restart_discovery()
 
     def _sync_client_port(self, value: int) -> None:
         if self.client_port_spin.value() != value:
@@ -293,8 +325,7 @@ class RemoteAudioIOWidget(QWidget):
         self.windows_firewall_notice.setText(
             "⚠ "
             + tr(
-                "On Windows, allow inbound TCP and UDP connections to port {0} in Windows Defender Firewall "
-                "before sharing."
+                "On Windows, allow inbound UDP connections to port {0} in Windows Defender Firewall before sharing."
             ).format(port)
         )
 
@@ -317,6 +348,113 @@ class RemoteAudioIOWidget(QWidget):
                     addresses.add(value)
         return tuple(sorted(addresses, key=ipaddress.IPv4Address))
 
+    @staticmethod
+    def _lan_ipv4_broadcast_addresses() -> tuple[str, ...]:
+        """Return directed IPv4 broadcast targets for active discovery."""
+        addresses: set[str] = set()
+        for interface in QNetworkInterface.allInterfaces():
+            flags = interface.flags()
+            if not flags & QNetworkInterface.InterfaceFlag.IsUp:
+                continue
+            if flags & QNetworkInterface.InterfaceFlag.IsLoopBack:
+                continue
+            for entry in interface.addressEntries():
+                address = entry.ip()
+                if address.protocol() != QAbstractSocket.NetworkLayerProtocol.IPv4Protocol:
+                    continue
+                broadcast = entry.broadcast().toString()
+                if broadcast and broadcast != "0.0.0.0":
+                    addresses.add(broadcast)
+        return tuple(sorted(addresses, key=ipaddress.IPv4Address)) or ("255.255.255.255",)
+
+    def _new_discovery(self) -> NetworkAudioDiscovery:
+        return NetworkAudioDiscovery(
+            self.client_port_spin.value(),
+            broadcast_addresses=self._lan_ipv4_broadcast_addresses(),
+        )
+
+    def _start_discovery(self) -> None:
+        if self._discovery_started or self._shutting_down:
+            return
+        self._discovery_started = True
+        try:
+            if self.discovery is not None:
+                self.discovery.start()
+        except (OSError, ValueError) as exc:
+            self.logger.warning("Remote audio discovery could not start: %s", exc)
+
+    def _restart_discovery(self) -> None:
+        old = self.discovery
+        if old is not None:
+            old.stop()
+        self.discovery = self._new_discovery()
+        self._discovery_signature = None
+        if self._discovery_started and not self._shutting_down:
+            try:
+                self.discovery.start()
+            except (OSError, ValueError) as exc:
+                self.logger.warning("Remote audio discovery could not restart: %s", exc)
+
+    def _refresh_discovery_list(self) -> None:
+        discovery = self.discovery
+        providers = discovery.snapshot() if discovery is not None else ()
+        signature: tuple[object, ...] = tuple(
+            (
+                provider.instance_id,
+                provider.host,
+                provider.port,
+                provider.provider_name,
+                provider.sample_rate,
+                provider.input_channels,
+                provider.output_channels,
+                provider.busy,
+            )
+            for provider in providers
+        )
+        if signature == self._discovery_signature:
+            return
+        current = self.discovery_list.currentItem()
+        selected_key = None
+        if current is not None:
+            selected = current.data(Qt.ItemDataRole.UserRole)
+            if isinstance(selected, DiscoveredProvider):
+                selected_key = selected.instance_id
+        self.discovery_list.clear()
+        selected_row = -1
+        for row, provider in enumerate(providers):
+            text = tr("{0}\n{1} Hz, {2} input / {3} output").format(
+                provider.provider_name,
+                provider.sample_rate,
+                provider.input_channels,
+                provider.output_channels,
+            )
+            if provider.busy:
+                text += " — " + tr("busy")
+            item = QListWidgetItem(text)
+            item.setData(Qt.ItemDataRole.UserRole, provider)
+            item.setToolTip(
+                tr("Input: {0}\nOutput: {1}").format(
+                    provider.input_device_name,
+                    provider.output_device_name,
+                )
+            )
+            self.discovery_list.addItem(item)
+            if selected_key == provider.instance_id:
+                selected_row = row
+        if selected_row >= 0:
+            self.discovery_list.setCurrentRow(selected_row)
+        self.discovery_status_label.setText(
+            tr("No available MeasureLab computers found.") if not providers else tr("Select a computer to connect.")
+        )
+        self._discovery_signature = signature
+
+    def _on_discovery_selection_changed(self, _current=None, _previous=None) -> None:
+        self._refresh_control_states()
+
+    def showEvent(self, event) -> None:
+        self._start_discovery()
+        super().showEvent(event)
+
     def _load_config(self) -> None:
         config = self.config_manager.get_network_audio_config()
         self.host_edit.setText(str(config.get("host", "")))
@@ -326,6 +464,7 @@ class RemoteAudioIOWidget(QWidget):
         self.jitter_spin.setValue(int(config.get("jitter_ms", 100)))
         self.duplex_check.setChecked(bool(config.get("duplex", True)))
         self.bind_edit.setText(str(config.get("bind_host", "0.0.0.0")))
+        self.discoverable_check.setChecked(bool(config.get("discoverable", True)))
 
     def _save_config(self) -> None:
         self.config_manager.set_network_audio_config(
@@ -335,10 +474,25 @@ class RemoteAudioIOWidget(QWidget):
                 "jitter_ms": self.jitter_spin.value(),
                 "duplex": self.duplex_check.isChecked(),
                 "bind_host": self.bind_edit.text().strip() or "0.0.0.0",
+                "discoverable": self.discoverable_check.isChecked(),
             }
         )
 
     def connect_client(self) -> None:
+        host = self.host_edit.text().strip()
+        if not host:
+            QMessageBox.warning(self, tr("Remote Audio I/O"), tr("Enter a remote host name or IP address."))
+            return
+        self._begin_connect(host, self.client_port_spin.value(), f"{host}:{self.client_port_spin.value()}")
+
+    def connect_selected_provider(self) -> None:
+        item = self.discovery_list.currentItem()
+        provider = item.data(Qt.ItemDataRole.UserRole) if item is not None else None
+        if not isinstance(provider, DiscoveredProvider) or provider.busy:
+            return
+        self._begin_connect(provider.host, provider.port, provider.provider_name)
+
+    def _begin_connect(self, host: str, port: int, target_label: str) -> None:
         if self._connecting or self.client is not None or getattr(self.audio_engine, "network_mode", False):
             return
         if self.provider is not None and self.provider.running:
@@ -351,15 +505,11 @@ class RemoteAudioIOWidget(QWidget):
                 tr("Stop active audio measurements before connecting remote audio."),
             )
             return
-        host = self.host_edit.text().strip()
-        if not host:
-            QMessageBox.warning(self, tr("Remote Audio I/O"), tr("Enter a remote host name or IP address."))
-            return
         self._save_config()
         self._last_error = None
         self._connecting = True
+        self._connecting_target_label = str(target_label)
         self._connect_cancel.clear()
-        port = self.client_port_spin.value()
         jitter_ms = self.jitter_spin.value()
         duplex = self.duplex_check.isChecked()
         self.refresh_status()
@@ -387,6 +537,7 @@ class RemoteAudioIOWidget(QWidget):
 
     def _on_client_connected(self, client: NetworkAudioClient) -> None:
         self._connecting = False
+        self._connecting_target_label = ""
         if self._shutting_down or self._connect_cancel.is_set():
             client.close()
             if not self._shutting_down:
@@ -415,6 +566,7 @@ class RemoteAudioIOWidget(QWidget):
 
     def _on_client_failed(self, message: str) -> None:
         self._connecting = False
+        self._connecting_target_label = ""
         if self._shutting_down:
             return
         if self._connect_cancel.is_set():
@@ -428,6 +580,7 @@ class RemoteAudioIOWidget(QWidget):
         if self._connecting:
             self._connect_cancel.set()
             self._connecting = False
+            self._connecting_target_label = ""
             self._last_error = None
             self.refresh_status()
             return
@@ -465,6 +618,7 @@ class RemoteAudioIOWidget(QWidget):
             self.bind_edit.text().strip() or "0.0.0.0",
             self.provider_port_spin.value(),
             allow_output=self.allow_output_check.isChecked(),
+            discoverable=self.discoverable_check.isChecked(),
         )
         try:
             provider.start()
@@ -481,6 +635,7 @@ class RemoteAudioIOWidget(QWidget):
         if self.provider is not None:
             self.provider.stop()
         self.provider = None
+        self._restart_discovery()
         self._last_error = None
         self.provider_details_label.setText(tr("Provider is stopped."))
         self.refresh_status()
@@ -488,6 +643,11 @@ class RemoteAudioIOWidget(QWidget):
     def _on_allow_output_changed(self, enabled: bool) -> None:
         if self.provider is not None:
             self.provider.set_allow_output(enabled)
+
+    def _on_discoverable_changed(self, enabled: bool) -> None:
+        if self.provider is not None:
+            self.provider.set_discoverable(enabled)
+            self._save_config()
 
     def _refresh_control_states(self) -> None:
         network_mode = bool(getattr(self.audio_engine, "network_mode", False))
@@ -500,8 +660,17 @@ class RemoteAudioIOWidget(QWidget):
         self.client_port_spin.setEnabled(client_settings_enabled)
         self.jitter_spin.setEnabled(client_settings_enabled)
         self.duplex_check.setEnabled(client_settings_enabled)
+        self.discovery_list.setEnabled(client_settings_enabled)
 
         self.connect_button.setEnabled(client_settings_enabled and not measurements_active)
+        selected_item = self.discovery_list.currentItem()
+        selected_provider = selected_item.data(Qt.ItemDataRole.UserRole) if selected_item is not None else None
+        self.discovered_connect_button.setEnabled(
+            client_settings_enabled
+            and not measurements_active
+            and isinstance(selected_provider, DiscoveredProvider)
+            and not selected_provider.busy
+        )
         self.disconnect_button.setText(tr("Cancel") if self._connecting else tr("Disconnect"))
         self.disconnect_button.setEnabled(self._connecting or (client_active and not measurements_active))
         if measurements_active and client_active:
@@ -512,6 +681,7 @@ class RemoteAudioIOWidget(QWidget):
         provider_settings_enabled = not provider_active and not client_active and not self._connecting
         self.bind_edit.setEnabled(provider_settings_enabled)
         self.provider_port_spin.setEnabled(provider_settings_enabled)
+        self.discoverable_check.setEnabled(provider_settings_enabled or provider_active)
         self.allow_output_check.setEnabled(provider_settings_enabled or provider_active)
         self.provider_button.setEnabled(provider_settings_enabled and not measurements_active)
         self.stop_provider_button.setEnabled(provider_active)
@@ -531,6 +701,7 @@ class RemoteAudioIOWidget(QWidget):
             self.provider_button.setToolTip("")
 
     def refresh_status(self) -> None:
+        self._refresh_discovery_list()
         snapshot: dict[str, object] | None = None
         source: object | None = None
         if self.client is not None:
@@ -590,7 +761,7 @@ class RemoteAudioIOWidget(QWidget):
         if snapshot is None:
             if self._connecting:
                 self.activity_label.setText(tr("Connecting..."))
-                self.activity_details_label.setText(f"{self.host_edit.text().strip()}:{self.client_port_spin.value()}")
+                self.activity_details_label.setText(self._connecting_target_label)
                 self._set_status_icon(self.activity_icon, QStyle.StandardPixmap.SP_BrowserReload)
             elif self._last_error:
                 self.activity_label.setText(tr("Connection failed"))
@@ -601,7 +772,9 @@ class RemoteAudioIOWidget(QWidget):
             else:
                 self.activity_label.setText(tr("Disconnected"))
                 if self.tabs.currentIndex() == 0:
-                    self.activity_details_label.setText(tr("Enter the remote computer's address and connect."))
+                    self.activity_details_label.setText(
+                        tr("Select an available MeasureLab computer or connect by address.")
+                    )
                 else:
                     self.activity_details_label.setText(tr("Choose a listen address and start sharing."))
                 self._set_status_icon(self.activity_icon, QStyle.StandardPixmap.SP_MessageBoxInformation)
@@ -664,6 +837,9 @@ class RemoteAudioIOWidget(QWidget):
         self._shutting_down = True
         self._connect_cancel.set()
         self._timer.stop()
+        if self.discovery is not None:
+            self.discovery.stop()
+        self._discovery_started = False
         if self.provider is not None:
             self.provider.stop()
             self.provider = None

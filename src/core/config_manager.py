@@ -42,6 +42,7 @@ class NetworkAudioConfigDict(TypedDict, total=False):
     jitter_ms: int
     duplex: bool
     bind_host: str
+    discoverable: bool
 
 
 # Default configuration used for initialization and validation
@@ -84,6 +85,7 @@ DEFAULT_CONFIG = {
         "jitter_ms": 100,
         "duplex": True,
         "bind_host": "0.0.0.0",
+        "discoverable": True,
     },
 }
 
@@ -375,6 +377,9 @@ class ConfigManager:
         duplex = loaded.get("duplex")
         if isinstance(duplex, bool):
             target["duplex"] = duplex
+        discoverable = loaded.get("discoverable")
+        if isinstance(discoverable, bool):
+            target["discoverable"] = discoverable
 
     def _merge_with_defaults(self, loaded_config):
         if not isinstance(loaded_config, dict):

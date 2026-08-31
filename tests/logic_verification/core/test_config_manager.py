@@ -137,6 +137,7 @@ class TestConfigManager(unittest.TestCase):
                 "jitter_ms": 250,
                 "duplex": False,
                 "bind_host": "127.0.0.1",
+                "discoverable": False,
             }
         )
 
@@ -146,6 +147,7 @@ class TestConfigManager(unittest.TestCase):
             "jitter_ms": 250,
             "duplex": False,
             "bind_host": "127.0.0.1",
+            "discoverable": False,
         }
 
         cm.set_network_audio_config({"port": 0, "jitter_ms": 1})
