@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from src.core.localization import tr
+from src.core.windows_firewall import FirewallAssessment, FirewallOperationResult, FirewallState
 from src.gui.widgets.remote_audio_io import RemoteAudioIOWidget
 
 
@@ -257,3 +258,75 @@ def test_remote_audio_widget_ignores_connection_that_finishes_after_cancel(qtbot
     client.close.assert_called_once_with()
     engine.configure_network_client.assert_not_called()
     assert widget.client is None
+
+
+def test_remote_audio_widget_checks_firewall_only_when_provider_is_started(qtbot):
+    widget = RemoteAudioIOWidget(_engine(), _Config())
+    qtbot.addWidget(widget)
+    manager = MagicMock()
+    manager.supported = True
+    manager.requires_permission.return_value = True
+    manager.assess.return_value = FirewallAssessment(FirewallState.READY)
+    widget.firewall_manager = manager
+
+    def mark_started(_settings):
+        widget._configuring_firewall = False
+        widget._pending_provider_start = None
+
+    with patch.object(widget, "_start_provider_now", side_effect=mark_started) as start_provider:
+        assert manager.assess.call_count == 0
+        widget.start_provider()
+        qtbot.waitUntil(lambda: start_provider.call_count == 1)
+
+    manager.assess.assert_called_once_with("0.0.0.0", 41000)
+    assert not widget._configuring_firewall
+
+
+def test_remote_audio_widget_does_not_start_after_uac_is_canceled(qtbot):
+    widget = RemoteAudioIOWidget(_engine(), _Config())
+    qtbot.addWidget(widget)
+    widget._configuring_firewall = True
+    widget._pending_provider_start = ("0.0.0.0", 41000, False)
+
+    with (
+        patch.object(widget, "_start_provider_now") as start_provider,
+        patch("src.gui.widgets.remote_audio_io.QMessageBox.information") as information,
+    ):
+        widget._on_firewall_configured(
+            (FirewallOperationResult(success=False, canceled=True), None),
+        )
+
+    start_provider.assert_not_called()
+    information.assert_called_once()
+    assert not widget._configuring_firewall
+    assert widget._pending_provider_start is None
+
+
+def test_remote_audio_widget_refuses_to_open_provider_on_public_network(qtbot):
+    widget = RemoteAudioIOWidget(_engine(), _Config())
+    qtbot.addWidget(widget)
+    widget._configuring_firewall = True
+    widget._pending_provider_start = ("0.0.0.0", 41000, False)
+
+    with (
+        patch.object(widget, "_start_provider_now") as start_provider,
+        patch("src.gui.widgets.remote_audio_io.QMessageBox.warning") as warning,
+    ):
+        widget._on_firewall_assessed(FirewallAssessment(FirewallState.PUBLIC_NETWORK))
+
+    start_provider.assert_not_called()
+    warning.assert_called_once()
+    assert widget._pending_provider_start is None
+
+
+def test_remote_audio_widget_disables_network_controls_during_firewall_check(qtbot):
+    widget = RemoteAudioIOWidget(_engine(), _Config())
+    qtbot.addWidget(widget)
+    widget._configuring_firewall = True
+
+    widget.refresh_status()
+
+    assert widget.activity_label.text() == tr("Checking Windows Firewall...")
+    assert not widget.connect_button.isEnabled()
+    assert not widget.provider_button.isEnabled()
+    assert not widget.bind_edit.isEnabled()

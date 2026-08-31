@@ -30,11 +30,19 @@ from src.core.audio_engine import AudioEngine
 from src.core.config_manager import ConfigManager
 from src.core.localization import tr
 from src.core.network_audio import NetworkAudioClient, NetworkAudioProvider
+from src.core.windows_firewall import (
+    FirewallAssessment,
+    FirewallOperationResult,
+    FirewallState,
+    WindowsFirewallManager,
+)
 
 
 class _RemoteAudioSignals(QObject):
     connected = pyqtSignal(object)
     failed = pyqtSignal(str)
+    firewall_assessed = pyqtSignal(object)
+    firewall_configured = pyqtSignal(object)
 
 
 class RemoteAudioIOWidget(QWidget):
@@ -47,7 +55,10 @@ class RemoteAudioIOWidget(QWidget):
         self.logger = logging.getLogger(__name__)
         self.client: NetworkAudioClient | None = None
         self.provider: NetworkAudioProvider | None = None
+        self.firewall_manager = WindowsFirewallManager()
         self._connecting = False
+        self._configuring_firewall = False
+        self._pending_provider_start: tuple[str, int, bool] | None = None
         self._connect_cancel = threading.Event()
         self._shutting_down = False
         self._last_error: str | None = None
@@ -56,6 +67,8 @@ class RemoteAudioIOWidget(QWidget):
         self._signals = _RemoteAudioSignals(self)
         self._signals.connected.connect(self._on_client_connected)
         self._signals.failed.connect(self._on_client_failed)
+        self._signals.firewall_assessed.connect(self._on_firewall_assessed)
+        self._signals.firewall_configured.connect(self._on_firewall_configured)
         self._build_ui()
         self._load_config()
         self._timer = QTimer(self)
@@ -436,18 +449,43 @@ class RemoteAudioIOWidget(QWidget):
         self.refresh_status()
 
     def start_provider(self) -> None:
-        if self.provider is not None and self.provider.running:
+        if self._configuring_firewall or (self.provider is not None and self.provider.running):
             return
         if getattr(self.audio_engine, "network_mode", False):
             QMessageBox.warning(self, tr("Remote Audio I/O"), tr("Disconnect remote audio before providing local I/O."))
             return
         self._save_config()
         self._last_error = None
-        provider = NetworkAudioProvider(
-            self.audio_engine,
+        settings = (
             self.bind_edit.text().strip() or "0.0.0.0",
             self.provider_port_spin.value(),
-            allow_output=self.allow_output_check.isChecked(),
+            self.allow_output_check.isChecked(),
+        )
+        self._pending_provider_start = settings
+        if not self.firewall_manager.supported or not self.firewall_manager.requires_permission(settings[0]):
+            self._start_provider_now(settings)
+            return
+
+        self._configuring_firewall = True
+        self.refresh_status()
+
+        def worker() -> None:
+            assessment = self.firewall_manager.assess(settings[0], settings[1])
+            self._signals.firewall_assessed.emit(assessment)
+
+        threading.Thread(target=worker, name="WindowsFirewallCheck", daemon=True).start()
+
+    def _start_provider_now(self, settings: tuple[str, int, bool]) -> None:
+        if self._shutting_down:
+            return
+        bind_host, port, allow_output = settings
+        self._configuring_firewall = False
+        self._pending_provider_start = None
+        provider = NetworkAudioProvider(
+            self.audio_engine,
+            bind_host,
+            port,
+            allow_output=allow_output,
         )
         try:
             provider.start()
@@ -458,6 +496,158 @@ class RemoteAudioIOWidget(QWidget):
             QMessageBox.critical(self, tr("Remote Audio I/O"), tr("Failed to start provider: {0}").format(exc))
             return
         self.provider = provider
+        self.refresh_status()
+
+    def _on_firewall_assessed(self, assessment: FirewallAssessment) -> None:
+        settings = self._pending_provider_start
+        if self._shutting_down or settings is None:
+            self._configuring_firewall = False
+            return
+        if assessment.state in (FirewallState.NOT_REQUIRED, FirewallState.READY):
+            self._start_provider_now(settings)
+            return
+        if assessment.state == FirewallState.PUBLIC_NETWORK:
+            self._configuring_firewall = False
+            self._pending_provider_start = None
+            self.refresh_status()
+            QMessageBox.warning(
+                self,
+                tr("Windows Firewall permission"),
+                tr(
+                    "This network is classified as Public. MeasureLab does not open Remote Audio Provider ports "
+                    "on Public networks. Change the Windows network profile to Private and try again."
+                ),
+            )
+            return
+        if assessment.state == FirewallState.MANAGED_POLICY:
+            self._show_managed_firewall_message()
+            return
+        if assessment.state == FirewallState.UNAVAILABLE:
+            self._offer_start_without_firewall_check(assessment.detail)
+            return
+
+        dialog = QMessageBox(self)
+        dialog.setIcon(QMessageBox.Icon.Question)
+        dialog.setWindowTitle(tr("Windows Firewall permission"))
+        dialog.setText(tr("Remote Audio Provider needs permission to receive audio from another computer."))
+        information = tr(
+            "MeasureLab will add inbound TCP and UDP rules for port {0}. The rules apply only to Private and "
+            "Domain networks and devices on the local subnet. Windows will ask for administrator approval."
+        ).format(settings[1])
+        if assessment.state == FirewallState.CONFLICTING_BLOCK:
+            information += "\n\n" + tr(
+                "An existing local Windows Firewall block rule for this MeasureLab executable will be removed."
+            )
+        dialog.setInformativeText(information)
+        allow_button = dialog.addButton(tr("Allow and start"), QMessageBox.ButtonRole.AcceptRole)
+        without_button = dialog.addButton(tr("Start without permission"), QMessageBox.ButtonRole.DestructiveRole)
+        dialog.addButton(QMessageBox.StandardButton.Cancel)
+        dialog.setDefaultButton(allow_button)
+        dialog.exec()
+
+        clicked = dialog.clickedButton()
+        if clicked is allow_button:
+            parent_window = int(self.window().winId())
+
+            def worker() -> None:
+                result = self.firewall_manager.ensure_rules(
+                    settings[0],
+                    settings[1],
+                    parent_window=parent_window,
+                )
+                post_assessment = None
+                if result.success:
+                    post_assessment = self.firewall_manager.assess(settings[0], settings[1])
+                self._signals.firewall_configured.emit((result, post_assessment))
+
+            threading.Thread(target=worker, name="WindowsFirewallConfigure", daemon=True).start()
+            return
+        if clicked is without_button:
+            self._start_provider_now(settings)
+            return
+        self._configuring_firewall = False
+        self._pending_provider_start = None
+        self.refresh_status()
+
+    def _on_firewall_configured(
+        self,
+        payload: tuple[FirewallOperationResult, FirewallAssessment | None],
+    ) -> None:
+        result, assessment = payload
+        settings = self._pending_provider_start
+        if self._shutting_down or settings is None:
+            self._configuring_firewall = False
+            return
+        if result.success and assessment is not None and assessment.state == FirewallState.READY:
+            self._start_provider_now(settings)
+            return
+
+        self._configuring_firewall = False
+        self._pending_provider_start = None
+        self.refresh_status()
+        if result.canceled:
+            QMessageBox.information(
+                self,
+                tr("Windows Firewall permission"),
+                tr("Administrator approval was canceled. Remote Audio Provider was not started."),
+            )
+            return
+        if assessment is not None and assessment.state == FirewallState.PUBLIC_NETWORK:
+            QMessageBox.warning(
+                self,
+                tr("Windows Firewall permission"),
+                tr(
+                    "The rules were added, but this network is Public. Change the Windows network profile to "
+                    "Private before starting Remote Audio Provider."
+                ),
+            )
+            return
+        if assessment is not None and assessment.state == FirewallState.MANAGED_POLICY:
+            self._show_managed_firewall_message()
+            return
+        detail = result.detail or (assessment.detail if assessment is not None else "")
+        QMessageBox.critical(
+            self,
+            tr("Windows Firewall permission"),
+            tr(
+                "Windows Firewall permission could not be configured. Remote Audio Provider was not started.\n{0}"
+            ).format(detail),
+        )
+
+    def _show_managed_firewall_message(self) -> None:
+        self._configuring_firewall = False
+        self._pending_provider_start = None
+        self.refresh_status()
+        QMessageBox.warning(
+            self,
+            tr("Windows Firewall permission"),
+            tr(
+                "The MeasureLab firewall rules are not effective. This device may be managed by your organization. "
+                "Ask an administrator to allow inbound TCP and UDP traffic for the selected port from the local subnet."
+            ),
+        )
+
+    def _offer_start_without_firewall_check(self, detail: str) -> None:
+        settings = self._pending_provider_start
+        if settings is None:
+            return
+        dialog = QMessageBox(self)
+        dialog.setIcon(QMessageBox.Icon.Warning)
+        dialog.setWindowTitle(tr("Windows Firewall permission"))
+        dialog.setText(tr("MeasureLab could not check Windows Firewall."))
+        dialog.setInformativeText(
+            tr(
+                "You can start the Provider without changing the firewall, but remote computers may not connect.\n{0}"
+            ).format(detail)
+        )
+        start_button = dialog.addButton(tr("Start without permission"), QMessageBox.ButtonRole.DestructiveRole)
+        dialog.addButton(QMessageBox.StandardButton.Cancel)
+        dialog.exec()
+        if dialog.clickedButton() is start_button:
+            self._start_provider_now(settings)
+            return
+        self._configuring_firewall = False
+        self._pending_provider_start = None
         self.refresh_status()
 
     def stop_provider(self) -> None:
@@ -477,8 +667,9 @@ class RemoteAudioIOWidget(QWidget):
         client_active = self.client is not None or network_mode
         provider_active = self.provider is not None and self.provider.running
         measurements_active = bool(self.audio_engine.get_status().get("active_clients", 0))
+        busy = self._configuring_firewall
 
-        client_settings_enabled = not self._connecting and not client_active and not provider_active
+        client_settings_enabled = not self._connecting and not busy and not client_active and not provider_active
         self.host_edit.setEnabled(client_settings_enabled)
         self.client_port_spin.setEnabled(client_settings_enabled)
         self.jitter_spin.setEnabled(client_settings_enabled)
@@ -492,7 +683,7 @@ class RemoteAudioIOWidget(QWidget):
         else:
             self.disconnect_button.setToolTip("")
 
-        provider_settings_enabled = not provider_active and not client_active and not self._connecting
+        provider_settings_enabled = not provider_active and not client_active and not self._connecting and not busy
         self.bind_edit.setEnabled(provider_settings_enabled)
         self.provider_port_spin.setEnabled(provider_settings_enabled)
         self.allow_output_check.setEnabled(provider_settings_enabled or provider_active)
@@ -571,7 +762,13 @@ class RemoteAudioIOWidget(QWidget):
                 self._set_status_icon(self.activity_icon, QStyle.StandardPixmap.SP_MessageBoxInformation)
 
         if snapshot is None:
-            if self._connecting:
+            if self._configuring_firewall:
+                self.activity_label.setText(tr("Checking Windows Firewall..."))
+                self.activity_details_label.setText(
+                    tr("Checking or updating the permissions required by Remote Audio Provider.")
+                )
+                self._set_status_icon(self.activity_icon, QStyle.StandardPixmap.SP_BrowserReload)
+            elif self._connecting:
                 self.activity_label.setText(tr("Connecting..."))
                 self.activity_details_label.setText(f"{self.host_edit.text().strip()}:{self.client_port_spin.value()}")
                 self._set_status_icon(self.activity_icon, QStyle.StandardPixmap.SP_BrowserReload)
@@ -645,6 +842,7 @@ class RemoteAudioIOWidget(QWidget):
 
     def shutdown(self) -> None:
         self._shutting_down = True
+        self._pending_provider_start = None
         self._connect_cancel.set()
         self._timer.stop()
         if self.provider is not None:

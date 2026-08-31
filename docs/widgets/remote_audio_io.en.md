@@ -15,6 +15,10 @@ Sample position and measurement integrity take priority over concealment. Missin
 5. Enable **Allow remote playback** only when remote output is required.
 6. Select **Start Provider**.
 
+On Windows, receiving a connection from another computer requires Windows Firewall permission. MeasureLab checks the current permission when the Provider is first started and again after the executable location or port changes. When necessary, an explanation dialog is followed by Windows administrator approval. This check and approval are not performed during ordinary MeasureLab startup or when using Remote Audio Client.
+
+The automatically created inbound rules are restricted to TCP and UDP on the selected port, the current `MeasureLab.exe`, Private or Domain networks, and sources on the local subnet. The rules do not apply to Public networks. On an organization-managed device that disables local rules, provide the displayed requirements to the administrator.
+
 While the provider is running, other measurement modules on the same computer cannot acquire the AudioEngine. This prevents unintended local output from contaminating a remote measurement.
 
 ## Connecting from the main computer
@@ -45,7 +49,7 @@ Do not treat a measurement interval showing `DATA LOSS DETECTED` as complete dat
 
 ## Transport and safety
 
-- TCP carries control messages and UDP carries uncompressed float32 PCM.
+- TCP carries control messages and UDP carries uncompressed float32 PCM. Both use the same port number selected in the interface.
 - The control channel uses an application heartbeat so an unresponsive client cannot reserve the provider indefinitely.
 - UDP packets include a session ID, sequence number, absolute sample position, and CRC.
 - The remote audio device clock is the sample-time authority for the session.
