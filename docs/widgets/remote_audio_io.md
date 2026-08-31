@@ -12,6 +12,7 @@ Remote Audio I/O は、同一LAN上の別のMeasureLab PCに接続されたオ�
 2. Remote Audio I/Oを開きます。
 3. **Provide Local I/O**タブを選択します。
 4. 待受アドレスと制御ポートを指定します。すべてのIPv4 LANインターフェースで待ち受ける場合は`0.0.0.0`を使用します。
+   Windowsでは、共有を開始する前にWindows Defender ファイアウォールの受信規則で、選択したポートへのTCPおよびUDP接続を許可してください（既定: `40100`）。
 5. リモート出力も使用する場合に限り、**Allow remote playback**を有効にします。
 6. **Start Provider**を押します。
 
@@ -45,7 +46,7 @@ Connection Integrityには次の情報が表示されます。
 
 ## 通信と安全性
 
-- 制御にはTCP、非圧縮float32 PCMにはUDPを使用します。
+- 制御にはTCP、非圧縮float32 PCMにはUDPを使用し、Providerは両方で同じポート番号を待ち受けます。
 - 制御チャネルはハートビートを使用し、応答不能になったクライアントがProviderを占有し続けることを防ぎます。
 - UDPパケットにはセッションID、シーケンス番号、絶対サンプル位置、CRCが含まれます。
 - リモートPCのオーディオクロックがセッションのサンプル時間基準になります。

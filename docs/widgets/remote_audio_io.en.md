@@ -12,6 +12,7 @@ Sample position and measurement integrity take priority over concealment. Missin
 2. Open Remote Audio I/O.
 3. Select **Provide Local I/O**.
 4. Set the listen address and control port. Use `0.0.0.0` to listen on every IPv4 LAN interface.
+   On Windows, allow inbound TCP and UDP connections to the selected port in Windows Defender Firewall before sharing (default: `40100`).
 5. Enable **Allow remote playback** only when remote output is required.
 6. Select **Start Provider**.
 
@@ -45,7 +46,7 @@ Do not treat a measurement interval showing `DATA LOSS DETECTED` as complete dat
 
 ## Transport and safety
 
-- TCP carries control messages and UDP carries uncompressed float32 PCM.
+- TCP carries control messages and UDP carries uncompressed float32 PCM. The provider listens on the same port number for both protocols.
 - The control channel uses an application heartbeat so an unresponsive client cannot reserve the provider indefinitely.
 - UDP packets include a session ID, sequence number, absolute sample position, and CRC.
 - The remote audio device clock is the sample-time authority for the session.

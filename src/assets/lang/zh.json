@@ -1449,6 +1449,7 @@
     "Offset: {0}": "偏移: {0}",
     "On Cycles:": "开启周期:",
     "On cycles": "开启周期",
+    "On Windows, allow inbound TCP and UDP connections to port {0} in Windows Defender Firewall before sharing.": "在 Windows 上开始共享前，请在 Windows Defender 防火墙中允许端口 {0} 的入站 TCP 和 UDP 连接。",
     "One channel below threshold": "一个声道低于阈值",
     "Open Audio": "打开音频",
     "Open Audio File": "打开音频文件",

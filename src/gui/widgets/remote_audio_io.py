@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ipaddress
 import logging
+import sys
 import threading
 
 from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSignal
@@ -212,6 +213,11 @@ class RemoteAudioIOWidget(QWidget):
         summary.setWordWrap(True)
         page_layout.addWidget(summary)
 
+        self.windows_firewall_notice = QLabel()
+        self.windows_firewall_notice.setWordWrap(True)
+        self.windows_firewall_notice.setVisible(sys.platform == "win32")
+        page_layout.addWidget(self.windows_firewall_notice)
+
         settings_layout = QHBoxLayout()
         access_group = QGroupBox(tr("Configuration"))
         form = QFormLayout(access_group)
@@ -224,6 +230,7 @@ class RemoteAudioIOWidget(QWidget):
         self.provider_port_spin = QSpinBox()
         self.provider_port_spin.setRange(1, 65535)
         self.provider_port_spin.valueChanged.connect(self._sync_client_port)
+        self.provider_port_spin.valueChanged.connect(self._update_windows_firewall_notice)
         self.provider_port_spin.setAccessibleName(tr("Control port:"))
         port_label = QLabel(tr("Control port:"))
         port_label.setBuddy(self.provider_port_spin)
@@ -262,6 +269,7 @@ class RemoteAudioIOWidget(QWidget):
         details_layout.addWidget(self.provider_details_label)
         page_layout.addWidget(details_group)
         page_layout.addStretch(1)
+        self._update_windows_firewall_notice(self.provider_port_spin.value())
         return page
 
     def _set_status_icon(self, label: QLabel, icon: QStyle.StandardPixmap) -> None:
@@ -280,6 +288,15 @@ class RemoteAudioIOWidget(QWidget):
     def _sync_client_port(self, value: int) -> None:
         if self.client_port_spin.value() != value:
             self.client_port_spin.setValue(value)
+
+    def _update_windows_firewall_notice(self, port: int) -> None:
+        self.windows_firewall_notice.setText(
+            "⚠ "
+            + tr(
+                "On Windows, allow inbound TCP and UDP connections to port {0} in Windows Defender Firewall "
+                "before sharing."
+            ).format(port)
+        )
 
     @staticmethod
     def _lan_ipv4_addresses() -> tuple[str, ...]:

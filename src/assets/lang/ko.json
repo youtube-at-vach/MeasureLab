@@ -1449,6 +1449,7 @@
     "Offset: {0}": "오프셋: {0}",
     "On Cycles:": "온 사이클:",
     "On cycles": "온 사이클",
+    "On Windows, allow inbound TCP and UDP connections to port {0} in Windows Defender Firewall before sharing.": "Windows에서 공유를 시작하기 전에 Windows Defender 방화벽에서 포트 {0}에 대한 인바운드 TCP 및 UDP 연결을 허용하세요.",
     "One channel below threshold": "한 채널이 임계값 미만",
     "Open Audio": "오디오 열기",
     "Open Audio File": "오디오 파일 열기",

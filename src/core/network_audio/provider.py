@@ -102,8 +102,10 @@ class NetworkAudioProvider:
             tcp_socket.bind((self.bind_host, self.port))
             tcp_socket.listen(1)
             tcp_socket.settimeout(0.5)
-            # Audio UDP must use the same user-selected LAN scope.
-            udp_socket.bind((self.bind_host, 0))
+            # TCP and UDP use the same numeric port in separate protocol
+            # namespaces, keeping the provider's inbound ports predictable.
+            effective_port = int(tcp_socket.getsockname()[1])
+            udp_socket.bind((self.bind_host, effective_port))
             udp_socket.settimeout(0.5)
             self._input_device_name = self._device_name(self.audio_engine.input_device, True)
             self._output_device_name = self._device_name(self.audio_engine.output_device, False)
