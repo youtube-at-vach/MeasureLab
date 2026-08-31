@@ -176,6 +176,29 @@ def test_remote_audio_widget_keeps_client_and_provider_ports_in_sync(qtbot):
     assert widget.client_port_spin.value() == 44000
 
 
+def test_remote_audio_widget_shows_current_firewall_port_on_windows(qtbot):
+    with patch("src.gui.widgets.remote_audio_io.sys.platform", "win32"):
+        widget = RemoteAudioIOWidget(_engine(), _Config())
+    qtbot.addWidget(widget)
+
+    assert not widget.windows_firewall_notice.isHidden()
+    assert "41000" in widget.windows_firewall_notice.text()
+    assert "Windows Defender Firewall" in widget.windows_firewall_notice.text()
+
+    widget.provider_port_spin.setValue(42000)
+
+    assert "42000" in widget.windows_firewall_notice.text()
+    assert "41000" not in widget.windows_firewall_notice.text()
+
+
+def test_remote_audio_widget_hides_firewall_notice_outside_windows(qtbot):
+    with patch("src.gui.widgets.remote_audio_io.sys.platform", "linux"):
+        widget = RemoteAudioIOWidget(_engine(), _Config())
+    qtbot.addWidget(widget)
+
+    assert widget.windows_firewall_notice.isHidden()
+
+
 def test_remote_audio_widget_provider_waiting_is_not_reported_as_healthy_connection(qtbot):
     widget = RemoteAudioIOWidget(_engine(), _Config())
     qtbot.addWidget(widget)

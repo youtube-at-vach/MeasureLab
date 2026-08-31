@@ -1449,6 +1449,7 @@
     "Offset: {0}": "オフセット: {0}",
     "On Cycles:": "オンサイクル:",
     "On cycles": "オンサイクル",
+    "On Windows, allow inbound TCP and UDP connections to port {0} in Windows Defender Firewall before sharing.": "Windowsで共有を開始する前に、Windows Defender ファイアウォールの受信規則でポート{0}へのTCPおよびUDP接続を許可してください。",
     "One channel below threshold": "片チャンネルがしきい値未満",
     "Open Audio": "音声を開く",
     "Open Audio File": "オーディオファイルを開く",

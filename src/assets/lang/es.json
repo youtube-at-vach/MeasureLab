@@ -1449,6 +1449,7 @@
     "Offset: {0}": "Desplazamiento: {0}",
     "On Cycles:": "Ciclos activos:",
     "On cycles": "Ciclos en encendido",
+    "On Windows, allow inbound TCP and UDP connections to port {0} in Windows Defender Firewall before sharing.": "En Windows, permita las conexiones TCP y UDP entrantes al puerto {0} en Firewall de Windows Defender antes de compartir.",
     "One channel below threshold": "Un canal por debajo del umbral",
     "Open Audio": "Abrir audio",
     "Open Audio File": "Abrir archivo de audio",
