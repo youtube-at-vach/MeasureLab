@@ -101,13 +101,15 @@ def decode_audio_packet(packet: bytes) -> tuple[dict[str, int], np.ndarray]:
         raise ProtocolError("invalid audio direction")
     if frames <= 0 or frames > PACKET_FRAMES or channels <= 0 or channels > MAX_CHANNELS:
         raise ProtocolError("invalid audio format")
-    payload = packet[_HEADER.size :]
+    payload = memoryview(packet)[_HEADER.size :]
     expected_size = frames * channels * np.dtype("<f4").itemsize
     if len(payload) != expected_size:
         raise ProtocolError("audio payload length mismatch")
     if (zlib.crc32(payload) & 0xFFFFFFFF) != crc:
         raise ProtocolError("audio payload checksum mismatch")
-    data = np.frombuffer(payload, dtype="<f4").reshape(frames, channels).copy()
+    # recvfrom() returns immutable bytes. Keep a read-only view until the
+    # indexed receive buffer performs the one required copy into its ring.
+    data = np.frombuffer(packet, dtype="<f4", count=frames * channels, offset=_HEADER.size).reshape(frames, channels)
     return (
         {
             "direction": direction,

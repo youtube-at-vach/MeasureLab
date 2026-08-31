@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 import threading
 import time
 
@@ -16,14 +17,20 @@ class IndexedAudioBuffer:
             raise ValueError("buffer dimensions must be positive")
         self.capacity_frames = int(capacity_frames)
         self.channels = int(channels)
-        self._packets: dict[int, np.ndarray] = {}
+        # Audio and validity live in fixed-size rings. The previous
+        # dictionary representation copied every packet into a separate
+        # ndarray and scanned every buffered packet on each callback read.
+        # Ring positions are unambiguous inside the retained absolute-sample
+        # window, so no per-sample absolute index array is required.
+        self._data = np.empty((self.capacity_frames, self.channels), dtype=np.float32)
+        self._valid = np.zeros(self.capacity_frames, dtype=bool)
         self._highest_end = 0
         self._consumed_until = 0
         self._condition = threading.Condition()
 
     def clear(self) -> None:
         with self._condition:
-            self._packets.clear()
+            self._valid.fill(False)
             self._highest_end = 0
             self._consumed_until = 0
             self._condition.notify_all()
@@ -33,24 +40,32 @@ class IndexedAudioBuffer:
         array = np.asarray(data, dtype=np.float32)
         if array.ndim != 2 or array.shape[1] != self.channels or len(array) <= 0:
             raise ValueError("packet shape does not match indexed buffer")
+        if len(array) > self.capacity_frames:
+            raise ValueError("packet exceeds indexed buffer capacity")
+        sample_end = sample_index + len(array)
         with self._condition:
-            if sample_index < self._consumed_until:
+            retained_start = max(self._consumed_until, self._highest_end - self.capacity_frames)
+            if sample_index < retained_start:
                 return "late"
-            if sample_index in self._packets:
+
+            extends_buffer = sample_end > self._highest_end
+            if extends_buffer:
+                # The packet overwrites its own ring range. Only an absolute
+                # gap before it needs invalidation to prevent samples from an
+                # earlier wrap being mistaken for new audio.
+                if sample_index > self._highest_end:
+                    self._invalidate_range(self._highest_end, sample_index)
+                self._highest_end = sample_end
+            elif self._range_is_valid(sample_index, len(array)):
                 return "duplicate"
-            self._packets[sample_index] = array.copy()
-            self._highest_end = max(self._highest_end, sample_index + len(array))
-            cutoff = max(self._consumed_until, self._highest_end - self.capacity_frames)
-            for start in tuple(self._packets):
-                if start + len(self._packets[start]) <= cutoff:
-                    del self._packets[start]
+            self._write_range(sample_index, array)
             self._condition.notify_all()
             return "accepted"
 
     def first_sample(self, timeout: float, cancel_event: threading.Event | None = None) -> int | None:
         deadline = time.monotonic() + max(0.0, float(timeout))
         with self._condition:
-            while not self._packets:
+            while not np.any(self._valid):
                 if cancel_event is not None and cancel_event.is_set():
                     return None
                 remaining = deadline - time.monotonic()
@@ -59,7 +74,7 @@ class IndexedAudioBuffer:
                 self._condition.wait(min(remaining, 0.05) if cancel_event is not None else remaining)
             if cancel_event is not None and cancel_event.is_set():
                 return None
-            return min(self._packets)
+            return self._first_valid_sample()
 
     def stream_start_sample(
         self,
@@ -106,32 +121,101 @@ class IndexedAudioBuffer:
         valid = np.zeros(frames, dtype=bool)
         end = sample_index + frames
         with self._condition:
-            for start, packet in tuple(self._packets.items()):
-                packet_end = start + len(packet)
-                overlap_start = max(start, sample_index)
-                overlap_end = min(packet_end, end)
-                if overlap_start < overlap_end:
-                    dst_start = overlap_start - sample_index
-                    src_start = overlap_start - start
-                    count = overlap_end - overlap_start
-                    result[dst_start : dst_start + count] = packet[src_start : src_start + count]
-                    valid[dst_start : dst_start + count] = True
-                if packet_end <= end:
-                    del self._packets[start]
-            self._consumed_until = max(self._consumed_until, end)
+            retained_start = max(self._consumed_until, self._highest_end - self.capacity_frames)
+            overlap_start = max(sample_index, retained_start)
+            overlap_end = min(end, self._highest_end)
+            if overlap_start < overlap_end:
+                self._copy_range(
+                    overlap_start,
+                    overlap_end - overlap_start,
+                    result,
+                    valid,
+                    overlap_start - sample_index,
+                )
 
-        missing: list[tuple[int, int]] = []
-        position = 0
-        while position < frames:
-            if valid[position]:
-                position += 1
-                continue
-            start = position
-            while position < frames and not valid[position]:
-                position += 1
-            missing.append((sample_index + start, position - start))
+            previous_consumed = self._consumed_until
+            self._consumed_until = max(self._consumed_until, end)
+            invalidate_start = max(previous_consumed, self._highest_end - self.capacity_frames)
+            invalidate_end = min(self._consumed_until, self._highest_end)
+            if invalidate_start < invalidate_end:
+                self._invalidate_range(invalidate_start, invalidate_end)
+
+        missing_mask = ~valid
+        if not np.any(missing_mask):
+            return result, []
+        transitions = np.flatnonzero(np.diff(np.pad(missing_mask, 1)))
+        missing = [(sample_index + int(start), int(stop - start)) for start, stop in transitions.reshape(-1, 2)]
         return result, missing
 
     def buffered_frames(self) -> int:
         with self._condition:
             return max(0, self._highest_end - self._consumed_until)
+
+    def _ring_segments(self, sample_index: int, frames: int) -> Iterator[tuple[slice, int, int]]:
+        ring_start = sample_index % self.capacity_frames
+        first_frames = min(frames, self.capacity_frames - ring_start)
+        yield slice(ring_start, ring_start + first_frames), 0, first_frames
+        if first_frames < frames:
+            yield slice(0, frames - first_frames), first_frames, frames
+
+    def _invalidate_range(self, sample_start: int, sample_end: int) -> None:
+        frames = max(0, sample_end - sample_start)
+        if frames >= self.capacity_frames:
+            self._valid.fill(False)
+            return
+        ring_start = sample_start % self.capacity_frames
+        first_frames = min(frames, self.capacity_frames - ring_start)
+        self._valid[ring_start : ring_start + first_frames] = False
+        if first_frames < frames:
+            self._valid[: frames - first_frames] = False
+
+    def _range_is_valid(self, sample_index: int, frames: int) -> bool:
+        ring_start = sample_index % self.capacity_frames
+        first_frames = min(frames, self.capacity_frames - ring_start)
+        if not np.all(self._valid[ring_start : ring_start + first_frames]):
+            return False
+        return first_frames == frames or bool(np.all(self._valid[: frames - first_frames]))
+
+    def _write_range(self, sample_index: int, data: np.ndarray) -> None:
+        frames = len(data)
+        ring_start = sample_index % self.capacity_frames
+        first_frames = min(frames, self.capacity_frames - ring_start)
+        self._data[ring_start : ring_start + first_frames] = data[:first_frames]
+        self._valid[ring_start : ring_start + first_frames] = True
+        if first_frames < frames:
+            remaining = frames - first_frames
+            self._data[:remaining] = data[first_frames:]
+            self._valid[:remaining] = True
+
+    def _copy_range(
+        self,
+        sample_index: int,
+        frames: int,
+        result: np.ndarray,
+        valid: np.ndarray,
+        result_start: int,
+    ) -> None:
+        ring_start = sample_index % self.capacity_frames
+        first_frames = min(frames, self.capacity_frames - ring_start)
+        destination = slice(result_start, result_start + first_frames)
+        ring_slice = slice(ring_start, ring_start + first_frames)
+        ring_valid = self._valid[ring_slice]
+        result[destination] = self._data[ring_slice]
+        result[destination][~ring_valid] = 0
+        valid[destination] = ring_valid
+        if first_frames < frames:
+            remaining = frames - first_frames
+            destination = slice(result_start + first_frames, result_start + frames)
+            ring_valid = self._valid[:remaining]
+            result[destination] = self._data[:remaining]
+            result[destination][~ring_valid] = 0
+            valid[destination] = ring_valid
+
+    def _first_valid_sample(self) -> int:
+        retained_start = max(self._consumed_until, self._highest_end - self.capacity_frames)
+        retained_frames = self._highest_end - retained_start
+        for ring_slice, source_start, _source_end in self._ring_segments(retained_start, retained_frames):
+            valid_positions = np.flatnonzero(self._valid[ring_slice])
+            if len(valid_positions):
+                return retained_start + source_start + int(valid_positions[0])
+        raise RuntimeError("indexed buffer validity state is inconsistent")

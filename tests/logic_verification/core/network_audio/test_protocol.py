@@ -37,6 +37,8 @@ def test_audio_packet_round_trip_is_float32_bit_exact():
     }
     assert decoded.dtype == np.float32
     assert np.array_equal(decoded.view(np.uint32), data.view(np.uint32))
+    assert not decoded.flags.owndata
+    assert not decoded.flags.writeable
 
 
 def test_packetizer_preserves_absolute_sample_positions():
