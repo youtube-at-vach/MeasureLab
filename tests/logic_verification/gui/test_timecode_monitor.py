@@ -2,8 +2,12 @@ import pytest
 import sys
 from unittest.mock import MagicMock
 
-# Mock numpy if needed for restricted environments
-if "numpy" not in sys.modules:
+# Mock numpy only when it genuinely cannot be imported.  Checking sys.modules
+# alone makes this test replace an installed NumPy when collection order has
+# not imported it yet, contaminating every subsequently collected test.
+try:
+    import numpy  # noqa: F401
+except ImportError:
     sys.modules["numpy"] = MagicMock()
 
 from src.gui.widgets.timecode_monitor import TimecodeMonitor, TimecodeMonitorWidget

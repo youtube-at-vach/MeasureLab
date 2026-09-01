@@ -549,7 +549,7 @@ class NetworkClientStream:
         self.latency = (input_latency, output_latency)
         self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
-        self._time_origin = time.monotonic()
+        self._sample_time_origin: float | None = None
 
     def start(self) -> None:
         if self.active:
@@ -558,10 +558,30 @@ class NetworkClientStream:
             raise RuntimeError("network audio client is disconnected")
         self.active = True
         self._stop_event.clear()
+        self._sample_time_origin = None
         self.client.stats.set_state("priming")
         self.client.set_playback_active(True)
         self._thread = threading.Thread(target=self._run, name="NetworkAudioCallback", daemon=True)
         self._thread.start()
+
+    def _time_info_for_sample(self, sample_index: int) -> NetworkStreamTime:
+        """Map remote sample positions onto one stable local monotonic timebase."""
+        # read_capture() deliberately keeps the first sample of each callback
+        # one callback block plus the configured jitter buffer behind the live
+        # remote sample position.  Treating that sample as ``currentTime``
+        # silently reports zero input latency to timing-sensitive instruments.
+        current_sample = int(sample_index) + self.blocksize + self.client.jitter_frames
+        if self._sample_time_origin is None:
+            self._sample_time_origin = time.monotonic() - current_sample / self.samplerate
+
+        input_time = self._sample_time_origin + int(sample_index) / self.samplerate
+        return NetworkStreamTime(
+            inputBufferAdcTime=input_time,
+            currentTime=self._sample_time_origin + current_sample / self.samplerate,
+            outputBufferDacTime=(
+                self._sample_time_origin + (int(sample_index) + self.client.playout_delay_frames) / self.samplerate
+            ),
+        )
 
     def _run(self) -> None:
         expected = self.client.first_capture_sample(timeout=5.0, cancel_event=self._stop_event)
@@ -580,12 +600,7 @@ class NetworkClientStream:
                 break
             indata, status = capture
             outdata.fill(0)
-            current_time = self._time_origin + expected / self.samplerate
-            time_info = NetworkStreamTime(
-                inputBufferAdcTime=current_time,
-                outputBufferDacTime=current_time + self.client.playout_delay_frames / self.samplerate,
-                currentTime=current_time,
-            )
+            time_info = self._time_info_for_sample(expected)
             try:
                 self.callback(indata, outdata, self.blocksize, time_info, status)
             except Exception as exc:

@@ -345,6 +345,32 @@ def test_network_stream_cpu_load_excludes_remote_capture_wait():
         client.close()
 
 
+def test_network_stream_time_info_preserves_buffered_sample_timing(monkeypatch):
+    client = NetworkAudioClient("127.0.0.1", 40100, jitter_ms=20, duplex=True)
+    client.sample_rate = 8000
+    client.block_size = 128
+    client.input_channels = 2
+    client.output_channels = 2
+    client.jitter_frames = 256
+    client.playout_delay_frames = 512
+    stream = NetworkClientStream(client, lambda *_args: None)
+    monkeypatch.setattr(client_module.time, "monotonic", lambda: 1000.0)
+
+    first = stream._time_info_for_sample(640)
+    second = stream._time_info_for_sample(768)
+
+    # The first input sample is one complete callback block plus the jitter
+    # buffer behind the callback's remote sample position.  Reporting both at
+    # the same time would make timing instruments silently assume zero latency.
+    assert first.currentTime == pytest.approx(1000.0)
+    assert first.currentTime - first.inputBufferAdcTime == pytest.approx((128 + 256) / 8000)
+    # Input and scheduled output positions share the provider's sample clock.
+    assert first.outputBufferDacTime - first.inputBufferAdcTime == pytest.approx(512 / 8000)
+    assert first.outputBufferDacTime - first.currentTime == pytest.approx((512 - 128 - 256) / 8000)
+    # Callback timestamps advance by remote samples, not local scheduler jitter.
+    assert second.currentTime - first.currentTime == pytest.approx(128 / 8000)
+
+
 def test_provider_rejects_virtual_audio_as_a_local_hardware_endpoint():
     engine = _FakeEngine()
     engine.offline_mode = True
