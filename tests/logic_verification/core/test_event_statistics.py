@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from src.core.event_detector import DetectorConfig, EventDetectorCore, EventPolarity
+from src.core.event_detector import DetectorConfig, EventCompletion, EventDetectorCore, EventPolarity, EventRecord
 from src.core.event_statistics import EventMetric, build_histogram, build_rate_trend, summarize_events
 
 
@@ -78,3 +78,34 @@ def test_censored_event_is_excluded_from_distribution_statistics():
     assert statistics.valid_event_count == 0
     assert statistics.censored_event_count == 1
     assert statistics.amplitude.count == 0
+
+
+def test_rate_trend_excludes_censored_and_out_of_range_records():
+    def event(start_sample, completion=EventCompletion.VALID):
+        return EventRecord(
+            sequence_number=0,
+            start_sample=start_sample,
+            end_sample=start_sample + 1,
+            polarity=EventPolarity.POSITIVE,
+            peak=1.0,
+            duration_seconds=0.001,
+            interval_seconds=None,
+            completion=completion,
+        )
+
+    trend = build_rate_trend(
+        (
+            event(2),
+            event(7),
+            event(4, EventCompletion.CENSORED_GAP),
+            event(-1),
+            event(10),
+        ),
+        elapsed_seconds=0.01,
+        sample_rate=1000,
+        bin_seconds=0.005,
+        data_gap_samples=(-1, 4, 10),
+    )
+
+    assert trend.event_counts == (1, 1)
+    assert trend.valid_bins == (False, True)

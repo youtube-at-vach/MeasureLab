@@ -177,8 +177,12 @@ def build_rate_trend(
     bin_count = max(1, int(math.ceil(elapsed_seconds / bin_seconds)))
     counts = np.zeros(bin_count, dtype=np.int64)
     for event in events:
+        if event.completion != EventCompletion.VALID:
+            continue
         start_seconds = float(event.start_sample) / sample_rate
-        index = min(bin_count - 1, max(0, int(start_seconds // bin_seconds)))
+        if not 0 <= start_seconds < elapsed_seconds:
+            continue
+        index = int(start_seconds // bin_seconds)
         counts[index] += 1
 
     starts = np.arange(bin_count, dtype=np.float64) * bin_seconds
@@ -187,8 +191,10 @@ def build_rate_trend(
     rates = np.divide(counts * 60.0, exposure, out=np.zeros(bin_count, dtype=np.float64), where=exposure > 0)
     valid = np.ones(bin_count, dtype=np.bool_)
     for sample in data_gap_samples:
-        gap_seconds = max(0.0, float(sample) / sample_rate)
-        index = min(bin_count - 1, int(gap_seconds // bin_seconds))
+        gap_seconds = float(sample) / sample_rate
+        if not 0 <= gap_seconds < elapsed_seconds:
+            continue
+        index = int(gap_seconds // bin_seconds)
         valid[index] = False
     rates[~valid] = np.nan
     partial = exposure < (bin_seconds - max(1e-12, bin_seconds * 1e-12))
