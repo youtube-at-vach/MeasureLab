@@ -147,8 +147,14 @@ class RemoteAudioIOWidget(QWidget):
         discovery_layout.addWidget(self.discovery_status_label)
         self.discovery_list = QListWidget()
         self.discovery_list.setAccessibleName(tr("Available MeasureLab computers"))
-        self.discovery_list.setMinimumHeight(160)
-        self.discovery_list.setMaximumHeight(240)
+        # Provider entries use two text lines. Query the active style instead of
+        # assuming a pixel height so two entries fit on every platform and font.
+        sample_item = QListWidgetItem("\n")
+        self.discovery_list.addItem(sample_item)
+        discovery_row_height = max(1, self.discovery_list.sizeHintForRow(0))
+        self.discovery_list.takeItem(0)
+        discovery_viewport_height = discovery_row_height * 2
+        self.discovery_list.setFixedHeight(discovery_viewport_height + self.discovery_list.frameWidth() * 2)
         self.discovery_list.currentItemChanged.connect(self._on_discovery_selection_changed)
         self.discovery_list.itemDoubleClicked.connect(lambda _item: self.connect_selected_provider())
         discovery_layout.addWidget(self.discovery_list)
