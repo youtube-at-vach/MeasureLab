@@ -6,6 +6,10 @@ Remote Audio I/O uses an audio device attached to another MeasureLab computer on
 
 Sample position and measurement integrity take priority over concealment. Missing audio is not interpolated. A missing range is replaced by an equal-length zero range and reported visibly as data loss.
 
+## Common Features
+
+This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
+
 ## Preparing the remote computer
 
 1. In Settings, select the physical input/output devices, sample rate, buffer size, and channels used for remote measurement.
