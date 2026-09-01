@@ -1,5 +1,25 @@
 # Changelog
 
+## [v0.8.7] - 2026-09-01
+
+### Added
+
+* **Remote Audio I/O**:
+    * Updated the remote transport to UDP protocol v2, combining discovery, connection control, keepalives, and uncompressed float32 PCM audio on one configurable UDP port.
+    * Added automatic IPv4 LAN discovery for sharing computers, while retaining manual address connections when discovery is unavailable.
+    * Added macOS local-network permission guidance for Remote Audio I/O discovery and connections.
+
+### Changed
+
+* **Remote Audio I/O**:
+    * Simplified the provider and client controls, including consolidated advanced connection settings and connection-quality information.
+    * Optimized indexed network-audio buffering for more efficient real-time transport handling.
+
+### Fixed
+
+* **Remote Audio I/O**:
+    * Use predictable provider UDP ports and stabilize the advanced-settings panel layout.
+
 ## [v0.8.6] - 2026-08-30
 
 ### Added
