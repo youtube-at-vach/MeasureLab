@@ -132,9 +132,8 @@ class RemoteAudioIOWidget(QWidget):
         self.tabs.addTab(self._build_client_tab(), tr("Connect to another computer"))
         self.tabs.addTab(self._build_provider_tab(), tr("Share this computer's audio"))
         self.tabs.currentChanged.connect(self.refresh_status)
-        self.tabs.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum)
-        layout.addWidget(self.tabs)
-        layout.addStretch(1)
+        self.tabs.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        layout.addWidget(self.tabs, 1)
 
     def _build_client_tab(self) -> QWidget:
         page = QWidget()

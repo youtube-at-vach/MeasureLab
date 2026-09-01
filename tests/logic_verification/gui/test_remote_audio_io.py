@@ -71,9 +71,14 @@ def test_remote_audio_widget_reveals_advanced_settings_on_request(qtbot):
     assert widget.client_options_panel.isHidden()
     assert not widget.host_edit.isVisible()
     widget.client_options_button.click()
+    expanded_tab_geometry = widget.tabs.geometry()
+    expanded_panel_geometry = widget.client_options_panel.geometry()
     assert widget.client_options_button.arrowType() == Qt.ArrowType.DownArrow
     assert widget.client_options_panel.isVisible()
     assert widget.host_edit.isVisible()
+    qtbot.wait(1)
+    assert widget.tabs.geometry() == expanded_tab_geometry
+    assert widget.client_options_panel.geometry() == expanded_panel_geometry
 
     widget.tabs.setCurrentIndex(1)
     assert widget.provider_options_panel.isHidden()
