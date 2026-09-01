@@ -1,9 +1,8 @@
-"""Versioned control and UDP packet protocol for MeasureLab network audio."""
+"""Versioned UDP control and audio protocol for MeasureLab network audio."""
 
 from __future__ import annotations
 
 import json
-import socket
 import struct
 import zlib
 
@@ -11,16 +10,47 @@ import numpy as np
 
 
 MAGIC = b"MLAU"
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
 DIRECTION_CAPTURE = 1
 DIRECTION_PLAYBACK = 2
+
+PACKET_DISCOVER_QUERY = 16
+PACKET_DISCOVER_REPLY = 17
+PACKET_CONNECT_REQUEST = 18
+PACKET_CONNECT_OFFER = 19
+PACKET_START = 20
+PACKET_START_ACK = 21
+PACKET_KEEPALIVE = 22
+PACKET_KEEPALIVE_ACK = 23
+PACKET_PLAYBACK_STATE = 24
+PACKET_CONTROL_ACK = 25
+PACKET_STOP = 26
+PACKET_STOPPED = 27
+PACKET_ERROR = 28
+
+CONTROL_PACKET_TYPES = frozenset(
+    {
+        PACKET_DISCOVER_QUERY,
+        PACKET_DISCOVER_REPLY,
+        PACKET_CONNECT_REQUEST,
+        PACKET_CONNECT_OFFER,
+        PACKET_START,
+        PACKET_START_ACK,
+        PACKET_KEEPALIVE,
+        PACKET_KEEPALIVE_ACK,
+        PACKET_PLAYBACK_STATE,
+        PACKET_CONTROL_ACK,
+        PACKET_STOP,
+        PACKET_STOPPED,
+        PACKET_ERROR,
+    }
+)
 
 FLAG_INPUT_XRUN = 1 << 0
 FLAG_OUTPUT_XRUN = 1 << 1
 
 MAX_DATAGRAM = 1200
 PACKET_FRAMES = 128
-MAX_CONTROL_MESSAGE = 64 * 1024
 MAX_CHANNELS = 2
 CONTROL_HEARTBEAT_INTERVAL = 1.0
 CONTROL_HEARTBEAT_TIMEOUT = 5.0
@@ -28,6 +58,8 @@ CONTROL_HEARTBEAT_TIMEOUT = 5.0
 # magic, version, direction, flags, session, sequence, first sample,
 # frames, channels, payload crc32
 _HEADER = struct.Struct("!4sBBHQQQHHI")
+# magic, version, packet type, JSON bytes, session, message ID, payload crc32
+_CONTROL_HEADER = struct.Struct("!4sBBHQQI")
 
 
 class ProtocolError(ValueError):
@@ -48,6 +80,83 @@ def control_bool(message: dict[str, object], key: str, default: bool | None = No
     if not isinstance(value, bool):
         raise ProtocolError(f"invalid control field: {key}")
     return value
+
+
+def control_str(message: dict[str, object], key: str, default: str | None = None, *, limit: int = 500) -> str:
+    """Read a bounded control string without coercing untrusted values."""
+    value = message.get(key, default)
+    if not isinstance(value, str) or len(value) > limit:
+        raise ProtocolError(f"invalid control field: {key}")
+    return value
+
+
+def bounded_control_text(value: object, *, limit: int = 500) -> str:
+    """Return text bounded by UTF-8 bytes so one control datagram stays atomic."""
+    encoded = str(value).encode("utf-8")[: max(0, int(limit))]
+    return encoded.decode("utf-8", errors="ignore")
+
+
+def datagram_kind(packet: bytes) -> int:
+    """Return the v2 packet type after validating the common prefix."""
+    if len(packet) < 6:
+        raise ProtocolError("invalid datagram size")
+    magic, version, kind = struct.unpack_from("!4sBB", packet)
+    if magic != MAGIC or version != PROTOCOL_VERSION:
+        raise ProtocolError("unsupported network audio protocol")
+    return kind
+
+
+def encode_control_datagram(
+    kind: int,
+    message: dict[str, object],
+    *,
+    session_id: int = 0,
+    message_id: int = 0,
+) -> bytes:
+    """Encode one bounded JSON control message into an atomic UDP datagram."""
+    if kind not in CONTROL_PACKET_TYPES:
+        raise ProtocolError("invalid control packet type")
+    if not isinstance(message, dict):
+        raise ProtocolError("control message must be an object")
+    payload = json.dumps(message, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    if len(payload) > MAX_DATAGRAM - _CONTROL_HEADER.size:
+        raise ProtocolError("control message exceeds datagram limit")
+    crc = zlib.crc32(payload) & 0xFFFFFFFF
+    return (
+        _CONTROL_HEADER.pack(
+            MAGIC,
+            PROTOCOL_VERSION,
+            kind,
+            len(payload),
+            int(session_id) & 0xFFFFFFFFFFFFFFFF,
+            int(message_id) & 0xFFFFFFFFFFFFFFFF,
+            crc,
+        )
+        + payload
+    )
+
+
+def decode_control_datagram(packet: bytes) -> tuple[dict[str, int], dict[str, object]]:
+    """Decode and validate one UDP control message."""
+    if len(packet) < _CONTROL_HEADER.size or len(packet) > MAX_DATAGRAM:
+        raise ProtocolError("invalid control datagram size")
+    magic, version, kind, payload_size, session_id, message_id, crc = _CONTROL_HEADER.unpack_from(packet)
+    if magic != MAGIC or version != PROTOCOL_VERSION:
+        raise ProtocolError("unsupported network audio protocol")
+    if kind not in CONTROL_PACKET_TYPES:
+        raise ProtocolError("invalid control packet type")
+    payload = packet[_CONTROL_HEADER.size :]
+    if len(payload) != payload_size:
+        raise ProtocolError("control payload length mismatch")
+    if (zlib.crc32(payload) & 0xFFFFFFFF) != crc:
+        raise ProtocolError("control payload checksum mismatch")
+    try:
+        message = json.loads(payload.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ProtocolError("invalid control message") from exc
+    if not isinstance(message, dict):
+        raise ProtocolError("control message must be an object")
+    return {"kind": kind, "session_id": session_id, "message_id": message_id}, message
 
 
 def encode_audio_packet(
@@ -155,33 +264,3 @@ def packetize_audio(
         )
         sequence += 1
     return packets
-
-
-def send_control(sock: socket.socket, message: dict[str, object]) -> None:
-    payload = json.dumps(message, separators=(",", ":"), ensure_ascii=True).encode("utf-8")
-    if not payload or len(payload) > MAX_CONTROL_MESSAGE:
-        raise ProtocolError("invalid control message size")
-    sock.sendall(struct.pack("!I", len(payload)) + payload)
-
-
-def _recv_exact(sock: socket.socket, size: int) -> bytes:
-    chunks = bytearray()
-    while len(chunks) < size:
-        chunk = sock.recv(size - len(chunks))
-        if not chunk:
-            raise ConnectionError("control connection closed")
-        chunks.extend(chunk)
-    return bytes(chunks)
-
-
-def recv_control(sock: socket.socket) -> dict[str, object]:
-    size = struct.unpack("!I", _recv_exact(sock, 4))[0]
-    if size <= 0 or size > MAX_CONTROL_MESSAGE:
-        raise ProtocolError("invalid control message size")
-    try:
-        message = json.loads(_recv_exact(sock, size).decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise ProtocolError("invalid control message") from exc
-    if not isinstance(message, dict):
-        raise ProtocolError("control message must be an object")
-    return message

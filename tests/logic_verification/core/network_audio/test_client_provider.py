@@ -5,13 +5,23 @@ import time
 import socket
 
 import numpy as np
+import pytest
 
 import src.core.network_audio.client as client_module
 import src.core.network_audio.provider as provider_module
 from src.core.network_audio.client import NetworkAudioClient, NetworkClientStream
+from src.core.network_audio.discovery import NetworkAudioDiscovery
 from src.core.network_audio.indexed_buffer import IndexedAudioBuffer
 from src.core.network_audio.models import NetworkAudioStats
 from src.core.network_audio.provider import NetworkAudioProvider
+from src.core.network_audio.protocol import (
+    PACKET_CONNECT_OFFER,
+    PACKET_CONNECT_REQUEST,
+    PACKET_START_ACK,
+    PROTOCOL_VERSION,
+    datagram_kind,
+    encode_control_datagram,
+)
 
 
 class _Status:
@@ -354,7 +364,6 @@ def test_provider_rejects_virtual_audio_as_a_local_hardware_endpoint():
 def test_provider_releases_session_when_connected_client_stops_answering_heartbeats(monkeypatch):
     monkeypatch.setattr(client_module, "CONTROL_HEARTBEAT_INTERVAL", 0.02)
     monkeypatch.setattr(client_module, "CONTROL_HEARTBEAT_TIMEOUT", 0.15)
-    monkeypatch.setattr(provider_module, "CONTROL_HEARTBEAT_INTERVAL", 0.02)
     monkeypatch.setattr(provider_module, "CONTROL_HEARTBEAT_TIMEOUT", 0.15)
     engine = _FakeEngine()
     provider = NetworkAudioProvider(engine, "127.0.0.1", 0)
@@ -379,15 +388,105 @@ def test_provider_stop_interrupts_a_client_stalled_during_negotiation():
     engine = _FakeEngine()
     provider = NetworkAudioProvider(engine, "127.0.0.1", 0)
     provider.start()
-    stalled_client = socket.create_connection(("127.0.0.1", provider.port), timeout=1.0)
+    stalled_client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    stalled_client.connect(("127.0.0.1", provider.port))
+    stalled_client.send(
+        encode_control_datagram(
+            PACKET_CONNECT_REQUEST,
+            {"protocol": PROTOCOL_VERSION, "client_nonce": "stalled", "duplex": False},
+            message_id=1,
+        )
+    )
 
     try:
-        assert _wait_until(lambda: provider._control_socket is not None)
+        assert _wait_until(lambda: provider._client_udp is not None)
         started = time.monotonic()
         provider.stop()
 
         assert time.monotonic() - started < 0.75
-        assert provider._accept_thread is None or not provider._accept_thread.is_alive()
+        assert provider._receiver_thread is None or not provider._receiver_thread.is_alive()
     finally:
         stalled_client.close()
+        provider.stop()
+
+
+def test_provider_has_no_tcp_listener():
+    engine = _FakeEngine()
+    provider = NetworkAudioProvider(engine, "127.0.0.1", 0)
+    provider.start()
+    try:
+        with pytest.raises(OSError):
+            socket.create_connection(("127.0.0.1", provider.port), timeout=0.2)
+    finally:
+        provider.stop()
+
+
+def test_active_discovery_finds_provider_without_manual_address_entry():
+    engine = _FakeEngine()
+    provider = NetworkAudioProvider(engine, "127.0.0.1", 0, discoverable=True)
+    provider.start()
+    discovery = NetworkAudioDiscovery(
+        provider.port,
+        broadcast_addresses=("127.0.0.1",),
+        interval=0.1,
+        ttl=0.5,
+    )
+    discovery.start()
+    try:
+        assert _wait_until(lambda: len(discovery.snapshot()) == 1)
+        found = discovery.snapshot()[0]
+        assert found.host == "127.0.0.1"
+        assert found.port == provider.port
+        assert found.provider_name
+        assert not found.busy
+    finally:
+        discovery.stop()
+        provider.stop()
+
+
+def test_provider_can_disable_and_reenable_automatic_discovery():
+    engine = _FakeEngine()
+    provider = NetworkAudioProvider(engine, "127.0.0.1", 0, discoverable=False)
+    provider.start()
+    discovery = NetworkAudioDiscovery(
+        provider.port,
+        broadcast_addresses=("127.0.0.1",),
+        interval=0.1,
+        ttl=0.5,
+    )
+    discovery.start()
+    try:
+        time.sleep(0.3)
+        assert discovery.snapshot() == ()
+        provider.set_discoverable(True)
+        assert _wait_until(lambda: len(discovery.snapshot()) == 1)
+    finally:
+        discovery.stop()
+        provider.stop()
+
+
+@pytest.mark.parametrize("dropped_kind", [PACKET_CONNECT_OFFER, PACKET_START_ACK])
+def test_client_retries_udp_connect_control_when_first_response_is_lost(monkeypatch, dropped_kind):
+    engine = _FakeEngine()
+    provider = NetworkAudioProvider(engine, "127.0.0.1", 0)
+    provider.start()
+    original_send = provider._send_packet
+    dropped_response = False
+
+    def drop_first_response(packet, address):
+        nonlocal dropped_response
+        if not dropped_response and datagram_kind(packet) == dropped_kind:
+            dropped_response = True
+            return
+        original_send(packet, address)
+
+    monkeypatch.setattr(provider, "_send_packet", drop_first_response)
+    client = NetworkAudioClient("127.0.0.1", provider.port, jitter_ms=20, duplex=False)
+    try:
+        client.connect(timeout=2.0)
+        assert dropped_response
+        assert client.connected
+        assert provider.status_snapshot()["state"] == "streaming"
+    finally:
+        client.close()
         provider.stop()
