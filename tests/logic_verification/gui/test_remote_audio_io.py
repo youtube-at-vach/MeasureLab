@@ -89,6 +89,24 @@ def test_remote_audio_widget_reveals_advanced_settings_on_request(qtbot):
     assert widget.bind_edit.isVisible()
 
 
+def test_remote_audio_widget_discovery_list_shows_two_computer_rows(qtbot):
+    widget = RemoteAudioIOWidget(_engine(), _Config())
+    qtbot.addWidget(widget)
+    widget.discovery_list.addItems(
+        [
+            "Computer 1\n48000 Hz, 2 input / 2 output",
+            "Computer 2\n48000 Hz, 2 input / 2 output",
+            "Computer 3\n48000 Hz, 2 input / 2 output",
+        ]
+    )
+    widget.resize(1180, 690)
+    widget.show()
+    qtbot.wait(1)
+
+    row_height = widget.discovery_list.sizeHintForRow(0)
+    assert widget.discovery_list.viewport().height() == row_height * 2
+
+
 def test_remote_audio_widget_keeps_provider_details_out_of_primary_status(qtbot):
     widget = RemoteAudioIOWidget(_engine(), _Config())
     qtbot.addWidget(widget)
