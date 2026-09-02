@@ -17,23 +17,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v6
-        with:
-          python-version: 3.x
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
-          node-version: '20'
+          node-version: '24'
           cache: npm
-          cache-dependency-path: download-site/package-lock.json
-      - run: echo "cache_id=$(date --utc '+%V')" >> "$GITHUB_ENV" 
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
-        with:
-          key: mkdocs-material-${{ env.cache_id }}
-          path: .cache
-          restore-keys: |
-            mkdocs-material-
-      - name: Install docs dependencies
-        run: pip install -r requirements-docs.txt
+          cache-dependency-path: |
+            docs-site/package-lock.json
+            download-site/package-lock.json
+      - name: Install PDF font
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+      - name: Install documentation dependencies
+        working-directory: docs-site
+        run: npm ci
       - name: Install download site dependencies
         working-directory: download-site
         run: npm ci
@@ -41,17 +38,17 @@ jobs:
         working-directory: download-site
         run: npm run build
       - name: Build docs
-        run: mkdocs build
+        working-directory: docs-site
+        run: npm run build:all
       - name: Merge download site into Pages output
         run: |
-          mkdir -p site/download
-          cp -R download-site/dist/. site/download/
-          cp version.json site/version.json
+          mkdir -p docs-site/dist/download
+          cp -R download-site/dist/. docs-site/dist/download/
+          cp version.json docs-site/dist/version.json
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
-          path: './site'
+          path: './docs-site/dist'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
-

@@ -12,7 +12,7 @@ echo "Detected OS: ${OS}"
 print_linux_manual_dependency_guidance() {
     echo "Please install the equivalent of the following tools/libraries manually for your distro:"
     echo "- Python: python3, python3-venv, python3-pip"
-    echo "- JavaScript tools: nodejs, npm"
+    echo "- Documentation tools: Node.js 24 LTS and npm 11+"
     echo "- Audio/runtime libs: portaudio, libsndfile"
     echo "- Build tools/headers (if pip build fails): compiler toolchain, portaudio dev headers, libsndfile dev headers"
 }
@@ -82,17 +82,17 @@ elif [ "${OS}" = "Darwin" ]; then
         sudo port selfupdate
         
         echo "Installing Python 3.12, pip, FFTW3, and Node.js via MacPorts..."
-        sudo port install python312 py312-pip fftw-3 fftw-3-single nodejs22 npm10
-        
-        read -p "Do you want to set Python 3.12 and Node.js 22 as system defaults via 'port select'? (y/N): " set_default
+        sudo port install python312 py312-pip fftw-3 fftw-3-single nodejs24 npm11
+
+        read -p "Do you want to set Python 3.12 and Node.js 24 as system defaults via 'port select'? (y/N): " set_default
         if [[ "$set_default" =~ ^[Yy]$ ]]; then
             echo "Setting default python to python312..."
             sudo port select --set python python312
             sudo port select --set python3 python312
             
             echo "Setting default node and npm..."
-            sudo port select --set node nodejs22
-            sudo port select --set npm npm10
+            sudo port select --set node nodejs24
+            sudo port select --set npm npm11
         else
             echo "Skipping 'port select'. If not set, you may need to call python3.12 and node/npm explicitly."
         fi
@@ -141,8 +141,20 @@ python -m pip install -c constraints.txt -r requirements.txt
 echo "Installing dev tools..."
 python -m pip install -c constraints.txt -e ".[dev]"
 
-echo "Installing doc requirements..."
-python -m pip install -c constraints.txt -r requirements-docs.txt
+echo "Installing documentation dependencies..."
+if ! command -v node > /dev/null || ! command -v npm > /dev/null; then
+    echo "Error: Node.js 24 LTS and npm are required for docs-site/."
+    exit 1
+fi
+
+NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
+if [ "${NODE_MAJOR}" -ne 24 ]; then
+    echo "Error: Node.js 24 LTS is required for docs-site/ (found $(node --version))."
+    echo "Install Node.js 24 and rerun this script."
+    exit 1
+fi
+
+npm --prefix docs-site ci
 
 echo ""
 echo "============================================================"

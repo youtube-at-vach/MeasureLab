@@ -6,7 +6,7 @@
 
 [![Online Manual](https://img.shields.io/badge/📖_Online_Manual-Click_Here-blue?style=for-the-badge&logo=gitbook&logoColor=white)](https://youtube-at-vach.github.io/MeasureLab/)
 
-[![MeasureLab Demo](docs/assets/banner.png)](https://youtu.be/9fkJLfK5v0M)
+[![MeasureLab Demo](docs-site/src/assets/banner.png)](https://youtu.be/9fkJLfK5v0M)
 
 <blockquote>
   <h3>📖 Official MeasureLab Online Manual is Available!</h3>
@@ -25,9 +25,9 @@ This project aims to reach more people as an alternative for audio enthusiasts w
 ### 🛠️ Widgets / Measurement Modules
 
 The following modules/widgets are integrated.
-Due to the large number of features, we recommend starting with the [**Widget Guide: Index by Purpose**](docs/widget_guide.en.md#quick-search-guide).
+Due to the large number of features, we recommend starting with the [**Widget Guide: Index by Purpose**](https://youtube-at-vach.github.io/MeasureLab/en/widget_guide/#quick-search-guide).
 
-For details on each function, please refer to the [**Widget Guide**](docs/widget_guide.en.md), and for actual measurement examples, see the [**Measurement Recipes**](docs/measurement_recipes/index.en.md).
+For details on each function, please refer to the [**Widget Guide**](https://youtube-at-vach.github.io/MeasureLab/en/widget_guide/), and for actual measurement examples, see the [**Measurement Recipes**](https://youtube-at-vach.github.io/MeasureLab/en/measurement_recipes/).
 
 | No. | Widget | Description |
 | :--- | :--- | :--- |
@@ -146,7 +146,7 @@ However, if you use JACK / PipeWire, sound may not be output or input/output may
 
 For instructions on running from source code and setting up the development environment, please refer to the following document.
 
-- [**Developer Guide**](docs/development.en.md)
+- [**Developer Guide**](https://youtube-at-vach.github.io/MeasureLab/en/development/)
 
 ---
 

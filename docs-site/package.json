@@ -1,0 +1,34 @@
+{
+  "name": "measurelab-docs",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.x",
+    "npm": ">=11"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build:web": "astro build",
+    "build:pdf": "node scripts/build-pdf.mjs",
+    "build:all": "npm run build:web && npm run build:pdf",
+    "check": "astro check && npm run build:web && node scripts/check-links.mjs"
+  },
+  "dependencies": {
+    "@astrojs/markdown-remark": "7.3.0",
+    "@astrojs/starlight": "0.41.11",
+    "astro": "7.2.10",
+    "katex": "0.18.5",
+    "rehype-class-names": "2.0.0",
+    "rehype-katex": "7.0.1",
+    "remark-custom-heading-id": "2.0.0",
+    "remark-math": "6.0.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.10",
+    "linkinator": "8.1.0",
+    "markdownlint-cli2": "0.23.2",
+    "pdfjs-dist": "6.3.289",
+    "starlight-to-pdf": "1.4.0",
+    "typescript": "6.0.3"
+  }
+}

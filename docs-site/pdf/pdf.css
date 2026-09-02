@@ -1,0 +1,135 @@
+html,
+body {
+  color: #181a20 !important;
+  background: #fff !important;
+  font-family: "Noto Sans CJK JP", "Noto Sans JP", "Noto Sans", sans-serif !important;
+  font-size: 10.5pt;
+  line-height: 1.55;
+}
+
+.s2pdf-container,
+.s2pdf-pagebreak,
+.s2pdf-heading,
+.sl-markdown-content {
+  background: #fff !important;
+}
+
+.s2pdf-contents {
+  font-size: 9.5pt;
+  line-height: 1.35;
+}
+
+.s2pdf-contents a {
+  color: #273a9b !important;
+  text-decoration: none;
+}
+
+.s2pdf-heading h1 {
+  break-after: avoid-page;
+  color: #1d2a6e !important;
+}
+
+h2,
+h3,
+h4,
+h5,
+h6 {
+  break-after: avoid-page;
+}
+
+img,
+picture,
+svg {
+  max-width: 100% !important;
+  height: auto !important;
+  background: #fff !important;
+  break-inside: avoid-page;
+}
+
+pre,
+table,
+blockquote,
+.katex-display {
+  break-inside: avoid-page;
+}
+
+pre,
+code {
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere;
+}
+
+table {
+  width: 100%;
+  font-size: 9pt;
+  border-collapse: collapse;
+}
+
+thead {
+  display: table-header-group;
+}
+
+tr {
+  break-inside: avoid-page;
+}
+
+.katex-display {
+  overflow: visible !important;
+  font-size: 0.95em;
+}
+
+.measurelab-cover,
+.measurelab-back-cover {
+  display: flex;
+  box-sizing: border-box;
+  min-height: 24.8cm;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  break-after: page;
+}
+
+.measurelab-cover {
+  color: #fff;
+  background: linear-gradient(145deg, #17245f, #4054c8 60%, #6679eb) !important;
+}
+
+.measurelab-cover h1 {
+  max-width: 14cm;
+  margin: 0.2cm 1cm 0.8cm;
+  color: #fff !important;
+  font-size: 30pt;
+  line-height: 1.2;
+}
+
+.measurelab-cover p {
+  max-width: 14cm;
+  color: #eef0ff !important;
+  font-size: 13pt;
+}
+
+.measurelab-cover__eyebrow {
+  margin: 0;
+  font-size: 18pt !important;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.measurelab-cover__url {
+  margin-top: 4cm;
+  font-size: 9pt !important;
+}
+
+.measurelab-back-cover {
+  color: #27315f;
+  background: #f0f2ff !important;
+}
+
+.measurelab-back-cover strong {
+  font-size: 24pt;
+}
+
+.measurelab-back-cover p {
+  max-width: 13cm;
+}

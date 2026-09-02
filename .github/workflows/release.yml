@@ -124,10 +124,17 @@ jobs:
       with:
         python-version: "3.12"
 
+    - name: Set up Node.js 24
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: '24'
+        cache: npm
+        cache-dependency-path: docs-site/package-lock.json
+
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libasound2-dev libxcb-cursor0 python3-cffi python3-brotli libpango-1.0-0 libpangoft2-1.0-0 fonts-noto-cjk
+        sudo apt-get install -y libasound2-dev libxcb-cursor0 fonts-noto-cjk
 
     - name: Install Python dependencies
       run: |
@@ -135,7 +142,10 @@ jobs:
         pip install "setuptools<70.0.0"
         pip install -r requirements.txt
         pip install pyinstaller
-        pip install -r requirements-docs.txt
+
+    - name: Install documentation dependencies
+      working-directory: docs-site
+      run: npm ci
 
     - name: Build standalone binary with PyInstaller
       run: |
@@ -143,15 +153,14 @@ jobs:
         pyinstaller --onefile --windowed --name MeasureLab --icon=app_icon.png --add-data "src:src" --exclude-module matplotlib --collect-all backports --collect-all pyfftw --hidden-import pyfftw main_gui.py
 
     - name: Build Documentation
-      env:
-        ENABLE_PDF_EXPORT: 1
-      run: mkdocs build
+      working-directory: docs-site
+      run: npm run build:all
 
     - name: Prepare Manuals for release
       run: |
         mkdir -p dist/release
-        mv site/pdf/operation_manual.pdf dist/release/operation_manual_ja.pdf
-        mv site/en/pdf/operation_manual.pdf dist/release/operation_manual_en.pdf
+        cp docs-site/dist/pdf/operation_manual_ja.pdf dist/release/operation_manual_ja.pdf
+        cp docs-site/dist/pdf/operation_manual_en.pdf dist/release/operation_manual_en.pdf
 
     - name: Build AppImage
       run: |

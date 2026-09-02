@@ -6,7 +6,7 @@
 
 [![オンライン・マニュアル](https://img.shields.io/badge/📖_オンライン・マニュアル-Click_Here-blue?style=for-the-badge&logo=gitbook&logoColor=white)](https://youtube-at-vach.github.io/MeasureLab/)
 
-[![MeasureLab Demo](docs/assets/banner.png)](https://youtu.be/9fkJLfK5v0M)
+[![MeasureLab Demo](docs-site/src/assets/banner.png)](https://youtu.be/9fkJLfK5v0M)
 
 <blockquote>
   <h3>📖 MeasureLab 公式オンライン・マニュアルを公開中！</h3>
@@ -25,9 +25,9 @@
 ### 🛠️ ウィジット / 測定モジュール
 
 以下のモジュール/ウィジットが統合されています。
-機能が多いため、まずは [**ウィジットガイド：目的別インデックス**](docs/widget_guide.md#quick-search-guide) から探すことをおすすめします。
+機能が多いため、まずは [**ウィジットガイド：目的別インデックス**](https://youtube-at-vach.github.io/MeasureLab/widget_guide/#quick-search-guide) から探すことをおすすめします。
 
-各機能の詳細は [**ウィジットガイド**](docs/widget_guide.md) を、実際の測定例については [**測定レシピ**](docs/measurement_recipes/index.md) を参照してください。
+各機能の詳細は [**ウィジットガイド**](https://youtube-at-vach.github.io/MeasureLab/widget_guide/) を、実際の測定例については [**測定レシピ**](https://youtube-at-vach.github.io/MeasureLab/measurement_recipes/) を参照してください。
 
 | No. | ウィジット | 説明 |
 | :--- | :--- | :--- |
@@ -147,7 +147,7 @@ Linux ではそのまま **PortAudio** バックエンドでも通常利用で�
 
 ソースコードからの実行手順や、開発環境のセットアップについては以下のドキュメントを参照してください。
 
-- [**開発者向けガイド**](docs/development.md)
+- [**開発者向けガイド**](https://youtube-at-vach.github.io/MeasureLab/development/)
 
 ---
 

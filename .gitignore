@@ -51,7 +51,8 @@ ehthumbs.db
 *.csv
 *.png
 !src/assets/*.png
-!docs/**/*.png
+!docs-site/public/*.png
+!docs-site/src/assets/**/*.png
 
 # Calibration settings
 calibration_settings.ini
@@ -77,6 +78,8 @@ wisdom/pyfftw_wisdom
 
 # Documentation build artifacts
 site/
+.astro/
+node_modules/
 
 # Local documentation viewer
 .obsidian/
@@ -89,10 +92,6 @@ thd.json
 .vscode/settings.json
 hammerstein_kernel_sample*.json
 inverse_hammerstein_model*.json
-
-# Auto-generated check logs
-docs/daily_check.log
-docs/translation_check.log
 
 temp_measured_hammerstein.json
 scripts/variability_results.json

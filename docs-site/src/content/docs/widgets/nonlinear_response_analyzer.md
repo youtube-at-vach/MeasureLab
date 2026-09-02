@@ -1,0 +1,38 @@
+---
+title: "Nonlinear Response Analyzer (非線形応答アナライザー)"
+---
+
+## 概要
+
+Nonlinear Response Analyzer は、オーディオ機器やDSPなどの非線形特性の詳細なシステム同定と解析を行うための高度なウィジェットです。
+動的なテスト信号（一様ホワイトノイズやガウシアンノイズなど）を使用して、Wienerモデルに基づくシステム挙動を同定し、応答を線形フィルタ成分とメモリを持たない非線形多項式成分に分離します。
+
+このウィジェットでは以下の解析が可能です。
+
+* **Wienerシステム同定:** 線形フィルタと最大5次までの非線形多項式を同定します。
+* **アルゴリズム選択:** 複数の同定アルゴリズムをサポート：Best Linear Approximation (BLA), Two-Stage Algorithm (TSA/SVD), Bussgang Theorem (相互相関)。
+* **ボード線図表示:** 同定された線形フィルタの周波数特性（振幅・位相）をグラフ表示します。
+* **非線形カーブ表示:** 中間信号から最終出力へのマッピングを示す、同定された多項式伝達関数を可視化します。
+
+## 共通機能
+
+このウィジェットは Detachable Wrapper の共通機能に対応しています。詳細は [Detachable Wrapper](https://youtube-at-vach.github.io/MeasureLab/widgets/detachable_wrapper/) の説明書を参照してください。
+
+## 設定項目
+
+### テスト信号パラメータ
+
+* **Signal Type:** 励起信号の種類を設定します（一様ホワイトノイズ、ガウシアンノイズ、ピンクノイズ、サインスイープ、PRBS）。
+* **Duration (s):** テスト信号の長さを設定します。
+* **Amplitude (dBFS):** テスト信号の出力振幅を設定します。
+* **Filter Range (Hz):** 解析を集中させるためにテスト信号の帯域を制限します。
+
+### システム同定
+
+* **Polynomial Order:** 非線形多項式の次数を設定します（1次〜5次）。
+* **Algorithm:** 同定アルゴリズムを選択します（BLA, TSA/SVD, Bussgang）。
+
+## 測定コントロール
+
+* **Start Analysis ボタン:** 測定と同定シーケンスを開始します。
+* **Stop ボタン:** 測定シーケンスを途中で停止します。

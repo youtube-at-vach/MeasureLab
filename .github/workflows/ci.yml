@@ -34,10 +34,12 @@ jobs:
               - '.github/workflows/ci.yml'
             docs:
               - '**/*.md'
-              - 'docs/**'
-              - 'mkdocs.yml'
+              - 'docs-site/**'
               - '.markdownlint-cli2.jsonc'
               - '.github/workflows/ci.yml'
+              - '.github/workflows/deploy_docs.yml'
+              - '.github/workflows/pdf_draft.yml'
+              - '.github/workflows/release.yml'
 
   docs-lint:
     needs: changes
@@ -50,10 +52,17 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: '20'
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
+      - name: Install documentation dependencies
+        working-directory: docs-site
+        run: npm ci
       - name: Markdown lint
-        run: |
-          npx markdownlint-cli2 "**/*.md"
+        run: docs-site/node_modules/.bin/markdownlint-cli2 "**/*.md" "#node_modules" "#docs-site/node_modules"
+      - name: Check documentation
+        working-directory: docs-site
+        run: npm run check
 
   lint-and-test:
     needs: changes

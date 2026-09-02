@@ -915,7 +915,7 @@ GUI 変更は、次を満たして初めて完了とする。
     - [信号解析プロットの設計](plot.md)
 - MeasureLab の現行制約と実装資料
     - [Agent Guide](../AGENTS.md)
-    - [ウィジェット共通機能 実装状況マトリクス](../docs/widget_feature_implementation_matrix.md)
-    - [Detachable Wrapper](../docs/widgets/detachable_wrapper.md)
+    - [ウィジェット共通機能 実装状況マトリクス](https://youtube-at-vach.github.io/MeasureLab/widget_feature_implementation_matrix/)
+    - [Detachable Wrapper](https://youtube-at-vach.github.io/MeasureLab/widgets/detachable_wrapper/)
 
 調査資料に含まれる製品例や一般論は設計探索の入力であり、個々の製品説明を MeasureLab の仕様として採用したものではない。外部規格への適合を主張する場合は、対象規格の一次資料と実測・自動テストを別途確認する。

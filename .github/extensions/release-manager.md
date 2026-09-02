@@ -21,7 +21,7 @@ Release Manager スキルは、プロジェクトの新しいバージョンリ�
 このスキルは以下のタスクを順番に実行します：
 
 1. **CHANGELOG更新** — 最新のコミットをCHANGELOG.mdに反映
-2. **ドキュメント確認** — docs/ 以下に新機能が記載されているか検証
+2. **ドキュメント確認** — `docs-site/src/content/docs/` 以下に新機能が記載されているか検証
 3. **バージョン更新** — pyproject.toml, src/core/version.py, version.json を更新
 4. **リンティング** — Ruff, Markdownlint でコードとドキュメントをチェック
 5. **スクリーンショット更新** — UI変更時に必要に応じてドキュメント画像を更新
@@ -33,7 +33,7 @@ Release Manager スキルは、プロジェクトの新しいバージョンリ�
 - `pyproject.toml` — プロジェクト設定
 - `src/core/version.py` — バージョン定義
 - `version.json` — バージョン情報
-- `docs/` — ドキュメント一式
+- `docs-site/src/content/docs/` — Starlightドキュメント一式
 
 ## 実行例
 

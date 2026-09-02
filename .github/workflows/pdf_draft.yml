@@ -19,10 +19,7 @@ jobs:
         with:
           filters: |
             docs:
-              - 'docs/**'
-              - '**/*.md'
-              - 'mkdocs.yml'
-              - 'requirements-docs.txt'
+              - 'docs-site/**'
               - '.github/workflows/pdf_draft.yml'
 
   build-pdf:
@@ -32,40 +29,30 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       
-      - name: Configure Git Credentials
-        run: |
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          python-version: 3.x
-          cache: 'pip'
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
 
-      - name: Install system dependencies for WeasyPrint
+      - name: Install PDF font
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3-cffi python3-brotli libpango-1.0-0 libpangoft2-1.0-0 fonts-noto-cjk
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
 
-      - name: Install MkDocs and plugins
-        run: |
-          pip install -r requirements-docs.txt
+      - name: Install documentation dependencies
+        working-directory: docs-site
+        run: npm ci
 
-      - name: Build Docs
-        env:
-          ENABLE_PDF_EXPORT: 1
-        run: mkdocs build
-
-      - name: Rename Output Files
-        run: |
-          mv site/pdf/operation_manual.pdf site/pdf/operation_manual_ja.pdf
-          mv site/en/pdf/operation_manual.pdf site/en/pdf/operation_manual_en.pdf
+      - name: Build web documentation and PDFs
+        working-directory: docs-site
+        run: npm run build:all
 
       - name: Upload PDF Artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: manual-pdf
           path: |
-            site/pdf/operation_manual_ja.pdf
-            site/en/pdf/operation_manual_en.pdf
+            docs-site/dist/pdf/operation_manual_ja.pdf
+            docs-site/dist/pdf/operation_manual_en.pdf
           retention-days: 5

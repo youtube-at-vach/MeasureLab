@@ -37,7 +37,7 @@ MeasureLab では `Agents: MeasureLab` を優先するが、毎回存在と番�
 1. 設計指針全文。現在の MeasureLab では `guide/MEASUREMENT_INSTRUMENT_DESIGN_GUIDELINES.md`。
 2. `guide/PROPOSED_FEATURES.md` の Overview、Status Legend、Selected Additions、Implemented/Covered、Conditional、On hold or Not Suitable、Deferred Reference Topics。
 3. `guide/CURRENT_DIRECTION.md` 全体と、対象モジュールのコード、テスト、日英ドキュメント。
-4. 必要に応じて `docs/widget_feature_implementation_matrix.md`、共通データ契約、エクスポート、翻訳、UI サイズ検証の実装。
+4. 必要に応じて `docs-site/src/content/docs/widget_feature_implementation_matrix.md`、共通データ契約、エクスポート、翻訳、UI サイズ検証の実装。
 
 既存の `agent-proposal-backlog-issue` がルートや `docs/` 配下を参照していても、現在のリポジトリで実体が `guide/` 配下に移動している場合は `rg --files` で解決した実パスを正本として使う。
 

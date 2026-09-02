@@ -1,0 +1,39 @@
+:root {
+  --sl-content-width: 58rem;
+  --sl-color-accent-low: #20285d;
+  --sl-color-accent: #7285ff;
+  --sl-color-accent-high: #dce2ff;
+}
+
+:root[data-theme='light'] {
+  --sl-color-accent-low: #e8ebff;
+  --sl-color-accent: #4054c8;
+  --sl-color-accent-high: #1d2a6e;
+}
+
+.sl-markdown-content img {
+  height: auto;
+  max-width: 100%;
+  background: #fff;
+}
+
+.katex-display {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: 0.25rem;
+}
+
+@media print {
+  :root {
+    color-scheme: light;
+  }
+
+  body,
+  img,
+  picture,
+  svg {
+    color: #000;
+    background: #fff;
+  }
+}

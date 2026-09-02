@@ -123,7 +123,7 @@ const SKILL_MANIFEST = {
     changelogPath: 'CHANGELOG.md',
     
     // ドキュメント
-    docsPath: 'docs/',
+    docsPath: 'docs-site/src/content/docs/',
     
     // スクリプト
     screenshotScript: 'scripts/capture_widget_screenshots.py'
