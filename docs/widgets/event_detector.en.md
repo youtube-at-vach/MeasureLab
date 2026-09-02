@@ -94,7 +94,7 @@ The summary reports sample count, minimum, median, mean, sample standard deviati
 
 ### Rate Trend
 
-The trend uses fixed, non-overlapping bins of 1 second, 10 seconds, 1 minute, 10 minutes, or 1 hour. The current bin is normalized by its elapsed exposure and marked as partial. A bin containing a data gap is invalidated and breaks the plotted line rather than showing a misleading rate across missing input.
+The trend uses fixed, non-overlapping bins of 1 second, 10 seconds, 1 minute, 10 minutes, or 1 hour. The current bin is normalized by its elapsed exposure and marked as partial. Like distributions, the trend is calculated from valid completed events only. A bin containing a data gap is invalidated and breaks the plotted line rather than showing a misleading rate across missing input.
 
 ### Events
 
