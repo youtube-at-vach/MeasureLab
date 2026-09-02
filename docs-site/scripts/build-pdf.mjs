@@ -87,6 +87,9 @@ for (const edition of editions) {
   await rm(path.join(outputDirectory, `${edition.filename}.pdf`), { force: true });
 }
 
+const browserExecutable = process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CHROMIUM_PATH;
+const extraArgs = browserExecutable ? ['--browser-executable', browserExecutable] : [];
+
 await withPreview(
   async ({ documentationRoot }) => {
     for (const edition of editions) {
@@ -122,6 +125,7 @@ await withPreview(
         '240000',
         '--print-bg',
         '--pdf-outline',
+        ...extraArgs,
       ]);
       await validatePdf(edition);
     }
