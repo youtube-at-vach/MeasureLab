@@ -26,6 +26,7 @@ def test_missing_samples_are_zero_filled_without_closing_the_gap():
 
     assert missing == [(4, 4)]
     assert np.array_equal(data[:, 0], [1, 1, 1, 1, 0, 0, 0, 0, 2, 2, 2, 2])
+    assert buffer.consumed_until() == 12
 
 
 def test_duplicate_and_late_packets_are_reported():

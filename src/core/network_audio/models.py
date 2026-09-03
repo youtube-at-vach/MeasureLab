@@ -161,6 +161,7 @@ class NetworkAudioStats:
 
     def snapshot(self) -> dict[str, object]:
         with self._lock:
+            resolved_retransmissions = self.recovered_packets + self.expired_retransmissions
             return {
                 "state": self.state,
                 "rx_packets": self.rx_packets,
@@ -181,6 +182,9 @@ class NetworkAudioStats:
                 "recovered_packets": self.recovered_packets,
                 "recovered_frames": self.recovered_frames,
                 "expired_retransmissions": self.expired_retransmissions,
+                "deadline_recovery_rate": (
+                    self.recovered_packets / resolved_retransmissions if resolved_retransmissions else None
+                ),
                 "retransmit_cache_misses": self.retransmit_cache_misses,
                 "jitter_frames": self.jitter_frames,
                 "buffered_frames": self.buffered_frames,
