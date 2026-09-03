@@ -97,8 +97,12 @@ class NetworkAudioStats:
             self.rx_bytes += max(0, int(size))
 
     def record_tx(self, size: int) -> None:
+        self.record_tx_batch(1, size)
+
+    def record_tx_batch(self, packets: int, size: int) -> None:
+        """Record a transmitted packet batch with one cross-thread update."""
         with self._lock:
-            self.tx_packets += 1
+            self.tx_packets += max(0, int(packets))
             self.tx_bytes += max(0, int(size))
 
     def record_duplicate(self) -> None:

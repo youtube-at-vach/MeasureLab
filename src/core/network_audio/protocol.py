@@ -122,10 +122,11 @@ def datagram_kind(packet: bytes) -> int:
     """Return the v2 packet type after validating the common prefix."""
     if len(packet) < 6:
         raise ProtocolError("invalid datagram size")
-    magic, version, kind = struct.unpack_from("!4sBB", packet)
-    if magic != MAGIC or version != PROTOCOL_VERSION:
+    # This dispatch runs before every full audio/control decode. Direct byte
+    # access avoids a second Struct result allocation on the packet hot path.
+    if packet[:4] != MAGIC or packet[4] != PROTOCOL_VERSION:
         raise ProtocolError("unsupported network audio protocol")
-    return kind
+    return packet[5]
 
 
 def encode_control_datagram(
@@ -200,7 +201,28 @@ def encode_audio_packet(
         raise ProtocolError("invalid audio channel count")
     if direction not in (DIRECTION_CAPTURE, DIRECTION_PLAYBACK):
         raise ProtocolError("invalid audio direction")
-    payload = np.ascontiguousarray(array, dtype="<f4").tobytes()
+    array = np.ascontiguousarray(array, dtype="<f4")
+    return _encode_audio_array(
+        array,
+        direction,
+        flags,
+        session_id,
+        sequence,
+        sample_index,
+    )
+
+
+def _encode_audio_array(
+    array: np.ndarray,
+    direction: int,
+    flags: int,
+    session_id: int,
+    sequence: int,
+    sample_index: int,
+) -> bytes:
+    """Encode an already validated contiguous little-endian float32 array."""
+    frames, channels = array.shape
+    payload = array.tobytes()
     crc = zlib.crc32(payload) & 0xFFFFFFFF
     header = _HEADER.pack(
         MAGIC,
@@ -264,24 +286,35 @@ def packetize_audio(
     first_sequence: int,
     sample_index: int,
 ) -> list[bytes]:
-    array = np.asarray(data)
+    array = np.asarray(data, dtype="<f4")
     if array.ndim != 2:
         raise ProtocolError("audio block must be two-dimensional")
+    if len(array) == 0:
+        return []
+    channels = array.shape[1]
+    if channels <= 0 or channels > MAX_CHANNELS:
+        raise ProtocolError("invalid audio channel count")
+    if direction not in (DIRECTION_CAPTURE, DIRECTION_PLAYBACK):
+        raise ProtocolError("invalid audio direction")
+    # Validate and normalize once per callback block. Calling the public
+    # single-packet encoder for every fragment repeated the same dtype, shape,
+    # channel, and direction work at packet rate.
+    array = np.ascontiguousarray(array, dtype="<f4")
     packets = []
     sequence = int(first_sequence)
     for offset in range(0, len(array), PACKET_FRAMES):
         chunk = array[offset : offset + PACKET_FRAMES]
         packets.append(
-            encode_audio_packet(
+            _encode_audio_array(
                 chunk,
-                direction=direction,
+                direction,
                 # Status flags describe the source callback block, not every
                 # UDP fragment. The first fragment is sufficient because loss
                 # of that fragment is itself reported as missing audio.
-                flags=flags if offset == 0 else 0,
-                session_id=session_id,
-                sequence=sequence,
-                sample_index=sample_index + offset,
+                flags if offset == 0 else 0,
+                session_id,
+                sequence,
+                sample_index + offset,
             )
         )
         sequence += 1

@@ -81,6 +81,24 @@ def test_packetizer_reports_callback_status_once_per_fragmented_block():
     assert [decode_audio_packet(packet)[0]["flags"] for packet in packets] == [3, 0, 0]
 
 
+def test_packetizer_normalizes_noncontiguous_float64_block_once():
+    source = np.arange(PACKET_FRAMES * 4, dtype=np.float64).reshape(-1, 2)[::2]
+    assert not source.flags.c_contiguous
+
+    packets = packetize_audio(
+        source,
+        direction=DIRECTION_CAPTURE,
+        flags=0,
+        session_id=10,
+        first_sequence=20,
+        sample_index=1000,
+    )
+
+    decoded = np.vstack([decode_audio_packet(packet)[1] for packet in packets])
+    assert decoded.dtype == np.float32
+    assert np.array_equal(decoded, source.astype(np.float32))
+
+
 def test_corrupt_payload_is_rejected():
     packet = bytearray(
         encode_audio_packet(

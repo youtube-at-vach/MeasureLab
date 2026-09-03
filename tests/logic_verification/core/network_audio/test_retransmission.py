@@ -76,3 +76,13 @@ def test_retransmit_history_capacity_preserves_negotiated_window_at_high_packet_
     assert capacity >= 6001
     assert packets == [b"0"]
     assert misses == 0
+
+
+def test_retransmit_history_adds_consecutive_callback_batch():
+    history = RetransmitHistory(0.1)
+
+    history.add_many(10, [b"ten", b"eleven", b"twelve"], now=6.0)
+
+    packets, misses = history.take_for_retransmit([10, 11, 12, 13], now=6.01)
+    assert packets == [b"ten", b"eleven", b"twelve"]
+    assert misses == 1

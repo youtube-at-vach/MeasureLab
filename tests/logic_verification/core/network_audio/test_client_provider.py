@@ -488,11 +488,14 @@ def test_network_stats_do_not_retain_incident_details():
 
     stats.record_loss(128)
     stats.record_queue_overflow(64)
+    stats.record_tx_batch(8, 8 * 1064)
     snapshot = stats.snapshot()
 
     assert snapshot["lost_frames"] == 192
     assert snapshot["lost_packets"] == 1
     assert snapshot["local_queue_overflows"] == 1
+    assert snapshot["tx_packets"] == 8
+    assert snapshot["tx_bytes"] == 8 * 1064
     assert "incidents" not in snapshot
 
 
