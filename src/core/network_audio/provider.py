@@ -679,11 +679,17 @@ class NetworkAudioProvider:
                 first_sequence = send_sequence
                 send_sequence += len(packets)
                 history = self._capture_history
-                for offset, packet in enumerate(packets):
-                    if history is not None:
-                        history.add(first_sequence + offset, packet)
-                    self._send_packet(packet, client_udp)
-                    self.stats.record_tx(len(packet))
+                if history is not None:
+                    history.add_many(first_sequence, packets)
+                sent_packets = 0
+                sent_bytes = 0
+                try:
+                    for packet in packets:
+                        self._send_packet(packet, client_udp)
+                        sent_packets += 1
+                        sent_bytes += len(packet)
+                finally:
+                    self.stats.record_tx_batch(sent_packets, sent_bytes)
             except (OSError, ProtocolError) as exc:
                 if not self._stop_event.is_set() and self._session_id == session_id:
                     self.stats.set_state("error", str(exc))

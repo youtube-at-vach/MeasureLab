@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict, deque
+from collections.abc import Sequence
 from dataclasses import dataclass
 import math
 import threading
@@ -56,6 +57,21 @@ class RetransmitHistory:
             self._evict(timestamp)
             self._entries[sequence] = _HistoryEntry(timestamp, bytes(packet))
             self._entries.move_to_end(sequence)
+            while len(self._entries) > self.max_packets:
+                self._entries.popitem(last=False)
+
+    def add_many(self, first_sequence: int, packets: Sequence[bytes], *, now: float | None = None) -> None:
+        """Add one callback block of consecutive packets under a single lock."""
+        if not packets:
+            return
+        timestamp = time.monotonic() if now is None else float(now)
+        first_sequence = int(first_sequence)
+        with self._lock:
+            self._evict(timestamp)
+            for offset, packet in enumerate(packets):
+                sequence = first_sequence + offset
+                self._entries[sequence] = _HistoryEntry(timestamp, bytes(packet))
+                self._entries.move_to_end(sequence)
             while len(self._entries) > self.max_packets:
                 self._entries.popitem(last=False)
 

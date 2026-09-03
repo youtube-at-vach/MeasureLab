@@ -117,21 +117,34 @@ class IndexedAudioBuffer:
         frames = int(frames)
         if frames <= 0:
             raise ValueError("frames must be positive")
-        result = np.zeros((frames, self.channels), dtype=np.float32)
-        valid = np.zeros(frames, dtype=bool)
         end = sample_index + frames
         with self._condition:
             retained_start = max(self._consumed_until, self._highest_end - self.capacity_frames)
             overlap_start = max(sample_index, retained_start)
             overlap_end = min(end, self._highest_end)
-            if overlap_start < overlap_end:
-                self._copy_range(
-                    overlap_start,
-                    overlap_end - overlap_start,
-                    result,
-                    valid,
-                    overlap_start - sample_index,
-                )
+            fully_buffered = (
+                frames <= self.capacity_frames
+                and overlap_start == sample_index
+                and overlap_end == end
+                and self._range_is_valid(sample_index, frames)
+            )
+            if fully_buffered:
+                # The steady-state path has no packet loss. Copy directly from
+                # the ring without allocating and populating a second boolean
+                # array solely to prove that every sample was present.
+                result = self._copy_valid_range(sample_index, frames)
+                valid = None
+            else:
+                result = np.zeros((frames, self.channels), dtype=np.float32)
+                valid = np.zeros(frames, dtype=bool)
+                if overlap_start < overlap_end:
+                    self._copy_range(
+                        overlap_start,
+                        overlap_end - overlap_start,
+                        result,
+                        valid,
+                        overlap_start - sample_index,
+                    )
 
             previous_consumed = self._consumed_until
             self._consumed_until = max(self._consumed_until, end)
@@ -140,6 +153,8 @@ class IndexedAudioBuffer:
             if invalidate_start < invalidate_end:
                 self._invalidate_range(invalidate_start, invalidate_end)
 
+        if valid is None:
+            return result, []
         missing_mask = ~valid
         if not np.any(missing_mask):
             return result, []
@@ -210,6 +225,17 @@ class IndexedAudioBuffer:
             result[destination] = self._data[:remaining]
             result[destination][~ring_valid] = 0
             valid[destination] = ring_valid
+
+    def _copy_valid_range(self, sample_index: int, frames: int) -> np.ndarray:
+        """Copy one range known to be fully valid from the ring."""
+        ring_start = sample_index % self.capacity_frames
+        first_frames = min(frames, self.capacity_frames - ring_start)
+        if first_frames == frames:
+            return self._data[ring_start : ring_start + frames].copy()
+        result = np.empty((frames, self.channels), dtype=np.float32)
+        result[:first_frames] = self._data[ring_start : ring_start + first_frames]
+        result[first_frames:] = self._data[: frames - first_frames]
+        return result
 
     def _first_valid_sample(self) -> int:
         retained_start = max(self._consumed_until, self._highest_end - self.capacity_frames)
