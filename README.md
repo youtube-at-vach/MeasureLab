@@ -2,7 +2,7 @@
 
 # 🚀 **MeasureLab (Audio Measurement Suite)** 🎶
 
-![CI](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml/badge.svg) ![Linux Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_appimage.yml/badge.svg) ![Windows Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_windows.yml/badge.svg) ![macOS Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_macos.yml/badge.svg)
+![CI](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml/badge.svg) ![Linux Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_appimage.yml/badge.svg) ![Windows Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_windows.yml/badge.svg) ![macOS Build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_macos.yml/badge.svg) [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/youtube-at-vach/MeasureLab/badge)](https://securityscorecards.dev/viewer/?uri=github.com/youtube-at-vach/MeasureLab)
 
 [![Online Manual](https://img.shields.io/badge/📖_Online_Manual-Click_Here-blue?style=for-the-badge&logo=gitbook&logoColor=white)](https://youtube-at-vach.github.io/MeasureLab/)
 
