@@ -21,6 +21,7 @@ from src.core.network_audio.protocol import (
     DIRECTION_PLAYBACK,
     FLAG_INPUT_XRUN,
     FLAG_OUTPUT_XRUN,
+    PACKET_AUDIO_NACK,
     PACKET_CONNECT_OFFER,
     PACKET_CONNECT_REQUEST,
     PACKET_CONTROL_ACK,
@@ -41,11 +42,13 @@ from src.core.network_audio.protocol import (
     control_int,
     control_str,
     datagram_kind,
+    decode_audio_nack,
     decode_audio_packet,
     decode_control_datagram,
     encode_control_datagram,
     packetize_audio,
 )
+from src.core.network_audio.retransmission import NackTracker, RetransmitHistory
 
 if TYPE_CHECKING:
     from src.core.audio_engine import AudioEngine
@@ -86,10 +89,14 @@ class NetworkAudioProvider:
         self._client_playback_active = False
         self._duplex_negotiated = False
         self._duplex = False
+        self._retransmission_negotiated = False
+        self._retransmit_window_seconds = 0.0
         self._callback_id: int | None = None
         self._sample_index = 0
         self._capture_queue: queue.Queue[tuple[int, np.ndarray, int]] = queue.Queue(maxsize=64)
         self._playback_buffer: IndexedAudioBuffer | None = None
+        self._capture_history: RetransmitHistory | None = None
+        self._playback_nacks: NackTracker | None = None
         self._playback_active = threading.Event()
         self._playback_started_at: int | None = None
         self._stop_event = threading.Event()
@@ -156,6 +163,7 @@ class NetworkAudioProvider:
                 packet, address = udp_socket.recvfrom(2048)
             except TimeoutError:
                 self._expire_session()
+                self._poll_playback_nacks()
                 continue
             except OSError:
                 return
@@ -163,6 +171,7 @@ class NetworkAudioProvider:
                 kind = datagram_kind(packet)
                 if kind == DIRECTION_PLAYBACK:
                     self._handle_playback_audio(packet, address)
+                    self._poll_playback_nacks()
                     continue
                 header, message = decode_control_datagram(packet)
                 cached = self._cached_response(address, header["kind"], header["message_id"])
@@ -170,6 +179,7 @@ class NetworkAudioProvider:
                     self._send_packet(cached, address)
                     continue
                 self._handle_control(header, message, address)
+                self._poll_playback_nacks()
             except (ProtocolError, TypeError, ValueError) as exc:
                 if address == self._client_udp:
                     self.stats.record_corrupt(str(exc))
@@ -201,6 +211,8 @@ class NetworkAudioProvider:
             self._handle_playback_state(header, message, address)
         elif kind == PACKET_STOP:
             self._handle_stop(header, address)
+        elif kind == PACKET_AUDIO_NACK:
+            self._handle_audio_nack(header, message, address)
 
     def _handle_discover(
         self,
@@ -252,6 +264,12 @@ class NetworkAudioProvider:
         if not client_nonce:
             raise ProtocolError("client nonce is required")
         requested_duplex = control_bool(message, "duplex", False)
+        requested_retransmission = control_bool(message, "retransmission", False)
+        retransmit_window_ms = 100
+        if requested_retransmission:
+            retransmit_window_ms = control_int(message, "retransmit_window_ms", 100)
+            if not 20 <= retransmit_window_ms <= 250:
+                raise ProtocolError("client retransmission window is invalid")
         with self._state_lock:
             if not self.running or self._stop_event.is_set():
                 return
@@ -264,6 +282,8 @@ class NetworkAudioProvider:
             self._client_requested_duplex = requested_duplex
             self._duplex_negotiated = requested_duplex and self.allow_output
             self._duplex = self._duplex_negotiated
+            self._retransmission_negotiated = requested_retransmission
+            self._retransmit_window_seconds = retransmit_window_ms / 1000.0
             self._playback_buffer = IndexedAudioBuffer(
                 capacity_frames=max(int(self.audio_engine.sample_rate) * 4, int(self.audio_engine.block_size) * 16),
                 channels=self._output_channels,
@@ -283,6 +303,8 @@ class NetworkAudioProvider:
                 "input_device_name": self._input_device_name,
                 "output_device_name": self._output_device_name,
                 "duplex": self._duplex,
+                "retransmission": self._retransmission_negotiated,
+                "retransmit_window_ms": retransmit_window_ms,
             },
             address,
             session_id=session_id,
@@ -302,6 +324,17 @@ class NetworkAudioProvider:
                     return
                 self._sample_index = 0
                 self._capture_queue = queue.Queue(maxsize=64)
+                if self._retransmission_negotiated:
+                    self._capture_history = RetransmitHistory(self._retransmit_window_seconds)
+                    self._playback_nacks = NackTracker(
+                        self._retransmit_window_seconds,
+                        expected_sequence=None,
+                    )
+                    if self._udp_socket is not None:
+                        self._udp_socket.settimeout(0.01)
+                else:
+                    self._capture_history = None
+                    self._playback_nacks = None
                 self._client_playback_active = False
                 self._playback_active.clear()
                 self._playback_started_at = None
@@ -355,7 +388,13 @@ class NetworkAudioProvider:
         if not self._matches_session(header, address) or not self._session_active:
             return
         self._last_control_received = time.monotonic()
-        self._set_client_playback_active(control_bool(message, "active", False))
+        active = control_bool(message, "active", False)
+        expected_sequence: int | None = None
+        if active and "next_sequence" in message:
+            expected_sequence = control_int(message, "next_sequence")
+            if not 0 <= expected_sequence <= 0xFFFFFFFFFFFFFFFF:
+                raise ProtocolError("invalid playback sequence")
+        self._set_client_playback_active(active, expected_sequence)
         response = self._send_control(
             PACKET_CONTROL_ACK,
             {"request_kind": PACKET_PLAYBACK_STATE},
@@ -381,6 +420,31 @@ class NetworkAudioProvider:
     def _matches_session(self, header: dict[str, int], address: tuple[str, int]) -> bool:
         return address == self._client_udp and header["session_id"] == self._session_id and self._session_id != 0
 
+    def _handle_audio_nack(
+        self,
+        header: dict[str, int],
+        message: dict[str, object],
+        address: tuple[str, int],
+    ) -> None:
+        history = self._capture_history
+        if (
+            not self._retransmission_negotiated
+            or history is None
+            or not self._session_active
+            or not self._matches_session(header, address)
+        ):
+            return
+        self._last_control_received = time.monotonic()
+        direction, sequences = decode_audio_nack(message)
+        if direction != DIRECTION_CAPTURE:
+            raise ProtocolError("invalid provider NACK direction")
+        packets, misses = history.take_for_retransmit(sequences)
+        self.stats.record_retransmit_cache_misses(misses)
+        for packet in packets:
+            self._send_packet(packet, address)
+            self.stats.record_tx(len(packet))
+            self.stats.record_retransmit()
+
     def _handle_playback_audio(self, packet: bytes, address: tuple[str, int]) -> None:
         playback = self._playback_buffer
         if not self._session_active or address != self._client_udp or playback is None:
@@ -390,6 +454,9 @@ class NetworkAudioProvider:
             return
         if not self._playback_active.is_set():
             return
+        recovered = False
+        if self._playback_nacks is not None:
+            recovered = self._playback_nacks.observe(header["sequence"])
         if header["sample_index"] + len(data) <= self._sample_index:
             self.stats.record_late()
             return
@@ -403,6 +470,36 @@ class NetworkAudioProvider:
                 self._playback_started_at = header["sample_index"]
             self.stats.record_rx(len(packet))
             self.stats.set_buffered_frames(playback.buffered_frames())
+            if recovered:
+                self.stats.record_recovery(len(data))
+
+    def _poll_playback_nacks(self) -> None:
+        tracker = self._playback_nacks
+        address = self._client_udp
+        if (
+            not self._retransmission_negotiated
+            or tracker is None
+            or address is None
+            or not self._session_active
+            or not self._playback_active.is_set()
+        ):
+            return
+        sequences, expired = tracker.poll()
+        self.stats.record_retransmit_expired(expired)
+        if not sequences:
+            return
+        try:
+            packet = encode_control_datagram(
+                PACKET_AUDIO_NACK,
+                {"direction": DIRECTION_PLAYBACK, "sequences": sequences},
+                session_id=self._session_id,
+                message_id=secrets.randbits(63) or 1,
+            )
+            self._send_packet(packet, address)
+            self.stats.record_nack_sent(len(sequences))
+        except (OSError, ProtocolError) as exc:
+            if not self._stop_event.is_set():
+                self.stats.set_state("error", f"audio retransmission request failed: {exc}")
 
     def _send_control(
         self,
@@ -491,11 +588,11 @@ class NetworkAudioProvider:
     def set_discoverable(self, enabled: bool) -> None:
         self.discoverable = bool(enabled)
 
-    def _set_client_playback_active(self, active: bool) -> None:
+    def _set_client_playback_active(self, active: bool, expected_sequence: int | None = None) -> None:
         self._client_playback_active = bool(active)
-        self._set_playback_active(self._client_playback_active)
+        self._set_playback_active(self._client_playback_active, expected_sequence)
 
-    def _set_playback_active(self, active: bool) -> None:
+    def _set_playback_active(self, active: bool, expected_sequence: int | None = None) -> None:
         playback_buffer = self._playback_buffer
         active = bool(active and self._duplex)
         if active:
@@ -503,6 +600,8 @@ class NetworkAudioProvider:
                 return
             if playback_buffer is not None:
                 playback_buffer.clear()
+            if self._playback_nacks is not None:
+                self._playback_nacks.reset(expected_sequence)
             self._playback_started_at = None
             self._playback_active.set()
             return
@@ -510,6 +609,8 @@ class NetworkAudioProvider:
         self._playback_started_at = None
         if playback_buffer is not None:
             playback_buffer.clear()
+        if self._playback_nacks is not None:
+            self._playback_nacks.reset(None)
 
     def _audio_callback(self, indata, outdata, frames, time_info, status) -> None:
         del time_info
@@ -559,8 +660,12 @@ class NetworkAudioProvider:
                     first_sequence=send_sequence,
                     sample_index=sample_index,
                 )
+                first_sequence = send_sequence
                 send_sequence += len(packets)
-                for packet in packets:
+                history = self._capture_history
+                for offset, packet in enumerate(packets):
+                    if history is not None:
+                        history.add(first_sequence + offset, packet)
                     self._send_packet(packet, client_udp)
                     self.stats.record_tx(len(packet))
             except (OSError, ProtocolError) as exc:
@@ -594,10 +699,17 @@ class NetworkAudioProvider:
         self._client_playback_active = False
         self._duplex_negotiated = False
         self._duplex = False
+        self._retransmission_negotiated = False
         self._playback_active.clear()
         self._playback_buffer = None
+        if self._capture_history is not None:
+            self._capture_history.clear()
+        self._capture_history = None
+        self._playback_nacks = None
         self._playback_started_at = None
         self._last_control_received = 0.0
+        if self._udp_socket is not None:
+            self._udp_socket.settimeout(0.2)
         if self.running:
             self.stats.set_state("listening")
 
@@ -643,6 +755,7 @@ class NetworkAudioProvider:
                 "port": self.port,
                 "client_address": self.client_address,
                 "duplex": self._duplex,
+                "retransmission_active": self._retransmission_negotiated,
                 "allow_output": self.allow_output,
                 "discoverable": self.discoverable,
                 "playback_active": self._playback_active.is_set(),

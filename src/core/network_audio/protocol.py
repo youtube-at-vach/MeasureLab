@@ -27,6 +27,8 @@ PACKET_CONTROL_ACK = 25
 PACKET_STOP = 26
 PACKET_STOPPED = 27
 PACKET_ERROR = 28
+PACKET_AUDIO_NACK = 29
+NACK_MAX_SEQUENCES = 32
 
 CONTROL_PACKET_TYPES = frozenset(
     {
@@ -43,6 +45,7 @@ CONTROL_PACKET_TYPES = frozenset(
         PACKET_STOP,
         PACKET_STOPPED,
         PACKET_ERROR,
+        PACKET_AUDIO_NACK,
     }
 )
 
@@ -88,6 +91,25 @@ def control_str(message: dict[str, object], key: str, default: str | None = None
     if not isinstance(value, str) or len(value) > limit:
         raise ProtocolError(f"invalid control field: {key}")
     return value
+
+
+def decode_audio_nack(message: dict[str, object]) -> tuple[int, list[int]]:
+    """Validate one bounded audio retransmission request."""
+    direction = control_int(message, "direction")
+    if direction not in (DIRECTION_CAPTURE, DIRECTION_PLAYBACK):
+        raise ProtocolError("invalid NACK direction")
+    values = message.get("sequences")
+    if not isinstance(values, list) or not values or len(values) > NACK_MAX_SEQUENCES:
+        raise ProtocolError("invalid NACK sequence list")
+    sequences: list[int] = []
+    seen: set[int] = set()
+    for value in values:
+        if not isinstance(value, int) or isinstance(value, bool) or not 0 <= value <= 0xFFFFFFFFFFFFFFFF:
+            raise ProtocolError("invalid NACK sequence")
+        if value not in seen:
+            sequences.append(value)
+            seen.add(value)
+    return direction, sequences
 
 
 def bounded_control_text(value: object, *, limit: int = 500) -> str:

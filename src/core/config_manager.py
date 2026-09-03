@@ -41,6 +41,7 @@ class NetworkAudioConfigDict(TypedDict, total=False):
     port: int
     jitter_ms: int
     duplex: bool
+    retransmission: bool
     bind_host: str
     discoverable: bool
 
@@ -84,6 +85,7 @@ DEFAULT_CONFIG = {
         "port": 40100,
         "jitter_ms": 100,
         "duplex": True,
+        "retransmission": True,
         "bind_host": "0.0.0.0",
         "discoverable": True,
     },
@@ -377,6 +379,9 @@ class ConfigManager:
         duplex = loaded.get("duplex")
         if isinstance(duplex, bool):
             target["duplex"] = duplex
+        retransmission = loaded.get("retransmission")
+        if isinstance(retransmission, bool):
+            target["retransmission"] = retransmission
         discoverable = loaded.get("discoverable")
         if isinstance(discoverable, bool):
             target["discoverable"] = discoverable

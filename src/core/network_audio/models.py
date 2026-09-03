@@ -74,6 +74,13 @@ class NetworkAudioStats:
         self.remote_input_xruns = 0
         self.remote_output_xruns = 0
         self.local_queue_overflows = 0
+        self.nack_requests_sent = 0
+        self.nack_packets_requested = 0
+        self.retransmitted_packets = 0
+        self.recovered_packets = 0
+        self.recovered_frames = 0
+        self.expired_retransmissions = 0
+        self.retransmit_cache_misses = 0
         self.jitter_frames = 0
         self.buffered_frames = 0
         self.last_error: str | None = None
@@ -126,6 +133,28 @@ class NetworkAudioStats:
         with self._lock:
             self.buffered_frames = max(0, int(frames))
 
+    def record_nack_sent(self, packets: int) -> None:
+        with self._lock:
+            self.nack_requests_sent += 1
+            self.nack_packets_requested += max(0, int(packets))
+
+    def record_retransmit(self) -> None:
+        with self._lock:
+            self.retransmitted_packets += 1
+
+    def record_recovery(self, frames: int) -> None:
+        with self._lock:
+            self.recovered_packets += 1
+            self.recovered_frames += max(0, int(frames))
+
+    def record_retransmit_expired(self, packets: int) -> None:
+        with self._lock:
+            self.expired_retransmissions += max(0, int(packets))
+
+    def record_retransmit_cache_misses(self, packets: int) -> None:
+        with self._lock:
+            self.retransmit_cache_misses += max(0, int(packets))
+
     def snapshot(self) -> dict[str, object]:
         with self._lock:
             return {
@@ -142,6 +171,13 @@ class NetworkAudioStats:
                 "remote_input_xruns": self.remote_input_xruns,
                 "remote_output_xruns": self.remote_output_xruns,
                 "local_queue_overflows": self.local_queue_overflows,
+                "nack_requests_sent": self.nack_requests_sent,
+                "nack_packets_requested": self.nack_packets_requested,
+                "retransmitted_packets": self.retransmitted_packets,
+                "recovered_packets": self.recovered_packets,
+                "recovered_frames": self.recovered_frames,
+                "expired_retransmissions": self.expired_retransmissions,
+                "retransmit_cache_misses": self.retransmit_cache_misses,
                 "jitter_frames": self.jitter_frames,
                 "buffered_frames": self.buffered_frames,
                 "last_error": self.last_error,
@@ -158,5 +194,12 @@ class NetworkAudioStats:
             self.remote_input_xruns = 0
             self.remote_output_xruns = 0
             self.local_queue_overflows = 0
+            self.nack_requests_sent = 0
+            self.nack_packets_requested = 0
+            self.retransmitted_packets = 0
+            self.recovered_packets = 0
+            self.recovered_frames = 0
+            self.expired_retransmissions = 0
+            self.retransmit_cache_misses = 0
             if self.state != "error":
                 self.last_error = None

@@ -19,6 +19,7 @@ class _Config:
             "port": 41000,
             "jitter_ms": 120,
             "duplex": True,
+            "retransmission": True,
             "bind_host": "0.0.0.0",
             "discoverable": True,
         }
@@ -43,6 +44,7 @@ def test_remote_audio_widget_loads_endpoint_and_starts_safe(qtbot):
     assert widget.client_port_spin.value() == 41000
     assert widget.jitter_spin.value() == 120
     assert widget.duplex_check.isChecked()
+    assert widget.retransmission_check.isChecked()
     assert widget.discoverable_check.isChecked()
     assert not widget.allow_output_check.isChecked()
     assert not widget.disconnect_button.isEnabled()
@@ -213,6 +215,7 @@ def test_remote_audio_widget_saves_preferences(qtbot):
     widget.client_port_spin.setValue(42000)
     widget.jitter_spin.setValue(200)
     widget.duplex_check.setChecked(False)
+    widget.retransmission_check.setChecked(False)
 
     widget._save_config()
 
@@ -221,6 +224,7 @@ def test_remote_audio_widget_saves_preferences(qtbot):
         "port": 42000,
         "jitter_ms": 200,
         "duplex": False,
+        "retransmission": False,
         "bind_host": "0.0.0.0",
         "discoverable": True,
     }

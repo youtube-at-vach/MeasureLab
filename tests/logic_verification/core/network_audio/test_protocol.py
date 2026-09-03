@@ -3,14 +3,17 @@ import pytest
 
 from src.core.network_audio.protocol import (
     DIRECTION_CAPTURE,
+    DIRECTION_PLAYBACK,
     MAX_DATAGRAM,
     PACKET_CONNECT_REQUEST,
+    PACKET_AUDIO_NACK,
     PACKET_FRAMES,
     ProtocolError,
     bounded_control_text,
     control_bool,
     control_int,
     datagram_kind,
+    decode_audio_nack,
     decode_audio_packet,
     decode_control_datagram,
     encode_control_datagram,
@@ -118,6 +121,24 @@ def test_udp_control_datagram_round_trip_preserves_envelope_and_json():
     assert datagram_kind(packet) == PACKET_CONNECT_REQUEST
     assert header == {"kind": PACKET_CONNECT_REQUEST, "session_id": 12, "message_id": 34}
     assert message == {"protocol": 2, "duplex": True}
+
+
+def test_audio_nack_validation_is_bounded_and_strict():
+    packet = encode_control_datagram(
+        PACKET_AUDIO_NACK,
+        {"direction": DIRECTION_PLAYBACK, "sequences": [3, 4, 4]},
+        session_id=12,
+        message_id=34,
+    )
+    header, message = decode_control_datagram(packet)
+
+    assert header["kind"] == PACKET_AUDIO_NACK
+    assert decode_audio_nack(message) == (DIRECTION_PLAYBACK, [3, 4])
+
+    with pytest.raises(ProtocolError, match="sequence"):
+        decode_audio_nack({"direction": DIRECTION_CAPTURE, "sequences": [True]})
+    with pytest.raises(ProtocolError, match="sequence list"):
+        decode_audio_nack({"direction": DIRECTION_CAPTURE, "sequences": list(range(33))})
 
 
 def test_udp_control_datagram_preserves_bounded_unicode_text():
