@@ -98,7 +98,10 @@ class RemoteAudioIOWidget(QWidget):
         self.activity_label.setAccessibleName(tr("Status"))
         status_layout.addWidget(self.activity_icon, 0, 0)
         status_layout.addWidget(self.activity_label, 0, 1)
-        status_layout.setColumnStretch(2, 1)
+        # The retransmission counters are localized as one status sentence.
+        # Give their column the spare width so CJK text does not break inside
+        # a unit such as "packet" while the middle column stays empty.
+        status_layout.setColumnStretch(3, 1)
 
         self.integrity_panel = QWidget()
         integrity_layout = QHBoxLayout(self.integrity_panel)

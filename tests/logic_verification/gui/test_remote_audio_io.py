@@ -207,6 +207,34 @@ def test_remote_audio_widget_displays_whether_integrity_loss_is_still_increasing
     assert not hasattr(widget, "incident_table")
 
 
+def test_remote_audio_widget_allocates_spare_status_width_to_retransmission_statistics(qtbot):
+    widget = RemoteAudioIOWidget(_engine(), _Config())
+    qtbot.addWidget(widget)
+    widget.resize(1180, 690)
+    widget.client = SimpleNamespace(
+        status_snapshot=lambda: {
+            "state": "streaming",
+            "lost_frames": 0,
+            "lost_packets": 0,
+            "corrupt_packets": 0,
+            "local_queue_overflows": 0,
+            "recovered_frames": 0,
+            "retransmitted_packets": 0,
+            "retransmission_active": True,
+        },
+        connected=True,
+        close=lambda: None,
+    )
+
+    widget.show()
+    widget.refresh_status()
+    widget.layout().activate()
+
+    status_panel = widget.stats_label.parentWidget()
+    assert widget.stats_label.width() > status_panel.width() // 2
+    assert widget.stats_label.height() == widget.stats_label.fontMetrics().height()
+
+
 def test_remote_audio_widget_saves_preferences(qtbot):
     config = _Config()
     widget = RemoteAudioIOWidget(_engine(), config)
