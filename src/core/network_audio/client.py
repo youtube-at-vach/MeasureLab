@@ -45,7 +45,7 @@ from src.core.network_audio.protocol import (
     encode_control_datagram,
     packetize_audio,
 )
-from src.core.network_audio.retransmission import NackTracker, RetransmitHistory
+from src.core.network_audio.retransmission import NackTracker, RetransmitHistory, history_packet_capacity
 
 
 @dataclass(slots=True)
@@ -153,7 +153,14 @@ class NetworkAudioClient:
             )
             if self.retransmission_active:
                 self._capture_nacks = NackTracker(self._retransmit_window_seconds, expected_sequence=0)
-                self._playback_history = RetransmitHistory(self._retransmit_window_seconds)
+                self._playback_history = RetransmitHistory(
+                    self._retransmit_window_seconds,
+                    max_packets=history_packet_capacity(
+                        self.sample_rate,
+                        self.block_size,
+                        self._retransmit_window_seconds,
+                    ),
+                )
             else:
                 self._capture_nacks = None
                 self._playback_history = None

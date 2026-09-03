@@ -37,7 +37,7 @@ Selecting **Start sharing** reserves the AudioEngine exclusively for the provide
 1. Open **Connect to another computer** in Remote Audio I/O.
 2. Select the remote computer under **Available MeasureLab computers**, then select **Connect selected**. No address or port entry is required.
 3. If discovery is unavailable, check **Connect from another computer** in the provider's **Advanced** details. On the client, open **Advanced**, enter the endpoint's address part under **Remote host** and its port part under **UDP port**, then select **Connect by address**. For example, enter `192.168.1.10` and `40100` for `192.168.1.10:40100`. A reachable host name may be used instead of the displayed IPv4 address. Manual connections use the same UDP protocol as discovered connections.
-4. The fixed network buffer and duplex request are also under **Advanced**. Start with 100 ms for a typical LAN.
+4. The fixed network buffer, duplex request, and **Recover lost network packets** option are also under **Advanced**. Start with a 100 ms buffer and packet recovery enabled for a typical LAN. Recovery is used only when both computers support it.
 5. Start an ordinary measurement module after the connection is established.
 
 Discovery sends an IPv4 broadcast query from the main computer to the selected UDP port and lists only providers that reply. Normally, use the default port `40100` on both computers. Discovery does not cross subnets and can be blocked by Wi-Fi client isolation, VPNs, or firewalls that filter broadcasts. Manual connection remains available when the provider address is otherwise reachable.
@@ -53,6 +53,7 @@ The **Connection quality** area at the top displays the following while connecte
 
 - Missing frame count
 - Event count combining missing packets, corrupt packets, and local queue overflows
+- Frames recovered by optional retransmission and packets retransmitted by this computer
 - Whether data loss is still increasing or has stopped increasing
 
 Open **Advanced** in the relevant tab to see the connected device and format, or the listening endpoints and connected client.
@@ -63,7 +64,7 @@ Do not treat a measurement interval showing **Data loss is increasing** as compl
 
 - Protocol v2 carries discovery, connection control, keepalives, and uncompressed float32 PCM audio on one UDP port. It has no TCP listener.
 - The main computer sends `DISCOVER_QUERY` and `CONNECT_REQUEST`; the provider returns responses and audio to the observed UDP source address. It does not trust a reply address declared in the payload.
-- Session start, playback state, shutdown, and other control packets use acknowledgements and retries with the same message ID. Real-time audio is not retransmitted because doing so would increase latency.
+- Session start, playback state, shutdown, and other reliable control packets use acknowledgements and retries with the same message ID. When enabled and supported by both computers, deadline-limited `AUDIO_NACK` requests recover recent audio packets without extending the fixed network-buffer deadline.
 - Keepalives prevent an unresponsive client from reserving the provider indefinitely.
 - Audio packets include a session ID, sequence number, absolute sample position, and CRC.
 - The remote audio device clock is the sample-time authority for the session.

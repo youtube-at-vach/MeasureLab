@@ -48,7 +48,7 @@ from src.core.network_audio.protocol import (
     encode_control_datagram,
     packetize_audio,
 )
-from src.core.network_audio.retransmission import NackTracker, RetransmitHistory
+from src.core.network_audio.retransmission import NackTracker, RetransmitHistory, history_packet_capacity
 
 if TYPE_CHECKING:
     from src.core.audio_engine import AudioEngine
@@ -97,6 +97,7 @@ class NetworkAudioProvider:
         self._playback_buffer: IndexedAudioBuffer | None = None
         self._capture_history: RetransmitHistory | None = None
         self._playback_nacks: NackTracker | None = None
+        self._playback_next_sequence: int | None = None
         self._playback_active = threading.Event()
         self._playback_started_at: int | None = None
         self._stop_event = threading.Event()
@@ -284,6 +285,7 @@ class NetworkAudioProvider:
             self._duplex = self._duplex_negotiated
             self._retransmission_negotiated = requested_retransmission
             self._retransmit_window_seconds = retransmit_window_ms / 1000.0
+            self._playback_next_sequence = None
             self._playback_buffer = IndexedAudioBuffer(
                 capacity_frames=max(int(self.audio_engine.sample_rate) * 4, int(self.audio_engine.block_size) * 16),
                 channels=self._output_channels,
@@ -325,7 +327,14 @@ class NetworkAudioProvider:
                 self._sample_index = 0
                 self._capture_queue = queue.Queue(maxsize=64)
                 if self._retransmission_negotiated:
-                    self._capture_history = RetransmitHistory(self._retransmit_window_seconds)
+                    self._capture_history = RetransmitHistory(
+                        self._retransmit_window_seconds,
+                        max_packets=history_packet_capacity(
+                            int(self.audio_engine.sample_rate),
+                            int(self.audio_engine.block_size),
+                            self._retransmit_window_seconds,
+                        ),
+                    )
                     self._playback_nacks = NackTracker(
                         self._retransmit_window_seconds,
                         expected_sequence=None,
@@ -390,7 +399,7 @@ class NetworkAudioProvider:
         self._last_control_received = time.monotonic()
         active = control_bool(message, "active", False)
         expected_sequence: int | None = None
-        if active and "next_sequence" in message:
+        if "next_sequence" in message:
             expected_sequence = control_int(message, "next_sequence")
             if not 0 <= expected_sequence <= 0xFFFFFFFFFFFFFFFF:
                 raise ProtocolError("invalid playback sequence")
@@ -452,11 +461,14 @@ class NetworkAudioProvider:
         header, data = decode_audio_packet(packet)
         if header["session_id"] != self._session_id or header["direction"] != DIRECTION_PLAYBACK:
             return
+        sequence = header["sequence"]
+        if self._playback_next_sequence is None or sequence >= self._playback_next_sequence:
+            self._playback_next_sequence = sequence + 1
         if not self._playback_active.is_set():
             return
         recovered = False
         if self._playback_nacks is not None:
-            recovered = self._playback_nacks.observe(header["sequence"])
+            recovered = self._playback_nacks.observe(sequence)
         if header["sample_index"] + len(data) <= self._sample_index:
             self.stats.record_late()
             return
@@ -583,13 +595,15 @@ class NetworkAudioProvider:
         """Arm or immediately mute remote playback."""
         self.allow_output = bool(enabled)
         self._duplex = self._duplex_negotiated and self.allow_output
-        self._set_playback_active(self._client_playback_active)
+        self._set_playback_active(self._client_playback_active, self._playback_next_sequence)
 
     def set_discoverable(self, enabled: bool) -> None:
         self.discoverable = bool(enabled)
 
     def _set_client_playback_active(self, active: bool, expected_sequence: int | None = None) -> None:
         self._client_playback_active = bool(active)
+        if expected_sequence is not None:
+            self._playback_next_sequence = expected_sequence
         self._set_playback_active(self._client_playback_active, expected_sequence)
 
     def _set_playback_active(self, active: bool, expected_sequence: int | None = None) -> None:
@@ -601,7 +615,9 @@ class NetworkAudioProvider:
             if playback_buffer is not None:
                 playback_buffer.clear()
             if self._playback_nacks is not None:
-                self._playback_nacks.reset(expected_sequence)
+                self._playback_nacks.reset(
+                    self._playback_next_sequence if expected_sequence is None else expected_sequence
+                )
             self._playback_started_at = None
             self._playback_active.set()
             return
@@ -706,6 +722,7 @@ class NetworkAudioProvider:
             self._capture_history.clear()
         self._capture_history = None
         self._playback_nacks = None
+        self._playback_next_sequence = None
         self._playback_started_at = None
         self._last_control_received = 0.0
         if self._udp_socket is not None:

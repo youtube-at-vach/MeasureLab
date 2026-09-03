@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from collections import OrderedDict, deque
 from dataclasses import dataclass
+import math
 import threading
 import time
 
-from src.core.network_audio.protocol import NACK_MAX_SEQUENCES
+from src.core.network_audio.protocol import NACK_MAX_SEQUENCES, PACKET_FRAMES
 
 NACK_MAX_PENDING = 128
 RETRANSMIT_MAX_ATTEMPTS = 3
@@ -16,6 +17,18 @@ RETRANSMIT_MAX_INTERVAL = 0.05
 REORDER_DELAY = 0.005
 RETRANSMIT_RATE_WINDOW = 0.1
 RETRANSMIT_MAX_PER_WINDOW = 64
+
+
+def history_packet_capacity(sample_rate: int, block_size: int, retention_seconds: float) -> int:
+    """Return enough entries to retain every packet in the negotiated window."""
+    sample_rate = max(1, int(sample_rate))
+    block_size = max(1, int(block_size))
+    retention_seconds = max(0.02, float(retention_seconds))
+    packets_per_block = math.ceil(block_size / PACKET_FRAMES)
+    retained_blocks = math.ceil(sample_rate * retention_seconds / block_size)
+    # Keep one extra callback block so count eviction cannot shorten the time
+    # window at a callback boundary.
+    return max(1, (retained_blocks + 1) * packets_per_block)
 
 
 @dataclass(slots=True)

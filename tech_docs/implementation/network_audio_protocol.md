@@ -161,16 +161,16 @@ After the session starts, the client sends `KEEPALIVE` with an empty object once
 The audio stream is controlled separately from the session. Just before the client begins its callback stream, it requests:
 
 ```json
-{"active":true}
+{"active":true,"next_sequence":1204}
 ```
 
-in `PLAYBACK_STATE`. When its callback stops, it sends the same packet with `false`. The provider replies with `CONTROL_ACK`:
+in `PLAYBACK_STATE`. `next_sequence` is the unsigned 64-bit sequence number of the next playback audio datagram the client will transmit. It is required when retransmission was negotiated and `active` is true, so the provider can detect loss of the first playback packet. The current MeasureLab client includes the counter for both active and inactive state changes. A provider accepts its omission for compatibility with older protocol-v2 clients, but cannot request packets preceding the first sequence it observes in that case. When the callback stops, the client sends the same packet with `active` set to false. The provider replies with `CONTROL_ACK`:
 
 ```json
 {"request_kind":24}
 ```
 
-The provider only accepts playback audio while this state is active *and* duplex was negotiated and remains allowed locally. Disabling “Allow remote playback” on the provider immediately mutes and clears its playback buffer, even if the session had negotiated duplex.
+The provider only accepts playback audio while this state is active *and* duplex was negotiated and remains allowed locally. Disabling “Allow remote playback” on the provider immediately mutes and clears its playback buffer, even if the session had negotiated duplex. It continues tracking the highest playback sequence while muted so retransmission can resume from the correct sequence if playback is allowed again.
 
 ## 7. Audio datagram format
 
@@ -217,7 +217,7 @@ Both directions maintain bounded local queues/buffers sized to at least four sec
 
 ### 8.1 Optional audio retransmission
 
-When negotiated, each audio sender retains recently transmitted datagrams for the negotiated retransmission window. The receiver tracks bounded gaps in audio sequence numbers, waits briefly for normal packet reordering, and sends an `AUDIO_NACK` control message such as:
+When negotiated, each audio sender retains recently transmitted datagrams for the negotiated retransmission window. The history entry capacity is derived from the sample rate, callback block size, packet size, and negotiated window, with one additional callback block retained at the count boundary. The receiver tracks bounded gaps in audio sequence numbers, waits briefly for normal packet reordering, and sends an `AUDIO_NACK` control message such as:
 
 ```json
 {"direction":1,"sequences":[1204,1205,1206]}

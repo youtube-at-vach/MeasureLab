@@ -1,4 +1,4 @@
-from src.core.network_audio.retransmission import NackTracker, RetransmitHistory
+from src.core.network_audio.retransmission import NackTracker, RetransmitHistory, history_packet_capacity
 
 
 def test_nack_tracker_waits_for_reordering_and_recovers_requested_gap():
@@ -58,3 +58,21 @@ def test_retransmit_history_rate_limits_many_valid_requests():
     assert len(second) == 32
     assert not limited
     assert len(resumed) == 6
+
+
+def test_retransmit_history_capacity_preserves_negotiated_window_at_high_packet_rate():
+    sample_rate = 384000
+    block_size = 16
+    retention_seconds = 0.25
+    packet_rate = sample_rate / block_size
+    capacity = history_packet_capacity(sample_rate, block_size, retention_seconds)
+    history = RetransmitHistory(retention_seconds, max_packets=capacity)
+
+    for sequence in range(4097):
+        history.add(sequence, str(sequence).encode(), now=sequence / packet_rate)
+
+    packets, misses = history.take_for_retransmit([0], now=4096 / packet_rate)
+
+    assert capacity >= 6001
+    assert packets == [b"0"]
+    assert misses == 0
