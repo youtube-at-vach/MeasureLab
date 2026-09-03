@@ -15,11 +15,14 @@ from src.core.network_audio.indexed_buffer import IndexedAudioBuffer
 from src.core.network_audio.models import NetworkAudioStats
 from src.core.network_audio.provider import NetworkAudioProvider
 from src.core.network_audio.protocol import (
+    DIRECTION_CAPTURE,
+    DIRECTION_PLAYBACK,
     PACKET_CONNECT_OFFER,
     PACKET_CONNECT_REQUEST,
     PACKET_START_ACK,
     PROTOCOL_VERSION,
     datagram_kind,
+    decode_audio_packet,
     encode_control_datagram,
 )
 
@@ -125,6 +128,166 @@ def test_localhost_capture_paces_network_stream_and_preserves_samples():
         provider.stop()
 
 
+@pytest.mark.parametrize("retransmission", [True, False])
+def test_capture_retransmission_is_optional_and_recovers_a_dropped_packet(monkeypatch, retransmission):
+    engine = _FakeEngine()
+    provider = NetworkAudioProvider(engine, "127.0.0.1", 0)
+    provider.start()
+    client = NetworkAudioClient(
+        "127.0.0.1",
+        provider.port,
+        jitter_ms=100,
+        duplex=False,
+        retransmission=retransmission,
+    )
+    client.connect()
+    original_send = provider._send_packet
+    dropped = False
+
+    def drop_first_sequence_one(packet, address):
+        nonlocal dropped
+        if datagram_kind(packet) == DIRECTION_CAPTURE:
+            header, _data = decode_audio_packet(packet)
+            if header["sequence"] == 1 and not dropped:
+                dropped = True
+                return
+        original_send(packet, address)
+
+    monkeypatch.setattr(provider, "_send_packet", drop_first_sequence_one)
+    try:
+        assert client.retransmission_active is retransmission
+        assert provider.status_snapshot()["retransmission_active"] is retransmission
+        assert _wait_until(lambda: engine._callback is not None)
+        for block_index in range(6):
+            indata = np.full((128, 2), block_index, dtype=np.float32)
+            outdata = np.empty((128, 2), dtype=np.float32)
+            engine._callback(indata, outdata, 128, None, _Status())
+            time.sleep(0.005)
+
+        capture = client._capture_buffer
+        assert capture is not None
+        assert dropped
+        assert _wait_until(lambda: capture.buffered_frames() >= 6 * 128)
+        if retransmission:
+            assert _wait_until(lambda: client.status_snapshot()["recovered_packets"] == 1)
+        block, missing = capture.read(0, 6 * 128)
+
+        if retransmission:
+            assert not missing
+            assert np.all(block[128:256] == np.float32(1.0))
+            assert client.status_snapshot()["nack_requests_sent"] >= 1
+            assert provider.status_snapshot()["retransmitted_packets"] == 1
+        else:
+            assert missing == [(128, 128)]
+            assert client.status_snapshot()["nack_requests_sent"] == 0
+            assert provider.status_snapshot()["retransmitted_packets"] == 0
+    finally:
+        client.close()
+        provider.stop()
+
+
+def test_playback_retransmission_recovers_a_dropped_packet(monkeypatch):
+    engine = _FakeEngine()
+    provider = NetworkAudioProvider(engine, "127.0.0.1", 0, allow_output=True)
+    provider.start()
+    client = NetworkAudioClient(
+        "127.0.0.1",
+        provider.port,
+        jitter_ms=100,
+        duplex=True,
+        retransmission=True,
+    )
+    client.connect()
+    client.set_playback_active(True)
+    original_send = client._send_packet
+    dropped = False
+
+    def drop_first_sequence_one(packet):
+        nonlocal dropped
+        if datagram_kind(packet) == DIRECTION_PLAYBACK:
+            header, _data = decode_audio_packet(packet)
+            if header["sequence"] == 1 and not dropped:
+                dropped = True
+                return
+        original_send(packet)
+
+    monkeypatch.setattr(client, "_send_packet", drop_first_sequence_one)
+    try:
+        assert _wait_until(lambda: provider.status_snapshot()["playback_active"])
+        for block_index in range(4):
+            block = np.full((128, 2), block_index + 1, dtype=np.float32)
+            client.enqueue_playback(block_index * 128, block)
+            time.sleep(0.005)
+
+        assert dropped
+        assert _wait_until(lambda: provider.status_snapshot()["recovered_packets"] == 1)
+        assert client.status_snapshot()["retransmitted_packets"] == 1
+
+        outputs = []
+        for _block_index in range(4):
+            indata = np.zeros((128, 2), dtype=np.float32)
+            outdata = np.empty((128, 2), dtype=np.float32)
+            engine._callback(indata, outdata, 128, None, _Status())
+            outputs.append(outdata.copy())
+        assert all(np.all(block == np.float32(index + 1)) for index, block in enumerate(outputs))
+        assert provider.status_snapshot()["lost_frames"] == 0
+    finally:
+        client.close()
+        provider.stop()
+
+
+def test_playback_retransmission_recovers_first_packet_after_provider_reenables_output(monkeypatch):
+    engine = _FakeEngine()
+    provider = NetworkAudioProvider(engine, "127.0.0.1", 0, allow_output=True)
+    provider.start()
+    client = NetworkAudioClient(
+        "127.0.0.1",
+        provider.port,
+        jitter_ms=100,
+        duplex=True,
+        retransmission=True,
+    )
+    client.connect()
+    client.set_playback_active(True)
+    provider.set_allow_output(False)
+    provider.set_allow_output(True)
+    original_send = client._send_packet
+    dropped = False
+
+    def drop_first_sequence_zero(packet):
+        nonlocal dropped
+        if datagram_kind(packet) == DIRECTION_PLAYBACK:
+            header, _data = decode_audio_packet(packet)
+            if header["sequence"] == 0 and not dropped:
+                dropped = True
+                return
+        original_send(packet)
+
+    monkeypatch.setattr(client, "_send_packet", drop_first_sequence_zero)
+    try:
+        assert _wait_until(lambda: provider.status_snapshot()["playback_active"])
+        for block_index in range(3):
+            block = np.full((128, 2), block_index + 1, dtype=np.float32)
+            client.enqueue_playback(block_index * 128, block)
+            time.sleep(0.005)
+
+        assert dropped
+        assert _wait_until(lambda: provider.status_snapshot()["recovered_packets"] == 1)
+        assert client.status_snapshot()["retransmitted_packets"] == 1
+
+        outputs = []
+        for _block_index in range(3):
+            indata = np.zeros((128, 2), dtype=np.float32)
+            outdata = np.empty((128, 2), dtype=np.float32)
+            engine._callback(indata, outdata, 128, None, _Status())
+            outputs.append(outdata.copy())
+        assert all(np.all(block == np.float32(index + 1)) for index, block in enumerate(outputs))
+        assert provider.status_snapshot()["lost_frames"] == 0
+    finally:
+        client.close()
+        provider.stop()
+
+
 def test_provider_defaults_to_capture_only_even_when_client_requests_duplex():
     engine = _FakeEngine()
     provider = NetworkAudioProvider(engine, "127.0.0.1", 0, allow_output=False)
@@ -135,6 +298,55 @@ def test_provider_defaults_to_capture_only_even_when_client_requests_duplex():
         assert not client.duplex
         provider.set_allow_output(True)
         assert not provider.status_snapshot()["duplex"]
+    finally:
+        client.close()
+        provider.stop()
+
+
+def test_client_treats_missing_retransmission_offer_as_unsupported():
+    client = NetworkAudioClient("127.0.0.1", 40100, retransmission=True)
+    client._apply_offer(
+        {"session_id": 123},
+        {
+            "protocol": PROTOCOL_VERSION,
+            "client_nonce": "nonce",
+            "session_id": 123,
+            "sample_rate": 48000,
+            "block_size": 128,
+            "input_channels": 2,
+            "output_channels": 2,
+            "provider_name": "old-provider",
+            "input_device_name": "input",
+            "output_device_name": "output",
+            "duplex": False,
+        },
+        "nonce",
+    )
+
+    assert client.retransmission
+    assert not client.retransmission_active
+
+
+def test_negotiated_retransmission_histories_cover_high_packet_rate_window():
+    engine = _FakeEngine()
+    engine.sample_rate = 384000
+    engine.block_size = 16
+    provider = NetworkAudioProvider(engine, "127.0.0.1", 0)
+    provider.start()
+    client = NetworkAudioClient(
+        "127.0.0.1",
+        provider.port,
+        jitter_ms=250,
+        duplex=False,
+        retransmission=True,
+    )
+    try:
+        client.connect()
+
+        assert client._playback_history is not None
+        assert provider._capture_history is not None
+        assert client._playback_history.max_packets >= 6001
+        assert provider._capture_history.max_packets >= 6001
     finally:
         client.close()
         provider.stop()

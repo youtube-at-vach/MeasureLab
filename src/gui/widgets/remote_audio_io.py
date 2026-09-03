@@ -98,7 +98,10 @@ class RemoteAudioIOWidget(QWidget):
         self.activity_label.setAccessibleName(tr("Status"))
         status_layout.addWidget(self.activity_icon, 0, 0)
         status_layout.addWidget(self.activity_label, 0, 1)
-        status_layout.setColumnStretch(2, 1)
+        # The retransmission counters are localized as one status sentence.
+        # Give their column the spare width so CJK text does not break inside
+        # a unit such as "packet" while the middle column stays empty.
+        status_layout.setColumnStretch(3, 1)
 
         self.integrity_panel = QWidget()
         integrity_layout = QHBoxLayout(self.integrity_panel)
@@ -201,6 +204,9 @@ class RemoteAudioIOWidget(QWidget):
         form.addRow(buffer_label, self.jitter_spin)
         self.duplex_check = QCheckBox(tr("Request remote output (duplex)"))
         form.addRow(self.duplex_check)
+        self.retransmission_check = QCheckBox(tr("Recover lost network packets"))
+        self.retransmission_check.setToolTip(tr("Request time-limited retransmission when both computers support it."))
+        form.addRow(self.retransmission_check)
         self.connect_button = QPushButton(tr("Connect by address"))
         self.connect_button.clicked.connect(self.connect_client)
         form.addRow(self.connect_button)
@@ -456,6 +462,7 @@ class RemoteAudioIOWidget(QWidget):
         self.provider_port_spin.setValue(port)
         self.jitter_spin.setValue(int(config.get("jitter_ms", 100)))
         self.duplex_check.setChecked(bool(config.get("duplex", True)))
+        self.retransmission_check.setChecked(bool(config.get("retransmission", True)))
         self.bind_edit.setText(str(config.get("bind_host", "0.0.0.0")))
         self.discoverable_check.setChecked(bool(config.get("discoverable", True)))
 
@@ -466,6 +473,7 @@ class RemoteAudioIOWidget(QWidget):
                 "port": self.client_port_spin.value(),
                 "jitter_ms": self.jitter_spin.value(),
                 "duplex": self.duplex_check.isChecked(),
+                "retransmission": self.retransmission_check.isChecked(),
                 "bind_host": self.bind_edit.text().strip() or "0.0.0.0",
                 "discoverable": self.discoverable_check.isChecked(),
             }
@@ -505,6 +513,7 @@ class RemoteAudioIOWidget(QWidget):
         self._connect_cancel.clear()
         jitter_ms = self.jitter_spin.value()
         duplex = self.duplex_check.isChecked()
+        retransmission = self.retransmission_check.isChecked()
         self.refresh_status()
 
         def worker() -> None:
@@ -513,6 +522,7 @@ class RemoteAudioIOWidget(QWidget):
                 port,
                 jitter_ms=jitter_ms,
                 duplex=duplex,
+                retransmission=retransmission,
             )
             try:
                 client.connect()
@@ -653,6 +663,7 @@ class RemoteAudioIOWidget(QWidget):
         self.client_port_spin.setEnabled(client_settings_enabled)
         self.jitter_spin.setEnabled(client_settings_enabled)
         self.duplex_check.setEnabled(client_settings_enabled)
+        self.retransmission_check.setEnabled(client_settings_enabled)
         self.discovery_list.setEnabled(client_settings_enabled)
 
         self.connect_button.setEnabled(client_settings_enabled and not measurements_active)
@@ -811,11 +822,19 @@ class RemoteAudioIOWidget(QWidget):
             self.integrity_label.setText(tr("No data loss ({0})").format(state))
             self._set_status_icon(self.integrity_icon, QStyle.StandardPixmap.SP_DialogApplyButton)
         if state != "error":
+            recovered = int(snapshot.get("recovered_frames", 0) or 0)
+            retransmitted = int(snapshot.get("retransmitted_packets", 0) or 0)
             self._set_optional_text(
                 self.stats_label,
-                tr("Dropped: {0} frames ({1} events)").format(
-                    loss,
-                    loss_events,
+                (
+                    tr("Dropped: {0} frames ({1} events); recovered: {2} frames; retransmitted: {3} packets").format(
+                        loss,
+                        loss_events,
+                        recovered,
+                        retransmitted,
+                    )
+                    if snapshot.get("retransmission_active")
+                    else tr("Dropped: {0} frames ({1} events)").format(loss, loss_events)
                 ),
             )
         self._refresh_control_states()

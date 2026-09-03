@@ -20,7 +20,7 @@ The wire format does not authenticate peers or encrypt control or audio traffic.
 Byte 5 (zero-based offset 5) distinguishes the two datagram classes after the common magic and version prefix:
 
 - Values `1` and `2` are audio directions: capture and playback respectively.
-- Values `16` through `28` are control packet types.
+- Values `16` through `29` are control packet types.
 
 Control packet types are as follows.
 
@@ -39,6 +39,7 @@ Control packet types are as follows.
 | 26 | `STOP` | client to provider |
 | 27 | `STOPPED` | provider to client |
 | 28 | `ERROR` | provider to client |
+| 29 | `AUDIO_NACK` | receiver to audio sender |
 
 ## 3. Control datagram format
 
@@ -114,10 +115,12 @@ Client                                      Provider
 `CONNECT_REQUEST` has session ID `0` and this payload:
 
 ```json
-{"protocol":2,"client_nonce":"<32-hex-character client nonce>","duplex":true}
+{"protocol":2,"client_nonce":"<32-hex-character client nonce>","duplex":true,"retransmission":true,"retransmit_window_ms":100}
 ```
 
 `duplex` is the client's request to send playback to the provider. The provider rejects a request with an unsupported protocol version, an absent/invalid nonce, or when another client is already allocated. Rejection is an `ERROR` response with an `error` string.
+
+`retransmission` is an optional request for deadline-limited audio packet retransmission. The provider only enables it when requested and echoes the resulting state in `CONNECT_OFFER`. A missing or false value preserves the original non-retransmitting behavior. `retransmit_window_ms` is limited to 20 through 250 ms and is derived from the client's selected network buffer.
 
 On success, `CONNECT_OFFER` uses the allocated session ID in both its header and the `session_id` payload member:
 
@@ -133,11 +136,15 @@ On success, `CONNECT_OFFER` uses the allocated session ID in both its header and
   "provider_name": "<provider host name>",
   "input_device_name": "<local input device name>",
   "output_device_name": "<local output device name>",
-  "duplex": true
+  "duplex": true,
+  "retransmission": true,
+  "retransmit_window_ms": 100
 }
 ```
 
 The client verifies the echoed nonce, matching session IDs, protocol version, and the same sample-rate, block-size, and channel-count ranges used by discovery. The effective duplex setting is the logical AND of the requested value and the offered value. The offer sets the provider's local sample rate, block size, and channel layout for the client; the client does not negotiate alternative values.
+
+Retransmission is active only when the client requested it and the offer confirms it. This additive negotiation keeps protocol-v2 peers compatible: an older peer ignores the request field or omits the offer field, and no `AUDIO_NACK` packets are then sent.
 
 ### 5.2 Start, stop, and errors
 
@@ -154,16 +161,16 @@ After the session starts, the client sends `KEEPALIVE` with an empty object once
 The audio stream is controlled separately from the session. Just before the client begins its callback stream, it requests:
 
 ```json
-{"active":true}
+{"active":true,"next_sequence":1204}
 ```
 
-in `PLAYBACK_STATE`. When its callback stops, it sends the same packet with `false`. The provider replies with `CONTROL_ACK`:
+in `PLAYBACK_STATE`. `next_sequence` is the unsigned 64-bit sequence number of the next playback audio datagram the client will transmit. It is required when retransmission was negotiated and `active` is true, so the provider can detect loss of the first playback packet. The current MeasureLab client includes the counter for both active and inactive state changes. A provider accepts its omission for compatibility with older protocol-v2 clients, but cannot request packets preceding the first sequence it observes in that case. When the callback stops, the client sends the same packet with `active` set to false. The provider replies with `CONTROL_ACK`:
 
 ```json
 {"request_kind":24}
 ```
 
-The provider only accepts playback audio while this state is active *and* duplex was negotiated and remains allowed locally. Disabling “Allow remote playback” on the provider immediately mutes and clears its playback buffer, even if the session had negotiated duplex.
+The provider only accepts playback audio while this state is active *and* duplex was negotiated and remains allowed locally. Disabling “Allow remote playback” on the provider immediately mutes and clears its playback buffer, even if the session had negotiated duplex. It continues tracking the highest playback sequence while muted so retransmission can resume from the correct sequence if playback is allowed again.
 
 ## 7. Audio datagram format
 
@@ -207,6 +214,18 @@ $$
 where $J$ is jitter frames, $B$ is the offered block size, $f_s$ is the offered sample rate, and $t_J$ is the selected buffer in milliseconds. The client uses a playback scheduling delay of `max(2J, 4B)` frames. It begins its callback stream only after its capture buffer has enough audio at the requested jitter depth.
 
 Both directions maintain bounded local queues/buffers sized to at least four seconds or sixteen blocks. A queue overflow drops that block and is recorded as lost frames. A late or duplicate packet is discarded and counted. Corrupt packets are discarded and counted; the client/provider continue running unless liveness or a transport failure ends the session.
+
+### 8.1 Optional audio retransmission
+
+When negotiated, each audio sender retains recently transmitted datagrams for the negotiated retransmission window. The history entry capacity is derived from the sample rate, callback block size, packet size, and negotiated window, with one additional callback block retained at the count boundary. The receiver tracks bounded gaps in audio sequence numbers, waits briefly for normal packet reordering, and sends an `AUDIO_NACK` control message such as:
+
+```json
+{"direction":1,"sequences":[1204,1205,1206]}
+```
+
+`direction` is capture (`1`) or playback (`2`). A request contains at most 32 unique sequence numbers, and a receiver tracks at most 128 missing packets. The sender validates the session, peer address, direction, history lifetime, minimum resend interval, per-packet retry limit, and a global limit of 64 retransmissions per 100 ms before retransmitting the original audio datagram. NACK requests are repeated at most three times and stop when the packet arrives or its time window expires.
+
+The client tracks capture gaps and the provider tracks playback gaps. A retransmitted packet is useful only while its absolute sample range remains in the indexed buffer; otherwise the existing late-packet and silence/XRUN behavior applies. Local callback XRUNs and local queue overflows never create retransmission requests because no recoverable network datagram exists for them.
 
 ## 9. Implementation scope
 

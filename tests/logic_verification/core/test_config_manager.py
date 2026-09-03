@@ -136,6 +136,7 @@ class TestConfigManager(unittest.TestCase):
                 "port": 42000,
                 "jitter_ms": 250,
                 "duplex": False,
+                "retransmission": False,
                 "bind_host": "127.0.0.1",
                 "discoverable": False,
             }
@@ -146,6 +147,7 @@ class TestConfigManager(unittest.TestCase):
             "port": 42000,
             "jitter_ms": 250,
             "duplex": False,
+            "retransmission": False,
             "bind_host": "127.0.0.1",
             "discoverable": False,
         }

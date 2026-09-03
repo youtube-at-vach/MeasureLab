@@ -19,6 +19,7 @@ class _Config:
             "port": 41000,
             "jitter_ms": 120,
             "duplex": True,
+            "retransmission": True,
             "bind_host": "0.0.0.0",
             "discoverable": True,
         }
@@ -43,6 +44,7 @@ def test_remote_audio_widget_loads_endpoint_and_starts_safe(qtbot):
     assert widget.client_port_spin.value() == 41000
     assert widget.jitter_spin.value() == 120
     assert widget.duplex_check.isChecked()
+    assert widget.retransmission_check.isChecked()
     assert widget.discoverable_check.isChecked()
     assert not widget.allow_output_check.isChecked()
     assert not widget.disconnect_button.isEnabled()
@@ -205,6 +207,34 @@ def test_remote_audio_widget_displays_whether_integrity_loss_is_still_increasing
     assert not hasattr(widget, "incident_table")
 
 
+def test_remote_audio_widget_allocates_spare_status_width_to_retransmission_statistics(qtbot):
+    widget = RemoteAudioIOWidget(_engine(), _Config())
+    qtbot.addWidget(widget)
+    widget.resize(1180, 690)
+    widget.client = SimpleNamespace(
+        status_snapshot=lambda: {
+            "state": "streaming",
+            "lost_frames": 0,
+            "lost_packets": 0,
+            "corrupt_packets": 0,
+            "local_queue_overflows": 0,
+            "recovered_frames": 0,
+            "retransmitted_packets": 0,
+            "retransmission_active": True,
+        },
+        connected=True,
+        close=lambda: None,
+    )
+
+    widget.show()
+    widget.refresh_status()
+    widget.layout().activate()
+
+    status_panel = widget.stats_label.parentWidget()
+    assert widget.stats_label.width() > status_panel.width() // 2
+    assert widget.stats_label.height() == widget.stats_label.fontMetrics().height()
+
+
 def test_remote_audio_widget_saves_preferences(qtbot):
     config = _Config()
     widget = RemoteAudioIOWidget(_engine(), config)
@@ -213,6 +243,7 @@ def test_remote_audio_widget_saves_preferences(qtbot):
     widget.client_port_spin.setValue(42000)
     widget.jitter_spin.setValue(200)
     widget.duplex_check.setChecked(False)
+    widget.retransmission_check.setChecked(False)
 
     widget._save_config()
 
@@ -221,6 +252,7 @@ def test_remote_audio_widget_saves_preferences(qtbot):
         "port": 42000,
         "jitter_ms": 200,
         "duplex": False,
+        "retransmission": False,
         "bind_host": "0.0.0.0",
         "discoverable": True,
     }
