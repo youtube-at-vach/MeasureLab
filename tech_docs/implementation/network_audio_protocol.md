@@ -120,7 +120,7 @@ Client                                      Provider
 
 `duplex` is the client's request to send playback to the provider. The provider rejects a request with an unsupported protocol version, an absent/invalid nonce, or when another client is already allocated. Rejection is an `ERROR` response with an `error` string.
 
-`retransmission` is an optional request for deadline-limited audio packet retransmission. The provider only enables it when requested and echoes the resulting state in `CONNECT_OFFER`. A missing or false value preserves the original non-retransmitting behavior. `retransmit_window_ms` is limited to 20 through 250 ms and is derived from the client's selected network buffer.
+`retransmission` is an optional request for deadline-limited audio packet retransmission. The provider only enables it when requested and echoes the resulting state in `CONNECT_OFFER`. A missing or false value preserves the original non-retransmitting behavior. `retransmit_window_ms` is limited to 20 through 250 ms and is derived from the client's selected network buffer. The provider may increase it to cover the client's effective two-block minimum jitter buffer after block alignment, but never above 250 ms.
 
 On success, `CONNECT_OFFER` uses the allocated session ID in both its header and the `session_id` payload member:
 
@@ -213,7 +213,7 @@ $$
 
 where $J$ is jitter frames, $B$ is the offered block size, $f_s$ is the offered sample rate, and $t_J$ is the selected buffer in milliseconds. The client uses a playback scheduling delay of `max(2J, 4B)` frames. It begins its callback stream only after its capture buffer has enough audio at the requested jitter depth.
 
-Both directions maintain bounded local queues/buffers sized to at least four seconds or sixteen blocks. A queue overflow drops that block and is recorded as lost frames. A late or duplicate packet is discarded and counted. Corrupt packets are discarded and counted; the client/provider continue running unless liveness or a transport failure ends the session.
+Both directions maintain bounded local queues/buffers sized to at least four seconds or sixteen blocks. A queue overflow drops that block and is recorded as lost frames. A late or duplicate packet is discarded and counted. Corrupt packets are discarded and counted; the client/provider continue running unless liveness or a transport failure ends the session. Once streaming has been primed, one capture read may wait at most one provider callback interval for its future jitter-buffer watermark. It then advances with silence/XRUN reporting instead of adding the previous fixed minimum wait of 250 ms. Reported stream latency uses the same sample timeline as callback timestamps: input latency is $J+B$, and output latency from callback time is $\max(0,D-J-B)$, where $D$ is the playback scheduling delay.
 
 ### 8.1 Optional audio retransmission
 
@@ -223,9 +223,9 @@ When negotiated, each audio sender retains recently transmitted datagrams for th
 {"direction":1,"sequences":[1204,1205,1206]}
 ```
 
-`direction` is capture (`1`) or playback (`2`). A request contains at most 32 unique sequence numbers, and a receiver tracks at most 128 missing packets. The sender validates the session, peer address, direction, history lifetime, minimum resend interval, per-packet retry limit, and a global limit of 64 retransmissions per 100 ms before retransmitting the original audio datagram. NACK requests are repeated at most three times and stop when the packet arrives or its time window expires.
+`direction` is capture (`1`) or playback (`2`). A request contains at most 32 unique sequence numbers, and a receiver tracks at most 128 missing packets. The sender validates the session, peer address, direction, history lifetime, minimum resend interval, per-packet retry limit, and a global limit of 64 retransmissions per 100 ms before retransmitting the original audio datagram. The receiver waits 1 ms for ordinary reordering, then schedules up to eight NACK requests with RTT-aware exponential backoff compressed to fit the remaining window. The sender still retransmits each audio datagram at most three times. Socket wake-ups follow the next retry deadline instead of polling every 10 ms.
 
-The client tracks capture gaps and the provider tracks playback gaps. A retransmitted packet is useful only while its absolute sample range remains in the indexed buffer; otherwise the existing late-packet and silence/XRUN behavior applies. Local callback XRUNs and local queue overflows never create retransmission requests because no recoverable network datagram exists for them.
+The client tracks capture gaps and the provider tracks playback gaps. Each gap also records the absolute sample position of its next received packet. A request expires at the earlier of the negotiated wall-clock window or that successor sample reaching playout, so retransmission can use all available time but cannot extend playout latency. A retransmitted packet is useful only while its absolute sample range remains in the indexed buffer; otherwise the existing late-packet and silence/XRUN behavior applies. Local callback XRUNs and local queue overflows never create retransmission requests because no recoverable network datagram exists for them. Status snapshots expose `deadline_recovery_rate` as recovered packets divided by recovered plus deadline-expired packets once at least one outcome is resolved.
 
 ## 9. Implementation scope
 

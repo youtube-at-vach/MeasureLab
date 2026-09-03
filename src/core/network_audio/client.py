@@ -172,7 +172,7 @@ class NetworkAudioClient:
                 session_id=self.session_id,
                 timeout=timeout,
             )
-            udp_socket.settimeout(0.01 if self.retransmission_active else 0.2)
+            udp_socket.settimeout(0.2)
             self._provider_udp = provider
             self._udp_socket = udp_socket
             self._stop_event.clear()
@@ -305,10 +305,18 @@ class NetworkAudioClient:
         if udp_socket is None or capture_buffer is None:
             return
         while not self._stop_event.is_set():
+            self._poll_capture_nacks()
+            timeout = 0.2
+            tracker = self._capture_nacks
+            if tracker is not None:
+                timeout = tracker.next_poll_delay(
+                    timeout,
+                    playout_sample=capture_buffer.consumed_until(),
+                )
             try:
+                udp_socket.settimeout(max(0.001, timeout))
                 packet = udp_socket.recv(2048)
             except TimeoutError:
-                self._poll_capture_nacks()
                 continue
             except OSError as exc:
                 if not self._stop_event.is_set():
@@ -321,7 +329,6 @@ class NetworkAudioClient:
                 elif kind != DIRECTION_PLAYBACK:
                     header, message = decode_control_datagram(packet)
                     self._accept_control(header, message)
-                self._poll_capture_nacks()
             except (ProtocolError, ValueError) as exc:
                 self.stats.record_corrupt(str(exc))
 
@@ -332,11 +339,16 @@ class NetworkAudioClient:
         result = capture_buffer.put(header["sample_index"], data)
         recovered = False
         if self._capture_nacks is not None:
-            recovered = self._capture_nacks.observe(header["sequence"])
+            recovered = self._capture_nacks.observe(
+                header["sequence"],
+                sample_index=header["sample_index"],
+            )
         if result == "duplicate":
             self.stats.record_duplicate()
         elif result == "late":
             self.stats.record_late()
+            if recovered:
+                self.stats.record_retransmit_expired(1)
         else:
             self.stats.record_rx(len(packet))
             self.stats.set_buffered_frames(capture_buffer.buffered_frames())
@@ -389,7 +401,9 @@ class NetworkAudioClient:
         tracker = self._capture_nacks
         if not self.retransmission_active or tracker is None or not self.connected:
             return
-        sequences, expired = tracker.poll()
+        capture_buffer = self._capture_buffer
+        playout_sample = capture_buffer.consumed_until() if capture_buffer is not None else None
+        sequences, expired = tracker.poll(playout_sample=playout_sample)
         self.stats.record_retransmit_expired(expired)
         if not sequences:
             return
@@ -546,9 +560,12 @@ class NetworkAudioClient:
         if buffer is None:
             raise RuntimeError("network capture buffer is unavailable")
         target = sample_index + frames + self.jitter_frames
+        # The future watermark paces callbacks against the provider clock.  A
+        # network stall may consume the fixed jitter reserve, but it must not
+        # add an unrelated 250 ms wait to every callback deadline.
         buffer.wait_until_buffered(
             target,
-            max(0.25, frames / self.sample_rate * 4.0),
+            frames / self.sample_rate,
             cancel_event,
         )
         if cancel_event is not None and cancel_event.is_set():
@@ -617,6 +634,14 @@ class NetworkAudioClient:
 
     def status_snapshot(self) -> dict[str, object]:
         snapshot = self.stats.snapshot()
+        if self.sample_rate > 0:
+            input_latency_ms = (self.jitter_frames + self.block_size) * 1000.0 / self.sample_rate
+            output_latency_ms = (
+                max(0, self.playout_delay_frames - self.jitter_frames - self.block_size) * 1000.0 / self.sample_rate
+            )
+        else:
+            input_latency_ms = 0.0
+            output_latency_ms = 0.0
         snapshot.update(
             {
                 "provider_name": self.provider_name,
@@ -627,6 +652,8 @@ class NetworkAudioClient:
                 "retransmission_active": self.retransmission_active,
                 "jitter_ms": self.jitter_ms,
                 "playout_delay_frames": self.playout_delay_frames,
+                "input_latency_ms": input_latency_ms,
+                "output_latency_ms": output_latency_ms,
                 "protocol": PROTOCOL_VERSION,
             }
         )
@@ -648,8 +675,11 @@ class NetworkClientStream:
         self.channels = (client.input_channels, client.output_channels)
         self.active = False
         self.cpu_load = 0.0
-        input_latency = client.jitter_frames / client.sample_rate
-        output_latency = client.playout_delay_frames / client.sample_rate
+        input_latency = (client.jitter_frames + client.block_size) / client.sample_rate
+        output_latency = max(
+            0.0,
+            (client.playout_delay_frames - client.jitter_frames - client.block_size) / client.sample_rate,
+        )
         self.latency = (input_latency, output_latency)
         self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()

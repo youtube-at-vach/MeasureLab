@@ -166,6 +166,11 @@ class IndexedAudioBuffer:
         with self._condition:
             return max(0, self._highest_end - self._consumed_until)
 
+    def consumed_until(self) -> int:
+        """Return the first sample that can still meet its playout deadline."""
+        with self._condition:
+            return self._consumed_until
+
     def _ring_segments(self, sample_index: int, frames: int) -> Iterator[tuple[slice, int, int]]:
         ring_start = sample_index % self.capacity_frames
         first_frames = min(frames, self.capacity_frames - ring_start)

@@ -17,6 +17,7 @@ from src.core.network_audio.provider import NetworkAudioProvider
 from src.core.network_audio.protocol import (
     DIRECTION_CAPTURE,
     DIRECTION_PLAYBACK,
+    PACKET_AUDIO_NACK,
     PACKET_CONNECT_OFFER,
     PACKET_CONNECT_REQUEST,
     PACKET_START_ACK,
@@ -181,6 +182,59 @@ def test_capture_retransmission_is_optional_and_recovers_a_dropped_packet(monkey
             assert missing == [(128, 128)]
             assert client.status_snapshot()["nack_requests_sent"] == 0
             assert provider.status_snapshot()["retransmitted_packets"] == 0
+    finally:
+        client.close()
+        provider.stop()
+
+
+def test_capture_retransmission_recovers_when_the_first_nack_is_lost(monkeypatch):
+    engine = _FakeEngine()
+    provider = NetworkAudioProvider(engine, "127.0.0.1", 0)
+    provider.start()
+    client = NetworkAudioClient(
+        "127.0.0.1",
+        provider.port,
+        jitter_ms=100,
+        duplex=False,
+        retransmission=True,
+    )
+    client.connect()
+    original_provider_send = provider._send_packet
+    original_client_send = client._send_packet
+    dropped_audio = False
+    dropped_nack = False
+
+    def drop_sequence_one(packet, address):
+        nonlocal dropped_audio
+        if datagram_kind(packet) == DIRECTION_CAPTURE:
+            header, _data = decode_audio_packet(packet)
+            if header["sequence"] == 1 and not dropped_audio:
+                dropped_audio = True
+                return
+        original_provider_send(packet, address)
+
+    def drop_first_nack(packet):
+        nonlocal dropped_nack
+        if datagram_kind(packet) == PACKET_AUDIO_NACK and not dropped_nack:
+            dropped_nack = True
+            return
+        original_client_send(packet)
+
+    monkeypatch.setattr(provider, "_send_packet", drop_sequence_one)
+    monkeypatch.setattr(client, "_send_packet", drop_first_nack)
+    try:
+        assert _wait_until(lambda: engine._callback is not None)
+        for block_index in range(6):
+            indata = np.full((128, 2), block_index, dtype=np.float32)
+            outdata = np.empty((128, 2), dtype=np.float32)
+            engine._callback(indata, outdata, 128, None, _Status())
+            time.sleep(0.003)
+
+        assert dropped_audio
+        assert dropped_nack
+        assert _wait_until(lambda: client.status_snapshot()["recovered_packets"] >= 1)
+        assert client.status_snapshot()["nack_requests_sent"] >= 2
+        assert provider.status_snapshot()["retransmitted_packets"] == 1
     finally:
         client.close()
         provider.stop()
@@ -352,6 +406,28 @@ def test_negotiated_retransmission_histories_cover_high_packet_rate_window():
         provider.stop()
 
 
+def test_negotiated_retransmission_window_covers_effective_jitter_floor():
+    engine = _FakeEngine()
+    provider = NetworkAudioProvider(engine, "127.0.0.1", 0)
+    provider.start()
+    client = NetworkAudioClient(
+        "127.0.0.1",
+        provider.port,
+        jitter_ms=20,
+        duplex=False,
+        retransmission=True,
+    )
+    try:
+        client.connect()
+
+        assert client.jitter_frames == 256
+        assert client._retransmit_window_seconds == pytest.approx(0.032)
+        assert provider._retransmit_window_seconds == pytest.approx(0.032)
+    finally:
+        client.close()
+        provider.stop()
+
+
 def test_provider_holds_audio_exclusivity_until_provider_is_stopped():
     engine = _FakeEngine()
     provider = NetworkAudioProvider(engine, "127.0.0.1", 0)
@@ -499,6 +575,16 @@ def test_network_stats_do_not_retain_incident_details():
     assert "incidents" not in snapshot
 
 
+def test_network_stats_report_resolved_deadline_recovery_rate():
+    stats = NetworkAudioStats()
+
+    assert stats.snapshot()["deadline_recovery_rate"] is None
+    stats.record_recovery(128)
+    stats.record_retransmit_expired(2)
+
+    assert stats.snapshot()["deadline_recovery_rate"] == pytest.approx(1 / 3)
+
+
 def test_network_stream_stop_cancels_capture_priming_without_late_error():
     client = NetworkAudioClient("127.0.0.1", 40100, jitter_ms=20, duplex=False)
     client.sample_rate = 8000
@@ -584,6 +670,47 @@ def test_network_stream_time_info_preserves_buffered_sample_timing(monkeypatch):
     assert first.outputBufferDacTime - first.currentTime == pytest.approx((512 - 128 - 256) / 8000)
     # Callback timestamps advance by remote samples, not local scheduler jitter.
     assert second.currentTime - first.currentTime == pytest.approx(128 / 8000)
+
+
+def test_network_stream_reports_latency_from_the_same_sample_timeline():
+    client = NetworkAudioClient("127.0.0.1", 40100, jitter_ms=20, duplex=True)
+    client.sample_rate = 8000
+    client.block_size = 128
+    client.input_channels = 2
+    client.output_channels = 2
+    client.jitter_frames = 256
+    client.playout_delay_frames = 512
+
+    stream = NetworkClientStream(client, lambda *_args: None)
+    snapshot = client.status_snapshot()
+
+    assert stream.latency == pytest.approx((48 / 1000, 16 / 1000))
+    assert snapshot["input_latency_ms"] == pytest.approx(48)
+    assert snapshot["output_latency_ms"] == pytest.approx(16)
+
+
+def test_capture_wait_cannot_add_more_than_one_callback_block(monkeypatch):
+    client = NetworkAudioClient("127.0.0.1", 40100, jitter_ms=20, duplex=False)
+    client.sample_rate = 8000
+    client.block_size = 128
+    client.input_channels = 2
+    client.jitter_frames = 256
+    buffer = IndexedAudioBuffer(capacity_frames=4096, channels=2)
+    client._capture_buffer = buffer
+    waits = []
+    original_wait = buffer.wait_until_buffered
+
+    def record_wait(sample_end, timeout, cancel_event=None):
+        waits.append(timeout)
+        return original_wait(sample_end, 0.0, cancel_event)
+
+    monkeypatch.setattr(buffer, "wait_until_buffered", record_wait)
+
+    data, status = client.read_capture(0, 128)
+
+    assert waits == pytest.approx([128 / 8000])
+    assert np.array_equal(data, np.zeros((128, 2), dtype=np.float32))
+    assert status.input_overflow
 
 
 def test_provider_rejects_virtual_audio_as_a_local_hardware_endpoint():
