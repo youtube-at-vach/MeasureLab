@@ -530,7 +530,7 @@ class MainWindow(QMainWindow):
         remote_output_available = bool(is_network and getattr(network_client, "duplex", False))
         network_status = network_client.status_snapshot() if network_client is not None else None
         io_role = "virtual" if is_offline else "remote_client" if is_network else "local"
-        self._last_output_backend_state = (is_offline, is_network, remote_output_available, io_role, None)
+        self._last_output_backend_state = (is_offline, is_network, remote_output_available, io_role, None, None)
         self._update_output_destination_ui_for_mode(
             is_offline,
             is_network=is_network,
@@ -718,6 +718,7 @@ class MainWindow(QMainWindow):
             self.audio_engine.stop_stream()
         except Exception:
             self.logger.exception("Failed to stop audio stream on close")
+        self.audio_engine.vst_dut.close()
         super().closeEvent(event)
 
     def open_measurement_console(self):
@@ -914,7 +915,9 @@ class MainWindow(QMainWindow):
                 bool(provider_status.get("allow_output")),
                 provider_status.get("last_error"),
             )
-        output_backend_state = (is_offline, is_network, remote_output_available, io_role, provider_state)
+        dut = self.audio_engine.vst_dut
+        dut_state = (dut.name, dut.bypassed, dut.error) if is_offline and dut.loaded else None
+        output_backend_state = (is_offline, is_network, remote_output_available, io_role, provider_state, dut_state)
         if output_backend_state != self._last_output_backend_state:
             self._update_output_destination_ui_for_mode(
                 is_offline,
@@ -1104,10 +1107,21 @@ class MainWindow(QMainWindow):
 
         if is_offline:
             # unique item for offline mode
-            self.output_dest_combo.addItem(tr("Virtual Loopback (Always On)"), "virtual_loopback")
+            dut = self.audio_engine.vst_dut
+            if dut.loaded:
+                label = tr("VST3 DUT")
+                if dut.error:
+                    label += f" ({tr('Error')})"
+                elif dut.bypassed:
+                    label += f" ({tr('Bypass')})"
+            else:
+                label = tr("Virtual Loopback (Always On)")
+            self.output_dest_combo.addItem(label, "virtual_loopback")
             self.output_dest_combo.setCurrentIndex(0)
             self.output_dest_combo.setEnabled(False)
-            self.output_dest_combo.setToolTip(tr("In Virtual Mode, audio is always looped back."))
+            self.output_dest_combo.setToolTip(
+                dut.name if dut.loaded else tr("In Virtual Mode, audio is always looped back.")
+            )
         elif io_role == "remote_provider":
             _mode, route, tooltip, _connected = self._remote_provider_ui_details(provider_status)
             self.output_dest_label.setText(f"{tr('I/O Routing')}:")
