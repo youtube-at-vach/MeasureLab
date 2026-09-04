@@ -12,9 +12,7 @@ Correlation is not a single score for stereo quality. Sustained negative correla
 
 The widget supports the Detachable Wrapper's detached, split, and compact states. See [Detachable Wrapper](detachable_wrapper.en.md) for details.
 
-Measurement actions, including Start, Hold, and Clear, are grouped in the right control panel. Split mode can place the XY scope and correlation display independently from that control panel.
-
-Compact mode maximizes the monitoring area by showing only the XY scope without outer margins. The correlation meter, acquisition state, action buttons, and detailed settings return in normal mode.
+Measurement actions, including Start, Hold, and Clear, are grouped in the right control panel.
 
 ## Reading the XY Scope
 
