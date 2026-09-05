@@ -60,11 +60,13 @@ current implementation.
 * **Automatic Peak Markers:** Mark peaks applying prominence and noise-floor thresholds.
 * **Real-time Psychoacoustic Masking Overlay:** Visualize human auditory perception masking curves.
 * **Burst Envelope Dynamics Profiler:** Measure attack/release envelopes and gain reduction recovery curves.
+* **Micro-dynamics Profiler:** Separate macro-envelope from micro-envelope to evaluate attack punchiness and micro-transient reproduction accuracy.
 
 ### 4. Network & Impedance Analyzer Extensions
 
 * **Haptic Audio Synchronization Profiler:** Low-frequency sweeps to measure tactile transducer latency.
 * **Thermal Power Compression Logger:** Track DC resistance (Re) drift over long sweeps to estimate voice coil temperature.
+* **Cable LCR Parameter Extractor:** Specialized measurement mode to extract ultra-low capacitance and inductance from analog interconnects and speaker cables.
 
 ### 5. Integrity & Spatial Visualization
 
@@ -76,6 +78,8 @@ current implementation.
 
 These ideas explore adventurous, next-generation concepts beyond standard audio measurement. They are currently brainstormed without constraints to expand future possibilities.
 
+* **Neuromorphic Audio Event Visualizer:** Capture and visualize audio transients and anomalies using event-based neuromorphic processing principles instead of standard sample-based frames.
+* **Synesthetic Measurement Mapper:** Translate high-dimensional audio measurements into rich multimodal sensory outputs (haptics and abstract visuals) for intuitive flaw detection.
 * **Ultrasonic Acoustic Levitation Calibrator:** Phase-aligning 40kHz ultrasonic channels to create 3D acoustic levitation focal points in mid-air.
 * **Bio-Acoustic Impedance Sonifier:** Measuring micro-fluctuations in organic subjects (e.g., plants) and sonifying them via high-resolution parameter mapping.
 * **AI-Driven Automated Measurement Recipe Generator:** Use AI to listen to a brief sweep and automatically configure the optimal distortion, impedance, and alignment measurements for the connected DUT.
