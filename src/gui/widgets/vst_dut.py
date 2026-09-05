@@ -1,6 +1,9 @@
 """Small, generic VST3 DUT editor; does not embed a native plugin window."""
 
-from PyQt6.QtCore import QThread, QTimer, pyqtSignal
+from collections import Counter
+import threading
+
+from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -18,6 +21,19 @@ from PyQt6.QtWidgets import (
 )
 
 from src.core.localization import tr
+from src.core.vst_discovery import VstScanResult, discover_vst3, vst3_search_paths
+
+
+class _Scanner(threading.Thread):
+    def __init__(self):
+        # A slow/unavailable network folder must not hold up application exit.
+        # Only the GUI timer reads the result, after this thread has finished.
+        super().__init__(daemon=True)
+        self.cancelled = threading.Event()
+        self.result = VstScanResult()
+
+    def run(self):
+        self.result = discover_vst3(cancelled=self.cancelled.is_set)
 
 
 class _Loader(QThread):
@@ -40,6 +56,8 @@ class VstDutDialog(QDialog):
         self.engine = engine
         self.dut = engine.vst_dut
         self.loader = None
+        self.scanner = None
+        self.discovered_paths = []
         self.setWindowTitle(tr("VST3 DUT"))
         self.resize(620, 530)
         layout = QVBoxLayout(self)
@@ -48,6 +66,23 @@ class VstDutDialog(QDialog):
         layout.addWidget(info)
         self.controls = QWidget()
         form = QFormLayout(self.controls)
+        search_row = QHBoxLayout()
+        self.plugin_search = QLineEdit()
+        self.plugin_search.setPlaceholderText(tr("Search installed VST3 plugins"))
+        self.plugin_search.textChanged.connect(self._filter_plugins)
+        search_row.addWidget(self.plugin_search)
+        self.rescan_button = QPushButton(tr("Rescan"))
+        self.rescan_button.clicked.connect(self._scan_plugins)
+        search_row.addWidget(self.rescan_button)
+        form.addRow(search_row)
+        self.plugins = QComboBox()
+        self.plugins.setMinimumWidth(0)
+        self.plugins.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.plugins.activated.connect(self._select_plugin)
+        form.addRow(tr("Installed VST3 plugins"), self.plugins)
+        self.scan_status = QLabel()
+        self.scan_status.setWordWrap(True)
+        form.addRow(self.scan_status)
         self.path = QLineEdit(self.dut.path)
         self.path.setPlaceholderText(tr("Path to .vst3 file or bundle"))
         browse = QPushButton(tr("Browse..."))
@@ -60,7 +95,7 @@ class VstDutDialog(QDialog):
         self.plugin_name.setPlaceholderText(tr("Plugin name inside bundle (optional)"))
         form.addRow(self.plugin_name)
         buttons = QHBoxLayout()
-        self.load_button = QPushButton(tr("Load"))
+        self.load_button = QPushButton(tr("Load VST3"))
         self.load_button.clicked.connect(self._load)
         buttons.addWidget(self.load_button)
         self.unload_button = QPushButton(tr("Unload"))
@@ -127,6 +162,51 @@ class VstDutDialog(QDialog):
         self.timer.timeout.connect(self._refresh)
         self.timer.start(250)
         self._refresh()
+        self._scan_plugins()
+
+    def _scan_plugins(self):
+        if self.scanner is not None:
+            return
+        self.scanner = _Scanner()
+        self.rescan_button.setEnabled(False)
+        self.scan_status.setText(tr("Scanning VST3 folders…"))
+        self.scan_status.setToolTip("\n".join(str(path) for path in vst3_search_paths()))
+        self.scanner.start()
+
+    def _scanned(self):
+        result = self.scanner.result
+        self.scanner = None
+        self.discovered_paths = result.paths
+        self.rescan_button.setEnabled(True)
+        self._filter_plugins()
+        message = tr("Found {0} VST3 bundles. Compatibility is checked on load.").format(len(result.paths))
+        if result.errors:
+            message += "\n" + tr("Some folders could not be scanned. See tooltip for details.")
+            self.scan_status.setToolTip(self.scan_status.toolTip() + "\n\n" + "\n".join(result.errors))
+        self.scan_status.setText(message)
+
+    def _filter_plugins(self):
+        selected = self.path.text()
+        query = self.plugin_search.text().strip().casefold()
+        counts = Counter(path.stem.casefold() for path in self.discovered_paths)
+        self.plugins.clear()
+        self.plugins.addItem(tr("Select a VST3 plugin…"), None)
+        for path in self.discovered_paths:
+            if query and query not in str(path).casefold():
+                continue
+            label = path.stem
+            if counts[label.casefold()] > 1:
+                label += f" — {path.parent}"
+            self.plugins.addItem(label, str(path))
+            self.plugins.setItemData(self.plugins.count() - 1, str(path), Qt.ItemDataRole.ToolTipRole)
+        self.plugins.setCurrentIndex(max(0, self.plugins.findData(selected)))
+
+    def _select_plugin(self, index):
+        path = self.plugins.itemData(index)
+        if path:
+            if path != self.path.text():
+                self.plugin_name.clear()
+            self.path.setText(path)
 
     def _browse(self):
         # macOS bundles can be selected as files using the native file dialog.
@@ -191,6 +271,8 @@ class VstDutDialog(QDialog):
         self._parameter_selected()
 
     def _refresh(self):
+        if self.scanner is not None and not self.scanner.is_alive():
+            self._scanned()
         loading = self.loader is not None
         available = self.engine.offline_mode and not self.engine.network_mode and not self.engine.is_audio_reserved()
         # Loading/routing/control changes are between measurement runs. This
@@ -217,10 +299,14 @@ class VstDutDialog(QDialog):
 
     def reject(self):
         if self.loader is None:
+            if self.scanner is not None:
+                self.scanner.cancelled.set()
             super().reject()
 
     def closeEvent(self, event):
         if self.loader is not None:
             event.ignore()
         else:
+            if self.scanner is not None:
+                self.scanner.cancelled.set()
             super().closeEvent(event)
