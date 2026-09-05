@@ -10,7 +10,7 @@ This guide explains the flow from setting up MeasureLab to performing your first
 
 Before starting the measurement, let's prepare to confirm **"whether the sound is being recorded correctly."**
 
-1. **Cable Connection**: Connect the **Output** and **Input** of your audio interface directly with a cable. This is called a "loopback connection."
+1. **Cable Connection**: Connect the **Output** and **Input** of your audio interface directly with a cable to create a "loopback connection."
 2. **Equipment Protection**: To prevent loud noises from suddenly damaging your equipment, initially set the output volume (OUT) and input gain (IN) of the audio interface to "minimum (zero)."
 
 Using this loopback connection first allows you to test whether the basic input and output between the PC and the audio interface are working properly, helping isolate the causes of configuration errors or equipment troubles.

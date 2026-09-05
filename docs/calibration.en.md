@@ -29,7 +29,7 @@ To perform displays and measurements in these units, **Input Sensitivity** and *
 Required equipment varies depending on the items being calibrated.
 
 * **Input/Output Voltage Calibration**:
-    * **Voltmeter (Multimeter)**: A **TrueRMS** compatible one is best. Inexpensive multimeters often measure the average value and calculate assuming a perfect sine wave, causing errors with complex waveforms. TrueRMS multimeters accurately measure the root mean square regardless of the waveform.
+    * **Voltmeter (Multimeter)**: A **TrueRMS** compatible one is best. Standard multimeters often estimate from the average value, causing errors with complex waveforms. TrueRMS multimeters accurately measure the root mean square regardless of the waveform.
     * **Audio Cables**: Required to connect the output and input of the audio interface or to apply the voltmeter.
 * **Sound Pressure Level (SPL) Calibration**:
     * **Speaker**: Required to play pink noise.
