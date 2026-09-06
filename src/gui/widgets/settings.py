@@ -1119,6 +1119,10 @@ class SettingsWidget(QWidget):
         self.offline_rate_spin.valueChanged.connect(self.on_offline_rate_changed)
         offline_sub_layout.addRow(tr("Simulation Rate:"), self.offline_rate_spin)
 
+        self.vst_dut_button = QPushButton(tr("VST3 DUT"))
+        self.vst_dut_button.clicked.connect(self.open_vst_dut)
+        offline_sub_layout.addRow(self.vst_dut_button)
+
         self.audio_sub_tabs.addTab(offline_sub_tab, tr("Virtual / Offline Mode"))
 
         audio_layout.addWidget(self.audio_sub_tabs)
@@ -1484,6 +1488,13 @@ class SettingsWidget(QWidget):
             self.audio_engine.set_sample_rate(hw_rate)
             self.sr_combo.setCurrentText(str(hw_rate))
             self.refresh_devices()
+
+    def open_vst_dut(self):
+        from src.gui.widgets.vst_dut import VstDutDialog
+
+        dialog = VstDutDialog(self.audio_engine, self)
+        dialog.exec()
+        dialog.deleteLater()
 
     def on_offline_rate_changed(self, val: int):
         self.config_manager.set_offline_sample_rate(val)

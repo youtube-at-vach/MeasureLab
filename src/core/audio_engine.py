@@ -7,6 +7,7 @@ import sounddevice as sd
 from src.core.calibration import CalibrationManager
 from src.core.errors import AudioEngineReservedError
 from src.core.network_audio.client import NetworkAudioClient, NetworkClientStream
+from src.core.vst_dut import VstDut
 
 
 import time
@@ -154,6 +155,7 @@ class AudioEngine:
 
         # Offline / Virtual Mode
         self.offline_mode = False
+        self.vst_dut = VstDut()
 
         # Network-backed I/O.  The connected client is configured explicitly
         # by the Remote Audio I/O widget and never silently falls back to a
@@ -331,6 +333,10 @@ class AudioEngine:
     def set_loopback(self, enabled):
         self.loopback = enabled
         self.logger.debug(f"Set software loopback: {enabled}")
+
+    @property
+    def has_virtual_dut(self):
+        return self.offline_mode and self.vst_dut.loaded
 
     def set_mute_output(self, enabled):
         self.mute_output = enabled
@@ -840,7 +846,17 @@ class AudioEngine:
         # Capture the pristine, full-precision output BEFORE applying dithering/quantization
         # to ensure that internal/digital loopback measurements keep their ideal numerical precision.
         if use_loopback:
-            self._update_loopback_buffer(mix_buffer, frames, logical_out_ch)
+            if self.has_virtual_dut:
+                previous_error = self.vst_dut.error
+                dut_output = self.vst_dut.process(mix_buffer, self.sample_rate, self.block_size)
+                self._update_loopback_buffer(dut_output, frames, 2)
+                if self.vst_dut.error and not previous_error:
+                    self.logger.error("VST DUT failed: %s", self.vst_dut.error)
+                    with self._status_lock:
+                        self.last_callback_error = RuntimeError(self.vst_dut.error)
+                        self.callback_error_count += 1
+            else:
+                self._update_loopback_buffer(mix_buffer, frames, logical_out_ch)
 
         # 5. Apply Effects (Dithering & Quantization to target hardware bit depth)
         # Network transport is float32 PCM.  Quantize/dither only once at the
@@ -955,6 +971,8 @@ class AudioEngine:
                     self.sample_rate,
                 )
             elif self.offline_mode:
+                # Starting/stopping clients must preserve the DUT and its
+                # native editor. The host resets on actual format changes.
                 self.active_dtype = "float64" if self.audio_engine_64bit else "float32"
                 self.stream = VirtualStream(
                     samplerate=self.sample_rate,

@@ -1,0 +1,2 @@
+# Optional VST3 DUT host; install in addition to requirements.txt.
+pedalboard>=0.9.24,<0.10

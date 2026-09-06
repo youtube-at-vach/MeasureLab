@@ -356,7 +356,9 @@ class NonlinearAnalyzer(MeasurementModule):
             raise e
 
         # Execute Offline Mode/Virtual Loopback emulation if active
-        if getattr(self.audio_engine, "offline_mode", False):
+        if getattr(self.audio_engine, "offline_mode", False) and not getattr(
+            self.audio_engine, "has_virtual_dut", False
+        ):
             rec_data = np.zeros((total_len, 2), dtype=np.float32)
             simulated_meas = (
                 cont_signal

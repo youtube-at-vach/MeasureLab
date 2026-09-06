@@ -48,6 +48,7 @@ class MockQPalette:
         LinkVisited = 11
         ToolTipBase = 12
         ToolTipText = 13
+        PlaceholderText = 14
 
     class ColorGroup:
         Disabled = 0

@@ -246,7 +246,9 @@ class NonlinearResponseAnalyzer(MeasurementModule):
 
         logger.info("Executing latency calibration...")
 
-        if getattr(self.audio_engine, "offline_mode", False):
+        if getattr(self.audio_engine, "offline_mode", False) and not getattr(
+            self.audio_engine, "has_virtual_dut", False
+        ):
             # Simulating short latency for virtual mode
             self.latency_sec = 0.0125
             self.signals.latency_result.emit(self.latency_sec)
@@ -290,7 +292,9 @@ class NonlinearResponseAnalyzer(MeasurementModule):
             if not worker.is_running:
                 return
 
-            if getattr(self.audio_engine, "offline_mode", False):
+            if getattr(self.audio_engine, "offline_mode", False) and not getattr(
+                self.audio_engine, "has_virtual_dut", False
+            ):
                 # Simulated system
                 sim = SimulatedNonlinearResponseSystem(sample_rate)
                 rec = np.zeros((len(u_padded), 2), dtype=np.float32)
