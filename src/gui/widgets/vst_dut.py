@@ -193,6 +193,14 @@ class VstDutDialog(QDialog):
 
         layout.addWidget(self.controls)
         layout.addWidget(self.editor_button)
+        monitor_row = QHBoxLayout()
+        self.monitor_button = QCheckBox(tr("Monitor Out"))
+        self.monitor_button.toggled.connect(self._toggle_monitor)
+        monitor_row.addWidget(self.monitor_button)
+        self.routing_button = QPushButton(tr("Routing"))
+        self.routing_button.clicked.connect(self._open_routing)
+        monitor_row.addWidget(self.routing_button)
+        layout.addLayout(monitor_row)
         self.notice = QLabel()
         self.notice.setWordWrap(True)
         layout.addWidget(self.notice)
@@ -295,6 +303,28 @@ class VstDutDialog(QDialog):
             self._error(tr("Could not open or close the plugin editor.") + "\n" + str(exc))
         self._refresh()
 
+    def _open_routing(self):
+        parent = self.parentWidget()
+        while parent is not None:
+            if hasattr(parent, "open_routing"):
+                self.accept()
+                parent.open_routing()
+                return
+            parent = parent.parentWidget()
+
+    def _toggle_monitor(self, enabled):
+        if enabled and self.engine.monitor.route.device is None:
+            self.monitor_button.blockSignals(True)
+            self.monitor_button.setChecked(False)
+            self.monitor_button.blockSignals(False)
+            self._open_routing()
+            return
+        try:
+            self.engine.set_monitor_enabled(enabled)
+        except Exception as exc:
+            self._error(str(exc))
+        self._refresh()
+
     def _loaded(self):
         succeeded = self.loader.succeeded
         self.loader.deleteLater()
@@ -340,6 +370,18 @@ class VstDutDialog(QDialog):
         loading = self.loader is not None
         virtual_mode = self.engine.offline_mode and not self.engine.network_mode
         available = virtual_mode and not self.engine.is_audio_reserved()
+        route = self.engine.monitor.route
+        self.monitor_button.blockSignals(True)
+        self.monitor_button.setChecked(route.enabled)
+        self.monitor_button.blockSignals(False)
+        self.monitor_button.setEnabled(route.enabled or (available and not loading))
+        from src.gui.widgets.routing import route_labels, state_labels
+
+        monitor = self.engine.monitor.status(self.engine.monitor_unavailable_reason())
+        self.monitor_button.setToolTip(
+            f"{route_labels()[route.source]} → {route.device_name or tr('Routing')} · {state_labels()[monitor.state]}"
+        )
+        self.routing_button.setEnabled(not loading)
         # Structural changes require stopped measurements. The native editor
         # stays independent so users can adjust the effect while observing it.
         editable = available and not self.engine.callbacks and not loading

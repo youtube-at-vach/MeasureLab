@@ -5,6 +5,7 @@ serves audio requests. Normal audio needs no optional VST dependency.
 """
 
 import atexit
+from dataclasses import dataclass
 import multiprocessing
 from multiprocessing.connection import Connection
 from multiprocessing.process import BaseProcess
@@ -12,10 +13,18 @@ from multiprocessing.synchronize import Event
 from pathlib import Path
 from queue import Queue
 import threading
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 import numpy as np
 from numpy.typing import NDArray
+
+
+@dataclass(frozen=True)
+class VstProcessResult:
+    """One host invocation, with independent wet and measurement return buses."""
+
+    wet: NDArray[np.float32]
+    measurement: NDArray[np.float32]
 
 
 class _EditorInterrupt:
@@ -171,7 +180,12 @@ class VstDut:
         self.return_routes: tuple[str, ...] = ("wet1", "wet2")
         self.padded_samples = 0
         self._format: tuple[float, int, int] | None = None
+        self.on_configuration_change: Callable[[], None] | None = None
         atexit.register(self.close)
+
+    def _configuration_changing(self) -> None:
+        if self.on_configuration_change is not None:
+            self.on_configuration_change()
 
     @property
     def loaded(self) -> bool:
@@ -179,6 +193,7 @@ class VstDut:
         return bool(self.path)
 
     def load(self, path: str, plugin_name: str | None = None) -> None:
+        self._configuration_changing()
         path = str(Path(path).expanduser().resolve())
         if Path(path).suffix.lower() != ".vst3" or not Path(path).exists():
             raise ValueError("Select an existing .vst3 file or bundle.")
@@ -251,6 +266,7 @@ class VstDut:
             self._process = None
 
     def close(self) -> None:
+        self._configuration_changing()
         with self._lock:
             self._close_locked()
             self.path = self.name = self.error = ""
@@ -322,6 +338,7 @@ class VstDut:
             raise RuntimeError(self.error) from exc
 
     def reset(self) -> None:
+        self._configuration_changing()
         with self._lock:
             self._format = None
             self.padded_samples = 0
@@ -356,11 +373,15 @@ class VstDut:
 
     def process(self, source: np.ndarray, sample_rate: float, block_size: int) -> NDArray[np.float32]:
         """Return two measurement channels; preserve streaming state and tails."""
+        return self.process_buses(source, sample_rate, block_size).measurement
+
+    def process_buses(self, source: np.ndarray, sample_rate: float, block_size: int) -> VstProcessResult:
+        """Expose wet audio before return routing without processing the host twice."""
         frames = len(source)
         silence = np.zeros((frames, 2), dtype=np.float32)
         with self._lock:
             if self.error:
-                return silence
+                return VstProcessResult(silence, silence)
             dry = np.asarray(source, dtype=np.float32)
             if dry.shape[1] == 1:
                 dry = np.repeat(dry, 2, axis=1)
@@ -394,8 +415,10 @@ class VstDut:
                     sources["wet2"] = wet[1]
                 for channel, return_route in enumerate(self.return_routes):
                     silence[:, channel] = sources[return_route]
-                return silence
+                wet_stereo = wet.T.copy() if len(wet) == 2 else np.repeat(wet.T, 2, axis=1)
+                return VstProcessResult(wet_stereo, silence)
             except Exception as exc:
                 self.error = str(exc)
                 self._close_locked()
-                return np.zeros_like(silence)
+                failed = np.zeros_like(silence)
+                return VstProcessResult(failed, failed)

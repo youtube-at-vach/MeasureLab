@@ -1106,7 +1106,7 @@ class SettingsWidget(QWidget):
         offline_sub_tab = QWidget()
         offline_sub_layout = QFormLayout(offline_sub_tab)
 
-        self.offline_check = QCheckBox(tr("Virtual Audio (No Hardware)"))
+        self.offline_check = QCheckBox(tr("Virtual Audio"))
         is_offline = self.config_manager.is_offline_mode()
         self.offline_check.setChecked(is_offline)
         self.offline_check.toggled.connect(self.on_offline_toggled)

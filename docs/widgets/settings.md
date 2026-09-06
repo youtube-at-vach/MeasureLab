@@ -49,7 +49,7 @@ FFT（高速フーリエ変換）の処理速度を向上させるための最�
         * **Bit Activity (LSB to MSB)**: 各ビット（LSBからMSBまで）の活動状況をヒートマップで可視化します。スタックビット（常に0または1）の検出に役立ちます。
         * **Quantization Step (Delta) Distribution**: 隣接サンプル間の差分（量子化ステップ）の分布を表示します。
 * **Virtual / Offline Mode タブ**:
-    * **Virtual Audio (No Hardware)**: 仮想オーディオドライバを有効にします。物理的なインターフェースがない場合に使用します。
+    * **Virtual Audio**: 仮想オーディオドライバを有効にします。物理的なインターフェースがない場合に使用します。
     * **Simulation Rate**: 仮想モード時のサンプリングレートを設定します。
 
 ### Audio Configuration (オーディオ構成)
