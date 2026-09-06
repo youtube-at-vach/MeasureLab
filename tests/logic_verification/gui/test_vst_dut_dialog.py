@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QDialogButtonBox
+from PyQt6.QtWidgets import QDialogButtonBox, QDoubleSpinBox, QSlider, QTabWidget
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import get_manager
@@ -32,10 +32,9 @@ def test_dut_controls_and_size_in_all_languages(qtbot, language):
         dialog.advanced.setChecked(True)
         assert dialog.minimumSizeHint().width() <= 1180
         assert dialog.minimumSizeHint().height() <= 690
-        for tab in range(dialog.tabs.count()):
-            dialog.tabs.setCurrentIndex(tab)
-            assert dialog.minimumSizeHint().width() <= 1180
-            assert dialog.minimumSizeHint().height() <= 690
+        dialog.routing_toggle.setChecked(True)
+        assert dialog.minimumSizeHint().width() <= 1180
+        assert dialog.minimumSizeHint().height() <= 690
         assert dialog.controls.isEnabled()
         dialog.channels.setCurrentIndex(0)
         assert engine.vst_dut.input_routes == (0,)
@@ -55,25 +54,24 @@ def test_dut_controls_and_size_in_all_languages(qtbot, language):
         manager.load_language("en")
 
 
-def test_parameters_use_actual_host_value(qtbot):
+def test_launcher_uses_only_native_editor_and_collapses_advanced_controls(qtbot):
     engine = AudioEngine()
     engine.offline_mode = True
-    engine.vst_dut.path = "test.vst3"
-    engine.vst_dut.parameters = {"gain": 0.25, "cutoff": 0.75}
     dialog = VstDutDialog(engine)
     qtbot.addWidget(dialog)
-    qtbot.waitUntil(lambda: dialog.scanner is None)
     try:
-        assert dialog.value.value() == 0.25
-        dialog.parameter.setCurrentIndex(1)
-        assert dialog.value.value() == 0.75
-        engine.vst_dut._request = MagicMock(return_value={"gain": 0.25, "cutoff": 0.5})
-        dialog.value.setValue(0.49)
-        dialog._apply_parameter()
-        engine.vst_dut._request.assert_called_once_with("parameter", ("cutoff", 0.49))
-        assert dialog.value.value() == 0.5
-        assert dialog.slider.value() == 500
-        assert not dialog.apply.isEnabled()
+        dialog.show()
+        assert not dialog.manual.isVisible()
+        assert not dialog.routing.isVisible()
+        assert not dialog.findChildren(QDoubleSpinBox)
+        assert not dialog.findChildren(QSlider)
+        assert not dialog.findChildren(QTabWidget)
+        assert not dialog.editor_button.isEnabled()
+        dialog.advanced.setChecked(True)
+        dialog.routing_toggle.setChecked(True)
+        assert dialog.path.isVisible()
+        assert dialog.plugin_name.isVisible()
+        assert dialog.routing.isVisible()
     finally:
         engine.vst_dut.close()
 
@@ -88,9 +86,7 @@ def test_empty_controls_and_keyboard_do_not_load_or_apply(qtbot):
     dialog.show()
     qtbot.waitUntil(lambda: dialog.scanner is None)
     assert not dialog.load_button.isEnabled()
-    assert not dialog.value.isEnabled()
-    assert not dialog.slider.isEnabled()
-    assert not dialog.apply.isEnabled()
+    assert not dialog.editor_button.isEnabled()
     assert not dialog.plugins.isEnabled()
     dialog.path.setText("test.vst3")
     assert dialog.load_button.isEnabled()
@@ -103,42 +99,101 @@ def test_empty_controls_and_keyboard_do_not_load_or_apply(qtbot):
     assert not dialog.isVisible()
 
 
-def test_parameter_search_slider_and_unload(qtbot):
+def test_native_editor_open_close_unload_and_dialog_exit(qtbot):
     engine = AudioEngine()
     engine.offline_mode = True
-    engine.vst_dut.path = "test.vst3"
-    engine.vst_dut.name = "Test effect"
-    engine.vst_dut.parameters = {"gain": 0.123456, "cutoff": 0.75}
-    engine.vst_dut._request = MagicMock(return_value={"gain": 0.25, "cutoff": 0.75})
+    dut = engine.vst_dut
+    dut.path = "test.vst3"
+    dut.name = "Test effect"
+    dut.open_editor = MagicMock(side_effect=lambda: setattr(dut, "editor_open", True))
+    dut.close_editor = MagicMock(side_effect=lambda: setattr(dut, "editor_open", False))
     dialog = VstDutDialog(engine)
     qtbot.addWidget(dialog)
     try:
-        assert dialog.value.value() == 0.123456  # Slider must not quantize the host value.
-        assert dialog.slider.value() == 123
-        assert not dialog.apply.isEnabled()
-        dialog.parameter_search.setText("GAIN")
-        assert dialog.parameter.count() == 1
-        dialog.slider.setValue(249)
-        assert dialog.value.value() == 0.249
-        engine.vst_dut._request.assert_not_called()  # Editing waits for Apply.
-        dialog.apply.click()
-        engine.vst_dut._request.assert_called_once_with("parameter", ("gain", 0.249))
-        assert dialog.value.value() == 0.25
-        assert not dialog.apply.isEnabled()
-        dialog.parameter_search.setText("missing")
-        assert dialog.parameter.count() == 0
-        assert not dialog.value.isEnabled()
-        assert not dialog.apply.isEnabled()
-        dialog.parameter_search.clear()
+        dialog.show()
+        dialog.editor_button.click()
+        dut.open_editor.assert_called_once()
+        assert dut.editor_open
+        assert dialog.editor_button.text() == "Close plugin editor"
+        assert not dialog.routing.isEnabled()
+        dialog.editor_button.click()
+        assert not dut.editor_open
+        assert dialog.editor_button.text() == "Open plugin editor"
+        dialog.editor_button.click()
+        dialog.reject()
+        assert not dut.editor_open
+        dialog.show()
         dialog.unload_button.click()
-        assert not engine.vst_dut.loaded
-        assert dialog.parameter.count() == 0
-        assert not dialog.value.isEnabled()
-        assert not dialog.apply.isEnabled()
-        assert not dialog.bypass.isChecked()
-        assert "Test effect" not in dialog.status.text()
+        assert not dut.loaded
+        assert not dialog.editor_button.isEnabled()
     finally:
-        engine.vst_dut.close()
+        dut.close()
+
+
+def test_editor_completion_error_is_reported_once_without_disabling_host(qtbot, monkeypatch):
+    engine = AudioEngine()
+    engine.offline_mode = True
+    dut = engine.vst_dut
+    dut.path = "test.vst3"
+    dialog = VstDutDialog(engine)
+    qtbot.addWidget(dialog)
+    errors = []
+    monkeypatch.setattr(dialog, "_error", errors.append)
+    dut.poll_editor = MagicMock(side_effect=[True, False])
+    dut.editor_error = "Plugin has no available editor UI."
+    try:
+        dialog._refresh()
+        dialog._refresh()
+        assert len(errors) == 1
+        assert dut.editor_error in errors[0]
+        assert dut.loaded and not dut.error
+        assert dialog.editor_button.isEnabled()
+    finally:
+        dut.close()
+
+
+def test_measurement_start_closes_native_editor(qtbot):
+    engine = AudioEngine()
+    engine.offline_mode = True
+    dut = engine.vst_dut
+    dut.path = "test.vst3"
+    dut.close_editor = MagicMock(side_effect=lambda: setattr(dut, "editor_open", False))
+    dialog = VstDutDialog(engine)
+    qtbot.addWidget(dialog)
+    try:
+        dut.editor_open = True
+        engine.callbacks[1] = MagicMock()
+        dialog._refresh()
+        dut.close_editor.assert_called_once()
+        assert not dut.editor_open
+        assert not dialog.editor_button.isEnabled()
+    finally:
+        engine.callbacks.clear()
+        dut.close()
+
+
+@pytest.mark.parametrize("succeeded", [True, False])
+def test_load_opens_native_editor_only_on_success(qtbot, monkeypatch, succeeded):
+    engine = AudioEngine()
+    engine.offline_mode = True
+    dut = engine.vst_dut
+    dut.path = "test.vst3"
+    dut.open_editor = MagicMock()
+
+    def load(*args):
+        if not succeeded:
+            raise RuntimeError("Load failed")
+
+    dut.load = MagicMock(side_effect=load)
+    dialog = VstDutDialog(engine)
+    qtbot.addWidget(dialog)
+    monkeypatch.setattr(dialog, "_error", MagicMock())
+    try:
+        dialog.load_button.click()
+        qtbot.waitUntil(lambda: dialog.loader is None)
+        assert dut.open_editor.call_count == int(succeeded)
+    finally:
+        dut.close()
 
 
 def test_loaded_identity_remains_visible_during_measurement(qtbot):
@@ -273,6 +328,9 @@ def test_installed_plugin_discovery_and_load(qtbot, monkeypatch):
         assert engine.vst_dut.loaded
         assert Path(engine.vst_dut.path) == target
         assert engine.vst_dut.name
-        assert dialog.parameter.count() == len(engine.vst_dut.parameters)
+        assert engine.vst_dut.editor_open
+        qtbot.wait(500)  # Allow the native window to be created before closing it.
+        engine.vst_dut.close_editor()
+        assert not engine.vst_dut.editor_error
     finally:
         engine.vst_dut.close()

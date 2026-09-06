@@ -8,6 +8,7 @@ import atexit
 import multiprocessing
 from multiprocessing.connection import Connection
 from multiprocessing.process import BaseProcess
+from multiprocessing.synchronize import Event
 from pathlib import Path
 import threading
 from typing import Any, Iterable
@@ -16,7 +17,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-def _plugin_worker(connection: Connection, path: str, plugin_name: str | None) -> None:
+def _plugin_worker(connection: Connection, path: str, plugin_name: str | None, close_editor: Event) -> None:
     try:
         from pedalboard import VST3Plugin
 
@@ -25,10 +26,10 @@ def _plugin_worker(connection: Connection, path: str, plugin_name: str | None) -
         plugin: Any = VST3Plugin(path, plugin_name=plugin_name)
         if not plugin.is_effect:
             raise ValueError("The DUT must accept audio input (VST3 effect).")
-        parameters = plugin.parameters
 
         def values():
-            return {name: float(param.raw_value) for name, param in parameters.items()}
+            # Presets selected in the native editor may change the parameter set.
+            return {name: float(param.raw_value) for name, param in plugin.parameters.items()}
 
         connection.send((True, {"name": plugin.name, "parameters": values()}))
         current_format = None
@@ -37,13 +38,24 @@ def _plugin_worker(connection: Connection, path: str, plugin_name: str | None) -
             command, payload = connection.recv()
             if command == "close":
                 break
-            if command == "reset":
+            if command == "editor":
+                # Acknowledge before entering JUCE's blocking event loop. The
+                # next reply completes this editor session, not an audio request.
+                connection.send((True, None))
+                editor_error = ""
+                try:
+                    plugin.show_editor(close_editor)
+                except Exception as exc:
+                    # Editor errors must not discard the loaded DSP instance.
+                    editor_error = f"{type(exc).__name__}: {exc}"
+                result = {"parameters": values(), "error": editor_error}
+            elif command == "reset":
                 plugin.reset()
                 current_format = None
                 result = None
             elif command == "parameter":
                 name, value = payload
-                parameters[name].raw_value = value
+                plugin.parameters[name].raw_value = value
                 result = values()
             elif command == "process":
                 audio, rate, block_size = payload
@@ -78,6 +90,9 @@ class VstDut:
         self._lock = threading.RLock()
         self._connection: Connection | None = None
         self._process: BaseProcess | None = None
+        self._editor_close: Event | None = None
+        self.editor_open = False
+        self.editor_error = ""
         self.path = ""
         self.name = ""
         self.parameters: dict[str, float] = {}
@@ -101,7 +116,8 @@ class VstDut:
         # Build the replacement first so a failed load preserves the current DUT.
         context = multiprocessing.get_context("spawn")
         parent, child = context.Pipe()
-        process = context.Process(target=_plugin_worker, args=(child, path, plugin_name), daemon=True)
+        editor_close = context.Event()
+        process = context.Process(target=_plugin_worker, args=(child, path, plugin_name, editor_close), daemon=True)
         try:
             process.start()
             child.close()
@@ -123,6 +139,7 @@ class VstDut:
         with self._lock:
             self._close_locked()
             self._connection, self._process = parent, process
+            self._editor_close = editor_close
             self.path, self.name = path, info["name"]
             self.parameters = info["parameters"]
             self.error = ""
@@ -142,6 +159,11 @@ class VstDut:
             process.close()
 
     def _close_locked(self) -> None:
+        if self._editor_close is not None:
+            self._editor_close.set()
+            self._editor_close = None
+        self.editor_open = False
+        self.editor_error = ""
         if self._connection is not None:
             self._connection.close()
             self._connection = None
@@ -158,6 +180,9 @@ class VstDut:
             self.padded_samples = 0
 
     def _request(self, command: str, payload: Any = None, timeout: float = 1.0) -> Any:
+        # Finish editing before processing/resetting the same native instance.
+        # This also drains its completion reply before sending the next request.
+        self.close_editor()
         if self.error:
             raise RuntimeError(self.error)
         if self._connection is None:
@@ -170,6 +195,49 @@ class VstDut:
             if not success:
                 raise RuntimeError(result)
             return result
+        except (OSError, EOFError, RuntimeError, TimeoutError) as exc:
+            self.error = str(exc) or "VST3 host disconnected."
+            self._close_locked()
+            raise RuntimeError(self.error) from exc
+
+    def open_editor(self) -> None:
+        """Open the loaded instance's native window without blocking the caller."""
+        with self._lock:
+            if self.editor_open:
+                return
+            if self._editor_close is None:
+                raise RuntimeError("No VST3 plugin loaded.")
+            self._editor_close.clear()
+            self.editor_error = ""
+            self._request("editor")
+            self.editor_open = True
+
+    def poll_editor(self) -> bool:
+        """Collect edited values on window close; return whether it completed."""
+        with self._lock:
+            return self._finish_editor(timeout=0)
+
+    def close_editor(self) -> None:
+        with self._lock:
+            if self.editor_open and self._editor_close is not None:
+                self._editor_close.set()
+                self._finish_editor(timeout=5.0)
+
+    def _finish_editor(self, timeout: float) -> bool:
+        if not self.editor_open or self._connection is None:
+            return False
+        try:
+            if not self._connection.poll(timeout):
+                if timeout == 0:
+                    return False
+                raise TimeoutError("VST3 editor stopped responding while closing.")
+            success, result = self._connection.recv()
+            if not success:
+                raise RuntimeError(result)
+            self.editor_open = False
+            self.parameters = result["parameters"]
+            self.editor_error = result["error"]
+            return True
         except (OSError, EOFError, RuntimeError, TimeoutError) as exc:
             self.error = str(exc) or "VST3 host disconnected."
             self._close_locked()
@@ -223,6 +291,7 @@ class VstDut:
                 if route >= 0:
                     audio[channel] = dry[:, route]
             try:
+                self.close_editor()
                 audio_format = (sample_rate, block_size, len(self.input_routes))
                 if audio_format != self._format:
                     self.padded_samples = 0

@@ -1,4 +1,4 @@
-"""Small, generic VST3 DUT editor; does not embed a native plugin window."""
+"""Simple VST3 launcher with native editor access and optional routing."""
 
 from collections import Counter
 from importlib.util import find_spec
@@ -9,11 +9,8 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
-    QDoubleSpinBox,
     QDialogButtonBox,
     QGroupBox,
-    QSlider,
-    QTabWidget,
     QFileDialog,
     QFormLayout,
     QHBoxLayout,
@@ -47,10 +44,12 @@ class _Loader(QThread):
     def __init__(self, dut, path, name, parent):
         super().__init__(parent)
         self.dut, self.path, self.name = dut, path, name
+        self.succeeded = False
 
     def run(self):
         try:
             self.dut.load(self.path, self.name or None)
+            self.succeeded = True
         except Exception as exc:
             self.failed.emit(str(exc))
 
@@ -64,7 +63,7 @@ class VstDutDialog(QDialog):
         self.scanner = None
         self.discovered_paths = []
         self.setWindowTitle(tr("VST3 DUT"))
-        self.resize(720, 580)
+        self.resize(660, 380)
         self.host_available = find_spec("pedalboard") is not None
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 16, 20, 16)
@@ -108,6 +107,14 @@ class VstDutDialog(QDialog):
         self.scan_status = QLabel()
         self.scan_status.setWordWrap(True)
         form.addRow(self.scan_status)
+        self.advanced = QCheckBox(tr("Manual plugin selection"))
+        form.addRow(self.advanced)
+        self.manual = QWidget()
+        manual_form = QFormLayout(self.manual)
+        manual_form.setContentsMargins(0, 0, 0, 0)
+        self.advanced.toggled.connect(self.manual.setVisible)
+        self.manual.hide()
+        form.addRow(self.manual)
         self.path = QLineEdit(self.dut.path)
         self.path.setAccessibleName(tr("Path to .vst3 file or bundle"))
         self.path.setPlaceholderText(tr("Path to .vst3 file or bundle"))
@@ -116,15 +123,11 @@ class VstDutDialog(QDialog):
         path_row = QHBoxLayout()
         path_row.addWidget(self.path)
         path_row.addWidget(browse)
-        form.addRow(path_row)
+        manual_form.addRow(path_row)
         self.plugin_name = QLineEdit()
         self.plugin_name.setPlaceholderText(tr("Plugin name inside bundle (optional)"))
         self.plugin_name.setAccessibleName(tr("Plugin name inside bundle (optional)"))
-        self.advanced = QCheckBox(tr("Plugin name inside bundle (optional)"))
-        self.advanced.toggled.connect(self.plugin_name.setVisible)
-        form.addRow(self.advanced)
-        self.plugin_name.hide()
-        form.addRow(self.plugin_name)
+        manual_form.addRow(self.plugin_name)
         self.path.textChanged.connect(self._path_changed)
         buttons = QHBoxLayout()
         self.load_button = QPushButton(tr("Load VST3"))
@@ -133,6 +136,9 @@ class VstDutDialog(QDialog):
         self.unload_button = QPushButton(tr("Unload"))
         self.unload_button.clicked.connect(self._unload)
         buttons.addWidget(self.unload_button)
+        self.editor_button = QPushButton(tr("Open plugin editor"))
+        self.editor_button.clicked.connect(self._toggle_editor)
+        buttons.addWidget(self.editor_button)
         self.bypass = QCheckBox(tr("Bypass"))
         self.bypass.setChecked(self.dut.bypassed)
         self.bypass.toggled.connect(lambda value: self._edit(lambda: self.dut.set_bypassed(value)))
@@ -140,10 +146,14 @@ class VstDutDialog(QDialog):
         buttons.addWidget(self.bypass)
         form.addRow(buttons)
 
-        self.tabs = QTabWidget()
-        controls_layout.addWidget(self.tabs)
-        routing = QWidget()
-        route_layout = QHBoxLayout(routing)
+        self.routing_toggle = QCheckBox(tr("Routing"))
+        controls_layout.addWidget(self.routing_toggle)
+        self.routing = QWidget()
+        self.routing_toggle.toggled.connect(self.routing.setVisible)
+        self.routing.hide()
+        controls_layout.addWidget(self.routing)
+        route_layout = QHBoxLayout(self.routing)
+        route_layout.setContentsMargins(0, 0, 0, 0)
         input_group = QGroupBox(tr("DUT inputs"))
         input_form = QFormLayout(input_group)
         input_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
@@ -152,7 +162,6 @@ class VstDutDialog(QDialog):
         return_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         route_layout.addWidget(input_group, 1)
         route_layout.addWidget(return_group, 1)
-        self.tabs.addTab(routing, tr("Routing"))
         self.channels = QComboBox()
         self.channels.addItem(tr("Mono"), 1)
         self.channels.addItem(tr("Stereo"), 2)
@@ -183,40 +192,6 @@ class VstDutDialog(QDialog):
             combo.currentIndexChanged.connect(self._routes_changed)
         self._update_mono_controls()
 
-        parameter_page = QWidget()
-        parameter_form = QFormLayout(parameter_page)
-        parameter_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
-        parameter_form.setSpacing(8)
-        self.tabs.addTab(parameter_page, tr("Parameters"))
-        self.parameter_search = QLineEdit()
-        self.parameter_search.setPlaceholderText(tr("Search parameters"))
-        self.parameter_search.setAccessibleName(tr("Search parameters"))
-        self.parameter_search.setClearButtonEnabled(True)
-        self.parameter_search.textChanged.connect(self._refresh_parameters)
-        parameter_form.addRow(self.parameter_search)
-        self.parameter = QComboBox()
-        self.parameter.setMinimumWidth(0)
-        self.parameter.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
-        self.parameter.currentIndexChanged.connect(self._parameter_selected)
-        parameter_form.addRow(tr("Parameter"), self.parameter)
-        parameter_row = QHBoxLayout()
-        self.value = QDoubleSpinBox()
-        self.value.setRange(0, 1)
-        self.value.setDecimals(6)
-        self.value.setSingleStep(0.01)
-        self.value.setKeyboardTracking(False)
-        self.value.setAccessibleName(tr("Normalized value (0–1)"))
-        self.slider = QSlider(Qt.Orientation.Horizontal)
-        self.slider.setRange(0, 1000)
-        self.slider.setAccessibleName(tr("Normalized value (0–1)"))
-        self.slider.valueChanged.connect(lambda value: self.value.setValue(value / 1000))
-        self.value.valueChanged.connect(self._value_changed)
-        parameter_row.addWidget(self.slider, 1)
-        parameter_row.addWidget(self.value)
-        self.apply = QPushButton(tr("Apply"))
-        self.apply.clicked.connect(self._apply_parameter)
-        parameter_row.addWidget(self.apply)
-        parameter_form.addRow(tr("Normalized value (0–1)"), parameter_row)
         layout.addWidget(self.controls)
         self.notice = QLabel()
         self.notice.setWordWrap(True)
@@ -225,11 +200,10 @@ class VstDutDialog(QDialog):
         self.close_buttons.button(QDialogButtonBox.StandardButton.Close).setText(tr("Close"))
         self.close_buttons.rejected.connect(self.reject)
         layout.addWidget(self.close_buttons)
-        # Enter in a search/value field must never activate Load or Unload.
+        # Enter in a search/path field must never activate Load or Unload.
         for button in self.findChildren(QPushButton):
             button.setAutoDefault(False)
         self.plugin_search.setFocus()
-        self._refresh_parameters()
         self.timer = QTimer(self)
         self.timer.timeout.connect(self._refresh)
         self.timer.start(250)
@@ -307,18 +281,38 @@ class VstDutDialog(QDialog):
 
     def _unload(self):
         self._edit(self.dut.close)
-        self._refresh_parameters()
         self._refresh()
 
+    def _toggle_editor(self):
+        if not self.controls.isEnabled() or not self.dut.loaded or self.dut.error:
+            return
+        try:
+            if self.dut.editor_open:
+                self.dut.close_editor()
+            else:
+                self.dut.open_editor()
+            self.engine.last_output_buffer = None
+        except Exception as exc:
+            self._error(tr("Could not open or close the plugin editor.") + "\n" + str(exc))
+        self._refresh()
+
+    def _close_editor(self):
+        try:
+            self.dut.close_editor()
+        except Exception as exc:
+            self._error(str(exc))
+
     def _loaded(self):
+        succeeded = self.loader.succeeded
         self.loader.deleteLater()
         self.loader = None
         self.bypass.blockSignals(True)
         self.bypass.setChecked(self.dut.bypassed)
         self.bypass.blockSignals(False)
         self.engine.last_output_buffer = None
-        self._refresh_parameters()
         self._refresh()
+        if succeeded:
+            self._toggle_editor()
 
     def _error(self, message):
         QMessageBox.warning(self, tr("VST3 DUT"), message)
@@ -347,41 +341,6 @@ class VstDutDialog(QDialog):
         returns = tuple(combo.currentData() for combo in self.returns)
         self._edit(lambda: self.dut.set_routes(inputs, returns))
 
-    def _refresh_parameters(self):
-        selected = self.parameter.currentText()
-        query = self.parameter_search.text().strip().casefold()
-        names = [name for name in self.dut.parameters if query in name.casefold()]
-        self.parameter.blockSignals(True)
-        self.parameter.clear()
-        self.parameter.addItems(names)
-        self.parameter.setCurrentIndex(max(0, self.parameter.findText(selected)))
-        self.parameter.blockSignals(False)
-        self.parameter.setPlaceholderText(tr("No matching parameters") if query else tr("No parameters available"))
-        self._parameter_selected()
-
-    def _parameter_selected(self):
-        self.parameter.setToolTip(self.parameter.currentText())
-        self.value.setValue(self.dut.parameters.get(self.parameter.currentText(), 0))
-        self._value_changed()
-
-    def _value_changed(self):
-        self.slider.blockSignals(True)
-        self.slider.setValue(round(self.value.value() * 1000))
-        self.slider.blockSignals(False)
-        selected = self.parameter.currentText() in self.dut.parameters
-        self.parameter.setEnabled(self.parameter.count() > 0)
-        self.value.setEnabled(selected and not self.dut.error)
-        self.slider.setEnabled(selected and not self.dut.error)
-        self.apply.setEnabled(
-            selected
-            and not self.dut.error
-            and self.value.value() != round(self.dut.parameters.get(self.parameter.currentText(), 0), 6)
-        )
-
-    def _apply_parameter(self):
-        self._edit(lambda: self.dut.set_parameter(self.parameter.currentText(), self.value.value()))
-        self._parameter_selected()
-
     def _refresh(self):
         if self.scanner is not None and not self.scanner.is_alive():
             self._scanned()
@@ -390,7 +349,19 @@ class VstDutDialog(QDialog):
         # Loading/routing/control changes are between measurement runs. This
         # prevents an unmarked discontinuity inside an FFT or swept capture.
         editable = available and not self.engine.callbacks and not loading
+        try:
+            if self.dut.poll_editor():
+                self.engine.last_output_buffer = None
+                if self.dut.editor_error:
+                    self._error(tr("Could not open or close the plugin editor.") + "\n" + self.dut.editor_error)
+            if self.dut.editor_open and not editable:
+                self.dut.close_editor()
+        except Exception as exc:
+            self._error(str(exc))
         self.controls.setEnabled(editable)
+        self.editor_button.setEnabled(self.dut.loaded and not self.dut.error)
+        self.editor_button.setText(tr("Close plugin editor") if self.dut.editor_open else tr("Open plugin editor"))
+        self.routing.setEnabled(not self.dut.editor_open)
         self.unload_button.setEnabled(self.dut.loaded)
         self.bypass.setEnabled(self.dut.loaded)
         self.load_button.setEnabled(bool(self.path.text().strip()))
@@ -398,7 +369,6 @@ class VstDutDialog(QDialog):
         self.bypass.blockSignals(True)
         self.bypass.setChecked(self.dut.bypassed)
         self.bypass.blockSignals(False)
-        self._value_changed()
         if loading:
             self.status.setText(tr("Loading VST3…"))
         elif self.dut.error:
@@ -419,12 +389,15 @@ class VstDutDialog(QDialog):
             self.notice.setText(tr("Stop measurements before changing the DUT."))
         elif not self.host_available:
             self.notice.setText(tr("No DUT loaded. Install requirements-vst.txt to enable VST3 hosting."))
+        elif self.dut.editor_open:
+            self.notice.setText(tr("Edit the plugin in its own window, then close it before measuring."))
         else:
             self.notice.setText("")
         self.notice.setVisible(bool(self.notice.text()))
 
     def reject(self):
         if self.loader is None:
+            self._close_editor()
             if self.scanner is not None:
                 self.scanner.cancelled.set()
             super().reject()
@@ -433,6 +406,7 @@ class VstDutDialog(QDialog):
         if self.loader is not None:
             event.ignore()
         else:
+            self._close_editor()
             if self.scanner is not None:
                 self.scanner.cancelled.set()
             super().closeEvent(event)

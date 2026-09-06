@@ -2,6 +2,8 @@
 
 import os
 import threading
+import sys
+from types import SimpleNamespace
 import time
 from unittest.mock import MagicMock
 
@@ -10,7 +12,7 @@ import pytest
 import sounddevice as sd
 
 from src.core.audio_engine import AudioEngine
-from src.core.vst_dut import VstDut
+from src.core.vst_dut import VstDut, _plugin_worker
 
 
 @pytest.fixture
@@ -107,6 +109,102 @@ def test_invalid_routes_and_parameters(dut):
         dut.set_parameter("gain", float("nan"))
 
 
+@pytest.mark.parametrize("editor_error", ["", "Plugin has no available editor UI."])
+def test_worker_editor_uses_loaded_instance_and_preserves_edits(monkeypatch, editor_error):
+    parameter = SimpleNamespace(raw_value=0.25)
+    plugin = SimpleNamespace(is_effect=True, name="Effect", parameters={"gain": parameter})
+    event = threading.Event()
+    connection = MagicMock()
+    audio = np.ones((2, 16), dtype=np.float32)
+    connection.recv.side_effect = [("editor", None), ("process", (audio, 48000, 16)), ("close", None)]
+
+    def show_editor(close_event):
+        assert threading.current_thread() is threading.main_thread()
+        assert close_event is event
+        assert connection.send.call_args.args == ((True, None),)
+        if editor_error:
+            raise RuntimeError(editor_error)
+        parameter.raw_value = 0.75
+
+    plugin.show_editor = show_editor
+    plugin.reset = MagicMock()
+    plugin.process = lambda audio, *args, **kwargs: audio * parameter.raw_value
+    factory = MagicMock(return_value=plugin)
+    monkeypatch.setitem(sys.modules, "pedalboard", SimpleNamespace(VST3Plugin=factory))
+    _plugin_worker(connection, "Effect.vst3", None, event)
+    factory.assert_called_once()
+    replies = [call.args[0] for call in connection.send.call_args_list]
+    assert len(replies) == 4
+    assert replies[2][0]
+    assert editor_error in replies[2][1]["error"]
+    assert replies[2][1]["parameters"]["gain"] == (0.25 if editor_error else 0.75)
+    np.testing.assert_array_equal(replies[3][1], audio * parameter.raw_value)
+
+
+def editor_host(dut):
+    dut.path = "test.vst3"
+    dut._connection = MagicMock()
+    dut._editor_close = MagicMock()
+    dut._connection.recv.return_value = (True, None)
+    dut.open_editor()
+    assert dut.editor_open
+    dut._connection.send.assert_called_once_with(("editor", None))
+    dut._connection.reset_mock()
+    return dut._connection
+
+
+def test_editor_wait_does_not_use_audio_timeout_or_open_duplicate(dut):
+    connection = editor_host(dut)
+    connection.poll.return_value = False
+    dut.open_editor()
+    assert not dut.poll_editor()
+    assert dut.editor_open and not dut.error
+    connection.send.assert_not_called()
+    connection.recv.assert_not_called()
+
+
+def test_editor_manual_close_collects_values_and_allows_reopen(dut):
+    connection = editor_host(dut)
+    connection.recv.return_value = (True, {"parameters": {"gain": 0.8}, "error": ""})
+    assert dut.poll_editor()
+    assert not dut.editor_open
+    assert dut.parameters == {"gain": 0.8}
+    assert not dut.poll_editor()  # Consume the completion reply only once.
+    connection.recv.return_value = (True, None)
+    dut.open_editor()
+    assert dut.editor_open
+    assert dut._editor_close.clear.call_count == 2
+
+
+def test_processing_closes_editor_and_drains_completion_before_audio(dut):
+    connection = editor_host(dut)
+    event = dut._editor_close
+    connection.recv.side_effect = [
+        (True, {"parameters": {"gain": 0.5}, "error": ""}),
+        (True, np.full((2, 16), 0.5, dtype=np.float32)),
+    ]
+    np.testing.assert_array_equal(dut.process(np.ones((16, 2)), 48000, 16), 0.5)
+    event.set.assert_called_once()
+    assert not dut.editor_open and not dut.error
+    assert dut.parameters == {"gain": 0.5}
+    assert connection.send.call_args.args[0][0] == "process"
+
+
+@pytest.mark.parametrize("failure", ["timeout", "crash"])
+def test_editor_failure_latches_silence_and_unload_clears_state(dut, failure):
+    connection = editor_host(dut)
+    if failure == "timeout":
+        connection.poll.return_value = False
+    else:
+        connection.recv.side_effect = EOFError
+    with pytest.raises(RuntimeError):
+        dut.close_editor()
+    assert dut.loaded and dut.error and not dut.editor_open
+    np.testing.assert_array_equal(dut.process(np.ones((16, 2)), 48000, 16), 0)
+    dut.close()
+    assert not dut.loaded and not dut.error
+
+
 def test_mixer_returns_dut_and_reference_to_all_measurement_clients(dut):
     engine = AudioEngine()
     engine.vst_dut.close()
@@ -135,6 +233,33 @@ def test_mixer_returns_dut_and_reference_to_all_measurement_clients(dut):
     dut._request.reset_mock()
     engine._master_callback(zeros, zeros.copy(), 32, None, sd.CallbackFlags())
     dut._request.assert_not_called()
+
+
+@pytest.mark.skipif(
+    not os.environ.get("MEASURELAB_TEST_VST3"), reason="Set MEASURELAB_TEST_VST3 to a native VST3 effect"
+)
+def test_real_native_editor_reopen_process_and_unload(dut):
+    dut.load(os.environ["MEASURELAB_TEST_VST3"])
+    pid = dut._process.pid
+    for _ in range(2):
+        dut.open_editor()
+        time.sleep(0.5)  # Exercise window creation and its event loop.
+        assert not dut.poll_editor()
+        assert dut.editor_open
+        dut.close_editor()
+        assert not dut.editor_error
+        assert dut._process.pid == pid
+    dut.open_editor()
+    time.sleep(0.5)
+    output = dut.process(np.ones((256, 2), dtype=np.float32) * 0.1, 48000, 256)
+    assert not dut.error and not dut.editor_error and not dut.editor_open
+    assert np.isfinite(output).all()
+    dut.open_editor()
+    time.sleep(0.5)
+    started = time.monotonic()
+    dut.close()
+    assert time.monotonic() - started < 2
+    assert not dut.editor_open and dut._process is None
 
 
 @pytest.mark.skipif(
