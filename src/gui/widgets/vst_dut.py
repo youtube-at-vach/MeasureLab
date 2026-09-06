@@ -138,7 +138,6 @@ class VstDutDialog(QDialog):
         buttons.addWidget(self.unload_button)
         self.editor_button = QPushButton(tr("Open plugin editor"))
         self.editor_button.clicked.connect(self._toggle_editor)
-        buttons.addWidget(self.editor_button)
         self.bypass = QCheckBox(tr("Bypass"))
         self.bypass.setChecked(self.dut.bypassed)
         self.bypass.toggled.connect(lambda value: self._edit(lambda: self.dut.set_bypassed(value)))
@@ -193,6 +192,7 @@ class VstDutDialog(QDialog):
         self._update_mono_controls()
 
         layout.addWidget(self.controls)
+        layout.addWidget(self.editor_button)
         self.notice = QLabel()
         self.notice.setWordWrap(True)
         layout.addWidget(self.notice)
@@ -284,23 +284,16 @@ class VstDutDialog(QDialog):
         self._refresh()
 
     def _toggle_editor(self):
-        if not self.controls.isEnabled() or not self.dut.loaded or self.dut.error:
+        if not self.editor_button.isEnabled():
             return
         try:
             if self.dut.editor_open:
                 self.dut.close_editor()
             else:
                 self.dut.open_editor()
-            self.engine.last_output_buffer = None
         except Exception as exc:
             self._error(tr("Could not open or close the plugin editor.") + "\n" + str(exc))
         self._refresh()
-
-    def _close_editor(self):
-        try:
-            self.dut.close_editor()
-        except Exception as exc:
-            self._error(str(exc))
 
     def _loaded(self):
         succeeded = self.loader.succeeded
@@ -345,23 +338,20 @@ class VstDutDialog(QDialog):
         if self.scanner is not None and not self.scanner.is_alive():
             self._scanned()
         loading = self.loader is not None
-        available = self.engine.offline_mode and not self.engine.network_mode and not self.engine.is_audio_reserved()
-        # Loading/routing/control changes are between measurement runs. This
-        # prevents an unmarked discontinuity inside an FFT or swept capture.
+        virtual_mode = self.engine.offline_mode and not self.engine.network_mode
+        available = virtual_mode and not self.engine.is_audio_reserved()
+        # Structural changes require stopped measurements. The native editor
+        # stays independent so users can adjust the effect while observing it.
         editable = available and not self.engine.callbacks and not loading
         try:
             if self.dut.poll_editor():
-                self.engine.last_output_buffer = None
                 if self.dut.editor_error:
                     self._error(tr("Could not open or close the plugin editor.") + "\n" + self.dut.editor_error)
-            if self.dut.editor_open and not editable:
-                self.dut.close_editor()
         except Exception as exc:
             self._error(str(exc))
         self.controls.setEnabled(editable)
-        self.editor_button.setEnabled(self.dut.loaded and not self.dut.error)
+        self.editor_button.setEnabled(virtual_mode and not loading and self.dut.loaded and not self.dut.error)
         self.editor_button.setText(tr("Close plugin editor") if self.dut.editor_open else tr("Open plugin editor"))
-        self.routing.setEnabled(not self.dut.editor_open)
         self.unload_button.setEnabled(self.dut.loaded)
         self.bypass.setEnabled(self.dut.loaded)
         self.load_button.setEnabled(bool(self.path.text().strip()))
@@ -386,18 +376,17 @@ class VstDutDialog(QDialog):
         if not available:
             self.notice.setText(tr("Enable Virtual Audio to use the DUT."))
         elif not editable and not loading:
-            self.notice.setText(tr("Stop measurements before changing the DUT."))
+            self.notice.setText(tr("Stop measurements before loading or routing the DUT."))
         elif not self.host_available:
             self.notice.setText(tr("No DUT loaded. Install requirements-vst.txt to enable VST3 hosting."))
         elif self.dut.editor_open:
-            self.notice.setText(tr("Edit the plugin in its own window, then close it before measuring."))
+            self.notice.setText(tr("You can keep the plugin editor open while measuring."))
         else:
             self.notice.setText("")
         self.notice.setVisible(bool(self.notice.text()))
 
     def reject(self):
         if self.loader is None:
-            self._close_editor()
             if self.scanner is not None:
                 self.scanner.cancelled.set()
             super().reject()
@@ -406,7 +395,6 @@ class VstDutDialog(QDialog):
         if self.loader is not None:
             event.ignore()
         else:
-            self._close_editor()
             if self.scanner is not None:
                 self.scanner.cancelled.set()
             super().closeEvent(event)

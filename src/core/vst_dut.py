@@ -1,7 +1,7 @@
 """Isolated VST3 effect host for the virtual audio device.
 
-Native plugin code runs on the child process's main thread. Only this module's
-worker imports the optional host library; normal audio needs no VST dependency.
+The child main thread owns native windows and plugin resets; a separate thread
+serves audio requests. Normal audio needs no optional VST dependency.
 """
 
 import atexit
@@ -10,6 +10,7 @@ from multiprocessing.connection import Connection
 from multiprocessing.process import BaseProcess
 from multiprocessing.synchronize import Event
 from pathlib import Path
+from queue import Queue
 import threading
 from typing import Any, Iterable
 
@@ -17,65 +18,129 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-def _plugin_worker(connection: Connection, path: str, plugin_name: str | None, close_editor: Event) -> None:
+class _EditorInterrupt:
+    """Let main-thread jobs briefly suspend a window without ending its session."""
+
+    def __init__(self, close_event: Event, jobs: Queue[tuple[str, Any]]):
+        self.close_event, self.jobs = close_event, jobs
+        self.interrupted = False
+
+    def is_set(self) -> bool:
+        if self.close_event.is_set():
+            return True
+        if not self.jobs.empty():
+            self.interrupted = True
+            return True
+        return False
+
+
+def _plugin_worker(
+    connection: Connection, path: str, plugin_name: str | None, close_editor: Event, editor_events: Connection
+) -> None:
+    jobs: Queue[tuple[str, Any]] = Queue()
+    receiver = None
     try:
         from pedalboard import VST3Plugin
 
-        # Pedalboard adds the parameter interface dynamically around its native
-        # VST3 class; that interface is absent from its generated type stubs.
         plugin: Any = VST3Plugin(path, plugin_name=plugin_name)
         if not plugin.is_effect:
             raise ValueError("The DUT must accept audio input (VST3 effect).")
 
-        def values():
-            # Presets selected in the native editor may change the parameter set.
+        def values() -> dict[str, float]:
             return {name: float(param.raw_value) for name, param in plugin.parameters.items()}
 
+        def reset_on_main() -> None:
+            # Some plugins are reinstantiated by Pedalboard.reset(). Their
+            # editor must be released first, and reinstantiation requires main.
+            finished = threading.Event()
+            errors: list[Exception] = []
+            jobs.put(("reset", (finished, errors)))
+            finished.wait()
+            if errors:
+                raise errors[0]
+
+        def receive() -> None:
+            current_format = None
+            result: Any
+            try:
+                while True:
+                    command, payload = connection.recv()
+                    if command == "close":
+                        return
+                    if command == "editor":
+                        jobs.put(("editor", None))
+                        result = None
+                    elif command == "reset":
+                        reset_on_main()
+                        current_format = None
+                        result = None
+                    elif command == "parameter":
+                        name, value = payload
+                        plugin.parameters[name].raw_value = value
+                        result = values()
+                    elif command == "process":
+                        audio, rate, block_size = payload
+                        audio_format = (rate, block_size, audio.shape[0])
+                        if audio_format != current_format:
+                            reset_on_main()
+                            current_format = audio_format
+                        result = plugin.process(audio, rate, buffer_size=block_size, reset=False)
+                    else:
+                        raise ValueError("Unknown VST host command")
+                    connection.send((True, result))
+            except EOFError:
+                pass  # Parent closed the host.
+            except Exception as exc:
+                try:
+                    connection.send((False, f"{type(exc).__name__}: {exc}"))
+                except (BrokenPipeError, EOFError, OSError):
+                    pass  # Parent may already have timed out.
+            finally:
+                jobs.put(("close", None))
+
         connection.send((True, {"name": plugin.name, "parameters": values()}))
-        current_format = None
-        result: Any
+        receiver = threading.Thread(target=receive, name="VST audio", daemon=True)
+        receiver.start()
+        editor_requested = False
+        interrupt = _EditorInterrupt(close_editor, jobs)
         while True:
-            command, payload = connection.recv()
+            if editor_requested and jobs.empty():
+                interrupt.interrupted = False
+                editor_error = ""
+                try:
+                    plugin.show_editor(interrupt)
+                except Exception as exc:
+                    editor_error = f"{type(exc).__name__}: {exc}"
+                if editor_error or not interrupt.interrupted:
+                    editor_requested = False
+                    # Completion never shares the audio reply channel. It may
+                    # arrive at any time, including during a measurement block.
+                    editor_events.send((True, {"parameters": values(), "error": editor_error}))
+                continue
+            command, payload = jobs.get()
             if command == "close":
                 break
             if command == "editor":
-                # Acknowledge before entering JUCE's blocking event loop. The
-                # next reply completes this editor session, not an audio request.
-                connection.send((True, None))
-                editor_error = ""
-                try:
-                    plugin.show_editor(close_editor)
-                except Exception as exc:
-                    # Editor errors must not discard the loaded DSP instance.
-                    editor_error = f"{type(exc).__name__}: {exc}"
-                result = {"parameters": values(), "error": editor_error}
+                editor_requested = True
             elif command == "reset":
-                plugin.reset()
-                current_format = None
-                result = None
-            elif command == "parameter":
-                name, value = payload
-                plugin.parameters[name].raw_value = value
-                result = values()
-            elif command == "process":
-                audio, rate, block_size = payload
-                audio_format = (rate, block_size, audio.shape[0])
-                if audio_format != current_format:
+                finished, errors = payload
+                try:
                     plugin.reset()
-                    current_format = audio_format
-                result = plugin.process(audio, rate, buffer_size=block_size, reset=False)
-            else:
-                raise ValueError("Unknown VST host command")
-            connection.send((True, result))
-    except EOFError:
-        pass  # Parent closed the host.
+                except Exception as exc:
+                    errors.append(exc)
+                finally:
+                    finished.set()
     except Exception as exc:
         try:
-            connection.send((False, f"{type(exc).__name__}: {exc}"))
+            target = connection if receiver is None else editor_events
+            target.send((False, f"{type(exc).__name__}: {exc}"))
         except (BrokenPipeError, EOFError, OSError):
-            pass  # Parent may already have timed out and disconnected.
+            pass  # Parent disconnected.
     finally:
         connection.close()
+        editor_events.close()
+        if receiver is not None:
+            receiver.join(timeout=0.2)
 
 
 class VstDut:
@@ -90,6 +155,7 @@ class VstDut:
         self._lock = threading.RLock()
         self._connection: Connection | None = None
         self._process: BaseProcess | None = None
+        self._editor_connection: Connection | None = None
         self._editor_close: Event | None = None
         self.editor_open = False
         self.editor_error = ""
@@ -116,11 +182,15 @@ class VstDut:
         # Build the replacement first so a failed load preserves the current DUT.
         context = multiprocessing.get_context("spawn")
         parent, child = context.Pipe()
+        editor_parent, editor_child = context.Pipe(duplex=False)
         editor_close = context.Event()
-        process = context.Process(target=_plugin_worker, args=(child, path, plugin_name, editor_close), daemon=True)
+        process = context.Process(
+            target=_plugin_worker, args=(child, path, plugin_name, editor_close, editor_child), daemon=True
+        )
         try:
             process.start()
             child.close()
+            editor_child.close()
             if not parent.poll(30.0):
                 raise TimeoutError("VST3 load timed out (30 s).")
             success, info = parent.recv()
@@ -129,6 +199,8 @@ class VstDut:
         except Exception as exc:
             parent.close()
             child.close()
+            editor_parent.close()
+            editor_child.close()
             if process.pid is not None:
                 self._terminate(process)
             if isinstance(exc, EOFError):
@@ -140,6 +212,7 @@ class VstDut:
             self._close_locked()
             self._connection, self._process = parent, process
             self._editor_close = editor_close
+            self._editor_connection = editor_parent
             self.path, self.name = path, info["name"]
             self.parameters = info["parameters"]
             self.error = ""
@@ -164,6 +237,9 @@ class VstDut:
             self._editor_close = None
         self.editor_open = False
         self.editor_error = ""
+        if self._editor_connection is not None:
+            self._editor_connection.close()
+            self._editor_connection = None
         if self._connection is not None:
             self._connection.close()
             self._connection = None
@@ -180,9 +256,7 @@ class VstDut:
             self.padded_samples = 0
 
     def _request(self, command: str, payload: Any = None, timeout: float = 1.0) -> Any:
-        # Finish editing before processing/resetting the same native instance.
-        # This also drains its completion reply before sending the next request.
-        self.close_editor()
+        self.poll_editor()
         if self.error:
             raise RuntimeError(self.error)
         if self._connection is None:
@@ -203,6 +277,7 @@ class VstDut:
     def open_editor(self) -> None:
         """Open the loaded instance's native window without blocking the caller."""
         with self._lock:
+            self.poll_editor()
             if self.editor_open:
                 return
             if self._editor_close is None:
@@ -224,14 +299,14 @@ class VstDut:
                 self._finish_editor(timeout=5.0)
 
     def _finish_editor(self, timeout: float) -> bool:
-        if not self.editor_open or self._connection is None:
+        if not self.editor_open or self._editor_connection is None:
             return False
         try:
-            if not self._connection.poll(timeout):
+            if not self._editor_connection.poll(timeout):
                 if timeout == 0:
                     return False
                 raise TimeoutError("VST3 editor stopped responding while closing.")
-            success, result = self._connection.recv()
+            success, result = self._editor_connection.recv()
             if not success:
                 raise RuntimeError(result)
             self.editor_open = False
@@ -291,7 +366,7 @@ class VstDut:
                 if route >= 0:
                     audio[channel] = dry[:, route]
             try:
-                self.close_editor()
+                self.poll_editor()
                 audio_format = (sample_rate, block_size, len(self.input_routes))
                 if audio_format != self._format:
                     self.padded_samples = 0

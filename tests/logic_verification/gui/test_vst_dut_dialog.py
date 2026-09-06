@@ -115,13 +115,15 @@ def test_native_editor_open_close_unload_and_dialog_exit(qtbot):
         dut.open_editor.assert_called_once()
         assert dut.editor_open
         assert dialog.editor_button.text() == "Close plugin editor"
-        assert not dialog.routing.isEnabled()
+        assert dialog.routing.isEnabled()
         dialog.editor_button.click()
         assert not dut.editor_open
         assert dialog.editor_button.text() == "Open plugin editor"
         dialog.editor_button.click()
-        dialog.reject()
-        assert not dut.editor_open
+        for finish in (dialog.reject, dialog.close):
+            dialog.show()
+            finish()
+            assert dut.editor_open
         dialog.show()
         dialog.unload_button.click()
         assert not dut.loaded
@@ -152,7 +154,7 @@ def test_editor_completion_error_is_reported_once_without_disabling_host(qtbot, 
         dut.close()
 
 
-def test_measurement_start_closes_native_editor(qtbot):
+def test_measurement_start_keeps_native_editor_and_allows_window_controls(qtbot):
     engine = AudioEngine()
     engine.offline_mode = True
     dut = engine.vst_dut
@@ -164,9 +166,19 @@ def test_measurement_start_closes_native_editor(qtbot):
         dut.editor_open = True
         engine.callbacks[1] = MagicMock()
         dialog._refresh()
+        dut.close_editor.assert_not_called()
+        assert dut.editor_open
+        assert dialog.editor_button.isEnabled()
+        assert not dialog.controls.isEnabled()
+        engine.is_audio_reserved = MagicMock(return_value=True)
+        dialog._refresh()
+        assert dialog.editor_button.isEnabled()  # Swept captures can own audio exclusively.
+        previous_buffer = object()
+        engine.last_output_buffer = previous_buffer
+        dialog.editor_button.click()
         dut.close_editor.assert_called_once()
         assert not dut.editor_open
-        assert not dialog.editor_button.isEnabled()
+        assert engine.last_output_buffer is previous_buffer
     finally:
         engine.callbacks.clear()
         dut.close()
@@ -329,7 +341,19 @@ def test_installed_plugin_discovery_and_load(qtbot, monkeypatch):
         assert Path(engine.vst_dut.path) == target
         assert engine.vst_dut.name
         assert engine.vst_dut.editor_open
-        qtbot.wait(500)  # Allow the native window to be created before closing it.
+        qtbot.wait(500)
+        dialog.reject()
+        assert engine.vst_dut.editor_open
+        engine.vst_dut.reset()
+        import numpy as np
+
+        for _ in range(20):
+            output = engine.vst_dut.process(np.ones((256, 2), dtype=np.float32) * 0.1, 48000, 256)
+            assert output.shape == (256, 2)
+            assert not engine.vst_dut.error
+            qtbot.wait(10)
+        assert not engine.vst_dut.poll_editor()
+        assert engine.vst_dut.editor_open
         engine.vst_dut.close_editor()
         assert not engine.vst_dut.editor_error
     finally:
