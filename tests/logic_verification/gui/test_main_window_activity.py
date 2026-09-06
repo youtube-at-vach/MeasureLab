@@ -37,6 +37,7 @@ def _build_window_stub(qtbot):
     window.sidebar.addItem("Welcome")
     window.sidebar.addItem("Settings")
     window.sidebar.addItem("Remote Audio I/O")
+    window.sidebar.addItem("Routing")
     window.sidebar.addItem("Signal Generator")
     window.sidebar.addItem("Recorder / Player")
     qtbot.addWidget(window.sidebar)
@@ -60,8 +61,8 @@ def test_refresh_sidebar_activity_indicators_updates_visuals_and_tooltips(qtbot)
 
     window._refresh_sidebar_activity_indicators()
 
-    active_item = window.sidebar.item(3)
-    detached_item = window.sidebar.item(4)
+    active_item = window.sidebar.item(4)
+    detached_item = window.sidebar.item(5)
     default_brush = window.sidebar.palette().brush(QPalette.ColorRole.Text)
     active_brush = window.sidebar.palette().brush(QPalette.ColorRole.Highlight)
 
@@ -80,7 +81,7 @@ def test_refresh_sidebar_activity_indicators_updates_visuals_and_tooltips(qtbot)
 
     window._refresh_sidebar_activity_indicators()
 
-    inactive_item = window.sidebar.item(3)
+    inactive_item = window.sidebar.item(4)
     assert not inactive_item.font().bold()
     assert inactive_item.foreground().color() == default_brush.color()
 
@@ -132,7 +133,7 @@ def test_menu_only_double_click_raises_both_split_windows(qtbot):
     window.module_widgets[0] = wrapper
 
     try:
-        window.on_sidebar_item_double_clicked(window.sidebar.item(3))
+        window.on_sidebar_item_double_clicked(window.sidebar.item(4))
         for external_window in (display_window, control_window):
             external_window.show.assert_called_once_with()
             external_window.raise_.assert_called_once_with()

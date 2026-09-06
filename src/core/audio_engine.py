@@ -8,6 +8,8 @@ from src.core.calibration import CalibrationManager
 from src.core.errors import AudioEngineReservedError
 from src.core.network_audio.client import NetworkAudioClient, NetworkClientStream
 from src.core.vst_dut import VstDut
+from src.core.monitor_output import MonitorOutput
+from src.core.routing import MonitorSource, RoutingSnapshot
 
 
 import time
@@ -156,6 +158,8 @@ class AudioEngine:
         # Offline / Virtual Mode
         self.offline_mode = False
         self.vst_dut = VstDut()
+        self.monitor = MonitorOutput()
+        self.vst_dut.on_configuration_change = lambda: self.monitor.enable(False)
 
         # Network-backed I/O.  The connected client is configured explicitly
         # by the Remote Audio I/O widget and never silently falls back to a
@@ -192,8 +196,7 @@ class AudioEngine:
 
         # Status Monitoring
         # Loopback State
-        self.loopback = False
-        self.mute_output = False
+        self._output_route = (False, False)  # loopback, muted; one callback snapshot
         self.last_output_buffer = None
 
         # Accumulate callback status flags between UI polls.
@@ -245,6 +248,7 @@ class AudioEngine:
             if self.network_mode:
                 raise RuntimeError(network_error)
             self._backend_transition = True
+        self.monitor.enable(False)
 
     def _end_backend_change(self) -> None:
         with self.lock:
@@ -335,12 +339,100 @@ class AudioEngine:
         self.logger.debug(f"Set software loopback: {enabled}")
 
     @property
+    def loopback(self):
+        return self._output_route[0]
+
+    @loopback.setter
+    def loopback(self, enabled):
+        self._output_route = (bool(enabled), self._output_route[1])
+
+    @property
+    def mute_output(self):
+        return self._output_route[1]
+
+    @mute_output.setter
+    def mute_output(self, enabled):
+        self._output_route = (self._output_route[0], bool(enabled))
+
+    @property
     def has_virtual_dut(self):
         return self.offline_mode and self.vst_dut.loaded
 
     def set_mute_output(self, enabled):
         self.mute_output = enabled
         self.logger.debug(f"Set mute output: {enabled}")
+
+    def set_output_destination(self, mode: str) -> None:
+        """Atomically apply the legacy output selection for every control surface."""
+        modes = {"physical": (False, False), "loopback_silent": (True, True), "loopback_mix": (True, False)}
+        if mode not in modes:
+            raise ValueError("Unknown output destination")
+        with self.lock:
+            if self._exclusive_owner is not None or self._backend_transition:
+                raise AudioEngineReservedError("Audio engine is reserved by Remote Audio I/O")
+            if self.offline_mode:
+                raise RuntimeError("Virtual audio always uses internal loopback")
+            self._output_route = modes[mode]
+
+    def get_output_destination(self) -> str:
+        loopback, muted = self._output_route
+        if loopback:
+            return "loopback_silent" if muted else "loopback_mix"
+        return "physical"
+
+    def monitor_unavailable_reason(self) -> str:
+        if not self.offline_mode or self.network_mode or self._exclusive_owner is not None or self._backend_transition:
+            return "Physical monitoring requires virtual audio."
+        if self.monitor.route.source == "dut_output" and not self.vst_dut.loaded:
+            return "Load a DUT to monitor its output."
+        if self.monitor.route.source != "output_mix" and self.has_virtual_dut and self.vst_dut.error:
+            return "DUT error; reload the plugin."
+        if self.monitor.route.device is None:
+            return "Select a physical output device."
+        return ""
+
+    def configure_monitor(
+        self, *, source: MonitorSource | None = None, device: int | None = None, gain_db: float | None = None
+    ) -> None:
+        with self.lock:
+            if self._backend_transition or self._exclusive_owner is not None:
+                raise AudioEngineReservedError("Audio engine is reserved by Remote Audio I/O")
+            self.monitor.configure(source=source, device=device, gain_db=gain_db)
+
+    def set_monitor_enabled(self, enabled: bool) -> None:
+        with self.lock:
+            if enabled:
+                reason = self.monitor_unavailable_reason()
+                if reason:
+                    raise RuntimeError(reason)
+            self.monitor.enable(enabled)
+            self._start_monitor_if_needed()
+
+    def _start_monitor_if_needed(self) -> None:
+        if not self.monitor.route.enabled or not self.callbacks or not self.is_active():
+            return
+        if self.monitor_unavailable_reason():
+            return
+        extra_settings = None
+        import sys
+
+        if sys.platform == "darwin":
+            settings = self._get_coreaudio_settings()
+            extra_settings = settings[1] if settings else None
+        elif self.monitor.route.hostapi is not None:
+            try:
+                api = sd.query_hostapis(self.monitor.route.hostapi)
+                if "jack" in str(api["name"]).lower():
+                    extra_settings = sd.JackSettings(client_name=f"{self.jack_client_name} Monitor")
+            except Exception as exc:
+                self.logger.debug("Monitor host API lookup failed: %s", exc)
+        self.monitor.start(self.sample_rate, self.block_size, extra_settings=extra_settings)
+
+    def routing_snapshot(self) -> RoutingSnapshot:
+        """Describe existing routes without consuming the engine's error counters."""
+        from src.core.routing import build_routing_snapshot
+
+        return build_routing_snapshot(self)
 
     def refresh_backend(self):
         """
@@ -491,6 +583,7 @@ class AudioEngine:
                 raise RuntimeError("Stop active audio measurements before connecting remote audio")
             self._backend_transition = True
         try:
+            self.monitor.enable(False)
             self.stop_stream()
             if not client.connected:
                 raise RuntimeError("Remote audio client disconnected while changing the audio backend")
@@ -614,6 +707,7 @@ class AudioEngine:
                     del self._callback_owners[cid]
                     self._cached_callbacks = list(self.callbacks.values())
                     raise RuntimeError("Audio stream failed to start")
+            self._start_monitor_if_needed()
 
         self.logger.debug(f"Registered callback {cid}")
         return cid
@@ -629,6 +723,9 @@ class AudioEngine:
                 owner = self._callback_owners.pop(callback_id, None)
                 self._cached_callbacks = list(self.callbacks.values())
                 unregistered = True
+
+            if not self.callbacks:
+                self.monitor.stop()
 
             # Check if we should stop the stream
             if (not self.callbacks) and (self.stream is not None) and (not self.pipewire_jack_resident):
@@ -754,7 +851,8 @@ class AudioEngine:
             new_len = max(frames * 2, self.block_size * 2)
             self._dither_scratch_buffer = np.zeros((new_len, 2), dtype=self._get_dtype())
 
-        dither_buf = self._dither_scratch_buffer[:frames, :channels]
+        # RNG output must be contiguous even for a mono view of stereo storage.
+        dither_buf = self._dither_scratch_buffer.reshape(-1)[: frames * channels].reshape(frames, channels)
 
         # 1. Generate R1 [0, 1) and scale to lsb
         self._rng.random(out=dither_buf, dtype=self._get_dtype())
@@ -790,9 +888,9 @@ class AudioEngine:
                 self.last_output_buffer = np.empty_like(source_buffer)
             np.copyto(self.last_output_buffer, source_buffer)
 
-    def _map_logical_to_hardware_output(self, mix_buffer, outdata, out_mode):
+    def _map_logical_to_hardware_output(self, mix_buffer, outdata, out_mode, *, muted=None):
         """Maps the logical mix buffer to the hardware output buffer."""
-        if self.mute_output:
+        if self.mute_output if muted is None else muted:
             return
 
         if out_mode == self.MODE_STEREO:
@@ -807,6 +905,9 @@ class AudioEngine:
                 outdata[:, 0] = 0
 
     def _master_callback(self, indata, outdata, frames, time, status):
+        monitor_session = self.monitor.session if self.offline_mode else None
+        loopback, muted = self._output_route
+        dut_result = None
         if status:
             # This branch runs only when PortAudio reports a status condition.
             # Keep the normal callback path unchanged and allocation-free.
@@ -826,7 +927,7 @@ class AudioEngine:
         outdata.fill(0)
 
         # 1. Prepare Inputs
-        use_loopback = self.loopback or self.offline_mode
+        use_loopback = loopback or self.offline_mode
         logical_in = self._prepare_logical_input(indata, frames, use_loopback)
 
         # 2. Prepare Output Configuration
@@ -848,8 +949,10 @@ class AudioEngine:
         if use_loopback:
             if self.has_virtual_dut:
                 previous_error = self.vst_dut.error
-                dut_output = self.vst_dut.process(mix_buffer, self.sample_rate, self.block_size)
-                self._update_loopback_buffer(dut_output, frames, 2)
+                dut_result = self.vst_dut.process_buses(mix_buffer, self.sample_rate, self.block_size)
+                self._update_loopback_buffer(dut_result.measurement, frames, 2)
+                if monitor_session is not None and monitor_session.source != "output_mix" and self.vst_dut.error:
+                    monitor_session.fail(self.vst_dut.error)
                 if self.vst_dut.error and not previous_error:
                     self.logger.error("VST DUT failed: %s", self.vst_dut.error)
                     with self._status_lock:
@@ -858,6 +961,16 @@ class AudioEngine:
             else:
                 self._update_loopback_buffer(mix_buffer, frames, logical_out_ch)
 
+        if monitor_session is not None:
+            if monitor_session.source == "output_mix":
+                monitor_source = mix_buffer
+            elif monitor_session.source == "dut_output":
+                monitor_source = dut_result.wet if dut_result is not None else None
+            else:
+                monitor_source = self.last_output_buffer
+            if monitor_source is not None:
+                self.monitor.submit(monitor_session, monitor_source)
+
         # 5. Apply Effects (Dithering & Quantization to target hardware bit depth)
         # Network transport is float32 PCM.  Quantize/dither only once at the
         # provider's physical output, not again on the client before transport.
@@ -865,7 +978,7 @@ class AudioEngine:
             self._apply_dithering(mix_buffer)
 
         # 6. Map to Hardware Output
-        self._map_logical_to_hardware_output(mix_buffer, outdata, out_mode)
+        self._map_logical_to_hardware_output(mix_buffer, outdata, out_mode, muted=muted)
 
     def _update_channel_modes(self):
         """
@@ -982,6 +1095,7 @@ class AudioEngine:
                 )
                 self.stream.start()
                 self.logger.debug(f"Virtual (Offline) audio stream started. SR={self.sample_rate}")
+                self._start_monitor_if_needed()
             else:
                 import sys
 
@@ -1039,6 +1153,7 @@ class AudioEngine:
         with self.lock:
             if not force and self._exclusive_owner is not None and owner is not self._exclusive_owner:
                 raise AudioEngineReservedError("Audio engine is reserved by Remote Audio I/O")
+            self.monitor.stop()
             if self.stream is not None:
                 try:
                     self.stream.stop()
@@ -1102,6 +1217,7 @@ class AudioEngine:
 
     def get_status(self):
         """Returns a dictionary containing current engine status."""
+        self.monitor.poll()
         active = self.is_active()
         cpu_load = 0.0
         if active and self.stream:

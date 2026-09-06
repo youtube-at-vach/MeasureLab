@@ -49,7 +49,7 @@ Selects the input and output devices. Previous settings have been split into tab
         * **Bit Activity (LSB to MSB)**: Visualizes the activity of each bit (from LSB to MSB) as a heatmap. Useful for detecting stuck bits.
         * **Quantization Step (Delta) Distribution**: Displays the distribution of quantization steps (differences between adjacent samples).
 * **Virtual / Offline Mode Tab**:
-    * **Virtual Audio (No Hardware)**: Enables the virtual audio driver. Use this when no physical interface is available.
+    * **Virtual Audio**: Enables the virtual audio driver. Use this when no physical interface is available.
     * **Simulation Rate**: Sets the sampling rate for the Virtual Mode.
 
 ### Audio Configuration

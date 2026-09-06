@@ -150,6 +150,7 @@ _CLASS_LOADERS: dict[tuple[str, str], Callable[[], type[Any]]] = {
     ("src.gui.widgets.remote_audio_io", "RemoteAudioIOWidget"): lambda: (
         import_module("src.gui.widgets.remote_audio_io").RemoteAudioIOWidget
     ),
+    ("src.gui.widgets.routing", "RoutingWidget"): lambda: import_module("src.gui.widgets.routing").RoutingWidget,
     ("src.gui.widgets.welcome", "WelcomeWidget"): lambda: import_module("src.gui.widgets.welcome").WelcomeWidget,
 }
 
@@ -195,7 +196,8 @@ def _load_remote_audio_widget_class():
 
 
 class MainWindow(QMainWindow):
-    _MODULE_PAGE_OFFSET = 3
+    _MODULE_PAGE_OFFSET = 4
+    _ROUTING_PAGE_INDEX = 3
     _ACTIVE_STATE_ATTRS = (
         "is_running",
         "is_playing",
@@ -380,6 +382,7 @@ class MainWindow(QMainWindow):
         self.sidebar.addItem(tr("Welcome"))
         self.sidebar.addItem(tr("Settings"))  # Add Settings item
         self.sidebar.addItem(tr("Remote Audio I/O"))
+        self.sidebar.addItem(tr("Routing"))
 
         for key in self._module_keys:
             self.sidebar.addItem(tr(key))
@@ -424,7 +427,14 @@ class MainWindow(QMainWindow):
         remote_layout.addWidget(QLabel(tr("Select Remote Audio I/O to load.")))
         self.content_area.addWidget(self._remote_audio_container)
 
-        # Add module pages (Index 3+) - lazy loaded per selection
+        self._routing_loaded = False
+        self._routing_container = QWidget()
+        routing_layout = QVBoxLayout(self._routing_container)
+        routing_layout.setContentsMargins(12, 12, 12, 12)
+        routing_layout.addWidget(QLabel(tr("Routing")))
+        self.content_area.addWidget(self._routing_container)
+
+        # Add module pages (Index 4+) - lazy loaded per selection
         self._module_containers: list[QWidget] = []
         for _key in self._module_keys:
             container = QWidget()
@@ -680,6 +690,7 @@ class MainWindow(QMainWindow):
         report(tr("Loading Remote Audio I/O..."))
         self._ensure_remote_audio_loaded()
         QApplication.processEvents()
+        self._ensure_routing_loaded()
 
         total = len(self._module_keys)
         last_event_time = time.monotonic()
@@ -697,6 +708,18 @@ class MainWindow(QMainWindow):
             if current_time - last_event_time > 0.05:
                 QApplication.processEvents()
                 last_event_time = current_time
+
+    def _ensure_routing_loaded(self):
+        if not self._routing_loaded:
+            widget_class = _load_class("src.gui.widgets.routing", "RoutingWidget")
+            self.routing_widget = widget_class(self.audio_engine)
+            self._replace_container_contents(self._routing_container, self.routing_widget)
+            self._routing_loaded = True
+
+    def open_routing(self):
+        self.set_menu_only_mode(False)
+        self._ensure_routing_loaded()
+        self.sidebar.setCurrentRow(self._ROUTING_PAGE_INDEX)
 
     def closeEvent(self, event):
         remote_audio = getattr(self, "remote_audio_widget", None)
@@ -901,6 +924,8 @@ class MainWindow(QMainWindow):
             )
         self._refresh_sidebar_activity_indicators()
 
+        self._sync_output_destination_ui(self._get_engine_output_destination(), propagate=True)
+
         # Keep routing labels aligned with the backend that actually owns I/O.
         is_offline = bool(status["offline_mode"])
         is_network = bool(status.get("network_mode", False))
@@ -1044,9 +1069,7 @@ class MainWindow(QMainWindow):
             item.setText(tr(key))
 
     def _get_engine_output_destination(self):
-        if self.audio_engine.loopback:
-            return "loopback_silent" if self.audio_engine.mute_output else "loopback_mix"
-        return "physical"
+        return self.audio_engine.get_output_destination()
 
     def _remote_provider_ui_details(self, provider_status: dict[str, object] | None):
         details = provider_status or {}
@@ -1210,15 +1233,14 @@ class MainWindow(QMainWindow):
 
     def on_output_destination_changed(self, index):
         data = self.output_dest_combo.currentData()
-        if data == "physical":
-            self.audio_engine.set_loopback(False)
-            self.audio_engine.set_mute_output(False)
-        elif data == "loopback_silent":
-            self.audio_engine.set_loopback(True)
-            self.audio_engine.set_mute_output(True)
-        elif data == "loopback_mix":
-            self.audio_engine.set_loopback(True)
-            self.audio_engine.set_mute_output(False)
+        if data not in ("physical", "loopback_silent", "loopback_mix"):
+            return
+        try:
+            self.audio_engine.set_output_destination(data)
+        except (RuntimeError, ValueError) as exc:
+            self.logger.warning("Could not change output destination: %s", exc)
+            self._sync_output_destination_ui(self._get_engine_output_destination())
+            return
 
         # Mirror selection to widgets that expose destination controls
         self._propagate_output_destination(data)
@@ -1278,6 +1300,10 @@ class MainWindow(QMainWindow):
             self.on_tool_selected(index)
             return
 
+        if index == self._ROUTING_PAGE_INDEX:
+            self.open_routing()
+            return
+
         if index >= self._MODULE_PAGE_OFFSET:
             module_index = index - self._MODULE_PAGE_OFFSET
             self._ensure_module_loaded(module_index)
@@ -1301,6 +1327,8 @@ class MainWindow(QMainWindow):
                 self.settings_widget.refresh_backend_mode_state()
         elif index == 2:
             self._ensure_remote_audio_loaded()
+        elif index == self._ROUTING_PAGE_INDEX:
+            self._ensure_routing_loaded()
         elif index >= self._MODULE_PAGE_OFFSET:
             self._ensure_module_loaded(index - self._MODULE_PAGE_OFFSET)
         self.content_area.setCurrentIndex(index)
