@@ -5,7 +5,8 @@ from unittest.mock import MagicMock
 
 import pytest
 import sounddevice as sd
-from PyQt6.QtWidgets import QWidget
+from PyQt6.QtCore import QPoint
+from PyQt6.QtWidgets import QLabel, QWidget
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
@@ -135,6 +136,7 @@ def test_expanded_dut_and_error_layout_fits_all_languages(qtbot, engine, languag
         engine.vst_dut.name = "Example plugin with a long descriptive name " * 4
         engine.vst_dut.return_routes = ("wet1", "dry2")
         engine.monitor.error = "Example driver error with diagnostic context " * 4
+        engine.vst_dut.error = "Example plugin error with diagnostic context " * 4
         widget = RoutingWidget(engine)
         qtbot.addWidget(widget)
         widget.details_toggle.setChecked(True)
@@ -143,5 +145,50 @@ def test_expanded_dut_and_error_layout_fits_all_languages(qtbot, engine, languag
         qtbot.waitUntil(widget.details.isVisible)
         assert widget.minimumSizeHint().width() <= 1180
         assert widget.minimumSizeHint().height() <= 690
+        assert widget.connections.horizontalScrollBar().maximum() == 0
+        for control in (widget.source, widget.device, widget.volume, widget.enabled, widget.status):
+            assert control.isVisible()
+            assert widget.rect().contains(control.mapTo(widget, QPoint(0, 0)))
+            assert widget.rect().contains(control.mapTo(widget, control.rect().bottomRight()))
     finally:
         manager.load_language("en")
+
+
+def test_monitor_branch_and_waiting_guidance_follow_shared_route(qtbot, engine):
+    engine.configure_monitor(source="output_mix", device=0)
+    widget = RoutingWidget(engine)
+    qtbot.addWidget(widget)
+    widget.show()
+    widget.enabled.click()
+    assert tr("Output mix") in widget.monitor_path.text()
+    assert tr("Monitoring waits for a generator or measurement to start.") in widget.monitor_hint.text()
+    assert tr("Turn monitoring off to change source or device.") in widget.monitor_hint.text()
+    flow_labels = [label.text() for label in widget.connections.findChildren(QLabel)]
+    assert tr("Measurement input") in flow_labels
+    assert tr("Physical monitor") not in flow_labels
+    widget.enabled.click()
+    widget.source.setCurrentIndex(widget.source.findData("measurement_return"))
+    widget.source.activated.emit(widget.source.currentIndex())
+    assert tr("Measurement return") in widget.monitor_path.text()
+    assert widget.monitor_hint.isHidden()
+
+
+def test_backend_change_hides_virtual_path_and_explains_disabled_controls(qtbot, engine):
+    engine.configure_monitor(source="output_mix", device=0)
+    widget = RoutingWidget(engine)
+    qtbot.addWidget(widget)
+    widget.show()
+    engine.offline_mode = False
+    widget.refresh()
+    assert widget.output_row.isVisible()
+    assert widget.monitor_path.isHidden()
+    assert not widget.volume.isEnabled()
+    assert not widget.enabled.isEnabled()
+    assert tr("Physical monitoring requires virtual audio.") in widget.status.text()
+    assert widget.monitor_hint.isHidden()  # Do not repeat the status explanation.
+    engine.offline_mode = True
+    widget.refresh()
+    assert widget.output_row.isHidden()
+    assert widget.monitor_path.isVisible()
+    assert widget.volume.isEnabled()
+    assert widget.enabled.isEnabled()

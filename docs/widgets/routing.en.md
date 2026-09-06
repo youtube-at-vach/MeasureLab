@@ -8,7 +8,7 @@ Routing is an infrastructure page. Closing it or switching to an instrument does
 1. Enable **Virtual Audio** in Settings and load a [VST3 DUT](../vst_dut.md) if needed.
 2. Open Routing and select a Monitor Out source.
 3. Explicitly select a physical output device.
-4. Check the monitor volume and enable Monitor Out. The initial volume is −20 dB.
+4. Check the monitor volume and select **Enable monitoring**. The initial volume is −20 dB.
 5. Start a generator or measurement. Enabling the monitor alone does not start audio processing.
 
 The VST launcher's Monitor Out shortcut controls this same route. If no device is selected, it opens Routing.
@@ -28,12 +28,17 @@ The existing measurement output channel selection and dithering do not apply to 
 ## Inspect connections
 
 The page shows the backend, clock, sample rate and devices or remote endpoint.
-Rows describe Source → Processing → Destination and actual state. A source with several destinations appears on several rows.
+**Signal flow** reads left to right: Source → Processing → Destination, with the actual state on the right. Measurement branches appear on separate rows.
+The audition path appears in **Monitor Out**, alongside its source, device, volume and enable control. Waiting and disabled-control explanations appear in the same section.
 Expand DUT routing details to inspect the individual DUT inputs and measurement return channels.
 
 In physical and remote client modes, the output destination selector controls the same setting as the bottom-right menu.
 Remote input-only connections show output as unavailable. Provider routes distinguish waiting, sharing and muted playback.
 Device setup remains in Settings; connection management remains in Remote Audio I/O.
+
+![Physical I/O signal paths and the labeled output destination selector](../assets/routing/en-light.png)
+
+This screenshot uses an example configuration for display verification, rather than a live device or plugin test.
 
 ## Timing, state and limits
 
