@@ -12,8 +12,6 @@ WAV, MP3, FLAC, OGG などの一般的なオーディオファイルの読み込
 
 このウィジェットは Detachable Wrapper の共通機能に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
 
-* **Compact Mode**: ファイル名、再生／録音状態、経過時間、シーク、Loop、Sync、未保存状態、入出力モード、再生ゲインのみを表示します。Load と詳細設定は通常表示へ戻して操作します。Compact の切り替えや通常表示への復帰によって、進行中の再生や録音は停止しません。
-
 ## 操作方法
 
 ### Playback (再生セクション)

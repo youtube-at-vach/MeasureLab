@@ -12,9 +12,6 @@
 
 このウィジェットは Detachable Wrapper の共通機能に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
 
-* **Split Window**: XYスコープと相関表示を操作パネルから独立して配置できます。
-* **Compact Mode**: 監視面積を最大化するためXYスコープだけを余白なしで表示します。相関メーター、取得状態、操作ボタン、詳細設定は通常表示へ戻すと再表示されます。
-
 ## XYスコープの読み方
 
 ### Mid/Side（M/S）

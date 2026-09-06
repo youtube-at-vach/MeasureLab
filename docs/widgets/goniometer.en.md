@@ -12,9 +12,6 @@ Correlation is not a single score for stereo quality. Sustained negative correla
 
 This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
 
-* **Split Window**: You can place the XY scope and correlation display independently from the control panel.
-* **Compact Mode**: Maximizes the monitoring area by showing only the XY scope without outer margins. The correlation meter, acquisition state, action buttons, and detailed settings return in normal mode.
-
 ## Reading the XY Scope
 
 ### Mid/Side (M/S)

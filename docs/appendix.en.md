@@ -14,14 +14,8 @@ Unlike expensive dedicated measuring instruments that possess an "absolutely unw
 
 What this tool excels at is observing "relative changes."
 
-* **Reliable Use (Relative Use)**:
-    * **Relative Comparison**: Confirming changes such as "whether the noise level decreased before and after a countermeasure" or "which of A and B has less distortion."
-    * **Operation Check**: Visual confirmation of whether the signal is clipping, oscillating, or if the intended frequency is being output.
-    * **Troubleshooting**: Identifying 50Hz/60Hz hum noise contamination or sudden glitches.
-
-* **Reference Only**:
-    * **Absolute Values (Voltage, Sound Pressure)**: Physical quantities other than dBFS (V, dBu, SPL) are merely estimated values unless corrected using a calibrated reference instrument.
-    * **Measurement in Minute Domains**: Measurements of THD+N below -100dB or the noise floor are strongly affected by the performance limits of the PC and audio interface itself.
+* **Reliable Use**: Relative comparison (e.g., noise reduction before and after countermeasures), operation checks (clipping or oscillation), and troubleshooting (hum noise or glitches).
+* **Reference Only**: Absolute values (physical quantities like voltage or sound pressure without calibration) and minute domain measurements (distortion below -100dB, dependent on PC or audio interface limits).
 
 ---
 
