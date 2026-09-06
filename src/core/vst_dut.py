@@ -81,9 +81,12 @@ def _plugin_worker(
                     elif command == "process":
                         audio, rate, block_size = payload
                         audio_format = (rate, block_size, audio.shape[0])
-                        if audio_format != current_format:
+                        # A fresh or explicitly reset instance needs only
+                        # process(reset=False) to prepare its first format.
+                        # Resetting here would recreate an already open editor.
+                        if current_format is not None and audio_format != current_format:
                             reset_on_main()
-                            current_format = audio_format
+                        current_format = audio_format
                         result = plugin.process(audio, rate, buffer_size=block_size, reset=False)
                     else:
                         raise ValueError("Unknown VST host command")

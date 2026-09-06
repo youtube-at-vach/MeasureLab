@@ -971,7 +971,8 @@ class AudioEngine:
                     self.sample_rate,
                 )
             elif self.offline_mode:
-                self.vst_dut.reset()
+                # Starting/stopping clients must preserve the DUT and its
+                # native editor. The host resets on actual format changes.
                 self.active_dtype = "float64" if self.audio_engine_64bit else "float32"
                 self.stream = VirtualStream(
                     samplerate=self.sample_rate,

@@ -111,7 +111,8 @@ def test_invalid_routes_and_parameters(dut):
 
 
 @pytest.mark.parametrize("editor_error", ["", "Plugin has no available editor UI."])
-def test_worker_processes_live_edits_and_resets_with_editor_open(monkeypatch, editor_error):
+@pytest.mark.parametrize("editor_before_audio", [False, True])
+def test_worker_processes_live_edits_and_resets_with_editor_open(monkeypatch, editor_error, editor_before_audio):
     parameter = SimpleNamespace(raw_value=0.25)
     plugin = SimpleNamespace(is_effect=True, name="Effect", parameters={"gain": parameter})
     event = threading.Event()
@@ -123,6 +124,7 @@ def test_worker_processes_live_edits_and_resets_with_editor_open(monkeypatch, ed
     audio = np.ones((2, 16), dtype=np.float32)
     failures = []
     opens = []
+    resets = []
 
     def show_editor(close_event):
         assert threading.current_thread() is threading.main_thread()
@@ -144,9 +146,11 @@ def test_worker_processes_live_edits_and_resets_with_editor_open(monkeypatch, ed
     def reset():
         assert threading.current_thread() is threading.main_thread()
         assert not showing.is_set()  # Reset may destroy/recreate the plugin.
+        resets.append(True)
 
     def process(audio, *args, **kwargs):
         assert threading.current_thread() is not threading.main_thread()
+        assert kwargs["reset"] is False
         return audio * parameter.raw_value
 
     def read(connection):
@@ -162,7 +166,8 @@ def test_worker_processes_live_edits_and_resets_with_editor_open(monkeypatch, ed
     def client():
         try:
             read(parent)
-            np.testing.assert_array_equal(request("process", (audio, 48000, 16)), audio * 0.25)
+            if not editor_before_audio:
+                np.testing.assert_array_equal(request("process", (audio, 48000, 16)), audio * 0.25)
             request("editor")
             if editor_error:
                 assert editor_error in read(editor_parent)["error"]
@@ -171,12 +176,24 @@ def test_worker_processes_live_edits_and_resets_with_editor_open(monkeypatch, ed
             np.testing.assert_array_equal(
                 request("process", (audio, 48000, 16)), audio * (0.25 if editor_error else 0.75)
             )
+            assert not resets  # First audio must not reset a freshly loaded plugin.
             if not editor_error:
+                assert len(opens) == 1
                 change_gain.set()
                 assert changed.wait(5)
                 np.testing.assert_array_equal(request("process", (audio, 48000, 16)), audio * 0.5)
                 assert showing.is_set()
+            # Real format changes still reset on main, once per change.
+            for count, (rate, block, channels) in enumerate([(44100, 16, 2), (44100, 32, 2), (44100, 32, 1)], 1):
+                block_audio = np.ones((channels, block), dtype=np.float32)
+                for _ in range(2):
+                    request("process", (block_audio, rate, block))
+                    assert len(resets) == count
             request("reset")
+            assert len(resets) == 4
+            # An explicit reset also covers the next block, even in a new format.
+            request("process", (audio, 48000, 16))
+            assert len(resets) == 4
             if not editor_error:
                 assert showing.wait(5)
                 assert not editor_parent.poll()  # Reset suspends, then reopens the session.
@@ -206,6 +223,31 @@ def test_worker_processes_live_edits_and_resets_with_editor_open(monkeypatch, ed
     finally:
         parent.close()
         editor_parent.close()
+
+
+def test_signal_generator_restart_keeps_dut_state_and_editor(dut, monkeypatch):
+    from src.gui.widgets.signal_generator import SignalGenerator
+
+    engine = AudioEngine()
+    engine.vst_dut.close()
+    engine.vst_dut = dut
+    engine.offline_mode = True
+    monkeypatch.setattr("src.core.audio_engine.VirtualStream", MagicMock())
+    fake_host(dut, lambda audio, rate, block: audio)
+    dut.editor_open = True
+    generator = SignalGenerator(engine)
+    zeros = np.zeros((engine.block_size, 2), dtype=np.float32)
+    try:
+        for _ in range(3):
+            generator.start_generation()
+            assert engine.stream is not None
+            engine._master_callback(zeros, zeros.copy(), len(zeros), None, sd.CallbackFlags())
+            generator.stop_generation()
+            assert engine.stream is None
+            assert dut.editor_open
+        assert [call.args[0] for call in dut._request.call_args_list] == ["process"] * 3
+    finally:
+        generator.stop_generation()
 
 
 def editor_host(dut):
@@ -310,8 +352,28 @@ def test_mixer_returns_dut_and_reference_to_all_measurement_clients(dut):
     not os.environ.get("MEASURELAB_TEST_VST3"), reason="Set MEASURELAB_TEST_VST3 to a native VST3 effect"
 )
 def test_real_native_editor_reopen_process_and_unload(dut):
+    from src.gui.widgets.signal_generator import SignalGenerator
+
     dut.load(os.environ["MEASURELAB_TEST_VST3"])
     pid = dut._process.pid
+    engine = AudioEngine()
+    engine.vst_dut.close()
+    engine.vst_dut = dut
+    engine.offline_mode = True
+    generator = SignalGenerator(engine)
+    dut.open_editor()
+    time.sleep(0.5)
+    try:
+        for _ in range(3):
+            generator.start_generation()
+            time.sleep(0.2)
+            generator.stop_generation()
+            assert not dut.error and not dut.editor_error
+            assert not dut.poll_editor() and dut.editor_open
+            assert dut._process.pid == pid
+    finally:
+        generator.stop_generation()
+        dut.close_editor()
     for _ in range(2):
         dut.open_editor()
         time.sleep(0.5)  # Exercise window creation and its event loop.
