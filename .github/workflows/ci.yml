@@ -174,4 +174,14 @@ jobs:
 
       - name: Tests (pytest)
         run: |
-          gdb --batch --return-child-result -ex run -ex 'thread apply all bt 45' --args python -m pytest -v
+          ulimit -c unlimited
+          sudo sysctl -w kernel.core_pattern=/tmp/measurelab-core-%p
+          set +e
+          pytest
+          pytest_exit=$?
+          for core_file in /tmp/measurelab-core-*; do
+            if [ -f "$core_file" ]; then
+              gdb --batch -ex 'thread apply all bt 45' "$(command -v python)" "$core_file"
+            fi
+          done
+          exit "$pytest_exit"
