@@ -83,6 +83,7 @@ jobs:
           sudo apt-get update
 
           packages=(
+            gdb
             portaudio19-dev
             libsndfile1
             libxcb-cursor0
@@ -173,4 +174,4 @@ jobs:
 
       - name: Tests (pytest)
         run: |
-          pytest
+          gdb --batch --return-child-result -ex run -ex 'thread apply all bt 45' --args python -m pytest -v
