@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
     QFileDialog,
     QFormLayout,
     QFrame,
+    QGraphicsScene,
     QGridLayout,
     QGroupBox,
     QHeaderView,
@@ -930,6 +931,9 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         distributions_layout.addLayout(distribution_stats_grid)
 
         self.plot_distribution = pg.PlotWidget()
+        # These small, dynamic scenes do not benefit from BSP indexing. Avoid
+        # Qt's deferred index rebuilds during plot updates and tab teardown.
+        self.plot_distribution.scene().setItemIndexMethod(QGraphicsScene.ItemIndexMethod.NoIndex)
         self.plot_distribution.showGrid(x=True, y=True, alpha=0.25)
         self.plot_distribution.setLabel("left", tr("Event Count"))
         self.histogram_item = pg.BarGraphItem(x=[], height=[], width=1.0, brush=pg.mkBrush("#3daee9"))
@@ -959,6 +963,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self.lbl_rate_trend_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
         rate_layout.addWidget(self.lbl_rate_trend_info)
         self.plot_rate_trend = pg.PlotWidget()
+        self.plot_rate_trend.scene().setItemIndexMethod(QGraphicsScene.ItemIndexMethod.NoIndex)
         self.plot_rate_trend.showGrid(x=True, y=True, alpha=0.25)
         self.plot_rate_trend.setLabel("bottom", tr("Measurement Time"), units="s")
         self.plot_rate_trend.setLabel("left", tr("Event Rate"), units=tr("events/min"))

@@ -950,6 +950,34 @@ def test_widget_plots_rate_bins_as_time_spans_instead_of_center_points(qtbot):
     assert reset_y_range == pytest.approx([0.0, 1.0])
 
 
+def test_statistics_plots_survive_updates_tab_switches_and_close(qtbot):
+    for _ in range(3):
+        module, callbacks = make_module(sample_rate=1000)
+        widget = EventDetectorWidget(module)
+        qtbot.addWidget(widget)
+        widget.show()
+        widget.spin_threshold.setValue(0.5)
+        widget.spin_hysteresis.setValue(0.1)
+        widget.spin_holdoff.setValue(0.0)
+        widget.btn_start.click()
+
+        samples = np.array([[0.0, 0.0], [0.7, 0.0], [0.3, 0.0]])
+        for _update in range(3):
+            callbacks[0](samples, np.zeros_like(samples), len(samples), None, False)
+            for tab in (widget.DISTRIBUTION_TAB_INDEX, widget.RATE_TAB_INDEX, widget.EVENTS_TAB_INDEX):
+                widget.tabs.setCurrentIndex(tab)
+                widget._refresh_analysis_views(force=True)
+                qtbot.wait(10)
+
+        assert module.get_snapshot().event_count == 3
+        assert np.sum(widget.histogram_item.opts["height"]) == 3
+        assert widget.events_table.rowCount() == 3
+        widget.close()
+        qtbot.wait(10)
+        assert not module.is_running
+        assert not widget.timer.isActive()
+
+
 def test_sample_rate_change_invalidates_active_run():
     module, callbacks = make_module(sample_rate=1000)
     module.start_analysis()
