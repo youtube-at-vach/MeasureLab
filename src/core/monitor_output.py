@@ -12,7 +12,7 @@ import threading
 import numpy as np
 import sounddevice as sd
 
-from src.core.routing import MonitorRoute, MonitorSource, MonitorStatus
+from src.core.routing import MonitorRoute, MonitorStatus
 
 
 class MonitorBuffer:
@@ -89,8 +89,7 @@ class MonitorBuffer:
 
 
 class MonitorSession:
-    def __init__(self, route: MonitorRoute, sample_rate: float, block_size: int):
-        self.source = route.source
+    def __init__(self, sample_rate: float, block_size: int):
         self.buffer = MonitorBuffer(sample_rate, block_size)
         self.accepting = True
         self.error = ""
@@ -113,17 +112,11 @@ class MonitorOutput:
         self._last_dropped = 0
         self._last_missing = 0
 
-    def configure(
-        self, *, source: MonitorSource | None = None, device: int | None = None, gain_db: float | None = None
-    ) -> None:
+    def configure(self, *, device: int | None = None, gain_db: float | None = None) -> None:
         with self._control_lock:
             route = self.route
-            if route.enabled and (source is not None or device is not None):
-                raise RuntimeError("Turn off the monitor before changing its source or device.")
-            if source is not None:
-                if source not in ("dut_output", "measurement_return", "output_mix"):
-                    raise ValueError("Unknown monitor source.")
-                route = replace(route, source=source)
+            if route.enabled and device is not None:
+                raise RuntimeError("Turn off the monitor before changing its device.")
             if gain_db is not None:
                 if not math.isfinite(gain_db) or not -60 <= gain_db <= 0:
                     raise ValueError("Monitor gain must be between -60 and 0 dB.")
@@ -159,7 +152,7 @@ class MonitorOutput:
             if not self.route.enabled or self.stream is not None or self.error:
                 return
             stream = None
-            session = MonitorSession(self.route, sample_rate, block_size)
+            session = MonitorSession(sample_rate, block_size)
             try:
                 route = self.route
                 if route.device is None:

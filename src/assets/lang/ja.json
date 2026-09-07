@@ -1173,7 +1173,6 @@
     "Load SOFA": "SOFAを読み込む",
     "Load Std R:": "負荷標準R:",
     "Load VST3": "VST3をロード",
-    "Load a DUT to monitor its output.": "DUT出力をモニターするにはDUTをロードしてください。",
     "Load an audio file to enable playback.": "再生を有効にするにはオーディオファイルを読み込んでください。",
     "Load an audio file to enable synchronized operation.": "同期操作を有効にするにはオーディオファイルを読み込んでください。",
     "Load an audio file to see its details.": "詳細を表示するにはオーディオファイルを読み込んでください。",
@@ -1312,7 +1311,6 @@
     "Measurement input": "測定入力",
     "Measurement input {0}": "測定入力 {0}",
     "Measurement inputs": "測定器への入力",
-    "Measurement return": "測定戻り信号",
     "Measurement stopped by user.": "ユーザーによって測定が停止されました。",
     "Measurements": "測定値",
     "Median": "中央値",
@@ -2251,7 +2249,6 @@
     "Triangle": "三角波",
     "Trig: {value:.2f} div": "トリガ: {value:.2f} div",
     "Trigger": "トリガー",
-    "Turn monitoring off to change source or device.": "ソースやデバイスを変更するには、試聴をオフにしてください。",
     "Two-Stage Method (SVD)": "2段階同定法 (SVD)",
     "Two-Tone (1.0k + 1.5k)": "ツートーン (1.0k + 1.5k)",
     "Type:": "タイプ:",
@@ -2492,5 +2489,6 @@
     "VST3 processes the generator signal in Virtual Audio.": "仮想オーディオでは信号発生器の出力をVST3で処理します。",
     "Same generator signal": "同じ信号発生器の出力",
     "Show channel settings": "チャンネル設定を表示",
-    "Internal loopback": "内部ループバック"
+    "Internal loopback": "内部ループバック",
+    "Turn monitoring off to change the device.": "デバイスを変更するにはモニターをOFFにしてください。"
 }

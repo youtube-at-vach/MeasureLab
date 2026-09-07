@@ -26,7 +26,6 @@ def route_labels():
     return {
         "output_mix": tr("Output mix"),
         "dut_output": tr("DUT output"),
-        "measurement_return": tr("Measurement return"),
         "measurement_input": tr("Measurement input"),
         "physical_input": tr("Physical input"),
         "physical_output": tr("Physical Output"),
@@ -53,7 +52,6 @@ def monitor_reason(reason):
     # use literal translation keys so the key checker can verify every locale.
     return {
         "Physical monitoring requires virtual audio.": tr("Physical monitoring requires virtual audio."),
-        "Load a DUT to monitor its output.": tr("Load a DUT to monitor its output."),
         "DUT error; reload the plugin.": tr("DUT error; reload the plugin."),
         "Select a physical output device.": tr("Select a physical output device."),
     }.get(reason, reason)
@@ -106,7 +104,6 @@ class ConnectionView(QScrollArea):
             snapshot.dut_returns,
             snapshot.input_mode,
             snapshot.output_mode,
-            snapshot.monitor.route.source,
             snapshot.monitor.state,
         )
         if identity == self._connections:
@@ -126,6 +123,7 @@ class ConnectionView(QScrollArea):
         dut_feed = next((c for c in connections if c.destination == "dut_output"), None)
         wet_return = next((c for c in connections if c.source == "dut_output"), None)
         row = 1
+        monitor_tap_shown = False
         for connection in connections:
             if connection is dut_feed and wet_return is not None:
                 continue
@@ -219,21 +217,15 @@ class ConnectionView(QScrollArea):
                     box.addWidget(
                         _label(tr("Waiting for audio") if connection.state == "waiting" else states[connection.state])
                     )
-                monitor_source = snapshot.monitor.route.source
-                tap = (
-                    column == 0
-                    and source == "output_mix"
-                    and monitor_source == "output_mix"
-                    or column == 2
-                    and ("vst_dut" in processors or "bypass" in processors)
-                    and monitor_source == "dut_output"
-                    or column == 4
+                if (
+                    snapshot.backend == "virtual"
+                    and column == 4
                     and connection.destination == "measurement_input"
-                    and monitor_source == "measurement_return"
-                )
-                if snapshot.backend == "virtual" and tap:
+                    and not monitor_tap_shown
+                ):
+                    monitor_tap_shown = True
                     outlet = _label(
-                        f"↓ {tr('Monitor Out')} · {labels[monitor_source]} · {states[snapshot.monitor.state]}",
+                        f"↓ {tr('Monitor Out')} · {tr('Measurement input {0}').format('L / R')} · {states[snapshot.monitor.state]}",
                         bold=True,
                     )
                     outlet.setStyleSheet("border-top: 1px solid palette(mid); padding-top: 5px;")
@@ -340,16 +332,6 @@ class RoutingWidget(QWidget):
         controls = QGridLayout()
         controls.setHorizontalSpacing(16)
         controls.setVerticalSpacing(6)
-        self.source = QComboBox()
-        self.source.setAccessibleName(tr("Source"))
-        self.source.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
-        for source in ("dut_output", "measurement_return", "output_mix"):
-            self.source.addItem(route_labels()[source], source)
-        self.source.activated.connect(lambda: self._configure(source=self.source.currentData()))
-        source_label = _label(tr("Source"))
-        source_label.setBuddy(self.source)
-        controls.addWidget(source_label, 0, 0)
-        controls.addWidget(self.source, 1, 0)
         device_row = QHBoxLayout()
         self.device = QComboBox()
         self.device.setMinimumWidth(0)
@@ -362,10 +344,9 @@ class RoutingWidget(QWidget):
         device_row.addWidget(self.refresh_button)
         device_label = _label(tr("Physical monitor device"))
         device_label.setBuddy(self.device)
-        controls.addWidget(device_label, 0, 1)
-        controls.addLayout(device_row, 1, 1)
+        controls.addWidget(device_label, 0, 0)
+        controls.addLayout(device_row, 1, 0)
         controls.setColumnStretch(0, 1)
-        controls.setColumnStretch(1, 2)
         monitor_layout.addLayout(controls)
 
         action_row = QHBoxLayout()
@@ -576,7 +557,7 @@ class RoutingWidget(QWidget):
 
     def refresh(self):
         snapshot = self.engine.routing_snapshot()
-        labels, states = route_labels(), state_labels()
+        states = state_labels()
         backend = {
             "virtual": tr("Virtual Audio"),
             "local": tr("Physical I/O"),
@@ -638,7 +619,7 @@ class RoutingWidget(QWidget):
         monitor = snapshot.monitor
         route = monitor.route
         self.monitor_path.setText(
-            f"↳ {tr('Monitor Out')} · {states[monitor.state]}: {labels[route.source]} → {tr('Physical monitor')}: "
+            f"↳ {tr('Monitor Out')} · {states[monitor.state]}: {tr('Measurement input {0}').format('L / R')} → {tr('Physical monitor')}: "
             f"{route.device_name or tr('Select a physical output device.')}"
         )
         self.monitor_path.setVisible(snapshot.backend == "virtual")
@@ -652,7 +633,7 @@ class RoutingWidget(QWidget):
         hint = (
             monitor_reason(reason)
             if reason and not route.enabled and reason != monitor.reason
-            else tr("Turn monitoring off to change source or device.")
+            else tr("Turn monitoring off to change the device.")
             if route.enabled
             else ""
         )
@@ -660,12 +641,9 @@ class RoutingWidget(QWidget):
             hint = tr("Monitoring waits for a generator or measurement to start.") + " " + hint
         self.monitor_hint.setText(hint)
         self.monitor_hint.setVisible(bool(hint))
-        self.source.setToolTip(hint if not editable else "")
         self.volume.setEnabled(snapshot.backend == "virtual")
-        self.source.setEnabled(editable)
         self.device.setEnabled(editable)
         self.refresh_button.setEnabled(editable)
-        self.source.setCurrentIndex(self.source.findData(route.source))
         self.device.setCurrentIndex(max(0, self.device.findData(route.device)))
         self.device.setToolTip(hint if not editable else self.device.currentText())
         self.volume.blockSignals(True)

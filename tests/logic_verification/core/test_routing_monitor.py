@@ -106,31 +106,33 @@ def start_monitor(engine):
 @pytest.mark.parametrize("precision", [False, True])
 @pytest.mark.parametrize("mode", ["stereo", "left", "right"])
 @pytest.mark.parametrize(
-    "source, expected",
+    "routes, stereo_expected, mono_expected",
     [
-        ("dut_output", (0.2, 0.4)),
-        ("measurement_return", (0.2, 0.8)),
-        ("output_mix", (0.4, 0.8)),
+        (("wet1", "dry2"), (0.2, 0.8), (0.2, 0.4)),
+        (("wet2", "wet1"), (0.4, 0.2), (0.2, 0.2)),
+        (("silence", "wet1"), (0, 0.2), (0, 0.2)),
+        (("dry1", "silence"), (0.4, 0), (0.4, 0)),
+        (("silence", "silence"), (0, 0), (0, 0)),
     ],
 )
-def test_monitor_samples_and_measurement_are_independent(engine, precision, mode, source, expected):
+def test_routed_monitor_samples_and_measurement_are_independent(
+    engine, precision, mode, routes, stereo_expected, mono_expected
+):
     engine.audio_engine_64bit = precision
     engine.output_channel_mode = mode
     engine._update_channel_modes()
-    engine.vst_dut.set_routes((0, 1), ("wet1", "dry2"))
+    engine.vst_dut.set_routes((0, 1), routes)
     captured = callbacks(engine)
     engine.dithering_enabled = True
     block(engine)
     block(engine)
     before = captured[-1].copy()
-    engine.configure_monitor(source=source)
     output = start_monitor(engine)
     for _ in range(20):
         block(engine)
     engine.configure_monitor(gain_db=0)
     result = output.render()
-    if mode != "stereo":
-        expected = {"dut_output": (0.2, 0.2), "measurement_return": (0.2, 0.4), "output_mix": (0.4, 0.4)}[source]
+    expected = stereo_expected if mode == "stereo" else mono_expected
     np.testing.assert_allclose(result, np.broadcast_to(expected, result.shape))
     for observed in captured[2:]:
         np.testing.assert_array_equal(observed, before)
@@ -162,11 +164,10 @@ def test_late_blocks_cannot_cross_activation_and_gain_does_not_restart(engine):
     np.testing.assert_array_equal(first.render(), 0)
 
 
-@pytest.mark.parametrize("field", ["source", "device"])
-def test_source_and_device_changes_require_off(engine, field):
+def test_device_changes_require_off(engine):
     start_monitor(engine)
     with pytest.raises(RuntimeError, match="Turn off"):
-        engine.configure_monitor(**{field: "output_mix" if field == "source" else 0})
+        engine.configure_monitor(device=0)
 
 
 @pytest.mark.parametrize("gain", [float("nan"), float("inf"), -61, 1])
@@ -264,14 +265,33 @@ def test_dut_failure_gates_buffer_before_control_thread_cleanup(engine):
     assert output.closed
 
 
-def test_output_mix_monitor_survives_dut_failure(engine):
-    callbacks(engine)
-    engine.configure_monitor(source="output_mix")
+@pytest.mark.parametrize("mode", ["stereo", "left", "right"])
+def test_measurement_input_monitor_works_without_a_dut(engine, mode):
+    engine.vst_dut.close()
+    engine.output_channel_mode = mode
+    engine._update_channel_modes()
+    captured = callbacks(engine)
+    assert not engine.monitor_unavailable_reason()
+    engine.configure_monitor(gain_db=0)
     output = start_monitor(engine)
-    engine.vst_dut._request.side_effect = RuntimeError("host failed")
     for _ in range(10):
         block(engine)
-    assert np.any(output.render())
+    result = output.render()
+    expected = (0.4, 0.8) if mode == "stereo" else (0.4, 0.4)
+    np.testing.assert_allclose(result, np.broadcast_to(expected, result.shape))
+    np.testing.assert_array_equal(result, captured[-1])
+
+
+def test_mono_dut_monitor_keeps_dry_reference_in_measurement_right(engine):
+    engine.vst_dut.set_routes((0,), ("wet1", "dry2"))
+    captured = callbacks(engine)
+    engine.configure_monitor(gain_db=0)
+    output = start_monitor(engine)
+    for _ in range(10):
+        block(engine)
+    result = output.render()
+    np.testing.assert_allclose(result, np.broadcast_to((0.2, 0.8), result.shape))
+    np.testing.assert_array_equal(result, captured[-1])
 
 
 def test_stream_loss_is_latched_until_explicit_enable(engine):
@@ -350,10 +370,10 @@ def test_virtual_snapshot_fanout_and_dut_channel_details(engine):
     snapshot = engine.routing_snapshot()
     assert snapshot.clock == "virtual_timer"
     assert snapshot.dut_returns == ("wet1", "dry2")
-    assert {c.destination for c in snapshot.connections if c.source == "dut_output"} == {
-        "measurement_input",
-        "physical_monitor",
-    }
+    assert {c.destination for c in snapshot.connections if c.source == "dut_output"} == {"measurement_input"}
+    monitors = [c for c in snapshot.connections if c.destination == "physical_monitor"]
+    assert len(monitors) == 1
+    assert monitors[0].source == "measurement_input"
     assert not snapshot.output_editable
 
 

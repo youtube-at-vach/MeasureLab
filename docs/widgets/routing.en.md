@@ -6,7 +6,7 @@ Routing is an infrastructure page. Closing it or switching to an instrument does
 ## Audition a DUT
 
 1. Enable **Virtual Audio** in Settings and load a [VST3 DUT](../vst_dut.md) if needed.
-2. Open Routing and select a Monitor Out source.
+2. Open Routing and check the measurement input L/R assignments in the signal flow.
 3. Explicitly select a physical output device.
 4. Check the monitor volume and select **Enable monitoring**. The initial volume is −20 dB.
 5. Start a generator or measurement. Enabling the monitor alone does not start audio processing.
@@ -14,16 +14,13 @@ Routing is an infrastructure page. Closing it or switching to an instrument does
 Routing owns channel mapping and monitor controls. The VST launcher's Routing button opens this page.
 The VST3 plugin button in Routing opens plugin loading, unloading, bypass and native editor management.
 
-| Source | Signal |
-| --- | --- |
-| DUT output (default) | The DUT output before measurement return mapping; mono DUT output is duplicated to both sides |
-| Measurement return | The two channels returned to instruments on the next block, including any dry reference |
-| Output mix | The module output mix before the DUT and dithering; available without a loaded DUT |
+Monitor Out always auditions the routed measurement input L/R. There is no source selector.
+For example, if measurement L is wet and R is a dry reference, those same signals are heard on the left and right.
+A channel assigned to silence remains silent. Without a loaded DUT, the virtual loopback input can still be monitored.
 
-For example, a measurement using wet audio on L and a dry reference on R can still monitor the DUT's stereo output independently.
 Monitor volume ranges from −60 to 0 dB. Volume, float32 conversion and clipping affect only the monitor copy.
 A stereo device receives its first two channels; a mono device receives their average.
-The existing measurement output channel selection and dithering do not apply to this monitor.
+The monitor adds no further output-channel mapping or dithering; it copies the configured measurement input.
 
 ## Inspect connections
 
@@ -33,7 +30,7 @@ Virtual Audio shows generators → VST3 → MeasureLab analysis. A dry reference
 The diagram includes measurement input L/R assignments. Physical and remote inputs feed analysis; generators feed their outputs independently.
 VST3 currently processes only the generator signal in Virtual Audio.
 
-The selected monitor tap is marked **↓ Monitor Out** with its state on the source, plugin or measurement input card.
+A single **↓ Monitor Out** marker identifies the combined measurement input L/R tap, with its state on the analysis destination card.
 The matching **↳ Monitor Out** section selects its physical device, volume and enable state.
 Off, waiting for audio, playing and faults are distinguished; waiting and disabled-control explanations appear alongside the controls.
 
@@ -56,11 +53,11 @@ This screenshot uses an example configuration for display verification, rather t
 - This is an audition path. The buffer targets approximately 100 ms, with at least two measurement blocks, plus the physical device latency.
 - The virtual timer and device clocks may drift. Missing audio is zero-filled; excessive buffering discards old audio. The measurement producer never waits for playback.
 - The device must accept the measurement sample rate. An unsupported rate fails only the monitor, without changing measurement settings. No application resampling is performed.
-- Turn the monitor off before changing source or device. Volume and ON/OFF can change during measurement without restarting the DUT or measurement stream.
+- Turn the monitor off before changing the device. Volume and ON/OFF can change during measurement without restarting the DUT or measurement stream.
 - Stopping measurement discards queued monitor audio. An enabled monitor follows a subsequent start with the same settings.
 - Backend, format, DUT load/unload, routing and bypass changes turn the monitor off.
 - A failed or disconnected monitor does not stop measurement. There is no fallback device or automatic error recovery. Resolve the problem and toggle OFF→ON to retry.
-- DUT errors silence measurement returns and stop DUT-derived monitoring. The pre-DUT output mix remains available for audition.
+- DUT errors silence measurement inputs and stop monitoring. Reload the plugin before enabling the monitor again.
 - Preferences last only for this application session. Restarting restores OFF, −20 dB and no selected device.
 
 The additional physical monitor is available only in virtual mode. Simultaneous remote sends, multiple monitor devices, free-form patching and low-latency instrument performance are outside this version's scope.

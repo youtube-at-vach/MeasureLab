@@ -1173,7 +1173,6 @@
     "Load SOFA": "SOFA 불러오기",
     "Load Std R:": "부하 표준 R:",
     "Load VST3": "VST3 로드",
-    "Load a DUT to monitor its output.": "출력을 모니터링하려면 DUT를 로드하세요.",
     "Load an audio file to enable playback.": "재생을 활성화하려면 오디오 파일을 불러오세요.",
     "Load an audio file to enable synchronized operation.": "동기화 동작을 활성화하려면 오디오 파일을 불러오세요.",
     "Load an audio file to see its details.": "세부 정보를 보려면 오디오 파일을 불러오세요.",
@@ -1312,7 +1311,6 @@
     "Measurement input": "측정 입력",
     "Measurement input {0}": "측정 입력 {0}",
     "Measurement inputs": "측정 입력",
-    "Measurement return": "측정 반환 신호",
     "Measurement stopped by user.": "사용자에 의해 측정이 중단되었습니다.",
     "Measurements": "측정값",
     "Median": "중앙값",
@@ -2251,7 +2249,6 @@
     "Triangle": "삼각파",
     "Trig: {value:.2f} div": "트리거: {value:.2f} div",
     "Trigger": "트리거",
-    "Turn monitoring off to change source or device.": "소스나 장치를 변경하려면 모니터링을 끄세요.",
     "Two-Stage Method (SVD)": "2단계 방법 (SVD)",
     "Two-Tone (1.0k + 1.5k)": "투톤 (1.0k + 1.5k)",
     "Type:": "유형:",
@@ -2492,5 +2489,6 @@
     "VST3 processes the generator signal in Virtual Audio.": "가상 오디오에서는 VST3가 신호 발생기의 출력을 처리합니다.",
     "Same generator signal": "동일한 신호 발생기 출력",
     "Show channel settings": "채널 설정 표시",
-    "Internal loopback": "내부 루프백"
+    "Internal loopback": "내부 루프백",
+    "Turn monitoring off to change the device.": "장치를 변경하려면 모니터링을 끄세요."
 }

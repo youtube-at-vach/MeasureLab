@@ -1173,7 +1173,6 @@
     "Load SOFA": "Загрузить SOFA",
     "Load Std R:": "Стандарт нагрузки R:",
     "Load VST3": "Загрузить VST3",
-    "Load a DUT to monitor its output.": "Загрузите DUT для прослушивания его выхода.",
     "Load an audio file to enable playback.": "Загрузите аудиофайл, чтобы включить воспроизведение.",
     "Load an audio file to enable synchronized operation.": "Загрузите аудиофайл, чтобы включить синхронную работу.",
     "Load an audio file to see its details.": "Загрузите аудиофайл, чтобы просмотреть сведения.",
@@ -1312,7 +1311,6 @@
     "Measurement input": "Вход измерения",
     "Measurement input {0}": "Измерительный вход {0}",
     "Measurement inputs": "Измерительные входы",
-    "Measurement return": "Возврат измерения",
     "Measurement stopped by user.": "Измерение остановлено пользователем.",
     "Measurements": "Измерения",
     "Median": "Медиана",
@@ -2251,7 +2249,6 @@
     "Triangle": "Треугольник",
     "Trig: {value:.2f} div": "Триггер: {value:.2f} дел",
     "Trigger": "Триггер",
-    "Turn monitoring off to change source or device.": "Отключите прослушивание, чтобы изменить источник или устройство.",
     "Two-Stage Method (SVD)": "Двухэтапный метод (SVD)",
     "Two-Tone (1.0k + 1.5k)": "Двухтональный (1.0k + 1.5k)",
     "Type:": "Тип:",
@@ -2492,5 +2489,6 @@
     "VST3 processes the generator signal in Virtual Audio.": "В режиме виртуального аудио VST3 обрабатывает сигнал генератора.",
     "Same generator signal": "Тот же сигнал генератора",
     "Show channel settings": "Показать настройки каналов",
-    "Internal loopback": "Внутренняя петля"
+    "Internal loopback": "Внутренняя петля",
+    "Turn monitoring off to change the device.": "Отключите мониторинг перед сменой устройства."
 }

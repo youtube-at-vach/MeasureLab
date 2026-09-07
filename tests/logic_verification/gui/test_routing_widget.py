@@ -33,8 +33,7 @@ def test_monitor_widget_uses_common_route_and_waits_without_measurements(qtbot, 
     qtbot.addWidget(widget)
     widget.show()
     assert not widget.enabled.isEnabled()
-    widget.source.setCurrentIndex(widget.source.findData("output_mix"))
-    widget.source.activated.emit(widget.source.currentIndex())
+    assert not hasattr(widget, "source")
     widget.device.setCurrentIndex(1)
     widget.device.activated.emit(1)
     assert widget.enabled.isEnabled()
@@ -42,7 +41,6 @@ def test_monitor_widget_uses_common_route_and_waits_without_measurements(qtbot, 
     assert engine.monitor.route.enabled
     assert engine.stream is None
     assert not engine.callbacks
-    assert not widget.source.isEnabled()
     assert not widget.device.isEnabled()
     assert widget.status.text() == tr("Waiting")
     widget.volume.setValue(-12)
@@ -150,7 +148,7 @@ def test_diagram_opens_routes_and_separates_wet_and_reference(qtbot, engine):
 
 
 def test_monitor_fault_display_and_invalid_configuration(qtbot, engine):
-    engine.configure_monitor(source="output_mix", device=0)
+    engine.configure_monitor(device=0)
     widget = RoutingWidget(engine)
     qtbot.addWidget(widget)
     engine.monitor.route = replace(engine.monitor.route, enabled=True)
@@ -209,7 +207,7 @@ def test_expanded_dut_and_error_layout_fits_all_languages(qtbot, engine, languag
         assert widget.minimumSizeHint().width() <= 1180
         assert widget.minimumSizeHint().height() <= 690
         assert widget.connections.horizontalScrollBar().maximum() == 0
-        for control in (widget.source, widget.device, widget.volume, widget.enabled, widget.status):
+        for control in (widget.device, widget.volume, widget.enabled, widget.status):
             assert control.isVisible()
             assert widget.rect().contains(control.mapTo(widget, QPoint(0, 0)))
             assert widget.rect().contains(control.mapTo(widget, control.rect().bottomRight()))
@@ -218,26 +216,23 @@ def test_expanded_dut_and_error_layout_fits_all_languages(qtbot, engine, languag
 
 
 def test_monitor_branch_and_waiting_guidance_follow_shared_route(qtbot, engine):
-    engine.configure_monitor(source="output_mix", device=0)
+    engine.configure_monitor(device=0)
     widget = RoutingWidget(engine)
     qtbot.addWidget(widget)
     widget.show()
     widget.enabled.click()
-    assert tr("Output mix") in widget.monitor_path.text()
+    assert tr("Measurement input {0}").format("L / R") in widget.monitor_path.text()
     assert tr("Monitoring waits for a generator or measurement to start.") in widget.monitor_hint.text()
-    assert tr("Turn monitoring off to change source or device.") in widget.monitor_hint.text()
+    assert tr("Turn monitoring off to change the device.") in widget.monitor_hint.text()
     flow_labels = [label.text() for label in widget.connections.findChildren(QLabel)]
     assert tr("Measurement input") in flow_labels
     assert tr("Physical monitor") not in flow_labels
     widget.enabled.click()
-    widget.source.setCurrentIndex(widget.source.findData("measurement_return"))
-    widget.source.activated.emit(widget.source.currentIndex())
-    assert tr("Measurement return") in widget.monitor_path.text()
     assert widget.monitor_hint.isHidden()
 
 
 def test_backend_change_hides_virtual_path_and_explains_disabled_controls(qtbot, engine):
-    engine.configure_monitor(source="output_mix", device=0)
+    engine.configure_monitor(device=0)
     widget = RoutingWidget(engine)
     qtbot.addWidget(widget)
     widget.show()
@@ -258,7 +253,7 @@ def test_backend_change_hides_virtual_path_and_explains_disabled_controls(qtbot,
 
 
 def test_channel_change_disables_monitor_without_changing_audio_backend(qtbot, engine):
-    engine.configure_monitor(source="output_mix", device=0)
+    engine.configure_monitor(device=0)
     engine.set_monitor_enabled(True)
     page = RoutingWidget(engine)
     qtbot.addWidget(page)
@@ -282,17 +277,18 @@ def test_diagram_identifies_silent_measurement_channels(qtbot, engine, routes):
             assert f"{tr('Silence')} → {tr('Measurement input {0}').format(channel)}" in texts
 
 
-def test_monitor_tap_moves_with_source_and_preserves_read_only_refresh(qtbot, engine):
+def test_monitor_has_one_fixed_input_tap_and_refresh_never_writes_routes(qtbot, engine):
     engine.vst_dut.path = "test.vst3"
     page = RoutingWidget(engine)
     qtbot.addWidget(page)
     engine.vst_dut.set_routes = MagicMock()
-    for source, label in (("output_mix", "Output mix"), ("measurement_return", "Measurement return")):
-        activate(page.source, source)
+    assert not hasattr(page, "source")
+    for returns in (("wet1", "dry1"), ("silence", "silence"), ("wet1", "wet2")):
+        engine.vst_dut.return_routes = returns
         page.refresh()
         taps = [node.text() for node in page.connections.findChildren(QLabel) if node.text().startswith("↓")]
         assert len(taps) == 1
-        assert tr(label) in taps[0]
+        assert tr("Measurement input {0}").format("L / R") in taps[0]
         assert tr("Off") in taps[0]
     engine.vst_dut.set_routes.assert_not_called()
 

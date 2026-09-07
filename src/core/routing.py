@@ -5,16 +5,12 @@ may appear in several connections; backend ownership and clock remain explicit.
 """
 
 from dataclasses import dataclass
-from typing import Literal
 
 import sounddevice as sd
-
-MonitorSource = Literal["dut_output", "measurement_return", "output_mix"]
 
 
 @dataclass(frozen=True)
 class MonitorRoute:
-    source: MonitorSource = "dut_output"
     device: int | None = None
     device_name: str = ""
     hostapi: int | None = None
@@ -165,7 +161,7 @@ def build_routing_snapshot(engine) -> RoutingSnapshot:
             add("output_mix", "remote_output" if network else "physical_output", ("output_channels",), state)
         else:
             add(
-                monitor.route.source,
+                "measurement_input",
                 "physical_monitor",
                 ("monitor_buffer", "monitor_gain"),
                 monitor.state,

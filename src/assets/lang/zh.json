@@ -1173,7 +1173,6 @@
     "Load SOFA": "加载 SOFA",
     "Load Std R:": "负载标准R:",
     "Load VST3": "加载VST3",
-    "Load a DUT to monitor its output.": "请加载 DUT 以监听其输出。",
     "Load an audio file to enable playback.": "请加载音频文件以启用播放。",
     "Load an audio file to enable synchronized operation.": "请加载音频文件以启用同步操作。",
     "Load an audio file to see its details.": "请加载音频文件以查看详情。",
@@ -1312,7 +1311,6 @@
     "Measurement input": "测量输入",
     "Measurement input {0}": "测量输入 {0}",
     "Measurement inputs": "测量输入",
-    "Measurement return": "测量返回信号",
     "Measurement stopped by user.": "测量已被用户停止。",
     "Measurements": "测量值",
     "Median": "中位数",
@@ -2251,7 +2249,6 @@
     "Triangle": "三角波",
     "Trig: {value:.2f} div": "触发: {value:.2f} 格",
     "Trigger": "触发",
-    "Turn monitoring off to change source or device.": "请先关闭监听，再更改信号源或设备。",
     "Two-Stage Method (SVD)": "两阶段法 (SVD)",
     "Two-Tone (1.0k + 1.5k)": "双音 (1.0k + 1.5k)",
     "Type:": "类型:",
@@ -2492,5 +2489,6 @@
     "VST3 processes the generator signal in Virtual Audio.": "虚拟音频模式下，VST3处理信号发生器的输出。",
     "Same generator signal": "同一信号发生器的输出",
     "Show channel settings": "显示通道设置",
-    "Internal loopback": "内部回环"
+    "Internal loopback": "内部回环",
+    "Turn monitoring off to change the device.": "更改设备前请关闭监听。"
 }

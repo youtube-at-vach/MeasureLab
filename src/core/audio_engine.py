@@ -9,7 +9,7 @@ from src.core.errors import AudioEngineReservedError
 from src.core.network_audio.client import NetworkAudioClient, NetworkClientStream
 from src.core.vst_dut import VstDut
 from src.core.monitor_output import MonitorOutput
-from src.core.routing import MonitorSource, RoutingSnapshot
+from src.core.routing import RoutingSnapshot
 
 
 import time
@@ -383,21 +383,17 @@ class AudioEngine:
     def monitor_unavailable_reason(self) -> str:
         if not self.offline_mode or self.network_mode or self._exclusive_owner is not None or self._backend_transition:
             return "Physical monitoring requires virtual audio."
-        if self.monitor.route.source == "dut_output" and not self.vst_dut.loaded:
-            return "Load a DUT to monitor its output."
-        if self.monitor.route.source != "output_mix" and self.has_virtual_dut and self.vst_dut.error:
+        if self.has_virtual_dut and self.vst_dut.error:
             return "DUT error; reload the plugin."
         if self.monitor.route.device is None:
             return "Select a physical output device."
         return ""
 
-    def configure_monitor(
-        self, *, source: MonitorSource | None = None, device: int | None = None, gain_db: float | None = None
-    ) -> None:
+    def configure_monitor(self, *, device: int | None = None, gain_db: float | None = None) -> None:
         with self.lock:
             if self._backend_transition or self._exclusive_owner is not None:
                 raise AudioEngineReservedError("Audio engine is reserved by Remote Audio I/O")
-            self.monitor.configure(source=source, device=device, gain_db=gain_db)
+            self.monitor.configure(device=device, gain_db=gain_db)
 
     def set_monitor_enabled(self, enabled: bool) -> None:
         with self.lock:
@@ -907,7 +903,6 @@ class AudioEngine:
     def _master_callback(self, indata, outdata, frames, time, status):
         monitor_session = self.monitor.session if self.offline_mode else None
         loopback, muted = self._output_route
-        dut_result = None
         if status:
             # This branch runs only when PortAudio reports a status condition.
             # Keep the normal callback path unchanged and allocation-free.
@@ -951,7 +946,7 @@ class AudioEngine:
                 previous_error = self.vst_dut.error
                 dut_result = self.vst_dut.process_buses(mix_buffer, self.sample_rate, self.block_size)
                 self._update_loopback_buffer(dut_result.measurement, frames, 2)
-                if monitor_session is not None and monitor_session.source != "output_mix" and self.vst_dut.error:
+                if monitor_session is not None and self.vst_dut.error:
                     monitor_session.fail(self.vst_dut.error)
                 if self.vst_dut.error and not previous_error:
                     self.logger.error("VST DUT failed: %s", self.vst_dut.error)
@@ -961,15 +956,10 @@ class AudioEngine:
             else:
                 self._update_loopback_buffer(mix_buffer, frames, logical_out_ch)
 
-        if monitor_session is not None:
-            if monitor_session.source == "output_mix":
-                monitor_source = mix_buffer
-            elif monitor_session.source == "dut_output":
-                monitor_source = dut_result.wet if dut_result is not None else None
-            else:
-                monitor_source = self.last_output_buffer
-            if monitor_source is not None:
-                self.monitor.submit(monitor_session, monitor_source)
+        # Audition only the routed L/R input sent to instruments on the next
+        # block. Gain, clipping and device buffering remain on the monitor copy.
+        if monitor_session is not None and self.last_output_buffer is not None:
+            self.monitor.submit(monitor_session, self.last_output_buffer)
 
         # 5. Apply Effects (Dithering & Quantization to target hardware bit depth)
         # Network transport is float32 PCM.  Quantize/dither only once at the

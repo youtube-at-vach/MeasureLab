@@ -1173,7 +1173,6 @@
     "Load SOFA": "Carregar SOFA",
     "Load Std R:": "R padrão de carga:",
     "Load VST3": "Carregar VST3",
-    "Load a DUT to monitor its output.": "Carregue um DUT para ouvir sua saída.",
     "Load an audio file to enable playback.": "Carregue um arquivo de áudio para ativar a reprodução.",
     "Load an audio file to enable synchronized operation.": "Carregue um arquivo de áudio para ativar a operação sincronizada.",
     "Load an audio file to see its details.": "Carregue um arquivo de áudio para ver os detalhes.",
@@ -1312,7 +1311,6 @@
     "Measurement input": "Entrada de medição",
     "Measurement input {0}": "Entrada de medição {0}",
     "Measurement inputs": "Entradas de medição",
-    "Measurement return": "Retorno de medição",
     "Measurement stopped by user.": "Medição parada pelo usuário.",
     "Measurements": "Medições",
     "Median": "Mediana",
@@ -2251,7 +2249,6 @@
     "Triangle": "Triângulo",
     "Trig: {value:.2f} div": "Disp: {value:.2f} div",
     "Trigger": "Disparo",
-    "Turn monitoring off to change source or device.": "Desative a monitoração para alterar a fonte ou o dispositivo.",
     "Two-Stage Method (SVD)": "Método de duas etapas (SVD)",
     "Two-Tone (1.0k + 1.5k)": "Tom duplo (1.0k + 1.5k)",
     "Type:": "Tipo:",
@@ -2492,5 +2489,6 @@
     "VST3 processes the generator signal in Virtual Audio.": "O VST3 processa o sinal do gerador no modo de áudio virtual.",
     "Same generator signal": "O mesmo sinal do gerador",
     "Show channel settings": "Mostrar configurações de canais",
-    "Internal loopback": "Retorno interno"
+    "Internal loopback": "Retorno interno",
+    "Turn monitoring off to change the device.": "Desative a monitorização para alterar o dispositivo."
 }
