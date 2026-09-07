@@ -167,6 +167,7 @@ def test_clip_level_accepts_large_positive_dbfs_values(qtbot):
 
     assert module.get_snapshot().event_count == 1
     assert module.get_run_metadata()["clip_threshold_dbfs"] == pytest.approx(60.0)
+    widget.btn_start.click()
 
 
 def test_widget_reports_detected_clips_without_invalidating_clip_measurement(qtbot):
@@ -183,6 +184,7 @@ def test_widget_reports_detected_clips_without_invalidating_clip_measurement(qtb
     assert widget.lbl_rate.text().endswith(" clips/min")
     assert widget.lbl_clipping.isHidden()
     assert widget.lbl_last_event.text().startswith("Last clip event: #1")
+    widget.btn_start.click()
 
 
 def test_module_registers_callback_detects_selected_channel_and_stops():
@@ -437,6 +439,7 @@ def test_widget_flashes_event_activity_for_count_increase(qtbot):
 
     widget._clear_event_delta()
     assert widget.lbl_event_delta.text() == ""
+    widget.btn_start.click()
 
 
 def test_widget_reset_and_manual_stop_clear_event_activity(qtbot):
@@ -624,6 +627,7 @@ def test_voltage_threshold_is_normalized_to_fs_and_frozen_in_run_metadata(qtbot)
     assert widget.lbl_last_event.text().startswith("Last event: #1 • 1400 mV •")
     widget.tabs.setCurrentIndex(widget.EVENTS_TAB_INDEX)
     assert widget.events_table.item(0, 4).text() == "1400 mV"
+    widget.btn_start.click()
 
 
 def test_widget_summary_keeps_only_primary_measurement_information(qtbot):
@@ -654,6 +658,7 @@ def test_widget_summary_keeps_only_primary_measurement_information(qtbot):
 
     assert widget.lbl_last_event.text().startswith("Last event: #1 • 0.7 FS •")
     assert "Valid" not in widget.lbl_last_event.text()
+    widget.btn_start.click()
 
 
 def test_widget_elapsed_time_uses_platform_monospace_fonts(qtbot):
@@ -868,6 +873,7 @@ def test_widget_shows_invalid_rate_after_input_gap(qtbot):
     assert widget.lbl_count.text() == "INVALID"
     assert widget.lbl_rate.text() == "INVALID"
     assert not widget.lbl_data_gap.isHidden()
+    widget.btn_start.click()
 
 
 def test_high_speed_counter_keeps_received_count_visible_after_input_gap(qtbot):
@@ -893,6 +899,7 @@ def test_high_speed_counter_keeps_received_count_visible_after_input_gap(qtbot):
     assert widget.lbl_count.text() == "1"
     assert widget.lbl_rate.text().endswith(" events/min")
     assert not widget.lbl_data_gap.isHidden()
+    widget.btn_start.click()
 
 
 def test_statistics_views_refresh_once_per_second_instead_of_every_status_tick(qtbot):
@@ -909,6 +916,7 @@ def test_statistics_views_refresh_once_per_second_instead_of_every_status_tick(q
 
     widget._update_results()
     widget._refresh_analysis_views.assert_called_once_with()
+    widget.btn_start.click()
 
 
 def test_widget_plots_rate_bins_as_time_spans_instead_of_center_points(qtbot):
@@ -948,6 +956,7 @@ def test_widget_plots_rate_bins_as_time_spans_instead_of_center_points(qtbot):
     reset_x_range, reset_y_range = widget.plot_rate_trend.getViewBox().viewRange()
     assert reset_x_range == pytest.approx([0.0, 100.0])
     assert reset_y_range == pytest.approx([0.0, 1.0])
+    widget.btn_start.click()
 
 
 def test_statistics_plots_survive_updates_tab_switches_and_close(qtbot):
@@ -972,6 +981,7 @@ def test_statistics_plots_survive_updates_tab_switches_and_close(qtbot):
         assert module.get_snapshot().event_count == 3
         assert np.sum(widget.histogram_item.opts["height"]) == 3
         assert widget.events_table.rowCount() == 3
+        widget.btn_start.click()
         widget.close()
         qtbot.wait(10)
         assert not module.is_running

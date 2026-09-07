@@ -44,6 +44,24 @@ def cleanup_test_config():
         os.remove("test_config.json")
 
 
+@pytest.fixture(autouse=True)
+def cleanup_qt_widgets():
+    yield
+    try:
+        from PyQt6.QtWidgets import QApplication
+
+        app = QApplication.instance()
+        if app is not None:
+            for widget in list(app.topLevelWidgets()):
+                try:
+                    widget.close()
+                except Exception:
+                    pass
+            app.processEvents()
+    except Exception:
+        pass
+
+
 @pytest.fixture(scope="session")
 def hardware_config():
     """
