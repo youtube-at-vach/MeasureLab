@@ -32,16 +32,7 @@ def test_dut_controls_and_size_in_all_languages(qtbot, language):
         dialog.advanced.setChecked(True)
         assert dialog.minimumSizeHint().width() <= 1180
         assert dialog.minimumSizeHint().height() <= 690
-        dialog.routing_toggle.setChecked(True)
-        assert dialog.minimumSizeHint().width() <= 1180
-        assert dialog.minimumSizeHint().height() <= 690
         assert dialog.controls.isEnabled()
-        dialog.channels.setCurrentIndex(0)
-        assert engine.vst_dut.input_routes == (0,)
-        assert engine.vst_dut.return_routes == ("wet1", "wet1")
-        assert not dialog.inputs[1].isEnabled()
-        dialog.returns[1].setCurrentIndex(2)
-        assert engine.vst_dut.return_routes == ("wet1", "dry1")
         engine.callbacks[1] = MagicMock()
         dialog._refresh()
         assert not dialog.controls.isEnabled()
@@ -62,16 +53,15 @@ def test_launcher_uses_only_native_editor_and_collapses_advanced_controls(qtbot)
     try:
         dialog.show()
         assert not dialog.manual.isVisible()
-        assert not dialog.routing.isVisible()
+        assert not hasattr(dialog, "routing")
+        assert not hasattr(dialog, "monitor_button")
         assert not dialog.findChildren(QDoubleSpinBox)
         assert not dialog.findChildren(QSlider)
         assert not dialog.findChildren(QTabWidget)
         assert not dialog.editor_button.isEnabled()
         dialog.advanced.setChecked(True)
-        dialog.routing_toggle.setChecked(True)
         assert dialog.path.isVisible()
         assert dialog.plugin_name.isVisible()
-        assert dialog.routing.isVisible()
     finally:
         engine.vst_dut.close()
 
@@ -115,7 +105,7 @@ def test_native_editor_open_close_unload_and_dialog_exit(qtbot):
         dut.open_editor.assert_called_once()
         assert dut.editor_open
         assert dialog.editor_button.text() == "Close plugin editor"
-        assert dialog.routing.isEnabled()
+        assert dialog.routing_button.isEnabled()
         dialog.editor_button.click()
         assert not dut.editor_open
         assert dialog.editor_button.text() == "Open plugin editor"

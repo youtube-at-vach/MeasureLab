@@ -11,8 +11,8 @@ Routing is an infrastructure page. Closing it or switching to an instrument does
 4. Check the monitor volume and select **Enable monitoring**. The initial volume is −20 dB.
 5. Start a generator or measurement. Enabling the monitor alone does not start audio processing.
 
-The VST launcher's Monitor Out shortcut controls this same route. If no device is selected, it opens Routing.
-Its Routing button also opens this page.
+Routing owns channel mapping and monitor controls. The VST launcher's Routing button opens this page.
+The VST3 plugin button in Routing opens plugin loading, unloading, bypass and native editor management.
 
 | Source | Signal |
 | --- | --- |
@@ -28,9 +28,18 @@ The existing measurement output channel selection and dithering do not apply to 
 ## Inspect connections
 
 The page shows the backend, clock, sample rate and devices or remote endpoint.
-**Signal flow** reads left to right: Source → Processing → Destination, with the actual state on the right. Measurement branches appear on separate rows.
-The audition path appears in **Monitor Out**, alongside its source, device, volume and enable control. Waiting and disabled-control explanations appear in the same section.
-Expand DUT routing details to inspect the individual DUT inputs and measurement return channels.
+**Signal flow** reads left to right: Source → Processing → Destination.
+Virtual Audio shows generators → VST3 → MeasureLab analysis. A dry reference branches from the same generator signal and appears on a separate row that skips the plugin.
+The diagram includes measurement input L/R assignments. Physical and remote inputs feed analysis; generators feed their outputs independently.
+VST3 currently processes only the generator signal in Virtual Audio.
+
+The selected monitor tap is marked **↓ Monitor Out** with its state on the source, plugin or measurement input card.
+The matching **↳ Monitor Out** section selects its physical device, volume and enable state.
+Off, waiting for audio, playing and faults are distinguished; waiting and disabled-control explanations appear alongside the controls.
+
+Click **Edit channel routing…** in the diagram to edit mono/stereo DUT inputs and measurement return L/R channels.
+Stop measurements before changing the mapping. Changes disable monitoring; switching to mono replaces DUT output 2 assignments with output 1.
+Plugin management no longer duplicates these controls.
 
 In physical and remote client modes, the output destination selector controls the same setting as the bottom-right menu.
 Remote input-only connections show output as unavailable. Provider routes distinguish waiting, sharing and muted playback.

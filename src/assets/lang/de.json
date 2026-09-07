@@ -2310,7 +2310,6 @@
     "Virtual Audio": "Virtuelles Audio",
     "Virtual Loopback (Always On)": "Virtueller Loopback (Immer aktiv)",
     "Virtual mode cannot scan physical loopback paths.": "Im virtuellen Modus können keine physischen Loopback-Pfade gescannt werden.",
-    "Virtual output → VST3 → measurement input (one block later).": "Virtueller Ausgang → VST3 → Messeingang (einen Block später).",
     "Virtual timer": "Virtueller Timer",
     "Voltage:": "Spannung:",
     "Volume (Gain):": "Lautstärke (Verstärkung):",
@@ -2482,5 +2481,16 @@
     "✔ HIGH FIDELITY": "✔ HIGH FIDELITY",
     "❌ ALTERED": "❌ ALTERED",
     "❌ HIGH DISTORTION": "❌ HIGH DISTORTION",
-    "⬆︎Update available: {0}": "⬆︎Update verfügbar: {0}"
+    "⬆︎Update available: {0}": "⬆︎Update verfügbar: {0}",
+    "Configure signal paths and monitoring in Routing.": "Signalwege und Monitoring unter Routing konfigurieren.",
+    "Direct": "Direkt",
+    "Edit channel routing…": "Kanalrouting bearbeiten…",
+    "Input goes to analysis. Generators feed the output independently.": "Der Eingang führt zur Analyse. Generatoren speisen den Ausgang unabhängig davon.",
+    "MeasureLab analysis": "MeasureLab-Analyse",
+    "MeasureLab generators": "MeasureLab-Generatoren",
+    "Stop measurements before changing the plugin.": "Messungen vor dem Ändern des Plugins stoppen.",
+    "VST3 processes the generator signal in Virtual Audio.": "VST3 verarbeitet das Generatorsignal im virtuellen Audiomodus.",
+    "Same generator signal": "Dasselbe Generatorsignal",
+    "Show channel settings": "Kanaleinstellungen anzeigen",
+    "Internal loopback": "Interne Rückführung"
 }

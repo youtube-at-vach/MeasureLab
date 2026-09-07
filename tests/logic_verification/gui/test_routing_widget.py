@@ -1,4 +1,4 @@
-"""Shared routing controls, infrastructure navigation and monitor shortcut."""
+"""Routing ownership, signal flow, channel editing and independent monitoring."""
 
 from dataclasses import replace
 from unittest.mock import MagicMock
@@ -54,24 +54,7 @@ def test_monitor_widget_uses_common_route_and_waits_without_measurements(qtbot, 
     assert not widget.enabled.isChecked()
 
 
-def test_route_list_and_shortcut_share_source_and_enabled_state(qtbot, engine):
-    engine.vst_dut.path = "test.vst3"
-    engine.configure_monitor(source="output_mix", device=0)
-    page = RoutingWidget(engine)
-    dialog = VstDutDialog(engine)
-    qtbot.addWidget(page)
-    qtbot.addWidget(dialog)
-    dialog.monitor_button.setChecked(True)
-    page.refresh()
-    assert page.enabled.isChecked()
-    assert page.source.currentData() == "output_mix"
-    assert tr("Output mix") in dialog.monitor_button.toolTip()
-    engine.set_monitor_enabled(False)
-    dialog._refresh()
-    assert not dialog.monitor_button.isChecked()
-
-
-def test_unconfigured_shortcut_opens_routing_without_enabling(qtbot, engine):
+def test_plugin_launcher_delegates_routing_without_changing_monitor(qtbot, engine):
     class Parent(QWidget):
         open_routing = MagicMock()
 
@@ -80,10 +63,90 @@ def test_unconfigured_shortcut_opens_routing_without_enabling(qtbot, engine):
     dialog = VstDutDialog(engine, parent)
     qtbot.addWidget(dialog)
     dialog.show()
-    dialog.monitor_button.setChecked(True)
+    assert not hasattr(dialog, "channels")
+    assert not hasattr(dialog, "monitor_button")
+    dialog.routing_button.click()
     parent.open_routing.assert_called_once()
     assert not engine.monitor.route.enabled
     assert not dialog.isVisible()
+
+
+def activate(combo, value):
+    combo.setCurrentIndex(combo.findData(value))
+    combo.activated.emit(combo.currentIndex())
+
+
+def test_channel_mapping_mono_reference_and_buffer_invalidation(qtbot, engine):
+    page = RoutingWidget(engine)
+    qtbot.addWidget(page)
+    engine.last_output_buffer = object()
+    activate(page.channels, 1)
+    assert engine.vst_dut.input_routes == (0,)
+    assert engine.vst_dut.return_routes == ("wet1", "wet1")
+    assert not page.inputs[1].isEnabled()
+    assert not page.returns[1].model().item(1).isEnabled()
+    assert engine.last_output_buffer is None
+    activate(page.returns[1], "dry1")
+    assert engine.vst_dut.return_routes == ("wet1", "dry1")
+    activate(page.channels, 2)
+    activate(page.inputs[1], -1)
+    assert engine.vst_dut.input_routes == (0, -1)
+    assert engine.vst_dut.return_routes == ("wet1", "dry1")
+
+
+@pytest.mark.parametrize("locked", ["callbacks", "reserved", "physical", "remote"])
+def test_channel_edits_recheck_measurement_ownership_at_activation(qtbot, engine, locked):
+    page = RoutingWidget(engine)
+    qtbot.addWidget(page)
+    # Change backend/ownership without refreshing the widget first.
+    if locked == "callbacks":
+        engine.callbacks[1] = MagicMock()
+    elif locked == "reserved":
+        engine.is_audio_reserved = MagicMock(return_value=True)
+    elif locked == "physical":
+        engine.offline_mode = False
+    else:
+        engine.network_mode = True
+    activate(page.channels, 1)
+    assert engine.vst_dut.input_routes == (0, 1)
+    assert page.channels.currentData() == 2
+    assert not page.route_controls.isEnabled()
+
+
+def test_route_refresh_never_writes_and_failure_restores_controls(qtbot, engine):
+    page = RoutingWidget(engine)
+    qtbot.addWidget(page)
+    engine.vst_dut.set_routes = MagicMock(side_effect=RuntimeError("reset failed"))
+    engine.vst_dut.input_routes = (1,)
+    engine.vst_dut.return_routes = ("dry2", "silence")
+    page.refresh()
+    page.refresh()
+    engine.vst_dut.set_routes.assert_not_called()
+    assert page.channels.currentData() == 1
+    assert page.inputs[0].currentData() == 1
+    assert page.returns[1].currentData() == "silence"
+    activate(page.channels, 2)
+    assert "reset failed" in page.error.text()
+    assert page.channels.currentData() == 1
+
+
+def test_diagram_opens_routes_and_separates_wet_and_reference(qtbot, engine):
+    from PyQt6.QtWidgets import QPushButton
+
+    engine.vst_dut.path = "test.vst3"
+    engine.vst_dut.name = "Test effect"
+    engine.vst_dut.return_routes = ("wet1", "dry1")
+    page = RoutingWidget(engine)
+    qtbot.addWidget(page)
+    page.show()
+    buttons = page.connections.findChildren(QPushButton)
+    assert len(buttons) == 1
+    buttons[0].click()
+    assert page.details.isVisible()
+    texts = [label.text() for label in page.connections.findChildren(QLabel)]
+    assert texts.count(tr("MeasureLab analysis")) == 2
+    assert texts.count(tr("VST3 DUT")) == 1
+    assert tr("Dry reference") in texts
 
 
 def test_monitor_fault_display_and_invalid_configuration(qtbot, engine):
@@ -192,3 +255,62 @@ def test_backend_change_hides_virtual_path_and_explains_disabled_controls(qtbot,
     assert widget.monitor_path.isVisible()
     assert widget.volume.isEnabled()
     assert widget.enabled.isEnabled()
+
+
+def test_channel_change_disables_monitor_without_changing_audio_backend(qtbot, engine):
+    engine.configure_monitor(source="output_mix", device=0)
+    engine.set_monitor_enabled(True)
+    page = RoutingWidget(engine)
+    qtbot.addWidget(page)
+    activate(page.returns[1], "dry1")
+    assert not engine.monitor.route.enabled
+    assert not page.enabled.isChecked()
+    assert engine.offline_mode
+    assert not engine.callbacks
+    assert engine.stream is None
+
+
+@pytest.mark.parametrize("routes", [("wet1", "silence"), ("silence", "dry2"), ("silence", "silence")])
+def test_diagram_identifies_silent_measurement_channels(qtbot, engine, routes):
+    engine.vst_dut.path = "test.vst3"
+    engine.vst_dut.return_routes = routes
+    page = RoutingWidget(engine)
+    qtbot.addWidget(page)
+    texts = [label.text() for label in page.connections.findChildren(QLabel)]
+    for channel, route in zip(("L", "R"), routes, strict=True):
+        if route == "silence":
+            assert f"{tr('Silence')} → {tr('Measurement input {0}').format(channel)}" in texts
+
+
+def test_monitor_tap_moves_with_source_and_preserves_read_only_refresh(qtbot, engine):
+    engine.vst_dut.path = "test.vst3"
+    page = RoutingWidget(engine)
+    qtbot.addWidget(page)
+    engine.vst_dut.set_routes = MagicMock()
+    for source, label in (("output_mix", "Output mix"), ("measurement_return", "Measurement return")):
+        activate(page.source, source)
+        page.refresh()
+        taps = [node.text() for node in page.connections.findChildren(QLabel) if node.text().startswith("↓")]
+        assert len(taps) == 1
+        assert tr(label) in taps[0]
+        assert tr("Off") in taps[0]
+    engine.vst_dut.set_routes.assert_not_called()
+
+
+def test_remote_input_only_diagram_shows_analysis_and_unavailable_output(qtbot, engine):
+    from types import SimpleNamespace
+
+    engine.offline_mode = False
+    engine.network_mode = True
+    engine.network_client = SimpleNamespace(connected=True, duplex=False)
+    page = RoutingWidget(engine)
+    qtbot.addWidget(page)
+    page.show()
+    texts = [label.text() for label in page.connections.findChildren(QLabel)]
+    assert tr("Remote input") in texts
+    assert tr("MeasureLab analysis") in texts
+    assert tr("Unavailable") in texts
+    assert tr("VST3 DUT") not in texts
+    assert not page.details_toggle.isVisible()
+    assert not page.plugin_button.isVisible()
+    assert not page.enabled.isEnabled()

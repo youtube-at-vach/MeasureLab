@@ -1,4 +1,4 @@
-"""Simple VST3 launcher with native editor access and optional routing."""
+"""VST3 plugin management; signal routing lives in the Routing page."""
 
 from collections import Counter
 from importlib.util import find_spec
@@ -76,7 +76,7 @@ class VstDutDialog(QDialog):
         status_font.setBold(True)
         self.status.setFont(status_font)
         layout.addWidget(self.status)
-        info = QLabel(tr("Virtual output → VST3 → measurement input (one block later)."))
+        info = QLabel(tr("Configure signal paths and monitoring in Routing."))
         info.setWordWrap(True)
         layout.addWidget(info)
         self.controls = QWidget()
@@ -145,62 +145,11 @@ class VstDutDialog(QDialog):
         buttons.addWidget(self.bypass)
         form.addRow(buttons)
 
-        self.routing_toggle = QCheckBox(tr("Routing"))
-        controls_layout.addWidget(self.routing_toggle)
-        self.routing = QWidget()
-        self.routing_toggle.toggled.connect(self.routing.setVisible)
-        self.routing.hide()
-        controls_layout.addWidget(self.routing)
-        route_layout = QHBoxLayout(self.routing)
-        route_layout.setContentsMargins(0, 0, 0, 0)
-        input_group = QGroupBox(tr("DUT inputs"))
-        input_form = QFormLayout(input_group)
-        input_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
-        return_group = QGroupBox(tr("Measurement inputs"))
-        return_form = QFormLayout(return_group)
-        return_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
-        route_layout.addWidget(input_group, 1)
-        route_layout.addWidget(return_group, 1)
-        self.channels = QComboBox()
-        self.channels.addItem(tr("Mono"), 1)
-        self.channels.addItem(tr("Stereo"), 2)
-        self.channels.setCurrentIndex(len(self.dut.input_routes) - 1)
-        input_form.addRow(tr("DUT channels"), self.channels)
-        self.inputs = []
-        for index in range(2):
-            combo = QComboBox()
-            combo.addItem(tr("Output L"), 0)
-            combo.addItem(tr("Output R"), 1)
-            combo.addItem(tr("Silence"), -1)
-            route = self.dut.input_routes[index] if index < len(self.dut.input_routes) else 1
-            combo.setCurrentIndex(combo.findData(route))
-            input_form.addRow(tr("DUT input {0}").format(index + 1), combo)
-            self.inputs.append(combo)
-        self.returns = []
-        for index in range(2):
-            combo = QComboBox()
-            combo.addItem(tr("DUT output 1"), "wet1")
-            combo.addItem(tr("DUT output 2"), "wet2")
-            combo.addItem(tr("Output L (reference)"), "dry1")
-            combo.addItem(tr("Output R (reference)"), "dry2")
-            combo.addItem(tr("Silence"), "silence")
-            combo.setCurrentIndex(combo.findData(self.dut.return_routes[index]))
-            return_form.addRow(tr("Measurement input {0}").format("L" if index == 0 else "R"), combo)
-            self.returns.append(combo)
-        for combo in [self.channels, *self.inputs, *self.returns]:
-            combo.currentIndexChanged.connect(self._routes_changed)
-        self._update_mono_controls()
-
         layout.addWidget(self.controls)
         layout.addWidget(self.editor_button)
-        monitor_row = QHBoxLayout()
-        self.monitor_button = QCheckBox(tr("Monitor Out"))
-        self.monitor_button.toggled.connect(self._toggle_monitor)
-        monitor_row.addWidget(self.monitor_button)
         self.routing_button = QPushButton(tr("Routing"))
         self.routing_button.clicked.connect(self._open_routing)
-        monitor_row.addWidget(self.routing_button)
-        layout.addLayout(monitor_row)
+        layout.addWidget(self.routing_button)
         self.notice = QLabel()
         self.notice.setWordWrap(True)
         layout.addWidget(self.notice)
@@ -312,19 +261,6 @@ class VstDutDialog(QDialog):
                 return
             parent = parent.parentWidget()
 
-    def _toggle_monitor(self, enabled):
-        if enabled and self.engine.monitor.route.device is None:
-            self.monitor_button.blockSignals(True)
-            self.monitor_button.setChecked(False)
-            self.monitor_button.blockSignals(False)
-            self._open_routing()
-            return
-        try:
-            self.engine.set_monitor_enabled(enabled)
-        except Exception as exc:
-            self._error(str(exc))
-        self._refresh()
-
     def _loaded(self):
         succeeded = self.loader.succeeded
         self.loader.deleteLater()
@@ -348,39 +284,12 @@ class VstDutDialog(QDialog):
             self._error(str(exc))
         self._refresh()
 
-    def _update_mono_controls(self):
-        stereo = self.channels.currentData() == 2
-        self.inputs[1].setEnabled(stereo)
-        for combo in self.returns:
-            combo.model().item(1).setEnabled(stereo)
-            if not stereo and combo.currentData() == "wet2":
-                combo.blockSignals(True)
-                combo.setCurrentIndex(0)
-                combo.blockSignals(False)
-
-    def _routes_changed(self):
-        self._update_mono_controls()
-        inputs = tuple(combo.currentData() for combo in self.inputs[: self.channels.currentData()])
-        returns = tuple(combo.currentData() for combo in self.returns)
-        self._edit(lambda: self.dut.set_routes(inputs, returns))
-
     def _refresh(self):
         if self.scanner is not None and not self.scanner.is_alive():
             self._scanned()
         loading = self.loader is not None
         virtual_mode = self.engine.offline_mode and not self.engine.network_mode
         available = virtual_mode and not self.engine.is_audio_reserved()
-        route = self.engine.monitor.route
-        self.monitor_button.blockSignals(True)
-        self.monitor_button.setChecked(route.enabled)
-        self.monitor_button.blockSignals(False)
-        self.monitor_button.setEnabled(route.enabled or (available and not loading))
-        from src.gui.widgets.routing import route_labels, state_labels
-
-        monitor = self.engine.monitor.status(self.engine.monitor_unavailable_reason())
-        self.monitor_button.setToolTip(
-            f"{route_labels()[route.source]} → {route.device_name or tr('Routing')} · {state_labels()[monitor.state]}"
-        )
         self.routing_button.setEnabled(not loading)
         # Structural changes require stopped measurements. The native editor
         # stays independent so users can adjust the effect while observing it.
@@ -418,7 +327,7 @@ class VstDutDialog(QDialog):
         if not available:
             self.notice.setText(tr("Enable Virtual Audio to use the DUT."))
         elif not editable and not loading:
-            self.notice.setText(tr("Stop measurements before loading or routing the DUT."))
+            self.notice.setText(tr("Stop measurements before changing the plugin."))
         elif not self.host_available:
             self.notice.setText(tr("No DUT loaded. Install requirements-vst.txt to enable VST3 hosting."))
         elif self.dut.editor_open:

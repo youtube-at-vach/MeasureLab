@@ -1,6 +1,6 @@
 """Infrastructure page for current connections and independent audition."""
 
-from PyQt6.QtCore import QSize, Qt, QTimer
+from PyQt6.QtCore import QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QPushButton,
     QScrollArea,
+    QToolButton,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
@@ -80,7 +81,9 @@ def _label(text="", *, bold=False):
 
 
 class ConnectionView(QScrollArea):
-    """Read-only signal paths, aligned from source to destination."""
+    """Display fixed engine paths, with explicit access to their channel mapping."""
+
+    edit_requested = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -88,50 +91,169 @@ class ConnectionView(QScrollArea):
         self.setFrameShape(QFrame.Shape.NoFrame)
         self.setProperty("measurelabScrollRole", "dynamic-content")
         self.setAccessibleName(tr("Current audio connections"))
-        self.setMinimumHeight(100)
+        self.setMinimumHeight(115)
         self._connections = None
 
     def sizeHint(self):
-        height = self.widget().sizeHint().height() + 4 if self.widget() is not None else 100
-        return QSize(720, min(280, height))
+        height = self.widget().sizeHint().height() + 4 if self.widget() is not None else 115
+        return QSize(760, min(330, height))
 
-    def set_connections(self, connections):
-        if connections == self._connections:
+    def set_snapshot(self, snapshot):
+        connections = tuple(c for c in snapshot.connections if c.destination != "physical_monitor")
+        identity = (
+            connections,
+            snapshot.dut_name,
+            snapshot.dut_returns,
+            snapshot.input_mode,
+            snapshot.output_mode,
+            snapshot.monitor.route.source,
+            snapshot.monitor.state,
+        )
+        if identity == self._connections:
             return
-        self._connections = connections
+        self._connections = identity
         content = QWidget()
         grid = QGridLayout(content)
         grid.setContentsMargins(0, 0, 0, 0)
-        grid.setHorizontalSpacing(12)
+        grid.setHorizontalSpacing(8)
         grid.setVerticalSpacing(8)
         labels, states = route_labels(), state_labels()
-        for column, title in ((0, tr("Source")), (2, tr("Processing")), (4, tr("Destination")), (5, tr("Status"))):
+        for column, title in ((0, tr("Source")), (2, tr("Processing")), (4, tr("Destination"))):
             grid.addWidget(_label(title), 0, column)
-        for column, stretch in ((0, 2), (2, 3), (4, 2), (5, 1)):
-            grid.setColumnStretch(column, stretch)
+            grid.setColumnStretch(column, 1)
+        # Join the DUT bus and its wet return into one readable path. Dry
+        # references stay separate: they never pass through the plugin.
+        dut_feed = next((c for c in connections if c.destination == "dut_output"), None)
+        wet_return = next((c for c in connections if c.source == "dut_output"), None)
         row = 1
         for connection in connections:
-            for column, text in ((0, labels[connection.source]), (4, labels[connection.destination])):
-                endpoint = _label(text, bold=True)
-                endpoint.setMargin(10)
-                endpoint.setStyleSheet(
-                    "background: palette(base); color: palette(text);"
-                    "border: 1px solid palette(mid); border-radius: 5px;"
+            if connection is dut_feed and wet_return is not None:
+                continue
+            source = connection.source
+            processors = connection.processors
+            if connection is wet_return and dut_feed is not None:
+                source = dut_feed.source
+                processors = dut_feed.processors + processors
+            for column in (0, 2, 4):
+                card = QFrame()
+                card.setObjectName("routingNode")
+                card.setStyleSheet(
+                    "QFrame#routingNode {background: palette(base); border: 1px solid palette(mid);border-radius: 8px;}"
                 )
-                grid.addWidget(endpoint, row, column)
+                box = QVBoxLayout(card)
+                box.setContentsMargins(12, 8, 12, 8)
+                box.setSpacing(4)
+                if column == 0:
+                    box.addWidget(_label(labels[source], bold=True))
+                    if source == "output_mix":
+                        box.addWidget(
+                            _label(
+                                tr("Same generator signal")
+                                if "dry_reference" in processors
+                                else tr("MeasureLab generators")
+                            )
+                        )
+                elif column == 2:
+                    has_dut = "vst_dut" in processors or "bypass" in processors
+                    title = (
+                        tr("Bypass")
+                        if "bypass" in processors
+                        else tr("VST3 DUT")
+                        if has_dut
+                        else tr("Dry reference")
+                        if "dry_reference" in processors
+                        else tr("Internal loopback")
+                        if "one_block_delay" in processors
+                        else labels[processors[0]]
+                        if processors
+                        else tr("Direct")
+                    )
+                    box.addWidget(_label(title, bold=True))
+                    if has_dut:
+                        name = _label(snapshot.dut_name)
+                        name.setMaximumHeight(name.fontMetrics().lineSpacing() * 2 + 4)
+                        name.setToolTip(snapshot.dut_name)
+                        box.addWidget(name)
+                    if "one_block_delay" in processors:
+                        box.addWidget(_label(tr("One block delay")))
+                    modes = {"stereo": tr("Stereo"), "left": tr("Left"), "right": tr("Right")}
+                    if "input_channels" in processors:
+                        box.addWidget(_label(modes[snapshot.input_mode]))
+                    if "output_channels" in processors:
+                        box.addWidget(_label(modes[snapshot.output_mode]))
+                    if has_dut:
+                        edit = QPushButton(tr("Edit channel routing…"))
+                        edit.clicked.connect(self.edit_requested)
+                        box.addWidget(edit)
+                else:
+                    if connection.destination == "measurement_input":
+                        box.addWidget(_label(tr("MeasureLab analysis"), bold=True))
+                        if snapshot.dut_returns:
+                            returns = {
+                                "wet1": tr("DUT output 1"),
+                                "wet2": tr("DUT output 2"),
+                                "dry1": tr("Output L (reference)"),
+                                "dry2": tr("Output R (reference)"),
+                                "silence": tr("Silence"),
+                            }
+                            for channel, route in zip(("L", "R"), snapshot.dut_returns, strict=True):
+                                belongs = (
+                                    route.startswith("wet")
+                                    if connection.source == "dut_output"
+                                    else route.startswith("dry")
+                                    if "dry_reference" in processors
+                                    else route == "silence"
+                                )
+                                # A mixed wet/dry + silence return has no separate
+                                # engine connection; show its silent channel here.
+                                if route == "silence" and (connection is wet_return or wet_return is None):
+                                    belongs = True
+                                if belongs:
+                                    box.addWidget(
+                                        _label(f"{returns[route]} → {tr('Measurement input {0}').format(channel)}")
+                                    )
+                        else:
+                            box.addWidget(_label(labels[connection.destination]))
+                    else:
+                        box.addWidget(_label(labels[connection.destination], bold=True))
+                    box.addWidget(
+                        _label(tr("Waiting for audio") if connection.state == "waiting" else states[connection.state])
+                    )
+                monitor_source = snapshot.monitor.route.source
+                tap = (
+                    column == 0
+                    and source == "output_mix"
+                    and monitor_source == "output_mix"
+                    or column == 2
+                    and ("vst_dut" in processors or "bypass" in processors)
+                    and monitor_source == "dut_output"
+                    or column == 4
+                    and connection.destination == "measurement_input"
+                    and monitor_source == "measurement_return"
+                )
+                if snapshot.backend == "virtual" and tap:
+                    outlet = _label(
+                        f"↓ {tr('Monitor Out')} · {labels[monitor_source]} · {states[snapshot.monitor.state]}",
+                        bold=True,
+                    )
+                    outlet.setStyleSheet("border-top: 1px solid palette(mid); padding-top: 5px;")
+                    box.addWidget(outlet)
+                box.addStretch()
+                grid.addWidget(card, row, column)
             for column in (1, 3):
-                arrow = _label("→")
+                arrow = _label("→", bold=True)
                 arrow.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                arrow.setFixedWidth(24)
+                font = arrow.font()
+                font.setPixelSize(22)
+                arrow.setFont(font)
                 grid.addWidget(arrow, row, column)
-            processing = _label(" → ".join(labels[p] for p in connection.processors) or "—")
-            grid.addWidget(processing, row, 2)
-            status = _label(states[connection.state], bold=True)
-            reason = monitor_reason(connection.reason)
-            status.setToolTip(reason or status.text())
-            grid.addWidget(status, row, 5)
             row += 1
-            if reason:
-                grid.addWidget(_label(reason), row, 0, 1, 6)
+            if connection.reason:
+                reason = _label(monitor_reason(connection.reason))
+                reason.setMaximumHeight(reason.fontMetrics().lineSpacing() * 2 + 4)
+                reason.setToolTip(reason.text())
+                grid.addWidget(reason, row, 0, 1, 5)
                 row += 1
         grid.setRowStretch(row, 1)
         old = self.takeWidget()
@@ -183,14 +305,31 @@ class RoutingWidget(QWidget):
         output_layout.addRow(tr("Output destination"), self.output)
         flow_layout.addWidget(self.output_row)
 
-        self.details_toggle = QCheckBox(tr("DUT routing details"))
+        self.details_toggle = QToolButton()
+        self.details_toggle.setText(tr("Show channel settings"))
+        self.details_toggle.setCheckable(True)
+        self.details_toggle.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.details_toggle.setArrowType(Qt.ArrowType.RightArrow)
+        self.details_toggle.toggled.connect(
+            lambda checked: self.details_toggle.setArrowType(
+                Qt.ArrowType.DownArrow if checked else Qt.ArrowType.RightArrow
+            )
+        )
+        self.details_toggle.setToolTip(tr("DUT routing details"))
         self.details_toggle.setProperty("measurelabLayoutAuditExpand", True)
         flow_layout.addWidget(self.details_toggle)
-        self.details = _label()
-        self.details.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.details = self._create_dut_routes()
         self.details.hide()
         self.details_toggle.toggled.connect(self.details.setVisible)
         flow_layout.addWidget(self.details)
+        self.connections.edit_requested.connect(lambda: self.details_toggle.setChecked(True))
+        plugin_row = QHBoxLayout()
+        self.flow_hint = _label()
+        plugin_row.addWidget(self.flow_hint, 1)
+        self.plugin_button = QPushButton(tr("VST3 plugin"))
+        self.plugin_button.clicked.connect(self._open_plugin)
+        plugin_row.addWidget(self.plugin_button)
+        flow_layout.addLayout(plugin_row)
         layout.addWidget(flow_group)
 
         group = QGroupBox(tr("Monitor Out"))
@@ -243,13 +382,18 @@ class RoutingWidget(QWidget):
         action_row.addWidget(self.volume)
         action_row.addSpacing(16)
         self.enabled = QCheckBox(tr("Enable monitoring"))
+        self.enabled.setStyleSheet(
+            "QCheckBox::indicator {width: 14px; height: 14px;}"
+            "QCheckBox::indicator:unchecked {border: 1px solid palette(text);"
+            "background: palette(base); border-radius: 2px;}"
+        )
         self.enabled.toggled.connect(self._toggle)
         action_row.addWidget(self.enabled)
         action_row.addStretch()
-        monitor_layout.addLayout(action_row)
         self.status = _label(bold=True)
         self.status.setAccessibleName(tr("Status"))
-        monitor_layout.addWidget(self.status)
+        action_row.addWidget(self.status, 1)
+        monitor_layout.addLayout(action_row)
         self.monitor_hint = _label()
         monitor_layout.addWidget(self.monitor_hint)
         note = _label(tr("Audition only: buffering and dropouts do not change measurement samples."))
@@ -265,6 +409,122 @@ class RoutingWidget(QWidget):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.refresh)
         self.timer.start(250)
+        self.refresh()
+
+    def _create_dut_routes(self):
+        panel = QWidget()
+        layout = QVBoxLayout(panel)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.route_controls = QWidget()
+        groups = QHBoxLayout(self.route_controls)
+        groups.setContentsMargins(0, 0, 0, 0)
+        input_group = QGroupBox(tr("DUT inputs"))
+        input_form = QFormLayout(input_group)
+        return_group = QGroupBox(tr("Measurement inputs"))
+        return_form = QFormLayout(return_group)
+        for form in (input_form, return_form):
+            form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        groups.addWidget(input_group, 1)
+        groups.addWidget(return_group, 1)
+        self.channels = QComboBox()
+        self.channels.addItem(tr("Mono"), 1)
+        self.channels.addItem(tr("Stereo"), 2)
+        self.channels.setAccessibleName(tr("DUT channels"))
+        input_form.addRow(tr("DUT channels"), self.channels)
+        self.inputs = []
+        for index in range(2):
+            combo = QComboBox()
+            for name, value in ((tr("Output L"), 0), (tr("Output R"), 1), (tr("Silence"), -1)):
+                combo.addItem(name, value)
+            name = tr("DUT input {0}").format(index + 1)
+            combo.setAccessibleName(name)
+            input_form.addRow(name, combo)
+            self.inputs.append(combo)
+        self.returns = []
+        for index in range(2):
+            combo = QComboBox()
+            for name, value in (
+                (tr("DUT output 1"), "wet1"),
+                (tr("DUT output 2"), "wet2"),
+                (tr("Output L (reference)"), "dry1"),
+                (tr("Output R (reference)"), "dry2"),
+                (tr("Silence"), "silence"),
+            ):
+                combo.addItem(name, value)
+            name = tr("Measurement input {0}").format("L" if index == 0 else "R")
+            combo.setAccessibleName(name)
+            return_form.addRow(name, combo)
+            self.returns.append(combo)
+        for combo in (self.channels, *self.inputs, *self.returns):
+            combo.setMinimumWidth(0)
+            combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+            combo.activated.connect(self._routes_changed)
+        layout.addWidget(self.route_controls)
+        self.route_notice = _label()
+        layout.addWidget(self.route_notice)
+        return panel
+
+    def _routes_editable(self):
+        return (
+            self.engine.offline_mode
+            and not self.engine.network_mode
+            and not self.engine.is_audio_reserved()
+            and not self.engine.callbacks
+        )
+
+    def _refresh_dut_routes(self):
+        dut = self.engine.vst_dut
+        values = (
+            len(dut.input_routes),
+            *dut.input_routes,
+            *(() if len(dut.input_routes) == 2 else (1,)),
+            *dut.return_routes,
+        )
+        for combo, value in zip((self.channels, *self.inputs, *self.returns), values, strict=True):
+            # Never rebuild options on the refresh timer: open menus and keyboard
+            # focus must survive status updates. Only user activation writes routes.
+            combo.setCurrentIndex(combo.findData(value))
+        stereo = len(dut.input_routes) == 2
+        self.inputs[1].setEnabled(stereo)
+        for combo in self.returns:
+            combo.model().item(1).setEnabled(stereo)
+        editable = self._routes_editable()
+        self.route_controls.setEnabled(editable)
+        self.route_notice.setText(
+            tr("Stop measurements before loading or routing the DUT.")
+            if not editable
+            else tr("No DUT loaded. Select a plugin and click Load VST3.")
+            if not dut.loaded
+            else ""
+        )
+        self.route_notice.setVisible(bool(self.route_notice.text()))
+
+    def _routes_changed(self):
+        # Check at activation too: measurement ownership can change between ticks.
+        if not self._routes_editable():
+            self.refresh()
+            return
+        count = self.channels.currentData()
+        inputs = tuple(combo.currentData() for combo in self.inputs[:count])
+        returns = tuple(
+            "wet1" if count == 1 and combo.currentData() == "wet2" else combo.currentData() for combo in self.returns
+        )
+        try:
+            self.engine.vst_dut.set_routes(inputs, returns)
+            self.engine.last_output_buffer = None
+            self._set_error("")
+        except Exception as exc:
+            self._set_error(str(exc))
+        self.refresh()
+
+    def _open_plugin(self):
+        from src.gui.widgets.vst_dut import VstDutDialog
+
+        dialog = VstDutDialog(self.engine, self)
+        dialog.exec()
+        if dialog.scanner is not None:
+            dialog.scanner.cancelled.set()
+        dialog.deleteLater()
         self.refresh()
 
     def _set_error(self, message):
@@ -332,7 +592,7 @@ class RoutingWidget(QWidget):
         self.summary.setText(f"{snapshot.sample_rate:g} Hz · {clock}")
         modes = {"stereo": tr("Stereo"), "left": tr("Left"), "right": tr("Right")}
         if snapshot.backend == "virtual":
-            device_text = f"{tr('VST3 DUT')}: {snapshot.dut_name}" if snapshot.dut_name else ""
+            device_text = ""
         else:
             device_text = (
                 f"{tr('Physical input') if snapshot.backend != 'remote_client' else tr('Remote input')}: "
@@ -342,7 +602,7 @@ class RoutingWidget(QWidget):
             )
         self.device_summary.setText(device_text)
         self.device_summary.setVisible(bool(device_text))
-        self.connections.set_connections(tuple(c for c in snapshot.connections if c.destination != "physical_monitor"))
+        self.connections.set_snapshot(snapshot)
         network = snapshot.backend == "remote_client"
         output_name = tr("Remote I/O Output") if network else tr("Physical Output")
         input_only = any(c.destination == "remote_output" and c.state == "unavailable" for c in snapshot.connections)
@@ -363,29 +623,23 @@ class RoutingWidget(QWidget):
             self._last_output_choices = choices
         self.output.setCurrentIndex(self.output.findData(snapshot.output_destination))
         self.output_row.setVisible(snapshot.output_editable)
-        self.details_toggle.setVisible(bool(snapshot.dut_inputs))
-        if snapshot.dut_inputs:
-            inputs = {0: tr("Output L"), 1: tr("Output R"), -1: tr("Silence")}
-            returns = {
-                "wet1": tr("DUT output 1"),
-                "wet2": tr("DUT output 2"),
-                "dry1": tr("Output L (reference)"),
-                "dry2": tr("Output R (reference)"),
-                "silence": tr("Silence"),
-            }
-            lines = [
-                f"{inputs[route]} → {tr('DUT input {0}').format(i + 1)}" for i, route in enumerate(snapshot.dut_inputs)
-            ]
-            lines += [
-                f"{returns[route]} → {tr('Measurement input {0}').format(ch)}"
-                for ch, route in zip(("L", "R"), snapshot.dut_returns, strict=True)
-            ]
-            self.details.setText("\n".join(lines))
-        self.details.setVisible(bool(snapshot.dut_inputs) and self.details_toggle.isChecked())
+        virtual = snapshot.backend == "virtual"
+        self.details_toggle.setVisible(virtual)
+        self.details.setVisible(virtual and self.details_toggle.isChecked())
+        self.plugin_button.setVisible(virtual)
+        self.flow_hint.setText(
+            tr("VST3 processes the generator signal in Virtual Audio.")
+            if virtual
+            else tr("Input goes to analysis. Generators feed the output independently.")
+            if snapshot.backend != "remote_provider"
+            else tr("Remote Audio I/O")
+        )
+        self._refresh_dut_routes()
         monitor = snapshot.monitor
         route = monitor.route
         self.monitor_path.setText(
-            f"{labels[route.source]} → {tr('Monitor buffer')} → {tr('Monitor volume')} → {tr('Physical monitor')}"
+            f"↳ {tr('Monitor Out')} · {states[monitor.state]}: {labels[route.source]} → {tr('Physical monitor')}: "
+            f"{route.device_name or tr('Select a physical output device.')}"
         )
         self.monitor_path.setVisible(snapshot.backend == "virtual")
         self.enabled.blockSignals(True)
