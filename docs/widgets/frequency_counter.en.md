@@ -17,15 +17,15 @@ This widget supports common features of the Detachable Wrapper. Please refer to 
 
 ### Starting and Stopping Measurements
 
-- **Start / Stop Button**: Toggles the measurement on and off.
-    - While measuring, the numerical values on the main display are updated, and the history is recorded in the graph.
+* **Start / Stop Button**: Toggles the measurement on and off.
+    * While measuring, the numerical values on the main display are updated, and the history is recorded in the graph.
 
 ### Understanding the Main Display
 
 The large numbers displayed at the top of the screen are the measurement results. It features a high-visibility LED-style design.
 
-- **Green Numbers**: The current frequency (or period).
-- **dB Display (bottom right)**: The current signal level (dBFS). Measurements are not taken if the signal is too small (below the Gate setting).
+* **Green Numbers**: The current frequency (or period).
+* **dB Display (bottom right)**: The current signal level (dBFS). Measurements are not taken if the signal is too small (below the Gate setting).
 
 ## Screen Configuration and Features
 
@@ -33,52 +33,52 @@ The large numbers displayed at the top of the screen are the measurement results
 
 The numerical display format can be switched according to the application.
 
-- **Frequency**: Displays in Hertz (Hz). This is normally used.
-- **Period**: Displays the period (s, ms, µs, ns). Used when you want to know the time taken for one wave cycle.
+* **Frequency**: Displays in Hertz (Hz). This is normally used.
+* **Period**: Displays the period (s, ms, µs, ns). Used when you want to know the time taken for one wave cycle.
 
 ### Statistics (Stats)
 
 Indicators showing the stability of the measurement are displayed in real-time below the display.
 
-- **Std Dev**: Standard Deviation. Indicates the amount of frequency variation. The smaller the value, the more stable it is.
-- **Allan Dev**: Allan Deviation. An indicator of short-term stability, used for evaluating oscillators, etc.
+* **Std Dev**: Standard Deviation. Indicates the amount of frequency variation. The smaller the value, the more stable it is.
+* **Allan Dev**: Allan Deviation. An indicator of short-term stability, used for evaluating oscillators, etc.
 
 ### Graphical Analysis (Tab Switching)
 
 By switching the tabs at the bottom of the screen, you can analyze the data from different perspectives.
 
 1. **Frequency Drift**
-    - Records how the frequency changes over time (horizontal axis).
-    - Ideal for observing frequency drift due to device warm-up (changes caused by heat).
+    * Records how the frequency changes over time (horizontal axis).
+    * Ideal for observing frequency drift due to device warm-up (changes caused by heat).
 
 2. **Allan Deviation**
-    - For advanced stability analysis.
-    - Displays stability on a log-log graph when the integration time (Tau) is varied, such as "fluctuation over 1 second" or "fluctuation over 10 seconds."
-    - A downward-sloping graph means that precision improves as you average over longer periods.
+    * For advanced stability analysis.
+    * Displays stability on a log-log graph when the integration time (Tau) is varied, such as "fluctuation over 1 second" or "fluctuation over 10 seconds."
+    * A downward-sloping graph means that precision improves as you average over longer periods.
 
 3. **Jitter Histogram**
-    - Displays frequency variation as a frequency distribution (histogram).
-    - You can check how the measured values are distributed around the mean (whether it is a normal distribution or biased toward a specific frequency).
-    - **Baseline Setting**: Choose whether to center the distribution on the "Mean" or an arbitrary "Reference" value.
-    - **X-axis Setting**: Choose whether the horizontal axis unit is "Hz/s (Native)" or the deviation rate "ppm".
+    * Displays frequency variation as a frequency distribution (histogram).
+    * You can check how the measured values are distributed around the mean (whether it is a normal distribution or biased toward a specific frequency).
+    * **Baseline Setting**: Choose whether to center the distribution on the "Mean" or an arbitrary "Reference" value.
+    * **X-axis Setting**: Choose whether the horizontal axis unit is "Hz/s (Native)" or the deviation rate "ppm".
 
 ## Settings
 
-- **Gate (dB)**
-    - Sets the "threshold" of the signal level for measurement.
-    - Prevents nonsensical numbers from being displayed when there is no input signal or only noise (e.g., -60dB).
+* **Gate (dB)**
+    * Sets the "threshold" of the signal level for measurement.
+    * Prevents nonsensical numbers from being displayed when there is no input signal or only noise (e.g., -60dB).
 
-- **Channel**
-    - Select the audio channel (Ch 1 / Ch 2) to be measured.
+* **Channel**
+    * Select the audio channel (Ch 1 / Ch 2) to be measured.
 
-- **Update Rate**
-    - Sets the frequency of measurement and display updates.
-    - **Fast (10Hz)**: Reacts quickly. Useful during circuit adjustment.
-    - **Slow (2Hz)**: Updates slowly. Uses a larger buffer, allowing for more stable, high-precision measurements.
+* **Update Rate**
+    * Sets the frequency of measurement and display updates.
+    * **Fast (10Hz)**: Reacts quickly. Useful during circuit adjustment.
+    * **Slow (2Hz)**: Updates slowly. Uses a larger buffer, allowing for more stable, high-precision measurements.
 
-- **Calibrate**
-    - A function to compensate measured values using a reference signal (an accurate base signal).
-    - Since computer audio interface clocks have errors, if strict measurement is required, input a known frequency (e.g., 10MHz rubidium oscillator or GPS standard) and set the correction factor using this function.
+* **Calibrate**
+    * A function to compensate measured values using a reference signal (an accurate base signal).
+    * Since computer audio interface clocks have errors, if strict measurement is required, input a known frequency (e.g., 10MHz rubidium oscillator or GPS standard) and set the correction factor using this function.
 
 ## Usage Examples
 

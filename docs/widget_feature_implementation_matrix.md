@@ -15,13 +15,13 @@ Nonlinear Response Analyzer は実験的モジュールですが、実装漏れ�
 
 判定は次のコード上の事実に基づきます。
 
-- 全モジュール共通機能: `DetachableWidgetWrapper` から常に提供されるか
-- コンソール主操作: `WidgetCapabilities.console_primary_action` の宣言先が、開始／停止を一つの
+* 全モジュール共通機能: `DetachableWidgetWrapper` から常に提供されるか
+* コンソール主操作: `WidgetCapabilities.console_primary_action` の宣言先が、開始／停止を一つの
   チェック可能ボタンで切り替える実装と一致するか
-- コンパクトモード: `WidgetCapabilities` の宣言と `CompactableWidgetInterface`、レイアウト更新処理が一致するか
-- 2 窓分割: `WidgetCapabilities` の宣言と `SplittableWidgetInterface`、表示、操作、復元の 3 処理が一致するか
-- 比較送信: `WidgetCapabilities` の宣言と `ComparableWidgetInterface`、比較データ生成処理が一致するか
-- テスト: 対象機能を直接操作する自動テストが存在し、今回の調査で成功したか
+* コンパクトモード: `WidgetCapabilities` の宣言と `CompactableWidgetInterface`、レイアウト更新処理が一致するか
+* 2 窓分割: `WidgetCapabilities` の宣言と `SplittableWidgetInterface`、表示、操作、復元の 3 処理が一致するか
+* 比較送信: `WidgetCapabilities` の宣言と `ComparableWidgetInterface`、比較データ生成処理が一致するか
+* テスト: 対象機能を直接操作する自動テストが存在し、今回の調査で成功したか
 
 ## ステータスの見方
 
@@ -161,43 +161,43 @@ Logs はモジュール固有ログではなく、共通のシングルトンロ
 
 モジュール別マトリクス外ですが、次の共通機能も実装されています。
 
-- Menu Only: コンテンツ領域と通常ステータスバーを隠し、サイドバー幅まで縮小
-- Menu Only からの分離起動: 未分離のモジュールをダブルクリックすると State B で開く
-- Menu Only からの再表示: State B は独立ウィンドウ、State C は表示・操作の両ウィンドウを前面化
-- グローバル出力先: Physical、Internal Loopback、Loopback + Physical を共通選択
-- モジュール生成: 通常起動ではスプラッシュ表示中に全対象モジュールを事前ロードし、未生成の場合は
+* Menu Only: コンテンツ領域と通常ステータスバーを隠し、サイドバー幅まで縮小
+* Menu Only からの分離起動: 未分離のモジュールをダブルクリックすると State B で開く
+* Menu Only からの再表示: State B は独立ウィンドウ、State C は表示・操作の両ウィンドウを前面化
+* グローバル出力先: Physical、Internal Loopback、Loopback + Physical を共通選択
+* モジュール生成: 通常起動ではスプラッシュ表示中に全対象モジュールを事前ロードし、未生成の場合は
   選択時に遅延ロードする。どちらの経路でも同じ共通ラッパーで包む
-- アクティビティ表示: 実行中モジュールをサイドバーで強調し、State B／State C をツールチップへ表示
+* アクティビティ表示: 実行中モジュールをサイドバーで強調し、State B／State C をツールチップへ表示
 
 ## 実装漏れ防止の仕組み
 
 ### 能力宣言の正本
 
-- `src/gui/module_registry.py` の `ModuleRegistration` と `WidgetCapabilities` が、遅延ロード情報、
+* `src/gui/module_registry.py` の `ModuleRegistration` と `WidgetCapabilities` が、遅延ロード情報、
   対応機能、対象外理由の正本です。
-- 共通ラッパーはメインアプリから能力宣言を受け取り、宣言とインターフェース実装が異なる場合は
+* 共通ラッパーはメインアプリから能力宣言を受け取り、宣言とインターフェース実装が異なる場合は
   明示的なエラーにします。コンソール主操作も宣言先がチェック可能ボタンか検証します。
   `hasattr()` による暗黙の機能推定は使用しません。
-- 契約テストは `ALL_MODULE_KEYS` の全 42 モジュールについて、登録漏れ、対応数、インターフェース、
+* 契約テストは `ALL_MODULE_KEYS` の全 42 モジュールについて、登録漏れ、対応数、インターフェース、
   必須メソッドのオーバーライドを検査します。
-- 本文書のサマリーとモジュール別マトリクスは `scripts/generate_widget_feature_matrix.py` で生成します。
+* 本文書のサマリーとモジュール別マトリクスは `scripts/generate_widget_feature_matrix.py` で生成します。
   `--check` により宣言と文書のずれを検出できます。
 
 ### 直接操作テスト
 
-- Transmission Analyzer のコンパクト切り替えを共通ラッパー経由で確認します。
-- Distortion Analyzer と Lock-in Amplifier の比較データ生成を確認します。
-- More メニューの Logs アクションが共通ログビューアを表示し、前面化することを確認します。
-- State C の2ウィンドウ前面化とサイドバー表示を確認します。
-- コンソールの共通タイトルバー操作、元ボタンの有効／無効状態との同期、Frequency Counter の
+* Transmission Analyzer のコンパクト切り替えを共通ラッパー経由で確認します。
+* Distortion Analyzer と Lock-in Amplifier の比較データ生成を確認します。
+* More メニューの Logs アクションが共通ログビューアを表示し、前面化することを確認します。
+* State C の2ウィンドウ前面化とサイドバー表示を確認します。
+* コンソールの共通タイトルバー操作、元ボタンの有効／無効状態との同期、Frequency Counter の
   `run_btn` 操作を確認します。全モジュール契約テストでは、30 モジュールの宣言先が実在する
   チェック可能ボタンであることと、残る 12 モジュールの対象外判定を確認します。
 
 ### マニュアル同期
 
-- Frequency Counter、Lock-in Spectrum Finder、Event Detector、Timecode Monitor、
+* Frequency Counter、Lock-in Spectrum Finder、Event Detector、Timecode Monitor、
   Stereo Alignment Monitor、Transmission Analyzer は、対応する共通機能を日英両版で明記します。
-- Detachable Wrapper は Compact ボタンの有効条件、More メニュー内の Send to Comparer、プラットフォーム別の
+* Detachable Wrapper は Compact ボタンの有効条件、More メニュー内の Send to Comparer、プラットフォーム別の
   スクリーンショット既定保存先、State C の再表示方法を日英両版で説明します。
 
 ## 残る検討事項
@@ -220,13 +220,13 @@ Ruff、Mypy、翻訳キー、Markdown lint、UI サイズ上限、マトリク�
 
 ## 主な根拠コード
 
-- モジュール一覧とラッパー適用: `src/gui/main_window.py`
-- モジュール登録と能力宣言の正本: `src/gui/module_registry.py`
-- モジュール名の正本: `src/core/module_constants.py`
-- 分離、分割、撮影、ログ、比較送信: `src/gui/widgets/detachable_wrapper.py`
-- 計測コンソールと開始／停止操作: `src/gui/measurement_console.py`
-- 全モジュール契約テスト: `tests/logic_verification/gui/test_widget_capabilities.py`
-- コンパクト契約: `src/gui/widgets/compactable_interface.py`
-- 2 窓分割契約: `src/gui/widgets/splittable_interface.py`
-- 比較送信契約: `src/gui/widgets/comparable_interface.py`
-- マトリクス生成: `scripts/generate_widget_feature_matrix.py`
+* モジュール一覧とラッパー適用: `src/gui/main_window.py`
+* モジュール登録と能力宣言の正本: `src/gui/module_registry.py`
+* モジュール名の正本: `src/core/module_constants.py`
+* 分離、分割、撮影、ログ、比較送信: `src/gui/widgets/detachable_wrapper.py`
+* 計測コンソールと開始／停止操作: `src/gui/measurement_console.py`
+* 全モジュール契約テスト: `tests/logic_verification/gui/test_widget_capabilities.py`
+* コンパクト契約: `src/gui/widgets/compactable_interface.py`
+* 2 窓分割契約: `src/gui/widgets/splittable_interface.py`
+* 比較送信契約: `src/gui/widgets/comparable_interface.py`
+* マトリクス生成: `scripts/generate_widget_feature_matrix.py`

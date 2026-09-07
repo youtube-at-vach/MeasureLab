@@ -16,67 +16,67 @@ This widget supports common features of the Detachable Wrapper. Please refer to 
 
 ### Starting and Stopping Measurements
 
-- **Start / Stop Button**: Toggles the measurement on and off.
-    - When started, new data appears at the origin (top or right edge, depending on the orientation), and old data flows outward (waterfall display).
+* **Start / Stop Button**: Toggles the measurement on and off.
+    * When started, new data appears at the origin (top or right edge, depending on the orientation), and old data flows outward (waterfall display).
 
 ### Understanding the Graph
 
-- **Time Axis**: Represents the passage of time. Depending on the orientation, the current time is either at the right edge (flowing left) or at the top edge (flowing down).
-- **Frequency Axis**: Represents frequency (pitch). Higher values indicate higher pitch.
-- **Color**: Represents the "strength" of the sound at that moment and frequency.
-    - **Bright colors (yellow, red, etc.)**: Strong sounds
-    - **Dark colors (blue, purple, black, etc.)**: Weak sounds or silence
+* **Time Axis**: Represents the passage of time. Depending on the orientation, the current time is either at the right edge (flowing left) or at the top edge (flowing down).
+* **Frequency Axis**: Represents frequency (pitch). Higher values indicate higher pitch.
+* **Color**: Represents the "strength" of the sound at that moment and frequency.
+    * **Bright colors (yellow, red, etc.)**: Strong sounds
+    * **Dark colors (blue, purple, black, etc.)**: Weak sounds or silence
 
 ### Understanding the Distribution Map (Color Bar) on the Right
 
 This vertical bar on the right side of the graph is a **"correspondence table between color and volume (dB)"** and also acts as a controller to adjust the brightness of the display.
 
-- **Meaning of Colors**: The top of the bar shows colors corresponding to strong sounds (near 0dB), and the bottom shows colors for weak sounds (near -120dB). Use it as a legend to understand "this color on the graph is roughly this volume."
-- **Adjusting the Display Range (Contrast Adjustment)**:
-    - **Drag the white handles (triangle marks)**: You can adjust the range of colors displayed.
-    - **Changing the Overall Brightness**: Drag the entire bar up or down, or scroll with the mouse wheel.
-    - **Changing the Contrast (Sharpness)**: Widen or narrow the width between the handles. Narrowing the width causes colors to change rapidly with small volume differences, making subtle changes easier to see.
+* **Meaning of Colors**: The top of the bar shows colors corresponding to strong sounds (near 0dB), and the bottom shows colors for weak sounds (near -120dB). Use it as a legend to understand "this color on the graph is roughly this volume."
+* **Adjusting the Display Range (Contrast Adjustment)**:
+    * **Drag the white handles (triangle marks)**: You can adjust the range of colors displayed.
+    * **Changing the Overall Brightness**: Drag the entire bar up or down, or scroll with the mouse wheel.
+    * **Changing the Contrast (Sharpness)**: Widen or narrow the width between the handles. Narrowing the width causes colors to change rapidly with small volume differences, making subtle changes easier to see.
 
 ## Settings
 
 ### Settings (Basic Settings)
 
-- **Channel**
-    - **Left / Right / Average**: Select the audio channel to analyze.
+* **Channel**
+    * **Left / Right / Average**: Select the audio channel to analyze.
 
-- **FFT Size (Frequency Resolution)**
-    - Configures the granularity of the analysis.
-    - **4096 / 8192 etc.**: Finer frequency resolution, but time-domain response becomes slightly blurred.
-    - **512 / 1024 etc.**: Sharper time response (for rhythms, etc.), but frequency resolution becomes coarse.
-    - `2048` is generally recommended for a good balance.
-    - When a faster "Speed" is selected, the maximum available FFT size is automatically limited to maintain real-time performance.
+* **FFT Size (Frequency Resolution)**
+    * Configures the granularity of the analysis.
+    * **4096 / 8192 etc.**: Finer frequency resolution, but time-domain response becomes slightly blurred.
+    * **512 / 1024 etc.**: Sharper time response (for rhythms, etc.), but frequency resolution becomes coarse.
+    * `2048` is generally recommended for a good balance.
+    * When a faster "Speed" is selected, the maximum available FFT size is automatically limited to maintain real-time performance.
 
-- **Window (Window Function)**
-    - `hann` (standard) or `blackman` are suitable for noise analysis.
+* **Window (Window Function)**
+    * `hann` (standard) or `blackman` are suitable for noise analysis.
 
-- **Scale**
-    - Switches the display scale of the frequency axis.
-    - **Linear**: Evenly spaced markings like a ruler. Suitable for observing high-frequency harmonics in detail.
-    - **Log**: Logarithmic scale. Like a piano keyboard, the lower frequency range is displayed wider. Ideal when you want to see musical pitches.
-    - **Mel**: Mel scale. A slightly magical scale where intervals that the human ear perceives as "twice as high" are evenly spaced. Often used for voice analysis.
+* **Scale**
+    * Switches the display scale of the frequency axis.
+    * **Linear**: Evenly spaced markings like a ruler. Suitable for observing high-frequency harmonics in detail.
+    * **Log**: Logarithmic scale. Like a piano keyboard, the lower frequency range is displayed wider. Ideal when you want to see musical pitches.
+    * **Mel**: Mel scale. A slightly magical scale where intervals that the human ear perceives as "twice as high" are evenly spaced. Often used for voice analysis.
 
-- **Direction**
-    - Selects the display orientation (waterfall direction) of the spectrogram.
-    - **X: Time**: Time flows along the horizontal axis, and frequency is on the vertical axis.
-    - **X: Frequency**: Frequency is on the horizontal axis, and time flows downwards along the vertical axis.
-- **Colormap**
-    - Changes the color scheme of the graph.
-    - **viridis / plasma / inferno / magma / cividis**: Scientifically common color schemes where changes in brightness are uniform and easy to see.
-    - **turbo**: A colorful rainbow-like scheme suitable for distinguishing fine level differences.
+* **Direction**
+    * Selects the display orientation (waterfall direction) of the spectrogram.
+    * **X: Time**: Time flows along the horizontal axis, and frequency is on the vertical axis.
+    * **X: Frequency**: Frequency is on the horizontal axis, and time flows downwards along the vertical axis.
+* **Colormap**
+    * Changes the color scheme of the graph.
+    * **viridis / plasma / inferno / magma / cividis**: Scientifically common color schemes where changes in brightness are uniform and easy to see.
+    * **turbo**: A colorful rainbow-like scheme suitable for distinguishing fine level differences.
 
-- **Speed (Flow Rate)**
-    - Adjusts the speed at which the graph scrolls.
-    - **Fast (Realtime)**: Flows in real-time. Suitable for viewing short-term changes.
-    - **Medium / Slow / Meteor**: Flows slowly. Used for monitoring environmental sounds or observing changes over a long period (displaying several to 10 minutes of history on one screen). These slow modes use a "Max Hold" mechanism to capture transient peaks within the time interval.
+* **Speed (Flow Rate)**
+    * Adjusts the speed at which the graph scrolls.
+    * **Fast (Realtime)**: Flows in real-time. Suitable for viewing short-term changes.
+    * **Medium / Slow / Meteor**: Flows slowly. Used for monitoring environmental sounds or observing changes over a long period (displaying several to 10 minutes of history on one screen). These slow modes use a "Max Hold" mechanism to capture transient peaks within the time interval.
 
-- **Min Freq / Max Freq**
-    - Narrows down the display range of the frequency axis.
-    - For example, if you want to see low frequencies in detail, set Max Freq to `1000 Hz`.
+* **Min Freq / Max Freq**
+    * Narrows down the display range of the frequency axis.
+    * For example, if you want to see low frequencies in detail, set Max Freq to `1000 Hz`.
 
 ## Usage Examples
 
