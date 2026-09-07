@@ -15,11 +15,11 @@ Arrange the necessary instruments (widgets) on the screen to perform measurement
 
 ## How to Read This Manual
 
-- For first-time users:
+* For first-time users:
   → Read the [Quickstart](quickstart.en.md) first.
-- To use specific features:
+* To use specific features:
   → Refer to each [**Widget Guide**](widget_guide.en.md).
-- To see actual measurement examples:
+* To see actual measurement examples:
   → Refer to the [**Measurement Recipes**](measurement_recipes/index.en.md).
 
 ---
@@ -40,7 +40,7 @@ While built-in audio functions of the PC can be used, we recommend an external a
 
 We recommend performing an operation check with a **"loopback connection,"** where the output signal is directly routed back to the input.
 
-- Connect a 3.5mm or 6.3mm standard plug cable from the output (OUT) to the input (IN).
+* Connect a 3.5mm or 6.3mm standard plug cable from the output (OUT) to the input (IN).
 
 ---
 
@@ -48,5 +48,5 @@ We recommend performing an operation check with a **"loopback connection,"** whe
 
 If you have any questions during operation, please also utilize the following pages:
 
-- [**Troubleshooting**](appendix.en.md#troubleshooting)
-- [**Appendix: Limitations and Precautions**](appendix.en.md#this-tool-is-not-a-measurement-instrument)
+* [**Troubleshooting**](appendix.en.md#troubleshooting)
+* [**Appendix: Limitations and Precautions**](appendix.en.md#this-tool-is-not-a-measurement-instrument)

@@ -24,11 +24,11 @@ If more than one endpoint is displayed, use the address on the LAN shared with t
 
 While sharing is active, Remote Audio I/O displays **Provide Local I/O**, and the main window switches to a provider-only state:
 
-- The status is **I/O Provider**, with **Mode: waiting**, **Mode: Input only**, or **Mode: Duplex**.
-- **I/O Routing** is read-only because it reports the route owned by the provider rather than offering a local output choice.
-- While waiting, it displays **Remote I/O provider — waiting for client**.
-- For an input-only connection, it displays **Physical input → Remote client · Physical output muted**.
-- For a duplex connection, it displays **Physical input → Remote client · Remote client → Physical output**.
+* The status is **I/O Provider**, with **Mode: waiting**, **Mode: Input only**, or **Mode: Duplex**.
+* **I/O Routing** is read-only because it reports the route owned by the provider rather than offering a local output choice.
+* While waiting, it displays **Remote I/O provider — waiting for client**.
+* For an input-only connection, it displays **Physical input → Remote client · Physical output muted**.
+* For a duplex connection, it displays **Physical input → Remote client · Remote client → Physical output**.
 
 Selecting **Start sharing** reserves the AudioEngine exclusively for the provider, including while it is waiting for a client. This keeps one owner in control of the physical audio stream, its device clock, sample order, and remote-output permission. Local measurement modules therefore cannot register their audio processing while sharing is active; allowing both paths to run could mix local output into the remote measurement or compromise its timing. Select **Stop sharing** before using local measurement modules again.
 
@@ -51,10 +51,10 @@ Calibration profiles are not transferred over the network. For measurements in p
 
 The **Connection quality** area at the top displays the following while connected:
 
-- Missing frame count
-- Event count combining missing packets, corrupt packets, and local queue overflows
-- Frames recovered by optional retransmission and packets retransmitted by this computer
-- Whether data loss is still increasing or has stopped increasing
+* Missing frame count
+* Event count combining missing packets, corrupt packets, and local queue overflows
+* Frames recovered by optional retransmission and packets retransmitted by this computer
+* Whether data loss is still increasing or has stopped increasing
 
 Open **Advanced** in the relevant tab to see the connected device and format, or the listening endpoints and connected client.
 
@@ -62,15 +62,15 @@ Do not treat a measurement interval showing **Data loss is increasing** as compl
 
 ## Transport and safety
 
-- Protocol v2 carries discovery, connection control, keepalives, and uncompressed float32 PCM audio on one UDP port. It has no TCP listener.
-- The main computer sends `DISCOVER_QUERY` and `CONNECT_REQUEST`; the provider returns responses and audio to the observed UDP source address. It does not trust a reply address declared in the payload.
-- Session start, playback state, shutdown, and other reliable control packets use acknowledgements and retries with the same message ID. When enabled and supported by both computers, deadline-limited `AUDIO_NACK` requests recover recent audio packets without extending the fixed network-buffer deadline.
-- Keepalives prevent an unresponsive client from reserving the provider indefinitely.
-- Audio packets include a session ID, sequence number, absolute sample position, and CRC.
-- The remote audio device clock is the sample-time authority for the session.
-- Playback uses a fixed look-ahead buffer. Its delay is not adjusted while streaming.
-- The transport is not encrypted or authenticated. Enable the provider only on a trusted LAN.
-- Protocol v2 supports IPv4, mono/stereo, and one client per provider.
-- Wired Ethernet is recommended for stable measurements.
+* Protocol v2 carries discovery, connection control, keepalives, and uncompressed float32 PCM audio on one UDP port. It has no TCP listener.
+* The main computer sends `DISCOVER_QUERY` and `CONNECT_REQUEST`; the provider returns responses and audio to the observed UDP source address. It does not trust a reply address declared in the payload.
+* Session start, playback state, shutdown, and other reliable control packets use acknowledgements and retries with the same message ID. When enabled and supported by both computers, deadline-limited `AUDIO_NACK` requests recover recent audio packets without extending the fixed network-buffer deadline.
+* Keepalives prevent an unresponsive client from reserving the provider indefinitely.
+* Audio packets include a session ID, sequence number, absolute sample position, and CRC.
+* The remote audio device clock is the sample-time authority for the session.
+* Playback uses a fixed look-ahead buffer. Its delay is not adjusted while streaming.
+* The transport is not encrypted or authenticated. Enable the provider only on a trusted LAN.
+* Protocol v2 supports IPv4, mono/stereo, and one client per provider.
+* Wired Ethernet is recommended for stable measurements.
 
 Stop active measurement modules before connecting or disconnecting. A failed network session never silently falls back to a local microphone or output.

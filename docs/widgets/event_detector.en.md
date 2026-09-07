@@ -33,9 +33,9 @@ Sets the event-start threshold in `FS`, `mV`, or `V`. The `mV` and `V` options a
 
 ### Polarity
 
-- `Positive`: Detect only positive threshold crossings.
-- `Negative`: Detect only negative threshold crossings.
-- `Both polarities`: Detect both directions. A direct positive-to-negative reversal without returning to the release band remains one bipolar event.
+* `Positive`: Detect only positive threshold crossings.
+* `Negative`: Detect only negative threshold crossings.
+* `Both polarities`: Detect both directions. A direct positive-to-negative reversal without returning to the release band remains one bipolar event.
 
 ### Hysteresis
 
@@ -55,11 +55,11 @@ Each `Start`, or `Reset` while measuring, creates a new run. A run stores an ide
 
 Each event stores the following sample-accurate information:
 
-- Start and end samples and times
-- Trigger polarity, largest-absolute-peak polarity, and signed peak value
-- Positive and negative peaks when each side was observed
-- Duration, start-to-start interval, and quiet time since the previous valid event
-- Completion status: valid, censored at stop, censored by a data gap, or censored by a configuration change
+* Start and end samples and times
+* Trigger polarity, largest-absolute-peak polarity, and signed peak value
+* Positive and negative peaks when each side was observed
+* Duration, start-to-start interval, and quiet time since the previous valid event
+* Completion status: valid, censored at stop, censored by a data gap, or censored by a configuration change
 
 A signal already beyond the threshold when measurement starts is not counted. Detection begins with a new crossing after the signal first returns to the release band.
 
@@ -67,11 +67,11 @@ A signal already beyond the threshold when measurement starts is not counted. De
 
 ### Summary
 
-- `Event` indicator: Flashes red for 250 ms when an event is detected. If multiple events arrive between display updates, the increment is shown as `+N` for 600 ms.
-- `Event Count`: Number of event starts observed in the run. A started event that is censored when acquisition stops remains part of this count.
-- `Event Rate`: Event Count per minute, normalized by actual elapsed time.
-- `Measurement Time`: Time calculated from the number of received samples.
-- The tab also shows valid events, positive and negative events classified by largest peak, censored events, and the latest event.
+* `Event` indicator: Flashes red for 250 ms when an event is detected. If multiple events arrive between display updates, the increment is shown as `+N` for 600 ms.
+* `Event Count`: Number of event starts observed in the run. A started event that is censored when acquisition stops remains part of this count.
+* `Event Rate`: Event Count per minute, normalized by actual elapsed time.
+* `Measurement Time`: Time calculated from the number of received samples.
+* The tab also shows valid events, positive and negative events classified by largest peak, censored events, and the latest event.
 
 Event Rate is calculated as follows:
 
@@ -85,10 +85,10 @@ The overall Event Rate is displayed as `INVALID` after a data gap, clipping, acq
 
 Statistics and a histogram are calculated from valid completed events only. Select one of these metrics:
 
-- `Peak Amplitude`: Absolute largest peak. It is shown in Vpeak when input sensitivity is calibrated, or FS peak otherwise.
-- `Duration`: Time from the threshold crossing until return to the release band.
-- `Interarrival Time`: Start-to-start time from the prior event where continuity is known.
-- `Quiet Time`: Time from the end of the previous valid event to the current event start.
+* `Peak Amplitude`: Absolute largest peak. It is shown in Vpeak when input sensitivity is calibrated, or FS peak otherwise.
+* `Duration`: Time from the threshold crossing until return to the release band.
+* `Interarrival Time`: Start-to-start time from the prior event where continuity is known.
+* `Quiet Time`: Time from the end of the previous valid event to the current event start.
 
 The summary reports sample count, minimum, median, mean, sample standard deviation, P95, P99, and maximum. Intervals spanning a data gap or configuration change are omitted.
 
@@ -100,9 +100,9 @@ The trend uses fixed, non-overlapping bins of 1 second, 10 seconds, 1 minute, 10
 
 The table shows the most recent 500 records. CSV and JSON exports include every retained record together with the run conditions.
 
-- JSON includes the `measurelab.event_detector` schema name and version.
-- CSV writes run conditions as comment rows followed by the event table.
-- Peaks are always retained in FS units, with a converted display value also included when calibrated.
+* JSON includes the `measurelab.event_detector` schema name and version.
+* CSV writes run conditions as comment rows followed by the event table.
+* Peaks are always retained in FS units, with a converted display value also included when calibrated.
 
 ## Basic Measurement Procedure
 
@@ -116,9 +116,9 @@ The table shows the most recent 500 records. CSV and JSON exports include every 
 
 ## Measurement Quality and Limitations
 
-- An event spanning multiple audio blocks is counted only once.
-- `CLIPPING` means the input reached full scale, so the recorded peak amplitude may be inaccurate.
-- `I/O BUFFER ERROR` means input samples may have been lost. An event active at the gap is retained as censored.
-- A sample-rate or channel-configuration change during acquisition invalidates the run. Restart measurement under the new conditions.
-- The detector retains the most recent 10,000 event records. If older records are discarded, it warns that statistics and export are incomplete.
-- DC and very-low-frequency measurement capability depends on the input coupling of the audio interface.
+* An event spanning multiple audio blocks is counted only once.
+* `CLIPPING` means the input reached full scale, so the recorded peak amplitude may be inaccurate.
+* `I/O BUFFER ERROR` means input samples may have been lost. An event active at the gap is retained as censored.
+* A sample-rate or channel-configuration change during acquisition invalidates the run. Restart measurement under the new conditions.
+* The detector retains the most recent 10,000 event records. If older records are discarded, it warns that statistics and export are incomplete.
+* DC and very-low-frequency measurement capability depends on the input coupling of the audio interface.

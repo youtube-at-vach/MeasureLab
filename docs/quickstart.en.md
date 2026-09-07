@@ -47,12 +47,12 @@ Please download the latest version for your OS from the [Releases](https://githu
 
 1. Download `MeasureLab-<version>-macos-arm64.dmg` for Apple Silicon or `MeasureLab-<version>-macos-x64.dmg` for Intel Macs.
 2. **Gatekeeper Bypass**:
-   - On the first launch, you may see a message saying the application "cannot be opened because the developer cannot be verified."
-   - To open it, **"Right-click (or Control + click) the app and select 'Open'."**
-   - A confirmation dialog will appear. Click **"Open"** again to start the application.
+   * On the first launch, you may see a message saying the application "cannot be opened because the developer cannot be verified."
+   * To open it, **"Right-click (or Control + click) the app and select 'Open'."**
+   * A confirmation dialog will appear. Click **"Open"** again to start the application.
 3. **If the "Open" option still doesn't appear**:
-   - Go to **System Settings > Privacy & Security**. Scroll down to find the message stating "MeasureLab.app was blocked..." and click **"Open Anyway"**.
-   - Alternatively, manually remove the quarantine flag via Terminal: `xattr -d com.apple.quarantine /path/to/MeasureLab.app` (You can drag the app icon into the terminal window to paste its path).
+   * Go to **System Settings > Privacy & Security**. Scroll down to find the message stating "MeasureLab.app was blocked..." and click **"Open Anyway"**.
+   * Alternatively, manually remove the quarantine flag via Terminal: `xattr -d com.apple.quarantine /path/to/MeasureLab.app` (You can drag the app icon into the terminal window to paste its path).
 
 **First launch (FFT Optimization):** On the first launch, preparation ([WISDOM](glossary.en.md#fft-wisdom-initial-optimization) generation) is performed to speed up measurement calculations. The screen may appear to freeze for several tens of seconds, but it is not a malfunction. From the next time, the cache will be used, and it will start instantly.
 
@@ -72,9 +72,9 @@ Select **Japanese** from the **Languages** combo box to switch the interface to 
 You can change the color scheme according to your environment and preference.
 Please select from the **Themes** combo box.
 
-- **Dark**: Dark mode that is easy on the eyes even in dark places (recommended).
-- **Light**: Bright display.
-- **System**: Follows the OS settings.
+* **Dark**: Dark mode that is easy on the eyes even in dark places (recommended).
+* **Light**: Bright display.
+* **System**: Follows the OS settings.
 
 ---
 
@@ -87,9 +87,9 @@ Open the **Settings** widget (gear icon) from the left menu.
 
 Select the audio interface you want to use from the device list.
 
-- **ASIO**: If there is a dedicated driver for the audio interface, selecting this is the most stable.
-- **WASAPI**: Recommended setting if there is no dedicated driver or when using standard Windows functions.
-- **MME / DirectSound**: Large latency, not very suitable for measurement.
+* **ASIO**: If there is a dedicated driver for the audio interface, selecting this is the most stable.
+* **WASAPI**: Recommended setting if there is no dedicated driver or when using standard Windows functions.
+* **MME / DirectSound**: Large latency, not very suitable for measurement.
 
 ### Linux
 
@@ -97,18 +97,18 @@ When performing high-precision measurements in a Linux environment, we strongly 
 
 1. Select the `jack` or `pipewire` device.
 2. Please turn the **"Jack/Pipewire mode"** checkbox **ON**.
-   - If you forget this, the measurement data may become intermittent, and accurate analysis may not be possible.
+   * If you forget this, the measurement data may become intermittent, and accurate analysis may not be possible.
 
 ### Recommendations for Input/Output and Sampling Settings
 
-- **Input/Output Channels**
-    - Basically, leave it at the default and select **Stereo (2ch)**.
-- **Sampling Rate**
-    - This determines the "fineness" or resolution of the recorded sound. The larger the number, the higher the definition. As long as your PC specs allow, we recommend selecting a high rate (high-resolution setting) such as **192kHz**.
-- **Buffer Size / Buffer Optimization**
-    - This is the size of the buffer that temporarily stores audio data.
-    - **We strongly recommend setting it to "Long (STABLE or higher)".**
-    - Unlike music production or gaming, measurement prioritizes stable data processing over latency.
+* **Input/Output Channels**
+    * Basically, leave it at the default and select **Stereo (2ch)**.
+* **Sampling Rate**
+    * This determines the "fineness" or resolution of the recorded sound. The larger the number, the higher the definition. As long as your PC specs allow, we recommend selecting a high rate (high-resolution setting) such as **192kHz**.
+* **Buffer Size / Buffer Optimization**
+    * This is the size of the buffer that temporarily stores audio data.
+    * **We strongly recommend setting it to "Long (STABLE or higher)".**
+    * Unlike music production or gaming, measurement prioritizes stable data processing over latency.
 
 ### Using Dithering
 
@@ -141,7 +141,7 @@ If you don't have an audio interface or want to analyze existing audio files wit
 1. Go to **Settings** (gear icon) > **Audio** tab > **Driver** section.
 2. Check the **Virtual / Offline Mode** option.
 3. Use the **Simulation Rate** to set your desired sampling rate.
-    - When analyzing high-quality audio files (e.g., 24-bit/192kHz), setting the Simulation Rate to match the file's rate ensures analysis without degradation from downsampling.
+    * When analyzing high-quality audio files (e.g., 24-bit/192kHz), setting the Simulation Rate to match the file's rate ensures analysis without degradation from downsampling.
 
 In this mode, you can load audio files into the **Player** widget or generate signals internally, and analyzed results will appear in the analyzer widgets just like real hardware.
 
@@ -151,7 +151,7 @@ In this mode, you can load audio files into the **Player** widget or generate si
 
 Once you are familiar with the basic operations, proceed to more detailed guides.
 
-- **To measure accurate voltage or SPL** → [Calibration](calibration.en.md)
-- **If you are unsure which tool to use** → [Widget Guide](widget_guide.en.md)
-- **To know how to measure in practice** → [Measurement Recipes](measurement_recipes/index.en.md)
-- **To see the waveform directly** → [Oscilloscope](widgets/oscilloscope.en.md)
+* **To measure accurate voltage or SPL** → [Calibration](calibration.en.md)
+* **If you are unsure which tool to use** → [Widget Guide](widget_guide.en.md)
+* **To know how to measure in practice** → [Measurement Recipes](measurement_recipes/index.en.md)
+* **To see the waveform directly** → [Oscilloscope](widgets/oscilloscope.en.md)
