@@ -123,6 +123,20 @@ class TestLockInBuffer(unittest.TestCase):
         ordered, s_idx = self.lockin.get_ordered_input_data()
         np.testing.assert_array_equal(ordered, expected_internal)
 
+    def test_generator_uses_current_engine_sample_rate(self):
+        self.lockin.gen_frequency = 1000.0
+        self.lockin.gen_amplitude = 1.0
+        frames = 16
+        indata = np.zeros((frames, 2))
+        outdata = np.zeros((frames, 2))
+
+        self.audio_engine.sample_rate = 96000
+        self.lockin._gen_phase = 0.0
+        self.callback(indata, outdata, frames, None, None)
+
+        expected = np.cos(np.arange(frames) * 2 * np.pi * self.lockin.gen_frequency / 96000)
+        np.testing.assert_allclose(outdata[:, 0], expected)
+
 
 if __name__ == "__main__":
     unittest.main()

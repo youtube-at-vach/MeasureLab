@@ -346,3 +346,27 @@ def test_linearity_analyzer_amplitude_continuity():
     # outdata2[:, 0] must match expected_ramp_sig, and not match expected_step_sig
     assert np.allclose(outdata2[:, 0], expected_ramp_sig, atol=1e-5)
     assert not np.allclose(outdata2[:, 0], expected_step_sig, atol=1e-5)
+
+
+def test_linearity_generator_rebuilds_phase_cache_for_current_sample_rate():
+    audio_engine = AudioEngine()
+    audio_engine.sample_rate = 48000
+    audio_engine.register_callback = MagicMock(side_effect=lambda cb: 1)
+    analyzer = LinearityAnalyzer(audio_engine)
+    analyzer.test_frequency = 1000.0
+    analyzer.gen_amplitude = 1.0
+    analyzer.output_channel = 0
+    analyzer.start_analysis()
+    callback = audio_engine.register_callback.call_args[0][0]
+    frames = 16
+    indata = np.zeros((frames, 2))
+    outdata = np.zeros((frames, 2))
+
+    callback(indata, outdata, frames, None, None)
+    audio_engine.sample_rate = 96000
+    analyzer._phase_rad = 0.0
+    outdata.fill(0.0)
+    callback(indata, outdata, frames, None, None)
+
+    expected = np.sin(np.arange(frames) * 2 * np.pi * analyzer.test_frequency / 96000)
+    np.testing.assert_allclose(outdata[:, 0], expected)

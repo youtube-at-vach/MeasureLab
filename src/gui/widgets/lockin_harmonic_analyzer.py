@@ -132,8 +132,6 @@ class LockInHarmonicAnalyzer(MeasurementModule):
         self.buffer_filled_samples = 0
         self._phase_gen = 0.0
 
-        sample_rate = self.audio_engine.sample_rate
-
         def callback(indata, outdata, frames, time, status):
             if not self.is_running:
                 outdata.fill(0)
@@ -142,6 +140,7 @@ class LockInHarmonicAnalyzer(MeasurementModule):
             # --- Generator ---
             outdata.fill(0)
             if self.output_enabled:
+                sample_rate = self.audio_engine.sample_rate
                 phase_step = 2 * np.pi * self.gen_frequency / sample_rate
                 wt = self._phase_gen + np.arange(frames) * phase_step
                 self._phase_gen = (self._phase_gen + frames * phase_step) % (2 * np.pi)

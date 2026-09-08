@@ -71,6 +71,18 @@ class TestOscilloscopeFeatures(unittest.TestCase):
         self.module.reset_clipping_latch()
         self.assertFalse(self.module.clipping_latched_l)
 
+    def test_display_gap_badge_reports_transfer_overflow(self):
+        self.widget.show()
+        self.module.is_running = True
+        self.module.process_queue = MagicMock()
+        self.module.get_display_data = MagicMock(return_value=None)
+        self.module.display_dropped_samples = 321
+
+        self.widget.update_plot()
+
+        self.assertFalse(self.widget.display_gap_badge.isHidden())
+        self.assertEqual(self.widget.display_gap_badge.text(), "Display skipped 321 samples")
+
     def test_auto_scale_engine(self):
         """Verify Auto Scale selects optimal Time/Div, V/Div, and Trigger settings."""
         sr = 48000

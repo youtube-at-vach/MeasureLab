@@ -227,7 +227,6 @@ class ImpedanceAnalyzer(MeasurementModule):
         # Generator State
         self._phase = 0
         self._gen_phase = 0.0
-        sample_rate = self.audio_engine.sample_rate
 
         def callback(indata, outdata, frames, time, status):
             if status:
@@ -255,6 +254,7 @@ class ImpedanceAnalyzer(MeasurementModule):
 
             # --- Output Generation ---
             # Generate Sine Wave with continuous phase
+            sample_rate = self.audio_engine.sample_rate
             phase_step = 2 * np.pi * self.gen_frequency / sample_rate
             t_phase = self._gen_phase + np.arange(frames) * phase_step
             signal = self.gen_amplitude * np.cos(t_phase)

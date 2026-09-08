@@ -392,6 +392,17 @@ def test_audio_callback_error_is_latched_until_acknowledged(qtbot):
     assert not window._callback_error_latched
 
 
+def test_audio_callback_error_snapshot_is_not_counted_twice(qtbot):
+    window = _build_window_stub(qtbot)
+    status = _audio_status(error_count=2, last_error="processing failed")
+
+    window._update_audio_io_error_indicator(status)
+    window._update_audio_io_error_indicator(status)
+
+    assert window._callback_error_count == 2
+    assert f"{tr('Error Count')}: 2" in window.io_error_button.toolTip()
+
+
 def test_init_audio_uses_portaudio_defaults_without_saved_devices():
     window = MagicMock()
     window.config_manager.get_audio_config.return_value = {}

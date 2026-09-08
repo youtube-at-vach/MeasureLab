@@ -311,6 +311,7 @@ class LinearityAnalyzer(MeasurementModule):
         self._phase_rad = 0.0
         self._last_frames = None
         self._last_freq = None
+        self._last_sample_rate = None
         self._phase_arr = None
         self._phase_inc = None
         self._current_amp = 0.0
@@ -363,9 +364,9 @@ class LinearityAnalyzer(MeasurementModule):
         # Reset generator phase
         self._phase_rad = 0.0
         self._last_frames = None
+        self._last_sample_rate = None
         self._current_amp = self.gen_amplitude
         self.input_index = 0
-        sample_rate = self.audio_engine.sample_rate
 
         def callback(indata, outdata, frames, time, status):
             # Input
@@ -406,11 +407,17 @@ class LinearityAnalyzer(MeasurementModule):
                         self._buffer_ready_event.set()
 
             # Output
-            if self._last_frames != frames or self._last_freq != self.test_frequency:
+            sample_rate = self.audio_engine.sample_rate
+            if (
+                self._last_frames != frames
+                or self._last_freq != self.test_frequency
+                or self._last_sample_rate != sample_rate
+            ):
                 self._phase_inc = 2 * np.pi * self.test_frequency / sample_rate
                 self._phase_arr = np.arange(frames) * self._phase_inc
                 self._last_frames = frames
                 self._last_freq = self.test_frequency
+                self._last_sample_rate = sample_rate
 
             current_phase = self._phase_rad + self._phase_arr
             self._phase_rad = (self._phase_rad + frames * self._phase_inc) % (2 * np.pi)

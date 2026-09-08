@@ -235,6 +235,14 @@ class AudioEngine:
         """Returns the appropriate numpy dtype based on precision settings."""
         return "float64" if self.audio_engine_64bit else "float32"
 
+    def _reset_processing_buffers(self) -> None:
+        """Discard reusable buffers whose dtype belongs to the old format."""
+        self._mix_buffer = None
+        self._client_buffer = None
+        self._logical_in_buffer = None
+        self._dither_scratch_buffer = None
+        self.last_output_buffer = None
+
     def _begin_local_backend_change(self, network_error: str) -> None:
         """Serialize local backend changes against provider/client transitions."""
         with self.lock:
@@ -254,10 +262,16 @@ class AudioEngine:
         """Enable/disable 64-bit precision."""
         self._begin_local_backend_change("Disconnect remote audio before changing processing precision")
         try:
-            self.audio_engine_64bit = enabled
+            # Stop callbacks before publishing the new processing dtype. Otherwise
+            # an in-flight callback can combine an old reusable buffer with a new
+            # dtype (notably the NumPy ``Generator.random(out=...)`` path).
+            self.stop_stream()
+            self.audio_engine_64bit = bool(enabled)
+            self._reset_processing_buffers()
             self.logger.debug(f"64-bit Audio Engine (float64) setting changed to: {enabled}")
-            # Apply instantly by restarting active stream
-            self._restart_stream()
+            with self.lock:
+                if self.callbacks or self.pipewire_jack_resident:
+                    self._start_master_stream()
         finally:
             self._end_backend_change()
 
@@ -602,14 +616,26 @@ class AudioEngine:
             self._callback_owners[cid] = owner
             self._cached_callbacks = list(self.callbacks.values())
 
-            # Start stream if not running
-            if self.stream is None:
+            # Start the stream if it is missing or a stopped stream object was
+            # left behind by the backend. Registration only succeeds when the
+            # callback can actually run.
+            if self.stream is None or not bool(self.stream.active):
                 self._start_master_stream()
-                if self.stream is None:
+                if self.stream is None or not bool(self.stream.active):
                     # _start_master_stream logs backend details and keeps its
                     # legacy non-raising API for resident-stream callers. A
                     # client registration, however, must not report success
                     # when no callback can ever run.
+                    failed_stream = self.stream
+                    if failed_stream is not None:
+                        try:
+                            failed_stream.stop()
+                            failed_stream.close()
+                        except Exception as e:
+                            self.logger.error(f"Error closing failed stream: {e}")
+                        finally:
+                            self.stream = None
+                            self.active_dtype = None
                     del self.callbacks[cid]
                     del self._callback_owners[cid]
                     self._cached_callbacks = list(self.callbacks.values())
@@ -950,7 +976,17 @@ class AudioEngine:
     def _start_master_stream(self):
         """Starts the underlying sounddevice stream or VirtualStream."""
         if self.stream is not None:
-            return
+            if bool(self.stream.active):
+                return
+            stale_stream = self.stream
+            try:
+                stale_stream.stop()
+                stale_stream.close()
+            except Exception as e:
+                self.logger.error(f"Error closing inactive stream: {e}")
+            finally:
+                self.stream = None
+                self.active_dtype = None
 
         hw_in_ch, hw_out_ch = self._update_channel_modes()
 
@@ -1061,7 +1097,7 @@ class AudioEngine:
                 raise AudioEngineReservedError("Audio engine is reserved by Remote Audio I/O")
             if self._backend_transition:
                 raise RuntimeError("Audio backend is changing")
-            if self.stream is None:
+            if self.stream is None or not bool(self.stream.active):
                 self._start_master_stream()
             return self.stream is not None and bool(self.stream.active)
 
@@ -1097,6 +1133,8 @@ class AudioEngine:
             self.accumulated_status = sd.CallbackFlags()
             self._latched_xrun_mask = 0
             self._latched_xrun_count = 0
+            self.callback_error_count = 0
+            self.last_callback_error = None
         if self.network_client is not None:
             self.network_client.stats.acknowledge_integrity_errors()
 
@@ -1129,15 +1167,14 @@ class AudioEngine:
             except Exception as exc:
                 self.logger.warning("Failed to read Remote Audio I/O provider status: %s", exc)
 
-        # Get and reset accumulated status and error stats thread-safely
+        # Snapshot status thread-safely. Callback failures remain latched until
+        # explicit acknowledgement so multiple observers cannot consume them.
         with self._status_lock:
             current_status_flags = self.accumulated_status
             self.accumulated_status = sd.CallbackFlags()
 
             error_count = self.callback_error_count
             last_error = str(self.last_callback_error) if self.last_callback_error else None
-            self.callback_error_count = 0
-            self.last_callback_error = None
 
             latched_xrun_mask = self._latched_xrun_mask
             latched_xrun_count = self._latched_xrun_count

@@ -133,6 +133,44 @@ class TestAudioEngineBasicSettings(unittest.TestCase):
         self.assertTrue(self.engine.ensure_stream_running())
         self.engine._start_master_stream.assert_not_called()
 
+    def test_ensure_stream_running_restarts_an_inactive_stream(self):
+        self.engine.stream = MagicMock(active=False)
+
+        def start_stream():
+            self.engine.stream = MagicMock(active=True)
+
+        self.engine._start_master_stream.side_effect = start_stream
+
+        self.assertTrue(self.engine.ensure_stream_running())
+        self.engine._start_master_stream.assert_called_once_with()
+
+    def test_register_callback_restarts_an_inactive_stream(self):
+        self.engine.stream = MagicMock(active=False)
+
+        def start_stream():
+            self.engine.stream = MagicMock(active=True)
+
+        self.engine._start_master_stream.side_effect = start_stream
+
+        callback = MagicMock()
+        callback_id = self.engine.register_callback(callback)
+
+        self.assertIs(self.engine.callbacks[callback_id], callback)
+        self.engine._start_master_stream.assert_called_once_with()
+
+    def test_register_callback_rolls_back_when_stream_remains_inactive(self):
+        failed_stream = MagicMock(active=False)
+        self.engine.stream = failed_stream
+
+        with self.assertRaisesRegex(RuntimeError, "failed to start"):
+            self.engine.register_callback(MagicMock())
+
+        self.assertEqual(self.engine.callbacks, {})
+        self.assertEqual(self.engine._callback_owners, {})
+        self.assertIsNone(self.engine.stream)
+        failed_stream.stop.assert_called_once_with()
+        failed_stream.close.assert_called_once_with()
+
     def test_set_loopback(self):
         self.assertFalse(self.engine.loopback)
         self.engine.set_loopback(True)
@@ -371,9 +409,15 @@ class TestAudioEngineBasicSettings(unittest.TestCase):
         self.assertEqual(status["error_count"], 5)
         self.assertEqual(status["last_error"], "Test Error")
 
-        # Verify stats are reset after get_status
-        self.assertEqual(self.engine.callback_error_count, 0)
-        self.assertIsNone(self.engine.last_callback_error)
+        # Callback failures remain observable until explicit acknowledgement.
+        repeated_status = self.engine.get_status()
+        self.assertEqual(repeated_status["error_count"], 5)
+        self.assertEqual(repeated_status["last_error"], "Test Error")
+
+        self.engine.clear_latched_audio_status()
+        cleared_status = self.engine.get_status()
+        self.assertEqual(cleared_status["error_count"], 0)
+        self.assertIsNone(cleared_status["last_error"])
 
     def test_xrun_status_is_latched_until_explicitly_cleared(self):
         self.engine.accumulated_status = _FakeCallbackFlags()
@@ -730,25 +774,38 @@ class TestAudioEngineLogic(unittest.TestCase):
         self.assertEqual(self.engine.output_channel_mode, "right")
 
     def test_set_audio_engine_64bit(self):
-        # Mock _restart_stream to verify it's called
-        self.engine._restart_stream = MagicMock()
+        old_stream = self.engine.stream
+        self.engine._start_master_stream = MagicMock()
+        self.engine._mix_buffer = np.zeros((4, 2), dtype=np.float32)
+        self.engine._client_buffer = np.zeros((4, 2), dtype=np.float32)
+        self.engine._logical_in_buffer = np.zeros((4, 2), dtype=np.float32)
+        self.engine._dither_scratch_buffer = np.zeros((4, 2), dtype=np.float32)
+        self.engine.last_output_buffer = np.zeros((4, 2), dtype=np.float32)
 
         # Test enabling 64-bit precision
         self.engine.set_audio_engine_64bit(True)
 
         self.assertTrue(self.engine.audio_engine_64bit)
-        self.engine._restart_stream.assert_called_once()
+        old_stream.stop.assert_called_once_with()
+        old_stream.close.assert_called_once_with()
+        self.assertIsNone(self.engine._mix_buffer)
+        self.assertIsNone(self.engine._client_buffer)
+        self.assertIsNone(self.engine._logical_in_buffer)
+        self.assertIsNone(self.engine._dither_scratch_buffer)
+        self.assertIsNone(self.engine.last_output_buffer)
+        self.engine._start_master_stream.assert_not_called()
         self.engine.logger.debug.assert_called_with("64-bit Audio Engine (float64) setting changed to: True")
 
         # Reset mocks
-        self.engine._restart_stream.reset_mock()
         self.engine.logger.debug.reset_mock()
+        self.engine.stream = MagicMock(active=True)
+        self.engine.callbacks = {1: MagicMock()}
 
         # Test disabling 64-bit precision
         self.engine.set_audio_engine_64bit(False)
 
         self.assertFalse(self.engine.audio_engine_64bit)
-        self.engine._restart_stream.assert_called_once()
+        self.engine._start_master_stream.assert_called_once_with()
         self.engine.logger.debug.assert_called_with("64-bit Audio Engine (float64) setting changed to: False")
 
     def test_set_channel_mode_no_restart_if_inactive(self):
@@ -1128,6 +1185,25 @@ class TestAudioEngineDithering(unittest.TestCase):
         max_val = np.max(np.abs(self.outdata))
         self.assertEqual(max_val, 0.0, "Output should be zero when dithering is disabled")
 
+    def test_precision_switch_rebuilds_dither_and_mix_buffers(self):
+        self.engine.dithering_enabled = True
+        self.engine._start_master_stream = MagicMock()
+
+        self.engine._master_callback(self.indata, self.outdata, self.frames, None, 0)
+        self.assertEqual(self.engine._mix_buffer.dtype, np.dtype("float32"))
+        self.assertEqual(self.engine._dither_scratch_buffer.dtype, np.dtype("float32"))
+
+        self.engine.set_audio_engine_64bit(True)
+        outdata64 = np.zeros_like(self.outdata, dtype=np.float64)
+        self.engine._master_callback(self.indata, outdata64, self.frames, None, 0)
+        self.assertEqual(self.engine._mix_buffer.dtype, np.dtype("float64"))
+        self.assertEqual(self.engine._dither_scratch_buffer.dtype, np.dtype("float64"))
+
+        self.engine.set_audio_engine_64bit(False)
+        self.engine._master_callback(self.indata, self.outdata, self.frames, None, 0)
+        self.assertEqual(self.engine._mix_buffer.dtype, np.dtype("float32"))
+        self.assertEqual(self.engine._dither_scratch_buffer.dtype, np.dtype("float32"))
+
     def test_dithering_logic_parsing(self):
         """Verify string parsing for bit depth selection."""
         self.engine.dithering_enabled = True
@@ -1227,16 +1303,20 @@ class TestAudioErrorHandling(unittest.TestCase):
             self.assertEqual(status_dict["error_count"], 1, "Error count should be 1")
             self.assertEqual(status_dict["last_error"], error_msg, "Last error message should match")
 
-            # Verify reset behavior
+            # Reading is observational; explicit acknowledgement clears it.
             status_dict_2 = engine.get_status()
-            self.assertEqual(status_dict_2["error_count"], 0, "Error count should be reset")
-            self.assertIsNone(status_dict_2["last_error"], "Last error should be None after reset")
+            self.assertEqual(status_dict_2["error_count"], 1, "Error count should remain latched")
+            self.assertEqual(status_dict_2["last_error"], error_msg)
+
+            engine.clear_latched_audio_status()
+            status_dict_3 = engine.get_status()
+            self.assertEqual(status_dict_3["error_count"], 0)
+            self.assertIsNone(status_dict_3["last_error"])
 
     def test_concurrency_error_stats(self):
-        # We will run N iterations of error logging across multiple threads,
-        # and concurrently read/reset them using get_status.
-        # At the end, the sum of all returned error counts + any remaining error count in engine
-        # must equal the total number of errors logged.
+        # We will run N iterations of error logging across multiple threads and
+        # concurrently observe them using get_status. The latched count must be
+        # monotonic and eventually equal the total number of errors logged.
         import threading
         import time
 
@@ -1246,7 +1326,7 @@ class TestAudioErrorHandling(unittest.TestCase):
         loops_per_writer = 1000
         total_errors = num_writers * loops_per_writer
 
-        sum_retrieved_errors = 0
+        observed_counts = []
         reader_active = True
 
         # Mock class for sd.CallbackFlags
@@ -1274,10 +1354,9 @@ class TestAudioErrorHandling(unittest.TestCase):
                     time.sleep(0.0001)
 
             def reader():
-                nonlocal sum_retrieved_errors
                 while reader_active:
                     status = engine.get_status()
-                    sum_retrieved_errors += status["error_count"]
+                    observed_counts.append(status["error_count"])
                     time.sleep(0.0002)
 
             writer_threads = [threading.Thread(target=writer) for _ in range(num_writers)]
@@ -1295,11 +1374,12 @@ class TestAudioErrorHandling(unittest.TestCase):
             reader_active = False
             reader_thread.join()
 
-            # Read any final remaining errors
+            # Read the final latched total.
             final_status = engine.get_status()
-            sum_retrieved_errors += final_status["error_count"]
+            observed_counts.append(final_status["error_count"])
 
-            self.assertEqual(sum_retrieved_errors, total_errors, "No error counts should be lost due to concurrency")
+            self.assertEqual(final_status["error_count"], total_errors)
+            self.assertEqual(observed_counts, sorted(observed_counts))
 
 
 if __name__ == "__main__":

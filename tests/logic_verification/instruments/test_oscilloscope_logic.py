@@ -427,6 +427,18 @@ class TestOscilloscopeDataFlow(unittest.TestCase):
         self.assertTrue(np.all(self.osc.input_data[100 : self.osc.buffer_size] == 0))
         self.assertTrue(np.all(self.osc.input_data[self.osc.buffer_size + 100 :] == 0))
 
+    def test_process_queue_reports_display_transfer_overflow(self):
+        self.osc.transfer_buffer = self.osc.transfer_buffer.__class__(10, 2, dtype=np.float32)
+        self.osc.transfer_buffer.write(np.arange(30, dtype=np.float32).reshape(15, 2))
+
+        self.osc.process_queue()
+
+        self.assertEqual(self.osc.display_dropped_samples, 5)
+        self.assertEqual(self.osc.transfer_buffer._read_index, 15)
+
+        self.osc.process_queue()
+        self.assertEqual(self.osc.display_dropped_samples, 0)
+
 
 class TestOscilloscopeWidgetLogic(unittest.TestCase):
     """Tests for OscilloscopeWidget logic (UI interactions) using mocks."""
