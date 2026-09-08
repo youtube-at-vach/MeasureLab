@@ -1,60 +1,11 @@
-# CI Pre-checker Skill
+# CI Pre-checker Extension
 
-## 概要
+PR前の検証手順は [CI Pre-checkerスキル](../../.agents/skills/ci-prechecker/SKILL.md) を参照してください。
+環境構築とコマンドの詳細は [Tool Usage Guide](../../.agents/workflows/tool_usage.md) にまとめています。
 
-CI Pre-checker スキルは、Pull Request を送信する前に、ローカルでコードがCIをパスするか事前確認するために設計されています。
-このスキルは `.agent/skills/ci_prechecker/SKILL.md` で定義された仕様に基づいており、プロジェクトレベルで利用可能になりました。
+このディレクトリの [拡張定義](ci-prechecker.extension.js) は、コマンドと検証ワークフローを定義しています。
+利用できるコマンドは、使用するクライアントの拡張対応状況に依存します。
+拡張を使用しない場合も、上記ガイドから検証を実行できます。
 
-## 使用方法
-
-```bash
-/slash-command ci-prechecker
-```
-
-または、以下のコマンドを個別に実行：
-
-```bash
-.venv/bin/ruff check .
-.venv/bin/ruff format --check .
-.venv/bin/mypy src main_gui.py
-python3 scripts/check_trn_keys.py
-npx markdownlint-cli2 "**/*.md" "#node_modules"
-.venv/bin/pytest
-```
-
-## 実装の場所
-
-- **仕様書**: `.agent/skills/ci_prechecker/SKILL.md`
-- **プロジェクト拡張**: `.github/extensions/` (このファイル)
-
-## チェック項目
-
-このスキルが確認する項目：
-
-1. **Ruff (コードリンティング)**
-   - Pythonコードのスタイルとエラー
-   - フォーマット済みかどうかの確認
-   - Lint違反は必要に応じて自動修正
-
-2. **Mypy (型チェック)**
-   - Pythonの静的型チェック
-
-3. **翻訳キー整合性チェック**
-   - 多言語対応の翻訳キーの欠落確認
-
-4. **Markdown Lint**
-   - ドキュメントのフォーマット検証
-
-5. **Pytest (ユニットテスト)**
-   - すべてのテストの実行と検証
-
-フォーマット確認が失敗した場合は、まず今回変更したファイルが原因か確認し、必要なら変更したファイルだけをフォーマットします。`ruff format .`による全体フォーマットは自動的に実行しません。
-
-## 前提条件
-
-- Python 3.12+ と仮想環境 (`.venv`) が構成されていること
-- 依存パッケージが `requirements.txt` から導入されていること
-
-## 完了条件
-
-すべてのステップでエラーが出ないことが確認できれば、CIをパスする可能性が非常に高いです。
+拡張定義は翻訳チェックに `python3` を指定しています。手動で検証するときはガイドに従って
+`./.venv/bin/python` を使用し、CIと同じ厳格なチェックには `--strict` を指定してください。
