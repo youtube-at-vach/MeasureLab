@@ -953,7 +953,7 @@ class MainWindow(QMainWindow):
         callback_error_count = int(status.get("error_count", 0) or 0)
         if callback_error_count:
             self._callback_error_latched = True
-            self._callback_error_count += callback_error_count
+            self._callback_error_count = callback_error_count
             self._last_callback_error = status.get("last_error") or tr("Error")
 
         self._io_error_latched = bool(details) or self._callback_error_latched

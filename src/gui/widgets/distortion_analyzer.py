@@ -307,12 +307,11 @@ class DistortionAnalyzer(MeasurementModule):
         self.input_data = np.zeros(self.buffer_size)
         self.current_result = None
 
-        sample_rate = self.audio_engine.sample_rate
-
         def callback(indata, outdata, frames, time, status):
             # Generate Signal
             outdata.fill(0)
             if self.output_enabled:
+                sample_rate = self.audio_engine.sample_rate
                 # Check signal type
                 if self.signal_type == "smpte" or self.signal_type == "ccif":
                     sine_wave = self._generate_dual_tone(frames, sample_rate)

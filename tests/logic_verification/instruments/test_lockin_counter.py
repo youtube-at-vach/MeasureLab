@@ -46,6 +46,22 @@ class TestLockInFrequencyCounter(unittest.TestCase):
     def create_signal(self, freq, amplitude=1.0, phase=0.0):
         return amplitude * np.cos(2 * np.pi * freq * self.t + phase)
 
+    def test_loopback_generator_uses_current_engine_sample_rate(self):
+        self.counter.ref_mode = "loopback"
+        self.counter.ref_channel = 0
+        self.counter.start_analysis()
+        callback = self.mock_audio_engine.register_callback.call_args[0][0]
+        frames = 16
+        indata = np.zeros((frames, 2))
+        outdata = np.zeros((frames, 2))
+
+        self.mock_audio_engine.sample_rate = 96000
+        self.counter._nco_phase_rad = 0.0
+        callback(indata, outdata, frames, None, None)
+
+        expected = 0.5 * np.cos(np.arange(frames) * 2 * np.pi * self.counter.gen_frequency / 96000)
+        np.testing.assert_allclose(outdata[:, 0], expected)
+
     def test_frequency_calculation_steady_state(self):
         """Test accurate frequency deviation measurement."""
         # 1001 Hz signal (1 Hz deviation from 1000 Hz NCO)

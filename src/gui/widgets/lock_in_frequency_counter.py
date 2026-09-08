@@ -252,8 +252,6 @@ class LockInFrequencyCounter(MeasurementModule):
         self.distribution_timestamps.clear()
         self.distribution_revision = 0
 
-        sample_rate = self.audio_engine.sample_rate
-
         def callback(indata, outdata, frames, time_info, status):
             # Input Capture
             if indata.shape[1] >= 2:
@@ -274,6 +272,7 @@ class LockInFrequencyCounter(MeasurementModule):
             outdata.fill(0)
             if self.ref_mode == "loopback":
                 # Phase Accumulator for smooth frequency transitions
+                sample_rate = self.audio_engine.sample_rate
                 phase_increment = 2 * np.pi * self.gen_frequency / sample_rate
 
                 # Create phase array for this block

@@ -100,6 +100,25 @@ def test_fundamental_and_harmonics_signal_generation(generator_widget):
     np.testing.assert_allclose(outdata[:, 1], expected_total, atol=1e-6)
 
 
+def test_generator_uses_current_engine_sample_rate(generator_widget):
+    _widget, module, engine = generator_widget
+    module.gen_frequency = 1000.0
+    module.gen_amplitude = 1.0
+    module.gen_phase = 0.0
+    module.max_harmonic = 1
+    module.start_generation()
+    callback = engine.register_callback.call_args[0][0]
+    frames = 16
+    outdata = np.zeros((frames, 2))
+
+    engine.sample_rate = 96000
+    module._phase_gen = 0.0
+    callback(None, outdata, frames, None, None)
+
+    expected = np.sin(np.arange(frames) * 2 * np.pi * module.gen_frequency / 96000)
+    np.testing.assert_allclose(outdata[:, 0], expected)
+
+
 def test_compensation_signal_generation(generator_widget):
     widget, module, engine = generator_widget
 

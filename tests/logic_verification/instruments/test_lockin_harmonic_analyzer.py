@@ -237,6 +237,29 @@ def test_lockin_harmonic_analyzer_phase_continuity():
     analyzer.stop_analysis()
 
 
+def test_lockin_harmonic_generator_uses_current_engine_sample_rate():
+    engine = MockAudioEngine()
+    analyzer = LockInHarmonicAnalyzer(engine)
+    analyzer.gen_frequency = 1000.0
+    analyzer.gen_amplitude = 1.0
+    analyzer.output_enabled = True
+    analyzer.output_channel = 0
+    analyzer.start_analysis()
+    callback = list(engine.callbacks.values())[0]
+    frames = 16
+    indata = np.zeros((frames, 2))
+    outdata = np.zeros((frames, 2))
+
+    engine.sample_rate = 96000
+    analyzer._phase_gen = 0.0
+    callback(indata, outdata, frames, None, None)
+
+    expected = np.sin(np.arange(frames) * 2 * np.pi * analyzer.gen_frequency / 96000)
+    np.testing.assert_allclose(outdata[:, 0], expected)
+
+    analyzer.stop_analysis()
+
+
 def test_lockin_harmonic_analyzer_calibration_settling_check():
     engine = MockAudioEngine()
     analyzer = LockInHarmonicAnalyzer(engine)

@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
 
 from src.gui.widgets.distortion_analyzer import (
@@ -170,3 +171,23 @@ def test_start_sweep_defensively_restores_sine_state(qtbot, mock_audio_engine):
     analyzer.start_analysis.assert_called_once_with()
     worker_class.assert_called_once()
     worker_class.return_value.start.assert_called_once_with()
+
+
+def test_generator_uses_current_engine_sample_rate(mock_audio_engine):
+    analyzer = DistortionAnalyzer(mock_audio_engine)
+    analyzer.output_enabled = True
+    analyzer.signal_type = "sine"
+    analyzer.gen_frequency = 1000.0
+    analyzer.gen_amplitude = 1.0
+    analyzer.start_analysis()
+    callback = mock_audio_engine.register_callback.call_args[0][0]
+    frames = 16
+    indata = np.zeros((frames, 2))
+    outdata = np.zeros((frames, 2))
+
+    mock_audio_engine.sample_rate = 96000
+    analyzer._phase_accumulator = 0.0
+    callback(indata, outdata, frames, None, None)
+
+    expected = np.sin((np.arange(frames) + 1) * 2 * np.pi * analyzer.gen_frequency / 96000)
+    np.testing.assert_allclose(outdata[:, analyzer.output_channel], expected)

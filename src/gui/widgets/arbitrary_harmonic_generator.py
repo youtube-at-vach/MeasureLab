@@ -82,7 +82,6 @@ class ArbitraryHarmonicGenerator(MeasurementModule):
             return
         self.is_running = True
         self._phase_gen = 0.0
-        sample_rate = self.audio_engine.sample_rate
 
         def callback(indata, outdata, frames, time, status):
             if not self.is_running:
@@ -103,6 +102,7 @@ class ArbitraryHarmonicGenerator(MeasurementModule):
                     comp_enabled = self.compensation_enabled
                     comp_coeffs = self.adjusted_compensation_coeffs.copy()
 
+                sample_rate = self.audio_engine.sample_rate
                 phase_step = 2.0 * np.pi * f0 / sample_rate
                 wt = self._phase_gen + np.arange(frames) * phase_step
                 self._phase_gen = float((self._phase_gen + frames * phase_step) % (2.0 * np.pi))

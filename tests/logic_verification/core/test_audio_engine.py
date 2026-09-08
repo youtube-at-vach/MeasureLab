@@ -409,9 +409,15 @@ class TestAudioEngineBasicSettings(unittest.TestCase):
         self.assertEqual(status["error_count"], 5)
         self.assertEqual(status["last_error"], "Test Error")
 
-        # Verify stats are reset after get_status
-        self.assertEqual(self.engine.callback_error_count, 0)
-        self.assertIsNone(self.engine.last_callback_error)
+        # Callback failures remain observable until explicit acknowledgement.
+        repeated_status = self.engine.get_status()
+        self.assertEqual(repeated_status["error_count"], 5)
+        self.assertEqual(repeated_status["last_error"], "Test Error")
+
+        self.engine.clear_latched_audio_status()
+        cleared_status = self.engine.get_status()
+        self.assertEqual(cleared_status["error_count"], 0)
+        self.assertIsNone(cleared_status["last_error"])
 
     def test_xrun_status_is_latched_until_explicitly_cleared(self):
         self.engine.accumulated_status = _FakeCallbackFlags()
@@ -1297,16 +1303,20 @@ class TestAudioErrorHandling(unittest.TestCase):
             self.assertEqual(status_dict["error_count"], 1, "Error count should be 1")
             self.assertEqual(status_dict["last_error"], error_msg, "Last error message should match")
 
-            # Verify reset behavior
+            # Reading is observational; explicit acknowledgement clears it.
             status_dict_2 = engine.get_status()
-            self.assertEqual(status_dict_2["error_count"], 0, "Error count should be reset")
-            self.assertIsNone(status_dict_2["last_error"], "Last error should be None after reset")
+            self.assertEqual(status_dict_2["error_count"], 1, "Error count should remain latched")
+            self.assertEqual(status_dict_2["last_error"], error_msg)
+
+            engine.clear_latched_audio_status()
+            status_dict_3 = engine.get_status()
+            self.assertEqual(status_dict_3["error_count"], 0)
+            self.assertIsNone(status_dict_3["last_error"])
 
     def test_concurrency_error_stats(self):
-        # We will run N iterations of error logging across multiple threads,
-        # and concurrently read/reset them using get_status.
-        # At the end, the sum of all returned error counts + any remaining error count in engine
-        # must equal the total number of errors logged.
+        # We will run N iterations of error logging across multiple threads and
+        # concurrently observe them using get_status. The latched count must be
+        # monotonic and eventually equal the total number of errors logged.
         import threading
         import time
 
@@ -1316,7 +1326,7 @@ class TestAudioErrorHandling(unittest.TestCase):
         loops_per_writer = 1000
         total_errors = num_writers * loops_per_writer
 
-        sum_retrieved_errors = 0
+        observed_counts = []
         reader_active = True
 
         # Mock class for sd.CallbackFlags
@@ -1344,10 +1354,9 @@ class TestAudioErrorHandling(unittest.TestCase):
                     time.sleep(0.0001)
 
             def reader():
-                nonlocal sum_retrieved_errors
                 while reader_active:
                     status = engine.get_status()
-                    sum_retrieved_errors += status["error_count"]
+                    observed_counts.append(status["error_count"])
                     time.sleep(0.0002)
 
             writer_threads = [threading.Thread(target=writer) for _ in range(num_writers)]
@@ -1365,11 +1374,12 @@ class TestAudioErrorHandling(unittest.TestCase):
             reader_active = False
             reader_thread.join()
 
-            # Read any final remaining errors
+            # Read the final latched total.
             final_status = engine.get_status()
-            sum_retrieved_errors += final_status["error_count"]
+            observed_counts.append(final_status["error_count"])
 
-            self.assertEqual(sum_retrieved_errors, total_errors, "No error counts should be lost due to concurrency")
+            self.assertEqual(final_status["error_count"], total_errors)
+            self.assertEqual(observed_counts, sorted(observed_counts))
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 from unittest.mock import MagicMock
 from src.gui.widgets.impedance_analyzer import ImpedanceAnalyzerWidget, ImpedanceAnalyzer
 from src.core.audio_engine import AudioEngine
@@ -93,6 +94,25 @@ def test_impedance_analyzer_phase_continuity(impedance_module):
 
     # Verify signal2[0] matches expected_val with phase continuity
     assert abs(signal2[0] - expected_val) < 1e-12
+
+
+def test_impedance_generator_uses_current_engine_sample_rate(impedance_module):
+    impedance_module.audio_engine.register_callback = MagicMock(return_value=1)
+    impedance_module.gen_frequency = 1000.0
+    impedance_module.gen_amplitude = 1.0
+    impedance_module.output_channel = 0
+    impedance_module.start_analysis()
+    callback = impedance_module.audio_engine.register_callback.call_args[0][0]
+    frames = 16
+    indata = np.zeros((frames, 2))
+    outdata = np.zeros((frames, 2))
+
+    impedance_module.audio_engine.sample_rate = 96000
+    impedance_module._gen_phase = 0.0
+    callback(indata, outdata, frames, None, None)
+
+    expected = np.cos(np.arange(frames) * 2 * np.pi * impedance_module.gen_frequency / 96000)
+    np.testing.assert_allclose(outdata[:, 0], expected)
 
 
 def test_impedance_analyzer_widget_sweep_finishes_stops_analysis(qtbot, impedance_module):

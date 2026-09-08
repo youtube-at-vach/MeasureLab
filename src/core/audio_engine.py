@@ -1133,6 +1133,8 @@ class AudioEngine:
             self.accumulated_status = sd.CallbackFlags()
             self._latched_xrun_mask = 0
             self._latched_xrun_count = 0
+            self.callback_error_count = 0
+            self.last_callback_error = None
         if self.network_client is not None:
             self.network_client.stats.acknowledge_integrity_errors()
 
@@ -1165,15 +1167,14 @@ class AudioEngine:
             except Exception as exc:
                 self.logger.warning("Failed to read Remote Audio I/O provider status: %s", exc)
 
-        # Get and reset accumulated status and error stats thread-safely
+        # Snapshot status thread-safely. Callback failures remain latched until
+        # explicit acknowledgement so multiple observers cannot consume them.
         with self._status_lock:
             current_status_flags = self.accumulated_status
             self.accumulated_status = sd.CallbackFlags()
 
             error_count = self.callback_error_count
             last_error = str(self.last_callback_error) if self.last_callback_error else None
-            self.callback_error_count = 0
-            self.last_callback_error = None
 
             latched_xrun_mask = self._latched_xrun_mask
             latched_xrun_count = self._latched_xrun_count
