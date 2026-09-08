@@ -442,7 +442,7 @@ class RecorderPlayer(MeasurementModule):
 
         # Select channels based on input_mode
         if self.input_mode == "Stereo":
-            rec_data = indata.copy()
+            rec_data = indata
         elif self.input_mode == "Left":
             rec_data = indata[:, 0:1]  # Keep 2D
         elif self.input_mode == "Right":
@@ -452,7 +452,9 @@ class RecorderPlayer(MeasurementModule):
                 rec_data = np.zeros((frames, 1), dtype=indata.dtype)
 
         if self._write_queue:
-            self._write_queue.put(rec_data)
+            # AudioEngine lends callback input only for this invocation. The
+            # writer consumes data asynchronously, so enqueue an owned block.
+            self._write_queue.put(rec_data.copy())
         self.recorded_samples += frames
 
     def _handle_playback(self, outdata, frames):

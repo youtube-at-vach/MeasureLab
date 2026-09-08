@@ -69,6 +69,18 @@ class TestRecorderPlayerLogic(unittest.TestCase):
         np.testing.assert_array_equal(rec_data, expected)
         self.assertEqual(self.player.recorded_samples, frames)
 
+    def test_recording_queue_owns_selected_channel_data(self):
+        self.player.is_recording = True
+        self.player.input_mode = "Left"
+        indata = np.ones((8, 2), dtype=np.float32)
+        outdata = np.zeros_like(indata)
+
+        self.player.audio_callback(indata, outdata, len(indata), None, None)
+        indata.fill(2.0)
+
+        rec_data = self.player._write_queue.get()
+        np.testing.assert_array_equal(rec_data, np.ones((8, 1), dtype=np.float32))
+
     def test_recording_right(self):
         self.player.is_recording = True
         self.player.input_mode = "Right"
