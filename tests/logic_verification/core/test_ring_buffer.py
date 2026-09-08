@@ -66,6 +66,19 @@ def test_overflow_behavior():
     np.testing.assert_array_equal(read_data, expected)
 
 
+def test_overflow_read_reports_sample_position_and_loss():
+    rb = RingBuffer(10, 1)
+    rb.write(np.arange(8, dtype=np.float32).reshape(-1, 1))
+    rb.write(np.arange(8, 15, dtype=np.float32).reshape(-1, 1))
+
+    result = rb.read_with_metadata()
+
+    np.testing.assert_array_equal(result.data[:, 0], np.arange(5, 15, dtype=np.float32))
+    assert result.start_sample_index == 5
+    assert result.end_sample_index == 15
+    assert result.dropped_samples == 5
+
+
 def test_huge_write_overflow():
     # Test writing a single chunk larger than capacity
     rb = RingBuffer(10, 1)
@@ -77,6 +90,29 @@ def test_huge_write_overflow():
     # Should contain the last 10 samples (15 to 24)
     expected = np.arange(15, 25, dtype=np.float32).reshape(-1, 1)
     np.testing.assert_array_equal(read_data, expected)
+
+
+def test_huge_write_preserves_submitted_sample_position():
+    rb = RingBuffer(10, 1)
+    rb.write(np.arange(25, dtype=np.float32).reshape(-1, 1))
+
+    result = rb.read_with_metadata()
+
+    np.testing.assert_array_equal(result.data[:, 0], np.arange(15, 25, dtype=np.float32))
+    assert result.start_sample_index == 15
+    assert result.end_sample_index == 25
+    assert result.dropped_samples == 15
+
+
+def test_partial_reads_preserve_absolute_positions():
+    rb = RingBuffer(10, 1)
+    rb.write(np.arange(6, dtype=np.float32).reshape(-1, 1))
+
+    first = rb.read_with_metadata(2)
+    second = rb.read_with_metadata()
+
+    assert (first.start_sample_index, first.end_sample_index, first.dropped_samples) == (0, 2, 0)
+    assert (second.start_sample_index, second.end_sample_index, second.dropped_samples) == (2, 6, 0)
 
 
 def test_mono_broadcasting():

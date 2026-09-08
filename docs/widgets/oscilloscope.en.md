@@ -25,6 +25,7 @@ This widget supports common features of the Detachable Wrapper. Please refer to 
 * **Scale**: Changes the scale of the voltage axis (vertical axis).
     * **Left Scale / Right Scale**: Allows you to set the display magnification for each of the left and right channels. "1.0x" is the standard; setting it to a larger value, such as "2.0x", will vertically expand the display of the waveform.
 * **Channels**: Check boxes can be used to toggle the display/hide status of each channel (Left/Right).
+* **Display skipped ... samples**: Indicates that old samples were overwritten before the GUI consumed the display ring buffer. This is distinct from an audio-device XRUN. Check the currently displayed waveform and any missed trigger before repeating the measurement if needed.
 
 ## Trigger Settings
 

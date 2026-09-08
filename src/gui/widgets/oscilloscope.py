@@ -163,6 +163,7 @@ class Oscilloscope(MeasurementModule):
         # High-performance transfer buffer (Ring Buffer)
         self.transfer_buffer_size = 65536
         self.transfer_buffer = RingBuffer(self.transfer_buffer_size, 2, dtype=np.float32)
+        self.display_dropped_samples = 0
 
         self.callback_id = None
 
@@ -325,6 +326,7 @@ class Oscilloscope(MeasurementModule):
         self.write_index = 0
 
         self.transfer_buffer.reset()
+        self.display_dropped_samples = 0
 
         if self.persistence_mode:
             self.reset_persistence()
@@ -342,7 +344,9 @@ class Oscilloscope(MeasurementModule):
         self.callback_id = self.audio_engine.register_callback(callback)
 
     def process_queue(self):
-        new_data = self.transfer_buffer.read()
+        read_result = self.transfer_buffer.read_with_metadata()
+        new_data = read_result.data
+        self.display_dropped_samples = read_result.dropped_samples
         n_frames = len(new_data)
         if n_frames == 0:
             return
@@ -818,6 +822,13 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
         self.clipping_warning_badge.setVisible(False)
         badge_layout.addWidget(self.clipping_warning_badge)
 
+        self.display_gap_badge = QLabel()
+        self.display_gap_badge.setStyleSheet(
+            "QLabel { color: #ffffff; background-color: #b05a00; font-weight: bold; padding: 2px 6px; border-radius: 3px; font-size: 10px; }"
+        )
+        self.display_gap_badge.setVisible(False)
+        badge_layout.addWidget(self.display_gap_badge)
+
         left_layout.addWidget(self.badge_group)
 
         # Measurements Panel
@@ -1261,6 +1272,7 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
             self.timer.start()
             self.toggle_btn.setText(tr("Stop"))
             self.clipping_warning_badge.setVisible(False)
+            self.display_gap_badge.setVisible(False)
         else:
             self.module.stop_analysis()
             self.timer.stop()
@@ -1633,6 +1645,9 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
 
         is_clipped = self.module.clipping_latched_l or self.module.clipping_latched_r
         self.clipping_warning_badge.setVisible(is_clipped)
+        dropped_samples = self.module.display_dropped_samples
+        self.display_gap_badge.setText(tr("Display skipped {0} samples").format(dropped_samples))
+        self.display_gap_badge.setVisible(dropped_samples > 0)
 
         if data is not None and len(data) > 0:
             current_len = len(data)
