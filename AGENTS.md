@@ -1,166 +1,81 @@
 ---
-description: Instructions for running development tools (pytest, ruff, mypy)
+description: MeasureLabで作業するエージェントの共通ルールと参照先
 ---
 
 # Agent Guide
 
-このリポジトリで作業するエージェント向けのガイドです。
-セットアップ、起動、テスト、構成、および開発時の注意点をまとめます。
+MeasureLabの作業では、まずこのガイドで共通ルールを確認し、必要な手順だけを参照してください。
+コマンドはリポジトリのルートで実行します。
 
-## 言語 / ローカライズ方針
+## 作業の進め方と参照先
 
-- GUI 表示文字列は **`tr()` で囲って** 多言語対応を前提に実装してください。
-- 翻訳ファイルは `src/assets/lang/*.json` にあります（`en.json` が基本）。
-- 翻訳キーの整合チェックは `scripts/check_trn_keys.py` を使えます。
+1. Gitの状態と対象コードを確認し、ユーザーの変更や無関係な変更を上書きしない。
+2. 変更に関係する設計資料と、作業に対応するスキルを読む。
+3. 実装・文書を更新し、変更に応じた検証を実行する。
+4. PR前のチェックを行い、変更内容・検証結果・未確認事項を報告する。
 
-## 実行環境
+| 確認したいこと | 参照先 |
+| --- | --- |
+| 環境構築、起動、テスト、UIサイズ検証 | [Tool Usage Guide](.agents/workflows/tool_usage.md) |
+| PR前の検証順序 | [CI Pre-checker](.agents/skills/ci-prechecker/SKILL.md) |
+| 製品の方向性 | [Current Direction](guide/CURRENT_DIRECTION.md) |
+| 計測器としての設計 | [設計ガイドライン](guide/MEASUREMENT_INSTRUMENT_DESIGN_GUIDELINES.md) |
+| UIの設計 | [UI/UX原則](guide/UIUX-Cognitive-Principles.md) |
+| 一般的な開発・貢献方法 | [開発ガイド](docs/development.en.md)、[Contributing](CONTRIBUTING.md) |
 
-- OS: Linux
-- Python: 3.12+ 想定（README 記載）
-- 推奨 Python 実行環境: `./.venv/bin/python`
+## 作業別スキル
 
-## セットアップ (venv)
+依頼された作業に対応するスキルを参照してください。各スキルの対象範囲と完了条件に従います。
 
-1. venv 作成
-   - `python3 -m venv .venv`
-   - `./.venv/bin/python -m pip install -U pip`
-2. 依存導入
-   - `./.venv/bin/python -m pip install -r requirements.txt`
+| 作業 | スキル |
+| --- | --- |
+| 提案をIssue化してBacklogに登録 | [agent-proposal-backlog-issue](.agents/skills/agent-proposal-backlog-issue/SKILL.md) |
+| 小規模な改善をIssue化してReadyに登録 | [agent-simple-ready-issue](.agents/skills/agent-simple-ready-issue/SKILL.md) |
+| Ready Issueの実装計画を作成 | [agent-ready-task-planner](.agents/skills/agent-ready-task-planner/SKILL.md) |
+| Working Issueを実装してPRを作成 | [agent-working-task-implement](.agents/skills/agent-working-task-implement/SKILL.md) |
+| 翻訳漏れ・キー不整合を修正 | [multilingual-translator](.agents/skills/multilingual-translator/SKILL.md) |
+| リリースを準備 | [release-manager](.agents/skills/release-manager/SKILL.md) |
 
-> [!NOTE]
-> `PyWavelets` は pip パッケージ名ですが、Python での import 名は `pywt` です。
+## 開発時の共通ルール
 
-## ツール利用ガイド (Tool Usage)
+* Pythonは3.12以降。Python・Pytest・Ruff・Mypyは `.venv/bin/` の実行ファイルを使用する。
+* GUI表示文字列は `tr()` で囲む。翻訳は `src/assets/lang/*.json` にあり、`en.json` を基本とする。
+* 作業終了時は毎回 `./.venv/bin/ruff check .` と `./.venv/bin/ruff format --check .` を実行する。
+* フォーマット確認が失敗したら、今回変更したファイルが原因か確認し、必要なファイルだけを整形する。全体フォーマットは専用PRに分ける。
+* Markdownは見出し・コードブロック前後に空行を置き、行末の空白を除く。リストマーカーと番号順を統一し、裸のURLは `<https://example.com>` のように囲む。変更後はMarkdown lintを実行する。
 
-ほとんどの開発ツールでは、`.venv/bin/` にある実行ファイルを使用する必要があります。
+### UIサイズの上限
 
-- `pytest` -> `./.venv/bin/pytest` (テスト実行)
-- `ruff`   -> `./.venv/bin/ruff` (リンター/フォーマッター)
-- `mypy`   -> `./.venv/bin/mypy` (型チェック)
+小さい画面でもコントロールがはみ出さないよう、`minimumSizeHint` を次の上限内に収めます。
 
-### Ruff format の運用
+| 対象 | 幅 × 高さ |
+| --- | --- |
+| MainWindow | 1400 × 740 px |
+| 各モジュールのコンテンツWidget | 1180 × 690 px |
 
-エージェントの作業終了時には、次の2つを毎回実行します。
+検証には各プラットフォームのQt既定フォントを使います。幅の上限にはLinuxとmacOSの
+フォント差・長い翻訳を考慮した約80pxのバッファを含めています。
 
-```bash
-./.venv/bin/ruff check .
-./.venv/bin/ruff format --check .
-```
+レイアウト・翻訳の変更時、新規モジュールのリリース前、CI相当の最終確認では、
+[UIサイズ検証](.agents/workflows/tool_usage.md#uiサイズ検証)を全言語で実行してください。
+上限を超えた場合は、`QScrollArea`、タブ、折りたたみ可能なグループへの整理や、
+最小サイズ・サイズポリシーの見直しで対応します。
 
-`ruff format .` による全体フォーマットは、不要な大量差分を避けるため通常の作業では実行しません。
-`ruff format --check .` が失敗した場合は、まず今回変更したファイルが原因か確認し、必要な場合に限り変更したファイルだけをフォーマットします。
-全体フォーマットが必要な場合は、機能変更と分けた専用PRで実施します。
+## コードを探すときの入口
 
-### VS Code タスク
+| ファイル | 役割 |
+| --- | --- |
+| `main_gui.py` | 言語設定の読み込み、スプラッシュ中の事前ロード、GUI起動 |
+| `src/gui/main_window.py` | サイドバー、モジュール切替・遅延ロード |
+| `src/core/audio_engine.py` | `sounddevice` を使うAudio I/O |
+| `src/core/config_manager.py` | `config.json` の管理 |
+| `src/core/localization.py` | `LocalizationManager` と `tr()` |
 
-VS Code から `pytest (venv)` タスクを利用可能です。
+## Pull Request
 
-### スラッシュコマンド
+* PRはReady for review（`draft=false`）で作成する。ユーザーが明示的に指定した場合だけDraftにする。
+* `gh pr create` に通常は `--draft` を付けず、作成後にDraftではないことを確認する。
+* 検証が失敗した場合は原因を確認する。未実施・失敗した検証を成功として報告しない。
 
-```bash
-/slash-command test
-/slash-command lint
-/slash-command typecheck
-```
-
-## 起動方法
-
-### GUI (MeasureLab 本体)
-
-- `./.venv/bin/python main_gui.py`
-
-起動時の流れ:
-
-- `main_gui.py`: `ConfigManager` で言語設定を読み、スプラッシュ表示中にモジュールを事前ロード。
-- `src/gui/main_window.py`: サイドバーでモジュールを切り替え。モジュールは基本的に遅延ロードされます。
-
-## テスト
-
-最小スモークテスト:
-
-- `./.venv/bin/python -m pytest -q tests/logic_verification/core/test_config_manager.py tests/logic_verification/core/test_utils.py`
-
-GUI メインウィンドウ周辺のみを確認する場合:
-
-- `./.venv/bin/python -m pytest -q tests/logic_verification/gui/test_main_window_activity.py`
-
-全体テスト:
-
-- `./.venv/bin/python -m pytest -q`
-
-## UIサイズ制限と検証スクリプト (UI Size Limits & Verification)
-
-画面サイズが小さいPC（ノートPCや低解像度ディスプレイ）でメニューやコントロールが画面外にはみ出ることを防止するため、UIの最大サイズ制限（上限）を設けています。
-
-### サイズ上限基準 (Size Constraints)
-
-- **MainWindow 最小サイズ (minimumSizeHint)**: 最大 **1400x740** px
-- **各モジュールコンテンツ (Widget minimumSizeHint)**: 最大 **1180x690** px
-    - ※Linux CI とmacOSで生じるフォントメトリクス差、および長い翻訳を考慮し、幅には約80pxのプラットフォーム差分バッファを含めています。高さ上限は従来どおり維持します。
-- **多言語レイアウト検証フォント**: **各プラットフォームのQt既定フォント**
-    - 固定ピクセルサイズはLinux CIとmacOSでフォントメトリクスの差が大きく、実際の標準表示以上にレイアウトを拡張するため、全言語を各環境の既定フォントで検証します。
-
-### 検証スクリプト (Check Script)
-
-開発時にレイアウトを変更した場合や、新規モジュールをリリースする前には、以下のスクリプトを実行してサイズ上限に収まっているかを確認してください（QApplicationやC言語拡張の競合を防ぐため、pytestとは独立したスクリプトになっています）。
-
-```bash
-./.venv/bin/python scripts/check_ui_size_limits.py
-```
-
-- 全モジュールが安全範囲内であれば `Verification Passed!` となり、終了コード `0` を返します（ログコンテキスト削減のため、パスしたモジュールの個別出力は省略されます）。
-- 超過したモジュールが存在する場合、該当するFAILモジュールの詳細エラー内容を赤字で出力して終了コード `1` を返します。
-- 引数なしではCIと同じく全言語をチェックします。実装中の素早い確認では、英語だけを1パスでチェックする `--quick` を使えます。
-
-```bash
-./.venv/bin/python scripts/check_ui_size_limits.py --quick
-```
-
-`--quick` はローカル開発用の短縮チェックです。CI相当の最終確認や翻訳・レイアウトを変更した場合は、必ず引数なしで全言語をチェックしてください。
-
-#### レイアウトがサイズ上限を超過した場合の対策
-
-1. コントロール数が多い場合、ウィジェットのレイアウトを `QScrollArea` でラップする。
-2. 多くのコントロールを `QTabWidget` や、折りたたみ可能な `QGroupBox` に整理・分割する。
-3. サブコンポーネントに対する `minimumWidth` や `minimumHeight` の設定値を削減し、伸縮可能なサイズポリシーを設定する。
-
-## 主要ディレクトリ / コンポーネント
-
-- `src/gui/main_window.py`: 画面全体（サイドバー・遅延ロード）。
-- `src/core/audio_engine.py`: Audio I/O (`sounddevice` ベース)。
-- `src/core/config_manager.py`: `config.json` の管理。
-- `src/core/localization.py`: `LocalizationManager` と `tr()`。
-
-## Linux オーディオ注意点
-
-README にもある通り、JACK / PipeWire の利用が推奨される場合があります。
-`ConfigManager` の `pipewire_jack_resident` 設定を確認してください。
-
-## デバッグ用の環境変数
-
-- `MEASURELAB_DEBUG_WINDOWS=1`: ウィンドウ挙動ログ。
-- `MEASURELAB_DEBUG_WINDOWS_TRACE=1`: ウィンドウ出現時のスタックトレース。
-
-## ドキュメント表記ルール (Markdown Lint)
-
-このプロジェクトでは `markdownlint-cli2` を使用しています。
-
-- **空白・改行**: 行末の不要な空白削除、見出しやコードブロック前後の空行。
-- **リスト**: マーカーの統一、番号付きリストの順序。
-- **URL**: `<https://example.com>` のように `<>` で囲む。
-
-チェックコマンド:
-
-```bash
-npx markdownlint-cli2 "**/*.md" "#node_modules"
-```
-
-## Pull Request 運用
-
-- PR は常に Ready for review（`draft=false`）で作成する。
-- ユーザーが明示的にドラフトを指定した場合に限り、Draft PR を作成する。
-- `gh pr create` を使用する場合は `--draft` を付けない。
-- PR 作成後、Draft ではないことを確認する。
-
----
-このファイルは「確認できた事実」に基づき、常に最新の状態に保つようにしてください。
+このガイドと参照先は、コード・設定で確認できた事実に基づいて更新してください。
+共通ルールはこのファイル、実行コマンドはTool Usage Guide、作業固有の手順は各スキルに記載します。
