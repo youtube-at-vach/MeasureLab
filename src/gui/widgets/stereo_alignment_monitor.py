@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
 )
 from scipy.signal import get_window
 
-from src.core.audio_engine import AudioEngine
+from src.core.audio_engine import AudioEngine, register_analysis_callback
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
@@ -95,7 +95,7 @@ class StereoAlignmentMonitor(MeasurementModule):
         sr = self.audio_engine.sample_rate
         self.freqs = np.fft.rfftfreq(self.fft_size, d=1.0 / sr)[:-1]
 
-        self.callback_id = self.audio_engine.register_callback(self._callback)
+        self.callback_id = register_analysis_callback(self.audio_engine, self._callback)
 
     def stop_analysis(self):
         if self.is_running:

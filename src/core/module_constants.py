@@ -45,6 +45,7 @@ MODULE_RESPONSE_VIEWER = "Response Viewer"
 MODULE_FEEDFORWARD_COMPENSATOR = "Feedforward Compensator"
 MODULE_NONLINEAR_RESPONSE_ANALYZER = "Nonlinear Response Analyzer"
 MODULE_LOCKIN_MODELER = "Lock-in Modeler"
+MODULE_IO_BRIDGE = "I/O Bridge"
 
 # List of all module keys in the order they should appear in the UI
 ALL_MODULE_KEYS = [
@@ -90,6 +91,7 @@ ALL_MODULE_KEYS = [
     MODULE_RESPONSE_VIEWER,
     MODULE_FEEDFORWARD_COMPENSATOR,
     MODULE_NONLINEAR_RESPONSE_ANALYZER,
+    MODULE_IO_BRIDGE,
 ]
 
 EXPERIMENTAL_MODULE_KEYS: list[str] = [

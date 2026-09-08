@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.core.audio_engine import AudioEngine
+from src.core.audio_engine import AudioEngine, register_analysis_callback
 from src.core.localization import tr
 from src.core.utils import format_si
 from src.measurement_modules.base import MeasurementModule
@@ -108,7 +108,7 @@ class RawTimeSeries(MeasurementModule):
 
             outdata.fill(0)
 
-        self.callback_id = self.audio_engine.register_callback(callback)
+        self.callback_id = register_analysis_callback(self.audio_engine, callback)
 
     def stop_analysis(self):
         if not self.is_running:

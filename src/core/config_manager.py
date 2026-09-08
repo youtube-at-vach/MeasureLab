@@ -1,6 +1,7 @@
 import locale
 import json
 import logging
+import math
 import os
 import sys
 import threading
@@ -46,6 +47,11 @@ class NetworkAudioConfigDict(TypedDict, total=False):
     discoverable: bool
 
 
+class IOBridgeConfigDict(TypedDict, total=False):
+    route: str
+    gain_db: float
+
+
 # Default configuration used for initialization and validation
 DEFAULT_CONFIG = {
     "audio": {
@@ -88,6 +94,10 @@ DEFAULT_CONFIG = {
         "retransmission": True,
         "bind_host": "0.0.0.0",
         "discoverable": True,
+    },
+    "io_bridge": {
+        "route": "physical",
+        "gain_db": -20.0,
     },
 }
 
@@ -386,6 +396,20 @@ class ConfigManager:
         if isinstance(discoverable, bool):
             target["discoverable"] = discoverable
 
+    def _merge_io_bridge_config(self, config: dict, loaded_config: dict) -> None:
+        """Merge persistent I/O Bridge preferences; the running state is never saved."""
+        loaded = loaded_config.get("io_bridge", {})
+        if not isinstance(loaded, dict):
+            self.logger.warning("'io_bridge' section is invalid; using defaults.")
+            return
+        target = config["io_bridge"]
+        route = loaded.get("route")
+        if isinstance(route, str) and route in {"physical", "remote_output"}:
+            target["route"] = route
+        gain_db = loaded.get("gain_db")
+        if isinstance(gain_db, (int, float)) and not isinstance(gain_db, bool) and math.isfinite(float(gain_db)):
+            target["gain_db"] = max(-60.0, min(0.0, float(gain_db)))
+
     def _merge_with_defaults(self, loaded_config):
         if not isinstance(loaded_config, dict):
             self.logger.warning("Config file root is not a dict; falling back to defaults.")
@@ -406,6 +430,7 @@ class ConfigManager:
         self._merge_screenshot_config(config, loaded_config)
         self._merge_measurement_console_config(config, loaded_config)
         self._merge_network_audio_config(config, loaded_config)
+        self._merge_io_bridge_config(config, loaded_config)
 
         return config
 
@@ -463,6 +488,19 @@ class ConfigManager:
         merged = self._default_config()
         self._merge_network_audio_config(merged, candidate)
         self.config["network_audio"] = merged["network_audio"]
+        self.save_config()
+
+    def get_io_bridge_config(self) -> IOBridgeConfigDict:
+        """Return saved Bridge route and level preferences (always starts OFF)."""
+        config = self.config.get("io_bridge", {})
+        return cast(IOBridgeConfigDict, deepcopy(config if isinstance(config, dict) else {}))
+
+    def set_io_bridge_config(self, bridge_config: IOBridgeConfigDict) -> None:
+        """Validate and save Bridge preferences without persisting its ON state."""
+        candidate = {"io_bridge": dict(bridge_config)}
+        merged = self._default_config()
+        self._merge_io_bridge_config(merged, candidate)
+        self.config["io_bridge"] = merged["io_bridge"]
         self.save_config()
 
     def get_pipewire_jack_resident(self) -> bool:

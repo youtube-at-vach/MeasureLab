@@ -20,6 +20,7 @@ from src.core.module_constants import (
     MODULE_GONIOMETER,
     MODULE_HRTF_PLAYER,
     MODULE_IMPEDANCE_ANALYZER,
+    MODULE_IO_BRIDGE,
     MODULE_LINEARITY_ANALYZER,
     MODULE_LOCK_IN_AMPLIFIER,
     MODULE_LOCK_IN_FREQUENCY_COUNTER,
@@ -570,5 +571,13 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         compact=COMPACT_DEFERRED,
         comparison=COMPARISON_DEFERRED,
         console_primary_action=NO_CONSOLE_ACTION,
+    ),
+    MODULE_IO_BRIDGE: _registration(
+        "src.gui.widgets.io_bridge",
+        "IOBridge",
+        split=NO_INDEPENDENT_DISPLAY,
+        compact=SUPPORTED,
+        comparison=NON_TRACE_COMPARISON,
+        console_primary_action=console_action("toggle_btn"),
     ),
 }

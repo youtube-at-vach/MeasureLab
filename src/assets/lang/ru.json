@@ -2443,5 +2443,15 @@
     "✔ HIGH FIDELITY": "✔ HIGH FIDELITY",
     "❌ ALTERED": "❌ ALTERED",
     "❌ HIGH DISTORTION": "❌ HIGH DISTORTION",
-    "⬆︎Update available: {0}": "⬆︎Доступно обновление: {0}"
+    "⬆︎Update available: {0}": "⬆︎Доступно обновление: {0}",
+    "I/O Bridge": "Мост ввода-вывода",
+    "Physical": "Физический",
+    "Remote Output": "Удалённый выход",
+    "Output route": "Маршрут выхода",
+    "STARTING": "ЗАПУСК",
+    "STOPPING": "ОСТАНОВКА",
+    "Unavailable": "Недоступно",
+    "Choose the Bridge output route. The route can only change while OFF.": "Выберите маршрут выхода моста. Изменить его можно только в состоянии ВЫКЛ.",
+    "Bridge send level relative to full scale.": "Уровень передачи моста относительно полной шкалы.",
+    "Monitor the analysis input locally or send local input to Remote Audio I/O.": "Слушайте аналитический вход локально или отправляйте локальный вход в удалённый аудио-ввод/вывод."
 }

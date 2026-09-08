@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src.core.analysis import AudioCalc, get_cached_window
-from src.core.audio_engine import AudioEngine
+from src.core.audio_engine import AudioEngine, register_analysis_callback
 from src.core.fft_manager import fft_manager
 from src.core.localization import tr
 from src.gui.styles import MONOSPACE_FONT_FAMILY
@@ -227,7 +227,7 @@ class NoiseProfiler(MeasurementModule):
 
             outdata.fill(0)
 
-        self.callback_id = self.audio_engine.register_callback(callback)
+        self.callback_id = register_analysis_callback(self.audio_engine, callback)
 
     def stop_analysis(self):
         if self.is_running:

@@ -23,7 +23,7 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
 )
 
-from src.core.audio_engine import AudioEngine
+from src.core.audio_engine import AudioEngine, register_analysis_callback
 from src.core.frequency_analysis import calculate_frequency_metrics, calculate_allan_deviation
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
@@ -225,7 +225,7 @@ class FrequencyCounter(MeasurementModule):
 
             outdata.fill(0)
 
-        self.callback_id = self.audio_engine.register_callback(callback)
+        self.callback_id = register_analysis_callback(self.audio_engine, callback)
 
     def stop_analysis(self):
         if self.is_running:

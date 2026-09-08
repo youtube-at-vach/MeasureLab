@@ -23,7 +23,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.core.audio_engine import AudioEngine
+from src.core.audio_engine import AudioEngine, register_analysis_callback
 from src.core.localization import tr
 from src.core.utils import format_si
 from src.measurement_modules.base import MeasurementModule
@@ -146,7 +146,7 @@ class TransientAnalyzer(MeasurementModule):
             self._target_samples = int(max(1, round(duration_s * self.fs)))
             self._triggered = not self.trigger_enabled
             self._prev_trigger_sample = None
-        self.callback_id = self.audio_engine.register_callback(self._audio_callback)
+        self.callback_id = register_analysis_callback(self.audio_engine, self._audio_callback)
 
     def stop_recording(self):
         callback_id_to_unregister = None

@@ -2443,5 +2443,15 @@
     "✔ HIGH FIDELITY": "✔ HIGH FIDELITY",
     "❌ ALTERED": "❌ ALTERED",
     "❌ HIGH DISTORTION": "❌ HIGH DISTORTION",
-    "⬆︎Update available: {0}": "⬆︎有可用更新: {0}"
+    "⬆︎Update available: {0}": "⬆︎有可用更新: {0}",
+    "I/O Bridge": "I/O桥接",
+    "Physical": "物理输出",
+    "Remote Output": "远程输出",
+    "Output route": "输出路径",
+    "STARTING": "启动中",
+    "STOPPING": "停止中",
+    "Unavailable": "不可用",
+    "Choose the Bridge output route. The route can only change while OFF.": "选择桥接输出路径。只有在关闭时才能更改路径。",
+    "Bridge send level relative to full scale.": "相对于满量程的桥接发送电平。",
+    "Monitor the analysis input locally or send local input to Remote Audio I/O.": "在本地监听分析输入，或将本地输入发送到远程音频 I/O。"
 }

@@ -2443,5 +2443,15 @@
     "✔ HIGH FIDELITY": "✔ HIGH FIDELITY",
     "❌ ALTERED": "❌ ALTERED",
     "❌ HIGH DISTORTION": "❌ HIGH DISTORTION",
-    "⬆︎Update available: {0}": "⬆︎Update verfügbar: {0}"
+    "⬆︎Update available: {0}": "⬆︎Update verfügbar: {0}",
+    "I/O Bridge": "I/O-Bridge",
+    "Physical": "Physisch",
+    "Remote Output": "Remote-Ausgang",
+    "Output route": "Ausgangsweg",
+    "STARTING": "STARTET",
+    "STOPPING": "STOPPT",
+    "Unavailable": "Nicht verfügbar",
+    "Choose the Bridge output route. The route can only change while OFF.": "Ausgangsweg der Bridge wählen. Er kann nur im Zustand AUS geändert werden.",
+    "Bridge send level relative to full scale.": "Bridge-Sendepegel relativ zum Vollbereich.",
+    "Monitor the analysis input locally or send local input to Remote Audio I/O.": "Analyseeingang lokal überwachen oder lokalen Eingang an Remote Audio I/O senden."
 }

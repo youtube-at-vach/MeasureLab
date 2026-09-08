@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src.core.analysis import get_cached_window
-from src.core.audio_engine import AudioEngine
+from src.core.audio_engine import AudioEngine, register_analysis_callback
 from src.core.fft_manager import fft_manager, get_dpss_windows
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
@@ -127,7 +127,7 @@ class SpectrumAnalyzer(MeasurementModule):
             self.audio_queue.put(new_data)
             outdata.fill(0)
 
-        self.callback_id = self.audio_engine.register_callback(callback)
+        self.callback_id = register_analysis_callback(self.audio_engine, callback)
 
     def process_queue(self):
         while not self.audio_queue.empty():

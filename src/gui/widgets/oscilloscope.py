@@ -25,7 +25,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src.core.analysis import AudioCalc
-from src.core.audio_engine import AudioEngine
+from src.core.audio_engine import AudioEngine, register_analysis_callback
 from src.core.comparison_manager import AxisMetadata, CalibrationInfo, ComparisonTrace
 from src.core.localization import tr
 from src.core.ring_buffer import RingBuffer
@@ -339,7 +339,7 @@ class Oscilloscope(MeasurementModule):
             self.transfer_buffer.write(indata)
             outdata.fill(0)
 
-        self.callback_id = self.audio_engine.register_callback(callback)
+        self.callback_id = register_analysis_callback(self.audio_engine, callback)
 
     def process_queue(self):
         new_data = self.transfer_buffer.read()

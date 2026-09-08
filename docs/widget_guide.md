@@ -13,6 +13,7 @@ MeasureLab に搭載されている多数のウィジェットを、用途ごと
 | あなたがやりたいこと | おすすめのウィジェット |
 | :--- | :--- |
 | **まず音を出したい / 信号源がほしい** | [Signal Generator](widgets/signal_generator.md) |
+| **解析音声をローカルでモニターしたい / ローカル入力をRemote Audio I/Oへ送りたい** | [I/O Bridge](widgets/io_bridge.md) |
 | **複雑な波形を合成したい / 特定の高調波をブレンドした信号を作りたい** | [Arbitrary Harmonic Generator](widgets/arbitrary_harmonic_generator.md) |
 | **周波数成分（スペクトル）を見たい** | [Spectrum Analyzer](widgets/spectrum_analyzer.md) |
 | **特定の周波数を極めて高い分解能で確認したい** | [Lock-in Spectrum Finder](widgets/lockin_spectrum_finder.md) |
@@ -181,6 +182,9 @@ MeasureLab に搭載されている多数のウィジェットを、用途ごと
 ## 🛠️ ユーティリティ
 
 その他の便利な機能です。
+
+* **[I/O Bridge](widgets/io_bridge.md)**
+    * 現在の解析入力を設定済みの物理出力でモニターするか、接続済みのRemote Audio I/Oプロバイダーへローカル物理入力を送出します。起動時はOFFで、保守的な初期送出レベルと上限付きバッファを使用します。
 
 * **[Recorder & Player](widgets/recorder_player.md)**
     * シンプルな録音・再生機能です。

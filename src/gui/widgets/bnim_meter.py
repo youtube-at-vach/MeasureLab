@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
 )
 from scipy.ndimage import gaussian_filter
 
-from src.core.audio_engine import AudioEngine
+from src.core.audio_engine import AudioEngine, register_analysis_callback
 from src.core.localization import tr
 from src.core.fft_manager import fft_manager
 from src.measurement_modules.base import MeasurementModule
@@ -124,7 +124,7 @@ class BNIMMeter(MeasurementModule):
             -2.0 * np.pi * self.frequencies[:, None].astype(np.float32, copy=False) * delays_s[None, :]
         ).astype(np.float32, copy=False)
 
-        self.callback_id = self.audio_engine.register_callback(self._callback)
+        self.callback_id = register_analysis_callback(self.audio_engine, self._callback)
 
     def stop_analysis(self):
         if self.is_running:

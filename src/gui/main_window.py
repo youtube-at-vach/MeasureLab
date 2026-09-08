@@ -25,6 +25,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.config_manager import ConfigManager
 from src.core.localization import get_manager, tr
 from src.core.module_constants import ALL_MODULE_KEYS, EXPERIMENTAL_MODULE_KEYS
+from src.core.module_constants import MODULE_IO_BRIDGE
 from src.gui.module_registry import MODULE_REGISTRY
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
@@ -146,6 +147,7 @@ _CLASS_LOADERS: dict[tuple[str, str], Callable[[], type[Any]]] = {
     ("src.gui.widgets.nonlinear_response_analyzer", "NonlinearResponseAnalyzer"): lambda: (
         import_module("src.gui.widgets.nonlinear_response_analyzer").NonlinearResponseAnalyzer
     ),
+    ("src.gui.widgets.io_bridge", "IOBridge"): lambda: import_module("src.gui.widgets.io_bridge").IOBridge,
     ("src.gui.widgets.settings", "SettingsWidget"): lambda: import_module("src.gui.widgets.settings").SettingsWidget,
     ("src.gui.widgets.remote_audio_io", "RemoteAudioIOWidget"): lambda: (
         import_module("src.gui.widgets.remote_audio_io").RemoteAudioIOWidget
@@ -625,7 +627,10 @@ class MainWindow(QMainWindow):
         try:
             registration = MODULE_REGISTRY[key]
             cls = _load_module_class(key)
-            module = cls(self.audio_engine)
+            if key == MODULE_IO_BRIDGE:
+                module = cls(self.audio_engine, self.config_manager)
+            else:
+                module = cls(self.audio_engine)
             self.modules[module_index] = module
 
             widget = module.get_widget()

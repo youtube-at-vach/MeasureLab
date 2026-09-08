@@ -28,7 +28,7 @@ from PyQt6.QtWidgets import (
 )
 from scipy.ndimage import gaussian_filter
 
-from src.core.audio_engine import AudioEngine
+from src.core.audio_engine import AudioEngine, register_analysis_callback
 from src.core.localization import tr
 from src.gui.styles import STYLE_TOGGLE_BTN_DARK, STYLE_TOGGLE_BTN_LIGHT
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
@@ -262,7 +262,7 @@ class Goniometer(MeasurementModule):
         self.heatmap.fill(0.0)
 
         try:
-            callback_id = self.audio_engine.register_callback(self._callback)
+            callback_id = register_analysis_callback(self.audio_engine, self._callback)
         except Exception as exc:
             self.callback_id = None
             self.is_running = False

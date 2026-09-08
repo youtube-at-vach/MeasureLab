@@ -69,6 +69,7 @@ plugins:
             キャリブレーション: Calibration
             UI概要: UI Overview
             設定: Settings
+            I/Oブリッジ: I/O Bridge
             ウィジット: Widgets
             基本: Basics
             信号生成と入出力: Signal Generation & I/O
@@ -159,6 +160,7 @@ nav:
           - ようこそ: widgets/welcome.md
           - 設定: widgets/settings.md
           - リモート音声I/O: widgets/remote_audio_io.md
+          - I/Oブリッジ: widgets/io_bridge.md
       - 信号生成と入出力:
           - 信号発生器: widgets/signal_generator.md
           - 任意高調波ジェネレーター: widgets/arbitrary_harmonic_generator.md

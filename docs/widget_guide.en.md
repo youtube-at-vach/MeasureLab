@@ -13,6 +13,7 @@ Checklist to find the best tool for "what you want to do" quickly.
 | What you want to do | Recommended Widget |
 | :--- | :--- |
 | **Output sound / Need a signal source** | [Signal Generator](widgets/signal_generator.en.md) |
+| **Monitor analysis audio or send local input to Remote Audio I/O** | [I/O Bridge](widgets/io_bridge.en.md) |
 | **Synthesize complex waveforms / Blend specific harmonics** | [Arbitrary Harmonic Generator](widgets/arbitrary_harmonic_generator.en.md) |
 | **View frequency components (spectrum)** | [Spectrum Analyzer](widgets/spectrum_analyzer.en.md) |
 | **Check specific frequencies with extremely high resolution** | [Lock-in Spectrum Finder](widgets/lockin_spectrum_finder.en.md) |
@@ -175,6 +176,9 @@ Handles stereo image and spatial sound reverberation.
 ## 🛠️ Utilities
 
 Other useful functions.
+
+* **[I/O Bridge](widgets/io_bridge.en.md)**
+    * Monitors the current analysis input through the configured physical output, or sends local physical input to a connected Remote Audio I/O provider. It starts OFF and uses a bounded buffer with a conservative default send level.
 
 * **[Recorder & Player](widgets/recorder_player.en.md)**
     * Simple recording and playback function.

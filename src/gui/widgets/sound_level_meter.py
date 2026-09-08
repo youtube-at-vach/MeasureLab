@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.core.audio_engine import AudioEngine
+from src.core.audio_engine import AudioEngine, register_analysis_callback
 from src.core.localization import tr
 from src.core.analysis import AudioCalc
 from src.measurement_modules.base import MeasurementModule
@@ -279,7 +279,7 @@ class SoundLevelMeter(MeasurementModule):
 
         # Setup callback
         try:
-            self.callback_id = self.audio_engine.register_callback(self.callback)
+            self.callback_id = register_analysis_callback(self.audio_engine, self.callback)
         except Exception as e:
             logger.error(f"Failed to start audio stream: {e}")
             self.is_running = False

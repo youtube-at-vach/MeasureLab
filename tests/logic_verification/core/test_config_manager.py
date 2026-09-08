@@ -157,6 +157,18 @@ class TestConfigManager(unittest.TestCase):
         self.assertEqual(invalid["port"], 40100)
         self.assertEqual(invalid["jitter_ms"], 100)
 
+    def test_io_bridge_config_is_validated_and_persisted(self):
+        cm = self.ConfigManager(config_filename=self.config_path)
+
+        self.assertEqual(cm.get_io_bridge_config(), {"route": "physical", "gain_db": -20.0})
+        cm.set_io_bridge_config({"route": "remote_output", "gain_db": -6.5})
+        self.assertEqual(cm.get_io_bridge_config(), {"route": "remote_output", "gain_db": -6.5})
+
+        cm.set_io_bridge_config({"route": "invalid", "gain_db": 10_000})
+        invalid = cm.get_io_bridge_config()
+        self.assertEqual(invalid["route"], "physical")
+        self.assertEqual(invalid["gain_db"], 0.0)
+
     def test_coreaudio_conversion_quality(self):
         cm = self.ConfigManager(config_filename=self.config_path)
 

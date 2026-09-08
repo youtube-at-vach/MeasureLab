@@ -685,6 +685,21 @@ class NetworkClientStream:
         self._stop_event = threading.Event()
         self._sample_time_origin: float | None = None
 
+    def _io_bridge(self):
+        """Return the engine-owned bridge when the callback is AudioEngine's."""
+        owner = getattr(self.callback, "__self__", None)
+        bridge = getattr(owner, "io_bridge", None)
+        return bridge
+
+    def _playback_mode(self) -> str:
+        bridge = self._io_bridge()
+        if bridge is not None:
+            if bridge.is_physical_active():
+                return "disabled"
+            if bridge.is_remote_output_active():
+                return "bridge"
+        return "normal"
+
     def start(self) -> None:
         if self.active:
             return
@@ -694,7 +709,7 @@ class NetworkClientStream:
         self._stop_event.clear()
         self._sample_time_origin = None
         self.client.stats.set_state("priming")
-        self.client.set_playback_active(True)
+        self.client.set_playback_active(self._playback_mode() != "disabled")
         self._thread = threading.Thread(target=self._run, name="NetworkAudioCallback", daemon=True)
         self._thread.start()
 
@@ -740,13 +755,21 @@ class NetworkClientStream:
             except Exception as exc:
                 self.client._fail(f"network audio callback failed: {exc}")
                 break
-            if self.client.duplex:
+            playback_mode = self._playback_mode()
+            if playback_mode == "bridge":
+                bridge = self._io_bridge()
+                if bridge is not None:
+                    bridge.fill_remote_output(outdata)
+            if self.client.duplex and playback_mode != "disabled":
                 self.client.enqueue_playback(expected + self.client.playout_delay_frames, outdata)
             elapsed = time.thread_time() - started
             load = elapsed / interval if interval > 0 else 0.0
             self.cpu_load = 0.9 * self.cpu_load + 0.1 * load
             expected += self.blocksize
         self.active = False
+        bridge = self._io_bridge()
+        if bridge is not None and not self.client.connected and not self._stop_event.is_set():
+            bridge.fail("Remote Audio I/O connection was lost")
 
     def stop(self) -> None:
         self.active = False
@@ -755,6 +778,8 @@ class NetworkClientStream:
             self._thread.join(timeout=1.0)
         self._thread = None
         self.client.set_playback_active(False)
+        if not self.client.connected and self._io_bridge() is not None:
+            self._io_bridge().fail("Remote Audio I/O connection was lost")
         if self.client.connected:
             self.client.stats.set_state("connected")
 

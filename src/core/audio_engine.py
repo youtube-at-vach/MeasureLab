@@ -1,4 +1,5 @@
 import logging
+import inspect
 import threading
 
 import numpy as np
@@ -6,11 +7,30 @@ import sounddevice as sd
 
 from src.core.calibration import CalibrationManager
 from src.core.errors import AudioEngineReservedError
+from src.core.io_bridge import IOBridgeController
 from src.core.network_audio.client import NetworkAudioClient, NetworkClientStream
 from src.core.vst_dut import VstDut
 
 
 import time
+
+
+def register_analysis_callback(audio_engine, callback):
+    """Register an analysis-only callback while keeping lightweight test doubles compatible.
+
+    Older module test doubles expose ``register_callback(callback)`` only.  The
+    production engine advertises the output-intent keyword explicitly, so use
+    it when the bound method supports it and preserve the old call shape for
+    compatible doubles.
+    """
+    register = audio_engine.register_callback
+    try:
+        parameters = inspect.signature(register).parameters
+    except (TypeError, ValueError):
+        parameters = {}
+    if "output_intent" in parameters:
+        return register(callback, output_intent="analysis")
+    return register(callback)
 
 
 class _DummyTime:
@@ -189,6 +209,7 @@ class AudioEngine:
         self._exclusive_audio_role = None
         self._exclusive_status_provider = None
         self._backend_transition = False
+        self._callback_output_intents = {}  # id -> "analysis" or "output"
 
         # Status Monitoring
         # Loopback State
@@ -231,12 +252,18 @@ class AudioEngine:
         self.coreaudio_change_device_parameters = True
         self.coreaudio_conversion_quality = "min"
 
+        # One controller is owned by the engine.  Widgets only request state
+        # changes through this object and never own an audio stream directly.
+        self.io_bridge = IOBridgeController(self)
+
     def _get_dtype(self):
         """Returns the appropriate numpy dtype based on precision settings."""
         return "float64" if self.audio_engine_64bit else "float32"
 
     def _begin_local_backend_change(self, network_error: str) -> None:
         """Serialize local backend changes against provider/client transitions."""
+        if self.io_bridge.is_active():
+            self.io_bridge.stop("I/O Bridge stopped because the audio backend changed")
         with self.lock:
             if self._backend_transition:
                 raise RuntimeError("Audio backend is already changing")
@@ -480,6 +507,7 @@ class AudioEngine:
 
     def configure_network_client(self, client: NetworkAudioClient) -> None:
         """Switch the engine to an already-connected remote audio session."""
+        self.io_bridge.stop("I/O Bridge stopped before connecting Remote Audio I/O")
         with self.lock:
             if not client.connected:
                 raise RuntimeError("Remote audio client is not connected")
@@ -524,6 +552,7 @@ class AudioEngine:
 
     def disconnect_network_client(self, *, force: bool = False) -> None:
         """Disconnect remote audio and restore the previous local settings."""
+        self.io_bridge.stop("I/O Bridge stopped before disconnecting Remote Audio I/O")
         with self.lock:
             if self._backend_transition:
                 raise RuntimeError("Audio backend is already changing")
@@ -585,21 +614,31 @@ class AudioEngine:
         with self.lock:
             return self._exclusive_owner is not None or self._backend_transition
 
-    def register_callback(self, callback, *, owner=None):
+    def register_callback(self, callback, *, owner=None, output_intent: str = "output"):
         """
         Registers a callback for audio processing.
         Returns a callback_id.
         Callback signature: callback(indata, outdata, frames, time, status)
         """
+        if output_intent not in {"analysis", "output"}:
+            raise ValueError("output_intent must be 'analysis' or 'output'")
+        # Read bridge ownership before taking the engine lock.  The bridge
+        # controller takes its own lock before inspecting callback intents;
+        # keeping this order consistent avoids a lock inversion during a
+        # simultaneous Remote Output start and callback registration.
+        bridge_owns_output = self.io_bridge.is_remote_output_active()
         with self.lock:
             if self._backend_transition:
                 raise RuntimeError("Audio backend is changing")
             if self._exclusive_owner is not None and owner is not self._exclusive_owner:
                 raise AudioEngineReservedError("Audio engine is reserved by Remote Audio I/O")
+            if bridge_owns_output and output_intent != "analysis":
+                raise AudioEngineReservedError("Stop I/O Bridge before starting an audio output")
             cid = self.next_callback_id
             self.next_callback_id += 1
             self.callbacks[cid] = callback
             self._callback_owners[cid] = owner
+            self._callback_output_intents[cid] = output_intent
             self._cached_callbacks = list(self.callbacks.values())
 
             # Start stream if not running
@@ -612,6 +651,7 @@ class AudioEngine:
                     # when no callback can ever run.
                     del self.callbacks[cid]
                     del self._callback_owners[cid]
+                    del self._callback_output_intents[cid]
                     self._cached_callbacks = list(self.callbacks.values())
                     raise RuntimeError("Audio stream failed to start")
 
@@ -627,6 +667,7 @@ class AudioEngine:
             if callback_id in self.callbacks:
                 del self.callbacks[callback_id]
                 owner = self._callback_owners.pop(callback_id, None)
+                self._callback_output_intents.pop(callback_id, None)
                 self._cached_callbacks = list(self.callbacks.values())
                 unregistered = True
 
@@ -667,6 +708,7 @@ class AudioEngine:
                 # Security/QA guard: Fill with silence instead of falling back to physical mic inputs on first frame
                 logical_in.fill(0)
             return logical_in
+
         else:
             # Hardware Input logic
             in_mode = self._current_in_mode
@@ -695,6 +737,39 @@ class AudioEngine:
                     logical_in[:, 0] = indata[:, 0]
                     logical_in[:, 1] = indata[:, 0]
             return logical_in
+
+    def get_local_audio_config(self) -> dict[str, object]:
+        """Return the local device/format even while Remote Audio I/O is active."""
+        with self.lock:
+            saved = self._local_audio_state
+            if saved is None:
+                return {
+                    "input_device": self.input_device,
+                    "output_device": self.output_device,
+                    "sample_rate": self.sample_rate,
+                    "block_size": self.block_size,
+                    "input_channels": self.input_channel_mode,
+                    "output_channels": self.output_channel_mode,
+                    "offline_mode": self.offline_mode,
+                }
+            (
+                input_device,
+                output_device,
+                sample_rate,
+                block_size,
+                input_channels,
+                output_channels,
+                offline_mode,
+            ) = saved
+        return {
+            "input_device": input_device,
+            "output_device": output_device,
+            "sample_rate": sample_rate,
+            "block_size": block_size,
+            "input_channels": input_channels,
+            "output_channels": output_channels,
+            "offline_mode": offline_mode,
+        }
 
     def _mix_clients(self, logical_in, frames, time, status, active_callbacks, logical_out_ch):
         """Iterates active clients, executes callbacks, and mixes output."""
@@ -829,6 +904,11 @@ class AudioEngine:
         use_loopback = self.loopback or self.offline_mode
         logical_in = self._prepare_logical_input(indata, frames, use_loopback)
 
+        # The bridge receives the exact logical analysis input before any
+        # measurement callback or output mixing can modify a buffer.  This is
+        # intentionally before the no-callback early return.
+        self.io_bridge.push_physical_input(logical_in)
+
         # 2. Prepare Output Configuration
         out_mode = self._current_out_mode
         logical_out_ch = 2 if out_mode == self.MODE_STEREO else 1
@@ -841,6 +921,13 @@ class AudioEngine:
             return
 
         mix_buffer = self._mix_clients(logical_in, frames, time, status, active_callbacks, logical_out_ch)
+
+        # Local Input -> Remote owns the remote playback path.  Analysis
+        # callbacks can continue to observe the remote input, but their output
+        # buffers must never be sent back to the provider.
+        if self.io_bridge.should_suppress_master_output():
+            outdata.fill(0)
+            return
 
         # 4. Update Loopback
         # Capture the pristine, full-precision output BEFORE applying dithering/quantization
@@ -1036,6 +1123,9 @@ class AudioEngine:
 
     def stop_stream(self, *, owner=None, force: bool = False):
         """Stops the master audio stream."""
+        bridge = getattr(self, "io_bridge", None)
+        if bridge is not None and owner is not bridge and bridge.is_active() and not force:
+            bridge.stop("I/O Bridge stopped with the audio stream")
         with self.lock:
             if not force and self._exclusive_owner is not None and owner is not self._exclusive_owner:
                 raise AudioEngineReservedError("Audio engine is reserved by Remote Audio I/O")
@@ -1167,6 +1257,7 @@ class AudioEngine:
             "latched_xrun_count": latched_xrun_count,
             "error_count": error_count,
             "last_error": last_error,
+            "io_bridge": self.io_bridge.snapshot().as_dict(),
         }
 
     def get_input_latency(self):

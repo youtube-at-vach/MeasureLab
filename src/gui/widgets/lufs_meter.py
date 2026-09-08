@@ -20,7 +20,7 @@ from PyQt6.QtWidgets import (
 )
 from scipy import signal
 
-from src.core.audio_engine import AudioEngine
+from src.core.audio_engine import AudioEngine, register_analysis_callback
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
@@ -465,7 +465,7 @@ class LufsMeter(MeasurementModule):
 
         self.is_running = True
         try:
-            self.callback_id = self.audio_engine.register_callback(callback)
+            self.callback_id = register_analysis_callback(self.audio_engine, callback)
         except Exception:
             self.callback_id = None
             self.is_running = False

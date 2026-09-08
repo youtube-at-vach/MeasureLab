@@ -2443,5 +2443,15 @@
     "✔ HIGH FIDELITY": "✔ HIGH FIDELITY",
     "❌ ALTERED": "❌ ALTERED",
     "❌ HIGH DISTORTION": "❌ HIGH DISTORTION",
-    "⬆︎Update available: {0}": "⬆︎업데이트 가능: {0}"
+    "⬆︎Update available: {0}": "⬆︎업데이트 가능: {0}",
+    "I/O Bridge": "I/O 브리지",
+    "Physical": "물리 출력",
+    "Remote Output": "원격 출력",
+    "Output route": "출력 경로",
+    "STARTING": "시작 중",
+    "STOPPING": "중지 중",
+    "Unavailable": "사용할 수 없음",
+    "Choose the Bridge output route. The route can only change while OFF.": "브리지 출력 경로를 선택합니다. OFF 상태에서만 경로를 변경할 수 있습니다.",
+    "Bridge send level relative to full scale.": "풀 스케일 기준 브리지 전송 레벨입니다.",
+    "Monitor the analysis input locally or send local input to Remote Audio I/O.": "분석 입력을 로컬에서 모니터링하거나 로컬 입력을 원격 오디오 I/O로 전송합니다."
 }
