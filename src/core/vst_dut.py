@@ -12,7 +12,7 @@ from multiprocessing.synchronize import Event
 from pathlib import Path
 from queue import Queue
 import threading
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 import numpy as np
 from numpy.typing import NDArray
@@ -162,6 +162,7 @@ class VstDut:
         self._editor_close: Event | None = None
         self.editor_open = False
         self.editor_error = ""
+        self.before_change: Callable[[], None] | None = None
         self.path = ""
         self.name = ""
         self.parameters: dict[str, float] = {}
@@ -179,6 +180,8 @@ class VstDut:
         return bool(self.path)
 
     def load(self, path: str, plugin_name: str | None = None) -> None:
+        if self.before_change is not None:
+            self.before_change()
         path = str(Path(path).expanduser().resolve())
         if Path(path).suffix.lower() != ".vst3" or not Path(path).exists():
             raise ValueError("Select an existing .vst3 file or bundle.")
@@ -251,6 +254,8 @@ class VstDut:
             self._process = None
 
     def close(self) -> None:
+        if self.before_change is not None:
+            self.before_change()
         with self._lock:
             self._close_locked()
             self.path = self.name = self.error = ""

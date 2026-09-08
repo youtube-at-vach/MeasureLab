@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from PyQt6.QtCore import QTimer
+from PyQt6.QtCore import QTimer, Qt
+from PyQt6.QtGui import QStandardItemModel
 from PyQt6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
@@ -74,12 +75,12 @@ class IOBridge(MeasurementModule):
         return value
 
     def start(self) -> bool:
-        started = self.controller.start()
+        started = self.controller.start(background=True)
         self.is_running = self.controller.snapshot().active
         return started
 
     def stop(self, reason: str | None = None) -> None:
-        self.controller.stop(reason)
+        self.controller.stop(reason, background=True)
         self.is_running = False
 
     def toggle(self, enabled: bool) -> bool:
@@ -209,15 +210,26 @@ class IOBridgeWidget(QWidget, CompactableWidgetInterface):
         availability = self.module.controller.route_availability(snapshot.route)
         self._updating = True
         try:
+            route_model = self.route_combo.model()
+            for index in range(self.route_combo.count()):
+                route = self.module.controller.route_availability(self.route_combo.itemData(index))
+                if isinstance(route_model, QStandardItemModel):
+                    item = route_model.item(index)
+                    if item is not None:
+                        item.setEnabled(route.available)
+                self.route_combo.setItemData(index, route.reason or "", Qt.ItemDataRole.ToolTipRole)
             route_index = self.route_combo.findData(snapshot.route.value)
             if route_index >= 0 and route_index != self.route_combo.currentIndex():
                 self.route_combo.setCurrentIndex(route_index)
             if abs(self.gain_spin.value() - snapshot.gain_db) > 1e-6:
                 self.gain_spin.setValue(snapshot.gain_db)
-            self.toggle_btn.setChecked(snapshot.active)
-            self.toggle_btn.setText(tr("ON") if snapshot.active else tr("OFF"))
+            self.toggle_btn.setChecked(snapshot.state in (IOBridgeState.STARTING, IOBridgeState.ON))
+            self.toggle_btn.setText(self._state_text(snapshot.state))
             transition = snapshot.state in (IOBridgeState.STARTING, IOBridgeState.STOPPING)
-            self.toggle_btn.setEnabled(not transition)
+            self.toggle_btn.setEnabled(
+                snapshot.state is not IOBridgeState.STOPPING
+                and (snapshot.state in (IOBridgeState.STARTING, IOBridgeState.ON) or availability.available)
+            )
             self.route_combo.setEnabled(not snapshot.active and not transition)
             self.gain_spin.setEnabled(not transition)
         finally:
@@ -226,6 +238,8 @@ class IOBridgeWidget(QWidget, CompactableWidgetInterface):
         self.status_label.setText(self._state_text(snapshot.state))
         self.input_label.setText(snapshot.input_label or availability.input_label or "-")
         self.output_label.setText(snapshot.output_label or availability.output_label or "-")
+        if snapshot.muted:
+            self.status_label.setText(self._state_text(snapshot.state) + " · " + tr("Mute"))
         reason = snapshot.reason
         if reason is None and not availability.available:
             reason = availability.reason

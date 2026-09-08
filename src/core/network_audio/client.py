@@ -694,8 +694,6 @@ class NetworkClientStream:
     def _playback_mode(self) -> str:
         bridge = self._io_bridge()
         if bridge is not None:
-            if bridge.is_physical_active():
-                return "disabled"
             if bridge.is_remote_output_active():
                 return "bridge"
         return "normal"

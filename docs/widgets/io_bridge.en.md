@@ -15,6 +15,8 @@ The bridge never changes the configured devices implicitly. It uses the current 
 
 The route selector is disabled while the bridge is running. Remote input is not sent back to Remote Output, and an active output-producing measurement callback prevents the Local Input → Remote route from starting.
 
+Local input Left/Right selects the physical capture terminal. Mono input is duplicated for stereo Remote output; stereo input is averaged for mono output. Physical output Left/Right selects the playback terminal and leaves the unused terminal silent. Different local and Remote sample rates are converted to the destination rate.
+
 ## Operation
 
 1. Configure the required devices and format in Settings. Connect Remote Audio I/O first when using a remote route.

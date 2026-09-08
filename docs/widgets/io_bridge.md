@@ -15,6 +15,8 @@ I/O Bridgeは、計測中の音声を一操作で受け渡す常設ウィジェ�
 
 動作中は経路を変更できません。Remote入力をRemote Outputへ送り返すことはなく、出力を生成する計測callbackが動作中の場合はローカル入力→Remote経路を開始できません。
 
+ローカル入力のLeft/Rightは物理入力端子を選びます。選択したmono入力はRemoteのstereo出力へ複製し、stereo入力をmono出力へ渡す場合は左右を平均します。Physical出力のLeft/Rightは送出端子を選び、使わない端子は無音にします。ローカルとRemoteのサンプルレートが異なる場合も、送出先のレートへ変換します。
+
 ## 操作
 
 1. Settingsで必要なデバイスとフォーマットを設定します。リモート経路では先にRemote Audio I/Oへ接続します。

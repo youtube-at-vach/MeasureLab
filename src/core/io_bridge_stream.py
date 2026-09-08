@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable
 import logging
 import threading
+import time
 from typing import Any, Literal
 
 import numpy as np
@@ -44,8 +45,7 @@ class BoundedAudioBuffer:
             self._size = 0
 
     def available_frames(self) -> int:
-        with self._lock:
-            return self._size
+        return self._size
 
     def write(self, block: np.ndarray) -> bool:
         """Write a block without waiting; return False when old data was dropped."""
@@ -58,19 +58,23 @@ class BoundedAudioBuffer:
         if frames == 0:
             return True
 
-        with self._lock:
+        if not self._lock.acquire(blocking=False):
+            self._dropped_frames += frames
+            return False
+        try:
             overflow = False
             if frames >= self.capacity_frames:
                 # Keeping the newest samples is the safest recovery from a
                 # stalled producer.  Never replay a stale block after a full
                 # queue.
+                dropped = self._size + frames - self.capacity_frames
                 array = array[-self.capacity_frames :]
                 frames = self.capacity_frames
                 self._read_index = 0
                 self._write_index = 0
                 self._size = 0
-                overflow = True
-                self._dropped_frames += int(array.shape[0])
+                overflow = dropped > 0
+                self._dropped_frames += dropped
             elif self._size + frames > self.capacity_frames:
                 drop = self._size + frames - self.capacity_frames
                 self._read_index = (self._read_index + drop) % self.capacity_frames
@@ -84,8 +88,9 @@ class BoundedAudioBuffer:
                 np.copyto(self._data[: frames - first], array[first:], casting="unsafe")
             self._write_index = (self._write_index + frames) % self.capacity_frames
             self._size += frames
-            np.nan_to_num(self._data, copy=False, nan=0.0, posinf=0.0, neginf=0.0)
             return not overflow
+        finally:
+            self._lock.release()
 
     def read_into(self, destination: np.ndarray) -> int:
         """Read into an existing array and zero-fill any unavailable frames."""
@@ -96,7 +101,9 @@ class BoundedAudioBuffer:
         if frames == 0:
             return 0
 
-        with self._lock:
+        if not self._lock.acquire(blocking=False):
+            return 0
+        try:
             count = min(frames, self._size)
             first = min(count, self.capacity_frames - self._read_index)
             np.copyto(destination[:first], self._data[self._read_index : self._read_index + first], casting="unsafe")
@@ -105,6 +112,8 @@ class BoundedAudioBuffer:
             self._read_index = (self._read_index + count) % self.capacity_frames
             self._size -= count
             return count
+        finally:
+            self._lock.release()
 
 
 class StreamingLinearResampler:
@@ -141,7 +150,7 @@ class StreamingLinearResampler:
         limit = float(combined.shape[0] - 1)
         if self._position >= limit:
             self._pending = combined[-1:, :].copy()
-            self._position = 0.0
+            self._position -= limit
             return np.empty((0, self.channels), dtype=np.float32)
 
         count = int(np.floor((limit - self._position) / self.step)) + 1
@@ -196,6 +205,8 @@ class IOBridgeStream:
         source_channels: int,
         channel_mode: str = "stereo",
         capacity_ms: int = 200,
+        target_rate: int | None = None,
+        hardware_channels: int | None = None,
         transform: Callable[[np.ndarray], None] | None = None,
         on_error: Callable[[str], None] | None = None,
         extra_settings=None,
@@ -211,15 +222,25 @@ class IOBridgeStream:
         self.source_channels = int(source_channels)
         self.channel_mode = str(channel_mode)
         self.capacity_ms = int(capacity_ms)
-        capacity = max(self.block_size * 4, round(self.sample_rate * self.capacity_ms / 1000))
+        self.target_rate = int(target_rate or sample_rate)
+        self.hardware_channels = int(hardware_channels or channels)
+        self.target_frames = max(1, round(self.target_rate * 0.04))
+        self._primed = False
+        self._fade_position = 0
+        self._fade_frames = max(1, round(self.target_rate * 0.01))
+        self._fade_indices = np.arange(1, self._fade_frames + 1, dtype=np.float32) / self._fade_frames
+        capacity = max(self.block_size * 4, round(self.target_rate * self.capacity_ms / 1000))
         source_capacity = max(self.block_size * 4, round(self.source_rate * self.capacity_ms / 1000))
         self._source_buffer = BoundedAudioBuffer(source_capacity, self.source_channels)
         self._destination_buffer = BoundedAudioBuffer(capacity, self.channels)
-        self._resampler = StreamingLinearResampler(self.source_rate, self.sample_rate, self.source_channels)
+        self._resampler = StreamingLinearResampler(self.source_rate, self.target_rate, self.source_channels)
         self._worker_wakeup = threading.Event()
         self._stop_event = threading.Event()
         self._worker: threading.Thread | None = None
         self._stream: Any | None = None
+        self._started = False
+        self._last_input_at = time.monotonic()
+        self._consecutive_statuses = 0
         self._transform = transform
         self._on_error = on_error
         self._extra_settings = extra_settings
@@ -253,7 +274,7 @@ class IOBridgeStream:
                     device=self.device,
                     samplerate=self.sample_rate,
                     blocksize=self.block_size,
-                    channels=self.channels,
+                    channels=self.hardware_channels,
                     dtype="float32",
                     callback=self._output_callback,
                     extra_settings=self._extra_settings,
@@ -263,12 +284,14 @@ class IOBridgeStream:
                     device=self.device,
                     samplerate=self.sample_rate,
                     blocksize=self.block_size,
-                    channels=self.channels,
+                    channels=self.hardware_channels,
                     dtype="float32",
                     callback=self._input_callback,
                     extra_settings=self._extra_settings,
                 )
             self._stream.start()
+            self._last_input_at = time.monotonic()
+            self._started = True
         except Exception as exc:
             self._report_error(f"failed to start bridge {self.direction} stream: {exc}")
             self.stop()
@@ -287,17 +310,36 @@ class IOBridgeStream:
         return accepted
 
     def read_into(self, destination: np.ndarray) -> int:
+        if not self._primed:
+            if self.buffered_frames < max(self.target_frames, len(destination)):
+                destination.fill(0)
+                return 0
+            self._primed = True
         count = self._destination_buffer.read_into(destination)
+        fade = min(count, self._fade_frames - self._fade_position)
+        if fade > 0:
+            destination[:fade] *= self._fade_indices[self._fade_position : self._fade_position + fade, None]
+            self._fade_position += fade
         if count < destination.shape[0]:
             self.underrun_count += 1
+            fade_out = min(count, self._fade_frames)
+            if fade_out:
+                destination[count - fade_out : count] *= self._fade_indices[fade_out - 1 :: -1, None] - (
+                    1.0 / self._fade_frames
+                )
+            self._primed = False
+            self._fade_position = 0
         return count
 
     def clear(self) -> None:
         self._source_buffer.clear()
         self._destination_buffer.clear()
         self._resampler.reset()
+        self._primed = False
+        self._fade_position = 0
 
     def stop(self) -> None:
+        self._started = False
         self._stop_event.set()
         self._worker_wakeup.set()
         stream = self._stream
@@ -305,9 +347,13 @@ class IOBridgeStream:
         if stream is not None:
             try:
                 stream.stop()
-                stream.close()
             except Exception as exc:
-                self.logger.warning("Failed to close bridge %s stream: %s", self.direction, exc)
+                self.logger.warning("Failed to stop bridge %s stream: %s", self.direction, exc)
+            finally:
+                try:
+                    stream.close()
+                except Exception as exc:
+                    self.logger.warning("Failed to close bridge %s stream: %s", self.direction, exc)
         worker = self._worker
         if worker is not None and worker is not threading.current_thread():
             worker.join(timeout=1.0)
@@ -316,39 +362,68 @@ class IOBridgeStream:
 
     def _worker_loop(self) -> None:
         while not self._stop_event.is_set():
+            if self._started and (not self.active or time.monotonic() - self._last_input_at > 2.0):
+                self._report_error("Bridge device stopped or audio input was lost.")
+                return
             count = self._source_buffer.read_into(self._scratch)
             if count == 0:
                 self._worker_wakeup.wait(0.01)
                 self._worker_wakeup.clear()
                 continue
+            self._last_input_at = time.monotonic()
             try:
-                converted = self._resampler.process(self._scratch[:count])
-                if converted.shape[0] == 0:
-                    continue
-                mapped = map_audio_channels(converted, self.channels, self.channel_mode)
-                self._destination_buffer.write(mapped)
+                self._convert_block(self._scratch[:count])
             except (TypeError, ValueError, FloatingPointError) as exc:
                 self._report_error(f"bridge conversion failed: {exc}")
                 self.clear()
 
+    def _convert_block(self, block: np.ndarray) -> None:
+        # Correct independent device clocks using the destination fill.
+        # The small bounded correction affects only the bridge copy.
+        error = (self.buffered_frames - self.target_frames) / self.target_rate
+        correction = float(np.clip(error / 10.0, -0.002, 0.002))
+        self._resampler.step = self.source_rate / self.target_rate * (1.0 + correction)
+        np.nan_to_num(block, copy=False, nan=0.0, posinf=0.0, neginf=0.0)
+        converted = self._resampler.process(block)
+        if converted.shape[0] == 0:
+            return
+        if self.direction == "input" and self.channel_mode in {"left", "right"}:
+            converted = map_audio_channels(converted, 1, self.channel_mode)
+        mapped = map_audio_channels(converted, self.channels)
+        if not self._destination_buffer.write(mapped):
+            self.overrun_count += 1
+
     def _input_callback(self, indata, frames, _time_info, status) -> None:
-        if status:
-            self._report_error(f"bridge input status: {status}")
+        self._record_status(status)
         if self._stop_event.is_set():
             return
         self.push(np.asarray(indata, dtype=np.float32)[: int(frames), : self.source_channels])
 
     def _output_callback(self, outdata, frames, _time_info, status) -> None:
         outdata.fill(0)
-        if status:
-            self._report_error(f"bridge output status: {status}")
+        self._record_status(status)
         if self._stop_event.is_set():
             return
-        self.read_into(outdata[: int(frames), : self.channels])
+        output = outdata[: int(frames), : self.channels]
+        if self.channel_mode == "right":
+            output = outdata[: int(frames), 1:2]
+        self.read_into(output)
         np.nan_to_num(outdata, copy=False, nan=0.0, posinf=0.0, neginf=0.0)
         if self._transform is not None:
             self._transform(outdata)
         np.clip(outdata, -1.0, 1.0, out=outdata)
+
+    def _record_status(self, status) -> None:
+        if status:
+            self._consecutive_statuses += 1
+            if self.direction == "input":
+                self.overrun_count += 1
+            else:
+                self.underrun_count += 1
+            if self._consecutive_statuses >= 20:
+                self._report_error(f"Persistent bridge {self.direction} status: {status}")
+        else:
+            self._consecutive_statuses = 0
 
     def _report_error(self, message: str) -> None:
         self.last_error = str(message)

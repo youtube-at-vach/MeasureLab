@@ -255,6 +255,11 @@ class AudioEngine:
         # One controller is owned by the engine.  Widgets only request state
         # changes through this object and never own an audio stream directly.
         self.io_bridge = IOBridgeController(self)
+        self.vst_dut.before_change = self._stop_bridge_for_dut_change
+
+    def _stop_bridge_for_dut_change(self):
+        if self.io_bridge.is_active():
+            self.io_bridge.stop("I/O Bridge stopped because the VST3 DUT changed")
 
     def _get_dtype(self):
         """Returns the appropriate numpy dtype based on precision settings."""
@@ -358,6 +363,8 @@ class AudioEngine:
             self._end_backend_change()
 
     def set_loopback(self, enabled):
+        if enabled != self.loopback and self.io_bridge.is_active():
+            self.io_bridge.stop("I/O Bridge stopped because loopback changed")
         self.loopback = enabled
         self.logger.debug(f"Set software loopback: {enabled}")
 
@@ -626,8 +633,8 @@ class AudioEngine:
         # controller takes its own lock before inspecting callback intents;
         # keeping this order consistent avoids a lock inversion during a
         # simultaneous Remote Output start and callback registration.
-        bridge_owns_output = self.io_bridge.is_remote_output_active()
-        with self.lock:
+        with self.io_bridge._lock, self.lock:
+            bridge_owns_output = self.io_bridge.is_remote_output_active()
             if self._backend_transition:
                 raise RuntimeError("Audio backend is changing")
             if self._exclusive_owner is not None and owner is not self._exclusive_owner:
@@ -679,7 +686,7 @@ class AudioEngine:
             self.logger.debug(f"Unregistered callback {callback_id}")
 
         # Stop stream outside the lock to avoid deadlock with callback
-        if should_stop:
+        if should_stop and not self.io_bridge.is_active():
             self.stop_stream(owner=owner)
 
     def _prepare_logical_input(self, indata, frames, use_loopback):
@@ -938,6 +945,7 @@ class AudioEngine:
                 dut_output = self.vst_dut.process(mix_buffer, self.sample_rate, self.block_size)
                 self._update_loopback_buffer(dut_output, frames, 2)
                 if self.vst_dut.error and not previous_error:
+                    self.io_bridge.fail("VST3 DUT failed: " + self.vst_dut.error)
                     self.logger.error("VST DUT failed: %s", self.vst_dut.error)
                     with self._status_lock:
                         self.last_callback_error = RuntimeError(self.vst_dut.error)
@@ -1008,6 +1016,22 @@ class AudioEngine:
                 return sd.JackSettings(client_name=self.jack_client_name)
         except Exception as e:
             self.logger.debug(f"Failed to query audio devices for JACK settings: {e}")
+        return None
+
+    def get_bridge_device_settings(self, device, direction):
+        """Reuse platform options for the saved local device, including in Remote mode."""
+        import sys
+
+        if sys.platform == "darwin":
+            settings = self._get_coreaudio_settings()
+            return settings[0 if direction == "input" else 1] if settings else None
+        devices, hostapis = self._get_cached_audio_info()
+        if device is None:
+            device = sd.default.device[0 if direction == "input" else 1]
+        if isinstance(device, int) and 0 <= device < len(devices):
+            hostapi = hostapis[devices[device]["hostapi"]]
+            if "jack" in str(hostapi["name"]).lower():
+                return sd.JackSettings(client_name=self.jack_client_name)
         return None
 
     def _get_coreaudio_settings(self):
@@ -1124,7 +1148,7 @@ class AudioEngine:
     def stop_stream(self, *, owner=None, force: bool = False):
         """Stops the master audio stream."""
         bridge = getattr(self, "io_bridge", None)
-        if bridge is not None and owner is not bridge and bridge.is_active() and not force:
+        if bridge is not None and owner is not bridge and bridge.is_active():
             bridge.stop("I/O Bridge stopped with the audio stream")
         with self.lock:
             if not force and self._exclusive_owner is not None and owner is not self._exclusive_owner:
