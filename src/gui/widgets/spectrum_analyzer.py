@@ -1,5 +1,4 @@
 import logging
-import queue
 
 import numpy as np
 import pyqtgraph as pg
@@ -21,6 +20,7 @@ from src.core.analysis import get_cached_window
 from src.core.audio_engine import AudioEngine
 from src.core.fft_manager import fft_manager, get_dpss_windows
 from src.core.localization import tr
+from src.core.ring_buffer import RingBuffer
 from src.measurement_modules.base import MeasurementModule
 from typing import List
 from src.core.comparison_manager import ComparisonTrace
@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 class SpectrumAnalyzer(MeasurementModule):
     # Threshold for switching to "Snapshot / Slow" mode
     LARGE_BUFFER_THRESHOLD = 600000
+    TRANSFER_BUFFER_SIZE = 65536
 
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
@@ -43,7 +44,10 @@ class SpectrumAnalyzer(MeasurementModule):
         # Store stereo data: (frames, 2)
         self.input_data = np.zeros((self.buffer_size, 2))
         self.write_head = 0
-        self.audio_queue = queue.Queue()
+        # Keep the analyzer's existing float64 acquisition precision while
+        # moving callback handoff storage into a fixed-size allocation.
+        self.transfer_buffer = RingBuffer(self.TRANSFER_BUFFER_SIZE, 2, dtype=self.input_data.dtype)
+        self.display_dropped_samples = 0
 
         # Analysis parameters
         self.window_type = "hanning"
@@ -105,73 +109,62 @@ class SpectrumAnalyzer(MeasurementModule):
         self.input_data = np.zeros((self.buffer_size, 2))
         self.write_head = 0
 
-        # Clear queue
-        while not self.audio_queue.empty():
-            try:
-                self.audio_queue.get_nowait()
-            except queue.Empty:
-                break
+        self.transfer_buffer.reset()
+        self.display_dropped_samples = 0
 
         def callback(indata, outdata, frames, time, status):
             if status:
                 logger.debug(status)
 
-            # Shift buffer and append new data
-            # We always capture 2 channels now if available
-            if indata.shape[1] >= 2:
-                new_data = indata[:, :2].copy()
-            else:
-                # If mono, duplicate to stereo for simplicity or handle gracefully
-                new_data = np.column_stack((indata[:, 0], indata[:, 0]))
-
-            self.audio_queue.put(new_data)
+            self.transfer_buffer.write(indata)
             outdata.fill(0)
 
         self.callback_id = self.audio_engine.register_callback(callback)
 
     def process_queue(self):
-        while not self.audio_queue.empty():
-            try:
-                new_data = self.audio_queue.get_nowait()
-            except queue.Empty:
-                break
+        read_result = self.transfer_buffer.read_with_metadata()
+        new_data = read_result.data
+        self.display_dropped_samples = read_result.dropped_samples
+        if len(new_data) == 0:
+            return
 
-            if self.buffer_size >= self.LARGE_BUFFER_THRESHOLD:
-                # --- Slow / Snapshot Mode ---
-                # Fill buffer linearly, then stop accepting data until processed (write_head reset)
+        if self.buffer_size >= self.LARGE_BUFFER_THRESHOLD:
+            # A snapshot must contain one continuous acquisition interval. If the
+            # display transfer overflowed, discard the partial snapshot and begin
+            # again with the oldest sample that is still available.
+            if read_result.dropped_samples:
+                self.write_head = 0
 
-                # If buffer is already "full" (waiting for processing), do nothing
-                if self.write_head >= self.buffer_size:
-                    continue
+            if self.write_head >= self.buffer_size:
+                return
 
-                # Calculate how much space is left
-                space_left = self.buffer_size - self.write_head
-                to_write = min(len(new_data), space_left)
+            space_left = self.buffer_size - self.write_head
+            to_write = min(len(new_data), space_left)
 
-                if to_write > 0:
-                    self.input_data[self.write_head : self.write_head + to_write] = new_data[:to_write]
-                    self.write_head += to_write
+            if to_write > 0:
+                self.input_data[self.write_head : self.write_head + to_write] = new_data[:to_write]
+                self.write_head += to_write
+        else:
+            # --- Normal Rolling Mode ---
+            # Efficient ring buffer logic (like Oscilloscope)
+            n_frames = len(new_data)
+            if n_frames > self.buffer_size:
+                # Just take the last part
+                self.input_data[:] = new_data[-self.buffer_size :]
+                self.write_head = 0
             else:
-                # --- Normal Rolling Mode ---
-                # Efficient ring buffer logic (like Oscilloscope)
-                n_frames = len(new_data)
-                if n_frames > self.buffer_size:
-                    # Just take the last part
-                    self.input_data[:] = new_data[-self.buffer_size :]
-                    self.write_head = 0
+                # Wrapped write
+                idx = self.write_head
+                end_idx = idx + n_frames
+                if end_idx <= self.buffer_size:
+                    self.input_data[idx:end_idx] = new_data
                 else:
-                    # Wrapped write
-                    idx = self.write_head
-                    end_idx = idx + n_frames
-                    if end_idx <= self.buffer_size:
-                        self.input_data[idx:end_idx] = new_data
-                    else:
-                        # Split
-                        part1_len = self.buffer_size - idx
-                        self.input_data[idx:] = new_data[:part1_len]
-                        self.input_data[: n_frames - part1_len] = new_data[part1_len:]
+                    # Split
+                    part1_len = self.buffer_size - idx
+                    self.input_data[idx:] = new_data[:part1_len]
+                    self.input_data[: n_frames - part1_len] = new_data[part1_len:]
 
-                    self.write_head = (idx + n_frames) % self.buffer_size
+                self.write_head = (idx + n_frames) % self.buffer_size
 
     def get_latest_data(self):
         """
@@ -858,6 +851,13 @@ class SpectrumAnalyzerWidget(
         self.cursor_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #00ffff;")
         info_layout.addWidget(self.cursor_label)
 
+        self.display_gap_badge = QLabel()
+        self.display_gap_badge.setStyleSheet(
+            "QLabel { color: #ffffff; background-color: #b05a00; font-weight: bold; padding: 2px 6px; border-radius: 3px; font-size: 10px; }"
+        )
+        self.display_gap_badge.setVisible(False)
+        info_layout.addWidget(self.display_gap_badge)
+
         info_layout.addStretch()
         display_layout.addLayout(info_layout)
 
@@ -1046,6 +1046,7 @@ class SpectrumAnalyzerWidget(
             self.module.start_analysis()
             self.timer.start()
             self.toggle_btn.setText(tr("Stop Analysis"))
+            self.display_gap_badge.setVisible(False)
         else:
             self.module.stop_analysis()
             self.timer.stop()
@@ -1239,8 +1240,11 @@ class SpectrumAnalyzerWidget(
         if not self.module.is_running:
             return
 
-        # Process audio queue
+        # Process pending audio without allowing display backlog to grow without bound.
         self.module.process_queue()
+        dropped_samples = self.module.display_dropped_samples
+        self.display_gap_badge.setText(tr("Display skipped {0} samples").format(dropped_samples))
+        self.display_gap_badge.setVisible(dropped_samples > 0)
 
         # Compute Spectrum
         results = self.module.compute_spectrum()

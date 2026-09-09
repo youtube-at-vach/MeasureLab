@@ -39,8 +39,8 @@ class TestSpectrumAnalyzer:
         qtbot.addWidget(widget)
         return widget
 
-    def test_queue_data_flow(self, sa_module):
-        """Verify that data flows from callback -> queue -> process_queue -> input_data."""
+    def test_transfer_buffer_data_flow(self, sa_module):
+        """Verify that data flows from callback -> transfer buffer -> input data."""
 
         # Start analysis to register callback
         sa_module.start_analysis()
@@ -49,8 +49,8 @@ class TestSpectrumAnalyzer:
         sa_module.audio_engine.register_callback.assert_called_once()
         callback = sa_module.audio_engine.register_callback.call_args[0][0]
 
-        # Verify queue is empty initially
-        assert sa_module.audio_queue.empty()
+        assert sa_module.transfer_buffer.available() == 0
+        assert sa_module.transfer_buffer.dtype == sa_module.input_data.dtype
 
         # Simulate audio callback
         frames = 100
@@ -59,19 +59,63 @@ class TestSpectrumAnalyzer:
 
         callback(indata, outdata, frames, 0.0, None)
 
-        # Verify data is in queue
-        assert not sa_module.audio_queue.empty()
-        assert sa_module.audio_queue.qsize() == 1
+        assert sa_module.transfer_buffer.available() == frames
 
         # Process queue
         sa_module.process_queue()
 
-        # Verify queue is empty and data is in buffer
-        assert sa_module.audio_queue.empty()
+        assert sa_module.transfer_buffer.available() == 0
         # write_head should be advanced by frames
         assert sa_module.write_head == frames
         # Check data content
         assert np.allclose(sa_module.input_data[:frames], 0.5)
+
+    def test_transfer_buffer_is_bounded_and_keeps_latest_samples(self, sa_module):
+        """A stalled display must not allow pending audio memory to grow indefinitely."""
+        sa_module.transfer_buffer = sa_module.transfer_buffer.__class__(10, 2, dtype=np.float32)
+        samples = np.arange(30, dtype=np.float32).reshape(15, 2)
+
+        sa_module.transfer_buffer.write(samples)
+        sa_module.process_queue()
+
+        assert sa_module.display_dropped_samples == 5
+        assert sa_module.write_head == 10
+        assert np.array_equal(sa_module.input_data[:10], samples[-10:])
+        assert sa_module.transfer_buffer.available() == 0
+
+        sa_module.process_queue()
+        assert sa_module.display_dropped_samples == 0
+
+    def test_snapshot_restarts_after_transfer_gap(self, sa_module):
+        """A slow FFT snapshot must never combine samples from across a transfer gap."""
+        sa_module.set_buffer_size(sa_module.LARGE_BUFFER_THRESHOLD)
+        sa_module.transfer_buffer = sa_module.transfer_buffer.__class__(10, 2, dtype=np.float32)
+        sa_module.input_data[:4] = -1.0
+        sa_module.write_head = 4
+        samples = np.arange(30, dtype=np.float32).reshape(15, 2)
+
+        sa_module.transfer_buffer.write(samples)
+        sa_module.process_queue()
+
+        assert sa_module.display_dropped_samples == 5
+        assert sa_module.write_head == 10
+        assert np.array_equal(sa_module.input_data[:10], samples[-10:])
+
+    def test_widget_reports_transfer_gap(self, sa_module, sa_widget):
+        """Display loss is visible even while a slow snapshot is still incomplete."""
+        sa_module.is_running = True
+        sa_module.display_dropped_samples = 23
+        sa_module.process_queue = MagicMock()
+        sa_module.compute_spectrum = MagicMock(return_value=None)
+
+        sa_widget.update_plot()
+
+        assert not sa_widget.display_gap_badge.isHidden()
+        assert "23" in sa_widget.display_gap_badge.text()
+
+        sa_module.display_dropped_samples = 0
+        sa_widget.update_plot()
+        assert sa_widget.display_gap_badge.isHidden()
 
     def test_weighting_application(self, sa_module, sa_widget):
         """Verify A/C/Z weighting application affects the overall RMS reading correctly."""
