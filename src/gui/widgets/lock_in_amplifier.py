@@ -723,6 +723,7 @@ class LockInAmplifierWidget(QWidget, ComparableWidgetInterface):
         # --- Left Panel: Settings ---
         settings_group = QGroupBox(tr("Settings"))
         settings_layout = QFormLayout()
+        settings_layout.setFormAlignment(Qt.AlignmentFlag.AlignTop)
 
         # Output Controls
         self.toggle_btn = QPushButton(tr("Start Output & Measure"))
@@ -732,8 +733,6 @@ class LockInAmplifierWidget(QWidget, ComparableWidgetInterface):
         self.toggle_btn.setStyleSheet(
             "QPushButton { background-color: #ccffcc; font-weight: bold; padding: 10px; color: black; } QPushButton:checked { background-color: #ffcccc; }"
         )
-
-        settings_layout.addRow(self.toggle_btn)
 
         settings_layout.addRow(self.toggle_btn)
 
@@ -889,14 +888,18 @@ class LockInAmplifierWidget(QWidget, ComparableWidgetInterface):
         meters_layout = QVBoxLayout()
 
         # Magnitude
-        meters_layout.addWidget(QLabel(tr("Magnitude")))
+        magnitude_header = QHBoxLayout()
+        magnitude_header.addStretch()
+        magnitude_header.addWidget(QLabel(tr("Magnitude")))
 
         # Unit Selection
         self.unit_combo = QComboBox()
         self.unit_combo.addItems(["dBFS", "dBV", "dBu", "V", "mV"])
         self.unit_combo.setCurrentText("dBFS")
         self.unit_combo.currentIndexChanged.connect(self.update_ui)  # Update immediately
-        meters_layout.addWidget(self.unit_combo)
+        magnitude_header.addWidget(self.unit_combo)
+        magnitude_header.addStretch()
+        meters_layout.addLayout(magnitude_header)
 
         self.mag_label = QLabel(tr("0.000 V"))
         self.mag_label.setStyleSheet("font-size: 36px; font-weight: bold; color: #00ff00;")
@@ -911,7 +914,7 @@ class LockInAmplifierWidget(QWidget, ComparableWidgetInterface):
         meters_layout.addSpacing(20)
 
         # Phase
-        meters_layout.addWidget(QLabel(tr("Phase")))
+        meters_layout.addWidget(QLabel(tr("Phase")), alignment=Qt.AlignmentFlag.AlignHCenter)
         self.phase_label = QLabel(tr("0.000 deg"))
         self.phase_label.setStyleSheet("font-size: 36px; font-weight: bold; color: #00ffff;")
         self.phase_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -923,20 +926,20 @@ class LockInAmplifierWidget(QWidget, ComparableWidgetInterface):
         xy_layout = QHBoxLayout()
 
         x_group = QVBoxLayout()
-        x_group.addWidget(QLabel(tr("X (In-phase)")))
+        x_group.addWidget(QLabel(tr("X (In-phase)")), alignment=Qt.AlignmentFlag.AlignHCenter)
         self.x_label = QLabel(tr("0.000 V"))
         self.x_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #ffff00;")
         self.x_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         x_group.addWidget(self.x_label)
-        xy_layout.addLayout(x_group)
+        xy_layout.addLayout(x_group, stretch=1)
 
         y_group = QVBoxLayout()
-        y_group.addWidget(QLabel(tr("Y (Quadrature)")))
+        y_group.addWidget(QLabel(tr("Y (Quadrature)")), alignment=Qt.AlignmentFlag.AlignHCenter)
         self.y_label = QLabel(tr("0.000 V"))
         self.y_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #ff00ff;")
         self.y_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         y_group.addWidget(self.y_label)
-        xy_layout.addLayout(y_group)
+        xy_layout.addLayout(y_group, stretch=1)
 
         meters_layout.addLayout(xy_layout)
 
@@ -944,10 +947,12 @@ class LockInAmplifierWidget(QWidget, ComparableWidgetInterface):
 
         # Reference Status
         ref_status_layout = QHBoxLayout()
+        ref_status_layout.addStretch()
         ref_status_layout.addWidget(QLabel(tr("Reference Status:")))
         self.ref_status_label = QLabel(tr("No Signal"))
         self.ref_status_label.setStyleSheet("font-weight: bold; color: #ff0000;")
         ref_status_layout.addWidget(self.ref_status_label)
+        ref_status_layout.addStretch()
         meters_layout.addLayout(ref_status_layout)
 
         meters_layout.addStretch()
