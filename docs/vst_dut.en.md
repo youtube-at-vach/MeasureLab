@@ -42,15 +42,6 @@ Bypass passes the DUT input directly to the DUT output, maintaining the routing.
 Unloading returns the system to a normal virtual loopback.
 Plugins are not automatically reloaded, and parameter settings are not persistently saved, so they must be reconfigured after restarting the application.
 
-### Example Screenshots
-
-A screenshot showing the expanded routing in Japanese, and the startup screen in English with the dark theme.
-Manual selection and routing are collapsed by default.
-
-![VST3 routing screen in Japanese](assets/vst_dut/routing-ja.png)
-
-![VST3 startup screen in dark theme](assets/vst_dut/launcher-dark.png)
-
 ## Automatically Scanned Folders
 
 User folders and shared folders are scanned, including manufacturer subfolders.
