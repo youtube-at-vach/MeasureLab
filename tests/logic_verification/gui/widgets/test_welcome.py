@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QLabel, QVBoxLayout
+from PyQt6.QtWidgets import QLabel, QPushButton, QVBoxLayout
 from PyQt6.QtCore import Qt
 from unittest.mock import patch
 
@@ -19,7 +19,6 @@ def test_welcome_widget_instantiation(qtbot):
 
         assert widget is not None
         assert isinstance(widget.layout(), QVBoxLayout)
-        assert widget.layout().count() == 2  # image section and text section
 
 
 def test_welcome_widget_layout_content(qtbot):
@@ -38,20 +37,19 @@ def test_welcome_widget_layout_content(qtbot):
         version_str = tr("Version {0}").format(__version__)
         assert version_str in texts
 
-        # Verify features are listed
-        features_str = " • ".join(
-            [
-                tr("Signal Generator"),
-                tr("Spectrum Analyzer"),
-                tr("Distortion Analyzer"),
-                tr("Network Analyzer"),
-                tr("Oscilloscope"),
-                tr("Lock-in Amplifier"),
-                tr("Frequency Counter"),
-                tr("Spectrogram"),
-            ]
-        )
-        assert features_str in texts
+        # Shortcuts request navigation; they do not start any instrument.
+        buttons = {button.accessibleName(): button for button in widget.findChildren(QPushButton)}
+        for key in (
+            "Settings",
+            "Remote Audio I/O",
+            "Signal Generator",
+            "Spectrum Analyzer",
+            "Oscilloscope",
+            "Distortion Analyzer",
+        ):
+            with qtbot.waitSignal(widget.page_requested) as signal:
+                buttons[tr(key)].click()
+            assert signal.args == [key]
 
 
 def test_welcome_widget_on_update_available(qtbot):
@@ -112,3 +110,24 @@ def test_welcome_widget_start_update_check(qtbot):
 
             # Verify it was started
             mock_checker_instance.start.assert_called_once()
+
+
+def test_recent_shortcuts_replaced_and_navigate(qtbot):
+    with patch("src.gui.widgets.welcome.QTimer.singleShot"):
+        widget = WelcomeWidget()
+        qtbot.addWidget(widget)
+        widget.set_recent_modules(["Spectrogram", "Signal Generator"])
+        widget.resize(780, 660)
+        widget.show()
+        qtbot.waitUntil(widget.isVisible)
+        buttons = widget.recent_container.findChildren(QPushButton)
+        for button in widget.findChildren(QPushButton):
+            if button.isVisible():
+                for label in button.findChildren(QLabel):
+                    assert label.height() > 0
+                    assert button.rect().contains(label.geometry())
+        with qtbot.waitSignal(widget.page_requested) as signal:
+            buttons[0].click()
+        assert signal.args == ["Spectrogram"]
+        widget.set_recent_modules([])
+        assert widget.recent_layout.count() == 1

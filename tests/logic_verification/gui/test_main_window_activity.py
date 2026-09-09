@@ -410,3 +410,45 @@ def test_init_audio_uses_portaudio_defaults_without_saved_devices():
     MainWindow._init_audio(window)
 
     window.audio_engine.set_devices.assert_called_once_with(None, None)
+
+
+def test_sidebar_search_preserves_navigation_and_loaded_modules(qtbot):
+    window = MainWindow()
+    qtbot.addWidget(window)
+    original_modules = list(window.modules)
+    original_page = window.content_area.currentIndex()
+    window.module_search.setText("  SPECTRUM  ")
+    row = window._module_keys.index("Spectrum Analyzer") + window._MODULE_PAGE_OFFSET
+    assert not window.sidebar.item(row).isHidden()
+    assert window.sidebar.item(0).isHidden()
+    assert window.content_area.currentIndex() == original_page
+    assert window.modules == original_modules
+    window.module_search.setText("no-such-module")
+    assert not window.search_empty_label.isHidden()
+    window._open_welcome_page("Welcome")
+    assert window.module_search.text() == ""
+    assert not window.search_empty_label.isVisible()
+    assert all(not window.sidebar.item(i).isHidden() for i in range(window.sidebar.count()))
+    assert window.sidebar.currentRow() == 0
+
+
+def test_recent_history_records_only_successful_navigation(qtbot, tmp_path):
+    from unittest.mock import patch
+
+    from src.core.config_manager import ConfigManager
+
+    window = MainWindow()
+    qtbot.addWidget(window)
+    window.config_manager = ConfigManager(str(tmp_path / "history.json"))
+    index = window._module_keys.index("Signal Generator")
+    row = index + window._MODULE_PAGE_OFFSET
+    with patch.object(window, "_ensure_module_loaded"):
+        window.on_tool_selected(row)
+        assert window.config_manager.get_recent_modules() == []
+        window.module_widgets[index] = _DummyWrapper()
+        window.on_tool_selected(row)
+        assert window.config_manager.get_recent_modules() == ["Signal Generator"]
+        window.on_tool_selected(0)
+        assert window.config_manager.get_recent_modules() == ["Signal Generator"]
+    window.module_widgets[index] = None
+    window.config_manager.shutdown()

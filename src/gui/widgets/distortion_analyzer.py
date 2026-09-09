@@ -607,6 +607,7 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         super().__init__()
         self.module = module
         self.sweep_worker = None
+        self._plots_closed = False
         self._realtime_output_mode_index = 1
         self.init_ui()
 
@@ -1983,7 +1984,7 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         return [trace]
 
     def closeEvent(self, event):
-        # Stop the timer and threads to prevent memory leaks and GC crashes
+        # Stop the timer and threads before tearing down the graphics widgets.
         self.timer.stop()
         if hasattr(self, "analysis_thread") and self.analysis_thread.isRunning():
             self.analysis_thread.quit()
@@ -1991,4 +1992,16 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         if self.sweep_worker and self.sweep_worker.isRunning():
             self.sweep_worker.stop()
             self.sweep_worker.wait()
+
+        # PlotWidget.close() explicitly removes QGraphicsWidgets from the
+        # pyqtgraph scene before QGraphicsView is destroyed.  Relying on Qt's
+        # parent-child deletion skips PlotItem.close(), which can leave an
+        # axis or ViewBox queued for a boundingRect() call during teardown.
+        if not self._plots_closed:
+            self._plots_closed = True
+            for plot in (self.spectrum_plot, self.harmonics_plot, self.sweep_plot):
+                plot.setUpdatesEnabled(False)
+                plot.close()
+                plot.deleteLater()
+
         super().closeEvent(event)

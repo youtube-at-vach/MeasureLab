@@ -329,3 +329,22 @@ class TestConfigManager(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_recent_modules_persist_and_validate(tmp_path):
+    from src.core.config_manager import ConfigManager
+    from src.core.module_constants import ALL_MODULE_KEYS
+
+    path = str(tmp_path / "recent.json")
+    config = ConfigManager(path)
+    keys = list(ALL_MODULE_KEYS)[:6]
+    for key in keys:
+        config.record_recent_module(key)
+    config.record_recent_module(keys[2])
+    config.record_recent_module("not-a-module")
+    config.shutdown()
+    restored = ConfigManager(path)
+    assert restored.get_recent_modules() == [keys[2], keys[5], keys[4], keys[3]]
+    assert restored._validated_recent_modules([None, {}, keys[0], keys[0], "unknown"]) == [keys[0]]
+    assert restored._validated_recent_modules("invalid") == []
+    restored.shutdown()
