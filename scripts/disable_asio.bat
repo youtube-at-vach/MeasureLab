@@ -2,7 +2,7 @@
 setlocal
 
 rem Define the target directory relative to this script
-set "TARGET_DIR=_internal\_sounddevice_data\portaudio-binaries"
+set "TARGET_DIR=%~dp0_internal\_sounddevice_data\portaudio-binaries"
 
 if not exist "%TARGET_DIR%" (
     echo Error: Could not find PortAudio binaries directory at:

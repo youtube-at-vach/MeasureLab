@@ -52,7 +52,8 @@ jobs:
     - name: Verify Windows Executable (GUI Self-Test)
       run: |
         echo "Testing dist/onefile/MeasureLab.exe with --self-test..."
-        ./dist/onefile/MeasureLab.exe --self-test
+        $process = Start-Process -Wait -PassThru -FilePath "dist/onefile/MeasureLab.exe" -ArgumentList "--self-test"
+        if ($process.ExitCode -ne 0) { throw "Self-test failed: $($process.ExitCode)" }
 
     - name: Build (onedir) with PyInstaller
       run: |
@@ -61,14 +62,31 @@ jobs:
         copy scripts/disable_asio.bat dist/onedir/MeasureLab/
         copy scripts/README_ASIO.txt dist/onedir/MeasureLab/
 
+    - name: Build Windows installer
+      id: installer
+      shell: pwsh
+      run: ./scripts/build_windows_installer.ps1
+
+    - name: Test Windows installer lifecycle
+      shell: pwsh
+      env:
+        INSTALLER_PATH: ${{ steps.installer.outputs.installer }}
+      run: ./scripts/test_windows_installer.ps1 -Installer $env:INSTALLER_PATH
+
+    - name: Upload installer test logs
+      if: always()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: windows-installer-test-logs
+        path: dist/installer-test/*.log
+        if-no-files-found: ignore
+
     - name: Package Windows release assets
       shell: pwsh
       run: |
-        # タグ名を取得（refs/tags/... から取り除く）
-        $tag = $env:GITHUB_REF -replace 'refs/tags/',''
-        if (-not $tag) { $tag = 'untagged' }
-        # ファイル名に使えない文字を置換
-        $tag = $tag -replace '[\\/*?:"<>|]', '-'
+        $version = python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])'
+        if ($LASTEXITCODE -ne 0) { throw "Could not read the application version" }
+        $tag = "v$version"
 
         $outDir = "dist/release"
         New-Item -ItemType Directory -Force -Path $outDir | Out-Null
@@ -83,7 +101,7 @@ jobs:
     - name: Sign Windows release assets
       shell: pwsh
       run: |
-        $files = Get-ChildItem -Path dist/release -Filter *.zip
+        $files = Get-ChildItem -Path dist/release -File | Where-Object { $_.Extension -in ".zip", ".exe" }
         foreach ($file in $files) {
             cosign sign-blob --yes --bundle "$($file.FullName).sigstore.json" "$($file.FullName)"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -124,6 +142,8 @@ jobs:
         files: |
           dist/release/*.zip
           dist/release/*.zip.sigstore.json
+          dist/release/*-windows-x64-setup.exe
+          dist/release/*-windows-x64-setup.exe.sigstore.json
         body_path: release_notes.md
         draft: ${{ github.event_name == 'workflow_dispatch' }}
 

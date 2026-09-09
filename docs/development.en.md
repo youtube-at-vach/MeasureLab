@@ -162,3 +162,7 @@ The MeasureLab project provides project-level skill extensions (Slash Commands) 
 * **/release-manager**: Assists with release preparation, including updating the CHANGELOG, checking documentation, synchronizing version numbers, updating screenshots for UI changes, and creating release PRs.
 
 For detailed specifications and usage of each skill, please refer to the Markdown files under the `.github/extensions/` directory in the repository.
+
+### Building the Windows installer
+
+See [Windows packaging and builds (Japanese)](windows_packaging.md) for the packaging decision, Inno Setup build commands, data preservation, and installer lifecycle checks in CI.

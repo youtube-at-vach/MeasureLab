@@ -14,6 +14,13 @@ For this reason, ASIO support is considered **experimental** and must be enabled
 > Enabling ASIO does **not** install or redistribute any ASIO drivers or the ASIO SDK.
 > An ASIO driver must already be installed on your system.
 
+Installer builds
+----------------
+The installer includes these scripts in %LOCALAPPDATA%\Programs\MeasureLab
+(or the installation folder you selected). Administrator privileges are not needed.
+Updating or reinstalling replaces the bundled libraries and resets ASIO to disabled.
+Run enable_asio.bat again after updating if you need experimental ASIO support.
+
 Enabling ASIO
 -------------
 To enable ASIO support, switch the active PortAudio library to the ASIO-enabled version

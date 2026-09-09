@@ -1,4 +1,4 @@
-name: Build Windows Executable
+name: Build Windows Packages
 
 on:
 
@@ -24,6 +24,9 @@ jobs:
           filters: |
             code:
               - 'src/**'
+              - 'scripts/**'
+              - 'packaging/windows/**'
+              - '.github/workflows/release.yml'
               - '*.py'
               - '*.spec'
               - '*.sh'
@@ -36,7 +39,7 @@ jobs:
 
   build:
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.code == 'true'
     runs-on: windows-latest
 
     steps:
@@ -92,6 +95,25 @@ jobs:
         copy scripts/disable_asio.bat dist/onedir/MeasureLab/
         copy scripts/README_ASIO.txt dist/onedir/MeasureLab/
 
+    - name: Build Windows installer
+      id: installer
+      shell: pwsh
+      run: ./scripts/build_windows_installer.ps1
+
+    - name: Test Windows installer lifecycle
+      shell: pwsh
+      env:
+        INSTALLER_PATH: ${{ steps.installer.outputs.installer }}
+      run: ./scripts/test_windows_installer.ps1 -Installer $env:INSTALLER_PATH
+
+    - name: Upload installer test logs
+      if: always()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: windows-installer-test-logs
+        path: dist/installer-test/*.log
+        if-no-files-found: ignore
+
     - name: Upload Artifact (onefile)
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
@@ -103,3 +125,10 @@ jobs:
       with:
         name: MeasureLab_Windows_onedir
         path: dist/onedir/MeasureLab/
+
+    - name: Upload Artifact (installer)
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: MeasureLab_Windows_installer
+        path: dist/release/*-windows-x64-setup.exe
+        if-no-files-found: error

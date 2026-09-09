@@ -162,3 +162,7 @@ MeasureLabのプロジェクトでは、開発ワークフローを自動化・�
 * **/release-manager**: CHANGELOGの更新、ドキュメントの記述確認、バージョン番号の同期、UI変更時のスクリーンショット更新、リリースPRの作成など、リリース準備を支援します。
 
 仕様詳細や各スキルの使い方については、リポジトリ内の `.github/extensions/` 以下のMarkdownファイルを参照してください。
+
+### Windowsインストーラーのビルド
+
+Windows配布方式の比較、Inno Setupによるビルド、更新・削除時のデータ保持、CIでの検証は [Windows配布方式とビルド](windows_packaging.md) を参照してください。
