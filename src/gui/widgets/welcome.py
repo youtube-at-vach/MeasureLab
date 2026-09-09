@@ -11,6 +11,16 @@ from src.core.utils import resource_path
 from src.core.version import __version__
 
 
+class _PageButton(QPushButton):
+    """Let wrapped title/description labels determine the button's geometry."""
+
+    def sizeHint(self):
+        return self.layout().totalSizeHint()
+
+    def minimumSizeHint(self):
+        return self.layout().totalMinimumSize()
+
+
 class WelcomeWidget(QWidget):
     page_requested = pyqtSignal(str)
 
@@ -33,8 +43,8 @@ class WelcomeWidget(QWidget):
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(32, 32, 32, 24)
-        layout.setSpacing(24)
+        layout.setContentsMargins(28, 24, 28, 20)
+        layout.setSpacing(16)
         layout.addStretch(1)
         header = QHBoxLayout()
         header.setSpacing(24)
@@ -56,6 +66,17 @@ class WelcomeWidget(QWidget):
         header.addLayout(introduction, 1)
         layout.addLayout(header)
         layout.addWidget(self._create_text_section())
+        recent_heading = QLabel(tr("Recently opened"))
+        recent_heading.setStyleSheet("font-weight: bold;")
+        layout.addWidget(recent_heading)
+        self.recent_container = QWidget()
+        self.recent_layout = QGridLayout(self.recent_container)
+        self.recent_layout.setContentsMargins(0, 0, 0, 0)
+        self.recent_layout.setSpacing(8)
+        self.recent_layout.setColumnStretch(0, 1)
+        self.recent_layout.setColumnStretch(1, 1)
+        layout.addWidget(self.recent_container)
+        self.set_recent_modules([])
         layout.addStretch(2)
         self.update_label = QLabel()
         self.update_label.setTextFormat(Qt.TextFormat.PlainText)
@@ -77,7 +98,7 @@ class WelcomeWidget(QWidget):
 
         if os.path.exists(assets_path):
             pixmap = QPixmap(assets_path)
-            scaled_pixmap = pixmap.scaledToHeight(112, Qt.TransformationMode.SmoothTransformation)
+            scaled_pixmap = pixmap.scaledToHeight(80, Qt.TransformationMode.SmoothTransformation)
             image_label.setPixmap(scaled_pixmap)
             image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
@@ -87,36 +108,71 @@ class WelcomeWidget(QWidget):
 
         return image_label
 
+    def _page_button(self, key, description=None):
+        button = _PageButton()
+        button.setAccessibleName(tr(key))
+        content = QVBoxLayout(button)
+        content.setContentsMargins(12, 9, 12, 9)
+        content.setSpacing(4)
+        title = QLabel(tr(key))
+        title.setWordWrap(True)
+        title.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        content.addWidget(title)
+        if description:
+            detail = QLabel(description)
+            detail.setWordWrap(True)
+            detail.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+            content.addWidget(detail)
+            title.setStyleSheet("font-weight: bold;")
+            button.setAccessibleDescription(description)
+        button.setStyleSheet("""
+            QPushButton { border: 1px solid palette(mid); border-radius: 6px;
+                background: palette(base); }
+            QPushButton:hover { border-color: palette(highlight); background: palette(alternate-base); }
+            QPushButton:focus { border: 2px solid palette(highlight); }
+            QPushButton:pressed { background: palette(alternate-base); }
+        """)
+        button.clicked.connect(lambda checked=False: self.page_requested.emit(key))
+        return button
+
     def _create_text_section(self) -> QWidget:
         container = QWidget()
         grid = QGridLayout(container)
         grid.setContentsMargins(0, 0, 0, 0)
-        grid.setSpacing(12)
-        # Opening a page never starts acquisition or signal output.
+        grid.setSpacing(10)
+        setup = QLabel(tr("1. Set up your audio"))
+        setup.setStyleSheet("font-weight: bold;")
+        grid.addWidget(setup, 0, 0, 1, 2)
+        grid.addWidget(self._page_button("Settings", tr("Choose your input and output devices.")), 1, 0)
+        grid.addWidget(self._page_button("Remote Audio I/O", tr("Use audio from another MeasureLab computer.")), 1, 1)
+        tools = QLabel(tr("2. Choose what to measure"))
+        tools.setStyleSheet("font-weight: bold;")
+        grid.addWidget(tools, 2, 0, 1, 2)
         pages = [
-            "Settings",
-            "Remote Audio I/O",
-            "Signal Generator",
-            "Spectrum Analyzer",
-            "Oscilloscope",
-            "Distortion Analyzer",
+            ("Signal Generator", tr("Generate a test tone.")),
+            ("Spectrum Analyzer", tr("See which frequencies are present.")),
+            ("Oscilloscope", tr("Inspect the waveform over time.")),
+            ("Distortion Analyzer", tr("Measure harmonic distortion.")),
         ]
-        for index, key in enumerate(pages):
-            button = QPushButton(tr(key))
-            button.setMinimumHeight(56)
-            button.setStyleSheet("""
-                QPushButton { text-align: left; padding: 10px 14px;
-                    border: 1px solid palette(mid); border-radius: 6px;
-                    background: palette(base); }
-                QPushButton:hover { border-color: palette(highlight); background: palette(alternate-base); }
-                QPushButton:focus { border: 2px solid palette(highlight); }
-                QPushButton:pressed { background: palette(highlight); color: palette(highlighted-text); }
-            """)
-            button.clicked.connect(lambda checked=False, page=key: self.page_requested.emit(page))
-            grid.addWidget(button, index // 2, index % 2)
+        for index, (key, description) in enumerate(pages):
+            grid.addWidget(self._page_button(key, description), 3 + index // 2, index % 2)
         grid.setColumnStretch(0, 1)
         grid.setColumnStretch(1, 1)
         return container
+
+    def set_recent_modules(self, keys):
+        while self.recent_layout.count():
+            item = self.recent_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.hide()
+                widget.deleteLater()
+        if not keys:
+            empty = QLabel(tr("Modules you open will appear here."))
+            empty.setWordWrap(True)
+            self.recent_layout.addWidget(empty, 0, 0, 1, 2)
+        for index, key in enumerate(keys[:4]):
+            self.recent_layout.addWidget(self._page_button(key), index // 2, index % 2)
 
     def open_release_page(self, event):
         if hasattr(self, "new_version_url"):

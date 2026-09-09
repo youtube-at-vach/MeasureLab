@@ -38,7 +38,7 @@ def test_welcome_widget_layout_content(qtbot):
         assert version_str in texts
 
         # Shortcuts request navigation; they do not start any instrument.
-        buttons = {button.text(): button for button in widget.findChildren(QPushButton)}
+        buttons = {button.accessibleName(): button for button in widget.findChildren(QPushButton)}
         for key in (
             "Settings",
             "Remote Audio I/O",
@@ -110,3 +110,24 @@ def test_welcome_widget_start_update_check(qtbot):
 
             # Verify it was started
             mock_checker_instance.start.assert_called_once()
+
+
+def test_recent_shortcuts_replaced_and_navigate(qtbot):
+    with patch("src.gui.widgets.welcome.QTimer.singleShot"):
+        widget = WelcomeWidget()
+        qtbot.addWidget(widget)
+        widget.set_recent_modules(["Spectrogram", "Signal Generator"])
+        widget.resize(780, 660)
+        widget.show()
+        qtbot.waitUntil(widget.isVisible)
+        buttons = widget.recent_container.findChildren(QPushButton)
+        for button in widget.findChildren(QPushButton):
+            if button.isVisible():
+                for label in button.findChildren(QLabel):
+                    assert label.height() > 0
+                    assert button.rect().contains(label.geometry())
+        with qtbot.waitSignal(widget.page_requested) as signal:
+            buttons[0].click()
+        assert signal.args == ["Spectrogram"]
+        widget.set_recent_modules([])
+        assert widget.recent_layout.count() == 1

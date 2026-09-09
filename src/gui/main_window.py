@@ -452,6 +452,16 @@ class MainWindow(QMainWindow):
             self.module_search.clear()
             self.sidebar.setCurrentRow(keys.index(key))
 
+    def _refresh_recent_modules(self):
+        self.welcome_widget.set_recent_modules(
+            [key for key in self.config_manager.get_recent_modules() if key in self._module_keys]
+        )
+
+    def _record_opened_module(self, module_index):
+        if self.module_widgets[module_index] is not None:
+            self.config_manager.record_recent_module(self._module_keys[module_index])
+            self._refresh_recent_modules()
+
     def _init_content_area(self, layout):
         """Initialize the central stacked widget content area."""
         self.content_area = QStackedWidget()
@@ -461,6 +471,7 @@ class MainWindow(QMainWindow):
         WelcomeWidget = _load_welcome_widget_class()
         self.welcome_widget = WelcomeWidget()
         self.welcome_widget.page_requested.connect(self._open_welcome_page)
+        self._refresh_recent_modules()
         self.content_area.addWidget(self.welcome_widget)
         self.sidebar.setCurrentRow(0)
 
@@ -1340,6 +1351,7 @@ class MainWindow(QMainWindow):
             self._ensure_module_loaded(module_index)
             wrapper = self.module_widgets[module_index]
             if isinstance(wrapper, DetachableWidgetWrapper):
+                self._record_opened_module(module_index)
                 if not wrapper.activate_external_windows():
                     wrapper.detach()
                 return
@@ -1359,7 +1371,9 @@ class MainWindow(QMainWindow):
         elif index == 2:
             self._ensure_remote_audio_loaded()
         elif index >= self._MODULE_PAGE_OFFSET:
-            self._ensure_module_loaded(index - self._MODULE_PAGE_OFFSET)
+            module_index = index - self._MODULE_PAGE_OFFSET
+            self._ensure_module_loaded(module_index)
+            self._record_opened_module(module_index)
         self.content_area.setCurrentIndex(index)
 
     def notify_active_model_changed(self):

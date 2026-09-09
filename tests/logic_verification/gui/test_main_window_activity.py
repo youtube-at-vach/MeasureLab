@@ -430,3 +430,25 @@ def test_sidebar_search_preserves_navigation_and_loaded_modules(qtbot):
     assert not window.search_empty_label.isVisible()
     assert all(not window.sidebar.item(i).isHidden() for i in range(window.sidebar.count()))
     assert window.sidebar.currentRow() == 0
+
+
+def test_recent_history_records_only_successful_navigation(qtbot, tmp_path):
+    from unittest.mock import patch
+
+    from src.core.config_manager import ConfigManager
+
+    window = MainWindow()
+    qtbot.addWidget(window)
+    window.config_manager = ConfigManager(str(tmp_path / "history.json"))
+    index = window._module_keys.index("Signal Generator")
+    row = index + window._MODULE_PAGE_OFFSET
+    with patch.object(window, "_ensure_module_loaded"):
+        window.on_tool_selected(row)
+        assert window.config_manager.get_recent_modules() == []
+        window.module_widgets[index] = _DummyWrapper()
+        window.on_tool_selected(row)
+        assert window.config_manager.get_recent_modules() == ["Signal Generator"]
+        window.on_tool_selected(0)
+        assert window.config_manager.get_recent_modules() == ["Signal Generator"]
+    window.module_widgets[index] = None
+    window.config_manager.shutdown()

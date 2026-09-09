@@ -14,6 +14,7 @@ from typing import TypedDict, cast
 from PyQt6.QtCore import QLocale
 
 from src.core.utils import resource_path
+from src.core.module_constants import ALL_MODULE_KEYS
 
 
 class AudioConfigDict(TypedDict, total=False):
@@ -69,6 +70,7 @@ DEFAULT_CONFIG = {
     },
     "language": "en",
     "theme": "system",
+    "recent_modules": [],
     "screenshot": {
         "output_dir": "screenshots",
     },
@@ -403,6 +405,7 @@ class ConfigManager:
         if isinstance(theme, str) and theme:
             config["theme"] = theme
 
+        config["recent_modules"] = self._validated_recent_modules(loaded_config.get("recent_modules"))
         self._merge_screenshot_config(config, loaded_config)
         self._merge_measurement_console_config(config, loaded_config)
         self._merge_network_audio_config(config, loaded_config)
@@ -581,6 +584,24 @@ class ConfigManager:
         """Updates the language setting."""
         self.config["language"] = lang_code
         self.save_config()
+
+    @staticmethod
+    def _validated_recent_modules(value) -> list[str]:
+        if not isinstance(value, list):
+            return []
+        return list(dict.fromkeys(key for key in value if isinstance(key, str) and key in ALL_MODULE_KEYS))[:4]
+
+    def get_recent_modules(self) -> list[str]:
+        return self._validated_recent_modules(self.config.get("recent_modules"))
+
+    def record_recent_module(self, key: str) -> None:
+        if key not in ALL_MODULE_KEYS:
+            return
+        previous = self.get_recent_modules()
+        recent = self._validated_recent_modules([key, *previous])
+        if recent != previous:
+            self.config["recent_modules"] = recent
+            self.save_config()
 
     def get_theme(self):
         """Returns the saved theme, defaults to 'system'."""
