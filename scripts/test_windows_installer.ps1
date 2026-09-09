@@ -14,6 +14,7 @@ $testRoot = Join-Path ([IO.Path]::GetTempPath()) "MeasureLab Installer Test $([g
 $installDir = Join-Path $testRoot "アプリ"
 $logDir = (New-Item -ItemType Directory -Force "dist/installer-test").FullName
 $originalAppData = $env:APPDATA
+$uninstallCompleted = $false
 
 function Invoke-CheckedProcess([string]$FilePath, [string[]]$Arguments, [string]$WorkingDirectory) {
     $process = Start-Process -FilePath $FilePath -ArgumentList $Arguments -WorkingDirectory $WorkingDirectory -PassThru
@@ -172,6 +173,7 @@ try {
         $dataHashes[$file.FullName] = (Get-FileHash -LiteralPath $file.FullName).Hash
     }
     Invoke-CheckedProcess (Join-Path $installDir "unins000.exe") @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/LOG=`"$logDir/uninstall.log`"") $testRoot
+    $uninstallCompleted = $true
     if ((Test-Path $registryKey) -or (Test-Path -LiteralPath $shortcut) -or
         (Test-Path -LiteralPath (Join-Path $installDir "MeasureLab.exe"))) {
         throw "Uninstall left application registration, shortcut or executable"
@@ -185,8 +187,12 @@ try {
     $env:APPDATA = $originalAppData
     # Retain logs in dist/installer-test; clean up registration even on failure.
     $uninstaller = Join-Path $installDir "unins000.exe"
-    if (Test-Path -LiteralPath $uninstaller) {
-        Invoke-CheckedProcess $uninstaller @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART") $testRoot
+    if (-not $uninstallCompleted -and (Test-Path -LiteralPath $uninstaller)) {
+        try {
+            Invoke-CheckedProcess $uninstaller @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART") $testRoot
+        } catch {
+            Write-Warning "Cleanup uninstall failed: $($_.Exception.Message)"
+        }
     }
     if (Test-Path -LiteralPath $testRoot) { Remove-Item -LiteralPath $testRoot -Recurse -Force }
 }
