@@ -63,8 +63,7 @@ class MockQPalette:
             self.colors[role] = color
         elif len(args) == 3:
             group, role, color = args
-            # We can store with group if needed, but for now just storing by role is enough for basic verification
-            self.colors[role] = color
+            self.colors[(group, role)] = color
 
     def color(self, role):
         return self.colors.get(role, MockQColor(255, 255, 255))  # Default to light
@@ -297,6 +296,32 @@ class TestThemeManager(unittest.TestCase):
         tm.set_theme("system")
 
         self.assertEqual(tm.get_effective_theme(), "light")
+
+    def test_readable_palette_contrast(self):
+        """Keep normal, selected, link and tooltip text readable in both themes."""
+
+        def luminance(color):
+            channels = [value / 255 for value in (color.r, color.g, color.b)]
+            linear = [value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4 for value in channels]
+            return sum(value * weight for value, weight in zip(linear, (0.2126, 0.7152, 0.0722), strict=True))
+
+        roles = MockQPalette.ColorRole
+        pairs = [
+            (roles.WindowText, roles.Window),
+            (roles.Text, roles.Base),
+            (roles.ButtonText, roles.Button),
+            (roles.HighlightedText, roles.Highlight),
+            (roles.Link, roles.Window),
+            (roles.ToolTipText, roles.ToolTipBase),
+        ]
+        tm = self.ThemeManager(self.mock_app)
+        for theme in ("light", "dark"):
+            tm.set_theme(theme)
+            palette = self.mock_app.setPalette.call_args[0][0]
+            for foreground, background in pairs:
+                with self.subTest(theme=theme, foreground=foreground, background=background):
+                    values = sorted((luminance(palette.color(foreground)), luminance(palette.color(background))))
+                    self.assertGreaterEqual((values[1] + 0.05) / (values[0] + 0.05), 4.5)
 
     def test_set_theme_invalid(self):
         tm = self.ThemeManager(self.mock_app)

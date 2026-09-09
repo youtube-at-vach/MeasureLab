@@ -1996,7 +1996,6 @@ class SignalGeneratorWidget(QWidget, CompactableWidgetInterface):
         self.settings_scroll.setProperty("measurelabScrollRole", "outer-controls")
         self.settings_scroll.setWidgetResizable(True)
         self.settings_scroll.setFrameShape(QFrame.Shape.NoFrame)
-        self.settings_scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
         settings_body = QWidget()
         settings_layout = QVBoxLayout(settings_body)
         settings_layout.setContentsMargins(0, 0, 0, 0)

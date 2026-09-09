@@ -343,7 +343,7 @@ class MainWindow(QMainWindow):
     def _refresh_shell_theme(self, _theme):
         # Qt style sheets can retain resolved palette colors across theme changes.
         palette = QApplication.palette()
-        for root in (self.sidebar_panel, self.welcome_widget, self.status_bar):
+        for root in (self.sidebar_panel, self.welcome_widget, self.status_bar, self._settings_container):
             for widget in [root, *root.findChildren(QWidget)]:
                 if widget.styleSheet():
                     widget.setPalette(palette)

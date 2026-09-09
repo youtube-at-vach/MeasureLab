@@ -162,26 +162,26 @@ class ThemeManager(QObject):
 
         # Base colors
         palette.setColor(QPalette.ColorRole.Window, QColor(240, 240, 240))
-        palette.setColor(QPalette.ColorRole.WindowText, QColor(0, 0, 0))
-        palette.setColor(QPalette.ColorRole.Base, QColor(255, 255, 255))
+        palette.setColor(QPalette.ColorRole.WindowText, QColor(35, 38, 41))
+        palette.setColor(QPalette.ColorRole.Base, QColor(252, 252, 252))
         palette.setColor(QPalette.ColorRole.AlternateBase, QColor(245, 245, 245))
-        palette.setColor(QPalette.ColorRole.Text, QColor(0, 0, 0))
+        palette.setColor(QPalette.ColorRole.Text, QColor(35, 38, 41))
         palette.setColor(QPalette.ColorRole.PlaceholderText, QColor(90, 90, 90))
-        palette.setColor(QPalette.ColorRole.Button, QColor(240, 240, 240))
-        palette.setColor(QPalette.ColorRole.ButtonText, QColor(0, 0, 0))
+        palette.setColor(QPalette.ColorRole.Button, QColor(235, 235, 235))
+        palette.setColor(QPalette.ColorRole.ButtonText, QColor(35, 38, 41))
         palette.setColor(QPalette.ColorRole.BrightText, QColor(255, 0, 0))
 
         # Highlight colors
-        palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
-        palette.setColor(QPalette.ColorRole.HighlightedText, QColor(255, 255, 255))
+        palette.setColor(QPalette.ColorRole.Highlight, QColor(48, 103, 151))
+        palette.setColor(QPalette.ColorRole.HighlightedText, QColor(252, 252, 252))
 
         # Links
-        palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
+        palette.setColor(QPalette.ColorRole.Link, QColor(48, 103, 151))
         palette.setColor(QPalette.ColorRole.LinkVisited, QColor(127, 0, 127))
 
         # Tooltips
-        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 220))
-        palette.setColor(QPalette.ColorRole.ToolTipText, QColor(0, 0, 0))
+        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(247, 247, 247))
+        palette.setColor(QPalette.ColorRole.ToolTipText, QColor(35, 38, 41))
 
         # Disabled colors
         palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, QColor(127, 127, 127))
@@ -198,26 +198,26 @@ class ThemeManager(QObject):
 
         # Base colors
         palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
-        palette.setColor(QPalette.ColorRole.WindowText, QColor(255, 255, 255))
+        palette.setColor(QPalette.ColorRole.WindowText, QColor(226, 228, 230))
         palette.setColor(QPalette.ColorRole.Base, QColor(35, 35, 35))
-        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(53, 53, 53))
-        palette.setColor(QPalette.ColorRole.Text, QColor(255, 255, 255))
+        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(62, 62, 62))
+        palette.setColor(QPalette.ColorRole.Text, QColor(226, 228, 230))
         palette.setColor(QPalette.ColorRole.PlaceholderText, QColor(170, 170, 170))
-        palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
-        palette.setColor(QPalette.ColorRole.ButtonText, QColor(255, 255, 255))
+        palette.setColor(QPalette.ColorRole.Button, QColor(64, 64, 64))
+        palette.setColor(QPalette.ColorRole.ButtonText, QColor(226, 228, 230))
         palette.setColor(QPalette.ColorRole.BrightText, QColor(255, 0, 0))
 
         # Highlight colors
-        palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
-        palette.setColor(QPalette.ColorRole.HighlightedText, QColor(0, 0, 0))
+        palette.setColor(QPalette.ColorRole.Highlight, QColor(65, 112, 153))
+        palette.setColor(QPalette.ColorRole.HighlightedText, QColor(252, 252, 252))
 
         # Links
-        palette.setColor(QPalette.ColorRole.Link, QColor(42, 130, 218))
+        palette.setColor(QPalette.ColorRole.Link, QColor(126, 183, 230))
         palette.setColor(QPalette.ColorRole.LinkVisited, QColor(200, 100, 200))
 
         # Tooltips
-        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 220))
-        palette.setColor(QPalette.ColorRole.ToolTipText, QColor(0, 0, 0))
+        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(64, 64, 64))
+        palette.setColor(QPalette.ColorRole.ToolTipText, QColor(226, 228, 230))
 
         # Disabled colors
         palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, QColor(127, 127, 127))
