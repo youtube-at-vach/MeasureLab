@@ -29,8 +29,23 @@ function Assert-InstalledBundle {
     if (-not (Test-Path $registryKey)) { throw "Missing per-user uninstall registration" }
     if (-not (Test-Path -LiteralPath $shortcut)) { throw "Missing Start menu shortcut" }
     $link = (New-Object -ComObject WScript.Shell).CreateShortcut($shortcut)
-    if ($link.TargetPath -ne (Join-Path $installDir "MeasureLab.exe") -or $link.WorkingDirectory -ne $installDir) {
-        throw "Incorrect shortcut target or working directory"
+    $expectedTarget = Join-Path $installDir "MeasureLab.exe"
+    # WScript.Shell can expose a valid shortcut path using its DOS 8.3 alias,
+    # especially when the target contains non-ASCII characters. Compare the
+    # referenced executable when the path strings use different spellings.
+    $targetMatches = $link.TargetPath -eq $expectedTarget
+    if (-not $targetMatches -and (Test-Path -LiteralPath $link.TargetPath)) {
+        $targetMatches = (Get-FileHash -LiteralPath $link.TargetPath).Hash -eq
+            (Get-FileHash -LiteralPath $expectedTarget).Hash
+    }
+    $workingDirectoryMatches = $link.WorkingDirectory -eq $installDir
+    $workingDirectoryTarget = Join-Path $link.WorkingDirectory "MeasureLab.exe"
+    if (-not $workingDirectoryMatches -and (Test-Path -LiteralPath $workingDirectoryTarget)) {
+        $workingDirectoryMatches = (Get-FileHash -LiteralPath $workingDirectoryTarget).Hash -eq
+            (Get-FileHash -LiteralPath $expectedTarget).Hash
+    }
+    if (-not $targetMatches -or -not $workingDirectoryMatches) {
+        throw "Incorrect shortcut target ('$($link.TargetPath)') or working directory ('$($link.WorkingDirectory)'); expected '$expectedTarget' and '$installDir'"
     }
     $sourceDir = (Resolve-Path "dist/onedir/MeasureLab").Path
     foreach ($file in Get-ChildItem -LiteralPath $sourceDir -Recurse -File) {
