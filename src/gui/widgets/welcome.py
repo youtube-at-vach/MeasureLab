@@ -1,8 +1,8 @@
 import os
 
-from PyQt6.QtCore import Qt, QTimer, QUrl
-from PyQt6.QtGui import QDesktopServices, QFont, QPixmap
-from PyQt6.QtWidgets import QLabel, QVBoxLayout, QWidget
+from PyQt6.QtCore import Qt, QTimer, QUrl, pyqtSignal
+from PyQt6.QtGui import QDesktopServices, QPixmap
+from PyQt6.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from src.core.constants import RELEASE_PAGE_URL_TEMPLATE
 from src.core.localization import tr
@@ -12,6 +12,8 @@ from src.core.version import __version__
 
 
 class WelcomeWidget(QWidget):
+    page_requested = pyqtSignal(str)
+
     def __init__(self):
         super().__init__()
         self.init_ui()
@@ -30,13 +32,39 @@ class WelcomeWidget(QWidget):
         self.new_version_url = RELEASE_PAGE_URL_TEMPLATE.format(tag=new_version)
 
     def init_ui(self):
-        layout = QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-
-        layout.addWidget(self._create_image_section())
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(32, 32, 32, 24)
+        layout.setSpacing(24)
+        layout.addStretch(1)
+        header = QHBoxLayout()
+        header.setSpacing(24)
+        header.addWidget(self._create_image_section())
+        introduction = QVBoxLayout()
+        title = QLabel("MeasureLab")
+        font = title.font()
+        font.setPointSize(26)
+        font.setBold(True)
+        title.setFont(font)
+        introduction.addWidget(title)
+        desc = QLabel(
+            tr(
+                "A comprehensive set of tools for precision audio analysis and measurement.\nSelect a module from the sidebar to begin."
+            )
+        )
+        desc.setWordWrap(True)
+        introduction.addWidget(desc)
+        header.addLayout(introduction, 1)
+        layout.addLayout(header)
         layout.addWidget(self._create_text_section())
-        self.setLayout(layout)
+        layout.addStretch(2)
+        self.update_label = QLabel()
+        self.update_label.setTextFormat(Qt.TextFormat.PlainText)
+        self.update_label.setStyleSheet("color: palette(link); font-weight: bold;")
+        self.update_label.hide()
+        self.update_label.mousePressEvent = self.open_release_page
+        layout.addWidget(self.update_label)
+        version_label = QLabel(tr("Version {0}").format(__version__))
+        layout.addWidget(version_label)
 
     def _create_image_section(self) -> QLabel:
         image_label = QLabel()
@@ -49,10 +77,10 @@ class WelcomeWidget(QWidget):
 
         if os.path.exists(assets_path):
             pixmap = QPixmap(assets_path)
-            scaled_pixmap = pixmap.scaledToHeight(400, Qt.TransformationMode.SmoothTransformation)
+            scaled_pixmap = pixmap.scaledToHeight(112, Qt.TransformationMode.SmoothTransformation)
             image_label.setPixmap(scaled_pixmap)
             image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            image_label.setStyleSheet("background-color: #1e1e1e;")
+
         else:
             image_label.setText(tr("Welcome Image Not Found"))
             image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -60,62 +88,35 @@ class WelcomeWidget(QWidget):
         return image_label
 
     def _create_text_section(self) -> QWidget:
-        text_container = QWidget()
-        text_container.setStyleSheet("background-color: #2b2b2b; color: #e0e0e0;")
-        text_layout = QVBoxLayout(text_container)
-        text_layout.setContentsMargins(40, 30, 40, 40)
-        text_layout.setSpacing(15)
-
-        title = QLabel("MeasureLab")
-        title.setFont(QFont("Arial", 24, QFont.Weight.Bold))
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        text_layout.addWidget(title)
-
-        desc = QLabel(
-            tr(
-                "A comprehensive set of tools for precision audio analysis and measurement.\nSelect a module from the sidebar to begin."
-            )
-        )
-        desc.setFont(QFont("Arial", 12))
-        desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        text_layout.addWidget(desc)
-
-        features = [
-            tr("Signal Generator"),
-            tr("Spectrum Analyzer"),
-            tr("Distortion Analyzer"),
-            tr("Network Analyzer"),
-            tr("Oscilloscope"),
-            tr("Lock-in Amplifier"),
-            tr("Frequency Counter"),
-            tr("Spectrogram"),
+        container = QWidget()
+        grid = QGridLayout(container)
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setSpacing(12)
+        # Opening a page never starts acquisition or signal output.
+        pages = [
+            "Settings",
+            "Remote Audio I/O",
+            "Signal Generator",
+            "Spectrum Analyzer",
+            "Oscilloscope",
+            "Distortion Analyzer",
         ]
-
-        features_str = " • ".join(features)
-        features_label = QLabel(features_str)
-        features_label.setFont(QFont("Arial", 10))
-        features_label.setStyleSheet("color: #888888;")
-        features_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        text_layout.addWidget(features_label)
-        text_layout.addStretch()
-
-        self.update_label = QLabel()
-        self.update_label.setTextFormat(Qt.TextFormat.PlainText)
-        self.update_label.setFont(QFont("Arial", 10, QFont.Weight.Bold))
-        self.update_label.setStyleSheet("color: #4CAF50;")
-        self.update_label.setAlignment(Qt.AlignmentFlag.AlignRight)
-        self.update_label.hide()
-        self.update_label.mousePressEvent = self.open_release_page
-        text_layout.addWidget(self.update_label)
-
-        version_label = QLabel(tr("Version {0}").format(__version__))
-        version_label.setFont(QFont("Arial", 9))
-        version_label.setStyleSheet("color: #777777;")
-        version_label.setAlignment(Qt.AlignmentFlag.AlignRight)
-        text_layout.addWidget(version_label)
-
-        return text_container
+        for index, key in enumerate(pages):
+            button = QPushButton(tr(key))
+            button.setMinimumHeight(56)
+            button.setStyleSheet("""
+                QPushButton { text-align: left; padding: 10px 14px;
+                    border: 1px solid palette(mid); border-radius: 6px;
+                    background: palette(base); }
+                QPushButton:hover { border-color: palette(highlight); background: palette(alternate-base); }
+                QPushButton:focus { border: 2px solid palette(highlight); }
+                QPushButton:pressed { background: palette(highlight); color: palette(highlighted-text); }
+            """)
+            button.clicked.connect(lambda checked=False, page=key: self.page_requested.emit(page))
+            grid.addWidget(button, index // 2, index % 2)
+        grid.setColumnStretch(0, 1)
+        grid.setColumnStretch(1, 1)
+        return container
 
     def open_release_page(self, event):
         if hasattr(self, "new_version_url"):

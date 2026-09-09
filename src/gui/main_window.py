@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QListWidget,
     QMainWindow,
     QPushButton,
@@ -337,6 +338,17 @@ class MainWindow(QMainWindow):
         self._init_sidebar(main_layout)
         self._init_content_area(main_layout)
         self._init_status_bar()
+        self.theme_manager.theme_changed.connect(self._refresh_shell_theme)
+
+    def _refresh_shell_theme(self, _theme):
+        # Qt style sheets can retain resolved palette colors across theme changes.
+        palette = QApplication.palette()
+        for root in (self.sidebar_panel, self.welcome_widget, self.status_bar):
+            for widget in [root, *root.findChildren(QWidget)]:
+                if widget.styleSheet():
+                    widget.setPalette(palette)
+                    widget.setStyleSheet(widget.styleSheet())
+        self._refresh_sidebar_activity_indicators()
 
     def _init_module_registry(self):
         """Initialize module registry arrays."""
@@ -363,7 +375,11 @@ class MainWindow(QMainWindow):
         self.sidebar_panel = QWidget()
         self.sidebar_panel.setFixedWidth(220)
         sidebar_layout = QVBoxLayout(self.sidebar_panel)
-        sidebar_layout.setContentsMargins(8, 8, 8, 8)
+        sidebar_layout.setContentsMargins(10, 14, 10, 10)
+        sidebar_layout.setSpacing(8)
+        brand = QLabel("MeasureLab")
+        brand.setStyleSheet("font-size: 18px; font-weight: 600; padding: 4px 6px 10px;")
+        sidebar_layout.addWidget(brand)
 
         self.menu_only_btn = QPushButton(tr("Menu Only"))
         self.menu_only_btn.setCheckable(True)
@@ -376,7 +392,24 @@ class MainWindow(QMainWindow):
         self.measurement_console_btn.clicked.connect(self.open_measurement_console)
         sidebar_layout.addWidget(self.measurement_console_btn)
 
+        self.module_search = QLineEdit()
+        self.module_search.setPlaceholderText(tr("Search modules"))
+        self.module_search.setAccessibleName(tr("Search modules"))
+        self.module_search.setClearButtonEnabled(True)
+        self.module_search.setMinimumHeight(30)
+        self.module_search.textChanged.connect(self._filter_sidebar)
+        sidebar_layout.addWidget(self.module_search)
+
         self.sidebar = QListWidget()
+        self.sidebar.setWordWrap(True)
+        self.sidebar.setTextElideMode(Qt.TextElideMode.ElideNone)
+        self.sidebar.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.sidebar.setStyleSheet("""
+            QListWidget { border: none; background: palette(window); outline: 0; }
+            QListWidget::item { padding: 7px 6px; border-radius: 4px; }
+            QListWidget::item:hover { background: palette(alternate-base); }
+            QListWidget::item:selected { background: palette(highlight); color: palette(highlighted-text); }
+        """)
         self.sidebar.addItem(tr("Welcome"))
         self.sidebar.addItem(tr("Settings"))  # Add Settings item
         self.sidebar.addItem(tr("Remote Audio I/O"))
@@ -387,6 +420,10 @@ class MainWindow(QMainWindow):
         self.sidebar.currentRowChanged.connect(self.on_tool_selected)
         self.sidebar.itemDoubleClicked.connect(self.on_sidebar_item_double_clicked)
         sidebar_layout.addWidget(self.sidebar, stretch=1)
+        self.search_empty_label = QLabel(tr("No matching modules"))
+        self.search_empty_label.setWordWrap(True)
+        self.search_empty_label.hide()
+        sidebar_layout.addWidget(self.search_empty_label)
 
         self.sidebar_footer = QWidget()
         self.sidebar_footer_layout = QVBoxLayout(self.sidebar_footer)
@@ -398,6 +435,23 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.sidebar_panel)
         self._refresh_sidebar_activity_indicators()
 
+    def _filter_sidebar(self, query):
+        # Hide rows in place so module indices and running instruments stay intact.
+        query = query.strip().casefold()
+        keys = ["Welcome", "Settings", "Remote Audio I/O", *self._module_keys]
+        visible = 0
+        for row, key in enumerate(keys):
+            matches = query in key.casefold() or query in tr(key).casefold()
+            self.sidebar.item(row).setHidden(not matches)
+            visible += matches
+        self.search_empty_label.setVisible(visible == 0)
+
+    def _open_welcome_page(self, key):
+        keys = ["Welcome", "Settings", "Remote Audio I/O", *self._module_keys]
+        if key in keys:
+            self.module_search.clear()
+            self.sidebar.setCurrentRow(keys.index(key))
+
     def _init_content_area(self, layout):
         """Initialize the central stacked widget content area."""
         self.content_area = QStackedWidget()
@@ -406,7 +460,9 @@ class MainWindow(QMainWindow):
         # Add initial welcome page (Index 0)
         WelcomeWidget = _load_welcome_widget_class()
         self.welcome_widget = WelcomeWidget()
+        self.welcome_widget.page_requested.connect(self._open_welcome_page)
         self.content_area.addWidget(self.welcome_widget)
+        self.sidebar.setCurrentRow(0)
 
         # Add Settings Page (Index 1) - lazy loaded to avoid importing scipy at startup
         self._settings_loaded = False
@@ -438,6 +494,7 @@ class MainWindow(QMainWindow):
         """Initialize the status bar and its indicators."""
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
+        self.status_bar.setStyleSheet("QStatusBar::item { border: none; } QLabel { padding: 2px 5px; }")
 
         # Status Labels
         self.status_label = QLabel(tr("Idle"))
