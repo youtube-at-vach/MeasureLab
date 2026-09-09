@@ -30,7 +30,7 @@ Due to the large number of features, we recommend starting with the [**Widget Gu
 For details on each function, please refer to the [**Widget Guide**](docs/widget_guide.en.md), and for actual measurement examples, see the [**Measurement Recipes**](docs/measurement_recipes/index.en.md).
 
 VST3 effects can also be inserted as a DUT in the virtual audio device using the optional host dependency.
-See the [VST3 DUT setup and routing guide (Japanese)](docs/vst_dut.md).
+See the [VST3 DUT setup and routing guide (English)](docs/vst_dut.en.md) or the [Japanese guide](docs/vst_dut.md).
 
 | No. | Widget | Description |
 | :--- | :--- | :--- |

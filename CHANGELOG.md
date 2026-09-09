@@ -1,5 +1,43 @@
 # Changelog
 
+## [v0.8.8] - 2026-09-09
+
+### Added
+
+* **VST3 Device Under Test**:
+    * Added optional VST3 effect hosting in Virtual / Offline Mode, including automatic discovery in standard plugin folders, search and rescan controls, manual selection, routing, bypass, and native editor controls.
+* **Remote Audio I/O**:
+    * Added optional deadline-limited audio packet retransmission for recently lost UDP packets, with negotiated peer compatibility and visible recovery counters.
+* **Welcome and Navigation**:
+    * Added setup guidance and recently opened module shortcuts to the Welcome page, plus searchable sidebar navigation.
+* **Oscilloscope**:
+    * Added a separate warning for samples skipped when the display ring buffer is overwritten before the GUI consumes it.
+
+### Changed
+
+* **Remote Audio I/O and Audio Engine**:
+    * Improved UDP retransmission and deadline recovery, protocol hot paths, indexed buffering, and sample-position-based loss accounting.
+    * Hardened audio buffer, stream, sample-rate, XRUN/error status, and ring-buffer contracts to preserve timing and measurement integrity.
+* **VST3 Device Under Test**:
+    * Isolated plugin processing from the main application and preserved the native editor and plugin state across measurement restarts when audio settings are unchanged.
+* **Spectrum Analyzer**:
+    * Bounded audio transfer to protect real-time processing and GUI responsiveness.
+* **Security and Release Artifacts**:
+    * Added keyless Sigstore bundles for Windows, Linux, and macOS release assets and OpenSSF Scorecard visibility.
+* **Localization and Documentation**:
+    * Added localized audio setup and measurement guidance and expanded the VST3 and Remote Audio I/O documentation.
+
+### Fixed
+
+* **VST3 Device Under Test**:
+    * Kept native VST3 editors open during measurements and restored them after signal-generation restarts, while handling plugin shutdown safely.
+* **GUI Stability**:
+    * Prevented plot teardown crashes and reduced flaky Qt graphics cleanup failures when closing widgets.
+* **Remote Audio I/O**:
+    * Corrected retransmission integrity boundaries and packet-statistics counter wrapping.
+* **Dependencies and Maintenance**:
+    * Updated Python and GitHub Actions dependencies.
+
 ## [v0.8.7] - 2026-09-01
 
 ### Added
