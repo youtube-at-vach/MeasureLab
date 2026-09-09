@@ -3,7 +3,7 @@ setlocal
 
 rem Define the target directory relative to this script
 rem In a PyInstaller onedir build, scripts are usually at the root, and internal data is in _internal
-set "TARGET_DIR=_internal\_sounddevice_data\portaudio-binaries"
+set "TARGET_DIR=%~dp0_internal\_sounddevice_data\portaudio-binaries"
 
 if not exist "%TARGET_DIR%" (
     echo Error: Could not find PortAudio binaries directory at:

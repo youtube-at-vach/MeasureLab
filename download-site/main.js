@@ -1,3 +1,5 @@
+import { hasWindowsInstaller } from "./release-assets.js";
+
 const FALLBACK_VERSION = "v0.6.3";
 const RELEASE_BASE_URL =
   "https://github.com/youtube-at-vach/MeasureLab/releases/download";
@@ -8,6 +10,7 @@ let currentVariantKey = null;
 let currentLang = "en";
 let currentOsName = "macOS";
 let versionLoaded = false;
+let windowsInstallerAvailable = false;
 
 const translations = {
   ja: {
@@ -31,10 +34,10 @@ const translations = {
         ],
       },
       Windows: {
-        lead: "Windows 10 / 11 向けのZIP版です。",
+        lead: "Windows 10 / 11（x64）向けです。",
+        installerHint: "インストーラーを実行すると、管理者権限なしでインストールできます。",
         items: [
-          "ZIP を展開して MeasureLab.exe を実行してください。",
-          "通常版 (onedir) と単一EXE版 (onefile) を選べます。",
+          "ZIP版は展開して MeasureLab.exe を実行してください。",
         ],
       },
       Linux: {
@@ -66,10 +69,15 @@ const translations = {
       Windows: {
         name: "Windows",
         icon: "🪟",
-        defaultVariant: "onedir",
+        defaultVariant: "installer",
         variants: {
+          installer: {
+            label: "インストーラー（推奨）",
+            size: "サイズはリリースページを参照",
+            assetName: "MeasureLab-{tag}-windows-x64-setup.exe",
+          },
           onedir: {
-            label: "通常版 (onedir)",
+            label: "ZIP版 (onedir)",
             size: "約 120 MB",
             assetName: "MeasureLab-{tag}-windows-x64-onedir.zip",
           },
@@ -115,10 +123,10 @@ const translations = {
         ],
       },
       Windows: {
-        lead: "适用于 Windows 10 / 11 的 ZIP 包。",
+        lead: "适用于 Windows 10 / 11（x64）。",
+        installerHint: "运行安装程序，无需管理员权限即可安装。",
         items: [
-          "解压 ZIP 文件后运行 MeasureLab.exe。",
-          "可选择标准版 (onedir) 或单文件 EXE 版 (onefile)。",
+          "使用 ZIP 版时，解压后运行 MeasureLab.exe。",
         ],
       },
       Linux: {
@@ -150,10 +158,15 @@ const translations = {
       Windows: {
         name: "Windows",
         icon: "🪟",
-        defaultVariant: "onedir",
+        defaultVariant: "installer",
         variants: {
+          installer: {
+            label: "安装程序（推荐）",
+            size: "大小请参阅发布页面",
+            assetName: "MeasureLab-{tag}-windows-x64-setup.exe",
+          },
           onedir: {
-            label: "标准版 (onedir)",
+            label: "ZIP 版 (onedir)",
             size: "约 120 MB",
             assetName: "MeasureLab-{tag}-windows-x64-onedir.zip",
           },
@@ -200,10 +213,10 @@ const translations = {
         ],
       },
       Windows: {
-        lead: "ZIP package for Windows 10 / 11.",
+        lead: "For Windows 10 / 11 (x64).",
+        installerHint: "Run the installer to install for your account without administrator privileges.",
         items: [
-          "Extract the ZIP archive and run MeasureLab.exe.",
-          "You can choose between the standard build (onedir) and the single EXE build (onefile).",
+          "For ZIP builds, extract the archive and run MeasureLab.exe.",
         ],
       },
       Linux: {
@@ -235,10 +248,15 @@ const translations = {
       Windows: {
         name: "Windows",
         icon: "🪟",
-        defaultVariant: "onedir",
+        defaultVariant: "installer",
         variants: {
+          installer: {
+            label: "Installer (recommended)",
+            size: "See release for size",
+            assetName: "MeasureLab-{tag}-windows-x64-setup.exe",
+          },
           onedir: {
-            label: "Standard (onedir)",
+            label: "ZIP (onedir)",
             size: "~120 MB",
             assetName: "MeasureLab-{tag}-windows-x64-onedir.zip",
           },
@@ -312,7 +330,9 @@ function getVariantEntries(osName) {
     return [];
   }
 
-  return Object.entries(data.variants);
+  return Object.entries(data.variants).filter(
+    ([key]) => osName !== "Windows" || key !== "installer" || windowsInstallerAvailable,
+  );
 }
 
 function selectVariant(osName, requestedVariantKey) {
@@ -321,11 +341,14 @@ function selectVariant(osName, requestedVariantKey) {
     return null;
   }
 
-  if (requestedVariantKey && data.variants[requestedVariantKey]) {
+  const availableKeys = getVariantEntries(osName).map(([key]) => key);
+  if (availableKeys.includes(requestedVariantKey)) {
     return requestedVariantKey;
   }
 
-  return data.defaultVariant;
+  return availableKeys.includes(data.defaultVariant)
+    ? data.defaultVariant
+    : availableKeys[0];
 }
 
 function getLanguageFromQuery() {
@@ -451,7 +474,10 @@ function renderRequirements(osName) {
   lead.textContent = requirement.lead;
   list.innerHTML = "";
 
-  requirement.items.forEach((item) => {
+  const items = osName === "Windows" && windowsInstallerAvailable
+    ? [requirement.installerHint, ...requirement.items]
+    : requirement.items;
+  items.forEach((item) => {
     const li = document.createElement("li");
     li.textContent = item;
     list.appendChild(li);
@@ -511,6 +537,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   applyStaticTranslations();
 
   currentVersion = await loadVersionTag();
+  windowsInstallerAvailable = await hasWindowsInstaller(currentVersion);
   versionLoaded = true;
 
   const detectedOS = detectOS();

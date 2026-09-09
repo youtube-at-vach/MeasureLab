@@ -24,9 +24,19 @@ MeasureLab は Windows および Linux で動作します。
 
 ### Windows
 
-1. `MeasureLab-<version>-windows-x64-onefile.zip`（または `onedir.zip`）をダウンロードします。
-2. ZIP ファイルを解凍します。
-3. フォルダ内の `MeasureLab.exe` をダブルクリックして実行します。
+1. Windows 10 / 11（x64）用の `MeasureLab-<version>-windows-x64-setup.exe` をダウンロードします。
+2. インストーラーを実行します。管理者権限は不要で、既定では現在のユーザーの `%LOCALAPPDATA%\Programs\MeasureLab` にインストールされます。
+3. スタートメニューから **MeasureLab** を起動します。デスクトップショートカットはインストール時に選択できます。
+
+更新時は MeasureLab を終了し、新しいインストーラーを実行してください。同じインストール先が使われ、`%APPDATA%\MeasureLab` の設定・校正データは保持されます。削除は **設定 > アプリ** から行います。アンインストールしても、ユーザー設定・校正データ・保存したスクリーンショットは残ります。
+
+ZIP版（`MeasureLab-<version>-windows-x64-onedir.zip`、`onefile.zip`）も引き続き利用できます。全体を展開して `MeasureLab.exe` を実行してください。過去のリリースではZIP版のみの場合があります。
+
+ZIP版から移行する場合、`%APPDATA%\MeasureLab` にある設定は引き継がれます。旧ZIPフォルダーにポータブル設定の `config.json` がある場合は、バックアップしてから、MeasureLab を終了した状態で新しいインストール先にコピーしてください。設定・校正・保存した測定結果を確認するまで旧フォルダーは残してください。旧実行ファイルの隣に保存したファイルは自動移動しません。
+
+実験的なASIO用スクリプトはインストール先に同梱されます。更新時には標準のPortAudioライブラリに戻るため、必要なら更新後に `enable_asio.bat` を再実行してください。詳細は同フォルダーの `README_ASIO.txt` を参照してください。
+
+現在のインストーラーにはWindows Authenticode署名がないため、SmartScreenの警告が表示される場合があります。リリースの `.sigstore.json` とSHA-256チェックサムは配布物を別途検証するためのもので、Windowsのコード署名を代替しません。
 
 ### Linux
 

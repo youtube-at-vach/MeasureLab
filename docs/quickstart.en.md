@@ -24,9 +24,19 @@ Please download the latest version for your OS from the [Releases](https://githu
 
 ### Windows
 
-1. Download `MeasureLab-<version>-windows-x64-onefile.zip` (or `onedir.zip`).
-2. Extract the ZIP file.
-3. Double-click `MeasureLab.exe` in the folder to run it.
+1. Download `MeasureLab-<version>-windows-x64-setup.exe` for Windows 10 / 11 (x64).
+2. Run the installer. It installs for the current user without administrator privileges, by default in `%LOCALAPPDATA%\Programs\MeasureLab`.
+3. Open **MeasureLab** from the Start menu. A desktop shortcut is optional during installation.
+
+To update, close MeasureLab and run the new installer. The installation folder is reused, and settings and calibration in `%APPDATA%\MeasureLab` are retained. Remove the application through **Settings > Apps**; user settings, calibration, and saved screenshots are retained.
+
+ZIP builds (`MeasureLab-<version>-windows-x64-onedir.zip` and `onefile.zip`) remain available. Extract the entire archive and run `MeasureLab.exe`. Older releases may only offer ZIP builds.
+
+When switching from ZIP to the installer, existing settings in `%APPDATA%\MeasureLab` are reused. If the old ZIP folder contains a portable `config.json`, back it up and copy it to the new installation folder while MeasureLab is closed to preserve that configuration. Keep the old folder until you have checked settings, calibration and saved measurements; files saved beside the old executable are not moved automatically.
+
+Experimental ASIO helper scripts are included in the installation folder. Updates restore the standard PortAudio library, so run `enable_asio.bat` again after an update if needed. See `README_ASIO.txt` in that folder.
+
+The installer currently has no Windows Authenticode signature, so SmartScreen may display a warning. Release `.sigstore.json` bundles and SHA-256 checksums provide separate artifact verification; they do not replace Windows code signing.
 
 ### Linux
 

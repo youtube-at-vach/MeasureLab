@@ -1,5 +1,9 @@
 name: Validate Download Site
 on:
+  pull_request:
+    paths:
+      - 'download-site/**'
+      - '.github/workflows/deploy_download_site.yml'
   push:
     branches:
       - main
@@ -27,6 +31,10 @@ jobs:
       - name: Install Dependencies
         working-directory: download-site
         run: npm ci
+
+      - name: Test release asset selection
+        working-directory: download-site
+        run: npm test
 
       - name: Build
         working-directory: download-site
