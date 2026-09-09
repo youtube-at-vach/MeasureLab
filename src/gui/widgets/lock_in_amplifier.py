@@ -27,6 +27,7 @@ from PyQt6.QtWidgets import (
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.gui.styles import button_style
 from src.measurement_modules.base import MeasurementModule
 from typing import List
 from src.gui.widgets.comparable_interface import ComparableWidgetInterface
@@ -730,9 +731,7 @@ class LockInAmplifierWidget(QWidget, ComparableWidgetInterface):
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.clicked.connect(self.on_toggle)
 
-        self.toggle_btn.setStyleSheet(
-            "QPushButton { background-color: #ccffcc; font-weight: bold; padding: 10px; color: black; } QPushButton:checked { background-color: #ffcccc; }"
-        )
+        self.toggle_btn.setStyleSheet(button_style("primary", toggle=True, extra="font-weight: bold; padding: 10px;"))
 
         settings_layout.addRow(self.toggle_btn)
 
@@ -2047,10 +2046,7 @@ class LockInAmplifierWidget(QWidget, ComparableWidgetInterface):
         if self._is_dark_theme:
             # Dark Theme
             self.toggle_btn.setStyleSheet(
-                "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; padding: 10px; font-weight: bold; }"
-                "QPushButton:checked { background-color: #c62828; color: white; border: 1px solid #555; border-radius: 4px; padding: 10px; }"
-                "QPushButton:hover { background-color: #388e3c; }"
-                "QPushButton:checked:hover { background-color: #d32f2f; }"
+                button_style("primary", toggle=True, extra="padding: 10px; font-weight: bold;")
             )
             self.mag_label.setStyleSheet("font-size: 36px; font-weight: bold; color: #00ff00;")
             self.mag_db_label.setStyleSheet("font-size: 24px; color: #88ff88;")
@@ -2061,10 +2057,7 @@ class LockInAmplifierWidget(QWidget, ComparableWidgetInterface):
         else:
             # Light Theme
             self.toggle_btn.setStyleSheet(
-                "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; padding: 10px; font-weight: bold; }"
-                "QPushButton:checked { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; padding: 10px; }"
-                "QPushButton:hover { background-color: #bbfebb; }"
-                "QPushButton:checked:hover { background-color: #ffbbbb; }"
+                button_style("primary", toggle=True, extra="padding: 10px; font-weight: bold;")
             )
             self.mag_label.setStyleSheet("font-size: 36px; font-weight: bold; color: #008800;")
             self.mag_db_label.setStyleSheet("font-size: 24px; color: #006600;")

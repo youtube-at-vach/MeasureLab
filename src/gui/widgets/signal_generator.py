@@ -36,6 +36,7 @@ except ImportError:
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.gui.styles import button_style
 from src.core.fft_manager import WARMUP_SIZES, MEDIUM_SIZES
 from src.core.utils import amplitude_to_linear, format_si, linear_to_amplitude
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
@@ -3255,20 +3256,7 @@ class SignalGeneratorWidget(QWidget, CompactableWidgetInterface):
 
         self._current_theme_name = theme_name or "light"
 
-        if theme_name == "dark":
-            self.toggle_btn.setStyleSheet(
-                "QPushButton { background-color: #555; color: white; border: 1px solid #777; border-radius: 4px; padding: 5px; font-weight: bold; }"
-                "QPushButton:checked { background-color: #c62828; color: white; border: 1px solid #777; border-radius: 4px; padding: 5px; font-weight: bold; }"
-                "QPushButton:hover { background-color: #666; }"
-                "QPushButton:checked:hover { background-color: #d32f2f; }"
-            )
-        else:
-            self.toggle_btn.setStyleSheet(
-                "QPushButton { background-color: #e0e0e0; color: black; border: 1px solid #ccc; border-radius: 4px; padding: 5px; font-weight: bold; }"
-                "QPushButton:checked { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; padding: 5px; font-weight: bold; }"
-                "QPushButton:hover { background-color: #eeeeee; }"
-                "QPushButton:checked:hover { background-color: #ffbbbb; }"
-            )
+        self.toggle_btn.setStyleSheet(button_style("primary", toggle=True, extra="padding: 5px; font-weight: bold;"))
         self._refresh_condition_badges()
 
     def _get_current_crest_factor(self):

@@ -30,7 +30,7 @@ from src.measurement_modules.base import MeasurementModule
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.core.comparison_manager import ComparisonManager
-from src.gui.styles import MONOSPACE_FONT_FAMILY
+from src.gui.styles import MONOSPACE_FONT_FAMILY, button_style
 from src.gui.widgets.instrument_plot import logarithmic_ticks_125
 
 logger = logging.getLogger(__name__)
@@ -130,9 +130,9 @@ class PlotComparerWidget(QWidget):
         self.readout_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.readout_label.setStyleSheet(f"""
             QLabel {{
-                background-color: #2c3e50;
-                color: #ecf0f1;
-                border: 1px solid #1a252f;
+                background-color: palette(base);
+                color: palette(text);
+                border: 1px solid palette(mid);
                 border-radius: 4px;
                 padding: 6px;
                 font-family: {MONOSPACE_FONT_FAMILY};
@@ -143,32 +143,17 @@ class PlotComparerWidget(QWidget):
 
         plot_layout.addWidget(plot_v_widget, stretch=1)
 
-        # Slim, premium vertical collapse button
+        # Slim vertical collapse button
         self.collapse_btn = QPushButton("›")
         self.collapse_btn.setFixedWidth(14)
         self.collapse_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
         self.collapse_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.collapse_btn.setToolTip(tr("Hide Control Panel"))
 
-        # Apply elegant, glassmorphism/flat premium styling
-        self.collapse_btn.setStyleSheet("""
-            QPushButton {
-                background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #2c3e50, stop:1 #34495e);
-                color: #ecf0f1;
-                border: 1px solid #1a252f;
-                border-radius: 3px;
-                font-size: 14px;
-                font-weight: bold;
-                padding: 0px;
-            }
-            QPushButton:hover {
-                background-color: #34495e;
-                color: #3498db;
-            }
-            QPushButton:pressed {
-                background-color: #1a252f;
-            }
-        """)
+        # Match the common secondary controls
+        self.collapse_btn.setStyleSheet(
+            button_style("secondary", extra="font-size: 14px; font-weight: bold; padding: 0px;")
+        )
         self.collapse_btn.clicked.connect(self.toggle_controls)
         plot_layout.addWidget(self.collapse_btn)
 
@@ -273,7 +258,7 @@ class PlotComparerWidget(QWidget):
         self.export_hint_label = QLabel(
             tr("Tip: Select items to export specifically, or check them to compare in the plot.")
         )
-        self.export_hint_label.setStyleSheet("color: #7f8c8d; font-size: 10px; padding: 2px;")
+        self.export_hint_label.setStyleSheet("color: palette(placeholder-text); font-size: 10px; padding: 2px;")
         traces_layout.addWidget(self.export_hint_label)
 
         self.tab_widget.addTab(traces_tab, tr("Traces"))

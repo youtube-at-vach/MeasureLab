@@ -27,7 +27,7 @@ from PyQt6.QtWidgets import (
 from src.core.analysis import AudioCalc, get_cached_window
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
-from src.gui.styles import MONOSPACE_FONT_FAMILY
+from src.gui.styles import MONOSPACE_FONT_FAMILY, button_style
 from src.measurement_modules.base import MeasurementModule
 from src.core.fft_manager import fft_manager
 from src.core.utils import amplitude_to_linear, linear_to_amplitude
@@ -736,7 +736,7 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         # Actual Frequency Display
         self.actual_freq_label = QLabel("--- Hz")
-        self.actual_freq_label.setStyleSheet("color: #aaaaaa;")
+        self.actual_freq_label.setStyleSheet("color: palette(placeholder-text);")
         sine_layout.addRow(tr("Actual Freq:"), self.actual_freq_label)
 
         sine_widget.setLayout(sine_layout)
@@ -1492,78 +1492,24 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
 
         checked = self.action_btn.isChecked()
 
-        if theme_name == "dark":
-            if checked:
-                self.action_btn.setStyleSheet(
-                    "QPushButton { background-color: #c62828; color: white; border: 1px solid #555; border-radius: 4px; padding: 5px; font-weight: bold; }"
-                    "QPushButton:hover { background-color: #d32f2f; }"
-                )
-            else:
-                self.action_btn.setStyleSheet(
-                    "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; padding: 5px; font-weight: bold; }"
-                    "QPushButton:hover { background-color: #388e3c; }"
-                )
+        if checked:
+            self.action_btn.setStyleSheet(button_style("stop", extra="padding: 5px; font-weight: bold;"))
         else:
-            if checked:
-                self.action_btn.setStyleSheet(
-                    "QPushButton { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; padding: 5px; font-weight: bold; }"
-                    "QPushButton:hover { background-color: #ffbbbb; }"
-                )
-            else:
-                self.action_btn.setStyleSheet(
-                    "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; padding: 5px; font-weight: bold; }"
-                    "QPushButton:hover { background-color: #bbfebb; }"
-                )
+            self.action_btn.setStyleSheet(button_style("primary", extra="padding: 5px; font-weight: bold;"))
 
         snap_checked = self.snap_check.isChecked()
-        if theme_name == "dark":
-            if snap_checked:
-                self.snap_check.setStyleSheet(
-                    "QPushButton { background-color: #1b5e20; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; }"
-                    "QPushButton:hover { background-color: #2e7d32; }"
-                )
-            else:
-                self.snap_check.setStyleSheet(
-                    "QPushButton { background-color: #3a3a3a; color: white; border: 1px solid #555; border-radius: 4px; }"
-                    "QPushButton:hover { background-color: #444444; }"
-                )
+        if snap_checked:
+            self.snap_check.setStyleSheet(button_style("selected", extra="font-weight: bold;"))
         else:
-            if snap_checked:
-                self.snap_check.setStyleSheet(
-                    "QPushButton { background-color: #a5d6a7; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; }"
-                    "QPushButton:hover { background-color: #c8e6c9; }"
-                )
-            else:
-                self.snap_check.setStyleSheet(
-                    "QPushButton { background-color: #e0e0e0; color: black; border: 1px solid #ccc; border-radius: 4px; }"
-                    "QPushButton:hover { background-color: #eeeeee; }"
-                )
+            self.snap_check.setStyleSheet(button_style("secondary"))
 
         # AES17 Calibration Button styling
         if hasattr(self, "aes17_cal_btn"):
             cal_checked = getattr(self.module, "aes17_calibrating", False)
-            if theme_name == "dark":
-                if cal_checked:
-                    self.aes17_cal_btn.setStyleSheet(
-                        "QPushButton { background-color: #ff9800; color: black; border: 1px solid #555; border-radius: 4px; font-weight: bold; }"
-                        "QPushButton:hover { background-color: #ffa726; }"
-                    )
-                else:
-                    self.aes17_cal_btn.setStyleSheet(
-                        "QPushButton { background-color: #3a3a3a; color: white; border: 1px solid #555; border-radius: 4px; }"
-                        "QPushButton:hover { background-color: #444444; }"
-                    )
+            if cal_checked:
+                self.aes17_cal_btn.setStyleSheet(button_style("selected", extra="font-weight: bold;"))
             else:
-                if cal_checked:
-                    self.aes17_cal_btn.setStyleSheet(
-                        "QPushButton { background-color: #ffe082; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; }"
-                        "QPushButton:hover { background-color: #fff9c4; }"
-                    )
-                else:
-                    self.aes17_cal_btn.setStyleSheet(
-                        "QPushButton { background-color: #e0e0e0; color: black; border: 1px solid #ccc; border-radius: 4px; }"
-                        "QPushButton:hover { background-color: #eeeeee; }"
-                    )
+                self.aes17_cal_btn.setStyleSheet(button_style("secondary"))
 
     def on_freq_changed(self, val):
         self.update_actual_frequency()

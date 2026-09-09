@@ -27,7 +27,7 @@ import pyqtgraph as pg
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.core.analysis import AudioCalc
-from src.gui.styles import MONOSPACE_FONT_FAMILY
+from src.gui.styles import MONOSPACE_FONT_FAMILY, button_style
 from src.core.transmission_logic import apply_octave_smoothing
 from src.gui.widgets.instrument_plot import InstrumentPlotWidget
 
@@ -867,7 +867,7 @@ class FeedforwardCompensatorWidget(QWidget):
         source_form.setSpacing(6)
 
         self.btn_load_model = QPushButton(tr("Load Forward Model JSON..."))
-        self.btn_load_model.setStyleSheet("background-color: #4ba3e3; color: white; font-weight: bold; padding: 5px;")
+        self.btn_load_model.setStyleSheet(button_style("secondary", extra="font-weight: bold; padding: 5px;"))
         self.btn_load_model.clicked.connect(self.load_model)
         source_form.addWidget(self.btn_load_model)
 
@@ -1092,7 +1092,7 @@ class FeedforwardCompensatorWidget(QWidget):
         # Results Label
         self.lbl_sim_results = QLabel(tr("Run simulation to see results."))
         self.lbl_sim_results.setStyleSheet(
-            f"font-family: {MONOSPACE_FONT_FAMILY}; font-size: 11px; background-color: #2b2b2b; color: #a9b7c6; padding: 8px; border-radius: 4px;"
+            f"font-family: {MONOSPACE_FONT_FAMILY}; font-size: 11px; background-color: palette(base); color: palette(text); padding: 8px; border-radius: 4px;"
         )
         sim_layout.addWidget(self.lbl_sim_results)
 

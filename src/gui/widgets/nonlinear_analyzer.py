@@ -29,6 +29,7 @@ from scipy.signal import (
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.gui.styles import button_style
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.instrument_plot import InstrumentPlotWidget
 from src.core.nonlinear_analyzer_core import (
@@ -776,7 +777,7 @@ class NonlinearAnalyzerWidget(QWidget):
 
         # Latency Display
         self.latency_label = QLabel("0.00 ms")
-        self.latency_label.setStyleSheet("font-weight: bold; color: #4ba3e3;")
+        self.latency_label.setStyleSheet("font-weight: bold; color: palette(link);")
         calib_form.addRow(tr("Delay Time:"), self.latency_label)
 
         # Calibrate Button
@@ -794,14 +795,10 @@ class NonlinearAnalyzerWidget(QWidget):
 
         ctrl_layout = QHBoxLayout()
         self.start_btn = QPushButton(tr("Start Analysis"))
-        self.start_btn.setStyleSheet(
-            "background-color: #2b8c56; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;"
-        )
+        self.start_btn.setStyleSheet(button_style("primary", extra="font-weight: bold; padding: 6px 12px;"))
         self.start_btn.clicked.connect(self.start_measurement)
         self.stop_btn = QPushButton(tr("Stop"))
-        self.stop_btn.setStyleSheet(
-            "background-color: #d9534f; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;"
-        )
+        self.stop_btn.setStyleSheet(button_style("stop", extra="font-weight: bold; padding: 6px 12px;"))
         self.stop_btn.setEnabled(False)
         self.stop_btn.clicked.connect(self.stop_measurement)
         ctrl_layout.addWidget(self.start_btn)
@@ -810,9 +807,7 @@ class NonlinearAnalyzerWidget(QWidget):
 
         # Export Button
         self.export_btn = QPushButton(tr("Export Model..."))
-        self.export_btn.setStyleSheet(
-            "background-color: #4ba3e3; color: white; font-weight: bold; padding: 6px 12px; border-radius: 4px;"
-        )
+        self.export_btn.setStyleSheet(button_style("secondary", extra="font-weight: bold; padding: 6px 12px;"))
         self.export_btn.setEnabled(False)
         self.export_btn.clicked.connect(self.export_model)
         ctrl_main_layout.addWidget(self.export_btn)
@@ -906,7 +901,7 @@ class NonlinearAnalyzerWidget(QWidget):
             self.cal_btn.setEnabled(False)
             self.latency_label.setEnabled(False)
             self.latency_label.setText(tr("Not Required (2-Ch Relative)"))
-            self.latency_label.setStyleSheet("font-weight: bold; color: #888888;")
+            self.latency_label.setStyleSheet("font-weight: bold; color: palette(placeholder-text);")
         else:
             self.cal_btn.setEnabled(True)
             self.latency_label.setEnabled(True)

@@ -37,7 +37,7 @@ from src.core.transmission_logic import (
     calculate_step_response,
     analyze_step_transient,
 )
-from src.gui.styles import MONOSPACE_FONT_FAMILY
+from src.gui.styles import MONOSPACE_FONT_FAMILY, button_style
 
 logger = logging.getLogger(__name__)
 
@@ -847,10 +847,7 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
 
         self.btn_toggle = QPushButton(tr("Start Diagnostics"))
         self.btn_toggle.setCheckable(True)
-        self.btn_toggle.setStyleSheet(
-            "QPushButton { background-color: #2ecc71; color: black; font-weight: bold; height: 34px; border-radius: 4px; }"
-            "QPushButton:checked { background-color: #e74c3c; color: white; }"
-        )
+        self.btn_toggle.setStyleSheet(button_style("primary", toggle=True, extra="font-weight: bold; height: 34px;"))
         self.btn_toggle.clicked.connect(self.on_toggle_test)
         ctrl_layout.addWidget(self.btn_toggle)
 
@@ -939,7 +936,7 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         status_layout.addWidget(self.lbl_status)
 
         self.lbl_reason = QLabel(tr("Start analysis to evaluate transmission characteristics."))
-        self.lbl_reason.setStyleSheet("color: #ecf0f1; font-size: 12px;")
+        self.lbl_reason.setStyleSheet("color: palette(text); font-size: 12px;")
         self.lbl_reason.setAlignment(Qt.AlignmentFlag.AlignCenter)
         status_layout.addWidget(self.lbl_reason)
 
@@ -948,11 +945,11 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         stats_row.setSpacing(15)
 
         self.lbl_stat_delay = QLabel(tr("Delay: -"))
-        self.lbl_stat_delay.setStyleSheet("color: #ecf0f1; font-size: 11px; font-weight: bold;")
+        self.lbl_stat_delay.setStyleSheet("color: palette(text); font-size: 11px; font-weight: bold;")
         self.lbl_stat_delay.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.lbl_stat_evm = QLabel(tr("EVM: -"))
-        self.lbl_stat_evm.setStyleSheet("color: #ecf0f1; font-size: 11px; font-weight: bold;")
+        self.lbl_stat_evm.setStyleSheet("color: palette(text); font-size: 11px; font-weight: bold;")
         self.lbl_stat_evm.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         stats_row.addWidget(self.lbl_stat_delay)
@@ -1282,52 +1279,40 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
 
         if theme_name == "dark":
             self.tabs.setStyleSheet(
-                "QTabWidget::pane { border: 1px solid #555; border-radius: 4px; padding: 4px; background-color: #222; }"
-                "QTabBar::tab { background: #333; color: #BBB; border: 1px solid #555; border-bottom-color: none; border-top-left-radius: 4px; border-top-right-radius: 4px; padding: 5px 10px; }"
-                "QTabBar::tab:selected { background: #222; color: white; border-bottom-color: #222; font-weight: bold; }"
+                "QTabWidget::pane { border: 1px solid palette(mid); border-radius: 4px; padding: 4px; background-color: palette(base); }"
+                "QTabBar::tab { background: palette(button); color: palette(button-text); border: 1px solid palette(mid); border-bottom-color: none; border-top-left-radius: 4px; border-top-right-radius: 4px; padding: 5px 10px; }"
+                "QTabBar::tab:selected { background: palette(base); color: palette(text); border-bottom-color: palette(base); font-weight: bold; }"
             )
-            self.lbl_reason.setStyleSheet("color: #ecf0f1; font-size: 12px;")
-            self.lbl_stat_delay.setStyleSheet("color: #ecf0f1; font-size: 11px; font-weight: bold;")
-            self.lbl_stat_evm.setStyleSheet("color: #ecf0f1; font-size: 11px; font-weight: bold;")
+            self.lbl_reason.setStyleSheet("color: palette(text); font-size: 12px;")
+            self.lbl_stat_delay.setStyleSheet("color: palette(text); font-size: 11px; font-weight: bold;")
+            self.lbl_stat_evm.setStyleSheet("color: palette(text); font-size: 11px; font-weight: bold;")
             self.lbl_step_stats.setStyleSheet(
                 f"font-family: {MONOSPACE_FONT_FAMILY}; font-size: 11px; color: #2ecc71; font-weight: bold; "
-                "background-color: rgba(44, 62, 80, 0.7); padding: 4px; border-radius: 4px; border: 1px solid #34495e;"
+                "background-color: palette(base); padding: 4px; border-radius: 4px; border: 1px solid palette(mid);"
             )
 
             if checked:
-                self.btn_toggle.setStyleSheet(
-                    "QPushButton { background-color: #c62828; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; height: 34px; }"
-                    "QPushButton:hover { background-color: #d32f2f; }"
-                )
+                self.btn_toggle.setStyleSheet(button_style("stop", extra="font-weight: bold; height: 34px;"))
             else:
-                self.btn_toggle.setStyleSheet(
-                    "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; height: 34px; }"
-                    "QPushButton:hover { background-color: #388e3c; }"
-                )
+                self.btn_toggle.setStyleSheet(button_style("primary", extra="font-weight: bold; height: 34px;"))
         else:
             self.tabs.setStyleSheet(
-                "QTabWidget::pane { border: 1px solid #CCC; border-radius: 4px; padding: 4px; background-color: #FFF; }"
-                "QTabBar::tab { background: #E0E0E0; color: #333; border: 1px solid #CCC; border-bottom-color: none; border-top-left-radius: 4px; border-top-right-radius: 4px; padding: 5px 10px; }"
-                "QTabBar::tab:selected { background: #FFF; color: black; border-bottom-color: #FFF; font-weight: bold; }"
+                "QTabWidget::pane { border: 1px solid palette(mid); border-radius: 4px; padding: 4px; background-color: palette(base); }"
+                "QTabBar::tab { background: palette(button); color: palette(text); border: 1px solid palette(mid); border-bottom-color: none; border-top-left-radius: 4px; border-top-right-radius: 4px; padding: 5px 10px; }"
+                "QTabBar::tab:selected { background: palette(base); color: palette(text); border-bottom-color: palette(base); font-weight: bold; }"
             )
-            self.lbl_reason.setStyleSheet("color: #333333; font-size: 12px;")
-            self.lbl_stat_delay.setStyleSheet("color: #333333; font-size: 11px; font-weight: bold;")
-            self.lbl_stat_evm.setStyleSheet("color: #333333; font-size: 11px; font-weight: bold;")
+            self.lbl_reason.setStyleSheet("color: palette(text); font-size: 12px;")
+            self.lbl_stat_delay.setStyleSheet("color: palette(text); font-size: 11px; font-weight: bold;")
+            self.lbl_stat_evm.setStyleSheet("color: palette(text); font-size: 11px; font-weight: bold;")
             self.lbl_step_stats.setStyleSheet(
                 f"font-family: {MONOSPACE_FONT_FAMILY}; font-size: 11px; color: #1b5e20; font-weight: bold; "
-                "background-color: rgba(236, 240, 241, 0.9); padding: 4px; border-radius: 4px; border: 1px solid #bdc3c7;"
+                "background-color: palette(base); padding: 4px; border-radius: 4px; border: 1px solid palette(mid);"
             )
 
             if checked:
-                self.btn_toggle.setStyleSheet(
-                    "QPushButton { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; height: 34px; }"
-                    "QPushButton:hover { background-color: #ffbbbb; }"
-                )
+                self.btn_toggle.setStyleSheet(button_style("stop", extra="font-weight: bold; height: 34px;"))
             else:
-                self.btn_toggle.setStyleSheet(
-                    "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; height: 34px; }"
-                    "QPushButton:hover { background-color: #bbfebb; }"
-                )
+                self.btn_toggle.setStyleSheet(button_style("primary", extra="font-weight: bold; height: 34px;"))
 
         card_color = self.get_card_color(theme_name)
         text_color = self.get_status_text_color(theme_name)

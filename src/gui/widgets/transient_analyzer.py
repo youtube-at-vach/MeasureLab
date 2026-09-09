@@ -25,6 +25,7 @@ from PyQt6.QtWidgets import (
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.gui.styles import button_style
 from src.core.utils import format_si
 from src.measurement_modules.base import MeasurementModule
 
@@ -549,7 +550,7 @@ class TransientAnalyzerWidget(QWidget):
         ringing_layout.addWidget(self.lbl_ringing_ratio)
 
         self.lbl_filter_type = QLabel(tr("Filter Type: N/A"))
-        self.lbl_filter_type.setStyleSheet("font-weight: bold; color: #3498db;")
+        self.lbl_filter_type.setStyleSheet("font-weight: bold; color: palette(link);")
         ringing_layout.addWidget(self.lbl_filter_type)
 
         # Warning label
@@ -566,7 +567,7 @@ class TransientAnalyzerWidget(QWidget):
 
         # Complexity Note
         note_label = QLabel(tr("Note: CWT analysis is computationally intensive. Long recordings may take time."))
-        note_label.setStyleSheet("color: gray; font-style: italic;")
+        note_label.setStyleSheet("color: palette(placeholder-text); font-style: italic;")
         note_label.setWordWrap(True)
         layout.addWidget(note_label)
 
@@ -687,7 +688,7 @@ class TransientAnalyzerWidget(QWidget):
     def _start_recording_ui(self):
         self.module.start_recording()
         self.rec_btn.setText(tr("Stop"))
-        self.rec_btn.setStyleSheet("background-color: #ffcccc; color: red;")
+        self.rec_btn.setStyleSheet(button_style("stop"))
         self.analyze_btn.setEnabled(False)
 
     def _stop_recording_ui(self):
