@@ -68,6 +68,7 @@ plugins:
             ようこそ: Welcome
             キャリブレーション: Calibration
             UI概要: UI Overview
+            VST3測定対象（DUT）: VST3 Device Under Test (DUT)
             設定: Settings
             ウィジット: Widgets
             基本: Basics
@@ -153,6 +154,7 @@ nav:
   - はじめに:
       - キャリブレーション: calibration.md
       - UI概要: widget_guide.md
+      - VST3測定対象（DUT）: vst_dut.md
 
   - ウィジット:
       - 基本:
