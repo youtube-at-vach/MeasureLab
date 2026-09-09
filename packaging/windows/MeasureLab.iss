@@ -1,4 +1,8 @@
 ; Build through scripts/build_windows_installer.ps1 (Inno Setup 6.3+).
+#if Ver < EncodeVer(6, 3, 0) || Ver >= EncodeVer(7, 0, 0)
+  #error Inno Setup 6.3+ (6.x) is required to compile this installer
+#endif
+
 #ifndef AppVersion
   #error AppVersion must be supplied by the build script
 #endif

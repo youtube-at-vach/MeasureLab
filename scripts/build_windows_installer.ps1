@@ -20,11 +20,9 @@ if ($env:GITHUB_REF_TYPE -eq "tag" -and $env:GITHUB_REF_NAME -ne "v$appVersion")
 if (-not (Test-Path -LiteralPath $Iscc)) {
     throw "Inno Setup 6.3+ is required. Install Inno Setup 6 or pass -Iscc <path to ISCC.exe>."
 }
-$compilerVersion = (Get-Item -LiteralPath $Iscc).VersionInfo.FileVersion
-if ([version]$compilerVersion -lt [version]"6.3.0" -or [version]$compilerVersion -ge [version]"7.0") {
-    throw "Expected Inno Setup 6.3+ (6.x), found $compilerVersion"
-}
-Write-Host "Building MeasureLab $appVersion with Inno Setup $compilerVersion"
+# ISCC.exe's file resource version may be 0.0.0.0. The installer script checks
+# the actual compiler version using Inno Setup's predefined Ver value.
+Write-Host "Building MeasureLab $appVersion with Inno Setup"
 
 $sourceDir = (Resolve-Path "dist/onedir/MeasureLab").Path
 foreach ($file in @("MeasureLab.exe", "_internal", "enable_asio.bat", "disable_asio.bat", "README_ASIO.txt")) {
