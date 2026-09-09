@@ -28,6 +28,7 @@ class ThemeManager(QObject):
         self.config_manager = config_manager
         self.logger = logging.getLogger(self.__class__.__name__)
         self.current_theme = "system"
+        self._original_stylesheet = self.app.styleSheet()
 
         # Cache original style so we can restore it when leaving dark theme.
         style = self.app.style()
@@ -99,6 +100,7 @@ class ThemeManager(QObject):
         if self.current_theme == "system":
             self.logger.debug(f"System theme changed to: {scheme}")
             self._apply_system_theme()
+            self.theme_changed.emit("system")
 
     def _detect_system_theme(self) -> str:
         """
@@ -189,6 +191,7 @@ class ThemeManager(QObject):
         palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(127, 127, 127))
 
         self.app.setPalette(palette)
+        self.app.setStyleSheet(self._original_stylesheet)
         self.logger.debug("Light theme applied")
 
     def _apply_dark_theme(self):
@@ -196,35 +199,55 @@ class ThemeManager(QObject):
         self._ensure_fusion_style()
         palette = QPalette()
 
-        # Base colors
-        palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
-        palette.setColor(QPalette.ColorRole.WindowText, QColor(226, 228, 230))
-        palette.setColor(QPalette.ColorRole.Base, QColor(35, 35, 35))
-        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(62, 62, 62))
-        palette.setColor(QPalette.ColorRole.Text, QColor(226, 228, 230))
-        palette.setColor(QPalette.ColorRole.PlaceholderText, QColor(170, 170, 170))
-        palette.setColor(QPalette.ColorRole.Button, QColor(64, 64, 64))
-        palette.setColor(QPalette.ColorRole.ButtonText, QColor(226, 228, 230))
-        palette.setColor(QPalette.ColorRole.BrightText, QColor(255, 0, 0))
+        # Surface hierarchy: recessed fields, shell, panels, raised controls.
+        # Keep the black measurement canvases and their trace colors independent
+        # of these chrome colors so data remains the strongest visual layer.
+        palette.setColor(QPalette.ColorRole.Window, QColor(22, 24, 27))
+        palette.setColor(QPalette.ColorRole.Base, QColor(15, 17, 20))
+        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(30, 33, 37))
+        palette.setColor(QPalette.ColorRole.Button, QColor(43, 47, 52))
 
-        # Highlight colors
+        # Explicit bevel roles prevent native light-palette edges in dark mode.
+        palette.setColor(QPalette.ColorRole.Light, QColor(72, 78, 86))
+        palette.setColor(QPalette.ColorRole.Midlight, QColor(57, 63, 70))
+        palette.setColor(QPalette.ColorRole.Mid, QColor(48, 53, 59))
+        palette.setColor(QPalette.ColorRole.Dark, QColor(100, 109, 120))
+        palette.setColor(QPalette.ColorRole.Shadow, QColor(6, 8, 10))
+
+        # Retain readable, softened whites and familiar semantic accents.
+        palette.setColor(QPalette.ColorRole.WindowText, QColor(226, 228, 230))
+        palette.setColor(QPalette.ColorRole.Text, QColor(226, 228, 230))
+        palette.setColor(QPalette.ColorRole.ButtonText, QColor(226, 228, 230))
+        palette.setColor(QPalette.ColorRole.PlaceholderText, QColor(160, 167, 176))
+        palette.setColor(QPalette.ColorRole.BrightText, QColor(255, 0, 0))
         palette.setColor(QPalette.ColorRole.Highlight, QColor(65, 112, 153))
         palette.setColor(QPalette.ColorRole.HighlightedText, QColor(252, 252, 252))
-
-        # Links
         palette.setColor(QPalette.ColorRole.Link, QColor(126, 183, 230))
         palette.setColor(QPalette.ColorRole.LinkVisited, QColor(200, 100, 200))
-
-        # Tooltips
-        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(64, 64, 64))
+        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(43, 47, 52))
         palette.setColor(QPalette.ColorRole.ToolTipText, QColor(226, 228, 230))
 
-        # Disabled colors
-        palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, QColor(127, 127, 127))
-        palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(127, 127, 127))
-        palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(127, 127, 127))
+        for role in (QPalette.ColorRole.WindowText, QPalette.ColorRole.Text, QPalette.ColorRole.ButtonText):
+            palette.setColor(QPalette.ColorGroup.Disabled, role, QColor(127, 135, 145))
 
         self.app.setPalette(palette)
+        # Keep native control rendering (including checked/mixed indicators).
+        # Empty checkboxes need an explicit edge against the darker surfaces.
+        self.app.setStyleSheet(
+            self._original_stylesheet
+            + """
+            QGroupBox { background-color: palette(alternate-base); }
+            QTabWidget::pane { background-color: palette(window); }
+            QCheckBox::indicator:unchecked {
+                border: 1px solid palette(dark);
+                border-radius: 2px;
+                background-color: palette(base);
+            }
+            QCheckBox::indicator:unchecked:disabled { border-color: palette(mid); }
+            QCheckBox::indicator:unchecked:hover,
+            QCheckBox:focus::indicator:unchecked { border-color: palette(link); }
+            """
+        )
         self.logger.debug("Dark theme applied")
 
     def _ensure_fusion_style(self) -> None:
