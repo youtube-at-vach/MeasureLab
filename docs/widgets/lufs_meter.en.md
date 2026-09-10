@@ -71,3 +71,7 @@ Displays time-series changes in Momentary (cyan) and Short-term (yellow) loudnes
 * **YouTube**: -14 LUFS
 * **Spotify**: -14 LUFS
 * **CD / Club Music**: -9 to -6 LUFS (Can be much higher due to the "loudness war")
+
+## True Peak measurement
+
+True Peak uses continuous 4× FIR interpolation with ten input samples of delay. Filter history is preserved across callbacks and reset on acquisition discontinuities. This is an estimate, not a certified BS.1770 compliance measurement. An internal loopback observes the signal before output quantization and cannot certify physical DAC headroom.

@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+from src.core.true_peak import EXPORT_TRUE_PEAK_CEILING, estimate_true_peak
 from src.core.analysis import AudioCalc
 from src.gui.widgets.hrtf_player import SOFALoader, HRTFData
 
@@ -152,9 +153,9 @@ class RenderWorker(QThread):
                 master_bus[: len(conv_l), 0] += conv_l
                 master_bus[: len(conv_r), 1] += conv_r
 
-            peak = np.max(np.abs(master_bus))
-            if peak > 0.99:
-                master_bus = (master_bus / peak) * 0.99
+            peak = estimate_true_peak(master_bus)
+            if peak > EXPORT_TRUE_PEAK_CEILING:
+                master_bus *= EXPORT_TRUE_PEAK_CEILING / peak
 
             self.progress.emit(100, tr("Done"))
             self.finished.emit(master_bus.astype(np.float32))

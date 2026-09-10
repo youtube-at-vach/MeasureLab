@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
 )
 from scipy import signal
 
+from src.core.true_peak import TruePeakMeter
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
@@ -316,6 +317,7 @@ class LufsMeter(MeasurementModule):
         # reset cannot retain pre-reset samples in the first gating block.
         self.reset_integration()
 
+        true_peak = TruePeakMeter(2)
         abs_gate_ms = self._i_abs_gate_ms
 
         def callback(indata, outdata, frames, time, status):
@@ -334,21 +336,25 @@ class LufsMeter(MeasurementModule):
             ):
                 input_status = True
             if input_status:
+                true_peak.reset()
                 self.data_gap_detected = True
                 self.measurement_valid = False
 
             data = np.asarray(indata)
             if data.ndim != 2 or data.shape[0] == 0 or data.shape[1] == 0 or not np.isrealobj(data):
+                true_peak.reset()
                 self.data_gap_detected = True
                 self.measurement_valid = False
                 return
             if not bool(np.all(np.isfinite(data))):
+                true_peak.reset()
                 self.data_gap_detected = True
                 self.measurement_valid = False
                 return
 
             actual_frames = int(data.shape[0])
             if int(frames) != actual_frames:
+                true_peak.reset()
                 self.data_gap_detected = True
                 self.measurement_valid = False
 
@@ -376,15 +382,8 @@ class LufsMeter(MeasurementModule):
             self.rms_l = self._to_db(rms_l_linear)
             self.rms_r = self._to_db(rms_r_linear)
 
-            # True Peak (Instantaneous)
-            if actual_frames > 0:
-                l_up = signal.resample_poly(l_channel, 4, 1)
-                r_up = signal.resample_poly(r_channel, 4, 1)
-                peak_l_linear = float(np.max(np.abs(l_up)))
-                peak_r_linear = float(np.max(np.abs(r_up)))
-            else:
-                peak_l_linear = 0.0
-                peak_r_linear = 0.0
+            # Stateful interpolation: do not fabricate silence at callback boundaries.
+            peak_l_linear, peak_r_linear = true_peak.process(np.column_stack((l_channel, r_channel)))
 
             self.peak_l = self._to_db(peak_l_linear)
             self.peak_r = self._to_db(peak_r_linear)

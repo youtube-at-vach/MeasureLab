@@ -1384,3 +1384,29 @@ class TestAudioErrorHandling(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_output_overload_is_observed_after_mixing_before_quantization():
+    engine = AudioEngine()
+    engine.loopback = True
+    engine.dithering_enabled = True
+
+    def source(indata, outdata, frames, time_info, status):
+        outdata.fill(0.8)
+
+    engine._cached_callbacks = [source, source]
+    data = np.zeros((64, 2), dtype=np.float32)
+    out = np.zeros_like(data)
+    engine._master_callback(data, out, len(data), None, None)
+    assert engine.get_status()["output_overload_peak"] > 1.59
+    assert np.max(out) <= 1.0
+    assert np.max(engine.last_output_buffer) > 1.59
+    # Status reads do not consume the warning; acknowledgement does.
+    assert engine.get_status()["output_overload_peak"] > 1.59
+    engine.clear_latched_audio_status()
+    assert engine.get_status()["output_overload_peak"] == 0
+    for mode in ("mute_output", "offline_mode"):
+        setattr(engine, mode, True)
+        engine._master_callback(data, out, len(data), None, None)
+        assert engine.get_status()["output_overload_peak"] == 0
+        setattr(engine, mode, False)

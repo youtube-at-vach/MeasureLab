@@ -26,6 +26,7 @@ import pyqtgraph as pg
 
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
+from src.core.true_peak import EXPORT_TRUE_PEAK_CEILING, estimate_true_peak
 from src.core.analysis import AudioCalc
 from src.gui.styles import MONOSPACE_FONT_FAMILY, button_style
 from src.core.transmission_logic import apply_octave_smoothing
@@ -759,6 +760,25 @@ class OfflineFFCompWorker(QThread):
                         ).format(20 * np.log10(peak_out))
                         out_data = out_data / peak_out
 
+                # Preserve relative gain of the comparison pair while reserving
+                # inter-sample headroom after all filtering and level matching.
+                true_peak = estimate_true_peak(out_data)
+                if write_matched_orig:
+                    if abs(file_sr - model_sr) > 1.0:
+                        matched_orig_data = data * scale_factor
+                    else:
+                        raw_data, _ = sf.read(self.input_path, always_2d=True)
+                        matched_orig_data = raw_data * scale_factor
+                    true_peak = max(true_peak, estimate_true_peak(matched_orig_data))
+                if true_peak > EXPORT_TRUE_PEAK_CEILING:
+                    attenuation = EXPORT_TRUE_PEAK_CEILING / true_peak
+                    out_data *= attenuation
+                    if write_matched_orig:
+                        matched_orig_data *= attenuation
+                    clipping_msg += "\n" + tr(
+                        "True-peak headroom: attenuated by {0:.2f} dB (estimated ceiling -1 dBTP)."
+                    ).format(-20 * np.log10(attenuation))
+
                 sf.write(
                     self.output_path,
                     out_data,
@@ -776,12 +796,6 @@ class OfflineFFCompWorker(QThread):
                     )
 
                 if write_matched_orig:
-                    if abs(file_sr - model_sr) > 1.0:
-                        matched_orig_data = data * scale_factor
-                    else:
-                        raw_data, _ = sf.read(self.input_path, always_2d=True)
-                        matched_orig_data = raw_data * scale_factor
-
                     base, ext = os.path.splitext(self.output_path)
                     matched_orig_path = base + "_matched_orig" + ext
                     sf.write(

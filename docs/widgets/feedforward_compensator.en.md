@@ -126,3 +126,7 @@ Applies the distortion compensation algorithm offline to a WAV audio file and sa
     * Automatic resampling is performed if the input audio's sampling rate differs from the model's rate.
     * Segmented processing with sufficient overlap is used to prevent boundary artifacts during block-by-block processing.
     * If the processed peak level exceeds 0 dBFS and digital clipping is about to occur, normalization is automatically applied, and a warning message is shown.
+
+## Export headroom
+
+After compensation and volume matching, export attenuates signals above an estimated -1 dBTP ceiling, including inter-sample peaks. RMS-matched output and original files receive the same additional attenuation to preserve their comparison level. This cannot undo clipping already introduced by compensation. The four-times estimate is not a guarantee for every DAC.

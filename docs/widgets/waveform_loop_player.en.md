@@ -50,3 +50,7 @@ This allows you to repeatedly and stably observe the transient response while tr
 ### Analyzing Specific Phrases
 
 Select a specific part of a song (for example, the exact moment a specific chord is played or where a noise artifact is present) and use it in conjunction with a spectrum analyzer to analyze the frequency components in detail.
+
+## Playback headroom
+
+Playback Gain remains explicit: files are not automatically normalized. Near-full-scale files may have inter-sample peaks above 0 dBTP, and resampling can produce samples above 0 dBFS. Reduce Playback Gain as needed. A 3 dB reduction is a useful precaution, not a universal guarantee. The global Error indicator latches mixed output sample peaks above 0 dBFS before quantization; its absence does not imply true-peak safety. Physical output attenuation is not applied automatically.

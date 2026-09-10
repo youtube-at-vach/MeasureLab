@@ -479,3 +479,15 @@ def test_recent_history_records_only_successful_navigation(qtbot, tmp_path):
         assert window.config_manager.get_recent_modules() == ["Signal Generator"]
     window.module_widgets[index] = None
     window.config_manager.shutdown()
+
+
+def test_output_overload_warning_is_distinct_from_buffer_error(qtbot):
+    window = _build_window_stub(qtbot)
+    status = _audio_status()
+    status["output_overload_peak"] = 1.6
+    window._update_audio_io_error_indicator(status)
+    assert not window.io_error_button.isHidden()
+    assert window.io_error_button.text() == tr("Error")
+    assert "+4.08 dBFS" in window.io_error_button.toolTip()
+    window.io_error_button.click()
+    assert window.io_error_button.isHidden()
