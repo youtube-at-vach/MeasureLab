@@ -81,11 +81,6 @@ const translations = {
             size: "約 120 MB",
             assetName: "MeasureLab-{tag}-windows-x64-onedir.zip",
           },
-          onefile: {
-            label: "単一EXE版 (onefile)",
-            size: "約 120 MB",
-            assetName: "MeasureLab-{tag}-windows-x64-onefile.zip",
-          },
         },
       },
       Linux: {
@@ -169,11 +164,6 @@ const translations = {
             label: "ZIP 版 (onedir)",
             size: "约 120 MB",
             assetName: "MeasureLab-{tag}-windows-x64-onedir.zip",
-          },
-          onefile: {
-            label: "单文件 EXE 版 (onefile)",
-            size: "约 120 MB",
-            assetName: "MeasureLab-{tag}-windows-x64-onefile.zip",
           },
         },
       },
@@ -259,11 +249,6 @@ const translations = {
             label: "ZIP (onedir)",
             size: "~120 MB",
             assetName: "MeasureLab-{tag}-windows-x64-onedir.zip",
-          },
-          onefile: {
-            label: "Single EXE (onefile)",
-            size: "~120 MB",
-            assetName: "MeasureLab-{tag}-windows-x64-onefile.zip",
           },
         },
       },

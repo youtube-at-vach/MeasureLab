@@ -30,7 +30,7 @@ MeasureLab は Windows および Linux で動作します。
 
 更新時は MeasureLab を終了し、新しいインストーラーを実行してください。同じインストール先が使われ、`%APPDATA%\MeasureLab` の設定・校正データは保持されます。削除は **設定 > アプリ** から行います。アンインストールしても、ユーザー設定・校正データ・保存したスクリーンショットは残ります。
 
-ZIP版（`MeasureLab-<version>-windows-x64-onedir.zip`、`onefile.zip`）も引き続き利用できます。全体を展開して `MeasureLab.exe` を実行してください。過去のリリースではZIP版のみの場合があります。
+フォルダー形式のZIP版（`MeasureLab-<version>-windows-x64-onedir.zip`）も引き続き利用できます。全体を展開して `MeasureLab.exe` を実行してください。過去のリリースではZIP版のみの場合があります。
 
 ZIP版から移行する場合、`%APPDATA%\MeasureLab` にある設定は引き継がれます。旧ZIPフォルダーにポータブル設定の `config.json` がある場合は、バックアップしてから、MeasureLab を終了した状態で新しいインストール先にコピーしてください。設定・校正・保存した測定結果を確認するまで旧フォルダーは残してください。旧実行ファイルの隣に保存したファイルは自動移動しません。
 

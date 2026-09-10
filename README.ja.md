@@ -117,7 +117,7 @@
 
 **Releases** ページから最新のバージョンをダウンロードしてください。
 
-- **Windows**: `MeasureLab-<version>-windows-x64-onefile.zip`（または `MeasureLab-<version>-windows-x64-onedir.zip`）をダウンロードして解凍し、`MeasureLab.exe` を実行します。
+- **Windows**: `MeasureLab-<version>-windows-x64-setup.exe` を実行してユーザー単位でインストールし、スタートメニューから MeasureLab を起動します。管理者権限は不要です。フォルダー形式の `onedir.zip` 版も引き続き利用できます。更新・移行については [Windowsのインストール手順](docs/quickstart.md#windows) を参照してください。
 - **Linux**: `MeasureLab-<version>-linux-x86_64.AppImage` をダウンロードし、実行権限を付与して起動します。
 
     ```bash
