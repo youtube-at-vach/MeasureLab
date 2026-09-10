@@ -58,6 +58,8 @@ Continues to measure the performance at the current moment.
 
 Measures by continuously changing the frequency from low to high tones, like sweeping your fingers across a piano keyboard from left to right.
 
+For both frequency and amplitude sweeps, an audio capture timeout stops the sweep and records a warning in the log. Previously completed points remain available; the interrupted point is not added, including when only part of its averaging has completed. Cancelling a sweep also discards the incomplete point.
+
 * **Use Case**: Used to find the equipment's "weak spots" across different frequencies, such as "it's good at bass but distorts at high frequencies."
 * **Settings**: Set Start (starting frequency), End (ending frequency), and Steps (number of measurement points).
 * **Sweep Results**: Results are plotted on a graph. The Y-axis unit can be selected from `dB` or `Percent (%)`, and when displayed in percent, it automatically scales to an approximately logarithmic view.
