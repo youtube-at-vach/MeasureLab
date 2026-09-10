@@ -22,8 +22,8 @@ This widget supports common features of the Detachable Wrapper. Please refer to 
 
 1. Click the "Logs" button located below the gear icon (Settings) in the left menu to open the "Log Viewer."
 2. Select the desired log level from the dropdown menu at the top.
-    * `All Logs (DEBUG)`: Displays all detailed mutterings (logs). While it's an overwhelming amount of information, it's the most helpful setting for developers when troubleshooting.
+    * `All Logs (DEBUG)`: Displays all detailed logs. While it provides a large amount of information, it is the most helpful setting for developers when troubleshooting.
     * `Info`: Displays general information and more critical messages (default setting).
-    * `Warnings`: Displays only warnings (slightly dangerous situations) and errors.
-    * `Errors Only`: Displays only error messages (situations that completely failed).
+    * `Warnings`: Displays only warnings and errors.
+    * `Errors Only`: Displays only error messages.
 3. Click the "Clear Logs" button to completely clear the display.
