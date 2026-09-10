@@ -1,5 +1,31 @@
 # Changelog
 
+## [v0.8.9] - 2026-09-10
+
+### Added
+
+* **Windows Distribution**:
+    * Added a user-scoped Windows x64 installer built with Inno Setup, including installer lifecycle validation and release-artifact integration.
+* **Documentation and Release Engineering**:
+    * Added a Windows packaging and build guide, refreshed widget screenshots, and added download-site support for detecting installer assets.
+
+### Changed
+
+* **GUI Theme and Navigation**:
+    * Improved dark-theme palette contrast, theme-aware widget styling, settings presentation, searchable sidebar navigation, and Welcome-page setup guidance and recent-module shortcuts.
+    * Added distinct visual styles for measurement start and stop actions.
+* **Lock-in Amplifier**:
+    * Improved control and display layout alignment.
+* **Windows Release Pipeline**:
+    * Extended build, release, checksum, Sigstore, and VirusTotal workflows to include the Windows installer and installer test logs.
+
+### Fixed
+
+* **Windows Installer Validation**:
+    * Improved compiler detection and shortcut validation for Unicode paths and DOS 8.3 paths, and made test cleanup safer.
+* **Documentation**:
+    * Removed obsolete VST3 screenshots and clarified Log Viewer descriptions.
+
 ## [v0.8.8] - 2026-09-09
 
 ### Added
