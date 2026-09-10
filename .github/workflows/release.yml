@@ -45,16 +45,6 @@ jobs:
         echo "ICU DLLs copied to libs/"
         ls libs
 
-    - name: Build (onefile) with PyInstaller
-      run: |
-        pyinstaller --onefile --windowed --name MeasureLab --icon=app_icon.ico --add-data "src;src" --add-binary "libs/icu*.dll;." --exclude-module matplotlib --collect-all backports --collect-all soundfile --collect-all pyfftw --hidden-import pyfftw --distpath dist/onefile --workpath build/onefile main_gui.py
-
-    - name: Verify Windows Executable (GUI Self-Test)
-      run: |
-        echo "Testing dist/onefile/MeasureLab.exe with --self-test..."
-        $process = Start-Process -Wait -PassThru -FilePath "dist/onefile/MeasureLab.exe" -ArgumentList "--self-test"
-        if ($process.ExitCode -ne 0) { throw "Self-test failed: $($process.ExitCode)" }
-
     - name: Build (onedir) with PyInstaller
       run: |
         pyinstaller --windowed --name MeasureLab --icon=app_icon.ico --add-data "src;src" --add-binary "libs/icu*.dll;." --exclude-module matplotlib --collect-all backports --collect-all soundfile --collect-all pyfftw --hidden-import pyfftw --distpath dist/onedir --workpath build/onedir main_gui.py
@@ -92,7 +82,6 @@ jobs:
         New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 
         $base = "MeasureLab-$tag-windows-x64"
-        Compress-Archive -Path "dist/onefile/MeasureLab.exe" -DestinationPath "$outDir/$base-onefile.zip" -Force
         Compress-Archive -Path "dist/onedir/MeasureLab" -DestinationPath "$outDir/$base-onedir.zip" -Force
 
     - name: Install Cosign

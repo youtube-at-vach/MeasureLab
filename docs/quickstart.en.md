@@ -30,7 +30,7 @@ Please download the latest version for your OS from the [Releases](https://githu
 
 To update, close MeasureLab and run the new installer. The installation folder is reused, and settings and calibration in `%APPDATA%\MeasureLab` are retained. Remove the application through **Settings > Apps**; user settings, calibration, and saved screenshots are retained.
 
-ZIP builds (`MeasureLab-<version>-windows-x64-onedir.zip` and `onefile.zip`) remain available. Extract the entire archive and run `MeasureLab.exe`. Older releases may only offer ZIP builds.
+The folder-based ZIP build (`MeasureLab-<version>-windows-x64-onedir.zip`) remains available. Extract the entire archive and run `MeasureLab.exe`. Older releases may only offer ZIP builds.
 
 When switching from ZIP to the installer, existing settings in `%APPDATA%\MeasureLab` are reused. If the old ZIP folder contains a portable `config.json`, back it up and copy it to the new installation folder while MeasureLab is closed to preserve that configuration. Keep the old folder until you have checked settings, calibration and saved measurements; files saved beside the old executable are not moved automatically.
 

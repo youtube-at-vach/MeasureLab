@@ -116,7 +116,7 @@ Major languages from around the world are supported. You can switch languages fr
 
 Please download the latest version from the **Releases** page.
 
-- **Windows**: Run `MeasureLab-<version>-windows-x64-setup.exe` to install for your user account, then open MeasureLab from the Start menu. Administrator privileges are not required. ZIP builds (`onefile.zip` / `onedir.zip`) remain available; extract them and run `MeasureLab.exe`. See the [Windows installation guide](docs/quickstart.en.md#windows) for updates and migration.
+- **Windows**: Run `MeasureLab-<version>-windows-x64-setup.exe` to install for your user account, then open MeasureLab from the Start menu. Administrator privileges are not required. The folder-based `onedir.zip` build remains available; extract it and run `MeasureLab.exe`. See the [Windows installation guide](docs/quickstart.en.md#windows) for updates and migration.
 - **Linux**: Download `MeasureLab-<version>-linux-x86_64.AppImage`, grant execution permission, and run it.
 
     ```bash

@@ -2,7 +2,7 @@
 
 ## 採用方式
 
-PyInstallerのonedir出力をInno Setup 6で包む、ユーザー単位のEXEインストーラーを標準とします。Pythonや依存ライブラリは同梱され、利用者によるPythonのインストールは不要です。既存のonedir ZIPとonefile ZIPも継続します。
+PyInstallerのonedir出力をInno Setup 6で包む、ユーザー単位のEXEインストーラーを標準とします。Pythonや依存ライブラリは同梱され、利用者によるPythonのインストールは不要です。フォルダー形式のonedir ZIPも継続します。
 
 | 方法 | 特徴 | 今回の判断 |
 | --- | --- | --- |
@@ -61,6 +61,6 @@ pwsh -File scripts/test_windows_installer.ps1 -Installer dist/release/MeasureLab
 
 ログは `dist/installer-test` に保存し、CIの成否にかかわらずアーティファクトとして収集します。リリース処理では検証に成功したEXEをSigstoreで署名し、チェックサムとともに公開し、VirusTotalのスキャン対象にも追加します。
 
-ダウンロードサイトは選択されたバージョンのGitHub Releaseにインストーラーが存在する場合だけ推奨表示します。旧リリース、取得失敗、API制限時は既存のZIP版へフォールバックします。
+ダウンロードサイトは選択されたバージョンのGitHub Releaseにインストーラーが存在する場合だけ推奨表示します。旧リリース、取得失敗、API制限時はonedir ZIP版へフォールバックします。
 
 実機でのオーディオ入出力、一般ユーザーでの対話式ウィザード、実際の旧バージョンからの更新、SmartScreen表示は別途Windowsで確認してください。CIの起動テストは計測機能すべての正常動作を保証するものではありません。

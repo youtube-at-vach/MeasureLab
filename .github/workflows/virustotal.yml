@@ -89,11 +89,10 @@ jobs:
           mkdir assets
           echo "Downloading assets for $TAG_NAME..."
           
-          # Match patterns: *windows-x64-onefile.zip, *windows-x64-onedir.zip, *.AppImage, *-macos-arm64.dmg, *-macos-x64.dmg
+          # Match patterns: *windows-x64-setup.exe, *windows-x64-onedir.zip, *.AppImage, *-macos-arm64.dmg, *-macos-x64.dmg
           # gh release download supports -p pattern
           
           cd assets
-          gh release download "$TAG_NAME" -p "*windows-x64-onefile.zip" || echo "No onefile zip found"
           gh release download "$TAG_NAME" -p "*windows-x64-setup.exe" || echo "No installer found"
           gh release download "$TAG_NAME" -p "*windows-x64-onedir.zip" || echo "No onedir zip found"
           gh release download "$TAG_NAME" -p "*.AppImage" || echo "No AppImage found"
@@ -101,38 +100,6 @@ jobs:
 
           
           ls -R
-
-      - name: Prepare Assets (Unzip Windows Onefile)
-        run: |
-          cd assets
-          # Find the onefile zip
-          ZIP_FILE=$(find . -name "*windows-x64-onefile.zip" | head -n1)
-          if [[ -n "$ZIP_FILE" ]]; then
-            echo "Extracting $ZIP_FILE..."
-            unzip "$ZIP_FILE"
-            # It should extract MeasureLab.exe
-            if [[ -f "MeasureLab.exe" ]]; then
-               # Rename it to include the base name for clarity in report (e.g. MeasureLab-v1.0.0-onefile.exe)
-               # We can grab the base name from zip
-               BASE_NAME=$(basename "$ZIP_FILE" .zip)
-               mv MeasureLab.exe "${BASE_NAME}.exe"
-               echo "Extracted and renamed to ${BASE_NAME}.exe"
-            fi
-            # We keep the original zip for scanning?
-            # User requirement: "onefile のみ：.exe"
-            # So for onefile, we scan the .exe INSTEAD of the zip, or BOTH?
-            # Result format example: "MeasureLab-…-onefile.exe"
-            # This implies we scan the exe.
-            # But what about the zip? User says "Windows 通常版：.zip" (which usually means onedir?)
-            # Wait, "Windows 通常版：.zip / onefile のみ：.exe"
-            
-            # Let's clarify:
-            # - onedir (.zip) -> Scan the zip
-            # - onefile (.zip) -> Extract and scan the .exe
-            
-            # So we DELETE the onefile zip from the scan list (or just ignore it in the script)
-            rm "$ZIP_FILE"
-          fi
 
       - name: VirusTotal Scan & Report
         id: vt_scan
@@ -169,7 +136,6 @@ jobs:
           patterns = [
               os.path.join(assets_dir, "*windows-x64-setup.exe"),
               os.path.join(assets_dir, "*onedir.zip"),
-              os.path.join(assets_dir, "*onefile.exe"),
               os.path.join(assets_dir, "*.AppImage"),
               os.path.join(assets_dir, "*.dmg")
           ]
@@ -277,7 +243,7 @@ jobs:
                       results_by_os["Linux"].append((fname, link))
                   elif fname.endswith(".dmg"):
                       results_by_os["macOS"].append((fname, link))
-                  elif "onedir" in fname or "onefile" in fname or fname.endswith(".exe") or fname.endswith(".zip"):
+                  elif "onedir" in fname or fname.endswith(".exe") or fname.endswith(".zip"):
                       results_by_os["Windows"].append((fname, link))
 
               md_output = "### 🔐 Security Scan Results (VirusTotal)\n\n"
@@ -308,9 +274,6 @@ jobs:
                       md_output += f"  VirusTotal Scan:\n"
                       md_output += f"  👉 [{link}]({link})\n\n"
                       
-                      if "onefile" in fname:
-                           md_output += "  ⚠️ *Note:* Single-file executables may trigger heuristic detections due to packer behavior (PyInstaller).\n\n"
-              
               md_output += "---\n"
 
               with open("vt_results.md", "w") as f:
