@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
 from src.core.analysis import AudioCalc
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.gui.styles import button_style
 from src.measurement_modules.base import MeasurementModule
 from src.core.fft_manager import fft_manager
 from src.core.utils import amplitude_to_linear, linear_to_amplitude
@@ -435,7 +436,7 @@ class AdvancedDistortionMeterWidget(QWidget):
 
         jtest_info = QLabel(tr("Outputs Fs/4 Sine + Fs/192 toggling LSB."))
         jtest_info.setWordWrap(True)
-        jtest_info.setStyleSheet("color: #aaaaaa; font-size: 11px;")
+        jtest_info.setStyleSheet("color: palette(placeholder-text); font-size: 11px;")
         jtest_layout.addRow(jtest_info)
 
         jtest_widget.setLayout(jtest_layout)
@@ -593,28 +594,10 @@ class AdvancedDistortionMeterWidget(QWidget):
 
         checked = self.start_btn.isChecked()
 
-        if theme_name == "dark":
-            if checked:
-                self.start_btn.setStyleSheet(
-                    "QPushButton { background-color: #c62828; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 13px; }"
-                    "QPushButton:hover { background-color: #d32f2f; }"
-                )
-            else:
-                self.start_btn.setStyleSheet(
-                    "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 13px; }"
-                    "QPushButton:hover { background-color: #388e3c; }"
-                )
+        if checked:
+            self.start_btn.setStyleSheet(button_style("stop", extra="font-weight: bold; font-size: 13px;"))
         else:
-            if checked:
-                self.start_btn.setStyleSheet(
-                    "QPushButton { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
-                    "QPushButton:hover { background-color: #ffbbbb; }"
-                )
-            else:
-                self.start_btn.setStyleSheet(
-                    "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
-                    "QPushButton:hover { background-color: #bbfebb; }"
-                )
+            self.start_btn.setStyleSheet(button_style("primary", extra="font-weight: bold; font-size: 13px;"))
 
     def update_analysis(self):
         if not self.module.is_running:

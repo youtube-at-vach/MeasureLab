@@ -22,7 +22,7 @@ from src.core.analysis import AudioCalc, get_cached_window
 from src.core.audio_engine import AudioEngine
 from src.core.fft_manager import fft_manager
 from src.core.localization import tr
-from src.gui.styles import MONOSPACE_FONT_FAMILY
+from src.gui.styles import MONOSPACE_FONT_FAMILY, button_style
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 from src.measurement_modules.base import MeasurementModule
@@ -314,9 +314,7 @@ class NoiseProfilerWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self.toggle_btn = QPushButton(tr("Start Profiling"))
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.clicked.connect(self.on_toggle)
-        self.toggle_btn.setStyleSheet(
-            "QPushButton { background-color: #ccffcc; color: black; } QPushButton:checked { background-color: #ffcccc; color: black; }"
-        )
+        self.toggle_btn.setStyleSheet(button_style("primary", toggle=True))
         top_ctrl_layout.addWidget(self.toggle_btn)
 
         # Input Channel Selection

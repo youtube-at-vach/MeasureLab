@@ -49,6 +49,11 @@ class MockQPalette:
         ToolTipBase = 12
         ToolTipText = 13
         PlaceholderText = 14
+        Light = 15
+        Midlight = 16
+        Mid = 17
+        Dark = 18
+        Shadow = 19
 
     class ColorGroup:
         Disabled = 0
@@ -71,6 +76,22 @@ class MockQPalette:
 
 class TestThemeManager(unittest.TestCase):
     def setUp(self):
+        # Load the module under test against mocked Qt bindings without
+        # mutating an already-imported production module.  Other GUI tests
+        # import ThemeManager during collection, so reloading that module
+        # here would leave their class globals pointing at MockQPalette.
+        self.theme_manager_module_name = "src.core.theme_manager"
+        self.original_theme_manager_module = sys.modules.pop(self.theme_manager_module_name, None)
+        self.core_package = sys.modules.get("src.core")
+        self._missing = object()
+        self.original_package_attribute = (
+            getattr(self.core_package, "theme_manager", self._missing)
+            if self.core_package is not None
+            else self._missing
+        )
+        if self.core_package is not None and hasattr(self.core_package, "theme_manager"):
+            delattr(self.core_package, "theme_manager")
+
         # prepare sys.modules patcher
         self.modules_patcher = patch.dict(
             sys.modules,
@@ -103,17 +124,15 @@ class TestThemeManager(unittest.TestCase):
         # Default styles
         self.mock_qt_widgets.QStyleFactory.keys.return_value = ["Fusion", "Windows", "WindowsVista"]
 
-        # Import/Reload module under test
-        if "src.core.theme_manager" in sys.modules:
-            importlib.reload(sys.modules["src.core.theme_manager"])
-        else:
-            importlib.import_module("src.core.theme_manager")
+        # Import a fresh module under test using the mocked Qt bindings.
+        importlib.import_module(self.theme_manager_module_name)
 
-        self.module_under_test = sys.modules["src.core.theme_manager"]
+        self.module_under_test = sys.modules[self.theme_manager_module_name]
         self.ThemeManager = self.module_under_test.ThemeManager
 
         # Setup common app mock
         self.mock_app = MagicMock()
+        self.mock_app.styleSheet.return_value = ""
         # Setup default style hints
         self.mock_style_hints = MagicMock()
         self.mock_style_hints.colorScheme.return_value = 1  # Light
@@ -126,8 +145,15 @@ class TestThemeManager(unittest.TestCase):
 
     def tearDown(self):
         self.modules_patcher.stop()
-        if "src.core.theme_manager" in sys.modules:
-            del sys.modules["src.core.theme_manager"]
+        sys.modules.pop(self.theme_manager_module_name, None)
+        if self.original_theme_manager_module is not None:
+            sys.modules[self.theme_manager_module_name] = self.original_theme_manager_module
+        if self.core_package is not None:
+            if self.original_package_attribute is self._missing:
+                if hasattr(self.core_package, "theme_manager"):
+                    delattr(self.core_package, "theme_manager")
+            else:
+                self.core_package.theme_manager = self.original_package_attribute
 
     def test_apply_system_theme_dark(self):
         tm = self.ThemeManager(self.mock_app)
@@ -214,11 +240,11 @@ class TestThemeManager(unittest.TestCase):
 
         # Verify palette was set on app
         self.mock_app.setPalette.assert_called()
-        # Check window color is dark (53, 53, 53)
+        # Check the dark shell palette
         args = self.mock_app.setPalette.call_args[0]
         palette_set = args[0]
         window_color = palette_set.colors[MockQPalette.ColorRole.Window]
-        self.assertEqual(window_color.r, 53)
+        self.assertEqual(window_color.r, 22)
 
     def test_set_theme_system_detect_dark_via_hints(self):
         # Setup Qt 6.5+ hints for Dark
@@ -245,7 +271,7 @@ class TestThemeManager(unittest.TestCase):
         args = self.mock_app.setPalette.call_args[0]
         palette_set = args[0]
         window_color = palette_set.colors[MockQPalette.ColorRole.Window]
-        self.assertEqual(window_color.r, 53)
+        self.assertEqual(window_color.r, 22)
 
     def test_set_theme_system_detect_light_via_hints(self):
         mock_qt = MagicMock()
@@ -313,6 +339,8 @@ class TestThemeManager(unittest.TestCase):
             (roles.HighlightedText, roles.Highlight),
             (roles.Link, roles.Window),
             (roles.ToolTipText, roles.ToolTipBase),
+            (roles.WindowText, roles.AlternateBase),
+            (roles.PlaceholderText, roles.Base),
         ]
         tm = self.ThemeManager(self.mock_app)
         for theme in ("light", "dark"):
@@ -322,6 +350,17 @@ class TestThemeManager(unittest.TestCase):
                 with self.subTest(theme=theme, foreground=foreground, background=background):
                     values = sorted((luminance(palette.color(foreground)), luminance(palette.color(background))))
                     self.assertGreaterEqual((values[1] + 0.05) / (values[0] + 0.05), 4.5)
+
+    def test_theme_switch_restores_application_stylesheet(self):
+        original = "QLabel { font-weight: bold; }"
+        self.mock_app.styleSheet.return_value = original
+        tm = self.ThemeManager(self.mock_app)
+        tm.set_theme("dark")
+        dark_stylesheet = self.mock_app.setStyleSheet.call_args[0][0]
+        tm.set_theme("dark")
+        self.mock_app.setStyleSheet.assert_called_with(dark_stylesheet)
+        tm.set_theme("light")
+        self.mock_app.setStyleSheet.assert_called_with(original)
 
     def test_set_theme_invalid(self):
         tm = self.ThemeManager(self.mock_app)
@@ -396,7 +435,9 @@ class TestThemeManager(unittest.TestCase):
         self.mock_style_hints.colorScheme.return_value = 2
 
         # Simulate signal
+        self.mock_signal_instance.emit.reset_mock()
         tm._on_system_theme_changed(2)
+        self.mock_signal_instance.emit.assert_called_once_with("system")
 
         # Should now be effectively dark
         self.assertEqual(tm.get_effective_theme(), "dark")
@@ -405,7 +446,7 @@ class TestThemeManager(unittest.TestCase):
         args = self.mock_app.setPalette.call_args[0]
         palette_set = args[0]
         window_color = palette_set.colors[MockQPalette.ColorRole.Window]
-        self.assertEqual(window_color.r, 53)
+        self.assertEqual(window_color.r, 22)
 
     def test_style_factory_keys_cached(self):
         """Test that QStyleFactory.keys() is cached to improve performance."""

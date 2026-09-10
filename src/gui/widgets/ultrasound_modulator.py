@@ -25,6 +25,7 @@ from PyQt6.QtWidgets import (
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.gui.styles import button_style
 from src.measurement_modules.base import MeasurementModule
 
 logger = logging.getLogger(__name__)
@@ -1190,28 +1191,10 @@ class UltrasoundModulatorWidget(QWidget):
 
         checked = self.start_btn.isChecked()
 
-        if theme_name == "dark":
-            if checked:
-                self.start_btn.setStyleSheet(
-                    "QPushButton { background-color: #c62828; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 13px; }"
-                    "QPushButton:hover { background-color: #d32f2f; }"
-                )
-            else:
-                self.start_btn.setStyleSheet(
-                    "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 13px; }"
-                    "QPushButton:hover { background-color: #388e3c; }"
-                )
+        if checked:
+            self.start_btn.setStyleSheet(button_style("stop", extra="font-weight: bold; font-size: 13px;"))
         else:
-            if checked:
-                self.start_btn.setStyleSheet(
-                    "QPushButton { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
-                    "QPushButton:hover { background-color: #ffbbbb; }"
-                )
-            else:
-                self.start_btn.setStyleSheet(
-                    "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
-                    "QPushButton:hover { background-color: #bbfebb; }"
-                )
+            self.start_btn.setStyleSheet(button_style("primary", extra="font-weight: bold; font-size: 13px;"))
         dark = self._current_theme_name == "dark"
         meter_background = "#26292e" if dark else "#e4e7eb"
         meter_border = "#5f6670" if dark else "#aab0b8"

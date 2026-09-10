@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (
 from scipy.signal import savgol_filter
 
 from src.core.localization import tr
+from src.gui.styles import button_style
 from src.measurement_modules.base import MeasurementModule
 from src.core.hammerstein_model import load_hammerstein_model, get_active_model, has_active_model
 from src.gui.widgets.instrument_plot import InstrumentAxisItem, InstrumentPlotWidget
@@ -105,12 +106,12 @@ class ResponseViewerWidget(QWidget):
         source_form.setSpacing(6)
 
         self.import_btn = QPushButton(tr("Import Model JSON..."))
-        self.import_btn.setStyleSheet("background-color: #4ba3e3; color: white; font-weight: bold; padding: 5px;")
+        self.import_btn.setStyleSheet(button_style("secondary", extra="font-weight: bold; padding: 5px;"))
         self.import_btn.clicked.connect(self.import_model_file)
         source_form.addWidget(self.import_btn)
 
         self.load_cache_btn = QPushButton(tr("Load Live Cache"))
-        self.load_cache_btn.setStyleSheet("background-color: #2b8c56; color: white; font-weight: bold; padding: 5px;")
+        self.load_cache_btn.setStyleSheet(button_style("secondary", extra="font-weight: bold; padding: 5px;"))
         self.load_cache_btn.clicked.connect(self.load_live_cache)
         source_form.addWidget(self.load_cache_btn)
 

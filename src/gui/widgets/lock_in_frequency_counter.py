@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.gui.styles import button_style
 from src.core.utils import format_si
 from src.measurement_modules.base import MeasurementModule
 
@@ -604,6 +605,7 @@ class LockInFrequencyCounterWidget(QWidget):
 
         # Start/Stop
         self.btn_run = QPushButton(tr("Start"))
+        self.btn_run.setStyleSheet(button_style("primary"))
         self.btn_run.setCheckable(True)
         self.btn_run.clicked.connect(self.on_run_clicked)
         controls_layout.addWidget(self.btn_run)
@@ -893,11 +895,11 @@ class LockInFrequencyCounterWidget(QWidget):
         if checked:
             self.module.start_analysis()
             self.btn_run.setText(tr("Stop"))
-            self.btn_run.setStyleSheet("background-color: #ffcccc;")
+            self.btn_run.setStyleSheet(button_style("stop"))
         else:
             self.module.stop_analysis()
             self.btn_run.setText(tr("Start"))
-            self.btn_run.setStyleSheet("")
+            self.btn_run.setStyleSheet(button_style("primary"))
 
     def _distribution_mode(self):
         if self.distribution_mode_combo.currentIndex() == 1:

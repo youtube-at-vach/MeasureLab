@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.gui.styles import button_style
 from src.measurement_modules.base import MeasurementModule
 from src.core.realtime_sss_core import RealtimeSSSEngine, measure_system_latency
 from src.core.hammerstein_model import save_hammerstein_model, set_active_model
@@ -1854,44 +1855,12 @@ class LockInModelerWidget(QWidget):
 
         checked = self.btn_toggle.isChecked()
 
-        if theme_name == "dark":
-            button_style = (
-                "QPushButton { background-color: #3a3a3a; color: white; border: 1px solid #555; border-radius: 4px; font-size: 12px; padding: 5px; }"
-                "QPushButton:hover { background-color: #444444; }"
-                "QPushButton:disabled { background-color: #222222; color: #777777; border: 1px solid #333; }"
-            )
-            self.export_btn.setStyleSheet(button_style)
-            self.btn_calibrate.setStyleSheet(button_style)
-
-            if checked:
-                self.btn_toggle.setStyleSheet(
-                    "QPushButton { background-color: #c62828; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 12px; padding: 5px; }"
-                    "QPushButton:hover { background-color: #d32f2f; }"
-                )
-            else:
-                self.btn_toggle.setStyleSheet(
-                    "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 12px; padding: 5px; }"
-                    "QPushButton:hover { background-color: #388e3c; }"
-                )
-        else:
-            button_style = (
-                "QPushButton { background-color: #e0e0e0; color: black; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; padding: 5px; }"
-                "QPushButton:hover { background-color: #d5d5d5; }"
-                "QPushButton:disabled { background-color: #f0f0f0; color: #aaaaaa; border: 1px solid #ddd; }"
-            )
-            self.export_btn.setStyleSheet(button_style)
-            self.btn_calibrate.setStyleSheet(button_style)
-
-            if checked:
-                self.btn_toggle.setStyleSheet(
-                    "QPushButton { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 12px; padding: 5px; }"
-                    "QPushButton:hover { background-color: #ffbbbb; }"
-                )
-            else:
-                self.btn_toggle.setStyleSheet(
-                    "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 12px; padding: 5px; }"
-                    "QPushButton:hover { background-color: #bbfebb; }"
-                )
+        secondary_style = button_style("secondary", extra="font-size: 12px; padding: 5px;")
+        self.export_btn.setStyleSheet(secondary_style)
+        self.btn_calibrate.setStyleSheet(secondary_style)
+        self.btn_toggle.setStyleSheet(
+            button_style("stop" if checked else "primary", extra="font-weight: bold; font-size: 12px; padding: 5px;")
+        )
 
     def closeEvent(self, event):
         self.timer.stop()

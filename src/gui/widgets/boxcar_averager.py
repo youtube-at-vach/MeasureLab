@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.gui.styles import button_style
 from src.measurement_modules.base import MeasurementModule
 
 
@@ -580,6 +581,7 @@ class BoxcarAveragerWidget(QWidget):
         action_layout.setContentsMargins(0, 0, 0, 0)
 
         self.toggle_btn = QPushButton(tr("Start"))
+        self.toggle_btn.setStyleSheet(button_style("primary", toggle=True))
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.clicked.connect(self.on_toggle)
         action_layout.addWidget(self.toggle_btn)

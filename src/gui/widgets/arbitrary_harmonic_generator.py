@@ -25,6 +25,7 @@ from PyQt6.QtWidgets import (
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.gui.styles import button_style
 from src.measurement_modules.base import MeasurementModule
 
 logger = logging.getLogger(__name__)
@@ -400,28 +401,10 @@ class ArbitraryHarmonicWidget(QWidget):
 
         checked = self.btn_toggle.isChecked()
 
-        if theme_name == "dark":
-            if checked:
-                self.btn_toggle.setStyleSheet(
-                    "QPushButton { background-color: #c62828; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 13px; }"
-                    "QPushButton:hover { background-color: #d32f2f; }"
-                )
-            else:
-                self.btn_toggle.setStyleSheet(
-                    "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 13px; }"
-                    "QPushButton:hover { background-color: #388e3c; }"
-                )
+        if checked:
+            self.btn_toggle.setStyleSheet(button_style("stop", extra="font-weight: bold; font-size: 13px;"))
         else:
-            if checked:
-                self.btn_toggle.setStyleSheet(
-                    "QPushButton { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
-                    "QPushButton:hover { background-color: #ffbbbb; }"
-                )
-            else:
-                self.btn_toggle.setStyleSheet(
-                    "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
-                    "QPushButton:hover { background-color: #bbfebb; }"
-                )
+            self.btn_toggle.setStyleSheet(button_style("primary", extra="font-weight: bold; font-size: 13px;"))
 
     def on_fundamental_changed(self):
         with self.module.lock:

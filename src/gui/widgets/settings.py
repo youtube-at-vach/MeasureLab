@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
 from src.core.audio_engine import AudioEngine
 from src.core.config_manager import ConfigManager
 from src.core.localization import get_manager, tr
+from src.gui.styles import button_style
 from src.core.generators import PinkNoise
 from src.core.analysis import AudioCalc
 
@@ -140,6 +141,7 @@ class SplCalibrationDialog(QDialog):
         layout.addLayout(form)
 
         self.start_btn = QPushButton(tr("Start"))
+        self.start_btn.setStyleSheet(button_style("primary", toggle=True))
         self.start_btn.setCheckable(True)
         self.start_btn.clicked.connect(self.on_start_toggle)
         layout.addWidget(self.start_btn)
@@ -512,6 +514,7 @@ class OutputCalibrationDialog(QDialog):
         # Step 3
         layout.addWidget(QLabel(f"<b>{tr('Step 3:')}</b> {tr('Play Tone.')}"))
         self.play_btn = QPushButton(tr("Start Tone"))
+        self.play_btn.setStyleSheet(button_style("primary", toggle=True))
         self.play_btn.setCheckable(True)
         self.play_btn.clicked.connect(self.on_play_toggle)
         layout.addWidget(self.play_btn)
@@ -638,6 +641,7 @@ class InputCalibrationDialog(QDialog):
         # Step 2
         layout.addWidget(QLabel(f"<b>{tr('Step 2:')}</b> {tr('Measure Input Level.')}"))
         self.measure_btn = QPushButton(tr("Start Measurement"))
+        self.measure_btn.setStyleSheet(button_style("primary", toggle=True))
         self.measure_btn.setCheckable(True)
         self.measure_btn.clicked.connect(self.on_measure_toggle)
         layout.addWidget(self.measure_btn)
@@ -777,6 +781,7 @@ class BitDepthDialog(QDialog):
         top_layout = QHBoxLayout()
 
         self.start_btn = QPushButton(tr("Start Analysis"))
+        self.start_btn.setStyleSheet(button_style("primary", toggle=True))
         self.start_btn.setCheckable(True)
         self.start_btn.clicked.connect(self.on_start_toggle)
         top_layout.addWidget(self.start_btn)

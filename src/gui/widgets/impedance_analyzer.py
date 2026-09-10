@@ -35,6 +35,7 @@ from PyQt6.QtWidgets import (
 from src.core.analysis import get_cached_window
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.gui.styles import button_style
 from src.core.utils import format_si, resource_path
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.instrument_plot import InstrumentPlotWidget
@@ -1049,6 +1050,12 @@ class ImpedanceAnalyzerWidget(QWidget):
         self.sweep_worker = None
         self.cal_mode = None  # 'open', 'short', or None (DUT)
 
+        # Theme handling
+        self.app = QApplication.instance()
+        if hasattr(self.app, "theme_manager"):
+            self.app.theme_manager.theme_changed.connect(self.apply_theme)
+            self.apply_theme(self.app.theme_manager.get_current_theme())
+
     def init_ui(self):
         nyquist_freq = self.module.audio_engine.sample_rate / 2.0
         main_layout = QHBoxLayout(self)
@@ -1073,9 +1080,7 @@ class ImpedanceAnalyzerWidget(QWidget):
         self.toggle_btn = QPushButton(tr("Start Measurement"))
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.clicked.connect(self.on_toggle)
-        self.toggle_btn.setStyleSheet(
-            "QPushButton { background-color: #ccffcc; color: black; font-weight: bold; padding: 10px; } QPushButton:checked { background-color: #ffcccc; }"
-        )
+        self.toggle_btn.setStyleSheet(button_style("primary", toggle=True, extra="font-weight: bold; padding: 10px;"))
         lay_meas.addRow(self.toggle_btn)
 
         self.freq_spin = QDoubleSpinBox()
@@ -1201,7 +1206,7 @@ class ImpedanceAnalyzerWidget(QWidget):
         self.btn_load.clicked.connect(lambda: self.start_sweep("load"))
         self.btn_dut = QPushButton(tr("Sweep DUT"))
         self.btn_dut.clicked.connect(lambda: self.start_sweep(None))
-        self.btn_dut.setStyleSheet("font-weight: bold; background-color: #ccccff; color: black;")
+        self.btn_dut.setStyleSheet(button_style("primary", extra="font-weight: bold;"))
 
         btn_grid.addWidget(self.btn_open, 0, 0)
         btn_grid.addWidget(self.btn_short, 0, 1)
@@ -1210,7 +1215,7 @@ class ImpedanceAnalyzerWidget(QWidget):
 
         self.btn_stop = QPushButton(tr("Stop Sweep"))
         self.btn_stop.clicked.connect(self.stop_sweep)
-        self.btn_stop.setStyleSheet("font-weight: bold; background-color: #ffcccc; color: black;")
+        self.btn_stop.setStyleSheet(button_style("stop", extra="font-weight: bold;"))
         self.btn_stop.setEnabled(False)  # Default disabled
         btn_grid.addWidget(self.btn_stop, 2, 0, 1, 2)  # Span 2 columns
 
@@ -2088,27 +2093,5 @@ class ImpedanceAnalyzerWidget(QWidget):
         if theme_name == "system" and hasattr(self.app, "theme_manager"):
             theme_name = self.app.theme_manager.get_effective_theme()
 
-        if theme_name == "dark":
-            # Dark Theme
-            self.toggle_btn.setStyleSheet(
-                "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; padding: 10px; font-weight: bold; }"
-                "QPushButton:checked { background-color: #c62828; color: white; border: 1px solid #555; border-radius: 4px; padding: 10px; }"
-                "QPushButton:hover { background-color: #388e3c; }"
-                "QPushButton:checked:hover { background-color: #d32f2f; }"
-            )
-            self.btn_dut.setStyleSheet("font-weight: bold; background-color: #5e35b1; color: white;")
-        else:
-            # Light Theme
-            self.toggle_btn.setStyleSheet(
-                "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; padding: 10px; font-weight: bold; }"
-                "QPushButton:checked { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; padding: 10px; }"
-                "QPushButton:hover { background-color: #bbfebb; }"
-                "QPushButton:checked:hover { background-color: #ffbbbb; }"
-            )
-            self.btn_dut.setStyleSheet("font-weight: bold; background-color: #ccccff; color: black;")
-
-        # Theme handling
-        self.app = QApplication.instance()
-        if hasattr(self.app, "theme_manager"):
-            self.app.theme_manager.theme_changed.connect(self.apply_theme)
-            self.apply_theme(self.app.theme_manager.get_current_theme())
+        self.toggle_btn.setStyleSheet(button_style("primary", toggle=True, extra="padding: 10px; font-weight: bold;"))
+        self.btn_dut.setStyleSheet(button_style("primary", extra="font-weight: bold;"))

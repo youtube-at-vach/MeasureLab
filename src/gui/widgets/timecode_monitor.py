@@ -36,7 +36,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.core.ltc import LTCDecoder, LTCEncoder
 from src.measurement_modules.base import MeasurementModule
-from src.gui.styles import MONOSPACE_FONT_FAMILY
+from src.gui.styles import MONOSPACE_FONT_FAMILY, button_style
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 
 
@@ -1313,6 +1313,7 @@ class TimecodeMonitorWidget(QWidget, CompactableWidgetInterface):
         # Monitor start/stop (ALSA/standard modes can benefit from explicitly stopping).
         monitor_row = QHBoxLayout()
         self._monitor_toggle_btn = QPushButton(tr("Start Monitor"))
+        self._monitor_toggle_btn.setStyleSheet(button_style("primary", toggle=True))
         self._monitor_toggle_btn.setCheckable(True)
         self._monitor_toggle_btn.setChecked(False)
         self._monitor_toggle_btn.clicked.connect(self._on_monitor_toggled)

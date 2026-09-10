@@ -26,6 +26,7 @@ from PyQt6.QtCore import Qt
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.gui.styles import button_style
 from src.measurement_modules.base import MeasurementModule
 from src.core.analysis import AudioCalc
 
@@ -714,6 +715,7 @@ class SoundQualityAnalyzerWidget(QWidget):
         file_layout.addWidget(self.load_btn)
 
         self.analyze_btn = QPushButton(tr("Analyze"))
+        self.analyze_btn.setStyleSheet(button_style("primary"))
         self.analyze_btn.clicked.connect(self.start_analysis)
         self.analyze_btn.setEnabled(False)
         file_layout.addWidget(self.analyze_btn)

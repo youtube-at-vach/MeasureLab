@@ -37,6 +37,7 @@ from scipy.signal import (
 from src.core.audio_engine import AudioEngine
 from src.core.fft_manager import fft_manager
 from src.core.localization import tr
+from src.gui.styles import button_style
 from src.core.utils import amplitude_to_linear, linear_to_amplitude
 from src.measurement_modules.base import MeasurementModule
 from typing import List
@@ -1288,6 +1289,7 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         left_layout.addWidget(tabs)
 
         self.start_btn = QPushButton(tr("Start Sweep"))
+        self.start_btn.setStyleSheet(button_style("primary", toggle=True))
         self.start_btn.setCheckable(True)
         self.start_btn.clicked.connect(self.on_start_stop)
         self.start_btn.setFixedHeight(40)

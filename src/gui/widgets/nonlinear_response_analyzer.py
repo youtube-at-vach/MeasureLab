@@ -22,6 +22,7 @@ from scipy.signal import freqz, fftconvolve, chirp as signal_chirp
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.gui.styles import button_style
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.instrument_plot import InstrumentPlotWidget
 from src.core.nonlinear_response_analyzer_core import (
@@ -551,7 +552,7 @@ class NonlinearResponseAnalyzerWidget(QWidget):
         ctrl_layout.addWidget(self.latency_label)
 
         self.run_btn = QPushButton(tr("Run Identification"))
-        self.run_btn.setStyleSheet("font-weight: bold; background-color: #0b5ed7; color: white;")
+        self.run_btn.setStyleSheet(button_style("primary", extra="font-weight: bold;"))
         self.run_btn.clicked.connect(self.on_run_clicked)
         ctrl_layout.addWidget(self.run_btn)
 

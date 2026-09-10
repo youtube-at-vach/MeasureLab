@@ -24,6 +24,7 @@ from src.core.analysis import get_cached_window
 from src.core.audio_engine import AudioEngine
 from src.core.fft_manager import fft_manager
 from src.core.localization import tr
+from src.gui.styles import button_style
 from src.measurement_modules.base import MeasurementModule
 
 
@@ -116,9 +117,7 @@ class ProcessorBenchmarkWidget(QWidget):
 
         self.start_btn = QPushButton(tr("Start Benchmark"))
         self.start_btn.setMinimumHeight(40)
-        self.start_btn.setStyleSheet(
-            "QPushButton { font-weight: bold; font-size: 14px; background-color: #ffcccc; color: black; }"
-        )
+        self.start_btn.setStyleSheet(button_style("primary", extra="font-weight: bold; font-size: 14px;"))
         self.start_btn.clicked.connect(self.start_benchmark)
         controls_layout.addWidget(self.start_btn)
 

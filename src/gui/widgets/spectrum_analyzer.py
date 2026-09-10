@@ -20,6 +20,7 @@ from src.core.analysis import get_cached_window
 from src.core.audio_engine import AudioEngine
 from src.core.fft_manager import fft_manager, get_dpss_windows
 from src.core.localization import tr
+from src.gui.styles import button_style
 from src.core.ring_buffer import RingBuffer
 from src.measurement_modules.base import MeasurementModule
 from typing import List
@@ -648,6 +649,12 @@ class SpectrumAnalyzerWidget(
         self.timer.timeout.connect(self.update_plot)
         self.timer.setInterval(30)
 
+        # Theme handling
+        self.app = QApplication.instance()
+        if hasattr(self.app, "theme_manager"):
+            self.app.theme_manager.theme_changed.connect(self.apply_theme)
+            self.apply_theme(self.app.theme_manager.get_current_theme())
+
     def get_display_widget(self) -> QWidget:
         """Return the information labels and spectrum plot for split mode."""
         return self.display_widget
@@ -683,9 +690,7 @@ class SpectrumAnalyzerWidget(
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.clicked.connect(self.on_toggle)
 
-        self.toggle_btn.setStyleSheet(
-            "QPushButton { background-color: #ccffcc; color: black; } QPushButton:checked { background-color: #ffcccc; color: black; }"
-        )
+        self.toggle_btn.setStyleSheet(button_style("primary", toggle=True))
 
         row1_layout.addWidget(self.toggle_btn)
 
@@ -1472,30 +1477,14 @@ class SpectrumAnalyzerWidget(
 
         if theme_name == "dark":
             # Dark Theme: Darker colors, White text
-            self.toggle_btn.setStyleSheet(
-                "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; padding: 5px; }"
-                "QPushButton:checked { background-color: #c62828; color: white; border: 1px solid #555; border-radius: 4px; padding: 5px; }"
-                "QPushButton:hover { background-color: #388e3c; }"
-                "QPushButton:checked:hover { background-color: #d32f2f; }"
-            )
+            self.toggle_btn.setStyleSheet(button_style("primary", toggle=True, extra="padding: 5px;"))
             self.overall_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #00ff00;")
             self.cursor_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #00ffff;")
         else:
             # Light Theme: Pastel colors, Black text
-            self.toggle_btn.setStyleSheet(
-                "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; padding: 5px; }"
-                "QPushButton:checked { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; padding: 5px; }"
-                "QPushButton:hover { background-color: #bbfebb; }"
-                "QPushButton:checked:hover { background-color: #ffbbbb; }"
-            )
+            self.toggle_btn.setStyleSheet(button_style("primary", toggle=True, extra="padding: 5px;"))
             self.overall_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #008800;")
             self.cursor_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #0000aa;")
-
-        # Theme handling
-        self.app = QApplication.instance()
-        if hasattr(self.app, "theme_manager"):
-            self.app.theme_manager.theme_changed.connect(self.apply_theme)
-            self.apply_theme(self.app.theme_manager.get_current_theme())
 
     def update_compact_layout(self):
         compact = self.is_compact_mode()

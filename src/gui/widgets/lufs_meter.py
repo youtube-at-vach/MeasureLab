@@ -25,7 +25,7 @@ from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
-from src.gui.styles import MONOSPACE_FONT_FAMILY
+from src.gui.styles import MONOSPACE_FONT_FAMILY, button_style
 
 
 class LufsMeter(MeasurementModule):
@@ -982,28 +982,10 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
 
         checked = self.toggle_btn.isChecked()
 
-        if theme_name == "dark":
-            if checked:
-                self.toggle_btn.setStyleSheet(
-                    "QPushButton { background-color: #aa3333; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 13px; }"
-                    "QPushButton:hover { background-color: #cc4444; }"
-                )
-            else:
-                self.toggle_btn.setStyleSheet(
-                    "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 13px; }"
-                    "QPushButton:hover { background-color: #388e3c; }"
-                )
+        if checked:
+            self.toggle_btn.setStyleSheet(button_style("stop", extra="font-weight: bold; font-size: 13px;"))
         else:
-            if checked:
-                self.toggle_btn.setStyleSheet(
-                    "QPushButton { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
-                    "QPushButton:hover { background-color: #ffbbbb; }"
-                )
-            else:
-                self.toggle_btn.setStyleSheet(
-                    "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
-                    "QPushButton:hover { background-color: #bbfebb; }"
-                )
+            self.toggle_btn.setStyleSheet(button_style("primary", extra="font-weight: bold; font-size: 13px;"))
 
     def on_target_changed(self, value):
         self.module.target_lufs = value

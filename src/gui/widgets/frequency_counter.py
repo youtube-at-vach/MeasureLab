@@ -27,7 +27,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.frequency_analysis import calculate_frequency_metrics, calculate_allan_deviation
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
-from src.gui.styles import MONOSPACE_FONT_FAMILY
+from src.gui.styles import button_style, MONOSPACE_FONT_FAMILY
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.instrument_plot import InstrumentPlotWidget
 
@@ -580,6 +580,7 @@ class FrequencyCounterWidget(QWidget, CompactableWidgetInterface):
 
         # Start/Stop
         self.run_btn = QPushButton(tr("Start"))
+        self.run_btn.setStyleSheet(button_style("primary", toggle=True))
         self.run_btn.setCheckable(True)
         self.run_btn.clicked.connect(self.on_run_toggle)
         controls_layout.addWidget(self.run_btn)

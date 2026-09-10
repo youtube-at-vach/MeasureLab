@@ -787,6 +787,13 @@ class MainWindow(QMainWindow):
         except Exception:
             self.logger.exception("Failed to stop audio stream on close")
         self.audio_engine.vst_dut.close()
+
+        app = QApplication.instance()
+        theme_manager = getattr(self, "theme_manager", None)
+        if theme_manager is not None and app is not None and getattr(app, "theme_manager", None) is theme_manager:
+            theme_manager.dispose()
+            delattr(app, "theme_manager")
+
         super().closeEvent(event)
 
     def open_measurement_console(self):

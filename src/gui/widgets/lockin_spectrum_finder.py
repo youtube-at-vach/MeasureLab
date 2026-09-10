@@ -36,7 +36,7 @@ from src.core.config_manager import ConfigManager
 from src.core.localization import tr
 from src.core.sonifier import Sonifier
 from src.measurement_modules.base import MeasurementModule
-from src.gui.styles import MONOSPACE_FONT_FAMILY
+from src.gui.styles import MONOSPACE_FONT_FAMILY, button_style
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 from src.gui.widgets.instrument_plot import InstrumentPlotWidget
@@ -1480,28 +1480,10 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
 
         checked = self.btn_toggle.isChecked()
 
-        if theme_name == "dark":
-            if checked:
-                self.btn_toggle.setStyleSheet(
-                    "QPushButton { background-color: #c62828; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 13px; }"
-                    "QPushButton:hover { background-color: #d32f2f; }"
-                )
-            else:
-                self.btn_toggle.setStyleSheet(
-                    "QPushButton { background-color: #2e7d32; color: white; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 13px; }"
-                    "QPushButton:hover { background-color: #388e3c; }"
-                )
+        if checked:
+            self.btn_toggle.setStyleSheet(button_style("stop", extra="font-weight: bold; font-size: 13px;"))
         else:
-            if checked:
-                self.btn_toggle.setStyleSheet(
-                    "QPushButton { background-color: #ffcccc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
-                    "QPushButton:hover { background-color: #ffbbbb; }"
-                )
-            else:
-                self.btn_toggle.setStyleSheet(
-                    "QPushButton { background-color: #ccffcc; color: black; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; font-size: 13px; }"
-                    "QPushButton:hover { background-color: #bbfebb; }"
-                )
+            self.btn_toggle.setStyleSheet(button_style("primary", extra="font-weight: bold; font-size: 13px;"))
 
     def _update_buffer_options(self):
         """Update buffer size choices based on mode."""
