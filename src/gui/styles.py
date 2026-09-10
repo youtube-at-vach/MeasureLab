@@ -5,6 +5,59 @@ Common stylesheet definitions for GUI widgets.
 import sys
 from typing import Literal
 
+from PyQt6.QtGui import QColor, QPalette
+
+
+def shell_style(palette: QPalette) -> str:
+    """Navigation surfaces share palette-derived edges and restrained accents."""
+    base = palette.color(QPalette.ColorRole.Base)
+    text = palette.color(QPalette.ColorRole.Text)
+    accent = palette.color(QPalette.ColorRole.Highlight)
+
+    def blend(foreground: QColor, amount: float) -> str:
+        return QColor(
+            *[
+                round(b * (1 - amount) + f * amount)
+                for b, f in zip(base.getRgb()[:3], foreground.getRgb()[:3], strict=True)
+            ]
+        ).name()
+
+    border = blend(text, 0.20)
+    hover = blend(accent, 0.06)
+    focus = blend(accent, 0.12)
+    return f"""
+        QWidget#sidebarPanel {{ border-right: 1px solid {border}; }}
+        QPushButton[shellAction="true"], QPushButton[welcomeCard="true"] {{
+            background: palette(base); color: palette(text);
+            border: 1px solid {border}; border-radius: 8px;
+        }}
+        QPushButton[shellAction="true"] {{ padding: 7px 10px; }}
+        QPushButton[shellAction="true"]:hover, QPushButton[welcomeCard="true"]:hover {{
+            background: {hover}; border-color: palette(highlight);
+        }}
+        QPushButton[shellAction="true"]:focus, QPushButton[welcomeCard="true"]:focus,
+        QPushButton[shellAction="true"]:checked, QPushButton[welcomeCard="true"]:pressed {{
+            background: {focus}; border: 1px solid palette(highlight);
+        }}
+        QPushButton[shellAction="true"]:pressed {{ background: {focus}; }}
+        QPushButton[welcomeCard="true"] QLabel {{ background: transparent; }}
+        QLabel[shellSecondary="true"] {{ color: palette(placeholder-text); }}
+        QLineEdit#moduleSearch, QComboBox#outputDestination {{
+            background: palette(base); color: palette(text);
+            border: 1px solid {border}; border-radius: 8px; padding: 6px 10px;
+        }}
+        QLineEdit#moduleSearch:focus, QComboBox#outputDestination:focus {{ border-color: palette(highlight); }}
+        QComboBox#outputDestination {{ padding-right: 26px; }}
+        QComboBox#outputDestination:hover {{ background: {hover}; border-color: palette(highlight); }}
+        QComboBox#outputDestination::drop-down {{ border: none; width: 24px; }}
+        QComboBox#outputDestination::down-arrow {{ image: none; }}
+        QComboBox#outputDestination:disabled {{ color: palette(placeholder-text); background: palette(window); }}
+        QStatusBar {{ border-top: 1px solid {border}; background: palette(window); }}
+        QStatusBar::item {{ border: none; }}
+        QLabel[statusDivider="true"] {{ padding: 3px 8px; border: none; border-right: 1px solid {border}; }}
+    """
+
+
 # Cross-platform Monospace Font Family
 # "monospace" (lowercase) is the standard CSS generic family name.
 # Qt on some platforms warns if "Monospace" (capital M) is used and not found.

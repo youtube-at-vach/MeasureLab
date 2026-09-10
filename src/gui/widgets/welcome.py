@@ -9,6 +9,7 @@ from src.core.localization import tr
 from src.core.update_checker import UpdateChecker
 from src.core.utils import resource_path
 from src.core.version import __version__
+from src.gui.styles import shell_style
 
 
 class _PageButton(QPushButton):
@@ -26,6 +27,7 @@ class WelcomeWidget(QWidget):
 
     def __init__(self):
         super().__init__()
+        self.setStyleSheet(shell_style(self.palette()))
         self.init_ui()
         # Delay the update check to ensure the UI renders first
         QTimer.singleShot(1000, self.start_update_check)
@@ -44,12 +46,13 @@ class WelcomeWidget(QWidget):
     def init_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(28, 24, 28, 20)
-        layout.setSpacing(16)
+        layout.setSpacing(20)
         layout.addStretch(1)
         header = QHBoxLayout()
         header.setSpacing(24)
         header.addWidget(self._create_image_section())
         introduction = QVBoxLayout()
+        introduction.setSpacing(10)
         title = QLabel("MeasureLab")
         font = title.font()
         font.setPointSize(26)
@@ -62,12 +65,13 @@ class WelcomeWidget(QWidget):
             )
         )
         desc.setWordWrap(True)
+        desc.setProperty("shellSecondary", True)
         introduction.addWidget(desc)
         header.addLayout(introduction, 1)
         layout.addLayout(header)
         layout.addWidget(self._create_text_section())
         recent_heading = QLabel(tr("Recently opened"))
-        recent_heading.setStyleSheet("font-weight: bold;")
+        recent_heading.setProperty("shellSecondary", True)
         layout.addWidget(recent_heading)
         self.recent_container = QWidget()
         self.recent_layout = QGridLayout(self.recent_container)
@@ -85,6 +89,7 @@ class WelcomeWidget(QWidget):
         self.update_label.mousePressEvent = self.open_release_page
         layout.addWidget(self.update_label)
         version_label = QLabel(tr("Version {0}").format(__version__))
+        version_label.setProperty("shellSecondary", True)
         layout.addWidget(version_label)
 
     def _create_image_section(self) -> QLabel:
@@ -110,10 +115,12 @@ class WelcomeWidget(QWidget):
 
     def _page_button(self, key, description=None):
         button = _PageButton()
+        button.setProperty("welcomeCard", True)
+        button.setCursor(Qt.CursorShape.PointingHandCursor)
         button.setAccessibleName(tr(key))
         content = QVBoxLayout(button)
-        content.setContentsMargins(12, 9, 12, 9)
-        content.setSpacing(4)
+        content.setContentsMargins(14, 12, 14, 12)
+        content.setSpacing(5)
         title = QLabel(tr(key))
         title.setWordWrap(True)
         title.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
@@ -121,17 +128,11 @@ class WelcomeWidget(QWidget):
         if description:
             detail = QLabel(description)
             detail.setWordWrap(True)
+            detail.setProperty("shellSecondary", True)
             detail.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
             content.addWidget(detail)
             title.setStyleSheet("font-weight: bold;")
             button.setAccessibleDescription(description)
-        button.setStyleSheet("""
-            QPushButton { border: 1px solid palette(mid); border-radius: 6px;
-                background: palette(base); }
-            QPushButton:hover { border-color: palette(highlight); background: palette(alternate-base); }
-            QPushButton:focus { border: 2px solid palette(highlight); }
-            QPushButton:pressed { background: palette(alternate-base); }
-        """)
         button.clicked.connect(lambda checked=False: self.page_requested.emit(key))
         return button
 
@@ -139,7 +140,8 @@ class WelcomeWidget(QWidget):
         container = QWidget()
         grid = QGridLayout(container)
         grid.setContentsMargins(0, 0, 0, 0)
-        grid.setSpacing(10)
+        grid.setHorizontalSpacing(12)
+        grid.setVerticalSpacing(10)
         setup = QLabel(tr("1. Set up your audio"))
         setup.setStyleSheet("font-weight: bold;")
         grid.addWidget(setup, 0, 0, 1, 2)
@@ -147,7 +149,8 @@ class WelcomeWidget(QWidget):
         grid.addWidget(self._page_button("Remote Audio I/O", tr("Use audio from another MeasureLab computer.")), 1, 1)
         tools = QLabel(tr("2. Choose what to measure"))
         tools.setStyleSheet("font-weight: bold;")
-        grid.addWidget(tools, 2, 0, 1, 2)
+        grid.setRowMinimumHeight(2, 12)
+        grid.addWidget(tools, 3, 0, 1, 2)
         pages = [
             ("Signal Generator", tr("Generate a test tone.")),
             ("Spectrum Analyzer", tr("See which frequencies are present.")),
@@ -155,7 +158,7 @@ class WelcomeWidget(QWidget):
             ("Distortion Analyzer", tr("Measure harmonic distortion.")),
         ]
         for index, (key, description) in enumerate(pages):
-            grid.addWidget(self._page_button(key, description), 3 + index // 2, index % 2)
+            grid.addWidget(self._page_button(key, description), 4 + index // 2, index % 2)
         grid.setColumnStretch(0, 1)
         grid.setColumnStretch(1, 1)
         return container
@@ -170,6 +173,7 @@ class WelcomeWidget(QWidget):
         if not keys:
             empty = QLabel(tr("Modules you open will appear here."))
             empty.setWordWrap(True)
+            empty.setProperty("shellSecondary", True)
             self.recent_layout.addWidget(empty, 0, 0, 1, 2)
         for index, key in enumerate(keys[:4]):
             self.recent_layout.addWidget(self._page_button(key), index // 2, index % 2)

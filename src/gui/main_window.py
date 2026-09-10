@@ -3,8 +3,8 @@ import logging
 import time
 from typing import Any, Callable, Optional
 
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QPalette
+from PyQt6.QtCore import QPointF, Qt, QTimer
+from PyQt6.QtGui import QPainter, QPalette, QPen, QPolygonF
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -17,6 +17,8 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
     QStackedWidget,
     QStatusBar,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -27,7 +29,40 @@ from src.core.config_manager import ConfigManager
 from src.core.localization import get_manager, tr
 from src.core.module_constants import ALL_MODULE_KEYS, EXPERIMENTAL_MODULE_KEYS
 from src.gui.module_registry import MODULE_REGISTRY
+from src.gui.styles import shell_style
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
+
+
+class _NavigationDelegate(QStyledItemDelegate):
+    """Add breathing room between existing groups without inserting navigation rows."""
+
+    GROUP_START_ROLE = Qt.ItemDataRole.UserRole + 1
+
+    def sizeHint(self, option, index):
+        size = super().sizeHint(option, index)
+        if index.data(self.GROUP_START_ROLE):
+            size.setHeight(size.height() + 8)
+        return size
+
+    def paint(self, painter, option, index):
+        option = QStyleOptionViewItem(option)
+        if index.data(self.GROUP_START_ROLE):
+            option.rect.adjust(0, 8, 0, 0)
+        super().paint(painter, option, index)
+
+
+class _OutputDestinationCombo(QComboBox):
+    """Keep the routing affordance visible with a flat, palette-aware chevron."""
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        role = QPalette.ColorRole.Text if self.isEnabled() else QPalette.ColorRole.PlaceholderText
+        painter.setPen(QPen(self.palette().color(role), 1.5))
+        x = 14 if self.layoutDirection() == Qt.LayoutDirection.RightToLeft else self.width() - 14
+        y = self.height() / 2
+        painter.drawPolyline(QPolygonF([QPointF(x - 3, y - 1.5), QPointF(x, y + 1.5), QPointF(x + 3, y - 1.5)]))
 
 
 _CLASS_LOADERS: dict[tuple[str, str], Callable[[], type[Any]]] = {
@@ -338,11 +373,14 @@ class MainWindow(QMainWindow):
         self._init_sidebar(main_layout)
         self._init_content_area(main_layout)
         self._init_status_bar()
+        self._refresh_shell_theme(None)
         self.theme_manager.theme_changed.connect(self._refresh_shell_theme)
 
     def _refresh_shell_theme(self, _theme):
         # Qt style sheets can retain resolved palette colors across theme changes.
         palette = QApplication.palette()
+        for root in (self.sidebar_panel, self.welcome_widget, self.status_bar):
+            root.setStyleSheet(shell_style(palette))
         for root in (self.sidebar_panel, self.welcome_widget, self.status_bar, self._settings_container):
             for widget in [root, *root.findChildren(QWidget)]:
                 if widget.styleSheet():
@@ -373,40 +411,44 @@ class MainWindow(QMainWindow):
     def _init_sidebar(self, layout):
         """Initialize the sidebar with navigation items."""
         self.sidebar_panel = QWidget()
+        self.sidebar_panel.setObjectName("sidebarPanel")
         self.sidebar_panel.setFixedWidth(220)
         sidebar_layout = QVBoxLayout(self.sidebar_panel)
-        sidebar_layout.setContentsMargins(10, 14, 10, 10)
+        sidebar_layout.setContentsMargins(12, 16, 12, 10)
         sidebar_layout.setSpacing(8)
-        brand = QLabel("MeasureLab")
-        brand.setStyleSheet("font-size: 18px; font-weight: 600; padding: 4px 6px 10px;")
-        sidebar_layout.addWidget(brand)
 
         self.menu_only_btn = QPushButton(tr("Menu Only"))
+        self.menu_only_btn.setProperty("shellAction", True)
         self.menu_only_btn.setCheckable(True)
         self.menu_only_btn.setToolTip(tr("Toggle menu-only mode."))
         self.menu_only_btn.toggled.connect(self.set_menu_only_mode)
         sidebar_layout.addWidget(self.menu_only_btn)
 
         self.measurement_console_btn = QPushButton(tr("Measurement Console"))
+        self.measurement_console_btn.setProperty("shellAction", True)
         self.measurement_console_btn.setToolTip(tr("Open the multi-instrument measurement console."))
         self.measurement_console_btn.clicked.connect(self.open_measurement_console)
         sidebar_layout.addWidget(self.measurement_console_btn)
 
         self.module_search = QLineEdit()
+        self.module_search.setObjectName("moduleSearch")
         self.module_search.setPlaceholderText(tr("Search modules"))
         self.module_search.setAccessibleName(tr("Search modules"))
         self.module_search.setClearButtonEnabled(True)
         self.module_search.setMinimumHeight(30)
         self.module_search.textChanged.connect(self._filter_sidebar)
+        sidebar_layout.addSpacing(6)
         sidebar_layout.addWidget(self.module_search)
 
         self.sidebar = QListWidget()
+        self.sidebar.setItemDelegate(_NavigationDelegate(self.sidebar))
+        self.sidebar.setVerticalScrollMode(QListWidget.ScrollMode.ScrollPerPixel)
         self.sidebar.setWordWrap(True)
         self.sidebar.setTextElideMode(Qt.TextElideMode.ElideNone)
         self.sidebar.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.sidebar.setStyleSheet("""
             QListWidget { border: none; background: palette(window); outline: 0; }
-            QListWidget::item { padding: 7px 6px; border-radius: 4px; }
+            QListWidget::item { padding: 7px 8px; border-radius: 6px; }
             QListWidget::item:hover { background: palette(alternate-base); }
             QListWidget::item:selected { background: palette(highlight); color: palette(highlighted-text); }
         """)
@@ -417,6 +459,17 @@ class MainWindow(QMainWindow):
         for key in self._module_keys:
             self.sidebar.addItem(tr(key))
 
+        # These boundaries follow the established order; module/page indices stay stable.
+        self._sidebar_group_starts = {
+            "Settings",
+            "Signal Generator",
+            "Oscilloscope",
+            "Lock-in Amplifier",
+            "Spectrogram",
+            "Recorder / Player",
+            "Processor Benchmark",
+            "Transmission Analyzer",
+        }
         self.sidebar.currentRowChanged.connect(self.on_tool_selected)
         self.sidebar.itemDoubleClicked.connect(self.on_sidebar_item_double_clicked)
         sidebar_layout.addWidget(self.sidebar, stretch=1)
@@ -424,6 +477,7 @@ class MainWindow(QMainWindow):
         self.search_empty_label.setWordWrap(True)
         self.search_empty_label.hide()
         sidebar_layout.addWidget(self.search_empty_label)
+        self._filter_sidebar("")
 
         self.sidebar_footer = QWidget()
         self.sidebar_footer_layout = QVBoxLayout(self.sidebar_footer)
@@ -444,6 +498,9 @@ class MainWindow(QMainWindow):
             matches = query in key.casefold() or query in tr(key).casefold()
             self.sidebar.item(row).setHidden(not matches)
             visible += matches
+            self.sidebar.item(row).setData(
+                _NavigationDelegate.GROUP_START_ROLE, not query and key in self._sidebar_group_starts
+            )
         self.search_empty_label.setVisible(visible == 0)
 
     def _open_welcome_page(self, key):
@@ -505,7 +562,6 @@ class MainWindow(QMainWindow):
         """Initialize the status bar and its indicators."""
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
-        self.status_bar.setStyleSheet("QStatusBar::item { border: none; } QLabel { padding: 2px 5px; }")
 
         # Status Labels
         self.status_label = QLabel(tr("Idle"))
@@ -513,6 +569,8 @@ class MainWindow(QMainWindow):
         self.sr_label = QLabel(tr("SR: -"))
         self.cpu_label = QLabel(tr("CPU: 0%"))
         self.clients_label = QLabel(tr("Clients: 0"))
+        for label in (self.status_label, self.io_label, self.sr_label, self.cpu_label, self.clients_label):
+            label.setProperty("statusDivider", True)
         self.compact_status_label = QLabel(tr("Idle") + " • -")
         self.compact_status_label.setStyleSheet("color: gray;")
         self.compact_status_label.setToolTip(tr("Audio status summary."))
@@ -527,13 +585,14 @@ class MainWindow(QMainWindow):
         self.io_error_button.clicked.connect(self._acknowledge_audio_io_error)
         self.io_error_button.hide()
         self.output_dest_label = QLabel(tr("Output:"))
-        self.output_dest_combo = QComboBox()
+        self.output_dest_combo = _OutputDestinationCombo()
+        self.output_dest_combo.setObjectName("outputDestination")
         self.output_dest_combo.addItem(tr("Physical Output"), "physical")
         self.output_dest_combo.addItem(tr("Internal Loopback (Silent)"), "loopback_silent")
         self.output_dest_combo.addItem(tr("Loopback + Physical"), "loopback_mix")
         self.output_dest_combo.setToolTip(tr("Global output destination for all modules."))
         self.output_dest_combo.currentIndexChanged.connect(self.on_output_destination_changed)
-        self.output_dest_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.output_dest_combo.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
 
         self._status_widgets = [
             self.status_label,
