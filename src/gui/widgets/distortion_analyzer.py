@@ -520,7 +520,7 @@ class SweepWorker(QThread):
 
                 def check_capture(loop=loop):
                     nonlocal timeout_count
-                    if self.module.capture_ready or timeout_count >= 100:  # 100 * 5ms = 500ms
+                    if not self.is_running or self.module.capture_ready or timeout_count >= 100:  # 500ms
                         loop.quit()
                     timeout_count += 1
 
@@ -531,10 +531,14 @@ class SweepWorker(QThread):
                 check_timer.stop()
 
                 with self.module.lock:
-                    if self.module.capture_ready:
-                        data = self.module.captured_buffer.copy()
+                    if not self.is_running or not self.module.capture_ready:
+                        self.module.capture_requested = False
+                        if self.is_running:
+                            logger.warning("Distortion sweep stopped: audio capture timed out at %s", val)
+                        self.is_running = False
+                        break
                     else:
-                        data = self.module.input_data.copy()  # Fallback
+                        data = self.module.captured_buffer.copy()
 
                 sample_rate = self.module.audio_engine.sample_rate
 
@@ -555,6 +559,9 @@ class SweepWorker(QThread):
                     results["basic_wave"]["target_frequency"] = self.module.gen_frequency
 
                 final_result = self.module._apply_result_averaging(results)
+
+            if not self.is_running:
+                break
 
             if results is None:
                 continue
