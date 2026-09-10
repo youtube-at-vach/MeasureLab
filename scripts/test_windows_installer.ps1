@@ -115,7 +115,7 @@ namespace MeasureLab
     return [MeasureLab.ShellLinkReader]::Read($Path)
 }
 
-function Assert-InstalledBundle {
+function Assert-InstalledBundle([bool]$AsioEnabled) {
     if (-not (Test-Path $registryKey)) { throw "Missing per-user uninstall registration" }
     if (-not (Test-Path -LiteralPath $shortcut)) { throw "Missing Start menu shortcut" }
     $expectedTarget = Join-Path $installDir "MeasureLab.exe"
@@ -128,13 +128,26 @@ function Assert-InstalledBundle {
         throw "Incorrect shortcut target ('$($linkProperties[0])') or working directory ('$($linkProperties[1])'); expected '$expectedTarget' and '$installDir'"
     }
     $sourceDir = (Resolve-Path "dist/onedir/MeasureLab").Path
+    $activePortAudio = "_internal\_sounddevice_data\portaudio-binaries\libportaudio64bit.dll"
+    $asioPortAudio = Join-Path $sourceDir "_internal\_sounddevice_data\portaudio-binaries\libportaudio64bit-asio.dll"
     foreach ($file in Get-ChildItem -LiteralPath $sourceDir -Recurse -File) {
         $relative = [IO.Path]::GetRelativePath($sourceDir, $file.FullName)
         $installed = Join-Path $installDir $relative
         if (-not (Test-Path -LiteralPath $installed)) { throw "Missing installed file: $relative" }
-        if ((Get-FileHash -LiteralPath $installed).Hash -ne (Get-FileHash -LiteralPath $file.FullName).Hash) {
+        $expected = if ($AsioEnabled -and $relative -eq $activePortAudio) { $asioPortAudio } else { $file.FullName }
+        if ((Get-FileHash -LiteralPath $installed).Hash -ne (Get-FileHash -LiteralPath $expected).Hash) {
             throw "Installed payload differs: $relative"
         }
+    }
+    $backup = Join-Path $installDir "$activePortAudio.bak"
+    if ($AsioEnabled) {
+        $standardPortAudio = Join-Path $sourceDir $activePortAudio
+        if (-not (Test-Path -LiteralPath $backup)) { throw "Missing standard PortAudio backup" }
+        if ((Get-FileHash -LiteralPath $backup).Hash -ne (Get-FileHash -LiteralPath $standardPortAudio).Hash) {
+            throw "Standard PortAudio backup differs from the bundled library"
+        }
+    } elseif (Test-Path -LiteralPath $backup) {
+        throw "Unexpected PortAudio backup while ASIO is disabled"
     }
 }
 
@@ -144,9 +157,9 @@ try {
     $userData = New-Item -ItemType Directory -Force (Join-Path $env:APPDATA "MeasureLab")
     $sentinel = Join-Path $userData.FullName "installer-preservation-test.txt"
     Set-Content -LiteralPath $sentinel -Value "keep user data"
-    $setupArgs = @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-", "/DIR=`"$installDir`"")
+    $setupArgs = @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-", "/TASKS=asio", "/DIR=`"$installDir`"")
     Invoke-CheckedProcess $Installer ($setupArgs + "/LOG=`"$logDir/install.log`"") $testRoot
-    Assert-InstalledBundle
+    Assert-InstalledBundle $true
     Invoke-CheckedProcess (Join-Path $installDir "MeasureLab.exe") @("--self-test") $installDir
 
     # Capture the real settings/calibration produced by startup, and preserve
@@ -162,7 +175,8 @@ try {
     Set-Content -LiteralPath $staleFile -Value "old runtime"
     # Omit /DIR on the second run: AppId must recover the existing location.
     Invoke-CheckedProcess $Installer @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-", "/LOG=`"$logDir/reinstall.log`"") $testRoot
-    Assert-InstalledBundle
+    # The ASIO task selected during the first install must be reused on update.
+    Assert-InstalledBundle $true
     if (Test-Path -LiteralPath $staleFile) { throw "Obsolete runtime survived update" }
     foreach ($file in $dataHashes.Keys) {
         if ((Get-FileHash -LiteralPath $file).Hash -ne $dataHashes[$file]) { throw "Update modified user data: $file" }
@@ -182,7 +196,7 @@ try {
     foreach ($file in $dataHashes.Keys) {
         if ((Get-FileHash -LiteralPath $file).Hash -ne $dataHashes[$file]) { throw "Uninstall modified user data: $file" }
     }
-    Write-Host "Installer test passed: install, payload hashes, shortcut, startup, reinstall and uninstall."
+    Write-Host "Installer test passed: ASIO selection, payload hashes, shortcut, startup, reinstall and uninstall."
 } finally {
     $env:APPDATA = $originalAppData
     # Retain logs in dist/installer-test; clean up registration even on failure.
