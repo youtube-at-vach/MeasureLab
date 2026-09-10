@@ -76,6 +76,22 @@ class MockQPalette:
 
 class TestThemeManager(unittest.TestCase):
     def setUp(self):
+        # Load the module under test against mocked Qt bindings without
+        # mutating an already-imported production module.  Other GUI tests
+        # import ThemeManager during collection, so reloading that module
+        # here would leave their class globals pointing at MockQPalette.
+        self.theme_manager_module_name = "src.core.theme_manager"
+        self.original_theme_manager_module = sys.modules.pop(self.theme_manager_module_name, None)
+        self.core_package = sys.modules.get("src.core")
+        self._missing = object()
+        self.original_package_attribute = (
+            getattr(self.core_package, "theme_manager", self._missing)
+            if self.core_package is not None
+            else self._missing
+        )
+        if self.core_package is not None and hasattr(self.core_package, "theme_manager"):
+            delattr(self.core_package, "theme_manager")
+
         # prepare sys.modules patcher
         self.modules_patcher = patch.dict(
             sys.modules,
@@ -108,13 +124,10 @@ class TestThemeManager(unittest.TestCase):
         # Default styles
         self.mock_qt_widgets.QStyleFactory.keys.return_value = ["Fusion", "Windows", "WindowsVista"]
 
-        # Import/Reload module under test
-        if "src.core.theme_manager" in sys.modules:
-            importlib.reload(sys.modules["src.core.theme_manager"])
-        else:
-            importlib.import_module("src.core.theme_manager")
+        # Import a fresh module under test using the mocked Qt bindings.
+        importlib.import_module(self.theme_manager_module_name)
 
-        self.module_under_test = sys.modules["src.core.theme_manager"]
+        self.module_under_test = sys.modules[self.theme_manager_module_name]
         self.ThemeManager = self.module_under_test.ThemeManager
 
         # Setup common app mock
@@ -132,8 +145,15 @@ class TestThemeManager(unittest.TestCase):
 
     def tearDown(self):
         self.modules_patcher.stop()
-        if "src.core.theme_manager" in sys.modules:
-            del sys.modules["src.core.theme_manager"]
+        sys.modules.pop(self.theme_manager_module_name, None)
+        if self.original_theme_manager_module is not None:
+            sys.modules[self.theme_manager_module_name] = self.original_theme_manager_module
+        if self.core_package is not None:
+            if self.original_package_attribute is self._missing:
+                if hasattr(self.core_package, "theme_manager"):
+                    delattr(self.core_package, "theme_manager")
+            else:
+                self.core_package.theme_manager = self.original_package_attribute
 
     def test_apply_system_theme_dark(self):
         tm = self.ThemeManager(self.mock_app)

@@ -102,6 +102,21 @@ class ThemeManager(QObject):
             self._apply_system_theme()
             self.theme_changed.emit("system")
 
+    def dispose(self) -> None:
+        """Disconnect from application-owned signals before the manager is discarded."""
+        if not self.supports_color_scheme:
+            return
+
+        style_hints = self.app.styleHints()
+        if style_hints is None:
+            return
+
+        try:
+            style_hints.colorSchemeChanged.disconnect(self._on_system_theme_changed)
+        except (AttributeError, TypeError, RuntimeError):
+            # The signal may already be unavailable or disconnected during Qt shutdown.
+            pass
+
     def _detect_system_theme(self) -> str:
         """
         Detect system theme.

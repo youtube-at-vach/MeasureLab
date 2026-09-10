@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import base64
 
-from PyQt6.QtCore import QSize, Qt, QTimer
+from PyQt6.QtCore import QSignalBlocker, QSize, Qt, QTimer
 from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import (
     QApplication,
@@ -428,14 +428,18 @@ def test_console_media_icons_follow_button_text_palette(qtbot):
     assert dock._primary_button is not None
 
     app = QApplication.instance()
+    QApplication.processEvents()
     original_palette = QPalette(app.palette())
+    original_stylesheet = app.styleSheet()
     expected_color = QColor(245, 235, 225)
     test_palette = QPalette(original_palette)
     test_palette.setColor(QPalette.ColorRole.ButtonText, expected_color)
 
     try:
-        app.setPalette(test_palette)
-        QApplication.processEvents()
+        app.setStyleSheet("")
+        with QSignalBlocker(app.styleHints()):
+            app.setPalette(test_palette)
+            QApplication.processEvents()
         qtbot.waitUntil(lambda: _icon_contains_color(dock._primary_button.icon(), expected_color))
 
         assert _icon_contains_color(console.stop_all_action.icon(), expected_color)
@@ -445,6 +449,7 @@ def test_console_media_icons_follow_button_text_palette(qtbot):
         assert _icon_contains_color(dock._primary_button.icon(), expected_color)
     finally:
         app.setPalette(original_palette)
+        app.setStyleSheet(original_stylesheet)
 
     console.close()
 
