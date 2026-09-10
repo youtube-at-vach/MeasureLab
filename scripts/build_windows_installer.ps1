@@ -30,6 +30,12 @@ foreach ($file in @("MeasureLab.exe", "_internal", "enable_asio.bat", "disable_a
         throw "Incomplete Windows bundle: missing $file"
     }
 }
+$portAudioDir = Join-Path $sourceDir "_internal\_sounddevice_data\portaudio-binaries"
+foreach ($file in @("libportaudio64bit.dll", "libportaudio64bit-asio.dll")) {
+    if (-not (Test-Path -LiteralPath (Join-Path $portAudioDir $file))) {
+        throw "Incomplete Windows bundle: missing PortAudio library $file"
+    }
+}
 $outputDir = (New-Item -ItemType Directory -Force "dist/release").FullName
 & $Iscc "/DAppVersion=$appVersion" "/DAppFileVersion=$fileVersion" "/DSourceDir=$sourceDir" "/DOutputDir=$outputDir" "packaging/windows/MeasureLab.iss"
 if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed: $LASTEXITCODE" }

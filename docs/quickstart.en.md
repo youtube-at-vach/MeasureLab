@@ -34,7 +34,7 @@ ZIP builds (`MeasureLab-<version>-windows-x64-onedir.zip` and `onefile.zip`) rem
 
 When switching from ZIP to the installer, existing settings in `%APPDATA%\MeasureLab` are reused. If the old ZIP folder contains a portable `config.json`, back it up and copy it to the new installation folder while MeasureLab is closed to preserve that configuration. Keep the old folder until you have checked settings, calibration and saved measurements; files saved beside the old executable are not moved automatically.
 
-Experimental ASIO helper scripts are included in the installation folder. Updates restore the standard PortAudio library, so run `enable_asio.bat` again after an update if needed. See `README_ASIO.txt` in that folder.
+ASIO support is experimental and disabled by default. After installing the required ASIO driver separately, select **Enable experimental ASIO support** during installation if needed. The installer reuses this selection during updates. Manual switching scripts are also included in the installation folder; see `README_ASIO.txt` there.
 
 The installer currently has no Windows Authenticode signature, so SmartScreen may display a warning. Release `.sigstore.json` bundles and SHA-256 checksums provide separate artifact verification; they do not replace Windows code signing.
 

@@ -8,7 +8,7 @@ This is **not a licensing restriction**, but a **stability and reliability decis
 In practice, ASIO driver behavior varies widely, and when used through PortAudio,
 it may cause crashes, hangs, or incorrect device reporting.
 
-For this reason, ASIO support is considered **experimental** and must be enabled manually.
+For this reason, ASIO support is considered **experimental** and is disabled by default.
 
 > **Note:**
 > Enabling ASIO does **not** install or redistribute any ASIO drivers or the ASIO SDK.
@@ -18,8 +18,9 @@ Installer builds
 ----------------
 The installer includes these scripts in %LOCALAPPDATA%\Programs\MeasureLab
 (or the installation folder you selected). Administrator privileges are not needed.
-Updating or reinstalling replaces the bundled libraries and resets ASIO to disabled.
-Run enable_asio.bat again after updating if you need experimental ASIO support.
+Select "Enable experimental ASIO support" during installation to enable it. The
+installer remembers this selection and reapplies it when updating or reinstalling.
+ASIO enabled later by manually running enable_asio.bat is not detected by the installer.
 
 Enabling ASIO
 -------------

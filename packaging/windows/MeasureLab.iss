@@ -41,13 +41,21 @@ SolidCompression=yes
 WizardStyle=modern
 CloseApplications=yes
 RestartApplications=no
+UsePreviousTasks=yes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl"
 
+[CustomMessages]
+english.AsioTask=Enable experimental ASIO support (requires an installed ASIO driver)
+japanese.AsioTask=実験的なASIO対応を有効にする（ASIOドライバーが別途必要）
+english.AudioTasks=Audio support:
+japanese.AudioTasks=オーディオ機能:
+
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "asio"; Description: "{cm:AsioTask}"; GroupDescription: "{cm:AudioTasks}"; Flags: unchecked
 
 [InstallDelete]
 ; Only this package-owned runtime directory is replaced. Never delete {app}
@@ -70,4 +78,5 @@ Name: "{userprograms}\MeasureLab"; Filename: "{app}\MeasureLab.exe"; WorkingDir:
 Name: "{userdesktop}\MeasureLab"; Filename: "{app}\MeasureLab.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
+Filename: "{app}\enable_asio.bat"; Parameters: "/silent"; WorkingDir: "{app}"; StatusMsg: "{cm:AsioTask}"; Tasks: asio; Flags: runhidden
 Filename: "{app}\MeasureLab.exe"; WorkingDir: "{app}"; Description: "{cm:LaunchProgram,MeasureLab}"; Flags: nowait postinstall skipifsilent unchecked
