@@ -18,8 +18,11 @@ else:
     MONOSPACE_FONT_FAMILY = "DejaVu Sans Mono, Liberation Mono, Courier New, monospace, Courier"
 
 
-# Stop/record is deliberately darker than the primary blue accent in both
-# themes. White text remains readable; disabled controls use the Qt palette.
+# Solid action fills distinguish measurement controls from neutral buttons.
+# White text is readable in both themes; disabled controls use the Qt palette.
+START_BACKGROUND = "#286443"
+START_HOVER = "#31764f"
+START_PRESSED = "#1d4e33"
 STOP_BACKGROUND = "#7e343d"
 STOP_HOVER = "#94434d"
 STOP_PRESSED = "#602832"
@@ -33,8 +36,8 @@ def button_style(
 ) -> str:
     """Shared action colors and states; extra contains only widget geometry/type.
 
-    Primary actions have a blue edge on a neutral surface. Selected options use
-    the selection fill; stop/record actions use a muted red. A start/stop toggle
+    Primary actions use a green fill so measurement starts are easy to find.
+    Selected options use the selection fill; stop/record actions use a muted red. A start/stop toggle
     changes to the stop role when checked, without changing its dimensions.
     Palette references also work for widgets without a theme-change handler.
     """
@@ -45,13 +48,20 @@ def button_style(
     hover_text = "palette(highlighted-text)" if role in {"primary", "selected"} else foreground
     pressed = "palette(base)"
     pressed_text = "palette(text)"
-    if role == "stop":
+    if role == "primary":
+        background, hover, pressed = START_BACKGROUND, START_HOVER, START_PRESSED
+        foreground = hover_text = pressed_text = "white"
+        border = START_HOVER
+    elif role == "stop":
         background, hover, pressed = STOP_BACKGROUND, STOP_HOVER, STOP_PRESSED
         foreground = hover_text = pressed_text = "white"
         border = STOP_HOVER
+    # A custom border replaces Qt's native button sizing. Restore a usable
+    # hit area for actions, including short translated labels such as "開始".
+    geometry = "padding: 4px 12px; min-width: 4em;" if role in {"primary", "stop"} else ""
     style = f"""
         QPushButton {{ background-color: {background}; color: {foreground};
-            border: 1px solid {border}; border-radius: 4px; {extra} }}
+            border: 1px solid {border}; border-radius: 4px; {geometry} {extra} }}
         QPushButton:hover {{ background-color: {hover}; color: {hover_text}; }}
         QPushButton:pressed {{ background-color: {pressed}; color: {pressed_text}; }}
     """

@@ -605,6 +605,7 @@ class LockInFrequencyCounterWidget(QWidget):
 
         # Start/Stop
         self.btn_run = QPushButton(tr("Start"))
+        self.btn_run.setStyleSheet(button_style("primary"))
         self.btn_run.setCheckable(True)
         self.btn_run.clicked.connect(self.on_run_clicked)
         controls_layout.addWidget(self.btn_run)
@@ -898,7 +899,7 @@ class LockInFrequencyCounterWidget(QWidget):
         else:
             self.module.stop_analysis()
             self.btn_run.setText(tr("Start"))
-            self.btn_run.setStyleSheet("")
+            self.btn_run.setStyleSheet(button_style("primary"))
 
     def _distribution_mode(self):
         if self.distribution_mode_combo.currentIndex() == 1:

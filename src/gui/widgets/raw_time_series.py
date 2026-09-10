@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.gui.styles import button_style
 from src.core.utils import format_si
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
@@ -248,6 +249,7 @@ class RawTimeSeriesWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
 
         # Start/Stop
         self.btn_start = QPushButton(tr("Start"))
+        self.btn_start.setStyleSheet(button_style("primary", toggle=True))
         self.btn_start.setCheckable(True)
         self.btn_start.clicked.connect(self._on_start_toggled)
         ctrl.addWidget(self.btn_start)

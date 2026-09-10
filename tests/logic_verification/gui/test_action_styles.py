@@ -59,3 +59,29 @@ def test_widget_theme_subscription_is_not_recursive(qtbot, theme_manager, module
     for theme in ("light", "dark", "light"):
         theme_manager.set_theme(theme)
         assert theme_manager.receivers(theme_manager.theme_changed) == subscribers
+
+
+@pytest.mark.parametrize("state", ["START_BACKGROUND", "START_HOVER", "START_PRESSED"])
+def test_measurement_button_white_text_contrast(state):
+    from PyQt6.QtGui import QColor
+    from src.gui import styles
+
+    color = QColor(getattr(styles, state))
+    channels = [color.redF(), color.greenF(), color.blueF()]
+    linear = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+    luminance = sum(c * weight for c, weight in zip(linear, (0.2126, 0.7152, 0.0722), strict=True))
+    assert 1.05 / (luminance + 0.05) >= 4.5
+
+
+@pytest.mark.parametrize("theme", ["dark", "light"])
+@pytest.mark.parametrize("role", ["primary", "stop"])
+def test_short_action_labels_keep_a_button_sized_hit_area(qapp, qtbot, theme_manager, theme, role):
+    theme_manager.set_theme(theme)
+    button = QPushButton("開始" if role == "primary" else "停止")
+    button.setStyleSheet(button_style(role))
+    qtbot.addWidget(button)
+    button.show()
+    qapp.processEvents()
+    metrics = button.fontMetrics()
+    assert button.sizeHint().width() >= metrics.horizontalAdvance(button.text()) + 24
+    assert button.sizeHint().height() >= metrics.boundingRect(button.text()).height() + 8

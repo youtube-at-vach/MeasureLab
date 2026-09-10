@@ -21,6 +21,7 @@ from scipy.ndimage import gaussian_filter
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.gui.styles import button_style
 from src.core.fft_manager import fft_manager
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
@@ -500,6 +501,7 @@ class BNIMMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         controls_layout = QVBoxLayout()
 
         self.toggle_btn = QPushButton(tr("Start"))
+        self.toggle_btn.setStyleSheet(button_style("primary", toggle=True))
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.clicked.connect(self.on_toggle)
         controls_layout.addWidget(self.toggle_btn)

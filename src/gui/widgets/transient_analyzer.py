@@ -468,6 +468,7 @@ class TransientAnalyzerWidget(QWidget):
 
         # Record Button
         self.rec_btn = QPushButton(tr("Record"))
+        self.rec_btn.setStyleSheet(button_style("primary"))
         self.rec_btn.setCheckable(True)
         self.rec_btn.clicked.connect(self.on_record_toggle)
         rec_layout.addWidget(self.rec_btn, 1, 4)
@@ -694,7 +695,7 @@ class TransientAnalyzerWidget(QWidget):
     def _stop_recording_ui(self):
         self.module.stop_recording()
         self.rec_btn.setText(tr("Record"))
-        self.rec_btn.setStyleSheet("")
+        self.rec_btn.setStyleSheet(button_style("primary"))
         self.analyze_btn.setEnabled(True)
         self.update_waveform_plot()
 

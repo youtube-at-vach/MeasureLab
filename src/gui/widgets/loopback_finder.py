@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import (
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.gui.styles import button_style
 from src.measurement_modules.base import MeasurementModule
 
 logger = logging.getLogger(__name__)
@@ -549,9 +550,11 @@ class LoopbackFinderWidget(QWidget):
         measurement_group = QGroupBox(tr("Scan"))
         measurement_layout = QVBoxLayout(measurement_group)
         self.start_btn = QPushButton(tr("Start Scan"))
+        self.start_btn.setStyleSheet(button_style("primary"))
         self.start_btn.clicked.connect(self.start_scan)
         measurement_layout.addWidget(self.start_btn)
         self.stop_btn = QPushButton(tr("Stop"))
+        self.stop_btn.setStyleSheet(button_style("stop"))
         self.stop_btn.clicked.connect(self.stop_scan)
         self.stop_btn.setEnabled(False)
         measurement_layout.addWidget(self.stop_btn)

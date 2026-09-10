@@ -21,6 +21,7 @@ from scipy.signal import get_window
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.gui.styles import button_style
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.instrument_plot import InstrumentPlotWidget
@@ -403,6 +404,7 @@ class StereoAlignmentMonitorWidget(QWidget, CompactableWidgetInterface):
         ctrl_vbox = QVBoxLayout()
 
         self.btn_toggle = QPushButton(tr("Start"))
+        self.btn_toggle.setStyleSheet(button_style("primary", toggle=True))
         self.btn_toggle.setCheckable(True)
         self.btn_toggle.clicked.connect(self.on_toggle)
         ctrl_vbox.addWidget(self.btn_toggle)

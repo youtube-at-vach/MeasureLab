@@ -55,7 +55,7 @@ from src.core.event_statistics import (
     summarize_events,
 )
 from src.core.localization import tr
-from src.gui.styles import MONOSPACE_FONT_FAMILY
+from src.gui.styles import button_style, MONOSPACE_FONT_FAMILY
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 from src.measurement_modules.base import MeasurementModule
@@ -1038,6 +1038,7 @@ class EventDetectorWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         measurement_group = QGroupBox(tr("Measurement"))
         measurement_layout = QVBoxLayout(measurement_group)
         self.btn_start = QPushButton(tr("Start"))
+        self.btn_start.setStyleSheet(button_style("primary", toggle=True))
         self.btn_start.setCheckable(True)
         self.btn_start.toggled.connect(self._on_start_toggled)
         measurement_layout.addWidget(self.btn_start)

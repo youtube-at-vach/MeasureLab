@@ -237,7 +237,7 @@ class ThemeManager(QObject):
             self._original_stylesheet
             + """
             QGroupBox { background-color: palette(alternate-base); }
-            QTabWidget::pane { background-color: palette(window); }
+            QTabWidget::pane { background-color: palette(window); border: 1px solid palette(mid); }
             QCheckBox::indicator:unchecked {
                 border: 1px solid palette(dark);
                 border-radius: 2px;
