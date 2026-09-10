@@ -10,6 +10,19 @@ sys.path.insert(0, PROJECT_ROOT)
 
 from src.measurement_modules.base import MeasurementModule  # noqa: E402
 
+# These modules provide interfaces or dialogs that are documented without a
+# standalone widget image. Their constructors require live application state,
+# so they are deliberately outside the offline capture contract.
+DOC_CAPTURE_EXCLUSIONS = {
+    "compactable_interface",
+    "comparable_interface",
+    "detachable_wrapper",
+    "instrument_plot",
+    "remote_audio_io",
+    "splittable_interface",
+    "vst_dut",
+}
+
 # --- Mocks ---
 
 
@@ -83,6 +96,9 @@ class MockAudioEngine:
 
     def get_status(self):
         return {"active": False, "sample_rate": 48000, "cpu_load": 0.0, "active_clients": 0}
+
+    def is_audio_reserved(self):
+        return False
 
     def list_devices(self):
         return []
@@ -279,7 +295,8 @@ def capture_widgets(targets=None):
         # to reach their normal ready state in documentation captures.
         mock_engine.sample_rate = 192000 if module_name == "ultrasound_modulator" else 48000
 
-        if module_name in {"detachable_wrapper", "instrument_plot"}:
+        if module_name in DOC_CAPTURE_EXCLUSIONS:
+            print(f"Skipping {module_name}: no standalone documentation capture")
             continue
 
         file_path = os.path.join(widgets_dir, filename)
@@ -353,8 +370,6 @@ def capture_widgets(targets=None):
 
             traceback.print_exc()
             fail_count += 1
-
-    print(f"\nFinished. Success: {success_count}, Failed: {fail_count}")
 
     print(f"\nFinished. Success: {success_count}, Failed: {fail_count}")
 

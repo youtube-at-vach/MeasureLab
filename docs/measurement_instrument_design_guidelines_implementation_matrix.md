@@ -3,7 +3,7 @@
 ## 概要
 
 更新日: 2026-08-27
-基準文書: [`guide/MEASUREMENT_INSTRUMENT_DESIGN_GUIDELINES.md`](../guide/MEASUREMENT_INSTRUMENT_DESIGN_GUIDELINES.md)  
+基準文書: [`guide/MEASUREMENT_INSTRUMENT_DESIGN_GUIDELINES.md`](https://github.com/youtube-at-vach/MeasureLab/blob/main/guide/MEASUREMENT_INSTRUMENT_DESIGN_GUIDELINES.md)
 対象コード: `src/gui/`、`src/measurement_modules/`、関連テスト
 
 この文書は、MeasureLab GUI Design Guideline v2.1 に対する現在の実装状況を、ウィジェットごとに記録する監査台帳です。実装を直すための設計書ではなく、対応している点、対応していない点、コード上の根拠、未検証の点を明文化することを目的とします。

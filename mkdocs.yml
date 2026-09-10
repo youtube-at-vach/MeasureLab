@@ -94,6 +94,7 @@ plugins:
             高度歪みメーター: Advanced Distortion Meter
             歪み解析: Distortion Analyzer
             非線形解析: Nonlinear Analyzer
+            非線形応答アナライザー: Nonlinear Response Analyzer
             応答ビューア: Response Viewer
             フィードフォワード歪み補正: Feedforward Compensator
             直線性解析: Linearity Analyzer
@@ -132,6 +133,7 @@ plugins:
             用語集: Glossary
             付録: Appendix
             開発情報: Development
+            Windows配布方式とビルド: Windows Packaging and Builds
             提案機能: Proposed Features
             ダウンロード: Download
             リリースページ: Release Page
@@ -183,6 +185,7 @@ nav:
           - 高度歪みメーター: widgets/advanced_distortion_meter.md
           - 歪み解析: widgets/distortion_analyzer.md
           - 非線形解析: widgets/nonlinear_analyzer.md
+          - 非線形応答アナライザー: widgets/nonlinear_response_analyzer.md
           - 応答ビューア: widgets/response_viewer.md
           - フィードフォワード歪み補正: widgets/feedforward_compensator.md
           - 直線性解析: widgets/linearity_analyzer.md
@@ -225,6 +228,7 @@ nav:
       - 用語集: glossary.md
       - 付録: appendix.md
       - 開発情報: development.md
+      - Windows配布方式とビルド: windows_packaging.md
       - 提案機能: PROPOSED_FEATURES.md
       - リリースページ: https://github.com/youtube-at-vach/MeasureLab/releases/
     

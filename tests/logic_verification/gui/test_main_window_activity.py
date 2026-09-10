@@ -2,6 +2,8 @@ from PyQt6.QtGui import QPalette
 from PyQt6.QtWidgets import QListWidget, QWidget
 from unittest.mock import MagicMock
 
+import pytest
+
 from src.core.localization import tr
 from src.gui.main_window import MainWindow
 from src.gui.module_registry import NO_INDEPENDENT_DISPLAY, WidgetCapabilities
@@ -13,6 +15,31 @@ NO_CAPABILITIES = WidgetCapabilities(
     compact_mode=NO_INDEPENDENT_DISPLAY,
     comparison=NO_INDEPENDENT_DISPLAY,
 )
+
+
+@pytest.fixture(autouse=True)
+def restore_application_appearance(qapp):
+    """Keep MainWindow theme setup from leaking into later GUI tests."""
+    original_palette = QPalette(qapp.palette())
+    original_stylesheet = qapp.styleSheet()
+    missing = object()
+    original_theme_manager = getattr(qapp, "theme_manager", missing)
+
+    yield
+
+    current_theme_manager = getattr(qapp, "theme_manager", missing)
+    if current_theme_manager is not original_theme_manager:
+        dispose = getattr(current_theme_manager, "dispose", None)
+        if callable(dispose):
+            dispose()
+        if original_theme_manager is missing:
+            delattr(qapp, "theme_manager")
+        else:
+            qapp.theme_manager = original_theme_manager
+
+    qapp.setStyleSheet(original_stylesheet)
+    qapp.setPalette(original_palette)
+    qapp.processEvents()
 
 
 class _DummyModule:

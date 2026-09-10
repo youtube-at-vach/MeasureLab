@@ -48,7 +48,7 @@ pwsh -File scripts/build_windows_installer.ps1 -Python .\.venv\Scripts\python.ex
 テストは使い捨てのWindowsアカウントで実行します。既存のMeasureLabのインストール登録やスタートメニュー項目がある場合は中止します。
 
 ```powershell
-pwsh -File scripts/test_windows_installer.ps1 -Installer dist/release/MeasureLab-v0.8.7-windows-x64-setup.exe
+pwsh -File scripts/test_windows_installer.ps1 -Installer dist/release/MeasureLab-v<version>-windows-x64-setup.exe
 ```
 
 確認する内容は次のとおりです。
