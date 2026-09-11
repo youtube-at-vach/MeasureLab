@@ -1046,11 +1046,6 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
         form.setContentsMargins(8, 8, 8, 8)
         form.setVerticalSpacing(10)
         form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
-        advanced_page = QWidget()
-        advanced_form = QFormLayout(advanced_page)
-        advanced_form.setContentsMargins(8, 8, 8, 8)
-        advanced_form.setVerticalSpacing(10)
-        advanced_form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
 
         self.btn_toggle = QPushButton(tr("Start Analysis"))
         self.btn_toggle.setCheckable(True)
@@ -1074,12 +1069,12 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
         self.spin_averages.setRange(1, 1000)
         self.spin_averages.setValue(1)
         self.spin_averages.valueChanged.connect(self.on_averages_changed)
-        advanced_form.addRow(self.lbl_averages, self.spin_averages)
+        form.addRow(self.lbl_averages, self.spin_averages)
 
         # Buffer size
         self.combo_buffer = QComboBox()
         self._update_buffer_options()
-        advanced_form.addRow(tr("Buffer Size:"), self.combo_buffer)
+        form.addRow(tr("Buffer Size:"), self.combo_buffer)
 
         # Input Channel
         self.combo_input_ch = QComboBox()
@@ -1102,7 +1097,7 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
         self.combo_window.addItems(["none", "blackmanharris", "hann", "hamming"])
         self.combo_window.setCurrentText(self.module.window_type)
         self.combo_window.currentTextChanged.connect(self.on_window_changed)
-        advanced_form.addRow(self.lbl_window, self.combo_window)
+        form.addRow(self.lbl_window, self.combo_window)
 
         # Display Unit
         self.lbl_unit = QLabel(tr("Display Unit:"))
@@ -1110,7 +1105,7 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
         self.combo_unit.addItems(["dBFS", "dBV", "dB SPL"])
         self.combo_unit.setCurrentText(self.module.display_unit)
         self.combo_unit.currentTextChanged.connect(self.on_unit_changed)
-        advanced_form.addRow(self.lbl_unit, self.combo_unit)
+        form.addRow(self.lbl_unit, self.combo_unit)
 
         self.lbl_start_f = QLabel(tr("Start Freq:"))
         self.spin_start_f = QDoubleSpinBox()
@@ -1213,7 +1208,6 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
         self.tabs.currentChanged.connect(self.section_selector.setCurrentIndex)
         left_panel.addWidget(self.section_selector)
         self._add_settings_page(settings_group, tr("Measurement"))
-        self._add_settings_page(advanced_page, tr("Settings"))
 
         # Targets Tab
         target_tab = QWidget()

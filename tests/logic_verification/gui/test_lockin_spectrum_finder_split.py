@@ -208,6 +208,28 @@ def test_settings_pages_preserve_controls_and_leave_plot_room(lockin_widget, qap
         assert widget.module.points == 320
 
 
+@pytest.mark.parametrize("mode", ["Scan", "Zoom"])
+def test_measurement_and_acquisition_controls_fit_together(lockin_widget, qapp, mode):
+    widget = lockin_widget
+    widget.resize(1000, 600)
+    widget.combo_mode.setCurrentIndex(widget.combo_mode.findData(mode))
+    widget.show()
+    qapp.processEvents()
+    for control in (
+        widget.combo_mode,
+        widget.combo_input_ch,
+        widget.spin_points,
+        widget.spin_averages,
+        widget.combo_buffer,
+        widget.combo_window,
+        widget.combo_unit,
+    ):
+        assert control.isVisible()
+    page = widget.tabs.currentWidget()
+    assert page.horizontalScrollBar().maximum() == 0
+    assert page.verticalScrollBar().maximum() == 0
+
+
 def test_mode_specific_fields_and_status_in_compact_display(lockin_widget, qapp):
     widget = lockin_widget
     widget.show()
@@ -236,7 +258,7 @@ def test_console_action_runs_from_any_page_and_compact_mode(lockin_widget, locki
     dock = InstrumentDockWidget("Finder", 0, "lockin_spectrum_finder")
     dock.set_instrument_widget(lockin_wrapper)
     try:
-        lockin_widget.section_selector.setCurrentIndex(4)
+        lockin_widget.section_selector.setCurrentIndex(lockin_widget.tabs.count() - 1)
         lockin_widget.set_compact_mode(True)
         assert dock._primary_button is not None
         dock._primary_button.click()

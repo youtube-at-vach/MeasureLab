@@ -33,7 +33,7 @@
 
 ## 操作方法
 
-**Start Analysis / Stop Analysis** の下のセレクターで、**Measurement**（モード・入力・点数・周波数範囲）、**Settings**（平均化・バッファ・窓関数・単位）、**Scan Targets**、**Target Generators**、**Audio Sonification** を切り替えます。開始・停止はどのページでも操作できます。小さいウィンドウでは長いページをスクロールできます。
+**Start Analysis / Stop Analysis** の下のセレクターで、**Measurement**（モード・入力・点数・周波数範囲・平均化・バッファ・窓関数・単位）、**Scan Targets**、**Target Generators**、**Audio Sonification** を切り替えます。開始・停止はどのページでも操作できます。小さいウィンドウでは長いページをスクロールできます。
 
 進行状態はグラフの下に表示され、コンパクト表示や分割した表示ウィンドウでも確認できます。オクターブ基準周波数はオクターブ間隔のときだけ、リスト用の対数軸設定は Scan List Only のときだけ表示されます。
 

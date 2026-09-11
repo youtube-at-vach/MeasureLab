@@ -33,7 +33,7 @@ You can select between two analysis modes based on your needs.
 
 ## Controls & Settings
 
-Use the section selector below **Start Analysis / Stop Analysis** to switch between **Measurement** (mode, input, points and frequency range), **Settings** (averaging, buffer, window and units), **Scan Targets**, **Target Generators**, and **Audio Sonification**. Start/stop remains available on every page. Long pages scroll in small windows.
+Use the section selector below **Start Analysis / Stop Analysis** to switch between **Measurement** (mode, input, points, frequency range, averaging, buffer, window and units), **Scan Targets**, **Target Generators**, and **Audio Sonification**. Start/stop remains available on every page. Long pages scroll in small windows.
 
 Progress appears below the spectrum and remains visible in compact and split display windows. The octave reference is shown only for octave spacing; the list-only logarithmic axis option is shown only for Scan List Only.
 
