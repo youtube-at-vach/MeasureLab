@@ -65,3 +65,51 @@ def test_lufs_meter_compact_mode(qtbot):
     assert parent_win.adjustSize.called
 
     parent_win.deleteLater()
+
+
+def test_lufs_readouts_survive_console_and_split_round_trip(qtbot):
+    from PyQt6.QtWidgets import QMainWindow
+
+    from PyQt6.QtCore import Qt
+
+    from src.gui.measurement_console import InstrumentDockWidget
+    from src.gui.module_registry import MODULE_REGISTRY
+    from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
+
+    module = LufsMeter(MockAudioEngine())
+    widget = LufsMeterWidget(module)
+    wrapper = DetachableWidgetWrapper(widget, "LUFS Meter", capabilities=MODULE_REGISTRY["LUFS Meter"].capabilities)
+    qtbot.addWidget(wrapper)
+    window = QMainWindow()
+    qtbot.addWidget(window)
+    dock = InstrumentDockWidget("LUFS Meter", 0, "LUFS Meter", window)
+    window.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, dock)
+    wrapper.set_console_hosted(True)
+    dock.set_instrument_widget(wrapper)
+    wrapper.toggle_compact(True)
+    window.show()
+
+    dock._primary_button.click()
+    assert module.is_running
+    module.integrated_lufs = -23.2
+    module.short_term_lufs = -22.8
+    widget.update_display()
+    assert widget.disp_i["label"].isVisible()
+    assert widget.disp_i["label"].text() == "-23.2"
+    assert widget.sidebar.isHidden()
+    assert widget.tabs.isHidden()
+
+    dock._primary_button.click()
+    assert not module.is_running
+    assert dock.take_instrument_widget() is wrapper
+    wrapper.set_console_hosted(False)
+    wrapper.split()
+    widget.set_compact_mode(True)
+    assert not widget.sidebar.isHidden()
+    assert widget.disp_s["label"].text() == "-22.8"
+    wrapper.reattach_all()
+    widget.set_compact_mode(False)
+    assert widget.display_widget.parent() is widget
+    assert not widget.sidebar.isHidden()
+    assert not widget.tabs.isHidden()
+    assert widget.layout().stretch(widget.layout().indexOf(widget.display_widget)) == 1
