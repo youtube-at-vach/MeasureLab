@@ -6,13 +6,30 @@ from copy import deepcopy
 import numpy as np
 
 from src.core.config_manager import ConfigManager
+from src.core.settings_generation import SettingsGeneration
 
 
-class CalibrationManager:
+class CalibrationManager(SettingsGeneration):
     """
     Manages audio calibration data (sensitivity, gain) and conversions.
     Stores data in a JSON file.
     """
+
+    _measurement_fields = frozenset(
+        {
+            "input_sensitivity",
+            "input_sensitivity_is_calibrated",
+            "output_gain",
+            "output_gain_is_calibrated",
+            "frequency_calibration",
+            "frequency_calibration_1pps",
+            "frequency_calibration_source",
+            "lockin_gain_offset",
+            "spl_offset_db",
+            "last_profile",
+            "frequency_map",
+        }
+    )
 
     def __init__(self, config_filename="calibration.json"):
         # Resolve config path using ConfigManager's logic (User Data Directory)

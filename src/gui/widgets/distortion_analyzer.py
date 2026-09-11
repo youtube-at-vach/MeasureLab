@@ -16,6 +16,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QPushButton,
     QSpinBox,
+    QScrollArea,
     QStackedWidget,
     QTableWidget,
     QTableWidgetItem,
@@ -24,6 +25,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from src.core.settings_generation import SettingsGeneration
+from src.gui.widgets.imd_sweep_ui import IMDSweepUI
 from src.core.analysis import AudioCalc, get_cached_window
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
@@ -39,7 +42,24 @@ from src.core.comparison_manager import ComparisonTrace, AxisMetadata, Calibrati
 logger = logging.getLogger(__name__)
 
 
-class DistortionAnalyzer(MeasurementModule):
+class DistortionAnalyzer(SettingsGeneration, MeasurementModule):
+    _measurement_fields = frozenset(
+        {
+            "input_channel",
+            "output_channel",
+            "output_enabled",
+            "signal_type",
+            "gen_frequency",
+            "_gen_amplitude",
+            "imd_f1",
+            "imd_f2",
+            "imd_ratio",
+            "filter_type",
+            "average_count",
+            "mode",
+        }
+    )
+
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
         self.is_running = False
@@ -91,6 +111,8 @@ class DistortionAnalyzer(MeasurementModule):
         self.sweep_mode = False
         self.sweep_running = False
         self.sweep_results = []
+        self.imd_snapshot = None
+        self.imd_cancel = None
 
         self.callback_id = None
         self.lock = threading.Lock()
@@ -391,6 +413,9 @@ class DistortionAnalyzer(MeasurementModule):
         return signal
 
     def stop_analysis(self):
+        if self.imd_cancel is not None:
+            self.imd_cancel()
+            return
         if self.is_running:
             if self.callback_id is not None:
                 self.audio_engine.unregister_callback(self.callback_id)
@@ -607,7 +632,7 @@ class RealtimeAnalysisWorker(QObject):
             logger.error(f"Error in analysis worker: {e}")
 
 
-class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
+class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface, IMDSweepUI):
     start_analysis_signal = pyqtSignal(np.ndarray, dict)
 
     def __init__(self, module: DistortionAnalyzer):
@@ -687,7 +712,9 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         mode_group = QGroupBox(tr("Mode"))
         mode_layout = QVBoxLayout()
         self.mode_combo = QComboBox()
-        self.mode_combo.addItems([tr("Real-time"), tr("Frequency Sweep"), tr("Amplitude Sweep")])
+        self.mode_combo.addItems(
+            [tr("Real-time"), tr("Frequency Sweep"), tr("Amplitude Sweep"), tr("IMD amplitude sweep")]
+        )
         self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
         mode_layout.addWidget(self.mode_combo)
         mode_group.setLayout(mode_layout)
@@ -810,6 +837,7 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         """Creates the Sweep settings tab."""
         sweep_widget = QWidget()
         sweep_layout = QFormLayout()
+        self._create_imd_controls(sweep_layout)
 
         self.sweep_start_spin = QDoubleSpinBox()
         self.sweep_start_spin.setRange(-120, 20000)
@@ -856,9 +884,14 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.sweep_y_unit_combo.addItems(["dB", "Percent (%)"])
         self.sweep_y_unit_combo.currentIndexChanged.connect(self._on_sweep_y_unit_changed)
         sweep_layout.addRow(tr("Y-Axis Unit:"), self.sweep_y_unit_combo)
+        self._append_imd_acquisition_controls(sweep_layout)
 
         sweep_widget.setLayout(sweep_layout)
-        return sweep_widget
+        scroll = QScrollArea()
+        scroll.setProperty("measurelabScrollRole", "outer-controls")
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(sweep_widget)
+        return scroll
 
     def _create_common_settings_tab(self) -> QWidget:
         """Creates the common settings tab."""
@@ -928,6 +961,7 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.action_btn.setCheckable(True)
         self.action_btn.clicked.connect(self.on_action)
         btn_layout.addWidget(self.action_btn)
+        self._create_imd_actions(btn_layout)
         return btn_layout
 
     def _create_meters_group(self) -> QGroupBox:
@@ -1064,6 +1098,9 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         return harmonics_widget
 
     def _on_sweep_y_unit_changed(self, idx):
+        if self.mode_combo.currentIndex() == 3:
+            self._plot_imd()
+            return
         # Clear data on the curve first to avoid applying log10 to negative values (dB values)
         # when we change logMode inside _update_sweep_y_axis_format()
         self.sweep_curve.clear()
@@ -1125,6 +1162,7 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.sweep_plot.setXRange(np.log10(20), np.log10(20000))
 
         self.sweep_curve = self.sweep_plot.plot(pen="c")
+        self.sweep_curve.sigPointsClicked.connect(self._imd_point_clicked)
 
         self._update_sweep_x_axis_format()
         self._update_sweep_y_axis_format()
@@ -1170,7 +1208,31 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.module.reset_averaging_state()
 
     def on_mode_changed(self, idx):
-        # 0: Real-time, 1: Frequency Sweep, 2: Amplitude Sweep
+        self._imd_mode_visibility(idx == 3)
+        self.layout().setStretch(0, 2 if idx == 3 else 1)
+        self.sweep_start_spin.setRange(-120, 20000)
+        self.sweep_end_spin.setRange(-120, 20000)
+        if idx == 3:
+            self.module.mode = "IMD amplitude sweep"
+            self.out_mode_combo.setEnabled(False)
+            self.module.output_enabled = True
+            self.settings_tabs.setCurrentIndex(1)
+            self.meters_group.hide()
+            self.tabs.setCurrentIndex(2)
+            for spin, value in ((self.sweep_start_spin, -40), (self.sweep_end_spin, -3)):
+                spin.setRange(-100, 0)
+                spin.setSuffix(" " + tr("dBFS (sum peak)"))
+                spin.setValue(value)
+            self.sweep_steps_spin.setValue(20)
+            self._update_sweep_x_controls()
+            self._plot_imd()
+            return
+        self.sweep_curve.setData([], [], symbol=None)
+        self.sweep_plot.setTitle(None)
+        for axis in (self.sweep_axis, self.sweep_plot.getPlotItem().getAxis("left")):
+            if hasattr(axis, "setSIPrefixEnableRanges"):
+                axis.setSIPrefixEnableRanges(None)
+            axis.enableAutoSIPrefix(True)
         modes = ["Real-time", "Frequency Sweep", "Amplitude Sweep"]
         if 0 <= idx < len(modes):
             self.module.mode = modes[idx]
@@ -1372,6 +1434,9 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
             self.imd_row_widget.setVisible(True)
 
     def start_sweep(self, mode_idx):
+        if mode_idx == 3:
+            self._start_imd()
+            return
         # SweepWorker always performs single-tone harmonic analysis. Keep this
         # invariant here as well as in the UI in case this method is called
         # directly or the module state was changed programmatically.
@@ -1421,6 +1486,11 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
             return
 
     def stop_sweep(self):
+        if self.imd_worker and self.imd_worker.isRunning():
+            self.imd_worker.stop()
+            self.action_btn.setEnabled(False)
+            self.imd_status.setText(tr("Cancelling..."))
+            return
         if self.sweep_worker:
             self.sweep_worker.stop()
             self.sweep_worker.wait()
@@ -1730,6 +1800,7 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
                 f"{tr('IMD (dB):'):<15} {res['imd_db']:>10.1f} dB\n"
                 "--------------------------------"
             )
+            detailed_text += "\n" + tr("Legacy real-time IMD: FFT peak method; CCIF uses RSS(d2+d3) / carrier sum.")
             self.detailed_label.setText(detailed_text)
 
             mag_linear = results.get("mag_linear")
@@ -1855,6 +1926,8 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
                 self.spectrum_curve.setData(freqs[1:], mag[1:])
 
     def get_comparable_data(self) -> list[ComparisonTrace]:
+        if self.mode_combo.currentIndex() == 3:
+            return self._imd_comparable()
         if not self.module.sweep_results:
             return []
 
@@ -1937,6 +2010,14 @@ class DistortionAnalyzerWidget(QWidget, ComparableWidgetInterface):
         return [trace]
 
     def closeEvent(self, event):
+        if (self.imd_worker and self.imd_worker.isRunning()) or (
+            self.imd_export_worker and self.imd_export_worker.isRunning()
+        ):
+            self._imd_close_pending = True
+            if self.imd_worker:
+                self.imd_worker.stop()
+            event.ignore()
+            return
         # Stop the timer and threads before tearing down the graphics widgets.
         self.timer.stop()
         if hasattr(self, "analysis_thread") and self.analysis_thread.isRunning():

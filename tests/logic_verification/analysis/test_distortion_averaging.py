@@ -48,6 +48,9 @@ class DummyQtWidgets:
     QLabel = MagicMock
     QPushButton = MagicMock
     QSpinBox = MagicMock
+    QScrollArea = MagicMock
+    QFileDialog = MagicMock
+    QProgressBar = MagicMock
     QStackedWidget = MagicMock
     QTableWidget = MagicMock
     QTableWidgetItem = MagicMock

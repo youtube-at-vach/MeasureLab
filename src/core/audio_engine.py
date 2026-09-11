@@ -5,6 +5,7 @@ import numpy as np
 import sounddevice as sd
 
 from src.core.calibration import CalibrationManager
+from src.core.settings_generation import SettingsGeneration
 from src.core.errors import AudioEngineReservedError
 from src.core.network_audio.client import NetworkAudioClient, NetworkClientStream
 from src.core.vst_dut import VstDut
@@ -126,7 +127,7 @@ class VirtualStream:
                 pass
 
 
-class AudioEngine:
+class AudioEngine(SettingsGeneration):
     """
     Handles audio I/O operations using sounddevice.
     Implements a mixer to support multiple simultaneous clients.
@@ -141,7 +142,29 @@ class AudioEngine:
     _XRUN_OUTPUT_UNDERFLOW = 1 << 2
     _XRUN_OUTPUT_OVERFLOW = 1 << 3
 
+    _measurement_fields = frozenset(
+        {
+            "input_device",
+            "output_device",
+            "sample_rate",
+            "block_size",
+            "stream",
+            "calibration",
+            "input_channel_mode",
+            "output_channel_mode",
+            "mute_output",
+            "loopback",
+            "offline_mode",
+            "network_mode",
+            "network_client",
+            "dithering_enabled",
+            "dithering_bit_depth",
+            "audio_engine_64bit",
+        }
+    )
+
     def __init__(self):
+        self.output_overload_events = 0
         self.input_device = None
         self.output_device = None
         self.sample_rate = 48000
@@ -892,6 +915,7 @@ class AudioEngine:
             if peak > 1.0:
                 with self._status_lock:
                     self.output_overload_peak = max(self.output_overload_peak, peak)
+                    self.output_overload_events += 1
 
         # 5. Apply Effects (Dithering & Quantization to target hardware bit depth)
         # Network transport is float32 PCM.  Quantize/dither only once at the

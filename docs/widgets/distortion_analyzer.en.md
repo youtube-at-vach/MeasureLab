@@ -39,7 +39,7 @@ This tool measures the following values:
 
 ### Measurement Modes (Mode)
 
-During sweep measurements, the system is automatically locked to a single-tone (sine wave) harmonic analysis mode to prevent IMD (Intermodulation Distortion) signals.
+Frequency Sweep and Amplitude Sweep retain single-tone THD analysis. Select **IMD amplitude sweep** for the separate two-tone procedure described below.
 
 #### Real-time
 
@@ -129,3 +129,80 @@ Investigate the quality of distortion in tube amplifiers or effectors.
 3. Look at the bar graph.
     * **2nd (2nd order)** is high: Often described as a warm, pleasing distortion.
     * **3rd (3rd order)** is high: A hard, edgy distortion.
+
+## IMD amplitude sweep
+
+Select **IMD amplitude sweep** in Mode and choose a fixed method in Sweep:
+
+| Method | Stimulus | Main ratio |
+| --- | --- | --- |
+| SMPTE stimulus / FFT sideband IMD | 60 Hz + 7000 Hz, 4:1 peak ratio | RSS of six sidebands f2 ± n·f1 (n=1–3), divided by f2 RMS |
+| DIN stimulus / FFT sideband IMD | 250 Hz + 8000 Hz, 4:1 | Same six-sideband ratio |
+| CCIF stimulus / d2 | 19000 Hz + 20000 Hz, 1:1 | 1000 Hz RMS divided by mean carrier RMS |
+
+These are stimulus presets, not a declaration of DIN/SMPTE certification.
+The FFT sideband method includes band noise and FM/PM contributions; it is not
+an AM-demodulation compliance measurement. CCIF stores 18/21 kHz d3 separately
+and does not add it to d2. Legacy real-time IMD remains unchanged: FFT peaks,
+with CCIF using RSS(d2+d3) divided by the sum of carrier amplitudes.
+
+1. Stop other signal generators and select input/output channels in Settings.
+   Enable output and unmute the engine. Check the DUT connection and gain.
+2. Set start/end levels (default −40 to −3 dBFS, 20 equally spaced points).
+   Ascending and descending sweeps are supported; equal endpoints are rejected.
+3. Use 500 ms settling, 500 ms records and four power averages initially.
+   Settling can be 100–30000 ms, records 200–2000 ms in 100 ms increments,
+   and averages 1–32. The output fade is at least 20 ms; choose a longer time
+   when your setup requires it. Settling begins after the fade completes.
+4. Start Measurement. Conditions are locked during the run. Cancel interrupts
+   settling or acquisition without freezing the interface. Save or compare
+   completed points after the procedure has stopped.
+
+The X axis is **dBFS (sum peak)**, not single-sine Vrms or watts.
+For level L, the peak sum is A=10^(L/20), with A1=A·r/(r+1) and A2=A/(r+1).
+Levels must be −100 to 0 dBFS, with 2–1000 points. Continuous phase and output
+fades limit abrupt transitions; they cannot guarantee freedom from analog
+saturation or clipping after mixing with another source.
+
+Each record removes DC and uses a periodic four-term Blackman–Harris window.
+N=ceil(sample rate × record seconds), df=sample rate/N, and each component
+integrates bins within ±(4·df+0.001·f) Hz. Component RMS power is
+2·sum(abs(FFT bins)^2)/(N·sum(window^2)); records are averaged in linear power.
+Records are consecutive and non-overlapping. Weighting, AES17, frequency
+correction and the real-time average count do not apply.
+Both carriers must exceed 1e-6 RMS FS, stand at least 20 dB above the local
+median bin noise and have a peak near the expected frequency. No noise is
+subtracted, and no hardware detection floor is guaranteed.
+
+All component bands must fit below Nyquist without overlap. CCIF at 32 kHz
+is rejected; 44.1 kHz is permitted with a near-Nyquist warning; 48 kHz is
+permitted without that numerical warning. The warning starts at 90% of
+Nyquist and is a product choice. Neither 44.1 nor 48 kHz guarantees the
+DAC/ADC high-frequency response or a calibrated measurement bandwidth.
+
+A missing carrier or an audio data gap invalidates its point. Input samples
+at or above 1−1e-7 FS, observed output overload, non-finite input, timeout,
+stream loss, exceptions or a change in acquisition conditions stop the run.
+Previously completed points retain their original conditions. Cancel marks
+an unfinished point invalid. Invalid points are gaps, never connected across
+in plots or comparison. Warnings, quality and end status remain in the result.
+Reset clears this result; a new run creates an independent snapshot. Existing
+comparison copies are unchanged.
+
+**Export** writes JSON (`measurelab.imd_sweep`, schema version 1) or
+UTF-8 CSV. JSON is the canonical result with run/step identifiers, times,
+acquisition conditions, sample intervals, validity, levels and components.
+CSV has one row per step/component (including `aggregate`), with complete run
+conditions in `run_metadata_json`. Missing values are null in JSON and blank
+in CSV; NaN/Infinity are never saved. Zero ratio is stored as zero with null
+dB and `zero_numerator=true`; the −160 dB plot floor is a display convention.
+Incomplete runs and rejected starts can be saved for diagnosis. A save error
+keeps the result available for retry.
+
+Input component levels use **dBFS_sine_rms** (0 dBFS = 1/√2 RMS FS).
+With explicit input sensitivity calibration, Vrms=RMS_FS × Vpeak_per_FS and
+dBV are also saved. Without calibration, V/dBV are null and relative results
+remain usable with a warning. Comparison uses captured dBFS peak-sum levels,
+method, reference and end state, split into contiguous valid sections.
+
+Expand Acquisition to change record length and averaging. Hover over the method, status, or readout for details. Click a plot point to inspect its result.
