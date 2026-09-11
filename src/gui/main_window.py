@@ -1,5 +1,6 @@
 from importlib import import_module
 import logging
+import math
 import time
 from typing import Any, Callable, Optional
 
@@ -1090,10 +1091,17 @@ class MainWindow(QMainWindow):
             self._callback_error_count = callback_error_count
             self._last_callback_error = status.get("last_error") or tr("Error")
 
-        self._io_error_latched = bool(details) or self._callback_error_latched
+        output_peak = float(status.get("output_overload_peak", 0.0) or 0.0)
+        self._io_error_latched = bool(details) or self._callback_error_latched or output_peak > 1.0
 
         if self._io_error_latched:
             tooltip_sections = []
+            if output_peak > 1.0:
+                tooltip_sections.append(
+                    tr("Output sample peak: +{0:.2f} dBFS. Reduce source levels. Click to clear.").format(
+                        20 * math.log10(output_peak)
+                    )
+                )
             if details:
                 count = (
                     int(status.get("latched_xrun_count", 0) or 0)
@@ -1113,7 +1121,9 @@ class MainWindow(QMainWindow):
                 )
 
             self.io_error_button.setText(
-                tr("I/O BUFFER ERROR") if details and not self._callback_error_latched else tr("Error")
+                tr("I/O BUFFER ERROR")
+                if details and not self._callback_error_latched and output_peak <= 1.0
+                else tr("Error")
             )
             self.io_error_button.setToolTip("\n\n".join(tooltip_sections))
         else:

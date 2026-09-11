@@ -309,3 +309,13 @@ def test_get_integrated_seconds(lufs_meter):
         remaining -= n
 
     assert abs(lufs_meter.get_integrated_seconds() - 1.5) < 1e-3
+
+
+@pytest.mark.parametrize("block_size", [64, 256, 1024])
+def test_true_peak_does_not_ring_at_callback_boundaries(lufs_meter, block_size):
+    lufs_meter.start_meter()
+    samples = generate_sine_wave(1000, -0.9151498112, 0.2, 48000)
+    for start in range(0, len(samples), block_size):
+        block = samples[start : start + block_size]
+        lufs_meter.audio_engine._callback(block, None, len(block), None, None)
+    assert lufs_meter.peak_hold_l == pytest.approx(-0.9151498112, abs=0.01)

@@ -69,3 +69,7 @@ Because the module is optimized for quality over real-time responsiveness, audio
 
 * **Stem Breakdown**: Import vocals, bass, keys and drums separately. Set vocals to Center (`Az 0, El 10`), Drums to bottom rear, and keys off to the wide sides. Render the mix for an immersive binaural song.
 * **ASMR / Narrative**: Import multiple voice tracks and sound effects, spread them across the full 3D sphere to mimic a realistic story scene, and export the unified high-fidelity scene to WAV.
+
+## Output headroom
+
+After convolution and mixing, normalization attenuates the whole render when its estimated true peak exceeds -1 dBTP. It preserves stereo balance and does not apply compression. Four-times interpolation and the margin reduce inter-sample overload risk; they do not guarantee every DAC reconstruction filter remains unclipped.

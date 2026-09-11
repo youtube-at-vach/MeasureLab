@@ -214,6 +214,7 @@ class AudioEngine:
 
         # Error tracking
         self.last_callback_error = None
+        self.output_overload_peak = 0.0
         self.callback_error_count = 0
 
         # Dithering
@@ -884,6 +885,14 @@ class AudioEngine:
             else:
                 self._update_loopback_buffer(mix_buffer, frames, logical_out_ch)
 
+        # Observe physical output before quantization without changing measurement gain.
+        # Sample overload only; absence of this warning does not imply true-peak safety.
+        if not self.offline_mode and not self.mute_output and mix_buffer.size:
+            peak = max(abs(float(np.min(mix_buffer))), abs(float(np.max(mix_buffer))))
+            if peak > 1.0:
+                with self._status_lock:
+                    self.output_overload_peak = max(self.output_overload_peak, peak)
+
         # 5. Apply Effects (Dithering & Quantization to target hardware bit depth)
         # Network transport is float32 PCM.  Quantize/dither only once at the
         # provider's physical output, not again on the client before transport.
@@ -1135,6 +1144,7 @@ class AudioEngine:
             self._latched_xrun_count = 0
             self.callback_error_count = 0
             self.last_callback_error = None
+            self.output_overload_peak = 0.0
         if self.network_client is not None:
             self.network_client.stats.acknowledge_integrity_errors()
 
@@ -1173,6 +1183,7 @@ class AudioEngine:
             current_status_flags = self.accumulated_status
             self.accumulated_status = sd.CallbackFlags()
 
+            output_overload_peak = self.output_overload_peak
             error_count = self.callback_error_count
             last_error = str(self.last_callback_error) if self.last_callback_error else None
 
@@ -1202,6 +1213,7 @@ class AudioEngine:
                 "output_overflow": bool(latched_xrun_mask & self._XRUN_OUTPUT_OVERFLOW),
             },
             "latched_xrun_count": latched_xrun_count,
+            "output_overload_peak": output_overload_peak,
             "error_count": error_count,
             "last_error": last_error,
         }

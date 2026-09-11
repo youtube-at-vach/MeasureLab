@@ -139,3 +139,21 @@ def test_interpolate_hrir_idw_blending():
     expected = np.zeros((10, 2))
     expected[:, :] = 1.5
     assert np.allclose(res, expected)
+
+
+def test_render_normalization_accounts_for_intersample_peaks(tmp_path, monkeypatch):
+    import soundfile as sf
+    from types import SimpleNamespace
+    from src.core.true_peak import EXPORT_TRUE_PEAK_CEILING, estimate_true_peak
+    from src.gui.widgets.spatial_binaural_mixer import RenderWorker
+
+    source = tmp_path / "isp.wav"
+    sf.write(source, np.tile([0.99, 0.99, -0.99, -0.99], 1024), 48000, subtype="FLOAT")
+    monkeypatch.setattr("src.gui.widgets.spatial_binaural_mixer.interpolate_hrir", lambda *args: np.ones((1, 2)))
+    hrtf = SimpleNamespace(ir_data=np.ones((1, 2, 1)), sampling_rate=48000)
+    worker = RenderWorker([{"path": str(source), "az": 0, "el": 0, "gain_db": 0}], hrtf, 48000)
+    results = []
+    worker.finished.connect(results.append)
+    worker.run()
+    assert isinstance(results[0], np.ndarray), results[0]
+    assert estimate_true_peak(results[0]) <= EXPORT_TRUE_PEAK_CEILING + 1e-6

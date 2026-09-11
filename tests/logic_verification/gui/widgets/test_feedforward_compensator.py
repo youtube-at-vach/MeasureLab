@@ -491,3 +491,28 @@ def test_compensate_bypass_linear_eq(dummy_model_data):
     y_bypass = engine.linear_output(u_comp_bypass)
     # The output amplitude should be around 0.27, definitely less than 0.35
     assert np.max(np.abs(y_bypass)) < 0.35
+
+
+@pytest.mark.parametrize("volume_matching", ["none", "peak", "rms"])
+@pytest.mark.parametrize("file_sr", [24000, 48000])
+def test_export_reserves_intersample_headroom(tmp_path, dummy_model_data, volume_matching, file_sr):
+    from src.core.true_peak import EXPORT_TRUE_PEAK_CEILING, estimate_true_peak
+
+    source = tmp_path / "isp.wav"
+    destination = tmp_path / "safe.wav"
+    samples = np.tile([0.99, 0.99, -0.99, -0.99], 2048)
+    sf.write(source, np.column_stack((samples, samples)), file_sr, subtype="FLOAT")
+    engine = LICFFEngine(dummy_model_data)
+    # Isolate export level management from the compensation algorithm.
+    engine.compensate = lambda data, **kwargs: data.copy()
+    worker = OfflineFFCompWorker(str(source), str(destination), engine, False, 1, 2.0, volume_matching=volume_matching)
+    result = MagicMock()
+    worker.finished.connect(result)
+    worker.run()
+    assert result.call_args[0][0], result.call_args
+    exported, _ = sf.read(destination, always_2d=True)
+    assert estimate_true_peak(exported) <= EXPORT_TRUE_PEAK_CEILING + 1e-4
+    if volume_matching == "rms":
+        original, _ = sf.read(tmp_path / "safe_matched_orig.wav", always_2d=True)
+        assert estimate_true_peak(original) <= EXPORT_TRUE_PEAK_CEILING + 1e-4
+        np.testing.assert_allclose(exported, original, atol=1e-4)
