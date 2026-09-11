@@ -190,3 +190,64 @@ def test_detached_state_can_transition_to_split(lockin_widget, lockin_wrapper, q
     wrapper.reattach_all()
     assert lockin_widget.layout().itemAt(0).widget() is lockin_widget.controls_widget
     assert lockin_widget.layout().itemAt(1).widget() is lockin_widget.display_widget
+
+
+def test_settings_pages_preserve_controls_and_leave_plot_room(lockin_widget, qapp):
+    widget = lockin_widget
+    widget.resize(1000, 600)
+    widget.show()
+    qapp.processEvents()
+    widget.spin_points.setValue(320)
+    for index in range(widget.tabs.count()):
+        widget.section_selector.setCurrentIndex(index)
+        qapp.processEvents()
+        assert widget.tabs.currentIndex() == index
+        assert widget.btn_toggle.isVisible()
+        assert widget.display_widget.width() > widget.width() * 0.6
+        assert widget.tabs.currentWidget().horizontalScrollBar().maximum() == 0
+        assert widget.module.points == 320
+
+
+def test_mode_specific_fields_and_status_in_compact_display(lockin_widget, qapp):
+    widget = lockin_widget
+    widget.show()
+    widget.combo_spacing.setCurrentIndex(widget.combo_spacing.findData("1/3 Octave"))
+    assert not widget.spin_octave_ref.isHidden()
+    widget.combo_spacing.setCurrentIndex(widget.combo_spacing.findData("Scan List Only"))
+    assert widget.spin_octave_ref.isHidden()
+    assert not widget.chk_log_axis.isHidden()
+    widget.combo_mode.setCurrentIndex(widget.combo_mode.findData("Zoom"))
+    assert widget.spin_start_f.isHidden()
+    assert widget.chk_log_axis.isHidden()
+    assert not widget.spin_zoom_center.isHidden()
+    widget.set_compact_mode(True)
+    widget.lbl_status.setText("Calculating... 50%")
+    qapp.processEvents()
+    assert widget.lbl_status.isVisible()
+    assert widget.display_widget.isAncestorOf(widget.lbl_status)
+
+
+def test_console_action_runs_from_any_page_and_compact_mode(lockin_widget, lockin_wrapper, qapp, monkeypatch):
+    from src.gui.measurement_console import InstrumentDockWidget, PrimaryActionStopResult
+
+    theme = MagicMock()
+    theme.get_current_theme.return_value = "dark"
+    monkeypatch.setattr(qapp, "theme_manager", theme, raising=False)
+    dock = InstrumentDockWidget("Finder", 0, "lockin_spectrum_finder")
+    dock.set_instrument_widget(lockin_wrapper)
+    try:
+        lockin_widget.section_selector.setCurrentIndex(4)
+        lockin_widget.set_compact_mode(True)
+        assert dock._primary_button is not None
+        dock._primary_button.click()
+        assert lockin_widget.module.is_running
+        assert lockin_widget.timer.isActive()
+        assert lockin_widget.lbl_status.text() == "Buffering..."
+        assert dock.stop_primary_action() == PrimaryActionStopResult.STOPPED
+        assert not lockin_widget.module.is_running
+        assert not lockin_widget.timer.isActive()
+        assert lockin_widget.lbl_status.text() == "Stopped"
+    finally:
+        dock.take_instrument_widget()
+        dock.close()
+        dock.deleteLater()

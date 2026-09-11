@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt6.QtCore import pyqtSignal, QObject, QTimer
+from PyQt6.QtCore import pyqtSignal, QObject, QTimer, Qt
 from PyQt6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -24,7 +24,9 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSpinBox,
-    QTabWidget,
+    QScrollArea,
+    QSizePolicy,
+    QStackedWidget,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -1007,7 +1009,7 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
         return self.display_widget
 
     def get_control_widget(self) -> QWidget:
-        """Return the settings, targets, sonification, and status panel for split mode."""
+        """Return the settings, targets, and sonification panel for split mode."""
         return self.controls_widget
 
     def restore_split_panels(self) -> None:
@@ -1032,17 +1034,29 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
 
     def init_ui(self):
         layout = QHBoxLayout()
+        layout.setSpacing(12)
 
         # LEFT: Controls
         self.controls_widget = QWidget()
         left_panel = QVBoxLayout(self.controls_widget)
-        settings_group = QGroupBox(tr("Settings"))
-        form = QFormLayout()
+        left_panel.setContentsMargins(0, 0, 0, 0)
+        left_panel.setSpacing(12)
+        settings_group = QWidget()
+        form = QFormLayout(settings_group)
+        form.setContentsMargins(8, 8, 8, 8)
+        form.setVerticalSpacing(10)
+        form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
+        advanced_page = QWidget()
+        advanced_form = QFormLayout(advanced_page)
+        advanced_form.setContentsMargins(8, 8, 8, 8)
+        advanced_form.setVerticalSpacing(10)
+        advanced_form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
 
         self.btn_toggle = QPushButton(tr("Start Analysis"))
         self.btn_toggle.setCheckable(True)
         self.btn_toggle.clicked.connect(self.on_toggle)
-        form.addRow(self.btn_toggle)
+        self.btn_toggle.setMinimumHeight(36)
+        left_panel.addWidget(self.btn_toggle)
 
         # Mode Selection
         self.combo_mode = QComboBox()
@@ -1060,12 +1074,12 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
         self.spin_averages.setRange(1, 1000)
         self.spin_averages.setValue(1)
         self.spin_averages.valueChanged.connect(self.on_averages_changed)
-        form.addRow(self.lbl_averages, self.spin_averages)
+        advanced_form.addRow(self.lbl_averages, self.spin_averages)
 
         # Buffer size
         self.combo_buffer = QComboBox()
         self._update_buffer_options()
-        form.addRow(tr("Buffer Size:"), self.combo_buffer)
+        advanced_form.addRow(tr("Buffer Size:"), self.combo_buffer)
 
         # Input Channel
         self.combo_input_ch = QComboBox()
@@ -1088,7 +1102,7 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
         self.combo_window.addItems(["none", "blackmanharris", "hann", "hamming"])
         self.combo_window.setCurrentText(self.module.window_type)
         self.combo_window.currentTextChanged.connect(self.on_window_changed)
-        form.addRow(self.lbl_window, self.combo_window)
+        advanced_form.addRow(self.lbl_window, self.combo_window)
 
         # Display Unit
         self.lbl_unit = QLabel(tr("Display Unit:"))
@@ -1096,7 +1110,7 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
         self.combo_unit.addItems(["dBFS", "dBV", "dB SPL"])
         self.combo_unit.setCurrentText(self.module.display_unit)
         self.combo_unit.currentTextChanged.connect(self.on_unit_changed)
-        form.addRow(self.lbl_unit, self.combo_unit)
+        advanced_form.addRow(self.lbl_unit, self.combo_unit)
 
         self.lbl_start_f = QLabel(tr("Start Freq:"))
         self.spin_start_f = QDoubleSpinBox()
@@ -1137,13 +1151,13 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
         self.chk_log_axis = QCheckBox(tr("Logarithmic X-Axis (List Only)"))
         self.chk_log_axis.setChecked(self.module.list_only_log_axis)
         self.chk_log_axis.stateChanged.connect(self.on_log_axis_changed)
-        form.addRow(tr("List Only Scale:"), self.chk_log_axis)
+        form.addRow(self.chk_log_axis)
 
         # Add Include Scan Targets Option
         self.chk_include_targets = QCheckBox(tr("Include Scan Targets"))
         self.chk_include_targets.setChecked(self.module.include_scan_targets)
         self.chk_include_targets.stateChanged.connect(self.on_include_targets_changed)
-        form.addRow(tr("Scan Targets:"), self.chk_include_targets)
+        form.addRow(self.chk_include_targets)
 
         self.lbl_octave_ref = QLabel(tr("Octave Ref Freq:"))
         self.spin_octave_ref = QDoubleSpinBox()
@@ -1165,11 +1179,8 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
         self.chk_track_peak.setChecked(self.module.track_peak)
         self.chk_track_peak.stateChanged.connect(self.on_track_peak_changed)
 
-        hbox_zoom_center = QHBoxLayout()
-        hbox_zoom_center.setContentsMargins(0, 0, 0, 0)
-        hbox_zoom_center.addWidget(self.spin_zoom_center)
-        hbox_zoom_center.addWidget(self.chk_track_peak)
-        form.addRow(self.lbl_zoom_center, hbox_zoom_center)
+        form.addRow(self.lbl_zoom_center, self.spin_zoom_center)
+        form.addRow(self.chk_track_peak)
 
         self.lbl_zoom_span = QLabel(tr("Zoom Span (±):"))
         self.spin_zoom_span = QDoubleSpinBox()
@@ -1181,9 +1192,11 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
 
         self.lbl_resolution = QLabel(tr("Resolution:"))
         self.lbl_resolution_info = QLabel("")
+        self.lbl_resolution_info.setWordWrap(True)
         self.lbl_resolution_info.setStyleSheet(f"font-family: {MONOSPACE_FONT_FAMILY}; font-weight: bold;")
         # Color will be set by apply_theme
-        form.addRow(self.lbl_resolution, self.lbl_resolution_info)
+        form.addRow(self.lbl_resolution)
+        form.addRow(self.lbl_resolution_info)
 
         self.app = QApplication.instance()
         if hasattr(self.app, "theme_manager"):
@@ -1192,10 +1205,15 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
 
         self._update_ui_visibility()
 
-        settings_group.setLayout(form)
-
-        self.tabs = QTabWidget()
-        self.tabs.addTab(settings_group, tr("Settings"))
+        # A full-width selector keeps every section reachable in narrow split windows.
+        self.section_selector = QComboBox()
+        self.section_selector.setAccessibleName(tr("Settings"))
+        self.tabs = QStackedWidget()
+        self.section_selector.currentIndexChanged.connect(self.tabs.setCurrentIndex)
+        self.tabs.currentChanged.connect(self.section_selector.setCurrentIndex)
+        left_panel.addWidget(self.section_selector)
+        self._add_settings_page(settings_group, tr("Measurement"))
+        self._add_settings_page(advanced_page, tr("Settings"))
 
         # Targets Tab
         target_tab = QWidget()
@@ -1206,6 +1224,8 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
         self.table_targets.setHorizontalHeaderLabels([tr("Frequency (Hz)"), tr("Cause / Note")])
         self.table_targets.horizontalHeader().setStretchLastSection(True)
         self.table_targets.verticalHeader().setVisible(False)
+        self.table_targets.setShowGrid(False)
+        self.table_targets.setAlternatingRowColors(True)
         self.table_targets.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table_targets.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table_targets.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
@@ -1232,14 +1252,14 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
 
         btn_layout.addWidget(self.btn_add_target, 0, 0)
         btn_layout.addWidget(self.btn_del_target, 0, 1)
-        btn_layout.addWidget(self.btn_zoom_target, 0, 2)
-        btn_layout.addWidget(self.btn_import_targets, 1, 0)
-        btn_layout.addWidget(self.btn_export_targets, 1, 1)
-        btn_layout.addWidget(self.btn_reset_targets, 1, 2)
+        btn_layout.addWidget(self.btn_zoom_target, 1, 0, 1, 2)
+        btn_layout.addWidget(self.btn_import_targets, 2, 0)
+        btn_layout.addWidget(self.btn_export_targets, 2, 1)
+        btn_layout.addWidget(self.btn_reset_targets, 3, 0, 1, 2)
 
         target_layout.addLayout(btn_layout)
 
-        self.tabs.addTab(target_tab, tr("Scan Targets"))
+        self._add_settings_page(target_tab, tr("Scan Targets"))
 
         # Target Generators Tab
         gen_tab = QWidget()
@@ -1274,8 +1294,11 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
         gen_layout.addWidget(mains_group)
 
         # Musical Scale Group
-        scale_group = QGroupBox(tr("Musical Scale (Equal Temperament)"))
+        scale_group = QGroupBox()
         scale_form = QFormLayout()
+        scale_title = QLabel(tr("Musical Scale (Equal Temperament)"))
+        scale_title.setWordWrap(True)
+        scale_form.addRow(scale_title)
 
         self.chk_musical_scale = QCheckBox(tr("Include Musical Scale"))
         self.chk_musical_scale.setChecked(self.module.include_musical_scale)
@@ -1304,13 +1327,17 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
         gen_layout.addWidget(scale_group)
 
         # Presets Group
-        presets_group = QGroupBox(tr("Other Presets"))
+        presets_group = QWidget()
         presets_form = QFormLayout()
 
-        self.chk_default_presets = QCheckBox(tr("Include Default Presets (Sample Rates, SMPS, etc.)"))
+        self.chk_default_presets = QCheckBox(tr("Other Presets"))
+        self.chk_default_presets.setToolTip(tr("Include Default Presets (Sample Rates, SMPS, etc.)"))
         self.chk_default_presets.setChecked(self.module.include_default_presets)
         self.chk_default_presets.stateChanged.connect(self.on_default_presets_changed)
         presets_form.addRow(self.chk_default_presets)
+        presets_description = QLabel(tr("Include Default Presets (Sample Rates, SMPS, etc.)"))
+        presets_description.setWordWrap(True)
+        presets_form.addRow(presets_description)
 
         presets_group.setLayout(presets_form)
         gen_layout.addWidget(presets_group)
@@ -1321,13 +1348,15 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
         self.btn_apply_gen.clicked.connect(self.on_apply_gen)
         gen_layout.addWidget(self.btn_apply_gen)
 
-        self.tabs.addTab(gen_tab, tr("Target Generators"))
+        mains_form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
+        scale_form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
+        self._add_settings_page(gen_tab, tr("Target Generators"))
 
         # Audio Sonification Tab
         sonification_tab = QWidget()
         sonification_layout = QVBoxLayout(sonification_tab)
 
-        sonification_group = QGroupBox(tr("Audio Sonification"))
+        sonification_group = QWidget()
         sonification_form = QFormLayout()
 
         self.chk_sonification_enable = QCheckBox(tr("Enable Sonification"))
@@ -1377,29 +1406,22 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
         sonification_layout.addWidget(sonification_group)
         sonification_layout.addStretch()
 
-        self.tabs.addTab(sonification_tab, tr("Audio Sonification"))
+        sonification_form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
+        self._add_settings_page(sonification_tab, tr("Audio Sonification"))
 
-        left_panel.addWidget(self.tabs)
+        left_panel.addWidget(self.tabs, 1)
 
-        # Status Label
-        ov_group = QGroupBox(tr("Status"))
-        ov_layout = QVBoxLayout()
-        self.lbl_status = QLabel(tr("Ready"))
-        self.lbl_status.setStyleSheet("font-size: 14px;")
-        ov_layout.addWidget(self.lbl_status)
-        ov_group.setLayout(ov_layout)
-        left_panel.addWidget(ov_group)
-
-        left_panel.addStretch()
         layout.addWidget(self.controls_widget, stretch=1)
 
         # RIGHT: Plot
         self.display_widget = QWidget()
         right_panel = QVBoxLayout(self.display_widget)
+        right_panel.setContentsMargins(0, 0, 0, 0)
+        right_panel.setSpacing(8)
         self.plot = InstrumentPlotWidget(title=tr("Lock-in Spectrum"))
         self.plot.setLabel("bottom", tr("Frequency"), units="Hz")
         self.plot.setLabel("left", tr("Amplitude"), units=self.module.display_unit)
-        self.plot.showGrid(x=True, y=True)
+        self.plot.showGrid(x=True, y=True, alpha=0.18)
         self.plot.setYRange(-180, 10)
         self.curve = self.plot.plot(pen="y")
 
@@ -1416,11 +1438,44 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
 
         # Initialize Log mode visual
         self._update_plot_log_mode()
+        if self.module.mode == "Zoom":
+            xmin = self.module.zoom_center_freq - self.module.zoom_span
+            xmax = self.module.zoom_center_freq + self.module.zoom_span
+        else:
+            xmin, xmax = self.module.start_freq, self.module.stop_freq
+        if self._is_log_scale_active():
+            xmin, xmax = np.log10(max(xmin, 1.0)), np.log10(max(xmax, 1.0))
+        self.plot.setXRange(xmin, xmax, padding=0.02)
 
-        right_panel.addWidget(self.plot)
+        right_panel.addWidget(self.plot, 1)
+        self.lbl_status = QLabel(tr("Ready"))
+        self.lbl_status.setWordWrap(True)
+        self.lbl_status.setMinimumHeight(28)
+        self.lbl_status.setContentsMargins(8, 0, 8, 0)
+        right_panel.addWidget(self.lbl_status)
         layout.addWidget(self.display_widget, stretch=3)
 
         self.setLayout(layout)
+
+    def _add_settings_page(self, page: QWidget, title: str) -> None:
+        """Keep the control rail compact without clipping translated controls."""
+        for form in page.findChildren(QFormLayout):
+            if form.rowWrapPolicy() != QFormLayout.RowWrapPolicy.WrapAllRows:
+                form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
+            form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        for combo in page.findChildren(QComboBox):
+            combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+            combo.setMinimumContentsLength(10)
+        scroll = QScrollArea()
+        scroll.setProperty("measurelabScrollRole", "outer-controls")
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        scroll.setWidgetResizable(True)
+        scroll.setAlignment(Qt.AlignmentFlag.AlignTop)
+        scroll.setWidget(page)
+        scroll.setMinimumWidth(300)
+        scroll.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding)
+        self.tabs.addWidget(scroll)
+        self.section_selector.addItem(title)
 
     def _get_marker_tooltip(self, x, y, data):
         if not data:
@@ -1451,8 +1506,9 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
         self.combo_spacing.setVisible(not is_zoom)
         self.chk_log_axis.setVisible(not is_zoom and self.module.spacing == "Scan List Only")
         self.chk_include_targets.setVisible(not is_zoom)
-        self.lbl_octave_ref.setVisible(not is_zoom)
-        self.spin_octave_ref.setVisible(not is_zoom)
+        is_octave = not is_zoom and "Octave" in self.module.spacing
+        self.lbl_octave_ref.setVisible(is_octave)
+        self.spin_octave_ref.setVisible(is_octave)
 
         self.lbl_zoom_center.setVisible(is_zoom)
         self.spin_zoom_center.setVisible(is_zoom)
@@ -1820,6 +1876,7 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
         if idx >= 0:
             self.combo_mode.setCurrentIndex(idx)
         self.spin_zoom_center.setValue(freq)
+        self.section_selector.setCurrentIndex(0)
 
     def _populate_targets_table(self):
         targets = self.module.current_targets
