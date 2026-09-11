@@ -536,7 +536,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
 
         # --- Left Sidebar ---
         self.sidebar = QWidget()
-        self.sidebar.setFixedWidth(220)
+        self.sidebar.setMinimumWidth(180)
         self.control_widget = self.sidebar
         sidebar_layout = QVBoxLayout()
         sidebar_layout.setContentsMargins(10, 10, 10, 10)
@@ -597,21 +597,26 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
 
         # 1. Top Panel (Horizontal combination of Digital Displays + Level Meters to optimize height!)
         top_panel = QWidget()
+        top_panel.setObjectName("lufsReadouts")
+        top_panel.setStyleSheet(
+            "QWidget#lufsReadouts { background: #10161c; border: 1px solid #35414c; border-radius: 6px; }"
+            "QWidget#lufsReadouts QLabel { background: transparent; color: #dce5ec; border: none; }"
+            "QWidget#lufsReadouts QGroupBox { color: #b4c1cc; border: none; background: transparent; }"
+        )
         top_panel_layout = QHBoxLayout(top_panel)
-        top_panel_layout.setContentsMargins(0, 0, 0, 0)
+        top_panel_layout.setContentsMargins(12, 12, 12, 12)
         top_panel_layout.setSpacing(10)
 
         # 1a. Digital Readouts Frame
         display_frame = QWidget()
-        display_frame.setStyleSheet("background-color: #000; border-radius: 8px;")
         display_layout = QHBoxLayout(display_frame)
         display_layout.setContentsMargins(6, 6, 6, 6)
         display_layout.setSpacing(6)
 
-        self.disp_i = self._create_big_display(tr("Integrated"), "#ffaa00")
+        self.disp_i = self._create_big_display(tr("Integrated"), "#f0c36a")
         display_layout.addWidget(self.disp_i["container"])
 
-        self.disp_s = self._create_big_display(tr("Short-Term"), "#00ccff")
+        self.disp_s = self._create_big_display(tr("Short-Term"), "#67cce8")
         display_layout.addWidget(self.disp_s["container"])
 
         top_panel_layout.addWidget(display_frame, 3)  # Stretch factor 3
@@ -627,7 +632,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
             bar.setRange(-120, 0)
             bar.setTextVisible(False)
             bar.setOrientation(Qt.Orientation.Vertical)
-            bar.setFixedSize(18, 110)  # Compact meter size
+            bar.setFixedSize(20, 110)  # Compact meter size
             bar.setStyleSheet("""
                 QProgressBar {
                     border: none;
@@ -650,18 +655,18 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         l_container.setSpacing(2)
         l_label = QLabel(tr("L"))
         l_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        l_label.setStyleSheet("font-weight: bold; font-size: 10px; color: #eee;")
+        l_label.setStyleSheet("font-weight: bold; font-size: 12px; color: #dce5ec;")
         self.l_bar = QProgressBar()
         apply_meter_style(self.l_bar)
         self.l_val_label = QLabel(tr("-INF"))
         self.l_val_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.l_val_label.setStyleSheet("font-size: 9px; font-weight: bold;")
+        self.l_val_label.setStyleSheet("font-size: 11px; font-weight: bold;")
         self.l_peak_label = QLabel(tr("TP: -INF"))
         self.l_peak_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.l_peak_label.setStyleSheet("color: #ff5555; font-size: 8px;")
+        self.l_peak_label.setStyleSheet("color: #efb4a9; font-size: 11px;")
         self.l_cf_label = QLabel(tr("CF: 0.0"))
         self.l_cf_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.l_cf_label.setStyleSheet("color: #00cccc; font-size: 8px;")
+        self.l_cf_label.setStyleSheet("color: #b4c1cc; font-size: 11px;")
 
         l_container.addWidget(l_label)
         l_container.addWidget(self.l_bar, 0, Qt.AlignmentFlag.AlignHCenter)
@@ -675,18 +680,18 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         r_container.setSpacing(2)
         r_label = QLabel(tr("R"))
         r_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        r_label.setStyleSheet("font-weight: bold; font-size: 10px; color: #eee;")
+        r_label.setStyleSheet("font-weight: bold; font-size: 12px; color: #dce5ec;")
         self.r_bar = QProgressBar()
         apply_meter_style(self.r_bar)
         self.r_val_label = QLabel(tr("-INF"))
         self.r_val_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.r_val_label.setStyleSheet("font-size: 9px; font-weight: bold;")
+        self.r_val_label.setStyleSheet("font-size: 11px; font-weight: bold;")
         self.r_peak_label = QLabel(tr("TP: -INF"))
         self.r_peak_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.r_peak_label.setStyleSheet("color: #ff5555; font-size: 8px;")
+        self.r_peak_label.setStyleSheet("color: #efb4a9; font-size: 11px;")
         self.r_cf_label = QLabel(tr("CF: 0.0"))
         self.r_cf_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.r_cf_label.setStyleSheet("color: #00cccc; font-size: 8px;")
+        self.r_cf_label.setStyleSheet("color: #b4c1cc; font-size: 11px;")
 
         r_container.addWidget(r_label)
         r_container.addWidget(self.r_bar, 0, Qt.AlignmentFlag.AlignHCenter)
@@ -706,20 +711,23 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         m_container.setSpacing(2)
         m_label = QLabel(tr("M"))
         m_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        m_label.setStyleSheet("font-weight: bold; font-size: 10px; color: #eee;")
+        m_label.setStyleSheet("font-weight: bold; font-size: 12px; color: #dce5ec;")
         self.m_bar = QProgressBar()
         apply_meter_style(self.m_bar)
         self.m_val_label = QLabel(tr("-INF"))
         self.m_val_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.m_val_label.setStyleSheet("font-size: 9px; font-weight: bold;")
+        self.m_val_label.setStyleSheet("font-size: 11px; font-weight: bold;")
         m_text_lbl = QLabel(tr("LUFS(M)"))
         m_text_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        m_text_lbl.setStyleSheet("color: #aaa; font-size: 8px;")
+        m_text_lbl.setStyleSheet("color: #b4c1cc; font-size: 11px;")
 
         m_container.addWidget(m_label)
         m_container.addWidget(self.m_bar, 0, Qt.AlignmentFlag.AlignHCenter)
         m_container.addWidget(self.m_val_label)
         m_container.addWidget(m_text_lbl)
+        m_spacer = QLabel(" ")
+        m_spacer.setStyleSheet("font-size: 11px;")
+        m_container.addWidget(m_spacer)
         loudness_layout.addLayout(m_container)
 
         # S Meter
@@ -727,26 +735,29 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         s_container.setSpacing(2)
         s_label = QLabel(tr("S"))
         s_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        s_label.setStyleSheet("font-weight: bold; font-size: 10px; color: #eee;")
+        s_label.setStyleSheet("font-weight: bold; font-size: 12px; color: #dce5ec;")
         self.s_bar = QProgressBar()
         apply_meter_style(self.s_bar)
         self.s_val_label = QLabel(tr("-INF"))
         self.s_val_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.s_val_label.setStyleSheet("font-size: 9px; font-weight: bold;")
+        self.s_val_label.setStyleSheet("font-size: 11px; font-weight: bold;")
         s_text_lbl = QLabel(tr("LUFS(S)"))
         s_text_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        s_text_lbl.setStyleSheet("color: #aaa; font-size: 8px;")
+        s_text_lbl.setStyleSheet("color: #b4c1cc; font-size: 11px;")
 
         s_container.addWidget(s_label)
         s_container.addWidget(self.s_bar, 0, Qt.AlignmentFlag.AlignHCenter)
         s_container.addWidget(self.s_val_label)
         s_container.addWidget(s_text_lbl)
+        s_spacer = QLabel(" ")
+        s_spacer.setStyleSheet("font-size: 11px;")
+        s_container.addWidget(s_spacer)
         loudness_layout.addLayout(s_container)
 
         # Assemble Meters Area
         meters_layout.addWidget(stereo_widget)
-        meters_layout.addStretch()
-        meters_layout.addWidget(loudness_widget)
+        meters_layout.setStretch(0, 1)
+        meters_layout.addWidget(loudness_widget, 1)
         meters_group.setLayout(meters_layout)
 
         top_panel_layout.addWidget(meters_group, 4)  # Stretch factor 4
@@ -760,13 +771,13 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         stats_tab = QWidget()
         stats_grid = QGridLayout(stats_tab)
         stats_grid.setContentsMargins(8, 8, 8, 8)
-        stats_grid.setSpacing(8)
+        stats_grid.setSpacing(12)
 
         # Create dashboard cards
-        self.card_lra = self._create_metric_card(tr("LRA"), tr("Loudness Range"), "#ffcc00")
-        self.card_offset = self._create_metric_card(tr("Target Offset"), tr("Diff from target"), "#00ffcc")
-        self.card_threshold = self._create_metric_card(tr("Gating Threshold"), tr("BS.1770 gating limit"), "#bb99ff")
-        self.card_time = self._create_metric_card(tr("Duration"), tr("Total integration time"), "#ff99bb")
+        self.card_lra = self._create_metric_card(tr("LRA"), tr("Loudness Range"))
+        self.card_offset = self._create_metric_card(tr("Target Offset"), tr("Diff from target"))
+        self.card_threshold = self._create_metric_card(tr("Gating Threshold"), tr("BS.1770 gating limit"))
+        self.card_time = self._create_metric_card(tr("Duration"), tr("Total integration time"))
 
         stats_grid.addWidget(self.card_lra["container"], 0, 0)
         stats_grid.addWidget(self.card_offset["container"], 0, 1)
@@ -784,10 +795,10 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         m_box = QHBoxLayout(m_group)
         m_box.setContentsMargins(4, 8, 4, 4)
         m_box.setSpacing(4)
-        self.card_m_cur = self._create_stat_value_box(tr("Current"), "#00ff00")
-        self.card_m_min = self._create_stat_value_box(tr("Min"), "#ff3333")
-        self.card_m_max = self._create_stat_value_box(tr("Max"), "#3399ff")
-        self.card_m_avg = self._create_stat_value_box(tr("Avg"), "#ffffff")
+        self.card_m_cur = self._create_stat_value_box(tr("Current"))
+        self.card_m_min = self._create_stat_value_box(tr("Min"))
+        self.card_m_max = self._create_stat_value_box(tr("Max"))
+        self.card_m_avg = self._create_stat_value_box(tr("Avg"))
         m_box.addWidget(self.card_m_cur["container"])
         m_box.addWidget(self.card_m_min["container"])
         m_box.addWidget(self.card_m_max["container"])
@@ -799,10 +810,10 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         s_box = QHBoxLayout(s_group)
         s_box.setContentsMargins(4, 8, 4, 4)
         s_box.setSpacing(4)
-        self.card_s_cur = self._create_stat_value_box(tr("Current"), "#00ff00")
-        self.card_s_min = self._create_stat_value_box(tr("Min"), "#ff3333")
-        self.card_s_max = self._create_stat_value_box(tr("Max"), "#3399ff")
-        self.card_s_avg = self._create_stat_value_box(tr("Avg"), "#ffffff")
+        self.card_s_cur = self._create_stat_value_box(tr("Current"))
+        self.card_s_min = self._create_stat_value_box(tr("Min"))
+        self.card_s_max = self._create_stat_value_box(tr("Max"))
+        self.card_s_avg = self._create_stat_value_box(tr("Avg"))
         s_box.addWidget(self.card_s_cur["container"])
         s_box.addWidget(self.card_s_min["container"])
         s_box.addWidget(self.card_s_max["container"])
@@ -824,22 +835,23 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         self.plot_widget.setYRange(-60, 0)
         self.plot_widget.showGrid(x=True, y=True)
         self.plot_widget.setBackground("#111")
-        self.plot_widget.setFixedHeight(140)  # Reduced from 180 to 140 for height limit
+        self.plot_widget.setMinimumHeight(140)
 
-        # Curves
-        self.m_curve = self.plot_widget.plot(pen=pg.mkPen("#00ccff", width=1), name=tr("Momentary"))  # Cyan
-        self.s_curve = self.plot_widget.plot(pen=pg.mkPen("#ffcc00", width=2), name=tr("Short-Term"))  # Yellow
+        # Keep trace identity explicit as well as color-coded.
+        self.plot_widget.addLegend(offset=(10, 10))
+        self.m_curve = self.plot_widget.plot(pen=pg.mkPen("#f0c36a", width=1), name=tr("Momentary"))
+        self.s_curve = self.plot_widget.plot(pen=pg.mkPen("#67cce8", width=2), name=tr("Short-Term"))
 
         # Target Line
         target = self.module.target_lufs
-        self.target_line = pg.InfiniteLine(angle=0, pos=target, pen=pg.mkPen("#00ff00", style=Qt.PenStyle.DashLine))
+        self.target_line = pg.InfiniteLine(angle=0, pos=target, pen=pg.mkPen("#4fce8a", style=Qt.PenStyle.DashLine))
         self.plot_widget.addItem(self.target_line)
 
         # Target band (-23 LUFS ±2) for quick visual alignment
         self.target_band = pg.LinearRegionItem(
             values=[target - 2, target + 2], orientation=pg.LinearRegionItem.Horizontal
         )
-        self.target_band.setBrush(pg.mkBrush(0, 255, 0, 20))
+        self.target_band.setBrush(pg.mkBrush(79, 206, 138, 20))
         self.target_band.setMovable(False)
         self.target_band.setZValue(-10)
         self.plot_widget.addItem(self.target_band)
@@ -852,7 +864,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
 
         # --- Assemble Main Layout ---
         main_layout.addWidget(self.sidebar)
-        main_layout.addWidget(content_area)
+        main_layout.addWidget(content_area, 1)
         self.setLayout(main_layout)
 
     def _create_big_display(self, title, color):
@@ -868,7 +880,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         lbl_val = QLabel("--.-")
         lbl_val.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl_val.setStyleSheet(
-            f"color: {color}; font-size: 32px; font-weight: bold; font-family: {MONOSPACE_FONT_FAMILY};"
+            f"color: {color}; font-size: 36px; font-weight: bold; font-family: {MONOSPACE_FONT_FAMILY};"
         )
 
         lbl_unit = QLabel("LUFS")
@@ -881,52 +893,42 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         container.setLayout(layout)
         return {"container": container, "label": lbl_val, "unit": lbl_unit}
 
-    def _create_metric_card(self, title, desc, color):
+    def _create_metric_card(self, title, desc):
         container = QWidget()
-        v_box = QVBoxLayout()
-        v_box.setContentsMargins(4, 4, 4, 4)
-        v_box.setSpacing(2)
+        container.setObjectName("lufsMetric")
+        container.setStyleSheet(
+            "QWidget#lufsMetric { background: palette(base); border: 1px solid palette(mid); border-radius: 4px; }"
+            "QWidget#lufsMetric QLabel { background: transparent; border: none; color: palette(text); }"
+        )
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setSpacing(6)
 
         lbl_title = QLabel(title)
-        lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_title.setStyleSheet("font-weight: bold; font-size: 10pt; color: #eee;")
-
-        lbl_desc = QLabel(desc)
-        lbl_desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_desc.setStyleSheet("font-size: 8pt; color: #888;")
-
+        lbl_title.setWordWrap(True)
+        lbl_title.setStyleSheet("font-weight: bold;")
         lbl_val = QLabel("--.-")
-        lbl_val.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_val.setStyleSheet(
-            f"font-size: 16px; font-weight: bold; color: {color}; font-family: {MONOSPACE_FONT_FAMILY};"
-        )
-
-        v_box.addWidget(lbl_title)
-        v_box.addWidget(lbl_desc)
-        v_box.addWidget(lbl_val)
-        container.setLayout(v_box)
-        container.setStyleSheet("background-color: #222; border-radius: 6px; border: 1px solid #333;")
+        lbl_val.setStyleSheet(f"font-size: 20px; font-weight: bold; font-family: {MONOSPACE_FONT_FAMILY};")
+        lbl_desc = QLabel(desc)
+        lbl_desc.setWordWrap(True)
+        layout.addWidget(lbl_title)
+        layout.addWidget(lbl_val)
+        layout.addWidget(lbl_desc)
         return {"container": container, "label": lbl_val}
 
-    def _create_stat_value_box(self, label_text, color):
+    def _create_stat_value_box(self, label_text):
+        # A single aligned label/value column; avoid nested cards around each number.
         container = QWidget()
-        h_box = QHBoxLayout()
-        h_box.setContentsMargins(6, 3, 6, 3)
-
-        lbl_label = QLabel(label_text + ":")
-        lbl_label.setStyleSheet("font-weight: bold; font-size: 9pt; color: #aaa;")
-
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(6, 8, 6, 8)
+        layout.setSpacing(6)
+        lbl_label = QLabel(label_text)
+        lbl_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl_val = QLabel("--.-")
-        lbl_val.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        lbl_val.setStyleSheet(
-            f"font-size: 11pt; font-weight: bold; color: {color}; font-family: {MONOSPACE_FONT_FAMILY};"
-        )
-
-        h_box.addWidget(lbl_label)
-        h_box.addStretch()
-        h_box.addWidget(lbl_val)
-        container.setLayout(h_box)
-        container.setStyleSheet("background-color: #1a1a1a; border-radius: 4px;")
+        lbl_val.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_val.setStyleSheet(f"font-size: 16px; font-weight: bold; font-family: {MONOSPACE_FONT_FAMILY};")
+        layout.addWidget(lbl_label)
+        layout.addWidget(lbl_val)
         return {"container": container, "label": lbl_val}
 
     def _reset_session_stats(self):
@@ -1157,13 +1159,13 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         # Standard dBFS colors
         if val > -3:
             state = "red"
-            color = "red"
+            color = "#ef6b73"
         elif val > -12:
             state = "yellow"
-            color = "#aaaa00"  # Yellow
+            color = "#d9b45f"  # Yellow
         else:
             state = "green"
-            color = "#00ff00"  # Green
+            color = "#4fce8a"  # Green
 
         attr_name = f"_state_{ch_id}"
         prev_state = getattr(self, attr_name, None)
@@ -1184,13 +1186,13 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
     def _set_lufs_bar_color(self, bar, lufs, target, ch_id):
         if lufs > target + 2:
             state = "red"
-            color = "red"
+            color = "#ef6b73"
         elif lufs > target - 2:
             state = "green"
-            color = "#00ff00"  # Green (Target)
+            color = "#4fce8a"  # Green (Target)
         else:
             state = "yellow"
-            color = "#aaaa00"  # Yellow/Orange
+            color = "#d9b45f"  # Yellow/Orange
 
         attr_name = f"_state_{ch_id}"
         prev_state = getattr(self, attr_name, None)
@@ -1222,7 +1224,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         if layout is None:
             return
         layout.addWidget(self.control_widget)
-        layout.addWidget(self.display_widget)
+        layout.addWidget(self.display_widget, 1)
         self.control_widget.show()
         self.display_widget.show()
 
