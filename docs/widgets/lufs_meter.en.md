@@ -60,7 +60,7 @@ Provides a table of the current value (Current), minimum (Min), maximum (Max), a
 
 ### Graph Tab
 
-Displays time-series changes in Momentary (cyan) and Short-term (yellow) loudness.
+Displays time-series changes in Momentary (orange) and Short-term (blue) loudness.
 
 * **Dashed line**: A reference line indicating the set Target LUFS.
 * Use this as a guide to check if the track or audio fits within your target loudness range.
