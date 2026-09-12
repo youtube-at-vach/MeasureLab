@@ -40,9 +40,9 @@ This widget supports common features of the Detachable Wrapper. Please refer to 
     * **Dual**: Displays both left and right channels simultaneously on the graph (Left=Green, Right=Red).
 
 * **FFT Size (Frequency Resolution)**
-    * Specifies the number of samples used for analysis. Think of this like the **megapixel count of a digital camera**.
-    * **Higher numbers (e.g., 131072, 1M)**: High megapixel (high resolution) state. The frequency scale becomes finer, making it easier to distinguish dense peaks. However, just as taking a high-res photo requires a longer "exposure time," the graph's response speed becomes slower.
-    * **Lower numbers (e.g., 1024, 4096)**: Low megapixel (low resolution) state. The frequency scale becomes coarser, but because the shutter speed is fast, it briskly follows fast-moving sounds.
+    * Specifies the number of samples used for analysis.
+    * **Higher values (e.g., 131072, 1M)**: Increases frequency resolution, making it easier to distinguish dense peaks, but the response speed over time becomes slower.
+    * **Lower values (e.g., 1024, 4096)**: Decreases frequency resolution, but the response speed over time becomes faster, allowing it to easily follow fast-moving sounds.
     * Usually, a value between `4096` and `16384` is recommended for a good balance between resolution and response speed.
 
 * **Window (Window Function)**
