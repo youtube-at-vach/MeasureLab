@@ -60,7 +60,7 @@ LUFS Meterは、放送や配信サービス（YouTube, Spotify, Netflixなど）
 
 ### Graph タブ
 
-Momentary（水色）とShort-term（黄色）のラウドネス変化を時系列グラフで表示します。
+Momentary（オレンジ）とShort-term（青）のラウドネス変化を時系列グラフで表示します。
 
 * **点線**: 設定された Target LUFS を示す基準線です。
 * これを目安に、楽曲や音声が目標とするラウドネス帯域に収まっているかを確認できます。
