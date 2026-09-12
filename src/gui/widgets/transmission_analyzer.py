@@ -1278,10 +1278,9 @@ class TransmissionAnalyzerWidget(QWidget, CompactableWidgetInterface):
         checked = self.btn_toggle.isChecked()
 
         if theme_name == "dark":
+            # Use the shared dark tab colors while retaining this pane's spacing.
             self.tabs.setStyleSheet(
-                "QTabWidget::pane { border: 1px solid palette(mid); border-radius: 4px; padding: 4px; background-color: palette(base); }"
-                "QTabBar::tab { background: palette(button); color: palette(button-text); border: 1px solid palette(mid); border-bottom-color: none; border-top-left-radius: 4px; border-top-right-radius: 4px; padding: 5px 10px; }"
-                "QTabBar::tab:selected { background: palette(base); color: palette(text); border-bottom-color: palette(base); font-weight: bold; }"
+                "QTabWidget::pane { border: 1px solid palette(mid); border-radius: 4px; padding: 4px; background-color: palette(window); }"
             )
             self.lbl_reason.setStyleSheet("color: palette(text); font-size: 12px;")
             self.lbl_stat_delay.setStyleSheet("color: palette(text); font-size: 11px; font-weight: bold;")

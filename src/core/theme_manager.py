@@ -248,11 +248,32 @@ class ThemeManager(QObject):
         self.app.setPalette(palette)
         # Keep native control rendering (including checked/mixed indicators).
         # Empty checkboxes need an explicit edge against the darker surfaces.
+        # Tabs use flat panel colors instead of Fusion's bright raised fill;
+        # a narrow selection edge keeps navigation distinct from action buttons.
         self.app.setStyleSheet(
             self._original_stylesheet
             + """
             QGroupBox { background-color: palette(alternate-base); }
             QTabWidget::pane { background-color: palette(window); border: 1px solid palette(mid); }
+            QTabBar::tab {
+                background-color: palette(alternate-base);
+                color: palette(placeholder-text);
+                border: 1px solid palette(mid);
+                border-top: 2px solid transparent;
+                padding: 5px 10px;
+            }
+            QTabBar::tab:selected {
+                background-color: palette(window);
+                color: palette(window-text);
+                border-top-color: palette(highlight);
+                border-bottom-color: palette(window);
+            }
+            QTabBar::tab:!selected:hover:enabled {
+                background-color: palette(button);
+                color: palette(window-text);
+            }
+            QTabBar::tab:focus:enabled { border-color: palette(link); }
+            QTabBar::tab:disabled { color: palette(button-text); }
             QCheckBox::indicator:unchecked {
                 border: 1px solid palette(dark);
                 border-radius: 2px;
