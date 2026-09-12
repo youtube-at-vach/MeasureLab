@@ -10,91 +10,64 @@ Last audited against the current implementation: 2026-08-13.
 > **Core Principle**
 > Accurate measurement, free of charge, and all features available to everyone.
 
-MeasureLab focuses on signal measurement for audio devices, DACs, amplifiers,
-and related analog paths. Feature selection follows these rules:
-
-* The result should remain meaningful on common 44.1 kHz and 48 kHz audio
-  devices whenever possible.
-* Optional high sample rates do not imply that every device has a flat or
-  calibrated measurement bandwidth near Nyquist.
-* A measurement should distinguish the device under test from the DAC, ADC,
-  clock, driver, and analog front end used by MeasureLab.
-* Relative two-channel measurements are preferred when they can remove the
-  measurement interface response.
-* Features that mainly measure the sound device itself are acceptable only
-  when they are clearly presented as sound-device diagnostics.
+MeasureLab focuses on signal measurement for audio devices, DACs, amplifiers, and related analog paths. Features should be meaningful on common 44.1/48 kHz devices, distinguish the DUT from the measurement interface, and prefer relative two-channel measurements. Sound device diagnostics are acceptable if clearly presented as such.
 
 ## Status Legend
 
-* **Implemented**: The user-facing measurement is already present.
-* **Partially implemented**: The core measurement exists, but the proposed
-  workflow, aggregation, or presentation is incomplete.
-* **Selected**: Suitable for addition to an existing widget and expected to
-  produce meaningful results on common audio devices.
-* **Conditional**: Useful only with a defined fixture, reference path, or
-  restricted use case.
-* **On hold**: Not selected for the current measurement-focused roadmap.
-* **Not suitable**: The result is too dependent on measurement hardware or is
-  outside the current scope.
+* **Implemented / Partially implemented**: User-facing measurement is present or core exists.
+* **Selected**: Suitable for addition to an existing widget.
+* **Conditional**: Useful only with restricted use cases.
+* **On hold / Not suitable**: Not selected or outside current scope.
 
 ## Selected Additions to Existing Widgets
 
-These are the highest-value remaining additions after comparison with the
-current implementation.
+Highest-value remaining additions grouped by target widgets.
 
 ### 1. Distortion Analyzer Extensions
 
-* **SMPTE, DIN, and CCIF IMD Sweeps:** Add amplitude sweeps and store IMD percentages/levels.
-* **AES17 Dynamic Range Automator:** Combine calibration, validation, and measurement into a sequence.
-* **Long-Term Warm-up and Stability Logger:** Report gain and THD trends over time.
-* **Multi-Tone Distortion (TD+N) Profiler:** Measure total distortion and noise simultaneously across the spectrum.
-* **Doppler Distortion (Phase IMD) Profiler:** Demodulate high-frequency carriers modulated by low-frequency driver excursion to measure Doppler distortion.
+* **SMPTE, DIN, and CCIF IMD Sweeps:** Amplitude sweeps storing IMD percentages/levels.
+* **AES17 Dynamic Range Automator:** Sequence for calibration, validation, and measurement.
+* **Long-Term Warm-up and Stability Logger:** Trend tracking for gain and THD.
+* **Multi-Tone Distortion (TD+N) & Doppler (Phase IMD) Profilers:** Simultaneous noise/distortion evaluation and driver excursion demodulation.
+* **Class-D Switching Artifact Profiler:** Sweep for out-of-band switching noise and aliasing common in Class-D amplifiers. (NEW)
 
 ### 2. LUFS & Sound Level Meter Extensions
 
-* **True-Peak Histogram and Clipping Profiler:** Add True-Peak histograms and count threshold exceedances (LUFS Meter).
-* **Percentile Noise Statistics (L10/L50/L90):** Track environmental noise percentiles over time (Sound Level Meter).
+* **True-Peak Histogram and Clipping Profiler:** Histogram and exceedance tracking.
+* **Percentile Noise Statistics (L10/L50/L90):** Environmental noise tracking over time.
 
 ### 3. Spectrum & Transient Analyzer Extensions
 
-* **Automatic Peak Markers:** Mark peaks applying prominence and noise-floor thresholds.
-* **Real-time Psychoacoustic Masking Overlay:** Visualize human auditory perception masking curves.
-* **Burst Envelope Dynamics Profiler:** Measure attack/release envelopes and gain reduction recovery curves.
-* **Micro-dynamics Profiler:** Separate macro-envelope from micro-envelope to evaluate attack punchiness and micro-transient reproduction accuracy.
+* **Peak & Dynamics Profilers:** Auto-peak markers, Burst Envelope Dynamics, and Micro-dynamics Profiler for punchiness.
+* **Psychoacoustic Masking Overlay:** Real-time human auditory perception curves.
 
 ### 4. Network & Impedance Analyzer Extensions
 
-* **Haptic Audio Synchronization Profiler:** Low-frequency sweeps to measure tactile transducer latency.
-* **Thermal Power Compression Logger:** Track DC resistance (Re) drift over long sweeps to estimate voice coil temperature.
-* **Cable LCR Parameter Extractor:** Specialized measurement mode to extract ultra-low capacitance and inductance from analog interconnects and speaker cables.
+* **Specialized Measurements:** Haptic Audio Sync Profiler, Thermal Power Compression Logger (Re drift), and Cable LCR Extractor.
+* **Loudspeaker Polar/Directivity 3D Plotter:** Automated turntable control and multi-angle acoustic response capturing. (NEW)
 
 ### 5. Integrity & Spatial Visualization
 
-* **Signal Integrity Logger:** Record XRUN timeline, categorize discontinuities (Event Detector).
-* **Spatial 3D Soundstage Mapper:** HRTF deconvolution to map perceived spatial positions (Stereo Alignment Monitor).
-* **Interactive Psychoacoustic Audiogram:** Apply personalized equal-loudness contours to analysis (Sound Quality Analyzer).
+* **Integrity Logger & Audiograms:** XRUN timeline (Event Detector) and Interactive Psychoacoustic Audiograms.
+* **Spatial & 3D Mapping:** HRTF deconvolution (Stereo Alignment Monitor) and 6DOF Head-Tracking Room Simulation (Spatial Binaural Mixer).
 
 ## Future / Visionary Ideas
 
-These ideas explore adventurous, next-generation concepts beyond standard audio measurement. They are currently brainstormed without constraints to expand future possibilities.
+Adventurous, next-generation concepts beyond standard audio measurement, currently brainstormed without constraints.
 
-* **Neuromorphic Audio Event Visualizer:** Capture and visualize audio transients and anomalies using event-based neuromorphic processing principles instead of standard sample-based frames.
-* **Synesthetic Measurement Mapper:** Translate high-dimensional audio measurements into rich multimodal sensory outputs (haptics and abstract visuals) for intuitive flaw detection.
-* **Ultrasonic Acoustic Levitation Calibrator:** Phase-aligning 40kHz ultrasonic channels to create 3D acoustic levitation focal points in mid-air.
-* **Bio-Acoustic Impedance Sonifier:** Measuring micro-fluctuations in organic subjects (e.g., plants) and sonifying them via high-resolution parameter mapping.
-* **AI-Driven Automated Measurement Recipe Generator:** Use AI to listen to a brief sweep and automatically configure the optimal distortion, impedance, and alignment measurements for the connected DUT.
-* **Brain-Computer Interface (BCI) Audiophile Profiler:** Measure human brainwave responses to different DACs/Amps to quantify perceptual audio quality directly from the listener.
-* **Quantum Audio Entropy Analyzer:** Analyze the true randomness of analog noise floors using quantum mechanics models to classify analog noise sources versus digital dithering artifacts.
-* **Holographic Soundstage Visualizer:** A fully immersive VR/AR holographic representation of sound topology.
-* **Augmented Reality (AR) Acoustic Mode Mapper:** Project visual room modes and nulls onto a physical space using AR glasses to optimize speaker placement.
-* **AI Golden Ear Component Fingerprinter:** Identify specific op-amps, capacitors, or vacuum tube models in a circuit strictly by analyzing the micro-nonlinearities and harmonic signature.
+* **Psycho-Acoustic Emotional Impact Scorer:** Analyze the signal to estimate human emotional response (e.g. excitement, relaxation) based on frequency content, tempo, and dynamic range.
+* **Temporal Audio Micro-Lens:** Use AI to interpolate and visualize acoustic events that happen between the samples (shorter than a single sample).
+* **Neuromorphic & Quantum Analysis:** Event-based audio transient capture and quantum mechanics modeling for true randomness of noise floors.
+* **Multimodal & Spatial:** Synesthetic Measurement Mapper (haptics/visuals), Ultrasonic Acoustic Levitation Calibrator, and Holographic/AR Acoustic Mode visualization.
+* **AI & Automation:** AI-Driven Measurement Recipe Generator, AI Golden Ear Component Fingerprinter.
+* **Bio & BCI Interfaces:** Bio-Acoustic Impedance Sonifier, Brain-Computer Interface (BCI) Audiophile Profiler.
 
 ## Previously Audited / Rejected / On Hold
 
-The following items have been reviewed and either implemented, conditionally approved, put on hold, or deemed not suitable for the current focus. They remain here for historical context.
+Items reviewed and either implemented, conditionally approved, put on hold, or deemed not suitable for the current focus. They remain here for historical context.
 
-* **Implemented/Covered:** Group/Phase Delay Plot, Frequency-Dependent Crosstalk/Leakage, Pre-Ringing and Causality Quantifier, True Peak, SMPTE and CCIF IMD, AES17 Dynamic Range, Volterra Kernel Extractor, Inter-Channel Phase Analysis, Binaural Tones, DAC Digital Filter Classification, Cumulative Spectral Visualization.
+* **Implemented/Covered:** Group/Phase Delay, Frequency-Dependent Crosstalk, Pre-Ringing, True Peak, IMD, AES17, Volterra Kernel, Inter-Channel Phase, Binaural Tones, DAC Filters, Cumulative Spectral.
 * **Partially Implemented:** Continuity/Data-Gap Detection.
-* **Conditional Candidates:** Thiele/Small Parameter Extraction, Hum AM/FM Modulation Analysis, Dynamic Burst Linearity, Null Comparator, Dynamics Processor Profiler.
-* **On Hold / Not Suitable:** Bandwidth- and Slew-Limited Measurements, Clock and Jitter Attribution, Fixture- or Hardware-Dominated tests, Lossy Codec Analyzer, Listener Fatigue Index, PEAQ/ODG Estimator, AI Circuit Reverse Engineer, Acoustic Metamaterial Simulator.
-* **Deferred Reference Topics:** ASRC Benchmark, DC Stability, Wow and Flutter, Room Acoustics and RT60, EQ Designer, AI Anomaly Detection, Plugin System, Multimeter, Cepstrum Analysis.
+* **Conditional:** Thiele/Small Extraction, Hum AM/FM, Dynamic Burst Linearity, Null Comparator, Dynamics Processor Profiler.
+* **On Hold / Not Suitable:** Bandwidth- and Slew-Limited, Clock/Jitter Attribution, Hardware-Dominated tests, Lossy Codec, Listener Fatigue Index, PEAQ/ODG Estimator, AI Circuit Reverse Engineer, Acoustic Metamaterial Simulator.
+* **Deferred Reference Topics:** ASRC Benchmark, DC Stability, Wow and Flutter, RT60, EQ Designer, AI Anomaly, Plugin System, Multimeter, Cepstrum Analysis.
