@@ -1,4 +1,5 @@
 import logging
+import time
 
 import numpy as np
 import pyqtgraph as pg
@@ -7,15 +8,21 @@ from PyQt6.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QDoubleSpinBox,
+    QFormLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QPushButton,
     QSlider,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
 
+from src.core.spectrum_peaks import MAX_PEAK_MARKERS, PROMINENCE_WINDOW, detect_spectrum_peaks
 from src.core.analysis import get_cached_window
 from src.core.audio_engine import AudioEngine
 from src.core.fft_manager import fft_manager, get_dpss_windows
@@ -643,6 +650,15 @@ class SpectrumAnalyzerWidget(
         self.last_mags = None
         self._spl_calibration_available = None
 
+        self.marker_mode = "off"
+        self.marker_prominence = 6.0
+        self.marker_spacing_hz = 100.0
+        self.marker_noise_floor = -90.0
+        self._marker_updated_at = -float("inf")
+        self._marker_context = None
+        self._marker_items = []
+        self._marker_symbols = None
+
         self.init_ui()
 
         self.timer = QTimer()
@@ -926,9 +942,194 @@ class SpectrumAnalyzerWidget(
 
         self.plot_widget.setClipToView(True)
 
+        self.marker_button = QToolButton(self.plot_widget)
+        self.marker_button.setText(tr("Peaks: Off"))
+        self.marker_button.setToolTip(tr("Automatic peak markers"))
+        self.marker_button.setStyleSheet(
+            "QToolButton { color: white; background: #202020; border: 1px solid #555; padding: 2px 6px; }"
+            "QToolButton:hover { background: #404040; }"
+        )
+        self.marker_button.clicked.connect(self.configure_peak_markers)
+        self.plot_widget.plotItem.vb.sigResized.connect(self._position_marker_button)
+        self._position_marker_button()
+
         display_layout.addWidget(self.plot_widget)
         layout.addWidget(self.display_widget, stretch=1)
         self.setLayout(layout)
+        for combo in self.controls_group.findChildren(QComboBox):
+            combo.currentTextChanged.connect(self._invalidate_peak_markers)
+        self.rta_check.toggled.connect(self._invalidate_peak_markers)
+        self.multitaper_check.toggled.connect(self._invalidate_peak_markers)
+        self.avg_slider.valueChanged.connect(self._invalidate_peak_markers)
+        self.plot_widget.plotItem.vb.sigRangeChanged.connect(self._invalidate_peak_markers)
+
+    def _invalidate_peak_markers(self, *args):
+        if self.marker_mode != "off":
+            self._clear_peak_markers()
+            self._update_marker_button()
+
+    def _position_marker_button(self):
+        self.marker_button.adjustSize()
+        rect = self.plot_widget.plotItem.vb.geometry()
+        self.marker_button.move(max(0, int(rect.right() - self.marker_button.width() - 6)), int(rect.top() + 6))
+        self.marker_button.raise_()
+
+    def _marker_unit(self):
+        unit = self.module.display_unit
+        if self.module.analysis_mode == "PSD":
+            unit += "/√Hz"
+        return f"{unit} ({self.module.weighting})"
+
+    def configure_peak_markers(self):
+        dialog = QDialog(self.marker_button.window())
+        dialog.setWindowTitle(tr("Automatic peak markers"))
+        form = QFormLayout(dialog)
+        mode = QComboBox()
+        for title, value in [(tr("Off"), "off"), (tr("Display peaks"), "display"), (tr("Raw-spectrum peaks"), "raw")]:
+            mode.addItem(title, value)
+        mode.setCurrentIndex(mode.findData(self.marker_mode))
+        form.addRow(tr("Detection source"), mode)
+        explanation = QLabel(
+            tr(
+                "Raw uses averaged, weighted bins before display smoothing. Display uses the visible trace or RTA bands."
+            )
+        )
+        explanation.setWordWrap(True)
+        form.addRow(explanation)
+        controls = []
+        for title, value, low, high, suffix in [
+            (tr("Local prominence"), self.marker_prominence, 0, 120, " dB"),
+            (tr("Minimum spacing"), self.marker_spacing_hz, 0, 100000, " Hz"),
+            (tr("Noise floor"), self.marker_noise_floor, -300, 300, " " + self._marker_unit()),
+        ]:
+            spin = QDoubleSpinBox()
+            spin.setRange(low, high)
+            spin.setDecimals(1)
+            spin.setSuffix(suffix)
+            spin.setValue(value)
+            form.addRow(title, spin)
+            controls.append(spin)
+        note = QLabel(
+            tr(
+                "Up to 5 peaks and 5 updates/s. Prominence uses up to 2049 source points. Settings apply to the next live frame."
+            )
+        )
+        note.setWordWrap(True)
+        form.addRow(note)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.button(QDialogButtonBox.StandardButton.Ok).setText(tr("OK"))
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText(tr("Cancel"))
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        form.addRow(buttons)
+        dialog.resize(460, 300)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.marker_mode = mode.currentData()
+            self.marker_prominence, self.marker_spacing_hz, self.marker_noise_floor = [c.value() for c in controls]
+            self._clear_peak_markers()
+            self._update_marker_button()
+        dialog.deleteLater()
+
+    def _update_marker_button(self):
+        names = {"off": tr("Peaks: Off"), "display": tr("Peaks: Display"), "raw": tr("Peaks: Raw")}
+        text = names[self.marker_mode]
+        if self.marker_mode != "off":
+            text += " · " + self._marker_unit()
+        if self.marker_button.text() != text:
+            self.marker_button.setText(text)
+            self._position_marker_button()
+
+    def _clear_peak_markers(self):
+        for item in self._marker_items:
+            item.hide()
+        if self._marker_symbols is not None:
+            self._marker_symbols.hide()
+        self._marker_updated_at = -float("inf")
+
+    def _update_peak_markers(self, raw_freqs, raw_mags, display_freqs, display_mags):
+        if self.marker_mode == "off":
+            return
+        bounds = self.plot_widget.viewRange()
+        context = (
+            self.marker_mode,
+            self.module.analysis_mode,
+            self.module.channel_mode,
+            self.module.display_unit,
+            self.module.weighting,
+            self.module.octave_smoothing,
+            self.module.rta_mode,
+            len(raw_freqs),
+            tuple(bounds[0]),
+            tuple(bounds[1]),
+        )
+        if context != self._marker_context:
+            self._clear_peak_markers()
+            self._marker_context = context
+        self._update_marker_button()
+        now = time.monotonic()
+        # Keep the largest raw FFTs near one marker refresh per second.
+        # The existing spectrum timer and rendering cadence remain independent.
+        interval = max(0.2, len(raw_freqs) / 2_000_000) if self.marker_mode == "raw" else 0.2
+        if now - self._marker_updated_at < interval:
+            return
+        self._marker_updated_at = now
+        for item in self._marker_items:
+            item.hide()
+        if self._marker_symbols is not None:
+            self._marker_symbols.hide()
+        if not np.all(np.isfinite(bounds)) or bounds[0][0] >= bounds[0][1]:
+            return
+        freqs, mags = (raw_freqs, raw_mags) if self.marker_mode == "raw" else (display_freqs, display_mags)
+        # Retain the full local-prominence neighborhood at viewport edges.
+        limits = np.power(10.0, np.clip(bounds[0], -300, 300))
+        lo, hi = np.searchsorted(freqs, limits)
+        lo, hi = max(0, lo - PROMINENCE_WINDOW // 2), min(len(freqs), hi + PROMINENCE_WINDOW // 2 + 1)
+        freqs, mags = freqs[lo:hi], mags[lo:hi]
+        channels = mags.shape[1] if mags.ndim == 2 else 1
+        peaks = []
+        for channel in range(min(channels, 2)):
+            values = mags[:, channel] if mags.ndim == 2 else mags
+            for hz, level in detect_spectrum_peaks(
+                freqs,
+                values,
+                self.marker_prominence,
+                self.marker_spacing_hz,
+                self.marker_noise_floor,
+                frequency_range=limits,
+                level_range=bounds[1],
+            ):
+                peaks.append((hz, level, channel))
+        peaks.sort(key=lambda peak: -peak[1])
+        # Lazily allocate a fixed pool; Off adds no plot objects or signal-processing work.
+        if peaks and not self._marker_items:
+            self._marker_symbols = pg.ScatterPlotItem(symbol="t", size=7, brush="w", pen="k")
+            self.plot_widget.addItem(self._marker_symbols, ignoreBounds=True)
+            for _ in range(MAX_PEAK_MARKERS):
+                item = pg.TextItem(anchor=(0.5, 1), color="#ffffff", fill=(20, 20, 20, 220))
+                self.plot_widget.addItem(item, ignoreBounds=True)
+                item.hide()
+                self._marker_items.append(item)
+        if self._marker_symbols is not None and peaks:
+            self._marker_symbols.setData(
+                x=[np.log10(p[0]) for p in peaks[:MAX_PEAK_MARKERS]],
+                y=[p[1] for p in peaks[:MAX_PEAK_MARKERS]],
+            )
+            self._marker_symbols.show()
+        occupied = [self.plot_widget.mapToScene(self.marker_button.geometry()).boundingRect()]
+        vb = self.plot_widget.plotItem.vb
+        for item, (hz, level, channel) in zip(self._marker_items, peaks[:MAX_PEAK_MARKERS], strict=False):
+            prefix = (tr("Left") if channel == 0 else tr("Right")) + " · " if channels == 2 else ""
+            item.setText(f"{prefix}{hz:.1f} Hz\n{level:.1f} {self._marker_unit()}")
+            x = np.log10(hz)
+            item.setPos(x, level)
+            item.show()
+            # Suppress overlapping labels and keep labels inside the plot viewport.
+            rect = item.mapRectToScene(item.boundingRect())
+            view_rect = vb.sceneBoundingRect()
+            if not view_rect.contains(rect) or any(rect.intersects(other) for other in occupied):
+                item.hide()
+            else:
+                occupied.append(rect)
 
     def apply_min_max_envelope(self, freqs, magnitude, x_range_log, width_px):
         """
@@ -1048,6 +1249,7 @@ class SpectrumAnalyzerWidget(
 
     def on_toggle(self, checked):
         if checked:
+            self._invalidate_peak_markers()
             self.module.start_analysis()
             self.timer.start()
             self.toggle_btn.setText(tr("Stop Analysis"))
@@ -1216,6 +1418,8 @@ class SpectrumAnalyzerWidget(
         if not calibrated and self.module.display_unit == "dB SPL":
             self.module.display_unit = "dBFS"
             self.module._peak_magnitude = None
+            if hasattr(self, "marker_button"):
+                self._invalidate_peak_markers()
 
         if force or calibrated != self._spl_calibration_available:
             options = ["dBFS", "dBV"]
@@ -1254,6 +1458,8 @@ class SpectrumAnalyzerWidget(
         # Compute Spectrum
         results = self.module.compute_spectrum()
         if results is None:
+            if self.marker_mode != "off":
+                self._clear_peak_markers()
             return
 
         freqs = results["freqs"]
@@ -1366,6 +1572,7 @@ class SpectrumAnalyzerWidget(
                 else:
                     peak_mags = None
 
+            self._update_peak_markers(freqs, magnitude, plot_freqs, plot_mags)
             x_log = np.log10(plot_freqs + 1e-12)
             w_log = (1.0 / fraction) * np.log10(2.0)
 
@@ -1421,6 +1628,8 @@ class SpectrumAnalyzerWidget(
                     plot_mags_clipped = plot_mags_clipped[:, 0]
                 self.rta_bar_main.setOpts(x=x_log, height=plot_mags_clipped - y_min, y0=y_min, width=w_log * 0.9)
             return
+
+        self._update_peak_markers(freqs, magnitude, plot_freqs, plot_mags)
 
         # Ensure RTA bars are hidden in non-RTA mode
         self.rta_bar_main.setVisible(False)

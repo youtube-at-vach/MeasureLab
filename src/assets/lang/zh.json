@@ -2457,5 +2457,18 @@
     "✔ HIGH FIDELITY": "✔ HIGH FIDELITY",
     "❌ ALTERED": "❌ ALTERED",
     "❌ HIGH DISTORTION": "❌ HIGH DISTORTION",
-    "⬆︎Update available: {0}": "⬆︎有可用更新: {0}"
+    "⬆︎Update available: {0}": "⬆︎有可用更新: {0}",
+    "Peaks: Off": "峰值：关闭",
+    "Automatic peak markers": "自动峰值标记",
+    "Display peaks": "显示频谱峰值",
+    "Raw-spectrum peaks": "原始频谱峰值",
+    "Detection source": "检测来源",
+    "Raw uses averaged, weighted bins before display smoothing. Display uses the visible trace or RTA bands.": "原始模式使用显示平滑前、已平均并加权的频点。显示模式使用可见曲线或RTA频带。",
+    "Local prominence": "局部突出度",
+    "Minimum spacing": "最小间距",
+    "Noise floor": "噪声阈值",
+    "Peaks: Display": "峰值：显示",
+    "Peaks: Raw": "峰值：原始",
+    "Up to 5 peaks and 5 updates/s. Prominence uses up to 2049 source points. Settings apply to the next live frame.": "最多5个峰值，每秒最多更新5次。突出度在最多2049个源数据点内评估。设置从下一实时帧开始生效。",
+    "OK": "确定"
 }

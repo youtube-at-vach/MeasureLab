@@ -2457,5 +2457,18 @@
     "✔ HIGH FIDELITY": "✔ HIGH FIDELITY",
     "❌ ALTERED": "❌ ALTERED",
     "❌ HIGH DISTORTION": "❌ HIGH DISTORTION",
-    "⬆︎Update available: {0}": "⬆︎Update verfügbar: {0}"
+    "⬆︎Update available: {0}": "⬆︎Update verfügbar: {0}",
+    "Peaks: Off": "Spitzen: Aus",
+    "Automatic peak markers": "Automatische Spitzenmarkierungen",
+    "Display peaks": "Anzeigespitzen",
+    "Raw-spectrum peaks": "Spitzen im Rohspektrum",
+    "Detection source": "Erkennungsquelle",
+    "Raw uses averaged, weighted bins before display smoothing. Display uses the visible trace or RTA bands.": "Roh verwendet gemittelte, gewichtete Bins vor der Anzeigeglättung. Anzeige verwendet die sichtbare Kurve oder RTA-Bänder.",
+    "Local prominence": "Lokale Prominenz",
+    "Minimum spacing": "Mindestabstand",
+    "Noise floor": "Rauschschwelle",
+    "Peaks: Display": "Spitzen: Anzeige",
+    "Peaks: Raw": "Spitzen: Roh",
+    "Up to 5 peaks and 5 updates/s. Prominence uses up to 2049 source points. Settings apply to the next live frame.": "Bis zu 5 Spitzen und 5 Aktualisierungen/s. Prominenz über bis zu 2049 Quellpunkte. Einstellungen gelten ab dem nächsten Messbild.",
+    "OK": "OK"
 }

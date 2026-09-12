@@ -2457,5 +2457,18 @@
     "✔ HIGH FIDELITY": "✔ HIGH FIDELITY",
     "❌ ALTERED": "❌ ALTERED",
     "❌ HIGH DISTORTION": "❌ HIGH DISTORTION",
-    "⬆︎Update available: {0}": "⬆︎Update available: {0}"
+    "⬆︎Update available: {0}": "⬆︎Update available: {0}",
+    "Peaks: Off": "Peaks: Off",
+    "Automatic peak markers": "Automatic peak markers",
+    "Display peaks": "Display peaks",
+    "Raw-spectrum peaks": "Raw-spectrum peaks",
+    "Detection source": "Detection source",
+    "Raw uses averaged, weighted bins before display smoothing. Display uses the visible trace or RTA bands.": "Raw uses averaged, weighted bins before display smoothing. Display uses the visible trace or RTA bands.",
+    "Local prominence": "Local prominence",
+    "Minimum spacing": "Minimum spacing",
+    "Noise floor": "Noise floor",
+    "Peaks: Display": "Peaks: Display",
+    "Peaks: Raw": "Peaks: Raw",
+    "Up to 5 peaks and 5 updates/s. Prominence uses up to 2049 source points. Settings apply to the next live frame.": "Up to 5 peaks and 5 updates/s. Prominence uses up to 2049 source points. Settings apply to the next live frame.",
+    "OK": "OK"
 }

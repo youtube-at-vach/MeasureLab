@@ -2457,5 +2457,18 @@
     "✔ HIGH FIDELITY": "✔ HIGH FIDELITY",
     "❌ ALTERED": "❌ ALTERED",
     "❌ HIGH DISTORTION": "❌ HIGH DISTORTION",
-    "⬆︎Update available: {0}": "⬆︎업데이트 가능: {0}"
+    "⬆︎Update available: {0}": "⬆︎업데이트 가능: {0}",
+    "Peaks: Off": "피크: 끔",
+    "Automatic peak markers": "자동 피크 마커",
+    "Display peaks": "표시 스펙트럼 피크",
+    "Raw-spectrum peaks": "원시 스펙트럼 피크",
+    "Detection source": "검출 소스",
+    "Raw uses averaged, weighted bins before display smoothing. Display uses the visible trace or RTA bands.": "원시는 표시 평활화 전의 평균화 및 가중치 적용 빈을 사용합니다. 표시는 보이는 곡선 또는 RTA 대역을 사용합니다.",
+    "Local prominence": "국소 돌출도",
+    "Minimum spacing": "최소 간격",
+    "Noise floor": "노이즈 플로어",
+    "Peaks: Display": "피크: 표시",
+    "Peaks: Raw": "피크: 원시",
+    "Up to 5 peaks and 5 updates/s. Prominence uses up to 2049 source points. Settings apply to the next live frame.": "최대 5개 피크, 초당 최대 5회 갱신. 돌출도는 최대 2049개 소스 점에서 평가합니다. 설정은 다음 실시간 프레임에 적용됩니다.",
+    "OK": "확인"
 }

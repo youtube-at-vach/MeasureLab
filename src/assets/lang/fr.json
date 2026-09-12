@@ -2457,5 +2457,18 @@
     "✔ HIGH FIDELITY": "✔ HIGH FIDELITY",
     "❌ ALTERED": "❌ ALTERED",
     "❌ HIGH DISTORTION": "❌ HIGH DISTORTION",
-    "⬆︎Update available: {0}": "⬆︎Mise à jour disponible : {0}"
+    "⬆︎Update available: {0}": "⬆︎Mise à jour disponible : {0}",
+    "Peaks: Off": "Pics : Non",
+    "Automatic peak markers": "Marqueurs automatiques de pics",
+    "Display peaks": "Pics affichés",
+    "Raw-spectrum peaks": "Pics du spectre brut",
+    "Detection source": "Source de détection",
+    "Raw uses averaged, weighted bins before display smoothing. Display uses the visible trace or RTA bands.": "Brut utilise les bins moyennés et pondérés avant le lissage visuel. Affichage utilise la courbe visible ou les bandes RTA.",
+    "Local prominence": "Proéminence locale",
+    "Minimum spacing": "Espacement minimal",
+    "Noise floor": "Seuil de bruit",
+    "Peaks: Display": "Pics : Affichage",
+    "Peaks: Raw": "Pics : Brut",
+    "Up to 5 peaks and 5 updates/s. Prominence uses up to 2049 source points. Settings apply to the next live frame.": "Jusqu’à 5 pics et 5 mises à jour/s. Proéminence sur 2049 points sources au maximum. Réglages appliqués à la prochaine trame en direct.",
+    "OK": "Valider"
 }
