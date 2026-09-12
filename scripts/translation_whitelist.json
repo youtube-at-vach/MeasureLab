@@ -291,7 +291,8 @@
         "✔ BIT-PERFECT",
         "✔ HIGH FIDELITY",
         "❌ ALTERED",
-        "❌ HIGH DISTORTION"
+        "❌ HIGH DISTORTION",
+        "OK"
     ],
     "regex_patterns": [
         "^[0-9\\s/:\\-().%+,^x&*~_#<>▲✔❌\\[\\]]*$",

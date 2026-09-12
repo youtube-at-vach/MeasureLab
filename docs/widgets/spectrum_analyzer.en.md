@@ -118,3 +118,49 @@ By playing a test signal (such as pink noise) and picking up the speaker's outpu
 5. Set **Weighting** to `Z` (flat).
 6. As the graph approaches flatness, the speaker's characteristic is flat. If the low or high frequencies are drooping, that is the limit of the speaker's reproduction range.
     * This is not a rigorous measurement as it also picks up room reflections, but it is effective for knowing trends.
+
+## Automatic Peak Markers
+
+Open **Peaks: Off** at the upper-right of the plot to configure markers.
+The button remains available in compact mode and in the split display window.
+Existing analysis controls and Peak Hold work independently.
+
+* **Off** is the default. No peak detection runs. Marker graphics are allocated
+  only on first use, then reused.
+* **Display peaks** detects maxima in the displayed trace after smoothing or
+  pixel-envelope aggregation, or in the RTA bands. Envelope minima and maxima at
+  the same frequency are combined before detection. Frequencies are display
+  bin/band centers and can change when zooming or resizing.
+* **Raw-spectrum peaks** detects FFT-bin maxima before display smoothing and
+  envelope aggregation. It retains the selected analysis mode, channel,
+  averaging, calibration and frequency weighting; it is not unprocessed audio.
+  Raw markers can lie above a smoothed trace or RTA bar. No sub-bin interpolation
+  or measurement-accuracy claim is implied.
+
+The button identifies the selected source and level unit, including weighting
+and `/√Hz` in PSD mode. Each marker gives frequency in Hz and level in that unit.
+Dual mode labels identify Left or Right; spacing applies separately per channel.
+
+* **Local prominence**, in dB, rejects peaks that do not rise sufficiently above
+  their surrounding valleys. The neighborhood is at most 2049 source points
+  centered on each peak; this bounds work on large FFTs. Broad peaks can therefore
+  have lower local prominence than their height above the distant noise floor.
+* **Minimum spacing**, in Hz, keeps the stronger peak when candidates in the same
+  channel are too close. It is independent of the logarithmic axis scale.
+* **Noise floor** is an absolute minimum peak level in the displayed unit, not an
+  automatically estimated noise statistic. Changing units reinterprets this
+  numeric threshold in the newly selected unit; review it in the settings dialog.
+
+Defaults are 6 dB prominence, 100 Hz spacing and a −90 noise-floor threshold.
+Settings last for the lifetime of the widget. OK applies them to the next live
+frame; Cancel leaves them unchanged. Up to five strongest visible peaks across
+both channels are marked, with detection refreshed at most five times per second
+while conditions remain unchanged. Raw mode reduces this limit to roughly one
+update per second at the largest (4M) FFT, without changing spectrum refresh.
+Condition and viewport changes invalidate old
+markers. Labels that overlap or extend outside the plot are hidden; position
+symbols remain. Flat traces, endpoints and invalid values are not reported as
+peaks. Detection does not add work to the audio callback or retain frame history.
+Stopping retains the latest overlay; restarting or changing analysis settings
+clears it until the next live frame. Markers are display aids and are not added to
+comparison traces or exported spectrum data.

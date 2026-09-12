@@ -2457,5 +2457,18 @@
     "✔ HIGH FIDELITY": "✔ 高忠実度 (High Fidelity)",
     "❌ ALTERED": "❌ 改変あり",
     "❌ HIGH DISTORTION": "❌ 高歪み (High Distortion)",
-    "⬆︎Update available: {0}": "⬆︎アップデートがあります: {0}"
+    "⬆︎Update available: {0}": "⬆︎アップデートがあります: {0}",
+    "Peaks: Off": "ピーク: OFF",
+    "Automatic peak markers": "自動ピークマーカー",
+    "Display peaks": "表示スペクトルのピーク",
+    "Raw-spectrum peaks": "Rawスペクトルのピーク",
+    "Detection source": "検出対象",
+    "Raw uses averaged, weighted bins before display smoothing. Display uses the visible trace or RTA bands.": "Rawは平均化・重み付け後、表示の平滑化前のビンを使用します。表示モードは表示波形またはRTA帯域を使用します。",
+    "Local prominence": "局所プロミネンス",
+    "Minimum spacing": "最小間隔",
+    "Noise floor": "ノイズフロア",
+    "Peaks: Display": "ピーク: 表示",
+    "Peaks: Raw": "ピーク: Raw",
+    "Up to 5 peaks and 5 updates/s. Prominence uses up to 2049 source points. Settings apply to the next live frame.": "最大5件、最大毎秒5回更新。プロミネンスは最大2049点の範囲で評価します。設定は次の測定フレームから適用されます。",
+    "OK": "OK"
 }

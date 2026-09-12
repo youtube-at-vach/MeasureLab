@@ -2457,5 +2457,18 @@
     "✔ HIGH FIDELITY": "✔ HIGH FIDELITY",
     "❌ ALTERED": "❌ ALTERED",
     "❌ HIGH DISTORTION": "❌ HIGH DISTORTION",
-    "⬆︎Update available: {0}": "⬆︎Доступно обновление: {0}"
+    "⬆︎Update available: {0}": "⬆︎Доступно обновление: {0}",
+    "Peaks: Off": "Пики: выкл.",
+    "Automatic peak markers": "Автоматические маркеры пиков",
+    "Display peaks": "Пики отображения",
+    "Raw-spectrum peaks": "Пики исходного спектра",
+    "Detection source": "Источник обнаружения",
+    "Raw uses averaged, weighted bins before display smoothing. Display uses the visible trace or RTA bands.": "Исходный спектр использует усреднённые взвешенные отсчёты до сглаживания. Отображение использует видимую кривую или полосы RTA.",
+    "Local prominence": "Локальная выраженность",
+    "Minimum spacing": "Минимальный интервал",
+    "Noise floor": "Порог шума",
+    "Peaks: Display": "Пики: отображение",
+    "Peaks: Raw": "Пики: исходные",
+    "Up to 5 peaks and 5 updates/s. Prominence uses up to 2049 source points. Settings apply to the next live frame.": "До 5 пиков; до 5 обновлений/с. Выраженность оценивается по не более чем 2049 исходным точкам. Настройки действуют со следующего кадра измерения.",
+    "OK": "ОК"
 }
