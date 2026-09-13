@@ -2480,5 +2480,6 @@
     "Main Instrument": "Главный прибор",
     "Reapply Layout": "Выровнять компоновку",
     "Tabbed View": "Вкладки",
-    "Undo Layout": "Отменить компоновку"
+    "Undo Layout": "Отменить компоновку",
+    "Click again to rotate instruments.": "Нажмите ещё раз, чтобы циклически переместить приборы."
 }

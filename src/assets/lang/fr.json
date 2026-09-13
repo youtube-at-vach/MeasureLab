@@ -2480,5 +2480,6 @@
     "Main Instrument": "Instrument principal",
     "Reapply Layout": "Réappliquer la disposition",
     "Tabbed View": "Vue en onglets",
-    "Undo Layout": "Annuler la disposition"
+    "Undo Layout": "Annuler la disposition",
+    "Click again to rotate instruments.": "Cliquez à nouveau pour permuter les instruments de façon cyclique."
 }

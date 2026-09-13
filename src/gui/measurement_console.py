@@ -309,7 +309,7 @@ class MeasurementConsoleWindow(QMainWindow):
         self._preset_layout_generation = 0
         self._layout_preset = "grid_2x2"
         self._main_module_index: int | None = None
-        self._undo_layout: tuple[bytes, str, int | None, bytes | None] | None = None
+        self._undo_layout: tuple[bytes, str, int | None, bytes | None, tuple[int, ...]] | None = None
         self._stop_all_generation = 0
         self._stop_all_queue: list[int] = []
         self._stop_all_active = False
@@ -383,8 +383,8 @@ class MeasurementConsoleWindow(QMainWindow):
         for key, label in self._preset_labels.items():
             action = QAction(label, self)
             action.setCheckable(True)
-            action.setToolTip(label)
-            action.triggered.connect(lambda _checked=False, preset=key: self.apply_layout_preset(preset))
+            action.setToolTip(f"{label}\n{tr('Click again to rotate instruments.')}")
+            action.triggered.connect(lambda _checked=False, preset=key: self.select_layout_preset(preset))
             self._preset_group.addAction(action)
             self._preset_actions[key] = action
             layout_menu.addAction(action)
@@ -985,16 +985,18 @@ class MeasurementConsoleWindow(QMainWindow):
             self._layout_preset,
             self._main_module_index,
             self._pre_compact_screen_dock_state,
+            self.module_indices,
         )
 
     def undo_layout(self) -> None:
         if self._layout_locked or self._undo_layout is None or self._closing:
             return
-        state, preset, main_index, compact_state = self._undo_layout
+        state, preset, main_index, compact_state, module_order = self._undo_layout
         self._preset_layout_generation += 1
         if self.restoreState(QByteArray(state), 1):
             self._layout_preset = preset
             self._main_module_index = main_index
+            self._docks = {index: self._docks[index] for index in module_order}
             self._pre_compact_screen_dock_state = compact_state
             self._compact_screen_layout_active = compact_state is not None
             for dock in self._docks.values():
@@ -1002,6 +1004,27 @@ class MeasurementConsoleWindow(QMainWindow):
             self._schedule_visible_state_snapshot()
         self._undo_layout = None
         self._refresh_layout_controls()
+
+    def select_layout_preset(self, preset: str) -> None:
+        """Repeat a selected preset to cycle its instruments through the panes."""
+        if self._layout_locked or self._closing or not self._docks or preset not in CONSOLE_LAYOUTS:
+            return
+        if preset != self._layout_preset or self._compact_screen_layout_active or len(self._docks) < 2:
+            self.apply_layout_preset(preset)
+            return
+
+        self._remember_layout_for_undo()
+        order = list(self._docks)
+        # Start from the displayed main pane, including an explicitly selected
+        # main instrument, so every click advances to the next visible position.
+        if preset.startswith("main_") and self._main_module_index in self._docks:
+            order.remove(self._main_module_index)
+            order.insert(0, self._main_module_index)
+        order = order[1:] + order[:1]
+        self._docks = {index: self._docks[index] for index in order}
+        if preset.startswith("main_"):
+            self._main_module_index = order[0]
+        self.apply_layout_preset(preset, remember=False)
 
     def apply_layout_preset(self, preset: str, *, remember: bool = True) -> None:
         """Apply a visual preset without changing instruments or measurement state."""

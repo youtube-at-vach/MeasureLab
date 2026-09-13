@@ -27,7 +27,10 @@ Use **Layout → Default Console** to restore that set deliberately.
 
 Choose a diagram button in the toolbar to apply a layout in one click. The same
 presets are available by name in the **Layout** menu. The outlined button identifies
-the selected preset; click it again to restore its proportions after dragging dividers.
+the selected preset. Click it again to cycle instruments through the panes; in a main
+layout, the next instrument becomes the main instrument. Instruments in overflow tabs
+are included in the cycle. Selecting a different preset applies it without advancing
+the order. Use **Layout → Reapply Layout** to restore proportions without changing order.
 
 | Preset | Arrangement |
 | --- | --- |
@@ -46,7 +49,7 @@ as tabs. Switching presets keeps the same instruments, settings, and running mea
 * **Layout → Main Instrument**: Choose which instrument occupies the large pane in
   either main layout. The first instrument is used initially.
 * **Layout → Reapply Layout**: Restore the selected preset's proportions.
-* **Undo Layout**: Restore the arrangement before the last preset or main-instrument
+* **Undo Layout**: Restore the arrangement before the last preset change, rotation, or main-instrument
   change, including manually adjusted dividers. Also available with **Alt+Backspace**.
   Adding or removing an instrument clears this undo history.
 * **Layout → Default Console**: Restore the initial four instruments in a 2 x 2 grid.

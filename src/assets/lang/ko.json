@@ -2480,5 +2480,6 @@
     "Main Instrument": "메인 계측기",
     "Reapply Layout": "레이아웃 다시 정렬",
     "Tabbed View": "탭 보기",
-    "Undo Layout": "레이아웃 실행 취소"
+    "Undo Layout": "레이아웃 실행 취소",
+    "Click again to rotate instruments.": "다시 누르면 계측기 위치가 순서대로 바뀝니다."
 }

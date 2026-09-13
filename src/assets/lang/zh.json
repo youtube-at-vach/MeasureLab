@@ -2480,5 +2480,6 @@
     "Main Instrument": "主仪器",
     "Reapply Layout": "重新整理布局",
     "Tabbed View": "标签页视图",
-    "Undo Layout": "撤销布局"
+    "Undo Layout": "撤销布局",
+    "Click again to rotate instruments.": "再次点击可依次轮换仪器位置。"
 }

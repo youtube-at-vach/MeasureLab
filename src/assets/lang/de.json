@@ -2480,5 +2480,6 @@
     "Main Instrument": "Hauptinstrument",
     "Reapply Layout": "Layout erneut anwenden",
     "Tabbed View": "Registeransicht",
-    "Undo Layout": "Layout rückgängig machen"
+    "Undo Layout": "Layout rückgängig machen",
+    "Click again to rotate instruments.": "Erneut klicken, um die Instrumente zyklisch umzuordnen."
 }

@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
     QApplication,
     QDockWidget,
     QMainWindow,
+    QToolButton,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -962,3 +963,95 @@ def test_default_console_resets_order_without_overwriting_later_preset(qtbot, mo
     assert console.module_indices == (0, 1, 2, 3)
     assert console._layout_preset == "main_right"
     console.close()
+
+
+@pytest.mark.parametrize("preset", list(CONSOLE_LAYOUTS))
+def test_repeated_preset_button_cycles_every_instrument_and_wraps(qtbot, monkeypatch, preset):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(6)])
+    console = MeasurementConsoleWindow(host)
+    monkeypatch.setattr(console, "_requires_compact_screen_layout", lambda _available: False)
+    for index in range(6):
+        console.add_module(index, arrange=False)
+    console.show()
+    console.apply_layout_preset(preset)
+    action = console._preset_actions[preset]
+    button = next(button for button in console.findChildren(QToolButton) if button.defaultAction() is action)
+    qtbot.wait(20)
+
+    for step in range(1, 7):
+        qtbot.mouseClick(button, Qt.MouseButton.LeftButton)
+        qtbot.wait(10)
+        expected = tuple((index + step) % 6 for index in range(6))
+        assert console.module_indices == expected
+        assert action.isChecked()
+        # Every instrument, including overflow tabs, gets the first/main pane.
+        assert console._docks[expected[0]].visibleRegion().boundingRect().isValid()
+        if preset.startswith("main_"):
+            assert console._main_module_index == expected[0]
+        assert all(console._docks[index]._scroll_area.widget() is host.wrappers[index] for index in range(6))
+    console.close()
+
+
+def test_rotation_from_explicit_main_can_be_undone_and_reapplied(qtbot, monkeypatch):
+    contents = [_PrimaryActionContent() for _ in range(4)]
+    wrappers = [
+        DetachableWidgetWrapper(content, f"Instrument {i}", capabilities=PRIMARY_ACTION_CAPABILITIES)
+        for i, content in enumerate(contents)
+    ]
+    host = _ConsoleHostStub(wrappers)
+    console = MeasurementConsoleWindow(host)
+    monkeypatch.setattr(console, "_requires_compact_screen_layout", lambda _available: False)
+    for index in range(4):
+        console.add_module(index, arrange=False)
+        contents[index].toggle_btn.click()
+    console.show()
+    console.apply_layout_preset("main_right")
+    console.set_main_instrument(2)
+    qtbot.wait(20)
+    original_geometry = {index: dock.geometry() for index, dock in console._docks.items()}
+    console._preset_actions["main_right"].trigger()
+    qtbot.wait(20)
+    assert console.module_indices == (0, 1, 3, 2)
+    assert console._main_module_index == 0
+    console.undo_layout_action.trigger()
+    qtbot.wait(20)
+    assert console.module_indices == (0, 1, 2, 3)
+    assert console._main_module_index == 2
+    assert all(dock.geometry() == original_geometry[index] for index, dock in console._docks.items())
+    console.reapply_layout_action.trigger()
+    qtbot.wait(20)
+    assert console._main_module_index == 2
+    assert console.module_indices == (0, 1, 2, 3)
+    assert all(content.toggle_btn.isChecked() for content in contents)
+    console.close()
+
+
+def test_rotated_order_survives_reapply_preset_switch_and_reopening(qtbot, monkeypatch):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(4)])
+    console = MeasurementConsoleWindow(host)
+    monkeypatch.setattr(console, "_requires_compact_screen_layout", lambda _available: False)
+    for index in range(4):
+        console.add_module(index, arrange=False)
+    console.show()
+    console.apply_layout_preset("main_right")
+    console._preset_actions["main_right"].trigger()
+    console.reapply_layout_action.trigger()
+    console._preset_actions["grid_2x2"].trigger()
+    qtbot.wait(20)
+    assert console.module_indices == (1, 2, 3, 0)
+    console.set_layout_locked(True)
+    console.select_layout_preset("grid_2x2")
+    assert console.module_indices == (1, 2, 3, 0)
+    console.close()
+
+    restored_host = _ConsoleHostStub([_DummyWrapper() for _ in range(4)])
+    restored_host.config_manager = host.config_manager
+    restored = MeasurementConsoleWindow(restored_host)
+    monkeypatch.setattr(restored, "_requires_compact_screen_layout", lambda _available: False)
+    assert restored.restore_workspace()
+    restored.show()
+    qtbot.wait(20)
+    assert restored.module_indices == (1, 2, 3, 0)
+    assert restored._main_module_index == 1
+    assert restored._layout_preset == "grid_2x2"
+    restored.close()

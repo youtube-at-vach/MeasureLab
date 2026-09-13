@@ -2480,5 +2480,6 @@
     "Main Instrument": "メイン計器",
     "Reapply Layout": "配置を整え直す",
     "Tabbed View": "タブ表示",
-    "Undo Layout": "配置を元に戻す"
+    "Undo Layout": "配置を元に戻す",
+    "Click again to rotate instruments.": "もう一度押すと計器の配置を順送りします。"
 }
