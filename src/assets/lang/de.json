@@ -2470,5 +2470,15 @@
     "Peaks: Display": "Spitzen: Anzeige",
     "Peaks: Raw": "Spitzen: Roh",
     "Up to 5 peaks and 5 updates/s. Prominence uses up to 2049 source points. Settings apply to the next live frame.": "Bis zu 5 Spitzen und 5 Aktualisierungen/s. Prominenz über bis zu 2049 Quellpunkte. Einstellungen gelten ab dem nächsten Messbild.",
-    "OK": "OK"
+    "OK": "OK",
+    "2 Columns x 3 Rows": "2 Spalten × 3 Zeilen",
+    "3 Columns x 2 Rows": "3 Spalten × 2 Zeilen",
+    "Extra instruments share panes as tabs.": "Zusätzliche Instrumente teilen sich Bereiche als Registerkarten.",
+    "Layout: {0} · {1} instruments": "Layout: {0} · {1} Instrumente",
+    "Main + 3 Below": "Hauptansicht + 3 unten",
+    "Main + 3 Right": "Hauptansicht + 3 rechts",
+    "Main Instrument": "Hauptinstrument",
+    "Reapply Layout": "Layout erneut anwenden",
+    "Tabbed View": "Registeransicht",
+    "Undo Layout": "Layout rückgängig machen"
 }

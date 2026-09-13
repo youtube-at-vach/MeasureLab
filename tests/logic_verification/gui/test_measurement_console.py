@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import base64
 
+import pytest
+
 from PyQt6.QtCore import QSignalBlocker, QSize, Qt, QTimer
 from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import (
@@ -19,6 +21,7 @@ from src.core.module_constants import (
     MODULE_SPECTROGRAM,
     MODULE_SPECTRUM_ANALYZER,
 )
+from src.gui.console_layouts import CONSOLE_LAYOUTS, layout_cells
 from src.gui.main_window import MainWindow
 from src.gui.measurement_console import DEFAULT_CONSOLE_MODULES, MeasurementConsoleWindow
 from src.gui.module_registry import NO_INDEPENDENT_DISPLAY, WidgetCapabilities, console_action
@@ -738,3 +741,224 @@ def test_main_window_transfer_round_trip_preserves_wrapper(qtbot):
     assert wrapper.parent() is container
     assert container.layout().indexOf(wrapper) == 0
     assert not window._module_console_hosts
+
+
+@pytest.mark.parametrize("preset", list(CONSOLE_LAYOUTS))
+@pytest.mark.parametrize("count", [1, 3, 4, 6, 8])
+def test_visual_presets_keep_all_instruments_reachable(qtbot, monkeypatch, preset, count):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(count)])
+    console = MeasurementConsoleWindow(host)
+    monkeypatch.setattr(console, "_requires_compact_screen_layout", lambda _available: False)
+    for index in range(count):
+        console.add_module(index, arrange=False)
+    console.show()
+    console.apply_layout_preset(preset)
+    qtbot.wait(20)
+
+    capacity = len(layout_cells(CONSOLE_LAYOUTS[preset]))
+    anchors = list(console._docks.values())[:capacity]
+    assert console.module_indices == tuple(range(count))
+    for anchor in anchors:
+        assert anchor.isVisible()
+        assert anchor.geometry().width() > 50
+        assert anchor.geometry().height() > 50
+        assert console.rect().contains(anchor.geometry())
+    for i, anchor in enumerate(anchors):
+        assert all(not anchor.geometry().intersects(other.geometry()) for other in anchors[i + 1 :])
+    for index in range(capacity, count):
+        assert console._docks[index] in console.tabifiedDockWidgets(anchors[(index - capacity) % capacity])
+    assert all(wrapper.console_hosted and wrapper.compact for wrapper in host.wrappers)
+    console.close()
+
+
+@pytest.mark.parametrize("preset,columns,rows", [("grid_2x3", 2, 3), ("grid_3x2", 3, 2)])
+def test_six_pane_grids_have_equal_cells_in_reading_order(qtbot, monkeypatch, preset, columns, rows):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(6)])
+    console = MeasurementConsoleWindow(host)
+    monkeypatch.setattr(console, "_requires_compact_screen_layout", lambda _available: False)
+    for index in range(6):
+        console.add_module(index, arrange=False)
+    console.show()
+    console.apply_layout_preset(preset)
+    qtbot.wait(20)
+
+    cells = [dock.geometry() for dock in console._docks.values()]
+    assert max(cell.width() for cell in cells) - min(cell.width() for cell in cells) <= 2
+    assert max(cell.height() for cell in cells) - min(cell.height() for cell in cells) <= 2
+    for row in range(rows):
+        assert len({cells[row * columns + column].y() for column in range(columns)}) == 1
+        assert all(
+            cells[row * columns + column].x() < cells[row * columns + column + 1].x() for column in range(columns - 1)
+        )
+    console.close()
+
+
+@pytest.mark.parametrize("preset", ["main_right", "main_bottom"])
+def test_main_instrument_selection_and_undo_preserve_measurement_state(qtbot, monkeypatch, preset):
+    contents = [_PrimaryActionContent() for _ in range(4)]
+    wrappers = [
+        DetachableWidgetWrapper(content, f"Instrument {i}", capabilities=PRIMARY_ACTION_CAPABILITIES)
+        for i, content in enumerate(contents)
+    ]
+    host = _ConsoleHostStub(wrappers)
+    console = MeasurementConsoleWindow(host)
+    monkeypatch.setattr(console, "_requires_compact_screen_layout", lambda _available: False)
+    for index in range(4):
+        console.add_module(index, arrange=False)
+        contents[index].toggle_btn.click()
+    console.show()
+    console.apply_layout_preset(preset)
+    qtbot.wait(20)
+    console.set_main_instrument(2)
+    qtbot.wait(20)
+
+    main = console._docks[2].geometry()
+    side = console._docks[0].geometry()
+    if preset == "main_right":
+        assert 1.8 < main.width() / side.width() < 2.2
+        assert main.height() > side.height() * 2.5
+    else:
+        assert 1.8 < main.height() / side.height() < 2.2
+        assert main.width() > side.width() * 2.5
+    assert console.module_indices == (0, 1, 2, 3)
+    console.undo_layout()
+    qtbot.wait(20)
+    assert console._main_module_index is None
+    assert console._docks[0].geometry().contains(main.center())
+    assert all(content.toggle_btn.isChecked() for content in contents)
+    assert all(console._docks[i]._scroll_area.widget() is wrappers[i] for i in range(4))
+    console.close()
+
+
+def test_latest_preset_wins_and_membership_changes_invalidate_undo(qtbot, monkeypatch):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(7)])
+    console = MeasurementConsoleWindow(host)
+    monkeypatch.setattr(console, "_requires_compact_screen_layout", lambda _available: False)
+    for index in range(6):
+        console.add_module(index, arrange=False)
+    console.show()
+    console.apply_layout_preset("grid_2x3")
+    console.apply_layout_preset("main_right")
+    console.apply_layout_preset("grid_3x2")
+    qtbot.wait(20)
+    assert console._layout_preset == "grid_3x2"
+    assert console._docks[2].geometry().x() > console._docks[1].geometry().x()
+    assert console.undo_layout_action.isEnabled()
+    console.add_module(6)
+    qtbot.wait(20)
+    assert not console.undo_layout_action.isEnabled()
+    assert console.tabifiedDockWidgets(console._docks[0]) == [console._docks[6]]
+    assert all(not console.tabifiedDockWidgets(console._docks[i]) for i in range(1, 6))
+    console.apply_layout_preset("main_bottom")
+    console.remove_module(2)
+    console.undo_layout()
+    qtbot.wait(20)
+    assert 2 not in console._docks
+    assert not console.undo_layout_action.isEnabled()
+    console.close()
+
+
+def test_locked_layout_rejects_queued_close_and_all_preset_controls(qtbot):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(4)])
+    console = MeasurementConsoleWindow(host)
+    for index in range(4):
+        console.add_module(index, arrange=False)
+    console.arrange_two_by_two()
+    console._docks[0].close()
+    console.set_layout_locked(True)
+    console.apply_layout_preset("main_right")
+    console.set_main_instrument(1)
+    console.undo_layout()
+    qtbot.wait(20)
+    assert console.module_indices == (0, 1, 2, 3)
+    assert console._layout_preset == "grid_2x2"
+    assert console._main_module_index is None
+    assert all(not action.isEnabled() for action in console._preset_actions.values())
+    assert not console.undo_layout_action.isEnabled()
+    console.close()
+
+
+def test_compact_screen_save_retains_chosen_layout_and_main_instrument(qtbot, monkeypatch):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(4)])
+    first = MeasurementConsoleWindow(host)
+    monkeypatch.setattr(first, "_requires_compact_screen_layout", lambda _available: False)
+    for index in range(4):
+        first.add_module(index, arrange=False)
+    first.show()
+    first.apply_layout_preset("main_right")
+    first.set_main_instrument(2)
+    qtbot.wait(20)
+    # A small-screen fallback must not permanently replace the preferred layout.
+    monkeypatch.setattr(first, "_requires_compact_screen_layout", lambda _available: True)
+    first._apply_responsive_layout(QSize(800, 700))
+    qtbot.wait(20)
+    first.close()
+
+    second_host = _ConsoleHostStub([_DummyWrapper() for _ in range(4)])
+    second_host.config_manager = host.config_manager
+    second = MeasurementConsoleWindow(second_host)
+    monkeypatch.setattr(second, "_requires_compact_screen_layout", lambda _available: False)
+    assert second.restore_workspace()
+    second.show()
+    qtbot.wait(20)
+    assert second._layout_preset == "main_right"
+    assert second._main_module_index == 2
+    assert not second.tabifiedDockWidgets(second._docks[2])
+    assert second._docks[2].width() > second._docks[0].width() * 1.8
+    second.close()
+
+
+def test_closing_immediately_after_preset_cancels_deferred_resize(qtbot):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(6)])
+    console = MeasurementConsoleWindow(host)
+    for index in range(6):
+        console.add_module(index, arrange=False)
+    console.apply_layout_preset("grid_3x2")
+    console.close()
+    qtbot.wait(20)
+    assert host.returned == list(range(6))
+
+
+def test_compact_membership_changes_survive_workspace_restore(qtbot, monkeypatch):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(7)])
+    console = MeasurementConsoleWindow(host)
+    monkeypatch.setattr(console, "_requires_compact_screen_layout", lambda _available: False)
+    for index in range(6):
+        console.add_module(index, arrange=False)
+    console.show()
+    console.apply_layout_preset("grid_3x2")
+    qtbot.wait(20)
+    monkeypatch.setattr(console, "_requires_compact_screen_layout", lambda _available: True)
+    console._apply_responsive_layout(QSize(800, 700))
+    console.add_module(6)
+    console.remove_module(1)
+    qtbot.wait(20)
+    assert len(console.tabifiedDockWidgets(console._docks[0])) == 5
+    console.close()
+
+    restored_host = _ConsoleHostStub([_DummyWrapper() for _ in range(7)])
+    restored_host.config_manager = host.config_manager
+    restored = MeasurementConsoleWindow(restored_host)
+    monkeypatch.setattr(restored, "_requires_compact_screen_layout", lambda _available: False)
+    assert restored.restore_workspace()
+    restored.show()
+    qtbot.wait(20)
+    assert restored.module_indices == (0, 2, 3, 4, 5, 6)
+    assert all(not restored.tabifiedDockWidgets(dock) for dock in restored._docks.values())
+    assert all(dock.isVisible() for dock in restored._docks.values())
+    restored.close()
+
+
+def test_default_console_resets_order_without_overwriting_later_preset(qtbot, monkeypatch):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(4)])
+    host._module_keys = list(DEFAULT_CONSOLE_MODULES)
+    console = MeasurementConsoleWindow(host)
+    monkeypatch.setattr(console, "_requires_compact_screen_layout", lambda _available: False)
+    for index in [3, 2, 1, 0]:
+        console.add_module(index, arrange=False)
+    console.load_default_console()
+    console.apply_layout_preset("main_right")
+    qtbot.wait(20)
+    assert console.module_indices == (0, 1, 2, 3)
+    assert console._layout_preset == "main_right"
+    console.close()

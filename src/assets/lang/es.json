@@ -2470,5 +2470,15 @@
     "Peaks: Display": "Picos: Vista",
     "Peaks: Raw": "Picos: Sin suavizar",
     "Up to 5 peaks and 5 updates/s. Prominence uses up to 2049 source points. Settings apply to the next live frame.": "Hasta 5 picos y 5 actualizaciones/s. Prominencia en hasta 2049 puntos de origen. Los ajustes se aplican al siguiente cuadro en vivo.",
-    "OK": "Aceptar"
+    "OK": "Aceptar",
+    "2 Columns x 3 Rows": "2 columnas × 3 filas",
+    "3 Columns x 2 Rows": "3 columnas × 2 filas",
+    "Extra instruments share panes as tabs.": "Los instrumentos adicionales comparten paneles mediante pestañas.",
+    "Layout: {0} · {1} instruments": "Disposición: {0} · {1} instrumentos",
+    "Main + 3 Below": "Principal + 3 debajo",
+    "Main + 3 Right": "Principal + 3 a la derecha",
+    "Main Instrument": "Instrumento principal",
+    "Reapply Layout": "Reaplicar disposición",
+    "Tabbed View": "Vista en pestañas",
+    "Undo Layout": "Deshacer disposición"
 }

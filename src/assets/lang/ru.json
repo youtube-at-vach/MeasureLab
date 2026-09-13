@@ -2470,5 +2470,15 @@
     "Peaks: Display": "Пики: отображение",
     "Peaks: Raw": "Пики: исходные",
     "Up to 5 peaks and 5 updates/s. Prominence uses up to 2049 source points. Settings apply to the next live frame.": "До 5 пиков; до 5 обновлений/с. Выраженность оценивается по не более чем 2049 исходным точкам. Настройки действуют со следующего кадра измерения.",
-    "OK": "ОК"
+    "OK": "ОК",
+    "2 Columns x 3 Rows": "2 столбца × 3 строки",
+    "3 Columns x 2 Rows": "3 столбца × 2 строки",
+    "Extra instruments share panes as tabs.": "Дополнительные приборы размещаются во вкладках панелей.",
+    "Layout: {0} · {1} instruments": "Компоновка: {0} · Приборов: {1}",
+    "Main + 3 Below": "Главный + 3 снизу",
+    "Main + 3 Right": "Главный + 3 справа",
+    "Main Instrument": "Главный прибор",
+    "Reapply Layout": "Выровнять компоновку",
+    "Tabbed View": "Вкладки",
+    "Undo Layout": "Отменить компоновку"
 }
