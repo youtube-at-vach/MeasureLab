@@ -742,6 +742,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         content_layout = QVBoxLayout()
         content_layout.setContentsMargins(10, 10, 10, 10)
         content_layout.setSpacing(8)
+        content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # 1. Top Panel (Horizontal combination of Digital Displays + Level Meters to optimize height!)
         top_panel = QWidget()
@@ -913,19 +914,6 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         top_panel_layout.addWidget(meters_group, 4)  # Stretch factor 4
 
         content_layout.addWidget(top_panel)
-        # Reserve text space so status changes cannot resize the plot viewport.
-        self.profile_status = QLabel()
-        self.profile_status.setWordWrap(True)
-        self.profile_summary = QLabel()
-        self.profile_summary.setWordWrap(True)
-        self.profile_summary.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        self.profile_acquisition = QLabel()
-        self.profile_acquisition.setWordWrap(True)
-        self.profile_details = self._fixed_text_panel(
-            (self.profile_status, self.profile_summary, self.profile_acquisition), lines=5
-        )
-        content_layout.addWidget(self.profile_details)
-
         # 2. Tabs (Statistics and Graph)
         self.tabs = QTabWidget()
 
@@ -983,6 +971,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         details_layout.addWidget(s_group)
 
         stats_grid.addWidget(details_panel, 1, 0, 1, 4)
+        stats_grid.setRowStretch(2, 1)
 
         self.tabs.addTab(stats_tab, tr("Statistics"))
 
@@ -1058,13 +1047,31 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
             self.event_plot.plot(pen=pg.mkPen(color, width=3), symbol=symbol, symbolSize=5)
             for color, symbol in (("#f0c36a", "o"), ("#ef6b73", "t"), ("#67cce8", "o"), ("#bf9bf2", "t"))
         ]
+        # Keep peak acquisition totals and event statistics with their timeline.
+        self.profile_status = QLabel()
+        self.profile_status.setWordWrap(True)
+        self.profile_summary = QLabel()
+        self.profile_summary.setWordWrap(True)
+        self.profile_summary.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.profile_acquisition = QLabel()
+        self.profile_acquisition.setWordWrap(True)
         self.event_note = QLabel()
         self.event_note.setWordWrap(True)
+        self.profile_details = self._fixed_text_panel(
+            (self.profile_status, self.profile_summary, self.profile_acquisition, self.event_note), lines=7
+        )
+        self.profile_details.setObjectName("lufsProfileDetails")
+        self.profile_details.setStyleSheet(
+            "QScrollArea#lufsProfileDetails { border: 1px solid palette(mid); border-radius: 4px; }"
+        )
+        self.profile_details.widget().layout().setContentsMargins(10, 8, 10, 8)
+        self.profile_details.widget().layout().setSpacing(4)
+        self.profile_details.setFixedHeight(self.profile_details.height() + 28)
+
         event_tab = QWidget()
         event_layout = QVBoxLayout(event_tab)
         event_layout.setContentsMargins(4, 4, 4, 4)
-        self.event_details = self._fixed_text_panel((self.event_note,), lines=2)
-        event_layout.addWidget(self.event_details)
+        event_layout.addWidget(self.profile_details)
         event_layout.addWidget(self.event_plot)
         self.tabs.addTab(event_tab, tr("Peak events"))
 
@@ -1593,13 +1600,8 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
             is_split = self.sidebar.parent() is not self
             if not is_split:
                 self.sidebar.setHidden(compact)
-        self.readouts_panel.setHidden(compact)
-        self.profile_details.setHidden(compact)
-        self.event_details.setHidden(compact)
-        if compact and self.tabs.currentIndex() == 0:
-            self.tabs.setCurrentIndex(2)  # Default to the peak distribution, not a statistics page.
-        self.tabs.setTabVisible(0, not compact)
-        self.tabs.show()
+        self.readouts_panel.show()
+        self.tabs.setHidden(compact)
 
         # Trigger size adjustment on the window that actually contains the display widget.
         # In split mode content_widget is reparented to None so self.window() == self;

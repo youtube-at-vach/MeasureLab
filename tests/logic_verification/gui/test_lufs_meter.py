@@ -158,10 +158,10 @@ def test_peak_profile_compact_status_and_stopped_reset(qtbot):
     callback(np.ones((100, 2)), None, 100, None, None)
     widget.on_toggle(False)
     widget.set_compact_mode(True)
-    assert not widget.tabs.isHidden()
-    assert widget.profile_details.isHidden()
-    assert widget.readouts_panel.isHidden()
-    assert widget.tabs.currentWidget() is widget.histogram_plot
+    assert widget.tabs.isHidden()
+    assert not widget.profile_details.isVisible()
+    assert not widget.readouts_panel.isHidden()
+    assert widget.tabs.currentIndex() == 0
     assert "latched" in widget.profile_status.text()
     assert "SP 100" in widget.profile_summary.text()
     widget.reset_btn.click()
@@ -327,22 +327,29 @@ def test_live_profile_text_and_axis_ticks_do_not_resize_plot(qtbot, profile_lang
         assert view_rect(plot) == original
 
 
-def test_compact_keeps_selected_plot_and_hides_all_profile_text(qtbot):
+@pytest.mark.parametrize("tab_index", range(4))
+def test_compact_shows_only_meters_and_restores_selected_tab(qtbot, tab_index):
     widget = LufsMeterWidget(LufsMeter(MockAudioEngine()))
     qtbot.addWidget(widget)
     widget.show()
-    widget.tabs.setCurrentIndex(3)
+    widget.tabs.setCurrentIndex(tab_index)
     widget.set_compact_mode(True)
     qtbot.wait(80)
-    assert widget.event_plot.isVisible()
-    assert not widget.readouts_panel.isVisible()
+    assert not widget.tabs.isVisible()
+    assert widget.readouts_panel.isVisible()
+    assert widget.disp_i["label"].isVisible()
+    assert widget.l_bar.isVisible()
     assert not widget.profile_status.isVisible()
     assert not widget.profile_summary.isVisible()
     assert not widget.profile_acquisition.isVisible()
     assert not widget.event_note.isVisible()
     widget.set_compact_mode(False)
     qtbot.wait(80)
-    assert widget.event_plot.isVisible()
+    assert widget.tabs.isVisible()
+    assert widget.tabs.currentIndex() == tab_index
+    assert widget.tabs.currentWidget().isVisible()
     assert widget.readouts_panel.isVisible()
-    assert widget.profile_status.isVisible()
-    assert widget.event_note.isVisible()
+    assert widget.profile_status.isVisible() == (tab_index == 3)
+    assert widget.profile_summary.isVisible() == (tab_index == 3)
+    assert widget.profile_acquisition.isVisible() == (tab_index == 3)
+    assert widget.event_note.isVisible() == (tab_index == 3)
