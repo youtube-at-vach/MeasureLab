@@ -465,3 +465,18 @@ def test_bad_frame_metadata_does_not_escape_callback(lufs_meter):
     lufs_meter.audio_engine._callback(np.ones((10, 2)), None, None, None, None)
     assert "processing_error" in lufs_meter.get_peak_profile().flags
     assert not lufs_meter.measurement_valid
+
+
+def test_stop_peak_hold_includes_the_same_delayed_tail_as_profile(lufs_meter):
+    meter = lufs_meter
+    meter.set_peak_threshold(0)
+    meter.start_meter()
+    meter.audio_engine._callback(np.full((2, 2), 0.99), None, 2, None, None)
+    assert meter.peak_hold_l < 0
+    meter.stop_meter()
+    result = meter.get_peak_profile()
+    assert result.exceedances[0, 1] > 0
+    assert meter.peak_hold_l > 0
+    meter.reset_peaks()
+    meter.stop_meter()  # Lifecycle cleanup must not resurrect the cleared hold.
+    assert meter.peak_hold_l == meter._db_floor

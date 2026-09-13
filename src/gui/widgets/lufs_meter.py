@@ -595,10 +595,15 @@ class LufsMeter(MeasurementModule):
 
     def stop_meter(self):
         with self._processing_lock:
+            if not self.is_running and self.callback_id is None:
+                return
             self.is_running = False
             self._run_token = None
             profile = self._profile
             tail = self._true_peak.process_envelope(np.zeros((10, 2)))
+            tail_peaks = np.max(tail, axis=0)
+            self.peak_hold_l = max(self.peak_hold_l, self._to_db(tail_peaks[0]))
+            self.peak_hold_r = max(self.peak_hold_r, self._to_db(tail_peaks[1]))
         try:
             if self.callback_id is not None:
                 self.audio_engine.unregister_callback(self.callback_id)
