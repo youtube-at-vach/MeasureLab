@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
 from scipy import signal
 
 from src.core.true_peak import TruePeakMeter
+from src.core.peak_profiler import PeakProfiler, PeakProfileSession
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.measurement_modules.base import MeasurementModule
@@ -99,6 +100,12 @@ class LufsMeter(MeasurementModule):
         self.crest_r = 0.0
 
         self.callback_id = None
+        self.peak_threshold_db = -1.0
+        self._profile = None
+        self._true_peak = TruePeakMeter(2)
+        self._processing_lock = threading.RLock()
+        self._input_channels = None
+        self._run_token = None
 
     @property
     def name(self) -> str:
@@ -221,10 +228,15 @@ class LufsMeter(MeasurementModule):
         self._p_sum_s = 0.0
 
     def reset_peaks(self):
-        self.peak_hold_l = self._db_floor
-        self.peak_hold_r = self._db_floor
+        with self._processing_lock:
+            self.peak_hold_l = self._db_floor
+            self.peak_hold_r = self._db_floor
 
     def reset_integration(self):
+        with self._processing_lock:
+            self._reset_integration()
+
+    def _reset_integration(self):
         self.integrated_lufs = -100.0
         self.integrated_threshold = -100.0
         self.lra = 0.0
@@ -245,7 +257,7 @@ class LufsMeter(MeasurementModule):
 
         Intended to be called from the GUI thread to keep the audio callback lean.
         """
-        with self._i_lock:
+        with self._processing_lock, self._i_lock:
             if not self._i_dirty:
                 return
             blocks = np.asarray(self._i_block_ms, dtype=np.float64)
@@ -293,12 +305,49 @@ class LufsMeter(MeasurementModule):
             self.lra = 0.0
 
     def reset_all_stats(self):
-        self.reset_peaks()
-        self.reset_integration()
+        old = None
+        with self._processing_lock:
+            self.reset_peaks()
+            self.reset_integration()
+            self._init_filters()
+            self._true_peak.reset()
+            self._input_channels = None
+            self.momentary_lufs = self.short_term_lufs = -100.0
+            self.rms_l = self.rms_r = self.peak_l = self.peak_r = self._db_floor
+            self.crest_l = self.crest_r = 0.0
+            self.measurement_valid = True
+            self.data_gap_detected = False
+            self.configuration_changed_detected = False
+            old = self._profile
+            self._profile = PeakProfileSession(self.sample_rate, self.peak_threshold_db) if self.is_running else None
+        if old is not None:
+            old.close()
+
+    def set_peak_threshold(self, value):
+        # Changing the threshold starts a new profile; never relabel old counts.
+        PeakProfiler(self.sample_rate, value)  # validate before mutating
+        if value == self.peak_threshold_db:
+            return
+        old = None
+        with self._processing_lock:
+            self.peak_threshold_db = float(value)
+            self._true_peak.reset()
+            old = self._profile
+            self._profile = PeakProfileSession(self.sample_rate, value) if self.is_running else None
+        if old is not None:
+            old.close()
+
+    def get_peak_profile(self):
+        profile = self._profile
+        if profile is None:
+            return PeakProfiler(self.sample_rate, self.peak_threshold_db).snapshot()
+        return profile.snapshot()
 
     def start_meter(self):
         if self.is_running:
             return
+        if self.callback_id is not None:
+            self.stop_meter()  # Retry failed unregistration before starting another run.
 
         self.sample_rate = float(self.audio_engine.sample_rate)
         self._init_filters()
@@ -317,16 +366,23 @@ class LufsMeter(MeasurementModule):
         # reset cannot retain pre-reset samples in the first gating block.
         self.reset_integration()
 
-        true_peak = TruePeakMeter(2)
+        self.reset_peaks()
+        self._true_peak = TruePeakMeter(2)
+        self._input_channels = None
+        self._profile = PeakProfileSession(self.sample_rate, self.peak_threshold_db)
+        run_token = object()
+        self._run_token = run_token
         abs_gate_ms = self._i_abs_gate_ms
 
-        def callback(indata, outdata, frames, time, status):
+        def process_block(indata, outdata, frames, time, status):
             del outdata, time
             if not self.is_running:
                 return
             if float(self.audio_engine.sample_rate) != self.sample_rate:
                 self.configuration_changed_detected = True
                 self.measurement_valid = False
+                self._profile.mark_gap("configuration_changed")
+                self._true_peak.reset()
                 return
 
             input_status = bool(getattr(status, "input_overflow", False) or getattr(status, "input_underflow", False))
@@ -336,31 +392,55 @@ class LufsMeter(MeasurementModule):
             ):
                 input_status = True
             if input_status:
-                true_peak.reset()
+                self._true_peak.reset()
+                self._profile.mark_gap("data_gap")
                 self.data_gap_detected = True
                 self.measurement_valid = False
 
             data = np.asarray(indata)
             if data.ndim != 2 or data.shape[0] == 0 or data.shape[1] == 0 or not np.isrealobj(data):
-                true_peak.reset()
+                self._true_peak.reset()
+                self._profile.mark_gap("data_gap")
                 self.data_gap_detected = True
                 self.measurement_valid = False
                 return
-            if not bool(np.all(np.isfinite(data))):
-                true_peak.reset()
+            if len(data) > PeakProfileSession.MAX_FRAMES:
+                self._profile.mark_gap("queue_overflow")
+                self._true_peak.reset()
+                self.data_gap_detected = True
+                self.measurement_valid = False
+                return
+            if not np.issubdtype(data.dtype, np.number) or not bool(np.all(np.isfinite(data))):
+                self._true_peak.reset()
+                self._profile.mark_gap("invalid_input")
                 self.data_gap_detected = True
                 self.measurement_valid = False
                 return
 
+            data = np.asarray(data[:, :2], dtype=np.float64)
+            # Reject unsafe magnitudes before squaring/filtering; preserve >0 dBFS input.
+            if np.max(np.abs(data)) > 1e12:
+                self._profile.mark_gap("invalid_input")
+                self._true_peak.reset()
+                self.data_gap_detected = True
+                self.measurement_valid = False
+                return
             actual_frames = int(data.shape[0])
             if int(frames) != actual_frames:
-                true_peak.reset()
+                self._true_peak.reset()
+                self._profile.mark_gap("data_gap")
                 self.data_gap_detected = True
                 self.measurement_valid = False
 
             # --- Stereo RMS & Peak Calculation ---
             # data is (frames, channels)
-            num_channels = data.shape[1]
+            num_channels = min(data.shape[1], 2)
+            if self._input_channels is not None and num_channels != self._input_channels:
+                self._true_peak.reset()
+                self._profile.mark_gap("configuration_changed")
+                self.configuration_changed_detected = True
+                self.measurement_valid = False
+            self._input_channels = num_channels
 
             if num_channels >= 2:
                 l_channel = data[:, 0]
@@ -383,7 +463,10 @@ class LufsMeter(MeasurementModule):
             self.rms_r = self._to_db(rms_r_linear)
 
             # Stateful interpolation: do not fabricate silence at callback boundaries.
-            peak_l_linear, peak_r_linear = true_peak.process(np.column_stack((l_channel, r_channel)))
+            stereo = np.column_stack((l_channel, r_channel))
+            envelope = self._true_peak.process_envelope(stereo)
+            peak_l_linear, peak_r_linear = np.maximum(np.max(np.abs(stereo), axis=0), np.max(envelope, axis=0))
+            self._profile.submit(stereo, envelope, num_channels)
 
             self.peak_l = self._to_db(peak_l_linear)
             self.peak_r = self._to_db(peak_r_linear)
@@ -438,18 +521,16 @@ class LufsMeter(MeasurementModule):
                         self._p_sum_m = float(np.sum(self._p_ring_m, dtype=np.float64))
                         block_ms = self._p_sum_m / float(self.buffer_size_m)
                         if block_ms > abs_gate_ms:
-                            with self._i_lock:
-                                self._i_block_ms.append(block_ms)
-                                self._i_dirty = True
+                            self._i_block_ms.append(block_ms)
+                            self._i_dirty = True
                     self._i_next_block_sample += self._i_block_step
 
                 if self._i_sample_count == self._lra_next_block_sample:
                     if self._p_filled_s >= self.buffer_size_s:
                         self._p_sum_s = float(np.sum(self._p_ring_s, dtype=np.float64))
                         block_s_ms = self._p_sum_s / float(self.buffer_size_s)
-                        with self._i_lock:
-                            self._lra_blocks.append(block_s_ms)
-                            self._i_dirty = True
+                        self._lra_blocks.append(block_s_ms)
+                        self._i_dirty = True
                     self._lra_next_block_sample += max(1, int(round(self.sample_rate)))
 
             # Momentary (400 ms) and Short-term (3 s)
@@ -462,20 +543,69 @@ class LufsMeter(MeasurementModule):
 
             # No output (meter is analysis-only). AudioEngine provides a fresh zeroed buffer.
 
+        def callback(indata, outdata, frames, time, status):
+            if not self.is_running or self._run_token is not run_token:
+                return
+            profile = self._profile
+            if profile is None:
+                return
+            try:
+                reported_frames = max(0, int(frames))
+            except (TypeError, ValueError, OverflowError):
+                reported_frames = 0
+            # Never wait on reset/snapshot work in the audio thread. A lost
+            # block belongs to the session observed at callback entry.
+            if not self._processing_lock.acquire(blocking=False):
+                if self.is_running and self._run_token is run_token:
+                    profile.mark_gap("data_gap")
+                    profile.callback_gap = True
+                    profile.position += reported_frames
+                return
+            position = None
+            try:
+                if not self.is_running or self._run_token is not run_token:
+                    return
+                profile = self._profile
+                position = profile.position
+                if self._profile.callback_gap:
+                    self._profile.callback_gap = False
+                    self._true_peak.reset()
+                    self._init_filters()
+                    self.measurement_valid = False
+                    self.data_gap_detected = True
+                process_block(indata, outdata, frames, time, status)
+            except Exception:
+                self._profile.mark_gap("processing_error")
+                self.measurement_valid = False
+                self._true_peak.reset()
+            finally:
+                if position is not None and profile.position == position:
+                    profile.position += reported_frames
+                self._processing_lock.release()
+
         self.is_running = True
         try:
             self.callback_id = self.audio_engine.register_callback(callback)
         except Exception:
             self.callback_id = None
             self.is_running = False
+            self._profile.mark_gap("start_failed")
+            self._profile.close()
             raise
 
     def stop_meter(self):
-        if self.is_running:
+        with self._processing_lock:
+            self.is_running = False
+            self._run_token = None
+            profile = self._profile
+            tail = self._true_peak.process_envelope(np.zeros((10, 2)))
+        try:
             if self.callback_id is not None:
                 self.audio_engine.unregister_callback(self.callback_id)
                 self.callback_id = None
-            self.is_running = False
+        finally:
+            if profile is not None:
+                profile.close(tail)
 
     def _to_db(self, value):
         if value <= 0 or not np.isfinite(value):
@@ -524,9 +654,10 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
             self.app.theme_manager.theme_changed.connect(self.apply_theme)
             self.apply_theme(self.app.theme_manager.get_current_theme())
 
-        self.timer = QTimer()
+        self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_display)
         self.timer.setInterval(50)  # 20 FPS
+        self.destroyed.connect(self.module.stop_meter)
 
     def init_ui(self):
         # Two-column layout (Sidebar on Left, Content on Right)
@@ -555,7 +686,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
 
         self.reset_btn = QPushButton(tr("Reset Peaks"))
         self.reset_btn.setMinimumHeight(28)
-        self.reset_btn.clicked.connect(self.module.reset_peaks)
+        self.reset_btn.clicked.connect(self.on_reset_peaks)
         controls_layout.addWidget(self.reset_btn)
 
         self.reset_stats_btn = QPushButton(tr("Reset Stats"))
@@ -581,6 +712,16 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         self.target_spin.setMinimumHeight(28)
         self.target_spin.valueChanged.connect(self.on_target_changed)
         settings_layout.addWidget(self.target_spin)
+
+        settings_layout.addWidget(QLabel(tr("Peak threshold:")))
+        self.peak_threshold_spin = QDoubleSpinBox()
+        self.peak_threshold_spin.setRange(-60.0, 6.0)
+        self.peak_threshold_spin.setDecimals(1)
+        self.peak_threshold_spin.setValue(self.module.peak_threshold_db)
+        self.peak_threshold_spin.setSuffix(" dBFS")
+        self.peak_threshold_spin.setToolTip(tr("Changing the threshold resets the peak profile."))
+        self.peak_threshold_spin.valueChanged.connect(self.on_peak_threshold_changed)
+        settings_layout.addWidget(self.peak_threshold_spin)
 
         settings_group.setLayout(settings_layout)
         sidebar_layout.addWidget(settings_group)
@@ -763,6 +904,14 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         top_panel_layout.addWidget(meters_group, 4)  # Stretch factor 4
 
         content_layout.addWidget(top_panel)
+        # Quality and threshold hits remain visible in compact/split displays.
+        self.profile_status = QLabel()
+        self.profile_status.setWordWrap(True)
+        self.profile_summary = QLabel()
+        self.profile_summary.setWordWrap(True)
+        self.profile_summary.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        content_layout.addWidget(self.profile_status)
+        content_layout.addWidget(self.profile_summary)
 
         # 2. Tabs (Statistics and Graph)
         self.tabs = QTabWidget()
@@ -859,6 +1008,50 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         graph_layout.addWidget(self.plot_widget)
         self.tabs.addTab(graph_tab, tr("Graph"))
 
+        self.histogram_plot = pg.PlotWidget()
+        self.histogram_plot.setBackground("#111")
+        self.histogram_plot.setMinimumHeight(140)
+        self.histogram_plot.setXRange(-61, 7)
+        self.histogram_plot.setLabel("bottom", tr("True Peak envelope"), units="dBTP")
+        self.histogram_plot.setLabel("left", tr("Frames"))
+        self.histogram_plot.showGrid(x=True, y=True)
+        self.histogram_plot.addLegend()
+        self.histogram_curves = [
+            self.histogram_plot.plot(pen=pg.mkPen(color, width=2, style=style), name=tr(label), stepMode="center")
+            for color, style, label in (
+                ("#f0c36a", Qt.PenStyle.SolidLine, "L"),
+                ("#67cce8", Qt.PenStyle.DashLine, "R"),
+            )
+        ]
+        self.histogram_threshold = pg.InfiniteLine(
+            pos=self.module.peak_threshold_db, angle=90, pen=pg.mkPen("#ef6b73", style=Qt.PenStyle.DashLine)
+        )
+        self.histogram_plot.addItem(self.histogram_threshold)
+        self.histogram_plot.setToolTip(tr("1 dB bins; end bins include values below -60 and at or above +6 dBTP."))
+        self.tabs.addTab(self.histogram_plot, tr("Peak histogram"))
+
+        self.event_plot = pg.PlotWidget()
+        self.event_plot.setBackground("#111")
+        self.event_plot.setMinimumHeight(140)
+        self.event_plot.setLabel("bottom", tr("Time since profile reset"), units="s")
+        self.event_plot.showGrid(x=True, y=True)
+        self.event_plot.getAxis("left").setTicks(
+            [[(0, tr("L / SP")), (1, tr("L / TP")), (2, tr("R / SP")), (3, tr("R / TP"))]]
+        )
+        self.event_plot.setYRange(-0.5, 3.5)
+        self.event_curves = [
+            self.event_plot.plot(pen=pg.mkPen(color, width=3), symbol=symbol, symbolSize=5)
+            for color, symbol in (("#f0c36a", "o"), ("#ef6b73", "t"), ("#67cce8", "o"), ("#bf9bf2", "t"))
+        ]
+        self.event_note = QLabel()
+        self.event_note.setWordWrap(True)
+        event_tab = QWidget()
+        event_layout = QVBoxLayout(event_tab)
+        event_layout.setContentsMargins(4, 4, 4, 4)
+        event_layout.addWidget(self.event_note)
+        event_layout.addWidget(self.event_plot)
+        self.tabs.addTab(event_tab, tr("Peak events"))
+
         content_layout.addWidget(self.tabs)
         content_area.setLayout(content_layout)
 
@@ -866,6 +1059,74 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         main_layout.addWidget(self.sidebar)
         main_layout.addWidget(content_area, 1)
         self.setLayout(main_layout)
+        self.update_peak_profile()
+
+    def closeEvent(self, event):
+        self.timer.stop()
+        self.module.stop_meter()
+        super().closeEvent(event)
+
+    def on_peak_threshold_changed(self, value):
+        self.module.set_peak_threshold(value)
+        self.update_peak_profile()
+
+    def update_peak_profile(self):
+        snapshot = self.module.get_peak_profile()
+        flags = snapshot.flags
+        if flags:
+            status = tr("INCOMPLETE — peak profile has acquisition anomalies")
+            reasons = {
+                "data_gap": tr("Data gap"),
+                "queue_overflow": tr("Peak profile queue overflow"),
+                "configuration_changed": tr("Configuration changed"),
+                "invalid_input": tr("Invalid input"),
+                "processing_error": tr("Peak processing failed"),
+                "start_failed": tr("Start failed"),
+            }
+            status += " · " + ", ".join(reasons[f] for f in sorted(flags) if f in reasons)
+        elif not snapshot.frames:
+            status = tr("Peak profile: waiting for input") if self.module.is_running else tr("Peak profile: no data")
+        elif np.any(snapshot.exceedances):
+            status = tr("Peak threshold exceeded (latched)")
+        else:
+            status = tr("Peak profile: no threshold exceedances")
+        self.profile_status.setText(status)
+        self.profile_status.setStyleSheet(
+            "color: #ef6b73; font-weight: bold;" if flags or np.any(snapshot.exceedances) else ""
+        )
+        rows = []
+        for ch in range(snapshot.channels):
+            rows.append(
+                tr("{0}: SP {1} / TP {2} frames ≥ {3:.1f} dBFS; longest SP {4:.3f} / TP {5:.3f} ms").format(
+                    tr("L") if ch == 0 else tr("R"),
+                    *snapshot.exceedances[ch],
+                    snapshot.threshold_db,
+                    *(snapshot.longest_frames[ch] * 1000 / snapshot.sample_rate),
+                )
+            )
+        self.profile_summary.setText("\n".join(rows) if rows else tr("SP = sample peak; TP = estimated True Peak"))
+        self.histogram_threshold.setPos(snapshot.threshold_db)
+        edges = np.concatenate(([-61.0], PeakProfiler.EDGES, [7.0]))
+        for ch, curve in enumerate(self.histogram_curves):
+            curve.setData(edges, snapshot.histogram[ch])
+            curve.setVisible(ch < snapshot.channels)
+        for lane, curve in enumerate(self.event_curves):
+            events = [event for event in snapshot.events if event.channel * 2 + event.kind == lane]
+            x = [
+                v
+                for event in events
+                for v in (event.start / snapshot.sample_rate, event.end / snapshot.sample_rate, np.nan)
+            ]
+            y = [v for _event in events for v in (lane, lane, np.nan)]
+            curve.setData(x, y, connect="finite")
+        self.event_note.setText(
+            tr("Events SP / TP: {0} / {1}; retained {2}, evicted {3}. Edge intervals may be partial.").format(
+                int(snapshot.events_started[:, 0].sum()),
+                int(snapshot.events_started[:, 1].sum()),
+                len(snapshot.events),
+                snapshot.evicted_events,
+            )
+        )
 
     def _create_big_display(self, title, color):
         container = QWidget()
@@ -942,6 +1203,10 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         self._s_sum = 0.0
         self._s_n = 0
 
+    def on_reset_peaks(self):
+        self.module.reset_peaks()
+        self.update_display(force=True)
+
     def on_reset_stats(self):
         self._reset_session_stats()
         self.m_history[:] = -100.0
@@ -952,6 +1217,8 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         self._state_m = None
         self._state_s = None
         self.module.reset_all_stats()
+        self.update_peak_profile()
+        self.update_display(force=True)
 
     def on_toggle(self, checked):
         if checked:
@@ -972,6 +1239,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
             self.module.stop_meter()
             self.timer.stop()
             self.toggle_btn.setText(tr("Start Metering"))
+            self.update_display(force=True)
         self.apply_theme()
 
     def apply_theme(self, theme_name=None):
@@ -993,9 +1261,10 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         self.target_line.setPos(value)
         self.target_band.setRegion([value - 2, value + 2])
 
-    def update_display(self):
-        if not self.module.is_running:
+    def update_display(self, force=False):
+        if not self.module.is_running and not force:
             return
+        self.update_peak_profile()
 
         # Keep integrated LUFS computation off the audio callback.
         self.module.update_integrated_lufs_if_dirty()
@@ -1024,13 +1293,13 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         self.l_val_label.setText(tr("{0} {1}").format(self._format_db(disp_rms_l), disp_unit))
         self.r_val_label.setText(tr("{0} {1}").format(self._format_db(disp_rms_r), disp_unit))
 
-        self.l_peak_label.setText(tr("TP: {0} {1}").format(self._format_db(disp_peak_hold_l), disp_unit))
-        self.r_peak_label.setText(tr("TP: {0} {1}").format(self._format_db(disp_peak_hold_r), disp_unit))
+        self.l_peak_label.setText(tr("TP: {0} {1}").format(self._format_db(disp_peak_hold_l), "dBTP"))
+        self.r_peak_label.setText(tr("TP: {0} {1}").format(self._format_db(disp_peak_hold_r), "dBTP"))
 
         self.l_cf_label.setText(tr("CF: {0:.1f}").format(crest_l))
         self.r_cf_label.setText(tr("CF: {0:.1f}").format(crest_r))
 
-        if not self.module.measurement_valid:
+        if not self.module.measurement_valid or self.module.get_peak_profile().flags:
             invalid = tr("INVALID")
             self.m_val_label.setText(invalid)
             self.s_val_label.setText(invalid)
