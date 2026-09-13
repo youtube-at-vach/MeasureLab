@@ -2470,5 +2470,16 @@
     "Peaks: Display": "ピーク: 表示",
     "Peaks: Raw": "ピーク: Raw",
     "Up to 5 peaks and 5 updates/s. Prominence uses up to 2049 source points. Settings apply to the next live frame.": "最大5件、最大毎秒5回更新。プロミネンスは最大2049点の範囲で評価します。設定は次の測定フレームから適用されます。",
-    "OK": "OK"
+    "OK": "OK",
+    "2 Columns x 3 Rows": "2列 × 3行",
+    "3 Columns x 2 Rows": "3列 × 2行",
+    "Extra instruments share panes as tabs.": "区画数を超える計器はタブで切り替えられます。",
+    "Layout: {0} · {1} instruments": "配置: {0} · 計器 {1} 台",
+    "Main + 3 Below": "メイン＋下に3分割",
+    "Main + 3 Right": "メイン＋右に3分割",
+    "Main Instrument": "メイン計器",
+    "Reapply Layout": "配置を整え直す",
+    "Tabbed View": "タブ表示",
+    "Undo Layout": "配置を元に戻す",
+    "Click again to rotate instruments.": "もう一度押すと計器の配置を順送りします。"
 }

@@ -12,12 +12,11 @@ import base64
 import binascii
 import logging
 import re
-from collections.abc import Sequence
 from enum import Enum
 from typing import TYPE_CHECKING
 
 from PyQt6.QtCore import QByteArray, QEvent, QSize, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QAction, QCloseEvent, QMoveEvent, QResizeEvent, QShowEvent
+from PyQt6.QtGui import QAction, QActionGroup, QCloseEvent, QMoveEvent, QResizeEvent, QShowEvent
 from PyQt6.QtWidgets import (
     QAbstractButton,
     QApplication,
@@ -27,6 +26,7 @@ from PyQt6.QtWidgets import (
     QScrollArea,
     QSizePolicy,
     QStyle,
+    QTabWidget,
     QToolBar,
     QToolButton,
     QWidget,
@@ -39,6 +39,7 @@ from src.core.module_constants import (
     MODULE_SPECTROGRAM,
     MODULE_SPECTRUM_ANALYZER,
 )
+from src.gui.console_layouts import CONSOLE_LAYOUTS, LayoutSplit, layout_cells, make_layout_icon
 from src.gui.widgets.detachable_wrapper import HeaderIcon, application_button_text_color, make_header_icon
 
 if TYPE_CHECKING:
@@ -306,6 +307,9 @@ class MeasurementConsoleWindow(QMainWindow):
         self._pre_compact_screen_dock_state: bytes | None = None
         self._screen_change_connected = False
         self._preset_layout_generation = 0
+        self._layout_preset = "grid_2x2"
+        self._main_module_index: int | None = None
+        self._undo_layout: tuple[bytes, str, int | None, bytes | None, tuple[int, ...]] | None = None
         self._stop_all_generation = 0
         self._stop_all_queue: list[int] = []
         self._stop_all_active = False
@@ -323,6 +327,7 @@ class MeasurementConsoleWindow(QMainWindow):
             | QMainWindow.DockOption.GroupedDragging
         )
         self.setDockNestingEnabled(True)
+        self.setTabPosition(Qt.DockWidgetArea.AllDockWidgetAreas, QTabWidget.TabPosition.North)
 
         # QMainWindow requires a central widget, but the console wants docks to
         # consume effectively all available space.  A one-pixel ignored widget
@@ -344,6 +349,7 @@ class MeasurementConsoleWindow(QMainWindow):
         toolbar = QToolBar(tr("Measurement Console"), self)
         toolbar.setObjectName("measurement_console_toolbar")
         toolbar.setMovable(False)
+        toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.addToolBar(toolbar)
 
         self.add_button = QToolButton(toolbar)
@@ -356,23 +362,63 @@ class MeasurementConsoleWindow(QMainWindow):
 
         self.layout_button = QToolButton(toolbar)
         self.layout_button.setText(tr("Layout"))
+        self.layout_button.setToolTip(tr("Extra instruments share panes as tabs."))
         self.layout_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         layout_menu = QMenu(self.layout_button)
 
-        side_by_side_action = QAction(tr("Side by Side"), layout_menu)
-        side_by_side_action.triggered.connect(self.arrange_side_by_side)
-        layout_menu.addAction(side_by_side_action)
+        self._preset_labels = {
+            "tabs": tr("Tabbed View"),
+            "columns": tr("Side by Side"),
+            "grid_2x2": tr("2 x 2 Grid"),
+            "grid_2x3": tr("2 Columns x 3 Rows"),
+            "grid_3x2": tr("3 Columns x 2 Rows"),
+            "main_right": tr("Main + 3 Right"),
+            "main_bottom": tr("Main + 3 Below"),
+        }
+        self._preset_actions: dict[str, QAction] = {}
+        self._preset_group = QActionGroup(self)
+        self._preset_group.setExclusive(True)
+        self.layout_button.setMenu(layout_menu)
+        toolbar.addWidget(self.layout_button)
+        for key, label in self._preset_labels.items():
+            action = QAction(label, self)
+            action.setCheckable(True)
+            action.setToolTip(f"{label}\n{tr('Click again to rotate instruments.')}")
+            action.triggered.connect(lambda _checked=False, preset=key: self.select_layout_preset(preset))
+            self._preset_group.addAction(action)
+            self._preset_actions[key] = action
+            layout_menu.addAction(action)
+            button = QToolButton(toolbar)
+            button.setDefaultAction(action)
+            button.setAccessibleName(label)
+            button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
+            button.setIconSize(QSize(40, 28))
+            button.setAutoRaise(True)
+            button.setStyleSheet(
+                "QToolButton { border: 1px solid transparent; border-radius: 5px; padding: 3px; }"
+                "QToolButton:hover { background: palette(midlight); border-color: palette(mid); }"
+                "QToolButton:checked { background: palette(midlight); border-color: palette(highlight); }"
+            )
+            toolbar.addWidget(button)
 
-        grid_action = QAction(tr("2 x 2 Grid"), layout_menu)
-        grid_action.triggered.connect(self.arrange_two_by_two)
-        layout_menu.addAction(grid_action)
-
+        layout_menu.addSeparator()
+        self.main_instrument_menu = layout_menu.addMenu(tr("Main Instrument"))
+        self.main_instrument_menu.aboutToShow.connect(self._rebuild_main_instrument_menu)
+        self.reapply_layout_action = QAction(tr("Reapply Layout"), self)
+        self.reapply_layout_action.triggered.connect(lambda: self.apply_layout_preset(self._layout_preset))
+        layout_menu.addAction(self.reapply_layout_action)
+        self.undo_layout_action = QAction(tr("Undo Layout"), self)
+        self.undo_layout_action.setShortcut("Alt+Backspace")
+        self.undo_layout_action.triggered.connect(self.undo_layout)
+        layout_menu.addAction(self.undo_layout_action)
+        toolbar.addAction(self.undo_layout_action)
+        layout_menu.addSeparator()
         default_action = QAction(tr("Default Console"), layout_menu)
         default_action.triggered.connect(self.load_default_console)
         layout_menu.addAction(default_action)
-
-        self.layout_button.setMenu(layout_menu)
-        toolbar.addWidget(self.layout_button)
+        toolbar.addSeparator()
+        self._refresh_layout_controls()
+        self._refresh_layout_icons()
 
         self.stop_all_action = QAction(tr("Stop All"), toolbar)
         self.stop_all_action.setToolTip(tr("Stop all running instruments in the console."))
@@ -388,6 +434,37 @@ class MeasurementConsoleWindow(QMainWindow):
 
         self._rebuild_add_menu()
 
+    def _refresh_layout_icons(self) -> None:
+        for key, action in self._preset_actions.items():
+            action.setIcon(make_layout_icon(key, application_button_text_color()))
+
+    def _refresh_layout_controls(self) -> None:
+        enabled = bool(self._docks) and not self._layout_locked
+        for key, action in self._preset_actions.items():
+            action.setEnabled(enabled)
+            action.setChecked(key == self._layout_preset)
+        self.reapply_layout_action.setEnabled(enabled)
+        self.undo_layout_action.setEnabled(enabled and self._undo_layout is not None)
+        self.main_instrument_menu.setEnabled(enabled and self._layout_preset.startswith("main_"))
+
+    def _rebuild_main_instrument_menu(self) -> None:
+        self.main_instrument_menu.clear()
+        main_index = (
+            self._main_module_index if self._main_module_index in self._docks else next(iter(self._docks), None)
+        )
+        for index, dock in self._docks.items():
+            action = self.main_instrument_menu.addAction(dock.windowTitle())
+            action.setCheckable(True)
+            action.setChecked(index == main_index)
+            action.triggered.connect(lambda _checked=False, i=index: self.set_main_instrument(i))
+
+    def set_main_instrument(self, module_index: int) -> None:
+        if self._layout_locked or module_index not in self._docks:
+            return
+        self._remember_layout_for_undo()
+        self._main_module_index = module_index
+        self.apply_layout_preset(self._layout_preset, remember=False)
+
     def _refresh_stop_all_icon(self) -> None:
         self.stop_all_action.setIcon(make_header_icon(HeaderIcon.STOP, application_button_text_color()))
 
@@ -398,6 +475,7 @@ class MeasurementConsoleWindow(QMainWindow):
             self, "stop_all_action"
         ):
             self._refresh_stop_all_icon()
+            self._refresh_layout_icons()
 
     def _rebuild_add_menu(self) -> None:
         self.add_menu.clear()
@@ -410,7 +488,7 @@ class MeasurementConsoleWindow(QMainWindow):
             self.add_menu.addAction(action)
 
     def load_default_console(self) -> None:
-        if self._layout_locked:
+        if self._layout_locked or self._closing:
             return
 
         default_indices = []
@@ -430,14 +508,21 @@ class MeasurementConsoleWindow(QMainWindow):
 
         for module_index in default_indices:
             self.add_module(module_index, arrange=False)
+        self._docks = {index: self._docks[index] for index in default_indices if index in self._docks}
 
         self._compact_screen_layout_active = False
         self._pre_compact_screen_dock_state = None
-        QTimer.singleShot(0, self._arrange_default_console_for_current_screen)
+        self._main_module_index = None
+        self._undo_layout = None
+        self._preset_layout_generation += 1
+        generation = self._preset_layout_generation
+        QTimer.singleShot(0, lambda: self._arrange_default_console_for_current_screen(generation))
 
-    def _arrange_default_console_for_current_screen(self) -> None:
+    def _arrange_default_console_for_current_screen(self, generation: int) -> None:
         """Apply the regular preset, then constrain it to the actual screen."""
-        self.arrange_two_by_two()
+        if self._closing or generation != self._preset_layout_generation:
+            return
+        self.apply_layout_preset("grid_2x2", remember=False)
         self._ensure_visible_on_screen()
 
     def restore_workspace(self) -> bool:
@@ -455,6 +540,13 @@ class MeasurementConsoleWindow(QMainWindow):
                 continue
             self.add_module(module_index, arrange=False)
 
+        preset = config.get("layout_preset", "grid_2x2")
+        self._layout_preset = preset if preset in CONSOLE_LAYOUTS else "grid_2x2"
+        main_key = config.get("main_module_key", "")
+        self._main_module_index = next(
+            (index for index in self._docks if self.main_window._module_keys[index] == main_key), None
+        )
+        self._refresh_layout_controls()
         compact_keys = set(config.get("compact_module_keys", []))
         for module_index in self._docks:
             wrapper = self.main_window.module_widgets[module_index]
@@ -477,7 +569,7 @@ class MeasurementConsoleWindow(QMainWindow):
             # Apply the recovery preset before restoring the lock flag.  A
             # queued preset would otherwise be rejected when the saved layout
             # itself was locked.
-            self.arrange_two_by_two()
+            self.apply_layout_preset(self._layout_preset, remember=False)
         elif self._docks:
             # A dock restored as visible and one restored as hidden are both
             # unchecked while their top-level parent has never been shown.
@@ -529,7 +621,11 @@ class MeasurementConsoleWindow(QMainWindow):
             "module_keys": [self.main_window._module_keys[index] for index in self._docks],
             "compact_module_keys": compact_keys,
             "geometry": base64.b64encode(geometry).decode("ascii"),
-            "dock_state": base64.b64encode(dock_state).decode("ascii"),
+            "dock_state": base64.b64encode(self._pre_compact_screen_dock_state or dock_state).decode("ascii"),
+            "layout_preset": self._layout_preset,
+            "main_module_key": (
+                self.main_window._module_keys[self._main_module_index] if self._main_module_index in self._docks else ""
+            ),
             "layout_locked": self._layout_locked,
         }
         self.main_window.config_manager.set_measurement_console_config(config)
@@ -636,7 +732,7 @@ class MeasurementConsoleWindow(QMainWindow):
             if self._compact_screen_layout_active:
                 return
             self._pre_compact_screen_dock_state = bytes(self.saveState(1))
-            self._apply_layout_while_locked(self.arrange_single_pane)
+            self._arrange_preset("tabs")
             self._compact_screen_layout_active = True
             return
 
@@ -646,21 +742,13 @@ class MeasurementConsoleWindow(QMainWindow):
         state = self._pre_compact_screen_dock_state
         self._compact_screen_layout_active = False
         self._pre_compact_screen_dock_state = None
+        self._preset_layout_generation += 1
         if state and self.restoreState(QByteArray(state), 1):
             for dock in self._docks.values():
                 dock.show()
             self._schedule_visible_state_snapshot()
         else:
-            self._apply_layout_while_locked(self.arrange_two_by_two)
-
-    def _apply_layout_while_locked(self, arrange) -> None:
-        """Apply a safety preset without changing the user's lock setting."""
-        was_locked = self._layout_locked
-        self._layout_locked = False
-        try:
-            arrange()
-        finally:
-            self._layout_locked = was_locked
+            self._arrange_preset(self._layout_preset)
 
     def add_module(self, module_index: int, *, arrange: bool = True) -> None:
         if module_index in self._docks:
@@ -691,10 +779,13 @@ class MeasurementConsoleWindow(QMainWindow):
         dock.visibilityChanged.connect(lambda _visible: self._schedule_visible_state_snapshot())
         dock.set_instrument_widget(wrapper)
         self._docks[module_index] = dock
+        self._invalidate_membership_snapshots()
         if arrange and self._compact_screen_layout_active and existing_docks:
             anchor = existing_docks[0]
             self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, dock)
             self.tabifyDockWidget(anchor, dock)
+        elif arrange and self._layout_preset != "grid_2x2":
+            self._arrange_preset(self._layout_preset)
         elif arrange:
             self._insert_dock_preserving_layout(dock, existing_docks)
         else:
@@ -703,12 +794,14 @@ class MeasurementConsoleWindow(QMainWindow):
             )
             self.addDockWidget(initial_area, dock)
         dock.show()
+        self._refresh_compact_membership_layout()
         if arrange and len(existing_docks) >= 4:
             # tabifyDockWidget() runs before the dock is shown so Qt never lays
             # it out as a temporary fifth split.  Raise it only after show().
             dock.raise_()
 
         self._rebuild_add_menu()
+        self._refresh_layout_controls()
         self.statusBar().showMessage(tr("{0} instruments in the console.").format(len(self._docks)))
         self._refresh_stop_all_action()
 
@@ -820,10 +913,15 @@ class MeasurementConsoleWindow(QMainWindow):
         self._schedule_visible_state_snapshot()
 
     def remove_module(self, module_index: int) -> None:
+        if self._layout_locked and not self._closing:
+            return
         dock = self._docks.pop(module_index, None)
         if dock is None:
             return
 
+        self._invalidate_membership_snapshots()
+        if self._main_module_index == module_index:
+            self._main_module_index = None
         wrapper = dock.take_instrument_widget()
         if wrapper is not None:
             wrapper.setParent(None)
@@ -832,7 +930,9 @@ class MeasurementConsoleWindow(QMainWindow):
         dock.deleteLater()
 
         self.main_window.return_module_from_console(module_index, self)
+        self._refresh_compact_membership_layout()
         self._rebuild_add_menu()
+        self._refresh_layout_controls()
         if self._docks:
             self.statusBar().showMessage(tr("{0} instruments in the console.").format(len(self._docks)))
         else:
@@ -861,117 +961,163 @@ class MeasurementConsoleWindow(QMainWindow):
             self.removeDockWidget(dock)
         return docks
 
-    def arrange_side_by_side(self) -> None:
-        """Arrange instruments in two columns, using tabs beyond two instruments.
+    def _invalidate_membership_snapshots(self) -> None:
+        # Never restore a snapshot containing removed docks or missing new ones.
+        self._preset_layout_generation += 1
+        self._undo_layout = None
+        self._last_visible_dock_state = None
+        self._pre_compact_screen_dock_state = None
 
-        A horizontal split per instrument quickly becomes unusable because each
-        hosted widget contributes its own minimum width.  Keep only two stable
-        comparison panes and distribute further instruments between their tab
-        groups instead (four instruments become two tabs on each side).
-        """
-        if self._layout_locked or not self._docks:
+    def _refresh_compact_membership_layout(self) -> None:
+        """Keep the large-screen layout in sync when tabbed membership changes."""
+        if not self._compact_screen_layout_active or self._closing or not self._docks:
             return
-        docks = self._prepare_for_preset()
-        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, docks[0])
+        # Build and capture synchronously, before Qt paints, then return to tabs.
+        # This prevents a stale snapshot from losing added/removed instruments
+        # on the next screen change or application launch.
+        self._arrange_preset(self._layout_preset)
+        self._pre_compact_screen_dock_state = bytes(self.saveState(1))
+        self._arrange_preset("tabs")
 
-        if len(docks) >= 2:
-            self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, docks[1])
+    def _remember_layout_for_undo(self) -> None:
+        self._undo_layout = (
+            bytes(self.saveState(1)),
+            self._layout_preset,
+            self._main_module_index,
+            self._pre_compact_screen_dock_state,
+            self.module_indices,
+        )
 
-        column_anchors = docks[:2]
-        for index, dock in enumerate(docks[2:]):
-            anchor = column_anchors[index % len(column_anchors)]
-            area = self.dockWidgetArea(anchor)
-            self.addDockWidget(area, dock)
-            self.tabifyDockWidget(anchor, dock)
+    def undo_layout(self) -> None:
+        if self._layout_locked or self._undo_layout is None or self._closing:
+            return
+        state, preset, main_index, compact_state, module_order = self._undo_layout
+        self._preset_layout_generation += 1
+        if self.restoreState(QByteArray(state), 1):
+            self._layout_preset = preset
+            self._main_module_index = main_index
+            self._docks = {index: self._docks[index] for index in module_order}
+            self._pre_compact_screen_dock_state = compact_state
+            self._compact_screen_layout_active = compact_state is not None
+            for dock in self._docks.values():
+                dock.show()
+            self._schedule_visible_state_snapshot()
+        self._undo_layout = None
+        self._refresh_layout_controls()
 
-        for dock in docks:
-            dock.show()
-        for anchor in column_anchors:
-            anchor.raise_()
-        self._schedule_visible_state_snapshot()
+    def select_layout_preset(self, preset: str) -> None:
+        """Repeat a selected preset to cycle its instruments through the panes."""
+        if self._layout_locked or self._closing or not self._docks or preset not in CONSOLE_LAYOUTS:
+            return
+        if preset != self._layout_preset or self._compact_screen_layout_active or len(self._docks) < 2:
+            self.apply_layout_preset(preset)
+            return
+
+        self._remember_layout_for_undo()
+        order = list(self._docks)
+        # Start from the displayed main pane, including an explicitly selected
+        # main instrument, so every click advances to the next visible position.
+        if preset.startswith("main_") and self._main_module_index in self._docks:
+            order.remove(self._main_module_index)
+            order.insert(0, self._main_module_index)
+        order = order[1:] + order[:1]
+        self._docks = {index: self._docks[index] for index in order}
+        if preset.startswith("main_"):
+            self._main_module_index = order[0]
+        self.apply_layout_preset(preset, remember=False)
+
+    def apply_layout_preset(self, preset: str, *, remember: bool = True) -> None:
+        """Apply a visual preset without changing instruments or measurement state."""
+        if self._layout_locked or not self._docks or self._closing or preset not in CONSOLE_LAYOUTS:
+            return
+        if remember:
+            self._remember_layout_for_undo()
+        self._layout_preset = preset
+        self._compact_screen_layout_active = False
+        self._pre_compact_screen_dock_state = None
+        self._arrange_preset(preset)
+        self._refresh_layout_controls()
+        self.statusBar().showMessage(
+            tr("Layout: {0} · {1} instruments").format(self._preset_labels[preset], len(self._docks))
+        )
+
+    def arrange_side_by_side(self) -> None:
+        self.apply_layout_preset("columns")
 
     def arrange_single_pane(self) -> None:
-        """Arrange all instruments as tabs in one reachable pane.
-
-        This is the safe fallback for screens smaller than the main window's
-        supported 2 x 2 workspace.  Each instrument still has its own scroll
-        area, while tabs keep every instrument reachable without shrinking its
-        controls below a usable size.
-        """
-        if self._layout_locked or not self._docks:
-            return
-        docks = self._prepare_for_preset()
-        anchor = docks[0]
-        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, anchor)
-        for dock in docks[1:]:
-            self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, dock)
-            self.tabifyDockWidget(anchor, dock)
-
-        for dock in docks:
-            dock.show()
-        anchor.raise_()
-        self._schedule_visible_state_snapshot()
+        self.apply_layout_preset("tabs")
 
     def arrange_two_by_two(self) -> None:
-        if self._layout_locked or not self._docks:
+        self.apply_layout_preset("grid_2x2")
+
+    def _arrange_preset(self, preset: str) -> None:
+        """Build each split level before nesting; absent cells consume no space."""
+        if self._closing or not self._docks:
             return
-        docks = self._prepare_for_preset()
-        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, docks[0])
+        self.setUpdatesEnabled(False)
+        try:
+            docks = self._prepare_for_preset()
+            if preset.startswith("main_") and self._main_module_index in self._docks:
+                main_dock = self._docks[self._main_module_index]
+                docks.remove(main_dock)
+                docks.insert(0, main_dock)
+            tree = CONSOLE_LAYOUTS[preset]
+            capacity = len(layout_cells(tree))
+            resize_groups: list[tuple[list[InstrumentDockWidget], list[int], Qt.Orientation]] = []
 
-        if len(docks) >= 2:
-            # Use opposing dock areas for the two columns.  With the central
-            # workspace collapsed to zero this is more reliable across Qt
-            # styles than asking one side area for a horizontal nested split.
-            self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, docks[1])
-        if len(docks) >= 3:
-            self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, docks[2])
-            self.splitDockWidget(docks[0], docks[2], Qt.Orientation.Vertical)
-        if len(docks) >= 4:
-            self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, docks[3])
-            self.splitDockWidget(docks[1], docks[3], Qt.Orientation.Vertical)
+            def build(node: int | LayoutSplit, *, root: bool = False) -> None:
+                if isinstance(node, int):
+                    return
+                children = [
+                    (child, weight, next(cell for cell in layout_cells(child) if cell < len(docks)))
+                    for child, weight in zip(node.children, node.weights, strict=True)
+                    if any(cell < len(docks) for cell in layout_cells(child))
+                ]
+                anchors = [docks[cell] for _, _, cell in children]
+                for previous, anchor in zip(anchors, anchors[1:], strict=False):
+                    if root and node.orientation == Qt.Orientation.Horizontal and len(anchors) == 2:
+                        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, anchor)
+                    else:
+                        self.splitDockWidget(previous, anchor, node.orientation)
+                if len(anchors) > 1:
+                    resize_groups.append((anchors, [weight for _, weight, _ in children], node.orientation))
+                for child, _, _ in children:
+                    build(child)
 
-        # Additional instruments become tabs in the four control-room cells.
-        # Stacking more rows makes QMainWindow honor every instrument's minimum
-        # height and can grow the console beyond the physical screen.
-        for index, dock in enumerate(docks[4:]):
-            anchor = docks[index % min(4, len(docks))]
-            self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, dock)
-            self.tabifyDockWidget(anchor, dock)
+            self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, docks[0])
+            build(tree, root=True)
+            for index, dock in enumerate(docks[capacity:]):
+                anchor = docks[index % capacity]
+                self.addDockWidget(self.dockWidgetArea(anchor), dock)
+                self.tabifyDockWidget(anchor, dock)
+            for dock in docks:
+                dock.show()
+            for dock in docks[:capacity]:
+                dock.raise_()
+            generation = self._preset_layout_generation
+            self._resize_preset(resize_groups, generation)
+            # Qt resolves hosted size hints again after showing the new split tree.
+            QTimer.singleShot(0, lambda: self._resize_preset(resize_groups, generation))
+            self._schedule_visible_state_snapshot()
+        finally:
+            self.setUpdatesEnabled(True)
 
-        for dock in docks:
-            dock.show()
-        for dock in docks[:4]:
-            dock.raise_()
-        generation = self._preset_layout_generation
-        self._equalize_two_by_two(docks, generation)
-        # QMainWindow performs another dock-layout pass after newly inserted
-        # docks become visible.  Reapply the ratios on the next event-loop turn
-        # so instrument-specific size hints cannot collapse either grid row.
-        QTimer.singleShot(
-            0,
-            lambda arranged=tuple(docks), current=generation: self._equalize_two_by_two(arranged, current),
-        )
-        self._schedule_visible_state_snapshot()
+    def _resize_preset(
+        self,
+        groups: list[tuple[list[InstrumentDockWidget], list[int], Qt.Orientation]],
+        generation: int,
+    ) -> None:
+        from PyQt6 import sip
 
-    def _equalize_two_by_two(self, docks: Sequence[InstrumentDockWidget], generation: int) -> None:
-        """Give the preset's columns and rows equal shares of the workspace."""
-        if (
-            self._closing
-            or generation != self._preset_layout_generation
-            or not docks
-            or any(dock not in self._docks.values() for dock in docks)
-        ):
+        if sip.isdeleted(self) or self._closing or generation != self._preset_layout_generation:
             return
-
-        column_width = max(1, self.width() // 2)
-        row_height = max(1, self.height() // 2)
-
-        if len(docks) >= 2:
-            self.resizeDocks(docks[:2], [column_width, column_width], Qt.Orientation.Horizontal)
-        if len(docks) >= 3:
-            self.resizeDocks([docks[0], docks[2]], [row_height, row_height], Qt.Orientation.Vertical)
-        if len(docks) >= 4:
-            self.resizeDocks([docks[1], docks[3]], [row_height, row_height], Qt.Orientation.Vertical)
+        for docks, weights, orientation in groups:
+            if any(dock not in self._docks.values() for dock in docks):
+                return
+            # Use the actual group's span, not the whole window for nested splits.
+            span = sum(dock.width() if orientation == Qt.Orientation.Horizontal else dock.height() for dock in docks)
+            sizes = [max(1, span * weight // sum(weights)) for weight in weights]
+            self.resizeDocks(docks, sizes, orientation)
 
     def _schedule_visible_state_snapshot(self) -> None:
         from PyQt6 import sip
@@ -995,12 +1141,7 @@ class MeasurementConsoleWindow(QMainWindow):
             return
 
         logger.warning("Saved measurement console hid one or more docks; using safe layout")
-        was_locked = self._layout_locked
-        self._layout_locked = False
-        try:
-            self.arrange_two_by_two()
-        finally:
-            self._layout_locked = was_locked
+        self._arrange_preset(self._layout_preset)
 
     def set_layout_locked(self, locked: bool) -> None:
         self._layout_locked = bool(locked)
@@ -1009,6 +1150,7 @@ class MeasurementConsoleWindow(QMainWindow):
             dock.setFeatures(features)
         self.add_button.setEnabled(not locked)
         self.layout_button.setEnabled(not locked)
+        self._refresh_layout_controls()
         self._rebuild_add_menu()
 
     def showEvent(self, event: QShowEvent) -> None:

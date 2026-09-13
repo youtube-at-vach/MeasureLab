@@ -2470,5 +2470,16 @@
     "Peaks: Display": "Peaks: Display",
     "Peaks: Raw": "Peaks: Raw",
     "Up to 5 peaks and 5 updates/s. Prominence uses up to 2049 source points. Settings apply to the next live frame.": "Up to 5 peaks and 5 updates/s. Prominence uses up to 2049 source points. Settings apply to the next live frame.",
-    "OK": "OK"
+    "OK": "OK",
+    "2 Columns x 3 Rows": "2 Columns x 3 Rows",
+    "3 Columns x 2 Rows": "3 Columns x 2 Rows",
+    "Extra instruments share panes as tabs.": "Extra instruments share panes as tabs.",
+    "Layout: {0} · {1} instruments": "Layout: {0} · {1} instruments",
+    "Main + 3 Below": "Main + 3 Below",
+    "Main + 3 Right": "Main + 3 Right",
+    "Main Instrument": "Main Instrument",
+    "Reapply Layout": "Reapply Layout",
+    "Tabbed View": "Tabbed View",
+    "Undo Layout": "Undo Layout",
+    "Click again to rotate instruments.": "Click again to rotate instruments."
 }

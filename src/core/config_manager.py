@@ -35,6 +35,8 @@ class MeasurementConsoleConfigDict(TypedDict, total=False):
     geometry: str
     dock_state: str
     layout_locked: bool
+    layout_preset: str
+    main_module_key: str
 
 
 class NetworkAudioConfigDict(TypedDict, total=False):
@@ -81,6 +83,8 @@ DEFAULT_CONFIG = {
         "geometry": "",
         "dock_state": "",
         "layout_locked": False,
+        "layout_preset": "grid_2x2",
+        "main_module_key": "",
     },
     "network_audio": {
         "host": "",
@@ -353,6 +357,11 @@ class ConfigManager:
         for key in ("geometry", "dock_state"):
             value = loaded.get(key)
             if isinstance(value, str) and len(value) <= 1_000_000:
+                target[key] = value
+
+        for key in ("layout_preset", "main_module_key"):
+            value = loaded.get(key)
+            if isinstance(value, str) and len(value) <= 256:
                 target[key] = value
 
         locked = loaded.get("layout_locked")

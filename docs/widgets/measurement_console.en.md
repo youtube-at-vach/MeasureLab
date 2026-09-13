@@ -25,14 +25,37 @@ Use **Layout → Default Console** to restore that set deliberately.
 
 ## Layouts and Controls
 
-The **Layout** menu provides these presets:
+Choose a diagram button in the toolbar to apply a layout in one click. The same
+presets are available by name in the **Layout** menu. The outlined button identifies
+the selected preset. Click it again to cycle instruments through the panes; in a main
+layout, the next instrument becomes the main instrument. Instruments in overflow tabs
+are included in the cycle. Selecting a different preset applies it without advancing
+the order. Use **Layout → Reapply Layout** to restore proportions without changing order.
 
-* **Side by Side**: Places two instruments next to each other.
-* **2 x 2 Grid**: Arranges up to four instruments in a grid.
-* **Default Console**: Restores the four-instrument preset.
+| Preset | Arrangement |
+| --- | --- |
+| **Tabbed View** | One pane with tabs for all instruments. |
+| **Side by Side** | Two equally sized columns. |
+| **2 x 2 Grid** | Two columns and two rows. |
+| **2 Columns x 3 Rows** | Six panes arranged vertically. |
+| **3 Columns x 2 Rows** | Six panes arranged horizontally. |
+| **Main + 3 Right** | A large main pane using two thirds of the width, with three stacked panes on the right. |
+| **Main + 3 Below** | A large main pane using two thirds of the height, with three panes below. |
+
+Grid instruments follow reading order, from left to right and top to bottom. Unused
+panes collapse when there are fewer instruments; extra instruments share the panes
+as tabs. Switching presets keeps the same instruments, settings, and running measurements.
+
+* **Layout → Main Instrument**: Choose which instrument occupies the large pane in
+  either main layout. The first instrument is used initially.
+* **Layout → Reapply Layout**: Restore the selected preset's proportions.
+* **Undo Layout**: Restore the arrangement before the last preset change, rotation, or main-instrument
+  change, including manually adjusted dividers. Also available with **Alt+Backspace**.
+  Adding or removing an instrument clears this undo history.
+* **Layout → Default Console**: Restore the initial four instruments in a 2 x 2 grid.
 
 Drag docks or tab them as needed. Enable **Lock Layout** after arranging the workspace to
-prevent accidental additions or layout changes.
+prevent accidental additions, removals, or preset changes. Measurement controls remain usable.
 
 For compatible modules, the dock title bar shows the module's main start/stop action. Its
 label, icon, enabled state, and running state stay synchronized with the original control.
@@ -42,9 +65,12 @@ single-button start/stop operation, and **Stop All** does not include those modu
 ## Restoring a Workspace
 
 The console stores its membership, dock arrangement, size, lock state, and compatible
-compact-mode selections. When a saved layout cannot be restored safely, MeasureLab falls
-back to a visible default layout. On small displays, the default arrangement is adjusted to
-remain usable.
+compact-mode selections, along with the selected preset and main instrument. When a saved
+layout cannot be restored safely, MeasureLab falls back to a visible default layout.
+On small displays, the default arrangement is adjusted to
+remain usable. The arrangement from the larger screen is retained for the next return to
+a larger display, including after restarting the application. You can explicitly select
+a different preset on a small screen.
 
 ## Limitations
 

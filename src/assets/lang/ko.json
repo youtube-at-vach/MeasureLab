@@ -2470,5 +2470,16 @@
     "Peaks: Display": "피크: 표시",
     "Peaks: Raw": "피크: 원시",
     "Up to 5 peaks and 5 updates/s. Prominence uses up to 2049 source points. Settings apply to the next live frame.": "최대 5개 피크, 초당 최대 5회 갱신. 돌출도는 최대 2049개 소스 점에서 평가합니다. 설정은 다음 실시간 프레임에 적용됩니다.",
-    "OK": "확인"
+    "OK": "확인",
+    "2 Columns x 3 Rows": "2열 × 3행",
+    "3 Columns x 2 Rows": "3열 × 2행",
+    "Extra instruments share panes as tabs.": "추가 계측기는 탭으로 패널을 공유합니다.",
+    "Layout: {0} · {1} instruments": "레이아웃: {0} · 계측기 {1}개",
+    "Main + 3 Below": "메인 + 아래쪽 3개",
+    "Main + 3 Right": "메인 + 오른쪽 3개",
+    "Main Instrument": "메인 계측기",
+    "Reapply Layout": "레이아웃 다시 정렬",
+    "Tabbed View": "탭 보기",
+    "Undo Layout": "레이아웃 실행 취소",
+    "Click again to rotate instruments.": "다시 누르면 계측기 위치가 순서대로 바뀝니다."
 }

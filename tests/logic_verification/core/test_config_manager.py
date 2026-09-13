@@ -185,6 +185,8 @@ class TestConfigManager(unittest.TestCase):
                 "compact_module_keys": ["Oscilloscope"],
                 "geometry": "Z2VvbWV0cnk=",
                 "dock_state": "c3RhdGU=",
+                "layout_preset": "main_right",
+                "main_module_key": "Spectrogram",
                 "layout_locked": True,
             }
         )
@@ -194,6 +196,11 @@ class TestConfigManager(unittest.TestCase):
         self.assertEqual(value["module_keys"], ["Oscilloscope", "Spectrogram"])
         self.assertEqual(value["compact_module_keys"], ["Oscilloscope"])
         self.assertTrue(value["layout_locked"])
+        self.assertEqual(value["layout_preset"], "main_right")
+        self.assertEqual(value["main_module_key"], "Spectrogram")
+        cm.save_config(force_sync=True)
+        restored = self.ConfigManager(config_filename=self.config_path)
+        self.assertEqual(restored.get_measurement_console_config(), value)
 
         # Returned values are copies and cannot mutate the manager implicitly.
         value["module_keys"].append("Spectrum Analyzer")

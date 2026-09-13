@@ -2470,5 +2470,16 @@
     "Peaks: Display": "峰值：显示",
     "Peaks: Raw": "峰值：原始",
     "Up to 5 peaks and 5 updates/s. Prominence uses up to 2049 source points. Settings apply to the next live frame.": "最多5个峰值，每秒最多更新5次。突出度在最多2049个源数据点内评估。设置从下一实时帧开始生效。",
-    "OK": "确定"
+    "OK": "确定",
+    "2 Columns x 3 Rows": "2列 × 3行",
+    "3 Columns x 2 Rows": "3列 × 2行",
+    "Extra instruments share panes as tabs.": "超出窗格数量的仪器以标签页共享窗格。",
+    "Layout: {0} · {1} instruments": "布局：{0} · {1}台仪器",
+    "Main + 3 Below": "主视图＋下方3格",
+    "Main + 3 Right": "主视图＋右侧3格",
+    "Main Instrument": "主仪器",
+    "Reapply Layout": "重新整理布局",
+    "Tabbed View": "标签页视图",
+    "Undo Layout": "撤销布局",
+    "Click again to rotate instruments.": "再次点击可依次轮换仪器位置。"
 }
