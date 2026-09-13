@@ -1025,7 +1025,8 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         self.histogram_plot.setBackground("#111")
         self.histogram_plot.setMinimumHeight(140)
         self.histogram_plot.setXRange(-61, 7, padding=0)
-        self.histogram_plot.setYRange(0, 100, padding=0)
+        self._histogram_y_max = 5.0
+        self.histogram_plot.setYRange(0, self._histogram_y_max, padding=0)
         self.histogram_plot.setLabel("bottom", tr("True Peak envelope"), units="dBTP")
         self.histogram_plot.setLabel("left", tr("Relative frequency"), units="%")
         self.histogram_plot.showGrid(x=True, y=True)
@@ -1157,6 +1158,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         )
         self.histogram_threshold.setPos(snapshot.threshold_db)
         edges = np.concatenate(([-61.0], PeakProfiler.EDGES, [7.0]))
+        highest_frequency = 0.0
         for ch, curve in enumerate(self.histogram_curves):
             counts = snapshot.histogram[ch]
             total = int(counts.sum())
@@ -1165,6 +1167,9 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
             )
             curve.setData(edges, frequency)
             curve.setVisible(ch < snapshot.channels)
+            if ch < snapshot.channels:
+                highest_frequency = max(highest_frequency, float(frequency.max()))
+        self._update_histogram_scale(highest_frequency)
         for lane, curve in enumerate(self.event_curves):
             events = [event for event in snapshot.events if event.channel * 2 + event.kind == lane]
             x = [
@@ -1182,6 +1187,21 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
                 snapshot.evicted_events,
             )
         )
+
+    def _update_histogram_scale(self, peak):
+        # Use a shared percentage scale for both channels, with headroom and
+        # separate expansion/contraction thresholds to avoid live axis jitter.
+        current = self._histogram_y_max
+        if peak <= 0:
+            upper = 5.0
+        elif peak > current * 0.9 or peak < current * 0.5:
+            target = min(100.0, peak * 1.2)
+            upper = next(value for value in (2, 3, 4, 5, 6, 8, 10, 15, 20, 30, 40, 50, 60, 80, 100) if value >= target)
+        else:
+            return
+        if upper != current:
+            self._histogram_y_max = float(upper)
+            self.histogram_plot.setYRange(0, upper, padding=0)
 
     def _stabilize_readout(self, label):
         # Reserve two lines for long translated invalid markers without letting

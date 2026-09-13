@@ -231,6 +231,62 @@ def profile_language(request):
     manager.load_language(previous)
 
 
+def test_histogram_scale_fits_music_without_jitter_and_recovers_from_silence(qtbot):
+    from src.core.peak_profiler import PeakProfiler
+
+    module = LufsMeter(MockAudioEngine())
+    core = PeakProfiler(48000)
+    core.channels = 2
+    core.frames = 1_000_000
+    module.get_peak_profile = core.snapshot
+    widget = LufsMeterWidget(module)
+    qtbot.addWidget(widget)
+
+    def distribution(channel, peak_percent):
+        counts = core.histogram[channel]
+        peak_count = round(peak_percent * 10_000)
+        other_count, remainder = divmod(1_000_000 - peak_count, len(counts) - 1)
+        counts[:] = other_count
+        counts[0] = peak_count
+        counts[1 : remainder + 1] += 1
+
+    def upper():
+        widget.update_peak_profile()
+        low, high = widget.histogram_plot.getViewBox().viewRange()[1]
+        assert low == 0
+        assert all(curve.yData.max() <= high for curve in widget.histogram_curves[: core.channels])
+        return high
+
+    distribution(0, 4.2)
+    distribution(1, 3.1)
+    assert upper() == 5
+    distribution(0, 5.5)
+    expanded = upper()
+    assert expanded == 8
+    for peak in (5.4, 5.3, 5.5, 5.2):
+        distribution(0, peak)
+        assert upper() == expanded
+    core.histogram *= 100
+    core.frames *= 100
+    assert upper() == expanded
+
+    # Either channel (including the silence/end bin) must remain fully visible.
+    distribution(1, 100)
+    assert upper() == 100
+    distribution(0, 4.2)
+    distribution(1, 3.1)
+    assert upper() == 6
+    core.histogram[:] = 0
+    core.frames = 0
+    assert upper() == 5
+
+    # An absent channel cannot determine the visible channel's scale.
+    core.channels = 1
+    distribution(0, 4.2)
+    distribution(1, 100)
+    assert upper() == 5
+
+
 def test_live_profile_text_and_axis_ticks_do_not_resize_plot(qtbot, profile_language):
     from src.core.peak_profiler import PeakEvent, PeakProfiler
 
