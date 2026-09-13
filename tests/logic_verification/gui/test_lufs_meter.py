@@ -142,3 +142,45 @@ def test_lufs_meter_widget_target_changed(qtbot):
     assert module.target_lufs == -14.0
     # Also test the visual line placement
     assert widget.target_line.value() == -14.0
+
+
+def test_peak_profile_compact_status_and_stopped_reset(qtbot):
+    import numpy as np
+
+    engine = MockAudioEngine()
+    engine.register_callback = MagicMock(return_value=1)
+    module = LufsMeter(engine)
+    widget = LufsMeterWidget(module)
+    qtbot.addWidget(widget)
+    widget.on_toggle(True)
+    callback = engine.register_callback.call_args.args[0]
+    callback(np.ones((100, 2)), None, 100, None, None)
+    widget.on_toggle(False)
+    widget.set_compact_mode(True)
+    assert widget.tabs.isHidden()
+    assert not widget.profile_status.isHidden()
+    assert not widget.profile_summary.isHidden()
+    assert "latched" in widget.profile_status.text()
+    assert "SP 100" in widget.profile_summary.text()
+    widget.reset_btn.click()
+    assert "-INF" in widget.l_peak_label.text()
+    assert "latched" in widget.profile_status.text()
+    widget.on_reset_stats()
+    assert "no data" in widget.profile_status.text()
+    assert all(curve.xData is None or len(curve.xData) == 0 for curve in widget.event_curves)
+
+
+def test_peak_profile_settings_and_anomalies(qtbot):
+    module = LufsMeter(MockAudioEngine())
+    widget = LufsMeterWidget(module)
+    qtbot.addWidget(widget)
+    widget.peak_threshold_spin.setValue(2)
+    assert module.peak_threshold_db == 2
+    assert widget.histogram_threshold.value() == 2
+    widget.on_toggle(True)
+    module._profile.mark_gap("queue_overflow")
+    widget.update_display()
+    assert "INCOMPLETE" in widget.profile_status.text()
+    widget.on_toggle(False)
+    widget.on_reset_stats()
+    assert "INCOMPLETE" not in widget.profile_status.text()
