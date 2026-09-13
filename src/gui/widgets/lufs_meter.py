@@ -13,6 +13,8 @@ from PyQt6.QtWidgets import (
     QLabel,
     QMessageBox,
     QProgressBar,
+    QScrollArea,
+    QSizePolicy,
     QPushButton,
     QTabWidget,
     QVBoxLayout,
@@ -743,6 +745,8 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
 
         # 1. Top Panel (Horizontal combination of Digital Displays + Level Meters to optimize height!)
         top_panel = QWidget()
+        self.readouts_panel = top_panel
+        top_panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         top_panel.setObjectName("lufsReadouts")
         top_panel.setStyleSheet(
             "QWidget#lufsReadouts { background: #10161c; border: 1px solid #35414c; border-radius: 6px; }"
@@ -909,14 +913,18 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         top_panel_layout.addWidget(meters_group, 4)  # Stretch factor 4
 
         content_layout.addWidget(top_panel)
-        # Quality and threshold hits remain visible in compact/split displays.
+        # Reserve text space so status changes cannot resize the plot viewport.
         self.profile_status = QLabel()
         self.profile_status.setWordWrap(True)
         self.profile_summary = QLabel()
         self.profile_summary.setWordWrap(True)
         self.profile_summary.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        content_layout.addWidget(self.profile_status)
-        content_layout.addWidget(self.profile_summary)
+        self.profile_acquisition = QLabel()
+        self.profile_acquisition.setWordWrap(True)
+        self.profile_details = self._fixed_text_panel(
+            (self.profile_status, self.profile_summary, self.profile_acquisition), lines=5
+        )
+        content_layout.addWidget(self.profile_details)
 
         # 2. Tabs (Statistics and Graph)
         self.tabs = QTabWidget()
@@ -1016,9 +1024,10 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         self.histogram_plot = pg.PlotWidget()
         self.histogram_plot.setBackground("#111")
         self.histogram_plot.setMinimumHeight(140)
-        self.histogram_plot.setXRange(-61, 7)
+        self.histogram_plot.setXRange(-61, 7, padding=0)
+        self.histogram_plot.setYRange(0, 100, padding=0)
         self.histogram_plot.setLabel("bottom", tr("True Peak envelope"), units="dBTP")
-        self.histogram_plot.setLabel("left", tr("Frames"))
+        self.histogram_plot.setLabel("left", tr("Relative frequency"), units="%")
         self.histogram_plot.showGrid(x=True, y=True)
         self.histogram_plot.addLegend()
         self.histogram_curves = [
@@ -1053,11 +1062,26 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         event_tab = QWidget()
         event_layout = QVBoxLayout(event_tab)
         event_layout.setContentsMargins(4, 4, 4, 4)
-        event_layout.addWidget(self.event_note)
+        self.event_details = self._fixed_text_panel((self.event_note,), lines=2)
+        event_layout.addWidget(self.event_details)
         event_layout.addWidget(self.event_plot)
         self.tabs.addTab(event_tab, tr("Peak events"))
 
-        content_layout.addWidget(self.tabs)
+        # Axis reservations are independent of tick values or SI prefixes.
+        tick_width = max(
+            self.fontMetrics().horizontalAdvance(text)
+            for text in (
+                "-200.000",
+                tr("L / SP"),
+                tr("L / TP"),
+                tr("R / SP"),
+                tr("R / TP"),
+            )
+        )
+        for plot in (self.plot_widget, self.histogram_plot, self.event_plot):
+            plot.getAxis("left").setWidth(tick_width + 40)
+            plot.getAxis("bottom").setHeight(self.fontMetrics().height() * 2 + 20)
+        content_layout.addWidget(self.tabs, 1)
         content_area.setLayout(content_layout)
 
         # --- Assemble Main Layout ---
@@ -1065,6 +1089,24 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         main_layout.addWidget(content_area, 1)
         self.setLayout(main_layout)
         self.update_peak_profile()
+
+    def _fixed_text_panel(self, labels, *, lines):
+        panel = QScrollArea()
+        panel.setFrameShape(QScrollArea.Shape.NoFrame)
+        panel.setWidgetResizable(True)
+        panel.setProperty("measurelabScrollRole", "dynamic-content")
+        panel.setFixedHeight(self.fontMetrics().lineSpacing() * lines + 4)
+        contents = QWidget()
+        contents.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        layout = QVBoxLayout(contents)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        for label in labels:
+            label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+            layout.addWidget(label)
+        panel.setWidget(contents)
+        return panel
 
     def closeEvent(self, event):
         self.timer.stop()
@@ -1110,10 +1152,18 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
                 )
             )
         self.profile_summary.setText("\n".join(rows) if rows else tr("SP = sample peak; TP = estimated True Peak"))
+        self.profile_acquisition.setText(
+            tr("Acquired: {0} frames / {1:.3f} s").format(snapshot.frames, snapshot.frames / snapshot.sample_rate)
+        )
         self.histogram_threshold.setPos(snapshot.threshold_db)
         edges = np.concatenate(([-61.0], PeakProfiler.EDGES, [7.0]))
         for ch, curve in enumerate(self.histogram_curves):
-            curve.setData(edges, snapshot.histogram[ch])
+            counts = snapshot.histogram[ch]
+            total = int(counts.sum())
+            frequency = (
+                counts.astype(np.float64) * (100.0 / total) if total else np.zeros_like(counts, dtype=np.float64)
+            )
+            curve.setData(edges, frequency)
             curve.setVisible(ch < snapshot.channels)
         for lane, curve in enumerate(self.event_curves):
             events = [event for event in snapshot.events if event.channel * 2 + event.kind == lane]
@@ -1132,6 +1182,18 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
                 snapshot.evicted_events,
             )
         )
+
+    def _stabilize_readout(self, label):
+        # Reserve two lines for long translated invalid markers without letting
+        # changing values alter the minimum width of every statistics column.
+        label.ensurePolished()
+        metrics = label.fontMetrics()
+        label.setWordWrap(True)
+        label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+        label.setMinimumWidth(
+            max(metrics.horizontalAdvance("-199.9"), (metrics.horizontalAdvance(tr("INVALID")) + 1) // 2) + 4
+        )
+        label.setFixedHeight(metrics.lineSpacing() * 2 + 4)
 
     def _create_big_display(self, title, color):
         container = QWidget()
@@ -1154,6 +1216,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         lbl_unit.setStyleSheet(f"color: {color}; font-size: 10pt; margin-bottom: 2px;")
 
         layout.addWidget(lbl_title)
+        self._stabilize_readout(lbl_val)
         layout.addWidget(lbl_val)
         layout.addWidget(lbl_unit)
         container.setLayout(layout)
@@ -1178,6 +1241,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         lbl_desc = QLabel(desc)
         lbl_desc.setWordWrap(True)
         layout.addWidget(lbl_title)
+        self._stabilize_readout(lbl_val)
         layout.addWidget(lbl_val)
         layout.addWidget(lbl_desc)
         return {"container": container, "label": lbl_val}
@@ -1194,6 +1258,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         lbl_val.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lbl_val.setStyleSheet(f"font-size: 16px; font-weight: bold; font-family: {MONOSPACE_FONT_FAMILY};")
         layout.addWidget(lbl_label)
+        self._stabilize_readout(lbl_val)
         layout.addWidget(lbl_val)
         return {"container": container, "label": lbl_val}
 
@@ -1508,8 +1573,13 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
             is_split = self.sidebar.parent() is not self
             if not is_split:
                 self.sidebar.setHidden(compact)
-        if hasattr(self, "tabs"):
-            self.tabs.setHidden(compact)
+        self.readouts_panel.setHidden(compact)
+        self.profile_details.setHidden(compact)
+        self.event_details.setHidden(compact)
+        if compact and self.tabs.currentIndex() == 0:
+            self.tabs.setCurrentIndex(2)  # Default to the peak distribution, not a statistics page.
+        self.tabs.setTabVisible(0, not compact)
+        self.tabs.show()
 
         # Trigger size adjustment on the window that actually contains the display widget.
         # In split mode content_widget is reparented to None so self.window() == self;

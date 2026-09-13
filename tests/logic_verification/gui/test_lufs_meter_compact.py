@@ -46,7 +46,10 @@ def test_lufs_meter_compact_mode(qtbot):
     widget.set_compact_mode(True)
     assert widget.is_compact_mode()
     assert widget.sidebar.isHidden()
-    assert widget.tabs.isHidden()
+    assert not widget.tabs.isHidden()
+    assert widget.readouts_panel.isHidden()
+    assert widget.profile_details.isHidden()
+    assert not widget.tabs.isTabVisible(0)
 
     # Wait for the singleShot timer of 50ms to fire and check if adjustSize was called
     qtbot.wait(100)
@@ -94,10 +97,14 @@ def test_lufs_readouts_survive_console_and_split_round_trip(qtbot):
     module.integrated_lufs = -23.2
     module.short_term_lufs = -22.8
     widget.update_display()
-    assert widget.disp_i["label"].isVisible()
+    assert not widget.disp_i["label"].isVisible()
+    assert widget.histogram_plot.isVisible()
     assert widget.disp_i["label"].text() == "-23.2"
     assert widget.sidebar.isHidden()
-    assert widget.tabs.isHidden()
+    assert not widget.tabs.isHidden()
+    assert widget.readouts_panel.isHidden()
+    assert widget.profile_details.isHidden()
+    assert not widget.tabs.isTabVisible(0)
 
     dock._primary_button.click()
     assert not module.is_running

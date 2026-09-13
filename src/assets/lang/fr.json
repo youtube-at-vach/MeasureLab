@@ -2487,7 +2487,6 @@
     "Configuration changed": "Configuration modifiée",
     "Data gap": "Perte de données",
     "Events SP / TP: {0} / {1}; retained {2}, evicted {3}. Edge intervals may be partial.": "Événements SP / TP : {0} / {1} ; conservés {2}, évincés {3}. Les intervalles aux limites peuvent être partiels.",
-    "Frames": "Trames",
     "INCOMPLETE — peak profile has acquisition anomalies": "INCOMPLET — anomalies d’acquisition dans le profil",
     "Invalid input": "Entrée invalide",
     "L / SP": "G / SP",
@@ -2507,5 +2506,7 @@
     "Start failed": "Échec du démarrage",
     "Time since profile reset": "Temps depuis la remise à zéro du profil",
     "True Peak envelope": "Enveloppe True Peak",
-    "{0}: SP {1} / TP {2} frames ≥ {3:.1f} dBFS; longest SP {4:.3f} / TP {5:.3f} ms": "{0} : SP {1} / TP {2} trames ≥ {3:.1f} dBFS ; durée max. SP {4:.3f} / TP {5:.3f} ms"
+    "{0}: SP {1} / TP {2} frames ≥ {3:.1f} dBFS; longest SP {4:.3f} / TP {5:.3f} ms": "{0} : SP {1} / TP {2} trames ≥ {3:.1f} dBFS ; durée max. SP {4:.3f} / TP {5:.3f} ms",
+    "Relative frequency": "Fréquence relative",
+    "Acquired: {0} frames / {1:.3f} s": "Acquisition : {0} trames / {1:.3f} s"
 }

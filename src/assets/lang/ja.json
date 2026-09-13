@@ -2487,7 +2487,6 @@
     "Configuration changed": "設定変更を検出",
     "Data gap": "データ欠損",
     "Events SP / TP: {0} / {1}; retained {2}, evicted {3}. Edge intervals may be partial.": "イベント SP / TP: {0} / {1}、保持 {2}、破棄 {3}。端の区間は未完了の場合があります。",
-    "Frames": "フレーム数",
     "INCOMPLETE — peak profile has acquisition anomalies": "不完全：ピークプロファイルに取得異常あり",
     "Invalid input": "無効な入力",
     "L / SP": "左 / SP",
@@ -2507,5 +2506,7 @@
     "Start failed": "開始失敗",
     "Time since profile reset": "プロファイルリセットからの時間",
     "True Peak envelope": "True Peak包絡線",
-    "{0}: SP {1} / TP {2} frames ≥ {3:.1f} dBFS; longest SP {4:.3f} / TP {5:.3f} ms": "{0}: ≥ {3:.1f} dBFS：SP {1} / TP {2}フレーム、最長 SP {4:.3f} / TP {5:.3f} ms"
+    "{0}: SP {1} / TP {2} frames ≥ {3:.1f} dBFS; longest SP {4:.3f} / TP {5:.3f} ms": "{0}: ≥ {3:.1f} dBFS：SP {1} / TP {2}フレーム、最長 SP {4:.3f} / TP {5:.3f} ms",
+    "Relative frequency": "相対頻度",
+    "Acquired: {0} frames / {1:.3f} s": "取得量: {0}フレーム / {1:.3f} s"
 }
