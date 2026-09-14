@@ -742,12 +742,11 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         content_layout = QVBoxLayout()
         content_layout.setContentsMargins(10, 10, 10, 10)
         content_layout.setSpacing(8)
-        content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # 1. Top Panel (Horizontal combination of Digital Displays + Level Meters to optimize height!)
         top_panel = QWidget()
         self.readouts_panel = top_panel
-        top_panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        top_panel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         top_panel.setObjectName("lufsReadouts")
         top_panel.setStyleSheet(
             "QWidget#lufsReadouts { background: #10161c; border: 1px solid #35414c; border-radius: 6px; }"
@@ -913,7 +912,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
 
         top_panel_layout.addWidget(meters_group, 4)  # Stretch factor 4
 
-        content_layout.addWidget(top_panel)
+        content_layout.addWidget(top_panel, 1)
         # 2. Tabs (Statistics and Graph)
         self.tabs = QTabWidget()
 
@@ -971,7 +970,8 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         details_layout.addWidget(s_group)
 
         stats_grid.addWidget(details_panel, 1, 0, 1, 4)
-        stats_grid.setRowStretch(2, 1)
+        stats_grid.setRowStretch(0, 1)
+        stats_grid.setRowStretch(1, 1)
 
         self.tabs.addTab(stats_tab, tr("Statistics"))
 

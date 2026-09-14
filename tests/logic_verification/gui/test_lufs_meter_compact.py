@@ -70,6 +70,25 @@ def test_lufs_meter_compact_mode(qtbot):
     parent_win.deleteLater()
 
 
+def test_lufs_statistics_use_available_height(qtbot):
+    from PyQt6.QtCore import QPoint
+
+    widget = LufsMeterWidget(LufsMeter(MockAudioEngine()))
+    qtbot.addWidget(widget)
+    widget.resize(1000, 620)
+    widget.show()
+    qtbot.waitExposed(widget)
+
+    # The live meter and statistics should share a desktop-sized viewport.
+    assert widget.readouts_panel.height() >= widget.display_widget.height() * 0.4
+    assert widget.tabs.height() >= widget.display_widget.height() * 0.4
+
+    stats_tab = widget.tabs.widget(0)
+    momentary_group = widget.card_m_cur["container"].parentWidget()
+    details_bottom = momentary_group.mapTo(stats_tab, QPoint(0, momentary_group.height())).y()
+    assert stats_tab.height() - details_bottom <= 20
+
+
 def test_lufs_readouts_survive_console_and_split_round_trip(qtbot):
     from PyQt6.QtWidgets import QMainWindow
 
