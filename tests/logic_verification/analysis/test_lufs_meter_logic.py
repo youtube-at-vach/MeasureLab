@@ -29,7 +29,8 @@ class MockAudioEngine:
 def lufs_meter():
     engine = MockAudioEngine()
     meter = LufsMeter(engine)
-    return meter
+    yield meter
+    meter.stop_meter()
 
 
 def generate_sine_wave(freq, peak_dbfs, duration, sr):
@@ -116,6 +117,7 @@ def test_integrated_gating_is_invariant_to_audio_block_boundaries():
             callback(block, None, len(block), None, None)
         meter.update_integrated_lufs_if_dirty()
         results.append((np.asarray(meter._i_block_ms), meter.integrated_lufs))
+        meter.stop_meter()
 
     expected_block_count = 1 + int((0.8 - 0.4) / 0.1)
     assert len(results[0][0]) == expected_block_count
@@ -319,3 +321,162 @@ def test_true_peak_does_not_ring_at_callback_boundaries(lufs_meter, block_size):
         block = samples[start : start + block_size]
         lufs_meter.audio_engine._callback(block, None, len(block), None, None)
     assert lufs_meter.peak_hold_l == pytest.approx(-0.9151498112, abs=0.01)
+
+
+def test_profile_stop_drains_and_reset_clears(lufs_meter):
+    meter = lufs_meter
+    meter.start_meter()
+    samples = np.ones((100, 2))
+    meter.audio_engine._callback(samples, None, 100, None, None)
+    meter.stop_meter()
+    result = meter.get_peak_profile()
+    assert result.frames == 100
+    assert result.exceedances[0, 0] == 100
+    assert not meter._profile._thread.is_alive()
+    meter.reset_peaks()
+    assert meter.get_peak_profile().frames == 100
+    meter.reset_all_stats()
+    assert meter.get_peak_profile().frames == 0
+    assert not meter.get_peak_profile().flags
+
+
+def test_callback_does_not_wait_for_gui_lock(lufs_meter):
+    import threading
+
+    meter = lufs_meter
+    meter.start_meter()
+    completed = threading.Event()
+    samples = np.ones((64, 2))
+
+    def invoke():
+        meter.audio_engine._callback(samples, None, 64, None, None)
+        completed.set()
+
+    with meter._processing_lock:
+        thread = threading.Thread(target=invoke)
+        thread.start()
+        assert completed.wait(0.5), "callback blocked on the GUI/reset lock"
+    thread.join()
+    # Visible even before the next callback; reset cannot erase a newer session's loss.
+    assert "data_gap" in meter.get_peak_profile().flags
+    meter.audio_engine._callback(samples, None, 64, None, None)
+    meter.stop_meter()
+    assert not meter.measurement_valid
+    result = meter.get_peak_profile()
+    assert min(event.start for event in result.events) >= 64
+
+
+def test_live_reset_replaces_worker_session_and_rejects_old_callback(lufs_meter):
+    meter = lufs_meter
+    meter.start_meter()
+    samples = np.ones((100, 2))
+    callback = meter.audio_engine._callback
+    callback(samples, None, 100, None, None)
+    old = meter._profile
+    meter.reset_all_stats()
+    assert meter._profile is not old
+    assert not old._thread.is_alive()
+    callback(np.zeros_like(samples), None, 100, None, None)
+    meter.stop_meter()
+    assert meter.get_peak_profile().exceedances.sum() == 0
+    meter.start_meter()
+    callback(samples, None, 100, None, None)
+    meter.stop_meter()
+    assert meter.get_peak_profile().frames == 0
+
+
+@pytest.mark.parametrize("bad_value", [np.nan, np.inf, -np.inf, 1e100])
+def test_profile_invalid_input_latches_and_recovers_only_on_reset(lufs_meter, bad_value):
+    meter = lufs_meter
+    meter.start_meter()
+    callback = meter.audio_engine._callback
+    callback(np.full((100, 2), bad_value), None, 100, None, None)
+    callback(np.zeros((100, 2)), None, 100, None, None)
+    meter.stop_meter()
+    result = meter.get_peak_profile()
+    assert "invalid_input" in result.flags
+    assert np.isfinite(result.histogram).all()
+    assert result.frames == 100
+    meter.reset_all_stats()
+    assert not meter.get_peak_profile().flags
+
+
+def test_threshold_change_starts_new_profile_without_resetting_loudness(lufs_meter):
+    meter = lufs_meter
+    meter.start_meter()
+    callback = meter.audio_engine._callback
+    callback(np.ones((100, 2)), None, 100, None, None)
+    meter.set_peak_threshold(3.0)
+    callback(np.ones((100, 2)), None, 100, None, None)
+    meter.stop_meter()
+    result = meter.get_peak_profile()
+    assert result.threshold_db == 3.0
+    assert result.frames == 100
+    assert result.exceedances.sum() == 0
+    assert meter._i_sample_count == 200
+
+
+def test_failed_unregister_can_be_retried_without_leaking_worker(lufs_meter):
+    meter = lufs_meter
+    meter.start_meter()
+    old = meter._profile
+    meter.audio_engine.unregister_callback = MagicMock(side_effect=RuntimeError("device error"))
+    with pytest.raises(RuntimeError):
+        meter.stop_meter()
+    assert not meter.is_running
+    assert meter.callback_id is not None
+    assert not old._thread.is_alive()
+    with pytest.raises(RuntimeError):
+        meter.start_meter()
+    assert meter._profile is old
+    meter.audio_engine.unregister_callback.side_effect = None
+    meter.start_meter()
+    assert meter.is_running
+    assert meter._profile is not old
+
+
+def test_callback_rechecks_run_before_mutating_session(lufs_meter):
+    meter = lufs_meter
+    meter.start_meter()
+    real_lock = meter._processing_lock
+    profile = meter._profile
+    fake_lock = MagicMock()
+
+    def acquire(*args, **kwargs):
+        # Stop/reset can occur after callback entry but before it acquires the lock.
+        meter.is_running = False
+        meter._run_token = None
+        meter._profile = None
+        return real_lock.acquire(*args, **kwargs)
+
+    fake_lock.acquire.side_effect = acquire
+    fake_lock.release.side_effect = real_lock.release
+    meter._processing_lock = fake_lock
+    try:
+        meter.audio_engine._callback(np.ones((10, 2)), None, 10, None, None)
+        assert profile.position == 0
+    finally:
+        meter._processing_lock = real_lock
+        meter._profile = profile
+
+
+def test_bad_frame_metadata_does_not_escape_callback(lufs_meter):
+    lufs_meter.start_meter()
+    lufs_meter.audio_engine._callback(np.ones((10, 2)), None, None, None, None)
+    assert "processing_error" in lufs_meter.get_peak_profile().flags
+    assert not lufs_meter.measurement_valid
+
+
+def test_stop_peak_hold_includes_the_same_delayed_tail_as_profile(lufs_meter):
+    meter = lufs_meter
+    meter.set_peak_threshold(0)
+    meter.start_meter()
+    meter.audio_engine._callback(np.full((2, 2), 0.99), None, 2, None, None)
+    assert meter.peak_hold_l < 0
+    meter.stop_meter()
+    result = meter.get_peak_profile()
+    assert result.exceedances[0, 1] > 0
+    assert meter.peak_hold_l > 0
+    meter.reset_peaks()
+    meter.stop_meter()  # Lifecycle cleanup must not resurrect the cleared hold.
+    assert meter.peak_hold_l == meter._db_floor

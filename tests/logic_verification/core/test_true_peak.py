@@ -35,3 +35,8 @@ def test_low_frequency_tone_has_no_artificial_block_edge_peaks():
     samples = 0.9 * np.sin(2 * np.pi * 1000 * np.arange(8192) / 48000)
     peak = max(meter.process(samples[start : start + 64])[0] for start in range(0, len(samples), 64))
     assert 20 * np.log10(peak) == pytest.approx(20 * np.log10(0.9), abs=0.01)
+
+
+def test_integer_input_converts_before_absolute_value():
+    samples = np.array([np.iinfo(np.int64).min], dtype=np.int64)
+    assert TruePeakMeter(1).process(samples)[0] == float(2**63)

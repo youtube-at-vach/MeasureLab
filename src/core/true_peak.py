@@ -22,6 +22,21 @@ class TruePeakMeter:
 
     def process(self, data: np.ndarray) -> np.ndarray:
         samples = np.asarray(data, dtype=np.float64)
+        envelope = self.process_envelope(samples)
+        if not len(envelope):
+            return np.zeros(self.channels)
+        if samples.ndim == 1:
+            samples = samples[:, None]
+        # Include unfiltered samples still awaiting FIR delay.
+        return np.maximum(np.max(np.abs(samples), axis=0), np.max(envelope, axis=0))
+
+    def process_envelope(self, data: np.ndarray) -> np.ndarray:
+        """Maximum absolute interpolant per input frame, delayed ten frames.
+
+        Each row covers four FIR phases; callers aligning source timestamps
+        must discard the first ten rows and drain ten rows at a finite end.
+        """
+        samples = np.asarray(data, dtype=np.float64)
         if samples.ndim == 1:
             samples = samples[:, None]
         if samples.ndim != 2 or samples.shape[1] != self.channels:
@@ -30,13 +45,12 @@ class TruePeakMeter:
             self.reset()
             raise ValueError("True peak input must be finite")
         if not len(samples):
-            return np.zeros(self.channels)
-        # Include unfiltered sample peaks, including those awaiting FIR delay.
-        peaks = np.max(np.abs(samples), axis=0)
+            return np.empty((0, self.channels))
+        envelope = np.zeros_like(samples)
         for i, phase in enumerate(self.phases):
             interpolated, self.states[i] = signal.lfilter(phase, [1.0], samples, axis=0, zi=self.states[i])
-            peaks = np.maximum(peaks, np.max(np.abs(interpolated), axis=0))
-        return peaks
+            np.maximum(envelope, np.abs(interpolated), out=envelope)
+        return envelope
 
     def flush(self) -> np.ndarray:
         """Include the finite signal's trailing filter response, then reset."""

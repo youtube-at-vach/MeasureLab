@@ -47,6 +47,9 @@ def test_lufs_meter_compact_mode(qtbot):
     assert widget.is_compact_mode()
     assert widget.sidebar.isHidden()
     assert widget.tabs.isHidden()
+    assert not widget.readouts_panel.isHidden()
+    assert not widget.profile_details.isVisible()
+    assert widget.tabs.isTabVisible(0)
 
     # Wait for the singleShot timer of 50ms to fire and check if adjustSize was called
     qtbot.wait(100)
@@ -65,6 +68,25 @@ def test_lufs_meter_compact_mode(qtbot):
     assert parent_win.adjustSize.called
 
     parent_win.deleteLater()
+
+
+def test_lufs_statistics_use_available_height(qtbot):
+    from PyQt6.QtCore import QPoint
+
+    widget = LufsMeterWidget(LufsMeter(MockAudioEngine()))
+    qtbot.addWidget(widget)
+    widget.resize(1000, 620)
+    widget.show()
+    qtbot.waitExposed(widget)
+
+    # The live meter and statistics should share a desktop-sized viewport.
+    assert widget.readouts_panel.height() >= widget.display_widget.height() * 0.4
+    assert widget.tabs.height() >= widget.display_widget.height() * 0.4
+
+    stats_tab = widget.tabs.widget(0)
+    momentary_group = widget.card_m_cur["container"].parentWidget()
+    details_bottom = momentary_group.mapTo(stats_tab, QPoint(0, momentary_group.height())).y()
+    assert stats_tab.height() - details_bottom <= 20
 
 
 def test_lufs_readouts_survive_console_and_split_round_trip(qtbot):
@@ -95,9 +117,13 @@ def test_lufs_readouts_survive_console_and_split_round_trip(qtbot):
     module.short_term_lufs = -22.8
     widget.update_display()
     assert widget.disp_i["label"].isVisible()
+    assert not widget.histogram_plot.isVisible()
     assert widget.disp_i["label"].text() == "-23.2"
     assert widget.sidebar.isHidden()
     assert widget.tabs.isHidden()
+    assert not widget.readouts_panel.isHidden()
+    assert not widget.profile_details.isVisible()
+    assert widget.tabs.isTabVisible(0)
 
     dock._primary_button.click()
     assert not module.is_running
@@ -106,6 +132,8 @@ def test_lufs_readouts_survive_console_and_split_round_trip(qtbot):
     wrapper.split()
     widget.set_compact_mode(True)
     assert not widget.sidebar.isHidden()
+    assert widget.readouts_panel.isVisible()
+    assert not widget.tabs.isVisible()
     assert widget.disp_s["label"].text() == "-22.8"
     wrapper.reattach_all()
     widget.set_compact_mode(False)
