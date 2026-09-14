@@ -122,7 +122,6 @@ By playing a test signal (such as pink noise) and picking up the speaker's outpu
 ## Automatic Peak Markers
 
 Open **Peaks: Off** at the upper-right of the plot to configure markers.
-The button remains available in compact mode and in the split display window.
 Existing analysis controls and Peak Hold work independently.
 
 * **Off** is the default. No peak detection runs. Marker graphics are allocated
