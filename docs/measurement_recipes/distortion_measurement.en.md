@@ -33,7 +33,7 @@ First, perform a "loopback measurement" to measure the distortion of the audio i
     * **Signal**: `Sine Wave`
     * **Frequency**: `1000 Hz` (standard)
     * **Amplitude**: around `-6 dBFS`
-        * *Distortion changes depending on amplitude. Distortion tends to increase near the maximum level.*
+        * Distortion changes depending on amplitude. Distortion tends to increase near the maximum level.
     * **Bin Center**: It is recommended to check this. It automatically snaps to the "FFT bin center frequency" that does not cause spectral leakage with the current FFT settings, enabling more accurate measurements.
 2. Press the **Start Measurement** button.
 
