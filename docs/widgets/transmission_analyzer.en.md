@@ -10,10 +10,6 @@
 
 It supports both digital and analog signal paths—such as USB cables, Bluetooth connections, or physical analog circuits—measuring sampling synchronization delay, clock jitter, and signal integrity in real-time.
 
-## Common Features
-
-This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
-
 ## Key Features & Measurement Modes
 
 The Transmission Analyzer offers two distinct measurement modes tailored to different testing objectives.

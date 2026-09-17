@@ -15,10 +15,6 @@
 * **Generator**: MeasureLab から LTC を出力する
 * **Compare**: 左右チャンネルの LTC のズレを比べる
 
-## 共通機能
-
-このウィジェットは Detachable Wrapper の共通機能に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
-
 ## タイムコード（LTC）とは
 
 タイムコード（LTC）の信号には、 `時:分:秒:フレーム` という正確な時間情報が含まれています。これを複数のカメラ等に記録しておくことで、後の編集作業でタイムラインを全自動で同期できます。

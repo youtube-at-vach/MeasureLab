@@ -8,10 +8,6 @@ This is a unique meter that simulates and visualizes how the human "hearing (bra
 More intuitively than a standard phase meter (Lissajous waveform), it displays "which frequency of sound is heard from which direction (left or right)" in a heat map like a thermogram.
 It is ideal for checking the sense of localization and spread of stereo sound images, and for checking binaural recordings.
 
-## Common Features
-
-This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
-
 ## How to Read the Screen
 
 ### Main Graph (Neural Map)

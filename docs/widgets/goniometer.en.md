@@ -8,10 +8,6 @@ The Goniometer is a live meter that plots the left and right stereo inputs on an
 
 Correlation is not a single score for stereo quality. Sustained negative correlation can indicate cancellation when summed to mono, but the intended sound and listening result still matter.
 
-## Common Features
-
-This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
-
 ## Reading the XY Scope
 
 ### Mid/Side (M/S)

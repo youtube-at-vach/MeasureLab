@@ -6,10 +6,6 @@
 
 LUFS Meterは、放送や配信サービス（YouTube, Spotify, Netflixなど）で標準的に使用される「ラウドネス（人が感じる音の大きさ）」を測定するメーターです。国際規格 ITU-R BS.1770-4 に準拠したアルゴリズムを使用しています。同時に通常のピークメーターやRMSメーターも表示します。
 
-## 共通機能
-
-このウィジェットは Detachable Wrapper の共通機能に対応しています。詳細は [Detachable Wrapper](detachable_wrapper.md) の説明書を参照してください。
-
 ## 主な指標の意味
 
 ### LUFS

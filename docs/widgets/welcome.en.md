@@ -6,10 +6,6 @@ This is the dashboard screen displayed first when MeasureLab is started. It list
 
 If you are using this tool for the first time, grasp the overall picture of each widget (measurement tool) from here and select the target tool from the sidebar on the left.
 
-## Common Features
-
-This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
-
 ## Operation
 
 * **Selection of Tools**: You can switch to each measurement widget by clicking the icon or name in the sidebar on the left.
