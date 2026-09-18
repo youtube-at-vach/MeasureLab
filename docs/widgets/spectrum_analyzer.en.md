@@ -8,10 +8,6 @@ This tool analyzes and displays the frequency components of audio signals in rea
 You can visually confirm the magnitude of each frequency band for sounds input via microphone or line-in.  
 In addition to general FFT (Fast Fourier Transformation) analysis, it also features advanced measurement functions such as PSD (Power Spectral Density) display useful for noise analysis, and weighting (A-weighting/C-weighting) that takes hearing sensitivity into account.
 
-## Common Features
-
-This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
-
 ## Operation
 
 ### Starting and Stopping Measurement

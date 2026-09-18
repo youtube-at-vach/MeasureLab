@@ -15,10 +15,6 @@ It has the same functions as instruments generally called "LCR meters" and can m
 * **Quality Factor ($Q$)**
 * **Dissipation Factor ($D$)**
 
-## Common Features
-
-This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
-
 ## Basic Knowledge for Beginners
 
 ### What is Impedance?

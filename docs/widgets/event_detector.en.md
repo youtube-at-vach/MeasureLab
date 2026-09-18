@@ -6,10 +6,6 @@
 
 Event Detector continuously monitors every input sample and records the count, amplitude, duration, interval, and rate of threshold events. It is intended for rare phenomena such as popcorn noise, random telegraph noise (RTN) in JFETs or operational amplifiers, and intermittent contact clicks.
 
-## Common Features
-
-This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
-
 ## Relationship to Other Time-Domain Widgets
 
 | Widget | Primary purpose |

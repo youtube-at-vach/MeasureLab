@@ -15,10 +15,6 @@ Key Features:
 * **Flexible Routing**: Supports arbitrary selection of input/output channels (L/R/Stereo).
 * **Pre-distortion**: Supports square-root processing to reduce distortion caused by demodulation.
 
-## Common Features
-
-This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
-
 ## Basic Operation
 
 ### Starting and Stopping Modulation

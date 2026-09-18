@@ -15,10 +15,6 @@ Since it can monitor timecode on independent left and right channels (L / R), it
 * **Generator**: Output LTC from MeasureLab
 * **Compare**: Check how far the left and right channels are apart
 
-## Common Features
-
-This widget supports common features of the Detachable Wrapper. Please refer to the [Detachable Wrapper](detachable_wrapper.en.md) documentation for details.
-
 ## What is Timecode (LTC)?
 
 A timecode (LTC) signal contains precise time information (`hour:minute:second:frame`). Recording this audio to multiple cameras allows editing software to later use it to automatically synchronize their timelines.
