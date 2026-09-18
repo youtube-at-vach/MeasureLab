@@ -15,12 +15,9 @@ Arrange the necessary instruments (widgets) on the screen to perform measurement
 
 ## How to Read This Manual
 
-* For first-time users:
-  → Read the [Quickstart](quickstart.en.md) first.
-* To use specific features:
-  → Refer to each [**Widget Guide**](widget_guide.en.md).
-* To see actual measurement examples:
-  → Refer to the [**Measurement Recipes**](measurement_recipes/index.en.md).
+* [Quickstart](quickstart.en.md): For first-time users
+* [**Widget Guide**](widget_guide.en.md): To use specific features
+* [**Measurement Recipes**](measurement_recipes/index.en.md): To see actual measurement examples
 
 ---
 
