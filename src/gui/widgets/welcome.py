@@ -45,8 +45,8 @@ class WelcomeWidget(QWidget):
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(28, 24, 28, 20)
-        layout.setSpacing(20)
+        layout.setContentsMargins(28, 20, 28, 16)
+        layout.setSpacing(16)
         layout.addStretch(1)
         header = QHBoxLayout()
         header.setSpacing(24)
