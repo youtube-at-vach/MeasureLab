@@ -82,11 +82,16 @@ class AnalysisWorker(QThread):
             # The filters (Loudness K-weighting) and psychoacoustic approximations
             # are tuned for 48kHz.
             analysis_sr = 48000
-            if self.target_sr == analysis_sr:
+            # Always derive analysis from the original audio. Going through the
+            # playback rate can discard frequency content and make measurements
+            # depend on the selected output device.
+            if samplerate == analysis_sr:
+                data_analysis = data
+            elif self.target_sr == analysis_sr:
                 data_analysis = data_playback
             else:
                 self.progress_update.emit(10, tr("Resampling to {}Hz (Analysis)...").format(analysis_sr))
-                data_analysis = self._resample(data_playback, self.target_sr, analysis_sr)
+                data_analysis = self._resample(data, samplerate, analysis_sr)
 
             if self._is_cancelled:
                 return
@@ -816,10 +821,22 @@ class SoundQualityAnalyzerWidget(QWidget):
     def load_file(self):
         path, _ = QFileDialog.getOpenFileName(self, tr("Open Audio File"), "", "Audio Files (*.wav *.flac *.aiff)")
         if path:
+            self.clear_results()
             self.current_file = path
             self.file_label.setText(path)
             self.analyze_btn.setEnabled(True)
             self.progress_bar.setVisible(False)
+
+    def clear_results(self):
+        """Discard results and playback together when their input is invalidated."""
+        self.stop_playback()
+        self.analysis_results = None
+        self.audio_data = None
+        self.play_btn.setEnabled(False)
+        self.stop_btn.setEnabled(False)
+        self.export_btn.setEnabled(False)
+        self._set_summary_placeholder()
+        self.clear_plots()
 
     def clear_plots(self):
         # Clear all separate layouts
@@ -856,11 +873,7 @@ class SoundQualityAnalyzerWidget(QWidget):
         self.progress_bar.setValue(0)
         self.progress_bar.setVisible(True)
 
-        self.clear_plots()
-
-        # Stop playback if running
-        if hasattr(self, "stop_playback"):
-            self.stop_playback()
+        self.clear_results()
 
         if self.worker is not None and self.worker.isRunning():
             self.worker.cancel()
@@ -899,6 +912,7 @@ class SoundQualityAnalyzerWidget(QWidget):
         self.plot_series(results)
 
     def on_error(self, msg):
+        self.clear_results()
         self.progress_bar.setVisible(False)
         self.analyze_btn.setEnabled(True)
         self.load_btn.setEnabled(True)
