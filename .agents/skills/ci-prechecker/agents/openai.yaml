@@ -1,4 +1,4 @@
 interface:
-  display_name: "CI Pre-checker"
-  short_description: "PR前のCI相当チェックを実行します"
-  default_prompt: "$ci-prechecker を使って、PR送信前のCI相当チェックを実行してください。"
+  display_name: "PR 前の検証"
+  short_description: "Ruff・型・翻訳・文書・テスト・UI サイズを検証し、失敗原因を確認します"
+  default_prompt: "$ci-prechecker を使って、PR 前の CI 相当チェックを実行し、必要な修正と結果の報告をしてください。"

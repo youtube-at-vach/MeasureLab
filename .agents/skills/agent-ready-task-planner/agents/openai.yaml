@@ -1,4 +1,4 @@
 interface:
-  display_name: "Ready Task Planner"
-  short_description: "Plan Ready Issues and update Project status"
-  default_prompt: "Use $agent-ready-task-planner to plan the current Ready Project task from the codebase."
+  display_name: "Ready Issue の計画"
+  short_description: "Ready Issue の実装計画を記録し、Working または Blocked に進めます"
+  default_prompt: "$agent-ready-task-planner を使って、Ready Issue を1件調査し、実装計画と Project の状態を更新してください。"

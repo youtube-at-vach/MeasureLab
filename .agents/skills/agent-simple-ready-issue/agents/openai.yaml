@@ -1,4 +1,4 @@
 interface:
-  display_name: "Simple Ready Issue"
-  short_description: "Turn small fixes into Ready Project Issues"
-  default_prompt: "Use $agent-simple-ready-issue to turn this small fix into a Ready Project Issue."
+  display_name: "小さな修正を Ready に登録"
+  short_description: "小さな不具合や表示の改善を Issue に整理し、Ready に登録します"
+  default_prompt: "$agent-simple-ready-issue を使って、この小さな修正を Issue に整理し、Ready に登録してください。"

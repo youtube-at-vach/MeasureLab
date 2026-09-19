@@ -1,60 +1,31 @@
 ---
 name: agent-working-task-implement
-description: MeasureLab の GitHub Project で Working の既存 Issue を1件実装し、検証済みの Ready for review PR を作成して Project Status を Review に進めるときに使用します。新規仕様の策定や未承認の製品判断は行いません。
+description: MeasureLab の Working Issue を正本の計画に沿って実装・検証し、レビュー可能な PR を作成して Project を Review に進める。
 ---
 
-# エージェント：Working タスク実装
+# Working Issue を実装
 
-Working 状態のIssueを正本の実装計画とコードベースに基づいて実装し、アプリケーション変更と運用スキル変更を混在させずに完了させる。ユーザーがこのフローを依頼した場合に限り、Issue、Project、ブランチ、PRを更新する。
+## 着手する
 
-## 1. 対象と前提を確認する
+1. [GitHub 共通手順](../../workflows/github_project.md)で `Working` の Issue を1件選び、本文・コメントから有効な `実装計画（正本）` を特定する。
+2. 計画が参照する設計資料、対象コード・テスト・日英ドキュメントを読み、現在の実装との差を確認する。
+3. `codex/<短い目的>` ブランチで作業する。既存変更と衝突する場合は独立した worktree を使うなど、ユーザーの変更を保護する。
 
-リポジトリルートで次を確認する。
+正本がない、計画の前提が崩れている、または製品判断が未確定なら、確認した事実と必要な決定を Issue に記録して実装を止める。ファイル移動などの通常の実装差は計画の目的に沿って解決し、変更理由を残す。
 
-- `git status --short --branch`、`AGENTS.md`、`gh auth status`
-- `gh repo view --json nameWithOwner,owner,url`
-- `gh project list --owner <owner> --format json`
-- `gh project item-list <number> --owner <owner> --limit 100 --format json`
+## 実装・検証する
 
-`Agents: MeasureLab` の Project を使用し、Status が `Working` の既存 Issue を一覧化する。ユーザーが対象を指定しなければ、Working が1件の場合だけそれを選ぶ。複数ある場合は Priority、Issue の計画コメント、Measurement Integrity への寄与から一意に選べない限り推測せず、対象指定を求める。
+Issue の範囲と既存契約を守る。測定系では callback の非ブロック性、単位・校正・有限値・品質情報、異常時と停止／リセット後の挙動を対象に応じて扱う。設計指針の例を理由に、不要な監視や安全機構を追加しない。
 
-対象Issueの本文・コメント・ラベル・担当者・Project item IDを読み、`## 実装計画（正本）` コメントがあることを確認する。計画がない、古い、または仕様判断が未確定なら実装せず、必要な決定事項をIssueコメントへ記録して停止する。
+変更した挙動と回帰リスクを検証するテストを追加・更新する。GUI の翻訳とレイアウトは [Agent Guide](../../../AGENTS.md)に従う。PR 前に [CI Pre-checker](../ci-prechecker/SKILL.md)を実行し、失敗や未実施を成功扱いしない。
 
-## 2. 設計と実装を照合する
+## Review に進める
 
-計画が参照する設計資料と対象コードを実際のパスで解決して読む。MeasureLab の主要資料は次のとおり。
+1. 差分と `git diff --check` を確認し、対象変更だけをコミット・push する。
+2. 同じ変更の既存 PR があれば更新し、なければ PR を作成する。本文に問題と変更後の挙動、関連 Issue、検証結果・制限を記載する。
+3. PR が Open かつ `isDraft:false` であることを確認する。ユーザーが Draft を指定した場合はその指定を優先し、Ready for review として完了報告しない。
+4. レビュー可能な PR と必須検証の成功を確認してから、対象 Issue の Project Status を `Working` → `Review` に変更する。PR 側の別項目を編集しない。
 
-- `guide/MEASUREMENT_INSTRUMENT_DESIGN_GUIDELINES.md`
-- `guide/PROPOSED_FEATURES.md`
-- `guide/CURRENT_DIRECTION.md`
-- 対象モジュール、既存テスト、日英ドキュメント、必要な共通契約
+## 完了
 
-計画とコードの差分を確認し、状態所有者・状態遷移、データ契約、品質フラグ、callback／worker／GUI境界、異常時・停止後・リセット後の挙動を維持する。測定系の変更では有限値、安全なクリッピング、境界付き履歴、異常のラッチとリセット、callback 非ブロックを実装・テストへ反映する。GUI文字列は `tr()` で管理し、翻訳キーとUIサイズ上限を確認する。
-
-## 3. 実装と検証
-
-`codex/<短い目的>` ブランチで実装する。既存のユーザー変更を上書きせず、対象Issueの範囲外へ広げない。テストは正常系だけでなく、入力不正、非有限値、I/Oエラー、データ欠落、設定変更、開始失敗、停止後保持、明示的リセットを対象契約に応じて追加する。
-
-変更に応じて、少なくとも次を実行する。
-
-- 対象Pytest、必要なら `QT_QPA_PLATFORM=offscreen ./.venv/bin/pytest -q`
-- `./.venv/bin/ruff check .`
-- `./.venv/bin/ruff format --check .`
-- `./.venv/bin/mypy src main_gui.py`
-- `./.venv/bin/python scripts/check_trn_keys.py`
-- `npx markdownlint-cli2 "**/*.md" "#node_modules"`
-- GUI変更時は `./.venv/bin/python scripts/check_ui_size_limits.py`
-
-失敗は原因を修正して再検証する。検証不能なハードウェア依存は、実行した範囲と未実行理由をPRへ明記する。
-
-## 4. PRとProjectをReviewへ進める
-
-差分、`git diff --check`、ブランチ、Issue番号を確認してコミット・pushする。`gh pr create` には `--draft` を付けず、PR本文にSummary、Validation、関連Issueを記録する。作成後に `isDraft:false` とOpen状態を確認する。
-
-PR作成後、`gh project item-list` でIssueのProject itemを再取得し、`gh project field-list` でStatusフィールドと `Review` の選択肢IDを毎回取得する。`gh project item-edit` で対象Issueを `Working` から `Review` に更新する。PRの自動Project項目が別に作成されても、Issueを指す既存項目を誤って編集しない。
-
-最後に `gh issue view`、`gh pr view`、Project item、`git status --short --branch` を再確認し、対象Issue・PR URL、検証結果、最終Status、変更ファイルを報告する。
-
-## 5. 運用スキル自体を同時に依頼された場合
-
-アプリ実装PRとスキル変更PRは別ブランチ・別PRにする。スキル追加には `skill-creator` の手順を使い、必要最小限の `SKILL.md` と `agents/openai.yaml` を作成する。`quick_validate.py`、Markdown lint、`git diff --check` を実行し、PRはReady for reviewで作成する。スキルPRのProject Statusを変更する場合も、対象項目を再取得してから行う。
+Issue・PR URL、検証結果と未確認事項、Project の最終 Status を報告する。PR 作成後に状態更新が失敗した場合は、その PR を維持して状態更新だけを再開する。

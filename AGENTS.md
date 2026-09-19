@@ -1,81 +1,72 @@
 ---
-description: MeasureLabで作業するエージェントの共通ルールと参照先
+description: MeasureLab の共通ルールと作業別スキルの入口
 ---
 
 # Agent Guide
 
-MeasureLabの作業では、まずこのガイドで共通ルールを確認し、必要な手順だけを参照してください。
-コマンドはリポジトリのルートで実行します。
+コマンドはリポジトリのルートで実行する。まず `git status --short --branch` と対象コードを確認し、ユーザーの変更や無関係な変更を上書きしない。
 
-## 作業の進め方と参照先
+## 作業の選び方
 
-1. Gitの状態と対象コードを確認し、ユーザーの変更や無関係な変更を上書きしない。
-2. 変更に関係する設計資料と、作業に対応するスキルを読む。
-3. 実装・文書を更新し、変更に応じた検証を実行する。
-4. PR前のチェックを行い、変更内容・検証結果・未確認事項を報告する。
+依頼に対応するスキルだけを読む。通常のコード修正に Issue 作成・Project 更新を強制しない。複数段階を依頼された場合は続けて進め、依頼にない次の段階へは自動的に進めない。
 
-| 確認したいこと | 参照先 |
+| 依頼 | スキル | 完了時の成果 |
+| --- | --- | --- |
+| 提案から次の候補を選ぶ | [agent-proposal-backlog-issue](.agents/skills/agent-proposal-backlog-issue/SKILL.md) | 候補、登録依頼があれば Backlog Issue |
+| 小さな修正を Issue にする | [agent-simple-ready-issue](.agents/skills/agent-simple-ready-issue/SKILL.md) | Ready Issue |
+| Ready Issue の実装計画を作る | [agent-ready-task-planner](.agents/skills/agent-ready-task-planner/SKILL.md) | 計画コメントと Working、または理由と Blocked |
+| Working Issue を実装する | [agent-working-task-implement](.agents/skills/agent-working-task-implement/SKILL.md) | 検証済み PR と Review |
+| 翻訳を調査・修正する | [multilingual-translator](.agents/skills/multilingual-translator/SKILL.md) | 検査結果、必要な翻訳修正 |
+| リリースを準備する | [release-manager](.agents/skills/release-manager/SKILL.md) | バージョン・文書の更新と準備 PR |
+| PR 前の検証を行う | [ci-prechecker](.agents/skills/ci-prechecker/SKILL.md) | 検証結果と必要な修正 |
+
+## 必要な資料
+
+全資料の一括読み込みを避け、対象に関係する節を読む。既読内容は変更や不足がなければ再取得しない。
+
+| 判断・操作 | 参照先 |
 | --- | --- |
-| 環境構築、起動、テスト、UIサイズ検証 | [Tool Usage Guide](.agents/workflows/tool_usage.md) |
-| PR前の検証順序 | [CI Pre-checker](.agents/skills/ci-prechecker/SKILL.md) |
-| 製品の方向性 | [Current Direction](guide/CURRENT_DIRECTION.md) |
-| 計測器としての設計 | [設計ガイドライン](guide/MEASUREMENT_INSTRUMENT_DESIGN_GUIDELINES.md) |
-| UIの設計 | [UI/UX原則](guide/UIUX-Cognitive-Principles.md) |
-| 一般的な開発・貢献方法 | [開発ガイド](docs/development.en.md)、[Contributing](CONTRIBUTING.md) |
+| 環境、起動、検証コマンド | [Tool Usage Guide](.agents/workflows/tool_usage.md) |
+| Issue・Project の確認と更新 | [GitHub 共通手順](.agents/workflows/github_project.md) |
+| 製品の方向性 | [Current Direction](guide/CURRENT_DIRECTION.md)の最新部分 |
+| 測定・GUI の設計 | [設計ガイドライン](guide/MEASUREMENT_INSTRUMENT_DESIGN_GUIDELINES.md)の判断優先順位・実装要件の境界と対象の節 |
+| UI の認知負荷と操作性 | [UI/UX 原則](guide/UIUX-Cognitive-Principles.md) |
+| 開発環境・貢献方法の詳細 | [開発ガイド](docs/development.en.md)、[Contributing](CONTRIBUTING.md) |
 
-## 作業別スキル
+## 実装と検証
 
-依頼された作業に対応するスキルを参照してください。各スキルの対象範囲と完了条件に従います。
-
-| 作業 | スキル |
-| --- | --- |
-| 提案をIssue化してBacklogに登録 | [agent-proposal-backlog-issue](.agents/skills/agent-proposal-backlog-issue/SKILL.md) |
-| 小規模な改善をIssue化してReadyに登録 | [agent-simple-ready-issue](.agents/skills/agent-simple-ready-issue/SKILL.md) |
-| Ready Issueの実装計画を作成 | [agent-ready-task-planner](.agents/skills/agent-ready-task-planner/SKILL.md) |
-| Working Issueを実装してPRを作成 | [agent-working-task-implement](.agents/skills/agent-working-task-implement/SKILL.md) |
-| 翻訳漏れ・キー不整合を修正 | [multilingual-translator](.agents/skills/multilingual-translator/SKILL.md) |
-| リリースを準備 | [release-manager](.agents/skills/release-manager/SKILL.md) |
-
-## 開発時の共通ルール
-
-* Pythonは3.12以降。Python・Pytest・Ruff・Mypyは `.venv/bin/` の実行ファイルを使用する。
-* GUI表示文字列は `tr()` で囲む。翻訳は `src/assets/lang/*.json` にあり、`en.json` を基本とする。
-* 作業終了時は毎回 `./.venv/bin/ruff check .` と `./.venv/bin/ruff format --check .` を実行する。
-* フォーマット確認が失敗したら、今回変更したファイルが原因か確認し、必要なファイルだけを整形する。全体フォーマットは専用PRに分ける。
-* Markdownは見出し・コードブロック前後に空行を置き、行末の空白を除く。リストマーカーと番号順を統一し、裸のURLは `<https://example.com>` のように囲む。変更後はMarkdown lintを実行する。
+* Python は3.12以降。Python・Pytest・Ruff・Mypy は `.venv/bin/` の実行ファイルを使う。
+* GUI 表示文字列は `tr()` で管理する。翻訳の基準は `src/assets/lang/en.json`、各言語は同じディレクトリの JSON。
+* 検証は変更した挙動と回帰リスクに合わせる。作業終了時は毎回 `./.venv/bin/ruff check .` と `./.venv/bin/ruff format --check .` を実行する。
+* 自動修正・整形は必要なファイルだけに限定する。全体フォーマットは専用 PR に分ける。
+* Markdown は見出し・コードブロック前後に空行を置き、行末空白を除く。リストマーカーと番号順を統一し、裸の URL は山括弧で囲む。変更後は Markdown lint を実行する。
+* 変更点、検証結果、未確認事項を報告する。失敗・未実施を成功扱いしない。
 
 ### UIサイズの上限
 
-小さい画面でもコントロールがはみ出さないよう、`minimumSizeHint` を次の上限内に収めます。
+Qt の各プラットフォームの既定フォントで、`minimumSizeHint` を次の上限内に収める。幅には Linux・macOS のフォント差と長い翻訳に備えた約80pxのバッファを含む。
 
 | 対象 | 幅 × 高さ |
 | --- | --- |
 | MainWindow | 1400 × 740 px |
 | 各モジュールのコンテンツWidget | 1180 × 690 px |
 
-検証には各プラットフォームのQt既定フォントを使います。幅の上限にはLinuxとmacOSの
-フォント差・長い翻訳を考慮した約80pxのバッファを含めています。
-
-レイアウト・翻訳の変更時、新規モジュールのリリース前、CI相当の最終確認では、
-[UIサイズ検証](.agents/workflows/tool_usage.md#uiサイズ検証)を全言語で実行してください。
-上限を超えた場合は、`QScrollArea`、タブ、折りたたみ可能なグループへの整理や、
-最小サイズ・サイズポリシーの見直しで対応します。
-
-## コードを探すときの入口
-
-| ファイル | 役割 |
-| --- | --- |
-| `main_gui.py` | 言語設定の読み込み、スプラッシュ中の事前ロード、GUI起動 |
-| `src/gui/main_window.py` | サイドバー、モジュール切替・遅延ロード |
-| `src/core/audio_engine.py` | `sounddevice` を使うAudio I/O |
-| `src/core/config_manager.py` | `config.json` の管理 |
-| `src/core/localization.py` | `LocalizationManager` と `tr()` |
+レイアウト・翻訳の変更時、新規モジュールのリリース前、CI 相当の最終確認では、[全言語 UI サイズ検証](.agents/workflows/tool_usage.md#uiサイズ検証)を実行する。超過時はスクロール、タブ、折りたたみ、最小サイズ・サイズポリシーの見直しで対応する。
 
 ## Pull Request
 
-* PRはReady for review（`draft=false`）で作成する。ユーザーが明示的に指定した場合だけDraftにする。
-* `gh pr create` に通常は `--draft` を付けず、作成後にDraftではないことを確認する。
-* 検証が失敗した場合は原因を確認する。未実施・失敗した検証を成功として報告しない。
+* ブランチ名は指定がなければ `codex/<目的>` とする。
+* PR は Ready for review で作成し、作成後に `isDraft:false` を確認する。ユーザーが明示した場合だけ Draft にする。
+* PR 前は [CI Pre-checker](.agents/skills/ci-prechecker/SKILL.md)を実行する。検証に失敗したら原因を調べ、残る問題を明記する。
 
-このガイドと参照先は、コード・設定で確認できた事実に基づいて更新してください。
-共通ルールはこのファイル、実行コマンドはTool Usage Guide、作業固有の手順は各スキルに記載します。
+## コードの入口
+
+| ファイル | 役割 |
+| --- | --- |
+| `main_gui.py` | 言語設定、スプラッシュ中の事前ロード、GUI 起動 |
+| `src/gui/main_window.py` | サイドバー、モジュール切替・遅延ロード |
+| `src/core/audio_engine.py` | `sounddevice` による Audio I/O |
+| `src/core/config_manager.py` | `config.json` の管理 |
+| `src/core/localization.py` | `LocalizationManager` と `tr()` |
+
+共通ルールはこのファイル、コマンドは Tool Usage Guide、GitHub 操作は共通手順、作業固有の判断は各スキルで管理する。更新はコード・設定で確認できた事実に基づく。

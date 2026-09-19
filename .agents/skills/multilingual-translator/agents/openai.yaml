@@ -1,4 +1,4 @@
 interface:
-  display_name: "Multilingual Translator"
-  short_description: "翻訳漏れを検出・修正します"
-  default_prompt: "$multilingual-translator を使って、翻訳キーの整合性を確認し、翻訳漏れを修正してください。"
+  display_name: "翻訳の調査と修正"
+  short_description: "全言語の翻訳漏れとキー不整合を修正し、翻訳と UI サイズを検証します"
+  default_prompt: "$multilingual-translator を使って、翻訳漏れとキー不整合を修正し、全言語の検証をしてください。"
