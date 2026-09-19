@@ -60,14 +60,12 @@ class TestSoundQualityAnalyzerPlaybackToggle(unittest.TestCase):
         # Mock dependencies
         self.mock_sd = MagicMock()
         self.mock_sf = MagicMock()
-        self.mock_pg = MagicMock()
 
         self.modules_patcher = patch.dict(
             sys.modules,
             {
                 "sounddevice": self.mock_sd,
                 "soundfile": self.mock_sf,
-                "pyqtgraph": self.mock_pg,
             },
         )
         self.modules_patcher.start()
@@ -214,9 +212,9 @@ class TestSoundQualityAnalyzerResultIntegrity(unittest.TestCase):
         self.assertEqual(widget.playback_position, 0)
         for button in (widget.play_btn, widget.stop_btn, widget.export_btn):
             self.assertFalse(button.isEnabled())
-        self.assertEqual(widget.summary_table.item(0, 1).text(), "-")
+        self.assertEqual(widget.metric_cards[0].values[0].text(), "—")
         self.assertEqual(widget.cursors, [])
-        self.assertIsNone(widget.p1)
+        self.assertEqual(widget.plot_stack.currentIndex(), 0)
         widget.toggle_playback()
         self.assertFalse(widget.is_playing)
         with patch("src.gui.widgets.sound_quality_analyzer.QFileDialog.getSaveFileName") as save:
@@ -269,4 +267,102 @@ class TestSoundQualityAnalyzerResultIntegrity(unittest.TestCase):
         self.assertTrue(widget.play_btn.isEnabled())
         self.assertTrue(widget.stop_btn.isEnabled())
         self.assertTrue(widget.export_btn.isEnabled())
-        self.assertEqual(widget.summary_table.item(0, 1).text(), "-20.0")
+        self.assertEqual(widget.metric_cards[0].values[0].text(), "-20.0")
+
+    def test_cancel_ignores_queued_results_and_recovers_after_worker_finishes(self):
+        widget, _, results = self._widget_with_results()
+        with patch("src.gui.widgets.sound_quality_analyzer.AnalysisWorker") as worker_type:
+            worker_type.return_value.isRunning.return_value = False
+            widget.start_analysis()
+        widget.cancel_analysis()
+        widget.worker.cancel.assert_called_once()
+        self.assertFalse(widget.load_btn.isEnabled())
+        widget.on_results(results)
+        self._assert_results_cleared(widget)
+        widget.on_progress(100, "Late progress")
+        self.assertEqual(widget.progress_bar.value(), 0)
+        widget.on_analysis_finished()
+        self.assertTrue(widget.load_btn.isEnabled())
+        self.assertTrue(widget.analyze_btn.isEnabled())
+        self.assertFalse(widget._analyzing)
+
+    def test_failed_playback_registration_leaves_transport_stopped(self):
+        widget, engine, _ = self._widget_with_results()
+        engine.register_callback.side_effect = RuntimeError("Device unavailable")
+        widget.toggle_playback()
+        self.assertFalse(widget.is_playing)
+        self.assertIsNone(widget.callback_id)
+        self.assertFalse(widget.playback_timer.isActive())
+        self.assertEqual(widget.play_btn.text(), "▶")
+        self.assertIn("Device unavailable", widget.status_label.text())
+        self.assertTrue(widget.export_btn.isEnabled())
+
+    def test_seek_end_retains_position_and_replay_restarts(self):
+        widget, engine, _ = self._widget_with_results()
+        widget.seek_slider.setValue(5000)
+        self.assertEqual(widget.playback_position, 24000)
+        widget.seek_slider.setValue(10000)
+        self.assertEqual(widget.playback_position, 48000)
+        widget.toggle_playback()
+        self.assertEqual(widget.playback_position, 0)
+        self.assertTrue(widget.is_playing)
+        widget.playback_position = 48000
+        widget.update_playback_cursor()
+        self.assertFalse(widget.is_playing)
+        self.assertEqual(widget.playback_position, 48000)
+        self.assertEqual(widget.seek_slider.value(), 10000)
+        engine.unregister_callback.assert_called_once()
+        widget.stop_playback()
+        self.assertEqual(widget.playback_position, 0)
+        self.assertEqual(widget.seek_slider.value(), 0)
+
+    def test_real_plot_metric_switch_preserves_time_range_and_channel_identity(self):
+        from src.gui.widgets.sound_quality_analyzer import SoundQualityAnalyzerWidget
+
+        widget, _, results = self._widget_with_results()
+        for metric in widget.metrics:
+            results["channels"][0][metric.series + "_series"] = np.array([0.1, 0.2, 0.3])
+            results["channels"][0][metric.series + "_step"] = 0.1
+        SoundQualityAnalyzerWidget.plot_series(widget, results)
+        widget.plot.setXRange(0.1, 0.25, padding=0)
+        widget.seek_playback(4000)
+        for index, metric in enumerate(widget.metrics):
+            widget.metric_cards[index].click()
+            self.assertEqual(widget.selected_metric, index)
+            self.assertEqual(widget.plot_title.text(), metric.title)
+            self.assertEqual(widget.method_label.text(), metric.method)
+            np.testing.assert_allclose(widget.plot.viewRange()[0], [0.1, 0.25])
+            self.assertEqual(len(widget.plot.listDataItems()), 1)
+            self.assertAlmostEqual(widget.cursors[0].value(), 0.4)
+            np.testing.assert_allclose(widget.plot.listDataItems()[0].getData()[0], [0, 0.1, 0.2])
+        widget.clear_results()
+        self.assertEqual(widget.plot.listDataItems(), [])
+        self.assertEqual(widget.plot_stack.currentIndex(), 0)
+
+    def test_nonfinite_summary_is_unavailable_and_mono_has_no_right_readout(self):
+        widget, _, results = self._widget_with_results()
+        results["channels"][0]["mean_roughness"] = np.nan
+        widget.display_metrics(results)
+        self.assertEqual(widget.metric_cards[2].values[0].text(), "—")
+        for card in widget.metric_cards:
+            self.assertEqual(card.values[1].text(), "")
+
+    def test_csv_keeps_all_six_metrics(self):
+        import csv
+        import tempfile
+        from pathlib import Path
+
+        widget, _, _ = self._widget_with_results()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "metrics.csv"
+            with (
+                patch(
+                    "src.gui.widgets.sound_quality_analyzer.QFileDialog.getSaveFileName", return_value=(str(path), "")
+                ),
+                patch("src.gui.widgets.sound_quality_analyzer.QMessageBox.information"),
+            ):
+                widget.export_csv()
+            with path.open(newline="") as file:
+                rows = list(csv.reader(file))
+        self.assertEqual(len(rows[0]), 7)
+        self.assertEqual(rows[1], ["Mono", "-20.0", "1.00", "0.10", "0.80", "0.20", "0.50"])

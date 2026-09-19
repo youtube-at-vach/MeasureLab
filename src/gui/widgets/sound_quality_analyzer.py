@@ -1,24 +1,27 @@
 import functools
 import logging
+from dataclasses import dataclass
+from pathlib import Path
 import numpy as np
 import pyqtgraph as pg
 import scipy.signal as signal
 import soundfile as sf
-from PyQt6.QtCore import QThread, QTimer, pyqtSignal
+from PyQt6.QtCore import QSize, QEvent, QThread, QTimer, pyqtSignal
+from PyQt6.QtGui import QPalette
 from PyQt6.QtWidgets import (
+    QButtonGroup,
     QCheckBox,
     QFileDialog,
-    QGroupBox,
+    QFrame,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QMessageBox,
     QProgressBar,
     QPushButton,
-    QSplitter,
-    QTableWidget,
-    QTableWidgetItem,
-    QTabWidget,
+    QScrollArea,
+    QSizePolicy,
+    QSlider,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -26,7 +29,7 @@ from PyQt6.QtCore import Qt
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
-from src.gui.styles import button_style
+from src.gui.styles import MONOSPACE_FONT_FAMILY, button_style
 from src.measurement_modules.base import MeasurementModule
 from src.core.analysis import AudioCalc
 
@@ -646,6 +649,110 @@ class SoundQualityAnalyzer(MeasurementModule):
         return SoundQualityAnalyzerWidget(self)
 
 
+@dataclass(frozen=True)
+class QualityMetric:
+    title: str
+    summary: str
+    series: str
+    unit: str
+    precision: int
+    method: str
+
+
+def quality_metrics():
+    """One definition drives navigation, readouts, and the history plot."""
+    return (
+        QualityMetric(
+            tr("Loudness"), "integrated_lufs", "lufs", "LUFS", 1, tr("Integrated loudness · Momentary history (400 ms)")
+        ),
+        QualityMetric(
+            tr("Sharpness"), "mean_sharpness", "sharpness", "acum", 2, tr("Mean sharpness · Simplified Zwicker model")
+        ),
+        QualityMetric(
+            tr("Roughness"),
+            "mean_roughness",
+            "roughness",
+            "asper",
+            2,
+            tr("Mean roughness · Broadband modulation estimate"),
+        ),
+        QualityMetric(
+            tr("Tonality"), "mean_tonality", "tonality", "0–1", 2, tr("Mean tonality · Inverse spectral flatness")
+        ),
+        QualityMetric(
+            tr("Fluctuation Strength"),
+            "mean_fluctuation",
+            "fluctuation",
+            "vacil",
+            2,
+            tr("Mean fluctuation strength · Slow modulation estimate"),
+        ),
+        QualityMetric(
+            tr("Articulation Index"), "mean_ai", "ai", "0–1", 2, tr("Mean AI · Assumed noise floor: −60 dBFS")
+        ),
+    )
+
+
+class MetricCard(QPushButton):
+    """A keyboard-accessible metric selector with aligned channel readouts."""
+
+    def __init__(self, metric):
+        super().__init__()
+        self.metric = metric
+        self.setCheckable(True)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.setMinimumHeight(72)
+        self.setToolTip(metric.method)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(12, 7, 12, 7)
+        layout.setSpacing(3)
+        title = QLabel(metric.title)
+        title.setWordWrap(True)
+        title.setStyleSheet("font-weight: 600;")
+        layout.addWidget(title)
+        row = QHBoxLayout()
+        self.values = [QLabel("—"), QLabel("")]
+        for value in self.values:
+            value.setStyleSheet(f"font-family: {MONOSPACE_FONT_FAMILY}; font-size: 20px;")
+            row.addWidget(value)
+        unit = QLabel(metric.unit)
+        unit.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        unit.setStyleSheet("color: palette(placeholder-text); font-size: 11px;")
+        row.addWidget(unit)
+        layout.addLayout(row)
+        for label in self.findChildren(QLabel):
+            label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setStyleSheet("""
+            MetricCard { background: palette(base); border: 1px solid palette(mid);
+                         border-radius: 6px; text-align: left; }
+            MetricCard:hover { border-color: palette(link); }
+            MetricCard:checked { background: palette(alternate-base); border: 2px solid palette(highlight); }
+            MetricCard:focus { border: 2px solid palette(link); }
+            MetricCard QLabel { background: transparent; border: none; }
+        """)
+        self.setAccessibleName(metric.title)
+
+    def sizeHint(self):
+        return self.layout().sizeHint().expandedTo(QSize(240, 76))
+
+    def minimumSizeHint(self):
+        return self.layout().minimumSize().expandedTo(QSize(0, 76))
+
+    def set_channels(self, channels, colors):
+        descriptions = []
+        for i, label in enumerate(self.values):
+            if i < len(channels):
+                channel = channels[i]
+                value = channel.get(self.metric.summary, np.nan)
+                text = f"{value:.{self.metric.precision}f}" if np.isfinite(value) else "—"
+                label.setText(text)
+                label.setStyleSheet(f"font-family: {MONOSPACE_FONT_FAMILY}; font-size: 20px; color: {colors[i]};")
+                descriptions.append(f"{tr(channel['name'])}: {text} {self.metric.unit}")
+            else:
+                label.setText("—" if i == 0 else "")
+        self.setAccessibleName(f"{self.metric.title}: " + "; ".join(descriptions))
+
+
 class SoundQualityAnalyzerWidget(QWidget):
     def __init__(self, module: SoundQualityAnalyzer):
         super().__init__()
@@ -654,299 +761,307 @@ class SoundQualityAnalyzerWidget(QWidget):
         self.analysis_results = None
         self.audio_data = None
         self.samplerate = 48000
-        # Playback State
         self.is_playing = False
-        self.playback_position = 0  # In samples
+        self.playback_position = 0
         self.callback_id = None
-        self.playback_timer = QTimer()
-        self.playback_timer.setInterval(50)  # 20 fps update
+        self._analyzing = False
+        self._cancel_requested = False
+        self.metrics = quality_metrics()
+        self.selected_metric = 0
+        self.plot = None
+        self.cursors = []
+        self.playback_timer = QTimer(self)
+        self.playback_timer.setInterval(50)
         self.playback_timer.timeout.connect(self.update_playback_cursor)
-
-        self.cursors = []  # List of InfiniteLines
-
         self.init_ui()
 
     def init_ui(self):
-        # Main vertical layout contains just the splitter
-        main_layout = QVBoxLayout(self)
-
-        self.splitter = QSplitter(Qt.Orientation.Vertical)
-        main_layout.addWidget(self.splitter)
-
-        # Top Section Widget
-        self.top_widget = QWidget()
-        top_layout = QVBoxLayout(self.top_widget)
-        top_layout.setContentsMargins(0, 0, 0, 0)
-
-        # --- Top: Controls ---
-        controls_layout = QHBoxLayout()
-
-        # Playback Group
-        playback_group = QGroupBox(tr("Playback"))
-        playback_layout = QHBoxLayout()
-        playback_layout.setContentsMargins(5, 5, 5, 5)
-
-        self.play_btn = QPushButton("▶")
-        self.play_btn.setToolTip(tr("Play/Pause"))
-        self.play_btn.setFixedWidth(40)
-        self.play_btn.clicked.connect(self.toggle_playback)
-        self.play_btn.setEnabled(False)
-        playback_layout.addWidget(self.play_btn)
-
-        self.stop_btn = QPushButton("■")
-        self.stop_btn.setToolTip(tr("Stop"))
-        self.stop_btn.setFixedWidth(40)
-        self.stop_btn.clicked.connect(self.stop_playback)
-        self.stop_btn.setEnabled(False)
-        playback_layout.addWidget(self.stop_btn)
-
-        self.chk_follow = QCheckBox(tr("Follow Cursor"))
-        self.chk_follow.setChecked(True)
-        playback_layout.addWidget(self.chk_follow)
-
-        playback_group.setLayout(playback_layout)
-        controls_layout.addWidget(playback_group)
-
-        # File & Analysis Group
-        file_group = QGroupBox(tr("File && Analysis"))
-        file_layout = QHBoxLayout()
-        file_layout.setContentsMargins(5, 5, 5, 5)
-
+        main = QVBoxLayout(self)
+        main.setContentsMargins(12, 12, 12, 12)
+        main.setSpacing(12)
+        source = QHBoxLayout()
+        source.setSpacing(10)
+        file_info = QVBoxLayout()
         self.file_label = QLabel(tr("No file selected"))
-        file_layout.addWidget(self.file_label, stretch=1)
-
+        self.file_label.setTextFormat(Qt.TextFormat.PlainText)
+        self.file_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.file_label.setStyleSheet("font-size: 16px; font-weight: 600;")
+        self.file_details = QLabel(tr("Open an audio file to measure its sound quality."))
+        self.file_details.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.file_details.setStyleSheet("color: palette(placeholder-text);")
+        file_info.addWidget(self.file_label)
+        file_info.addWidget(self.file_details)
+        source.addLayout(file_info, 1)
         self.load_btn = QPushButton(tr("Load File..."))
         self.load_btn.clicked.connect(self.load_file)
-        file_layout.addWidget(self.load_btn)
-
         self.analyze_btn = QPushButton(tr("Analyze"))
-        self.analyze_btn.setStyleSheet(button_style("primary"))
+        self.analyze_btn.setStyleSheet(button_style("primary", extra="padding: 7px 16px;"))
         self.analyze_btn.clicked.connect(self.start_analysis)
         self.analyze_btn.setEnabled(False)
-        file_layout.addWidget(self.analyze_btn)
-
         self.export_btn = QPushButton(tr("Export CSV..."))
         self.export_btn.clicked.connect(self.export_csv)
         self.export_btn.setEnabled(False)
-        file_layout.addWidget(self.export_btn)
+        for button in (self.load_btn, self.analyze_btn, self.export_btn):
+            button.setMinimumHeight(34)
+            source.addWidget(button)
+        main.addLayout(source)
 
-        file_group.setLayout(file_layout)
-        controls_layout.addWidget(file_group, stretch=1)
-
-        top_layout.addLayout(controls_layout)
-
-        # Progress
+        status_row = QHBoxLayout()
+        self.status_label = QLabel(tr("No file selected"))
+        self.status_label.setTextFormat(Qt.TextFormat.PlainText)
+        self.status_label.setWordWrap(True)
+        status_row.addWidget(self.status_label, 1)
         self.progress_bar = QProgressBar()
-        self.progress_bar.setVisible(False)
-        top_layout.addWidget(self.progress_bar)
+        self.progress_bar.setFixedWidth(140)
+        self.progress_bar.setFixedHeight(16)
+        self.progress_bar.hide()
+        status_row.addWidget(self.progress_bar)
+        self.cancel_btn = QPushButton(tr("Cancel"))
+        self.cancel_btn.clicked.connect(self.cancel_analysis)
+        self.cancel_btn.hide()
+        status_row.addWidget(self.cancel_btn)
+        main.addLayout(status_row)
 
-        # --- Middle: Metrics Summary ---
-        summary_group = QGroupBox(tr("Summary Metrics"))
-        summary_layout = QVBoxLayout()
+        body = QHBoxLayout()
+        body.setSpacing(14)
+        overview = QWidget()
+        overview.setMinimumWidth(240)
+        overview.setMaximumWidth(340)
+        overview_layout = QVBoxLayout(overview)
+        overview_layout.setContentsMargins(0, 0, 0, 0)
+        overview_layout.setSpacing(7)
+        summary_heading = QLabel(tr("Summary Metrics"))
+        summary_heading.setStyleSheet("font-weight: 600;")
+        overview_layout.addWidget(summary_heading)
+        self.channel_key = QLabel(tr("Integrated / Mean"))
+        self.channel_key.setStyleSheet("color: palette(placeholder-text);")
+        overview_layout.addWidget(self.channel_key)
+        card_content = QWidget()
+        card_layout = QVBoxLayout(card_content)
+        card_layout.setContentsMargins(0, 0, 3, 0)
+        card_layout.setSpacing(7)
+        self.metric_group = QButtonGroup(self)
+        self.metric_cards = []
+        for i, metric in enumerate(self.metrics):
+            card = MetricCard(metric)
+            self.metric_group.addButton(card, i)
+            self.metric_cards.append(card)
+            card_layout.addWidget(card)
+        card_layout.addStretch()
+        self.metric_cards[0].setChecked(True)
+        self.metric_group.idClicked.connect(self.select_metric)
+        scroll = QScrollArea()
+        scroll.setObjectName("soundQualityMetrics")
+        scroll.setProperty("measurelabScrollRole", "dynamic-content")
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setWidget(card_content)
+        overview_layout.addWidget(scroll, 1)
+        body.addWidget(overview, 3)
 
-        self.summary_table = QTableWidget()
-        self.summary_table.setColumnCount(7)
-        self.summary_table.setHorizontalHeaderLabels(
-            [
-                tr("Channel"),
-                tr("Integrated\nLoudness (LUFS)"),
-                tr("Mean Sharpness\n(acum)"),
-                tr("Mean Roughness\n(asper)"),
-                tr("Mean Tonality\n(0-1)"),
-                tr("Mean Fluctuation\n(vacil)"),
-                tr("Mean AI\n(0-1)"),
-            ]
+        detail = QVBoxLayout()
+        detail.setSpacing(8)
+        heading = QHBoxLayout()
+        self.plot_title = QLabel(self.metrics[0].title)
+        self.plot_title.setStyleSheet("font-size: 20px; font-weight: 600;")
+        heading.addWidget(self.plot_title, 1)
+        self.fit_btn = QPushButton(tr("Fit to data"))
+        self.fit_btn.clicked.connect(self.fit_plot)
+        self.fit_btn.setEnabled(False)
+        heading.addWidget(self.fit_btn)
+        detail.addLayout(heading)
+        self.method_label = QLabel(self.metrics[0].method)
+        self.method_label.setWordWrap(True)
+        self.method_label.setStyleSheet("color: palette(placeholder-text);")
+        detail.addWidget(self.method_label)
+        self.plot_stack = QStackedWidget()
+        self.empty_label = QLabel(tr("Load a file, then select Analyze.\nAll six metrics will appear here."))
+        self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.empty_label.setWordWrap(True)
+        self.empty_label.setStyleSheet(
+            "background: palette(base); color: palette(placeholder-text); border-radius: 6px; padding: 24px;"
         )
+        self.plot_stack.addWidget(self.empty_label)
+        detail.addWidget(self.plot_stack, 1)
+        self.history_hint = QLabel(tr("Click the graph to seek · Drag to pan · Scroll to zoom"))
+        self.history_hint.setWordWrap(True)
+        self.history_hint.setStyleSheet("color: palette(placeholder-text); font-size: 11px;")
+        detail.addWidget(self.history_hint)
+        body.addLayout(detail, 8)
+        main.addLayout(body, 1)
 
-        # Table configuration
-        self.summary_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.summary_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)  # Read-only
-        self.summary_table.setAlternatingRowColors(True)
-        self.summary_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        self.summary_table.verticalHeader().setVisible(False)
+        transport = QHBoxLayout()
+        transport.setSpacing(10)
+        self.play_btn = QPushButton("▶")
+        self.play_btn.setToolTip(tr("Play/Pause"))
+        self.play_btn.setAccessibleName(tr("Play/Pause"))
+        self.play_btn.clicked.connect(self.toggle_playback)
+        self.stop_btn = QPushButton("■")
+        self.stop_btn.setToolTip(tr("Stop"))
+        self.stop_btn.setAccessibleName(tr("Stop"))
+        self.stop_btn.clicked.connect(self.stop_playback)
+        for button in (self.play_btn, self.stop_btn):
+            button.setFixedSize(40, 32)
+            button.setEnabled(False)
+            transport.addWidget(button)
+        self.time_label = QLabel("0:00.0 / 0:00.0")
+        self.time_label.setStyleSheet(f"font-family: {MONOSPACE_FONT_FAMILY};")
+        transport.addWidget(self.time_label)
+        self.seek_slider = QSlider(Qt.Orientation.Horizontal)
+        self.seek_slider.setRange(0, 10000)
+        self.seek_slider.setPageStep(500)
+        self.seek_slider.setAccessibleName(tr("Playback position"))
+        self.seek_slider.setEnabled(False)
+        self.seek_slider.valueChanged.connect(self.seek_playback)
+        transport.addWidget(self.seek_slider, 1)
+        self.chk_follow = QCheckBox(tr("Follow Cursor"))
+        self.chk_follow.setChecked(True)
+        transport.addWidget(self.chk_follow)
+        main.addLayout(transport)
 
-        summary_layout.addWidget(self.summary_table)
-        summary_group.setLayout(summary_layout)
-        top_layout.addWidget(summary_group)
+    def channel_colors(self):
+        dark = self.palette().color(QPalette.ColorRole.Base).lightness() < 128
+        return ("#73c7ed", "#edb577") if dark else ("#14658c", "#9b5210")
 
-        self.splitter.addWidget(self.top_widget)
-
-        # --- Bottom: Graphs ---
-        self.tabs = QTabWidget()
-
-        # Tab 1: Loudness
-        self.tab_loudness = QWidget()
-        self.layout_loudness = QVBoxLayout(self.tab_loudness)
-        self.tabs.addTab(self.tab_loudness, tr("Loudness"))
-
-        # Tab 2: Sharpness
-        self.tab_sharpness = QWidget()
-        self.layout_sharpness = QVBoxLayout(self.tab_sharpness)
-        self.tabs.addTab(self.tab_sharpness, tr("Sharpness"))
-
-        # Tab 3: Roughness
-        self.tab_roughness = QWidget()
-        self.layout_roughness = QVBoxLayout(self.tab_roughness)
-        self.tabs.addTab(self.tab_roughness, tr("Roughness"))
-
-        # Tab 4: Tonality
-        self.tab_tonality = QWidget()
-        self.layout_tonality = QVBoxLayout(self.tab_tonality)
-        self.tabs.addTab(self.tab_tonality, tr("Tonality"))
-
-        # Tab 5: Fluctuation Strength
-        self.tab_fluctuation = QWidget()
-        self.layout_fluctuation = QVBoxLayout(self.tab_fluctuation)
-        self.tabs.addTab(self.tab_fluctuation, tr("Fluctuation Strength"))
-
-        # Tab 6: Articulation Index
-        self.tab_ai = QWidget()
-        self.layout_ai = QVBoxLayout(self.tab_ai)
-        self.tabs.addTab(self.tab_ai, tr("Articulation Index"))
-
-        self.splitter.addWidget(self.tabs)
-
-        # Give initial proportions to splitter (e.g. 1/3 top, 2/3 bottom)
-        self.splitter.setSizes([300, 500])
-
-        self._set_summary_placeholder()
-
-    def _set_summary_placeholder(self):
-        self.summary_table.setRowCount(1)
-        for i in range(7):
-            item = QTableWidgetItem("-")
-            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.summary_table.setItem(0, i, item)
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        if event.type() == QEvent.Type.PaletteChange and hasattr(self, "metric_cards"):
+            if self.analysis_results:
+                self.display_metrics(self.analysis_results)
+            if self.plot is not None:
+                self._style_plot()
+                self.select_metric(self.selected_metric)
 
     def load_file(self):
         path, _ = QFileDialog.getOpenFileName(self, tr("Open Audio File"), "", "Audio Files (*.wav *.flac *.aiff)")
         if path:
             self.clear_results()
             self.current_file = path
-            self.file_label.setText(path)
+            self.file_label.setText(Path(path).name)
+            self.file_label.setToolTip(path)
+            self.file_details.setText(tr("Ready to analyze"))
+            self.status_label.setText(tr("Ready to analyze"))
+            self.empty_label.setText(tr("Select Analyze to calculate all six metrics."))
             self.analyze_btn.setEnabled(True)
-            self.progress_bar.setVisible(False)
+            self.progress_bar.hide()
 
     def clear_results(self):
-        """Discard results and playback together when their input is invalidated."""
         self.stop_playback()
         self.analysis_results = None
         self.audio_data = None
-        self.play_btn.setEnabled(False)
-        self.stop_btn.setEnabled(False)
-        self.export_btn.setEnabled(False)
-        self._set_summary_placeholder()
+        for button in (self.play_btn, self.stop_btn, self.export_btn, self.fit_btn, self.seek_slider):
+            button.setEnabled(False)
+        for card in self.metric_cards:
+            card.set_channels([], self.channel_colors())
+        self.channel_key.setText(tr("Integrated / Mean"))
+        self.time_label.setText("0:00.0 / 0:00.0")
         self.clear_plots()
 
     def clear_plots(self):
-        # Clear all separate layouts
-        for layout in [
-            self.layout_loudness,
-            self.layout_sharpness,
-            self.layout_roughness,
-            self.layout_tonality,
-            self.layout_fluctuation,
-            self.layout_ai,
-        ]:
-            if layout is not None:
-                while layout.count():
-                    item = layout.takeAt(0)
-                    w = item.widget()
-                    if w:
-                        w.deleteLater()
-
-        # Reset references
-        self.p1 = None
-        self.p2 = None
-        self.p3 = None
-        self.p4 = None
-        self.p5 = None
-        self.p6 = None
+        if self.plot is not None:
+            self.plot.clear()
         self.cursors = []
+        self.plot_stack.setCurrentIndex(0)
 
     def start_analysis(self):
-        if not hasattr(self, "current_file"):
+        if not hasattr(self, "current_file") or self._analyzing:
             return
-
+        if self.worker is not None and self.worker.isRunning():
+            return
+        self.clear_results()
+        self._analyzing = True
+        self._cancel_requested = False
         self.analyze_btn.setEnabled(False)
         self.load_btn.setEnabled(False)
         self.progress_bar.setValue(0)
-        self.progress_bar.setVisible(True)
-
-        self.clear_results()
-
-        if self.worker is not None and self.worker.isRunning():
-            self.worker.cancel()
-            self.worker.wait()
-
+        self.progress_bar.show()
+        self.cancel_btn.setEnabled(True)
+        self.cancel_btn.show()
+        self.status_label.setText(tr("Loading file..."))
+        self.file_details.setText(tr("Analyzing audio…"))
+        self.empty_label.setText(tr("Analyzing audio…"))
         target_sr = self.module.audio_engine.sample_rate
         self.worker = AnalysisWorker(self.current_file, target_sr)
         self.worker.progress_update.connect(self.on_progress)
         self.worker.results_ready.connect(self.on_results)
         self.worker.error_occurred.connect(self.on_error)
+        self.worker.finished.connect(self.on_analysis_finished)
         self.worker.start()
 
+    def cancel_analysis(self):
+        if self.worker is not None and self._analyzing:
+            self._cancel_requested = True
+            self.worker.cancel()
+            self.cancel_btn.setEnabled(False)
+            self.status_label.setText(tr("Cancelling…"))
+
+    def on_analysis_finished(self):
+        self._analyzing = False
+        self.progress_bar.hide()
+        self.cancel_btn.hide()
+        self.analyze_btn.setEnabled(hasattr(self, "current_file"))
+        self.load_btn.setEnabled(True)
+        if self._cancel_requested:
+            self.file_details.setText(tr("Ready to analyze"))
+            self.status_label.setText(tr("Analysis cancelled"))
+            self.empty_label.setText(tr("Select Analyze to calculate all six metrics."))
+
     def on_progress(self, val, msg):
-        self.progress_bar.setValue(val)
-        self.progress_bar.setFormat(f"%p% - {msg}")
+        if not self._cancel_requested:
+            self.progress_bar.setValue(val)
+            self.status_label.setText(msg)
 
     def on_results(self, results):
+        if self._cancel_requested:
+            return
         self.analysis_results = results
-
-        # Store for playback
-        if "audio_data" in results:
-            self.audio_data = results["audio_data"]  # (samples, ch) or (samples,)
-            self.samplerate = results["samplerate"]
-            self.playback_position = 0
-            self.is_playing = False
-            self.play_btn.setText("▶")
-
-        self.progress_bar.setVisible(False)
+        self.audio_data = results.get("audio_data")
+        self.samplerate = results["samplerate"]
+        self.playback_position = 0
+        self.is_playing = False
+        self.play_btn.setText("▶")
+        self.progress_bar.hide()
+        self.cancel_btn.hide()
         self.analyze_btn.setEnabled(True)
         self.load_btn.setEnabled(True)
-        self.play_btn.setEnabled(True)
-        self.stop_btn.setEnabled(True)
+        playable = self.audio_data is not None and len(self.audio_data) > 0
+        for control in (self.play_btn, self.stop_btn, self.seek_slider):
+            control.setEnabled(playable)
         self.export_btn.setEnabled(True)
-
+        self.fit_btn.setEnabled(True)
+        self.status_label.setText(tr("Analysis complete"))
+        duration = results.get("duration", len(self.audio_data) / self.samplerate if playable else 0)
+        self.file_details.setText(
+            tr("{duration} s · Analysis: 48 kHz · Playback: {rate} Hz").format(
+                duration=f"{duration:.2f}", rate=self.samplerate
+            )
+        )
         self.display_metrics(results)
         self.plot_series(results)
+        self.update_playback_cursor()
 
     def on_error(self, msg):
+        if self._cancel_requested:
+            return
         self.clear_results()
-        self.progress_bar.setVisible(False)
+        self.progress_bar.hide()
+        self.cancel_btn.hide()
         self.analyze_btn.setEnabled(True)
         self.load_btn.setEnabled(True)
-        self.file_label.setText(f"Error: {msg}")
+        self.file_details.setText(tr("Ready to analyze"))
+        self.status_label.setText(tr("Analysis failed: {}").format(msg))
+        self.empty_label.setText(tr("Select Analyze to retry, or load another file."))
 
     def display_metrics(self, results):
         channels = results.get("channels", [])
-        self.summary_table.setRowCount(len(channels))
-
-        for row, ch in enumerate(channels):
-            name = ch["name"]
-            i_lufs = ch["integrated_lufs"]
-            m_sh = ch["mean_sharpness"]
-            m_r = ch["mean_roughness"]
-            m_t = ch["mean_tonality"]
-            m_f = ch["mean_fluctuation"]
-            m_a = ch["mean_ai"]
-
-            # Create items
-            items = [
-                QTableWidgetItem(name),
-                QTableWidgetItem(f"{i_lufs:.1f}"),
-                QTableWidgetItem(f"{m_sh:.2f}"),
-                QTableWidgetItem(f"{m_r:.2f}"),
-                QTableWidgetItem(f"{m_t:.2f}"),
-                QTableWidgetItem(f"{m_f:.2f}"),
-                QTableWidgetItem(f"{m_a:.2f}"),
-            ]
-
-            # Center text for data columns
-            for i, item in enumerate(items):
-                if i > 0:
-                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
-                self.summary_table.setItem(row, i, item)
+        colors = self.channel_colors()
+        self.channel_key.setText(
+            " &nbsp; ".join(
+                f'<span style="color:{colors[i]}">● {tr(ch["name"])}</span>' for i, ch in enumerate(channels[:2])
+            )
+        )
+        for card in self.metric_cards:
+            card.set_channels(channels, colors)
 
     def export_csv(self):
         if not self.analysis_results:
@@ -998,111 +1113,85 @@ class SoundQualityAnalyzerWidget(QWidget):
             QMessageBox.critical(self, tr("Export Failed"), tr("Failed to export metrics.\nError: {}").format(str(e)))
 
     def plot_series(self, results):
-        self.clear_plots()
+        if self.plot is None:
+            self.plot = pg.PlotWidget()
+            self.plot.setMinimumSize(240, 180)
+            self.plot.showGrid(x=True, y=True, alpha=0.15)
+            self.plot.setLabel("bottom", tr("Time"), units="s")
+            self.plot.setMenuEnabled(False)
+            self.plot.getAxis("left").enableAutoSIPrefix(False)
+            self.plot.addLegend(offset=(-12, 12))
+            self.plot.scene().sigMouseClicked.connect(self.on_plot_clicked)
+            self.plot_stack.addWidget(self.plot)
+        self._style_plot()
+        self.select_metric(self.selected_metric, preserve_range=False)
+        self.plot_stack.setCurrentWidget(self.plot)
 
-        # Loudness Plot (Tab 1)
-        p1 = pg.PlotWidget(title=tr("Loudness (Momentary)"))
-        p1.setLabel("left", "LUFS")
-        p1.setLabel("bottom", "Time", units="s")
-        p1.showGrid(y=True)
-        p1.addLegend()
+    def _style_plot(self):
+        palette = self.palette()
+        self.plot.setBackground(palette.color(QPalette.ColorRole.Base))
+        for name in ("left", "bottom"):
+            axis = self.plot.getAxis(name)
+            axis.setPen(pg.mkPen(palette.color(QPalette.ColorRole.Mid)))
+            axis.setTextPen(pg.mkPen(palette.color(QPalette.ColorRole.Text)))
+        self.plot.plotItem.legend.setLabelTextColor(palette.color(QPalette.ColorRole.Text))
 
-        # Sharpness Plot (Tab 2)
-        p2 = pg.PlotWidget(title=tr("Sharpness (Zwicker)"))
-        p2.setLabel("left", "acum")
-        p2.setLabel("bottom", "Time", units="s")
-        p2.showGrid(y=True)
-        p2.addLegend()
-        p2.setXLink(p1)
+    def select_metric(self, index, preserve_range=True):
+        self.selected_metric = index
+        metric = self.metrics[index]
+        self.metric_cards[index].setChecked(True)
+        self.plot_title.setText(metric.title)
+        self.method_label.setText(metric.method)
+        if self.plot is None or self.analysis_results is None:
+            return
+        previous_range = self.plot.viewRange()[0] if preserve_range else None
+        self.plot.clear()
+        self.plot.setLabel("left", metric.unit)
+        for i, channel in enumerate(self.analysis_results["channels"]):
+            values = np.asarray(channel.get(metric.series + "_series", []))
+            times = np.arange(len(values)) * channel.get(metric.series + "_step", 0.1)
+            pen = pg.mkPen(
+                self.channel_colors()[i], width=1.8, style=Qt.PenStyle.SolidLine if i == 0 else Qt.PenStyle.DashLine
+            )
+            self.plot.plot(
+                times,
+                values,
+                pen=pen,
+                name=tr(channel["name"]),
+                connect="finite",
+                antialias=True,
+            )
+        cursor = pg.InfiniteLine(
+            pos=self.playback_position / self.samplerate,
+            angle=90,
+            pen=pg.mkPen(self.palette().color(QPalette.ColorRole.Text), width=1),
+        )
+        self.plot.addItem(cursor, ignoreBounds=True)
+        self.cursors = [cursor]
+        self.plot.enableAutoRange(axis="y")
+        if previous_range:
+            self.plot.setXRange(*previous_range, padding=0)
+        else:
+            self.fit_plot()
 
-        # Roughness Plot (Tab 3)
-        p3 = pg.PlotWidget(title=tr("Roughness"))
-        p3.setLabel("left", "asper")
-        p3.setLabel("bottom", "Time", units="s")
-        p3.showGrid(y=True)
-        p3.addLegend()
-        p3.setXLink(p1)
+    def fit_plot(self):
+        if self.plot is not None and self.analysis_results is not None:
+            duration = self.analysis_results.get("duration", 0)
+            if not duration and self.audio_data is not None:
+                duration = len(self.audio_data) / self.samplerate
+            self.plot.setXRange(0, max(duration, 0.1), padding=0.01)
+            self.plot.enableAutoRange(axis="y")
 
-        # Tonality Plot (Tab 4)
-        p4 = pg.PlotWidget(title=tr("Tonality"))
-        p4.setLabel("left", "SFM inv")
-        p4.setLabel("bottom", "Time", units="s")
-        p4.showGrid(y=True)
-        p4.addLegend()
-        p4.setXLink(p1)
+    @staticmethod
+    def _time_text(seconds):
+        minutes, tenths = divmod(max(0, round(seconds * 10)), 600)
+        return f"{minutes}:{tenths // 10:02d}.{tenths % 10}"
 
-        # Fluctuation Strength Plot (Tab 5)
-        p5 = pg.PlotWidget(title=tr("Fluctuation Strength"))
-        p5.setLabel("left", "vacil")
-        p5.setLabel("bottom", "Time", units="s")
-        p5.showGrid(y=True)
-        p5.addLegend()
-        p5.setXLink(p1)
-
-        # Articulation Index Plot (Tab 6)
-        p6 = pg.PlotWidget(title=tr("Articulation Index"))
-        p6.setLabel("left", "AI (0-1)")
-        p6.setLabel("bottom", "Time", units="s")
-        p6.showGrid(y=True)
-        p6.addLegend()
-        p6.setXLink(p1)
-
-        colors = ["c", "m", "g", "y"]
-
-        for i, ch in enumerate(results["channels"]):
-            c = colors[i % len(colors)]
-            name = ch["name"]
-
-            # Loudness
-            t_l = np.arange(len(ch["lufs_series"])) * ch["lufs_step"]
-            p1.plot(t_l, ch["lufs_series"], pen=c, name=name)
-
-            # Sharpness
-            t_s = np.arange(len(ch["sharpness_series"])) * ch["sharpness_step"]
-            p2.plot(t_s, ch["sharpness_series"], pen=c, name=name)
-
-            # Roughness
-            t_r = np.arange(len(ch["roughness_series"])) * ch["roughness_step"]
-            p3.plot(t_r, ch["roughness_series"], pen=c, name=name)
-
-            # Tonality
-            t_t = np.arange(len(ch["tonality_series"])) * ch["tonality_step"]
-            p4.plot(t_t, ch["tonality_series"], pen=c, name=name)
-
-            # Fluctuation Strength
-            t_f = np.arange(len(ch["fluctuation_series"])) * ch["fluctuation_step"]
-            p5.plot(t_f, ch["fluctuation_series"], pen=c, name=name)
-
-            # Articulation Index
-            t_a = np.arange(len(ch["ai_series"])) * ch["ai_step"]
-            p6.plot(t_a, ch["ai_series"], pen=c, name=name)
-
-        self.p1 = p1
-        self.p2 = p2
-        self.p3 = p3
-        self.p4 = p4
-        self.p5 = p5
-        self.p6 = p6
-
-        self.layout_loudness.addWidget(p1)
-        self.layout_sharpness.addWidget(p2)
-        self.layout_roughness.addWidget(p3)
-        self.layout_tonality.addWidget(p4)
-        self.layout_fluctuation.addWidget(p5)
-        self.layout_ai.addWidget(p6)
-
-        # Add cursors
-        self.cursors = []
-        for p in [self.p1, self.p2, self.p3, self.p4, self.p5, self.p6]:
-            if p is None:
-                continue
-            # Click event
-            p.scene().sigMouseClicked.connect(self.on_plot_clicked)
-
-            # Add cursor
-            line = pg.InfiniteLine(pos=0, angle=90, pen=pg.mkPen("y", width=2))
-            p.addItem(line)
-            self.cursors.append(line)
+    def seek_playback(self, value):
+        if self.audio_data is None:
+            return
+        self.playback_position = min(round(value / 10000 * len(self.audio_data)), len(self.audio_data))
+        self.update_playback_cursor()
 
     # --- Playback Logic ---
 
@@ -1124,9 +1213,14 @@ class SoundQualityAnalyzerWidget(QWidget):
             if self.playback_position >= len(self.audio_data):
                 self.playback_position = 0
 
+            try:
+                self.callback_id = self.module.audio_engine.register_callback(self.audio_callback)
+            except Exception as exc:
+                self.status_label.setText(tr("Playback failed: {}").format(exc))
+                return
             self.is_playing = True
+            self.status_label.setText(tr("Analysis complete"))
             self.play_btn.setText("⏸")
-            self.callback_id = self.module.audio_engine.register_callback(self.audio_callback)
             self.playback_timer.start()
 
     def stop_playback(self):
@@ -1137,6 +1231,7 @@ class SoundQualityAnalyzerWidget(QWidget):
             self.callback_id = None
         self.playback_timer.stop()
         self.playback_position = 0
+        self.seek_slider.setValue(0)
         self.update_playback_cursor()
 
     def audio_callback(self, indata, outdata, frames, time, status):
@@ -1187,20 +1282,25 @@ class SoundQualityAnalyzerWidget(QWidget):
             return
 
         # Check if finished
-        if self.playback_position >= len(self.audio_data):
-            self.stop_playback()
-            return
+        if self.is_playing and self.playback_position >= len(self.audio_data):
+            self.toggle_playback()
 
         t = self.playback_position / self.samplerate
+        duration = len(self.audio_data) / self.samplerate
+        self.time_label.setText(f"{self._time_text(t)} / {self._time_text(duration)}")
+        self.seek_slider.blockSignals(True)
+        if not self.seek_slider.isSliderDown():
+            self.seek_slider.setValue(round(t / duration * 10000) if duration else 0)
+        self.seek_slider.blockSignals(False)
 
         # Update lines
         for line in self.cursors:
             line.setValue(t)
 
         # Follow
-        if self.chk_follow.isChecked() and self.is_playing and self.p1:
-            # Check if cursor is visible in the first plot (all are linked)
-            vb = self.p1.plotItem.vb
+        if self.chk_follow.isChecked() and self.is_playing and self.plot is not None:
+            # Keep the playback position visible without changing the zoom.
+            vb = self.plot.plotItem.vb
             view_range = vb.viewRange()[0]  # x range (min, max)
 
             # Define margin (e.g. 5%)
@@ -1219,15 +1319,10 @@ class SoundQualityAnalyzerWidget(QWidget):
         if self.audio_data is None:
             return
 
-        # Determine which plot was clicked
-        target_plot = None
-
-        for p in (self.p1, self.p2, self.p3, self.p4, self.p5, self.p6):
-            if p is not None and p.sceneBoundingRect().contains(event.scenePos()):
-                target_plot = p
-                break
-
-        if target_plot is None:
+        if event.button() != Qt.MouseButton.LeftButton or self.plot is None:
+            return
+        target_plot = self.plot
+        if not target_plot.plotItem.vb.sceneBoundingRect().contains(event.scenePos()):
             return
 
         # Map scene pos to view pos for the target plot

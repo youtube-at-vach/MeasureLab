@@ -26,16 +26,20 @@ This tool is for **offline analysis only**. It analyzes pre-recorded audio files
     * There is a file size limit of 500 million total samples (approx. 1 hour 26 mins for 48kHz Stereo).
 2. Press the **Analyze** button to start the analysis.
     * Internally, the audio is resampled to 48kHz for analysis (to optimize psychoacoustic filters).
-    * Long files may take some time to process.
-3. Once the analysis is complete, the **Summary Metrics** will display the average values for each channel (Loudness, Sharpness, Roughness, Tonality, Fluctuation Strength, AI) in a table format.
-4. Click the **Export CSV** button to save the analysis results (including average metrics and time-series data) as a CSV file.
-5. The graphs below show how each of these metrics "changed over time." Use the tabs to switch between metrics.
+    * Progress and the current processing stage are shown. Use **Cancel** to interrupt analysis; cancellation may wait for the current calculation stage to finish.
+3. The **Summary Metrics** panel shows all six metrics: integrated loudness and mean values for the other five. Blue identifies the left channel (or the single mono channel), and amber identifies the right channel. Unavailable results appear as “—”.
+4. Select a metric card to show its time history in the large graph. Channels use distinct colors and solid/dashed lines. Switching metrics preserves the visible time range.
+5. **Export CSV** saves the six summary values for each channel. Time-series data is not included in the CSV.
+
+The description above the graph identifies the calculation method. Sharpness, roughness, and fluctuation strength use simplified estimates; tonality uses inverse spectral flatness. AI assumes a noise floor of −60 dBFS and does not establish actual speech intelligibility in measured noise.
 
 ### Playback and Verification
 
-* **Playback Button (▶)**: Plays the analyzed audio file (follows the GUI audio engine settings).
-* **Follow Cursor**: When checked, the yellow cursor on the graph moves in synchronization with the playback. You can listen to the sound at specific "high value (or discontinuous) locations."
-* **Graph Interaction**: Click on the graph to move the playback cursor to that position.
+* **Play / Pause (▶ / ⏸)**: Play or pause the analyzed audio. **Stop (■)** returns to the beginning. Reaching the end retains the final position; playing again restarts from the beginning.
+* **Time display and slider**: Show the current position and total duration. Seek using the slider or by clicking the graph.
+* **Follow Cursor**: Pan the graph when playback moves outside the visible range. The cursor updates whether this option is enabled or not.
+* **Graph interaction**: Drag to pan and scroll to zoom. **Fit to data** restores the full file duration and automatic vertical scaling.
+* **New files and reanalysis**: Clear the previous results and playback data. Cancelling the file dialog preserves existing results. Analysis failures display a reason and allow a retry.
 
 ## Use Cases
 
