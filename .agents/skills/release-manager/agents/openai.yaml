@@ -1,4 +1,4 @@
 interface:
-  display_name: "Release Manager"
-  short_description: "リリース準備、検証、PR作成を進めます"
-  default_prompt: "$release-manager を使って、このリポジトリのリリース準備を行ってください。"
+  display_name: "リリース準備"
+  short_description: "変更履歴・文書・バージョンを更新し、検証済みのリリース準備 PR を作ります"
+  default_prompt: "$release-manager を使って、このリポジトリのリリース準備を行い、検証済みの準備 PR を作成してください。"

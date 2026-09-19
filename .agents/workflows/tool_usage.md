@@ -54,11 +54,10 @@ Markdown lintにはNode.jsとnpmが必要です。OSの依存ライブラリな�
 失敗した場合は今回の変更が原因か確認します。整形が必要なら変更したファイルだけを
 `./.venv/bin/ruff format <変更したファイル>` で整形し、全体フォーマットは専用PRに分けます。
 
-型チェックと、CIと同じ厳格な翻訳キーチェック:
+型チェック:
 
 ```bash
 ./.venv/bin/mypy src main_gui.py
-./.venv/bin/python scripts/check_trn_keys.py --strict
 ```
 
 Markdown変更時:
@@ -66,6 +65,16 @@ Markdown変更時:
 ```bash
 npx markdownlint-cli2 "**/*.md" "#node_modules"
 ```
+
+### 翻訳キー
+
+CIと同じ厳格な検査を使います。重複キーなど終了コードに反映されない警告も確認してください。
+
+```bash
+./.venv/bin/python scripts/check_trn_keys.py --strict
+```
+
+修正方法は [翻訳スキル](../skills/multilingual-translator/SKILL.md)を参照してください。
 
 ### テスト
 
@@ -109,10 +118,18 @@ QApplicationやC拡張の競合を避けるため、Pytestとは独立して実�
 
 ## PR前の検証
 
-[CI Pre-checker](../skills/ci-prechecker/SKILL.md)の順序で、Ruff lint、Ruff format、Mypy、
-翻訳キー、Markdown lint、全Pytestを実行します。CIとの照合では翻訳キーに `--strict` を指定し、
-UIサイズ検証も全言語で実行してください。
-実際のCIの対象・環境は [.github/workflows/ci.yml](../../.github/workflows/ci.yml) で確認できます。
+次の順で実行し、各段階の終了コードと結果を確認します。コマンドは上記の各節を正本とします。
 
-失敗時は原因を確認して修正・再検証し、実行できなかった検証は理由とともに報告します。
-Git操作にはシステムの `git` を使用し、PRの作成方法は [AGENTS.md](../../AGENTS.md#pull-request) に従います。
+1. [開発中の検証](#開発中の検証)の Ruff lint と Ruff format。
+2. 同節の Mypy。
+3. [翻訳キー](#翻訳キー)の厳格な検査。
+4. [開発中の検証](#開発中の検証)の Markdown lint。
+5. [テスト](#テスト)の全体テスト。
+6. [UIサイズ検証](#uiサイズ検証)の全言語検証。Pytest とは別プロセスで実行。
+
+GUI を表示できない環境では `QT_QPA_PLATFORM=offscreen` を設定します。CI の環境変数と
+実行条件は [.github/workflows/ci.yml](../../.github/workflows/ci.yml) で確認してください。
+CI は変更パスによりジョブを省略しますが、ローカルで CI 相当の最終確認を依頼された場合は全項目を実行します。
+
+失敗時の修正範囲と再実行の判断は [CI Pre-checker](../skills/ci-prechecker/SKILL.md)、
+PR の作成条件は [AGENTS.md](../../AGENTS.md#pull-request) に従います。

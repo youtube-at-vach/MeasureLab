@@ -1,4 +1,4 @@
 interface:
-  display_name: "Working Task Implementer"
-  short_description: "Implement Working Issues and move PRs to Review"
-  default_prompt: "Use $agent-working-task-implement to implement the current Working Project task and prepare its PR for review."
+  display_name: "Working Issue の実装"
+  short_description: "正本の計画に沿って実装・検証し、レビュー可能な PR と Review 状態まで進めます"
+  default_prompt: "$agent-working-task-implement を使って、Working Issue を1件実装・検証し、PR を作成して Review に進めてください。"

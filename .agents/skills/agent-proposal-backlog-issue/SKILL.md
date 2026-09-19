@@ -1,84 +1,37 @@
 ---
 name: agent-proposal-backlog-issue
-description: MeasureLab の設計指針とプロポーサルを比較し、次に実装する候補を GitHub Issue 化して Project の Backlog に登録するときに使用します。コード実装や既存 Issue の一般的な整理には使用しません。
+description: MeasureLab の提案から次の候補を選び、GitHub Issue として Backlog に登録する。候補選定だけの依頼にも使う。
 ---
 
-# エージェント：プロポーサル Backlog Issue 化
+# 提案を Backlog に登録
 
-MeasureLab の「次に実装するもの」を、測定器設計の原則と既存実装の事実に基づいて選定し、重複のない GitHub Issue として Project の Backlog に登録するためのプロトタイプです。この段階の Issue は、実装方法を確定する仕様書ではなく、なぜ必要か、どのような価値・能力を求めるか、どの方向に検討すべきかを共有するための起点とする。
+提案の必要性と期待する成果を共有する。詳細設計とコード実装は後続タスクで扱う。件数指定がなければ1件を選ぶ。
 
-## 適用範囲
+## 選ぶ
 
-- ユーザーが、プロポーサルから次の実装候補を選び、Backlog に Issue 化するよう依頼した場合に使用する。
-- 「次に実装するもの」は、個数の指定がなければ 1 件に絞る。複数件を求められた場合だけ指定数を選ぶ。
-- Issue 作成と Project 更新は外部状態を変更するため、ユーザーの依頼がある場合だけ実行する。候補選定だけの依頼では Issue を作成しない。
-- コードの実装、PR 作成、プロポーサル文書自体の改訂、既存 Issue の実装計画変更はこのスキルの範囲外とする。
+1. [設計指針](../../../guide/MEASUREMENT_INSTRUMENT_DESIGN_GUIDELINES.md)の判断優先順位と実装要件の境界、[現在の方向性](../../../guide/CURRENT_DIRECTION.md)の最新部分を読む。
+2. [提案一覧](../../../docs/PROPOSED_FEATURES.md)の概要・状態区分と候補の節を読み、対象コード・テストで実装済み範囲を確認する。
+3. [GitHub 共通手順](../../workflows/github_project.md)に従い、既存 Issue と Project の重複を調べる。
 
-## 選定前の読み取り
+測定結果の信頼性、一般的な 44.1/48 kHz 環境での有用性、既存機能の完成度、再利用性、検証可能性を比較する。1 Issue に収まる候補を優先し、監視や安全機構を増やすこと自体を目的にしない。
 
-リポジトリのルートを確認し、次の資料を読む。
+* `Implemented`、`Covered`、`On hold`、`Not suitable` は原則対象外。`Conditional` は必要な機器・基準経路・用途を説明できる場合だけ選ぶ。
+* 同じ目的の既存 Issue がある提案は除外する。特に `Blocked` の提案を別名や代替 Issue で再登録しない。対応関係が不明なら確認できるまで候補から外す。
+* 適切な候補がなければ、その理由を報告して終了する。候補選定だけの依頼では GitHub を変更しない。
 
-1. `guide/MEASUREMENT_INSTRUMENT_DESIGN_GUIDELINES.md` は省略せず全文を読む。
-2. `guide/PROPOSED_FEATURES.md` の Overview、Status Legend、Selected Additions、Implemented/Covered、Conditional、On hold の各区分を読む。
-3. `guide/CURRENT_DIRECTION.md`、対象ウィジェットのコード・テスト・ドキュメントが存在する場合は、提案がすでに実装済みでないか確認する。
-4. `git status --short --branch` を読み取り、作業ツリーを変更しない。
+## 登録する
 
-GitHub の現状も、次の最小確認で読み取る。認証・スコープの確認は省略してよい。
+タイトルは簡潔な英語の `[Feature] ...`、ラベルは既存の `enhancement` を使う。本文は次の内容に絞る。
 
-- `gh repo view --json nameWithOwner,owner,url` で対象リポジトリを確定する。
-- `gh project list --owner <owner> --format json` で対象 Project を確認する。MeasureLab では通常 `Agents: MeasureLab` を優先するが、存在を再確認してから使う。
-- `gh project item-list <number> --owner <owner> --format json` と Issue 検索で、同じ提案や同じ目的の Issue が既にないか調べる。
+* 現状の不足と測定上・利用上の価値。
+* 提案・設計指針との対応、他候補より先に扱う理由。
+* 必要な能力、期待する結果、対象範囲と留保。
+* 対象コード・テスト・資料への参照。
 
-### Blocked の提案を候補から除外する
+API、データ形式、UI 配置、閾値、詳細な受け入れ条件はここで固定しない。GUI・測定上の考慮事項は候補に関係するものだけ添える。
 
-- Project の項目一覧から `Status: Blocked` の Issue を抽出し、Issue のタイトル・本文と `guide/PROPOSED_FEATURES.md` の提案名、対象ウィジェット、目的を照合する。
-- Blocked の Project 項目が代表しているプロポーサルは、未完了であっても現在の候補集合から除外する。Blocked であることを理由に、同じプロポーサルを再 Issue 化したり、重複する代替 Issue を作成したりしない。
-- Blocked 項目がプロポーサル由来か判断できない場合は、Issue の目的と提案の対応を追加確認し、対応を確定できるまでその提案を候補から外す。
-- 候補選定の記録には、除外したプロポーサル、対応する Issue、Project Status が `Blocked` であることを明記する。Blocked ではない既存 Issue も、従来どおり同じ提案・目的の重複確認で除外する。
+書き込み直前に重複と `Blocked` を再確認し、Issue 作成 → Project 追加 → `Backlog` 設定の順に進める。優先度はユーザー指定を優先し、指定がなくても測定基盤・安全性の最優先候補には、理由を添えて既存の `P1` を設定してよい。
 
-## 選定基準
+## 完了
 
-候補を次の順で比較する。
-
-1. Measurement Integrity、過負荷・クリッピング・データ欠落の検知、測定値の妥当性表示など、誤測定防止に直結するか。
-2. 44.1/48 kHz を含む一般的なオーディオ環境で意味のある測定結果になるか。
-3. 既存機能の「Partially implemented」を完成させ、複数ウィジェットや共通測定基盤へ再利用できるか。
-4. 測定条件の可視性、決定論的な状態遷移、校正状態、再現性、停止後の異常履歴を改善するか。
-5. 後続の実装タスクで、自動テスト、GUI テスト、翻訳キー検査、UI サイズ検証などの検証観点を定義しやすいか。
-6. 現在のロードマップや既存 Project 項目と競合せず、実装範囲を 1 Issue に分解できるか。
-
-`Implemented`、`Covered`、`On hold`、`Not suitable` の提案は原則選ばない。`Conditional` は必要な fixture・基準経路・用途が Issue 内で明確になる場合だけ選ぶ。機能追加の魅力だけで判断せず、測定結果の信頼性と実装可能性を優先する。
-
-Blocked の既存 Issue が代表する提案は、上記の除外規則を優先し、実装の優先度や安全性が高く見えても選ばない。残りの候補から、既存 Issue と目的が重複しないものを比較する。
-
-## Issue の作成内容
-
-タイトルは、既存の MeasureLab の慣例に合わせて簡潔な英語の `[Feature] ...` とする。本文は日本語またはプロジェクトで通用する言語で、実装方法ではなく提案の意図と必要性が伝わるように、少なくとも次を含める。
-
-- `背景`: 現状の実装と不足している測定上の問題。
-- `方向性・選定理由`: 設計指針のどの原則と `guide/PROPOSED_FEATURES.md` のどの提案に基づくか、どのような測定上・利用上の価値を目指すか、他候補より先に検討する理由。
-- `必要な機能・期待する結果`: 利用者や測定器が何をできる必要があるか、どの状態や問題を把握・防止できる必要があるかを、概念的な能力と期待する結果として記述する。対象モジュールに触れる場合も、実装単位や内部構造を固定しない。
-- `範囲と留保`: この Issue で扱う目的と対象の大まかな境界、および実装方法・データモデル・UI レイアウト・エクスポート形式・詳細な異常時状態遷移・具体的な受け入れ条件は後続の実装タスクで検討することを示す。
-- `参照`: 設計指針、プロポーサル、対象コード、関連テストへのパスまたは URL。
-
-Issue には、後続の設計・実装で考慮すべき理念的な観点を必要に応じて添える。GUI の候補では `tr()` による翻訳管理や多言語レイアウトへの配慮、測定系の候補ではリアルタイム性、有限値、安全な入力・出力、異常状態の可視性や復帰可能性などを「考慮事項」または期待する性質として示す。ただし、具体的な API、状態機械、閾値、画面配置、テストケース、完了条件まで Issue で決めない。
-
-Issue の目的は候補を Backlog で共有し、後続タスクの検討対象を定めることである。細部を先に仕様化して評価軸を固定しないよう、既存実装との関係、設計理念、必要な機能、期待する成果に留め、実装案の比較や詳細な完了条件は後続タスクに委ねる。
-
-## GitHub への登録手順
-
-書き込み直前に、既存 Issue の重複と対象 Project を再確認する。認証・スコープの確認は必要な場合だけ行う。
-
-1. 既存 Issue のタイトル・目的が重複していないことを確認する。
-2. Project 項目を再取得し、選定した提案が Blocked Issue の代表する提案に含まれていないことを確認する。確認できない場合は Issue 作成を止める。
-3. `gh issue create --repo <owner>/<repo> --title ... --body ... --label enhancement` で Issue を作成する。Project の `--project` オプションに依存せず、Issue 作成と Project 追加を分離して検証する。
-4. 作成結果の Issue URL を使い、`gh project item-add <number> --owner <owner> --url <issue-url> --format json` で Project に追加する。
-5. `gh project field-list <number> --owner <owner> --format json` で Status フィールドと `Backlog` オプションの ID を取得し、`gh project item-edit` で Status を Backlog に設定する。ID はプロジェクトごとに取得し、固定値を使い回さない。
-6. Priority フィールドがあり、候補が測定基盤・安全性に関わる最優先候補である場合は `P1` を設定してよい。ユーザーが優先度を指定した場合はそれを優先する。
-7. `gh project item-list ... --jq` と `gh issue view ... --json` で、Issue URL、Project 名、Status、必要な Priority、ラベルを再確認する。
-
-Issue 作成後に Project 追加だけが失敗した場合は、同じタイトルで再作成しない。作成済み Issue の URL を報告し、権限不足が原因なら必要に応じて `gh auth refresh -s project` を案内したうえで、Project 追加を再開する。
-
-## 完了報告
-
-選定した候補、選定理由の要点、Issue URL、Project 名、Status、Priority、ラベルを簡潔に報告する。Issue 作成は成功したが Backlog 登録に失敗した場合は、未完了であることを明示し、Issue が重複して作成されない再開手順を示す。
+候補と選定理由、Issue URL、Project の最終状態、設定したラベル・優先度を報告する。除外した `Blocked` の候補があれば対応 Issue とともに示す。登録が一部失敗した場合は、成功済みの URL と残りの操作を残す。
