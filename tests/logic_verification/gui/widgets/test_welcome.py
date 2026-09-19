@@ -5,7 +5,7 @@ from unittest.mock import patch
 from src.gui.widgets.welcome import WelcomeWidget
 from src.core.version import __version__
 from src.core.constants import RELEASE_PAGE_URL_TEMPLATE
-from src.core.localization import tr
+from src.core.localization import get_manager, tr
 
 
 def test_welcome_widget_instantiation(qtbot):
@@ -131,3 +131,20 @@ def test_recent_shortcuts_replaced_and_navigate(qtbot):
         assert signal.args == ["Spectrogram"]
         widget.set_recent_modules([])
         assert widget.recent_layout.count() == 1
+
+
+def test_spanish_welcome_with_four_recent_modules_stays_within_height_limit(qtbot):
+    manager = get_manager()
+    manager.load_language("es")
+    try:
+        with patch("src.gui.widgets.welcome.QTimer.singleShot"):
+            widget = WelcomeWidget()
+            qtbot.addWidget(widget)
+            widget.set_recent_modules(["Frequency Counter", "Recorder / Player", "LUFS Meter", "Sound Level Meter"])
+            widget.resize(1180, 690)
+            widget.show()
+            qtbot.waitUntil(widget.isVisible)
+
+            assert widget.minimumSizeHint().height() <= 690
+    finally:
+        manager.load_language("en")
