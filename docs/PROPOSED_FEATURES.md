@@ -25,26 +25,23 @@ Highest-value remaining additions grouped by target widgets.
 
 ### 1. Distortion Analyzer Extensions
 
-* **SMPTE, DIN, and CCIF IMD Sweeps:** Amplitude sweeps storing IMD percentages/levels.
-* **AES17 Dynamic Range Automator:** Sequence for calibration, validation, and measurement.
-* **Long-Term Warm-up and Stability Logger:** Trend tracking for gain and THD.
-* **Multi-Tone Distortion (TD+N) & Doppler (Phase IMD) Profilers:** Simultaneous noise/distortion evaluation and driver excursion demodulation.
-* **Class-D Switching Artifact Profiler:** Sweep for out-of-band switching noise and aliasing common in Class-D amplifiers. (NEW)
+* **IMD & Stability:** SMPTE, DIN, and CCIF IMD Sweeps, Long-Term Warm-up Logger.
+* **Advanced Profilers:** Multi-Tone (TD+N), Phase IMD, Class-D Switching Artifact Profiler.
+* **Automation:** AES17 Dynamic Range Automator.
 
 ### 2. LUFS & Sound Level Meter Extensions
 
-* **True-Peak Histogram and Clipping Profiler:** Histogram and exceedance tracking.
-* **Percentile Noise Statistics (L10/L50/L90):** Environmental noise tracking over time.
+* **Statistics:** True-Peak Histogram, Clipping Profiler, Percentile Noise (L10/L50/L90).
 
 ### 3. Spectrum & Transient Analyzer Extensions
 
-* **Peak & Dynamics Profilers:** Auto-peak markers, Burst Envelope Dynamics, and Micro-dynamics Profiler for punchiness.
-* **Psychoacoustic Masking Overlay:** Real-time human auditory perception curves.
+* **Dynamics & Perception:** Auto-peak markers, Burst Envelope Dynamics, Psychoacoustic Masking Overlay.
+* **Psychoacoustic Holography (Perceptual Residue Auralizer):** Isolate and monitor purely "inaudible" (masked) audio components to hear what the brain filters out. (NEW)
 
-### 4. Network & Impedance Analyzer Extensions
+### 4. Network & Signal Generator Extensions
 
-* **Specialized Measurements:** Haptic Audio Sync Profiler, Thermal Power Compression Logger (Re drift), and Cable LCR Extractor.
-* **Loudspeaker Polar/Directivity 3D Plotter:** Automated turntable control and multi-angle acoustic response capturing. (NEW)
+* **Specialized:** Thermal Power Compression Logger, Cable LCR Extractor, Loudspeaker Polar 3D Plotter.
+* **Time-Reversal Acoustic Focusing:** Export time-reversed Impulse Responses (via Network Analyzer) to Signal Generator to create a physical focal point where all reflections arrive simultaneously. (NEW)
 
 ### 5. Integrity & Spatial Visualization
 
@@ -58,6 +55,7 @@ Adventurous, next-generation concepts beyond standard audio measurement, current
 * **Psycho-Acoustic Emotional Impact Scorer:** Analyze the signal to estimate human emotional response (e.g. excitement, relaxation) based on frequency content, tempo, and dynamic range.
 * **Temporal Audio Micro-Lens:** Use AI to interpolate and visualize acoustic events that happen between the samples (shorter than a single sample).
 * **Neuromorphic & Quantum Analysis:** Event-based audio transient capture and quantum mechanics modeling for true randomness of noise floors.
+* **Synesthetic Haptic Translator:** Convert complex audio transients into targeted physical vibrations for haptic suits. (NEW)
 * **Multimodal & Spatial:** Synesthetic Measurement Mapper (haptics/visuals), Ultrasonic Acoustic Levitation Calibrator, and Holographic/AR Acoustic Mode visualization.
 * **AI & Automation:** AI-Driven Measurement Recipe Generator, AI Golden Ear Component Fingerprinter.
 * **Bio & BCI Interfaces:** Bio-Acoustic Impedance Sonifier, Brain-Computer Interface (BCI) Audiophile Profiler.
