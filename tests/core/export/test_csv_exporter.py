@@ -24,6 +24,23 @@ def test_export_traces_success():
     assert result is True
 
 
+@pytest.mark.parametrize("utf8_bom", [False, True])
+def test_export_utf8_bom_option(tmp_path, sample_traces, utf8_bom):
+    import codecs
+
+    sample_traces[0].name = "左チャンネル"
+    path = tmp_path / "unicode.csv"
+    options = {"layout": "independent", "include_metadata": False}
+    if utf8_bom:
+        options["utf8_bom"] = True
+    assert CsvTraceExporter().export_traces(str(path), sample_traces[:1], options)
+    assert path.read_bytes().startswith(codecs.BOM_UTF8) is utf8_bom
+    with path.open(encoding="utf-8-sig", newline="") as file:
+        rows = list(csv.reader(file))
+    assert rows[0][0] == "左チャンネル_Frequency (Hz)"
+    assert rows[1] == ["10.0", "-10.0"]
+
+
 @pytest.fixture
 def sample_traces():
     t1 = ComparisonTrace(

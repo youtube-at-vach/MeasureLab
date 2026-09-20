@@ -415,12 +415,79 @@ class TestSoundQualityAnalyzerResultIntegrity(unittest.TestCase):
         widget.fit_plot()
         np.testing.assert_array_equal(trace.getData()[1], original)
 
-    def test_csv_keeps_all_six_metrics(self):
+    def test_csv_exports_all_original_plot_samples_for_mono_and_stereo(self):
+        import codecs
         import csv
         import tempfile
         from pathlib import Path
 
-        widget, _, _ = self._widget_with_results()
+        from src.gui.widgets.sound_quality_analyzer import SoundQualityAnalyzerWidget
+
+        for names in (("Mono",), ("Left", "Right")):
+            with self.subTest(channels=names), tempfile.TemporaryDirectory() as directory:
+                widget, _, results = self._widget_with_results()
+                results["channels"] = [{"name": name} for name in names]
+                expected_columns = []
+                for ch_index, channel in enumerate(results["channels"]):
+                    for index, metric in enumerate(widget.metrics):
+                        # Distinct lengths, time grids and high-precision values.
+                        values = np.arange(index + ch_index + 2) / 7.0 - 20.123456789
+                        if index == 0:
+                            values[0] = -np.inf
+                        if index == 1:
+                            values[0] = np.nan
+                        step = (index + 1) * 0.013
+                        channel[metric.series + "_series"] = values
+                        channel[metric.series + "_step"] = step
+                        expected_columns.extend([np.arange(len(values)) * step, values.copy()])
+
+                SoundQualityAnalyzerWidget.plot_series(widget, results)
+                for index in range(len(widget.metrics)):
+                    widget.select_metric(index)
+                    for ch_index, trace in enumerate(widget.plot.listDataItems()):
+                        col = (ch_index * 6 + index) * 2
+                        x, y = trace.getOriginalDataset()
+                        np.testing.assert_array_equal(x, expected_columns[col])
+                        np.testing.assert_array_equal(y, expected_columns[col + 1])
+                # Export must include every metric and samples outside this zoom.
+                widget.plot.setXRange(0.01, 0.02, padding=0)
+                path = Path(directory) / "metrics.csv"
+                with (
+                    patch(
+                        "src.gui.widgets.sound_quality_analyzer.QFileDialog.getSaveFileName",
+                        return_value=(str(path), ""),
+                    ),
+                    patch("src.gui.widgets.sound_quality_analyzer.QMessageBox.information") as success,
+                    patch("src.gui.widgets.sound_quality_analyzer.QMessageBox.critical") as failure,
+                ):
+                    widget.export_csv()
+                success.assert_called_once()
+                failure.assert_not_called()
+                self.assertTrue(path.read_bytes().startswith(codecs.BOM_UTF8))
+                with path.open(encoding="utf-8-sig", newline="") as file:
+                    rows = list(csv.reader(file))
+                self.assertEqual(len(rows[0]), 12 * len(names))
+                self.assertEqual(len(rows) - 1, max(map(len, expected_columns)))
+                self.assertTrue(all(len(row) == len(rows[0]) for row in rows))
+                self.assertEqual(len(set(rows[0])), len(rows[0]))
+                for ch_index, name in enumerate(names):
+                    for index, metric in enumerate(widget.metrics):
+                        col = (ch_index * 6 + index) * 2
+                        self.assertEqual(rows[0][col], f"{name}_{metric.series}_Time (s)")
+                        self.assertIn(f"({metric.unit})", rows[0][col + 1])
+                for col, expected in enumerate(expected_columns):
+                    actual = [row[col] for row in rows[1:]]
+                    np.testing.assert_array_equal(np.asarray(actual[: len(expected)], dtype=float), expected)
+                    self.assertEqual(actual[len(expected) :], [""] * (len(actual) - len(expected)))
+
+    def test_csv_empty_series_keeps_columns_without_fabricating_samples(self):
+        import csv
+        import tempfile
+        from pathlib import Path
+
+        widget, _, results = self._widget_with_results()
+        results["channels"][0]["lufs_series"] = np.array([-20.125, -19.375])
+        # Missing step uses the same default as the history plot.
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "metrics.csv"
             with (
@@ -430,7 +497,33 @@ class TestSoundQualityAnalyzerResultIntegrity(unittest.TestCase):
                 patch("src.gui.widgets.sound_quality_analyzer.QMessageBox.information"),
             ):
                 widget.export_csv()
-            with path.open(newline="") as file:
+            with path.open(encoding="utf-8-sig", newline="") as file:
                 rows = list(csv.reader(file))
-        self.assertEqual(len(rows[0]), 7)
-        self.assertEqual(rows[1], ["Mono", "-20.0", "1.00", "0.10", "0.80", "0.20", "0.50"])
+        self.assertEqual(len(rows[0]), 12)
+        self.assertEqual(rows[1], ["0.0", "-20.125"] + [""] * 10)
+        self.assertEqual(rows[2], ["0.1", "-19.375"] + [""] * 10)
+
+    def test_csv_cancel_and_write_failure_do_not_report_success(self):
+        widget, _, _ = self._widget_with_results()
+        with (
+            patch("src.gui.widgets.sound_quality_analyzer.QFileDialog.getSaveFileName", return_value=("", "")),
+            patch("src.gui.widgets.sound_quality_analyzer.CsvTraceExporter.export_traces") as export,
+            patch("src.gui.widgets.sound_quality_analyzer.QMessageBox.information") as success,
+            patch("src.gui.widgets.sound_quality_analyzer.QMessageBox.critical") as failure,
+        ):
+            widget.export_csv()
+            export.assert_not_called()
+            success.assert_not_called()
+            failure.assert_not_called()
+
+        with (
+            patch(
+                "src.gui.widgets.sound_quality_analyzer.QFileDialog.getSaveFileName", return_value=("metrics.csv", "")
+            ),
+            patch("builtins.open", side_effect=OSError("Permission denied")),
+            patch("src.gui.widgets.sound_quality_analyzer.QMessageBox.information") as success,
+            patch("src.gui.widgets.sound_quality_analyzer.QMessageBox.critical") as failure,
+        ):
+            widget.export_csv()
+            success.assert_not_called()
+            failure.assert_called_once()

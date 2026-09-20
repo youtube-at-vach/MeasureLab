@@ -29,6 +29,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 
 from src.core.audio_engine import AudioEngine
+from src.core.comparison_manager import AxisMetadata, ComparisonTrace
+from src.core.export.csv_exporter import CsvTraceExporter
 from src.core.localization import tr
 from src.gui.styles import MONOSPACE_FONT_FAMILY, button_style
 from src.measurement_modules.base import MeasurementModule
@@ -659,6 +661,12 @@ class QualityMetric:
     precision: int
     method: str
 
+    def history(self, channel):
+        """Return the original time grid and samples for plotting and export."""
+        values = np.asarray(channel.get(self.series + "_series", []))
+        times = np.arange(len(values)) * channel.get(self.series + "_step", 0.1)
+        return times, values
+
 
 def quality_metrics():
     """One definition drives navigation, readouts, and the history plot."""
@@ -1075,37 +1083,32 @@ class SoundQualityAnalyzerWidget(QWidget):
             return
 
         try:
-            import csv
-
-            with open(path, mode="w", newline="", encoding="utf-8") as f:
-                writer = csv.writer(f)
-
-                # Write header
-                writer.writerow(
-                    [
-                        "Channel",
-                        "Integrated Loudness (LUFS)",
-                        "Mean Sharpness (acum)",
-                        "Mean Roughness (asper)",
-                        "Mean Tonality (0-1)",
-                        "Mean Fluctuation (vacil)",
-                        "Mean AI (0-1)",
-                    ]
-                )
-
-                # Write data rows
-                for ch in self.analysis_results.get("channels", []):
-                    writer.writerow(
-                        [
-                            ch["name"],
-                            f"{ch['integrated_lufs']:.1f}",
-                            f"{ch['mean_sharpness']:.2f}",
-                            f"{ch['mean_roughness']:.2f}",
-                            f"{ch['mean_tonality']:.2f}",
-                            f"{ch['mean_fluctuation']:.2f}",
-                            f"{ch['mean_ai']:.2f}",
-                        ]
+            traces = []
+            for channel in self.analysis_results.get("channels", []):
+                for metric in self.metrics:
+                    times, values = metric.history(channel)
+                    traces.append(
+                        ComparisonTrace(
+                            id=f"{channel['name']}_{metric.series}",
+                            name=f"{tr(channel['name'])}_{metric.series}",
+                            source_module=self.module.name,
+                            timestamp="",
+                            plot_type="time_history",
+                            x_axis=AxisMetadata("Time", "s", "s"),
+                            y_axis=AxisMetadata(metric.title, metric.unit, metric.unit),
+                            x_data=times,
+                            y_data=values,
+                        )
                     )
+
+            # Each metric has its own sampling interval. Independent column pairs
+            # retain every original sample without interpolation or extrapolation.
+            if not CsvTraceExporter().export_traces(
+                path,
+                traces,
+                {"layout": "independent", "include_metadata": False, "utf8_bom": True},
+            ):
+                raise OSError(f"Could not write CSV file: {path}")
 
             QMessageBox.information(
                 self, tr("Export Successful"), tr("Successfully exported metrics to:\n{}").format(path)
@@ -1149,8 +1152,7 @@ class SoundQualityAnalyzerWidget(QWidget):
         self.plot.clear()
         self.plot.setLabel("left", metric.unit)
         for i, channel in enumerate(self.analysis_results["channels"]):
-            values = np.asarray(channel.get(metric.series + "_series", []))
-            times = np.arange(len(values)) * channel.get(metric.series + "_step", 0.1)
+            times, values = metric.history(channel)
             pen = pg.mkPen(
                 self.channel_colors()[i], width=1, style=Qt.PenStyle.SolidLine if i == 0 else Qt.PenStyle.DashLine
             )

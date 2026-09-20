@@ -29,7 +29,11 @@ This tool is for **offline analysis only**. It analyzes pre-recorded audio files
     * Progress and the current processing stage are shown. Use **Cancel** to interrupt analysis; cancellation may wait for the current calculation stage to finish.
 3. The **Summary Metrics** panel shows all six metrics: integrated loudness and mean values for the other five. Blue identifies the left channel (or the single mono channel), and amber identifies the right channel. Unavailable results appear as “—”.
 4. Select a metric card to show its time history in the large graph. Channels use distinct colors and solid/dashed lines. Switching metrics preserves the visible time range.
-5. **Export CSV** saves the six summary values for each channel. Time-series data is not included in the CSV.
+5. **Export CSV** saves the plotted time-series data for all channels and all six metrics in one CSV. The export covers the full duration regardless of the selected metric or zoom range.
+
+The first row contains column headers with units. Each channel and metric has its own pair of time (seconds) and value columns, for example `Mono_lufs_Time (s)` and `Mono_lufs_Loudness (LUFS)`. Headers follow the display language. Sampling intervals differ between metrics, so select the matching time and value columns when creating an Excel scatter chart. Shorter columns are padded with empty cells.
+
+Samples are exported without interpolation or rounding to the displayed precision. Loudness contains the plotted 400 ms momentary history; the summary panel's integrated loudness and the other metrics' means are not included. Nonfinite values are written as `nan`, `inf`, or `-inf`. Files use comma separators and UTF-8 with a BOM for Excel compatibility.
 
 The description above the graph identifies the calculation method. Sharpness, roughness, and fluctuation strength use simplified estimates; tonality uses inverse spectral flatness. AI assumes a noise floor of −60 dBFS and does not establish actual speech intelligibility in measured noise.
 
