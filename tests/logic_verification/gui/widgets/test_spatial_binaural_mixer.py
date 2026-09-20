@@ -583,6 +583,7 @@ def test_plot_geometry_stays_stable_across_render_play_stop_and_edit(qtbot, tmp_
 
     monkeypatch.setattr(RenderWorker, "_render", paused_render)
     widget.on_render_play()
+
     def assert_geometry_stable(g1, g2):
         # g1 and g2 are tuples: (pos, size, rect)
         assert g1[0] == g2[0], f"Position changed: {g1[0]} != {g2[0]}"
