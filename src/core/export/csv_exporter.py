@@ -39,9 +39,11 @@ class CsvTraceExporter(BaseTraceExporter):
         layout = options.get("layout", "merged")  # "independent" or "merged"
         include_headers = options.get("include_headers", True)
         include_metadata = options.get("include_metadata", True)
+        # Opt in for spreadsheet applications that use the BOM to detect UTF-8.
+        encoding = "utf-8-sig" if options.get("utf8_bom", False) else "utf-8"
 
         try:
-            with open(filepath, "w", newline="", encoding="utf-8") as f:
+            with open(filepath, "w", newline="", encoding=encoding) as f:
                 writer = csv.writer(f, delimiter=delimiter)
 
                 # Write metadata header if requested

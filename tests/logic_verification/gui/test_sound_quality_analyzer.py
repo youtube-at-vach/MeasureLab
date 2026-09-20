@@ -60,14 +60,12 @@ class TestSoundQualityAnalyzerPlaybackToggle(unittest.TestCase):
         # Mock dependencies
         self.mock_sd = MagicMock()
         self.mock_sf = MagicMock()
-        self.mock_pg = MagicMock()
 
         self.modules_patcher = patch.dict(
             sys.modules,
             {
                 "sounddevice": self.mock_sd,
                 "soundfile": self.mock_sf,
-                "pyqtgraph": self.mock_pg,
             },
         )
         self.modules_patcher.start()
@@ -214,9 +212,9 @@ class TestSoundQualityAnalyzerResultIntegrity(unittest.TestCase):
         self.assertEqual(widget.playback_position, 0)
         for button in (widget.play_btn, widget.stop_btn, widget.export_btn):
             self.assertFalse(button.isEnabled())
-        self.assertEqual(widget.summary_table.item(0, 1).text(), "-")
+        self.assertEqual(widget.metric_cards[0].values[0].text(), "—")
         self.assertEqual(widget.cursors, [])
-        self.assertIsNone(widget.p1)
+        self.assertEqual(widget.plot_stack.currentIndex(), 0)
         widget.toggle_playback()
         self.assertFalse(widget.is_playing)
         with patch("src.gui.widgets.sound_quality_analyzer.QFileDialog.getSaveFileName") as save:
@@ -269,4 +267,263 @@ class TestSoundQualityAnalyzerResultIntegrity(unittest.TestCase):
         self.assertTrue(widget.play_btn.isEnabled())
         self.assertTrue(widget.stop_btn.isEnabled())
         self.assertTrue(widget.export_btn.isEnabled())
-        self.assertEqual(widget.summary_table.item(0, 1).text(), "-20.0")
+        self.assertEqual(widget.metric_cards[0].values[0].text(), "-20.0")
+
+    def test_cancel_ignores_queued_results_and_recovers_after_worker_finishes(self):
+        widget, _, results = self._widget_with_results()
+        with patch("src.gui.widgets.sound_quality_analyzer.AnalysisWorker") as worker_type:
+            worker_type.return_value.isRunning.return_value = False
+            widget.start_analysis()
+        widget.cancel_analysis()
+        widget.worker.cancel.assert_called_once()
+        self.assertFalse(widget.load_btn.isEnabled())
+        widget.on_results(results)
+        self._assert_results_cleared(widget)
+        widget.on_progress(100, "Late progress")
+        self.assertEqual(widget.progress_bar.value(), 0)
+        widget.on_analysis_finished()
+        self.assertTrue(widget.load_btn.isEnabled())
+        self.assertTrue(widget.analyze_btn.isEnabled())
+        self.assertFalse(widget._analyzing)
+
+    def test_failed_playback_registration_leaves_transport_stopped(self):
+        widget, engine, _ = self._widget_with_results()
+        engine.register_callback.side_effect = RuntimeError("Device unavailable")
+        widget.toggle_playback()
+        self.assertFalse(widget.is_playing)
+        self.assertIsNone(widget.callback_id)
+        self.assertFalse(widget.playback_timer.isActive())
+        self.assertEqual(widget.play_btn.text(), "▶")
+        self.assertIn("Device unavailable", widget.status_label.text())
+        self.assertTrue(widget.export_btn.isEnabled())
+
+    def test_seek_end_retains_position_and_replay_restarts(self):
+        widget, engine, _ = self._widget_with_results()
+        widget.seek_slider.setValue(5000)
+        self.assertEqual(widget.playback_position, 24000)
+        widget.seek_slider.setValue(10000)
+        self.assertEqual(widget.playback_position, 48000)
+        widget.toggle_playback()
+        self.assertEqual(widget.playback_position, 0)
+        self.assertTrue(widget.is_playing)
+        widget.playback_position = 48000
+        widget.update_playback_cursor()
+        self.assertFalse(widget.is_playing)
+        self.assertEqual(widget.playback_position, 48000)
+        self.assertEqual(widget.seek_slider.value(), 10000)
+        engine.unregister_callback.assert_called_once()
+        widget.stop_playback()
+        self.assertEqual(widget.playback_position, 0)
+        self.assertEqual(widget.seek_slider.value(), 0)
+
+    def test_real_plot_metric_switch_preserves_time_range_and_channel_identity(self):
+        from src.gui.widgets.sound_quality_analyzer import SoundQualityAnalyzerWidget
+
+        widget, _, results = self._widget_with_results()
+        for metric in widget.metrics:
+            results["channels"][0][metric.series + "_series"] = np.array([0.1, 0.2, 0.3])
+            results["channels"][0][metric.series + "_step"] = 0.1
+        SoundQualityAnalyzerWidget.plot_series(widget, results)
+        widget.plot.setXRange(0.1, 0.25, padding=0)
+        widget.seek_playback(4000)
+        for index, metric in enumerate(widget.metrics):
+            widget.metric_cards[index].click()
+            self.assertEqual(widget.selected_metric, index)
+            self.assertEqual(widget.plot_title.text(), metric.title)
+            self.assertEqual(widget.method_label.text(), metric.method)
+            np.testing.assert_allclose(widget.plot.viewRange()[0], [0.1, 0.25])
+            self.assertEqual(len(widget.plot.listDataItems()), 1)
+            self.assertAlmostEqual(widget.cursors[0].value(), 0.4)
+            np.testing.assert_allclose(widget.plot.listDataItems()[0].getData()[0], [0, 0.1, 0.2])
+        widget.clear_results()
+        self.assertEqual(widget.plot.listDataItems(), [])
+        self.assertEqual(widget.plot_stack.currentIndex(), 0)
+
+    def test_nonfinite_summary_is_unavailable_and_mono_has_no_right_readout(self):
+        widget, _, results = self._widget_with_results()
+        results["channels"][0]["mean_roughness"] = np.nan
+        widget.display_metrics(results)
+        self.assertEqual(widget.metric_cards[2].values[0].text(), "—")
+        for card in widget.metric_cards:
+            self.assertEqual(card.values[1].text(), "")
+
+    def test_playback_reuses_history_paint_and_zoom_invalidates_cache(self):
+        import pyqtgraph as pg
+        from src.gui.widgets.sound_quality_analyzer import SoundQualityAnalyzerWidget
+
+        widget, _, results = self._widget_with_results()
+        results["channels"][0]["lufs_series"] = np.array([-20.0, -18.0, -22.0, -19.0])
+        results["channels"][0]["lufs_step"] = 0.25
+        SoundQualityAnalyzerWidget.plot_series(widget, results)
+        widget.resize(1180, 690)
+        curve = widget.plot.listDataItems()[0].curve
+        painted = []
+        original_paint = pg.PlotCurveItem.paint
+
+        def record_paint(item, *args):
+            if item is curve:
+                painted.append(item)
+            return original_paint(item, *args)
+
+        with patch.object(pg.PlotCurveItem, "paint", record_paint):
+            widget.show()
+            for _ in range(3):
+                QApplication.processEvents()
+                widget.plot.viewport().repaint()
+            initial_paints = len(painted)
+            self.assertGreater(initial_paints, 0)
+
+            widget.is_playing = True
+            for position in (4800, 9600, 14400, 19200):
+                widget.playback_position = position
+                widget.update_playback_cursor()
+                widget.plot.viewport().repaint()
+                QApplication.processEvents()
+            self.assertAlmostEqual(widget.cursors[0].value(), 0.4)
+            self.assertEqual(len(painted), initial_paints)
+
+            # Zoom must regenerate the trace, rather than stretch a stale image.
+            widget.plot.setXRange(0.1, 0.6, padding=0)
+            QApplication.processEvents()
+            widget.plot.viewport().repaint()
+            self.assertGreater(len(painted), initial_paints)
+
+    def test_zoom_clips_history_without_changing_measurement_samples(self):
+        from src.gui.widgets.sound_quality_analyzer import SoundQualityAnalyzerWidget
+
+        widget, _, results = self._widget_with_results()
+        values = np.sin(np.arange(36000) * 0.1)
+        values[1001] = 20.0  # A narrow peak must survive zooming.
+        values[1003] = np.nan
+        values[1005] = -np.inf
+        original = values.copy()
+        results["channels"][0]["lufs_series"] = values
+        results["channels"][0]["lufs_step"] = 0.1
+        results["duration"] = 3600.0
+        SoundQualityAnalyzerWidget.plot_series(widget, results)
+        widget.plot.setXRange(100.0, 101.0, padding=0)
+        trace = widget.plot.listDataItems()[0]
+        times, displayed = trace.getData()
+        self.assertLessEqual(len(displayed), 13)  # Visible samples and boundary neighbors.
+        self.assertIn(20.0, displayed)
+        self.assertTrue(np.isnan(displayed).any())
+        self.assertTrue(np.isneginf(displayed).any())
+        np.testing.assert_allclose(displayed, original[np.rint(times / 0.1).astype(int)])
+        np.testing.assert_array_equal(values, original)
+        np.testing.assert_array_equal(trace.getOriginalDataset()[1], original)
+
+        widget.fit_plot()
+        np.testing.assert_array_equal(trace.getData()[1], original)
+
+    def test_csv_exports_all_original_plot_samples_for_mono_and_stereo(self):
+        import codecs
+        import csv
+        import tempfile
+        from pathlib import Path
+
+        from src.gui.widgets.sound_quality_analyzer import SoundQualityAnalyzerWidget
+
+        for names in (("Mono",), ("Left", "Right")):
+            with self.subTest(channels=names), tempfile.TemporaryDirectory() as directory:
+                widget, _, results = self._widget_with_results()
+                results["channels"] = [{"name": name} for name in names]
+                expected_columns = []
+                for ch_index, channel in enumerate(results["channels"]):
+                    for index, metric in enumerate(widget.metrics):
+                        # Distinct lengths, time grids and high-precision values.
+                        values = np.arange(index + ch_index + 2) / 7.0 - 20.123456789
+                        if index == 0:
+                            values[0] = -np.inf
+                        if index == 1:
+                            values[0] = np.nan
+                        step = (index + 1) * 0.013
+                        channel[metric.series + "_series"] = values
+                        channel[metric.series + "_step"] = step
+                        expected_columns.extend([np.arange(len(values)) * step, values.copy()])
+
+                SoundQualityAnalyzerWidget.plot_series(widget, results)
+                for index in range(len(widget.metrics)):
+                    widget.select_metric(index)
+                    for ch_index, trace in enumerate(widget.plot.listDataItems()):
+                        col = (ch_index * 6 + index) * 2
+                        x, y = trace.getOriginalDataset()
+                        np.testing.assert_array_equal(x, expected_columns[col])
+                        np.testing.assert_array_equal(y, expected_columns[col + 1])
+                # Export must include every metric and samples outside this zoom.
+                widget.plot.setXRange(0.01, 0.02, padding=0)
+                path = Path(directory) / "metrics.csv"
+                with (
+                    patch(
+                        "src.gui.widgets.sound_quality_analyzer.QFileDialog.getSaveFileName",
+                        return_value=(str(path), ""),
+                    ),
+                    patch("src.gui.widgets.sound_quality_analyzer.QMessageBox.information") as success,
+                    patch("src.gui.widgets.sound_quality_analyzer.QMessageBox.critical") as failure,
+                ):
+                    widget.export_csv()
+                success.assert_called_once()
+                failure.assert_not_called()
+                self.assertTrue(path.read_bytes().startswith(codecs.BOM_UTF8))
+                with path.open(encoding="utf-8-sig", newline="") as file:
+                    rows = list(csv.reader(file))
+                self.assertEqual(len(rows[0]), 12 * len(names))
+                self.assertEqual(len(rows) - 1, max(map(len, expected_columns)))
+                self.assertTrue(all(len(row) == len(rows[0]) for row in rows))
+                self.assertEqual(len(set(rows[0])), len(rows[0]))
+                for ch_index, name in enumerate(names):
+                    for index, metric in enumerate(widget.metrics):
+                        col = (ch_index * 6 + index) * 2
+                        self.assertEqual(rows[0][col], f"{name}_{metric.series}_Time (s)")
+                        self.assertIn(f"({metric.unit})", rows[0][col + 1])
+                for col, expected in enumerate(expected_columns):
+                    actual = [row[col] for row in rows[1:]]
+                    np.testing.assert_array_equal(np.asarray(actual[: len(expected)], dtype=float), expected)
+                    self.assertEqual(actual[len(expected) :], [""] * (len(actual) - len(expected)))
+
+    def test_csv_empty_series_keeps_columns_without_fabricating_samples(self):
+        import csv
+        import tempfile
+        from pathlib import Path
+
+        widget, _, results = self._widget_with_results()
+        results["channels"][0]["lufs_series"] = np.array([-20.125, -19.375])
+        # Missing step uses the same default as the history plot.
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "metrics.csv"
+            with (
+                patch(
+                    "src.gui.widgets.sound_quality_analyzer.QFileDialog.getSaveFileName", return_value=(str(path), "")
+                ),
+                patch("src.gui.widgets.sound_quality_analyzer.QMessageBox.information"),
+            ):
+                widget.export_csv()
+            with path.open(encoding="utf-8-sig", newline="") as file:
+                rows = list(csv.reader(file))
+        self.assertEqual(len(rows[0]), 12)
+        self.assertEqual(rows[1], ["0.0", "-20.125"] + [""] * 10)
+        self.assertEqual(rows[2], ["0.1", "-19.375"] + [""] * 10)
+
+    def test_csv_cancel_and_write_failure_do_not_report_success(self):
+        widget, _, _ = self._widget_with_results()
+        with (
+            patch("src.gui.widgets.sound_quality_analyzer.QFileDialog.getSaveFileName", return_value=("", "")),
+            patch("src.gui.widgets.sound_quality_analyzer.CsvTraceExporter.export_traces") as export,
+            patch("src.gui.widgets.sound_quality_analyzer.QMessageBox.information") as success,
+            patch("src.gui.widgets.sound_quality_analyzer.QMessageBox.critical") as failure,
+        ):
+            widget.export_csv()
+            export.assert_not_called()
+            success.assert_not_called()
+            failure.assert_not_called()
+
+        with (
+            patch(
+                "src.gui.widgets.sound_quality_analyzer.QFileDialog.getSaveFileName", return_value=("metrics.csv", "")
+            ),
+            patch("builtins.open", side_effect=OSError("Permission denied")),
+            patch("src.gui.widgets.sound_quality_analyzer.QMessageBox.information") as success,
+            patch("src.gui.widgets.sound_quality_analyzer.QMessageBox.critical") as failure,
+        ):
+            widget.export_csv()
+            success.assert_not_called()
+            failure.assert_called_once()
