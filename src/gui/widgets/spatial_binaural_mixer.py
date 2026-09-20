@@ -390,6 +390,12 @@ class SpatialBinauralMixerWidget(QWidget):
         status_row.addWidget(self.progress_bar)
         status_row.addWidget(self.cancel_btn)
         layout.addLayout(status_row)
+        # State changes must not borrow space from the source map. Keep the
+        # result line and transport controls in the layout even when hidden.
+        for control in (self.result_label, self.progress_bar, self.cancel_btn):
+            policy = control.sizePolicy()
+            policy.setRetainSizeWhenHidden(True)
+            control.setSizePolicy(policy)
         self.progress_bar.hide()
         self.cancel_btn.hide()
         self.on_preview_cb_changed()

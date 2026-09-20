@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 from PyQt6.QtCore import Qt
 
 from src.core.localization import tr
@@ -536,3 +537,61 @@ def test_overlapping_sources_keep_card_selection_when_dragged(qtbot):
     assert view.selected_id == second.number
     assert second.az_spin.value() == 90
     assert first.az_spin.value() == 0
+
+
+@pytest.mark.parametrize("language", ["de", "en", "es", "fr", "ja", "ko", "pt", "ru", "zh"])
+def test_plot_geometry_stays_stable_across_render_play_stop_and_edit(qtbot, tmp_path, monkeypatch, language):
+    from threading import Event
+
+    import soundfile as sf
+    from PyQt6.QtCore import QPoint
+    from PyQt6.QtWidgets import QApplication
+
+    from src.core import localization
+    from src.gui.widgets.spatial_binaural_render import RenderWorker
+
+    manager = localization.LocalizationManager()
+    manager.load_language(language)
+    monkeypatch.setattr(localization, "_loc_manager", manager)
+    module = SpatialBinauralMixer(make_engine())
+    module.hrtf_data = make_hrtf()
+    widget = module.get_widget()
+    qtbot.addWidget(widget)
+    source = tmp_path / "source.wav"
+    sf.write(source, np.zeros(48000), 48000)
+    track = widget.add_track()
+    track.load_file(source)
+    widget.resize(1000, 620)
+    widget.show()
+
+    def geometry():
+        # Flush both label layout requests and their parent layout updates.
+        QApplication.processEvents()
+        QApplication.processEvents()
+        view = widget.azimuth_view
+        return view.mapTo(widget, QPoint()), view.size(), view._geometry()
+
+    initial = geometry()
+    started = Event()
+    release = Event()
+    render = RenderWorker._render
+
+    def paused_render(worker):
+        started.set()
+        release.wait(3)
+        return render(worker)
+
+    monkeypatch.setattr(RenderWorker, "_render", paused_render)
+    widget.on_render_play()
+    try:
+        qtbot.waitUntil(started.is_set)
+        assert geometry() == initial  # Inline progress and Cancel are visible.
+    finally:
+        release.set()
+        qtbot.waitUntil(lambda: widget.worker is None, timeout=5000)
+    assert module.is_playing
+    assert geometry() == initial  # Render summary and playback progress are visible.
+    widget.on_stop_play()
+    assert geometry() == initial
+    track.gain_spin.setValue(-3)
+    assert geometry() == initial  # The obsolete render summary is hidden again.
