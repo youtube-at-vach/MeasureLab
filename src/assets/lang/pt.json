@@ -2518,7 +2518,7 @@
     "Ready to analyze": "Pronto para analisar",
     "Select Analyze to calculate all six metrics.": "Selecione Analisar para calcular as seis métricas.",
     "Select Analyze to retry, or load another file.": "Selecione Analisar para tentar novamente ou abra outro arquivo.",
-    "{duration} s · Analysis: 48 kHz · Playback: {rate} Hz": "{duration} s · Análise: 48 kHz · Reprodução: {rate} Hz"
+    "{duration} s · Analysis: 48 kHz · Playback: {rate} Hz": "{duration} s · Análise: 48 kHz · Reprodução: {rate} Hz",
     "Add Audio Files": "Adicionar arquivos de áudio",
     "Add audio files, then place each source around the listener.": "Adicione arquivos de áudio e posicione as fontes ao redor do ouvinte.",
     "Audio contains non-finite samples: {0}": "O áudio contém amostras não finitas: {0}",

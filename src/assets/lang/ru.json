@@ -2518,7 +2518,7 @@
     "Ready to analyze": "Готово к анализу",
     "Select Analyze to calculate all six metrics.": "Запустите анализ для расчёта всех шести показателей.",
     "Select Analyze to retry, or load another file.": "Повторите анализ или откройте другой файл.",
-    "{duration} s · Analysis: 48 kHz · Playback: {rate} Hz": "{duration} с · Анализ: 48 кГц · Воспроизведение: {rate} Гц"
+    "{duration} s · Analysis: 48 kHz · Playback: {rate} Hz": "{duration} с · Анализ: 48 кГц · Воспроизведение: {rate} Гц",
     "Add Audio Files": "Добавить аудиофайлы",
     "Add audio files, then place each source around the listener.": "Добавьте аудиофайлы и разместите источники вокруг слушателя.",
     "Audio contains non-finite samples: {0}": "Аудио содержит неконечные значения: {0}",

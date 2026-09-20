@@ -2518,7 +2518,7 @@
     "Ready to analyze": "분석 준비 완료",
     "Select Analyze to calculate all six metrics.": "분석을 선택하여 6가지 지표를 계산하세요.",
     "Select Analyze to retry, or load another file.": "분석을 선택하여 재시도하거나 다른 파일을 여세요.",
-    "{duration} s · Analysis: 48 kHz · Playback: {rate} Hz": "{duration} 초 · 분석: 48 kHz · 재생: {rate} Hz"
+    "{duration} s · Analysis: 48 kHz · Playback: {rate} Hz": "{duration} 초 · 분석: 48 kHz · 재생: {rate} Hz",
     "Add Audio Files": "오디오 파일 추가",
     "Add audio files, then place each source around the listener.": "오디오 파일을 추가한 후 청취자 주위에 음원을 배치하세요.",
     "Audio contains non-finite samples: {0}": "오디오에 유한하지 않은 샘플이 있습니다: {0}",

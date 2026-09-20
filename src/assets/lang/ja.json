@@ -2518,7 +2518,7 @@
     "Ready to analyze": "解析の準備完了",
     "Select Analyze to calculate all six metrics.": "「解析」を選択すると6指標を算出します。",
     "Select Analyze to retry, or load another file.": "「解析」で再試行するか、別のファイルを開いてください。",
-    "{duration} s · Analysis: 48 kHz · Playback: {rate} Hz": "{duration} 秒 · 解析: 48 kHz · 再生: {rate} Hz"
+    "{duration} s · Analysis: 48 kHz · Playback: {rate} Hz": "{duration} 秒 · 解析: 48 kHz · 再生: {rate} Hz",
     "Add Audio Files": "音声ファイルを追加",
     "Add audio files, then place each source around the listener.": "音声ファイルを追加し、聴取者の周囲に音源を配置してください。",
     "Audio contains non-finite samples: {0}": "音声に非有限値が含まれています: {0}",

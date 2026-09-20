@@ -2518,7 +2518,7 @@
     "Ready to analyze": "准备分析",
     "Select Analyze to calculate all six metrics.": "选择分析以计算全部六项指标。",
     "Select Analyze to retry, or load another file.": "选择分析以重试，或打开其他文件。",
-    "{duration} s · Analysis: 48 kHz · Playback: {rate} Hz": "{duration} 秒 · 分析：48 kHz · 播放：{rate} Hz"
+    "{duration} s · Analysis: 48 kHz · Playback: {rate} Hz": "{duration} 秒 · 分析：48 kHz · 播放：{rate} Hz",
     "Add Audio Files": "添加音频文件",
     "Add audio files, then place each source around the listener.": "添加音频文件，然后将各声源放置在听者周围。",
     "Audio contains non-finite samples: {0}": "音频包含非有限采样值：{0}",

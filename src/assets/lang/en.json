@@ -2518,7 +2518,7 @@
     "Ready to analyze": "Ready to analyze",
     "Select Analyze to calculate all six metrics.": "Select Analyze to calculate all six metrics.",
     "Select Analyze to retry, or load another file.": "Select Analyze to retry, or load another file.",
-    "{duration} s · Analysis: 48 kHz · Playback: {rate} Hz": "{duration} s · Analysis: 48 kHz · Playback: {rate} Hz"
+    "{duration} s · Analysis: 48 kHz · Playback: {rate} Hz": "{duration} s · Analysis: 48 kHz · Playback: {rate} Hz",
     "Add Audio Files": "Add Audio Files",
     "Add audio files, then place each source around the listener.": "Add audio files, then place each source around the listener.",
     "Audio contains non-finite samples: {0}": "Audio contains non-finite samples: {0}",
