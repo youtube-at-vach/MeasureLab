@@ -347,6 +347,74 @@ class TestSoundQualityAnalyzerResultIntegrity(unittest.TestCase):
         for card in widget.metric_cards:
             self.assertEqual(card.values[1].text(), "")
 
+    def test_playback_reuses_history_paint_and_zoom_invalidates_cache(self):
+        import pyqtgraph as pg
+        from src.gui.widgets.sound_quality_analyzer import SoundQualityAnalyzerWidget
+
+        widget, _, results = self._widget_with_results()
+        results["channels"][0]["lufs_series"] = np.array([-20.0, -18.0, -22.0, -19.0])
+        results["channels"][0]["lufs_step"] = 0.25
+        SoundQualityAnalyzerWidget.plot_series(widget, results)
+        widget.resize(1180, 690)
+        curve = widget.plot.listDataItems()[0].curve
+        painted = []
+        original_paint = pg.PlotCurveItem.paint
+
+        def record_paint(item, *args):
+            if item is curve:
+                painted.append(item)
+            return original_paint(item, *args)
+
+        with patch.object(pg.PlotCurveItem, "paint", record_paint):
+            widget.show()
+            for _ in range(3):
+                QApplication.processEvents()
+                widget.plot.viewport().repaint()
+            initial_paints = len(painted)
+            self.assertGreater(initial_paints, 0)
+
+            widget.is_playing = True
+            for position in (4800, 9600, 14400, 19200):
+                widget.playback_position = position
+                widget.update_playback_cursor()
+                widget.plot.viewport().repaint()
+                QApplication.processEvents()
+            self.assertAlmostEqual(widget.cursors[0].value(), 0.4)
+            self.assertEqual(len(painted), initial_paints)
+
+            # Zoom must regenerate the trace, rather than stretch a stale image.
+            widget.plot.setXRange(0.1, 0.6, padding=0)
+            QApplication.processEvents()
+            widget.plot.viewport().repaint()
+            self.assertGreater(len(painted), initial_paints)
+
+    def test_zoom_clips_history_without_changing_measurement_samples(self):
+        from src.gui.widgets.sound_quality_analyzer import SoundQualityAnalyzerWidget
+
+        widget, _, results = self._widget_with_results()
+        values = np.sin(np.arange(36000) * 0.1)
+        values[1001] = 20.0  # A narrow peak must survive zooming.
+        values[1003] = np.nan
+        values[1005] = -np.inf
+        original = values.copy()
+        results["channels"][0]["lufs_series"] = values
+        results["channels"][0]["lufs_step"] = 0.1
+        results["duration"] = 3600.0
+        SoundQualityAnalyzerWidget.plot_series(widget, results)
+        widget.plot.setXRange(100.0, 101.0, padding=0)
+        trace = widget.plot.listDataItems()[0]
+        times, displayed = trace.getData()
+        self.assertLessEqual(len(displayed), 13)  # Visible samples and boundary neighbors.
+        self.assertIn(20.0, displayed)
+        self.assertTrue(np.isnan(displayed).any())
+        self.assertTrue(np.isneginf(displayed).any())
+        np.testing.assert_allclose(displayed, original[np.rint(times / 0.1).astype(int)])
+        np.testing.assert_array_equal(values, original)
+        np.testing.assert_array_equal(trace.getOriginalDataset()[1], original)
+
+        widget.fit_plot()
+        np.testing.assert_array_equal(trace.getData()[1], original)
+
     def test_csv_keeps_all_six_metrics(self):
         import csv
         import tempfile

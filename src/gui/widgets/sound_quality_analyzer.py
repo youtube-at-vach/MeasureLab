@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QFileDialog,
     QFrame,
+    QGraphicsItem,
     QHBoxLayout,
     QLabel,
     QMessageBox,
@@ -1151,16 +1152,25 @@ class SoundQualityAnalyzerWidget(QWidget):
             values = np.asarray(channel.get(metric.series + "_series", []))
             times = np.arange(len(values)) * channel.get(metric.series + "_step", 0.1)
             pen = pg.mkPen(
-                self.channel_colors()[i], width=1.8, style=Qt.PenStyle.SolidLine if i == 0 else Qt.PenStyle.DashLine
+                self.channel_colors()[i], width=1, style=Qt.PenStyle.SolidLine if i == 0 else Qt.PenStyle.DashLine
             )
-            self.plot.plot(
+            # Dense, antialiased wide/dashed paths are expensive to rasterize.
+            # Keep channel styles, but use a one-pixel pen for history traces.
+            trace = self.plot.plot(
                 times,
                 values,
                 pen=pen,
                 name=tr(channel["name"]),
                 connect="finite",
-                antialias=True,
+                antialias=False,
             )
+            # Enable clipping after attachment, when the ViewBox is available.
+            trace.setClipToView(True)
+            # History is immutable during playback. Moving the cursor repaints
+            # the viewport; reuse the rasterized curves until the view changes.
+            # Clipping above also bounds the cache when zooming into long files.
+            # Qt invalidates this device-coordinate cache on scale/style changes.
+            trace.curve.setCacheMode(QGraphicsItem.CacheMode.DeviceCoordinateCache)
         cursor = pg.InfiniteLine(
             pos=self.playback_position / self.samplerate,
             angle=90,
