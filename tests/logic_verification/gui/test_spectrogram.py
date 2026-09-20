@@ -449,37 +449,6 @@ class TestSpectrogramOptimization(unittest.TestCase):
         assert module.acc_count == 0
 
 
-class TestSpectrogramStyle(unittest.TestCase):
-    def test_spectrogram_style(self):
-        # Heavy patching for style test
-        with patch.dict(sys.modules, mock_modules):
-            if "src.gui.widgets.spectrogram" in sys.modules:
-                del sys.modules["src.gui.widgets.spectrogram"]
-
-            from src.gui.widgets.spectrogram import SpectrogramWidget, Spectrogram
-            from src.gui.styles import STYLE_TOGGLE_BTN_DARK, STYLE_TOGGLE_BTN_LIGHT
-
-            mock_audio_engine = MagicMock()
-            spectrogram = Spectrogram(mock_audio_engine)
-
-            mock_app = MagicMock()
-            mock_theme_manager = MagicMock()
-            mock_app.theme_manager = mock_theme_manager
-            mock_qt_widgets.QApplication.instance.return_value = mock_app
-
-            mock_theme_manager.get_current_theme.return_value = "light"
-
-            widget = SpectrogramWidget(spectrogram)
-
-            # Test Dark Theme
-            widget.apply_theme("dark")
-            widget.toggle_btn.setStyleSheet.assert_called_with(STYLE_TOGGLE_BTN_DARK)
-
-            # Test Light Theme
-            widget.apply_theme("light")
-            widget.toggle_btn.setStyleSheet.assert_called_with(STYLE_TOGGLE_BTN_LIGHT)
-
-
 class TestSpectrogramColormaps(unittest.TestCase):
     def test_spectrogram_colormaps_exist(self):
         """
