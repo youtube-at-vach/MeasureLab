@@ -2,70 +2,87 @@
 
 ## Overview
 
-The **Spatial Binaural Mixer** is a high-quality, offline 3D spatial audio rendering module designed for placing multiple independent source tracks in a virtual 3D space using Head-Related Transfer Functions (HRTF / SOFA files).
+Place multiple audio files around a listener, render them through a stereo HRTF dataset,
+and monitor or export the binaural mix. Processing is offline: position and gain changes
+apply to the next render. Editing the mix stops the previous monitor playback.
 
-Unlike real-time HRTF players, this module is specifically engineered for multi-track stem rendering. It employs block-less FFT convolution and high-precision spatial interpolation, ensuring the absolute highest sound quality for mixing and exporting spatial audio.
+The workspace combines a top-view azimuth map with numbered track cards. The map shows
+direction only, not source distance or elevation. Both light and dark themes are supported.
 
-## 🌟 Key Features
+## Load and position sources
 
-* **Multitrack Support**: Load multiple audio files (WAV, FLAC, MP3, etc.) and independently control their spatial position (Azimuth, Elevation), volume (Gain), and mute/solo states.
-* **IDW Spatial Interpolation**: Uses Inverse Distance Weighting interpolation between the nearest measured HRIR points from the SOFA file to smoothly synthesize any arbitrary angle, extending the precision beyond the original SOFA grid.
-* **Offline Block-less FFT Convolution**: Bypasses real-time buffer overlap-add mechanisms, convolving the entire audio track perfectly at once (`scipy.signal.fftconvolve`) to prevent any windowing artifacts or zipper noise.
-* **Float64 Processing**: Internal summing bus operates in 64-bit floating point precision, ensuring absolute headroom before final normalization and export.
-* **Highest Quality Resampling**: Synchronizes mixed sample rates natively using Polyphase Sinc interpolation (`resample_poly`).
+1. Choose **Load SOFA** to load a stereo HRIR dataset (`.sofa` or `.nc`). The shared loader
+   expects spherical source positions in degrees and impulse responses for two ears.
+2. Choose **Add Audio Files** to import several files together, or **Add Track** to create
+   an empty card and use **Load Audio** to choose or replace its source.
+3. Select a numbered card, then click or drag in the map to change its azimuth. You can
+   also enter an exact angle in the card. With the map focused, Left/Right changes the
+   angle by 1°, Shift+Left/Right by 10°, and Home returns it to the front.
+4. Set elevation and gain in the card. Hover over the filename to see its full path,
+   duration, sample rate and channel count.
 
----
+Angles follow the SOFA convention used by the loaded HRIRs:
 
-## 🎛️ Usage Guide
+| Parameter | Meaning |
+| --- | --- |
+| Azimuth 0° | Front |
+| Azimuth +90° | Listener's left |
+| Azimuth −90° | Listener's right |
+| Azimuth ±180° | Rear |
+| Elevation 0° | Horizontal plane |
+| Elevation +90° / −90° | Above / below |
 
-### 1. Spatial Settings (SOFA)
+See the [SOFA coordinate specification](https://sofacoustics.org/mediawiki/index.php/SOFA_specifications).
+The old guide reversed left and right; the renderer's angle convention is unchanged.
 
-Choose the HRTF filter dataset you want to use for the acoustic space.
+All files begin at the same time. Channels within each file are **averaged to mono**
+before spatial rendering. Stereo width within the original file is therefore not retained,
+and opposite-polarity channels can cancel. This is a source-positioning mixer, not a timeline editor.
 
-* Click **Load SOFA** and select a `.sofa` or `.nc` format file.
+**Solo** restricts the mix to loaded solo tracks; **Mute always excludes a track**, including
+a solo track. An empty solo card does not silence loaded sources. Crossed-out map markers
+identify excluded or unloaded sources. Number buttons let you select sources whose markers overlap.
+Removing a card leaves the remaining source numbers unchanged.
 
-### 2. Track Setup
+## Preview range
 
-Add the individual sound sources (e.g., Vocals, Drums, Bass) you want to spatialize.
+**Preview Mode** processes the same time range in every included source. Set **Start** and
+**Duration**, or use the previous/next segment buttons to move by one duration.
+A source that has already ended contributes silence; its ending is never replayed.
+If the range contains no source audio, the render reports an error.
 
-1. Click **Add Track**.
-2. For each added track row:
-   * **Load Audio**: Select the source audio file. Mono files are spatialized natively; stereo files will be summed to mono uniformly to act as a point source before dual channel convolution.
-   * **Azimuth**: Horizontal angle in degrees.
-     * `0°`: Dead center front.
-     * `+90°`: Straight to the right ear.
-     * `-90°`: Straight to the left ear.
-     * `180° / -180°`: Dead center behind.
-   * **Elevation**: Vertical angle in degrees.
-     * `0°`: Eye level horizontal plane.
-     * `+90°`: Directly above the head (Zenith).
-     * `-90°`: Directly below the head (Nadir).
-   * **Gain**: Control the relative volume of the track in the final mix.
-   * **Mute/Solo**: Quickly isolate or ignore tracks during monitor testing.
-   * **Remove Track (X) button**: Removes the track. Screen readers announce the action as "Remove Track," and it can be activated from the keyboard.
+The range label applies to **both monitoring and WAV export**. Disable Preview Mode to
+export the complete mix. Convolution includes the filter tail, so the output may be longer
+than the selected source segment. Each selected segment is convolved independently;
+a preview does not include filter history from before its start time.
 
-### 3. Preview Settings
+## Render, monitor and export
 
-Use these settings to render and monitor only a specific portion of the tracks.
+* **Render & Monitor** renders the current mix and starts playback through the active audio device.
+* **Stop Monitor** stops playback and releases its audio callback. Playback completion does the same.
+* **Render to WAV** asks for a destination, then renders and saves stereo 32-bit float WAV
+  in the background. The sample rate captured at render start is used for the file header.
+  The destination is replaced only after the complete file has been written successfully.
+* Progress, cancellation and playback position appear within the workspace. Settings are
+  locked while rendering. Cancellation takes effect after the current read, resampling,
+  convolution or peak-analysis operation, or between output-writing blocks.
+* Leaving or closing the widget stops monitoring and cancels a pending render. Cancelled
+  renders do not start playback or replace the destination file.
+* If the device sample rate changes, monitoring requires a new render rather than playing
+  the previous buffer at the wrong rate. Export remains tied to the captured render rate.
 
-* **Preview Mode**: Enable to process only a segment of the audio instead of the full tracks.
-* **Start**: The starting point of the preview segment in seconds.
-* **Duration**: The length of the preview segment to process in seconds.
-* **Previous/Next Preview Segment (◀ / ▶) buttons**: Quickly shift the start time backward or forward by the set duration to navigate through the tracks. Each button has a screen-reader action name.
+The completed render shows its duration and the attenuation applied for peak headroom.
 
-### 4. Rendering and Exporting
+## Processing and output headroom
 
-Because the module is optimized for quality over real-time responsiveness, audio is processed completely before playback or saving.
+The renderer blends up to three measured HRIRs using inverse angular-distance weighting,
+resamples sources and HRIRs as needed, and applies full FFT convolution. It accumulates the
+mix in float64 and processes sources one at a time to avoid holding all decoded files at once.
+The output and the current convolution still require memory proportional to their duration.
+Interpolation quality depends on the dataset, its angular coverage and the measured HRIRs;
+interpolation does not add missing acoustic information.
 
-* **▶ Render & Monitor**: Renders the complete mixed tracks directly into RAM, then plays it out through MeasureLab's active audio device. Rendering time depends on the number of tracks and the track length. Progress is shown in a popup, and the process can be cancelled at any time.
-* **⏸ Stop Monitor**: Immediately halts playback of the rendered RAM buffer.
-* **Render to WAV**: Processes the mix and opens a dialog to save the result directly to your disk as a 32-bit Float WAV file, locking the peak volume to standard maximum (`0.99 FS` to avoid clipping).
-
-## Practical Examples
-
-* **Stem Breakdown**: Import vocals, bass, keys and drums separately. Set vocals to Center (`Az 0, El 10`), Drums to bottom rear, and keys off to the wide sides. Render the mix for an immersive binaural song.
-* **ASMR / Narrative**: Import multiple voice tracks and sound effects, spread them across the full 3D sphere to mimic a realistic story scene, and export the unified high-fidelity scene to WAV.
-
-## Output headroom
-
-After convolution and mixing, normalization attenuates the whole render when its estimated true peak exceeds -1 dBTP. It preserves stereo balance and does not apply compression. Four-times interpolation and the margin reduce inter-sample overload risk; they do not guarantee every DAC reconstruction filter remains unclipped.
+If the estimated true peak exceeds −1 dBTP, the whole mix is attenuated. This preserves
+stereo balance without compression or upward normalization. Four-times interpolation and
+the margin reduce inter-sample overload risk; they do not guarantee that every DAC
+reconstruction filter remains unclipped.
