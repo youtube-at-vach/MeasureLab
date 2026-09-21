@@ -2,7 +2,7 @@
 
 ## Overview
 
-Last audited against the current implementation: 2026-08-13.
+Audited 2026-09-21 against checkout `8e6c15c2`; incoming proposals at locally available `origin/main` (`52ae2aea`) were also reviewed. This is a source/documentation audit, not hardware validation. The historical review record below is preserved verbatim.
 
 ## Scope and Selection Policy
 
@@ -10,57 +10,77 @@ Last audited against the current implementation: 2026-08-13.
 > **Core Principle**
 > Accurate measurement, free of charge, and all features available to everyone.
 
-MeasureLab focuses on signal measurement for audio devices, DACs, amplifiers, and related analog paths. Features should be meaningful on common 44.1/48 kHz devices, distinguish the DUT from the measurement interface, and prefer relative two-channel measurements. Sound device diagnostics are acceptable if clearly presented as such.
+Follow the [current direction](../guide/CURRENT_DIRECTION.md): improve useful measurements and readable results on ordinary 44.1/48 kHz interfaces. Prefer relative two-channel measurements, distinguish the DUT from the acquisition path, and extend existing widgets before adding another instrument. Follow the [design boundaries](../guide/MEASUREMENT_INSTRUMENT_DESIGN_GUIDELINES.md#15-理想的な測定器と実装要件の境界); do not add duplicate background monitoring.
 
-## Status Legend
+**Proposed** means ready for review, not approved or scheduled. **Vision** requires an experiment before promotion. **Covered** rejects a duplicate proposal. Historical rejected/deferred topics remain inactive; new audit judgments below do not imply a human review decision.
 
-* **Implemented / Partially implemented**: User-facing measurement is present or core exists.
-* **Selected**: Suitable for addition to an existing widget.
-* **Conditional**: Useful only with restricted use cases.
-* **On hold / Not suitable**: Not selected or outside current scope.
+## Proposed Extensions
 
-## Selected Additions to Existing Widgets
+Three new proposals, followed by one clarified existing proposal. No new standalone widget is justified by this audit.
 
-Highest-value remaining additions grouped by target widgets.
+### 1. Output Impedance and Load Interaction — Network Analyzer
 
-### 1. Distortion Analyzer Extensions
+* **Question:** Will a headphone or line output change its frequency response with a different load? Capture two sweeps with manually exchanged known resistive loads and a common input reference. Derive complex source impedance versus frequency; optionally use a measured load impedance to predict its voltage-divider response.
+* **Existing / missing:** [Network Analyzer](widgets/network_analyzer.en.md) supplies XFER, phase and references; [Impedance Analyzer](widgets/impedance_analyzer.en.md) measures passive loads using a shunt. Neither derives an active output's source impedance from two loaded transfer functions. Add a paired-load mode to Network Analyzer, reusing its acquisition and plots.
+* **First delivery / proof:** Start with low-voltage, single-ended outputs, two entered effective loads including analyzer input loading, unchanged gain and common phase alignment. Show the measured response difference even when source impedance is unresolved. Validate with a known series resistor and predict a third load; mark ill-conditioned results when the difference is within repeat scatter. Bridged/power outputs and load-dependent nonlinear behavior are outside this first model.
 
-* **SMPTE, DIN, and CCIF IMD Sweeps:** Amplitude sweeps storing IMD percentages/levels.
-* **AES17 Dynamic Range Automator:** Sequence for calibration, validation, and measurement.
-* **Long-Term Warm-up and Stability Logger:** Trend tracking for gain and THD.
-* **Multi-Tone Distortion (TD+N) & Doppler (Phase IMD) Profilers:** Simultaneous noise/distortion evaluation and driver excursion demodulation.
-* **Class-D Switching Artifact Profiler:** Sweep for out-of-band switching noise and aliasing common in Class-D amplifiers. (NEW)
+### 2. Signal-Level Residual Map — Distortion Analyzer
 
-### 2. LUFS & Sound Level Meter Extensions
+* **Question:** Does the noise remaining between tones rise when a DAC or amplifier reproduces a signal? Add a fixed-frequency level sequence with quiet captures before/after it; show residual power density versus frequency and stimulus level, plus band-integrated absolute residual levels.
+* **Existing / missing:** [Noise Profiler](widgets/noise_profiler.en.md) characterizes the selected input; Distortion Analyzer reports THD+N; [Advanced Distortion Meter](widgets/advanced_distortion_meter.en.md) already measures multitone TD+N. The new result is the level-dependent residual spectrum with explicit tone/harmonic exclusion, not another aggregate distortion score. Reuse the distortion sweep and shared spectral calculations.
+* **First delivery / proof:** Keep ADC gain, bandwidth, FFT window and exclusion bands fixed; average linear power and report the retained bandwidth. Include a matching loopback baseline without subtracting distortion powers. Test constant-noise and amplitude-dependent-noise signals, plus off-bin leakage. Label the result “residual,” since unresolved spurs remain; quiet auto-muting and interface noise prevent automatic DUT attribution. [Audio Precision explains why idle noise and noise in a signal's presence differ](https://www.ap.com/category/news/signal-to-noise-ratio-snr-dynamic-range-and-noise).
 
-* **True-Peak Histogram and Clipping Profiler:** Histogram and exceedance tracking.
-* **Percentile Noise Statistics (L10/L50/L90):** Environmental noise tracking over time.
+### 3. Difference with Repeatability — Plot Comparer
 
-### 3. Spectrum & Transient Analyzer Extensions
+* **Question:** Is a small response change larger than this setup's run-to-run variation? Group repeated A/B acquisitions and display their mean gain difference alongside each group's repeat scatter, retaining every original trace.
+* **Existing / missing:** [Plot Comparer](widgets/plot_comparer.en.md) overlays, normalizes and exports traces; Network Analyzer applies a reference. Neither groups independent runs or computes their spread. Add offline comparison of unsmoothed Network Analyzer gain traces first; this needs no new acquisition widget.
+* **First delivery / proof:** Show run count and sample standard deviation, not an audibility or full-uncertainty verdict. Require compatible frequency coverage and acquisition settings; extend exported metadata with rate, level, gain/calibration identity and quality flags. Missing metadata stays “unverified”; no extrapolation or implicit normalization. Verify identical runs, a known gain shift, missing bins and mismatched settings. Manual repeat capture is enough for the first version.
 
-* **Peak & Dynamics Profilers:** Auto-peak markers, Burst Envelope Dynamics, and Micro-dynamics Profiler for punchiness.
-* **Psychoacoustic Masking Overlay:** Real-time human auditory perception curves.
+### 4. IMD Amplitude Sweeps — Distortion Analyzer (Carried Forward)
 
-### 4. Network & Impedance Analyzer Extensions
-
-* **Specialized Measurements:** Haptic Audio Sync Profiler, Thermal Power Compression Logger (Re drift), and Cable LCR Extractor.
-* **Loudspeaker Polar/Directivity 3D Plotter:** Automated turntable control and multi-angle acoustic response capturing. (NEW)
-
-### 5. Integrity & Spatial Visualization
-
-* **Integrity Logger & Audiograms:** XRUN timeline (Event Detector) and Interactive Psychoacoustic Audiograms.
-* **Spatial & 3D Mapping:** HRTF deconvolution (Stereo Alignment Monitor) and 6DOF Head-Tracking Room Simulation (Spatial Binaural Mixer).
+[The implementation](../src/gui/widgets/distortion_analyzer.py) has SMPTE/CCIF real-time metrics, but `SweepWorker.run()` calls harmonic analysis and sweep plots/exports read THD+N fields. Route amplitude sweeps through the selected IMD analysis, store IMD percent/dB and actual tone frequencies/ratio, and update plots/export together. Validate against the same captured signal's real-time result. Treat DIN as a separately specified preset/metric, not an already supported standard. This is the smallest implementation candidate; AES17 measurement itself is already present.
 
 ## Future / Visionary Ideas
 
-Adventurous, next-generation concepts beyond standard audio measurement, currently brainstormed without constraints.
+These ideas are separated from the implementation candidates. Each has a concrete experiment and a reuse check.
 
-* **Psycho-Acoustic Emotional Impact Scorer:** Analyze the signal to estimate human emotional response (e.g. excitement, relaxation) based on frequency content, tempo, and dynamic range.
-* **Temporal Audio Micro-Lens:** Use AI to interpolate and visualize acoustic events that happen between the samples (shorter than a single sample).
-* **Neuromorphic & Quantum Analysis:** Event-based audio transient capture and quantum mechanics modeling for true randomness of noise floors.
-* **Multimodal & Spatial:** Synesthetic Measurement Mapper (haptics/visuals), Ultrasonic Acoustic Levitation Calibrator, and Holographic/AR Acoustic Mode visualization.
-* **AI & Automation:** AI-Driven Measurement Recipe Generator, AI Golden Ear Component Fingerprinter.
-* **Bio & BCI Interfaces:** Bio-Acoustic Impedance Sonifier, Brain-Computer Interface (BCI) Audiophile Profiler.
+### Two-Input Noise Microscope — New Vision
+
+Make weak shared noise emerge as two synchronized input channels average complex cross-spectra. Noise Profiler currently averages one channel's magnitude; this would be a new estimator there, not another spectrum widget. [Published low-frequency experiments](https://arxiv.org/abs/1408.2470) support the principle, but do not establish performance on consumer interfaces. First test known common noise plus independent noise, then a split physical source. Display both auto-spectra, cross-spectrum phase/sign and convergence. Shared interference, loading and [cross-spectral cancellation](https://www.nist.gov/publications/phase-inversion-and-collapse-cross-spectral-function) must be characterized before claiming a lower usable noise floor.
+
+### Model Challenge Bench — New Vision
+
+Let a measured model propose where it might be wrong, then ask the real DUT. Extend [Response Viewer](widgets/response_viewer.en.md) with held-out frequency/level probes and a prediction-error map; select additional probes within user-set output limits. Existing THD maps, simulations and adaptive predistortion already cover modeling and correction. The new capability is independent experimental validation and adaptive probe selection. First demonstrate a known virtual model passing, and an intentionally inadequate model failing; retain measured, predicted and unexplored regions separately. This neither infers circuit topology nor replaces the deferred generic AI-anomaly proposal.
+
+### Time-Reversal Focus Experiment — Refined Existing Vision
+
+Turn the existing focusing idea into a measurable experiment: reuse Network Analyzer's impulse response and Recorder & Player to replay an energy-normalized reversed response, then measure concentration at the target and nearby positions. [Single-loudspeaker focusing has been demonstrated](https://pubmed.ncbi.nlm.nih.gov/28764440/), but a captured room response is not a guarantee of a spatially isolated focus. The missing extension is paired capture/replay and spatial verification. Promote only after a repeatable low-level test with unchanged geometry; do not promise levitation or a universal inverse filter.
+
+## Audit of Earlier Candidates
+
+| Earlier candidate | Current disposition and evidence |
+| --- | --- |
+| True-Peak Histogram / Clipping Profiler | **Covered:** [LUFS Meter](widgets/lufs_meter.en.md) has histogram, SP/TP intervals and incomplete-run flags. |
+| L10/L50/L90 | **Covered:** [Sound Level Meter](../src/gui/widgets/sound_level_meter.py), `calculate_ln_statistics()` and statistics UI. |
+| Auto-peak markers | **Covered:** [Spectrum Analyzer](../src/gui/widgets/spectrum_analyzer.py), `configure_peak_markers()`, display/raw modes. |
+| Multitone TD+N; Cable LCR Extractor | **Covered:** Advanced Distortion Meter MIM; Impedance Analyzer L/C/R, OSL and sweep. A specialized name adds no measurement. |
+| AES17 automator; warm-up/stability logger | **Retained, lower priority:** automate the existing calibration/measurement sequence; separately retain periodic gain/THD with acquisition conditions. Neither requires a new widget. |
+| XRUN timeline | **Partial:** Event Detector already marks gaps and censored events; only a timeline linked to existing engine loss metadata remains a potential extension. |
+| Class-D switching artifact profiler | **Not selected in this audit:** ordinary-rate capture cannot identify out-of-band switching noise from aliased in-band components. Spectrum observation is covered; causal attribution needs a specified wider-band front end. |
+| Thermal power compression / Re drift; Phase IMD / Doppler | **Conditional:** impedance time series and two-tone IMD already exist. Actual thermal compression needs controlled drive and acoustic response; Doppler needs specified phase demodulation. No new implementation commitment. |
+| Burst Envelope / Micro-dynamics; Haptic Audio Sync | **Conditional:** Transient Analyzer and Boxcar already capture/average transients. Define an additional observable metric and, for haptics, a sensor before reconsidering. |
+| Loudspeaker Polar/Directivity 3D Plotter; HRTF deconvolution; 6DOF Room Simulation | **Retained as vision:** reuse Network Analyzer, HRTF Player and Spatial Binaural Mixer. Acquisition geometry, fixtures/tracking and validation remain prerequisites. |
+| Psychoacoustic Masking Overlay; Perceptual Residue Auralizer; Interactive Audiograms | **Retained as vision:** require a specified perceptual model and calibrated listening protocol. A separated residue becoming audible does not establish that it was audible in the original mixture. |
+
+### Other Earlier Vision Seeds (Not Scheduled)
+
+Preserved for later workers, without treating speculation as a measurement capability:
+
+* **Perception / AI:** Psycho-Acoustic Emotional Impact Scorer; AI-Driven Measurement Recipe Generator; AI Golden Ear Component Fingerprinter. Define a testable output before promotion; no emotion or component-identification accuracy is established.
+* **Temporal Audio Micro-Lens:** Interpolated displays may illustrate band-limited reconstruction; AI cannot establish unrecorded sub-sample events as measured facts.
+* **Neuromorphic & Quantum Analysis:** Event-based transient capture is covered by Event Detector; quantum modeling of noise has no defined observable here.
+* **Multimodal / Spatial:** Synesthetic Measurement Mapper; Synesthetic Haptic Translator; Ultrasonic Acoustic Levitation Calibrator; Holographic/AR Acoustic Mode visualization. Additional hardware and an experiment remain undefined.
+* **Bio / BCI:** Bio-Acoustic Impedance Sonifier; Brain-Computer Interface Audiophile Profiler. Retained as speculative concepts only.
 
 ## Previously Audited / Rejected / On Hold
 
