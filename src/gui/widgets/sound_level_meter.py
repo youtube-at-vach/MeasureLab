@@ -5,7 +5,7 @@ import threading
 import numpy as np
 import pyqtgraph as pg
 from scipy.signal import butter, lfilter, sosfilt
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -23,6 +23,7 @@ from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
 from src.gui.styles import button_style
 from src.core.analysis import AudioCalc
+from src.core.sound_level import ImpulseTimeWeighting, LevelHistory
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
@@ -31,71 +32,32 @@ from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 logger = logging.getLogger(__name__)
 
 
+class _AcquisitionEvents(QObject):
+    finished = pyqtSignal(object)
+
+
 class SoundLevelMeter(MeasurementModule):
+    TIME_CONSTANTS = {"FAST": 0.125, "SLOW": 1.0, "10ms": 0.010}
+
     def __init__(self, audio_engine: AudioEngine):
         super().__init__()
         self.audio_engine = audio_engine
         self.is_running = False
-
-        # Measurement parameters
-        self.freq_weighting = "A"  # A, C, Z
-        self.time_weighting = "FAST"  # FAST, SLOW, IMPULSE, 10ms
-        self.channel = 0  # 0 for Left, 1 for Right
-        self.target_duration = None  # None means continuous
-        self.start_time = None
-        self.bandwidth_mode = "20Hz - 20kHz (Wide)"  # Default
-
-        # State variables
-        self.leq_integrator = 0.0
-        self.leq_samples = 0
-        self.lmax = -np.inf
-        self.lmin = np.inf
-        self.lpeak = -np.inf
-
-        # LN Statistics
-        self.ln_history_capacity = 360000  # 10 hours at 0.1s rate
-        self.ln_history = np.zeros(self.ln_history_capacity, dtype=np.float32)
-        self.ln_history_ptr = 0
-        self.ln_history_count = 0
-        self.last_sample_time = 0.0
-        self.LN_SAMPLING_PERIOD = 0.1  # Fixed 0.1s for statistics as requested
-
-        # Cache for LN statistics
-        self._ln_stats_cache = {}
-        self._ln_stats_last_count = 0
-        self._ln_stats_last_time = 0.0
-
+        self.freq_weighting = "A"
+        self.time_weighting = "FAST"
+        self.channel = 0
+        self.target_duration = None
+        self.bandwidth_mode = "20Hz - 20kHz"
         self.callback_id = None
-        self._filter_lock = threading.Lock()
-
-        # Filters
-        self.sos_filter = None
-        self.filter_state = None
-        self.bw_filter = None
-        self.bw_filter_state = None
-
-        # Time weighting constants (tau)
-        self.TIME_CONSTANTS = {
-            "FAST": 0.125,
-            "SLOW": 1.0,
-            "IMPULSE": 0.035,  # Rise time. Fall is different, see logic below
-            "10ms": 0.010,
-        }
-        self.IMPULSE_FALL_TAU = 1.5
-
-        # Current instantaneous level (squared pressure)
-        self.current_sq_val = 0.0
-
-        # Results (thread-safe access needed ideally, but Python GIL helps basic reads)
-        self.results = {
-            "Lp": -np.inf,
-            "Leq": -np.inf,
-            "LE": -np.inf,
-            "Lmax": -np.inf,
-            "Lmin": -np.inf,
-            "Lpeak": -np.inf,
-            "LN": {},  # L5, L10, L50, L90, L95, Lhigh, Llow, Lave
-        }
+        self._run_token = None
+        self._state_lock = threading.RLock()
+        self._events = _AcquisitionEvents()
+        # Stream shutdown must run on the owning thread, never inside PortAudio.
+        self._events.finished.connect(self._finish_analysis, Qt.ConnectionType.QueuedConnection)
+        self.sample_rate = float(audio_engine.sample_rate or 48000)
+        self.bw_filter = self.bw_filter_state = None
+        self.sos_filter = self.filter_state = None
+        self._reset_measurements()
 
     @property
     def name(self):
@@ -108,433 +70,163 @@ class SoundLevelMeter(MeasurementModule):
     def get_widget(self):
         return SoundLevelMeterWidget(self)
 
+    def _set_parameter(self, name, value):
+        with self._state_lock:
+            if getattr(self, name) == value:
+                return
+            setattr(self, name, value)
+            self._update_filters()
+            self._reset_measurements()
+
     def set_freq_weighting(self, weighting):
-        self.freq_weighting = weighting
-        self._update_filters()
+        self._set_parameter("freq_weighting", weighting)
 
     def set_time_weighting(self, weighting):
-        self.time_weighting = weighting
-        # Reset integration if needed or just continue? Usually better to keep current val but adapt tau.
-        # But for impulse it's stateful.
+        self._set_parameter("time_weighting", weighting)
 
     def set_channel(self, channel):
-        self.channel = channel
-        self.reset_measurements()
+        self._set_parameter("channel", channel)
 
     def set_target_duration(self, duration_str):
-        if duration_str == "Continuous":
-            self.target_duration = None
-        else:
-            # Parse "1s", "1min"
-            val = int(duration_str[:-1]) if duration_str[-1] == "s" else int(duration_str[:-3]) * 60
-            self.target_duration = float(val)
-        # Don't reset immediately, applies to next start? Or reset if running?
-        # Usually settings apply to next run.
+        duration = None
+        if duration_str != "Continuous":
+            duration = float(int(duration_str[:-3]) * 60 if duration_str.endswith("min") else int(duration_str[:-1]))
+        self._set_parameter("target_duration", duration)
 
     def set_bandwidth_mode(self, mode):
-        # mode: String from combobox
-        self.bandwidth_mode = mode
-        self._update_filters()
+        self._set_parameter("bandwidth_mode", mode)
 
-    def reset_measurements(self):
+    def _reset_measurements(self):
+        """Start a new acquisition interval; caller owns the processing lock."""
         self.leq_integrator = 0.0
         self.leq_samples = 0
         self.lmax = -np.inf
         self.lmin = np.inf
         self.lpeak = -np.inf
+        self.current_sq_val = 0.0
+        self._impulse = ImpulseTimeWeighting()
+        self._history = LevelHistory(self.sample_rate)
+        self._history_snapshot = None
+        self._target_samples = None if self.target_duration is None else round(self.target_duration * self.sample_rate)
+        self.results = dict.fromkeys(("Lp", "Leq", "LE", "Lmax", "Lmin", "Lpeak"), -np.inf)
 
-        # Reset LN Statistics
-        self.ln_history_ptr = 0
-        self.ln_history_count = 0
-        self.last_sample_time = time.time()
-
-        # Reset Results
-        self.results = {
-            "Lp": -np.inf,
-            "Leq": -np.inf,
-            "LE": -np.inf,
-            "Lmax": -np.inf,
-            "Lmin": -np.inf,
-            "Lpeak": -np.inf,
-            "LN": {},
-        }
+    def reset_measurements(self):
+        with self._state_lock:
+            self._update_filters()
+            self._reset_measurements()
 
     def _update_filters(self):
-        sr = self.audio_engine.sample_rate
-        if not sr:
-            return
-
-        # Bandwidth Filter Design
-        # 20Hz is common lower bound.
-        # Upper: 12.5k, 20k, 8k
-        upper_freq = 20000
-        if "12.5kHz" in self.bandwidth_mode:
-            upper_freq = 12500
-        elif "8kHz" in self.bandwidth_mode:
-            upper_freq = 8000
-        elif "20kHz" in self.bandwidth_mode:
-            upper_freq = 20000
-
-        # Ensure upper freq is below Nyquist
-        nyquist = sr / 2.0
-
-        # Design separately to avoid wide-bandpass issues
-        # Highpass 20Hz (Always apply)
-        sos_hp = butter(4, 20, btype="highpass", fs=sr, output="sos")
-
-        if upper_freq >= nyquist * 0.95:
-            # Just Highpass
-            new_bw_filter = sos_hp
+        """Design and reset filters within the acquisition lock."""
+        self.sample_rate = float(self.audio_engine.sample_rate or 48000)
+        upper = 12500 if "12.5kHz" in self.bandwidth_mode else 8000 if "8kHz" in self.bandwidth_mode else 20000
+        highpass = butter(4, 20, btype="highpass", fs=self.sample_rate, output="sos")
+        if upper < self.sample_rate * 0.5 * 0.95:
+            lowpass = butter(4, upper, btype="lowpass", fs=self.sample_rate, output="sos")
+            self.bw_filter = np.vstack((highpass, lowpass))
         else:
-            # Highpass + Lowpass cascade
-            sos_lp = butter(4, upper_freq, btype="lowpass", fs=sr, output="sos")
-            new_bw_filter = np.vstack((sos_hp, sos_lp))
-
-        new_bw_state = np.zeros((new_bw_filter.shape[0], 2))
-
-        if self.freq_weighting == "Z":
-            new_sos_filter = None
-            new_filter_state = None
-        elif self.freq_weighting == "A":
-            new_sos_filter = AudioCalc.design_a_weighting(sr)
-            new_filter_state = np.zeros((new_sos_filter.shape[0], 2))
+            self.bw_filter = highpass
+        self.bw_filter_state = np.zeros((len(self.bw_filter), 2))
+        if self.freq_weighting == "A":
+            self.sos_filter = AudioCalc.design_a_weighting(self.sample_rate)
         elif self.freq_weighting == "C":
-            new_sos_filter = AudioCalc.design_c_weighting(sr)
-            new_filter_state = np.zeros((new_sos_filter.shape[0], 2))
-
-        # Assign safely using lock to prevent race condition in the audio callback
-        with self._filter_lock:
-            self.bw_filter_state = new_bw_state
-            self.bw_filter = new_bw_filter
-            if self.freq_weighting != "Z":
-                self.filter_state = new_filter_state
-                self.sos_filter = new_sos_filter
-            else:
-                self.filter_state = None
-                self.sos_filter = None
-
-    def _apply_impulse_weighting(self, sq_sig, sr):
-        """
-        Apply Impulse time weighting using a downsampled approximation to improve performance.
-        Impulse: Rise 35ms, Fall 1500ms.
-        """
-        factor = 8  # Processing 1/8th of samples gives ~8x speedup with good accuracy
-
-        # 1. Adjust time constants for lower sample rate
-        sr_low = sr / factor
-
-        tau_rise = self.TIME_CONSTANTS.get("IMPULSE", 0.035)
-        tau_fall = self.IMPULSE_FALL_TAU
-
-        alpha_rise = 1.0 - np.exp(-1.0 / (sr_low * tau_rise))
-        alpha_fall = 1.0 - np.exp(-1.0 / (sr_low * tau_fall))
-
-        # 2. Downsample using Max pooling (to capture peaks)
-        # Pad to multiple of factor
-        n = len(sq_sig)
-        rem = n % factor
-        if rem != 0:
-            pad_width = factor - rem
-            # Pad with 0 (silence) to avoid extending loud signals artificially
-            sig_padded = np.pad(sq_sig, (0, pad_width), mode="constant", constant_values=0)
+            self.sos_filter = AudioCalc.design_c_weighting(self.sample_rate)
         else:
-            sig_padded = sq_sig
-
-        # Reshape to (chunks, factor) and take max of each chunk
-        chunks = sig_padded.reshape(-1, factor)
-        sig_low = np.max(chunks, axis=1)
-
-        # 3. Apply standard Impulse logic on reduced data (Python loop)
-        curr = self.current_sq_val
-
-        # Performance critical loop (optimized using list comprehension)
-        cr = 1.0 - alpha_rise
-        cf = 1.0 - alpha_fall
-
-        # Convert to list for faster iteration and use walrus operator for state accumulation
-        sig_list = sig_low.tolist()
-        out_low = np.fromiter(
-            (curr := (alpha_rise * s + cr * curr if s > curr else alpha_fall * s + cf * curr) for s in sig_list),
-            dtype=sig_low.dtype,
-            count=len(sig_list),
-        )
-
-        # 4. Upsample (Repeat)
-        out_high = np.repeat(out_low, factor)
-
-        # Trim padding
-        if rem != 0:
-            out_high = out_high[:n]
-
-        return out_high, curr
+            self.sos_filter = None
+        self.filter_state = None if self.sos_filter is None else np.zeros((len(self.sos_filter), 2))
 
     def start_analysis(self):
         if self.is_running:
             return
+        self.stop_analysis()  # Release any registration awaiting completion delivery.
+        with self._state_lock:
+            self._update_filters()
+            self._reset_measurements()
+            token = self._run_token = object()
+            self.is_running = True
 
-        self.is_running = True
-        self._update_filters()
-        self.reset_measurements()
-        self.start_time = time.time()
-        self.last_sample_time = self.start_time
+        def callback(indata, outdata, frames, time_info, status):
+            self.callback(indata, outdata, frames, time_info, status, run_token=token)
 
-        # Setup callback
         try:
-            self.callback_id = self.audio_engine.register_callback(self.callback)
-        except Exception as e:
-            logger.error(f"Failed to start audio stream: {e}")
-            self.is_running = False
+            self.callback_id = self.audio_engine.register_callback(callback)
+        except Exception:
+            with self._state_lock:
+                self.is_running = False
+                self._run_token = None
+            logger.exception("Failed to start sound level measurement")
+
+    def _finish_analysis(self, token):
+        if token is self._run_token and not self.is_running:
+            self.stop_analysis()
 
     def stop_analysis(self):
-        if not self.is_running:
-            return
-        self.is_running = False
-        if self.callback_id is not None:
-            self.audio_engine.unregister_callback(self.callback_id)
-            self.callback_id = None
+        with self._state_lock:
+            self.is_running = False
+            self._run_token = None
+            callback_id, self.callback_id = self.callback_id, None
+        if callback_id is not None:
+            self.audio_engine.unregister_callback(callback_id)
 
-    def callback(self, indata, outdata, frames, time_info, status):
-        if not self.is_running:
-            return
-
-        # Check duration
-        if self.target_duration is not None:
-            if time.time() - self.start_time >= self.target_duration:
-                self.is_running = False
+    def callback(self, indata, outdata, frames, time_info, status, *, run_token=None):
+        with self._state_lock:
+            if not self.is_running or (run_token is not None and run_token is not self._run_token):
                 return
+            if not len(indata):
+                return
+            if self.sample_rate != float(self.audio_engine.sample_rate or 48000):
+                self._update_filters()
+                self._reset_measurements()
+            # A fixed-duration acquisition includes exactly this many samples,
+            # including the final partial callback. Wall-clock time is irrelevant.
+            remaining = len(indata) if self._target_samples is None else self._target_samples - self.leq_samples
+            signal = indata[:remaining, self.channel if self.channel < indata.shape[1] else 0]
+            if not len(signal):
+                return
+            if self.bw_filter is not None:
+                signal, self.bw_filter_state = sosfilt(self.bw_filter, signal, zi=self.bw_filter_state)
+            if self.sos_filter is not None:
+                signal, self.filter_state = sosfilt(self.sos_filter, signal, zi=self.filter_state)
+            powers = signal**2
+            if self.time_weighting == "IMPULSE":
+                weighted = self._impulse.process(powers, self.sample_rate)
+            else:
+                alpha = -np.expm1(-1 / (self.sample_rate * self.TIME_CONSTANTS[self.time_weighting]))
+                weighted, _ = lfilter([alpha], [1, -(1 - alpha)], powers, zi=[self.current_sq_val * (1 - alpha)])
+            self.current_sq_val = float(weighted[-1])
+            self.lmax = max(self.lmax, float(np.max(weighted)))
+            self.lmin = min(self.lmin, float(np.min(weighted)))
+            self.lpeak = max(self.lpeak, float(np.max(powers)))
+            self.leq_integrator += float(np.sum(powers))
+            self.leq_samples += len(powers)
+            self._history.append(weighted)
+            linear_results = {
+                "Lp": self.current_sq_val,
+                "Leq": self.leq_integrator / self.leq_samples,
+                "LE": self.leq_integrator / self.sample_rate,
+                "Lmax": self.lmax,
+                "Lmin": self.lmin,
+                "Lpeak": self.lpeak,
+            }
+            self.results = {key: float(10 * np.log10(value + 1e-12)) for key, value in linear_results.items()}
+            if self._target_samples is not None and self.leq_samples >= self._target_samples:
+                self.is_running = False
+                self._events.finished.emit(self._run_token)
 
-        # Mono processing for now (use channel 0 or mix?)
-        # Let's use the first selected input channel or average if stereo.
-        # Assuming indata is (frames, channels).
+    def get_display_snapshot(self):
+        with self._state_lock:
+            if self._history_snapshot is None or self._history_snapshot.revision != self._history.revision:
+                self._history_snapshot = self._history.snapshot()
+            return self.results.copy(), self.leq_samples / self.sample_rate, self._history_snapshot
 
-        if indata.shape[1] > self.channel:
-            sig = indata[:, self.channel]
-        else:
-            # Fallback to channel 0 if requested channel doesn't exist
-            sig = indata[:, 0]
-
-        # If calibration is available, apply it to convert to Pascal?
-        # BUT wait, the calibration in settings is global input scale factor?
-        # Or usually 'dBFS to real unit'.
-        # Let's assume sig is in FS (-1.0 to 1.0).
-        # We need a calibration factor to convert FS to Pa.
-        # For now, let's treat FS as the unit and user sees dBFS-based SPL unless calibrated.
-        # NOTE: The requirement says "use settings calibration value".
-        # We will apply that in the final dB calculation or here.
-        # Typically calibration is "X dB at 1.0 FS" or "Sensitivity X V/Pa".
-        # Let's do raw calculations and offset dB at display time or use a sensitivity factor here.
-        # For robustness, let's calculate in FS and add offset in display.
-        # Ah, but integrators need linear values.
-        # Let's assume 1.0 FS = 0 dB for internal math, then add global offset.
-
-        with self._filter_lock:
-            # Apply Bandwidth Filter (HighSens/Wide/Normal)
-            bw_filt = self.bw_filter
-            bw_state = self.bw_filter_state
-            if bw_filt is not None and bw_state is not None:
-                try:
-                    sig, self.bw_filter_state = sosfilt(bw_filt, sig, zi=bw_state)
-                except ValueError as e:
-                    logger.warning(f"Shape mismatch in bandwidth filter: {e}")
-
-            # Apply Frequency Weighting
-            freq_filt = self.sos_filter
-            freq_state = self.filter_state
-            if freq_filt is not None and freq_state is not None:
-                try:
-                    sig, self.filter_state = sosfilt(freq_filt, sig, zi=freq_state)
-                except ValueError as e:
-                    logger.warning(f"Shape mismatch in frequency weighting filter: {e}")
-
-        # Square signal for power
-        sq_sig = sig**2
-
-        # Time Weighting
-        # Digital implementation of RC low-pass on squared signal
-        # y[n] = alpha * x[n] + (1 - alpha) * y[n-1]
-        # alpha = 1 - exp(-1 / (fs * tau))
-
-        sr = self.audio_engine.sample_rate or 48000
-
-        tau = self.TIME_CONSTANTS.get(self.time_weighting, 0.125)
-
-        alpha = 1.0 - np.exp(-1.0 / (sr * tau))
-
-        if self.time_weighting != "IMPULSE":
-            # Exponential moving average filter
-            # y = lfilter([alpha], [1, -(1-alpha)], x)
-            # We need to maintain state.
-
-            # initial state
-            zi = [self.current_sq_val * (1 - alpha)]
-
-            filtered_sq, zf = lfilter([alpha], [1, -(1 - alpha)], sq_sig, zi=zi)
-
-            self.current_sq_val = filtered_sq[-1]
-            block_vals = filtered_sq
-        else:
-            # Impulse implementation using optimized downsampling strategy
-            block_vals, self.current_sq_val = self._apply_impulse_weighting(sq_sig, sr)
-
-        # Update Measurements
-
-        # Lp (Instantaneous / Time-weighted level)
-        # Taking the last value of the block is common for display update,
-        # but for max/min we should scan the block.
-        lp_inst = block_vals[-1]
-
-        # Lmax, Lmin
-        # We assume Lmax/Lmin are derived from the Time-Weighted signal.
-        blk_max = np.max(block_vals)
-        blk_min = np.min(block_vals)
-
-        if blk_max > 1e-12:  # avoid log of zero issues implicitly later
-            if blk_max > self.current_sq_val:
-                pass  # logic check
-
-        # Update state Lmax (store in linear power to avoid log calls in callback, convert later)
-        # Actually usually stored in dB, but linear is safer for aggregation.
-        # Wait, Lmax is max of the weighted level? Yes, usually.
-        self.lmax = max(self.lmax, blk_max)
-        self.lmin = min(self.lmin, blk_min)
-
-        # Leq (Equivalent Continuous Sound Level)
-        # Average of squared pressure over time (unweighted by time constant, but freq weighted).
-        # So we integrate the raw 'sq_sig' (which is freq weighted but not time weighted).
-        self.leq_integrator += np.sum(sq_sig)
-        self.leq_samples += len(sq_sig)
-
-        # LE (Sound Exposure Level) will be calculated from leq_integrator in update_display logic
-        # LE = 10 log10( sum(sq_sig) / sr )
-
-        # Lpeak (Peak Sound Level)
-        # Max of the absolute raw signal (freq weighted, NO time weighting).
-        # raw peak
-        peak_curr = np.max(sq_sig)
-        self.lpeak = max(self.lpeak, peak_curr)
-
-        # LN Data Collection (0.1s interval)
-        current_time = time.time()
-        if current_time - self.last_sample_time >= self.LN_SAMPLING_PERIOD:
-            # Add current instantaneous level (Lp) to history
-            # Lp is already calculated as linear power 'lp_inst'
-            # Convert to dB for storage? Better to store linear for averaging (Lave),
-            # but usually Ln percentiles are on dB values.
-            # Lave is "Energy Average" usually -> Leq.
-            # But "Lave" might effectively be Leq.
-            # Let's store LINEAR power to support accurate Leq/Lave calculation of the subset,
-            # and convert to dB for sorting/percentiles.
-            self.ln_history[self.ln_history_ptr] = lp_inst
-            self.ln_history_ptr = (self.ln_history_ptr + 1) % self.ln_history_capacity
-            if self.ln_history_count < self.ln_history_capacity:
-                self.ln_history_count += 1
-            self.last_sample_time = current_time
-
-        # Store for display (Atomic update preferred)
-        self.results["Lp"] = 10 * np.log10(lp_inst + 1e-12)
-        self.results["Leq"] = 10 * np.log10((self.leq_integrator / (self.leq_samples + 1e-12)) + 1e-12)
-
-        # LE: 10 log10 ( Integral(p^2) dt ). dt = 1/sr.
-        # LE = 10 log10 ( sum(sq_sig) / sr ).
-        # self.leq_integrator tracks sum(p^2).
-        le_val = (self.leq_integrator / sr) + 1e-12
-        self.results["LE"] = 10 * np.log10(le_val)
-
-        self.results["Lmax"] = 10 * np.log10(self.lmax + 1e-12)
-        self.results["Lmin"] = 10 * np.log10(self.lmin + 1e-12)
-        self.results["Lpeak"] = 10 * np.log10(self.lpeak + 1e-12)
-
-        # Calculate/Update Statistics periodically (or on demand)
-        # Since this is the audio callback, we should NOT sort a potentially large array here.
-        # It's better to defer this to the GUI timer or a separate method called by GUI.
-        # We just collected the data.
+    @property
+    def ln_history_count(self):
+        return self._history.count
 
     def calculate_ln_statistics(self):
-        """Calculate LN statistics from history. Called by GUI."""
-        if self.ln_history_count == 0:
-            return {}
-
-        current_time = time.time()
-
-        # Adaptive update rate based on history size to prevent UI stutter
-        # Small history (< 1000 items / 100s): update every 0.1s
-        # Large history: update every 1.0s to save CPU
-        update_interval = 1.0 if self.ln_history_count > 1000 else 0.1
-
-        if (self.ln_history_count != self._ln_stats_last_count) and (
-            current_time - self._ln_stats_last_time >= update_interval
-        ):
-            data_linear = self.ln_history[: self.ln_history_count]
-            data_db = 10 * np.log10(data_linear + 1e-12)
-
-            # Percentiles (Ln is level EXCEEDED n% of time)
-            p_vals = np.percentile(data_db, [95, 90, 50, 10, 5])
-            l5, l10, l50, l90, l95 = p_vals
-
-            lhigh = float(np.max(data_db))
-            llow = float(np.min(data_db))
-            lave = float(10 * np.log10(np.mean(data_linear) + 1e-12))
-
-            self._ln_stats_cache = {
-                "L5": float(l5),
-                "L10": float(l10),
-                "L50": float(l50),
-                "L90": float(l90),
-                "L95": float(l95),
-                "Lhigh": lhigh,
-                "Llow": llow,
-                "Lave": lave,
-            }
-            self._ln_stats_last_count = self.ln_history_count
-            self._ln_stats_last_time = current_time
-
-        return self._ln_stats_cache
+        return self.get_display_snapshot()[2].statistics.copy()
 
     def get_ln_histogram(self, bin_size=0.5):
-        """
-        Calculate histogram of LN history.
-        Args:
-            bin_size (float): Bin size in dB.
-        Returns:
-            tuple: (bins, probabilities)
-                   bins: Center frequencies of bins
-                   probabilities: Normalized count (pdf) or absolute count?
-                                  Let's return normalized probability (sum=100% or 1.0)
-        """
-        if self.ln_history_count == 0:
-            return np.array([]), np.array([])
-
-        data_linear = self.ln_history[: self.ln_history_count]
-        data_db = 10 * np.log10(data_linear + 1e-12)
-
-        # Determine range
-        min_val = np.min(data_db)
-        max_val = np.max(data_db)
-
-        # Align bins to bin_size
-        start = np.floor(min_val / bin_size) * bin_size
-        end = np.ceil(max_val / bin_size) * bin_size
-
-        # Create bins edges
-        # If flat, make sure we have at least one bin
-        if start == end:
-            end += bin_size
-
-        bins = np.arange(start, end + bin_size, bin_size)
-
-        hist, bin_edges = np.histogram(data_db, bins=bins, density=False)
-
-        # Calculate centers
-        centers = (bin_edges[:-1] + bin_edges[1:]) / 2
-
-        # Normalize to percent?
-        total = np.sum(hist)
-        if total > 0:
-            probs = (hist / total) * 100.0
-        else:
-            probs = hist
-
-        return centers, probs
+        return self.get_display_snapshot()[2].histogram(bin_size)
 
 
 class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInterface):
@@ -556,7 +248,8 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidge
             self.apply_theme(self.app.theme_manager.get_current_theme())
 
         self.last_ln_update_time = 0.0
-        self.timer = QTimer()
+        self._last_history_view = None
+        self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_display)
         self.timer.start(50)  # 20Hz refresh
 
@@ -630,6 +323,7 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidge
         self.combo_duration.currentTextChanged.connect(self.module.set_target_duration)
         settings_layout.addWidget(self.combo_duration)
 
+        settings_group.setToolTip(tr("Changing a measurement setting resets the acquisition and statistics."))
         settings_group.setLayout(settings_layout)
         sidebar_layout.addWidget(settings_group)
 
@@ -652,10 +346,19 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidge
         )
         content_layout.addWidget(self.calibration_warning)
 
+        self.acquisition_label = QLabel()
+        self.acquisition_label.setWordWrap(True)
+        self.acquisition_label.setToolTip(
+            tr("LN uses 100 ms samples and retains the latest 10 hours. Leq covers the full acquisition.")
+        )
+        content_layout.addWidget(self.acquisition_label)
+
         # 1. Main Display (Big Numbers)
         display_frame = QWidget()
-        display_frame.setStyleSheet("background-color: #000; border-radius: 8px; margin-bottom: 10px;")
+        display_frame.setObjectName("soundLevelReadouts")
+        display_frame.setStyleSheet("QWidget#soundLevelReadouts { background-color: #000; border-radius: 8px; }")
         display_layout = QHBoxLayout()
+        display_layout.setContentsMargins(8, 6, 8, 6)
 
         # Lp Display
         self.disp_lp = self._create_big_display(tr("Instantaneous (Lp)"), "#00ff00")
@@ -678,8 +381,8 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidge
         self.plot_widget = pg.PlotWidget()
         self.plot_widget.setBackground("#111")
         self.plot_widget.showGrid(x=True, y=True)
-        self.plot_widget.setLabel("bottom", "Level", units="dB")
-        self.plot_widget.setLabel("left", "Probability", units="%")
+        self.plot_widget.setLabel("bottom", tr("Level"), units="dBFS")
+        self.plot_widget.setLabel("left", tr("Probability"), units="%")
 
         self.hist_item = pg.BarGraphItem(x=[0], height=[0], width=0.4, brush="g")
         self.plot_widget.addItem(self.hist_item)
@@ -796,10 +499,12 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidge
     def _create_big_display(self, title, color):
         container = QWidget()
         layout = QVBoxLayout()
+        layout.setContentsMargins(6, 6, 6, 6)
+        layout.setSpacing(4)
 
         lbl_title = QLabel(title)
         lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_title.setStyleSheet("color: #aaa; font-size: 14pt; margin-top: 10px;")
+        lbl_title.setStyleSheet("color: #aaa; font-size: 14pt;")
 
         lbl_val = QLabel("--.-")
         lbl_val.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -807,7 +512,7 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidge
 
         lbl_unit = QLabel("dB")
         lbl_unit.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_unit.setStyleSheet(f"color: {color}; font-size: 18pt; margin-bottom: 15px;")
+        lbl_unit.setStyleSheet(f"color: {color}; font-size: 18pt;")
 
         layout.addWidget(lbl_title)
         layout.addWidget(lbl_val)
@@ -841,11 +546,10 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidge
 
     def on_start_toggle(self, checked):
         if checked:
-            self.btn_start.setText(tr("Stop"))
             self.module.start_analysis()
         else:
-            self.btn_start.setText(tr("Start"))
             self.module.stop_analysis()
+        self.update_display()
         self.apply_theme()
 
     def apply_theme(self, theme_name=None):
@@ -863,79 +567,56 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidge
             self.btn_start.setStyleSheet(button_style("primary", extra="font-weight: bold; font-size: 14px;"))
 
     def update_display(self):
-        # Check if stopped automatically
-        if not self.module.is_running and self.btn_start.isChecked():
-            self.btn_start.setChecked(False)
-            self.on_start_toggle(False)
-
-        # Refresh even while stopped so calibration changes in Settings are
-        # reflected immediately in the always-running UI timer.
+        running = self.module.is_running
+        if not running and self.module.callback_id is not None:
+            self.module.stop_analysis()
+        if self.btn_start.isChecked() != running:
+            self.btn_start.blockSignals(True)
+            self.btn_start.setChecked(running)
+            self.btn_start.blockSignals(False)
+            self.apply_theme()
+        self.btn_start.setText(tr("Stop") if running else tr("Start"))
         cal_db, level_unit = self._update_calibration_display()
+        vals, elapsed, history = self.module.get_display_snapshot()
+        self.acquisition_label.setText(
+            tr("{state} · Acquired: {elapsed:.1f} s · LN window: {window:.1f} s").format(
+                state=tr("Running") if running else tr("Stopped"),
+                elapsed=elapsed,
+                window=history.powers.size * history.interval_seconds,
+            )
+        )
 
-        if not self.module.is_running:
+        def fmt(value):
+            return f"{value + cal_db:.1f}" if np.isfinite(value) else "--.-"
+
+        for key, display in (("Lp", self.disp_lp), ("Leq", self.disp_leq)):
+            text = fmt(vals[key])
+            if self._last_metrics.get(key) != text:
+                self._last_metrics[key] = text
+                display["label"].setText(text)
+        for key, label in self.metric_labels.items():
+            text = f"{fmt(vals[key])} {level_unit}"
+            if self._last_metrics.get(key) != text:
+                self._last_metrics[key] = text
+                label.setText(text)
+
+        # A reset or stop is visible immediately. Expensive distribution work
+        # runs at most four times per second, on a detached history snapshot.
+        view_key = (history, cal_db, level_unit)
+        previous = self._last_history_view
+        unchanged = previous is not None and previous[0] is history and previous[1:] == view_key[1:]
+        if unchanged:
             return
-
-        vals = self.module.results
-
-        # Helper formatter
-        def fmt(v):
-            return f"{v + cal_db:.1f}" if not np.isinf(v) and not np.isnan(v) else "--.-"
-
-        # Update Big Displays
-        val_lp = vals.get("Lp", -np.inf)
-        lp_text = fmt(val_lp)
-        if self._last_metrics.get("Lp") != lp_text:
-            self._last_metrics["Lp"] = lp_text
-            self.disp_lp["label"].setText(lp_text)
-
-        val_leq = vals.get("Leq", -np.inf)
-        leq_text = fmt(val_leq)
-        if self._last_metrics.get("Leq") != leq_text:
-            self._last_metrics["Leq"] = leq_text
-            self.disp_leq["label"].setText(leq_text)
-
-        # Update Details
-        last_metrics = self._last_metrics
-        last_metrics_get = last_metrics.get
-        vals_get = vals.get
-        for key, lbl in self.metric_labels.items():
-            val = vals_get(key, -np.inf)
-            text = f"{fmt(val)} {level_unit}"
-            if last_metrics_get(key) != text:
-                last_metrics[key] = text
-                lbl.setText(text)
-
-        # Update Stats (LN)
-        # Always calculate? It might be heavy if history is huge.
-        # But user wants to see it 'live' usually.
-        # Only calculate if tab is visible?
-        # Optimization: Only calculate if current tab is Histogram or Stats
-        current_idx = self.tabs.currentIndex()
-        is_hist_tab = self.tabs.widget(current_idx) == self.tab_hist
-        is_stats_tab = self.tabs.widget(current_idx) == self.tab_stats
-
-        if (is_hist_tab or is_stats_tab) and self.module.ln_history_count > 0:
-            # We can optimize by not calculating every GUI frame (50ms), maybe every 250ms?
-            if time.monotonic() - self.last_ln_update_time >= 0.25:
-                self.last_ln_update_time = time.monotonic()
-
-                # For Stats tab
-                if is_stats_tab:
-                    ln_stats = self.module.calculate_ln_statistics()
-                    for key, lbl in self.ln_labels.items():
-                        val = ln_stats.get(key, -np.inf)
-                        lbl.setText(f"{fmt(val)} {level_unit}")
-
-                # For Histogram tab
-                if is_hist_tab:
-                    centers, probs = self.module.get_ln_histogram(bin_size=0.5)
-                    if len(centers) > 0:
-                        # Update bar graph
-                        # BarGraphItem needs x, height, width
-                        self.hist_item.setOpts(x=centers, height=probs, width=0.4)
-
-                        # Auto range y?
-                        # self.plot_widget.setYRange(0, np.max(probs)*1.1)
+        now = time.monotonic()
+        if running and history.powers.size and now - self.last_ln_update_time < 0.25:
+            return
+        self.last_ln_update_time = now
+        self._last_history_view = view_key
+        for key, label in self.ln_labels.items():
+            label.setText(f"{fmt(history.statistics.get(key, -np.inf))} {level_unit}")
+        centers, probabilities = history.histogram()
+        self.hist_item.setOpts(x=centers + cal_db, height=probabilities, width=0.4)
+        self.plot_widget.setLabel("bottom", tr("Level"), units=level_unit)
 
     def update_compact_layout(self):
         compact = self.is_compact_mode()
