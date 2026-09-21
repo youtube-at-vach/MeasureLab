@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 import pytest
+import numpy as np
 from PyQt6.QtCore import Qt
 from src.gui.widgets.lufs_meter import LufsMeter, LufsMeterWidget
 
@@ -11,6 +12,7 @@ class MockAudioEngine:
         self.calibration.get_spl_offset_db.return_value = None
 
     def register_callback(self, callback):
+        self.callback = callback
         return 1
 
     def unregister_callback(self, callback_id):
@@ -117,19 +119,20 @@ def test_lufs_meter_widget_reset_stats(qtbot):
     widget = LufsMeterWidget(module)
     qtbot.addWidget(widget)
 
-    # Simulate some stats
-    widget._m_min = -20.0
-    widget._m_max = -5.0
-    widget._m_sum = -100.0
-    widget._m_n = 5
+    widget.on_toggle(True)
+    mono = 0.1 * np.sin(2 * np.pi * 997 * np.arange(24000) / engine.sample_rate)
+    block = np.column_stack((mono, mono))
+    engine.callback(block, None, len(block), None, None)
+    widget.update_display()
+    assert module.get_loudness_history().momentary.count == 2
+    assert widget.card_m_min["label"].text() != "---"
 
-    # Reset stats
     qtbot.mouseClick(widget.reset_stats_btn, Qt.MouseButton.LeftButton)
 
-    assert widget._m_min is None
-    assert widget._m_max is None
-    assert widget._m_sum == 0.0
-    assert widget._m_n == 0
+    assert module.get_loudness_history().momentary.count == 0
+    assert module.get_loudness_history().points == ()
+    assert widget.card_m_min["label"].text() == "---"
+    assert widget.m_curve.xData is None or len(widget.m_curve.xData) == 0
 
 
 def test_lufs_meter_widget_target_changed(qtbot):
@@ -353,3 +356,60 @@ def test_compact_shows_only_meters_and_restores_selected_tab(qtbot, tab_index):
     assert widget.profile_summary.isVisible() == (tab_index == 3)
     assert widget.profile_acquisition.isVisible() == (tab_index == 3)
     assert widget.event_note.isVisible() == (tab_index == 3)
+
+
+def test_loudness_repaints_and_stop_preserve_acquired_history(qtbot):
+    engine = MockAudioEngine()
+    module = LufsMeter(engine)
+    widget = LufsMeterWidget(module)
+    qtbot.addWidget(widget)
+    widget.on_toggle(True)
+    # Acquire without painting. Include a partial final interval to verify
+    # x=0 means the latest acquired sample, not the latest timer invocation.
+    signal = 0.1 * np.sin(2 * np.pi * 997 * np.arange(25200) / engine.sample_rate)
+    block = np.column_stack((signal, signal))
+    engine.callback(block, None, len(block), None, None)
+    before = module.get_loudness_history()
+    assert before.momentary.count == 2
+    for _ in range(5):
+        widget.update_display(force=True)
+    assert module.get_loudness_history() == before
+    np.testing.assert_allclose(widget.m_curve.xData, [-0.125, -0.025])
+    np.testing.assert_allclose(widget.m_curve.yData, [p.momentary for p in before.points])
+    assert widget.card_s_avg["label"].text() == "---"
+    widget.on_toggle(False)
+    for _ in range(3):
+        widget.update_display(force=True)
+    assert module.get_loudness_history() == before
+
+    # A freshly created view can reconstruct results without having observed
+    # the original acquisition. Starting again clears the previous run.
+    other = LufsMeterWidget(module)
+    qtbot.addWidget(other)
+    other.update_display(force=True)
+    np.testing.assert_array_equal(other.m_curve.yData, widget.m_curve.yData)
+    assert other.card_m_avg["label"].text() == widget.card_m_avg["label"].text()
+    widget.on_toggle(True)
+    assert module.get_loudness_history().points == ()
+    assert widget.card_m_avg["label"].text() == "---"
+    assert widget.m_curve.xData is None or len(widget.m_curve.xData) == 0
+
+
+def test_invalid_loudness_does_not_leave_a_valid_looking_graph(qtbot):
+    engine = MockAudioEngine()
+    module = LufsMeter(engine)
+    widget = LufsMeterWidget(module)
+    qtbot.addWidget(widget)
+    widget.on_toggle(True)
+    mono = 0.1 * np.sin(2 * np.pi * 997 * np.arange(24000) / engine.sample_rate)
+    block = np.column_stack((mono, mono))
+    engine.callback(block, None, len(block), None, None)
+    widget.update_display()
+    assert len(widget.m_curve.xData) == 2
+    before = module.get_loudness_history().momentary
+    engine.callback(np.full((100, 2), np.nan), None, 100, None, None)
+    engine.callback(block, None, len(block), None, None)
+    widget.update_display()
+    assert widget.card_m_avg["label"].text() == "INVALID"
+    assert widget.m_curve.xData is None or len(widget.m_curve.xData) == 0
+    assert module.get_loudness_history().momentary == before

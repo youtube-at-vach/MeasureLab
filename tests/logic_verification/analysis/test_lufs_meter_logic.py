@@ -480,3 +480,60 @@ def test_stop_peak_hold_includes_the_same_delayed_tail_as_profile(lufs_meter):
     meter.reset_peaks()
     meter.stop_meter()  # Lifecycle cleanup must not resurrect the cleared hold.
     assert meter.peak_hold_l == meter._db_floor
+
+
+@pytest.mark.parametrize("sample_rate", [44100, 48000])
+@pytest.mark.parametrize("chunk_size", [257, 4096, 65536])
+def test_loudness_history_matches_complete_sample_windows(sample_rate, chunk_size):
+    """Reference windows and stats do not depend on callbacks or GUI polling."""
+    meter = LufsMeter(MockAudioEngine(sample_rate))
+    meter.start_meter()
+    # Peak profile queue pressure is tested separately; isolate loudness here.
+    meter._profile.submit = lambda *args: None
+    t = np.arange(round(4.25 * sample_rate)) / sample_rate
+    amplitude = np.where(t < 1.1, 0.2, np.where(t < 2.4, 0.01, 0.08))
+    mono = amplitude * np.sin(2 * np.pi * 997 * t)
+    data = np.column_stack((mono, mono * 0.7))
+    filtered = signal.lfilter(meter.b0_shelf, meter.a0_shelf, data, axis=0)
+    filtered = signal.lfilter(meter.b1_hp, meter.a1_hp, filtered, axis=0)
+    power = np.sum(filtered**2, axis=1).astype(np.float32)
+
+    try:
+        for start in range(0, len(data), chunk_size):
+            block = data[start : start + chunk_size]
+            meter.audio_engine._callback(block, None, len(block), None, None)
+        snapshot = meter.get_loudness_history()
+        assert meter.measurement_valid
+        assert snapshot.sample_count == len(data)
+        expected_samples = np.arange(round(0.4 * sample_rate), len(data) + 1, round(0.1 * sample_rate))
+        assert [point.sample for point in snapshot.points] == list(expected_samples)
+        m_values = []
+        s_values = []
+        for point in snapshot.points:
+            m_power = power[point.sample - round(0.4 * sample_rate) : point.sample].mean(dtype=np.float64)
+            m_value = -0.691 + 10 * np.log10(m_power)
+            assert point.momentary == pytest.approx(m_value, abs=1e-8)
+            m_values.append(m_value)
+            if point.sample < 3 * sample_rate:
+                assert point.short_term is None
+            else:
+                s_power = power[point.sample - 3 * sample_rate : point.sample].mean(dtype=np.float64)
+                s_value = -0.691 + 10 * np.log10(s_power)
+                assert point.short_term == pytest.approx(s_value, abs=1e-8)
+                s_values.append(s_value)
+        for stats, values in ((snapshot.momentary, m_values), (snapshot.short_term, s_values)):
+            assert stats.count == len(values)
+            assert stats.minimum == pytest.approx(min(values), abs=1e-8)
+            assert stats.maximum == pytest.approx(max(values), abs=1e-8)
+            assert stats.average == pytest.approx(np.mean(values), abs=1e-8)
+        meter.reset_peaks()
+        assert meter.get_loudness_history() == snapshot
+        meter.reset_all_stats()
+        assert meter.get_loudness_history().points == ()
+        assert meter.get_loudness_history().sample_count == 0
+        # A partial post-reset window must not include the previous run.
+        block = data[: round(0.3 * sample_rate)]
+        meter.audio_engine._callback(block, None, len(block), None, None)
+        assert meter.get_loudness_history().points == ()
+    finally:
+        meter.stop_meter()
