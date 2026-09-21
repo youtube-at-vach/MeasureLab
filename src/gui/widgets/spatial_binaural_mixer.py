@@ -1,475 +1,548 @@
+"""Offline spatial mixing: source placement, render lifecycle and monitoring."""
+
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
 import soundfile as sf
-from scipy.signal import fftconvolve
-
-from PyQt6.QtCore import QThread, pyqtSignal, Qt
+from PyQt6.QtCore import QTimer, Qt
+from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QPushButton,
-    QLabel,
-    QFileDialog,
-    QScrollArea,
-    QGroupBox,
-    QMessageBox,
-    QProgressDialog,
-    QFrame,
+    QApplication,
     QCheckBox,
     QDoubleSpinBox,
+    QFileDialog,
+    QFrame,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QScrollArea,
+    QSizePolicy,
     QSpinBox,
+    QVBoxLayout,
+    QWidget,
 )
-
 
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.gui.styles import button_style
+from src.gui.widgets.hrtf_player import HRTFData, SOFALoader
+from src.gui.widgets.spatial_azimuth_view import AzimuthView
+from src.gui.widgets.spatial_binaural_render import (
+    RenderWorker,
+    TrackConfig,
+    interpolate_hrir as interpolate_hrir,  # Keep the existing public import available.
+    validate_hrtf,
+)
 from src.measurement_modules.base import MeasurementModule
-from src.core.true_peak import EXPORT_TRUE_PEAK_CEILING, estimate_true_peak
-from src.core.analysis import AudioCalc
-from src.gui.widgets.hrtf_player import SOFALoader, HRTFData
 
 
-def interpolate_hrir(hrtf_data: HRTFData, target_az: float, target_el: float, k: int = 3, p: float = 2.0) -> np.ndarray:
-    """
-    Interpolate HRIR using Inverse Distance Weighting (IDW) from k-nearest neighbors.
-    """
-    pos = hrtf_data.source_positions
-    deg2rad = np.pi / 180.0
-    az_rad = target_az * deg2rad
-    el_rad = target_el * deg2rad
-    pos_az_rad = pos[:, 0] * deg2rad
-    pos_el_rad = pos[:, 1] * deg2rad
+class FileLabel(QLabel):
+    """Keep long paths available without letting them dictate layout width."""
 
-    # Calculate angular distance on a sphere
-    cos_terms = np.sin(el_rad) * np.sin(pos_el_rad) + np.cos(el_rad) * np.cos(pos_el_rad) * np.cos(pos_az_rad - az_rad)
-    cos_terms = np.clip(cos_terms, -1.0, 1.0)
-    dists = np.arccos(cos_terms)
+    def __init__(self, text):
+        super().__init__(text)
+        self._filename = text
+        self.setTextFormat(Qt.TextFormat.PlainText)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.setMinimumWidth(80)
 
-    nearest_indices = np.argsort(dists)[:k]
-    nearest_dists = dists[nearest_indices]
+    def set_file(self, path):
+        self._filename = Path(path).name
+        self._elide()
+        self.setToolTip(str(path))
+        self.setAccessibleDescription(str(path))
 
-    # Exact match handling
-    if nearest_dists[0] < 1e-6:
-        return hrtf_data.ir_data[nearest_indices[0]].T.astype(np.float64)
+    def _elide(self):
+        self.setText(
+            self.fontMetrics().elidedText(self._filename, Qt.TextElideMode.ElideMiddle, self.contentsRect().width())
+        )
 
-    epsilon = 1e-9
-    weights = 1.0 / (nearest_dists**p + epsilon)
-    weights /= np.sum(weights)
-
-    N = hrtf_data.ir_data.shape[2]
-    blended_hrir = np.zeros((N, 2), dtype=np.float64)
-
-    for idx, w in zip(nearest_indices, weights, strict=True):
-        pair = hrtf_data.ir_data[idx].T.astype(np.float64)
-        blended_hrir += pair * w
-
-    return blended_hrir
-
-
-class RenderWorker(QThread):
-    progress = pyqtSignal(int, str)
-    finished = pyqtSignal(object)
-
-    def __init__(self, tracks_data, hrtf_data, target_sr, start_sec=None, duration_sec=None):
-        super().__init__()
-        self.tracks_data = tracks_data
-        self.hrtf_data = hrtf_data
-        self.target_sr = target_sr
-        self.start_sec = start_sec
-        self.duration_sec = duration_sec
-        self.is_cancelled = False
-
-    def cancel(self):
-        self.is_cancelled = True
-
-    def run(self):
-        try:
-            processed_tracks = []
-
-            for i, track in enumerate(self.tracks_data):
-                if self.is_cancelled:
-                    self.finished.emit(None)
-                    return
-                self.progress.emit(10, tr("Loading track {0}...").format(i + 1))
-
-                info = sf.info(track["path"])
-                if self.start_sec is not None and self.duration_sec is not None:
-                    start_frame = int(self.start_sec * info.samplerate)
-                    if start_frame >= info.frames:
-                        start_frame = max(0, info.frames - info.samplerate)  # if start exceeds file
-
-                    frames_to_read = int(self.duration_sec * info.samplerate)
-                    frames_to_read = min(frames_to_read, info.frames - start_frame)
-
-                    data, sr = sf.read(track["path"], always_2d=True, start=start_frame, frames=frames_to_read)
-                else:
-                    data, sr = sf.read(track["path"], always_2d=True)
-
-                if sr != self.target_sr:
-                    data = AudioCalc.resample(data, sr, self.target_sr)
-
-                # Convert to mono if it's stereo
-                if data.shape[1] > 1:
-                    data = np.mean(data, axis=1)
-                else:
-                    data = data[:, 0]
-
-                # Apply track gain
-                gain_linear = 10 ** (track["gain_db"] / 20.0)
-                data *= gain_linear
-                processed_tracks.append(data)
-
-            if not processed_tracks:
-                raise ValueError(tr("No valid tracks to render."))
-
-            N_hrir = 0
-            if self.hrtf_data:
-                N_hrir_orig = self.hrtf_data.ir_data.shape[2]
-                N_hrir = int(N_hrir_orig * self.target_sr / self.hrtf_data.sampling_rate)
-
-            max_mix_len = max(len(t) for t in processed_tracks) + N_hrir
-            master_bus = np.zeros((max_mix_len, 2), dtype=np.float64)
-
-            for i, (audio_data, config) in enumerate(zip(processed_tracks, self.tracks_data, strict=True)):
-                if self.is_cancelled:
-                    self.finished.emit(None)
-                    return
-                self.progress.emit(20 + int(70 * i / len(processed_tracks)), tr("Rendering track {0}...").format(i + 1))
-
-                hrir_orig = interpolate_hrir(self.hrtf_data, config["az"], config["el"])
-                if self.hrtf_data.sampling_rate != self.target_sr:
-                    hrir = AudioCalc.resample(hrir_orig, self.hrtf_data.sampling_rate, self.target_sr)
-                    correction = self.hrtf_data.sampling_rate / self.target_sr
-                    hrir *= correction
-                else:
-                    hrir = hrir_orig
-
-                # Full offline FFT Convolution (highest mathematical accuracy)
-                conv_l = fftconvolve(audio_data, hrir[:, 0], mode="full")
-                conv_r = fftconvolve(audio_data, hrir[:, 1], mode="full")
-
-                master_bus[: len(conv_l), 0] += conv_l
-                master_bus[: len(conv_r), 1] += conv_r
-
-            peak = estimate_true_peak(master_bus)
-            if peak > EXPORT_TRUE_PEAK_CEILING:
-                master_bus *= EXPORT_TRUE_PEAK_CEILING / peak
-
-            self.progress.emit(100, tr("Done"))
-            self.finished.emit(master_bus.astype(np.float32))
-        except Exception as e:
-            self.finished.emit(e)
+    def resizeEvent(self, event):
+        self._elide()
+        super().resizeEvent(event)
 
 
 class TrackControlUI(QFrame):
     removed = pyqtSignal(object)
+    changed = pyqtSignal()
+    selected = pyqtSignal(object)
 
-    def __init__(self):
+    def __init__(self, number=1):
         super().__init__()
-        self.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
+        self.number = number
         self.file_path = None
-        self.init_ui()
-
-    def init_ui(self):
-        layout = QHBoxLayout()
-
+        self.setObjectName("spatialTrackCard")
+        self.setStyleSheet(
+            "QFrame#spatialTrackCard { border: 1px solid palette(mid); border-radius: 5px; }"
+            "QFrame#spatialTrackCard[selected='true'] { border: 2px solid palette(highlight); }"
+        )
+        layout = QVBoxLayout(self)
+        layout.setSpacing(6)
+        header = QHBoxLayout()
+        self.select_btn = QPushButton(str(number))
+        self.select_btn.setCheckable(True)
+        self.select_btn.setAccessibleName(tr("Track {0}").format(number))
+        self.select_btn.setFixedWidth(36)
+        self.select_btn.clicked.connect(lambda: self.selected.emit(self))
+        self.name_label = FileLabel(tr("No file"))
+        self.name_label.setAccessibleName(tr("Loaded audio file"))
         self.load_btn = QPushButton(tr("Load Audio"))
         self.load_btn.clicked.connect(self.on_load)
-        self.name_label = QLabel(tr("No file"))
-        self.name_label.setFixedWidth(150)
-        self.name_label.setAccessibleName(tr("Loaded audio file"))
+        self.remove_btn = QPushButton("×")
+        self.remove_btn.setFixedWidth(30)
+        self.remove_btn.setAccessibleName(tr("Remove Track"))
+        self.remove_btn.setToolTip(tr("Remove Track"))
+        self.remove_btn.clicked.connect(lambda: self.removed.emit(self))
+        header.addWidget(self.select_btn)
+        header.addWidget(self.name_label, 1)
+        header.addWidget(self.load_btn)
+        header.addWidget(self.remove_btn)
+        layout.addLayout(header)
 
-        layout.addWidget(self.load_btn)
-        layout.addWidget(self.name_label)
-
+        controls = QGridLayout()
         self.az_label = QLabel(tr("Azimuth:"))
         self.az_spin = QSpinBox()
         self.az_spin.setRange(-180, 180)
         self.az_spin.setSuffix("°")
-        self.az_spin.setSingleStep(1)
-        self.az_spin.setValue(0)
-        self.az_label.setBuddy(self.az_spin)
-        self.az_spin.setAccessibleName(tr("Azimuth:"))
-        layout.addWidget(self.az_label)
-        layout.addWidget(self.az_spin)
-
         self.el_label = QLabel(tr("Elevation:"))
         self.el_spin = QSpinBox()
         self.el_spin.setRange(-90, 90)
         self.el_spin.setSuffix("°")
-        self.el_spin.setSingleStep(1)
-        self.el_spin.setValue(0)
-        self.el_label.setBuddy(self.el_spin)
-        self.el_spin.setAccessibleName(tr("Elevation:"))
-        layout.addWidget(self.el_label)
-        layout.addWidget(self.el_spin)
-
         self.gain_label = QLabel(tr("Gain:"))
         self.gain_spin = QDoubleSpinBox()
-        self.gain_spin.setRange(-60.0, 12.0)
-        self.gain_spin.setSuffix(" dB")
-        self.gain_spin.setSingleStep(1.0)
+        self.gain_spin.setRange(-60, 12)
         self.gain_spin.setDecimals(1)
-        self.gain_spin.setValue(0.0)
-        self.gain_label.setBuddy(self.gain_spin)
-        self.gain_spin.setAccessibleName(tr("Gain:"))
-        layout.addWidget(self.gain_label)
-        layout.addWidget(self.gain_spin)
-
+        self.gain_spin.setSingleStep(1)
+        self.gain_spin.setSuffix(" dB")
+        for column, (label, spin) in enumerate(
+            ((self.az_label, self.az_spin), (self.el_label, self.el_spin), (self.gain_label, self.gain_spin))
+        ):
+            label.setBuddy(spin)
+            spin.setAccessibleName(label.text())
+            spin.setKeyboardTracking(False)
+            spin.valueChanged.connect(self.changed)
+            controls.addWidget(label, 0, column)
+            controls.addWidget(spin, 1, column)
+            controls.setColumnStretch(column, 1)
         self.mute_btn = QPushButton(tr("Mute"))
-        self.mute_btn.setCheckable(True)
-        layout.addWidget(self.mute_btn)
-
         self.solo_btn = QPushButton(tr("Solo"))
-        self.solo_btn.setCheckable(True)
-        layout.addWidget(self.solo_btn)
+        for column, button in enumerate((self.mute_btn, self.solo_btn), 3):
+            button.setCheckable(True)
+            button.toggled.connect(self.changed)
+            controls.addWidget(button, 1, column)
+        layout.addLayout(controls)
+        order = [
+            self.load_btn,
+            self.select_btn,
+            self.az_spin,
+            self.el_spin,
+            self.gain_spin,
+            self.mute_btn,
+            self.solo_btn,
+            self.remove_btn,
+        ]
+        for before, after in zip(order, order[1:], strict=False):
+            QWidget.setTabOrder(before, after)
 
-        self.remove_btn = QPushButton("X")
-        self.remove_btn.setAccessibleName(tr("Remove Track"))
-        self.remove_btn.setToolTip(tr("Remove Track"))
-        self.remove_btn.clicked.connect(lambda: self.removed.emit(self))
-        layout.addWidget(self.remove_btn)
+    def set_selected(self, selected):
+        self.select_btn.setChecked(selected)
+        self.setProperty("selected", selected)
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.update()
 
-        self.setLayout(layout)
-
-        QWidget.setTabOrder(self.load_btn, self.az_spin)
-        QWidget.setTabOrder(self.az_spin, self.el_spin)
-        QWidget.setTabOrder(self.el_spin, self.gain_spin)
-        QWidget.setTabOrder(self.gain_spin, self.mute_btn)
-        QWidget.setTabOrder(self.mute_btn, self.solo_btn)
-        QWidget.setTabOrder(self.solo_btn, self.remove_btn)
+    def load_file(self, path):
+        # Validate before replacing an existing source.
+        info = sf.info(path)
+        if not info.frames:
+            raise ValueError(tr("No audio in the selected range."))
+        self.file_path = str(path)
+        self.name_label.set_file(path)
+        self.name_label.setToolTip(f"{path}\n{info.duration:.2f} s · {info.samplerate} Hz · {info.channels} ch")
+        self.changed.emit()
 
     def on_load(self):
-        fname, _ = QFileDialog.getOpenFileName(
+        path, _ = QFileDialog.getOpenFileName(
             self, tr("Open Audio"), "", "Audio Files (*.wav *.mp3 *.flac *.ogg);;All Files (*)"
         )
-        if fname:
-            self.file_path = fname
-            self.name_label.setText(fname.split("/")[-1])
+        if path:
+            try:
+                self.load_file(path)
+            except Exception as exc:
+                QMessageBox.warning(self, tr("Error"), str(exc))
+
+    def config(self):
+        return TrackConfig(self.file_path, self.az_spin.value(), self.el_spin.value(), self.gain_spin.value())
 
 
 class SpatialBinauralMixer(MeasurementModule):
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine
         self.hrtf_data: Optional[HRTFData] = None
-
         self.playback_buffer: Optional[np.ndarray] = None
         self.playback_cursor = 0
+        self.playback_sample_rate = 0
         self.is_playing = False
         self.callback_id = None
 
     @property
-    def name(self) -> str:
+    def name(self):
         return tr("Spatial Binaural Mixer")
 
     @property
-    def description(self) -> str:
+    def description(self):
         return tr("Offline High-Quality HRTF Multitrack Spatial Renderer.")
 
     def get_widget(self):
         return SpatialBinauralMixerWidget(self)
 
+    def play(self, result):
+        self.stop()
+        if self.audio_engine.sample_rate != result.sample_rate:
+            raise ValueError(tr("Sample rate changed. Render again to monitor."))
+        self.playback_buffer = result.audio
+        self.playback_sample_rate = result.sample_rate
+        self.playback_cursor = 0
+        self.is_playing = True
+        try:
+            self.callback_id = self.audio_engine.register_callback(self._callback)
+        except Exception:
+            self.stop()
+            raise
+
+    def stop(self):
+        self.is_playing = False
+        if self.callback_id is not None:
+            self.audio_engine.unregister_callback(self.callback_id)
+            self.callback_id = None
+        self.playback_buffer = None
+
     def _callback(self, indata, outdata, frames, time_info, status):
         outdata.fill(0)
-        if not self.is_playing or self.playback_buffer is None:
+        buffer = self.playback_buffer
+        if not self.is_playing or buffer is None:
             return
-
-        rem = len(self.playback_buffer) - self.playback_cursor
-        if rem <= 0:
+        if self.audio_engine.sample_rate != self.playback_sample_rate:
             self.is_playing = False
             return
-
-        to_cp = min(frames, rem)
-        chunk = self.playback_buffer[self.playback_cursor : self.playback_cursor + to_cp]
-
+        count = min(frames, len(buffer) - self.playback_cursor)
+        chunk = buffer[self.playback_cursor : self.playback_cursor + count]
         if outdata.shape[1] >= 2:
-            outdata[:to_cp, :2] = chunk
+            outdata[:count, :2] = chunk
         elif outdata.shape[1] == 1:
-            outdata[:to_cp, 0] = np.mean(chunk, axis=1)
-
-        self.playback_cursor += to_cp
-        if self.playback_cursor >= len(self.playback_buffer):
+            outdata[:count, 0] = np.mean(chunk, axis=1)
+        self.playback_cursor += count
+        if self.playback_cursor >= len(buffer):
             self.is_playing = False
 
 
 class SpatialBinauralMixerWidget(QWidget):
-    def __init__(self, module: SpatialBinauralMixer):
+    def __init__(self, module):
         super().__init__()
         self.module = module
         self.tracks = []
+        self.selected_track = None
+        self._next_track_number = 1
+        self.worker = None
+        self._render_callback = None
         self.init_ui()
+        self.monitor_timer = QTimer(self)
+        self.monitor_timer.setInterval(100)
+        self.monitor_timer.timeout.connect(self._update_monitor)
+        self.destroyed.connect(module.stop)
+        self._scene_changed()
 
     def init_ui(self):
-        layout = QVBoxLayout()
-
-        # SOFA Settings
-        sofa_group = QGroupBox(tr("Spatial Settings (SOFA)"))
-        sofa_layout = QHBoxLayout()
+        layout = QVBoxLayout(self)
+        self.sofa_group = QGroupBox(tr("Spatial Settings (SOFA)"))
+        sofa_layout = QHBoxLayout(self.sofa_group)
         self.load_sofa_btn = QPushButton(tr("Load SOFA"))
         self.load_sofa_btn.clicked.connect(self.on_load_sofa)
-        self.sofa_label = QLabel(tr("No SOFA loaded"))
+        self.sofa_label = FileLabel(tr("No SOFA loaded"))
         sofa_layout.addWidget(self.load_sofa_btn)
-        sofa_layout.addWidget(self.sofa_label)
-        sofa_layout.addStretch()
-        sofa_group.setLayout(sofa_layout)
-        layout.addWidget(sofa_group)
+        sofa_layout.addWidget(self.sofa_label, 1)
+        layout.addWidget(self.sofa_group)
 
-        # Tracks
+        self.editor = QWidget()
+        editor_layout = QHBoxLayout(self.editor)
+        editor_layout.setContentsMargins(0, 0, 0, 0)
+        scene_group = QGroupBox(tr("Source placement"))
+        scene_layout = QVBoxLayout(scene_group)
+        self.azimuth_view = AzimuthView()
+        self.azimuth_view.selected.connect(self._select_number)
+        self.azimuth_view.azimuth_changed.connect(self._set_azimuth)
+        scene_layout.addWidget(self.azimuth_view, 1)
+        hint = QLabel(tr("Drag to change azimuth. Arrow keys adjust the selected source."))
+        hint.setWordWrap(True)
+        scene_layout.addWidget(hint)
+        note = QLabel(tr("Top view · direction only. Set elevation in the track card."))
+        note.setWordWrap(True)
+        scene_layout.addWidget(note)
+        editor_layout.addWidget(scene_group, 2)
+
         tracks_group = QGroupBox(tr("Tracks"))
-        tracks_layout = QVBoxLayout()
-
+        tracks_layout = QVBoxLayout(tracks_group)
+        toolbar = QHBoxLayout()
+        self.add_track_btn = QPushButton(tr("Add Track"))
+        self.add_track_btn.clicked.connect(self.add_track)
+        self.add_files_btn = QPushButton(tr("Add Audio Files"))
+        self.add_files_btn.clicked.connect(self.on_add_files)
+        toolbar.addWidget(self.add_files_btn)
+        toolbar.addWidget(self.add_track_btn)
+        toolbar.addStretch()
+        tracks_layout.addLayout(toolbar)
+        self.empty_label = QLabel(tr("Add audio files, then place each source around the listener."))
+        self.empty_label.setWordWrap(True)
+        tracks_layout.addWidget(self.empty_label)
         self.tracks_area = QScrollArea()
         self.tracks_area.setObjectName("spatialMixerTracksScroll")
         self.tracks_area.setProperty("measurelabScrollRole", "dynamic-content")
         self.tracks_area.setWidgetResizable(True)
         self.tracks_area.setAccessibleName(tr("Tracks"))
+        self.tracks_area.setMinimumWidth(480)
         self.tracks_container = QWidget()
-        self.tracks_inner_layout = QVBoxLayout()
+        self.tracks_inner_layout = QVBoxLayout(self.tracks_container)
+        self.tracks_inner_layout.setContentsMargins(4, 4, 4, 4)
         self.tracks_inner_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.tracks_container.setLayout(self.tracks_inner_layout)
         self.tracks_area.setWidget(self.tracks_container)
+        tracks_layout.addWidget(self.tracks_area, 1)
+        mono_note = QLabel(tr("Each file becomes one mono source. Mute takes priority over Solo."))
+        mono_note.setWordWrap(True)
+        tracks_layout.addWidget(mono_note)
+        editor_layout.addWidget(tracks_group, 3)
+        layout.addWidget(self.editor, 1)
 
-        self.add_track_btn = QPushButton(tr("Add Track"))
-        self.add_track_btn.clicked.connect(self.add_track)
-
-        tracks_layout.addWidget(self.add_track_btn)
-        tracks_layout.addWidget(self.tracks_area)
-        tracks_group.setLayout(tracks_layout)
-        layout.addWidget(tracks_group)
-
-        # Preview Settings
-        preview_group = QGroupBox(tr("Preview Settings"))
-        preview_layout = QHBoxLayout()
-
+        self.preview_group = QGroupBox(tr("Preview Settings"))
+        preview_layout = QHBoxLayout(self.preview_group)
         self.preview_cb = QCheckBox(tr("Preview Mode"))
-        self.preview_cb.stateChanged.connect(self.on_preview_cb_changed)
-
+        self.preview_cb.toggled.connect(self.on_preview_cb_changed)
         preview_layout.addWidget(self.preview_cb)
         self.start_label = QLabel(tr("Start:"))
         self.start_sec_spin = QDoubleSpinBox()
-        self.start_sec_spin.setRange(0.0, 3600.0)
-        self.start_sec_spin.setSingleStep(1.0)
-        self.start_sec_spin.setSuffix(" s")
-        self.start_sec_spin.setDecimals(1)
-        self.start_sec_spin.setValue(0.0)
-        self.start_sec_spin.setEnabled(False)
-        self.start_label.setBuddy(self.start_sec_spin)
-        self.start_sec_spin.setAccessibleName(tr("Start:"))
-        preview_layout.addWidget(self.start_label)
-        preview_layout.addWidget(self.start_sec_spin)
-
-        self.prev_btn = QPushButton("◀")
-        self.prev_btn.setFixedWidth(24)
-        self.prev_btn.setAccessibleName(tr("Previous Preview Segment"))
-        self.prev_btn.setToolTip(tr("Previous Preview Segment"))
-        self.prev_btn.setEnabled(False)
-        self.prev_btn.clicked.connect(self.on_prev_preview)
-        preview_layout.addWidget(self.prev_btn)
-
-        self.next_btn = QPushButton("▶")
-        self.next_btn.setFixedWidth(24)
-        self.next_btn.setAccessibleName(tr("Next Preview Segment"))
-        self.next_btn.setToolTip(tr("Next Preview Segment"))
-        self.next_btn.setEnabled(False)
-        self.next_btn.clicked.connect(self.on_next_preview)
-        preview_layout.addWidget(self.next_btn)
-
+        self.start_sec_spin.setRange(0, 86400)
         self.duration_label = QLabel(tr("Duration:"))
         self.duration_sec_spin = QDoubleSpinBox()
-        self.duration_sec_spin.setRange(0.1, 600.0)
-        self.duration_sec_spin.setSingleStep(1.0)
-        self.duration_sec_spin.setSuffix(" s")
-        self.duration_sec_spin.setDecimals(1)
-        self.duration_sec_spin.setValue(10.0)
-        self.duration_sec_spin.setEnabled(False)
-        self.duration_label.setBuddy(self.duration_sec_spin)
-        self.duration_sec_spin.setAccessibleName(tr("Duration:"))
+        self.duration_sec_spin.setRange(0.1, 600)
+        self.duration_sec_spin.setValue(10)
+        for label, spin in ((self.start_label, self.start_sec_spin), (self.duration_label, self.duration_sec_spin)):
+            spin.setDecimals(1)
+            spin.setSuffix(" s")
+            spin.setKeyboardTracking(False)
+            label.setBuddy(spin)
+            spin.setAccessibleName(label.text())
+            spin.valueChanged.connect(self._scene_changed)
+        preview_layout.addWidget(self.start_label)
+        preview_layout.addWidget(self.start_sec_spin)
+        self.prev_btn = QPushButton("◀")
+        self.next_btn = QPushButton("▶")
+        for button, name, handler in (
+            (self.prev_btn, tr("Previous Preview Segment"), self.on_prev_preview),
+            (self.next_btn, tr("Next Preview Segment"), self.on_next_preview),
+        ):
+            button.setFixedWidth(32)
+            button.setAccessibleName(name)
+            button.setToolTip(name)
+            button.clicked.connect(handler)
+            preview_layout.addWidget(button)
         preview_layout.addWidget(self.duration_label)
         preview_layout.addWidget(self.duration_sec_spin)
         preview_layout.addStretch()
-        preview_group.setLayout(preview_layout)
-        layout.addWidget(preview_group)
+        layout.addWidget(self.preview_group)
 
-        # Export Actions
-        actions_group = QGroupBox(tr("Render Actions"))
-        actions_layout = QHBoxLayout()
-
+        self.range_label = QLabel()
+        self.range_label.setWordWrap(True)
+        layout.addWidget(self.range_label)
+        self.result_label = QLabel()
+        self.result_label.setWordWrap(True)
+        self.result_label.hide()
+        layout.addWidget(self.result_label)
+        actions = QHBoxLayout()
         self.play_btn = QPushButton(tr("▶ Render & Monitor"))
         self.play_btn.setAccessibleName(tr("Render & Monitor"))
+        self.play_btn.setStyleSheet(button_style("primary"))
         self.play_btn.clicked.connect(self.on_render_play)
         self.stop_btn = QPushButton(tr("⏸ Stop Monitor"))
         self.stop_btn.setAccessibleName(tr("Stop Monitor"))
+        self.stop_btn.setStyleSheet(button_style("stop"))
         self.stop_btn.clicked.connect(self.on_stop_play)
-
         self.export_btn = QPushButton(tr("Render to WAV"))
         self.export_btn.setAccessibleName(tr("Render to WAV"))
         self.export_btn.clicked.connect(self.on_export)
+        for button in (self.play_btn, self.stop_btn, self.export_btn):
+            actions.addWidget(button)
+        actions.addStretch()
+        layout.addLayout(actions)
+        status_row = QHBoxLayout()
+        self.status_label = QLabel()
+        self.status_label.setTextFormat(Qt.TextFormat.PlainText)
+        self.status_label.setWordWrap(True)
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setFixedWidth(130)
+        self.cancel_btn = QPushButton(tr("Cancel"))
+        self.cancel_btn.clicked.connect(self.cancel_render)
+        status_row.addWidget(self.status_label, 1)
+        status_row.addWidget(self.progress_bar)
+        status_row.addWidget(self.cancel_btn)
+        layout.addLayout(status_row)
+        # State changes must not borrow space from the source map. Keep the
+        # result line and transport controls in the layout even when hidden.
+        for control in (self.result_label, self.progress_bar, self.cancel_btn):
+            policy = control.sizePolicy()
+            policy.setRetainSizeWhenHidden(True)
+            control.setSizePolicy(policy)
+        self.progress_bar.hide()
+        self.cancel_btn.hide()
+        self.on_preview_cb_changed()
+        order = [
+            self.load_sofa_btn,
+            self.azimuth_view,
+            self.add_files_btn,
+            self.add_track_btn,
+            self.preview_cb,
+            self.start_sec_spin,
+            self.prev_btn,
+            self.next_btn,
+            self.duration_sec_spin,
+            self.play_btn,
+            self.stop_btn,
+            self.export_btn,
+            self.cancel_btn,
+        ]
+        for before, after in zip(order, order[1:], strict=False):
+            QWidget.setTabOrder(before, after)
 
-        actions_layout.addWidget(self.play_btn)
-        actions_layout.addWidget(self.stop_btn)
-        actions_layout.addWidget(self.export_btn)
-        actions_layout.addStretch()
-        actions_group.setLayout(actions_layout)
-        layout.addWidget(actions_group)
+    def _select_number(self, number):
+        track = next((t for t in self.tracks if t.number == number), None)
+        if track:
+            self.select_track(track)
 
-        self.setLayout(layout)
+    def select_track(self, track):
+        self.selected_track = track
+        for item in self.tracks:
+            item.set_selected(item is track)
+        self.tracks_area.ensureWidgetVisible(track)
+        self._update_map()
 
-        QWidget.setTabOrder(self.load_sofa_btn, self.add_track_btn)
-        QWidget.setTabOrder(self.add_track_btn, self.preview_cb)
-        QWidget.setTabOrder(self.preview_cb, self.start_sec_spin)
-        QWidget.setTabOrder(self.start_sec_spin, self.prev_btn)
-        QWidget.setTabOrder(self.prev_btn, self.next_btn)
-        QWidget.setTabOrder(self.next_btn, self.duration_sec_spin)
-        QWidget.setTabOrder(self.duration_sec_spin, self.play_btn)
-        QWidget.setTabOrder(self.play_btn, self.stop_btn)
-        QWidget.setTabOrder(self.stop_btn, self.export_btn)
+    def _set_azimuth(self, number, azimuth):
+        track = next((t for t in self.tracks if t.number == number), None)
+        if track:
+            track.az_spin.setValue(azimuth)
 
-    def on_preview_cb_changed(self, state):
-        is_checked = self.preview_cb.isChecked()
-        self.start_sec_spin.setEnabled(is_checked)
-        self.duration_sec_spin.setEnabled(is_checked)
-        self.prev_btn.setEnabled(is_checked)
-        self.next_btn.setEnabled(is_checked)
+    def _audible_tracks(self):
+        loaded = [t for t in self.tracks if t.file_path]
+        solo = any(t.solo_btn.isChecked() for t in loaded)
+        return [t for t in loaded if not t.mute_btn.isChecked() and (not solo or t.solo_btn.isChecked())]
+
+    def _update_map(self):
+        audible = self._audible_tracks()
+        self.azimuth_view.set_sources(
+            [(t.number, t.az_spin.value(), t in audible) for t in self.tracks],
+            self.selected_track.number if self.selected_track else None,
+        )
+
+    def _scene_changed(self):
+        if self.module.callback_id is not None:
+            self.on_stop_play()
+        self.empty_label.setVisible(not self.tracks)
+        self.result_label.hide()
+        self._update_map()
+        self._update_actions()
+        rate = self.module.audio_engine.sample_rate if self.module.audio_engine else 48000
+        if self.preview_cb.isChecked():
+            self.range_label.setText(
+                tr("Monitor / WAV: {0:.1f}–{1:.1f} s + filter tail · {2} Hz").format(
+                    self.start_sec_spin.value(), self.start_sec_spin.value() + self.duration_sec_spin.value(), rate
+                )
+            )
+        else:
+            self.range_label.setText(tr("Monitor / WAV: full mix + filter tail · {0} Hz").format(rate))
+        if self.module.hrtf_data is None:
+            self.status_label.setText(tr("Please load a SOFA file first."))
+        elif not self._audible_tracks():
+            self.status_label.setText(tr("No valid tracks to render."))
+        else:
+            self.status_label.setText(tr("Ready · {0} audible tracks").format(len(self._audible_tracks())))
+
+    def _update_actions(self):
+        busy = self.worker is not None
+        ready = self.module.hrtf_data is not None and bool(self._audible_tracks()) and not busy
+        self.play_btn.setEnabled(ready and not self.module.is_playing)
+        self.export_btn.setEnabled(ready and not self.module.is_playing)
+        self.stop_btn.setEnabled(self.module.callback_id is not None)
+        for control in (self.sofa_group, self.editor, self.preview_group):
+            control.setEnabled(not busy)
+        self.progress_bar.setVisible(busy or self.module.is_playing)
+        self.cancel_btn.setVisible(busy)
+
+    def on_preview_cb_changed(self, *_):
+        for control in (self.start_sec_spin, self.duration_sec_spin, self.prev_btn, self.next_btn):
+            control.setEnabled(self.preview_cb.isChecked())
+        self._scene_changed()
 
     def on_prev_preview(self):
-        dur = self.duration_sec_spin.value()
-        curr = self.start_sec_spin.value()
-        self.start_sec_spin.setValue(max(0.0, curr - dur))
+        self.start_sec_spin.setValue(max(0, self.start_sec_spin.value() - self.duration_sec_spin.value()))
 
     def on_next_preview(self):
-        dur = self.duration_sec_spin.value()
-        curr = self.start_sec_spin.value()
-        self.start_sec_spin.setValue(curr + dur)
+        self.start_sec_spin.setValue(self.start_sec_spin.value() + self.duration_sec_spin.value())
 
     def on_load_sofa(self):
-        fname, _ = QFileDialog.getOpenFileName(
-            self, tr("Open SOFA File"), "", "SOFA Files (*.sofa *.nc);;All Files (*)"
-        )
-        if fname:
+        path, _ = QFileDialog.getOpenFileName(self, tr("Open SOFA File"), "", "SOFA Files (*.sofa *.nc);;All Files (*)")
+        if path:
             try:
-                data = SOFALoader.load(fname)
-                if data:
-                    self.module.hrtf_data = data
-                    self.sofa_label.setText(fname.split("/")[-1])
-                else:
-                    raise ValueError("Loader returned None")
-            except Exception as e:
-                QMessageBox.warning(self, tr("Error"), tr("Failed to load SOFA file: {0}").format(e))
+                data = SOFALoader.load(path)
+                if data is None:
+                    raise ValueError(tr("Invalid stereo HRTF data."))
+                validate_hrtf(data)
+                self.module.hrtf_data = data
+                self.sofa_label.set_file(path)
+                self._scene_changed()
+            except Exception as exc:
+                QMessageBox.warning(self, tr("Error"), tr("Failed to load SOFA file: {0}").format(exc))
 
     def add_track(self):
-        track = TrackControlUI()
+        track = TrackControlUI(self._next_track_number)
+        self._next_track_number += 1
         track.removed.connect(self.remove_track)
+        track.selected.connect(self.select_track)
+        track.changed.connect(self._scene_changed)
         self.tracks.append(track)
         self.tracks_inner_layout.addWidget(track)
+        self.select_track(track)
         self._update_track_tab_order()
+        self._scene_changed()
+        return track
+
+    def on_add_files(self):
+        paths, _ = QFileDialog.getOpenFileNames(
+            self, tr("Open Audio"), "", "Audio Files (*.wav *.mp3 *.flac *.ogg);;All Files (*)"
+        )
+        errors = []
+        for path in paths:
+            track = self.add_track()
+            try:
+                track.load_file(path)
+            except Exception as exc:
+                self.remove_track(track)
+                errors.append(f"{Path(path).name}: {exc}")
+        if errors:
+            QMessageBox.warning(self, tr("Error"), "\n".join(errors))
 
     def remove_track(self, track):
         self.tracks.remove(track)
         self.tracks_inner_layout.removeWidget(track)
+        if self.selected_track is track:
+            self.selected_track = None
+            if self.tracks:
+                self.select_track(self.tracks[-1])
         track.deleteLater()
         self._update_track_tab_order()
+        self._scene_changed()
 
     def _update_track_tab_order(self):
         previous = self.add_track_btn
@@ -479,81 +552,125 @@ class SpatialBinauralMixerWidget(QWidget):
         QWidget.setTabOrder(previous, self.preview_cb)
 
     def _collect_track_configs(self):
-        solo_active = any(t.solo_btn.isChecked() for t in self.tracks)
-        configs = []
-        for t in self.tracks:
-            if not t.file_path:
-                continue
-            if solo_active and not t.solo_btn.isChecked():
-                continue
-            if not solo_active and t.mute_btn.isChecked():
-                continue
-            configs.append(
-                {"path": t.file_path, "az": t.az_spin.value(), "el": t.el_spin.value(), "gain_db": t.gain_spin.value()}
-            )
-        return configs
+        return [track.config() for track in self._audible_tracks()]
 
-    def start_render(self, callback):
-        if not self.module.hrtf_data:
-            QMessageBox.warning(self, tr("Error"), tr("Please load a SOFA file first."))
+    def start_render(self, callback, *, output_path=None):
+        if self.worker is not None:
             return
-
-        configs = self._collect_track_configs()
-        if not configs:
-            QMessageBox.warning(self, tr("Error"), tr("No valid tracks to render."))
+        if self.module.hrtf_data is None or not self._audible_tracks():
+            self._scene_changed()
             return
-
-        self.pd = QProgressDialog(tr("Rendering Mix..."), tr("Cancel"), 0, 100, self)
-        self.pd.setWindowModality(Qt.WindowModality.WindowModal)
-        self.pd.show()
-
-        start_sec = self.start_sec_spin.value() if self.preview_cb.isChecked() else None
-        duration_sec = self.duration_sec_spin.value() if self.preview_cb.isChecked() else None
-
+        self.on_stop_play()
+        self._scene_changed()
+        self._render_callback = callback
         self.worker = RenderWorker(
-            configs,
+            self._collect_track_configs(),
             self.module.hrtf_data,
             self.module.audio_engine.sample_rate,
-            start_sec=start_sec,
-            duration_sec=duration_sec,
+            start_sec=self.start_sec_spin.value() if self.preview_cb.isChecked() else None,
+            duration_sec=self.duration_sec_spin.value() if self.preview_cb.isChecked() else None,
+            parent=QApplication.instance(),
+            output_path=output_path,
         )
-        self.worker.progress.connect(self.pd.setValue)
-        self.pd.canceled.connect(self.worker.cancel)
-
-        def on_finished(result):
-            self.pd.close()
-            if result is None:
-                pass  # Cancelled
-            elif isinstance(result, Exception):
-                QMessageBox.warning(self, tr("Error"), str(result))
-            else:
-                callback(result)
-
-        self.worker.finished.connect(on_finished)
+        # The application owns running threads even if a detached widget is deleted.
+        # Shutdown joins only at application exit, never during interactive cancellation.
+        self.destroyed.connect(self.worker.cancel)
+        self.worker.progress.connect(self._render_progress)
+        self.worker.finished.connect(self._render_finished)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.progress_bar.setValue(0)
+        self.cancel_btn.setEnabled(True)
+        self.status_label.setText(tr("Rendering Mix..."))
+        self._update_actions()
         self.worker.start()
 
-    def on_render_play(self):
-        def play_callback(buffer):
-            self.module.playback_buffer = buffer
-            self.module.playback_cursor = 0
-            self.module.is_playing = True
-            if self.module.callback_id is None:
-                self.module.callback_id = self.module.audio_engine.register_callback(self.module._callback)
+    def _render_progress(self, value, message):
+        if self.worker is not None and not self.worker.cancelled.is_set():
+            self.progress_bar.setValue(value)
+            self.status_label.setText(message)
 
-        self.start_render(play_callback)
+    def cancel_render(self):
+        if self.worker is not None:
+            self.worker.cancel()
+            self.cancel_btn.setEnabled(False)
+            self.status_label.setText(tr("Cancelling after the current processing step..."))
+
+    def _render_finished(self):
+        worker = self.worker
+        callback = self._render_callback
+        self.worker = None
+        self._render_callback = None
+        self._update_actions()
+        if worker.cancelled.is_set() and not worker.output_saved:
+            self.status_label.setText(tr("Cancelled"))
+        elif worker.error is not None:
+            self.status_label.setText(str(worker.error))
+        elif worker.result is not None:
+            result = worker.result
+            self.result_label.setText(
+                tr("Rendered {0:.1f} s · peak attenuation {1:.1f} dB").format(
+                    len(result.audio) / result.sample_rate, result.attenuation_db
+                )
+            )
+            self.result_label.show()
+            try:
+                callback(result)
+            except Exception as exc:
+                self.status_label.setText(str(exc))
+            self._update_actions()
+
+    def on_render_play(self):
+        self.start_render(self._play_result)
+
+    def _play_result(self, result):
+        self.module.play(result)
+        self.monitor_timer.start()
+        self._update_monitor()
+
+    def _update_monitor(self):
+        module = self.module
+        stream = getattr(module.audio_engine, "stream", None)
+        if stream is None or not stream.active:
+            self.on_stop_play()
+            return
+        if not module.is_playing:
+            changed_rate = module.audio_engine.sample_rate != module.playback_sample_rate
+            self.on_stop_play()
+            self.status_label.setText(
+                tr("Sample rate changed. Render again to monitor.") if changed_rate else tr("Done")
+            )
+            return
+        total = len(module.playback_buffer)
+        self.progress_bar.setValue(round(100 * module.playback_cursor / max(1, total)))
+        self.status_label.setText(
+            tr("Monitoring {0:.1f} / {1:.1f} s").format(
+                module.playback_cursor / module.playback_sample_rate, total / module.playback_sample_rate
+            )
+        )
+        self._update_actions()
 
     def on_stop_play(self):
-        self.module.is_playing = False
+        self.monitor_timer.stop()
+        self.module.stop()
+        self._update_actions()
+        self.status_label.setText(tr("Stopped"))
 
     def on_export(self):
-        def export_callback(buffer):
-            fname, _ = QFileDialog.getSaveFileName(self, tr("Export WAV"), "", "WAV Files (*.wav)")
-            if fname:
-                try:
-                    # Exporting as FLOAT to preserve dynamic range
-                    sf.write(fname, buffer, self.module.audio_engine.sample_rate, subtype="FLOAT")
-                    QMessageBox.information(self, tr("Success"), tr("WAV Export Successful"))
-                except Exception as e:
-                    QMessageBox.warning(self, tr("Error"), str(e))
+        path, _ = QFileDialog.getSaveFileName(self, tr("Export WAV"), "mix.wav", "WAV Files (*.wav)")
+        if not path:
+            return
 
-        self.start_render(export_callback)
+        def saved(result):
+            self.status_label.setText(tr("WAV Export Successful") + " · " + Path(path).name)
+
+        self.start_render(saved, output_path=path)
+
+    def hideEvent(self, event):
+        self.on_stop_play()
+        self.cancel_render()
+        super().hideEvent(event)
+
+    def closeEvent(self, event):
+        self.on_stop_play()
+        self.cancel_render()
+        super().closeEvent(event)

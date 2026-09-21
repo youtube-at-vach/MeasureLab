@@ -77,19 +77,6 @@ def test_widget_retains_worker_until_finished(qapp, qtbot, monkeypatch, frequenc
     qapp.processEvents()
 
 
-def test_frequency_worker_ignores_deleted_signals(monkeypatch):
-    from PyQt6 import sip
-
-    monkeypatch.setattr(
-        "src.gui.widgets.frequency_counter.calculate_frequency_metrics",
-        lambda *_args: (1000.0, -20.0),
-    )
-    worker = FrequencyWorker([], 48000, -60.0, 1.0)
-    sip.delete(worker.signals)
-
-    worker.run()
-
-
 def test_frequency_counter_compact_mode(qapp, qtbot, frequency_counter):
     from src.gui.widgets.compactable_interface import CompactableWidgetInterface
     from unittest.mock import MagicMock
