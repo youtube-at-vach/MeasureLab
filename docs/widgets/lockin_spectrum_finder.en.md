@@ -111,5 +111,5 @@ The **Audio Sonification** tab provides an audio output corresponding to detecte
 
 * **Horizontal Axis (Frequency)**: Represents the frequency (Hz).
 * **Vertical Axis (Amplitude)**: Represents the amplitude level in the specified unit (dBFS, dBV, or dB SPL). If calibration has been applied, offsets such as the input offset or microphone offset are included.
-* **Scatter Plot Tooltips**: Clicking on the red target markers in the plot will display a rich tooltip showing the exact Frequency, Magnitude, Phase, and any associated cause/note for that target.
+* **Scatter Plot Tooltips**: Clicking on the red target markers in the plot will display a rich tooltip showing the exact Frequency, Magnitude, Phase, and any associated Cause/Memo for that target.
 * During calculations, a red vertical line (sweep line) appears on the graph to indicate the current progress, and the spectrum is updated progressively. If Averages is enabled, the current averaging count is also displayed alongside the progress.
