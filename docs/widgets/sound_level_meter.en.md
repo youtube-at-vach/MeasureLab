@@ -4,14 +4,16 @@
 
 ## Overview
 
-The Sound Level Meter is a precision tool for measuring environmental noise and the sound pressure level (SPL) of audio equipment. It features weighting filters and time response characteristics compliant with common sound level meter standards (such as IEC 61672).
+The Sound Level Meter measures environmental noise and the sound pressure level (SPL) of audio equipment, with A/C/Z frequency weighting and selectable time responses. These functions alone do not establish IEC 61672 compliance for the complete measurement system.
 
 ## Basic Operation
 
 ### Starting Measurement
 
 * **Start Button**: Begins the measurement.
-* **Reset Button**: Resets measurement values (such as Leq and Lmax) and recalculates from zero.
+* **Reset Button**: Clears all readings, statistics, histogram data, and filter memory. During acquisition, it starts a fresh interval and restarts the selected duration. While stopped, it clears the retained result without starting acquisition.
+* Changing the channel, frequency/time weighting, bandwidth, or duration starts a fresh interval. Results from different settings are never combined.
+* The status line shows acquired audio time and the time covered by LN statistics. Completed results remain available in every tab until reset or a new acquisition.
 
 ### Main Display
 
@@ -24,6 +26,7 @@ The large numbers displayed at the top of the screen.
 
 * **Histogram (LN)**: Displays the distribution of sound pressure levels in a bar graph.
 * **Statistics**: Displays statistical indicators.
+    * **L10 / L90**: Levels exceeded for 10% and 90% of the sampled time, respectively.
     * **L50**: Median value (level exceeded 50% of the time).
     * **L5 / L95**: Represent levels close to the noise peaks and background noise (ambient noise), respectively.
 * **Details**: Displays detailed data such as Lmax (maximum value), Lmin (minimum value), Lpeak (peak value of the waveform), and LE (sound exposure level for single events).
@@ -60,12 +63,18 @@ Limits the frequency bandwidth to be measured.
 
 ### Duration
 
-Sets the time to automatically end measurement (e.g., 1 minute, 10 minutes, etc.). Setting it to "Continuous" continues measurement until manually stopped.
+Sets the acquired audio duration (e.g., 1 minute or 10 minutes). Acquisition stops at the exact sample boundary, even within a callback block. This counts delivered audio samples rather than elapsed computer-clock time; an interruption does not count as recorded silence. "Continuous" acquires until manually stopped. A sample-rate change clears the interval and filter state before acquiring at the new rate.
 
-### Lp Interval
+### LN Statistics Window
 
-Sets the sampling interval of the instantaneous value (Lp) used for calculating statistical information (histogram and LN values). A smaller value increases the time resolution but also increases the calculation load (Default: 0.1s).
+Lp is sampled at fixed 100 ms audio-sample boundaries (4,410 samples at 44.1 kHz; 4,800 at 48 kHz), including every boundary within a large callback. This interval is fixed, not an adjustable control.
+
+LN percentiles and the histogram cover up to the latest 10 hours. The window rolls forward after reaching that limit; Leq, LE, Lmax, Lmin, and Lpeak continue to cover the full acquisition. LN values are unavailable until the first 100 ms boundary. Lave is the energy average of the retained Lp samples; it is distinct from Leq, which integrates every frequency-weighted input sample.
+
+IMPULSE applies an asymmetric exponential detector to every squared sample, with a 35 ms rise and 1.5 s fall. Its state carries across callbacks. This replaces the previous eight-sample peak-pooling approximation, so IMPULSE readings can differ from older versions. It is not a claim of standards certification.
 
 ## About Calibration
 
 To display accurate "dB SPL" values, please calibrate the "SPL Offset" in the "Calibration" tab of the **Settings widget** beforehand. If not calibrated, a warning message is displayed and the unit automatically falls back to digital full scale (dBFS).
+
+Calibration offsets apply consistently to the retained readings, LN values, and histogram axis, including while stopped. Changing the offset re-expresses the same digital measurement; it does not restart acquisition.

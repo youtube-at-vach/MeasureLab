@@ -319,3 +319,148 @@ class TestSoundLevelMeterSplittable:
         widget.restore_split_panels()
         assert not display_w.isHidden()
         assert not control_w.isHidden()
+
+
+@pytest.mark.parametrize("sample_rate", [44100, 48000])
+@pytest.mark.parametrize("weighting", ["FAST", "SLOW", "10ms", "IMPULSE"])
+def test_fixed_duration_is_exact_and_independent_of_callback_partition(sample_rate, weighting):
+    signal_time = np.arange(sample_rate * 2) / sample_rate
+    amplitude = np.where(signal_time < 0.4, 0.1, 0.5)
+    signal = (amplitude * np.sin(2 * np.pi * 1000 * signal_time))[:, None]
+    snapshots = []
+    for block_size in [127, 1024, 8192, len(signal)]:
+        engine = MockAudioEngine()
+        engine.sample_rate = sample_rate
+        meter = SoundLevelMeter(engine)
+        meter.set_time_weighting(weighting)
+        meter.set_target_duration("1s")
+        meter.start_analysis()
+        for start in range(0, len(signal), block_size):
+            block = signal[start : start + block_size]
+            meter.callback(block, None, len(block), None, None)
+        assert not meter.is_running
+        assert meter.leq_samples == sample_rate
+        results, elapsed, history = meter.get_display_snapshot()
+        assert elapsed == 1.0
+        assert len(history.powers) == 10
+        assert results["LE"] == pytest.approx(results["Leq"])
+        snapshots.append((results, history.powers))
+        meter.stop_analysis()
+    for results, powers in snapshots[1:]:
+        assert results == pytest.approx(snapshots[0][0], abs=1e-9)
+        np.testing.assert_allclose(powers, snapshots[0][1], rtol=1e-10)
+
+
+@pytest.mark.parametrize(
+    "parameter,value",
+    [
+        ("freq_weighting", "C"),
+        ("time_weighting", "SLOW"),
+        ("channel", 1),
+        ("bandwidth_mode", "20Hz - 8kHz"),
+        ("target_duration", "1s"),
+    ],
+)
+def test_measurement_setting_starts_a_fresh_interval(slm, parameter, value):
+    slm.start_analysis()
+    signal = np.ones((6000, 2))
+    slm.callback(signal, None, len(signal), None, None)
+    assert slm.calculate_ln_statistics()
+    getattr(slm, f"set_{parameter}")(value)
+    results, elapsed, history = slm.get_display_snapshot()
+    assert slm.is_running
+    assert elapsed == 0
+    assert not history.statistics
+    assert all(np.isneginf(value) for value in results.values())
+    assert slm.current_sq_val == 0
+
+
+def test_reset_clears_filter_memory_and_restarts_duration(slm):
+    slm.set_target_duration("1s")
+    slm.start_analysis()
+    signal = np.random.default_rng(2).normal(size=(24000, 2)) * 0.1
+    slm.callback(signal, None, len(signal), None, None)
+    before = slm.get_display_snapshot()
+    slm.reset_measurements()
+    slm.callback(signal, None, len(signal), None, None)
+    after = slm.get_display_snapshot()
+    assert after[0] == pytest.approx(before[0])
+    np.testing.assert_array_equal(after[2].powers, before[2].powers)
+    assert after[1] == 0.5
+    assert slm.is_running
+    slm.callback(signal, None, len(signal), None, None)
+    assert not slm.is_running
+    assert slm.leq_samples == 48000
+
+
+def test_completed_registration_is_released_on_owner_thread_and_old_events_are_ignored(qapp):
+    import threading
+
+    engine = MockAudioEngine()
+    registered = []
+    released = []
+    engine.register_callback = lambda callback: registered.append(callback) or len(registered)
+    engine.unregister_callback = lambda cid: released.append((cid, threading.get_ident()))
+    meter = SoundLevelMeter(engine)
+    meter.set_target_duration("1s")
+    meter.start_analysis()
+    signal = np.ones((48000, 1)) * 0.1
+    worker = threading.Thread(target=lambda: registered[0](signal, None, len(signal), None, None))
+    worker.start()
+    worker.join(timeout=5)
+    assert not worker.is_alive()
+    assert not meter.is_running
+    assert released == []
+    qapp.processEvents()
+    assert released == [(1, threading.get_ident())]
+    assert meter.callback_id is None
+    meter.start_analysis()
+    registered[1](signal, None, len(signal), None, None)
+    meter.start_analysis()  # Restart before the queued completion is delivered.
+    registered[1](signal, None, len(signal), None, None)  # Stale audio callback.
+    qapp.processEvents()
+    assert meter.is_running
+    assert meter.leq_samples == 0
+    assert meter.callback_id == 3
+    meter.stop_analysis()
+    assert [cid for cid, _ in released] == [1, 2, 3]
+
+
+def test_stopped_result_calibration_histogram_and_reset_stay_consistent(qtbot):
+    engine = MockAudioEngine()
+    engine.calibration.get_spl_offset_db.return_value = None
+    meter = SoundLevelMeter(engine)
+    widget = SoundLevelMeterWidget(meter)
+    qtbot.addWidget(widget)
+    meter.set_target_duration("1s")
+    meter.start_analysis()
+    signal = np.sin(2 * np.pi * 1000 * np.arange(48000) / 48000)[:, None] * 0.1
+    meter.callback(signal, None, len(signal), None, None)
+    widget.update_display()
+    assert not widget.btn_start.isChecked()
+    assert widget.disp_leq["label"].text() == f"{meter.results['Leq']:.1f}"
+    centers = widget.hist_item.opts["x"].copy()
+    engine.calibration.get_spl_offset_db.return_value = 94.0
+    widget.update_display()
+    assert widget.disp_leq["label"].text() == f"{meter.results['Leq'] + 94:.1f}"
+    np.testing.assert_allclose(widget.hist_item.opts["x"], centers + 94)
+    assert widget.plot_widget.getAxis("bottom").labelUnits == "dB SPL"
+    assert widget.ln_labels["L50"].text().endswith("dB SPL")
+    meter.reset_measurements()
+    widget.update_display()
+    assert widget.disp_leq["label"].text() == "--.-"
+    assert widget.ln_labels["L50"].text() == "--.- dB SPL"
+    assert len(widget.hist_item.opts["x"]) == 0
+
+
+def test_failed_start_restores_button_and_leaves_no_registration(qtbot):
+    engine = MockAudioEngine()
+    engine.register_callback = MagicMock(side_effect=RuntimeError("device unavailable"))
+    meter = SoundLevelMeter(engine)
+    widget = SoundLevelMeterWidget(meter)
+    qtbot.addWidget(widget)
+    widget.btn_start.click()
+    assert not widget.btn_start.isChecked()
+    assert widget.btn_start.text() == "Start"
+    assert meter.callback_id is None
+    assert not meter.is_running
