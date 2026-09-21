@@ -26,6 +26,7 @@ from src.core.true_peak import TruePeakMeter
 from src.core.peak_profiler import PeakProfiler, PeakProfileSession
 from src.core.audio_engine import AudioEngine
 from src.core.localization import tr
+from src.core.loudness_history import LoudnessHistory, LoudnessHistorySnapshot
 from src.measurement_modules.base import MeasurementModule
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
@@ -81,6 +82,7 @@ class LufsMeter(MeasurementModule):
         self._i_abs_gate_ms = float(10 ** ((-70.0 + 0.691) / 10.0))
         self._i_dirty = False
         self._i_lock = threading.Lock()
+        self._loudness_history = LoudnessHistory(self.sample_rate, round(0.1 * self.sample_rate))
 
         self._lra_blocks = []
         self._lra_next_block_sample = 0
@@ -246,6 +248,8 @@ class LufsMeter(MeasurementModule):
         self._i_sample_count = 0
         # 400 ms block with 75% overlap -> 100 ms step
         self._i_block_step = max(1, int(round(0.1 * float(self.sample_rate))))
+        self._loudness_history = LoudnessHistory(self.sample_rate, self._i_block_step)
+        self.momentary_lufs = self.short_term_lufs = -100.0
         self._i_next_block_sample = max(1, int(round(self.momentary_window * float(self.sample_rate))))
         self._lra_next_block_sample = max(1, int(round(self.short_term_window * float(self.sample_rate))))
         self._reset_power_rings()
@@ -253,6 +257,10 @@ class LufsMeter(MeasurementModule):
             self._i_block_ms = []
             self._lra_blocks = []
             self._i_dirty = False
+
+    def get_loudness_history(self) -> LoudnessHistorySnapshot:
+        with self._processing_lock:
+            return self._loudness_history.snapshot(self._i_sample_count)
 
     def update_integrated_lufs_if_dirty(self):
         """Recompute gated integrated loudness (BS.1770) when new blocks arrive.
@@ -522,6 +530,16 @@ class LufsMeter(MeasurementModule):
                         # boundary so round-off cannot drift over long runs.
                         self._p_sum_m = float(np.sum(self._p_ring_m, dtype=np.float64))
                         block_ms = self._p_sum_m / float(self.buffer_size_m)
+                        # Record every complete M window independently of GUI
+                        # refreshes and of the integrated loudness gate. S is
+                        # available only after its full three-second window.
+                        if self.measurement_valid:
+                            short_term = (
+                                self._to_lufs(self._p_sum_s / self.buffer_size_s)
+                                if self._p_filled_s >= self.buffer_size_s
+                                else None
+                            )
+                            self._loudness_history.append(self._i_sample_count, self._to_lufs(block_ms), short_term)
                         if block_ms > abs_gate_ms:
                             self._i_block_ms.append(block_ms)
                             self._i_dirty = True
@@ -639,19 +657,11 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         SplittableWidgetInterface.__init__(self)
         self.module = module
 
-        # History for plotting
-        self.history_size = 400  # 20s at 50ms interval
-        self.m_history = np.full(self.history_size, -100.0)
-        self.s_history = np.full(self.history_size, -100.0)
-
         # Performance optimizations state
         self._state_l = None
         self._state_r = None
         self._state_m = None
         self._state_s = None
-
-        # Session stats (since last reset)
-        self._reset_session_stats()
 
         self.init_ui()
 
@@ -984,6 +994,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         self.plot_widget.setLabel("left", tr("LUFS"), units="dB")
         self.plot_widget.setLabel("bottom", tr("Time"), units="s")
         self.plot_widget.setYRange(-60, 0)
+        self.plot_widget.setXRange(-LoudnessHistory.HISTORY_SECONDS, 0, padding=0)
         self.plot_widget.showGrid(x=True, y=True)
         self.plot_widget.setBackground("#111")
         self.plot_widget.setMinimumHeight(140)
@@ -1289,25 +1300,11 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         layout.addWidget(lbl_val)
         return {"container": container, "label": lbl_val}
 
-    def _reset_session_stats(self):
-        self._m_min = None
-        self._m_max = None
-        self._m_sum = 0.0
-        self._m_n = 0
-
-        self._s_min = None
-        self._s_max = None
-        self._s_sum = 0.0
-        self._s_n = 0
-
     def on_reset_peaks(self):
         self.module.reset_peaks()
         self.update_display(force=True)
 
     def on_reset_stats(self):
-        self._reset_session_stats()
-        self.m_history[:] = -100.0
-        self.s_history[:] = -100.0
         # Reset color states so they force update on next tick
         self._state_l = None
         self._state_r = None
@@ -1330,6 +1327,7 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
                 QMessageBox.critical(self, tr("Error"), tr("Failed to start measurement: {0}").format(str(exc)))
                 self.apply_theme()
                 return
+            self.update_display(force=True)
             self.timer.start()
             self.toggle_btn.setText(tr("Stop Metering"))
         else:
@@ -1417,6 +1415,8 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
             ):
                 card["label"].setText(invalid)
             self.card_time["label"].setText(self._format_seconds(self.module.get_integrated_seconds()))
+            self.m_curve.clear()
+            self.s_curve.clear()
             return
 
         # Update LUFS
@@ -1441,8 +1441,8 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         self.disp_s["unit"].setText("LUFS")
 
         # Update session stats
-        self._update_session_stats(m_lufs, s_lufs)
-        self._update_stats_labels(m_lufs, s_lufs)
+        history = self.module.get_loudness_history()
+        self._update_stats_labels(m_lufs, s_lufs, history)
 
         # Color coding with optimization
         self._set_bar_color(self.l_bar, rms_l, "l")
@@ -1450,19 +1450,14 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         self._set_lufs_bar_color(self.m_bar, m_lufs, self.module.target_lufs, "m")
         self._set_lufs_bar_color(self.s_bar, s_lufs, self.module.target_lufs, "s")
 
-        # Update Plot
-        self.m_history = np.roll(self.m_history, -1)
-        self.m_history[-1] = m_lufs
-
-        self.s_history = np.roll(self.s_history, -1)
-        self.s_history[-1] = s_lufs
-
-        # X axis (time)
-        # 0 to -20s
-        x = np.linspace(-self.history_size * 0.05, 0, self.history_size)
-
-        self.m_curve.setData(x, self.m_history)
-        self.s_curve.setData(x, self.s_history)
+        # Acquisition time is authoritative; repainting never adds observations.
+        x = [(point.sample - history.sample_count) / history.sample_rate for point in history.points]
+        self.m_curve.setData(x, [point.momentary for point in history.points])
+        self.s_curve.setData(
+            x,
+            [point.short_term if point.short_term is not None else np.nan for point in history.points],
+            connect="finite",
+        )
 
     def _format_db(self, value: float) -> str:
         if value <= -199.9:
@@ -1478,35 +1473,15 @@ class LufsMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInter
         rem = seconds - (minutes * 60)
         return tr("{0:d} m {1:.0f} s").format(minutes, rem)
 
-    def _update_session_stats(self, m_lufs: float, s_lufs: float):
-        # Momentary
-        if m_lufs > -99.9:
-            self._m_min = m_lufs if self._m_min is None else min(self._m_min, m_lufs)
-            self._m_max = m_lufs if self._m_max is None else max(self._m_max, m_lufs)
-            self._m_sum += float(m_lufs)
-            self._m_n += 1
-
-        # Short-term
-        if s_lufs > -99.9:
-            self._s_min = s_lufs if self._s_min is None else min(self._s_min, s_lufs)
-            self._s_max = s_lufs if self._s_max is None else max(self._s_max, s_lufs)
-            self._s_sum += float(s_lufs)
-            self._s_n += 1
-
-    def _update_stats_labels(self, m_lufs: float, s_lufs: float):
-        # Momentary details
+    def _update_stats_labels(self, m_lufs: float, s_lufs: float, history: LoudnessHistorySnapshot):
         self.card_m_cur["label"].setText(self._format_db(m_lufs))
-        self.card_m_min["label"].setText(self._format_db(self._m_min if self._m_min is not None else -100.0))
-        self.card_m_max["label"].setText(self._format_db(self._m_max if self._m_max is not None else -100.0))
-        m_avg = (self._m_sum / self._m_n) if self._m_n > 0 else -100.0
-        self.card_m_avg["label"].setText(self._format_db(m_avg))
-
-        # Short-term details
         self.card_s_cur["label"].setText(self._format_db(s_lufs))
-        self.card_s_min["label"].setText(self._format_db(self._s_min if self._s_min is not None else -100.0))
-        self.card_s_max["label"].setText(self._format_db(self._s_max if self._s_max is not None else -100.0))
-        s_avg = (self._s_sum / self._s_n) if self._s_n > 0 else -100.0
-        self.card_s_avg["label"].setText(self._format_db(s_avg))
+        for stats, cards in (
+            (history.momentary, (self.card_m_min, self.card_m_max, self.card_m_avg)),
+            (history.short_term, (self.card_s_min, self.card_s_max, self.card_s_avg)),
+        ):
+            for value, card in zip((stats.minimum, stats.maximum, stats.average), cards, strict=True):
+                card["label"].setText(tr("---") if value is None else self._format_db(value))
 
         # Gated items
         self.card_lra["label"].setText(tr("{0:.1f} LU").format(self.module.lra))

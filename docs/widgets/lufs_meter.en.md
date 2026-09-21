@@ -52,11 +52,13 @@ When checked, switches the units of the RMS level meter to "dB SPL" (requires pr
 
 Provides a table of the current value (Current), minimum (Min), maximum (Max), and average (Avg) for each indicator.
 
+M/S statistics are sampled every 100 ms of acquired audio, independently of screen refreshes. Only complete windows contribute: M starts after 400 ms and S after 3 seconds. Current readings use the available audio during this initial warm-up. Min/Max/Avg cover the session since Start Metering or Reset Stats; silence is excluded and `---` means no finite observation yet. Avg is the arithmetic mean of these LUFS readings, not the gated energy average shown by Integrated LUFS. Reset Peaks leaves these statistics unchanged.
+
 * **Target Offset**: Displays the difference between the set Target LUFS and the current Integrated LUFS. A "+" indicates it is louder than the target, while a "-" indicates it is quieter.
 
 ### Graph Tab
 
-Displays time-series changes in Momentary (orange) and Short-term (blue) loudness.
+Displays the latest 20 seconds of acquired Momentary (orange) and Short-term (blue) loudness, using the same 100 ms observations as the statistics. The time axis is relative to the latest acquired sample (`0 s`), not elapsed wall-clock time. No history is fabricated before the first complete window. Delayed screen updates recover the retained observations; repeated redraws do not add points. Stop Metering holds the history, and a new start or Reset Stats clears it. Invalid acquisition clears the graph and marks the statistics INVALID until reset or restart.
 
 * **Dashed line**: A reference line indicating the set Target LUFS.
 * Use this as a guide to check if the track or audio fits within your target loudness range.
