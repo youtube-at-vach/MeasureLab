@@ -1,5 +1,47 @@
 # Changelog
 
+## [v0.9.0] - 2026-09-23
+
+### Added
+
+* **Windows Distribution**:
+    * Standardized Windows releases on a user-scoped installer and an onedir ZIP, with optional experimental ASIO support in the installer.
+* **Measurement Console**:
+    * Added localized layout presets, instrument cycling, layout undo, and up to 12 saved workspaces.
+* **Spectrum Analyzer**:
+    * Added configurable automatic peak markers for displayed or raw spectra, with prominence, spacing, and noise-floor controls.
+* **LUFS Meter**:
+    * Added streaming True Peak measurement, a peak histogram and bounded clipping profile, and acquisition-based loudness history and session statistics.
+    * Added compact-mode meters and grouped peak-history details.
+* **Sound Quality Analyzer**:
+    * Added CSV export of full time-series data for all channels and metrics at their original sampling intervals.
+* **Spatial Binaural Mixer**:
+    * Added an interactive azimuth map for placing and selecting sound sources.
+
+### Changed
+
+* **Sound Level Meter**:
+    * Based measurement duration and level statistics on acquired audio samples, with consistent impulse weighting across audio callbacks.
+* **True Peak and Export Headroom**:
+    * Preserved True Peak filter state across streamed audio blocks and reserved estimated −1 dBTP headroom in compensation exports.
+* **Navigation**:
+    * Extended sidebar search and accessibility descriptions with translated task summaries.
+* **Measurement Console**:
+    * Improved workspace restoration, status visibility, and layout controls while preserving active instruments and measurements during layout changes.
+
+### Fixed
+
+* **Distortion Analyzer**:
+    * Handled capture timeouts during distortion sweeps.
+* **Sound Quality Analyzer**:
+    * Prevented stale results from surviving input changes or failed analysis, and based measurements on the original audio rather than the selected playback device's sample rate.
+* **Frequency Counter**:
+    * Corrected calibration result tracking.
+* **LUFS Meter**:
+    * Included the delayed True Peak filter tail in stopped peak holds.
+* **Spatial Binaural Mixer**:
+    * Preserved plot geometry when progress and result controls appear or disappear.
+
 ## [v0.8.9] - 2026-09-10
 
 ### Added
