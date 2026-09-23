@@ -170,7 +170,10 @@ class PairedLoadStudy:
         repeat_resolved = np.zeros(len(grid), dtype=bool)
         if repeat_available:
             combined_error = np.hypot(error_a, error_b)
-            repeat_resolved = valid & (np.abs(h_b - h_a) > 3 * combined_error)
+            denominator_error = np.hypot(error_a / r_a, error_b / r_b)
+            repeat_resolved = (
+                valid & (np.abs(h_b - h_a) > 3 * combined_error) & (np.abs(denominator) > 3 * denominator_error)
+            )
         low_coherence = (coh_a < min_coherence) | (coh_b < min_coherence)
         repeat_resolved &= ~low_coherence
         return LoadResult(

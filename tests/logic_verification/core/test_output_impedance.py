@@ -52,6 +52,19 @@ def test_phase_scatter_also_prevents_false_resolution():
     assert not np.any(result.repeat_resolved)
 
 
+def test_large_impedance_needs_resolved_denominator():
+    source = np.full(len(FREQUENCIES), 1_000_000 + 0j)
+    study = PairedLoadStudy()
+    for gain in (0.9999, 1.0001):
+        study.add("A", capture(32, source, gain=gain))
+        study.add("B", capture(100, source, gain=gain))
+
+    result = study.calculate(300)
+    assert np.all(result.numerically_valid)
+    assert np.allclose(result.source_ohms, source)
+    assert not np.any(result.repeat_resolved)
+
+
 def test_single_pair_remains_provisional_and_marks_low_coherence():
     source = np.full(len(FREQUENCIES), 5 + 0j)
     study = PairedLoadStudy()

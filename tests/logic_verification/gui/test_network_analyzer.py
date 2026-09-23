@@ -60,6 +60,7 @@ def _curve_len(values):
 
 def test_load_study_captures_only_completed_xfer_sweeps(qtbot, tmp_path, monkeypatch):
     widget = _make_widget(qtbot)
+    assert widget.load_a_spin.minimum() <= 8.0
     analyzer = widget.module
     widget.in_combo.setCurrentIndex(widget.in_combo.findData("XFER"))
     frequencies = np.array([100.0, 1000.0, 5000.0])
@@ -97,6 +98,13 @@ def test_load_study_captures_only_completed_xfer_sweeps(qtbot, tmp_path, monkeyp
     assert float(rows[header_index + 1][header.index("a1_transfer_real")]) == pytest.approx(
         (32 / (source[0] + 32)).real
     )
+
+    widget._clear_load_study()
+    assert widget.capture_a_btn.isEnabled()
+    assert widget.capture_b_btn.isEnabled()
+    widget.capture_a_btn.click()
+    assert len(widget.load_study.a) == 1
+    assert not widget.load_study.b
 
     analyzer.sweep_revision = 3
     analyzer.raw_H = None

@@ -1,6 +1,6 @@
+import csv
 import logging
 import threading
-import csv
 
 import numpy as np
 import pyqtgraph as pg
@@ -1232,7 +1232,7 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.load_b_spin = QDoubleSpinBox()
         self.prediction_load_spin = QDoubleSpinBox()
         for spin, value in ((self.load_a_spin, 32.0), (self.load_b_spin, 100.0), (self.prediction_load_spin, 300.0)):
-            spin.setRange(10.0, 1_000_000.0)
+            spin.setRange(1.0, 1_000_000.0)
             spin.setDecimals(2)
             spin.setSuffix(" Ω")
             spin.setValue(value)
@@ -1324,8 +1324,16 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
     def _clear_load_study(self) -> None:
         self.load_study.clear()
         self.load_result = None
+        self.last_captured_sweep_revision = 0
         self.load_a_spin.setEnabled(True)
         self.load_b_spin.setEnabled(True)
+        available = (
+            self.module.completed_sweep_revision == self.module.sweep_revision
+            and self.module.sweep_conditions is not None
+            and self.module.sweep_conditions.input_mode in {"XFER", "XFER_REV"}
+        )
+        self.capture_a_btn.setEnabled(available)
+        self.capture_b_btn.setEnabled(available)
         self.load_counts_label.setText(tr("Captures: A {0}, B {1}").format(0, 0))
         self.load_status_label.setText(tr("Capture one XFER sweep for each load."))
         for curve in (
