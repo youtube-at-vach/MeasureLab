@@ -886,6 +886,7 @@ class MainWindow(QMainWindow):
         console.show()
         console.raise_()
         console.activateWindow()
+        console.update_from_main_status()
 
     def _on_measurement_console_closed(self):
         self._measurement_console = None
@@ -1079,6 +1080,10 @@ class MainWindow(QMainWindow):
                 provider_status=provider_status,
             )
             self._last_output_backend_state = output_backend_state
+
+        console = self._measurement_console
+        if console is not None:
+            console.update_from_main_status()
 
     def _update_audio_io_error_indicator(self, status):
         xrun_status = status.get("latched_xrun_status", {})

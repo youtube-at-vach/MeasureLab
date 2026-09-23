@@ -20,15 +20,24 @@ from PyQt6.QtGui import QAction, QActionGroup, QCloseEvent, QMoveEvent, QResizeE
 from PyQt6.QtWidgets import (
     QAbstractButton,
     QApplication,
+    QDialog,
+    QDialogButtonBox,
     QDockWidget,
+    QInputDialog,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QMainWindow,
     QMenu,
+    QMessageBox,
     QScrollArea,
     QSizePolicy,
     QStyle,
     QTabWidget,
     QToolBar,
     QToolButton,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -61,6 +70,68 @@ def _safe_object_name(module_key: str) -> str:
     """Return a stable ASCII object name required by QMainWindow.saveState()."""
     slug = re.sub(r"[^a-z0-9]+", "_", module_key.lower()).strip("_")
     return f"measurement_console_dock_{slug}"
+
+
+class InstrumentPickerDialog(QDialog):
+    """A bounded, keyboard-searchable alternative to the long instrument menu."""
+
+    def __init__(self, console: "MeasurementConsoleWindow") -> None:
+        super().__init__(console)
+        self.console = console
+        self.setWindowTitle(tr("Add Instrument"))
+        self.setMinimumSize(430, 460)
+        layout = QVBoxLayout(self)
+        self.search = QLineEdit(self)
+        self.search.setPlaceholderText(tr("Search instruments..."))
+        self.search.setClearButtonEnabled(True)
+        layout.addWidget(self.search)
+        self.list = QListWidget(self)
+        layout.addWidget(self.list)
+        self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel, self)
+        self.add_action = self.buttons.addButton(tr("Add Instrument"), QDialogButtonBox.ButtonRole.AcceptRole)
+        layout.addWidget(self.buttons)
+
+        self.search.textChanged.connect(self._filter)
+        self.search.returnPressed.connect(self._add_selected)
+        self.list.itemActivated.connect(lambda _item: self._add_selected())
+        self.list.currentItemChanged.connect(lambda *_args: self._sync_add_action())
+        self.add_action.clicked.connect(self._add_selected)
+        self.buttons.rejected.connect(self.reject)
+        self._filter("")
+        self.search.setFocus()
+
+    def _filter(self, query: str) -> None:
+        self.list.clear()
+        needle = query.strip().casefold()
+        available = []
+        already_added = []
+        for index, key in enumerate(self.console.main_window._module_keys):
+            label = tr(key)
+            if needle and needle not in label.casefold() and needle not in key.casefold():
+                continue
+            (already_added if index in self.console._docks else available).append((index, label))
+        for index, label in [*available, *already_added]:
+            item = QListWidgetItem(label, self.list)
+            item.setData(Qt.ItemDataRole.UserRole, index)
+            if index in self.console._docks:
+                item.setToolTip(tr("Already in console"))
+                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
+        if available:
+            self.list.setCurrentRow(0)
+        self._sync_add_action()
+
+    def _sync_add_action(self) -> None:
+        item = self.list.currentItem()
+        self.add_action.setEnabled(item is not None and bool(item.flags() & Qt.ItemFlag.ItemIsEnabled))
+
+    def _add_selected(self) -> None:
+        item = self.list.currentItem()
+        if item is None or not item.flags() & Qt.ItemFlag.ItemIsEnabled:
+            return
+        index = item.data(Qt.ItemDataRole.UserRole)
+        self.console.add_module(index)
+        if index in self.console._docks:
+            self.accept()
 
 
 class InstrumentDockWidget(QDockWidget):
@@ -315,6 +386,14 @@ class MeasurementConsoleWindow(QMainWindow):
         self._stop_all_active = False
         self._stop_all_stopped_count = 0
         self._stop_all_failed_count = 0
+        self._stop_all_failed_indices: list[int] = []
+        self._autosave_enabled = False
+        self._restoring_workspace = False
+        self._workspace_save_timer = QTimer(self)
+        self._workspace_save_timer.setSingleShot(True)
+        self._workspace_save_timer.setInterval(1500)
+        self._workspace_save_timer.timeout.connect(self.save_workspace)
+        self._default_console_undo: dict | None = None
 
         self.setWindowTitle(tr("Measurement Console"))
         self.setObjectName("measurement_console_window")
@@ -340,6 +419,23 @@ class MeasurementConsoleWindow(QMainWindow):
 
         self._init_toolbar()
         self.statusBar().showMessage(tr("No instruments in the console."))
+        self.audio_status_label = QLabel(tr("Idle"), self)
+        self.audio_status_label.setObjectName("console_audio_status")
+        self.statusBar().addPermanentWidget(self.audio_status_label)
+        self.audio_warning_button = QToolButton(self)
+        self.audio_warning_button.setObjectName("console_audio_warning")
+        self.audio_warning_button.setText(tr("I/O BUFFER ERROR"))
+        self.audio_warning_button.setToolTip(tr("I/O BUFFER ERROR"))
+        self.audio_warning_button.setStyleSheet("color: red; font-weight: bold;")
+        self.audio_warning_button.clicked.connect(self._acknowledge_audio_warning)
+        self.stop_failure_button = QToolButton(self)
+        self.stop_failure_button.setObjectName("console_stop_failure")
+        self.stop_failure_button.setStyleSheet("color: red; font-weight: bold;")
+        self.stop_failure_button.clicked.connect(self._show_first_stop_failure)
+        self.statusBar().addPermanentWidget(self.audio_warning_button)
+        self.statusBar().addPermanentWidget(self.stop_failure_button)
+        self.audio_warning_button.hide()
+        self.stop_failure_button.hide()
 
     @property
     def module_indices(self) -> tuple[int, ...]:
@@ -355,9 +451,7 @@ class MeasurementConsoleWindow(QMainWindow):
         self.add_button = QToolButton(toolbar)
         self.add_button.setText(tr("Add Instrument"))
         self.add_button.setToolTip(tr("Add Instrument"))
-        self.add_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-        self.add_menu = QMenu(self.add_button)
-        self.add_button.setMenu(self.add_menu)
+        self.add_button.clicked.connect(self._show_instrument_picker)
         toolbar.addWidget(self.add_button)
 
         self.layout_button = QToolButton(toolbar)
@@ -416,6 +510,12 @@ class MeasurementConsoleWindow(QMainWindow):
         default_action = QAction(tr("Default Console"), layout_menu)
         default_action.triggered.connect(self.load_default_console)
         layout_menu.addAction(default_action)
+        self.undo_default_action = QAction(tr("Undo Default Console"), layout_menu)
+        self.undo_default_action.setEnabled(False)
+        self.undo_default_action.triggered.connect(self.undo_default_console)
+        layout_menu.addAction(self.undo_default_action)
+        self.workspace_menu = layout_menu.addMenu(tr("Workspaces"))
+        self.workspace_menu.aboutToShow.connect(self._rebuild_workspace_menu)
         toolbar.addSeparator()
         self._refresh_layout_controls()
         self._refresh_layout_icons()
@@ -432,7 +532,10 @@ class MeasurementConsoleWindow(QMainWindow):
         self.lock_action.toggled.connect(self.set_layout_locked)
         toolbar.addAction(self.lock_action)
 
-        self._rebuild_add_menu()
+    def _show_instrument_picker(self) -> None:
+        if self._layout_locked or self._closing:
+            return
+        InstrumentPickerDialog(self).exec()
 
     def _refresh_layout_icons(self) -> None:
         for key, action in self._preset_actions.items():
@@ -440,12 +543,73 @@ class MeasurementConsoleWindow(QMainWindow):
 
     def _refresh_layout_controls(self) -> None:
         enabled = bool(self._docks) and not self._layout_locked
+        self.layout_button.setText(f"{tr('Layout')}: {self._preset_labels[self._layout_preset]}")
         for key, action in self._preset_actions.items():
             action.setEnabled(enabled)
             action.setChecked(key == self._layout_preset)
         self.reapply_layout_action.setEnabled(enabled)
         self.undo_layout_action.setEnabled(enabled and self._undo_layout is not None)
         self.main_instrument_menu.setEnabled(enabled and self._layout_preset.startswith("main_"))
+        self.undo_default_action.setEnabled(not self._layout_locked and self._default_console_undo is not None)
+        self.workspace_menu.setEnabled(not self._layout_locked)
+
+    def _rebuild_workspace_menu(self) -> None:
+        self.workspace_menu.clear()
+        self.workspace_menu.addAction(tr("Save Workspace..."), self._save_named_workspace)
+        profiles = self.main_window.config_manager.get_measurement_console_profiles()
+        if not profiles:
+            return
+        self.workspace_menu.addSeparator()
+        for name in sorted(profiles, key=str.casefold):
+            submenu = self.workspace_menu.addMenu(name)
+            submenu.addAction(tr("Load Workspace"), lambda _checked=False, n=name: self._load_named_workspace(n))
+            submenu.addAction(tr("Delete Workspace"), lambda _checked=False, n=name: self._delete_named_workspace(n))
+
+    def _save_named_workspace(self) -> None:
+        if self._layout_locked or self._closing:
+            return
+        name, accepted = QInputDialog.getText(self, tr("Save Workspace..."), tr("Workspace name"))
+        name = name.strip()
+        if not accepted or not name:
+            return
+        if len(name) > 64:
+            QMessageBox.information(self, tr("Workspaces"), tr("Workspace name must be 64 characters or fewer."))
+            return
+        profiles = self.main_window.config_manager.get_measurement_console_profiles()
+        if name not in profiles and len(profiles) >= 12:
+            QMessageBox.information(self, tr("Workspaces"), tr("Up to 12 workspaces can be saved."))
+            return
+        if (
+            name in profiles
+            and QMessageBox.question(self, tr("Workspaces"), tr("Replace workspace {0}?").format(name))
+            != QMessageBox.StandardButton.Yes
+        ):
+            return
+        profiles[name] = self._workspace_snapshot()
+        self.main_window.config_manager.set_measurement_console_profiles(profiles)
+        self.statusBar().showMessage(tr("Workspace saved: {0}").format(name))
+
+    def _load_named_workspace(self, name: str) -> None:
+        if self._layout_locked or self._closing:
+            return
+        snapshot = self.main_window.config_manager.get_measurement_console_profiles().get(name)
+        if snapshot is None:
+            return
+        self.restore_workspace(snapshot, replace=True)
+        self.statusBar().showMessage(tr("Workspace loaded: {0}").format(name))
+
+    def _delete_named_workspace(self, name: str) -> None:
+        if self._layout_locked or self._closing:
+            return
+        profiles = self.main_window.config_manager.get_measurement_console_profiles()
+        if name not in profiles:
+            return
+        if QMessageBox.question(self, tr("Workspaces"), tr("Delete workspace {0}?").format(name)) != (
+            QMessageBox.StandardButton.Yes
+        ):
+            return
+        del profiles[name]
+        self.main_window.config_manager.set_measurement_console_profiles(profiles)
 
     def _rebuild_main_instrument_menu(self) -> None:
         self.main_instrument_menu.clear()
@@ -468,6 +632,47 @@ class MeasurementConsoleWindow(QMainWindow):
     def _refresh_stop_all_icon(self) -> None:
         self.stop_all_action.setIcon(make_header_icon(HeaderIcon.STOP, application_button_text_color()))
 
+    def update_from_main_status(self) -> None:
+        """Mirror the already-polled MainWindow status without querying audio again."""
+        main = self.main_window
+        if not hasattr(main, "compact_status_label"):
+            return
+        summary = f"{main.compact_status_label.text()} · {main.output_dest_combo.currentText()}"
+        if self.audio_status_label.text() != summary:
+            self.audio_status_label.setText(summary)
+        details = f"{main.io_label.text()}\n{main.cpu_label.text()}\n{main.clients_label.text()}"
+        if self.audio_status_label.toolTip() != details:
+            self.audio_status_label.setToolTip(details)
+        warning = bool(main._io_error_latched)
+        if self.audio_warning_button.isHidden() == warning:
+            self.audio_warning_button.setVisible(warning)
+        if warning:
+            if self.audio_warning_button.text() != main.io_error_button.text():
+                self.audio_warning_button.setText(main.io_error_button.text())
+            if self.audio_warning_button.toolTip() != main.io_error_button.toolTip():
+                self.audio_warning_button.setToolTip(main.io_error_button.toolTip())
+
+    def _acknowledge_audio_warning(self) -> None:
+        self.main_window._acknowledge_audio_io_error()
+        self.update_from_main_status()
+
+    def _show_first_stop_failure(self) -> None:
+        if self._stop_all_failed_indices:
+            self.activate_module(self._stop_all_failed_indices[0])
+
+    def _refresh_stop_failure_indicator(self) -> None:
+        self._stop_all_failed_indices = [
+            index
+            for index in self._stop_all_failed_indices
+            if index in self._docks and self._docks[index].primary_action_is_running()
+        ]
+        count = len(self._stop_all_failed_indices)
+        self.stop_failure_button.setVisible(bool(count))
+        if count:
+            names = ", ".join(self._docks[index].windowTitle() for index in self._stop_all_failed_indices)
+            self.stop_failure_button.setText(tr("Stop failed: {0}").format(count))
+            self.stop_failure_button.setToolTip(tr("Could not stop: {0}").format(names))
+
     def changeEvent(self, event) -> None:
         """Keep toolbar icons legible after a live light/dark theme switch."""
         super().changeEvent(event)
@@ -477,19 +682,13 @@ class MeasurementConsoleWindow(QMainWindow):
             self._refresh_stop_all_icon()
             self._refresh_layout_icons()
 
-    def _rebuild_add_menu(self) -> None:
-        self.add_menu.clear()
-        for module_index, module_key in enumerate(self.main_window._module_keys):
-            action = QAction(tr(module_key), self.add_menu)
-            action.setCheckable(True)
-            action.setChecked(module_index in self._docks)
-            action.setEnabled(module_index not in self._docks and not self._layout_locked)
-            action.triggered.connect(lambda _checked=False, i=module_index: self.add_module(i))
-            self.add_menu.addAction(action)
-
     def load_default_console(self) -> None:
         if self._layout_locked or self._closing:
             return
+
+        if self._docks and not self._restoring_workspace:
+            self._default_console_undo = self._workspace_snapshot()
+            self.undo_default_action.setEnabled(True)
 
         default_indices = []
         for module_key in DEFAULT_CONSOLE_MODULES:
@@ -518,6 +717,15 @@ class MeasurementConsoleWindow(QMainWindow):
         generation = self._preset_layout_generation
         QTimer.singleShot(0, lambda: self._arrange_default_console_for_current_screen(generation))
 
+    def undo_default_console(self) -> None:
+        snapshot = self._default_console_undo
+        if snapshot is None or self._layout_locked or self._closing:
+            return
+        self._default_console_undo = None
+        self.restore_workspace(snapshot, replace=True)
+        self._refresh_layout_controls()
+        self._schedule_workspace_save()
+
     def _arrange_default_console_for_current_screen(self, generation: int) -> None:
         """Apply the regular preset, then constrain it to the actual screen."""
         if self._closing or generation != self._preset_layout_generation:
@@ -525,58 +733,69 @@ class MeasurementConsoleWindow(QMainWindow):
         self.apply_layout_preset("grid_2x2", remember=False)
         self._ensure_visible_on_screen()
 
-    def restore_workspace(self) -> bool:
+    def restore_workspace(self, snapshot: dict | None = None, *, replace: bool = False) -> bool:
         """Restore the last console layout, falling back to the four-instrument preset."""
-        config = self.main_window.config_manager.get_measurement_console_config()
+        config = snapshot if snapshot is not None else self.main_window.config_manager.get_measurement_console_config()
         if config.get("version") != 1:
             self.load_default_console()
             return False
 
-        for module_key in config.get("module_keys", []):
-            try:
-                module_index = self.main_window._module_keys.index(module_key)
-            except ValueError:
-                logger.warning("Saved console module is unavailable: %s", module_key)
-                continue
-            self.add_module(module_index, arrange=False)
+        self._workspace_save_timer.stop()
+        self._restoring_workspace = True
+        try:
+            if replace:
+                self.lock_action.setChecked(False)
+                for module_index in list(self._docks):
+                    self.remove_module(module_index)
 
-        preset = config.get("layout_preset", "grid_2x2")
-        self._layout_preset = preset if preset in CONSOLE_LAYOUTS else "grid_2x2"
-        main_key = config.get("main_module_key", "")
-        self._main_module_index = next(
-            (index for index in self._docks if self.main_window._module_keys[index] == main_key), None
-        )
-        self._refresh_layout_controls()
-        compact_keys = set(config.get("compact_module_keys", []))
-        for module_index in self._docks:
-            wrapper = self.main_window.module_widgets[module_index]
-            module_key = self.main_window._module_keys[module_index]
-            if wrapper is not None and wrapper.is_compactable:
-                wrapper.toggle_compact(module_key in compact_keys)
+            for module_key in config.get("module_keys", []):
+                try:
+                    module_index = self.main_window._module_keys.index(module_key)
+                except ValueError:
+                    logger.warning("Saved console module is unavailable: %s", module_key)
+                    continue
+                self.add_module(module_index, arrange=False)
 
-        geometry_ok = self._restore_blob(config.get("geometry", ""), self.restoreGeometry)
-        state_ok = self._restore_blob(
-            config.get("dock_state", ""),
-            lambda state: self.restoreState(state, 1),
-        )
-        # Floating instruments deliberately are not part of the streamlined
-        # console mode. Normalize older saved layouts that still contain them.
-        for dock in self._docks.values():
-            if dock.isFloating():
-                dock.setFloating(False)
+            preset = config.get("layout_preset", "grid_2x2")
+            self._layout_preset = preset if preset in CONSOLE_LAYOUTS else "grid_2x2"
+            main_key = config.get("main_module_key", "")
+            self._main_module_index = next(
+                (index for index in self._docks if self.main_window._module_keys[index] == main_key), None
+            )
+            self._refresh_layout_controls()
+            compact_keys = set(config.get("compact_module_keys", []))
+            for module_index in self._docks:
+                wrapper = self.main_window.module_widgets[module_index]
+                module_key = self.main_window._module_keys[module_index]
+                if wrapper is not None and wrapper.is_compactable:
+                    wrapper.toggle_compact(module_key in compact_keys)
 
-        if self._docks and not state_ok:
-            # Apply the recovery preset before restoring the lock flag.  A
-            # queued preset would otherwise be rejected when the saved layout
-            # itself was locked.
-            self.apply_layout_preset(self._layout_preset, remember=False)
-        elif self._docks:
-            # A dock restored as visible and one restored as hidden are both
-            # unchecked while their top-level parent has never been shown.
-            # Validate only after Qt has applied child visibility in showEvent.
-            self._validate_docks_after_show = True
+            geometry_ok = self._restore_blob(config.get("geometry", ""), self.restoreGeometry)
+            state_ok = self._restore_blob(
+                config.get("dock_state", ""),
+                lambda state: self.restoreState(state, 1),
+            )
+            # Floating instruments deliberately are not part of the streamlined
+            # console mode. Normalize older saved layouts that still contain them.
+            for dock in self._docks.values():
+                if dock.isFloating():
+                    dock.setFloating(False)
 
-        self.lock_action.setChecked(bool(config.get("layout_locked", False)))
+            if self._docks and not state_ok:
+                # Apply the recovery preset before restoring the lock flag.  A
+                # queued preset would otherwise be rejected when the saved layout
+                # itself was locked.
+                self.apply_layout_preset(self._layout_preset, remember=False)
+            elif self._docks:
+                # A dock restored as visible and one restored as hidden are both
+                # unchecked while their top-level parent has never been shown.
+                # Validate only after Qt has applied child visibility in showEvent.
+                self._validate_docks_after_show = True
+
+            self.lock_action.setChecked(bool(config.get("layout_locked", False)))
+        finally:
+            self._restoring_workspace = False
+        self._schedule_workspace_save()
         return geometry_ok and state_ok
 
     @staticmethod
@@ -589,7 +808,7 @@ class MeasurementConsoleWindow(QMainWindow):
         except (binascii.Error, ValueError, UnicodeError):
             return False
 
-    def save_workspace(self) -> None:
+    def _workspace_snapshot(self) -> dict:
         compact_keys = []
         for module_index in self._docks:
             wrapper = self.main_window.module_widgets[module_index]
@@ -628,7 +847,19 @@ class MeasurementConsoleWindow(QMainWindow):
             ),
             "layout_locked": self._layout_locked,
         }
-        self.main_window.config_manager.set_measurement_console_config(config)
+        return config
+
+    def save_workspace(self) -> None:
+        self.main_window.config_manager.set_measurement_console_config(self._workspace_snapshot())
+
+    def _schedule_workspace_save(self) -> None:
+        if self._autosave_enabled and not self._restoring_workspace and not self._closing:
+            self._workspace_save_timer.start()
+
+    def _enable_autosave(self) -> None:
+        if not self._closing:
+            self._autosave_enabled = True
+            self._schedule_workspace_save()
 
     def _has_usable_window_size(self) -> bool:
         """Return whether the current size is safe to persist for this workspace."""
@@ -655,6 +886,7 @@ class MeasurementConsoleWindow(QMainWindow):
         """Cache geometry after native move/resize processing has settled."""
         if not self._closing:
             QTimer.singleShot(0, self._cache_usable_geometry)
+            self._schedule_workspace_save()
 
     def adjustSize(self) -> None:
         """Keep hosted widgets from auto-fitting the whole dock workspace."""
@@ -800,10 +1032,10 @@ class MeasurementConsoleWindow(QMainWindow):
             # it out as a temporary fifth split.  Raise it only after show().
             dock.raise_()
 
-        self._rebuild_add_menu()
         self._refresh_layout_controls()
         self.statusBar().showMessage(tr("{0} instruments in the console.").format(len(self._docks)))
         self._refresh_stop_all_action()
+        self._schedule_workspace_save()
 
     def stop_all_instruments(self) -> None:
         """Stop every running primary action currently hosted by the console."""
@@ -821,6 +1053,7 @@ class MeasurementConsoleWindow(QMainWindow):
         self._stop_all_active = True
         self._stop_all_stopped_count = 0
         self._stop_all_failed_count = 0
+        self._stop_all_failed_indices.clear()
         self.stop_all_action.setEnabled(False)
         self._process_next_stop(generation)
 
@@ -840,6 +1073,7 @@ class MeasurementConsoleWindow(QMainWindow):
                 self._stop_all_stopped_count += 1
             elif result in (PrimaryActionStopResult.BLOCKED, PrimaryActionStopResult.FAILED):
                 self._stop_all_failed_count += 1
+                self._stop_all_failed_indices.append(module_index)
 
             QTimer.singleShot(0, lambda g=generation: self._process_next_stop(g))
             return
@@ -859,6 +1093,7 @@ class MeasurementConsoleWindow(QMainWindow):
         else:
             message = tr("Stopped {0} instruments.").format(self._stop_all_stopped_count)
         self.statusBar().showMessage(message)
+        self._refresh_stop_failure_indicator()
         self._refresh_stop_all_action()
 
     def _refresh_stop_all_action(self) -> None:
@@ -866,6 +1101,7 @@ class MeasurementConsoleWindow(QMainWindow):
             return
         has_running_action = any(dock.primary_action_is_running() for dock in self._docks.values())
         self.stop_all_action.setEnabled(has_running_action and not self._stop_all_active and not self._closing)
+        self._refresh_stop_failure_indicator()
 
     def _cancel_stop_all(self) -> None:
         self._stop_all_generation += 1
@@ -931,13 +1167,13 @@ class MeasurementConsoleWindow(QMainWindow):
 
         self.main_window.return_module_from_console(module_index, self)
         self._refresh_compact_membership_layout()
-        self._rebuild_add_menu()
         self._refresh_layout_controls()
         if self._docks:
             self.statusBar().showMessage(tr("{0} instruments in the console.").format(len(self._docks)))
         else:
             self.statusBar().showMessage(tr("No instruments in the console."))
         self._refresh_stop_all_action()
+        self._schedule_workspace_save()
 
     def activate_module(self, module_index: int) -> bool:
         dock = self._docks.get(module_index)
@@ -1004,6 +1240,7 @@ class MeasurementConsoleWindow(QMainWindow):
             self._schedule_visible_state_snapshot()
         self._undo_layout = None
         self._refresh_layout_controls()
+        self._schedule_workspace_save()
 
     def select_layout_preset(self, preset: str) -> None:
         """Repeat a selected preset to cycle its instruments through the panes."""
@@ -1040,6 +1277,7 @@ class MeasurementConsoleWindow(QMainWindow):
         self.statusBar().showMessage(
             tr("Layout: {0} · {1} instruments").format(self._preset_labels[preset], len(self._docks))
         )
+        self._schedule_workspace_save()
 
     def arrange_side_by_side(self) -> None:
         self.apply_layout_preset("columns")
@@ -1124,6 +1362,7 @@ class MeasurementConsoleWindow(QMainWindow):
 
         if not sip.isdeleted(self) and not self._closing:
             QTimer.singleShot(0, self._cache_visible_dock_state)
+            self._schedule_workspace_save()
 
     def _cache_visible_dock_state(self) -> None:
         from PyQt6 import sip
@@ -1151,7 +1390,7 @@ class MeasurementConsoleWindow(QMainWindow):
         self.add_button.setEnabled(not locked)
         self.layout_button.setEnabled(not locked)
         self._refresh_layout_controls()
-        self._rebuild_add_menu()
+        self._schedule_workspace_save()
 
     def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
@@ -1167,6 +1406,7 @@ class MeasurementConsoleWindow(QMainWindow):
         QTimer.singleShot(0, self._schedule_geometry_recovery)
         self._schedule_visible_state_snapshot()
         self._schedule_geometry_snapshot()
+        QTimer.singleShot(0, self._enable_autosave)
 
     def moveEvent(self, event: QMoveEvent) -> None:
         super().moveEvent(event)
@@ -1185,6 +1425,7 @@ class MeasurementConsoleWindow(QMainWindow):
             event.accept()
             return
         self._closing = True
+        self._workspace_save_timer.stop()
         self._cancel_stop_all()
         self.save_workspace()
         for module_index in list(self._docks):

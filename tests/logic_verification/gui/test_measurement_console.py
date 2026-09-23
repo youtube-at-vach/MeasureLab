@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+from copy import deepcopy
 
 import pytest
 
@@ -9,6 +10,8 @@ from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import (
     QApplication,
     QDockWidget,
+    QComboBox,
+    QLabel,
     QMainWindow,
     QToolButton,
     QPushButton,
@@ -24,7 +27,8 @@ from src.core.module_constants import (
 )
 from src.gui.console_layouts import CONSOLE_LAYOUTS, layout_cells
 from src.gui.main_window import MainWindow
-from src.gui.measurement_console import DEFAULT_CONSOLE_MODULES, MeasurementConsoleWindow
+from src.gui.measurement_console import DEFAULT_CONSOLE_MODULES, InstrumentPickerDialog, MeasurementConsoleWindow
+from src.core.localization import get_manager
 from src.gui.module_registry import NO_INDEPENDENT_DISPLAY, WidgetCapabilities, console_action
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
@@ -98,12 +102,19 @@ class _PrimaryActionContent(QWidget):
 class _ConfigStub:
     def __init__(self):
         self.console_config = {"version": 0}
+        self.profiles = {}
 
     def get_measurement_console_config(self):
         return self.console_config
 
     def set_measurement_console_config(self, config) -> None:
         self.console_config = config
+
+    def get_measurement_console_profiles(self):
+        return deepcopy(self.profiles)
+
+    def set_measurement_console_profiles(self, profiles) -> None:
+        self.profiles = deepcopy(profiles)
 
 
 class _ConsoleHostStub(QWidget):
@@ -281,6 +292,53 @@ def test_layout_menu_replaces_single_row_with_side_by_side(qapp):
 
     assert "Side by Side" in action_labels
     assert "Single Row" not in action_labels
+    console.close()
+
+
+def test_instrument_picker_searches_both_localized_and_original_names(qtbot):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(3)])
+    host._module_keys = ["Oscilloscope", "Spectrum Analyzer", "Signal Generator"]
+    console = MeasurementConsoleWindow(host)
+    console.add_module(0)
+    get_manager().load_language("ja")
+    try:
+        picker = InstrumentPickerDialog(console)
+        picker.search.setText("スペクトラム")
+        assert picker.list.count() == 1
+        assert picker.list.item(0).data(Qt.ItemDataRole.UserRole) == 1
+        picker.search.setText("spectrum")
+        assert picker.list.count() == 1
+        picker._add_selected()
+        assert picker.result() == picker.DialogCode.Accepted
+        assert console.module_indices == (0, 1)
+        picker.close()
+    finally:
+        get_manager().load_language("en")
+        console.close()
+
+
+def test_console_mirrors_existing_audio_status_and_latched_warning(qapp):
+    host = _ConsoleHostStub([])
+    host.compact_status_label = QLabel("Idle • 48 kHz")
+    host.output_dest_combo = QComboBox()
+    host.output_dest_combo.addItem("Physical Output")
+    host.io_label = QLabel("In: Stereo | Out: Stereo")
+    host.cpu_label = QLabel("CPU: 1.0%")
+    host.clients_label = QLabel("Clients: 0")
+    host._io_error_latched = True
+    host.io_error_button = QPushButton("I/O BUFFER ERROR")
+    host.io_error_button.setToolTip("Input overflow")
+    console = MeasurementConsoleWindow(host)
+
+    console.update_from_main_status()
+    assert console.audio_status_label.text() == "Idle • 48 kHz · Physical Output"
+    assert "CPU: 1.0%" in console.audio_status_label.toolTip()
+    assert not console.audio_warning_button.isHidden()
+    assert console.audio_warning_button.toolTip() == "Input overflow"
+
+    host._io_error_latched = False
+    console.update_from_main_status()
+    assert console.audio_warning_button.isHidden()
     console.close()
 
 
@@ -509,6 +567,10 @@ def test_console_stop_all_reports_running_actions_that_are_disabled(qtbot):
     assert content.toggle_btn.isChecked()
     assert "1" in console.statusBar().currentMessage()
     assert console.stop_all_action.isEnabled()
+    assert not console.stop_failure_button.isHidden()
+    assert "Instrument 0" in console.stop_failure_button.toolTip()
+    console.apply_layout_preset("tabs")
+    assert not console.stop_failure_button.isHidden()
     console.close()
 
 
@@ -962,6 +1024,59 @@ def test_default_console_resets_order_without_overwriting_later_preset(qtbot, mo
     qtbot.wait(20)
     assert console.module_indices == (0, 1, 2, 3)
     assert console._layout_preset == "main_right"
+    console.close()
+
+
+def test_default_console_can_restore_previous_membership(qtbot, monkeypatch):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(5)])
+    host._module_keys = [*DEFAULT_CONSOLE_MODULES, "Extra"]
+    console = MeasurementConsoleWindow(host)
+    monkeypatch.setattr(console, "_requires_compact_screen_layout", lambda _available: False)
+    for index in (4, 0, 2):
+        console.add_module(index, arrange=False)
+    console.show()
+    qtbot.waitUntil(console.isVisible)
+
+    console.load_default_console()
+    qtbot.waitUntil(lambda: console.module_indices == (0, 1, 2, 3))
+    assert console.undo_default_action.isEnabled()
+    console.undo_default_console()
+
+    assert console.module_indices == (4, 0, 2)
+    assert not console.undo_default_action.isEnabled()
+    console.close()
+
+
+def test_console_autosaves_layout_before_close(qtbot):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(2)])
+    console = MeasurementConsoleWindow(host)
+    for index in range(2):
+        console.add_module(index, arrange=False)
+    console.show()
+    qtbot.waitUntil(lambda: console._autosave_enabled)
+    console.apply_layout_preset("columns")
+
+    qtbot.waitUntil(lambda: host.config_manager.console_config.get("layout_preset") == "columns", timeout=3000)
+    assert console.isVisible()
+    console.close()
+
+
+def test_named_workspace_can_be_saved_and_recalled(qtbot, monkeypatch):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(3)])
+    console = MeasurementConsoleWindow(host)
+    for index in (0, 1):
+        console.add_module(index, arrange=False)
+    console.show()
+    qtbot.waitUntil(console.isVisible)
+    monkeypatch.setattr("src.gui.measurement_console.QInputDialog.getText", lambda *_args: ("Bench A", True))
+
+    console._save_named_workspace()
+    assert host.config_manager.profiles["Bench A"]["module_keys"] == ["Instrument 0", "Instrument 1"]
+    console.remove_module(1)
+    console.add_module(2)
+    console._load_named_workspace("Bench A")
+
+    assert console.module_indices == (0, 1)
     console.close()
 
 
