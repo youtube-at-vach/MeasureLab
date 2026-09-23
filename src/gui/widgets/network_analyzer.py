@@ -1395,6 +1395,11 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         result = self.load_result
         conditions = self.load_study.a[0].conditions
         try:
+            aligned_inputs = [
+                (f"{group.lower()}{number}", *self.load_study.align_capture(capture, result.frequencies))
+                for group, captures in (("A", self.load_study.a), ("B", self.load_study.b))
+                for number, capture in enumerate(captures, start=1)
+            ]
             with open(path, "w", newline="", encoding="utf-8") as file:
                 writer = csv.writer(file)
                 writer.writerow(["# load_a_ohms", self.load_study.a[0].load_ohms])
@@ -1404,31 +1409,33 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
                     writer.writerow([f"# {key}", value])
                 writer.writerow(["# count_a", result.count_a])
                 writer.writerow(["# count_b", result.count_b])
-                writer.writerow(
-                    [
-                        "frequency_hz",
-                        "difference_b_minus_a_db",
-                        "source_resistance_ohms",
-                        "source_reactance_ohms",
-                        "predicted_load_minus_a_db",
-                        "numerically_valid",
-                        "repeat_resolved",
-                        "low_coherence",
-                    ]
-                )
+                header = [
+                    "frequency_hz",
+                    "difference_b_minus_a_db",
+                    "source_resistance_ohms",
+                    "source_reactance_ohms",
+                    "predicted_load_minus_a_db",
+                    "numerically_valid",
+                    "repeat_resolved",
+                    "low_coherence",
+                ]
+                for prefix, _, _ in aligned_inputs:
+                    header.extend((f"{prefix}_transfer_real", f"{prefix}_transfer_imag", f"{prefix}_coherence"))
+                writer.writerow(header)
                 for index, frequency in enumerate(result.frequencies):
-                    writer.writerow(
-                        [
-                            frequency,
-                            result.difference_db[index],
-                            result.source_ohms.real[index],
-                            result.source_ohms.imag[index],
-                            result.predicted_difference_db[index],
-                            int(result.numerically_valid[index]),
-                            int(result.repeat_resolved[index]),
-                            int(result.low_coherence[index]),
-                        ]
-                    )
+                    row = [
+                        frequency,
+                        result.difference_db[index],
+                        result.source_ohms.real[index],
+                        result.source_ohms.imag[index],
+                        result.predicted_difference_db[index],
+                        int(result.numerically_valid[index]),
+                        int(result.repeat_resolved[index]),
+                        int(result.low_coherence[index]),
+                    ]
+                    for _, transfer, coherence in aligned_inputs:
+                        row.extend((transfer.real[index], transfer.imag[index], coherence[index]))
+                    writer.writerow(row)
         except OSError as exc:
             QMessageBox.critical(self, tr("Source impedance"), str(exc))
 

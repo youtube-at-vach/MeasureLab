@@ -106,6 +106,21 @@ class PairedLoadStudy:
                 raise ValueError("Sweep settings or channel routing differ from the stored captures.")
         own.append(capture)
 
+    @staticmethod
+    def align_capture(capture: LoadCapture, frequencies: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """Resample a stored complex capture onto a grid already within its coverage."""
+        if (
+            len(frequencies) == 0
+            or frequencies[0] < capture.frequencies[0]
+            or frequencies[-1] > capture.frequencies[-1]
+        ):
+            raise ValueError("The output grid extends beyond a capture.")
+        transfer = np.interp(frequencies, capture.frequencies, capture.transfer.real) + 1j * np.interp(
+            frequencies, capture.frequencies, capture.transfer.imag
+        )
+        coherence = np.interp(frequencies, capture.frequencies, capture.coherence)
+        return transfer, coherence
+
     def calculate(self, prediction_load_ohms: float, *, min_coherence: float = 0.8) -> LoadResult:
         if not self.a or not self.b:
             raise ValueError("Capture both load groups before calculating.")
@@ -121,14 +136,9 @@ class PairedLoadStudy:
             raise ValueError("The captures have no usable common frequency range.")
 
         def aligned(items: list[LoadCapture]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-            transfer = np.stack(
-                [
-                    np.interp(grid, item.frequencies, item.transfer.real)
-                    + 1j * np.interp(grid, item.frequencies, item.transfer.imag)
-                    for item in items
-                ]
-            )
-            coherence = np.stack([np.interp(grid, item.frequencies, item.coherence) for item in items])
+            pairs = [self.align_capture(item, grid) for item in items]
+            transfer = np.stack([pair[0] for pair in pairs])
+            coherence = np.stack([pair[1] for pair in pairs])
             mean = np.mean(transfer, axis=0)
             standard_error = (
                 np.sqrt(np.sum(np.abs(transfer - mean) ** 2, axis=0) / (len(items) * (len(items) - 1)))

@@ -1,5 +1,8 @@
+import csv
+
 import numpy as np
 import pytest
+from PyQt6.QtWidgets import QFileDialog
 
 from src.core.output_impedance import SweepConditions
 from src.gui.widgets.network_analyzer import NetworkAnalyzer, NetworkAnalyzerWidget
@@ -55,7 +58,7 @@ def _curve_len(values):
     return 0 if values is None else len(values)
 
 
-def test_load_study_captures_only_completed_xfer_sweeps(qtbot):
+def test_load_study_captures_only_completed_xfer_sweeps(qtbot, tmp_path, monkeypatch):
     widget = _make_widget(qtbot)
     analyzer = widget.module
     widget.in_combo.setCurrentIndex(widget.in_combo.findData("XFER"))
@@ -80,6 +83,20 @@ def test_load_study_captures_only_completed_xfer_sweeps(qtbot):
     assert widget.load_result is not None
     assert np.allclose(widget.load_result.source_ohms, source)
     assert widget.save_load_btn.isEnabled()
+
+    output = tmp_path / "load-study.csv"
+    monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *_: (str(output), ""))
+    widget._save_load_study()
+    with output.open(newline="", encoding="utf-8") as file:
+        rows = list(csv.reader(file))
+    header_index = next(index for index, row in enumerate(rows) if row[0] == "frequency_hz")
+    header = rows[header_index]
+    assert "a1_transfer_real" in header
+    assert "b1_transfer_imag" in header
+    assert "b1_coherence" in header
+    assert float(rows[header_index + 1][header.index("a1_transfer_real")]) == pytest.approx(
+        (32 / (source[0] + 32)).real
+    )
 
     analyzer.sweep_revision = 3
     analyzer.raw_H = None
