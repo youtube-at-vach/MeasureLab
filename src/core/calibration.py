@@ -50,9 +50,9 @@ class CalibrationManager:
         self.last_profile = None
         self.frequency_map = []
         # Caches for vectorized interpolation
-        self._freq_cache = np.array([])
-        self._mag_cache = np.array([])
-        self._phase_cache = np.array([])
+        self._freq_cache: np.ndarray | None = np.array([])
+        self._mag_cache: np.ndarray | None = np.array([])
+        self._phase_cache: np.ndarray | None = np.array([])
         self._map_cache = (np.array([]), np.array([]), np.array([]))
         self.load()
 
@@ -121,7 +121,7 @@ class CalibrationManager:
                                     entry = None
                             if isinstance(entry, dict) and "offset_db" in entry:
                                 try:
-                                    value = float(entry.get("offset_db"))
+                                    value = float(entry["offset_db"])
                                     self.spl_offset_db = value if np.isfinite(value) else None
                                 except Exception:
                                     self.spl_offset_db = None

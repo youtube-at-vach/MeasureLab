@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import ClassVar
 from unittest.mock import patch
 
 import numpy as np
@@ -9,7 +10,7 @@ from src.gui.widgets.nonlinear_response_analyzer import NonlinearResponseAnalyze
 
 
 class _FailingSession:
-    instances = []
+    instances: ClassVar[list["_FailingSession"]] = []
 
     def __init__(self, *args, **kwargs):
         self.stopped = False

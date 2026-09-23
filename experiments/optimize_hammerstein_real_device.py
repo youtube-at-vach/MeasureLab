@@ -46,7 +46,7 @@ def run_trial(
     print("=======================================================")
 
     # Run subprocess
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, check=False, capture_output=True, text=True)  # noqa: S603 - arguments are built locally
     if result.returncode != 0:
         print(f"[-] Trial failed with error code {result.returncode}")
         print(result.stderr)

@@ -30,7 +30,7 @@ dependencies = [
 [project.optional-dependencies]
 vst = ["pedalboard>=0.9.24,<0.10"]
 dev = [
-  "ruff>=0.7.0",
+  "ruff>=0.16.7",
   "mypy>=1.9.0",
   "pytest>=7.4.0",
   "pytest-qt>=4.2.0",
@@ -46,10 +46,14 @@ exclude = [
 
 
 [tool.ruff.lint]
-# Start with a narrow, low-noise rule set focused on correctness and
-# the whitespace issue (W293) that currently breaks CI. Broaden later as we
-# pay down existing style debt.
-select = ["E9", "F", "E7", "E4", "W292", "W293", "B", "S110"]
+# Favor checks that catch correctness and security mistakes without requiring
+# unrelated style changes throughout the existing codebase.
+select = [
+    "E9", "F", "E7", "E4", "W292", "W293", "B",
+    "S110", "S3", "S5", "S6",
+    "PLE", "PLW1510",
+    "RUF006", "RUF008", "RUF009", "RUF012", "RUF013", "RUF100",
+]
 ignore = []
 
 [tool.ruff.lint.per-file-ignores]
@@ -61,6 +65,9 @@ python_version = "3.12"
 ignore_missing_imports = true
 show_error_codes = true
 warn_unused_ignores = true
+check_untyped_defs = true
+warn_redundant_casts = true
+strict_equality = true
 warn_return_any = false
 warn_unreachable = true
 files = ["src/core", "src/gui"]

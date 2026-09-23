@@ -279,7 +279,7 @@ def predict_harmonic_response(f0, A_in, H_freqs, sorted_freqs, sample_rate, max_
     Predicts the harmonic complex responses (Y1..Y5) under the Hammerstein model for a single tone of frequency f0 and amplitude A_in.
     """
     nyquist = sample_rate / 2.0
-    H_interp = {}
+    H_interp: dict[int, dict[int, complex]] = {}
 
     for n in range(1, 6):
         f_n = n * f0

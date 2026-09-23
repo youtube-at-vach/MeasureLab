@@ -79,10 +79,12 @@ def format_si(value, unit: str = "", sig_figs: int = 4, space: str = " ") -> str
 
 def resource_path(relative_path):
     """Get absolute path to resource, works for dev and for PyInstaller"""
+    # PyInstaller creates a temp folder and stores path in _MEIPASS.
     try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
+        base_path = getattr(sys, "_MEIPASS", None)
     except Exception:
+        base_path = None
+    if base_path is None:
         base_path = os.path.abspath(".")
         # If running from source, we might be in the root directory or src
         # We assume the 'src' folder is in the current directory or one level down/up

@@ -225,7 +225,7 @@ class AudioEngine:
         # Caching
         self._device_list_cache = None
         self._host_apis_cache = None
-        self._last_cache_time = 0
+        self._last_cache_time = 0.0
 
         # Core Audio macOS Settings
         self.coreaudio_fail_if_conversion_required = True
@@ -380,7 +380,7 @@ class AudioEngine:
                 sd._initialize()
                 self._device_list_cache = None
                 self._host_apis_cache = None
-                self._last_cache_time = 0
+                self._last_cache_time = 0.0
                 self.logger.debug("Audio backend refreshed successfully.")
             except Exception as e:
                 self.logger.error(f"Error re-initializing PortAudio: {e}")

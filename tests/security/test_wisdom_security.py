@@ -49,18 +49,12 @@ class TestWisdomSecurity(unittest.TestCase):
         with open(self.manager.wisdom_path, "rb") as f:
             content = f.read()
 
-        # Try to parse as JSON
+        # Invalid JSON must fail: accepting another serialization format would
+        # regress the wisdom file's data contract.
         try:
             data = json.loads(content)
-        except json.JSONDecodeError:
-            # If it fails, check if it was pickle (the failure mode before fix)
-            try:
-                import pickle
-
-                pickle.loads(content)
-                self.fail("Saved file is a pickle stream! Should be JSON.")
-            except Exception:
-                self.fail("Saved file is neither JSON nor Pickle?")
+        except json.JSONDecodeError as exc:
+            self.fail(f"Saved file is not JSON: {exc}")
 
         # Verify content structure
         self.assertIsInstance(data, list)

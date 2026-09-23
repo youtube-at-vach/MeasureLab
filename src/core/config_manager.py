@@ -8,7 +8,7 @@ import atexit
 import weakref
 from copy import deepcopy
 from pathlib import Path
-from typing import TypedDict, cast
+from typing import Any, TypedDict, cast
 
 # Use QLocale for robust language detection on all platforms, including macOS
 from PyQt6.QtCore import QLocale
@@ -311,7 +311,7 @@ class ConfigManager:
         self._save_timer.start()
 
     def _default_config(self):
-        config = deepcopy(DEFAULT_CONFIG)
+        config: dict[str, Any] = deepcopy(DEFAULT_CONFIG)
         # Update dynamic defaults (paths that depend on runtime environment)
         config["screenshot"]["output_dir"] = self._get_default_screenshot_dir()
         return config
