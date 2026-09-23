@@ -6,6 +6,7 @@ import pytest
 pytest.importorskip("PyQt6")
 
 try:
+    from src.core.localization import tr
     from src.gui.widgets.frequency_counter import FrequencyCounter, FrequencyCounterWidget, FrequencyWorker
 except ImportError:
     pytest.skip("Skipping GUI test due to missing dependencies", allow_module_level=True)
@@ -38,6 +39,14 @@ def test_reset_state_clears_history(frequency_counter):
     assert len(frequency_counter.freq_history) == 0
     assert len(frequency_counter.time_history) == 0
     assert frequency_counter.start_time != 1000.0
+
+
+def test_idle_frequency_counter_does_not_show_a_measured_zero(qapp, qtbot, frequency_counter):
+    frequency_counter.is_running = False
+    widget = FrequencyCounterWidget(frequency_counter)
+    qtbot.addWidget(widget)
+
+    assert widget.freq_label.text() == tr("---.----- Hz")
 
 
 def test_widget_channel_change_resets_history(qapp, frequency_counter):

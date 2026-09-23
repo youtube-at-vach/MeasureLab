@@ -9,6 +9,7 @@ from src.core.localization import tr
 from src.core.update_checker import UpdateChecker
 from src.core.utils import resource_path
 from src.core.version import __version__
+from src.gui.navigation_descriptions import translated_page_descriptions
 from src.gui.styles import shell_style
 
 
@@ -137,6 +138,7 @@ class WelcomeWidget(QWidget):
         return button
 
     def _create_text_section(self) -> QWidget:
+        descriptions = translated_page_descriptions()
         container = QWidget()
         grid = QGridLayout(container)
         grid.setContentsMargins(0, 0, 0, 0)
@@ -145,20 +147,15 @@ class WelcomeWidget(QWidget):
         setup = QLabel(tr("1. Set up your audio"))
         setup.setStyleSheet("font-weight: bold;")
         grid.addWidget(setup, 0, 0, 1, 2)
-        grid.addWidget(self._page_button("Settings", tr("Choose your input and output devices.")), 1, 0)
-        grid.addWidget(self._page_button("Remote Audio I/O", tr("Use audio from another MeasureLab computer.")), 1, 1)
+        grid.addWidget(self._page_button("Settings", descriptions["Settings"]), 1, 0)
+        grid.addWidget(self._page_button("Remote Audio I/O", descriptions["Remote Audio I/O"]), 1, 1)
         tools = QLabel(tr("2. Choose what to measure"))
         tools.setStyleSheet("font-weight: bold;")
         grid.setRowMinimumHeight(2, 12)
         grid.addWidget(tools, 3, 0, 1, 2)
-        pages = [
-            ("Signal Generator", tr("Generate a test tone.")),
-            ("Spectrum Analyzer", tr("See which frequencies are present.")),
-            ("Oscilloscope", tr("Inspect the waveform over time.")),
-            ("Distortion Analyzer", tr("Measure harmonic distortion.")),
-        ]
-        for index, (key, description) in enumerate(pages):
-            grid.addWidget(self._page_button(key, description), 4 + index // 2, index % 2)
+        pages = ("Signal Generator", "Spectrum Analyzer", "Oscilloscope", "Distortion Analyzer")
+        for index, key in enumerate(pages):
+            grid.addWidget(self._page_button(key, descriptions[key]), 4 + index // 2, index % 2)
         grid.setColumnStretch(0, 1)
         grid.setColumnStretch(1, 1)
         return container

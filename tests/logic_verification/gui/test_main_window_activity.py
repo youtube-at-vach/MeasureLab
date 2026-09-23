@@ -1,10 +1,11 @@
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPalette
 from PyQt6.QtWidgets import QListWidget, QWidget
 from unittest.mock import MagicMock
 
 import pytest
 
-from src.core.localization import tr
+from src.core.localization import get_manager, tr
 from src.gui.main_window import MainWindow
 from src.gui.module_registry import NO_INDEPENDENT_DISPLAY, WidgetCapabilities
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
@@ -457,6 +458,28 @@ def test_sidebar_search_preserves_navigation_and_loaded_modules(qtbot):
     assert not window.search_empty_label.isVisible()
     assert all(not window.sidebar.item(i).isHidden() for i in range(window.sidebar.count()))
     assert window.sidebar.currentRow() == 0
+
+
+def test_sidebar_search_finds_measurement_goals_and_explains_result(qtbot):
+    window = MainWindow()
+    qtbot.addWidget(window)
+    row = window._module_keys.index("Oscilloscope") + window._MODULE_PAGE_OFFSET
+    item = window.sidebar.item(row)
+    description = tr("Inspect the waveform over time.")
+    assert description in item.toolTip()
+    assert item.data(Qt.ItemDataRole.AccessibleDescriptionRole) == description
+
+    manager = get_manager()
+    original_language = window.config_manager.get_language()
+    try:
+        manager.load_language("ja")
+        for query in ("波形", "waveform"):
+            window.module_search.setText(query)
+            assert not item.isHidden()
+            assert window.sidebar.item(0).isHidden()
+            assert window.modules == [None] * len(window._module_keys)
+    finally:
+        manager.load_language(original_language)
 
 
 def test_recent_history_records_only_successful_navigation(qtbot, tmp_path):
