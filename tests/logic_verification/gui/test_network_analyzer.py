@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+from src.core.output_impedance import SweepConditions
 from src.gui.widgets.network_analyzer import NetworkAnalyzer, NetworkAnalyzerWidget
 
 
@@ -52,6 +53,39 @@ def _make_widget(qtbot):
 
 def _curve_len(values):
     return 0 if values is None else len(values)
+
+
+def test_load_study_captures_only_completed_xfer_sweeps(qtbot):
+    widget = _make_widget(qtbot)
+    analyzer = widget.module
+    widget.in_combo.setCurrentIndex(widget.in_combo.findData("XFER"))
+    frequencies = np.array([100.0, 1000.0, 5000.0])
+    source = np.array([8 + 2j, 10 + 4j, 12 + 6j])
+    conditions = SweepConditions(48000, 20, 20000, 1.0, 0.5, 1, "STEREO", "XFER", 0, 1)
+
+    for revision, group, load in ((1, "A", 32.0), (2, "B", 100.0)):
+        analyzer.sweep_revision = revision
+        analyzer.completed_sweep_revision = revision
+        analyzer.sweep_conditions = conditions
+        analyzer.raw_freqs = frequencies.copy()
+        analyzer.raw_H = load / (source + load)
+        analyzer.raw_coherence = np.ones(len(frequencies))
+        widget.on_sweep_finished()
+        button = widget.capture_a_btn if group == "A" else widget.capture_b_btn
+        assert button.isEnabled()
+        button.click()
+        assert not widget.capture_a_btn.isEnabled()
+        assert not widget.capture_b_btn.isEnabled()
+
+    assert widget.load_result is not None
+    assert np.allclose(widget.load_result.source_ohms, source)
+    assert widget.save_load_btn.isEnabled()
+
+    analyzer.sweep_revision = 3
+    analyzer.raw_H = None
+    widget.on_sweep_finished()
+    assert not widget.capture_a_btn.isEnabled()
+    assert not widget.capture_b_btn.isEnabled()
 
 
 def test_update_ir_plot_updates_etc_curve(qtbot):

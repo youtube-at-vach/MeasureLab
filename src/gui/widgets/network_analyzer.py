@@ -1,5 +1,6 @@
 import logging
 import threading
+import csv
 
 import numpy as np
 import pyqtgraph as pg
@@ -37,6 +38,7 @@ from scipy.signal import (
 from src.core.audio_engine import AudioEngine
 from src.core.fft_manager import fft_manager
 from src.core.localization import tr
+from src.core.output_impedance import LoadCapture, PairedLoadStudy, SweepConditions
 from src.gui.styles import button_style
 from src.core.utils import amplitude_to_linear, linear_to_amplitude
 from src.measurement_modules.base import MeasurementModule
@@ -176,6 +178,9 @@ class NetworkAnalyzer(MeasurementModule):
         self.raw_freqs = None
         self.raw_auto_delay_sec = 0.0
         self.raw_coherence = None
+        self.sweep_conditions = None
+        self.sweep_revision = 0
+        self.completed_sweep_revision = 0
 
         # Routing
         self.output_channel = "STEREO"  # 'L', 'R', 'STEREO'
@@ -276,6 +281,33 @@ class NetworkAnalyzer(MeasurementModule):
         if self.worker and self.worker.isRunning():
             return
 
+        self.sweep_revision += 1
+        self.raw_H = None
+        self.raw_freqs = None
+        self.raw_coherence = None
+        calibration = getattr(self.audio_engine, "calibration", None)
+        self.sweep_conditions = SweepConditions(
+            self.audio_engine.sample_rate,
+            self.start_freq,
+            self.end_freq,
+            self.chirp_duration,
+            self.amplitude,
+            self.averages,
+            self.output_channel,
+            self.input_mode,
+            self.ref_channel_index,
+            self.meas_channel_index,
+            str(self.audio_engine.input_device)
+            if getattr(self.audio_engine, "input_device", None) is not None
+            else None,
+            str(self.audio_engine.output_device)
+            if getattr(self.audio_engine, "output_device", None) is not None
+            else None,
+            getattr(calibration, "last_profile", None),
+            getattr(calibration, "input_sensitivity", None),
+            getattr(calibration, "output_gain", None),
+        )
+
         if self._dummy_callback_id is None:
             self._dummy_callback_id = self.audio_engine.register_callback(self._dummy_callback)
 
@@ -369,7 +401,33 @@ class NetworkAnalyzer(MeasurementModule):
         # 3. Process
         self._process_sweep_data(averaged_data, inv_filter, chirp, sample_rate, worker)
 
+        if worker.is_running:
+            self.completed_sweep_revision = self.sweep_revision
         self.signals.progress.emit(100)
+
+    def get_load_capture(self, load_ohms: float) -> LoadCapture:
+        """Freeze the latest completed XFER sweep before any display processing."""
+        if (
+            self.completed_sweep_revision != self.sweep_revision
+            or self.raw_H is None
+            or self.raw_freqs is None
+            or self.raw_coherence is None
+            or self.sweep_conditions is None
+            or self.sweep_conditions.input_mode not in {"XFER", "XFER_REV"}
+        ):
+            raise ValueError("A completed XFER sweep is required.")
+        mask = (
+            (self.raw_freqs >= self.sweep_conditions.start_freq)
+            & (self.raw_freqs <= self.sweep_conditions.end_freq)
+            & (self.raw_freqs > 0)
+        )
+        return LoadCapture.create(
+            load_ohms,
+            self.raw_freqs[mask],
+            self.raw_H[mask],
+            self.raw_coherence[mask],
+            self.sweep_conditions,
+        )
 
     def _record_sweep(self, chirp, sample_rate):
         """Prepares output buffer and runs the play/record session."""
@@ -840,6 +898,9 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         QWidget.__init__(self)
         ComparableWidgetInterface.__init__(self)
         self.module = module
+        self.load_study = PairedLoadStudy()
+        self.last_captured_sweep_revision = 0
+        self.load_result = None
         self.init_ui()
 
         self.module.signals.update_plot.connect(self.update_plot)
@@ -1155,6 +1216,222 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         cal_tab.setLayout(cal_tab_layout)
         return cal_tab
 
+    def _create_load_controls_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        hint = QLabel(
+            tr(
+                "Use XFER with a common reference. Keep gain and wiring fixed; exchange only the known load between sweeps."
+            )
+        )
+        hint.setWordWrap(True)
+        layout.addWidget(hint)
+
+        form = QFormLayout()
+        self.load_a_spin = QDoubleSpinBox()
+        self.load_b_spin = QDoubleSpinBox()
+        self.prediction_load_spin = QDoubleSpinBox()
+        for spin, value in ((self.load_a_spin, 32.0), (self.load_b_spin, 100.0), (self.prediction_load_spin, 300.0)):
+            spin.setRange(10.0, 1_000_000.0)
+            spin.setDecimals(2)
+            spin.setSuffix(" Ω")
+            spin.setValue(value)
+        form.addRow(tr("Load A:"), self.load_a_spin)
+        form.addRow(tr("Load B:"), self.load_b_spin)
+        form.addRow(tr("Prediction load:"), self.prediction_load_spin)
+        layout.addLayout(form)
+
+        row = QHBoxLayout()
+        self.capture_a_btn = QPushButton(tr("Capture A"))
+        self.capture_b_btn = QPushButton(tr("Capture B"))
+        self.capture_a_btn.setEnabled(False)
+        self.capture_b_btn.setEnabled(False)
+        self.capture_a_btn.clicked.connect(lambda: self._capture_load("A"))
+        self.capture_b_btn.clicked.connect(lambda: self._capture_load("B"))
+        row.addWidget(self.capture_a_btn)
+        row.addWidget(self.capture_b_btn)
+        layout.addLayout(row)
+
+        self.load_counts_label = QLabel(tr("Captures: A {0}, B {1}").format(0, 0))
+        layout.addWidget(self.load_counts_label)
+        self.prediction_load_spin.valueChanged.connect(self._refresh_load_results)
+        self.clear_load_btn = QPushButton(tr("Clear load study"))
+        self.clear_load_btn.clicked.connect(self._clear_load_study)
+        layout.addWidget(self.clear_load_btn)
+        layout.addStretch()
+        return tab
+
+    def _create_load_results_tab(self) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        self.load_status_label = QLabel(tr("Capture one XFER sweep for each load."))
+        self.load_status_label.setWordWrap(True)
+        layout.addWidget(self.load_status_label)
+
+        self.load_difference_plot = InstrumentPlotWidget(title=tr("Load response difference"))
+        self.load_difference_plot.setLabel("left", tr("Gain difference"), units="dB")
+        self.load_difference_plot.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.load_difference_plot.setLogMode(x=True, y=False)
+        self.load_difference_plot.showGrid(x=True, y=True)
+        self.load_difference_plot.addLegend()
+        self.load_difference_curve = self.load_difference_plot.plot(pen="c", name=tr("B versus A"))
+        self.load_prediction_curve = self.load_difference_plot.plot(pen="m", name=tr("Predicted load versus A"))
+        layout.addWidget(self.load_difference_plot)
+
+        self.load_impedance_plot = InstrumentPlotWidget(title=tr("Source impedance"))
+        self.load_impedance_plot.setLabel("left", tr("Impedance"), units="Ω")
+        self.load_impedance_plot.setLabel("bottom", tr("Frequency"), units="Hz")
+        self.load_impedance_plot.setLogMode(x=True, y=False)
+        self.load_impedance_plot.showGrid(x=True, y=True)
+        self.load_impedance_plot.setXLink(self.load_difference_plot)
+        self.load_impedance_plot.addLegend()
+        self.load_resistance_curve = self.load_impedance_plot.plot(pen="g", name=tr("Resistance"))
+        self.load_reactance_curve = self.load_impedance_plot.plot(pen="y", name=tr("Reactance"))
+        self.load_provisional_curve = self.load_impedance_plot.plot(
+            pen=pg.mkPen("gray", style=pg.QtCore.Qt.PenStyle.DashLine), name=tr("Unresolved / provisional")
+        )
+        layout.addWidget(self.load_impedance_plot)
+
+        self.save_load_btn = QPushButton(tr("Save load study CSV..."))
+        self.save_load_btn.setEnabled(False)
+        self.save_load_btn.clicked.connect(self._save_load_study)
+        layout.addWidget(self.save_load_btn)
+        return tab
+
+    def _capture_load(self, group: str) -> None:
+        if self.last_captured_sweep_revision == self.module.sweep_revision:
+            QMessageBox.warning(self, tr("Source impedance"), tr("This sweep has already been captured."))
+            return
+        try:
+            spin = self.load_a_spin if group == "A" else self.load_b_spin
+            capture = self.module.get_load_capture(spin.value())
+            self.load_study.add(group, capture)
+        except ValueError as exc:
+            logger.warning("Load capture rejected: %s", exc)
+            QMessageBox.warning(
+                self,
+                tr("Source impedance"),
+                tr("Cannot capture: use a completed XFER sweep with unchanged settings and different loads."),
+            )
+            return
+        self.last_captured_sweep_revision = self.module.sweep_revision
+        self.capture_a_btn.setEnabled(False)
+        self.capture_b_btn.setEnabled(False)
+        self.load_a_spin.setEnabled(not self.load_study.a)
+        self.load_b_spin.setEnabled(not self.load_study.b)
+        self._refresh_load_results()
+
+    def _clear_load_study(self) -> None:
+        self.load_study.clear()
+        self.load_result = None
+        self.load_a_spin.setEnabled(True)
+        self.load_b_spin.setEnabled(True)
+        self.load_counts_label.setText(tr("Captures: A {0}, B {1}").format(0, 0))
+        self.load_status_label.setText(tr("Capture one XFER sweep for each load."))
+        for curve in (
+            self.load_difference_curve,
+            self.load_prediction_curve,
+            self.load_resistance_curve,
+            self.load_reactance_curve,
+            self.load_provisional_curve,
+        ):
+            curve.clear()
+        self.save_load_btn.setEnabled(False)
+
+    def _refresh_load_results(self) -> None:
+        count_a, count_b = len(self.load_study.a), len(self.load_study.b)
+        self.load_counts_label.setText(tr("Captures: A {0}, B {1}").format(count_a, count_b))
+        if not count_a or not count_b:
+            self.load_status_label.setText(tr("Capture one XFER sweep for each load."))
+            return
+        self.load_result = None
+        self.save_load_btn.setEnabled(False)
+        try:
+            result = self.load_study.calculate(self.prediction_load_spin.value())
+        except ValueError as exc:
+            logger.warning("Load study calculation rejected: %s", exc)
+            for curve in (
+                self.load_difference_curve,
+                self.load_prediction_curve,
+                self.load_resistance_curve,
+                self.load_reactance_curve,
+                self.load_provisional_curve,
+            ):
+                curve.clear()
+            self.load_status_label.setText(tr("No common frequency range between load captures."))
+            return
+        self.load_result = result
+        self.save_load_btn.setEnabled(True)
+        freq = result.frequencies
+        self.load_difference_curve.setData(freq, result.difference_db)
+        trusted = result.numerically_valid & ~result.low_coherence
+        resolved = trusted & result.repeat_resolved
+        provisional = trusted & ~resolved
+        self.load_prediction_curve.setData(freq, np.where(resolved, result.predicted_difference_db, np.nan))
+        self.load_resistance_curve.setData(freq, np.where(resolved, result.source_ohms.real, np.nan))
+        self.load_reactance_curve.setData(freq, np.where(resolved, result.source_ohms.imag, np.nan))
+        self.load_provisional_curve.setData(freq, np.where(provisional, np.abs(result.source_ohms), np.nan))
+        if result.repeat_available:
+            self.load_status_label.setText(
+                tr("Resolved {0}/{1} bins with repeats; {2} bins have low coherence. Gray is unresolved |Z|.").format(
+                    int(np.count_nonzero(resolved)), len(freq), int(np.count_nonzero(result.low_coherence))
+                )
+            )
+        else:
+            self.load_status_label.setText(
+                tr(
+                    "Provisional |Z|: capture at least two sweeps per load to assess repeat scatter; {0} bins have low coherence."
+                ).format(int(np.count_nonzero(result.low_coherence)))
+            )
+
+    def _save_load_study(self) -> None:
+        if self.load_result is None:
+            return
+        path, _ = QFileDialog.getSaveFileName(self, tr("Save load study CSV..."), "", tr("CSV Files (*.csv)"))
+        if not path:
+            return
+        if not path.lower().endswith(".csv"):
+            path += ".csv"
+        result = self.load_result
+        conditions = self.load_study.a[0].conditions
+        try:
+            with open(path, "w", newline="", encoding="utf-8") as file:
+                writer = csv.writer(file)
+                writer.writerow(["# load_a_ohms", self.load_study.a[0].load_ohms])
+                writer.writerow(["# load_b_ohms", self.load_study.b[0].load_ohms])
+                writer.writerow(["# prediction_load_ohms", self.prediction_load_spin.value()])
+                for key, value in vars(conditions).items():
+                    writer.writerow([f"# {key}", value])
+                writer.writerow(["# count_a", result.count_a])
+                writer.writerow(["# count_b", result.count_b])
+                writer.writerow(
+                    [
+                        "frequency_hz",
+                        "difference_b_minus_a_db",
+                        "source_resistance_ohms",
+                        "source_reactance_ohms",
+                        "predicted_load_minus_a_db",
+                        "numerically_valid",
+                        "repeat_resolved",
+                        "low_coherence",
+                    ]
+                )
+                for index, frequency in enumerate(result.frequencies):
+                    writer.writerow(
+                        [
+                            frequency,
+                            result.difference_db[index],
+                            result.source_ohms.real[index],
+                            result.source_ohms.imag[index],
+                            result.predicted_difference_db[index],
+                            int(result.numerically_valid[index]),
+                            int(result.repeat_resolved[index]),
+                            int(result.low_coherence[index]),
+                        ]
+                    )
+        except OSError as exc:
+            QMessageBox.critical(self, tr("Source impedance"), str(exc))
+
     def _create_bode_tab(self) -> QWidget:
         bode_tab = QWidget()
         plot_layout = QVBoxLayout(bode_tab)
@@ -1281,10 +1558,12 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         left_layout.setContentsMargins(5, 5, 5, 5)
 
         tabs = QTabWidget()
+        self.control_tabs = tabs
         tabs.addTab(self._create_settings_tab(), tr("Settings"))
         tabs.addTab(self._create_display_tab(), tr("Display"))
         tabs.addTab(self._create_harmonics_settings_tab(), tr("Harmonics"))
         tabs.addTab(self._create_calibration_tab(), tr("Calibration"))
+        tabs.addTab(self._create_load_controls_tab(), tr("Load study"))
 
         left_layout.addWidget(tabs)
 
@@ -1305,6 +1584,7 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         plot_tabs.addTab(self._create_ir_tab(), tr("Impulse Response"))
         plot_tabs.addTab(self._create_etc_tab(), tr("ETC"))
         plot_tabs.addTab(self._create_harmonics_tab(), tr("Harmonics"))
+        plot_tabs.addTab(self._create_load_results_tab(), tr("Source impedance"))
 
         layout.addWidget(plot_tabs)
         self.setLayout(layout)
@@ -1545,6 +1825,7 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         logger.error(f"Error: {msg}")
         self.start_btn.setChecked(False)
         self.start_btn.setText(tr("Start Sweep"))
+        self.control_tabs.setEnabled(True)
 
     def on_store_reference(self):
         if not self.freqs:
@@ -1635,6 +1916,9 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
     def on_start_stop(self, checked):
         if checked:
             self.update_frequency_limits()
+            self.control_tabs.setEnabled(False)
+            self.capture_a_btn.setEnabled(False)
+            self.capture_b_btn.setEnabled(False)
             self.freqs = []
             self.mags = []
             self.phases = []
@@ -1660,6 +1944,7 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
             self.module.start_sweep()
         else:
             self.module.stop_sweep()
+            self.control_tabs.setEnabled(True)
             self.update_timer.stop()
             self.refresh_plots()
             self.start_btn.setText(tr("Start Sweep"))
@@ -1669,6 +1954,15 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
         self.refresh_plots()
         self.start_btn.setChecked(False)
         self.start_btn.setText(tr("Start Sweep"))
+        self.control_tabs.setEnabled(True)
+        available = (
+            self.module.completed_sweep_revision == self.module.sweep_revision
+            and self.module.sweep_revision != self.last_captured_sweep_revision
+            and self.module.sweep_conditions is not None
+            and self.module.sweep_conditions.input_mode in {"XFER", "XFER_REV"}
+        )
+        self.capture_a_btn.setEnabled(available)
+        self.capture_b_btn.setEnabled(available)
 
     def on_update_timer(self):
         if self._needs_plot_update:
