@@ -1,4 +1,5 @@
 import logging
+import sys
 import threading
 
 import numpy as np
@@ -11,6 +12,11 @@ from src.core.vst_dut import VstDut
 
 
 import time
+
+
+def _running_on_macos() -> bool:
+    """Check at runtime so type checking covers the CoreAudio path on every OS."""
+    return sys.platform == "darwin"
 
 
 class _DummyTime:
@@ -962,9 +968,7 @@ class AudioEngine:
         """
         Returns a tuple of (ca_in, ca_out) for CoreAudioSettings if running on macOS, else None.
         """
-        import sys
-
-        if sys.platform != "darwin":
+        if not _running_on_macos():
             return None
         try:
             ca_in = sd.CoreAudioSettings(
@@ -1028,9 +1032,7 @@ class AudioEngine:
                 self.stream.start()
                 self.logger.debug(f"Virtual (Offline) audio stream started. SR={self.sample_rate}")
             else:
-                import sys
-
-                if sys.platform == "darwin":
+                if _running_on_macos():
                     extra_settings = self._get_coreaudio_settings()
                 else:
                     extra_settings = self._get_jack_settings()
