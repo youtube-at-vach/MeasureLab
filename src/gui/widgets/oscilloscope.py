@@ -56,7 +56,7 @@ class Oscilloscope(MeasurementModule):
     MAX_TRIGGER_SEARCH_WINDOW_SIZE = 8192
 
     # Standard 1-2-5 step sequences for Time/Div and Vertical Scale (per division)
-    TIME_DIV_OPTIONS = [
+    TIME_DIV_OPTIONS = (
         ("10 us", 0.00001),
         ("20 us", 0.00002),
         ("50 us", 0.00005),
@@ -72,9 +72,9 @@ class Oscilloscope(MeasurementModule):
         ("100 ms", 0.1),
         ("200 ms", 0.2),
         ("500 ms", 0.5),
-    ]
+    )
 
-    VDIV_OPTIONS_UNCALIBRATED = [
+    VDIV_OPTIONS_UNCALIBRATED = (
         ("1 mFS", 0.001),
         ("2 mFS", 0.002),
         ("5 mFS", 0.005),
@@ -86,9 +86,9 @@ class Oscilloscope(MeasurementModule):
         ("250 mFS", 0.25),
         ("500 mFS", 0.5),
         ("1 FS", 1.0),
-    ]
+    )
 
-    VDIV_OPTIONS_CALIBRATED = [
+    VDIV_OPTIONS_CALIBRATED = (
         ("1 mV", 0.001),
         ("2 mV", 0.002),
         ("5 mV", 0.005),
@@ -103,7 +103,7 @@ class Oscilloscope(MeasurementModule):
         ("5 V", 5.0),
         ("10 V", 10.0),
         ("20 V", 20.0),
-    ]
+    )
 
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine

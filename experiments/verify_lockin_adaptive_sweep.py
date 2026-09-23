@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# ruff: noqa: E402, B023
+# ruff: noqa: E402
 import sys
 import os
 import time

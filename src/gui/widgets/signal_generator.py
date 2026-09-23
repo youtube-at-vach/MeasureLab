@@ -79,7 +79,7 @@ class PreferredNumberSpinBox(QDoubleSpinBox):
         previous_values = [candidate for candidate in candidates if candidate < value - epsilon]
         return previous_values[-1] if previous_values else value
 
-    def stepBy(self, steps: int):  # noqa: N802 - Qt virtual method name
+    def stepBy(self, steps: int):  # Qt virtual method name
         if steps == 0:
             return
 
@@ -222,9 +222,9 @@ class _ChannelPlaybackState:
 
 
 class SignalGenerator(MeasurementModule):
-    BUFFERED_WAVEFORMS = ["noise", "multitone", "mls", "golay", "burst", "prbs"]
-    SHAREABLE_BUFFERED_WAVEFORMS = {"multitone", "mls", "golay", "burst", "prbs"}
-    PERIODIC_WAVEFORMS = {"sine", "square", "triangle", "sawtooth", "pulse", "tone_noise"}
+    BUFFERED_WAVEFORMS = ("noise", "multitone", "mls", "golay", "burst", "prbs")
+    SHAREABLE_BUFFERED_WAVEFORMS = frozenset({"multitone", "mls", "golay", "burst", "prbs"})
+    PERIODIC_WAVEFORMS = frozenset({"sine", "square", "triangle", "sawtooth", "pulse", "tone_noise"})
 
     def __init__(self, audio_engine: AudioEngine):
         self.audio_engine = audio_engine

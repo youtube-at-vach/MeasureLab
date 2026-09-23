@@ -19,7 +19,7 @@ def run_benchmark():
 
     with patch.dict(sys.modules, mocks):
         # Import inside patched context
-        from src.core.fft_manager import fft_manager  # noqa: E402
+        from src.core.fft_manager import fft_manager
 
         def perform_scan_baseline(max_out, max_in, sample_rate, duration=0.1):
             found_paths = []

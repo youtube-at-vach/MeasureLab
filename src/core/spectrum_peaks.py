@@ -47,7 +47,7 @@ def detect_spectrum_peaks(
     # this prevents an unbounded series of argmax scans on rejected candidates.
     candidates = safe[indices].copy()
     candidate_freqs = freqs[indices]
-    selected = []
+    selected: list[tuple[float, float]] = []
     prominence_checked = False
     while len(selected) < MAX_PEAK_MARKERS and len(indices):
         best = int(np.argmax(candidates))

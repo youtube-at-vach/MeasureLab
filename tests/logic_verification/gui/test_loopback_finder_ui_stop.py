@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from src.gui.widgets.loopback_finder import LoopbackFinder, LoopbackFinderWidget  # noqa: E402
+from src.gui.widgets.loopback_finder import LoopbackFinder, LoopbackFinderWidget
 
 
 def _widget(qtbot):

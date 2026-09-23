@@ -611,7 +611,7 @@ class LatencyCalibrator:
         self.read_pos = 0
         self.finished = threading.Event()
         self.callback_id = None
-        self.error = None
+        self.error: Exception | None = None
 
     def callback(self, indata, outdata, frames, time, status):
         try:

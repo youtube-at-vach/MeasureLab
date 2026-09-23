@@ -7,7 +7,7 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from src.gui.widgets import loopback_finder as loopback_module  # noqa: E402
+from src.gui.widgets import loopback_finder as loopback_module
 
 
 class _CallbackStop(Exception):

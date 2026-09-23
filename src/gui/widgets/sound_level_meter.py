@@ -1,6 +1,7 @@
 import logging
 import time
 import threading
+from types import MappingProxyType
 
 import numpy as np
 import pyqtgraph as pg
@@ -37,7 +38,7 @@ class _AcquisitionEvents(QObject):
 
 
 class SoundLevelMeter(MeasurementModule):
-    TIME_CONSTANTS = {"FAST": 0.125, "SLOW": 1.0, "10ms": 0.010}
+    TIME_CONSTANTS = MappingProxyType({"FAST": 0.125, "SLOW": 1.0, "10ms": 0.010})
 
     def __init__(self, audio_engine: AudioEngine):
         super().__init__()

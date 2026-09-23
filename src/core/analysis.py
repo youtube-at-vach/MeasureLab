@@ -726,7 +726,7 @@ class AudioCalc:
                 candidates[cand] = get_residual_mse(cand)
 
         if candidates:
-            best_freq = min(candidates, key=candidates.get)
+            best_freq = min(candidates, key=lambda candidate: candidates[candidate])
         else:
             best_freq = res_fine.x
 

@@ -115,8 +115,10 @@ def setup_app():
 
     # Optional: log transient windows during startup to diagnose flashes.
     if os.environ.get("MEASURELAB_DEBUG_WINDOWS", "").strip() not in ("", "0", "false", "False"):
-        app._measurelab_window_logger = TopLevelWindowLogger(app)  # keep a strong ref
-        app.installEventFilter(app._measurelab_window_logger)
+        window_logger = TopLevelWindowLogger(app)
+        # QApplication permits dynamic attributes; retain the logger with the app.
+        app._measurelab_window_logger = window_logger  # type: ignore[attr-defined]
+        app.installEventFilter(window_logger)
 
     # Attach the Qt logging handler to the root logger
     try:
@@ -147,11 +149,11 @@ def _preload_dependencies():
     """
     try:
         import numpy  # noqa: F401
-        import scipy  # noqa: F401
-        import scipy.signal  # noqa: F401
-        import scipy.special  # noqa: F401
-        import scipy.fft  # noqa: F401
-        import scipy.interpolate  # noqa: F401
+        import scipy
+        import scipy.signal
+        import scipy.special
+        import scipy.fft
+        import scipy.interpolate
         import scipy.linalg  # noqa: F401
         import netCDF4  # noqa: F401
         import pywt  # noqa: F401

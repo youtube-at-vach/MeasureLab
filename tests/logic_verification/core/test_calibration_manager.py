@@ -48,11 +48,11 @@ except ImportError:
 
 # --------------------------------------------------------
 
-import pytest  # noqa: E402
-import os  # noqa: E402
-import json  # noqa: E402
-from src.core.calibration import CalibrationManager  # noqa: E402
-import tempfile  # noqa: E402
+import pytest
+import os
+import json
+from src.core.calibration import CalibrationManager
+import tempfile
 
 
 @pytest.fixture

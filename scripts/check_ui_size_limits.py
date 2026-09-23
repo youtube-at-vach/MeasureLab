@@ -280,7 +280,7 @@ def _run_single_profile(language: str, font_arg: str) -> None:
 
 def _run_profile_worker(profile: AuditProfile) -> list[LayoutFailure]:
     font_arg = "default" if profile.font_pixel_size is None else str(profile.font_pixel_size)
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603 - fixed Python executable and this script, with profile arguments
         [sys.executable, __file__, "--profile", profile.language, font_arg],
         check=False,
         capture_output=True,

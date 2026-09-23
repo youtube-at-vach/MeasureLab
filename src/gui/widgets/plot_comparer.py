@@ -54,8 +54,8 @@ class PlotComparer(MeasurementModule):
 
 class PlotComparerWidget(QWidget):
     # Color palette for traces (beautiful neon colors for dark mode, dark rich colors for light mode)
-    COLORS_DARK = ["#00ff00", "#00ffff", "#ffff00", "#ff00ff", "#ff8800", "#ff3333", "#3388ff", "#ffffff"]
-    COLORS_LIGHT = ["#008800", "#008888", "#888800", "#880088", "#d35400", "#c0392b", "#2980b9", "#2c3e50"]
+    COLORS_DARK = ("#00ff00", "#00ffff", "#ffff00", "#ff00ff", "#ff8800", "#ff3333", "#3388ff", "#ffffff")
+    COLORS_LIGHT = ("#008800", "#008888", "#888800", "#880088", "#d35400", "#c0392b", "#2980b9", "#2c3e50")
 
     def __init__(self, module: PlotComparer):
         super().__init__()

@@ -45,7 +45,7 @@ class BitDepthEstimator:
         - 'delta_hist': Tuple (hist, bin_edges) for quantization step histogram
         - 'bit_distribution': Array of length 32 representing bit activity probability
         """
-        if self._write_ptr == 0:
+        if self._write_ptr == 0 or self._buffer is None:
             return None
 
         # Just take a copy of the valid data
@@ -55,7 +55,7 @@ class BitDepthEstimator:
         if len(full_data) < 2:
             return None
 
-        results = {}
+        results: dict[str, object] = {}
 
         # 1. Delta Estimation & Bit Depth
         diffs = np.abs(np.diff(full_data))

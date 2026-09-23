@@ -1,5 +1,6 @@
 import logging
 import time
+from types import MappingProxyType
 
 import numpy as np
 import pyqtgraph as pg
@@ -636,7 +637,7 @@ class SpectrumAnalyzerWidget(
     ComparableWidgetInterface,
     SplittableWidgetInterface,
 ):
-    _SI_PREFIXES = {-15: "f", -12: "p", -9: "n", -6: "µ", -3: "m", 0: "", 3: "k", 6: "M", 9: "G"}
+    _SI_PREFIXES = MappingProxyType({-15: "f", -12: "p", -9: "n", -6: "µ", -3: "m", 0: "", 3: "k", 6: "M", 9: "G"})
 
     def __init__(self, module: SpectrumAnalyzer):
         QWidget.__init__(self)
