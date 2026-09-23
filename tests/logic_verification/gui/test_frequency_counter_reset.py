@@ -7,7 +7,12 @@ pytest.importorskip("PyQt6")
 
 try:
     from src.core.localization import tr
-    from src.gui.widgets.frequency_counter import FrequencyCounter, FrequencyCounterWidget, FrequencyWorker
+    from src.gui.widgets.frequency_counter import (
+        FrequencyCalibrationDialog,
+        FrequencyCounter,
+        FrequencyCounterWidget,
+        FrequencyWorker,
+    )
 except ImportError:
     pytest.skip("Skipping GUI test due to missing dependencies", allow_module_level=True)
 
@@ -173,3 +178,120 @@ def test_frequency_counter_exposes_run_button_to_measurement_console(qapp, qtbot
     wrapper.console_primary_action().click()
     assert not widget.run_btn.isChecked()
     assert frequency_counter.stop_analysis.called
+
+
+def test_calibration_counts_only_new_valid_raw_measurements(qapp, qtbot, frequency_counter):
+    counter = frequency_counter
+    counter.audio_engine.calibration.frequency_calibration = 0.98
+    counter.audio_engine.calibration.get_active_frequency_calibration.return_value = 1.001
+    widget = FrequencyCounterWidget(counter)
+    qtbot.addWidget(widget)
+    dialog = FrequencyCalibrationDialog(counter, widget)
+    qtbot.addWidget(dialog)
+    dialog.target_samples = 10
+
+    counter.capture_frames = 8192
+    widget._start_worker = MagicMock()
+    widget.update_display()
+    worker = widget._start_worker.call_args.args[0]
+    assert worker.calibration_factor == 1.001
+
+    widget.on_freq_calculation_result(1001.0, -6.0, counter.capture_generation, 8192, worker.calibration_factor)
+    assert counter.latest_raw_freq == pytest.approx(1000.0)
+    dialog.start_measurement()
+    dialog.on_measure_tick()
+    assert dialog.measurements == []
+
+    widget.on_freq_calculation_result(1001.0, -6.0, counter.capture_generation, 9216, worker.calibration_factor)
+    dialog.on_measure_tick()
+    dialog.on_measure_tick()
+    assert dialog.measurements == pytest.approx([1000.0])
+
+    widget.on_freq_calculation_result(None, -100.0, counter.capture_generation, 10240, worker.calibration_factor)
+    assert counter.current_freq == 0.0
+    assert counter.latest_raw_freq is None
+    assert widget.freq_label.text() == widget._placeholder_main_text()
+    dialog.on_measure_tick()
+    assert len(dialog.measurements) == 1
+
+    widget.on_freq_calculation_result(1001.0, -6.0, counter.capture_generation, 11264, worker.calibration_factor)
+    dialog.on_measure_tick()
+    assert dialog.measurements == pytest.approx([1000.0, 1000.0])
+    dialog.reject()
+    assert not dialog.timer.isActive()
+
+
+def test_calibration_ignores_worker_started_before_measure_click(qapp, qtbot, frequency_counter):
+    counter = frequency_counter
+    widget = FrequencyCounterWidget(counter)
+    qtbot.addWidget(widget)
+    dialog = FrequencyCalibrationDialog(counter, widget)
+    qtbot.addWidget(dialog)
+    counter.capture_frames = 8192
+
+    dialog.start_measurement()
+    widget.on_freq_calculation_result(1000.0, -6.0, counter.capture_generation, 8192, 1.0)
+    dialog.on_measure_tick()
+    assert dialog.measurements == []
+    dialog.reject()
+
+
+def test_frequency_worker_delivers_capture_metadata_to_widget(qapp, qtbot, monkeypatch, frequency_counter):
+    counter = frequency_counter
+    counter.audio_engine.calibration.get_active_frequency_calibration.return_value = 1.001
+    # Long monitoring sessions must not truncate the frame index to Qt's
+    # 32-bit integer signal type.
+    counter.capture_frames = 2**31 + 8192
+    monkeypatch.setattr(
+        "src.gui.widgets.frequency_counter.calculate_frequency_metrics",
+        lambda *_args: (1001.0, -6.0),
+    )
+    widget = FrequencyCounterWidget(counter)
+    qtbot.addWidget(widget)
+
+    widget.update_display()
+    qtbot.waitUntil(lambda: counter.latest_result_frame == 2**31 + 8192, timeout=2000)
+    qtbot.waitUntil(lambda: not widget._active_workers, timeout=2000)
+
+    assert counter.latest_raw_freq == pytest.approx(1000.0)
+    assert counter.current_freq == pytest.approx(1001.0)
+
+
+def test_calibration_does_not_mix_capture_generations(qapp, qtbot, frequency_counter):
+    counter = frequency_counter
+    widget = FrequencyCounterWidget(counter)
+    qtbot.addWidget(widget)
+    dialog = FrequencyCalibrationDialog(counter, widget)
+    qtbot.addWidget(dialog)
+    dialog.start_measurement()
+
+    counter.reset_state()
+    widget.on_freq_calculation_result(1000.0, -6.0, counter.capture_generation - 1, 8192, 1.0)
+    assert counter.latest_raw_freq is None
+    dialog.on_measure_tick()
+    assert dialog.measurements == []
+    assert not dialog.is_measuring
+    assert not dialog.timer.isActive()
+
+
+def test_calibration_saves_factor_from_raw_frequency_with_1pps_active(qapp, qtbot, monkeypatch, frequency_counter):
+    from PyQt6.QtWidgets import QMessageBox
+
+    counter = frequency_counter
+    counter.audio_engine.calibration.frequency_calibration = 0.98
+    counter.audio_engine.calibration.get_active_frequency_calibration.return_value = 1.001
+    widget = FrequencyCounterWidget(counter)
+    qtbot.addWidget(widget)
+    dialog = FrequencyCalibrationDialog(counter, widget)
+    qtbot.addWidget(dialog)
+    dialog.target_samples = 1
+    dialog.ref_spin.setValue(1000.0)
+    monkeypatch.setattr(QMessageBox, "question", lambda *_args: QMessageBox.StandardButton.Yes)
+    monkeypatch.setattr(QMessageBox, "information", lambda *_args: None)
+
+    dialog.start_measurement()
+    widget.on_freq_calculation_result(1001.0, -6.0, counter.capture_generation, 8192, 1.001)
+    dialog.on_measure_tick()
+
+    counter.audio_engine.calibration.set_frequency_calibration.assert_called_once_with(pytest.approx(1.0))
+    assert not dialog.timer.isActive()

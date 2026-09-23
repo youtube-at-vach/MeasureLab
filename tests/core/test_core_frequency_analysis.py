@@ -51,6 +51,23 @@ class TestFrequencyAnalysisCore(unittest.TestCase):
             # Should fallback to coarse freq
             self.assertAlmostEqual(freq, 1000.0, delta=25.0)
 
+    def test_calibration_applies_when_precise_fit_fails(self):
+        from unittest.mock import patch
+
+        sr = 48000
+        signal = np.sin(2 * np.pi * 1000.0 * np.arange(2048) / sr)
+        with patch("src.core.frequency_analysis.AudioCalc.optimize_frequency", side_effect=RuntimeError):
+            raw, _ = calculate_frequency_metrics(signal, sr, -60.0)
+            calibrated, _ = calculate_frequency_metrics(signal, sr, -60.0, calibration_factor=1.01)
+
+        self.assertAlmostEqual(calibrated, raw * 1.01)
+
+    def test_calibration_applies_to_low_frequency_fallback(self):
+        sr = 1000
+        signal = np.sin(2 * np.pi * 9.0 * np.arange(sr) / sr)
+        freq, _ = calculate_frequency_metrics(signal, sr, -60.0, calibration_factor=1.1)
+        self.assertAlmostEqual(freq, 9.9)
+
     def test_calculate_frequency_metrics_low_freq(self):
         t = np.arange(2048) / 48000
         # 5 Hz is below the > 10 Hz coarse estimate threshold

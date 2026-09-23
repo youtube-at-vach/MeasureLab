@@ -110,7 +110,7 @@ class AllanWorker(QRunnable):
 class FrequencyWorkerSignals(QObject):
     """Signals for the FrequencyWorker."""
 
-    result = pyqtSignal(object, float)  # freq (float or None), amp_db
+    result = pyqtSignal(object, float, object, object, float)  # freq, amp_db, capture generation/frame, factor
     finished = pyqtSignal(object)  # worker
 
 
@@ -119,12 +119,14 @@ class FrequencyWorker(QRunnable):
     Worker thread for calculating frequency precision.
     """
 
-    def __init__(self, data, sr, gate_threshold_db, calibration_factor):
+    def __init__(self, data, sr, gate_threshold_db, calibration_factor, capture_generation=-1, capture_frame=-1):
         super().__init__()
         self.data = data
         self.sr = sr
         self.gate_threshold_db = gate_threshold_db
         self.calibration_factor = calibration_factor
+        self.capture_generation = capture_generation
+        self.capture_frame = capture_frame
         self.signals = FrequencyWorkerSignals()
 
     def run(self):
@@ -136,7 +138,7 @@ class FrequencyWorker(QRunnable):
             freq, db = None, -140.0
 
         try:
-            self.signals.result.emit(freq, db)
+            self.signals.result.emit(freq, db, self.capture_generation, self.capture_frame, self.calibration_factor)
         except RuntimeError as e:
             logger.debug("Frequency worker result discarded during shutdown: %s", e)
         finally:
@@ -175,6 +177,12 @@ class FrequencyCounter(MeasurementModule):
         self.start_time = 0
         self.current_freq = 0.0
         self.current_amp_db = -100.0
+        # The calibration dialog may only use a new, valid result from the
+        # current capture. Keep its uncalibrated value separate from the readout.
+        self.latest_raw_freq = None
+        self.latest_result_frame = -1
+        self.capture_frames = 0
+        self.capture_generation = 0
         self.std_dev = 0.0
         self.allan_deviation = 0.0
         self.allan_taus = []
@@ -192,7 +200,13 @@ class FrequencyCounter(MeasurementModule):
         return FrequencyCounterWidget(self)
 
     def reset_state(self):
-        self.input_buffer = np.zeros(self.buffer_size)
+        with self.lock:
+            self.input_buffer = np.zeros(self.buffer_size)
+            self.capture_frames = 0
+            self.capture_generation += 1
+        self.current_freq = 0.0
+        self.latest_raw_freq = None
+        self.latest_result_frame = -1
         self.freq_history.clear()
         self.time_history.clear()
         self.start_time = time.time()
@@ -222,6 +236,7 @@ class FrequencyCounter(MeasurementModule):
                 else:
                     self.input_buffer = np.roll(self.input_buffer, -len(new_data))
                     self.input_buffer[-len(new_data) :] = new_data
+                self.capture_frames += frames
 
             outdata.fill(0)
 
@@ -289,6 +304,8 @@ class FrequencyCounter(MeasurementModule):
         self.current_amp_db = db
         if freq is not None:
             self.current_freq = freq
+        else:
+            self.current_freq = 0.0
 
         return freq
 
@@ -353,6 +370,8 @@ class FrequencyCalibrationDialog(QDialog):
         self.timer = QTimer()
         self.timer.timeout.connect(self.on_measure_tick)
         self.target_samples = 10  # Average over 10 samples
+        self._last_result_frame = -1
+        self._capture_generation = -1
 
     def init_ui(self):
         layout = QVBoxLayout()
@@ -362,7 +381,7 @@ class FrequencyCalibrationDialog(QDialog):
         # Reference Input
         form = QFormLayout()
         self.ref_spin = QDoubleSpinBox()
-        self.ref_spin.setRange(0, 100000000)
+        self.ref_spin.setRange(0.000001, 100000000)
         self.ref_spin.setDecimals(6)
         self.ref_spin.setValue(1000.0)
         form.addRow(tr("Reference Frequency (Hz):"), self.ref_spin)
@@ -387,7 +406,15 @@ class FrequencyCalibrationDialog(QDialog):
         self.setLayout(layout)
 
     def start_measurement(self):
+        if not self.module.is_running:
+            self.status_label.setText(tr("Status: Cancelled"))
+            return
         self.measurements = []
+        with self.module.lock:
+            self._capture_generation = self.module.capture_generation
+            # Exclude a worker that captured audio before Measure was pressed
+            # but finishes afterward.
+            self._last_result_frame = self.module.capture_frames
         self.is_measuring = True
         self.measure_btn.setEnabled(False)
         self.status_label.setText(tr("Status: Measuring... (0/10)"))
@@ -396,22 +423,18 @@ class FrequencyCalibrationDialog(QDialog):
     def on_measure_tick(self):
         if not self.is_measuring:
             return
+        if not self.module.is_running or self.module.capture_generation != self._capture_generation:
+            self.is_measuring = False
+            self.timer.stop()
+            self.measure_btn.setEnabled(True)
+            self.status_label.setText(tr("Status: Cancelled"))
+            return
 
-        # Get raw frequency (without calibration applied yet, or reverse it?)
-        # The module.process() returns calibrated frequency if we changed the code.
-        # But we want the RAW frequency to calculate the NEW factor.
-        # So we should get the current_freq and divide by the OLD factor.
-
-        # Wait, if we use process(), it updates current_freq.
-        # Let's just use the latest value from module.
-
-        calibrated_freq = self.module.current_freq
-        current_factor = self.module.audio_engine.calibration.frequency_calibration
-
-        if calibrated_freq <= 0:
-            return  # Wait for valid signal
-
-        raw_freq = calibrated_freq / current_factor
+        result_frame = self.module.latest_result_frame
+        raw_freq = self.module.latest_raw_freq
+        if result_frame <= self._last_result_frame or raw_freq is None:
+            return
+        self._last_result_frame = result_frame
         self.measurements.append(raw_freq)
 
         self.status_label.setText(
@@ -450,6 +473,11 @@ class FrequencyCalibrationDialog(QDialog):
             self.accept()
         else:
             self.status_label.setText(tr("Status: Cancelled"))
+
+    def done(self, result):
+        self.timer.stop()
+        self.is_measuring = False
+        super().done(result)
 
 
 class FrequencyCounterWidget(QWidget, CompactableWidgetInterface):
@@ -990,11 +1018,28 @@ class FrequencyCounterWidget(QWidget, CompactableWidgetInterface):
         else:
             self.allan_curve.clear()  # Performance: Use clear() instead of setData([], []) to avoid list parsing overhead
 
-    def on_freq_calculation_result(self, freq, amp_db):
+    def on_freq_calculation_result(self, freq, amp_db, capture_generation=-1, capture_frame=-1, calibration_factor=1.0):
         self.is_calculating_freq = False
+        if capture_generation >= 0 and (
+            not self.module.is_running or capture_generation != self.module.capture_generation
+        ):
+            return
+
+        if freq is not None and not np.isfinite(freq):
+            freq = None
         self.module.current_amp_db = amp_db
         if freq is not None:
             self.module.current_freq = freq
+            if capture_frame >= 0 and freq > 0 and np.isfinite(calibration_factor) and calibration_factor > 0:
+                raw_freq = float(freq / calibration_factor)
+                self.module.latest_raw_freq = raw_freq if np.isfinite(raw_freq) and raw_freq > 0 else None
+            else:
+                self.module.latest_raw_freq = None
+        else:
+            self.module.current_freq = 0.0
+            self.module.latest_raw_freq = None
+        if capture_frame >= 0:
+            self.module.latest_result_frame = capture_frame
 
         # Update Amp
         self.amp_label.setText(tr("{0:.1f} dBFS").format(self.module.current_amp_db))
@@ -1120,6 +1165,10 @@ class FrequencyCounterWidget(QWidget, CompactableWidgetInterface):
         # Prepare parameters for worker
         with self.module.lock:
             data = self.module.input_buffer.copy()
+            capture_frame = self.module.capture_frames
+            capture_generation = self.module.capture_generation
+        if capture_frame <= 0 or capture_frame <= self.module.latest_result_frame:
+            return
         sr = getattr(self.module.audio_engine, "sample_rate", 48000)
 
         cal_factor = 1.0
@@ -1133,9 +1182,11 @@ class FrequencyCounterWidget(QWidget, CompactableWidgetInterface):
             cal_factor = float(cal_factor)
         except Exception:
             cal_factor = 1.0
+        if not np.isfinite(cal_factor) or cal_factor <= 0:
+            cal_factor = 1.0
 
         self.is_calculating_freq = True
-        worker = FrequencyWorker(data, sr, self.module.gate_threshold_db, cal_factor)
+        worker = FrequencyWorker(data, sr, self.module.gate_threshold_db, cal_factor, capture_generation, capture_frame)
         worker.signals.result.connect(self.on_freq_calculation_result)
         self._start_worker(worker)
 

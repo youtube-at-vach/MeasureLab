@@ -48,9 +48,9 @@ def calculate_frequency_metrics(data, sr, gate_threshold_db, calibration_factor=
             precise_freq = float(precise_freq) * calibration_factor
             return precise_freq, db
         except Exception:
-            return coarse_freq, db
+            return coarse_freq * calibration_factor, db
     else:
-        return coarse_freq, db
+        return coarse_freq * calibration_factor, db
 
 
 def calculate_allan_deviation(data, dt_seconds):
