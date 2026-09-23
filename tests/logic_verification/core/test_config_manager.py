@@ -209,6 +209,28 @@ class TestConfigManager(unittest.TestCase):
             ["Oscilloscope", "Spectrogram"],
         )
 
+    def test_measurement_console_profiles_are_bounded_and_persisted(self):
+        cm = self.ConfigManager(config_filename=self.config_path)
+        cm.set_measurement_console_profiles(
+            {
+                "Bench A": {
+                    "version": 1,
+                    "module_keys": ["Oscilloscope", "Oscilloscope"],
+                    "layout_preset": "tabs",
+                },
+                "invalid": {"version": 0},
+                "x" * 65: {"version": 1},
+            }
+        )
+        profiles = cm.get_measurement_console_profiles()
+        self.assertEqual(list(profiles), ["Bench A"])
+        self.assertEqual(profiles["Bench A"]["module_keys"], ["Oscilloscope"])
+        profiles["Bench A"]["module_keys"].append("Spectrum Analyzer")
+        self.assertEqual(cm.get_measurement_console_profiles()["Bench A"]["module_keys"], ["Oscilloscope"])
+        cm.save_config(force_sync=True)
+        restored = self.ConfigManager(config_filename=self.config_path)
+        self.assertEqual(restored.get_measurement_console_profiles(), cm.get_measurement_console_profiles())
+
     def test_screenshot_output_dir_getters(self):
         cm = self.ConfigManager(config_filename=self.config_path)
 

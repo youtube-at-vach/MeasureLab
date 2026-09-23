@@ -86,6 +86,7 @@ DEFAULT_CONFIG = {
         "layout_preset": "grid_2x2",
         "main_module_key": "",
     },
+    "measurement_console_profiles": {},
     "network_audio": {
         "host": "",
         "port": 40100,
@@ -368,6 +369,23 @@ class ConfigManager:
         if isinstance(locked, bool):
             target["layout_locked"] = locked
 
+    def _merge_measurement_console_profiles(self, config: dict, loaded_config: dict) -> None:
+        loaded = loaded_config.get("measurement_console_profiles", {})
+        if not isinstance(loaded, dict):
+            return
+        profiles: dict[str, MeasurementConsoleConfigDict] = {}
+        for name, snapshot in loaded.items():
+            if len(profiles) >= 12:
+                break
+            if not isinstance(name, str) or not name.strip() or len(name) > 64 or not isinstance(snapshot, dict):
+                continue
+            staged = self._default_config()
+            self._merge_measurement_console_config(staged, {"measurement_console": snapshot})
+            normalized = staged["measurement_console"]
+            if normalized["version"] == 1:
+                profiles[name.strip()] = normalized
+        config["measurement_console_profiles"] = profiles
+
     def _merge_network_audio_config(self, config: dict, loaded_config: dict) -> None:
         """Merge bounded, non-secret network endpoint preferences."""
         loaded = loaded_config.get("network_audio", {})
@@ -417,6 +435,7 @@ class ConfigManager:
         config["recent_modules"] = self._validated_recent_modules(loaded_config.get("recent_modules"))
         self._merge_screenshot_config(config, loaded_config)
         self._merge_measurement_console_config(config, loaded_config)
+        self._merge_measurement_console_profiles(config, loaded_config)
         self._merge_network_audio_config(config, loaded_config)
 
         return config
@@ -631,6 +650,15 @@ class ConfigManager:
         staged = self._default_config()
         self._merge_measurement_console_config(staged, {"measurement_console": console_config})
         self.config["measurement_console"] = staged["measurement_console"]
+        self.save_config()
+
+    def get_measurement_console_profiles(self) -> dict[str, MeasurementConsoleConfigDict]:
+        return deepcopy(self.config.get("measurement_console_profiles", {}))
+
+    def set_measurement_console_profiles(self, profiles: dict[str, MeasurementConsoleConfigDict]) -> None:
+        staged = self._default_config()
+        self._merge_measurement_console_profiles(staged, {"measurement_console_profiles": profiles})
+        self.config["measurement_console_profiles"] = staged["measurement_console_profiles"]
         self.save_config()
 
     def get_screenshot_output_dir(self) -> str:
