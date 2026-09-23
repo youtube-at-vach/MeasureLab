@@ -498,7 +498,7 @@ class FrequencyCounterWidget(QWidget, CompactableWidgetInterface):
         display_frame.setStyleSheet("background-color: #000; border: 2px solid #444; border-radius: 10px;")
         display_layout = QVBoxLayout(display_frame)
 
-        self.freq_label = QLabel(tr("0.00000 Hz"))
+        self.freq_label = QLabel(self._placeholder_main_text())
         self.freq_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         # Use a monospaced font if available, or just a clean sans-serif
         font = QFont()

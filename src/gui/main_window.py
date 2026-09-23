@@ -30,6 +30,7 @@ from src.core.config_manager import ConfigManager
 from src.core.localization import get_manager, tr
 from src.core.module_constants import ALL_MODULE_KEYS, EXPERIMENTAL_MODULE_KEYS
 from src.gui.module_registry import MODULE_REGISTRY
+from src.gui.navigation_descriptions import PAGE_DESCRIPTIONS, translated_page_descriptions
 from src.gui.styles import shell_style
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
@@ -460,6 +461,19 @@ class MainWindow(QMainWindow):
         for key in self._module_keys:
             self.sidebar.addItem(tr(key))
 
+        descriptions = translated_page_descriptions()
+        for row, key in enumerate(("Welcome", "Settings", "Remote Audio I/O")):
+            description = descriptions.get(key)
+            if description:
+                item = self.sidebar.item(row)
+                item.setToolTip(f"{tr(key)}\n{description}")
+                item.setData(Qt.ItemDataRole.AccessibleDescriptionRole, description)
+        for module_index, key in enumerate(self._module_keys):
+            description = descriptions.get(key)
+            if description:
+                item = self.sidebar.item(module_index + self._MODULE_PAGE_OFFSET)
+                item.setData(Qt.ItemDataRole.AccessibleDescriptionRole, description)
+
         # These boundaries follow the established order; module/page indices stay stable.
         self._sidebar_group_starts = {
             "Settings",
@@ -494,9 +508,11 @@ class MainWindow(QMainWindow):
         # Hide rows in place so module indices and running instruments stay intact.
         query = query.strip().casefold()
         keys = ["Welcome", "Settings", "Remote Audio I/O", *self._module_keys]
+        descriptions = translated_page_descriptions()
         visible = 0
         for row, key in enumerate(keys):
-            matches = query in key.casefold() or query in tr(key).casefold()
+            description = PAGE_DESCRIPTIONS.get(key, "")
+            matches = any(query in text.casefold() for text in (key, tr(key), description, descriptions.get(key, "")))
             self.sidebar.item(row).setHidden(not matches)
             visible += matches
             self.sidebar.item(row).setData(
@@ -1154,6 +1170,9 @@ class MainWindow(QMainWindow):
     def _build_module_activity_tooltip(self, module_index: int) -> str:
         key = self._module_keys[module_index]
         parts = [tr(key)]
+        description = translated_page_descriptions().get(key)
+        if description:
+            parts.append(description)
 
         if self._module_is_active(self.modules[module_index]):
             parts.append(tr("ACTIVE"))
