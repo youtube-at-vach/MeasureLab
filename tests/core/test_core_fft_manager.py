@@ -122,6 +122,22 @@ def test_warmup(monkeypatch):
     assert (512, "float64", "FFTW_FORWARD") in manager._plans
 
 
+def test_startup_plans_are_ready_without_measurement(monkeypatch):
+    manager = FFTManager()
+    monkeypatch.setattr("src.core.fft_manager.WARMUP_SIZES", [256, 1024])
+
+    manager.prepare_startup_plans()
+
+    for size in (256, 1024):
+        for dtype in ("float32", "float64"):
+            plan = manager._plans[(size, dtype, "FFTW_FORWARD")]
+            assert plan["flags"] == ("FFTW_ESTIMATE",)
+
+    # A deliberate optimization request can still upgrade a prepared plan.
+    manager.get_plan(256, "float32", flags=("FFTW_MEASURE",))
+    assert manager._plans[(256, "float32", "FFTW_FORWARD")]["flags"] == ("FFTW_MEASURE",)
+
+
 def test_save_load_wisdom(tmp_path):
     manager = FFTManager()
 

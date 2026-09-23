@@ -19,8 +19,7 @@ except ImportError:
     HAS_PYFFTW = False
     logger.warning("pyfftw not found. Falling back to numpy.fft")
 
-# Common FFT sizes to optimize during startup
-# Common FFT sizes to optimize during startup
+# Common FFT sizes offered by the real-time instruments.
 WARMUP_SIZES = [256, 512, 1024, 2048, 4096, 8192, 16384, 24000, 32768, 48000, 65536]
 # Medium sizes for standard exhaustive optimization (on-demand)
 MEDIUM_SIZES = [131072, 262144, 524288]
@@ -37,8 +36,8 @@ class FFTManager:
         self._plans = {}
         self._lock = threading.Lock()
 
-        # Limit the maximum number of threads to 8. PyFFTW suffers massive thread
-        # synchronization overhead when doing small 1D FFTs on high-end many-core processors.
+        # Limit the maximum number of threads to 8. Small 1D transforms use one
+        # thread in _create_plan to avoid FFTW's synchronization overhead.
         self.threads = min(8, multiprocessing.cpu_count())
 
         if HAS_PYFFTW:
@@ -182,7 +181,8 @@ class FFTManager:
             output_array = pyfftw.empty_aligned(output_shape, dtype=output_dtype)
 
             # Use provided flags (ESTIMATE vs MEASURE)
-            fft_object = pyfftw.FFTW(input_array, output_array, direction=direction, flags=flags, threads=self.threads)
+            plan_threads = 1 if size <= 8192 else self.threads
+            fft_object = pyfftw.FFTW(input_array, output_array, direction=direction, flags=flags, threads=plan_threads)
 
             # Save wisdom only if we did a measurement (MEASURE or PATIENT etc),
             # though ESTIMATE doesn't generate wisdom worth saving usually, saving doesn't hurt.
@@ -293,6 +293,21 @@ class FFTManager:
         Wrapper for numpy.fft.rfftfreq.
         """
         return np.fft.rfftfreq(n, d)
+
+    def prepare_startup_plans(self):
+        """Build the common real-time plans without measuring every FFT size.
+
+        FFTW_ESTIMATE uses imported wisdom when available. On a fresh install it
+        builds plans in milliseconds, so instruments are ready before the main
+        window opens without making the user wait for a full FFTW measurement.
+        Explicit optimization in Settings still uses warmup() and FFTW_MEASURE.
+        """
+        if not HAS_PYFFTW:
+            return
+
+        for size in WARMUP_SIZES:
+            for dtype in ("float64", "float32"):
+                self.get_plan(size, dtype, flags=("FFTW_ESTIMATE",))
 
     def warmup(self, callback=None, force=False, exhaustive=False, include_huge=False):
         """
