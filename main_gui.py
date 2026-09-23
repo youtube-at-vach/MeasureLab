@@ -242,13 +242,13 @@ def main():
         app.processEvents()
 
     try:
-        # 1. Warmup FFT Optimization (Show progress)
-        # This will be fast if wisdom exists, or show progress if optimizing
-        fft_manager.warmup(callback=_update_splash)
+        # Prepare every common FFT plan before the user can open an instrument.
+        # Full FFTW measurement remains an explicit operation in Settings.
+        _update_splash(tr("Finishing core initialization..."))
+        fft_manager.prepare_startup_plans()
 
         # Wait for the background preload thread to complete.
         # This ensures the cache is populated before MainWindow loads widgets.
-        _update_splash(tr("Finishing core initialization..."))
         preload_thread.join(timeout=5.0)
 
         # 2. Preload Modules
