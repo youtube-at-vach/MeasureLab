@@ -143,7 +143,7 @@ class WelcomeWidget(QWidget):
         grid = QGridLayout(container)
         grid.setContentsMargins(0, 0, 0, 0)
         grid.setHorizontalSpacing(12)
-        grid.setVerticalSpacing(10)
+        grid.setVerticalSpacing(8)
         setup = QLabel(tr("1. Set up your audio"))
         setup.setStyleSheet("font-weight: bold;")
         grid.addWidget(setup, 0, 0, 1, 2)
