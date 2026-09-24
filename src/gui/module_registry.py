@@ -107,7 +107,6 @@ def console_action(button_attribute: str) -> ConsolePrimaryActionCapability:
     return ConsolePrimaryActionCapability(ConsoleActionStatus.SUPPORTED, button_attribute)
 
 
-CONSOLE_ACTION_DEFERRED = ConsolePrimaryActionCapability(ConsoleActionStatus.DEFERRED)
 NO_CONSOLE_ACTION = ConsolePrimaryActionCapability(ConsoleActionStatus.NOT_APPLICABLE)
 
 

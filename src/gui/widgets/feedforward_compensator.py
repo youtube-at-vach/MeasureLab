@@ -277,20 +277,6 @@ class LICFFEngine:
 
         return Q_fft_M, F_inv_lin_M, F_inv_nl_M, bp_filter_M
 
-    def power_oversampled_fft(self, x, p, L=8):
-        if p == 1:
-            return np.fft.rfft(x)
-        N_x = len(x)
-        X = np.fft.rfft(x)
-        N_up = L * N_x
-        X_up = np.zeros(N_up // 2 + 1, dtype=complex)
-        X_up[: len(X)] = X * L
-        x_up = np.fft.irfft(X_up, n=N_up)
-        xp_up = x_up**p
-        Xp_up = np.fft.rfft(xp_up)
-        Xp = Xp_up[: N_x // 2 + 1] / L
-        return Xp
-
     def nonlinear_spectrum(self, x, L=8):
         M = len(x)
         X = np.fft.rfft(x)
@@ -369,11 +355,6 @@ class LICFFEngine:
         M = len(x)
         Q_fft, _, _, _ = self._prepare_buffers_for_length(M)
         return np.fft.irfft(np.fft.rfft(x) * Q_fft[1], n=M)
-
-    def nonlinear_output(self, x):
-        M = len(x)
-        Y_fft = self.nonlinear_spectrum(x)
-        return np.fft.irfft(Y_fft, n=M) + self.q0_sum
 
     def compensate(
         self, u_in, iterative=False, iters=3, clip_limit=1.5, linear_only=False, bypass_linear_eq=False, stats=None

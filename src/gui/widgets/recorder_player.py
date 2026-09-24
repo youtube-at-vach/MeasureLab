@@ -41,9 +41,6 @@ from src.measurement_modules.base import MeasurementModule
 logger = logging.getLogger(__name__)
 
 
-WRITE_BLOCK_SIZE = 65536
-
-
 @dataclass(frozen=True, slots=True)
 class LoadedAudioInfo:
     """Structured file information used by normal and compact presentations."""

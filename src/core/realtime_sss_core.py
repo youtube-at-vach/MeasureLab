@@ -384,25 +384,6 @@ class RealtimeSSSEngine:
 
         return result_freq, corrected_results, quality
 
-    def _process_block_ls(
-        self,
-        n_comp: np.ndarray,
-        theta_comp: np.ndarray,
-        y_raw: np.ndarray,
-        f_mid: float,
-        valid_mask: np.ndarray,
-        ref_in_block: np.ndarray | None,
-    ) -> tuple[float, list[complex], float]:
-        r_raw = None
-        if ref_in_block is not None:
-            if ref_in_block.shape[1] >= 1:
-                r_raw = ref_in_block[:, 0]
-            else:
-                r_raw = np.zeros_like(y_raw)
-
-        self._append_analysis_history(n_comp, theta_comp, y_raw, r_raw, valid_mask)
-        return self._execute_ls_fit(f_mid, ref_in_block is not None)
-
     def generate_output_block(self, outdata_block: np.ndarray, block_index: int):
         """
         Generates output sweep signal block and writes it to outdata_block.
