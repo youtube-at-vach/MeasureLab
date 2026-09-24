@@ -36,6 +36,19 @@ Primary uses:
     * **XFER (Ref=R, Meas=L)**: Reverse transfer function mode using Right as reference.
     * **Crosstalk L -> R / R -> L**: Pre-configured macros for measuring crosstalk between channels.
 
+## Output Impedance and Load Interaction
+
+Use the **Load study** controls and **Source impedance** result tab to compare an output driving two known resistive loads. This is intended for low-voltage, single-ended headphone or line outputs. Do not connect a bridged or power-amplifier output directly to an audio interface. Start at a low output level and check that the output and input are not clipping.
+
+1. Split the DUT output into the measurement input and a removable resistor to ground. Feed an unchanged upstream signal to the other input as the common XFER reference. Choose **XFER** or **XFER REV**, according to that wiring. Include the measurement input impedance in each *effective* load value (the parallel combination of the resistor and input impedance).
+2. Enter the effective **Load A** and **Load B** resistances. Keep the output level, ADC gain, wiring, sample rate, routing, and sweep settings fixed. Stop the output before changing the resistor.
+3. Run a sweep with load A and select **Capture A** after it completes. Exchange only the load, run another sweep, and select **Capture B**. The response difference appears even if source impedance cannot be resolved.
+4. Repeat each load at least once to estimate run-to-run scatter. Enter a **Prediction load** to see the voltage-divider prediction relative to A. **Save load study CSV...** includes the results, validity flags, conditions, and each capture's complex transfer and coherence for later verification.
+
+The analysis uses the unsmoothed complex XFER transfer functions and the model `H(R) = G × R / (Z + R)`, where `G` is the unchanged upstream response and `Z` is source impedance. It reports real resistance and imaginary reactance. Gray `|Z|` is provisional or unresolved. A bin is marked resolved only when both the *complex* response difference and the impedance calculation's denominator exceed three times their standard errors estimated from at least two captures of *each* load. Bins with coherence below 0.8 are withheld from the impedance curves. Numerical singularities are withheld as well. The third-load prediction is shown only for resolved bins. These are measurement quality indicators, not a claim about audibility or complete uncertainty.
+
+The prediction assumes a linear, load-independent source at the same level. Unchanged gain and a common phase path are essential; the application can check stored sweep settings and selected devices, but cannot detect a manual hardware gain change. Reactive loads, nonlinear load interactions, and outputs that change operating mode with load are outside this first model. The existing **Reference Trace** controls are for display comparisons and are separate from these raw complex captures.
+
 ## Display and Analysis
 
 Customize the graph display in the **"Display"** tab.
