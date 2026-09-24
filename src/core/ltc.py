@@ -4,9 +4,6 @@ import collections
 import numpy as np
 
 
-SYNC_WORD = 0xBFFC  # 1011 1111 1111 1100 (Reverse of 0011 1111 1111 1101 ?)
-
-
 class LTCEncoder:
     """Generates LTC audio samples."""
 
@@ -14,7 +11,6 @@ class LTCEncoder:
         self.sample_rate = sample_rate
         self.fps = fps
         self.samples_per_frame = sample_rate / fps
-        self.current_frame_samples = 0
         self.phase = 1.0  # -1.0 or 1.0
 
         # State
@@ -38,7 +34,6 @@ class LTCEncoder:
         mm: int,
         ss: int,
         ff: int,
-        user_bits: Optional[list] = None,
         out_buffer: Optional[np.ndarray] = None,
     ) -> np.ndarray:
         """Generates audio samples for one LTC frame."""
@@ -165,9 +160,6 @@ class LTCDecoder:
         self.fps = fps
         self.samples_since_last_zc = 0
         self._last_sign: Optional[bool] = None
-        self.bit_stream = 0
-        self.bits_count = 0
-        self.current_bits: list[int] = []
         self.last_bit_is_one = False
 
         # Pulse Width discrimination
@@ -188,9 +180,6 @@ class LTCDecoder:
         self.fps = fps
         self.samples_since_last_zc = 0
         self._last_sign = None
-        self.bit_stream = 0
-        self.bits_count = 0
-        self.current_bits = []
         self.last_bit_is_one = False
 
         # Pulse Width discrimination

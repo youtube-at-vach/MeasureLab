@@ -90,7 +90,6 @@ class NetworkAudioClient:
         self.playout_delay_frames = 0
 
         self._udp_socket: socket.socket | None = None
-        self._provider_udp: tuple[str, int] | None = None
         self._capture_buffer: IndexedAudioBuffer | None = None
         self._stop_event = threading.Event()
         self._send_lock = threading.Lock()
@@ -173,7 +172,6 @@ class NetworkAudioClient:
                 timeout=timeout,
             )
             udp_socket.settimeout(0.2)
-            self._provider_udp = provider
             self._udp_socket = udp_socket
             self._stop_event.clear()
             self._closing = False
@@ -623,7 +621,6 @@ class NetworkAudioClient:
         self._heartbeat_thread = None
         with self._pending_lock:
             self._pending.clear()
-        self._provider_udp = None
         if self._playback_history is not None:
             self._playback_history.clear()
         self._playback_history = None

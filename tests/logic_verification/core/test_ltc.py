@@ -15,7 +15,6 @@ def test_ltc_encoder_init():
     assert encoder.fps == fps
     assert encoder.samples_per_frame == sample_rate / fps
     assert encoder.total_frames == 0
-    assert encoder.current_frame_samples == 0
     assert encoder.phase == 1.0
 
 
@@ -71,9 +70,6 @@ def test_ltc_decoder_init():
     assert decoder.fps == fps
     assert decoder.samples_since_last_zc == 0
     assert decoder._last_sign is None
-    assert decoder.bit_stream == 0
-    assert decoder.bits_count == 0
-    assert decoder.current_bits == []
     assert decoder.last_bit_is_one is False
     assert decoder.pulse_avg == (sample_rate / fps) / 160.0
     assert isinstance(decoder.decoded_bits, collections.deque)

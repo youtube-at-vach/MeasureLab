@@ -241,8 +241,7 @@ def test_engine_ls_extractor_decimation_continuity():
             assert engine.out_sig is not None
             indata[:chunk, 0] = engine.out_sig[start : start + chunk]
 
-        # Manually compute D that the engine will use to track transitions
-        # (mirroring the logic inside _process_block_ls)
+        # Manually compute the decimation factor used by the engine.
         n_mid = start + frames / 2.0
         if 0 <= n_mid < engine.sweep_samples:
             f1 = engine.start_freq / 1.3

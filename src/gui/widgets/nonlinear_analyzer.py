@@ -288,14 +288,6 @@ class NonlinearAnalyzer(MeasurementModule):
         self.signals.latency_result.emit(self.latency_sec)
         logger.info(f"Calibration successful: Latency = {self.latency_sec * 1000:.2f} ms ({lag:.2f} samples)")
 
-    def _generate_sss_and_inverse(self, sample_rate, amplitude=1.0):
-        """
-        Generates SSS signal and inverse match filter by delegating to the core implementation.
-        Scaled by amplitude for playback.
-        """
-        sss, inv_filter = generate_sss_and_inverse(sample_rate, self.sweep_duration, self.start_freq, self.end_freq)
-        return amplitude * sss, inv_filter
-
     def _execute_measurement(self, worker):
         sample_rate = self.audio_engine.sample_rate
         P = 5  # We support up to P=5 orders

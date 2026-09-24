@@ -90,7 +90,6 @@ class NetworkAudioProvider:
         self._session_id = 0
         self._session_active = False
         self._last_control_received = 0.0
-        self._client_requested_duplex = False
         self._client_playback_active = False
         self._duplex_negotiated = False
         self._duplex = False
@@ -296,7 +295,6 @@ class NetworkAudioProvider:
             self._session_id = secrets.randbits(63) or 1
             self._client_udp = address
             self._last_control_received = time.monotonic()
-            self._client_requested_duplex = requested_duplex
             self._duplex_negotiated = requested_duplex and self.allow_output
             self._duplex = self._duplex_negotiated
             self._retransmission_negotiated = requested_retransmission
@@ -738,7 +736,6 @@ class NetworkAudioProvider:
             send_thread.join(timeout=1.0)
         self._send_thread = None
         self.client_address = ""
-        self._client_requested_duplex = False
         self._client_playback_active = False
         self._duplex_negotiated = False
         self._duplex = False
