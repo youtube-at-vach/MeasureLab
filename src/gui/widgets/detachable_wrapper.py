@@ -1,5 +1,6 @@
 import os
 import re
+import logging
 from datetime import datetime
 from enum import Enum
 from functools import lru_cache
@@ -597,6 +598,12 @@ class DetachableWidgetWrapper(QWidget):
             from src.gui.widgets.log_viewer import LogViewerWindow
 
             viewer = LogViewerWindow.get_instance()
+            app = QApplication.instance()
+            if app is not None and not hasattr(app, "_measurelab_log_handler"):
+                app._measurelab_log_handler = LogViewerWindow.attach_to_logger(  # type: ignore[attr-defined]
+                    logging.getLogger(), dialog=viewer
+                )
+
             viewer.show()
             viewer.raise_()
             viewer.activateWindow()

@@ -10,7 +10,6 @@ from src.core.config_manager import ConfigManager
 from src.core.errors import AudioEngineReservedError
 from src.core.localization import get_manager, tr
 from src.core.utils import resource_path
-from src.core.fft_manager import fft_manager
 
 
 class _ExpectedExceptionLogger:
@@ -101,6 +100,7 @@ def setup_app():
 
     # Load language early so the splash text matches user settings.
     # Keep this lightweight: just read config + load translations.
+    config_manager = None
     try:
         config_manager = ConfigManager()
         get_manager().load_language(config_manager.get_language())
@@ -110,6 +110,11 @@ def setup_app():
         pass
 
     app = QApplication(sys.argv)
+    if config_manager is not None:
+        # MainWindow reuses the configuration already read to select the
+        # language for the splash screen. Reading the same file again during
+        # construction only adds I/O and repeats default merging.
+        app._measurelab_config_manager = config_manager  # type: ignore[attr-defined]
 
     from src.gui.startup import TopLevelWindowLogger
 
@@ -119,17 +124,6 @@ def setup_app():
         # QApplication permits dynamic attributes; retain the logger with the app.
         app._measurelab_window_logger = window_logger  # type: ignore[attr-defined]
         app.installEventFilter(window_logger)
-
-    # Attach the Qt logging handler to the root logger
-    try:
-        from src.gui.widgets.log_viewer import LogViewerWindow
-
-        LogViewerWindow.attach_to_logger(root_logger)
-
-        # If debug is passed, we might want to ensure the log level matches
-        # The QtLogHandler operates at DEBUG and filters based on user selection in the UI.
-    except ImportError as e:
-        logging.error(f"Could not load GUI LogViewer: {e}")
 
     # Brand name (do not translate)
     app.setApplicationName("MeasureLab")
@@ -141,53 +135,15 @@ def setup_app():
     return app
 
 
-def _preload_dependencies():
-    """Preload heavy dependencies in a background thread to utilize idle CPU time.
-
-    This ensures that when the main thread imports modules utilizing these packages,
-    they are loaded instantly from sys.modules cache without blocking the GUI.
-    """
-    try:
-        import numpy  # noqa: F401
-        import scipy
-        import scipy.signal
-        import scipy.special
-        import scipy.fft
-        import scipy.interpolate
-        import scipy.linalg  # noqa: F401
-        import netCDF4  # noqa: F401
-        import pywt  # noqa: F401
-        import soundfile  # noqa: F401
-    except Exception:  # noqa: S110
-        # Preload failures should never crash application startup
-        pass
-
-    # HistogramLUTItem asks Matplotlib for optional color maps while the first
-    # spectrogram-like widget is constructed. Warm pyplot here so that work is
-    # overlapped with the rest of startup and the complete color-map menu stays
-    # immediately responsive. Matplotlib is optional from MeasureLab's point of
-    # view, so its absence must not abort the core dependency preload above.
-    try:
-        import matplotlib.pyplot  # noqa: F401
-    except Exception:  # noqa: S110
-        pass
-
-
 def main():
     """GUI Application Entry Point"""
     app = setup_app()
 
-    # Start preloading heavy libraries in the background immediately
-    import threading
-
-    preload_thread = threading.Thread(target=_preload_dependencies, daemon=True)
-    preload_thread.start()
-
-    # Import other PyQt components after setup
+    # Import only the small startup surface before showing the splash. The
+    # main window and its audio/module registry can then load behind it.
     from PyQt6.QtCore import Qt, QTimer
     from PyQt6.QtGui import QPixmap
 
-    from src.gui.main_window import MainWindow
     from src.gui.startup import WrappingSplashScreen
 
     # Startup splash (loading screen): show immediately while MainWindow initializes.
@@ -223,6 +179,8 @@ def main():
     )
     app.processEvents()
 
+    from src.gui.main_window import MainWindow
+
     # Brand name (do not translate)
     app.setApplicationName("MeasureLab")
     try:
@@ -232,33 +190,6 @@ def main():
 
     enable_experimental = "--experimental" in sys.argv or "--experimentalflag" in sys.argv
     window = MainWindow(enable_experimental=enable_experimental)
-
-    # Preload all modules while splash is visible, so module switching feels instant.
-    def _update_splash(msg: str):
-        # Translate the message here if needed, or pass translated strings
-        splash.showMessage(
-            f"{tr('Loading...')}\n{msg}",
-            Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter,
-            Qt.GlobalColor.white,
-        )
-        app.processEvents()
-
-    try:
-        # Prepare every common FFT plan before the user can open an instrument.
-        # Full FFTW measurement remains an explicit operation in Settings.
-        _update_splash(tr("Finishing core initialization..."))
-        fft_manager.prepare_startup_plans()
-
-        # Wait for the background preload thread to complete.
-        # This ensures the cache is populated before MainWindow loads widgets.
-        preload_thread.join(timeout=5.0)
-
-        # 2. Preload Modules
-        window.preload_all_modules(progress_callback=_update_splash)
-    except Exception as e:
-        logging.error(f"Startup error: {e}")
-        # If preload fails, still show the window; individual pages may show errors.
-        pass
 
     # Show the main window, then finish the splash on the next event-loop turn.
     # On some Linux WMs, calling finish() immediately can reveal a briefly

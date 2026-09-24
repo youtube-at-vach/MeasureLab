@@ -481,6 +481,27 @@ def test_sidebar_search_finds_measurement_goals_and_explains_result(qtbot):
         manager.load_language(original_language)
 
 
+def test_visible_navigation_updates_before_lazy_page_load(qtbot):
+    from unittest.mock import patch
+
+    window = MainWindow()
+    qtbot.addWidget(window)
+    window.show()
+    qtbot.wait(0)
+
+    module_index = window._module_keys.index("Spectrum Analyzer")
+    row = module_index + window._MODULE_PAGE_OFFSET
+    loaded = []
+
+    with patch.object(window, "_ensure_module_loaded", side_effect=lambda index: loaded.append(index)):
+        window.sidebar.setCurrentRow(row)
+        assert window.content_area.currentIndex() == row
+        assert loaded == []
+        qtbot.wait(1)
+
+    assert loaded == [module_index]
+
+
 def test_recent_history_records_only_successful_navigation(qtbot, tmp_path):
     from unittest.mock import patch
 

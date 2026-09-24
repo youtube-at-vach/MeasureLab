@@ -261,7 +261,9 @@ class MainWindow(QMainWindow):
     def _init_core(self):
         """Initialize core components (config, localization, audio engine, theme)."""
         # Initialize Core Components
-        self.config_manager = ConfigManager()
+        app = QApplication.instance()
+        startup_config = getattr(app, "_measurelab_config_manager", None) if app is not None else None
+        self.config_manager = startup_config or ConfigManager()
 
         # Initialize Localization
         lang = self.config_manager.get_language()
@@ -572,6 +574,8 @@ class MainWindow(QMainWindow):
             self._module_containers.append(container)
             self.content_area.addWidget(container)
 
+        self._page_load_pending = False
+
     def _init_status_bar(self):
         """Initialize the status bar and its indicators."""
         self.status_bar = QStatusBar()
@@ -582,6 +586,7 @@ class MainWindow(QMainWindow):
         self.io_label = QLabel(tr("In: - | Out: -"))
         self.sr_label = QLabel(tr("SR: -"))
         self.cpu_label = QLabel(tr("CPU: 0%"))
+        self.cpu_label.setToolTip(tr("CPU Load of Audio Thread"))
         self.clients_label = QLabel(tr("Clients: 0"))
         for label in (self.status_label, self.io_label, self.sr_label, self.cpu_label, self.clients_label):
             label.setProperty("statusDivider", True)
@@ -995,59 +1000,73 @@ class MainWindow(QMainWindow):
                 if provider_connected
                 else "color: #2d7dd2; font-weight: bold;"
             )
-            self.status_label.setText(tr("I/O Provider"))
-            self.status_label.setStyleSheet(status_style)
+            status_text = tr("I/O Provider")
         elif status["active"]:
             state_text = tr("ACTIVE").capitalize()
             status_style = "color: green; font-weight: bold;"
-            self.status_label.setText(tr("ACTIVE"))
-            self.status_label.setStyleSheet(status_style)
+            status_text = tr("ACTIVE")
         else:
             state_text = tr("IDLE").capitalize()
             status_style = "color: gray;"
-            self.status_label.setText(tr("IDLE"))
+            status_text = tr("IDLE")
+
+        if self.status_label.text() != status_text:
+            self.status_label.setText(status_text)
+        if self.status_label.styleSheet() != status_style:
             self.status_label.setStyleSheet(status_style)
 
         # I/O Mode
         in_mode = status["input_channels"].capitalize()
         out_mode = status["output_channels"].capitalize()
-        if io_role == "remote_provider":
-            self.io_label.setText(f"{tr('Mode:')} {provider_mode}")
-        else:
-            self.io_label.setText(tr("In: {0} | Out: {1}").format(in_mode, out_mode))
+        io_text = (
+            f"{tr('Mode:')} {provider_mode}"
+            if io_role == "remote_provider"
+            else tr("In: {0} | Out: {1}").format(in_mode, out_mode)
+        )
+        if self.io_label.text() != io_text:
+            self.io_label.setText(io_text)
 
         # Sample Rate
-        self.sr_label.setText(tr("SR: {0}").format(status["sample_rate"]))
+        sr_text = tr("SR: {0}").format(status["sample_rate"])
+        if self.sr_label.text() != sr_text:
+            self.sr_label.setText(sr_text)
 
         # CPU Load
         cpu = status["cpu_load"] * 100
 
-        self.cpu_label.setText(tr("CPU: {0:.1f}%").format(cpu))
-        self.cpu_label.setStyleSheet("")
-        self.cpu_label.setToolTip(tr("CPU Load of Audio Thread"))
+        cpu_text = tr("CPU: {0:.1f}%").format(cpu)
+        if self.cpu_label.text() != cpu_text:
+            self.cpu_label.setText(cpu_text)
         self._update_audio_io_error_indicator(status)
 
         # Clients
         visible_clients = int(provider_connected) if io_role == "remote_provider" else status["active_clients"]
-        self.clients_label.setText(tr("Clients: {0}").format(visible_clients))
+        clients_text = tr("Clients: {0}").format(visible_clients)
+        if self.clients_label.text() != clients_text:
+            self.clients_label.setText(clients_text)
 
         compact_sr = self._format_compact_sample_rate(status["sample_rate"])
-        if io_role == "remote_provider":
-            self.compact_status_label.setText(f"{tr('I/O Provider')} • {state_text} • {compact_sr}")
-        else:
-            self.compact_status_label.setText(f"{state_text} • {compact_sr}")
-        self.compact_status_label.setStyleSheet(status_style)
-        if io_role == "remote_provider":
-            self.compact_status_label.setToolTip(provider_tooltip)
-        else:
-            self.compact_status_label.setToolTip(
-                tr("In: {0} | Out: {1}\nCPU: {2:.1f}%\nClients: {3}").format(
-                    in_mode,
-                    out_mode,
-                    cpu,
-                    status["active_clients"],
-                )
+        compact_text = (
+            f"{tr('I/O Provider')} • {state_text} • {compact_sr}"
+            if io_role == "remote_provider"
+            else f"{state_text} • {compact_sr}"
+        )
+        compact_tooltip = (
+            provider_tooltip
+            if io_role == "remote_provider"
+            else tr("In: {0} | Out: {1}\nCPU: {2:.1f}%\nClients: {3}").format(
+                in_mode,
+                out_mode,
+                cpu,
+                status["active_clients"],
             )
+        )
+        if self.compact_status_label.text() != compact_text:
+            self.compact_status_label.setText(compact_text)
+        if self.compact_status_label.styleSheet() != status_style:
+            self.compact_status_label.setStyleSheet(status_style)
+        if self.compact_status_label.toolTip() != compact_tooltip:
+            self.compact_status_label.setToolTip(compact_tooltip)
         self._refresh_sidebar_activity_indicators()
 
         # Keep routing labels aligned with the backend that actually owns I/O.
@@ -1138,17 +1157,22 @@ class MainWindow(QMainWindow):
                     f"{tr('Error')}: {self._last_callback_error}\n{tr('Error Count')}: {self._callback_error_count}"
                 )
 
-            self.io_error_button.setText(
+            button_text = (
                 tr("I/O BUFFER ERROR")
                 if details and not self._callback_error_latched and output_peak <= 1.0
                 else tr("Error")
             )
-            self.io_error_button.setToolTip("\n\n".join(tooltip_sections))
+            button_tooltip = "\n\n".join(tooltip_sections)
         else:
-            self.io_error_button.setText(tr("I/O BUFFER ERROR"))
-            self.io_error_button.setToolTip("")
+            button_text = tr("I/O BUFFER ERROR")
+            button_tooltip = ""
 
-        self.io_error_button.setVisible(self._io_error_latched)
+        if self.io_error_button.text() != button_text:
+            self.io_error_button.setText(button_text)
+        if self.io_error_button.toolTip() != button_tooltip:
+            self.io_error_button.setToolTip(button_tooltip)
+        if self.io_error_button.isVisible() != self._io_error_latched:
+            self.io_error_button.setVisible(self._io_error_latched)
 
     def _acknowledge_audio_io_error(self):
         self.audio_engine.clear_latched_audio_status()
@@ -1194,6 +1218,8 @@ class MainWindow(QMainWindow):
 
         default_brush = self.sidebar.palette().brush(QPalette.ColorRole.Text)
         active_brush = self.sidebar.palette().brush(QPalette.ColorRole.Highlight)
+        language = get_manager().language
+        activity_cache = getattr(self, "_sidebar_activity_cache", {})
 
         for module_index, key in enumerate(self._module_keys):
             item = self.sidebar.item(module_index + self._MODULE_PAGE_OFFSET)
@@ -1201,12 +1227,25 @@ class MainWindow(QMainWindow):
                 continue
 
             is_active = self._module_is_active(self.modules[module_index])
+            wrapper = self.module_widgets[module_index]
+            is_split = bool(getattr(wrapper, "is_split", False)) if wrapper is not None else False
+            is_detached = bool(getattr(wrapper, "is_detached", False)) if wrapper is not None else False
+            state = (language, is_active, is_split, is_detached)
+            if activity_cache.get(module_index) == state:
+                continue
+
             font = item.font()
             font.setBold(is_active)
             item.setFont(font)
             item.setForeground(active_brush if is_active else default_brush)
             item.setToolTip(self._build_module_activity_tooltip(module_index))
-            item.setText(tr(key))
+            translated_key = tr(key)
+            if item.text() != translated_key:
+                item.setText(translated_key)
+
+            activity_cache[module_index] = state
+
+        self._sidebar_activity_cache = activity_cache
 
     def _get_engine_output_destination(self):
         if self.audio_engine.loopback:
@@ -1456,10 +1495,9 @@ class MainWindow(QMainWindow):
         self.set_menu_only_mode(False)
         self.on_tool_selected(index)
 
-    def on_tool_selected(self, index):
-        if index < 0:
-            return
-        if self._menu_only_mode:
+    def _load_page(self, index: int) -> None:
+        """Load the selected page after its placeholder is already visible."""
+        if index < 0 or self.content_area.currentIndex() != index:
             return
         if index == 1:
             self._ensure_settings_loaded()
@@ -1471,7 +1509,33 @@ class MainWindow(QMainWindow):
             module_index = index - self._MODULE_PAGE_OFFSET
             self._ensure_module_loaded(module_index)
             self._record_opened_module(module_index)
+
+    def _schedule_selected_page_load(self) -> None:
+        if self._page_load_pending:
+            return
+        self._page_load_pending = True
+
+        def load_selected_page() -> None:
+            self._page_load_pending = False
+            self._load_page(self.sidebar.currentRow())
+
+        # Let Qt paint the selected placeholder before importing a heavy page.
+        QTimer.singleShot(0, load_selected_page)
+
+    def on_tool_selected(self, index):
+        if index < 0 or self._menu_only_mode:
+            return
+
+        # Publish the navigation state before any optional import or widget
+        # construction. Visible windows therefore acknowledge the click even
+        # when the selected instrument is expensive to initialize.
         self.content_area.setCurrentIndex(index)
+        if self.isVisible():
+            self._schedule_selected_page_load()
+        else:
+            # Keep programmatic construction/tests deterministic before the
+            # window enters the event loop.
+            self._load_page(index)
 
     def notify_active_model_changed(self):
         """Notify all loaded modules that the active Hammerstein model has been updated."""

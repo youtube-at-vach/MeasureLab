@@ -173,13 +173,14 @@ class LogViewerWindow(QDialog):
         self.all_logs.clear()
 
     @classmethod
-    def attach_to_logger(cls, root_logger: logging.Logger):
+    def attach_to_logger(cls, root_logger: logging.Logger, dialog=None):
         """Instantiates the QtLogHandler and attaches its signal to the global dialog instance.
 
-        Note: This method is actively used in `main_gui.py` to route root logger messages
-        to the GUI. It is not dead code.
+        The main window attaches this handler only when the log viewer is first opened,
+        so the secondary dialog does not add to normal application startup.
         """
-        dialog = cls.get_instance()
+        if dialog is None:
+            dialog = cls.get_instance()
         handler = QtLogHandler()
         handler.signals.log_emitted.connect(dialog.append_log)
         root_logger.addHandler(handler)
