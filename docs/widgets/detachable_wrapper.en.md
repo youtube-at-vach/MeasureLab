@@ -3,7 +3,7 @@
 ## Overview
 
 Most widgets (measurement tools) in MeasureLab are wrapped in a common framework called the "Detachable Wrapper."
-This is not just a decoration; it is a "multi-functional frame" provided to offer a screenshot function for saving measurement results and a window separation function for freely changing the screen layout.
+It provides a screenshot function for saving measurement results and a window separation function for freely changing the screen layout.
 
 Whether you are using tools such as the Spectrogram or Spectrum Analyzer, you can record data and rearrange layouts with the same operational feel.
 
