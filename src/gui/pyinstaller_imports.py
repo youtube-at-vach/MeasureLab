@@ -30,7 +30,6 @@ if False:
     from src.gui.widgets.noise_profiler import NoiseProfiler
     from src.gui.widgets.one_pps_monitor import OnePPSMonitor
     from src.gui.widgets.oscilloscope import Oscilloscope
-    from src.gui.widgets.plot_comparer import PlotComparer
     from src.gui.widgets.processor_benchmark import ProcessorBenchmark
     from src.gui.widgets.raw_time_series import RawTimeSeries
     from src.gui.widgets.remote_audio_io import RemoteAudioIOWidget
@@ -78,7 +77,6 @@ if False:
         NoiseProfiler,
         OnePPSMonitor,
         Oscilloscope,
-        PlotComparer,
         ProcessorBenchmark,
         RawTimeSeries,
         RemoteAudioIOWidget,

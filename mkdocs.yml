@@ -120,7 +120,6 @@ plugins:
             ボックスカー平均器: Boxcar Averager
             ユーティリティ: Utilities
             分離ウィンドウラッパー: Detachable Wrapper
-            プロット比較器: Plot Comparer
             プロセッサーベンチマーク: Processor Benchmark
             波形ループプレイヤー: Waveform Loop Player
             ログビューアー: Log Viewer
@@ -212,7 +211,6 @@ nav:
       - ユーティリティ:
           - 分離ウィンドウラッパー: widgets/detachable_wrapper.md
           - 計測コンソール（試験的機能）: widgets/measurement_console.md
-          - プロット比較器: widgets/plot_comparer.md
           - プロセッサーベンチマーク: widgets/processor_benchmark.md
           - 波形ループプレイヤー: widgets/waveform_loop_player.md
           - ログビューアー: widgets/log_viewer.md

@@ -163,9 +163,6 @@ _CLASS_LOADERS: dict[tuple[str, str], Callable[[], type[Any]]] = {
     ("src.gui.widgets.processor_benchmark", "ProcessorBenchmark"): lambda: (
         import_module("src.gui.widgets.processor_benchmark").ProcessorBenchmark
     ),
-    ("src.gui.widgets.plot_comparer", "PlotComparer"): lambda: (
-        import_module("src.gui.widgets.plot_comparer").PlotComparer
-    ),
     ("src.gui.widgets.transmission_analyzer", "TransmissionAnalyzer"): lambda: (
         import_module("src.gui.widgets.transmission_analyzer").TransmissionAnalyzer
     ),

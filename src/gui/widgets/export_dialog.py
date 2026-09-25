@@ -23,13 +23,13 @@ from PyQt6.QtWidgets import (
 )
 from src.core.localization import tr
 from src.core.export.manager import ExportManager
-from src.core.comparison_manager import ComparisonTrace
+from src.core.export.trace import ExportTrace
 
 SAFE_NAME_PATTERN = re.compile(r"[^\w \-]")
 
 
 class ExportSettingsDialog(QDialog):
-    def __init__(self, traces: List[ComparisonTrace], parent=None):
+    def __init__(self, traces: List[ExportTrace], parent=None):
         super().__init__(parent)
         self.traces = traces
         self.export_manager = ExportManager.instance()
@@ -91,19 +91,8 @@ class ExportSettingsDialog(QDialog):
         self.options_stack = QStackedWidget()
         main_layout.addWidget(self.options_stack)
 
-        # --- Create JSON/MLComp Options Widget ---
+        # --- Create JSON Options Widget ---
         self.json_widget = QWidget()
-        json_layout = QVBoxLayout(self.json_widget)
-        json_group = QGroupBox(tr("JSON Options"))
-        json_group_layout = QVBoxLayout(json_group)
-        json_desc = QLabel(
-            tr(
-                "Saves comparison traces as highly compatible MeasureLab proprietary format (.mlcomp). This allows importing them back into Plot Comparer later."
-            )
-        )
-        json_desc.setWordWrap(True)
-        json_group_layout.addWidget(json_desc)
-        json_layout.addWidget(json_group)
         self.options_stack.addWidget(self.json_widget)
 
         # --- Create CSV Options Widget ---
@@ -218,7 +207,7 @@ class ExportSettingsDialog(QDialog):
                     base, _ = os.path.splitext(current_path)
                     self.path_edit.setText(base + ext)
                 else:
-                    self.path_edit.setText("comparison_export" + ext)
+                    self.path_edit.setText("traces_export" + ext)
 
     def on_layout_mode_changed(self):
         # Enable/Disable reference trace combobox based on layout choice
@@ -244,7 +233,7 @@ class ExportSettingsDialog(QDialog):
             self.path_edit.setText("")
         else:
             self.path_edit.setPlaceholderText(tr("Select destination file..."))
-            self.path_edit.setText("comparison_export" + ext)
+            self.path_edit.setText("traces_export" + ext)
 
     def browse_filepath(self):
         fmt_id = self.format_combo.currentData()
@@ -259,7 +248,7 @@ class ExportSettingsDialog(QDialog):
                 self.path_edit.setText(folder)
         else:
             # File selection mode
-            default_name = self.path_edit.text().strip() or "comparison_export" + exporter.default_extension
+            default_name = self.path_edit.text().strip() or "traces_export" + exporter.default_extension
 
             filepath, _ = QFileDialog.getSaveFileName(
                 self, tr("Select Destination File"), default_name, exporter.file_filter

@@ -15,7 +15,6 @@ from src.measurement_modules.base import MeasurementModule  # noqa: E402
 # so they are deliberately outside the offline capture contract.
 DOC_CAPTURE_EXCLUSIONS = {
     "compactable_interface",
-    "comparable_interface",
     "detachable_wrapper",
     "instrument_plot",
     "remote_audio_io",

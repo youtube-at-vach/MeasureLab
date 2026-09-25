@@ -2,7 +2,7 @@ import csv
 import logging
 import pytest
 from unittest.mock import patch
-from src.core.comparison_manager import ComparisonTrace, AxisMetadata
+from src.core.export.trace import ExportTrace, AxisMetadata
 from src.core.export.csv_exporter import CsvTraceExporter
 
 
@@ -43,7 +43,7 @@ def test_export_utf8_bom_option(tmp_path, sample_traces, utf8_bom):
 
 @pytest.fixture
 def sample_traces():
-    t1 = ComparisonTrace(
+    t1 = ExportTrace(
         id="trace_1",
         name="Trace 1",
         source_module="module_a",
@@ -55,7 +55,7 @@ def sample_traces():
         y_data=[-10.0, -20.0, -30.0],
     )
 
-    t2 = ComparisonTrace(
+    t2 = ExportTrace(
         id="trace_2",
         name="Trace 2",
         source_module="module_b",
@@ -69,7 +69,7 @@ def sample_traces():
         y2_data=[45.0, 90.0],
     )
 
-    t_empty = ComparisonTrace(
+    t_empty = ExportTrace(
         id="trace_empty",
         name="Trace Empty",
         source_module="module_c",
@@ -81,7 +81,7 @@ def sample_traces():
         y_data=[],
     )
 
-    t_empty_y2 = ComparisonTrace(
+    t_empty_y2 = ExportTrace(
         id="trace_empty_y2",
         name="Trace Empty Y2",
         source_module="module_d",

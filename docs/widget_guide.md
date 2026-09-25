@@ -28,7 +28,6 @@ MeasureLab に搭載されている多数のウィジェットを、用途ごと
 | **ノイズの種類(1/f等)を分析したい** | [Noise Profiler](widgets/noise_profiler.md) |
 | **ポップコーンノイズなど、まれな異常の発生回数を測りたい** | [Event Detector](widgets/event_detector.md) |
 | **左右の音響特性のズレを精密に整えたい** | [Stereo Alignment Monitor](widgets/stereo_alignment_monitor.md) |
-| **異なる測定から取得した複数のプロットを重ね合わせて比較したい** | [Plot Comparer](widgets/plot_comparer.md) |
 | **デジタル/アナログ伝送路の品質、遅延、完全性を総合的に評価したい** | [Transmission Analyzer (試験的)](widgets/transmission_analyzer.md) |
 
 ---
@@ -191,8 +190,6 @@ MeasureLab に搭載されている多数のウィジェットを、用途ごと
     * 任意のウィジェットを別ウィンドウとして切り離すための枠組みです。
 * **[計測コンソール（試験的機能）](widgets/measurement_console.md)**
     * 既存の測定ウィジェットを、音声処理を重複させずにドッキング可能なワークスペースへ配置します。
-* **[Plot Comparer](widgets/plot_comparer.md)**
-    * 異なる測定モジュール（スペクトラムアナライザ、ネットワークアナライザ、オシロスコープなど）から保存・エクスポートした測定データをインポートし、ゲインオフセットや軸シフトなどを調整しながら重ね合わせて詳細に比較できます。
 * **[Processor Benchmark](widgets/processor_benchmark.md)**
     * PCのFFTおよび描画パフォーマンスをテストし、リアルタイム処理の限界を検証します。
 * **[Settings](widgets/settings.md)**

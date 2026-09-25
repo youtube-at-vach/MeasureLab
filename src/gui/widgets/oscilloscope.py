@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional
+from typing import Optional
 
 import numpy as np
 import pyqtgraph as pg
@@ -26,7 +26,6 @@ from PyQt6.QtWidgets import (
 
 from src.core.analysis import AudioCalc
 from src.core.audio_engine import AudioEngine
-from src.core.comparison_manager import AxisMetadata, CalibrationInfo, ComparisonTrace
 from src.core.localization import tr
 from src.core.ring_buffer import RingBuffer
 from src.core.utils import format_si
@@ -41,7 +40,6 @@ from src.gui.styles import (
     STYLE_TOGGLE_BTN_LIGHT,
 )
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
-from src.gui.widgets.comparable_interface import ComparableWidgetInterface
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 from src.measurement_modules.base import MeasurementModule
 
@@ -687,14 +685,13 @@ class Oscilloscope(MeasurementModule):
         return True
 
 
-class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetInterface, SplittableWidgetInterface):
+class OscilloscopeWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInterface):
     VIEW_Y_MIN = -4.0
     VIEW_Y_MAX = 4.0
 
     def __init__(self, module: Oscilloscope):
         QWidget.__init__(self)
         CompactableWidgetInterface.__init__(self)
-        ComparableWidgetInterface.__init__(self)
         SplittableWidgetInterface.__init__(self)
         self.module = module
         self._rgba_buffer = None
@@ -1914,92 +1911,3 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, ComparableWidgetIn
                     bottom_axis.setHeight(0)
                 show_y = getattr(self.module, "show_y_axis", False)
                 self._update_y_axis_display(show_y)
-
-    def get_comparable_data(self) -> List[ComparisonTrace]:
-        if self.last_display_data is None or self.last_display_time is None:
-            return []
-
-        import uuid
-        from datetime import datetime
-
-        data = self.last_display_data
-        t = self.last_display_time
-        is_calibrated, input_sensitivity, _unit = self.module.get_amplitude_display_state()
-        timestamp = datetime.now().isoformat()
-        traces = []
-
-        if self.module.show_left:
-            trace_id = str(uuid.uuid4())
-            trace_name = f"{tr('Oscilloscope')} - L ({datetime.now().strftime('%H:%M:%S')})"
-            x_axis = AxisMetadata(dimension="time", base_unit="s", display_unit="s", is_log=False)
-
-            if is_calibrated:
-                y_axis = AxisMetadata(dimension="voltage", base_unit="V", display_unit="V", is_log=False)
-                y_data = data[:, 0] * input_sensitivity
-                ref_lvl = "absolute"
-            else:
-                y_axis = AxisMetadata(dimension="voltage", base_unit="FS", display_unit="FS", is_log=False)
-                y_data = data[:, 0]
-                ref_lvl = "relative"
-
-            trace_l = ComparisonTrace(
-                id=trace_id,
-                name=trace_name,
-                source_module="Oscilloscope",
-                timestamp=timestamp,
-                plot_type="time_series",
-                x_axis=x_axis,
-                y_axis=y_axis,
-                x_data=t,
-                y_data=y_data,
-                calibration=CalibrationInfo(
-                    is_calibrated=is_calibrated,
-                    input_sensitivity=input_sensitivity,
-                    applied_offset_db=0.0,
-                    reference_level=ref_lvl,
-                ),
-                metadata={
-                    "channel": "Left",
-                    "timebase": self.module.timebase,
-                },
-            )
-            traces.append(trace_l)
-
-        if self.module.show_right:
-            trace_id = str(uuid.uuid4())
-            trace_name = f"{tr('Oscilloscope')} - R ({datetime.now().strftime('%H:%M:%S')})"
-            x_axis = AxisMetadata(dimension="time", base_unit="s", display_unit="s", is_log=False)
-
-            if is_calibrated:
-                y_axis = AxisMetadata(dimension="voltage", base_unit="V", display_unit="V", is_log=False)
-                y_data = data[:, 1] * input_sensitivity
-                ref_lvl = "absolute"
-            else:
-                y_axis = AxisMetadata(dimension="voltage", base_unit="FS", display_unit="FS", is_log=False)
-                y_data = data[:, 1]
-                ref_lvl = "relative"
-
-            trace_r = ComparisonTrace(
-                id=trace_id,
-                name=trace_name,
-                source_module="Oscilloscope",
-                timestamp=timestamp,
-                plot_type="time_series",
-                x_axis=x_axis,
-                y_axis=y_axis,
-                x_data=t,
-                y_data=y_data,
-                calibration=CalibrationInfo(
-                    is_calibrated=is_calibrated,
-                    input_sensitivity=input_sensitivity,
-                    applied_offset_db=0.0,
-                    reference_level=ref_lvl,
-                ),
-                metadata={
-                    "channel": "Right",
-                    "timebase": self.module.timebase,
-                },
-            )
-            traces.append(trace_r)
-
-        return traces

@@ -24,21 +24,14 @@ MATRIX_PATH = ROOT / "docs" / "widget_feature_implementation_matrix.md"
 CAPABILITY_FIELDS = {
     "compact": "compact_mode",
     "split": "split_window",
-    "compare": "comparison",
 }
 EXCLUSION_LABELS = {
     CapabilityExclusionReason.NO_INDEPENDENT_DISPLAY: "外A",
-    CapabilityExclusionReason.NON_TRACE_COMPARISON: "外B",
-    CapabilityExclusionReason.COMPARISON_RECEIVER: "外C",
-    CapabilityExclusionReason.COMPARISON_DEFERRED: "外D",
     CapabilityExclusionReason.COMPACT_DEFERRED: "外E",
     CapabilityExclusionReason.SPLIT_DEFERRED: "外F",
 }
 EXCLUSION_NOTES = {
     CapabilityExclusionReason.NO_INDEPENDENT_DISPLAY: "独立表示部なし",
-    CapabilityExclusionReason.NON_TRACE_COMPARISON: "比較対象がトレースではない",
-    CapabilityExclusionReason.COMPARISON_RECEIVER: "比較データの受信・表示側",
-    CapabilityExclusionReason.COMPARISON_DEFERRED: "比較送信は未実装",
     CapabilityExclusionReason.COMPACT_DEFERRED: "コンパクトは未実装",
     CapabilityExclusionReason.SPLIT_DEFERRED: "2 窓分割は未実装",
 }
@@ -67,7 +60,6 @@ def _module_note(capabilities) -> str:
         for capability in (
             capabilities.split_window,
             capabilities.compact_mode,
-            capabilities.comparison,
         )
         if capability.exclusion_reason is not None
     }
@@ -137,9 +129,8 @@ def render_summary() -> str:
     labels = {
         "compact": ("コンパクトモード", "ウィジェット個別"),
         "split": ("表示／操作の 2 窓分割（State C）", "ウィジェット個別"),
-        "compare": ("Plot Comparer への送信", "ウィジェット個別"),
     }
-    for capability_name in ("compact", "split", "compare"):
+    for capability_name in ("compact", "split"):
         field_name = CAPABILITY_FIELDS[capability_name]
         supported = sum(getattr(spec.capabilities, field_name).is_supported for spec in MODULE_REGISTRY.values())
         label, provider = labels[capability_name]
@@ -173,7 +164,6 @@ def render_modules() -> str:
                 "共✓",
                 _matrix_label(spec.capabilities.split_window),
                 _matrix_label(spec.capabilities.compact_mode),
-                _matrix_label(spec.capabilities.comparison),
                 _console_action_label(console_action.status),
                 "共✓",
                 "共✓",
@@ -187,14 +177,13 @@ def render_modules() -> str:
             "単一窓分離",
             "2 窓分割",
             "コンパクト",
-            "比較送信",
             "コンソール主操作",
             "撮影",
             "ログ",
             "備考",
         ],
         rows,
-        ["center", "left", "center", "center", "center", "center", "center", "center", "center", "left"],
+        ["center", "left", "center", "center", "center", "center", "center", "center", "left"],
     )
 
 

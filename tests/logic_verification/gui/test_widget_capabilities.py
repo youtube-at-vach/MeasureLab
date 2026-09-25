@@ -11,7 +11,6 @@ from src.gui.main_window import _load_module_class
 from src.gui.module_registry import (
     CapabilityExclusionReason,
     CapabilityStatus,
-    COMPARISON_DEFERRED,
     FeatureCapability,
     MODULE_REGISTRY,
     NO_INDEPENDENT_DISPLAY,
@@ -20,7 +19,6 @@ from src.gui.module_registry import (
     WidgetCapabilities,
 )
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
-from src.gui.widgets.comparable_interface import ComparableWidgetInterface
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper, validate_widget_capabilities
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 from src.measurement_modules.base import MeasurementModule
@@ -29,12 +27,10 @@ from src.measurement_modules.base import MeasurementModule
 FULL_CAPABILITIES = WidgetCapabilities(
     split_window=SUPPORTED,
     compact_mode=SUPPORTED,
-    comparison=SUPPORTED,
 )
 NO_CAPABILITIES = WidgetCapabilities(
     split_window=NO_INDEPENDENT_DISPLAY,
     compact_mode=NO_INDEPENDENT_DISPLAY,
-    comparison=NO_INDEPENDENT_DISPLAY,
 )
 
 
@@ -69,11 +65,6 @@ def test_registered_widget_matches_declared_capabilities(module_key, qapp, share
                 SplittableWidgetInterface,
                 ("get_display_widget", "get_control_widget", "restore_split_panels"),
             ),
-            (
-                registration.capabilities.comparison.is_supported,
-                ComparableWidgetInterface,
-                ("get_comparable_data",),
-            ),
         )
         for declared_supported, interface_type, required_methods in contracts:
             assert isinstance(widget, interface_type) is declared_supported
@@ -98,14 +89,10 @@ class _DuckTypedWidget(QWidget):
     def get_control_widget(self) -> QWidget:
         return self
 
-    def get_comparable_data(self) -> list[object]:
-        return []
-
 
 class _FullyCapableWidget(
     QWidget,
     CompactableWidgetInterface,
-    ComparableWidgetInterface,
     SplittableWidgetInterface,
 ):
     def __init__(self):
@@ -130,9 +117,6 @@ class _FullyCapableWidget(
         self.main_layout.addWidget(self.display_widget)
         self.main_layout.addWidget(self.control_widget)
 
-    def get_comparable_data(self) -> list[object]:
-        return []
-
 
 class _MissingCompactOverride(QWidget, CompactableWidgetInterface):
     def __init__(self):
@@ -147,7 +131,6 @@ def test_wrapper_uses_declarations_instead_of_duck_typing(qtbot):
 
     assert wrapper.compact_btn is None
     assert wrapper.split_btn is None
-    assert wrapper.compare_action is None
 
     wrapper.detach()
     assert wrapper.independent_window is not None
@@ -161,7 +144,6 @@ def test_supported_declarations_drive_wrapper_and_independent_window(qtbot):
 
     assert wrapper.compact_btn is not None
     assert wrapper.split_btn is not None
-    assert wrapper.compare_action is not None
 
     wrapper.detach()
     assert wrapper.independent_window is not None
@@ -185,7 +167,6 @@ def test_capability_mismatches_fail_fast(qtbot):
     missing_override_capabilities = WidgetCapabilities(
         split_window=SPLIT_DEFERRED,
         compact_mode=SUPPORTED,
-        comparison=COMPARISON_DEFERRED,
     )
     with pytest.raises(ValueError, match=r"does not override update_compact_layout\(\)"):
         validate_widget_capabilities(missing_override, missing_override_capabilities)
@@ -199,6 +180,5 @@ def test_feature_specific_exclusion_reasons_are_enforced():
     with pytest.raises(ValueError, match="not a valid exclusion reason for compact_mode"):
         WidgetCapabilities(
             split_window=SPLIT_DEFERRED,
-            compact_mode=COMPARISON_DEFERRED,
-            comparison=COMPARISON_DEFERRED,
+            compact_mode=SPLIT_DEFERRED,
         )

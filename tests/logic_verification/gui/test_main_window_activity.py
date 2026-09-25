@@ -14,7 +14,6 @@ from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 NO_CAPABILITIES = WidgetCapabilities(
     split_window=NO_INDEPENDENT_DISPLAY,
     compact_mode=NO_INDEPENDENT_DISPLAY,
-    comparison=NO_INDEPENDENT_DISPLAY,
 )
 
 

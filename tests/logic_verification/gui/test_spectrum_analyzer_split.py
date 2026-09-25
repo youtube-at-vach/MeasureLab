@@ -202,6 +202,3 @@ def test_detached_state_can_transition_to_split(spectrum_widget, spectrum_wrappe
     assert spectrum_widget.controls_group.parent() is wrapper.split_control_window
 
     wrapper.reattach_all()
-    spectrum_widget.last_freqs = np.array([20.0, 1000.0])
-    spectrum_widget.last_mags = np.array([-40.0, -20.0])
-    assert spectrum_widget.get_comparable_data()
