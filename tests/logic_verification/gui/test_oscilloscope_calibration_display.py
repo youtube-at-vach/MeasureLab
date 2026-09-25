@@ -81,22 +81,6 @@ class TestOscilloscopeCalibrationDisplay(unittest.TestCase):
         self.assertIn("V1: 0.000V", cursor_text)
         self.assertIn("V2: 1.000V", cursor_text)
 
-    def test_comparison_trace_unit_matches_calibration_state(self):
-        self.module.show_right = False
-        self.widget.last_display_time = np.array([0.0, 1.0])
-        self.widget.last_display_data = np.array([[0.0, 0.0], [0.5, 0.0]])
-
-        uncalibrated_trace = self.widget.get_comparable_data()[0]
-        self.assertEqual(uncalibrated_trace.y_axis.display_unit, "FS")
-        self.assertEqual(uncalibrated_trace.calibration.reference_level, "relative")
-        np.testing.assert_allclose(uncalibrated_trace.y_data, [0.0, 0.5])
-
-        self.engine.calibration.input_sensitivity_is_calibrated = True
-        calibrated_trace = self.widget.get_comparable_data()[0]
-        self.assertEqual(calibrated_trace.y_axis.display_unit, "V")
-        self.assertEqual(calibrated_trace.calibration.reference_level, "absolute")
-        np.testing.assert_allclose(calibrated_trace.y_data, [0.0, 1.0])
-
 
 if __name__ == "__main__":
     unittest.main()

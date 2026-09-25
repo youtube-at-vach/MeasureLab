@@ -24,9 +24,7 @@ from PyQt6.QtWidgets import (
 from src.core.localization import tr
 from src.gui.module_registry import WidgetCapabilities
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
-from src.gui.widgets.comparable_interface import ComparableWidgetInterface
 from src.gui.widgets.splittable_interface import SplittableWidgetInterface
-from src.core.comparison_manager import ComparisonManager
 
 
 def validate_widget_capabilities(widget: QWidget, capabilities: WidgetCapabilities) -> None:
@@ -44,12 +42,6 @@ def validate_widget_capabilities(widget: QWidget, capabilities: WidgetCapabiliti
             capabilities.split_window.is_supported,
             SplittableWidgetInterface,
             ("get_display_widget", "get_control_widget", "restore_split_panels"),
-        ),
-        (
-            "comparison",
-            capabilities.comparison.is_supported,
-            ComparableWidgetInterface,
-            ("get_comparable_data",),
         ),
     )
     widget_type = type(widget)
@@ -299,7 +291,6 @@ class DetachableWidgetWrapper(QWidget):
         self._pre_compact_window_size = None
 
         self.is_compactable = capabilities.compact_mode.is_supported
-        self.is_comparable = capabilities.comparison.is_supported
         self.is_splittable = capabilities.split_window.is_supported
 
         self.init_ui()
@@ -325,8 +316,6 @@ class DetachableWidgetWrapper(QWidget):
         self.detach_btn.setVisible(not hosted)
         self.more_btn.setVisible(not hosted)
         self.logs_action.setVisible(not hosted)
-        if self.compare_action is not None:
-            self.compare_action.setVisible(not hosted)
         if self.split_btn is not None:
             self.split_btn.setVisible(not hosted)
 
@@ -485,12 +474,6 @@ class DetachableWidgetWrapper(QWidget):
             self.compact_btn.setCheckable(True)
             self.compact_btn.clicked.connect(self.toggle_compact)
             self.compact_btn.setEnabled(False)
-
-        self.compare_action = None
-        if self.is_comparable:
-            self.compare_action = QAction(tr("Send to Comparer"), self.more_menu)
-            self.compare_action.triggered.connect(self.send_to_comparer)
-            self.more_menu.addAction(self.compare_action)
 
         self.split_btn = None
         if self.is_splittable:
@@ -885,31 +868,3 @@ class DetachableWidgetWrapper(QWidget):
             self.toggle_compact(False)
             self.compact_btn.setEnabled(False)
         self.is_split = False
-
-    def send_to_comparer(self):
-        if not self.is_comparable:
-            return
-        try:
-            traces = self.content_widget.get_comparable_data()
-            if not traces:
-                QMessageBox.warning(self, tr("Compare"), tr("No data available to compare."))
-                return
-
-            manager = ComparisonManager.instance()
-            for trace in traces:
-                manager.add_trace(trace)
-
-            QMessageBox.information(
-                self,
-                tr("Compare"),
-                tr("Successfully sent {0} traces to Plot Comparer.").format(len(traces)),
-            )
-        except Exception as e:
-            import logging
-
-            logging.getLogger(__name__).error("Failed to send data to comparer", exc_info=True)
-            QMessageBox.critical(
-                self,
-                tr("Error"),
-                tr("Failed to send data to comparer: {0}").format(str(e)),
-            )

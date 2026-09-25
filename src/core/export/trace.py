@@ -1,12 +1,8 @@
-import json
-import logging
+"""Trace data shared by CSV/JSON exporters and their callers."""
+
 import uuid
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional
-
-from PyQt6.QtCore import QObject, pyqtSignal
-
-logger = logging.getLogger(__name__)
+from typing import Any, Dict, Optional
 
 
 @dataclass
@@ -52,7 +48,7 @@ class AxisMetadata:
 
 
 @dataclass
-class ComparisonTrace:
+class ExportTrace:
     id: str  # Unique trace ID
     name: str  # Display name
     source_module: str  # Generating module name
@@ -119,7 +115,7 @@ class ComparisonTrace:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ComparisonTrace":
+    def from_dict(cls, data: Dict[str, Any]) -> "ExportTrace":
         import numpy as np
 
         # Convert list of floats (handling potential NumPy conversions upstream if necessary)
@@ -149,100 +145,3 @@ class ComparisonTrace:
             calibration=CalibrationInfo.from_dict(data.get("calibration", {})),
             metadata=dict(data.get("metadata", {})),
         )
-
-
-class ComparisonManager(QObject):
-    """
-    Singleton class to manage the list of traces shared across all modules
-    for comparative plotting.
-    """
-
-    trace_added = pyqtSignal(str)  # Emits trace_id
-    trace_removed = pyqtSignal(str)  # Emits trace_id
-    cleared = pyqtSignal()
-
-    _instance: Optional["ComparisonManager"] = None
-
-    @classmethod
-    def instance(cls) -> "ComparisonManager":
-        if cls._instance is None:
-            cls._instance = cls()
-        return cls._instance
-
-    def __init__(self):
-        super().__init__()
-        # Prevent double initialization if subclassed or called multiple times
-        if hasattr(self, "_initialized"):
-            return
-        self._traces: Dict[str, ComparisonTrace] = {}
-        self._initialized = True
-        logger.info("ComparisonManager initialized.")
-
-    def add_trace(self, trace: ComparisonTrace):
-        """Add or update a comparison trace."""
-        self._traces[trace.id] = trace
-        logger.info(f"Trace added: '{trace.name}' (ID: {trace.id}, Source: {trace.source_module})")
-        self.trace_added.emit(trace.id)
-
-    def remove_trace(self, trace_id: str):
-        """Remove a trace by its ID."""
-        if trace_id in self._traces:
-            name = self._traces[trace_id].name
-            del self._traces[trace_id]
-            logger.info(f"Trace removed: '{name}' (ID: {trace_id})")
-            self.trace_removed.emit(trace_id)
-
-    def get_trace(self, trace_id: str) -> Optional[ComparisonTrace]:
-        """Retrieve a specific trace."""
-        return self._traces.get(trace_id)
-
-    def get_all_traces(self) -> Dict[str, ComparisonTrace]:
-        """Get all currently loaded traces."""
-        return self._traces.copy()
-
-    def clear_all_traces(self):
-        """Remove all loaded traces."""
-        self._traces.clear()
-        logger.info("All comparison traces cleared.")
-        self.cleared.emit()
-
-    def export_to_file(self, filepath: str, trace_ids: List[str]) -> bool:
-        """
-        Export selected traces to a JSON file.
-        """
-        try:
-            traces = self._traces
-            export_data = [trace.to_dict() for tid in trace_ids if (trace := traces.get(tid)) is not None]
-
-            with open(filepath, "w", encoding="utf-8") as f:
-                json.dump({"version": "1.0", "traces": export_data}, f, indent=4)
-            logger.info(f"Exported {len(export_data)} traces to {filepath}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to export traces: {e}", exc_info=True)
-            return False
-
-    def import_from_file(self, filepath: str) -> List[str]:
-        """
-        Import traces from a JSON file and add them to the manager.
-        Returns a list of newly imported trace IDs.
-        """
-        imported_ids = []
-        try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                content = json.load(f)
-
-            traces_data = content.get("traces", [])
-            for tdata in traces_data:
-                trace = ComparisonTrace.from_dict(tdata)
-                # Ensure trace ID is unique if we're importing it again
-                # but usually we want to preserve it unless it collides.
-                # If ID exists, we can generate a new one or overwrite. Let's overwrite.
-                self.add_trace(trace)
-                imported_ids.append(trace.id)
-
-            logger.info(f"Imported {len(imported_ids)} traces from {filepath}")
-            return imported_ids
-        except Exception as e:
-            logger.error(f"Failed to import traces: {e}", exc_info=True)
-            return []

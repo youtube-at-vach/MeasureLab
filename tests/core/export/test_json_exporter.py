@@ -3,7 +3,7 @@ import logging
 from unittest.mock import patch, mock_open
 
 from src.core.export.json_exporter import JsonTraceExporter
-from src.core.comparison_manager import ComparisonTrace, AxisMetadata
+from src.core.export.trace import ExportTrace, AxisMetadata
 
 
 def test_export_traces_error_path(caplog):
@@ -18,7 +18,7 @@ def test_export_traces_error_path(caplog):
 
 def test_export_traces_success():
     exporter = JsonTraceExporter()
-    trace = ComparisonTrace(
+    trace = ExportTrace(
         id="test_1",
         name="Test Trace",
         source_module="test",
@@ -58,6 +58,6 @@ def test_format_id():
 
 def test_properties():
     exporter = JsonTraceExporter()
-    assert exporter.name == "MeasureLab Comparison Files (*.mlcomp)"
-    assert exporter.file_filter == "MeasureLab Comparison Files (*.mlcomp *.json)"
-    assert exporter.default_extension == ".mlcomp"
+    assert exporter.name == "JSON Files (*.json)"
+    assert exporter.file_filter == "JSON Files (*.json)"
+    assert exporter.default_extension == ".json"

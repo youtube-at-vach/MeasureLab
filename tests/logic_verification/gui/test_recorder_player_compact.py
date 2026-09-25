@@ -130,9 +130,8 @@ def test_responsive_layout_switches_by_card_not_by_scaling(qtbot):
     assert widget.cards_layout.direction() == QBoxLayout.Direction.LeftToRight
 
 
-def test_registry_declares_compact_without_split_or_comparison():
+def test_registry_declares_compact_without_split():
     capabilities = MODULE_REGISTRY[MODULE_RECORDER_PLAYER].capabilities
 
     assert capabilities.compact_mode.is_supported
     assert not capabilities.split_window.is_supported
-    assert not capabilities.comparison.is_supported

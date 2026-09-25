@@ -1,7 +1,7 @@
 import json
 import logging
 from typing import List, Dict, Any
-from src.core.comparison_manager import ComparisonTrace
+from src.core.export.trace import ExportTrace
 from src.core.localization import tr
 from .base import BaseTraceExporter
 
@@ -15,17 +15,17 @@ class JsonTraceExporter(BaseTraceExporter):
 
     @property
     def name(self) -> str:
-        return tr("MeasureLab Comparison Files (*.mlcomp)")
+        return tr("JSON Files (*.json)")
 
     @property
     def file_filter(self) -> str:
-        return tr("MeasureLab Comparison Files (*.mlcomp *.json)")
+        return tr("JSON Files (*.json)")
 
     @property
     def default_extension(self) -> str:
-        return ".mlcomp"
+        return ".json"
 
-    def export_traces(self, filepath: str, traces: List[ComparisonTrace], options: Dict[str, Any]) -> bool:
+    def export_traces(self, filepath: str, traces: List[ExportTrace], options: Dict[str, Any]) -> bool:
         try:
             export_data = [trace.to_dict() for trace in traces]
 

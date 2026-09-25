@@ -2,7 +2,7 @@ import csv
 import logging
 import numpy as np
 from typing import List, Dict, Any
-from src.core.comparison_manager import ComparisonTrace
+from src.core.export.trace import ExportTrace
 from src.core.localization import tr
 from .base import BaseTraceExporter
 
@@ -34,7 +34,7 @@ class CsvTraceExporter(BaseTraceExporter):
             return f"'{field_str}"
         return field_str
 
-    def export_traces(self, filepath: str, traces: List[ComparisonTrace], options: Dict[str, Any]) -> bool:
+    def export_traces(self, filepath: str, traces: List[ExportTrace], options: Dict[str, Any]) -> bool:
         delimiter = "," if options.get("delimiter", "comma") == "comma" else "\t"
         layout = options.get("layout", "merged")  # "independent" or "merged"
         include_headers = options.get("include_headers", True)
@@ -64,7 +64,7 @@ class CsvTraceExporter(BaseTraceExporter):
             logger.error(f"Failed to export traces to CSV: {e}", exc_info=True)
             return False
 
-    def _export_merged(self, writer, traces: List[ComparisonTrace], include_headers: bool, options: Dict[str, Any]):
+    def _export_merged(self, writer, traces: List[ExportTrace], include_headers: bool, options: Dict[str, Any]):
         ref_id = options.get("reference_trace_id", "union")
 
         # 1. Determine common X grid
@@ -155,7 +155,7 @@ class CsvTraceExporter(BaseTraceExporter):
 
         writer.writerows(zip(*cols, strict=False))
 
-    def _export_independent(self, writer, traces: List[ComparisonTrace], include_headers: bool):
+    def _export_independent(self, writer, traces: List[ExportTrace], include_headers: bool):
         # 1. Write Headers
         if include_headers:
             headers = []

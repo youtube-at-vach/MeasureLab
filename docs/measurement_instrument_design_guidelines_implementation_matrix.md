@@ -1,12 +1,14 @@
 # MeasureLab GUI Design Guideline 対応状況マトリクス
 
+> この文書は 2026-08-26 時点の調査記録です。2026-09-25 に Plot Comparer と比較送信機能は削除されました。以下の比較機能に関する記述は過去の状態を示します。現在の能力宣言は `src/gui/module_registry.py`、共通機能一覧は `docs/widget_feature_implementation_matrix.md` を参照してください。
+
 ## 概要
 
 更新日: 2026-08-27
 基準文書: [`guide/MEASUREMENT_INSTRUMENT_DESIGN_GUIDELINES.md`](https://github.com/youtube-at-vach/MeasureLab/blob/main/guide/MEASUREMENT_INSTRUMENT_DESIGN_GUIDELINES.md)
 対象コード: `src/gui/`、`src/measurement_modules/`、関連テスト
 
-この文書は、MeasureLab GUI Design Guideline v2.1 に対する現在の実装状況を、ウィジェットごとに記録する監査台帳です。実装を直すための設計書ではなく、対応している点、対応していない点、コード上の根拠、未検証の点を明文化することを目的とします。
+この文書は、MeasureLab GUI Design Guideline v2.1 に対する 2026-08-27 時点の実装状況を、ウィジェットごとに記録した監査台帳です。実装を直すための設計書ではなく、対応している点、対応していない点、コード上の根拠、未検証の点を明文化することを目的とします。
 
 > [!IMPORTANT]
 > 「未対応／要確認」は、その機能を各モジュールへ追加する実装指示ではありません。特にクリッピング、I/O 異常、入力品質などは、必要性、既存の共通状態、リアルタイム負荷をガイドライン 1.5 節に従って評価してください。同じ監視を各 callback へ追加することは禁止され、共通監視も実利用先と性能予算が確認できるまでは導入しません。
@@ -377,7 +379,7 @@ Qtの標準入力、スピンボックス、コンボボックス、ワーカー
 * **対象外／保留:** Compact、Split、Comparisonは `COMPACT_DEFERRED`、`SPLIT_DEFERRED`、`COMPARISON_DEFERRED`、コンソール主操作は単一の測定トグルへ集約しないため対象外です。
 * **根拠:** `src/gui/widgets/processor_benchmark.py`、`MODULE_PROCESSOR_BENCHMARK`
 
-### 36. Plot Comparer
+### 36. Plot Comparer（削除済み）
 
 * **対応:** `ComparisonManager` のトレースを受信し、ドメインフィルタ、表示／非表示、色、Y軸割当、ゲインオフセット、時間シフト、カーソル、複数軸、CSV／JSONエクスポートを提供します。比較器自身を送信元にしない能力宣言はガイドラインに適合します。
 * **未対応／要確認:** トレース色、軸線、ステータス色へ直接色指定があり、`THEME-01`。カスタム読出し、折りたたみボタン、色選択、軸割当の accessible name とキーボード操作が不足します（`A11Y-01`、`CONTROL-01`）。比較不能な単位、校正、品質フラグ、変換をUIで常に理由付き除外する契約と、エクスポートの品質情報が不十分です（`DATA-01`、`DATA-02`、`PLOT-01`）。

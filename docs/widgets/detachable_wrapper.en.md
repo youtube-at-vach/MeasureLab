@@ -24,12 +24,6 @@ Choose **"Logs"** from the **"More"** menu in the upper right of the widget to o
 * **Use Cases**: Used to check warnings or errors during measurements, and to obtain debugging information.
 * **Features**: You can filter the level of logs to display, such as all logs, info, warnings, or errors only.
 
-### Sending to Plot Comparer (Send to Comparer)
-
-The **"Send to Comparer"** action appears in the **"More"** menu only for widgets that can export 1D/XY traces.
-Selecting it adds the current measurement traces to Plot Comparer so they can be overlaid with other results.
-A warning is shown when there is no data available to send.
-
 ### Splitting Windows (Split Window)
 
 By pressing the **"Split Window"** button (available only for widgets that support this feature), the widget is split into two independent windows: a "display section" (such as waveforms) and a "control section" for settings.
@@ -58,7 +52,7 @@ For supported widgets, the **"Compact"** button is always present in the common 
 Each widget, such as the Spectrogram, consists of the following three areas:
 
 1. **Common Header**:
-    An area containing the title and direct icons for More, screenshot, compact, split, and detach actions. The More menu contains Logs and, for supported widgets, Send to Comparer.
+    An area containing the title and direct icons for More, screenshot, compact, split, and detach actions. The More menu contains Logs.
 2. **Main Display Area**:
     The most important area where waveforms, graphs, and numerical values are displayed.
 3. **Control Area**:

@@ -29,7 +29,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 
 from src.core.audio_engine import AudioEngine
-from src.core.comparison_manager import AxisMetadata, ComparisonTrace
+from src.core.export.trace import AxisMetadata, ExportTrace
 from src.core.export.csv_exporter import CsvTraceExporter
 from src.core.localization import tr
 from src.gui.styles import MONOSPACE_FONT_FAMILY, button_style
@@ -1088,7 +1088,7 @@ class SoundQualityAnalyzerWidget(QWidget):
                 for metric in self.metrics:
                     times, values = metric.history(channel)
                     traces.append(
-                        ComparisonTrace(
+                        ExportTrace(
                             id=f"{channel['name']}_{metric.series}",
                             name=f"{tr(channel['name'])}_{metric.series}",
                             source_module=self.module.name,

@@ -9,7 +9,6 @@ from PyQt6.QtWidgets import QHBoxLayout, QWidget
 
 from src.gui.module_registry import (
     COMPACT_DEFERRED,
-    COMPARISON_DEFERRED,
     NO_INDEPENDENT_DISPLAY,
     SUPPORTED,
     WidgetCapabilities,
@@ -22,7 +21,6 @@ from src.gui.widgets.splittable_interface import SplittableWidgetInterface
 NO_CAPABILITIES = WidgetCapabilities(
     split_window=NO_INDEPENDENT_DISPLAY,
     compact_mode=NO_INDEPENDENT_DISPLAY,
-    comparison=NO_INDEPENDENT_DISPLAY,
 )
 
 
@@ -65,7 +63,6 @@ def split_wrapper(qapp, qtbot):
     capabilities = WidgetCapabilities(
         split_window=SUPPORTED,
         compact_mode=COMPACT_DEFERRED,
-        comparison=COMPARISON_DEFERRED,
     )
     wrapper = DetachableWidgetWrapper(content, "Split Actions", capabilities=capabilities)
     qtbot.addWidget(wrapper)
@@ -166,35 +163,6 @@ def test_logs_action_opens_and_activates_shared_viewer(qtbot):
     viewer.show.assert_called_once_with()
     viewer.raise_.assert_called_once_with()
     viewer.activateWindow.assert_called_once_with()
-
-
-def test_more_menu_contains_comparison_only_when_supported(qtbot):
-    plain_wrapper = DetachableWidgetWrapper(QWidget(), "Plain", capabilities=NO_CAPABILITIES)
-    qtbot.addWidget(plain_wrapper)
-    assert plain_wrapper.logs_action in plain_wrapper.more_menu.actions()
-    assert plain_wrapper.compare_action is None
-
-    comparable_capabilities = WidgetCapabilities(
-        split_window=NO_INDEPENDENT_DISPLAY,
-        compact_mode=NO_INDEPENDENT_DISPLAY,
-        comparison=SUPPORTED,
-    )
-
-    from src.gui.widgets.comparable_interface import ComparableWidgetInterface
-
-    class _ComparableContent(QWidget, ComparableWidgetInterface):
-        def get_comparable_data(self):
-            return []
-
-    comparable_wrapper = DetachableWidgetWrapper(
-        _ComparableContent(),
-        "Comparable",
-        capabilities=comparable_capabilities,
-    )
-    qtbot.addWidget(comparable_wrapper)
-
-    assert comparable_wrapper.compare_action is not None
-    assert comparable_wrapper.compare_action in comparable_wrapper.more_menu.actions()
 
 
 def test_header_buttons_use_clear_custom_icons_and_accessible_labels(split_wrapper):

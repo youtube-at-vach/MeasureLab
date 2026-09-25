@@ -28,7 +28,6 @@ Checklist to find the best tool for "what you want to do" quickly.
 | **Analyze noise types (1/f, etc.)** | [Noise Profiler](widgets/noise_profiler.en.md) |
 | **Count rare anomalies such as popcorn noise** | [Event Detector](widgets/event_detector.en.md) |
 | **Precisely align L/R acoustic characteristics** | [Stereo Alignment Monitor](widgets/stereo_alignment_monitor.en.md) |
-| **Overlay and compare multiple plot traces from different measurements** | [Plot Comparer](widgets/plot_comparer.en.md) |
 | **Evaluate digital/analog transmission path quality, latency, and integrity** | [Transmission Analyzer (Experimental)](widgets/transmission_analyzer.en.md) |
 
 ---
@@ -185,8 +184,6 @@ Other useful functions.
     * A framework for detaching any widget into a separate window.
 * **[Measurement Console (Experimental)](widgets/measurement_console.en.md)**
     * Arranges multiple existing measurement widgets in a dockable workspace without duplicating audio processing.
-* **[Plot Comparer](widgets/plot_comparer.en.md)**
-    * Imports measurement traces saved/exported from other modules (Spectrum Analyzer, Network Analyzer, Oscilloscope, etc.) and allows detailed comparison by overlaying them with adjustable gain offsets, axis shifts, and peak alignment.
 * **[Processor Benchmark](widgets/processor_benchmark.en.md)**
     * Tests the FFT and rendering performance of your PC to verify real-time processing limits.
 * **[Settings](widgets/settings.en.md)**

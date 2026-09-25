@@ -42,10 +42,7 @@ from src.core.output_impedance import LoadCapture, PairedLoadStudy, SweepConditi
 from src.gui.styles import button_style
 from src.core.utils import amplitude_to_linear, linear_to_amplitude
 from src.measurement_modules.base import MeasurementModule
-from typing import List
-from src.gui.widgets.comparable_interface import ComparableWidgetInterface
 from src.gui.widgets.instrument_plot import InstrumentPlotWidget, logarithmic_ticks_125
-from src.core.comparison_manager import ComparisonTrace, AxisMetadata, CalibrationInfo
 
 logger = logging.getLogger(__name__)
 
@@ -893,10 +890,9 @@ class NetworkAnalyzer(MeasurementModule):
         self.signals.delay_comp_result.emit(total_delay_sec, total_delay_samples)
 
 
-class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
+class NetworkAnalyzerWidget(QWidget):
     def __init__(self, module: NetworkAnalyzer):
         QWidget.__init__(self)
-        ComparableWidgetInterface.__init__(self)
         self.module = module
         self.load_study = PairedLoadStudy()
         self.last_captured_sweep_revision = 0
@@ -2607,116 +2603,3 @@ class NetworkAnalyzerWidget(QWidget, ComparableWidgetInterface):
                 )
 
             curve.setData(freqs_to_plot, y_values)
-
-    def get_comparable_data(self) -> List[ComparisonTrace]:
-        if not self.freqs:
-            return []
-
-        import uuid
-        from datetime import datetime
-
-        freqs_arr = np.array(self.freqs)
-        mags_arr = np.array(self.mags)
-        phases_arr = np.array(self.phases)
-
-        # Apply frequency limits if checked
-        mask = np.ones(len(freqs_arr), dtype=bool)
-        if self.limit_check.isChecked():
-            limit = self.limit_spin.value()
-            mask &= freqs_arr <= limit
-        if self.min_limit_check.isChecked():
-            min_limit = self.min_limit_spin.value()
-            mask &= freqs_arr >= min_limit
-
-        freqs_arr = freqs_arr[mask]
-        mags_arr = mags_arr[mask]
-        phases_arr = phases_arr[mask]
-
-        if len(freqs_arr) == 0:
-            return []
-
-        is_transfer_mode = self.module.input_mode in {"XFER", "XFER_REV", "XTALK_LR", "XTALK_RL"}
-        is_single_absolute_mode = (not is_transfer_mode) and (self.single_mode_combo.currentData() == "absolute")
-
-        try:
-            input_sensitivity = self.module.audio_engine.calibration.input_sensitivity
-            is_calibrated = self.module.audio_engine.calibration.is_calibrated
-        except Exception:
-            input_sensitivity = 1.0
-            is_calibrated = False
-
-        timestamp = datetime.now().isoformat()
-        trace_id = str(uuid.uuid4())
-
-        # Determine trace name based on mode
-        mode_str = tr(self.module.input_mode)
-        trace_name = f"{tr('Network Analyzer')} - {mode_str} ({datetime.now().strftime('%H:%M:%S')})"
-
-        # Handle X, Y axes depending on transfer vs single channel mode and relative vs absolute mode
-        if is_transfer_mode or (not is_single_absolute_mode):
-            # Transfer function or Relative Single-Channel mode is relative dB (Gain) and Phase
-            x_axis = AxisMetadata(dimension="frequency", base_unit="Hz", display_unit="Hz", is_log=True)
-            y_axis = AxisMetadata(dimension="gain", base_unit="dB", display_unit="dB", is_log=False)
-            y2_axis = AxisMetadata(dimension="phase", base_unit="deg", display_unit="deg", is_log=False)
-
-            y_data = mags_arr.tolist()
-            y2_data = phases_arr.tolist()
-
-            calibration = CalibrationInfo(
-                is_calibrated=is_calibrated,
-                input_sensitivity=input_sensitivity,
-                applied_offset_db=0.0,
-                reference_level="relative",
-            )
-        else:
-            # Single channel measurement - Absolute mode
-            x_axis = AxisMetadata(dimension="frequency", base_unit="Hz", display_unit="Hz", is_log=True)
-            y2_axis = AxisMetadata(dimension="phase", base_unit="deg", display_unit="deg", is_log=False)
-
-            # Base dB calculation (dBFS)
-            out_amp_db = 20 * np.log10(self.module.get_output_amplitude() + 1e-12)
-            base_db = mags_arr + out_amp_db
-
-            # Linear conversion
-            mags_linear = 10 ** (base_db / 20)
-
-            if is_calibrated:
-                # Volts (uncalibrated peak FS * sensitivity = Vrms)
-                y_axis = AxisMetadata(dimension="voltage", base_unit="V", display_unit="dBV", is_log=False)
-                y_data = (mags_linear * input_sensitivity).tolist()
-                ref_lvl = "absolute"
-            else:
-                # Relative FS
-                y_axis = AxisMetadata(dimension="voltage", base_unit="FS", display_unit="dBFS", is_log=False)
-                y_data = mags_linear.tolist()
-                ref_lvl = "relative"
-
-            y2_data = phases_arr.tolist()
-
-            calibration = CalibrationInfo(
-                is_calibrated=is_calibrated,
-                input_sensitivity=input_sensitivity,
-                applied_offset_db=0.0,
-                reference_level=ref_lvl,
-            )
-
-        trace = ComparisonTrace(
-            id=trace_id,
-            name=trace_name,
-            source_module="Network Analyzer",
-            timestamp=timestamp,
-            plot_type="frequency_response",
-            x_axis=x_axis,
-            y_axis=y_axis,
-            y2_axis=y2_axis,
-            x_data=freqs_arr.tolist(),
-            y_data=y_data,
-            y2_data=y2_data,
-            calibration=calibration,
-            metadata={
-                "input_mode": self.module.input_mode,
-                "smoothing": self.smooth_combo.currentText(),
-            },
-        )
-
-        return [trace]

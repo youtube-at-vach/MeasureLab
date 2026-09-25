@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any
-from src.core.comparison_manager import ComparisonTrace
+from src.core.export.trace import ExportTrace
 
 
 class BaseTraceExporter(ABC):
@@ -29,6 +29,6 @@ class BaseTraceExporter(ABC):
         pass
 
     @abstractmethod
-    def export_traces(self, filepath: str, traces: List[ComparisonTrace], options: Dict[str, Any]) -> bool:
+    def export_traces(self, filepath: str, traces: List[ExportTrace], options: Dict[str, Any]) -> bool:
         """Execute the export logic."""
         pass
