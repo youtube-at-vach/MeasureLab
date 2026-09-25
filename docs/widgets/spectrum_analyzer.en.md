@@ -157,5 +157,5 @@ markers. Labels that overlap or extend outside the plot are hidden; position
 symbols remain. Flat traces, endpoints and invalid values are not reported as
 peaks. Detection does not add work to the audio callback or retain frame history.
 Stopping retains the latest overlay; restarting or changing analysis settings
-clears it until the next live frame. Markers are display aids and are not added to
-comparison traces or exported spectrum data.
+clears it until the next live frame. Markers are display aids and are not included
+in exported spectrum data.

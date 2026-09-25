@@ -696,8 +696,6 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, SplittableWidgetIn
         self.module = module
         self._rgba_buffer = None
         self._clip_buffer = None
-        self.last_display_data = None
-        self.last_display_time = None
         self._updating_trigger_line = False
 
         self._time_array_cache = None
@@ -1656,9 +1654,6 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, SplittableWidgetIn
                 t = np.linspace(0, window_duration, current_len)
                 self._time_array_cache = t
                 self._time_array_cache_params = (window_duration, current_len)
-
-            self.last_display_data = data.copy()
-            self.last_display_time = t.copy()
 
             display_step = max(1, int(np.ceil(current_len / self.module.MAX_DISPLAY_SAMPLES)))
 
