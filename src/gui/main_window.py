@@ -1515,7 +1515,7 @@ class MainWindow(QMainWindow):
         if index == 1:
             self._ensure_settings_loaded()
             if self._settings_loaded:
-                self.settings_widget.refresh_backend_mode_state()
+                self.settings_widget.refresh_from_engine()
         elif index == 2:
             self._ensure_remote_audio_loaded()
         elif index >= self._MODULE_PAGE_OFFSET:

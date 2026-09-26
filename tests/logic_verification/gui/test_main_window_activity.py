@@ -533,6 +533,82 @@ def test_visible_navigation_updates_before_lazy_page_load(qtbot):
     assert loaded[0][1] > 0
 
 
+def test_settings_calibration_refreshes_after_other_page_changes_shared_values(qtbot):
+    window = MainWindow()
+    qtbot.addWidget(window)
+    window.on_tool_selected(1)
+    settings = window.settings_widget
+    settings.tabs.setCurrentWidget(settings.calibration_tab)
+
+    calibration = window.audio_engine.calibration
+    calibration.input_sensitivity = 2.5
+    calibration.input_sensitivity_is_calibrated = True
+    calibration.output_gain = 3.5
+    calibration.output_gain_is_calibrated = True
+    calibration.frequency_calibration_1pps = 1.0007
+    calibration.frequency_calibration_source = "1pps"
+
+    window.on_tool_selected(0)
+    window.on_tool_selected(1)
+
+    assert settings.in_sens_edit.text() == "2.5000"
+    assert settings.out_gain_edit.text() == "3.5000"
+    assert settings.freq_cal_1pps_ppm_edit.text() == "+700.000 ppm"
+    assert settings.freq_cal_source_combo.currentData() == "1pps"
+
+
+def test_settings_values_reach_modules_loaded_later(qtbot, monkeypatch):
+    from src.gui.widgets import frequency_counter
+    from src.gui.widgets.event_detector import EventDetectionMode
+
+    window = MainWindow()
+    qtbot.addWidget(window)
+    window.on_tool_selected(1)
+    settings = window.settings_widget
+    calibration = window.audio_engine.calibration
+    monkeypatch.setattr(calibration, "save", lambda: True)
+
+    settings.in_sens_edit.setText("2.5")
+    settings.on_in_sens_changed()
+    settings.out_gain_edit.setText("3.5")
+    settings.on_out_gain_changed()
+    calibration.set_frequency_calibration_1pps(1.0007)
+    settings.freq_cal_source_combo.setCurrentIndex(settings.freq_cal_source_combo.findData("1pps"))
+
+    def loaded(key):
+        index = window._module_keys.index(key)
+        window._ensure_module_loaded(index)
+        assert window.modules[index].audio_engine is window.audio_engine
+        return window.modules[index], window.module_widgets[index].content_widget
+
+    counter, _counter_widget = loaded("Frequency Counter")
+    seen_factors = []
+
+    def fake_frequency_metrics(_data, _rate, _gate, factor):
+        seen_factors.append(factor)
+        return 1000.0, -6.0
+
+    monkeypatch.setattr(frequency_counter, "calculate_frequency_metrics", fake_frequency_metrics)
+    counter.is_running = True
+    counter.process()
+    counter.is_running = False
+    assert seen_factors == [pytest.approx(1.0007)]
+
+    monitor, monitor_widget = loaded("1PPS Monitor")
+    assert monitor.nominal_rate == window.audio_engine.sample_rate
+    monitor_widget._update_calibration_label()
+    assert "+700.000 ppm" in monitor_widget.lbl_stored_cal.text()
+
+    _generator, generator_widget = loaded("Signal Generator")
+    assert generator_widget.unit_combo.findData("Vpeak") >= 0
+    assert "3.5 Vpeak/FS" in generator_widget.calibration_condition_badge.text()
+
+    detector, detector_widget = loaded("Event Detector")
+    detector_widget.combo_mode.setCurrentIndex(detector_widget.combo_mode.findData(EventDetectionMode.THRESHOLD_EVENTS))
+    assert detector_widget.combo_threshold_unit.findData("V") >= 0
+    assert detector.get_input_calibration_state() == (True, 2.5)
+
+
 def test_pending_lazy_load_waits_while_menu_only_mode_is_active(qtbot):
     from unittest.mock import patch
 

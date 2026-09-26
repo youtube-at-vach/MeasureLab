@@ -1532,6 +1532,13 @@ class SettingsWidget(QWidget):
         self.update_buffer_duration()
         self._update_offline_ui_state()
 
+    def refresh_from_engine(self) -> None:
+        """Refresh the active settings page after another instrument changed shared state."""
+        self.refresh_backend_mode_state()
+        if self.tabs.currentWidget() is self.calibration_tab:
+            self.refresh_cal_profiles()
+            self._refresh_all_calibration_displays()
+
     def on_offline_toggled(self, checked: bool):
         self.config_manager.set_offline_mode(checked)
         self._update_offline_ui_state()
