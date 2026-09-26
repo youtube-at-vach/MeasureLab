@@ -1,5 +1,5 @@
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPalette
+from PyQt6.QtCore import QEvent, QObject, Qt
+from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import QListWidget, QWidget
 from unittest.mock import MagicMock
 
@@ -112,6 +112,21 @@ def test_refresh_sidebar_activity_indicators_updates_visuals_and_tooltips(qtbot)
     assert inactive_item.foreground().color() == default_brush.color()
 
 
+def test_sidebar_activity_cache_refreshes_when_palette_changes(qtbot):
+    window = _build_window_stub(qtbot)
+    window.modules[0] = _DummyModule(is_playing=True)
+    window._refresh_sidebar_activity_indicators()
+
+    palette = QPalette(window.sidebar.palette())
+    palette.setColor(QPalette.ColorRole.Highlight, QColor("#123456"))
+    palette.setColor(QPalette.ColorRole.Text, QColor("#654321"))
+    window.sidebar.setPalette(palette)
+    window._refresh_sidebar_activity_indicators()
+
+    assert window.sidebar.item(3).foreground().color() == QColor("#123456")
+    assert window.sidebar.item(4).foreground().color() == QColor("#654321")
+
+
 def test_build_module_activity_tooltip(qtbot):
     window = _build_window_stub(qtbot)
 
@@ -168,6 +183,36 @@ def test_menu_only_double_click_raises_both_split_windows(qtbot):
         wrapper.is_split = False
         wrapper.split_display_window = None
         wrapper.split_control_window = None
+
+
+def test_menu_only_size_stays_fixed_when_detached_window_closes(qtbot):
+    window = MainWindow()
+    qtbot.addWidget(window)
+    window.show()
+    qtbot.waitExposed(window)
+    window.resize(700, 700)
+    normal_size = window.size()
+    normal_height_limits = (window.minimumHeight(), window.maximumHeight())
+
+    window.set_menu_only_mode(True)
+    menu_size = window.size()
+    content = QWidget()
+    content.setMinimumHeight(900)
+    wrapper = DetachableWidgetWrapper(content, "Test Module", capabilities=NO_CAPABILITIES)
+    window._module_containers[0].layout().addWidget(wrapper)
+
+    wrapper.detach()
+    qtbot.waitExposed(wrapper.independent_window)
+    assert window.size() == menu_size
+    wrapper.independent_window.close()
+    window.adjustSize()
+
+    assert window.size() == menu_size
+    assert not wrapper.is_detached
+
+    window.set_menu_only_mode(False)
+    assert window.size() == normal_size
+    assert (window.minimumHeight(), window.maximumHeight()) == normal_height_limits
 
 
 def _audio_status(
@@ -479,6 +524,180 @@ def test_sidebar_search_finds_measurement_goals_and_explains_result(qtbot):
             assert window.modules == [None] * len(window._module_keys)
     finally:
         manager.load_language(original_language)
+
+
+def test_visible_navigation_updates_before_lazy_page_load(qtbot):
+    from unittest.mock import patch
+
+    class PaintSpy(QObject):
+        def __init__(self):
+            super().__init__()
+            self.paint_count = 0
+
+        def eventFilter(self, _obj, event):
+            if event.type() == QEvent.Type.Paint:
+                self.paint_count += 1
+            return False
+
+    window = MainWindow()
+    qtbot.addWidget(window)
+    window.show()
+    qtbot.wait(0)
+
+    module_index = window._module_keys.index("Spectrum Analyzer")
+    row = module_index + window._MODULE_PAGE_OFFSET
+    paint_spy = PaintSpy()
+    window._module_containers[module_index].installEventFilter(paint_spy)
+    loaded = []
+
+    with patch.object(
+        window, "_ensure_module_loaded", side_effect=lambda index: loaded.append((index, paint_spy.paint_count))
+    ):
+        window.sidebar.setCurrentRow(row)
+        assert window.content_area.currentIndex() == row
+        assert loaded == []
+        qtbot.waitUntil(lambda: bool(loaded))
+
+    assert len(loaded) == 1
+    assert loaded[0][0] == module_index
+    assert loaded[0][1] > 0
+
+
+def test_settings_calibration_refreshes_after_other_page_changes_shared_values(qtbot):
+    window = MainWindow()
+    qtbot.addWidget(window)
+    window.on_tool_selected(1)
+    settings = window.settings_widget
+    settings.tabs.setCurrentWidget(settings.calibration_tab)
+
+    calibration = window.audio_engine.calibration
+    calibration.input_sensitivity = 2.5
+    calibration.input_sensitivity_is_calibrated = True
+    calibration.output_gain = 3.5
+    calibration.output_gain_is_calibrated = True
+    calibration.frequency_calibration_1pps = 1.0007
+    calibration.frequency_calibration_source = "1pps"
+
+    window.on_tool_selected(0)
+    window.on_tool_selected(1)
+
+    assert settings.in_sens_edit.text() == "2.5000"
+    assert settings.out_gain_edit.text() == "3.5000"
+    assert settings.freq_cal_1pps_ppm_edit.text() == "+700.000 ppm"
+    assert settings.freq_cal_source_combo.currentData() == "1pps"
+
+
+def test_settings_values_reach_modules_loaded_later(qtbot, monkeypatch):
+    from src.gui.widgets import frequency_counter
+    from src.gui.widgets.event_detector import EventDetectionMode
+
+    window = MainWindow()
+    qtbot.addWidget(window)
+    window.on_tool_selected(1)
+    settings = window.settings_widget
+    calibration = window.audio_engine.calibration
+    monkeypatch.setattr(calibration, "save", lambda: True)
+
+    settings.in_sens_edit.setText("2.5")
+    settings.on_in_sens_changed()
+    settings.out_gain_edit.setText("3.5")
+    settings.on_out_gain_changed()
+    calibration.set_frequency_calibration_1pps(1.0007)
+    settings.freq_cal_source_combo.setCurrentIndex(settings.freq_cal_source_combo.findData("1pps"))
+
+    def loaded(key):
+        index = window._module_keys.index(key)
+        window._ensure_module_loaded(index)
+        assert window.modules[index].audio_engine is window.audio_engine
+        return window.modules[index], window.module_widgets[index].content_widget
+
+    counter, _counter_widget = loaded("Frequency Counter")
+    seen_factors = []
+
+    def fake_frequency_metrics(_data, _rate, _gate, factor):
+        seen_factors.append(factor)
+        return 1000.0, -6.0
+
+    monkeypatch.setattr(frequency_counter, "calculate_frequency_metrics", fake_frequency_metrics)
+    counter.is_running = True
+    counter.process()
+    counter.is_running = False
+    assert seen_factors == [pytest.approx(1.0007)]
+
+    monitor, monitor_widget = loaded("1PPS Monitor")
+    assert monitor.nominal_rate == window.audio_engine.sample_rate
+    monitor_widget._update_calibration_label()
+    assert "+700.000 ppm" in monitor_widget.lbl_stored_cal.text()
+
+    _generator, generator_widget = loaded("Signal Generator")
+    assert generator_widget.unit_combo.findData("Vpeak") >= 0
+    assert "3.5 Vpeak/FS" in generator_widget.calibration_condition_badge.text()
+
+    detector, detector_widget = loaded("Event Detector")
+    detector_widget.combo_mode.setCurrentIndex(detector_widget.combo_mode.findData(EventDetectionMode.THRESHOLD_EVENTS))
+    assert detector_widget.combo_threshold_unit.findData("V") >= 0
+    assert detector.get_input_calibration_state() == (True, 2.5)
+
+
+def test_pending_lazy_load_waits_while_menu_only_mode_is_active(qtbot):
+    from unittest.mock import patch
+
+    window = MainWindow()
+    qtbot.addWidget(window)
+    window.show()
+    qtbot.wait(0)
+
+    module_index = window._module_keys.index("Spectrum Analyzer")
+    row = module_index + window._MODULE_PAGE_OFFSET
+    loaded = []
+
+    with patch.object(window, "_ensure_module_loaded", side_effect=lambda index: loaded.append(index)):
+        window.sidebar.setCurrentRow(row)
+        window.set_menu_only_mode(True)
+        qtbot.wait(30)
+        assert loaded == []
+
+        window.set_menu_only_mode(False)
+        qtbot.waitUntil(lambda: bool(loaded))
+
+    assert loaded == [module_index]
+
+
+@pytest.mark.parametrize(
+    ("recent", "expected"),
+    [
+        (
+            [],
+            ["Signal Generator", "Spectrum Analyzer", "Oscilloscope", "Distortion Analyzer"],
+        ),
+        (
+            ["Recorder / Player", "Spectrum Analyzer"],
+            ["Recorder / Player", "Spectrum Analyzer", "Signal Generator", "Oscilloscope"],
+        ),
+        (
+            ["Frequency Counter", "LUFS Meter", "Recorder / Player", "Spectrogram"],
+            ["Frequency Counter", "LUFS Meter", "Recorder / Player", "Spectrogram"],
+        ),
+    ],
+)
+def test_startup_preload_prioritizes_recent_modules_with_four_page_limit(qtbot, recent, expected):
+    from unittest.mock import patch
+
+    window = MainWindow()
+    qtbot.addWidget(window)
+    loaded = []
+    progress = []
+
+    with (
+        patch.object(window.config_manager, "get_recent_modules", return_value=recent),
+        patch.object(
+            window, "_ensure_module_loaded", side_effect=lambda index: loaded.append(window._module_keys[index])
+        ),
+    ):
+        window.preload_startup_modules(progress.append)
+
+    assert loaded == expected
+    assert len(progress) == len(expected)
 
 
 def test_recent_history_records_only_successful_navigation(qtbot, tmp_path):

@@ -2,8 +2,6 @@ import math
 import os
 import sys
 
-import numpy as np
-
 _SI_PREFIXES = {
     -24: "y",
     -21: "z",
@@ -106,7 +104,7 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
-def amplitude_to_linear(val: float, unit: str, gain: float = 1.0, crest_factor: float = np.sqrt(2)) -> float:
+def amplitude_to_linear(val: float, unit: str, gain: float = 1.0, crest_factor: float = math.sqrt(2)) -> float:
     """
     Convert a given amplitude value in a specific unit to linear scale (0-1).
     """
@@ -137,13 +135,16 @@ def amplitude_to_linear(val: float, unit: str, gain: float = 1.0, crest_factor: 
     return amp_linear
 
 
-def linear_to_amplitude(amp_linear: float, unit: str, gain: float = 1.0, crest_factor: float = np.sqrt(2)) -> float:
+def linear_to_amplitude(amp_linear: float, unit: str, gain: float = 1.0, crest_factor: float = math.sqrt(2)) -> float:
     """
     Convert a linear amplitude (0-1) to a specific unit.
     """
     if unit in ("Linear (0-1)", "Amplitude"):
         return amp_linear
-    elif unit == "dBFS":
+    if unit in ("dBFS", "dBV", "dBu"):
+        import numpy as np
+
+    if unit == "dBFS":
         return 20 * np.log10(amp_linear + 1e-12)
     elif unit == "dBV":
         v_peak = amp_linear * gain

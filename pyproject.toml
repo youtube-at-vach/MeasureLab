@@ -15,7 +15,7 @@ authors = [
 dependencies = [
   # numpy 2.4.2 causes "DLL load failed" on Windows. Keep < 2.4.0.
   "numpy>=1.24,<2.4.0",
-  "scipy>=1.11,<1.18",
+  "scipy>=1.11,<1.19",
   "sounddevice>=0.4.6,<0.6",
   "PyQt6>=6.6,<6.12",
   "pyqtgraph>=0.13,<0.15",
@@ -28,12 +28,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-vst = ["pedalboard>=0.9.24,<0.10"]
+vst = ["pedalboard>=0.9.25,<0.10"]
 dev = [
-  "ruff>=0.16.7",
+  "ruff>=0.16.8",
   "mypy>=1.9.0",
   "pytest>=7.4.0",
-  "pytest-qt>=4.2.0",
+  "pytest-qt>=4.5.0",
   "pytest-json-report>=1.5,<2",
 ]
 

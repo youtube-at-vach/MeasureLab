@@ -68,11 +68,22 @@ class LogViewerWindow(QDialog):
         self.initial_logger_level = logging.getLogger().level
 
         self._init_ui()
+        self._connected_theme_manager = None
+        self._connect_theme_manager()
 
-        # Connect to theme changes to refresh existing logs with new palette colors
+    def _connect_theme_manager(self):
+        # GUI startup creates the log viewer before MainWindow creates the theme manager.
+        # Bind again on first show so later theme changes still refresh existing logs.
         app = QApplication.instance()
-        if app and hasattr(app, "theme_manager"):
-            app.theme_manager.theme_changed.connect(self._refresh_display)
+        theme_manager = getattr(app, "theme_manager", None) if app is not None else None
+        if theme_manager is not None and theme_manager is not self._connected_theme_manager:
+            theme_manager.theme_changed.connect(self._refresh_display)
+            self._connected_theme_manager = theme_manager
+            self._refresh_display()
+
+    def showEvent(self, event):
+        self._connect_theme_manager()
+        super().showEvent(event)
 
     def _init_ui(self):
         layout = QVBoxLayout(self)
@@ -173,13 +184,14 @@ class LogViewerWindow(QDialog):
         self.all_logs.clear()
 
     @classmethod
-    def attach_to_logger(cls, root_logger: logging.Logger):
+    def attach_to_logger(cls, root_logger: logging.Logger, dialog=None):
         """Instantiates the QtLogHandler and attaches its signal to the global dialog instance.
 
-        Note: This method is actively used in `main_gui.py` to route root logger messages
-        to the GUI. It is not dead code.
+        Normal GUI startup attaches the handler before the main window is built.
+        Alternate entry points can attach it when the viewer is first opened.
         """
-        dialog = cls.get_instance()
+        if dialog is None:
+            dialog = cls.get_instance()
         handler = QtLogHandler()
         handler.signals.log_emitted.connect(dialog.append_log)
         root_logger.addHandler(handler)

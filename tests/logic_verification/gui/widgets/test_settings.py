@@ -1,7 +1,43 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 from PyQt6.QtWidgets import QTabWidget
+from src.gui.widgets import settings as settings_module
 from src.gui.widgets.settings import SettingsWidget
 from src.core.config_manager import ConfigManager
+
+
+def test_default_hostapi_ignores_invalid_backend_value():
+    settings = MagicMock()
+    settings.config_manager.get_audio_config.return_value = {}
+    sounddevice = MagicMock()
+
+    with patch.dict("sys.modules", {"sounddevice": sounddevice}):
+        assert SettingsWidget._get_current_host_api_index(settings, []) == 0
+        sounddevice.default.hostapi = 2
+        assert SettingsWidget._get_current_host_api_index(settings, []) == 2
+
+
+def test_64bit_toggle_upgrades_active_forward_and_inverse_plans():
+    settings = MagicMock()
+    settings.include_huge_check.isChecked.return_value = False
+    progress = MagicMock()
+    progress.wasCanceled.return_value = False
+
+    with (
+        patch("PyQt6.QtWidgets.QProgressDialog", return_value=progress),
+        patch.object(settings_module.fft_manager, "get_plan") as get_plan,
+        patch.object(settings_module.fft_manager, "save_wisdom") as save_wisdom,
+    ):
+        SettingsWidget.on_audio_engine_64bit_toggled(settings, True)
+
+    sizes = [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144]
+    assert get_plan.call_args_list == [
+        call(size, dtype="float64", flags=("FFTW_MEASURE",), direction=direction)
+        for size in sizes
+        for direction in ("FFTW_FORWARD", "FFTW_BACKWARD")
+    ]
+    save_wisdom.assert_called_once_with()
+    settings._refresh_fft_optimization_status.assert_called_once_with()
+    progress.setValue.assert_any_call(100)
 
 
 def test_settings_widget_instantiation(qtbot):
@@ -50,6 +86,23 @@ def test_settings_widget_instantiation(qtbot):
             tabs = widget.findChild(QTabWidget)
             assert tabs is not None
             assert tabs.count() == 3
+
+            with patch.object(
+                settings_module.fft_manager,
+                "get_forward_plan_coverage",
+                return_value={
+                    "measured": {
+                        (size, dtype) for size in settings_module.WARMUP_SIZES for dtype in ("float32", "float64")
+                    },
+                    "estimated": {
+                        (size, dtype) for size in settings_module.MEDIUM_SIZES for dtype in ("float32", "float64")
+                    },
+                },
+            ):
+                widget._refresh_fft_optimization_status()
+                assert "MEASURE" in widget.fft_status_values[0][0].text()
+                assert "ESTIMATE" in widget.fft_status_values[1][0].text()
+                assert widget.fft_status_values[2][0].text() == "— No plan"
 
 
 def test_settings_offline_mode_toggle_ui(qtbot):

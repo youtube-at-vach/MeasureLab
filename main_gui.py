@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 import argparse
 import logging
-from logging.handlers import RotatingFileHandler
+from logging.handlers import MemoryHandler, RotatingFileHandler
 import os
 import signal
 import sys
 
-from src.core.config_manager import ConfigManager
 from src.core.errors import AudioEngineReservedError
-from src.core.localization import get_manager, tr
-from src.core.utils import resource_path
-from src.core.fft_manager import fft_manager
 
 
 class _ExpectedExceptionLogger:
@@ -33,7 +29,52 @@ def _install_expected_exception_logger() -> None:
     sys.excepthook = _ExpectedExceptionLogger(previous_hook)
 
 
-def setup_app():
+def _attach_startup_log_handler(app, root_logger):
+    from src.gui.widgets.log_viewer import LogViewerWindow
+
+    handler = LogViewerWindow.attach_to_logger(root_logger)
+    app._measurelab_log_handler = handler
+    return handler
+
+
+def _show_startup_splash(app):
+    """Paint the splash before configuration and log viewer setup."""
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtGui import QPixmap
+
+    from src.core.utils import resource_path
+    from src.gui.startup import WrappingSplashScreen
+
+    pixmap = QPixmap(resource_path("src/assets/welcome.png"))
+    if pixmap.isNull():
+        pixmap = QPixmap(624, 360)
+        pixmap.fill(Qt.GlobalColor.black)
+    else:
+        pixmap = pixmap.scaled(
+            624,
+            360,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+
+    splash = WrappingSplashScreen(pixmap)
+    splash.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+    splash.show()
+    # Center on primary screen.
+    try:
+        screen = app.primaryScreen()
+        if screen is not None:
+            geom = screen.availableGeometry()
+            splash_rect = splash.frameGeometry()
+            splash_rect.moveCenter(geom.center())
+            splash.move(splash_rect.topLeft())
+    except Exception:  # noqa: S110
+        pass
+    app.processEvents()
+    return splash
+
+
+def setup_app(show_splash=False):
     """Set up the QApplication instance, logging, and environment configuration."""
     # Suppress benign GNOME portal Settings warnings like:
     #   qt.qpa.theme.gnome: dbus reply error: ... org.freedesktop.portal.Settings
@@ -61,17 +102,6 @@ def setup_app():
 
     numeric_level = getattr(logging, args.log_level.upper(), logging.INFO)
 
-    # Determine log file path
-    if os.environ.get("MEASURELAB_TESTING") == "1":
-        log_path = os.devnull
-    elif args.log_file:
-        log_path = args.log_file
-    else:
-        # Default to User Data Directory
-        user_dir = ConfigManager.get_user_data_dir()
-        os.makedirs(user_dir, exist_ok=True)
-        log_path = os.path.join(user_dir, "measurelab.log")
-
     # Configure root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(numeric_level)
@@ -83,15 +113,33 @@ def setup_app():
     console_handler.setFormatter(formatter)
     root_logger.addHandler(console_handler)
 
+    # Hold messages until Qt and the translated log viewer are available.
+    startup_log_buffer = MemoryHandler(capacity=1000, flushLevel=logging.CRITICAL + 1)
+    root_logger.addHandler(startup_log_buffer)
+
     # PyQt forwards exceptions raised by signal handlers to sys.excepthook.
     # Expected Remote Audio I/O ownership conflicts should be visible in the
     # log, but they do not need a full traceback on stderr.
     _install_expected_exception_logger()
 
+    app = QApplication(sys.argv)
+    if show_splash:
+        # Retain the window while the rest of setup_app runs.
+        app._measurelab_splash = _show_startup_splash(app)  # type: ignore[attr-defined]
+
+    from src.core.config_manager import ConfigManager
+    from src.core.localization import get_manager
+
     # File handler (5MB, 2 backups)
     if os.environ.get("MEASURELAB_TESTING") == "1":
         logging.info("MEASURELAB_TESTING=1 detected: Skipping file logging initialization.")
     else:
+        if args.log_file:
+            log_path = args.log_file
+        else:
+            user_dir = ConfigManager.get_user_data_dir()
+            os.makedirs(user_dir, exist_ok=True)
+            log_path = os.path.join(user_dir, "measurelab.log")
         try:
             file_handler = RotatingFileHandler(log_path, maxBytes=5 * 1024 * 1024, backupCount=2, encoding="utf-8")
             file_handler.setFormatter(formatter)
@@ -99,17 +147,31 @@ def setup_app():
         except Exception as e:
             logging.error(f"Failed to set up file logging at {log_path}: {e}")
 
-    # Load language early so the splash text matches user settings.
-    # Keep this lightweight: just read config + load translations.
+    # Load language before adding text to the splash.
+    config_manager = None
     try:
         config_manager = ConfigManager()
         get_manager().load_language(config_manager.get_language())
     except Exception:
         # If config or translations fail, proceed with defaults.
         logging.error("Failed to load configuration or language", exc_info=True)
-        pass
 
-    app = QApplication(sys.argv)
+    # Replay the earliest messages once the log viewer can be created in the
+    # user's language, then keep it attached for the rest of the session.
+    try:
+        handler = _attach_startup_log_handler(app, root_logger)
+        startup_log_buffer.setTarget(handler)
+    except ImportError as e:
+        logging.error("Could not load GUI LogViewer: %s", e)
+    finally:
+        root_logger.removeHandler(startup_log_buffer)
+        startup_log_buffer.close()
+
+    if config_manager is not None:
+        # MainWindow reuses the configuration already read to select the
+        # language for the splash screen. Reading the same file again during
+        # construction only adds I/O and repeats default merging.
+        app._measurelab_config_manager = config_manager  # type: ignore[attr-defined]
 
     from src.gui.startup import TopLevelWindowLogger
 
@@ -119,17 +181,6 @@ def setup_app():
         # QApplication permits dynamic attributes; retain the logger with the app.
         app._measurelab_window_logger = window_logger  # type: ignore[attr-defined]
         app.installEventFilter(window_logger)
-
-    # Attach the Qt logging handler to the root logger
-    try:
-        from src.gui.widgets.log_viewer import LogViewerWindow
-
-        LogViewerWindow.attach_to_logger(root_logger)
-
-        # If debug is passed, we might want to ensure the log level matches
-        # The QtLogHandler operates at DEBUG and filters based on user selection in the UI.
-    except ImportError as e:
-        logging.error(f"Could not load GUI LogViewer: {e}")
 
     # Brand name (do not translate)
     app.setApplicationName("MeasureLab")
@@ -141,87 +192,23 @@ def setup_app():
     return app
 
 
-def _preload_dependencies():
-    """Preload heavy dependencies in a background thread to utilize idle CPU time.
-
-    This ensures that when the main thread imports modules utilizing these packages,
-    they are loaded instantly from sys.modules cache without blocking the GUI.
-    """
-    try:
-        import numpy  # noqa: F401
-        import scipy
-        import scipy.signal
-        import scipy.special
-        import scipy.fft
-        import scipy.interpolate
-        import scipy.linalg  # noqa: F401
-        import netCDF4  # noqa: F401
-        import pywt  # noqa: F401
-        import soundfile  # noqa: F401
-    except Exception:  # noqa: S110
-        # Preload failures should never crash application startup
-        pass
-
-    # HistogramLUTItem asks Matplotlib for optional color maps while the first
-    # spectrogram-like widget is constructed. Warm pyplot here so that work is
-    # overlapped with the rest of startup and the complete color-map menu stays
-    # immediately responsive. Matplotlib is optional from MeasureLab's point of
-    # view, so its absence must not abort the core dependency preload above.
-    try:
-        import matplotlib.pyplot  # noqa: F401
-    except Exception:  # noqa: S110
-        pass
-
-
 def main():
     """GUI Application Entry Point"""
-    app = setup_app()
+    app = setup_app(show_splash=True)
 
-    # Start preloading heavy libraries in the background immediately
-    import threading
-
-    preload_thread = threading.Thread(target=_preload_dependencies, daemon=True)
-    preload_thread.start()
-
-    # Import other PyQt components after setup
     from PyQt6.QtCore import Qt, QTimer
-    from PyQt6.QtGui import QPixmap
 
-    from src.gui.main_window import MainWindow
-    from src.gui.startup import WrappingSplashScreen
+    from src.core.localization import tr
 
-    # Startup splash (loading screen): show immediately while MainWindow initializes.
-    pixmap = QPixmap(resource_path("src/assets/welcome.png"))
-    if pixmap.isNull():
-        pixmap = QPixmap(624, 360)
-        pixmap.fill(Qt.GlobalColor.black)
-    else:
-        pixmap = pixmap.scaled(
-            624,
-            360,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-
-    splash = WrappingSplashScreen(pixmap)
-    splash.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
-    splash.show()
-    # Center on primary screen
-    try:
-        screen = app.primaryScreen()
-        if screen is not None:
-            geom = screen.availableGeometry()
-            splash_rect = splash.frameGeometry()
-            splash_rect.moveCenter(geom.center())
-            splash.move(splash_rect.topLeft())
-    except Exception:  # noqa: S110
-        pass
+    splash = app._measurelab_splash
     splash.showMessage(
         f"{tr('Loading...')}\n{tr('Initializing application...')}",
         Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter,
         Qt.GlobalColor.white,
     )
     app.processEvents()
+
+    from src.gui.main_window import MainWindow
 
     # Brand name (do not translate)
     app.setApplicationName("MeasureLab")
@@ -233,32 +220,30 @@ def main():
     enable_experimental = "--experimental" in sys.argv or "--experimentalflag" in sys.argv
     window = MainWindow(enable_experimental=enable_experimental)
 
-    # Preload all modules while splash is visible, so module switching feels instant.
-    def _update_splash(msg: str):
-        # Translate the message here if needed, or pass translated strings
+    def update_splash(message: str) -> None:
         splash.showMessage(
-            f"{tr('Loading...')}\n{msg}",
+            f"{tr('Loading...')}\n{message}",
             Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter,
             Qt.GlobalColor.white,
         )
         app.processEvents()
 
+    # Keep common FFT sizes ready before instruments can start measuring.
+    # Plan creation on the first transform can otherwise delay live analysis.
+    update_splash(tr("Finishing core initialization..."))
     try:
-        # Prepare every common FFT plan before the user can open an instrument.
-        # Full FFTW measurement remains an explicit operation in Settings.
-        _update_splash(tr("Finishing core initialization..."))
+        from src.core.fft_manager import fft_manager
+
         fft_manager.prepare_startup_plans()
+    except Exception:
+        logging.exception("Failed to prepare startup FFT plans")
 
-        # Wait for the background preload thread to complete.
-        # This ensures the cache is populated before MainWindow loads widgets.
-        preload_thread.join(timeout=5.0)
+    try:
+        window.preload_startup_modules(progress_callback=update_splash)
+    except Exception:
+        logging.exception("Failed to prepare startup modules")
 
-        # 2. Preload Modules
-        window.preload_all_modules(progress_callback=_update_splash)
-    except Exception as e:
-        logging.error(f"Startup error: {e}")
-        # If preload fails, still show the window; individual pages may show errors.
-        pass
+    window.set_startup_size()
 
     # Show the main window, then finish the splash on the next event-loop turn.
     # On some Linux WMs, calling finish() immediately can reveal a briefly

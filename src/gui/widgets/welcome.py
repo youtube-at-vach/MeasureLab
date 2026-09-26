@@ -25,6 +25,7 @@ class _PageButton(QPushButton):
 
 class WelcomeWidget(QWidget):
     page_requested = pyqtSignal(str)
+    BASIC_MODULE_KEYS = ("Signal Generator", "Spectrum Analyzer", "Oscilloscope", "Distortion Analyzer")
 
     def __init__(self):
         super().__init__()
@@ -153,8 +154,7 @@ class WelcomeWidget(QWidget):
         tools.setStyleSheet("font-weight: bold;")
         grid.setRowMinimumHeight(2, 12)
         grid.addWidget(tools, 3, 0, 1, 2)
-        pages = ("Signal Generator", "Spectrum Analyzer", "Oscilloscope", "Distortion Analyzer")
-        for index, key in enumerate(pages):
+        for index, key in enumerate(self.BASIC_MODULE_KEYS):
             grid.addWidget(self._page_button(key, descriptions[key]), 4 + index // 2, index % 2)
         grid.setColumnStretch(0, 1)
         grid.setColumnStretch(1, 1)

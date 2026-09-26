@@ -38,6 +38,7 @@ class TestWisdomSecurity(unittest.TestCase):
 
         if self.manager.wisdom_path.exists():
             os.remove(self.manager.wisdom_path)
+        self.manager.wisdom_path.with_name(self.manager.wisdom_path.name + "_status.json").unlink(missing_ok=True)
 
     def test_save_wisdom_json(self):
         """Test that wisdom is saved as JSON with base64 encoding."""

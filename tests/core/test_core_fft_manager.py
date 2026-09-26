@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 from src.core.fft_manager import FFTManager
 
 
@@ -136,6 +137,53 @@ def test_startup_plans_are_ready_without_measurement(monkeypatch):
     # A deliberate optimization request can still upgrade a prepared plan.
     manager.get_plan(256, "float32", flags=("FFTW_MEASURE",))
     assert manager._plans[(256, "float32", "FFTW_FORWARD")]["flags"] == ("FFTW_MEASURE",)
+
+
+def test_optimization_coverage_survives_restart_and_rejects_stale_metadata(tmp_path, monkeypatch):
+    manager = FFTManager()
+    manager.wisdom_path = tmp_path / "wisdom.json"
+    manager._measured_plans.clear()
+    manager._optimization_status_known = True
+    monkeypatch.setattr("src.core.fft_manager.WARMUP_SIZES", [256, 512])
+    monkeypatch.setattr("src.core.fft_manager.MEDIUM_SIZES", [1024])
+    monkeypatch.setattr("src.core.fft_manager.HUGE_SIZES", [2048])
+
+    manager.prepare_startup_plans()
+    assert manager.get_measured_plan_sizes() == {"float32": set(), "float64": set()}
+    assert manager.get_forward_plan_coverage() == {
+        "measured": set(),
+        "estimated": {(size, dtype) for size in (256, 512) for dtype in ("float32", "float64")},
+    }
+
+    manager.warmup(force=True, exhaustive=True)
+    assert manager.get_measured_plan_sizes() == {
+        "float32": {256, 512, 1024},
+        "float64": {256, 512, 1024},
+    }
+    assert manager.get_forward_plan_coverage() == {
+        "measured": {(size, dtype) for size in (256, 512, 1024) for dtype in ("float32", "float64")},
+        "estimated": set(),
+    }
+
+    restarted = FFTManager()
+    restarted.wisdom_path = manager.wisdom_path
+    restarted.load_wisdom()
+    assert restarted.get_measured_plan_sizes() == manager.get_measured_plan_sizes()
+
+    # A valid wisdom file without matching status must not claim measured coverage.
+    manager.wisdom_path.write_text(manager.wisdom_path.read_text() + "\n")
+    restarted.load_wisdom()
+    assert restarted.get_measured_plan_sizes() is None
+
+
+def test_warmup_does_not_report_success_for_estimated_plan(monkeypatch, tmp_path):
+    manager = FFTManager()
+    manager.wisdom_path = tmp_path / "wisdom.json"
+    monkeypatch.setattr("src.core.fft_manager.WARMUP_SIZES", [256])
+    monkeypatch.setattr(manager, "get_plan", lambda *args, **kwargs: {"flags": ("FFTW_ESTIMATE",)})
+
+    with pytest.raises(RuntimeError, match="Failed to create FFT plan"):
+        manager.warmup(force=True)
 
 
 def test_save_load_wisdom(tmp_path):
