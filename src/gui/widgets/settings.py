@@ -1591,12 +1591,9 @@ class SettingsWidget(QWidget):
         if checked:
             from PyQt6.QtWidgets import QProgressDialog
             from PyQt6.QtCore import Qt
-            from src.core.fft_manager import FFTManager
 
-            manager = FFTManager()
-            # Simple heuristic: check if a basic float64 plan exists. We check if 32768 size exists for float64.
-            # PyFFTW wisdom stores plans across sessions if saved correctly, but to ensure smooth first-time experience:
-            # We explicitly trigger a targeted warmup for float64 specifically.
+            # Upgrade the plans used by instruments in this session. Optimizing a
+            # separate manager would save wisdom but leave these plans unchanged.
             progress = QProgressDialog(tr("Optimizing 64-bit FFT Operations..."), tr("Cancel"), 0, 100, self)
             progress.setWindowModality(Qt.WindowModality.WindowModal)
             progress.setWindowTitle(tr("FFT Optimization"))
@@ -1615,14 +1612,14 @@ class SettingsWidget(QWidget):
                 if progress.wasCanceled():
                     break
                 # Only warming up float64
-                _ = manager.get_plan(size, dtype="float64", flags=("FFTW_MEASURE",), direction="FFTW_FORWARD")
-                _ = manager.get_plan(size // 2 + 1, dtype="float64", flags=("FFTW_MEASURE",), direction="FFTW_BACKWARD")
+                fft_manager.get_plan(size, dtype="float64", flags=("FFTW_MEASURE",), direction="FFTW_FORWARD")
+                fft_manager.get_plan(size, dtype="float64", flags=("FFTW_MEASURE",), direction="FFTW_BACKWARD")
                 progress.setValue(int(((i + 1) / total_sizes) * 100))
 
-            manager.save_wisdom()
-            fft_manager.load_wisdom()
+            fft_manager.save_wisdom()
             self._refresh_fft_optimization_status()
-            progress.setValue(100)
+            if not progress.wasCanceled():
+                progress.setValue(100)
 
     def open_spl_calibration(self):
         dlg = SplCalibrationDialog(self.audio_engine, self)
