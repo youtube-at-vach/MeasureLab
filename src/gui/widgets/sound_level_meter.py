@@ -254,6 +254,11 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidge
         self.timer.timeout.connect(self.update_display)
         self.timer.start(50)  # 20Hz refresh
 
+    def closeEvent(self, event):
+        self.timer.stop()
+        self.module.stop_analysis()
+        super().closeEvent(event)
+
     def init_ui(self):
         # Main Layout: Sidebar (Left) + Content (Right)
         main_layout = QHBoxLayout()
