@@ -402,8 +402,10 @@ class DetachableWidgetWrapper(QWidget):
             theme_name = self.app.theme_manager.get_effective_theme()
 
         title_size = 12 if self._console_hosted else 14
-        title_color = "white" if theme_name == "dark" else "black"
-        self.title_label.setStyleSheet(f"color: {title_color}; font-weight: bold; font-size: {title_size}px;")
+        self.title_label.setStyleSheet(f"color: palette(window-text); font-weight: bold; font-size: {title_size}px;")
+        self.header.setStyleSheet(
+            "QWidget#instrumentHeader { background: palette(alternate-base); border-bottom: 1px solid palette(mid); }"
+        )
 
         self._refresh_header_icons()
 
@@ -447,8 +449,9 @@ class DetachableWidgetWrapper(QWidget):
 
         # --- Header ---
         self.header = QWidget()
+        self.header.setObjectName("instrumentHeader")
         header_layout = QHBoxLayout(self.header)
-        header_layout.setContentsMargins(5, 5, 10, 5)
+        header_layout.setContentsMargins(12, 5, 10, 5)
         header_layout.setSpacing(4)
 
         self.title_label = QLabel(self.title)

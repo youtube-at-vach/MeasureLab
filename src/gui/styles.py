@@ -12,7 +12,7 @@ def shell_style(palette: QPalette) -> str:
     """Navigation surfaces share palette-derived edges and restrained accents."""
     base = palette.color(QPalette.ColorRole.Base)
     text = palette.color(QPalette.ColorRole.Text)
-    accent = palette.color(QPalette.ColorRole.Highlight)
+    accent = palette.color(QPalette.ColorRole.Link)
 
     def blend(foreground: QColor, amount: float) -> str:
         return QColor(
@@ -22,33 +22,43 @@ def shell_style(palette: QPalette) -> str:
             ]
         ).name()
 
-    border = blend(text, 0.20)
-    hover = blend(accent, 0.06)
+    border = blend(text, 0.14)
+    hover = blend(text, 0.06)
     focus = blend(accent, 0.12)
     return f"""
-        QWidget#sidebarPanel {{ border-right: 1px solid {border}; }}
+        QWidget#sidebarPanel {{ background: palette(base); border-right: 1px solid {border}; }}
+        QLabel#sidebarBrand {{ color: palette(window-text); padding: 0 8px 6px 8px; }}
+        QListWidget#moduleNavigation {{ border: none; background: palette(base); outline: 0; }}
+        QListWidget#moduleNavigation::item {{
+            padding: 7px 8px; border-radius: 4px; border-left: 3px solid transparent;
+        }}
+        QListWidget#moduleNavigation::item:hover {{ background: {hover}; }}
+        QListWidget#moduleNavigation::item:selected {{
+            background: {focus}; color: palette(text); border-left-color: palette(link);
+        }}
+        QListWidget#moduleNavigation::item:focus {{ border-left-color: palette(link); }}
         QPushButton[shellAction="true"], QPushButton[welcomeCard="true"] {{
-            background: palette(base); color: palette(text);
-            border: 1px solid {border}; border-radius: 8px;
+            background: palette(alternate-base); color: palette(text);
+            border: 1px solid {border}; border-radius: 5px;
         }}
         QPushButton[shellAction="true"] {{ padding: 7px 10px; }}
         QPushButton[shellAction="true"]:hover, QPushButton[welcomeCard="true"]:hover {{
-            background: {hover}; border-color: palette(highlight);
+            background: {hover}; border-color: palette(link);
         }}
         QPushButton[shellAction="true"]:focus, QPushButton[welcomeCard="true"]:focus,
         QPushButton[shellAction="true"]:checked, QPushButton[welcomeCard="true"]:pressed {{
-            background: {focus}; border: 1px solid palette(highlight);
+            background: {focus}; border: 1px solid palette(link);
         }}
         QPushButton[shellAction="true"]:pressed {{ background: {focus}; }}
         QPushButton[welcomeCard="true"] QLabel {{ background: transparent; }}
         QLabel[shellSecondary="true"] {{ color: palette(placeholder-text); }}
         QLineEdit#moduleSearch, QComboBox#outputDestination {{
             background: palette(base); color: palette(text);
-            border: 1px solid {border}; border-radius: 8px; padding: 6px 10px;
+            border: 1px solid {border}; border-radius: 5px; padding: 6px 10px;
         }}
-        QLineEdit#moduleSearch:focus, QComboBox#outputDestination:focus {{ border-color: palette(highlight); }}
+        QLineEdit#moduleSearch:focus, QComboBox#outputDestination:focus {{ border-color: palette(link); }}
         QComboBox#outputDestination {{ padding-right: 26px; }}
-        QComboBox#outputDestination:hover {{ background: {hover}; border-color: palette(highlight); }}
+        QComboBox#outputDestination:hover {{ background: {hover}; border-color: palette(link); }}
         QComboBox#outputDestination::drop-down {{ border: none; width: 24px; }}
         QComboBox#outputDestination::down-arrow {{ image: none; }}
         QComboBox#outputDestination:disabled {{ color: palette(placeholder-text); background: palette(window); }}

@@ -217,17 +217,17 @@ class ThemeManager(QObject):
         # Surface hierarchy: recessed fields, shell, panels, raised controls.
         # Keep the black measurement canvases and their trace colors independent
         # of these chrome colors so data remains the strongest visual layer.
-        palette.setColor(QPalette.ColorRole.Window, QColor(22, 24, 27))
-        palette.setColor(QPalette.ColorRole.Base, QColor(15, 17, 20))
-        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(30, 33, 37))
-        palette.setColor(QPalette.ColorRole.Button, QColor(43, 47, 52))
+        palette.setColor(QPalette.ColorRole.Window, QColor(24, 26, 28))
+        palette.setColor(QPalette.ColorRole.Base, QColor(17, 19, 21))
+        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(33, 36, 38))
+        palette.setColor(QPalette.ColorRole.Button, QColor(44, 48, 51))
 
         # Explicit bevel roles prevent native light-palette edges in dark mode.
-        palette.setColor(QPalette.ColorRole.Light, QColor(72, 78, 86))
-        palette.setColor(QPalette.ColorRole.Midlight, QColor(57, 63, 70))
-        palette.setColor(QPalette.ColorRole.Mid, QColor(48, 53, 59))
-        palette.setColor(QPalette.ColorRole.Dark, QColor(100, 109, 120))
-        palette.setColor(QPalette.ColorRole.Shadow, QColor(6, 8, 10))
+        palette.setColor(QPalette.ColorRole.Light, QColor(77, 83, 87))
+        palette.setColor(QPalette.ColorRole.Midlight, QColor(57, 63, 66))
+        palette.setColor(QPalette.ColorRole.Mid, QColor(49, 55, 58))
+        palette.setColor(QPalette.ColorRole.Dark, QColor(108, 118, 123))
+        palette.setColor(QPalette.ColorRole.Shadow, QColor(10, 12, 13))
 
         # Retain readable, softened whites and familiar semantic accents.
         palette.setColor(QPalette.ColorRole.WindowText, QColor(226, 228, 230))
@@ -235,26 +235,53 @@ class ThemeManager(QObject):
         palette.setColor(QPalette.ColorRole.ButtonText, QColor(226, 228, 230))
         palette.setColor(QPalette.ColorRole.PlaceholderText, QColor(160, 167, 176))
         palette.setColor(QPalette.ColorRole.BrightText, QColor(255, 0, 0))
-        palette.setColor(QPalette.ColorRole.Highlight, QColor(65, 112, 153))
+        palette.setColor(QPalette.ColorRole.Highlight, QColor(45, 112, 125))
         palette.setColor(QPalette.ColorRole.HighlightedText, QColor(252, 252, 252))
-        palette.setColor(QPalette.ColorRole.Link, QColor(126, 183, 230))
+        palette.setColor(QPalette.ColorRole.Link, QColor(125, 204, 216))
         palette.setColor(QPalette.ColorRole.LinkVisited, QColor(200, 100, 200))
-        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(43, 47, 52))
+        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(44, 48, 51))
         palette.setColor(QPalette.ColorRole.ToolTipText, QColor(226, 228, 230))
 
         for role in (QPalette.ColorRole.WindowText, QPalette.ColorRole.Text, QPalette.ColorRole.ButtonText):
             palette.setColor(QPalette.ColorGroup.Disabled, role, QColor(127, 135, 145))
 
         self.app.setPalette(palette)
-        # Keep native control rendering (including checked/mixed indicators).
-        # Empty checkboxes need an explicit edge against the darker surfaces.
-        # Tabs use flat panel colors instead of Fusion's bright raised fill;
-        # a narrow selection edge keeps navigation distinct from action buttons.
+        # Flat, neutral controls keep the measurement canvas dominant. Leave
+        # native arrows and checked/mixed indicators intact; custom painting
+        # those subcontrols can hide state or platform-specific affordances.
         self.app.setStyleSheet(
             self._original_stylesheet
             + """
-            QGroupBox { background-color: palette(alternate-base); }
-            QTabWidget::pane { background-color: palette(window); border: 1px solid palette(mid); }
+            QGroupBox {
+                background-color: palette(alternate-base);
+                border: 1px solid palette(mid); border-radius: 5px;
+                margin-top: 10px; padding: 4px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin; subcontrol-position: top left;
+                left: 10px; padding: 0 4px; color: palette(window-text);
+            }
+            QPushButton {
+                background-color: palette(button); color: palette(button-text);
+                border: 1px solid palette(midlight); border-radius: 4px; padding: 3px 8px;
+            }
+            QPushButton:hover:enabled { background-color: palette(midlight); border-color: palette(dark); }
+            QPushButton:pressed:enabled { background-color: palette(base); }
+            QPushButton:checked:enabled { background-color: palette(highlight); color: palette(highlighted-text); }
+            QPushButton:focus:enabled { border-color: palette(link); }
+            QPushButton:disabled { color: palette(button-text); border-color: palette(mid); }
+            QLineEdit, QAbstractSpinBox, QComboBox {
+                background-color: palette(base); color: palette(text);
+                border: 1px solid palette(midlight); border-radius: 3px; padding: 2px 3px;
+                selection-background-color: palette(highlight);
+                selection-color: palette(highlighted-text);
+            }
+            QComboBox { padding-right: 17px; }
+            QLineEdit:focus, QAbstractSpinBox:focus, QComboBox:focus { border-color: palette(link); }
+            QLineEdit:disabled, QAbstractSpinBox:disabled, QComboBox:disabled {
+                color: palette(text); border-color: palette(mid); background-color: palette(window);
+            }
+            QTabWidget::pane { background-color: palette(window); border: 1px solid palette(mid); border-radius: 4px; }
             QTabBar::tab {
                 background-color: palette(alternate-base);
                 color: palette(placeholder-text);
@@ -265,7 +292,7 @@ class ThemeManager(QObject):
             QTabBar::tab:selected {
                 background-color: palette(window);
                 color: palette(window-text);
-                border-top-color: palette(highlight);
+                border-top-color: palette(link);
                 border-bottom-color: palette(window);
             }
             QTabBar::tab:!selected:hover:enabled {
@@ -282,6 +309,19 @@ class ThemeManager(QObject):
             QCheckBox::indicator:unchecked:disabled { border-color: palette(mid); }
             QCheckBox::indicator:unchecked:hover,
             QCheckBox:focus::indicator:unchecked { border-color: palette(link); }
+            QScrollBar:vertical { background: palette(window); width: 10px; margin: 0; }
+            QScrollBar:horizontal { background: palette(window); height: 10px; margin: 0; }
+            QScrollBar::handle { background: palette(midlight); border: 2px solid palette(window); border-radius: 4px; }
+            QScrollBar::handle:vertical { min-height: 28px; }
+            QScrollBar::handle:horizontal { min-width: 28px; }
+            QScrollBar::handle:hover { background: palette(dark); }
+            QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; }
+            QScrollBar::add-page, QScrollBar::sub-page { background: none; }
+            QHeaderView::section {
+                background: palette(alternate-base); color: palette(placeholder-text);
+                border: none; border-bottom: 1px solid palette(mid); padding: 4px 6px;
+            }
+            QToolTip { border: 1px solid palette(dark); padding: 4px 6px; }
             """
         )
         self.logger.debug("Dark theme applied")
