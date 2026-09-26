@@ -243,6 +243,8 @@ def main():
     except Exception:
         logging.exception("Failed to prepare startup modules")
 
+    window.set_startup_size()
+
     # Show the main window, then finish the splash on the next event-loop turn.
     # On some Linux WMs, calling finish() immediately can reveal a briefly
     # unpolished (small) initial window before final geometry is applied.

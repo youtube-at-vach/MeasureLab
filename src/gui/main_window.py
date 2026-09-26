@@ -260,6 +260,25 @@ class MainWindow(QMainWindow):
         self._init_ui()
         self._init_state()
 
+    def set_startup_size(self):
+        """Give the initial window a consistent 16:10 shape after startup preloading."""
+        target_width, target_height = 1280, 800
+        self.layout().activate()
+        minimum = self.minimumSizeHint()
+        screen = self.screen() or QApplication.primaryScreen()
+        scale = 1.0
+        if screen is not None:
+            available = screen.availableGeometry()
+            scale = min(
+                scale,
+                available.width() * 0.95 / target_width,
+                available.height() * 0.95 / target_height,
+            )
+        self.resize(
+            max(minimum.width(), round(target_width * scale)),
+            max(minimum.height(), round(target_height * scale)),
+        )
+
     def _init_core(self):
         """Initialize core components (config, localization, audio engine, theme)."""
         # Initialize Core Components
