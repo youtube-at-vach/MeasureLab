@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import logging
-from logging.handlers import RotatingFileHandler
+from logging.handlers import MemoryHandler, RotatingFileHandler
 import os
 import signal
 import sys
@@ -30,6 +30,14 @@ def _install_expected_exception_logger() -> None:
         return
 
     sys.excepthook = _ExpectedExceptionLogger(previous_hook)
+
+
+def _attach_startup_log_handler(app, root_logger):
+    from src.gui.widgets.log_viewer import LogViewerWindow
+
+    handler = LogViewerWindow.attach_to_logger(root_logger)
+    app._measurelab_log_handler = handler
+    return handler
 
 
 def setup_app():
@@ -82,6 +90,10 @@ def setup_app():
     console_handler.setFormatter(formatter)
     root_logger.addHandler(console_handler)
 
+    # Hold messages until Qt and the translated log viewer are available.
+    startup_log_buffer = MemoryHandler(capacity=1000, flushLevel=logging.CRITICAL + 1)
+    root_logger.addHandler(startup_log_buffer)
+
     # PyQt forwards exceptions raised by signal handlers to sys.excepthook.
     # Expected Remote Audio I/O ownership conflicts should be visible in the
     # log, but they do not need a full traceback on stderr.
@@ -107,9 +119,20 @@ def setup_app():
     except Exception:
         # If config or translations fail, proceed with defaults.
         logging.error("Failed to load configuration or language", exc_info=True)
-        pass
 
     app = QApplication(sys.argv)
+
+    # Replay the earliest messages once the log viewer can be created in the
+    # user's language, then keep it attached for the rest of the session.
+    try:
+        handler = _attach_startup_log_handler(app, root_logger)
+        startup_log_buffer.setTarget(handler)
+    except ImportError as e:
+        logging.error("Could not load GUI LogViewer: %s", e)
+    finally:
+        root_logger.removeHandler(startup_log_buffer)
+        startup_log_buffer.close()
+
     if config_manager is not None:
         # MainWindow reuses the configuration already read to select the
         # language for the splash screen. Reading the same file again during
@@ -190,6 +213,29 @@ def main():
 
     enable_experimental = "--experimental" in sys.argv or "--experimentalflag" in sys.argv
     window = MainWindow(enable_experimental=enable_experimental)
+
+    def update_splash(message: str) -> None:
+        splash.showMessage(
+            f"{tr('Loading...')}\n{message}",
+            Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter,
+            Qt.GlobalColor.white,
+        )
+        app.processEvents()
+
+    # Keep common FFT sizes ready before instruments can start measuring.
+    # Plan creation on the first transform can otherwise delay live analysis.
+    update_splash(tr("Finishing core initialization..."))
+    try:
+        from src.core.fft_manager import fft_manager
+
+        fft_manager.prepare_startup_plans()
+    except Exception:
+        logging.exception("Failed to prepare startup FFT plans")
+
+    try:
+        window.preload_startup_modules(progress_callback=update_splash)
+    except Exception:
+        logging.exception("Failed to prepare startup modules")
 
     # Show the main window, then finish the splash on the next event-loop turn.
     # On some Linux WMs, calling finish() immediately can reveal a briefly

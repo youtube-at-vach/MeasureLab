@@ -557,6 +557,43 @@ def test_pending_lazy_load_waits_while_menu_only_mode_is_active(qtbot):
     assert loaded == [module_index]
 
 
+@pytest.mark.parametrize(
+    ("recent", "expected"),
+    [
+        (
+            [],
+            ["Signal Generator", "Spectrum Analyzer", "Oscilloscope", "Distortion Analyzer"],
+        ),
+        (
+            ["Recorder / Player", "Spectrum Analyzer"],
+            ["Recorder / Player", "Spectrum Analyzer", "Signal Generator", "Oscilloscope"],
+        ),
+        (
+            ["Frequency Counter", "LUFS Meter", "Recorder / Player", "Spectrogram"],
+            ["Frequency Counter", "LUFS Meter", "Recorder / Player", "Spectrogram"],
+        ),
+    ],
+)
+def test_startup_preload_prioritizes_recent_modules_with_four_page_limit(qtbot, recent, expected):
+    from unittest.mock import patch
+
+    window = MainWindow()
+    qtbot.addWidget(window)
+    loaded = []
+    progress = []
+
+    with (
+        patch.object(window.config_manager, "get_recent_modules", return_value=recent),
+        patch.object(
+            window, "_ensure_module_loaded", side_effect=lambda index: loaded.append(window._module_keys[index])
+        ),
+    ):
+        window.preload_startup_modules(progress.append)
+
+    assert loaded == expected
+    assert len(progress) == len(expected)
+
+
 def test_recent_history_records_only_successful_navigation(qtbot, tmp_path):
     from unittest.mock import patch
 

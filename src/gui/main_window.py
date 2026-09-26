@@ -801,6 +801,18 @@ class MainWindow(QMainWindow):
             )
             self.logger.error(f"Failed to load module {key}: {e}", exc_info=True)
 
+    def preload_startup_modules(self, progress_callback=None):
+        """Prepare up to four recently used or Welcome modules before showing the window."""
+        recent = self.config_manager.get_recent_modules()
+        basic = self.welcome_widget.BASIC_MODULE_KEYS
+        keys = [key for key in dict.fromkeys([*recent, *basic]) if key in self._module_keys][:4]
+
+        for position, key in enumerate(keys, start=1):
+            if progress_callback is not None:
+                progress_callback(tr("Loading {0} ({1}/{2})...").format(tr(key), position, len(keys)))
+            self._ensure_module_loaded(self._module_keys.index(key))
+            QApplication.processEvents()
+
     def preload_all_modules(self, progress_callback=None):
         """Preload Settings and all modules.
 
