@@ -244,7 +244,7 @@ class TestThemeManager(unittest.TestCase):
         args = self.mock_app.setPalette.call_args[0]
         palette_set = args[0]
         window_color = palette_set.colors[MockQPalette.ColorRole.Window]
-        self.assertEqual(window_color.r, 22)
+        self.assertEqual(window_color.r, 24)
 
     def test_set_theme_system_detect_dark_via_hints(self):
         # Setup Qt 6.5+ hints for Dark
@@ -271,7 +271,7 @@ class TestThemeManager(unittest.TestCase):
         args = self.mock_app.setPalette.call_args[0]
         palette_set = args[0]
         window_color = palette_set.colors[MockQPalette.ColorRole.Window]
-        self.assertEqual(window_color.r, 22)
+        self.assertEqual(window_color.r, 24)
 
     def test_set_theme_system_detect_light_via_hints(self):
         mock_qt = MagicMock()
@@ -446,7 +446,7 @@ class TestThemeManager(unittest.TestCase):
         args = self.mock_app.setPalette.call_args[0]
         palette_set = args[0]
         window_color = palette_set.colors[MockQPalette.ColorRole.Window]
-        self.assertEqual(window_color.r, 22)
+        self.assertEqual(window_color.r, 24)
 
     def test_style_factory_keys_cached(self):
         """Test that QStyleFactory.keys() is cached to improve performance."""

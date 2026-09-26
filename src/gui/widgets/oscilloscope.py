@@ -800,14 +800,14 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, SplittableWidgetIn
 
         self.badge_status_label = QLabel()
         self.badge_status_label.setStyleSheet(
-            "QLabel { color: #d0d7de; font-weight: normal; padding: 2px 4px; font-size: 11px; }"
+            "QLabel { color: palette(text); font-weight: normal; padding: 2px 4px; font-size: 11px; }"
         )
         badge_layout.addWidget(self.badge_status_label)
 
         badge_layout.addStretch()
 
         self.calibration_status_label = QLabel()
-        self.calibration_status_label.setStyleSheet("QLabel { color: #8b949e; font-size: 10px; }")
+        self.calibration_status_label.setStyleSheet("QLabel { color: palette(placeholder-text); font-size: 10px; }")
         badge_layout.addWidget(self.calibration_status_label)
 
         self.clipping_warning_badge = QLabel(tr("CLIPPING"))
@@ -1848,6 +1848,12 @@ class OscilloscopeWidget(QWidget, CompactableWidgetInterface, SplittableWidgetIn
             if hasattr(self, "meas_r_auto_label"):
                 self.meas_r_auto_label.setStyleSheet(STYLE_LABEL_RIGHT_CH_LIGHT)
             self.cursor_info_label.setStyleSheet(STYLE_LABEL_CURSOR_LIGHT)
+
+        # Re-resolve local palette references when switching themes so the
+        # acquisition conditions remain readable on both panel backgrounds.
+        for label in (self.badge_status_label, self.calibration_status_label):
+            label.setPalette(self.app.palette())
+            label.setStyleSheet(label.styleSheet())
 
     def update_compact_layout(self):
         compact = self.is_compact_mode()

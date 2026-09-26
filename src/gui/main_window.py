@@ -439,6 +439,17 @@ class MainWindow(QMainWindow):
         sidebar_layout.setContentsMargins(12, 16, 12, 10)
         sidebar_layout.setSpacing(8)
 
+        brand = QLabel("MeasureLab")
+        brand.setObjectName("sidebarBrand")
+        brand_font = brand.font()
+        if brand_font.pointSizeF() > 0:
+            brand_font.setPointSizeF(brand_font.pointSizeF() + 3)
+        else:
+            brand_font.setPixelSize(brand_font.pixelSize() + 4)
+        brand_font.setBold(True)
+        brand.setFont(brand_font)
+        sidebar_layout.addWidget(brand)
+
         self.menu_only_btn = QPushButton(tr("Menu Only"))
         self.menu_only_btn.setProperty("shellAction", True)
         self.menu_only_btn.setCheckable(True)
@@ -463,17 +474,12 @@ class MainWindow(QMainWindow):
         sidebar_layout.addWidget(self.module_search)
 
         self.sidebar = QListWidget()
+        self.sidebar.setObjectName("moduleNavigation")
         self.sidebar.setItemDelegate(_NavigationDelegate(self.sidebar))
         self.sidebar.setVerticalScrollMode(QListWidget.ScrollMode.ScrollPerPixel)
         self.sidebar.setWordWrap(True)
         self.sidebar.setTextElideMode(Qt.TextElideMode.ElideNone)
         self.sidebar.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.sidebar.setStyleSheet("""
-            QListWidget { border: none; background: palette(window); outline: 0; }
-            QListWidget::item { padding: 7px 8px; border-radius: 6px; }
-            QListWidget::item:hover { background: palette(alternate-base); }
-            QListWidget::item:selected { background: palette(highlight); color: palette(highlighted-text); }
-        """)
         self.sidebar.addItem(tr("Welcome"))
         self.sidebar.addItem(tr("Settings"))  # Add Settings item
         self.sidebar.addItem(tr("Remote Audio I/O"))
@@ -1251,7 +1257,7 @@ class MainWindow(QMainWindow):
             return
 
         default_brush = self.sidebar.palette().brush(QPalette.ColorRole.Text)
-        active_brush = self.sidebar.palette().brush(QPalette.ColorRole.Highlight)
+        active_brush = self.sidebar.palette().brush(QPalette.ColorRole.Link)
         language = get_manager().language
         activity_cache = getattr(self, "_sidebar_activity_cache", {})
 

@@ -90,7 +90,7 @@ def test_refresh_sidebar_activity_indicators_updates_visuals_and_tooltips(qtbot)
     active_item = window.sidebar.item(3)
     detached_item = window.sidebar.item(4)
     default_brush = window.sidebar.palette().brush(QPalette.ColorRole.Text)
-    active_brush = window.sidebar.palette().brush(QPalette.ColorRole.Highlight)
+    active_brush = window.sidebar.palette().brush(QPalette.ColorRole.Link)
 
     assert active_item.font().bold()
     assert active_item.foreground().color() == active_brush.color()
@@ -118,7 +118,7 @@ def test_sidebar_activity_cache_refreshes_when_palette_changes(qtbot):
     window._refresh_sidebar_activity_indicators()
 
     palette = QPalette(window.sidebar.palette())
-    palette.setColor(QPalette.ColorRole.Highlight, QColor("#123456"))
+    palette.setColor(QPalette.ColorRole.Link, QColor("#123456"))
     palette.setColor(QPalette.ColorRole.Text, QColor("#654321"))
     window.sidebar.setPalette(palette)
     window._refresh_sidebar_activity_indicators()
