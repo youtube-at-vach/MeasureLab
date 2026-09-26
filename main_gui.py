@@ -6,10 +6,7 @@ import os
 import signal
 import sys
 
-from src.core.config_manager import ConfigManager
 from src.core.errors import AudioEngineReservedError
-from src.core.localization import get_manager, tr
-from src.core.utils import resource_path
 
 
 class _ExpectedExceptionLogger:
@@ -40,7 +37,44 @@ def _attach_startup_log_handler(app, root_logger):
     return handler
 
 
-def setup_app():
+def _show_startup_splash(app):
+    """Paint the splash before configuration and log viewer setup."""
+    from PyQt6.QtCore import Qt
+    from PyQt6.QtGui import QPixmap
+
+    from src.core.utils import resource_path
+    from src.gui.startup import WrappingSplashScreen
+
+    pixmap = QPixmap(resource_path("src/assets/welcome.png"))
+    if pixmap.isNull():
+        pixmap = QPixmap(624, 360)
+        pixmap.fill(Qt.GlobalColor.black)
+    else:
+        pixmap = pixmap.scaled(
+            624,
+            360,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+
+    splash = WrappingSplashScreen(pixmap)
+    splash.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+    splash.show()
+    # Center on primary screen.
+    try:
+        screen = app.primaryScreen()
+        if screen is not None:
+            geom = screen.availableGeometry()
+            splash_rect = splash.frameGeometry()
+            splash_rect.moveCenter(geom.center())
+            splash.move(splash_rect.topLeft())
+    except Exception:  # noqa: S110
+        pass
+    app.processEvents()
+    return splash
+
+
+def setup_app(show_splash=False):
     """Set up the QApplication instance, logging, and environment configuration."""
     # Suppress benign GNOME portal Settings warnings like:
     #   qt.qpa.theme.gnome: dbus reply error: ... org.freedesktop.portal.Settings
@@ -68,17 +102,6 @@ def setup_app():
 
     numeric_level = getattr(logging, args.log_level.upper(), logging.INFO)
 
-    # Determine log file path
-    if os.environ.get("MEASURELAB_TESTING") == "1":
-        log_path = os.devnull
-    elif args.log_file:
-        log_path = args.log_file
-    else:
-        # Default to User Data Directory
-        user_dir = ConfigManager.get_user_data_dir()
-        os.makedirs(user_dir, exist_ok=True)
-        log_path = os.path.join(user_dir, "measurelab.log")
-
     # Configure root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(numeric_level)
@@ -99,10 +122,24 @@ def setup_app():
     # log, but they do not need a full traceback on stderr.
     _install_expected_exception_logger()
 
+    app = QApplication(sys.argv)
+    if show_splash:
+        # Retain the window while the rest of setup_app runs.
+        app._measurelab_splash = _show_startup_splash(app)  # type: ignore[attr-defined]
+
+    from src.core.config_manager import ConfigManager
+    from src.core.localization import get_manager
+
     # File handler (5MB, 2 backups)
     if os.environ.get("MEASURELAB_TESTING") == "1":
         logging.info("MEASURELAB_TESTING=1 detected: Skipping file logging initialization.")
     else:
+        if args.log_file:
+            log_path = args.log_file
+        else:
+            user_dir = ConfigManager.get_user_data_dir()
+            os.makedirs(user_dir, exist_ok=True)
+            log_path = os.path.join(user_dir, "measurelab.log")
         try:
             file_handler = RotatingFileHandler(log_path, maxBytes=5 * 1024 * 1024, backupCount=2, encoding="utf-8")
             file_handler.setFormatter(formatter)
@@ -110,8 +147,7 @@ def setup_app():
         except Exception as e:
             logging.error(f"Failed to set up file logging at {log_path}: {e}")
 
-    # Load language early so the splash text matches user settings.
-    # Keep this lightweight: just read config + load translations.
+    # Load language before adding text to the splash.
     config_manager = None
     try:
         config_manager = ConfigManager()
@@ -119,8 +155,6 @@ def setup_app():
     except Exception:
         # If config or translations fail, proceed with defaults.
         logging.error("Failed to load configuration or language", exc_info=True)
-
-    app = QApplication(sys.argv)
 
     # Replay the earliest messages once the log viewer can be created in the
     # user's language, then keep it attached for the rest of the session.
@@ -160,41 +194,13 @@ def setup_app():
 
 def main():
     """GUI Application Entry Point"""
-    app = setup_app()
+    app = setup_app(show_splash=True)
 
-    # Import only the small startup surface before showing the splash. The
-    # main window and its audio/module registry can then load behind it.
     from PyQt6.QtCore import Qt, QTimer
-    from PyQt6.QtGui import QPixmap
 
-    from src.gui.startup import WrappingSplashScreen
+    from src.core.localization import tr
 
-    # Startup splash (loading screen): show immediately while MainWindow initializes.
-    pixmap = QPixmap(resource_path("src/assets/welcome.png"))
-    if pixmap.isNull():
-        pixmap = QPixmap(624, 360)
-        pixmap.fill(Qt.GlobalColor.black)
-    else:
-        pixmap = pixmap.scaled(
-            624,
-            360,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
-
-    splash = WrappingSplashScreen(pixmap)
-    splash.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
-    splash.show()
-    # Center on primary screen
-    try:
-        screen = app.primaryScreen()
-        if screen is not None:
-            geom = screen.availableGeometry()
-            splash_rect = splash.frameGeometry()
-            splash_rect.moveCenter(geom.center())
-            splash.move(splash_rect.topLeft())
-    except Exception:  # noqa: S110
-        pass
+    splash = app._measurelab_splash
     splash.showMessage(
         f"{tr('Loading...')}\n{tr('Initializing application...')}",
         Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter,

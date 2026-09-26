@@ -185,6 +185,36 @@ def test_menu_only_double_click_raises_both_split_windows(qtbot):
         wrapper.split_control_window = None
 
 
+def test_menu_only_size_stays_fixed_when_detached_window_closes(qtbot):
+    window = MainWindow()
+    qtbot.addWidget(window)
+    window.show()
+    qtbot.waitExposed(window)
+    window.resize(700, 700)
+    normal_size = window.size()
+    normal_height_limits = (window.minimumHeight(), window.maximumHeight())
+
+    window.set_menu_only_mode(True)
+    menu_size = window.size()
+    content = QWidget()
+    content.setMinimumHeight(900)
+    wrapper = DetachableWidgetWrapper(content, "Test Module", capabilities=NO_CAPABILITIES)
+    window._module_containers[0].layout().addWidget(wrapper)
+
+    wrapper.detach()
+    qtbot.waitExposed(wrapper.independent_window)
+    assert window.size() == menu_size
+    wrapper.independent_window.close()
+    window.adjustSize()
+
+    assert window.size() == menu_size
+    assert not wrapper.is_detached
+
+    window.set_menu_only_mode(False)
+    assert window.size() == normal_size
+    assert (window.minimumHeight(), window.maximumHeight()) == normal_height_limits
+
+
 def _audio_status(
     *,
     latched=None,

@@ -252,6 +252,8 @@ class MainWindow(QMainWindow):
         self._normal_geometry = None
         self._normal_min_width = self.minimumWidth()
         self._normal_max_width = self.maximumWidth()
+        self._normal_min_height = self.minimumHeight()
+        self._normal_max_height = self.maximumHeight()
 
         self._init_core()
         self._init_audio()
@@ -1456,6 +1458,9 @@ class MainWindow(QMainWindow):
             self._normal_geometry = self.saveGeometry()
             self._normal_min_width = self.minimumWidth()
             self._normal_max_width = self.maximumWidth()
+            self._normal_min_height = self.minimumHeight()
+            self._normal_max_height = self.maximumHeight()
+            menu_height = self.height()
 
             self.content_area.hide()
             self._move_status_widgets_to_sidebar_footer()
@@ -1463,11 +1468,14 @@ class MainWindow(QMainWindow):
             self.status_bar.hide()
             self.menu_only_btn.setText(tr("Normal View"))
             self.sidebar.setToolTip(tr("Double-click a menu item to open it."))
-            self.setFixedWidth(self.sidebar_panel.width())
+            # Reattaching a detached module can update Qt's size hints while the content area is hidden.
+            self.setFixedSize(self.sidebar_panel.width(), menu_height)
             return
 
         self.setMinimumWidth(self._normal_min_width)
         self.setMaximumWidth(self._normal_max_width)
+        self.setMinimumHeight(self._normal_min_height)
+        self.setMaximumHeight(self._normal_max_height)
         self.content_area.show()
         self.sidebar_footer.hide()
         self._move_status_widgets_to_status_bar()
