@@ -261,8 +261,8 @@ class MainWindow(QMainWindow):
         self._init_state()
 
     def set_startup_size(self):
-        """Give the initial window a consistent 16:10 shape after startup preloading."""
-        target_width, target_height = 1280, 800
+        """Set the initial window size after startup preloading."""
+        target_width, target_height = 1280, 740
         self.layout().activate()
         minimum = self.minimumSizeHint()
         screen = self.screen() or QApplication.primaryScreen()
@@ -761,6 +761,7 @@ class MainWindow(QMainWindow):
             self._replace_container_contents(self._settings_container, self.settings_widget)
             self._settings_loaded = True
         except Exception as e:
+            self.logger.exception("Failed to load Settings")
             self._replace_container_contents(
                 self._settings_container,
                 QLabel(tr("Failed to load Settings: {0}").format(str(e))),

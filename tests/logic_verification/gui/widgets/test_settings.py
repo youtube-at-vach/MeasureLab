@@ -5,6 +5,17 @@ from src.gui.widgets.settings import SettingsWidget
 from src.core.config_manager import ConfigManager
 
 
+def test_default_hostapi_ignores_invalid_backend_value():
+    settings = MagicMock()
+    settings.config_manager.get_audio_config.return_value = {}
+    sounddevice = MagicMock()
+
+    with patch.dict("sys.modules", {"sounddevice": sounddevice}):
+        assert SettingsWidget._get_current_host_api_index(settings, []) == 0
+        sounddevice.default.hostapi = 2
+        assert SettingsWidget._get_current_host_api_index(settings, []) == 2
+
+
 def test_settings_widget_instantiation(qtbot):
     """Test basic instantiation of the SettingsWidget."""
     mock_engine = MagicMock()

@@ -60,7 +60,7 @@ class TestFFTWarmup(unittest.TestCase):
             manager = FFTManager()
 
             # Mock get_plan to track calls.
-            manager.get_plan = MagicMock()
+            manager.get_plan = MagicMock(return_value={"flags": ("FFTW_MEASURE",)})
 
             # Call warmup
             manager.warmup(callback=MagicMock())

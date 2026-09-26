@@ -1812,10 +1812,12 @@ class SettingsWidget(QWidget):
         try:
             import sounddevice as sd
 
-            return sd.default.hostapi
+            default_hostapi = sd.default.hostapi
+            if isinstance(default_hostapi, int):
+                return default_hostapi
         except Exception as e:
             self.logger.debug(f"Failed to get default hostapi: {e}")
-            return 0
+        return 0
 
     def on_hostapi_changed(self):
         self._populate_device_combos()
