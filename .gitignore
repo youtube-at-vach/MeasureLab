@@ -29,6 +29,7 @@ env/
 .mypy_cache/
 .pyright/
 .pytest_cache/
+artifacts/gui_fuzz/
 .ruff_cache/
 .coverage
 

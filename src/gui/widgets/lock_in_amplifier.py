@@ -658,6 +658,11 @@ class LockInAmplifierWidget(QWidget):
         # so frequency limits track sample rate changes.
         self.timer.start()
 
+    def closeEvent(self, event):
+        self.timer.stop()
+        self.module.stop_analysis()
+        super().closeEvent(event)
+
     def get_decimal_places(self, val_std, val_abs=None, is_db=False, default=3, max_places=6):
         if val_std <= 0:
             return default

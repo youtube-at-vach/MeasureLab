@@ -573,6 +573,12 @@ class RecorderPlayerWidget(QWidget, CompactableWidgetInterface):
         self.timer.timeout.connect(self.update_ui)
         self.timer.start(100)
 
+    def closeEvent(self, event):
+        self.timer.stop()
+        self.module.stop_playback()
+        self.module.stop_recording()
+        super().closeEvent(event)
+
     @staticmethod
     def _emphasize(label: QLabel, *, larger: bool = False, monospace: bool = False):
         font = label.font()
