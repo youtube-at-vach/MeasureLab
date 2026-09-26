@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock, patch
 from PyQt6.QtWidgets import QTabWidget
+from src.gui.widgets import settings as settings_module
 from src.gui.widgets.settings import SettingsWidget
 from src.core.config_manager import ConfigManager
 
@@ -50,6 +51,23 @@ def test_settings_widget_instantiation(qtbot):
             tabs = widget.findChild(QTabWidget)
             assert tabs is not None
             assert tabs.count() == 3
+
+            with patch.object(
+                settings_module.fft_manager,
+                "get_forward_plan_coverage",
+                return_value={
+                    "measured": {
+                        (size, dtype) for size in settings_module.WARMUP_SIZES for dtype in ("float32", "float64")
+                    },
+                    "estimated": {
+                        (size, dtype) for size in settings_module.MEDIUM_SIZES for dtype in ("float32", "float64")
+                    },
+                },
+            ):
+                widget._refresh_fft_optimization_status()
+                assert "MEASURE" in widget.fft_status_values[0][0].text()
+                assert "ESTIMATE" in widget.fft_status_values[1][0].text()
+                assert widget.fft_status_values[2][0].text() == "— No plan"
 
 
 def test_settings_offline_mode_toggle_ui(qtbot):

@@ -6,6 +6,7 @@ import logging
 import os
 import json
 import base64
+import hashlib
 from pathlib import Path
 from src.core.localization import tr
 
@@ -35,6 +36,8 @@ class FFTManager:
     def __init__(self):
         self._plans = {}
         self._lock = threading.Lock()
+        self._measured_plans = set()
+        self._optimization_status_known = True
 
         # Limit the maximum number of threads to 8. Small 1D transforms use one
         # thread in _create_plan to avoid FFTW's synchronization overhead.
@@ -72,6 +75,7 @@ class FFTManager:
             return
 
         if self.wisdom_path.exists():
+            self._optimization_status_known = False
             try:
                 # Use JSON + Base64 to safely load wisdom (avoids pickle deserialization vulnerabilities)
                 with open(self.wisdom_path, "r") as f:
@@ -81,10 +85,67 @@ class FFTManager:
 
                 # Decode base64 strings back to bytes
                 wisdom = tuple(base64.b64decode(item) for item in data)
-                pyfftw.import_wisdom(wisdom)
+                imported = pyfftw.import_wisdom(wisdom)
+                if all(imported[:2]):
+                    self._load_optimization_status()
+                else:
+                    self._optimization_status_known = False
                 logger.debug(f"Loaded pyfftw wisdom from {self.wisdom_path}")
             except Exception as e:
                 logger.warning(f"Failed to load wisdom: {e}")
+
+    def _load_optimization_status(self):
+        """Load verified plan details; legacy wisdom has no inspectable size list."""
+        self._optimization_status_known = False
+        status_path = self.wisdom_path.with_name(self.wisdom_path.name + "_status.json")
+        try:
+            with open(status_path, encoding="utf-8") as f:
+                status = json.load(f)
+            digest = hashlib.sha256(self.wisdom_path.read_bytes()).hexdigest()
+            if status["version"] != 1 or status["wisdom_sha256"] != digest:
+                return
+            plans = status["measured_plans"]
+            if not isinstance(plans, list):
+                return
+            measured = set()
+            for plan in plans:
+                if (
+                    not isinstance(plan, list)
+                    or len(plan) != 3
+                    or not isinstance(plan[0], int)
+                    or plan[0] <= 0
+                    or plan[1] not in ("float32", "float64")
+                    or plan[2] not in ("FFTW_FORWARD", "FFTW_BACKWARD")
+                ):
+                    return
+                measured.add(tuple(plan))
+            self._measured_plans = measured
+            self._optimization_status_known = True
+        except (OSError, ValueError, TypeError, KeyError) as e:
+            logger.debug(f"Could not read FFT optimization status: {e}")
+
+    def get_measured_plan_sizes(self):
+        """Return measured forward FFT sizes by precision, or None for legacy wisdom."""
+        coverage = self.get_forward_plan_coverage()
+        if coverage is None:
+            return None
+        return {
+            dtype: {size for size, plan_dtype in coverage["measured"] if plan_dtype == dtype}
+            for dtype in ("float32", "float64")
+        }
+
+    def get_forward_plan_coverage(self):
+        """Return measured and estimated real FFT plans, or None for legacy wisdom."""
+        if not HAS_PYFFTW or not self._optimization_status_known:
+            return None
+        with self._lock:
+            measured = {(size, dtype) for size, dtype, direction in self._measured_plans if direction == "FFTW_FORWARD"}
+            estimated = {
+                (size, dtype)
+                for (size, dtype, direction), plan in self._plans.items()
+                if direction == "FFTW_FORWARD" and "FFTW_MEASURE" not in plan["flags"]
+            }
+        return {"measured": measured, "estimated": estimated - measured}
 
     def save_wisdom(self):
         if not HAS_PYFFTW:
@@ -99,6 +160,17 @@ class FFTManager:
 
             with open(self.wisdom_path, "w") as f:
                 json.dump(data, f)
+            digest = hashlib.sha256(self.wisdom_path.read_bytes()).hexdigest()
+            status_path = self.wisdom_path.with_name(self.wisdom_path.name + "_status.json")
+            with open(status_path, "w", encoding="utf-8") as f:
+                json.dump(
+                    {
+                        "version": 1,
+                        "wisdom_sha256": digest,
+                        "measured_plans": [list(plan) for plan in sorted(self._measured_plans)],
+                    },
+                    f,
+                )
             logger.debug(f"Saved pyfftw wisdom to {self.wisdom_path}")
         except Exception as e:
             logger.error(f"Failed to save wisdom: {e}")
@@ -187,9 +259,6 @@ class FFTManager:
             # Save wisdom only if we did a measurement (MEASURE or PATIENT etc),
             # though ESTIMATE doesn't generate wisdom worth saving usually, saving doesn't hurt.
             # But typically we only care about saving after costly optimizations.
-            if "FFTW_MEASURE" in flags and not getattr(self, "_in_warmup", False):
-                self.save_wisdom()
-
             self._plans[(size, dtype_str, direction)] = {
                 "object": fft_object,
                 "input": input_array,
@@ -197,6 +266,10 @@ class FFTManager:
                 "flags": flags,
                 "lock": threading.Lock(),
             }
+            if "FFTW_MEASURE" in flags:
+                self._measured_plans.add((size, dtype_str, direction))
+                if not self._in_warmup:
+                    self.save_wisdom()
             logger.debug(f"Created pyfftw plan for size {size} ({dtype_str}, {direction}) with flags {flags}")
 
         except Exception as e:
@@ -324,11 +397,18 @@ class FFTManager:
             pyfftw.forget_wisdom()
             with self._lock:
                 self._plans.clear()
+                self._measured_plans.clear()
+                self._optimization_status_known = True
             if self.wisdom_path.exists():
                 try:
                     self.wisdom_path.unlink()
                 except Exception as e:
                     logger.warning(f"Failed to delete wisdom file: {e}")
+            status_path = self.wisdom_path.with_name(self.wisdom_path.name + "_status.json")
+            try:
+                status_path.unlink(missing_ok=True)
+            except OSError as e:
+                logger.warning(f"Failed to delete FFT optimization status: {e}")
 
         sizes_to_optimize = WARMUP_SIZES
         if exhaustive:
@@ -345,8 +425,10 @@ class FFTManager:
                     callback(tr("Optimizing FFT... (Size {0}) {1}/{2}").format(size, _i + 1, total))
 
                 # Use MEASURE for warmup to ensure peak performance
-                self.get_plan(size, "float64", flags=("FFTW_MEASURE",))
-                self.get_plan(size, "float32", flags=("FFTW_MEASURE",))
+                for dtype in ("float64", "float32"):
+                    plan = self.get_plan(size, dtype, flags=("FFTW_MEASURE",))
+                    if plan is None or "FFTW_MEASURE" not in plan["flags"]:
+                        raise RuntimeError(f"Failed to create FFT plan for size {size} ({dtype})")
         finally:
             self._in_warmup = False
 

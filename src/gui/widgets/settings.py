@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import (
     QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QInputDialog,
@@ -30,7 +31,7 @@ from src.gui.styles import button_style
 from src.core.generators import PinkNoise
 from src.core.analysis import AudioCalc
 
-from src.core.fft_manager import fft_manager
+from src.core.fft_manager import HAS_PYFFTW, HUGE_SIZES, MEDIUM_SIZES, WARMUP_SIZES, fft_manager
 from PyQt6.QtWidgets import QProgressDialog
 from PyQt6.QtCore import Qt
 
@@ -1047,22 +1048,44 @@ class SettingsWidget(QWidget):
         # --- FFT Optimization ---
         fft_group = QGroupBox(tr("FFT Optimization"))
         fft_layout = QVBoxLayout()
-        fft_desc = QLabel(
-            tr(
-                "Pre-calculate FFT plans for faster performance. This may take a few seconds. Includes exhaustive optimization (up to 4M)."
+        fft_layout.addWidget(QLabel(tr("FFT plan status (32-bit + 64-bit)")))
+        status_grid = QGridLayout()
+        self.fft_status_values = []
+        for column, (label, sizes) in enumerate(
+            (
+                (tr("Standard · 256–65K"), WARMUP_SIZES),
+                (tr("Medium · 131K–524K"), MEDIUM_SIZES),
+                (tr("Huge · 1M–4M"), HUGE_SIZES),
             )
-        )
-        fft_desc.setWordWrap(True)
-        fft_layout.addWidget(fft_desc)
-
-        self.regen_fft_btn = QPushButton(tr("Regenerate Optimization"))
-        self.regen_fft_btn.clicked.connect(self.on_regenerate_fft)
-        fft_layout.addWidget(self.regen_fft_btn)
+        ):
+            status_value = QLabel()
+            status_font = status_value.font()
+            status_font.setBold(True)
+            status_value.setFont(status_font)
+            status_grid.addWidget(QLabel(label), 0, column)
+            status_grid.addWidget(status_value, 1, column)
+            self.fft_status_values.append((status_value, sizes))
+            status_grid.setColumnStretch(column, 1)
+        fft_layout.addLayout(status_grid)
+        self.fft_status_label = QLabel()
+        self.fft_status_label.setWordWrap(True)
+        fft_layout.addWidget(self.fft_status_label)
+        self._refresh_fft_optimization_status()
 
         self.include_huge_check = QCheckBox(tr("Include Huge Sizes (Slow)"))
         self.include_huge_check.setToolTip(tr("Optimizes sizes up to 4M. Can take several minutes."))
         self.include_huge_check.setChecked(False)
-        fft_layout.addWidget(self.include_huge_check)
+        self.include_huge_check.setEnabled(HAS_PYFFTW)
+
+        self.regen_fft_btn = QPushButton(tr("Optimize FFT"))
+        self.regen_fft_btn.setToolTip(tr("Run if spectrum analysis feels slow."))
+        self.regen_fft_btn.setEnabled(HAS_PYFFTW)
+        self.regen_fft_btn.clicked.connect(self.on_regenerate_fft)
+        fft_actions = QHBoxLayout()
+        fft_actions.addWidget(self.include_huge_check)
+        fft_actions.addStretch()
+        fft_actions.addWidget(self.regen_fft_btn)
+        fft_layout.addLayout(fft_actions)
 
         fft_group.setLayout(fft_layout)
         general_layout.addWidget(fft_group)
@@ -1070,6 +1093,37 @@ class SettingsWidget(QWidget):
         general_layout.addStretch()
         general_tab.setLayout(general_layout)
         return general_tab
+
+    def _refresh_fft_optimization_status(self):
+        coverage = fft_manager.get_forward_plan_coverage()
+        if coverage is None:
+            if not HAS_PYFFTW:
+                self.fft_status_label.setText(tr("FFT acceleration is unavailable (pyFFTW is not installed)."))
+            else:
+                self.fft_status_label.setText(tr("FFT plan status unknown (older saved data)."))
+            self.fft_status_label.setVisible(True)
+            for value, _sizes in self.fft_status_values:
+                value.setText("?")
+                value.setToolTip("")
+            return
+
+        self.fft_status_label.clear()
+        self.fft_status_label.setVisible(False)
+        for value, sizes in self.fft_status_values:
+            expected = {(size, dtype) for size in sizes for dtype in ("float32", "float64")}
+            measured = expected & coverage["measured"]
+            estimated = expected & coverage["estimated"]
+            if measured == expected:
+                value.setText("✓ " + tr("MEASURE plans"))
+            elif measured:
+                value.setText("◐ " + tr("Some MEASURE plans"))
+            elif estimated == expected:
+                value.setText("○ " + tr("ESTIMATE plans"))
+            elif estimated:
+                value.setText("◐ " + tr("Some ESTIMATE plans"))
+            else:
+                value.setText("— " + tr("No plan"))
+            value.setToolTip(tr("MEASURE: {0}, ESTIMATE: {1}").format(len(measured), len(estimated)))
 
     def _create_audio_tab(self) -> QWidget:
         audio_tab = QWidget()
@@ -1559,6 +1613,8 @@ class SettingsWidget(QWidget):
                 progress.setValue(int(((i + 1) / total_sizes) * 100))
 
             manager.save_wisdom()
+            fft_manager.load_wisdom()
+            self._refresh_fft_optimization_status()
             progress.setValue(100)
 
     def open_spl_calibration(self):
@@ -2057,6 +2113,7 @@ class SettingsWidget(QWidget):
         try:
             include_huge = self.include_huge_check.isChecked()
             fft_manager.warmup(callback=callback, force=True, exhaustive=True, include_huge=include_huge)
+            self._refresh_fft_optimization_status()
 
             # Ensure it hits 100% at the end
             progress.setValue(100)
@@ -2068,11 +2125,14 @@ class SettingsWidget(QWidget):
             QMessageBox.information(self, tr("Success"), tr("FFT optimization completed successfully."))
         except Exception as e:
             progress.close()
+            self._refresh_fft_optimization_status()
             QMessageBox.critical(self, tr("Error"), tr("Optimization failed: {0}").format(str(e)))
 
     # --- Calibration Profiles ---
 
     def _on_settings_tab_changed(self, index):
+        if index == 0:
+            self._refresh_fft_optimization_status()
         if self.tabs.widget(index) is self.calibration_tab:
             self.refresh_cal_profiles()
             self._refresh_all_calibration_displays()
