@@ -29,7 +29,6 @@ env/
 .mypy_cache/
 .pyright/
 .pytest_cache/
-artifacts/gui_fuzz/
 .ruff_cache/
 .coverage
 
@@ -53,6 +52,9 @@ ehthumbs.db
 *.png
 !src/assets/*.png
 !docs/**/*.png
+
+# Local GUI fuzz traces, failure reports, and screenshots
+/artifacts/gui_fuzz/
 
 # Calibration settings
 calibration_settings.ini
