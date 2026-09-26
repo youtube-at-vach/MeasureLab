@@ -1,5 +1,5 @@
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPalette
+from PyQt6.QtCore import QEvent, QObject, Qt
+from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import QListWidget, QWidget
 from unittest.mock import MagicMock
 
@@ -110,6 +110,21 @@ def test_refresh_sidebar_activity_indicators_updates_visuals_and_tooltips(qtbot)
     inactive_item = window.sidebar.item(3)
     assert not inactive_item.font().bold()
     assert inactive_item.foreground().color() == default_brush.color()
+
+
+def test_sidebar_activity_cache_refreshes_when_palette_changes(qtbot):
+    window = _build_window_stub(qtbot)
+    window.modules[0] = _DummyModule(is_playing=True)
+    window._refresh_sidebar_activity_indicators()
+
+    palette = QPalette(window.sidebar.palette())
+    palette.setColor(QPalette.ColorRole.Highlight, QColor("#123456"))
+    palette.setColor(QPalette.ColorRole.Text, QColor("#654321"))
+    window.sidebar.setPalette(palette)
+    window._refresh_sidebar_activity_indicators()
+
+    assert window.sidebar.item(3).foreground().color() == QColor("#123456")
+    assert window.sidebar.item(4).foreground().color() == QColor("#654321")
 
 
 def test_build_module_activity_tooltip(qtbot):
@@ -484,6 +499,43 @@ def test_sidebar_search_finds_measurement_goals_and_explains_result(qtbot):
 def test_visible_navigation_updates_before_lazy_page_load(qtbot):
     from unittest.mock import patch
 
+    class PaintSpy(QObject):
+        def __init__(self):
+            super().__init__()
+            self.paint_count = 0
+
+        def eventFilter(self, _obj, event):
+            if event.type() == QEvent.Type.Paint:
+                self.paint_count += 1
+            return False
+
+    window = MainWindow()
+    qtbot.addWidget(window)
+    window.show()
+    qtbot.wait(0)
+
+    module_index = window._module_keys.index("Spectrum Analyzer")
+    row = module_index + window._MODULE_PAGE_OFFSET
+    paint_spy = PaintSpy()
+    window._module_containers[module_index].installEventFilter(paint_spy)
+    loaded = []
+
+    with patch.object(
+        window, "_ensure_module_loaded", side_effect=lambda index: loaded.append((index, paint_spy.paint_count))
+    ):
+        window.sidebar.setCurrentRow(row)
+        assert window.content_area.currentIndex() == row
+        assert loaded == []
+        qtbot.waitUntil(lambda: bool(loaded))
+
+    assert len(loaded) == 1
+    assert loaded[0][0] == module_index
+    assert loaded[0][1] > 0
+
+
+def test_pending_lazy_load_waits_while_menu_only_mode_is_active(qtbot):
+    from unittest.mock import patch
+
     window = MainWindow()
     qtbot.addWidget(window)
     window.show()
@@ -495,9 +547,12 @@ def test_visible_navigation_updates_before_lazy_page_load(qtbot):
 
     with patch.object(window, "_ensure_module_loaded", side_effect=lambda index: loaded.append(index)):
         window.sidebar.setCurrentRow(row)
-        assert window.content_area.currentIndex() == row
+        window.set_menu_only_mode(True)
+        qtbot.wait(30)
         assert loaded == []
-        qtbot.wait(1)
+
+        window.set_menu_only_mode(False)
+        qtbot.waitUntil(lambda: bool(loaded))
 
     assert loaded == [module_index]
 

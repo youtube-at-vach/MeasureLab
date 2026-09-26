@@ -1230,14 +1230,15 @@ class MainWindow(QMainWindow):
             wrapper = self.module_widgets[module_index]
             is_split = bool(getattr(wrapper, "is_split", False)) if wrapper is not None else False
             is_detached = bool(getattr(wrapper, "is_detached", False)) if wrapper is not None else False
-            state = (language, is_active, is_split, is_detached)
+            foreground_brush = active_brush if is_active else default_brush
+            state = (language, is_active, is_split, is_detached, foreground_brush)
             if activity_cache.get(module_index) == state:
                 continue
 
             font = item.font()
             font.setBold(is_active)
             item.setFont(font)
-            item.setForeground(active_brush if is_active else default_brush)
+            item.setForeground(foreground_brush)
             item.setToolTip(self._build_module_activity_tooltip(module_index))
             translated_key = tr(key)
             if item.text() != translated_key:
@@ -1497,7 +1498,7 @@ class MainWindow(QMainWindow):
 
     def _load_page(self, index: int) -> None:
         """Load the selected page after its placeholder is already visible."""
-        if index < 0 or self.content_area.currentIndex() != index:
+        if index < 0 or self._menu_only_mode or self.content_area.currentIndex() != index:
             return
         if index == 1:
             self._ensure_settings_loaded()
@@ -1519,8 +1520,9 @@ class MainWindow(QMainWindow):
             self._page_load_pending = False
             self._load_page(self.sidebar.currentRow())
 
-        # Let Qt paint the selected placeholder before importing a heavy page.
-        QTimer.singleShot(0, load_selected_page)
+        # Give Qt one frame to paint the placeholder before importing a heavy page.
+        # A zero-delay timer can fire before the pending paint event.
+        QTimer.singleShot(16, load_selected_page)
 
     def on_tool_selected(self, index):
         if index < 0 or self._menu_only_mode:
