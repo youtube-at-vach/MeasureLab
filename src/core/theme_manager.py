@@ -301,12 +301,14 @@ class ThemeManager(QObject):
             }
             QTabBar::tab:focus:enabled { border-color: palette(link); }
             QTabBar::tab:disabled { color: palette(button-text); }
-            QCheckBox::indicator:unchecked {
+            QCheckBox::indicator:unchecked,
+            QGroupBox::indicator:unchecked {
                 border: 1px solid palette(dark);
                 border-radius: 2px;
                 background-color: palette(base);
             }
-            QCheckBox::indicator:unchecked:disabled { border-color: palette(mid); }
+            QCheckBox::indicator:unchecked:disabled,
+            QGroupBox::indicator:unchecked:disabled { border-color: palette(mid); }
             QCheckBox::indicator:unchecked:hover,
             QCheckBox:focus::indicator:unchecked { border-color: palette(link); }
             QScrollBar:vertical { background: palette(window); width: 10px; margin: 0; }

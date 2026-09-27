@@ -48,10 +48,14 @@ def cleanup_test_config():
 def cleanup_qt_widgets():
     yield
     try:
+        from PyQt6.QtCore import QCoreApplication, QEvent
         from PyQt6.QtWidgets import QApplication
 
         app = QApplication.instance()
         if app is not None:
+            # pytest-qt uses deleteLater(); processEvents() alone leaves those
+            # widgets in topLevelWidgets(), where we would close them again.
+            QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
             for widget in list(app.topLevelWidgets()):
                 try:
                     widget.close()
