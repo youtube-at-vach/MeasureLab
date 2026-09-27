@@ -550,6 +550,11 @@ class LockInFrequencyCounterWidget(QWidget):
         self.timer.timeout.connect(self.update_ui)
         self.timer.start(100)  # 10Hz
 
+    def closeEvent(self, event):
+        self.timer.stop()
+        self.module.stop_analysis()
+        super().closeEvent(event)
+
     def get_decimal_places(self, val_std, default=5, max_places=12):
         if val_std <= 0:
             return default

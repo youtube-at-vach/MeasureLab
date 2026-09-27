@@ -407,6 +407,11 @@ class TransientAnalyzerWidget(QWidget):
         self.timer.start(100)
         self.worker = None
 
+    def closeEvent(self, event):
+        self.timer.stop()
+        self.module.stop_recording()
+        super().closeEvent(event)
+
     def init_ui(self):
         layout = QVBoxLayout(self)
 

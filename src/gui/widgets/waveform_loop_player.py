@@ -280,6 +280,12 @@ class WaveformLoopPlayerWidget(QWidget):
         self.timer.timeout.connect(self.update_ui)
         self.timer.start(50)
 
+    def closeEvent(self, event):
+        self.timer.stop()
+        self._waveform_refresh_timer.stop()
+        self.module.stop_playback()
+        super().closeEvent(event)
+
     def init_ui(self):
         layout = QVBoxLayout()
 

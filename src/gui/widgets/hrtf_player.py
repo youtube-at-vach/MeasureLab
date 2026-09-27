@@ -254,6 +254,13 @@ class HRTFPlayer(MeasurementModule):
     def stop_rotation(self):
         self.rotation_active = False
         self.overlap_buffer = None
+        self.release_idle_callback()
+
+    def release_idle_callback(self):
+        """Release the shared output callback after rotation or one-shot playback ends."""
+        if not self.rotation_active and not self.is_playing and self.callback_id is not None:
+            self.audio_engine.unregister_callback(self.callback_id)
+            self.callback_id = None
 
     def _get_resampled_pair(self, index: int) -> np.ndarray:
         """
@@ -647,6 +654,13 @@ class HRTFPlayerWidget(QWidget):
 
         self.setLayout(layout)
 
+    def closeEvent(self, event):
+        self.vis_timer.stop()
+        self.module.stop_rotation()
+        self.module.is_playing = False
+        self.module.release_idle_callback()
+        super().closeEvent(event)
+
     def on_load_clicked(self):
         fname, _ = QFileDialog.getOpenFileName(
             self, tr("Open SOFA File"), "", "SOFA Files (*.sofa *.nc);;All Files (*)"
@@ -789,6 +803,7 @@ class HRTFPlayerWidget(QWidget):
         self.module.stop_rotation()
 
     def update_visualization(self):
+        self.module.release_idle_callback()
         if self.module.rotation_active:
             # Update marker
             if hasattr(self, "pos_indicator"):

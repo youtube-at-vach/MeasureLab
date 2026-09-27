@@ -201,6 +201,11 @@ class ArbitraryHarmonicWidget(QWidget):
         self.timer.setInterval(100)  # 10 Hz update for visual stability
         self.timer.start()
 
+    def closeEvent(self, event):
+        self.timer.stop()
+        self.module.stop_generation()
+        super().closeEvent(event)
+
     def init_ui(self):
         layout = QHBoxLayout()
 

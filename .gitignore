@@ -53,6 +53,9 @@ ehthumbs.db
 !src/assets/*.png
 !docs/**/*.png
 
+# Local GUI fuzz traces, failure reports, and screenshots
+/artifacts/gui_fuzz/
+
 # Calibration settings
 calibration_settings.ini
 

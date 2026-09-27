@@ -586,6 +586,11 @@ class UltrasoundModulatorWidget(QWidget):
         self.timer.timeout.connect(self.update_ui_state)
         self.timer.start(200)
 
+    def closeEvent(self, event):
+        self.timer.stop()
+        self.module.stop()
+        super().closeEvent(event)
+
     def init_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)

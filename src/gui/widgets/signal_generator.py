@@ -1718,6 +1718,12 @@ class SignalGeneratorWidget(QWidget, CompactableWidgetInterface):
         self.output_state_timer.timeout.connect(self._refresh_output_state)
         self.output_state_timer.start()
 
+    def closeEvent(self, event):
+        self.frequency_limit_timer.stop()
+        self.output_state_timer.stop()
+        self.module.stop_generation()
+        super().closeEvent(event)
+
     def update_compact_layout(self) -> None:
         """Keep output operation and status visible while hiding detailed settings."""
         self.settings_scroll.setHidden(self.is_compact_mode())

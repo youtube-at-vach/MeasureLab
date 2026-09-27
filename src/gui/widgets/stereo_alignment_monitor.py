@@ -175,12 +175,13 @@ class StereoAlignmentMonitor(MeasurementModule):
 
             if total_e > epsilon:
                 # 1. L/R Balance
-                ratio = e_l / (e_r + epsilon)
+                ratio = max(e_l, epsilon) / (e_r + epsilon)
                 self.balance_db = 10.0 * np.log10(ratio)
 
                 # 2. Center Focus
-                e_m = (total_e + 2 * np.sum(np.real(self.s_lr))) / 4.0
-                e_s = (total_e - 2 * np.sum(np.real(self.s_lr))) / 4.0
+                # Roundoff can make a theoretically zero side/mid energy negative.
+                e_m = max(0.0, (total_e + 2 * np.sum(np.real(self.s_lr))) / 4.0)
+                e_s = max(0.0, (total_e - 2 * np.sum(np.real(self.s_lr))) / 4.0)
                 self.center_focus = (e_m / (e_m + e_s + epsilon)) * 100.0
                 self.ms_ratio_db = 10.0 * np.log10((e_m + epsilon) / (e_s + epsilon))
 
