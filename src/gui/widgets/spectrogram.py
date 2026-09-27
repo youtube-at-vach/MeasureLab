@@ -368,7 +368,6 @@ class SpectrogramWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInt
         self.direction_combo.addItem(f"X: {tr('Frequency')}", ORIENTATION_FREQUENCY_X)
         self.direction_combo.setAccessibleName(tr("Direction:"))
         self.direction_combo.setToolTip(tr("Direction:"))
-        self.direction_combo.setFixedWidth(105)
         direction_index = 1 if self.module.display_orientation == ORIENTATION_FREQUENCY_X else 0
         self.direction_combo.setCurrentIndex(direction_index)
         self.direction_combo.currentIndexChanged.connect(self.on_direction_changed)

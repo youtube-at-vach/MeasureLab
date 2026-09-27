@@ -45,6 +45,11 @@ mock_label = MagicMock()
 mock_label.text.return_value = "Overall: -- dB"
 mock_qt_widgets.QLabel = MagicMock(return_value=mock_label)
 
+mock_button = MagicMock()
+mock_button.minimumWidth.return_value = 0
+mock_button.sizeHint.return_value.width.return_value = 80
+mock_qt_widgets.QPushButton = MagicMock(return_value=mock_button)
+
 mock_pg = MagicMock()
 mock_plot_item = MagicMock()
 mock_axis = MagicMock()
