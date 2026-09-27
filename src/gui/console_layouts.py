@@ -28,6 +28,11 @@ CONSOLE_LAYOUTS: dict[str, int | LayoutSplit] = {
         (LayoutSplit(V, (0, 3), (1, 1)), LayoutSplit(V, (1, 4), (1, 1)), LayoutSplit(V, (2, 5), (1, 1))),
         (1, 1, 1),
     ),
+    "top_2_bottom_3": LayoutSplit(
+        V,
+        (LayoutSplit(H, (0, 1), (1, 1)), LayoutSplit(H, (2, 3, 4), (1, 1, 1))),
+        (2, 1),
+    ),
     "main_right": LayoutSplit(H, (0, LayoutSplit(V, (1, 2, 3), (1, 1, 1))), (2, 1)),
     "main_bottom": LayoutSplit(V, (0, LayoutSplit(H, (1, 2, 3), (1, 1, 1))), (2, 1)),
 }
