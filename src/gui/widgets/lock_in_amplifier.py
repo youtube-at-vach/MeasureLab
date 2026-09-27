@@ -30,6 +30,7 @@ from src.core.localization import tr
 from src.gui.styles import button_style
 from src.measurement_modules.base import MeasurementModule
 from src.core.utils import amplitude_to_linear, linear_to_amplitude
+from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.instrument_plot import InstrumentPlotWidget
 
 
@@ -637,9 +638,10 @@ class FRASweepWorker(QThread):
         self.module._buffer_ready_event.set()
 
 
-class LockInAmplifierWidget(QWidget):
+class LockInAmplifierWidget(QWidget, CompactableWidgetInterface):
     def __init__(self, module: LockInAmplifier):
         QWidget.__init__(self)
+        CompactableWidgetInterface.__init__(self)
         self.module = module
         self._last_nyquist_freq = None
         self._is_dark_theme = False
@@ -662,6 +664,28 @@ class LockInAmplifierWidget(QWidget):
         self.timer.stop()
         self.module.stop_analysis()
         super().closeEvent(event)
+
+    def set_compact_mode(self, enabled: bool) -> None:
+        # A running sweep must keep its progress and cancel control reachable.
+        if enabled and any(worker is not None and worker.isRunning() for worker in (self.fra_worker, self.cal_worker)):
+            return
+        CompactableWidgetInterface.set_compact_mode(self, enabled)
+
+    def update_compact_layout(self) -> None:
+        """Show the existing manual readouts without the other measurement tabs."""
+        if self.is_compact_mode():
+            if self._compact_meter_layout.indexOf(self.meters_group) < 0:
+                self._manual_layout.removeWidget(self.meters_group)
+                self._compact_meter_layout.addWidget(self.meters_group)
+            self.tabs.hide()
+            self._compact_meter_container.show()
+        else:
+            if self._manual_layout.indexOf(self.meters_group) < 0:
+                self._compact_meter_layout.removeWidget(self.meters_group)
+                self._manual_layout.addWidget(self.meters_group, stretch=2)
+            self._compact_meter_container.hide()
+            self.tabs.show()
+        self.meters_group.show()
 
     def get_decimal_places(self, val_std, val_abs=None, is_db=False, default=3, max_places=6):
         if val_std <= 0:
@@ -704,6 +728,14 @@ class LockInAmplifierWidget(QWidget):
         self._init_calibration_tab()
 
         main_layout.addWidget(self.tabs)
+        self._compact_meter_container = QWidget()
+        self._compact_meter_layout = QVBoxLayout(self._compact_meter_container)
+        self._compact_meter_layout.setContentsMargins(0, 0, 0, 0)
+        self.compact_status_label = QLabel(tr("Stopped"))
+        self.compact_status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._compact_meter_layout.addWidget(self.compact_status_label)
+        main_layout.addWidget(self._compact_meter_container)
+        self._compact_meter_container.hide()
         self.setLayout(main_layout)
 
         # Data storage for FRA
@@ -721,6 +753,7 @@ class LockInAmplifierWidget(QWidget):
         # --- Tab 1: Manual Control (Existing) ---
         manual_widget = QWidget()
         manual_layout = QHBoxLayout(manual_widget)
+        self._manual_layout = manual_layout
 
         # --- Left Panel: Settings ---
         settings_group = QGroupBox(tr("Settings"))
@@ -885,6 +918,7 @@ class LockInAmplifierWidget(QWidget):
 
         # --- Right Panel: Meters ---
         meters_group = QGroupBox(tr("Measurements"))
+        self.meters_group = meters_group
         meters_layout = QVBoxLayout()
 
         # Magnitude
@@ -901,12 +935,12 @@ class LockInAmplifierWidget(QWidget):
         magnitude_header.addStretch()
         meters_layout.addLayout(magnitude_header)
 
-        self.mag_label = QLabel(tr("0.000 V"))
+        self.mag_label = QLabel(tr("-inf dBFS"))
         self.mag_label.setStyleSheet("font-size: 36px; font-weight: bold; color: #00ff00;")
         self.mag_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         meters_layout.addWidget(self.mag_label)
 
-        self.mag_db_label = QLabel(tr("-inf dBFS"))
+        self.mag_db_label = QLabel("")
         self.mag_db_label.setStyleSheet("font-size: 24px; color: #88ff88;")
         self.mag_db_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         meters_layout.addWidget(self.mag_db_label)
@@ -927,7 +961,7 @@ class LockInAmplifierWidget(QWidget):
 
         x_group = QVBoxLayout()
         x_group.addWidget(QLabel(tr("X (In-phase)")), alignment=Qt.AlignmentFlag.AlignHCenter)
-        self.x_label = QLabel(tr("0.000 V"))
+        self.x_label = QLabel(tr("{0} FS").format("0.000000"))
         self.x_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #ffff00;")
         self.x_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         x_group.addWidget(self.x_label)
@@ -935,7 +969,7 @@ class LockInAmplifierWidget(QWidget):
 
         y_group = QVBoxLayout()
         y_group.addWidget(QLabel(tr("Y (Quadrature)")), alignment=Qt.AlignmentFlag.AlignHCenter)
-        self.y_label = QLabel(tr("0.000 V"))
+        self.y_label = QLabel(tr("{0} FS").format("0.000000"))
         self.y_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #ff00ff;")
         self.y_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         y_group.addWidget(self.y_label)
@@ -1324,6 +1358,7 @@ class LockInAmplifierWidget(QWidget):
     def update_ui(self):
         # Keep frequency ranges synced with the current sample rate.
         self._refresh_frequency_limits()
+        self.compact_status_label.setText(tr("Running") if self.module.is_running else tr("Stopped"))
         if not self.module.is_running:
             return
 

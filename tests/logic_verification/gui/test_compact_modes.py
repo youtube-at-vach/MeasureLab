@@ -10,7 +10,8 @@ from src.gui.widgets.raw_time_series import RawTimeSeries, RawTimeSeriesWidget
 from src.gui.widgets.bnim_meter import BNIMMeter, BNIMMeterWidget
 from src.gui.widgets.sound_level_meter import SoundLevelMeter, SoundLevelMeterWidget
 from src.gui.widgets.noise_profiler import NoiseProfiler, NoiseProfilerWidget
-from src.core.module_constants import MODULE_SOUND_LEVEL_METER
+from src.gui.widgets.lock_in_amplifier import LockInAmplifier, LockInAmplifierWidget
+from src.core.module_constants import MODULE_LOCK_IN_AMPLIFIER, MODULE_SOUND_LEVEL_METER
 from src.gui.module_registry import MODULE_REGISTRY
 from src.gui.widgets.compactable_interface import CompactableWidgetInterface
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
@@ -73,6 +74,75 @@ def test_raw_time_series_compact_mode(qtbot):
     widget.set_compact_mode(False)
     assert not widget.is_compact_mode()
     assert not widget.right_widget.isHidden()
+
+
+def test_lock_in_console_compact_shows_manual_meters_and_restores_tabs(qtbot):
+    engine = MockAudioEngine()
+    engine.calibration.lockin_gain_offset = 0.0
+    widget = LockInAmplifierWidget(LockInAmplifier(engine))
+    wrapper = DetachableWidgetWrapper(
+        widget,
+        "Lock-in Amplifier",
+        capabilities=MODULE_REGISTRY[MODULE_LOCK_IN_AMPLIFIER].capabilities,
+    )
+    qtbot.addWidget(wrapper)
+
+    assert wrapper.is_compactable
+    assert not wrapper.is_splittable
+    widget.tabs.setCurrentIndex(1)
+    full_width = widget.minimumSizeHint().width()
+
+    wrapper.set_console_hosted(True)
+    wrapper.toggle_compact(True)
+    assert widget.is_compact_mode()
+    assert widget.tabs.isHidden()
+    assert widget.meters_group.parent() is widget._compact_meter_container
+    assert widget.minimumSizeHint().width() < full_width
+    assert widget.x_label.parent() is widget.meters_group
+    assert widget.y_label.parent() is widget.meters_group
+
+    wrapper.console_primary_action().click()
+    assert widget.module.is_running
+    wrapper.console_primary_action().click()
+    assert not widget.module.is_running
+
+    wrapper.set_console_hosted(False)
+    assert not widget.is_compact_mode()
+    assert not widget.tabs.isHidden()
+    assert widget.tabs.currentIndex() == 1
+    assert widget._manual_layout.indexOf(widget.meters_group) >= 0
+
+    wrapper.detach()
+    assert not wrapper.compact_btn.isEnabled()
+    assert not wrapper.independent_window.supports_compact_mode
+    wrapper.toggle_compact(True)
+    assert not widget.is_compact_mode()
+    wrapper.reattach()
+
+
+def test_lock_in_console_keeps_sweep_controls_visible_during_sweep(qtbot):
+    engine = MockAudioEngine()
+    engine.calibration.lockin_gain_offset = 0.0
+    widget = LockInAmplifierWidget(LockInAmplifier(engine))
+    wrapper = DetachableWidgetWrapper(
+        widget,
+        "Lock-in Amplifier",
+        capabilities=MODULE_REGISTRY[MODULE_LOCK_IN_AMPLIFIER].capabilities,
+    )
+    qtbot.addWidget(wrapper)
+    widget.fra_worker = MagicMock()
+    widget.fra_worker.isRunning.return_value = True
+
+    wrapper.set_console_hosted(True)
+    wrapper.toggle_compact(True)
+    assert not widget.is_compact_mode()
+    assert not wrapper.compact_btn.isChecked()
+    assert not widget.tabs.isHidden()
+
+    widget.fra_worker.isRunning.return_value = False
+    wrapper.toggle_compact(True)
+    assert widget.is_compact_mode()
+    assert widget.tabs.isHidden()
 
 
 def test_bnim_meter_compact_mode(qtbot):

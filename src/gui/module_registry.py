@@ -146,8 +146,11 @@ class WidgetCapabilities:
     split_window: FeatureCapability
     compact_mode: FeatureCapability
     console_primary_action: ConsolePrimaryActionCapability = NO_CONSOLE_ACTION
+    compact_console_only: bool = False
 
     def __post_init__(self) -> None:
+        if self.compact_console_only and not self.compact_mode.is_supported:
+            raise ValueError("Console-only compact mode must be supported")
         allowed_reasons = {
             "split_window": {
                 CapabilityExclusionReason.NO_INDEPENDENT_DISPLAY,
@@ -179,11 +182,13 @@ def _caps(
     split: FeatureCapability,
     compact: FeatureCapability,
     console_primary_action: ConsolePrimaryActionCapability,
+    compact_console_only: bool = False,
 ) -> WidgetCapabilities:
     return WidgetCapabilities(
         split_window=split,
         compact_mode=compact,
         console_primary_action=console_primary_action,
+        compact_console_only=compact_console_only,
     )
 
 
@@ -194,6 +199,7 @@ def _registration(
     split: FeatureCapability,
     compact: FeatureCapability,
     console_primary_action: ConsolePrimaryActionCapability,
+    compact_console_only: bool = False,
 ) -> ModuleRegistration:
     return ModuleRegistration(
         module_path,
@@ -202,6 +208,7 @@ def _registration(
             split=split,
             compact=compact,
             console_primary_action=console_primary_action,
+            compact_console_only=compact_console_only,
         ),
     )
 
@@ -288,8 +295,9 @@ MODULE_REGISTRY: dict[str, ModuleRegistration] = {
         "src.gui.widgets.lock_in_amplifier",
         "LockInAmplifier",
         split=SPLIT_DEFERRED,
-        compact=COMPACT_DEFERRED,
+        compact=SUPPORTED,
         console_primary_action=console_action("toggle_btn"),
+        compact_console_only=True,
     ),
     MODULE_LOCK_IN_HARMONIC_ANALYZER: _registration(
         "src.gui.widgets.lockin_harmonic_analyzer",

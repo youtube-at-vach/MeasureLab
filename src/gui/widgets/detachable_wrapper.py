@@ -339,7 +339,9 @@ class DetachableWidgetWrapper(QWidget):
         if self.compact_btn is not None:
             if not hosted and self.content_widget.is_compact_mode():
                 self.toggle_compact(False)
-            self.compact_btn.setEnabled(hosted or self.is_detached or self.is_split)
+            self.compact_btn.setEnabled(
+                hosted or (not self.capabilities.compact_console_only and (self.is_detached or self.is_split))
+            )
 
     def console_primary_action(self) -> QAbstractButton | None:
         """Return the explicitly declared start/stop control for console use."""
@@ -616,6 +618,8 @@ class DetachableWidgetWrapper(QWidget):
     def toggle_compact(self, checked):
         if not self.is_compactable:
             return
+        if checked and self.capabilities.compact_console_only and not self._console_hosted:
+            return
 
         window = self._compact_window()
         was_compact = self.content_widget.is_compact_mode()
@@ -623,15 +627,16 @@ class DetachableWidgetWrapper(QWidget):
             self._pre_compact_window_size = QSize(window.size())
 
         self.content_widget.set_compact_mode(checked)
-        self._schedule_compact_window_adjustment(checked, window)
+        compact = self.content_widget.is_compact_mode()
+        self._schedule_compact_window_adjustment(compact, window)
 
         if self.compact_btn:
             self.compact_btn.blockSignals(True)
-            self.compact_btn.setChecked(checked)
+            self.compact_btn.setChecked(compact)
             self._set_header_button_state(
                 self.compact_btn,
-                tr("Full Mode") if checked else tr("Compact"),
-                HeaderIcon.FULL_MODE if checked else HeaderIcon.COMPACT,
+                tr("Full Mode") if compact else tr("Compact"),
+                HeaderIcon.FULL_MODE if compact else HeaderIcon.COMPACT,
             )
             self.compact_btn.blockSignals(False)
 
@@ -706,7 +711,7 @@ class DetachableWidgetWrapper(QWidget):
             self.title,
             self.content_widget,
             self,
-            supports_compact_mode=self.is_compactable,
+            supports_compact_mode=self.is_compactable and not self.capabilities.compact_console_only,
             compact_target=self.content_widget,
         )
         self.independent_window.closed.connect(self.reattach)
@@ -722,7 +727,7 @@ class DetachableWidgetWrapper(QWidget):
         self._set_header_button_state(self.detach_btn, tr("Reattach"), HeaderIcon.REATTACH)
         self.detach_btn.setEnabled(False)  # Use the big reattach button in placeholder or window close
         if self.compact_btn:
-            self.compact_btn.setEnabled(True)
+            self.compact_btn.setEnabled(not self.capabilities.compact_console_only)
         if self.split_btn:
             # State B can transition directly to State C.
             self.split_btn.setEnabled(True)
@@ -792,7 +797,7 @@ class DetachableWidgetWrapper(QWidget):
             display_title,
             display_widget,
             self,
-            supports_compact_mode=self.is_compactable,
+            supports_compact_mode=self.is_compactable and not self.capabilities.compact_console_only,
             compact_target=self.content_widget,
         )
         self.split_display_window.closed.connect(self.reattach_all)
@@ -818,7 +823,7 @@ class DetachableWidgetWrapper(QWidget):
         if self.split_btn:
             self.split_btn.setEnabled(False)
         if self.compact_btn:
-            self.compact_btn.setEnabled(True)
+            self.compact_btn.setEnabled(not self.capabilities.compact_console_only)
         self.is_split = True
 
     def reattach_all(self):

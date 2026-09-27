@@ -62,6 +62,12 @@ Switching between tabs allows you to choose between fixed-point measurement and 
     * **Dual Cursors**: Checking `Show Cursors` displays two cursors (C1, C2). The difference ($\Delta$) between them shows the frequency difference, gain difference (dB), and phase difference, which is useful for detailed analysis of bandwidth and resonance points.
     * Ideal for measuring the bandwidth of filter circuits and amplifiers.
 
+### Compact View in Measurement Console
+
+When added to Measurement Console, the compact view shows the manual Magnitude, Phase, X/Y, reference status, and unit selector.
+Start and stop measurement from the dock title bar. Switch to the full view to use all three tabs.
+During an FRA or calibration sweep, compact mode stays unavailable so the progress and stop controls remain accessible.
+
 ## Key Parameter Descriptions
 
 Important setting items for mastering the lock-in amplifier.
