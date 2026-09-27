@@ -466,6 +466,7 @@ class MeasurementConsoleWindow(QMainWindow):
             "grid_2x2": tr("2 x 2 Grid"),
             "grid_2x3": tr("2 Columns x 3 Rows"),
             "grid_3x2": tr("3 Columns x 2 Rows"),
+            "top_2_bottom_3": tr("2 Above + 3 Below"),
             "main_right": tr("Main + 3 Right"),
             "main_bottom": tr("Main + 3 Below"),
         }

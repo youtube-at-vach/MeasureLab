@@ -2422,6 +2422,7 @@
     "OK": "确定",
     "2 Columns x 3 Rows": "2列 × 3行",
     "3 Columns x 2 Rows": "3列 × 2行",
+    "2 Above + 3 Below": "上方2格＋下方3格",
     "Extra instruments share panes as tabs.": "超出窗格数量的仪器以标签页共享窗格。",
     "Layout: {0} · {1} instruments": "布局：{0} · {1}台仪器",
     "Main + 3 Below": "主视图＋下方3格",

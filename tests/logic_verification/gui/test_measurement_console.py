@@ -805,7 +805,7 @@ def test_main_window_transfer_round_trip_preserves_wrapper(qtbot):
 
 
 @pytest.mark.parametrize("preset", list(CONSOLE_LAYOUTS))
-@pytest.mark.parametrize("count", [1, 3, 4, 6, 8])
+@pytest.mark.parametrize("count", [1, 3, 4, 5, 6, 8])
 def test_visual_presets_keep_all_instruments_reachable(qtbot, monkeypatch, preset, count):
     host = _ConsoleHostStub([_DummyWrapper() for _ in range(count)])
     console = MeasurementConsoleWindow(host)
@@ -851,6 +851,30 @@ def test_six_pane_grids_have_equal_cells_in_reading_order(qtbot, monkeypatch, pr
         assert all(
             cells[row * columns + column].x() < cells[row * columns + column + 1].x() for column in range(columns - 1)
         )
+    console.close()
+
+
+def test_two_above_three_below_preset_has_five_panes_in_reading_order(qtbot, monkeypatch):
+    host = _ConsoleHostStub([_DummyWrapper() for _ in range(5)])
+    console = MeasurementConsoleWindow(host)
+    monkeypatch.setattr(console, "_requires_compact_screen_layout", lambda _available: False)
+    for index in range(5):
+        console.add_module(index, arrange=False)
+    console.show()
+    console.apply_layout_preset("top_2_bottom_3")
+    qtbot.wait(20)
+
+    top = [console._docks[index].geometry() for index in (0, 1)]
+    bottom = [console._docks[index].geometry() for index in (2, 3, 4)]
+    assert top[0].y() == top[1].y()
+    assert bottom[0].y() == bottom[1].y() == bottom[2].y()
+    assert top[0].x() < top[1].x()
+    assert bottom[0].x() < bottom[1].x() < bottom[2].x()
+    assert max(cell.width() for cell in top) - min(cell.width() for cell in top) <= 2
+    assert max(cell.width() for cell in bottom) - min(cell.width() for cell in bottom) <= 2
+    assert all(cell.bottom() < bottom[0].top() for cell in top)
+    assert 1.8 < top[0].height() / bottom[0].height() < 2.2
+    assert console._preset_actions["top_2_bottom_3"].isChecked()
     console.close()
 
 
