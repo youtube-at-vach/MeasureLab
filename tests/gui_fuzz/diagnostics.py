@@ -44,6 +44,9 @@ class Scenario:
         self.strict_runtime_warnings = strict_runtime_warnings
 
     def __enter__(self):
+        directory = ARTIFACT_ROOT / f"{self.widget_key.replace(' ', '_')}_{self.seed}"
+        for name in ("failure.json", "last.png"):
+            (directory / name).unlink(missing_ok=True)
         self._active = True
         self._old_excepthook = sys.excepthook
         self._warning_context = warnings.catch_warnings()
