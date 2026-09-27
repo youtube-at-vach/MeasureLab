@@ -57,6 +57,7 @@ class _DummyWrapper:
 def _build_window_stub(qtbot):
     window = MainWindow.__new__(MainWindow)
     window.__init__()
+    qtbot.addWidget(window)
     window._module_keys = ["Signal Generator", "Recorder / Player"]
     window.modules = [None, None]
     window.module_widgets = [None, None]
@@ -561,6 +562,22 @@ def test_visible_navigation_updates_before_lazy_page_load(qtbot):
     assert len(loaded) == 1
     assert loaded[0][0] == module_index
     assert loaded[0][1] > 0
+
+
+def test_pending_page_load_is_cancelled_on_close(qtbot, monkeypatch):
+    window = MainWindow()
+    qtbot.addWidget(window)
+    window.show()
+    qtbot.wait(30)
+
+    load_page = MagicMock()
+    monkeypatch.setattr(window, "_load_page", load_page)
+    window._schedule_selected_page_load()
+    assert window._page_load_timer.isActive()
+
+    window.close()
+    qtbot.wait(30)
+    load_page.assert_not_called()
 
 
 def test_settings_calibration_refreshes_after_other_page_changes_shared_values(qtbot):

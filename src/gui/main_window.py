@@ -602,6 +602,9 @@ class MainWindow(QMainWindow):
             self.content_area.addWidget(container)
 
         self._page_load_pending = False
+        self._page_load_timer = QTimer(self)
+        self._page_load_timer.setSingleShot(True)
+        self._page_load_timer.timeout.connect(self._load_selected_page)
 
     def _init_status_bar(self):
         """Initialize the status bar and its indicators."""
@@ -885,6 +888,8 @@ class MainWindow(QMainWindow):
                 last_event_time = current_time
 
     def closeEvent(self, event):
+        self._page_load_timer.stop()
+        self._page_load_pending = False
         remote_audio = getattr(self, "remote_audio_widget", None)
         if remote_audio is not None:
             try:
@@ -1562,13 +1567,13 @@ class MainWindow(QMainWindow):
             return
         self._page_load_pending = True
 
-        def load_selected_page() -> None:
-            self._page_load_pending = False
-            self._load_page(self.sidebar.currentRow())
-
         # Give Qt one frame to paint the placeholder before importing a heavy page.
         # A zero-delay timer can fire before the pending paint event.
-        QTimer.singleShot(16, load_selected_page)
+        self._page_load_timer.start(16)
+
+    def _load_selected_page(self) -> None:
+        self._page_load_pending = False
+        self._load_page(self.sidebar.currentRow())
 
     def on_tool_selected(self, index):
         if index < 0 or self._menu_only_mode:
