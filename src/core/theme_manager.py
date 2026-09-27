@@ -9,6 +9,7 @@ Provides theme detection and switching functionality with support for:
 
 import logging
 import platform
+from pathlib import Path
 from typing import Any
 
 from PyQt6.QtCore import QObject, pyqtSignal
@@ -235,7 +236,7 @@ class ThemeManager(QObject):
         palette.setColor(QPalette.ColorRole.ButtonText, QColor(226, 228, 230))
         palette.setColor(QPalette.ColorRole.PlaceholderText, QColor(160, 167, 176))
         palette.setColor(QPalette.ColorRole.BrightText, QColor(255, 0, 0))
-        palette.setColor(QPalette.ColorRole.Highlight, QColor(45, 112, 125))
+        palette.setColor(QPalette.ColorRole.Highlight, QColor(56, 125, 137))
         palette.setColor(QPalette.ColorRole.HighlightedText, QColor(252, 252, 252))
         palette.setColor(QPalette.ColorRole.Link, QColor(125, 204, 216))
         palette.setColor(QPalette.ColorRole.LinkVisited, QColor(200, 100, 200))
@@ -246,9 +247,9 @@ class ThemeManager(QObject):
             palette.setColor(QPalette.ColorGroup.Disabled, role, QColor(127, 135, 145))
 
         self.app.setPalette(palette)
-        # Flat, neutral controls keep the measurement canvas dominant. Leave
-        # native arrows and checked/mixed indicators intact; custom painting
-        # those subcontrols can hide state or platform-specific affordances.
+        # Flat, neutral controls keep the measurement canvas dominant. A
+        # bundled checkmark makes checked and disabled states visible on Fusion.
+        check_icon = (Path(__file__).resolve().parents[1] / "assets" / "checkmark.svg").as_posix()
         self.app.setStyleSheet(
             self._original_stylesheet
             + """
@@ -301,14 +302,6 @@ class ThemeManager(QObject):
             }
             QTabBar::tab:focus:enabled { border-color: palette(link); }
             QTabBar::tab:disabled { color: palette(button-text); }
-            QCheckBox::indicator:unchecked {
-                border: 1px solid palette(dark);
-                border-radius: 2px;
-                background-color: palette(base);
-            }
-            QCheckBox::indicator:unchecked:disabled { border-color: palette(mid); }
-            QCheckBox::indicator:unchecked:hover,
-            QCheckBox:focus::indicator:unchecked { border-color: palette(link); }
             QScrollBar:vertical { background: palette(window); width: 10px; margin: 0; }
             QScrollBar:horizontal { background: palette(window); height: 10px; margin: 0; }
             QScrollBar::handle { background: palette(midlight); border: 2px solid palette(window); border-radius: 4px; }
@@ -322,6 +315,30 @@ class ThemeManager(QObject):
                 border: none; border-bottom: 1px solid palette(mid); padding: 4px 6px;
             }
             QToolTip { border: 1px solid palette(dark); padding: 4px 6px; }
+            """
+            + f"""
+            QCheckBox::indicator:unchecked, QGroupBox::indicator:unchecked {{
+                width: 16px; height: 16px;
+                border: 1px solid palette(placeholder-text); border-radius: 3px;
+                background-color: palette(base);
+            }}
+            QCheckBox::indicator:checked, QGroupBox::indicator:checked {{
+                width: 16px; height: 16px;
+                border: 1px solid palette(link); border-radius: 3px;
+                background-color: palette(highlight);
+                image: url("{check_icon}");
+            }}
+            QCheckBox::indicator:unchecked:disabled, QGroupBox::indicator:unchecked:disabled {{
+                border-color: palette(dark);
+            }}
+            QCheckBox::indicator:checked:disabled, QGroupBox::indicator:checked:disabled {{
+                border-color: palette(dark); background-color: palette(dark);
+            }}
+            QCheckBox::indicator:unchecked:hover, QGroupBox::indicator:unchecked:hover,
+            QCheckBox::indicator:checked:hover, QGroupBox::indicator:checked:hover,
+            QCheckBox:focus::indicator {{
+                border-color: palette(link);
+            }}
             """
         )
         self.logger.debug("Dark theme applied")
