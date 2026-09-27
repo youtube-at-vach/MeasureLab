@@ -106,7 +106,8 @@ def test_spectrum_analyzer_controls_use_two_rows(spectrum_widget):
 
 
 @pytest.mark.parametrize("language", ["de", "en", "es", "fr", "ja", "ko", "pt", "ru", "zh"])
-def test_spectrum_controls_fit_at_minimum_width_in_all_languages(qapp, language):
+@pytest.mark.parametrize("theme", ["light", "dark"])
+def test_spectrum_controls_fit_at_minimum_width_in_all_languages(qapp, language, theme):
     manager = get_manager()
     previous_language = manager.language
     manager.load_language(language)
@@ -117,6 +118,7 @@ def test_spectrum_controls_fit_at_minimum_width_in_all_languages(qapp, language)
     widget = None
     try:
         widget = SpectrumAnalyzerWidget(SpectrumAnalyzer(engine))
+        widget.apply_theme(theme)
         widget.resize(widget.minimumSizeHint().width(), 690)
         widget.show()
         qapp.processEvents()
@@ -140,6 +142,7 @@ def test_spectrum_controls_fit_at_minimum_width_in_all_languages(qapp, language)
                     control = row.itemAt(item_index).widget()
                     assert control.width() >= control.minimumSizeHint().width(), (
                         language,
+                        theme,
                         action,
                         type(control).__name__,
                         control.width(),

@@ -702,6 +702,7 @@ class SpectrumAnalyzerWidget(
         self.toggle_btn.clicked.connect(self.on_toggle)
 
         self.toggle_btn.setStyleSheet(button_style("primary", toggle=True))
+        self._fit_toggle_button()
 
         row1_layout.addWidget(self.toggle_btn)
 
@@ -1250,6 +1251,7 @@ class SpectrumAnalyzerWidget(
             self.toggle_btn.setText(tr("Stop"))
             self.toggle_btn.setToolTip(tr("Stop Analysis"))
             self.toggle_btn.setAccessibleName(tr("Stop Analysis"))
+            self._fit_toggle_button()
             self.display_gap_badge.setVisible(False)
         else:
             self.module.stop_analysis()
@@ -1257,6 +1259,10 @@ class SpectrumAnalyzerWidget(
             self.toggle_btn.setText(tr("Start"))
             self.toggle_btn.setToolTip(tr("Start Analysis"))
             self.toggle_btn.setAccessibleName(tr("Start Analysis"))
+            self._fit_toggle_button()
+
+    def _fit_toggle_button(self):
+        self.toggle_btn.setMinimumWidth(max(self.toggle_btn.minimumWidth(), self.toggle_btn.sizeHint().width()))
 
     def on_mode_changed(self, index):
         val = self.mode_combo.itemData(index)
@@ -1679,6 +1685,7 @@ class SpectrumAnalyzerWidget(
             self.toggle_btn.setStyleSheet(button_style("primary", toggle=True, extra="padding: 5px;"))
             self.overall_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #008800;")
             self.cursor_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #0000aa;")
+        self._fit_toggle_button()
 
     def update_compact_layout(self):
         compact = self.is_compact_mode()
