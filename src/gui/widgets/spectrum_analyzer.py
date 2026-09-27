@@ -692,10 +692,12 @@ class SpectrumAnalyzerWidget(
 
         # Row 1: Basic Controls
         row1_layout = QHBoxLayout()
-        row1_layout.setSpacing(4)
+        row1_layout.setSpacing(3)
 
         # Start/Stop
-        self.toggle_btn = QPushButton(tr("Start Analysis"))
+        self.toggle_btn = QPushButton(tr("Start"))
+        self.toggle_btn.setToolTip(tr("Start Analysis"))
+        self.toggle_btn.setAccessibleName(tr("Start Analysis"))
         self.toggle_btn.setCheckable(True)
         self.toggle_btn.clicked.connect(self.on_toggle)
 
@@ -1245,12 +1247,16 @@ class SpectrumAnalyzerWidget(
             self._invalidate_peak_markers()
             self.module.start_analysis()
             self.timer.start()
-            self.toggle_btn.setText(tr("Stop Analysis"))
+            self.toggle_btn.setText(tr("Stop"))
+            self.toggle_btn.setToolTip(tr("Stop Analysis"))
+            self.toggle_btn.setAccessibleName(tr("Stop Analysis"))
             self.display_gap_badge.setVisible(False)
         else:
             self.module.stop_analysis()
             self.timer.stop()
-            self.toggle_btn.setText(tr("Start Analysis"))
+            self.toggle_btn.setText(tr("Start"))
+            self.toggle_btn.setToolTip(tr("Start Analysis"))
+            self.toggle_btn.setAccessibleName(tr("Start Analysis"))
 
     def on_mode_changed(self, index):
         val = self.mode_combo.itemData(index)

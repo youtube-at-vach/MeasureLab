@@ -7,6 +7,7 @@ import pytest
 from PyQt6 import sip
 from PyQt6.QtWidgets import QHBoxLayout, QWidget
 
+from src.core.localization import get_manager, tr
 from src.core.module_constants import MODULE_SPECTRUM_ANALYZER
 from src.gui.module_registry import MODULE_REGISTRY
 from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
@@ -102,6 +103,53 @@ def test_spectrum_analyzer_controls_use_two_rows(spectrum_widget):
     assert controls_layout.count() == 2
     assert isinstance(controls_layout.itemAt(0).layout(), QHBoxLayout)
     assert isinstance(controls_layout.itemAt(1).layout(), QHBoxLayout)
+
+
+@pytest.mark.parametrize("language", ["de", "en", "es", "fr", "ja", "ko", "pt", "ru", "zh"])
+def test_spectrum_controls_fit_at_minimum_width_in_all_languages(qapp, language):
+    manager = get_manager()
+    previous_language = manager.language
+    manager.load_language(language)
+    engine = MagicMock()
+    engine.sample_rate = 48000
+    engine.calibration.get_spl_offset_db.return_value = None
+    engine.register_callback.return_value = 1
+    widget = None
+    try:
+        widget = SpectrumAnalyzerWidget(SpectrumAnalyzer(engine))
+        widget.resize(widget.minimumSizeHint().width(), 690)
+        widget.show()
+        qapp.processEvents()
+
+        for running in (False, True):
+            if running:
+                widget.module.start_analysis = MagicMock()
+                widget.on_toggle(True)
+                widget.timer.stop()
+                qapp.processEvents()
+
+            action = "Stop" if running else "Start"
+            assert widget.toggle_btn.text() == tr(action)
+            assert widget.toggle_btn.toolTip() == tr(f"{action} Analysis")
+            assert widget.toggle_btn.accessibleName() == tr(f"{action} Analysis")
+
+            controls_layout = widget.controls_group.layout()
+            for row_index in (0, 1):
+                row = controls_layout.itemAt(row_index).layout()
+                for item_index in range(row.count()):
+                    control = row.itemAt(item_index).widget()
+                    assert control.width() >= control.minimumSizeHint().width(), (
+                        language,
+                        action,
+                        type(control).__name__,
+                        control.width(),
+                        control.minimumSizeHint().width(),
+                    )
+    finally:
+        if widget is not None:
+            widget.timer.stop()
+            widget.close()
+        manager.load_language(previous_language)
 
 
 def test_split_live_update_and_reattach_preserve_rendering_objects(spectrum_widget, spectrum_wrapper, qtbot):
