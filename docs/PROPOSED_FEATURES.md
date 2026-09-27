@@ -16,8 +16,6 @@ Follow the [current direction](../guide/CURRENT_DIRECTION.md): improve useful me
 
 ## Proposed Extensions
 
-Three new proposals, followed by one clarified existing proposal. No new standalone widget is justified by this audit.
-
 ### 1. Output Impedance and Load Interaction — Network Analyzer
 
 * **Question:** Will a headphone or line output change its frequency response with a different load? Capture two sweeps with manually exchanged known resistive loads and a common input reference. Derive complex source impedance versus frequency; optionally use a measured load impedance to predict its voltage-divider response.
@@ -40,6 +38,20 @@ Three new proposals, followed by one clarified existing proposal. No new standal
 
 [The implementation](../src/gui/widgets/distortion_analyzer.py) has SMPTE/CCIF real-time metrics, but `SweepWorker.run()` calls harmonic analysis and sweep plots/exports read THD+N fields. Route amplitude sweeps through the selected IMD analysis, store IMD percent/dB and actual tone frequencies/ratio, and update plots/export together. Validate against the same captured signal's real-time result. Treat DIN as a separately specified preset/metric, not an already supported standard. This is the smallest implementation candidate; AES17 measurement itself is already present.
 
+### 5. Transient / Onset Highlighting — Spectrogram
+
+* **Question:** Can we easily spot clicks, pops, or percussion onsets in a dense spectrogram?
+* **Existing / missing:** Spectrogram shows energy over time and frequency, but sudden broad-band transients can get lost visually.
+* **Proposal:** Add a visual overlay or specific color mapping option to highlight sudden transient events based on short-term energy changes across the frequency spectrum.
+* **Reuse:** Extend the existing Spectrogram widget to compute and highlight spectral difference over time.
+
+### 6. Event-Triggered Audio Capture — Sound Level Meter
+
+* **Question:** Can we automatically capture the audio of intermittent loud noises without recording gigabytes of silence?
+* **Existing / missing:** Sound Level Meter shows instantaneous SPL, and Recorder & Player captures audio manually. We lack an automatic trigger based on SPL.
+* **Proposal:** Add an option to trigger short audio recordings (e.g., 5 seconds before and after) when the instantaneous SPL exceeds a user-defined threshold.
+* **Reuse:** Combine Sound Level Meter's SPL calculation with Recorder & Player's buffer capabilities.
+
 ## Future / Visionary Ideas
 
 These ideas are separated from the implementation candidates. Each has a concrete experiment and a reuse check.
@@ -55,6 +67,24 @@ Let a measured model propose where it might be wrong, then ask the real DUT. Ext
 ### Time-Reversal Focus Experiment — Refined Existing Vision
 
 Turn the existing focusing idea into a measurable experiment: reuse Network Analyzer's impulse response and Recorder & Player to replay an energy-normalized reversed response, then measure concentration at the target and nearby positions. [Single-loudspeaker focusing has been demonstrated](https://pubmed.ncbi.nlm.nih.gov/28764440/), but a captured room response is not a guarantee of a spatially isolated focus. The missing extension is paired capture/replay and spatial verification. Promote only after a repeatable low-level test with unchanged geometry; do not promise levitation or a universal inverse filter.
+
+### Spatial Acoustic Holography Viewer — New Vision
+
+* **Concept:** Visualize the 3D acoustic field of a room or speaker using multiple microphones or a tracked moving microphone.
+* **Experiment:** Measure spatial impulse responses at known grid points and reconstruct the wave propagation over time.
+* **Reuse:** Combine Network Analyzer's IR capture with a new spatial mapping visualization layer. Requires an external tracking system or strict manual positioning.
+
+### Psychoacoustic Sweet-Spot Visualizer — New Vision
+
+* **Concept:** Real-time evaluation of the listening "sweet spot" based on perceptual metrics, not just flat frequency response.
+* **Experiment:** Measure Interaural Time Difference (ITD) and Interaural Level Difference (ILD) across a spatial grid using a binaural microphone.
+* **Reuse:** Extend Spatial Binaural Mixer and Network Analyzer to map the area where spatial imaging and tonal balance are optimal.
+
+### Perceptual Audio-Lens (AI Source Separation Measurement) — New Vision
+
+* **Concept:** Separate individual instruments or noise sources from a complex mixture and measure their individual characteristics.
+* **Experiment:** Apply a source separation model to a complex signal, then run standard THD or frequency response measurements on the isolated tracks.
+* **Reuse:** Integrate a separation algorithm as a pre-processing step before routing the signal to existing analysis widgets like Spectrum Analyzer or Distortion Analyzer.
 
 ## Audit of Earlier Candidates
 
