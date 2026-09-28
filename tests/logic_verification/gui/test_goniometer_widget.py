@@ -107,17 +107,18 @@ def test_plot_guides_axes_and_grid_defaults_and_toggles(widget):
     assert not left_axis.grid
 
 
-def test_plot_background_matches_theme(widget):
+def test_plot_background_stays_black_across_themes(widget):
     def background_name() -> str:
         return widget.plot_widget.backgroundBrush().color().name()
 
     assert background_name() == "#000000"
 
-    widget.apply_theme("light")
-    assert background_name() == "#fafafa"
+    widget.direction_guides_chk.setChecked(True)
 
-    widget.apply_theme("dark")
-    assert background_name() == "#000000"
+    for theme in ("light", "dark", "light", "system"):
+        widget.apply_theme(theme)
+        assert background_name() == "#000000"
+        assert all(label.color.name() == "#bbbbbb" for label in widget._direction_labels)
 
 
 def test_measurement_actions_are_large_and_belong_to_control_panel(widget):

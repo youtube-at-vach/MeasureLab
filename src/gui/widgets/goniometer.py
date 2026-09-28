@@ -1367,12 +1367,10 @@ class GoniometerWidget(QWidget, CompactableWidgetInterface, SplittableWidgetInte
     def apply_theme(self, theme_name: str) -> None:
         if theme_name == "system" and self.app is not None and hasattr(self.app, "theme_manager"):
             theme_name = self.app.theme_manager.get_effective_theme()
-        background = "#000000" if theme_name == "dark" else "#fafafa"
-        self.plot_widget.setBackground(background)
+        self.plot_widget.setBackground("#000000")
         self.toggle_btn.setStyleSheet(STYLE_TOGGLE_BTN_DARK if theme_name == "dark" else STYLE_TOGGLE_BTN_LIGHT)
-        label_color = "#bbbbbb" if theme_name == "dark" else "#444444"
         for label in self._direction_labels:
-            label.setColor(label_color)
+            label.setColor("#bbbbbb")
         self.update_palette()
 
     def get_display_widget(self) -> QWidget:
