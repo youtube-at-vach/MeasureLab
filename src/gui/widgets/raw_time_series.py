@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -328,23 +329,7 @@ class RawTimeSeriesWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         left = QVBoxLayout(self.display_widget)
         left.setContentsMargins(0, 0, 0, 0)
 
-        transport = QHBoxLayout()
-        self.btn_start = QPushButton(tr("Start"))
-        self.btn_start.setStyleSheet(button_style("primary", toggle=True))
-        self.btn_start.setCheckable(True)
-        self.btn_start.setToolTip(tr("Start a new history. Stop keeps the last acquired data."))
-        self.btn_start.clicked.connect(self._on_start_toggled)
-        self.btn_pause = QPushButton(tr("Hold Display"))
-        self.btn_pause.setCheckable(True)
-        self.btn_pause.setToolTip(tr("Freeze the view while acquisition continues."))
-        self.btn_pause.clicked.connect(self._on_pause_toggled)
-        transport.addWidget(self.btn_start)
-        transport.addWidget(self.btn_pause)
-        transport.addStretch()
-        left.addLayout(transport)
-
         self.status_label = QLabel()
-        self.status_label.setWordWrap(True)
         self.status_label.setTextFormat(Qt.TextFormat.PlainText)
         self.status_label.setAccessibleName(tr("Acquisition status"))
         left.addWidget(self.status_label)
@@ -377,15 +362,42 @@ class RawTimeSeriesWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         left.addWidget(self.plots, 1)
 
         self.view_label = QLabel()
-        self.view_label.setWordWrap(True)
         left.addWidget(self.view_label)
         self.unit_note = QLabel()
-        self.unit_note.setWordWrap(True)
         left.addWidget(self.unit_note)
+        # Single-line readouts cannot take space from the plots as their text
+        # changes. Keep the voltage notice's row even when it is hidden.
+        for label in (self.status_label, self.view_label, self.unit_note):
+            label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+            label.setMinimumHeight(label.fontMetrics().height())
+        policy = self.unit_note.sizePolicy()
+        policy.setRetainSizeWhenHidden(True)
+        self.unit_note.setSizePolicy(policy)
         root.addWidget(self.display_widget, stretch=1)
 
-        self.right_widget = QGroupBox(tr("Display"))
+        self.right_widget = QGroupBox(tr("Controls"))
         right = QVBoxLayout(self.right_widget)
+        self.btn_start = QPushButton(tr("Start"))
+        self.btn_start.setStyleSheet(button_style("primary", toggle=True))
+        self.btn_start.setCheckable(True)
+        self.btn_start.setToolTip(tr("Start a new history. Stop keeps the last acquired data."))
+        self.btn_start.clicked.connect(self._on_start_toggled)
+        self.btn_pause = QPushButton(tr("Hold Display"))
+        self.btn_pause.setCheckable(True)
+        self.btn_pause.setToolTip(tr("Freeze the view while acquisition continues."))
+        self.btn_pause.clicked.connect(self._on_pause_toggled)
+        for button, texts in (
+            (self.btn_start, (tr("Start"), tr("Stop"))),
+            (self.btn_pause, (tr("Hold Display"), tr("Resume Display"))),
+        ):
+            width = 0
+            for text in texts:
+                button.setText(text)
+                width = max(width, button.sizeHint().width())
+            button.setText(texts[0])
+            button.setMinimumWidth(width)
+            right.addWidget(button)
+
         form = QFormLayout()
         form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
         self.combo_span = QComboBox()
@@ -422,6 +434,12 @@ class RawTimeSeriesWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         self.lbl_dc_ch1 = QLabel()
         self.lbl_dc_ch2 = QLabel()
         for label in (self.lbl_dc_title, self.lbl_dc_ch1, self.lbl_dc_ch2):
+            policy = label.sizePolicy()
+            policy.setRetainSizeWhenHidden(True)
+            if label is not self.lbl_dc_title:
+                policy.setHorizontalPolicy(QSizePolicy.Policy.Ignored)
+                label.setMinimumHeight(label.fontMetrics().height())
+            label.setSizePolicy(policy)
             right.addWidget(label)
         right.addStretch()
         self.envelope_note = QLabel(
@@ -471,6 +489,7 @@ class RawTimeSeriesWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
                 else tr("Voltage is nominal; input calibration is not set.")
             )
         self.unit_note.setVisible(self.module.show_volts)
+        self.unit_note.setToolTip(self.unit_note.text())
 
     def _apply_dc_visibility(self):
         for label in (self.lbl_dc_title, self.lbl_dc_ch1, self.lbl_dc_ch2):
@@ -530,6 +549,7 @@ class RawTimeSeriesWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         else:
             text = tr("Stopped — last value") if self.module._sample_count else tr("Ready")
         self.status_label.setText(text)
+        self.status_label.setToolTip(text)
 
     def _update_plot(self):
         if not self.module.is_running and self.module.callback_id is not None:
@@ -564,6 +584,7 @@ class RawTimeSeriesWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             self.lbl_dc_ch2.setText("CH2: —")
             self.plot_ch2.setTitle(tr("CH2"), color=self._channel_colors[1])
             self.view_label.setText(tr("Start to capture a new history."))
+            self.view_label.setToolTip(self.view_label.text())
             return
 
         unit_factor = self._get_unit_factor()
@@ -574,7 +595,10 @@ class RawTimeSeriesWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
         dc = frame.dc_mean() * unit_factor
         self.lbl_dc_ch1.setText(f"CH1: {self._format_amplitude(dc[0])}")
         self.lbl_dc_ch2.setText(f"CH2: {self._format_amplitude(dc[1])}")
+        for label in (self.lbl_dc_ch1, self.lbl_dc_ch2):
+            label.setToolTip(label.text())
         self.view_label.setText(tr("Peak envelope · Displayed history: {0:.2f} s").format(frame.duration_s))
+        self.view_label.setToolTip(self.view_label.text())
         self.plot_ch2.setTitle(
             tr("CH2") if frame.channels == 2 else tr("CH2 · mirrors mono input"), color=self._channel_colors[1]
         )
@@ -604,9 +628,14 @@ class RawTimeSeriesWidget(QWidget, CompactableWidgetInterface, SplittableWidgetI
             self._apply_theme()
 
     def update_compact_layout(self):
-        # Acquisition controls and state stay next to the plot even when split.
+        compact = self.is_compact_mode()
+        self.layout().setContentsMargins(*((0, 0, 0, 0) if compact else (8, 8, 8, 8)))
+        self.layout().setSpacing(0 if compact else 12)
+        self.display_widget.layout().setSpacing(0 if compact else -1)
+        self.view_label.setHidden(compact)
+        # A split control window stays available while its display is compact.
         if self.right_widget.parent() is self:
-            self.right_widget.setHidden(self.is_compact_mode())
+            self.right_widget.setHidden(compact)
 
     def closeEvent(self, event):
         self.timer.stop()

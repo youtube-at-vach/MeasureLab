@@ -11,7 +11,13 @@ While an oscilloscope captures and displays momentary waveforms, Raw Time Series
 
 ### Starting and Stopping Measurements
 
-* **Start / Stop Button**: Toggles monitoring between active and stopped states. Stopping does not clear the buffer; resuming continues drawing from where it left off.
+* **Start / Stop Button**: Located in the **Controls** panel. Stop keeps the last acquired history; Start begins a new history.
+
+### Display and Controls
+
+The display contains the plots, acquisition status, and voltage calibration notice. Start / Stop, Hold Display, and display settings are in the Controls panel. In a two-window split, all operations stay in the control window. Compact mode hides the controls and history summary while keeping acquisition status and voltage calibration information visible.
+
+Turning Show Volts or Show DC Offset on or off preserves the plot area. Show Volts changes the axis units and values together, preserving the waveform's displayed size at the same vertical zoom.
 
 ### Reading the Graph
 
@@ -39,7 +45,7 @@ While an oscilloscope captures and displays momentary waveforms, Raw Time Series
     * **OFF (Default)**: Displays relative to digital Full Scale (FS) (-1.0 to +1.0).
     * **ON**: Displays in voltage units (V). Reflects the input sensitivity setting (calibration) of the audio interface.
 
-* **Pause**
+* **Hold Display / Resume Display**
     * Pauses only the screen updates.
     * **Important**: Data recording continues in the background. When unpaused, the display updates all at once to include data recorded during the pause. This is useful for carefully reading values while viewing the graph.
 
@@ -65,7 +71,7 @@ Wait for and monitor noise that occurs sporadically, such as occasional "popping
 1. Set a long **Time Span** (`60s` or more).
 2. Set the **Scale** to a high value (`5.0x` or `10.0x`) to magnify the noise floor during silence.
 3. When noise occurs, it will be recorded as a spike on the graph.
-4. Quickly press **Pause** when you see noise to examine the waveform. This can be used as a "visual trigger" for irregular phenomena that are difficult to capture with standard oscilloscope trigger settings.
+4. Quickly press **Hold Display** when you see noise to examine the waveform. This can be used as a "visual trigger" for irregular phenomena that are difficult to capture with standard oscilloscope trigger settings.
 
 ### Difference from Oscilloscope Trigger
 

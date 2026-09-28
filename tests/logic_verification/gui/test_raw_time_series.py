@@ -5,6 +5,10 @@ import numpy as np
 import pytest
 
 from src.gui.widgets.raw_time_series import RawTimeSeries, RawTimeSeriesWidget
+from src.core.localization import get_manager
+from src.core.module_constants import MODULE_RAW_TIME_SERIES
+from src.gui.module_registry import MODULE_REGISTRY
+from src.gui.widgets.detachable_wrapper import DetachableWidgetWrapper
 
 
 class AudioEngine:
@@ -221,7 +225,7 @@ def test_input_discontinuity_stops_without_relabelling_old_history(widget, meter
     np.testing.assert_array_equal(meter.get_display_frame(10).values, before.values)
 
 
-def test_mono_input_is_explicit_and_compact_keeps_transport(widget, meter):
+def test_mono_input_is_explicit_and_compact_hides_controls(widget, meter):
     widget.show()
     widget.btn_start.click()
     meter.audio_engine.feed(np.full((480, 1), 0.25, dtype=np.float32))
@@ -230,12 +234,105 @@ def test_mono_input_is_explicit_and_compact_keeps_transport(widget, meter):
     np.testing.assert_array_equal(widget.curve_ch1.yData, widget.curve_ch2.yData)
     widget.set_compact_mode(True)
     assert widget.right_widget.isHidden()
+    assert not widget.btn_start.isVisible()
+    assert not widget.btn_pause.isVisible()
+    assert widget.status_label.isVisible()
+    assert widget.view_label.isHidden()
+    widget.set_compact_mode(False)
     assert widget.btn_start.isVisible()
     assert widget.btn_pause.isVisible()
-    assert widget.status_label.isVisible()
+    assert widget.view_label.isVisible()
     widget.close()
     assert not widget.timer.isActive()
     assert not meter.audio_engine.callbacks
+
+
+def test_split_keeps_all_operations_in_control_window(qtbot, meter):
+    widget = RawTimeSeriesWidget(meter)
+    wrapper = DetachableWidgetWrapper(
+        widget, "Raw Time Series", capabilities=MODULE_REGISTRY[MODULE_RAW_TIME_SERIES].capabilities
+    )
+    qtbot.addWidget(wrapper)
+    wrapper.show()
+    wrapper.split()
+    assert not widget.display_widget.findChildren(type(widget.btn_start))
+    for control in (widget.btn_start, widget.btn_pause, widget.combo_span, widget.chk_volts, widget.chk_dc):
+        assert widget.right_widget.isAncestorOf(control)
+        assert control.window() is wrapper.split_control_window
+
+    widget.btn_start.click()
+    meter.audio_engine.feed(np.full((480, 2), 0.25, dtype=np.float32))
+    widget._update_plot()
+    widget.btn_pause.click()
+    wrapper.toggle_compact(True)
+    assert widget.btn_start.isVisible()
+    assert widget.btn_pause.isVisible()
+    assert widget.status_label.isVisible()
+    assert "acquisition running" in widget.status_label.text()
+    widget.btn_start.click()
+    assert not meter.is_running
+    assert not meter.audio_engine.callbacks
+
+    wrapper.reattach_all()
+    assert widget.btn_start.window() is wrapper
+    assert widget.btn_start.isVisible()
+    assert widget.btn_pause.isVisible()
+    assert not widget.is_compact_mode()
+
+
+@pytest.mark.parametrize("language", sorted(get_manager().available_languages))
+@pytest.mark.parametrize("mode", ["normal", "compact", "split", "split_compact"])
+def test_display_options_preserve_plot_geometry_and_waveform_scale(qtbot, meter, language, mode):
+    manager = get_manager()
+    manager.load_language(language)
+    try:
+        widget = RawTimeSeriesWidget(meter)
+        wrapper = DetachableWidgetWrapper(
+            widget, "Raw Time Series", capabilities=MODULE_REGISTRY[MODULE_RAW_TIME_SERIES].capabilities
+        )
+        qtbot.addWidget(wrapper)
+        wrapper.resize(1000, 650)
+        wrapper.show()
+        widget.btn_start.click()
+        meter.audio_engine.feed(np.full((480, 2), 0.25, dtype=np.float32))
+        widget._update_plot()
+        if mode.startswith("split"):
+            wrapper.split()
+        if "compact" in mode:
+            wrapper.toggle_compact(True)
+
+        def geometry():
+            qtbot.wait(30)
+            return [plot.vb.sceneBoundingRect() for plot in (widget.plot_ch1, widget.plot_ch2)]
+
+        original_geometry = geometry()
+        original_waveform = widget.curve_ch1.yData / widget.plot_ch1.viewRange()[1][1]
+        for volts, dc, sensitivity in (
+            (True, False, 2.5),
+            (True, True, 1e9),
+            (False, True, 1e9),
+            (True, True, float("nan")),
+            (False, False, 2.5),
+        ):
+            meter.audio_engine.calibration.input_sensitivity = sensitivity
+            meter.audio_engine.calibration.input_sensitivity_is_calibrated = False
+            widget.chk_volts.setChecked(volts)
+            widget.chk_dc.setChecked(dc)
+            widget._update_plot()
+            assert geometry() == original_geometry
+            np.testing.assert_allclose(
+                widget.curve_ch1.yData / widget.plot_ch1.viewRange()[1][1], original_waveform, rtol=1e-6
+            )
+        widget.btn_pause.click()
+        assert geometry() == original_geometry
+        widget.btn_start.click()
+        assert geometry() == original_geometry
+        widget.btn_pause.click()
+        assert geometry() == original_geometry
+        if mode.startswith("split"):
+            wrapper.reattach_all()
+    finally:
+        manager.load_language("en")
 
 
 def test_recreated_view_restores_settings_and_frozen_frame(qtbot, widget, meter):
