@@ -3,7 +3,6 @@ import os
 import unittest
 from unittest.mock import MagicMock
 import pytest
-import numpy as np
 
 # Skip if PyQt6 is not installed
 pytest.importorskip("PyQt6")
@@ -100,42 +99,6 @@ class TestRawTimeSeriesFormatting(unittest.TestCase):
         # Zero
         formatted_zero = self.widget._format_amplitude(0.0)
         self.assertIsInstance(formatted_zero, str)
-
-    def test_decimate_for_plot(self):
-        # The decimate_for_plot method is a static method
-
-        # Test empty/None cases
-        t_empty, y_empty = RawTimeSeriesWidget._decimate_for_plot(None, None, 10)
-        self.assertEqual(len(t_empty), 0)
-        self.assertEqual(len(y_empty), 0)
-
-        t_empty, y_empty = RawTimeSeriesWidget._decimate_for_plot(np.array([]), np.array([]), 10)
-        self.assertEqual(len(t_empty), 0)
-
-        # Test no decimation needed (len <= max_points)
-        t = np.arange(5)
-        y = np.arange(5)
-        t_out, y_out = RawTimeSeriesWidget._decimate_for_plot(t, y, max_points=10)
-        np.testing.assert_array_equal(t_out, t)
-        np.testing.assert_array_equal(y_out, y)
-
-        # Test decimation needed (len > max_points)
-        t = np.arange(20)
-        y = np.arange(20)
-        t_out, y_out = RawTimeSeriesWidget._decimate_for_plot(t, y, max_points=5)
-        # step = max(1, 20 // 5) = 4
-        # t_out should be [0, 4, 8, 12, 16]
-        np.testing.assert_array_equal(t_out, np.array([0, 4, 8, 12, 16]))
-        np.testing.assert_array_equal(y_out, np.array([0, 4, 8, 12, 16]))
-
-        # Another decimation test
-        t = np.arange(100)
-        y = np.arange(100)
-        t_out, y_out = RawTimeSeriesWidget._decimate_for_plot(t, y, max_points=33)
-        # step = max(1, 100 // 33) = 3
-        # len should be ceil(100 / 3) = 34
-        self.assertEqual(len(t_out), 34)
-        np.testing.assert_array_equal(t_out[:3], np.array([0, 3, 6]))
 
 
 if __name__ == "__main__":
