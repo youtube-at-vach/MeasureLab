@@ -20,8 +20,8 @@
 
 | ID | 目的・範囲 | 依存・変更境界 | 完了条件・検証 | 今回含めないもの | 状態 |
 | --- | --- | --- | --- | --- | --- |
-| 003-A | GUIなしの参照runner、manifest/hash、理論付きFFT/窓/RMS/endpoint | 002、P04/P05。migration fixtureとscripts/testsだけ、現行DSPは変更しない | AC01/04。基準source hash、同じ入力で再生成/再検査、破損hash・違う版・shapeを拒否。現行値と理論値と既知差を別保存 | 候補Rust実装、製品FFT修正 | 未着手・最優先 |
-| 003-B | 仮想4/8ch、route、trigger/history、gap/世代、校正/保存metadataのoracle | 003-A、P02/P03/P13/P14。core.mdの意味をfixtureへ | AC02/03/08/09/11/12。厳密なID/位置/reasonと独立した手計算例。Python旧engineにない能力は新契約oracleと明記 | 物理I/O、共有graph本体 | 未着手 |
+| 003-A | GUIなしの参照runner、manifest/hash、理論付きFFT/窓/RMS/endpoint | 002、P04/P05。migration fixtureとscripts/testsだけ、現行DSPは変更しない | AC01/04。基準source hash、同じ入力で再生成/再検査、破損hash・違う版・shapeを拒否。現行値と理論値と既知差を別保存 | 候補Rust実装、製品FFT修正 | 完了（2026-09-30、参照側20ケース） |
+| 003-B | 仮想4/8ch、route、trigger/history、gap/世代、校正/保存metadataのoracle | 003-A、P02/P03/P13/P14。core.mdの意味をfixtureへ | AC02/03/08/09/11/12。厳密なID/位置/reasonと独立した手計算例。Python旧engineにない能力は新契約oracleと明記 | 物理I/O、共有graph本体 | 未着手・次の作業 |
 | 003-C | 最小FIR/rate写像、現行polyphase/代表SOS参照 | 003-A、P06。数値契約と係数・初期条件固定 | AC10/14。理論有限和、impulse、DC、tone、gap、chunk分割一致。旧版のinvalid rate挙動を別記録 | 製品用resampler選定、全rate構成 | 未着手 |
 | 004-A | Qt SDKを分離導入・版固定し、CXX-Qt/Qt Bridgeで同じ小画面 | 002-C/D。native内の薄いQt境界。導入前に現在の公式要件を確認 | Start/Stop、worker通知、list model、再生成/破棄、遅い通知、AC07/13。両方式の実行物と差分表 | 本格採用、41画面 | 未着手・SDK未導入 |
 | 004-B | 上記のbuild/QML編集/packageと対象OS起動比較 | 004-A。同一workload/依存組合せとbenchmark記録 | AC16と性能protocol。Intel/ARM/Windows/Linuxの実行済み・未実行を分離 | 未所有環境の成功扱い、安定版配布 | 未着手 |
@@ -40,3 +40,16 @@ MIG-003はA/B/Cすべての入力/期待値と再現コマンドが揃うまで�
 MIG-004はSDK導入だけで完了にしない。OSや実機の不足はその試験だけを未確認として残し、
 依存しないfixture/純粋演算/GUI境界の検証は進められる。
 各試験の具体的な実行コマンドは実装と同時に作業票へ追加し、まだ存在しないrunnerを実行済みと記録しない。
+
+## 003-Aの再検査
+
+[fixture仕様・生成/再検査手順](fixtures/README.md)と[決定0002](decisions/0002-fft-reference-runner.md)を参照。
+通常の検査は保存bytesを読むだけで、期待値の再生成と分離する。
+
+```bash
+./.venv/bin/python scripts/migration_fft_reference.py verify
+./.venv/bin/pytest -q tests/logic_verification/test_migration_fft_reference.py
+./.venv/bin/python scripts/migration_fft_reference.py verify --fixtures .migration-local/fft-extended-v1 --baseline migration/fixtures/fft-extended-v1.manifest.json
+```
+
+AC01の4/8ch部分は003-B、候補実装のAC01/04合格は005/006以降。

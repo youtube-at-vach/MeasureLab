@@ -1,8 +1,8 @@
 # 次期コア検証の進捗
 
-更新: 2026-09-29。計画の正本は[評価計画](../guide/RUST_QML_MIGRATION_PLAN.md)。
-Rust/QMLの採用は未決定。MIG-001の環境整備とMIG-002の台帳・P0契約を完了。
-次はMIG-003-Aの、GUIを起動しない固定入力の参照ランナーへ進む。
+更新: 2026-09-30。計画の正本は[評価計画](../guide/RUST_QML_MIGRATION_PLAN.md)。
+Rust/QMLの採用は未決定。MIG-001、MIG-002に続き、MIG-003-AのGUI不要の参照ランナーを完了。
+次はMIG-003-Bの仮想4/8ch・route・trigger/history・校正metadataのoracleへ進む。
 
 ## 作業場所と基準
 
@@ -13,14 +13,14 @@ Rust/QMLの採用は未決定。MIG-001の環境整備とMIG-002の台帳・P0�
 | 検証用ブランチ | `codex/next-core-evaluation` |
 | 作業開始・Python参照コミット | `9fd79958`（MeasureLab 0.9.0、開始時のローカルmain） |
 | 計画書の調査コミット | `68cbdabc3ecd542d9d73fa0aa86bf9159f44d811` |
-| 最終main同期 | 2026-09-29、`9fd79958`から分岐。同日のMIG-002作業でfetchし、origin/mainに追加差分なしを確認 |
+| 最終main同期 | 2026-09-30にfetch。origin/mainは参照`9fd79958`のまま、取込み差分なし |
 | 統合担当 | 当面、この検証ブランチを担当する単一の作業者 |
-| リモート | 開始時にMIG-001の`6194b741`と同じorigin/codex/next-core-evaluationを確認。今回のMIG-002はローカル変更、push・PR・Issue・Project更新・配布は未実施 |
+| リモート | 今回開始時のHEADとorigin/codex/next-core-evaluationはMIG-002の`996ed1dc`。003-Aはローカル未コミット変更、push・PR・Issue・Project更新・配布は未実施 |
 
 調査コミットから開始時mainまでの差分には計画書、設計ガイド、Measurement Consoleのレイアウト、
-Goniometerのテーマ対応、翻訳と対応テストがある。数値fixtureはまだ作成していない。
+Goniometerのテーマ対応、翻訳と対応テストがある。
 MIG-002の棚卸しでは開始時mainを確認した。参照は`9fd79958f6a8bbae6808813d3704617612e6d26c`。
-MIG-003で入力・期待値・source hash・依存バージョンを一緒に固定する。
+MIG-003-AでFFTの入力・期待値・source hash・依存バージョンを一緒に固定した。
 
 ## タスク
 
@@ -28,15 +28,59 @@ MIG-003で入力・期待値・source hash・依存バージョンを一緒に�
 | --- | --- | --- |
 | MIG-001 | 完了 | 管理されたworktree、専用Python環境、状態を分離したオフライン起動、Rust/C++ビルドツール、再開・同期手順 |
 | MIG-002 | 完了（P0文書・整合検査） | 41モジュール+共通10件、20プリミティブと双方向対応、コア/数値契約、16受け入れ条件、性能・反復予算、後続作業票 |
-| MIG-003 | 未着手・次に003-A | 参照ランナー/FFTの003-A、仮想4/8ch・metadataの003-B、filter/rate変換の003-Cへ分割 |
+| MIG-003 | 進行中・003-A完了 | 参照runner/FFTの20ケースと再現検査。次は仮想4/8ch・metadataの003-B、続いてfilter/rate変換の003-C |
 | MIG-004 | 未着手 | Qt開発用SDKの導入・版固定、CXX-Qt/Qt Bridge比較、GUIと配布経路 |
 | MIG-005〜008 | 未着手 | 計画にある依存関係に従う。採用判断までの検証範囲 |
 
 `native/`にはツールチェーンの固定と準備手順のみを置いた。
 Cargo workspace、クレート、Cargo.lock、QML、音声backendは未作成。
-候補実装は今回作成した契約v0.1を出発点とし、公開型・ABI・採用ライブラリは後続の検証で決める。
+候補実装は契約v0.1を出発点とし、公開型・ABI・採用ライブラリは後続の検証で決める。
 
-## MIG-002の成果と検証
+## MIG-003-Aの成果と検証
+
+着手: 2026-09-30、`codex/next-core-evaluation`、HEAD `996ed1dc`、作業ツリーはclean。
+変更境界は`scripts/`・`tests/`・`migration/`。現行DSP/UIと契約の許容差は変更していない。
+
+- [参照runner](../scripts/migration_fft_reference.py)と[独立理論oracle](../scripts/migration_fft_oracle.py):
+  生成と検査を分離。現行FFT/窓、解析式DFT、正規化/PSD/RMS/inverse、phase/dBを照合。
+- [fixture・再現手順](fixtures/README.md): 小規模14件の入力/期待値bytesをGit対象へ保存。
+  拡張6件の全hashとmanifest、実行reportを保存。N=24000/48000/4194304の配列はローカルに保持。
+- GUI/device moduleをimportしない。source/runner hash、全導入版、dtype/shape、ID/metadataを検査し、
+  不一致・NaN・暗黙FFT fallbackを拒否。明示portable modeでもsource/hash/数値の条件は維持する。
+- [決定0002](decisions/0002-fft-reference-runner.md): Spectrumの対象メソッドASTをそのまま実行するadapterの境界、
+  1 thread・空wisdomによる数値検証、巨大配列の保存方式を記録。
+- DC/Nyquistの現行表示差を実測。peakは理論より約+6.0206 dB、RMS換算/ASDは約+3.0103 dB。
+  理論値と現行値を別保存し、製品側の修正は行っていない。
+
+| 今回の確認 | 結果 |
+| --- | --- |
+| 参照起動分離・offscreen self-test | 成功、終了コード0。従来と同じlocale/font警告 |
+| Rust/C++スモーク | 既存実行物の再実行成功。Qt接続は未検証 |
+| 固定環境のfixture再検査 | 小規模14件・拡張6件すべて成功、GUI/device importなし |
+| 再生成とbaseline照合 | 別ディレクトリへ再生成し、小規模manifest/入力/期待値一致。拡張も保存manifestと一致 |
+| 理論比較 | f64の最大正規化FFT複素差は約1.34e-13、f32は約2.83e-9。窓・inverse・PSD積分・phase/dBも契約内 |
+| 対象Pytest | 78 passed、2 skipped（12.12秒）。skipは直接DFT試験の奇数長Nyquistという該当しない2組合せ。奇数最終binのfixture自体は検証済み |
+| Ruff lint / format・Markdown lint・台帳 | 成功。574 Pythonファイル、172 Markdownファイル、台帳41件/20プリミティブ。`git diff --check`も成功 |
+| main差分 | fetch後も`9fd79958`。参照基準の更新・マージ不要 |
+
+検査時間とprocess peak RSSは[実行report](fixtures/README.md#ケースと結果)へ記録した。
+単発の検査全体の診断値であり、性能protocolに沿う新旧比較ではない。
+AC01は2ch、AC04は参照fixture側まで。MIG-003全体、候補実装、4/8ch、filter/rate、Qt/実機/他OSは未完了。
+全体Pytest/Mypy/翻訳/UIサイズとGitHub CIは未実施。製品UI・翻訳の変更やPR作成は行っていない。
+
+再実行:
+
+```bash
+./.venv/bin/python scripts/migration_fft_reference.py verify
+./.venv/bin/python scripts/migration_fft_reference.py verify --fixtures .migration-local/fft-extended-v1 --baseline migration/fixtures/fft-extended-v1.manifest.json
+./.venv/bin/pytest -q tests/logic_verification/test_migration_fft_reference.py tests/logic_verification/test_migration_reference.py tests/logic_verification/test_migration_inventory.py tests/logic_verification/core/test_fft_manager.py tests/logic_verification/core/test_window_functions.py tests/logic_verification/analysis/test_spectrum_rms_accuracy.py
+./.venv/bin/python scripts/check_migration_inventory.py
+./.venv/bin/ruff check .
+./.venv/bin/ruff format --check .
+npx markdownlint-cli2 "**/*.md" "#node_modules"
+```
+
+## MIG-002の成果と検証（前回記録）
 
 - [機能台帳](inventory.md): `ALL_MODULE_KEYS` / `MODULE_REGISTRY`の41件と共通・外部連携10件。
   サブ機能、現行source、代表テスト、プリミティブ対応を記録。移行状態は全件未着手。
@@ -103,9 +147,9 @@ GUI起動時にlocaleのUTF-8への切替と、`Sans Serif`のフォント代替
 
 1. このファイルと`git status --short --branch`を確認する。最後の記録後の変更を保護する。
 2. [環境手順](environment.md)に従い、参照版の起動とツールチェーンを再確認する。
-3. 台帳チェックを実行し、[作業票](tasks.md)の003-Aへ進む。最初は参照runnerとFFT/window/RMSの小さいfixture。
-4. source hash・環境・dtype/shape・入力bytes・理論期待値を固定し、現行との既知差は別記録する。
-5. 003-Bで仮想4/8ch・route・trigger/history・validity・校正metadata、003-Cで最小FIR/rate写像を追加する。
+3. 台帳チェックと`migration_fft_reference.py verify`を実行する。環境差は確認し、比較時だけ明示portable modeを使う。
+4. [作業票](tasks.md)の003-Bへ進み、仮想4/8ch・route・trigger/history・validity・校正metadataを固定する。
+5. 003-Cで最小FIR/rate写像を追加する。既存fixtureを自動更新せず、契約oracleと旧版参照を分ける。
 6. 004はQt開発SDKの分離導入・版固定から始め、両接続方式を同じ小画面と性能protocolで比較する。
 7. 契約変更が必要なら決定記録、台帳、AC、fixtureを同時に更新する。MIG-002完了とRust/QML採用決定を混同しない。
 

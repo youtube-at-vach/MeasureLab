@@ -15,6 +15,9 @@ rate、ch ID、区間、seed/生成式/パラメータ、Timebase、route/tap、
 期待値の由来（理論/現行関数/新契約モデル）、比較尺度・許容差を持たせる。
 環境はPython/OS/CPU、NumPy/SciPy/pyFFTW/PyWavelets/netCDF4等の全導入版、FFT backend/thread数を保存する。
 
+MIG-003-Aで[FFT参照fixture v1](../fixtures/README.md)を作成。数値契約の変更はなく、
+同ページに実行済み範囲、source固定、保存形式、現行表示の既知差と再現コマンドを記録した。
+
 標準入力はlittle-endian IEEE754 f64のframe-major配列。f32ケースは別配列・別期待値で、
 quantize済み入力を双方へ同一に渡す。complex値は実部/虚部を明示し、言語固有のpickleを使わない。
 小さな配列はレビューできるJSONでもよい。SHA-256はシリアライズ後のファイルbytesへ適用する。
