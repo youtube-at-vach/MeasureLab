@@ -32,6 +32,11 @@ env/
 .ruff_cache/
 .coverage
 
+# Next-core evaluation: local toolchains, reference data, and Rust output
+/.tools/
+/.migration-local/
+/native/target/
+
 # VSCode settings
 #.vscode/
 

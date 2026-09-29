@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "codex/next-core-evaluation"]
   pull_request:
-    branches: ["main"]
+    branches: ["main", "codex/next-core-evaluation"]
 
 permissions:
   contents: read
