@@ -2,7 +2,8 @@
 
 MIG-001の開発環境準備。Rust/QMLの採用・API・クレート境界は未決定。
 [進捗](../migration/status.md)と[参照環境](../migration/environment.md)を先に確認する。
-Cargo workspaceとQMLはMIG-002の契約以降に追加する。現時点ではRustの製品コードもCargo.lockも存在しない。
+MIG-002の[コア契約](../migration/contracts/core.md)と[後続作業票](../migration/tasks.md)を作成済み。
+Cargo workspaceとQMLは後続タスクで追加する。現時点ではRustの製品コードもCargo.lockも存在しない。
 
 ## このworktreeで使う
 
