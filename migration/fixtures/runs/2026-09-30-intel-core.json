@@ -1,0 +1,429 @@
+{
+  "elapsed_seconds": 1.2978813190002256,
+  "environment": {
+    "fft": {
+      "backend": "pyfftw",
+      "plan": "FFTW_ESTIMATE",
+      "threads": 1,
+      "wisdom": "empty temporary directory"
+    },
+    "implementation": "CPython",
+    "logical_cpus": 4,
+    "machine": "x86_64",
+    "os": "macOS-14.8.9-x86_64-i386-64bit",
+    "packages": {
+      "MeasureLab": "0.9.0",
+      "PyQt6": "6.11.0",
+      "PyQt6-Qt6": "6.11.2",
+      "PyQt6_sip": "13.12.0",
+      "PyWavelets": "1.10.0",
+      "Pygments": "2.21.0",
+      "ast_serialize": "0.11.2",
+      "certifi": "2026.7.22",
+      "cffi": "2.1.1",
+      "cftime": "1.6.6",
+      "charset-normalizer": "3.5.1",
+      "colorama": "0.4.6",
+      "hypothesis": "6.168.3",
+      "idna": "3.20",
+      "iniconfig": "2.3.0",
+      "librt": "0.16.0",
+      "mypy": "2.3.1",
+      "mypy_extensions": "1.1.0",
+      "netCDF4": "1.7.4",
+      "numpy": "2.2.6",
+      "packaging": "26.3",
+      "pathspec": "1.1.1",
+      "pip": "26.2.1",
+      "pluggy": "1.6.0",
+      "pyFFTW": "0.15.1",
+      "pycparser": "3.0",
+      "pyqtgraph": "0.14.0",
+      "pytest": "9.1.1",
+      "pytest-json-report": "1.5.0",
+      "pytest-metadata": "3.1.1",
+      "pytest-qt": "4.5.0",
+      "requests": "2.34.2",
+      "ruff": "0.16.8",
+      "scipy": "1.18.1",
+      "sortedcontainers": "2.4.0",
+      "sounddevice": "0.5.6",
+      "soundfile": "0.14.0",
+      "typing_extensions": "4.16.0",
+      "urllib3": "2.8.0"
+    },
+    "processor": "i386",
+    "python": "3.12.14"
+  },
+  "exports": 4,
+  "generator_sha256": {
+    "scripts/migration_core_cases.py": "5c72b9dac827e2a03d3d5f8115b73f55b778cbe4b1fa11277b3b48b7ea381d62",
+    "scripts/migration_core_oracle.py": "4e8b4832be85072bcbd0ec8fdf1ec8fb7110888676a64904d6cbe92f4bb11ba9",
+    "scripts/migration_core_reference.py": "ec131b04aa36df9dfccf1e1c71c30d880796b3aa79c23db6e6c5934860778bb7",
+    "scripts/migration_fft_oracle.py": "c415bc4be21947a59fb35b2a32215b0fba58183f2d1a1d3022984ceef73c1ce7",
+    "scripts/migration_fft_reference.py": "8f9a34746f3290fb5bda9e62022a685dc91d294155ce33f4b004edaf80377379"
+  },
+  "limitations": [
+    "FFTManager is called once per channel; this does not validate AudioEngine N-channel support",
+    "State, routing, history and calibration cases are new-contract oracles, not legacy engine results",
+    "History cases model interval availability; no streaming storage or shared graph is implemented",
+    "CSV/JSON are fixture exchange formats, not existing product exporter compatibility",
+    "No candidate core, physical I/O, GUI, throughput or other OS validation"
+  ],
+  "manifest_sha256": "86ab9d47a618f125c65743f38507e44e123fc5cddb605095d3e77735589aa785",
+  "mode": "pinned-reference",
+  "process_peak_rss_bytes": 99299328,
+  "scenarios": [
+    {
+      "acceptance": [
+        "AC02"
+      ],
+      "id": "route-4-to-2",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC02"
+      ],
+      "id": "route-8-to-4",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC02"
+      ],
+      "id": "route-2-to-8",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC02"
+      ],
+      "id": "route-reordered-zero",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC02",
+        "AC09"
+      ],
+      "id": "route-reason-union",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC02",
+        "AC12"
+      ],
+      "id": "route-mixed-units-rejected",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC03"
+      ],
+      "id": "route-boundary-and-rejections",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC08"
+      ],
+      "id": "history-reader-fast",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC08"
+      ],
+      "id": "history-reader-delayed",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC08",
+        "AC09"
+      ],
+      "id": "history-retention-overflow",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC08"
+      ],
+      "id": "history-future-pending",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC08"
+      ],
+      "id": "history-fractional-trigger",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC08"
+      ],
+      "id": "history-before-start",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC09"
+      ],
+      "id": "history-gap-absolute-position",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC09"
+      ],
+      "id": "history-old-generation",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC09"
+      ],
+      "id": "history-wrong-timebase",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC09"
+      ],
+      "id": "time-rational-origin",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC09"
+      ],
+      "id": "time-nominal-rate-not-sync",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC09"
+      ],
+      "id": "time-explicit-mapping",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC09"
+      ],
+      "id": "time-expired-mapping",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC11"
+      ],
+      "id": "taps-gain-map-quantization",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC11"
+      ],
+      "id": "taps-muted-device-only",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC09"
+      ],
+      "id": "blocks-gap-reorder-restart",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC09"
+      ],
+      "id": "analysis-gap-nonfinite",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC09"
+      ],
+      "id": "analysis-outside-invalid-support",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC12"
+      ],
+      "id": "calibration-reorder-and-unknown",
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC12"
+      ],
+      "id": "calibration-nominal-axis",
+      "status": "pass"
+    }
+  ],
+  "status": "pass",
+  "tones": [
+    {
+      "db_tested_bins": 4,
+      "id": "ac01-4ch-f8",
+      "integrated_power_fs2": [
+        0.00048828125,
+        0.001953125000000001,
+        0.004394531250000003,
+        0.0078125
+      ],
+      "max_absolute_errors": {
+        "fft_over_n": 4.4456221219939e-15,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 2.6020852139652106e-18,
+        "inverse_windowed": 9.71445146547012e-17,
+        "parseval": 1.5612511283791264e-17,
+        "peak_db": 0.0,
+        "peak_fs": 4.0617008542077694e-15,
+        "phase_rad": 7.111008766795918e-14,
+        "psd_fs2_hz": 2.168404344971009e-19,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 0.0,
+        "window": 0.0
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 4,
+      "rms_fs": [
+        0.02209708691207961,
+        0.0441941738241592,
+        0.06629126073623881,
+        0.08838834764831853
+      ]
+    },
+    {
+      "db_tested_bins": 4,
+      "id": "ac01-4ch-f4",
+      "integrated_power_fs2": [
+        0.000488281250000001,
+        0.0019531246476227856,
+        0.0043945305763112815,
+        0.0078124991086287576
+      ],
+      "max_absolute_errors": {
+        "fft_over_n": 4.835954714700977e-09,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 8.913712407077057e-10,
+        "inverse_windowed": 5.21540641784668e-08,
+        "parseval": 8.562134386908005e-10,
+        "peak_db": 7.835417648038856e-07,
+        "peak_fs": 7.186013756266263e-09,
+        "phase_rad": 5.227318504677564e-08,
+        "psd_fs2_hz": 7.606368497298927e-11,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 0.0,
+        "window": 0.0
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 4,
+      "rms_fs": [
+        0.022097086862358967,
+        0.04419417372471795,
+        0.06629126080596998,
+        0.08838834744943587
+      ]
+    },
+    {
+      "db_tested_bins": 8,
+      "id": "ac01-8ch-f8",
+      "integrated_power_fs2": [
+        0.00048828125,
+        0.001953125000000001,
+        0.004394531250000003,
+        0.0078125,
+        0.01220703125,
+        0.017578125000000007,
+        0.023925781250000014,
+        0.031250000000000014
+      ],
+      "max_absolute_errors": {
+        "fft_over_n": 1.564997491160737e-14,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 1.734723475976807e-17,
+        "inverse_windowed": 2.0122792321330962e-16,
+        "parseval": 1.1102230246251565e-16,
+        "peak_db": 3.552713678800501e-15,
+        "peak_fs": 1.3004237756501e-14,
+        "phase_rad": 1.4307236032915028e-13,
+        "psd_fs2_hz": 1.3010426069826053e-18,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 0.0,
+        "window": 0.0
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 8,
+      "rms_fs": [
+        0.02209708691207961,
+        0.0441941738241592,
+        0.06629126073623881,
+        0.08838834764831853,
+        0.11048543456039811,
+        0.1325825214724778,
+        0.15467960838455724,
+        0.17677669529663723
+      ]
+    },
+    {
+      "db_tested_bins": 8,
+      "id": "ac01-8ch-f4",
+      "integrated_power_fs2": [
+        0.000488281250000001,
+        0.0019531246476227856,
+        0.0043945305763112815,
+        0.0078124991086287576,
+        0.012207031243761511,
+        0.017578122994414764,
+        0.023925778897825344,
+        0.031249998197366124
+      ],
+      "max_absolute_errors": {
+        "fft_over_n": 7.2539320767986706e-09,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 2.352174652969774e-09,
+        "inverse_windowed": 7.450580596923828e-08,
+        "parseval": 2.270729451692155e-09,
+        "peak_db": 7.835417648038856e-07,
+        "peak_fs": 1.0752799289859283e-08,
+        "phase_rad": 5.227318504677564e-08,
+        "psd_fs2_hz": 2.007189150131372e-10,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 0.0,
+        "window": 0.0
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 8,
+      "rms_fs": [
+        0.022097086862358967,
+        0.04419417372471795,
+        0.06629126080596998,
+        0.08838834744943587,
+        0.11048543453867102,
+        0.13258252161194004,
+        0.15467960812128662,
+        0.17677669489887177
+      ]
+    }
+  ]
+}

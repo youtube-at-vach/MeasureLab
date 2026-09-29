@@ -4,6 +4,9 @@ MIG-003-A、2026-09-30。契約は[数値v0.1](../contracts/numerics.md)。
 Rust候補や製品UIの試験ではなく、現行FFT・窓と独立理論の比較用データ。
 基準sourceは`9fd79958f6a8bbae6808813d3704617612e6d26c`。
 
+MIG-003-Bの4/8ch・route・履歴・校正/保存は別の[コア契約fixture v1](core-v1.md)を参照。
+以下は003-Aの保存仕様・結果で、既存の入力・期待値は変更していない。
+
 ## 実装と保存形式
 
 [参照runner](../../scripts/migration_fft_reference.py)が現行`FFTManager.rfft/irfft/rfftfreq`と

@@ -1,0 +1,2863 @@
+[
+  {
+    "acceptance": [
+      "AC02"
+    ],
+    "expected": {
+      "channel_ids": [
+        "out.pick",
+        "out.mix"
+      ],
+      "input_calibration_ids": [
+        [
+          "input.delta"
+        ],
+        [
+          "input.alpha",
+          "input.gamma"
+        ]
+      ],
+      "revision": "route.1",
+      "single_v_per_fs": [
+        null,
+        null
+      ],
+      "unit": "FS",
+      "validity": [],
+      "values": [
+        [
+          8,
+          4
+        ],
+        [
+          -8,
+          -4
+        ]
+      ]
+    },
+    "id": "route-4-to-2",
+    "input": {
+      "channel_ids": [
+        "input.alpha",
+        "input.beta",
+        "input.gamma",
+        "input.delta"
+      ],
+      "route": {
+        "gains": [
+          [
+            0,
+            0,
+            0,
+            1
+          ],
+          [
+            0.5,
+            0,
+            0.5,
+            0
+          ]
+        ],
+        "inputs": [
+          "input.alpha",
+          "input.beta",
+          "input.gamma",
+          "input.delta"
+        ],
+        "outputs": [
+          "out.pick",
+          "out.mix"
+        ],
+        "revision": "route.1"
+      },
+      "start": 10,
+      "unit": "FS",
+      "validity": [],
+      "values": [
+        [
+          2,
+          4,
+          6,
+          8
+        ],
+        [
+          -2,
+          -4,
+          -6,
+          -8
+        ]
+      ]
+    },
+    "operation": "route",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC02"
+    ],
+    "expected": {
+      "channel_ids": [
+        "out.7",
+        "out.1",
+        "out.mix",
+        "out.invert"
+      ],
+      "input_calibration_ids": [
+        [
+          "input.theta"
+        ],
+        [
+          "input.beta"
+        ],
+        [
+          "input.gamma",
+          "input.epsilon"
+        ],
+        [
+          "input.alpha"
+        ]
+      ],
+      "revision": "route.1",
+      "single_v_per_fs": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "unit": "FS",
+      "validity": [],
+      "values": [
+        [
+          16,
+          4,
+          8,
+          -2
+        ]
+      ]
+    },
+    "id": "route-8-to-4",
+    "input": {
+      "channel_ids": [
+        "input.alpha",
+        "input.beta",
+        "input.gamma",
+        "input.delta",
+        "input.epsilon",
+        "input.zeta",
+        "input.eta",
+        "input.theta"
+      ],
+      "route": {
+        "gains": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          [
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0.5,
+            0,
+            0.5,
+            0,
+            0,
+            0
+          ],
+          [
+            -1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "inputs": [
+          "input.alpha",
+          "input.beta",
+          "input.gamma",
+          "input.delta",
+          "input.epsilon",
+          "input.zeta",
+          "input.eta",
+          "input.theta"
+        ],
+        "outputs": [
+          "out.7",
+          "out.1",
+          "out.mix",
+          "out.invert"
+        ],
+        "revision": "route.1"
+      },
+      "start": 10,
+      "unit": "FS",
+      "validity": [],
+      "values": [
+        [
+          2,
+          4,
+          6,
+          8,
+          10,
+          12,
+          14,
+          16
+        ]
+      ]
+    },
+    "operation": "route",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC02"
+    ],
+    "expected": {
+      "channel_ids": [
+        "out.0",
+        "out.1",
+        "out.2",
+        "out.3",
+        "out.4",
+        "out.5",
+        "out.6",
+        "out.7"
+      ],
+      "input_calibration_ids": [
+        [
+          "input.alpha"
+        ],
+        [
+          "input.beta"
+        ],
+        [
+          "input.alpha"
+        ],
+        [
+          "input.beta"
+        ],
+        [
+          "input.alpha"
+        ],
+        [
+          "input.beta"
+        ],
+        [
+          "input.alpha"
+        ],
+        [
+          "input.beta"
+        ]
+      ],
+      "revision": "route.1",
+      "single_v_per_fs": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "unit": "FS",
+      "validity": [],
+      "values": [
+        [
+          0.25,
+          -0.5,
+          0.25,
+          -0.5,
+          0.25,
+          -0.5,
+          0.25,
+          -0.5
+        ]
+      ]
+    },
+    "id": "route-2-to-8",
+    "input": {
+      "channel_ids": [
+        "input.alpha",
+        "input.beta"
+      ],
+      "route": {
+        "gains": [
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            1
+          ]
+        ],
+        "inputs": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "outputs": [
+          "out.0",
+          "out.1",
+          "out.2",
+          "out.3",
+          "out.4",
+          "out.5",
+          "out.6",
+          "out.7"
+        ],
+        "revision": "route.1"
+      },
+      "start": 10,
+      "unit": "FS",
+      "validity": [],
+      "values": [
+        [
+          0.25,
+          -0.5
+        ]
+      ]
+    },
+    "operation": "route",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC02"
+    ],
+    "expected": {
+      "channel_ids": [
+        "out.mix",
+        "out.zero"
+      ],
+      "input_calibration_ids": [
+        [
+          "input.alpha",
+          "input.gamma"
+        ],
+        []
+      ],
+      "revision": "route.1",
+      "single_v_per_fs": [
+        null,
+        null
+      ],
+      "unit": "FS",
+      "validity": [],
+      "values": [
+        [
+          4,
+          0
+        ]
+      ]
+    },
+    "id": "route-reordered-zero",
+    "input": {
+      "channel_ids": [
+        "input.delta",
+        "input.beta",
+        "input.alpha",
+        "input.gamma"
+      ],
+      "route": {
+        "gains": [
+          [
+            0.5,
+            0.5,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        "inputs": [
+          "input.alpha",
+          "input.gamma",
+          "input.delta"
+        ],
+        "outputs": [
+          "out.mix",
+          "out.zero"
+        ],
+        "revision": "route.1"
+      },
+      "start": 10,
+      "unit": "FS",
+      "validity": [],
+      "values": [
+        [
+          8,
+          4,
+          2,
+          6
+        ]
+      ]
+    },
+    "operation": "route",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC02",
+      "AC09"
+    ],
+    "expected": {
+      "channel_ids": [
+        "out.mix",
+        "out.pick",
+        "out.zero"
+      ],
+      "input_calibration_ids": [
+        [
+          "input.alpha",
+          "input.beta"
+        ],
+        [
+          "input.gamma"
+        ],
+        []
+      ],
+      "revision": "route.1",
+      "single_v_per_fs": [
+        null,
+        null,
+        null
+      ],
+      "unit": "FS",
+      "validity": [
+        {
+          "channel_id": "out.mix",
+          "interval": [
+            100,
+            101
+          ],
+          "reasons": [
+            "missing",
+            "nonfinite"
+          ]
+        }
+      ],
+      "values": [
+        [
+          null,
+          2,
+          0
+        ],
+        [
+          2.5,
+          4,
+          0
+        ]
+      ]
+    },
+    "id": "route-reason-union",
+    "input": {
+      "channel_ids": [
+        "input.alpha",
+        "input.beta",
+        "input.gamma"
+      ],
+      "route": {
+        "gains": [
+          [
+            1,
+            0.5,
+            0
+          ],
+          [
+            0,
+            0,
+            1
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        "inputs": [
+          "input.alpha",
+          "input.beta",
+          "input.gamma"
+        ],
+        "outputs": [
+          "out.mix",
+          "out.pick",
+          "out.zero"
+        ],
+        "revision": "route.1"
+      },
+      "start": 100,
+      "unit": "FS",
+      "validity": [
+        {
+          "channel_id": "input.alpha",
+          "interval": [
+            100,
+            101
+          ],
+          "reason": "missing"
+        },
+        {
+          "channel_id": "input.beta",
+          "interval": [
+            100,
+            101
+          ],
+          "reason": "nonfinite"
+        }
+      ],
+      "values": [
+        [
+          null,
+          null,
+          2
+        ],
+        [
+          1,
+          3,
+          4
+        ]
+      ]
+    },
+    "operation": "route",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC02",
+      "AC12"
+    ],
+    "expected": {
+      "reason": "mix_requires_explicit_unit_conversion",
+      "status": "rejected"
+    },
+    "id": "route-mixed-units-rejected",
+    "input": {
+      "channel_ids": [
+        "input.alpha",
+        "input.beta",
+        "input.gamma",
+        "input.delta"
+      ],
+      "route": {
+        "gains": [
+          [
+            0,
+            0,
+            0,
+            1
+          ],
+          [
+            0.5,
+            0,
+            0.5,
+            0
+          ]
+        ],
+        "inputs": [
+          "input.alpha",
+          "input.beta",
+          "input.gamma",
+          "input.delta"
+        ],
+        "outputs": [
+          "out.pick",
+          "out.mix"
+        ],
+        "revision": "route.1"
+      },
+      "start": 10,
+      "unit": "mixed-V-and-FS",
+      "validity": [],
+      "values": [
+        [
+          2,
+          4,
+          6,
+          8
+        ],
+        [
+          -2,
+          -4,
+          -6,
+          -8
+        ]
+      ]
+    },
+    "operation": "route",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC03"
+    ],
+    "expected": [
+      {
+        "published_route": {
+          "gains": [
+            [
+              0,
+              1
+            ]
+          ],
+          "inputs": [
+            "input.alpha",
+            "input.beta"
+          ],
+          "outputs": [
+            "out.pick"
+          ],
+          "revision": "route.1"
+        },
+        "request_id": "req.1",
+        "revision": "route.1",
+        "sample": 128,
+        "status": "applied"
+      },
+      {
+        "published_route": {
+          "gains": [
+            [
+              0,
+              1
+            ]
+          ],
+          "inputs": [
+            "input.alpha",
+            "input.beta"
+          ],
+          "outputs": [
+            "out.pick"
+          ],
+          "revision": "route.1"
+        },
+        "reason": "unknown_or_duplicate_input",
+        "request_id": "unknown",
+        "status": "rejected"
+      },
+      {
+        "published_route": {
+          "gains": [
+            [
+              0,
+              1
+            ]
+          ],
+          "inputs": [
+            "input.alpha",
+            "input.beta"
+          ],
+          "outputs": [
+            "out.pick"
+          ],
+          "revision": "route.1"
+        },
+        "reason": "unknown_or_duplicate_input",
+        "request_id": "duplicate-input",
+        "status": "rejected"
+      },
+      {
+        "published_route": {
+          "gains": [
+            [
+              0,
+              1
+            ]
+          ],
+          "inputs": [
+            "input.alpha",
+            "input.beta"
+          ],
+          "outputs": [
+            "out.pick"
+          ],
+          "revision": "route.1"
+        },
+        "reason": "duplicate_or_empty_output",
+        "request_id": "duplicate-output",
+        "status": "rejected"
+      },
+      {
+        "published_route": {
+          "gains": [
+            [
+              0,
+              1
+            ]
+          ],
+          "inputs": [
+            "input.alpha",
+            "input.beta"
+          ],
+          "outputs": [
+            "out.pick"
+          ],
+          "revision": "route.1"
+        },
+        "reason": "gain_shape",
+        "request_id": "shape",
+        "status": "rejected"
+      },
+      {
+        "published_route": {
+          "gains": [
+            [
+              0,
+              1
+            ]
+          ],
+          "inputs": [
+            "input.alpha",
+            "input.beta"
+          ],
+          "outputs": [
+            "out.pick"
+          ],
+          "revision": "route.1"
+        },
+        "reason": "nonfinite_gain",
+        "request_id": "nan",
+        "status": "rejected"
+      },
+      {
+        "published_route": {
+          "gains": [
+            [
+              1,
+              0
+            ]
+          ],
+          "inputs": [
+            "input.alpha",
+            "input.beta"
+          ],
+          "outputs": [
+            "out.pick"
+          ],
+          "revision": "route.0"
+        },
+        "request_id": "req.2",
+        "revision": "route.0",
+        "sample": 256,
+        "status": "applied"
+      }
+    ],
+    "id": "route-boundary-and-rejections",
+    "input": {
+      "initial": {
+        "gains": [
+          [
+            1,
+            0
+          ]
+        ],
+        "inputs": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "outputs": [
+          "out.pick"
+        ],
+        "revision": "route.0"
+      },
+      "known_ids": [
+        "input.alpha",
+        "input.beta"
+      ],
+      "requests": [
+        {
+          "id": "req.1",
+          "next_block_start": 128,
+          "requested_sample": 101,
+          "route": {
+            "gains": [
+              [
+                0,
+                1
+              ]
+            ],
+            "inputs": [
+              "input.alpha",
+              "input.beta"
+            ],
+            "outputs": [
+              "out.pick"
+            ],
+            "revision": "route.1"
+          }
+        },
+        {
+          "id": "unknown",
+          "next_block_start": 256,
+          "requested_sample": 150,
+          "route": {
+            "gains": [
+              [
+                1
+              ]
+            ],
+            "inputs": [
+              "input.unknown"
+            ],
+            "outputs": [
+              "out.pick"
+            ],
+            "revision": "route.1"
+          }
+        },
+        {
+          "id": "duplicate-input",
+          "next_block_start": 256,
+          "requested_sample": 150,
+          "route": {
+            "gains": [
+              [
+                1,
+                1
+              ]
+            ],
+            "inputs": [
+              "input.alpha",
+              "input.alpha"
+            ],
+            "outputs": [
+              "out.pick"
+            ],
+            "revision": "route.1"
+          }
+        },
+        {
+          "id": "duplicate-output",
+          "next_block_start": 256,
+          "requested_sample": 150,
+          "route": {
+            "gains": [
+              [
+                1,
+                0
+              ],
+              [
+                0,
+                1
+              ]
+            ],
+            "inputs": [
+              "input.alpha",
+              "input.beta"
+            ],
+            "outputs": [
+              "out.pick",
+              "out.pick"
+            ],
+            "revision": "route.1"
+          }
+        },
+        {
+          "id": "shape",
+          "next_block_start": 256,
+          "requested_sample": 150,
+          "route": {
+            "gains": [
+              [
+                1
+              ]
+            ],
+            "inputs": [
+              "input.alpha",
+              "input.beta"
+            ],
+            "outputs": [
+              "out.pick"
+            ],
+            "revision": "route.1"
+          }
+        },
+        {
+          "id": "nan",
+          "next_block_start": 256,
+          "requested_sample": 150,
+          "route": {
+            "gains": [
+              [
+                "NaN",
+                0
+              ]
+            ],
+            "inputs": [
+              "input.alpha",
+              "input.beta"
+            ],
+            "outputs": [
+              "out.pick"
+            ],
+            "revision": "route.1"
+          }
+        },
+        {
+          "id": "req.2",
+          "next_block_start": 256,
+          "requested_sample": 256,
+          "route": {
+            "gains": [
+              [
+                1,
+                0
+              ]
+            ],
+            "inputs": [
+              "input.alpha",
+              "input.beta"
+            ],
+            "outputs": [
+              "out.pick"
+            ],
+            "revision": "route.0"
+          }
+        }
+      ]
+    },
+    "operation": "route_changes",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC08"
+    ],
+    "expected": {
+      "event_id": "fixture.trigger.001",
+      "fractional_residual": [
+        0,
+        1
+      ],
+      "generation": 3,
+      "interval": [
+        1792,
+        2816
+      ],
+      "missing": [],
+      "pending": [],
+      "reason": null,
+      "status": "snapshot",
+      "stream_id": "fixture.session.input",
+      "timebase_id": "fixture.timebase.input"
+    },
+    "id": "history-reader-fast",
+    "input": {
+      "acquired_intervals": [
+        [
+          0,
+          2816
+        ]
+      ],
+      "acquired_until": 2816,
+      "capacity": 4096,
+      "event": {
+        "condition_revision": "condition.1",
+        "generation": 3,
+        "id": "fixture.trigger.001",
+        "kind": "edge",
+        "polarity": "rising",
+        "sample": [
+          2048,
+          1
+        ],
+        "source": "virtual",
+        "stream_id": "fixture.session.input",
+        "timebase_id": "fixture.timebase.input",
+        "validity": []
+      },
+      "generation": 3,
+      "notification_host_seconds": 10,
+      "post": 768,
+      "pre": 256,
+      "reader_id": "reader.fast",
+      "stream_id": "fixture.session.input",
+      "timebase_id": "fixture.timebase.input"
+    },
+    "operation": "history",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC08"
+    ],
+    "expected": {
+      "event_id": "fixture.trigger.001",
+      "fractional_residual": [
+        0,
+        1
+      ],
+      "generation": 3,
+      "interval": [
+        1792,
+        2816
+      ],
+      "missing": [],
+      "pending": [],
+      "reason": null,
+      "status": "snapshot",
+      "stream_id": "fixture.session.input",
+      "timebase_id": "fixture.timebase.input"
+    },
+    "id": "history-reader-delayed",
+    "input": {
+      "acquired_intervals": [
+        [
+          0,
+          4096
+        ]
+      ],
+      "acquired_until": 4096,
+      "capacity": 4096,
+      "event": {
+        "condition_revision": "condition.1",
+        "generation": 3,
+        "id": "fixture.trigger.001",
+        "kind": "edge",
+        "polarity": "rising",
+        "sample": [
+          2048,
+          1
+        ],
+        "source": "virtual",
+        "stream_id": "fixture.session.input",
+        "timebase_id": "fixture.timebase.input",
+        "validity": []
+      },
+      "generation": 3,
+      "notification_host_seconds": 20,
+      "post": 768,
+      "pre": 256,
+      "reader_id": "reader.slow",
+      "stream_id": "fixture.session.input",
+      "timebase_id": "fixture.timebase.input"
+    },
+    "operation": "history",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC08",
+      "AC09"
+    ],
+    "expected": {
+      "event_id": "fixture.trigger.001",
+      "fractional_residual": [
+        0,
+        1
+      ],
+      "generation": 3,
+      "interval": [
+        1792,
+        2816
+      ],
+      "missing": [
+        [
+          1792,
+          1904
+        ]
+      ],
+      "pending": [],
+      "reason": "missing",
+      "status": "gap",
+      "stream_id": "fixture.session.input",
+      "timebase_id": "fixture.timebase.input"
+    },
+    "id": "history-retention-overflow",
+    "input": {
+      "acquired_intervals": [
+        [
+          0,
+          6000
+        ]
+      ],
+      "acquired_until": 6000,
+      "capacity": 4096,
+      "event": {
+        "condition_revision": "condition.1",
+        "generation": 3,
+        "id": "fixture.trigger.001",
+        "kind": "edge",
+        "polarity": "rising",
+        "sample": [
+          2048,
+          1
+        ],
+        "source": "virtual",
+        "stream_id": "fixture.session.input",
+        "timebase_id": "fixture.timebase.input",
+        "validity": []
+      },
+      "generation": 3,
+      "notification_host_seconds": 20,
+      "post": 768,
+      "pre": 256,
+      "reader_id": "reader.slow",
+      "stream_id": "fixture.session.input",
+      "timebase_id": "fixture.timebase.input"
+    },
+    "operation": "history",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC08"
+    ],
+    "expected": {
+      "event_id": "fixture.trigger.001",
+      "fractional_residual": [
+        0,
+        1
+      ],
+      "generation": 3,
+      "interval": [
+        1792,
+        2816
+      ],
+      "missing": [],
+      "pending": [
+        [
+          2500,
+          2816
+        ]
+      ],
+      "reason": null,
+      "status": "pending",
+      "stream_id": "fixture.session.input",
+      "timebase_id": "fixture.timebase.input"
+    },
+    "id": "history-future-pending",
+    "input": {
+      "acquired_intervals": [
+        [
+          0,
+          2500
+        ]
+      ],
+      "acquired_until": 2500,
+      "capacity": 4096,
+      "event": {
+        "condition_revision": "condition.1",
+        "generation": 3,
+        "id": "fixture.trigger.001",
+        "kind": "edge",
+        "polarity": "rising",
+        "sample": [
+          2048,
+          1
+        ],
+        "source": "virtual",
+        "stream_id": "fixture.session.input",
+        "timebase_id": "fixture.timebase.input",
+        "validity": []
+      },
+      "generation": 3,
+      "notification_host_seconds": 10,
+      "post": 768,
+      "pre": 256,
+      "reader_id": "reader.fast",
+      "stream_id": "fixture.session.input",
+      "timebase_id": "fixture.timebase.input"
+    },
+    "operation": "history",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC08"
+    ],
+    "expected": {
+      "event_id": "fixture.trigger.001",
+      "fractional_residual": [
+        1,
+        2
+      ],
+      "generation": 3,
+      "interval": [
+        1792,
+        2816
+      ],
+      "missing": [],
+      "pending": [],
+      "reason": null,
+      "status": "snapshot",
+      "stream_id": "fixture.session.input",
+      "timebase_id": "fixture.timebase.input"
+    },
+    "id": "history-fractional-trigger",
+    "input": {
+      "acquired_intervals": [
+        [
+          0,
+          2816
+        ]
+      ],
+      "acquired_until": 2816,
+      "capacity": 4096,
+      "event": {
+        "condition_revision": "condition.1",
+        "generation": 3,
+        "id": "fixture.trigger.001",
+        "kind": "edge",
+        "polarity": "rising",
+        "sample": [
+          4097,
+          2
+        ],
+        "source": "virtual",
+        "stream_id": "fixture.session.input",
+        "timebase_id": "fixture.timebase.input",
+        "validity": []
+      },
+      "generation": 3,
+      "notification_host_seconds": 10,
+      "post": 768,
+      "pre": 256,
+      "reader_id": "reader.fast",
+      "stream_id": "fixture.session.input",
+      "timebase_id": "fixture.timebase.input"
+    },
+    "operation": "history",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC08"
+    ],
+    "expected": {
+      "event_id": "fixture.trigger.001",
+      "fractional_residual": [
+        0,
+        1
+      ],
+      "generation": 3,
+      "interval": [
+        -2,
+        6
+      ],
+      "missing": [
+        [
+          -2,
+          0
+        ]
+      ],
+      "pending": [],
+      "reason": "missing",
+      "status": "gap",
+      "stream_id": "fixture.session.input",
+      "timebase_id": "fixture.timebase.input"
+    },
+    "id": "history-before-start",
+    "input": {
+      "acquired_intervals": [
+        [
+          0,
+          10
+        ]
+      ],
+      "acquired_until": 10,
+      "capacity": 4096,
+      "event": {
+        "condition_revision": "condition.1",
+        "generation": 3,
+        "id": "fixture.trigger.001",
+        "kind": "edge",
+        "polarity": "rising",
+        "sample": [
+          2,
+          1
+        ],
+        "source": "virtual",
+        "stream_id": "fixture.session.input",
+        "timebase_id": "fixture.timebase.input",
+        "validity": []
+      },
+      "generation": 3,
+      "notification_host_seconds": 10,
+      "post": 4,
+      "pre": 4,
+      "reader_id": "reader.fast",
+      "stream_id": "fixture.session.input",
+      "timebase_id": "fixture.timebase.input"
+    },
+    "operation": "history",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC09"
+    ],
+    "expected": {
+      "event_id": "fixture.trigger.001",
+      "fractional_residual": [
+        0,
+        1
+      ],
+      "generation": 3,
+      "interval": [
+        98,
+        106
+      ],
+      "missing": [
+        [
+          100,
+          104
+        ]
+      ],
+      "pending": [],
+      "reason": "missing",
+      "status": "gap",
+      "stream_id": "fixture.session.input",
+      "timebase_id": "fixture.timebase.input"
+    },
+    "id": "history-gap-absolute-position",
+    "input": {
+      "acquired_intervals": [
+        [
+          0,
+          100
+        ],
+        [
+          104,
+          110
+        ]
+      ],
+      "acquired_until": 110,
+      "capacity": 4096,
+      "event": {
+        "condition_revision": "condition.1",
+        "generation": 3,
+        "id": "fixture.trigger.001",
+        "kind": "edge",
+        "polarity": "rising",
+        "sample": [
+          102,
+          1
+        ],
+        "source": "virtual",
+        "stream_id": "fixture.session.input",
+        "timebase_id": "fixture.timebase.input",
+        "validity": []
+      },
+      "generation": 3,
+      "notification_host_seconds": 10,
+      "post": 4,
+      "pre": 4,
+      "reader_id": "reader.fast",
+      "stream_id": "fixture.session.input",
+      "timebase_id": "fixture.timebase.input"
+    },
+    "operation": "history",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC09"
+    ],
+    "expected": {
+      "event_id": "fixture.trigger.001",
+      "reason": "stale_generation",
+      "status": "rejected"
+    },
+    "id": "history-old-generation",
+    "input": {
+      "acquired_intervals": [
+        [
+          0,
+          2816
+        ]
+      ],
+      "acquired_until": 2816,
+      "capacity": 4096,
+      "event": {
+        "condition_revision": "condition.1",
+        "generation": 3,
+        "id": "fixture.trigger.001",
+        "kind": "edge",
+        "polarity": "rising",
+        "sample": [
+          2048,
+          1
+        ],
+        "source": "virtual",
+        "stream_id": "fixture.session.input",
+        "timebase_id": "fixture.timebase.input",
+        "validity": []
+      },
+      "generation": 4,
+      "notification_host_seconds": 10,
+      "post": 768,
+      "pre": 256,
+      "reader_id": "reader.fast",
+      "stream_id": "fixture.session.input",
+      "timebase_id": "fixture.timebase.input"
+    },
+    "operation": "history",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC09"
+    ],
+    "expected": {
+      "event_id": "fixture.trigger.001",
+      "reason": "stream_or_timebase_mismatch",
+      "status": "rejected"
+    },
+    "id": "history-wrong-timebase",
+    "input": {
+      "acquired_intervals": [
+        [
+          0,
+          2816
+        ]
+      ],
+      "acquired_until": 2816,
+      "capacity": 4096,
+      "event": {
+        "condition_revision": "condition.1",
+        "generation": 3,
+        "id": "fixture.trigger.001",
+        "kind": "edge",
+        "polarity": "rising",
+        "sample": [
+          2048,
+          1
+        ],
+        "source": "virtual",
+        "stream_id": "fixture.session.input",
+        "timebase_id": "another.timebase",
+        "validity": []
+      },
+      "generation": 3,
+      "notification_host_seconds": 10,
+      "post": 768,
+      "pre": 256,
+      "reader_id": "reader.fast",
+      "stream_id": "fixture.session.input",
+      "timebase_id": "fixture.timebase.input"
+    },
+    "operation": "history",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC09"
+    ],
+    "expected": {
+      "reason": null,
+      "uncertainty_seconds": null,
+      "value": [
+        3758,
+        375
+      ]
+    },
+    "id": "time-rational-origin",
+    "input": {
+      "left": {
+        "clock_domain": "fixture.virtual",
+        "generation": 3,
+        "id": "fixture.timebase.input",
+        "nominal_rate": [
+          48000,
+          1
+        ],
+        "origin_kind": "virtual",
+        "origin_sample": 0,
+        "origin_seconds": [
+          10,
+          1
+        ],
+        "rate": [
+          48000,
+          1
+        ],
+        "uncertainty_seconds": null
+      },
+      "mapping": null,
+      "right": {
+        "clock_domain": "fixture.virtual",
+        "generation": 3,
+        "id": "fixture.timebase.input",
+        "nominal_rate": [
+          48000,
+          1
+        ],
+        "origin_kind": "virtual",
+        "origin_sample": 0,
+        "origin_seconds": [
+          10,
+          1
+        ],
+        "rate": [
+          48000,
+          1
+        ],
+        "uncertainty_seconds": null
+      },
+      "sample": 1024
+    },
+    "operation": "time",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC09"
+    ],
+    "expected": {
+      "reason": "unsynchronized",
+      "value": null
+    },
+    "id": "time-nominal-rate-not-sync",
+    "input": {
+      "left": {
+        "clock_domain": "fixture.virtual",
+        "generation": 3,
+        "id": "fixture.timebase.input",
+        "nominal_rate": [
+          48000,
+          1
+        ],
+        "origin_kind": "virtual",
+        "origin_sample": 0,
+        "origin_seconds": [
+          10,
+          1
+        ],
+        "rate": [
+          48000,
+          1
+        ],
+        "uncertainty_seconds": null
+      },
+      "mapping": null,
+      "right": {
+        "clock_domain": "device.independent",
+        "generation": 3,
+        "id": "device.other",
+        "nominal_rate": [
+          48000,
+          1
+        ],
+        "origin_kind": "virtual",
+        "origin_sample": 0,
+        "origin_seconds": [
+          10,
+          1
+        ],
+        "rate": [
+          48000,
+          1
+        ],
+        "uncertainty_seconds": null
+      },
+      "sample": 1024
+    },
+    "operation": "time",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC09"
+    ],
+    "expected": {
+      "mapping": {
+        "from": [
+          "fixture.timebase.input",
+          3
+        ],
+        "method": "fixture-exact",
+        "offset": [
+          1,
+          2
+        ],
+        "ratio": [
+          1,
+          1
+        ],
+        "to": [
+          "device.other",
+          3
+        ],
+        "uncertainty_samples": [
+          0,
+          1
+        ],
+        "valid_interval": [
+          0,
+          2048
+        ]
+      },
+      "reason": null,
+      "value": [
+        2049,
+        2
+      ]
+    },
+    "id": "time-explicit-mapping",
+    "input": {
+      "left": {
+        "clock_domain": "fixture.virtual",
+        "generation": 3,
+        "id": "fixture.timebase.input",
+        "nominal_rate": [
+          48000,
+          1
+        ],
+        "origin_kind": "virtual",
+        "origin_sample": 0,
+        "origin_seconds": [
+          10,
+          1
+        ],
+        "rate": [
+          48000,
+          1
+        ],
+        "uncertainty_seconds": null
+      },
+      "mapping": {
+        "from": [
+          "fixture.timebase.input",
+          3
+        ],
+        "method": "fixture-exact",
+        "offset": [
+          1,
+          2
+        ],
+        "ratio": [
+          1,
+          1
+        ],
+        "to": [
+          "device.other",
+          3
+        ],
+        "uncertainty_samples": [
+          0,
+          1
+        ],
+        "valid_interval": [
+          0,
+          2048
+        ]
+      },
+      "right": {
+        "clock_domain": "device.independent",
+        "generation": 3,
+        "id": "device.other",
+        "nominal_rate": [
+          48000,
+          1
+        ],
+        "origin_kind": "virtual",
+        "origin_sample": 0,
+        "origin_seconds": [
+          10,
+          1
+        ],
+        "rate": [
+          48000,
+          1
+        ],
+        "uncertainty_seconds": null
+      },
+      "sample": 1024
+    },
+    "operation": "time",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC09"
+    ],
+    "expected": {
+      "reason": "unsynchronized",
+      "value": null
+    },
+    "id": "time-expired-mapping",
+    "input": {
+      "left": {
+        "clock_domain": "fixture.virtual",
+        "generation": 3,
+        "id": "fixture.timebase.input",
+        "nominal_rate": [
+          48000,
+          1
+        ],
+        "origin_kind": "virtual",
+        "origin_sample": 0,
+        "origin_seconds": [
+          10,
+          1
+        ],
+        "rate": [
+          48000,
+          1
+        ],
+        "uncertainty_seconds": null
+      },
+      "mapping": {
+        "from": [
+          "fixture.timebase.input",
+          3
+        ],
+        "method": "fixture-exact",
+        "offset": [
+          1,
+          2
+        ],
+        "ratio": [
+          1,
+          1
+        ],
+        "to": [
+          "device.other",
+          3
+        ],
+        "uncertainty_samples": [
+          0,
+          1
+        ],
+        "valid_interval": [
+          0,
+          2048
+        ]
+      },
+      "right": {
+        "clock_domain": "device.independent",
+        "generation": 3,
+        "id": "device.other",
+        "nominal_rate": [
+          48000,
+          1
+        ],
+        "origin_kind": "virtual",
+        "origin_sample": 0,
+        "origin_seconds": [
+          10,
+          1
+        ],
+        "rate": [
+          48000,
+          1
+        ],
+        "uncertainty_seconds": null
+      },
+      "sample": 2048
+    },
+    "operation": "time",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC11"
+    ],
+    "expected": {
+      "output.device_buffer": [
+        [
+          -0.25,
+          0.25
+        ],
+        [
+          0,
+          0.5
+        ]
+      ],
+      "output.mixed": [
+        [
+          0.3,
+          -0.6
+        ],
+        [
+          0.8,
+          0.1
+        ]
+      ],
+      "physical_output": {
+        "reason": "not_measured",
+        "value": null
+      },
+      "virtual_loopback": {
+        "delay_frames": 2,
+        "initial_validity": {
+          "interval": [
+            0,
+            2
+          ],
+          "reason": "warmup"
+        },
+        "source_tap": "output.mixed"
+      }
+    },
+    "id": "taps-gain-map-quantization",
+    "input": {
+      "dither": "none",
+      "gain": 0.5,
+      "loopback_delay_frames": 2,
+      "mapping": [
+        1,
+        0
+      ],
+      "mixed": [
+        [
+          0.3,
+          -0.6
+        ],
+        [
+          0.8,
+          0.1
+        ]
+      ],
+      "mute": false,
+      "quantization_step": 0.25
+    },
+    "operation": "taps",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC11"
+    ],
+    "expected": {
+      "output.device_buffer": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "output.mixed": [
+        [
+          0.3,
+          -0.6
+        ],
+        [
+          0.8,
+          0.1
+        ]
+      ],
+      "physical_output": {
+        "reason": "not_measured",
+        "value": null
+      },
+      "virtual_loopback": {
+        "delay_frames": 2,
+        "initial_validity": {
+          "interval": [
+            0,
+            2
+          ],
+          "reason": "warmup"
+        },
+        "source_tap": "output.mixed"
+      }
+    },
+    "id": "taps-muted-device-only",
+    "input": {
+      "dither": "none",
+      "gain": 0.5,
+      "loopback_delay_frames": 2,
+      "mapping": [
+        1,
+        0
+      ],
+      "mixed": [
+        [
+          0.3,
+          -0.6
+        ],
+        [
+          0.8,
+          0.1
+        ]
+      ],
+      "mute": true,
+      "quantization_step": 0.25
+    },
+    "operation": "taps",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC09"
+    ],
+    "expected": [
+      {
+        "generation": 3,
+        "interval": [
+          0,
+          2
+        ],
+        "missing": [],
+        "status": "accepted"
+      },
+      {
+        "generation": 3,
+        "interval": [
+          6,
+          8
+        ],
+        "missing": [
+          [
+            2,
+            6
+          ]
+        ],
+        "status": "accepted"
+      },
+      {
+        "reason": "overlap_or_reverse",
+        "status": "rejected"
+      },
+      {
+        "reason": "configuration_requires_new_generation",
+        "status": "rejected"
+      },
+      {
+        "generation": 4,
+        "interval": [
+          0,
+          2
+        ],
+        "missing": [],
+        "status": "accepted"
+      },
+      {
+        "reason": "stale_generation",
+        "status": "rejected"
+      },
+      {
+        "reason": "frame_shape",
+        "status": "rejected"
+      },
+      {
+        "reason": "frame_shape",
+        "status": "rejected"
+      }
+    ],
+    "id": "blocks-gap-reorder-restart",
+    "input": {
+      "blocks": [
+        {
+          "binding": [
+            0,
+            1
+          ],
+          "channel_ids": [
+            "input.alpha",
+            "input.beta"
+          ],
+          "clock_domain": "virtual",
+          "dtype": "<f8",
+          "frames": 2,
+          "generation": 3,
+          "rate": [
+            48000,
+            1
+          ],
+          "start": 0,
+          "values": [
+            [
+              1,
+              2
+            ],
+            [
+              3,
+              4
+            ]
+          ]
+        },
+        {
+          "binding": [
+            0,
+            1
+          ],
+          "channel_ids": [
+            "input.alpha",
+            "input.beta"
+          ],
+          "clock_domain": "virtual",
+          "dtype": "<f8",
+          "frames": 2,
+          "generation": 3,
+          "rate": [
+            48000,
+            1
+          ],
+          "start": 6,
+          "values": [
+            [
+              1,
+              2
+            ],
+            [
+              3,
+              4
+            ]
+          ]
+        },
+        {
+          "binding": [
+            0,
+            1
+          ],
+          "channel_ids": [
+            "input.alpha",
+            "input.beta"
+          ],
+          "clock_domain": "virtual",
+          "dtype": "<f8",
+          "frames": 2,
+          "generation": 3,
+          "rate": [
+            48000,
+            1
+          ],
+          "start": 0,
+          "values": [
+            [
+              1,
+              2
+            ],
+            [
+              3,
+              4
+            ]
+          ]
+        },
+        {
+          "binding": [
+            0,
+            1
+          ],
+          "channel_ids": [
+            "input.beta",
+            "input.alpha"
+          ],
+          "clock_domain": "virtual",
+          "dtype": "<f8",
+          "frames": 2,
+          "generation": 3,
+          "rate": [
+            48000,
+            1
+          ],
+          "start": 8,
+          "values": [
+            [
+              1,
+              2
+            ],
+            [
+              3,
+              4
+            ]
+          ]
+        },
+        {
+          "binding": [
+            0,
+            1
+          ],
+          "channel_ids": [
+            "input.beta",
+            "input.alpha"
+          ],
+          "clock_domain": "virtual",
+          "dtype": "<f8",
+          "frames": 2,
+          "generation": 4,
+          "rate": [
+            48000,
+            1
+          ],
+          "start": 0,
+          "values": [
+            [
+              1,
+              2
+            ],
+            [
+              3,
+              4
+            ]
+          ]
+        },
+        {
+          "binding": [
+            0,
+            1
+          ],
+          "channel_ids": [
+            "input.alpha",
+            "input.beta"
+          ],
+          "clock_domain": "virtual",
+          "dtype": "<f8",
+          "frames": 2,
+          "generation": 3,
+          "rate": [
+            48000,
+            1
+          ],
+          "start": 6,
+          "values": [
+            [
+              1,
+              2
+            ],
+            [
+              3,
+              4
+            ]
+          ]
+        },
+        {
+          "binding": [
+            0,
+            1
+          ],
+          "channel_ids": [
+            "input.beta",
+            "input.alpha"
+          ],
+          "clock_domain": "virtual",
+          "dtype": "<f8",
+          "frames": 3,
+          "generation": 4,
+          "rate": [
+            48000,
+            1
+          ],
+          "start": 2,
+          "values": [
+            [
+              1,
+              2
+            ],
+            [
+              3,
+              4
+            ]
+          ]
+        },
+        {
+          "binding": [
+            0,
+            1
+          ],
+          "channel_ids": [
+            "input.beta",
+            "input.alpha"
+          ],
+          "clock_domain": "virtual",
+          "dtype": "<f8",
+          "frames": 0,
+          "generation": 4,
+          "rate": [
+            48000,
+            1
+          ],
+          "start": 2,
+          "values": []
+        }
+      ]
+    },
+    "operation": "blocks",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC09"
+    ],
+    "expected": {
+      "reasons": [
+        "missing",
+        "nonfinite"
+      ],
+      "status": "invalid",
+      "value": null
+    },
+    "id": "analysis-gap-nonfinite",
+    "input": {
+      "channel_ids": [
+        "input.alpha"
+      ],
+      "interval": [
+        98,
+        106
+      ],
+      "validity": [
+        {
+          "channel_id": "input.alpha",
+          "interval": [
+            100,
+            104
+          ],
+          "reason": "missing"
+        },
+        {
+          "channel_id": "input.alpha",
+          "interval": [
+            104,
+            105
+          ],
+          "reason": "nonfinite"
+        },
+        {
+          "channel_id": "input.beta",
+          "interval": [
+            98,
+            106
+          ],
+          "reason": "unsupported"
+        }
+      ]
+    },
+    "operation": "analysis_validity",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC09"
+    ],
+    "expected": {
+      "status": "eligible"
+    },
+    "id": "analysis-outside-invalid-support",
+    "input": {
+      "channel_ids": [
+        "input.alpha"
+      ],
+      "interval": [
+        104,
+        110
+      ],
+      "validity": [
+        {
+          "channel_id": "input.alpha",
+          "interval": [
+            100,
+            104
+          ],
+          "reason": "missing"
+        }
+      ]
+    },
+    "operation": "analysis_validity",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC12"
+    ],
+    "expected": {
+      "acquired_host_seconds": null,
+      "axis": {
+        "corrected": [
+          1000.1,
+          2000.2
+        ],
+        "correction": 1.0001,
+        "dimension": "frequency",
+        "nominal": [
+          1000,
+          2000
+        ],
+        "unit": "Hz"
+      },
+      "channels": [
+        {
+          "calibration": {
+            "applied_interval": [
+              0,
+              4096
+            ],
+            "device_binding": {
+              "device": "virtual.device",
+              "port": 3
+            },
+            "is_calibrated": true,
+            "revision": "profile.1",
+            "v_per_fs": 1.75
+          },
+          "dbv": -16.211338722752796,
+          "id": "input.delta",
+          "peak_fs": 0.125,
+          "rms_fs": 0.08838834764831843,
+          "rms_v": 0.15467960838455724,
+          "spl": null,
+          "validity": {
+            "rms_v": null,
+            "spl": "uncalibrated"
+          }
+        },
+        {
+          "calibration": {
+            "applied_interval": [
+              0,
+              4096
+            ],
+            "device_binding": {
+              "device": "virtual.device",
+              "port": 0
+            },
+            "is_calibrated": true,
+            "revision": "profile.1",
+            "v_per_fs": 1
+          },
+          "dbv": -33.11329952303793,
+          "id": "input.alpha",
+          "peak_fs": 0.03125,
+          "rms_fs": 0.022097086912079608,
+          "rms_v": 0.022097086912079608,
+          "spl": null,
+          "validity": {
+            "rms_v": null,
+            "spl": "uncalibrated"
+          }
+        },
+        {
+          "calibration": {
+            "applied_interval": [
+              0,
+              4096
+            ],
+            "device_binding": {
+              "device": "virtual.device",
+              "port": 2
+            },
+            "is_calibrated": true,
+            "revision": "profile.1",
+            "v_per_fs": 1.5
+          },
+          "dbv": -20.04904924753106,
+          "id": "input.gamma",
+          "peak_fs": 0.09375,
+          "rms_fs": 0.06629126073623882,
+          "rms_v": 0.09943689110435824,
+          "spl": null,
+          "validity": {
+            "rms_v": null,
+            "spl": "uncalibrated"
+          }
+        },
+        {
+          "calibration": {
+            "applied_interval": [
+              0,
+              4096
+            ],
+            "device_binding": {
+              "device": "virtual.device",
+              "port": 1
+            },
+            "is_calibrated": false,
+            "revision": "profile.1",
+            "v_per_fs": 1.25
+          },
+          "dbv": null,
+          "id": "input.beta",
+          "peak_fs": 0.0625,
+          "rms_fs": 0.044194173824159216,
+          "rms_v": null,
+          "spl": null,
+          "validity": {
+            "rms_v": "uncalibrated",
+            "spl": "uncalibrated"
+          }
+        }
+      ],
+      "generation": 3,
+      "interval": [
+        0,
+        4096
+      ],
+      "operation_revision": "rms-cosine-v1",
+      "result_host_seconds": [
+        11,
+        1
+      ],
+      "result_id": "fixture.result.001",
+      "route_revision": "route.1",
+      "stream_id": "fixture.session.input",
+      "tap": "input.raw",
+      "timebase": {
+        "clock_domain": "fixture.virtual",
+        "generation": 3,
+        "id": "fixture.timebase.input",
+        "nominal_rate": [
+          48000,
+          1
+        ],
+        "origin_kind": "virtual",
+        "origin_sample": 0,
+        "origin_seconds": [
+          10,
+          1
+        ],
+        "rate": [
+          48000,
+          1
+        ],
+        "uncertainty_seconds": null
+      },
+      "trigger_id": "fixture.trigger.001",
+      "units": {
+        "dbv": "dBV_RMS",
+        "peak_fs": "FS_peak",
+        "rms_fs": "FS_RMS",
+        "rms_v": "V_RMS",
+        "spl": "dBSPL"
+      },
+      "validity": []
+    },
+    "id": "calibration-reorder-and-unknown",
+    "input": {
+      "channel_order": [
+        "input.delta",
+        "input.alpha",
+        "input.gamma",
+        "input.beta"
+      ],
+      "frequency_correction": 1.0001,
+      "frequency_hz": [
+        1000,
+        2000
+      ],
+      "peak_fs": {
+        "input.alpha": 0.03125,
+        "input.beta": 0.0625,
+        "input.delta": 0.125,
+        "input.gamma": 0.09375
+      },
+      "profiles": {
+        "input.alpha": {
+          "applied_interval": [
+            0,
+            4096
+          ],
+          "device_binding": {
+            "device": "virtual.device",
+            "port": 0
+          },
+          "is_calibrated": true,
+          "revision": "profile.1",
+          "v_per_fs": 1
+        },
+        "input.beta": {
+          "applied_interval": [
+            0,
+            4096
+          ],
+          "device_binding": {
+            "device": "virtual.device",
+            "port": 1
+          },
+          "is_calibrated": false,
+          "revision": "profile.1",
+          "v_per_fs": 1.25
+        },
+        "input.delta": {
+          "applied_interval": [
+            0,
+            4096
+          ],
+          "device_binding": {
+            "device": "virtual.device",
+            "port": 3
+          },
+          "is_calibrated": true,
+          "revision": "profile.1",
+          "v_per_fs": 1.75
+        },
+        "input.gamma": {
+          "applied_interval": [
+            0,
+            4096
+          ],
+          "device_binding": {
+            "device": "virtual.device",
+            "port": 2
+          },
+          "is_calibrated": true,
+          "revision": "profile.1",
+          "v_per_fs": 1.5
+        }
+      },
+      "provenance": {
+        "acquired_host_seconds": null,
+        "generation": 3,
+        "interval": [
+          0,
+          4096
+        ],
+        "operation_revision": "rms-cosine-v1",
+        "result_host_seconds": [
+          11,
+          1
+        ],
+        "result_id": "fixture.result.001",
+        "route_revision": "route.1",
+        "stream_id": "fixture.session.input",
+        "tap": "input.raw",
+        "timebase": {
+          "clock_domain": "fixture.virtual",
+          "generation": 3,
+          "id": "fixture.timebase.input",
+          "nominal_rate": [
+            48000,
+            1
+          ],
+          "origin_kind": "virtual",
+          "origin_sample": 0,
+          "origin_seconds": [
+            10,
+            1
+          ],
+          "rate": [
+            48000,
+            1
+          ],
+          "uncertainty_seconds": null
+        },
+        "trigger_id": "fixture.trigger.001",
+        "validity": []
+      }
+    },
+    "operation": "calibration",
+    "origin": "new-contract-oracle"
+  },
+  {
+    "acceptance": [
+      "AC12"
+    ],
+    "expected": {
+      "acquired_host_seconds": null,
+      "axis": {
+        "corrected": [
+          1000,
+          2000
+        ],
+        "correction": 1,
+        "dimension": "frequency",
+        "nominal": [
+          1000,
+          2000
+        ],
+        "unit": "Hz"
+      },
+      "channels": [
+        {
+          "calibration": {
+            "applied_interval": [
+              0,
+              4096
+            ],
+            "device_binding": {
+              "device": "virtual.device",
+              "port": 3
+            },
+            "is_calibrated": true,
+            "revision": "profile.1",
+            "v_per_fs": 1.75
+          },
+          "dbv": -16.211338722752796,
+          "id": "input.delta",
+          "peak_fs": 0.125,
+          "rms_fs": 0.08838834764831843,
+          "rms_v": 0.15467960838455724,
+          "spl": null,
+          "validity": {
+            "rms_v": null,
+            "spl": "uncalibrated"
+          }
+        },
+        {
+          "calibration": {
+            "applied_interval": [
+              0,
+              4096
+            ],
+            "device_binding": {
+              "device": "virtual.device",
+              "port": 0
+            },
+            "is_calibrated": true,
+            "revision": "profile.1",
+            "v_per_fs": 1
+          },
+          "dbv": -33.11329952303793,
+          "id": "input.alpha",
+          "peak_fs": 0.03125,
+          "rms_fs": 0.022097086912079608,
+          "rms_v": 0.022097086912079608,
+          "spl": null,
+          "validity": {
+            "rms_v": null,
+            "spl": "uncalibrated"
+          }
+        },
+        {
+          "calibration": {
+            "applied_interval": [
+              0,
+              4096
+            ],
+            "device_binding": {
+              "device": "virtual.device",
+              "port": 2
+            },
+            "is_calibrated": true,
+            "revision": "profile.1",
+            "v_per_fs": 1.5
+          },
+          "dbv": -20.04904924753106,
+          "id": "input.gamma",
+          "peak_fs": 0.09375,
+          "rms_fs": 0.06629126073623882,
+          "rms_v": 0.09943689110435824,
+          "spl": null,
+          "validity": {
+            "rms_v": null,
+            "spl": "uncalibrated"
+          }
+        },
+        {
+          "calibration": {
+            "applied_interval": [
+              0,
+              4096
+            ],
+            "device_binding": {
+              "device": "virtual.device",
+              "port": 1
+            },
+            "is_calibrated": false,
+            "revision": "profile.1",
+            "v_per_fs": 1.25
+          },
+          "dbv": null,
+          "id": "input.beta",
+          "peak_fs": 0.0625,
+          "rms_fs": 0.044194173824159216,
+          "rms_v": null,
+          "spl": null,
+          "validity": {
+            "rms_v": "uncalibrated",
+            "spl": "uncalibrated"
+          }
+        }
+      ],
+      "generation": 3,
+      "interval": [
+        0,
+        4096
+      ],
+      "operation_revision": "rms-cosine-v1",
+      "result_host_seconds": [
+        11,
+        1
+      ],
+      "result_id": "fixture.result.001",
+      "route_revision": "route.1",
+      "stream_id": "fixture.session.input",
+      "tap": "input.raw",
+      "timebase": {
+        "clock_domain": "fixture.virtual",
+        "generation": 3,
+        "id": "fixture.timebase.input",
+        "nominal_rate": [
+          48000,
+          1
+        ],
+        "origin_kind": "virtual",
+        "origin_sample": 0,
+        "origin_seconds": [
+          10,
+          1
+        ],
+        "rate": [
+          48000,
+          1
+        ],
+        "uncertainty_seconds": null
+      },
+      "trigger_id": "fixture.trigger.001",
+      "units": {
+        "dbv": "dBV_RMS",
+        "peak_fs": "FS_peak",
+        "rms_fs": "FS_RMS",
+        "rms_v": "V_RMS",
+        "spl": "dBSPL"
+      },
+      "validity": []
+    },
+    "id": "calibration-nominal-axis",
+    "input": {
+      "channel_order": [
+        "input.delta",
+        "input.alpha",
+        "input.gamma",
+        "input.beta"
+      ],
+      "frequency_correction": 1,
+      "frequency_hz": [
+        1000,
+        2000
+      ],
+      "peak_fs": {
+        "input.alpha": 0.03125,
+        "input.beta": 0.0625,
+        "input.delta": 0.125,
+        "input.gamma": 0.09375
+      },
+      "profiles": {
+        "input.alpha": {
+          "applied_interval": [
+            0,
+            4096
+          ],
+          "device_binding": {
+            "device": "virtual.device",
+            "port": 0
+          },
+          "is_calibrated": true,
+          "revision": "profile.1",
+          "v_per_fs": 1
+        },
+        "input.beta": {
+          "applied_interval": [
+            0,
+            4096
+          ],
+          "device_binding": {
+            "device": "virtual.device",
+            "port": 1
+          },
+          "is_calibrated": false,
+          "revision": "profile.1",
+          "v_per_fs": 1.25
+        },
+        "input.delta": {
+          "applied_interval": [
+            0,
+            4096
+          ],
+          "device_binding": {
+            "device": "virtual.device",
+            "port": 3
+          },
+          "is_calibrated": true,
+          "revision": "profile.1",
+          "v_per_fs": 1.75
+        },
+        "input.gamma": {
+          "applied_interval": [
+            0,
+            4096
+          ],
+          "device_binding": {
+            "device": "virtual.device",
+            "port": 2
+          },
+          "is_calibrated": true,
+          "revision": "profile.1",
+          "v_per_fs": 1.5
+        }
+      },
+      "provenance": {
+        "acquired_host_seconds": null,
+        "generation": 3,
+        "interval": [
+          0,
+          4096
+        ],
+        "operation_revision": "rms-cosine-v1",
+        "result_host_seconds": [
+          11,
+          1
+        ],
+        "result_id": "fixture.result.001",
+        "route_revision": "route.1",
+        "stream_id": "fixture.session.input",
+        "tap": "input.raw",
+        "timebase": {
+          "clock_domain": "fixture.virtual",
+          "generation": 3,
+          "id": "fixture.timebase.input",
+          "nominal_rate": [
+            48000,
+            1
+          ],
+          "origin_kind": "virtual",
+          "origin_sample": 0,
+          "origin_seconds": [
+            10,
+            1
+          ],
+          "rate": [
+            48000,
+            1
+          ],
+          "uncertainty_seconds": null
+        },
+        "trigger_id": "fixture.trigger.001",
+        "validity": []
+      }
+    },
+    "operation": "calibration",
+    "origin": "new-contract-oracle"
+  }
+]
