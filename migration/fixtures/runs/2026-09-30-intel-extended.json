@@ -1,0 +1,259 @@
+{
+  "cases": [
+    {
+      "db_tested_bins": 1,
+      "elapsed_seconds": 0.04797810499997013,
+      "id": "tone-24000-boxcar",
+      "integrated_power_fs2": [
+        0.03125
+      ],
+      "known_differences": [],
+      "max_absolute_errors": {
+        "fft_over_n": 2.1914039708592193e-16,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 0.0,
+        "inverse_windowed": 3.0531133177191805e-16,
+        "parseval": 0.0,
+        "peak_db": 0.0,
+        "peak_fs": 4.1166929740599654e-16,
+        "phase_rad": 1.0066405023259253e-15,
+        "psd_fs2_hz": 4.416940278717954e-32,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 0.0,
+        "window": 0.0
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 1,
+      "rms_fs": [
+        0.1767766952966369
+      ]
+    },
+    {
+      "db_tested_bins": 7,
+      "elapsed_seconds": 0.02741220699999758,
+      "id": "tone-24000-hann",
+      "integrated_power_fs2": [
+        0.031249999999826125
+      ],
+      "known_differences": [],
+      "max_absolute_errors": {
+        "fft_over_n": 5.0241577742426485e-14,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 1.578251418443699e-14,
+        "inverse_windowed": 2.498001805406602e-16,
+        "parseval": 3.469446951953614e-18,
+        "peak_db": 1.0545178952270362e-07,
+        "peak_fs": 1.262323578998803e-13,
+        "phase_rad": 3.227616214428397e-10,
+        "psd_fs2_hz": 1.0519363158323358e-14,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 6.938893903907228e-18,
+        "window": 5.551115123125783e-16
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 70,
+      "rms_fs": [
+        0.1767766952966369
+      ]
+    },
+    {
+      "db_tested_bins": 1,
+      "elapsed_seconds": 0.06272425199995268,
+      "id": "tone-48000-boxcar",
+      "integrated_power_fs2": [
+        0.03125
+      ],
+      "known_differences": [],
+      "max_absolute_errors": {
+        "fft_over_n": 1.9513944615087564e-16,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 0.0,
+        "inverse_windowed": 3.0531133177191805e-16,
+        "parseval": 0.0,
+        "peak_db": 0.0,
+        "peak_fs": 3.6047666470927557e-16,
+        "phase_rad": 9.688522120008147e-16,
+        "psd_fs2_hz": 7.057931576857061e-32,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 0.0,
+        "window": 0.0
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 1,
+      "rms_fs": [
+        0.1767766952966369
+      ]
+    },
+    {
+      "db_tested_bins": 5,
+      "elapsed_seconds": 0.04363981500000591,
+      "id": "tone-48000-hann",
+      "integrated_power_fs2": [
+        0.03124999999991307
+      ],
+      "known_differences": [],
+      "max_absolute_errors": {
+        "fft_over_n": 1.33287046401442e-13,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 4.1886633050935984e-14,
+        "inverse_windowed": 2.498001805406602e-16,
+        "parseval": 3.469446951953614e-18,
+        "peak_db": 5.590012364109498e-07,
+        "peak_fs": 3.35009797680641e-13,
+        "phase_rad": 6.498655971706113e-10,
+        "psd_fs2_hz": 5.584074869169342e-14,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 6.938893903907228e-18,
+        "window": 6.661338147750939e-16
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 49,
+      "rms_fs": [
+        0.1767766952966369
+      ]
+    },
+    {
+      "db_tested_bins": 1,
+      "elapsed_seconds": 3.166282215000024,
+      "id": "tone-4194304-boxcar",
+      "integrated_power_fs2": [
+        0.03125
+      ],
+      "known_differences": [],
+      "max_absolute_errors": {
+        "fft_over_n": 2.67259050294592e-16,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 0.0,
+        "inverse_windowed": 3.608224830031759e-16,
+        "parseval": 6.938893903907228e-18,
+        "peak_db": 0.0,
+        "peak_fs": 4.871929466917893e-16,
+        "phase_rad": 9.857594317662659e-16,
+        "psd_fs2_hz": 1.1161906384575596e-29,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 0.0,
+        "window": 0.0
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 1,
+      "rms_fs": [
+        0.17677669529663687
+      ]
+    },
+    {
+      "db_tested_bins": 3,
+      "elapsed_seconds": 3.9562638170000355,
+      "id": "tone-4194304-hann",
+      "integrated_power_fs2": [
+        0.031249999999998994
+      ],
+      "known_differences": [],
+      "max_absolute_errors": {
+        "fft_over_n": 5.681130210131555e-15,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 1.7694179454963432e-15,
+        "inverse_windowed": 3.0531133177191805e-16,
+        "parseval": 1.0408340855860843e-17,
+        "peak_db": 4.938272013532696e-13,
+        "peak_fs": 1.4210854715202004e-14,
+        "phase_rad": 1.429208764403322e-11,
+        "psd_fs2_hz": 2.0694557179012918e-13,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 6.938893903907228e-18,
+        "window": 5.551115123125783e-16
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 5,
+      "rms_fs": [
+        0.17677669529663687
+      ]
+    }
+  ],
+  "elapsed_seconds": 8.723604104999936,
+  "environment": {
+    "fft": {
+      "backend": "pyfftw",
+      "plan": "FFTW_ESTIMATE",
+      "threads": 1,
+      "wisdom": "empty temporary directory"
+    },
+    "implementation": "CPython",
+    "logical_cpus": 4,
+    "machine": "x86_64",
+    "os": "macOS-14.8.9-x86_64-i386-64bit",
+    "packages": {
+      "MeasureLab": "0.9.0",
+      "PyQt6": "6.11.0",
+      "PyQt6-Qt6": "6.11.2",
+      "PyQt6_sip": "13.12.0",
+      "PyWavelets": "1.10.0",
+      "Pygments": "2.21.0",
+      "ast_serialize": "0.11.2",
+      "certifi": "2026.7.22",
+      "cffi": "2.1.1",
+      "cftime": "1.6.6",
+      "charset-normalizer": "3.5.1",
+      "colorama": "0.4.6",
+      "hypothesis": "6.168.3",
+      "idna": "3.20",
+      "iniconfig": "2.3.0",
+      "librt": "0.16.0",
+      "mypy": "2.3.1",
+      "mypy_extensions": "1.1.0",
+      "netCDF4": "1.7.4",
+      "numpy": "2.2.6",
+      "packaging": "26.3",
+      "pathspec": "1.1.1",
+      "pip": "26.2.1",
+      "pluggy": "1.6.0",
+      "pyFFTW": "0.15.1",
+      "pycparser": "3.0",
+      "pyqtgraph": "0.14.0",
+      "pytest": "9.1.1",
+      "pytest-json-report": "1.5.0",
+      "pytest-metadata": "3.1.1",
+      "pytest-qt": "4.5.0",
+      "requests": "2.34.2",
+      "ruff": "0.16.8",
+      "scipy": "1.18.1",
+      "sortedcontainers": "2.4.0",
+      "sounddevice": "0.5.6",
+      "soundfile": "0.14.0",
+      "typing_extensions": "4.16.0",
+      "urllib3": "2.8.0"
+    },
+    "processor": "i386",
+    "python": "3.12.14"
+  },
+  "fixture_manifest_sha256": "89d6d397b02b6eb67e7abab4d8655697a4bf7b1f490704a63322cea933842d64",
+  "generator_sha256": {
+    "scripts/migration_fft_oracle.py": "c415bc4be21947a59fb35b2a32215b0fba58183f2d1a1d3022984ceef73c1ce7",
+    "scripts/migration_fft_reference.py": "8f9a34746f3290fb5bda9e62022a685dc91d294155ce33f4b004edaf80377379"
+  },
+  "limitations": [
+    "No candidate implementation, GUI, audio device, performance or 4/8-channel validation"
+  ],
+  "mode": "pinned-reference",
+  "process_peak_rss_bytes": 1105309696,
+  "reference_commit": "9fd79958f6a8bbae6808813d3704617612e6d26c",
+  "status": "pass",
+  "suite": "extended"
+}

@@ -1,0 +1,583 @@
+{
+  "cases": [
+    {
+      "db_tested_bins": 2,
+      "elapsed_seconds": 0.014739715000018805,
+      "id": "ac01-boxcar-f64",
+      "integrated_power_fs2": [
+        0.00048828125,
+        0.001953125000000001
+      ],
+      "known_differences": [],
+      "max_absolute_errors": {
+        "fft_over_n": 2.920318224952501e-16,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 8.673617379884035e-19,
+        "inverse_windowed": 5.551115123125783e-17,
+        "parseval": 2.6020852139652106e-18,
+        "peak_db": 0.0,
+        "peak_fs": 4.694615618266238e-16,
+        "phase_rad": 9.351821791549636e-15,
+        "psd_fs2_hz": 8.131516293641283e-20,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 0.0,
+        "window": 0.0
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 2,
+      "rms_fs": [
+        0.02209708691207961,
+        0.0441941738241592
+      ]
+    },
+    {
+      "db_tested_bins": 2,
+      "elapsed_seconds": 0.012562623999997413,
+      "id": "ac01-boxcar-f32",
+      "integrated_power_fs2": [
+        0.000488281250000001,
+        0.0019531246476227856
+      ],
+      "known_differences": [],
+      "max_absolute_errors": {
+        "fft_over_n": 2.8224515866992542e-09,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 3.52377214430169e-10,
+        "inverse_windowed": 3.3527612686157227e-08,
+        "parseval": 3.4358776479330444e-10,
+        "peak_db": 7.835417648038856e-07,
+        "peak_fs": 5.6380359478303e-09,
+        "phase_rad": 4.45370742230724e-09,
+        "psd_fs2_hz": 3.0069523693915245e-11,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 0.0,
+        "window": 0.0
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 2,
+      "rms_fs": [
+        0.022097086862358967,
+        0.04419417372471795
+      ]
+    },
+    {
+      "db_tested_bins": 1,
+      "elapsed_seconds": 0.02706369200006975,
+      "id": "dc-boxcar",
+      "integrated_power_fs2": [
+        0.015625
+      ],
+      "known_differences": [
+        {
+          "bin": 0,
+          "current_db": -12.041199826524505,
+          "difference_db": 6.020599913314367,
+          "display_unit": "dBFS",
+          "meaning": "peak_FS",
+          "mode": "Spectrum",
+          "reason": "all bins doubled",
+          "theory_db": -18.06179973983887,
+          "theory_linear": 0.125
+        },
+        {
+          "bin": 0,
+          "current_db": -15.051499783149927,
+          "difference_db": 3.010299956688945,
+          "display_unit": "dBV",
+          "meaning": "RMS_V_at_1_V_per_FS",
+          "mode": "Spectrum",
+          "reason": "endpoint sqrt(2) excess",
+          "theory_db": -18.06179973983887,
+          "theory_linear": 0.125
+        },
+        {
+          "bin": 0,
+          "current_db": -25.740312677108985,
+          "difference_db": 3.0102999568080158,
+          "display_unit": "dBFS",
+          "meaning": "ASD_FS_per_sqrt_Hz",
+          "mode": "PSD",
+          "reason": "endpoint sqrt(2) excess",
+          "theory_db": -28.750612633917,
+          "theory_linear": 0.03651483716701107
+        }
+      ],
+      "max_absolute_errors": {
+        "fft_over_n": 2.170255191322901e-17,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 0.0,
+        "inverse_windowed": 0.0,
+        "parseval": 0.0,
+        "peak_db": 0.0,
+        "peak_fs": 4.340510382645802e-17,
+        "phase_rad": 0.0,
+        "psd_fs2_hz": 8.03841296292523e-35,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 0.0,
+        "window": 0.0
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 1,
+      "rms_fs": [
+        0.125
+      ]
+    },
+    {
+      "db_tested_bins": 1,
+      "elapsed_seconds": 0.023803486000019802,
+      "id": "nyquist-boxcar",
+      "integrated_power_fs2": [
+        0.015625
+      ],
+      "known_differences": [
+        {
+          "bin": 2048,
+          "current_db": -12.041199826524505,
+          "difference_db": 6.020599913314367,
+          "display_unit": "dBFS",
+          "meaning": "peak_FS",
+          "mode": "Spectrum",
+          "reason": "all bins doubled",
+          "theory_db": -18.06179973983887,
+          "theory_linear": 0.125
+        },
+        {
+          "bin": 2048,
+          "current_db": -15.051499783149927,
+          "difference_db": 3.010299956688945,
+          "display_unit": "dBV",
+          "meaning": "RMS_V_at_1_V_per_FS",
+          "mode": "Spectrum",
+          "reason": "endpoint sqrt(2) excess",
+          "theory_db": -18.06179973983887,
+          "theory_linear": 0.125
+        },
+        {
+          "bin": 2048,
+          "current_db": -25.740312677108985,
+          "difference_db": 3.0102999568080158,
+          "display_unit": "dBFS",
+          "meaning": "ASD_FS_per_sqrt_Hz",
+          "mode": "PSD",
+          "reason": "endpoint sqrt(2) excess",
+          "theory_db": -28.750612633917,
+          "theory_linear": 0.03651483716701107
+        }
+      ],
+      "max_absolute_errors": {
+        "fft_over_n": 2.170255191322901e-17,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 0.0,
+        "inverse_windowed": 0.0,
+        "parseval": 0.0,
+        "peak_db": 0.0,
+        "peak_fs": 4.340510382645802e-17,
+        "phase_rad": 0.0,
+        "psd_fs2_hz": 8.03841296292523e-35,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 0.0,
+        "window": 0.0
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 1,
+      "rms_fs": [
+        0.125
+      ]
+    },
+    {
+      "db_tested_bins": 2049,
+      "elapsed_seconds": 0.005949531000055686,
+      "id": "impulse-boxcar",
+      "integrated_power_fs2": [
+        0.000244140625
+      ],
+      "known_differences": [],
+      "max_absolute_errors": {
+        "fft_over_n": 0.0,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 0.0,
+        "inverse_windowed": 0.0,
+        "parseval": 0.0,
+        "peak_db": 0.0,
+        "peak_fs": 0.0,
+        "phase_rad": 0.0,
+        "psd_fs2_hz": 0.0,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 0.0,
+        "window": 0.0
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 2049,
+      "rms_fs": [
+        0.015625
+      ]
+    },
+    {
+      "db_tested_bins": 0,
+      "elapsed_seconds": 0.005417645999955312,
+      "id": "silence-boxcar",
+      "integrated_power_fs2": [
+        0.0
+      ],
+      "known_differences": [],
+      "max_absolute_errors": {
+        "fft_over_n": 0.0,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 0.0,
+        "inverse_windowed": 0.0,
+        "parseval": 0.0,
+        "peak_db": 0.0,
+        "peak_fs": 0.0,
+        "phase_rad": 0.0,
+        "psd_fs2_hz": 0.0,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 0.0,
+        "window": 0.0
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 0,
+      "rms_fs": [
+        0.0
+      ]
+    },
+    {
+      "db_tested_bins": 14,
+      "elapsed_seconds": 0.00949838400003955,
+      "id": "ac01-hann-f64",
+      "integrated_power_fs2": [
+        0.00048828124998409676,
+        0.0019531249999954923
+      ],
+      "known_differences": [],
+      "max_absolute_errors": {
+        "fft_over_n": 1.4982544277014068e-16,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 6.071532165918825e-18,
+        "inverse_windowed": 4.85722573273506e-17,
+        "parseval": 1.0842021724855044e-17,
+        "peak_db": 6.423306331271306e-10,
+        "peak_fs": 4.926614671774132e-16,
+        "phase_rad": 1.8507555531513904e-09,
+        "psd_fs2_hz": 8.775261333554552e-19,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 4.336808689942018e-19,
+        "window": 5.551115123125783e-16
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 147,
+      "rms_fs": [
+        0.02209708691207961,
+        0.0441941738241592
+      ]
+    },
+    {
+      "db_tested_bins": 6,
+      "elapsed_seconds": 0.009021251999911328,
+      "id": "ac01-hann-f32",
+      "integrated_power_fs2": [
+        0.0004882812176057901,
+        0.0019531247334555843
+      ],
+      "known_differences": [],
+      "max_absolute_errors": {
+        "fft_over_n": 1.3513303713627854e-09,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 2.6653991405493904e-10,
+        "inverse_windowed": 2.00827087112887e-08,
+        "parseval": 2.5802541223432507e-10,
+        "peak_db": 7.501447143454243e-07,
+        "peak_fs": 5.397724961442307e-09,
+        "phase_rad": 7.963157882756665e-09,
+        "psd_fs2_hz": 1.9187224861239374e-11,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 2.168404344971009e-19,
+        "window": 5.551115123125783e-16
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 6,
+      "rms_fs": [
+        0.022097086862358967,
+        0.04419417372471795
+      ]
+    },
+    {
+      "db_tested_bins": 8,
+      "elapsed_seconds": 0.0058737880000308,
+      "id": "dc-hann",
+      "integrated_power_fs2": [
+        0.015625000000000003
+      ],
+      "known_differences": [],
+      "max_absolute_errors": {
+        "fft_over_n": 3.538133968037389e-16,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 5.204170427930421e-17,
+        "inverse_windowed": 9.71445146547012e-17,
+        "parseval": 3.469446951953614e-18,
+        "peak_db": 1.4141221527097514e-10,
+        "peak_fs": 4.440892098500626e-16,
+        "phase_rad": 9.095676787391916e-11,
+        "psd_fs2_hz": 6.288372600415926e-18,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 0.0,
+        "window": 5.551115123125783e-16
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 79,
+      "rms_fs": [
+        0.125
+      ]
+    },
+    {
+      "db_tested_bins": 8,
+      "elapsed_seconds": 0.005894561999980397,
+      "id": "nyquist-hann",
+      "integrated_power_fs2": [
+        0.015625
+      ],
+      "known_differences": [],
+      "max_absolute_errors": {
+        "fft_over_n": 3.538133968037389e-16,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 5.551115123125783e-17,
+        "inverse_windowed": 9.020562075079397e-17,
+        "parseval": 0.0,
+        "peak_db": 1.4141221527097514e-10,
+        "peak_fs": 4.440892098500626e-16,
+        "phase_rad": 9.095676787391916e-11,
+        "psd_fs2_hz": 6.288372600415926e-18,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 0.0,
+        "window": 5.551115123125783e-16
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 79,
+      "rms_fs": [
+        0.125
+      ]
+    },
+    {
+      "db_tested_bins": 0,
+      "elapsed_seconds": 0.005353358999968805,
+      "id": "impulse-hann",
+      "integrated_power_fs2": [
+        0.0
+      ],
+      "known_differences": [],
+      "max_absolute_errors": {
+        "fft_over_n": 0.0,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 0.0,
+        "inverse_windowed": 0.0,
+        "parseval": 0.0,
+        "peak_db": 0.0,
+        "peak_fs": 0.0,
+        "phase_rad": 0.0,
+        "psd_fs2_hz": 0.0,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 0.0,
+        "window": 5.551115123125783e-16
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 0,
+      "rms_fs": [
+        0.015625
+      ]
+    },
+    {
+      "db_tested_bins": 0,
+      "elapsed_seconds": 0.005299560000025849,
+      "id": "silence-hann",
+      "integrated_power_fs2": [
+        0.0
+      ],
+      "known_differences": [],
+      "max_absolute_errors": {
+        "fft_over_n": 0.0,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 0.0,
+        "inverse_windowed": 0.0,
+        "parseval": 0.0,
+        "peak_db": 0.0,
+        "peak_fs": 0.0,
+        "phase_rad": 0.0,
+        "psd_fs2_hz": 0.0,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 0.0,
+        "window": 5.551115123125783e-16
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 0,
+      "rms_fs": [
+        0.0
+      ]
+    },
+    {
+      "db_tested_bins": 1,
+      "elapsed_seconds": 0.0055249650000632755,
+      "id": "tone-quarter",
+      "integrated_power_fs2": [
+        0.03125
+      ],
+      "known_differences": [],
+      "max_absolute_errors": {
+        "fft_over_n": 2.520063141528695e-16,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 0.0,
+        "inverse_windowed": 2.220446049250313e-16,
+        "parseval": 0.0,
+        "peak_db": 0.0,
+        "peak_fs": 5.039904166592405e-16,
+        "phase_rad": 9.83047564636453e-16,
+        "psd_fs2_hz": 1.0986371609838513e-32,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 0.0,
+        "window": 0.0
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 1,
+      "rms_fs": [
+        0.1767766952966369
+      ]
+    },
+    {
+      "db_tested_bins": 1,
+      "elapsed_seconds": 0.005898795999996764,
+      "id": "odd-last-bin",
+      "integrated_power_fs2": [
+        0.007812500000006559
+      ],
+      "known_differences": [],
+      "max_absolute_errors": {
+        "fft_over_n": 5.990016067926522e-14,
+        "frequency_hz": 0.0,
+        "integrated_power_fs2": 6.5607241861442844e-15,
+        "inverse_windowed": 1.3877787807814457e-16,
+        "parseval": 0.0,
+        "peak_db": 3.6486369481281145e-12,
+        "peak_fs": 5.249967127696209e-14,
+        "phase_rad": 8.615249342180474e-13,
+        "psd_fs2_hz": 5.597735816542659e-16,
+        "rms_fs": 0.0,
+        "time_window_power_fs2": 0.0,
+        "window": 0.0
+      },
+      "phase_below_threshold": {
+        "reason": "below phase threshold; compare complex FFT only",
+        "value": null
+      },
+      "phase_tested_bins": 1,
+      "rms_fs": [
+        0.08838834764835554
+      ]
+    }
+  ],
+  "elapsed_seconds": 1.3877067050000278,
+  "environment": {
+    "fft": {
+      "backend": "pyfftw",
+      "plan": "FFTW_ESTIMATE",
+      "threads": 1,
+      "wisdom": "empty temporary directory"
+    },
+    "implementation": "CPython",
+    "logical_cpus": 4,
+    "machine": "x86_64",
+    "os": "macOS-14.8.9-x86_64-i386-64bit",
+    "packages": {
+      "MeasureLab": "0.9.0",
+      "PyQt6": "6.11.0",
+      "PyQt6-Qt6": "6.11.2",
+      "PyQt6_sip": "13.12.0",
+      "PyWavelets": "1.10.0",
+      "Pygments": "2.21.0",
+      "ast_serialize": "0.11.2",
+      "certifi": "2026.7.22",
+      "cffi": "2.1.1",
+      "cftime": "1.6.6",
+      "charset-normalizer": "3.5.1",
+      "colorama": "0.4.6",
+      "hypothesis": "6.168.3",
+      "idna": "3.20",
+      "iniconfig": "2.3.0",
+      "librt": "0.16.0",
+      "mypy": "2.3.1",
+      "mypy_extensions": "1.1.0",
+      "netCDF4": "1.7.4",
+      "numpy": "2.2.6",
+      "packaging": "26.3",
+      "pathspec": "1.1.1",
+      "pip": "26.2.1",
+      "pluggy": "1.6.0",
+      "pyFFTW": "0.15.1",
+      "pycparser": "3.0",
+      "pyqtgraph": "0.14.0",
+      "pytest": "9.1.1",
+      "pytest-json-report": "1.5.0",
+      "pytest-metadata": "3.1.1",
+      "pytest-qt": "4.5.0",
+      "requests": "2.34.2",
+      "ruff": "0.16.8",
+      "scipy": "1.18.1",
+      "sortedcontainers": "2.4.0",
+      "sounddevice": "0.5.6",
+      "soundfile": "0.14.0",
+      "typing_extensions": "4.16.0",
+      "urllib3": "2.8.0"
+    },
+    "processor": "i386",
+    "python": "3.12.14"
+  },
+  "fixture_manifest_sha256": "e36f0fd511b6b0e5cef29ee615f50dab115455a81b04fca7bcc2d18eea44d16e",
+  "generator_sha256": {
+    "scripts/migration_fft_oracle.py": "c415bc4be21947a59fb35b2a32215b0fba58183f2d1a1d3022984ceef73c1ce7",
+    "scripts/migration_fft_reference.py": "8f9a34746f3290fb5bda9e62022a685dc91d294155ce33f4b004edaf80377379"
+  },
+  "limitations": [
+    "No candidate implementation, GUI, audio device, performance or 4/8-channel validation"
+  ],
+  "mode": "pinned-reference",
+  "process_peak_rss_bytes": 104243200,
+  "reference_commit": "9fd79958f6a8bbae6808813d3704617612e6d26c",
+  "status": "pass",
+  "suite": "small"
+}
