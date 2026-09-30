@@ -1,7 +1,29 @@
-# N-channel audio boundary and UAC-232 diagnostic
+# N-channel audio boundary and device diagnostics
 
 MIG-005-A/B、2026-09-30。製品のbackend変更やRust/QML採用の決定ではない。
 [決定0009](../migration/decisions/0009-audio-boundary-uac232.md)と[進捗](../migration/status.md)を参照。
+
+## 通常はBlackHoleで検証する
+
+2026-09-30のユーザー指示により、以後の通常テストはBlackHole 16ch／2chを使う。
+UAC-232は物理I/O、校正・配線、USB復帰、物理遅延など実機が必要な試験だけに限定する。
+[決定0010](../migration/decisions/0010-blackhole-virtual-audio.md)へ方針、比較境界、失敗runを記録した。
+
+```bash
+./.venv/bin/python scripts/migration_audio_virtual.py --virtual-device --output .migration-local/blackhole-new-run
+./.venv/bin/pytest -q tests/logic_verification/test_migration_audio_virtual.py tests/logic_verification/test_migration_audio_candidate.py
+```
+
+既定で4条件をPortAudio→CPALの順で各3回取得する。2chは現行AudioEngine、16chは直接PortAudio stream。
+CPALは1〜16chの明示入力／出力数、source ID、gain行列、mute区間を受け付ける。
+BlackHole 16chの全port identityと4／8ch→16portの並替え・複製・mix・zeroを比較する。
+論理4／8chとdeviceの16portを区別し、製品の物理多ch対応を合格にしない。
+48 kHzを明示し、PortAudio側はCore Audioのdevice parameter変更と変換時の拒否を有効にする。
+指定したBlackHoleのrate／frame sizeは変わりうる。system default deviceは変更しない。
+raw input／device提出output、source、時刻、状態、XRUN、hashをGit管理外の新規出力先へ保存する。
+全sample絶対差2e-6 FS、channel間marker差1 frame、backend振幅差0.1 dBを測定前に固定する。
+時刻原点／不確かさは未検証で、仮想loopbackでも物理遅延の精度はunknown。
+長時間、USB復帰、排他、動的route配送、実graph／Qt接続の合格とは分ける。
 
 ## 取得境界
 
@@ -47,7 +69,7 @@ runnerは保存済み003-Bのroute/tap/blockの10例を入力し、手計算期�
 ## 実機の短時間診断
 
 deviceを開くには明示的な`--hardware`が必要。同名デバイスが複数あれば拒否し、既定deviceへfallbackしない。
-CPALは0.18.2をCargo.lockで固定。Core Audioの2ch f32/48 kHzを確認し、256 frameを要求する。
+CPALは0.18.2をCargo.lockで固定。UAC-232ではCore Audioの2ch f32/48 kHzを確認し、256 frameを要求する。
 LinuxでのcompileにはALSA開発依存が必要。Linux CIはcompileだけで、実機合格とは扱わない。
 
 配線は出力Lを分岐し、−20 dB attenuator経由で入力L、直結で入力R。出力Rは未接続。

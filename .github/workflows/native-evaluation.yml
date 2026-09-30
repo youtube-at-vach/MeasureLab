@@ -51,6 +51,7 @@ jobs:
         working-directory: native
         run: |
           cargo build --locked -p audio-probe
+          cargo test --locked -p audio-probe
           cargo clippy --locked -p audio-probe --all-targets -- -D warnings
 
   qt-boundary:

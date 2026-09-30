@@ -1,6 +1,7 @@
-//! CPAL headless two-channel hardware diagnostic. File/JSON/Vec growth is on control thread.
+//! CPAL headless N-channel device diagnostic. File/JSON/Vec growth is on control thread.
 #![forbid(unsafe_code)]
-use audio_core::{Consumer, Delivery, IoFormat, MAX_CALLBACK_FRAMES, Route, frame_queue};
+use audio_core::{Consumer, Delivery, IoFormat, MAX_CALLBACK_FRAMES, frame_queue};
+use audio_probe::RequestFormat;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use serde_json::{Value, json};
 use std::{
@@ -93,13 +94,13 @@ impl Capture {
             }
         }
     }
-    fn save(&self, path: &Path) -> Result<Value, Box<dyn Error>> {
+    fn save(&self, path: &Path, channels: usize) -> Result<Value, Box<dyn Error>> {
         let mut file = fs::File::create(path)?;
         for value in &self.values {
             file.write_all(&value.to_le_bytes())?
         }
         Ok(
-            json!({"frames":self.samples.len(),"channels":2,"dtype":"<f4","samples":self.samples,"seconds":self.seconds,"gaps":self.gaps}),
+            json!({"frames":self.samples.len(),"channels":channels,"dtype":"<f4","samples":self.samples,"seconds":self.seconds,"gaps":self.gaps}),
         )
     }
 }
@@ -128,14 +129,14 @@ fn run() -> Result<(), Box<dyn Error>> {
         return Err("usage: audio-probe REQUEST.json MIXED.f32 OUTPUT_DIRECTORY".into());
     }
     let request: Value = serde_json::from_slice(&fs::read(&args[1])?)?;
-    if request["schema_version"] != 1 {
-        return Err("unsupported schema".into());
-    }
+    let requested = RequestFormat::parse(&request)?;
     let name = request["device"].as_str().ok_or("device")?;
-    let duration = request["duration_seconds"].as_f64().ok_or("duration")?;
-    if !duration.is_finite() || !(1.0..=60.0).contains(&duration) {
-        return Err("duration must be in 1..60 seconds".into());
-    }
+    let duration = requested.duration;
+    let input_channels = requested.input_channels;
+    let output_channels = requested.output_channels;
+    let source_channels = requested.source_ids.len();
+    let route = requested.route.compile(&requested.source_ids)?;
+    let mute = requested.mute;
     let output_path = Path::new(&args[3]);
     if output_path.exists() {
         return Err("output exists".into());
@@ -150,11 +151,7 @@ fn run() -> Result<(), Box<dyn Error>> {
         .iter()
         .map(|v| f32::from_le_bytes(*v))
         .collect();
-    if signal.len() != (duration * 48000.) as usize
-        || signal.iter().any(|v| !v.is_finite() || v.abs() > 0.05)
-    {
-        return Err("invalid signal length/amplitude".into());
-    }
+    requested.validate_signal(&signal)?;
     let session = request["session_id"]
         .as_str()
         .filter(|s| !s.is_empty())
@@ -165,16 +162,27 @@ fn run() -> Result<(), Box<dyn Error>> {
         timebase_id: format!("{session}.input.timebase"),
         clock_domain: format!("coreaudio.device:{name}"),
         rate: [48000, 1],
-        input_ids: vec!["input.L".into(), "input.R".into()],
-        input_ports: vec![0, 1],
-        output_ids: vec!["output.L".into(), "output.R".into()],
-        output_ports: vec![0, 1],
+        input_ids: if input_channels == 2 {
+            vec!["input.L".into(), "input.R".into()]
+        } else {
+            (0..input_channels)
+                .map(|p| format!("input.port.{p}"))
+                .collect()
+        },
+        input_ports: (0..input_channels).collect(),
+        output_ids: requested.route.outputs.clone(),
+        output_ports: (0..output_channels).collect(),
     };
     let host = cpal::default_host();
     let device = selected_device(&host, name)?;
     let supported = |input: bool| -> Result<bool, Box<dyn Error>> {
         let matches = |c: cpal::SupportedStreamConfigRange| {
-            c.channels() == 2
+            usize::from(c.channels())
+                == if input {
+                    input_channels
+                } else {
+                    output_channels
+                }
                 && c.sample_format() == cpal::SampleFormat::F32
                 && c.min_sample_rate() <= 48000
                 && 48000 <= c.max_sample_rate()
@@ -186,16 +194,20 @@ fn run() -> Result<(), Box<dyn Error>> {
         })
     };
     if !supported(true)? || !supported(false)? {
-        return Err("explicit 2ch f32 48000 unsupported".into());
+        return Err("explicit channel count/f32/48000 unsupported".into());
     }
-    format.validate(2, 2)?;
+    format.validate(input_channels, output_channels)?;
     let config = cpal::StreamConfig {
-        channels: 2,
+        channels: input_channels as u16,
         sample_rate: 48000,
         buffer_size: cpal::BufferSize::Fixed(256),
     };
-    let (mut input_tx, mut input_rx) = frame_queue(8192, 2, 48000.)?;
-    let (mut output_tx, mut output_rx) = frame_queue(8192, 2, 48000.)?;
+    let output_config = cpal::StreamConfig {
+        channels: output_channels as u16,
+        ..config
+    };
+    let (mut input_tx, mut input_rx) = frame_queue(8192, input_channels, 48000.)?;
+    let (mut output_tx, mut output_rx) = frame_queue(8192, output_channels, 48000.)?;
     let errors = Arc::new(AtomicU64::new(0));
     let xruns = Arc::new(AtomicU64::new(0));
     let rejected = Arc::new(AtomicU64::new(0));
@@ -216,7 +228,7 @@ fn run() -> Result<(), Box<dyn Error>> {
             if input_tx.write(data, seconds, 0).is_err() {
                 bad.fetch_add(1, Relaxed);
             }
-            stats.record(started, data.len() / 2);
+            stats.record(started, data.len() / input_channels);
         },
         move |e| {
             if e.kind() == cpal::ErrorKind::Xrun {
@@ -227,37 +239,36 @@ fn run() -> Result<(), Box<dyn Error>> {
         },
         Some(Duration::from_secs(5)),
     )?;
-    let route = Route {
-        inputs: vec!["generator.L".into()],
-        outputs: vec!["output.L".into(), "output.R".into()],
-        gains: vec![vec![1.], vec![0.]],
-        revision: "L-only.1".into(),
-    }
-    .compile(&["generator.L".into()])?;
-    let mut scratch = vec![0f32; MAX_CALLBACK_FRAMES];
+    let mut scratch = vec![0f32; MAX_CALLBACK_FRAMES * source_channels];
     let mut cursor = 0usize;
     let (err, xrun) = (errors.clone(), xruns.clone());
     let (stats, bad) = (output_stats.clone(), rejected.clone());
     let output = device.build_output_stream(
-        config,
+        output_config,
         move |data: &mut [f32], info: &cpal::OutputCallbackInfo| {
             let started = Instant::now();
-            let frames = data.len() / 2;
+            let frames = data.len() / output_channels;
             data.fill(0.);
-            if frames > MAX_CALLBACK_FRAMES || !data.len().is_multiple_of(2) {
+            if frames > MAX_CALLBACK_FRAMES || !data.len().is_multiple_of(output_channels) {
                 bad.fetch_add(1, Relaxed);
                 stats.record(started, frames);
                 return;
             }
-            for (offset, value) in scratch[..frames].iter_mut().enumerate() {
-                *value = signal.get(cursor + offset).copied().unwrap_or(0.);
+            for (offset, value) in scratch[..frames * source_channels].iter_mut().enumerate() {
+                *value = signal
+                    .get(cursor * source_channels + offset)
+                    .copied()
+                    .unwrap_or(0.);
             }
-            if route.process_into(&scratch[..frames], data).is_err() {
+            if route
+                .process_into(&scratch[..frames * source_channels], data)
+                .is_err()
+            {
                 bad.fetch_add(1, Relaxed);
             }
             // Mute preserves mixed source. Its independently recorded source file remains nonzero.
-            for (offset, frame) in data.as_chunks_mut::<2>().0.iter_mut().enumerate() {
-                if (108032..132096).contains(&(cursor + offset)) {
+            for (offset, frame) in data.chunks_exact_mut(output_channels).enumerate() {
+                if (mute[0]..mute[1]).contains(&(cursor + offset)) {
                     frame.fill(0.);
                 }
             }
@@ -310,8 +321,8 @@ fn run() -> Result<(), Box<dyn Error>> {
     captured.drain(&mut input_rx);
     submitted.drain(&mut output_rx);
     fs::create_dir(output_path)?;
-    let capture = captured.save(&output_path.join("input.bin"))?;
-    let submit = submitted.save(&output_path.join("output.bin"))?;
+    let capture = captured.save(&output_path.join("input.bin"), input_channels)?;
+    let submit = submitted.save(&output_path.join("output.bin"), output_channels)?;
     let report = json!({"schema_version":1,"request":request,"backend":"CPAL 0.18.2","device":name,"format":format,
         "input":capture,"output":submit,
         "queues":{"input":input_rx.stats(),"output":output_rx.stats()},"input_callback":input_stats.report(),"output_callback":output_stats.report(),

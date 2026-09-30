@@ -73,6 +73,23 @@ GUIのテスト用スタブは使わず、`MEASURELAB_TESTING=0`として分離�
 これは既定の保存先の分離であり、GUIから明示的に指定するエクスポート先等を制限する仕組みではない。
 実機を使う場合はGUIで切り替え、現行版とデバイスを同時に開かず一方ずつ測定する。
 
+## 音声テストの引き継ぎ
+
+2026-09-30のユーザー指示: UAC-232でひとまず動作を確認済み。以後はBlackHole 16ch／2ch経由でよい。
+通常の音声回帰、route／port対応、mute、start／stop、再オープンではこの2台を優先する。
+UAC-232は物理ADC/DAC、hardware gain／電圧／配線、USB切断／復帰、物理遅延など、
+実機でしか確認できない条件を検証するときだけ使う。
+実機の未確認項目は残し、仮想deviceや保存fixtureで進められる工程を止めない。
+
+```bash
+./.venv/bin/python scripts/migration_audio_virtual.py --virtual-device --output .migration-local/blackhole-new-run
+```
+
+BlackHole 2ch／16chを完全一致で指定し、fallbackしない。48 kHz／256 frame／f32の短い診断。
+指定したBlackHoleのrate／frame sizeを変更しうるが、system default deviceは変更しない。
+2chは現行AudioEngine、16chは直接PortAudioとの比較で、製品engineの16ch対応とは区別する。
+詳細とraw結果の所在は[決定0010](decisions/0010-blackhole-virtual-audio.md)と[進捗](status.md)を参照。
+
 検証側では上の専用スクリプトから起動する。直接`main_gui.py`を起動すると、従来のユーザーデータ保存先が使われる。
 将来のネイティブ版は、この参照版とも別のアプリ名・保存先・スキーマを使う。
 

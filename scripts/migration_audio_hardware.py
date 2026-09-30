@@ -64,7 +64,7 @@ def exact_device(name):
     return matches[0]
 
 
-def legacy_capture(name, signal, directory):
+def legacy_capture(name, signal, directory, *, output_values=None, exact_coreaudio_rate=False):
     import sounddevice as sd
     from src.core.audio_engine import AudioEngine
     from src.core.config_manager import ConfigManager
@@ -85,6 +85,9 @@ def legacy_capture(name, signal, directory):
         engine.set_block_size(256)
         engine.set_channel_mode("stereo", "stereo")
         engine.set_audio_engine_64bit(False)
+        if exact_coreaudio_rate:
+            engine.set_coreaudio_change_device_parameters(True)
+            engine.set_coreaudio_fail_if_conversion_required(True)
         capacity = RATE * (DURATION + 2)
         captured = np.empty((capacity, 2), dtype="<f4")
         submitted = np.empty_like(captured)
@@ -99,7 +102,10 @@ def legacy_capture(name, signal, directory):
             nonlocal cursor
             output.fill(0)
             count = min(frames, max(0, len(signal) - cursor))
-            output[:count, 0] = signal[cursor : cursor + count]
+            if output_values is None:
+                output[:count, 0] = signal[cursor : cursor + count]
+            else:
+                output[:count] = output_values[cursor : cursor + count]
             cursor += frames
 
         def observed(indata, outdata, frames, times, status):
