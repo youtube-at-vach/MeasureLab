@@ -3,10 +3,10 @@ name: Native evaluation
 on:
   push:
     branches: ["codex/next-core-evaluation", "codex/migration-*"]
-    paths: ["native/**", "migration/**", "scripts/migration_qt_*.py", "scripts/migration_fft_*.py", "scripts/migration_core_*.py", ".github/workflows/native-evaluation.yml"]
+    paths: ["native/**", "migration/**", "scripts/migration_qt_*.py", "scripts/migration_fft_*.py", "scripts/migration_core_*.py", "scripts/migration_graph_*.py", "tests/logic_verification/test_migration_graph_*.py", ".github/workflows/native-evaluation.yml"]
   pull_request:
     branches: ["main", "codex/next-core-evaluation"]
-    paths: ["native/**", "migration/**", "scripts/migration_qt_*.py", "scripts/migration_fft_*.py", "scripts/migration_core_*.py", ".github/workflows/native-evaluation.yml"]
+    paths: ["native/**", "migration/**", "scripts/migration_qt_*.py", "scripts/migration_fft_*.py", "scripts/migration_core_*.py", "scripts/migration_graph_*.py", "tests/logic_verification/test_migration_graph_*.py", ".github/workflows/native-evaluation.yml"]
   workflow_dispatch:
 
 permissions:
@@ -19,13 +19,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Rust format, pure worker and DSP tests and Clippy
+      - name: Rust format, pure worker, DSP and graph tests and Clippy
         working-directory: native
         run: |
           cargo fmt --all --check
-          cargo test --locked -p probe-core -p dsp-core
+          cargo test --locked -p probe-core -p dsp-core -p graph-core
           cargo build --locked -p dsp-core --bin fft-candidate
-          cargo clippy --locked -p probe-core -p dsp-core --all-targets -- -D warnings
+          cargo build --locked -p graph-core --bin graph-core
+          cargo clippy --locked -p probe-core -p dsp-core -p graph-core --all-targets -- -D warnings
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
@@ -34,6 +35,7 @@ jobs:
           python -m venv .venv
           ./.venv/bin/python -m pip install numpy==2.2.6
           ./.venv/bin/python scripts/migration_fft_candidate.py --portable --report fft-candidate.json
+          ./.venv/bin/python scripts/migration_graph_candidate.py --portable --report graph-candidate.json
 
   qt-boundary:
     runs-on: ubuntu-24.04

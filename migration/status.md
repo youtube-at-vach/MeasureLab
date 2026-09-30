@@ -4,7 +4,9 @@
 Rust/QMLの採用は未決定。MIG-003-A/B/Cの参照側とMIG-004-Aの基本GUI境界を検証済み。
 004-BのIntel反復build/編集/ローカルpackageは検証済み。対象OS全体の完了ではない。
 Linux CIのICU不足を修正し、再実行は未確認。006-Aへ純粋FFT候補を追加し、24ケースの数値比較に合格。
-Intelでのコア編集5回も完了、中央値24.544秒。005-Aのbackend境界、006-Bの共有graphは未着手。
+Intelでのコア編集5回も完了、中央値24.544秒。
+006-Bのpure共有graphを追加し、Rust16テストと保存18ケースで共有・分岐・所有権を検証した。
+005-Aのbackend境界と006-Cの実履歴は未着手。実取得/Qtへのgraph統合は後続。
 
 ## 作業場所と基準
 
@@ -12,12 +14,12 @@ Intelでのコア編集5回も完了、中央値24.544秒。005-Aのbackend境�
 | --- | --- |
 | 現行版 | `/Users/vach/MeasureLab`、`main` |
 | 検証用worktree | `/Users/vach/.codex/worktrees/next-core-evaluation/MeasureLab`（Codex管理） |
-| 検証用ブランチ | 統合先`codex/next-core-evaluation`、今回の作業`codex/migration-006-a`（004-Bの`e0b992ce`から分岐） |
+| 検証用ブランチ | 統合先`codex/next-core-evaluation`、今回の作業`codex/migration-006-b`（006-Aとreport整理の`4c6ea93e`から分岐） |
 | 作業開始・Python参照コミット | `9fd79958`（MeasureLab 0.9.0、開始時のローカルmain） |
 | 計画書の調査コミット | `68cbdabc3ecd542d9d73fa0aa86bf9159f44d811` |
 | 最終main同期 | 2026-09-30にfetch。origin/mainは参照`9fd79958`のまま、取込み差分なし |
 | 統合担当 | 当面、この検証ブランチを担当する単一の作業者 |
-| リモート | 今回開始時は004-Bの`e0b992ce`がremote一致・clean。そこから006-A用ローカルブランチを分岐。今回の変更は未コミット。今回のpush・PR・Issue・Project更新・配布は未実施 |
+| リモート | 今回開始時は006-Aの`4c6ea93e`がremote一致・clean。そこから006-B用ローカルブランチを分岐。今回の変更は未コミット。今回のpush・PR・Issue・Project更新・配布は未実施 |
 
 調査コミットから開始時mainまでの差分には計画書、設計ガイド、Measurement Consoleのレイアウト、
 Goniometerのテーマ対応、翻訳と対応テストがある。
@@ -35,14 +37,65 @@ MIG-003-Cも既存fixtureと契約を変更せず、filter/rate参照を独立�
 | MIG-003 | 完了（A/B/Cの参照側） | FFT20+4ケース、27契約例、4保存例にfilter/rateの21数値ケースと6 rate境界を追加。候補実装でのAC合格は005/006以降 |
 | MIG-004 | 進行中（AとBのIntel範囲を完了） | Bの32 sample+warmup2回とローカルbundleが合格。Linux CIのICU不足を修正したが再実行未確認。他OS/clean環境は未確認 |
 | MIG-005 | 未着手 | backend共通境界/route/tapは005-A。実機2chは005-B |
-| MIG-006 | 進行中（Aの保存コーパスとIntel編集を完了） | 純粋FFT候補24ケース合格、編集5回。共有graph/履歴/filter/校正のB〜Eは未着手 |
+| MIG-006 | 進行中（Aとpure graphのBを完了） | 純粋FFT候補24ケース、編集5回。Bは共有結果18ケースとRust16テストで合格。履歴/filter/校正のC〜Eと実取得/Qt統合は未着手 |
 | MIG-007〜008 | 未着手 | 計画にある依存関係に従う。採用判断までの検証範囲 |
 
 `native/`にツールチェーン/SDKの固定、Cargo workspace/lock、模擬workerと2方式のadapter、共通QMLを置いた。
-006-Aの`dsp-core`へFFT/窓/単位/PSDを追加。音声backend、共有Analysis Graphは未作成。
+006-Aの`dsp-core`へFFT/窓/単位/PSD、006-Bの`graph-core`へ固定DAG・共有/購読/独立平均/cacheを追加。
+音声backend、取得schedulerとQtへのgraph接続は未作成。
 候補実装は契約v0.1を出発点とし、公開型・ABI・採用ライブラリは後続の検証で決める。
 
-## MIG-006-Aの成果と検証
+## MIG-006-Bの成果と検証
+
+着手: 2026-09-30、HEAD `4c6ea93e`、006-Aのブランチはremote一致・clean。
+前回記録の「006-A未コミット」は古く、`60474671`で実装、`4c6ea93e`までにreport整理済みと確認した。
+同じworktreeで`codex/migration-006-b`へ分岐。今回の変更は未コミット。
+変更境界は`native/graph-core`、workspace/lock、独立runner/test/CIと検証文書。
+現行DSP/UI、003-A/B/Cの保存入力・期待値・許容差、006-AのDSP実装は変更していない。
+
+- [pure graph](../native/graph-core/src/lib.rs): owned入力→共有FFT→購読別PSD平均/最新snapshotの固定DAG。
+  Source/Timebase・signal条件の完全比較、同一allocation/ID、nonCloneの購読tokenを追加。
+- node/subscription/in-flight数、N/channel数、cache結果数/numeric bytesを制限。
+  未保持cacheを先に外し、表示の最新snapshot置換と測定gapを分ける。
+- Job/Completionを解析workerで実行し、公開時に需要とincarnationを再確認。
+  最後の解除、旧世代、同key再購読、shutdown/dropでも不要nodeが復活しない。
+  in-flight結果と外部に保持する公開済みsnapshotは寿命を保ってから解放する。
+- [比較runner](../scripts/migration_graph_candidate.py): 18ケースの元input bytesを解析threadへ渡し、
+  理論/現行数値、共有、metadata、終了時回収を検査。NumPyだけのportable環境でも成功。
+- [決定0008](decisions/0008-shared-fft-graph.md)と[再実行手順](../native/shared-graph.md)を追加。
+  非Qtの独立CIへgraph test/build/Clippyとportable比較を追加。GitHub実行は未確認。
+
+| 最終確認 | 結果 |
+| --- | --- |
+| 共有数値比較 | `.migration-local/2026-09-30-006-b-graph-final.json`。小規模14+4/8ch 4件すべて理論/現行へ合格。各FFT評価1、同一result ID/allocation、解除/shutdown後node/subscription/cache/in-flight数0 |
+| 最小Python環境 | `.migration-local/2026-09-30-006-b-minimal.json`。既存のNumPy 2.2.6+pipだけのvenvでportable18件成功。Qt/FFTW/音声依存なし |
+| Rust test/fmt/Clippy | `.migration-local/2026-09-30-006-b-rust-checks.json`。Graph16+DSP5+模擬worker5の26 passed、workspace formatとpure3クレートのClippy成功 |
+| Python対象回帰 | 177 passed（27.59秒）。新graph境界21件と既存FFT/core/filter/台帳/起動分離 |
+| 保存fixture verify | FFT14+拡張6、core 4 FFT/27契約/4保存、filter 21数値/6 rate境界すべて成功。保存入力・期待値の更新なし |
+| 起動分離 | 設定保存先とRust 1.98.1を確認。Python offline/offscreen self-test成功、終了コード0。従来のlocale/font警告のみ |
+| report/log整合 | 最終数値18+最小環境18とbuild/checkを含む41コマンドのgzip/hash/終了コード0、現source/runner/実行物hashを確認 |
+| Ruff lint / format | 成功、603 Pythonファイルのformat確認。初回の新テストS603は呼出し条件を確認・明記して解消 |
+| Markdown lint・台帳・diff | 成功。184 Markdownファイル、41モジュールの双方向対応、変更文書の100ローカルリンク、`git diff --check`を確認 |
+| main同期 | fetch後もorigin/mainは`9fd79958`。差分なし、取込み/参照更新不要 |
+
+最大正規化complex FFT差はf64約5.99e-14、f32約8.35e-9。許容差は変更していない。
+
+AC05/06とAC07のpure graph/node/cache/in-flight所有権までが006-Bの検証範囲。
+Job実行はcaller-owned threadで、永続scheduler・実取得queue・音声callback/実保存・QML adapterは未実装。
+cacheのbyte上限はgraph所有のnumeric payloadだけで、外部snapshotやprocess RSSの上限ではない。
+trigger/historyは006-C、filterは006-D、校正/保存は006-E。拡張6件のgraph比較、release、10分連続、
+描画性能、他OS、実機、P2全体・Rust/QML採用は未確認。
+全体Pytest/Mypy/翻訳/UIサイズは未実施。製品UI/翻訳を変更していない。
+
+再実行:
+
+```bash
+cargo +1.98.1 test --offline --locked --manifest-path native/Cargo.toml -p graph-core
+./.venv/bin/python scripts/migration_graph_candidate.py --report .migration-local/006-b-verify.json
+./.venv/bin/pytest -q tests/logic_verification/test_migration_graph_candidate.py
+```
+
+## MIG-006-Aの成果と検証（前回記録）
 
 着手: 2026-09-30、HEAD `e0b992ce`、004-Bのブランチはremote一致・clean。
 statusの004-B欄には未コミットとあったが、開始時にcommit済みであることを確認した。
@@ -435,11 +488,11 @@ GUI起動時にlocaleのUTF-8への切替と、`Sans Serif`のフォント代替
 2. [環境手順](environment.md)に従い、参照版の起動とツールチェーンを再確認する。
 3. 台帳チェックとFFT/core/filterの各reference runnerでverifyを実行する。
    環境差は確認し、比較時だけ明示portable modeを使う。
-4. [作業票](tasks.md)の005-Aまたは006-Bへ進める。006-Aの保存コーパス/Intel編集と004-BのIntel反復は完了した。
+4. [作業票](tasks.md)の005-Aまたは006-Cへ進める。006-Aの保存コーパス/Intel編集、006-Bのpure graph、004-BのIntel反復は完了した。
    Linux CIのICU修正は004-Bの`e0b992ce`へcommit済み。修正後のGitHub実行は未確認。公開する段階で確認する。
    ARM/Windows/Linuxの反復測定、full Xcode、release/clean環境の配布起動は未確認のまま残す。
 5. 003-A/B/Cの保存入力と期待値は揃った。候補実装へ同じbytesを通し、参照側の完了と実装のAC合格を分ける。
-6. 005-A/006-Bも着手可能。独立Rust CIは追加済み。source/state/所有権の境界を記録し、
+6. 005-A/006-Cも着手可能。独立Rust CIは追加済み。source/state/所有権の境界を記録し、
    004-Aの模擬workerのmutex/通知を音声callbackへ転用しない。
 7. 契約変更が必要なら決定記録、台帳、AC、fixtureを同時に更新する。MIG-002完了とRust/QML採用決定を混同しない。
 

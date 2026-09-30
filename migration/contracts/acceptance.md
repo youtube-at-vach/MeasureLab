@@ -9,6 +9,8 @@ MIG-003は入力/期待値を用意し、MIG-005/006以降で候補実装を同�
 下表の候補実装に対する合格とは別で、003-Bの履歴は区間の可用性oracleまで。実バッファは006-Cで検証する。
 006-Aで[純粋FFT候補24件](../decisions/0007-pure-fft-candidate.md)が保存済み理論/現行参照へ合格した。
 AC01のFFT部分とAC04の保存コーパスの結果であり、物理I/O・共有graph・他のACの合格ではない。
+006-Bで[pure共有graph](../decisions/0008-shared-fft-graph.md)のRust16テストと保存18ケースが合格した。
+AC05/06とAC07のnode/cache/in-flight寿命まで。実音声・QML画面・保存sessionの統合は後続で検証する。
 
 ## fixtureの最小セット
 

@@ -1,6 +1,6 @@
 # MIG-002後の実行単位
 
-2026-09-29。Issue作成や技術採用の決定ではなく、このworktreeで再開するためのローカル作業票。
+2026-09-30更新。Issue作成や技術採用の決定ではなく、このworktreeで再開するためのローカル作業票。
 共通基準は`9fd79958f6a8bbae6808813d3704617612e6d26c`と[決定0001](decisions/0001-p0-contracts.md)。
 各タスクは着手時にbranch/commit、変更境界、コマンド、結果、未確認点を[status](status.md)へ追記する。
 既存の検証ブランチを使い、独立した実装を切り出すときは`codex/migration-<task>`、PR比較先は`codex/next-core-evaluation`。
@@ -28,7 +28,7 @@
 | 005-A | N-channel buffer/route/tap、backend共通境界 | 003-A/B。P02/P03。PortAudio基準とCPAL比較 | AC01〜03/09/11。4/8ch・非対称I/O・明示mapping・queue overflow。Rust追加時は独立CI追加 | network多ch拡張、全機器 | 未着手 |
 | 005-B | 実機2ch、XRUN/再接続、排他/停止/時刻 | 005-Aと利用可能な実機。device/配線/校正を記録 | AC11/13/16、同じ配線で現行と交互測定。測定前に許容振幅差/遅延誤差を決める | 実機4/8/16ch保証 | 未着手・実機条件待ち |
 | 006-A | FFT/窓/単位/PSDを参照比較 | 003-A、P04/P05。GUI非依存core | AC01/04、f32/f64・非2冪/極大・endpoint。必須数値条件合格、core編集時間記録 | 全解析モジュール | 完了（2026-09-30、保存コーパス24件とIntel編集5回。全体採用・他OS・Python相対比較は未確認） |
-| 006-B | 固定DAG・共有key・購読token・bounded cache | 006-A、003-B、P15 | AC05〜07。評価count/同一ID、条件分岐、独立平均、最後の解除/終了回収 | 汎用graph editor | 未着手 |
+| 006-B | 固定DAG・共有key・購読token・bounded cache | 006-A、003-B、P15 | AC05〜07。評価count/同一ID、条件分岐、独立平均、最後の解除/終了回収 | 汎用graph editor | 完了（2026-09-30、pure graphのRust16テスト/保存18ケース。実取得/Qt統合は後続） |
 | 006-C | trigger/history・Timebase・generation・validity | 003-B、006-B、P03 | AC08/09、異なるcursor/通知遅延・保持超過・旧世代拒否。共有graphへ統合 | 外部trigger実機adapter | 未着手 |
 | 006-D | 最小rate変換/filterとvalidity伝播 | 003-C、006-C、P06 | AC10/14、同じgraph内で遅延/区間/phase stateを保持 | 高品質resamplerの全機能 | 未着手 |
 | 006-E | 不変result・channel校正・CSV/JSON来歴 | 003-B、006-B/C、P13/P14 | AC12、再読込、保存失敗、profile変更後の不変性、uncalibrated | 旧設定の自動移行 | 未着手 |
@@ -131,4 +131,18 @@ Qt SDKや実機は不要。拡張6件はローカル配列とversioned manifest�
 ```
 
 反復中は他のbuild/testを止める。通常の比較はfixtureを書き換えない。
-006-Bの共有graph、005-Aの音声buffer/route/backend境界は未着手。
+006-Bのpure共有graphは完了。005-Aの音声buffer/route/backend境界と006-Cの実履歴は未着手。
+
+## 006-Bの再検査
+
+[共有graphの手順](../native/shared-graph.md)と[決定0008](decisions/0008-shared-fft-graph.md)を参照。
+元の入力bytesで同じFFT結果を2購読へ渡し、数値・評価回数・結果ID・Source・終了時回収を検査する。
+Graphは制御/解析worker用API。取得queue/永続scheduler/音声callback/Qt adapterは後続で接続する。
+
+```bash
+cargo +1.98.1 test --offline --locked --manifest-path native/Cargo.toml -p graph-core
+./.venv/bin/python scripts/migration_graph_candidate.py --report .migration-local/006-b-verify.json
+./.venv/bin/pytest -q tests/logic_verification/test_migration_graph_candidate.py
+```
+
+005-Aまたは006-Cへ進められる。Rust/QML採用・AC07の実音声/GUI/保存統合の合格とは分ける。

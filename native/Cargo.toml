@@ -1,5 +1,5 @@
 [workspace]
-members = ["probe-core", "dsp-core", "cxxqt-probe", "qtbridge-probe"]
+members = ["probe-core", "dsp-core", "graph-core", "cxxqt-probe", "qtbridge-probe"]
 resolver = "2"
 
 [workspace.package]
