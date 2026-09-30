@@ -32,10 +32,17 @@ env/
 .ruff_cache/
 .coverage
 
-# Next-core evaluation: local toolchains, reference data, and Rust output
+# Next-core evaluation: local toolchains, reference data, and build output
 /.tools/
 /.migration-local/
-/native/target/
+/native/**/target/
+
+# Generated QML language-server settings contain local build paths
+/native/**/.qmlls.ini
+/native/**/.qmlls.user.ini
+
+# Raw benchmark logs are local; keep reports and immutable fixtures versioned
+/migration/benchmarks/results/*-logs/
 
 # VSCode settings
 #.vscode/
