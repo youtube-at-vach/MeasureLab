@@ -1,9 +1,9 @@
 # 次期コア検証の進捗
 
 更新: 2026-09-30。計画の正本は[評価計画](../guide/RUST_QML_MIGRATION_PLAN.md)。
-Rust/QMLの採用は未決定。MIG-001、MIG-002、MIG-003-Aに続き、
-MIG-003-Bの仮想4/8ch・route・trigger/history・校正/保存metadataのoracleを完了。
-次はMIG-003-Cの最小FIR/rate写像・現行polyphase/代表SOSの参照へ進む。
+Rust/QMLの採用は未決定。MIG-001、MIG-002に続き、MIG-003-A/B/Cの参照側を完了。
+最小FIR/rate写像、現行polyphase/代表SOSの21数値ケースと6 rate境界を追加した。
+次はMIG-004-AのQt開発SDK・接続方式比較。005-A/006-Aの参照依存も揃った。
 
 ## 作業場所と基準
 
@@ -16,13 +16,14 @@ MIG-003-Bの仮想4/8ch・route・trigger/history・校正/保存metadataのorac
 | 計画書の調査コミット | `68cbdabc3ecd542d9d73fa0aa86bf9159f44d811` |
 | 最終main同期 | 2026-09-30にfetch。origin/mainは参照`9fd79958`のまま、取込み差分なし |
 | 統合担当 | 当面、この検証ブランチを担当する単一の作業者 |
-| リモート | 今回開始時のHEADとorigin/codex/next-core-evaluationはMIG-003-Aの`320eb506`。003-Bはローカル未コミット変更。今回のcommit・push・PR・Issue・Project更新・配布は未実施 |
+| リモート | 今回開始時のHEADとorigin/codex/next-core-evaluationはMIG-003-Bの`1cd243f2`。003-Cはローカル未コミット変更。今回のcommit・push・PR・Issue・Project更新・配布は未実施 |
 
 調査コミットから開始時mainまでの差分には計画書、設計ガイド、Measurement Consoleのレイアウト、
 Goniometerのテーマ対応、翻訳と対応テストがある。
 MIG-002の棚卸しでは開始時mainを確認した。参照は`9fd79958f6a8bbae6808813d3704617612e6d26c`。
 MIG-003-AでFFTの入力・期待値・source hash・依存バージョンを一緒に固定した。
 MIG-003-Bは003-Aを変更せず、4/8ch参照と新契約の手計算例を別fixtureへ追加した。
+MIG-003-Cも既存fixtureと契約を変更せず、filter/rate参照を独立したfixtureへ追加した。
 
 ## タスク
 
@@ -30,7 +31,7 @@ MIG-003-Bは003-Aを変更せず、4/8ch参照と新契約の手計算例を別f
 | --- | --- | --- |
 | MIG-001 | 完了 | 管理されたworktree、専用Python環境、状態を分離したオフライン起動、Rust/C++ビルドツール、再開・同期手順 |
 | MIG-002 | 完了（P0文書・整合検査） | 41モジュール+共通10件、20プリミティブと双方向対応、コア/数値契約、16受け入れ条件、性能・反復予算、後続作業票 |
-| MIG-003 | 進行中・003-A/B完了 | 既存FFT20ケースに4/8chの4ケース、27契約例、4保存例を追加。次はfilter/rate変換の003-C |
+| MIG-003 | 完了（A/B/Cの参照側） | FFT20+4ケース、27契約例、4保存例にfilter/rateの21数値ケースと6 rate境界を追加。候補実装でのAC合格は005/006以降 |
 | MIG-004 | 未着手 | Qt開発用SDKの導入・版固定、CXX-Qt/Qt Bridge比較、GUIと配布経路 |
 | MIG-005〜008 | 未着手 | 計画にある依存関係に従う。採用判断までの検証範囲 |
 
@@ -38,7 +39,63 @@ MIG-003-Bは003-Aを変更せず、4/8ch参照と新契約の手計算例を別f
 Cargo workspace、クレート、Cargo.lock、QML、音声backendは未作成。
 候補実装は契約v0.1を出発点とし、公開型・ABI・採用ライブラリは後続の検証で決める。
 
-## MIG-003-Bの成果と検証
+## MIG-003-Cの成果と検証
+
+着手: 2026-09-30、`codex/next-core-evaluation`、HEAD `1cd243f2`、作業ツリーはclean。
+statusの前回記録には003-Bが未コミットとあったが、開始時にcommit済み・remote一致を確認。
+変更境界は`scripts/`・`tests/`・`migration/`。現行DSP/UI・003-A/Bのfixture・契約の許容差は変更していない。
+
+- [参照runner](../scripts/migration_filter_reference.py)、[独立oracle](../scripts/migration_filter_oracle.py)、
+  [ケース定義](../scripts/migration_filter_cases.py)を追加。GUI/deviceをimportしない。
+- [fixture仕様](fixtures/filter-v1.md): 最小FIR5件、現行polyphase12件、代表SOS4件と6 rate境界。
+  入力・係数・初期state・期待出力・metadataとhashを133ファイルへ固定。
+- FIRは直接有限和と新契約モデルを照合。trigger1024→512、信号遅延0.5 output sample、
+  gap `[100,104)`→`[50,53)`、warmup `[0,1)`、whole/1/127/256/不規則chunk一致を確認。
+- polyphaseは独立sinc/Kaiser式・中心補償した有限和、SOSは独立direct form Iと帯域/位相を照合。
+  SOSの因果参照はzero stateからの出力・最終state・chunk一致も保存する。
+- [決定0004](decisions/0004-filter-rate-reference.md): 現行一括API、新契約FIR、同じ係数の因果SOS参照を区別。
+  invalid rateの現行bypassと新契約拒否、独立chunk呼出しによる端点/長さ差を別記録した。
+
+| 今回の確認 | 結果 |
+| --- | --- |
+| 参照起動分離・offscreen self-test | 成功、終了コード0。従来と同じlocale/font警告 |
+| Rust/C++スモーク | 既存実行物の再実行成功。Qt接続は未検証 |
+| 新fixture再検査 | 固定環境で21数値ケース・6 rate境界すべて成功、GUI/device importなし |
+| 新fixture再生成 | Pytest内で新しい一時ディレクトリへ明示生成。manifestを含む全133ファイルのbytesが保存版と一致 |
+| 独立理論との比較 | 最大差はFIR約2.78e-17、polyphase約1.11e-16、SOS約4.77e-14。全ケースで契約内 |
+| 対象回帰Pytest | 213 passed、2 skipped（31.01秒）。新規44件を含む。skipは既存003-Aの奇数長Nyquistという該当しない組合せ |
+| 既存保存fixture | 003-Aの小規模14件・拡張6件、003-Bの4 FFT・27契約例・4保存例を固定環境で再検査し成功。期待値更新なし |
+| Ruff lint / format | 成功。変更後の全体lint・format確認を最終実行でも通過 |
+| Markdown lint・台帳・diff | 成功。176 Markdownファイル、台帳41件/20プリミティブ、変更文書のリンクと`git diff --check`も成功 |
+| main差分 | fetch後もorigin/mainは`9fd79958`。参照更新・マージ不要 |
+
+[実行report](fixtures/runs/2026-09-30-intel-filter.json)へ時間・process peak RSS・各誤差を保存。
+検査全体約2.64秒、RSS 106,176,512 bytesは単発の診断値で、並行Pytestの影響もある。
+性能protocolに沿う比較結果ではない。
+
+現行polyphaseの127-frame独立呼出しでは、48→24 kHzの1秒入力が24189 framesになる
+（一括は24000）。SOSの独立前後処理にも端点差がある。現行製品を修正したり、
+これらを連続処理の合格として扱ったりせず、006-Dのstate/phase保持の比較資料にした。
+
+全体Pytest/Mypy/翻訳/UIサイズとGitHub CIは未実施。製品UI・翻訳の変更やPR作成は行っていない。
+候補core・共有graph・物理I/O・Qt・他OS、IIR gap回復・全filter/rate構成は未完了。
+MIG-003の完了はA/B/Cの参照入力・期待値・再現検査が揃った意味に限定する。
+
+再実行:
+
+```bash
+./.venv/bin/python scripts/migration_filter_reference.py verify
+./.venv/bin/python scripts/migration_core_reference.py verify
+./.venv/bin/python scripts/migration_fft_reference.py verify
+./.venv/bin/python scripts/migration_fft_reference.py verify --fixtures .migration-local/fft-extended-v1 --baseline migration/fixtures/fft-extended-v1.manifest.json
+./.venv/bin/pytest -q tests/logic_verification/test_migration_filter_reference.py tests/logic_verification/test_migration_core_reference.py tests/logic_verification/test_migration_fft_reference.py tests/logic_verification/test_migration_reference.py tests/logic_verification/test_migration_inventory.py tests/logic_verification/analysis/test_resample.py tests/logic_verification/analysis/test_filters.py tests/logic_verification/analysis/test_analysis_cache.py tests/logic_verification/core/test_fft_manager.py tests/logic_verification/core/test_window_functions.py tests/logic_verification/analysis/test_spectrum_rms_accuracy.py
+./.venv/bin/python scripts/check_migration_inventory.py
+./.venv/bin/ruff check .
+./.venv/bin/ruff format --check .
+npx markdownlint-cli2 "**/*.md" "#node_modules"
+```
+
+## MIG-003-Bの成果と検証（前回記録）
 
 着手: 2026-09-30、`codex/next-core-evaluation`、HEAD `320eb506`、作業ツリーはclean。
 変更境界は`scripts/`・`tests/`・`migration/`。現行DSP/UI・003-Aのscript/fixture・契約の許容差は変更していない。
@@ -197,12 +254,12 @@ GUI起動時にlocaleのUTF-8への切替と、`Sans Serif`のフォント代替
 
 1. このファイルと`git status --short --branch`を確認する。最後の記録後の変更を保護する。
 2. [環境手順](environment.md)に従い、参照版の起動とツールチェーンを再確認する。
-3. 台帳チェック、`migration_fft_reference.py verify`、`migration_core_reference.py verify`を実行する。
+3. 台帳チェックとFFT/core/filterの各reference runnerでverifyを実行する。
    環境差は確認し、比較時だけ明示portable modeを使う。
-4. [作業票](tasks.md)の003-Cへ進み、最小FIR/rate写像、現行polyphase/代表SOSの参照を追加する。
-   既存fixtureを自動更新せず、契約oracleと旧版参照を分ける。
-5. 003-A/B/Cの入力・期待値・再現検査がすべて揃ってからMIG-003全体を完了にする。
-6. 004はQt開発SDKの分離導入・版固定から始め、両接続方式を同じ小画面と性能protocolで比較する。
+4. [作業票](tasks.md)の004-Aへ進む。導入前に公式要件を確認し、Qt開発SDKを分離導入・版固定する。
+   PyQtのruntimeを開発SDKとして使わず、両接続方式を同じ小画面と性能protocolで比較する。
+5. 003-A/B/Cの保存入力と期待値は揃った。候補実装へ同じbytesを通し、参照側の完了と実装のAC合格を分ける。
+6. 005-A/006-Aも着手可能。Rustコードを追加する際は独立CIを追加し、source/state/所有権の境界を記録する。
 7. 契約変更が必要なら決定記録、台帳、AC、fixtureを同時に更新する。MIG-002完了とRust/QML採用決定を混同しない。
 
 長時間の自動実行や定期通知は設定していない。次回もこのworktreeを再利用できる。

@@ -1,0 +1,725 @@
+{
+  "cases": [
+    {
+      "acceptance": [
+        "AC10"
+      ],
+      "diagnostics": {},
+      "id": "fir-impulse-even",
+      "max_absolute_errors": {
+        "chunk-127": 0.0,
+        "chunk-256": 0.0,
+        "chunk-irregular": 0.0,
+        "chunk-one": 0.0,
+        "chunk-whole": 0.0,
+        "saved.coefficients": 0.0,
+        "saved.model.output": 0.0,
+        "saved.theory.output": 0.0
+      },
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC10"
+      ],
+      "diagnostics": {},
+      "id": "fir-impulse-odd",
+      "max_absolute_errors": {
+        "chunk-127": 0.0,
+        "chunk-256": 0.0,
+        "chunk-irregular": 0.0,
+        "chunk-one": 0.0,
+        "chunk-whole": 0.0,
+        "saved.coefficients": 0.0,
+        "saved.model.output": 0.0,
+        "saved.theory.output": 0.0
+      },
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC10"
+      ],
+      "diagnostics": {},
+      "id": "fir-dc",
+      "max_absolute_errors": {
+        "chunk-127": 0.0,
+        "chunk-256": 0.0,
+        "chunk-irregular": 0.0,
+        "chunk-one": 0.0,
+        "chunk-whole": 0.0,
+        "saved.coefficients": 0.0,
+        "saved.model.output": 0.0,
+        "saved.theory.output": 0.0
+      },
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC10"
+      ],
+      "diagnostics": {},
+      "id": "fir-tone",
+      "max_absolute_errors": {
+        "chunk-127": 2.7755575615628914e-17,
+        "chunk-256": 2.7755575615628914e-17,
+        "chunk-irregular": 2.7755575615628914e-17,
+        "chunk-one": 2.7755575615628914e-17,
+        "chunk-whole": 2.7755575615628914e-17,
+        "saved.coefficients": 0.0,
+        "saved.model.output": 0.0,
+        "saved.theory.output": 0.0
+      },
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC10"
+      ],
+      "diagnostics": {},
+      "id": "fir-gap",
+      "max_absolute_errors": {
+        "chunk-127": 2.7755575615628914e-17,
+        "chunk-256": 2.7755575615628914e-17,
+        "chunk-irregular": 2.7755575615628914e-17,
+        "chunk-one": 2.7755575615628914e-17,
+        "chunk-whole": 2.7755575615628914e-17,
+        "saved.coefficients": 0.0,
+        "saved.model.output": 0.0,
+        "saved.theory.output": 0.0
+      },
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC14"
+      ],
+      "diagnostics": {
+        "legacy_restarted_chunks": {
+          "chunk_size": 127,
+          "max_abs_difference_prefix": 0.0,
+          "meaning": "independent calls reset endpoint/phase; not streaming equivalence",
+          "restarted_frames": 65,
+          "whole_frames": 65
+        }
+      },
+      "id": "poly-48000-24000-impulse-even",
+      "max_absolute_errors": {
+        "coefficients": 1.1102230246251565e-16,
+        "finite-sum": 0.0,
+        "saved.coefficients": 0.0,
+        "saved.current.output": 0.0,
+        "saved.theory.coefficients": 0.0,
+        "saved.theory.output": 0.0
+      },
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC14"
+      ],
+      "diagnostics": {
+        "legacy_restarted_chunks": {
+          "chunk_size": 127,
+          "max_abs_difference_prefix": 0.0791750864200752,
+          "meaning": "independent calls reset endpoint/phase; not streaming equivalence",
+          "restarted_frames": 65,
+          "whole_frames": 65
+        }
+      },
+      "id": "poly-48000-24000-dc",
+      "max_absolute_errors": {
+        "coefficients": 1.1102230246251565e-16,
+        "finite-sum": 0.0,
+        "saved.coefficients": 0.0,
+        "saved.current.output": 0.0,
+        "saved.theory.coefficients": 0.0,
+        "saved.theory.output": 0.0
+      },
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC14"
+      ],
+      "diagnostics": {
+        "legacy_restarted_chunks": {
+          "chunk_size": 127,
+          "max_abs_difference_prefix": 0.5049317242582672,
+          "meaning": "independent calls reset endpoint/phase; not streaming equivalence",
+          "restarted_frames": 24189,
+          "whole_frames": 24000
+        },
+        "passband": {
+          "peak_frequency_hz": [
+            1000.0,
+            1000.0
+          ],
+          "rms_error_fs": [
+            0.0001735502819675827,
+            8.685571632886802e-05
+          ]
+        }
+      },
+      "id": "poly-48000-24000-tone",
+      "max_absolute_errors": {
+        "coefficients": 1.1102230246251565e-16,
+        "finite-sum": 0.0,
+        "saved.coefficients": 0.0,
+        "saved.current.output": 0.0,
+        "saved.theory.coefficients": 0.0,
+        "saved.theory.output": 0.0
+      },
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC14"
+      ],
+      "diagnostics": {
+        "legacy_restarted_chunks": {
+          "chunk_size": 127,
+          "max_abs_difference_prefix": 0.0,
+          "meaning": "independent calls reset endpoint/phase; not streaming equivalence",
+          "restarted_frames": 258,
+          "whole_frames": 258
+        }
+      },
+      "id": "poly-24000-48000-impulse-even",
+      "max_absolute_errors": {
+        "coefficients": 1.1102230246251565e-16,
+        "finite-sum": 0.0,
+        "saved.coefficients": 0.0,
+        "saved.current.output": 0.0,
+        "saved.theory.coefficients": 0.0,
+        "saved.theory.output": 0.0
+      },
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC14"
+      ],
+      "diagnostics": {
+        "legacy_restarted_chunks": {
+          "chunk_size": 127,
+          "max_abs_difference_prefix": 0.10788507414128345,
+          "meaning": "independent calls reset endpoint/phase; not streaming equivalence",
+          "restarted_frames": 258,
+          "whole_frames": 258
+        }
+      },
+      "id": "poly-24000-48000-dc",
+      "max_absolute_errors": {
+        "coefficients": 1.1102230246251565e-16,
+        "finite-sum": 0.0,
+        "saved.coefficients": 0.0,
+        "saved.current.output": 0.0,
+        "saved.theory.coefficients": 0.0,
+        "saved.theory.output": 0.0
+      },
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC14"
+      ],
+      "diagnostics": {
+        "legacy_restarted_chunks": {
+          "chunk_size": 127,
+          "max_abs_difference_prefix": 0.1254773605217343,
+          "meaning": "independent calls reset endpoint/phase; not streaming equivalence",
+          "restarted_frames": 48000,
+          "whole_frames": 48000
+        },
+        "passband": {
+          "peak_frequency_hz": [
+            1000.0,
+            1000.0
+          ],
+          "rms_error_fs": [
+            0.0001741257020236031,
+            8.711648962532459e-05
+          ]
+        }
+      },
+      "id": "poly-24000-48000-tone",
+      "max_absolute_errors": {
+        "coefficients": 1.1102230246251565e-16,
+        "finite-sum": 0.0,
+        "saved.coefficients": 0.0,
+        "saved.current.output": 0.0,
+        "saved.theory.coefficients": 0.0,
+        "saved.theory.output": 0.0
+      },
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC14"
+      ],
+      "diagnostics": {
+        "legacy_restarted_chunks": {
+          "chunk_size": 127,
+          "max_abs_difference_prefix": 0.0,
+          "meaning": "independent calls reset endpoint/phase; not streaming equivalence",
+          "restarted_frames": 142,
+          "whole_frames": 141
+        }
+      },
+      "id": "poly-44100-48000-impulse-even",
+      "max_absolute_errors": {
+        "coefficients": 8.673617379884035e-19,
+        "finite-sum": 0.0,
+        "saved.coefficients": 0.0,
+        "saved.current.output": 0.0,
+        "saved.theory.coefficients": 0.0,
+        "saved.theory.output": 0.0
+      },
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC14"
+      ],
+      "diagnostics": {
+        "legacy_restarted_chunks": {
+          "chunk_size": 127,
+          "max_abs_difference_prefix": 0.19242071769764962,
+          "meaning": "independent calls reset endpoint/phase; not streaming equivalence",
+          "restarted_frames": 142,
+          "whole_frames": 141
+        }
+      },
+      "id": "poly-44100-48000-dc",
+      "max_absolute_errors": {
+        "coefficients": 8.673617379884035e-19,
+        "finite-sum": 0.0,
+        "saved.coefficients": 0.0,
+        "saved.current.output": 0.0,
+        "saved.theory.coefficients": 0.0,
+        "saved.theory.output": 0.0
+      },
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC14"
+      ],
+      "diagnostics": {
+        "legacy_restarted_chunks": {
+          "chunk_size": 127,
+          "max_abs_difference_prefix": 0.5182168762416027,
+          "meaning": "independent calls reset endpoint/phase; not streaming equivalence",
+          "restarted_frames": 48267,
+          "whole_frames": 48000
+        },
+        "passband": {
+          "peak_frequency_hz": [
+            1000.0,
+            1000.0
+          ],
+          "rms_error_fs": [
+            0.00010667659487234582,
+            5.334130357129152e-05
+          ]
+        }
+      },
+      "id": "poly-44100-48000-tone",
+      "max_absolute_errors": {
+        "coefficients": 8.673617379884035e-19,
+        "finite-sum": 0.0,
+        "saved.coefficients": 0.0,
+        "saved.current.output": 0.0,
+        "saved.theory.coefficients": 0.0,
+        "saved.theory.output": 0.0
+      },
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC14"
+      ],
+      "diagnostics": {
+        "legacy_restarted_chunks": {
+          "chunk_size": 127,
+          "max_abs_difference_prefix": 0.0,
+          "meaning": "independent calls reset endpoint/phase; not streaming equivalence",
+          "restarted_frames": 119,
+          "whole_frames": 119
+        }
+      },
+      "id": "poly-48000-44100-impulse-even",
+      "max_absolute_errors": {
+        "coefficients": 8.673617379884035e-19,
+        "finite-sum": 0.0,
+        "saved.coefficients": 0.0,
+        "saved.current.output": 0.0,
+        "saved.theory.coefficients": 0.0,
+        "saved.theory.output": 0.0
+      },
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC14"
+      ],
+      "diagnostics": {
+        "legacy_restarted_chunks": {
+          "chunk_size": 127,
+          "max_abs_difference_prefix": 0.08547717424886964,
+          "meaning": "independent calls reset endpoint/phase; not streaming equivalence",
+          "restarted_frames": 119,
+          "whole_frames": 119
+        }
+      },
+      "id": "poly-48000-44100-dc",
+      "max_absolute_errors": {
+        "coefficients": 8.673617379884035e-19,
+        "finite-sum": 0.0,
+        "saved.coefficients": 0.0,
+        "saved.current.output": 0.0,
+        "saved.theory.coefficients": 0.0,
+        "saved.theory.output": 0.0
+      },
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC14"
+      ],
+      "diagnostics": {
+        "legacy_restarted_chunks": {
+          "chunk_size": 127,
+          "max_abs_difference_prefix": 0.5195396531921417,
+          "meaning": "independent calls reset endpoint/phase; not streaming equivalence",
+          "restarted_frames": 44221,
+          "whole_frames": 44100
+        },
+        "passband": {
+          "peak_frequency_hz": [
+            1000.0,
+            1000.0
+          ],
+          "rms_error_fs": [
+            0.00010664082238273642,
+            5.3325234059778404e-05
+          ]
+        }
+      },
+      "id": "poly-48000-44100-tone",
+      "max_absolute_errors": {
+        "coefficients": 8.673617379884035e-19,
+        "finite-sum": 0.0,
+        "saved.coefficients": 0.0,
+        "saved.current.output": 0.0,
+        "saved.theory.coefficients": 0.0,
+        "saved.theory.output": 0.0
+      },
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC14"
+      ],
+      "diagnostics": {
+        "legacy_restarted_chunks": {
+          "chunk_size": 256,
+          "max_abs_difference": 3.084497204962084e-12,
+          "meaning": "offline forward/backward calls re-pad endpoints; not streaming equivalence"
+        }
+      },
+      "id": "sos-lowpass-impulse-even",
+      "max_absolute_errors": {
+        "butterworth-magnitude": 1.6653345369377348e-15,
+        "causal-chunk-127": 0.0,
+        "causal-chunk-256": 0.0,
+        "causal-chunk-irregular": 0.0,
+        "causal-chunk-one": 0.0,
+        "causal-chunk-whole": 0.0,
+        "causal-recurrence": 2.1510571102112408e-16,
+        "complex-response": 1.4435538527050698e-15,
+        "final-state": 1.2726066243226035e-58,
+        "forward-backward-recurrence": 9.43689570931383e-16,
+        "phase-radians": 6.982561850713162e-16,
+        "saved.coefficients": 0.0,
+        "saved.current.causal": 0.0,
+        "saved.current.final_state": 0.0,
+        "saved.current.output": 0.0,
+        "saved.current.response": 0.0,
+        "saved.frequency_hz": 0.0,
+        "saved.initial.state": 0.0,
+        "saved.theory.causal": 0.0,
+        "saved.theory.final_state": 0.0,
+        "saved.theory.magnitude": 0.0,
+        "saved.theory.output": 0.0,
+        "saved.theory.response": 0.0,
+        "state-chunk-127": 0.0,
+        "state-chunk-256": 0.0,
+        "state-chunk-irregular": 0.0,
+        "state-chunk-one": 0.0,
+        "state-chunk-whole": 0.0
+      },
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC14"
+      ],
+      "diagnostics": {
+        "legacy_restarted_chunks": {
+          "chunk_size": 256,
+          "max_abs_difference": 0.832449782863915,
+          "meaning": "offline forward/backward calls re-pad endpoints; not streaming equivalence"
+        }
+      },
+      "id": "sos-lowpass-impulse-center",
+      "max_absolute_errors": {
+        "butterworth-magnitude": 1.6653345369377348e-15,
+        "causal-chunk-127": 0.0,
+        "causal-chunk-256": 0.0,
+        "causal-chunk-irregular": 0.0,
+        "causal-chunk-one": 0.0,
+        "causal-chunk-whole": 0.0,
+        "causal-recurrence": 2.1510571102112408e-16,
+        "complex-response": 1.4435538527050698e-15,
+        "final-state": 3.879131357713549e-37,
+        "forward-backward-recurrence": 2.463307335887066e-16,
+        "phase-radians": 6.982561850713162e-16,
+        "saved.coefficients": 0.0,
+        "saved.current.causal": 0.0,
+        "saved.current.final_state": 0.0,
+        "saved.current.output": 0.0,
+        "saved.current.response": 0.0,
+        "saved.frequency_hz": 0.0,
+        "saved.initial.state": 0.0,
+        "saved.theory.causal": 0.0,
+        "saved.theory.final_state": 0.0,
+        "saved.theory.magnitude": 0.0,
+        "saved.theory.output": 0.0,
+        "saved.theory.response": 0.0,
+        "state-chunk-127": 0.0,
+        "state-chunk-256": 0.0,
+        "state-chunk-irregular": 0.0,
+        "state-chunk-one": 0.0,
+        "state-chunk-whole": 0.0
+      },
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC14"
+      ],
+      "diagnostics": {
+        "legacy_restarted_chunks": {
+          "chunk_size": 256,
+          "max_abs_difference": 0.0,
+          "meaning": "offline forward/backward calls re-pad endpoints; not streaming equivalence"
+        }
+      },
+      "id": "sos-lowpass-dc",
+      "max_absolute_errors": {
+        "butterworth-magnitude": 1.6653345369377348e-15,
+        "causal-chunk-127": 0.0,
+        "causal-chunk-256": 0.0,
+        "causal-chunk-irregular": 0.0,
+        "causal-chunk-one": 0.0,
+        "causal-chunk-whole": 0.0,
+        "causal-recurrence": 6.106226635438361e-16,
+        "complex-response": 1.4435538527050698e-15,
+        "final-state": 1.942890293094024e-16,
+        "forward-backward-recurrence": 3.885780586188048e-16,
+        "phase-radians": 6.982561850713162e-16,
+        "saved.coefficients": 0.0,
+        "saved.current.causal": 0.0,
+        "saved.current.final_state": 0.0,
+        "saved.current.output": 0.0,
+        "saved.current.response": 0.0,
+        "saved.frequency_hz": 0.0,
+        "saved.initial.state": 0.0,
+        "saved.theory.causal": 0.0,
+        "saved.theory.final_state": 0.0,
+        "saved.theory.magnitude": 0.0,
+        "saved.theory.output": 0.0,
+        "saved.theory.response": 0.0,
+        "state-chunk-127": 0.0,
+        "state-chunk-256": 0.0,
+        "state-chunk-irregular": 0.0,
+        "state-chunk-one": 0.0,
+        "state-chunk-whole": 0.0
+      },
+      "status": "pass"
+    },
+    {
+      "acceptance": [
+        "AC14"
+      ],
+      "diagnostics": {
+        "legacy_restarted_chunks": {
+          "chunk_size": 256,
+          "max_abs_difference": 0.11652325868604856,
+          "meaning": "offline forward/backward calls re-pad endpoints; not streaming equivalence"
+        }
+      },
+      "id": "sos-lowpass-tone",
+      "max_absolute_errors": {
+        "butterworth-magnitude": 1.6653345369377348e-15,
+        "causal-chunk-127": 0.0,
+        "causal-chunk-256": 0.0,
+        "causal-chunk-irregular": 0.0,
+        "causal-chunk-one": 0.0,
+        "causal-chunk-whole": 0.0,
+        "causal-recurrence": 7.216449660063518e-16,
+        "complex-response": 1.4435538527050698e-15,
+        "final-state": 8.326672684688674e-17,
+        "forward-backward-recurrence": 9.43689570931383e-16,
+        "phase-radians": 6.982561850713162e-16,
+        "saved.coefficients": 0.0,
+        "saved.current.causal": 0.0,
+        "saved.current.final_state": 0.0,
+        "saved.current.output": 0.0,
+        "saved.current.response": 0.0,
+        "saved.frequency_hz": 0.0,
+        "saved.initial.state": 0.0,
+        "saved.theory.causal": 0.0,
+        "saved.theory.final_state": 0.0,
+        "saved.theory.magnitude": 0.0,
+        "saved.theory.output": 0.0,
+        "saved.theory.response": 0.0,
+        "state-chunk-127": 0.0,
+        "state-chunk-256": 0.0,
+        "state-chunk-irregular": 0.0,
+        "state-chunk-one": 0.0,
+        "state-chunk-whole": 0.0,
+        "steady-causal-tone": 4.7611033327378104e-14,
+        "steady-zero-phase-tone": 4.7692109262908826e-14
+      },
+      "status": "pass"
+    }
+  ],
+  "elapsed_seconds": 2.6413039060025767,
+  "environment": {
+    "fft": {
+      "backend": "numpy",
+      "use": "polyphase output peak-frequency diagnostic only"
+    },
+    "implementation": "CPython",
+    "logical_cpus": 4,
+    "machine": "x86_64",
+    "os": "macOS-14.8.9-x86_64-i386-64bit",
+    "packages": {
+      "MeasureLab": "0.9.0",
+      "PyQt6": "6.11.0",
+      "PyQt6-Qt6": "6.11.2",
+      "PyQt6_sip": "13.12.0",
+      "PyWavelets": "1.10.0",
+      "Pygments": "2.21.0",
+      "ast_serialize": "0.11.2",
+      "certifi": "2026.7.22",
+      "cffi": "2.1.1",
+      "cftime": "1.6.6",
+      "charset-normalizer": "3.5.1",
+      "colorama": "0.4.6",
+      "hypothesis": "6.168.3",
+      "idna": "3.20",
+      "iniconfig": "2.3.0",
+      "librt": "0.16.0",
+      "mypy": "2.3.1",
+      "mypy_extensions": "1.1.0",
+      "netCDF4": "1.7.4",
+      "numpy": "2.2.6",
+      "packaging": "26.3",
+      "pathspec": "1.1.1",
+      "pip": "26.2.1",
+      "pluggy": "1.6.0",
+      "pyFFTW": "0.15.1",
+      "pycparser": "3.0",
+      "pyqtgraph": "0.14.0",
+      "pytest": "9.1.1",
+      "pytest-json-report": "1.5.0",
+      "pytest-metadata": "3.1.1",
+      "pytest-qt": "4.5.0",
+      "requests": "2.34.2",
+      "ruff": "0.16.8",
+      "scipy": "1.18.1",
+      "sortedcontainers": "2.4.0",
+      "sounddevice": "0.5.6",
+      "soundfile": "0.14.0",
+      "typing_extensions": "4.16.0",
+      "urllib3": "2.8.0"
+    },
+    "processor": "i386",
+    "python": "3.12.14"
+  },
+  "generator_sha256": {
+    "scripts/migration_core_cases.py": "5c72b9dac827e2a03d3d5f8115b73f55b778cbe4b1fa11277b3b48b7ea381d62",
+    "scripts/migration_core_oracle.py": "4e8b4832be85072bcbd0ec8fdf1ec8fb7110888676a64904d6cbe92f4bb11ba9",
+    "scripts/migration_core_reference.py": "ec131b04aa36df9dfccf1e1c71c30d880796b3aa79c23db6e6c5934860778bb7",
+    "scripts/migration_fft_oracle.py": "c415bc4be21947a59fb35b2a32215b0fba58183f2d1a1d3022984ceef73c1ce7",
+    "scripts/migration_fft_reference.py": "8f9a34746f3290fb5bda9e62022a685dc91d294155ce33f4b004edaf80377379",
+    "scripts/migration_filter_cases.py": "c5e6e458b887f5dbd52c781913223c6244507d74335c87ac4a14ef51de42af45",
+    "scripts/migration_filter_oracle.py": "15bad254f47225e2959f9b0a152d2b317b8b04ddf2e7ce9cf8717df7be67ed39",
+    "scripts/migration_filter_reference.py": "89befdf29f9bc51e7b38d01f1271ed75e477028c739baa34aa226a71ba91d691"
+  },
+  "limitations": [
+    "FIR streaming and validity are new-contract oracles; no candidate core or shared graph",
+    "Legacy AudioCalc.resample and lowpass_filter operate on complete arrays, not streams",
+    "Causal SOS uses scipy.signal.sosfilt with product coefficients, not a legacy streaming API",
+    "No IIR gap recovery contract, other filters/rates, physical I/O, GUI or other OS validation",
+    "Timing and RSS cover verification, not a protocol-compliant performance benchmark"
+  ],
+  "manifest_sha256": "134dbba8301d52e585e0cb15abb550da6713c44c36a782df8bd299d0dfba1599",
+  "mode": "pinned-reference",
+  "process_peak_rss_bytes": 106176512,
+  "rate_cases": [
+    {
+      "contract": "invalid_rate",
+      "legacy": "same_object",
+      "rates": [
+        0,
+        48000
+      ]
+    },
+    {
+      "contract": "invalid_rate",
+      "legacy": "same_object",
+      "rates": [
+        -1,
+        48000
+      ]
+    },
+    {
+      "contract": "invalid_rate",
+      "legacy": "same_object",
+      "rates": [
+        48000,
+        0
+      ]
+    },
+    {
+      "contract": "invalid_rate",
+      "legacy": "same_object",
+      "rates": [
+        48000,
+        -1
+      ]
+    },
+    {
+      "contract": "invalid_rate",
+      "legacy": "same_object",
+      "rates": [
+        0,
+        0
+      ]
+    },
+    {
+      "contract": "valid_rate_pair",
+      "legacy": "same_object",
+      "rates": [
+        48000,
+        48000
+      ]
+    }
+  ],
+  "status": "pass"
+}

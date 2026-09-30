@@ -22,7 +22,7 @@
 | --- | --- | --- | --- | --- | --- |
 | 003-A | GUIなしの参照runner、manifest/hash、理論付きFFT/窓/RMS/endpoint | 002、P04/P05。migration fixtureとscripts/testsだけ、現行DSPは変更しない | AC01/04。基準source hash、同じ入力で再生成/再検査、破損hash・違う版・shapeを拒否。現行値と理論値と既知差を別保存 | 候補Rust実装、製品FFT修正 | 完了（2026-09-30、参照側20ケース） |
 | 003-B | 仮想4/8ch、route、trigger/history、gap/世代、校正/保存metadataのoracle | 003-A、P02/P03/P13/P14。core.mdの意味をfixtureへ | AC02/03/08/09/11/12。厳密なID/位置/reasonと独立した手計算例。Python旧engineにない能力は新契約oracleと明記 | 物理I/O、共有graph本体 | 完了（2026-09-30、4 FFT・27契約例・4保存例。実バッファは006-C） |
-| 003-C | 最小FIR/rate写像、現行polyphase/代表SOS参照 | 003-A、P06。数値契約と係数・初期条件固定 | AC10/14。理論有限和、impulse、DC、tone、gap、chunk分割一致。旧版のinvalid rate挙動を別記録 | 製品用resampler選定、全rate構成 | 未着手 |
+| 003-C | 最小FIR/rate写像、現行polyphase/代表SOS参照 | 003-A、P06。数値契約と係数・初期条件固定 | AC10/14。理論有限和、impulse、DC、tone、gap、chunk分割一致。旧版のinvalid rate挙動を別記録 | 製品用resampler選定、全rate構成 | 完了（2026-09-30、21数値ケース・6 rate境界。参照側のみ） |
 | 004-A | Qt SDKを分離導入・版固定し、CXX-Qt/Qt Bridgeで同じ小画面 | 002-C/D。native内の薄いQt境界。導入前に現在の公式要件を確認 | Start/Stop、worker通知、list model、再生成/破棄、遅い通知、AC07/13。両方式の実行物と差分表 | 本格採用、41画面 | 未着手・SDK未導入 |
 | 004-B | 上記のbuild/QML編集/packageと対象OS起動比較 | 004-A。同一workload/依存組合せとbenchmark記録 | AC16と性能protocol。Intel/ARM/Windows/Linuxの実行済み・未実行を分離 | 未所有環境の成功扱い、安定版配布 | 未着手 |
 | 005-A | N-channel buffer/route/tap、backend共通境界 | 003-A/B。P02/P03。PortAudio基準とCPAL比較 | AC01〜03/09/11。4/8ch・非対称I/O・明示mapping・queue overflow。Rust追加時は独立CI追加 | network多ch拡張、全機器 | 未着手 |
@@ -64,6 +64,21 @@ AC01の4/8ch参照fixtureは003-Bで作成済み。候補実装のAC01/04合格�
 ./.venv/bin/pytest -q tests/logic_verification/test_migration_core_reference.py
 ```
 
-次は003-Cの最小FIR/rate写像、現行polyphase/代表SOS参照へ進む。
 003-Bの履歴oracleは区間の可用性まで。005/006では実際の候補coreへ同じ入力を通し、
 波形snapshotの保持・所有権・購読を追加検証する。
+
+## 003-Cの再検査
+
+[fixture仕様](fixtures/filter-v1.md)と[決定0004](decisions/0004-filter-rate-reference.md)を参照。
+FIRは新契約モデル、polyphase/SOSは現行参照と独立有限和・差分方程式を区別する。
+同じ入力・係数・初期条件・端点を固定し、通常verifyは期待値を書き換えない。
+
+```bash
+./.venv/bin/python scripts/migration_filter_reference.py verify
+./.venv/bin/pytest -q tests/logic_verification/test_migration_filter_reference.py
+```
+
+003-A/B/Cの保存入力・期待値と再現検査が揃い、MIG-003は参照側として完了。
+次は004-AのQt開発SDKの分離導入・版固定と、CXX-Qt/Qt Bridgeの比較。
+005-A、006-Aも参照側の依存が揃った。候補実装の開始時はRust CI追加と同じfixtureの比較を行う。
+MIG-006-Dでは一括APIをchunkごとに再起動せず、state/phase/validityをgraph内で保持する。
