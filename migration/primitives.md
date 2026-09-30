@@ -191,6 +191,7 @@ event・統計・stereo指標
 | validity・精度・共有条件 | f64。未校正でもFSは保持、絶対単位は無効。profileや補正位置が変われば結果を分岐。過去結果を書換えない |
 | 現行の入口 | [source](../src/core/calibration.py) |
 | 参照検証 | [test](../tests/logic_verification/core/test_calibration_alignment.py) |
+| 候補検証 | 006-Eの[ID校正/result](../native/result-candidate.md)。基本V/FS/補正軸と不変snapshot、SPL/mapは後続 |
 
 ## P14
 
@@ -205,6 +206,7 @@ file・保存・来歴
 | validity・精度・共有条件 | f64値を保持し表示間引きを保存しない。非有限値とvalidityを明示。同じdataでも保存要求の寿命は独立 |
 | 現行の入口 | [source](../src/core/export/trace.py) |
 | 参照検証 | [test](../tests/core/export/test_json_exporter.py) |
+| 候補検証 | 006-Eの[実験用JSON/CSV](../native/result-candidate.md)。元精度/来歴/null/reasonとno-clobber保存、製品互換/async/cancelは後続 |
 
 ## P15
 

@@ -11,6 +11,7 @@ static NEXT_GRAPH: AtomicU64 = AtomicU64::new(1);
 pub const TRANSFORM_REVISION: &str = "realfft-3.5.0-x-over-n-v1";
 pub mod filter;
 pub mod history;
+pub mod result;
 pub mod time;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]

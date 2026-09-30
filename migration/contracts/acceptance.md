@@ -14,6 +14,10 @@ AC05/06とAC07のnode/cache/in-flight寿命まで。実音声・QML画面・保�
 006-Cで[実履歴とTimebase/世代境界](../decisions/0011-history-timebase-graph.md)をpure共有graphへ接続した。
 AC08/09の保存13契約と4/8ch入力4件、graph Rust27テストが合格。実取得/外部clock/Qtは後続。
 
+006-Eで[不変resultと基本校正/保存](../decisions/0013-result-calibration-exchange.md)を追加した。
+AC12は保存2校正契約/4交換例、4/8ch f32/f64の共有FFT、完全再読込と保存失敗のpure境界まで。
+現行製品importer、実取得/Qt/非同期保存/cancel、校正map/実deviceは後続。
+
 ## fixtureの最小セット
 
 | ID | 入力・操作 | 合格条件 | 実装・検証タスク |
