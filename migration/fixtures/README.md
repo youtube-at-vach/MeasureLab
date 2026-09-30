@@ -41,7 +41,10 @@ NumPyへの暗黙fallbackは拒否する。性能protocolの4 threadとは用途
 | --- | --- | --- |
 | [小規模manifest](fft-v1/manifest.json)と同ディレクトリ | 14件。AC01の2ch×矩形/Hann×f64/f32、DC/Nyquist/impulse/無音×矩形/Hann、A=0.25 tone、奇数4095の最終bin | 全入力と理論/現行配列、約6 MiB |
 | [拡張manifest](fft-extended-v1.manifest.json) | 6件。N=24000/48000/4194304×矩形/Hann、A=0.25・k=37 | 生成式と全配列hash/shape、代表スカラー/誤差。約651 MiBの配列は`.migration-local/fft-extended-v1/` |
-| [小規模run](runs/2026-09-30-intel-small.json)・[拡張run](runs/2026-09-30-intel-extended.json) | 同じ固定環境で保存bytesから再検査、20件成功 | 実行環境、manifest hash、各誤差、既知差、検査全体の時間/プロセスpeak RSS |
+| ローカルrun: `runs/2026-09-30-intel-small.json`・`runs/2026-09-30-intel-extended.json` | 同じ固定環境で保存bytesから再検査、20件成功 | 実行環境、manifest hash、各誤差、既知差、検査全体の時間/プロセスpeak RSS |
+
+詳細run JSONはGit管理外のローカル記録。Gitには以下の要約と再実行手順、固定fixtureを保持する。
+保存方針は[性能protocol](../benchmarks/protocol.md#保存する結果)を参照。
 
 小規模runは1.388秒・peak RSS約99.4 MiB、拡張runは8.724秒・約1054.1 MiB。
 ファイル読込・理論生成・参照計算・比較を含む単発の診断値で、FFT単体やsteady-stateの性能ではない。

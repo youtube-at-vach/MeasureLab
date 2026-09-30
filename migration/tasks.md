@@ -115,7 +115,8 @@ clean 3回、no-op warmup1回+5回、QML編集5回、package3回を方式ごと�
 `--smoke`は診断用で、性能protocolの完了にしない。
 ローカルZIP展開起動、クリーンOS/配布、他OS/CPUを別扱いにする。
 005-A/006-Aは残るOS検証を待たずに進められるが、004-Bの不足をその合格に置き換えない。
-[比較記録](decisions/0006-qt-iteration-local-bundles.md)と[全sample](benchmarks/results/2026-09-30-004-b-intel.json)を参照。
+[比較記録](decisions/0006-qt-iteration-local-bundles.md)に条件・結果・限界を要約している。
+全sampleはローカルの`benchmarks/results/2026-09-30-004-b-intel.json`へ保持し、Git管理外に置く。
 
 ## 006-Aの再検査
 

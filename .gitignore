@@ -41,8 +41,13 @@ env/
 /native/**/.qmlls.ini
 /native/**/.qmlls.user.ini
 
-# Raw benchmark logs are local; keep reports and immutable fixtures versioned
-/migration/benchmarks/results/*-logs/
+# Full evaluation reports and raw logs remain local; fixed fixtures stay versioned
+/migration/benchmarks/results/
+/migration/fixtures/runs/
+/migration/qt/*.json
+# Keep concise SDK acquisition provenance and CI failure summaries
+!/migration/qt/*-sdk.json
+!/migration/qt/*-ci.json
 
 # VSCode settings
 #.vscode/

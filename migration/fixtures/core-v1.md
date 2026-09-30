@@ -28,7 +28,8 @@ AC01の4/8chは現行FFT関数をchannelごとに呼ぶ参照まで。
 
 ## 結果
 
-[固定環境の実行report](runs/2026-09-30-intel-core.json)に環境・hash・誤差を記録。
+固定環境の詳細reportはローカルの`runs/2026-09-30-intel-core.json`に環境・hash・誤差を記録。
+詳細reportはGit管理外。Gitには固定fixtureと以下の結果要約・再検査手順を保持する。
 4 FFT・27契約例・4保存例すべて成功。f64の最大`X/N`複素誤差は約`1.56e-14`、f32は約`7.25e-9`。
 bin・phase・peak/RMS・PSD積分・inverseも既存の契約許容差内。
 新規Pytestは70件成功。別ディレクトリへの再生成でもmanifestを含む全82ファイルのbytesが一致した。

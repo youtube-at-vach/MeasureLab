@@ -67,14 +67,14 @@ f32の保存参照はN=4096の2/4/8chで、f32拡張/endpoint全構成は今回�
 
 | 最終確認 | 結果 |
 | --- | --- |
-| 候補数値比較 | [report](fixtures/runs/2026-09-30-intel-candidate-fft.json)。小規模14/4・8ch 4/拡張6件すべて理論・現行の両方へ合格 |
-| コア編集反復 | [report](benchmarks/results/2026-09-30-006-a-intel.json)。5回すべてRust5テストと24比較成功、DSP再コンパイルを確認 |
+| 候補数値比較 | ローカルreport: `fixtures/runs/2026-09-30-intel-candidate-fft.json`。小規模14/4・8ch 4/拡張6件すべて理論・現行の両方へ合格 |
+| コア編集反復 | ローカルreport: `benchmarks/results/2026-09-30-006-a-intel.json`。5回すべてRust5テストと24比較成功、DSP再コンパイルを確認 |
 | 編集時間 | 26.093/24.544/24.770/24.493/24.453秒。中央値24.544、min/max 24.453/26.093、母標準偏差0.621秒。絶対30秒目安内 |
 | report/log整合 | 採用反復の161コマンド、単独数値24/最小環境18を含む205コマンドのgzip/hash/終了コード0を確認 |
-| 最小Python環境 | [NumPy+pipのみのreport](fixtures/runs/2026-09-30-intel-candidate-minimal.json)。portable数値比較18件成功。Qt/FFTW/音声依存なし |
+| 最小Python環境 | ローカルreport: `fixtures/runs/2026-09-30-intel-candidate-minimal.json`。NumPy+pipのみでportable数値比較18件成功。Qt/FFTW/音声依存なし |
 | Rust build/fmt/Clippy | workspaceで成功。既存CXX-Qtの空init archive/重複rpathのlink警告は残る。ソースlint警告なし |
 | Rust test | DSP5件、模擬worker5件、合計10 passed |
-| Qt境界回帰 | [report](qt/2026-09-30-intel-006-a-regression.json)。新lockで両方式の共通QML寿命検査各1回成功 |
+| Qt境界回帰 | ローカルreport: `qt/2026-09-30-intel-006-a-regression.json`。新lockで両方式の共通QML寿命検査各1回成功 |
 | Python対象回帰 | 216 passed、2 skipped（33.48秒）。新runner/反復/異常系25件を含む。skipは既存の奇数長Nyquistの該当しない組合せ |
 | 保存fixture verify | FFT小規模14/拡張6、core 4 FFT/27契約/4保存、filter 21数値/6 rate境界すべて成功。入力・期待値の変更なし |
 | 起動分離 | 参照設定とRust1.98.1を確認。Python offline/offscreen self-test成功、終了コード0。従来のlocale/font警告のみ |
@@ -83,7 +83,7 @@ f32の保存参照はN=4096の2/4/8chで、f32拡張/endpoint全構成は今回�
 | Markdown lint・台帳・diff | 成功、182 Markdownファイル、41モジュールの双方向対応、変更文書のローカルリンク、`git diff --check`を確認 |
 | main同期 | 終了時fetch後もorigin/mainは`9fd79958`。取込み・参照更新不要 |
 
-初回の編集反復は他のbuild/testと重なったので[診断run](benchmarks/results/2026-09-30-006-a-development.json)へ分離し、
+初回の編集反復は他のbuild/testと重なったのでローカルの`benchmarks/results/2026-09-30-006-a-development.json`へ分離し、
 採用run中は他のagent build/testを止めた。電源状態・他アプリ負荷の時系列は未記録。
 実装中のコンパイル失敗1回とClippy失敗2回は[決定0007](decisions/0007-pure-fft-candidate.md)へ記録した。
 単独数値比較全体33.095秒/Python親peak RSS 473,767,936 bytesは診断値で、Rust FFT単体の性能値ではない。
@@ -110,13 +110,13 @@ Python同等編集、GUIへの波及、release/10分連続、Rust子RSS、物理
 - [反復runner](../scripts/migration_qt_iteration.py)を追加。通信なし、CPU並列数4、debug、同じQML/worker/lock。
   方式別targetを完全削除するclean 3回、no-op warmup1回+5回、固定QML編集5回、package3回。
 - 元のsourceと既存targetを使わず、専用コピーで測定。QML変更は毎回同じbytesへ復帰する。
-  [report](benchmarks/results/2026-09-30-004-b-intel.json)に32 sampleとwarmup2回、全commandの圧縮log/hashを保存。
+  ローカルの`benchmarks/results/2026-09-30-004-b-intel.json`に32 sampleとwarmup2回、全commandの圧縮log/hashを保存。
 - bundle内のQML読み込みを追加。ad-hoc署名、ZIP化、再配置後にSDK環境変数・開発PATHを外して起動。
   読み込んだQMLとQt library/pluginの実パスがbundle内であることを要求する。
-- [補助検査](qt/2026-09-30-intel-bundle.json): Cocoaでも両方式の寿命検査と展開後の署名検査に成功。
+- ローカル補助検査report（`qt/2026-09-30-intel-bundle.json`）: Cocoaでも両方式の寿命検査と展開後の署名検査に成功。
   QMLを外すと両方式ともexit 101で拒否し、開発checkoutへfallbackしない。検査後は復元した。
 - [決定0006](decisions/0006-qt-iteration-local-bundles.md)と[再実行手順](../native/qt-iteration.md)を追加。
-  [試行失敗4件](benchmarks/results/2026-09-30-004-b-development.json)も本測定と分けて保存した。
+  試行失敗4件もローカルの`benchmarks/results/2026-09-30-004-b-development.json`へ本測定と分けて保存した。
 - 004-Aの[GitHub CI](https://github.com/youtube-at-vach/MeasureLab/actions/runs/36671211283)はpure core成功、
   Qt境界はICU 73不足でbuild失敗、QML試験skipだった。[根拠](qt/2026-09-30-linux-ci.json)を保存し、
   Linux専用ICU archiveと環境を空にしたqmakeの事前検査を追加。修正後のCIは未実行。
@@ -196,7 +196,7 @@ AC07の実graph所有権、AC13の実音声回収、AC16全体の合格や技術
 | Native CI定義 | YAMLの構文と2 jobをローカル確認。GitHub上の実行は未確認 |
 | main差分 | fetch後もorigin/mainは`9fd79958`。参照更新・マージ不要 |
 
-[実行report](qt/2026-09-30-intel-probe.json)に同じQML、ソース/lock/実行物のhash、環境と各runを保存。
+ローカルの`qt/2026-09-30-intel-probe.json`に同じQML、ソース/lock/実行物のhash、環境と各runを保存。
 各self-testの時間は診断値で、004-Bの性能protocolによる反復build・実行性能の比較ではない。
 MIG-004-Aの完了は、このIntel hostでSDK・両実行物・基本GUI境界が揃った範囲に限定する。
 
@@ -248,7 +248,7 @@ statusの前回記録には003-Bが未コミットとあったが、開始時に
 | Markdown lint・台帳・diff | 成功。176 Markdownファイル、台帳41件/20プリミティブ、変更文書のリンクと`git diff --check`も成功 |
 | main差分 | fetch後もorigin/mainは`9fd79958`。参照更新・マージ不要 |
 
-[実行report](fixtures/runs/2026-09-30-intel-filter.json)へ時間・process peak RSS・各誤差を保存。
+ローカルの`fixtures/runs/2026-09-30-intel-filter.json`へ時間・process peak RSS・各誤差を保存。
 検査全体約2.64秒、RSS 106,176,512 bytesは単発の診断値で、並行Pytestの影響もある。
 性能protocolに沿う比較結果ではない。
 
@@ -304,7 +304,7 @@ npx markdownlint-cli2 "**/*.md" "#node_modules"
 | Markdown lint・台帳・diff | 成功。174 Markdownファイル、台帳41件/20プリミティブ。`git diff --check`も成功 |
 | main差分 | fetch後もorigin/mainは`9fd79958`。参照更新・マージ不要 |
 
-[実行report](fixtures/runs/2026-09-30-intel-core.json)に時間・process peak RSS・誤差を保存。
+ローカルの`fixtures/runs/2026-09-30-intel-core.json`に時間・process peak RSS・誤差を保存。
 単発の全検査の診断値であり、性能protocolによる新旧比較ではない。
 全体Pytest/Mypy/翻訳/UIサイズとGitHub CIは未実施。製品UI・翻訳の変更やPR作成は行っていない。
 003-C、候補core、物理I/O、Qt、他OS、実バッファ/共有graph、製品保存互換は未完了。

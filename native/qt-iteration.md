@@ -18,8 +18,9 @@ runnerが環境を設定するので、004-AのSDK環境変数を事前にexport
 `--smoke`は各経路1回の診断用。protocol完了・予算判定には使わない。
 reportと対応する`<report名>-logs/`へ、終了コード、単調clockの時間、ready観測時刻、
 全コマンドのgzip圧縮log/hash、全sampleと中央値/min/max/標準偏差を保存する。
-Gitには結果JSONを記録し、対応する`<report名>-logs/`はローカル生成物として除外する。
-report内のlog相対パスとhashはローカルログの照合用で、別checkoutにはログを別途移す。
+結果JSONと対応する`<report名>-logs/`はローカル生成物としてGit管理外に置く。
+Gitには[比較記録](../migration/decisions/0006-qt-iteration-local-bundles.md)へ条件・結果・限界を残す。
+report内のlog相対パスとhashはローカルログの照合用で、別checkoutにはreportとログを別途移す。
 失敗sampleを除外した集計や、自動再試行による上書きはしない。
 ログの`<repo>`・`<scratch>`・`<home>`は絶対パスの置換で、コマンドの引数自体は変更しない。
 

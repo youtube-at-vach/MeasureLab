@@ -29,8 +29,9 @@ allocationと同期処理を行う解析worker用で、callbackへ移さない�
 
 ## 確認結果
 
-[全24ケースのreport](../fixtures/runs/2026-09-30-intel-candidate-fft.json)に、
+ローカルの全24ケースreport（`../fixtures/runs/2026-09-30-intel-candidate-fft.json`）に、
 入力/manifest、source/lock/実行物のhash、全コマンドのgzip log、環境と誤差を保存した。
+詳細reportはGit管理外とし、Gitにはこの文書の条件・結果・限界と再実行手順を残す。
 手順は[native FFT](../../native/fft-candidate.md)。
 
 | 対象 | 実行範囲 |
@@ -47,11 +48,11 @@ allocationと同期処理を行う解析worker用で、callbackへ移さない�
 全24件は理論/現行の両方へ合格。f64の最大正規化FFT差は約1.33e-13、
 f32は約8.35e-9、inverse最大差は約5.83e-16 / 1.04e-7。
 phase最大差は約1.84e-9 / 5.26e-8 rad。すべて開始時の許容差内。
-[最小Python環境のreport](../fixtures/runs/2026-09-30-intel-candidate-minimal.json)は
+ローカルの最小Python環境report（`../fixtures/runs/2026-09-30-intel-candidate-minimal.json`）は
 NumPyとpipのみでportable比較18件に成功。LinuxでのGitHub実行は未確認。
 Cargo workspaceのbuild/fmt/Clippyと、DSP5件・模擬worker5件のRustテストも成功。
 Cargo.lockは新規9依存とDSPクレートの追加だけで、既存依存版は変更していない。
-[既存Qtの回帰report](../qt/2026-09-30-intel-006-a-regression.json)は両方式の寿命検査各1回に成功。
+ローカルのQt回帰report（`../qt/2026-09-30-intel-006-a-regression.json`）は両方式の寿命検査各1回に成功。
 既存CXX-Qtの空init archive/重複rpathのlink警告は残る。ソースlint警告はない。
 
 ## 開発反復の扱い
@@ -67,14 +68,14 @@ patch作成は単一の編集操作だが、独立した作成時間は計測し
 実装中は`ToPrimitive`の不足でコンパイル1回、Clippyのiterator指摘で2回失敗し、修正した。
 これらは検証待ち時間へ混ぜず、開発上の修正として記録する。
 
-[採用run](../benchmarks/results/2026-09-30-006-a-intel.json)の5値は
+ローカルの採用run（`../benchmarks/results/2026-09-30-006-a-intel.json`）の5値は
 26.093 / 24.544 / 24.770 / 24.493 / 24.453秒。
 中央値24.544秒、min/max 24.453 / 26.093秒、母標準偏差0.621秒。
 5回ともDSPを再コンパイルし、Rust5テストと24ケース比較が成功した。
 warmupとbase復帰を含む161コマンドlogのgzip/hashと終了コード0を確認した。
 絶対30秒の目安内だが、Python同等修正との速度比やAC16全体の合格には数えない。
 他アプリの負荷・電源状態の時系列は未記録。
-[並行作業と重なった診断run](../benchmarks/results/2026-09-30-006-a-development.json)も保持する。
+並行作業と重なった診断runもローカルの`../benchmarks/results/2026-09-30-006-a-development.json`へ保持する。
 
 ## 残る範囲
 

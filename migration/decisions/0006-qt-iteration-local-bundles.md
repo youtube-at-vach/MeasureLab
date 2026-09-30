@@ -17,7 +17,9 @@ offscreen/software/Basic、英語560×360 px、Qt scale factor 1。
 `MACOSX_DEPLOYMENT_TARGET=13.0`を明示し、実行物の`minos 13.0 / sdk 15.2`も確認した。
 macOS 13での起動確認ではない。
 
-[全sample・集計・source/hash・コマンドログ](../benchmarks/results/2026-09-30-004-b-intel.json)を保存した。
+全sample・集計・source/hash・コマンドログをローカルの
+`../benchmarks/results/2026-09-30-004-b-intel.json`へ保存した。
+詳細reportとログはGit管理外とし、Gitにはこの文書の条件・結果・限界と再実行手順を残す。
 clean各3回、no-op各warmup1回+5回、QML編集各5回、package各3回。
 warmupを除いた32 sampleはすべて合格し、warmup2回も寿命検査を通った。
 ログはgzip圧縮し、reportから相対パスとhashで参照する。
@@ -33,6 +35,15 @@ warmupを除いた32 sampleはすべて合格し、warmup2回も寿命検査を�
 | no-op + core/UI検査 | 2.470秒、2.440〜2.513秒 | 2.646秒、2.578〜2.894秒 | 回数・状態/寿命検査合格。専用の時間予算なし |
 | QML編集 + UI検査 | 2.063秒、2.035〜2.093秒 | 2.241秒、2.215〜2.341秒 | 両方式とも10秒以内 |
 | package + 展開/UI検査 | 56.903秒、56.807〜75.745秒 | 59.842秒、58.845〜101.453秒 | 両方式とも900秒以内。クリーンOSは未確認 |
+
+各経路の主時間は次の全sampleを測定順に保存する（秒、小数3桁に丸め、warmupを除く）。
+
+| 経路 | CXX-Qt 全sample | Qt Bridge 全sample |
+| --- | --- | --- |
+| clean | 221.795 / 224.705 / 221.259 | 258.154 / 258.282 / 254.057 |
+| no-op | 2.513 / 2.440 / 2.478 / 2.470 / 2.458 | 2.658 / 2.646 / 2.578 / 2.619 / 2.894 |
+| QML編集 | 2.093 / 2.086 / 2.063 / 2.063 / 2.035 | 2.234 / 2.215 / 2.261 / 2.241 / 2.341 |
+| package | 56.807 / 56.903 / 75.745 | 59.842 / 58.845 / 101.453 |
 
 QMLの固定変更は表示labelだけ。各回元のbytesへ戻し、10回すべてCargoのFresh/no compileを要求した。
 外部QMLを読む設計なので、Rust codegen/resource/relinkは発生しない。
@@ -56,7 +67,7 @@ SDKの環境変数・開発用PATHを外し、専用HOME/cacheで起動する。
 QML実パスと実際にロードされたQt library/pluginがすべて展開bundle内にあることを要求した。
 ZIPはCXX-Qt約44.47 MiB、Qt Bridge約45.17 MiB。配布・downloadは行っていない。
 
-[補助検査](../qt/2026-09-30-intel-bundle.json)で、Cocoa/softwareでの寿命検査と
+ローカルの補助検査report（`../qt/2026-09-30-intel-bundle.json`）で、Cocoa/softwareでの寿命検査と
 展開後の`codesign --verify --deep --strict`も両方式で成功した。
 bundleのQMLを一時的に外すと両方式ともexit 101となり、readyへ進まない。検査後は復元した。
 英語canvasの画像を確認し、両方式のPNG bytesは一致した。画像は`.migration-local/`に保存する。
@@ -64,7 +75,8 @@ bundleのQMLを一時的に外すと両方式ともexit 101となり、readyへ�
 
 ## 開発中の失敗とLinux CI
 
-[試行失敗の記録](../benchmarks/results/2026-09-30-004-b-development.json)と圧縮ログを別保存した。
+試行の事前検査失敗4件と修正4回を、ローカルの
+`../benchmarks/results/2026-09-30-004-b-development.json`と圧縮ログへ別保存した。
 locale警告をSDK版へ混ぜた検査誤り、offscreen/不要SQL plugin、system libraryの誤分類、
 Qt Bridgeのbundle framework検索/署名エラーを修正した。
 これらを本測定の成功sampleで上書きせず、試行の時間を予算判定にも混ぜない。

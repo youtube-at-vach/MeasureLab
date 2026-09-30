@@ -54,6 +54,8 @@ Qt SDKを用意する必要はない。
 別OS/依存環境は`--portable`を明示する。source/hash/shape/数値条件は緩めない。
 reportは新規ファイルかつfixture外に限る。コマンドlog/gzip/hash、lock/source/実行物hash、
 環境、各誤差、旧表示の既知差を保存する。
+詳細reportはローカル生成物としてGit管理外に置き、Gitには
+[決定0007](../migration/decisions/0007-pure-fft-candidate.md)へ条件・誤差・判定・限界を要約する。
 時間/RSSはファイル比較全体の診断値で、FFT throughputやsteady-state性能ではない。
 RSSはPython親processのみで、Rust子processのpeak RSSは未計測。
 

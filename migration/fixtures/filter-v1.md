@@ -73,7 +73,8 @@ cosineは両端1024 framesを明示して除き、因果処理の振幅/位相�
 
 ## 結果と既知差
 
-[固定環境の実行report](runs/2026-09-30-intel-filter.json)に全ケースの誤差と診断値を保存。
+固定環境の詳細reportはローカルの`runs/2026-09-30-intel-filter.json`に全ケースの誤差と診断値を保存。
+詳細reportはGit管理外。Gitには固定fixtureと以下の結果要約・再検査手順を保持する。
 Python 3.12.14、NumPy 2.2.6、SciPy 1.18.1、macOS Intel。
 最大差はFIR約2.78e-17、polyphase約1.11e-16、SOS約4.77e-14で契約内。
 1秒/1 kHzのpolyphaseではRMS差の最大は約0.000175 FS、peak周波数は全chで1000 Hz。

@@ -61,7 +61,14 @@ AIによる修正ではpatch作成に要した時間、compiler/test失敗数、
 
 ## 保存する結果
 
-`migration/benchmarks/results/<日付>-<task>-<host>.json`に以下を記録する（MIG-004以降に作成）。
+`.migration-local/benchmarks/<日付>-<task>-<host>.json`に以下を記録する（MIG-004以降に作成）。
+全ケース・全sampleの詳細JSONとraw logは実行生成物としてGit管理外に置く。
+既存の`migration/benchmarks/results/`、`migration/fixtures/runs/`とQt実行reportも同じ扱いとする。
+文書中のローカルreportパスは保存場所の記録で、別checkoutへの配布は別途行う。
+
+Gitには測定条件、主時間の全sampleと集計、最大数値誤差、判定・限界、再実行手順を
+`migration/decisions/`や`migration/status.md`へ要約して残す。
+固定fixtureの入力・期待値・manifestと、短いSDK取得・CI失敗の記録は保持する。
 
 ```json
 {
@@ -81,4 +88,4 @@ AIによる修正ではpatch作成に要した時間、compiler/test失敗数、
 ```
 
 各runに開始/終了条件、duration、exit code、metrics、失敗理由を付ける。空のひな形を測定結果として登録しない。
-raw logは必要な範囲を添付し、集計値だけで最良runを選ばない。ハードウェア識別に不要な個人情報は保存しない。
+raw logはローカルreportと併せて保持し、集計値だけで最良runを選ばない。ハードウェア識別に不要な個人情報は保存しない。

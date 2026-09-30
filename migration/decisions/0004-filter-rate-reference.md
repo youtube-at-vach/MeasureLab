@@ -23,7 +23,8 @@ AC10にはchunkを跨ぐ因果FIRの位相・gap・時刻が必要。
 
 ## 証拠と限界
 
-[fixture仕様と結果](../fixtures/filter-v1.md)、[実行report](../fixtures/runs/2026-09-30-intel-filter.json)を参照。
+[fixture仕様と結果](../fixtures/filter-v1.md)に要約と再実行手順を残す。
+詳細reportはローカルの`../fixtures/runs/2026-09-30-intel-filter.json`に保持し、Git管理外に置く。
 21件の数値ケースと6件のrate境界が契約内。chunk状態を保持するFIR/因果SOSは一致し、
 一括APIを独立chunkごとに再起動すると差が出ることを確認した。
 
