@@ -14,3 +14,5 @@ host = "linux"
 target = "desktop"
 arch = "linux_gcc_64"
 directory = "gcc_64"
+# The RHEL-based SDK needs ICU 73, absent from ubuntu-24.04's system ICU.
+extra_archives = ["icu"]

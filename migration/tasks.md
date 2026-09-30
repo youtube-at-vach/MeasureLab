@@ -24,7 +24,7 @@
 | 003-B | 仮想4/8ch、route、trigger/history、gap/世代、校正/保存metadataのoracle | 003-A、P02/P03/P13/P14。core.mdの意味をfixtureへ | AC02/03/08/09/11/12。厳密なID/位置/reasonと独立した手計算例。Python旧engineにない能力は新契約oracleと明記 | 物理I/O、共有graph本体 | 完了（2026-09-30、4 FFT・27契約例・4保存例。実バッファは006-C） |
 | 003-C | 最小FIR/rate写像、現行polyphase/代表SOS参照 | 003-A、P06。数値契約と係数・初期条件固定 | AC10/14。理論有限和、impulse、DC、tone、gap、chunk分割一致。旧版のinvalid rate挙動を別記録 | 製品用resampler選定、全rate構成 | 完了（2026-09-30、21数値ケース・6 rate境界。参照側のみ） |
 | 004-A | Qt SDKを分離導入・版固定し、CXX-Qt/Qt Bridgeで同じ小画面 | 002-C/D。native内の薄いQt境界。導入前に現在の公式要件を確認 | Start/Stop、worker通知、list model、再生成/破棄、遅い通知、AC07/13。両方式の実行物と差分表 | 本格採用、41画面 | 完了（2026-09-30、Intel・模擬GUI境界。AC07/13の実graph/音声部分は後続） |
-| 004-B | 上記のbuild/QML編集/packageと対象OS起動比較 | 004-A。同一workload/依存組合せとbenchmark記録 | AC16と性能protocol。Intel/ARM/Windows/Linuxの実行済み・未実行を分離 | 未所有環境の成功扱い、安定版配布 | 未着手 |
+| 004-B | 上記のbuild/QML編集/packageと対象OS起動比較 | 004-A。同一workload/依存組合せとbenchmark記録 | AC16と性能protocol。Intel/ARM/Windows/Linuxの実行済み・未実行を分離 | 未所有環境の成功扱い、安定版配布 | Intel範囲完了（2026-09-30）。その他OS/clean環境、修正後Linux CIは未確認 |
 | 005-A | N-channel buffer/route/tap、backend共通境界 | 003-A/B。P02/P03。PortAudio基準とCPAL比較 | AC01〜03/09/11。4/8ch・非対称I/O・明示mapping・queue overflow。Rust追加時は独立CI追加 | network多ch拡張、全機器 | 未着手 |
 | 005-B | 実機2ch、XRUN/再接続、排他/停止/時刻 | 005-Aと利用可能な実機。device/配線/校正を記録 | AC11/13/16、同じ配線で現行と交互測定。測定前に許容振幅差/遅延誤差を決める | 実機4/8/16ch保証 | 未着手・実機条件待ち |
 | 006-A | FFT/窓/単位/PSDを参照比較 | 003-A、P04/P05。GUI非依存core | AC01/04、f32/f64・非2冪/極大・endpoint。必須数値条件合格、core編集時間記録 | 全解析モジュール | 未着手 |
@@ -80,7 +80,8 @@ FIRは新契約モデル、polyphase/SOSは現行参照と独立有限和・差�
 
 003-A/B/Cの保存入力・期待値と再現検査が揃い、MIG-003は参照側として完了。
 004-AでQt開発SDKと両実行物を固定し、Intelで基本GUI境界を比較した。
-次は004-Bの反復build/編集/packageと対象OS起動。AC07の実graph所有権は006-B、実音声回収は005-B/008。
+004-BでIntelの反復build/編集/ローカルpackageを検証した。他OS/clean環境は未確認。
+AC07の実graph所有権は006-B、実音声回収は005-B/008。
 005-A、006-Aも参照側の依存が揃った。候補実装の開始時はRust CI追加と同じfixtureの比較を行う。
 MIG-006-Dでは一括APIをchunkごとに再起動せず、state/phase/validityをgraph内で保持する。
 
@@ -99,3 +100,19 @@ cargo +1.98.1 clippy --locked --manifest-path native/Cargo.toml --workspace --al
 ```
 
 通常runnerは保存fixtureを書き換えない。時間は短い診断試行として記録し、004-Bの性能protocolに代用しない。
+
+## 004-Bの再検査
+
+[反復測定手順](../native/qt-iteration.md)に従い、作業用コピーで固定した表示変更を繰り返す。
+runnerはRust/SDK環境を設定し、依存取得と製品sourceの変更を行わない。
+
+```bash
+./.venv/bin/python scripts/migration_qt_iteration.py --qt-prefix .tools/qt/6.11.2/macos --report .migration-local/004-b.json
+./.venv/bin/pytest -q tests/logic_verification/test_migration_qt_iteration.py tests/logic_verification/test_migration_qt_probe.py
+```
+
+clean 3回、no-op warmup1回+5回、QML編集5回、package3回を方式ごとに実行する。
+`--smoke`は診断用で、性能protocolの完了にしない。
+ローカルZIP展開起動、クリーンOS/配布、他OS/CPUを別扱いにする。
+005-A/006-Aは残るOS検証を待たずに進められるが、004-Bの不足をその合格に置き換えない。
+[比較記録](decisions/0006-qt-iteration-local-bundles.md)と[全sample](benchmarks/results/2026-09-30-004-b-intel.json)を参照。

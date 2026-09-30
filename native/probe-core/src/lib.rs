@@ -222,13 +222,32 @@ pub fn live_models() -> usize {
 
 /// Both executables load the very same file, without embedding it at compile time.
 pub fn qml_path() -> std::path::PathBuf {
-    std::env::var_os("MEASURELAB_PROBE_QML")
-        .map_or_else(
-            || std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../qml/Main.qml"),
-            std::path::PathBuf::from,
-        )
-        .canonicalize()
-        .expect("QML file must exist")
+    let path = resolve_qml_path(
+        std::env::var_os("MEASURELAB_PROBE_QML"),
+        &std::env::current_exe().expect("executable location"),
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")),
+    )
+    .canonicalize()
+    .expect("QML file must exist");
+    println!("PROBE_QML {}", path.display());
+    path
+}
+
+fn resolve_qml_path(
+    explicit: Option<std::ffi::OsString>,
+    executable: &std::path::Path,
+    development: &std::path::Path,
+) -> std::path::PathBuf {
+    if let Some(path) = explicit {
+        return path.into();
+    }
+    if let Some(directory) = executable.parent()
+        && directory.file_name().is_some_and(|name| name == "MacOS")
+    {
+        // A missing bundle resource must fail, never fall back to the developer checkout.
+        return directory.join("../Resources/Main.qml");
+    }
+    development.join("../qml/Main.qml")
 }
 
 #[cfg(test)]
@@ -236,6 +255,29 @@ mod tests {
     use super::*;
     use std::sync::mpsc;
     use std::time::Instant;
+
+    #[test]
+    fn packaged_qml_never_depends_on_the_developer_checkout() {
+        use std::path::{Path, PathBuf};
+        let development = Path::new("/developer/native/probe-core");
+        let executable = Path::new("/relocated/Evaluation.app/Contents/MacOS/probe");
+        assert_eq!(
+            resolve_qml_path(None, executable, development),
+            PathBuf::from("/relocated/Evaluation.app/Contents/MacOS/../Resources/Main.qml")
+        );
+        assert_eq!(
+            resolve_qml_path(Some("/explicit/Main.qml".into()), executable, development),
+            PathBuf::from("/explicit/Main.qml")
+        );
+        assert_eq!(
+            resolve_qml_path(
+                None,
+                Path::new("/developer/target/debug/probe"),
+                development
+            ),
+            development.join("../qml/Main.qml")
+        );
+    }
 
     fn wait_for(probe: &Probe, predicate: impl Fn(&Snapshot) -> bool) {
         let deadline = Instant::now() + Duration::from_secs(3);

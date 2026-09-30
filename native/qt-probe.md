@@ -37,6 +37,7 @@ export RUSTUP_HOME="$PWD/.tools/rustup"
 export PATH="$CARGO_HOME/bin:$PWD/.tools/build-venv/bin:$PATH"
 export QMAKE="$PWD/.tools/qt/6.11.2/macos/bin/qmake"
 export CARGO_BUILD_JOBS=4
+export MACOSX_DEPLOYMENT_TARGET=13.0
 "$QMAKE" -query QT_VERSION
 cargo +1.98.1 build --locked --manifest-path native/Cargo.toml
 cargo +1.98.1 fmt --manifest-path native/Cargo.toml --all --check
@@ -45,6 +46,7 @@ cargo +1.98.1 clippy --locked --manifest-path native/Cargo.toml --workspace --al
 ```
 
 初回のみ依存解決でCargo.lockを作る。更新は両接続方式の再検査と一緒に行う。
+004-B以降はmacOSの最小対象を明示する。SDK版を最小OS版に使う既定値を避け、両方式の条件を揃える。
 CXX本体とcxx-genの不一致はリンクエラーになるため、片方だけの更新はしない。
 Qtのheaders、`libexec/moc`、`qmltyperegistrar`、frameworksがこのSDK内に存在することを確認する。
 
@@ -82,6 +84,7 @@ native/target/debug/qtbridge-probe
 画像確認は実行物に`--snapshot <絶対パス.png>`を渡す。500 ms後にQML canvasを保存して終了する。
 この画像はwindow frameを含まず、物理モニター上の操作確認の代わりにはならない。
 生成物とSDKはGit管理外。配布用のbundleを作る手順ではない。
+004-Bの反復測定・ローカルbundle起動は[別手順](qt-iteration.md)で行う。
 
 ## 所有権と今回の境界
 
