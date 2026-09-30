@@ -1,6 +1,7 @@
 # 検証環境と再開手順
 
-MIG-001、2026-09-29。[進捗・作業場所](status.md)と[評価計画](../guide/RUST_QML_MIGRATION_PLAN.md)を参照。
+MIG-001、2026-09-29。Qt欄はMIG-004-A（2026-09-30）で更新。
+[進捗・作業場所](status.md)と[評価計画](../guide/RUST_QML_MIGRATION_PLAN.md)を参照。
 以下は検証worktreeのルートで実行する。既存mainのvenvを共有・コピーしない。
 
 ## 確認済み環境
@@ -15,12 +16,13 @@ MIG-001、2026-09-29。[進捗・作業場所](status.md)と[評価計画](../gu
 | C++ | Apple Clang 16.0.0、Command Line Tools |
 | CMake / Ninja | 4.4.3 / 1.13.2、`.tools/build-venv/`へ分離 |
 | Node.js / npm | 22.22.2 / 10.9.8（既存MacPorts環境） |
-| Qt開発用SDK | 未導入。qmake未検出、pkg-configでQt6Core未検出 |
-| CXX-Qt / Qt Bridge | 未導入・未選定。MIG-004で同じ条件により比較 |
+| Qt開発用SDK | 6.11.2、`.tools/qt/6.11.2/macos/`へ分離導入。qmake/moc/headers/private headers/frameworksを確認 |
+| CXX-Qt / Qt Bridge | 0.10.0 / 0.3.0。共通QML・模擬workerでIntelの基本境界を検証。採用は未選定 |
 
 PyQt6 wheelのQt runtimeをC++開発用SDKとして扱わない。
 Qt接続の必要条件は[CXX-Qt公式ガイド](https://kdab.github.io/cxx-qt/book/getting-started/index.html)を確認し、
-MIG-004でQt・接続ライブラリ・C++コンパイラの組合せを記録する。
+MIG-004-Aの[組合せ・起動手順](../native/qt-probe.md)と[SDK導入記録](qt/2026-09-30-intel-sdk.json)を参照。
+Apple Clang 16/Apple SDK 15.2のCommand Line Toolsで試し、full Xcodeは未導入。
 本タスクのRust固定は評価環境の出発点であり、本格採用の判断ではない。
 
 ## Python参照環境
@@ -79,6 +81,8 @@ GUIのテスト用スタブは使わず、`MEASURELAB_TESTING=0`として分離�
 導入と確認は[nativeの準備手順](../native/README.md)を参照する。
 `.tools/`にRustとCMake/Ninjaを置き、シェルの設定ファイルやOSの既定ツールを変更していない。
 新しいシェルでは環境変数の設定が必要になる。
+Qtプローブを実行するときは、その手順で開発SDKのframework/plugin/QMLパスも指定する。
+Python参照起動のコマンドへQt開発SDKの環境変数を引き継がない。
 
 ## 今回の検証を再実行
 

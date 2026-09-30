@@ -1,0 +1,16 @@
+# Open-source Qt development SDK, separate from the PyQt runtime.
+version = "6.11.2"
+aqtinstall = "3.3.0"
+archives = ["qtbase", "qtdeclarative", "qttools", "qtsvg", "qttranslations"]
+
+[mac]
+host = "mac"
+target = "desktop"
+arch = "clang_64"
+directory = "macos"
+
+[linux]
+host = "linux"
+target = "desktop"
+arch = "linux_gcc_64"
+directory = "gcc_64"

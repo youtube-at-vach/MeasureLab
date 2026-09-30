@@ -1,0 +1,16 @@
+[workspace]
+members = ["probe-core", "cxxqt-probe", "qtbridge-probe"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace.dependencies]
+cxx = "=1.0.202"
+cxx-qt = "=0.10.0"
+cxx-qt-lib = { version = "=0.10.0", features = ["qt_gui", "qt_qml"] }
+cxx-qt-build = "=0.10.0"
+qtbridge = "=0.3.0"
+probe-core = { path = "probe-core" }

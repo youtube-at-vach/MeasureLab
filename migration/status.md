@@ -1,9 +1,9 @@
 # 次期コア検証の進捗
 
 更新: 2026-09-30。計画の正本は[評価計画](../guide/RUST_QML_MIGRATION_PLAN.md)。
-Rust/QMLの採用は未決定。MIG-001、MIG-002に続き、MIG-003-A/B/Cの参照側を完了。
-最小FIR/rate写像、現行polyphase/代表SOSの21数値ケースと6 rate境界を追加した。
-次はMIG-004-AのQt開発SDK・接続方式比較。005-A/006-Aの参照依存も揃った。
+Rust/QMLの採用は未決定。MIG-003-A/B/Cの参照側に続き、MIG-004-Aの基本GUI境界を検証した。
+Qt 6.11.2の開発SDKを分離導入し、CXX-Qt 0.10.0とQt Bridge 0.3.0を同じQML・模擬workerで比較。
+次は004-Bの反復build/編集/packageと対象OS起動。005-A/006-Aの参照依存も揃っている。
 
 ## 作業場所と基準
 
@@ -11,12 +11,12 @@ Rust/QMLの採用は未決定。MIG-001、MIG-002に続き、MIG-003-A/B/Cの参
 | --- | --- |
 | 現行版 | `/Users/vach/MeasureLab`、`main` |
 | 検証用worktree | `/Users/vach/.codex/worktrees/next-core-evaluation/MeasureLab`（Codex管理） |
-| 検証用ブランチ | `codex/next-core-evaluation` |
+| 検証用ブランチ | 統合先`codex/next-core-evaluation`、今回の作業`codex/migration-004-a` |
 | 作業開始・Python参照コミット | `9fd79958`（MeasureLab 0.9.0、開始時のローカルmain） |
 | 計画書の調査コミット | `68cbdabc3ecd542d9d73fa0aa86bf9159f44d811` |
 | 最終main同期 | 2026-09-30にfetch。origin/mainは参照`9fd79958`のまま、取込み差分なし |
 | 統合担当 | 当面、この検証ブランチを担当する単一の作業者 |
-| リモート | 今回開始時のHEADとorigin/codex/next-core-evaluationはMIG-003-Bの`1cd243f2`。003-Cはローカル未コミット変更。今回のcommit・push・PR・Issue・Project更新・配布は未実施 |
+| リモート | 今回開始時のHEADはMIG-003-Cの`a8ff6dd7`、統合ブランチはremote一致・clean。そこから004-A用ローカルブランチを分岐。今回の変更は未コミット。push・PR・Issue・Project更新・配布は未実施 |
 
 調査コミットから開始時mainまでの差分には計画書、設計ガイド、Measurement Consoleのレイアウト、
 Goniometerのテーマ対応、翻訳と対応テストがある。
@@ -32,12 +32,70 @@ MIG-003-Cも既存fixtureと契約を変更せず、filter/rate参照を独立�
 | MIG-001 | 完了 | 管理されたworktree、専用Python環境、状態を分離したオフライン起動、Rust/C++ビルドツール、再開・同期手順 |
 | MIG-002 | 完了（P0文書・整合検査） | 41モジュール+共通10件、20プリミティブと双方向対応、コア/数値契約、16受け入れ条件、性能・反復予算、後続作業票 |
 | MIG-003 | 完了（A/B/Cの参照側） | FFT20+4ケース、27契約例、4保存例にfilter/rateの21数値ケースと6 rate境界を追加。候補実装でのAC合格は005/006以降 |
-| MIG-004 | 未着手 | Qt開発用SDKの導入・版固定、CXX-Qt/Qt Bridge比較、GUIと配布経路 |
+| MIG-004 | 進行中（Aの基本GUI境界を完了） | 開発SDK・両実行物を固定。Intelで状態/通知/list model/購読/破棄を検証。Bの反復時間・配布・他OSは未着手 |
 | MIG-005〜008 | 未着手 | 計画にある依存関係に従う。採用判断までの検証範囲 |
 
-`native/`にはツールチェーンの固定と準備手順のみを置いた。
-Cargo workspace、クレート、Cargo.lock、QML、音声backendは未作成。
+`native/`にツールチェーン/SDKの固定、Cargo workspace/lock、模擬workerと2方式のadapter、共通QMLを置いた。
+音声backend、測定DSP、共有Analysis Graphは未作成。
 候補実装は契約v0.1を出発点とし、公開型・ABI・採用ライブラリは後続の検証で決める。
+
+## MIG-004-Aの成果と検証
+
+着手: 2026-09-30、HEAD `a8ff6dd7`、統合ブランチの作業ツリーはclean。
+このworktree内で`codex/migration-004-a`へ分岐した。
+変更境界は`native/`、runnerと対象テスト、`migration/`、独立したRust CI。
+現行DSP/UI、003-A/B/Cの保存入力・期待値・許容差は変更していない。
+
+- [Qt SDK仕様](../native/qt-sdk.toml): 6.11.2とaqtinstall 3.3.0を固定して`.tools/qt/`へ分離導入。
+  [導入記録](qt/2026-09-30-intel-sdk.json)に配布metadata、取得した5アーカイブのhash、compiler/SDK/依存版を保存。
+- [workspace](../native/Cargo.toml)とCargo.lock: Rust 1.98.1、CXX-Qt 0.10.0、Qt Bridge 0.3.0、CXX 1.0.202。
+  初回のCXX本体/生成器の版違いによるリンク失敗を修正し、両方式をビルド・実行した。
+- [共通QML](../native/qml/Main.qml)と[模擬worker](../native/probe-core/src/lib.rs):
+  Preparing/Runningの区別、cancel/失敗/停止、重複要求、容量1の最新snapshotと通知集約、旧世代拒否。
+- 各viewと模擬保存sessionが一意のtokenを保持する。1view、両viewを閉じた後も残る需要で継続し、
+  最後の解除で停止する。異なるProbeのtokenと重複解除を拒否する。
+- [共通runner](../scripts/migration_qt_probe.py)でBackend・共有view windowの破棄/再生成と、running中の終了を検査。
+  終了コード、シナリオ完了、engine/application破棄後のworker/model数0を要求する。
+- [決定0005](decisions/0005-qt-boundary-probes.md)に両方式の差分表と境界を記録。
+  [再実行手順](../native/qt-probe.md)と[独立Rust CI](../.github/workflows/native-evaluation.yml)を追加した。
+
+| 今回の確認 | 結果 |
+| --- | --- |
+| Python参照の分離起動・self-test | 成功、終了コード0。従来と同じlocale/font警告 |
+| 保存fixtureのverify | FFT小規模14/拡張6、coreの4 FFT/27契約/4保存、filterの21数値/6 rate境界すべて成功。期待値更新なし |
+| Qt開発SDK | qmake/moc 6.11.2、headers/private headers/frameworksを確認。PyQt runtimeとは別パス |
+| Rust locked build / fmt / Clippy | 成功。CXX-Qt側に空のinit archiveと重複rpathのlink警告は残る。ソースlintの警告はなし |
+| 模擬workerのRustテスト | 4 passed。遅いconsumer、cancel/失敗/旧世代、破棄、2view/sessionと最後のtoken解除 |
+| 両方式の共通QML検査 | 各3回すべて成功。160 msのGUI停止中もproducerが進行。通知集約、list model、購読・破棄・再生成・終了を検査 |
+| QML画面の画像確認 | 英語、offscreen/software/Basic、560×360 px。両案のcanvas PNG bytes一致。画像は`.migration-local/`に保存 |
+| Python関連回帰 | 181 passed、2 skipped（31.38秒）。runnerの追加異常系を含む最終単独検査は7 passed。skipは既存の奇数長Nyquistという該当しない組合せ |
+| 現行Python UI全言語サイズ | 9言語すべて成功、`Verification Passed!`、終了コード0。新QMLの9言語評価とは別 |
+| Ruff lint / format | 成功、590 Pythonファイルのformat確認 |
+| Markdown lint・台帳・diff | 成功。178 Markdownファイル、41モジュールの双方向対応、変更文書のリンク、`git diff --check`を確認 |
+| Native CI定義 | YAMLの構文と2 jobをローカル確認。GitHub上の実行は未確認 |
+| main差分 | fetch後もorigin/mainは`9fd79958`。参照更新・マージ不要 |
+
+[実行report](qt/2026-09-30-intel-probe.json)に同じQML、ソース/lock/実行物のhash、環境と各runを保存。
+各self-testの時間は診断値で、004-Bの性能protocolによる反復build・実行性能の比較ではない。
+MIG-004-Aの完了は、このIntel hostでSDK・両実行物・基本GUI境界が揃った範囲に限定する。
+
+Qt Bridgeの公式READMEはmacOS arm64 experimentalと記載し、Intelは未掲載。
+今回はCommand Line ToolsのApple Clang 16/Apple SDK 15.2で成立したが、full Xcodeは未導入。
+他OS/CPU、配布、全言語QML、アプリ全体のwindow root再生成、全例外経路、10分連続・負荷・性能予算は未確認。
+AC07の実graph/node/cache/in-flight result所有権は006-B、AC13の実backend/device/callback回収は005-B/008で検証する。
+模擬保存sessionは需要tokenのみで、実ファイル保存やDSPの共有計算を行っていない。
+全体Pytest/Mypy/翻訳検査、GitHub CIは未実施。
+
+再実行は[004-Aの手順](../native/qt-probe.md)の環境変数を設定してから行う。
+
+```bash
+cargo +1.98.1 build --locked --manifest-path native/Cargo.toml
+cargo +1.98.1 fmt --manifest-path native/Cargo.toml --all --check
+cargo +1.98.1 test --locked --manifest-path native/Cargo.toml -p probe-core
+cargo +1.98.1 clippy --locked --manifest-path native/Cargo.toml --workspace --all-targets -- -D warnings
+./.venv/bin/python scripts/migration_qt_probe.py --qt-prefix .tools/qt/6.11.2/macos --repeat 3 --report .migration-local/qt-probe.json
+./.venv/bin/pytest -q tests/logic_verification/test_migration_qt_probe.py
+```
 
 ## MIG-003-Cの成果と検証
 
@@ -256,10 +314,12 @@ GUI起動時にlocaleのUTF-8への切替と、`Sans Serif`のフォント代替
 2. [環境手順](environment.md)に従い、参照版の起動とツールチェーンを再確認する。
 3. 台帳チェックとFFT/core/filterの各reference runnerでverifyを実行する。
    環境差は確認し、比較時だけ明示portable modeを使う。
-4. [作業票](tasks.md)の004-Aへ進む。導入前に公式要件を確認し、Qt開発SDKを分離導入・版固定する。
-   PyQtのruntimeを開発SDKとして使わず、両接続方式を同じ小画面と性能protocolで比較する。
+4. [作業票](tasks.md)の004-Bへ進む。004-Aの同じ画面とSDKを用い、性能protocolに従って
+   clean/incremental/QML編集/packageを反復測定する。PyQt runtimeを開発SDKとして使わない。
+   full Xcode・他OS/CPU・配布先の条件不足は、その試験を未確認として残す。
 5. 003-A/B/Cの保存入力と期待値は揃った。候補実装へ同じbytesを通し、参照側の完了と実装のAC合格を分ける。
-6. 005-A/006-Aも着手可能。Rustコードを追加する際は独立CIを追加し、source/state/所有権の境界を記録する。
+6. 005-A/006-Aも着手可能。独立Rust CIは追加済み。source/state/所有権の境界を記録し、
+   004-Aの模擬workerのmutex/通知を音声callbackへ転用しない。
 7. 契約変更が必要なら決定記録、台帳、AC、fixtureを同時に更新する。MIG-002完了とRust/QML採用決定を混同しない。
 
 長時間の自動実行や定期通知は設定していない。次回もこのworktreeを再利用できる。

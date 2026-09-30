@@ -1,9 +1,11 @@
 # Native evaluation environment
 
-MIG-001の開発環境準備。Rust/QMLの採用・API・クレート境界は未決定。
+MIG-001の開発環境準備とMIG-004-AのQt境界プローブ。Rust/QMLの採用・公開API・製品クレート境界は未決定。
 [進捗](../migration/status.md)と[参照環境](../migration/environment.md)を先に確認する。
 MIG-002の[コア契約](../migration/contracts/core.md)と[後続作業票](../migration/tasks.md)を作成済み。
-Cargo workspaceとQMLは後続タスクで追加する。現時点ではRustの製品コードもCargo.lockも存在しない。
+MIG-004-AでCargo workspace/lockと同じ小さなQML画面を追加した。
+`probe-core`はGUI非依存の模擬worker、`cxxqt-probe`/`qtbridge-probe`は薄いQt adapter。
+音声backend、測定DSP、Analysis Graphは未実装。[Qt SDK・比較画面の起動手順](qt-probe.md)を参照。
 
 ## このworktreeで使う
 
@@ -62,7 +64,7 @@ python3.12 -m venv .tools/build-venv
 ```
 
 Rust本体・componentsは`rust-toolchain.toml`、CMake/Ninjaは`build-requirements.txt`で固定する。
-Qt、CXX-Qt、Qt Bridgeの導入はMIG-004で別途固定する。
+Qt開発SDKは[qt-sdk.toml](qt-sdk.toml)、CXX-Qt/Qt Bridge/CXXは[Cargo.toml](Cargo.toml)と[Cargo.lock](Cargo.lock)で固定した。
 現行PyQtのQt runtimeと開発用SDKのパスを混在させない。
 
 ## ビルド・リンクのスモーク
@@ -98,5 +100,6 @@ cmake --build .tools/cmake-smoke/build
 .tools/cmake-smoke/build/toolchain_smoke
 ```
 
-これらはmacOS Intelでのツール単体の確認。Qtとの接続、配布、他OS/CPUの成立性を示すものではない。
+これらのHello worldスモークはmacOS Intelでのツール単体の確認。
+Qtとの接続は別の[共通プローブ](qt-probe.md)で確認し、配布・他OS/CPUは後続検証とする。
 `.tools/`は再構築可能なGit管理外データとして扱う。

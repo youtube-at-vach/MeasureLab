@@ -23,7 +23,7 @@
 | 003-A | GUIなしの参照runner、manifest/hash、理論付きFFT/窓/RMS/endpoint | 002、P04/P05。migration fixtureとscripts/testsだけ、現行DSPは変更しない | AC01/04。基準source hash、同じ入力で再生成/再検査、破損hash・違う版・shapeを拒否。現行値と理論値と既知差を別保存 | 候補Rust実装、製品FFT修正 | 完了（2026-09-30、参照側20ケース） |
 | 003-B | 仮想4/8ch、route、trigger/history、gap/世代、校正/保存metadataのoracle | 003-A、P02/P03/P13/P14。core.mdの意味をfixtureへ | AC02/03/08/09/11/12。厳密なID/位置/reasonと独立した手計算例。Python旧engineにない能力は新契約oracleと明記 | 物理I/O、共有graph本体 | 完了（2026-09-30、4 FFT・27契約例・4保存例。実バッファは006-C） |
 | 003-C | 最小FIR/rate写像、現行polyphase/代表SOS参照 | 003-A、P06。数値契約と係数・初期条件固定 | AC10/14。理論有限和、impulse、DC、tone、gap、chunk分割一致。旧版のinvalid rate挙動を別記録 | 製品用resampler選定、全rate構成 | 完了（2026-09-30、21数値ケース・6 rate境界。参照側のみ） |
-| 004-A | Qt SDKを分離導入・版固定し、CXX-Qt/Qt Bridgeで同じ小画面 | 002-C/D。native内の薄いQt境界。導入前に現在の公式要件を確認 | Start/Stop、worker通知、list model、再生成/破棄、遅い通知、AC07/13。両方式の実行物と差分表 | 本格採用、41画面 | 未着手・SDK未導入 |
+| 004-A | Qt SDKを分離導入・版固定し、CXX-Qt/Qt Bridgeで同じ小画面 | 002-C/D。native内の薄いQt境界。導入前に現在の公式要件を確認 | Start/Stop、worker通知、list model、再生成/破棄、遅い通知、AC07/13。両方式の実行物と差分表 | 本格採用、41画面 | 完了（2026-09-30、Intel・模擬GUI境界。AC07/13の実graph/音声部分は後続） |
 | 004-B | 上記のbuild/QML編集/packageと対象OS起動比較 | 004-A。同一workload/依存組合せとbenchmark記録 | AC16と性能protocol。Intel/ARM/Windows/Linuxの実行済み・未実行を分離 | 未所有環境の成功扱い、安定版配布 | 未着手 |
 | 005-A | N-channel buffer/route/tap、backend共通境界 | 003-A/B。P02/P03。PortAudio基準とCPAL比較 | AC01〜03/09/11。4/8ch・非対称I/O・明示mapping・queue overflow。Rust追加時は独立CI追加 | network多ch拡張、全機器 | 未着手 |
 | 005-B | 実機2ch、XRUN/再接続、排他/停止/時刻 | 005-Aと利用可能な実機。device/配線/校正を記録 | AC11/13/16、同じ配線で現行と交互測定。測定前に許容振幅差/遅延誤差を決める | 実機4/8/16ch保証 | 未着手・実機条件待ち |
@@ -79,6 +79,23 @@ FIRは新契約モデル、polyphase/SOSは現行参照と独立有限和・差�
 ```
 
 003-A/B/Cの保存入力・期待値と再現検査が揃い、MIG-003は参照側として完了。
-次は004-AのQt開発SDKの分離導入・版固定と、CXX-Qt/Qt Bridgeの比較。
+004-AでQt開発SDKと両実行物を固定し、Intelで基本GUI境界を比較した。
+次は004-Bの反復build/編集/packageと対象OS起動。AC07の実graph所有権は006-B、実音声回収は005-B/008。
 005-A、006-Aも参照側の依存が揃った。候補実装の開始時はRust CI追加と同じfixtureの比較を行う。
 MIG-006-Dでは一括APIをchunkごとに再起動せず、state/phase/validityをgraph内で保持する。
+
+## 004-Aの再検査
+
+[起動手順](../native/qt-probe.md)の環境変数を設定し、[共通プローブ](../native/qml/Main.qml)を実行する。
+[決定0005](decisions/0005-qt-boundary-probes.md)で、模擬worker・Qtの寿命検査と実graph/実音声の合格を分ける。
+
+```bash
+cargo +1.98.1 build --locked --manifest-path native/Cargo.toml
+cargo +1.98.1 fmt --manifest-path native/Cargo.toml --all --check
+cargo +1.98.1 test --locked --manifest-path native/Cargo.toml -p probe-core
+cargo +1.98.1 clippy --locked --manifest-path native/Cargo.toml --workspace --all-targets -- -D warnings
+./.venv/bin/python scripts/migration_qt_probe.py --qt-prefix .tools/qt/6.11.2/macos --repeat 3 --report .migration-local/qt-probe.json
+./.venv/bin/pytest -q tests/logic_verification/test_migration_qt_probe.py
+```
+
+通常runnerは保存fixtureを書き換えない。時間は短い診断試行として記録し、004-Bの性能protocolに代用しない。
