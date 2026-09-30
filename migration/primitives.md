@@ -49,6 +49,7 @@
 | validity・精度・共有条件 | 上書き・未取得区間を欠落として返す。位置は整数、subsampleは有理数。同一eventでも読取りは非消費 |
 | 現行の入口 | [source](../src/core/ring_buffer.py) |
 | 参照検証 | [test](../tests/logic_verification/core/test_ring_buffer.py) |
+| 候補検証 | 006-Cの[履歴/Timebase](../native/history-candidate.md)、[Rust試験](../native/graph-core/src/history/tests.rs)、[保存比較](../scripts/migration_history_candidate.py)。実取得/Qt接続は後続 |
 
 ## P04
 

@@ -9,6 +9,8 @@ use std::time::Duration;
 
 static NEXT_GRAPH: AtomicU64 = AtomicU64::new(1);
 pub const TRANSFORM_REVISION: &str = "realfft-3.5.0-x-over-n-v1";
+pub mod history;
+pub mod time;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Precision {
@@ -228,6 +230,12 @@ impl SignalBlock {
     pub fn interval(&self) -> (u64, u64) {
         (self.start, self.start + self.frames as u64)
     }
+    pub fn samples(&self) -> &Samples {
+        &self.samples
+    }
+    pub fn validity(&self) -> &[InvalidSpan] {
+        &self.validity
+    }
 }
 #[derive(Debug)]
 pub enum Numeric {
@@ -423,6 +431,14 @@ struct State {
     in_flight: usize,
     evaluations: u64,
     display_replacements: u64,
+    minimum_generations: HashMap<String, u64>,
+}
+impl State {
+    fn accepts(&self, source: &Source) -> bool {
+        self.minimum_generations
+            .get(&source.stream_id)
+            .is_none_or(|minimum| source.generation >= *minimum)
+    }
 }
 struct Core {
     id: u64,
@@ -478,6 +494,7 @@ impl Graph {
                     in_flight: 0,
                     evaluations: 0,
                     display_replacements: 0,
+                    minimum_generations: HashMap::new(),
                 }),
                 idle: Condvar::new(),
             }),
@@ -492,6 +509,7 @@ impl Graph {
         key.validate(&self.core.limits)?;
         let mut state = self.core.state.lock().unwrap();
         if state.closed
+            || !state.accepts(&key.source)
             || state.consumers.len() >= self.core.limits.max_subscriptions
             || (!state.nodes.contains_key(&key) && state.nodes.len() >= self.core.limits.max_nodes)
         {
@@ -522,11 +540,14 @@ impl Graph {
         })
     }
     /// Reserve at most one interval per node. Busy/capacity errors reject the whole request.
-    /// Complete windows only: trigger/history slicing and acquisition queues belong to 005-A/006-C.
+    /// Complete windows only; history::History supplies owned windows from arbitrary input chunks.
     pub fn schedule(&self, block: Arc<SignalBlock>) -> Result<Vec<Job>, String> {
         let mut state = self.core.state.lock().unwrap();
         if state.closed {
             return Err("Graph closed".into());
+        }
+        if !state.accepts(&block.source) {
+            return Err("stale_generation".into());
         }
         if block.frames > self.core.limits.max_frames
             || block.source.channel_ids.len() > self.core.limits.max_channels
@@ -578,8 +599,20 @@ impl Graph {
         }
         Ok(jobs)
     }
+    /// Only complete acquired history windows can enter the DAG. Gaps/pending are diagnostic
+    /// outcomes, with no invented zero samples and no FFT evaluation.
+    pub fn schedule_history(&self, read: &history::HistoryRead) -> Result<Vec<Job>, String> {
+        let block = read
+            .snapshot
+            .as_ref()
+            .ok_or_else(|| read.report.status.clone())?;
+        self.schedule(Arc::clone(block))
+    }
     pub fn cached(&self, key: &FftKey, start: u64) -> Option<Arc<FftResult>> {
         let mut state = self.core.state.lock().unwrap();
+        if !state.accepts(&key.source) {
+            return None;
+        }
         let at = state
             .cache
             .iter()
@@ -600,12 +633,54 @@ impl Graph {
             display_replacements: s.display_replacements,
         }
     }
+    /// Retire a stream before restart. Old leases remain owned but can no longer publish.
+    /// Existing tokens survive and can be reconfigured explicitly to the new generation.
+    pub fn retire_stream_before(&self, stream_id: &str, generation: u64) -> Result<(), String> {
+        let mut s = self.core.state.lock().unwrap();
+        if s.closed || stream_id.is_empty() {
+            return Err("Graph closed or invalid stream".into());
+        }
+        // Only a known demand may introduce a fence, bounding this table by subscription count.
+        if !s
+            .consumers
+            .values()
+            .any(|c| c.key.source.stream_id == stream_id)
+        {
+            return Err("Unknown stream".into());
+        }
+        let current = s.minimum_generations.get(stream_id).copied().unwrap_or(0);
+        if generation < current {
+            return Err("stale_generation".into());
+        }
+        if !s.minimum_generations.contains_key(stream_id)
+            && s.minimum_generations.len() >= self.core.limits.max_subscriptions
+        {
+            return Err("Generation fence capacity exceeded".into());
+        }
+        s.minimum_generations.insert(stream_id.into(), generation);
+        s.nodes.retain(|key, _| {
+            key.source.stream_id != stream_id || key.source.generation >= generation
+        });
+        s.cache.retain(|r| {
+            r.key.source.stream_id != stream_id || r.key.source.generation >= generation
+        });
+        for c in s
+            .consumers
+            .values_mut()
+            .filter(|c| c.key.source.stream_id == stream_id && c.key.source.generation < generation)
+        {
+            c.reset();
+            c.latest = None;
+        }
+        Ok(())
+    }
     pub fn shutdown(&self) {
         let mut s = self.core.state.lock().unwrap();
         s.closed = true;
         s.consumers.clear();
         s.nodes.clear();
         s.cache.clear();
+        s.minimum_generations.clear();
     }
     /// Wait for caller-owned jobs/completions to finish or be dropped. This does not run or cancel a thread.
     pub fn wait_idle(&self, timeout: Duration) -> bool {
@@ -660,6 +735,9 @@ impl Subscription {
         let core = self.core.upgrade().ok_or("Graph dropped")?;
         key.validate(&core.limits)?;
         let mut s = core.state.lock().unwrap();
+        if !s.accepts(&key.source) {
+            return Err("stale_generation".into());
+        }
         let old = &s.consumers.get(&self.id).ok_or("Subscription closed")?.key;
         if old == &key {
             return Ok(());
@@ -670,7 +748,8 @@ impl Subscription {
             .iter()
             .any(|(id, c)| *id != self.id && &c.key == old);
         if !s.nodes.contains_key(&key)
-            && s.nodes.len() - usize::from(!old_shared) >= core.limits.max_nodes
+            && s.nodes.len() - usize::from(!old_shared && s.nodes.contains_key(old))
+                >= core.limits.max_nodes
         {
             return Err("Node capacity exceeded".into());
         }
@@ -706,6 +785,7 @@ struct Lease {
 impl Lease {
     fn active(&self, s: &State) -> bool {
         !s.closed
+            && s.accepts(&self.key.source)
             && s.nodes
                 .get(&self.key)
                 .is_some_and(|n| n.incarnation == self.incarnation)

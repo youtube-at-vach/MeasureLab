@@ -7,7 +7,8 @@ MIG-006-B、2026-09-30。[コア契約v0.1](../migration/contracts/core.md#fft�
 ## 入力・共有・所有権
 
 固定経路はowned SignalBlock → FFT → 購読別のPSD平均と最新snapshot。
-汎用graph editor、取得buffer、trigger/history、音声backend、Qt adapterは含めない。
+006-Cの[履歴/Timebase候補](history-candidate.md)が任意chunkからowned窓を供給する。
+汎用graph editor、音声backend、Qt adapterは含めない。
 入力は制御側で検証したframe-majorのf32/f64と順序付きChannelId。
 Timebaseには有理数のrate/nominal rate、原点、clock domain、revision、generationを残す。
 未知の原点時刻・不確かさは`None`のまま保持する。
@@ -31,7 +32,7 @@ input gainは有限の無次元補正だけを実際に適用する。V/SPL校�
 
 `Graph::schedule()`は完全な窓のowned入力に対し、必要なnodeだけの`Job`を予約する。
 frame数がN以上で、startがalignment/hopに合うnodeだけを対象とし、先頭N frameを使う。
-履歴からの窓切出しは006-C。異なるNのnodeは必要なら別に計算する。
+履歴からの窓切出しは006-Cの`History`/`schedule_history()`で行う。異なるNのnodeは必要なら別に計算する。
 同一nodeのstartは単調増加。重複/逆順、nodeの処理中、容量超過は要求全体を拒否し、
 一部だけ予約したり、黙って入力を捨てたりしない。予約したJobのcancel/dropはその窓を取り消す。
 
@@ -78,5 +79,6 @@ cargo +1.98.1 clippy --offline --locked --manifest-path native/Cargo.toml -p gra
 詳細reportとコマンドの圧縮log/hashは`.migration-local/`に置く。Gitには
 [決定0008](../migration/decisions/0008-shared-fft-graph.md)と[進捗](../migration/status.md)へ条件・結果・限界を要約する。
 純粋graphでAC05/06とAC07のnode/cache/in-flight寿命を検証する。
-Qt画面・実取得/音声worker・実保存sessionとの統合、trigger/history、全体終了は後続。
+Qt画面・実取得/音声worker・実保存sessionとの統合、全体終了は後続。
+trigger/historyのpure境界は006-Cの独立runnerで検証する。
 拡張6件、release、steady-state、10分連続、描画性能、他OSは今回の検証範囲に含めない。

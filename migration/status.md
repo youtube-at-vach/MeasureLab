@@ -9,7 +9,8 @@ Intelでのコア編集5回も完了、中央値24.544秒。
 005-Aへpure音声境界とCPAL adapterを追加し、10契約例と4/8ch f32/f64の元bytesを検証。
 005-BはUAC-232の交互3回にBlackHole 2ch／16chの回帰経路を追加。USB再接続・排他・絶対遅延は未確認。
 以後の通常音声テストはBlackHole 16ch／2chを優先し、実機が必要な要件だけUAC-232を使う。
-006-Cの実履歴、取得/Qtへのgraph統合は未着手。
+006-Cのworker所有履歴・Timebase・世代fenceをpure共有graphへ接続し、保存13契約と4入力bytesが合格。
+取得/Qtへのgraph統合、006-D/Eのfilter/rate/校正/保存は未着手。
 
 ## 作業場所と基準
 
@@ -17,12 +18,12 @@ Intelでのコア編集5回も完了、中央値24.544秒。
 | --- | --- |
 | 現行版 | `/Users/vach/MeasureLab`、`main` |
 | 検証用worktree | `/Users/vach/.codex/worktrees/next-core-evaluation/MeasureLab`（Codex管理） |
-| 検証用ブランチ | 統合先`codex/next-core-evaluation`、今回の作業`codex/migration-005-virtual`（005-A/Bの`3fc00cbf`から分岐） |
+| 検証用ブランチ | 統合先`codex/next-core-evaluation`、今回の作業`codex/migration-006-c`（005-virtualの`f9ff4558`から分岐） |
 | 作業開始・Python参照コミット | `9fd79958`（MeasureLab 0.9.0、開始時のローカルmain） |
 | 計画書の調査コミット | `68cbdabc3ecd542d9d73fa0aa86bf9159f44d811` |
 | 最終main同期 | 2026-09-30にfetch。origin/mainは参照`9fd79958`のまま、取込み差分なし |
 | 統合担当 | 当面、この検証ブランチを担当する単一の作業者 |
-| リモート | 今回開始時は005-A/Bの`3fc00cbf`がremote一致・clean。そこから005-virtual用ローカルブランチを分岐。今回の変更は未コミット。push・PR・Issue・Project更新・配布は未実施 |
+| リモート | 今回開始時は005-virtualの`f9ff4558`がremote一致・clean。そこから006-C用ローカルブランチを分岐。今回の変更は未コミット。push・PR・Issue・Project更新・配布は未実施 |
 
 調査コミットから開始時mainまでの差分には計画書、設計ガイド、Measurement Consoleのレイアウト、
 Goniometerのテーマ対応、翻訳と対応テストがある。
@@ -40,16 +41,81 @@ MIG-003-Cも既存fixtureと契約を変更せず、filter/rate参照を独立�
 | MIG-003 | 完了（A/B/Cの参照側） | FFT20+4ケース、27契約例、4保存例にfilter/rateの21数値ケースと6 rate境界を追加。候補実装でのAC合格は005/006以降 |
 | MIG-004 | 進行中（AとBのIntel範囲を完了） | Bの32 sample+warmup2回とローカルbundleが合格。Linux CIのICU不足を修正したが再実行未確認。他OS/clean環境は未確認 |
 | MIG-005 | 進行中（Aのpure境界とBの短い実機／仮想比較） | route/tap/queueの10契約例+4入力bytes、UAC-232の交互3回とBlackHoleの2／16ch・4／8ch route経路を追加。動的route配送、時刻写像、排他/USB復帰/長時間は残る |
-| MIG-006 | 進行中（Aとpure graphのBを完了） | 純粋FFT候補24ケース、編集5回。Bは共有結果18ケースとRust16テストで合格。履歴/filter/校正のC〜Eと実取得/Qt統合は未着手 |
+| MIG-006 | 進行中（Aとpure graphのB/Cを完了） | 純粋FFT24ケース/編集5回、共有18ケースに履歴13契約/4入力bytesを追加。graph Rust27テストで合格。D/Eのfilter/rate/校正/保存と実取得/Qt統合は未着手 |
 | MIG-007〜008 | 未着手 | 計画にある依存関係に従う。採用判断までの検証範囲 |
 
 `native/`にツールチェーン/SDKの固定、Cargo workspace/lock、模擬workerと2方式のadapter、共通QMLを置いた。
 006-Aの`dsp-core`へFFT/窓/単位/PSD、006-Bの`graph-core`へ固定DAG・共有/購読/独立平均/cacheを追加。
 005-Aの`audio-core`とCPAL 0.18.2の`audio-probe`を追加した。
+006-Cは`graph-core`内にworker所有履歴/有理数時刻/旧世代公開のfenceを追加した。
 現行PortAudioは比較基準。永続取得schedulerとgraph/Qt接続、製品backend共通化は未作成。
 候補実装は契約v0.1を出発点とし、公開型・ABI・採用ライブラリは後続の検証で決める。
 
-## MIG-005仮想デバイスの成果と検証
+## MIG-006-Cの成果と検証
+
+着手: 2026-09-30、HEAD `f9ff4558`、005-virtualのブランチはremote一致・clean。
+前回記録の「005-virtual未コミット」は古く、このcommitへ保存済みと確認した。
+同じworktreeで`codex/migration-006-c`へ分岐。今回の変更は未コミット。
+変更境界はgraph-coreのhistory/timeと世代公開境界、独立runner/test/CI、検証文書。
+保存003-A/B/Cの入力/期待値/契約/許容差、現行DSP/UI、既存DSP/audio実装、Cargo lockの変更なし。
+
+- [実履歴](../native/graph-core/src/history.rs): frame容量・numeric bytes・validity span数を制限したworker所有buffer。
+  任意chunkから独立readerと非消費trigger queryへowned snapshotを渡し、retention後も値を維持する。
+  gap/pending/負位置/floorと分数残差を正確に返す。source revision境界をまたぐ窓は明示拒否する。
+- [正確な時刻](../native/graph-core/src/time.rs): 有理数の原点/rateと世代付きclock写像。
+  未知原点はunknown、別clockの写像なし/期限切れ/世代不一致はunsynchronized。
+  不確かさNoneを0で補わず、checked演算の表現超過も明示拒否する。
+- [共有graph](../native/graph-core/src/lib.rs)へsnapshotだけを渡す。gap/pendingはFFT jobを作らず、
+  validity spanは無効数値と平均resetへ伝播する。restartは新構成を検証してからgraphへ世代fenceを入れる。
+  旧event/reader/block/cache/reconfigureを拒否し、計算済みの旧Completionも新世代へ公開しない。
+  外部が保持した確定snapshotの寿命は維持する。
+- [保存比較runner](../scripts/migration_history_candidate.py): 保存履歴9/時刻4契約を完全一致で比較。
+  4/8ch × f32/f64の4入力bytesを1/127/256/17 frameから復元し、遅いreaderとretention後にも元bytesを保持する。
+  同じFFT結果を2購読へ渡し、保存理論/現行数値、Source/区間/同一ID/allocation、停止後の回収を検査する。
+- [決定0011](decisions/0011-history-timebase-graph.md)と[再検査手順](../native/history-candidate.md)を追加。
+  独立Rust CIへharness build/portable比較と変更pathを追加。GitHub実行は未確認。
+
+最終report: `.migration-local/2026-09-30-006-c-history-final.json`。
+保存13契約と4入力bytes/FFT比較が成功。最大正規化complex差はf64約1.57e-14、f32約8.35e-9。
+各FFT評価1、2購読の同一ID/allocation、終了後node/subscription/cache/in-flight数0。
+容量上限は内部の保持numeric payloadとspan数で、metadata/allocator/外部snapshot/全process RSSは別。
+今回deviceは開かず、BlackHole 16ch／2ch優先という音声テストの引継ぎは維持する。
+
+| 最終確認 | 結果 |
+| --- | --- |
+| 保存履歴/時刻/元bytes | 13契約と4/8ch f32/f64の4件すべて合格。snapshot/delayed/retention後の全bytes一致 |
+| 最小Python環境 | `.migration-local/2026-09-30-006-c-minimal.json`。既存NumPy 2.2.6+pipだけのvenvで同じ13+4件成功、Qt/FFTW/音声依存なし |
+| Rust test/fmt/Clippy | Graph27＋Audio9＋CPAL request4＋DSP5＋模擬worker5の50 passed。workspace formatとpure4 crate/CPALのClippy成功 |
+| 新規graphテスト | 006-C追加11件。独立cursor/通知遅延/正確なgap、所有snapshot、世代fence、失敗restartの原子性、validity、写像期限。4/8ch両精度の断続取得を独立frame集合oracleと照合 |
+| Python対象回帰 | 237 passed（34.20秒）。新履歴境界27件と既存graph/audio/core/filter/FFT/台帳/起動分離/ring buffer |
+| 共有graph保存回帰 | `.migration-local/2026-09-30-006-c-graph-regression.json`。元の18ケースすべて数値/共有/回収が合格 |
+| 保存fixture verify | FFT14、core4 FFT/27契約/4保存、filter21数値/6 rate境界が成功。入力・期待値の変更なし |
+| 起動分離 | 保存先確認とoffline/offscreen self-test成功。従来のlocale/font警告のみ |
+| report整合 | 最終/最小環境/共有回帰/Rust検査の34 commandのgzip/log hash/終了コード0、source/runner/lock/binary hashを確認 |
+| Ruff lint/format | 成功、615 Pythonファイルのformat確認 |
+| Markdown lint・台帳・CI仕様・diff | 成功。189 Markdown、41モジュール双方向対応、CI YAML3 jobとhistory trigger/build/portable経路、inline Python、`git diff --check` |
+| main同期 | fetch後もorigin/mainは`9fd79958`。取込み/参照更新不要 |
+
+Rust検証は`.migration-local/2026-09-30-006-c-rust-checks.json`、
+数値/hash監査は`.migration-local/2026-09-30-006-c-audit.json`に保存する。
+開発runは`.migration-local/2026-09-30-006-c-development.json`へ分離した。
+初回harnessの所有権に関するコンパイルエラー2件とClippyのmanual_pop_if指摘1件を修正した。
+CI構文確認はPython環境にPyYAMLがなかったため、既存Ruby YAML parserとPython compileで確認した。
+
+006-Cの完了はAC08/09のworker所有履歴/Timebase/世代とpure共有graphまで。
+取得queue/永続scheduler/CPAL・PortAudio/Qtとの接続、実clockの推定/物理遅延/外部trigger、
+trigger付きMeasurementResultの保存、release/steady-state/長時間/他OSは未確認。
+全体Pytest/Mypy/翻訳/全言語UIサイズとGitHub CIは今回未実施。製品UI/翻訳の変更はない。
+Rust/QMLの採用やMIG-006全体の完了には数えない。006-D/Eへ進められる。
+
+再実行:
+
+```bash
+./.venv/bin/python scripts/migration_history_candidate.py --report .migration-local/006-c-new.json
+./.venv/bin/pytest -q tests/logic_verification/test_migration_history_candidate.py tests/logic_verification/test_migration_graph_candidate.py
+```
+
+## MIG-005仮想デバイスの成果と検証（前回記録）
 
 着手: 2026-09-30、HEAD `3fc00cbf`、005-A/Bのブランチはremote一致・clean。
 前回記録の「005-A/B未コミット」は古く、このcommitへ保存済みと確認した。
@@ -634,13 +700,13 @@ GUI起動時にlocaleのUTF-8への切替と、`Sans Serif`のフォント代替
 2. [環境手順](environment.md)に従い、参照版の起動とツールチェーンを再確認する。
 3. 台帳チェックとFFT/core/filterの各reference runnerでverifyを実行する。
    環境差は確認し、比較時だけ明示portable modeを使う。
-4. [作業票](tasks.md)の006-Cまたは005-A/Bの残る境界へ進める。006-Aの保存コーパス/Intel編集、006-Bのpure graph、004-BのIntel反復は完了した。
+4. [作業票](tasks.md)の006-D/Eまたは005-A/Bの残る境界へ進める。006-Aの保存コーパス/Intel編集、006-B/Cのpure graph/履歴、004-BのIntel反復は完了した。
    Linux CIのICU修正は004-Bの`e0b992ce`へcommit済み。修正後のGitHub実行は未確認。公開する段階で確認する。
    ARM/Windows/Linuxの反復測定、full Xcode、release/clean環境の配布起動は未確認のまま残す。
 5. 003-A/B/Cの保存入力と期待値は揃った。候補実装へ同じbytesを通し、参照側の完了と実装のAC合格を分ける。
-6. 006-Cは着手可能。005-Aのpure queue/route、005-Bの実機とBlackHoleの診断経路は追加済み。
+6. 006-Cのpure履歴/Timebaseは共有graphへ接続済み。005-Aのpure queue/route、005-Bの実機とBlackHoleの診断経路は追加済み。
    以後はBlackHole 16ch／2chで通常の回帰を行う。UAC-232は実機が必要な要件だけに使う。
-   実履歴／Timebase／旧世代拒否、動的route配送・実取得のgraph接続を検証する。
+   次はfilter/rate・校正/保存、または動的route配送・実取得のgraph接続を検証する。
    物理USB切断／復帰は必要時にユーザーが操作できる回だけで行う。
    独立Rust CIは追加済み。source/state/所有権の境界を記録し、
    004-Aの模擬workerのmutex/通知を音声callbackへ転用しない。

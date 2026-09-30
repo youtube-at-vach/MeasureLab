@@ -11,6 +11,8 @@ MIG-003は入力/期待値を用意し、MIG-005/006以降で候補実装を同�
 AC01のFFT部分とAC04の保存コーパスの結果であり、物理I/O・共有graph・他のACの合格ではない。
 006-Bで[pure共有graph](../decisions/0008-shared-fft-graph.md)のRust16テストと保存18ケースが合格した。
 AC05/06とAC07のnode/cache/in-flight寿命まで。実音声・QML画面・保存sessionの統合は後続で検証する。
+006-Cで[実履歴とTimebase/世代境界](../decisions/0011-history-timebase-graph.md)をpure共有graphへ接続した。
+AC08/09の保存13契約と4/8ch入力4件、graph Rust27テストが合格。実取得/外部clock/Qtは後続。
 
 ## fixtureの最小セット
 

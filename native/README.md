@@ -8,6 +8,7 @@ MIG-004-AでCargo workspace/lockと同じ小さなQML画面を追加した。
 MIG-006-Aの`dsp-core`はGUI非依存のFFT/窓/単位/PSD候補。[FFT比較手順](fft-candidate.md)を参照。
 006-Bの`graph-core`は固定DAG・共有FFT結果・購読token・独立平均・容量制限付きcacheの候補。
 [共有graphの手順](shared-graph.md)を参照。
+006-Cのworker所有履歴・Trigger/Timebase・世代fenceは[履歴候補の手順](history-candidate.md)を参照。
 005-Aの`audio-core`はN-channel/route/tap/取得queue、`audio-probe`はCPAL基本adapter。
 [音声境界・実機診断](audio-boundary.md)を参照。永続schedulerと実graph接続は未実装。
 [Qt SDK・比較画面の起動手順](qt-probe.md)を参照。
