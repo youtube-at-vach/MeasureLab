@@ -20,6 +20,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from scripts import migration_audio_candidate as audio  # noqa: E402
+from scripts import migration_audio_graph as acquisition  # noqa: E402
 from scripts import migration_audio_hardware as hardware  # noqa: E402
 from scripts import migration_fft_candidate as candidate  # noqa: E402
 from scripts import migration_fft_reference as fft  # noqa: E402
@@ -321,7 +322,7 @@ def main():
             "Short headless diagnostic, not 3 x 10 minute performance or P2 acceptance",
             "2ch uses unchanged AudioEngine; N-channel uses direct PortAudio, not the legacy engine",
             "Virtual loopback cannot establish physical delay, USB recovery, hardware gain or voltage",
-            "Dynamic route delivery, device exclusivity and graph/Qt integration remain untested",
+            "Input.raw acquisition/history/shared FFT tested; dynamic output route, device exclusivity and Qt remain untested",
             "Timestamp uncertainty and XRUN affected intervals remain unknown",
         ],
     }
@@ -340,6 +341,10 @@ def main():
                 ROOT / "native/audio-probe/src/lib.rs",
                 ROOT / "native/audio-core/src/lib.rs",
                 ROOT / "native/Cargo.lock",
+                ROOT / "native/graph-core/Cargo.toml",
+                ROOT / "scripts/migration_audio_graph.py",
+                *sorted((ROOT / "native/graph-core/src").rglob("*.rs")),
+                *sorted((ROOT / "native/dsp-core/src").rglob("*.rs")),
             ]
         }
         generation = 0
@@ -370,6 +375,7 @@ def main():
                             or raw["format"]["output_ids"] != request["route"]["outputs"]
                         ):
                             raise ValueError("CPAL generation or output identity mismatch")
+                        acquisition.validate_device_graph(raw)
                     result = analyze(directory, expected, source)
                     metrics.append(result)
                     report["runs"].append(
@@ -393,6 +399,7 @@ def main():
                                     "output_callback",
                                     "callback_ms",
                                     "queues",
+                                    "analysis_graph",
                                 )
                             },
                         }
@@ -412,6 +419,7 @@ def main():
                 candidate.run_command([str(binary), str(path), str(signal_path), str(directory)], timeout=30)
             )
             raw = json.loads((directory / "manifest.json").read_bytes())
+            acquisition.validate_device_graph(raw)
             passed = (
                 raw["state"] == "cancelled"
                 and raw["input"]["frames"] == raw["output"]["frames"] == 0

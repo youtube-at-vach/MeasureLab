@@ -35,6 +35,7 @@
 | validity・精度・共有条件 | チャンネル不一致は拒否。XRUN/欠落は区間付き。f32/f64形式を保持。同一tap/route/stream世代のみ共有 |
 | 現行の入口 | [source](../src/core/audio_engine.py) |
 | 参照検証 | [test](../tests/logic_verification/core/test_audio_engine.py) |
+| 候補検証 | 005の[queue→履歴→共有FFT](../native/acquisition-candidate.md)。input.rawの実取得接続まで。動的出力route/全tap/製品共通adapterは後続 |
 
 ## P03
 
@@ -49,7 +50,7 @@
 | validity・精度・共有条件 | 上書き・未取得区間を欠落として返す。位置は整数、subsampleは有理数。同一eventでも読取りは非消費 |
 | 現行の入口 | [source](../src/core/ring_buffer.py) |
 | 参照検証 | [test](../tests/logic_verification/core/test_ring_buffer.py) |
-| 候補検証 | 006-Cの[履歴/Timebase](../native/history-candidate.md)、[Rust試験](../native/graph-core/src/history/tests.rs)、[保存比較](../scripts/migration_history_candidate.py)。実取得/Qt接続は後続 |
+| 候補検証 | 006-Cの[履歴/Timebase](../native/history-candidate.md)、[Rust試験](../native/graph-core/src/history/tests.rs)、[保存比較](../scripts/migration_history_candidate.py)。input.rawの実取得接続は005の[取得worker](../native/acquisition-candidate.md)、Qt/外部triggerは後続 |
 
 ## P04
 
@@ -221,6 +222,7 @@ file・保存・来歴
 | validity・精度・共有条件 | UIからの要求を成功扱いしない。失敗/破棄を一度通知。数値精度は非該当。結果nodeは共有、制御の所有者を明示 |
 | 現行の入口 | [source](../src/gui/main_window.py) |
 | 参照検証 | [test](../tests/logic_verification/gui/test_main_window_activity.py) |
+| 候補検証 | 005の[単一取得worker](../native/acquisition-candidate.md)。poll上限/世代fence/保存token/Failed/冪等stop。Qtと製品backend状態機械は後続 |
 
 ## P16
 

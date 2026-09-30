@@ -143,6 +143,10 @@ impl History {
     /// Reject duplicate/reversed/configuration-changed blocks before mutating any history.
     /// Route/filter/calibration revisions can change within a generation; reads cannot cross those boundaries.
     pub fn append(&mut self, block: SignalBlock) -> Result<(), String> {
+        self.append_ref(&block)
+    }
+    /// Copy the bounded retained tail while the caller keeps its immutable acquisition block.
+    pub fn append_ref(&mut self, block: &SignalBlock) -> Result<(), String> {
         if block.source.generation != self.source.generation {
             return Err(if block.source.generation < self.source.generation {
                 "stale_generation"
@@ -186,7 +190,25 @@ impl History {
                 .push_front(slice(&old, floor, old.interval().1)?);
         }
         self.blocks
-            .push_back(slice(&block, block.start.max(floor), end)?);
+            .push_back(slice(block, block.start.max(floor), end)?);
+        self.high = end;
+        Ok(())
+    }
+    /// A queue can report a trailing acquired gap before another frame arrives.
+    /// Advance acquisition/retention without allocating or fabricating sample values.
+    pub fn append_gap(&mut self, interval: [u64; 2]) -> Result<(), String> {
+        let [start, end] = interval;
+        if start != self.high || end <= start || end > i64::MAX as u64 {
+            return Err("gap_interval".into());
+        }
+        let floor = end.saturating_sub(self.limits.capacity_frames as u64);
+        while self.blocks.front().is_some_and(|b| b.interval().1 <= floor) {
+            self.blocks.pop_front();
+        }
+        if let Some(old) = self.blocks.pop_front_if(|b| b.start < floor) {
+            self.blocks
+                .push_front(slice(&old, floor, old.interval().1)?);
+        }
         self.high = end;
         Ok(())
     }

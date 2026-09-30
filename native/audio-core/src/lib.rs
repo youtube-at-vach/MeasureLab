@@ -520,6 +520,9 @@ pub struct QueueStats {
     pub numeric_bytes: usize,
 }
 impl<T: Sample> Consumer<T> {
+    pub fn rate_hz(&self) -> f64 {
+        self.ring.rate
+    }
     pub fn stats(&self) -> QueueStats {
         QueueStats {
             capacity_frames: self.ring.slots.len(),

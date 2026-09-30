@@ -3,6 +3,9 @@
 use audio_core::{Consumer, Delivery, IoFormat, MAX_CALLBACK_FRAMES, frame_queue};
 use audio_probe::RequestFormat;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use graph_core::acquisition::{Acquisition, CaptureLimits, FftSpec};
+use graph_core::history::HistoryLimits;
+use graph_core::{Average, Presentation, Samples, Subscription, WindowSpec};
 use serde_json::{Value, json};
 use std::{
     error::Error,
@@ -67,6 +70,78 @@ struct Capture {
     samples: Vec<u64>,
     seconds: Vec<Option<f64>>,
     gaps: Vec<[u64; 2]>,
+}
+struct InputAnalysis {
+    worker: Acquisition<f32>,
+    first: Subscription,
+    second: Subscription,
+    windows: usize,
+    numeric_windows: usize,
+    gap_windows: usize,
+    shared_notifications: usize,
+}
+impl InputAnalysis {
+    fn new(rx: Consumer, mut format: IoFormat) -> Result<Self, Box<dyn Error>> {
+        format.output_ids.clear();
+        format.output_ports.clear();
+        let worker = Acquisition::new(
+            rx,
+            format,
+            FftSpec {
+                n: 1024,
+                hop: 512,
+                alignment: 0,
+                window: WindowSpec::SymmetricHann,
+            },
+            CaptureLimits {
+                history: HistoryLimits::frames(8192),
+                frames_per_poll: 1024,
+                windows_per_poll: 16,
+            },
+        )?;
+        let p = || Presentation {
+            color: "blue".into(),
+            unit: "FS".into(),
+        };
+        let first = worker.subscribe(Average::None, p())?;
+        let second = worker.subscribe(Average::CumulativePsd, p())?;
+        Ok(Self {
+            worker,
+            first,
+            second,
+            windows: 0,
+            numeric_windows: 0,
+            gap_windows: 0,
+            shared_notifications: 0,
+        })
+    }
+    fn drain(&mut self, captured: &mut Capture) -> Result<bool, Box<dyn Error>> {
+        let report = self.worker.poll()?;
+        for block in &report.blocks {
+            let Samples::F32(values) = block.samples() else {
+                return Err("capture precision".into());
+            };
+            captured.values.extend(values);
+        }
+        for stamp in &report.timestamps {
+            captured.samples.push(stamp.sample);
+            captured.seconds.push(stamp.seconds);
+        }
+        captured.gaps.extend(&report.gaps);
+        self.windows += report.windows.len();
+        self.numeric_windows += report.windows.iter().filter(|w| w.numeric).count();
+        self.gap_windows += report
+            .windows
+            .iter()
+            .filter(|w| w.history.status == "gap")
+            .count();
+        match (self.first.take_latest(), self.second.take_latest()) {
+            (Some(a), Some(b)) if Arc::ptr_eq(a.raw(), b.raw()) => self.shared_notifications += 1,
+            (None, None) => (),
+            _ => return Err("acquisition FFT not shared".into()),
+        }
+        Ok(report.deliveries != 0 || !report.windows.is_empty())
+    }
 }
 impl Capture {
     fn new() -> Self {
@@ -206,7 +281,8 @@ fn run() -> Result<(), Box<dyn Error>> {
         channels: output_channels as u16,
         ..config
     };
-    let (mut input_tx, mut input_rx) = frame_queue(8192, input_channels, 48000.)?;
+    let (mut input_tx, input_rx) = frame_queue(8192, input_channels, 48000.)?;
+    let mut analysis = InputAnalysis::new(input_rx, format.clone())?;
     let (mut output_tx, mut output_rx) = frame_queue(8192, output_channels, 48000.)?;
     let errors = Arc::new(AtomicU64::new(0));
     let xruns = Arc::new(AtomicU64::new(0));
@@ -301,7 +377,7 @@ fn run() -> Result<(), Box<dyn Error>> {
         output.play()?;
         let until = Instant::now() + Duration::from_secs_f64(duration + 0.2);
         while Instant::now() < until {
-            captured.drain(&mut input_rx);
+            analysis.drain(&mut captured)?;
             submitted.drain(&mut output_rx);
             std::thread::sleep(Duration::from_millis(2));
         }
@@ -318,14 +394,24 @@ fn run() -> Result<(), Box<dyn Error>> {
         drop(output);
         drop(input);
     }
-    captured.drain(&mut input_rx);
+    while analysis.drain(&mut captured)? {}
     submitted.drain(&mut output_rx);
+    let before_stop = analysis.worker.graph().stats();
+    let input_queue = analysis.worker.queue_stats().unwrap();
+    let input_source = analysis.worker.key().source.clone();
+    let history_frames = analysis.worker.history().unwrap().retained_frames();
+    analysis.worker.stop();
+    analysis.worker.stop();
+    let graph_report = json!({"source":input_source,"windows":analysis.windows,
+        "numeric_windows":analysis.numeric_windows,"gap_windows":analysis.gap_windows,
+        "shared_notifications":analysis.shared_notifications,"before_stop":before_stop,
+        "after_stop":analysis.worker.graph().stats(),"retained_history_frames":history_frames});
     fs::create_dir(output_path)?;
     let capture = captured.save(&output_path.join("input.bin"), input_channels)?;
     let submit = submitted.save(&output_path.join("output.bin"), output_channels)?;
     let report = json!({"schema_version":1,"request":request,"backend":"CPAL 0.18.2","device":name,"format":format,
         "input":capture,"output":submit,
-        "queues":{"input":input_rx.stats(),"output":output_rx.stats()},"input_callback":input_stats.report(),"output_callback":output_stats.report(),
+        "queues":{"input":input_queue,"output":output_rx.stats()},"analysis_graph":graph_report,"input_callback":input_stats.report(),"output_callback":output_stats.report(),
         "errors":errors.load(Relaxed),"xruns":xruns.load(Relaxed),"callback_rejections":rejected.load(Relaxed),"stop_ms":stop_ms,
         "state":if cancel{"cancelled"}else{"stopped"},"timestamp_kind":"callback-host estimate using backend capture/playback offsets; cross-stream uncertainty unknown",
         "xrun_interval":"unknown"});

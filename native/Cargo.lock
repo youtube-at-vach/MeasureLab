@@ -50,6 +50,7 @@ version = "0.1.0"
 dependencies = [
  "audio-core",
  "cpal",
+ "graph-core",
  "serde_json",
 ]
 
@@ -461,6 +462,7 @@ dependencies = [
 name = "graph-core"
 version = "0.1.0"
 dependencies = [
+ "audio-core",
  "dsp-core",
  "serde",
  "serde_json",

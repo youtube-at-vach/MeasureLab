@@ -23,7 +23,8 @@ BlackHole 16chの全port identityと4／8ch→16portの並替え・複製・mix�
 raw input／device提出output、source、時刻、状態、XRUN、hashをGit管理外の新規出力先へ保存する。
 全sample絶対差2e-6 FS、channel間marker差1 frame、backend振幅差0.1 dBを測定前に固定する。
 時刻原点／不確かさは未検証で、仮想loopbackでも物理遅延の精度はunknown。
-長時間、USB復帰、排他、動的route配送、実graph／Qt接続の合格とは分ける。
+005の[取得worker](acquisition-candidate.md)でCPAL input.rawを履歴/共有FFTへ接続した。
+長時間、USB復帰、排他、動的route配送、全tap/Qt接続の合格とは分ける。
 
 ## 取得境界
 
@@ -48,7 +49,8 @@ queueの上限は内部numeric storage/slot数の制限で、workerが保存す�
 `RouteControl`は制御/worker側のtransactionalなblock境界API。
 音声callbackへ動的routeを配送するschedulerはまだない。`BlockValidator`はgap、重複/逆順、
 rate/channel/dtype/clock/binding変更の新generation、旧世代拒否を検査する。
-Stream/Timebaseのgraph接続と完全なTimebase写像は006-C以降で行う。
+005の[取得接続](acquisition-candidate.md)はinput.rawの物理binding/元precisionを保持する。
+Timebase原点/不確かさはunknownとし、完全なdevice/host clock写像は後続。
 
 ## デバイスなしの再検査
 

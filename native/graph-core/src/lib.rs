@@ -9,6 +9,7 @@ use std::time::Duration;
 
 static NEXT_GRAPH: AtomicU64 = AtomicU64::new(1);
 pub const TRANSFORM_REVISION: &str = "realfft-3.5.0-x-over-n-v1";
+pub mod acquisition;
 pub mod filter;
 pub mod history;
 pub mod result;
@@ -614,6 +615,27 @@ impl Graph {
             .as_ref()
             .ok_or_else(|| read.report.status.clone())?;
         self.schedule(Arc::clone(block))
+    }
+    /// Worker-side discontinuity. Fence already reserved jobs, discard unread display
+    /// snapshots and reset independent averages without inventing numeric gap samples.
+    pub fn invalidate_source(&self, source: &Source) -> Result<(), String> {
+        let mut s = self.core.state.lock().unwrap();
+        if s.closed || !s.accepts(source) {
+            return Err("Graph closed or stale_generation".into());
+        }
+        let mut incarnation = s.next_id;
+        for (_, node) in s.nodes.iter_mut().filter(|(key, _)| &key.source == source) {
+            node.incarnation = incarnation;
+            incarnation += 1;
+            node.pending = false;
+        }
+        s.next_id = incarnation;
+        s.cache.retain(|r| &r.key.source != source);
+        for c in s.consumers.values_mut().filter(|c| &c.key.source == source) {
+            c.reset();
+            c.latest = None;
+        }
+        Ok(())
     }
     /// Register one worker transform after subscribing to its exact output Source.
     /// All output consumers share this state; the final token removes it through prune().

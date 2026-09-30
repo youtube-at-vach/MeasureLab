@@ -18,6 +18,10 @@ AC08/09の保存13契約と4/8ch入力4件、graph Rust27テストが合格。�
 AC12は保存2校正契約/4交換例、4/8ch f32/f64の共有FFT、完全再読込と保存失敗のpure境界まで。
 現行製品importer、実取得/Qt/非同期保存/cancel、校正map/実deviceは後続。
 
+005の[取得queue→履歴→共有FFT](../decisions/0014-acquisition-history-shared-fft.md)を追加した。
+AC01/05/07/09のinput.raw接続を保存4入力×2bindingとBlackHoleの短い診断で検査する。
+全tap/動的route、製品save/校正/Qt統合、外部clock、長時間は後続。最終結果はstatusを参照。
+
 ## fixtureの最小セット
 
 | ID | 入力・操作 | 合格条件 | 実装・検証タスク |
