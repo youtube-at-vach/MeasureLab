@@ -3,10 +3,10 @@ name: Native evaluation
 on:
   push:
     branches: ["codex/next-core-evaluation", "codex/migration-*"]
-    paths: ["native/**", "migration/**", "scripts/migration_qt_*.py", "scripts/migration_fft_*.py", "scripts/migration_core_*.py", "scripts/migration_graph_*.py", "tests/logic_verification/test_migration_graph_*.py", ".github/workflows/native-evaluation.yml"]
+    paths: ["native/**", "migration/**", "scripts/migration_qt_*.py", "scripts/migration_fft_*.py", "scripts/migration_core_*.py", "scripts/migration_graph_*.py", "scripts/migration_audio_*.py", "tests/logic_verification/test_migration_graph_*.py", "tests/logic_verification/test_migration_audio_*.py", ".github/workflows/native-evaluation.yml"]
   pull_request:
     branches: ["main", "codex/next-core-evaluation"]
-    paths: ["native/**", "migration/**", "scripts/migration_qt_*.py", "scripts/migration_fft_*.py", "scripts/migration_core_*.py", "scripts/migration_graph_*.py", "tests/logic_verification/test_migration_graph_*.py", ".github/workflows/native-evaluation.yml"]
+    paths: ["native/**", "migration/**", "scripts/migration_qt_*.py", "scripts/migration_fft_*.py", "scripts/migration_core_*.py", "scripts/migration_graph_*.py", "scripts/migration_audio_*.py", "tests/logic_verification/test_migration_graph_*.py", "tests/logic_verification/test_migration_audio_*.py", ".github/workflows/native-evaluation.yml"]
   workflow_dispatch:
 
 permissions:
@@ -19,14 +19,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Rust format, pure worker, DSP and graph tests and Clippy
+      - name: Rust format, pure worker, DSP, graph and audio boundary tests and Clippy
         working-directory: native
         run: |
           cargo fmt --all --check
-          cargo test --locked -p probe-core -p dsp-core -p graph-core
+          cargo test --locked -p probe-core -p dsp-core -p graph-core -p audio-core
           cargo build --locked -p dsp-core --bin fft-candidate
           cargo build --locked -p graph-core --bin graph-core
-          cargo clippy --locked -p probe-core -p dsp-core -p graph-core --all-targets -- -D warnings
+          cargo build --locked -p audio-core
+          cargo clippy --locked -p probe-core -p dsp-core -p graph-core -p audio-core --all-targets -- -D warnings
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
@@ -36,6 +37,21 @@ jobs:
           ./.venv/bin/python -m pip install numpy==2.2.6
           ./.venv/bin/python scripts/migration_fft_candidate.py --portable --report fft-candidate.json
           ./.venv/bin/python scripts/migration_graph_candidate.py --portable --report graph-candidate.json
+          ./.venv/bin/python scripts/migration_audio_candidate.py --portable --report audio-candidate.json
+
+  audio-backend:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install ALSA build prerequisites
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libasound2-dev pkg-config
+      - name: Build and lint CPAL adapter without Qt or hardware
+        working-directory: native
+        run: |
+          cargo build --locked -p audio-probe
+          cargo clippy --locked -p audio-probe --all-targets -- -D warnings
 
   qt-boundary:
     runs-on: ubuntu-24.04
@@ -51,7 +67,7 @@ jobs:
       - name: Install Qt runtime prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends build-essential libgl1-mesa-dev libgl1 libegl1 libopengl0 libxkbcommon0 libxkbcommon-x11-0 libxcb-cursor0 libfontconfig1 libdbus-1-3
+          sudo apt-get install -y --no-install-recommends build-essential libgl1-mesa-dev libgl1 libegl1 libopengl0 libxkbcommon0 libxkbcommon-x11-0 libxcb-cursor0 libfontconfig1 libdbus-1-3 libasound2-dev
       - name: Install isolated development SDK from pinned specification
         run: |
           python -m pip install -r native/build-requirements.txt

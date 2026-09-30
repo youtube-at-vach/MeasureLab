@@ -25,8 +25,8 @@
 | 003-C | 最小FIR/rate写像、現行polyphase/代表SOS参照 | 003-A、P06。数値契約と係数・初期条件固定 | AC10/14。理論有限和、impulse、DC、tone、gap、chunk分割一致。旧版のinvalid rate挙動を別記録 | 製品用resampler選定、全rate構成 | 完了（2026-09-30、21数値ケース・6 rate境界。参照側のみ） |
 | 004-A | Qt SDKを分離導入・版固定し、CXX-Qt/Qt Bridgeで同じ小画面 | 002-C/D。native内の薄いQt境界。導入前に現在の公式要件を確認 | Start/Stop、worker通知、list model、再生成/破棄、遅い通知、AC07/13。両方式の実行物と差分表 | 本格採用、41画面 | 完了（2026-09-30、Intel・模擬GUI境界。AC07/13の実graph/音声部分は後続） |
 | 004-B | 上記のbuild/QML編集/packageと対象OS起動比較 | 004-A。同一workload/依存組合せとbenchmark記録 | AC16と性能protocol。Intel/ARM/Windows/Linuxの実行済み・未実行を分離 | 未所有環境の成功扱い、安定版配布 | Intel範囲完了（2026-09-30）。その他OS/clean環境、修正後Linux CIは未確認 |
-| 005-A | N-channel buffer/route/tap、backend共通境界 | 003-A/B。P02/P03。PortAudio基準とCPAL比較 | AC01〜03/09/11。4/8ch・非対称I/O・明示mapping・queue overflow。Rust追加時は独立CI追加 | network多ch拡張、全機器 | 未着手 |
-| 005-B | 実機2ch、XRUN/再接続、排他/停止/時刻 | 005-Aと利用可能な実機。device/配線/校正を記録 | AC11/13/16、同じ配線で現行と交互測定。測定前に許容振幅差/遅延誤差を決める | 実機4/8/16ch保証 | 未着手・実機条件待ち |
+| 005-A | N-channel buffer/route/tap、backend共通境界 | 003-A/B。P02/P03。PortAudio基準とCPAL比較 | AC01〜03/09/11。4/8ch・非対称I/O・明示mapping・queue overflow。Rust追加時は独立CI追加 | network多ch拡張、全機器 | 進行中（2026-09-30、pure境界10例/4入力bytesとCPAL adapter。動的route配送・PortAudio共通adapterは後続） |
+| 005-B | 実機2ch、XRUN/再接続、排他/停止/時刻 | 005-Aと利用可能な実機。device/配線/校正を記録 | AC11/13/16、同じ配線で現行と交互測定。測定前に許容振幅差/遅延誤差を決める | 実機4/8/16ch保証 | 進行中（2026-09-30、UAC-232の交互3回/mute/start-stop/cancel。切断復帰・排他・絶対遅延/長時間は未確認） |
 | 006-A | FFT/窓/単位/PSDを参照比較 | 003-A、P04/P05。GUI非依存core | AC01/04、f32/f64・非2冪/極大・endpoint。必須数値条件合格、core編集時間記録 | 全解析モジュール | 完了（2026-09-30、保存コーパス24件とIntel編集5回。全体採用・他OS・Python相対比較は未確認） |
 | 006-B | 固定DAG・共有key・購読token・bounded cache | 006-A、003-B、P15 | AC05〜07。評価count/同一ID、条件分岐、独立平均、最後の解除/終了回収 | 汎用graph editor | 完了（2026-09-30、pure graphのRust16テスト/保存18ケース。実取得/Qt統合は後続） |
 | 006-C | trigger/history・Timebase・generation・validity | 003-B、006-B、P03 | AC08/09、異なるcursor/通知遅延・保持超過・旧世代拒否。共有graphへ統合 | 外部trigger実機adapter | 未着手 |
@@ -131,7 +131,8 @@ Qt SDKや実機は不要。拡張6件はローカル配列とversioned manifest�
 ```
 
 反復中は他のbuild/testを止める。通常の比較はfixtureを書き換えない。
-006-Bのpure共有graphは完了。005-Aの音声buffer/route/backend境界と006-Cの実履歴は未着手。
+006-Bのpure共有graphは完了。005-Aのpure音声buffer/routeとCPAL adapter、005-Bの短い実機比較を追加した。
+006-Cの実履歴は未着手。実取得/graph統合・時刻写像・動的route配送は後続。
 
 ## 006-Bの再検査
 
@@ -146,3 +147,18 @@ cargo +1.98.1 test --offline --locked --manifest-path native/Cargo.toml -p graph
 ```
 
 005-Aまたは006-Cへ進められる。Rust/QML採用・AC07の実音声/GUI/保存統合の合格とは分ける。
+
+## 005-A/Bの再検査
+
+[音声境界と実機手順](../native/audio-boundary.md)と[決定0009](decisions/0009-audio-boundary-uac232.md)を参照。
+通常の保存比較はdeviceを開かない。実機runnerは新しい出力ディレクトリと明示的なhardware指定を要求する。
+
+```bash
+./.venv/bin/python scripts/migration_audio_candidate.py --report .migration-local/005-a-new.json
+./.venv/bin/python scripts/migration_audio_hardware.py --hardware --device 'ZOOM UAC-232' --output .migration-local/uac232-new-run
+./.venv/bin/pytest -q tests/logic_verification/test_migration_audio_candidate.py
+```
+
+005-Aはpure境界とCPAL基本adapter、005-Bは短い実機2ch診断まで。
+USBは今回は接続したまま。出力Rの配線、切断/復帰、device排他、時刻写像、長時間と実graph統合は未確認。
+006-Cへはこれらを待たずに進められる。
