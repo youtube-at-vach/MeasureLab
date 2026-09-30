@@ -1,12 +1,14 @@
 # P0以降の受け入れ条件
 
-MIG-002、2026-09-29。下表は**これから実行する試験**で、合格の記録ではない。
+MIG-002、2026-09-29。下表は試験の定義で、表そのものを合格の記録とはしない。
 [コア](core.md)・[数値](numerics.md)・[性能条件](../benchmarks/protocol.md)を正本とする。
 MIG-003は入力/期待値を用意し、MIG-005/006以降で候補実装を同じ入力に通す。
 
 2026-09-30に003-Aの[AC01の2ch・AC04の参照fixture](../fixtures/README.md)を作成・理論照合済み。
 続いて003-Bの[4/8chとコア契約fixture](../fixtures/core-v1.md)を作成・照合済み。
 下表の候補実装に対する合格とは別で、003-Bの履歴は区間の可用性oracleまで。実バッファは006-Cで検証する。
+006-Aで[純粋FFT候補24件](../decisions/0007-pure-fft-candidate.md)が保存済み理論/現行参照へ合格した。
+AC01のFFT部分とAC04の保存コーパスの結果であり、物理I/O・共有graph・他のACの合格ではない。
 
 ## fixtureの最小セット
 
@@ -27,7 +29,7 @@ MIG-003は入力/期待値を用意し、MIG-005/006以降で候補実装を同�
 | AC13 | start→準備中stop、開始失敗、重複stop、画面再生成、終了 | 実状態のみ通知。callback/worker/token回収。失敗とcancelを正常完了にしない | 004-A、005-B、008 |
 | AC14 | 既存polyphaseと代表SOS filterを同一入力/係数/stateで比較 | 理論と現行を別比較。端点、warmup、連続chunkに差があれば明示 | 003-C、006-D |
 | AC15 | 小さなP2フローを10分、複数表示、保存、遅いGUI | データ欠落なし、表示遅延/CPU/RSSを記録、負荷超過は条件とgapを残す。性能予算で判定 | 007-B、008 |
-| AC16 | clean/incremental/core編集/QML編集/package、対象OS起動 | 反復時間と失敗回数を保存。未実行OSを合格にしない。実機2chとpackageの記録が必要 | 004-B、005-B、007-B、008 |
+| AC16 | clean/incremental/core編集/QML編集/package、対象OS起動 | 反復時間と失敗回数を保存。未実行OSを合格にしない。実機2chとpackageの記録が必要 | 004-B、005-B、006-A、007-B、008 |
 
 AC01のfixtureでは配列順とは別の論理ID（例: `input.alpha`等）を明示する。
 AC02のmixはFSで行い、異なるV/FSを持つ入力の物理単位を単純な一つの校正係数で表さない。

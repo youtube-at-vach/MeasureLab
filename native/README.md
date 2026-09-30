@@ -5,7 +5,8 @@ MIG-001の開発環境準備とMIG-004-AのQt境界プローブ。Rust/QMLの採
 MIG-002の[コア契約](../migration/contracts/core.md)と[後続作業票](../migration/tasks.md)を作成済み。
 MIG-004-AでCargo workspace/lockと同じ小さなQML画面を追加した。
 `probe-core`はGUI非依存の模擬worker、`cxxqt-probe`/`qtbridge-probe`は薄いQt adapter。
-音声backend、測定DSP、Analysis Graphは未実装。[Qt SDK・比較画面の起動手順](qt-probe.md)を参照。
+MIG-006-Aの`dsp-core`はGUI非依存のFFT/窓/単位/PSD候補。[FFT比較手順](fft-candidate.md)を参照。
+音声backend、Analysis Graphは未実装。[Qt SDK・比較画面の起動手順](qt-probe.md)を参照。
 004-Bの開発反復とローカルbundleは[反復測定手順](qt-iteration.md)へ分離する。
 
 ## このworktreeで使う

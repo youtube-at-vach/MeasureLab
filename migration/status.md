@@ -3,7 +3,8 @@
 更新: 2026-09-30。計画の正本は[評価計画](../guide/RUST_QML_MIGRATION_PLAN.md)。
 Rust/QMLの採用は未決定。MIG-003-A/B/Cの参照側とMIG-004-Aの基本GUI境界を検証済み。
 004-BのIntel反復build/編集/ローカルpackageは検証済み。対象OS全体の完了ではない。
-Linux CIのICU不足を修正し、再実行は未確認。次は005-A/006-Aの候補core比較へ進められる。
+Linux CIのICU不足を修正し、再実行は未確認。006-Aへ純粋FFT候補を追加し、24ケースの数値比較に合格。
+Intelでのコア編集5回も完了、中央値24.544秒。005-Aのbackend境界、006-Bの共有graphは未着手。
 
 ## 作業場所と基準
 
@@ -11,12 +12,12 @@ Linux CIのICU不足を修正し、再実行は未確認。次は005-A/006-Aの�
 | --- | --- |
 | 現行版 | `/Users/vach/MeasureLab`、`main` |
 | 検証用worktree | `/Users/vach/.codex/worktrees/next-core-evaluation/MeasureLab`（Codex管理） |
-| 検証用ブランチ | 統合先`codex/next-core-evaluation`、今回の作業`codex/migration-004-b`（004-Aの`80435eef`から分岐） |
+| 検証用ブランチ | 統合先`codex/next-core-evaluation`、今回の作業`codex/migration-006-a`（004-Bの`e0b992ce`から分岐） |
 | 作業開始・Python参照コミット | `9fd79958`（MeasureLab 0.9.0、開始時のローカルmain） |
 | 計画書の調査コミット | `68cbdabc3ecd542d9d73fa0aa86bf9159f44d811` |
 | 最終main同期 | 2026-09-30にfetch。origin/mainは参照`9fd79958`のまま、取込み差分なし |
 | 統合担当 | 当面、この検証ブランチを担当する単一の作業者 |
-| リモート | 今回開始時は004-Aの`80435eef`がremote一致・clean。そこから004-B用ローカルブランチを分岐。今回の変更は未コミット。今回のpush・PR・Issue・Project更新・配布は未実施 |
+| リモート | 今回開始時は004-Bの`e0b992ce`がremote一致・clean。そこから006-A用ローカルブランチを分岐。今回の変更は未コミット。今回のpush・PR・Issue・Project更新・配布は未実施 |
 
 調査コミットから開始時mainまでの差分には計画書、設計ガイド、Measurement Consoleのレイアウト、
 Goniometerのテーマ対応、翻訳と対応テストがある。
@@ -33,13 +34,73 @@ MIG-003-Cも既存fixtureと契約を変更せず、filter/rate参照を独立�
 | MIG-002 | 完了（P0文書・整合検査） | 41モジュール+共通10件、20プリミティブと双方向対応、コア/数値契約、16受け入れ条件、性能・反復予算、後続作業票 |
 | MIG-003 | 完了（A/B/Cの参照側） | FFT20+4ケース、27契約例、4保存例にfilter/rateの21数値ケースと6 rate境界を追加。候補実装でのAC合格は005/006以降 |
 | MIG-004 | 進行中（AとBのIntel範囲を完了） | Bの32 sample+warmup2回とローカルbundleが合格。Linux CIのICU不足を修正したが再実行未確認。他OS/clean環境は未確認 |
-| MIG-005〜008 | 未着手 | 計画にある依存関係に従う。採用判断までの検証範囲 |
+| MIG-005 | 未着手 | backend共通境界/route/tapは005-A。実機2chは005-B |
+| MIG-006 | 進行中（Aの保存コーパスとIntel編集を完了） | 純粋FFT候補24ケース合格、編集5回。共有graph/履歴/filter/校正のB〜Eは未着手 |
+| MIG-007〜008 | 未着手 | 計画にある依存関係に従う。採用判断までの検証範囲 |
 
 `native/`にツールチェーン/SDKの固定、Cargo workspace/lock、模擬workerと2方式のadapter、共通QMLを置いた。
-音声backend、測定DSP、共有Analysis Graphは未作成。
+006-Aの`dsp-core`へFFT/窓/単位/PSDを追加。音声backend、共有Analysis Graphは未作成。
 候補実装は契約v0.1を出発点とし、公開型・ABI・採用ライブラリは後続の検証で決める。
 
-## MIG-004-Bの成果と検証
+## MIG-006-Aの成果と検証
+
+着手: 2026-09-30、HEAD `e0b992ce`、004-Bのブランチはremote一致・clean。
+statusの004-B欄には未コミットとあったが、開始時にcommit済みであることを確認した。
+同じworktreeで`codex/migration-006-a`へ分岐。今回の変更は未コミット。
+変更境界は`native/dsp-core`、独立runner/test/CI、`migration/`の記録。
+現行DSP/UI、003-A/B/Cの保存入力・期待値・許容差は変更していない。
+
+- [純粋FFT候補](../native/dsp-core/src/lib.rs): RealFFT 3.5.0 / RustFFT 6.4.1、f32/f64、
+  boxcar/symmetric Hann、N-channel、FS peak/coherent bin RMS/時間RMS、PSD/ASD、inverse。
+- [比較runner](../scripts/migration_fft_candidate.py): 元の`input.bin`をRustへ渡し、保存済み理論値と現行値の両方へ比較。
+  schema/ID順/shape/dtype/単位/hash/有限性を検査。phase/dBは定義した閾値を守る。
+- [編集反復runner](../scripts/migration_fft_iteration.py): 専用sourceコピー/targetで同じ係数分岐変更を5回。
+  元checkoutとfixtureを編集せず、Rustテストと全24比較まで測る。5回すべて成功。
+- [決定0007](decisions/0007-pure-fft-candidate.md)と[再実行手順](../native/fft-candidate.md)を追加。
+- 非Qtの独立CIへDSP test/ClippyとNumPyだけのportable比較18件を追加。GitHub実行は未確認。
+
+数値比較は小規模14件、4/8ch 4件、拡張6件すべて合格。
+最大正規化FFT差はf64約1.33e-13、f32約8.35e-9。許容差の変更なし。
+AC01は同じ入力に対するFFT部分、AC04は保存コーパスに対する候補の数値合格。
+f32の保存参照はN=4096の2/4/8chで、f32拡張/endpoint全構成は今回追加していない。
+実音声経路、route、共有graph、GUI、実機、他OS、release/steady-stateは別の未完了範囲。
+
+| 最終確認 | 結果 |
+| --- | --- |
+| 候補数値比較 | [report](fixtures/runs/2026-09-30-intel-candidate-fft.json)。小規模14/4・8ch 4/拡張6件すべて理論・現行の両方へ合格 |
+| コア編集反復 | [report](benchmarks/results/2026-09-30-006-a-intel.json)。5回すべてRust5テストと24比較成功、DSP再コンパイルを確認 |
+| 編集時間 | 26.093/24.544/24.770/24.493/24.453秒。中央値24.544、min/max 24.453/26.093、母標準偏差0.621秒。絶対30秒目安内 |
+| report/log整合 | 採用反復の161コマンド、単独数値24/最小環境18を含む205コマンドのgzip/hash/終了コード0を確認 |
+| 最小Python環境 | [NumPy+pipのみのreport](fixtures/runs/2026-09-30-intel-candidate-minimal.json)。portable数値比較18件成功。Qt/FFTW/音声依存なし |
+| Rust build/fmt/Clippy | workspaceで成功。既存CXX-Qtの空init archive/重複rpathのlink警告は残る。ソースlint警告なし |
+| Rust test | DSP5件、模擬worker5件、合計10 passed |
+| Qt境界回帰 | [report](qt/2026-09-30-intel-006-a-regression.json)。新lockで両方式の共通QML寿命検査各1回成功 |
+| Python対象回帰 | 216 passed、2 skipped（33.48秒）。新runner/反復/異常系25件を含む。skipは既存の奇数長Nyquistの該当しない組合せ |
+| 保存fixture verify | FFT小規模14/拡張6、core 4 FFT/27契約/4保存、filter 21数値/6 rate境界すべて成功。入力・期待値の変更なし |
+| 起動分離 | 参照設定とRust1.98.1を確認。Python offline/offscreen self-test成功、終了コード0。従来のlocale/font警告のみ |
+| Native CI仕様 | YAML 2 job/inline Pythonと、pure DSPの最小依存経路をローカル確認。GitHub実行は未確認 |
+| Ruff lint / format | 成功、599 Pythonファイルのformat確認 |
+| Markdown lint・台帳・diff | 成功、182 Markdownファイル、41モジュールの双方向対応、変更文書のローカルリンク、`git diff --check`を確認 |
+| main同期 | 終了時fetch後もorigin/mainは`9fd79958`。取込み・参照更新不要 |
+
+初回の編集反復は他のbuild/testと重なったので[診断run](benchmarks/results/2026-09-30-006-a-development.json)へ分離し、
+採用run中は他のagent build/testを止めた。電源状態・他アプリ負荷の時系列は未記録。
+実装中のコンパイル失敗1回とClippy失敗2回は[決定0007](decisions/0007-pure-fft-candidate.md)へ記録した。
+単独数値比較全体33.095秒/Python親peak RSS 473,767,936 bytesは診断値で、Rust FFT単体の性能値ではない。
+
+006-Aの完了は保存コーパスの数値合格とIntel/debugの編集反復記録まで。
+Python同等編集、GUIへの波及、release/10分連続、Rust子RSS、物理I/O、他OS、AC16全体は未確認。
+全体Pytest/Mypy/翻訳/現行Pythonの全言語UIサイズは未実施。製品UI・翻訳の変更はない。
+
+再実行:
+
+```bash
+./.venv/bin/python scripts/migration_fft_candidate.py --extended .migration-local/fft-extended-v1 --report .migration-local/006-a-verify.json
+./.venv/bin/python scripts/migration_fft_iteration.py --extended .migration-local/fft-extended-v1 --report .migration-local/006-a-edits.json
+./.venv/bin/pytest -q tests/logic_verification/test_migration_fft_candidate.py
+```
+
+## MIG-004-Bの成果と検証（前回記録）
 
 着手: 2026-09-30、HEAD `80435eef`、004-Aのブランチはremote一致・clean。
 このworktreeで`codex/migration-004-b`へ分岐した。今回の変更は未コミット。
@@ -374,11 +435,11 @@ GUI起動時にlocaleのUTF-8への切替と、`Sans Serif`のフォント代替
 2. [環境手順](environment.md)に従い、参照版の起動とツールチェーンを再確認する。
 3. 台帳チェックとFFT/core/filterの各reference runnerでverifyを実行する。
    環境差は確認し、比較時だけ明示portable modeを使う。
-4. [作業票](tasks.md)の005-A/006-Aへ進める。004-BのIntel反復測定は完了した。
-   Linux CIのICU修正は未コミット・未実行。GitHubへ公開する段階で実際のCI結果を確認する。
+4. [作業票](tasks.md)の005-Aまたは006-Bへ進める。006-Aの保存コーパス/Intel編集と004-BのIntel反復は完了した。
+   Linux CIのICU修正は004-Bの`e0b992ce`へcommit済み。修正後のGitHub実行は未確認。公開する段階で確認する。
    ARM/Windows/Linuxの反復測定、full Xcode、release/clean環境の配布起動は未確認のまま残す。
 5. 003-A/B/Cの保存入力と期待値は揃った。候補実装へ同じbytesを通し、参照側の完了と実装のAC合格を分ける。
-6. 005-A/006-Aも着手可能。独立Rust CIは追加済み。source/state/所有権の境界を記録し、
+6. 005-A/006-Bも着手可能。独立Rust CIは追加済み。source/state/所有権の境界を記録し、
    004-Aの模擬workerのmutex/通知を音声callbackへ転用しない。
 7. 契約変更が必要なら決定記録、台帳、AC、fixtureを同時に更新する。MIG-002完了とRust/QML採用決定を混同しない。
 

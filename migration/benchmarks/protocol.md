@@ -4,6 +4,9 @@ MIG-002、2026-09-29。ここには測定手順と初期予算を置く。**新�
 MIG-001のスモーク時間は比較結果に含めない。Processor Benchmarkの製品機能移行も別に扱う。
 MIG-004-Bで候補2方式のIntel開発反復とローカルbundleを測定した。
 [結果と範囲](../decisions/0006-qt-iteration-local-bundles.md)を参照。実行性能・他OS・同等Python編集の比較は未確認。
+MIG-006-Aで純粋FFTのコア1ファイル編集→Rustテストと24参照比較をIntel/debugで5回測定した。
+[結果と制限](../decisions/0007-pure-fft-candidate.md#開発反復の扱い)を参照。
+候補の編集反復であり、release/steady-stateやPython相対性能の比較ではない。
 
 ## 固定条件
 

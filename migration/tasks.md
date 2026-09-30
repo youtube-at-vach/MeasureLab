@@ -27,7 +27,7 @@
 | 004-B | 上記のbuild/QML編集/packageと対象OS起動比較 | 004-A。同一workload/依存組合せとbenchmark記録 | AC16と性能protocol。Intel/ARM/Windows/Linuxの実行済み・未実行を分離 | 未所有環境の成功扱い、安定版配布 | Intel範囲完了（2026-09-30）。その他OS/clean環境、修正後Linux CIは未確認 |
 | 005-A | N-channel buffer/route/tap、backend共通境界 | 003-A/B。P02/P03。PortAudio基準とCPAL比較 | AC01〜03/09/11。4/8ch・非対称I/O・明示mapping・queue overflow。Rust追加時は独立CI追加 | network多ch拡張、全機器 | 未着手 |
 | 005-B | 実機2ch、XRUN/再接続、排他/停止/時刻 | 005-Aと利用可能な実機。device/配線/校正を記録 | AC11/13/16、同じ配線で現行と交互測定。測定前に許容振幅差/遅延誤差を決める | 実機4/8/16ch保証 | 未着手・実機条件待ち |
-| 006-A | FFT/窓/単位/PSDを参照比較 | 003-A、P04/P05。GUI非依存core | AC01/04、f32/f64・非2冪/極大・endpoint。必須数値条件合格、core編集時間記録 | 全解析モジュール | 未着手 |
+| 006-A | FFT/窓/単位/PSDを参照比較 | 003-A、P04/P05。GUI非依存core | AC01/04、f32/f64・非2冪/極大・endpoint。必須数値条件合格、core編集時間記録 | 全解析モジュール | 完了（2026-09-30、保存コーパス24件とIntel編集5回。全体採用・他OS・Python相対比較は未確認） |
 | 006-B | 固定DAG・共有key・購読token・bounded cache | 006-A、003-B、P15 | AC05〜07。評価count/同一ID、条件分岐、独立平均、最後の解除/終了回収 | 汎用graph editor | 未着手 |
 | 006-C | trigger/history・Timebase・generation・validity | 003-B、006-B、P03 | AC08/09、異なるcursor/通知遅延・保持超過・旧世代拒否。共有graphへ統合 | 外部trigger実機adapter | 未着手 |
 | 006-D | 最小rate変換/filterとvalidity伝播 | 003-C、006-C、P06 | AC10/14、同じgraph内で遅延/区間/phase stateを保持 | 高品質resamplerの全機能 | 未着手 |
@@ -82,7 +82,7 @@ FIRは新契約モデル、polyphase/SOSは現行参照と独立有限和・差�
 004-AでQt開発SDKと両実行物を固定し、Intelで基本GUI境界を比較した。
 004-BでIntelの反復build/編集/ローカルpackageを検証した。他OS/clean環境は未確認。
 AC07の実graph所有権は006-B、実音声回収は005-B/008。
-005-A、006-Aも参照側の依存が揃った。候補実装の開始時はRust CI追加と同じfixtureの比較を行う。
+005-A、006-Aの参照側の依存が揃った。006-Aへ純粋FFT候補と同じfixture比較、Rust CIを追加した。
 MIG-006-Dでは一括APIをchunkごとに再起動せず、state/phase/validityをgraph内で保持する。
 
 ## 004-Aの再検査
@@ -116,3 +116,18 @@ clean 3回、no-op warmup1回+5回、QML編集5回、package3回を方式ごと�
 ローカルZIP展開起動、クリーンOS/配布、他OS/CPUを別扱いにする。
 005-A/006-Aは残るOS検証を待たずに進められるが、004-Bの不足をその合格に置き換えない。
 [比較記録](decisions/0006-qt-iteration-local-bundles.md)と[全sample](benchmarks/results/2026-09-30-004-b-intel.json)を参照。
+
+## 006-Aの再検査
+
+[純粋FFTの手順](../native/fft-candidate.md)と[決定0007](decisions/0007-pure-fft-candidate.md)を参照。
+候補実行物へ003-A/Bの元の入力bytesを通し、保存済み理論/現行の両方と比較する。
+Qt SDKや実機は不要。拡張6件はローカル配列とversioned manifestの一致を要求する。
+
+```bash
+./.venv/bin/python scripts/migration_fft_candidate.py --extended .migration-local/fft-extended-v1 --report .migration-local/006-a-verify.json
+./.venv/bin/python scripts/migration_fft_iteration.py --extended .migration-local/fft-extended-v1 --report .migration-local/006-a-edits.json
+./.venv/bin/pytest -q tests/logic_verification/test_migration_fft_candidate.py
+```
+
+反復中は他のbuild/testを止める。通常の比較はfixtureを書き換えない。
+006-Bの共有graph、005-Aの音声buffer/route/backend境界は未着手。
