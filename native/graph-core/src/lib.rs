@@ -9,6 +9,7 @@ use std::time::Duration;
 
 static NEXT_GRAPH: AtomicU64 = AtomicU64::new(1);
 pub const TRANSFORM_REVISION: &str = "realfft-3.5.0-x-over-n-v1";
+pub mod filter;
 pub mod history;
 pub mod time;
 
@@ -432,6 +433,7 @@ struct State {
     evaluations: u64,
     display_replacements: u64,
     minimum_generations: HashMap<String, u64>,
+    filters: HashMap<Source, filter::Filter>,
 }
 impl State {
     fn accepts(&self, source: &Source) -> bool {
@@ -452,6 +454,9 @@ impl Core {
             .nodes
             .retain(|key, _| state.consumers.values().any(|c| &c.key == key));
         state.cache.retain(|r| state.nodes.contains_key(&r.key));
+        state
+            .filters
+            .retain(|source, _| state.consumers.values().any(|c| &c.key.source == source));
     }
     fn trim(&self, state: &mut State) {
         while state.cache.len() > self.limits.cache_results
@@ -495,6 +500,7 @@ impl Graph {
                     evaluations: 0,
                     display_replacements: 0,
                     minimum_generations: HashMap::new(),
+                    filters: HashMap::new(),
                 }),
                 idle: Condvar::new(),
             }),
@@ -608,6 +614,79 @@ impl Graph {
             .ok_or_else(|| read.report.status.clone())?;
         self.schedule(Arc::clone(block))
     }
+    /// Register one worker transform after subscribing to its exact output Source.
+    /// All output consumers share this state; the final token removes it through prune().
+    pub fn attach_filter(&self, filter: filter::Filter) -> Result<(), String> {
+        let mut s = self.core.state.lock().unwrap();
+        let source = filter.output_source().clone();
+        if s.closed
+            || !s.accepts(filter.input_source())
+            || !s.accepts(&source)
+            || s.filters.len() >= self.core.limits.max_nodes
+            || s.filters.contains_key(&source)
+            || !s.consumers.values().any(|c| c.key.source == source)
+            || s.filters
+                .values()
+                .any(|f| f.output_source().stream_id == source.stream_id)
+            || s.filters
+                .keys()
+                .any(|p| p.stream_id == filter.input_source().stream_id)
+            || s.filters
+                .values()
+                .any(|f| f.input_source().stream_id == source.stream_id)
+        {
+            return Err("Filter closed, duplicate, chained or without demand".into());
+        }
+        s.filters.insert(source, filter);
+        Ok(())
+    }
+    /// Single control/analysis worker entry point. FFT windows come from output history.
+    pub fn process_filter(
+        &self,
+        source: &Source,
+        block: &SignalBlock,
+    ) -> Result<Option<SignalBlock>, String> {
+        let mut s = self.core.state.lock().unwrap();
+        if s.closed || !s.accepts(source) || !s.accepts(block.source()) {
+            return Err("Graph closed or stale_generation".into());
+        }
+        s.filters
+            .get_mut(source)
+            .ok_or("Unknown filter")?
+            .process(block)
+    }
+    pub fn finish_filter(&self, source: &Source, end: u64) -> Result<Option<SignalBlock>, String> {
+        let mut s = self.core.state.lock().unwrap();
+        if s.closed || !s.accepts(source) {
+            return Err("Graph closed or stale_generation".into());
+        }
+        s.filters
+            .get_mut(source)
+            .ok_or("Unknown filter")?
+            .finish(end)
+    }
+    pub fn filter_metadata(&self, source: &Source) -> Option<filter::FilterMetadata> {
+        self.core
+            .state
+            .lock()
+            .unwrap()
+            .filters
+            .get(source)
+            .map(|f| f.metadata().clone())
+    }
+    pub fn filter_state(&self, source: &Source) -> Option<Vec<f64>> {
+        self.core
+            .state
+            .lock()
+            .unwrap()
+            .filters
+            .get(source)?
+            .sos_state()
+            .map(<[f64]>::to_vec)
+    }
+    pub fn filter_count(&self) -> usize {
+        self.core.state.lock().unwrap().filters.len()
+    }
     pub fn cached(&self, key: &FftKey, start: u64) -> Option<Arc<FftResult>> {
         let mut state = self.core.state.lock().unwrap();
         if !state.accepts(&key.source) {
@@ -645,6 +724,10 @@ impl Graph {
             .consumers
             .values()
             .any(|c| c.key.source.stream_id == stream_id)
+            && !s
+                .filters
+                .values()
+                .any(|f| f.input_source().stream_id == stream_id)
         {
             return Err("Unknown stream".into());
         }
@@ -657,18 +740,47 @@ impl Graph {
         {
             return Err("Generation fence capacity exceeded".into());
         }
+        let derived: HashSet<_> = s
+            .filters
+            .values()
+            .filter(|f| {
+                f.input_source().stream_id == stream_id && f.input_source().generation < generation
+            })
+            .map(|f| f.output_source().clone())
+            .collect();
+        // Derived fences reject old external blocks and reconfiguration after state has been removed.
+        // One transform per distinct output stream; the table has an explicit bounded budget.
+        if s.minimum_generations.len()
+            + usize::from(!s.minimum_generations.contains_key(stream_id))
+            + derived
+                .iter()
+                .filter(|p| !s.minimum_generations.contains_key(&p.stream_id))
+                .count()
+            > self.core.limits.max_subscriptions
+        {
+            return Err("Generation fence capacity exceeded".into());
+        }
         s.minimum_generations.insert(stream_id.into(), generation);
+        for source in &derived {
+            s.minimum_generations
+                .insert(source.stream_id.clone(), generation);
+        }
+        s.filters.retain(|source, _| {
+            !derived.contains(source)
+                && (source.stream_id != stream_id || source.generation >= generation)
+        });
         s.nodes.retain(|key, _| {
-            key.source.stream_id != stream_id || key.source.generation >= generation
+            !derived.contains(&key.source)
+                && (key.source.stream_id != stream_id || key.source.generation >= generation)
         });
         s.cache.retain(|r| {
-            r.key.source.stream_id != stream_id || r.key.source.generation >= generation
+            !derived.contains(&r.key.source)
+                && (r.key.source.stream_id != stream_id || r.key.source.generation >= generation)
         });
-        for c in s
-            .consumers
-            .values_mut()
-            .filter(|c| c.key.source.stream_id == stream_id && c.key.source.generation < generation)
-        {
+        for c in s.consumers.values_mut().filter(|c| {
+            derived.contains(&c.key.source)
+                || (c.key.source.stream_id == stream_id && c.key.source.generation < generation)
+        }) {
             c.reset();
             c.latest = None;
         }
@@ -681,6 +793,7 @@ impl Graph {
         s.nodes.clear();
         s.cache.clear();
         s.minimum_generations.clear();
+        s.filters.clear();
     }
     /// Wait for caller-owned jobs/completions to finish or be dropped. This does not run or cancel a thread.
     pub fn wait_idle(&self, timeout: Duration) -> bool {

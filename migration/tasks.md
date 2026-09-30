@@ -30,7 +30,7 @@
 | 006-A | FFT/窓/単位/PSDを参照比較 | 003-A、P04/P05。GUI非依存core | AC01/04、f32/f64・非2冪/極大・endpoint。必須数値条件合格、core編集時間記録 | 全解析モジュール | 完了（2026-09-30、保存コーパス24件とIntel編集5回。全体採用・他OS・Python相対比較は未確認） |
 | 006-B | 固定DAG・共有key・購読token・bounded cache | 006-A、003-B、P15 | AC05〜07。評価count/同一ID、条件分岐、独立平均、最後の解除/終了回収 | 汎用graph editor | 完了（2026-09-30、pure graphのRust16テスト/保存18ケース。実取得/Qt統合は後続） |
 | 006-C | trigger/history・Timebase・generation・validity | 003-B、006-B、P03 | AC08/09、異なるcursor/通知遅延・保持超過・旧世代拒否。共有graphへ統合 | 外部trigger実機adapter | 完了（2026-09-30、worker所有履歴/pure graph・保存13契約/4入力bytes、Rust27テスト。実取得/Qtは後続） |
-| 006-D | 最小rate変換/filterとvalidity伝播 | 003-C、006-C、P06 | AC10/14、同じgraph内で遅延/区間/phase stateを保持 | 高品質resamplerの全機能 | 未着手 |
+| 006-D | 最小rate変換/filterとvalidity伝播 | 003-C、006-C、P06 | AC10/14、同じgraph内で遅延/区間/phase stateを保持 | 高品質resamplerの全機能 | 完了（2026-09-30、f64保存21ケース×5 chunk/6 rate境界と一段のpure graph。f32・IIR gap回復・実取得/Qtは後続） |
 | 006-E | 不変result・channel校正・CSV/JSON来歴 | 003-B、006-B/C、P13/P14 | AC12、再読込、保存失敗、profile変更後の不変性、uncalibrated | 旧設定の自動移行 | 未着手 |
 | 007-A | 同じ結果をline/heatmapへ表示、操作/画像保存 | 004、006。P19のsnapshot境界 | AC05/07/08、軸/cursor/zoom・画像・再生成・サイズ/9言語 | 全41機能のUI | 未着手 |
 | 007-B | 描画/GUI遅延・CPU/RSS・表示編集時間 | 007-A、性能protocol | AC15/16。遅いGUIでも測定を保ち、単独/複数表示を比較 | 理論だけでの性能判定 | 未着手 |
@@ -146,7 +146,7 @@ cargo +1.98.1 test --offline --locked --manifest-path native/Cargo.toml -p graph
 ./.venv/bin/pytest -q tests/logic_verification/test_migration_graph_candidate.py
 ```
 
-006-Cのpure境界を検証済み。006-D/Eまたは005-A/Bの残る境界へ進められる。Rust/QML採用・AC07の実音声/GUI/保存統合の合格とは分ける。
+006-C/Dのpure境界を検証済み。006-Eまたは005-A/Bの残る境界へ進められる。Rust/QML採用・AC07の実音声/GUI/保存統合の合格とは分ける。
 
 ## 005-A/Bの再検査
 
@@ -181,4 +181,18 @@ cargo +1.98.1 test --offline --locked --manifest-path native/Cargo.toml -p graph
 ```
 
 独立reader・遅い通知・保持超過・gap/pending・世代fence・validity・正確な時刻を検査する。
-006-Dのfilter/rateと006-Eの校正/保存へ進める。実取得/Qt/物理clock/永続schedulerは後続。
+006-Dのfilter/rateもpure境界を検証済み。006-Eの校正/保存へ進める。実取得/Qt/物理clock/永続schedulerは後続。
+
+## 006-Dの再検査
+
+[filter/rateの手順](../native/filter-candidate.md)と[決定0012](decisions/0012-filter-rate-graph.md)を参照。
+保存21ケースを5種類のchunkで通し、理論/現行数値、phase/state、delay/trigger、validityと共有FFTを検査する。
+
+```bash
+cargo +1.98.1 test --offline --locked --manifest-path native/Cargo.toml -p graph-core
+./.venv/bin/python scripts/migration_filter_candidate.py --report .migration-local/006-d-new.json
+./.venv/bin/pytest -q tests/logic_verification/test_migration_filter_candidate.py
+```
+
+NumPy-only CIは明示`--portable`を使う。原点/処理遅延のunknownを0へ補わず、係数bitsとfixtureを固定する。
+006-Eへ進められる。IIR gap回復、f32、chain、実取得/Qt/永続scheduler/物理clockは後続。

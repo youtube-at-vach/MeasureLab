@@ -92,6 +92,7 @@
 | validity・精度・共有条件 | f64参照。欠落の影響をsupportへ拡張。係数・状態・開始位置の一致が必要。TruePeak oversamplingは別条件 |
 | 現行の入口 | [source](../src/core/analysis.py) |
 | 参照検証 | [test](../tests/logic_verification/analysis/test_resample.py) |
+| 候補検証 | [006-D](../native/filter-candidate.md)。f64保存21ケースとpure graphのstate/phase/validity。実取得/Qt・f32・IIR gap回復は後続 |
 
 ## P07
 
