@@ -35,7 +35,7 @@
 | validity・精度・共有条件 | チャンネル不一致は拒否。XRUN/欠落は区間付き。f32/f64形式を保持。同一tap/route/stream世代のみ共有 |
 | 現行の入口 | [source](../src/core/audio_engine.py) |
 | 参照検証 | [test](../tests/logic_verification/core/test_audio_engine.py) |
-| 候補検証 | 005の[queue→履歴→共有FFT](../native/acquisition-candidate.md)。input.rawの実取得接続まで。動的出力route/全tap/製品共通adapterは後続 |
+| 候補検証 | 005の[queue→履歴→共有FFT](../native/acquisition-candidate.md)と[動的出力route](../native/dynamic-route.md)。f32 callback/BlackHoleまで。全tap/製品共通adapterは後続 |
 
 ## P03
 

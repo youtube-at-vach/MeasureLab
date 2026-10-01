@@ -137,8 +137,7 @@ def verify(*, portable=False):
         "source_sha256": {
             str(path.relative_to(ROOT)): fft.digest(path.read_bytes())
             for path in [
-                ROOT / "native/audio-core/src/lib.rs",
-                ROOT / "native/audio-core/src/main.rs",
+                *sorted((ROOT / "native/audio-core/src").rglob("*.rs")),
                 ROOT / "native/Cargo.lock",
                 Path(__file__),
             ]

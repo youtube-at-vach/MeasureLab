@@ -31,6 +31,7 @@ jobs:
           cargo build --locked -p graph-core --bin result-candidate
           cargo build --locked -p graph-core --bin acquisition-candidate
           cargo build --locked -p audio-core
+          cargo build --locked -p audio-core --bin route-candidate
           cargo clippy --locked -p probe-core -p dsp-core -p graph-core -p audio-core --all-targets -- -D warnings
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -46,6 +47,7 @@ jobs:
           ./.venv/bin/python scripts/migration_result_candidate.py --portable --report result-candidate.json
           ./.venv/bin/python scripts/migration_audio_candidate.py --portable --report audio-candidate.json
           ./.venv/bin/python scripts/migration_audio_graph.py --portable --report acquisition-candidate.json
+          ./.venv/bin/python scripts/migration_audio_route.py --portable --report route-candidate.json
 
   audio-backend:
     runs-on: ubuntu-24.04

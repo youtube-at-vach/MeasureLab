@@ -13,7 +13,9 @@ Intelでのコア編集5回も完了、中央値24.544秒。
 006-Dのgraph所有filter/rate stateを追加し、f64保存21ケース×5 chunk/6 rate境界が合格。
 006-Eの不変result/基本ID校正/JSON・CSV保存を追加し、保存2校正契約・4交換例と4/8ch f32/f64が合格。
 005のinput.raw取得queue→履歴→共有FFTを接続し、保存4入力×2bindingの8ケースに合格。
-CPALのBlackHole診断にも同じworkerを接続した。Qt統合、製品保存互換/非同期保存は未着手。
+CPALのBlackHole診断にも同じworkerを接続した。
+005-Aへ固定容量の動的出力route mailboxを追加。保存f32の12条件とBlackHoleの9取得/3 cancelを検証した。
+Qt統合、製品共通adapter、製品保存互換/非同期保存は未着手。
 
 ## 作業場所と基準
 
@@ -21,12 +23,12 @@ CPALのBlackHole診断にも同じworkerを接続した。Qt統合、製品保�
 | --- | --- |
 | 現行版 | `/Users/vach/MeasureLab`、`main` |
 | 検証用worktree | `/Users/vach/.codex/worktrees/next-core-evaluation/MeasureLab`（Codex管理） |
-| 検証用ブランチ | 統合先`codex/next-core-evaluation`、今回の作業`codex/migration-005-graph`（006-Eの`ab0c6247`から分岐） |
+| 検証用ブランチ | 統合先`codex/next-core-evaluation`、今回の作業`codex/migration-005-route`（005-graphの`8f1d1362`から分岐） |
 | 作業開始・Python参照コミット | `9fd79958`（MeasureLab 0.9.0、開始時のローカルmain） |
 | 計画書の調査コミット | `68cbdabc3ecd542d9d73fa0aa86bf9159f44d811` |
 | 最終main同期 | 2026-10-01にfetch。origin/mainは参照`9fd79958`のまま、取込み差分なし |
 | 統合担当 | 当面、この検証ブランチを担当する単一の作業者 |
-| リモート | 今回開始時は006-Eの`ab0c6247`がremote一致・clean。そこから005-graph用ローカルブランチを分岐。今回の変更は未コミット。push・PR・Issue・Project更新・配布は未実施 |
+| リモート | 今回開始時は005-graphの`8f1d1362`がremote一致・clean。そこから005-route用ローカルブランチを分岐。今回の変更は未コミット。push・PR・Issue・Project更新・配布は未実施 |
 
 調査コミットから開始時mainまでの差分には計画書、設計ガイド、Measurement Consoleのレイアウト、
 Goniometerのテーマ対応、翻訳と対応テストがある。
@@ -43,7 +45,7 @@ MIG-003-Cも既存fixtureと契約を変更せず、filter/rate参照を独立�
 | MIG-002 | 完了（P0文書・整合検査） | 41モジュール+共通10件、20プリミティブと双方向対応、コア/数値契約、16受け入れ条件、性能・反復予算、後続作業票 |
 | MIG-003 | 完了（A/B/Cの参照側） | FFT20+4ケース、27契約例、4保存例にfilter/rateの21数値ケースと6 rate境界を追加。候補実装でのAC合格は005/006以降 |
 | MIG-004 | 進行中（AとBのIntel範囲を完了） | Bの32 sample+warmup2回とローカルbundleが合格。Linux CIのICU不足を修正したが再実行未確認。他OS/clean環境は未確認 |
-| MIG-005 | 進行中（Aのpure境界とBの短い実機／仮想比較） | route/tap/queueの10契約例+4入力bytes、UAC-232の交互3回とBlackHoleの2／16ch・4／8ch route経路を追加。input.rawを取得queue/履歴/共有FFTへ接続。動的出力route、時刻写像、排他/USB復帰/長時間は残る |
+| MIG-005 | 進行中（Aの取得graph・動的f32 routeとBの短い実機／仮想比較） | 取得queue/履歴/共有FFTに動的出力mailboxを追加。保存12条件、BlackHole 2→2/4→16/8→16の9取得と3保留cancel。製品共通adapter/全tap、時刻写像、排他/USB復帰/長時間は残る |
 | MIG-006 | 進行中（A〜Eのpure範囲を完了） | FFT/共有/履歴/filterに不変result/ID校正/保存を追加。Eの2校正契約・4交換例・4/8ch f32/f64、graph Rust50テスト合格。校正/保存/Qtの実取得統合は未着手 |
 | MIG-007〜008 | 未着手 | 計画にある依存関係に従う。採用判断までの検証範囲 |
 
@@ -54,14 +56,83 @@ MIG-003-Cも既存fixtureと契約を変更せず、filter/rate参照を独立�
 006-Dで同じgraphへf64の一段filter/rate stateと派生世代fenceを追加した。
 006-Eは共有FFTから全配列と来歴をowned resultへ保存し、ID校正/JSON・CSVのpure境界を追加した。
 005-graphはinput.rawの取得queueをworker所有履歴/固定FFT schedulerへ接続し、CPAL診断にも利用する。
-現行PortAudioは比較基準。input.rawのgraph接続は追加済み。独立した永続thread scheduler、
-出力route/Qt接続、製品backend共通化は未作成。
+現行PortAudioは比較基準。input.rawのgraph接続は追加済み。動的出力routeは固定容量mailboxでCPAL callbackへ配送する。
+独立した永続thread scheduler、全tap/Qt接続、製品backend共通化は未作成。
 候補実装は契約v0.1を出発点とし、公開型・ABI・採用ライブラリは後続の検証で決める。
 
-## MIG-005取得graph接続の成果と検証
+## MIG-005動的出力routeの成果と検証
+
+着手: 2026-10-01、HEAD `8f1d1362`。005-graphはremote一致・cleanで保存済みだった。
+前回の「005-graph未コミット」は古く、このcommitへ保存済みと確認した。
+同じworktreeで`codex/migration-005-route`へ分岐。今回の変更は未コミット。
+変更境界はaudio-coreの制御→callback配送、CPAL診断、独立runner/test/CI、検証文書。
+現行Python DSP/UI、003-A/B/Cの保存入力・期待値・契約・許容差、Cargo依存/lockは変更していない。
+
+- [動的mailbox](../native/audio-core/src/dynamic_route.rs)はcontrol/callback各1 owner、未確認要求1件。
+  制御側で検証・compileし、callbackでは固定16×16 termsをblock境界でcopyする。
+  callbackのalloc/解放/lock/待機loop/文字列操作はない。unsafeを使わない。
+  busy/無効/旧世代/逆順/output binding変更は現在のrouteを保ったまま拒否する。
+- callbackの全block検査後に、要求位置以上の境界へ適用。数値sequence/区間を返し、
+  制御側でrevision・要求/実適用sampleを不変eventへ記録する。遅いackでも音声を続ける。
+  closeは冪等、callback破棄後に保留をcancelledとして一度返す。再開時は新endpointを使う。
+- [保存比較runner](../scripts/migration_audio_route.py)は003-Bの4/8ch f32元bytesを4→2/8、8→4/16へ通す。
+  固定/可変blockと1/4 blockおきのack確認の12条件。独立sampleモデルと手計算位置を照合し、
+  output.mixed/mute後device_bufferの全bytes、generation/sequence/revision/要求/実位置を検査する。
+- [CPAL診断](../native/audio-probe/src/main.rs)の制御loopから実callbackへ同じmailboxを配送する。
+  全scheduleをdevice open前に検証し、未完了の変更は保存reportと終了失敗へ反映する。
+  ackは`output-callback.frame`に限定し、input.rawへ出力revisionを事後適用しない。
+  全raw提出/入力、共有FFTの件数/共有/回収、mute/error/XRUN/gapを検査する。
+- [決定0015](decisions/0015-dynamic-output-route.md)、[再検査手順](../native/dynamic-route.md)、
+  P02/AC03/作業票を更新。独立CIへroute build/portable比較を追加。GitHub実行は未確認。
+
+最終保存report: `.migration-local/2026-10-01-005-route-final.json`。
+最小環境report: `.migration-local/2026-10-01-005-route-minimal.json`。
+12条件が成功。要求位置257/1025/2049に対し、固定256 blockは512/1536/2304、
+可変blockは384/1790/2174、遅いackは383/1659/2298で適用し、独立oracleと一致した。
+mixed/device bytesは完全一致。空のFS合計の符号付きzeroは既存CompiledRouteを保ち、muteは+0。
+
+| 確認 | 結果 |
+| --- | --- |
+| 保存入力・動的route・tap | 4/8ch f32 × 出力2種 × block/ack3種の12条件、36変更の値/metadata完全一致 |
+| 最小Python環境 | Python 3.12.14/NumPy 2.2.6＋pipだけで同じ12件成功。Qt/FFTW/SciPy/音声依存なし |
+| BlackHole実配送 | `.migration-local/2026-10-01-005-route-blackhole-final-v3/report.json`。2→2/4→16/8→16を各3回、計9取得・27適用とPreparing中3保留cancel成功。入力/提出最大誤差0 FS、gap/error/XRUN/reject 0 |
+| 実取得graph | 計3564完成窓。各窓の共有FFT評価1、同じraw allocationを2購読で共有し、stop後のnode/subscription/cache/in-flightは0 |
+| Rust test/fmt/Clippy | Audio18/CPAL request6/Graph62/DSP5/模擬worker5、計96 passed。追加11件。2,000件の同時配送、旧世代/無効/busy/停止/再開/16ch/加算順、workspace formatとpure/CPAL Clippy成功 |
+| Python対象回帰 | 251 passed（128.08秒）。新route33件とaudio/virtual/取得graph/result/graph/history/filter/台帳/分離起動/ring buffer |
+| 保存fixture verify | FFT14、core4 FFT/27契約/4保存、filter21数値/6 rate境界が成功。入力・期待値更新なし |
+| Ruff/Markdown/台帳/CI仕様/diff | 成功。631 Python/197 Markdown、41モジュール双方向対応、CIは既存workflowへroute build/portable 2行だけの追加・inline SDK Python整合を検査 |
+| 起動分離 | 専用state-dirの保存先確認とoffline/offscreen self-test終了0。従来のlocale/font警告のみ |
+| source/report/hash監査 | 最終/最小環境/CPALのsource/runner/lock/binary、元fixture不変、全raw/request/manifestと57 commandのgzip log/hash/終了コード0を照合 |
+| main同期 | fetch後もorigin/mainは`9fd79958`。取込み/参照更新不要 |
+
+Rust/対象回帰/保存fixtureのcommandとlogは`.migration-local/2026-10-01-005-route-rust-final-v2-checks.json`、
+`2026-10-01-005-route-python-checks.json`へ保存する。
+台帳/Ruff/Markdown/分離起動は`2026-10-01-005-route-static-checks.json`、文書の最終確認は`2026-10-01-005-route-final-checks.json`、
+CIの最小変更照合は`2026-10-01-005-route-ci-check.json`、hash監査は`2026-10-01-005-route-audit.json`。
+開発runと中間のBlackHole runは別名で保存し、最終v3は同じ最終source/hashで全9取得・3 cancelを再実行した。
+開発中の空sumの符号付きzero照合、共有通知のcoalesceを完成窓数と同一視したchecker、
+Rust testのJSON macroとClippy/固定配列比較を修正した。失敗run/中間runは削除せず分けて保持する。
+旧静的audio runnerも、新moduleを含むsource hashへ広げた。
+
+内部mailbox/係数は固定容量で、controlの文字列/外部snapshot/全process RSSの上限ではない。
+callbackはf32のみ。f64元bytesは既存queue回帰で検査したが、動的f64演算の合格ではない。
+CPALのcopyするtapはdevice提出buffer。mixedの実取得queue/graph購読、全tap、製品PortAudio共通adapter、
+Qt表示、実取得校正/非同期保存、device/host clock写像、USB復帰、排他、長時間、他OSは未確認。
+MIG-005全体、最小2chフロー、Rust/QML採用は未完了。次は007-Aの実result表示、または製品共通adapter/全tapへ進められる。
+全体Pytest/Mypy/翻訳/全言語UIサイズとGitHub CIは未実施。製品UI/翻訳の変更はない。
+
+再実行:
+
+```bash
+./.venv/bin/python scripts/migration_audio_route.py --report .migration-local/005-route-new.json
+./.venv/bin/python scripts/migration_audio_route.py --virtual-device --output .migration-local/005-route-blackhole-new
+./.venv/bin/pytest -q tests/logic_verification/test_migration_audio_route.py
+```
+
+## MIG-005取得graph接続の成果と検証（前回記録）
 
 着手: 2026-10-01、HEAD `ab0c6247`。006-Eはremote一致・cleanで保存済みだった。
-同じworktreeで`codex/migration-005-graph`へ分岐。今回の変更は未コミット。
+同じworktreeで`codex/migration-005-graph`へ分岐。005-route着手時に`8f1d1362`へ保存済み・remote一致を確認した。
 変更境界はaudio queue→graph接続、CPAL診断、独立runner/test/CI、検証文書。
 現行Python DSP/UI、003-A/B/Cの入力・期待値・契約・許容差を変更していない。
 Cargo lockはgraph-core→audio-core、audio-probe→graph-coreのローカル依存2行だけを更新した。
@@ -914,13 +985,13 @@ GUI起動時にlocaleのUTF-8への切替と、`Sans Serif`のフォント代替
 2. [環境手順](environment.md)に従い、参照版の起動とツールチェーンを再確認する。
 3. 台帳チェックとFFT/core/filterの各reference runnerでverifyを実行する。
    環境差は確認し、比較時だけ明示portable modeを使う。
-4. [作業票](tasks.md)の005-A/Bの動的出力route/製品共通adapterまたは007-Aの実result表示境界へ進める。006-Aの保存コーパス/Intel編集、006-B/C/D/Eのpure graph/履歴/filter/result、004-BのIntel反復は完了した。
+4. [作業票](tasks.md)の005-A/Bの製品共通adapter/全tapまたは007-Aの実result表示境界へ進める。動的f32 routeのcallback配送/BlackHoleは005-routeで追加した。006-Aの保存コーパス/Intel編集、006-B/C/D/Eのpure graph/履歴/filter/result、004-BのIntel反復は完了した。
    Linux CIのICU修正は004-Bの`e0b992ce`へcommit済み。修正後のGitHub実行は未確認。公開する段階で確認する。
    ARM/Windows/Linuxの反復測定、full Xcode、release/clean環境の配布起動は未確認のまま残す。
 5. 003-A/B/Cの保存入力と期待値は揃った。候補実装へ同じbytesを通し、参照側の完了と実装のAC合格を分ける。
 6. 006-Cのpure履歴/Timebaseは共有graphへ接続済み。005-Aのpure queue/route、005-Bの実機とBlackHoleの診断経路は追加済み。
    以後はBlackHole 16ch／2chで通常の回帰を行う。UAC-232は実機が必要な要件だけに使う。
-   006-Dのfilter/rateと006-Eの不変result/基本校正/保存もpure境界を検証済み。input.rawの実取得は005-graphで接続した。次は実result表示、または動的出力route配送・製品共通adapterを検証する。
+   006-Dのfilter/rateと006-Eの不変result/基本校正/保存もpure境界を検証済み。input.rawは005-graph、動的f32 route配送は005-routeで接続した。次は実result表示、または全tap・製品共通adapterを検証する。
    物理USB切断／復帰は必要時にユーザーが操作できる回だけで行う。
    独立Rust CIは追加済み。source/state/所有権の境界を記録し、
    004-Aの模擬workerのmutex/通知を音声callbackへ転用しない。

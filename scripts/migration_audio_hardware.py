@@ -329,8 +329,8 @@ def main():
             str(p.relative_to(ROOT)): fft.digest(p.read_bytes())
             for p in [
                 ROOT / "src/core/audio_engine.py",
-                ROOT / "native/audio-probe/src/main.rs",
-                ROOT / "native/audio-core/src/lib.rs",
+                *sorted((ROOT / "native/audio-probe/src").rglob("*.rs")),
+                *sorted((ROOT / "native/audio-core/src").rglob("*.rs")),
                 ROOT / "native/Cargo.lock",
                 Path(__file__),
             ]

@@ -24,7 +24,8 @@ raw input／device提出output、source、時刻、状態、XRUN、hashをGit管
 全sample絶対差2e-6 FS、channel間marker差1 frame、backend振幅差0.1 dBを測定前に固定する。
 時刻原点／不確かさは未検証で、仮想loopbackでも物理遅延の精度はunknown。
 005の[取得worker](acquisition-candidate.md)でCPAL input.rawを履歴/共有FFTへ接続した。
-長時間、USB復帰、排他、動的route配送、全tap/Qt接続の合格とは分ける。
+動的route配送は独立した[mailbox/BlackHole検査](dynamic-route.md)で追加した。
+この静的比較は長時間、USB復帰、排他、全tap/Qt接続の合格とは分ける。
 
 ## 取得境界
 
@@ -47,7 +48,7 @@ queueの上限は内部numeric storage/slot数の制限で、workerが保存す�
 生成・route compile・JSON/ファイル・queue handleの破棄は制御側に置く。
 
 `RouteControl`は制御/worker側のtransactionalなblock境界API。
-音声callbackへ動的routeを配送するschedulerはまだない。`BlockValidator`はgap、重複/逆順、
+音声callbackへの配送には別の[単一owner mailbox](dynamic-route.md)を使う。`BlockValidator`はgap、重複/逆順、
 rate/channel/dtype/clock/binding変更の新generation、旧世代拒否を検査する。
 005の[取得接続](acquisition-candidate.md)はinput.rawの物理binding/元precisionを保持する。
 Timebase原点/不確かさはunknownとし、完全なdevice/host clock写像は後続。
@@ -97,4 +98,4 @@ backend間の相対phase差1度、mute時tone低下60 dB。
 CPALの準備中cancelと二重pause/drop、現行の二重stopを確認する。
 取得異常を正常値で埋めず、エラー時も保存できたreportを残す。
 追加配線が必要なのは出力Rの物理対応試験。USB抜き差しは同じ配線で人の操作が必要。
-排他、切断復帰、長時間、他OS、動的route配送、実graph/GUI統合は未確認。
+このUAC-232診断では排他、切断復帰、長時間、他OS、動的route配送、実graph/GUI統合は未確認。

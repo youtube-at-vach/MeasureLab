@@ -1,7 +1,8 @@
 //! CPAL headless N-channel device diagnostic. File/JSON/Vec growth is on control thread.
 #![forbid(unsafe_code)]
+use audio_core::dynamic_route::{RouteController, RouteEvent, route_mailbox};
 use audio_core::{Consumer, Delivery, IoFormat, MAX_CALLBACK_FRAMES, frame_queue};
-use audio_probe::RequestFormat;
+use audio_probe::{RequestFormat, ScheduledRoute};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use graph_core::acquisition::{Acquisition, CaptureLimits, FftSpec};
 use graph_core::history::HistoryLimits;
@@ -70,6 +71,25 @@ struct Capture {
     samples: Vec<u64>,
     seconds: Vec<Option<f64>>,
     gaps: Vec<[u64; 2]>,
+}
+fn pump_routes(
+    controller: &mut RouteController,
+    schedule: &[ScheduledRoute],
+    generation: u64,
+    next: &mut usize,
+    events: &mut Vec<RouteEvent>,
+) -> Result<(), &'static str> {
+    if let Some(event) = controller.take_event() {
+        events.push(event);
+    }
+    if events.len() == *next
+        && let Some(update) = schedule.get(*next)
+        && controller.rendered_through() >= update.send_after_sample
+    {
+        controller.publish(&update.route, generation, update.requested_sample)?;
+        *next += 1;
+    }
+    Ok(())
 }
 struct InputAnalysis {
     worker: Acquisition<f32>,
@@ -210,7 +230,6 @@ fn run() -> Result<(), Box<dyn Error>> {
     let input_channels = requested.input_channels;
     let output_channels = requested.output_channels;
     let source_channels = requested.source_ids.len();
-    let route = requested.route.compile(&requested.source_ids)?;
     let mute = requested.mute;
     let output_path = Path::new(&args[3]);
     if output_path.exists() {
@@ -272,6 +291,11 @@ fn run() -> Result<(), Box<dyn Error>> {
         return Err("explicit channel count/f32/48000 unsupported".into());
     }
     format.validate(input_channels, output_channels)?;
+    let (mut route_controller, mut route_callback) = route_mailbox(
+        requested.source_ids.clone(),
+        requested.route.clone(),
+        format.generation,
+    )?;
     let config = cpal::StreamConfig {
         channels: input_channels as u16,
         sample_rate: 48000,
@@ -336,8 +360,8 @@ fn run() -> Result<(), Box<dyn Error>> {
                     .copied()
                     .unwrap_or(0.);
             }
-            if route
-                .process_into(&scratch[..frames * source_channels], data)
+            if route_callback
+                .process_block(cursor as u64, &scratch[..frames * source_channels], data)
                 .is_err()
             {
                 bad.fetch_add(1, Relaxed);
@@ -372,6 +396,15 @@ fn run() -> Result<(), Box<dyn Error>> {
     let mut captured = Capture::new();
     let mut submitted = Capture::new();
     let mut stop_ms = None;
+    let mut route_events = Vec::new();
+    let mut next_route = 0;
+    pump_routes(
+        &mut route_controller,
+        &requested.route_updates,
+        format.generation,
+        &mut next_route,
+        &mut route_events,
+    )?;
     if !cancel {
         input.play()?;
         output.play()?;
@@ -379,6 +412,13 @@ fn run() -> Result<(), Box<dyn Error>> {
         while Instant::now() < until {
             analysis.drain(&mut captured)?;
             submitted.drain(&mut output_rx);
+            pump_routes(
+                &mut route_controller,
+                &requested.route_updates,
+                format.generation,
+                &mut next_route,
+                &mut route_events,
+            )?;
             std::thread::sleep(Duration::from_millis(2));
         }
         let stop = Instant::now();
@@ -387,15 +427,29 @@ fn run() -> Result<(), Box<dyn Error>> {
         // Explicit duplicate stop (idempotence) before releasing on control thread.
         output.pause()?;
         input.pause()?;
+        route_controller.close();
         drop(output);
         drop(input);
         stop_ms = Some(stop.elapsed().as_secs_f64() * 1000.);
     } else {
+        route_controller.close();
         drop(output);
         drop(input);
     }
     while analysis.drain(&mut captured)? {}
     submitted.drain(&mut output_rx);
+    while let Some(event) = route_controller.take_event() {
+        route_events.push(event);
+    }
+    let route_failed = next_route != requested.route_updates.len()
+        || route_events.len() != next_route
+        || route_events
+            .iter()
+            .any(|event| event.status != audio_core::dynamic_route::RouteStatus::Applied);
+    let route_report = json!({"initial_sequence":0,"initial_revision":requested.route.revision,
+        "sample_domain":"output-callback.frame",
+        "submitted_count":next_route,"unsubmitted_count":requested.route_updates.len()-next_route,
+        "rendered_through":route_controller.rendered_through(),"events":route_events});
     let before_stop = analysis.worker.graph().stats();
     let input_queue = analysis.worker.queue_stats().unwrap();
     let input_source = analysis.worker.key().source.clone();
@@ -411,6 +465,7 @@ fn run() -> Result<(), Box<dyn Error>> {
     let submit = submitted.save(&output_path.join("output.bin"), output_channels)?;
     let report = json!({"schema_version":1,"request":request,"backend":"CPAL 0.18.2","device":name,"format":format,
         "input":capture,"output":submit,
+        "dynamic_routes":route_report,
         "queues":{"input":input_queue,"output":output_rx.stats()},"analysis_graph":graph_report,"input_callback":input_stats.report(),"output_callback":output_stats.report(),
         "errors":errors.load(Relaxed),"xruns":xruns.load(Relaxed),"callback_rejections":rejected.load(Relaxed),"stop_ms":stop_ms,
         "state":if cancel{"cancelled"}else{"stopped"},"timestamp_kind":"callback-host estimate using backend capture/playback offsets; cross-stream uncertainty unknown",
@@ -427,7 +482,8 @@ fn run() -> Result<(), Box<dyn Error>> {
         && (captured.samples.is_empty()
             || submitted.samples.is_empty()
             || errors.load(Relaxed) > 0
-            || rejected.load(Relaxed) > 0)
+            || rejected.load(Relaxed) > 0
+            || route_failed)
     {
         return Err("capture failed; report retained".into());
     }

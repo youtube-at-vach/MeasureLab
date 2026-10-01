@@ -50,6 +50,10 @@ AC02のmixはFSで行い、異なるV/FSを持つ入力の物理単位を単純�
 
 ## 最初のフローの終了条件
 
+005の[動的出力route](../../native/dynamic-route.md)でAC03のf32 callback配送/実sample ack、
+無効/旧世代/busy拒否、停止中cancelを検査する。保存4/8chとBlackHoleの短時間診断まで。
+AC02/11の全tap graph、PortAudio動的比較、GUI、物理clock/出力精度や長時間の合格には置き換えない。
+
 2ch生成 → 明示route → 取得/Timebase → 波形と共有FFT → Spectrum/heatmapの複数表示 → 校正付きCSV/JSON保存を通す。
 最低限boxcar/Hann、peak/RMS/PSD、基本V/FS校正、開始/停止/失敗を含める。
 保存データには元の区間・Timebase・trigger・tap・校正revision・validityを残す。
