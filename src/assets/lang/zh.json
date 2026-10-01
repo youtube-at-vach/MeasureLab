@@ -2564,5 +2564,18 @@
     "migration.display.waiting": "正在等待结果",
     "migration.display.voltage_uncalibrated": "电压不可用 · 未校准",
     "migration.display.voltage": "有效值: %1 V · %2 dBV",
-    "migration.display.calibration_profile": "配置: %1 V/FS · %2 · 端口 %3"
+    "migration.display.calibration_profile": "配置: %1 V/FS · %2 · 端口 %3",
+    "migration.display.calibration_edit": "编辑校准",
+    "migration.display.calibration_channel": "通道",
+    "migration.display.calibration_factor": "系数 (V/FS)",
+    "migration.display.calibration_revision": "配置修订",
+    "migration.display.calibration_binding": "设备：%1 · 端口 %2",
+    "migration.display.calibration_enabled": "使用电压校准",
+    "migration.display.calibration_note": "更改适用于重新启动前的新结果。保持的结果保留原有校准配置。",
+    "migration.display.calibration_rejected": "请检查配置值并重试。",
+    "migration.display.calibration_queued": "正在应用校准…",
+    "migration.display.calibration_applied": "校准已应用",
+    "migration.display.calibration_cancelled": "校准更改已取消",
+    "migration.display.calibration_apply": "应用",
+    "migration.display.calibration_close": "关闭"
 }

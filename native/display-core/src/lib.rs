@@ -158,6 +158,7 @@ pub struct Snapshot {
     pub error: String,
     pub frame: Option<Arc<Frame>>,
     pub trigger: Option<Arc<TriggerResponse>>,
+    pub calibration: String,
 }
 #[derive(Default)]
 struct Mailbox {
@@ -165,6 +166,7 @@ struct Mailbox {
     pending: bool,
     demand: HashSet<u64>,
     trigger: trigger::Controller,
+    calibration: calibration::Controller,
 }
 pub struct Display {
     mailbox: Arc<Mutex<Mailbox>>,
@@ -231,6 +233,7 @@ impl Display {
             };
             slot.pending = false;
             slot.trigger = trigger::Controller::default();
+            slot.calibration = calibration::Controller::default();
         }
         let request = self.request.clone();
         let owner = Owner {
@@ -263,6 +266,7 @@ impl Display {
                     };
                     request.validate()?;
                     request.format.generation = generation;
+                    calibration::initialize(&owner, &request);
                     if request.live.is_some() {
                         #[cfg(feature = "live-audio")]
                         return live::run(&owner, &notify, &request);
@@ -306,6 +310,7 @@ impl Display {
                 let mut slot = owner.mailbox.lock().unwrap();
                 slot.snapshot.reclaimed = true; // acquisition, subscriptions and stream have dropped
                 trigger::cancel(&mut slot, result.as_ref().err().map(String::as_str));
+                calibration::cancel(&mut slot);
                 match result {
                     Err(error) => {
                         slot.snapshot.state = State::Failed;
@@ -341,6 +346,7 @@ impl Display {
             slot.snapshot.state = State::Stopping;
         }
         trigger::cancel(&mut slot, None);
+        calibration::cancel(&mut slot);
     }
     fn join(&mut self) {
         if let Some(worker) = self.worker.take() {
@@ -384,6 +390,8 @@ fn replay<T: CaptureSample>(
     mut tx: Producer<T>,
     rx: audio_core::Consumer<T>,
 ) -> Result<(), String> {
+    let mut request = request.clone();
+    let request = &mut request;
     let mut acquisition = Acquisition::new(
         rx,
         request.format.clone(),
@@ -405,6 +413,7 @@ fn replay<T: CaptureSample>(
         if !sync_demand(owner, &acquisition, &mut subscriptions)? {
             break;
         }
+        calibration::process(owner, notify, request)?;
         trigger::process(owner, notify, request, &mut acquisition)?;
         for chunk in samples.chunks(256 * request.format.input_ids.len()) {
             tx.write(chunk, None, 0)?;
@@ -414,6 +423,18 @@ fn replay<T: CaptureSample>(
             }
         }
         let frame = shared_frame(&subscriptions, request)?.ok_or("display_result_missing")?;
+        if let Some(revision) = calibration::evidence_revision(owner)
+            && let Some(path) = &request.evidence
+        {
+            calibration::save_result(
+                &frame.result,
+                &path.join(format!(
+                    "calibration-{}-{revision}.result.json",
+                    request.format.generation
+                )),
+                request,
+            )?;
+        }
         if !evidence_written {
             if let Some(path) = &request.evidence {
                 calibration::save_result(
@@ -435,7 +456,8 @@ fn replay<T: CaptureSample>(
             thread::sleep(Duration::from_millis(5));
         }
     }
-    reclaim(&mut acquisition)
+    reclaim(&mut acquisition)?;
+    trigger::finish_evidence(owner, request)
 }
 fn sync_demand<T: CaptureSample>(
     owner: &Owner,

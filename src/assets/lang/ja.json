@@ -2564,5 +2564,18 @@
     "migration.display.waiting": "結果を待っています",
     "migration.display.voltage_uncalibrated": "電圧は未校正のため表示できません",
     "migration.display.voltage": "実効値: %1 V · %2 dBV",
-    "migration.display.calibration_profile": "プロファイル: %1 V/FS · %2 · ポート %3"
+    "migration.display.calibration_profile": "プロファイル: %1 V/FS · %2 · ポート %3",
+    "migration.display.calibration_edit": "校正を編集",
+    "migration.display.calibration_channel": "チャンネル",
+    "migration.display.calibration_factor": "係数 (V/FS)",
+    "migration.display.calibration_revision": "プロファイル改訂",
+    "migration.display.calibration_binding": "デバイス: %1 · ポート %2",
+    "migration.display.calibration_enabled": "電圧校正を使用",
+    "migration.display.calibration_note": "変更は再起動まで新しい結果に適用されます。保持中の結果は元の校正を維持します。",
+    "migration.display.calibration_rejected": "プロファイルの値を確認して再試行してください。",
+    "migration.display.calibration_queued": "校正を適用中…",
+    "migration.display.calibration_applied": "校正を適用しました",
+    "migration.display.calibration_cancelled": "校正変更をキャンセルしました",
+    "migration.display.calibration_apply": "適用",
+    "migration.display.calibration_close": "閉じる"
 }

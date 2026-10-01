@@ -2564,5 +2564,18 @@
     "migration.display.waiting": "Ожидание результата",
     "migration.display.voltage_uncalibrated": "Напряжение недоступно · нет калибровки",
     "migration.display.voltage": "СКЗ: %1 V · %2 dBV",
-    "migration.display.calibration_profile": "Профиль: %1 V/FS · %2 · порт %3"
+    "migration.display.calibration_profile": "Профиль: %1 V/FS · %2 · порт %3",
+    "migration.display.calibration_edit": "Изменить калибровку",
+    "migration.display.calibration_channel": "Канал",
+    "migration.display.calibration_factor": "Коэффициент (V/FS)",
+    "migration.display.calibration_revision": "Ревизия профиля",
+    "migration.display.calibration_binding": "Устройство: %1 · порт %2",
+    "migration.display.calibration_enabled": "Использовать калибровку напряжения",
+    "migration.display.calibration_note": "Изменения действуют для новых результатов до перезапуска. Удерживаемые результаты сохраняют свой профиль.",
+    "migration.display.calibration_rejected": "Проверьте значения профиля и повторите попытку.",
+    "migration.display.calibration_queued": "Применение калибровки…",
+    "migration.display.calibration_applied": "Калибровка применена",
+    "migration.display.calibration_cancelled": "Изменение калибровки отменено",
+    "migration.display.calibration_apply": "Применить",
+    "migration.display.calibration_close": "Закрыть"
 }

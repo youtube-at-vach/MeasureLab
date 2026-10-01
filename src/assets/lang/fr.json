@@ -2564,5 +2564,18 @@
     "migration.display.waiting": "En attente du résultat",
     "migration.display.voltage_uncalibrated": "Tension indisponible · non étalonnée",
     "migration.display.voltage": "RMS : %1 V · %2 dBV",
-    "migration.display.calibration_profile": "Profil : %1 V/FS · %2 · port %3"
+    "migration.display.calibration_profile": "Profil : %1 V/FS · %2 · port %3",
+    "migration.display.calibration_edit": "Modifier l’étalonnage",
+    "migration.display.calibration_channel": "Canal",
+    "migration.display.calibration_factor": "Facteur (V/FS)",
+    "migration.display.calibration_revision": "Révision du profil",
+    "migration.display.calibration_binding": "Périphérique : %1 · port %2",
+    "migration.display.calibration_enabled": "Utiliser l’étalonnage de tension",
+    "migration.display.calibration_note": "Les modifications s’appliquent aux nouveaux résultats jusqu’au redémarrage. Les résultats figés conservent leur profil.",
+    "migration.display.calibration_rejected": "Vérifiez les valeurs du profil et réessayez.",
+    "migration.display.calibration_queued": "Application de l’étalonnage…",
+    "migration.display.calibration_applied": "Étalonnage appliqué",
+    "migration.display.calibration_cancelled": "Modification de l’étalonnage annulée",
+    "migration.display.calibration_apply": "Appliquer",
+    "migration.display.calibration_close": "Fermer"
 }

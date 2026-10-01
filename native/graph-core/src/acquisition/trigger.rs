@@ -3,7 +3,7 @@
 use super::*;
 use crate::FftResult;
 use crate::history::{HistoryRead, TriggerEvent};
-use crate::result::{Capture, MeasurementResult};
+use crate::result::{Capture, MeasurementResult, Profile};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -38,6 +38,15 @@ impl<T: CaptureSample> Acquisition<T> {
     /// Read exactly N frames at floor(event.sample)-pre. GUI reception time is never an anchor.
     /// Reading old windows must not publish into continuous views or change their averages.
     pub fn capture_trigger(&mut self, request: &TriggerRequest) -> Result<TriggerRead, String> {
+        self.capture_trigger_with_profiles(request, |_| BTreeMap::new())
+    }
+    /// Resolve session profiles against the actual captured interval and construct one result.
+    /// The analysis owner supplies profiles; pending/gap reads never call the provider.
+    pub fn capture_trigger_with_profiles(
+        &mut self,
+        request: &TriggerRequest,
+        profiles: impl FnOnce([u64; 2]) -> BTreeMap<String, Profile>,
+    ) -> Result<TriggerRead, String> {
         if self.state != WorkerState::Running {
             return Err("capture_not_running".into());
         }
@@ -128,7 +137,7 @@ impl<T: CaptureSample> Acquisition<T> {
                 result_host_seconds: None,
                 clock_mapping: None,
             },
-            &BTreeMap::new(),
+            &profiles([raw.interval().0, raw.interval().1]),
             1.,
         )?;
         self.trigger_cache = Some(Arc::clone(&raw));

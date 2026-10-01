@@ -48,6 +48,7 @@ ApplicationWindow {
     property string imageStatus: ""
     property bool workspaceTesting: Qt.application.arguments.indexOf("--workspace-test") >= 0
     property bool triggerTesting: Qt.application.arguments.indexOf("--trigger-test") >= 0
+    property bool calibrationEditingTest: Qt.application.arguments.indexOf("--calibration-edit-test") >= 0
     property var workspaceEvidence: ({})
     property var lineBefore: null
     property var mapBefore: null
@@ -158,7 +159,7 @@ ApplicationWindow {
     Component.onCompleted: {
         recreate();
         console.log("DISPLAY_READY");
-        if (backend.testing && !triggerTesting)
+        if (backend.testing && !triggerTesting && !calibrationEditingTest)
             exercise.start();
     }
     Rectangle {
@@ -196,6 +197,11 @@ ApplicationWindow {
                     text: tr("migration.display.save_image")
                     enabled: !!frame && !savePending
                     onClicked: saveImage(imagePath.text)
+                }
+                Button {
+                    text: tr("migration.display.calibration_edit")
+                    enabled: backend && backend.state === 2 && !!backend.calibration
+                    onClicked: calibrationEditor.open()
                 }
                 Label {
                     text: stateLabel()
@@ -272,6 +278,21 @@ ApplicationWindow {
         enabled: window.triggerTesting
         host: window
         panel: triggerPanel
+        line: line
+        map: map
+    }
+    CalibrationEditor {
+        id: calibrationEditor
+        source: window.backend
+        messages: window.messages
+        x: (window.width - width) / 2
+        y: (window.height - height) / 2
+    }
+    CalibrationEditExercise {
+        enabled: window.calibrationEditingTest
+        host: window
+        editor: calibrationEditor
+        triggerPanel: triggerPanel
         line: line
         map: map
     }

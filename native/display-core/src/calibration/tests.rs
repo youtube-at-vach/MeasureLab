@@ -167,6 +167,7 @@ fn live_csv_is_deferred_reads_full_snapshot_and_reports_no_clobber_failure() {
     save_result(&frame.result, &json, &config).unwrap();
     let csv = json.with_extension("csv");
     assert!(!csv.exists());
+    config.calibration.clear(); // final session state cannot discard saved calibration
     finish_live_evidence(&config).unwrap();
     assert_eq!(
         frame.result.to_value(),
@@ -179,4 +180,112 @@ fn live_csv_is_deferred_reads_full_snapshot_and_reports_no_clobber_failure() {
     assert_eq!(previous, std::fs::read(&csv).unwrap());
     std::fs::remove_dir_all(directory).unwrap();
     std::fs::remove_file(input).unwrap();
+}
+
+fn edit(config: &Request, generation: u64, revision: u64) -> String {
+    json!({"generation": generation, "revision": revision, "profiles": config.calibration})
+        .to_string()
+}
+
+#[test]
+fn editing_running_profiles_preserves_relative_values_held_results_and_restart_config() {
+    for precision in [Precision::F32, Precision::F64] {
+        for channels in [4, 8] {
+            let mut config = request(precision, channels, false);
+            let path = config.input.clone().unwrap();
+            config.format.input_ports.reverse();
+            config.calibration = profiles(&config);
+            let mut display = Display::with_request(config.clone());
+            display.subscribe();
+            display.subscribe();
+            let generation = display.start(false, |_| true).unwrap();
+            wait(&display, |s| s.produced >= 1);
+            let held = display.peek().frame.unwrap();
+            let before = held.result.to_value();
+            for p in &mut config.calibration {
+                p.revision = "edited".into();
+                p.v_per_fs *= 3.;
+            }
+            assert!(display.apply_calibration(&edit(&config, generation, 1)));
+            wait(&display, |s| {
+                s.frame.as_ref().is_some_and(|f| {
+                    f.result.to_value()["calibration"][0]["profile"]["revision"] == "edited"
+                })
+            });
+            let after = display.peek().frame.unwrap().result.to_value();
+            assert_eq!(after["source"], before["source"]);
+            assert_eq!(after["columns"]["peak_fs"], before["columns"]["peak_fs"]);
+            for index in 0..channels - 2 {
+                let initial = before["columns"]["rms_v"]["values"][index]
+                    .as_f64()
+                    .unwrap();
+                let current = after["columns"]["rms_v"]["values"][index].as_f64().unwrap();
+                assert!((current / initial - 3.).abs() < 1e-8);
+            }
+            assert_eq!(held.result.to_value(), before);
+            assert!(!display.apply_calibration(&edit(&config, generation - 1, 2)));
+            assert!(!display.apply_calibration(&edit(&config, generation, 1)));
+            display.shutdown();
+            assert!(!display.apply_calibration(&edit(&config, generation, 2)));
+            let next = display.start(false, |_| true).unwrap();
+            wait(&display, |s| s.generation == next && s.frame.is_some());
+            assert_ne!(
+                display.peek().frame.unwrap().result.to_value()["calibration"][0]["profile"]["revision"],
+                "edited"
+            );
+            display.shutdown();
+            drop(display);
+            assert_eq!(held.result.to_value(), before);
+            std::fs::remove_file(path).unwrap();
+        }
+    }
+}
+
+#[test]
+fn bounded_edit_mailbox_rejects_busy_stale_invalid_and_stopped_without_partial_update() {
+    let mut config = request(Precision::F64, 4, false);
+    let path = config.input.clone().unwrap();
+    config.calibration = profiles(&config);
+    let mut display = Display::with_request(config.clone());
+    let owner = Owner {
+        mailbox: display.mailbox.clone(),
+        stop: display.stop.clone(),
+    };
+    initialize(&owner, &config);
+    {
+        let mut slot = display.mailbox.lock().unwrap();
+        slot.snapshot.state = State::Running;
+        slot.snapshot.generation = config.format.generation;
+    }
+    assert!(!display.apply_calibration(&" ".repeat(MAX_EDIT_BYTES + 1)));
+    assert!(!display.apply_calibration("{\"generation\":1}"));
+    let original = serde_json::to_value(&config.calibration).unwrap();
+    for fault in 0..7 {
+        let mut changed = config.clone();
+        changed.calibration[0].v_per_fs = 99.; // must not apply even this valid part
+        match fault {
+            0 => changed.calibration[1].channel_id = "unknown".into(),
+            1 => changed.calibration[1].device_binding.port = 99,
+            2 => changed.calibration[1].device_binding.device = "other".into(),
+            3 => changed.calibration[1].v_per_fs = 0.,
+            4 => changed.calibration[1].revision = " ".into(),
+            5 => changed.calibration[1].revision = "x".repeat(257),
+            _ => changed.calibration.push(changed.calibration[0].clone()),
+        }
+        let revision = fault + 1;
+        assert!(display.apply_calibration(&edit(&changed, 1, revision)));
+        assert!(!display.apply_calibration(&edit(&changed, 1, revision + 1)));
+        process(&owner, &|_| true, &mut config).unwrap();
+        let receipt: Value = serde_json::from_str(&display.peek().calibration).unwrap();
+        assert_eq!(receipt["status"], "rejected");
+        assert_eq!(receipt["profiles"], original);
+        assert_eq!(serde_json::to_value(&config.calibration).unwrap(), original);
+    }
+    assert!(display.apply_calibration(&edit(&config, 1, 8)));
+    display.stop();
+    process(&owner, &|_| true, &mut config).unwrap();
+    let receipt: Value = serde_json::from_str(&display.peek().calibration).unwrap();
+    assert_eq!(receipt["status"], "cancelled");
+    assert_eq!(receipt["profiles"], original);
+    std::fs::remove_file(path).unwrap();
 }

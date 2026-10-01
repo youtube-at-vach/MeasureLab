@@ -18,6 +18,42 @@ pub(super) struct Controller {
     revision: u64,
     active: Option<Arc<Submission>>,
     command: Option<Command>,
+    evidence: Vec<DeferredEvidence>,
+}
+struct DeferredEvidence {
+    directory: PathBuf,
+    generation: u64,
+    submission: Arc<Submission>,
+    receipt: Arc<TriggerResponse>,
+    bytes: Option<Vec<u8>>,
+}
+fn defer_evidence(controller: &mut Controller, evidence: DeferredEvidence) -> Result<(), String> {
+    if controller.evidence.iter().any(|old| {
+        old.generation == evidence.generation
+            && old.submission.revision == evidence.submission.revision
+            && old.receipt.status == evidence.receipt.status
+    }) {
+        return Ok(()); // retain the first pending/retry diagnostic, as with create_new
+    }
+    if controller.evidence.len() == 8 {
+        return Err("live_trigger_evidence_capacity".into());
+    }
+    controller.evidence.push(evidence);
+    Ok(())
+}
+pub(super) fn finish_evidence(owner: &Owner, request: &Request) -> Result<(), String> {
+    let evidence = std::mem::take(&mut owner.mailbox.lock().unwrap().trigger.evidence);
+    for entry in evidence {
+        save_evidence(
+            &entry.directory,
+            entry.generation,
+            &entry.submission,
+            &entry.receipt,
+            entry.bytes,
+            request,
+        )?;
+    }
+    Ok(())
 }
 enum Command {
     Read(Arc<Submission>),
@@ -126,18 +162,11 @@ pub(super) fn process<T: CaptureSample>(
         acquisition.release_trigger_cache();
         return Ok(());
     };
-    let (receipt, evidence) = match acquisition.capture_trigger(&submission.request) {
+    let (receipt, evidence) = match acquisition
+        .capture_trigger_with_profiles(&submission.request, |interval| request.profiles(interval))
+    {
         Err(reason) => (response(&submission, "error", Some(&reason)), None),
-        Ok(mut read) => {
-            if !request.calibration.is_empty()
-                && let (Some(raw), Some(result)) = (&read.raw, &read.result)
-            {
-                read.result = Some(Arc::new(calibration::calibrated_result(
-                    raw,
-                    result.capture().clone(),
-                    request,
-                )?));
-            }
+        Ok(read) => {
             let frame = read
                 .result
                 .as_ref()
@@ -196,14 +225,27 @@ pub(super) fn process<T: CaptureSample>(
     }
     // Evidence I/O runs on the analysis owner, outside the control lock and audio callback.
     if let Some(path) = &request.evidence {
-        save_evidence(
-            path,
-            acquisition.format().generation,
-            &submission,
-            &receipt,
-            evidence,
-            request,
-        )?;
+        if request.live.is_some() {
+            defer_evidence(
+                &mut owner.mailbox.lock().unwrap().trigger,
+                DeferredEvidence {
+                    directory: path.clone(),
+                    generation: acquisition.format().generation,
+                    submission: submission.clone(),
+                    receipt: receipt.clone(),
+                    bytes: evidence,
+                },
+            )?;
+        } else {
+            save_evidence(
+                path,
+                acquisition.format().generation,
+                &submission,
+                &receipt,
+                evidence,
+                request,
+            )?;
+        }
     }
     if !owner.notify(notify) {
         owner.stop.store(true, Ordering::Release);

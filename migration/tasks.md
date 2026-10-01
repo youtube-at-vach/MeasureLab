@@ -32,10 +32,11 @@
 | 006-C | trigger/history・Timebase・generation・validity | 003-B、006-B、P03 | AC08/09、異なるcursor/通知遅延・保持超過・旧世代拒否。共有graphへ統合 | 外部trigger実機adapter | 完了（2026-09-30、worker所有履歴/pure graph・保存13契約/4入力bytes、Rust27テスト。実取得/Qtは後続） |
 | 006-D | 最小rate変換/filterとvalidity伝播 | 003-C、006-C、P06 | AC10/14、同じgraph内で遅延/区間/phase stateを保持 | 高品質resamplerの全機能 | 完了（2026-09-30、f64保存21ケース×5 chunk/6 rate境界と一段のpure graph。f32・IIR gap回復・実取得/Qtは後続） |
 | 006-E | 不変result・channel校正・CSV/JSON来歴 | 003-B、006-B/C、P13/P14 | AC12、再読込、保存失敗、profile変更後の不変性、uncalibrated | 旧設定の自動移行 | 完了（2026-10-01、pure不変result/ID校正/JSON・CSV。保存2契約・4例と4/8ch f32/f64。製品互換/async/Qtは後続） |
-| 007-A | 同じ結果をline/heatmapへ表示、操作/画像保存 | 004、006。P19のsnapshot境界 | AC05/07/08、軸/cursor/zoom・画像・再生成・サイズ/9言語 | 全41機能のUI | 進行中（2026-10-01、保存4/8ch f32/f64とBlackHole実入力→実graph→両Qt表示。分離view/翻訳JSON/9言語に手動Triggerのhold/retry/releaseを追加。セッションID校正は007-A-calibration-inputへ追加。Qt編集・適用/製品保存操作/実window manager/他OSは後続。実施結果はstatus） |
+| 007-A | 同じ結果をline/heatmapへ表示、操作/画像保存 | 004、006。P19のsnapshot境界 | AC05/07/08、軸/cursor/zoom・画像・再生成・サイズ/9言語 | 全41機能のUI | 進行中（2026-10-01、保存4/8ch f32/f64とBlackHole実入力→実graph→両Qt表示。分離view/翻訳JSON/9言語に手動Triggerのhold/retry/releaseを追加。セッションID校正は007-A-calibration-input、取得中のQt編集・適用は007-A-calibration-editへ追加。製品保存操作/実window manager/他OSは後続。実施結果はstatus） |
 | 007-A-trigger | 取得履歴の非消費query→共有raw FFT→trigger付き不変result | 005-graph、006-C/E。解析owner APIと独立runner | AC08/09のpending/gap/分数残差/旧世代拒否、通常平均/位置不変、保存4入力×2bindingの全bytes・32完全result | Qt操作、実入力要求配送、arm/cancel/検出器、長時間性能 | worker範囲完了（2026-10-01）。Qt/実入力の配送は次行で検証 |
 | 007-A-trigger-display | Qtのtyped要求/revision→解析owner、両view共通hold/retry/release | 007-A-trigger、007-live-display/分離/翻訳境界 | AC08/09/13。保存4入力×9言語×両Qt、元bytes/全result、pending/gap非数値、保持中の取得継続、旧世代/停止/破棄、BlackHole短時間診断 | 検出器のarm/cancel、前段filter/外部clock、製品校正/保存、長時間性能/他OS | 配送を追加（2026-10-01）。成功件数と未確認範囲はstatus |
 | 007-A-calibration-input | session ID/device/port校正→通常/Trigger取得結果→両QtのV/dBVとv1診断保存 | 006-E、007-A-trigger-display。後段校正/同じ不変resultを使用 | AC12/13。port/profile逆順、異なる係数/disabled/未指定、元bytesの全配列、完全CSV/JSON再読込、寿命/9言語/サイズ、BlackHole短時間診断 | Qtのprofile編集・適用mailbox、製品保存UI/互換/async、SPL/map、物理校正/性能/他OS | 接続範囲完了（2026-10-02、保存72実行/BlackHole18実行）。詳細と未確認範囲はstatus |
+| 007-A-calibration-edit | 取得中のQt profile編集・適用と通常/Trigger結果 | 007-A-calibration-input。typed mailbox/解析ownerと共通ダイアログ | AC12/13。原子的拒否/世代/busy/停止、変更前後の全配列/元bytes/共有raw/旧保持結果、CSV/9言語/サイズ、BlackHole短時間 | 製品保存UI/互換/async/再起動維持、SPL/map、物理校正/性能/他OS | 評価範囲完了（2026-10-02、保存72実行/BlackHole18実行、既存live回帰6実行）。詳細と未確認範囲はstatus |
 | 007-B | 描画/GUI遅延・CPU/RSS・表示編集時間 | 007-A、性能protocol | AC15/16。遅いGUIでも測定を保ち、単独/複数表示を比較 | 理論だけでの性能判定 | 未着手 |
 | 007-C | Plot Renderer Feasibility Spike。簡易plotterを基準にrsplot / wgpu系など1〜2候補を最小試験 | 004、007-Aの既存表示境界。独立試験コードと検証記録。007-A全体の完了は待たない | Spectrum 10万〜100万点の連続更新、Spectrogram rolling image、Zoom/Pan・座標変換・カーソル、QML統合/ライフサイクル、CPU/GPU負荷/コピー回数の比較表と再実行手順・未確認点 | renderer採用判断、製品組込み、個別widgetの本実装 | Intel最小試験・記録完了（2026-10-01、wgpu 1候補/PyQt画像provider。基準100万点はSIGBUS。native texture共有・他OS等は未確認） |
 | 008 | 2chフロー統合と四案の比較判断表 | 004〜007、実機/配布記録 | AC01〜16、仮想4/8ch回帰、採用/変更/段階導入/現行継続の理由と未確認点 | P3以降の自動開始、旧版置換 | 未着手 |
@@ -311,4 +312,19 @@ ChannelId/device/port/実区間/revision、未校正、CSV/JSON、保持/再開/
 ```
 
 BlackHoleの診断係数は物理校正の証拠ではない。元取得bytesから全数値を照合する。
-Qtのprofile編集・適用、製品保存操作/互換/非同期化、物理校正/期限/map、長時間/性能/他OSは後続。
+Qtのprofile編集・適用は[次の検証単位](../native/calibration-edit.md)で追加・検査した。
+製品保存操作/互換/非同期化、物理校正/期限/map、長時間/性能/他OSは後続。
+
+## 007-A Qt校正profile編集・適用の再検査
+
+[編集・適用の手順](../native/calibration-edit.md)と[決定0023](decisions/0023-qt-calibration-edit.md)を参照。
+
+```bash
+./.venv/bin/python scripts/migration_qt_calibration_edit.py --qt-prefix .tools/qt/6.11.2/macos --all-inputs --output .migration-local/007-calibration-edit-new
+./.venv/bin/python scripts/migration_qt_calibration_edit.py --virtual-device --qt-prefix .tools/qt/6.11.2/macos --repeat 3 --output .migration-local/007-calibration-edit-live-new
+./.venv/bin/pytest -q tests/logic_verification/test_migration_qt_calibration_edit.py tests/logic_verification/test_migration_qt_calibration.py tests/logic_verification/test_migration_qt_trigger.py tests/logic_verification/test_migration_qt_workspace.py
+```
+
+保存4入力×9言語×両Qtで係数変更/原子的拒否/無効化/未指定channel追加、通常/Triggerの全resultとCSVを照合する。
+BlackHoleは他のGUI/buildを止めて検査する。診断係数を物理校正の証拠にしない。
+編集はセッション内だけで再開時は初期設定へ戻る。製品保存操作/互換/非同期化、物理校正/期限/map、長時間/性能/他OSは後続。

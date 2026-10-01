@@ -163,7 +163,9 @@ def validate_evidence(directory, request, *, count=3):
     return observed
 
 
-def run_display(binary, env, directory, case, timeout, *, trigger=False, language="en", calibration=False):
+def run_display(
+    binary, env, directory, case, timeout, *, trigger=False, language="en", calibration=False, calibration_edit=False
+):
     import sounddevice as sd
 
     directory.mkdir(parents=True, exist_ok=False)
@@ -197,6 +199,8 @@ def run_display(binary, env, directory, case, timeout, *, trigger=False, languag
         command += ["--trigger-test", "--language", language]
     if calibration:
         command += ["--calibration-test", "1"]
+    if calibration_edit:
+        command += ["--calibration-edit-test", "--language", language]
     started, code, output, reason, details = time.monotonic(), None, "", None, {}
     try:
         index = virtual.exact_device(case["device"])
@@ -229,7 +233,11 @@ def run_display(binary, env, directory, case, timeout, *, trigger=False, languag
                 marker in output
                 for marker in (
                     "DISPLAY_READY",
-                    "DISPLAY_TRIGGER_PASS" if trigger else PASS,
+                    "DISPLAY_CALIBRATION_EDIT_PASS"
+                    if calibration_edit
+                    else "DISPLAY_TRIGGER_PASS"
+                    if trigger
+                    else PASS,
                     "DISPLAY_IMAGE_OK",
                     "DISPLAY_TEARDOWN workers=0 models=0",
                 )
@@ -248,6 +256,12 @@ def run_display(binary, env, directory, case, timeout, *, trigger=False, languag
             )
         ):
             raise fft.ReferenceError("live Qt lifecycle/exit mismatch")
+        if calibration_edit:
+            from scripts.migration_qt_calibration_edit import validate_run
+
+            details["edit"] = validate_run(output, evidence, request, language)
+            if not (directory / "display.png.editor.png").is_file():
+                raise fft.ReferenceError("missing live calibration editor image")
         if trigger:
             from scripts.migration_qt_trigger import validate_ui, validate_captures
 
@@ -260,10 +274,10 @@ def run_display(binary, env, directory, case, timeout, *, trigger=False, languag
         details.update(
             image=inspect_png(
                 directory / "display.png",
-                size=details.get("trigger", {}).get("size", (1000, 640)),
+                size=details.get("edit", {}).get("size") or details.get("trigger", {}).get("size", (1000, 640)),
                 regions=plot_regions(output),
             ),
-            evidence=validate_evidence(evidence, request, count=2 if trigger else 3),
+            evidence=validate_evidence(evidence, request, count=2 if trigger or calibration_edit else 3),
         )
     except subprocess.TimeoutExpired as exc:
         output = "".join(

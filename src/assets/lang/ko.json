@@ -2564,5 +2564,18 @@
     "migration.display.waiting": "결과 대기 중",
     "migration.display.voltage_uncalibrated": "전압 표시 불가 · 미교정",
     "migration.display.voltage": "실효값: %1 V · %2 dBV",
-    "migration.display.calibration_profile": "프로필: %1 V/FS · %2 · 포트 %3"
+    "migration.display.calibration_profile": "프로필: %1 V/FS · %2 · 포트 %3",
+    "migration.display.calibration_edit": "교정 편집",
+    "migration.display.calibration_channel": "채널",
+    "migration.display.calibration_factor": "계수 (V/FS)",
+    "migration.display.calibration_revision": "프로파일 개정",
+    "migration.display.calibration_binding": "장치: %1 · 포트 %2",
+    "migration.display.calibration_enabled": "전압 교정 사용",
+    "migration.display.calibration_note": "변경 사항은 재시작 전까지 새 결과에 적용됩니다. 유지 중인 결과는 기존 프로파일을 유지합니다.",
+    "migration.display.calibration_rejected": "프로파일 값을 확인한 후 다시 시도하세요.",
+    "migration.display.calibration_queued": "교정 적용 중…",
+    "migration.display.calibration_applied": "교정 적용 완료",
+    "migration.display.calibration_cancelled": "교정 변경 취소됨",
+    "migration.display.calibration_apply": "적용",
+    "migration.display.calibration_close": "닫기"
 }

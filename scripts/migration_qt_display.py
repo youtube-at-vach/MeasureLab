@@ -191,7 +191,17 @@ def validate_evidence(directory, case, *, count=3, request=None):
 
 
 def run_display(
-    binary, env, directory, case, timeout, *, language="en", workspace=False, trigger=False, calibration=False
+    binary,
+    env,
+    directory,
+    case,
+    timeout,
+    *,
+    language="en",
+    workspace=False,
+    trigger=False,
+    calibration=False,
+    calibration_edit=False,
 ):
     directory.mkdir(parents=True, exist_ok=False)
     evidence = directory / "results"
@@ -218,6 +228,8 @@ def run_display(
         command.append("--trigger-test")
     if calibration:
         command += ["--calibration-test", "1"]
+    if calibration_edit:
+        command.append("--calibration-edit-test")
     started = time.monotonic()
     try:
         result = subprocess.run(  # noqa: S603 - explicit local evaluation binary
@@ -249,7 +261,7 @@ def run_display(
             m in output
             for m in (
                 "DISPLAY_READY",
-                "DISPLAY_TRIGGER_PASS" if trigger else PASS,
+                "DISPLAY_CALIBRATION_EDIT_PASS" if calibration_edit else "DISPLAY_TRIGGER_PASS" if trigger else PASS,
                 "DISPLAY_IMAGE_OK",
                 "DISPLAY_TEARDOWN workers=0 models=0",
             )
@@ -259,6 +271,12 @@ def run_display(
     details = {}
     if passed:
         try:
+            if calibration_edit:
+                from scripts.migration_qt_calibration_edit import validate_run
+
+                details["edit"] = validate_run(output, evidence, body, language, case)
+                if not image.with_suffix(".png.editor.png").is_file():
+                    raise fft.ReferenceError("missing calibration editor image")
             if workspace:
                 from scripts.migration_qt_workspace import validate_workspace
 
@@ -272,12 +290,14 @@ def run_display(
                     from scripts.migration_qt_calibration import validate_ui
 
                     details["calibration"] = validate_ui(details["trigger"], evidence, language)
-            size = details.get("trigger", {}).get(
+            size = details.get("edit", {}).get("size") or details.get("trigger", {}).get(
                 "size", details.get("workspace", {}).get("main", {}).get("size", (1000, 640))
             )
             details.update(
                 image=inspect_png(image, size=size, regions=plot_regions(output)),
-                evidence=validate_evidence(evidence, case, count=2 if trigger else 4 if workspace else 3, request=body),
+                evidence=validate_evidence(
+                    evidence, case, count=2 if trigger or calibration_edit else 4 if workspace else 3, request=body
+                ),
             )
         except (OSError, ValueError, KeyError, struct.error, zlib.error, fft.ReferenceError) as exc:
             passed, reason = False, str(exc)

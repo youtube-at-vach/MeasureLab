@@ -116,6 +116,70 @@ fn pending_retry_shares_continuous_raw_without_consuming_latest_or_average() {
 }
 
 #[test]
+fn profiles_resolve_once_only_for_complete_actual_interval_without_rebuilding_raw() {
+    use crate::result::DeviceBinding;
+    use std::cell::Cell;
+
+    let (mut tx, mut worker, view) = setup();
+    let calls = Cell::new(0);
+    let profiles = |interval| {
+        calls.set(calls.get() + 1);
+        assert_eq!(interval, [0, 8]);
+        BTreeMap::from([(
+            "left".into(),
+            Profile {
+                revision: "edited.left".into(),
+                device_binding: DeviceBinding {
+                    device: "diagnostic".into(),
+                    port: 0,
+                },
+                is_calibrated: true,
+                v_per_fs: 2.,
+                applied_interval: interval,
+            },
+        )])
+    };
+    feed(&mut tx, &mut worker, 0, 4);
+    let pending = worker
+        .capture_trigger_with_profiles(&request(4), profiles)
+        .unwrap();
+    assert!(pending.result.is_none() && pending.raw.is_none());
+    assert_eq!(calls.get(), 0);
+    let mut invalid = request(4);
+    invalid.event.generation += 1;
+    assert!(
+        worker
+            .capture_trigger_with_profiles(&invalid, profiles)
+            .is_err()
+    );
+    assert_eq!(calls.get(), 0);
+    feed(&mut tx, &mut worker, 4, 12);
+    let calibrated = worker
+        .capture_trigger_with_profiles(&request(4), profiles)
+        .unwrap();
+    assert_eq!(calls.get(), 1);
+    let original = calibrated.result.as_ref().unwrap().to_value();
+    let uncalibrated = worker.capture_trigger(&request(4)).unwrap();
+    assert!(Arc::ptr_eq(
+        calibrated.raw.as_ref().unwrap(),
+        uncalibrated.raw.as_ref().unwrap()
+    ));
+    assert_eq!(worker.trigger_evaluations(), 0);
+    assert_eq!(view.take_latest().unwrap().raw().interval(), (8, 16));
+    assert_eq!(
+        original["calibration"][1]["profile"]["applied_interval"],
+        serde_json::json!([0, 8])
+    );
+    let fs = original["columns"]["rms_fs"]["values"][1].as_f64().unwrap();
+    assert_eq!(original["columns"]["rms_v"]["values"][1], fs * 2.);
+    assert!(original["columns"]["rms_v"]["values"][0].is_null());
+    assert_eq!(original, calibrated.result.as_ref().unwrap().to_value());
+    assert!(
+        uncalibrated.result.as_ref().unwrap().to_value()["columns"]["rms_v"]["values"][1].is_null()
+    );
+}
+
+#[test]
 fn fractional_unaligned_trigger_is_computed_once_without_changing_continuous_state() {
     let (mut tx, mut worker, view) = setup();
     feed(&mut tx, &mut worker, 0, 24);

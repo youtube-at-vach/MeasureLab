@@ -36,14 +36,15 @@ FS/nominal Hzは保持し、V RMS/dBV/PSD V²/HzだけをID校正する。
 共通QMLは選択チャンネルのV RMS/dBVとprofile revision/V/FS/portを表示する。
 線とheatmapは引き続きFS。表示文言は既存翻訳JSONの `tr()` で9言語を管理する。
 保持/分離/履歴失効/停止/新世代/Backend破棄でも完成resultは不変。
-別profileの適用には次セッションの設定を使う。Qtの編集・適用mailboxは未実装。
+初期設定は次セッションにも使う。取得中のQt編集・適用mailboxは[後続の検証単位](calibration-edit.md)で追加した。
 
 ## 診断保存と再検査
 
 `evidence` を明示した場合、最初の通常結果と完成Trigger結果を既存v1 JSONへ保存する。
-校正配列がある時だけ同じ完全resultのCSVも保存する。表示間引きを保存しない。
+保存replayは校正配列がある時に同じ完全resultのCSVも保存する。liveは停止後に全saved snapshotのCSVを保存する。表示間引きを保存しない。
 既存 `save_new` のno-clobber/atomicな一ファイル公開を使い、失敗はworker failureとして返す。
-JSON/CSVの一組のatomic commitではない。保存replayでは解析owner上の同期診断I/O。liveではJSONを取得中に保存し、
+JSON/CSVの一組のatomic commitではない。保存replayでは解析owner上の同期診断I/O。liveの通常/Trigger JSONは
+[編集・適用の検証](calibration-edit.md)で容量を限定したsnapshot/bytes保持と停止後保存へ移した。
 CSVはstream/graph停止後にJSONの完全snapshotを一件ずつ再読込して保存する。
 CSVの重いencodeを取得queueの時間予算へ持ち込まない。CSV失敗は終了時にも失敗として報告する。
 製品の非同期保存UIではない。
@@ -75,5 +76,5 @@ BlackHoleの同じ解析ownerへの短い診断は、他の音声/build/GUI検�
 reportへsource/runner/binary/request/result/bytes/CSV/PNGのhashと実行出力を保存する。
 異なる参照環境での比較は明示 `--portable`。元fixture/許容差は変更しない。
 
-Qtのprofile編集・適用、製品保存操作/互換/非同期化、校正期限/周波数・位相・SPL map、
+Qtのprofile編集・適用は[別作業票](calibration-edit.md)を参照。製品保存操作/互換/非同期化、校正期限/周波数・位相・SPL map、
 物理校正、長時間/負荷下/他OS/実window manager、AC15/16、Rust/QML採用判断は後続。

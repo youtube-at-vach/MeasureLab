@@ -46,7 +46,8 @@ AC08/09/13のpending→明示retry、二viewの共有hold/分離/release、旧�
 007-Aの[セッションID校正](../decisions/0022-session-calibration-display.md)を通常/Triggerの取得結果へ追加した。
 AC12のdevice/portとID対応、適用区間/係数/revision、不変result、全相対/絶対配列、v1 CSV/JSONを検査する。
 両QtのV RMS/dBV/未校正表示と9言語も検査する。成功件数はstatusを参照。
-Qtの編集・適用/製品保存操作/互換/非同期化、map/物理校正、性能/他OS、AC12全体は後続。
+Qtの編集・適用は[決定0023](../decisions/0023-qt-calibration-edit.md)で追加し、取得中の原子的変更と旧result不変性を検査する。
+製品保存操作/互換/非同期化、map/物理校正、性能/他OS、AC12全体は後続。
 
 ## fixtureの最小セット
 

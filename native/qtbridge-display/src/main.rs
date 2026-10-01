@@ -14,6 +14,7 @@ mod backend {
         reclaimed: bool,
         payload: String,
         capture: String,
+        calibration: String,
         error: String,
         testing: bool,
         translations: String,
@@ -31,6 +32,7 @@ mod backend {
                 reclaimed: false,
                 payload: String::new(),
                 capture: String::new(),
+                calibration: String::new(),
                 error: String::new(),
                 testing: std::env::args().any(|arg| arg == "--self-test"),
                 translations: display_core::locale::selected_catalog(),
@@ -47,6 +49,7 @@ mod backend {
         qproperty!("reclaimed", Member = reclaimed, Notify = changed);
         qproperty!("payload", Member = payload, Notify = changed);
         qproperty!("capture", Member = capture, Notify = changed);
+        qproperty!("calibration", Member = calibration, Notify = changed);
         qproperty!("error", Member = error, Notify = changed);
         qproperty!("testing", Member = testing, Constant);
         qproperty!("translations", Member = translations, Constant);
@@ -61,6 +64,7 @@ mod backend {
             self.shared = s.shared;
             self.reclaimed = s.reclaimed;
             self.error = s.error;
+            self.calibration = s.calibration;
             self.capture = s
                 .trigger
                 .as_ref()
@@ -119,6 +123,12 @@ mod backend {
         #[qslot]
         fn subscribers(&self) -> i32 {
             self.display.subscribers() as i32
+        }
+        #[qslot]
+        fn apply_calibration(&mut self, encoded: String) -> bool {
+            let accepted = self.display.apply_calibration(&encoded);
+            self.apply(self.display.peek());
+            accepted
         }
         #[qslot]
         fn request_trigger(&mut self, encoded: String) -> bool {

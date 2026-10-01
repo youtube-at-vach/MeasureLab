@@ -2564,5 +2564,18 @@
     "migration.display.waiting": "Esperando resultado",
     "migration.display.voltage_uncalibrated": "Tensión no disponible · sin calibrar",
     "migration.display.voltage": "Valor eficaz: %1 V · %2 dBV",
-    "migration.display.calibration_profile": "Perfil: %1 V/FS · %2 · puerto %3"
+    "migration.display.calibration_profile": "Perfil: %1 V/FS · %2 · puerto %3",
+    "migration.display.calibration_edit": "Editar calibración",
+    "migration.display.calibration_channel": "Canal",
+    "migration.display.calibration_factor": "Factor (V/FS)",
+    "migration.display.calibration_revision": "Revisión del perfil",
+    "migration.display.calibration_binding": "Dispositivo: %1 · puerto %2",
+    "migration.display.calibration_enabled": "Usar calibración de tensión",
+    "migration.display.calibration_note": "Los cambios se aplican a nuevos resultados hasta el reinicio. Los resultados retenidos conservan su perfil.",
+    "migration.display.calibration_rejected": "Compruebe los valores del perfil e inténtelo de nuevo.",
+    "migration.display.calibration_queued": "Aplicando calibración…",
+    "migration.display.calibration_applied": "Calibración aplicada",
+    "migration.display.calibration_cancelled": "Cambio de calibración cancelado",
+    "migration.display.calibration_apply": "Aplicar",
+    "migration.display.calibration_close": "Cerrar"
 }

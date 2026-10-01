@@ -21,6 +21,7 @@ mod ffi {
         #[qproperty(bool, reclaimed)]
         #[qproperty(QString, payload)]
         #[qproperty(QString, capture)]
+        #[qproperty(QString, calibration)]
         #[qproperty(QString, error)]
         #[qproperty(bool, testing)]
         #[qproperty(QString, translations)]
@@ -42,6 +43,8 @@ mod ffi {
         #[qinvokable]
         fn subscribers(&self) -> i32;
         #[qinvokable]
+        fn apply_calibration(self: Pin<&mut Self>, encoded: &QString) -> bool;
+        #[qinvokable]
         fn request_trigger(self: Pin<&mut Self>, encoded: &QString) -> bool;
         #[qinvokable]
         fn retry_trigger(self: Pin<&mut Self>, generation: u64, revision: u64) -> bool;
@@ -61,6 +64,7 @@ pub struct DisplayBackendRust {
     reclaimed: bool,
     payload: QString,
     capture: QString,
+    calibration: QString,
     error: QString,
     testing: bool,
     translations: QString,
@@ -78,6 +82,7 @@ impl Default for DisplayBackendRust {
             reclaimed: false,
             payload: QString::default(),
             capture: QString::default(),
+            calibration: QString::default(),
             error: QString::default(),
             testing: std::env::args().any(|arg| arg == "--self-test"),
             translations: QString::from(&display_core::locale::selected_catalog()),
@@ -94,6 +99,8 @@ impl ffi::DisplayBackend {
         self.as_mut().set_error(QString::from(&snapshot.error));
         self.as_mut().set_outcome(snapshot.outcome);
         self.as_mut().set_state(snapshot.state.code());
+        self.as_mut()
+            .set_calibration(QString::from(&snapshot.calibration));
         self.as_mut().set_capture(QString::from(
             snapshot.trigger.as_ref().map_or("", |r| r.encoded.as_str()),
         ));
@@ -150,6 +157,16 @@ impl ffi::DisplayBackend {
     }
     fn subscribers(&self) -> i32 {
         self.display.subscribers() as i32
+    }
+    fn apply_calibration(mut self: Pin<&mut Self>, encoded: &QString) -> bool {
+        let accepted = self
+            .as_mut()
+            .rust_mut()
+            .display
+            .apply_calibration(&encoded.to_string());
+        let snapshot = self.display.peek();
+        self.apply(snapshot);
+        accepted
     }
     fn request_trigger(mut self: Pin<&mut Self>, encoded: &QString) -> bool {
         let accepted = self
