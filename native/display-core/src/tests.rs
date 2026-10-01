@@ -41,7 +41,8 @@ fn request(precision: Precision, channels: usize, invalid: bool) -> Request {
         precision,
         n,
         window: WindowSpec::Boxcar,
-        input: path,
+        input: Some(path),
+        live: None,
         evidence: None,
     }
 }
@@ -62,7 +63,7 @@ fn saved_precision_channel_ids_projection_sharing_and_held_result() {
     for precision in [Precision::F32, Precision::F64] {
         for channels in [4, 8] {
             let request = request(precision, channels, false);
-            let path = request.input.clone();
+            let path = request.input.clone().unwrap();
             let mut display = Display::with_request(request);
             display.subscribe();
             display.subscribe();
@@ -100,7 +101,7 @@ fn saved_precision_channel_ids_projection_sharing_and_held_result() {
 #[test]
 fn real_graph_demand_session_restart_and_stale_notification() {
     let request = request(Precision::F64, 4, false);
-    let path = request.input.clone();
+    let path = request.input.clone().unwrap();
     let mut display = Display::with_request(request);
     assert!(display.start(false, |_| true).is_none());
     let first = display.subscribe();
@@ -130,7 +131,7 @@ fn real_graph_demand_session_restart_and_stale_notification() {
 #[test]
 fn invalid_values_are_null_with_reason_never_a_normal_zero() {
     let request = request(Precision::F64, 4, true);
-    let path = request.input.clone();
+    let path = request.input.clone().unwrap();
     let mut display = Display::with_request(request);
     display.subscribe();
     display.start(false, |_| true).unwrap();
@@ -145,7 +146,7 @@ fn invalid_values_are_null_with_reason_never_a_normal_zero() {
 #[test]
 fn cancel_failure_bad_input_and_disconnected_gui_reclaim() {
     let request = request(Precision::F32, 4, false);
-    let path = request.input.clone();
+    let path = request.input.clone().unwrap();
     let mut display = Display::with_request(request);
     display.subscribe();
     display.start(false, |_| true).unwrap();
@@ -176,4 +177,53 @@ fn demand_is_bounded_and_foreign_tokens_rejected() {
     }
     assert_eq!(display.subscribe(), 0);
     assert_eq!(display.subscribers(), MAX_DEMAND);
+}
+
+#[test]
+fn source_choice_precision_and_live_ports_are_validated_without_opening() {
+    let mut request = request(Precision::F32, 4, false);
+    let path = request.input.clone().unwrap();
+    request.validate().unwrap();
+    request.live = Some(LiveRequest {
+        device: "BlackHole 16ch".into(),
+        device_channels: 16,
+    });
+    assert!(request.validate().is_err()); // two sources
+    request.input = None;
+    assert!(request.validate().is_err()); // clock domain must identify exact device
+    request.format.clock_domain = "cpal.device:BlackHole 16ch".into();
+    request.format.input_ports = vec![15, 13, 11, 9];
+    request.validate().unwrap();
+    request.precision = Precision::F64;
+    assert!(request.validate().is_err());
+    request.precision = Precision::F32;
+    request.format.input_ports[0] = 16;
+    assert!(request.validate().is_err());
+    request.live = None;
+    assert!(request.validate().is_err()); // no source
+    std::fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn unavailable_live_input_fails_and_reclaims_instead_of_replaying() {
+    let mut request = request(Precision::F32, 2, false);
+    let path = request.input.take().unwrap();
+    let name = "MeasureLab deliberately unavailable evaluation device";
+    request.live = Some(LiveRequest {
+        device: name.into(),
+        device_channels: 2,
+    });
+    request.format.clock_domain = format!("cpal.device:{name}");
+    let mut display = Display::with_request(request);
+    display.subscribe();
+    display.start(false, |_| true).unwrap();
+    wait(&display, |s| s.state == State::Failed);
+    display.shutdown();
+    let state = display.peek();
+    assert!(state.reclaimed && state.frame.is_none() && state.produced == 0);
+    #[cfg(feature = "live-audio")]
+    assert_eq!(state.error, "live_exact_device_not_unique");
+    #[cfg(not(feature = "live-audio"))]
+    assert_eq!(state.error, "display_live_feature_disabled");
+    std::fs::remove_file(path).unwrap();
 }

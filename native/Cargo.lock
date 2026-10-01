@@ -412,6 +412,7 @@ name = "display-core"
 version = "0.1.0"
 dependencies = [
  "audio-core",
+ "audio-probe",
  "graph-core",
  "probe-core",
  "serde",

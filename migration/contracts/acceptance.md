@@ -24,7 +24,9 @@ AC01/05/07/09のinput.raw接続を保存4入力×2bindingとBlackHoleの短い�
 
 007-Aの[保存入力の共有result表示](../decisions/0016-shared-result-display.md)を追加した。
 AC05とAC07/13の実graph→両Qt adapterの初期境界を4/8ch f32/f64、cursor/zoom、PNG、
-表示再生成と購読解除で検査する。実音声/trigger UI/9言語/性能/他OSの合格ではない。
+表示再生成と購読解除で検査する。続いて[BlackHole実入力](../decisions/0017-live-result-display.md)を
+2ch／16chから選ぶ4ch／8chで接続し、取得窓bytesと全peak、遅いGUI、stream回収まで検査する。
+trigger UI/校正・製品保存/9言語/長時間性能/他OSの合格ではない。
 
 ## fixtureの最小セット
 

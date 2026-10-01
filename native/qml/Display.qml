@@ -30,6 +30,7 @@ ApplicationWindow {
     property bool saved: false
     property bool savePending: false
     property bool failed: false
+    property bool liveInput: Qt.application.arguments.indexOf("--live-input") >= 0
     property string imageStatus: ""
     function check(ok, message) {
         if (!ok && !failed) {
@@ -71,7 +72,7 @@ ApplicationWindow {
         case 1:
             return qsTr("Preparing");
         case 2:
-            return qsTr("Replaying saved input");
+            return liveInput ? qsTr("Acquiring live input") : qsTr("Replaying saved input");
         case 3:
             return qsTr("Stopping");
         case 4:
@@ -127,14 +128,14 @@ ApplicationWindow {
             anchors.margins: 16
             spacing: 8
             Label {
-                text: qsTr("Saved input · shared FFT · uncalibrated FS · clock origin unknown")
+                text: liveInput ? qsTr("Live input · shared FFT · uncalibrated FS · clock origin unknown") : qsTr("Saved input · shared FFT · uncalibrated FS · clock origin unknown")
                 Layout.fillWidth: true
                 elide: Text.ElideRight
                 font.bold: true
             }
             RowLayout {
                 Button {
-                    text: qsTr("Start replay")
+                    text: liveInput ? qsTr("Start input") : qsTr("Start replay")
                     enabled: backend && (backend.state === 0 || backend.state === 4)
                     onClicked: backend.start(false)
                 }
@@ -263,7 +264,7 @@ ApplicationWindow {
                 line.item.cursorBin = bin;
                 map.item.cursorBin = bin;
                 check(line.item.cursorValue === frame.peak_fs.values[bin * frame.source.channel_ids.length + ch], "full precision cursor");
-                check(Math.abs(line.item.cursorValue - (ch + 1) / 32) < 0.000001, "fixture tone cursor");
+                check(Math.abs(line.item.cursorValue - (ch + 1) / (liveInput ? 512 : 32)) < 0.000001, "input tone cursor");
                 line.item.zoom(line.item.cursorHz, 0.5);
                 check(line.item.highHz - line.item.lowHz === 12000 && map.item.highHz === 24000, "independent zoom");
                 line.item.resetZoom();

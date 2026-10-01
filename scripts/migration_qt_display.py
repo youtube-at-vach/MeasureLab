@@ -216,20 +216,9 @@ def run_display(binary, env, directory, case, timeout):
     }
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--qt-prefix", type=Path, required=True)
-    parser.add_argument("--target-dir", type=Path, default=ROOT / "native/target/debug")
-    parser.add_argument(
-        "--output", type=Path, required=True, help="new run directory; never overwrite existing results"
-    )
-    parser.add_argument("--timeout", type=float, default=30)
-    parser.add_argument("--repeat", type=int, default=1)
-    parser.add_argument("--portable", action="store_true")
-    args = parser.parse_args()
-    if args.timeout <= 0 or args.repeat < 1 or args.output.exists():
-        parser.error("positive timeout/repeat and a new output directory are required")
-    prefix = args.qt_prefix.resolve()
+def qt_environment(prefix):
+    """Use only the selected SDK for native Qt children; keep Python audio separate."""
+    prefix = prefix.resolve()
     env = {
         **os.environ,
         "QMAKE": str(prefix / "bin/qmake"),
@@ -244,7 +233,24 @@ def main():
     env["DYLD_FRAMEWORK_PATH" if sys.platform == "darwin" else "LD_LIBRARY_PATH"] = str(prefix / "lib")
     version = subprocess.check_output([env["QMAKE"], "-query", "QT_VERSION"], env=env, text=True).strip()  # noqa: S603 - selected SDK
     if version != tomllib.loads((ROOT / "native/qt-sdk.toml").read_text())["version"]:
-        parser.error("Qt SDK version mismatch")
+        raise ValueError("Qt SDK version mismatch")
+    return env, version
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--qt-prefix", type=Path, required=True)
+    parser.add_argument("--target-dir", type=Path, default=ROOT / "native/target/debug")
+    parser.add_argument(
+        "--output", type=Path, required=True, help="new run directory; never overwrite existing results"
+    )
+    parser.add_argument("--timeout", type=float, default=30)
+    parser.add_argument("--repeat", type=int, default=1)
+    parser.add_argument("--portable", action="store_true")
+    args = parser.parse_args()
+    if args.timeout <= 0 or args.repeat < 1 or args.output.exists():
+        parser.error("positive timeout/repeat and a new output directory are required")
+    env, version = qt_environment(args.qt_prefix)
     binaries = [
         args.target_dir.resolve() / (name + (".exe" if os.name == "nt" else ""))
         for name in ("cxxqt-display", "qtbridge-display")

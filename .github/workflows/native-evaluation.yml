@@ -3,10 +3,10 @@ name: Native evaluation
 on:
   push:
     branches: ["codex/next-core-evaluation", "codex/migration-*"]
-    paths: ["native/**", "migration/**", "scripts/migration_qt_*.py", "scripts/migration_plot_*.py", "tests/logic_verification/test_migration_plot_*.py", "scripts/migration_fft_*.py", "scripts/migration_core_*.py", "scripts/migration_graph_*.py", "scripts/migration_history_*.py", "scripts/migration_filter_*.py", "scripts/migration_result_*.py", "scripts/migration_audio_*.py", "tests/logic_verification/test_migration_graph_*.py", "tests/logic_verification/test_migration_history_*.py", "tests/logic_verification/test_migration_filter_*.py", "tests/logic_verification/test_migration_result_*.py", "tests/logic_verification/test_migration_audio_*.py", ".github/workflows/native-evaluation.yml"]
+    paths: ["native/**", "migration/**", "scripts/migration_qt_*.py", "tests/logic_verification/test_migration_qt_*.py", "scripts/migration_plot_*.py", "tests/logic_verification/test_migration_plot_*.py", "scripts/migration_fft_*.py", "scripts/migration_core_*.py", "scripts/migration_graph_*.py", "scripts/migration_history_*.py", "scripts/migration_filter_*.py", "scripts/migration_result_*.py", "scripts/migration_audio_*.py", "tests/logic_verification/test_migration_graph_*.py", "tests/logic_verification/test_migration_history_*.py", "tests/logic_verification/test_migration_filter_*.py", "tests/logic_verification/test_migration_result_*.py", "tests/logic_verification/test_migration_audio_*.py", ".github/workflows/native-evaluation.yml"]
   pull_request:
     branches: ["main", "codex/next-core-evaluation"]
-    paths: ["native/**", "migration/**", "scripts/migration_qt_*.py", "scripts/migration_plot_*.py", "tests/logic_verification/test_migration_plot_*.py", "scripts/migration_fft_*.py", "scripts/migration_core_*.py", "scripts/migration_graph_*.py", "scripts/migration_history_*.py", "scripts/migration_filter_*.py", "scripts/migration_result_*.py", "scripts/migration_audio_*.py", "tests/logic_verification/test_migration_graph_*.py", "tests/logic_verification/test_migration_history_*.py", "tests/logic_verification/test_migration_filter_*.py", "tests/logic_verification/test_migration_result_*.py", "tests/logic_verification/test_migration_audio_*.py", ".github/workflows/native-evaluation.yml"]
+    paths: ["native/**", "migration/**", "scripts/migration_qt_*.py", "tests/logic_verification/test_migration_qt_*.py", "scripts/migration_plot_*.py", "tests/logic_verification/test_migration_plot_*.py", "scripts/migration_fft_*.py", "scripts/migration_core_*.py", "scripts/migration_graph_*.py", "scripts/migration_history_*.py", "scripts/migration_filter_*.py", "scripts/migration_result_*.py", "scripts/migration_audio_*.py", "tests/logic_verification/test_migration_graph_*.py", "tests/logic_verification/test_migration_history_*.py", "tests/logic_verification/test_migration_filter_*.py", "tests/logic_verification/test_migration_result_*.py", "tests/logic_verification/test_migration_audio_*.py", ".github/workflows/native-evaluation.yml"]
   workflow_dispatch:
 
 permissions:
@@ -62,7 +62,15 @@ jobs:
         run: |
           cargo build --locked -p audio-probe
           cargo test --locked -p audio-probe
-          cargo clippy --locked -p audio-probe --all-targets -- -D warnings
+          cargo test --locked -p display-core --features live-audio
+          cargo clippy --locked -p audio-probe -p display-core --features live-audio --all-targets -- -D warnings
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Test live evidence rejection without Qt or audio devices
+        run: |
+          python -m pip install numpy==2.2.6 pytest
+          python -m pytest -q tests/logic_verification/test_migration_qt_live.py
 
   renderer-spike:
     runs-on: ubuntu-24.04

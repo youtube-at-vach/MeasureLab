@@ -279,7 +279,7 @@ wavelet・過渡解析
 | validity・精度・共有条件 | 描画f32可、元値/cursor/exportは解析精度。描画省略をdata gapにしない。複数viewは同じresult IDを参照 |
 | 現行の入口 | [source](../src/gui/widgets/instrument_plot.py) |
 | 参照検証 | [test](../tests/logic_verification/gui/widgets/test_instrument_plot.py) |
-| 候補検証 | 007-Aの[共有result表示](../native/display-candidate.md)。保存replay/両Qt/英語の初期境界。実音声・9言語・性能は後続 |
+| 候補検証 | 007-Aの[共有result表示](../native/display-candidate.md)。保存replayと[BlackHole実入力](../native/live-display.md)/両Qt/英語の初期境界。trigger・9言語・性能は後続 |
 
 ## P20
 

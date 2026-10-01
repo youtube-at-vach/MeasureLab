@@ -1,4 +1,4 @@
-//! MIG-007-A saved-input replay through the real acquisition/history/shared FFT.
+//! MIG-007-A replay/live input through the real acquisition/history/shared FFT.
 //! This is an analysis thread, never an audio callback. Qt receives one immutable
 //! projection; GUI notification replacement does not discard acquisition data.
 #![forbid(unsafe_code)]
@@ -24,6 +24,15 @@ static MODELS: AtomicUsize = AtomicUsize::new(0);
 const MAX_INPUT_BYTES: u64 = 4096 * 16 * 8;
 const MAX_DEMAND: usize = 16;
 
+#[cfg(feature = "live-audio")]
+mod live;
+
+#[derive(Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LiveRequest {
+    pub device: String,
+    pub device_channels: usize,
+}
 #[derive(Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Request {
@@ -31,24 +40,46 @@ pub struct Request {
     pub precision: Precision,
     pub n: usize,
     pub window: WindowSpec,
-    pub input: PathBuf,
+    pub input: Option<PathBuf>,
+    pub live: Option<LiveRequest>,
     /// Optional directory for each generation's first-result evidence.
     pub evidence: Option<PathBuf>,
 }
 impl Request {
-    fn bytes(&self) -> Result<Vec<u8>, String> {
+    fn validate(&self) -> Result<(), String> {
         let channels = self.format.input_ids.len();
-        self.format.validate(channels, 0)?;
         if !(3..=4096).contains(&self.n) || channels == 0 || channels > 16 {
             return Err("display_input_capacity".into());
         }
+        match (&self.input, &self.live) {
+            (Some(_), None) => self.format.validate(channels, 0).map_err(String::from),
+            (None, Some(live)) => {
+                if self.precision != Precision::F32
+                    || self.format.rate != [48000, 1]
+                    || live.device.trim().is_empty()
+                    || !(1..=16).contains(&live.device_channels)
+                    || self.format.clock_domain != format!("cpal.device:{}", live.device)
+                {
+                    return Err("display_live_configuration".into());
+                }
+                self.format
+                    .validate(live.device_channels, 0)
+                    .map_err(String::from)
+            }
+            _ => Err("display_input_source".into()),
+        }
+    }
+    fn bytes(&self) -> Result<Vec<u8>, String> {
+        self.validate()?;
+        let channels = self.format.input_ids.len();
         let width = if self.precision == Precision::F32 {
             4
         } else {
             8
         };
         let expected = self.n * channels * width;
-        let file = std::fs::File::open(&self.input).map_err(|e| e.to_string())?;
+        let file = std::fs::File::open(self.input.as_ref().ok_or("display_input_source")?)
+            .map_err(|e| e.to_string())?;
         if file.metadata().map_err(|e| e.to_string())?.len() != expected as u64 {
             return Err("display_input_shape".into());
         }
@@ -211,8 +242,15 @@ impl Display {
                             serde_json::from_reader(file.take(65537)).map_err(|e| e.to_string())?
                         }
                     };
-                    let bytes = request.bytes()?;
+                    request.validate()?;
                     request.format.generation = generation;
+                    if request.live.is_some() {
+                        #[cfg(feature = "live-audio")]
+                        return live::run(&owner, &notify, &request);
+                        #[cfg(not(feature = "live-audio"))]
+                        return Err("display_live_feature_disabled".into());
+                    }
+                    let bytes = request.bytes()?;
                     match request.precision {
                         Precision::F32 => {
                             let samples: Vec<f32> = bytes
@@ -247,7 +285,7 @@ impl Display {
                 .unwrap_or_else(|_| Err("display_worker_panic".into()));
             {
                 let mut slot = owner.mailbox.lock().unwrap();
-                slot.snapshot.reclaimed = true; // replay's Acquisition and subscriptions have dropped
+                slot.snapshot.reclaimed = true; // acquisition, subscriptions and stream have dropped
                 match result {
                     Err(error) => {
                         slot.snapshot.state = State::Failed;
@@ -343,20 +381,7 @@ fn replay<T: CaptureSample>(
     let mut subscriptions: BTreeMap<u64, Subscription> = BTreeMap::new();
     let mut evidence_written = false;
     while !owner.stop.load(Ordering::Acquire) {
-        let demand = owner.mailbox.lock().unwrap().demand.clone();
-        subscriptions.retain(|id, _| demand.contains(id));
-        for id in demand {
-            if let std::collections::btree_map::Entry::Vacant(entry) = subscriptions.entry(id) {
-                entry.insert(acquisition.subscribe(
-                    Average::None,
-                    Presentation {
-                        color: "cyan".into(),
-                        unit: "FS_peak".into(),
-                    },
-                )?);
-            }
-        }
-        if subscriptions.is_empty() {
+        if !sync_demand(owner, &acquisition, &mut subscriptions)? {
             break;
         }
         for chunk in samples.chunks(256 * request.format.input_ids.len()) {
@@ -366,18 +391,7 @@ fn replay<T: CaptureSample>(
                 return Err("replay_gap".into());
             }
         }
-        let latest: Vec<_> = subscriptions
-            .values()
-            .filter_map(Subscription::take_latest)
-            .collect();
-        if latest.len() != subscriptions.len() {
-            return Err("display_result_missing".into());
-        }
-        let raw = latest[0].raw();
-        if latest.iter().any(|s| !Arc::ptr_eq(raw, s.raw())) {
-            return Err("display_result_not_shared".into());
-        }
-        let frame = Arc::new(project(raw)?);
+        let frame = shared_frame(&subscriptions)?.ok_or("display_result_missing")?;
         if !evidence_written {
             if let Some(path) = &request.evidence {
                 frame
@@ -390,17 +404,7 @@ fn replay<T: CaptureSample>(
             }
             evidence_written = true;
         }
-        {
-            let mut slot = owner.mailbox.lock().unwrap();
-            if owner.stop.load(Ordering::Acquire) {
-                break;
-            }
-            slot.snapshot.state = State::Running;
-            slot.snapshot.produced = acquisition.graph().stats().fft_evaluations;
-            slot.snapshot.shared = true;
-            slot.snapshot.frame = Some(frame);
-        }
-        if !owner.notify(notify) {
+        if !publish(owner, notify, &acquisition, frame) {
             break;
         }
         for _ in 0..8 {
@@ -410,6 +414,64 @@ fn replay<T: CaptureSample>(
             thread::sleep(Duration::from_millis(5));
         }
     }
+    reclaim(&mut acquisition)
+}
+fn sync_demand<T: CaptureSample>(
+    owner: &Owner,
+    acquisition: &Acquisition<T>,
+    subscriptions: &mut BTreeMap<u64, Subscription>,
+) -> Result<bool, String> {
+    let demand = owner.mailbox.lock().unwrap().demand.clone();
+    subscriptions.retain(|id, _| demand.contains(id));
+    for id in demand {
+        if let std::collections::btree_map::Entry::Vacant(entry) = subscriptions.entry(id) {
+            entry.insert(acquisition.subscribe(
+                Average::None,
+                Presentation {
+                    color: "cyan".into(),
+                    unit: "FS_peak".into(),
+                },
+            )?);
+        }
+    }
+    Ok(!subscriptions.is_empty())
+}
+fn shared_frame(subscriptions: &BTreeMap<u64, Subscription>) -> Result<Option<Arc<Frame>>, String> {
+    let latest: Vec<_> = subscriptions
+        .values()
+        .filter_map(Subscription::take_latest)
+        .collect();
+    if latest.is_empty() {
+        return Ok(None);
+    }
+    if latest.len() != subscriptions.len() {
+        return Err("display_result_missing".into());
+    }
+    let raw = latest[0].raw();
+    if latest.iter().any(|s| !Arc::ptr_eq(raw, s.raw())) {
+        return Err("display_result_not_shared".into());
+    }
+    Ok(Some(Arc::new(project(raw)?)))
+}
+fn publish<T: CaptureSample>(
+    owner: &Owner,
+    notify: &impl Fn(u64) -> bool,
+    acquisition: &Acquisition<T>,
+    frame: Arc<Frame>,
+) -> bool {
+    {
+        let mut slot = owner.mailbox.lock().unwrap();
+        if owner.stop.load(Ordering::Acquire) {
+            return false;
+        }
+        slot.snapshot.state = State::Running;
+        slot.snapshot.produced = acquisition.graph().stats().fft_evaluations;
+        slot.snapshot.shared = true;
+        slot.snapshot.frame = Some(frame);
+    }
+    owner.notify(notify)
+}
+fn reclaim<T: CaptureSample>(acquisition: &mut Acquisition<T>) -> Result<(), String> {
     acquisition.stop();
     let stats = acquisition.graph().stats();
     if stats.nodes != 0
