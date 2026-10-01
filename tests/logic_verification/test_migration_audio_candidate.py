@@ -16,8 +16,9 @@ def binary():
     return audio.build()[0]
 
 
+@pytest.mark.native
 def test_reviewed_route_rejections_taps_generations_and_multichannel_bytes():
-    report = audio.verify()
+    report = audio.verify(portable=True)
     assert len(report["cases"]) == 10
     assert len(report["queues"]) == 4
     assert {case["id"] for case in report["queues"]} == {
@@ -27,7 +28,7 @@ def test_reviewed_route_rejections_taps_generations_and_multichannel_bytes():
 
 @pytest.mark.parametrize("fault", ["count", "id", "gain", "null", "gap", "tap"])
 def test_checker_rejects_corrupted_results(fault):
-    cases = audio.reviewed_cases()
+    cases = audio.reviewed_cases(portable=True)
     observed = [{"id": case["id"], "observed": copy.deepcopy(case["expected"])} for case in cases]
     if fault == "count":
         observed.pop()
@@ -45,6 +46,7 @@ def test_checker_rejects_corrupted_results(fault):
         audio.validate_results(cases, observed)
 
 
+@pytest.mark.native
 @pytest.mark.parametrize("fault", ["duplicate_id", "dtype", "capacity", "rate", "shape", "extra", "existing_output"])
 def test_queue_rejects_without_touching_saved_input(binary, tmp_path, fault):
     request = {

@@ -29,8 +29,9 @@ def output(binary, tmp_path):
     return case, directory, request, source
 
 
+@pytest.mark.native
 def test_four_original_precision_channel_cases_with_two_explicit_bindings(binary, tmp_path):
-    manifest, _ = candidate.load_manifest(acquisition.core.DEFAULT_FIXTURES, is_core=True, portable=False)
+    manifest, _ = candidate.load_manifest(acquisition.core.DEFAULT_FIXTURES, is_core=True, portable=True)
     for case in manifest["tones"]:
         for reverse in (False, True):
             result = acquisition.verify_case(binary, case, reverse=reverse)
@@ -41,12 +42,14 @@ def test_four_original_precision_channel_cases_with_two_explicit_bindings(binary
         [
             sys.executable,
             str(acquisition.ROOT / "scripts/migration_audio_graph.py"),
+            "--portable",
             "--report",
             str(tmp_path / "headless.json"),
         ]
     )
 
 
+@pytest.mark.native
 @pytest.mark.parametrize(
     "fault",
     [
@@ -103,6 +106,7 @@ def test_rejects_corrupt_acquisition_manifest(output, fault):
         acquisition.read_result(directory, case, reverse=True)
 
 
+@pytest.mark.native
 @pytest.mark.parametrize("name", ["poll_raw", "snapshot", "held_after_stop", "fft_over_n"])
 def test_rejects_corrupted_or_nonfinite_arrays(output, name):
     case, directory, _, _ = output
@@ -117,6 +121,7 @@ def test_rejects_corrupted_or_nonfinite_arrays(output, name):
         acquisition.read_result(directory, case, reverse=True)
 
 
+@pytest.mark.native
 @pytest.mark.parametrize("fault", ["schema", "binding", "precision", "shape", "existing_output"])
 def test_native_rejects_bad_inputs_without_modifying_existing_files(binary, output, tmp_path, fault):
     _, directory, request, source = output

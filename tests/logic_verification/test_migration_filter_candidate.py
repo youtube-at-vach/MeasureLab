@@ -35,6 +35,7 @@ def result(filter_binary, filter_manifest, tmp_path):
     return request, output, path, input_path
 
 
+@pytest.mark.native
 def test_saved_21_cases_five_chunks_and_graph_state(filter_binary, filter_manifest):
     for case in filter_manifest["cases"]:
         report = filters.verify_case(filter_binary, case, filter_manifest["tolerances"])
@@ -64,6 +65,7 @@ def test_saved_manifest_and_original_bytes_are_pinned(filter_manifest, tmp_path,
         filters.load_manifest(portable=True, directory=tmp_path)
 
 
+@pytest.mark.native
 @pytest.mark.parametrize(
     "fault",
     [
@@ -140,6 +142,7 @@ def test_rejects_changed_metadata_validity_sharing_or_ownership(result, fault):
         filters.read_result(output, request)
 
 
+@pytest.mark.native
 @pytest.mark.parametrize("fault", ["truncated", "nonfinite"])
 def test_rejects_corrupt_result_bytes(result, fault):
     request, output, _, _ = result
@@ -150,6 +153,7 @@ def test_rejects_corrupt_result_bytes(result, fault):
         filters.read_result(output, request)
 
 
+@pytest.mark.native
 @pytest.mark.parametrize(
     "fault",
     [
@@ -201,6 +205,7 @@ def test_native_rejections_preserve_input_and_output(filter_binary, result, tmp_
         assert not output.exists()
 
 
+@pytest.mark.native
 def test_saved_rate_rejections_and_identity(filter_binary, filter_manifest, tmp_path):
     path = tmp_path / "rates.json"
     output = tmp_path / "observed.json"

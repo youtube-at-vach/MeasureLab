@@ -23,7 +23,7 @@ def binary():
 
 @pytest.fixture
 def valid_case():
-    manifest, _ = candidate.load_manifest(fft.DEFAULT_FIXTURES)
+    manifest, _ = candidate.load_manifest(fft.DEFAULT_FIXTURES, portable=True)
     return manifest["cases"][0]
 
 
@@ -39,10 +39,17 @@ def invoke(binary, tmp_path, request, data):
     return result, output
 
 
+@pytest.mark.native
 def test_real_candidate_matches_all_small_and_multichannel_bytes(tmp_path):
     report = tmp_path / "report.json"
     result = subprocess.run(  # noqa: S603 - built test executable or repository runner, no shell
-        [sys.executable, str(candidate.ROOT / "scripts/migration_fft_candidate.py"), "--report", str(report)],
+        [
+            sys.executable,
+            str(candidate.ROOT / "scripts/migration_fft_candidate.py"),
+            "--portable",
+            "--report",
+            str(report),
+        ],
         capture_output=True,
         text=True,
         check=False,
@@ -56,6 +63,7 @@ def test_real_candidate_matches_all_small_and_multichannel_bytes(tmp_path):
     assert data["binary_sha256"]
 
 
+@pytest.mark.native
 @pytest.mark.parametrize(
     "field,value",
     [
@@ -81,6 +89,7 @@ def test_cli_rejects_invalid_request_without_output(binary, tmp_path, valid_case
     assert b"FFT candidate failed" in result.stderr
 
 
+@pytest.mark.native
 @pytest.mark.parametrize("data", [b"", b"\0" * 7, np.full(8192, np.nan, dtype="<f8").tobytes()])
 def test_cli_rejects_bytecount_and_nonfinite_input(binary, tmp_path, valid_case, data):
     result, output = invoke(binary, tmp_path, candidate.request_for(valid_case), data)
@@ -88,8 +97,9 @@ def test_cli_rejects_bytecount_and_nonfinite_input(binary, tmp_path, valid_case,
     assert not output.exists()
 
 
+@pytest.mark.native
 def test_cli_keeps_f32_transform_and_inverse(binary, tmp_path):
-    manifest, _ = candidate.load_manifest(fft.DEFAULT_FIXTURES)
+    manifest, _ = candidate.load_manifest(fft.DEFAULT_FIXTURES, portable=True)
     case = next(c for c in manifest["cases"] if c["spec"]["dtype"] == "<f4")
     request = candidate.request_for(case)
     data = (fft.DEFAULT_FIXTURES / case["spec"]["id"] / "input.bin").read_bytes()
@@ -101,6 +111,7 @@ def test_cli_keeps_f32_transform_and_inverse(binary, tmp_path):
     fft.compare(arrays["fft_over_n"], saved, fft.TOLERANCES["f32"], "f32 FFT")
 
 
+@pytest.mark.native
 @pytest.mark.parametrize("mutation", ["ids", "units", "shape", "dtype", "path", "nonfinite"])
 def test_reader_rejects_corrupt_candidate(binary, tmp_path, valid_case, mutation):
     request = candidate.request_for(valid_case)
@@ -141,7 +152,7 @@ def test_reader_rejects_modified_input_hash(tmp_path, valid_case):
 
 
 def test_manifest_rejects_tolerance_change_even_portable(tmp_path):
-    manifest, _ = candidate.load_manifest(fft.DEFAULT_FIXTURES)
+    manifest, _ = candidate.load_manifest(fft.DEFAULT_FIXTURES, portable=True)
     manifest = copy.deepcopy(manifest)
     manifest["tolerances"]["f64"]["atol"] = 1e-2
     fft.write_json(tmp_path / "manifest.json", manifest)
@@ -154,7 +165,13 @@ def test_report_cannot_overwrite_fixture_or_existing_file(tmp_path):
     existing.write_text("keep")
     for path in [existing, fft.DEFAULT_FIXTURES / "new-report.json"]:
         result = subprocess.run(  # noqa: S603 - built test executable or repository runner, no shell
-            [sys.executable, str(candidate.ROOT / "scripts/migration_fft_candidate.py"), "--report", str(path)],
+            [
+                sys.executable,
+                str(candidate.ROOT / "scripts/migration_fft_candidate.py"),
+                "--portable",
+                "--report",
+                str(path),
+            ],
             capture_output=True,
             text=True,
             check=False,

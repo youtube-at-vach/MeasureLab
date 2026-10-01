@@ -5,6 +5,7 @@ import csv
 import io
 import json
 import subprocess
+import sys
 
 import pytest
 
@@ -39,6 +40,7 @@ def rejected(binary, mode, input_path, output):
     assert not output.exists()
 
 
+@pytest.mark.native
 def test_saved_calibration_and_four_exchange_examples(tone_output):
     case, output, _ = tone_output
     observed = result.fixture_projection(result.read_result(output))
@@ -53,6 +55,7 @@ def test_saved_calibration_and_four_exchange_examples(tone_output):
             result.core.compare_tree(observed, expected)
 
 
+@pytest.mark.native
 @pytest.mark.parametrize(
     "fault",
     [
@@ -116,6 +119,7 @@ def test_native_read_rejects_corrupt_result_before_publication(result_binary, to
     assert (directory / "result.json").read_bytes() == original
 
 
+@pytest.mark.native
 @pytest.mark.parametrize("fault", ["missing", "duplicate", "nonfinite", "reason", "order", "metadata", "truncated"])
 def test_native_and_independent_csv_reader_reject_corruption(result_binary, tone_output, tmp_path, fault):
     _, directory, _ = tone_output
@@ -147,6 +151,7 @@ def test_native_and_independent_csv_reader_reject_corruption(result_binary, tone
         result.read_result(directory)
 
 
+@pytest.mark.native
 @pytest.mark.parametrize(
     "fault",
     [
@@ -187,13 +192,15 @@ def test_native_rejects_invalid_calibration_requests(result_binary, tone_output,
     rejected(result_binary, "--tone", request_path, tmp_path / "rejected")
 
 
+@pytest.mark.native
 def test_entire_saved_corpus_calibration_and_save_session(tmp_path):
     # Pytest's common conftest imports Qt/audio. Check the runner in its own headless process.
     report_path = tmp_path / "report.json"
     completed = subprocess.run(  # noqa: S603 - fixed local Python runner, explicit argv
         [
-            str(result.ROOT / ".venv/bin/python"),
+            sys.executable,
             str(result.ROOT / "scripts/migration_result_candidate.py"),
+            "--portable",
             "--report",
             str(report_path),
         ],

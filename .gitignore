@@ -66,6 +66,8 @@ ehthumbs.db
 
 # Ignore test result files
 *.csv
+# Reviewed migration exchange fixtures must survive a fresh checkout.
+!/migration/fixtures/core-v1/*.csv
 *.png
 !src/assets/*.png
 !docs/**/*.png

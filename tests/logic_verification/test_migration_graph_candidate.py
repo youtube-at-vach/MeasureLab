@@ -31,10 +31,11 @@ def graph_output(graph_binary, tmp_path):
     return case, output, request_path, input_path
 
 
+@pytest.mark.native
 def test_original_fixture_bytes_share_one_fft_and_release_graph(graph_binary):
     count = 0
     for directory, is_core in [(fft.DEFAULT_FIXTURES, False), (graph.core.DEFAULT_FIXTURES, True)]:
-        manifest, _ = candidate.load_manifest(directory, is_core=is_core)
+        manifest, _ = candidate.load_manifest(directory, is_core=is_core, portable=True)
         for case in manifest["tones"] if is_core else manifest["cases"]:
             result = graph.verify_case(graph_binary, directory, case, is_core=is_core)
             assert result["graph"]["before_release"]["fft_evaluations"] == 1
@@ -42,6 +43,7 @@ def test_original_fixture_bytes_share_one_fft_and_release_graph(graph_binary):
     assert count == 18
 
 
+@pytest.mark.native
 @pytest.mark.parametrize(
     "fault",
     [
@@ -86,6 +88,7 @@ def test_rejects_corrupt_identity_counts_metadata_and_shape(graph_output, fault)
         graph.read_result(output, case)
 
 
+@pytest.mark.native
 @pytest.mark.parametrize("fault", ["truncated", "nonfinite", "path_escape"])
 def test_rejects_bad_numeric_bytes_and_paths(graph_output, fault):
     case, output, _, _ = graph_output
@@ -105,6 +108,7 @@ def test_rejects_bad_numeric_bytes_and_paths(graph_output, fault):
         graph.read_result(output, case)
 
 
+@pytest.mark.native
 @pytest.mark.parametrize(
     "fault", ["zero_rate", "wrong_generation", "duplicate_channel", "bad_shape", "unknown_field", "output_exists"]
 )

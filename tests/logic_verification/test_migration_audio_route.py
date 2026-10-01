@@ -31,8 +31,9 @@ def run_case(binary, tmp_path, request=None):
     return result, output, request, source
 
 
+@pytest.mark.native
 def test_saved_input_bytes_routes_mute_variable_blocks_and_slow_acks():
-    report = route.verify()
+    report = route.verify(portable=True)
     assert report["status"] == "pass"
     assert len(report["cases"]) == 12
     assert all(len(case["events"]) == 3 for case in report["cases"])
@@ -49,6 +50,7 @@ def test_independent_oracle_has_hand_computed_requested_and_late_boundaries(bloc
     assert [event["requested_sample"] for event in events] == [257, 1025, 2049]
 
 
+@pytest.mark.native
 @pytest.mark.parametrize(
     "fault", ["revision", "generation", "requested", "actual", "interval", "sequence", "tap", "sample", "missing_event"]
 )
@@ -76,6 +78,7 @@ def test_checker_rejects_corrupt_candidate_output(binary, tmp_path, fault):
         route.validate_offline(output, request, source)
 
 
+@pytest.mark.native
 @pytest.mark.parametrize(
     "fault",
     [

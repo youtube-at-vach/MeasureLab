@@ -30,8 +30,9 @@ def corpus_output(history_binary, tmp_path):
     return case, output, request, input_path
 
 
+@pytest.mark.native
 def test_saved_history_time_contracts_and_original_4_8ch_bytes(history_binary, tmp_path):
-    cases = history.reviewed_cases()
+    cases = history.reviewed_cases(portable=True)
     request = tmp_path / "request.json"
     fft.write_json(
         request, {"schema_version": 1, "cases": [{k: c[k] for k in ("id", "operation", "input")} for c in cases]}
@@ -49,7 +50,7 @@ def test_saved_history_time_contracts_and_original_4_8ch_bytes(history_binary, t
 
 @pytest.mark.parametrize("fault", ["position", "reason", "integer_type", "identity", "count", "unknown_field"])
 def test_rejects_corrupt_contract_evidence(fault):
-    cases = history.reviewed_cases()
+    cases = history.reviewed_cases(portable=True)
     observed = [{"id": c["id"], "observed": copy.deepcopy(c["expected"])} for c in cases]
     if fault == "position":
         observed[0]["observed"]["interval"][0] += 1
@@ -67,6 +68,7 @@ def test_rejects_corrupt_contract_evidence(fault):
         history.validate_results(cases, observed)
 
 
+@pytest.mark.native
 @pytest.mark.parametrize(
     "fault",
     [
@@ -111,6 +113,7 @@ def test_rejects_corrupt_history_graph_manifest(corpus_output, fault):
         history.read_corpus(output, case)
 
 
+@pytest.mark.native
 @pytest.mark.parametrize("fault", ["snapshot", "delayed", "fft_shape", "nonfinite"])
 def test_rejects_changed_original_bytes_or_fft(corpus_output, fault):
     case, output, _, _ = corpus_output
@@ -128,6 +131,7 @@ def test_rejects_changed_original_bytes_or_fft(corpus_output, fault):
         history.read_corpus(output, case)
 
 
+@pytest.mark.native
 @pytest.mark.parametrize("fault", ["rate", "generation", "shape", "unknown_field", "existing_output"])
 def test_native_corpus_rejects_malformed_request_and_preserves_input(history_binary, corpus_output, tmp_path, fault):
     _, _, request_path, input_path = corpus_output
@@ -159,8 +163,9 @@ def test_native_corpus_rejects_malformed_request_and_preserves_input(history_bin
         assert not output.exists()
 
 
+@pytest.mark.native
 def test_native_cases_reject_expected_answers_and_preserve_existing_output(history_binary, tmp_path):
-    case = history.reviewed_cases()[0]
+    case = history.reviewed_cases(portable=True)[0]
     request, output = tmp_path / "request.json", tmp_path / "output.json"
     fft.write_json(request, {"schema_version": 1, "cases": [case]})
     result = subprocess.run(  # noqa: S603 - local candidate, explicit argv
