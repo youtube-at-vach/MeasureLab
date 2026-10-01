@@ -62,5 +62,6 @@ FFTの全配列をコピーする前に保守的な容量検査を行う。metad
 typed f64の係数`1.0`とcorrection`1.0`だけは旧fixtureの整数`1`という表記へ正確に戻す。
 現行製品のCSV/JSON importer互換や旧設定の自動移行の合格を意味しない。
 
-実取得/永続scheduler/Qt、非同期保存worker/cancel、SPL/周波数・位相map、実device校正、
+[セッションID校正の取得/Qt接続](calibration-display.md)を007-Aへ追加した。
+Qtのprofile編集/適用、永続scheduler、非同期保存worker/cancel、SPL/周波数・位相map、実device校正、
 legacy製品importer、長時間/性能/他OSは後続。AC12はpure校正/保存境界までの合格とする。

@@ -2530,7 +2530,7 @@
     "migration.display.image_saved": "画像を保存しました",
     "migration.display.invalid": "無効: %1",
     "migration.display.live": "実入力を取得中",
-    "migration.display.live_description": "実入力 · 共有FFT · 未校正FS · クロック原点不明",
+    "migration.display.live_description": "実入力 · 共有FFT · FS · 時刻原点は不明",
     "migration.display.no_result": "結果なし",
     "migration.display.png_path": "PNG保存先",
     "migration.display.png_placeholder": "出力先の絶対パス.png",
@@ -2542,7 +2542,7 @@
     "migration.display.reset_zoom": "ズームをリセット",
     "migration.display.result": "結果 %1 · サンプル [%2, %3) · %4",
     "migration.display.save_image": "画像を保存",
-    "migration.display.saved_description": "保存入力 · 共有FFT · 未校正FS · クロック原点不明",
+    "migration.display.saved_description": "保存入力 · 共有FFT · FS · 時刻原点は不明",
     "migration.display.spectrogram": "スペクトログラム",
     "migration.display.spectrum": "スペクトル",
     "migration.display.start_input": "入力を開始",
@@ -2561,5 +2561,8 @@
     "migration.display.trigger_retry": "取得を再試行",
     "migration.display.trigger_sample": "トリガー位置",
     "migration.display.unknown": "不明",
-    "migration.display.waiting": "結果を待っています"
+    "migration.display.waiting": "結果を待っています",
+    "migration.display.voltage_uncalibrated": "電圧は未校正のため表示できません",
+    "migration.display.voltage": "実効値: %1 V · %2 dBV",
+    "migration.display.calibration_profile": "プロファイル: %1 V/FS · %2 · ポート %3"
 }

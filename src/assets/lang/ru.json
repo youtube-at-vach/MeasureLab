@@ -2530,7 +2530,7 @@
     "migration.display.image_saved": "Изображение сохранено",
     "migration.display.invalid": "Недопустимо: %1",
     "migration.display.live": "Получение входного сигнала",
-    "migration.display.live_description": "Живой вход · общая БПФ · FS без калибровки · начало отсчёта часов неизвестно",
+    "migration.display.live_description": "Живой вход · общая FFT · FS · начало отсчёта времени неизвестно",
     "migration.display.no_result": "Нет результата",
     "migration.display.png_path": "Путь PNG",
     "migration.display.png_placeholder": "Абсолютный путь вывода.png",
@@ -2542,7 +2542,7 @@
     "migration.display.reset_zoom": "Сбросить масштаб",
     "migration.display.result": "Результат %1 · отсчёты [%2, %3) · %4",
     "migration.display.save_image": "Сохранить изображение",
-    "migration.display.saved_description": "Сохранённый вход · общая БПФ · FS без калибровки · начало отсчёта часов неизвестно",
+    "migration.display.saved_description": "Сохранённый вход · общая FFT · FS · начало отсчёта времени неизвестно",
     "migration.display.spectrogram": "Спектрограмма",
     "migration.display.spectrum": "Спектр",
     "migration.display.start_input": "Запустить вход",
@@ -2561,5 +2561,8 @@
     "migration.display.trigger_retry": "Повторить захват",
     "migration.display.trigger_sample": "Отсчёт запуска",
     "migration.display.unknown": "Неизвестно",
-    "migration.display.waiting": "Ожидание результата"
+    "migration.display.waiting": "Ожидание результата",
+    "migration.display.voltage_uncalibrated": "Напряжение недоступно · нет калибровки",
+    "migration.display.voltage": "СКЗ: %1 V · %2 dBV",
+    "migration.display.calibration_profile": "Профиль: %1 V/FS · %2 · порт %3"
 }

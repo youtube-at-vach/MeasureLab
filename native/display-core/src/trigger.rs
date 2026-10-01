@@ -128,7 +128,16 @@ pub(super) fn process<T: CaptureSample>(
     };
     let (receipt, evidence) = match acquisition.capture_trigger(&submission.request) {
         Err(reason) => (response(&submission, "error", Some(&reason)), None),
-        Ok(read) => {
+        Ok(mut read) => {
+            if !request.calibration.is_empty()
+                && let (Some(raw), Some(result)) = (&read.raw, &read.result)
+            {
+                read.result = Some(Arc::new(calibration::calibrated_result(
+                    raw,
+                    result.capture().clone(),
+                    request,
+                )?));
+            }
             let frame = read
                 .result
                 .as_ref()
@@ -193,6 +202,7 @@ pub(super) fn process<T: CaptureSample>(
             &submission,
             &receipt,
             evidence,
+            request,
         )?;
     }
     if !owner.notify(notify) {
@@ -206,6 +216,7 @@ fn save_evidence(
     submission: &Submission,
     receipt: &TriggerResponse,
     bytes: Option<Vec<u8>>,
+    request: &Request,
 ) -> Result<(), String> {
     let stem = format!(
         "trigger-{generation}-{}-{}",
@@ -226,10 +237,7 @@ fn save_evidence(
         Err(e) => return Err(e.to_string()),
     }
     if let Some(frame) = &receipt.frame {
-        frame
-            .result
-            .save_new(&path.with_extension("result.json"), Format::Json)
-            .map_err(|e| e.to_string())?;
+        calibration::save_result(&frame.result, &path.with_extension("result.json"), request)?;
         let mut file = std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)

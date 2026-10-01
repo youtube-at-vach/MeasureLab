@@ -117,9 +117,16 @@ def validate_evidence(directory, request, *, count=3):
             tones, np.arange(1, channels + 1) / 512, rtol=0, atol=TOLERANCES["tone_abs"]
         ):
             raise fft.ReferenceError("live physical port binding or tone mismatch")
-        voltage = document["columns"]["rms_v"]
-        if voltage["values"] != [None] * channels or voltage["reasons"] != ["uncalibrated"] * channels:
-            raise fft.ReferenceError("live uncalibrated voltage is numeric")
+        if request.get("calibration"):
+            from scripts.migration_qt_calibration import validate_result, validate_exchange
+
+            bound = {**request, "format": {**request["format"], "generation": generation}}
+            validate_result(document, bound, values)
+            validate_exchange(path)
+        else:
+            voltage = document["columns"]["rms_v"]
+            if voltage["values"] != [None] * channels or voltage["reasons"] != ["uncalibrated"] * channels:
+                raise fft.ReferenceError("live uncalibrated voltage is numeric")
         metrics = json.loads(metrics_path.read_bytes())
         expected_format = {**request["format"], "generation": generation}
         if (
@@ -156,13 +163,17 @@ def validate_evidence(directory, request, *, count=3):
     return observed
 
 
-def run_display(binary, env, directory, case, timeout, *, trigger=False, language="en"):
+def run_display(binary, env, directory, case, timeout, *, trigger=False, language="en", calibration=False):
     import sounddevice as sd
 
     directory.mkdir(parents=True, exist_ok=False)
     evidence = directory / "results"
     evidence.mkdir()
     request = request_for(case, evidence)
+    if calibration:
+        from scripts.migration_qt_calibration import diagnostic_profiles
+
+        request["calibration"] = diagnostic_profiles(request)
     request_path = directory / "request.json"
     request_path.write_text(json.dumps(request) + "\n")
     period = stimulus(case)
@@ -184,6 +195,8 @@ def run_display(binary, env, directory, case, timeout, *, trigger=False, languag
     command = [str(binary), "--self-test", "--live-input", "--snapshot", str(directory.resolve() / "display.png")]
     if trigger:
         command += ["--trigger-test", "--language", language]
+    if calibration:
+        command += ["--calibration-test", "1"]
     started, code, output, reason, details = time.monotonic(), None, "", None, {}
     try:
         index = virtual.exact_device(case["device"])
@@ -240,6 +253,10 @@ def run_display(binary, env, directory, case, timeout, *, trigger=False, languag
 
             details["trigger"] = validate_ui(output, language)
             details["captures"] = validate_captures(evidence, request)
+            if calibration:
+                from scripts.migration_qt_calibration import validate_ui as validate_calibration_ui
+
+                details["calibration"] = validate_calibration_ui(details["trigger"], evidence, language)
         details.update(
             image=inspect_png(
                 directory / "display.png",

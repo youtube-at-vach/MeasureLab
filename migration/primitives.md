@@ -192,7 +192,7 @@ event・統計・stereo指標
 | validity・精度・共有条件 | f64。未校正でもFSは保持、絶対単位は無効。profileや補正位置が変われば結果を分岐。過去結果を書換えない |
 | 現行の入口 | [source](../src/core/calibration.py) |
 | 参照検証 | [test](../tests/logic_verification/core/test_calibration_alignment.py) |
-| 候補検証 | 006-Eの[ID校正/result](../native/result-candidate.md)。基本V/FS/補正軸と不変snapshot、SPL/mapは後続 |
+| 候補検証 | 006-Eの[ID校正/result](../native/result-candidate.md)。007-Aの[取得/両Qt接続](../native/calibration-display.md)でsession binding/実区間/絶対値/保持不変性を検査。Qt編集・適用/SPL/mapは後続 |
 
 ## P14
 
@@ -207,7 +207,7 @@ file・保存・来歴
 | validity・精度・共有条件 | f64値を保持し表示間引きを保存しない。非有限値とvalidityを明示。同じdataでも保存要求の寿命は独立 |
 | 現行の入口 | [source](../src/core/export/trace.py) |
 | 参照検証 | [test](../tests/core/export/test_json_exporter.py) |
-| 候補検証 | 006-Eの[実験用JSON/CSV](../native/result-candidate.md)。元精度/来歴/null/reasonとno-clobber保存、製品互換/async/cancelは後続 |
+| 候補検証 | 006-Eの[実験用JSON/CSV](../native/result-candidate.md)。007-Aの[校正済み取得結果](../native/calibration-display.md)でも全値/来歴の往復を検査。製品保存UI/互換/async/cancelは後続 |
 
 ## P15
 
@@ -279,7 +279,7 @@ wavelet・過渡解析
 | validity・精度・共有条件 | 描画f32可、元値/cursor/exportは解析精度。描画省略をdata gapにしない。複数viewは同じresult IDを参照 |
 | 現行の入口 | [source](../src/gui/widgets/instrument_plot.py) |
 | 参照検証 | [test](../tests/logic_verification/gui/widgets/test_instrument_plot.py) |
-| 候補検証 | 007-Aの[共有result表示](../native/display-candidate.md)。保存replayと[BlackHole実入力](../native/live-display.md)/両Qt。[分離表示と9言語](../native/workspace-display.md)、[Trigger要求配送](../native/trigger-display.md)の共有hold/retry/releaseを検査。実window manager/他OS・性能は後続 |
+| 候補検証 | 007-Aの[共有result表示](../native/display-candidate.md)。保存replayと[BlackHole実入力](../native/live-display.md)/両Qt。[分離表示と9言語](../native/workspace-display.md)、[Trigger要求配送](../native/trigger-display.md)、[校正結果表示](../native/calibration-display.md)を検査。実window manager/他OS・性能は後続 |
 
 ## P20
 

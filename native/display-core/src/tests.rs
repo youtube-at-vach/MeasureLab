@@ -44,6 +44,7 @@ pub(super) fn request(precision: Precision, channels: usize, invalid: bool) -> R
         input: Some(path),
         live: None,
         evidence: None,
+        calibration: vec![],
     }
 }
 pub(super) fn wait(display: &Display, condition: impl Fn(&Snapshot) -> bool) {

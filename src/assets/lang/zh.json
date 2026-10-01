@@ -2530,7 +2530,7 @@
     "migration.display.image_saved": "图像已保存",
     "migration.display.invalid": "无效：%1",
     "migration.display.live": "正在采集实时输入",
-    "migration.display.live_description": "实时输入 · 共享FFT · 未校准FS · 时钟原点未知",
+    "migration.display.live_description": "实时输入 · 共享FFT · FS · 时钟原点未知",
     "migration.display.no_result": "无结果",
     "migration.display.png_path": "PNG路径",
     "migration.display.png_placeholder": "输出文件的绝对路径.png",
@@ -2542,7 +2542,7 @@
     "migration.display.reset_zoom": "重置缩放",
     "migration.display.result": "结果 %1 · 样本 [%2, %3) · %4",
     "migration.display.save_image": "保存图像",
-    "migration.display.saved_description": "已保存输入 · 共享FFT · 未校准FS · 时钟原点未知",
+    "migration.display.saved_description": "保存输入 · 共享FFT · FS · 时钟原点未知",
     "migration.display.spectrogram": "语谱图",
     "migration.display.spectrum": "频谱",
     "migration.display.start_input": "开始输入",
@@ -2561,5 +2561,8 @@
     "migration.display.trigger_retry": "重试采集",
     "migration.display.trigger_sample": "触发采样位置",
     "migration.display.unknown": "未知",
-    "migration.display.waiting": "正在等待结果"
+    "migration.display.waiting": "正在等待结果",
+    "migration.display.voltage_uncalibrated": "电压不可用 · 未校准",
+    "migration.display.voltage": "有效值: %1 V · %2 dBV",
+    "migration.display.calibration_profile": "配置: %1 V/FS · %2 · 端口 %3"
 }

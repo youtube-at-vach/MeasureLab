@@ -128,7 +128,7 @@ def inspect_png(path, *, size=(1000, 640), kind="both", regions=None):
     }
 
 
-def validate_evidence(directory, case, *, count=3):
+def validate_evidence(directory, case, *, count=3, request=None):
     paths = sorted(directory.glob("generation-*.json"))
     if len(paths) != count:
         raise fft.ReferenceError(f"expected {count} recorded running generations, got {len(paths)}")
@@ -142,7 +142,7 @@ def validate_evidence(directory, case, *, count=3):
         document = json.loads(path.read_bytes())
         generation = document["source"]["generation"]
         generations.add(generation)
-        expected = audio.expected_source(audio.request_for(case))
+        expected = audio.expected_source(request or audio.request_for(case))
         expected["generation"] = expected["timebase"]["generation"] = generation
         if (
             document["source"] != expected
@@ -163,13 +163,22 @@ def validate_evidence(directory, case, *, count=3):
         comparisons = {
             origin: fft.compare(
                 values,
-                fft.read_array(source, case["arrays"][f"{origin}.peak_fs"]),
+                fft.read_array(source, case["arrays"][f"{origin}.peak_fs"])[
+                    :, request["format"]["input_ports"] if request else list(range(channels))
+                ],
                 fft.TOLERANCES[precision],
                 f"display {origin} peak",
             )
             for origin in ("theory", "current")
         }
-        if any(v is not None for v in document["columns"]["rms_v"]["values"]) or any(
+        if request and request.get("calibration"):
+            from scripts.migration_qt_calibration import validate_result, validate_exchange
+
+            samples = fft.read_array(source, case["arrays"]["input"])[..., request["format"]["input_ports"]]
+            bound = {**request, "format": {**request["format"], "generation": generation}}
+            comparisons.update(validate_result(document, bound, samples, case))
+            validate_exchange(path)
+        elif any(v is not None for v in document["columns"]["rms_v"]["values"]) or any(
             r != "uncalibrated" for r in document["columns"]["rms_v"]["reasons"]
         ):
             raise fft.ReferenceError("uncalibrated voltage shown as numeric")
@@ -181,7 +190,9 @@ def validate_evidence(directory, case, *, count=3):
     return observed
 
 
-def run_display(binary, env, directory, case, timeout, *, language="en", workspace=False, trigger=False):
+def run_display(
+    binary, env, directory, case, timeout, *, language="en", workspace=False, trigger=False, calibration=False
+):
     directory.mkdir(parents=True, exist_ok=False)
     evidence = directory / "results"
     evidence.mkdir()
@@ -191,6 +202,11 @@ def run_display(binary, env, directory, case, timeout, *, language="en", workspa
     core.checked_file(source, case["arrays"]["input"])
     body = {k: request[k] for k in ("format", "precision", "n", "window")}
     body.update(input=str(source / case["arrays"]["input"]["file"]), evidence=str(evidence.resolve()))
+    if calibration:
+        from scripts.migration_qt_calibration import diagnostic_profiles
+
+        body["format"]["input_ports"].reverse()
+        body["calibration"] = diagnostic_profiles(body)
     request_path = directory / "request.json"
     request_path.write_text(json.dumps(body) + "\n")
     child_env = {**env, "MEASURELAB_DISPLAY_REQUEST": str(request_path.resolve())}
@@ -200,6 +216,8 @@ def run_display(binary, env, directory, case, timeout, *, language="en", workspa
         command.append("--workspace-test")
     if trigger:
         command.append("--trigger-test")
+    if calibration:
+        command += ["--calibration-test", "1"]
     started = time.monotonic()
     try:
         result = subprocess.run(  # noqa: S603 - explicit local evaluation binary
@@ -250,12 +268,16 @@ def run_display(binary, env, directory, case, timeout, *, language="en", workspa
 
                 details["trigger"] = validate_ui(output, language)
                 details["captures"] = validate_captures(evidence, body, case)
+                if calibration:
+                    from scripts.migration_qt_calibration import validate_ui
+
+                    details["calibration"] = validate_ui(details["trigger"], evidence, language)
             size = details.get("trigger", {}).get(
                 "size", details.get("workspace", {}).get("main", {}).get("size", (1000, 640))
             )
             details.update(
                 image=inspect_png(image, size=size, regions=plot_regions(output)),
-                evidence=validate_evidence(evidence, case, count=2 if trigger else 4 if workspace else 3),
+                evidence=validate_evidence(evidence, case, count=2 if trigger else 4 if workspace else 3, request=body),
             )
         except (OSError, ValueError, KeyError, struct.error, zlib.error, fft.ReferenceError) as exc:
             passed, reason = False, str(exc)
@@ -271,6 +293,32 @@ def run_display(binary, env, directory, case, timeout, *, language="en", workspa
         "reason": reason if reason else (None if passed else "exit or lifecycle mismatch"),
         "output": output,
         **details,
+    }
+
+
+def projection_for(document):
+    """Observed full result -> display boundary, no calibration or numeric recalculation."""
+    count = sum(bool(c["profile"] and c["profile"]["is_calibrated"]) for c in document["calibration"])
+    return {
+        "schema_version": 1,
+        "result_id": document["capture"]["result_id"],
+        "source": document["source"],
+        "interval": document["interval"],
+        "frequency_hz": document["axis"]["corrected"],
+        "peak_fs": document["columns"]["peak_fs"],
+        "validity": document["validity"],
+        "error": document["error"],
+        "clock_origin": "unknown",
+        "calibration": "uncalibrated"
+        if count == 0
+        else "calibrated"
+        if count == len(document["calibration"])
+        else "partial",
+        "channel_calibration": document["calibration"],
+        "rms_v": document["columns"]["rms_v"],
+        "dbv": document["columns"]["dbv"],
+        "capture": document["capture"],
+        "raw_result_id": document["raw_result_id"],
     }
 
 

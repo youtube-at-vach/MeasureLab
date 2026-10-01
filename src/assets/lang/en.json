@@ -2530,7 +2530,7 @@
     "migration.display.image_saved": "Image saved",
     "migration.display.invalid": "Invalid: %1",
     "migration.display.live": "Acquiring live input",
-    "migration.display.live_description": "Live input · shared FFT · uncalibrated FS · clock origin unknown",
+    "migration.display.live_description": "Live input · shared FFT · FS · clock origin unknown",
     "migration.display.no_result": "No result",
     "migration.display.png_path": "PNG path",
     "migration.display.png_placeholder": "Absolute output path.png",
@@ -2542,7 +2542,7 @@
     "migration.display.reset_zoom": "Reset zoom",
     "migration.display.result": "Result %1 · samples [%2, %3) · %4",
     "migration.display.save_image": "Save image",
-    "migration.display.saved_description": "Saved input · shared FFT · uncalibrated FS · clock origin unknown",
+    "migration.display.saved_description": "Saved input · shared FFT · FS · clock origin unknown",
     "migration.display.spectrogram": "Spectrogram",
     "migration.display.spectrum": "Spectrum",
     "migration.display.start_input": "Start input",
@@ -2561,5 +2561,8 @@
     "migration.display.trigger_retry": "Retry capture",
     "migration.display.trigger_sample": "Trigger sample",
     "migration.display.unknown": "Unknown",
-    "migration.display.waiting": "Waiting for result"
+    "migration.display.waiting": "Waiting for result",
+    "migration.display.voltage_uncalibrated": "Voltage unavailable · uncalibrated",
+    "migration.display.voltage": "RMS: %1 V · %2 dBV",
+    "migration.display.calibration_profile": "Profile: %1 V/FS · %2 · port %3"
 }

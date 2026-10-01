@@ -2530,7 +2530,7 @@
     "migration.display.image_saved": "Imagen guardada",
     "migration.display.invalid": "No válido: %1",
     "migration.display.live": "Adquiriendo entrada en vivo",
-    "migration.display.live_description": "Entrada en vivo · FFT compartida · FS sin calibrar · origen del reloj desconocido",
+    "migration.display.live_description": "Entrada en vivo · FFT compartida · FS · origen del reloj desconocido",
     "migration.display.no_result": "Sin resultado",
     "migration.display.png_path": "Ruta PNG",
     "migration.display.png_placeholder": "Ruta de salida absoluta.png",
@@ -2542,7 +2542,7 @@
     "migration.display.reset_zoom": "Restablecer zoom",
     "migration.display.result": "Resultado %1 · muestras [%2, %3) · %4",
     "migration.display.save_image": "Guardar imagen",
-    "migration.display.saved_description": "Entrada guardada · FFT compartida · FS sin calibrar · origen del reloj desconocido",
+    "migration.display.saved_description": "Entrada guardada · FFT compartida · FS · origen del reloj desconocido",
     "migration.display.spectrogram": "Espectrograma",
     "migration.display.spectrum": "Espectro",
     "migration.display.start_input": "Iniciar entrada",
@@ -2561,5 +2561,8 @@
     "migration.display.trigger_retry": "Reintentar captura",
     "migration.display.trigger_sample": "Muestra de disparo",
     "migration.display.unknown": "Desconocido",
-    "migration.display.waiting": "Esperando resultado"
+    "migration.display.waiting": "Esperando resultado",
+    "migration.display.voltage_uncalibrated": "Tensión no disponible · sin calibrar",
+    "migration.display.voltage": "Valor eficaz: %1 V · %2 dBV",
+    "migration.display.calibration_profile": "Perfil: %1 V/FS · %2 · puerto %3"
 }

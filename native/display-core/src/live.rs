@@ -56,10 +56,10 @@ pub(super) fn run(
             } else if last_data.elapsed() > Duration::from_secs(3) {
                 return Err("live_input_timeout".into());
             }
-            if let Some(frame) = shared_frame(&subscriptions)? {
+            if let Some(frame) = shared_frame(&subscriptions, request)? {
                 if !evidence_written {
                     if let Some(path) = &request.evidence {
-                        save_window(path, &acquisition, &frame)?;
+                        save_window(path, &acquisition, &frame, request)?;
                     }
                     evidence_written = true;
                 }
@@ -76,12 +76,15 @@ pub(super) fn run(
     let queue = acquisition.queue_stats();
     let evaluations = acquisition.graph().stats().fft_evaluations;
     let reclaimed = reclaim(&mut acquisition);
+    // CSV serialization can exceed the live queue's time budget. Defer only this
+    // diagnostic exchange until no callback/graph remains; do not enlarge the queue.
+    let exchange = calibration::finish_live_evidence(request);
     // Capture counters only after the callback/stream owner has been released.
     let metrics = json!({ "schema_version": 1, "generation": request.format.generation,
         "device": live.device, "format": request.format, "input": input.report(),
         "captured_frames": captured_frames, "fft_evaluations": evaluations, "queue": queue,
         "stop_ms": stopped.as_ref().ok(), "reclaimed": reclaimed.is_ok(),
-        "error": result.as_ref().err().or(stopped.as_ref().err()).or(reclaimed.as_ref().err()) });
+        "error": result.as_ref().err().or(stopped.as_ref().err()).or(reclaimed.as_ref().err()).or(exchange.as_ref().err()) });
     if let Some(path) = &request.evidence {
         save_new(
             &path.join(format!("live-{}.json", request.format.generation)),
@@ -90,7 +93,8 @@ pub(super) fn run(
     }
     result?;
     stopped?;
-    reclaimed
+    reclaimed?;
+    exchange
 }
 fn save_new(path: &std::path::Path, bytes: Vec<u8>) -> Result<(), String> {
     use std::io::Write;
@@ -105,6 +109,7 @@ fn save_window(
     path: &std::path::Path,
     acquisition: &Acquisition<f32>,
     frame: &Frame,
+    request: &Request,
 ) -> Result<(), String> {
     let document = frame.result.to_value();
     let start = document["interval"][0]
@@ -124,12 +129,10 @@ fn save_window(
     let bytes = values.iter().flat_map(|v| v.to_le_bytes()).collect();
     let generation = acquisition.format().generation;
     save_new(&path.join(format!("input-{generation}.f32")), bytes)?;
-    frame
-        .result
-        .save_new(
-            &path.join(format!("generation-{generation}.json")),
-            Format::Json,
-        )
-        .map_err(|e| e.to_string())?;
+    calibration::save_result(
+        &frame.result,
+        &path.join(format!("generation-{generation}.json")),
+        request,
+    )?;
     Ok(())
 }

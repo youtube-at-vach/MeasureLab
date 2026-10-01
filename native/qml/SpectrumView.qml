@@ -24,6 +24,18 @@ ColumnLayout {
     readonly property real cursorHz: frame ? frame.frequency_hz[cursorBin] : 0
     readonly property var cursorValue: frame ? frame.peak_fs.values[cursorBin * frame.source.channel_ids.length + channel] : null
     readonly property string cursorReason: frame ? (frame.peak_fs.reasons[cursorBin * frame.source.channel_ids.length + channel] || "") : ""
+    readonly property var channelProfile: frame ? frame.channel_calibration[channel].profile : null
+    readonly property var voltageValue: frame ? frame.rms_v.values[channel] : null
+    readonly property var dbvValue: frame ? frame.dbv.values[channel] : null
+    readonly property string voltageText: !frame ? tr("migration.display.waiting")
+        : voltageValue === null ? (frame.rms_v.reasons[channel] === "uncalibrated"
+            ? tr("migration.display.voltage_uncalibrated")
+            : tr("migration.display.invalid").arg(frame.rms_v.reasons[channel]))
+        : tr("migration.display.voltage").arg(voltageValue.toPrecision(8)).arg(dbvValue === null
+            ? tr("migration.display.invalid").arg(frame.dbv.reasons[channel]) : dbvValue.toPrecision(8))
+    readonly property string profileText: channelProfile ? tr("migration.display.calibration_profile")
+        .arg(channelProfile.v_per_fs.toPrecision(8)).arg(channelProfile.revision).arg(channelProfile.device_binding.port) : ""
+    readonly property bool calibrationLabelsFit: !voltageLabel.truncated && (!channelProfile || !profileLabel.truncated)
     readonly property var displayedText: ({
         heading: heading.text,
         reset: resetButton.text,
@@ -223,6 +235,19 @@ ColumnLayout {
         Layout.fillWidth: true
         elide: Text.ElideRight
         text: !view.frame ? tr("migration.display.waiting") : (view.cursorValue === null ? tr("migration.display.invalid").arg(view.cursorReason) : tr("migration.display.cursor").arg(view.cursorHz.toFixed(2)).arg(view.cursorValue.toPrecision(8)))
+    }
+    Label {
+        id: voltageLabel
+        Layout.fillWidth: true
+        elide: Text.ElideRight
+        text: view.voltageText
+    }
+    Label {
+        id: profileLabel
+        Layout.fillWidth: true
+        elide: Text.ElideRight
+        visible: !!view.channelProfile
+        text: view.profileText
     }
     RowLayout {
         visible: view.workspaceControls

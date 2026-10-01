@@ -22,7 +22,7 @@ from scripts import migration_audio_graph as audio  # noqa: E402
 from scripts import migration_fft_candidate as candidate  # noqa: E402
 from scripts import migration_fft_reference as fft  # noqa: E402
 from scripts import migration_trigger_candidate as trigger  # noqa: E402
-from scripts.migration_qt_display import qt_environment, run_display  # noqa: E402
+from scripts.migration_qt_display import projection_for, qt_environment, run_display  # noqa: E402
 from scripts.migration_qt_probe import sha256  # noqa: E402
 from scripts.migration_qt_workspace import LANGUAGES  # noqa: E402
 
@@ -244,23 +244,16 @@ def validate_captures(directory, request, case=None):
             "result_id": receipt["frame"]["result_id"],
             "event": receipt["request"]["event"],
         }
-        comparisons = trigger.validate_document(
-            document, read, request, case or {"spec": {"rate_hz": 48000, "window": "boxcar"}}, samples, alignment=0
-        )
-        expected_projection = {
-            "schema_version": 1,
-            "result_id": document["capture"]["result_id"],
-            "source": document["source"],
-            "interval": document["interval"],
-            "frequency_hz": document["axis"]["corrected"],
-            "peak_fs": document["columns"]["peak_fs"],
-            "validity": document["validity"],
-            "error": document["error"],
-            "clock_origin": "unknown",
-            "calibration": "uncalibrated",
-            "capture": document["capture"],
-            "raw_result_id": document["raw_result_id"],
-        }
+        if request.get("calibration"):
+            from scripts.migration_qt_calibration import validate_result, validate_exchange
+
+            comparisons = validate_result(document, request, samples, case, read=read)
+            validate_exchange(stem.with_suffix(".result.json"))
+        else:
+            comparisons = trigger.validate_document(
+                document, read, request, case or {"spec": {"rate_hz": 48000, "window": "boxcar"}}, samples, alignment=0
+            )
+        expected_projection = projection_for(document)
         trigger.exact(receipt["frame"], expected_projection, "Qt projection matches full result")
         observed.append({"revision": revision, "interval": [start, start + n], "comparisons": comparisons})
     return {"captures": observed, "files_sha256": {p.name: sha256(p) for p in sorted(directory.glob("trigger-*"))}}

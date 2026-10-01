@@ -635,6 +635,24 @@ impl MeasurementResult {
             .get(name)
             .map(|column| serde_json::to_value(column).expect("validated finite column"))
     }
+    pub fn calibration_value(&self) -> Value {
+        serde_json::to_value(&self.0.calibration).expect("validated calibration")
+    }
+    pub fn calibration_status(&self) -> &'static str {
+        let count = self
+            .0
+            .calibration
+            .iter()
+            .filter(|c| calibrated(c).is_some())
+            .count();
+        if count == 0 {
+            "uncalibrated"
+        } else if count == self.0.calibration.len() {
+            "calibrated"
+        } else {
+            "partial"
+        }
+    }
     pub fn validity(&self) -> &[InvalidSpan] {
         &self.0.validity
     }

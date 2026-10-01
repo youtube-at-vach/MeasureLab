@@ -32,7 +32,7 @@ def test_qml_keys_included_in_check_and_update_inventory():
     english = json.loads((workspace.ROOT / "src/assets/lang/en.json").read_text())
     used = set().union(*(extract_tr_keys(p) for p in paths if p.suffix == ".qml"))
     expected = {k for k in english if k.startswith(workspace.PREFIX)}
-    assert used == expected and len(used) == 45
+    assert used == expected and len(used) == 48
     for language in workspace.LANGUAGES:
         local = json.loads((workspace.ROOT / f"src/assets/lang/{language}.json").read_text())
         assert all(

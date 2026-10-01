@@ -208,7 +208,7 @@ def validate_document(document, read, request, case, samples, *, alignment=None)
         "error": None,
         "capture": {
             "result_id": result_id,
-            "trigger_id": read["event"]["id"],
+            "trigger_id": read["event"]["id"] if read["event"] else None,
             "trigger": read["event"],
             "acquired_host_seconds": None,
             "result_host_seconds": None,
@@ -304,7 +304,7 @@ def validate_document(document, read, request, case, samples, *, alignment=None)
             f"uncalibrated {name}",
         )
     # The unshifted FFT also retains both original fixture comparisons.
-    if start == 0:
+    if start == 0 and "arrays" in case:
         directory = core.DEFAULT_FIXTURES / case["spec"]["id"]
         observed = np.asarray(columns["fft_over_n"]["values"]).reshape(n // 2 + 1, channels, 2)
         observed = observed[..., 0] + 1j * observed[..., 1]

@@ -43,6 +43,11 @@ AC08/09/13のpending→明示retry、二viewの共有hold/分離/release、旧�
 保存4/8ch f32/f64・9言語・両QtとBlackHoleの短い診断で検査する。全result/取得bytesを独立oracleへ照合する。
 検出器のarm/cancel、前段filter/外部clock、製品校正/保存互換、長時間/負荷下/他OSは別で、AC全体は未完了。
 
+007-Aの[セッションID校正](../decisions/0022-session-calibration-display.md)を通常/Triggerの取得結果へ追加した。
+AC12のdevice/portとID対応、適用区間/係数/revision、不変result、全相対/絶対配列、v1 CSV/JSONを検査する。
+両QtのV RMS/dBV/未校正表示と9言語も検査する。成功件数はstatusを参照。
+Qtの編集・適用/製品保存操作/互換/非同期化、map/物理校正、性能/他OS、AC12全体は後続。
+
 ## fixtureの最小セット
 
 | ID | 入力・操作 | 合格条件 | 実装・検証タスク |

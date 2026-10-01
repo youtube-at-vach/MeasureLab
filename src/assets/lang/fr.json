@@ -2530,7 +2530,7 @@
     "migration.display.image_saved": "Image enregistrée",
     "migration.display.invalid": "Non valide : %1",
     "migration.display.live": "Acquisition de l’entrée en direct",
-    "migration.display.live_description": "Entrée en direct · FFT partagée · FS non étalonnée · origine de l’horloge inconnue",
+    "migration.display.live_description": "Entrée en direct · FFT partagée · FS · origine temporelle inconnue",
     "migration.display.no_result": "Aucun résultat",
     "migration.display.png_path": "Chemin PNG",
     "migration.display.png_placeholder": "Chemin de sortie absolu.png",
@@ -2542,7 +2542,7 @@
     "migration.display.reset_zoom": "Réinitialiser le zoom",
     "migration.display.result": "Résultat %1 · échantillons [%2, %3) · %4",
     "migration.display.save_image": "Enregistrer l’image",
-    "migration.display.saved_description": "Entrée enregistrée · FFT partagée · FS non étalonnée · origine de l’horloge inconnue",
+    "migration.display.saved_description": "Entrée enregistrée · FFT partagée · FS · origine temporelle inconnue",
     "migration.display.spectrogram": "Spectrogramme",
     "migration.display.spectrum": "Spectre",
     "migration.display.start_input": "Démarrer l’entrée",
@@ -2561,5 +2561,8 @@
     "migration.display.trigger_retry": "Réessayer la capture",
     "migration.display.trigger_sample": "Échantillon de déclenchement",
     "migration.display.unknown": "Inconnu",
-    "migration.display.waiting": "En attente du résultat"
+    "migration.display.waiting": "En attente du résultat",
+    "migration.display.voltage_uncalibrated": "Tension indisponible · non étalonnée",
+    "migration.display.voltage": "RMS : %1 V · %2 dBV",
+    "migration.display.calibration_profile": "Profil : %1 V/FS · %2 · port %3"
 }

@@ -83,6 +83,12 @@ Timer {
             held = response.frame;
             heldText = JSON.stringify(held);
             baseline = backend.produced;
+            if (host.argument("--calibration-test")) {
+                line.item.channel = 0;
+                map.item.channel = held.source.channel_ids.length - 1;
+                check(held.calibration === "partial" && Object.isFrozen(held.channel_calibration), "immutable partial calibration");
+                check(line.item.voltageValue !== null && map.item.voltageValue === null, "calibrated and missing profile voltage");
+            }
             line.detach();
             map.detach();
             line.item.zoom(1000, 0.5);
@@ -125,6 +131,16 @@ Timer {
             checks.buttons_fit = panel.buttonsFit;
             checks.minimum = [host.minimumWidth, host.minimumHeight];
             checks.size = [host.width, host.height];
+            if (host.argument("--calibration-test")) {
+                checks.calibration = {
+                    result_id: held.result_id,
+                    spectrum: {channel: line.item.channel, voltage: line.item.voltageText, profile: line.item.profileText},
+                    spectrogram: {channel: map.item.channel, voltage: map.item.voltageText, profile: map.item.profileText},
+                    labels_fit: line.item.calibrationLabelsFit && map.item.calibrationLabelsFit
+                };
+                check(line.item.frame === held && map.item.frame === held, "calibration uses held result");
+                check(checks.calibration.labels_fit, "calibration labels fit");
+            }
             check(panel.submit(panel.requestAt(0, 3)), "expired request");
             phase = 8;
             break;

@@ -24,7 +24,9 @@ static MODELS: AtomicUsize = AtomicUsize::new(0);
 const MAX_INPUT_BYTES: u64 = 4096 * 16 * 8;
 const MAX_DEMAND: usize = 16;
 
+mod calibration;
 pub mod locale;
+pub use calibration::ChannelCalibration;
 mod trigger;
 pub use trigger::TriggerResponse;
 
@@ -48,6 +50,8 @@ pub struct Request {
     pub live: Option<LiveRequest>,
     /// Optional directory for each generation's first-result evidence.
     pub evidence: Option<PathBuf>,
+    #[serde(default)]
+    pub calibration: Vec<ChannelCalibration>,
 }
 impl Request {
     fn validate(&self) -> Result<(), String> {
@@ -71,7 +75,8 @@ impl Request {
                     .map_err(String::from)
             }
             _ => Err("display_input_source".into()),
-        }
+        }?;
+        self.validate_calibration()
     }
     fn bytes(&self) -> Result<Vec<u8>, String> {
         self.validate()?;
@@ -130,7 +135,10 @@ fn project_result(result: Arc<MeasurementResult>) -> Result<Frame, String> {
         "frequency_hz": result.corrected_frequencies(),
         "peak_fs": result.column_value("peak_fs").ok_or("display_peak_column")?,
         "validity": result.validity(), "error": result.error(),
-        "clock_origin": "unknown", "calibration": "uncalibrated",
+        "clock_origin": "unknown", "calibration": result.calibration_status(),
+        "channel_calibration": result.calibration_value(),
+        "rms_v": result.column_value("rms_v").ok_or("display_voltage_column")?,
+        "dbv": result.column_value("dbv").ok_or("display_dbv_column")?,
         "capture": result.capture(),
         "raw_result_id": result.raw_result_id(),
     }))
@@ -405,16 +413,14 @@ fn replay<T: CaptureSample>(
                 return Err("replay_gap".into());
             }
         }
-        let frame = shared_frame(&subscriptions)?.ok_or("display_result_missing")?;
+        let frame = shared_frame(&subscriptions, request)?.ok_or("display_result_missing")?;
         if !evidence_written {
             if let Some(path) = &request.evidence {
-                frame
-                    .result
-                    .save_new(
-                        &path.join(format!("generation-{}.json", request.format.generation)),
-                        Format::Json,
-                    )
-                    .map_err(|e| e.to_string())?;
+                calibration::save_result(
+                    &frame.result,
+                    &path.join(format!("generation-{}.json", request.format.generation)),
+                    request,
+                )?;
             }
             evidence_written = true;
         }
@@ -451,7 +457,10 @@ fn sync_demand<T: CaptureSample>(
     }
     Ok(!subscriptions.is_empty())
 }
-fn shared_frame(subscriptions: &BTreeMap<u64, Subscription>) -> Result<Option<Arc<Frame>>, String> {
+fn shared_frame(
+    subscriptions: &BTreeMap<u64, Subscription>,
+    request: &Request,
+) -> Result<Option<Arc<Frame>>, String> {
     let latest: Vec<_> = subscriptions
         .values()
         .filter_map(Subscription::take_latest)
@@ -466,7 +475,19 @@ fn shared_frame(subscriptions: &BTreeMap<u64, Subscription>) -> Result<Option<Ar
     if latest.iter().any(|s| !Arc::ptr_eq(raw, s.raw())) {
         return Err("display_result_not_shared".into());
     }
-    Ok(Some(Arc::new(project(raw)?)))
+    let result = calibration::calibrated_result(
+        raw,
+        Capture {
+            result_id: format!("{}:{}", raw.id().graph, raw.id().serial),
+            trigger_id: None,
+            acquired_host_seconds: None,
+            result_host_seconds: None,
+            trigger: None,
+            clock_mapping: None,
+        },
+        request,
+    )?;
+    Ok(Some(Arc::new(project_result(Arc::new(result))?)))
 }
 fn publish<T: CaptureSample>(
     owner: &Owner,

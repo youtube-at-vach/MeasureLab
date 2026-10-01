@@ -1,6 +1,6 @@
 # 次期コア検証の進捗
 
-更新: 2026-10-01。計画の正本は[評価計画](../guide/RUST_QML_MIGRATION_PLAN.md)。
+更新: 2026-10-02。計画の正本は[評価計画](../guide/RUST_QML_MIGRATION_PLAN.md)。
 Rust/QMLの採用は未決定。MIG-003-A/B/Cの参照側とMIG-004-Aの基本GUI境界を検証済み。
 004-BのIntel反復build/編集/ローカルpackageは検証済み。対象OS全体の完了ではない。
 Linux CIのICU不足を修正し、再実行は未確認。006-Aへ純粋FFT候補を追加し、24ケースの数値比較に合格。
@@ -21,7 +21,9 @@ BlackHoleの実入力→同じ共有result→両Qt表示を追加した。
 取得ownerのTrigger captureを追加し、保存4入力×2bindingの32完全resultを検査した。
 QtのTrigger要求配送と2view共通hold/retry/releaseを追加。保存4入力×9言語×両Qtの72実行が成功。
 BlackHoleのTrigger要求配送も2/4/8ch×両Qt×3反復の18実行が成功。
-校正・製品保存操作、製品共通adapter、製品保存互換/非同期保存は未着手。
+セッションID校正を通常/Trigger取得結果、両QtのV RMS/dBV表示、診断JSON/CSVへ接続した。
+校正付き保存4入力×9言語×両Qtの72実行と、BlackHole 2/4/8ch×両Qt×3反復の18実行が成功。
+Qtのprofile編集・適用、製品保存操作、製品共通adapter、製品保存互換/非同期保存は未着手。
 007-CはIntel/Metalのwgpu 1候補と簡易plotterの最小試験を実施した。
 候補の10万/100万点・rolling imageは約29〜30 Hzで更新。基準100万点のJSON/QML境界はSIGBUSを3回再現した。
 PyQt画像provider経路の試験であり、採用判断・個別widgetの本実装・native GPU texture共有は含まない。
@@ -32,12 +34,12 @@ PyQt画像provider経路の試験であり、採用判断・個別widgetの本�
 | --- | --- |
 | 現行版 | `/Users/vach/MeasureLab`、`main` |
 | 検証用worktree | `/Users/vach/.codex/worktrees/next-core-evaluation/MeasureLab`（Codex管理） |
-| 検証用ブランチ | 統合先`codex/next-core-evaluation`、今回の作業`codex/migration-trigger-delivery`（Trigger workerの`6e0b1ce2`から分岐） |
+| 検証用ブランチ | 統合先`codex/next-core-evaluation`、今回の作業`codex/migration-calibration-input`（Qt Trigger配送の`8a0af002`から分岐） |
 | 作業開始・Python参照コミット | `9fd79958`（MeasureLab 0.9.0、開始時のローカルmain） |
 | 計画書の調査コミット | `68cbdabc3ecd542d9d73fa0aa86bf9159f44d811` |
-| 最終main同期 | 2026-10-01にfetch。origin/mainは参照`9fd79958`のまま、取込み差分なし |
+| 最終main同期 | 2026-10-02にfetch。origin/mainは参照`9fd79958`のまま、取込み差分なし |
 | 統合担当 | 当面、この検証ブランチを担当する単一の作業者 |
-| リモート | 今回開始時は`codex/migration-trigger-capture`の`6e0b1ce2`がremote一致・clean。Qt Trigger配送の変更は未コミット。今回のpush・PR・Issue・Project更新・配布は未実施 |
+| リモート | 今回開始時は`codex/migration-trigger-delivery`の`8a0af002`がremote一致・clean。セッションID校正の変更は未コミット。今回のpush・PR・Issue・Project更新・配布は未実施 |
 
 調査コミットから開始時mainまでの差分には計画書、設計ガイド、Measurement Consoleのレイアウト、
 Goniometerのテーマ対応、翻訳と対応テストがある。
@@ -55,8 +57,8 @@ MIG-003-Cも既存fixtureと契約を変更せず、filter/rate参照を独立�
 | MIG-003 | 完了（A/B/Cの参照側） | FFT20+4ケース、27契約例、4保存例にfilter/rateの21数値ケースと6 rate境界を追加。候補実装でのAC合格は005/006以降 |
 | MIG-004 | 進行中（AとBのIntel範囲を完了） | Bの32 sample+warmup2回とローカルbundleが合格。Linux CIのICU不足を修正したが再実行未確認。他OS/clean環境は未確認 |
 | MIG-005 | 進行中（Aの取得graph・動的f32 routeとBの短い実機／仮想比較） | 取得queue/履歴/共有FFTに動的出力mailboxを追加。保存12条件、BlackHole 2→2/4→16/8→16の9取得と3保留cancel。製品共通adapter/全tap、時刻写像、排他/USB復帰/長時間は残る |
-| MIG-006 | 進行中（A〜Eのpure範囲を完了） | FFT/共有/履歴/filterに不変result/ID校正/保存を追加。Eの2校正契約・4交換例・4/8ch f32/f64、graph Rust50テスト合格。校正/保存/Qtの実取得統合は未着手 |
-| MIG-007 | 進行中（Aの保存／BlackHole実入力表示・分離/9言語・Qt Trigger配送、CのIntel最小試験） | 保存表示/分離/9言語、取得ownerのTrigger captureにQtのhold/retry/releaseを追加。保存4入力×9言語×両Qtの72実行・288完全result/72 PNG、BlackHole要求配送18実行が成功。校正・製品保存操作/実window manager/他OS/統合性能は残る。renderer候補9試行成功、基準100万点3試行SIGBUS。採用判断・個別widgetの本実装・native texture共有は含めない |
+| MIG-006 | 進行中（A〜Eのpure範囲を完了） | FFT/共有/履歴/filterに不変result/ID校正/保存を追加。Eの2校正契約・4交換例・4/8ch f32/f64、graph Rust50テスト合格。セッションID校正の取得/Qt/診断保存接続は007-Aへ追加。Qt編集・適用/製品保存互換/非同期保存は未着手 |
+| MIG-007 | 進行中（Aの保存／BlackHole実入力表示・分離/9言語・Qt Trigger配送/セッションID校正、CのIntel最小試験） | 保存表示/分離/9言語、Trigger要求配送、セッションID校正を取得/両Qt/診断JSON・CSVへ接続。校正付き保存4入力×9言語×両Qtの72実行・288完全result/CSV・72 PNG、BlackHole18実行が成功。Qt編集・適用/製品保存操作/実window manager/他OS/統合性能は残る。renderer候補9試行成功、基準100万点3試行SIGBUS。採用判断・個別widgetの本実装・native texture共有は含めない |
 | MIG-008 | 未着手 | 計画にある依存関係に従う。採用判断までの検証範囲 |
 
 `native/`にツールチェーン/SDKの固定、Cargo workspace/lock、模擬workerと2方式のadapter、共通QMLを置いた。
@@ -72,10 +74,100 @@ BlackHole input.rawの解析thread schedulerと両Qt表示を追加した。
 同じviewの分離/reparent/close回収と、製品翻訳JSON→QML `tr()`を追加した。
 取得ownerへ非消費Trigger capture/共有raw FFT/trigger付き不変resultを追加した。
 Qtからrevision付き要求を解析threadへ配送し、両viewの共有hold/retry/releaseを接続した。
+セッションID校正を通常/Trigger取得結果、両Qtの絶対値/校正snapshot表示と診断JSON/CSVへ接続した。
 汎用scheduler、全tap/Qt接続、製品backend共通化は未作成。
 候補実装は契約v0.1を出発点とし、公開型・ABI・採用ライブラリは後続の検証で決める。
 
-## MIG-007-A Qt Trigger要求配送の成果と検証
+## MIG-007-A セッションID校正の取得・両Qt接続の成果と検証
+
+着手: 2026-10-02、HEAD `8a0af002`。前回の「Qt Trigger配送未コミット」は古く、
+開始時にremote一致・cleanの保存済みcommitを確認した。
+同じworktreeで `codex/migration-calibration-input` へ分岐。今回の変更は未コミット。
+変更境界はdisplay-coreのセッション設定/結果生成、resultの校正読取りAPI、共通QML、
+翻訳3追加キーと説明2キー×9言語、独立runner/証拠破損test、Native CIと検証文書。
+現行Python DSP/GUI、audio callback、元fixture/数値契約/許容差、Cargo.lockは変更していない。
+
+- [セッション設定](../native/display-core/src/calibration.rs)をChannelId/device/portへ明示的に結び付け、
+  重複/未知ID、不正係数/空revision/誤bindingをstream開始前に拒否する。
+  profile順では対応を決めず、各resultの実区間をapplied_intervalに記録する。
+- 通常/Triggerの共有raw FFTへ同じ後段校正を適用し、全相対値を保持する。
+  V RMS/dBV/PSDの絶対値だけを派生し、disabled/未指定profileとSPLはnull/uncalibratedを維持する。
+  Triggerのraw/cache/追加FFT件数を維持し、未取得/欠落へ数値を生成しない。
+- [両Qt共通表示](../native/qml/SpectrumView.qml)で選択チャンネルのV RMS/dBV、係数、revision/portを表示する。
+  FSグラフ/元軸は維持し、同じ完成resultを保持/分離/停止/新世代/Backend破棄後も不変にする。
+- [独立runner](../scripts/migration_qt_calibration.py)は逆順port/profileと診断係数を使い、
+  通常/Trigger全配列を元bytesのNumPy oracleへ比較する。期待値はQt/Rustへ送らない。
+  校正付き完全JSON/CSVを独立readerへ往復し、実翻訳ラベル/表示値/revision/非切詰め/サイズ/PNGを検査する。
+  既存Triggerのpending/retry/raw共有/hold/gap/release/世代/停止/破棄検査も維持する。
+- [手順](../native/calibration-display.md)、[決定0022](decisions/0022-session-calibration-display.md)、
+  P13/P14/P19、AC12/13と作業票を更新し、独立Native CIへ保存校正比較を登録した。
+  GitHub実行は未確認。
+
+最終保存report: `.migration-local/2026-10-02-calibration-saved-final-v3/report.json`。
+保存4/8ch f32/f64×9言語×両Qtの72実行、通常144＋Trigger144の288完全resultと288 CSV、
+Trigger144取得窓bytes、72 PNGがすべて成功。
+mainのlayout最小サイズは640〜841×572〜578 px、Qt SDK 6.11.2/macOS Intel/offscreen/software/Basic。
+640 ms GUI停止中に通常FFTは5〜9窓進み、共有hold/独立zoom/分離の結果は不変だった。
+短い診断条件であり、定常throughput/通知遅延/AC15・16の性能合格には数えない。
+
+BlackHole最終report: `.migration-local/2026-10-02-calibration-live-final-v3/report.json`。
+2→2/4-from-16/8-from-16×両Qt×3反復の18実行、通常36＋Trigger36の72完全resultと72 CSV、
+通常36＋Trigger36の72取得窓bytes、18 PNGが成功。全相対/絶対配列を元取得bytesの独立oracleへ比較した。
+通常peak差の最大は約 `1.5957e-9 FS`。callback error/XRUN/rejectedと取得gapは0、stream回収27.7〜38.9 ms。
+GUI停止640 ms中にFFTは30〜38窓進んだ。queue最大深さは1024〜7554/8192 frameで、
+負荷下の余裕や長時間性能は保証しない。default deviceとcallback処理は変更していない。
+
+Rust workspaceはGraph72/Display14/Audio18/Audio probe8/DSP5/模擬worker5、計122 passed。
+Displayのlive-audio無しも別実行で14件成功（重複あり）。workspace format/全target Clippyと両Qt buildが成功。
+Python対象回帰は297 passed（49.95秒）。新規40の校正/全数値/単位/来歴/CSV/UI破損検査と、
+既存取得/共有/履歴/保存/Trigger/分離/台帳回帰を含む。全体Pytestの代わりにはしない。
+参照FFT14、core4 FFT/27契約/4保存、filter21数値/6 rate境界、41件台帳と2566キーの厳格翻訳checkも成功。
+校正を省略した通常表示の回帰は `2026-10-02-calibration-display-regression/report.json` の
+8実行/24完全result/8 PNGが成功。分離表示は `2026-10-02-calibration-workspace-regression/report.json` の
+en/ja×8ch f64×両Qt、4実行/16完全result/12 PNGが成功。
+未校正Triggerは `2026-10-02-calibration-trigger-regression/report.json` のen×4ch f64×両Qt、
+2実行/8完全result/4取得窓bytes/2 PNGが成功。
+既存Pythonの全9言語UIサイズ検査は134.66秒で `Verification Passed`。
+分離した保存先でPython参照版のoffscreen起動self-testも成功した（9.83秒）。
+最終QMLの日本語4ch f32とロシア語8ch f32の保持画面も目視確認した。
+
+command/終了コード/gzip log/hashは `.migration-local/2026-10-02-calibration-checks/` へ保存する。
+開発中の失敗logも保持する。校正破損test初回の2件は期待profileと観測fixtureのbindingを共有していた。
+独立したdeepcopyへ修正して再検査した。次の対象回帰の2件は、表示値への末尾0追加が値を変えない検査と、
+旧45翻訳キー固定の検査だった。数値を変える破損へ変更し、追加後の48キーへ更新して297件を再検査した。
+参照runnerを同じprocessで順に呼んだ初回はFFT singletonのfresh-process guardで失敗した。
+各公式CLIを別processで再実行した。Ruff formatの初回も追加したdeepcopy行を整形し再検査した。
+過去の失敗を成功件数へ混ぜない。
+
+最初のBlackHole反復 `2026-10-02-calibration-live-final/report.json` は18実行中3成功/15失敗。
+取得中に同期CSV encode/保存を追加した経路でqueueが8192 frameへ達し、live_input_gapを記録した。
+一部はGUI停止中のFFT増分0で先に失敗したが、停止時のmetricsにもgapを残した。
+CSV診断保存をstream/graph停止後へ移し、callback/queue容量/gap/error判定は変更しなかった。
+停止後CSVの完全再読込/既存file拒否もRust testへ追加した。
+live専用関数はfeature無しのClippyでunusedを検出し、live-audioまたはtestの条件コンパイルへ限定した。
+修正前の保存72実行も最終sourceの合格へ混ぜず、新規出力先へ全条件を再検査した。
+修正前のsource/runner 92件はhash一致を確認して `2026-10-02-calibration-before-live-fix/` へ保存した。
+修正後の6条件/18条件の開発runも保持し、最終sourceの18条件とは区別した。
+
+最終5 report（計104実行）とmanifest/source/runner/binary/取得bytes/result/CSV/PNGを含む
+3287ファイルのhashが一致した。監査時点50件のcommand/gzip log hashを確認し、
+修正前の失敗reportも保持した。監査は `2026-10-02-calibration-checks/audit.json`。
+Ruff lint/format、Markdown lint、diff whitespaceの最終checkも成功。
+SDKのlocale、ranlib/重複rpath警告は残る。
+
+診断係数は物理校正の証拠ではない。セッション入力の接続までで、Qtのprofile編集・適用mailbox、
+製品保存操作/互換/非同期保存、期限/周波数・位相・SPL map、物理USB/clock/校正は未確認。
+保存replayの同期診断I/Oと、Triggerの一時未校正/校正result生成には追加負荷がある。
+liveのCSVはstream/graph停止後に完全JSONを一件ずつ再読込して保存する。
+これらは定常/負荷下/長時間性能の合格にはしない。
+JSON/CSVは一ファイルずつ公開し、ペアcommitを保証しない。実window manager/他OSも未確認。
+全体Pytest/Mypy/GitHub CI、commit/push/PR/Issue/Project更新・配布は今回未実施。
+007-A全体/007-B/008、Rust/QML採用、製品41機能の移植は完了にしない。
+次はQtのprofile編集・適用、製品保存操作/非同期化、または005の全tap/製品共通adapterへ進められる。
+
+## MIG-007-A Qt Trigger要求配送の成果と検証（前回記録）
+
+2026-10-01の作業記録。Qt Trigger配送は `8a0af002` へ保存済み。以下は当時の記録。
 
 着手: 2026-10-01、HEAD `6e0b1ce2`。前回の「Trigger capture未コミット」は古く、
 開始時にremote一致・cleanの保存済みcommitを確認した。
@@ -1398,13 +1490,13 @@ GUI起動時にlocaleのUTF-8への切替と、`Sans Serif`のフォント代替
 2. [環境手順](environment.md)に従い、参照版の起動とツールチェーンを再確認する。
 3. 台帳チェックとFFT/core/filterの各reference runnerでverifyを実行する。
    環境差は確認し、比較時だけ明示portable modeを使う。
-4. [作業票](tasks.md)の007-A-triggerは取得owner APIを完了した。Qtからの要求配送と2viewの共有hold/retry/releaseは007-A-trigger-displayへ追加した。次は基本校正・保存のQt操作/実取得統合、または005-A/Bの製品共通adapter/全tapへ進める。BlackHole実入力表示は007-live-displayへ追加した。007-CのIntel最小renderer試験と失敗記録は007-rendererへ追加した。採用判断・個別widgetの本実装は行っていない。007-Aの保存入力の共有result表示は007-displayで追加した。動的f32 routeのcallback配送/BlackHoleは005-routeで追加した。006-Aの保存コーパス/Intel編集、006-B/C/D/Eのpure graph/履歴/filter/result、004-BのIntel反復は完了した。
+4. [作業票](tasks.md)の007-A-triggerは取得owner APIを完了した。Qtからの要求配送と2viewの共有hold/retry/releaseは007-A-trigger-displayへ追加した。007-A-calibration-inputでセッションID校正の取得/両Qt表示/診断JSON・CSVを追加した。次はQtのprofile編集・適用と製品保存操作/非同期化、または005-A/Bの製品共通adapter/全tapへ進める。BlackHole実入力表示は007-live-displayへ追加した。007-CのIntel最小renderer試験と失敗記録は007-rendererへ追加した。採用判断・個別widgetの本実装は行っていない。007-Aの保存入力の共有result表示は007-displayで追加した。動的f32 routeのcallback配送/BlackHoleは005-routeで追加した。006-Aの保存コーパス/Intel編集、006-B/C/D/Eのpure graph/履歴/filter/result、004-BのIntel反復は完了した。
    Linux CIのICU修正は004-Bの`e0b992ce`へcommit済み。修正後のGitHub実行は未確認。公開する段階で確認する。
    ARM/Windows/Linuxの反復測定、full Xcode、release/clean環境の配布起動は未確認のまま残す。
 5. 003-A/B/Cの保存入力と期待値は揃った。候補実装へ同じbytesを通し、参照側の完了と実装のAC合格を分ける。
 6. 006-Cのpure履歴/Timebaseは共有graphへ接続済み。005-Aのpure queue/route、005-Bの実機とBlackHoleの診断経路は追加済み。
    以後はBlackHole 16ch／2chで通常の回帰を行う。UAC-232は実機が必要な要件だけに使う。
-   006-Dのfilter/rateと006-Eの不変result/基本校正/保存もpure境界を検証済み。input.rawは005-graph、動的f32 route配送は005-routeで接続した。保存入力の実result表示は007-displayで追加した。BlackHole実入力表示は007-live-displayへ追加した。分離view/9言語は007-windows-i18nで追加した。取得ownerのTrigger captureとQt要求配送/共有holdは追加済み。次は基本校正・保存のQt操作/実取得統合、または全tap・製品共通adapterを検証する。
+   006-Dのfilter/rateと006-Eの不変result/基本校正/保存もpure境界を検証済み。input.rawは005-graph、動的f32 route配送は005-routeで接続した。保存入力の実result表示は007-displayで追加した。BlackHole実入力表示は007-live-displayへ追加した。分離view/9言語は007-windows-i18nで追加した。取得ownerのTrigger captureとQt要求配送/共有holdは追加済み。セッションID校正は取得/両Qt表示/診断CSV・JSONまで追加済み。次はQtのprofile編集・適用、製品保存操作/非同期化、または全tap・製品共通adapterを検証する。
    物理USB切断／復帰は必要時にユーザーが操作できる回だけで行う。
    独立Rust CIは追加済み。source/state/所有権の境界を記録し、
    004-Aの模擬workerのmutex/通知を音声callbackへ転用しない。
