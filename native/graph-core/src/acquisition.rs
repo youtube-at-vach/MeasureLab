@@ -9,6 +9,9 @@ use audio_core::{Consumer, Delivery, IoFormat, MAX_CALLBACK_FRAMES, Sample};
 use serde::Serialize;
 use std::sync::Arc;
 
+mod trigger;
+pub use trigger::{TriggerRead, TriggerRequest};
+
 mod sealed {
     pub trait Sealed {}
     impl Sealed for f32 {}
@@ -88,6 +91,9 @@ pub struct Acquisition<T: CaptureSample> {
     next_window: u64,
     graph: Graph,
     state: WorkerState,
+    // One retained on-demand raw result, independent of continuous view mailboxes.
+    trigger_cache: Option<Arc<crate::FftResult>>,
+    trigger_evaluations: u64,
 }
 fn prepare<T: CaptureSample>(
     receiver: &Consumer<T>,
@@ -173,6 +179,8 @@ impl<T: CaptureSample> Acquisition<T> {
             key,
             graph: Graph::new(Limits::default())?,
             state: WorkerState::Running,
+            trigger_cache: None,
+            trigger_evaluations: 0,
         })
     }
     pub fn key(&self) -> &FftKey {
@@ -226,12 +234,14 @@ impl<T: CaptureSample> Acquisition<T> {
         self.format = format;
         self.next_window = key.alignment;
         self.key = key;
+        self.trigger_cache = None;
         Ok(())
     }
     pub fn stop(&mut self) {
         self.graph.shutdown();
         self.receiver = None;
         self.history = None;
+        self.trigger_cache = None;
         if self.state == WorkerState::Running {
             self.state = WorkerState::Stopped;
         }

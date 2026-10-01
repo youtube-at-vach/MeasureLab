@@ -17,6 +17,7 @@ MIG-006-Aの`dsp-core`はGUI非依存のFFT/窓/単位/PSD候補。[FFT比較手
 007-Aの[保存入力の実result表示](display-candidate.md)では、独立解析threadと両Qt adapterでline/heatmapを検査する。
 [BlackHole実入力表示](live-display.md)で同じ所有境界へCPAL input.rawを接続する。
 [分離表示と9言語](workspace-display.md)で同じviewのreparent/需要解除と翻訳JSON接続を検査する。
+007-Aの[Trigger capture worker](trigger-capture.md)で取得履歴の非消費query/共有raw FFT/不変resultを接続する。Qt操作は後続。
 007-Cの[renderer spike](renderer-spike.md)では、簡易plotterとwgpuの最小描画・QML画像転送を試験する。採用判断・個別widgetの本実装は含めない。
 [Qt SDK・比較画面の起動手順](qt-probe.md)を参照。
 004-Bの開発反復とローカルbundleは[反復測定手順](qt-iteration.md)へ分離する。

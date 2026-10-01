@@ -50,7 +50,7 @@
 | validity・精度・共有条件 | 上書き・未取得区間を欠落として返す。位置は整数、subsampleは有理数。同一eventでも読取りは非消費 |
 | 現行の入口 | [source](../src/core/ring_buffer.py) |
 | 参照検証 | [test](../tests/logic_verification/core/test_ring_buffer.py) |
-| 候補検証 | 006-Cの[履歴/Timebase](../native/history-candidate.md)、[Rust試験](../native/graph-core/src/history/tests.rs)、[保存比較](../scripts/migration_history_candidate.py)。input.rawの実取得接続は005の[取得worker](../native/acquisition-candidate.md)、Qt/外部triggerは後続 |
+| 候補検証 | 006-Cの[履歴/Timebase](../native/history-candidate.md)、[Rust試験](../native/graph-core/src/history/tests.rs)、[保存比較](../scripts/migration_history_candidate.py)。input.rawは005の[取得worker](../native/acquisition-candidate.md)、過去窓の不変resultは007-Aの[Trigger capture](../native/trigger-capture.md)へ接続。Qt/実入力のtrigger要求・外部triggerは後続 |
 
 ## P04
 

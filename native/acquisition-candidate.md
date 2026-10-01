@@ -39,3 +39,6 @@ GUI通知相当の未読snapshot置換と取得gapは別に数える。
 raw input/output/manifest、各runのgraph件数とhashは新規出力先へ保存する。
 短いloopback診断であり、長時間/定常性能、USB復帰・排他、物理clockの精度、他OSの合格ではない。
 出力routeは開始時の固定設定。動的配送、全tap、Qt、製品save/校正統合は後続。
+
+取得ownerの追加[Trigger capture API](trigger-capture.md)では履歴から過去窓を非消費で読み、
+通常の最新位置/平均を変えずに不変resultを返す。保存入力で検証し、Qt/実入力の要求配送は後続とする。

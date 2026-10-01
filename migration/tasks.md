@@ -33,6 +33,7 @@
 | 006-D | 最小rate変換/filterとvalidity伝播 | 003-C、006-C、P06 | AC10/14、同じgraph内で遅延/区間/phase stateを保持 | 高品質resamplerの全機能 | 完了（2026-09-30、f64保存21ケース×5 chunk/6 rate境界と一段のpure graph。f32・IIR gap回復・実取得/Qtは後続） |
 | 006-E | 不変result・channel校正・CSV/JSON来歴 | 003-B、006-B/C、P13/P14 | AC12、再読込、保存失敗、profile変更後の不変性、uncalibrated | 旧設定の自動移行 | 完了（2026-10-01、pure不変result/ID校正/JSON・CSV。保存2契約・4例と4/8ch f32/f64。製品互換/async/Qtは後続） |
 | 007-A | 同じ結果をline/heatmapへ表示、操作/画像保存 | 004、006。P19のsnapshot境界 | AC05/07/08、軸/cursor/zoom・画像・再生成・サイズ/9言語 | 全41機能のUI | 進行中（2026-10-01、保存4/8ch f32/f64とBlackHole実入力→実graph→両Qt表示。分離view/翻訳JSON接続/9言語検査を追加。trigger/校正・製品保存操作/実window manager/他OSは後続。実施結果はstatus） |
+| 007-A-trigger | 取得履歴の非消費query→共有raw FFT→trigger付き不変result | 005-graph、006-C/E。解析owner APIと独立runner | AC08/09のpending/gap/分数残差/旧世代拒否、通常平均/位置不変、保存4入力×2bindingの全bytes・32完全result | Qt操作、実入力要求配送、arm/cancel/検出器、長時間性能 | worker範囲完了（2026-10-01）。Qt/実入力のtrigger配送は後続 |
 | 007-B | 描画/GUI遅延・CPU/RSS・表示編集時間 | 007-A、性能protocol | AC15/16。遅いGUIでも測定を保ち、単独/複数表示を比較 | 理論だけでの性能判定 | 未着手 |
 | 007-C | Plot Renderer Feasibility Spike。簡易plotterを基準にrsplot / wgpu系など1〜2候補を最小試験 | 004、007-Aの既存表示境界。独立試験コードと検証記録。007-A全体の完了は待たない | Spectrum 10万〜100万点の連続更新、Spectrogram rolling image、Zoom/Pan・座標変換・カーソル、QML統合/ライフサイクル、CPU/GPU負荷/コピー回数の比較表と再実行手順・未確認点 | renderer採用判断、製品組込み、個別widgetの本実装 | Intel最小試験・記録完了（2026-10-01、wgpu 1候補/PyQt画像provider。基準100万点はSIGBUS。native texture共有・他OS等は未確認） |
 | 008 | 2chフロー統合と四案の比較判断表 | 004〜007、実機/配布記録 | AC01〜16、仮想4/8ch回帰、採用/変更/段階導入/現行継続の理由と未確認点 | P3以降の自動開始、旧版置換 | 未着手 |
@@ -271,3 +272,13 @@ trigger UI/校正・製品保存操作/長時間性能/他OSは後続。分離�
 同じview/tokenの分離・再接続、native close/最後の解除、再オープン、分離中の再生成/終了と3画像を検査する。
 Qt SDK/offscreenの結果で、実window manager/他OS/font/DPI、動的言語変更や製品41画面の移植は含めない。
 BlackHole回帰は他のGUI/renderer/build試験が終わってから実行する。負荷中の取得gapも失敗記録に残す。
+
+Trigger captureの解析owner接続は[手順](../native/trigger-capture.md)と[決定0020](decisions/0020-trigger-capture-worker.md)を参照する。
+
+```bash
+./.venv/bin/python scripts/migration_trigger_candidate.py --output .migration-local/007-trigger-new
+./.venv/bin/pytest -q tests/logic_verification/test_migration_trigger_candidate.py
+```
+
+保存4/8ch f32/f64×2binding、未取得/遅い通知/1frameずれ/同じraw共有/保持超過/旧世代/stop後の不変性を検査する。
+N≤4096の同期worker APIまで。次はQtからrequest/revisionを配送し、2viewのhold/retry/releaseを接続する。

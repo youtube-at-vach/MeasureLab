@@ -30,6 +30,7 @@ jobs:
           cargo build --locked -p graph-core --bin filter-candidate
           cargo build --locked -p graph-core --bin result-candidate
           cargo build --locked -p graph-core --bin acquisition-candidate
+          cargo build --locked -p graph-core --bin trigger-candidate
           cargo build --locked -p audio-core
           cargo build --locked -p audio-core --bin route-candidate
           cargo clippy --locked -p probe-core -p display-core -p dsp-core -p graph-core -p audio-core --all-targets -- -D warnings
@@ -48,6 +49,7 @@ jobs:
           ./.venv/bin/python scripts/migration_result_candidate.py --portable --report result-candidate.json
           ./.venv/bin/python scripts/migration_audio_candidate.py --portable --report audio-candidate.json
           ./.venv/bin/python scripts/migration_audio_graph.py --portable --report acquisition-candidate.json
+          ./.venv/bin/python scripts/migration_trigger_candidate.py --portable --output trigger-candidate
           ./.venv/bin/python scripts/migration_audio_route.py --portable --report route-candidate.json
 
   audio-backend:

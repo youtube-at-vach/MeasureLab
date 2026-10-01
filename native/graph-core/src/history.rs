@@ -251,6 +251,7 @@ impl History {
             || !event.sample.valid()
             || event.source.is_empty()
             || event.kind.is_empty()
+            || event.polarity.is_empty()
             || event.condition_revision.is_empty()
             || event
                 .received_host_seconds
