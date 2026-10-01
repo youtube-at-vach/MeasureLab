@@ -20,6 +20,9 @@ Python CIがRust候補を `--offline --locked` でビルドし、クリーンな
 * Pythonだけの参照・証拠検証は通常CIに残す。専用CIへの移動をskipによる成功扱いにしない。
 * CIの候補比較は既存のportableモードを明示する。元fixture、source hash、
   理論値との比較、数値許容差、メタデータ検証は維持する。固定環境の検査はrunnerに残す。
+* 大きな不正FFT入力には短いparameter IDを付ける。Pytestが生bytesを
+  `PYTEST_CURRENT_TEST` へ展開すると、Linuxの環境文字列上限を超えてsubprocessを
+  起動できない。入力bytesとNaN拒否の検査内容は維持する。
 * core-v1のCSVをignoreから除外し、保存済みmanifestのSHA-256に一致する元データを登録する。
   CIで期待値を再生成しない。
 * 移行テストとmarker設定の変更でNative evaluationが起動するようpathを整理する。

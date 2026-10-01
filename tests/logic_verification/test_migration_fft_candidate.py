@@ -90,7 +90,13 @@ def test_cli_rejects_invalid_request_without_output(binary, tmp_path, valid_case
 
 
 @pytest.mark.native
-@pytest.mark.parametrize("data", [b"", b"\0" * 7, np.full(8192, np.nan, dtype="<f8").tobytes()])
+@pytest.mark.parametrize(
+    "data",
+    [b"", b"\0" * 7, np.full(8192, np.nan, dtype="<f8").tobytes()],
+    # Pytest also exports the node ID in PYTEST_CURRENT_TEST. Raw byte IDs exceed
+    # Linux's per-environment-string limit when the candidate subprocess starts.
+    ids=["empty", "truncated", "nonfinite"],
+)
 def test_cli_rejects_bytecount_and_nonfinite_input(binary, tmp_path, valid_case, data):
     result, output = invoke(binary, tmp_path, candidate.request_for(valid_case), data)
     assert result.returncode == 1
