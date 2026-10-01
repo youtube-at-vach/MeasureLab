@@ -20,7 +20,7 @@ pub(super) fn run(
             window: request.window,
         },
         CaptureLimits {
-            history: HistoryLimits::frames(request.n * 2),
+            history: HistoryLimits::frames(request.n * 8),
             frames_per_poll: 1024,
             windows_per_poll: 1,
         },
@@ -43,6 +43,7 @@ pub(super) fn run(
             if input.failed() {
                 return Err("live_input_callback_failure".into());
             }
+            trigger::process(owner, notify, request, &mut acquisition)?;
             let report = acquisition.poll()?;
             // This short correctness evaluation fails explicitly on discontinuity.
             // Recoverable XRUN/reconnect policy belongs to MIG-005-B.
@@ -66,6 +67,7 @@ pub(super) fn run(
                     break;
                 }
             }
+            trigger::process(owner, notify, request, &mut acquisition)?;
             thread::sleep(Duration::from_millis(2));
         }
         Ok(())

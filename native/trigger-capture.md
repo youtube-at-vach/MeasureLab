@@ -2,7 +2,8 @@
 
 2026-10-01。既存のinput.raw取得ownerへ[Triggerと履歴契約](../migration/contracts/core.md#triggerと履歴)を接続する。
 [決定0020](../migration/decisions/0020-trigger-capture-worker.md)と[進捗](../migration/status.md)を参照。
-Qt操作・検出器・実入力のトリガーschedulerは後続。Rust/QML採用や007-A全体の完了を意味しない。
+Qt操作・実入力への要求配送は[追加手順](trigger-display.md)で検証する。
+検出器は後続。Rust/QML採用や007-A全体の完了を意味しない。
 
 ## 所有境界と読取り
 
@@ -59,5 +60,5 @@ reportはmanifest/source/runner/lock/binary、request/input/result/bytesのhash�
 fixtureのhash・数値・metadata検査を維持する。NumPyだけの証拠破損テストは通常Python CIへ、
 `native` markerの実行比較はNative evaluationへ置く。
 
-次はこのAPIへQtからrequest/revisionを配送し、2viewの共有hold/retry/releaseを接続する。
-BlackHole実入力ではcallbackを変更せず、解析ownerへ配送して取得gapと負荷を別に検査する。
+[Qt要求配送](trigger-display.md)でrequest/revisionと2viewの共有hold/retry/releaseを接続した。
+BlackHole実入力もcallbackを変更せず解析ownerへ配送する。短い取得gap検査と性能合格を区別する。

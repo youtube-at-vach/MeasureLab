@@ -2550,6 +2550,16 @@
     "migration.display.stop": "停止",
     "migration.display.stopping": "停止中",
     "migration.display.title": "MeasureLab · 共有FFT表示の検証",
+    "migration.display.trigger_cancelled": "取得をキャンセルしました",
+    "migration.display.trigger_capture": "トリガーで保持",
+    "migration.display.trigger_complete": "トリガー結果を保持中",
+    "migration.display.trigger_error": "トリガー要求に失敗: %1",
+    "migration.display.trigger_gap": "トリガー履歴を取得できません",
+    "migration.display.trigger_pending": "トリガー区間の取得待ち",
+    "migration.display.trigger_queued": "取得要求を受付済み",
+    "migration.display.trigger_release": "表示を再開",
+    "migration.display.trigger_retry": "取得を再試行",
+    "migration.display.trigger_sample": "トリガー位置",
     "migration.display.unknown": "不明",
     "migration.display.waiting": "結果を待っています"
 }

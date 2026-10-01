@@ -162,6 +162,31 @@ fn fractional_unaligned_trigger_is_computed_once_without_changing_continuous_sta
 }
 
 #[test]
+fn releasing_trigger_cache_keeps_external_capture_and_continuous_state() {
+    let (mut tx, mut worker, _view) = setup();
+    feed(&mut tx, &mut worker, 0, 24);
+    let captured = worker.capture_trigger(&request(5)).unwrap();
+    let document = captured.result.as_ref().unwrap().to_value();
+    let before = serde_json::to_value(worker.graph().stats()).unwrap();
+    assert_eq!(worker.trigger_evaluations(), 1);
+    worker.release_trigger_cache();
+    worker.release_trigger_cache();
+    let fresh = worker.capture_trigger(&request(5)).unwrap();
+    assert_eq!(fresh.fft_origin, "computed");
+    assert_eq!(worker.trigger_evaluations(), 2);
+    assert!(!Arc::ptr_eq(
+        captured.raw.as_ref().unwrap(),
+        fresh.raw.as_ref().unwrap()
+    ));
+    assert_eq!(
+        before,
+        serde_json::to_value(worker.graph().stats()).unwrap()
+    );
+    worker.stop();
+    assert_eq!(document, captured.result.as_ref().unwrap().to_value());
+}
+
+#[test]
 fn owned_trigger_snapshots_survive_eviction_restart_and_stop() {
     let (mut tx, mut worker, view) = setup();
     feed(&mut tx, &mut worker, 0, 16);

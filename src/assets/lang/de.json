@@ -2550,6 +2550,16 @@
     "migration.display.stop": "Stopp",
     "migration.display.stopping": "Wird gestoppt",
     "migration.display.title": "MeasureLab · Anzeigeauswertung mit gemeinsamer FFT",
+    "migration.display.trigger_cancelled": "Erfassung abgebrochen",
+    "migration.display.trigger_capture": "Am Trigger halten",
+    "migration.display.trigger_complete": "Trigger-Ergebnis gehalten",
+    "migration.display.trigger_error": "Trigger-Anfrage fehlgeschlagen: %1",
+    "migration.display.trigger_gap": "Trigger-Verlauf nicht verfügbar",
+    "migration.display.trigger_pending": "Warten auf Trigger-Samples",
+    "migration.display.trigger_queued": "Erfassung vorgemerkt",
+    "migration.display.trigger_release": "Fortsetzen",
+    "migration.display.trigger_retry": "Erneut erfassen",
+    "migration.display.trigger_sample": "Trigger-Sample",
     "migration.display.unknown": "Unbekannt",
     "migration.display.waiting": "Warten auf Ergebnis"
 }

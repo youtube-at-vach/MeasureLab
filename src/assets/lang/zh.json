@@ -2550,6 +2550,16 @@
     "migration.display.stop": "停止",
     "migration.display.stopping": "正在停止",
     "migration.display.title": "MeasureLab · 共享FFT显示验证",
+    "migration.display.trigger_cancelled": "采集已取消",
+    "migration.display.trigger_capture": "按触发保持",
+    "migration.display.trigger_complete": "正在保持触发结果",
+    "migration.display.trigger_error": "触发请求失败：%1",
+    "migration.display.trigger_gap": "触发历史不可用",
+    "migration.display.trigger_pending": "等待触发区间采样",
+    "migration.display.trigger_queued": "采集请求已排队",
+    "migration.display.trigger_release": "恢复显示",
+    "migration.display.trigger_retry": "重试采集",
+    "migration.display.trigger_sample": "触发采样位置",
     "migration.display.unknown": "未知",
     "migration.display.waiting": "正在等待结果"
 }

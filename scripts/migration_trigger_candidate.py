@@ -192,7 +192,7 @@ def validate_manifest(header, request):
     return reads
 
 
-def validate_document(document, read, request, case, samples):
+def validate_document(document, read, request, case, samples, *, alignment=None):
     n, channels = request["n"], len(request["format"]["input_ids"])
     start = read["history"]["interval"][0]
     raw_id = read["raw_result_id"]
@@ -218,7 +218,7 @@ def validate_document(document, read, request, case, samples):
             "source": source,
             "n": n,
             "hop": n,
-            "alignment": start,
+            "alignment": start if alignment is None else alignment,
             "window": request["window"],
             "remove_dc": False,
             "input_gains": [],

@@ -2550,6 +2550,16 @@
     "migration.display.stop": "Arrêter",
     "migration.display.stopping": "Arrêt en cours",
     "migration.display.title": "MeasureLab · évaluation d’affichage avec FFT partagée",
+    "migration.display.trigger_cancelled": "Capture annulée",
+    "migration.display.trigger_capture": "Figer au déclenchement",
+    "migration.display.trigger_complete": "Résultat du déclenchement figé",
+    "migration.display.trigger_error": "Échec de la demande de déclenchement : %1",
+    "migration.display.trigger_gap": "Historique du déclenchement indisponible",
+    "migration.display.trigger_pending": "En attente des échantillons du déclenchement",
+    "migration.display.trigger_queued": "Capture en attente",
+    "migration.display.trigger_release": "Reprendre",
+    "migration.display.trigger_retry": "Réessayer la capture",
+    "migration.display.trigger_sample": "Échantillon de déclenchement",
     "migration.display.unknown": "Inconnu",
     "migration.display.waiting": "En attente du résultat"
 }

@@ -25,6 +25,8 @@ const MAX_INPUT_BYTES: u64 = 4096 * 16 * 8;
 const MAX_DEMAND: usize = 16;
 
 pub mod locale;
+mod trigger;
+pub use trigger::TriggerResponse;
 
 #[cfg(feature = "live-audio")]
 mod live;
@@ -100,7 +102,7 @@ impl Request {
 
 #[derive(Debug)]
 pub struct Frame {
-    pub result: MeasurementResult,
+    pub result: Arc<MeasurementResult>,
     pub projection: String,
 }
 /// All full precision bins survive. Only rasterization maps values to pixels.
@@ -119,14 +121,18 @@ pub fn project(raw: &FftResult) -> Result<Frame, String> {
         &BTreeMap::new(),
         1.,
     )?;
-    let document = result.to_value();
+    project_result(Arc::new(result))
+}
+fn project_result(result: Arc<MeasurementResult>) -> Result<Frame, String> {
     let projection = serde_json::to_string(&json!({
-        "schema_version": 1, "result_id": id,
-        "source": document["source"], "interval": document["interval"],
-        "frequency_hz": document["axis"]["corrected"],
-        "peak_fs": document["columns"]["peak_fs"],
-        "validity": document["validity"], "error": document["error"],
+        "schema_version": 1, "result_id": result.capture().result_id,
+        "source": result.source(), "interval": result.interval(),
+        "frequency_hz": result.corrected_frequencies(),
+        "peak_fs": result.column_value("peak_fs").ok_or("display_peak_column")?,
+        "validity": result.validity(), "error": result.error(),
         "clock_origin": "unknown", "calibration": "uncalibrated",
+        "capture": result.capture(),
+        "raw_result_id": result.raw_result_id(),
     }))
     .map_err(|e| e.to_string())?;
     Ok(Frame { result, projection })
@@ -143,12 +149,14 @@ pub struct Snapshot {
     pub reclaimed: bool,
     pub error: String,
     pub frame: Option<Arc<Frame>>,
+    pub trigger: Option<Arc<TriggerResponse>>,
 }
 #[derive(Default)]
 struct Mailbox {
     snapshot: Snapshot,
     pending: bool,
     demand: HashSet<u64>,
+    trigger: trigger::Controller,
 }
 pub struct Display {
     mailbox: Arc<Mutex<Mailbox>>,
@@ -214,6 +222,7 @@ impl Display {
                 ..Snapshot::default()
             };
             slot.pending = false;
+            slot.trigger = trigger::Controller::default();
         }
         let request = self.request.clone();
         let owner = Owner {
@@ -288,6 +297,7 @@ impl Display {
             {
                 let mut slot = owner.mailbox.lock().unwrap();
                 slot.snapshot.reclaimed = true; // acquisition, subscriptions and stream have dropped
+                trigger::cancel(&mut slot, result.as_ref().err().map(String::as_str));
                 match result {
                     Err(error) => {
                         slot.snapshot.state = State::Failed;
@@ -322,6 +332,7 @@ impl Display {
         if matches!(slot.snapshot.state, State::Preparing | State::Running) {
             slot.snapshot.state = State::Stopping;
         }
+        trigger::cancel(&mut slot, None);
     }
     fn join(&mut self) {
         if let Some(worker) = self.worker.take() {
@@ -375,7 +386,7 @@ fn replay<T: CaptureSample>(
             window: request.window,
         },
         CaptureLimits {
-            history: HistoryLimits::frames(request.n * 2),
+            history: HistoryLimits::frames(request.n * 8),
             frames_per_poll: 1024,
             windows_per_poll: 1,
         },
@@ -386,6 +397,7 @@ fn replay<T: CaptureSample>(
         if !sync_demand(owner, &acquisition, &mut subscriptions)? {
             break;
         }
+        trigger::process(owner, notify, request, &mut acquisition)?;
         for chunk in samples.chunks(256 * request.format.input_ids.len()) {
             tx.write(chunk, None, 0)?;
             let report = acquisition.poll()?;
@@ -409,6 +421,7 @@ fn replay<T: CaptureSample>(
         if !publish(owner, notify, &acquisition, frame) {
             break;
         }
+        trigger::process(owner, notify, request, &mut acquisition)?;
         for _ in 0..8 {
             if owner.stop.load(Ordering::Acquire) {
                 break;

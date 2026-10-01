@@ -2550,6 +2550,16 @@
     "migration.display.stop": "Parar",
     "migration.display.stopping": "Parando",
     "migration.display.title": "MeasureLab · avaliação de visualização com FFT compartilhada",
+    "migration.display.trigger_cancelled": "Captura cancelada",
+    "migration.display.trigger_capture": "Reter no disparo",
+    "migration.display.trigger_complete": "Resultado do disparo retido",
+    "migration.display.trigger_error": "Falha na solicitação de disparo: %1",
+    "migration.display.trigger_gap": "Histórico do disparo indisponível",
+    "migration.display.trigger_pending": "Aguardando amostras do disparo",
+    "migration.display.trigger_queued": "Captura na fila",
+    "migration.display.trigger_release": "Retomar",
+    "migration.display.trigger_retry": "Tentar captura novamente",
+    "migration.display.trigger_sample": "Amostra do disparo",
     "migration.display.unknown": "Desconhecido",
     "migration.display.waiting": "Aguardando resultado"
 }

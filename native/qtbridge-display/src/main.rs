@@ -13,6 +13,7 @@ mod backend {
         shared: bool,
         reclaimed: bool,
         payload: String,
+        capture: String,
         error: String,
         testing: bool,
         translations: String,
@@ -29,6 +30,7 @@ mod backend {
                 shared: false,
                 reclaimed: false,
                 payload: String::new(),
+                capture: String::new(),
                 error: String::new(),
                 testing: std::env::args().any(|arg| arg == "--self-test"),
                 translations: display_core::locale::selected_catalog(),
@@ -44,6 +46,7 @@ mod backend {
         qproperty!("shared", Member = shared, Notify = changed);
         qproperty!("reclaimed", Member = reclaimed, Notify = changed);
         qproperty!("payload", Member = payload, Notify = changed);
+        qproperty!("capture", Member = capture, Notify = changed);
         qproperty!("error", Member = error, Notify = changed);
         qproperty!("testing", Member = testing, Constant);
         qproperty!("translations", Member = translations, Constant);
@@ -58,6 +61,10 @@ mod backend {
             self.shared = s.shared;
             self.reclaimed = s.reclaimed;
             self.error = s.error;
+            self.capture = s
+                .trigger
+                .as_ref()
+                .map_or_else(String::new, |r| r.encoded.clone());
             self.payload = s
                 .frame
                 .as_ref()
@@ -112,6 +119,24 @@ mod backend {
         #[qslot]
         fn subscribers(&self) -> i32 {
             self.display.subscribers() as i32
+        }
+        #[qslot]
+        fn request_trigger(&mut self, encoded: String) -> bool {
+            let accepted = self.display.request_trigger(&encoded);
+            self.apply(self.display.peek());
+            accepted
+        }
+        #[qslot]
+        fn retry_trigger(&mut self, generation: u64, revision: u64) -> bool {
+            let accepted = self.display.retry_trigger(generation, revision);
+            self.apply(self.display.peek());
+            accepted
+        }
+        #[qslot]
+        fn release_trigger(&mut self, generation: u64, revision: u64) -> bool {
+            let accepted = self.display.release_trigger(generation, revision);
+            self.apply(self.display.peek());
+            accepted
         }
     }
 }

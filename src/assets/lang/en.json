@@ -2550,6 +2550,16 @@
     "migration.display.stop": "Stop",
     "migration.display.stopping": "Stopping",
     "migration.display.title": "MeasureLab · shared FFT display evaluation",
+    "migration.display.trigger_cancelled": "Capture cancelled",
+    "migration.display.trigger_capture": "Hold at trigger",
+    "migration.display.trigger_complete": "Holding trigger result",
+    "migration.display.trigger_error": "Trigger request failed: %1",
+    "migration.display.trigger_gap": "Trigger history unavailable",
+    "migration.display.trigger_pending": "Waiting for trigger samples",
+    "migration.display.trigger_queued": "Capture queued",
+    "migration.display.trigger_release": "Resume",
+    "migration.display.trigger_retry": "Retry capture",
+    "migration.display.trigger_sample": "Trigger sample",
     "migration.display.unknown": "Unknown",
     "migration.display.waiting": "Waiting for result"
 }

@@ -4,13 +4,13 @@ use super::*;
 use crate::FftResult;
 use crate::history::{HistoryRead, TriggerEvent};
 use crate::result::{Capture, MeasurementResult};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 static NEXT_CAPTURE: AtomicU64 = AtomicU64::new(1);
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct TriggerRequest {
     pub request_id: String,
@@ -28,6 +28,10 @@ pub struct TriggerRead {
     pub fft_origin: &'static str,
 }
 impl<T: CaptureSample> Acquisition<T> {
+    /// Analysis owner releases its extra cache; external captures keep their owned data.
+    pub fn release_trigger_cache(&mut self) {
+        self.trigger_cache = None;
+    }
     pub fn trigger_evaluations(&self) -> u64 {
         self.trigger_evaluations
     }

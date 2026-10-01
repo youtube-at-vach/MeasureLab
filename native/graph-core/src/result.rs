@@ -613,6 +613,34 @@ impl MeasurementResult {
     pub fn to_value(&self) -> Value {
         serde_json::to_value(&self.0).expect("validated finite result")
     }
+    /// Borrow the immutable document fields without serializing every numeric column.
+    pub fn source(&self) -> &Source {
+        &self.0.source
+    }
+    pub fn interval(&self) -> [u64; 2] {
+        self.0.interval
+    }
+    pub fn capture(&self) -> &Capture {
+        &self.0.capture
+    }
+    pub fn raw_result_id(&self) -> Option<[u64; 2]> {
+        self.0.raw_result_id
+    }
+    pub fn corrected_frequencies(&self) -> &[f64] {
+        &self.0.axis.corrected
+    }
+    pub fn column_value(&self, name: &str) -> Option<Value> {
+        self.0
+            .columns
+            .get(name)
+            .map(|column| serde_json::to_value(column).expect("validated finite column"))
+    }
+    pub fn validity(&self) -> &[InvalidSpan] {
+        &self.0.validity
+    }
+    pub fn error(&self) -> Option<&str> {
+        self.0.error.as_deref()
+    }
     pub fn encode(&self, format: Format) -> Result<Vec<u8>, String> {
         match format {
             Format::Json => serde_json::to_vec(&self.0).map_err(|e| e.to_string()),

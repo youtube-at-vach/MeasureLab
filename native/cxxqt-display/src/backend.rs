@@ -20,6 +20,7 @@ mod ffi {
         #[qproperty(bool, shared)]
         #[qproperty(bool, reclaimed)]
         #[qproperty(QString, payload)]
+        #[qproperty(QString, capture)]
         #[qproperty(QString, error)]
         #[qproperty(bool, testing)]
         #[qproperty(QString, translations)]
@@ -40,6 +41,12 @@ mod ffi {
         fn unsubscribe(self: Pin<&mut Self>, token: u64) -> bool;
         #[qinvokable]
         fn subscribers(&self) -> i32;
+        #[qinvokable]
+        fn request_trigger(self: Pin<&mut Self>, encoded: &QString) -> bool;
+        #[qinvokable]
+        fn retry_trigger(self: Pin<&mut Self>, generation: u64, revision: u64) -> bool;
+        #[qinvokable]
+        fn release_trigger(self: Pin<&mut Self>, generation: u64, revision: u64) -> bool;
     }
     impl cxx_qt::Threading for DisplayBackend {}
 }
@@ -53,6 +60,7 @@ pub struct DisplayBackendRust {
     shared: bool,
     reclaimed: bool,
     payload: QString,
+    capture: QString,
     error: QString,
     testing: bool,
     translations: QString,
@@ -69,6 +77,7 @@ impl Default for DisplayBackendRust {
             shared: false,
             reclaimed: false,
             payload: QString::default(),
+            capture: QString::default(),
             error: QString::default(),
             testing: std::env::args().any(|arg| arg == "--self-test"),
             translations: QString::from(&display_core::locale::selected_catalog()),
@@ -85,6 +94,9 @@ impl ffi::DisplayBackend {
         self.as_mut().set_error(QString::from(&snapshot.error));
         self.as_mut().set_outcome(snapshot.outcome);
         self.as_mut().set_state(snapshot.state.code());
+        self.as_mut().set_capture(QString::from(
+            snapshot.trigger.as_ref().map_or("", |r| r.encoded.as_str()),
+        ));
         self.set_payload(QString::from(
             snapshot
                 .frame
@@ -138,5 +150,35 @@ impl ffi::DisplayBackend {
     }
     fn subscribers(&self) -> i32 {
         self.display.subscribers() as i32
+    }
+    fn request_trigger(mut self: Pin<&mut Self>, encoded: &QString) -> bool {
+        let accepted = self
+            .as_mut()
+            .rust_mut()
+            .display
+            .request_trigger(&encoded.to_string());
+        let s = self.display.peek();
+        self.apply(s);
+        accepted
+    }
+    fn retry_trigger(mut self: Pin<&mut Self>, generation: u64, revision: u64) -> bool {
+        let accepted = self
+            .as_mut()
+            .rust_mut()
+            .display
+            .retry_trigger(generation, revision);
+        let s = self.display.peek();
+        self.apply(s);
+        accepted
+    }
+    fn release_trigger(mut self: Pin<&mut Self>, generation: u64, revision: u64) -> bool {
+        let accepted = self
+            .as_mut()
+            .rust_mut()
+            .display
+            .release_trigger(generation, revision);
+        let s = self.display.peek();
+        self.apply(s);
+        accepted
     }
 }

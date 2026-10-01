@@ -16,7 +16,17 @@ ApplicationWindow {
     function tr(key) {
         return messages[key] || "";
     }
-    property var frame: null
+    property var latestFrame: null
+    property string captureEncoded: backend ? backend.capture : ""
+    readonly property var trigger: captureEncoded ? freeze(JSON.parse(captureEncoded)) : null
+    readonly property var frame: trigger && ["queued", "pending", "gap", "complete", "error"].indexOf(trigger.status) >= 0 ? trigger.frame : latestFrame
+    function freeze(value) {
+        if (value && typeof value === "object" && !Object.isFrozen(value)) {
+            Object.keys(value).forEach(key => freeze(value[key]));
+            Object.freeze(value);
+        }
+        return value;
+    }
     property bool holding: false
     onHoldingChanged: {
         if (!holding)
@@ -37,6 +47,7 @@ ApplicationWindow {
     property bool liveInput: Qt.application.arguments.indexOf("--live-input") >= 0
     property string imageStatus: ""
     property bool workspaceTesting: Qt.application.arguments.indexOf("--workspace-test") >= 0
+    property bool triggerTesting: Qt.application.arguments.indexOf("--trigger-test") >= 0
     property var workspaceEvidence: ({})
     property var lineBefore: null
     property var mapBefore: null
@@ -87,20 +98,13 @@ ApplicationWindow {
         if (holding)
             return;
         if (!backend || !backend.payload) {
-            frame = null;
+            latestFrame = null;
             return;
         }
         const next = JSON.parse(backend.payload);
-        if (frame && frame.result_id === next.result_id)
+        if (latestFrame && latestFrame.result_id === next.result_id)
             return;
-        function freeze(value) {
-            if (value && typeof value === "object" && !Object.isFrozen(value)) {
-                Object.keys(value).forEach(key => freeze(value[key]));
-                Object.freeze(value);
-            }
-            return value;
-        }
-        frame = freeze(next);
+        latestFrame = freeze(next);
     }
     function stateLabel() {
         if (!backend)
@@ -123,7 +127,7 @@ ApplicationWindow {
         holding = false;
         line.active = false;
         map.active = false;
-        frame = null;
+        latestFrame = null;
         if (backend)
             backend.destroy();
         backend = factory.createObject(window);
@@ -154,7 +158,7 @@ ApplicationWindow {
     Component.onCompleted: {
         recreate();
         console.log("DISPLAY_READY");
-        if (backend.testing)
+        if (backend.testing && !triggerTesting)
             exercise.start();
     }
     Rectangle {
@@ -218,6 +222,14 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 elide: Text.ElideRight
             }
+            TriggerPanel {
+                id: triggerPanel
+                Layout.fillWidth: true
+                source: window.backend
+                current: window.latestFrame
+                response: window.trigger
+                messages: window.messages
+            }
             RowLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -255,6 +267,13 @@ ApplicationWindow {
                 text: backend && messages["migration.display.counters"] ? tr("migration.display.counters").arg(backend.produced).arg(backend.coalesced) : ""
             }
         }
+    }
+    TriggerExercise {
+        enabled: window.triggerTesting
+        host: window
+        panel: triggerPanel
+        line: line
+        map: map
     }
     Timer {
         id: exercise

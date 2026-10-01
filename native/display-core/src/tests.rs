@@ -2,7 +2,7 @@ use super::*;
 use serde_json::Value;
 use std::time::Instant;
 
-fn request(precision: Precision, channels: usize, invalid: bool) -> Request {
+pub(super) fn request(precision: Precision, channels: usize, invalid: bool) -> Request {
     let id = TOKEN.fetch_add(1, Ordering::SeqCst);
     let path = std::env::temp_dir().join(format!(
         "measurelab-display-{}-{id}.bin",
@@ -46,7 +46,7 @@ fn request(precision: Precision, channels: usize, invalid: bool) -> Request {
         evidence: None,
     }
 }
-fn wait(display: &Display, condition: impl Fn(&Snapshot) -> bool) {
+pub(super) fn wait(display: &Display, condition: impl Fn(&Snapshot) -> bool) {
     let deadline = Instant::now() + Duration::from_secs(5);
     while !condition(&display.peek()) {
         assert!(

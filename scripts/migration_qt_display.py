@@ -181,7 +181,7 @@ def validate_evidence(directory, case, *, count=3):
     return observed
 
 
-def run_display(binary, env, directory, case, timeout, *, language="en", workspace=False):
+def run_display(binary, env, directory, case, timeout, *, language="en", workspace=False, trigger=False):
     directory.mkdir(parents=True, exist_ok=False)
     evidence = directory / "results"
     evidence.mkdir()
@@ -198,6 +198,8 @@ def run_display(binary, env, directory, case, timeout, *, language="en", workspa
     command = [str(binary), "--self-test", "--snapshot", str(image), "--language", language]
     if workspace:
         command.append("--workspace-test")
+    if trigger:
+        command.append("--trigger-test")
     started = time.monotonic()
     try:
         result = subprocess.run(  # noqa: S603 - explicit local evaluation binary
@@ -225,7 +227,15 @@ def run_display(binary, env, directory, case, timeout, *, language="en", workspa
     )
     passed = (
         code == 0
-        and all(m in output for m in ("DISPLAY_READY", PASS, "DISPLAY_IMAGE_OK", "DISPLAY_TEARDOWN workers=0 models=0"))
+        and all(
+            m in output
+            for m in (
+                "DISPLAY_READY",
+                "DISPLAY_TRIGGER_PASS" if trigger else PASS,
+                "DISPLAY_IMAGE_OK",
+                "DISPLAY_TEARDOWN workers=0 models=0",
+            )
+        )
         and not any(e in output for e in errors)
     )
     details = {}
@@ -235,10 +245,17 @@ def run_display(binary, env, directory, case, timeout, *, language="en", workspa
                 from scripts.migration_qt_workspace import validate_workspace
 
                 details["workspace"] = validate_workspace(output, language, image)
-            size = details.get("workspace", {}).get("main", {}).get("size", (1000, 640))
+            if trigger:
+                from scripts.migration_qt_trigger import validate_ui, validate_captures
+
+                details["trigger"] = validate_ui(output, language)
+                details["captures"] = validate_captures(evidence, body, case)
+            size = details.get("trigger", {}).get(
+                "size", details.get("workspace", {}).get("main", {}).get("size", (1000, 640))
+            )
             details.update(
                 image=inspect_png(image, size=size, regions=plot_regions(output)),
-                evidence=validate_evidence(evidence, case, count=4 if workspace else 3),
+                evidence=validate_evidence(evidence, case, count=2 if trigger else 4 if workspace else 3),
             )
         except (OSError, ValueError, KeyError, struct.error, zlib.error, fft.ReferenceError) as exc:
             passed, reason = False, str(exc)

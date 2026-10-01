@@ -2550,6 +2550,16 @@
     "migration.display.stop": "중지",
     "migration.display.stopping": "정지 중",
     "migration.display.title": "MeasureLab · 공유 FFT 표시 검증",
+    "migration.display.trigger_cancelled": "캡처 취소됨",
+    "migration.display.trigger_capture": "트리거에서 유지",
+    "migration.display.trigger_complete": "트리거 결과 유지 중",
+    "migration.display.trigger_error": "트리거 요청 실패: %1",
+    "migration.display.trigger_gap": "트리거 이력을 사용할 수 없음",
+    "migration.display.trigger_pending": "트리거 구간 샘플 대기 중",
+    "migration.display.trigger_queued": "캡처 요청 대기 중",
+    "migration.display.trigger_release": "표시 재개",
+    "migration.display.trigger_retry": "캡처 재시도",
+    "migration.display.trigger_sample": "트리거 샘플",
     "migration.display.unknown": "알 수 없음",
     "migration.display.waiting": "결과 대기 중"
 }

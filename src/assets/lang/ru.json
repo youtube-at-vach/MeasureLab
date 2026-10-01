@@ -2550,6 +2550,16 @@
     "migration.display.stop": "Стоп",
     "migration.display.stopping": "Остановка",
     "migration.display.title": "MeasureLab · проверка отображения общей БПФ",
+    "migration.display.trigger_cancelled": "Захват отменён",
+    "migration.display.trigger_capture": "Удержать по запуску",
+    "migration.display.trigger_complete": "Результат запуска удерживается",
+    "migration.display.trigger_error": "Ошибка запроса запуска: %1",
+    "migration.display.trigger_gap": "История запуска недоступна",
+    "migration.display.trigger_pending": "Ожидание отсчётов запуска",
+    "migration.display.trigger_queued": "Захват в очереди",
+    "migration.display.trigger_release": "Продолжить",
+    "migration.display.trigger_retry": "Повторить захват",
+    "migration.display.trigger_sample": "Отсчёт запуска",
     "migration.display.unknown": "Неизвестно",
     "migration.display.waiting": "Ожидание результата"
 }

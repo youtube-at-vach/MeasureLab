@@ -36,7 +36,12 @@ AC05/07/13の同じview/tokenの分離・再接続、native closeによる需要
 007-Aの[Trigger capture worker](../decisions/0020-trigger-capture-worker.md)で取得履歴のqueryと
 共有raw FFT/不変resultを接続する。AC08/09の非消費読取り、分数位置、pending/gap、保持超過、
 世代/停止後の所有権を保存4入力×2bindingで検査する。通常表示の平均/最新位置は変更しない。
-Qtのtrigger操作・実入力要求配送・外部clock・負荷下の性能は後続で、AC08/09全体の完了にしない。
+Qtのtrigger操作・実入力要求配送は次の段階で検査する。外部clock・負荷下の性能は後続で、AC08/09全体の完了にしない。
+
+007-Aの[Qt Trigger要求配送](../decisions/0021-qt-trigger-delivery.md)で解析ownerへrevision付き要求を送る。
+AC08/09/13のpending→明示retry、二viewの共有hold/分離/release、旧世代拒否、stop/再開/破棄後の不変性を
+保存4/8ch f32/f64・9言語・両QtとBlackHoleの短い診断で検査する。全result/取得bytesを独立oracleへ照合する。
+検出器のarm/cancel、前段filter/外部clock、製品校正/保存互換、長時間/負荷下/他OSは別で、AC全体は未完了。
 
 ## fixtureの最小セット
 

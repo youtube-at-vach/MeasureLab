@@ -50,7 +50,7 @@
 | validity・精度・共有条件 | 上書き・未取得区間を欠落として返す。位置は整数、subsampleは有理数。同一eventでも読取りは非消費 |
 | 現行の入口 | [source](../src/core/ring_buffer.py) |
 | 参照検証 | [test](../tests/logic_verification/core/test_ring_buffer.py) |
-| 候補検証 | 006-Cの[履歴/Timebase](../native/history-candidate.md)、[Rust試験](../native/graph-core/src/history/tests.rs)、[保存比較](../scripts/migration_history_candidate.py)。input.rawは005の[取得worker](../native/acquisition-candidate.md)、過去窓の不変resultは007-Aの[Trigger capture](../native/trigger-capture.md)へ接続。Qt/実入力のtrigger要求・外部triggerは後続 |
+| 候補検証 | 006-Cの[履歴/Timebase](../native/history-candidate.md)、[Rust試験](../native/graph-core/src/history/tests.rs)、[保存比較](../scripts/migration_history_candidate.py)。input.rawは005の[取得worker](../native/acquisition-candidate.md)、過去窓の不変resultは007-Aの[Trigger capture](../native/trigger-capture.md)へ接続。[Qt要求配送](../native/trigger-display.md)で共有hold/retry/releaseを検査。検出器・外部triggerは後続 |
 
 ## P04
 
@@ -279,7 +279,7 @@ wavelet・過渡解析
 | validity・精度・共有条件 | 描画f32可、元値/cursor/exportは解析精度。描画省略をdata gapにしない。複数viewは同じresult IDを参照 |
 | 現行の入口 | [source](../src/gui/widgets/instrument_plot.py) |
 | 参照検証 | [test](../tests/logic_verification/gui/widgets/test_instrument_plot.py) |
-| 候補検証 | 007-Aの[共有result表示](../native/display-candidate.md)。保存replayと[BlackHole実入力](../native/live-display.md)/両Qt。[分離表示と9言語](../native/workspace-display.md)を保存入力で検査。trigger・実window manager/他OS・性能は後続 |
+| 候補検証 | 007-Aの[共有result表示](../native/display-candidate.md)。保存replayと[BlackHole実入力](../native/live-display.md)/両Qt。[分離表示と9言語](../native/workspace-display.md)、[Trigger要求配送](../native/trigger-display.md)の共有hold/retry/releaseを検査。実window manager/他OS・性能は後続 |
 
 ## P20
 

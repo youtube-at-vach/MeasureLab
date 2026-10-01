@@ -73,11 +73,11 @@ def stimulus(case):
     return values
 
 
-def validate_evidence(directory, request):
+def validate_evidence(directory, request, *, count=3):
     """Require actual captured bytes and independent FFT, plus completed stream cleanup."""
     paths = sorted(directory.glob("generation-*.json"))
-    if len(paths) != 3 or len(list(directory.glob("live-*.json"))) != 3:
-        raise fft.ReferenceError("expected three live generations with closed-stream evidence")
+    if len(paths) != count or len(list(directory.glob("live-*.json"))) != count:
+        raise fft.ReferenceError(f"expected {count} live generations with closed-stream evidence")
     channels = len(request["format"]["input_ids"])
     observed, generations = [], set()
     for path in paths:
@@ -156,7 +156,7 @@ def validate_evidence(directory, request):
     return observed
 
 
-def run_display(binary, env, directory, case, timeout):
+def run_display(binary, env, directory, case, timeout, *, trigger=False, language="en"):
     import sounddevice as sd
 
     directory.mkdir(parents=True, exist_ok=False)
@@ -182,6 +182,8 @@ def run_display(binary, env, directory, case, timeout):
             statuses.append(str(status))
 
     command = [str(binary), "--self-test", "--live-input", "--snapshot", str(directory.resolve() / "display.png")]
+    if trigger:
+        command += ["--trigger-test", "--language", language]
     started, code, output, reason, details = time.monotonic(), None, "", None, {}
     try:
         index = virtual.exact_device(case["device"])
@@ -212,7 +214,12 @@ def run_display(binary, env, directory, case, timeout):
             code != 0
             or not all(
                 marker in output
-                for marker in ("DISPLAY_READY", PASS, "DISPLAY_IMAGE_OK", "DISPLAY_TEARDOWN workers=0 models=0")
+                for marker in (
+                    "DISPLAY_READY",
+                    "DISPLAY_TRIGGER_PASS" if trigger else PASS,
+                    "DISPLAY_IMAGE_OK",
+                    "DISPLAY_TEARDOWN workers=0 models=0",
+                )
             )
             or any(
                 marker in output
@@ -228,10 +235,19 @@ def run_display(binary, env, directory, case, timeout):
             )
         ):
             raise fft.ReferenceError("live Qt lifecycle/exit mismatch")
-        details = {
-            "image": inspect_png(directory / "display.png", regions=plot_regions(output)),
-            "evidence": validate_evidence(evidence, request),
-        }
+        if trigger:
+            from scripts.migration_qt_trigger import validate_ui, validate_captures
+
+            details["trigger"] = validate_ui(output, language)
+            details["captures"] = validate_captures(evidence, request)
+        details.update(
+            image=inspect_png(
+                directory / "display.png",
+                size=details.get("trigger", {}).get("size", (1000, 640)),
+                regions=plot_regions(output),
+            ),
+            evidence=validate_evidence(evidence, request, count=2 if trigger else 3),
+        )
     except subprocess.TimeoutExpired as exc:
         output = "".join(
             v.decode(errors="replace") if isinstance(v, bytes) else v or "" for v in (exc.stdout, exc.stderr)
