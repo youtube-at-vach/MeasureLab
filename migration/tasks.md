@@ -34,12 +34,14 @@
 | 006-E | 不変result・channel校正・CSV/JSON来歴 | 003-B、006-B/C、P13/P14 | AC12、再読込、保存失敗、profile変更後の不変性、uncalibrated | 旧設定の自動移行 | 完了（2026-10-01、pure不変result/ID校正/JSON・CSV。保存2契約・4例と4/8ch f32/f64。製品互換/async/Qtは後続） |
 | 007-A | 同じ結果をline/heatmapへ表示、操作/画像保存 | 004、006。P19のsnapshot境界 | AC05/07/08、軸/cursor/zoom・画像・再生成・サイズ/9言語 | 全41機能のUI | 進行中（2026-10-01、保存4/8ch f32/f64→実graph→両Qt表示の初期境界。実音声/trigger/9言語は後続） |
 | 007-B | 描画/GUI遅延・CPU/RSS・表示編集時間 | 007-A、性能protocol | AC15/16。遅いGUIでも測定を保ち、単独/複数表示を比較 | 理論だけでの性能判定 | 未着手 |
+| 007-C | Plot Renderer Feasibility Spike。簡易plotterを基準にrsplot / wgpu系など1〜2候補を最小試験 | 004、007-Aの既存表示境界。独立試験コードと検証記録。007-A全体の完了は待たない | Spectrum 10万〜100万点の連続更新、Spectrogram rolling image、Zoom/Pan・座標変換・カーソル、QML統合/ライフサイクル、CPU/GPU負荷/コピー回数の比較表と再実行手順・未確認点 | renderer採用判断、製品組込み、個別widgetの本実装 | 未着手（2026-10-01追加） |
 | 008 | 2chフロー統合と四案の比較判断表 | 004〜007、実機/配布記録 | AC01〜16、仮想4/8ch回帰、採用/変更/段階導入/現行継続の理由と未確認点 | P3以降の自動開始、旧版置換 | 未着手 |
 
 MIG-003はA/B/Cすべての入力/期待値と再現コマンドが揃うまで完了にしない。
 MIG-004はSDK導入だけで完了にしない。OSや実機の不足はその試験だけを未確認として残し、
 依存しないfixture/純粋演算/GUI境界の検証は進められる。
 各試験の具体的な実行コマンドは実装と同時に作業票へ追加し、まだ存在しないrunnerを実行済みと記録しない。
+007-Cの試験条件・完了成果物は[評価計画の簡易検証タスク](../guide/RUST_QML_MIGRATION_PLAN.md#121-mig-007-c-plot-renderer-feasibility-spike採用判断ではない)を参照する。
 
 ## 003-Aの再検査
 

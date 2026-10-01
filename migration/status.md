@@ -48,7 +48,7 @@ MIG-003-Cも既存fixtureと契約を変更せず、filter/rate参照を独立�
 | MIG-004 | 進行中（AとBのIntel範囲を完了） | Bの32 sample+warmup2回とローカルbundleが合格。Linux CIのICU不足を修正したが再実行未確認。他OS/clean環境は未確認 |
 | MIG-005 | 進行中（Aの取得graph・動的f32 routeとBの短い実機／仮想比較） | 取得queue/履歴/共有FFTに動的出力mailboxを追加。保存12条件、BlackHole 2→2/4→16/8→16の9取得と3保留cancel。製品共通adapter/全tap、時刻写像、排他/USB復帰/長時間は残る |
 | MIG-006 | 進行中（A〜Eのpure範囲を完了） | FFT/共有/履歴/filterに不変result/ID校正/保存を追加。Eの2校正契約・4交換例・4/8ch f32/f64、graph Rust50テスト合格。校正/保存/Qtの実取得統合は未着手 |
-| MIG-007 | 進行中（Aの保存入力表示の初期境界） | 実queue/履歴/共有FFTから両Qtのline/heatmapへ接続。保存24実行/72 resultを検証。実音声/trigger/9言語/性能は残る |
+| MIG-007 | 進行中（Aの保存入力表示の初期境界、Cは未着手） | 実queue/履歴/共有FFTから両Qtのline/heatmapへ接続。保存24実行/72 resultを検証。実音声/trigger/9言語/性能は残る。2026-10-01に[007-C Plot Renderer Feasibility Spike](tasks.md)を追加。簡易plotterと1〜2候補の最小試験のみで、採用判断・個別widgetの本実装は含めない |
 | MIG-008 | 未着手 | 計画にある依存関係に従う。採用判断までの検証範囲 |
 
 `native/`にツールチェーン/SDKの固定、Cargo workspace/lock、模擬workerと2方式のadapter、共通QMLを置いた。
