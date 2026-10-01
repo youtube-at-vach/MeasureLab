@@ -1,0 +1,295 @@
+"""MIG-007-A: saved acquisition bytes -> shared FFT -> both Qt line/heatmap adapters.
+
+No implicit build, fixture regeneration, audio device, or PyQt import. The native
+worker records full results; the runner checks them against independent fixtures.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+from pathlib import Path
+import platform
+import struct
+import subprocess
+import sys
+import time
+import tomllib
+import zlib
+
+import numpy as np
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from scripts import migration_audio_graph as audio  # noqa: E402
+from scripts import migration_core_reference as core  # noqa: E402
+from scripts import migration_fft_candidate as candidate  # noqa: E402
+from scripts import migration_fft_reference as fft  # noqa: E402
+from scripts.migration_qt_probe import sha256  # noqa: E402
+
+PASS = "DISPLAY_PASS shared cursor zoom immutable slow_gui cancel failure stale views session recreate image shutdown"
+
+
+def inspect_png(path):
+    """Check PNG integrity and visible plot pixels without loading a GUI runtime."""
+    data = path.read_bytes()
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        raise fft.ReferenceError("invalid PNG signature")
+    pos, compressed, header = 8, bytearray(), None
+    while pos < len(data):
+        size = struct.unpack_from(">I", data, pos)[0]
+        kind, payload = data[pos + 4 : pos + 8], data[pos + 8 : pos + 8 + size]
+        crc = struct.unpack_from(">I", data, pos + 8 + size)[0]
+        if zlib.crc32(kind + payload) != crc:
+            raise fft.ReferenceError("PNG CRC mismatch")
+        if kind == b"IHDR":
+            header = struct.unpack(">IIBBBBB", payload)
+        elif kind == b"IDAT":
+            compressed.extend(payload)
+        pos += 12 + size
+    if header is None:
+        raise fft.ReferenceError("missing PNG header")
+    width, height, bits, color, _, _, interlace = header
+    if (width, height) != (1000, 640) or bits != 8 or color not in (2, 6) or interlace != 0:
+        raise fft.ReferenceError(f"unexpected evaluation image format: {header}")
+    bpp = 3 if color == 2 else 4
+    packed = zlib.decompress(compressed)
+    stride = width * bpp
+    if len(packed) != (stride + 1) * height:
+        raise fft.ReferenceError("PNG pixel shape mismatch")
+    previous = bytearray(stride)
+    pixels = []
+    for y in range(height):
+        offset = y * (stride + 1)
+        method = packed[offset]
+        row = bytearray(packed[offset + 1 : offset + stride + 1])
+        for x in range(stride):
+            left = row[x - bpp] if x >= bpp else 0
+            up = previous[x]
+            corner = previous[x - bpp] if x >= bpp else 0
+            if method == 1:
+                predictor = left
+            elif method == 2:
+                predictor = up
+            elif method == 3:
+                predictor = (left + up) // 2
+            elif method == 4:
+                base = left + up - corner
+                distances = [abs(base - v) for v in (left, up, corner)]
+                predictor = (left, up, corner)[distances.index(min(distances))]
+            elif method == 0:
+                predictor = 0
+            else:
+                raise fft.ReferenceError("unknown PNG filter")
+            row[x] = (row[x] + predictor) % 256
+        pixels.append(np.frombuffer(row, dtype=np.uint8).reshape(width, bpp)[:, :3].astype(int))
+        previous = row
+    rgb = np.stack(pixels)
+    line, heat = rgb[215:510, 68:468], rgb[215:530, 545:974]
+    cyan = int(np.count_nonzero((line[:, :, 1] - line[:, :, 0] > 60) & (line[:, :, 2] > 100)))
+    colored = int(np.count_nonzero((np.ptp(heat, axis=2) > 50) & (np.max(heat, axis=2) > 90)))
+    if cyan < 20 or colored < 20:
+        raise fft.ReferenceError("PNG missing rendered spectrum or heatmap")
+    return {
+        "width": width,
+        "height": height,
+        "cyan_line_pixels": cyan,
+        "heatmap_pixels": colored,
+        "sha256": sha256(path),
+    }
+
+
+def validate_evidence(directory, case):
+    paths = sorted(directory.glob("generation-*.json"))
+    if len(paths) != 3:
+        raise fft.ReferenceError(f"expected three recorded running generations, got {len(paths)}")
+    n = case["spec"]["n"]
+    channels = case["arrays"]["input"]["shape"][1]
+    source = core.DEFAULT_FIXTURES / case["spec"]["id"]
+    precision = "f32" if case["spec"]["dtype"] == "<f4" else "f64"
+    observed = []
+    generations = set()
+    for path in paths:
+        document = json.loads(path.read_bytes())
+        generation = document["source"]["generation"]
+        generations.add(generation)
+        expected = audio.expected_source(audio.request_for(case))
+        expected["generation"] = expected["timebase"]["generation"] = generation
+        if (
+            document["source"] != expected
+            or document["interval"] != [0, n]
+            or document["validity"]
+            or document["error"]
+        ):
+            raise fft.ReferenceError("recorded source/interval/validity mismatch")
+        if document["axis"]["unit"] != "Hz" or document["columns"]["peak_fs"]["shape"] != [n // 2 + 1, channels]:
+            raise fft.ReferenceError("recorded axis/shape mismatch")
+        fft.compare(
+            np.asarray(document["axis"]["corrected"]),
+            fft.read_array(source, case["arrays"]["theory.frequency_hz"]),
+            fft.TOLERANCES["window"],
+            "display frequency axis",
+        )
+        values = np.asarray(document["columns"]["peak_fs"]["values"]).reshape(n // 2 + 1, channels)
+        comparisons = {
+            origin: fft.compare(
+                values,
+                fft.read_array(source, case["arrays"][f"{origin}.peak_fs"]),
+                fft.TOLERANCES[precision],
+                f"display {origin} peak",
+            )
+            for origin in ("theory", "current")
+        }
+        if any(v is not None for v in document["columns"]["rms_v"]["values"]) or any(
+            r != "uncalibrated" for r in document["columns"]["rms_v"]["reasons"]
+        ):
+            raise fft.ReferenceError("uncalibrated voltage shown as numeric")
+        observed.append(
+            {"file": path.name, "sha256": sha256(path), "generation": generation, "comparisons": comparisons}
+        )
+    if len(generations) != 3:
+        raise fft.ReferenceError("repeated generation in evidence")
+    return observed
+
+
+def run_display(binary, env, directory, case, timeout):
+    directory.mkdir(parents=True, exist_ok=False)
+    evidence = directory / "results"
+    evidence.mkdir()
+    request = audio.request_for(case)
+    source = core.DEFAULT_FIXTURES / case["spec"]["id"]
+    core.load_tone(core.DEFAULT_FIXTURES, case)
+    core.checked_file(source, case["arrays"]["input"])
+    body = {k: request[k] for k in ("format", "precision", "n", "window")}
+    body.update(input=str(source / case["arrays"]["input"]["file"]), evidence=str(evidence.resolve()))
+    request_path = directory / "request.json"
+    request_path.write_text(json.dumps(body) + "\n")
+    child_env = {**env, "MEASURELAB_DISPLAY_REQUEST": str(request_path.resolve())}
+    image = directory.resolve() / "display.png"
+    command = [str(binary), "--self-test", "--snapshot", str(image)]
+    started = time.monotonic()
+    try:
+        result = subprocess.run(  # noqa: S603 - explicit local evaluation binary
+            command, cwd=ROOT, env=child_env, capture_output=True, text=True, timeout=timeout, check=False
+        )
+        code, output = result.returncode, result.stdout + result.stderr
+        reason = None
+    except subprocess.TimeoutExpired as exc:
+        code = None
+        output = "".join(
+            v.decode(errors="replace") if isinstance(v, bytes) else v or "" for v in (exc.stdout, exc.stderr)
+        )
+        reason = "timeout"
+    errors = (
+        "DISPLAY_FAIL",
+        "TypeError:",
+        "ReferenceError:",
+        "QQmlApplicationEngine failed",
+        "Cannot assign",
+        "is not a function",
+        "Binding loop",
+    )
+    passed = (
+        code == 0
+        and all(m in output for m in ("DISPLAY_READY", PASS, "DISPLAY_IMAGE_OK", "DISPLAY_TEARDOWN workers=0 models=0"))
+        and not any(e in output for e in errors)
+    )
+    details = {}
+    if passed:
+        try:
+            details = {"image": inspect_png(image), "evidence": validate_evidence(evidence, case)}
+        except (OSError, ValueError, KeyError, struct.error, zlib.error, fft.ReferenceError) as exc:
+            passed, reason = False, str(exc)
+    return {
+        "binary": binary.name,
+        "case": case["spec"]["id"],
+        "command": command,
+        "request_sha256": sha256(request_path),
+        "binary_sha256": sha256(binary),
+        "duration_seconds": time.monotonic() - started,
+        "exit_code": code,
+        "passed": passed,
+        "reason": reason if reason else (None if passed else "exit or lifecycle mismatch"),
+        "output": output,
+        **details,
+    }
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--qt-prefix", type=Path, required=True)
+    parser.add_argument("--target-dir", type=Path, default=ROOT / "native/target/debug")
+    parser.add_argument(
+        "--output", type=Path, required=True, help="new run directory; never overwrite existing results"
+    )
+    parser.add_argument("--timeout", type=float, default=30)
+    parser.add_argument("--repeat", type=int, default=1)
+    parser.add_argument("--portable", action="store_true")
+    args = parser.parse_args()
+    if args.timeout <= 0 or args.repeat < 1 or args.output.exists():
+        parser.error("positive timeout/repeat and a new output directory are required")
+    prefix = args.qt_prefix.resolve()
+    env = {
+        **os.environ,
+        "QMAKE": str(prefix / "bin/qmake"),
+        "QT_QPA_PLATFORM": "offscreen",
+        "QT_QUICK_BACKEND": "software",
+        "QT_QUICK_CONTROLS_STYLE": "Basic",
+        "QT_PLUGIN_PATH": str(prefix / "plugins"),
+        "QML_IMPORT_PATH": str(prefix / "qml"),
+        "QML2_IMPORT_PATH": str(prefix / "qml"),
+        "MEASURELAB_DISPLAY_QML": str(ROOT / "native/qml/Display.qml"),
+    }
+    env["DYLD_FRAMEWORK_PATH" if sys.platform == "darwin" else "LD_LIBRARY_PATH"] = str(prefix / "lib")
+    version = subprocess.check_output([env["QMAKE"], "-query", "QT_VERSION"], env=env, text=True).strip()  # noqa: S603 - selected SDK
+    if version != tomllib.loads((ROOT / "native/qt-sdk.toml").read_text())["version"]:
+        parser.error("Qt SDK version mismatch")
+    binaries = [
+        args.target_dir.resolve() / (name + (".exe" if os.name == "nt" else ""))
+        for name in ("cxxqt-display", "qtbridge-display")
+    ]
+    if not all(p.is_file() for p in binaries):
+        parser.error("build both display binaries first")
+    manifest, manifest_hash = candidate.load_manifest(core.DEFAULT_FIXTURES, portable=args.portable, is_core=True)
+    args.output.mkdir(parents=True)
+    runs = [
+        run_display(binary, env, args.output / f"{repeat}-{case['spec']['id']}-{binary.stem}", case, args.timeout)
+        for repeat in range(args.repeat)
+        for case in manifest["tones"]
+        for binary in binaries
+    ]
+    paths = [
+        p
+        for p in (ROOT / "native").rglob("*")
+        if p.is_file() and "target" not in p.parts and p.suffix in (".rs", ".qml", ".toml", ".lock")
+    ]
+    report = {
+        "schema_version": 1,
+        "task": "MIG-007-A-display",
+        "passed": all(r["passed"] for r in runs),
+        "mode": "portable" if args.portable else "pinned-reference",
+        "measurement_kind": "saved_input_correctness_only",
+        "host": {"os": platform.system(), "release": platform.release(), "machine": platform.machine()},
+        "qt_version": version,
+        "fixture_manifest_sha256": manifest_hash,
+        "runner_sha256": sha256(Path(__file__)),
+        "source_sha256": {str(p.relative_to(ROOT)): sha256(p) for p in sorted(paths)},
+        "runs": runs,
+        "limitations": [
+            "saved input replay; no live audio device",
+            "not rendering performance or other-OS validation",
+            "no trigger UI or nine-language QML translation validation",
+            "Canvas/software raster is an evaluation candidate; Qt adapter choice remains undecided",
+        ],
+    }
+    (args.output / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
+    for run in runs:
+        print(f"{run['binary']} {run['case']}: {'PASS' if run['passed'] else 'FAIL'} {run['reason'] or ''}")
+        if not run["passed"]:
+            print(run["output"])
+    return 0 if report["passed"] else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

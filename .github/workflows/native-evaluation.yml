@@ -23,7 +23,7 @@ jobs:
         working-directory: native
         run: |
           cargo fmt --all --check
-          cargo test --locked -p probe-core -p dsp-core -p graph-core -p audio-core
+          cargo test --locked -p probe-core -p display-core -p dsp-core -p graph-core -p audio-core
           cargo build --locked -p dsp-core --bin fft-candidate
           cargo build --locked -p graph-core --bin graph-core
           cargo build --locked -p graph-core --bin history-candidate
@@ -32,7 +32,7 @@ jobs:
           cargo build --locked -p graph-core --bin acquisition-candidate
           cargo build --locked -p audio-core
           cargo build --locked -p audio-core --bin route-candidate
-          cargo clippy --locked -p probe-core -p dsp-core -p graph-core -p audio-core --all-targets -- -D warnings
+          cargo clippy --locked -p probe-core -p display-core -p dsp-core -p graph-core -p audio-core --all-targets -- -D warnings
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
@@ -106,4 +106,7 @@ jobs:
           cargo build --locked --workspace
           cargo clippy --locked --workspace --all-targets -- -D warnings
       - name: Run shared QML lifecycle checks
-        run: python scripts/migration_qt_probe.py --qt-prefix "$QT_EVALUATION_PREFIX" --repeat 3
+        run: |
+          python -m pip install numpy==2.2.6
+          python scripts/migration_qt_probe.py --qt-prefix "$QT_EVALUATION_PREFIX" --repeat 3
+          python scripts/migration_qt_display.py --qt-prefix "$QT_EVALUATION_PREFIX" --portable --output qt-display-results

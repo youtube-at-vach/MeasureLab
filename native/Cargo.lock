@@ -370,6 +370,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cxxqt-display"
+version = "0.1.0"
+dependencies = [
+ "cxx",
+ "cxx-qt",
+ "cxx-qt-build",
+ "cxx-qt-lib",
+ "display-core",
+]
+
+[[package]]
 name = "cxxqt-probe"
 version = "0.1.0"
 dependencies = [
@@ -394,6 +405,17 @@ checksum = "1e0e367e4e7da84520dedcac1901e4da967309406d1e51017ae1abfb97adbd38"
 dependencies = [
  "bitflags",
  "objc2",
+]
+
+[[package]]
+name = "display-core"
+version = "0.1.0"
+dependencies = [
+ "audio-core",
+ "graph-core",
+ "probe-core",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -873,6 +895,14 @@ checksum = "db92f2bba637c43461af6cd344bc726a5bb9321f4ca99ad1f5c659d7909420ee"
 dependencies = [
  "cc",
  "qt-build-utils",
+]
+
+[[package]]
+name = "qtbridge-display"
+version = "0.1.0"
+dependencies = [
+ "display-core",
+ "qtbridge",
 ]
 
 [[package]]

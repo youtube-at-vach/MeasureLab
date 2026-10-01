@@ -22,6 +22,10 @@ AC12は保存2校正契約/4交換例、4/8ch f32/f64の共有FFT、完全再読
 AC01/05/07/09のinput.raw接続を保存4入力×2bindingとBlackHoleの短い診断で検査する。
 全tap/動的route、製品save/校正/Qt統合、外部clock、長時間は後続。最終結果はstatusを参照。
 
+007-Aの[保存入力の共有result表示](../decisions/0016-shared-result-display.md)を追加した。
+AC05とAC07/13の実graph→両Qt adapterの初期境界を4/8ch f32/f64、cursor/zoom、PNG、
+表示再生成と購読解除で検査する。実音声/trigger UI/9言語/性能/他OSの合格ではない。
+
 ## fixtureの最小セット
 
 | ID | 入力・操作 | 合格条件 | 実装・検証タスク |
