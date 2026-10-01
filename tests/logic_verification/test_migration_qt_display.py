@@ -12,7 +12,7 @@ import pytest
 from scripts import migration_audio_graph as audio
 from scripts import migration_core_reference as core
 from scripts import migration_fft_reference as fft
-from scripts.migration_qt_display import PASS, inspect_png, run_display, validate_evidence
+from scripts.migration_qt_display import PASS, inspect_png, plot_regions, run_display, validate_evidence
 
 
 @pytest.fixture
@@ -124,3 +124,23 @@ def test_saved_image_requires_both_plots_and_valid_crc(tmp_path):
     path.write_bytes(data)
     with pytest.raises(fft.ReferenceError, match="CRC"):
         inspect_png(path)
+
+
+def test_actual_plot_regions_allow_layout_changes_and_reject_false_regions(tmp_path):
+    path = tmp_path / "image.png"
+    png(path, True)
+    regions = {"spectrum": [90, 210, 50, 50], "spectrogram": [590, 210, 50, 50]}
+    output = "qml: DISPLAY_PLOT_REGIONS " + json.dumps(regions) + "\n"
+    assert inspect_png(path, regions=plot_regions(output))["cyan_line_pixels"] == 100
+    for bad in (
+        {**regions, "spectrogram": regions["spectrum"]},
+        {**regions, "spectrum": [-1, 0, 50, 50]},
+        {**regions, "spectrum": [90, 210, 1000, 50]},
+        {**regions, "spectrum": [90.5, 210, 50, 50]},
+        {**regions, "spectrum": [200, 210, 50, 50]},
+    ):
+        with pytest.raises(fft.ReferenceError):
+            inspect_png(path, regions=bad)
+    for missing in ("", output + output):
+        with pytest.raises(fft.ReferenceError):
+            plot_regions(missing)

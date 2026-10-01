@@ -22,6 +22,7 @@ mod ffi {
         #[qproperty(QString, payload)]
         #[qproperty(QString, error)]
         #[qproperty(bool, testing)]
+        #[qproperty(QString, translations)]
         type DisplayBackend = super::DisplayBackendRust;
         #[qinvokable]
         fn start(self: Pin<&mut Self>, fail: bool) -> bool;
@@ -54,6 +55,7 @@ pub struct DisplayBackendRust {
     payload: QString,
     error: QString,
     testing: bool,
+    translations: QString,
 }
 impl Default for DisplayBackendRust {
     fn default() -> Self {
@@ -69,6 +71,7 @@ impl Default for DisplayBackendRust {
             payload: QString::default(),
             error: QString::default(),
             testing: std::env::args().any(|arg| arg == "--self-test"),
+            translations: QString::from(&display_core::locale::selected_catalog()),
         }
     }
 }

@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import struct
 import subprocess
 import sys
@@ -31,27 +32,34 @@ from scripts.migration_qt_probe import sha256  # noqa: E402
 PASS = "DISPLAY_PASS shared cursor zoom immutable slow_gui cancel failure stale views session recreate image shutdown"
 
 
-def inspect_png(path):
+def plot_regions(output):
+    records = re.findall(r"DISPLAY_PLOT_REGIONS (.+)", output)
+    if len(records) != 1:
+        raise fft.ReferenceError("missing or repeated rendered plot regions")
+    return json.loads(records[0])
+
+
+def inspect_png(path, *, size=(1000, 640), kind="both", regions=None):
     """Check PNG integrity and visible plot pixels without loading a GUI runtime."""
     data = path.read_bytes()
     if data[:8] != b"\x89PNG\r\n\x1a\n":
         raise fft.ReferenceError("invalid PNG signature")
     pos, compressed, header = 8, bytearray(), None
     while pos < len(data):
-        size = struct.unpack_from(">I", data, pos)[0]
-        kind, payload = data[pos + 4 : pos + 8], data[pos + 8 : pos + 8 + size]
-        crc = struct.unpack_from(">I", data, pos + 8 + size)[0]
-        if zlib.crc32(kind + payload) != crc:
+        chunk_size = struct.unpack_from(">I", data, pos)[0]
+        chunk_kind, payload = data[pos + 4 : pos + 8], data[pos + 8 : pos + 8 + chunk_size]
+        crc = struct.unpack_from(">I", data, pos + 8 + chunk_size)[0]
+        if zlib.crc32(chunk_kind + payload) != crc:
             raise fft.ReferenceError("PNG CRC mismatch")
-        if kind == b"IHDR":
+        if chunk_kind == b"IHDR":
             header = struct.unpack(">IIBBBBB", payload)
-        elif kind == b"IDAT":
+        elif chunk_kind == b"IDAT":
             compressed.extend(payload)
-        pos += 12 + size
+        pos += 12 + chunk_size
     if header is None:
         raise fft.ReferenceError("missing PNG header")
     width, height, bits, color, _, _, interlace = header
-    if (width, height) != (1000, 640) or bits != 8 or color not in (2, 6) or interlace != 0:
+    if (width, height) != tuple(size) or bits != 8 or color not in (2, 6) or interlace != 0:
         raise fft.ReferenceError(f"unexpected evaluation image format: {header}")
     bpp = 3 if color == 2 else 4
     packed = zlib.decompress(compressed)
@@ -87,9 +95,29 @@ def inspect_png(path):
         previous = row
     rgb = np.stack(pixels)
     line, heat = rgb[215:510, 68:468], rgb[215:530, 545:974]
+    if kind != "both":
+        line = heat = rgb[60 : height - 90, 52 : width - 12]
+    if regions is not None:
+
+        def crop(name):
+            region = regions[name]
+            if len(region) != 4 or any(type(v) is not int for v in region):
+                raise fft.ReferenceError("invalid plot region")
+            x, y, w, h = region
+            if min(x, y) < 0 or min(w, h) <= 0 or x + w > width or y + h > height:
+                raise fft.ReferenceError("plot region outside image")
+            return rgb[y : y + h, x : x + w]
+
+        if kind == "both":
+            line, heat = crop("spectrum"), crop("spectrogram")
+            a, b = regions["spectrum"], regions["spectrogram"]
+            if a[0] + a[2] > b[0] and b[0] + b[2] > a[0]:
+                raise fft.ReferenceError("overlapping spectrum and spectrogram regions")
+        else:
+            line = heat = crop(kind)
     cyan = int(np.count_nonzero((line[:, :, 1] - line[:, :, 0] > 60) & (line[:, :, 2] > 100)))
     colored = int(np.count_nonzero((np.ptp(heat, axis=2) > 50) & (np.max(heat, axis=2) > 90)))
-    if cyan < 20 or colored < 20:
+    if (kind in ("both", "spectrum") and cyan < 20) or (kind in ("both", "spectrogram") and colored < 20):
         raise fft.ReferenceError("PNG missing rendered spectrum or heatmap")
     return {
         "width": width,
@@ -100,10 +128,10 @@ def inspect_png(path):
     }
 
 
-def validate_evidence(directory, case):
+def validate_evidence(directory, case, *, count=3):
     paths = sorted(directory.glob("generation-*.json"))
-    if len(paths) != 3:
-        raise fft.ReferenceError(f"expected three recorded running generations, got {len(paths)}")
+    if len(paths) != count:
+        raise fft.ReferenceError(f"expected {count} recorded running generations, got {len(paths)}")
     n = case["spec"]["n"]
     channels = case["arrays"]["input"]["shape"][1]
     source = core.DEFAULT_FIXTURES / case["spec"]["id"]
@@ -148,12 +176,12 @@ def validate_evidence(directory, case):
         observed.append(
             {"file": path.name, "sha256": sha256(path), "generation": generation, "comparisons": comparisons}
         )
-    if len(generations) != 3:
+    if len(generations) != count:
         raise fft.ReferenceError("repeated generation in evidence")
     return observed
 
 
-def run_display(binary, env, directory, case, timeout):
+def run_display(binary, env, directory, case, timeout, *, language="en", workspace=False):
     directory.mkdir(parents=True, exist_ok=False)
     evidence = directory / "results"
     evidence.mkdir()
@@ -167,7 +195,9 @@ def run_display(binary, env, directory, case, timeout):
     request_path.write_text(json.dumps(body) + "\n")
     child_env = {**env, "MEASURELAB_DISPLAY_REQUEST": str(request_path.resolve())}
     image = directory.resolve() / "display.png"
-    command = [str(binary), "--self-test", "--snapshot", str(image)]
+    command = [str(binary), "--self-test", "--snapshot", str(image), "--language", language]
+    if workspace:
+        command.append("--workspace-test")
     started = time.monotonic()
     try:
         result = subprocess.run(  # noqa: S603 - explicit local evaluation binary
@@ -189,6 +219,9 @@ def run_display(binary, env, directory, case, timeout):
         "Cannot assign",
         "is not a function",
         "Binding loop",
+        "Required property",
+        "Unable to assign",
+        "QString::arg: Argument missing",
     )
     passed = (
         code == 0
@@ -198,7 +231,15 @@ def run_display(binary, env, directory, case, timeout):
     details = {}
     if passed:
         try:
-            details = {"image": inspect_png(image), "evidence": validate_evidence(evidence, case)}
+            if workspace:
+                from scripts.migration_qt_workspace import validate_workspace
+
+                details["workspace"] = validate_workspace(output, language, image)
+            size = details.get("workspace", {}).get("main", {}).get("size", (1000, 640))
+            details.update(
+                image=inspect_png(image, size=size, regions=plot_regions(output)),
+                evidence=validate_evidence(evidence, case, count=4 if workspace else 3),
+            )
         except (OSError, ValueError, KeyError, struct.error, zlib.error, fft.ReferenceError) as exc:
             passed, reason = False, str(exc)
     return {

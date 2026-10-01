@@ -15,6 +15,7 @@ mod backend {
         payload: String,
         error: String,
         testing: bool,
+        translations: String,
     }
     impl Default for DisplayBackend {
         fn default() -> Self {
@@ -30,6 +31,7 @@ mod backend {
                 payload: String::new(),
                 error: String::new(),
                 testing: std::env::args().any(|arg| arg == "--self-test"),
+                translations: display_core::locale::selected_catalog(),
             }
         }
     }
@@ -44,6 +46,7 @@ mod backend {
         qproperty!("payload", Member = payload, Notify = changed);
         qproperty!("error", Member = error, Notify = changed);
         qproperty!("testing", Member = testing, Constant);
+        qproperty!("translations", Member = translations, Constant);
         #[qsignal]
         fn changed(&mut self);
         fn apply(&mut self, s: Snapshot) {
@@ -120,6 +123,8 @@ impl QmlElement for backend::DisplayBackend {
     const IS_SINGLETON: bool = false;
 }
 fn main() {
+    let language = display_core::locale::selected_language().expect("valid --language required");
+    println!("DISPLAY_LANGUAGE {language}");
     let mut app = QApp::new();
     app.register::<backend::DisplayBackend>()
         .load_qml_from_file(&format!("file://{}", display_core::qml_path().display()));

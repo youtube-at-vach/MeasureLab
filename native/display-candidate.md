@@ -54,11 +54,11 @@ PNG pathを入力しSave imageを押す。画像取得中は表示snapshotを保
   非有限/invalidは`null`とreasonを保持し、正常なzeroへ置換しない。dBFS peakの描画下限は−120 dB。
 - heatmapは取得sample区間で行を配置する。GUIが表示しなかった区間を空白にし、取得gapと区別する。
   再開世代で表示履歴を消去する。line/heatmapが同じ不変projectionを参照する。
-- QML文言は既存評価プローブと同じ`qsTr()`。英語のimplicit layout由来の最小サイズを検査する。
-  製品`tr()`/翻訳JSONとの接続と9言語QML評価は未実装。
+- QML文言は製品と同じ翻訳JSONから`tr()`へ渡す。
+  [分離表示/9言語の検査](workspace-display.md)で両Qt方式の実ラベル・layout最小サイズを検証する。
 
 実音声input.raw/Qt接続は[BlackHole実入力表示](live-display.md)へ追加した。
-trigger UI、基本校正の操作と製品save互換、分離window、9言語、GPU描画、
+trigger UI、基本校正の操作と製品save互換、実window manager/他OSの9言語、GPU描画、
 10分性能/CPU/RSS、QML編集反復、他OS/配布は未確認。
 AC05とAC07/13の保存replay表示境界までの結果であり、AC08のtrigger表示やAC15/16の合格ではない。
 [決定0016](../migration/decisions/0016-shared-result-display.md)と[進捗](../migration/status.md)を参照。

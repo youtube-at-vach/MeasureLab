@@ -32,7 +32,7 @@
 | 006-C | trigger/history・Timebase・generation・validity | 003-B、006-B、P03 | AC08/09、異なるcursor/通知遅延・保持超過・旧世代拒否。共有graphへ統合 | 外部trigger実機adapter | 完了（2026-09-30、worker所有履歴/pure graph・保存13契約/4入力bytes、Rust27テスト。実取得/Qtは後続） |
 | 006-D | 最小rate変換/filterとvalidity伝播 | 003-C、006-C、P06 | AC10/14、同じgraph内で遅延/区間/phase stateを保持 | 高品質resamplerの全機能 | 完了（2026-09-30、f64保存21ケース×5 chunk/6 rate境界と一段のpure graph。f32・IIR gap回復・実取得/Qtは後続） |
 | 006-E | 不変result・channel校正・CSV/JSON来歴 | 003-B、006-B/C、P13/P14 | AC12、再読込、保存失敗、profile変更後の不変性、uncalibrated | 旧設定の自動移行 | 完了（2026-10-01、pure不変result/ID校正/JSON・CSV。保存2契約・4例と4/8ch f32/f64。製品互換/async/Qtは後続） |
-| 007-A | 同じ結果をline/heatmapへ表示、操作/画像保存 | 004、006。P19のsnapshot境界 | AC05/07/08、軸/cursor/zoom・画像・再生成・サイズ/9言語 | 全41機能のUI | 進行中（2026-10-01、保存4/8ch f32/f64とBlackHole実入力→実graph→両Qt表示。trigger/校正・製品保存操作/分離window/9言語は後続） |
+| 007-A | 同じ結果をline/heatmapへ表示、操作/画像保存 | 004、006。P19のsnapshot境界 | AC05/07/08、軸/cursor/zoom・画像・再生成・サイズ/9言語 | 全41機能のUI | 進行中（2026-10-01、保存4/8ch f32/f64とBlackHole実入力→実graph→両Qt表示。分離view/翻訳JSON接続/9言語検査を追加。trigger/校正・製品保存操作/実window manager/他OSは後続。実施結果はstatus） |
 | 007-B | 描画/GUI遅延・CPU/RSS・表示編集時間 | 007-A、性能protocol | AC15/16。遅いGUIでも測定を保ち、単独/複数表示を比較 | 理論だけでの性能判定 | 未着手 |
 | 007-C | Plot Renderer Feasibility Spike。簡易plotterを基準にrsplot / wgpu系など1〜2候補を最小試験 | 004、007-Aの既存表示境界。独立試験コードと検証記録。007-A全体の完了は待たない | Spectrum 10万〜100万点の連続更新、Spectrogram rolling image、Zoom/Pan・座標変換・カーソル、QML統合/ライフサイクル、CPU/GPU負荷/コピー回数の比較表と再実行手順・未確認点 | renderer採用判断、製品組込み、個別widgetの本実装 | Intel最小試験・記録完了（2026-10-01、wgpu 1候補/PyQt画像provider。基準100万点はSIGBUS。native texture共有・他OS等は未確認） |
 | 008 | 2chフロー統合と四案の比較判断表 | 004〜007、実機/配布記録 | AC01〜16、仮想4/8ch回帰、採用/変更/段階導入/現行継続の理由と未確認点 | P3以降の自動開始、旧版置換 | 未着手 |
@@ -251,9 +251,23 @@ cargo +1.98.1 test --offline --locked --manifest-path native/Cargo.toml -p displ
 遅いGUI・旧世代拒否・再生成・PNG・動作中終了を検査する。全peak配列/軸を既存期待値へ照合する。
 新しい出力先を指定し、元fixtureと既存runを上書きしない。NumPy-only CIは明示`--portable`を使う。
 保存replayと英語QMLの初期境界まで。BlackHole実入力は[追加手順](../native/live-display.md)へ分離した。
-trigger UI/校正・製品保存操作/分離window/9言語・長時間性能/他OSは後続。
+trigger UI/校正・製品保存操作/長時間性能/他OSは後続。分離表示/9言語は下の追加検査を使う。
 
 ```bash
 ./.venv/bin/python scripts/migration_qt_live.py --virtual-device --qt-prefix .tools/qt/6.11.2/macos --repeat 3 --output .migration-local/007-live-new
 ./.venv/bin/pytest -q tests/logic_verification/test_migration_qt_live.py
 ```
+
+分離Windowと9言語の追加検査は[手順](../native/workspace-display.md)と[決定0018](decisions/0018-detached-localized-displays.md)を参照する。
+
+```bash
+./.venv/bin/python scripts/migration_qt_workspace.py --qt-prefix .tools/qt/6.11.2/macos --all-inputs --output .migration-local/007-workspace-new
+./.venv/bin/pytest -q tests/logic_verification/test_migration_qt_workspace.py tests/logic_verification/test_migration_qt_display.py tests/logic_verification/test_migration_qt_live.py
+./.venv/bin/python scripts/check_trn_keys.py --strict
+./.venv/bin/python scripts/check_ui_size_limits.py
+```
+
+既定は最大8ch f64×9言語×両方式、`--all-inputs`は4/8ch f32/f64を含む。
+同じview/tokenの分離・再接続、native close/最後の解除、再オープン、分離中の再生成/終了と3画像を検査する。
+Qt SDK/offscreenの結果で、実window manager/他OS/font/DPI、動的言語変更や製品41画面の移植は含めない。
+BlackHole回帰は他のGUI/renderer/build試験が終わってから実行する。負荷中の取得gapも失敗記録に残す。

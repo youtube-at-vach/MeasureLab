@@ -60,6 +60,7 @@ Window {
         onLoaded: Qt.callLater(() => window.baselineReady = true)
         sourceComponent: SpectrumView {
             source: sourceAdapter
+            messages: displayTranslations
             frame: window.baselineReady && backend.payload ? JSON.parse(backend.payload) : null
             heatmap: backend.kind === "spectrogram"
             lowHz: window.viewLow * 24000

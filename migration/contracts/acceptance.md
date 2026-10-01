@@ -26,7 +26,12 @@ AC01/05/07/09のinput.raw接続を保存4入力×2bindingとBlackHoleの短い�
 AC05とAC07/13の実graph→両Qt adapterの初期境界を4/8ch f32/f64、cursor/zoom、PNG、
 表示再生成と購読解除で検査する。続いて[BlackHole実入力](../decisions/0017-live-result-display.md)を
 2ch／16chから選ぶ4ch／8chで接続し、取得窓bytesと全peak、遅いGUI、stream回収まで検査する。
-trigger UI/校正・製品保存/9言語/長時間性能/他OSの合格ではない。
+trigger UI/校正・製品保存/長時間性能/他OSの合格ではない。
+
+007-Aの[分離表示と9言語](../decisions/0018-detached-localized-displays.md)を保存入力へ追加した。
+AC05/07/13の同じview/tokenの分離・再接続、native closeによる需要解除、最後のclose/recreate/終了回収と、
+9言語のcatalog/実ラベル/最小サイズ/PNGを両Qt方式で検査する。
+実window managerの移動/focus/minimize、他OS/font/DPI、言語の動的切替は未確認。
 
 ## fixtureの最小セット
 

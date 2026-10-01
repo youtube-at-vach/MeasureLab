@@ -6,6 +6,11 @@ ColumnLayout {
     id: view
     required property var source
     required property var frame
+    required property var messages
+    property bool detached: false
+    property bool workspaceControls: false
+    property bool capturePending: false
+    property var subscribedSource: null
     property bool heatmap: false
     property double token: 0
     property int channel: 0
@@ -19,9 +24,31 @@ ColumnLayout {
     readonly property real cursorHz: frame ? frame.frequency_hz[cursorBin] : 0
     readonly property var cursorValue: frame ? frame.peak_fs.values[cursorBin * frame.source.channel_ids.length + channel] : null
     readonly property string cursorReason: frame ? (frame.peak_fs.reasons[cursorBin * frame.source.channel_ids.length + channel] || "") : ""
+    readonly property var displayedText: ({
+        heading: heading.text,
+        reset: resetButton.text,
+        detach: detachButton.text,
+        save: saveButton.text
+    })
+    readonly property bool buttonsFit: resetButton.width >= resetButton.implicitWidth && detachButton.width >= detachButton.implicitWidth && saveButton.width >= saveButton.implicitWidth
 
-    Component.onCompleted: token = source.subscribe()
-    Component.onDestruction: source.unsubscribe(token)
+    signal detachRequested()
+    signal saveRequested()
+    function tr(key) {
+        return messages[key];
+    }
+    function plotRegion(target) {
+        const point = plot.mapToItem(target, 52, 14);
+        return [Math.floor(point.x), Math.floor(point.y), Math.ceil(plot.width - 64), Math.ceil(plot.height - 40)];
+    }
+    Component.onCompleted: {
+        subscribedSource = source;
+        token = subscribedSource.subscribe();
+    }
+    Component.onDestruction: {
+        if (subscribedSource)
+            subscribedSource.unsubscribe(token);
+    }
     onFrameChanged: {
         if (!frame) {
             rows = [];
@@ -60,16 +87,19 @@ ColumnLayout {
     }
     RowLayout {
         Label {
-            text: view.heatmap ? qsTr("Spectrogram") : qsTr("Spectrum")
+            id: heading
+            text: view.heatmap ? tr("migration.display.spectrogram") : tr("migration.display.spectrum")
             font.bold: true
         }
         ComboBox {
             Layout.fillWidth: true
             model: view.frame ? view.frame.source.channel_ids : []
+            currentIndex: view.channel
             onActivated: view.channel = currentIndex
         }
         Button {
-            text: qsTr("Reset zoom")
+            id: resetButton
+            text: tr("migration.display.reset_zoom")
             onClicked: view.resetZoom()
         }
     }
@@ -192,6 +222,20 @@ ColumnLayout {
     Label {
         Layout.fillWidth: true
         elide: Text.ElideRight
-        text: !view.frame ? qsTr("Waiting for result") : (view.cursorValue === null ? qsTr("Invalid: %1").arg(view.cursorReason) : qsTr("%1 Hz · %2 FS peak").arg(view.cursorHz.toFixed(2)).arg(view.cursorValue.toPrecision(8)))
+        text: !view.frame ? tr("migration.display.waiting") : (view.cursorValue === null ? tr("migration.display.invalid").arg(view.cursorReason) : tr("migration.display.cursor").arg(view.cursorHz.toFixed(2)).arg(view.cursorValue.toPrecision(8)))
+    }
+    RowLayout {
+        visible: view.workspaceControls
+        Button {
+            id: detachButton
+            text: view.detached ? tr("migration.display.dock") : tr("migration.display.detach")
+            onClicked: view.detachRequested()
+        }
+        Button {
+            id: saveButton
+            text: tr("migration.display.save_image")
+            enabled: !!view.frame && !view.capturePending
+            onClicked: view.saveRequested()
+        }
     }
 }

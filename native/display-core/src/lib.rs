@@ -24,6 +24,8 @@ static MODELS: AtomicUsize = AtomicUsize::new(0);
 const MAX_INPUT_BYTES: u64 = 4096 * 16 * 8;
 const MAX_DEMAND: usize = 16;
 
+pub mod locale;
+
 #[cfg(feature = "live-audio")]
 mod live;
 

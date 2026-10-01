@@ -17,7 +17,8 @@ CPALのBlackHole診断にも同じworkerを接続した。
 005-Aへ固定容量の動的出力route mailboxを追加。保存f32の12条件とBlackHoleの9取得/3 cancelを検証した。
 007-Aの保存入力→実graph→両Qtのline/heatmap表示を追加した。
 BlackHoleの実入力→同じ共有result→両Qt表示を追加した。
-trigger/校正・製品保存操作/9言語、製品共通adapter、製品保存互換/非同期保存は未着手。
+分離viewと既存JSONによる9言語QMLを追加。保存4/8ch f32/f64×9言語×両Qtの72実行が成功。
+trigger/校正・製品保存操作、製品共通adapter、製品保存互換/非同期保存は未着手。
 007-CはIntel/Metalのwgpu 1候補と簡易plotterの最小試験を実施した。
 候補の10万/100万点・rolling imageは約29〜30 Hzで更新。基準100万点のJSON/QML境界はSIGBUSを3回再現した。
 PyQt画像provider経路の試験であり、採用判断・個別widgetの本実装・native GPU texture共有は含まない。
@@ -28,12 +29,12 @@ PyQt画像provider経路の試験であり、採用判断・個別widgetの本�
 | --- | --- |
 | 現行版 | `/Users/vach/MeasureLab`、`main` |
 | 検証用worktree | `/Users/vach/.codex/worktrees/next-core-evaluation/MeasureLab`（Codex管理） |
-| 検証用ブランチ | 統合先`codex/next-core-evaluation`、今回の作業`codex/migration-007-live-display`（007-rendererの`f49ba320`から分岐） |
+| 検証用ブランチ | 統合先`codex/next-core-evaluation`、今回の作業`codex/migration-007-windows-i18n`（007-live-displayの`973c8290`から分岐） |
 | 作業開始・Python参照コミット | `9fd79958`（MeasureLab 0.9.0、開始時のローカルmain） |
 | 計画書の調査コミット | `68cbdabc3ecd542d9d73fa0aa86bf9159f44d811` |
 | 最終main同期 | 2026-10-01にfetch。origin/mainは参照`9fd79958`のまま、取込み差分なし |
 | 統合担当 | 当面、この検証ブランチを担当する単一の作業者 |
-| リモート | 今回開始時は007-rendererの`f49ba320`がremote一致・clean。保存表示は`217ff38c`、renderer記録は`f49ba320`へ保存済み。007-live-displayへローカル分岐。今回の変更は未コミット。今回のpush・PR・Issue・Project更新・配布は未実施 |
+| リモート | 今回開始時は007-live-displayの`973c8290`がremote一致・clean。分離表示/9言語の変更は未コミット。今回のpush・PR・Issue・Project更新・配布は未実施 |
 
 調査コミットから開始時mainまでの差分には計画書、設計ガイド、Measurement Consoleのレイアウト、
 Goniometerのテーマ対応、翻訳と対応テストがある。
@@ -52,7 +53,7 @@ MIG-003-Cも既存fixtureと契約を変更せず、filter/rate参照を独立�
 | MIG-004 | 進行中（AとBのIntel範囲を完了） | Bの32 sample+warmup2回とローカルbundleが合格。Linux CIのICU不足を修正したが再実行未確認。他OS/clean環境は未確認 |
 | MIG-005 | 進行中（Aの取得graph・動的f32 routeとBの短い実機／仮想比較） | 取得queue/履歴/共有FFTに動的出力mailboxを追加。保存12条件、BlackHole 2→2/4→16/8→16の9取得と3保留cancel。製品共通adapter/全tap、時刻写像、排他/USB復帰/長時間は残る |
 | MIG-006 | 進行中（A〜Eのpure範囲を完了） | FFT/共有/履歴/filterに不変result/ID校正/保存を追加。Eの2校正契約・4交換例・4/8ch f32/f64、graph Rust50テスト合格。校正/保存/Qtの実取得統合は未着手 |
-| MIG-007 | 進行中（Aの保存／BlackHole実入力表示、CのIntel最小試験を完了） | 保存入力の24実行/72 resultに、簡易plotterとwgpu 1候補の18短時間試行を追加。候補9試行は成功、基準100万点3試行はSIGBUS。BlackHole実入力を両Qtへ接続。trigger/校正・製品保存操作/9言語/統合性能・native texture共有は残る。採用判断・個別widgetの本実装は含めない |
+| MIG-007 | 進行中（Aの保存／BlackHole実入力表示・分離/9言語検査、CのIntel最小試験） | 保存入力の24実行/72 resultに、簡易plotterとwgpu 1候補の18短時間試行を追加。候補9試行は成功、基準100万点3試行はSIGBUS。BlackHole実入力を両Qtへ接続。分離view/9言語の72実行・288 result/216 PNGも成功。trigger/校正・製品保存操作/実window manager/他OS/統合性能・native texture共有は残る。採用判断・個別widgetの本実装は含めない |
 | MIG-008 | 未着手 | 計画にある依存関係に従う。採用判断までの検証範囲 |
 
 `native/`にツールチェーン/SDKの固定、Cargo workspace/lock、模擬workerと2方式のadapter、共通QMLを置いた。
@@ -65,8 +66,84 @@ MIG-003-Cも既存fixtureと契約を変更せず、filter/rate参照を独立�
 現行PortAudioは比較基準。input.rawのgraph接続は追加済み。動的出力routeは固定容量mailboxでCPAL callbackへ配送する。
 007-Aに保存replay用の独立解析threadと両Qt表示を追加した。
 BlackHole input.rawの解析thread schedulerと両Qt表示を追加した。
+同じviewの分離/reparent/close回収と、製品翻訳JSON→QML `tr()`を追加した。
 汎用scheduler、全tap/Qt接続、製品backend共通化は未作成。
 候補実装は契約v0.1を出発点とし、公開型・ABI・採用ライブラリは後続の検証で決める。
+
+## MIG-007-A 分離表示と9言語の成果と検証
+
+着手: 2026-10-01、HEAD `973c8290`。007-live-displayはremote一致・cleanで保存済みだった。
+同じworktreeで`codex/migration-007-windows-i18n`へ分岐。今回の変更は未コミット。
+変更境界は表示workerのlocale/両Qt adapter/共通QML、翻訳JSON・キー保守、runner/test/独立CIと文書。
+現行Python DSP/GUIコード、音声callback/取得core、元fixture・契約・許容差、Cargo.lockは変更していない。
+
+- [共通wrapper](../native/qml/PlotPane.qml)で同じviewを分離Windowへreparentする。
+  結果snapshot/需要token/ch/cursor/独立zoom/履歴を保持し、再接続で購読を増やさない。
+  native closeでview需要を解除し、他の需要は継続、最後の解除でworker/graphを回収する。
+  通常表示への再オープン、分離中のBackend再生成・アプリ終了も検査する。
+- [locale境界](../native/display-core/src/locale.rs)から製品のen.jsonを正本にした35キーを
+  QML `tr()`へ渡す。9言語をbinaryへ埋め込み、起動時の`--language`で選ぶ。
+  既存のIdle/Stop/Spectrum等の訳と用語をそろえ、全言語の置換fieldを維持した。
+  callback/解析threadへ翻訳処理を加えず、結果ID・単位・reasonは保存値のまま。
+- 翻訳check/updateは同じQML source inventoryを使用する。コメント/文字列内の偽呼出しを除外し、
+  QMLだけのキーが未使用扱いで削除されない。既存の翻訳キー/値は変更していない。
+- [runner](../scripts/migration_qt_workspace.py)は両方式のcatalog/実ラベル/button幅/最小サイズに加え、
+  4世代の完全resultとmain/分離2画面のPNGを要求する。全peak/軸を元の理論/現行fixtureへ照合する。
+  長い翻訳でpanel位置が変わるため、実Canvas座標で画素を検査し、領域外・重複・空画像を拒否する。
+- renderer spikeの既存SpectrumViewにも英語catalogを供給した。workspace操作のfooterはspikeで表示せず、
+  元のデータ領域/試験条件を維持する。採用・性能の追加判断は行っていない。
+- [手順](../native/workspace-display.md)、[決定0018](decisions/0018-detached-localized-displays.md)、P19/AC/作業票を更新した。
+  Rust CIへ9言語のQt検査と不正証拠拒否、厳格翻訳checkを追加。GitHub実行は未確認。
+
+最終保存report: `.migration-local/2026-10-01-007-windows-final-v3/report.json`。
+保存4/8ch f32/f64×9言語×両Qt方式の72実行、288完全resultと216 PNGがすべて成功。
+mainのlayout最小サイズは640〜841×540 px、分離Windowは320〜402×280 px。
+Qt SDKのmacOS既定fontで1180×690 pxの上限内。日本語・中国語・ロシア語の最終画像を目視確認した。
+BlackHole回帰: `.migration-local/2026-10-01-007-windows-live-final/report.json`。
+他のGUI/build試験を止めて3入力条件×両Qt方式×3反復の18実行、54完全result/取得窓/停止診断、18 PNGが成功。
+全peakのNumPy oracleとの差は最大約`1.8382e-9 FS`、stream回収26.5〜32.7 ms、queue最大深さ1280〜4864/8192 frame。
+callback error/XRUN/rejectedと取得gapは0。短い診断で、絶対遅延・負荷下の性能合格ではない。
+
+| 検証 | 結果 |
+| --- | --- |
+| 分離/9言語QML | 72実行/288 result/216 PNG、全ラベル・button幅・layout上限・close/reopen/recreate/終了が成功 |
+| BlackHole英語回帰 | 18実行/54 result・取得窓・回収記録/18 PNGが成功。全peakはNumPy oracleへ既存f32許容差で一致 |
+| Rust | 両Qt build、表示8 tests、workspace全target Clippy/formatが成功。依存版/lock不変 |
+| Python対象回帰 | 89 passed。workspace/display/live/renderer/台帳/localization。偽catalog/label/clipping/寿命/画像領域を拒否 |
+| 保存fixture・台帳 | FFT14、core4 FFT/27契約/4保存、filter21数値/6 rate境界、41件の台帳checkが成功 |
+| 既存Python全言語UI | 全9言語Verification Passed。QMLの実行結果とは別 |
+| Ruff/翻訳/Markdown | Ruff lint/format、2553キーの厳格翻訳check、Markdown 204ファイル0 issues、diff whitespaceが成功。最終文書更新後にも再検査 |
+| source/report/hash | 最終workspace/実入力のsource、翻訳9 JSON、runner/helpers、binary、全request/result/取得窓/停止診断/PNGが一致。854種類のfile・1078照合 |
+| main/CI | fetch後もorigin/mainは`9fd79958`で取込み差分なし。追加CIのGitHub実行は未確認 |
+
+開発中の失敗と限界:
+
+- `007-windows-smoke`は追加restartでcoalesced counterがリセットされた後の試験が失敗した。
+  v2は浮動Windowのclose拒否がアプリ終了も拒否する問題と、初期翻訳bindingの空fieldを検出した。
+  両方を修正し、v3/v4を別directoryへ保存した。失敗記録を保持する。
+- 最初の`007-windows-final`は固定座標のPNG検査が翻訳後の細いpeakを見落としたため中断した。
+  実Canvas領域を検査するよう修正した。v2は用語を製品既存訳へそろえる前の開発runとして中断・保持した。
+  未完了runを最終72条件の合格には数えない。
+- 最初の`007-windows-live-regression`はGUI/renderer比較と同時実行した。
+  2/4chの4実行は成功、8chの両方式は`live_input_gap`で失敗し、queue最大深さが8192/8192 frameに達した。
+  失敗を正常なzeroや成功へ変換せず、stream/graph回収と診断を保存した。
+  同時負荷の影響を含む失敗で、性能予算や負荷下での安定性の合格ではない。
+  最終18実行は他のGUI試験を止めて再実行した。007-Bで負荷条件を固定した検証が必要。
+- rendererの互換診断では候補9/基準6が成功、既知の基準100万点SIGBUSを3回再現しrunner終了コードは1。
+  同時試験/短い更新の診断で、前回の性能表を置き換えない。原データは`007-windows-renderer-regression`に保持した。
+- 最終sourceのrenderer互換スモークは基準Spectrum 10万点3更新、rolling 1024×32行40更新の両方が成功。
+  再生成・cursor・元データ領域も検査した。`007-windows-renderer-final-spectrum`/`-spectrogram`へ保存した。
+  短い互換試験で、性能表・採用判断の更新には使わない。
+- SDKのlocale/font、offscreenのpropagateSizeHints、ranlib/重複rpath警告は残る。
+
+検査log/終了コード/hashは`.migration-local/2026-10-01-007-windows-checks.json`と`007-windows-check-*.log.gz`、
+UI logは`007-windows-ui-size.log`、最終監査は`2026-10-01-007-windows-audit.json`へ保存した。
+
+分離操作/9言語のQt SDK 6.11.2/macOS Intel/offscreen/software/Basic範囲を完了した。
+実window managerの移動/focus/minimize、他OS/font/DPI、動的言語切替と配布は未確認。
+007-A全体/007-B/008、Rust/QML採用、製品41機能の移植を完了にしない。
+次はtrigger/保持履歴操作、基本校正・製品保存操作、または005の全tap/製品共通adapter。
+全体Pytest/Mypyは今回未実施。push/PR/Issue/Project更新・配布も行っていない。
 
 ## MIG-007-A BlackHole実入力の共有result表示の成果と検証
 
@@ -1183,13 +1260,13 @@ GUI起動時にlocaleのUTF-8への切替と、`Sans Serif`のフォント代替
 2. [環境手順](environment.md)に従い、参照版の起動とツールチェーンを再確認する。
 3. 台帳チェックとFFT/core/filterの各reference runnerでverifyを実行する。
    環境差は確認し、比較時だけ明示portable modeを使う。
-4. [作業票](tasks.md)の007-Aのtrigger/基本校正・保存操作/分離window/9言語、または005-A/Bの製品共通adapter/全tapへ進める。BlackHole実入力表示は007-live-displayへ追加した。007-CのIntel最小renderer試験と失敗記録は007-rendererへ追加した。採用判断・個別widgetの本実装は行っていない。007-Aの保存入力の共有result表示は007-displayで追加した。動的f32 routeのcallback配送/BlackHoleは005-routeで追加した。006-Aの保存コーパス/Intel編集、006-B/C/D/Eのpure graph/履歴/filter/result、004-BのIntel反復は完了した。
+4. [作業票](tasks.md)の007-Aのtrigger/基本校正・保存操作、または005-A/Bの製品共通adapter/全tapへ進める。BlackHole実入力表示は007-live-displayへ追加した。007-CのIntel最小renderer試験と失敗記録は007-rendererへ追加した。採用判断・個別widgetの本実装は行っていない。007-Aの保存入力の共有result表示は007-displayで追加した。動的f32 routeのcallback配送/BlackHoleは005-routeで追加した。006-Aの保存コーパス/Intel編集、006-B/C/D/Eのpure graph/履歴/filter/result、004-BのIntel反復は完了した。
    Linux CIのICU修正は004-Bの`e0b992ce`へcommit済み。修正後のGitHub実行は未確認。公開する段階で確認する。
    ARM/Windows/Linuxの反復測定、full Xcode、release/clean環境の配布起動は未確認のまま残す。
 5. 003-A/B/Cの保存入力と期待値は揃った。候補実装へ同じbytesを通し、参照側の完了と実装のAC合格を分ける。
 6. 006-Cのpure履歴/Timebaseは共有graphへ接続済み。005-Aのpure queue/route、005-Bの実機とBlackHoleの診断経路は追加済み。
    以後はBlackHole 16ch／2chで通常の回帰を行う。UAC-232は実機が必要な要件だけに使う。
-   006-Dのfilter/rateと006-Eの不変result/基本校正/保存もpure境界を検証済み。input.rawは005-graph、動的f32 route配送は005-routeで接続した。保存入力の実result表示は007-displayで追加した。BlackHole実入力表示は007-live-displayへ追加した。次はtrigger/基本校正・保存操作/分離window/9言語、または全tap・製品共通adapterを検証する。
+   006-Dのfilter/rateと006-Eの不変result/基本校正/保存もpure境界を検証済み。input.rawは005-graph、動的f32 route配送は005-routeで接続した。保存入力の実result表示は007-displayで追加した。BlackHole実入力表示は007-live-displayへ追加した。分離view/9言語は007-windows-i18nで追加した。次はtrigger/基本校正・保存操作、または全tap・製品共通adapterを検証する。
    物理USB切断／復帰は必要時にユーザーが操作できる回だけで行う。
    独立Rust CIは追加済み。source/state/所有権の境界を記録し、
    004-Aの模擬workerのmutex/通知を音声callbackへ転用しない。

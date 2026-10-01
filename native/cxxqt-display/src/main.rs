@@ -1,6 +1,8 @@
 mod backend;
 use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QUrl};
 fn main() {
+    let language = display_core::locale::selected_language().expect("valid --language required");
+    println!("DISPLAY_LANGUAGE {language}");
     let mut app = QGuiApplication::new();
     let mut engine = QQmlApplicationEngine::new();
     engine.pin_mut().load(&QUrl::from(&format!(

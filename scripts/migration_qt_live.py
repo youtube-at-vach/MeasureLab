@@ -24,7 +24,7 @@ sys.path.insert(0, str(ROOT))
 from scripts import migration_audio_graph as audio  # noqa: E402
 from scripts import migration_audio_virtual as virtual  # noqa: E402
 from scripts import migration_fft_reference as fft  # noqa: E402
-from scripts.migration_qt_display import PASS, inspect_png, qt_environment  # noqa: E402
+from scripts.migration_qt_display import PASS, inspect_png, plot_regions, qt_environment  # noqa: E402
 from scripts.migration_qt_probe import sha256  # noqa: E402
 
 N, RATE = 1024, 48000
@@ -228,7 +228,10 @@ def run_display(binary, env, directory, case, timeout):
             )
         ):
             raise fft.ReferenceError("live Qt lifecycle/exit mismatch")
-        details = {"image": inspect_png(directory / "display.png"), "evidence": validate_evidence(evidence, request)}
+        details = {
+            "image": inspect_png(directory / "display.png", regions=plot_regions(output)),
+            "evidence": validate_evidence(evidence, request),
+        }
     except subprocess.TimeoutExpired as exc:
         output = "".join(
             v.decode(errors="replace") if isinstance(v, bytes) else v or "" for v in (exc.stdout, exc.stderr)

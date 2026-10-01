@@ -242,6 +242,9 @@ def qt_run(args):
     engine = QQmlApplicationEngine()
     engine.addImageProvider("spike", provider)
     engine.rootContext().setContextProperty("backend", backend)
+    engine.rootContext().setContextProperty(
+        "displayTranslations", json.loads((ROOT / "src/assets/lang/en.json").read_text())
+    )
     engine.load(QUrl.fromLocalFile(str(QML)))
     if not engine.rootObjects():
         raise RuntimeError("spike QML did not load")
