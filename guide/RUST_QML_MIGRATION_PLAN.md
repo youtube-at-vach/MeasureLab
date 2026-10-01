@@ -625,7 +625,8 @@ MIG-008の結果から「Rust + Qt Quickを本格展開する」「接続・描�
 
 ### 12.1 MIG-007-C: Plot Renderer Feasibility Spike（採用判断ではない）
 
-2026-10-01追加、未着手。現在の[簡易plotter](../native/qml/SpectrumView.qml)と
+2026-10-01追加。同日のIntel最小試験結果は[進捗](../migration/status.md#mig-007-c-plot-renderer-feasibility-spikeの成果と検証)へ記録した。
+現在の[簡易plotter](../native/qml/SpectrumView.qml)と
 [MIG-007-Aの表示境界](../native/display-candidate.md)を基準に、rsplot / wgpu系などから1〜2候補を最小構成で試験する。
 合成データまたは保存入力を使い、MIG-007-A全体の完了や実音声接続を待たずに実施できる簡易タスクとする。
 

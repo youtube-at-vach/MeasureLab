@@ -15,6 +15,7 @@ MIG-006-Aの`dsp-core`はGUI非依存のFFT/窓/単位/PSD候補。[FFT比較手
 動的出力routeのcallback配送は[検査手順](dynamic-route.md)を参照。
 全tap、製品共通adapter、実音声のQt表示・汎用永続schedulerは未実装。
 007-Aの[保存入力の実result表示](display-candidate.md)では、独立解析threadと両Qt adapterでline/heatmapを検査する。
+007-Cの[renderer spike](renderer-spike.md)では、簡易plotterとwgpuの最小描画・QML画像転送を試験する。採用判断・個別widgetの本実装は含めない。
 [Qt SDK・比較画面の起動手順](qt-probe.md)を参照。
 004-Bの開発反復とローカルbundleは[反復測定手順](qt-iteration.md)へ分離する。
 

@@ -17,6 +17,9 @@ CPALのBlackHole診断にも同じworkerを接続した。
 005-Aへ固定容量の動的出力route mailboxを追加。保存f32の12条件とBlackHoleの9取得/3 cancelを検証した。
 007-Aの保存入力→実graph→両Qtのline/heatmap表示を追加した。
 実音声のQt統合、製品共通adapter、製品保存互換/非同期保存は未着手。
+007-CはIntel/Metalのwgpu 1候補と簡易plotterの最小試験を実施した。
+候補の10万/100万点・rolling imageは約29〜30 Hzで更新。基準100万点のJSON/QML境界はSIGBUSを3回再現した。
+PyQt画像provider経路の試験であり、採用判断・個別widgetの本実装・native GPU texture共有は含まない。
 
 ## 作業場所と基準
 
@@ -24,12 +27,12 @@ CPALのBlackHole診断にも同じworkerを接続した。
 | --- | --- |
 | 現行版 | `/Users/vach/MeasureLab`、`main` |
 | 検証用worktree | `/Users/vach/.codex/worktrees/next-core-evaluation/MeasureLab`（Codex管理） |
-| 検証用ブランチ | 統合先`codex/next-core-evaluation`、今回の作業`codex/migration-007-display`（005-routeの`408a79f5`から分岐） |
+| 検証用ブランチ | 統合先`codex/next-core-evaluation`、今回の作業`codex/migration-007-renderer`（007-displayの`366aa7f3`から分岐） |
 | 作業開始・Python参照コミット | `9fd79958`（MeasureLab 0.9.0、開始時のローカルmain） |
 | 計画書の調査コミット | `68cbdabc3ecd542d9d73fa0aa86bf9159f44d811` |
 | 最終main同期 | 2026-10-01にfetch。origin/mainは参照`9fd79958`のまま、取込み差分なし |
 | 統合担当 | 当面、この検証ブランチを担当する単一の作業者 |
-| リモート | 今回開始時は005-routeの`408a79f5`がremote一致・clean。そこから007-display用ローカルブランチを分岐。今回の変更は未コミット。push・PR・Issue・Project更新・配布は未実施 |
+| リモート | 今回開始時は007-displayの`366aa7f3`がremote一致・clean。保存表示は`217ff38c`、spike計画は`366aa7f3`へ保存済み。007-renderer用ローカルブランチを分岐。今回の変更は未コミット。push・PR・Issue・Project更新・配布は未実施 |
 
 調査コミットから開始時mainまでの差分には計画書、設計ガイド、Measurement Consoleのレイアウト、
 Goniometerのテーマ対応、翻訳と対応テストがある。
@@ -48,7 +51,7 @@ MIG-003-Cも既存fixtureと契約を変更せず、filter/rate参照を独立�
 | MIG-004 | 進行中（AとBのIntel範囲を完了） | Bの32 sample+warmup2回とローカルbundleが合格。Linux CIのICU不足を修正したが再実行未確認。他OS/clean環境は未確認 |
 | MIG-005 | 進行中（Aの取得graph・動的f32 routeとBの短い実機／仮想比較） | 取得queue/履歴/共有FFTに動的出力mailboxを追加。保存12条件、BlackHole 2→2/4→16/8→16の9取得と3保留cancel。製品共通adapter/全tap、時刻写像、排他/USB復帰/長時間は残る |
 | MIG-006 | 進行中（A〜Eのpure範囲を完了） | FFT/共有/履歴/filterに不変result/ID校正/保存を追加。Eの2校正契約・4交換例・4/8ch f32/f64、graph Rust50テスト合格。校正/保存/Qtの実取得統合は未着手 |
-| MIG-007 | 進行中（Aの保存入力表示の初期境界、Cは未着手） | 実queue/履歴/共有FFTから両Qtのline/heatmapへ接続。保存24実行/72 resultを検証。実音声/trigger/9言語/性能は残る。2026-10-01に[007-C Plot Renderer Feasibility Spike](tasks.md)を追加。簡易plotterと1〜2候補の最小試験のみで、採用判断・個別widgetの本実装は含めない |
+| MIG-007 | 進行中（Aの保存入力表示の初期境界、CのIntel最小試験を完了） | 保存入力の24実行/72 resultに、簡易plotterとwgpu 1候補の18短時間試行を追加。候補9試行は成功、基準100万点3試行はSIGBUS。実音声/trigger/9言語/統合性能・native texture共有は残る。採用判断・個別widgetの本実装は含めない |
 | MIG-008 | 未着手 | 計画にある依存関係に従う。採用判断までの検証範囲 |
 
 `native/`にツールチェーン/SDKの固定、Cargo workspace/lock、模擬workerと2方式のadapter、共通QMLを置いた。
@@ -63,7 +66,78 @@ MIG-003-Cも既存fixtureと契約を変更せず、filter/rate参照を独立�
 実音声の永続thread scheduler、全tap/Qt接続、製品backend共通化は未作成。
 候補実装は契約v0.1を出発点とし、公開型・ABI・採用ライブラリは後続の検証で決める。
 
-## MIG-007-A保存入力の共有result表示の成果と検証
+## MIG-007-C Plot Renderer Feasibility Spikeの成果と検証
+
+着手: 2026-10-01、HEAD `366aa7f3`。007-displayはremote一致・cleanで保存済みだった。
+同じworktreeで`codex/migration-007-renderer`へ分岐。変更は未コミット。
+変更境界は独立したrenderer crate/QML試験画面、Python試験host/oracle/test、独立Rust CIと検証文書。
+現行Python DSP/UI、既存native workspace/lock、簡易plotter、保存fixture・数値契約・許容差は変更していない。
+
+- [wgpu候補](../native/renderer-spike/src/main.rs)はGPUでSpectrumの最大値縮約とRGBA rasterを生成する。
+  rolling imageは32行の循環bufferに新しい1行だけをuploadし、画像全体を読み戻す。
+  Cargo workspace/lockを分離し、wgpu 30.0.1、Rust 1.98.1を固定した。
+- [試験host](../scripts/migration_plot_renderer.py)が同じf32入力と1024×256 pxのデータ領域で、
+  既存SpectrumViewとwgpu候補を比較する。PyQt image providerでQMLへ接続し、画像を実表示したことを画素で検査する。
+  候補の入力hash、狭い1 bin peak、元データcursorと32行を越えたrolling historyを全更新でCPU oracleと照合する。
+  oracleは表示更新の測定後に実行する。
+- Zoom/Pan、画面座標↔周波数、元データ参照、viewの破棄/再生成、GPU ownerのstop/再生成、
+  GPU更新要求直後のQML engine破棄とGPU完了/owner破棄を検査した。
+  この接続はGUI threadで読み戻しを待つ。非同期mailbox・CXX-Qt/Qt Bridge接続・GPU texture共有は未実装。
+- [再実行手順・コピー内訳](../native/renderer-spike.md)を追加した。
+  Rust CIはGPU/Qtを起動しないbuild/test/Clippy/formatと、Pythonの不正証拠拒否を検査する。GitHub実行は未確認。
+
+最終reportは`.migration-local/2026-10-01-007-c-final-v3/report.json`。
+検査要約は`.migration-local/2026-10-01-007-c-checks.json`、source/hash監査は`2026-10-01-007-c-audit.json`へ保存した。
+macOS 14.8.9/Intel、Iris Pro Graphics 6200/Metal、PyQt Qt runtime 6.11.2、Qt offscreen/software/Basic。
+更新目標30 Hz、warmup 3更新、Spectrum 30更新、Spectrogram 40更新、各3回。
+候補9試行と基準10万点/rollingの6試行は検査成功。基準100万点の3試行は失敗し、比較runnerの終了コードは1。
+
+| 経路 | 更新Hz（3試行） | 表示までの中央値ms（3試行） | p95 msの範囲 | CPU全run率の範囲 |
+| --- | --- | --- | --- | --- |
+| 基準 Spectrum 10万点 | 3.034 / 3.110 / 3.076 | 323.727 / 318.002 / 321.328 | 322.112〜328.975 | 98.65〜99.32% |
+| 基準 Spectrum 100万点 | 未取得（全3試行SIGBUS） | 未取得 | 未取得 | 未取得 |
+| 基準 Spectrogram 1024×32行 | 12.075 / 11.951 / 12.106 | 88.491 / 90.517 / 87.089 | 116.215〜118.176 | 93.29〜93.57% |
+| wgpu Spectrum 10万点 | 29.349 / 29.280 / 29.318 | 13.129 / 13.105 / 13.072 | 13.559〜13.646 | 39.31〜39.60% |
+| wgpu Spectrum 100万点 | 29.308 / 29.435 / 29.483 | 31.927 / 31.982 / 31.980 | 32.426〜32.927 | 81.41〜83.50% |
+| wgpu Spectrogram 1024×32行 | 29.212 / 29.279 / 29.223 | 11.052 / 11.014 / 11.006 | 11.487〜11.550 | 31.47〜31.77% |
+
+主時間には生成・転送・表示を含む。CPU全run値はoracle・warmup・生成/破棄も含む。
+候補は軸/文字等を持たない最小rasterで、基準のCanvas/JSON経路全体との試験である。
+この差をrenderer単体・言語単体の性能差やAC15/16の合格として扱わない。
+OSのGPU全体使用率中央値は、候補100万点が各試行2%、他の成功条件は0〜1%。
+他アプリの負荷も含み、低い値は短い処理の無活動を意味しない。
+GPU timestamp featureは未対応なのでpass時間はnull。候補だけのGPU負荷/転送時間は未確認。
+
+基準100万点は初回の38,752,554 bytesのJSONをQMLへ渡す境界でSIGBUS（終了-10）を3回再現した。
+macOS診断のfaulting threadはQtQml/QQmlBindingで、保護されたJS VM Isolated Heapへのアクセスを示す。
+`QV4_FORCE_INTERPRETER=1`でもSIGBUSを再現した。Qtの根本原因や修正は未確定。
+GPU側が100万点を処理できた結果と、基準JSON/QML経路の失敗を分けて記録する。
+開発/初回測定は`007-c-development`、`007-c-final`/`007-c-final-v2`と各`007-c-*-smoke*`、
+interpreter診断は`007-c-million-interpreter-diagnostic`へ保持し、失敗記録は削除していない。
+
+明示的な候補copy/転送は、入力upload 1回、uniform upload 1回、GPU readback copy 1回、
+mapped buffer→Vec copy 1回、RGBA IPC 1,048,576 bytes、QImage.copy 1回/更新。
+入力はSpectrumで400,000/4,000,000 bytes、rollingで新規行4,096 bytes、uniformは32 bytes。
+OS pipe・Qt/driver内部のcopy回数とUMAの物理転送回数は未確認。
+共有textureと非同期転送による削減余地を後続の検証材料とする。
+
+| 検証 | 結果 |
+| --- | --- |
+| renderer最小試験 | 候補9＋基準6試行成功、基準100万点3試行失敗。入力/画素/cursor/rolling/再生成/終了を検査 |
+| Rust | release build、2 tests、Clippy、format成功。既存workspace/lockは不変 |
+| Python対象回帰 | 36 passed。新規5件＋既存表示runner/台帳。入力不一致・peak欠落・誤cursor・rolling破損・不正/truncated transportを拒否 |
+| 保存fixture・台帳 | FFT14、core4 FFT/27契約/4保存、filter21数値/6 rate境界と41モジュールの台帳checkが成功 |
+| Ruff/Markdown | lint/format成功、Markdown 200ファイルは0 issues。最終文書更新後も再検査 |
+| UIサイズ | 既存Python GUI全9言語はVerification Passed。試験QMLは英語、1088×352/392 pxでデータ領域1024×256 px。9言語QMLの合格ではない |
+| source/hash | 最終reportのrunner/試験QML/基準QML/Rust/WGSL/lock/実行物のhashはすべて一致。候補の記録354更新と終了中の更新を検査 |
+| main/GitHub CI | fetch後もorigin/mainは`9fd79958`、取込み不要。新しい独立CIは未実行 |
+
+007-CのIntel最小試験と確認記録を完了した。rendererの採用判断・製品組込み・個別widgetの本実装は行っていない。
+rsplot、native GPU texture共有、非同期GUI、他OS、9言語QML、実音声、複数viewと10分性能は未確認。
+次は007-Aの実音声表示/trigger/基本校正/保存操作/9言語、または005の全tap・共通adapterへ進める。
+全体Pytest/Mypy/厳格翻訳キー・実音声回帰は今回未実施。push/PR/Issue/Project更新・配布も行っていない。
+
+## MIG-007-A保存入力の共有result表示の成果と検証（前回記録）
 
 着手: 2026-10-01、HEAD `408a79f5`。005-routeはremote一致・cleanで保存済みだった。
 同じworktreeで`codex/migration-007-display`へ分岐。今回の変更は未コミット。
@@ -1052,7 +1126,7 @@ GUI起動時にlocaleのUTF-8への切替と、`Sans Serif`のフォント代替
 2. [環境手順](environment.md)に従い、参照版の起動とツールチェーンを再確認する。
 3. 台帳チェックとFFT/core/filterの各reference runnerでverifyを実行する。
    環境差は確認し、比較時だけ明示portable modeを使う。
-4. [作業票](tasks.md)の007-Aの実音声表示/trigger/9言語、または005-A/Bの製品共通adapter/全tapへ進める。007-Aの保存入力の共有result表示は007-displayで追加した。動的f32 routeのcallback配送/BlackHoleは005-routeで追加した。006-Aの保存コーパス/Intel編集、006-B/C/D/Eのpure graph/履歴/filter/result、004-BのIntel反復は完了した。
+4. [作業票](tasks.md)の007-Aの実音声表示/trigger/9言語、または005-A/Bの製品共通adapter/全tapへ進める。007-CのIntel最小renderer試験と失敗記録は007-rendererへ追加した。採用判断・個別widgetの本実装は行っていない。007-Aの保存入力の共有result表示は007-displayで追加した。動的f32 routeのcallback配送/BlackHoleは005-routeで追加した。006-Aの保存コーパス/Intel編集、006-B/C/D/Eのpure graph/履歴/filter/result、004-BのIntel反復は完了した。
    Linux CIのICU修正は004-Bの`e0b992ce`へcommit済み。修正後のGitHub実行は未確認。公開する段階で確認する。
    ARM/Windows/Linuxの反復測定、full Xcode、release/clean環境の配布起動は未確認のまま残す。
 5. 003-A/B/Cの保存入力と期待値は揃った。候補実装へ同じbytesを通し、参照側の完了と実装のAC合格を分ける。

@@ -7,6 +7,8 @@ MIG-004-Bで候補2方式のIntel開発反復とローカルbundleを測定し�
 MIG-006-Aで純粋FFTのコア1ファイル編集→Rustテストと24参照比較をIntel/debugで5回測定した。
 [結果と制限](../decisions/0007-pure-fft-candidate.md#開発反復の扱い)を参照。
 候補の編集反復であり、release/steady-stateやPython相対性能の比較ではない。
+MIG-007-Cの[renderer spike](../../native/renderer-spike.md)は合成入力による短時間の描画/転送試験。
+本protocolの30秒warmup・10分連続×3回と、製品の新旧実行性能・AC15/16の検証は未実施のままである。
 
 ## 固定条件
 
