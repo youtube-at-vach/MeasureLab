@@ -2593,5 +2593,10 @@
     "migration.display.save_closed": "Speichern beendet",
     "migration.display.save_cancel": "Wartenden Auftrag abbrechen",
     "migration.display.save_finish": "Speichern beenden",
-    "migration.display.save_finish_note": "Beim Beenden werden wartende Aufträge abgebrochen. Laufende Schreibvorgänge behalten ihr tatsächliches Ergebnis."
+    "migration.display.save_finish_note": "Beim Beenden werden wartende Aufträge abgebrochen. Laufende Schreibvorgänge behalten ihr tatsächliches Ergebnis.",
+    "migration.display.save_v1_json": "Testformat v1 JSON",
+    "migration.display.save_v1_csv": "Testformat v1 CSV",
+    "migration.display.save_product_json": "Produkt-JSON",
+    "migration.display.save_product_csv": "Produkt-CSV + Metadaten",
+    "migration.display.save_csv_companion": "Bewahren Sie CSV und die zugehörige .metadata.json-Datei zusammen auf, um das vollständige Ergebnis wiederherzustellen. Bei einem Fehler kann nur die CSV verbleiben."
 }

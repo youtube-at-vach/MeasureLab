@@ -2593,5 +2593,10 @@
     "migration.display.save_closed": "Guardado detenido",
     "migration.display.save_cancel": "Cancelar tarea en cola",
     "migration.display.save_finish": "Detener guardado",
-    "migration.display.save_finish_note": "Detener cancela las tareas en cola. Una escritura en curso conserva su resultado real."
+    "migration.display.save_finish_note": "Detener cancela las tareas en cola. Una escritura en curso conserva su resultado real.",
+    "migration.display.save_v1_json": "JSON v1 de evaluación",
+    "migration.display.save_v1_csv": "CSV v1 de evaluación",
+    "migration.display.save_product_json": "JSON del producto",
+    "migration.display.save_product_csv": "CSV del producto + metadatos",
+    "migration.display.save_csv_companion": "Conserve el CSV y su archivo .metadata.json juntos para restaurar el resultado completo. Un fallo al guardar puede dejar solo el CSV."
 }

@@ -2593,5 +2593,10 @@
     "migration.display.save_closed": "Enregistrement arrêté",
     "migration.display.save_cancel": "Annuler la tâche en attente",
     "migration.display.save_finish": "Arrêter l’enregistrement",
-    "migration.display.save_finish_note": "L’arrêt annule les tâches en attente. Une écriture en cours conserve son résultat réel."
+    "migration.display.save_finish_note": "L’arrêt annule les tâches en attente. Une écriture en cours conserve son résultat réel.",
+    "migration.display.save_v1_json": "JSON v1 d’évaluation",
+    "migration.display.save_v1_csv": "CSV v1 d’évaluation",
+    "migration.display.save_product_json": "JSON du produit",
+    "migration.display.save_product_csv": "CSV du produit + métadonnées",
+    "migration.display.save_csv_companion": "Conservez le CSV et son fichier .metadata.json ensemble pour restaurer le résultat complet. Un échec peut laisser uniquement le CSV."
 }

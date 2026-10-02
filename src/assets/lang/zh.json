@@ -2593,5 +2593,10 @@
     "migration.display.save_closed": "保存已停止",
     "migration.display.save_cancel": "取消排队保存",
     "migration.display.save_finish": "停止保存",
-    "migration.display.save_finish_note": "停止保存会取消排队的任务。正在写入的任务保留实际结果。"
+    "migration.display.save_finish_note": "停止保存会取消排队的任务。正在写入的任务保留实际结果。",
+    "migration.display.save_v1_json": "评估用v1 JSON",
+    "migration.display.save_v1_csv": "评估用v1 CSV",
+    "migration.display.save_product_json": "产品JSON",
+    "migration.display.save_product_csv": "产品CSV＋元数据",
+    "migration.display.save_csv_companion": "请将CSV和随附的.metadata.json文件一起保存，以恢复完整结果。保存失败时可能仅留下CSV。"
 }

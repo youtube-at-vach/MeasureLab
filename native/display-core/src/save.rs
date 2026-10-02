@@ -2,6 +2,8 @@
 //! File I/O and writer teardown stay outside Qt and the acquisition owner.
 use super::*;
 use graph_core::export::{CloseMode, SaveTicket, SaveWorker};
+use graph_core::product::{self, ProductFormat};
+use serde::Serialize;
 use std::sync::OnceLock;
 
 const MAX_SESSIONS: usize = 8;
@@ -9,12 +11,36 @@ const HISTORY: usize = 16;
 static SESSIONS: AtomicUsize = AtomicUsize::new(0);
 static REAPERS: OnceLock<Mutex<Vec<JoinHandle<()>>>> = OnceLock::new();
 
+/// One queue and operation sequence for all formats, including CSV/sidecar pairs.
+#[derive(Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum SaveFormat {
+    Json,
+    Csv,
+    ProductJson,
+    ProductCsv,
+}
+impl SaveFormat {
+    fn write(
+        result: &MeasurementResult,
+        path: &std::path::Path,
+        format: Self,
+    ) -> std::io::Result<()> {
+        match format {
+            Self::Json => result.save_new(path, Format::Json),
+            Self::Csv => result.save_new(path, Format::Csv),
+            Self::ProductJson => product::save_new(result, path, ProductFormat::ProductJson),
+            Self::ProductCsv => product::save_new(result, path, ProductFormat::ProductCsv),
+        }
+    }
+}
+
 #[derive(Default)]
 pub(super) struct Controller {
     presented: Vec<Arc<Frame>>,
     pinned: Option<Arc<MeasurementResult>>,
-    worker: Option<SaveWorker>,
-    tickets: Vec<SaveTicket>,
+    worker: Option<SaveWorker<SaveFormat>>,
+    tickets: Vec<SaveTicket<SaveFormat>>,
     rejection: Option<String>,
     closed: bool,
 }
@@ -37,8 +63,10 @@ impl Controller {
         let submission: Submission =
             serde_json::from_str(encoded).map_err(|_| "invalid_request")?;
         let format = match submission.format.as_str() {
-            "json" => Format::Json,
-            "csv" => Format::Csv,
+            "json" => SaveFormat::Json,
+            "csv" => SaveFormat::Csv,
+            "product_json" => SaveFormat::ProductJson,
+            "product_csv" => SaveFormat::ProductCsv,
             _ => return Err("invalid_format".into()),
         };
         let snapshot = self.pinned.as_ref().ok_or("no_result")?;
@@ -53,7 +81,7 @@ impl Controller {
                     (n < MAX_SESSIONS).then_some(n + 1)
                 })
                 .map_err(|_| "busy")?;
-            match SaveWorker::start(2) {
+            match SaveWorker::with_writer(2, SaveFormat::write) {
                 Ok(worker) => self.worker = Some(worker),
                 Err(error) => {
                     SESSIONS.fetch_sub(1, Ordering::SeqCst);

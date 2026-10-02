@@ -9,6 +9,7 @@ Dialog {
     property var selected: null
     property alias destination: path.text
     property alias formatIndex: format.currentIndex
+    readonly property var formats: ["json", "csv", "product_json", "product_csv"]
     property string encoded: source ? source.saves : ""
     property double selectedOperation: 0
     property double lastOperation: 0
@@ -17,7 +18,7 @@ Dialog {
     readonly property bool canSave: source && selected && !report.closed && !!destination.trim()
     readonly property var displayedText: ({title: title, path: pathLabel.text, format: formatLabel.text,
         note: note.text, save: saveButton.text, cancel: cancelButton.text, finish: finishButton.text,
-        close: closeButton.text, status: statusLabel.text})
+        close: closeButton.text, status: statusLabel.text, formats: format.model, companion: companion.text})
     modal: true
     title: tr("migration.display.save_measurement")
     width: Math.max(560, form.implicitWidth + 48)
@@ -34,7 +35,7 @@ Dialog {
         return "";
     }
     function labelsFit() { return [saveButton, cancelButton, finishButton, closeButton].every(b => b.width >= b.implicitWidth)
-        && form.width >= pathLabel.implicitWidth + path.implicitWidth + 12; }
+        && form.width >= pathLabel.implicitWidth + path.implicitWidth + 12 && format.width >= format.implicitWidth; }
     function selectResult(frame) {
         if (!source || !frame || !source.pin_result(frame.source.generation, frame.result_id))
             return false;
@@ -44,10 +45,10 @@ Dialog {
         return true;
     }
     function submit() {
-        if (!canSave)
+        if (!canSave || formatIndex < 0 || formatIndex >= formats.length)
             return false;
         return source.save_result(JSON.stringify({generation: selected.source.generation,
-            result_id: selected.result_id, destination: destination, format: formatIndex === 0 ? "json" : "csv"}));
+            result_id: selected.result_id, destination: destination, format: formats[formatIndex]}));
     }
     function cancelSelected() { return source && receipt ? source.cancel_save(receipt.operation_id) : false; }
     onSourceChanged: close()
@@ -90,8 +91,12 @@ Dialog {
                 TextField { id: path; Layout.fillWidth: true; Layout.preferredWidth: 280; selectByMouse: true;
                     ToolTip.visible: pathHover.hovered; ToolTip.text: text; HoverHandler { id: pathHover } }
                 Label { id: formatLabel; text: dialog.tr("migration.display.save_format") }
-                ComboBox { id: format; model: ["JSON", "CSV"]; Layout.fillWidth: true }
+                ComboBox { id: format; model: [dialog.tr("migration.display.save_v1_json"), dialog.tr("migration.display.save_v1_csv"),
+                    dialog.tr("migration.display.save_product_json"), dialog.tr("migration.display.save_product_csv")];
+                    implicitContentWidthPolicy: ComboBox.WidestText; Layout.fillWidth: true }
             }
+            Label { id: companion; visible: dialog.formatIndex === 3; text: dialog.tr("migration.display.save_csv_companion");
+                Layout.fillWidth: true; Layout.preferredWidth: 480; wrapMode: Text.WordWrap }
             Label { id: note; text: dialog.tr("migration.display.save_note") + "\n" + dialog.tr("migration.display.save_finish_note"); Layout.fillWidth: true;
                 Layout.preferredWidth: 480; wrapMode: Text.WordWrap }
             ComboBox {

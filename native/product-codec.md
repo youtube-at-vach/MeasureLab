@@ -15,7 +15,8 @@ MIG-006-E-native-product、2026-10-02。[決定0027](../migration/decisions/0027
 受付で配列の複製/encode/ファイルI/Oを行わず、workerだけがcodecとpublishを実行する。
 receiptのformatは`product_json`/`product_csv`で、既存v1の`json`/`csv`と区別する。
 容量、busy/closed、pending-only cancel、writingの実成否、Drain/CancelPending、終了とsnapshot回収は共通である。
-wait/join/Dropは制御・終了threadで行い、GUI/audio callbackへ置かない。Qtへの製品format接続は後続。
+wait/join/Dropは制御・終了threadで行い、GUI/audio callbackへ置かない。
+[両Qt保存操作](qt-save.md)は同じworkerへ4形式を配送し、一つの容量/操作ID/receiptを共有する。
 
 native CSV writerは製品exporterの既存optionであるindependent/comma/headerなし/metadata行なし/BOMなしを使う。
 列descriptorと完全carrierはsidecarへ保存するため、翻訳済みheaderの生成や解釈を必要としない。
@@ -53,5 +54,6 @@ native保存→Python readerの4往復と、実exporter→native readerの2往�
 既存Pythonの24往復と旧JSON/32 CSV条件は別の検査として維持する。
 reportにsource/binary/fixture/input/artifact hash、command、receipt、失敗と未確認範囲を残す。
 
-Qtの製品保存format/import操作、取得profile再起動維持、取得中の保存負荷/長時間、他OS、
+Qtの製品保存formatは[決定0028](../migration/decisions/0028-qt-product-snapshot-save.md)で接続した。
+製品import操作、取得profile再起動維持、取得中の保存負荷/長時間、他OS、
 005-A-common/006-D-integration/008-Aの統合と採用判断は未完了。結果は[status](../migration/status.md)を正本とする。

@@ -207,7 +207,7 @@ file・保存・来歴
 | validity・精度・共有条件 | f64値を保持し表示間引きを保存しない。非有限値とvalidityを明示。同じdataでも保存要求の寿命は独立 |
 | 現行の入口 | [source](../src/core/export/trace.py) |
 | 参照検証 | [test](../tests/core/export/test_json_exporter.py) |
-| 候補検証 | 006-Eの[実験用JSON/CSV](../native/result-candidate.md)。007-Aの[校正済み取得結果](../native/calibration-display.md)でも全値/来歴の往復を検査。[非同期worker](../native/async-save.md)でbounded受付/完了/失敗/pending cancel/寿命と全往復を検査。[製品互換adapter評価](../native/product-exchange.md)で旧JSON/CSVとunknown、carrier/sidecarの完全往復を検査。[両Qt保存操作](../native/qt-save.md)で表示済み通常/Trigger resultのpin、受付/実完了/失敗、GUI外の終了を検査。[native製品codec/共通保存worker](../native/product-codec.md)で実exporterとの双方向往復と部分pair失敗を検査。Qt製品format接続、取得中の保存負荷は後続 |
+| 候補検証 | 006-Eの[実験用JSON/CSV](../native/result-candidate.md)。007-Aの[校正済み取得結果](../native/calibration-display.md)でも全値/来歴の往復を検査。[非同期worker](../native/async-save.md)でbounded受付/完了/失敗/pending cancel/寿命と全往復を検査。[製品互換adapter評価](../native/product-exchange.md)で旧JSON/CSVとunknown、carrier/sidecarの完全往復を検査。[両Qt保存操作](../native/qt-save.md)で表示済み通常/Trigger resultのpin、受付/実完了/失敗、GUI外の終了を検査。[native製品codec/共通保存worker](../native/product-codec.md)で実exporterとの双方向往復と部分pair失敗を検査。[両Qt製品format](../migration/decisions/0028-qt-product-snapshot-save.md)を同じ保存workerへ接続。製品import、取得中の保存負荷は後続 |
 
 ## P15
 

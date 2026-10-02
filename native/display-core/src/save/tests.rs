@@ -48,16 +48,27 @@ fn presented_pin_survives_analysis_stop_restart_and_full_exchange() {
         display.start(false, |_| true).unwrap();
         wait(&display, |s| s.produced > 0);
         display.present(&display.peek());
-        for (format, kind) in [(Format::Json, "json"), (Format::Csv, "csv")] {
+        for (index, kind) in ["json", "csv", "product_json", "product_csv"]
+            .into_iter()
+            .enumerate()
+        {
             let path = dir.join(format!("pinned.{kind}"));
             assert!(display.save_result(&submission(&result, &path, kind)));
-            let report = terminal(&display, if kind == "json" { 1 } else { 2 });
+            let report = terminal(&display, index + 1);
+            assert_eq!(report["receipts"][index]["format"], kind);
             assert_eq!(
                 report["receipts"].as_array().unwrap().last().unwrap()["status"]["state"],
                 "saved"
             );
             assert_eq!(
-                MeasurementResult::load(&path, format).unwrap().to_value(),
+                match kind {
+                    "json" => MeasurementResult::load(&path, Format::Json),
+                    "csv" => MeasurementResult::load(&path, Format::Csv),
+                    "product_json" => product::load(&path, ProductFormat::ProductJson),
+                    _ => product::load(&path, ProductFormat::ProductCsv),
+                }
+                .unwrap()
+                .to_value(),
                 result.to_value()
             );
         }
@@ -152,6 +163,55 @@ fn qobject_retirement_dispatches_disk_join_and_retains_actual_outcomes() {
 }
 
 #[test]
+fn product_pair_failure_preserves_sidecar_and_recovers_in_same_queue() {
+    let request = request(Precision::F64, 4, false);
+    let input = request.input.clone().unwrap();
+    let mut display = Display::with_request(request);
+    display.subscribe();
+    let generation = display.start(false, |_| true).unwrap();
+    wait(&display, |s| s.produced > 0);
+    let shown = display.take(generation).unwrap();
+    let result = shown.frame.as_ref().unwrap().result.clone();
+    display.present(&shown);
+    assert!(display.pin_result(generation, &result.capture().result_id));
+    let path = input.with_extension("partial.csv");
+    let sidecar = product::sidecar_path(&path);
+    std::fs::write(&sidecar, b"existing sidecar").unwrap();
+    assert!(display.save_result(&submission(&result, &path, "product_csv")));
+    let report = terminal(&display, 1);
+    assert_eq!(report["receipts"][0]["format"], "product_csv");
+    assert_eq!(report["receipts"][0]["status"]["state"], "failed");
+    assert_eq!(report["receipts"][0]["status"]["kind"], "AlreadyExists");
+    assert!(path.is_file());
+    assert_eq!(std::fs::read(&sidecar).unwrap(), b"existing sidecar");
+    assert!(product::load(&path, ProductFormat::ProductCsv).is_err());
+    let recovery = input.with_extension("recovery.csv");
+    assert!(display.save_result(&submission(&result, &recovery, "product_csv")));
+    assert_eq!(
+        terminal(&display, 2)["receipts"][1]["status"]["state"],
+        "saved"
+    );
+    assert_eq!(
+        product::load(&recovery, ProductFormat::ProductCsv)
+            .unwrap()
+            .to_value(),
+        result.to_value()
+    );
+    wait(&display, |s| s.produced > shown.produced + 2);
+    display.shutdown();
+    drop(display);
+    for path in [
+        input,
+        path,
+        sidecar,
+        product::sidecar_path(&recovery),
+        recovery,
+    ] {
+        std::fs::remove_file(path).unwrap();
+    }
+}
+
+#[test]
 fn blocked_writer_busy_pending_cancel_and_gui_drop_leave_graph_independent() {
     let request = request(Precision::F64, 4, false);
     let input = request.input.clone().unwrap();
@@ -174,20 +234,20 @@ fn blocked_writer_busy_pending_cancel_and_gui_drop_leave_graph_independent() {
             let _guard = changed
                 .wait_while(lock.lock().unwrap(), |open| !*open)
                 .unwrap();
-            result.save_new(path, format)
+            SaveFormat::write(result, path, format)
         })
         .unwrap(),
     );
     let path = input.with_extension("blocked.json");
     let cancelled_path = input.with_extension("cancelled.json");
-    assert!(display.save_result(&submission(&result, &path, "json")));
+    assert!(display.save_result(&submission(&result, &path, "product_json")));
     entered_rx.recv_timeout(Duration::from_secs(5)).unwrap();
     let writing = display.saves.tickets[0].clone();
     assert_eq!(writing.receipt().status, SaveStatus::Writing);
-    assert!(display.save_result(&submission(&result, &cancelled_path, "json")));
+    assert!(display.save_result(&submission(&result, &cancelled_path, "csv")));
     let pending = display.saves.tickets[1].clone();
     assert_eq!(pending.receipt().status, SaveStatus::Queued);
-    assert!(!display.save_result(&submission(&result, &path, "json")));
+    assert!(!display.save_result(&submission(&result, &path, "product_csv")));
     assert_eq!(display.saves.rejection.as_deref(), Some("busy"));
     assert!(!display.cancel_save(writing.receipt().operation_id));
     assert!(display.cancel_save(pending.receipt().operation_id));
@@ -215,7 +275,7 @@ fn blocked_writer_busy_pending_cancel_and_gui_drop_leave_graph_independent() {
         SaveStatus::Saved
     );
     assert_eq!(
-        MeasurementResult::load(&path, Format::Json)
+        product::load(&path, ProductFormat::ProductJson)
             .unwrap()
             .to_value(),
         result.to_value()

@@ -2593,5 +2593,10 @@
     "migration.display.save_closed": "保存を停止しました",
     "migration.display.save_cancel": "待機中の保存を取消",
     "migration.display.save_finish": "保存を停止",
-    "migration.display.save_finish_note": "保存の停止は待機中の処理を取り消します。書込み中の処理は実際の成否を保持します。"
+    "migration.display.save_finish_note": "保存の停止は待機中の処理を取り消します。書込み中の処理は実際の成否を保持します。",
+    "migration.display.save_v1_json": "評価用v1 JSON",
+    "migration.display.save_v1_csv": "評価用v1 CSV",
+    "migration.display.save_product_json": "製品JSON",
+    "migration.display.save_product_csv": "製品CSV＋メタデータ",
+    "migration.display.save_csv_companion": "完全な結果を復元するには、CSVと付随する.metadata.jsonを一緒に保管してください。保存失敗時はCSVだけが残る場合があります。"
 }

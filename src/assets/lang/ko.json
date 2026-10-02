@@ -2593,5 +2593,10 @@
     "migration.display.save_closed": "저장 중지됨",
     "migration.display.save_cancel": "대기 중 저장 취소",
     "migration.display.save_finish": "저장 중지",
-    "migration.display.save_finish_note": "저장을 중지하면 대기 중인 작업이 취소됩니다. 진행 중인 쓰기는 실제 결과를 유지합니다."
+    "migration.display.save_finish_note": "저장을 중지하면 대기 중인 작업이 취소됩니다. 진행 중인 쓰기는 실제 결과를 유지합니다.",
+    "migration.display.save_v1_json": "평가용 v1 JSON",
+    "migration.display.save_v1_csv": "평가용 v1 CSV",
+    "migration.display.save_product_json": "제품 JSON",
+    "migration.display.save_product_csv": "제품 CSV + 메타데이터",
+    "migration.display.save_csv_companion": "전체 결과를 복원하려면 CSV와 해당 .metadata.json 파일을 함께 보관하세요. 저장에 실패하면 CSV만 남을 수 있습니다."
 }

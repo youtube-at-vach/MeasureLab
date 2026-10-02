@@ -1,7 +1,7 @@
 """MIG-007-A-save: Qt admission, immutable full-result saves and I/O failure recovery.
 
 Saved original input bytes only; no implicit build or fixture regeneration.
-Short correctness diagnostics, not load/performance or product-format acceptance.
+Short correctness diagnostics, not load/performance or final product-schema acceptance.
 """
 
 from __future__ import annotations
@@ -28,10 +28,22 @@ from scripts.migration_qt_probe import sha256  # noqa: E402
 
 audio, candidate, fft, trigger = calibration.audio, calibration.candidate, calibration.fft, calibration.trigger
 LANGUAGES = calibration.LANGUAGES
+PARTIAL_METADATA = b'{"old_sidecar":true}\n'
 
 
-def read_document(path):
+def read_document(path, *, product=False, codec=None):
     """Independent strict CSV reader, preserving every null/reason and metadata field."""
+    if product:
+        from scripts import migration_product_exchange as exchange
+
+        imported = (
+            exchange.import_json(exchange.read_file(path), codec)
+            if path.suffix == ".json"
+            else exchange.load_csv_pair(path, codec)
+        )
+        if imported.snapshot is None:
+            raise fft.ReferenceError("product save missing complete snapshot")
+        return imported.snapshot
     if path.suffix == ".json":
         return audio.core.read_json(path.read_bytes())
     rows = list(csv.reader(io.StringIO(path.read_text(), newline=""), strict=True))
@@ -86,6 +98,10 @@ def validate_ui(output, language):
     expected.update(
         close=catalog["migration.display.calibration_close"],
         note=catalog["migration.display.save_note"] + "\n" + catalog["migration.display.save_finish_note"],
+        formats=[
+            catalog["migration.display.save_" + key] for key in ("v1_json", "v1_csv", "product_json", "product_csv")
+        ],
+        companion=catalog["migration.display.save_csv_companion"],
     )
     trigger.exact(dialog["labels"], expected, "translated save dialog")
     if dialog["labels_fit"] is not True:
@@ -100,13 +116,14 @@ def validate_ui(output, language):
     return record
 
 
-def validate_receipts(receipts, directory, frames, names):
+def validate_receipts(receipts, directory, frames, names, *, product=False):
     if len(receipts) != len(names):
         raise fft.ReferenceError("missing save receipts")
     for index, (receipt, name) in enumerate(zip(receipts, names, strict=True), 1):
         if receipt["operation_id"] != index or type(receipt["operation_id"]) is not int:
             raise fft.ReferenceError("save operation identity")
-        if receipt["destination"] != str(directory / name) or receipt["format"] != Path(name).suffix[1:]:
+        expected_format = ("product_" if product else "") + Path(name).suffix[1:]
+        if receipt["destination"] != str(directory / name) or receipt["format"] != expected_format:
             raise fft.ReferenceError("save destination/format")
         frame = frames[index - 1]
         for field, value in (
@@ -121,14 +138,18 @@ def validate_receipts(receipts, directory, frames, names):
         path = directory / name
         if state == "saved" and not path.is_file() or state == "cancelled" and path.exists():
             raise fft.ReferenceError("save receipt/file mismatch")
+        if product and path.suffix == ".csv":
+            sidecar = Path(str(path) + ".metadata.json")
+            if state == "saved" and not sidecar.is_file() or state == "cancelled" and sidecar.exists():
+                raise fft.ReferenceError("save receipt/sidecar mismatch")
 
 
-def validate_run(output, directory, request, language, case):
+def validate_run(output, directory, request, language, case, *, product=False, codec=None):
     record = validate_ui(output, language)
     retired = [audio.core.read_json(v.encode()) for v in re.findall(r"DISPLAY_SAVE_RETIRED (.+)", output)]
     if len(retired) != 2 or any(v["error"] is not None for v in retired):
         raise fft.ReferenceError("missing or failed save retirement")
-    old = next((v["receipts"] for v in retired if len(v["receipts"]) == 9), None)
+    old = next((v["receipts"] for v in retired if len(v["receipts"]) == 9 + int(product)), None)
     new = next((v["receipts"] for v in retired if len(v["receipts"]) == 2), None)
     if old is None or new is None:
         raise fft.ReferenceError("retired save session mismatch")
@@ -145,22 +166,31 @@ def validate_run(output, directory, request, language, case):
         "stop.json",
         "stop.csv",
     ]
-    validate_receipts(old, directory, [normal] * 5 + [held] * 4, names)
-    validate_receipts(new, directory, [teardown] * 2, ["teardown.json", "teardown.csv"])
-    if [r["status"]["state"] for r in old[:7]] != ["saved", "saved", "failed", "failed", "saved", "saved", "saved"]:
+    expected_states = ["saved", "saved", "failed", "failed", "saved", "saved", "saved"]
+    if product:
+        names.insert(4, "partial.csv")
+        expected_states.insert(4, "failed")
+    normal_count = 5 + int(product)
+    validate_receipts(old, directory, [normal] * normal_count + [held] * 4, names, product=product)
+    validate_receipts(new, directory, [teardown] * 2, ["teardown.json", "teardown.csv"], product=product)
+    if [r["status"]["state"] for r in old[: len(expected_states)]] != expected_states:
         raise fft.ReferenceError("save failure/recovery outcomes")
     if old[2]["status"]["kind"] != "AlreadyExists" or old[3]["status"]["kind"] != "NotFound":
         raise fft.ReferenceError("unexpected save I/O failures")
+    if product:
+        validate_partial_pair(old[4], directory, codec)
     expected_profiles = edit.edited_profiles(request)["edited"]
     edit.exact_qml(record["calibration"]["profiles"], expected_profiles, "profile edited after pin")
     if record["calibration"]["status"] != "applied":
         raise fft.ReferenceError("profile edit was not applied")
     comparisons, documents = [], {}
-    for receipt, frame in [(r, normal if i < 5 else held) for i, r in enumerate(old)] + [(r, teardown) for r in new]:
+    for receipt, frame in [(r, normal if i < normal_count else held) for i, r in enumerate(old)] + [
+        (r, teardown) for r in new
+    ]:
         if receipt["status"]["state"] != "saved":
             continue
         path = Path(receipt["destination"])
-        document = read_document(path)
+        document = read_document(path, product=product, codec=codec)
         edit.exact_qml(frame, projection_for(document), "pinned projection/full result")
         if frame["result_id"] in documents:
             trigger.exact(document, documents[frame["result_id"]], "all saved arrays and provenance are identical")
@@ -181,15 +211,34 @@ def validate_run(output, directory, request, language, case):
             comparisons.append(calibration.validate_result(document, bound, samples, case, read=read))
         documents[frame["result_id"]] = document
     trigger.exact(
-        read_document(directory / "normal.json"),
-        read_document(directory / "recovery.json"),
+        read_document(directory / "normal.json", product=product, codec=codec),
+        read_document(directory / "recovery.json", product=product, codec=codec),
         "existing destination unchanged after failure",
     )
     expected_files = {Path(r["destination"]) for r in old + new if r["status"]["state"] == "saved"}
+    if product:
+        expected_files |= {Path(str(p) + ".metadata.json") for p in expected_files if p.suffix == ".csv"}
+        expected_files |= {directory / "partial.csv", directory / "partial.csv.metadata.json"}
     if set(directory.rglob("*")) != expected_files:
         raise fft.ReferenceError("unexpected saved/temporary/stale files")
     record.update(retired=retired, comparisons=comparisons)
+    if product:
+        record["codec_commands"] = codec.commands
     return record
+
+
+def validate_partial_pair(receipt, directory, codec):
+    """A pair failure must preserve the pre-existing sidecar and reject restoration."""
+    if receipt["status"].get("kind") != "AlreadyExists":
+        raise fft.ReferenceError("unexpected sidecar publication failure")
+    path = directory / "partial.csv"
+    if not path.is_file() or Path(str(path) + ".metadata.json").read_bytes() != PARTIAL_METADATA:
+        raise fft.ReferenceError("partial CSV/old sidecar not preserved")
+    try:
+        read_document(path, product=True, codec=codec)
+    except fft.ReferenceError:
+        return
+    raise fft.ReferenceError("partial product pair was restored")
 
 
 def main():
@@ -201,6 +250,9 @@ def main():
     parser.add_argument("--all-inputs", action="store_true")
     parser.add_argument("--timeout", type=float, default=30)
     parser.add_argument("--portable", action="store_true")
+    parser.add_argument(
+        "--product-format", action="store_true", help="exercise native product JSON/CSV and sidecar failure"
+    )
     args = parser.parse_args()
     if args.output.exists() or not np.isfinite(args.timeout) or args.timeout <= 0:
         parser.error("new output directory and positive timeout required")
@@ -211,6 +263,9 @@ def main():
     ]
     if not all(p.is_file() for p in binaries):
         parser.error("build both Qt displays first")
+    reader = args.target_dir.resolve() / ("result-candidate.exe" if os.name == "nt" else "result-candidate")
+    if args.product_format and not reader.is_file():
+        parser.error("build result-candidate for independent full-snapshot validation")
     manifest, manifest_hash = candidate.load_manifest(audio.core.DEFAULT_FIXTURES, portable=args.portable, is_core=True)
     args.output.mkdir(parents=True)
     started = time.monotonic()
@@ -227,6 +282,7 @@ def main():
                     language=language,
                     calibration=True,
                     saving=True,
+                    product_saving=args.product_format,
                 )
                 runs.append(run)
                 print(
@@ -265,11 +321,15 @@ def main():
             )
         ),
     ]
+    if args.product_format:
+        helpers += [ROOT / "scripts/migration_product_exchange.py"]
+        paths += sorted((ROOT / "src/core/export").glob("*.py"))
+        paths += [ROOT / "src/core/localization.py", ROOT / "src/core/utils.py"]
     fft.write_json(
         args.output / "report.json",
         {
             "schema_version": 1,
-            "task": "MIG-007-A-save",
+            "task": "MIG-007-A-product-save" if args.product_format else "MIG-007-A-save",
             "passed": all(r["passed"] for r in runs),
             "duration_seconds": time.monotonic() - started,
             "qt_version": version,
@@ -279,12 +339,16 @@ def main():
             "fixture_manifest_sha256": manifest_hash,
             "source_sha256": {str(p.relative_to(ROOT)): sha256(p) for p in sorted(paths)},
             "runner_sha256": {str(p.relative_to(ROOT)): sha256(p) for p in helpers},
+            "codec_binary_sha256": sha256(reader) if args.product_format else None,
             "runs": runs,
             "files_sha256": {
                 str(p.relative_to(args.output)): sha256(p) for p in sorted(args.output.rglob("*")) if p.is_file()
             },
             "limitations": [
-                "v1 evaluation codec; native product codec pending",
+                "product codec with carrier/sidecar; import UI and final schema pending"
+                if args.product_format
+                else "v1 evaluation codec; product formats tested separately",
+                "CSV pair publication is not transactional",
                 "two-job bound, no process byte budget",
                 "short correctness diagnostic, no load/performance acceptance",
                 "no other-OS or real window manager acceptance",

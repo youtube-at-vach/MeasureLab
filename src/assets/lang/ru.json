@@ -2593,5 +2593,10 @@
     "migration.display.save_closed": "Сохранение остановлено",
     "migration.display.save_cancel": "Отменить задание в очереди",
     "migration.display.save_finish": "Остановить сохранение",
-    "migration.display.save_finish_note": "Остановка отменяет задания в очереди. Текущая запись сохраняет фактический результат."
+    "migration.display.save_finish_note": "Остановка отменяет задания в очереди. Текущая запись сохраняет фактический результат.",
+    "migration.display.save_v1_json": "JSON v1 для оценки",
+    "migration.display.save_v1_csv": "CSV v1 для оценки",
+    "migration.display.save_product_json": "JSON продукта",
+    "migration.display.save_product_csv": "CSV продукта + метаданные",
+    "migration.display.save_csv_companion": "Храните CSV вместе с файлом .metadata.json для восстановления полного результата. При ошибке сохранения может остаться только CSV."
 }

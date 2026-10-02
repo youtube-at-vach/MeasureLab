@@ -203,6 +203,7 @@ def run_display(
     calibration=False,
     calibration_edit=False,
     saving=False,
+    product_saving=False,
 ):
     directory.mkdir(parents=True, exist_ok=False)
     evidence = directory / "results"
@@ -235,6 +236,11 @@ def run_display(
         saves = directory.resolve() / "saves"
         saves.mkdir()
         command += ["--save-test", "--save-directory", str(saves)]
+        if product_saving:
+            from scripts.migration_qt_save import PARTIAL_METADATA
+
+            (saves / "partial.csv.metadata.json").write_bytes(PARTIAL_METADATA)
+            command += ["--save-format", "product"]
     started = time.monotonic()
     try:
         result = subprocess.run(  # noqa: S603 - explicit local evaluation binary
@@ -285,7 +291,14 @@ def run_display(
             if saving:
                 from scripts.migration_qt_save import validate_run
 
-                details["save"] = validate_run(output, saves, body, language, case)
+                codec = None
+                if product_saving:
+                    from scripts.migration_product_exchange import NativeCodec
+
+                    codec = NativeCodec(
+                        binary.parent / ("result-candidate.exe" if os.name == "nt" else "result-candidate")
+                    )
+                details["save"] = validate_run(output, saves, body, language, case, product=product_saving, codec=codec)
                 if "DISPLAY_SAVE_TEARDOWN sessions=0" not in output or not image.with_suffix(".png.save.png").is_file():
                     raise fft.ReferenceError("missing save teardown/dialog image")
             if calibration_edit:

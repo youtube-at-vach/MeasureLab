@@ -153,3 +153,4 @@ jobs:
           python scripts/migration_qt_calibration.py --qt-prefix "$QT_EVALUATION_PREFIX" --portable --all-inputs --output qt-calibration-results
           python scripts/migration_qt_calibration_edit.py --qt-prefix "$QT_EVALUATION_PREFIX" --portable --all-inputs --output qt-calibration-edit-results
           python scripts/migration_qt_save.py --qt-prefix "$QT_EVALUATION_PREFIX" --portable --all-inputs --output qt-save-results
+          python scripts/migration_qt_save.py --qt-prefix "$QT_EVALUATION_PREFIX" --portable --product-format --all-inputs --output qt-product-save-results

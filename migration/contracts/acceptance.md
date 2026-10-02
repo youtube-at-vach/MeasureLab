@@ -57,12 +57,17 @@ Qt保存操作/製品互換/取得中の保存負荷/長時間は後続で、AC�
 AC12の旧JSON/CSV値/軸/校正/metadataとunknown、完全snapshotのRust reader往復を検査する。
 製品JSONのcarrierと独立列CSVのsidecarは評価用で、merged表は元gridを復元しない。
 native製品codec/workerは[決定0027](../decisions/0027-native-product-snapshot-codec.md)で追加し、同じfixtureの双方向完全往復、receiptと部分pair失敗を検査する。
-Qt製品format/import、取得profile再起動維持、pair transaction、取得中性能/他OSは後続。
+Qt製品import、取得profile再起動維持、pair transaction、取得中性能/他OSは後続。
 007-Aの[両Qt非同期保存操作](../decisions/0026-qt-snapshot-save.md)を追加した。
 AC07/12/13の完成resultのpin、旧校正の保持、受付/実完了/取消/失敗復帰、停止/分離/再生成、
 GUI外のwriter終了を保存入力で検査する。最終件数はstatusを参照。
-BlackHoleの保存操作、Qt製品format接続、長時間/負荷下/他OSとAC全体は未完了。
+BlackHoleの保存操作、製品import、長時間/負荷下/他OSとAC全体は未完了。
 AC12全体の合格にはしない。残工程と依存は[MIG-008までの整理表](../remaining-to-mig008.md)を参照する。
+
+007-Aの[両Qt製品snapshot保存](../decisions/0028-qt-product-snapshot-save.md)を追加した。
+AC07/12/13の同じpin/worker/容量で製品JSON/CSVを保存し、全値/来歴の復元、
+CSV/sidecar公開の部分失敗と復帰、9言語/サイズ/終了を保存入力で検査する。
+製品import UI、旧トレースnative import、再起動校正維持、取得中性能/他OSは後続。
 
 ## fixtureの最小セット
 

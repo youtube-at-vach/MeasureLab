@@ -16,11 +16,14 @@ Timer {
     property double baseline: 0
     property double generation: 0
     property bool dialogSaved: false
+    readonly property bool product: host.argument("--save-format") === "product"
+    readonly property int extra: product ? 1 : 0
+    property bool pairChecked: false
     function check(ok, message) { return host.check(ok, "measurement save: " + message); }
     function path(name) { return host.argument("--save-directory") + "/" + name; }
     function submit(name, format) {
         dialog.destination = path(name);
-        dialog.formatIndex = format;
+        dialog.formatIndex = format + (product ? 2 : 0);
         return dialog.submit();
     }
     function complete(count) { return dialog.report.receipts.length === count
@@ -74,22 +77,27 @@ Timer {
             phase = 4;
             break;
         case 4:
-            if (!complete(4))
+            if (!complete(4 + (pairChecked ? extra : 0)))
                 return;
             check(dialog.report.receipts[3].status.state === "failed", "missing parent fails");
+            if (product && !pairChecked) {
+                check(submit("partial.csv", 1), "admit CSV with existing sidecar");
+                phase = 14;
+                break;
+            }
             checks.dialog = {labels: dialog.displayedText, size: [dialog.width, dialog.height], labels_fit: dialog.labelsFit()};
             check(dialog.labelsFit() && dialog.width <= 1180 && dialog.height <= 690, "dialog fits");
             check(dialog.contentItem.grabToImage(result => {
                 check(result.saveToFile(host.argument("--snapshot") + ".save.png"), "dialog image");
                 dialogSaved = true;
             }), "dialog image request");
-            check(submit("recovery.json", 0), "recovery after I/O failure");
-            phase = 5;
+            // Keep the selected CSV/companion explanation until the actual image is captured.
+            phase = 15;
             break;
         case 5:
-            if (!complete(5) || !dialogSaved)
+            if (!complete(5 + extra) || !dialogSaved)
                 return;
-            check(dialog.report.receipts[4].status.state === "saved", "save recovered");
+            check(dialog.report.receipts[4 + extra].status.state === "saved", "save recovered");
             checks.blocked_gui_fft = backend.stall();
             check(checks.blocked_gui_fft >= 2, "acquisition advances with blocked GUI");
             dialog.close();
@@ -109,10 +117,10 @@ Timer {
             phase = 7;
             break;
         case 7:
-            if (!complete(7))
+            if (!complete(7 + extra))
                 return;
-            check(dialog.report.receipts.slice(5).every(r => r.status.state === "saved"), "actual trigger completion");
-            const stale = {generation: generation - 1, result_id: host.frame.result_id, destination: path("stale.json"), format: "json"};
+            check(dialog.report.receipts.slice(5 + extra).every(r => r.status.state === "saved"), "actual trigger completion");
+            const stale = {generation: generation - 1, result_id: host.frame.result_id, destination: path("stale.json"), format: product ? "product_json" : "json"};
             check(!backend.save_result(JSON.stringify(stale)), "stale pinned identity rejected");
             check(!backend.save_result("{}"), "malformed request rejected");
             check(!backend.cancel_save(dialog.report.receipts[0].operation_id), "completed save cannot be cancelled");
@@ -123,7 +131,7 @@ Timer {
             phase = 8;
             break;
         case 8:
-            if (!complete(9) || backend.state !== 0 || backend.workers())
+            if (!complete(9 + extra) || backend.state !== 0 || backend.workers())
                 return;
             check(backend.reclaimed, "acquisition reclaimed independently");
             check(!dialog.submit(), "closed admission rejected");
@@ -174,6 +182,19 @@ Timer {
             console.log("DISPLAY_SAVE_PASS pin normal trigger immutable failure recovery stop restart recreate teardown");
             test.stop();
             Qt.quit();
+            break;
+        case 14:
+            if (!complete(5))
+                return;
+            check(dialog.report.receipts[4].status.state === "failed", "CSV sidecar publication failed");
+            pairChecked = true;
+            phase = 4;
+            break;
+        case 15:
+            if (!dialogSaved)
+                return;
+            check(submit("recovery.json", 0), "recovery after I/O failure");
+            phase = 5;
             break;
         }
     }

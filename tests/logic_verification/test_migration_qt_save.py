@@ -29,6 +29,10 @@ def ui(language):
     labels.update(
         close=catalog["migration.display.calibration_close"],
         note=catalog["migration.display.save_note"] + "\n" + catalog["migration.display.save_finish_note"],
+        formats=[
+            catalog["migration.display.save_" + key] for key in ("v1_json", "v1_csv", "product_json", "product_csv")
+        ],
+        companion=catalog["migration.display.save_csv_companion"],
     )
     return {
         "closed": True,
@@ -173,3 +177,60 @@ def test_save_runner_is_headless():
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("fault", [None, "v1_format", "missing_sidecar", "cancelled_sidecar"])
+def test_product_csv_receipt_requires_pair_and_explicit_format(tmp_path, fault):
+    path = tmp_path / "result.csv"
+    sidecar = tmp_path / "result.csv.metadata.json"
+    path.write_text("csv")
+    sidecar.write_text("metadata")
+    frame = {"result_id": "1:2", "source": {"generation": 1}, "interval": [10, 20]}
+    receipt = {
+        "operation_id": 1,
+        "result_id": "1:2",
+        "generation": 1,
+        "interval": [10, 20],
+        "destination": str(path),
+        "format": "product_csv",
+        "status": {"state": "saved"},
+    }
+    if fault == "v1_format":
+        receipt["format"] = "csv"
+    elif fault == "missing_sidecar":
+        sidecar.unlink()
+    elif fault == "cancelled_sidecar":
+        receipt["status"]["state"] = "cancelled"
+        path.unlink()
+    if fault:
+        with pytest.raises(save.fft.ReferenceError):
+            save.validate_receipts([receipt], tmp_path, [frame], [path.name], product=True)
+    else:
+        save.validate_receipts([receipt], tmp_path, [frame], [path.name], product=True)
+
+
+@pytest.mark.parametrize("fault", [None, "replaced_sidecar", "missing_csv", "wrong_failure"])
+def test_product_partial_pair_audit_preserves_old_file_and_rejects_restore(tmp_path, fault):
+    path = tmp_path / "partial.csv"
+    sidecar = tmp_path / "partial.csv.metadata.json"
+    path.write_text("orphan csv")
+    sidecar.write_bytes(save.PARTIAL_METADATA)
+    receipt = {"status": {"state": "failed", "kind": "AlreadyExists"}}
+    if fault == "replaced_sidecar":
+        sidecar.write_text("changed")
+    elif fault == "missing_csv":
+        path.unlink()
+    elif fault == "wrong_failure":
+        receipt["status"]["kind"] = "NotFound"
+    if fault:
+        with pytest.raises(save.fft.ReferenceError):
+            save.validate_partial_pair(receipt, tmp_path, None)
+    else:
+        save.validate_partial_pair(receipt, tmp_path, None)
+
+
+def test_product_trace_without_carrier_is_not_a_complete_result(tmp_path):
+    path = tmp_path / "legacy.json"
+    path.write_text('{"version":"1.0","traces":[]}')
+    with pytest.raises(save.fft.ReferenceError, match="missing complete snapshot"):
+        save.read_document(path, product=True)
