@@ -74,6 +74,7 @@ legacy `CalibrationInfo`の係数1や`is_calibrated: false`を校正済みの証
 MIG-008の製品schema判断時に、結果の復元と取得設定の再開を個別に決める。
 
 007-A-saveのv1操作と[native製品codec/file worker](product-codec.md)を追加した。
-次はQt製品format接続、005-A-common、006-D-integrationを進める。
+両Qt製品format接続と[native製品import](product-import.md)を追加した。
+次はQt製品import操作、005-A-common、006-D-integrationを進める。
 取得中の保存負荷、長時間性能、実機/他OS、製品GUI import操作、MIG-008と採用判断は未完了。
 実施結果は[status](../migration/status.md)を正本とする。

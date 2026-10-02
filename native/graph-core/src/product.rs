@@ -31,6 +31,12 @@ const TRACE_KEYS: [&str; 13] = [
 ];
 static NEXT_TEMP: AtomicU64 = AtomicU64::new(1);
 
+mod import;
+pub use import::{
+    ImportedProduct, SampleRelation, import_csv, import_csv_pair, import_json, load_csv_with_spec,
+    load_import,
+};
+
 #[derive(Clone, Copy, Debug, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ProductFormat {
@@ -79,7 +85,7 @@ struct Trace {
     calibration: Calibration,
     metadata: serde_json::Map<String, Value>,
 }
-#[derive(PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Document {
     version: String,
@@ -229,7 +235,7 @@ fn projection(result: &MeasurementResult) -> Result<Document, String> {
     })
 }
 
-fn decode_document(document: Document) -> Result<MeasurementResult, String> {
+fn decode_document(document: &Document) -> Result<MeasurementResult, String> {
     if document.version != "1.0" || document.traces.is_empty() || document.traces.len() > 1024 {
         return Err("unsupported_product_schema".into());
     }
@@ -287,7 +293,7 @@ fn validate_trace_fields(value: &Value, with_arrays: bool) -> Result<(), String>
     }
     Ok(())
 }
-pub fn decode_json(bytes: &[u8]) -> Result<MeasurementResult, String> {
+fn json_document(bytes: &[u8]) -> Result<Document, String> {
     let value = parse_json(bytes)?;
     let traces = value["traces"].as_array().ok_or("invalid_product_traces")?;
     if traces.len() > 1024 {
@@ -309,7 +315,10 @@ pub fn decode_json(bytes: &[u8]) -> Result<MeasurementResult, String> {
             }
         }
     }
-    decode_document(serde_json::from_value(value).map_err(|e| e.to_string())?)
+    serde_json::from_value(value).map_err(|e| e.to_string())
+}
+pub fn decode_json(bytes: &[u8]) -> Result<MeasurementResult, String> {
+    decode_document(&json_document(bytes)?)
 }
 pub fn encode_json(result: &MeasurementResult) -> Result<Vec<u8>, String> {
     bounded(serde_json::to_vec(&projection(result)?).map_err(|e| e.to_string())?)
@@ -324,6 +333,34 @@ fn bounded(bytes: Vec<u8>) -> Result<Vec<u8>, String> {
 fn parse_json(bytes: &[u8]) -> Result<Value, String> {
     if bytes.len() > MAX_BYTES {
         return Err("product_file_capacity".into());
+    }
+    // serde_json without arbitrary_precision promotes out-of-range integer
+    // tokens to f64. Reject them before parsing, including nested metadata,
+    // rather than silently rounding a legacy observation or its descriptors.
+    let (mut i, mut in_string) = (0, false);
+    while i < bytes.len() {
+        match bytes[i] {
+            b'\\' if in_string => i += 1,
+            b'"' => in_string = !in_string,
+            b'-' | b'0'..=b'9' if !in_string => {
+                let start = i;
+                while i < bytes.len()
+                    && matches!(bytes[i], b'-' | b'+' | b'0'..=b'9' | b'.' | b'e' | b'E')
+                {
+                    i += 1;
+                }
+                let token = &bytes[start..i];
+                if !token.iter().any(|b| matches!(b, b'.' | b'e' | b'E')) {
+                    let token = std::str::from_utf8(token).map_err(|e| e.to_string())?;
+                    if token.parse::<i64>().is_err() && token.parse::<u64>().is_err() {
+                        return Err("product_integer_outside_64_bit".into());
+                    }
+                }
+                continue;
+            }
+            _ => (),
+        }
+        i += 1;
     }
     unique_json(bytes)
 }
@@ -476,24 +513,34 @@ fn validate_csv_syntax(text: &str, delimiter: u8, separator: Option<usize>) -> R
     }
     Ok(())
 }
-pub fn decode_csv_pair(bytes: &[u8], metadata: &[u8]) -> Result<MeasurementResult, String> {
+fn csv_pair_document(bytes: &[u8], metadata: &[u8]) -> Result<Document, String> {
     if bytes.len() > MAX_BYTES {
         return Err("product_file_capacity".into());
     }
     let sidecar: Sidecar =
         serde_json::from_value(parse_json(metadata)?).map_err(|e| e.to_string())?;
-    let opts = &sidecar.options;
     if sidecar.schema_version != 1
         || sidecar.kind != CSV_KIND
         || sidecar.csv_sha256 != hash(bytes)
-        || opts.layout != "independent"
-        || !matches!(opts.delimiter.as_str(), "comma" | "tab")
-        || sidecar.descriptors.len() > 1024
+        || sidecar.options.layout != "independent"
     {
         return Err("mismatched_or_unsupported_product_sidecar".into());
     }
+    csv_document(bytes, &sidecar.options, sidecar.descriptors)
+}
+fn csv_document(bytes: &[u8], opts: &Options, descriptors: Vec<Value>) -> Result<Document, String> {
+    if bytes.len() > MAX_BYTES {
+        return Err("product_file_capacity".into());
+    }
+    if !matches!(opts.layout.as_str(), "independent" | "merged")
+        || !matches!(opts.delimiter.as_str(), "comma" | "tab")
+        || descriptors.len() > 1024
+    {
+        return Err("unsupported_product_csv_spec".into());
+    }
+    let independent = opts.layout == "independent";
     let mut traces = Vec::new();
-    for mut value in sidecar.descriptors {
+    for mut value in descriptors {
         validate_trace_fields(&value, false)?;
         let secondary = !value["y2_axis"].is_null();
         let map = value.as_object_mut().ok_or("invalid_product_descriptor")?;
@@ -553,10 +600,11 @@ pub fn decode_csv_pair(bytes: &[u8], metadata: &[u8]) -> Result<MeasurementResul
             }
         }
     }
-    let width: usize = traces
-        .iter()
-        .map(|t| 2 + usize::from(t.y2_axis.is_some()))
-        .sum();
+    let width: usize = usize::from(!independent)
+        + traces
+            .iter()
+            .map(|t| 1 + usize::from(independent) + usize::from(t.y2_axis.is_some()))
+            .sum::<usize>();
     if opts.include_headers
         && records
             .next()
@@ -574,9 +622,20 @@ pub fn decode_csv_pair(bytes: &[u8], metadata: &[u8]) -> Result<MeasurementResul
         if row.len() != width {
             return Err("product_csv_width".into());
         }
-        let mut offset = 0;
+        let numeric = |cell: &str| {
+            cell.parse::<f64>()
+                .ok()
+                .filter(|f| f.is_finite())
+                .ok_or("product_csv_numeric")
+        };
+        let shared_x = if independent {
+            None
+        } else {
+            Some(numeric(&row[0])?)
+        };
+        let mut offset = usize::from(!independent);
         for (i, t) in traces.iter_mut().enumerate() {
-            let size = 2 + usize::from(t.y2_axis.is_some());
+            let size = 1 + usize::from(independent) + usize::from(t.y2_axis.is_some());
             let cells: Vec<_> = row.iter().skip(offset).take(size).collect();
             offset += size;
             if cells.iter().all(|c| c.is_empty()) {
@@ -588,28 +647,26 @@ pub fn decode_csv_pair(bytes: &[u8], metadata: &[u8]) -> Result<MeasurementResul
             }
             let values = cells
                 .iter()
-                .map(|c| {
-                    c.parse::<f64>()
-                        .ok()
-                        .filter(|f| f.is_finite())
-                        .ok_or("product_csv_numeric")
-                })
+                .map(|c| numeric(c))
                 .collect::<Result<Vec<_>, _>>()?;
-            count += values.len();
+            count += values.len() + usize::from(!independent);
             if count > MAX_VALUES {
                 return Err("product_numeric_capacity".into());
             }
-            t.x_data.push(values[0]);
-            t.y_data.push(values[1]);
-            if size == 3 {
-                t.y2_data.get_or_insert_with(Vec::new).push(values[2]);
+            t.x_data.push(shared_x.unwrap_or(values[0]));
+            t.y_data.push(values[usize::from(independent)]);
+            if let Some(y2) = &mut t.y2_data {
+                y2.push(values[1 + usize::from(independent)]);
             }
         }
     }
-    decode_document(Document {
+    Ok(Document {
         version: "1.0".into(),
         traces,
     })
+}
+pub fn decode_csv_pair(bytes: &[u8], metadata: &[u8]) -> Result<MeasurementResult, String> {
+    decode_document(&csv_pair_document(bytes, metadata)?)
 }
 pub fn load(path: &Path, format: ProductFormat) -> Result<MeasurementResult, String> {
     let bytes = read(path)?;

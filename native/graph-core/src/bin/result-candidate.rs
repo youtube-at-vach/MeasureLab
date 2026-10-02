@@ -434,6 +434,18 @@ fn fft(request: &Path, input: &Path, output: &Path) -> Result<Value, Error> {
 fn run() -> Result<(), Error> {
     let args: Vec<_> = std::env::args_os().skip(1).collect();
     let audit = match args.as_slice() {
+        [mode, input, output] if mode == "--product-import-json" || mode == "--product-import-csv" => {
+            let imported = product::load_import(Path::new(input), if mode == "--product-import-json" { ProductFormat::ProductJson } else { ProductFormat::ProductCsv })?;
+            fs::create_dir(Path::new(output))?;
+            fs::write(Path::new(output).join("imported.json"), serde_json::to_vec(&imported.to_value())?)?;
+            json!({"product_import_validated": true, "has_snapshot": imported.snapshot().is_some()})
+        },
+        [mode, input, specification, output] if mode == "--product-import-csv-spec" => {
+            let imported = product::load_csv_with_spec(Path::new(input), Path::new(specification))?;
+            fs::create_dir(Path::new(output))?;
+            fs::write(Path::new(output).join("imported.json"), serde_json::to_vec(&imported.to_value())?)?;
+            json!({"product_import_validated": true, "has_snapshot": imported.snapshot().is_some()})
+        },
         [mode, input, output] if mode == "--product-save-json" || mode == "--product-save-csv" => {
             let result = MeasurementResult::load(Path::new(input), if mode == "--product-save-json" { Format::Json } else { Format::Csv })?;
             fs::create_dir(Path::new(output))?;

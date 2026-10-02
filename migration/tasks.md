@@ -33,8 +33,9 @@
 | 006-D | 最小rate変換/filterとvalidity伝播 | 003-C、006-C、P06 | AC10/14、同じgraph内で遅延/区間/phase stateを保持 | 高品質resamplerの全機能 | 完了（2026-09-30、f64保存21ケース×5 chunk/6 rate境界と一段のpure graph。f32・IIR gap回復・実取得/Qtは後続） |
 | 006-E | 不変result・channel校正・CSV/JSON来歴 | 003-B、006-B/C、P13/P14 | AC12、再読込、保存失敗、profile変更後の不変性、uncalibrated | 旧設定の自動移行 | 完了（2026-10-01、pure不変result/ID校正/JSON・CSV。保存2契約・4例と4/8ch f32/f64。非同期workerは次行、製品互換/Qt保存操作は後続） |
 | 006-E-async-save | 不変snapshotのbounded非同期保存worker | 006-E、007-A-calibration-editのencode負荷記録。graph-core/exportと独立runner | AC07/12/13のworker境界。受付/実完了/失敗/pending cancel/寿命、graph進行、2契約と4入力の両format完全往復 | Qt保存操作、製品互換形式、pair transaction、取得中/長時間性能 | 評価範囲完了（2026-10-02、Rust新規9件、保存12実行/36 saved/36 failed）。結果はstatus |
-| 006-E-compat | 製品形式/旧CSV・JSONとsnapshotの互換adapter・読込み | 006-E、006-E-async-save、現行ExportTrace。製品版管理は008で判断 | AC12。元値/軸/単位/校正/metadata、旧fileのunknown、失敗/上書きの保証範囲を検査 | 全旧設定自動移行、全解析形式 | 評価用Python adapterを追加（2026-10-02）。製品JSON carrier/CSV sidecarとnative readerの完全往復、旧fileのunknownを検査。native snapshot codec/file workerは次行。Qt製品保存formatは007-A-product-saveへ接続。製品importと取得profile再起動維持は後続 |
+| 006-E-compat | 製品形式/旧CSV・JSONとsnapshotの互換adapter・読込み | 006-E、006-E-async-save、現行ExportTrace。製品版管理は008で判断 | AC12。元値/軸/単位/校正/metadata、旧fileのunknown、失敗/上書きの保証範囲を検査 | 全旧設定自動移行、全解析形式 | 評価用Python adapterを追加（2026-10-02）。製品JSON carrier/CSV sidecarとnative readerの完全往復、旧fileのunknownを検査。native snapshot codec/file workerは次行。Qt製品保存formatは007-A-product-save、native読込みは006-E-native-importへ追加。Qt import操作と取得profile再起動維持は後続 |
 | 006-E-native-product | 製品snapshot codecと共通非同期保存worker | 006-E-compat、006-E-async-save、実ExportTrace/exporter | AC12の全値/元精度/来歴、双方向往復、receipt、上書き拒否、部分pairと失敗後の復帰。worker寿命と既存Qt回帰 | Qt製品import、旧fileのnativeトレースimport、取得profile再起動維持、取得中性能/他OS | 保存fixture範囲完了（2026-10-02、12実行/72双方向完全往復、48 saved/48期待failed）。Rust新規7件と既存Qt経路も成功。詳細と証拠はstatus。006-E全体は未完了 |
+| 006-E-native-import | 旧トレース/完全snapshotのnative製品読込み | 006-E-compat、006-E-native-product。product parser/独立CLI/実exporter | AC12。旧JSON/CSV 32条件/sidecar、unknown、全snapshotの3入口完全一致、破損拒否、入力不変 | Qt非同期import/表示/取消/寿命、取得profile再起動維持、負荷/他OS | 保存fixture範囲完了（2026-10-02、旧JSON/CSV32条件・旧pairと18完全import、Rust新規8件/対象Python新規75件）。詳細はstatus。同期file-worker APIのみ |
 | 007-A | 同じ結果をline/heatmapへ表示、操作/画像保存 | 004、006。P19のsnapshot境界 | AC05/07/08、軸/cursor/zoom・画像・再生成・サイズ/9言語 | 全41機能のUI | 進行中（2026-10-01、保存4/8ch f32/f64とBlackHole実入力→実graph→両Qt表示。分離view/翻訳JSON/9言語に手動Triggerのhold/retry/releaseを追加。セッションID校正は007-A-calibration-input、取得中のQt編集・適用は007-A-calibration-editへ追加。製品保存は007-A-product-saveへ接続。製品import/実window manager/他OSは後続。実施結果はstatus） |
 | 007-A-trigger | 取得履歴の非消費query→共有raw FFT→trigger付き不変result | 005-graph、006-C/E。解析owner APIと独立runner | AC08/09のpending/gap/分数残差/旧世代拒否、通常平均/位置不変、保存4入力×2bindingの全bytes・32完全result | Qt操作、実入力要求配送、arm/cancel/検出器、長時間性能 | worker範囲完了（2026-10-01）。Qt/実入力の配送は次行で検証 |
 | 007-A-trigger-display | Qtのtyped要求/revision→解析owner、両view共通hold/retry/release | 007-A-trigger、007-live-display/分離/翻訳境界 | AC08/09/13。保存4入力×9言語×両Qt、元bytes/全result、pending/gap非数値、保持中の取得継続、旧世代/停止/破棄、BlackHole短時間診断 | 検出器のarm/cancel、前段filter/外部clock、製品校正/保存、長時間性能/他OS | 配送を追加（2026-10-01）。成功件数と未確認範囲はstatus |
@@ -54,7 +55,7 @@ MIG-004はSDK導入だけで完了にしない。OSや実機の不足はその�
 007-Cの[再実行・負荷/コピーの境界](../native/renderer-spike.md)と[試験結果](status.md#mig-007-c-plot-renderer-feasibility-spikeの成果と検証)を追加済み。基準100万点の失敗も比較記録へ残す。
 
 [MIG-008までの残工程](remaining-to-mig008.md)に、未完了範囲・実施順・依存・実機/別環境の必要条件を整理した。
-007-A-saveの保存fixture範囲を進めた。006-E-native-productの保存fixture範囲を追加。Qt製品format接続を007-A-product-saveへ追加。次は製品import、005-A-commonへ進める。006-D-integration、008-A/B/Cも同表のローカル作業単位であり、Issue作成や採用判断は行っていない。
+007-A-saveの保存fixture範囲を進めた。006-E-native-productの保存fixture範囲を追加。Qt製品format接続を007-A-product-saveへ追加。旧トレースと完全snapshotのnative importを006-E-native-importへ追加。次はQt製品import、005-A-commonへ進める。006-D-integration、008-A/B/Cも同表のローカル作業単位であり、Issue作成や採用判断は行っていない。
 
 ## 003-Aの再検査
 
@@ -278,6 +279,18 @@ Qt製品format接続、byte予算/取得中の負荷/長時間/他OSは後続。
 merged CSVの補間は元gridの復元にしない。完全CSV復元はindependent列とmetadata sidecarが必要。
 native codec/保存workerは[専用手順](../native/product-codec.md)で追加し、runnerの`--native-product`で再検査する。
 Qt製品format接続/取得profile再起動維持、pair transaction、取得中性能/他OSは後続。
+
+## 006-E native製品importの再検査
+
+[手順](../native/product-import.md)と[決定0029](decisions/0029-native-product-import.md)を参照。
+
+```bash
+./.venv/bin/python scripts/migration_product_import_candidate.py --output .migration-local/native-import-new
+./.venv/bin/pytest -q tests/logic_verification/test_migration_product_import_candidate.py
+```
+
+別OS/NumPy-only CIは明示`--portable`を追加する。旧JSON/CSVのunknownと、完全snapshotを区別する。
+Qtの非同期配送/表示/寿命、再起動取得profile、負荷/長時間/他OSは後続。
 
 ## 007-Aの再検査
 

@@ -49,6 +49,7 @@ jobs:
           ./.venv/bin/python scripts/migration_result_candidate.py --portable --report result-candidate.json
           ./.venv/bin/python scripts/migration_result_candidate.py --portable --async-save --output async-save-results --report async-save-results/report.json
           ./.venv/bin/python scripts/migration_product_candidate.py --portable --native-product --output product-compat-results
+          ./.venv/bin/python scripts/migration_product_import_candidate.py --portable --output product-import-results
           ./.venv/bin/python scripts/migration_audio_candidate.py --portable --report audio-candidate.json
           ./.venv/bin/python scripts/migration_audio_graph.py --portable --report acquisition-candidate.json
           ./.venv/bin/python scripts/migration_trigger_candidate.py --portable --output trigger-candidate

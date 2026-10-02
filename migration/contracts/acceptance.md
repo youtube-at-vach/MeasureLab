@@ -69,6 +69,12 @@ AC07/12/13の同じpin/worker/容量で製品JSON/CSVを保存し、全値/来�
 CSV/sidecar公開の部分失敗と復帰、9言語/サイズ/終了を保存入力で検査する。
 製品import UI、旧トレースnative import、再起動校正維持、取得中性能/他OSは後続。
 
+006-Eの[native製品import](../decisions/0029-native-product-import.md)を追加した。
+AC12の旧JSON/CSV値・軸・校正・metadataとunknown、独立列/merged列の32条件、
+6保存snapshot×3入口の18完全importを検査する。結果はstatusを参照。
+破損carrier/sidecarを旧トレースへfallbackせず、取得profileを自動適用しない。
+Qt importの非同期配送/表示/寿命、取得中負荷/長時間/他OSとAC全体は後続。
+
 ## fixtureの最小セット
 
 | ID | 入力・操作 | 合格条件 | 実装・検証タスク |

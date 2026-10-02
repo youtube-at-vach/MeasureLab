@@ -23,7 +23,8 @@ native CSV writerは製品exporterの既存optionであるindependent/comma/head
 readerはindependentのcomma/tab、header/metadata/BOMの16条件を実exporterで検査する。
 headerは列数だけを確認し、単位/校正をそこから推定しない。CSVの未閉鎖quote、空のdata行、interior paddingも拒否する。
 merged表の完全snapshot復元、carrierのない旧fileからのresult生成は拒否する。
-旧トレースと取得情報のunknownを読む入口は引き続きPython互換adapterである。
+旧トレースと取得情報のunknownは[別のnative import入口](product-import.md)でも読む。
+既存の完全snapshot専用readerは旧fileを拒否し、返す型と保証を維持する。
 
 ## 保存完了と制限
 
@@ -55,5 +56,6 @@ native保存→Python readerの4往復と、実exporter→native readerの2往�
 reportにsource/binary/fixture/input/artifact hash、command、receipt、失敗と未確認範囲を残す。
 
 Qtの製品保存formatは[決定0028](../migration/decisions/0028-qt-product-snapshot-save.md)で接続した。
-製品import操作、取得profile再起動維持、取得中の保存負荷/長時間、他OS、
+旧トレースと完全snapshotの[native import](product-import.md)を追加した。
+Qt製品import操作、取得profile再起動維持、取得中の保存負荷/長時間、他OS、
 005-A-common/006-D-integration/008-Aの統合と採用判断は未完了。結果は[status](../migration/status.md)を正本とする。
