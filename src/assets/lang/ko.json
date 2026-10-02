@@ -2577,5 +2577,21 @@
     "migration.display.calibration_applied": "교정 적용 완료",
     "migration.display.calibration_cancelled": "교정 변경 취소됨",
     "migration.display.calibration_apply": "적용",
-    "migration.display.calibration_close": "닫기"
+    "migration.display.calibration_close": "닫기",
+    "migration.display.save_measurement": "측정 결과 저장",
+    "migration.display.save_path": "저장 위치",
+    "migration.display.save_format": "형식",
+    "migration.display.save_selected": "결과 %1 · 프레임 [%2, %3)",
+    "migration.display.save_note": "취득이 계속되어도 선택한 결과는 유지됩니다. 기존 파일은 보존됩니다.",
+    "migration.display.save_queued": "대기 중",
+    "migration.display.save_writing": "쓰는 중",
+    "migration.display.save_saved": "저장됨",
+    "migration.display.save_failed": "저장 실패",
+    "migration.display.save_cancelled": "취소됨",
+    "migration.display.save_busy": "저장 대기열이 가득 찼습니다. 작업 완료 후 다시 시도하세요.",
+    "migration.display.save_rejected": "저장 요청이 거부되었습니다. 선택한 결과와 저장 위치를 확인하세요.",
+    "migration.display.save_closed": "저장 중지됨",
+    "migration.display.save_cancel": "대기 중 저장 취소",
+    "migration.display.save_finish": "저장 중지",
+    "migration.display.save_finish_note": "저장을 중지하면 대기 중인 작업이 취소됩니다. 진행 중인 쓰기는 실제 결과를 유지합니다."
 }

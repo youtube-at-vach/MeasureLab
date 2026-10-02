@@ -202,6 +202,7 @@ def run_display(
     trigger=False,
     calibration=False,
     calibration_edit=False,
+    saving=False,
 ):
     directory.mkdir(parents=True, exist_ok=False)
     evidence = directory / "results"
@@ -230,6 +231,10 @@ def run_display(
         command += ["--calibration-test", "1"]
     if calibration_edit:
         command.append("--calibration-edit-test")
+    if saving:
+        saves = directory.resolve() / "saves"
+        saves.mkdir()
+        command += ["--save-test", "--save-directory", str(saves)]
     started = time.monotonic()
     try:
         result = subprocess.run(  # noqa: S603 - explicit local evaluation binary
@@ -261,7 +266,13 @@ def run_display(
             m in output
             for m in (
                 "DISPLAY_READY",
-                "DISPLAY_CALIBRATION_EDIT_PASS" if calibration_edit else "DISPLAY_TRIGGER_PASS" if trigger else PASS,
+                "DISPLAY_SAVE_PASS"
+                if saving
+                else "DISPLAY_CALIBRATION_EDIT_PASS"
+                if calibration_edit
+                else "DISPLAY_TRIGGER_PASS"
+                if trigger
+                else PASS,
                 "DISPLAY_IMAGE_OK",
                 "DISPLAY_TEARDOWN workers=0 models=0",
             )
@@ -271,6 +282,12 @@ def run_display(
     details = {}
     if passed:
         try:
+            if saving:
+                from scripts.migration_qt_save import validate_run
+
+                details["save"] = validate_run(output, saves, body, language, case)
+                if "DISPLAY_SAVE_TEARDOWN sessions=0" not in output or not image.with_suffix(".png.save.png").is_file():
+                    raise fft.ReferenceError("missing save teardown/dialog image")
             if calibration_edit:
                 from scripts.migration_qt_calibration_edit import validate_run
 
@@ -290,8 +307,12 @@ def run_display(
                     from scripts.migration_qt_calibration import validate_ui
 
                     details["calibration"] = validate_ui(details["trigger"], evidence, language)
-            size = details.get("edit", {}).get("size") or details.get("trigger", {}).get(
-                "size", details.get("workspace", {}).get("main", {}).get("size", (1000, 640))
+            size = (
+                details.get("save", {}).get("size")
+                or details.get("edit", {}).get("size")
+                or details.get("trigger", {}).get(
+                    "size", details.get("workspace", {}).get("main", {}).get("size", (1000, 640))
+                )
             )
             details.update(
                 image=inspect_png(image, size=size, regions=plot_regions(output)),

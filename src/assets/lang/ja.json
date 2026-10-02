@@ -2577,5 +2577,21 @@
     "migration.display.calibration_applied": "校正を適用しました",
     "migration.display.calibration_cancelled": "校正変更をキャンセルしました",
     "migration.display.calibration_apply": "適用",
-    "migration.display.calibration_close": "閉じる"
+    "migration.display.calibration_close": "閉じる",
+    "migration.display.save_measurement": "測定結果を保存",
+    "migration.display.save_path": "保存先",
+    "migration.display.save_format": "形式",
+    "migration.display.save_selected": "結果 %1 · フレーム [%2, %3)",
+    "migration.display.save_note": "取得が続いても選択した結果は変わりません。既存ファイルは保持されます。",
+    "migration.display.save_queued": "待機中",
+    "migration.display.save_writing": "書込み中",
+    "migration.display.save_saved": "保存済み",
+    "migration.display.save_failed": "保存に失敗",
+    "migration.display.save_cancelled": "キャンセル済み",
+    "migration.display.save_busy": "保存待ちが上限に達しました。完了後に再試行してください。",
+    "migration.display.save_rejected": "保存要求が拒否されました。選択した結果と保存先を確認してください。",
+    "migration.display.save_closed": "保存を停止しました",
+    "migration.display.save_cancel": "待機中の保存を取消",
+    "migration.display.save_finish": "保存を停止",
+    "migration.display.save_finish_note": "保存の停止は待機中の処理を取り消します。書込み中の処理は実際の成否を保持します。"
 }

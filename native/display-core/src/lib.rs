@@ -29,6 +29,8 @@ pub mod locale;
 pub use calibration::ChannelCalibration;
 mod trigger;
 pub use trigger::TriggerResponse;
+mod save;
+pub use save::finish_saves;
 
 #[cfg(feature = "live-audio")]
 mod live;
@@ -173,6 +175,7 @@ pub struct Display {
     stop: Arc<AtomicBool>,
     worker: Option<JoinHandle<()>>,
     request: Option<Request>,
+    saves: save::Controller,
 }
 impl Default for Display {
     fn default() -> Self {
@@ -182,6 +185,7 @@ impl Default for Display {
             stop: Arc::default(),
             worker: None,
             request: None,
+            saves: save::Controller::default(),
         }
     }
 }

@@ -22,6 +22,7 @@ MIG-006-Aの`dsp-core`はGUI非依存のFFT/窓/単位/PSD候補。[FFT比較手
 [Qt要求配送](trigger-display.md)で両Qtから同じ解析ownerへhold/retry/releaseを配送する。
 [セッションID校正](calibration-display.md)で通常/Trigger結果へdevice/portを照合した校正を適用し、両Qt表示/診断JSON・CSVへ接続する。
 [Qt校正編集・適用](calibration-edit.md)で取得中のprofile変更と旧result不変性を検査する。
+007-Aの[非同期保存操作](qt-save.md)で完成resultのpin、両Qtの保存/取消、GUI外のwriter終了を検査する。
 007-Cの[renderer spike](renderer-spike.md)では、簡易plotterとwgpuの最小描画・QML画像転送を試験する。採用判断・個別widgetの本実装は含めない。
 [Qt SDK・比較画面の起動手順](qt-probe.md)を参照。
 004-Bの開発反復とローカルbundleは[反復測定手順](qt-iteration.md)へ分離する。

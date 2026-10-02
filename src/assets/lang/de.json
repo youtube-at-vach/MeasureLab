@@ -2577,5 +2577,21 @@
     "migration.display.calibration_applied": "Kalibrierung angewendet",
     "migration.display.calibration_cancelled": "Kalibrierungsänderung abgebrochen",
     "migration.display.calibration_apply": "Anwenden",
-    "migration.display.calibration_close": "Schließen"
+    "migration.display.calibration_close": "Schließen",
+    "migration.display.save_measurement": "Messung speichern",
+    "migration.display.save_path": "Ziel",
+    "migration.display.save_format": "Dateiformat",
+    "migration.display.save_selected": "Ergebnis %1 · Frames [%2, %3)",
+    "migration.display.save_note": "Das ausgewählte Ergebnis bleibt während der Erfassung unverändert. Vorhandene Dateien bleiben erhalten.",
+    "migration.display.save_queued": "Wartend",
+    "migration.display.save_writing": "Wird geschrieben",
+    "migration.display.save_saved": "Gespeichert",
+    "migration.display.save_failed": "Speichern fehlgeschlagen",
+    "migration.display.save_cancelled": "Abgebrochen",
+    "migration.display.save_busy": "Die Speicherwarteschlange ist voll. Nach Abschluss eines Auftrags erneut versuchen.",
+    "migration.display.save_rejected": "Speicheranfrage abgelehnt. Ergebnis und Ziel prüfen.",
+    "migration.display.save_closed": "Speichern beendet",
+    "migration.display.save_cancel": "Wartenden Auftrag abbrechen",
+    "migration.display.save_finish": "Speichern beenden",
+    "migration.display.save_finish_note": "Beim Beenden werden wartende Aufträge abgebrochen. Laufende Schreibvorgänge behalten ihr tatsächliches Ergebnis."
 }

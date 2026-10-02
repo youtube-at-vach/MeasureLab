@@ -49,6 +49,7 @@ ApplicationWindow {
     property bool workspaceTesting: Qt.application.arguments.indexOf("--workspace-test") >= 0
     property bool triggerTesting: Qt.application.arguments.indexOf("--trigger-test") >= 0
     property bool calibrationEditingTest: Qt.application.arguments.indexOf("--calibration-edit-test") >= 0
+    property bool savingTest: Qt.application.arguments.indexOf("--save-test") >= 0
     property var workspaceEvidence: ({})
     property var lineBefore: null
     property var mapBefore: null
@@ -159,7 +160,7 @@ ApplicationWindow {
     Component.onCompleted: {
         recreate();
         console.log("DISPLAY_READY");
-        if (backend.testing && !triggerTesting && !calibrationEditingTest)
+        if (backend.testing && !triggerTesting && !calibrationEditingTest && !savingTest)
             exercise.start();
     }
     Rectangle {
@@ -210,6 +211,11 @@ ApplicationWindow {
                 }
             }
             RowLayout {
+                Button {
+                    text: tr("migration.display.save_measurement")
+                    enabled: backend && !!frame
+                    onClicked: measurementSave.selectResult(frame)
+                }
                 Label {
                     text: tr("migration.display.png_path")
                 }
@@ -292,6 +298,21 @@ ApplicationWindow {
         enabled: window.calibrationEditingTest
         host: window
         editor: calibrationEditor
+        triggerPanel: triggerPanel
+        line: line
+        map: map
+    }
+    SaveDialog {
+        id: measurementSave
+        source: window.backend
+        messages: window.messages
+        x: (window.width - width) / 2
+        y: (window.height - height) / 2
+    }
+    SaveExercise {
+        enabled: window.savingTest
+        host: window
+        dialog: measurementSave
         triggerPanel: triggerPanel
         line: line
         map: map

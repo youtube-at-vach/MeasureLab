@@ -2577,5 +2577,21 @@
     "migration.display.calibration_applied": "Calibração aplicada",
     "migration.display.calibration_cancelled": "Alteração de calibração cancelada",
     "migration.display.calibration_apply": "Aplicar",
-    "migration.display.calibration_close": "Fechar"
+    "migration.display.calibration_close": "Fechar",
+    "migration.display.save_measurement": "Salvar medição",
+    "migration.display.save_path": "Destino",
+    "migration.display.save_format": "Formato",
+    "migration.display.save_selected": "Resultado %1 · quadros [%2, %3)",
+    "migration.display.save_note": "O resultado selecionado permanece fixo durante a aquisição. Os arquivos existentes são preservados.",
+    "migration.display.save_queued": "Na fila",
+    "migration.display.save_writing": "Gravando",
+    "migration.display.save_saved": "Salvo",
+    "migration.display.save_failed": "Falha ao salvar",
+    "migration.display.save_cancelled": "Cancelado",
+    "migration.display.save_busy": "A fila está cheia. Tente novamente após o término de uma tarefa.",
+    "migration.display.save_rejected": "Solicitação recusada. Confira o resultado e o destino.",
+    "migration.display.save_closed": "Gravação interrompida",
+    "migration.display.save_cancel": "Cancelar tarefa na fila",
+    "migration.display.save_finish": "Parar gravação",
+    "migration.display.save_finish_note": "Parar cancela as tarefas na fila. Uma gravação em andamento mantém seu resultado real."
 }

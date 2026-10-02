@@ -2577,5 +2577,21 @@
     "migration.display.calibration_applied": "校准已应用",
     "migration.display.calibration_cancelled": "校准更改已取消",
     "migration.display.calibration_apply": "应用",
-    "migration.display.calibration_close": "关闭"
+    "migration.display.calibration_close": "关闭",
+    "migration.display.save_measurement": "保存测量结果",
+    "migration.display.save_path": "保存路径",
+    "migration.display.save_format": "格式",
+    "migration.display.save_selected": "结果 %1 · 帧 [%2, %3)",
+    "migration.display.save_note": "采集继续时，所选结果保持不变。已有文件会被保留。",
+    "migration.display.save_queued": "排队中",
+    "migration.display.save_writing": "写入中",
+    "migration.display.save_saved": "已保存",
+    "migration.display.save_failed": "保存失败",
+    "migration.display.save_cancelled": "已取消",
+    "migration.display.save_busy": "保存队列已满。请在任务完成后重试。",
+    "migration.display.save_rejected": "保存请求被拒绝。请检查所选结果和保存路径。",
+    "migration.display.save_closed": "保存已停止",
+    "migration.display.save_cancel": "取消排队保存",
+    "migration.display.save_finish": "停止保存",
+    "migration.display.save_finish_note": "停止保存会取消排队的任务。正在写入的任务保留实际结果。"
 }

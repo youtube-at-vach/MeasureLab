@@ -12,6 +12,7 @@ fn main() {
     let code = app.pin_mut().exec();
     drop(engine);
     drop(app);
+    display_core::finish_saves();
     assert_eq!(display_core::live_workers(), 0);
     assert_eq!(display_core::live_models(), 0);
     println!("DISPLAY_TEARDOWN workers=0 models=0");

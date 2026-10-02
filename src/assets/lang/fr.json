@@ -2577,5 +2577,21 @@
     "migration.display.calibration_applied": "Étalonnage appliqué",
     "migration.display.calibration_cancelled": "Modification de l’étalonnage annulée",
     "migration.display.calibration_apply": "Appliquer",
-    "migration.display.calibration_close": "Fermer"
+    "migration.display.calibration_close": "Fermer",
+    "migration.display.save_measurement": "Enregistrer la mesure",
+    "migration.display.save_path": "Fichier de destination",
+    "migration.display.save_format": "Format de fichier",
+    "migration.display.save_selected": "Résultat %1 · trames [%2, %3)",
+    "migration.display.save_note": "Le résultat sélectionné reste fixe pendant l’acquisition. Les fichiers existants sont conservés.",
+    "migration.display.save_queued": "En attente",
+    "migration.display.save_writing": "Écriture en cours",
+    "migration.display.save_saved": "Enregistré",
+    "migration.display.save_failed": "Échec de l’enregistrement",
+    "migration.display.save_cancelled": "Annulé",
+    "migration.display.save_busy": "La file est pleine. Réessayez après la fin d’une tâche.",
+    "migration.display.save_rejected": "Demande refusée. Vérifiez le résultat et la destination.",
+    "migration.display.save_closed": "Enregistrement arrêté",
+    "migration.display.save_cancel": "Annuler la tâche en attente",
+    "migration.display.save_finish": "Arrêter l’enregistrement",
+    "migration.display.save_finish_note": "L’arrêt annule les tâches en attente. Une écriture en cours conserve son résultat réel."
 }

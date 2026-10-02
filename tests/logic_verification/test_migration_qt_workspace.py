@@ -27,12 +27,19 @@ def test_qml_keys_ignore_comments_strings_and_nonliteral_calls(tmp_path):
 
 def test_qml_keys_included_in_check_and_update_inventory():
     paths = translation_source_files()
-    for name in ("Display.qml", "PlotPane.qml", "SpectrumView.qml", "TriggerPanel.qml", "CalibrationEditor.qml"):
+    for name in (
+        "Display.qml",
+        "PlotPane.qml",
+        "SpectrumView.qml",
+        "TriggerPanel.qml",
+        "CalibrationEditor.qml",
+        "SaveDialog.qml",
+    ):
         assert workspace.ROOT / "native/qml" / name in paths
     english = json.loads((workspace.ROOT / "src/assets/lang/en.json").read_text())
     used = set().union(*(extract_tr_keys(p) for p in paths if p.suffix == ".qml"))
     expected = {k for k in english if k.startswith(workspace.PREFIX)}
-    assert used == expected and len(used) == 61
+    assert used == expected
     for language in workspace.LANGUAGES:
         local = json.loads((workspace.ROOT / f"src/assets/lang/{language}.json").read_text())
         assert all(

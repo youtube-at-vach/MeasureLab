@@ -2577,5 +2577,21 @@
     "migration.display.calibration_applied": "Calibration applied",
     "migration.display.calibration_cancelled": "Calibration change cancelled",
     "migration.display.calibration_apply": "Apply",
-    "migration.display.calibration_close": "Close"
+    "migration.display.calibration_close": "Close",
+    "migration.display.save_measurement": "Save measurement",
+    "migration.display.save_path": "Destination",
+    "migration.display.save_format": "Format",
+    "migration.display.save_selected": "Result %1 · frames [%2, %3)",
+    "migration.display.save_note": "The selected result stays fixed while acquisition continues. Existing files are preserved.",
+    "migration.display.save_queued": "Queued",
+    "migration.display.save_writing": "Writing",
+    "migration.display.save_saved": "Saved",
+    "migration.display.save_failed": "Save failed",
+    "migration.display.save_cancelled": "Cancelled",
+    "migration.display.save_busy": "Save queue is full. Try again after a job finishes.",
+    "migration.display.save_rejected": "Save request rejected. Check the selected result and destination.",
+    "migration.display.save_closed": "Saving stopped",
+    "migration.display.save_cancel": "Cancel queued save",
+    "migration.display.save_finish": "Stop saving",
+    "migration.display.save_finish_note": "Stop saving cancels queued jobs. A write in progress keeps its actual outcome."
 }

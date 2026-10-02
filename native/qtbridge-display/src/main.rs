@@ -15,6 +15,7 @@ mod backend {
         payload: String,
         capture: String,
         calibration: String,
+        saves: String,
         error: String,
         testing: bool,
         translations: String,
@@ -33,6 +34,7 @@ mod backend {
                 payload: String::new(),
                 capture: String::new(),
                 calibration: String::new(),
+                saves: String::new(),
                 error: String::new(),
                 testing: std::env::args().any(|arg| arg == "--self-test"),
                 translations: display_core::locale::selected_catalog(),
@@ -50,12 +52,14 @@ mod backend {
         qproperty!("payload", Member = payload, Notify = changed);
         qproperty!("capture", Member = capture, Notify = changed);
         qproperty!("calibration", Member = calibration, Notify = changed);
+        qproperty!("saves", Member = saves, Notify = changed);
         qproperty!("error", Member = error, Notify = changed);
         qproperty!("testing", Member = testing, Constant);
         qproperty!("translations", Member = translations, Constant);
         #[qsignal]
         fn changed(&mut self);
         fn apply(&mut self, s: Snapshot) {
+            self.display.present(&s);
             self.state = s.state.code();
             self.outcome = s.outcome;
             self.generation = s.generation;
@@ -125,6 +129,36 @@ mod backend {
             self.display.subscribers() as i32
         }
         #[qslot]
+        fn pin_result(&mut self, generation: u64, result_id: String) -> bool {
+            self.display.pin_result(generation, &result_id)
+        }
+        #[qslot]
+        fn release_save_result(&mut self) {
+            self.display.release_save_result();
+        }
+        #[qslot]
+        fn save_result(&mut self, encoded: String) -> bool {
+            let accepted = self.display.save_result(&encoded);
+            self.poll_saves();
+            accepted
+        }
+        #[qslot]
+        fn poll_saves(&mut self) {
+            self.saves = self.display.poll_saves();
+            self.changed();
+        }
+        #[qslot]
+        fn cancel_save(&mut self, operation_id: u64) -> bool {
+            let cancelled = self.display.cancel_save(operation_id);
+            self.poll_saves();
+            cancelled
+        }
+        #[qslot]
+        fn close_saves(&mut self) {
+            self.display.close_saves();
+            self.poll_saves();
+        }
+        #[qslot]
         fn apply_calibration(&mut self, encoded: String) -> bool {
             let accepted = self.display.apply_calibration(&encoded);
             self.apply(self.display.peek());
@@ -165,6 +199,7 @@ fn main() {
         .load_qml_from_file(&format!("file://{}", display_core::qml_path().display()));
     let code = app.run();
     drop(app);
+    display_core::finish_saves();
     assert_eq!(display_core::live_workers(), 0);
     assert_eq!(display_core::live_models(), 0);
     println!("DISPLAY_TEARDOWN workers=0 models=0");

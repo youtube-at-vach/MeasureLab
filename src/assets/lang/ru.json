@@ -2577,5 +2577,21 @@
     "migration.display.calibration_applied": "Калибровка применена",
     "migration.display.calibration_cancelled": "Изменение калибровки отменено",
     "migration.display.calibration_apply": "Применить",
-    "migration.display.calibration_close": "Закрыть"
+    "migration.display.calibration_close": "Закрыть",
+    "migration.display.save_measurement": "Сохранить измерение",
+    "migration.display.save_path": "Путь сохранения",
+    "migration.display.save_format": "Формат",
+    "migration.display.save_selected": "Результат %1 · кадры [%2, %3)",
+    "migration.display.save_note": "Выбранный результат не меняется при продолжении сбора данных. Существующие файлы сохраняются.",
+    "migration.display.save_queued": "В очереди",
+    "migration.display.save_writing": "Запись",
+    "migration.display.save_saved": "Сохранено",
+    "migration.display.save_failed": "Ошибка сохранения",
+    "migration.display.save_cancelled": "Отменено",
+    "migration.display.save_busy": "Очередь заполнена. Повторите попытку после завершения задания.",
+    "migration.display.save_rejected": "Запрос отклонён. Проверьте результат и путь сохранения.",
+    "migration.display.save_closed": "Сохранение остановлено",
+    "migration.display.save_cancel": "Отменить задание в очереди",
+    "migration.display.save_finish": "Остановить сохранение",
+    "migration.display.save_finish_note": "Остановка отменяет задания в очереди. Текущая запись сохраняет фактический результат."
 }

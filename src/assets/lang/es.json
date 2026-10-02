@@ -2577,5 +2577,21 @@
     "migration.display.calibration_applied": "Calibración aplicada",
     "migration.display.calibration_cancelled": "Cambio de calibración cancelado",
     "migration.display.calibration_apply": "Aplicar",
-    "migration.display.calibration_close": "Cerrar"
+    "migration.display.calibration_close": "Cerrar",
+    "migration.display.save_measurement": "Guardar medición",
+    "migration.display.save_path": "Destino",
+    "migration.display.save_format": "Formato",
+    "migration.display.save_selected": "Resultado %1 · cuadros [%2, %3)",
+    "migration.display.save_note": "El resultado seleccionado permanece fijo durante la adquisición. Se conservan los archivos existentes.",
+    "migration.display.save_queued": "En cola",
+    "migration.display.save_writing": "Escribiendo",
+    "migration.display.save_saved": "Guardado",
+    "migration.display.save_failed": "Error al guardar",
+    "migration.display.save_cancelled": "Cancelado",
+    "migration.display.save_busy": "La cola está llena. Inténtelo después de que termine una tarea.",
+    "migration.display.save_rejected": "Solicitud rechazada. Compruebe el resultado y el destino.",
+    "migration.display.save_closed": "Guardado detenido",
+    "migration.display.save_cancel": "Cancelar tarea en cola",
+    "migration.display.save_finish": "Detener guardado",
+    "migration.display.save_finish_note": "Detener cancela las tareas en cola. Una escritura en curso conserva su resultado real."
 }

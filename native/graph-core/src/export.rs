@@ -124,7 +124,11 @@ impl SaveWorker {
     pub fn start(capacity: usize) -> io::Result<Self> {
         Self::with_writer(capacity, MeasurementResult::save_new)
     }
-    fn with_writer(
+    /// Explicit codec seam for non-real-time adapters. A successful writer must
+    /// finish sync/no-clobber publication before returning Ok. The default uses
+    /// MeasurementResult::save_new; injected writers also enable bounded queue
+    /// and slow-I/O ownership checks without timing-dependent filesystem tricks.
+    pub fn with_writer(
         capacity: usize,
         writer: impl Fn(&MeasurementResult, &Path, Format) -> io::Result<()> + Send + 'static,
     ) -> io::Result<Self> {

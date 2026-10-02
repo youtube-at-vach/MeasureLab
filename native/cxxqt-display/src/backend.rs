@@ -22,6 +22,7 @@ mod ffi {
         #[qproperty(QString, payload)]
         #[qproperty(QString, capture)]
         #[qproperty(QString, calibration)]
+        #[qproperty(QString, saves)]
         #[qproperty(QString, error)]
         #[qproperty(bool, testing)]
         #[qproperty(QString, translations)]
@@ -42,6 +43,18 @@ mod ffi {
         fn unsubscribe(self: Pin<&mut Self>, token: u64) -> bool;
         #[qinvokable]
         fn subscribers(&self) -> i32;
+        #[qinvokable]
+        fn pin_result(self: Pin<&mut Self>, generation: u64, result_id: &QString) -> bool;
+        #[qinvokable]
+        fn release_save_result(self: Pin<&mut Self>);
+        #[qinvokable]
+        fn save_result(self: Pin<&mut Self>, encoded: &QString) -> bool;
+        #[qinvokable]
+        fn poll_saves(self: Pin<&mut Self>);
+        #[qinvokable]
+        fn cancel_save(self: Pin<&mut Self>, operation_id: u64) -> bool;
+        #[qinvokable]
+        fn close_saves(self: Pin<&mut Self>);
         #[qinvokable]
         fn apply_calibration(self: Pin<&mut Self>, encoded: &QString) -> bool;
         #[qinvokable]
@@ -65,6 +78,7 @@ pub struct DisplayBackendRust {
     payload: QString,
     capture: QString,
     calibration: QString,
+    saves: QString,
     error: QString,
     testing: bool,
     translations: QString,
@@ -83,6 +97,7 @@ impl Default for DisplayBackendRust {
             payload: QString::default(),
             capture: QString::default(),
             calibration: QString::default(),
+            saves: QString::default(),
             error: QString::default(),
             testing: std::env::args().any(|arg| arg == "--self-test"),
             translations: QString::from(&display_core::locale::selected_catalog()),
@@ -91,6 +106,7 @@ impl Default for DisplayBackendRust {
 }
 impl ffi::DisplayBackend {
     fn apply(mut self: Pin<&mut Self>, snapshot: Snapshot) {
+        self.as_mut().rust_mut().display.present(&snapshot);
         self.as_mut().set_generation(snapshot.generation);
         self.as_mut().set_produced(snapshot.produced);
         self.as_mut().set_coalesced(snapshot.coalesced);
@@ -157,6 +173,37 @@ impl ffi::DisplayBackend {
     }
     fn subscribers(&self) -> i32 {
         self.display.subscribers() as i32
+    }
+    fn pin_result(mut self: Pin<&mut Self>, generation: u64, result_id: &QString) -> bool {
+        self.as_mut()
+            .rust_mut()
+            .display
+            .pin_result(generation, &result_id.to_string())
+    }
+    fn release_save_result(mut self: Pin<&mut Self>) {
+        self.as_mut().rust_mut().display.release_save_result();
+    }
+    fn save_result(mut self: Pin<&mut Self>, encoded: &QString) -> bool {
+        let accepted = self
+            .as_mut()
+            .rust_mut()
+            .display
+            .save_result(&encoded.to_string());
+        self.poll_saves();
+        accepted
+    }
+    fn poll_saves(self: Pin<&mut Self>) {
+        let encoded = self.display.poll_saves();
+        self.set_saves(QString::from(&encoded));
+    }
+    fn cancel_save(mut self: Pin<&mut Self>, operation_id: u64) -> bool {
+        let cancelled = self.display.cancel_save(operation_id);
+        self.as_mut().poll_saves();
+        cancelled
+    }
+    fn close_saves(mut self: Pin<&mut Self>) {
+        self.as_mut().rust_mut().display.close_saves();
+        self.poll_saves();
     }
     fn apply_calibration(mut self: Pin<&mut Self>, encoded: &QString) -> bool {
         let accepted = self
