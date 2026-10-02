@@ -43,7 +43,7 @@ flowchart TD
 | 5. 008-A | 生成→明示route→取得/Timebase→波形/共有FFT→line/heatmap→基本V/FS校正→CSV/JSONを一つの2chフローへ統合 | boxcar/Hann、peak/RMS/PSD、Trigger/保持、購読解除、開始/停止/失敗、同じcoreの仮想4/8ch回帰。AC01〜14の対象結果を対応表へ記録 | 1〜4の対象範囲を統合。独立probeの成功だけで置換しない |
 | 6. 007-B / 008-B性能 | 現在のGUI停止試験・renderer spikeは短い診断。統合物で単独/複数表示、保存、遅いGUI、負荷超過を測る | 仮想2/4/8chを条件ごとに30秒warmup＋10分×3回。callback/解析/表示/stop遅延の分布、CPU秒/RSS時系列、queue/gap/FFT共有/表示省略を記録。同条件のPythonと予算比較。AC15/16 | 5を固定し、測定中は他のbuild/GUI試験を終了。GPU取得不可はunknown |
 | 7. 005-B / 008-B音声 | UAC-232交互3回の短い2ch比較は成功。時刻写像/絶対遅延、排他、開始失敗、XRUN位置、USB/スリープ復帰、長時間が残る | 許容振幅差/遅延誤差を測定前に固定。実機2chと統合フロー、stop/cancel/失敗/再接続の回収を記録。AC09/11/13/16 | 通常はBlackHole。USB抜き差しと物理clock/電圧/遅延には実機・配線・人の操作が必要 |
-| 8. 004-B / 008-B配布・操作 | Intelの模擬probeでbuild/edit/local bundleは成功。実graph統合物、他OS/clean環境、実window managerの確認は残る | 対象OSでclean/no-op/core編集/QML編集/packageをprotocolどおり反復。統合配布物の展開/起動、入力/focus/分離/close/zoom/cursor/画像保存、9言語/サイズ/High DPIを検査。AC07/13/16 | Intelの開発比較は着手可能。ARM/Windows/Linuxとclean起動は各実行環境が必要 |
+| 8. 004-B / 008-B配布・操作 | IntelとLinuxの模擬probeでbuild/edit/local packageは成功。Linuxの両Qt X11寿命、英語の製品保存8実行、現行Python全言語サイズも成功。実graph統合配布物、ARM/Windows/clean環境、手動操作は残る | 対象OSでclean/no-op/core編集/QML編集/packageをprotocolどおり反復。統合配布物の展開/起動、入力/focus/分離/close/zoom/cursor/画像保存、9言語/サイズ/High DPIを検査。AC07/13/16 | Intel/Linuxの開発比較は可能。ARM/Windowsとclean起動は各実行環境が必要。Linuxでも実音声・統合物・長時間は未確認 |
 | 9. CI・証拠整理 | Linux ICU修正後のGitHub CIは未確認。新async比較も定義追加まで。保存reportとsource/binaryのhashを整合させる | 対象commitのCI結果、各試験のcommand/条件/全sample/失敗/未実施を保持。ローカル成功とCI/OS成功を区別 | ローカル検査は可能。GitHub再実行は対象変更の公開時に確認 |
 | 10. 008-C判断 | 004〜007と008-A/Bの結果を四案へ集約し、未達と保守費用も評価 | 理由付きの方針、未確認/重大な未解決点、次の範囲と再評価条件を決定記録へ残す。MIG-008完了と41機能移行完了を分ける | 判断材料が揃った時点で実施。結果が不十分なら未完了と記録 |
 

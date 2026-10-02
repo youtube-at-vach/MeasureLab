@@ -1,6 +1,9 @@
 # 次期コア検証の進捗
 
 更新: 2026-10-02。計画の正本は[評価計画](../guide/RUST_QML_MIGRATION_PLAN.md)。
+開発環境をUbuntu 26.04.1 / x86_64へ移し、LinuxのOS検証を再開した。
+LinuxのSDK/build、両Qtの寿命・X11起動、製品保存8実行、全言語UIサイズは成功。
+開発反復32試行とwarmup2回、ローカルpackageの6展開起動も成功。詳細は下のLinux記録を参照。
 Rust/QMLの採用は未決定。MIG-003-A/B/Cの参照側とMIG-004-Aの基本GUI境界を検証済み。
 004-BのIntel反復build/編集/ローカルpackageは検証済み。対象OS全体の完了ではない。
 Linux CIのICU不足を修正し、再実行は未確認。006-Aへ純粋FFT候補を追加し、24ケースの数値比較に合格。
@@ -42,14 +45,14 @@ PyQt画像provider経路の試験であり、採用判断・個別widgetの本�
 
 | 項目 | 値 |
 | --- | --- |
-| 現行版 | `/Users/vach/MeasureLab`、`main` |
-| 検証用worktree | `/Users/vach/.codex/worktrees/next-core-evaluation/MeasureLab`（Codex管理） |
-| 検証用ブランチ | 統合先`codex/next-core-evaluation`、今回の作業`codex/migration-native-product-import`（Qt製品保存の`d464c2a1`から分岐） |
+| 現行版 | 参照コミット`9fd79958`。以前のmacOS checkoutは`/Users/vach/MeasureLab`、`main` |
+| 検証用checkout | Linuxは`/home/hotstaff/MeasureLab`。以前は`/Users/vach/.codex/worktrees/next-core-evaluation/MeasureLab`（Codex管理） |
+| 検証用ブランチ | 統合先`codex/next-core-evaluation`、現在`codex/migration-native-product-import`。Linux検証の開始HEADは`8ea77dd1` |
 | 作業開始・Python参照コミット | `9fd79958`（MeasureLab 0.9.0、開始時のローカルmain） |
 | 計画書の調査コミット | `68cbdabc3ecd542d9d73fa0aa86bf9159f44d811` |
 | 最終main同期 | 2026-10-02に再fetch。origin/mainは参照`9fd79958`のまま、取込み差分なし |
 | 統合担当 | 当面、この検証ブランチを担当する単一の作業者 |
-| リモート | 今回開始時は`codex/migration-qt-product-save`の`d464c2a1`がremote一致・clean。前回のQt製品保存はcommit済み。今回のnative製品importは未コミット、push・PR・Issue・Project更新・配布は未実施 |
+| リモート | Linux検証の開始時は`8ea77dd1`がremote一致・clean。native製品importもcommit済み。今回のLinux修正・検証記録は未コミット。今回のpush・PR・Issue・Project更新・公開配布は未実施 |
 
 調査コミットから開始時mainまでの差分には計画書、設計ガイド、Measurement Consoleのレイアウト、
 Goniometerのテーマ対応、翻訳と対応テストがある。
@@ -65,7 +68,7 @@ MIG-003-Cも既存fixtureと契約を変更せず、filter/rate参照を独立�
 | MIG-001 | 完了 | 管理されたworktree、専用Python環境、状態を分離したオフライン起動、Rust/C++ビルドツール、再開・同期手順 |
 | MIG-002 | 完了（P0文書・整合検査） | 41モジュール+共通10件、20プリミティブと双方向対応、コア/数値契約、16受け入れ条件、性能・反復予算、後続作業票 |
 | MIG-003 | 完了（A/B/Cの参照側） | FFT20+4ケース、27契約例、4保存例にfilter/rateの21数値ケースと6 rate境界を追加。候補実装でのAC合格は005/006以降 |
-| MIG-004 | 進行中（AとBのIntel範囲を完了） | Bの32 sample+warmup2回とローカルbundleが合格。Linux CIのICU不足を修正したが再実行未確認。他OS/clean環境は未確認 |
+| MIG-004 | 進行中（A/BのIntel・Linux host範囲を完了） | Linuxでも両Qt基本寿命、32 sample+warmup2回、6 package展開起動が成功。ICUを含むSDKのlocal buildも成功。GitHub CI、ARM/Windows/clean環境は未確認 |
 | MIG-005 | 進行中（Aの取得graph・動的f32 routeとBの短い実機／仮想比較） | 取得queue/履歴/共有FFTに動的出力mailboxを追加。保存12条件、BlackHole 2→2/4→16/8→16の9取得と3保留cancel。製品共通adapter/全tap、時刻写像、排他/USB復帰/長時間は残る |
 | MIG-006 | 進行中（A〜Eのpure範囲、非同期保存workerと互換adapter評価） | FFT/共有/履歴/filter、不変result/ID校正とv1保存。非同期保存12実行/36 saved/36 failed、新規Rust9件が合格。取得/Qt校正編集は007-Aへ追加。互換adapterの製品JSON carrier/CSV sidecarと旧JSON/32 CSV条件を検査。両Qtのv1保存操作を追加。native製品snapshot codec/共通保存workerを追加。保存12実行/72双方向完全往復、48 saved/48期待failedを検査。Qt製品保存formatと旧トレース/完全snapshotのnative importを追加。旧JSON/CSV32条件・旧pairと18完全importが合格。Qt製品importと取得中の負荷は後続 |
 | MIG-007 | 進行中（Aの保存／BlackHole実入力表示・分離/9言語・Qt Trigger配送/ID校正とQt編集・適用、CのIntel最小試験） | Qt校正編集・適用まで接続し、保存4入力×9言語×両Qtの72実行・648完全result/CSV・144 PNG、BlackHole18実行・162完全result/CSV・36 PNGが成功。v1非同期保存操作の保存72実行と既存BlackHole回帰6実行が成功。Qt製品保存formatの保存72実行・497完全snapshot・216期待failed/151取消も成功。製品import/実window manager/他OS/統合性能は残る。renderer候補9試行成功、基準100万点3試行SIGBUS。採用判断・個別widgetの本実装・native texture共有は含めない |
@@ -88,7 +91,86 @@ Qtからrevision付き要求を解析threadへ配送し、両viewの共有hold/r
 汎用scheduler、全tap/Qt接続、製品backend共通化は未作成。
 候補実装は契約v0.1を出発点とし、公開型・ABI・採用ライブラリは後続の検証で決める。
 
-## MIG-006-E native製品importの成果と検証
+## Linux OS検証の成果と検証
+
+着手: 2026-10-02、Ubuntu 26.04.1 / x86_64、HEAD `8ea77dd1`、remote一致・clean。
+既存checkoutとブランチを再利用した。今回の変更は未コミット。
+環境と再実行は[Linux再開手順](environment.md#linuxでの再開)、packageの境界は
+[反復手順](../native/qt-iteration.md#linuxローカルpackageの境界)を参照。
+
+- `.tools/`へRust 1.98.1、CMake/Ninja/aqtinstallとQt SDK 6.11.2を分離導入した。
+  Linux用ICU archiveを含め、空の環境でのqmake照会も6.11.2を返した。
+  GCC 15.2.0とRust付属lldを使用。不足していたOpenGL開発用リンクは作業用パスだけで補った。
+- Python 3.14.4 / NumPy 2.2.6でpolyphase理論出力が0になる配列破壊を再現した。
+  NumPy 2.3.3へ更新すると、元fixtureとの21数値ケース/6 rate境界が成功した。
+  root所有の旧venvは`.tools/venv-before-linux-os/`へ保管し、ユーザー所有の`.venv/`へ再構築した。
+  Python 3.12/3.13のpinは維持し、3.14以降のみNumPy 2.3.3を指定した。
+- `migration_qt_iteration.py`にLinuxのhost/compiler照会とローカルtar.gz packageを追加した。
+  Qt/QML/ICU・platform pluginの依存を検査し、開発環境を外した展開物で寿命/QML/実libraryパスを要求する。
+  QML欠落時のexit 101も記録し、開発checkoutへのfallbackを拒否する。
+- Linux既定フォントで騒音計、Lock-in Spectrum Finderとロシア語Welcomeの高さ超過を検出した。
+  外周余白・間隔を減らし、表示・操作を保持したまま全言語のサイズ検査を通した。
+  日本語の騒音計/Lock-in画面画像も目視確認した。
+- NumPy更新後のMypyでCSVの空欄列2件が指摘されたため、配列と`list[str]`の列型を明示した。
+  CSVの実行処理、現行DSP、元fixtureと数値許容差、Cargo.lock、QML表示/翻訳は変更していない。
+
+証拠の親directoryは`.migration-local/2026-10-02-linux-os/`。
+`environment.json`に全導入版とQt archive 6件のhash、`binaries.json`に14実行物のhashを保存した。
+完了した大きなbuild cacheは空き容量確保のため削除し、実行物を同directoryの`binaries/`へ固定した。
+失敗log、diagnostic packageのarchive、正常な保存結果と画像は保持した。
+反復測定中は他のbuild/testを止め、611 source/fixtureパスと測定前diffを固定した。
+
+| 確認 | 結果 |
+| --- | --- |
+| 分離Python GUI self-test | 成功、終了コード0。NumPy更新前の起動確認で、数値検査の合格とは区別 |
+| 保存fixture portable verify | FFT14、core 4 FFT/27契約/4保存、filter21/6 rateすべて成功。別環境比較として記録 |
+| Rust workspace build/test/Clippy/fmt | 成功。workspace 156 passed。CPAL/ALSA adapterもbuild/型検査済み、device取得は未実施 |
+| 両Qt基本寿命 | offscreen各3回、X11/xcb各1回成功。X11 canvas PNG bytesも一致。手動入力/focusの評価は未実施 |
+| 両Qt製品保存 | 英語・保存4/8ch f32/f64×両Qtの8実行が成功。全値、失敗/取消、分離/再生成と元bytes oracleを照合 |
+| Python対象回帰 | 187 passed/1 skipped。skipは固定macOS環境でのbyte同一再生成。portable verifyは成功 |
+| CSV型修正後の回帰 | CSV exporter/製品importの86 passed。Qt保存比較後の型注釈変更で、動作変更なし |
+| UI変更後の回帰 | Welcome/騒音計/MainWindowの65 passed。全言語サイズは最終v4で`Verification Passed!`、exit 0 |
+| 反復runner回帰 | 23 passed。SDK/別Qt/plugin fallbackと欠落resourceを拒否 |
+| Mypy・翻訳・台帳 | 116 sourceのMypy、厳格な翻訳キー、41モジュール/双方向対応が成功 |
+| 開発反復・package | 32試行+warmup2回、packageの6展開起動、Python参照起動3回すべて成功。先行診断と別reportへ保存 |
+| 最終Ruff/Markdown/diff | Ruff lint/format（683 files）、Markdown lint（225 files）、`git diff --check`が成功 |
+
+本測定は`iteration.json`と`iteration-logs/`、実体は
+`.migration-local/qt-iteration/run-2fri_vg_/`へ保持した。
+全299圧縮logのhash/展開、6 archive、固定14実行物、保存成果物216件と611 source/fixtureパスを再照合し、不一致なし。
+`audit-hashes.json`に実体directoryと照合結果を保存した。
+製品保存reportのCSV sourceは型注釈変更前のHEAD版と照合し、変更後の86件の回帰と区別した。
+本測定後もcacheだけを削除し、最後の両実行物を`iteration-binaries/`と対応するhashへ保持した。
+archiveと6展開物、sourceコピー、全logは残している。終了時のディスク空きは約3.8 GiB。
+
+| Linux反復経路 | CXX-Qt 中央値 | Qt Bridge 中央値 | 結果 |
+| --- | --- | --- | --- |
+| clean | 206.998秒 | 230.258秒 | 各3回成功、600秒以内 |
+| no-op | 1.704秒 | 1.923秒 | warmupを除く各5回成功 |
+| QML編集 | 1.403秒 | 1.634秒 | 各5回成功、10秒以内、native再コンパイルなし |
+| package→tar.gz展開→寿命/欠落QML検査 | 27.626秒 | 28.611秒 | 各3回成功、900秒以内。archive約64.08/69.35 MiB |
+
+cleanのmin/maxはCXX-Qt 203.087/210.043秒、Qt Bridge 211.737/248.249秒。
+CPU並列数4、GCC、debug/offscreen/software/Basic/scale 1、同じQMLと依存lock。
+他のbuild/testを止めて測定した。OS cache、desktop process、電源・熱条件は固定していない。
+Python参照版全体の起動ready中央値は2.585秒。小さなQMLとworkloadが異なるため速度比にしない。
+同等Python表示編集の比較値がなく、相対予算や言語だけの効果は未評価。
+
+初回workspace buildは`-lGL`不足、初回Rust/Qt testはruntimeパス未指定のexit 127で失敗した。
+補助リンク/runtimeパスを設定して再検査し、最終成功と初回失敗を分けた。
+初回package診断はbuild同時実行中にproducer進行assertで失敗した。
+失敗archive/logを保持し、build終了後の別diagnostic reportでは両方式が成功した。
+UIサイズは50違反、調整後の残り違反、途中終了143のrunを最終v4成功へ混ぜない。
+FFT/coreの既存reportへの書込みはrunnerが拒否したため、更新後の確認を新しいreport名へ保存した。
+
+Linuxの成功はこのhostと対象ケースだけ。Ubuntu 24.04のGitHub CI、clean OS/別distribution、
+macOS ARM/Windows、実音声取得/USB復帰、10分・取得中負荷、統合配布/手動操作/High DPIは未確認。
+巨大FFTの拡張6ケースは移送されていないため未実施。全体Pytestも未実施。
+MIG-004/007/008全体とRust/QML採用判断は未完了。Qt製品import等の次段実装は今回進めていない。
+
+## MIG-006-E native製品importの成果と検証（前回記録）
+
+native製品importは`8ea77dd1`へ保存済み。以下はmacOSで実施した当時の記録。
 
 着手: 2026-10-02、HEAD `d464c2a1`。開始時はremote一致・clean。
 前回の両Qt製品保存はこのcommitへ保存済みで、未コミットの進捗記録を訂正した。

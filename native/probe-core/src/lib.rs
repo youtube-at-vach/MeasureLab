@@ -241,11 +241,14 @@ fn resolve_qml_path(
     if let Some(path) = explicit {
         return path.into();
     }
-    if let Some(directory) = executable.parent()
-        && directory.file_name().is_some_and(|name| name == "MacOS")
-    {
-        // A missing bundle resource must fail, never fall back to the developer checkout.
-        return directory.join("../Resources/Main.qml");
+    if let Some(directory) = executable.parent() {
+        // A missing package resource must fail, never fall back to the developer checkout.
+        if directory.file_name().is_some_and(|name| name == "MacOS") {
+            return directory.join("../Resources/Main.qml");
+        }
+        if directory.file_name().is_some_and(|name| name == "bin") {
+            return directory.join("../share/measurelab-evaluation/Main.qml");
+        }
     }
     development.join("../qml/Main.qml")
 }
@@ -264,6 +267,14 @@ mod tests {
         assert_eq!(
             resolve_qml_path(None, executable, development),
             PathBuf::from("/relocated/Evaluation.app/Contents/MacOS/../Resources/Main.qml")
+        );
+        assert_eq!(
+            resolve_qml_path(
+                None,
+                Path::new("/relocated/Evaluation/bin/probe"),
+                development
+            ),
+            PathBuf::from("/relocated/Evaluation/bin/../share/measurelab-evaluation/Main.qml")
         );
         assert_eq!(
             resolve_qml_path(Some("/explicit/Main.qml".into()), executable, development),

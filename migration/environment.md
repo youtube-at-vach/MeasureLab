@@ -73,6 +73,50 @@ GUIのテスト用スタブは使わず、`MEASURELAB_TESTING=0`として分離�
 これは既定の保存先の分離であり、GUIから明示的に指定するエクスポート先等を制限する仕組みではない。
 実機を使う場合はGUIで切り替え、現行版とデバイスを同時に開かず一方ずつ測定する。
 
+## Linuxでの再開
+
+2026-10-02、`/home/hotstaff/MeasureLab`、Ubuntu 26.04.1 / x86_64へ開発環境を移した。
+macOSのパスと上表は前回の記録。最新の実施範囲は[進捗](status.md)を参照。
+Rust 1.98.1とQt SDK 6.11.2は同じ固定仕様で`.tools/`へ新規導入した。
+SDKにはLinux専用の`icu` archiveを含め、`env -i .../bin/qmake -query QT_VERSION`で6.11.2を確認した。
+システムQtやPyQt runtimeを開発SDKの代用にしない。
+
+引き継いだPython 3.14.4 / NumPy 2.2.6では、filter参照の大きな配列が途中で変更され、
+polyphase toneの理論出力が0になった。既存fixtureとの比較を失敗として残した。
+[NumPyの既知問題](https://github.com/numpy/numpy/issues/28681)と一致する挙動を再現し、
+[Python 3.14対応の2.3.3](https://numpy.org/doc/2.3/release/2.3.3-notes.html)へ更新した。
+`constraints.txt`はPython 3.12/3.13の2.2.6を維持し、3.14以降に2.3.3を指定する。
+Linux以外のPython 3.14環境の動作確認は含まない。
+
+旧`.venv`の依存はroot所有で更新できなかったため、`.tools/venv-before-linux-os/`へそのまま保管した。
+新しいユーザー所有の`.venv/`を作り、既存の導入版一覧からNumPyだけを置き換えて再導入した。
+editable installはこのcheckoutを参照し、`pip check`は成功した。旧venvは実行環境の切替用に自動参照しない。
+導入前後の全依存、SDK archive hashと失敗logは`.migration-local/2026-10-02-linux-os/`へ保存した。
+SciPy 1.17.0 / Ruff 0.16.7等は引継ぎ版であり、`constraints.txt`全体との一致は主張しない。
+
+システムにはGCC 15.2.0、ALSA headers、OpenGL runtimeがあるが、`libGL.so`の開発用リンクがなかった。
+管理者権限を使わず、`.tools/system-lib/libGL.so`をシステムの`libGL.so.1`へリンクし、
+ビルドだけに`LIBRARY_PATH`を指定した。Rust付属の`ld.lld`も`.tools/build-venv/bin/`へリンクした。
+システムパッケージ、シェル設定、ユーザー共通Rust設定は変更していない。
+通常の新規環境ではNative CIが指定する開発パッケージを導入し、この補助リンクは不要。
+
+```bash
+export CARGO_HOME="$PWD/.tools/cargo"
+export RUSTUP_HOME="$PWD/.tools/rustup"
+export PATH="$CARGO_HOME/bin:$PWD/.tools/build-venv/bin:$PATH"
+export QMAKE="$PWD/.tools/qt/6.11.2/gcc_64/bin/qmake"
+export CARGO_BUILD_JOBS=4
+export LIBRARY_PATH="$PWD/.tools/system-lib"
+export LD_LIBRARY_PATH="$PWD/.tools/qt/6.11.2/gcc_64/lib"
+cargo +1.98.1 build --locked --offline --manifest-path native/Cargo.toml --workspace
+cargo +1.98.1 test --locked --offline --manifest-path native/Cargo.toml --workspace
+cargo +1.98.1 clippy --locked --offline --manifest-path native/Cargo.toml --workspace --all-targets -- -D warnings
+```
+
+Python参照起動とportable比較は、Qt SDK用の`LD_LIBRARY_PATH`等を外した別processで実行する。
+Rust/Qtテスト実行物にはSDKのruntimeパスが必要で、指定しなかった初回はloaderのexit 127で失敗した。
+GUI self-testは分離した設定を使う。BlackHoleはmacOS専用なので、このLinux環境の実音声試験には使わない。
+
 ## 音声テストの引き継ぎ
 
 2026-09-30のユーザー指示: UAC-232でひとまず動作を確認済み。以後はBlackHole 16ch／2ch経由でよい。

@@ -3,7 +3,7 @@
 [004-Aの共通画面](qt-probe.md)と同じSDK・依存lock・模擬workerを使う。
 これは開発反復の検証で、音声callback・DSP・Analysis Graphの実行性能ではない。
 [性能protocol](../migration/benchmarks/protocol.md)の回数と検証終点をrunnerへ固定した。
-Intel Mac以外の成功、クリーンOSへの配布、技術採用の判断には数えない。
+各reportのOS/CPUでの検査として扱い、クリーンOSへの配布、技術採用の判断には数えない。
 
 ## 再実行
 
@@ -14,6 +14,10 @@ runnerが環境を設定するので、004-AのSDK環境変数を事前にexport
 ./.venv/bin/python scripts/migration_qt_iteration.py --qt-prefix .tools/qt/6.11.2/macos --report .migration-local/004-b.json
 ./.venv/bin/pytest -q tests/logic_verification/test_migration_qt_iteration.py tests/logic_verification/test_migration_qt_probe.py
 ```
+
+LinuxではSDKを `.tools/qt/6.11.2/gcc_64` として同じコマンドを実行する。
+Linuxの専用ツール導入・環境修復は[環境手順](../migration/environment.md#linuxでの再開)を参照。
+ビルド時の不足ライブラリを作業用パスで補う場合、その条件をreportと環境記録に残す。
 
 `--smoke`は各経路1回の診断用。protocol完了・予算判定には使わない。
 reportと対応する`<report名>-logs/`へ、終了コード、単調clockの時間、ready観測時刻、
@@ -35,7 +39,8 @@ report内のlog相対パスとhashはローカルログの照合用で、別chec
 | Python起動 | 3回。現行版全体を新process・分離状態・offlineで起動 | self-testの起動成功markerまでを記録。5秒後の自動終了も要求 |
 
 CPU並列数4、Qt 6.11.2、Rust 1.98.1、offscreen/software/Basic、scale 1、英語560×360 px。
-`MACOSX_DEPLOYMENT_TARGET=13.0`を両方式に指定するが、macOS 13での起動確認を意味しない。
+macOSのみ`MACOSX_DEPLOYMENT_TARGET=13.0`を両方式に指定する。macOS 13での起動確認を意味しない。
+LinuxではhostのGCCを使い、macOS用のcompiler・SDK・電源照会は実行しない。
 方式ごとに別targetを使い、同じsample番号でCXX-Qt→Qt Bridgeの順に交互実行する。
 OS page cacheと熱・他processの影響は固定できない。
 [QML disk cache](https://doc.qt.io/qt-6/qmldiskcache.html)は専用パスへ分離する。
@@ -48,7 +53,7 @@ Python起動は41モジュールを持つ現行版全体なので、小さなQML
 clean 600秒・表示編集10秒・package 900秒の絶対基準を記録する。
 表示編集で10秒を超えても、同等Python値がなければ`max(10秒, Pythonの2倍)`の超過を断定しない。
 
-## ローカルbundleの境界
+## macOSローカルbundleの境界
 
 [Qtの公式配布手順](https://doc.qt.io/qt-6/macos-deployment.html)に従い、
 SDKの`macdeployqt -qmldir=...`でQt framework・QML importをbundleへ導入する。
@@ -67,6 +72,26 @@ ZIPを別の場所へ展開し、SDK環境変数と開発用PATHを外し、新�
 開発SDKが導入された同じMacでの試験なので、クリーンOS試験の代用にはしない。
 物理画面・Finder起動・Gatekeeper・Developer ID署名・notarization・download経路は未確認。
 full Xcodeも未導入。他OSのpackage手順をこの結果から成功と扱わない。
+
+## Linuxローカルpackageの境界
+
+[QtのLinux配布手順](https://doc.qt.io/qt-6/linux-deployment.html)と
+[qt.conf](https://doc.qt.io/qt-6/qt-conf.html)に従い、実行物、QML、Qt/ICU共有ライブラリ、
+QtQml/QtQuick import、offscreen/xcb pluginを同じdirectoryへ置く。
+`ldd`で実行物と全QML/platform pluginの推移的依存を検査し、SDKの`lib`内の依存をコピーする。
+不足依存を拒否し、glibc・X11・OpenGL・font等のhost依存をreportに記録する。
+QtQml/QtQuick内の未使用styleも含むため、最小packageサイズや製品配布の比較には使わない。
+
+launcherは自身のdirectoryから`LD_LIBRARY_PATH`を設定する。`qt.conf`でplugin/importの探索先を固定する。
+tar.gzを新しいdirectoryへ展開し、開発PATH・SDK/plugin/QML overrideを外した新しいHOME/cacheで起動する。
+`LD_DEBUG=libs`の実際の`calling init`記録から、Qt/ICU/pluginが展開物内であることを要求する。
+検索候補だけの記録は合格にしない。QMLの実パスと全寿命markerも検査する。
+`bin/`内の実行物は隣接する`share/measurelab-evaluation/Main.qml`を要求し、
+QMLを取り除く異常系はexit 101と失敗markerを保存する。開発checkoutへfallbackしない。
+
+検査後はarchiveと展開物を保持し、重複するstaging treeを削除する。
+同じhostでのdebug package診断であり、clean OS・別distribution・release・署名・公開配布は未確認。
+packageの反復時間には依存検査、圧縮、展開、正常起動、QML欠落拒否までを含む。
 
 生成したworkspace・target・bundle・ZIPは`.migration-local/qt-iteration/run-*/`へ保持する。
 runnerは実行ごとに新しい場所を作り、元のsourceや既存`native/target`を書き換えない。

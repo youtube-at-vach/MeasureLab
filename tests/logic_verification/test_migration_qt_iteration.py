@@ -12,6 +12,8 @@ from scripts.migration_qt_iteration import (
     PASS,
     TEARDOWN,
     execute,
+    linux_package_passed,
+    loaded_linux_paths,
     package_environment,
     package_passed,
     probe_passed,
@@ -78,6 +80,33 @@ def test_package_requires_library_trace_and_bundle_qml():
     app = Path("/relocated/Probe.app")
     assert not package_passed(successful(f"PROBE_QML {app}/Contents/Resources/Main.qml"), app)
     assert not package_passed(successful(f"dyld[1]: <UUID> {app}/Contents/Frameworks/QtCore.framework/QtCore"), app)
+
+
+def test_linux_package_requires_actual_qt_plugin_and_resource_paths(tmp_path):
+    app = tmp_path / "evaluation"
+    output = (
+        f"PROBE_QML {app}/share/measurelab-evaluation/Main.qml\n"
+        f"  12: calling init: {app}/lib/libQt6Core.so.6\n"
+        f"  12: calling init: {app}/bin/../plugins/platforms/libqoffscreen.so\n"
+        "  12: calling init: /lib/x86_64-linux-gnu/libc.so.6\n"
+    )
+    assert linux_package_passed(successful(output), app)
+    for foreign in (
+        "/developer/libQt6Gui.so.6",
+        "/usr/lib/libQt6Gui.so.6",
+        "/developer/libcustomplugin.so",
+        "/usr/lib/qt6/qml/QtQml/Models/libmodelsplugin.so",
+    ):
+        assert not linux_package_passed(successful(output + f"  12: calling init: {foreign}\n"), app)
+    assert not linux_package_passed(successful(output.replace("libqoffscreen.so", "other.so")), app)
+    assert not linux_package_passed(successful(output.replace("libQt6Core.so.6", "other.so")), app)
+    assert not linux_package_passed(successful(output.replace("share/measurelab-evaluation", "developer")), app)
+
+
+def test_linux_library_search_attempts_are_not_loaded_library_evidence():
+    output = "12: trying file=/developer/libQt6Core.so.6\n12: calling init: /package/lib/libQt6Core.so.6\n"
+    assert loaded_linux_paths(output) == ["/package/lib/libQt6Core.so.6"]
+    assert not linux_package_passed(successful(output), Path("/package"))
 
 
 def test_package_environment_removes_inherited_sdk(monkeypatch, tmp_path):

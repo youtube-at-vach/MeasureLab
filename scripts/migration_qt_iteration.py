@@ -3,7 +3,8 @@
 
 Default counts follow MIG-002-v0.1. --smoke runs one sample per path and cannot
 produce a budget verdict. macOS packaging is a relocated, ad-hoc signed local
-bundle test, not a clean OS, Gatekeeper, notarization, or distribution result.
+bundle test. Linux packages carry Qt/QML/ICU and retain host system dependencies.
+Neither is a clean OS or distribution result.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ import shutil
 import signal
 import statistics
 import subprocess
+import tarfile
 import tempfile
 import threading
 import time
@@ -125,9 +127,8 @@ def build_environment(prefix: Path, scratch: Path) -> dict[str, str]:
         CARGO_HOME=str(ROOT / ".tools/cargo"),
         RUSTUP_HOME=str(ROOT / ".tools/rustup"),
         CARGO_BUILD_JOBS="4",
-        MACOSX_DEPLOYMENT_TARGET="13.0",
-        CC="/usr/bin/clang",
-        CXX="/usr/bin/clang++",
+        CC="/usr/bin/clang" if platform.system() == "Darwin" else "/usr/bin/cc",
+        CXX="/usr/bin/clang++" if platform.system() == "Darwin" else "/usr/bin/c++",
         QMAKE=str(prefix / "bin/qmake"),
         PATH=f"{ROOT}/.tools/cargo/bin:{ROOT}/.tools/build-venv/bin:{env.get('PATH', '')}",
         QT_QPA_PLATFORM="offscreen",
@@ -140,8 +141,12 @@ def build_environment(prefix: Path, scratch: Path) -> dict[str, str]:
         MEASURELAB_PROBE_QML=str(scratch / "native/qml/Main.qml"),
         XDG_CACHE_HOME=str(scratch / "qml-cache"),
         QML_DISK_CACHE_PATH=str(scratch / "qml-cache"),
-        LC_ALL="en_US.UTF-8",
+        LC_ALL="en_US.UTF-8" if platform.system() == "Darwin" else "C.UTF-8",
     )
+    if platform.system() == "Darwin":
+        env["MACOSX_DEPLOYMENT_TARGET"] = "13.0"
+    elif (ROOT / ".tools/system-lib").is_dir():
+        env["LIBRARY_PATH"] = str(ROOT / ".tools/system-lib")
     env["DYLD_FRAMEWORK_PATH" if platform.system() == "Darwin" else "LD_LIBRARY_PATH"] = str(prefix / "lib")
     return env
 
@@ -155,12 +160,13 @@ def package_environment(destination: Path) -> dict[str, str]:
         "HOME": str(destination / "home"),
         "XDG_CACHE_HOME": str(destination / "cache"),
         "QML_DISK_CACHE_PATH": str(destination / "cache"),
-        "LC_ALL": "en_US.UTF-8",
+        "LC_ALL": "en_US.UTF-8" if platform.system() == "Darwin" else "C.UTF-8",
         "QT_QPA_PLATFORM": "offscreen",
         "QT_QUICK_BACKEND": "software",
         "QT_QUICK_CONTROLS_STYLE": "Basic",
         "QT_SCALE_FACTOR": "1",
         "DYLD_PRINT_LIBRARIES": "1",
+        **({"LD_DEBUG": "libs"} if platform.system() == "Linux" else {}),
     }
 
 
@@ -172,6 +178,50 @@ def loaded_qt_paths(output: str) -> list[str]:
         and ("/Qt" in line or "libq" in line)
         and not line.split()[-1].startswith(("/usr/lib/", "/System/Library/"))
     ]
+
+
+def loaded_linux_paths(output: str) -> list[str]:
+    """Use actual glibc initialization records, never library search candidates."""
+    return sorted(
+        {line.split("calling init:", 1)[1].strip() for line in output.splitlines() if "calling init: /" in line}
+    )
+
+
+def linux_package_passed(step: dict, app: Path) -> bool:
+    loaded = loaded_linux_paths(step["output"])
+    qt = [
+        path
+        for path in loaded
+        if Path(path).name.startswith(("libQt6", "libq", "libicu")) or "/qml/" in path or "/plugins/" in path
+    ]
+    return (
+        probe_passed(step)
+        and f"PROBE_QML {app}/share/measurelab-evaluation/Main.qml\n" in step["output"]
+        and any(Path(path).name.startswith("libQt6Core.so") for path in qt)
+        and any(Path(path).name == "libqoffscreen.so" for path in qt)
+        and all(Path(path).resolve().is_relative_to(app.resolve()) for path in qt)
+        and all(
+            Path(path).resolve().is_relative_to(app.resolve()) or path.startswith(("/usr/lib/", "/lib/", "/lib64/"))
+            for path in loaded
+        )
+    )
+
+
+def host_metadata() -> dict:
+    if platform.system() == "Darwin":
+        return {
+            "processor": read_command(["/usr/sbin/sysctl", "-n", "machdep.cpu.brand_string"]),
+            "memory_bytes": read_command(["/usr/sbin/sysctl", "-n", "hw.memsize"]),
+            "power": read_command(["/usr/bin/pmset", "-g", "batt"]),
+        }
+    cpu = Path("/proc/cpuinfo").read_text()
+    memory = Path("/proc/meminfo").read_text()
+    return {
+        "processor": next(line.split(":", 1)[1].strip() for line in cpu.splitlines() if line.startswith("model name")),
+        "memory_bytes": str(int(memory.split("MemTotal:", 1)[1].split()[0]) * 1024),
+        "power": "not_measured",
+        "distribution": platform.freedesktop_os_release(),
+    }
 
 
 def package_passed(step: dict, app: Path) -> bool:
@@ -228,6 +278,7 @@ class Benchmark:
         env: dict[str, str] | None = None,
         cwd: Path | None = None,
         ready_marker: str = "PROBE_READY",
+        expected_exit_code: int = 0,
     ) -> dict:
         step = execute(command, cwd or self.scratch, env or self.env, 1200, ready_marker)
         index = sum(len(run["steps"]) for run in self.runs + self.reference_runs) + len(self.current_steps)
@@ -239,9 +290,10 @@ class Benchmark:
                 "command": [self.clean_text(part) for part in command],
                 "log": f"{self.log_dir.name}/{log.name}",
                 "log_sha256": digest(log),
+                "expected_exit_code": expected_exit_code,
             }
         )
-        if step["exit_code"] != 0 or step["reason"]:
+        if step["exit_code"] != expected_exit_code or step["reason"]:
             raise RuntimeError(f"command failed: {command[0]} ({step['reason'] or step['exit_code']}); see {log}")
         return step
 
@@ -312,6 +364,8 @@ class Benchmark:
             raise RuntimeError("Python reference readiness/self-test failed")
 
     def package(self, adapter: str, binary: Path, index: int) -> dict:
+        if platform.system() == "Linux":
+            return self.package_linux(adapter, binary, index)
         app = self.scratch / "packages" / f"{adapter}-{index}" / f"{adapter}.app"
         contents = app / "Contents"
         (contents / "MacOS").mkdir(parents=True)
@@ -377,6 +431,83 @@ class Benchmark:
             "relocated_app": self.clean_text(str(relocated_app)),
             "loaded_qt_paths": [self.clean_text(path) for path in loaded_qt_paths(step["output"])],
             "signing": "ad_hoc_verified",
+            "clean_os": "not_tested",
+        }
+
+    def package_linux(self, adapter: str, binary: Path, index: int) -> dict:
+        app = self.scratch / "packages" / f"{adapter}-{index}" / f"{adapter}-evaluation"
+        (app / "bin").mkdir(parents=True)
+        resource = app / "share/measurelab-evaluation/Main.qml"
+        resource.parent.mkdir(parents=True)
+        shutil.copy2(binary, app / "bin" / adapter)
+        shutil.copy2(self.scratch / "native/qml/Main.qml", resource)
+        (app / "bin/qt.conf").write_text("[Paths]\nPrefix=..\nLibraries=lib\nPlugins=plugins\nQmlImports=qml\n")
+        for module in ("QtQml", "QtQuick"):
+            shutil.copytree(self.prefix / "qml" / module, app / "qml" / module)
+        platforms = app / "plugins/platforms"
+        platforms.mkdir(parents=True)
+        for name in ("libqoffscreen.so", "libqxcb.so"):
+            shutil.copy2(self.prefix / "plugins/platforms" / name, platforms / name)
+        (app / "lib").mkdir()
+        system_dependencies = set()
+        # ldd reports transitive dependencies too, including those of QML/platform plugins.
+        for elf in [app / "bin" / adapter, *sorted(app.rglob("*.so"))]:
+            dependencies = self.step(["/usr/bin/ldd", str(elf)])
+            if "not found" in dependencies["output"]:
+                raise RuntimeError(f"unresolved package dependency: {elf}")
+            for line in dependencies["output"].splitlines():
+                if "=> /" not in line:
+                    continue
+                path = Path(line.split("=>", 1)[1].strip().split()[0])
+                if path.is_relative_to(self.prefix / "lib"):
+                    destination = app / "lib" / path.name
+                    if not destination.exists():
+                        shutil.copy2(path, destination)
+                elif path.is_relative_to(self.prefix):
+                    raise RuntimeError(f"unexpected SDK dependency: {path}")
+                else:
+                    system_dependencies.add(str(path))
+        launcher = app / "launch"
+        launcher.write_text(
+            "#!/bin/sh\nset -eu\n"
+            'package_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\n'
+            'export LD_LIBRARY_PATH="$package_dir/lib"\n'
+            f'exec "$package_dir/bin/{adapter}" "$@"\n'
+        )
+        launcher.chmod(0o755)
+        archive = Path(shutil.make_archive(str(app.parent / "evaluation"), "gztar", app.parent, app.name))
+        relocated = self.scratch / "relocated" / f"{adapter}-{index}"
+        relocated.mkdir(parents=True)
+        with tarfile.open(archive) as handle:
+            handle.extractall(relocated, filter="data")
+        relocated_app = relocated / app.name
+        env = package_environment(relocated)
+        step = self.step([str(relocated_app / "launch"), "--self-test"], env=env, cwd=relocated)
+        if not linux_package_passed(step, relocated_app):
+            raise RuntimeError("relocated lifecycle/QML/loaded Qt/ICU/plugin paths check failed")
+        # A missing resource must not load the existing developer QML via a fallback.
+        relocated_qml = relocated_app / "share/measurelab-evaluation/Main.qml"
+        original = relocated_qml.read_bytes()
+        try:
+            relocated_qml.unlink()
+            negative = self.step(
+                [str(relocated_app / "launch"), "--self-test"], env=env, cwd=relocated, expected_exit_code=101
+            )
+            if "PROBE_QML" in negative["output"] or "QML file must exist" not in negative["output"]:
+                raise RuntimeError("missing package QML was not rejected")
+        finally:
+            relocated_qml.write_bytes(original)
+        # Keep the archive and verified extraction; discard the redundant staging tree.
+        shutil.rmtree(app)
+        return {
+            "archive_bytes": archive.stat().st_size,
+            "archive_sha256": digest(archive),
+            "bundle_qml_sha256": digest(relocated_qml),
+            "relocated_app": self.clean_text(str(relocated_app)),
+            "loaded_libraries": [self.clean_text(path) for path in loaded_linux_paths(step["output"])],
+            "system_dependencies": sorted(system_dependencies),
+            "missing_qml_exit_code": negative["exit_code"],
+            "signing": "not_applicable_local_linux_archive",
             "clean_os": "not_tested",
         }
 
@@ -475,9 +606,7 @@ class Benchmark:
                 "os": platform.platform(),
                 "machine": platform.machine(),
                 "cpu_parallelism": 4,
-                "processor": read_command(["/usr/sbin/sysctl", "-n", "machdep.cpu.brand_string"]),
-                "memory_bytes": read_command(["/usr/sbin/sysctl", "-n", "hw.memsize"]),
-                "power": read_command(["/usr/bin/pmset", "-g", "batt"]),
+                **host_metadata(),
             },
             "source": self.source_metadata
             | {
@@ -490,8 +619,10 @@ class Benchmark:
             "tools": {
                 "rust": self.version,
                 "qt": tomllib.loads((ROOT / "native/qt-sdk.toml").read_text())["version"],
-                "compiler": read_command(["/usr/bin/clang++", "--version"]),
-                "apple_sdk": read_command(["/usr/bin/xcrun", "--show-sdk-version"]),
+                "compiler": read_command([self.env["CXX"], "--version"]),
+                "apple_sdk": read_command(["/usr/bin/xcrun", "--show-sdk-version"])
+                if platform.system() == "Darwin"
+                else None,
             },
             "workload": {
                 "kind": "004-A synthetic worker and same QML",
@@ -502,7 +633,7 @@ class Benchmark:
                 "renderer": "software",
                 "style": "Basic",
                 "display_language": "English",
-                "macos_deployment_target": "13.0",
+                "macos_deployment_target": self.env.get("MACOSX_DEPLOYMENT_TARGET"),
             },
             "cache": {
                 "cargo_registry": "pre-fetched; --locked --offline",
@@ -539,12 +670,12 @@ class Benchmark:
             if not self.smoke and all(v["complete"] for a in aggregates.values() for v in a.values())
             else "not_evaluated",
             "limitations": [
-                "Intel/macOS only; ARM/Windows/Linux not run",
+                f"{platform.system()}/{platform.machine()} host only; other OS/CPU not run",
                 "no fresh OS, physical screen, Gatekeeper, notarization, or distribution",
                 "debug bundle, not release runtime performance",
                 "no equivalent Python display-edit baseline; ratio budget not evaluated",
                 "no DSP/core-edit measurement until MIG-006-A; no audio/graph/10-minute runtime benchmark",
-                "no full Xcode; compiler/SDK via Command Line Tools",
+                "host system dependencies retained; no clean OS test",
                 "cache and OS scheduling effects not controlled; no causal language-speed conclusion",
             ],
             "artifacts_directory": self.clean_text(str(self.scratch)),
@@ -564,8 +695,8 @@ def main() -> int:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--smoke", action="store_true")
     args = parser.parse_args()
-    if platform.system() != "Darwin":
-        parser.error("this packaging protocol currently supports macOS only; do not extrapolate to other OSes")
+    if platform.system() not in {"Darwin", "Linux"}:
+        parser.error("this packaging protocol supports macOS and Linux only")
     prefix = args.qt_prefix.resolve()
     expected = tomllib.loads((ROOT / "native/qt-sdk.toml").read_text())["version"]
     if read_command([str(prefix / "bin/qmake"), "-query", "QT_VERSION"]) != expected:
