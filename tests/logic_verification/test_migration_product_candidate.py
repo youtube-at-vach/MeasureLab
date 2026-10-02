@@ -281,6 +281,7 @@ def test_complete_corpus_headless_product_roundtrips(tmp_path):
             sys.executable,
             str(runner.ROOT / "scripts/migration_product_candidate.py"),
             "--portable",
+            "--native-product",
             "--output",
             str(output),
         ],
@@ -296,3 +297,129 @@ def test_complete_corpus_headless_product_roundtrips(tmp_path):
     for run in report["runs"]:
         assert run["existing_files_preserved"]
     assert report["native_binary_sha256"]
+    assert report["task"] == "MIG-006-E-native-product"
+    assert sum(run["native"]["exact_cross_language_roundtrips"] for run in report["runs"]) == 72
+    receipts = [receipt for run in report["runs"] for receipt in run["native"]["audit"]["receipts"]]
+    assert sum(r["status"]["state"] == "saved" for r in receipts) == 48
+    assert sum(r["status"]["state"] == "failed" for r in receipts) == 48
+
+
+@pytest.mark.native
+@pytest.mark.parametrize(
+    "delimiter,headers,metadata,bom", list(itertools.product(("comma", "tab"), *[(False, True)] * 3))
+)
+def test_actual_independent_csv_option_sets_restore_with_native_product_reader(
+    native_codec, native_snapshot, tmp_path, delimiter, headers, metadata, bom
+):
+    import hashlib
+
+    document = product.projection(native_snapshot)
+    spec = product.csv_spec(
+        document, delimiter=delimiter, include_headers=headers, include_metadata=metadata, utf8_bom=bom
+    )
+    path = tmp_path / "actual.csv"
+    assert CsvTraceExporter().export_traces(
+        str(path), [ExportTrace.from_dict(t) for t in document["traces"]], spec["options"]
+    )
+    sidecar = {
+        "schema_version": 1,
+        "kind": product.CSV_KIND,
+        "csv_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        **spec,
+    }
+    Path(str(path) + ".metadata.json").write_bytes(result.core.json_bytes(sidecar))
+    output = tmp_path / "native"
+    result.candidate.run_command([str(native_codec.binary), "--product-read-csv", str(path), str(output)])
+    assert result.read_result(output) == native_snapshot
+
+
+@pytest.mark.native
+@pytest.mark.parametrize("fault", ["projection", "carrier", "duplicate_key", "large_integer", "nonfinite", "legacy"])
+def test_native_product_json_reader_rejects_modified_or_unknown_results(native_codec, native_snapshot, tmp_path, fault):
+    document = product.projection(native_snapshot)
+    if fault == "projection":
+        document["traces"][1]["y_data"][0] += 1
+    elif fault == "carrier":
+        document["traces"][0]["metadata"][product.MARKER]["snapshot"]["source"]["tap"] = "OutputMixed"
+    elif fault == "large_integer":
+        document["traces"][1]["y_data"][0] = 2**53 + 1
+    elif fault == "nonfinite":
+        document["traces"][1]["y_data"][0] = float("nan")
+    elif fault == "legacy":
+        document = legacy()
+    payload = json.dumps(document)
+    if fault == "duplicate_key":
+        payload = payload.replace('"version": "1.0"', '"version": "1.0", "version": "1.0"', 1)
+    path = tmp_path / "modified.json"
+    path.write_text(payload)
+    with pytest.raises(result.fft.ReferenceError):
+        result.candidate.run_command(
+            [str(native_codec.binary), "--product-read-json", str(path), str(tmp_path / "native")]
+        )
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "capacity",
+        "generation",
+        "interval_bool",
+        "format",
+        "pending",
+        "partial_saved",
+        "missing_receipt",
+        "orphan",
+        "temporary",
+    ],
+)
+def test_native_product_receipt_audit_rejects_false_completion(tmp_path, fault):
+    expected = {"capture": {"result_id": "old-result"}, "source": {"generation": 7}, "interval": [0, 8]}
+    specs = [
+        ("product.json", "product_json", None),
+        ("product.csv", "product_csv", None),
+        ("product.json", "product_json", "AlreadyExists"),
+        ("product.csv", "product_csv", "AlreadyExists"),
+        ("absent/product.json", "product_json", "NotFound"),
+        ("orphan.csv", "product_csv", "AlreadyExists"),
+        ("recovered.json", "product_json", None),
+        ("recovered.csv", "product_csv", None),
+    ]
+    audit = {"capacity": 2, "snapshot_released_by_worker": True, "partial_pair_rejected": True, "receipts": []}
+    for i, (name, fmt, kind) in enumerate(specs, 1):
+        audit["receipts"].append(
+            {
+                "operation_id": i,
+                "result_id": "old-result",
+                "generation": 7,
+                "interval": [0, 8],
+                "destination": str(tmp_path / name),
+                "format": fmt,
+                "status": {"state": "failed", "kind": kind, "message": "expected I/O failure"}
+                if kind
+                else {"state": "saved"},
+            }
+        )
+    (tmp_path / "orphan.csv").write_bytes(b"partial CSV")
+    (tmp_path / "orphan.csv.metadata.json").write_bytes(b"existing user sidecar")
+    runner.validate_native_audit(audit, expected, tmp_path)
+    receipt = audit["receipts"][0]
+    if fault == "capacity":
+        audit["capacity"] = True
+    elif fault == "generation":
+        receipt["generation"] += 1
+    elif fault == "interval_bool":
+        receipt["interval"][0] = False
+    elif fault == "format":
+        receipt["format"] = "json"
+    elif fault == "pending":
+        receipt["status"] = {"state": "writing"}
+    elif fault == "partial_saved":
+        audit["receipts"][5]["status"] = {"state": "saved"}
+    elif fault == "missing_receipt":
+        audit["receipts"].pop()
+    elif fault == "orphan":
+        (tmp_path / "orphan.csv.metadata.json").write_bytes(b"replaced user's metadata")
+    else:
+        (tmp_path / "partial.tmp").write_bytes(b"partial")
+    with pytest.raises(result.fft.ReferenceError):
+        runner.validate_native_audit(audit, expected, tmp_path)

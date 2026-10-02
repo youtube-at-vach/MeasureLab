@@ -29,7 +29,8 @@ Qtのprofile編集・適用mailboxと共通ダイアログを追加し、保存7
 006-E-compatの評価用Python adapterを追加。旧JSON/CSVとunknown、製品JSON carrier/CSV sidecarの完全snapshot往復を検査。
 両Qtのv1非同期保存操作を追加し、保存4入力×9言語×両Qtの72実行が成功。
 既存BlackHole取得/校正編集も6実行で回帰なし。
-native製品codec/保存worker接続、製品共通adapterと取得中の保存負荷検証は未着手。
+native製品snapshot codec/共通保存workerを追加。保存12実行/72完全往復、48 saved/48期待failedが成功。
+Qt製品format接続、製品共通backendと取得中の保存負荷検証は残る。
 007-CはIntel/Metalのwgpu 1候補と簡易plotterの最小試験を実施した。
 候補の10万/100万点・rolling imageは約29〜30 Hzで更新。基準100万点のJSON/QML境界はSIGBUSを3回再現した。
 PyQt画像provider経路の試験であり、採用判断・個別widgetの本実装・native GPU texture共有は含まない。
@@ -40,12 +41,12 @@ PyQt画像provider経路の試験であり、採用判断・個別widgetの本�
 | --- | --- |
 | 現行版 | `/Users/vach/MeasureLab`、`main` |
 | 検証用worktree | `/Users/vach/.codex/worktrees/next-core-evaluation/MeasureLab`（Codex管理） |
-| 検証用ブランチ | 統合先`codex/next-core-evaluation`、今回の作業`codex/migration-qt-save`（互換adapterの`9346eb71`から分岐） |
+| 検証用ブランチ | 統合先`codex/next-core-evaluation`、今回の作業`codex/migration-native-product-codec`（Qt保存操作の`ef671731`から分岐） |
 | 作業開始・Python参照コミット | `9fd79958`（MeasureLab 0.9.0、開始時のローカルmain） |
 | 計画書の調査コミット | `68cbdabc3ecd542d9d73fa0aa86bf9159f44d811` |
 | 最終main同期 | 2026-10-02に再fetch。origin/mainは参照`9fd79958`のまま、取込み差分なし |
 | 統合担当 | 当面、この検証ブランチを担当する単一の作業者 |
-| リモート | 今回開始時は`codex/migration-product-compat`の`9346eb71`がremote一致・clean。前回の「互換adapter未コミット」は古い記録。今回のQt保存操作は未コミット、push・PR・Issue・Project更新・配布は未実施 |
+| リモート | 今回開始時は`codex/migration-qt-save`の`ef671731`がremote一致・clean。前回のQt保存操作はcommit済み。今回のnative製品codecは未コミット、push・PR・Issue・Project更新・配布は未実施 |
 
 調査コミットから開始時mainまでの差分には計画書、設計ガイド、Measurement Consoleのレイアウト、
 Goniometerのテーマ対応、翻訳と対応テストがある。
@@ -63,8 +64,8 @@ MIG-003-Cも既存fixtureと契約を変更せず、filter/rate参照を独立�
 | MIG-003 | 完了（A/B/Cの参照側） | FFT20+4ケース、27契約例、4保存例にfilter/rateの21数値ケースと6 rate境界を追加。候補実装でのAC合格は005/006以降 |
 | MIG-004 | 進行中（AとBのIntel範囲を完了） | Bの32 sample+warmup2回とローカルbundleが合格。Linux CIのICU不足を修正したが再実行未確認。他OS/clean環境は未確認 |
 | MIG-005 | 進行中（Aの取得graph・動的f32 routeとBの短い実機／仮想比較） | 取得queue/履歴/共有FFTに動的出力mailboxを追加。保存12条件、BlackHole 2→2/4→16/8→16の9取得と3保留cancel。製品共通adapter/全tap、時刻写像、排他/USB復帰/長時間は残る |
-| MIG-006 | 進行中（A〜Eのpure範囲、非同期保存workerと互換adapter評価） | FFT/共有/履歴/filter、不変result/ID校正とv1保存。非同期保存12実行/36 saved/36 failed、新規Rust9件が合格。取得/Qt校正編集は007-Aへ追加。互換adapterの製品JSON carrier/CSV sidecarと旧JSON/32 CSV条件を検査。両Qtのv1保存操作を追加。native製品codec/保存worker接続と取得中の負荷は後続 |
-| MIG-007 | 進行中（Aの保存／BlackHole実入力表示・分離/9言語・Qt Trigger配送/ID校正とQt編集・適用、CのIntel最小試験） | Qt校正編集・適用まで接続し、保存4入力×9言語×両Qtの72実行・648完全result/CSV・144 PNG、BlackHole18実行・162完全result/CSV・36 PNGが成功。v1非同期保存操作の保存72実行と既存BlackHole回帰6実行が成功。native製品形式/実window manager/他OS/統合性能は残る。renderer候補9試行成功、基準100万点3試行SIGBUS。採用判断・個別widgetの本実装・native texture共有は含めない |
+| MIG-006 | 進行中（A〜Eのpure範囲、非同期保存workerと互換adapter評価） | FFT/共有/履歴/filter、不変result/ID校正とv1保存。非同期保存12実行/36 saved/36 failed、新規Rust9件が合格。取得/Qt校正編集は007-Aへ追加。互換adapterの製品JSON carrier/CSV sidecarと旧JSON/32 CSV条件を検査。両Qtのv1保存操作を追加。native製品snapshot codec/共通保存workerを追加。保存12実行/72双方向完全往復、48 saved/48期待failedを検査。Qt製品format接続と取得中の負荷は後続 |
+| MIG-007 | 進行中（Aの保存／BlackHole実入力表示・分離/9言語・Qt Trigger配送/ID校正とQt編集・適用、CのIntel最小試験） | Qt校正編集・適用まで接続し、保存4入力×9言語×両Qtの72実行・648完全result/CSV・144 PNG、BlackHole18実行・162完全result/CSV・36 PNGが成功。v1非同期保存操作の保存72実行と既存BlackHole回帰6実行が成功。Qt製品format接続/実window manager/他OS/統合性能は残る。renderer候補9試行成功、基準100万点3試行SIGBUS。採用判断・個別widgetの本実装・native texture共有は含めない |
 | MIG-008 | 未着手 | [残工程と依存](remaining-to-mig008.md)を整理。008-A統合→008-B実行/反復/実機/配布比較→008-C四案の判断。P3以降の機能展開は含まない |
 
 `native/`にツールチェーン/SDKの固定、Cargo workspace/lock、模擬workerと2方式のadapter、共通QMLを置いた。
@@ -84,7 +85,64 @@ Qtからrevision付き要求を解析threadへ配送し、両viewの共有hold/r
 汎用scheduler、全tap/Qt接続、製品backend共通化は未作成。
 候補実装は契約v0.1を出発点とし、公開型・ABI・採用ライブラリは後続の検証で決める。
 
-## MIG-007-A 両Qtの非同期保存操作の成果と検証
+## MIG-006-E native製品snapshot codec/保存workerの成果と検証
+
+着手: 2026-10-02、HEAD `ef671731`。開始時はremote一致・clean。
+前回の両Qt保存操作はこのcommitへ保存済みで、進捗の未コミット記録を訂正した。
+同じworktreeで `codex/migration-native-product-codec` へ分岐。今回の変更は未コミット。
+変更境界はgraph-coreの製品codec/共通worker、headless runner/test、Cargo依存、Native CIと検証文書。
+現行製品DSP/GUI、audio callback、元fixture/数値許容差、QML/翻訳は変更していない。
+
+- [native製品codec](../native/product-codec.md)はPython互換adapterと同じJSON carrier/独立列CSV sidecarを使う。
+  全snapshotを既存Rust readerへ通し、再構成したprojectionの値/軸/単位/校正/metadataと完全一致を要求する。
+  nullを含むprojectionは理由付きで省略し、元のnull/reason/影響区間は完全snapshotに残す。
+- 保存workerのformat型をparameter化し、既存v1をdefaultとして同じqueue/取消/終了境界を共有する。
+  receiptはproduct_json/product_csvを明示する。受付でencode/I/O/数値配列copyを行わない。
+  CSV/sidecarの両公開が完了してからsavedを返し、部分失敗と旧file不変、失敗後の復帰を検査する。
+- writerのCSV optionは既存製品exporterのindependent/comma/headerなし/metadata行なし/BOMなし。
+  読込みは実exporterの16 independent条件を検査。headerから単位/校正を推定せず、mergedの完全復元を拒否する。
+  carrierのない旧fileからresultを生成しない。旧トレース/unknownの入口はPython adapterを維持する。
+- 重複JSON key、欠落field、非有限値、f64へ非可逆な整数、projection/sidecarの改変を拒否する。
+  serdeのoptional fieldの欠落と符号付きゼロの変化、CSV parserの未閉鎖quote/空data行の寛容さも補って検査する。
+- [決定0027](decisions/0027-native-product-snapshot-codec.md)、P14/AC12、作業票/残工程を更新。
+  Native CIへ同じfixtureのnative比較を追加。GitHubでの実行は未確認。
+
+最終report: `.migration-local/2026-10-02-native-product-final-v2/report.json`、806.604秒。
+保存2校正契約/4交換例と4/8ch f32/f64の両入口から12実行、
+native保存→Python readerと実exporter→native readerの72完全snapshot往復が成功。
+48 saved/48 failedのreceiptを実fileへ照合。failedは既存file24件、親directory不在12件、
+sidecar既存による部分pair12件で、旧fileを変更せず、部分pairを復元せず、同じworkerが次の保存へ復帰した。
+既存Pythonの24往復、旧JSON/32 CSV条件を別に維持する。短い正確性診断を性能合格にしない。
+
+Rustは新規7件を含むpure 5 crateで138 passed。共通workerの既存busy/取消/終了/graph独立性も成功。
+対象Pythonは201 passed、1 deselected（85.18秒）。新規31条件を含み、実CSV option16条件/破損6条件/
+receipt監査9条件、既存v1 async/result/Qt保存と実exporterを検査した。
+高コストの全コーパスPytest一件は外し、同じ範囲を最終runnerで別途検査した。
+両Qt buildと主要5 crateの全target Clippy、Ruff lint/format（678 files）、
+Markdown lint（222 files、指摘0）、台帳41件/双方向対応/ローカルリンク、diff whitespaceは成功。
+SDKの既存ranlib/重複rpath警告は残る。
+既存v1 Qt保存回帰は英語/ac01-4ch-f8×両Qtの2実行すべて成功。
+reportは `.migration-local/2026-10-02-native-product-qt-regression/report.json`。
+33.954秒。これは既存Qt経路の回帰で、新しい製品formatのGUI合格には加算しない。
+製品成果物305件とQt成果物46件を含む471パスのsource/helper/binary/manifest/入力/成果物hashを再照合し、不一致なし。
+監査は製品reportと同directoryの `audit-hashes.json`。
+参照保存先分離、FFT14、core4 FFT/27契約/4保存、filter21数値/6 rate境界の再検査も成功。
+再fetch後もorigin/mainは `9fd79958`、取込み差分なし。
+
+初回の全コーパス比較は、意図的に壊したsidecarのJSON読込みerrorをrunnerが未捕捉で停止した。
+期待する拒否として扱うよう修正した。次の比較は12実行/72往復に成功したが、
+途中で欠落field/符号付きゼロの検査を追加したため、ソースとbinaryを固定したfinal-v2へ再実行し、全範囲が成功した。
+これらの探索reportを最終合格へ混ぜない。
+
+Qt製品format/import操作、旧fileのnativeトレースimport、取得profile再起動維持、pair transaction、
+取得中の保存負荷/長時間、byte予算/RSS、他OS/実window manager、診断I/O置換は未確認。
+全体Pytest/Mypy/全言語製品UIサイズ、GitHub CI、commit/push/PRは今回未実施。
+レイアウト/翻訳は変更していない。MIG-006/007/008全体と採用判断を完了にしない。
+次はQt製品format接続、005-A-common/006-D-integration、008-Aの2ch統合へ進める。
+
+## MIG-007-A 両Qtの非同期保存操作の成果と検証（前回記録）
+
+Qt保存操作は `ef671731` へ保存済み。以下は当時の記録。
 
 着手: 2026-10-02、HEAD `9346eb71`。開始時はremote一致・clean。
 前回の互換adapterはこのcommitへ保存済みで、進捗の未コミット記録を訂正した。
@@ -1748,9 +1806,9 @@ GUI起動時にlocaleのUTF-8への切替と、`Sans Serif`のフォント代替
 2. [環境手順](environment.md)に従い、参照版の保存先分離とツールチェーンを再確認する。
 3. 台帳とFFT/core/filterのreference runnerでverifyを実行する。既存の入力/期待値/許容差を変更せず、
    別環境の比較時だけ明示portable modeを使う。
-4. [残工程整理](remaining-to-mig008.md)と[作業票](tasks.md)に従い、両Qtのv1保存操作を検査した後、
-   native製品codec/保存worker接続へ進む。006-E-compatの評価用Python adapterと旧形式のunknownは検査済みだが、
-   Qt保存操作/取得profile再起動維持/取得中の保存負荷は残る。
+4. [残工程整理](remaining-to-mig008.md)と[作業票](tasks.md)に従い、検査済みの両Qt v1操作と
+   native製品snapshot codec/保存workerをQt製品formatへ接続する。006-E-compatのPython adapterと旧形式のunknownも検査済み。
+   Qt製品format/import、旧fileのnativeトレースimport、取得profile再起動維持/取得中の保存負荷は残る。
    join/DropをGUI外で実行し、受付を実完了と混同しない。
 5. 音声側は005-A-commonの全tap/製品共通adapter、対象filterの006-D-integrationへ進める。
    通常の取得/route/回帰はBlackHole 16ch／2chを優先し、物理USB/clock/電圧/遅延だけ実機を使う。

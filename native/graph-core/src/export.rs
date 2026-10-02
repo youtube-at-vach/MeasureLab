@@ -1,4 +1,4 @@
-//! Bounded, non-real-time file worker for immutable v1 snapshots.
+//! Bounded, non-real-time file worker for immutable snapshots and explicit codecs.
 //! Submission shares an Arc, never encodes arrays or performs file I/O. This is
 //! an evaluation boundary, not the product schema or a callback-safe API.
 use crate::result::{Format, MeasurementResult};
@@ -31,24 +31,24 @@ impl SaveStatus {
 
 /// Identity is copied from the submitted snapshot, never from current settings.
 #[derive(Clone, Debug, Serialize)]
-pub struct SaveReceipt {
+pub struct SaveReceipt<F = Format> {
     pub operation_id: u64,
     pub result_id: String,
     pub generation: u64,
     pub interval: [u64; 2],
     pub destination: PathBuf,
-    pub format: Format,
+    pub format: F,
     pub status: SaveStatus,
 }
-struct Operation {
-    receipt: Mutex<SaveReceipt>,
+struct Operation<F> {
+    receipt: Mutex<SaveReceipt<F>>,
     changed: Condvar,
 }
 /// A ticket retains only a small receipt, not the numeric snapshot.
 #[derive(Clone)]
-pub struct SaveTicket(Arc<Operation>);
-impl SaveTicket {
-    pub fn receipt(&self) -> SaveReceipt {
+pub struct SaveTicket<F = Format>(Arc<Operation<F>>);
+impl<F: Copy> SaveTicket<F> {
+    pub fn receipt(&self) -> SaveReceipt<F> {
         self.0.receipt.lock().unwrap().clone()
     }
     /// Pending-only cancellation. false means writing or completion already won;
@@ -63,7 +63,7 @@ impl SaveTicket {
         true
     }
     /// Control/test thread only; a timeout returns the current, possibly pending receipt.
-    pub fn wait(&self, timeout: Duration) -> SaveReceipt {
+    pub fn wait(&self, timeout: Duration) -> SaveReceipt<F> {
         self.0
             .changed
             .wait_timeout_while(self.0.receipt.lock().unwrap(), timeout, |receipt| {
@@ -95,42 +95,49 @@ pub enum CloseMode {
     Drain,
     CancelPending,
 }
-struct Request {
+struct Request<F> {
     snapshot: Arc<MeasurementResult>,
     path: PathBuf,
-    format: Format,
-    ticket: SaveTicket,
+    format: F,
+    ticket: SaveTicket<F>,
 }
-struct State {
-    queue: VecDeque<Request>,
+struct State<F> {
+    queue: VecDeque<Request<F>>,
     outstanding: usize,
     capacity: usize,
     next_id: u64,
     closed: bool,
     worker_panicked: bool,
 }
-struct Shared {
-    state: Mutex<State>,
+struct Shared<F> {
+    state: Mutex<State<F>>,
     ready: Condvar,
 }
 
 /// Capacity counts queued plus writing operations. It is a job-count bound,
 /// not a total byte budget; snapshot size limits remain those of MeasurementResult.
-pub struct SaveWorker {
-    shared: Arc<Shared>,
+pub struct SaveWorker<F: Copy + Send + 'static = Format> {
+    shared: Arc<Shared<F>>,
     thread: Option<JoinHandle<()>>,
 }
 impl SaveWorker {
     pub fn start(capacity: usize) -> io::Result<Self> {
         Self::with_writer(capacity, MeasurementResult::save_new)
     }
+}
+impl SaveWorker<crate::product::ProductFormat> {
+    pub fn start_product(capacity: usize) -> io::Result<Self> {
+        Self::with_writer(capacity, crate::product::save_new)
+    }
+}
+impl<F: Copy + Send + 'static> SaveWorker<F> {
     /// Explicit codec seam for non-real-time adapters. A successful writer must
     /// finish sync/no-clobber publication before returning Ok. The default uses
     /// MeasurementResult::save_new; injected writers also enable bounded queue
     /// and slow-I/O ownership checks without timing-dependent filesystem tricks.
     pub fn with_writer(
         capacity: usize,
-        writer: impl Fn(&MeasurementResult, &Path, Format) -> io::Result<()> + Send + 'static,
+        writer: impl Fn(&MeasurementResult, &Path, F) -> io::Result<()> + Send + 'static,
     ) -> io::Result<Self> {
         if !(1..=MAX_SAVE_JOBS).contains(&capacity) {
             return Err(io::Error::new(io::ErrorKind::InvalidInput, "save_capacity"));
@@ -161,8 +168,8 @@ impl SaveWorker {
         &self,
         snapshot: Arc<MeasurementResult>,
         path: PathBuf,
-        format: Format,
-    ) -> Result<SaveTicket, SubmitError> {
+        format: F,
+    ) -> Result<SaveTicket<F>, SubmitError> {
         if path.file_name().is_none()
             || path.as_os_str().as_encoded_bytes().len() > MAX_PATH_BYTES
             || path.as_os_str().as_encoded_bytes().contains(&0)
@@ -240,14 +247,17 @@ impl SaveWorker {
         Ok(())
     }
 }
-impl Drop for SaveWorker {
+impl<F: Copy + Send + 'static> Drop for SaveWorker<F> {
     fn drop(&mut self) {
         self.close(CloseMode::CancelPending);
         let _ = self.join();
     }
 }
 
-fn run(shared: Arc<Shared>, writer: impl Fn(&MeasurementResult, &Path, Format) -> io::Result<()>) {
+fn run<F: Copy>(
+    shared: Arc<Shared<F>>,
+    writer: impl Fn(&MeasurementResult, &Path, F) -> io::Result<()>,
+) {
     loop {
         let (request, write) = {
             let state = shared.state.lock().unwrap();
@@ -313,4 +323,4 @@ fn run(shared: Arc<Shared>, writer: impl Fn(&MeasurementResult, &Path, Format) -
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

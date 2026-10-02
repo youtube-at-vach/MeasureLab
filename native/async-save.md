@@ -3,7 +3,7 @@
 2026-10-02。[決定0024](../migration/decisions/0024-async-snapshot-save.md)と
 [MIG-008までの残工程](../migration/remaining-to-mig008.md)を参照。
 既存の[実験用v1 JSON/CSV](result-candidate.md)を専用workerで保存する。
-製品保存形式、Qtの保存操作、取得中の診断保存の置換はこの段階では含まない。
+この節はv1保存workerの評価範囲。[Qtのv1操作](qt-save.md)と[native製品codec接続](product-codec.md)は別単位で追加した。取得中の診断保存の置換は後続。
 
 ## 所有・完了・終了
 

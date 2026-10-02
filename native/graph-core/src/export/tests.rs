@@ -11,9 +11,9 @@ use std::sync::mpsc;
 
 const TIMEOUT: Duration = Duration::from_secs(5);
 static NEXT_DIRECTORY: AtomicU64 = AtomicU64::new(1);
-struct Directory(PathBuf);
+pub(crate) struct Directory(pub(crate) PathBuf);
 impl Directory {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let path = std::env::temp_dir().join(format!(
             "migration-async-save-{}-{}",
             std::process::id(),
@@ -22,7 +22,7 @@ impl Directory {
         fs::create_dir(&path).unwrap();
         Self(path)
     }
-    fn file(&self, name: &str) -> PathBuf {
+    pub(crate) fn file(&self, name: &str) -> PathBuf {
         self.0.join(name)
     }
 }
@@ -71,7 +71,7 @@ fn capture() -> Capture {
         clock_mapping: None,
     }
 }
-fn snapshot(factor: f64) -> Arc<MeasurementResult> {
+pub(crate) fn snapshot(factor: f64) -> Arc<MeasurementResult> {
     let profiles = BTreeMap::from([(
         "left".into(),
         Profile {

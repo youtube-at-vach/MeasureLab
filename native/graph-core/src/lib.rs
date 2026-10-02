@@ -13,6 +13,7 @@ pub mod acquisition;
 pub mod export;
 pub mod filter;
 pub mod history;
+pub mod product;
 pub mod result;
 pub mod time;
 

@@ -877,7 +877,7 @@ fn csv_decode(text: &str) -> Result<Vec<Vec<String>>, String> {
 mod tests;
 
 /// Reject duplicate keys at every depth before typed schema validation.
-fn unique_json(bytes: &[u8]) -> Result<Value, String> {
+pub(crate) fn unique_json(bytes: &[u8]) -> Result<Value, String> {
     use serde::de::{self, MapAccess, SeqAccess, Visitor};
     struct Unique(Value);
     struct UniqueVisitor;

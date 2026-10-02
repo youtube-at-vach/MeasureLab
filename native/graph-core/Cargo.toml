@@ -6,6 +6,8 @@ publish.workspace = true
 
 [dependencies]
 audio-core = { path = "../audio-core" }
+csv = "=1.4.0"
 dsp-core = { path = "../dsp-core" }
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = { version = "=1.0.151", features = ["float_roundtrip"] }
+sha2 = "=0.10.9"

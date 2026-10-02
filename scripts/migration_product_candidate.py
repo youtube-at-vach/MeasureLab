@@ -124,7 +124,94 @@ def verify_legacy(output):
     return comparisons
 
 
-def verify(*, output, portable=False):
+def validate_native_audit(audit, expected, directory):
+    """Require terminal receipts and actual files for the submitted snapshot."""
+    if (
+        set(audit) != {"capacity", "receipts", "snapshot_released_by_worker", "partial_pair_rejected"}
+        or type(audit["capacity"]) is not int
+        or audit["capacity"] != 2
+        or audit["snapshot_released_by_worker"] is not True
+        or audit["partial_pair_rejected"] is not True
+        or len(audit["receipts"]) != 8
+    ):
+        raise fft.ReferenceError("Native product worker capacity/ownership inventory mismatch")
+    operations = [
+        ("product.json", "product_json", "saved", None),
+        ("product.csv", "product_csv", "saved", None),
+        ("product.json", "product_json", "failed", "AlreadyExists"),
+        ("product.csv", "product_csv", "failed", "AlreadyExists"),
+        ("absent/product.json", "product_json", "failed", "NotFound"),
+        ("orphan.csv", "product_csv", "failed", "AlreadyExists"),
+        ("recovered.json", "product_json", "saved", None),
+        ("recovered.csv", "product_csv", "saved", None),
+    ]
+    for index, (receipt, (name, fmt, state, kind)) in enumerate(zip(audit["receipts"], operations, strict=True), 1):
+        identity = {
+            "operation_id": index,
+            "result_id": expected["capture"]["result_id"],
+            "generation": expected["source"]["generation"],
+            "interval": expected["interval"],
+            "destination": str(directory / name),
+            "format": fmt,
+        }
+        status = receipt.get("status", {})
+        if (
+            set(receipt) != set(identity) | {"status"}
+            or any(receipt[k] != v or type(receipt[k]) is not type(v) for k, v in identity.items())
+            or any(type(v) is not int for v in receipt["interval"])
+            or status.get("state") != state
+            or set(status) != ({"state", "kind", "message"} if kind else {"state"})
+            or (kind and (status["kind"] != kind or not isinstance(status["message"], str) or not status["message"]))
+        ):
+            raise fft.ReferenceError("Native product receipt identity or actual completion mismatch")
+    if (
+        not (directory / "orphan.csv").is_file()
+        or (directory / "orphan.csv.metadata.json").read_bytes() != b"existing user sidecar"
+        or (directory / "absent").exists()
+        or any(p.name.endswith(".tmp") for p in directory.iterdir())
+    ):
+        raise fft.ReferenceError("Native product partial publication or cleanup mismatch")
+
+
+def verify_native(binary, codec, expected, source, fmt, directory):
+    """Both native-worker -> real product reader and actual exporter -> native reader."""
+    command = result.candidate.run_command(
+        [str(binary), f"--product-save-{fmt}", str(source / f"result.{fmt}"), str(directory)]
+    )
+    audit = core.read_json((directory / "audit.json").read_bytes())
+    validate_native_audit(audit, expected, directory)
+    document = product.projection(expected)
+    for name in ("product", "recovered"):
+        for imported in (
+            product.import_json(product.read_file(directory / f"{name}.json"), codec),
+            product.load_csv_pair(directory / f"{name}.csv", codec),
+        ):
+            if core.json_bytes(imported.snapshot) != core.json_bytes(expected) or imported.document != document:
+                raise fft.ReferenceError("Native product writer disagrees with actual ExportTrace schema")
+    try:
+        product.load_csv_pair(directory / "orphan.csv", codec)
+    except (fft.ReferenceError, ValueError):
+        pass
+    else:
+        raise fft.ReferenceError("Partial native product pair was restored")
+    actual = directory / "actual-exporter"
+    actual.mkdir()
+    product.save_json(actual / "product.json", document)
+    product.save_csv_pair(actual / "product.csv", document)
+    reads = []
+    for file_fmt in ("json", "csv"):
+        target = actual / f"native-read-{file_fmt}"
+        reads.append(
+            result.candidate.run_command(
+                [str(binary), f"--product-read-{file_fmt}", str(actual / f"product.{file_fmt}"), str(target)]
+            )
+        )
+        if core.json_bytes(result.read_result(target)) != core.json_bytes(expected):
+            raise fft.ReferenceError("Actual exporter to native reader changed the complete snapshot")
+    return {"save_command": command, "read_commands": reads, "audit": audit, "exact_cross_language_roundtrips": 6}
+
+
+def verify(*, output, portable=False, native_product=False):
     started = time.perf_counter()
     output = Path(output).resolve()
     output.mkdir(parents=True, exist_ok=False)
@@ -170,6 +257,13 @@ def verify(*, output, portable=False):
                     p.name: fft.digest(p.read_bytes()) for p in directory.iterdir()
                 } or original != fft.digest(input_path.read_bytes()):
                     raise fft.ReferenceError("Compatibility export modified existing files/input")
+                native = (
+                    verify_native(binary, codec, expected, source, fmt, directory / "native-worker")
+                    if native_product
+                    else None
+                )
+                if original != fft.digest(input_path.read_bytes()):
+                    raise fft.ReferenceError("Native product worker modified its snapshot input")
                 runs.append(
                     {
                         "id": case["id"],
@@ -180,6 +274,7 @@ def verify(*, output, portable=False):
                         "file_sha256": before,
                         "exact_snapshot_roundtrips": 2,
                         "existing_files_preserved": True,
+                        **({"native": native} if native_product else {}),
                     }
                 )
         legacy = verify_legacy(output / "legacy")
@@ -196,12 +291,13 @@ def verify(*, output, portable=False):
         files += [ROOT / "src/core/localization.py", ROOT / "src/core/utils.py"]
         report = {
             "schema_version": 1,
-            "task": "MIG-006-E-compat",
+            "task": "MIG-006-E-native-product" if native_product else "MIG-006-E-compat",
             "status": "pass",
             "mode": "portable" if portable else "pinned-reference",
             "environment": fft.environment(),
             "source_sha256": {str(p.relative_to(ROOT)): fft.digest(p.read_bytes()) for p in files},
             "native_binary_sha256": fft.digest(binary.read_bytes()),
+            "native_source_sha256": reference["source_sha256"],
             "build": build,
             "snapshot_report_sha256": fft.digest((output / "snapshot-report.json").read_bytes()),
             "native_validation_commands": codec.commands,
@@ -212,7 +308,9 @@ def verify(*, output, portable=False):
             },
             "elapsed_seconds": time.perf_counter() - started,
             "limitations": [
-                "Python evaluation adapter only; native product codec, Qt save UI and live save integration remain pending",
+                "Native product snapshot codec/worker evaluated; Qt product format and live save integration remain pending"
+                if native_product
+                else "Python evaluation adapter only; native product codec and Qt product format integration remain pending",
                 "Product JSON 1.0 remains unchanged; an experimental reserved carrier metadata envelope retains the snapshot",
                 "Null projections are explicitly omitted from legacy display arrays; all values/reasons remain in the retained snapshot",
                 "CSV requires explicit descriptors; merged tables may contain interpolated samples and do not restore the original grid",
@@ -235,12 +333,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True, help="new directory for all evidence")
     parser.add_argument("--portable", action="store_true")
+    parser.add_argument("--native-product", action="store_true", help="also compare native product codec/file worker")
     args = parser.parse_args()
     try:
-        report = verify(output=args.output, portable=args.portable)
+        report = verify(output=args.output, portable=args.portable, native_product=args.native_product)
         print(
             f"PASS: {len(report['runs'])} compatibility runs, 24 exact snapshot roundtrips, legacy JSON and {len(report['legacy_csv'])} CSV modes"
         )
+        if args.native_product:
+            print("PASS: native product worker, 72 exact cross-language roundtrips, 48 saved/48 failed receipts")
     except (fft.ReferenceError, OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
         print(f"FAIL: {error}", file=sys.stderr)
         return 1

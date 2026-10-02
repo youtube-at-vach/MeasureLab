@@ -63,7 +63,7 @@ pair transaction、hard-link非対応filesystem、directory metadataの電源断
 読取fileは各256 MiB、projectionは4,000,000 numeric scalarと1024 traceを上限とする。
 完全snapshotの保持、deep copy、encoder scratch、全processのRSS上限ではない。
 処理はfile worker用で、audio callbackやGUI threadへ追加しない。
-`save_json()`/`save_csv_pair()`は同期APIで、既存Rust非同期workerへの製品形式接続は後続である。
+`save_json()`/`save_csv_pair()`は同期APIで、nativeの同形式codecと共通非同期workerは[別単位](product-codec.md)で追加した。
 
 ## profileと再起動の範囲
 
@@ -73,6 +73,7 @@ legacy `CalibrationInfo`の係数1や`is_calibrated: false`を校正済みの証
 取得用profileの再起動維持、device再照合、Qt編集設定の保存、旧設定の自動移行は未実装。
 MIG-008の製品schema判断時に、結果の復元と取得設定の再開を個別に決める。
 
-次は007-A-saveの両Qt保存操作、製品codecのnative/file worker接続、005-A-common、006-D-integrationを進める。
+007-A-saveのv1操作と[native製品codec/file worker](product-codec.md)を追加した。
+次はQt製品format接続、005-A-common、006-D-integrationを進める。
 取得中の保存負荷、長時間性能、実機/他OS、製品GUI import操作、MIG-008と採用判断は未完了。
 実施結果は[status](../migration/status.md)を正本とする。

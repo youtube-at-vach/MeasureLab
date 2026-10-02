@@ -1,5 +1,6 @@
 //! Headless MIG-006-E harness: inputs only, saved bytes, three consumers and file roundtrips.
 use graph_core::export::{SaveStatus, SaveWorker};
+use graph_core::product::{self, ProductFormat};
 use graph_core::result::{Capture, Format, MeasurementResult, Profile};
 use graph_core::{
     Average, FftKey, Graph, Limits, Precision, Presentation, Rational, Samples, SignalBlock,
@@ -151,6 +152,91 @@ fn async_roundtrip(result: MeasurementResult, directory: &Path) -> Result<Value,
         return Err("file worker retained numeric snapshot".into());
     }
     Ok(json!({"capacity":2, "receipts":receipts, "snapshot_released_by_worker":true}))
+}
+fn product_roundtrip(result: MeasurementResult, directory: &Path) -> Result<Value, Error> {
+    let snapshot = Arc::new(result);
+    let mut worker = SaveWorker::start_product(2)?;
+    let mut receipts = Vec::new();
+    let files = [
+        ("product.json", ProductFormat::ProductJson),
+        ("product.csv", ProductFormat::ProductCsv),
+    ];
+    for (name, format) in files {
+        let ticket = worker.submit(Arc::clone(&snapshot), directory.join(name), format)?;
+        let receipt = ticket.wait(Duration::from_secs(30));
+        if receipt.status != SaveStatus::Saved
+            || product::load(&directory.join(name), format)?.to_value() != snapshot.to_value()
+        {
+            return Err("native product save did not complete exactly".into());
+        }
+        receipts.push(receipt);
+    }
+    for (name, format) in files {
+        let path = directory.join(name);
+        let before = fs::read(&path)?;
+        let sidecar = matches!(format, ProductFormat::ProductCsv)
+            .then(|| fs::read(product::sidecar_path(&path)))
+            .transpose()?;
+        let ticket = worker.submit(Arc::clone(&snapshot), path.clone(), format)?;
+        let receipt = ticket.wait(Duration::from_secs(30));
+        if !matches!(&receipt.status, SaveStatus::Failed { kind, .. } if kind == "AlreadyExists")
+            || before != fs::read(&path)?
+            || sidecar
+                .is_some_and(|before| fs::read(product::sidecar_path(&path)).ok() != Some(before))
+        {
+            return Err("existing product file was not preserved".into());
+        }
+        receipts.push(receipt);
+    }
+    let failed = worker.submit(
+        Arc::clone(&snapshot),
+        directory.join("absent/product.json"),
+        ProductFormat::ProductJson,
+    )?;
+    let receipt = failed.wait(Duration::from_secs(30));
+    if !matches!(&receipt.status, SaveStatus::Failed { kind, .. } if kind == "NotFound") {
+        return Err("missing parent not reported failed".into());
+    }
+    receipts.push(receipt);
+    let orphan = directory.join("orphan.csv");
+    fs::write(product::sidecar_path(&orphan), b"existing user sidecar")?;
+    let partial = worker.submit(
+        Arc::clone(&snapshot),
+        orphan.clone(),
+        ProductFormat::ProductCsv,
+    )?;
+    let receipt = partial.wait(Duration::from_secs(30));
+    if !matches!(&receipt.status, SaveStatus::Failed { kind, .. } if kind == "AlreadyExists")
+        || !orphan.exists()
+        || fs::read(product::sidecar_path(&orphan))? != b"existing user sidecar"
+        || product::load(&orphan, ProductFormat::ProductCsv).is_ok()
+    {
+        return Err("partial product pair was reported saved or restored".into());
+    }
+    receipts.push(receipt);
+    for (name, format) in [
+        ("recovered.json", ProductFormat::ProductJson),
+        ("recovered.csv", ProductFormat::ProductCsv),
+    ] {
+        let ticket = worker.submit(Arc::clone(&snapshot), directory.join(name), format)?;
+        let receipt = ticket.wait(Duration::from_secs(30));
+        if receipt.status != SaveStatus::Saved
+            || product::load(&directory.join(name), format)?.to_value() != snapshot.to_value()
+        {
+            return Err("product worker did not recover".into());
+        }
+        receipts.push(receipt);
+    }
+    worker.join()?;
+    if Arc::strong_count(&snapshot) != 1
+        || fs::read_dir(directory)?
+            .any(|e| e.is_ok_and(|e| e.file_name().to_string_lossy().ends_with(".tmp")))
+    {
+        return Err("product worker retained snapshot or temporary files".into());
+    }
+    Ok(
+        json!({"capacity":2,"receipts":receipts,"snapshot_released_by_worker":true,"partial_pair_rejected":true}),
+    )
 }
 fn tone(request: &Path, output: &Path) -> Result<Value, Error> {
     let request: ToneRequest = serde_json::from_slice(&fs::read(request)?)?;
@@ -348,6 +434,17 @@ fn fft(request: &Path, input: &Path, output: &Path) -> Result<Value, Error> {
 fn run() -> Result<(), Error> {
     let args: Vec<_> = std::env::args_os().skip(1).collect();
     let audit = match args.as_slice() {
+        [mode, input, output] if mode == "--product-save-json" || mode == "--product-save-csv" => {
+            let result = MeasurementResult::load(Path::new(input), if mode == "--product-save-json" { Format::Json } else { Format::Csv })?;
+            fs::create_dir(Path::new(output))?;
+            product_roundtrip(result, Path::new(output))?
+        },
+        [mode, input, output] if mode == "--product-read-json" || mode == "--product-read-csv" => {
+            let result = product::load(Path::new(input), if mode == "--product-read-json" { ProductFormat::ProductJson } else { ProductFormat::ProductCsv })?;
+            fs::create_dir(Path::new(output))?;
+            roundtrip(&result, Path::new(output))?;
+            json!({"product_snapshot_validated":true,"roundtrips":2})
+        },
         [mode, input, output] if mode == "--async-read-json" || mode == "--async-read-csv" => {
             let result = MeasurementResult::load(Path::new(input), if mode == "--async-read-json" { Format::Json } else { Format::Csv })?;
             fs::create_dir(Path::new(output))?;
