@@ -1,0 +1,16 @@
+[package]
+name = "display-core"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[features]
+live-audio = ["dep:audio-probe"]
+
+[dependencies]
+probe-core.workspace = true
+graph-core = { path = "../graph-core" }
+audio-core = { path = "../audio-core" }
+audio-probe = { path = "../audio-probe", optional = true }
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = { version = "=1.0.151", features = ["float_roundtrip"] }

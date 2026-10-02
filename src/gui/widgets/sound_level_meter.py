@@ -340,7 +340,8 @@ class SoundLevelMeterWidget(QWidget, CompactableWidgetInterface, SplittableWidge
         content_area = QWidget()
         self.display_widget = content_area
         content_layout = QVBoxLayout()
-        content_layout.setContentsMargins(10, 10, 10, 10)
+        content_layout.setContentsMargins(10, 4, 10, 4)
+        content_layout.setSpacing(4)
 
         self.calibration_warning = QLabel("⚠ " + tr("SPL calibration is not set. Values are shown in dBFS."))
         self.calibration_warning.setAlignment(Qt.AlignmentFlag.AlignCenter)

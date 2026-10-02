@@ -117,7 +117,7 @@ class CsvTraceExporter(BaseTraceExporter):
             writer.writerow(headers)
 
         # 3. Interpolate and prepare columns directly
-        cols = [x_grid]
+        cols: list[np.ndarray | list[str]] = [x_grid]
 
         cached_x_id = None
         cached_orig_x = None

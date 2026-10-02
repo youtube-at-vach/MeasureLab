@@ -96,6 +96,20 @@ CIと同じ厳格な検査を使います。重複キーなど終了コードに
 ./.venv/bin/pytest -q
 ```
 
+移行ブランチではRust候補の実行テストも含まれます。固定ツールチェーンを用意し、初回は
+`native/`で `cargo fetch --locked` を実行してください。候補runnerは取得済みの依存を使って
+`--offline --locked` でビルドします。
+PythonのみのCIとRust候補のCIは次の範囲に分けます。両方の成功を全体の合格条件とします。
+
+```bash
+./.venv/bin/pytest -q -m "not native"
+./.venv/bin/pytest -q -m native tests/logic_verification/test_migration_*candidate.py tests/logic_verification/test_migration_audio_graph.py tests/logic_verification/test_migration_audio_route.py
+```
+
+`native` はRust実行ファイルを使うテストのmarkerです。Pythonだけで完結する参照・破損検出の
+テストは通常CIに残します。別OSの保存fixture比較にはrunnerの `--portable` を使い、元の
+fixture・source hash・許容差は変更しません。固定環境の再現検証では従来どおり指定を省略します。
+
 ハードウェアテストは通常スキップされます。対応機器を使用して明示的に検証する場合だけ
 `--hardware` を指定してください。このオプションではハードウェア以外のテストがスキップされるため、全体テストの代わりにはなりません。
 

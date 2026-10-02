@@ -1,0 +1,161 @@
+{
+  "acquired_host_seconds": null,
+  "axis": {
+    "corrected": [
+      1000.1,
+      2000.2
+    ],
+    "correction": 1.0001,
+    "dimension": "frequency",
+    "nominal": [
+      1000,
+      2000
+    ],
+    "unit": "Hz"
+  },
+  "channels": [
+    {
+      "calibration": {
+        "applied_interval": [
+          0,
+          4096
+        ],
+        "device_binding": {
+          "device": "virtual.device",
+          "port": 3
+        },
+        "is_calibrated": true,
+        "revision": "profile.1",
+        "v_per_fs": 1.75
+      },
+      "dbv": -16.211338722752796,
+      "id": "input.delta",
+      "peak_fs": 0.125,
+      "rms_fs": 0.08838834764831843,
+      "rms_v": 0.15467960838455724,
+      "spl": null,
+      "validity": {
+        "rms_v": null,
+        "spl": "uncalibrated"
+      }
+    },
+    {
+      "calibration": {
+        "applied_interval": [
+          0,
+          4096
+        ],
+        "device_binding": {
+          "device": "virtual.device",
+          "port": 0
+        },
+        "is_calibrated": true,
+        "revision": "profile.1",
+        "v_per_fs": 1
+      },
+      "dbv": -33.11329952303793,
+      "id": "input.alpha",
+      "peak_fs": 0.03125,
+      "rms_fs": 0.022097086912079608,
+      "rms_v": 0.022097086912079608,
+      "spl": null,
+      "validity": {
+        "rms_v": null,
+        "spl": "uncalibrated"
+      }
+    },
+    {
+      "calibration": {
+        "applied_interval": [
+          0,
+          4096
+        ],
+        "device_binding": {
+          "device": "virtual.device",
+          "port": 2
+        },
+        "is_calibrated": true,
+        "revision": "profile.1",
+        "v_per_fs": 1.5
+      },
+      "dbv": -20.04904924753106,
+      "id": "input.gamma",
+      "peak_fs": 0.09375,
+      "rms_fs": 0.06629126073623882,
+      "rms_v": 0.09943689110435824,
+      "spl": null,
+      "validity": {
+        "rms_v": null,
+        "spl": "uncalibrated"
+      }
+    },
+    {
+      "calibration": {
+        "applied_interval": [
+          0,
+          4096
+        ],
+        "device_binding": {
+          "device": "virtual.device",
+          "port": 1
+        },
+        "is_calibrated": false,
+        "revision": "profile.1",
+        "v_per_fs": 1.25
+      },
+      "dbv": null,
+      "id": "input.beta",
+      "peak_fs": 0.0625,
+      "rms_fs": 0.044194173824159216,
+      "rms_v": null,
+      "spl": null,
+      "validity": {
+        "rms_v": "uncalibrated",
+        "spl": "uncalibrated"
+      }
+    }
+  ],
+  "generation": 3,
+  "interval": [
+    0,
+    4096
+  ],
+  "operation_revision": "rms-cosine-v1",
+  "result_host_seconds": [
+    11,
+    1
+  ],
+  "result_id": "fixture.result.001",
+  "route_revision": "route.1",
+  "stream_id": "fixture.session.input",
+  "tap": "input.raw",
+  "timebase": {
+    "clock_domain": "fixture.virtual",
+    "generation": 3,
+    "id": "fixture.timebase.input",
+    "nominal_rate": [
+      48000,
+      1
+    ],
+    "origin_kind": "virtual",
+    "origin_sample": 0,
+    "origin_seconds": [
+      10,
+      1
+    ],
+    "rate": [
+      48000,
+      1
+    ],
+    "uncertainty_seconds": null
+  },
+  "trigger_id": "fixture.trigger.001",
+  "units": {
+    "dbv": "dBV_RMS",
+    "peak_fs": "FS_peak",
+    "rms_fs": "FS_RMS",
+    "rms_v": "V_RMS",
+    "spl": "dBSPL"
+  },
+  "validity": []
+}

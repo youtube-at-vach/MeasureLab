@@ -1036,6 +1036,7 @@ class LockInSpectrumFinderWidget(QWidget, CompactableWidgetInterface, Splittable
         # LEFT: Controls
         self.controls_widget = QWidget()
         left_panel = QVBoxLayout(self.controls_widget)
+        left_panel.setContentsMargins(6, 6, 6, 6)
         settings_group = QGroupBox(tr("Settings"))
         form = QFormLayout()
 

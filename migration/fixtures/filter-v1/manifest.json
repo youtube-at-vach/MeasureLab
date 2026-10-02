@@ -1,0 +1,4243 @@
+{
+  "cases": [
+    {
+      "arrays": {
+        "coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "contract",
+          "sha256": "ba0c29f3d865060f3f512c4c270fe82eb3822347b57b191fc4f51d9423fc8cb0",
+          "shape": [
+            3
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "f55db607bd726aa5e181aee6630d2e0efe8f989c5bdfc60b2d9bb0ed24cb8f92",
+          "shape": [
+            1031,
+            2
+          ]
+        },
+        "model.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "model.output.bin",
+          "layout": "C/frame-major",
+          "origin": "model",
+          "sha256": "d4b364a8c51f91f43b8e6353bb9c5e161462ca2d800c566f5868af1160e9d91c",
+          "shape": [
+            516,
+            2
+          ]
+        },
+        "theory.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.output.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "d4b364a8c51f91f43b8e6353bb9c5e161462ca2d800c566f5868af1160e9d91c",
+          "shape": [
+            516,
+            2
+          ]
+        }
+      },
+      "metadata": {
+        "acceptance": [
+          "AC10"
+        ],
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated"
+        },
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "chunks": {
+          "127": [
+            127
+          ],
+          "256": [
+            256
+          ],
+          "irregular": [
+            3,
+            128,
+            1,
+            7,
+            256,
+            2
+          ],
+          "one": [
+            1
+          ],
+          "whole": [
+            100000
+          ]
+        },
+        "delay_compensated": false,
+        "dtype": "<f8",
+        "filter_revision": "causal-3tap-v1",
+        "gap_numeric_policy": "missing input is computational zero; every affected output stays invalid",
+        "generation": 0,
+        "input_formula": "impulse-even",
+        "input_gaps": [],
+        "input_interval": [
+          0,
+          1031
+        ],
+        "input_parameters": {
+          "amplitudes": [
+            0.25,
+            0.125
+          ],
+          "dc_levels": [
+            0.25,
+            -0.125
+          ],
+          "impulse_amplitudes": [
+            1,
+            -0.5
+          ],
+          "phases_rad": [
+            0,
+            0.375
+          ],
+          "tone_hz": [
+            1000,
+            1000
+          ]
+        },
+        "input_shape": [
+          1031,
+          2
+        ],
+        "invalid_intervals": {
+          "gap": [],
+          "warmup": [
+            [
+              0,
+              1
+            ]
+          ]
+        },
+        "layout": "C/frame-major",
+        "origin": "independent finite sum vs new-contract state model",
+        "origin_mapping": {
+          "input": [
+            0,
+            1
+          ],
+          "output": [
+            0,
+            1
+          ]
+        },
+        "output_interval": [
+          0,
+          516
+        ],
+        "output_m_to_input": [
+          2,
+          1
+        ],
+        "output_rate_hz": [
+          24000,
+          1
+        ],
+        "output_shape": [
+          516,
+          2
+        ],
+        "output_stream": "fixture.fir",
+        "output_timebase": "fixture.clock.24k",
+        "processing_latency_reason": "not_measured",
+        "processing_latency_seconds": null,
+        "rate_ratio": [
+          1,
+          2
+        ],
+        "route_revision": "identity-v1",
+        "seed": null,
+        "signal_delay_input_samples": [
+          1,
+          1
+        ],
+        "signal_delay_output_samples": [
+          1,
+          2
+        ],
+        "signal_delay_seconds": [
+          1,
+          48000
+        ],
+        "source_rate_hz": [
+          48000,
+          1
+        ],
+        "source_stream": "fixture.input",
+        "source_timebase": "fixture.clock.48k",
+        "tail_flush": false,
+        "tap": "fixture.input",
+        "trigger": {
+          "delayed_feature_center": [
+            1025,
+            2
+          ],
+          "input": [
+            1024,
+            1
+          ],
+          "output": [
+            512,
+            1
+          ]
+        },
+        "unit": "FS"
+      },
+      "spec": {
+        "gaps": [],
+        "id": "fir-impulse-even",
+        "kind": "fir",
+        "n": 1031,
+        "signal": "impulse-even",
+        "source_rate": 48000,
+        "target_rate": 24000
+      }
+    },
+    {
+      "arrays": {
+        "coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "contract",
+          "sha256": "ba0c29f3d865060f3f512c4c270fe82eb3822347b57b191fc4f51d9423fc8cb0",
+          "shape": [
+            3
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "0ce871fcb00804d47b08f4b384f190696754ac31720cee7712e1b67f843832c2",
+          "shape": [
+            1031,
+            2
+          ]
+        },
+        "model.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "model.output.bin",
+          "layout": "C/frame-major",
+          "origin": "model",
+          "sha256": "43804cfa6a6aca0b1bba8aea48e67f1af82ec8ad8aacdeac9e36fb78d3f791c1",
+          "shape": [
+            516,
+            2
+          ]
+        },
+        "theory.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.output.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "43804cfa6a6aca0b1bba8aea48e67f1af82ec8ad8aacdeac9e36fb78d3f791c1",
+          "shape": [
+            516,
+            2
+          ]
+        }
+      },
+      "metadata": {
+        "acceptance": [
+          "AC10"
+        ],
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated"
+        },
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "chunks": {
+          "127": [
+            127
+          ],
+          "256": [
+            256
+          ],
+          "irregular": [
+            3,
+            128,
+            1,
+            7,
+            256,
+            2
+          ],
+          "one": [
+            1
+          ],
+          "whole": [
+            100000
+          ]
+        },
+        "delay_compensated": false,
+        "dtype": "<f8",
+        "filter_revision": "causal-3tap-v1",
+        "gap_numeric_policy": "missing input is computational zero; every affected output stays invalid",
+        "generation": 0,
+        "input_formula": "impulse-odd",
+        "input_gaps": [],
+        "input_interval": [
+          0,
+          1031
+        ],
+        "input_parameters": {
+          "amplitudes": [
+            0.25,
+            0.125
+          ],
+          "dc_levels": [
+            0.25,
+            -0.125
+          ],
+          "impulse_amplitudes": [
+            1,
+            -0.5
+          ],
+          "phases_rad": [
+            0,
+            0.375
+          ],
+          "tone_hz": [
+            1000,
+            1000
+          ]
+        },
+        "input_shape": [
+          1031,
+          2
+        ],
+        "invalid_intervals": {
+          "gap": [],
+          "warmup": [
+            [
+              0,
+              1
+            ]
+          ]
+        },
+        "layout": "C/frame-major",
+        "origin": "independent finite sum vs new-contract state model",
+        "origin_mapping": {
+          "input": [
+            0,
+            1
+          ],
+          "output": [
+            0,
+            1
+          ]
+        },
+        "output_interval": [
+          0,
+          516
+        ],
+        "output_m_to_input": [
+          2,
+          1
+        ],
+        "output_rate_hz": [
+          24000,
+          1
+        ],
+        "output_shape": [
+          516,
+          2
+        ],
+        "output_stream": "fixture.fir",
+        "output_timebase": "fixture.clock.24k",
+        "processing_latency_reason": "not_measured",
+        "processing_latency_seconds": null,
+        "rate_ratio": [
+          1,
+          2
+        ],
+        "route_revision": "identity-v1",
+        "seed": null,
+        "signal_delay_input_samples": [
+          1,
+          1
+        ],
+        "signal_delay_output_samples": [
+          1,
+          2
+        ],
+        "signal_delay_seconds": [
+          1,
+          48000
+        ],
+        "source_rate_hz": [
+          48000,
+          1
+        ],
+        "source_stream": "fixture.input",
+        "source_timebase": "fixture.clock.48k",
+        "tail_flush": false,
+        "tap": "fixture.input",
+        "trigger": {
+          "delayed_feature_center": [
+            1025,
+            2
+          ],
+          "input": [
+            1024,
+            1
+          ],
+          "output": [
+            512,
+            1
+          ]
+        },
+        "unit": "FS"
+      },
+      "spec": {
+        "gaps": [],
+        "id": "fir-impulse-odd",
+        "kind": "fir",
+        "n": 1031,
+        "signal": "impulse-odd",
+        "source_rate": 48000,
+        "target_rate": 24000
+      }
+    },
+    {
+      "arrays": {
+        "coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "contract",
+          "sha256": "ba0c29f3d865060f3f512c4c270fe82eb3822347b57b191fc4f51d9423fc8cb0",
+          "shape": [
+            3
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "81c06a84fa09fbdee56399a80c5b896e335c892680fc99d4d58157e13a2bda91",
+          "shape": [
+            1031,
+            2
+          ]
+        },
+        "model.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "model.output.bin",
+          "layout": "C/frame-major",
+          "origin": "model",
+          "sha256": "64949273e1728a690e1f09f193974a6fe19be57fd715303ce4d474716abcc61c",
+          "shape": [
+            516,
+            2
+          ]
+        },
+        "theory.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.output.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "64949273e1728a690e1f09f193974a6fe19be57fd715303ce4d474716abcc61c",
+          "shape": [
+            516,
+            2
+          ]
+        }
+      },
+      "metadata": {
+        "acceptance": [
+          "AC10"
+        ],
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated"
+        },
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "chunks": {
+          "127": [
+            127
+          ],
+          "256": [
+            256
+          ],
+          "irregular": [
+            3,
+            128,
+            1,
+            7,
+            256,
+            2
+          ],
+          "one": [
+            1
+          ],
+          "whole": [
+            100000
+          ]
+        },
+        "delay_compensated": false,
+        "dtype": "<f8",
+        "filter_revision": "causal-3tap-v1",
+        "gap_numeric_policy": "missing input is computational zero; every affected output stays invalid",
+        "generation": 0,
+        "input_formula": "dc",
+        "input_gaps": [],
+        "input_interval": [
+          0,
+          1031
+        ],
+        "input_parameters": {
+          "amplitudes": [
+            0.25,
+            0.125
+          ],
+          "dc_levels": [
+            0.25,
+            -0.125
+          ],
+          "impulse_amplitudes": [
+            1,
+            -0.5
+          ],
+          "phases_rad": [
+            0,
+            0.375
+          ],
+          "tone_hz": [
+            1000,
+            1000
+          ]
+        },
+        "input_shape": [
+          1031,
+          2
+        ],
+        "invalid_intervals": {
+          "gap": [],
+          "warmup": [
+            [
+              0,
+              1
+            ]
+          ]
+        },
+        "layout": "C/frame-major",
+        "origin": "independent finite sum vs new-contract state model",
+        "origin_mapping": {
+          "input": [
+            0,
+            1
+          ],
+          "output": [
+            0,
+            1
+          ]
+        },
+        "output_interval": [
+          0,
+          516
+        ],
+        "output_m_to_input": [
+          2,
+          1
+        ],
+        "output_rate_hz": [
+          24000,
+          1
+        ],
+        "output_shape": [
+          516,
+          2
+        ],
+        "output_stream": "fixture.fir",
+        "output_timebase": "fixture.clock.24k",
+        "processing_latency_reason": "not_measured",
+        "processing_latency_seconds": null,
+        "rate_ratio": [
+          1,
+          2
+        ],
+        "route_revision": "identity-v1",
+        "seed": null,
+        "signal_delay_input_samples": [
+          1,
+          1
+        ],
+        "signal_delay_output_samples": [
+          1,
+          2
+        ],
+        "signal_delay_seconds": [
+          1,
+          48000
+        ],
+        "source_rate_hz": [
+          48000,
+          1
+        ],
+        "source_stream": "fixture.input",
+        "source_timebase": "fixture.clock.48k",
+        "tail_flush": false,
+        "tap": "fixture.input",
+        "trigger": {
+          "delayed_feature_center": [
+            1025,
+            2
+          ],
+          "input": [
+            1024,
+            1
+          ],
+          "output": [
+            512,
+            1
+          ]
+        },
+        "unit": "FS"
+      },
+      "spec": {
+        "gaps": [],
+        "id": "fir-dc",
+        "kind": "fir",
+        "n": 1031,
+        "signal": "dc",
+        "source_rate": 48000,
+        "target_rate": 24000
+      }
+    },
+    {
+      "arrays": {
+        "coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "contract",
+          "sha256": "ba0c29f3d865060f3f512c4c270fe82eb3822347b57b191fc4f51d9423fc8cb0",
+          "shape": [
+            3
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "312fa7b17d21652a94a3b6b4f1844623f1cefca9569d3810f25256105f2be6bb",
+          "shape": [
+            1031,
+            2
+          ]
+        },
+        "model.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "model.output.bin",
+          "layout": "C/frame-major",
+          "origin": "model",
+          "sha256": "2f855879f7afeaa2b486e4a9b39e71adc8801c31d86b47c8a55c091255194615",
+          "shape": [
+            516,
+            2
+          ]
+        },
+        "theory.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.output.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "ab0530b40ccb94dcb437895d37e7974e7a17ef3401c4a4c2913043073387c5fb",
+          "shape": [
+            516,
+            2
+          ]
+        }
+      },
+      "metadata": {
+        "acceptance": [
+          "AC10"
+        ],
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated"
+        },
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "chunks": {
+          "127": [
+            127
+          ],
+          "256": [
+            256
+          ],
+          "irregular": [
+            3,
+            128,
+            1,
+            7,
+            256,
+            2
+          ],
+          "one": [
+            1
+          ],
+          "whole": [
+            100000
+          ]
+        },
+        "delay_compensated": false,
+        "dtype": "<f8",
+        "filter_revision": "causal-3tap-v1",
+        "gap_numeric_policy": "missing input is computational zero; every affected output stays invalid",
+        "generation": 0,
+        "input_formula": "tone",
+        "input_gaps": [],
+        "input_interval": [
+          0,
+          1031
+        ],
+        "input_parameters": {
+          "amplitudes": [
+            0.25,
+            0.125
+          ],
+          "dc_levels": [
+            0.25,
+            -0.125
+          ],
+          "impulse_amplitudes": [
+            1,
+            -0.5
+          ],
+          "phases_rad": [
+            0,
+            0.375
+          ],
+          "tone_hz": [
+            1000,
+            1000
+          ]
+        },
+        "input_shape": [
+          1031,
+          2
+        ],
+        "invalid_intervals": {
+          "gap": [],
+          "warmup": [
+            [
+              0,
+              1
+            ]
+          ]
+        },
+        "layout": "C/frame-major",
+        "origin": "independent finite sum vs new-contract state model",
+        "origin_mapping": {
+          "input": [
+            0,
+            1
+          ],
+          "output": [
+            0,
+            1
+          ]
+        },
+        "output_interval": [
+          0,
+          516
+        ],
+        "output_m_to_input": [
+          2,
+          1
+        ],
+        "output_rate_hz": [
+          24000,
+          1
+        ],
+        "output_shape": [
+          516,
+          2
+        ],
+        "output_stream": "fixture.fir",
+        "output_timebase": "fixture.clock.24k",
+        "processing_latency_reason": "not_measured",
+        "processing_latency_seconds": null,
+        "rate_ratio": [
+          1,
+          2
+        ],
+        "route_revision": "identity-v1",
+        "seed": null,
+        "signal_delay_input_samples": [
+          1,
+          1
+        ],
+        "signal_delay_output_samples": [
+          1,
+          2
+        ],
+        "signal_delay_seconds": [
+          1,
+          48000
+        ],
+        "source_rate_hz": [
+          48000,
+          1
+        ],
+        "source_stream": "fixture.input",
+        "source_timebase": "fixture.clock.48k",
+        "tail_flush": false,
+        "tap": "fixture.input",
+        "trigger": {
+          "delayed_feature_center": [
+            1025,
+            2
+          ],
+          "input": [
+            1024,
+            1
+          ],
+          "output": [
+            512,
+            1
+          ]
+        },
+        "unit": "FS"
+      },
+      "spec": {
+        "gaps": [],
+        "id": "fir-tone",
+        "kind": "fir",
+        "n": 1031,
+        "signal": "tone",
+        "source_rate": 48000,
+        "target_rate": 24000
+      }
+    },
+    {
+      "arrays": {
+        "coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "contract",
+          "sha256": "ba0c29f3d865060f3f512c4c270fe82eb3822347b57b191fc4f51d9423fc8cb0",
+          "shape": [
+            3
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "312fa7b17d21652a94a3b6b4f1844623f1cefca9569d3810f25256105f2be6bb",
+          "shape": [
+            1031,
+            2
+          ]
+        },
+        "model.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "model.output.bin",
+          "layout": "C/frame-major",
+          "origin": "model",
+          "sha256": "1f562f32fc2becf515d682afc4cb193c4dd7c3008e3dcce8fe3b2e24cdbebb13",
+          "shape": [
+            516,
+            2
+          ]
+        },
+        "theory.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.output.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "142ee0d8fdb7c1a61337027e1181e1bf981dd0daf9bdebbaa357f7fd733a6c86",
+          "shape": [
+            516,
+            2
+          ]
+        }
+      },
+      "metadata": {
+        "acceptance": [
+          "AC10"
+        ],
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated"
+        },
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "chunks": {
+          "127": [
+            127
+          ],
+          "256": [
+            256
+          ],
+          "irregular": [
+            3,
+            128,
+            1,
+            7,
+            256,
+            2
+          ],
+          "one": [
+            1
+          ],
+          "whole": [
+            100000
+          ]
+        },
+        "delay_compensated": false,
+        "dtype": "<f8",
+        "filter_revision": "causal-3tap-v1",
+        "gap_numeric_policy": "missing input is computational zero; every affected output stays invalid",
+        "generation": 0,
+        "input_formula": "gap",
+        "input_gaps": [
+          [
+            100,
+            104
+          ]
+        ],
+        "input_interval": [
+          0,
+          1031
+        ],
+        "input_parameters": {
+          "amplitudes": [
+            0.25,
+            0.125
+          ],
+          "dc_levels": [
+            0.25,
+            -0.125
+          ],
+          "impulse_amplitudes": [
+            1,
+            -0.5
+          ],
+          "phases_rad": [
+            0,
+            0.375
+          ],
+          "tone_hz": [
+            1000,
+            1000
+          ]
+        },
+        "input_shape": [
+          1031,
+          2
+        ],
+        "invalid_intervals": {
+          "gap": [
+            [
+              50,
+              53
+            ]
+          ],
+          "warmup": [
+            [
+              0,
+              1
+            ]
+          ]
+        },
+        "layout": "C/frame-major",
+        "origin": "independent finite sum vs new-contract state model",
+        "origin_mapping": {
+          "input": [
+            0,
+            1
+          ],
+          "output": [
+            0,
+            1
+          ]
+        },
+        "output_interval": [
+          0,
+          516
+        ],
+        "output_m_to_input": [
+          2,
+          1
+        ],
+        "output_rate_hz": [
+          24000,
+          1
+        ],
+        "output_shape": [
+          516,
+          2
+        ],
+        "output_stream": "fixture.fir",
+        "output_timebase": "fixture.clock.24k",
+        "processing_latency_reason": "not_measured",
+        "processing_latency_seconds": null,
+        "rate_ratio": [
+          1,
+          2
+        ],
+        "route_revision": "identity-v1",
+        "seed": null,
+        "signal_delay_input_samples": [
+          1,
+          1
+        ],
+        "signal_delay_output_samples": [
+          1,
+          2
+        ],
+        "signal_delay_seconds": [
+          1,
+          48000
+        ],
+        "source_rate_hz": [
+          48000,
+          1
+        ],
+        "source_stream": "fixture.input",
+        "source_timebase": "fixture.clock.48k",
+        "tail_flush": false,
+        "tap": "fixture.input",
+        "trigger": {
+          "delayed_feature_center": [
+            1025,
+            2
+          ],
+          "input": [
+            1024,
+            1
+          ],
+          "output": [
+            512,
+            1
+          ]
+        },
+        "unit": "FS"
+      },
+      "spec": {
+        "gaps": [
+          [
+            100,
+            104
+          ]
+        ],
+        "id": "fir-gap",
+        "kind": "fir",
+        "n": 1031,
+        "signal": "gap",
+        "source_rate": 48000,
+        "target_rate": 24000
+      }
+    },
+    {
+      "arrays": {
+        "coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "4d6012f8e24c4c5442ad6624ed5d0f2931bd1a893aabb6e4e4919bd7d3284ae5",
+          "shape": [
+            41
+          ]
+        },
+        "current.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.output.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "d0b14b01a6cf08f84fc57c2211033972b001f9de3774cda81b40b8c3413c0b0a",
+          "shape": [
+            65,
+            2
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "2dcf24f98a78dd18964ea2c839ca17ebd630df9da9ca2d3e5a62efebf842db6d",
+          "shape": [
+            129,
+            2
+          ]
+        },
+        "theory.coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "30578cefa70c6e410952225f87776847eb269e19cbeba175209f0dbc48edc877",
+          "shape": [
+            41
+          ]
+        },
+        "theory.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.output.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "d0b14b01a6cf08f84fc57c2211033972b001f9de3774cda81b40b8c3413c0b0a",
+          "shape": [
+            65,
+            2
+          ]
+        }
+      },
+      "metadata": {
+        "acceptance": [
+          "AC14"
+        ],
+        "axis": 0,
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated"
+        },
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "coefficient_origin": "_get_resample_filter vs normalized sinc/Kaiser formula",
+        "coefficient_pre_pad": 2,
+        "coefficient_scale": 1,
+        "cval": 0,
+        "delay_compensated": true,
+        "down": 2,
+        "dtype": "<f8",
+        "generation": 0,
+        "half_len": 20,
+        "initial_state": "independent whole-array call",
+        "input_formula": "impulse-even",
+        "input_interval": [
+          0,
+          129
+        ],
+        "input_parameters": {
+          "amplitudes": [
+            0.25,
+            0.125
+          ],
+          "dc_levels": [
+            0.25,
+            -0.125
+          ],
+          "impulse_amplitudes": [
+            1,
+            -0.5
+          ],
+          "phases_rad": [
+            0,
+            0.375
+          ],
+          "tone_hz": [
+            1000,
+            1000
+          ]
+        },
+        "input_shape": [
+          129,
+          2
+        ],
+        "kaiser_beta": 5.0,
+        "layout": "C/frame-major",
+        "origin": "AudioCalc.resample vs centered finite sum",
+        "output_interval": [
+          0,
+          65
+        ],
+        "output_rate_hz": 24000,
+        "output_shape": [
+          65,
+          2
+        ],
+        "padtype": "constant",
+        "pre_remove_outputs": 11,
+        "route_revision": "identity-v1",
+        "seed": null,
+        "signal_delay_before_compensation_output": [
+          10,
+          1
+        ],
+        "source_rate_hz": 48000,
+        "tap": "fixture.input",
+        "unit": "FS",
+        "up": 1,
+        "validity": "legacy API provides no validity metadata; endpoint zero padding is explicit"
+      },
+      "spec": {
+        "gaps": [],
+        "id": "poly-48000-24000-impulse-even",
+        "kind": "poly",
+        "n": 129,
+        "signal": "impulse-even",
+        "source_rate": 48000,
+        "target_rate": 24000
+      }
+    },
+    {
+      "arrays": {
+        "coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "4d6012f8e24c4c5442ad6624ed5d0f2931bd1a893aabb6e4e4919bd7d3284ae5",
+          "shape": [
+            41
+          ]
+        },
+        "current.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.output.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "7a66586526d7c3e0d1dc67608bf7f172c78d783c3c8c412a16cf8ea84ce96c6d",
+          "shape": [
+            65,
+            2
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "e5ee68c76e17f2dd48bc0d699fab1218d692ef605106d75e62aaafccc4809bd3",
+          "shape": [
+            129,
+            2
+          ]
+        },
+        "theory.coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "30578cefa70c6e410952225f87776847eb269e19cbeba175209f0dbc48edc877",
+          "shape": [
+            41
+          ]
+        },
+        "theory.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.output.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "7a66586526d7c3e0d1dc67608bf7f172c78d783c3c8c412a16cf8ea84ce96c6d",
+          "shape": [
+            65,
+            2
+          ]
+        }
+      },
+      "metadata": {
+        "acceptance": [
+          "AC14"
+        ],
+        "axis": 0,
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated"
+        },
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "coefficient_origin": "_get_resample_filter vs normalized sinc/Kaiser formula",
+        "coefficient_pre_pad": 2,
+        "coefficient_scale": 1,
+        "cval": 0,
+        "delay_compensated": true,
+        "down": 2,
+        "dtype": "<f8",
+        "generation": 0,
+        "half_len": 20,
+        "initial_state": "independent whole-array call",
+        "input_formula": "dc",
+        "input_interval": [
+          0,
+          129
+        ],
+        "input_parameters": {
+          "amplitudes": [
+            0.25,
+            0.125
+          ],
+          "dc_levels": [
+            0.25,
+            -0.125
+          ],
+          "impulse_amplitudes": [
+            1,
+            -0.5
+          ],
+          "phases_rad": [
+            0,
+            0.375
+          ],
+          "tone_hz": [
+            1000,
+            1000
+          ]
+        },
+        "input_shape": [
+          129,
+          2
+        ],
+        "kaiser_beta": 5.0,
+        "layout": "C/frame-major",
+        "origin": "AudioCalc.resample vs centered finite sum",
+        "output_interval": [
+          0,
+          65
+        ],
+        "output_rate_hz": 24000,
+        "output_shape": [
+          65,
+          2
+        ],
+        "padtype": "constant",
+        "pre_remove_outputs": 11,
+        "route_revision": "identity-v1",
+        "seed": null,
+        "signal_delay_before_compensation_output": [
+          10,
+          1
+        ],
+        "source_rate_hz": 48000,
+        "tap": "fixture.input",
+        "unit": "FS",
+        "up": 1,
+        "validity": "legacy API provides no validity metadata; endpoint zero padding is explicit"
+      },
+      "spec": {
+        "gaps": [],
+        "id": "poly-48000-24000-dc",
+        "kind": "poly",
+        "n": 129,
+        "signal": "dc",
+        "source_rate": 48000,
+        "target_rate": 24000
+      }
+    },
+    {
+      "arrays": {
+        "coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "4d6012f8e24c4c5442ad6624ed5d0f2931bd1a893aabb6e4e4919bd7d3284ae5",
+          "shape": [
+            41
+          ]
+        },
+        "current.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.output.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "6e53660dc22ed2c387460685a07921657c28c4921a7cf21272aa404afb0fa05d",
+          "shape": [
+            24000,
+            2
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "c786693fc01710f52e30fa5c7f4d938bac9b6ce622e8c336be33f62fc669e590",
+          "shape": [
+            48000,
+            2
+          ]
+        },
+        "theory.coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "30578cefa70c6e410952225f87776847eb269e19cbeba175209f0dbc48edc877",
+          "shape": [
+            41
+          ]
+        },
+        "theory.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.output.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "6e53660dc22ed2c387460685a07921657c28c4921a7cf21272aa404afb0fa05d",
+          "shape": [
+            24000,
+            2
+          ]
+        }
+      },
+      "metadata": {
+        "acceptance": [
+          "AC14"
+        ],
+        "axis": 0,
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated"
+        },
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "coefficient_origin": "_get_resample_filter vs normalized sinc/Kaiser formula",
+        "coefficient_pre_pad": 2,
+        "coefficient_scale": 1,
+        "cval": 0,
+        "delay_compensated": true,
+        "down": 2,
+        "dtype": "<f8",
+        "generation": 0,
+        "half_len": 20,
+        "initial_state": "independent whole-array call",
+        "input_formula": "tone",
+        "input_interval": [
+          0,
+          48000
+        ],
+        "input_parameters": {
+          "amplitudes": [
+            0.25,
+            0.125
+          ],
+          "dc_levels": [
+            0.25,
+            -0.125
+          ],
+          "impulse_amplitudes": [
+            1,
+            -0.5
+          ],
+          "phases_rad": [
+            0,
+            0.375
+          ],
+          "tone_hz": [
+            1000,
+            1000
+          ]
+        },
+        "input_shape": [
+          48000,
+          2
+        ],
+        "kaiser_beta": 5.0,
+        "layout": "C/frame-major",
+        "origin": "AudioCalc.resample vs centered finite sum",
+        "output_interval": [
+          0,
+          24000
+        ],
+        "output_rate_hz": 24000,
+        "output_shape": [
+          24000,
+          2
+        ],
+        "padtype": "constant",
+        "pre_remove_outputs": 11,
+        "route_revision": "identity-v1",
+        "seed": null,
+        "signal_delay_before_compensation_output": [
+          10,
+          1
+        ],
+        "source_rate_hz": 48000,
+        "tap": "fixture.input",
+        "unit": "FS",
+        "up": 1,
+        "validity": "legacy API provides no validity metadata; endpoint zero padding is explicit"
+      },
+      "spec": {
+        "gaps": [],
+        "id": "poly-48000-24000-tone",
+        "kind": "poly",
+        "n": 48000,
+        "signal": "tone",
+        "source_rate": 48000,
+        "target_rate": 24000
+      }
+    },
+    {
+      "arrays": {
+        "coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "4d6012f8e24c4c5442ad6624ed5d0f2931bd1a893aabb6e4e4919bd7d3284ae5",
+          "shape": [
+            41
+          ]
+        },
+        "current.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.output.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "12a27f59952a787ae0135cb751a07e7ee8776dbe675c7bebd93a60407ac6e6c0",
+          "shape": [
+            258,
+            2
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "2dcf24f98a78dd18964ea2c839ca17ebd630df9da9ca2d3e5a62efebf842db6d",
+          "shape": [
+            129,
+            2
+          ]
+        },
+        "theory.coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "30578cefa70c6e410952225f87776847eb269e19cbeba175209f0dbc48edc877",
+          "shape": [
+            41
+          ]
+        },
+        "theory.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.output.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "12a27f59952a787ae0135cb751a07e7ee8776dbe675c7bebd93a60407ac6e6c0",
+          "shape": [
+            258,
+            2
+          ]
+        }
+      },
+      "metadata": {
+        "acceptance": [
+          "AC14"
+        ],
+        "axis": 0,
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated"
+        },
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "coefficient_origin": "_get_resample_filter vs normalized sinc/Kaiser formula",
+        "coefficient_pre_pad": 1,
+        "coefficient_scale": 2,
+        "cval": 0,
+        "delay_compensated": true,
+        "down": 1,
+        "dtype": "<f8",
+        "generation": 0,
+        "half_len": 20,
+        "initial_state": "independent whole-array call",
+        "input_formula": "impulse-even",
+        "input_interval": [
+          0,
+          129
+        ],
+        "input_parameters": {
+          "amplitudes": [
+            0.25,
+            0.125
+          ],
+          "dc_levels": [
+            0.25,
+            -0.125
+          ],
+          "impulse_amplitudes": [
+            1,
+            -0.5
+          ],
+          "phases_rad": [
+            0,
+            0.375
+          ],
+          "tone_hz": [
+            1000,
+            1000
+          ]
+        },
+        "input_shape": [
+          129,
+          2
+        ],
+        "kaiser_beta": 5.0,
+        "layout": "C/frame-major",
+        "origin": "AudioCalc.resample vs centered finite sum",
+        "output_interval": [
+          0,
+          258
+        ],
+        "output_rate_hz": 48000,
+        "output_shape": [
+          258,
+          2
+        ],
+        "padtype": "constant",
+        "pre_remove_outputs": 21,
+        "route_revision": "identity-v1",
+        "seed": null,
+        "signal_delay_before_compensation_output": [
+          20,
+          1
+        ],
+        "source_rate_hz": 24000,
+        "tap": "fixture.input",
+        "unit": "FS",
+        "up": 2,
+        "validity": "legacy API provides no validity metadata; endpoint zero padding is explicit"
+      },
+      "spec": {
+        "gaps": [],
+        "id": "poly-24000-48000-impulse-even",
+        "kind": "poly",
+        "n": 129,
+        "signal": "impulse-even",
+        "source_rate": 24000,
+        "target_rate": 48000
+      }
+    },
+    {
+      "arrays": {
+        "coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "4d6012f8e24c4c5442ad6624ed5d0f2931bd1a893aabb6e4e4919bd7d3284ae5",
+          "shape": [
+            41
+          ]
+        },
+        "current.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.output.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "1e9f8466fa887bd5d71b7212ccef866032d1773f48cc31bd793571ab82d7b29e",
+          "shape": [
+            258,
+            2
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "e5ee68c76e17f2dd48bc0d699fab1218d692ef605106d75e62aaafccc4809bd3",
+          "shape": [
+            129,
+            2
+          ]
+        },
+        "theory.coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "30578cefa70c6e410952225f87776847eb269e19cbeba175209f0dbc48edc877",
+          "shape": [
+            41
+          ]
+        },
+        "theory.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.output.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "1e9f8466fa887bd5d71b7212ccef866032d1773f48cc31bd793571ab82d7b29e",
+          "shape": [
+            258,
+            2
+          ]
+        }
+      },
+      "metadata": {
+        "acceptance": [
+          "AC14"
+        ],
+        "axis": 0,
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated"
+        },
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "coefficient_origin": "_get_resample_filter vs normalized sinc/Kaiser formula",
+        "coefficient_pre_pad": 1,
+        "coefficient_scale": 2,
+        "cval": 0,
+        "delay_compensated": true,
+        "down": 1,
+        "dtype": "<f8",
+        "generation": 0,
+        "half_len": 20,
+        "initial_state": "independent whole-array call",
+        "input_formula": "dc",
+        "input_interval": [
+          0,
+          129
+        ],
+        "input_parameters": {
+          "amplitudes": [
+            0.25,
+            0.125
+          ],
+          "dc_levels": [
+            0.25,
+            -0.125
+          ],
+          "impulse_amplitudes": [
+            1,
+            -0.5
+          ],
+          "phases_rad": [
+            0,
+            0.375
+          ],
+          "tone_hz": [
+            1000,
+            1000
+          ]
+        },
+        "input_shape": [
+          129,
+          2
+        ],
+        "kaiser_beta": 5.0,
+        "layout": "C/frame-major",
+        "origin": "AudioCalc.resample vs centered finite sum",
+        "output_interval": [
+          0,
+          258
+        ],
+        "output_rate_hz": 48000,
+        "output_shape": [
+          258,
+          2
+        ],
+        "padtype": "constant",
+        "pre_remove_outputs": 21,
+        "route_revision": "identity-v1",
+        "seed": null,
+        "signal_delay_before_compensation_output": [
+          20,
+          1
+        ],
+        "source_rate_hz": 24000,
+        "tap": "fixture.input",
+        "unit": "FS",
+        "up": 2,
+        "validity": "legacy API provides no validity metadata; endpoint zero padding is explicit"
+      },
+      "spec": {
+        "gaps": [],
+        "id": "poly-24000-48000-dc",
+        "kind": "poly",
+        "n": 129,
+        "signal": "dc",
+        "source_rate": 24000,
+        "target_rate": 48000
+      }
+    },
+    {
+      "arrays": {
+        "coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "4d6012f8e24c4c5442ad6624ed5d0f2931bd1a893aabb6e4e4919bd7d3284ae5",
+          "shape": [
+            41
+          ]
+        },
+        "current.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.output.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "592546316745e75586478a1f6537ca486875c5ba381174f5e7f6aa3747fce77b",
+          "shape": [
+            48000,
+            2
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "0b5336646019378ae46030df060446ce5d89e62bff99cb326b432db05f8d55c7",
+          "shape": [
+            24000,
+            2
+          ]
+        },
+        "theory.coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "30578cefa70c6e410952225f87776847eb269e19cbeba175209f0dbc48edc877",
+          "shape": [
+            41
+          ]
+        },
+        "theory.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.output.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "592546316745e75586478a1f6537ca486875c5ba381174f5e7f6aa3747fce77b",
+          "shape": [
+            48000,
+            2
+          ]
+        }
+      },
+      "metadata": {
+        "acceptance": [
+          "AC14"
+        ],
+        "axis": 0,
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated"
+        },
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "coefficient_origin": "_get_resample_filter vs normalized sinc/Kaiser formula",
+        "coefficient_pre_pad": 1,
+        "coefficient_scale": 2,
+        "cval": 0,
+        "delay_compensated": true,
+        "down": 1,
+        "dtype": "<f8",
+        "generation": 0,
+        "half_len": 20,
+        "initial_state": "independent whole-array call",
+        "input_formula": "tone",
+        "input_interval": [
+          0,
+          24000
+        ],
+        "input_parameters": {
+          "amplitudes": [
+            0.25,
+            0.125
+          ],
+          "dc_levels": [
+            0.25,
+            -0.125
+          ],
+          "impulse_amplitudes": [
+            1,
+            -0.5
+          ],
+          "phases_rad": [
+            0,
+            0.375
+          ],
+          "tone_hz": [
+            1000,
+            1000
+          ]
+        },
+        "input_shape": [
+          24000,
+          2
+        ],
+        "kaiser_beta": 5.0,
+        "layout": "C/frame-major",
+        "origin": "AudioCalc.resample vs centered finite sum",
+        "output_interval": [
+          0,
+          48000
+        ],
+        "output_rate_hz": 48000,
+        "output_shape": [
+          48000,
+          2
+        ],
+        "padtype": "constant",
+        "pre_remove_outputs": 21,
+        "route_revision": "identity-v1",
+        "seed": null,
+        "signal_delay_before_compensation_output": [
+          20,
+          1
+        ],
+        "source_rate_hz": 24000,
+        "tap": "fixture.input",
+        "unit": "FS",
+        "up": 2,
+        "validity": "legacy API provides no validity metadata; endpoint zero padding is explicit"
+      },
+      "spec": {
+        "gaps": [],
+        "id": "poly-24000-48000-tone",
+        "kind": "poly",
+        "n": 24000,
+        "signal": "tone",
+        "source_rate": 24000,
+        "target_rate": 48000
+      }
+    },
+    {
+      "arrays": {
+        "coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f517ed012c86b6368a84fdb7fa48c1f6090e919acd0da2d0f27147baccfcdb85",
+          "shape": [
+            3201
+          ]
+        },
+        "current.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.output.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "46a62896a7df14f17a67a7fe53aac92f4bf6c5817914e2d516f6c6e27dd88326",
+          "shape": [
+            141,
+            2
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "2dcf24f98a78dd18964ea2c839ca17ebd630df9da9ca2d3e5a62efebf842db6d",
+          "shape": [
+            129,
+            2
+          ]
+        },
+        "theory.coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "502b27cb0bfba6d8a5a4d57940237a5fd0c594141226c95c567282320de2b498",
+          "shape": [
+            3201
+          ]
+        },
+        "theory.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.output.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "46a62896a7df14f17a67a7fe53aac92f4bf6c5817914e2d516f6c6e27dd88326",
+          "shape": [
+            141,
+            2
+          ]
+        }
+      },
+      "metadata": {
+        "acceptance": [
+          "AC14"
+        ],
+        "axis": 0,
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated"
+        },
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "coefficient_origin": "_get_resample_filter vs normalized sinc/Kaiser formula",
+        "coefficient_pre_pad": 17,
+        "coefficient_scale": 160,
+        "cval": 0,
+        "delay_compensated": true,
+        "down": 147,
+        "dtype": "<f8",
+        "generation": 0,
+        "half_len": 1600,
+        "initial_state": "independent whole-array call",
+        "input_formula": "impulse-even",
+        "input_interval": [
+          0,
+          129
+        ],
+        "input_parameters": {
+          "amplitudes": [
+            0.25,
+            0.125
+          ],
+          "dc_levels": [
+            0.25,
+            -0.125
+          ],
+          "impulse_amplitudes": [
+            1,
+            -0.5
+          ],
+          "phases_rad": [
+            0,
+            0.375
+          ],
+          "tone_hz": [
+            1000,
+            1000
+          ]
+        },
+        "input_shape": [
+          129,
+          2
+        ],
+        "kaiser_beta": 5.0,
+        "layout": "C/frame-major",
+        "origin": "AudioCalc.resample vs centered finite sum",
+        "output_interval": [
+          0,
+          141
+        ],
+        "output_rate_hz": 48000,
+        "output_shape": [
+          141,
+          2
+        ],
+        "padtype": "constant",
+        "pre_remove_outputs": 11,
+        "route_revision": "identity-v1",
+        "seed": null,
+        "signal_delay_before_compensation_output": [
+          1600,
+          147
+        ],
+        "source_rate_hz": 44100,
+        "tap": "fixture.input",
+        "unit": "FS",
+        "up": 160,
+        "validity": "legacy API provides no validity metadata; endpoint zero padding is explicit"
+      },
+      "spec": {
+        "gaps": [],
+        "id": "poly-44100-48000-impulse-even",
+        "kind": "poly",
+        "n": 129,
+        "signal": "impulse-even",
+        "source_rate": 44100,
+        "target_rate": 48000
+      }
+    },
+    {
+      "arrays": {
+        "coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f517ed012c86b6368a84fdb7fa48c1f6090e919acd0da2d0f27147baccfcdb85",
+          "shape": [
+            3201
+          ]
+        },
+        "current.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.output.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "175f87a7194731fb72cd925feb88d9c4b75a47a3e1cd126abed553165f19ba5c",
+          "shape": [
+            141,
+            2
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "e5ee68c76e17f2dd48bc0d699fab1218d692ef605106d75e62aaafccc4809bd3",
+          "shape": [
+            129,
+            2
+          ]
+        },
+        "theory.coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "502b27cb0bfba6d8a5a4d57940237a5fd0c594141226c95c567282320de2b498",
+          "shape": [
+            3201
+          ]
+        },
+        "theory.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.output.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "175f87a7194731fb72cd925feb88d9c4b75a47a3e1cd126abed553165f19ba5c",
+          "shape": [
+            141,
+            2
+          ]
+        }
+      },
+      "metadata": {
+        "acceptance": [
+          "AC14"
+        ],
+        "axis": 0,
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated"
+        },
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "coefficient_origin": "_get_resample_filter vs normalized sinc/Kaiser formula",
+        "coefficient_pre_pad": 17,
+        "coefficient_scale": 160,
+        "cval": 0,
+        "delay_compensated": true,
+        "down": 147,
+        "dtype": "<f8",
+        "generation": 0,
+        "half_len": 1600,
+        "initial_state": "independent whole-array call",
+        "input_formula": "dc",
+        "input_interval": [
+          0,
+          129
+        ],
+        "input_parameters": {
+          "amplitudes": [
+            0.25,
+            0.125
+          ],
+          "dc_levels": [
+            0.25,
+            -0.125
+          ],
+          "impulse_amplitudes": [
+            1,
+            -0.5
+          ],
+          "phases_rad": [
+            0,
+            0.375
+          ],
+          "tone_hz": [
+            1000,
+            1000
+          ]
+        },
+        "input_shape": [
+          129,
+          2
+        ],
+        "kaiser_beta": 5.0,
+        "layout": "C/frame-major",
+        "origin": "AudioCalc.resample vs centered finite sum",
+        "output_interval": [
+          0,
+          141
+        ],
+        "output_rate_hz": 48000,
+        "output_shape": [
+          141,
+          2
+        ],
+        "padtype": "constant",
+        "pre_remove_outputs": 11,
+        "route_revision": "identity-v1",
+        "seed": null,
+        "signal_delay_before_compensation_output": [
+          1600,
+          147
+        ],
+        "source_rate_hz": 44100,
+        "tap": "fixture.input",
+        "unit": "FS",
+        "up": 160,
+        "validity": "legacy API provides no validity metadata; endpoint zero padding is explicit"
+      },
+      "spec": {
+        "gaps": [],
+        "id": "poly-44100-48000-dc",
+        "kind": "poly",
+        "n": 129,
+        "signal": "dc",
+        "source_rate": 44100,
+        "target_rate": 48000
+      }
+    },
+    {
+      "arrays": {
+        "coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f517ed012c86b6368a84fdb7fa48c1f6090e919acd0da2d0f27147baccfcdb85",
+          "shape": [
+            3201
+          ]
+        },
+        "current.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.output.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "0e4715e117004476583c790f0a4acf7773a33a5a2b973a43c52b77878b1e5995",
+          "shape": [
+            48000,
+            2
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "8fda69223377a1b089c6e8e395a7256b1ade60b1fe150f7c035a499e64da6825",
+          "shape": [
+            44100,
+            2
+          ]
+        },
+        "theory.coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "502b27cb0bfba6d8a5a4d57940237a5fd0c594141226c95c567282320de2b498",
+          "shape": [
+            3201
+          ]
+        },
+        "theory.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.output.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "0e4715e117004476583c790f0a4acf7773a33a5a2b973a43c52b77878b1e5995",
+          "shape": [
+            48000,
+            2
+          ]
+        }
+      },
+      "metadata": {
+        "acceptance": [
+          "AC14"
+        ],
+        "axis": 0,
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated"
+        },
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "coefficient_origin": "_get_resample_filter vs normalized sinc/Kaiser formula",
+        "coefficient_pre_pad": 17,
+        "coefficient_scale": 160,
+        "cval": 0,
+        "delay_compensated": true,
+        "down": 147,
+        "dtype": "<f8",
+        "generation": 0,
+        "half_len": 1600,
+        "initial_state": "independent whole-array call",
+        "input_formula": "tone",
+        "input_interval": [
+          0,
+          44100
+        ],
+        "input_parameters": {
+          "amplitudes": [
+            0.25,
+            0.125
+          ],
+          "dc_levels": [
+            0.25,
+            -0.125
+          ],
+          "impulse_amplitudes": [
+            1,
+            -0.5
+          ],
+          "phases_rad": [
+            0,
+            0.375
+          ],
+          "tone_hz": [
+            1000,
+            1000
+          ]
+        },
+        "input_shape": [
+          44100,
+          2
+        ],
+        "kaiser_beta": 5.0,
+        "layout": "C/frame-major",
+        "origin": "AudioCalc.resample vs centered finite sum",
+        "output_interval": [
+          0,
+          48000
+        ],
+        "output_rate_hz": 48000,
+        "output_shape": [
+          48000,
+          2
+        ],
+        "padtype": "constant",
+        "pre_remove_outputs": 11,
+        "route_revision": "identity-v1",
+        "seed": null,
+        "signal_delay_before_compensation_output": [
+          1600,
+          147
+        ],
+        "source_rate_hz": 44100,
+        "tap": "fixture.input",
+        "unit": "FS",
+        "up": 160,
+        "validity": "legacy API provides no validity metadata; endpoint zero padding is explicit"
+      },
+      "spec": {
+        "gaps": [],
+        "id": "poly-44100-48000-tone",
+        "kind": "poly",
+        "n": 44100,
+        "signal": "tone",
+        "source_rate": 44100,
+        "target_rate": 48000
+      }
+    },
+    {
+      "arrays": {
+        "coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f517ed012c86b6368a84fdb7fa48c1f6090e919acd0da2d0f27147baccfcdb85",
+          "shape": [
+            3201
+          ]
+        },
+        "current.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.output.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "a08c26530121c169bcb6654f40724bfc7777b2458a36b7736116200e7d8cfee7",
+          "shape": [
+            119,
+            2
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "2dcf24f98a78dd18964ea2c839ca17ebd630df9da9ca2d3e5a62efebf842db6d",
+          "shape": [
+            129,
+            2
+          ]
+        },
+        "theory.coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "502b27cb0bfba6d8a5a4d57940237a5fd0c594141226c95c567282320de2b498",
+          "shape": [
+            3201
+          ]
+        },
+        "theory.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.output.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "a08c26530121c169bcb6654f40724bfc7777b2458a36b7736116200e7d8cfee7",
+          "shape": [
+            119,
+            2
+          ]
+        }
+      },
+      "metadata": {
+        "acceptance": [
+          "AC14"
+        ],
+        "axis": 0,
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated"
+        },
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "coefficient_origin": "_get_resample_filter vs normalized sinc/Kaiser formula",
+        "coefficient_pre_pad": 160,
+        "coefficient_scale": 147,
+        "cval": 0,
+        "delay_compensated": true,
+        "down": 160,
+        "dtype": "<f8",
+        "generation": 0,
+        "half_len": 1600,
+        "initial_state": "independent whole-array call",
+        "input_formula": "impulse-even",
+        "input_interval": [
+          0,
+          129
+        ],
+        "input_parameters": {
+          "amplitudes": [
+            0.25,
+            0.125
+          ],
+          "dc_levels": [
+            0.25,
+            -0.125
+          ],
+          "impulse_amplitudes": [
+            1,
+            -0.5
+          ],
+          "phases_rad": [
+            0,
+            0.375
+          ],
+          "tone_hz": [
+            1000,
+            1000
+          ]
+        },
+        "input_shape": [
+          129,
+          2
+        ],
+        "kaiser_beta": 5.0,
+        "layout": "C/frame-major",
+        "origin": "AudioCalc.resample vs centered finite sum",
+        "output_interval": [
+          0,
+          119
+        ],
+        "output_rate_hz": 44100,
+        "output_shape": [
+          119,
+          2
+        ],
+        "padtype": "constant",
+        "pre_remove_outputs": 11,
+        "route_revision": "identity-v1",
+        "seed": null,
+        "signal_delay_before_compensation_output": [
+          10,
+          1
+        ],
+        "source_rate_hz": 48000,
+        "tap": "fixture.input",
+        "unit": "FS",
+        "up": 147,
+        "validity": "legacy API provides no validity metadata; endpoint zero padding is explicit"
+      },
+      "spec": {
+        "gaps": [],
+        "id": "poly-48000-44100-impulse-even",
+        "kind": "poly",
+        "n": 129,
+        "signal": "impulse-even",
+        "source_rate": 48000,
+        "target_rate": 44100
+      }
+    },
+    {
+      "arrays": {
+        "coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f517ed012c86b6368a84fdb7fa48c1f6090e919acd0da2d0f27147baccfcdb85",
+          "shape": [
+            3201
+          ]
+        },
+        "current.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.output.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "9bc0962d4decbdd33661743a4b2c3974cfcbbb67eed463bac5372cce0a065d54",
+          "shape": [
+            119,
+            2
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "e5ee68c76e17f2dd48bc0d699fab1218d692ef605106d75e62aaafccc4809bd3",
+          "shape": [
+            129,
+            2
+          ]
+        },
+        "theory.coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "502b27cb0bfba6d8a5a4d57940237a5fd0c594141226c95c567282320de2b498",
+          "shape": [
+            3201
+          ]
+        },
+        "theory.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.output.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "9bc0962d4decbdd33661743a4b2c3974cfcbbb67eed463bac5372cce0a065d54",
+          "shape": [
+            119,
+            2
+          ]
+        }
+      },
+      "metadata": {
+        "acceptance": [
+          "AC14"
+        ],
+        "axis": 0,
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated"
+        },
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "coefficient_origin": "_get_resample_filter vs normalized sinc/Kaiser formula",
+        "coefficient_pre_pad": 160,
+        "coefficient_scale": 147,
+        "cval": 0,
+        "delay_compensated": true,
+        "down": 160,
+        "dtype": "<f8",
+        "generation": 0,
+        "half_len": 1600,
+        "initial_state": "independent whole-array call",
+        "input_formula": "dc",
+        "input_interval": [
+          0,
+          129
+        ],
+        "input_parameters": {
+          "amplitudes": [
+            0.25,
+            0.125
+          ],
+          "dc_levels": [
+            0.25,
+            -0.125
+          ],
+          "impulse_amplitudes": [
+            1,
+            -0.5
+          ],
+          "phases_rad": [
+            0,
+            0.375
+          ],
+          "tone_hz": [
+            1000,
+            1000
+          ]
+        },
+        "input_shape": [
+          129,
+          2
+        ],
+        "kaiser_beta": 5.0,
+        "layout": "C/frame-major",
+        "origin": "AudioCalc.resample vs centered finite sum",
+        "output_interval": [
+          0,
+          119
+        ],
+        "output_rate_hz": 44100,
+        "output_shape": [
+          119,
+          2
+        ],
+        "padtype": "constant",
+        "pre_remove_outputs": 11,
+        "route_revision": "identity-v1",
+        "seed": null,
+        "signal_delay_before_compensation_output": [
+          10,
+          1
+        ],
+        "source_rate_hz": 48000,
+        "tap": "fixture.input",
+        "unit": "FS",
+        "up": 147,
+        "validity": "legacy API provides no validity metadata; endpoint zero padding is explicit"
+      },
+      "spec": {
+        "gaps": [],
+        "id": "poly-48000-44100-dc",
+        "kind": "poly",
+        "n": 129,
+        "signal": "dc",
+        "source_rate": 48000,
+        "target_rate": 44100
+      }
+    },
+    {
+      "arrays": {
+        "coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f517ed012c86b6368a84fdb7fa48c1f6090e919acd0da2d0f27147baccfcdb85",
+          "shape": [
+            3201
+          ]
+        },
+        "current.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.output.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "fe9a0a716770198d8ec9685034978163fc77da437a018956c55709b2d327129e",
+          "shape": [
+            44100,
+            2
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "c786693fc01710f52e30fa5c7f4d938bac9b6ce622e8c336be33f62fc669e590",
+          "shape": [
+            48000,
+            2
+          ]
+        },
+        "theory.coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "502b27cb0bfba6d8a5a4d57940237a5fd0c594141226c95c567282320de2b498",
+          "shape": [
+            3201
+          ]
+        },
+        "theory.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.output.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "fe9a0a716770198d8ec9685034978163fc77da437a018956c55709b2d327129e",
+          "shape": [
+            44100,
+            2
+          ]
+        }
+      },
+      "metadata": {
+        "acceptance": [
+          "AC14"
+        ],
+        "axis": 0,
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated"
+        },
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "coefficient_origin": "_get_resample_filter vs normalized sinc/Kaiser formula",
+        "coefficient_pre_pad": 160,
+        "coefficient_scale": 147,
+        "cval": 0,
+        "delay_compensated": true,
+        "down": 160,
+        "dtype": "<f8",
+        "generation": 0,
+        "half_len": 1600,
+        "initial_state": "independent whole-array call",
+        "input_formula": "tone",
+        "input_interval": [
+          0,
+          48000
+        ],
+        "input_parameters": {
+          "amplitudes": [
+            0.25,
+            0.125
+          ],
+          "dc_levels": [
+            0.25,
+            -0.125
+          ],
+          "impulse_amplitudes": [
+            1,
+            -0.5
+          ],
+          "phases_rad": [
+            0,
+            0.375
+          ],
+          "tone_hz": [
+            1000,
+            1000
+          ]
+        },
+        "input_shape": [
+          48000,
+          2
+        ],
+        "kaiser_beta": 5.0,
+        "layout": "C/frame-major",
+        "origin": "AudioCalc.resample vs centered finite sum",
+        "output_interval": [
+          0,
+          44100
+        ],
+        "output_rate_hz": 44100,
+        "output_shape": [
+          44100,
+          2
+        ],
+        "padtype": "constant",
+        "pre_remove_outputs": 11,
+        "route_revision": "identity-v1",
+        "seed": null,
+        "signal_delay_before_compensation_output": [
+          10,
+          1
+        ],
+        "source_rate_hz": 48000,
+        "tap": "fixture.input",
+        "unit": "FS",
+        "up": 147,
+        "validity": "legacy API provides no validity metadata; endpoint zero padding is explicit"
+      },
+      "spec": {
+        "gaps": [],
+        "id": "poly-48000-44100-tone",
+        "kind": "poly",
+        "n": 48000,
+        "signal": "tone",
+        "source_rate": 48000,
+        "target_rate": 44100
+      }
+    },
+    {
+      "arrays": {
+        "coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "0f0d78dbe03df22ca84abba641ec0a123032605117f8661f5ac06f8a5f4c6e1d",
+          "shape": [
+            4,
+            6
+          ]
+        },
+        "current.causal": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.causal.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "ca5ac01edfafe35b3abad5e2bc7092fb4f5d22e2a38c588187aa1b9a7a83043b",
+          "shape": [
+            1024,
+            2
+          ]
+        },
+        "current.final_state": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.final_state.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "64c293cf4f703491fcfb413d885d593b25139fd4d28d48f93f65768d3b4bc4a4",
+          "shape": [
+            4,
+            2,
+            2
+          ]
+        },
+        "current.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.output.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "4a979f16165444d355c467f20d81e866caa464fe3a7868640e1170cc78aa71f7",
+          "shape": [
+            1024,
+            2
+          ]
+        },
+        "current.response": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "current.response.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f2ac907e81263d859e0dcf16ef0fbf3a65dca86ddc82e177df3d3e6301ae1e23",
+          "shape": [
+            5,
+            2
+          ]
+        },
+        "frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "contract",
+          "sha256": "85cf88dfa68f8706018d4a83a10153b4a45c97b93d6769f9ede5f47d6295d24b",
+          "shape": [
+            5
+          ]
+        },
+        "initial.state": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "initial.state.bin",
+          "layout": "C/frame-major",
+          "origin": "contract",
+          "sha256": "38723a2e5e8a17aa7950dc008209944e898f69a7bd10a23c839d341e935fd5ca",
+          "shape": [
+            4,
+            2,
+            2
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "c23fb3a9bf8d3f3404b5057af68f0fa4e885f9713543fae4e02d5fd60a401733",
+          "shape": [
+            1024,
+            2
+          ]
+        },
+        "theory.causal": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.causal.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "dbffcd1a329452458663cd5f01b1d4678ef80c9b201f196de0f4527722d6016a",
+          "shape": [
+            1024,
+            2
+          ]
+        },
+        "theory.final_state": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.final_state.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f40604dce5eadabc8032d2935cffaf11e605d496dda6eb35244875199889bf0c",
+          "shape": [
+            4,
+            2,
+            2
+          ]
+        },
+        "theory.magnitude": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.magnitude.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "efc62ced77b0ec4b0c37f20ee65500d9e78b562967877a36148a0a8304b5f0ba",
+          "shape": [
+            5
+          ]
+        },
+        "theory.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.output.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "a75ee8302e8ca4580150af8f770c663de2509024a05c4394fb1742681961e65a",
+          "shape": [
+            1024,
+            2
+          ]
+        },
+        "theory.response": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "theory.response.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "a189e4a31e4f3e2bb61629e74d1764a458b25d75f1f0f28aa331098a1dc7bfe5",
+          "shape": [
+            5,
+            2
+          ]
+        }
+      },
+      "metadata": {
+        "acceptance": [
+          "AC14"
+        ],
+        "axis_adapter": "call product separately for each named channel",
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated"
+        },
+        "causal_initial_state": "all zero",
+        "causal_origin": "scipy.signal.sosfilt with product SOS; scalar direct-form-I oracle",
+        "causal_warmup": "zero state transient retained; no arbitrary valid-after cutoff",
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "chunks": {
+          "127": [
+            127
+          ],
+          "256": [
+            256
+          ],
+          "irregular": [
+            3,
+            128,
+            1,
+            7,
+            256,
+            2
+          ],
+          "one": [
+            1
+          ],
+          "whole": [
+            100000
+          ]
+        },
+        "coefficient_origin": "_get_butter_sos(8, 4000/24000, lowpass)",
+        "dtype": "<f8",
+        "generation": 0,
+        "input_formula": "impulse-even",
+        "input_interval": [
+          0,
+          1024
+        ],
+        "input_parameters": {
+          "amplitudes": [
+            0.25,
+            0.125
+          ],
+          "dc_levels": [
+            0.25,
+            -0.125
+          ],
+          "impulse_amplitudes": [
+            1,
+            -0.5
+          ],
+          "phases_rad": [
+            0,
+            0.375
+          ],
+          "tone_hz": [
+            1000,
+            12000
+          ]
+        },
+        "input_shape": [
+          1024,
+          2
+        ],
+        "layout": "C/frame-major",
+        "offline_initial_state": "steady DC state scaled by each extended endpoint",
+        "offline_phase": "zero phase; magnitude is squared causal magnitude",
+        "origin": "AudioCalc.lowpass_filter vs scalar direct-form-I forward/backward recurrence",
+        "output_interval": [
+          0,
+          1024
+        ],
+        "output_rate_hz": 48000,
+        "output_shape": [
+          1024,
+          2
+        ],
+        "padlen": 27,
+        "padtype": "odd",
+        "route_revision": "identity-v1",
+        "seed": null,
+        "source_rate_hz": 48000,
+        "tap": "fixture.input",
+        "unit": "FS"
+      },
+      "spec": {
+        "cutoff_hz": 4000,
+        "gaps": [],
+        "id": "sos-lowpass-impulse-even",
+        "kind": "sos",
+        "n": 1024,
+        "order": 8,
+        "signal": "impulse-even",
+        "source_rate": 48000,
+        "target_rate": 48000
+      }
+    },
+    {
+      "arrays": {
+        "coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "0f0d78dbe03df22ca84abba641ec0a123032605117f8661f5ac06f8a5f4c6e1d",
+          "shape": [
+            4,
+            6
+          ]
+        },
+        "current.causal": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.causal.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f663b0bf1b8efb49f12bb42e04a714d7d549bd19625c4e768128990446145bc1",
+          "shape": [
+            1024,
+            2
+          ]
+        },
+        "current.final_state": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.final_state.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "3f8362838a8f3e966cb7839a43245218e9e206525900e83a641d08ce64a5ccde",
+          "shape": [
+            4,
+            2,
+            2
+          ]
+        },
+        "current.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.output.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "761d5c7daab6a6b57bfc302d00f4f1e95ff76cdccee298ef29526b99c3d4c505",
+          "shape": [
+            1024,
+            2
+          ]
+        },
+        "current.response": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "current.response.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f2ac907e81263d859e0dcf16ef0fbf3a65dca86ddc82e177df3d3e6301ae1e23",
+          "shape": [
+            5,
+            2
+          ]
+        },
+        "frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "contract",
+          "sha256": "85cf88dfa68f8706018d4a83a10153b4a45c97b93d6769f9ede5f47d6295d24b",
+          "shape": [
+            5
+          ]
+        },
+        "initial.state": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "initial.state.bin",
+          "layout": "C/frame-major",
+          "origin": "contract",
+          "sha256": "38723a2e5e8a17aa7950dc008209944e898f69a7bd10a23c839d341e935fd5ca",
+          "shape": [
+            4,
+            2,
+            2
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "af5f0837231f3d67a7e95350302ab9cbd1f05aea0d97399c52c44718bdff5ca2",
+          "shape": [
+            1024,
+            2
+          ]
+        },
+        "theory.causal": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.causal.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "1d51fa6ef1b41b273b6e0e20acc4357e6c6e34dcf54c44d03e4785bdfd61c3f2",
+          "shape": [
+            1024,
+            2
+          ]
+        },
+        "theory.final_state": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.final_state.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "7f5c4728241327bd83ca54d6443f1db4643874c3230e7e250cc11db118fb60fd",
+          "shape": [
+            4,
+            2,
+            2
+          ]
+        },
+        "theory.magnitude": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.magnitude.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "efc62ced77b0ec4b0c37f20ee65500d9e78b562967877a36148a0a8304b5f0ba",
+          "shape": [
+            5
+          ]
+        },
+        "theory.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.output.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "97481bfa0016ea7172fe2cda4dc21ada833ee9af0b809755ef90e57fc27cefa2",
+          "shape": [
+            1024,
+            2
+          ]
+        },
+        "theory.response": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "theory.response.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "a189e4a31e4f3e2bb61629e74d1764a458b25d75f1f0f28aa331098a1dc7bfe5",
+          "shape": [
+            5,
+            2
+          ]
+        }
+      },
+      "metadata": {
+        "acceptance": [
+          "AC14"
+        ],
+        "axis_adapter": "call product separately for each named channel",
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated"
+        },
+        "causal_initial_state": "all zero",
+        "causal_origin": "scipy.signal.sosfilt with product SOS; scalar direct-form-I oracle",
+        "causal_warmup": "zero state transient retained; no arbitrary valid-after cutoff",
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "chunks": {
+          "127": [
+            127
+          ],
+          "256": [
+            256
+          ],
+          "irregular": [
+            3,
+            128,
+            1,
+            7,
+            256,
+            2
+          ],
+          "one": [
+            1
+          ],
+          "whole": [
+            100000
+          ]
+        },
+        "coefficient_origin": "_get_butter_sos(8, 4000/24000, lowpass)",
+        "dtype": "<f8",
+        "generation": 0,
+        "input_formula": "impulse-center",
+        "input_interval": [
+          0,
+          1024
+        ],
+        "input_parameters": {
+          "amplitudes": [
+            0.25,
+            0.125
+          ],
+          "dc_levels": [
+            0.25,
+            -0.125
+          ],
+          "impulse_amplitudes": [
+            1,
+            -0.5
+          ],
+          "phases_rad": [
+            0,
+            0.375
+          ],
+          "tone_hz": [
+            1000,
+            12000
+          ]
+        },
+        "input_shape": [
+          1024,
+          2
+        ],
+        "layout": "C/frame-major",
+        "offline_initial_state": "steady DC state scaled by each extended endpoint",
+        "offline_phase": "zero phase; magnitude is squared causal magnitude",
+        "origin": "AudioCalc.lowpass_filter vs scalar direct-form-I forward/backward recurrence",
+        "output_interval": [
+          0,
+          1024
+        ],
+        "output_rate_hz": 48000,
+        "output_shape": [
+          1024,
+          2
+        ],
+        "padlen": 27,
+        "padtype": "odd",
+        "route_revision": "identity-v1",
+        "seed": null,
+        "source_rate_hz": 48000,
+        "tap": "fixture.input",
+        "unit": "FS"
+      },
+      "spec": {
+        "cutoff_hz": 4000,
+        "gaps": [],
+        "id": "sos-lowpass-impulse-center",
+        "kind": "sos",
+        "n": 1024,
+        "order": 8,
+        "signal": "impulse-center",
+        "source_rate": 48000,
+        "target_rate": 48000
+      }
+    },
+    {
+      "arrays": {
+        "coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "0f0d78dbe03df22ca84abba641ec0a123032605117f8661f5ac06f8a5f4c6e1d",
+          "shape": [
+            4,
+            6
+          ]
+        },
+        "current.causal": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.causal.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "78ea3a386fd499a24940b3430083135c8bfdffd87b6c2a085a59438069ce3e4f",
+          "shape": [
+            1024,
+            2
+          ]
+        },
+        "current.final_state": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.final_state.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "be5581dfa6e7f14fb625fff2b261cd4e4e5754519e3852b3048185b5cbaf7fb6",
+          "shape": [
+            4,
+            2,
+            2
+          ]
+        },
+        "current.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.output.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "2b15ce41c25ebb64f2d5b7f412714bff20158ae3d88f035dc5263b32450a5be7",
+          "shape": [
+            1024,
+            2
+          ]
+        },
+        "current.response": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "current.response.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f2ac907e81263d859e0dcf16ef0fbf3a65dca86ddc82e177df3d3e6301ae1e23",
+          "shape": [
+            5,
+            2
+          ]
+        },
+        "frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "contract",
+          "sha256": "85cf88dfa68f8706018d4a83a10153b4a45c97b93d6769f9ede5f47d6295d24b",
+          "shape": [
+            5
+          ]
+        },
+        "initial.state": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "initial.state.bin",
+          "layout": "C/frame-major",
+          "origin": "contract",
+          "sha256": "38723a2e5e8a17aa7950dc008209944e898f69a7bd10a23c839d341e935fd5ca",
+          "shape": [
+            4,
+            2,
+            2
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "2b15ce41c25ebb64f2d5b7f412714bff20158ae3d88f035dc5263b32450a5be7",
+          "shape": [
+            1024,
+            2
+          ]
+        },
+        "theory.causal": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.causal.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "ad33c151ecfe163c9e7b52dfe1e3840808504c99196b834bc66a97a84b474c17",
+          "shape": [
+            1024,
+            2
+          ]
+        },
+        "theory.final_state": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.final_state.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "c52bbacd1e564c590da1ec5a8b4987c98afdbcc5d0742daca5ec25d736872da2",
+          "shape": [
+            4,
+            2,
+            2
+          ]
+        },
+        "theory.magnitude": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.magnitude.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "efc62ced77b0ec4b0c37f20ee65500d9e78b562967877a36148a0a8304b5f0ba",
+          "shape": [
+            5
+          ]
+        },
+        "theory.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.output.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "745d6a2626d8c89076ff0aa7534347fc12469084f6efeaee8ab3e69eae34bc18",
+          "shape": [
+            1024,
+            2
+          ]
+        },
+        "theory.response": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "theory.response.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "a189e4a31e4f3e2bb61629e74d1764a458b25d75f1f0f28aa331098a1dc7bfe5",
+          "shape": [
+            5,
+            2
+          ]
+        }
+      },
+      "metadata": {
+        "acceptance": [
+          "AC14"
+        ],
+        "axis_adapter": "call product separately for each named channel",
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated"
+        },
+        "causal_initial_state": "all zero",
+        "causal_origin": "scipy.signal.sosfilt with product SOS; scalar direct-form-I oracle",
+        "causal_warmup": "zero state transient retained; no arbitrary valid-after cutoff",
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "chunks": {
+          "127": [
+            127
+          ],
+          "256": [
+            256
+          ],
+          "irregular": [
+            3,
+            128,
+            1,
+            7,
+            256,
+            2
+          ],
+          "one": [
+            1
+          ],
+          "whole": [
+            100000
+          ]
+        },
+        "coefficient_origin": "_get_butter_sos(8, 4000/24000, lowpass)",
+        "dtype": "<f8",
+        "generation": 0,
+        "input_formula": "dc",
+        "input_interval": [
+          0,
+          1024
+        ],
+        "input_parameters": {
+          "amplitudes": [
+            0.25,
+            0.125
+          ],
+          "dc_levels": [
+            0.25,
+            -0.125
+          ],
+          "impulse_amplitudes": [
+            1,
+            -0.5
+          ],
+          "phases_rad": [
+            0,
+            0.375
+          ],
+          "tone_hz": [
+            1000,
+            12000
+          ]
+        },
+        "input_shape": [
+          1024,
+          2
+        ],
+        "layout": "C/frame-major",
+        "offline_initial_state": "steady DC state scaled by each extended endpoint",
+        "offline_phase": "zero phase; magnitude is squared causal magnitude",
+        "origin": "AudioCalc.lowpass_filter vs scalar direct-form-I forward/backward recurrence",
+        "output_interval": [
+          0,
+          1024
+        ],
+        "output_rate_hz": 48000,
+        "output_shape": [
+          1024,
+          2
+        ],
+        "padlen": 27,
+        "padtype": "odd",
+        "route_revision": "identity-v1",
+        "seed": null,
+        "source_rate_hz": 48000,
+        "tap": "fixture.input",
+        "unit": "FS"
+      },
+      "spec": {
+        "cutoff_hz": 4000,
+        "gaps": [],
+        "id": "sos-lowpass-dc",
+        "kind": "sos",
+        "n": 1024,
+        "order": 8,
+        "signal": "dc",
+        "source_rate": 48000,
+        "target_rate": 48000
+      }
+    },
+    {
+      "arrays": {
+        "coefficients": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "coefficients.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "0f0d78dbe03df22ca84abba641ec0a123032605117f8661f5ac06f8a5f4c6e1d",
+          "shape": [
+            4,
+            6
+          ]
+        },
+        "current.causal": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.causal.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "a4b54d1d1971281ae0259b8604702eacd119776ea6210fcd4f9bfd82fa9c72f4",
+          "shape": [
+            8192,
+            2
+          ]
+        },
+        "current.final_state": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.final_state.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "90b949bd79d82106e32788335b82261fe98f2ee17f0ed4038475b2b6201c2fb0",
+          "shape": [
+            4,
+            2,
+            2
+          ]
+        },
+        "current.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.output.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "e17f4374a2d2824d8efcdbdd5a366e32d1d104a65d9221e7a1917bd9035b9961",
+          "shape": [
+            8192,
+            2
+          ]
+        },
+        "current.response": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "current.response.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f2ac907e81263d859e0dcf16ef0fbf3a65dca86ddc82e177df3d3e6301ae1e23",
+          "shape": [
+            5,
+            2
+          ]
+        },
+        "frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "contract",
+          "sha256": "85cf88dfa68f8706018d4a83a10153b4a45c97b93d6769f9ede5f47d6295d24b",
+          "shape": [
+            5
+          ]
+        },
+        "initial.state": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "initial.state.bin",
+          "layout": "C/frame-major",
+          "origin": "contract",
+          "sha256": "38723a2e5e8a17aa7950dc008209944e898f69a7bd10a23c839d341e935fd5ca",
+          "shape": [
+            4,
+            2,
+            2
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "63158024882d31fa397fa111a79883c640e8c26cd9573afb6a67d1941ebc165c",
+          "shape": [
+            8192,
+            2
+          ]
+        },
+        "theory.causal": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.causal.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "7680c67fbba6102be242ad85e2779fae02ab42dd47d0543c6d136c7b1b8695f6",
+          "shape": [
+            8192,
+            2
+          ]
+        },
+        "theory.final_state": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.final_state.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "91b9ac086b5fe2af3fb9b517bbfc408fd1edacdcd17ca0c6e8b08682455bf742",
+          "shape": [
+            4,
+            2,
+            2
+          ]
+        },
+        "theory.magnitude": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.magnitude.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "efc62ced77b0ec4b0c37f20ee65500d9e78b562967877a36148a0a8304b5f0ba",
+          "shape": [
+            5
+          ]
+        },
+        "theory.output": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.output.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "b7835991751385d5f491c08df6e3e9fbdc362428b48e94e819c688131c49706f",
+          "shape": [
+            8192,
+            2
+          ]
+        },
+        "theory.response": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "theory.response.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "a189e4a31e4f3e2bb61629e74d1764a458b25d75f1f0f28aa331098a1dc7bfe5",
+          "shape": [
+            5,
+            2
+          ]
+        }
+      },
+      "metadata": {
+        "acceptance": [
+          "AC14"
+        ],
+        "axis_adapter": "call product separately for each named channel",
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated"
+        },
+        "causal_initial_state": "all zero",
+        "causal_origin": "scipy.signal.sosfilt with product SOS; scalar direct-form-I oracle",
+        "causal_warmup": "zero state transient retained; no arbitrary valid-after cutoff",
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "chunks": {
+          "127": [
+            127
+          ],
+          "256": [
+            256
+          ],
+          "irregular": [
+            3,
+            128,
+            1,
+            7,
+            256,
+            2
+          ],
+          "one": [
+            1
+          ],
+          "whole": [
+            100000
+          ]
+        },
+        "coefficient_origin": "_get_butter_sos(8, 4000/24000, lowpass)",
+        "dtype": "<f8",
+        "generation": 0,
+        "input_formula": "tone",
+        "input_interval": [
+          0,
+          8192
+        ],
+        "input_parameters": {
+          "amplitudes": [
+            0.25,
+            0.125
+          ],
+          "dc_levels": [
+            0.25,
+            -0.125
+          ],
+          "impulse_amplitudes": [
+            1,
+            -0.5
+          ],
+          "phases_rad": [
+            0,
+            0.375
+          ],
+          "tone_hz": [
+            1000,
+            12000
+          ]
+        },
+        "input_shape": [
+          8192,
+          2
+        ],
+        "layout": "C/frame-major",
+        "offline_initial_state": "steady DC state scaled by each extended endpoint",
+        "offline_phase": "zero phase; magnitude is squared causal magnitude",
+        "origin": "AudioCalc.lowpass_filter vs scalar direct-form-I forward/backward recurrence",
+        "output_interval": [
+          0,
+          8192
+        ],
+        "output_rate_hz": 48000,
+        "output_shape": [
+          8192,
+          2
+        ],
+        "padlen": 27,
+        "padtype": "odd",
+        "route_revision": "identity-v1",
+        "seed": null,
+        "source_rate_hz": 48000,
+        "tap": "fixture.input",
+        "unit": "FS"
+      },
+      "spec": {
+        "cutoff_hz": 4000,
+        "gaps": [],
+        "id": "sos-lowpass-tone",
+        "kind": "sos",
+        "n": 8192,
+        "order": 8,
+        "signal": "tone",
+        "source_rate": 48000,
+        "target_rate": 48000
+      }
+    }
+  ],
+  "contract": "MIG-002-numerics-v0.1",
+  "contract_sha256": {
+    "migration/contracts/core.md": "8ddf639d405a4bbe080622ab07fc4efdaf5bc32c14b3a3291022155476391b9e",
+    "migration/contracts/numerics.md": "eeaab73b19433c8010eb4693c2dd6a04655444d780809bcb2f507ca510203fcd"
+  },
+  "environment": {
+    "fft": {
+      "backend": "numpy",
+      "use": "polyphase output peak-frequency diagnostic only"
+    },
+    "implementation": "CPython",
+    "logical_cpus": 4,
+    "machine": "x86_64",
+    "os": "macOS-14.8.9-x86_64-i386-64bit",
+    "packages": {
+      "MeasureLab": "0.9.0",
+      "PyQt6": "6.11.0",
+      "PyQt6-Qt6": "6.11.2",
+      "PyQt6_sip": "13.12.0",
+      "PyWavelets": "1.10.0",
+      "Pygments": "2.21.0",
+      "ast_serialize": "0.11.2",
+      "certifi": "2026.7.22",
+      "cffi": "2.1.1",
+      "cftime": "1.6.6",
+      "charset-normalizer": "3.5.1",
+      "colorama": "0.4.6",
+      "hypothesis": "6.168.3",
+      "idna": "3.20",
+      "iniconfig": "2.3.0",
+      "librt": "0.16.0",
+      "mypy": "2.3.1",
+      "mypy_extensions": "1.1.0",
+      "netCDF4": "1.7.4",
+      "numpy": "2.2.6",
+      "packaging": "26.3",
+      "pathspec": "1.1.1",
+      "pip": "26.2.1",
+      "pluggy": "1.6.0",
+      "pyFFTW": "0.15.1",
+      "pycparser": "3.0",
+      "pyqtgraph": "0.14.0",
+      "pytest": "9.1.1",
+      "pytest-json-report": "1.5.0",
+      "pytest-metadata": "3.1.1",
+      "pytest-qt": "4.5.0",
+      "requests": "2.34.2",
+      "ruff": "0.16.8",
+      "scipy": "1.18.1",
+      "sortedcontainers": "2.4.0",
+      "sounddevice": "0.5.6",
+      "soundfile": "0.14.0",
+      "typing_extensions": "4.16.0",
+      "urllib3": "2.8.0"
+    },
+    "processor": "i386",
+    "python": "3.12.14"
+  },
+  "generator_sha256": {
+    "scripts/migration_core_cases.py": "5c72b9dac827e2a03d3d5f8115b73f55b778cbe4b1fa11277b3b48b7ea381d62",
+    "scripts/migration_core_oracle.py": "4e8b4832be85072bcbd0ec8fdf1ec8fb7110888676a64904d6cbe92f4bb11ba9",
+    "scripts/migration_core_reference.py": "ec131b04aa36df9dfccf1e1c71c30d880796b3aa79c23db6e6c5934860778bb7",
+    "scripts/migration_fft_oracle.py": "c415bc4be21947a59fb35b2a32215b0fba58183f2d1a1d3022984ceef73c1ce7",
+    "scripts/migration_fft_reference.py": "8f9a34746f3290fb5bda9e62022a685dc91d294155ce33f4b004edaf80377379",
+    "scripts/migration_filter_cases.py": "c5e6e458b887f5dbd52c781913223c6244507d74335c87ac4a14ef51de42af45",
+    "scripts/migration_filter_oracle.py": "15bad254f47225e2959f9b0a152d2b317b8b04ddf2e7ce9cf8717df7be67ed39",
+    "scripts/migration_filter_reference.py": "89befdf29f9bc51e7b38d01f1271ed75e477028c739baa34aa226a71ba91d691"
+  },
+  "limitations": [
+    "FIR streaming and validity are new-contract oracles; no candidate core or shared graph",
+    "Legacy AudioCalc.resample and lowpass_filter operate on complete arrays, not streams",
+    "Causal SOS uses scipy.signal.sosfilt with product coefficients, not a legacy streaming API",
+    "No IIR gap recovery contract, other filters/rates, physical I/O, GUI or other OS validation",
+    "Timing and RSS cover verification, not a protocol-compliant performance benchmark"
+  ],
+  "rate_cases": [
+    {
+      "contract": "invalid_rate",
+      "legacy": "same_object",
+      "rates": [
+        0,
+        48000
+      ]
+    },
+    {
+      "contract": "invalid_rate",
+      "legacy": "same_object",
+      "rates": [
+        -1,
+        48000
+      ]
+    },
+    {
+      "contract": "invalid_rate",
+      "legacy": "same_object",
+      "rates": [
+        48000,
+        0
+      ]
+    },
+    {
+      "contract": "invalid_rate",
+      "legacy": "same_object",
+      "rates": [
+        48000,
+        -1
+      ]
+    },
+    {
+      "contract": "invalid_rate",
+      "legacy": "same_object",
+      "rates": [
+        0,
+        0
+      ]
+    },
+    {
+      "contract": "valid_rate_pair",
+      "legacy": "same_object",
+      "rates": [
+        48000,
+        48000
+      ]
+    }
+  ],
+  "reference_commit": "9fd79958f6a8bbae6808813d3704617612e6d26c",
+  "schema_version": 1,
+  "source_sha256": {
+    "src/__init__.py": "9c302e24d402a6668fe8c5fd2d76de9fb18045c5a0beaa6c3a761b7e49f4582c",
+    "src/core/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "src/core/analysis.py": "6afa44940331814323bdd794ae076c63d014148a6dcd0a122ee7fceb39df3e2c",
+    "src/core/fft_manager.py": "307a4c95130fed46e25afd9730fd8669cdd9fd8fbaee97c0d0a2c12aaafcaef6",
+    "src/core/localization.py": "37f0b9bd2e00539f245057e3b584d26815c90f75c466f2c50c39ec8376ad5617",
+    "src/core/utils.py": "89639b5654fcf8a8196005e945d4dec2a970ca761fbf5d8e43e07838346269d5",
+    "src/gui/widgets/spectrum_analyzer.py": "0829288791037f4c5b1e2c49ba8c5593d645b4bc623cf6989279b50ff6d49c0a"
+  },
+  "tolerances": {
+    "fir": {
+      "atol": 1e-12,
+      "rtol": 1e-12
+    },
+    "poly": {
+      "atol": 1e-10,
+      "rtol": 1e-08
+    },
+    "sos": {
+      "atol": 1e-10,
+      "rtol": 1e-08
+    }
+  }
+}

@@ -1,0 +1,11 @@
+[package]
+name = "audio-probe"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+audio-core = { path = "../audio-core" }
+graph-core = { path = "../graph-core" }
+cpal = "=0.18.2"
+serde_json = "=1.0.151"

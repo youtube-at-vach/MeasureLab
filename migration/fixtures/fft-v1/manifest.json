@@ -1,0 +1,4758 @@
+{
+  "cases": [
+    {
+      "arrays": {
+        "current.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "current.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "d3157a50dfe052cf77571a2a3cda55607336146f02622cfbc60707aea8a36823",
+          "shape": [
+            2049,
+            2,
+            2
+          ]
+        },
+        "current.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "current.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "ef324170755d72d66f2d48bb0acdb766e38678b6839c3487ecd8890d344f8b16",
+          "shape": [
+            2
+          ]
+        },
+        "current.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "a79141c3dfb169e5f5129d4076b3a099203325a97ab8b86449bd06881d064933",
+          "shape": [
+            4096,
+            2
+          ]
+        },
+        "current.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "ddc01076aaeb6cd8fb5cf638b4ce761035a3fbb9bb5bfcb4cff3276470615c78",
+          "shape": [
+            2049,
+            2
+          ]
+        },
+        "current.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "57ffbe94927d870fdafc08f662801af3e7a9a8a3483c27f7edba41757a30043a",
+          "shape": [
+            2049,
+            2
+          ]
+        },
+        "current.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "e3ee2f454a61398ff9a4fa357df77de3905c19f47bd90cd306717e771f2c9e71",
+          "shape": [
+            2
+          ]
+        },
+        "current.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "8349de712d39cb02c2bb2819078ec65449a4ffe7967ae732591a69e3a77fde5e",
+          "shape": [
+            2
+          ]
+        },
+        "current.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.window.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7",
+          "shape": [
+            4096
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "eb2b84eea56390d2a647c09792fb755ed233860f6fb946c98d652a0d9502bf41",
+          "shape": [
+            4096,
+            2
+          ]
+        },
+        "theory.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "theory.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f79d5aeaaf3a90353fce5309f7122d6550d3288f0d0373b03fcc9029ec21bc4c",
+          "shape": [
+            2049,
+            2,
+            2
+          ]
+        },
+        "theory.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "theory.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f7bbdd9aa560376d897030bbe19520b22676fea6f2ffc1441ee37b52628ed970",
+          "shape": [
+            2
+          ]
+        },
+        "theory.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "eb2b84eea56390d2a647c09792fb755ed233860f6fb946c98d652a0d9502bf41",
+          "shape": [
+            4096,
+            2
+          ]
+        },
+        "theory.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "78d289855d935b6552e9033da73cf7a840977728735d8fd83b8ec500baef07df",
+          "shape": [
+            2049,
+            2
+          ]
+        },
+        "theory.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "2754468143399fc6b969a410e4bc3b01d3c596334743a4cc0ed893f1119e472a",
+          "shape": [
+            2049,
+            2
+          ]
+        },
+        "theory.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "e3ee2f454a61398ff9a4fa357df77de3905c19f47bd90cd306717e771f2c9e71",
+          "shape": [
+            2
+          ]
+        },
+        "theory.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "8349de712d39cb02c2bb2819078ec65449a4ffe7967ae732591a69e3a77fde5e",
+          "shape": [
+            2
+          ]
+        },
+        "theory.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.window.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7",
+          "shape": [
+            4096
+          ]
+        }
+      },
+      "known_differences": [],
+      "metadata": {
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated",
+          "unit": "FS"
+        },
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "current_fft_origin": "FFTManager.rfft/irfft, get_cached_window",
+        "input_formula": "A*cos(2*pi*k*n/N+phase)",
+        "interval": [
+          0,
+          4096
+        ],
+        "normalization_origin": "contract adapter; not a product peak/PSD/RMS function",
+        "route": {
+          "inputs": [
+            "input.alpha",
+            "input.beta"
+          ],
+          "outputs": [
+            "input.alpha",
+            "input.beta"
+          ],
+          "revision": "identity-v1"
+        },
+        "seed": null,
+        "tap": "fixture.input",
+        "theory_fft_origin": "analytic finite geometric sum; ideal input before f32 quantization",
+        "time_quantities_origin": "finite sums over saved input; independent analytic window",
+        "timebase": {
+          "clock": "fixture.nominal",
+          "generation": 0,
+          "origin_frame": 0,
+          "sample_rate_hz": 48000
+        },
+        "validity": {
+          "invalid_intervals": [],
+          "state": "valid"
+        },
+        "window_symmetry": "symmetric"
+      },
+      "spec": {
+        "dtype": "<f8",
+        "id": "ac01-boxcar-f64",
+        "n": 4096,
+        "rate_hz": 48000,
+        "signal": "cosine",
+        "tones": [
+          [
+            37,
+            0.03125,
+            0.0
+          ],
+          [
+            71,
+            0.0625,
+            0.19634954084936207
+          ]
+        ],
+        "window": "boxcar"
+      },
+      "summary": {
+        "db_tested_bins": 2,
+        "integrated_power_fs2": [
+          0.00048828125,
+          0.001953125000000001
+        ],
+        "max_absolute_errors": {
+          "fft_over_n": 2.920318224952501e-16,
+          "frequency_hz": 0.0,
+          "integrated_power_fs2": 8.673617379884035e-19,
+          "inverse_windowed": 5.551115123125783e-17,
+          "parseval": 2.6020852139652106e-18,
+          "peak_db": 0.0,
+          "peak_fs": 4.694615618266238e-16,
+          "phase_rad": 9.351821791549636e-15,
+          "psd_fs2_hz": 8.131516293641283e-20,
+          "rms_fs": 0.0,
+          "time_window_power_fs2": 0.0,
+          "window": 0.0
+        },
+        "phase_below_threshold": {
+          "reason": "below phase threshold; compare complex FFT only",
+          "value": null
+        },
+        "phase_tested_bins": 2,
+        "rms_fs": [
+          0.02209708691207961,
+          0.0441941738241592
+        ]
+      }
+    },
+    {
+      "arrays": {
+        "current.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "current.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "4ee6ba3369e19dc83ae079a2cef928c5d3b745ae00f28b6e876cf01307a30287",
+          "shape": [
+            2049,
+            2,
+            2
+          ]
+        },
+        "current.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "current.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "2e3b68685f2cf4743505fe710b41bb7ac3499837d8eab33df2041f4a8e4cfc04",
+          "shape": [
+            2
+          ]
+        },
+        "current.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f4",
+          "file": "current.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "6a16b431ae1128eca41b0f2a92b2fa02e6187f571793183456d79541160c6c73",
+          "shape": [
+            4096,
+            2
+          ]
+        },
+        "current.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "97d03331b306688519baf58d776a7575b07d51d936bbfd70693827db8f872569",
+          "shape": [
+            2049,
+            2
+          ]
+        },
+        "current.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "7a23e4fa2ce017b9f0ac8a3b7b3791de27cb46bda49fc3c216273f41ef105f86",
+          "shape": [
+            2049,
+            2
+          ]
+        },
+        "current.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "0c12dc7d5bbf756898f70144fdaa0c0250395d56face9ee3565320b5815e3ae1",
+          "shape": [
+            2
+          ]
+        },
+        "current.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "9fe3fb9c44c6812aa3dd9532306ed4dc658e83d27533fa41f0f9caf7dbec7960",
+          "shape": [
+            2
+          ]
+        },
+        "current.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.window.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7",
+          "shape": [
+            4096
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f4",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "a802d66db7f32c90de6cd87887f6a0146678c043598940b78f97015ba72495f2",
+          "shape": [
+            4096,
+            2
+          ]
+        },
+        "theory.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "theory.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f79d5aeaaf3a90353fce5309f7122d6550d3288f0d0373b03fcc9029ec21bc4c",
+          "shape": [
+            2049,
+            2,
+            2
+          ]
+        },
+        "theory.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "theory.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f7bbdd9aa560376d897030bbe19520b22676fea6f2ffc1441ee37b52628ed970",
+          "shape": [
+            2
+          ]
+        },
+        "theory.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "ef90e95830275b2989e57f793206d206956a2d4ae3851c7a0dfa454cbf525cb4",
+          "shape": [
+            4096,
+            2
+          ]
+        },
+        "theory.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "78d289855d935b6552e9033da73cf7a840977728735d8fd83b8ec500baef07df",
+          "shape": [
+            2049,
+            2
+          ]
+        },
+        "theory.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "2754468143399fc6b969a410e4bc3b01d3c596334743a4cc0ed893f1119e472a",
+          "shape": [
+            2049,
+            2
+          ]
+        },
+        "theory.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "0c12dc7d5bbf756898f70144fdaa0c0250395d56face9ee3565320b5815e3ae1",
+          "shape": [
+            2
+          ]
+        },
+        "theory.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "9fe3fb9c44c6812aa3dd9532306ed4dc658e83d27533fa41f0f9caf7dbec7960",
+          "shape": [
+            2
+          ]
+        },
+        "theory.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.window.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7",
+          "shape": [
+            4096
+          ]
+        }
+      },
+      "known_differences": [],
+      "metadata": {
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated",
+          "unit": "FS"
+        },
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "current_fft_origin": "FFTManager.rfft/irfft, get_cached_window",
+        "input_formula": "A*cos(2*pi*k*n/N+phase)",
+        "interval": [
+          0,
+          4096
+        ],
+        "normalization_origin": "contract adapter; not a product peak/PSD/RMS function",
+        "route": {
+          "inputs": [
+            "input.alpha",
+            "input.beta"
+          ],
+          "outputs": [
+            "input.alpha",
+            "input.beta"
+          ],
+          "revision": "identity-v1"
+        },
+        "seed": null,
+        "tap": "fixture.input",
+        "theory_fft_origin": "analytic finite geometric sum; ideal input before f32 quantization",
+        "time_quantities_origin": "finite sums over saved input; independent analytic window",
+        "timebase": {
+          "clock": "fixture.nominal",
+          "generation": 0,
+          "origin_frame": 0,
+          "sample_rate_hz": 48000
+        },
+        "validity": {
+          "invalid_intervals": [],
+          "state": "valid"
+        },
+        "window_symmetry": "symmetric"
+      },
+      "spec": {
+        "dtype": "<f4",
+        "id": "ac01-boxcar-f32",
+        "n": 4096,
+        "rate_hz": 48000,
+        "signal": "cosine",
+        "tones": [
+          [
+            37,
+            0.03125,
+            0.0
+          ],
+          [
+            71,
+            0.0625,
+            0.19634954084936207
+          ]
+        ],
+        "window": "boxcar"
+      },
+      "summary": {
+        "db_tested_bins": 2,
+        "integrated_power_fs2": [
+          0.000488281250000001,
+          0.0019531246476227856
+        ],
+        "max_absolute_errors": {
+          "fft_over_n": 2.8224515866992542e-09,
+          "frequency_hz": 0.0,
+          "integrated_power_fs2": 3.52377214430169e-10,
+          "inverse_windowed": 3.3527612686157227e-08,
+          "parseval": 3.4358776479330444e-10,
+          "peak_db": 7.835417648038856e-07,
+          "peak_fs": 5.6380359478303e-09,
+          "phase_rad": 4.45370742230724e-09,
+          "psd_fs2_hz": 3.0069523693915245e-11,
+          "rms_fs": 0.0,
+          "time_window_power_fs2": 0.0,
+          "window": 0.0
+        },
+        "phase_below_threshold": {
+          "reason": "below phase threshold; compare complex FFT only",
+          "value": null
+        },
+        "phase_tested_bins": 2,
+        "rms_fs": [
+          0.022097086862358967,
+          0.04419417372471795
+        ]
+      }
+    },
+    {
+      "arrays": {
+        "current.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "current.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "a1d5a16e76e1847aa44c402a03b3d17421ccc0c26f6983cc3ab03f0366f74345",
+          "shape": [
+            2049,
+            1,
+            2
+          ]
+        },
+        "current.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "current.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "19330939750a0d709a81ea043d9b982f080e99caf0ffe496fdc14d5f95a3b7ec",
+          "shape": [
+            1
+          ]
+        },
+        "current.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f50e1094a4ccc0f4043ba378c9172850608a3d4d931b28000bca0a1e09975a69",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "current.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "3a0fb8dafd95f31a8a821cc5f35782a0e793269cbda9e16ec52956259767768d",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "current.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "20c44eca973ef5e15cb57ace67f1f7696ca8930dc601e2b8e4b9b06f231ae87f",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "current.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "1cab600f57951016c0b4bd619177c26235366a7f52e26e839e3aac1219cda82d",
+          "shape": [
+            1
+          ]
+        },
+        "current.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "19330939750a0d709a81ea043d9b982f080e99caf0ffe496fdc14d5f95a3b7ec",
+          "shape": [
+            1
+          ]
+        },
+        "current.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.window.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7",
+          "shape": [
+            4096
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "f50e1094a4ccc0f4043ba378c9172850608a3d4d931b28000bca0a1e09975a69",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "theory.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "theory.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "0e561de002cbb40baa56a7de591b3d2da6cd82e78c1e6bf18668884ad23ae6a8",
+          "shape": [
+            2049,
+            1,
+            2
+          ]
+        },
+        "theory.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "theory.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "19330939750a0d709a81ea043d9b982f080e99caf0ffe496fdc14d5f95a3b7ec",
+          "shape": [
+            1
+          ]
+        },
+        "theory.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f50e1094a4ccc0f4043ba378c9172850608a3d4d931b28000bca0a1e09975a69",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "theory.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "e50883a91516e6f70ae6f9d08a45d1150a75d617f10332a286f864a7867bd1ce",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "theory.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "a4d2bfd62c51f311c330dbe0d35a329204df12685e746e69c38df1394632a365",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "theory.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "1cab600f57951016c0b4bd619177c26235366a7f52e26e839e3aac1219cda82d",
+          "shape": [
+            1
+          ]
+        },
+        "theory.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "19330939750a0d709a81ea043d9b982f080e99caf0ffe496fdc14d5f95a3b7ec",
+          "shape": [
+            1
+          ]
+        },
+        "theory.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.window.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7",
+          "shape": [
+            4096
+          ]
+        }
+      },
+      "known_differences": [
+        {
+          "bin": 0,
+          "current_db": -12.041199826524505,
+          "difference_db": 6.020599913314367,
+          "display_unit": "dBFS",
+          "meaning": "peak_FS",
+          "mode": "Spectrum",
+          "reason": "all bins doubled",
+          "theory_db": -18.06179973983887,
+          "theory_linear": 0.125
+        },
+        {
+          "bin": 0,
+          "current_db": -15.051499783149927,
+          "difference_db": 3.010299956688945,
+          "display_unit": "dBV",
+          "meaning": "RMS_V_at_1_V_per_FS",
+          "mode": "Spectrum",
+          "reason": "endpoint sqrt(2) excess",
+          "theory_db": -18.06179973983887,
+          "theory_linear": 0.125
+        },
+        {
+          "bin": 0,
+          "current_db": -25.740312677108985,
+          "difference_db": 3.0102999568080158,
+          "display_unit": "dBFS",
+          "meaning": "ASD_FS_per_sqrt_Hz",
+          "mode": "PSD",
+          "reason": "endpoint sqrt(2) excess",
+          "theory_db": -28.750612633917,
+          "theory_linear": 0.03651483716701107
+        }
+      ],
+      "metadata": {
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated",
+          "unit": "FS"
+        },
+        "channel_ids": [
+          "input.alpha"
+        ],
+        "current_fft_origin": "FFTManager.rfft/irfft, get_cached_window",
+        "input_formula": "dc",
+        "interval": [
+          0,
+          4096
+        ],
+        "normalization_origin": "contract adapter; not a product peak/PSD/RMS function",
+        "route": {
+          "inputs": [
+            "input.alpha"
+          ],
+          "outputs": [
+            "input.alpha"
+          ],
+          "revision": "identity-v1"
+        },
+        "seed": null,
+        "tap": "fixture.input",
+        "theory_fft_origin": "analytic finite geometric sum; ideal input before f32 quantization",
+        "time_quantities_origin": "finite sums over saved input; independent analytic window",
+        "timebase": {
+          "clock": "fixture.nominal",
+          "generation": 0,
+          "origin_frame": 0,
+          "sample_rate_hz": 48000
+        },
+        "validity": {
+          "invalid_intervals": [],
+          "state": "valid"
+        },
+        "window_symmetry": "symmetric"
+      },
+      "spec": {
+        "dtype": "<f8",
+        "id": "dc-boxcar",
+        "n": 4096,
+        "rate_hz": 48000,
+        "signal": "dc",
+        "tones": [],
+        "window": "boxcar"
+      },
+      "summary": {
+        "db_tested_bins": 1,
+        "integrated_power_fs2": [
+          0.015625
+        ],
+        "max_absolute_errors": {
+          "fft_over_n": 2.170255191322901e-17,
+          "frequency_hz": 0.0,
+          "integrated_power_fs2": 0.0,
+          "inverse_windowed": 0.0,
+          "parseval": 0.0,
+          "peak_db": 0.0,
+          "peak_fs": 4.340510382645802e-17,
+          "phase_rad": 0.0,
+          "psd_fs2_hz": 8.03841296292523e-35,
+          "rms_fs": 0.0,
+          "time_window_power_fs2": 0.0,
+          "window": 0.0
+        },
+        "phase_below_threshold": {
+          "reason": "below phase threshold; compare complex FFT only",
+          "value": null
+        },
+        "phase_tested_bins": 1,
+        "rms_fs": [
+          0.125
+        ]
+      }
+    },
+    {
+      "arrays": {
+        "current.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "current.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "5266bf3646afb8157b2fbff3f02b7a7988bfc186bd5629b6372b6d422c592142",
+          "shape": [
+            2049,
+            1,
+            2
+          ]
+        },
+        "current.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "current.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "19330939750a0d709a81ea043d9b982f080e99caf0ffe496fdc14d5f95a3b7ec",
+          "shape": [
+            1
+          ]
+        },
+        "current.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "35b4622a81875f3425aa4ae476df682718d8181669bed6bb06bc2d8f5899e224",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "current.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "aeca651d7dfe0110a5a88bf4788fe40b813f1de035634ddbc14d8e9ea274cda5",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "current.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "797115ec0be08ec068accc6ef3694f49cd6f4aec5d43136db11c5518158ea684",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "current.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "1cab600f57951016c0b4bd619177c26235366a7f52e26e839e3aac1219cda82d",
+          "shape": [
+            1
+          ]
+        },
+        "current.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "19330939750a0d709a81ea043d9b982f080e99caf0ffe496fdc14d5f95a3b7ec",
+          "shape": [
+            1
+          ]
+        },
+        "current.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.window.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7",
+          "shape": [
+            4096
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "35b4622a81875f3425aa4ae476df682718d8181669bed6bb06bc2d8f5899e224",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "theory.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "theory.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "85555f214ecc60ef636cd1e63c4fd6354301b346f7eb2757ef0a3be4d18d6915",
+          "shape": [
+            2049,
+            1,
+            2
+          ]
+        },
+        "theory.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "theory.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "19330939750a0d709a81ea043d9b982f080e99caf0ffe496fdc14d5f95a3b7ec",
+          "shape": [
+            1
+          ]
+        },
+        "theory.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "35b4622a81875f3425aa4ae476df682718d8181669bed6bb06bc2d8f5899e224",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "theory.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "68bc3a14a9b63a8bbaae936e2ac9f39549c45644f50e8cb5d70b1f5c6e4463b3",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "theory.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "adef602c2c3419344ef5e887ab80031983c56aa8ccb56501ad9963285864e953",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "theory.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "1cab600f57951016c0b4bd619177c26235366a7f52e26e839e3aac1219cda82d",
+          "shape": [
+            1
+          ]
+        },
+        "theory.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "19330939750a0d709a81ea043d9b982f080e99caf0ffe496fdc14d5f95a3b7ec",
+          "shape": [
+            1
+          ]
+        },
+        "theory.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.window.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7",
+          "shape": [
+            4096
+          ]
+        }
+      },
+      "known_differences": [
+        {
+          "bin": 2048,
+          "current_db": -12.041199826524505,
+          "difference_db": 6.020599913314367,
+          "display_unit": "dBFS",
+          "meaning": "peak_FS",
+          "mode": "Spectrum",
+          "reason": "all bins doubled",
+          "theory_db": -18.06179973983887,
+          "theory_linear": 0.125
+        },
+        {
+          "bin": 2048,
+          "current_db": -15.051499783149927,
+          "difference_db": 3.010299956688945,
+          "display_unit": "dBV",
+          "meaning": "RMS_V_at_1_V_per_FS",
+          "mode": "Spectrum",
+          "reason": "endpoint sqrt(2) excess",
+          "theory_db": -18.06179973983887,
+          "theory_linear": 0.125
+        },
+        {
+          "bin": 2048,
+          "current_db": -25.740312677108985,
+          "difference_db": 3.0102999568080158,
+          "display_unit": "dBFS",
+          "meaning": "ASD_FS_per_sqrt_Hz",
+          "mode": "PSD",
+          "reason": "endpoint sqrt(2) excess",
+          "theory_db": -28.750612633917,
+          "theory_linear": 0.03651483716701107
+        }
+      ],
+      "metadata": {
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated",
+          "unit": "FS"
+        },
+        "channel_ids": [
+          "input.alpha"
+        ],
+        "current_fft_origin": "FFTManager.rfft/irfft, get_cached_window",
+        "input_formula": "nyquist",
+        "interval": [
+          0,
+          4096
+        ],
+        "normalization_origin": "contract adapter; not a product peak/PSD/RMS function",
+        "route": {
+          "inputs": [
+            "input.alpha"
+          ],
+          "outputs": [
+            "input.alpha"
+          ],
+          "revision": "identity-v1"
+        },
+        "seed": null,
+        "tap": "fixture.input",
+        "theory_fft_origin": "analytic finite geometric sum; ideal input before f32 quantization",
+        "time_quantities_origin": "finite sums over saved input; independent analytic window",
+        "timebase": {
+          "clock": "fixture.nominal",
+          "generation": 0,
+          "origin_frame": 0,
+          "sample_rate_hz": 48000
+        },
+        "validity": {
+          "invalid_intervals": [],
+          "state": "valid"
+        },
+        "window_symmetry": "symmetric"
+      },
+      "spec": {
+        "dtype": "<f8",
+        "id": "nyquist-boxcar",
+        "n": 4096,
+        "rate_hz": 48000,
+        "signal": "nyquist",
+        "tones": [],
+        "window": "boxcar"
+      },
+      "summary": {
+        "db_tested_bins": 1,
+        "integrated_power_fs2": [
+          0.015625
+        ],
+        "max_absolute_errors": {
+          "fft_over_n": 2.170255191322901e-17,
+          "frequency_hz": 0.0,
+          "integrated_power_fs2": 0.0,
+          "inverse_windowed": 0.0,
+          "parseval": 0.0,
+          "peak_db": 0.0,
+          "peak_fs": 4.340510382645802e-17,
+          "phase_rad": 0.0,
+          "psd_fs2_hz": 8.03841296292523e-35,
+          "rms_fs": 0.0,
+          "time_window_power_fs2": 0.0,
+          "window": 0.0
+        },
+        "phase_below_threshold": {
+          "reason": "below phase threshold; compare complex FFT only",
+          "value": null
+        },
+        "phase_tested_bins": 1,
+        "rms_fs": [
+          0.125
+        ]
+      }
+    },
+    {
+      "arrays": {
+        "current.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "current.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "6044e3a8f65b1c1fb80efe4cd79815e1626f43ed26a2b33b1eca236bcfb54587",
+          "shape": [
+            2049,
+            1,
+            2
+          ]
+        },
+        "current.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "current.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "5d39fb0c9ed2b5c26abe8098a3612a5f93d412f4cdedb1b5cdc207df28c8c999",
+          "shape": [
+            1
+          ]
+        },
+        "current.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "9eed0236a8abebfd1e94ac0d7538c732ee1c1cce40e45a5115e8be7444ea73b9",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "current.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "eb386992bb618051673f6a45d2da4c75140baa6bcabd135dcc2345f8af6687e3",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "current.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "31b4dff8cf6a31436fb9e43a52194e6570cf947412409a29cefde0a541e56236",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "current.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "19330939750a0d709a81ea043d9b982f080e99caf0ffe496fdc14d5f95a3b7ec",
+          "shape": [
+            1
+          ]
+        },
+        "current.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "5d39fb0c9ed2b5c26abe8098a3612a5f93d412f4cdedb1b5cdc207df28c8c999",
+          "shape": [
+            1
+          ]
+        },
+        "current.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.window.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7",
+          "shape": [
+            4096
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "9eed0236a8abebfd1e94ac0d7538c732ee1c1cce40e45a5115e8be7444ea73b9",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "theory.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "theory.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "d793f48baa2e9d56bbb9492c6b3a39c864eb25b2fc9b8ba4565881f114cc88a8",
+          "shape": [
+            2049,
+            1,
+            2
+          ]
+        },
+        "theory.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "theory.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "5d39fb0c9ed2b5c26abe8098a3612a5f93d412f4cdedb1b5cdc207df28c8c999",
+          "shape": [
+            1
+          ]
+        },
+        "theory.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "9eed0236a8abebfd1e94ac0d7538c732ee1c1cce40e45a5115e8be7444ea73b9",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "theory.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "eb386992bb618051673f6a45d2da4c75140baa6bcabd135dcc2345f8af6687e3",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "theory.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "31b4dff8cf6a31436fb9e43a52194e6570cf947412409a29cefde0a541e56236",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "theory.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "19330939750a0d709a81ea043d9b982f080e99caf0ffe496fdc14d5f95a3b7ec",
+          "shape": [
+            1
+          ]
+        },
+        "theory.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "5d39fb0c9ed2b5c26abe8098a3612a5f93d412f4cdedb1b5cdc207df28c8c999",
+          "shape": [
+            1
+          ]
+        },
+        "theory.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.window.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7",
+          "shape": [
+            4096
+          ]
+        }
+      },
+      "known_differences": [],
+      "metadata": {
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated",
+          "unit": "FS"
+        },
+        "channel_ids": [
+          "input.alpha"
+        ],
+        "current_fft_origin": "FFTManager.rfft/irfft, get_cached_window",
+        "input_formula": "impulse",
+        "interval": [
+          0,
+          4096
+        ],
+        "normalization_origin": "contract adapter; not a product peak/PSD/RMS function",
+        "route": {
+          "inputs": [
+            "input.alpha"
+          ],
+          "outputs": [
+            "input.alpha"
+          ],
+          "revision": "identity-v1"
+        },
+        "seed": null,
+        "tap": "fixture.input",
+        "theory_fft_origin": "analytic finite geometric sum; ideal input before f32 quantization",
+        "time_quantities_origin": "finite sums over saved input; independent analytic window",
+        "timebase": {
+          "clock": "fixture.nominal",
+          "generation": 0,
+          "origin_frame": 0,
+          "sample_rate_hz": 48000
+        },
+        "validity": {
+          "invalid_intervals": [],
+          "state": "valid"
+        },
+        "window_symmetry": "symmetric"
+      },
+      "spec": {
+        "dtype": "<f8",
+        "id": "impulse-boxcar",
+        "n": 4096,
+        "rate_hz": 48000,
+        "signal": "impulse",
+        "tones": [],
+        "window": "boxcar"
+      },
+      "summary": {
+        "db_tested_bins": 2049,
+        "integrated_power_fs2": [
+          0.000244140625
+        ],
+        "max_absolute_errors": {
+          "fft_over_n": 0.0,
+          "frequency_hz": 0.0,
+          "integrated_power_fs2": 0.0,
+          "inverse_windowed": 0.0,
+          "parseval": 0.0,
+          "peak_db": 0.0,
+          "peak_fs": 0.0,
+          "phase_rad": 0.0,
+          "psd_fs2_hz": 0.0,
+          "rms_fs": 0.0,
+          "time_window_power_fs2": 0.0,
+          "window": 0.0
+        },
+        "phase_below_threshold": {
+          "reason": "below phase threshold; compare complex FFT only",
+          "value": null
+        },
+        "phase_tested_bins": 2049,
+        "rms_fs": [
+          0.015625
+        ]
+      }
+    },
+    {
+      "arrays": {
+        "current.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "current.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "7f271868a6763d99c0dd6de83190b66c2d039e2398f183c7a751bf6b927a226c",
+          "shape": [
+            2049,
+            1,
+            2
+          ]
+        },
+        "current.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "current.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "current.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "current.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f3e70dac36eb1b853d669f00f457c97c2f37cb5d8ae245305d05d661439365a7",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "current.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f3e70dac36eb1b853d669f00f457c97c2f37cb5d8ae245305d05d661439365a7",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "current.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "current.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "current.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.window.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7",
+          "shape": [
+            4096
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "theory.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "theory.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "5ae64f6d7628a3b3a900494bf767de06418d00bbdf28c947a78ebe9def670494",
+          "shape": [
+            2049,
+            1,
+            2
+          ]
+        },
+        "theory.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "theory.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "theory.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "theory.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f3e70dac36eb1b853d669f00f457c97c2f37cb5d8ae245305d05d661439365a7",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "theory.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f3e70dac36eb1b853d669f00f457c97c2f37cb5d8ae245305d05d661439365a7",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "theory.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "theory.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "theory.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.window.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7",
+          "shape": [
+            4096
+          ]
+        }
+      },
+      "known_differences": [],
+      "metadata": {
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated",
+          "unit": "FS"
+        },
+        "channel_ids": [
+          "input.alpha"
+        ],
+        "current_fft_origin": "FFTManager.rfft/irfft, get_cached_window",
+        "input_formula": "silence",
+        "interval": [
+          0,
+          4096
+        ],
+        "normalization_origin": "contract adapter; not a product peak/PSD/RMS function",
+        "route": {
+          "inputs": [
+            "input.alpha"
+          ],
+          "outputs": [
+            "input.alpha"
+          ],
+          "revision": "identity-v1"
+        },
+        "seed": null,
+        "tap": "fixture.input",
+        "theory_fft_origin": "analytic finite geometric sum; ideal input before f32 quantization",
+        "time_quantities_origin": "finite sums over saved input; independent analytic window",
+        "timebase": {
+          "clock": "fixture.nominal",
+          "generation": 0,
+          "origin_frame": 0,
+          "sample_rate_hz": 48000
+        },
+        "validity": {
+          "invalid_intervals": [],
+          "state": "valid"
+        },
+        "window_symmetry": "symmetric"
+      },
+      "spec": {
+        "dtype": "<f8",
+        "id": "silence-boxcar",
+        "n": 4096,
+        "rate_hz": 48000,
+        "signal": "silence",
+        "tones": [],
+        "window": "boxcar"
+      },
+      "summary": {
+        "db_tested_bins": 0,
+        "integrated_power_fs2": [
+          0.0
+        ],
+        "max_absolute_errors": {
+          "fft_over_n": 0.0,
+          "frequency_hz": 0.0,
+          "integrated_power_fs2": 0.0,
+          "inverse_windowed": 0.0,
+          "parseval": 0.0,
+          "peak_db": 0.0,
+          "peak_fs": 0.0,
+          "phase_rad": 0.0,
+          "psd_fs2_hz": 0.0,
+          "rms_fs": 0.0,
+          "time_window_power_fs2": 0.0,
+          "window": 0.0
+        },
+        "phase_below_threshold": {
+          "reason": "below phase threshold; compare complex FFT only",
+          "value": null
+        },
+        "phase_tested_bins": 0,
+        "rms_fs": [
+          0.0
+        ]
+      }
+    },
+    {
+      "arrays": {
+        "current.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "current.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "b61b6d1abbf409b18a827e56e269b5281a035f9bb397c09fc98808b604ec661f",
+          "shape": [
+            2049,
+            2,
+            2
+          ]
+        },
+        "current.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "current.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "899fc5efc8f0ffa5212888768717f4e6f076ede0b331168491c9f767359bf72c",
+          "shape": [
+            2
+          ]
+        },
+        "current.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "1c62e3578bf1c06ed9323c3812ebaa1ffa7b9224a36eb007740617f4d6040ef4",
+          "shape": [
+            4096,
+            2
+          ]
+        },
+        "current.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "66436d45a157c8576cae5bc2081d6c1f59febfd3847429925fb2eddeb987690f",
+          "shape": [
+            2049,
+            2
+          ]
+        },
+        "current.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "09c241dc1cd1da77a48b3396d41bbbcf7362746fe5be92e2a7f137c671862e78",
+          "shape": [
+            2049,
+            2
+          ]
+        },
+        "current.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "e3ee2f454a61398ff9a4fa357df77de3905c19f47bd90cd306717e771f2c9e71",
+          "shape": [
+            2
+          ]
+        },
+        "current.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "867a2897f640a129e3d9c5761dbf288784361396d1b53b931d3d411107f73c1c",
+          "shape": [
+            2
+          ]
+        },
+        "current.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.window.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "3e53cbec61fbbb151ef3e1f34ec229180e3c2983a6f198c0af71415c8fc9a039",
+          "shape": [
+            4096
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "eb2b84eea56390d2a647c09792fb755ed233860f6fb946c98d652a0d9502bf41",
+          "shape": [
+            4096,
+            2
+          ]
+        },
+        "theory.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "theory.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "9b19ec871d85235e41f911ed7cf17f948c826e48dd1badd034274deab58dcbc2",
+          "shape": [
+            2049,
+            2,
+            2
+          ]
+        },
+        "theory.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "theory.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "80bb768338b4f7f1a9eb7632935384a63f4e83ab2aaae2f70a3d8ab251f67dd0",
+          "shape": [
+            2
+          ]
+        },
+        "theory.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "460eb8a134d8f25cafa1447b24707258b6b0ed07ed3efbe65e71228abbb459c4",
+          "shape": [
+            4096,
+            2
+          ]
+        },
+        "theory.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "22eb0e6d31905b0cecbc81b8ef6848a052da099b80ec4a8f2ba20ebfa5ba49fd",
+          "shape": [
+            2049,
+            2
+          ]
+        },
+        "theory.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "48fb7ae9fb3c3e8f681e91bdfe6f610a554d87c9e7b0aadc8fa44e1def6314c4",
+          "shape": [
+            2049,
+            2
+          ]
+        },
+        "theory.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "e3ee2f454a61398ff9a4fa357df77de3905c19f47bd90cd306717e771f2c9e71",
+          "shape": [
+            2
+          ]
+        },
+        "theory.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "fe4668aa2e7834e4fd2908de78161072eee9f157591a16788ca168950f26b5fd",
+          "shape": [
+            2
+          ]
+        },
+        "theory.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.window.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "606370aaa6a3eff2404db5513eaf3cc798ce3fb05d5801e53602c31d11ba004b",
+          "shape": [
+            4096
+          ]
+        }
+      },
+      "known_differences": [],
+      "metadata": {
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated",
+          "unit": "FS"
+        },
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "current_fft_origin": "FFTManager.rfft/irfft, get_cached_window",
+        "input_formula": "A*cos(2*pi*k*n/N+phase)",
+        "interval": [
+          0,
+          4096
+        ],
+        "normalization_origin": "contract adapter; not a product peak/PSD/RMS function",
+        "route": {
+          "inputs": [
+            "input.alpha",
+            "input.beta"
+          ],
+          "outputs": [
+            "input.alpha",
+            "input.beta"
+          ],
+          "revision": "identity-v1"
+        },
+        "seed": null,
+        "tap": "fixture.input",
+        "theory_fft_origin": "analytic finite geometric sum; ideal input before f32 quantization",
+        "time_quantities_origin": "finite sums over saved input; independent analytic window",
+        "timebase": {
+          "clock": "fixture.nominal",
+          "generation": 0,
+          "origin_frame": 0,
+          "sample_rate_hz": 48000
+        },
+        "validity": {
+          "invalid_intervals": [],
+          "state": "valid"
+        },
+        "window_symmetry": "symmetric"
+      },
+      "spec": {
+        "dtype": "<f8",
+        "id": "ac01-hann-f64",
+        "n": 4096,
+        "rate_hz": 48000,
+        "signal": "cosine",
+        "tones": [
+          [
+            37,
+            0.03125,
+            0.0
+          ],
+          [
+            71,
+            0.0625,
+            0.19634954084936207
+          ]
+        ],
+        "window": "hann"
+      },
+      "summary": {
+        "db_tested_bins": 14,
+        "integrated_power_fs2": [
+          0.00048828124998409676,
+          0.0019531249999954923
+        ],
+        "max_absolute_errors": {
+          "fft_over_n": 1.4982544277014068e-16,
+          "frequency_hz": 0.0,
+          "integrated_power_fs2": 6.071532165918825e-18,
+          "inverse_windowed": 4.85722573273506e-17,
+          "parseval": 1.0842021724855044e-17,
+          "peak_db": 6.423306331271306e-10,
+          "peak_fs": 4.926614671774132e-16,
+          "phase_rad": 1.8507555531513904e-09,
+          "psd_fs2_hz": 8.775261333554552e-19,
+          "rms_fs": 0.0,
+          "time_window_power_fs2": 4.336808689942018e-19,
+          "window": 5.551115123125783e-16
+        },
+        "phase_below_threshold": {
+          "reason": "below phase threshold; compare complex FFT only",
+          "value": null
+        },
+        "phase_tested_bins": 147,
+        "rms_fs": [
+          0.02209708691207961,
+          0.0441941738241592
+        ]
+      }
+    },
+    {
+      "arrays": {
+        "current.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "current.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "bb2b1c91d79208bbbc5b7670a6fdb32d0acd6a36410b0b9a14b3755bc2a5438c",
+          "shape": [
+            2049,
+            2,
+            2
+          ]
+        },
+        "current.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "current.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "c40959c50abfc7048dbc2eb49a9dfabce3f185438889303a2d79d2e452bf5674",
+          "shape": [
+            2
+          ]
+        },
+        "current.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f4",
+          "file": "current.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "72f702411a5c8b57d1ee239cf941235280131801e8d9b1161b037d4b0bea3cb6",
+          "shape": [
+            4096,
+            2
+          ]
+        },
+        "current.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "7543180a99835cd960e3cf56fd42f47fb59193f297bf3adc3d3001095f7139ae",
+          "shape": [
+            2049,
+            2
+          ]
+        },
+        "current.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "9ee8406e2cefb98fef286144544cadcc2f55c5f9b1a47374568a1c10efd36740",
+          "shape": [
+            2049,
+            2
+          ]
+        },
+        "current.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "0c12dc7d5bbf756898f70144fdaa0c0250395d56face9ee3565320b5815e3ae1",
+          "shape": [
+            2
+          ]
+        },
+        "current.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "068e29b4c90f9816198ec616bca15a96a242898a98ca2137f3e11db6f60fbf04",
+          "shape": [
+            2
+          ]
+        },
+        "current.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.window.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "3e53cbec61fbbb151ef3e1f34ec229180e3c2983a6f198c0af71415c8fc9a039",
+          "shape": [
+            4096
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f4",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "a802d66db7f32c90de6cd87887f6a0146678c043598940b78f97015ba72495f2",
+          "shape": [
+            4096,
+            2
+          ]
+        },
+        "theory.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "theory.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "9b19ec871d85235e41f911ed7cf17f948c826e48dd1badd034274deab58dcbc2",
+          "shape": [
+            2049,
+            2,
+            2
+          ]
+        },
+        "theory.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "theory.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "80bb768338b4f7f1a9eb7632935384a63f4e83ab2aaae2f70a3d8ab251f67dd0",
+          "shape": [
+            2
+          ]
+        },
+        "theory.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "5595f44cfdf916044fa015c64c812619ba586340526222a8f0224652cc3002fd",
+          "shape": [
+            4096,
+            2
+          ]
+        },
+        "theory.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "22eb0e6d31905b0cecbc81b8ef6848a052da099b80ec4a8f2ba20ebfa5ba49fd",
+          "shape": [
+            2049,
+            2
+          ]
+        },
+        "theory.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "48fb7ae9fb3c3e8f681e91bdfe6f610a554d87c9e7b0aadc8fa44e1def6314c4",
+          "shape": [
+            2049,
+            2
+          ]
+        },
+        "theory.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "0c12dc7d5bbf756898f70144fdaa0c0250395d56face9ee3565320b5815e3ae1",
+          "shape": [
+            2
+          ]
+        },
+        "theory.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "d43759aa30ce5062e6ed2742bf26de747a2cf9309b376eaf7c401881936e0c97",
+          "shape": [
+            2
+          ]
+        },
+        "theory.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.window.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "606370aaa6a3eff2404db5513eaf3cc798ce3fb05d5801e53602c31d11ba004b",
+          "shape": [
+            4096
+          ]
+        }
+      },
+      "known_differences": [],
+      "metadata": {
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated",
+          "unit": "FS"
+        },
+        "channel_ids": [
+          "input.alpha",
+          "input.beta"
+        ],
+        "current_fft_origin": "FFTManager.rfft/irfft, get_cached_window",
+        "input_formula": "A*cos(2*pi*k*n/N+phase)",
+        "interval": [
+          0,
+          4096
+        ],
+        "normalization_origin": "contract adapter; not a product peak/PSD/RMS function",
+        "route": {
+          "inputs": [
+            "input.alpha",
+            "input.beta"
+          ],
+          "outputs": [
+            "input.alpha",
+            "input.beta"
+          ],
+          "revision": "identity-v1"
+        },
+        "seed": null,
+        "tap": "fixture.input",
+        "theory_fft_origin": "analytic finite geometric sum; ideal input before f32 quantization",
+        "time_quantities_origin": "finite sums over saved input; independent analytic window",
+        "timebase": {
+          "clock": "fixture.nominal",
+          "generation": 0,
+          "origin_frame": 0,
+          "sample_rate_hz": 48000
+        },
+        "validity": {
+          "invalid_intervals": [],
+          "state": "valid"
+        },
+        "window_symmetry": "symmetric"
+      },
+      "spec": {
+        "dtype": "<f4",
+        "id": "ac01-hann-f32",
+        "n": 4096,
+        "rate_hz": 48000,
+        "signal": "cosine",
+        "tones": [
+          [
+            37,
+            0.03125,
+            0.0
+          ],
+          [
+            71,
+            0.0625,
+            0.19634954084936207
+          ]
+        ],
+        "window": "hann"
+      },
+      "summary": {
+        "db_tested_bins": 6,
+        "integrated_power_fs2": [
+          0.0004882812176057901,
+          0.0019531247334555843
+        ],
+        "max_absolute_errors": {
+          "fft_over_n": 1.3513303713627854e-09,
+          "frequency_hz": 0.0,
+          "integrated_power_fs2": 2.6653991405493904e-10,
+          "inverse_windowed": 2.00827087112887e-08,
+          "parseval": 2.5802541223432507e-10,
+          "peak_db": 7.501447143454243e-07,
+          "peak_fs": 5.397724961442307e-09,
+          "phase_rad": 7.963157882756665e-09,
+          "psd_fs2_hz": 1.9187224861239374e-11,
+          "rms_fs": 0.0,
+          "time_window_power_fs2": 2.168404344971009e-19,
+          "window": 5.551115123125783e-16
+        },
+        "phase_below_threshold": {
+          "reason": "below phase threshold; compare complex FFT only",
+          "value": null
+        },
+        "phase_tested_bins": 6,
+        "rms_fs": [
+          0.022097086862358967,
+          0.04419417372471795
+        ]
+      }
+    },
+    {
+      "arrays": {
+        "current.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "current.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "c2b485ac36e0dbefe6b58577df5ec8c4f7e3b1cd42b927b90a28a2065578faa6",
+          "shape": [
+            2049,
+            1,
+            2
+          ]
+        },
+        "current.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "current.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "48f53bc9208e7c87f16c0b9d7bf283126b6707bdcc256c7fe92c1b4e5f130435",
+          "shape": [
+            1
+          ]
+        },
+        "current.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "d5d65784d931af72c33c211aa79c75b4625aebee7239f62ba7923959bb44e94d",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "current.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "5670c6699f0473a0384475670342be24a11b65a0a8bd0ea65f38dff19cb15edf",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "current.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "6231f3746979844a33f7ddf2550181d2da1e28f42e492dbb061ead739ea14382",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "current.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "1cab600f57951016c0b4bd619177c26235366a7f52e26e839e3aac1219cda82d",
+          "shape": [
+            1
+          ]
+        },
+        "current.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "19330939750a0d709a81ea043d9b982f080e99caf0ffe496fdc14d5f95a3b7ec",
+          "shape": [
+            1
+          ]
+        },
+        "current.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.window.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "3e53cbec61fbbb151ef3e1f34ec229180e3c2983a6f198c0af71415c8fc9a039",
+          "shape": [
+            4096
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "f50e1094a4ccc0f4043ba378c9172850608a3d4d931b28000bca0a1e09975a69",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "theory.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "theory.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "95d7c3888c11652b1814a7855ddc09ea3e416e7a40990c212f7c5f782810f86c",
+          "shape": [
+            2049,
+            1,
+            2
+          ]
+        },
+        "theory.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "theory.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "2de5619c4b1080c445cf82663219a7d1791d9004c27421b4223c93801142f9f6",
+          "shape": [
+            1
+          ]
+        },
+        "theory.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "672bf812d6a1f7a35449ac5ec98be38b072cf5554aed467c804de31c05f04be7",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "theory.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "74e02fba79f9fb167d0bb73868e4379a6fa42f2dbf755d77abb027db1b5b228e",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "theory.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "d67eb4bbee36f8dacfe251e3bcb4540efd0ad501e7e1e348df561e5dee0e8947",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "theory.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "1cab600f57951016c0b4bd619177c26235366a7f52e26e839e3aac1219cda82d",
+          "shape": [
+            1
+          ]
+        },
+        "theory.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "19330939750a0d709a81ea043d9b982f080e99caf0ffe496fdc14d5f95a3b7ec",
+          "shape": [
+            1
+          ]
+        },
+        "theory.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.window.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "606370aaa6a3eff2404db5513eaf3cc798ce3fb05d5801e53602c31d11ba004b",
+          "shape": [
+            4096
+          ]
+        }
+      },
+      "known_differences": [],
+      "metadata": {
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated",
+          "unit": "FS"
+        },
+        "channel_ids": [
+          "input.alpha"
+        ],
+        "current_fft_origin": "FFTManager.rfft/irfft, get_cached_window",
+        "input_formula": "dc",
+        "interval": [
+          0,
+          4096
+        ],
+        "normalization_origin": "contract adapter; not a product peak/PSD/RMS function",
+        "route": {
+          "inputs": [
+            "input.alpha"
+          ],
+          "outputs": [
+            "input.alpha"
+          ],
+          "revision": "identity-v1"
+        },
+        "seed": null,
+        "tap": "fixture.input",
+        "theory_fft_origin": "analytic finite geometric sum; ideal input before f32 quantization",
+        "time_quantities_origin": "finite sums over saved input; independent analytic window",
+        "timebase": {
+          "clock": "fixture.nominal",
+          "generation": 0,
+          "origin_frame": 0,
+          "sample_rate_hz": 48000
+        },
+        "validity": {
+          "invalid_intervals": [],
+          "state": "valid"
+        },
+        "window_symmetry": "symmetric"
+      },
+      "spec": {
+        "dtype": "<f8",
+        "id": "dc-hann",
+        "n": 4096,
+        "rate_hz": 48000,
+        "signal": "dc",
+        "tones": [],
+        "window": "hann"
+      },
+      "summary": {
+        "db_tested_bins": 8,
+        "integrated_power_fs2": [
+          0.015625000000000003
+        ],
+        "max_absolute_errors": {
+          "fft_over_n": 3.538133968037389e-16,
+          "frequency_hz": 0.0,
+          "integrated_power_fs2": 5.204170427930421e-17,
+          "inverse_windowed": 9.71445146547012e-17,
+          "parseval": 3.469446951953614e-18,
+          "peak_db": 1.4141221527097514e-10,
+          "peak_fs": 4.440892098500626e-16,
+          "phase_rad": 9.095676787391916e-11,
+          "psd_fs2_hz": 6.288372600415926e-18,
+          "rms_fs": 0.0,
+          "time_window_power_fs2": 0.0,
+          "window": 5.551115123125783e-16
+        },
+        "phase_below_threshold": {
+          "reason": "below phase threshold; compare complex FFT only",
+          "value": null
+        },
+        "phase_tested_bins": 79,
+        "rms_fs": [
+          0.125
+        ]
+      }
+    },
+    {
+      "arrays": {
+        "current.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "current.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "7702833a562a183aa51136d1a9c8e946178d0aff4c0d52340b1479024cf80e01",
+          "shape": [
+            2049,
+            1,
+            2
+          ]
+        },
+        "current.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "current.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "19330939750a0d709a81ea043d9b982f080e99caf0ffe496fdc14d5f95a3b7ec",
+          "shape": [
+            1
+          ]
+        },
+        "current.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "89cb6a5740917a65c53e9b067023305d6454c18159d2f088992caeb309cd16f0",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "current.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "2c584757d5551eb03911b707c6172c7ffea7a368831d02f566135aeb2461ddd4",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "current.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "1ac0a50a4b20203debf2e481657d103b1bdf9f145a3017ec14f523ddbe757c1e",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "current.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "1cab600f57951016c0b4bd619177c26235366a7f52e26e839e3aac1219cda82d",
+          "shape": [
+            1
+          ]
+        },
+        "current.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "19330939750a0d709a81ea043d9b982f080e99caf0ffe496fdc14d5f95a3b7ec",
+          "shape": [
+            1
+          ]
+        },
+        "current.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.window.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "3e53cbec61fbbb151ef3e1f34ec229180e3c2983a6f198c0af71415c8fc9a039",
+          "shape": [
+            4096
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "35b4622a81875f3425aa4ae476df682718d8181669bed6bb06bc2d8f5899e224",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "theory.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "theory.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "06149d045c4d27b918d3b6b417db273bc6213aa7326825de9c690dd242df7ccf",
+          "shape": [
+            2049,
+            1,
+            2
+          ]
+        },
+        "theory.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "theory.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "2de5619c4b1080c445cf82663219a7d1791d9004c27421b4223c93801142f9f6",
+          "shape": [
+            1
+          ]
+        },
+        "theory.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "a62d65f2b8e998532a0d884a8b409374b50be3bfe3084c25fc6403e35d12406f",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "theory.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "890cc0722841ef75da3d0552f9bde08a9d744f908eed1070d2abca485c4a88cc",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "theory.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "2e71a24ac745d68a04a460daaf83cd3e0dacc8843794474532ec6ef47d044308",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "theory.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "1cab600f57951016c0b4bd619177c26235366a7f52e26e839e3aac1219cda82d",
+          "shape": [
+            1
+          ]
+        },
+        "theory.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "19330939750a0d709a81ea043d9b982f080e99caf0ffe496fdc14d5f95a3b7ec",
+          "shape": [
+            1
+          ]
+        },
+        "theory.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.window.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "606370aaa6a3eff2404db5513eaf3cc798ce3fb05d5801e53602c31d11ba004b",
+          "shape": [
+            4096
+          ]
+        }
+      },
+      "known_differences": [],
+      "metadata": {
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated",
+          "unit": "FS"
+        },
+        "channel_ids": [
+          "input.alpha"
+        ],
+        "current_fft_origin": "FFTManager.rfft/irfft, get_cached_window",
+        "input_formula": "nyquist",
+        "interval": [
+          0,
+          4096
+        ],
+        "normalization_origin": "contract adapter; not a product peak/PSD/RMS function",
+        "route": {
+          "inputs": [
+            "input.alpha"
+          ],
+          "outputs": [
+            "input.alpha"
+          ],
+          "revision": "identity-v1"
+        },
+        "seed": null,
+        "tap": "fixture.input",
+        "theory_fft_origin": "analytic finite geometric sum; ideal input before f32 quantization",
+        "time_quantities_origin": "finite sums over saved input; independent analytic window",
+        "timebase": {
+          "clock": "fixture.nominal",
+          "generation": 0,
+          "origin_frame": 0,
+          "sample_rate_hz": 48000
+        },
+        "validity": {
+          "invalid_intervals": [],
+          "state": "valid"
+        },
+        "window_symmetry": "symmetric"
+      },
+      "spec": {
+        "dtype": "<f8",
+        "id": "nyquist-hann",
+        "n": 4096,
+        "rate_hz": 48000,
+        "signal": "nyquist",
+        "tones": [],
+        "window": "hann"
+      },
+      "summary": {
+        "db_tested_bins": 8,
+        "integrated_power_fs2": [
+          0.015625
+        ],
+        "max_absolute_errors": {
+          "fft_over_n": 3.538133968037389e-16,
+          "frequency_hz": 0.0,
+          "integrated_power_fs2": 5.551115123125783e-17,
+          "inverse_windowed": 9.020562075079397e-17,
+          "parseval": 0.0,
+          "peak_db": 1.4141221527097514e-10,
+          "peak_fs": 4.440892098500626e-16,
+          "phase_rad": 9.095676787391916e-11,
+          "psd_fs2_hz": 6.288372600415926e-18,
+          "rms_fs": 0.0,
+          "time_window_power_fs2": 0.0,
+          "window": 5.551115123125783e-16
+        },
+        "phase_below_threshold": {
+          "reason": "below phase threshold; compare complex FFT only",
+          "value": null
+        },
+        "phase_tested_bins": 79,
+        "rms_fs": [
+          0.125
+        ]
+      }
+    },
+    {
+      "arrays": {
+        "current.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "current.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "7f271868a6763d99c0dd6de83190b66c2d039e2398f183c7a751bf6b927a226c",
+          "shape": [
+            2049,
+            1,
+            2
+          ]
+        },
+        "current.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "current.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "current.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "current.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f3e70dac36eb1b853d669f00f457c97c2f37cb5d8ae245305d05d661439365a7",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "current.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f3e70dac36eb1b853d669f00f457c97c2f37cb5d8ae245305d05d661439365a7",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "current.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "19330939750a0d709a81ea043d9b982f080e99caf0ffe496fdc14d5f95a3b7ec",
+          "shape": [
+            1
+          ]
+        },
+        "current.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "current.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.window.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "3e53cbec61fbbb151ef3e1f34ec229180e3c2983a6f198c0af71415c8fc9a039",
+          "shape": [
+            4096
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "9eed0236a8abebfd1e94ac0d7538c732ee1c1cce40e45a5115e8be7444ea73b9",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "theory.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "theory.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "5ae64f6d7628a3b3a900494bf767de06418d00bbdf28c947a78ebe9def670494",
+          "shape": [
+            2049,
+            1,
+            2
+          ]
+        },
+        "theory.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "theory.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "theory.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "theory.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f3e70dac36eb1b853d669f00f457c97c2f37cb5d8ae245305d05d661439365a7",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "theory.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f3e70dac36eb1b853d669f00f457c97c2f37cb5d8ae245305d05d661439365a7",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "theory.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "19330939750a0d709a81ea043d9b982f080e99caf0ffe496fdc14d5f95a3b7ec",
+          "shape": [
+            1
+          ]
+        },
+        "theory.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "theory.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.window.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "606370aaa6a3eff2404db5513eaf3cc798ce3fb05d5801e53602c31d11ba004b",
+          "shape": [
+            4096
+          ]
+        }
+      },
+      "known_differences": [],
+      "metadata": {
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated",
+          "unit": "FS"
+        },
+        "channel_ids": [
+          "input.alpha"
+        ],
+        "current_fft_origin": "FFTManager.rfft/irfft, get_cached_window",
+        "input_formula": "impulse",
+        "interval": [
+          0,
+          4096
+        ],
+        "normalization_origin": "contract adapter; not a product peak/PSD/RMS function",
+        "route": {
+          "inputs": [
+            "input.alpha"
+          ],
+          "outputs": [
+            "input.alpha"
+          ],
+          "revision": "identity-v1"
+        },
+        "seed": null,
+        "tap": "fixture.input",
+        "theory_fft_origin": "analytic finite geometric sum; ideal input before f32 quantization",
+        "time_quantities_origin": "finite sums over saved input; independent analytic window",
+        "timebase": {
+          "clock": "fixture.nominal",
+          "generation": 0,
+          "origin_frame": 0,
+          "sample_rate_hz": 48000
+        },
+        "validity": {
+          "invalid_intervals": [],
+          "state": "valid"
+        },
+        "window_symmetry": "symmetric"
+      },
+      "spec": {
+        "dtype": "<f8",
+        "id": "impulse-hann",
+        "n": 4096,
+        "rate_hz": 48000,
+        "signal": "impulse",
+        "tones": [],
+        "window": "hann"
+      },
+      "summary": {
+        "db_tested_bins": 0,
+        "integrated_power_fs2": [
+          0.0
+        ],
+        "max_absolute_errors": {
+          "fft_over_n": 0.0,
+          "frequency_hz": 0.0,
+          "integrated_power_fs2": 0.0,
+          "inverse_windowed": 0.0,
+          "parseval": 0.0,
+          "peak_db": 0.0,
+          "peak_fs": 0.0,
+          "phase_rad": 0.0,
+          "psd_fs2_hz": 0.0,
+          "rms_fs": 0.0,
+          "time_window_power_fs2": 0.0,
+          "window": 5.551115123125783e-16
+        },
+        "phase_below_threshold": {
+          "reason": "below phase threshold; compare complex FFT only",
+          "value": null
+        },
+        "phase_tested_bins": 0,
+        "rms_fs": [
+          0.015625
+        ]
+      }
+    },
+    {
+      "arrays": {
+        "current.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "current.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "7f271868a6763d99c0dd6de83190b66c2d039e2398f183c7a751bf6b927a226c",
+          "shape": [
+            2049,
+            1,
+            2
+          ]
+        },
+        "current.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "current.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "current.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "current.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f3e70dac36eb1b853d669f00f457c97c2f37cb5d8ae245305d05d661439365a7",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "current.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f3e70dac36eb1b853d669f00f457c97c2f37cb5d8ae245305d05d661439365a7",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "current.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "current.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "current.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.window.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "3e53cbec61fbbb151ef3e1f34ec229180e3c2983a6f198c0af71415c8fc9a039",
+          "shape": [
+            4096
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "theory.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "theory.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "5ae64f6d7628a3b3a900494bf767de06418d00bbdf28c947a78ebe9def670494",
+          "shape": [
+            2049,
+            1,
+            2
+          ]
+        },
+        "theory.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "theory.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "theory.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "c35020473aed1b4642cd726cad727b63fff2824ad68cedd7ffb73c7cbd890479",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "theory.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f3e70dac36eb1b853d669f00f457c97c2f37cb5d8ae245305d05d661439365a7",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "theory.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f3e70dac36eb1b853d669f00f457c97c2f37cb5d8ae245305d05d661439365a7",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "theory.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "theory.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "af5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc",
+          "shape": [
+            1
+          ]
+        },
+        "theory.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.window.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "606370aaa6a3eff2404db5513eaf3cc798ce3fb05d5801e53602c31d11ba004b",
+          "shape": [
+            4096
+          ]
+        }
+      },
+      "known_differences": [],
+      "metadata": {
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated",
+          "unit": "FS"
+        },
+        "channel_ids": [
+          "input.alpha"
+        ],
+        "current_fft_origin": "FFTManager.rfft/irfft, get_cached_window",
+        "input_formula": "silence",
+        "interval": [
+          0,
+          4096
+        ],
+        "normalization_origin": "contract adapter; not a product peak/PSD/RMS function",
+        "route": {
+          "inputs": [
+            "input.alpha"
+          ],
+          "outputs": [
+            "input.alpha"
+          ],
+          "revision": "identity-v1"
+        },
+        "seed": null,
+        "tap": "fixture.input",
+        "theory_fft_origin": "analytic finite geometric sum; ideal input before f32 quantization",
+        "time_quantities_origin": "finite sums over saved input; independent analytic window",
+        "timebase": {
+          "clock": "fixture.nominal",
+          "generation": 0,
+          "origin_frame": 0,
+          "sample_rate_hz": 48000
+        },
+        "validity": {
+          "invalid_intervals": [],
+          "state": "valid"
+        },
+        "window_symmetry": "symmetric"
+      },
+      "spec": {
+        "dtype": "<f8",
+        "id": "silence-hann",
+        "n": 4096,
+        "rate_hz": 48000,
+        "signal": "silence",
+        "tones": [],
+        "window": "hann"
+      },
+      "summary": {
+        "db_tested_bins": 0,
+        "integrated_power_fs2": [
+          0.0
+        ],
+        "max_absolute_errors": {
+          "fft_over_n": 0.0,
+          "frequency_hz": 0.0,
+          "integrated_power_fs2": 0.0,
+          "inverse_windowed": 0.0,
+          "parseval": 0.0,
+          "peak_db": 0.0,
+          "peak_fs": 0.0,
+          "phase_rad": 0.0,
+          "psd_fs2_hz": 0.0,
+          "rms_fs": 0.0,
+          "time_window_power_fs2": 0.0,
+          "window": 5.551115123125783e-16
+        },
+        "phase_below_threshold": {
+          "reason": "below phase threshold; compare complex FFT only",
+          "value": null
+        },
+        "phase_tested_bins": 0,
+        "rms_fs": [
+          0.0
+        ]
+      }
+    },
+    {
+      "arrays": {
+        "current.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "current.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "bda17f6188b55529eaf9a3f63c0456d1fe5852d64def8366e1b600ebadcc1f7c",
+          "shape": [
+            2049,
+            1,
+            2
+          ]
+        },
+        "current.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "current.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "e88967535eb1a4ccf6dc3c7d71a34c642a8afa288c7bd133251710c15644e93f",
+          "shape": [
+            1
+          ]
+        },
+        "current.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "3ebb25533a1c085a9bc5b4ffdb9bf2f8ba1d50175fec56bc2200018af18b1d35",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "current.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "47851efef1920155216bef8fad74a1761fceb99056f5d20586c840318e3fc3b5",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "current.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "29476d2d3a4705f98a8f96dafab6e5b9981186277de9d26b2b5268e5fad6f140",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "current.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "3891e0dd63c93a2e30200251ee02b367238f76d317d1e1e070c3e02604136397",
+          "shape": [
+            1
+          ]
+        },
+        "current.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "e88967535eb1a4ccf6dc3c7d71a34c642a8afa288c7bd133251710c15644e93f",
+          "shape": [
+            1
+          ]
+        },
+        "current.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.window.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7",
+          "shape": [
+            4096
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "ef975a3e3b3e69364cc134ca4229e4936473312b1d2c9bb5c78cf739274a8877",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "theory.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "theory.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "b7347901d285510eda70467b8b77d4b4b189319ffc2bc7e9c9e0572f0f04b223",
+          "shape": [
+            2049,
+            1,
+            2
+          ]
+        },
+        "theory.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
+          "shape": [
+            2049
+          ]
+        },
+        "theory.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "e88967535eb1a4ccf6dc3c7d71a34c642a8afa288c7bd133251710c15644e93f",
+          "shape": [
+            1
+          ]
+        },
+        "theory.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "ef975a3e3b3e69364cc134ca4229e4936473312b1d2c9bb5c78cf739274a8877",
+          "shape": [
+            4096,
+            1
+          ]
+        },
+        "theory.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "8bec4bf1e4ea6631317059f220e8328fb0cd4ae0f621250bdd41a58676d0339f",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "theory.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "c22baa4a53e8626637e501ce1ad9777a4f77b9f2f314a11edfef096def1d4ad9",
+          "shape": [
+            2049,
+            1
+          ]
+        },
+        "theory.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "3891e0dd63c93a2e30200251ee02b367238f76d317d1e1e070c3e02604136397",
+          "shape": [
+            1
+          ]
+        },
+        "theory.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "e88967535eb1a4ccf6dc3c7d71a34c642a8afa288c7bd133251710c15644e93f",
+          "shape": [
+            1
+          ]
+        },
+        "theory.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.window.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7",
+          "shape": [
+            4096
+          ]
+        }
+      },
+      "known_differences": [],
+      "metadata": {
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated",
+          "unit": "FS"
+        },
+        "channel_ids": [
+          "input.alpha"
+        ],
+        "current_fft_origin": "FFTManager.rfft/irfft, get_cached_window",
+        "input_formula": "A*cos(2*pi*k*n/N+phase)",
+        "interval": [
+          0,
+          4096
+        ],
+        "normalization_origin": "contract adapter; not a product peak/PSD/RMS function",
+        "route": {
+          "inputs": [
+            "input.alpha"
+          ],
+          "outputs": [
+            "input.alpha"
+          ],
+          "revision": "identity-v1"
+        },
+        "seed": null,
+        "tap": "fixture.input",
+        "theory_fft_origin": "analytic finite geometric sum; ideal input before f32 quantization",
+        "time_quantities_origin": "finite sums over saved input; independent analytic window",
+        "timebase": {
+          "clock": "fixture.nominal",
+          "generation": 0,
+          "origin_frame": 0,
+          "sample_rate_hz": 48000
+        },
+        "validity": {
+          "invalid_intervals": [],
+          "state": "valid"
+        },
+        "window_symmetry": "symmetric"
+      },
+      "spec": {
+        "dtype": "<f8",
+        "id": "tone-quarter",
+        "n": 4096,
+        "rate_hz": 48000,
+        "signal": "cosine",
+        "tones": [
+          [
+            37,
+            0.25,
+            0.0
+          ]
+        ],
+        "window": "boxcar"
+      },
+      "summary": {
+        "db_tested_bins": 1,
+        "integrated_power_fs2": [
+          0.03125
+        ],
+        "max_absolute_errors": {
+          "fft_over_n": 2.520063141528695e-16,
+          "frequency_hz": 0.0,
+          "integrated_power_fs2": 0.0,
+          "inverse_windowed": 2.220446049250313e-16,
+          "parseval": 0.0,
+          "peak_db": 0.0,
+          "peak_fs": 5.039904166592405e-16,
+          "phase_rad": 9.83047564636453e-16,
+          "psd_fs2_hz": 1.0986371609838513e-32,
+          "rms_fs": 0.0,
+          "time_window_power_fs2": 0.0,
+          "window": 0.0
+        },
+        "phase_below_threshold": {
+          "reason": "below phase threshold; compare complex FFT only",
+          "value": null
+        },
+        "phase_tested_bins": 1,
+        "rms_fs": [
+          0.1767766952966369
+        ]
+      }
+    },
+    {
+      "arrays": {
+        "current.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "current.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "9823be5a8b6c7788da403eef05b8b58401f362faa2d84c3bec44cde4b97a5ab4",
+          "shape": [
+            2048,
+            1,
+            2
+          ]
+        },
+        "current.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "16af610f9ecf55f786cd9d4420e9dacc45fefa3586c1805b26e23dd850b3eea3",
+          "shape": [
+            2048
+          ]
+        },
+        "current.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "7de8726a4d61808248126b6a80e935aa66a96272245ae72abf7b17b0850cfeba",
+          "shape": [
+            1
+          ]
+        },
+        "current.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "38033de365c4e28b27e2823a8206aa49a1afb2368f9228f640e1745814b6ab79",
+          "shape": [
+            4095,
+            1
+          ]
+        },
+        "current.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "5bc07ff2b53db5f557413b469eb0f50c77b66eb0d8da07ebb77d4320ea5eeb35",
+          "shape": [
+            2048,
+            1
+          ]
+        },
+        "current.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "5c5f18c8251b7b5dca3f0b4bfa5080546f7fb573bbb8da731423326dddbbde2b",
+          "shape": [
+            2048,
+            1
+          ]
+        },
+        "current.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "2fd9186e4b2630b650cec2018d434984b1a101787aed58904c12913cb2251e95",
+          "shape": [
+            1
+          ]
+        },
+        "current.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "7de8726a4d61808248126b6a80e935aa66a96272245ae72abf7b17b0850cfeba",
+          "shape": [
+            1
+          ]
+        },
+        "current.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "current.window.bin",
+          "layout": "C/frame-major",
+          "origin": "current",
+          "sha256": "83a7fd835ac7f8a4941f9a57782b258fbbc34d0bcb5a7364d10bdc2d0de4dcc2",
+          "shape": [
+            4095
+          ]
+        },
+        "input": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "input.bin",
+          "layout": "C/frame-major",
+          "origin": "fixed-input",
+          "sha256": "5fea6defb79b4929b488a23138d2e1a2a83a1dd4a9f83a68dc8063f64b85f63e",
+          "shape": [
+            4095,
+            1
+          ]
+        },
+        "theory.fft_over_n": {
+          "byte_order": "little",
+          "complex": "real-imag-last-axis",
+          "dtype": "<f8",
+          "file": "theory.fft_over_n.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "a37a78f633096511aa64cd41a42497caa503fa91da5bf3df0bf4894d53a25d6e",
+          "shape": [
+            2048,
+            1,
+            2
+          ]
+        },
+        "theory.frequency_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.frequency_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "16af610f9ecf55f786cd9d4420e9dacc45fefa3586c1805b26e23dd850b3eea3",
+          "shape": [
+            2048
+          ]
+        },
+        "theory.integrated_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.integrated_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "c69d03728a1f0cd72995cc17088d1119d5a37364a4829b86b2cce761bbc476dc",
+          "shape": [
+            1
+          ]
+        },
+        "theory.inverse_windowed": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.inverse_windowed.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "5fea6defb79b4929b488a23138d2e1a2a83a1dd4a9f83a68dc8063f64b85f63e",
+          "shape": [
+            4095,
+            1
+          ]
+        },
+        "theory.peak_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.peak_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "2a7f5d8c494728b1abd942c7a1c50b513c12671a33a63d9c53f3b548556dc964",
+          "shape": [
+            2048,
+            1
+          ]
+        },
+        "theory.psd_fs2_hz": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.psd_fs2_hz.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "9b3c2a3ad9d9612f2baa7e11e9d3c4c871a445591008c0cda931d748a59425e3",
+          "shape": [
+            2048,
+            1
+          ]
+        },
+        "theory.rms_fs": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.rms_fs.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "2fd9186e4b2630b650cec2018d434984b1a101787aed58904c12913cb2251e95",
+          "shape": [
+            1
+          ]
+        },
+        "theory.time_window_power_fs2": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.time_window_power_fs2.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "7de8726a4d61808248126b6a80e935aa66a96272245ae72abf7b17b0850cfeba",
+          "shape": [
+            1
+          ]
+        },
+        "theory.window": {
+          "byte_order": "little",
+          "complex": null,
+          "dtype": "<f8",
+          "file": "theory.window.bin",
+          "layout": "C/frame-major",
+          "origin": "theory",
+          "sha256": "83a7fd835ac7f8a4941f9a57782b258fbbc34d0bcb5a7364d10bdc2d0de4dcc2",
+          "shape": [
+            4095
+          ]
+        }
+      },
+      "known_differences": [],
+      "metadata": {
+        "calibration": {
+          "revision": null,
+          "state": "uncalibrated",
+          "unit": "FS"
+        },
+        "channel_ids": [
+          "input.alpha"
+        ],
+        "current_fft_origin": "FFTManager.rfft/irfft, get_cached_window",
+        "input_formula": "A*cos(2*pi*k*n/N+phase)",
+        "interval": [
+          0,
+          4095
+        ],
+        "normalization_origin": "contract adapter; not a product peak/PSD/RMS function",
+        "route": {
+          "inputs": [
+            "input.alpha"
+          ],
+          "outputs": [
+            "input.alpha"
+          ],
+          "revision": "identity-v1"
+        },
+        "seed": null,
+        "tap": "fixture.input",
+        "theory_fft_origin": "analytic finite geometric sum; ideal input before f32 quantization",
+        "time_quantities_origin": "finite sums over saved input; independent analytic window",
+        "timebase": {
+          "clock": "fixture.nominal",
+          "generation": 0,
+          "origin_frame": 0,
+          "sample_rate_hz": 48000
+        },
+        "validity": {
+          "invalid_intervals": [],
+          "state": "valid"
+        },
+        "window_symmetry": "symmetric"
+      },
+      "spec": {
+        "dtype": "<f8",
+        "id": "odd-last-bin",
+        "n": 4095,
+        "rate_hz": 48000,
+        "signal": "cosine",
+        "tones": [
+          [
+            2047,
+            0.125,
+            0.3
+          ]
+        ],
+        "window": "boxcar"
+      },
+      "summary": {
+        "db_tested_bins": 1,
+        "integrated_power_fs2": [
+          0.007812500000006559
+        ],
+        "max_absolute_errors": {
+          "fft_over_n": 5.990016067926522e-14,
+          "frequency_hz": 0.0,
+          "integrated_power_fs2": 6.5607241861442844e-15,
+          "inverse_windowed": 1.3877787807814457e-16,
+          "parseval": 0.0,
+          "peak_db": 3.6486369481281145e-12,
+          "peak_fs": 5.249967127696209e-14,
+          "phase_rad": 8.615249342180474e-13,
+          "psd_fs2_hz": 5.597735816542659e-16,
+          "rms_fs": 0.0,
+          "time_window_power_fs2": 0.0,
+          "window": 0.0
+        },
+        "phase_below_threshold": {
+          "reason": "below phase threshold; compare complex FFT only",
+          "value": null
+        },
+        "phase_tested_bins": 1,
+        "rms_fs": [
+          0.08838834764835554
+        ]
+      }
+    }
+  ],
+  "contract": "MIG-002-numerics-v0.1",
+  "environment": {
+    "fft": {
+      "backend": "pyfftw",
+      "plan": "FFTW_ESTIMATE",
+      "threads": 1,
+      "wisdom": "empty temporary directory"
+    },
+    "implementation": "CPython",
+    "logical_cpus": 4,
+    "machine": "x86_64",
+    "os": "macOS-14.8.9-x86_64-i386-64bit",
+    "packages": {
+      "MeasureLab": "0.9.0",
+      "PyQt6": "6.11.0",
+      "PyQt6-Qt6": "6.11.2",
+      "PyQt6_sip": "13.12.0",
+      "PyWavelets": "1.10.0",
+      "Pygments": "2.21.0",
+      "ast_serialize": "0.11.2",
+      "certifi": "2026.7.22",
+      "cffi": "2.1.1",
+      "cftime": "1.6.6",
+      "charset-normalizer": "3.5.1",
+      "colorama": "0.4.6",
+      "hypothesis": "6.168.3",
+      "idna": "3.20",
+      "iniconfig": "2.3.0",
+      "librt": "0.16.0",
+      "mypy": "2.3.1",
+      "mypy_extensions": "1.1.0",
+      "netCDF4": "1.7.4",
+      "numpy": "2.2.6",
+      "packaging": "26.3",
+      "pathspec": "1.1.1",
+      "pip": "26.2.1",
+      "pluggy": "1.6.0",
+      "pyFFTW": "0.15.1",
+      "pycparser": "3.0",
+      "pyqtgraph": "0.14.0",
+      "pytest": "9.1.1",
+      "pytest-json-report": "1.5.0",
+      "pytest-metadata": "3.1.1",
+      "pytest-qt": "4.5.0",
+      "requests": "2.34.2",
+      "ruff": "0.16.8",
+      "scipy": "1.18.1",
+      "sortedcontainers": "2.4.0",
+      "sounddevice": "0.5.6",
+      "soundfile": "0.14.0",
+      "typing_extensions": "4.16.0",
+      "urllib3": "2.8.0"
+    },
+    "processor": "i386",
+    "python": "3.12.14"
+  },
+  "generator_sha256": {
+    "scripts/migration_fft_oracle.py": "c415bc4be21947a59fb35b2a32215b0fba58183f2d1a1d3022984ceef73c1ce7",
+    "scripts/migration_fft_reference.py": "8f9a34746f3290fb5bda9e62022a685dc91d294155ce33f4b004edaf80377379"
+  },
+  "reference_commit": "9fd79958f6a8bbae6808813d3704617612e6d26c",
+  "schema_version": 1,
+  "source_sha256": {
+    "src/__init__.py": "9c302e24d402a6668fe8c5fd2d76de9fb18045c5a0beaa6c3a761b7e49f4582c",
+    "src/core/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "src/core/analysis.py": "6afa44940331814323bdd794ae076c63d014148a6dcd0a122ee7fceb39df3e2c",
+    "src/core/fft_manager.py": "307a4c95130fed46e25afd9730fd8669cdd9fd8fbaee97c0d0a2c12aaafcaef6",
+    "src/core/localization.py": "37f0b9bd2e00539f245057e3b584d26815c90f75c466f2c50c39ec8376ad5617",
+    "src/core/utils.py": "89639b5654fcf8a8196005e945d4dec2a970ca761fbf5d8e43e07838346269d5",
+    "src/gui/widgets/spectrum_analyzer.py": "0829288791037f4c5b1e2c49ba8c5593d645b4bc623cf6989279b50ff6d49c0a"
+  },
+  "suite": "small",
+  "tolerances": {
+    "db_f32": {
+      "atol": 0.001,
+      "rtol": 0
+    },
+    "db_f64": {
+      "atol": 1e-05,
+      "rtol": 0
+    },
+    "f32": {
+      "atol": 2e-06,
+      "rtol": 2e-05
+    },
+    "f64": {
+      "atol": 2e-11,
+      "rtol": 1e-09
+    },
+    "phase_f32": {
+      "atol": 0.0001,
+      "rtol": 0
+    },
+    "phase_f64": {
+      "atol": 1e-07,
+      "rtol": 0
+    },
+    "window": {
+      "atol": 1e-12,
+      "rtol": 1e-12
+    }
+  }
+}
