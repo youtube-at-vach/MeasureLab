@@ -85,25 +85,25 @@ If multiple signal generators are active, their mix becomes the stimulus signal 
 
 ## Timing, Precision, and Compatibility
 
-- Using the existing callback path of the virtual device, the DUT output and reference signal are passed to the instruments in the next block.
-- Internal plugin states and the control panel are preserved when restarting the measurement stream with the same audio settings between blocks.
+* Using the existing callback path of the virtual device, the DUT output and reference signal are passed to the instruments in the next block.
+* Internal plugin states and the control panel are preserved when restarting the measurement stream with the same audio settings between blocks.
   Starting and stopping the signal generator does not cause the plugin to reload or the panel to reopen.
   Since the plugin's audio processing is also stopped while the measurement stream is stopped, internal states such as reverb or delay are carried over upon restart.
   Changing routing or bypass, or changing sample rate/block size resets the internal state. Parameter values are preserved.
-- Samples buffered by the host at startup are padded with silence before the returned audio to maintain the timeline.
+* Samples buffered by the host at startup are padded with silence before the returned audio to maintain the timeline.
   The number of padded samples is displayed in the DUT dialog. Because this includes plugin-specific latency, calibrate for latency on the instrument side if necessary. This value alone does not represent the overall reported latency of the VST.
-- Input and output to Pedalboard are float32. Even with MeasureLab's 64-bit setting, DUT processing operates at float32.
+* Input and output to Pedalboard are float32. Even with MeasureLab's 64-bit setting, DUT processing operates at float32.
   Amplitude clipping, additional dither, and normalization are not applied.
-- Compatible VST3 effects matching the OS and CPU architecture of the running Python on macOS/Windows/Linux are supported.
+* Compatible VST3 effects matching the OS and CPU architecture of the running Python on macOS/Windows/Linux are supported.
   VST2, MIDI instruments, sidechains, and multi-channel buses are not supported.
   Plugins that do not accept mono/stereo configurations will result in an error.
-- Plugins are loaded in a separate process, with the main thread handling the native panel and a dedicated thread handling audio processing.
+* Plugins are loaded in a separate process, with the main thread handling the native panel and a dedicated thread handling audio processing.
   Panel exit notifications and audio responses use separate communication paths. Loading times out at 30 seconds, and processing responses at 1 second.
   The panel can be displayed without time limits, and a 5-second timeout applies to the closing operation.
   When resetting a plugin due to changes in audio settings or routing, the panel is temporarily closed, processed in the main thread, and automatically redisplayed.
   If stops, crashes, or invalid outputs are detected, the entire measurement input is silenced, and a DUT error is displayed.
   It does not automatically revert to the normal loopback. Reloading is required to recover.
-- The host is timer-driven and does not guarantee strict real-time operation or compatibility with any arbitrary plugin.
+* The host is timer-driven and does not guarantee strict real-time operation or compatibility with any arbitrary plugin.
   Plugins with authentication screens or similar features that require GUI interaction may not be usable.
 
 While a DUT is selected, the virtual mode demo generation for the Nonlinear Analyzer is not used, and the actual DUT output is measured instead.
