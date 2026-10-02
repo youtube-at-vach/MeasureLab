@@ -114,7 +114,8 @@ struct Document {
 /// No mutable access and no unchecked Deserialize implementation.
 #[derive(Clone, Debug)]
 pub struct MeasurementResult(Document);
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Format {
     Json,
     Csv,

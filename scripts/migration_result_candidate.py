@@ -89,6 +89,86 @@ def read_result(directory):
     return document
 
 
+def validate_async_audit(audit, document, directory):
+    """Accept completed worker receipts only, with the submitted snapshot identity."""
+    if (
+        set(audit) != {"capacity", "receipts", "snapshot_released_by_worker"}
+        or type(audit["capacity"]) is not int
+        or audit["capacity"] != 2
+        or audit["snapshot_released_by_worker"] is not True
+        or len(audit["receipts"]) != 6
+    ):
+        raise fft.ReferenceError("Async save capacity/ownership inventory mismatch")
+    operations = [
+        ("result.json", "json", "saved", None),
+        ("result.csv", "csv", "saved", None),
+        ("result.json", "json", "failed", "AlreadyExists"),
+        ("result.csv", "csv", "failed", "AlreadyExists"),
+        ("absent/result.json", "json", "failed", "NotFound"),
+        ("recovered.json", "json", "saved", None),
+    ]
+    for index, (receipt, (name, fmt, status, kind)) in enumerate(zip(audit["receipts"], operations, strict=True), 1):
+        expected = {
+            "operation_id": index,
+            "result_id": document["capture"]["result_id"],
+            "generation": document["source"]["generation"],
+            "interval": document["interval"],
+            "destination": str(directory / name),
+            "format": fmt,
+        }
+        if (
+            set(receipt) != set(expected) | {"status"}
+            or any(core.json_bytes(receipt[key]) != core.json_bytes(value) for key, value in expected.items())
+            or type(receipt["operation_id"]) is not int
+            or type(receipt["generation"]) is not int
+        ):
+            raise fft.ReferenceError("Async save receipt identity mismatch")
+        outcome = receipt["status"]
+        if kind is None:
+            if outcome != {"state": status}:
+                raise fft.ReferenceError("Async save is not completed")
+        elif (
+            set(outcome) != {"state", "kind", "message"}
+            or outcome["state"] != status
+            or outcome["kind"] != kind
+            or not isinstance(outcome["message"], str)
+            or not outcome["message"]
+        ):
+            raise fft.ReferenceError("Async save failure mismatch")
+    return audit
+
+
+def check_async_roundtrips(binary, directory):
+    document = read_result(directory)
+    records = []
+    for fmt in ("json", "csv"):
+        original = directory / f"result.{fmt}"
+        original_hash = fft.digest(original.read_bytes())
+        output = directory / f"async-from-{fmt}"
+        command = candidate.run_command([str(binary), f"--async-read-{fmt}", str(original), str(output)])
+        if core.json_bytes(read_result(output)) != core.json_bytes(document):
+            raise fft.ReferenceError("Async save changed numeric arrays or provenance")
+        if (
+            fft.digest(original.read_bytes()) != original_hash
+            or (output / "recovered.json").read_bytes() != (output / "result.json").read_bytes()
+            or (output / "absent").exists()
+            or any(output.glob("*.tmp"))
+            or any(output.glob(".*.tmp"))
+        ):
+            raise fft.ReferenceError("Async save modified input or left partial output")
+        audit = validate_async_audit(core.read_json((output / "audit.json").read_bytes()), document, output)
+        records.append(
+            {
+                "format": fmt,
+                "command": command,
+                "audit": audit,
+                "input_sha256": original_hash,
+                "file_sha256": {p.name: fft.digest(p.read_bytes()) for p in sorted(output.iterdir())},
+            }
+        )
+    return records
+
+
 def pair(value):
     return None if value is None else [value["numerator"], value["denominator"]]
 
@@ -260,7 +340,7 @@ def validate_corpus(document, request, case):
     return arrays
 
 
-def verify(*, portable=False):
+def verify(*, portable=False, async_save=False, output=None):
     started = time.perf_counter()
     manifest, manifest_hash = candidate.load_manifest(core.DEFAULT_FIXTURES, portable=portable, is_core=True)
     scenarios = core.read_json(core.checked_file(core.DEFAULT_FIXTURES, manifest["scenarios"]))
@@ -276,9 +356,14 @@ def verify(*, portable=False):
             core.read_json(data) if entry["format"] == "json" else core.read_csv(data)
         )
     binary, build_record = build()
-    contracts, corpus = [], []
+    contracts, corpus, async_records = [], [], []
+    if output is not None:
+        if not async_save:
+            raise ValueError("--output requires --async-save")
+        output = Path(output).resolve()
+        output.mkdir(parents=True, exist_ok=False)
     with tempfile.TemporaryDirectory(prefix="migration-results-") as temp:
-        temp = Path(temp)
+        temp = output or Path(temp)
         for case in [c for c in scenarios if c["operation"] == "calibration"]:
             request, output = temp / "request.json", temp / case["id"]
             fft.write_json(request, {"schema_version": 1, "input": case["input"]})
@@ -302,6 +387,8 @@ def verify(*, portable=False):
                     "file_sha256": {p.name: fft.digest(p.read_bytes()) for p in sorted(output.iterdir())},
                 }
             )
+            if async_save:
+                async_records.append({"id": case["id"], "runs": check_async_roundtrips(binary, output)})
         for case in manifest["tones"]:
             request_data = request_for(case)
             request, output = temp / "request.json", temp / case["spec"]["id"]
@@ -367,13 +454,15 @@ def verify(*, portable=False):
                     "file_sha256": {p.name: fft.digest(p.read_bytes()) for p in sorted(output.iterdir())},
                 }
             )
+            if async_save:
+                async_records.append({"id": case["spec"]["id"], "runs": check_async_roundtrips(binary, output)})
     fft.assert_headless()
     paths = [ROOT / "native" / p for p in ("Cargo.toml", "Cargo.lock", "rust-toolchain.toml")]
     for crate in ("dsp-core", "graph-core"):
         paths += [ROOT / "native" / crate / "Cargo.toml", *sorted((ROOT / "native" / crate).rglob("*.rs"))]
     return {
         "schema_version": 1,
-        "task": "MIG-006-E",
+        "task": "MIG-006-E-async-save" if async_save else "MIG-006-E",
         "status": "pass",
         "mode": "portable" if portable else "pinned-reference",
         "environment": fft.environment(),
@@ -392,11 +481,14 @@ def verify(*, portable=False):
         "build": build_record,
         "contracts": contracts,
         "corpus": corpus,
+        "async_saves": async_records,
         "elapsed_seconds": time.perf_counter() - started,
         "limitations": [
             "Experimental versioned exchange, no legacy product importer or automatic settings migration",
             "Basic post-analysis V/FS calibration on input.raw only; SPL, frequency/phase calibration maps and physical device calibration remain unverified",
-            "No acquisition scheduler, Qt, async file worker, cancellation or product save-session integration",
+            "Qt save controls, legacy product compatibility, paired-file transactions and live save-session integration remain unverified",
+            "Worker job count is bounded; total retained bytes and encoder scratch memory are not a measured memory budget",
+            "Active writes cannot be interrupted; join/Drop must run on a teardown thread, never the GUI or callback",
             "Atomic no-clobber publication requires hard-link support; directory crash durability not evaluated",
             "Not a performance, other-OS or technology-adoption result",
         ],
@@ -407,14 +499,22 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--portable", action="store_true")
     parser.add_argument("--report", type=Path)
+    parser.add_argument(
+        "--async-save", action="store_true", help="also verify the bounded file worker from both JSON and CSV"
+    )
+    parser.add_argument("--output", type=Path, help="new directory for --async-save artifacts")
     args = parser.parse_args()
     try:
-        report = verify(portable=args.portable)
+        report = verify(portable=args.portable, async_save=args.async_save, output=args.output)
         if args.report:
             fft.write_json(args.report, report)
         print(
             f"PASS: {len(report['contracts'])} calibration contracts, 4 saved exchanges, {len(report['corpus'])} shared FFT results; JSON/CSV exact roundtrips"
         )
+        if args.async_save:
+            print(
+                f"PASS: {sum(len(case['runs']) for case in report['async_saves'])} async save runs, no-clobber/failure/recovery receipts"
+            )
     except (fft.ReferenceError, OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
         print(f"FAIL: {error}", file=sys.stderr)
         return 1

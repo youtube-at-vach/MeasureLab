@@ -1,4 +1,5 @@
 //! Headless MIG-006-E harness: inputs only, saved bytes, three consumers and file roundtrips.
+use graph_core::export::{SaveStatus, SaveWorker};
 use graph_core::result::{Capture, Format, MeasurementResult, Profile};
 use graph_core::{
     Average, FftKey, Graph, Limits, Precision, Presentation, Rational, Samples, SignalBlock,
@@ -6,6 +7,7 @@ use graph_core::{
 };
 use serde::Deserialize;
 use serde_json::{Value, json};
+use std::time::Duration;
 use std::{collections::BTreeMap, fs, path::Path, sync::Arc};
 type Error = Box<dyn std::error::Error>;
 #[derive(Deserialize)]
@@ -92,6 +94,63 @@ fn roundtrip(result: &MeasurementResult, directory: &Path) -> Result<(), Error> 
         }
     }
     Ok(())
+}
+fn async_roundtrip(result: MeasurementResult, directory: &Path) -> Result<Value, Error> {
+    let snapshot = Arc::new(result);
+    let mut worker = SaveWorker::start(2)?;
+    let mut receipts = Vec::new();
+    let files = [("result.json", Format::Json), ("result.csv", Format::Csv)];
+    let tickets = files
+        .iter()
+        .map(|(name, format)| worker.submit(Arc::clone(&snapshot), directory.join(name), *format))
+        .collect::<Result<Vec<_>, _>>()?;
+    for (ticket, (name, format)) in tickets.iter().zip(files) {
+        let receipt = ticket.wait(Duration::from_secs(30));
+        if receipt.status != SaveStatus::Saved
+            || MeasurementResult::load(&directory.join(name), format)?.to_value()
+                != snapshot.to_value()
+        {
+            return Err("async roundtrip did not complete exactly".into());
+        }
+        receipts.push(receipt);
+    }
+    for (name, format) in files {
+        let path = directory.join(name);
+        let bytes = fs::read(&path)?;
+        let ticket = worker.submit(Arc::clone(&snapshot), path.clone(), format)?;
+        let receipt = ticket.wait(Duration::from_secs(30));
+        if !matches!(&receipt.status, SaveStatus::Failed { kind, .. } if kind == "AlreadyExists")
+            || fs::read(path)? != bytes
+        {
+            return Err("async existing destination was not preserved".into());
+        }
+        receipts.push(receipt);
+    }
+    let failed = worker.submit(
+        Arc::clone(&snapshot),
+        directory.join("absent/result.json"),
+        Format::Json,
+    )?;
+    let receipt = failed.wait(Duration::from_secs(30));
+    if !matches!(&receipt.status, SaveStatus::Failed { kind, .. } if kind == "NotFound") {
+        return Err("missing parent was not a save failure".into());
+    }
+    receipts.push(receipt);
+    let recovered = worker.submit(
+        Arc::clone(&snapshot),
+        directory.join("recovered.json"),
+        Format::Json,
+    )?;
+    let receipt = recovered.wait(Duration::from_secs(30));
+    if receipt.status != SaveStatus::Saved {
+        return Err("file worker did not recover after I/O failure".into());
+    }
+    receipts.push(receipt);
+    worker.join()?;
+    if Arc::strong_count(&snapshot) != 1 {
+        return Err("file worker retained numeric snapshot".into());
+    }
+    Ok(json!({"capacity":2, "receipts":receipts, "snapshot_released_by_worker":true}))
 }
 fn tone(request: &Path, output: &Path) -> Result<Value, Error> {
     let request: ToneRequest = serde_json::from_slice(&fs::read(request)?)?;
@@ -289,6 +348,11 @@ fn fft(request: &Path, input: &Path, output: &Path) -> Result<Value, Error> {
 fn run() -> Result<(), Error> {
     let args: Vec<_> = std::env::args_os().skip(1).collect();
     let audit = match args.as_slice() {
+        [mode, input, output] if mode == "--async-read-json" || mode == "--async-read-csv" => {
+            let result = MeasurementResult::load(Path::new(input), if mode == "--async-read-json" { Format::Json } else { Format::Csv })?;
+            fs::create_dir(Path::new(output))?;
+            async_roundtrip(result, Path::new(output))?
+        },
         [mode, input, output] if mode == "--read-json" || mode == "--read-csv" => {
             let result = MeasurementResult::load(Path::new(input), if mode == "--read-json" { Format::Json } else { Format::Csv })?;
             fs::create_dir(Path::new(output))?;

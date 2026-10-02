@@ -49,6 +49,12 @@ AC12のdevice/portとID対応、適用区間/係数/revision、不変result、�
 Qtの編集・適用は[決定0023](../decisions/0023-qt-calibration-edit.md)で追加し、取得中の原子的変更と旧result不変性を検査する。
 製品保存操作/互換/非同期化、map/物理校正、性能/他OS、AC12全体は後続。
 
+006-Eの[非同期snapshot保存](../decisions/0024-async-snapshot-save.md)を追加した。
+AC07/12/13の保存worker境界として、bounded受付/実完了/失敗/pending cancel/終了/数値snapshot回収を検査する。
+既存2校正契約/4交換例と4/8ch f32/f64を両formatから保存し、全値/来歴の完全往復とreceiptを検査する。
+Qt保存操作/製品互換/取得中の保存負荷/長時間は後続で、AC全体の合格ではない。
+残工程と依存は[MIG-008までの整理表](../remaining-to-mig008.md)を参照する。
+
 ## fixtureの最小セット
 
 | ID | 入力・操作 | 合格条件 | 実装・検証タスク |

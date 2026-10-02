@@ -1,6 +1,6 @@
 # MIG-002後の実行単位
 
-2026-10-01更新。Issue作成や技術採用の決定ではなく、このworktreeで再開するためのローカル作業票。
+2026-10-02更新。Issue作成や技術採用の決定ではなく、このworktreeで再開するためのローカル作業票。
 共通基準は`9fd79958f6a8bbae6808813d3704617612e6d26c`と[決定0001](decisions/0001-p0-contracts.md)。
 各タスクは着手時にbranch/commit、変更境界、コマンド、結果、未確認点を[status](status.md)へ追記する。
 既存の検証ブランチを使い、独立した実装を切り出すときは`codex/migration-<task>`、PR比較先は`codex/next-core-evaluation`。
@@ -31,15 +31,18 @@
 | 006-B | 固定DAG・共有key・購読token・bounded cache | 006-A、003-B、P15 | AC05〜07。評価count/同一ID、条件分岐、独立平均、最後の解除/終了回収 | 汎用graph editor | 完了（2026-09-30、pure graphのRust16テスト/保存18ケース。実取得/Qt統合は後続） |
 | 006-C | trigger/history・Timebase・generation・validity | 003-B、006-B、P03 | AC08/09、異なるcursor/通知遅延・保持超過・旧世代拒否。共有graphへ統合 | 外部trigger実機adapter | 完了（2026-09-30、worker所有履歴/pure graph・保存13契約/4入力bytes、Rust27テスト。実取得/Qtは後続） |
 | 006-D | 最小rate変換/filterとvalidity伝播 | 003-C、006-C、P06 | AC10/14、同じgraph内で遅延/区間/phase stateを保持 | 高品質resamplerの全機能 | 完了（2026-09-30、f64保存21ケース×5 chunk/6 rate境界と一段のpure graph。f32・IIR gap回復・実取得/Qtは後続） |
-| 006-E | 不変result・channel校正・CSV/JSON来歴 | 003-B、006-B/C、P13/P14 | AC12、再読込、保存失敗、profile変更後の不変性、uncalibrated | 旧設定の自動移行 | 完了（2026-10-01、pure不変result/ID校正/JSON・CSV。保存2契約・4例と4/8ch f32/f64。製品互換/async/Qtは後続） |
+| 006-E | 不変result・channel校正・CSV/JSON来歴 | 003-B、006-B/C、P13/P14 | AC12、再読込、保存失敗、profile変更後の不変性、uncalibrated | 旧設定の自動移行 | 完了（2026-10-01、pure不変result/ID校正/JSON・CSV。保存2契約・4例と4/8ch f32/f64。非同期workerは次行、製品互換/Qt保存操作は後続） |
+| 006-E-async-save | 不変snapshotのbounded非同期保存worker | 006-E、007-A-calibration-editのencode負荷記録。graph-core/exportと独立runner | AC07/12/13のworker境界。受付/実完了/失敗/pending cancel/寿命、graph進行、2契約と4入力の両format完全往復 | Qt保存操作、製品互換形式、pair transaction、取得中/長時間性能 | 評価範囲完了（2026-10-02、Rust新規9件、保存12実行/36 saved/36 failed）。結果はstatus |
+| 006-E-compat | 製品形式/旧CSV・JSONとsnapshotの互換adapter・読込み | 006-E、006-E-async-save、現行ExportTrace。製品版管理は008で判断 | AC12。元値/軸/単位/校正/metadata、旧fileのunknown、失敗/上書きの保証範囲を検査 | 全旧設定自動移行、全解析形式 | 未着手。残工程整理の第2工程 |
 | 007-A | 同じ結果をline/heatmapへ表示、操作/画像保存 | 004、006。P19のsnapshot境界 | AC05/07/08、軸/cursor/zoom・画像・再生成・サイズ/9言語 | 全41機能のUI | 進行中（2026-10-01、保存4/8ch f32/f64とBlackHole実入力→実graph→両Qt表示。分離view/翻訳JSON/9言語に手動Triggerのhold/retry/releaseを追加。セッションID校正は007-A-calibration-input、取得中のQt編集・適用は007-A-calibration-editへ追加。製品保存操作/実window manager/他OSは後続。実施結果はstatus） |
 | 007-A-trigger | 取得履歴の非消費query→共有raw FFT→trigger付き不変result | 005-graph、006-C/E。解析owner APIと独立runner | AC08/09のpending/gap/分数残差/旧世代拒否、通常平均/位置不変、保存4入力×2bindingの全bytes・32完全result | Qt操作、実入力要求配送、arm/cancel/検出器、長時間性能 | worker範囲完了（2026-10-01）。Qt/実入力の配送は次行で検証 |
 | 007-A-trigger-display | Qtのtyped要求/revision→解析owner、両view共通hold/retry/release | 007-A-trigger、007-live-display/分離/翻訳境界 | AC08/09/13。保存4入力×9言語×両Qt、元bytes/全result、pending/gap非数値、保持中の取得継続、旧世代/停止/破棄、BlackHole短時間診断 | 検出器のarm/cancel、前段filter/外部clock、製品校正/保存、長時間性能/他OS | 配送を追加（2026-10-01）。成功件数と未確認範囲はstatus |
 | 007-A-calibration-input | session ID/device/port校正→通常/Trigger取得結果→両QtのV/dBVとv1診断保存 | 006-E、007-A-trigger-display。後段校正/同じ不変resultを使用 | AC12/13。port/profile逆順、異なる係数/disabled/未指定、元bytesの全配列、完全CSV/JSON再読込、寿命/9言語/サイズ、BlackHole短時間診断 | Qtのprofile編集・適用mailbox、製品保存UI/互換/async、SPL/map、物理校正/性能/他OS | 接続範囲完了（2026-10-02、保存72実行/BlackHole18実行）。詳細と未確認範囲はstatus |
 | 007-A-calibration-edit | 取得中のQt profile編集・適用と通常/Trigger結果 | 007-A-calibration-input。typed mailbox/解析ownerと共通ダイアログ | AC12/13。原子的拒否/世代/busy/停止、変更前後の全配列/元bytes/共有raw/旧保持結果、CSV/9言語/サイズ、BlackHole短時間 | 製品保存UI/互換/async/再起動維持、SPL/map、物理校正/性能/他OS | 評価範囲完了（2026-10-02、保存72実行/BlackHole18実行、既存live回帰6実行）。詳細と未確認範囲はstatus |
+| 007-A-save | 両Qtから同じ通常/Trigger snapshotの保存操作 | 007-A-calibration-edit、006-E-async-save。display-core/両Qt/共通QML | AC07/12/13。受付と実完了、busy/cancel/失敗でも取得継続、hold/分離/再生成、全値/来歴/9言語/サイズ、GUI外のjoin | 全旧形式、長時間性能/他OS | 未着手。次に着手する保存側の単位 |
 | 007-B | 描画/GUI遅延・CPU/RSS・表示編集時間 | 007-A、性能protocol | AC15/16。遅いGUIでも測定を保ち、単独/複数表示を比較 | 理論だけでの性能判定 | 未着手 |
 | 007-C | Plot Renderer Feasibility Spike。簡易plotterを基準にrsplot / wgpu系など1〜2候補を最小試験 | 004、007-Aの既存表示境界。独立試験コードと検証記録。007-A全体の完了は待たない | Spectrum 10万〜100万点の連続更新、Spectrogram rolling image、Zoom/Pan・座標変換・カーソル、QML統合/ライフサイクル、CPU/GPU負荷/コピー回数の比較表と再実行手順・未確認点 | renderer採用判断、製品組込み、個別widgetの本実装 | Intel最小試験・記録完了（2026-10-01、wgpu 1候補/PyQt画像provider。基準100万点はSIGBUS。native texture共有・他OS等は未確認） |
-| 008 | 2chフロー統合と四案の比較判断表 | 004〜007、実機/配布記録 | AC01〜16、仮想4/8ch回帰、採用/変更/段階導入/現行継続の理由と未確認点 | P3以降の自動開始、旧版置換 | 未着手 |
+| 008 | 2chフロー統合と四案の比較判断表 | 004〜007、実機/配布記録 | AC01〜16、仮想4/8ch回帰、採用/変更/段階導入/現行継続の理由と未確認点 | P3以降の自動開始、旧版置換 | 未着手。008-A統合→008-B比較→008-C判断。依存と残工程は下の整理表 |
 
 MIG-003はA/B/Cすべての入力/期待値と再現コマンドが揃うまで完了にしない。
 MIG-004はSDK導入だけで完了にしない。OSや実機の不足はその試験だけを未確認として残し、
@@ -47,6 +50,9 @@ MIG-004はSDK導入だけで完了にしない。OSや実機の不足はその�
 各試験の具体的な実行コマンドは実装と同時に作業票へ追加し、まだ存在しないrunnerを実行済みと記録しない。
 007-Cの試験条件・完了成果物は[評価計画の簡易検証タスク](../guide/RUST_QML_MIGRATION_PLAN.md#121-mig-007-c-plot-renderer-feasibility-spike採用判断ではない)を参照する。
 007-Cの[再実行・負荷/コピーの境界](../native/renderer-spike.md)と[試験結果](status.md#mig-007-c-plot-renderer-feasibility-spikeの成果と検証)を追加済み。基準100万点の失敗も比較記録へ残す。
+
+[MIG-008までの残工程](remaining-to-mig008.md)に、未完了範囲・実施順・依存・実機/別環境の必要条件を整理した。
+次は007-A-save、006-E-compat、005-A-commonへ進める。006-D-integration、008-A/B/Cも同表のローカル作業単位であり、Issue作成や採用判断は行っていない。
 
 ## 003-Aの再検査
 
@@ -237,7 +243,22 @@ NumPy-only CIは明示`--portable`を使う。原点/処理遅延のunknownを0�
 ```
 
 ID校正・profile/世代変更後の不変性、未校正、null/reason、軸/Timebase/trigger、完全再読込と保存失敗を検査する。
-NumPy-only CIは明示`--portable`。製品importer/非同期保存/cancel/Qt/実取得/校正mapは後続。
+NumPy-only CIは明示`--portable`。製品importer/Qt保存操作/取得中の保存負荷/校正mapは後続。
+
+## 006-E 非同期snapshot保存の再検査
+
+[非同期保存手順](../native/async-save.md)と[決定0024](decisions/0024-async-snapshot-save.md)を参照。
+既存v1形式を使い、元fixture/許容差を変更せず、両formatの完全往復と実workerのreceiptを検査する。
+
+```bash
+cargo +1.98.1 test --offline --locked --manifest-path native/Cargo.toml -p graph-core --lib export::tests
+./.venv/bin/python scripts/migration_result_candidate.py --async-save --output .migration-local/async-save-new --report .migration-local/async-save-new/report.json
+./.venv/bin/pytest -q tests/logic_verification/test_migration_async_save_candidate.py tests/logic_verification/test_migration_result_candidate.py
+```
+
+新規directoryに12実行/36 saved/36 failedと全file/hashを保存する。別OS/最小環境は明示`--portable`。
+workerはbounded job数/完了/失敗/pending cancel/寿命の範囲まで。
+Qt保存操作、製品互換形式、byte予算/取得中の負荷/長時間/他OSは後続。
 
 ## 007-Aの再検査
 
