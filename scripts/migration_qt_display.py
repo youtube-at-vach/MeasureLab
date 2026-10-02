@@ -204,6 +204,7 @@ def run_display(
     calibration_edit=False,
     saving=False,
     product_saving=False,
+    importing=False,
 ):
     directory.mkdir(parents=True, exist_ok=False)
     evidence = directory / "results"
@@ -241,6 +242,13 @@ def run_display(
 
             (saves / "partial.csv.metadata.json").write_bytes(PARTIAL_METADATA)
             command += ["--save-format", "product"]
+    if importing:
+        from scripts.migration_qt_import import prepare_inputs
+
+        imports = directory.resolve() / "imports"
+        inputs = prepare_inputs(imports)
+        child_env["MEASURELAB_IMPORT_EVIDENCE"] = str(directory.resolve() / "imported")
+        command += ["--import-test", "--import-directory", str(imports)]
     started = time.monotonic()
     try:
         result = subprocess.run(  # noqa: S603 - explicit local evaluation binary
@@ -272,7 +280,9 @@ def run_display(
             m in output
             for m in (
                 "DISPLAY_READY",
-                "DISPLAY_SAVE_PASS"
+                "DISPLAY_IMPORT_PASS"
+                if importing
+                else "DISPLAY_SAVE_PASS"
                 if saving
                 else "DISPLAY_CALIBRATION_EDIT_PASS"
                 if calibration_edit
@@ -288,6 +298,10 @@ def run_display(
     details = {}
     if passed:
         try:
+            if importing:
+                from scripts.migration_qt_import import validate_run
+
+                details["import"] = validate_run(output, directory, imports, inputs, body, language, case)
             if saving:
                 from scripts.migration_qt_save import validate_run
 
@@ -321,7 +335,8 @@ def run_display(
 
                     details["calibration"] = validate_ui(details["trigger"], evidence, language)
             size = (
-                details.get("save", {}).get("size")
+                details.get("import", {}).get("size")
+                or details.get("save", {}).get("size")
                 or details.get("edit", {}).get("size")
                 or details.get("trigger", {}).get(
                     "size", details.get("workspace", {}).get("main", {}).get("size", (1000, 640))

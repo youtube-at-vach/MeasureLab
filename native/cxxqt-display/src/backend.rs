@@ -23,6 +23,7 @@ mod ffi {
         #[qproperty(QString, capture)]
         #[qproperty(QString, calibration)]
         #[qproperty(QString, saves)]
+        #[qproperty(QString, imports)]
         #[qproperty(QString, error)]
         #[qproperty(bool, testing)]
         #[qproperty(QString, translations)]
@@ -56,6 +57,14 @@ mod ffi {
         #[qinvokable]
         fn close_saves(self: Pin<&mut Self>);
         #[qinvokable]
+        fn import_product(self: Pin<&mut Self>, encoded: &QString) -> bool;
+        #[qinvokable]
+        fn poll_imports(self: Pin<&mut Self>);
+        #[qinvokable]
+        fn cancel_import(self: Pin<&mut Self>, operation_id: u64) -> bool;
+        #[qinvokable]
+        fn close_imports(self: Pin<&mut Self>);
+        #[qinvokable]
         fn apply_calibration(self: Pin<&mut Self>, encoded: &QString) -> bool;
         #[qinvokable]
         fn request_trigger(self: Pin<&mut Self>, encoded: &QString) -> bool;
@@ -79,6 +88,7 @@ pub struct DisplayBackendRust {
     capture: QString,
     calibration: QString,
     saves: QString,
+    imports: QString,
     error: QString,
     testing: bool,
     translations: QString,
@@ -98,6 +108,7 @@ impl Default for DisplayBackendRust {
             capture: QString::default(),
             calibration: QString::default(),
             saves: QString::default(),
+            imports: QString::default(),
             error: QString::default(),
             testing: std::env::args().any(|arg| arg == "--self-test"),
             translations: QString::from(&display_core::locale::selected_catalog()),
@@ -204,6 +215,28 @@ impl ffi::DisplayBackend {
     fn close_saves(mut self: Pin<&mut Self>) {
         self.as_mut().rust_mut().display.close_saves();
         self.poll_saves();
+    }
+    fn import_product(mut self: Pin<&mut Self>, encoded: &QString) -> bool {
+        let accepted = self
+            .as_mut()
+            .rust_mut()
+            .display
+            .import_product(&encoded.to_string());
+        self.poll_imports();
+        accepted
+    }
+    fn poll_imports(self: Pin<&mut Self>) {
+        let encoded = self.display.poll_imports();
+        self.set_imports(QString::from(&encoded));
+    }
+    fn cancel_import(mut self: Pin<&mut Self>, operation_id: u64) -> bool {
+        let cancelled = self.display.cancel_import(operation_id);
+        self.as_mut().poll_imports();
+        cancelled
+    }
+    fn close_imports(mut self: Pin<&mut Self>) {
+        self.as_mut().rust_mut().display.close_imports();
+        self.poll_imports();
     }
     fn apply_calibration(mut self: Pin<&mut Self>, encoded: &QString) -> bool {
         let accepted = self

@@ -16,6 +16,7 @@ mod backend {
         capture: String,
         calibration: String,
         saves: String,
+        imports: String,
         error: String,
         testing: bool,
         translations: String,
@@ -35,6 +36,7 @@ mod backend {
                 capture: String::new(),
                 calibration: String::new(),
                 saves: String::new(),
+                imports: String::new(),
                 error: String::new(),
                 testing: std::env::args().any(|arg| arg == "--self-test"),
                 translations: display_core::locale::selected_catalog(),
@@ -53,6 +55,7 @@ mod backend {
         qproperty!("capture", Member = capture, Notify = changed);
         qproperty!("calibration", Member = calibration, Notify = changed);
         qproperty!("saves", Member = saves, Notify = changed);
+        qproperty!("imports", Member = imports, Notify = changed);
         qproperty!("error", Member = error, Notify = changed);
         qproperty!("testing", Member = testing, Constant);
         qproperty!("translations", Member = translations, Constant);
@@ -159,6 +162,28 @@ mod backend {
             self.poll_saves();
         }
         #[qslot]
+        fn import_product(&mut self, encoded: String) -> bool {
+            let accepted = self.display.import_product(&encoded);
+            self.poll_imports();
+            accepted
+        }
+        #[qslot]
+        fn poll_imports(&mut self) {
+            self.imports = self.display.poll_imports();
+            self.changed();
+        }
+        #[qslot]
+        fn cancel_import(&mut self, operation_id: u64) -> bool {
+            let cancelled = self.display.cancel_import(operation_id);
+            self.poll_imports();
+            cancelled
+        }
+        #[qslot]
+        fn close_imports(&mut self) {
+            self.display.close_imports();
+            self.poll_imports();
+        }
+        #[qslot]
         fn apply_calibration(&mut self, encoded: String) -> bool {
             let accepted = self.display.apply_calibration(&encoded);
             self.apply(self.display.peek());
@@ -200,6 +225,7 @@ fn main() {
     let code = app.run();
     drop(app);
     display_core::finish_saves();
+    display_core::finish_imports();
     assert_eq!(display_core::live_workers(), 0);
     assert_eq!(display_core::live_models(), 0);
     println!("DISPLAY_TEARDOWN workers=0 models=0");

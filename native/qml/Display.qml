@@ -50,6 +50,7 @@ ApplicationWindow {
     property bool triggerTesting: Qt.application.arguments.indexOf("--trigger-test") >= 0
     property bool calibrationEditingTest: Qt.application.arguments.indexOf("--calibration-edit-test") >= 0
     property bool savingTest: Qt.application.arguments.indexOf("--save-test") >= 0
+    property bool importingTest: Qt.application.arguments.indexOf("--import-test") >= 0
     property var workspaceEvidence: ({})
     property var lineBefore: null
     property var mapBefore: null
@@ -160,7 +161,7 @@ ApplicationWindow {
     Component.onCompleted: {
         recreate();
         console.log("DISPLAY_READY");
-        if (backend.testing && !triggerTesting && !calibrationEditingTest && !savingTest)
+        if (backend.testing && !triggerTesting && !calibrationEditingTest && !savingTest && !importingTest)
             exercise.start();
     }
     Rectangle {
@@ -215,6 +216,11 @@ ApplicationWindow {
                     text: tr("migration.display.save_measurement")
                     enabled: backend && !!frame
                     onClicked: measurementSave.selectResult(frame)
+                }
+                Button {
+                    text: tr("migration.display.import_open")
+                    enabled: !!backend
+                    onClicked: productImport.open()
                 }
                 Label {
                     text: tr("migration.display.png_path")
@@ -314,6 +320,20 @@ ApplicationWindow {
         host: window
         dialog: measurementSave
         triggerPanel: triggerPanel
+        line: line
+        map: map
+    }
+    ImportDialog {
+        id: productImport
+        source: window.backend
+        messages: window.messages
+        x: (window.width - width) / 2
+        y: (window.height - height) / 2
+    }
+    ImportExercise {
+        enabled: window.importingTest
+        host: window
+        dialog: productImport
         line: line
         map: map
     }

@@ -31,6 +31,8 @@ mod trigger;
 pub use trigger::TriggerResponse;
 mod save;
 pub use save::finish_saves;
+mod import;
+pub use import::finish_imports;
 
 #[cfg(feature = "live-audio")]
 mod live;
@@ -176,6 +178,7 @@ pub struct Display {
     worker: Option<JoinHandle<()>>,
     request: Option<Request>,
     saves: save::Controller,
+    imports: import::Controller,
 }
 impl Default for Display {
     fn default() -> Self {
@@ -186,6 +189,7 @@ impl Default for Display {
             worker: None,
             request: None,
             saves: save::Controller::default(),
+            imports: import::Controller::default(),
         }
     }
 }

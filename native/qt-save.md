@@ -64,5 +64,6 @@ diskを待たないQObject破棄、終了後の実file/全配列を検査する�
 製品形式も同じwriter境界へ接続し、混在formatのbusy/取消/終了と、旧pinの4形式完全往復を検査する。
 
 このrunnerは保存入力の短い正確性診断。BlackHoleでの新しい保存操作、実window manager、
-長時間/負荷下の性能、byte予算、他OS、製品import UI/旧トレースnative import、pair transaction、再起動校正維持は後続。
+長時間/負荷下の性能、byte予算、他OS、import結果のplot統合、pair transaction、再起動校正維持は後続。
+旧トレースnative importと[両Qtの読込み・参照表](qt-import.md)は独立した評価単位へ追加した。
 MIG-007/008全体とRust/QML採用の合格にはしない。

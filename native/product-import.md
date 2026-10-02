@@ -36,7 +36,8 @@ snapshot/projection/JSON保持とencoder scratchはallocationを伴い、process
 
 すべて同期のfile-worker APIであり、GUI/audio callback/取得ownerから直接呼ばない。
 新しいprocessの独立CLIで結果を検査し、入力/descriptor/sidecarを変更せずowned resultを返す。
-Qtへの非同期配送、容量/取消/旧要求のfence、GUI外のjoinは次の評価単位。
+[両Qtの非同期配送・参照表](qt-import.md)に容量/取消/旧要求のfenceとGUI外joinを追加した。
+この同期APIをGUI/取得ownerから直接呼ばず、独立reader経由で利用する。
 
 ## 再検査
 

@@ -147,6 +147,7 @@ jobs:
           python -m pip install numpy==2.2.6 pytest
           python scripts/check_trn_keys.py --strict
           python -m pytest -q tests/logic_verification/test_migration_qt_workspace.py tests/logic_verification/test_migration_qt_display.py tests/logic_verification/test_migration_qt_trigger.py tests/logic_verification/test_migration_qt_calibration.py tests/logic_verification/test_migration_qt_calibration_edit.py tests/logic_verification/test_migration_qt_save.py
+          python -m pytest -q tests/logic_verification/test_migration_qt_import.py
           python scripts/migration_qt_probe.py --qt-prefix "$QT_EVALUATION_PREFIX" --repeat 3
           python scripts/migration_qt_display.py --qt-prefix "$QT_EVALUATION_PREFIX" --portable --output qt-display-results
           python scripts/migration_qt_workspace.py --qt-prefix "$QT_EVALUATION_PREFIX" --portable --output qt-workspace-results
@@ -155,3 +156,4 @@ jobs:
           python scripts/migration_qt_calibration_edit.py --qt-prefix "$QT_EVALUATION_PREFIX" --portable --all-inputs --output qt-calibration-edit-results
           python scripts/migration_qt_save.py --qt-prefix "$QT_EVALUATION_PREFIX" --portable --all-inputs --output qt-save-results
           python scripts/migration_qt_save.py --qt-prefix "$QT_EVALUATION_PREFIX" --portable --product-format --all-inputs --output qt-product-save-results
+          python scripts/migration_qt_import.py --qt-prefix "$QT_EVALUATION_PREFIX" --portable --all-inputs --output qt-product-import-results
