@@ -9,6 +9,7 @@ MIG-006-Aの`dsp-core`はGUI非依存のFFT/窓/単位/PSD候補。[FFT比較手
 006-Bの`graph-core`は固定DAG・共有FFT結果・購読token・独立平均・容量制限付きcacheの候補。
 [共有graphの手順](shared-graph.md)を参照。
 006-Cのworker所有履歴・Trigger/Timebase・世代fenceは[履歴候補の手順](history-candidate.md)を参照。
+006-Eの[製品互換adapter評価](product-exchange.md)では、現行ExportTrace/exporterとnative readerの往復、旧JSON/CSVのunknownを検査する。native製品codec/file worker接続は後続。
 006-Dのgraph所有filter/rate stateは[filter候補の手順](filter-candidate.md)を参照。
 005-Aの`audio-core`はN-channel/route/tap/取得queue、`audio-probe`はCPAL基本adapter。
 [音声境界・実機診断](audio-boundary.md)を参照。005の[取得worker](acquisition-candidate.md)でinput.raw queue/履歴/共有FFTを接続。

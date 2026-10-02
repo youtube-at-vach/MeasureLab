@@ -3,10 +3,10 @@ name: Native evaluation
 on:
   push:
     branches: ["codex/next-core-evaluation", "codex/migration-*"]
-    paths: ["native/**", "migration/**", "src/assets/lang/**", "scripts/translation_utils.py", "scripts/check_trn_keys.py", "scripts/update_translations.py", "scripts/migration_*.py", "tests/logic_verification/test_migration_*.py", "tests/conftest.py", "pytest.ini", ".gitignore", ".github/workflows/native-evaluation.yml"]
+    paths: ["native/**", "migration/**", "src/assets/lang/**", "src/core/export/**", "src/core/localization.py", "src/core/utils.py", "scripts/translation_utils.py", "scripts/check_trn_keys.py", "scripts/update_translations.py", "scripts/migration_*.py", "tests/logic_verification/test_migration_*.py", "tests/conftest.py", "pytest.ini", ".gitignore", ".github/workflows/native-evaluation.yml"]
   pull_request:
     branches: ["main", "codex/next-core-evaluation", "codex/migration-*"]
-    paths: ["native/**", "migration/**", "src/assets/lang/**", "scripts/translation_utils.py", "scripts/check_trn_keys.py", "scripts/update_translations.py", "scripts/migration_*.py", "tests/logic_verification/test_migration_*.py", "tests/conftest.py", "pytest.ini", ".gitignore", ".github/workflows/native-evaluation.yml"]
+    paths: ["native/**", "migration/**", "src/assets/lang/**", "src/core/export/**", "src/core/localization.py", "src/core/utils.py", "scripts/translation_utils.py", "scripts/check_trn_keys.py", "scripts/update_translations.py", "scripts/migration_*.py", "tests/logic_verification/test_migration_*.py", "tests/conftest.py", "pytest.ini", ".gitignore", ".github/workflows/native-evaluation.yml"]
   workflow_dispatch:
 
 permissions:
@@ -48,6 +48,7 @@ jobs:
           ./.venv/bin/python scripts/migration_filter_candidate.py --portable --report filter-candidate.json
           ./.venv/bin/python scripts/migration_result_candidate.py --portable --report result-candidate.json
           ./.venv/bin/python scripts/migration_result_candidate.py --portable --async-save --output async-save-results --report async-save-results/report.json
+          ./.venv/bin/python scripts/migration_product_candidate.py --portable --output product-compat-results
           ./.venv/bin/python scripts/migration_audio_candidate.py --portable --report audio-candidate.json
           ./.venv/bin/python scripts/migration_audio_graph.py --portable --report acquisition-candidate.json
           ./.venv/bin/python scripts/migration_trigger_candidate.py --portable --output trigger-candidate

@@ -358,8 +358,6 @@ def verify(*, portable=False, async_save=False, output=None):
     binary, build_record = build()
     contracts, corpus, async_records = [], [], []
     if output is not None:
-        if not async_save:
-            raise ValueError("--output requires --async-save")
         output = Path(output).resolve()
         output.mkdir(parents=True, exist_ok=False)
     with tempfile.TemporaryDirectory(prefix="migration-results-") as temp:
@@ -502,7 +500,7 @@ def main():
     parser.add_argument(
         "--async-save", action="store_true", help="also verify the bounded file worker from both JSON and CSV"
     )
-    parser.add_argument("--output", type=Path, help="new directory for --async-save artifacts")
+    parser.add_argument("--output", type=Path, help="new directory retaining verified snapshot artifacts")
     args = parser.parse_args()
     try:
         report = verify(portable=args.portable, async_save=args.async_save, output=args.output)

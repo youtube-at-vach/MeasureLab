@@ -6,7 +6,8 @@
 
 MIG-001/002とMIG-003の参照側は完了。004はIntel範囲、006はpure範囲、
 007-Aは保存/BlackHole表示・Trigger・校正編集まで検証した。
-今回006-Eの非同期保存workerを追加した。Qtの保存操作と製品互換形式への接続は次の工程である。
+006-Eの非同期保存workerと、製品JSON/CSVの互換adapter評価を追加した。
+互換adapterはPythonの独立試作で、native/file workerとQtへの製品形式接続は次の工程である。
 MIG-008の統合と採用判断、41機能の移行は未完了。
 
 ## 実施順と依存
@@ -18,7 +19,7 @@ MIG-008の統合と採用判断、41機能の移行は未完了。
 ```mermaid
 flowchart TD
     S[006-E async保存worker: 検証済み] --> U[007-A-save: 両Qtの保存操作]
-    S --> C[006-E-compat: 製品形式と読込みadapter]
+    S --> C[006-E-compat: 評価試作済み / native接続待ち]
     A[005-A: 共通backend・route・tap] --> I[008-A: 2ch最小フロー統合]
     U --> I
     C --> I
@@ -36,7 +37,7 @@ flowchart TD
 | 順序・作業 | 現状と残る実装/検証 | 完了条件・AC | 必要な条件 |
 | --- | --- | --- | --- |
 | 1. 007-A-save | 通常/Triggerの同じ完成snapshotを両Qtから保存。保存先/format、queued/writing/saved/failed/cancelled、busy、終了の操作を接続する。workerは完成済み | 元の全配列/校正/区間を保持、pending/gapから正常値を作らない、I/O failureでも取得継続。hold/分離/停止/再生成、9言語/サイズ/操作到達性。AC07/12/13 | 現在のIntel/Qtと保存fixture、BlackHoleで着手可能。join/DropはGUI外 |
-| 2. 006-E-compat | v1実験形式と現行ExportTrace/CSV/JSONの対応を定義し、互換adapterと読込みを試作。profile再起動維持の範囲も定義する | 値/軸/単位/校正/metadataの往復。旧fileにないStream/Timebaseはunknown。製品schemaは008で版管理し、失敗/上書き/単一fileとpairの保証を明示。AC12 | 現在の保存fixture/現行exporterで着手可能 |
+| 2. 006-E-compat | 評価用Python adapterの製品JSON carrier/CSV sidecar、旧JSON/32 CSV条件の読込みを検査。native codec/file workerへの製品形式接続と取得profile再起動維持は残る | 値/軸/単位/校正/metadataの往復。旧fileにないStream/Timebaseはunknown。製品schemaは008で版管理し、失敗/上書き/単一fileとpairの保証を明示。AC12 | 保存fixture/現行exporterの評価範囲を検査済み。製品接続は現在の環境で着手可能 |
 | 3. 005-A-common | CPALとPortAudioを共通backend契約へ接続。現在のinput.rawと動的f32 routeを、購読されたtapのgraphへ統合する | 非対称2/4/8ch、ID/port/route ack/世代/gap、input.calibrated、output.mixed/post_dut/device_bufferの位置と処理条件を照合。DUT未実装は同一tap扱いにしない。AC01〜03/09/11 | 保存入力とBlackHoleで着手可能。全tapの常時copyは不要 |
 | 4. 006-D-integration | 一段f64 filter/rateのpure契約を取得schedulerへ接続。P2で使うdtype/構成を固定する | AC10のtrigger/遅延/gap/warmupと、AC14のpolyphase/SOS参照比較を統合後も維持。SOS gap拒否をfailureとして扱い、未実装f32/chain/全rateを対象外と明示 | 保存fixtureで着手可能。必要なf32やgap回復をP2に選ぶ場合だけ追加実装 |
 | 5. 008-A | 生成→明示route→取得/Timebase→波形/共有FFT→line/heatmap→基本V/FS校正→CSV/JSONを一つの2chフローへ統合 | boxcar/Hann、peak/RMS/PSD、Trigger/保持、購読解除、開始/停止/失敗、同じcoreの仮想4/8ch回帰。AC01〜14の対象結果を対応表へ記録 | 1〜4の対象範囲を統合。独立probeの成功だけで置換しない |
@@ -47,6 +48,7 @@ flowchart TD
 | 10. 008-C判断 | 004〜007と008-A/Bの結果を四案へ集約し、未達と保守費用も評価 | 理由付きの方針、未確認/重大な未解決点、次の範囲と再評価条件を決定記録へ残す。MIG-008完了と41機能移行完了を分ける | 判断材料が揃った時点で実施。結果が不十分なら未完了と記録 |
 
 保存操作/互換形式とbackend共通化は別の変更境界として進められる。
+互換adapterの範囲と単一file/pairの保証は[手順](../native/product-exchange.md)に定義する。
 007-Cのwgpu候補はIntelで約29〜30 Hz、基準100万点はSIGBUSを再現した。
 必要な点数での安定性・転送方式・コピー/負荷を統合性能へ反映し、描画問題が残る場合は方式変更案へ記録する。
 native GPU texture共有や個別widgetの本実装を、spikeの成功だけで完了にしない。

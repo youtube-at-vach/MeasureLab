@@ -53,7 +53,11 @@ Qtの編集・適用は[決定0023](../decisions/0023-qt-calibration-edit.md)で
 AC07/12/13の保存worker境界として、bounded受付/実完了/失敗/pending cancel/終了/数値snapshot回収を検査する。
 既存2校正契約/4交換例と4/8ch f32/f64を両formatから保存し、全値/来歴の完全往復とreceiptを検査する。
 Qt保存操作/製品互換/取得中の保存負荷/長時間は後続で、AC全体の合格ではない。
-残工程と依存は[MIG-008までの整理表](../remaining-to-mig008.md)を参照する。
+006-Eの[製品互換adapter評価](../decisions/0025-product-exchange-compatibility.md)を追加した。
+AC12の旧JSON/CSV値/軸/校正/metadataとunknown、完全snapshotのRust reader往復を検査する。
+製品JSONのcarrierと独立列CSVのsidecarは評価用で、merged表は元gridを復元しない。
+native製品codec/Qt import・保存操作、取得profile再起動維持、pair transaction、取得中性能/他OSは後続。
+AC12全体の合格にはしない。残工程と依存は[MIG-008までの整理表](../remaining-to-mig008.md)を参照する。
 
 ## fixtureの最小セット
 

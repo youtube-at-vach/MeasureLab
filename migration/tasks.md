@@ -33,7 +33,7 @@
 | 006-D | 最小rate変換/filterとvalidity伝播 | 003-C、006-C、P06 | AC10/14、同じgraph内で遅延/区間/phase stateを保持 | 高品質resamplerの全機能 | 完了（2026-09-30、f64保存21ケース×5 chunk/6 rate境界と一段のpure graph。f32・IIR gap回復・実取得/Qtは後続） |
 | 006-E | 不変result・channel校正・CSV/JSON来歴 | 003-B、006-B/C、P13/P14 | AC12、再読込、保存失敗、profile変更後の不変性、uncalibrated | 旧設定の自動移行 | 完了（2026-10-01、pure不変result/ID校正/JSON・CSV。保存2契約・4例と4/8ch f32/f64。非同期workerは次行、製品互換/Qt保存操作は後続） |
 | 006-E-async-save | 不変snapshotのbounded非同期保存worker | 006-E、007-A-calibration-editのencode負荷記録。graph-core/exportと独立runner | AC07/12/13のworker境界。受付/実完了/失敗/pending cancel/寿命、graph進行、2契約と4入力の両format完全往復 | Qt保存操作、製品互換形式、pair transaction、取得中/長時間性能 | 評価範囲完了（2026-10-02、Rust新規9件、保存12実行/36 saved/36 failed）。結果はstatus |
-| 006-E-compat | 製品形式/旧CSV・JSONとsnapshotの互換adapter・読込み | 006-E、006-E-async-save、現行ExportTrace。製品版管理は008で判断 | AC12。元値/軸/単位/校正/metadata、旧fileのunknown、失敗/上書きの保証範囲を検査 | 全旧設定自動移行、全解析形式 | 未着手。残工程整理の第2工程 |
+| 006-E-compat | 製品形式/旧CSV・JSONとsnapshotの互換adapter・読込み | 006-E、006-E-async-save、現行ExportTrace。製品版管理は008で判断 | AC12。元値/軸/単位/校正/metadata、旧fileのunknown、失敗/上書きの保証範囲を検査 | 全旧設定自動移行、全解析形式 | 評価用Python adapterを追加（2026-10-02）。製品JSON carrier/CSV sidecarとnative readerの完全往復、旧fileのunknownを検査。native/file worker・Qtへの製品形式接続と取得profile再起動維持は後続 |
 | 007-A | 同じ結果をline/heatmapへ表示、操作/画像保存 | 004、006。P19のsnapshot境界 | AC05/07/08、軸/cursor/zoom・画像・再生成・サイズ/9言語 | 全41機能のUI | 進行中（2026-10-01、保存4/8ch f32/f64とBlackHole実入力→実graph→両Qt表示。分離view/翻訳JSON/9言語に手動Triggerのhold/retry/releaseを追加。セッションID校正は007-A-calibration-input、取得中のQt編集・適用は007-A-calibration-editへ追加。製品保存操作/実window manager/他OSは後続。実施結果はstatus） |
 | 007-A-trigger | 取得履歴の非消費query→共有raw FFT→trigger付き不変result | 005-graph、006-C/E。解析owner APIと独立runner | AC08/09のpending/gap/分数残差/旧世代拒否、通常平均/位置不変、保存4入力×2bindingの全bytes・32完全result | Qt操作、実入力要求配送、arm/cancel/検出器、長時間性能 | worker範囲完了（2026-10-01）。Qt/実入力の配送は次行で検証 |
 | 007-A-trigger-display | Qtのtyped要求/revision→解析owner、両view共通hold/retry/release | 007-A-trigger、007-live-display/分離/翻訳境界 | AC08/09/13。保存4入力×9言語×両Qt、元bytes/全result、pending/gap非数値、保持中の取得継続、旧世代/停止/破棄、BlackHole短時間診断 | 検出器のarm/cancel、前段filter/外部clock、製品校正/保存、長時間性能/他OS | 配送を追加（2026-10-01）。成功件数と未確認範囲はstatus |
@@ -258,7 +258,22 @@ cargo +1.98.1 test --offline --locked --manifest-path native/Cargo.toml -p graph
 
 新規directoryに12実行/36 saved/36 failedと全file/hashを保存する。別OS/最小環境は明示`--portable`。
 workerはbounded job数/完了/失敗/pending cancel/寿命の範囲まで。
-Qt保存操作、製品互換形式、byte予算/取得中の負荷/長時間/他OSは後続。
+Qt保存操作、製品形式のnative/file worker接続、byte予算/取得中の負荷/長時間/他OSは後続。
+
+## 006-E 製品互換adapterの再検査
+
+[互換手順](../native/product-exchange.md)と[決定0025](decisions/0025-product-exchange-compatibility.md)を参照。
+現行ExportTrace/exporterを使う評価用Python adapter。製品schemaの確定やGUI import操作ではない。
+
+```bash
+./.venv/bin/python scripts/migration_product_candidate.py --output .migration-local/product-compat-new
+./.venv/bin/pytest -q tests/logic_verification/test_migration_product_candidate.py tests/logic_verification/test_migration_result_candidate.py tests/core/export/test_json_exporter.py tests/core/export/test_csv_exporter.py
+```
+
+2校正契約/4交換例と4/8ch f32/f64のJSON/CSV両入口から12実行/24完全snapshot往復を検査する。
+旧JSON/CSVの値/軸/単位/校正/metadataを保持し、旧取得情報はunknown。
+merged CSVの補間は元gridの復元にしない。完全CSV復元はindependent列とmetadata sidecarが必要。
+取得profile再起動維持、native codec/保存worker/Qt接続、pair transaction、取得中性能/他OSは後続。
 
 ## 007-Aの再検査
 
