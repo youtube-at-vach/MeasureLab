@@ -1,5 +1,5 @@
 use super::*;
-use audio_probe::live::LiveInput;
+use audio_probe::live::BackendInput;
 use graph_core::Samples;
 use std::time::Instant;
 
@@ -11,7 +11,13 @@ pub(super) fn run(
     let mut request = request.clone();
     let request = &mut request;
     let live = request.live.clone().ok_or("display_input_source")?;
-    let (mut input, rx) = LiveInput::open(&live.device, live.device_channels, &request.format)?;
+    let (mut input, rx) = BackendInput::open(
+        live.backend,
+        live.library.as_deref(),
+        &live.device,
+        live.device_channels,
+        &request.format,
+    )?;
     let mut acquisition = Acquisition::new(
         rx,
         request.format.clone(),
@@ -108,7 +114,7 @@ pub(super) fn run(
     };
     // Capture counters only after the callback/stream owner has been released.
     let metrics = json!({ "schema_version": 1, "generation": request.format.generation,
-        "device": live.device, "format": request.format, "input": input.report(),
+        "device": live.device, "backend": live.backend, "format": request.format, "input": input.report(),
         "captured_frames": captured_frames, "fft_evaluations": evaluations, "queue": queue,
         "stop_ms": stopped.as_ref().ok(), "reclaimed": reclaimed.is_ok(),
         "error": result.as_ref().err().or(stopped.as_ref().err()).or(reclaimed.as_ref().err()).or(triggers.as_ref().err()).or(windows.as_ref().err()).or(exchange.as_ref().err()).or(save_evidence.as_ref().err()) });
@@ -417,6 +423,8 @@ mod tests {
         std::fs::create_dir(&directory).unwrap();
         request.evidence = Some(directory.clone());
         request.live = Some(LiveRequest {
+            backend: Backend::Cpal,
+            library: None,
             device: "diagnostic".into(),
             device_channels: 4,
         });

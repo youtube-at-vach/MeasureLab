@@ -188,6 +188,8 @@ fn source_choice_precision_and_live_ports_are_validated_without_opening() {
     let path = request.input.clone().unwrap();
     request.validate().unwrap();
     request.live = Some(LiveRequest {
+        backend: Backend::Cpal,
+        library: None,
         device: "BlackHole 16ch".into(),
         device_channels: 16,
     });
@@ -213,6 +215,8 @@ fn unavailable_live_input_fails_and_reclaims_instead_of_replaying() {
     let path = request.input.take().unwrap();
     let name = "MeasureLab deliberately unavailable evaluation device";
     request.live = Some(LiveRequest {
+        backend: Backend::Cpal,
+        library: None,
         device: name.into(),
         device_channels: 2,
     });
@@ -232,6 +236,60 @@ fn unavailable_live_input_fails_and_reclaims_instead_of_replaying() {
 }
 
 #[test]
+fn explicit_backend_requires_its_clock_and_library_before_device_access() {
+    let mut request = request(Precision::F32, 2, false);
+    let path = request.input.take().unwrap();
+    request.format.clock_domain = "portaudio.device:explicit".into();
+    request.live = Some(LiveRequest {
+        backend: Backend::PortAudio,
+        library: None,
+        device: "explicit".into(),
+        device_channels: 2,
+    });
+    assert!(request.validate().is_err());
+    request.live.as_mut().unwrap().library = Some("relative-library".into());
+    assert!(request.validate().is_err());
+    let missing = std::env::temp_dir().join(format!(
+        "measurelab-missing-portaudio-{}",
+        std::process::id()
+    ));
+    request.live.as_mut().unwrap().library = Some(missing);
+    request.validate().unwrap();
+    request.live.as_mut().unwrap().backend = Backend::Cpal;
+    assert!(request.validate().is_err());
+    request.live.as_mut().unwrap().backend = Backend::PortAudio;
+    request.format.clock_domain = "cpal.device:explicit".into();
+    assert!(request.validate().is_err());
+    request.format.clock_domain = "portaudio.device:explicit".into();
+    let mut display = Display::with_request(request);
+    display.subscribe();
+    display.start(false, |_| true).unwrap();
+    wait(&display, |s| s.state == State::Failed);
+    display.shutdown();
+    let state = display.peek();
+    assert!(state.reclaimed && state.frame.is_none() && state.produced == 0);
+    #[cfg(feature = "live-audio")]
+    assert!(state.error.starts_with("portaudio_library:"));
+    #[cfg(not(feature = "live-audio"))]
+    assert_eq!(state.error, "display_live_feature_disabled");
+    std::fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn old_live_request_defaults_to_cpal_and_unknown_backend_is_rejected() {
+    let live: LiveRequest =
+        serde_json::from_value(json!({"device": "explicit", "device_channels": 2})).unwrap();
+    assert_eq!(live.backend, Backend::Cpal);
+    assert!(live.library.is_none());
+    assert!(
+        serde_json::from_value::<LiveRequest>(
+            json!({"device": "explicit", "device_channels": 2, "backend": "Default"})
+        )
+        .is_err()
+    );
+}
+
+#[test]
 fn slow_save_diagnostics_require_live_evidence_and_bound_latency() {
     let mut request = request(Precision::F32, 2, false);
     let path = request.input.clone().unwrap();
@@ -241,6 +299,8 @@ fn slow_save_diagnostics_require_live_evidence_and_bound_latency() {
     assert!(request.validate().is_err());
     request.input = None;
     request.live = Some(LiveRequest {
+        backend: Backend::Cpal,
+        library: None,
         device: "diagnostic".into(),
         device_channels: 2,
     });

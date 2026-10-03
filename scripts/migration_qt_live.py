@@ -42,12 +42,13 @@ def cases():
 
 def request_for(case, evidence):
     count = virtual.DEVICES[case["device"]]
+    backend = case.get("backend", "Cpal")
     return {
         "format": {
             "stream_id": f"live.{case['id']}.input",
             "generation": 0,
             "timebase_id": f"live.{case['id']}.clock",
-            "clock_domain": f"cpal.device:{case['device']}",
+            "clock_domain": f"{backend.lower()}.device:{case['device']}",
             "rate": [RATE, 1],
             "input_ids": [f"input.logical.{ch}" for ch in range(len(case["ports"]))],
             "input_ports": case["ports"],
@@ -58,7 +59,12 @@ def request_for(case, evidence):
         "n": N,
         "window": "Boxcar",
         "input": None,
-        "live": {"device": case["device"], "device_channels": count},
+        "live": {
+            "device": case["device"],
+            "device_channels": count,
+            "backend": backend,
+            "library": case.get("library"),
+        },
         "evidence": str(evidence.resolve()),
     }
 
@@ -129,11 +135,13 @@ def validate_evidence(directory, request, *, count=3):
                 raise fft.ReferenceError("live uncalibrated voltage is numeric")
         metrics = json.loads(metrics_path.read_bytes())
         expected_format = {**request["format"], "generation": generation}
+        backend = request["live"].get("backend", "Cpal")
         if (
             metrics["schema_version"] != 1
             or metrics["generation"] != generation
             or metrics["format"] != expected_format
             or metrics["device"] != request["live"]["device"]
+            or metrics.get("backend", "Cpal") != backend
             or not metrics["reclaimed"]
             or metrics["error"] is not None
             or metrics["input"]["closed"] is not True
@@ -150,6 +158,15 @@ def validate_evidence(directory, request, *, count=3):
             or metrics["stop_ms"] < 0
         ):
             raise fft.ReferenceError("live capture/stream cleanup metrics mismatch")
+        if backend == "PortAudio" and (
+            metrics["input"].get("terminated") is not True
+            or metrics["input"].get("transport") != "native PortAudio callback -> common f32 input queue"
+            or type(metrics["input"].get("api_version")) is not int
+            or metrics["input"]["api_version"] >> 16 != 19
+            or metrics["input"].get("reported_rate") != RATE
+            or type(metrics["input"].get("stream_info_version")) is not int
+        ):
+            raise fft.ReferenceError("native PortAudio callback/termination evidence mismatch")
         observed.append(
             {
                 "generation": generation,
@@ -184,6 +201,9 @@ def run_display(
     evidence = directory / "results"
     evidence.mkdir()
     request = request_for(case, evidence)
+    binary_before = sha256(binary)
+    library = request["live"]["library"]
+    library_before = sha256(Path(library)) if library else None
     if saving:
         request.update(save_input_evidence=True, save_diagnostic_delay_ms=250 if save_load else 0)
     if calibration:
@@ -349,16 +369,20 @@ def run_display(
         sd.PortAudioError,
     ) as exc:
         reason = str(exc)
+    if sha256(binary) != binary_before or (library and sha256(Path(library)) != library_before):
+        reason = "native binary or PortAudio library changed during comparison"
     return {
         "case": case["id"],
         "binary": binary.name,
+        "backend": request["live"]["backend"],
+        "portaudio_library": {"path": library, "sha256": library_before} if library else None,
         "command": command,
         "passed": reason is None,
         "reason": reason,
         "exit_code": code,
         "output": output,
         "duration_seconds": time.monotonic() - started,
-        "binary_sha256": sha256(binary),
+        "binary_sha256": binary_before,
         "request_sha256": sha256(request_path),
         "stimulus": {
             "sha256": sha256(directory / "stimulus.f32"),
@@ -379,21 +403,41 @@ def main():
     parser.add_argument("--repeat", type=int, default=1)
     parser.add_argument("--case", choices=[c["id"] for c in cases()])
     parser.add_argument("--timeout", type=float, default=30)
+    parser.add_argument("--backend", choices=("Cpal", "PortAudio"), default="Cpal")
+    parser.add_argument("--portaudio-library", type=Path)
     args = parser.parse_args()
     if not args.virtual_device or sys.platform != "darwin":
         parser.error("explicit --virtual-device on macOS is required for BlackHole I/O")
     if args.output.exists() or args.repeat < 1 or not np.isfinite(args.timeout) or args.timeout <= 0:
         parser.error("new output directory and positive repeat/timeout required")
+    if (args.backend == "PortAudio") != (args.portaudio_library is not None):
+        parser.error("PortAudio requires --portaudio-library; Cpal does not accept it")
+    if args.portaudio_library is not None and (
+        not args.portaudio_library.is_absolute() or not args.portaudio_library.is_file()
+    ):
+        parser.error("an absolute path to a trusted PortAudio v19 library is required")
     env, version = qt_environment(args.qt_prefix)
     binaries = [args.target_dir.resolve() / name for name in ("cxxqt-display", "qtbridge-display")]
     if not all(p.is_file() for p in binaries):
         parser.error("build both display binaries first")
+    sources = [
+        p
+        for p in (ROOT / "native").rglob("*")
+        if p.is_file() and "target" not in p.parts and p.suffix in (".rs", ".qml", ".toml", ".lock")
+    ]
+    source_before = {str(p.relative_to(ROOT)): sha256(p) for p in sorted(sources)}
+    binary_before = {p.name: sha256(p) for p in binaries}
     args.output.mkdir(parents=True)
     runs = []
     for repeat in range(args.repeat):
         for case in cases():
             if args.case and case["id"] != args.case:
                 continue
+            case = {
+                **case,
+                "backend": args.backend,
+                "library": str(args.portaudio_library) if args.portaudio_library else None,
+            }
             for binary in binaries:
                 run = run_display(binary, env, args.output / f"{repeat}-{case['id']}-{binary.name}", case, args.timeout)
                 runs.append(run)
@@ -401,15 +445,15 @@ def main():
                     f"{binary.name} {case['id']}: {'PASS' if run['passed'] else 'FAIL'} {run['reason'] or ''}",
                     flush=True,
                 )
-    sources = [
-        p
-        for p in (ROOT / "native").rglob("*")
-        if p.is_file() and "target" not in p.parts and p.suffix in (".rs", ".qml", ".toml", ".lock")
-    ]
+    source_after = {str(p.relative_to(ROOT)): sha256(p) for p in sorted(sources)}
+    fixed = source_before == source_after and binary_before == {p.name: sha256(p) for p in binaries}
     report = {
         "schema_version": 1,
-        "task": "MIG-007-A-live",
-        "passed": all(r["passed"] for r in runs),
+        "task": "MIG-005-A-native-callback-Qt" if args.backend == "PortAudio" else "MIG-007-A-live",
+        "backend": args.backend,
+        "passed": fixed and all(r["passed"] for r in runs),
+        "source_binary_unchanged": fixed,
+        "binary_sha256": binary_before,
         "host": {
             "os": platform.system(),
             "release": platform.release(),
@@ -428,7 +472,8 @@ def main():
                 ROOT / "scripts/migration_qt_probe.py",
             ]
         },
-        "source_sha256": {str(p.relative_to(ROOT)): sha256(p) for p in sorted(sources)},
+        "source_sha256": source_before,
+        "source_sha256_after": source_after,
         "tolerances": TOLERANCES,
         "runs": runs,
         "limitations": [

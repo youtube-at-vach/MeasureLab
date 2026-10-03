@@ -4,11 +4,62 @@ use audio_core::backend::{Backend, InputBinding, SampleFormat};
 use audio_core::{Consumer, IoFormat, MAX_CHANNELS};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use serde_json::{Value, json};
+use std::path::Path;
 use std::sync::{
     Arc,
     atomic::{AtomicU64, Ordering::Relaxed},
 };
 use std::time::{Duration, Instant};
+
+/// Selected by the immutable request, never inferred from the default device.
+pub enum BackendInput {
+    Cpal(LiveInput),
+    PortAudio(portaudio_input::PortAudioInput),
+}
+impl BackendInput {
+    pub fn open(
+        backend: Backend,
+        library: Option<&Path>,
+        name: &str,
+        channels: usize,
+        format: &IoFormat,
+    ) -> Result<(Self, Consumer), String> {
+        match (backend, library) {
+            (Backend::Cpal, None) => {
+                LiveInput::open(name, channels, format).map(|(s, rx)| (Self::Cpal(s), rx))
+            }
+            (Backend::PortAudio, Some(path)) => {
+                portaudio_input::PortAudioInput::open(path, name, channels, format)
+                    .map(|(s, rx)| (Self::PortAudio(s), rx))
+            }
+            _ => Err("live_backend_library_configuration".into()),
+        }
+    }
+    pub fn start(&mut self) -> Result<(), String> {
+        match self {
+            Self::Cpal(s) => s.start(),
+            Self::PortAudio(s) => s.start(),
+        }
+    }
+    pub fn failed(&self) -> bool {
+        match self {
+            Self::Cpal(s) => s.failed(),
+            Self::PortAudio(s) => s.failed(),
+        }
+    }
+    pub fn stop(&mut self) -> Result<f64, String> {
+        match self {
+            Self::Cpal(s) => s.stop(),
+            Self::PortAudio(s) => s.stop(),
+        }
+    }
+    pub fn report(&self) -> Value {
+        match self {
+            Self::Cpal(s) => s.report(),
+            Self::PortAudio(s) => s.report(),
+        }
+    }
+}
 
 #[derive(Default)]
 struct Counters {

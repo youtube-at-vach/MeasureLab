@@ -134,6 +134,8 @@ fn wrong_device_port_channel_duplicate_or_invalid_factor_fails_before_acquisitio
     // Retargeting to a live device requires explicit new bindings, before stream open.
     config.input = None;
     config.live = Some(LiveRequest {
+        backend: Backend::Cpal,
+        library: None,
         device: "BlackHole 16ch".into(),
         device_channels: 16,
     });
@@ -160,6 +162,8 @@ fn live_csv_is_deferred_reads_full_snapshot_and_reports_no_clobber_failure() {
     std::fs::create_dir(&directory).unwrap();
     config.evidence = Some(directory.clone());
     config.live = Some(LiveRequest {
+        backend: Backend::Cpal,
+        library: None,
         device: "diagnostic".into(),
         device_channels: 4,
     });

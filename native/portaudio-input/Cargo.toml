@@ -1,12 +1,10 @@
 [package]
-name = "audio-probe"
+name = "portaudio-input"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
 
 [dependencies]
 audio-core = { path = "../audio-core" }
-portaudio-input = { path = "../portaudio-input" }
-graph-core = { path = "../graph-core" }
-cpal = "=0.18.2"
+libloading = "=0.8.9"
 serde_json = "=1.0.151"

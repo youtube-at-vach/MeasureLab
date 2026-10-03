@@ -38,6 +38,7 @@ def evidence(directory, case):
             "schema_version": 1,
             "generation": generation,
             "device": case["device"],
+            "backend": case.get("backend", "Cpal"),
             "format": {**request["format"], "generation": generation},
             "input": {"callbacks": 4, "frames": live.N, "errors": 0, "xruns": 0, "rejected": 0, "closed": True},
             "captured_frames": live.N,
@@ -47,6 +48,14 @@ def evidence(directory, case):
             "queue": {"channels": request["live"]["device_channels"], "capacity_frames": 8192, "max_depth_frames": 256},
             "stop_ms": 1.5,
         }
+        if case.get("backend") == "PortAudio":
+            metrics["input"].update(
+                terminated=True,
+                transport="native PortAudio callback -> common f32 input queue",
+                api_version=19 << 16,
+                reported_rate=live.RATE,
+                stream_info_version=0,
+            )
         (directory / f"generation-{generation}.json").write_text(json.dumps(document))
         (directory / f"live-{generation}.json").write_text(json.dumps(metrics))
         samples.tofile(directory / f"input-{generation}.f32")
@@ -56,6 +65,31 @@ def evidence(directory, case):
 @pytest.mark.parametrize("case", live.cases(), ids=lambda case: case["id"])
 def test_acquired_bytes_and_explicit_mapping_pass(tmp_path, case):
     assert len(live.validate_evidence(tmp_path, evidence(tmp_path, case))) == 3
+
+
+@pytest.mark.parametrize("mutation", [None, "backend", "terminated", "transport", "version", "rate"])
+def test_portaudio_requires_direct_callback_and_termination(tmp_path, mutation):
+    case = {**live.cases()[1], "backend": "PortAudio", "library": "/trusted/portaudio"}
+    request = evidence(tmp_path, case)
+    assert request["format"]["clock_domain"] == "portaudio.device:BlackHole 16ch"
+    path = tmp_path / "live-5.json"
+    metrics = json.loads(path.read_bytes())
+    if mutation == "backend":
+        metrics["backend"] = "Cpal"
+    elif mutation == "terminated":
+        metrics["input"]["terminated"] = False
+    elif mutation == "transport":
+        metrics["input"]["transport"] = "blocking worker -> pipe"
+    elif mutation == "version":
+        metrics["input"]["api_version"] = 18 << 16
+    elif mutation == "rate":
+        metrics["input"]["reported_rate"] = 44100
+    path.write_text(json.dumps(metrics))
+    if mutation is None:
+        assert len(live.validate_evidence(tmp_path, request)) == 3
+    else:
+        with pytest.raises(fft.ReferenceError):
+            live.validate_evidence(tmp_path, request)
 
 
 @pytest.mark.parametrize(

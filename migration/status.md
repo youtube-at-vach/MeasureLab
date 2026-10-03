@@ -13,11 +13,11 @@
 | --- | --- |
 | macOS checkout | `/Users/vach/.codex/worktrees/next-core-evaluation/MeasureLab`（Codex管理、再利用） |
 | 実行環境 | macOS 14.8.9 / Intel。Linuxの前回検証はUbuntu 26.04.1 / x86_64 |
-| ブランチ | 統合先`codex/next-core-evaluation`、今回`codex/migration-backend-input` |
-| 今回の開始点 | `144606b4`、remote一致・cleanの`codex/migration-filter-acquisition`から分岐 |
+| ブランチ | 統合先`codex/next-core-evaluation`、今回`codex/migration-portaudio-callback` |
+| 今回の開始点 | `8dd585ea`、remote一致・cleanの`codex/migration-backend-input`から分岐 |
 | 数値/DSP参照 | `9fd79958`（MeasureLab 0.9.0）。元fixture/係数/許容差を維持 |
 | 最終main同期 | 2026-10-03、origin/main `84013a76`をmerge `0fe41a7a`で取込み。差分はCURRENT_DIRECTION.mdのみ |
-| Git状態 | 前回のf64 filter取得接続は`144606b4`へコミット済み。今回の共通入力境界・文書整理は未コミット |
+| Git状態 | f64 filter取得は`144606b4`、共通入力境界・文書整理は`8dd585ea`へコミット済み。今回のnative callback/Qt backend選択は未コミット |
 | 外部更新 | 今回のpush/PR/Issue/Project更新/公開配布は未実施。無人継続・定期通知は未設定 |
 
 `.venv/`、`.tools/`、`.migration-local/`はGit管理外。worktreeを退役させる前に必要な証拠を保存する。
@@ -33,7 +33,7 @@
 | MIG-002 | 完了 | 41機能+共通10件、20プリミティブ、コア/数値契約、AC01〜16、比較protocolと作業票 |
 | MIG-003 | 完了（参照側） | FFT24ケース、27契約/4保存例、filter21数値/6 rate境界。候補実装の採用判定とは別 |
 | MIG-004 | 進行中 | Intel/Linuxの両Qt基本寿命、build/edit反復、ローカルpackage。ARM/Windows/clean環境とGitHub CIは残る |
-| MIG-005 | 進行中 | N-channel input.raw queue/履歴/共有FFT、動的f32 route、短いUAC-232/BlackHole比較。今回、CPALとPortAudio評価workerの共通入力境界を追加 |
+| MIG-005 | 進行中 | N-channel input.raw queue/履歴/共有FFT、動的f32 route、短いUAC-232/BlackHole比較。共通入力境界に加え、PortAudio native callbackと両Qtのrequestによるbackend選択を検証 |
 | MIG-006 | 進行中 | FFT/共有graph/履歴/Timebase/世代、pure filter、不変result/ID校正、v1/製品JSON・CSV/非同期保存/旧形式import。保存f64 filterの取得scheduler21ケース×5 chunkも検証済み |
 | MIG-007 | 進行中 | 保存/BlackHoleの両Qt line/heatmap、分離/9言語、Trigger hold/retry/release、校正編集、v1/製品保存、製品import参照表。rendererはIntelの最小試験のみ |
 | MIG-008 | 未着手 | 008-Aの同じ2chフロー統合、008-Bの同条件比較、008-Cの四案の理由付き判断が必要 |
@@ -45,11 +45,39 @@ writerの250 ms待ち注入はbusy/取消/取得継続の診断で、実ディ�
 
 ## 今回の変更と検証
 
+[native PortAudio callback](../native/callback-input.md)と[決定0034](decisions/0034-native-portaudio-callback.md)を追加。
+callbackから`InputWriter<f32>`へ直接書き、両Qtの同じ取得owner/履歴/共有FFT/line・heatmapへ接続した。
+backendはrequestで明示選択し、旧requestはCPALを維持する。製品設定UI/現行AudioEngineは対象外。
+unsafe/PortAudio v19 ABI/library寿命は専用crateへ隔離し、libloading 0.8.9をCargo.lockへ追加した。
+元fixture/係数/許容差、製品DSP/GUIは変更していない。
+
+| 検証 | 結果・証拠 |
+| --- | --- |
+| PortAudio native callback/両Qt | BlackHole論理2/4/8ch×両Qtの6実行・18取得世代成功。計233,472取得frame、元f32/独立FFT/選択port・tone、共有表示/遅いGUI/世代/停止回収を照合。全stream close/terminate成功、status/XRUN/拒否なし |
+| CPAL/両Qt回帰 | 同じsource/binaryで2/4/8ch×両Qtの6実行・18取得世代成功。元bytes/共有result/stream・graph回収を確認 |
+| 保存共通入力の回帰 | 4/8ch f32/f64×両backend binding×正逆port×boxcar/Hannの32条件成功。元bytes/共有FFT/全相対列/unknown/JSON・CSV/停止後pin・回収を照合 |
+| Rust | workspace186件成功（追加9件）。callback元bits、XRUN/不正block、library/clock/backend拒否、旧request、開始/abort/close/terminate失敗とcontext寿命を検査 |
+| Python/静的検査/参照verify | Qt関連285件+共通入力45件の330件成功。workspace Clippy/Rust fmt、Mypy116 source、Ruff lint/format698 files、Markdown lint236 files、diff check成功。FFT14/core4 FFT・27契約・4保存/filter21・6 rateのverify成功 |
+
+reportは`.migration-local/2026-10-03-native-callback/portaudio-qt-v2/report.json`と同階層の`cpal-qt/report.json`。
+両方式で95 native sourceと2実行物のhashが一致し、各比較前後も一致した。PortAudio library hashも保持した。
+初回6実行は`PaStreamInfo.structVersion=0`を拒否して失敗した。公式v19.7の初期化実装もこのfieldを設定しないため、
+ABIは`Pa_GetVersion`のv19で照合し、fieldは診断値として保持。実48 kHz検査を維持して再build/全6条件再取得した。
+初回の失敗reportは`portaudio-qt/report.json`に残し、合格には数えない。
+保存回帰reportは同階層の`saved-backend-input/report.json`。成功reportに対応する120 source/3実行物とPortAudio libraryを
+`source-snapshot/`と`binaries/`へ固定保存し、各artifact/logとともに`evidence-audit.json`でhashを照合した。
+初回失敗版のsource/binary実体は未保存で、report内のhashとlogだけを保持する。
+Pythonの初回検査は存在しないtest pathの指定で収集前に停止した。存在するQt関連testを列挙して330件を再検査し、この停止を合格には数えない。
+CI定義へdevice不要のnative callback/lifetime/拒否テストを追加した。remote CI、全体Pytest、全言語UIサイズは今回未実施。
+レイアウト/翻訳の変更はない。buildのduplicate rpathとQt生成archiveのranlib警告は残るが、build/Clippyは終了コード0。
+
+## 前回の共通入力評価
+
 [共通入力境界](../native/backend-input.md)と[決定0033](decisions/0033-common-backend-input.md)を追加した。
 `InputBinding`/`InputWriter<T>`で実backend/device/精度/ID/port/rate/世代を固定し、
 既存CPAL callbackとPortAudio評価workerを同じtyped queue/取得owner/共有FFTへ通す。
-PortAudioはblocking入力worker→binary pipe経由。製品callback/Qtのbackend選択は未接続。
-現行製品DSP/GUI、Cargo.lock、元fixture/係数/許容差は変更していない。
+この前回試験のPortAudioはblocking入力worker→binary pipe経由。今回追加したnative callbackとは別のtransport。
+この段階では現行製品DSP/GUI、Cargo.lock、元fixture/係数/許容差は変更していない。
 
 | 検証 | 結果・証拠 |
 | --- | --- |
@@ -59,7 +87,7 @@ PortAudioはblocking入力worker→binary pipe経由。製品callback/Qtのbacke
 | Rust/Python | workspace177件（新規3件）、関連Python116件と追加2件成功。新規境界45件を補強後に全件再検査 |
 | 静的検査・参照verify | workspace Clippy/Rust fmt、Mypy116 source、Ruff lint/format696 files、Markdown lint234 files、台帳41件/20プリミティブ、diff check成功。FFT14/core4 FFT・27契約・4保存/filter21・6 rateのverify成功 |
 
-最新reportは`.migration-local/2026-10-03-backend-input-final-v2/report.json`（result ID検査の補強後に全条件再取得・成功）。
+前回reportは`.migration-local/2026-10-03-backend-input-final-v2/report.json`（result ID検査の補強後に全条件再取得・成功）。
 source/binary/fixture/元bytes/全窓/出力hashとコマンドを保持し、比較前後のsource/binary一致を確認した。
 CPAL reportは`.migration-local/2026-10-03-backend-input-cpal-qt/report.json`。
 logの共通prefixは`2026-10-03-backend-input-`。Rust/Pythonは`workspace-final.log`/`python-final.log`、追加検査は`python-identity-final.log`。
@@ -67,7 +95,7 @@ logの共通prefixは`2026-10-03-backend-input-`。Rust/Pythonは`workspace-fina
 初回の保存比較は検証harnessのhistory status期待名で失敗し、修正後の32条件は成功。
 途中のharness構文誤りも修正済み。Rust全体の初回はQt test実行物のframework探索で停止し、
 `DYLD_FRAMEWORK_PATH`へ分離SDKを指定して再検査した。これらの失敗を合格には数えない。
-レイアウト/翻訳の変更はなく、全体Pytest/全言語UIサイズ/GitHub CIは今回未実施。
+レイアウト/翻訳の変更はなく、全体Pytest/全言語UIサイズ/GitHub CIはこの段階では未実施。
 
 実backendはf32。ローカルsounddeviceは`float64`指定を内部で`float32`へ変更するため、
 実streamのdtype/rate/channel数を確認する。保存f64の成功をdevice f64対応の根拠にしない。
@@ -81,14 +109,14 @@ logの共通prefixは`2026-10-03-backend-input-`。Rust/Pythonは`workspace-fina
 
 | 優先・作業 | 状態と次の具体的な作業 | 必要な条件 |
 | --- | --- | --- |
-| 1. 005-A-common | 入力境界の部分実装済み。PortAudioの製品callback/両Qt backend選択、動的route ack/世代、購読tapのgraph統合を進める | 保存入力/Intel/BlackHoleで着手可能 |
+| 1. 005-A-common | PortAudio native callback/両Qt requestによる選択まで検証済み。動的route ack/世代、購読tapのgraph統合、製品backend設定UI/永続profileが残る | 保存入力/Intel/BlackHoleで着手可能 |
 | 2. 006-Dの実入力/Qt接続 | 保存f64 scheduler済み。実backend f32との精度境界を明示して、一段filter/派生履歴/共有FFT/Trigger/保存を同じフローへ接続 | 現環境で着手可能。暗黙変換はしない |
 | 3. 008-A統合 | 未着手。生成→明示route→取得/Timebase→波形/共有FFT→line/heatmap→基本V/FS校正→CSV/JSONを一つの2chフローへ統合。仮想4/8ch回帰とAC対応表を残す | 1〜2の対象backend/dtype/tapを固定する |
 | 4. import/profile | import結果のline/heatmap/cursor/再保存、取得profileの再起動維持が未実装 | 現環境で独立して着手可能 |
 | 5. 007-B/008-B性能 | 未着手。統合物を固定し、2/4/8chの30秒warmup+10分×3回、単独/複数view/保存/遅いGUI/負荷超過を同条件Pythonと比較 | 3の固定後。測定中に他build/GUI試験を走らせない |
 | 6. 005-B/008-B音声 | 短い比較のみ済み。時刻写像/絶対遅延、排他/開始失敗/XRUN位置、USB/スリープ復帰/長時間が未確認 | 通常はBlackHole。物理試験には実機/配線、USB操作には人が必要 |
 | 7. 004-B/008-B配布・操作 | Intel/Linuxの模擬probeは済み。実graph統合配布物、ARM/Windows/clean環境、window manager操作/High DPIは未確認 | 各実行環境と手動操作が必要 |
-| 8. CI・証拠整理 | 今回の保存比較/拒否テストもNative CIへ追加済み。Linux ICU修正後と新規比較のremote実行は未確認 | 対象変更の公開時にcommitとCI結果を照合 |
+| 8. CI・証拠整理 | 保存比較とnative callback/拒否/寿命テストをNative CIへ追加済み。Linux ICU修正後と新規比較のremote実行は未確認 | 対象変更の公開時にcommitとCI結果を照合 |
 | 9. 008-C判断 | 未着手。AC01〜16の証拠/未達、性能/反復/実機/配布/保守費用を四案へ集約 | 材料が揃った時点で理由/未確認/次の範囲/再評価条件を記録 |
 
 残るtapは`input.calibrated`、`output.mixed/post_dut/device_buffer`。結果への後段ID校正を
@@ -117,7 +145,8 @@ rendererはwgpu候補約29〜30 Hz、基準100万点のJSON/QML境界はSIGBUS�
 
 | 対象 | 参照先 |
 | --- | --- |
-| 今回の共通入力 | [手順](../native/backend-input.md)、[決定0033](decisions/0033-common-backend-input.md)、上記最新report |
+| 今回のnative callback/Qt backend | [手順](../native/callback-input.md)、[決定0034](decisions/0034-native-portaudio-callback.md)、上記report |
+| 前回の共通入力 | [手順](../native/backend-input.md)、[決定0033](decisions/0033-common-backend-input.md)、前回report |
 | 保存f64 filter取得 | [手順](../native/filter-acquisition.md)、[詳細結果](status-history-2026-10-03.md#mig-006-d-integration-保存f64のfilter取得scheduler) |
 | 両Qt/取得中保存 | [Qt保存](../native/qt-save.md)、[取得中保存](../native/live-save.md)、[詳細履歴](status-history-2026-10-03.md) |
 | 製品互換/import | [native codec](../native/product-codec.md)、[native import](../native/product-import.md)、[Qt import](../native/qt-import.md) |

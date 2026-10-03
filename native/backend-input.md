@@ -20,7 +20,8 @@ f32/f64の暗黙変換、portの複製/切捨て、旧世代queueの再利用は
 CPALの既存両Qt表示は同じ`InputWriter<f32>`へ接続した。保存f32/f64のworker入力にも同じ境界を使用する。
 実PortAudioは評価用Python adapter workerのblocking `InputStream.read(256)`から
 binary pipe経由で同じRust queueへ配送し、取得中に履歴/FFTを進める。
-pipe/JSON/ファイル操作をaudio callbackへ入れない。製品AudioEngineのcallbackやQtのbackend選択は未接続。
+pipe/JSON/ファイル操作をaudio callbackへ入れない。製品AudioEngineのcallbackは未接続。
+後続の[PortAudio native callback](callback-input.md)は別transportとして同じqueue/両Qtへ接続し、requestでbackendを選択する。
 PortAudio内部bufferとpipeもあるため、この試作の転送費用をcallback直結と同じと扱わない。
 
 ローカルsounddeviceの`_check_dtype`は`float64`を`float32`へ変更する。実試験は明示f32だけで、
@@ -78,6 +79,6 @@ reportにはsource/binary/fixture/入力/出力hash、条件/コマンド/全窓
 比較前後でsource/binaryが変われば合格にしない。失敗reportと途中入力も保持する。
 [Native CI](../.github/workflows/native-evaluation.yml)へ保存比較と拒否テストを追加した。remote成功は未確認。
 
-`input.calibrated`、output.mixed/post_dut/device_buffer、PortAudioの製品callback/Qt接続、
+`input.calibrated`、output.mixed/post_dut/device_buffer、PortAudioの製品AudioEngine callback/設定UI、
 f64 filter/派生Trigger保存、失敗復帰/長時間/他OS/配布と008-A全フローは未完了。
 未実装DUTはpost_dutとmixedを同じtapとして扱わない。

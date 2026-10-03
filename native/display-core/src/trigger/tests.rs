@@ -63,6 +63,8 @@ fn deferred_trigger_snapshots_are_bounded_deduplicated_and_survive_stop() {
     };
     config.evidence = Some(directory.clone());
     config.live = Some(LiveRequest {
+        backend: Backend::Cpal,
+        library: None,
         device: "diagnostic".into(),
         device_channels: 4,
     });

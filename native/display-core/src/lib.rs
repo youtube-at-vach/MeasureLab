@@ -2,6 +2,7 @@
 //! This is an analysis thread, never an audio callback. Qt receives one immutable
 //! projection; GUI notification replacement does not discard acquisition data.
 #![forbid(unsafe_code)]
+use audio_core::backend::Backend;
 use audio_core::{IoFormat, Producer, frame_queue, frame_queue_f64};
 use graph_core::acquisition::{Acquisition, CaptureLimits, CaptureSample, FftSpec};
 use graph_core::history::HistoryLimits;
@@ -42,6 +43,13 @@ mod live;
 pub struct LiveRequest {
     pub device: String,
     pub device_channels: usize,
+    #[serde(default = "cpal_backend")]
+    pub backend: Backend,
+    /// Required absolute path for the native PortAudio v19 callback evaluation.
+    pub library: Option<PathBuf>,
+}
+fn cpal_backend() -> Backend {
+    Backend::Cpal
 }
 #[derive(Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -82,7 +90,20 @@ impl Request {
                     || self.format.rate != [48000, 1]
                     || live.device.trim().is_empty()
                     || !(1..=16).contains(&live.device_channels)
-                    || self.format.clock_domain != format!("cpal.device:{}", live.device)
+                    || self.format.clock_domain
+                        != format!(
+                            "{}.device:{}",
+                            match live.backend {
+                                Backend::Cpal => "cpal",
+                                Backend::PortAudio => "portaudio",
+                            },
+                            live.device
+                        )
+                    || match (live.backend, &live.library) {
+                        (Backend::Cpal, None) => false,
+                        (Backend::PortAudio, Some(path)) => !path.is_absolute(),
+                        _ => true,
+                    }
                 {
                     return Err("display_live_configuration".into());
                 }

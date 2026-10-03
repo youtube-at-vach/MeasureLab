@@ -27,6 +27,7 @@
 | 004-B | 上記のbuild/QML編集/packageと対象OS起動比較 | 004-A。同一workload/依存組合せとbenchmark記録 | AC16と性能protocol。Intel/ARM/Windows/Linuxの実行済み・未実行を分離 | 未所有環境の成功扱い、安定版配布 | Intel（2026-09-30）とLinux（2026-10-02）のhost範囲完了。Linuxも32試行+warmup2回、6 package展開起動成功。ARM/Windows/clean環境、GitHub CIは未確認 |
 | 005-A | N-channel buffer/route/tap、backend共通境界 | 003-A/B。P02/P03。PortAudio基準とCPAL比較 | AC01〜03/09/11。4/8ch・非対称I/O・明示mapping・queue overflow。Rust追加時は独立CI追加 | network多ch拡張、全機器 | 進行中（2026-10-01、取得graphと動的f32 route mailboxを接続。保存12条件とCPAL/BlackHole配送を検査。全tap・PortAudio共通adapterは後続） |
 | 005-A-common-input | CPAL callbackとPortAudio評価workerの共通input.raw境界 | 005-graph、audio-core/backend、CPAL live、binary worker transport | 精度/ID/port/rate/世代/clockの固定、元bytes/共有FFT、JSON・CSV/停止後pin、無効窓/拒否/回収。保存32条件とBlackHole2/4/8chを照合 | 製品PortAudio callback/Qt backend選択、全tap/動的route、filter、性能/他OS | 入力境界の評価範囲完了（2026-10-03、保存32条件、実PortAudio3実行、CPAL両Qt6実行）。実backendはf32、保存f64をdevice対応と混同しない。手順はnative/backend-input.md、結果はstatus。005-A-common全体は進行中 |
+| 005-A-native-callback-Qt | PortAudio native callbackから共通f32 queue/両Qtへ直結しrequestでbackendを選択 | 005-A-common-input、audio-probe/live、display-core/live、明示PortAudio v19 library | 元bits/拒否/XRUN/開始停止失敗の寿命、BlackHole論理2/4/8ch×両Qt×両backendで元bytes/独立FFT/port/共有表示/世代/close/terminate/source・binary固定を照合 | 製品AudioEngine/設定UI/永続profile、全tap/動的route ack、f64 filter、性能/他OS | 評価範囲完了（2026-10-03、PortAudio6実行18世代と同一実行物のCPAL6実行18世代）。手順はnative/callback-input.md、失敗と結果はstatus。005-A-common全体は進行中 |
 | 005-B | 仮想I/O回帰と必要時の実機2ch、XRUN/再接続、排他/停止/時刻 | 005-A。通常はBlackHole 16ch／2ch、物理要件だけUAC-232。device/配線/校正を記録 | AC11/13/16、同じ配線で現行と交互測定。測定前に許容振幅差/遅延誤差を決める | 実機4/8/16ch保証 | 進行中（2026-10-01、BlackHoleの静的比較/実取得graphにCPAL動的routeの9取得・3保留cancelを追加。切断復帰・排他・絶対遅延/長時間は未確認） |
 | 006-A | FFT/窓/単位/PSDを参照比較 | 003-A、P04/P05。GUI非依存core | AC01/04、f32/f64・非2冪/極大・endpoint。必須数値条件合格、core編集時間記録 | 全解析モジュール | 完了（2026-09-30、保存コーパス24件とIntel編集5回。全体採用・他OS・Python相対比較は未確認） |
 | 006-B | 固定DAG・共有key・購読token・bounded cache | 006-A、003-B、P15 | AC05〜07。評価count/同一ID、条件分岐、独立平均、最後の解除/終了回収 | 汎用graph editor | 完了（2026-09-30、pure graphのRust16テスト/保存18ケース。実取得/Qt統合は後続） |
@@ -60,9 +61,24 @@ MIG-004はSDK導入だけで完了にしない。OSや実機の不足はその�
 
 [MIG-008までの残工程](remaining-to-mig008.md)に、未完了範囲・実施順・依存・実機/別環境の必要条件を整理した。
 保存/互換/製品import参照表とBlackHole取得中保存、保存f64 filter取得schedulerを検査済み。
-005-A-common-inputで実backend入力を同じqueue/graphへ接続した。次は製品callback/Qt backend選択・全tapと、
-実f32入力からf64 filterへの明示精度境界/Qt接続を固定して008-Aへ進める。
+005-A-common-inputと005-A-native-callback-Qtで実backend入力を同じqueue/graph/両Qtへ接続した。
+次は動的route ack/全tapと、実f32入力からf64 filterへの明示精度境界/Qt接続を固定して008-Aへ進める。
+製品AudioEngine callback/設定UIとprofile再起動維持は今回のrequest選択と区別する。
 実負荷/長時間性能は統合物の固定後に比較する。008-A/B/Cはローカル作業単位で、Issue作成/採用判断はしていない。
+
+## 005-A-native-callback-Qtの再検査
+
+[native callbackの手順](../native/callback-input.md)と[決定0034](decisions/0034-native-portaudio-callback.md)を参照。
+両Qtをbuildしてから、明示libraryのPortAudioとCPALを同じsource/binaryで検査する。
+
+```bash
+cargo +1.98.1 test --offline --locked --manifest-path native/Cargo.toml -p portaudio-input -p audio-probe -p display-core --features live-audio
+./.venv/bin/pytest -q tests/logic_verification/test_migration_qt_live.py
+./.venv/bin/python scripts/migration_qt_live.py --virtual-device --backend PortAudio --portaudio-library "$PWD/.venv/lib/python3.12/site-packages/_sounddevice_data/portaudio-binaries/libportaudio.dylib" --qt-prefix .tools/qt/6.11.2/macos --output .migration-local/native-callback-portaudio-new
+./.venv/bin/python scripts/migration_qt_live.py --virtual-device --backend Cpal --qt-prefix .tools/qt/6.11.2/macos --output .migration-local/native-callback-cpal-new
+```
+
+callback/Qt request選択の評価範囲だけ。全tap、動的route、製品設定UI/profile、filter、性能/他OSは後続。
 
 ## 005-A-common-inputの再検査
 
