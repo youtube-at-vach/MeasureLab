@@ -84,7 +84,7 @@ def build():
     return native / "target/debug" / ("filter-candidate.exe" if os.name == "nt" else "filter-candidate"), record
 
 
-def request_for(case):
+def request_for(case, *, acquisition=False):
     spec, meta = case["spec"], case["metadata"]
     coefficients = fft.read_array(FIXTURES / spec["id"], case["arrays"]["coefficients"])
     config = {
@@ -120,6 +120,10 @@ def request_for(case):
         "filter_state_revision": "none",
         "calibration_revision": "uncalibrated-FS",
     }
+    if acquisition:
+        source["route_revision"] = "input-physical-binding"
+        source["calibration_revision"] = "none"
+        source["timebase"]["origin_kind"] = "backend-unverified"
     frequencies = (
         fft.read_array(FIXTURES / spec["id"], case["arrays"]["frequency_hz"]).tolist() if spec["kind"] == "sos" else []
     )
@@ -241,7 +245,7 @@ def normalize_spans(spans, count):
     return result
 
 
-def validate_header(header, request):
+def validate_header(header, request, *, acquisition=False):
     meta = expected_metadata(request)
     ratio = meta["rate_ratio"]
     count = (request["frames"] * ratio["numerator"] + ratio["denominator"] - 1) // ratio["denominator"]
@@ -266,7 +270,7 @@ def validate_header(header, request):
         raise fft.ReferenceError("Filter chunk inventory mismatch")
     expected_spans = spans_for(request)
     for run in header["runs"].values():
-        if not isinstance(run, dict) or set(run) != {
+        fields = {
             "validity",
             "windows",
             "before_release",
@@ -275,8 +279,13 @@ def validate_header(header, request):
             "filters_before",
             "filters_released",
             "filters_after",
-        }:
+        }
+        if acquisition:
+            fields.add("acquisition")
+        if not isinstance(run, dict) or set(run) != fields:
             raise fft.ReferenceError("Filter run fields mismatch")
+        if acquisition:
+            validate_acquisition(run["acquisition"], request)
         if normalize_spans(run["validity"], count) != expected_spans:
             raise fft.ReferenceError("Filter support/gap/warmup mismatch")
         if core.json_bytes(
@@ -379,9 +388,36 @@ def validate_header(header, request):
     return shapes
 
 
-def read_result(directory, request):
+def validate_acquisition(evidence, request):
+    fields = {
+        "acquired_frames",
+        "gaps",
+        "max_deliveries",
+        "max_raw_windows",
+        "max_filtered_windows",
+        "history_released",
+        "queue_released",
+        "state",
+    }
+    if not isinstance(evidence, dict) or set(evidence) != fields:
+        raise fft.ReferenceError("Acquisition proof fields mismatch")
+    expected = {
+        "acquired_frames": request["frames"] - sum(end - start for start, end in request["gaps"]),
+        "gaps": request["gaps"],
+        "history_released": True,
+        "queue_released": True,
+        "state": "Stopped",
+    }
+    if any(core.json_bytes(evidence[k]) != core.json_bytes(v) for k, v in expected.items()):
+        raise fft.ReferenceError("Acquisition positions, gaps or resource release mismatch")
+    for key, maximum in {"max_deliveries": 8192, "max_raw_windows": 1, "max_filtered_windows": 1}.items():
+        if type(evidence[key]) is not int or not 0 < evidence[key] <= maximum:
+            raise fft.ReferenceError("Acquisition poll budget mismatch")
+
+
+def read_result(directory, request, *, acquisition=False):
     header = json.loads((directory / "manifest.json").read_bytes())
-    shapes = validate_header(header, request)
+    shapes = validate_header(header, request, acquisition=acquisition)
     arrays, hashes = {}, {}
     for name, shape in shapes.items():
         raw = (directory / f"{name}.bin").read_bytes()
@@ -394,17 +430,24 @@ def read_result(directory, request):
     return arrays, hashes, header
 
 
-def verify_case(binary, case, tolerances):
-    request = request_for(case)
+def verify_case(binary, case, tolerances, *, acquisition=False):
+    request = request_for(case, acquisition=acquisition)
     folder = FIXTURES / case["spec"]["id"]
     with tempfile.TemporaryDirectory(prefix="migration-filter-candidate-") as temp:
         temp = Path(temp)
         path = temp / "request.json"
         fft.write_json(path, request)
-        record = candidate.run_command([str(binary), str(path), str(folder / "input.bin"), str(temp / "output")])
+        command = [
+            str(binary),
+            *(["--acquisition"] if acquisition else []),
+            str(path),
+            str(folder / "input.bin"),
+            str(temp / "output"),
+        ]
+        record = candidate.run_command(command)
         if fft.digest((folder / "input.bin").read_bytes()) != case["arrays"]["input"]["sha256"]:
             raise fft.ReferenceError("Candidate changed original filter input")
-        arrays, hashes, header = read_result(temp / "output", request)
+        arrays, hashes, header = read_result(temp / "output", request, acquisition=acquisition)
         comparisons = {}
         kind = case["spec"]["kind"]
         for name, array in arrays.items():
@@ -448,10 +491,42 @@ def verify_case(binary, case, tolerances):
     }
 
 
-def verify(*, portable=False):
+def source_hashes():
+    native = ROOT / "native"
+    paths = [
+        native / p
+        for p in (
+            "Cargo.toml",
+            "Cargo.lock",
+            "rust-toolchain.toml",
+            "graph-core/Cargo.toml",
+            "dsp-core/Cargo.toml",
+            "audio-core/Cargo.toml",
+        )
+    ]
+    paths += [
+        *sorted((native / "graph-core").rglob("*.rs")),
+        *sorted((native / "dsp-core").rglob("*.rs")),
+        *sorted((native / "audio-core").rglob("*.rs")),
+    ]
+    return {str(p.relative_to(native)): fft.digest(p.read_bytes()) for p in paths}
+
+
+RUNNERS = (
+    "scripts/migration_filter_candidate.py",
+    "scripts/migration_fft_candidate.py",
+    "scripts/migration_fft_reference.py",
+    "scripts/migration_core_reference.py",
+)
+
+
+def verify(*, portable=False, acquisition=False):
     started = time.perf_counter()
     manifest = load_manifest(portable=portable)
+    source = source_hashes()
+    runners = core.hashes(RUNNERS)
     binary, build_record = build()
+    binary_hash = fft.digest(binary.read_bytes())
     with tempfile.TemporaryDirectory(prefix="migration-filter-rates-") as temp:
         temp = Path(temp)
         request, output = temp / "request.json", temp / "output.json"
@@ -469,31 +544,20 @@ def verify(*, portable=False):
         ]
         if core.json_bytes(rates) != core.json_bytes(expected):
             raise fft.ReferenceError("Rate validation differs from saved contract")
-    corpus = [verify_case(binary, case, manifest["tolerances"]) for case in manifest["cases"]]
+    corpus = [verify_case(binary, case, manifest["tolerances"], acquisition=acquisition) for case in manifest["cases"]]
     fft.assert_headless()
-    native = ROOT / "native"
-    paths = [
-        native / p
-        for p in ("Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "graph-core/Cargo.toml", "dsp-core/Cargo.toml")
-    ]
-    paths += [*sorted((native / "graph-core").rglob("*.rs")), *sorted((native / "dsp-core").rglob("*.rs"))]
+    if source_hashes() != source or core.hashes(RUNNERS) != runners or fft.digest(binary.read_bytes()) != binary_hash:
+        raise fft.ReferenceError("Source, runner or executable changed during filter comparison")
     return {
         "schema_version": 1,
-        "task": "MIG-006-D",
+        "task": "MIG-006-D-integration" if acquisition else "MIG-006-D",
         "status": "pass",
         "mode": "portable" if portable else "pinned-reference",
         "fixture_manifest_sha256": MANIFEST_SHA256,
         "environment": fft.environment(),
-        "binary_sha256": fft.digest(binary.read_bytes()),
-        "source_sha256": {str(p.relative_to(native)): fft.digest(p.read_bytes()) for p in paths},
-        "runner_sha256": core.hashes(
-            (
-                "scripts/migration_filter_candidate.py",
-                "scripts/migration_fft_candidate.py",
-                "scripts/migration_fft_reference.py",
-                "scripts/migration_core_reference.py",
-            )
-        ),
+        "binary_sha256": binary_hash,
+        "source_sha256": source,
+        "runner_sha256": runners,
         "build": build_record,
         "rate_command": rate_command,
         "rates": rates,
@@ -501,7 +565,10 @@ def verify(*, portable=False):
         "elapsed_seconds": time.perf_counter() - started,
         "limitations": [
             "f64 saved coefficients; no production filter selection or f32 filter validation",
-            "Single worker transform stage; no scheduler, acquisition/Qt integration or performance acceptance",
+            "Single f64 worker transform stage; Qt integration and performance acceptance unverified",
+            "Queue-backed acquisition scheduler exercised"
+            if acquisition
+            else "Pure filter only; acquisition scheduler not exercised",
             "SOS zero-state transient remains warmup; gaps/invalid input explicitly unsupported",
             "Forward/backward SOS is a bounded offline adapter, never restarted per streaming chunk",
             "Processing latency unknown; other OS, long runs and physical audio unverified",
@@ -512,6 +579,9 @@ def verify(*, portable=False):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--portable", action="store_true")
+    parser.add_argument(
+        "--acquisition", action="store_true", help="Compare through the actual queue/history/FFT acquisition owner"
+    )
     parser.add_argument("--report", type=Path)
     args = parser.parse_args()
     if args.report:
@@ -520,7 +590,7 @@ def main():
             parser.error("Report must be new and outside fixtures")
         report.parent.mkdir(parents=True, exist_ok=True)
     try:
-        result = verify(portable=args.portable)
+        result = verify(portable=args.portable, acquisition=args.acquisition)
         if args.report:
             fft.write_json(args.report, result)
         print(

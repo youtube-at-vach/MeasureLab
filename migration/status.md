@@ -1,11 +1,16 @@
 # 次期コア検証の進捗
 
 更新: 2026-10-03。計画の正本は[評価計画](../guide/RUST_QML_MIGRATION_PLAN.md)。
-今回はmacOS 14.8.9 / Intelで両QtのBlackHole取得中保存を進めた。
+今回はmacOS 14.8.9 / Intelで006-D-integrationの保存f64取得queue→filter→履歴→共有FFTを接続した。
+21保存ケース×5 callback pattern、6 rate境界、331数値比較と13,980派生窓の検査に合格。
+2/4/8chのgap/Trigger写像、EOF/stop、世代fence、寿命とfailureも検査した。
+Rust workspace174件（新規9件）、関連Python155件（新規10件）が成功。
+実backend/Qtへのfilter接続、005-A-common/008-A、長時間/性能/他OSは未完了。
+前回は両QtのBlackHole取得中保存を進めた。
 製品JSON/CSVとv1 JSON/CSVで各2/4/8ch×両Qt×3反復の計36実行に合格。
 324完全snapshot保存、90期待failed、72取消、108元bytes oracle結果を検査した。
 writerへ250 msを注入し、writing+queued/busy/取消と320 msのGUI待機中の15〜16 FFT進行を確認。
-長時間/実ディスク性能は未確認。次は005-A-common/006-D-integrationから008-Aへ進める。
+長時間/実ディスク性能は未確認。次は005-A-commonと実backend/Qtのfilter接続から008-Aへ進める。
 前回の両Qt製品importは保存4入力×9言語×両Qtの72実行と、文言修正後の18実行に合格。
 LinuxのOS検証はUbuntu 26.04.1 / x86_64で実施した。
 LinuxのSDK/build、両Qtの寿命・X11起動、製品保存8実行、全言語UIサイズは成功。
@@ -53,12 +58,12 @@ PyQt画像provider経路の試験であり、採用判断・個別widgetの本�
 | --- | --- |
 | 現行版 | 参照コミット`9fd79958`。以前のmacOS checkoutは`/Users/vach/MeasureLab`、`main` |
 | 検証用checkout | 現在は`/Users/vach/.codex/worktrees/next-core-evaluation/MeasureLab`（Codex管理）。Linuxは`/home/hotstaff/MeasureLab` |
-| 検証用ブランチ | 統合先`codex/next-core-evaluation`、現在`codex/migration-live-product-save`。今回の開始HEADは`8b288ee0` |
+| 検証用ブランチ | 統合先`codex/next-core-evaluation`、現在`codex/migration-filter-acquisition`。今回の開始HEADは`f568fa7e` |
 | 作業開始・Python参照コミット | `9fd79958`（MeasureLab 0.9.0、開始時のローカルmain） |
 | 計画書の調査コミット | `68cbdabc3ecd542d9d73fa0aa86bf9159f44d811` |
 | 最終main同期 | 2026-10-03にfetchし、origin/main `84013a76`をmerge `0fe41a7a`で取込み。差分はCURRENT_DIRECTION.mdのみ。DSP/fixture参照`9fd79958`は維持 |
 | 統合担当 | 当面、この検証ブランチを担当する単一の作業者 |
-| リモート | 開始時の`8b288ee0`はremote一致・clean。前回のQt import変更・記録は同commitに保存済み。今回の取得中保存変更・記録は未コミット。push・PR・Issue・Project更新・公開配布は未実施 |
+| リモート | 開始時の`codex/migration-live-product-save`はremote一致・clean、HEAD `f568fa7e`。前回の取得中保存変更・記録は同commitに保存済み。今回のfilter取得統合変更・記録は未コミット。今回のpush・PR・Issue・Project更新・公開配布は未実施 |
 
 調査コミットから開始時mainまでの差分には計画書、設計ガイド、Measurement Consoleのレイアウト、
 Goniometerのテーマ対応、翻訳と対応テストがある。
@@ -76,7 +81,7 @@ MIG-003-Cも既存fixtureと契約を変更せず、filter/rate参照を独立�
 | MIG-003 | 完了（A/B/Cの参照側） | FFT20+4ケース、27契約例、4保存例にfilter/rateの21数値ケースと6 rate境界を追加。候補実装でのAC合格は005/006以降 |
 | MIG-004 | 進行中（A/BのIntel・Linux host範囲を完了） | Linuxでも両Qt基本寿命、32 sample+warmup2回、6 package展開起動が成功。ICUを含むSDKのlocal buildも成功。GitHub CI、ARM/Windows/clean環境は未確認 |
 | MIG-005 | 進行中（Aの取得graph・動的f32 routeとBの短い実機／仮想比較） | 取得queue/履歴/共有FFTに動的出力mailboxを追加。保存12条件、BlackHole 2→2/4→16/8→16の9取得と3保留cancel。製品共通adapter/全tap、時刻写像、排他/USB復帰/長時間は残る |
-| MIG-006 | 進行中（A〜Eのpure範囲、非同期保存workerと互換adapter評価） | FFT/共有/履歴/filter、不変result/ID校正とv1保存。非同期保存12実行/36 saved/36 failed、新規Rust9件が合格。取得/Qt校正編集は007-Aへ追加。互換adapterの製品JSON carrier/CSV sidecarと旧JSON/32 CSV条件を検査。両Qtのv1保存操作を追加。native製品snapshot codec/共通保存workerを追加。保存12実行/72双方向完全往復、48 saved/48期待failedを検査。Qt製品保存formatと旧トレース/完全snapshotのnative importを追加。旧JSON/CSV32条件・旧pairと18完全importが合格。Qt製品importを独立参照表へ追加し、保存72実行と最終文言18実行を検査。BlackHole取得中の実保存/注入待ち診断を追加。plot統合と実負荷/長時間性能は後続 |
+| MIG-006 | 進行中（A〜Eのpure範囲、非同期保存workerと互換adapter評価） | FFT/共有/履歴/filter、不変result/ID校正とv1保存。非同期保存12実行/36 saved/36 failed、新規Rust9件が合格。取得/Qt校正編集は007-Aへ追加。互換adapterの製品JSON carrier/CSV sidecarと旧JSON/32 CSV条件を検査。両Qtのv1保存操作を追加。native製品snapshot codec/共通保存workerを追加。保存12実行/72双方向完全往復、48 saved/48期待failedを検査。Qt製品保存formatと旧トレース/完全snapshotのnative importを追加。旧JSON/CSV32条件・旧pairと18完全importが合格。Qt製品importを独立参照表へ追加し、保存72実行と最終文言18実行を検査。BlackHole取得中の実保存/注入待ち診断を追加。保存f64の一段filter取得schedulerを追加し、21ケース×5 callback patternを検査。実backend/Qtのfilter接続、plot統合と実負荷/長時間性能は後続 |
 | MIG-007 | 進行中（Aの保存／BlackHole実入力表示・分離/9言語・Qt Trigger配送/ID校正とQt編集・適用、CのIntel最小試験） | Qt校正編集・適用まで接続し、保存4入力×9言語×両Qtの72実行・648完全result/CSV・144 PNG、BlackHole18実行・162完全result/CSV・36 PNGが成功。v1非同期保存操作の保存72実行と既存BlackHole回帰6実行が成功。Qt製品保存formatの保存72実行・497完全snapshot・216期待failed/151取消も成功。製品importの独立参照表を追加し、保存72実行と最終文言18実行を検査。BlackHole取得中保存をv1/製品の計36実行で検査し、注入待ちのbusy/取消も成功。import plot統合/実window manager/他OS/統合性能は残る。renderer候補9試行成功、基準100万点3試行SIGBUS。採用判断・個別widgetの本実装・native texture共有は含めない |
 | MIG-008 | 未着手 | [残工程と依存](remaining-to-mig008.md)を整理。008-A統合→008-B実行/反復/実機/配布比較→008-C四案の判断。P3以降の機能展開は含まない |
 
@@ -85,6 +90,7 @@ MIG-003-Cも既存fixtureと契約を変更せず、filter/rate参照を独立�
 005-Aの`audio-core`とCPAL 0.18.2の`audio-probe`を追加した。
 006-Cは`graph-core`内にworker所有履歴/有理数時刻/旧世代公開のfenceを追加した。
 006-Dで同じgraphへf64の一段filter/rate stateと派生世代fenceを追加した。
+006-D-integrationで保存f64 queueを同じ取得ownerのfilter/専用履歴/共有FFTへ接続した。
 006-Eは共有FFTから全配列と来歴をowned resultへ保存し、ID校正/JSON・CSVのpure境界を追加した。
 005-graphはinput.rawの取得queueをworker所有履歴/固定FFT schedulerへ接続し、CPAL診断にも利用する。
 現行PortAudioは比較基準。input.rawのgraph接続は追加済み。動的出力routeは固定容量mailboxでCPAL callbackへ配送する。
@@ -94,10 +100,67 @@ BlackHole input.rawの解析thread schedulerと両Qt表示を追加した。
 取得ownerへ非消費Trigger capture/共有raw FFT/trigger付き不変resultを追加した。
 Qtからrevision付き要求を解析threadへ配送し、両viewの共有hold/retry/releaseを接続した。
 セッションID校正を通常/Trigger取得結果、両Qtの絶対値/校正snapshot表示と診断JSON/CSVへ接続した。
-汎用scheduler、全tap/Qt接続、製品backend共通化は未作成。
+保存f64の一段filter固定schedulerは追加済み。汎用scheduler、全tap/Qtのfilter接続、製品backend共通化は未作成。
 候補実装は契約v0.1を出発点とし、公開型・ABI・採用ライブラリは後続の検証で決める。
 
+## MIG-006-D-integration 保存f64のfilter取得scheduler
+
+着手: 2026-10-03、macOS 14.8.9 / Intel、HEAD `f568fa7e`、remote一致・clean。
+同じworktreeで`codex/migration-filter-acquisition`へ分岐した。変更は未コミット。
+[取得統合手順](../native/filter-acquisition.md)と[決定0032](decisions/0032-acquisition-filter-scheduler.md)を追加した。
+現行製品DSP/GUI、audio callback、元fixture/係数/数値許容差、Cargo.lockは変更していない。
+
+- `Acquisition<f64>`の実Sourceから一段filterを作り、同じgraphで出力FFTを共有する。
+  入力消費前の設定と正確な出力keyの需要を要求する。rawと派生は別の履歴/位置を持つ。
+  P2の最初のfilter候補はf64因果3-tap `[0.25,0.5,0.25]`、48→24 kHz。
+- 各pollはframe配送上限とraw/派生それぞれの窓上限を保持する。
+  FIRのgap/support/warmup/中心補償を維持し、欠落を位置付きで返す。
+  producer停止/queue drain後の明示EOFだけが終端paddingを生成し、stop/cancelは生成しない。
+- SOS gap/nonfinite/backend flags、filter容量はfailureとしてownerを終了・回収する。
+  小さい履歴のexpired窓は正常FFTで埋めない。SOS zero-stateは全区間warmupのまま。
+- 最後の派生token解除でfilterと次pollの履歴を回収し、raw取得を継続できる。
+  親restartで旧派生completionをfenceし、新世代はtokenとfilterを明示再設定する。
+  外部snapshotの所有権/不変性と、Trigger1024→512、信号遅延1/2 output sampleを検査した。
+
+| 保存f64検査 | 結果 |
+| --- | --- |
+| 実queue/因果filter/専用履歴/共有FFT | 21ケース×5 callback pattern成功。331理論/現行・共有FFT比較、13,980派生窓、12,985数値FFT評価 |
+| gap | 保存FIR例の`[100,104)`を実overwriteで作り、取得frame数とsupport拡大`[50,53)`を照合。warmup`[0,1)`を保持 |
+| 数値/来歴 | 全出力/最終state、chunk間bytes一致、元入力不変、rate/delay/unknown/ID、同一result allocationを照合 |
+| Rust | workspace174 passed、新規9件。2/4/8ch、EOF/stop、未読queue拒否、SOS failure、容量/履歴不足、世代/寿命 |
+| Python | 関連155 passed、新規10件。pureと取得の21ケース、取得/Trigger/Qt表示の回帰、偽reportを拒否 |
+
+最終reportは `.migration-local/2026-10-03-filter-acquisition-final.json`。
+元manifest全体と132 fixture配列（manifest含む133 file）のhashを照合し、source/runner/binaryは比較前後で一致。
+前後方向SOS/応答と6 rate境界は既存pure adapterの回帰で、取得へ接続したのは因果状態だけ。
+この短いdebug保存診断の198.1秒は性能protocolの測定ではない。
+Rust logは `2026-10-03-filter-acquisition-workspace.log`、Pythonは同prefixの`-python.log`。
+workspace Clippy/Rust fmt、Mypy116 source、Ruff lint/format691 filesは成功。
+固定環境のFFT14、core4 FFT/27契約/4保存、filter21/6 rateもverify成功、期待値更新なし。
+
+初回のRust buildは型推論/部分moveの2コンパイルエラーで不合格、修正後に全件成功。
+初回比較はそのbuild失敗で終了。retryは検証harnessの履歴を全区間保持して遅くなり、
+poly-44100-48000-tone中に自分のprocessを停止したため不合格。成功扱いにしない。
+raw履歴256/派生512 frameへ固定し、最終比較を別reportで実施した。
+
+既存両Qt raw表示の保存4/8ch f32/f64×2方式の8実行と、BlackHole 2/4/8ch×2方式の6実行も成功。
+reportは同prefixの`-qt-saved/report.json`と`-qt-live/report.json`。42世代の元値/共有FFTと14 PNGを検査し、
+liveのstream回収/gapなし/callback error・XRUNなし、終了後workers/models/sessions=0を確認した。
+両Qt buildとworkspace Clippyは成功。既知の重複rpath/空init archive、locale/font/offscreen警告は残る。
+最終証拠監査は同prefixの`-evidence-audit.json`、98 source・3実行物・234登録fileのhash一致を確認した。
+source snapshotと固定実行物を同prefixの`-source-snapshot/`と`-binaries/`へ保持した。
+filterの一時出力bytesは比較時に全検査/hash化し、reportへ保持した。Qt回帰の全artifactは保持・再hashした。
+Markdown lint231 files、台帳41件/20プリミティブ、`git diff --check`は成功。
+レイアウト/翻訳/製品UIは変更していない。全体Pytest/全言語UIサイズ/GitHub CIは今回未実施。
+Native CIへ取得filter比較を追加したが、remoteでの成功は未確認。
+現在のCPAL/Qtはf32/raw。実backend/Qtへのfilter接続、派生TriggerのQt配送/保存、
+f32/chain/SOS gap回復、005-A-commonの全tap/PortAudio共通境界、008-A全フローは未完了。
+物理clock/USB/電圧/遅延、長時間/負荷/CPU/RSS/同条件Python比較、他OS/clean配布も残る。
+次は005-A-commonと008-Aのbackend/dtype/対象tapを固定し、同じ2chフローへ接続する。
+
 ## MIG-007-A BlackHole取得中のsnapshot保存
+
+以下は `f568fa7e` へ保存された前回の記録。着手時点と当時の未コミット状態を保持する。
 
 着手: 2026-10-03、macOS 14.8.9 / Intel、HEAD `8b288ee0`、remote一致・clean。
 既存worktreeで`codex/migration-live-product-save`へ分岐した。変更は未コミット。
@@ -2146,10 +2209,10 @@ GUI起動時にlocaleのUTF-8への切替と、`Sans Serif`のフォント代替
 4. [残工程整理](remaining-to-mig008.md)と[作業票](tasks.md)に従い、接続済みの両Qt v1/製品保存操作と
    native製品snapshot codec/保存workerと旧トレース/完全snapshotのnative importから、
    両Qtの製品importと独立参照表を検証し、BlackHole取得中の保存と注入待ちの診断も検査済み。
-   次は005-A-common/006-D-integrationから008-Aの2ch統合へ進める。実負荷/長時間性能は統合物を固定して比較する。
+   保存f64の006-D-integrationも検査済み。次は005-A-commonと実backend/Qtのfilter接続から008-Aの2ch統合へ進める。実負荷/長時間性能は統合物を固定して比較する。
    import plot統合と取得profile再起動維持も別の評価単位として残る。
    join/DropをGUI外で実行し、受付を実完了と混同しない。
-5. 音声側は005-A-commonの全tap/製品共通adapter、対象filterの006-D-integrationへ進める。
+5. 音声側は005-A-commonの全tap/製品共通adapter、保存f64で検査したfilterの実backend/Qt接続へ進める。
    通常の取得/route/回帰はBlackHole 16ch／2chを優先し、物理USB/clock/電圧/遅延だけ実機を使う。
    USB切断/復帰は人が操作できる回に限る。
 6. 008-Aの同じ2chフローを固定した後、007-B/008-Bで性能/反復速度/実機/配布/操作を比較する。

@@ -522,6 +522,10 @@ pub struct QueueStats {
     pub numeric_bytes: usize,
 }
 impl<T: Sample> Consumer<T> {
+    /// Worker-side EOF precondition. The producer must already be stopped by the caller.
+    pub fn is_drained(&self) -> bool {
+        self.next == self.ring.end.load(SeqCst)
+    }
     pub fn rate_hz(&self) -> f64 {
         self.ring.rate
     }

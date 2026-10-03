@@ -712,6 +712,15 @@ impl Graph {
     pub fn filter_count(&self) -> usize {
         self.core.state.lock().unwrap().filters.len()
     }
+    /// Exact fixed-scheduler demand, inspected on the control/analysis owner only.
+    pub fn has_demand(&self, key: &FftKey) -> bool {
+        let state = self.core.state.lock().unwrap();
+        !state.closed
+            && state
+                .consumers
+                .values()
+                .any(|consumer| &consumer.key == key)
+    }
     pub fn cached(&self, key: &FftKey, start: u64) -> Option<Arc<FftResult>> {
         let mut state = self.core.state.lock().unwrap();
         if !state.accepts(&key.source) {

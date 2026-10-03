@@ -43,6 +43,57 @@ def test_saved_21_cases_five_chunks_and_graph_state(filter_binary, filter_manife
     assert len(filter_manifest["cases"]) == 21
 
 
+@pytest.mark.native
+def test_saved_21_cases_through_actual_acquisition_queue(filter_binary, filter_manifest):
+    for case in filter_manifest["cases"]:
+        report = filters.verify_case(filter_binary, case, filter_manifest["tolerances"], acquisition=True)
+        assert all(run["acquisition"]["history_released"] for run in report["graph"]["runs"].values())
+
+
+@pytest.mark.native
+@pytest.mark.parametrize(
+    "fault", ["frames", "gap", "window_budget", "delivery_budget", "history", "queue", "state", "boolean", "extra"]
+)
+def test_rejects_false_acquisition_evidence(filter_binary, filter_manifest, tmp_path, fault):
+    case = filter_manifest["cases"][4]
+    request = filters.request_for(case, acquisition=True)
+    path = tmp_path / "request.json"
+    fft.write_json(path, request)
+    output = tmp_path / "output"
+    candidate.run_command(
+        [
+            str(filter_binary),
+            "--acquisition",
+            str(path),
+            str(filters.FIXTURES / case["spec"]["id"] / "input.bin"),
+            str(output),
+        ]
+    )
+    header = json.loads((output / "manifest.json").read_bytes())
+    evidence = header["runs"]["whole"]["acquisition"]
+    if fault == "frames":
+        evidence["acquired_frames"] += 1
+    elif fault == "gap":
+        evidence["gaps"] = []
+    elif fault == "window_budget":
+        evidence["max_filtered_windows"] = 2
+    elif fault == "delivery_budget":
+        evidence["max_deliveries"] = 8193
+    elif fault == "history":
+        evidence["history_released"] = False
+    elif fault == "queue":
+        evidence["queue_released"] = False
+    elif fault == "state":
+        evidence["state"] = "Running"
+    elif fault == "boolean":
+        evidence["max_raw_windows"] = True
+    else:
+        evidence["extra"] = 1
+    fft.write_json(output / "manifest.json", header)
+    with pytest.raises(fft.ReferenceError):
+        filters.read_result(output, request, acquisition=True)
+
+
 @pytest.mark.parametrize("fault", ["metadata", "tolerance", "coefficient_bytes", "input_bytes"])
 def test_saved_manifest_and_original_bytes_are_pinned(filter_manifest, tmp_path, fault):
     if fault in {"metadata", "tolerance"}:

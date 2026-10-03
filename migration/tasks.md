@@ -31,6 +31,7 @@
 | 006-B | 固定DAG・共有key・購読token・bounded cache | 006-A、003-B、P15 | AC05〜07。評価count/同一ID、条件分岐、独立平均、最後の解除/終了回収 | 汎用graph editor | 完了（2026-09-30、pure graphのRust16テスト/保存18ケース。実取得/Qt統合は後続） |
 | 006-C | trigger/history・Timebase・generation・validity | 003-B、006-B、P03 | AC08/09、異なるcursor/通知遅延・保持超過・旧世代拒否。共有graphへ統合 | 外部trigger実機adapter | 完了（2026-09-30、worker所有履歴/pure graph・保存13契約/4入力bytes、Rust27テスト。実取得/Qtは後続） |
 | 006-D | 最小rate変換/filterとvalidity伝播 | 003-C、006-C、P06 | AC10/14、同じgraph内で遅延/区間/phase stateを保持 | 高品質resamplerの全機能 | 完了（2026-09-30、f64保存21ケース×5 chunk/6 rate境界と一段のpure graph。f32・IIR gap回復・実取得/Qtは後続） |
+| 006-D-integration | 一段f64 filterを実取得queue/専用履歴/共有FFTへ接続 | 006-D、005-graph。graph-core/acquisitionと既存filter runner | AC10/14の保存21ケース×5 callback pattern、元bytes/最終state/共有/位置/寿命、2/4/8chのgap/Trigger/世代、容量/失敗を照合 | 実backend/Qt、f32/chain/SOS gap回復、派生TriggerのQt保存、長時間/他OS | 保存入力範囲完了（2026-10-03、21ケース×5 callback pattern、331比較/13,980派生窓、Rust新規9件/Python新規10件）。P2最初のfilter候補はf64因果3-tap 48→24 kHz。手順はnative/filter-acquisition.md、結果はstatus |
 | 006-E | 不変result・channel校正・CSV/JSON来歴 | 003-B、006-B/C、P13/P14 | AC12、再読込、保存失敗、profile変更後の不変性、uncalibrated | 旧設定の自動移行 | 完了（2026-10-01、pure不変result/ID校正/JSON・CSV。保存2契約・4例と4/8ch f32/f64。非同期workerは次行、製品互換/Qt保存操作は後続） |
 | 006-E-async-save | 不変snapshotのbounded非同期保存worker | 006-E、007-A-calibration-editのencode負荷記録。graph-core/exportと独立runner | AC07/12/13のworker境界。受付/実完了/失敗/pending cancel/寿命、graph進行、2契約と4入力の両format完全往復 | Qt保存操作、製品互換形式、pair transaction、取得中/長時間性能 | 評価範囲完了（2026-10-02、Rust新規9件、保存12実行/36 saved/36 failed）。結果はstatus |
 | 006-E-compat | 製品形式/旧CSV・JSONとsnapshotの互換adapter・読込み | 006-E、006-E-async-save、現行ExportTrace。製品版管理は008で判断 | AC12。元値/軸/単位/校正/metadata、旧fileのunknown、失敗/上書きの保証範囲を検査 | 全旧設定自動移行、全解析形式 | 評価用Python adapterを追加（2026-10-02）。製品JSON carrier/CSV sidecarとnative readerの完全往復、旧fileのunknownを検査。native snapshot codec/file workerは次行。Qt製品保存formatは007-A-product-save、native読込みは006-E-native-importへ追加。Qt import操作を007-A-product-importへ追加。取得profile再起動維持は後続 |
@@ -57,7 +58,7 @@ MIG-004はSDK導入だけで完了にしない。OSや実機の不足はその�
 007-Cの[再実行・負荷/コピーの境界](../native/renderer-spike.md)と[試験結果](status.md#mig-007-c-plot-renderer-feasibility-spikeの成果と検証)を追加済み。基準100万点の失敗も比較記録へ残す。
 
 [MIG-008までの残工程](remaining-to-mig008.md)に、未完了範囲・実施順・依存・実機/別環境の必要条件を整理した。
-007-A-saveの保存fixture範囲を進めた。006-E-native-productの保存fixture範囲を追加。Qt製品format接続を007-A-product-saveへ追加。旧トレースと完全snapshotのnative importを006-E-native-importへ追加。Qt製品importを007-A-product-importへ追加。取得中の保存/注入待ち診断を007-A-live-saveへ追加。次は005-A-common、006-D-integrationから008-Aへ進める。実負荷/長時間性能は統合物を固定してから比較する。008-A/B/Cも同表のローカル作業単位であり、Issue作成や採用判断は行っていない。
+007-A-saveの保存fixture範囲を進めた。006-E-native-productの保存fixture範囲を追加。Qt製品format接続を007-A-product-saveへ追加。旧トレースと完全snapshotのnative importを006-E-native-importへ追加。Qt製品importを007-A-product-importへ追加。取得中の保存/注入待ち診断を007-A-live-saveへ追加。006-D-integrationの保存f64 queue接続を進めた。次は005-A-commonと実backend/Qtへのfilter接続から008-Aへ進める。実負荷/長時間性能は統合物を固定してから比較する。008-A/B/Cも同表のローカル作業単位であり、Issue作成や採用判断は行っていない。
 
 ## 003-Aの再検査
 
@@ -235,7 +236,22 @@ cargo +1.98.1 test --offline --locked --manifest-path native/Cargo.toml -p graph
 ```
 
 NumPy-only CIは明示`--portable`を使う。原点/処理遅延のunknownを0へ補わず、係数bitsとfixtureを固定する。
-006-Eの基本校正/保存もpure境界を検証済み。IIR gap回復、f32、chain、実取得/Qt/永続scheduler/物理clockは後続。
+006-Eの基本校正/保存もpure境界を検証済み。保存f64の固定取得scheduler接続は次節へ追加した。IIR gap回復、f32、chain、実backend/Qt/汎用scheduler/物理clockは後続。
+
+## 006-D-integrationの再検査
+
+[filter取得統合](../native/filter-acquisition.md)と[決定0032](decisions/0032-acquisition-filter-scheduler.md)を参照。
+保存21ケースの因果経路を実queue/取得owner/専用履歴/共有FFTへ接続する。
+
+```bash
+cargo +1.98.1 test --offline --locked --manifest-path native/Cargo.toml -p graph-core -p audio-core
+./.venv/bin/python scripts/migration_filter_candidate.py --acquisition --report .migration-local/filter-acquisition-new.json
+./.venv/bin/pytest -q tests/logic_verification/test_migration_filter_candidate.py tests/logic_verification/test_migration_audio_graph.py tests/logic_verification/test_migration_trigger_candidate.py
+```
+
+別環境のNumPy-only検査は`--portable --acquisition`を明示する。元fixture/係数/許容差は維持する。
+前後方向SOS/応答と6 rate境界は従来pure adapterの回帰。P2の最初の候補はf64因果3-tap 48→24 kHz。
+CPAL/Qtは現状f32/raw。実backend/Qt接続と派生Trigger保存、f32/chain/SOS gap回復、性能/他OSは後続。
 
 ## 006-Eの再検査
 

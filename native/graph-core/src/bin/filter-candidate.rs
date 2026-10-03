@@ -8,6 +8,8 @@ use graph_core::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{collections::BTreeMap, fs, path::Path, sync::Arc};
+#[path = "filter-candidate/acquisition.rs"]
+mod acquisition;
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Request {
@@ -61,7 +63,12 @@ struct WindowProof {
     numeric: bool,
     average_count: u64,
 }
-fn corpus(r: Request, raw: &[u8], output: &Path) -> Result<(), Box<dyn std::error::Error>> {
+fn corpus(
+    r: Request,
+    raw: &[u8],
+    output: &Path,
+    through_queue: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
     if r.schema_version != 1
         || r.frames == 0
         || r.frames > 65536
@@ -109,6 +116,14 @@ fn corpus(r: Request, raw: &[u8], output: &Path) -> Result<(), Box<dyn std::erro
     for (name, pattern) in &r.chunks {
         if name.is_empty() || !name.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'-') {
             return Err("chunk name".into());
+        }
+        if through_queue {
+            let (run, arrays) = acquisition::run(&r, pattern, &values)?;
+            for (suffix, values) in arrays {
+                binaries.insert(format!("{name}.{suffix}"), values);
+            }
+            runs.insert(name.clone(), run);
+            continue;
         }
         let graph = Graph::new(Limits::default())?;
         let key = FftKey {
@@ -268,7 +283,11 @@ fn corpus(r: Request, raw: &[u8], output: &Path) -> Result<(), Box<dyn std::erro
     Ok(())
 }
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<_> = std::env::args().collect();
+    let mut args: Vec<_> = std::env::args().collect();
+    let through_queue = args.get(1).is_some_and(|a| a == "--acquisition");
+    if through_queue {
+        args.remove(1);
+    }
     if args.len() == 4 && args[1] == "--rates" {
         let r: Rates = serde_json::from_slice(&fs::read(&args[2])?)?;
         if r.schema_version != 1 || r.rates.len() > 64 || Path::new(&args[3]).exists() {
@@ -300,5 +319,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("usage: filter-candidate request.json input.bin NEW_OUTPUT_DIR".into());
     }
     let r: Request = serde_json::from_slice(&fs::read(&args[1])?)?;
-    corpus(r, &fs::read(&args[2])?, Path::new(&args[3]))
+    corpus(r, &fs::read(&args[2])?, Path::new(&args[3]), through_queue)
 }

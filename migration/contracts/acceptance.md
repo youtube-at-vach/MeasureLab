@@ -80,6 +80,12 @@ AC07/12/13の通常/Trigger pin、旧校正/全配列/来歴と実取得bytesの
 writerの注入待ちによるbusy/queued-only取消、GUI待機中の取得継続、I/O復帰と回収を検査する。
 長時間/実ディスク負荷/CPU/RSS/同条件Python比較、他OSとAC全体は後続。最終結果はstatusを参照。
 
+006-D-integrationの[一段f64 filter取得scheduler](../decisions/0032-acquisition-filter-scheduler.md)を追加した。
+AC10/14の保存21ケースを実queueから因果filter/専用履歴/共有FFTへ通し、
+元bytes、chunk一致、gap/warmup、遅延/Trigger写像、世代と寿命を検査する。
+前後方向SOS/応答と6 rate境界は従来pure adapterの回帰。結果はstatusを参照。
+実backend/Qt、派生Triggerの配送/保存、f32/chain/SOS gap回復、長時間/他OSとAC全体は後続。
+
 ## fixtureの最小セット
 
 | ID | 入力・操作 | 合格条件 | 実装・検証タスク |

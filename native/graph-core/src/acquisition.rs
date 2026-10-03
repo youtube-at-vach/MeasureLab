@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 mod trigger;
 pub use trigger::{TriggerRead, TriggerRequest};
+mod derived;
 
 mod sealed {
     pub trait Sealed {}
@@ -79,6 +80,8 @@ pub struct PollReport {
     pub timestamps: Vec<FrameStamp>,
     pub gaps: Vec<[u64; 2]>,
     pub windows: Vec<WindowEvent>,
+    pub filtered_blocks: Vec<Arc<SignalBlock>>,
+    pub filtered_windows: Vec<WindowEvent>,
 }
 /// A single input queue, explicit logical-to-physical binding and one FFT specification.
 /// Display/save demand is represented only by external graph subscription tokens.
@@ -94,6 +97,8 @@ pub struct Acquisition<T: CaptureSample> {
     // One retained on-demand raw result, independent of continuous view mailboxes.
     trigger_cache: Option<Arc<crate::FftResult>>,
     trigger_evaluations: u64,
+    filtered: Option<derived::FilteredStream>,
+    input_finished: bool,
 }
 fn prepare<T: CaptureSample>(
     receiver: &Consumer<T>,
@@ -181,6 +186,8 @@ impl<T: CaptureSample> Acquisition<T> {
             state: WorkerState::Running,
             trigger_cache: None,
             trigger_evaluations: 0,
+            filtered: None,
+            input_finished: false,
         })
     }
     pub fn key(&self) -> &FftKey {
@@ -213,6 +220,7 @@ impl<T: CaptureSample> Acquisition<T> {
     /// Existing subscriptions must explicitly reconfigure to key() after success.
     pub fn restart(&mut self, receiver: Consumer<T>, format: IoFormat) -> Result<(), String> {
         if self.state != WorkerState::Running
+            || self.input_finished
             || format.stream_id != self.format.stream_id
             || format.generation <= self.format.generation
         {
@@ -235,6 +243,7 @@ impl<T: CaptureSample> Acquisition<T> {
         self.next_window = key.alignment;
         self.key = key;
         self.trigger_cache = None;
+        self.filtered = None;
         Ok(())
     }
     pub fn stop(&mut self) {
@@ -242,6 +251,7 @@ impl<T: CaptureSample> Acquisition<T> {
         self.receiver = None;
         self.history = None;
         self.trigger_cache = None;
+        self.filtered = None;
         if self.state == WorkerState::Running {
             self.state = WorkerState::Stopped;
         }
@@ -261,44 +271,16 @@ impl<T: CaptureSample> Acquisition<T> {
         }
     }
     fn windows(&mut self, report: &mut PollReport) -> Result<(), String> {
-        while report.windows.len() < self.limits.windows_per_poll {
-            let end = self
-                .next_window
-                .checked_add(self.key.n as u64)
-                .ok_or("position_overflow")?;
-            if end > i64::MAX as u64 {
-                return Err("position_overflow".into());
-            }
-            let history = self.history.as_ref().unwrap();
-            if end > history.acquired_until() {
-                break;
-            }
-            let read = history.read_interval(self.next_window as i64, end as i64)?;
-            let mut event = WindowEvent {
-                history: read.report.clone(),
-                result_id: None,
-                numeric: false,
-            };
-            if read.snapshot.is_some() {
-                for job in self.graph.schedule_history(&read)? {
-                    let completion = job.compute();
-                    event.result_id = Some(completion.result().id());
-                    event.numeric = completion.result().numeric().is_some();
-                    if !completion.publish() {
-                        return Err("publication_fenced".into());
-                    }
-                }
-            } else {
-                self.graph.invalidate_source(&self.key.source)?;
-            }
-            report.windows.push(event);
-            self.next_window = self
-                .next_window
-                .checked_add(self.key.hop as u64)
-                .ok_or("position_overflow")?;
-        }
-        Ok(())
+        derived::schedule_windows(
+            &self.graph,
+            self.history.as_ref().unwrap(),
+            &self.key,
+            &mut self.next_window,
+            self.limits.windows_per_poll,
+            &mut report.windows,
+        )
     }
+
     fn commit(
         &mut self,
         values: &mut Vec<T>,
@@ -316,18 +298,21 @@ impl<T: CaptureSample> Acquisition<T> {
             std::mem::take(validity),
         )?);
         history.append_ref(&block)?;
+        self.process_filtered(&block, report)?;
         report.blocks.push(block);
         self.windows(report)
     }
     fn poll_inner(&mut self) -> Result<PollReport, String> {
         let mut report = PollReport::default();
+        self.filtered_windows(&mut report)?;
         self.windows(&mut report)?;
         let mut values = Vec::new();
         let mut validity = Vec::new();
         while report.deliveries < self.limits.frames_per_poll
             && report.windows.len() < self.limits.windows_per_poll
+            && report.filtered_windows.len() < self.limits.windows_per_poll
         {
-            let Some(delivery) = self.receiver.as_mut().unwrap().take() else {
+            let Some(delivery) = self.receiver.as_mut().and_then(Consumer::take) else {
                 break;
             };
             report.deliveries += 1;
@@ -336,6 +321,7 @@ impl<T: CaptureSample> Acquisition<T> {
                     self.commit(&mut values, &mut validity, &mut report)?;
                     self.history.as_mut().unwrap().append_gap(interval)?;
                     self.graph.invalidate_source(&self.key.source)?;
+                    self.filtered_gap()?;
                     report.gaps.push(interval);
                     self.windows(&mut report)?;
                 }

@@ -33,7 +33,8 @@ Rust/QML、製品resampler、公開APIの採用は未決定。
 131072出力frame/call、4096 validity span。FIRの内部履歴は有限supportに必要なframeだけを保持する。
 一時出力/validityも検査するが、metadata/allocator/外部snapshot/全process RSSの予算とは別。
 allocationとgraph mutexを使うので、音声callbackから呼ばない。
-永続scheduler、filter chain、実取得queue/Qtへの接続、f32 filter、品質/性能の採用判断は後続。
+保存f64の実取得queue/固定scheduler接続は[006-D-integration](filter-acquisition.md)へ追加した。
+汎用scheduler、filter chain、実backend/Qtへの接続、f32 filter、品質/性能の採用判断は後続。
 
 ## 保存比較
 
