@@ -1,55 +1,44 @@
-# Rust core段階導入の評価と再開
+# Rust coreの評価用workspace
 
-2026-10-04。[判断0037](../migration/decisions/0037-mig008-integrated-evaluation.md)に従い、
-次の対象は現行Spectrum AnalyzerへのRust FFT/共有result接続評価。
-Python bindingと製品切替は未実装。現在地は[進捗](../migration/status.md)を参照する。
-Qt/QMLの両adapter・表示用core・初期probe・renderer試作と専用runnerを削除した。
+[評価計画](../guide/RUST_QML_MIGRATION_PLAN.md)に従い、現行Spectrum Analyzerへの
+Rust FFT／共有result接続を次の対象とする。Python bindingと製品切替は未実装。
+現在地とMIG-008の結果は[進捗](../migration/status.md)を参照する。
 
-## このworktreeで使う
+## buildと検証
 
-リポジトリルートで導入済みのRustツールを有効にする。全fixture再verifyは不要。
+このworktreeのRust 1.98.1をリポジトリルートから使う。
 
 ```bash
 export CARGO_HOME="$PWD/.tools/cargo"
 export RUSTUP_HOME="$PWD/.tools/rustup"
 export PATH="$CARGO_HOME/bin:$PATH"
 export CARGO_BUILD_JOBS=4
-export MACOSX_DEPLOYMENT_TARGET=13.0
 ```
 
-Rust 1.98.1は[rust-toolchain.toml](rust-toolchain.toml)、依存版は[Cargo.lock](Cargo.lock)へ固定済み。
-試作用Qt SDKとbuild用venvは削除済み。現行GUIはルートの`.venv/`を使う。
-
-FFT/共有graphのbuild（変更した場合だけ）:
+新しい環境では[rust-toolchain.toml](rust-toolchain.toml)のtoolchainを用意し、初回だけ
+`cargo fetch --locked --manifest-path native/Cargo.toml`で依存を取得する。
+このworktreeでは導入済み。依存版は[Cargo.lock](Cargo.lock)へ固定する。
 
 ```bash
-cargo +1.98.1 build --offline --locked --manifest-path native/Cargo.toml -p dsp-core -p graph-core
+cargo build --offline --locked --manifest-path native/Cargo.toml --workspace
+cargo test --offline --locked --manifest-path native/Cargo.toml --workspace
+cargo fmt --all --manifest-path native/Cargo.toml --check
+cargo clippy --offline --locked --manifest-path native/Cargo.toml --workspace --all-targets -- -D warnings
 ```
 
-関連crateだけをtestする。Windows/ARM、長時間試験、MIG-008フローの再実行は今回の対象に含めない。
+開発中は変更したcrate・テストに絞る。DSPのintegration testは
+[固定fixture](../migration/fixtures/README.md)の18条件をlibraryへ直接渡して比較し、期待値を生成し直さない。
+[Native evaluation](../.github/workflows/native-evaluation.yml)は明示した手動実行だけ。
+Qt SDK、CMake/Ninja、音声backend開発パッケージとPython検証用venvは不要。
+現行GUI・Pythonの開発ツールはルートの`.venv/`を使う。
 
 ## 実装の入口
 
-| 対象 | 実装・必要な手順 |
+| crate | 役割 |
 | --- | --- |
-| f32音声/ID/queue | [audio-core](audio-core/src/lib.rs)、[共通入力](audio-core/src/backend.rs)、[CPAL](audio-probe/src/lib.rs)、[PortAudio](portaudio-input/src/lib.rs) |
-| route | [実装](audio-core/src/dynamic_route.rs)、[配送・ack](dynamic-route.md) |
-| 取得/履歴/Timebase | [取得owner](graph-core/src/acquisition.rs)、[履歴](graph-core/src/history.rs)、[時刻](graph-core/src/time.rs) |
-| FFT/共有 | [DSP](dsp-core/src/lib.rs)、[共有graph](graph-core/src/lib.rs)、[参照fixture](../migration/fixtures/README.md) |
-| filter | [stateと明示精度変換](graph-core/src/filter.rs)、[派生取得](graph-core/src/acquisition/derived.rs) |
-| Trigger | [取得履歴からのcapture](graph-core/src/acquisition/trigger.rs) |
-| 校正 | [ID対応校正/result](graph-core/src/result.rs) |
-| 保存/読込み | [snapshot/worker](graph-core/src/export.rs)、[製品codec](product-codec.md)、[製品import](graph-core/src/product/import.rs) |
+| [dsp-core](dsp-core/src/lib.rs) | f32/f64 FFT、窓・振幅・RMS・PSD。plan/scratchはAnalyzerが所有 |
+| [graph-core](graph-core/src/lib.rs) | 同条件FFTの共有、不変result、履歴／取得／Timebase、Trigger、filter、校正、保存 |
+| [audio-core](audio-core/src/lib.rs) | graphの取得境界で使うChannelId・世代・容量制限付きqueue |
 
-runnerの追加オプションは`./.venv/bin/python scripts/migration_<対象>.py --help`で確認する。
-既存のcore/input runnerは対象変更の必要な条件だけ指定する。
-CPAL/PortAudioは入力境界の既存実装として保持し、製品backend切替は行っていない。
-
-## 文書とアーティファクト
-
-基準/数値契約、固定fixture、core実装、既存比較の要約を保持する。
-方針決定後に削除したQt/rendererコード・手順はGit履歴`edad0838`から取得できる。
-MIG-008の未コミット差分の保存先は[進捗](../migration/status.md#方針決定後の整理)。
-選んだ最終reportと関連失敗は`.migration-local/evidence/`にgzipで保存。
-古いreport内のartifactパスは実施時の記録で、削除済み中間物の存在を保証しない。
-再実行は現在のコードから新しい出力先へ行う。
+Qt/QML・renderer・CPAL/PortAudio試作と評価CLIは削除済み。
+保存codecのunit testは残す。製品とのPython境界・同条件性能・配布保証は未検証。

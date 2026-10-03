@@ -1,21 +1,12 @@
 import ast
 import json
 import os
-from pathlib import Path
 
 # Configuration
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC_DIR = os.path.join(PROJECT_ROOT, "src")
 LANG_DIR = os.path.join(SRC_DIR, "assets", "lang")
 MAIN_GUI_FILE = os.path.join(PROJECT_ROOT, "main_gui.py")
-
-
-def translation_source_files():
-    """Shared inventory for the current Python GUI's translation tools."""
-    paths = sorted(Path(SRC_DIR).rglob("*.py"))
-    if Path(MAIN_GUI_FILE).is_file():
-        paths.append(Path(MAIN_GUI_FILE))
-    return paths
 
 
 class TrVisitor(ast.NodeVisitor):
@@ -76,8 +67,7 @@ class TrVisitor(ast.NodeVisitor):
 def extract_tr_keys(filepath):
     try:
         with open(filepath, "r", encoding="utf-8") as f:
-            text = f.read()
-        tree = ast.parse(text, filename=str(filepath))
+            tree = ast.parse(f.read(), filename=filepath)
         visitor = TrVisitor()
         visitor.visit(tree)
         return visitor.keys

@@ -72,7 +72,7 @@ Pythonには取得gapの区間・世代来歴がなく、表示dropは最終poll
 core編集はPython16テストとRust対象テスト、同じ2fixtureと元許容差を使用。
 表示確認はPythonの保存生成入力と既存split Widget、nativeの既存replay/lifecycle/oracleを使った。
 検査範囲は同一でなく、人の設計・修正時間も含まないため一般的な開発速度比にはしない。
-4つの一時編集はbyte一致で元に戻した。clean/packageは[既存結果](0006-qt-iteration-local-bundles.md)を再利用した。
+4つの一時編集はbyte一致で元に戻した。clean/packageは当時の既存結果を再利用した（元記録はGit履歴`75581059`の決定0006）。
 
 初回runnerの旧binary、QML root itemの画像取得、画像検査import、窓名と診断JSON化の不備は修正した。
 最初の完走比較ではPython Widget生成がheatmap Nを2048へ戻していたため、同条件比較から除外した。
@@ -101,9 +101,10 @@ Windows/ARM、clean配布、延期したtap/profile/filter/機器条件は未確
 `saved-final/report.json.gz`、`live-final/report.json.gz`、`languages-final/report.json.gz`、
 `runtime-final/report.json.gz`、`edits-final/report.json.gz`が成功の正本。
 保存先・command・条件・途中失敗・対応表は同directoryの`index.json`。
-実行/編集の元logは`.migration-local/benchmarks/mig008-runtime-v3/`と`mig008-edits-v2/`。
+実行/編集の元logは`.migration-local/benchmarks/mig008-runtime-v3/raw-logs.json.gz`と
+`mig008-edits-v2/raw-logs.json.gz`へ圧縮して保持する。
 全source/binaryの複製や古いfixtureの再生成はしていない。
 
 方針決定後、Qt/QML・rendererの並列試作と専用runner/CI・SDK・表示生成物を削除した。
 本書の測定値・条件は実施時の記録として保持する。
-削除した元コードとMIG-008の未コミット差分の復元先は[進捗](../status.md#方針決定後の整理)を参照。
+削除した元コードとMIG-008の未コミット差分の復元先は[進捗](../status.md#保存済みの評価記録)を参照。

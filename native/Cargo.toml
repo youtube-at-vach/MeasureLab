@@ -1,5 +1,5 @@
 [workspace]
-members = ["dsp-core", "graph-core", "audio-core", "portaudio-input", "audio-probe"]
+members = ["dsp-core", "graph-core", "audio-core"]
 resolver = "2"
 
 [workspace.package]

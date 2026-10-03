@@ -2,7 +2,7 @@
 
 2026-09-29。[評価計画](../../guide/RUST_QML_MIGRATION_PLAN.md)のP0契約。
 これは検証用の意味・不変条件で、Rustの公開型、ABI、保存形式の確定ではない。
-現行との差は[決定記録](../decisions/0001-p0-contracts.md)、判定例は[受け入れ条件](acceptance.md)に置く。
+本書は再利用するcoreの意味を参照する契約。今回の実装範囲・完了条件は評価計画に従う。
 変更時は版、理由、影響する台帳・fixture・後続タスクを一緒に更新する。
 
 ## 識別と信号ブロック
@@ -125,7 +125,7 @@ Preparing中のStop/画面破棄/例外でもcallback・worker・deviceを回収
 
 音声callbackでgraph構築、無制限alloc、file/network待機、GUI、同期IPC、FFT plan作成、
 待ち時間の不明なlock/解放を行わない。事前確保bufferと容量のあるqueueを使う。
-監視負荷も[性能予算](../benchmarks/protocol.md)へ含める。
+性能比較には監視負荷も含める。
 ワーカーの数値結果とGUI向けsnapshotは分け、GUI停止が取得を停止させない。
 
 ## 結果・校正・保存

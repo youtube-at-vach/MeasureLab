@@ -9,11 +9,11 @@ import os
 
 from translation_utils import (
     LANG_DIR,
+    PROJECT_ROOT,
     SRC_DIR,
     extract_tr_keys,
     load_json,
     save_json,
-    translation_source_files,
 )
 
 
@@ -25,8 +25,19 @@ def main():
     code_keys = set()
     file_count = 0
 
-    for filepath in translation_source_files():
-        keys = extract_tr_keys(filepath)
+    # Recursive scan of src/ directory
+    for root, _dirs, files in os.walk(SRC_DIR):
+        for file in files:
+            if file.endswith(".py"):
+                filepath = os.path.join(root, file)
+                keys = extract_tr_keys(filepath)
+                code_keys.update(keys)
+                file_count += 1
+
+    # Also include main_gui.py in root
+    main_gui = os.path.join(PROJECT_ROOT, "main_gui.py")
+    if os.path.exists(main_gui):
+        keys = extract_tr_keys(main_gui)
         code_keys.update(keys)
         file_count += 1
 

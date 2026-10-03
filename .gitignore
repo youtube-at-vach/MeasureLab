@@ -35,11 +35,7 @@ env/
 # Next-core evaluation: local toolchains, reference data, and build output
 /.tools/
 /.migration-local/
-/native/**/target/
-
-# Full evaluation reports and raw logs remain local; fixed fixtures stay versioned
-/migration/benchmarks/results/
-/migration/fixtures/runs/
+/native/target/
 
 # VSCode settings
 #.vscode/
@@ -58,8 +54,6 @@ ehthumbs.db
 
 # Ignore test result files
 *.csv
-# Reviewed migration exchange fixtures must survive a fresh checkout.
-!/migration/fixtures/core-v1/*.csv
 *.png
 !src/assets/*.png
 !docs/**/*.png

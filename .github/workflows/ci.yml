@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: ["main", "codex/next-core-evaluation"]
+    branches: ["main"]
   pull_request:
-    branches: ["main", "codex/next-core-evaluation", "codex/migration-*"]
+    branches: ["main"]
 
 permissions:
   contents: read
@@ -29,7 +29,6 @@ jobs:
               - 'scripts/**'
               - '*.py'
               - 'pyproject.toml'
-              - 'pytest.ini'
               - 'requirements*.txt'
               - 'constraints.txt'
               - '.github/workflows/ci.yml'
@@ -174,5 +173,4 @@ jobs:
 
       - name: Tests (pytest)
         run: |
-          # Rust executable comparisons run in Native evaluation after Cargo dependencies are fetched.
-          pytest -m "not native"
+          pytest

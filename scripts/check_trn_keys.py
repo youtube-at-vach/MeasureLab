@@ -5,10 +5,11 @@ import sys
 
 from translation_utils import (
     LANG_DIR,
+    MAIN_GUI_FILE,
+    SRC_DIR,
     extract_tr_keys,
     load_json,
     save_json,
-    translation_source_files,
 )
 
 
@@ -68,7 +69,16 @@ def main():
     print(f"Loaded {len(en_keys)} keys from en.json")
 
     # 2. Extract keys from Code
-    files_to_scan = translation_source_files()
+    files_to_scan = []
+    # Recursive scan of src/ directory
+    for root, _dirs, files in os.walk(SRC_DIR):
+        for file in files:
+            if file.endswith(".py"):
+                files_to_scan.append(os.path.join(root, file))
+
+    # Main GUI
+    if os.path.exists(MAIN_GUI_FILE):
+        files_to_scan.append(MAIN_GUI_FILE)
 
     code_keys = set()
     for fp in files_to_scan:

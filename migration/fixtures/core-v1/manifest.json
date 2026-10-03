@@ -1,476 +1,77 @@
 {
   "contract": "MIG-002-core-v0.1",
-  "contract_sha256": {
-    "migration/contracts/core.md": "8ddf639d405a4bbe080622ab07fc4efdaf5bc32c14b3a3291022155476391b9e",
-    "migration/contracts/numerics.md": "eeaab73b19433c8010eb4693c2dd6a04655444d780809bcb2f507ca510203fcd"
-  },
-  "core_tolerances": {
-    "atol": 1e-12,
-    "db": {
-      "atol": 1e-05,
-      "rtol": 0
-    },
-    "metadata": "exact",
-    "rtol": 1e-12
-  },
+  "contract_sha256": {"migration/contracts/core.md": "8ddf639d405a4bbe080622ab07fc4efdaf5bc32c14b3a3291022155476391b9e", "migration/contracts/numerics.md": "eeaab73b19433c8010eb4693c2dd6a04655444d780809bcb2f507ca510203fcd"},
   "environment": {
-    "fft": {
-      "backend": "pyfftw",
-      "plan": "FFTW_ESTIMATE",
-      "threads": 1,
-      "wisdom": "empty temporary directory"
-    },
+    "fft": {"backend": "pyfftw", "plan": "FFTW_ESTIMATE", "threads": 1, "wisdom": "empty temporary directory"},
     "implementation": "CPython",
     "logical_cpus": 4,
     "machine": "x86_64",
     "os": "macOS-14.8.9-x86_64-i386-64bit",
-    "packages": {
-      "MeasureLab": "0.9.0",
-      "PyQt6": "6.11.0",
-      "PyQt6-Qt6": "6.11.2",
-      "PyQt6_sip": "13.12.0",
-      "PyWavelets": "1.10.0",
-      "Pygments": "2.21.0",
-      "ast_serialize": "0.11.2",
-      "certifi": "2026.7.22",
-      "cffi": "2.1.1",
-      "cftime": "1.6.6",
-      "charset-normalizer": "3.5.1",
-      "colorama": "0.4.6",
-      "hypothesis": "6.168.3",
-      "idna": "3.20",
-      "iniconfig": "2.3.0",
-      "librt": "0.16.0",
-      "mypy": "2.3.1",
-      "mypy_extensions": "1.1.0",
-      "netCDF4": "1.7.4",
-      "numpy": "2.2.6",
-      "packaging": "26.3",
-      "pathspec": "1.1.1",
-      "pip": "26.2.1",
-      "pluggy": "1.6.0",
-      "pyFFTW": "0.15.1",
-      "pycparser": "3.0",
-      "pyqtgraph": "0.14.0",
-      "pytest": "9.1.1",
-      "pytest-json-report": "1.5.0",
-      "pytest-metadata": "3.1.1",
-      "pytest-qt": "4.5.0",
-      "requests": "2.34.2",
-      "ruff": "0.16.8",
-      "scipy": "1.18.1",
-      "sortedcontainers": "2.4.0",
-      "sounddevice": "0.5.6",
-      "soundfile": "0.14.0",
-      "typing_extensions": "4.16.0",
-      "urllib3": "2.8.0"
-    },
+    "packages": {"MeasureLab": "0.9.0", "PyQt6": "6.11.0", "PyQt6-Qt6": "6.11.2", "PyQt6_sip": "13.12.0", "PyWavelets": "1.10.0", "Pygments": "2.21.0", "ast_serialize": "0.11.2", "certifi": "2026.7.22", "cffi": "2.1.1", "cftime": "1.6.6", "charset-normalizer": "3.5.1", "colorama": "0.4.6", "hypothesis": "6.168.3", "idna": "3.20", "iniconfig": "2.3.0", "librt": "0.16.0", "mypy": "2.3.1", "mypy_extensions": "1.1.0", "netCDF4": "1.7.4", "numpy": "2.2.6", "packaging": "26.3", "pathspec": "1.1.1", "pip": "26.2.1", "pluggy": "1.6.0", "pyFFTW": "0.15.1", "pycparser": "3.0", "pyqtgraph": "0.14.0", "pytest": "9.1.1", "pytest-json-report": "1.5.0", "pytest-metadata": "3.1.1", "pytest-qt": "4.5.0", "requests": "2.34.2", "ruff": "0.16.8", "scipy": "1.18.1", "sortedcontainers": "2.4.0", "sounddevice": "0.5.6", "soundfile": "0.14.0", "typing_extensions": "4.16.0", "urllib3": "2.8.0"},
     "processor": "i386",
     "python": "3.12.14"
   },
-  "exports": [
-    {
-      "case_id": "calibration-reorder-and-unknown",
-      "file": "calibration-reorder-and-unknown.json",
-      "format": "json",
-      "origin": "new-contract exchange example",
-      "sha256": "f9539f791a277ac246dd9df5f39d99b6281ea91188ed262eede77691553530a5"
-    },
-    {
-      "case_id": "calibration-reorder-and-unknown",
-      "file": "calibration-reorder-and-unknown.csv",
-      "format": "csv",
-      "origin": "new-contract exchange example",
-      "sha256": "187f56a96d83f92fce6af02ec1f68a5930ddb7eb1b78b44c41547744887e94e6"
-    },
-    {
-      "case_id": "calibration-nominal-axis",
-      "file": "calibration-nominal-axis.json",
-      "format": "json",
-      "origin": "new-contract exchange example",
-      "sha256": "38f3a6f22399699a538bc30f025fa5bbc848a6d5603cc2864274249dfee10db3"
-    },
-    {
-      "case_id": "calibration-nominal-axis",
-      "file": "calibration-nominal-axis.csv",
-      "format": "csv",
-      "origin": "new-contract exchange example",
-      "sha256": "e7239e7cfef397447a748e525705085c059f251c98e31cc47c78d0021394e68e"
-    }
-  ],
   "fft_tolerances": {
-    "db_f32": {
-      "atol": 0.001,
-      "rtol": 0
-    },
-    "db_f64": {
-      "atol": 1e-05,
-      "rtol": 0
-    },
-    "f32": {
-      "atol": 2e-06,
-      "rtol": 2e-05
-    },
-    "f64": {
-      "atol": 2e-11,
-      "rtol": 1e-09
-    },
-    "phase_f32": {
-      "atol": 0.0001,
-      "rtol": 0
-    },
-    "phase_f64": {
-      "atol": 1e-07,
-      "rtol": 0
-    },
-    "window": {
-      "atol": 1e-12,
-      "rtol": 1e-12
-    }
+    "db_f32": {"atol": 0.001, "rtol": 0},
+    "db_f64": {"atol": 1e-05, "rtol": 0},
+    "f32": {"atol": 2e-06, "rtol": 2e-05},
+    "f64": {"atol": 2e-11, "rtol": 1e-09},
+    "phase_f32": {"atol": 0.0001, "rtol": 0},
+    "phase_f64": {"atol": 1e-07, "rtol": 0},
+    "window": {"atol": 1e-12, "rtol": 1e-12}
   },
-  "generator_sha256": {
-    "scripts/migration_core_cases.py": "5c72b9dac827e2a03d3d5f8115b73f55b778cbe4b1fa11277b3b48b7ea381d62",
-    "scripts/migration_core_oracle.py": "4e8b4832be85072bcbd0ec8fdf1ec8fb7110888676a64904d6cbe92f4bb11ba9",
-    "scripts/migration_core_reference.py": "ec131b04aa36df9dfccf1e1c71c30d880796b3aa79c23db6e6c5934860778bb7",
-    "scripts/migration_fft_oracle.py": "c415bc4be21947a59fb35b2a32215b0fba58183f2d1a1d3022984ceef73c1ce7",
-    "scripts/migration_fft_reference.py": "8f9a34746f3290fb5bda9e62022a685dc91d294155ce33f4b004edaf80377379"
-  },
-  "limitations": [
-    "FFTManager is called once per channel; this does not validate AudioEngine N-channel support",
-    "State, routing, history and calibration cases are new-contract oracles, not legacy engine results",
-    "History cases model interval availability; no streaming storage or shared graph is implemented",
-    "CSV/JSON are fixture exchange formats, not existing product exporter compatibility",
-    "No candidate core, physical I/O, GUI, throughput or other OS validation"
-  ],
+  "generator_sha256": {"scripts/migration_core_cases.py": "5c72b9dac827e2a03d3d5f8115b73f55b778cbe4b1fa11277b3b48b7ea381d62", "scripts/migration_core_oracle.py": "4e8b4832be85072bcbd0ec8fdf1ec8fb7110888676a64904d6cbe92f4bb11ba9", "scripts/migration_core_reference.py": "ec131b04aa36df9dfccf1e1c71c30d880796b3aa79c23db6e6c5934860778bb7", "scripts/migration_fft_oracle.py": "c415bc4be21947a59fb35b2a32215b0fba58183f2d1a1d3022984ceef73c1ce7", "scripts/migration_fft_reference.py": "8f9a34746f3290fb5bda9e62022a685dc91d294155ce33f4b004edaf80377379"},
   "reference_commit": "9fd79958f6a8bbae6808813d3704617612e6d26c",
-  "scenarios": {
-    "file": "scenarios.json",
-    "origin": "hand-calculated new-contract examples",
-    "sha256": "3f49ccc73332d7af9a014faefe74d2fb5bca2adf04cfcdb0a3b1ee57dd23bbcd"
-  },
   "schema_version": 1,
-  "source_sha256": {
-    "src/__init__.py": "9c302e24d402a6668fe8c5fd2d76de9fb18045c5a0beaa6c3a761b7e49f4582c",
-    "src/core/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "src/core/analysis.py": "6afa44940331814323bdd794ae076c63d014148a6dcd0a122ee7fceb39df3e2c",
-    "src/core/fft_manager.py": "307a4c95130fed46e25afd9730fd8669cdd9fd8fbaee97c0d0a2c12aaafcaef6",
-    "src/core/localization.py": "37f0b9bd2e00539f245057e3b584d26815c90f75c466f2c50c39ec8376ad5617",
-    "src/core/utils.py": "89639b5654fcf8a8196005e945d4dec2a970ca761fbf5d8e43e07838346269d5",
-    "src/gui/widgets/spectrum_analyzer.py": "0829288791037f4c5b1e2c49ba8c5593d645b4bc623cf6989279b50ff6d49c0a"
-  },
+  "source_sha256": {"src/__init__.py": "9c302e24d402a6668fe8c5fd2d76de9fb18045c5a0beaa6c3a761b7e49f4582c", "src/core/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "src/core/analysis.py": "6afa44940331814323bdd794ae076c63d014148a6dcd0a122ee7fceb39df3e2c", "src/core/fft_manager.py": "307a4c95130fed46e25afd9730fd8669cdd9fd8fbaee97c0d0a2c12aaafcaef6", "src/core/localization.py": "37f0b9bd2e00539f245057e3b584d26815c90f75c466f2c50c39ec8376ad5617", "src/core/utils.py": "89639b5654fcf8a8196005e945d4dec2a970ca761fbf5d8e43e07838346269d5", "src/gui/widgets/spectrum_analyzer.py": "0829288791037f4c5b1e2c49ba8c5593d645b4bc623cf6989279b50ff6d49c0a"},
   "tones": [
     {
       "arrays": {
-        "current.fft_over_n": {
-          "byte_order": "little",
-          "complex": "real-imag-last-axis",
-          "dtype": "<f8",
-          "file": "current.fft_over_n.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "aac9a8fe0e150e5f46a6142d1e74b3a332efc3a35637da7c7cb997a474071a52",
-          "shape": [
-            2049,
-            4,
-            2
-          ]
-        },
-        "current.frequency_hz": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.frequency_hz.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
-          "shape": [
-            2049
-          ]
-        },
-        "current.integrated_power_fs2": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.integrated_power_fs2.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "e418285fae05de5d0088491933f78e2d14c3f34e7f16b4232712e0436535f263",
-          "shape": [
-            4
-          ]
-        },
-        "current.inverse_windowed": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.inverse_windowed.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "e8ede35e3aea49e11c58a8b1c553e5d3c12ae12a3ebba4b536966cfa520a95b5",
-          "shape": [
-            4096,
-            4
-          ]
-        },
-        "current.peak_fs": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.peak_fs.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "d95ed744d606f5ed0e6d64fbd619b461bc91c8178888fd2624b6d055382ae3cd",
-          "shape": [
-            2049,
-            4
-          ]
-        },
-        "current.psd_fs2_hz": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.psd_fs2_hz.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "b722f0e8d278ce1bb37e8b042c3a069448cbed483de31a161be408e5e46f8025",
-          "shape": [
-            2049,
-            4
-          ]
-        },
-        "current.rms_fs": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.rms_fs.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "b8c5a2cc39c234a1a40f94f9f88763eafb0f8e25364998a759e451e585eb2ca0",
-          "shape": [
-            4
-          ]
-        },
-        "current.time_window_power_fs2": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.time_window_power_fs2.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "3eb8572b44b20435d2fd93c2ce65caa036b9ab6d6abe59ce7c9aeae61af9e29f",
-          "shape": [
-            4
-          ]
-        },
-        "current.window": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.window.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7",
-          "shape": [
-            4096
-          ]
-        },
-        "input": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "input.bin",
-          "layout": "C/frame-major",
-          "origin": "fixed-input",
-          "sha256": "a2d88b89ba4f24f6f1667b6a1f6ec960c47ca4709957ffb6f61ac2e744a5d7c1",
-          "shape": [
-            4096,
-            4
-          ]
-        },
-        "theory.fft_over_n": {
-          "byte_order": "little",
-          "complex": "real-imag-last-axis",
-          "dtype": "<f8",
-          "file": "theory.fft_over_n.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "3d061001b6cbc9b3681aa80a1b6a4ed039378c88a5595a511d87a2c28a5df0c6",
-          "shape": [
-            2049,
-            4,
-            2
-          ]
-        },
-        "theory.frequency_hz": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.frequency_hz.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
-          "shape": [
-            2049
-          ]
-        },
-        "theory.integrated_power_fs2": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.integrated_power_fs2.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "474a9c8d0e58dcb9570cf0cdbaf9256cf41e081b54ac96848ee77756448ba342",
-          "shape": [
-            4
-          ]
-        },
-        "theory.inverse_windowed": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.inverse_windowed.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "a2d88b89ba4f24f6f1667b6a1f6ec960c47ca4709957ffb6f61ac2e744a5d7c1",
-          "shape": [
-            4096,
-            4
-          ]
-        },
-        "theory.peak_fs": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.peak_fs.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "305517fe401c29aefecb7c24d6ab811814d60409fa968a6a6dfc32c464ca5829",
-          "shape": [
-            2049,
-            4
-          ]
-        },
-        "theory.psd_fs2_hz": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.psd_fs2_hz.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "896fa7fea2e0abf4ddb4beec31ee2583ffcd674ad67f7b2dd1d0bbdc17c318eb",
-          "shape": [
-            2049,
-            4
-          ]
-        },
-        "theory.rms_fs": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.rms_fs.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "b8c5a2cc39c234a1a40f94f9f88763eafb0f8e25364998a759e451e585eb2ca0",
-          "shape": [
-            4
-          ]
-        },
-        "theory.time_window_power_fs2": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.time_window_power_fs2.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "3eb8572b44b20435d2fd93c2ce65caa036b9ab6d6abe59ce7c9aeae61af9e29f",
-          "shape": [
-            4
-          ]
-        },
-        "theory.window": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.window.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7",
-          "shape": [
-            4096
-          ]
-        }
+        "current.fft_over_n": {"byte_order": "little", "complex": "real-imag-last-axis", "dtype": "<f8", "file": "current.fft_over_n.bin", "layout": "C/frame-major", "origin": "current", "sha256": "aac9a8fe0e150e5f46a6142d1e74b3a332efc3a35637da7c7cb997a474071a52", "shape": [2049, 4, 2]},
+        "current.frequency_hz": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.frequency_hz.bin", "layout": "C/frame-major", "origin": "current", "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5", "shape": [2049]},
+        "current.integrated_power_fs2": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.integrated_power_fs2.bin", "layout": "C/frame-major", "origin": "current", "sha256": "e418285fae05de5d0088491933f78e2d14c3f34e7f16b4232712e0436535f263", "shape": [4]},
+        "current.inverse_windowed": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.inverse_windowed.bin", "layout": "C/frame-major", "origin": "current", "sha256": "e8ede35e3aea49e11c58a8b1c553e5d3c12ae12a3ebba4b536966cfa520a95b5", "shape": [4096, 4]},
+        "current.peak_fs": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.peak_fs.bin", "layout": "C/frame-major", "origin": "current", "sha256": "d95ed744d606f5ed0e6d64fbd619b461bc91c8178888fd2624b6d055382ae3cd", "shape": [2049, 4]},
+        "current.psd_fs2_hz": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.psd_fs2_hz.bin", "layout": "C/frame-major", "origin": "current", "sha256": "b722f0e8d278ce1bb37e8b042c3a069448cbed483de31a161be408e5e46f8025", "shape": [2049, 4]},
+        "current.rms_fs": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.rms_fs.bin", "layout": "C/frame-major", "origin": "current", "sha256": "b8c5a2cc39c234a1a40f94f9f88763eafb0f8e25364998a759e451e585eb2ca0", "shape": [4]},
+        "current.time_window_power_fs2": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.time_window_power_fs2.bin", "layout": "C/frame-major", "origin": "current", "sha256": "3eb8572b44b20435d2fd93c2ce65caa036b9ab6d6abe59ce7c9aeae61af9e29f", "shape": [4]},
+        "current.window": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.window.bin", "layout": "C/frame-major", "origin": "current", "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7", "shape": [4096]},
+        "input": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "input.bin", "layout": "C/frame-major", "origin": "fixed-input", "sha256": "a2d88b89ba4f24f6f1667b6a1f6ec960c47ca4709957ffb6f61ac2e744a5d7c1", "shape": [4096, 4]},
+        "theory.fft_over_n": {"byte_order": "little", "complex": "real-imag-last-axis", "dtype": "<f8", "file": "theory.fft_over_n.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "3d061001b6cbc9b3681aa80a1b6a4ed039378c88a5595a511d87a2c28a5df0c6", "shape": [2049, 4, 2]},
+        "theory.frequency_hz": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.frequency_hz.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5", "shape": [2049]},
+        "theory.integrated_power_fs2": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.integrated_power_fs2.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "474a9c8d0e58dcb9570cf0cdbaf9256cf41e081b54ac96848ee77756448ba342", "shape": [4]},
+        "theory.inverse_windowed": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.inverse_windowed.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "a2d88b89ba4f24f6f1667b6a1f6ec960c47ca4709957ffb6f61ac2e744a5d7c1", "shape": [4096, 4]},
+        "theory.peak_fs": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.peak_fs.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "305517fe401c29aefecb7c24d6ab811814d60409fa968a6a6dfc32c464ca5829", "shape": [2049, 4]},
+        "theory.psd_fs2_hz": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.psd_fs2_hz.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "896fa7fea2e0abf4ddb4beec31ee2583ffcd674ad67f7b2dd1d0bbdc17c318eb", "shape": [2049, 4]},
+        "theory.rms_fs": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.rms_fs.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "b8c5a2cc39c234a1a40f94f9f88763eafb0f8e25364998a759e451e585eb2ca0", "shape": [4]},
+        "theory.time_window_power_fs2": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.time_window_power_fs2.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "3eb8572b44b20435d2fd93c2ce65caa036b9ab6d6abe59ce7c9aeae61af9e29f", "shape": [4]},
+        "theory.window": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.window.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7", "shape": [4096]}
       },
       "metadata": {
         "acquired_host_seconds": null,
         "calibration": {
-          "input.alpha": {
-            "revision": null,
-            "state": "uncalibrated"
-          },
-          "input.beta": {
-            "revision": null,
-            "state": "uncalibrated"
-          },
-          "input.delta": {
-            "revision": null,
-            "state": "uncalibrated"
-          },
-          "input.gamma": {
-            "revision": null,
-            "state": "uncalibrated"
-          }
+          "input.alpha": {"revision": null, "state": "uncalibrated"},
+          "input.beta": {"revision": null, "state": "uncalibrated"},
+          "input.delta": {"revision": null, "state": "uncalibrated"},
+          "input.gamma": {"revision": null, "state": "uncalibrated"}
         },
-        "channel_ids": [
-          "input.alpha",
-          "input.beta",
-          "input.gamma",
-          "input.delta"
-        ],
+        "channel_ids": ["input.alpha", "input.beta", "input.gamma", "input.delta"],
         "current_origin": "FFTManager per channel, contract normalization adapter",
         "dtype": "<f8",
         "generation": 3,
         "input_formula": "A*cos(2*pi*k*n/N+phase)",
-        "interval": [
-          0,
-          4096
-        ],
+        "interval": [0, 4096],
         "layout": "C/frame-major",
         "operation_revision": "fft-reference-v1",
-        "result_host_seconds": [
-          11,
-          1
-        ],
+        "result_host_seconds": [11, 1],
         "result_id": "ac01-4ch-f8",
         "route_revision": "route.1",
         "seed": null,
-        "shape": [
-          4096,
-          4
-        ],
+        "shape": [4096, 4],
         "stream_id": "fixture.session.input",
         "tap": "input.raw",
         "theory_origin": "analytic finite geometric sum, before f32 input quantization",
-        "timebase": {
-          "clock_domain": "fixture.virtual",
-          "generation": 3,
-          "id": "fixture.timebase.input",
-          "nominal_rate": [
-            48000,
-            1
-          ],
-          "origin_kind": "virtual",
-          "origin_sample": 0,
-          "origin_seconds": [
-            10,
-            1
-          ],
-          "rate": [
-            48000,
-            1
-          ],
-          "uncertainty_seconds": null
-        },
+        "timebase": {"clock_domain": "fixture.virtual", "generation": 3, "id": "fixture.timebase.input", "nominal_rate": [48000, 1], "origin_kind": "virtual", "origin_sample": 0, "origin_seconds": [10, 1], "rate": [48000, 1], "uncertainty_seconds": null},
         "trigger_id": "fixture.trigger.001",
         "validity": []
       },
@@ -481,342 +82,61 @@
         "rate_hz": 48000,
         "signal": "cosine",
         "tones": [
-          [
-            37,
-            0.03125,
-            0.0
-          ],
-          [
-            71,
-            0.0625,
-            0.19634954084936207
-          ],
-          [
-            113,
-            0.09375,
-            0.39269908169872414
-          ],
-          [
-            173,
-            0.125,
-            0.5890486225480862
-          ]
+          [37, 0.03125, 0.0],
+          [71, 0.0625, 0.19634954084936207],
+          [113, 0.09375, 0.39269908169872414],
+          [173, 0.125, 0.5890486225480862]
         ],
         "window": "boxcar"
       }
     },
     {
       "arrays": {
-        "current.fft_over_n": {
-          "byte_order": "little",
-          "complex": "real-imag-last-axis",
-          "dtype": "<f8",
-          "file": "current.fft_over_n.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "49b80dba6f49aa5a118a586984f05a78ca46db35ad7e764e92ae792dc1f7611c",
-          "shape": [
-            2049,
-            4,
-            2
-          ]
-        },
-        "current.frequency_hz": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.frequency_hz.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
-          "shape": [
-            2049
-          ]
-        },
-        "current.integrated_power_fs2": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.integrated_power_fs2.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "1453313c8beb4d26a1139c8aff5b5b177d7c2cb13bfc1b03cf32bb714fbce102",
-          "shape": [
-            4
-          ]
-        },
-        "current.inverse_windowed": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f4",
-          "file": "current.inverse_windowed.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "f11082f084a9776153bf1688f7730f842f72506537d5c5842779c924e972a4cc",
-          "shape": [
-            4096,
-            4
-          ]
-        },
-        "current.peak_fs": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.peak_fs.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "f55c2ed4204f85598776b155c71afc3913b4793d525f8ff1d6aa786c19883edf",
-          "shape": [
-            2049,
-            4
-          ]
-        },
-        "current.psd_fs2_hz": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.psd_fs2_hz.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "e7bd55d98b130e33e384417de9d0162b9087d0b64cf298aaa8fd7c53befc9477",
-          "shape": [
-            2049,
-            4
-          ]
-        },
-        "current.rms_fs": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.rms_fs.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "31a7f5a74dad0427910b8871131f8569ae1a43bdfd46b5ce413694974512c173",
-          "shape": [
-            4
-          ]
-        },
-        "current.time_window_power_fs2": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.time_window_power_fs2.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "ceb3be2d45699668e1e616f40bc7bddd66c656298d32036011af21285ce24595",
-          "shape": [
-            4
-          ]
-        },
-        "current.window": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.window.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7",
-          "shape": [
-            4096
-          ]
-        },
-        "input": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f4",
-          "file": "input.bin",
-          "layout": "C/frame-major",
-          "origin": "fixed-input",
-          "sha256": "f2c1d4b4b910343aec6da7ef1c090f4f502893f1763dcbc96463bf8c0d53526e",
-          "shape": [
-            4096,
-            4
-          ]
-        },
-        "theory.fft_over_n": {
-          "byte_order": "little",
-          "complex": "real-imag-last-axis",
-          "dtype": "<f8",
-          "file": "theory.fft_over_n.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "3d061001b6cbc9b3681aa80a1b6a4ed039378c88a5595a511d87a2c28a5df0c6",
-          "shape": [
-            2049,
-            4,
-            2
-          ]
-        },
-        "theory.frequency_hz": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.frequency_hz.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
-          "shape": [
-            2049
-          ]
-        },
-        "theory.integrated_power_fs2": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.integrated_power_fs2.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "474a9c8d0e58dcb9570cf0cdbaf9256cf41e081b54ac96848ee77756448ba342",
-          "shape": [
-            4
-          ]
-        },
-        "theory.inverse_windowed": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.inverse_windowed.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "536a581d6a334bd34f70cdddcba1cf22aae9611499d57a526913ebc9eec59fb7",
-          "shape": [
-            4096,
-            4
-          ]
-        },
-        "theory.peak_fs": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.peak_fs.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "305517fe401c29aefecb7c24d6ab811814d60409fa968a6a6dfc32c464ca5829",
-          "shape": [
-            2049,
-            4
-          ]
-        },
-        "theory.psd_fs2_hz": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.psd_fs2_hz.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "896fa7fea2e0abf4ddb4beec31ee2583ffcd674ad67f7b2dd1d0bbdc17c318eb",
-          "shape": [
-            2049,
-            4
-          ]
-        },
-        "theory.rms_fs": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.rms_fs.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "31a7f5a74dad0427910b8871131f8569ae1a43bdfd46b5ce413694974512c173",
-          "shape": [
-            4
-          ]
-        },
-        "theory.time_window_power_fs2": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.time_window_power_fs2.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "ceb3be2d45699668e1e616f40bc7bddd66c656298d32036011af21285ce24595",
-          "shape": [
-            4
-          ]
-        },
-        "theory.window": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.window.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7",
-          "shape": [
-            4096
-          ]
-        }
+        "current.fft_over_n": {"byte_order": "little", "complex": "real-imag-last-axis", "dtype": "<f8", "file": "current.fft_over_n.bin", "layout": "C/frame-major", "origin": "current", "sha256": "49b80dba6f49aa5a118a586984f05a78ca46db35ad7e764e92ae792dc1f7611c", "shape": [2049, 4, 2]},
+        "current.frequency_hz": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.frequency_hz.bin", "layout": "C/frame-major", "origin": "current", "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5", "shape": [2049]},
+        "current.integrated_power_fs2": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.integrated_power_fs2.bin", "layout": "C/frame-major", "origin": "current", "sha256": "1453313c8beb4d26a1139c8aff5b5b177d7c2cb13bfc1b03cf32bb714fbce102", "shape": [4]},
+        "current.inverse_windowed": {"byte_order": "little", "complex": null, "dtype": "<f4", "file": "current.inverse_windowed.bin", "layout": "C/frame-major", "origin": "current", "sha256": "f11082f084a9776153bf1688f7730f842f72506537d5c5842779c924e972a4cc", "shape": [4096, 4]},
+        "current.peak_fs": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.peak_fs.bin", "layout": "C/frame-major", "origin": "current", "sha256": "f55c2ed4204f85598776b155c71afc3913b4793d525f8ff1d6aa786c19883edf", "shape": [2049, 4]},
+        "current.psd_fs2_hz": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.psd_fs2_hz.bin", "layout": "C/frame-major", "origin": "current", "sha256": "e7bd55d98b130e33e384417de9d0162b9087d0b64cf298aaa8fd7c53befc9477", "shape": [2049, 4]},
+        "current.rms_fs": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.rms_fs.bin", "layout": "C/frame-major", "origin": "current", "sha256": "31a7f5a74dad0427910b8871131f8569ae1a43bdfd46b5ce413694974512c173", "shape": [4]},
+        "current.time_window_power_fs2": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.time_window_power_fs2.bin", "layout": "C/frame-major", "origin": "current", "sha256": "ceb3be2d45699668e1e616f40bc7bddd66c656298d32036011af21285ce24595", "shape": [4]},
+        "current.window": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.window.bin", "layout": "C/frame-major", "origin": "current", "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7", "shape": [4096]},
+        "input": {"byte_order": "little", "complex": null, "dtype": "<f4", "file": "input.bin", "layout": "C/frame-major", "origin": "fixed-input", "sha256": "f2c1d4b4b910343aec6da7ef1c090f4f502893f1763dcbc96463bf8c0d53526e", "shape": [4096, 4]},
+        "theory.fft_over_n": {"byte_order": "little", "complex": "real-imag-last-axis", "dtype": "<f8", "file": "theory.fft_over_n.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "3d061001b6cbc9b3681aa80a1b6a4ed039378c88a5595a511d87a2c28a5df0c6", "shape": [2049, 4, 2]},
+        "theory.frequency_hz": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.frequency_hz.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5", "shape": [2049]},
+        "theory.integrated_power_fs2": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.integrated_power_fs2.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "474a9c8d0e58dcb9570cf0cdbaf9256cf41e081b54ac96848ee77756448ba342", "shape": [4]},
+        "theory.inverse_windowed": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.inverse_windowed.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "536a581d6a334bd34f70cdddcba1cf22aae9611499d57a526913ebc9eec59fb7", "shape": [4096, 4]},
+        "theory.peak_fs": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.peak_fs.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "305517fe401c29aefecb7c24d6ab811814d60409fa968a6a6dfc32c464ca5829", "shape": [2049, 4]},
+        "theory.psd_fs2_hz": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.psd_fs2_hz.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "896fa7fea2e0abf4ddb4beec31ee2583ffcd674ad67f7b2dd1d0bbdc17c318eb", "shape": [2049, 4]},
+        "theory.rms_fs": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.rms_fs.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "31a7f5a74dad0427910b8871131f8569ae1a43bdfd46b5ce413694974512c173", "shape": [4]},
+        "theory.time_window_power_fs2": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.time_window_power_fs2.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "ceb3be2d45699668e1e616f40bc7bddd66c656298d32036011af21285ce24595", "shape": [4]},
+        "theory.window": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.window.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7", "shape": [4096]}
       },
       "metadata": {
         "acquired_host_seconds": null,
         "calibration": {
-          "input.alpha": {
-            "revision": null,
-            "state": "uncalibrated"
-          },
-          "input.beta": {
-            "revision": null,
-            "state": "uncalibrated"
-          },
-          "input.delta": {
-            "revision": null,
-            "state": "uncalibrated"
-          },
-          "input.gamma": {
-            "revision": null,
-            "state": "uncalibrated"
-          }
+          "input.alpha": {"revision": null, "state": "uncalibrated"},
+          "input.beta": {"revision": null, "state": "uncalibrated"},
+          "input.delta": {"revision": null, "state": "uncalibrated"},
+          "input.gamma": {"revision": null, "state": "uncalibrated"}
         },
-        "channel_ids": [
-          "input.alpha",
-          "input.beta",
-          "input.gamma",
-          "input.delta"
-        ],
+        "channel_ids": ["input.alpha", "input.beta", "input.gamma", "input.delta"],
         "current_origin": "FFTManager per channel, contract normalization adapter",
         "dtype": "<f4",
         "generation": 3,
         "input_formula": "A*cos(2*pi*k*n/N+phase)",
-        "interval": [
-          0,
-          4096
-        ],
+        "interval": [0, 4096],
         "layout": "C/frame-major",
         "operation_revision": "fft-reference-v1",
-        "result_host_seconds": [
-          11,
-          1
-        ],
+        "result_host_seconds": [11, 1],
         "result_id": "ac01-4ch-f4",
         "route_revision": "route.1",
         "seed": null,
-        "shape": [
-          4096,
-          4
-        ],
+        "shape": [4096, 4],
         "stream_id": "fixture.session.input",
         "tap": "input.raw",
         "theory_origin": "analytic finite geometric sum, before f32 input quantization",
-        "timebase": {
-          "clock_domain": "fixture.virtual",
-          "generation": 3,
-          "id": "fixture.timebase.input",
-          "nominal_rate": [
-            48000,
-            1
-          ],
-          "origin_kind": "virtual",
-          "origin_sample": 0,
-          "origin_seconds": [
-            10,
-            1
-          ],
-          "rate": [
-            48000,
-            1
-          ],
-          "uncertainty_seconds": null
-        },
+        "timebase": {"clock_domain": "fixture.virtual", "generation": 3, "id": "fixture.timebase.input", "nominal_rate": [48000, 1], "origin_kind": "virtual", "origin_sample": 0, "origin_seconds": [10, 1], "rate": [48000, 1], "uncertainty_seconds": null},
         "trigger_id": "fixture.trigger.001",
         "validity": []
       },
@@ -827,362 +147,65 @@
         "rate_hz": 48000,
         "signal": "cosine",
         "tones": [
-          [
-            37,
-            0.03125,
-            0.0
-          ],
-          [
-            71,
-            0.0625,
-            0.19634954084936207
-          ],
-          [
-            113,
-            0.09375,
-            0.39269908169872414
-          ],
-          [
-            173,
-            0.125,
-            0.5890486225480862
-          ]
+          [37, 0.03125, 0.0],
+          [71, 0.0625, 0.19634954084936207],
+          [113, 0.09375, 0.39269908169872414],
+          [173, 0.125, 0.5890486225480862]
         ],
         "window": "boxcar"
       }
     },
     {
       "arrays": {
-        "current.fft_over_n": {
-          "byte_order": "little",
-          "complex": "real-imag-last-axis",
-          "dtype": "<f8",
-          "file": "current.fft_over_n.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "2cba5784860fd73d28db6ecb767022a5c65a9f5b006b67804d33a883d28e3650",
-          "shape": [
-            2049,
-            8,
-            2
-          ]
-        },
-        "current.frequency_hz": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.frequency_hz.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
-          "shape": [
-            2049
-          ]
-        },
-        "current.integrated_power_fs2": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.integrated_power_fs2.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "097efed77fa15a4252bcec7157d3204d70b99ee3cf81394e31dac37be167f2a1",
-          "shape": [
-            8
-          ]
-        },
-        "current.inverse_windowed": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.inverse_windowed.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "8f3793bf31339dd93d3befd00646c5666b594399d5c1ffb785ab52d4cb791ebc",
-          "shape": [
-            4096,
-            8
-          ]
-        },
-        "current.peak_fs": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.peak_fs.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "925b8c86e4ab4a92c393453526932c9e27eab0b11b287aee442418913687d2ea",
-          "shape": [
-            2049,
-            8
-          ]
-        },
-        "current.psd_fs2_hz": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.psd_fs2_hz.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "aec5bfc23c4cb88879c4e4da712f85c6d33b09798df9ddbe462d7c1e4c7eff00",
-          "shape": [
-            2049,
-            8
-          ]
-        },
-        "current.rms_fs": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.rms_fs.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "5b2b57741b04c06cb22921ee02035cee8f287acdceccb885cd180707b812b65d",
-          "shape": [
-            8
-          ]
-        },
-        "current.time_window_power_fs2": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.time_window_power_fs2.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "5e2d842695f99f4af368908cabbff3c821da6e7b424d2a5fb690388cc063cd07",
-          "shape": [
-            8
-          ]
-        },
-        "current.window": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.window.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7",
-          "shape": [
-            4096
-          ]
-        },
-        "input": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "input.bin",
-          "layout": "C/frame-major",
-          "origin": "fixed-input",
-          "sha256": "3926c0bd928f60b44b349c07ef4fdbb174da296350400a2d7e4216032ebcce0b",
-          "shape": [
-            4096,
-            8
-          ]
-        },
-        "theory.fft_over_n": {
-          "byte_order": "little",
-          "complex": "real-imag-last-axis",
-          "dtype": "<f8",
-          "file": "theory.fft_over_n.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "d49dcda7d750a4086e3414e654bfe0685d8d4b99eae3a16b2594badf7d33d3e3",
-          "shape": [
-            2049,
-            8,
-            2
-          ]
-        },
-        "theory.frequency_hz": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.frequency_hz.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
-          "shape": [
-            2049
-          ]
-        },
-        "theory.integrated_power_fs2": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.integrated_power_fs2.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "a54abdce1090355d3d9db9e65457df1248292dd423d604e1db46b995a8d877e4",
-          "shape": [
-            8
-          ]
-        },
-        "theory.inverse_windowed": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.inverse_windowed.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "3926c0bd928f60b44b349c07ef4fdbb174da296350400a2d7e4216032ebcce0b",
-          "shape": [
-            4096,
-            8
-          ]
-        },
-        "theory.peak_fs": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.peak_fs.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "57d635f313fc0ec3bf6da6a6cdadc8fc29f40c8f93d15f5b96862522adfa140a",
-          "shape": [
-            2049,
-            8
-          ]
-        },
-        "theory.psd_fs2_hz": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.psd_fs2_hz.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "d48f7a9a350d24491ad7d0abdd55968c5804fdf44435c0cb0b4984a242766936",
-          "shape": [
-            2049,
-            8
-          ]
-        },
-        "theory.rms_fs": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.rms_fs.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "5b2b57741b04c06cb22921ee02035cee8f287acdceccb885cd180707b812b65d",
-          "shape": [
-            8
-          ]
-        },
-        "theory.time_window_power_fs2": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.time_window_power_fs2.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "5e2d842695f99f4af368908cabbff3c821da6e7b424d2a5fb690388cc063cd07",
-          "shape": [
-            8
-          ]
-        },
-        "theory.window": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.window.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7",
-          "shape": [
-            4096
-          ]
-        }
+        "current.fft_over_n": {"byte_order": "little", "complex": "real-imag-last-axis", "dtype": "<f8", "file": "current.fft_over_n.bin", "layout": "C/frame-major", "origin": "current", "sha256": "2cba5784860fd73d28db6ecb767022a5c65a9f5b006b67804d33a883d28e3650", "shape": [2049, 8, 2]},
+        "current.frequency_hz": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.frequency_hz.bin", "layout": "C/frame-major", "origin": "current", "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5", "shape": [2049]},
+        "current.integrated_power_fs2": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.integrated_power_fs2.bin", "layout": "C/frame-major", "origin": "current", "sha256": "097efed77fa15a4252bcec7157d3204d70b99ee3cf81394e31dac37be167f2a1", "shape": [8]},
+        "current.inverse_windowed": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.inverse_windowed.bin", "layout": "C/frame-major", "origin": "current", "sha256": "8f3793bf31339dd93d3befd00646c5666b594399d5c1ffb785ab52d4cb791ebc", "shape": [4096, 8]},
+        "current.peak_fs": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.peak_fs.bin", "layout": "C/frame-major", "origin": "current", "sha256": "925b8c86e4ab4a92c393453526932c9e27eab0b11b287aee442418913687d2ea", "shape": [2049, 8]},
+        "current.psd_fs2_hz": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.psd_fs2_hz.bin", "layout": "C/frame-major", "origin": "current", "sha256": "aec5bfc23c4cb88879c4e4da712f85c6d33b09798df9ddbe462d7c1e4c7eff00", "shape": [2049, 8]},
+        "current.rms_fs": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.rms_fs.bin", "layout": "C/frame-major", "origin": "current", "sha256": "5b2b57741b04c06cb22921ee02035cee8f287acdceccb885cd180707b812b65d", "shape": [8]},
+        "current.time_window_power_fs2": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.time_window_power_fs2.bin", "layout": "C/frame-major", "origin": "current", "sha256": "5e2d842695f99f4af368908cabbff3c821da6e7b424d2a5fb690388cc063cd07", "shape": [8]},
+        "current.window": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.window.bin", "layout": "C/frame-major", "origin": "current", "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7", "shape": [4096]},
+        "input": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "input.bin", "layout": "C/frame-major", "origin": "fixed-input", "sha256": "3926c0bd928f60b44b349c07ef4fdbb174da296350400a2d7e4216032ebcce0b", "shape": [4096, 8]},
+        "theory.fft_over_n": {"byte_order": "little", "complex": "real-imag-last-axis", "dtype": "<f8", "file": "theory.fft_over_n.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "d49dcda7d750a4086e3414e654bfe0685d8d4b99eae3a16b2594badf7d33d3e3", "shape": [2049, 8, 2]},
+        "theory.frequency_hz": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.frequency_hz.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5", "shape": [2049]},
+        "theory.integrated_power_fs2": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.integrated_power_fs2.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "a54abdce1090355d3d9db9e65457df1248292dd423d604e1db46b995a8d877e4", "shape": [8]},
+        "theory.inverse_windowed": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.inverse_windowed.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "3926c0bd928f60b44b349c07ef4fdbb174da296350400a2d7e4216032ebcce0b", "shape": [4096, 8]},
+        "theory.peak_fs": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.peak_fs.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "57d635f313fc0ec3bf6da6a6cdadc8fc29f40c8f93d15f5b96862522adfa140a", "shape": [2049, 8]},
+        "theory.psd_fs2_hz": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.psd_fs2_hz.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "d48f7a9a350d24491ad7d0abdd55968c5804fdf44435c0cb0b4984a242766936", "shape": [2049, 8]},
+        "theory.rms_fs": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.rms_fs.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "5b2b57741b04c06cb22921ee02035cee8f287acdceccb885cd180707b812b65d", "shape": [8]},
+        "theory.time_window_power_fs2": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.time_window_power_fs2.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "5e2d842695f99f4af368908cabbff3c821da6e7b424d2a5fb690388cc063cd07", "shape": [8]},
+        "theory.window": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.window.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7", "shape": [4096]}
       },
       "metadata": {
         "acquired_host_seconds": null,
         "calibration": {
-          "input.alpha": {
-            "revision": null,
-            "state": "uncalibrated"
-          },
-          "input.beta": {
-            "revision": null,
-            "state": "uncalibrated"
-          },
-          "input.delta": {
-            "revision": null,
-            "state": "uncalibrated"
-          },
-          "input.epsilon": {
-            "revision": null,
-            "state": "uncalibrated"
-          },
-          "input.eta": {
-            "revision": null,
-            "state": "uncalibrated"
-          },
-          "input.gamma": {
-            "revision": null,
-            "state": "uncalibrated"
-          },
-          "input.theta": {
-            "revision": null,
-            "state": "uncalibrated"
-          },
-          "input.zeta": {
-            "revision": null,
-            "state": "uncalibrated"
-          }
+          "input.alpha": {"revision": null, "state": "uncalibrated"},
+          "input.beta": {"revision": null, "state": "uncalibrated"},
+          "input.delta": {"revision": null, "state": "uncalibrated"},
+          "input.epsilon": {"revision": null, "state": "uncalibrated"},
+          "input.eta": {"revision": null, "state": "uncalibrated"},
+          "input.gamma": {"revision": null, "state": "uncalibrated"},
+          "input.theta": {"revision": null, "state": "uncalibrated"},
+          "input.zeta": {"revision": null, "state": "uncalibrated"}
         },
-        "channel_ids": [
-          "input.alpha",
-          "input.beta",
-          "input.gamma",
-          "input.delta",
-          "input.epsilon",
-          "input.zeta",
-          "input.eta",
-          "input.theta"
-        ],
+        "channel_ids": ["input.alpha", "input.beta", "input.gamma", "input.delta", "input.epsilon", "input.zeta", "input.eta", "input.theta"],
         "current_origin": "FFTManager per channel, contract normalization adapter",
         "dtype": "<f8",
         "generation": 3,
         "input_formula": "A*cos(2*pi*k*n/N+phase)",
-        "interval": [
-          0,
-          4096
-        ],
+        "interval": [0, 4096],
         "layout": "C/frame-major",
         "operation_revision": "fft-reference-v1",
-        "result_host_seconds": [
-          11,
-          1
-        ],
+        "result_host_seconds": [11, 1],
         "result_id": "ac01-8ch-f8",
         "route_revision": "route.1",
         "seed": null,
-        "shape": [
-          4096,
-          8
-        ],
+        "shape": [4096, 8],
         "stream_id": "fixture.session.input",
         "tap": "input.raw",
         "theory_origin": "analytic finite geometric sum, before f32 input quantization",
-        "timebase": {
-          "clock_domain": "fixture.virtual",
-          "generation": 3,
-          "id": "fixture.timebase.input",
-          "nominal_rate": [
-            48000,
-            1
-          ],
-          "origin_kind": "virtual",
-          "origin_sample": 0,
-          "origin_seconds": [
-            10,
-            1
-          ],
-          "rate": [
-            48000,
-            1
-          ],
-          "uncertainty_seconds": null
-        },
+        "timebase": {"clock_domain": "fixture.virtual", "generation": 3, "id": "fixture.timebase.input", "nominal_rate": [48000, 1], "origin_kind": "virtual", "origin_sample": 0, "origin_seconds": [10, 1], "rate": [48000, 1], "uncertainty_seconds": null},
         "trigger_id": "fixture.trigger.001",
         "validity": []
       },
@@ -1193,382 +216,69 @@
         "rate_hz": 48000,
         "signal": "cosine",
         "tones": [
-          [
-            37,
-            0.03125,
-            0.0
-          ],
-          [
-            71,
-            0.0625,
-            0.19634954084936207
-          ],
-          [
-            113,
-            0.09375,
-            0.39269908169872414
-          ],
-          [
-            173,
-            0.125,
-            0.5890486225480862
-          ],
-          [
-            251,
-            0.15625,
-            0.7853981633974483
-          ],
-          [
-            331,
-            0.1875,
-            0.9817477042468103
-          ],
-          [
-            419,
-            0.21875,
-            1.1780972450961724
-          ],
-          [
-            509,
-            0.25,
-            1.3744467859455345
-          ]
+          [37, 0.03125, 0.0],
+          [71, 0.0625, 0.19634954084936207],
+          [113, 0.09375, 0.39269908169872414],
+          [173, 0.125, 0.5890486225480862],
+          [251, 0.15625, 0.7853981633974483],
+          [331, 0.1875, 0.9817477042468103],
+          [419, 0.21875, 1.1780972450961724],
+          [509, 0.25, 1.3744467859455345]
         ],
         "window": "boxcar"
       }
     },
     {
       "arrays": {
-        "current.fft_over_n": {
-          "byte_order": "little",
-          "complex": "real-imag-last-axis",
-          "dtype": "<f8",
-          "file": "current.fft_over_n.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "c4decefefe7cc661fad3fd0d5d1c017aa7bcb02e66ea33314b3e31d5cd0e28fa",
-          "shape": [
-            2049,
-            8,
-            2
-          ]
-        },
-        "current.frequency_hz": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.frequency_hz.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
-          "shape": [
-            2049
-          ]
-        },
-        "current.integrated_power_fs2": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.integrated_power_fs2.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "bcc01319b48cd96a332959a7fa3102f46c23a679884e15e8c487d0211cfc463b",
-          "shape": [
-            8
-          ]
-        },
-        "current.inverse_windowed": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f4",
-          "file": "current.inverse_windowed.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "8514f85d7ca18c29e916c1755d58fab2c9c9e4cb74351705071f0b75230c5410",
-          "shape": [
-            4096,
-            8
-          ]
-        },
-        "current.peak_fs": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.peak_fs.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "11cdcdf3b2940b3f8acb37bc9f757a890554bbad375e3734e2ec2ccc24698d43",
-          "shape": [
-            2049,
-            8
-          ]
-        },
-        "current.psd_fs2_hz": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.psd_fs2_hz.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "fc14a7ed1edb415ee49b4235f72a0ab4f4ca0a0aad89d9f3ecc4307f1e0d74b0",
-          "shape": [
-            2049,
-            8
-          ]
-        },
-        "current.rms_fs": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.rms_fs.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "34d09a9257218fea839359fb2c6c261f3cd6795c407bb31c2d4983129d1ceb48",
-          "shape": [
-            8
-          ]
-        },
-        "current.time_window_power_fs2": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.time_window_power_fs2.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "8566e2d11123ecfca534e0eb82556187e3c681eb55a0d8fdd7f45373971372d4",
-          "shape": [
-            8
-          ]
-        },
-        "current.window": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "current.window.bin",
-          "layout": "C/frame-major",
-          "origin": "current",
-          "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7",
-          "shape": [
-            4096
-          ]
-        },
-        "input": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f4",
-          "file": "input.bin",
-          "layout": "C/frame-major",
-          "origin": "fixed-input",
-          "sha256": "79b1b8474e37c6c8609d0afe2b8587b5ef3b1d8bd4576b240d98a600e89b3597",
-          "shape": [
-            4096,
-            8
-          ]
-        },
-        "theory.fft_over_n": {
-          "byte_order": "little",
-          "complex": "real-imag-last-axis",
-          "dtype": "<f8",
-          "file": "theory.fft_over_n.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "d49dcda7d750a4086e3414e654bfe0685d8d4b99eae3a16b2594badf7d33d3e3",
-          "shape": [
-            2049,
-            8,
-            2
-          ]
-        },
-        "theory.frequency_hz": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.frequency_hz.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5",
-          "shape": [
-            2049
-          ]
-        },
-        "theory.integrated_power_fs2": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.integrated_power_fs2.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "a54abdce1090355d3d9db9e65457df1248292dd423d604e1db46b995a8d877e4",
-          "shape": [
-            8
-          ]
-        },
-        "theory.inverse_windowed": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.inverse_windowed.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "e4dcc34cd0db4b640ddf83c12e638368b2e6f53833808d94889c8c46693f66cb",
-          "shape": [
-            4096,
-            8
-          ]
-        },
-        "theory.peak_fs": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.peak_fs.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "57d635f313fc0ec3bf6da6a6cdadc8fc29f40c8f93d15f5b96862522adfa140a",
-          "shape": [
-            2049,
-            8
-          ]
-        },
-        "theory.psd_fs2_hz": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.psd_fs2_hz.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "d48f7a9a350d24491ad7d0abdd55968c5804fdf44435c0cb0b4984a242766936",
-          "shape": [
-            2049,
-            8
-          ]
-        },
-        "theory.rms_fs": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.rms_fs.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "34d09a9257218fea839359fb2c6c261f3cd6795c407bb31c2d4983129d1ceb48",
-          "shape": [
-            8
-          ]
-        },
-        "theory.time_window_power_fs2": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.time_window_power_fs2.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "8566e2d11123ecfca534e0eb82556187e3c681eb55a0d8fdd7f45373971372d4",
-          "shape": [
-            8
-          ]
-        },
-        "theory.window": {
-          "byte_order": "little",
-          "complex": null,
-          "dtype": "<f8",
-          "file": "theory.window.bin",
-          "layout": "C/frame-major",
-          "origin": "theory",
-          "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7",
-          "shape": [
-            4096
-          ]
-        }
+        "current.fft_over_n": {"byte_order": "little", "complex": "real-imag-last-axis", "dtype": "<f8", "file": "current.fft_over_n.bin", "layout": "C/frame-major", "origin": "current", "sha256": "c4decefefe7cc661fad3fd0d5d1c017aa7bcb02e66ea33314b3e31d5cd0e28fa", "shape": [2049, 8, 2]},
+        "current.frequency_hz": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.frequency_hz.bin", "layout": "C/frame-major", "origin": "current", "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5", "shape": [2049]},
+        "current.integrated_power_fs2": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.integrated_power_fs2.bin", "layout": "C/frame-major", "origin": "current", "sha256": "bcc01319b48cd96a332959a7fa3102f46c23a679884e15e8c487d0211cfc463b", "shape": [8]},
+        "current.inverse_windowed": {"byte_order": "little", "complex": null, "dtype": "<f4", "file": "current.inverse_windowed.bin", "layout": "C/frame-major", "origin": "current", "sha256": "8514f85d7ca18c29e916c1755d58fab2c9c9e4cb74351705071f0b75230c5410", "shape": [4096, 8]},
+        "current.peak_fs": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.peak_fs.bin", "layout": "C/frame-major", "origin": "current", "sha256": "11cdcdf3b2940b3f8acb37bc9f757a890554bbad375e3734e2ec2ccc24698d43", "shape": [2049, 8]},
+        "current.psd_fs2_hz": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.psd_fs2_hz.bin", "layout": "C/frame-major", "origin": "current", "sha256": "fc14a7ed1edb415ee49b4235f72a0ab4f4ca0a0aad89d9f3ecc4307f1e0d74b0", "shape": [2049, 8]},
+        "current.rms_fs": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.rms_fs.bin", "layout": "C/frame-major", "origin": "current", "sha256": "34d09a9257218fea839359fb2c6c261f3cd6795c407bb31c2d4983129d1ceb48", "shape": [8]},
+        "current.time_window_power_fs2": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.time_window_power_fs2.bin", "layout": "C/frame-major", "origin": "current", "sha256": "8566e2d11123ecfca534e0eb82556187e3c681eb55a0d8fdd7f45373971372d4", "shape": [8]},
+        "current.window": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "current.window.bin", "layout": "C/frame-major", "origin": "current", "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7", "shape": [4096]},
+        "input": {"byte_order": "little", "complex": null, "dtype": "<f4", "file": "input.bin", "layout": "C/frame-major", "origin": "fixed-input", "sha256": "79b1b8474e37c6c8609d0afe2b8587b5ef3b1d8bd4576b240d98a600e89b3597", "shape": [4096, 8]},
+        "theory.fft_over_n": {"byte_order": "little", "complex": "real-imag-last-axis", "dtype": "<f8", "file": "theory.fft_over_n.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "d49dcda7d750a4086e3414e654bfe0685d8d4b99eae3a16b2594badf7d33d3e3", "shape": [2049, 8, 2]},
+        "theory.frequency_hz": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.frequency_hz.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "f7703bd4dbdb51c719d4e27e31f7d5eaafabeb2f2cf8b3305d58c63ba0d12ff5", "shape": [2049]},
+        "theory.integrated_power_fs2": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.integrated_power_fs2.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "a54abdce1090355d3d9db9e65457df1248292dd423d604e1db46b995a8d877e4", "shape": [8]},
+        "theory.inverse_windowed": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.inverse_windowed.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "e4dcc34cd0db4b640ddf83c12e638368b2e6f53833808d94889c8c46693f66cb", "shape": [4096, 8]},
+        "theory.peak_fs": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.peak_fs.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "57d635f313fc0ec3bf6da6a6cdadc8fc29f40c8f93d15f5b96862522adfa140a", "shape": [2049, 8]},
+        "theory.psd_fs2_hz": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.psd_fs2_hz.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "d48f7a9a350d24491ad7d0abdd55968c5804fdf44435c0cb0b4984a242766936", "shape": [2049, 8]},
+        "theory.rms_fs": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.rms_fs.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "34d09a9257218fea839359fb2c6c261f3cd6795c407bb31c2d4983129d1ceb48", "shape": [8]},
+        "theory.time_window_power_fs2": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.time_window_power_fs2.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "8566e2d11123ecfca534e0eb82556187e3c681eb55a0d8fdd7f45373971372d4", "shape": [8]},
+        "theory.window": {"byte_order": "little", "complex": null, "dtype": "<f8", "file": "theory.window.bin", "layout": "C/frame-major", "origin": "theory", "sha256": "9ad28ff0dbb91703f930756f2c9d0f2a9f7655d6e0efeb120b4c23f9321bdaa7", "shape": [4096]}
       },
       "metadata": {
         "acquired_host_seconds": null,
         "calibration": {
-          "input.alpha": {
-            "revision": null,
-            "state": "uncalibrated"
-          },
-          "input.beta": {
-            "revision": null,
-            "state": "uncalibrated"
-          },
-          "input.delta": {
-            "revision": null,
-            "state": "uncalibrated"
-          },
-          "input.epsilon": {
-            "revision": null,
-            "state": "uncalibrated"
-          },
-          "input.eta": {
-            "revision": null,
-            "state": "uncalibrated"
-          },
-          "input.gamma": {
-            "revision": null,
-            "state": "uncalibrated"
-          },
-          "input.theta": {
-            "revision": null,
-            "state": "uncalibrated"
-          },
-          "input.zeta": {
-            "revision": null,
-            "state": "uncalibrated"
-          }
+          "input.alpha": {"revision": null, "state": "uncalibrated"},
+          "input.beta": {"revision": null, "state": "uncalibrated"},
+          "input.delta": {"revision": null, "state": "uncalibrated"},
+          "input.epsilon": {"revision": null, "state": "uncalibrated"},
+          "input.eta": {"revision": null, "state": "uncalibrated"},
+          "input.gamma": {"revision": null, "state": "uncalibrated"},
+          "input.theta": {"revision": null, "state": "uncalibrated"},
+          "input.zeta": {"revision": null, "state": "uncalibrated"}
         },
-        "channel_ids": [
-          "input.alpha",
-          "input.beta",
-          "input.gamma",
-          "input.delta",
-          "input.epsilon",
-          "input.zeta",
-          "input.eta",
-          "input.theta"
-        ],
+        "channel_ids": ["input.alpha", "input.beta", "input.gamma", "input.delta", "input.epsilon", "input.zeta", "input.eta", "input.theta"],
         "current_origin": "FFTManager per channel, contract normalization adapter",
         "dtype": "<f4",
         "generation": 3,
         "input_formula": "A*cos(2*pi*k*n/N+phase)",
-        "interval": [
-          0,
-          4096
-        ],
+        "interval": [0, 4096],
         "layout": "C/frame-major",
         "operation_revision": "fft-reference-v1",
-        "result_host_seconds": [
-          11,
-          1
-        ],
+        "result_host_seconds": [11, 1],
         "result_id": "ac01-8ch-f4",
         "route_revision": "route.1",
         "seed": null,
-        "shape": [
-          4096,
-          8
-        ],
+        "shape": [4096, 8],
         "stream_id": "fixture.session.input",
         "tap": "input.raw",
         "theory_origin": "analytic finite geometric sum, before f32 input quantization",
-        "timebase": {
-          "clock_domain": "fixture.virtual",
-          "generation": 3,
-          "id": "fixture.timebase.input",
-          "nominal_rate": [
-            48000,
-            1
-          ],
-          "origin_kind": "virtual",
-          "origin_sample": 0,
-          "origin_seconds": [
-            10,
-            1
-          ],
-          "rate": [
-            48000,
-            1
-          ],
-          "uncertainty_seconds": null
-        },
+        "timebase": {"clock_domain": "fixture.virtual", "generation": 3, "id": "fixture.timebase.input", "nominal_rate": [48000, 1], "origin_kind": "virtual", "origin_sample": 0, "origin_seconds": [10, 1], "rate": [48000, 1], "uncertainty_seconds": null},
         "trigger_id": "fixture.trigger.001",
         "validity": []
       },
@@ -1579,46 +289,14 @@
         "rate_hz": 48000,
         "signal": "cosine",
         "tones": [
-          [
-            37,
-            0.03125,
-            0.0
-          ],
-          [
-            71,
-            0.0625,
-            0.19634954084936207
-          ],
-          [
-            113,
-            0.09375,
-            0.39269908169872414
-          ],
-          [
-            173,
-            0.125,
-            0.5890486225480862
-          ],
-          [
-            251,
-            0.15625,
-            0.7853981633974483
-          ],
-          [
-            331,
-            0.1875,
-            0.9817477042468103
-          ],
-          [
-            419,
-            0.21875,
-            1.1780972450961724
-          ],
-          [
-            509,
-            0.25,
-            1.3744467859455345
-          ]
+          [37, 0.03125, 0.0],
+          [71, 0.0625, 0.19634954084936207],
+          [113, 0.09375, 0.39269908169872414],
+          [173, 0.125, 0.5890486225480862],
+          [251, 0.15625, 0.7853981633974483],
+          [331, 0.1875, 0.9817477042468103],
+          [419, 0.21875, 1.1780972450961724],
+          [509, 0.25, 1.3744467859455345]
         ],
         "window": "boxcar"
       }
