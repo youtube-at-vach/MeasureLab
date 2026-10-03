@@ -192,6 +192,15 @@ def validate_manifest(header, request):
     return reads
 
 
+def tone_rms_from_peak(peaks, n):
+    """DC and even-length Nyquist have constant magnitude; interior tones use sqrt(2)."""
+    result = np.asarray(peaks) / np.sqrt(2)
+    result[0] = peaks[0]
+    if n % 2 == 0:
+        result[-1] = peaks[-1]
+    return result
+
+
 def validate_document(document, read, request, case, samples, *, alignment=None):
     n, channels = request["n"], len(request["format"]["input_ids"])
     start = read["history"]["interval"][0]
@@ -245,7 +254,7 @@ def validate_document(document, read, request, case, samples, *, alignment=None)
         window=window,
         inverse_windowed=samples * window[:, None],
         fft_over_n=np.stack((transformed.real, transformed.imag), axis=-1),
-        tone_rms_fs=expected_arrays["peak_fs"] / np.sqrt(2),
+        tone_rms_fs=tone_rms_from_peak(expected_arrays["peak_fs"], n),
         asd_fs_sqrt_hz=np.sqrt(expected_arrays["psd_fs2_hz"]),
     )
     units = {

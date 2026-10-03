@@ -44,6 +44,8 @@ def proof():
         tone_rms_fs=arrays["peak_fs"] / np.sqrt(2),
         asd_fs_sqrt_hz=np.sqrt(arrays["psd_fs2_hz"]),
     )
+    # Hand-calculated DC mean and alternating magnitude of each ramp channel.
+    arrays["tone_rms_fs"][[0, -1]] = [np.arange(14, 18) / 128, np.full(4, 1 / 64)]
     units = {
         "window": "1",
         "inverse_windowed": "FS",

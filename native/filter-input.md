@@ -21,7 +21,8 @@ raw port順・backend flags・非有限値のvalidity・欠落のsupport・世�
 処理遅延と未検証clock写像はunknown。親Trigger1024→派生512、信号遅延1/2 output sampleを分ける。
 
 一つのfilter stateと専用履歴/共有FFTを使う。最終購読解除・stop/restartの回収は既存取得ownerに従う。
-Qtの通常/Trigger表示と保存は現在rawで、派生resultのQt接続は次の作業単位とする。
+この精度境界の検査ではQt接続を含めない。後続の[filter/Qt接続](filter-qt.md)で
+派生履歴/共有FFT・手動Trigger・不変snapshot保存を追加した。結果は進捗を参照。
 
 ## 保存入力の再検査
 
@@ -59,5 +60,5 @@ file/JSONはstream停止後に書く。XRUN/gap/非有限/timeoutは診断failur
 PortAudioの実48 kHzとterminateも要求する。library/source/binaryを固定保存する。
 
 この短い診断は負荷超過回復、長時間性能、絶対遅延、物理clock、他OS/配布の合格ではない。
-f32演算filter、chain/SOS gap回復、全tap、製品設定UI/profile、Qt派生Trigger/保存、
+f32演算filter、chain/SOS gap回復、全tap、製品設定UI/profile、親Trigger adapter、
 008-Aの生成から保存までの全フロー統合は残る。

@@ -44,6 +44,7 @@ fn deferred_trigger_snapshots_are_bounded_deduplicated_and_survive_stop() {
             submission: Arc::new(serde_json::from_str(&encoded).unwrap()),
             receipt: receipt.clone(),
             bytes: Some(bytes.clone()),
+            parent: None,
         };
         if revision == 9 {
             assert!(defer_evidence(&mut controller, make()).is_err());

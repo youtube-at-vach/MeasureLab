@@ -131,6 +131,18 @@ fn calibrated(p: &Calibration) -> Option<f64> {
         .map(|p| p.v_per_fs)
 }
 impl MeasurementResult {
+    /// Retain the worker's transform provenance in the immutable snapshot/codec.
+    pub fn with_filter_metadata(
+        mut self,
+        metadata: &crate::filter::FilterMetadata,
+    ) -> Result<Self, String> {
+        if metadata.output != self.0.source {
+            return Err("invalid_result_filter".into());
+        }
+        self.0.conditions["filter"] = serde_json::to_value(metadata).map_err(|e| e.to_string())?;
+        self.validate(true)?;
+        Ok(self)
+    }
     fn base(
         source: &Source,
         interval: [u64; 2],
@@ -396,6 +408,14 @@ impl MeasurementResult {
     }
     fn validate(&self, with_columns: bool) -> Result<(), String> {
         let d = &self.0;
+        if let Some(value) = d.conditions.get("filter") {
+            let metadata: crate::filter::FilterMetadata =
+                serde_json::from_value(value.clone()).map_err(|_| "invalid_result_filter")?;
+            metadata.validate()?;
+            if metadata.output != d.source {
+                return Err("invalid_result_filter".into());
+            }
+        }
         let channels = &d.source.channel_ids;
         if d.schema_version != 1
             || !d.source.valid()

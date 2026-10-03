@@ -19,6 +19,7 @@ ColumnLayout {
     property int cursorBin: 0
     property var rows: []
     property string lastId: ""
+    property string axisIdentity: ""
     property int paints: 0
     readonly property string resultId: frame ? frame.result_id : ""
     readonly property real cursorHz: frame ? frame.frequency_hz[cursorBin] : 0
@@ -66,6 +67,14 @@ ColumnLayout {
             rows = [];
             lastId = "";
         } else if (lastId !== frame.result_id) {
+            const axis = JSON.stringify([frame.source.stream_id, frame.source.timebase.id,
+                frame.frequency_hz[frame.frequency_hz.length - 1]]);
+            if (axis !== axisIdentity) {
+                rows = [];
+                resetZoom();
+                cursorBin = Math.min(cursorBin, frame.frequency_hz.length - 1);
+                axisIdentity = axis;
+            }
             if (rows.length && rows[rows.length - 1].source.generation !== frame.source.generation)
                 rows = [];
             rows = rows.concat([frame]).slice(-32);

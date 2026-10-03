@@ -41,6 +41,7 @@ pub(super) fn request(precision: Precision, channels: usize, invalid: bool) -> R
         precision,
         n,
         window: WindowSpec::Boxcar,
+        filter: None,
         input: Some(path),
         live: None,
         evidence: None,

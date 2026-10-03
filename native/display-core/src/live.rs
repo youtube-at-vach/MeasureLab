@@ -28,26 +28,29 @@ pub(super) fn run(
             window: request.window,
         },
         CaptureLimits {
-            history: HistoryLimits::frames(request.n * 8),
+            history: HistoryLimits::frames(request.input_frames() * 8),
             frames_per_poll: 1024,
             windows_per_poll: 1,
         },
     )?;
     let mut subscriptions = BTreeMap::new();
+    let (key, filter) = filter::prepare(&acquisition, request)?;
     let mut evidence_written = false;
     let mut pending_windows = Vec::new();
     let mut captured_frames = 0;
+    let mut filter_raw = FilterRaw::default();
     let mut save_inputs = SaveInputs::default();
     let mut last_data = Instant::now();
     let result = (|| {
         if owner.stop.load(Ordering::Acquire)
-            || !sync_demand(owner, &acquisition, &mut subscriptions)?
+            || !sync_demand(owner, &acquisition, &key, &mut subscriptions)?
         {
             return Ok(());
         }
+        filter::attach(&mut acquisition, request, filter)?;
         input.start()?;
         while !owner.stop.load(Ordering::Acquire) {
-            if !sync_demand(owner, &acquisition, &mut subscriptions)? {
+            if !sync_demand(owner, &acquisition, &key, &mut subscriptions)? {
                 break;
             }
             if input.failed() {
@@ -56,6 +59,9 @@ pub(super) fn run(
             calibration::process(owner, notify, request)?;
             trigger::process(owner, notify, request, &mut acquisition)?;
             let report = acquisition.poll()?;
+            if request.filter.is_some() && request.evidence.is_some() {
+                filter_raw.push(&report)?;
+            }
             // This short correctness evaluation fails explicitly on discontinuity.
             // Recoverable XRUN/reconnect policy belongs to MIG-005-B.
             if !report.gaps.is_empty() {
@@ -67,7 +73,11 @@ pub(super) fn run(
             } else if last_data.elapsed() > Duration::from_secs(3) {
                 return Err("live_input_timeout".into());
             }
-            if let Some(frame) = shared_frame(&subscriptions, request)? {
+            if let Some(frame) = shared_frame(
+                &subscriptions,
+                request,
+                acquisition.filtered_metadata().as_ref(),
+            )? {
                 if request.save_input_evidence {
                     save_inputs.push(&acquisition, &frame)?;
                 }
@@ -112,12 +122,18 @@ pub(super) fn run(
     } else {
         Ok(())
     };
+    let filter_evidence = if request.filter.is_some() && request.evidence.is_some() {
+        filter_raw.write(request)
+    } else {
+        Ok(())
+    };
     // Capture counters only after the callback/stream owner has been released.
     let metrics = json!({ "schema_version": 1, "generation": request.format.generation,
         "device": live.device, "backend": live.backend, "format": request.format, "input": input.report(),
         "captured_frames": captured_frames, "fft_evaluations": evaluations, "queue": queue,
+        "filter": request.filter,
         "stop_ms": stopped.as_ref().ok(), "reclaimed": reclaimed.is_ok(),
-        "error": result.as_ref().err().or(stopped.as_ref().err()).or(reclaimed.as_ref().err()).or(triggers.as_ref().err()).or(windows.as_ref().err()).or(exchange.as_ref().err()).or(save_evidence.as_ref().err()) });
+        "error": result.as_ref().err().or(stopped.as_ref().err()).or(reclaimed.as_ref().err()).or(triggers.as_ref().err()).or(windows.as_ref().err()).or(exchange.as_ref().err()).or(save_evidence.as_ref().err()).or(filter_evidence.as_ref().err()) });
     if let Some(path) = &request.evidence {
         save_new(
             &path.join(format!("live-{}.json", request.format.generation)),
@@ -130,7 +146,47 @@ pub(super) fn run(
     triggers?;
     windows?;
     exchange?;
-    save_evidence
+    save_evidence?;
+    filter_evidence
+}
+
+/// Opt-in correctness evidence only; bounded copies on the analysis owner.
+/// Serialization and file I/O wait until native callback/stream shutdown.
+#[derive(Default)]
+struct FilterRaw {
+    bytes: Vec<u8>,
+    end: u64,
+}
+impl FilterRaw {
+    fn push(&mut self, report: &graph_core::acquisition::PollReport) -> Result<(), String> {
+        for block in &report.blocks {
+            let Samples::F32(values) = block.samples() else {
+                return Err("filter_raw_precision".into());
+            };
+            if block.interval().0 != self.end
+                || values.len() * 4 > 32 * 1024 * 1024 - self.bytes.len()
+            {
+                return Err("filter_raw_evidence_interval_or_capacity".into());
+            }
+            self.bytes
+                .extend(values.iter().flat_map(|v| v.to_le_bytes()));
+            self.end = block.interval().1;
+        }
+        Ok(())
+    }
+    fn write(self, request: &Request) -> Result<(), String> {
+        let stem = request
+            .evidence
+            .as_ref()
+            .unwrap()
+            .join(format!("filter-raw-{}", request.format.generation));
+        let metadata = json!({"format": request.format, "interval": [0, self.end], "byte_count": self.bytes.len(), "max_bytes": 32 * 1024 * 1024});
+        save_new(&stem.with_extension("f32"), self.bytes)?;
+        save_new(
+            &stem.with_extension("json"),
+            serde_json::to_vec_pretty(&metadata).map_err(|e| e.to_string())?,
+        )
+    }
 }
 
 const SAVE_INPUT_MAX_BYTES: usize = 8 * 1024 * 1024;
@@ -200,6 +256,7 @@ struct PendingWindow {
     revision: Option<u64>,
     result: Arc<MeasurementResult>,
     bytes: Vec<u8>,
+    parent: Option<filter::ParentEvidence>,
 }
 fn defer_window(
     pending: &mut Vec<PendingWindow>,
@@ -214,18 +271,21 @@ fn defer_window(
     let start = i64::try_from(start).map_err(|_| "live_result_interval")?;
     let end = i64::try_from(end).map_err(|_| "live_result_interval")?;
     let read = acquisition
-        .history()
+        .filtered_history()
+        .or_else(|| acquisition.history())
         .ok_or("live_history_missing")?
         .read_interval(start, end)?;
     let block = read.snapshot.ok_or("live_evidence_history_missing")?;
-    let Samples::F32(values) = block.samples() else {
-        return Err("live_evidence_precision".into());
+    let bytes = match block.samples() {
+        Samples::F32(values) => values.iter().flat_map(|v| v.to_le_bytes()).collect(),
+        Samples::F64(values) => values.iter().flat_map(|v| v.to_le_bytes()).collect(),
     };
     pending.push(PendingWindow {
         generation: acquisition.format().generation,
         revision,
         result: frame.result.clone(),
-        bytes: values.iter().flat_map(|v| v.to_le_bytes()).collect(),
+        bytes,
+        parent: filter::parent_evidence(acquisition, frame.result.interval())?,
     });
     Ok(())
 }
@@ -239,17 +299,26 @@ fn save_window(
         revision,
         result,
         bytes,
+        parent,
     } = window;
     let stem = revision.map(|r| format!("calibration-{generation}-{r}"));
+    let precision = if request.filter.is_some() {
+        "f64"
+    } else {
+        "f32"
+    };
     let input_path = stem.as_ref().map_or_else(
-        || path.join(format!("input-{generation}.f32")),
-        |s| path.join(format!("{s}.f32")),
+        || path.join(format!("input-{generation}.{precision}")),
+        |s| path.join(format!("{s}.{precision}")),
     );
     let result_path = stem.as_ref().map_or_else(
         || path.join(format!("generation-{generation}.json")),
         |s| path.join(format!("{s}.result.json")),
     );
     save_new(&input_path, bytes)?;
+    if let Some(parent) = parent {
+        parent.write(&input_path)?;
+    }
     calibration::save_result(&result, &result_path, request)?;
     Ok(())
 }
@@ -448,7 +517,8 @@ mod tests {
                     generation: 1,
                     revision: Some(1),
                     result: frame.result,
-                    bytes: bytes.clone()
+                    bytes: bytes.clone(),
+                    parent: None
                 },
                 &request
             )

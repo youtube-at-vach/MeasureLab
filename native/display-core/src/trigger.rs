@@ -26,6 +26,7 @@ struct DeferredEvidence {
     submission: Arc<Submission>,
     receipt: Arc<TriggerResponse>,
     bytes: Option<Vec<u8>>,
+    parent: Option<filter::ParentEvidence>,
 }
 fn defer_evidence(controller: &mut Controller, evidence: DeferredEvidence) -> Result<(), String> {
     if controller.evidence.iter().any(|old| {
@@ -50,6 +51,7 @@ pub(super) fn finish_evidence(owner: &Owner, request: &Request) -> Result<(), St
             &entry.submission,
             &entry.receipt,
             entry.bytes,
+            entry.parent,
             request,
         )?;
     }
@@ -162,9 +164,16 @@ pub(super) fn process<T: CaptureSample>(
         acquisition.release_trigger_cache();
         return Ok(());
     };
-    let (receipt, evidence) = match acquisition
-        .capture_trigger_with_profiles(&submission.request, |interval| request.profiles(interval))
-    {
+    let read = if request.filter.is_some() {
+        acquisition.capture_filtered_trigger_with_profiles(&submission.request, |interval| {
+            request.profiles(interval)
+        })
+    } else {
+        acquisition.capture_trigger_with_profiles(&submission.request, |interval| {
+            request.profiles(interval)
+        })
+    };
+    let (receipt, evidence) = match read {
         Err(reason) => (response(&submission, "error", Some(&reason)), None),
         Ok(read) => {
             let frame = read
@@ -186,7 +195,7 @@ pub(super) fn process<T: CaptureSample>(
                 "request": submission.request, "status": status, "reason": read.history.report.reason,
                 "history": read.history.report, "fractional_residual": read.history.fractional_residual,
                 "fft_origin": read.fft_origin, "frame": projection,
-                "acquired_until": acquisition.history().unwrap().acquired_until(),
+                "acquired_until": acquisition.filtered_history().or_else(|| acquisition.history()).unwrap().acquired_until(),
                 "trigger_evaluations": acquisition.trigger_evaluations(),
                 "continuous_evaluations": acquisition.graph().stats().fft_evaluations}).to_string();
             let evidence = read
@@ -226,6 +235,12 @@ pub(super) fn process<T: CaptureSample>(
     // Evidence I/O runs on the analysis owner, outside the control lock and audio callback.
     if let Some(path) = &request.evidence {
         if request.live.is_some() {
+            let parent = receipt
+                .frame
+                .as_ref()
+                .map(|frame| filter::parent_evidence(acquisition, frame.result.interval()))
+                .transpose()?
+                .flatten();
             defer_evidence(
                 &mut owner.mailbox.lock().unwrap().trigger,
                 DeferredEvidence {
@@ -234,6 +249,7 @@ pub(super) fn process<T: CaptureSample>(
                     submission: submission.clone(),
                     receipt: receipt.clone(),
                     bytes: evidence,
+                    parent,
                 },
             )?;
         } else {
@@ -243,6 +259,7 @@ pub(super) fn process<T: CaptureSample>(
                 &submission,
                 &receipt,
                 evidence,
+                None,
                 request,
             )?;
         }
@@ -258,6 +275,7 @@ fn save_evidence(
     submission: &Submission,
     receipt: &TriggerResponse,
     bytes: Option<Vec<u8>>,
+    parent: Option<filter::ParentEvidence>,
     request: &Request,
 ) -> Result<(), String> {
     let stem = format!(
@@ -287,6 +305,9 @@ fn save_evidence(
             .map_err(|e| e.to_string())?;
         file.write_all(&bytes.ok_or("trigger_evidence_bytes")?)
             .map_err(|e| e.to_string())?;
+        if let Some(parent) = parent {
+            parent.write(&path)?;
+        }
     }
     Ok(())
 }

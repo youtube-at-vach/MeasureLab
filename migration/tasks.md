@@ -34,7 +34,8 @@
 | 006-C | trigger/history・Timebase・generation・validity | 003-B、006-B、P03 | AC08/09、異なるcursor/通知遅延・保持超過・旧世代拒否。共有graphへ統合 | 外部trigger実機adapter | 完了（2026-09-30、worker所有履歴/pure graph・保存13契約/4入力bytes、Rust27テスト。実取得/Qtは後続） |
 | 006-D | 最小rate変換/filterとvalidity伝播 | 003-C、006-C、P06 | AC10/14、同じgraph内で遅延/区間/phase stateを保持 | 高品質resamplerの全機能 | 完了（2026-09-30、f64保存21ケース×5 chunk/6 rate境界と一段のpure graph。f32・IIR gap回復・実取得/Qtは後続） |
 | 006-D-integration | 一段f64 filterを実取得queue/専用履歴/共有FFTへ接続 | 006-D、005-graph。graph-core/acquisitionと既存filter runner | AC10/14の保存21ケース×5 callback pattern、元bytes/最終state/共有/位置/寿命、2/4/8chのgap/Trigger/世代、容量/失敗を照合 | 実backend/Qt、f32/chain/SOS gap回復、派生TriggerのQt保存、長時間/他OS | 保存入力範囲完了（2026-10-03、21ケース×5 callback pattern、331比較/13,980派生窓、Rust新規9件/Python新規10件）。P2最初のfilter候補はf64因果3-tap 48→24 kHz。手順はnative/filter-acquisition.md、結果はstatus |
-| 006-D-explicit-f32-input | 元f32のraw境界を維持し解析ownerで明示拡張、一段f64 filter/派生履歴/共有FFTへ接続 | 006-D-integration、共通入力/native callback。`F32ToF64Exact`の明示指定 | 保存FIR5信号×2/4/8ch×正逆port×5 pattern、元値/来歴/gap/共有/回収/世代、CPAL/PortAudio native BlackHoleを照合 | Qt/派生Trigger/保存、f32演算/chain/SOS gap回復、性能/他OS | 対象範囲完了（2026-10-03、保存30条件×5 pattern、native両backend6実行）。手順はnative/filter-input.md、結果はstatus。006-DのQt統合と008-Aは未完了 |
+| 006-D-explicit-f32-input | 元f32のraw境界を維持し解析ownerで明示拡張、一段f64 filter/派生履歴/共有FFTへ接続 | 006-D-integration、共通入力/native callback。`F32ToF64Exact`の明示指定 | 保存FIR5信号×2/4/8ch×正逆port×5 pattern、元値/来歴/gap/共有/回収/世代、CPAL/PortAudio native BlackHoleを照合 | Qt/派生Trigger/保存、f32演算/chain/SOS gap回復、性能/他OS | 対象範囲完了（2026-10-03、保存30条件×5 pattern、native両backend6実行）。手順はnative/filter-input.md、結果はstatus。固定filterのQt統合は次行。006-D全体と008-Aは未完了 |
+| 006-D-filter-Qt | 固定filterの両Qt派生表示・手動Trigger・校正・4形式snapshot保存 | 006-D-explicit-f32-input、005-A-native-callback-Qt、007-A-save | f32/f64×2/4/8ch×Boxcar/Hann、正逆port、来歴/数値/pending/gap/共有/hold、9言語/回収、native両backendを照合 | 親Trigger adapter、f32演算/chain/SOS gap回復、全tap/動的route、永続profile、性能/他OS | 対象範囲完了（2026-10-03、保存逆port24実行・正port Boxcar12実行・9言語18実行、BlackHole24実行48世代成功）。手順はnative/filter-qt.md、結果はstatus。006-D全体と008-Aは未完了 |
 | 006-E | 不変result・channel校正・CSV/JSON来歴 | 003-B、006-B/C、P13/P14 | AC12、再読込、保存失敗、profile変更後の不変性、uncalibrated | 旧設定の自動移行 | 完了（2026-10-01、pure不変result/ID校正/JSON・CSV。保存2契約・4例と4/8ch f32/f64。非同期workerは次行、製品互換/Qt保存操作は後続） |
 | 006-E-async-save | 不変snapshotのbounded非同期保存worker | 006-E、007-A-calibration-editのencode負荷記録。graph-core/exportと独立runner | AC07/12/13のworker境界。受付/実完了/失敗/pending cancel/寿命、graph進行、2契約と4入力の両format完全往復 | Qt保存操作、製品互換形式、pair transaction、取得中/長時間性能 | 評価範囲完了（2026-10-02、Rust新規9件、保存12実行/36 saved/36 failed）。結果はstatus |
 | 006-E-compat | 製品形式/旧CSV・JSONとsnapshotの互換adapter・読込み | 006-E、006-E-async-save、現行ExportTrace。製品版管理は008で判断 | AC12。元値/軸/単位/校正/metadata、旧fileのunknown、失敗/上書きの保証範囲を検査 | 全旧設定自動移行、全解析形式 | 評価用Python adapterを追加（2026-10-02）。製品JSON carrier/CSV sidecarとnative readerの完全往復、旧fileのunknownを検査。native snapshot codec/file workerは次行。Qt製品保存formatは007-A-product-save、native読込みは006-E-native-importへ追加。Qt import操作を007-A-product-importへ追加。取得profile再起動維持は後続 |
@@ -63,7 +64,8 @@ MIG-004はSDK導入だけで完了にしない。OSや実機の不足はその�
 [MIG-008までの残工程](remaining-to-mig008.md)に、未完了範囲・実施順・依存・実機/別環境の必要条件を整理した。
 保存/互換/製品import参照表とBlackHole取得中保存、保存f64 filter取得schedulerを検査済み。
 005-A-common-inputと005-A-native-callback-Qtで実backend入力を同じqueue/graph/両Qtへ接続した。
-明示f32→f64境界を006-D-explicit-f32-inputへ追加。次は動的route ack/全tapと、filterのQt接続を進めて008-Aへ進む。
+明示f32→f64境界と固定filterの両Qt派生表示/手動Trigger/保存を追加した。
+次は動的route ack/購読tapの対象範囲を固定し、検証済みのfilter構成と合わせて008-Aへ進む。
 製品AudioEngine callback/設定UIとprofile再起動維持は今回のrequest選択と区別する。
 実負荷/長時間性能は統合物の固定後に比較する。008-A/B/Cはローカル作業単位で、Issue作成/採用判断はしていない。
 
@@ -281,8 +283,27 @@ NumPy-only CIは明示`--portable`を使う。原点/処理遅延のunknownを0�
 ./.venv/bin/python scripts/migration_filter_live.py --virtual-device --portaudio-library "$PWD/.venv/lib/python3.12/site-packages/_sounddevice_data/portaudio-binaries/libportaudio.dylib" --output .migration-local/filter-live-new
 ```
 
-保存30条件×5 patternとnative BlackHole callbackの短い診断を分ける。Qt/派生Trigger/保存、
-動的route/全tap、製品設定UI/profile、性能/他OSは後続。結果/失敗/source・binary固定はstatusとreportを参照。
+保存30条件×5 patternとnative BlackHole callbackの短い診断を分ける。
+固定filterのQt/派生Trigger/保存は次節。動的route/全tap、製品設定UI/profile、性能/他OSは後続。
+結果/失敗/source・binary固定はstatusとreportを参照。
+
+## 006-D-filter-Qtの再検査
+
+[固定filter/両Qt接続](../native/filter-qt.md)と[決定0036](decisions/0036-filter-qt-integration.md)を参照。
+
+```bash
+./.venv/bin/python scripts/migration_qt_filter.py --qt-prefix .tools/qt/6.11.2/macos --output .migration-local/filter-qt-saved-new
+./.venv/bin/python scripts/migration_qt_filter.py --qt-prefix .tools/qt/6.11.2/macos --forward --window Boxcar --output .migration-local/filter-qt-forward-new
+./.venv/bin/python scripts/migration_qt_filter.py --qt-prefix .tools/qt/6.11.2/macos --channels 2 --precision F32 --window SymmetricHann --language en --language ja --language de --language es --language fr --language ko --language pt --language ru --language zh --output .migration-local/filter-qt-languages-new
+./.venv/bin/python scripts/migration_qt_filter.py --qt-prefix .tools/qt/6.11.2/macos --virtual-device --portaudio-library "$PWD/.venv/lib/python3.12/site-packages/_sounddevice_data/portaudio-binaries/libportaudio.dylib" --output .migration-local/filter-qt-live-new
+./.venv/bin/pytest -q tests/logic_verification/test_migration_qt_filter.py
+```
+
+保存逆port24条件、正portのBoxcar12条件、2ch/f32/Hannの9言語×両Qtと、
+BlackHole両backendの2/4/8ch×Boxcar/Hann×両Qtを別reportへ記録する。
+元fixture/許容差を維持し、独立有限和と全数値、同じsnapshotの4保存形式を照合する。
+BlackHoleは他のGUI/build試験を終了してから検査する。親Trigger adapter、f32演算/chain、
+全tap/動的route、永続profile、長時間/他OSと008-A全体は後続。
 
 ## 006-D-integrationの再検査
 

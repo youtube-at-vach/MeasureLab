@@ -4,8 +4,8 @@ use super::*;
 use crate::filter::{Filter, FilterMetadata};
 
 pub(super) struct FilteredStream {
-    key: FftKey,
-    history: History,
+    pub(super) key: FftKey,
+    pub(super) history: History,
     next_window: u64,
     sos: bool,
 }

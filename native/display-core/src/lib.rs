@@ -7,7 +7,7 @@ use audio_core::{IoFormat, Producer, frame_queue, frame_queue_f64};
 use graph_core::acquisition::{Acquisition, CaptureLimits, CaptureSample, FftSpec};
 use graph_core::history::HistoryLimits;
 use graph_core::result::{Capture, Format, MeasurementResult};
-use graph_core::{Average, FftResult, Precision, Presentation, Subscription, WindowSpec};
+use graph_core::{Average, FftKey, FftResult, Precision, Presentation, Subscription, WindowSpec};
 use probe_core::State;
 use serde::Deserialize;
 use serde_json::json;
@@ -22,10 +22,12 @@ static GENERATION: AtomicU64 = AtomicU64::new(0);
 static TOKEN: AtomicU64 = AtomicU64::new(0);
 static WORKERS: AtomicUsize = AtomicUsize::new(0);
 static MODELS: AtomicUsize = AtomicUsize::new(0);
-const MAX_INPUT_BYTES: u64 = 4096 * 16 * 8;
+const MAX_INPUT_BYTES: u64 = 8192 * 16 * 8;
 const MAX_DEMAND: usize = 16;
 
 mod calibration;
+mod filter;
+pub use filter::FilterRequest;
 pub mod locale;
 pub use calibration::ChannelCalibration;
 mod trigger;
@@ -58,6 +60,8 @@ pub struct Request {
     pub precision: Precision,
     pub n: usize,
     pub window: WindowSpec,
+    /// Opt-in fixed P2 filter. F32 input requires an explicit widening policy.
+    pub filter: Option<FilterRequest>,
     pub input: Option<PathBuf>,
     pub live: Option<LiveRequest>,
     /// Optional directory for each generation's first-result evidence.
@@ -113,6 +117,7 @@ impl Request {
             }
             _ => Err("display_input_source".into()),
         }?;
+        self.validate_filter()?;
         self.validate_calibration()
     }
     fn bytes(&self) -> Result<Vec<u8>, String> {
@@ -123,7 +128,7 @@ impl Request {
         } else {
             8
         };
-        let expected = self.n * channels * width;
+        let expected = self.input_frames() * channels * width;
         let file = std::fs::File::open(self.input.as_ref().ok_or("display_input_source")?)
             .map_err(|e| e.to_string())?;
         if file.metadata().map_err(|e| e.to_string())?.len() != expected as u64 {
@@ -443,27 +448,45 @@ fn replay<T: CaptureSample>(
             window: request.window,
         },
         CaptureLimits {
-            history: HistoryLimits::frames(request.n * 8),
+            history: HistoryLimits::frames(request.input_frames() * 8),
             frames_per_poll: 1024,
             windows_per_poll: 1,
         },
     )?;
     let mut subscriptions: BTreeMap<u64, Subscription> = BTreeMap::new();
+    let (key, filter) = filter::prepare(&acquisition, request)?;
+    if !sync_demand(owner, &acquisition, &key, &mut subscriptions)? {
+        return reclaim(&mut acquisition);
+    }
+    filter::attach(&mut acquisition, request, filter)?;
     let mut evidence_written = false;
     while !owner.stop.load(Ordering::Acquire) {
-        if !sync_demand(owner, &acquisition, &mut subscriptions)? {
+        if !sync_demand(owner, &acquisition, &key, &mut subscriptions)? {
             break;
         }
         calibration::process(owner, notify, request)?;
         trigger::process(owner, notify, request, &mut acquisition)?;
         for chunk in samples.chunks(256 * request.format.input_ids.len()) {
             tx.write(chunk, None, 0)?;
-            let report = acquisition.poll()?;
-            if !report.gaps.is_empty() {
-                return Err("replay_gap".into());
+            loop {
+                let report = acquisition.poll()?;
+                if !report.gaps.is_empty() {
+                    return Err("replay_gap".into());
+                }
+                if report.deliveries == 0
+                    && report.windows.is_empty()
+                    && report.filtered_windows.is_empty()
+                {
+                    break;
+                }
             }
         }
-        let frame = shared_frame(&subscriptions, request)?.ok_or("display_result_missing")?;
+        let frame = shared_frame(
+            &subscriptions,
+            request,
+            acquisition.filtered_metadata().as_ref(),
+        )?
+        .ok_or("display_result_missing")?;
         if let Some(revision) = calibration::evidence_revision(owner)
             && let Some(path) = &request.evidence
         {
@@ -503,13 +526,15 @@ fn replay<T: CaptureSample>(
 fn sync_demand<T: CaptureSample>(
     owner: &Owner,
     acquisition: &Acquisition<T>,
+    key: &FftKey,
     subscriptions: &mut BTreeMap<u64, Subscription>,
 ) -> Result<bool, String> {
     let demand = owner.mailbox.lock().unwrap().demand.clone();
     subscriptions.retain(|id, _| demand.contains(id));
     for id in demand {
         if let std::collections::btree_map::Entry::Vacant(entry) = subscriptions.entry(id) {
-            entry.insert(acquisition.subscribe(
+            entry.insert(acquisition.graph().subscribe(
+                key.clone(),
                 Average::None,
                 Presentation {
                     color: "cyan".into(),
@@ -523,6 +548,7 @@ fn sync_demand<T: CaptureSample>(
 fn shared_frame(
     subscriptions: &BTreeMap<u64, Subscription>,
     request: &Request,
+    filter: Option<&graph_core::filter::FilterMetadata>,
 ) -> Result<Option<Arc<Frame>>, String> {
     let latest: Vec<_> = subscriptions
         .values()
@@ -538,7 +564,7 @@ fn shared_frame(
     if latest.iter().any(|s| !Arc::ptr_eq(raw, s.raw())) {
         return Err("display_result_not_shared".into());
     }
-    let result = calibration::calibrated_result(
+    let mut result = calibration::calibrated_result(
         raw,
         Capture {
             result_id: format!("{}:{}", raw.id().graph, raw.id().serial),
@@ -550,6 +576,9 @@ fn shared_frame(
         },
         request,
     )?;
+    if let Some(filter) = filter {
+        result = result.with_filter_metadata(filter)?;
+    }
     Ok(Some(Arc::new(project_result(Arc::new(result))?)))
 }
 fn publish<T: CaptureSample>(

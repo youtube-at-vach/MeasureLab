@@ -48,6 +48,7 @@ ApplicationWindow {
     property string imageStatus: ""
     property bool workspaceTesting: Qt.application.arguments.indexOf("--workspace-test") >= 0
     property bool triggerTesting: Qt.application.arguments.indexOf("--trigger-test") >= 0
+    property bool filterTesting: Qt.application.arguments.indexOf("--filter-test") >= 0
     property bool calibrationEditingTest: Qt.application.arguments.indexOf("--calibration-edit-test") >= 0
     property bool savingTest: Qt.application.arguments.indexOf("--save-test") >= 0
     property bool importingTest: Qt.application.arguments.indexOf("--import-test") >= 0
@@ -161,7 +162,7 @@ ApplicationWindow {
     Component.onCompleted: {
         recreate();
         console.log("DISPLAY_READY");
-        if (backend.testing && !triggerTesting && !calibrationEditingTest && !savingTest && !importingTest)
+        if (backend.testing && !triggerTesting && !filterTesting && !calibrationEditingTest && !savingTest && !importingTest)
             exercise.start();
     }
     Rectangle {
@@ -292,6 +293,14 @@ ApplicationWindow {
         panel: triggerPanel
         line: line
         map: map
+    }
+    FilterExercise {
+        enabled: window.filterTesting
+        host: window
+        panel: triggerPanel
+        line: line
+        map: map
+        dialog: measurementSave
     }
     CalibrationEditor {
         id: calibrationEditor

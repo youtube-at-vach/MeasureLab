@@ -114,6 +114,8 @@ def proof():
         tone_rms_fs=arrays["peak_fs"] / np.sqrt(2),
         asd_fs_sqrt_hz=np.sqrt(arrays["psd_fs2_hz"]),
     )
+    # The ramp's mean and alternating component have constant magnitude.
+    arrays["tone_rms_fs"][[0, -1]] = [[7 / 32, 7 / 64], [1 / 32, 1 / 64]]
     units = {
         "window": "1",
         "inverse_windowed": "FS",

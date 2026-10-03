@@ -44,7 +44,8 @@ impl Default for FilterLimits {
         }
     }
 }
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct FilterMetadata {
     pub parent: Source,
     pub output: Source,
@@ -93,6 +94,57 @@ pub fn rate_ratio(source: &Rational, target: &Rational) -> Result<Rational, Stri
     )
 }
 impl FilterMetadata {
+    /// Validate serialized transform provenance before accepting a saved result.
+    pub fn validate(&self) -> Result<(), String> {
+        let ratio = rate_ratio(&self.parent.timebase.rate, &self.output.timebase.rate)?;
+        if !self.parent.valid()
+            || !self.output.valid()
+            || self.parent.channel_ids != self.output.channel_ids
+            || self.parent.generation != self.output.generation
+            || self.parent.stream_id == self.output.stream_id
+            || self.parent.timebase.id == self.output.timebase.id
+            || self.output.precision != Precision::F64
+            || self.output.route_revision != self.parent.route_revision
+            || self.output.tap != self.parent.tap
+            || self.output.calibration_revision != self.parent.calibration_revision
+            || self.output.timebase.clock_domain != self.parent.timebase.clock_domain
+            || ratio != self.rate_ratio
+            || self.output_m_to_input
+                != rat(i128::from(ratio.denominator), ratio.numerator as u128)?
+            || self.origin_mapping != [rat(0, 1)?, rat(0, 1)?]
+            || !matches!(
+                (self.parent.precision, self.input_conversion),
+                (Precision::F64, None) | (Precision::F32, Some(InputConversion::F32ToF64Exact))
+            )
+            || self.processing_latency_seconds.is_some()
+            || self.processing_latency_reason != "not_measured"
+        {
+            return Err("invalid_filter_metadata".into());
+        }
+        match &self.signal_delay_input_samples {
+            Some(delay) => {
+                let rate = &self.parent.timebase.rate;
+                if delay.numerator < 0
+                    || delay != &delay.normalized()?
+                    || self.signal_delay_output_samples != Some(self.map_position(delay)?)
+                    || self.signal_delay_seconds
+                        != Some(rat(
+                            i128::from(delay.numerator) * i128::from(rate.denominator),
+                            u128::from(delay.denominator) * rate.numerator as u128,
+                        )?)
+                {
+                    return Err("invalid_filter_metadata_delay".into());
+                }
+            }
+            None if self.signal_delay_output_samples.is_some()
+                || self.signal_delay_seconds.is_some() =>
+            {
+                return Err("invalid_filter_metadata_delay".into());
+            }
+            None => {}
+        }
+        Ok(())
+    }
     pub fn map_position(&self, position: &Rational) -> Result<Rational, String> {
         rat(
             i128::from(position.numerator) * i128::from(self.rate_ratio.numerator),

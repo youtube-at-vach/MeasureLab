@@ -67,6 +67,116 @@ fn request(sample: i64) -> TriggerRequest {
         },
     }
 }
+
+#[test]
+fn filtered_trigger_uses_derived_domain_cache_and_refuses_reclaimed_or_parent_events() {
+    use crate::filter::{Filter, FilterConfig, FilterLimits, InputConversion};
+    let (mut tx, mut worker, raw_view) = setup();
+    let filter = Filter::new_with_conversion(
+        worker.key().source.clone(),
+        "derived".into(),
+        "derived.clock".into(),
+        FilterConfig::Fir {
+            coefficients: vec![0.25, 0.5, 0.25],
+            target_rate: Rational {
+                numerator: 24000,
+                denominator: 1,
+            },
+            centered: false,
+            revision: "p2".into(),
+        },
+        FilterLimits::default(),
+        Some(InputConversion::F32ToF64Exact),
+    )
+    .unwrap();
+    let mut key = worker.key().clone();
+    key.source = filter.output_source().clone();
+    let view = worker
+        .graph()
+        .subscribe(
+            key.clone(),
+            Average::CumulativePsd,
+            Presentation {
+                color: "cyan".into(),
+                unit: "FS".into(),
+            },
+        )
+        .unwrap();
+    worker
+        .attach_filter(
+            filter,
+            FftSpec {
+                n: 8,
+                hop: 8,
+                alignment: 0,
+                window: WindowSpec::Boxcar,
+            },
+            HistoryLimits::frames(16),
+        )
+        .unwrap();
+    let mut event = request(12);
+    assert!(
+        worker
+            .capture_filtered_trigger_with_profiles(&event, |_| BTreeMap::new())
+            .is_err()
+    );
+    event.event.stream_id = key.source.stream_id.clone();
+    event.event.timebase_id = key.source.timebase.id.clone();
+    event.event.sample = Rational {
+        numerator: 25,
+        denominator: 2,
+    };
+    let pending = worker
+        .capture_filtered_trigger_with_profiles(&event, |_| panic!("pending profiles"))
+        .unwrap();
+    assert_eq!(pending.history.report.status, "pending");
+    feed(&mut tx, &mut worker, 0, 32);
+    let continuous = view.take_latest().unwrap();
+    let capture = worker
+        .capture_filtered_trigger_with_profiles(&event, |_| BTreeMap::new())
+        .unwrap();
+    assert_eq!(capture.history.report.interval, [8, 16]);
+    assert_eq!(capture.fft_origin, "continuous-cache");
+    assert!(Arc::ptr_eq(capture.raw.as_ref().unwrap(), continuous.raw()));
+    assert_eq!(
+        capture.history.fractional_residual,
+        Rational {
+            numerator: 1,
+            denominator: 2
+        }
+    );
+    let held = capture.result.unwrap();
+    let expected = held.to_value();
+    assert_eq!(
+        expected["conditions"]["filter"]["parent"]["precision"],
+        "F32"
+    );
+    assert!(worker.capture_trigger(&event).is_err());
+    event.event.generation += 1;
+    assert!(
+        worker
+            .capture_filtered_trigger_with_profiles(&event, |_| BTreeMap::new())
+            .is_err()
+    );
+    event.event.generation -= 1;
+    feed(&mut tx, &mut worker, 32, 48);
+    let gap = worker
+        .capture_filtered_trigger_with_profiles(&event, |_| panic!("gap profiles"))
+        .unwrap();
+    assert_eq!(gap.history.report.status, "gap");
+    assert!(gap.raw.is_none());
+    drop(view);
+    worker.poll().unwrap();
+    assert!(
+        worker
+            .capture_filtered_trigger_with_profiles(&event, |_| BTreeMap::new())
+            .is_err()
+    );
+    assert_eq!(worker.graph().filter_count(), 0);
+    assert!(raw_view.take_latest().is_some());
+    worker.stop();
+    assert_eq!(held.to_value(), expected);
+}
 fn feed(tx: &mut Producer<f32>, worker: &mut Acquisition<f32>, start: usize, frames: usize) {
     let values: Vec<_> = (start..start + frames)
         .flat_map(|n| [n as f32, -(n as f32)])

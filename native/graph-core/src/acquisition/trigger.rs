@@ -47,21 +47,43 @@ impl<T: CaptureSample> Acquisition<T> {
         request: &TriggerRequest,
         profiles: impl FnOnce([u64; 2]) -> BTreeMap<String, Profile>,
     ) -> Result<TriggerRead, String> {
+        self.capture_selected_trigger(request, profiles, false)
+    }
+    /// Event and pre/post are explicitly in the derived Stream/Timebase domain.
+    /// This never infers a parent-event mapping or compensates signal delay.
+    pub fn capture_filtered_trigger_with_profiles(
+        &mut self,
+        request: &TriggerRequest,
+        profiles: impl FnOnce([u64; 2]) -> BTreeMap<String, Profile>,
+    ) -> Result<TriggerRead, String> {
+        self.capture_selected_trigger(request, profiles, true)
+    }
+    fn capture_selected_trigger(
+        &mut self,
+        request: &TriggerRequest,
+        profiles: impl FnOnce([u64; 2]) -> BTreeMap<String, Profile>,
+        filtered: bool,
+    ) -> Result<TriggerRead, String> {
         if self.state != WorkerState::Running {
             return Err("capture_not_running".into());
         }
+        let (key, history) = if filtered {
+            let stream = self.filtered.as_ref().ok_or("capture_filter_missing")?;
+            if self.graph.filter_metadata(&stream.key.source).is_none() {
+                return Err("capture_filter_missing".into());
+            }
+            (&stream.key, &stream.history)
+        } else {
+            (&self.key, self.history.as_ref().unwrap())
+        };
         if request.request_id.is_empty()
             || request.request_id.len() > 256
-            || self.key.n > 4096
-            || request.pre.checked_add(request.post) != Some(self.key.n as u64)
+            || key.n > 4096
+            || request.pre.checked_add(request.post) != Some(key.n as u64)
         {
             return Err("trigger_request".into());
         }
-        let read =
-            self.history
-                .as_ref()
-                .unwrap()
-                .query(&request.event, request.pre, request.post)?;
+        let read = history.query(&request.event, request.pre, request.post)?;
         let mut response = TriggerRead {
             request_id: request.request_id.clone(),
             history: read,
@@ -73,7 +95,7 @@ impl<T: CaptureSample> Acquisition<T> {
             return Ok(response);
         };
         let start = block.interval().0;
-        let mut key = self.key.clone();
+        let mut key = key.clone();
         // Preserve the continuous key when its hop/alignment also matches this window.
         if start < key.alignment || !(start - key.alignment).is_multiple_of(key.hop as u64) {
             key.alignment = start;
@@ -94,7 +116,7 @@ impl<T: CaptureSample> Acquisition<T> {
                 max_nodes: 1,
                 max_subscriptions: 1,
                 max_in_flight: 1,
-                max_frames: self.key.n,
+                max_frames: key.n,
                 max_channels: self.format.input_ids.len(),
                 ..Limits::default()
             })?;
@@ -121,7 +143,7 @@ impl<T: CaptureSample> Acquisition<T> {
             graph.shutdown();
             (raw, "computed")
         };
-        let result = MeasurementResult::from_fft(
+        let mut result = MeasurementResult::from_fft(
             &raw,
             Capture {
                 result_id: format!(
@@ -140,6 +162,10 @@ impl<T: CaptureSample> Acquisition<T> {
             &profiles([raw.interval().0, raw.interval().1]),
             1.,
         )?;
+        if filtered {
+            result = result
+                .with_filter_metadata(&self.filtered_metadata().ok_or("capture_filter_missing")?)?;
+        }
         self.trigger_cache = Some(Arc::clone(&raw));
         response.raw = Some(raw);
         response.result = Some(Arc::new(result));

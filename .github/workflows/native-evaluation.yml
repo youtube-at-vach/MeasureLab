@@ -154,10 +154,12 @@ jobs:
           python scripts/check_trn_keys.py --strict
           python -m pytest -q tests/logic_verification/test_migration_qt_workspace.py tests/logic_verification/test_migration_qt_display.py tests/logic_verification/test_migration_qt_trigger.py tests/logic_verification/test_migration_qt_calibration.py tests/logic_verification/test_migration_qt_calibration_edit.py tests/logic_verification/test_migration_qt_save.py
           python -m pytest -q tests/logic_verification/test_migration_qt_import.py
+          python -m pytest -q tests/logic_verification/test_migration_qt_filter.py
           python scripts/migration_qt_probe.py --qt-prefix "$QT_EVALUATION_PREFIX" --repeat 3
           python scripts/migration_qt_display.py --qt-prefix "$QT_EVALUATION_PREFIX" --portable --output qt-display-results
           python scripts/migration_qt_workspace.py --qt-prefix "$QT_EVALUATION_PREFIX" --portable --output qt-workspace-results
           python scripts/migration_qt_trigger.py --qt-prefix "$QT_EVALUATION_PREFIX" --portable --all-inputs --output qt-trigger-results
+          python scripts/migration_qt_filter.py --qt-prefix "$QT_EVALUATION_PREFIX" --portable --output qt-filter-results
           python scripts/migration_qt_calibration.py --qt-prefix "$QT_EVALUATION_PREFIX" --portable --all-inputs --output qt-calibration-results
           python scripts/migration_qt_calibration_edit.py --qt-prefix "$QT_EVALUATION_PREFIX" --portable --all-inputs --output qt-calibration-edit-results
           python scripts/migration_qt_save.py --qt-prefix "$QT_EVALUATION_PREFIX" --portable --all-inputs --output qt-save-results

@@ -102,7 +102,8 @@ Timer {
             if (backend.produced <= baseline + 1)
                 return;
             check(line.item.frame === held && map.item.frame === held && JSON.stringify(held) === heldText, "hold immutable during acquisition");
-            check(line.item.highHz - line.item.lowHz === 12000 && map.item.highHz === 24000, "independent trigger zoom");
+            const nyquist = held.frequency_hz[held.frequency_hz.length - 1];
+            check(line.item.highHz - line.item.lowHz === nyquist / 2 && map.item.highHz === nyquist, "independent trigger zoom");
             check(backend.subscribers() === 2 && line.detached && map.detached, "detach preserves demand and hold");
             line.dock();
             map.dock();
