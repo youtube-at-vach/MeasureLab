@@ -1,4 +1,0 @@
-# Development tools only; keep separate from the Python reference environment.
-cmake==4.4.3
-ninja==1.13.2
-aqtinstall==3.3.0

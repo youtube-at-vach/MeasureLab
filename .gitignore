@@ -37,17 +37,9 @@ env/
 /.migration-local/
 /native/**/target/
 
-# Generated QML language-server settings contain local build paths
-/native/**/.qmlls.ini
-/native/**/.qmlls.user.ini
-
 # Full evaluation reports and raw logs remain local; fixed fixtures stay versioned
 /migration/benchmarks/results/
 /migration/fixtures/runs/
-/migration/qt/*.json
-# Keep concise SDK acquisition provenance and CI failure summaries
-!/migration/qt/*-sdk.json
-!/migration/qt/*-ci.json
 
 # VSCode settings
 #.vscode/

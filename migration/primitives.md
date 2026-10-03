@@ -52,7 +52,7 @@
 | validity・精度・共有条件 | 上書き・未取得区間を欠落として返す。位置は整数、subsampleは有理数。同一eventでも読取りは非消費 |
 | 現行の入口 | [source](../src/core/ring_buffer.py) |
 | 参照検証 | [test](../tests/logic_verification/core/test_ring_buffer.py) |
-| 候補検証 | 006-Cの[履歴/Timebaseの実装](../native/graph-core/src/history.rs)、[Rust試験](../native/graph-core/src/history/tests.rs)、[保存比較](../scripts/migration_history_candidate.py)。input.rawは005の[取得workerの実装](../native/graph-core/src/acquisition.rs)、過去窓の不変resultは007-Aの[Trigger captureの実装](../native/graph-core/src/acquisition/trigger.rs)へ接続。[Qt要求配送の実装](../native/display-core/src/trigger.rs)で共有hold/retry/releaseを検査。検出器・外部triggerは後続 |
+| 候補検証 | 006-Cの[履歴/Timebaseの実装](../native/graph-core/src/history.rs)、[Rust試験](../native/graph-core/src/history/tests.rs)、[保存比較](../scripts/migration_history_candidate.py)。input.rawは005の[取得workerの実装](../native/graph-core/src/acquisition.rs)、過去窓の不変resultは007-Aの[Trigger captureの実装](../native/graph-core/src/acquisition/trigger.rs)へ接続。Qt要求配送の検証結果は[判断0037](decisions/0037-mig008-integrated-evaluation.md)に保持し、試作は削除。検出器・外部triggerは後続 |
 
 ## P04
 
@@ -194,7 +194,7 @@ event・統計・stereo指標
 | validity・精度・共有条件 | f64。未校正でもFSは保持、絶対単位は無効。profileや補正位置が変われば結果を分岐。過去結果を書換えない |
 | 現行の入口 | [source](../src/core/calibration.py) |
 | 参照検証 | [test](../tests/logic_verification/core/test_calibration_alignment.py) |
-| 候補検証 | 006-Eの[ID校正/resultの実装](../native/graph-core/src/result.rs)。007-Aの[取得/両Qt接続の実装](../native/display-core/src/calibration.rs)でsession binding/実区間/絶対値/保持不変性を検査。[Qt編集・適用](../native/calibration-edit.md)で原子的置換/旧result不変性/共有rawを検査。SPL/mapは後続 |
+| 候補検証 | 006-Eの[ID校正/resultの実装](../native/graph-core/src/result.rs)。007-Aの両Qt校正・編集でsession binding/実区間/絶対値/原子的置換/旧result不変性を検査した。結果は[判断0037](decisions/0037-mig008-integrated-evaluation.md)に保持し、Qt試作は削除。SPL/mapは未確認 |
 
 ## P14
 
@@ -209,7 +209,7 @@ file・保存・来歴
 | validity・精度・共有条件 | f64値を保持し表示間引きを保存しない。非有限値とvalidityを明示。同じdataでも保存要求の寿命は独立 |
 | 現行の入口 | [source](../src/core/export/trace.py) |
 | 参照検証 | [test](../tests/core/export/test_json_exporter.py) |
-| 候補検証 | 006-Eの[実験用JSON/CSVの実装](../native/graph-core/src/result.rs)。007-Aの[校正済み取得結果の実装](../native/display-core/src/calibration.rs)でも全値/来歴の往復を検査。[非同期workerの実装](../native/graph-core/src/export.rs)でbounded受付/完了/失敗/pending cancel/寿命と全往復を検査。[製品互換adapter評価の実装](../scripts/migration_product_candidate.py)で旧JSON/CSVとunknown、carrier/sidecarの完全往復を検査。[両Qt保存操作](../native/qt-save.md)で表示済み通常/Trigger resultのpin、受付/実完了/失敗、GUI外の終了を検査。[native製品codec/共通保存worker](../native/product-codec.md)で実exporterとの双方向往復と部分pair失敗を検査。[既存の検証結果](status.md#再利用する証拠)を同じ保存workerへ接続。[native製品importの実装](../native/graph-core/src/product/import.rs)で旧トレースのunknownと完全snapshot、明示CSV descriptorを検査。Qt import操作、取得中の保存負荷は後続 |
+| 候補検証 | 006-Eの[実験用JSON/CSVの実装](../native/graph-core/src/result.rs)。[非同期workerの実装](../native/graph-core/src/export.rs)でbounded受付/完了/失敗/pending cancel/寿命と全往復を検査。[製品互換adapter評価の実装](../scripts/migration_product_candidate.py)で旧JSON/CSVとunknown、carrier/sidecarの完全往復を検査。[native製品codec/共通保存worker](../native/product-codec.md)で実exporterとの双方向往復と部分pair失敗を検査。[native製品importの実装](../native/graph-core/src/product/import.rs)で旧トレースのunknownと完全snapshot、明示CSV descriptorを検査。Qtのpin/通常・Trigger保存/取得中保存の結果は[判断0037](decisions/0037-mig008-integrated-evaluation.md)に保持し、Qt試作は削除 |
 
 ## P15
 
@@ -281,7 +281,7 @@ wavelet・過渡解析
 | validity・精度・共有条件 | 描画f32可、元値/cursor/exportは解析精度。描画省略をdata gapにしない。複数viewは同じresult IDを参照 |
 | 現行の入口 | [source](../src/gui/widgets/instrument_plot.py) |
 | 参照検証 | [test](../tests/logic_verification/gui/widgets/test_instrument_plot.py) |
-| 候補検証 | 007-Aの[共有result表示の実装](../native/display-core/src/lib.rs)。保存replayと[BlackHole実入力](../native/live-display.md)/両Qt。[分離表示と9言語の実装](../native/qml/Display.qml)、[Trigger要求配送の実装](../native/display-core/src/trigger.rs)、[校正結果表示の実装](../native/display-core/src/calibration.rs)と[取得中のQt校正編集](../native/calibration-edit.md)を検査。実window manager/他OS・性能は後続 |
+| 候補検証 | 007-A〜MIG-008で共有resultの保存replay/BlackHole実入力、分離表示と9言語、Trigger/校正/取得中保存を検査。性能と採用判断は[判断0037](decisions/0037-mig008-integrated-evaluation.md)を参照。Qt/QML試作は削除し、次の対象は現行Spectrum AnalyzerへのRust FFT/共有result接続。Python binding、実window manager/他OSは未確認 |
 
 ## P20
 

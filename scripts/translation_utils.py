@@ -2,7 +2,6 @@ import ast
 import json
 import os
 from pathlib import Path
-import re
 
 # Configuration
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -12,19 +11,11 @@ MAIN_GUI_FILE = os.path.join(PROJECT_ROOT, "main_gui.py")
 
 
 def translation_source_files():
-    """Shared inventory: maintenance must preserve keys used by native QML too."""
+    """Shared inventory for the current Python GUI's translation tools."""
     paths = sorted(Path(SRC_DIR).rglob("*.py"))
     if Path(MAIN_GUI_FILE).is_file():
         paths.append(Path(MAIN_GUI_FILE))
-    paths.extend(sorted((Path(PROJECT_ROOT) / "native/qml").glob("*.qml")))
     return paths
-
-
-def extract_qml_tr_keys(text):
-    # Skip comments and standalone strings before considering literal tr() calls.
-    literal = r"""(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')"""
-    tokens = re.compile(r"//[^\n]*|/\*[\s\S]*?\*/|" + literal + r"|\btr\s*\(\s*(?P<key>" + literal + r")\s*\)")
-    return {ast.literal_eval(m["key"]) for m in tokens.finditer(text) if m["key"] is not None}
 
 
 class TrVisitor(ast.NodeVisitor):
@@ -86,8 +77,6 @@ def extract_tr_keys(filepath):
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             text = f.read()
-        if str(filepath).endswith(".qml"):
-            return extract_qml_tr_keys(text)
         tree = ast.parse(text, filename=str(filepath))
         visitor = TrVisitor()
         visitor.visit(tree)

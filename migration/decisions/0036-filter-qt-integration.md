@@ -19,8 +19,9 @@ Triggerは派生履歴へ非消費queryを行い、派生domainのeventと窓長
 
 ## 根拠と制限
 
-検証結果・途中の失敗・保存先は[進捗](../status.md)、再実行は
-[filter/Qt手順](../../native/filter-qt.md)へ記録する。
+検証結果・途中の失敗・保存先は[進捗](../status.md)へ記録する。
+filter/Qt手順とQt試作は[判断0037](0037-mig008-integrated-evaluation.md)後に削除した。
+元コード・手順はGit履歴`edad0838`、MIG-008の未コミット差分は[進捗](../status.md#方針決定後の整理)の保存先から取得できる。
 元fixture/係数/許容差と製品DSP/GUIは変更しない。
 独立有限和、共有FFT/Trigger、pin/save、世代/回収と短いBlackHole診断を対象にする。
 全tap/動的route、永続profile、長時間性能/他OSと008-A全体は完了にしない。

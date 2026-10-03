@@ -11,13 +11,13 @@ Windows・ARMの準備/検証はMIG-008後。別環境構築と過去のスモ�
 | Python | 3.12.14（MacPorts）、worktree専用`.venv/` |
 | Python依存 | `constraints.txt` + `.[dev]`、PyQt6 6.11.0 / Qt runtime 6.11.2 |
 | Rust / Cargo | 1.98.1、`.tools/cargo/`と`.tools/rustup/` |
-| C++ / build | Apple Clang 16.0.0、CMake 4.4.3 / Ninja 1.13.2、`.tools/build-venv/` |
-| Qt SDK | 6.11.2、`.tools/qt/6.11.2/macos/`。PyQt runtimeとは分離 |
-| Qt接続 | CXX-Qt 0.10.0 / Qt Bridge 0.3.0、Cargo.lockで固定 |
+| C++ / build | Apple Clang 16.0.0。試作用CMake/Ninjaのbuild用venvは方針決定後に削除 |
+| Qt SDK・接続試作 | MIG-008ではQt SDK 6.11.2、CXX-Qt 0.10.0 / Qt Bridge 0.3.0を使用。方針決定後にSDK・両adapterを削除 |
 | 音声 | BlackHole 2ch / 16ch。MIG-008主経路は2ch、48 kHz / 256 frames / f32 |
 
-SDK・toolchain・依存cacheと主workspaceのbuild cacheは保持する。
-再生成できるHello world、SDK download archive、独立rendererのbuild、中間試験・配布コピーは削除した。
+Rust toolchain・依存cacheと現行GUIの`.venv/`は保持する。
+Qt SDK・build用venvとQt依存を含む旧build cacheを削除し、検証に必要なcoreだけを再buildする。
+評価結果と削除対象の未コミット差分の保存先は[進捗](status.md#方針決定後の整理)。
 
 ## Python参照版の起動
 

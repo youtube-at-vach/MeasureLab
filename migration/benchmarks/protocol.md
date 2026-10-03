@@ -1,8 +1,11 @@
 # MIG-008の短い比較条件 v0.2
 
 更新: 2026-10-04。[評価計画](../../guide/RUST_QML_MIGRATION_PLAN.md)に従う。
-**統合フローと同条件Pythonの実行性能比較は未実施。**
+代表2chの実行・編集比較を2026-10-04に実施した。
+結果、現行Pythonの未対応能力と条件差は[判断0037](../decisions/0037-mig008-integrated-evaluation.md)を参照。
 長時間試験、10分×3回、全ch/全backend/全Qtの直積、clean build/packageの反復を削除した。
+本書は実施済みMIG-008の比較条件。方針決定後にQt/rendererの専用runnerを削除し、
+次の現行GUI/Rust core接続評価は判断0037の範囲で進める。
 
 ## 固定条件
 

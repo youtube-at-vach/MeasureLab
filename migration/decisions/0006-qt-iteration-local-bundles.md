@@ -32,5 +32,6 @@ bundleはad-hoc署名、展開後起動・寿命と開発SDKからの分離ま�
 Linux CIの旧失敗はSDKのICU不足。仕様へICU archiveを追加したがremote再実行は未確認。
 
 reportは`migration/benchmarks/results/2026-09-30-004-b-intel.json`と同名の圧縮log directory。
-再実行コードは[runner](../../scripts/migration_qt_iteration.py)。
+比較用runner・両Qt接続・SDKは[判断0037](0037-mig008-integrated-evaluation.md)後に削除した。
+元コードはGit履歴`edad0838`、MIG-008の未コミット差分は[進捗](../status.md#方針決定後の整理)の保存先から取得できる。
 MIG-008では既存値を利用し、clean/packageの追加反復や別OS検証を行わない。

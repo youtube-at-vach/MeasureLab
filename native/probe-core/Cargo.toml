@@ -1,5 +1,0 @@
-[package]
-name = "probe-core"
-version.workspace = true
-edition.workspace = true
-publish.workspace = true
