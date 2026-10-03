@@ -1,9 +1,12 @@
 # Pinned versions for reproducible installs. Adjust when bumping Python/OS targets.
-# Python target: 3.12 (per CI workflows).
+# Python target: 3.12 (CI); Linux development also uses 3.14.
 
 # numpy 2.4.2 causes "DLL load failed" on Windows (v0.5.0 worked with 2.2.6).
-# Keep pinned to 2.2.6 until the issue is resolved.
-numpy==2.2.6
+# Keep the existing 3.12/3.13 pin. NumPy 2.2.6's temporary-elision
+# heuristics corrupt retained arrays on CPython 3.14 (numpy/numpy#28681).
+# 2.3.3 supports Python 3.14 and stays below the project's 2.4 upper bound.
+numpy==2.2.6; python_version < "3.14"
+numpy==2.3.3; python_version >= "3.14"
 scipy==1.18.1
 sounddevice==0.5.6
 PyQt6==6.11.0

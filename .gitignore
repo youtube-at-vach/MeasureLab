@@ -32,6 +32,23 @@ env/
 .ruff_cache/
 .coverage
 
+# Next-core evaluation: local toolchains, reference data, and build output
+/.tools/
+/.migration-local/
+/native/**/target/
+
+# Generated QML language-server settings contain local build paths
+/native/**/.qmlls.ini
+/native/**/.qmlls.user.ini
+
+# Full evaluation reports and raw logs remain local; fixed fixtures stay versioned
+/migration/benchmarks/results/
+/migration/fixtures/runs/
+/migration/qt/*.json
+# Keep concise SDK acquisition provenance and CI failure summaries
+!/migration/qt/*-sdk.json
+!/migration/qt/*-ci.json
+
 # VSCode settings
 #.vscode/
 
@@ -49,6 +66,8 @@ ehthumbs.db
 
 # Ignore test result files
 *.csv
+# Reviewed migration exchange fixtures must survive a fresh checkout.
+!/migration/fixtures/core-v1/*.csv
 *.png
 !src/assets/*.png
 !docs/**/*.png

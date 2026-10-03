@@ -16,6 +16,9 @@
     "node_modules/",
     "**/node_modules/**",
     ".venv/",
+    ".tools/",
+    ".migration-local/",
+    "native/target/",
     ".github/deepwiki/", // Generated DeepWiki codebase wiki export (verbatim content)
   ],
 }

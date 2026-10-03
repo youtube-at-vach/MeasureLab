@@ -1,0 +1,9 @@
+[package]
+name = "qtbridge-probe"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+probe-core.workspace = true
+qtbridge.workspace = true
