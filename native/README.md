@@ -1,131 +1,57 @@
-# Native evaluation environment
+# Native評価の実装と再開
 
-MIG-001の開発環境準備とMIG-004-AのQt境界プローブ。Rust/QMLの採用・公開API・製品クレート境界は未決定。
-[進捗](../migration/status.md)と[参照環境](../migration/environment.md)を先に確認する。
-MIG-002の[コア契約](../migration/contracts/core.md)と[後続作業票](../migration/tasks.md)を作成済み。
-MIG-004-AでCargo workspace/lockと同じ小さなQML画面を追加した。
-`probe-core`はGUI非依存の模擬worker、`cxxqt-probe`/`qtbridge-probe`は薄いQt adapter。
-MIG-006-Aの`dsp-core`はGUI非依存のFFT/窓/単位/PSD候補。[FFT比較手順](fft-candidate.md)を参照。
-006-Bの`graph-core`は固定DAG・共有FFT結果・購読token・独立平均・容量制限付きcacheの候補。
-[共有graphの手順](shared-graph.md)を参照。
-006-Cのworker所有履歴・Trigger/Timebase・世代fenceは[履歴候補の手順](history-candidate.md)を参照。
-006-Eの[製品互換adapter評価](product-exchange.md)では、現行ExportTrace/exporterとnative readerの往復、旧JSON/CSVのunknownを検査する。[native製品snapshot codec/保存worker](product-codec.md)も追加。両Qt製品format接続を追加。[native製品import](product-import.md)は旧トレースと完全snapshotを区別する。[両Qtのimport操作・参照表](qt-import.md)を追加。取得中の負荷とimport結果のplot統合は後続。
-006-Dのgraph所有filter/rate stateは[filter候補の手順](filter-candidate.md)を参照。
-保存f64の取得queue/専用履歴/共有FFTへの接続は[filter取得統合](filter-acquisition.md)を参照。
-実f32入力からの明示変換と一段f64 filterは[精度境界](filter-input.md)を参照。
-両Qtの派生履歴/共有FFT・手動Trigger・不変snapshot保存は[filter/Qt接続](filter-qt.md)を参照。
-005-Aの`audio-core`はN-channel/route/tap/取得queue、`audio-probe`はCPAL基本adapter。
-[音声境界・実機診断](audio-boundary.md)を参照。005の[取得worker](acquisition-candidate.md)でinput.raw queue/履歴/共有FFTを接続。
-[共通入力境界](backend-input.md)でCPAL callbackとPortAudio評価workerを同じtyped queue/取得graphへ接続した。
-[PortAudio native callback](callback-input.md)も同じqueueへ直結し、両Qtのrequestでbackendを明示選択できる。
-動的出力routeのcallback配送は[検査手順](dynamic-route.md)を参照。
-全tap、製品共通adapter・汎用永続schedulerは未実装。
-007-Aの[保存入力の実result表示](display-candidate.md)では、独立解析threadと両Qt adapterでline/heatmapを検査する。
-[BlackHole実入力表示](live-display.md)で同じ所有境界へCPAL input.rawを接続する。
-[分離表示と9言語](workspace-display.md)で同じviewのreparent/需要解除と翻訳JSON接続を検査する。
-007-Aの[Trigger capture worker](trigger-capture.md)で取得履歴の非消費query/共有raw FFT/不変resultを接続する。
-[Qt要求配送](trigger-display.md)で両Qtから同じ解析ownerへhold/retry/releaseを配送する。
-[セッションID校正](calibration-display.md)で通常/Trigger結果へdevice/portを照合した校正を適用し、両Qt表示/診断JSON・CSVへ接続する。
-[Qt校正編集・適用](calibration-edit.md)で取得中のprofile変更と旧result不変性を検査する。
-007-Aの[非同期保存操作](qt-save.md)で完成resultのpin、両Qtの保存/取消、GUI外のwriter終了を検査する。
-[取得中保存診断](live-save.md)でBlackHole 2/4/8chの元bytesと両Qtの実保存、注入待ちのbusy/取消を検査する。
-007-Cの[renderer spike](renderer-spike.md)では、簡易plotterとwgpuの最小描画・QML画像転送を試験する。採用判断・個別widgetの本実装は含めない。
-[Qt SDK・比較画面の起動手順](qt-probe.md)を参照。
-004-Bの開発反復とローカルbundleは[反復測定手順](qt-iteration.md)へ分離する。
+2026-10-04。[MIG-008の計画](../guide/RUST_QML_MIGRATION_PLAN.md)と[進捗](../migration/status.md)が入口。
+現在のmacOS Intel環境と既存コードを再利用する。Windows・ARMはMIG-008後、長時間試験は不要。
 
 ## このworktreeで使う
 
-コマンドはリポジトリのルートで実行する。導入済みのローカルツールを現在のシェルで有効にする。
+リポジトリルートで導入済みのツールを有効にする。再導入・Hello world・全fixture再verifyは不要。
 
 ```bash
 export CARGO_HOME="$PWD/.tools/cargo"
 export RUSTUP_HOME="$PWD/.tools/rustup"
 export PATH="$CARGO_HOME/bin:$PWD/.tools/build-venv/bin:$PATH"
-migration_rust_version="$(./.venv/bin/python -c 'import tomllib; print(tomllib.load(open("native/rust-toolchain.toml", "rb"))["toolchain"]["channel"])')"
-rustc +"$migration_rust_version" -Vv
-cargo +"$migration_rust_version" -V
-rustup component list --toolchain "$migration_rust_version" --installed
-cmake --version
-ninja --version
-clang++ --version
+export QMAKE="$PWD/.tools/qt/6.11.2/macos/bin/qmake"
+export CARGO_BUILD_JOBS=4
+export MACOSX_DEPLOYMENT_TARGET=13.0
+export DYLD_FRAMEWORK_PATH="$PWD/.tools/qt/6.11.2/macos/lib"
 ```
 
-`CARGO_HOME`と`RUSTUP_HOME`も必要。PATHだけを変更すると、ユーザー共通のRust設定を参照してしまう。
-別のworktreeから戻った場合はルートに移動してから設定し直す。
-`rust-toolchain.toml`は`native/`以下に適用されるため、ルートからのコマンドでは明示的に`+version`を指定する。
+Rust 1.98.1は[rust-toolchain.toml](rust-toolchain.toml)、Qt 6.11.2は[qt-sdk.toml](qt-sdk.toml)、
+依存版は[Cargo.lock](Cargo.lock)へ固定済み。
+Qt SDKの環境変数はPython参照版の別processへ引き継がない。
 
-## 新しい環境への導入
-
-[Rust公式のインストール手順](https://doc.rust-lang.org/book/ch01-01-installation.html)と
-[rustupの配布方法](https://github.com/rust-lang/rustup/blob/main/doc/user-guide/src/installation/other.md)に従う。
-以下の例は初回に確認した**macOS Intel**用。別OS/CPUではhost tupleをその環境に合わせる。
-
-先に上の環境変数と`migration_rust_version`を設定する。Rust未導入ならバージョン確認コマンドは導入後に実行する。
+主経路のbuild（変更した場合だけ）:
 
 ```bash
-mkdir -p .tools/downloads
-curl --proto '=https' --tlsv1.2 -fsSL https://static.rust-lang.org/rustup/dist/x86_64-apple-darwin/rustup-init -o .tools/downloads/rustup-init
-curl --proto '=https' --tlsv1.2 -fsSL https://static.rust-lang.org/rustup/dist/x86_64-apple-darwin/rustup-init.sha256 -o .tools/downloads/rustup-init.sha256
-./.venv/bin/python - <<'PY'
-import hashlib
-from pathlib import Path
-
-installer = Path(".tools/downloads/rustup-init")
-expected = Path(str(installer) + ".sha256").read_text().split()[0]
-actual = hashlib.sha256(installer.read_bytes()).hexdigest()
-if actual != expected:
-    raise SystemExit("rustup-init SHA-256 mismatch")
-print("rustup-init SHA-256 verified:", actual)
-PY
+cargo +1.98.1 build --offline --locked --manifest-path native/Cargo.toml -p cxxqt-display -p graph-core
 ```
 
-ハッシュ一致・終了コード0を確認してから実行する。`--no-modify-path`でシェル設定ファイルを変更しない。
-default設定も上で指定したworktree内のRUSTUP_HOMEに保存される。
+関連crate/featureだけをtestする。Qt Bridgeのbuildや全workspace再検査は対象変更に必要な場合に行う。
 
-```bash
-chmod +x .tools/downloads/rustup-init
-.tools/downloads/rustup-init -y --no-modify-path --profile minimal --default-toolchain "$migration_rust_version" --component rustfmt --component clippy
-python3.12 -m venv .tools/build-venv
-.tools/build-venv/bin/python -m pip install -r native/build-requirements.txt
-```
+## 実装の入口
 
-Rust本体・componentsは`rust-toolchain.toml`、CMake/Ninjaは`build-requirements.txt`で固定する。
-Qt開発SDKは[qt-sdk.toml](qt-sdk.toml)、CXX-Qt/Qt Bridge/CXXは[Cargo.toml](Cargo.toml)と[Cargo.lock](Cargo.lock)で固定した。
-現行PyQtのQt runtimeと開発用SDKのパスを混在させない。
+| 対象 | 実装・必要な手順 |
+| --- | --- |
+| f32音声/ID/queue | [audio-core](audio-core/src/lib.rs)、[共通入力](audio-core/src/backend.rs)、[CPAL](audio-probe/src/lib.rs)、[PortAudio](portaudio-input/src/lib.rs) |
+| route | [実装](audio-core/src/dynamic_route.rs)、[配送・ack](dynamic-route.md) |
+| 取得/履歴/Timebase | [取得owner](graph-core/src/acquisition.rs)、[履歴](graph-core/src/history.rs)、[時刻](graph-core/src/time.rs) |
+| FFT/共有 | [DSP](dsp-core/src/lib.rs)、[共有graph](graph-core/src/lib.rs)、[参照fixture](../migration/fixtures/README.md) |
+| filter | [stateと明示精度変換](graph-core/src/filter.rs)、[派生取得](graph-core/src/acquisition/derived.rs)、[固定filter/Qt](filter-qt.md) |
+| 表示/Trigger | [BlackHole表示](live-display.md)、[Qt接続](display-core/src/lib.rs)、[Trigger](display-core/src/trigger.rs)、[QML](qml/Display.qml) |
+| 校正 | [result](graph-core/src/result.rs)、[Qtの編集・適用](calibration-edit.md) |
+| 保存/読込み | [snapshot/worker](graph-core/src/export.rs)、[製品codec](product-codec.md)、[Qt保存](qt-save.md)、[製品import](graph-core/src/product/import.rs) |
+| GUI初期probe | [Qt環境と起動](qt-probe.md)。模擬workerの結果を統合フローの成功に置き換えない |
 
-## ビルド・リンクのスモーク
+runnerの追加オプションは`./.venv/bin/python scripts/migration_<対象>.py --help`で確認する。
+既存の全条件runnerは対象変更の必要な条件だけ指定する。
+通常の音声確認はBlackHole 2ch。UAC-232や別OSの追加試験をMIG-008の前提にしない。
 
-ローカルの使い捨てプロジェクトで確認する。これは製品コードや測定処理の検証ではない。
-上の環境変数を設定したシェルで実行する。
+## 文書とアーティファクト
 
-```bash
-test -f .tools/rust-smoke/Cargo.toml || cargo +"$migration_rust_version" new --vcs none --name measurelab_toolchain_smoke .tools/rust-smoke
-cargo +"$migration_rust_version" generate-lockfile --manifest-path .tools/rust-smoke/Cargo.toml
-cargo +"$migration_rust_version" run --locked --manifest-path .tools/rust-smoke/Cargo.toml
-cargo +"$migration_rust_version" fmt --manifest-path .tools/rust-smoke/Cargo.toml --check
-cargo +"$migration_rust_version" clippy --locked --manifest-path .tools/rust-smoke/Cargo.toml -- -D warnings
-```
-
-初回はCargo生成の`Hello, world!`がコンパイル・リンク・実行でき、rustfmtとClippyが成功した。
-C++側も最小のC++17実行物をCMake/Ninjaで確認した。再生成する場合は以下を使う。
-
-```bash
-mkdir -p .tools/cmake-smoke
-cat > .tools/cmake-smoke/CMakeLists.txt <<'CMAKE'
-cmake_minimum_required(VERSION 3.21)
-project(MeasureLabToolchainSmoke LANGUAGES CXX)
-add_executable(toolchain_smoke main.cpp)
-target_compile_features(toolchain_smoke PRIVATE cxx_std_17)
-CMAKE
-cat > .tools/cmake-smoke/main.cpp <<'CPP'
-#include <iostream>
-int main() { std::cout << "C++ toolchain OK\n"; }
-CPP
-cmake -S .tools/cmake-smoke -B .tools/cmake-smoke/build -G Ninja
-cmake --build .tools/cmake-smoke/build
-.tools/cmake-smoke/build/toolchain_smoke
-```
-
-これらのHello worldスモークはmacOS Intelでのツール単体の確認。
-Qtとの接続は別の[共通プローブ](qt-probe.md)で確認し、配布・他OS/CPUは後続検証とする。
-`.tools/`は再構築可能なGit管理外データとして扱う。
+試作ごとの重複手順書・決定記録・詳細な進捗履歴は整理した。
+基準/数値契約、固定fixture、実装・上表の操作手順、既存比較の要約を保持する。
+削除した文書の元内容はGit履歴の`1bc1e21c`から取得できる。
+選んだ最終reportと関連失敗は`.migration-local/evidence/`にgzipで保存。
+古いreport内のartifactパスは実施時の記録で、削除済み中間物の存在を保証しない。
+再実行は現在のコードから新しい出力先へ行う。

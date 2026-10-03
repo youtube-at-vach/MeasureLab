@@ -113,16 +113,19 @@ fixture・source hash・許容差は変更しません。固定環境の再現�
 #### Native evaluation の手動実行
 
 リモートの `Native evaluation` は、開発中の push・PR 作成・PR 更新では自動実行しません。
-通常の Python CI は従来どおり実行します。Native の変更がまとまった時点、統合前、
-リリース前など、必要なタイミングで明示的に実行してください。
+通常の Python CI は従来どおり実行します。
+MIG-008までの検証範囲は[評価計画](../../guide/RUST_QML_MIGRATION_PLAN.md)に従い、
+対象変更のテストと代表フローを優先します。Windows・ARMと長時間試験は実行しません。
+Native CIは対象変更の確認に必要な場合に明示的に実行してください。
 自動実行を省略していても、未実施の Native 検証を合格扱いにはしません。
 
-* PR では `run-native-evaluation` ラベルを付けると全ジョブを実行します。
+* PR では `run-native-evaluation` ラベルを付けると`probe-core`・`audio-backend`・`qt-boundary`を実行します。
     ラベルを残したまま push しても再実行しません。最新コミットを再検証するには、
     ラベルを外して付け直してください。他のラベルでは検証ジョブを実行しません。
 * ワークフローが既定ブランチに存在する場合は、GitHub の Actions → Native evaluation →
-    Run workflow で対象ブランチと `suite` を選べます。`all` は全ジョブ、
-    `probe-core`・`audio-backend`・`renderer-spike`・`qt-boundary` は指定ジョブだけを実行します。
+    Run workflow で対象ブランチと `suite` を選べます。`all` は上の3ジョブ、
+    `probe-core`・`audio-backend`・`qt-boundary` は指定ジョブだけを実行します。
+    延期した描画試作は`renderer-spike`を個別指定した場合だけ実行します。
     既定ブランチへの統合前は PR ラベルによる実行を使ってください。
 
 CLI での手動実行例（`--ref` を検証対象のブランチに置き換えます）:
@@ -134,7 +137,7 @@ gh workflow run native-evaluation.yml --ref codex/next-core-evaluation -f suite=
 
 同じブランチで明示的に再実行すると、先に動いていた Native evaluation をキャンセルします。
 ジョブの上限は `probe-core` が30分、`audio-backend`・`renderer-spike` が15分、
-`qt-boundary` が120分です。QML ライフサイクル検証ステップは90分で打ち切ります。
+`qt-boundary` が60分です。QML 検証は代表2ch条件とし、ステップは10分で打ち切ります。
 上限で終了した検証は失敗として調査し、合格扱いにはしません。
 
 ハードウェアテストは通常スキップされます。対応機器を使用して明示的に検証する場合だけ

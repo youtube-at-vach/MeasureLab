@@ -4,7 +4,7 @@
 
 ## 判断
 
-前段の[明示精度境界](0035-explicit-filter-input.md)を同じ解析ownerへ接続し、
+前段の[既存の検証結果](../status.md#再利用する証拠)を同じ解析ownerへ接続し、
 両Qtの購読を一段filterの派生FFT keyへ切り替える。
 因果3-tap `[0.25,0.5,0.25]`、48→24 kHzを固定し、requestで明示選択する。
 raw経路とdevice実精度を保持し、汎用filter UI・f32演算・chainはこの単位に含めない。

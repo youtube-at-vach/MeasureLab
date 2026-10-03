@@ -1,7 +1,7 @@
 # native製品snapshot codecと保存worker
 
-MIG-006-E-native-product、2026-10-02。[決定0027](../migration/decisions/0027-native-product-snapshot-codec.md)と
-[Python互換adapter](product-exchange.md)を参照。製品schemaとRust/QML採用の確定ではない。
+MIG-006-E-native-product、2026-10-02。[既存の検証結果](../migration/status.md#再利用する証拠)と
+[Python互換adapterの実装](../scripts/migration_product_candidate.py)を参照。製品schemaとRust/QML採用の確定ではない。
 
 ## codecと所有境界
 
@@ -23,7 +23,7 @@ native CSV writerは製品exporterの既存optionであるindependent/comma/head
 readerはindependentのcomma/tab、header/metadata/BOMの16条件を実exporterで検査する。
 headerは列数だけを確認し、単位/校正をそこから推定しない。CSVの未閉鎖quote、空のdata行、interior paddingも拒否する。
 merged表の完全snapshot復元、carrierのない旧fileからのresult生成は拒否する。
-旧トレースと取得情報のunknownは[別のnative import入口](product-import.md)でも読む。
+旧トレースと取得情報のunknownは[別のnative import入口の実装](graph-core/src/product/import.rs)でも読む。
 既存の完全snapshot専用readerは旧fileを拒否し、返す型と保証を維持する。
 
 ## 保存完了と制限
@@ -37,25 +37,9 @@ sidecar公開の失敗はorphan CSVを残しうるが、failedを維持し、旧
 完全snapshot/表示用projection/encoder scratchには重複とallocationがあり、process RSSのbyte予算ではない。
 進行中のOS書込みの中断、終了時間の上限、hard-link非対応filesystemは未対応。
 
-## 再検査
+## 対象変更の検証
 
-[Rust環境](README.md#このworktreeで使う)を設定し、新しい出力directoryを指定する。
-
-```bash
-cargo +1.98.1 test --offline --locked --manifest-path native/Cargo.toml -p graph-core -p display-core -p dsp-core -p audio-core -p probe-core --lib
-cargo +1.98.1 clippy --offline --locked --manifest-path native/Cargo.toml -p graph-core -p display-core -p dsp-core -p audio-core -p probe-core --all-targets -- -D warnings
-./.venv/bin/python scripts/migration_product_candidate.py --native-product --output .migration-local/native-product-new
-./.venv/bin/pytest -q tests/logic_verification/test_migration_product_candidate.py tests/logic_verification/test_migration_async_save_candidate.py tests/logic_verification/test_migration_result_candidate.py tests/logic_verification/test_migration_qt_save.py tests/core/export/test_json_exporter.py tests/core/export/test_csv_exporter.py
-```
-
-別OS/NumPy-only CIは明示`--portable`を追加する。元fixture/source hash/数値許容差を変更しない。
-runnerは2校正契約/4交換例と4/8ch f32/f64から12実行を行い、
-native保存→Python readerの4往復と、実exporter→native readerの2往復を各実行で照合する。
-計72の完全snapshot往復、48 saved/48 expected failedを検査し、部分pairと失敗後の復帰も確認する。
-既存Pythonの24往復と旧JSON/32 CSV条件は別の検査として維持する。
-reportにsource/binary/fixture/input/artifact hash、command、receipt、失敗と未確認範囲を残す。
-
-Qtの製品保存formatは[決定0028](../migration/decisions/0028-qt-product-snapshot-save.md)で接続した。
-旧トレースと完全snapshotの[native import](product-import.md)を追加した。
-Qt製品import操作、取得profile再起動維持、取得中の保存負荷/長時間、他OS、
-005-A-common/006-D-integration/008-Aの統合と採用判断は未完了。結果は[status](../migration/status.md)を正本とする。
+現在の範囲は[MIG-008計画](../guide/RUST_QML_MIGRATION_PLAN.md)に従う。
+関連する変更がある場合だけ[対象テスト](../tests/logic_verification/test_migration_product_candidate.py)と[runner](../scripts/migration_product_candidate.py)を使う。
+オプションは`./.venv/bin/python scripts/migration_product_candidate.py --help`で確認する。
+全条件の再実行・長時間試験・他OS検証はMIG-008の前提にしない。

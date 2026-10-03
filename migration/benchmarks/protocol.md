@@ -1,93 +1,49 @@
-# 実行性能・開発反復速度の比較条件 v0.1
+# MIG-008の短い比較条件 v0.2
 
-MIG-002、2026-09-29。ここには測定手順と初期予算を置く。**新旧の実行性能測定はまだ行っていない。**
-MIG-001のスモーク時間は比較結果に含めない。Processor Benchmarkの製品機能移行も別に扱う。
-MIG-004-Bで候補2方式のIntel開発反復とローカルbundleを測定した。
-[結果と範囲](../decisions/0006-qt-iteration-local-bundles.md)を参照。実行性能・他OS・同等Python編集の比較は未確認。
-MIG-006-Aで純粋FFTのコア1ファイル編集→Rustテストと24参照比較をIntel/debugで5回測定した。
-[結果と制限](../decisions/0007-pure-fft-candidate.md#開発反復の扱い)を参照。
-候補の編集反復であり、release/steady-stateやPython相対性能の比較ではない。
-MIG-007-Cの[renderer spike](../../native/renderer-spike.md)は合成入力による短時間の描画/転送試験。
-本protocolの30秒warmup・10分連続×3回と、製品の新旧実行性能・AC15/16の検証は未実施のままである。
+更新: 2026-10-04。[評価計画](../../guide/RUST_QML_MIGRATION_PLAN.md)に従う。
+**統合フローと同条件Pythonの実行性能比較は未実施。**
+長時間試験、10分×3回、全ch/全backend/全Qtの直積、clean build/packageの反復を削除した。
 
 ## 固定条件
 
-同じ開発機、AC01の入力bytes、rate=48 kHz、I/O block=256、FFT N=4096/hop=1024、
-boxcar/Hann、2chを基本とし、4/8chと非2冪/極大FFTは別行で測る。
-2view（lineとheatmap）、表示30 Hz、history容量、保存頻度を固定し、実際の画面pixel数とscaleも残す。
-表示しないheadless演算とGUI込みを別測定する。現行の計算共有/N-channel未対応は「未対応」と記録し、
-現行を改造した比較はadapter版を明記する。アーキテクチャの差を言語だけの効果としない。
+現在のmacOS Intel環境で同じ2ch入力・設定を使う。
+48 kHz、f32、I/O block=256、FFT N=4096/hop=1024、Hann、
+lineとheatmapの2view、表示目標30 Hzを基本にする。
+history容量、保存タイミング、画面サイズ、backendとQt接続方式を記録する。
+現行Pythonで未対応の能力は未対応と記録し、比較のための全面改造を追加しない。
 
-OS/CPU/メモリ/電源状態、各commitとdirty差分hash、toolchain/Qt/bridge/backend/依存lock、
-thread数/CPU並列数（初期4、両案同じ値）、debug/release、コマンド、環境変数、cache条件を保存する。
-実行性能はrelease相当、開発反復は普段のdebug/検証条件とし、混ぜない。
-PythonのFFTW plan/wisdom、OS page cache、Rust target、QML cacheを区別する。
+実行性能はrelease相当、編集反復は通常のdebug条件。
+OS/CPU、commitまたはdirty差分、toolchain/Qt/依存lock、コマンドをreportへ残す。
+測定中は他のbuild/GUI試験を止める。
 
 ## 測定区間・回数
 
-| 経路 | 開始 → 終了 | 回数・cache |
-| --- | --- | --- |
-| clean build | 依存取得済み、project build生成物を除いた状態 → 起動してready | 3回。依存取得/SDK導入時間は別欄。Pythonも新processでimport/readyを含める |
-| incremental/no-op | 変更なしでbuild/検証コマンド実行 → readyと対象テスト完了 | warmup1回＋5回 |
-| core 1ファイル編集 | 固定した小変更patch適用済みからコマンド開始 → 対象テストと参照比較完了 | patch/hash/対象試験を同等にし5回。各回baseへ戻して同じ変更。GUI波及も含める |
-| QML/表示のみ編集 | 同等の表示label/layout変更からコマンド開始 → readyと対象UI検証完了 | 5回。reload/codegen/resource/relinkの内訳を記録 |
-| package | packaging開始 → clean環境で起動/ready | OS別3回。署名・notarization・download等の外部待ちを別記録 |
-| 実行性能 | 30秒warmup後 → 10分連続処理 | 3回。準備/FFT planとsteady-stateを別計測 |
-
-wall timeは単調clockで測る。各runのraw値、中央値、min/max、ばらつき、終了コードを保存する。
-実行性能はcallback/解析/表示遅延のp50/p95/p99/max、process treeのCPU秒とpeak RSS、
-queue容量/最大深さ、data gap、表示の更新省略、FFT評価countを記録する。
-RSS成長はwarmup後の時系列で判定する。GPU使用量など取得できない値はunknownと記す。
-AIによる修正ではpatch作成に要した時間、compiler/test失敗数、修正回数も別列にし、待ち時間へ混ぜない。
-
-## 初期予算と判定
-
-以下は実測から得た限界ではなく、P1を評価するための初期予算。
-数値/状態の受け入れ条件は必須。性能の超過は改善・方式変更の判断材料で、直ちに採用/不採用を決めない。
-超過したまま「予算内」と記録しない。変更が必要なら根拠・変更前後の値を決定記録へ残す。
-
-| 項目 | 初期予算・用途 |
+| 経路 | 最小比較 |
 | --- | --- |
-| callback | block時間5.333 msに対しp99≤50%、max<100%。RT経路の禁止処理がないことも別確認 |
-| 連続取得 | 10分の仮想2/4/8chで欠落0。意図的overflow試験ではgapの位置/数が厳密一致 |
-| 表示 | 結果が利用可能になってから描画までp95≤100 ms、stop要求から状態通知までp95≤200 ms。FFT窓取得時間は別 |
-| CPU/RSS | 同等の2ch workloadでCPU秒≤現行の1.25倍、peak RSS≤2倍。history満杯後の後半5分のRSS増加≤5 MiB |
-| core編集/検証 | 中央値≤max(30秒, 現行同等修正の2倍)。共有契約と数値比較を省略しない |
-| 表示編集/検証 | 中央値≤max(10秒, 現行同等修正の2倍)。自動で測れるreadyに加え目視結果を別記録 |
-| clean ready | 依存取得済みの中央値≤10分。同条件のPython起動も併記 |
-| package ready | 外部待ちを除く中央値≤15分。対象OSでの展開・起動まで含む |
+| 実行性能 | 各案5秒warmup後、30秒・1回。2view表示と途中1回の保存を同じ条件で行う |
+| core編集 | 同じ処理の小変更から対象テスト・参照比較の結果まで各1回 |
+| 表示編集 | 同等のlabel/layout変更から表示確認まで各1回 |
+| build/package | 既存[Qt反復結果](../decisions/0006-qt-iteration-local-bundles.md)と[core編集結果](../decisions/0007-pure-fft-candidate.md)を再利用。clean環境の新規試験は不要 |
 
-短い試行のp99だけでRT性を保証しない。負荷・再接続・終了経路、コールバック内のallocation/lock/解放も調べる。
-測定のために重いlogや毎frame file出力をcallbackへ追加しない。
-同条件の現行値が未取得なら比率判定は未確認。ARM/Windows/LinuxへIntel結果を外挿しない。
+CPU秒、peak RSS、表示更新率/応答時間、取得gap、FFT共有count、停止/終了結果を記録する。
+既存の診断から取得できる値を使う。計測のために新しい監視基盤や全frameのarchiveを作らない。
+取得できない値は未確認と記し、短い試験から長時間安定性やRT保証を推定しない。
+追加試行は異常・結果の食い違い・比較条件の不一致を解消する場合だけ行う。
+
+## 判定
+
+数値・ChannelId・区間・校正・保存の一致は[数値契約](../contracts/numerics.md)と既存fixtureで判断する。
+許容差や期待値を緩めない。4/8chは同じ統合coreの短い正しさ回帰に限定する。
+
+性能は同条件Pythonとの実測差、編集から確認までの待ち時間、
+既知の描画制約・保守負担をMIG-008の四案へ渡す。
+一律の性能比率や全OS配布を完了条件にせず、測定値と選択理由を残す。
+短時間では判断できない事項は未確認のまま添える。
 
 ## 保存する結果
 
-`.migration-local/benchmarks/<日付>-<task>-<host>.json`に以下を記録する（MIG-004以降に作成）。
-全ケース・全sampleの詳細JSONとraw logは実行生成物としてGit管理外に置く。
-既存の`migration/benchmarks/results/`、`migration/fixtures/runs/`とQt実行reportも同じ扱いとする。
-文書中のローカルreportパスは保存場所の記録で、別checkoutへの配布は別途行う。
-
-Gitには測定条件、主時間の全sampleと集計、最大数値誤差、判定・限界、再実行手順を
-`migration/decisions/`や`migration/status.md`へ要約して残す。
-固定fixtureの入力・期待値・manifestと、短いSDK取得・CI失敗の記録は保持する。
-
-```json
-{
-  "schema_version": 1,
-  "protocol": "MIG-002-v0.1",
-  "task": "MIG-004-B",
-  "host": {},
-  "source": {},
-  "workload": {},
-  "commands": [],
-  "cache": {},
-  "runs": [],
-  "correctness": "not_run",
-  "budget_verdict": "not_run",
-  "limitations": []
-}
-```
-
-各runに開始/終了条件、duration、exit code、metrics、失敗理由を付ける。空のひな形を測定結果として登録しない。
-raw logはローカルreportと併せて保持し、集計値だけで最良runを選ばない。ハードウェア識別に不要な個人情報は保存しない。
+既存runnerのreportとraw logを`.migration-local/benchmarks/`へ保存する。
+条件、実測値、終了コード、失敗・未確認点と再実行コマンドを記録し、
+[進捗](../status.md)と008-Cの判断にはその要点とreportの所在だけを残す。
+新しい専用手順書、同じ結果の複数文書への転記、全source/binaryの複製と再hash監査は不要。
+既存のreport schemaや固定fixtureのhash検査は維持する。

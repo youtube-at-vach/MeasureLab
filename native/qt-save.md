@@ -1,9 +1,8 @@
 # MIG-007-A 両Qtの非同期測定結果保存
 
-[非同期worker](async-save.md)と[Qt校正編集](calibration-edit.md)の次の評価単位。
-[決定0026](../migration/decisions/0026-qt-snapshot-save.md)と[進捗](../migration/status.md)を参照。
+[非同期workerの実装](graph-core/src/export.rs)と[Qt校正編集](calibration-edit.md)の次の評価単位。
+[進捗・検証結果](../migration/status.md)を参照。
 保存形式は006-Eの評価用v1 JSON/CSVと[native製品JSON/CSV](product-codec.md)。
-製品形式の接続は[決定0028](../migration/decisions/0028-qt-product-snapshot-save.md)で追加した。
 
 ## 操作と所有境界
 
@@ -35,36 +34,9 @@ retire中も含めて保存sessionはprocess内で最大8個。上限時は新�
 Qt終了後、両mainが終了threadを回収し、最終receiptと `sessions=0` を記録してからprocessを終了する。
 取得workerの既存joinはこの変更の対象外。診断evidenceの同期I/Oも置換していない。
 
-## 再検査
+## 対象変更の検証
 
-先に[両Qtのbuild](qt-probe.md#導入とビルド)を行う。
-
-```bash
-./.venv/bin/python scripts/migration_qt_save.py --qt-prefix .tools/qt/6.11.2/macos --all-inputs --output .migration-local/007-save-new
-./.venv/bin/python scripts/migration_qt_save.py --qt-prefix .tools/qt/6.11.2/macos --product-format --all-inputs --output .migration-local/007-product-save-new
-./.venv/bin/pytest -q tests/logic_verification/test_migration_qt_save.py tests/logic_verification/test_migration_qt_display.py tests/logic_verification/test_migration_qt_workspace.py tests/logic_verification/test_migration_qt_trigger.py tests/logic_verification/test_migration_qt_calibration.py tests/logic_verification/test_migration_qt_calibration_edit.py
-```
-
-既定は9言語×両Qt、`--all-inputs`で保存4/8ch f32/f64をすべて通す。
-単一言語は `--language ja`。新しいdirectoryだけを使い、fixture/許容差を変更しない。
-通常結果pin→校正変更→旧結果JSON/CSV→既存file/親不在failure→復帰→Trigger保持/分離→
-JSON/CSV→保存受付終了/取得停止→再開/旧世代拒否→Backend再生成→受付済みの終了を検査する。
-各保存fileの全値/来歴を比較し、異なる結果だけ元bytesの独立NumPy oracleへ照合する。
-同じ結果の別format・復帰保存・停止時保存は全fieldの完全一致を要求する。
-取消済みfile、stale file、残った一時fileを拒否する。
-writingとcloseの競合はsavedまたはcancelledを実receiptに従って検査し、固定の取消件数を要求しない。
-9言語の実ラベル、主画面/ダイアログのサイズ、PNGと全file/hashを記録する。
-製品形式では `result-candidate` も事前buildする。Python互換readerと既存Rust result readerで
-carrier/sidecarを検査し、全snapshotを同じ元bytesのoracleへ照合する。
-sidecar既存の部分pair失敗を追加し、旧file不変/復元拒否/復帰と、savedには両fileがあることを検査する。
-
-Rust新規テストではwriterを決定的に停止し、busy、queued-only cancel、graph継続、
-diskを待たないQObject破棄、終了後の実file/全配列を検査する。
-`SaveWorker::with_writer()`は明示codec境界で、既定writerと同じsync/no-clobber完了条件を要求する。
-製品形式も同じwriter境界へ接続し、混在formatのbusy/取消/終了と、旧pinの4形式完全往復を検査する。
-
-保存入力の短い正確性診断に加え、明示BlackHole取得と注入待ちでのbusy/取消を
-[取得中保存診断](live-save.md)へ追加した。実window manager、長時間/実負荷下の性能、
-byte予算、他OS、import結果のplot統合、pair transaction、再起動校正維持は後続。
-旧トレースnative importと[両Qtの読込み・参照表](qt-import.md)は独立した評価単位へ追加した。
-MIG-007/008全体とRust/QML採用の合格にはしない。
+現在の範囲は[MIG-008計画](../guide/RUST_QML_MIGRATION_PLAN.md)に従う。
+関連する変更がある場合だけ[対象テスト](../tests/logic_verification/test_migration_qt_save.py)と[runner](../scripts/migration_qt_save.py)を使う。
+オプションは`./.venv/bin/python scripts/migration_qt_save.py --help`で確認する。
+全条件の再実行・長時間試験・他OS検証はMIG-008の前提にしない。

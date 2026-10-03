@@ -2,7 +2,7 @@
 
 MIG-003-B、2026-09-30。[コア](../contracts/core.md)と[数値](../contracts/numerics.md)はv0.1のまま。
 [manifest](core-v1/manifest.json)、[手計算の入力・期待値](core-v1/scenarios.json)、
-[決定0003](../decisions/0003-core-contract-oracles.md)を参照。
+[既存の検証結果](../status.md#再利用する証拠)を参照。
 
 ## 保存内容と検証範囲
 
