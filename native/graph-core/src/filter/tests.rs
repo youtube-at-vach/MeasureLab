@@ -516,3 +516,148 @@ fn sos_output_limit_rejection_preserves_state() {
         &[0.0, 1.0]
     );
 }
+
+fn widening(config: FilterConfig, precision: Precision) -> Result<Filter, String> {
+    Filter::new_with_conversion(
+        source(2, precision),
+        "derived".into(),
+        "derived.clock".into(),
+        config,
+        FilterLimits::default(),
+        Some(InputConversion::F32ToF64Exact),
+    )
+}
+fn identity() -> FilterConfig {
+    FilterConfig::Fir {
+        coefficients: vec![1.],
+        target_rate: Rational {
+            numerator: 48000,
+            denominator: 1,
+        },
+        centered: false,
+        revision: "identity".into(),
+    }
+}
+#[test]
+fn explicit_widening_preserves_f32_extremes_and_source_identity() {
+    let mut f = widening(identity(), Precision::F32).unwrap();
+    let input = vec![
+        f32::from_bits(1),
+        -f32::from_bits(1),
+        f32::MAX,
+        -f32::MAX,
+        0.,
+        -0.,
+        1.0000001,
+        -1.0000001,
+    ];
+    let b = SignalBlock::new(
+        f.input_source().clone(),
+        0,
+        Samples::F32(input.clone()),
+        vec![],
+    )
+    .unwrap();
+    let before = input.iter().map(|v| v.to_bits()).collect::<Vec<_>>();
+    let out = f.process(&b).unwrap().unwrap();
+    for (actual, expected) in values(&out).iter().zip(&input) {
+        // FIR summation may normalize signed zero; all nonzero finite values widen exactly.
+        if *expected != 0. {
+            assert_eq!(actual.to_bits(), f64::from(*expected).to_bits());
+        } else {
+            assert_eq!(*actual, 0.);
+        }
+    }
+    let Samples::F32(raw) = b.samples() else {
+        panic!()
+    };
+    assert_eq!(raw.iter().map(|v| v.to_bits()).collect::<Vec<_>>(), before);
+    assert_eq!(f.metadata().parent.precision, Precision::F32);
+    assert_eq!(f.metadata().output.precision, Precision::F64);
+    assert_eq!(
+        f.metadata().input_conversion,
+        Some(InputConversion::F32ToF64Exact)
+    );
+    assert!(
+        f.output_source()
+            .filter_state_revision
+            .contains("f32-to-f64-exact-v1")
+    );
+    assert_eq!(f.metadata().processing_latency_seconds, None);
+    assert!(widening(identity(), Precision::F64).is_err());
+    let f64 = Filter::new(
+        source(2, Precision::F64),
+        "derived".into(),
+        "derived.clock".into(),
+        identity(),
+        FilterLimits::default(),
+    )
+    .unwrap();
+    assert_ne!(f.output_source(), f64.output_source());
+    assert!(
+        serde_json::to_value(f64.metadata())
+            .unwrap()
+            .get("input_conversion")
+            .is_none()
+    );
+}
+#[test]
+fn widening_keeps_invalid_support_and_rejects_sos_atomically() {
+    let config = FilterConfig::Fir {
+        coefficients: vec![0.25, 0.5, 0.25],
+        target_rate: Rational {
+            numerator: 24000,
+            denominator: 1,
+        },
+        centered: false,
+        revision: "p2".into(),
+    };
+    let mut f = widening(config, Precision::F32).unwrap();
+    let mut v = vec![1.; 20];
+    v[9] = f32::NAN;
+    let b = SignalBlock::new(
+        f.input_source().clone(),
+        0,
+        Samples::F32(v),
+        vec![InvalidSpan {
+            start: 2,
+            end: 3,
+            channel_id: Some("input.0".into()),
+            reason: "unsupported".into(),
+            origin: "backend.flags:1".into(),
+        }],
+    )
+    .unwrap();
+    let out = f.process(&b).unwrap().unwrap();
+    assert!(
+        out.validity()
+            .iter()
+            .any(|s| s.start == 1 && s.end == 3 && s.origin == "backend.flags:1")
+    );
+    assert!(out.validity().iter().any(|s| s.start == 2
+        && s.end == 4
+        && s.reason == "nonfinite"
+        && s.channel_id.as_deref() == Some("input.1")));
+    assert!(values(&out).iter().all(|v| v.is_finite()));
+    let mut sos = widening(
+        FilterConfig::Sos {
+            coefficients: vec![[1., 0., 0., 1., 0., 0.]],
+            revision: "sos".into(),
+        },
+        Precision::F32,
+    )
+    .unwrap();
+    let bad = SignalBlock::new(
+        sos.input_source().clone(),
+        0,
+        Samples::F32(vec![1., f32::INFINITY]),
+        vec![],
+    )
+    .unwrap();
+    assert_eq!(
+        sos.process(&bad).unwrap_err(),
+        "unsupported_iir_gap_or_invalid"
+    );
+    assert_eq!(sos.cursor, 0);
+    assert!(sos.sos_state().unwrap().iter().all(|v| *v == 0.));
+}

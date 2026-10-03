@@ -151,6 +151,11 @@ def expected_metadata(request):
     rate = as_fraction(source["timebase"]["rate"])
     ratio = as_fraction(target) / rate
     output = copy.deepcopy(source)
+    conversion = request.get("input_conversion")
+    if conversion is not None:
+        if conversion != "F32ToF64Exact" or source["precision"] != "F32":
+            raise fft.ReferenceError("Unsupported explicit filter input conversion")
+        output["precision"] = "F64"
     output["stream_id"] = request["output_stream"]
     output["timebase"]["id"] = request["output_timebase"]
     output["timebase"]["rate"] = target
@@ -159,10 +164,11 @@ def expected_metadata(request):
     bits = "".join(f"{struct.unpack('<Q', struct.pack('<d', float(v)))[0]:016x}" for v in coefficients)
     centered = config.get("centered", False)
     output["filter_state_revision"] = (
-        f"none/{config['kind'].lower()}:{config['revision']}:{ratio.numerator}:{ratio.denominator}:{str(centered).lower()}:{bits}"
+        f"{source['filter_state_revision']}{'/f32-to-f64-exact-v1' if conversion else ''}"
+        f"/{config['kind'].lower()}:{config['revision']}:{ratio.numerator}:{ratio.denominator}:{str(centered).lower()}:{bits}"
     )
     delay = Fraction(len(config["coefficients"]) - 1, 2 * ratio.numerator) if config["kind"] == "Fir" else None
-    return {
+    metadata = {
         "parent": source,
         "output": output,
         "rate_ratio": rational(ratio),
@@ -179,6 +185,9 @@ def expected_metadata(request):
         else "zero-state-transient-no-valid-after-cutoff",
         "tail_flush": False,
     }
+    if conversion is not None:
+        metadata["input_conversion"] = conversion
+    return metadata
 
 
 def spans_for(request):
@@ -374,6 +383,11 @@ def validate_header(header, request, *, acquisition=False):
             ):
                 raise fft.ReferenceError("Filtered graph cache bound mismatch")
     shapes = {f"{name}.output": [count, len(request["source"]["channel_ids"])] for name in request["chunks"]}
+    if acquisition and request["source"]["precision"] == "F32":
+        acquired = request["frames"] - sum(end - start for start, end in request["gaps"])
+        shapes.update(
+            {f"{name}.raw_f32_as_f64": [acquired, len(request["source"]["channel_ids"])] for name in request["chunks"]}
+        )
     for name, run in header["runs"].items():
         if any(w["numeric"] for w in run["windows"]):
             shapes[f"{name}.fft_over_n"] = [33, len(request["source"]["channel_ids"]), 2]

@@ -48,6 +48,7 @@ jobs:
           ./.venv/bin/python scripts/migration_history_candidate.py --portable --report history-candidate.json
           ./.venv/bin/python scripts/migration_filter_candidate.py --portable --report filter-candidate.json
           ./.venv/bin/python scripts/migration_filter_candidate.py --portable --acquisition --report filter-acquisition.json
+          ./.venv/bin/python scripts/migration_filter_input.py --portable --output filter-input-results
           ./.venv/bin/python scripts/migration_result_candidate.py --portable --report result-candidate.json
           ./.venv/bin/python scripts/migration_result_candidate.py --portable --async-save --output async-save-results --report async-save-results/report.json
           ./.venv/bin/python scripts/migration_product_candidate.py --portable --native-product --output product-compat-results
@@ -81,6 +82,7 @@ jobs:
         run: |
           python -m pip install numpy==2.2.6 pytest
           python -m pytest -q tests/logic_verification/test_migration_qt_live.py
+          python -m pytest -q tests/logic_verification/test_migration_filter_live.py
 
   renderer-spike:
     runs-on: ubuntu-24.04

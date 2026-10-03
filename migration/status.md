@@ -13,11 +13,11 @@
 | --- | --- |
 | macOS checkout | `/Users/vach/.codex/worktrees/next-core-evaluation/MeasureLab`（Codex管理、再利用） |
 | 実行環境 | macOS 14.8.9 / Intel。Linuxの前回検証はUbuntu 26.04.1 / x86_64 |
-| ブランチ | 統合先`codex/next-core-evaluation`、今回`codex/migration-portaudio-callback` |
-| 今回の開始点 | `8dd585ea`、remote一致・cleanの`codex/migration-backend-input`から分岐 |
+| ブランチ | 統合先`codex/next-core-evaluation`、今回`codex/migration-filter-input` |
+| 今回の開始点 | `344f309e`、remote一致・cleanの`codex/migration-portaudio-callback`から分岐 |
 | 数値/DSP参照 | `9fd79958`（MeasureLab 0.9.0）。元fixture/係数/許容差を維持 |
 | 最終main同期 | 2026-10-03、origin/main `84013a76`をmerge `0fe41a7a`で取込み。差分はCURRENT_DIRECTION.mdのみ |
-| Git状態 | f64 filter取得は`144606b4`、共通入力境界・文書整理は`8dd585ea`へコミット済み。今回のnative callback/Qt backend選択は未コミット |
+| Git状態 | f64 filter取得は`144606b4`、共通入力境界は`8dd585ea`、native callback/Qt backend選択は`344f309e`へコミット済み。今回の明示f32→f64 filter境界は未コミット |
 | 外部更新 | 今回のpush/PR/Issue/Project更新/公開配布は未実施。無人継続・定期通知は未設定 |
 
 `.venv/`、`.tools/`、`.migration-local/`はGit管理外。worktreeを退役させる前に必要な証拠を保存する。
@@ -34,7 +34,7 @@
 | MIG-003 | 完了（参照側） | FFT24ケース、27契約/4保存例、filter21数値/6 rate境界。候補実装の採用判定とは別 |
 | MIG-004 | 進行中 | Intel/Linuxの両Qt基本寿命、build/edit反復、ローカルpackage。ARM/Windows/clean環境とGitHub CIは残る |
 | MIG-005 | 進行中 | N-channel input.raw queue/履歴/共有FFT、動的f32 route、短いUAC-232/BlackHole比較。共通入力境界に加え、PortAudio native callbackと両Qtのrequestによるbackend選択を検証 |
-| MIG-006 | 進行中 | FFT/共有graph/履歴/Timebase/世代、pure filter、不変result/ID校正、v1/製品JSON・CSV/非同期保存/旧形式import。保存f64 filterの取得scheduler21ケース×5 chunkも検証済み |
+| MIG-006 | 進行中 | FFT/共有graph/履歴/Timebase/世代、pure filter、不変result/ID校正、v1/製品JSON・CSV/非同期保存/旧形式import。保存f64 filterの取得scheduler21ケース×5 chunk、明示f32→f64境界の保存30条件×5 patternとnative BlackHole両backend6実行も検証済み |
 | MIG-007 | 進行中 | 保存/BlackHoleの両Qt line/heatmap、分離/9言語、Trigger hold/retry/release、校正編集、v1/製品保存、製品import参照表。rendererはIntelの最小試験のみ |
 | MIG-008 | 未着手 | 008-Aの同じ2chフロー統合、008-Bの同条件比較、008-Cの四案の理由付き判断が必要 |
 
@@ -44,6 +44,35 @@ writerの250 ms待ち注入はbusy/取消/取得継続の診断で、実ディ�
 詳細件数・失敗・artifact hashは[詳細履歴](status-history-2026-10-03.md)に保持した。
 
 ## 今回の変更と検証
+
+[明示f32→f64 filter境界](../native/filter-input.md)と[決定0035](decisions/0035-explicit-filter-input.md)を追加。
+`Filter::new`のf32拒否を維持し、明示した`F32ToF64Exact`だけを解析ownerで拡張する。
+queue/元block/raw履歴はf32、filter state/派生履歴/共有FFTはf64。元f32 Sourceを親metadataへ残し、
+変換policyを出力identityへ含めた。P2の因果3-tap `[0.25,0.5,0.25]`、48→24 kHzを維持する。
+製品DSP/GUI、元fixture/係数/許容差、Cargo.lockは変更していない。
+
+| 検証 | 結果・証拠 |
+| --- | --- |
+| 保存f32/明示変換 | 5 FIR信号×2/4/8ch×正逆portの30条件×5 callback pattern成功。元値/port、独立有限和、全1,200派生窓のvalidity/ID/共有/平均reset、最初の有効FFT、gap `[100,104)`、poll上限/回収を照合 |
+| native実入力 | 同じ実行物のCPAL/PortAudioでBlackHole各2/4/8ch、計6実行成功。計49,152元f32 frame、24,576派生frame、384派生窓を照合。選択tone/振幅、元値/全filter配列/共有FFT、stream close、PortAudio terminateと実48 kHzを検査。XRUN/拒否/取得gapなし |
+| Rust | workspace191件成功（追加5件）。明示変換/極値、非有限/flags/SOS拒否、raw保持/逆port/gap/共有回収、restart fence、device不要のrequest拒否を検査 |
+| Python/参照verify | 関連131件+live診断の拒否14件、計145件成功。旧f64のpure/実queueの各21ケース×5 patternも回帰。FFT14/core4 FFT・27契約・4保存/filter21・6 rateのverify成功 |
+
+保存reportは`.migration-local/2026-10-03-filter-input/report.json`、native実入力の最終reportは
+`.migration-local/2026-10-03-filter-live-final/report.json`。それぞれ43/52 native source、runner、
+実行物（実入力はPortAudio libraryも）を固定保存し、591/110 artifactを`evidence-audit.json`で照合した。
+比較前後のsource/runner/binary/library一致と、保存実体の全hash一致を確認した。
+最初の実入力6実行も成功したが、filter数の実測記録とdevice不要のrequest拒否testを補強したため、
+finalへ再build/全6条件を再取得した。最初のreportは`2026-10-03-filter-live/report.json`に保持し、最終sourceの根拠には使わない。
+
+workspace Clippy/Rust fmt、Mypy116 source、Ruff lint/format704 files、Markdown lint238 files、diff checkは成功。
+追加scriptの初回Ruffは未使用import1件を検出し、除去後の全体検査に合格した。
+終了時のfetchでもorigin/mainは`84013a76`、未取込commitなしを確認した。
+Native CIへ保存比較とlive診断のdevice不要testを追加した。
+remote CI、全体Pytest、全言語UIサイズは未実施。レイアウト/翻訳の変更はない。
+両Qtのfilter/派生Trigger/保存接続、動的route ack/全tap、製品設定UI/profile、長時間性能/他OS、008-A全体は残る。
+
+## 前回のnative callbackと検証
 
 [native PortAudio callback](../native/callback-input.md)と[決定0034](decisions/0034-native-portaudio-callback.md)を追加。
 callbackから`InputWriter<f32>`へ直接書き、両Qtの同じ取得owner/履歴/共有FFT/line・heatmapへ接続した。
@@ -100,7 +129,7 @@ logの共通prefixは`2026-10-03-backend-input-`。Rust/Pythonは`workspace-fina
 実backendはf32。ローカルsounddeviceは`float64`指定を内部で`float32`へ変更するため、
 実streamのdtype/rate/channel数を確認する。保存f64の成功をdevice f64対応の根拠にしない。
 最初のfilter候補はf64因果3-tap `[0.25,0.5,0.25]`、48→24 kHzのまま。
-実入力からの明示変換/来歴または対応精度の選択、filterのQt接続は次の単位で決める。
+明示f32→f64境界は[今回の手順](../native/filter-input.md)で追加した。filterのQt接続は次の単位で決める。
 
 ## 未完了と着手順
 
@@ -110,7 +139,7 @@ logの共通prefixは`2026-10-03-backend-input-`。Rust/Pythonは`workspace-fina
 | 優先・作業 | 状態と次の具体的な作業 | 必要な条件 |
 | --- | --- | --- |
 | 1. 005-A-common | PortAudio native callback/両Qt requestによる選択まで検証済み。動的route ack/世代、購読tapのgraph統合、製品backend設定UI/永続profileが残る | 保存入力/Intel/BlackHoleで着手可能 |
-| 2. 006-Dの実入力/Qt接続 | 保存f64 scheduler済み。実backend f32との精度境界を明示して、一段filter/派生履歴/共有FFT/Trigger/保存を同じフローへ接続 | 現環境で着手可能。暗黙変換はしない |
+| 2. 006-Dの実入力/Qt接続 | 保存f64 schedulerと明示f32→f64境界を追加。次は一段filter/派生履歴/共有FFTを両Qtへ接続し、派生Trigger/保存を同じフローにする | 現環境で着手可能。暗黙変換はしない |
 | 3. 008-A統合 | 未着手。生成→明示route→取得/Timebase→波形/共有FFT→line/heatmap→基本V/FS校正→CSV/JSONを一つの2chフローへ統合。仮想4/8ch回帰とAC対応表を残す | 1〜2の対象backend/dtype/tapを固定する |
 | 4. import/profile | import結果のline/heatmap/cursor/再保存、取得profileの再起動維持が未実装 | 現環境で独立して着手可能 |
 | 5. 007-B/008-B性能 | 未着手。統合物を固定し、2/4/8chの30秒warmup+10分×3回、単独/複数view/保存/遅いGUI/負荷超過を同条件Pythonと比較 | 3の固定後。測定中に他build/GUI試験を走らせない |
@@ -145,7 +174,8 @@ rendererはwgpu候補約29〜30 Hz、基準100万点のJSON/QML境界はSIGBUS�
 
 | 対象 | 参照先 |
 | --- | --- |
-| 今回のnative callback/Qt backend | [手順](../native/callback-input.md)、[決定0034](decisions/0034-native-portaudio-callback.md)、上記report |
+| 今回のf32 filter精度境界 | [手順](../native/filter-input.md)、[決定0035](decisions/0035-explicit-filter-input.md)、上記保存/実入力report |
+| 前回のnative callback/Qt backend | [手順](../native/callback-input.md)、[決定0034](decisions/0034-native-portaudio-callback.md)、上記report |
 | 前回の共通入力 | [手順](../native/backend-input.md)、[決定0033](decisions/0033-common-backend-input.md)、前回report |
 | 保存f64 filter取得 | [手順](../native/filter-acquisition.md)、[詳細結果](status-history-2026-10-03.md#mig-006-d-integration-保存f64のfilter取得scheduler) |
 | 両Qt/取得中保存 | [Qt保存](../native/qt-save.md)、[取得中保存](../native/live-save.md)、[詳細履歴](status-history-2026-10-03.md) |

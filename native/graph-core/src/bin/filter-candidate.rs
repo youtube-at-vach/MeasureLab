@@ -1,9 +1,11 @@
 //! Saved-input-only harness: one graph transform state shared by two FFT consumers.
-use graph_core::filter::{Filter, FilterConfig, FilterLimits, SosState, rate_ratio};
+use graph_core::filter::{
+    Filter, FilterConfig, FilterLimits, InputConversion, SosState, rate_ratio,
+};
 use graph_core::history::{History, HistoryLimits};
 use graph_core::{
-    Average, FftKey, Graph, InvalidSpan, Limits, Presentation, Rational, Samples, SignalBlock,
-    Source, WindowSpec,
+    Average, FftKey, Graph, InvalidSpan, Limits, Precision, Presentation, Rational, Samples,
+    SignalBlock, Source, WindowSpec,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -18,6 +20,8 @@ struct Request {
     output_stream: String,
     output_timebase: String,
     config: FilterConfig,
+    input_conversion: Option<InputConversion>,
+    input_ports: Option<Vec<usize>>,
     frames: usize,
     gaps: Vec<[u64; 2]>,
     chunks: BTreeMap<String, Vec<usize>>,
@@ -69,6 +73,11 @@ fn corpus(
     output: &Path,
     through_queue: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let width = if r.source.precision == Precision::F32 {
+        4
+    } else {
+        8
+    };
     if r.schema_version != 1
         || r.frames == 0
         || r.frames > 65536
@@ -77,7 +86,11 @@ fn corpus(
         || r.chunks
             .values()
             .any(|p| p.is_empty() || p.len() > 16 || p.iter().any(|n| *n == 0 || *n > 65536))
-        || raw.len() != r.frames * r.source.channel_ids.len() * 8
+        || r.source.channel_ids.is_empty()
+        || r.source.channel_ids.len() > 32
+        || raw.len() != r.frames * r.source.channel_ids.len() * width
+        || (r.source.precision == Precision::F32 && !through_queue)
+        || (r.input_ports.is_some() && !through_queue)
         || r.gaps.len() > 32
         || r.gaps
             .iter()
@@ -87,21 +100,36 @@ fn corpus(
     {
         return Err("invalid_request".into());
     }
-    let values: Vec<_> = raw
-        .as_chunks::<8>()
-        .0
-        .iter()
-        .map(|b| f64::from_le_bytes(*b))
-        .collect();
+    let samples = match r.source.precision {
+        Precision::F32 => Samples::F32(
+            raw.as_chunks::<4>()
+                .0
+                .iter()
+                .map(|b| f32::from_le_bytes(*b))
+                .collect(),
+        ),
+        Precision::F64 => Samples::F64(
+            raw.as_chunks::<8>()
+                .0
+                .iter()
+                .map(|b| f64::from_le_bytes(*b))
+                .collect(),
+        ),
+    };
+    let values: Vec<f64> = match &samples {
+        Samples::F32(v) => v.iter().copied().map(f64::from).collect(),
+        Samples::F64(v) => v.clone(),
+    };
     if values.iter().any(|v| !v.is_finite()) {
         return Err("nonfinite input".into());
     }
-    let template = Filter::new(
+    let template = Filter::new_with_conversion(
         r.source.clone(),
         r.output_stream.clone(),
         r.output_timebase.clone(),
         r.config.clone(),
         FilterLimits::default(),
+        r.input_conversion,
     )?;
     let source = template.output_source().clone();
     let channels = source.channel_ids.len();
@@ -118,7 +146,7 @@ fn corpus(
             return Err("chunk name".into());
         }
         if through_queue {
-            let (run, arrays) = acquisition::run(&r, pattern, &values)?;
+            let (run, arrays) = acquisition::run(&r, pattern, &samples)?;
             for (suffix, values) in arrays {
                 binaries.insert(format!("{name}.{suffix}"), values);
             }

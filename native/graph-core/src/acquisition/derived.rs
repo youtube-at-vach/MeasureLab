@@ -12,7 +12,7 @@ pub(super) struct FilteredStream {
 
 impl<T: CaptureSample> Acquisition<T> {
     /// Configure before consuming input. Subscribe to the exact output key first.
-    /// f32 input and filter chains are explicitly unsupported by Filter::new.
+    /// F32 input requires Filter::new_with_conversion; Filter::new never widens it.
     pub fn attach_filter(
         &mut self,
         filter: Filter,

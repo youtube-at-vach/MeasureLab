@@ -2,7 +2,14 @@
 //! Output positions use the absolute rational phase; centered FIR waits for lookahead.
 use crate::{InvalidSpan, Precision, Rational, Samples, SignalBlock, Source};
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::collections::VecDeque;
+
+/// An explicit worker-side boundary; this does not increase device precision.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub enum InputConversion {
+    F32ToF64Exact,
+}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "kind", deny_unknown_fields)]
@@ -41,6 +48,8 @@ impl Default for FilterLimits {
 pub struct FilterMetadata {
     pub parent: Source,
     pub output: Source,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub input_conversion: Option<InputConversion>,
     pub rate_ratio: Rational,
     pub output_m_to_input: Rational,
     pub origin_mapping: [Rational; 2],
@@ -329,8 +338,23 @@ impl Filter {
         config: FilterConfig,
         limits: FilterLimits,
     ) -> Result<Self, String> {
+        Self::new_with_conversion(input, output_stream, output_timebase, config, limits, None)
+    }
+    /// F32 requires an opt-in exact widening before the existing f64 transform.
+    /// Parent metadata stays F32; output identity includes the conversion policy.
+    pub fn new_with_conversion(
+        input: Source,
+        output_stream: String,
+        output_timebase: String,
+        config: FilterConfig,
+        limits: FilterLimits,
+        input_conversion: Option<InputConversion>,
+    ) -> Result<Self, String> {
         if !input.valid()
-            || input.precision != Precision::F64
+            || !matches!(
+                (input.precision, input_conversion),
+                (Precision::F64, None) | (Precision::F32, Some(InputConversion::F32ToF64Exact))
+            )
             || input.channel_ids.len() > limits.max_channels
             || output_stream.is_empty()
             || output_timebase.is_empty()
@@ -421,6 +445,7 @@ impl Filter {
         }
         let ratio = rate_ratio(&input.timebase.rate, &target)?;
         let mut output = input.clone();
+        output.precision = Precision::F64;
         output.stream_id = output_stream;
         output.timebase.id = output_timebase;
         output.timebase.rate = target.normalized()?;
@@ -434,7 +459,11 @@ impl Filter {
         // Exact coefficient bits are part of identity: revision labels alone cannot alias different kernels.
         output.filter_state_revision = format!(
             "{}/{}:{revision}:{}:{}:{centered}:{bits}",
-            input.filter_state_revision,
+            if input_conversion.is_some() {
+                format!("{}/f32-to-f64-exact-v1", input.filter_state_revision)
+            } else {
+                input.filter_state_revision.clone()
+            },
             if matches!(state, State::Fir(_)) {
                 "fir"
             } else {
@@ -446,6 +475,7 @@ impl Filter {
         let metadata = FilterMetadata {
             parent: input,
             output,
+            input_conversion,
             output_m_to_input: rat(i128::from(ratio.denominator), ratio.numerator as u128)?,
             origin_mapping: [rat(0, 1)?, rat(0, 1)?],
             signal_delay_output_samples: delay
@@ -529,8 +559,12 @@ impl Filter {
         if matches!(self.state, State::Sos(_)) && block.frames > self.limits.max_output_frames {
             return Err("filter_capacity".into());
         }
-        let Samples::F64(values) = block.samples() else {
-            return Err("unsupported_precision".into());
+        let values: Cow<'_, [f64]> = match (block.samples(), self.metadata.input_conversion) {
+            (Samples::F64(values), None) => Cow::Borrowed(values),
+            (Samples::F32(values), Some(InputConversion::F32ToF64Exact)) => {
+                Cow::Owned(values.iter().copied().map(f64::from).collect())
+            }
+            _ => return Err("unsupported_precision".into()),
         };
         if matches!(self.state, State::Sos(_))
             && (start != self.cursor
@@ -540,16 +574,17 @@ impl Filter {
             return Err("unsupported_iir_gap_or_invalid".into());
         }
         let mut next = self.clone();
-        let result = next.process_inner(block)?;
+        let result = next.process_inner(block, &values)?;
         *self = next;
         Ok(result)
     }
-    fn process_inner(&mut self, block: &SignalBlock) -> Result<Option<SignalBlock>, String> {
+    fn process_inner(
+        &mut self,
+        block: &SignalBlock,
+        values: &[f64],
+    ) -> Result<Option<SignalBlock>, String> {
         let (start, end) = block.interval();
         let channels = self.input_source().channel_ids.len();
-        let Samples::F64(values) = block.samples() else {
-            unreachable!()
-        };
         if let State::Sos(state) = &mut self.state {
             let output = state.process(values)?;
             self.cursor = end;

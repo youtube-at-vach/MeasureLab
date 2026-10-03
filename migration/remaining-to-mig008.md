@@ -13,7 +13,9 @@ MIG-001/002とMIG-003の参照側は完了。004はIntel範囲、006はpure範�
 [006-D-integration](../native/filter-acquisition.md)へ一段f64 filterの実queue/取得scheduler/共有FFT接続を追加した。21保存ケース×5 callback patternの検査に合格。実backend/Qtへのfilter接続は残る。
 [共通input.raw境界](../native/backend-input.md)を追加。保存32条件、実PortAudio BlackHole2/4/8chの3実行とCPAL両Qtの6実行を検査した。
 [PortAudio native callback/両Qt requestによる選択](../native/callback-input.md)も追加し、2/4/8chのPortAudio6実行18世代と同じ実行物のCPAL6実行18世代を検査した。
-製品AudioEngine callback/設定UI・永続profile、全tap/動的route ackは残る。実backendはf32で、sounddeviceのfloat64指定はfloat32へ変更される。f64 filterへの明示精度境界を次に固定する。
+製品AudioEngine callback/設定UI・永続profile、全tap/動的route ackは残る。実backendはf32で、sounddeviceのfloat64指定はfloat32へ変更される。[f64 filterへの明示精度境界](../native/filter-input.md)を追加。元f32のraw履歴を維持し、
+変換の来歴を派生Source/metadataへ保持する。保存30条件×5 patternとnative BlackHole両backend6実行を検査した。
+Qtのfilter/派生Trigger/保存接続は残る。
 MIG-008の統合と採用判断、41機能の移行は未完了。
 
 ## 実施順と依存
@@ -45,7 +47,7 @@ flowchart TD
 | 1. 007-A-save | 通常/Triggerの完成snapshotを両Qtからpinしてv1非同期保存。保存先/format、各状態/取消/保存受付終了とGUI外のjoinを追加。保存4入力×9言語×両Qtの72実行で検証済み。製品formatの007-A-product-saveも保存72実行/497完全snapshotの検査に合格。007-A-live-saveへBlackHole取得中の保存と注入待ちの診断を追加。長時間/実ディスク負荷は残る | 元の全配列/校正/区間を保持、pending/gapから正常値を作らない、I/O failureでも取得継続。hold/分離/停止/再生成、9言語/サイズ/操作到達性。AC07/12/13 | 現在のIntel/Qtと保存fixture、BlackHoleで着手可能。join/DropはGUI外 |
 | 2. 006-E-compat | 評価用Python adapterの製品JSON carrier/CSV sidecar、旧JSON/32 CSV条件の読込みを検査。native snapshot codec/共通file workerと実exporterの保存12実行/72双方向完全往復を検査済み。Qt製品保存format接続と保存72実行の完全snapshot検査に合格。旧トレース/完全snapshotのnative importを追加。Qt製品importを参照表へ追加し、保存72実行で検査した。import plot統合/取得profile再起動維持は残る | 値/軸/単位/校正/metadataの往復。旧fileにないStream/Timebaseはunknown。製品schemaは008で版管理し、失敗/上書き/単一fileとpairの保証を明示。AC12 | 保存fixture/現行exporterの評価範囲を検査済み。Qt参照表の保存fixture範囲も検査済み。plot統合と取得中の負荷は現在の環境で着手可能 |
 | 3. 005-A-common | input.rawをCPAL/PortAudio native callback・評価workerと同じ取得graph/両Qtへ接続済み。次は動的f32 route ackと購読tapのgraph統合。製品設定UI/永続profileは別単位 | 非対称2/4/8ch、ID/port/route ack/世代/gap、input.calibrated、output.mixed/post_dut/device_bufferの位置と処理条件を照合。DUT未実装は同一tap扱いにしない。AC01〜03/09/11 | 保存入力とBlackHoleで着手可能。全tapの常時copyは不要 |
-| 4. 006-D-integration | 保存f64の実queue/取得schedulerへ一段filter/rateを接続。P2最初の候補は因果3-tap 48→24 kHz。保存21ケース×5 callback patternに合格。実backend/Qtはf32/rawで未接続 | AC10のtrigger/遅延/gap/warmupと、AC14のpolyphase/SOS参照比較を統合後も維持。SOS gap拒否をfailureとして扱い、未実装f32/chain/全rateを対象外と明示 | 明示f32→f64変換の来歴または対応精度を固定してから接続。f32/gap回復をP2に選ぶ場合だけ追加実装 |
+| 4. 006-D-integration | 保存f64の実queue/取得schedulerへ一段filter/rateを接続。P2最初の候補は因果3-tap 48→24 kHz。保存21ケース×5 callback patternに合格。明示f32→f64変換を取得ownerへ追加。両Qtはf32/rawでfilter未接続 | AC10のtrigger/遅延/gap/warmupと、AC14のpolyphase/SOS参照比較を統合後も維持。SOS gap拒否をfailureとして扱い、未実装f32/chain/全rateを対象外と明示 | 明示変換の来歴を固定。次は両Qtの派生履歴/共有FFT/Trigger/保存を接続。f32 arithmetic/gap回復をP2に選ぶ場合だけ追加実装 |
 | 5. 008-A | 生成→明示route→取得/Timebase→波形/共有FFT→line/heatmap→基本V/FS校正→CSV/JSONを一つの2chフローへ統合 | boxcar/Hann、peak/RMS/PSD、Trigger/保持、購読解除、開始/停止/失敗、同じcoreの仮想4/8ch回帰。AC01〜14の対象結果を対応表へ記録 | 1〜4の対象範囲を統合。独立probeの成功だけで置換しない |
 | 6. 007-B / 008-B性能 | 現在のGUI停止試験・renderer spikeは短い診断。統合物で単独/複数表示、保存、遅いGUI、負荷超過を測る | 仮想2/4/8chを条件ごとに30秒warmup＋10分×3回。callback/解析/表示/stop遅延の分布、CPU秒/RSS時系列、queue/gap/FFT共有/表示省略を記録。同条件のPythonと予算比較。AC15/16 | 5を固定し、測定中は他のbuild/GUI試験を終了。GPU取得不可はunknown |
 | 7. 005-B / 008-B音声 | UAC-232交互3回の短い2ch比較は成功。時刻写像/絶対遅延、排他、開始失敗、XRUN位置、USB/スリープ復帰、長時間が残る | 許容振幅差/遅延誤差を測定前に固定。実機2chと統合フロー、stop/cancel/失敗/再接続の回収を記録。AC09/11/13/16 | 通常はBlackHole。USB抜き差しと物理clock/電圧/遅延には実機・配線・人の操作が必要 |

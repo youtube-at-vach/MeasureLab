@@ -10,7 +10,8 @@ worker所有履歴、共有FFTへ通す評価。採用判断と008-Aの全フロ
 008-A向けの最初のfilter候補はf64、因果3-tap `[0.25, 0.5, 0.25]`、48→24 kHzの一段。
 現行の保存fixtureと許容差を維持する。中心補償polyphaseの保存4 rate組合せと代表SOSも回帰対象にする。
 f32を暗黙にf64へ変換しない。現在のCPAL/BlackHoleとQtの取得経路はf32/rawのままで、
-今回のfilterは保存入力のf64 queueだけを検査する。実backendへのdtype選択とQt接続は後続。
+この保存ステップはf64 queueだけを検査する。後続の[明示f32精度境界](filter-input.md)を追加した。
+Qtのfilter接続は後続。
 
 1. `Acquisition<f64>`を作り、その実Sourceから`Filter::new`で親・出力Stream/Timebaseを固定する。
 2. 出力Sourceと固定FFT仕様の正確なkeyへ、view/sessionのtokenを購読する。

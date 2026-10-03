@@ -1,11 +1,12 @@
 //! Saved coefficients/bytes through the real acquisition queue and persistent owner.
 use super::*;
-use audio_core::{IoFormat, frame_queue_f64};
-use graph_core::acquisition::{Acquisition, CaptureLimits, FftSpec, PollReport};
+use audio_core::{Consumer, IoFormat, Producer, frame_queue, frame_queue_f64};
+use graph_core::acquisition::{Acquisition, CaptureLimits, CaptureSample, FftSpec, PollReport};
 
 #[derive(Default)]
 struct Observed {
     values: Vec<f64>,
+    raw_f32_as_f64: Vec<f64>,
     validity: Vec<InvalidSpan>,
     proofs: Vec<WindowProof>,
     fft_sample: Option<Vec<f64>>,
@@ -34,6 +35,12 @@ impl Observed {
             .iter()
             .map(|b| (b.interval().1 - b.interval().0) as usize)
             .sum::<usize>();
+        for block in &report.blocks {
+            if let Samples::F32(values) = block.samples() {
+                self.raw_f32_as_f64
+                    .extend(values.iter().copied().map(f64::from));
+            }
+        }
         self.gaps.extend(report.gaps);
         for block in report.filtered_blocks {
             if block.interval().0 != (self.values.len() / channels) as u64 {
@@ -81,7 +88,7 @@ impl Observed {
     }
     fn drain(
         &mut self,
-        worker: &mut Acquisition<f64>,
+        worker: &mut Acquisition<impl CaptureSample>,
         a: &graph_core::Subscription,
         b: &graph_core::Subscription,
         channels: usize,
@@ -98,11 +105,30 @@ type Run = (serde_json::Value, BTreeMap<String, Vec<f64>>);
 pub(super) fn run(
     r: &Request,
     pattern: &[usize],
-    values: &[f64],
+    samples: &Samples,
 ) -> Result<Run, Box<dyn std::error::Error>> {
     let channels = r.source.channel_ids.len();
     let capacity = if r.gaps.is_empty() { 8192 } else { 128 };
-    let (mut tx, rx) = frame_queue_f64(capacity, channels, r.source.timebase.rate_hz())?;
+    match samples {
+        Samples::F32(values) => {
+            let (tx, rx) = frame_queue(capacity, channels, r.source.timebase.rate_hz())?;
+            run_typed(r, pattern, values, tx, rx, capacity)
+        }
+        Samples::F64(values) => {
+            let (tx, rx) = frame_queue_f64(capacity, channels, r.source.timebase.rate_hz())?;
+            run_typed(r, pattern, values, tx, rx, capacity)
+        }
+    }
+}
+fn run_typed<T: CaptureSample>(
+    r: &Request,
+    pattern: &[usize],
+    values: &[T],
+    mut tx: Producer<T>,
+    rx: Consumer<T>,
+    capacity: usize,
+) -> Result<Run, Box<dyn std::error::Error>> {
+    let channels = r.source.channel_ids.len();
     let format = IoFormat {
         stream_id: r.source.stream_id.clone(),
         generation: r.source.generation,
@@ -113,7 +139,10 @@ pub(super) fn run(
             r.source.timebase.rate.denominator,
         ],
         input_ids: r.source.channel_ids.clone(),
-        input_ports: (0..channels).collect(),
+        input_ports: r
+            .input_ports
+            .clone()
+            .unwrap_or_else(|| (0..channels).collect()),
         output_ids: Vec::new(),
         output_ports: Vec::new(),
     };
@@ -137,12 +166,13 @@ pub(super) fn run(
     if worker.key().source != r.source {
         return Err("acquisition source metadata".into());
     }
-    let filter = Filter::new(
+    let filter = Filter::new_with_conversion(
         worker.key().source.clone(),
         r.output_stream.clone(),
         r.output_timebase.clone(),
         r.config.clone(),
         FilterLimits::default(),
+        r.input_conversion,
     )?;
     let source = filter.output_source().clone();
     let key = FftKey {
@@ -223,6 +253,9 @@ pub(super) fn run(
             "max_filtered_windows": observed.max_filtered_windows, "history_released": history_released,
             "state": worker.state(), "queue_released": worker.queue_stats().is_none()}});
     let mut arrays = BTreeMap::from([("output".into(), observed.values)]);
+    if !observed.raw_f32_as_f64.is_empty() {
+        arrays.insert("raw_f32_as_f64".into(), observed.raw_f32_as_f64);
+    }
     if let Some(values) = observed.fft_sample {
         arrays.insert("fft_over_n".into(), values);
     }

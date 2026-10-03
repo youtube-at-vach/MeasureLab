@@ -1,5 +1,5 @@
 use super::*;
-use crate::filter::{FilterConfig, FilterLimits};
+use crate::filter::{FilterConfig, FilterLimits, InputConversion};
 use crate::history::TriggerEvent;
 use audio_core::{Producer, frame_queue, frame_queue_f64};
 
@@ -56,7 +56,7 @@ fn fir(w: &Acquisition<impl CaptureSample>, centered: bool, rate: i64) -> Filter
     )
     .unwrap()
 }
-fn views(w: &Acquisition<f64>, f: &Filter) -> (Subscription, Subscription) {
+fn views(w: &Acquisition<impl CaptureSample>, f: &Filter) -> (Subscription, Subscription) {
     let key = FftKey {
         source: f.output_source().clone(),
         n: 8,
@@ -85,7 +85,7 @@ fn input(start: usize, end: usize, channels: usize) -> Vec<f64> {
         .flat_map(|n| (0..channels).map(move |c| (n + c) as f64))
         .collect()
 }
-fn drain(w: &mut Acquisition<f64>) -> Vec<PollReport> {
+fn drain(w: &mut Acquisition<impl CaptureSample>) -> Vec<PollReport> {
     let mut reports = Vec::new();
     for _ in 0..10000 {
         let r = w.poll().unwrap();
@@ -109,6 +109,177 @@ fn output(reports: &[PollReport]) -> Vec<f64> {
             v.clone()
         })
         .collect()
+}
+
+fn f32_fir(w: &Acquisition<f32>) -> Filter {
+    Filter::new_with_conversion(
+        w.key().source.clone(),
+        "derived".into(),
+        "derived.clock".into(),
+        FilterConfig::Fir {
+            coefficients: vec![0.25, 0.5, 0.25],
+            target_rate: Rational {
+                numerator: 24000,
+                denominator: 1,
+            },
+            centered: false,
+            revision: "p2-test".into(),
+        },
+        FilterLimits::default(),
+        Some(InputConversion::F32ToF64Exact),
+    )
+    .unwrap()
+}
+fn input32(start: usize, end: usize, channels: usize) -> Vec<f32> {
+    input(start, end, channels)
+        .iter()
+        .map(|v| (*v * 0.123456789) as f32)
+        .collect()
+}
+#[test]
+fn explicit_f32_queue_filter_preserves_raw_ports_gap_and_shared_lifetime() {
+    for channels in [2, 4, 8] {
+        let (mut tx, rx) = frame_queue(32, channels, 48000.).unwrap();
+        let mut fmt = format(channels);
+        fmt.input_ports.reverse();
+        let mut w = Acquisition::new(rx, fmt, spec(), limits()).unwrap();
+        let raw = w
+            .subscribe(
+                Average::None,
+                Presentation {
+                    color: "raw".into(),
+                    unit: "FS".into(),
+                },
+            )
+            .unwrap();
+        let f = f32_fir(&w);
+        let (a, b) = views(&w, &f);
+        w.attach_filter(f, spec(), HistoryLimits::frames(64))
+            .unwrap();
+        let mut reports = Vec::new();
+        let mut cursor = 0;
+        while cursor < 1031 {
+            let end = if cursor == 100 {
+                136
+            } else {
+                (cursor + 7).min(if cursor < 100 { 100 } else { 1031 })
+            };
+            tx.write(&input32(cursor, end, channels), None, 0).unwrap();
+            reports.extend(drain(&mut w));
+            cursor = end;
+        }
+        let values = output(&reports);
+        for m in 0usize..516 {
+            for c in 0..channels {
+                let expected: f64 = [0.25, 0.5, 0.25]
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(j, h)| {
+                        let n = (2 * m).checked_sub(j)?;
+                        Some(if (100..104).contains(&n) {
+                            0.
+                        } else {
+                            h * f64::from(input32(n, n + 1, channels)[channels - 1 - c])
+                        })
+                    })
+                    .sum();
+                assert_eq!(values[m * channels + c], expected);
+            }
+        }
+        for block in reports.iter().flat_map(|r| &r.blocks) {
+            let Samples::F32(actual) = block.samples() else {
+                panic!()
+            };
+            let (start, end) = block.interval();
+            let expected: Vec<_> = input32(start as usize, end as usize, channels)
+                .chunks_exact(channels)
+                .flat_map(|row| row.iter().rev().map(|v| v.to_bits()))
+                .collect();
+            assert_eq!(
+                actual.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                expected
+            );
+        }
+        let x = a.take_latest().unwrap();
+        let y = b.take_latest().unwrap();
+        assert!(Arc::ptr_eq(x.raw(), y.raw()));
+        assert_eq!(
+            raw.take_latest().unwrap().raw().key().source.precision,
+            Precision::F32
+        );
+        assert_eq!(x.raw().key().source.precision, Precision::F64);
+        let metadata = w.filtered_metadata().unwrap();
+        assert_eq!(metadata.parent, w.key().source);
+        assert_eq!(
+            metadata
+                .map_position(&Rational {
+                    numerator: 1024,
+                    denominator: 1
+                })
+                .unwrap(),
+            Rational {
+                numerator: 512,
+                denominator: 1
+            }
+        );
+        drop(a);
+        assert_eq!(w.graph().filter_count(), 1);
+        drop(b);
+        tx.write(&input32(1031, 1047, channels), None, 0).unwrap();
+        assert!(output(&drain(&mut w)).is_empty());
+        assert!(w.filtered_history().is_none());
+        assert!(raw.take_latest().is_some());
+        w.stop();
+        assert!(w.history().is_none() && w.queue_stats().is_none());
+        assert_eq!(w.graph().stats().subscriptions, 0);
+        assert_eq!(x.raw().key().source.precision, Precision::F64);
+    }
+}
+#[test]
+fn f32_restart_fences_widened_completion_and_resets_filter_state() {
+    let (mut tx, rx) = frame_queue(32, 2, 48000.).unwrap();
+    let mut w = Acquisition::new(rx, format(2), spec(), limits()).unwrap();
+    let f = f32_fir(&w);
+    let (a, b) = views(&w, &f);
+    let old = f.output_source().clone();
+    w.attach_filter(f, spec(), HistoryLimits::frames(64))
+        .unwrap();
+    tx.write(&input32(0, 32, 2), None, 0).unwrap();
+    drain(&mut w);
+    let frozen = a.take_latest().unwrap();
+    let completion = w
+        .graph()
+        .schedule(Arc::new(
+            SignalBlock::new(old, 16, Samples::F64(input(16, 24, 2)), vec![]).unwrap(),
+        ))
+        .unwrap()
+        .pop()
+        .unwrap()
+        .compute();
+    let (mut tx2, rx2) = frame_queue(32, 2, 48000.).unwrap();
+    let mut fmt = format(2);
+    fmt.generation = 2;
+    w.restart(rx2, fmt).unwrap();
+    assert!(!completion.publish());
+    assert!(b.take_latest().is_none() && w.filtered_history().is_none());
+    let f = f32_fir(&w);
+    let mut key = w.key().clone();
+    key.source = f.output_source().clone();
+    a.reconfigure(key.clone()).unwrap();
+    b.reconfigure(key).unwrap();
+    w.attach_filter(f, spec(), HistoryLimits::frames(64))
+        .unwrap();
+    tx2.write(&input32(0, 32, 2), None, 0).unwrap();
+    let reports = drain(&mut w);
+    assert!(
+        reports
+            .iter()
+            .flat_map(|r| &r.filtered_blocks)
+            .flat_map(|b| b.validity())
+            .any(|v| v.reason == "warmup" && v.start == 0)
+    );
+    assert_eq!(a.take_latest().unwrap().raw().key().source.generation, 2);
+    assert_eq!(frozen.raw().key().source.generation, 1);
 }
 
 #[test]
