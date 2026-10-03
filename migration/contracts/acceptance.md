@@ -75,6 +75,11 @@ AC12の旧JSON/CSV値・軸・校正・metadataとunknown、独立列/merged列�
 破損carrier/sidecarを旧トレースへfallbackせず、取得profileを自動適用しない。
 Qt importの非同期配送/表示/寿命、取得中負荷/長時間/他OSとAC全体は後続。
 
+007-Aの[BlackHole取得中保存](../decisions/0031-live-snapshot-save.md)を追加した。
+AC07/12/13の通常/Trigger pin、旧校正/全配列/来歴と実取得bytesの照合、
+writerの注入待ちによるbusy/queued-only取消、GUI待機中の取得継続、I/O復帰と回収を検査する。
+長時間/実ディスク負荷/CPU/RSS/同条件Python比較、他OSとAC全体は後続。最終結果はstatusを参照。
+
 ## fixtureの最小セット
 
 | ID | 入力・操作 | 合格条件 | 実装・検証タスク |

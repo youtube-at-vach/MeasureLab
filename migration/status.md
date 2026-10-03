@@ -1,9 +1,13 @@
 # 次期コア検証の進捗
 
 更新: 2026-10-03。計画の正本は[評価計画](../guide/RUST_QML_MIGRATION_PLAN.md)。
-前回はUbuntu 26.04.1 / x86_64でLinuxのOS検証を実施した。
-今回はmacOS 14.8.9 / Intelの既存worktreeへ戻り、両Qtの非同期製品importと参照表を追加した。
-保存4入力×9言語×両Qtの72実行と、文言修正後の9言語×両Qtの18実行に合格。
+今回はmacOS 14.8.9 / Intelで両QtのBlackHole取得中保存を進めた。
+製品JSON/CSVとv1 JSON/CSVで各2/4/8ch×両Qt×3反復の計36実行に合格。
+324完全snapshot保存、90期待failed、72取消、108元bytes oracle結果を検査した。
+writerへ250 msを注入し、writing+queued/busy/取消と320 msのGUI待機中の15〜16 FFT進行を確認。
+長時間/実ディスク性能は未確認。次は005-A-common/006-D-integrationから008-Aへ進める。
+前回の両Qt製品importは保存4入力×9言語×両Qtの72実行と、文言修正後の18実行に合格。
+LinuxのOS検証はUbuntu 26.04.1 / x86_64で実施した。
 LinuxのSDK/build、両Qtの寿命・X11起動、製品保存8実行、全言語UIサイズは成功。
 開発反復32試行とwarmup2回、ローカルpackageの6展開起動も成功。詳細は下のLinux記録を参照。
 Rust/QMLの採用は未決定。MIG-003-A/B/Cの参照側とMIG-004-Aの基本GUI境界を検証済み。
@@ -49,12 +53,12 @@ PyQt画像provider経路の試験であり、採用判断・個別widgetの本�
 | --- | --- |
 | 現行版 | 参照コミット`9fd79958`。以前のmacOS checkoutは`/Users/vach/MeasureLab`、`main` |
 | 検証用checkout | 現在は`/Users/vach/.codex/worktrees/next-core-evaluation/MeasureLab`（Codex管理）。Linuxは`/home/hotstaff/MeasureLab` |
-| 検証用ブランチ | 統合先`codex/next-core-evaluation`、現在`codex/migration-qt-product-import`。今回の開始HEADは`551fa9c8` |
+| 検証用ブランチ | 統合先`codex/next-core-evaluation`、現在`codex/migration-live-product-save`。今回の開始HEADは`8b288ee0` |
 | 作業開始・Python参照コミット | `9fd79958`（MeasureLab 0.9.0、開始時のローカルmain） |
 | 計画書の調査コミット | `68cbdabc3ecd542d9d73fa0aa86bf9159f44d811` |
 | 最終main同期 | 2026-10-03にfetchし、origin/main `84013a76`をmerge `0fe41a7a`で取込み。差分はCURRENT_DIRECTION.mdのみ。DSP/fixture参照`9fd79958`は維持 |
 | 統合担当 | 当面、この検証ブランチを担当する単一の作業者 |
-| リモート | 開始時の`551fa9c8`はremote一致・clean。前回のLinux修正・記録は同commitに保存済み。今回のQt import変更・記録は未コミット。push・PR・Issue・Project更新・公開配布は未実施 |
+| リモート | 開始時の`8b288ee0`はremote一致・clean。前回のQt import変更・記録は同commitに保存済み。今回の取得中保存変更・記録は未コミット。push・PR・Issue・Project更新・公開配布は未実施 |
 
 調査コミットから開始時mainまでの差分には計画書、設計ガイド、Measurement Consoleのレイアウト、
 Goniometerのテーマ対応、翻訳と対応テストがある。
@@ -72,8 +76,8 @@ MIG-003-Cも既存fixtureと契約を変更せず、filter/rate参照を独立�
 | MIG-003 | 完了（A/B/Cの参照側） | FFT20+4ケース、27契約例、4保存例にfilter/rateの21数値ケースと6 rate境界を追加。候補実装でのAC合格は005/006以降 |
 | MIG-004 | 進行中（A/BのIntel・Linux host範囲を完了） | Linuxでも両Qt基本寿命、32 sample+warmup2回、6 package展開起動が成功。ICUを含むSDKのlocal buildも成功。GitHub CI、ARM/Windows/clean環境は未確認 |
 | MIG-005 | 進行中（Aの取得graph・動的f32 routeとBの短い実機／仮想比較） | 取得queue/履歴/共有FFTに動的出力mailboxを追加。保存12条件、BlackHole 2→2/4→16/8→16の9取得と3保留cancel。製品共通adapter/全tap、時刻写像、排他/USB復帰/長時間は残る |
-| MIG-006 | 進行中（A〜Eのpure範囲、非同期保存workerと互換adapter評価） | FFT/共有/履歴/filter、不変result/ID校正とv1保存。非同期保存12実行/36 saved/36 failed、新規Rust9件が合格。取得/Qt校正編集は007-Aへ追加。互換adapterの製品JSON carrier/CSV sidecarと旧JSON/32 CSV条件を検査。両Qtのv1保存操作を追加。native製品snapshot codec/共通保存workerを追加。保存12実行/72双方向完全往復、48 saved/48期待failedを検査。Qt製品保存formatと旧トレース/完全snapshotのnative importを追加。旧JSON/CSV32条件・旧pairと18完全importが合格。Qt製品importを独立参照表へ追加し、保存72実行と最終文言18実行を検査。plot統合と取得中の負荷は後続 |
-| MIG-007 | 進行中（Aの保存／BlackHole実入力表示・分離/9言語・Qt Trigger配送/ID校正とQt編集・適用、CのIntel最小試験） | Qt校正編集・適用まで接続し、保存4入力×9言語×両Qtの72実行・648完全result/CSV・144 PNG、BlackHole18実行・162完全result/CSV・36 PNGが成功。v1非同期保存操作の保存72実行と既存BlackHole回帰6実行が成功。Qt製品保存formatの保存72実行・497完全snapshot・216期待failed/151取消も成功。製品importの独立参照表を追加し、保存72実行と最終文言18実行を検査。import plot統合/実window manager/他OS/統合性能は残る。renderer候補9試行成功、基準100万点3試行SIGBUS。採用判断・個別widgetの本実装・native texture共有は含めない |
+| MIG-006 | 進行中（A〜Eのpure範囲、非同期保存workerと互換adapter評価） | FFT/共有/履歴/filter、不変result/ID校正とv1保存。非同期保存12実行/36 saved/36 failed、新規Rust9件が合格。取得/Qt校正編集は007-Aへ追加。互換adapterの製品JSON carrier/CSV sidecarと旧JSON/32 CSV条件を検査。両Qtのv1保存操作を追加。native製品snapshot codec/共通保存workerを追加。保存12実行/72双方向完全往復、48 saved/48期待failedを検査。Qt製品保存formatと旧トレース/完全snapshotのnative importを追加。旧JSON/CSV32条件・旧pairと18完全importが合格。Qt製品importを独立参照表へ追加し、保存72実行と最終文言18実行を検査。BlackHole取得中の実保存/注入待ち診断を追加。plot統合と実負荷/長時間性能は後続 |
+| MIG-007 | 進行中（Aの保存／BlackHole実入力表示・分離/9言語・Qt Trigger配送/ID校正とQt編集・適用、CのIntel最小試験） | Qt校正編集・適用まで接続し、保存4入力×9言語×両Qtの72実行・648完全result/CSV・144 PNG、BlackHole18実行・162完全result/CSV・36 PNGが成功。v1非同期保存操作の保存72実行と既存BlackHole回帰6実行が成功。Qt製品保存formatの保存72実行・497完全snapshot・216期待failed/151取消も成功。製品importの独立参照表を追加し、保存72実行と最終文言18実行を検査。BlackHole取得中保存をv1/製品の計36実行で検査し、注入待ちのbusy/取消も成功。import plot統合/実window manager/他OS/統合性能は残る。renderer候補9試行成功、基準100万点3試行SIGBUS。採用判断・個別widgetの本実装・native texture共有は含めない |
 | MIG-008 | 未着手 | [残工程と依存](remaining-to-mig008.md)を整理。008-A統合→008-B実行/反復/実機/配布比較→008-C四案の判断。P3以降の機能展開は含まない |
 
 `native/`にツールチェーン/SDKの固定、Cargo workspace/lock、模擬workerと2方式のadapter、共通QMLを置いた。
@@ -93,7 +97,75 @@ Qtからrevision付き要求を解析threadへ配送し、両viewの共有hold/r
 汎用scheduler、全tap/Qt接続、製品backend共通化は未作成。
 候補実装は契約v0.1を出発点とし、公開型・ABI・採用ライブラリは後続の検証で決める。
 
+## MIG-007-A BlackHole取得中のsnapshot保存
+
+着手: 2026-10-03、macOS 14.8.9 / Intel、HEAD `8b288ee0`、remote一致・clean。
+既存worktreeで`codex/migration-live-product-save`へ分岐した。変更は未コミット。
+[取得中保存手順](../native/live-save.md)と[決定0031](decisions/0031-live-snapshot-save.md)を追加した。
+現行製品DSP/GUI、audio callback、parser/数値許容差、元fixture、Cargo.lockは変更していない。
+
+- 既存の両Qt保存操作をBlackHole input.raw/共有FFTへ接続した。
+  通常/Trigger pin、校正snapshot、2 job/16 receipt、GUI外のwriter終了を維持する。
+  v1と製品JSON/CSVの実保存を検査し、取得停止後の診断exportで代用しない。
+- 元bytes oracle用に、明示診断requestだけで解析ownerが連続raw窓を保持する。
+  1世代最大256窓/8 MiBで、区間不連続/重複/容量超過は明示failure。
+  file I/Oはstream/graph終了後。callbackと保存受付へ配列copy/encode/I/Oを追加しない。
+  全processのbyte/RSS上限や長時間記録ではなく、既存取得workerのjoin時間も未評価。
+- writerだけに250 msの待ちを注入し、writing 1件+queued 1件、3件目のbusy、
+  queued-only取消と320 msのGUI待機中の取得を検査した。実ディスクの速度ではない。
+  校正変更前のpin不変、I/O failureからの復帰、部分pair失敗/旧sidecar保護、
+  Trigger保持/分離、Stop/保存受付終了/再開/Backend再生成/終了も同じ経路で検査した。
+
+| BlackHole最終matrix | 結果 |
+| --- | --- |
+| 製品JSON/CSV | 2/4/8ch×両Qt×3反復の18実行に合格。162 saved、54期待failed、36 cancelled、54元bytes oracle結果 |
+| v1 JSON/CSV | 同じ18実行に合格。162 saved、36期待failed、36 cancelled、54元bytes oracle結果 |
+| 取得と寿命 | 各実行の3世代でstream/graph回収、gap/callback error/XRUNなし。終了後はworkers/models/sessions=0 |
+| 注入待ちとGUI | writing/queuedとbusyを観測し、受付直後にqueuedだけ取消。320 msのGUI待機中に15〜16 FFT進行 |
+| raw記録 | 製品matrixの最大140窓、v1の最大89窓。固定256窓/8 MiB以内。全区間/port/世代/元bytesを検査 |
+
+最終reportは `.migration-local/2026-10-03-live-product-save-final/report.json` と
+`.migration-local/2026-10-03-live-v1-save-final/report.json`。
+36実行は英語/offscreen/software/debugの短い正確性診断。72 PNGも検査した。
+全配列/来歴/校正は実取得bytesの独立NumPy oracleへ照合し、同じpinの別formatと復帰保存は完全一致。
+取消/busy/stale file、残った一時fileを拒否し、製品CSV savedにはCSVとsidecarの両方を要求した。
+fixtureの期待値/数値許容差、取得queue容量8192 frameは変更していない。
+
+初回 `.migration-local/2026-10-03-live-save-initial/` の6実行は不合格。
+取消を次のTimer tickまで待つ競合と、GUI待機直後の古い表示区間からTriggerを要求する問題を検出した。
+後者の待機は診断rawの256窓上限へ達し、容量failureを記録した。初回の診断failureとして保持する。
+検証Timerで取消を受付直後へ移し、GUI待機後に新しい通知を受け取るよう修正した。
+修正後 `.migration-local/2026-10-03-live-save-retry/` の製品6実行は成功。
+最終18実行とはsource/recordを区別し、初回logを保持した。
+
+Rust workspaceは165 passed（新規2件）、関連Pythonは296 passed（新規19件）。
+workspace Clippy/Rust fmt、Mypy 116 source、Ruff lint/format（689 files）は成功。
+固定環境の参照はFFT14、core 4 FFT/27契約/4保存、filter21/6 rateをverifyし、期待値更新なし。
+Rust全体テストの初回はQt Bridge test実行物のQtCore framework探索不足でSIGABRT。
+`DYLD_FRAMEWORK_PATH` を固定SDKへ指定した再実行で165件が成功した。
+logは `.migration-local/2026-10-03-live-save-rust-tests.log` と `-final.log` に分けた。
+
+保存4/8ch f32/f64×英語/日本語×両Qtの16回帰実行も全件成功。
+`.migration-local/2026-10-03-live-save-saved-regression/report.json` に
+112 saved、48期待failed、32 cancelled、48元bytes oracle結果、32 PNGを保存した。
+レイアウト/翻訳の変更はなく、9言語の実ラベルは関連Pythonで検査した。
+全言語の製品UIサイズも `Verification Passed!`、exit 0。
+logは `.migration-local/2026-10-03-live-save-ui-size.log`。
+日本語の主画面と英語の保存ダイアログ内容を目視確認した。
+
+最終監査は `.migration-local/2026-10-03-live-save-evidence-audit.json`。
+3 reportの全1,926成果物、登録source/runner、各要求、元fixture manifest、実行物のhashを照合し、不一致なし。
+固定実行物3件は `.migration-local/2026-10-03-live-save-binaries/`、
+138 sourceのsnapshotは `.migration-local/2026-10-03-live-save-source-snapshot/` へ保持した。
+Markdown lint（229 files）、台帳41件/20プリミティブ、`git diff --check` も成功。
+全体PytestとGitHub CI、commit/push/PRは未実施。MIG-006/007/008全体と採用判断は未完了。
+実ディスク保存負荷/長時間/CPU/RSSと同条件Python比較、全tap/製品共通backend、対象filter、
+物理USB/clock/電圧/遅延、他OS/実window manager/High DPI/clean配布は残る。
+次は005-A-common/006-D-integrationから008-Aの同じ2chフローを固定し、007-B/008-Bで性能を比較する。
+
 ## MIG-007-A 両Qtの非同期製品importと参照表
+
+以下は `8b288ee0` へ保存された前回の記録。着手時点と当時の未コミット状態を保持する。
 
 着手: 2026-10-03、macOS 14.8.9 / Intel、HEAD `551fa9c8`、remote一致・clean。
 既存worktreeで`codex/migration-qt-product-import`へ分岐した。変更は未コミット。
@@ -2073,7 +2145,8 @@ GUI起動時にlocaleのUTF-8への切替と、`Sans Serif`のフォント代替
    別環境の比較時だけ明示portable modeを使う。
 4. [残工程整理](remaining-to-mig008.md)と[作業票](tasks.md)に従い、接続済みの両Qt v1/製品保存操作と
    native製品snapshot codec/保存workerと旧トレース/完全snapshotのnative importから、
-   両Qtの製品importと独立参照表まで検証済み。次は取得中の保存負荷へ進める。
+   両Qtの製品importと独立参照表を検証し、BlackHole取得中の保存と注入待ちの診断も検査済み。
+   次は005-A-common/006-D-integrationから008-Aの2ch統合へ進める。実負荷/長時間性能は統合物を固定して比較する。
    import plot統合と取得profile再起動維持も別の評価単位として残る。
    join/DropをGUI外で実行し、受付を実完了と混同しない。
 5. 音声側は005-A-commonの全tap/製品共通adapter、対象filterの006-D-integrationへ進める。

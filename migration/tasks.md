@@ -44,6 +44,7 @@
 | 007-A-save | 両Qtから同じ通常/Trigger snapshotの保存操作 | 007-A-calibration-edit、006-E-async-save。display-core/両Qt/共通QML | AC07/12/13。受付と実完了、busy/cancel/失敗でも取得継続、hold/分離/再生成、全値/来歴/9言語/サイズ、GUI外のjoin | 全旧形式、長時間性能/他OS | 保存fixture範囲完了（2026-10-02、4入力×9言語×両Qtの72実行）。v1通常/Trigger resultのpin、受付/実完了/失敗復帰、GUI外の終了を検査。製品format接続は次行。BlackHole保存操作/性能は後続。詳細はstatus |
 | 007-A-product-save | 両Qt保存操作へ製品JSON/CSVを接続 | 007-A-save、006-E-native-product。共通display-core/worker/QML | AC07/12/13。旧pin/校正/全配列の完全往復、同じ容量/操作ID、CSV/sidecar両公開と部分失敗、9言語/サイズ、GUI外の終了 | 製品import UI/旧トレースnative import、再起動校正維持、取得中性能/他OS | 保存fixture範囲完了（2026-10-02、4入力×9言語×両Qtの72実行、497 saved/216期待failed/151取消、216元bytes oracle結果）。検査結果と証拠はstatus。MIG-007/008全体は未完了 |
 | 007-A-product-import | 両Qtから製品JSON/CSV pair/明示CSV specを非同期読込み、独立した参照表へ表示 | 006-E-native-import、007-A-product-save。display-core/両Qt/共通QML | AC07/12/13。旧fileのunknown、全snapshot/元値/Y2/校正の保持、容量/取消/最新要求fence、取得/profile独立性、GUI外join、9言語/サイズ | import結果のline/heatmap、全点cursor/zoom・再保存、再起動校正維持、負荷/他OS | 保存fixture範囲完了（2026-10-03、4入力×9言語×両Qtの72実行）。元値/unknown/完全snapshotと寿命を検査。文言修正後の9言語×両Qt・18実行も成功。結果はstatus、手順はnative/qt-import.md |
+| 007-A-live-save | BlackHole取得中の両Qt v1/製品snapshot保存と注入待ちのbusy/取消 | 007-A-save/product-save、007-A-calibration-edit、CPAL input.raw。既存worker/codecを使用 | AC07/12/13の対象境界。実取得bytesと全配列/校正の照合、writing+queued/busy/取消、GUI待機中の取得、I/O復帰、Stop/再開/再生成/終了 | 長時間/実ディスク性能/byte予算、全tap/共通backend、対象filter統合、他OS | 短い診断範囲完了（2026-10-03、v1/製品の各2/4/8ch×両Qt×3反復、計36実行）。結果はstatus、手順はnative/live-save.md。注入250 msは実ディスク性能の合格ではない |
 | 007-B | 描画/GUI遅延・CPU/RSS・表示編集時間 | 007-A、性能protocol | AC15/16。遅いGUIでも測定を保ち、単独/複数表示を比較 | 理論だけでの性能判定 | 未着手 |
 | 007-C | Plot Renderer Feasibility Spike。簡易plotterを基準にrsplot / wgpu系など1〜2候補を最小試験 | 004、007-Aの既存表示境界。独立試験コードと検証記録。007-A全体の完了は待たない | Spectrum 10万〜100万点の連続更新、Spectrogram rolling image、Zoom/Pan・座標変換・カーソル、QML統合/ライフサイクル、CPU/GPU負荷/コピー回数の比較表と再実行手順・未確認点 | renderer採用判断、製品組込み、個別widgetの本実装 | Intel最小試験・記録完了（2026-10-01、wgpu 1候補/PyQt画像provider。基準100万点はSIGBUS。native texture共有・他OS等は未確認） |
 | 008 | 2chフロー統合と四案の比較判断表 | 004〜007、実機/配布記録 | AC01〜16、仮想4/8ch回帰、採用/変更/段階導入/現行継続の理由と未確認点 | P3以降の自動開始、旧版置換 | 未着手。008-A統合→008-B比較→008-C判断。依存と残工程は下の整理表 |
@@ -56,7 +57,7 @@ MIG-004はSDK導入だけで完了にしない。OSや実機の不足はその�
 007-Cの[再実行・負荷/コピーの境界](../native/renderer-spike.md)と[試験結果](status.md#mig-007-c-plot-renderer-feasibility-spikeの成果と検証)を追加済み。基準100万点の失敗も比較記録へ残す。
 
 [MIG-008までの残工程](remaining-to-mig008.md)に、未完了範囲・実施順・依存・実機/別環境の必要条件を整理した。
-007-A-saveの保存fixture範囲を進めた。006-E-native-productの保存fixture範囲を追加。Qt製品format接続を007-A-product-saveへ追加。旧トレースと完全snapshotのnative importを006-E-native-importへ追加。Qt製品importを007-A-product-importへ追加。次は取得中の保存負荷、005-A-commonへ進める。006-D-integration、008-A/B/Cも同表のローカル作業単位であり、Issue作成や採用判断は行っていない。
+007-A-saveの保存fixture範囲を進めた。006-E-native-productの保存fixture範囲を追加。Qt製品format接続を007-A-product-saveへ追加。旧トレースと完全snapshotのnative importを006-E-native-importへ追加。Qt製品importを007-A-product-importへ追加。取得中の保存/注入待ち診断を007-A-live-saveへ追加。次は005-A-common、006-D-integrationから008-Aへ進める。実負荷/長時間性能は統合物を固定してから比較する。008-A/B/Cも同表のローカル作業単位であり、Issue作成や採用判断は行っていない。
 
 ## 003-Aの再検査
 
@@ -408,6 +409,19 @@ I/O failureと復帰、Trigger保持/分離、queued-only取消/保存受付終�
 Python互換reader/Rust reader/元bytes oracleで全snapshotを検査する。
 既存sidecarの部分pair失敗、旧file保持/復元拒否、失敗後の復帰を追加する。
 製品import UI/旧トレースnative import、再起動校正維持、取得中性能/他OSは後続。
+
+## 007-A 取得中保存の再検査
+
+[BlackHole取得中保存](../native/live-save.md)と[決定0031](decisions/0031-live-snapshot-save.md)を参照。
+
+```bash
+./.venv/bin/python scripts/migration_qt_save.py --virtual-device --load-test --qt-prefix .tools/qt/6.11.2/macos --repeat 3 --output .migration-local/007-live-save-new
+./.venv/bin/python scripts/migration_qt_save.py --virtual-device --load-test --product-format --qt-prefix .tools/qt/6.11.2/macos --repeat 3 --output .migration-local/007-live-product-save-new
+```
+
+他のbuild/GUI/音声試験を止めてから、2/4/8ch×両Qtの通常/Trigger保存を通す。
+実取得bytesと全配列/来歴、旧校正pin、busy/queued取消、I/O復帰、stream/worker回収を検査する。
+writerの250 ms待ちは注入条件。実ディスクの負荷限界や10分性能の合格に転用しない。
 
 ## 007-A 両Qt製品読込み・参照表の再検査
 

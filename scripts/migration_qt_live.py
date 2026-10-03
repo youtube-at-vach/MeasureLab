@@ -164,7 +164,19 @@ def validate_evidence(directory, request, *, count=3):
 
 
 def run_display(
-    binary, env, directory, case, timeout, *, trigger=False, language="en", calibration=False, calibration_edit=False
+    binary,
+    env,
+    directory,
+    case,
+    timeout,
+    *,
+    trigger=False,
+    language="en",
+    calibration=False,
+    calibration_edit=False,
+    saving=False,
+    product_saving=False,
+    save_load=False,
 ):
     import sounddevice as sd
 
@@ -172,6 +184,8 @@ def run_display(
     evidence = directory / "results"
     evidence.mkdir()
     request = request_for(case, evidence)
+    if saving:
+        request.update(save_input_evidence=True, save_diagnostic_delay_ms=250 if save_load else 0)
     if calibration:
         from scripts.migration_qt_calibration import diagnostic_profiles
 
@@ -201,6 +215,17 @@ def run_display(
         command += ["--calibration-test", "1"]
     if calibration_edit:
         command += ["--calibration-edit-test", "--language", language]
+    if saving:
+        saves = directory.resolve() / "saves"
+        saves.mkdir()
+        command += ["--save-test", "--save-directory", str(saves), "--language", language]
+        if save_load:
+            command += ["--save-load-test", "1"]
+        if product_saving:
+            from scripts.migration_qt_save import PARTIAL_METADATA
+
+            (saves / "partial.csv.metadata.json").write_bytes(PARTIAL_METADATA)
+            command += ["--save-format", "product"]
     started, code, output, reason, details = time.monotonic(), None, "", None, {}
     try:
         index = virtual.exact_device(case["device"])
@@ -233,7 +258,9 @@ def run_display(
                 marker in output
                 for marker in (
                     "DISPLAY_READY",
-                    "DISPLAY_CALIBRATION_EDIT_PASS"
+                    "DISPLAY_SAVE_PASS"
+                    if saving
+                    else "DISPLAY_CALIBRATION_EDIT_PASS"
                     if calibration_edit
                     else "DISPLAY_TRIGGER_PASS"
                     if trigger
@@ -256,6 +283,31 @@ def run_display(
             )
         ):
             raise fft.ReferenceError("live Qt lifecycle/exit mismatch")
+        if saving:
+            from scripts.migration_qt_save import validate_run, validate_live_inputs
+
+            codec = None
+            if product_saving:
+                from scripts.migration_product_exchange import NativeCodec
+
+                codec = NativeCodec(binary.parent / "result-candidate")
+            details["save"] = validate_run(
+                output,
+                saves,
+                request,
+                language,
+                None,
+                product=product_saving,
+                codec=codec,
+                live_evidence=evidence,
+                load=save_load,
+            )
+            details["save_inputs"] = validate_live_inputs(evidence, request, count=3)
+            if "DISPLAY_SAVE_TEARDOWN sessions=0" not in output:
+                raise fft.ReferenceError("missing live save teardown")
+            details["dialog_image"] = inspect_png(
+                directory / "display.png.save.png", size=details["save"]["dialog"]["image_size"], kind="dialog"
+            )
         if calibration_edit:
             from scripts.migration_qt_calibration_edit import validate_run
 
@@ -274,7 +326,9 @@ def run_display(
         details.update(
             image=inspect_png(
                 directory / "display.png",
-                size=details.get("edit", {}).get("size") or details.get("trigger", {}).get("size", (1000, 640)),
+                size=details.get("save", {}).get("size")
+                or details.get("edit", {}).get("size")
+                or details.get("trigger", {}).get("size", (1000, 640)),
                 regions=plot_regions(output),
             ),
             evidence=validate_evidence(evidence, request, count=2 if trigger or calibration_edit else 3),

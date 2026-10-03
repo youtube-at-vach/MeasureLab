@@ -1,7 +1,7 @@
 """MIG-007-A-save: Qt admission, immutable full-result saves and I/O failure recovery.
 
-Saved original input bytes only; no implicit build or fixture regeneration.
-Short correctness diagnostics, not load/performance or final product-schema acceptance.
+Saved original or opt-in BlackHole input bytes; no implicit build or fixture regeneration.
+Short correctness diagnostics, including injected slow I/O, not performance acceptance.
 """
 
 from __future__ import annotations
@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import csv
 import io
+from importlib import metadata
 import json
 import os
 from pathlib import Path
@@ -144,12 +145,14 @@ def validate_receipts(receipts, directory, frames, names, *, product=False):
                 raise fft.ReferenceError("save receipt/sidecar mismatch")
 
 
-def validate_run(output, directory, request, language, case, *, product=False, codec=None):
+def validate_run(
+    output, directory, request, language, case, *, product=False, codec=None, live_evidence=None, load=False
+):
     record = validate_ui(output, language)
     retired = [audio.core.read_json(v.encode()) for v in re.findall(r"DISPLAY_SAVE_RETIRED (.+)", output)]
     if len(retired) != 2 or any(v["error"] is not None for v in retired):
         raise fft.ReferenceError("missing or failed save retirement")
-    old = next((v["receipts"] for v in retired if len(v["receipts"]) == 9 + int(product)), None)
+    old = next((v["receipts"] for v in retired if len(v["receipts"]) == 9 + int(product) + 2 * int(load)), None)
     new = next((v["receipts"] for v in retired if len(v["receipts"]) == 2), None)
     if old is None or new is None:
         raise fft.ReferenceError("retired save session mismatch")
@@ -171,6 +174,11 @@ def validate_run(output, directory, request, language, case, *, product=False, c
         names.insert(4, "partial.csv")
         expected_states.insert(4, "failed")
     normal_count = 5 + int(product)
+    if load:
+        names[normal_count:normal_count] = ["slow.json", "cancelled.csv"]
+        expected_states[normal_count:normal_count] = ["saved", "cancelled"]
+        validate_load(record, old[normal_count : normal_count + 2], request)
+        normal_count += 2
     validate_receipts(old, directory, [normal] * normal_count + [held] * 4, names, product=product)
     validate_receipts(new, directory, [teardown] * 2, ["teardown.json", "teardown.csv"], product=product)
     if [r["status"]["state"] for r in old[: len(expected_states)]] != expected_states:
@@ -198,7 +206,11 @@ def validate_run(output, directory, request, language, case, *, product=False, c
             bound = {**request, "format": {**request["format"], "generation": frame["source"]["generation"]}}
             if frame["result_id"] == held["result_id"]:
                 bound["calibration"] = expected_profiles
-            samples = edit.samples_for(None, bound, case, start=document["interval"][0])
+            samples = (
+                live_samples(live_evidence, bound, document["interval"])
+                if live_evidence is not None
+                else edit.samples_for(None, bound, case, start=document["interval"][0])
+            )
             read = None
             if document["capture"]["trigger"] is not None:
                 response = record["trigger"]
@@ -227,6 +239,105 @@ def validate_run(output, directory, request, language, case, *, product=False, c
     return record
 
 
+def validate_load(record, receipts, request):
+    """Only injected writer latency proves this concurrency exercise, never a disk budget."""
+    load = record.get("load", {})
+    if request.get("save_diagnostic_delay_ms") != 250 or any(load.get(k) is not True for k in ("busy", "cancelled")):
+        raise fft.ReferenceError("missing explicit slow save/busy/cancel evidence")
+    before, after, stalled = (load.get(k) for k in ("before", "after", "blocked_gui_fft"))
+    if any(type(v) is not int or v < 0 for v in (before, after, stalled)) or after < before + 2 or stalled < 2:
+        raise fft.ReferenceError("slow save blocked acquisition")
+    outstanding = load.get("outstanding", [])
+    if len(outstanding) != 2 or [r["status"]["state"] for r in outstanding] != ["writing", "queued"]:
+        raise fft.ReferenceError("slow writer/queued operation not observed")
+    for observed, completed in zip(outstanding, receipts, strict=True):
+        trigger.exact(
+            {k: v for k, v in observed.items() if k != "status"},
+            {k: v for k, v in completed.items() if k != "status"},
+            "slow operation identity",
+        )
+
+
+def read_live_inputs(directory, request, generation):
+    """Strict generation/port/interval binding for the bounded raw diagnostic archive."""
+    metadata_path = directory / f"save-input-{generation}.json"
+    raw_path = directory / f"save-input-{generation}.f32"
+    record = audio.core.read_json(metadata_path.read_bytes())
+    interval, windows = record.get("interval"), record.get("windows")
+    if (
+        not isinstance(interval, list)
+        or len(interval) != 2
+        or any(type(v) is not int for v in interval)
+        or interval[0] != 0
+        or type(windows) is not int
+        or not 1 <= windows <= 256
+        or interval[1] != request["n"] * windows
+    ):
+        raise fft.ReferenceError("live save raw interval/capacity")
+    expected = dict(
+        schema_version=1,
+        format={**request["format"], "generation": generation},
+        precision="F32",
+        n=request["n"],
+        interval=interval,
+        windows=windows,
+        byte_count=interval[1] * len(request["format"]["input_ids"]) * 4,
+        max_bytes=8 * 1024 * 1024,
+        max_windows=256,
+    )
+    trigger.exact(record, expected, "live save raw metadata")
+    if expected["byte_count"] > expected["max_bytes"] or raw_path.stat().st_size != expected["byte_count"]:
+        raise fft.ReferenceError("live save raw byte count/capacity")
+    samples = np.frombuffer(raw_path.read_bytes(), dtype="<f4").reshape(interval[1], -1)
+    if not np.all(np.isfinite(samples)):
+        raise fft.ReferenceError("live save raw nonfinite input")
+    return record, samples
+
+
+def live_samples(directory, request, interval):
+    from scripts import migration_qt_live as live
+
+    record, all_samples = read_live_inputs(directory, request, request["format"]["generation"])
+    if (
+        len(interval) != 2
+        or any(type(v) is not int for v in interval)
+        or interval[0] < 0
+        or interval[1] - interval[0] != request["n"]
+        or interval[1] > record["interval"][1]
+    ):
+        raise fft.ReferenceError("saved interval missing from live raw evidence")
+    samples = all_samples[interval[0] : interval[1]]
+    peaks = np.abs(np.fft.rfft(samples.astype(float), axis=0)) * 2 / request["n"]
+    channels = samples.shape[1]
+    if not np.array_equal(peaks.argmax(axis=0), live.BINS[:channels]) or not np.allclose(
+        peaks[live.BINS[:channels], np.arange(channels)], np.arange(1, channels + 1) / 512, rtol=0, atol=1e-6
+    ):
+        raise fft.ReferenceError("saved live tone/port mismatch")
+    return samples
+
+
+def validate_live_inputs(directory, request, *, count):
+    paths = sorted(directory.glob("save-input-*.json"))
+    live_paths = sorted(directory.glob("live-*.json"))
+    if len(paths) != count or len(live_paths) != count or len(list(directory.glob("save-input-*.f32"))) != count:
+        raise fft.ReferenceError("missing live save raw generations")
+    observed = []
+    for path in live_paths:
+        metrics = audio.core.read_json(path.read_bytes())
+        generation = metrics["generation"]
+        record, _ = read_live_inputs(directory, request, generation)
+        if record["windows"] != metrics["fft_evaluations"] or record["interval"][1] > metrics["captured_frames"]:
+            raise fft.ReferenceError("live save raw/graph coverage mismatch")
+        observed.append(
+            dict(
+                metadata=record,
+                metadata_sha256=sha256(directory / f"save-input-{generation}.json"),
+                input_sha256=sha256(directory / f"save-input-{generation}.f32"),
+            )
+        )
+    return observed
+
+
 def validate_partial_pair(receipt, directory, codec):
     """A pair failure must preserve the pre-existing sidecar and reject restoration."""
     if receipt["status"].get("kind") != "AlreadyExists":
@@ -248,14 +359,25 @@ def main():
     parser.add_argument("--target-dir", type=Path, default=ROOT / "native/target/debug")
     parser.add_argument("--language", choices=LANGUAGES, action="append")
     parser.add_argument("--all-inputs", action="store_true")
+    parser.add_argument(
+        "--virtual-device", action="store_true", help="explicit opt-in to BlackHole input/output on macOS"
+    )
+    parser.add_argument(
+        "--load-test", action="store_true", help="inject 250 ms writer latency; check busy/cancel and acquisition"
+    )
+    parser.add_argument("--repeat", type=int, default=1)
     parser.add_argument("--timeout", type=float, default=30)
     parser.add_argument("--portable", action="store_true")
     parser.add_argument(
         "--product-format", action="store_true", help="exercise native product JSON/CSV and sidecar failure"
     )
     args = parser.parse_args()
-    if args.output.exists() or not np.isfinite(args.timeout) or args.timeout <= 0:
-        parser.error("new output directory and positive timeout required")
+    if args.output.exists() or args.repeat < 1 or not np.isfinite(args.timeout) or args.timeout <= 0:
+        parser.error("new output directory and positive repeat/timeout required")
+    if args.virtual_device and sys.platform != "darwin":
+        parser.error("BlackHole requires macOS")
+    if args.load_test and not args.virtual_device:
+        parser.error("--load-test requires explicit --virtual-device")
     env, version = qt_environment(args.qt_prefix)
     binaries = [
         args.target_dir.resolve() / (name + (".exe" if os.name == "nt" else ""))
@@ -267,33 +389,46 @@ def main():
     if args.product_format and not reader.is_file():
         parser.error("build result-candidate for independent full-snapshot validation")
     manifest, manifest_hash = candidate.load_manifest(audio.core.DEFAULT_FIXTURES, portable=args.portable, is_core=True)
+    if args.virtual_device:
+        from scripts import migration_qt_live as live
+
+        cases, runner = live.cases(), live.run_display
+    else:
+        cases, runner = manifest["tones"] if args.all_inputs else manifest["tones"][:1], run_display
+    languages = args.language or (("en",) if args.virtual_device else LANGUAGES)
     args.output.mkdir(parents=True)
     started = time.monotonic()
     runs = []
-    for language in args.language or LANGUAGES:
-        for case in manifest["tones"] if args.all_inputs else manifest["tones"][:1]:
-            for binary in binaries:
-                run = run_display(
-                    binary,
-                    env,
-                    args.output / f"{language}-{case['spec']['id']}-{binary.stem}",
-                    case,
-                    args.timeout,
-                    language=language,
-                    calibration=True,
-                    saving=True,
-                    product_saving=args.product_format,
-                )
-                runs.append(run)
-                print(
-                    f"{binary.name} {language} {case['spec']['id']}: {'PASS' if run['passed'] else 'FAIL'} {run['reason'] or ''}",
-                    flush=True,
-                )
-                if not run["passed"]:
+    for repeat in range(args.repeat):
+        for language in languages:
+            for case in cases:
+                name = case["id"] if args.virtual_device else case["spec"]["id"]
+                for binary in binaries:
+                    options = {"save_load": args.load_test} if args.virtual_device else {}
+                    run = runner(
+                        binary,
+                        env,
+                        args.output / f"{repeat}-{language}-{name}-{binary.stem}",
+                        case,
+                        args.timeout,
+                        language=language,
+                        calibration=True,
+                        saving=True,
+                        product_saving=args.product_format,
+                        **options,
+                    )
+                    runs.append(run)
                     print(
-                        "\n".join(line for line in run["output"].splitlines() if "DISPLAY_SAVE {" not in line)[-5000:],
+                        f"{binary.name} {language} {name}: {'PASS' if run['passed'] else 'FAIL'} {run['reason'] or ''}",
                         flush=True,
                     )
+                    if not run["passed"]:
+                        print(
+                            "\n".join(line for line in run["output"].splitlines() if "DISPLAY_SAVE {" not in line)[
+                                -5000:
+                            ],
+                            flush=True,
+                        )
     paths = [
         p
         for p in (ROOT / "native").rglob("*")
@@ -311,6 +446,8 @@ def main():
                 "qt_trigger",
                 "qt_probe",
                 "qt_workspace",
+                "qt_live",
+                "audio_virtual",
                 "trigger_candidate",
                 "audio_graph",
                 "fft_candidate",
@@ -334,8 +471,23 @@ def main():
             "duration_seconds": time.monotonic() - started,
             "qt_version": version,
             "mode": "portable" if args.portable else "pinned-reference",
-            "measurement_kind": "saved_input_correctness_only",
-            "host": {"os": platform.system(), "release": platform.release(), "machine": platform.machine()},
+            "measurement_kind": "BlackHole_slow_writer_correctness_only"
+            if args.load_test
+            else "BlackHole_correctness_only"
+            if args.virtual_device
+            else "saved_input_correctness_only",
+            "injected_writer_delay_ms": 250 if args.load_test else 0,
+            "host": {
+                "os": platform.system(),
+                "release": platform.release(),
+                "machine": platform.machine(),
+                "macos": platform.mac_ver()[0],
+            },
+            "python_version": platform.python_version(),
+            "versions": {
+                name: metadata.version(name)
+                for name in (("numpy", "sounddevice") if args.virtual_device else ("numpy",))
+            },
             "fixture_manifest_sha256": manifest_hash,
             "source_sha256": {str(p.relative_to(ROOT)): sha256(p) for p in sorted(paths)},
             "runner_sha256": {str(p.relative_to(ROOT)): sha256(p) for p in helpers},
@@ -345,12 +497,13 @@ def main():
                 str(p.relative_to(args.output)): sha256(p) for p in sorted(args.output.rglob("*")) if p.is_file()
             },
             "limitations": [
-                "product codec with carrier/sidecar; import UI and final schema pending"
+                "product codec with carrier/sidecar; final schema pending"
                 if args.product_format
                 else "v1 evaluation codec; product formats tested separately",
                 "CSV pair publication is not transactional",
                 "two-job bound, no process byte budget",
                 "short correctness diagnostic, no load/performance acceptance",
+                "injected writer wait is not measured disk latency; bounded raw archive is diagnostic only",
                 "no other-OS or real window manager acceptance",
             ],
         },

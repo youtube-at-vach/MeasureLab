@@ -44,6 +44,8 @@ pub(super) fn request(precision: Precision, channels: usize, invalid: bool) -> R
         input: Some(path),
         live: None,
         evidence: None,
+        save_input_evidence: false,
+        save_diagnostic_delay_ms: 0,
         calibration: vec![],
     }
 }
@@ -226,5 +228,27 @@ fn unavailable_live_input_fails_and_reclaims_instead_of_replaying() {
     assert_eq!(state.error, "live_exact_device_not_unique");
     #[cfg(not(feature = "live-audio"))]
     assert_eq!(state.error, "display_live_feature_disabled");
+    std::fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn slow_save_diagnostics_require_live_evidence_and_bound_latency() {
+    let mut request = request(Precision::F32, 2, false);
+    let path = request.input.clone().unwrap();
+    request.save_diagnostic_delay_ms = 250;
+    assert!(request.validate().is_err());
+    request.save_input_evidence = true;
+    assert!(request.validate().is_err());
+    request.input = None;
+    request.live = Some(LiveRequest {
+        device: "diagnostic".into(),
+        device_channels: 2,
+    });
+    request.format.clock_domain = "cpal.device:diagnostic".into();
+    assert!(request.validate().is_err());
+    request.evidence = Some(path.with_extension("evidence"));
+    request.validate().unwrap();
+    request.save_diagnostic_delay_ms = 501;
+    assert!(request.validate().is_err());
     std::fs::remove_file(path).unwrap();
 }

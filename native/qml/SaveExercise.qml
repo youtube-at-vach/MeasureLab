@@ -18,6 +18,8 @@ Timer {
     property bool dialogSaved: false
     readonly property bool product: host.argument("--save-format") === "product"
     readonly property int extra: product ? 1 : 0
+    readonly property bool loadTest: host.argument("--save-load-test") === "1"
+    readonly property int loadExtra: loadTest ? 2 : 0
     property bool pairChecked: false
     function check(ok, message) { return host.check(ok, "measurement save: " + message); }
     function path(name) { return host.argument("--save-directory") + "/" + name; }
@@ -32,7 +34,7 @@ Timer {
         if (!check(Date.now() < host.deadline, "timeout phase " + phase))
             return;
         const backend = host.backend;
-        if (!check(backend && backend.state !== 4, "worker failure"))
+        if (!check(backend && backend.state !== 4, "worker failure: " + (backend ? backend.error : "missing backend")))
             return;
         switch (phase) {
         case 0:
@@ -85,7 +87,8 @@ Timer {
                 phase = 14;
                 break;
             }
-            checks.dialog = {labels: dialog.displayedText, size: [dialog.width, dialog.height], labels_fit: dialog.labelsFit()};
+            checks.dialog = {labels: dialog.displayedText, size: [dialog.width, dialog.height],
+                image_size: [dialog.contentItem.width, dialog.contentItem.height], labels_fit: dialog.labelsFit()};
             check(dialog.labelsFit() && dialog.width <= 1180 && dialog.height <= 690, "dialog fits");
             check(dialog.contentItem.grabToImage(result => {
                 check(result.saveToFile(host.argument("--snapshot") + ".save.png"), "dialog image");
@@ -98,9 +101,35 @@ Timer {
             if (!complete(5 + extra) || !dialogSaved)
                 return;
             check(dialog.report.receipts[4 + extra].status.state === "saved", "save recovered");
+            if (loadTest) {
+                checks.load = {before: backend.produced};
+                check(submit("slow.json", 0), "admit slow writer");
+                check(submit("cancelled.csv", 1), "admit queued writer");
+                checks.load.busy = !submit("busy.json", 0);
+                check(checks.load.busy && dialog.report.rejection === "busy", "shared queue busy");
+                backend.poll_saves();
+                checks.load.outstanding = dialog.report.receipts.slice(5 + extra);
+                check(checks.load.outstanding[0].status.state === "writing" && checks.load.outstanding[1].status.state === "queued", "slow writer and queued operation observed");
+                checks.load.cancelled = backend.cancel_save(checks.load.outstanding[1].operation_id);
+                check(checks.load.cancelled, "cancel only queued operation");
+                checks.load.blocked_gui_fft = backend.stall();
+                check(checks.load.blocked_gui_fft >= 2, "graph continues with writer and stalled GUI");
+                phase = 17;
+                break;
+            }
+            phase = 18;
+            break;
+        case 18:
+            checks.before_stall_result = host.latestFrame.result_id;
             checks.blocked_gui_fft = backend.stall();
             check(checks.blocked_gui_fft >= 2, "acquisition advances with blocked GUI");
             dialog.close();
+            // Let Qt consume the coalesced notification before choosing a live interval.
+            phase = 19;
+            break;
+        case 19:
+            if (host.latestFrame.result_id === checks.before_stall_result)
+                return;
             check(triggerPanel.submit(triggerPanel.requestAt(host.latestFrame.interval[0], 1)), "trigger request");
             phase = 6;
             break;
@@ -117,9 +146,9 @@ Timer {
             phase = 7;
             break;
         case 7:
-            if (!complete(7 + extra))
+            if (!complete(7 + extra + loadExtra))
                 return;
-            check(dialog.report.receipts.slice(5 + extra).every(r => r.status.state === "saved"), "actual trigger completion");
+            check(dialog.report.receipts.slice(5 + extra + loadExtra).every(r => r.status.state === "saved"), "actual trigger completion");
             const stale = {generation: generation - 1, result_id: host.frame.result_id, destination: path("stale.json"), format: product ? "product_json" : "json"};
             check(!backend.save_result(JSON.stringify(stale)), "stale pinned identity rejected");
             check(!backend.save_result("{}"), "malformed request rejected");
@@ -131,7 +160,7 @@ Timer {
             phase = 8;
             break;
         case 8:
-            if (!complete(9 + extra) || backend.state !== 0 || backend.workers())
+            if (!complete(9 + extra + loadExtra) || backend.state !== 0 || backend.workers())
                 return;
             check(backend.reclaimed, "acquisition reclaimed independently");
             check(!dialog.submit(), "closed admission rejected");
@@ -195,6 +224,14 @@ Timer {
                 return;
             check(submit("recovery.json", 0), "recovery after I/O failure");
             phase = 5;
+            break;
+        case 17:
+            if (!complete(7 + extra))
+                return;
+            checks.load.after = backend.produced;
+            check(checks.load.after >= checks.load.before + 2, "acquisition advances across slow save");
+            check(dialog.report.receipts[5 + extra].status.state === "saved" && dialog.report.receipts[6 + extra].status.state === "cancelled", "slow save completes and queued cancel creates no file");
+            phase = 18;
             break;
         }
     }

@@ -63,6 +63,7 @@ ch/cursor/zoom、Stop/Recreate/Save imageは保存表示と同じ操作。
 [分離Windowと起動時の9言語](workspace-display.md)も同じ画面へ接続する。
 
 AC01/05/07/13のBlackHole input.raw→両Qt表示まで。物理ADC/DAC・絶対遅延・USB復帰・長時間、
-全tap／製品共通adapter、trigger／校正／製品保存UI、実window manager、10分性能、他OS／配布は残る。
+全tap／製品共通adapter、実window manager、10分性能、他OS／配布は残る。
+Trigger配送/校正編集はそれぞれの手順へ、実入力の保存は[取得中保存診断](live-save.md)へ追加した。
 9言語QMLの分離操作は保存入力で検査する。実入力は英語回帰で、実window manager/他OSの合格には数えない。
 最終実施結果は[進捗](../migration/status.md)、判断境界は[決定0017](../migration/decisions/0017-live-result-display.md)を参照。

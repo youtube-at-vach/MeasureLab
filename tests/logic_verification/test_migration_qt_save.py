@@ -7,9 +7,11 @@ import json
 import subprocess
 import sys
 
+import numpy as np
 import pytest
 
 from scripts import migration_qt_save as save
+from scripts import migration_qt_live as live
 
 
 def ui(language):
@@ -234,3 +236,90 @@ def test_product_trace_without_carrier_is_not_a_complete_result(tmp_path):
     path.write_text('{"version":"1.0","traces":[]}')
     with pytest.raises(save.fft.ReferenceError, match="missing complete snapshot"):
         save.read_document(path, product=True)
+
+
+@pytest.mark.parametrize(
+    "fault", [None, "generation", "ports", "interval", "windows", "capacity", "bytes", "nonfinite", "tone", "outside"]
+)
+def test_live_save_raw_archive_binds_generation_ports_and_saved_interval(tmp_path, fault):
+    case = live.cases()[1]
+    request = live.request_for(case, tmp_path)
+    request["format"]["generation"] = 5
+    samples = np.tile(live.stimulus(case)[:, case["ports"]], (4, 1))
+    raw = tmp_path / "save-input-5.f32"
+    samples.tofile(raw)
+    record = dict(
+        schema_version=1,
+        format=deepcopy(request["format"]),
+        precision="F32",
+        n=live.N,
+        interval=[0, live.N * 4],
+        windows=4,
+        byte_count=samples.nbytes,
+        max_bytes=8 * 1024 * 1024,
+        max_windows=256,
+    )
+    interval = [2 * live.N, 3 * live.N]
+    if fault == "generation":
+        record["format"]["generation"] = 6
+    elif fault == "ports":
+        record["format"]["input_ports"].reverse()
+    elif fault == "interval":
+        record["interval"][0] = 1
+    elif fault == "windows":
+        record["windows"] = 257
+    elif fault == "capacity":
+        record["max_bytes"] *= 2
+    elif fault == "bytes":
+        raw.write_bytes(raw.read_bytes()[:-4])
+    elif fault == "nonfinite":
+        samples[0, 0] = np.nan
+        samples.tofile(raw)
+    elif fault == "tone":
+        np.zeros_like(samples).tofile(raw)
+    elif fault == "outside":
+        interval = [4 * live.N, 5 * live.N]
+    (tmp_path / "save-input-5.json").write_text(json.dumps(record))
+    if fault:
+        with pytest.raises(save.fft.ReferenceError):
+            save.live_samples(tmp_path, request, interval)
+    else:
+        np.testing.assert_array_equal(save.live_samples(tmp_path, request, interval), samples[2 * live.N : 3 * live.N])
+
+
+@pytest.mark.parametrize("fault", [None, "delay", "busy", "cancel", "blocked", "no_progress", "writing", "identity"])
+def test_slow_save_requires_observed_writer_queue_and_independent_graph_progress(fault):
+    receipts = [dict(operation_id=i, result_id="1:3", status={"state": s}) for i, s in ((6, "saved"), (7, "cancelled"))]
+    outstanding = deepcopy(receipts)
+    outstanding[0]["status"]["state"] = "writing"
+    outstanding[1]["status"]["state"] = "queued"
+    record = {"load": dict(before=5, after=20, blocked_gui_fft=15, busy=True, cancelled=True, outstanding=outstanding)}
+    request = {"save_diagnostic_delay_ms": 250}
+    if fault == "delay":
+        request["save_diagnostic_delay_ms"] = 0
+    elif fault in ("busy", "cancel"):
+        record["load"]["busy" if fault == "busy" else "cancelled"] = False
+    elif fault == "blocked":
+        record["load"]["blocked_gui_fft"] = 0
+    elif fault == "no_progress":
+        record["load"]["after"] = 5
+    elif fault == "writing":
+        outstanding[0]["status"]["state"] = "saved"
+    elif fault == "identity":
+        outstanding[1]["operation_id"] = 8
+    if fault:
+        with pytest.raises(save.fft.ReferenceError):
+            save.validate_load(record, receipts, request)
+    else:
+        save.validate_load(record, receipts, request)
+
+
+def test_slow_save_requires_device_opt_in_before_output_creation(tmp_path):
+    result = subprocess.run(  # noqa: S603 - explicit repository diagnostic script
+        [sys.executable, save.__file__, "--qt-prefix", str(tmp_path), "--output", str(tmp_path / "run"), "--load-test"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 2 and "explicit --virtual-device" in result.stderr
+    assert not (tmp_path / "run").exists()

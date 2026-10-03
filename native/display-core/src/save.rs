@@ -53,7 +53,7 @@ struct Submission {
     format: String,
 }
 impl Controller {
-    fn submit(&mut self, encoded: &str) -> Result<(), String> {
+    fn submit(&mut self, encoded: &str, delay_ms: u64) -> Result<(), String> {
         if self.closed {
             return Err("closed".into());
         }
@@ -81,7 +81,12 @@ impl Controller {
                     (n < MAX_SESSIONS).then_some(n + 1)
                 })
                 .map_err(|_| "busy")?;
-            match SaveWorker::with_writer(2, SaveFormat::write) {
+            match SaveWorker::with_writer(2, move |result, path, format| {
+                if delay_ms != 0 {
+                    thread::sleep(Duration::from_millis(delay_ms));
+                }
+                SaveFormat::write(result, path, format)
+            }) {
                 Ok(worker) => self.worker = Some(worker),
                 Err(error) => {
                     SESSIONS.fetch_sub(1, Ordering::SeqCst);
@@ -136,7 +141,15 @@ impl Display {
     }
     /// true is admission, not completion. An accepted job owns the pinned Arc.
     pub fn save_result(&mut self, encoded: &str) -> bool {
-        match self.saves.submit(encoded) {
+        let delay = self
+            .request
+            .as_ref()
+            .map_or(0, |r| r.save_diagnostic_delay_ms);
+        if delay != 0 && self.request.as_ref().is_some_and(|r| r.validate().is_err()) {
+            self.saves.rejection = Some("invalid_request".into());
+            return false;
+        }
+        match self.saves.submit(encoded, delay) {
             Ok(()) => {
                 self.saves.rejection = None;
                 true

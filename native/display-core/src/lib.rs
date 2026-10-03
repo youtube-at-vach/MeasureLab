@@ -54,6 +54,12 @@ pub struct Request {
     pub live: Option<LiveRequest>,
     /// Optional directory for each generation's first-result evidence.
     pub evidence: Option<PathBuf>,
+    /// Bounded raw-window evidence for the opt-in live save correctness exercise.
+    #[serde(default)]
+    pub save_input_evidence: bool,
+    /// Injected writer latency, not a measured disk or performance result.
+    #[serde(default)]
+    pub save_diagnostic_delay_ms: u64,
     #[serde(default)]
     pub calibration: Vec<ChannelCalibration>,
 }
@@ -62,6 +68,12 @@ impl Request {
         let channels = self.format.input_ids.len();
         if !(3..=4096).contains(&self.n) || channels == 0 || channels > 16 {
             return Err("display_input_capacity".into());
+        }
+        if self.save_diagnostic_delay_ms > 500
+            || (self.save_input_evidence && (self.live.is_none() || self.evidence.is_none()))
+            || (self.save_diagnostic_delay_ms != 0 && !self.save_input_evidence)
+        {
+            return Err("display_save_diagnostic_configuration".into());
         }
         match (&self.input, &self.live) {
             (Some(_), None) => self.format.validate(channels, 0).map_err(String::from),

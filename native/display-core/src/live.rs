@@ -31,6 +31,7 @@ pub(super) fn run(
     let mut evidence_written = false;
     let mut pending_windows = Vec::new();
     let mut captured_frames = 0;
+    let mut save_inputs = SaveInputs::default();
     let mut last_data = Instant::now();
     let result = (|| {
         if owner.stop.load(Ordering::Acquire)
@@ -61,6 +62,9 @@ pub(super) fn run(
                 return Err("live_input_timeout".into());
             }
             if let Some(frame) = shared_frame(&subscriptions, request)? {
+                if request.save_input_evidence {
+                    save_inputs.push(&acquisition, &frame)?;
+                }
                 if !evidence_written {
                     if request.evidence.is_some() {
                         defer_window(&mut pending_windows, &acquisition, &frame, None)?;
@@ -96,12 +100,18 @@ pub(super) fn run(
     // CSV serialization can exceed the live queue's time budget. Defer only this
     // diagnostic exchange until no callback/graph remains; do not enlarge the queue.
     let exchange = calibration::finish_live_evidence(request);
+    // Raw diagnostic windows never perform I/O while the stream is active.
+    let save_evidence = if request.save_input_evidence {
+        save_inputs.write(request)
+    } else {
+        Ok(())
+    };
     // Capture counters only after the callback/stream owner has been released.
     let metrics = json!({ "schema_version": 1, "generation": request.format.generation,
         "device": live.device, "format": request.format, "input": input.report(),
         "captured_frames": captured_frames, "fft_evaluations": evaluations, "queue": queue,
         "stop_ms": stopped.as_ref().ok(), "reclaimed": reclaimed.is_ok(),
-        "error": result.as_ref().err().or(stopped.as_ref().err()).or(reclaimed.as_ref().err()).or(triggers.as_ref().err()).or(windows.as_ref().err()).or(exchange.as_ref().err()) });
+        "error": result.as_ref().err().or(stopped.as_ref().err()).or(reclaimed.as_ref().err()).or(triggers.as_ref().err()).or(windows.as_ref().err()).or(exchange.as_ref().err()).or(save_evidence.as_ref().err()) });
     if let Some(path) = &request.evidence {
         save_new(
             &path.join(format!("live-{}.json", request.format.generation)),
@@ -113,7 +123,62 @@ pub(super) fn run(
     reclaimed?;
     triggers?;
     windows?;
-    exchange
+    exchange?;
+    save_evidence
+}
+
+const SAVE_INPUT_MAX_BYTES: usize = 8 * 1024 * 1024;
+const SAVE_INPUT_MAX_WINDOWS: usize = 256;
+#[derive(Default)]
+struct SaveInputs {
+    bytes: Vec<u8>,
+    end: u64,
+    windows: usize,
+}
+impl SaveInputs {
+    fn push(&mut self, acquisition: &Acquisition<f32>, frame: &Frame) -> Result<(), String> {
+        let [start, end] = frame.result.interval();
+        if start != self.end || end <= start {
+            return Err("live_save_evidence_interval".into());
+        }
+        let read = acquisition
+            .history()
+            .ok_or("live_history_missing")?
+            .read_interval(
+                i64::try_from(start).map_err(|_| "live_result_interval")?,
+                i64::try_from(end).map_err(|_| "live_result_interval")?,
+            )?;
+        let block = read.snapshot.ok_or("live_save_evidence_history_missing")?;
+        let Samples::F32(values) = block.samples() else {
+            return Err("live_evidence_precision".into());
+        };
+        if self.windows == SAVE_INPUT_MAX_WINDOWS
+            || values.len() * 4 > SAVE_INPUT_MAX_BYTES - self.bytes.len()
+        {
+            return Err("live_save_evidence_capacity".into());
+        }
+        self.bytes
+            .extend(values.iter().flat_map(|v| v.to_le_bytes()));
+        self.end = end;
+        self.windows += 1;
+        Ok(())
+    }
+    fn write(self, request: &Request) -> Result<(), String> {
+        let directory = request
+            .evidence
+            .as_ref()
+            .ok_or("live_save_evidence_directory")?;
+        let stem = directory.join(format!("save-input-{}", request.format.generation));
+        let metadata = json!({"schema_version": 1, "format": request.format,
+            "precision": "F32", "n": request.n, "interval": [0, self.end],
+            "windows": self.windows, "byte_count": self.bytes.len(),
+            "max_bytes": SAVE_INPUT_MAX_BYTES, "max_windows": SAVE_INPUT_MAX_WINDOWS});
+        save_new(&stem.with_extension("f32"), self.bytes)?;
+        save_new(
+            &stem.with_extension("json"),
+            serde_json::to_vec_pretty(&metadata).map_err(|e| e.to_string())?,
+        )
+    }
 }
 fn save_new(path: &std::path::Path, bytes: Vec<u8>) -> Result<(), String> {
     use std::io::Write;
@@ -186,6 +251,95 @@ fn save_window(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn save_raw_archive_keeps_all_intervals_and_refuses_capacity_without_truncation() {
+        let mut request = crate::tests::request(Precision::F32, 4, false);
+        let input = request.input.take().unwrap();
+        let bytes = std::fs::read(&input).unwrap();
+        let values: Vec<_> = bytes
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|v| f32::from_le_bytes(*v))
+            .collect();
+        let (mut tx, rx) = frame_queue(2048, 4, 48000.).unwrap();
+        let mut acquisition = Acquisition::new(
+            rx,
+            request.format.clone(),
+            FftSpec {
+                n: request.n,
+                hop: request.n,
+                alignment: 0,
+                window: request.window,
+            },
+            CaptureLimits {
+                history: HistoryLimits::frames(request.n * 8),
+                frames_per_poll: 1024,
+                windows_per_poll: 1,
+            },
+        )
+        .unwrap();
+        let subscription = acquisition
+            .subscribe(
+                Average::None,
+                Presentation {
+                    color: "cyan".into(),
+                    unit: "FS_peak".into(),
+                },
+            )
+            .unwrap();
+        let mut inputs = SaveInputs::default();
+        for _ in 0..SAVE_INPUT_MAX_WINDOWS {
+            tx.write(&values, None, 0).unwrap();
+            acquisition.poll().unwrap();
+            let frame = project(subscription.take_latest().unwrap().raw()).unwrap();
+            inputs.push(&acquisition, &frame).unwrap();
+            assert_eq!(
+                inputs.push(&acquisition, &frame).unwrap_err(),
+                "live_save_evidence_interval"
+            );
+        }
+        let expected = bytes.repeat(SAVE_INPUT_MAX_WINDOWS);
+        assert_eq!(inputs.bytes, expected);
+        tx.write(&values, None, 0).unwrap();
+        acquisition.poll().unwrap();
+        let frame = project(subscription.take_latest().unwrap().raw()).unwrap();
+        assert_eq!(
+            inputs.push(&acquisition, &frame).unwrap_err(),
+            "live_save_evidence_capacity"
+        );
+        assert_eq!(inputs.bytes, expected);
+        let mut byte_limit = SaveInputs {
+            bytes: vec![0; SAVE_INPUT_MAX_BYTES],
+            end: inputs.end,
+            windows: 0,
+        };
+        assert_eq!(
+            byte_limit.push(&acquisition, &frame).unwrap_err(),
+            "live_save_evidence_capacity"
+        );
+        drop(subscription);
+        reclaim(&mut acquisition).unwrap();
+        drop(acquisition);
+        let directory = input.with_extension("save-raw");
+        std::fs::create_dir(&directory).unwrap();
+        request.evidence = Some(directory.clone());
+        inputs.write(&request).unwrap();
+        assert_eq!(
+            std::fs::read(directory.join("save-input-1.f32")).unwrap(),
+            expected
+        );
+        let metadata: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(directory.join("save-input-1.json")).unwrap())
+                .unwrap();
+        assert_eq!(
+            metadata["interval"],
+            json!([0, request.n * SAVE_INPUT_MAX_WINDOWS])
+        );
+        assert_eq!(metadata["windows"], SAVE_INPUT_MAX_WINDOWS);
+        std::fs::remove_file(input).unwrap();
+        std::fs::remove_dir_all(directory).unwrap();
+    }
     #[test]
     fn deferred_windows_keep_bytes_profiles_and_capacity_after_graph_shutdown() {
         let mut request = crate::tests::request(Precision::F32, 4, false);
