@@ -14,6 +14,7 @@ MIG-006-Aの`dsp-core`はGUI非依存のFFT/窓/単位/PSD候補。[FFT比較手
 保存f64の取得queue/専用履歴/共有FFTへの接続は[filter取得統合](filter-acquisition.md)を参照。
 005-Aの`audio-core`はN-channel/route/tap/取得queue、`audio-probe`はCPAL基本adapter。
 [音声境界・実機診断](audio-boundary.md)を参照。005の[取得worker](acquisition-candidate.md)でinput.raw queue/履歴/共有FFTを接続。
+[共通入力境界](backend-input.md)でCPAL callbackとPortAudio評価workerを同じtyped queue/取得graphへ接続した。
 動的出力routeのcallback配送は[検査手順](dynamic-route.md)を参照。
 全tap、製品共通adapter・汎用永続schedulerは未実装。
 007-Aの[保存入力の実result表示](display-candidate.md)では、独立解析threadと両Qt adapterでline/heatmapを検査する。

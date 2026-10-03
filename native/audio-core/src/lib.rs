@@ -7,6 +7,7 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering::SeqCst};
 
+pub mod backend;
 pub mod dynamic_route;
 
 pub const MAX_CHANNELS: usize = 16;

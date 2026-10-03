@@ -33,7 +33,7 @@ hard-linkによるno-clobber公開を行う。例外、短いwrite、flush失敗
 2view＋保存sessionの同じraw result、評価1回、view解除後のsession、最後の解除/shutdown回収を確認する。
 profile/世代変更後の不変性、無効窓、nonfinite/zero/未校正、trigger分数位置/clock写像のunknown、
 重複JSON key、壊れた版/shape/precision/単位/null/reason、保存失敗はRust/Pythonで検査する。
-最終の件数・report・環境は[進捗](../status.md#mig-006-eの成果と検証)を正本とする。
+最終の件数・report・環境は[進捗](../status-history-2026-10-03.md#mig-006-eの成果と検証)を正本とする。
 
 再実行は[候補手順](../../native/result-candidate.md)。実取得/Qt/永続scheduler、製品save session、
 校正map/実device、legacy importer、steady-state/長時間/他OSは未確認。

@@ -48,7 +48,7 @@ PortAudio側に`change_device_parameters=True`と`fail_if_conversion_required=Tr
 
 失敗runとraw bytesは`.migration-local/2026-09-30-005-virtual-development/`へ保持する。
 96 kHzの準備記録は`.migration-local/2026-09-30-005-virtual-rate-setup.json`。
-最終run・検証結果は[statusの仮想device欄](../status.md#mig-005仮想デバイスの成果と検証)を参照。
+最終run・検証結果は[statusの仮想device欄](../status-history-2026-10-03.md#mig-005仮想デバイスの成果と検証)を参照。
 XRUNやqueue gapを埋めて合格にせず、準備中cancel・二重stop・再オープンと数値一致を別に検査する。
 
 ## 残る範囲

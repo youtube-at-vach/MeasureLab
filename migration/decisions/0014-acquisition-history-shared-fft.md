@@ -51,7 +51,7 @@ CPAL診断の入力consumerもこのworkerへ置き換える。
 [BlackHole runner](../../scripts/migration_audio_virtual.py)は元のPortAudio比較に加えて、
 完成窓数＝数値窓数＝FFT評価数、2購読の同じallocation、unknown原点、停止後の回収を検査する。
 Preparing中cancelもgraph/queue/履歴の停止まで通す。callback内の処理は変更しない。
-最終件数とreportは[進捗](../status.md#mig-005取得graph接続の成果と検証)を参照。
+最終件数とreportは[進捗](../status-history-2026-10-03.md#mig-005取得graph接続の成果と検証)を参照。
 
 動的出力routeの配送、全tap、製品PortAudio共通adapter、独立した永続thread scheduler、
 Qt表示、校正/保存sessionの実取得統合、clock写像、長時間、USB復帰・排他、他OSは未確認。

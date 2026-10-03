@@ -1,6 +1,7 @@
 //! Input-only CPAL owner for the display evaluation. Construct/start/stop on the
 //! analysis thread; callbacks only write the bounded queue and atomic counters.
-use audio_core::{Consumer, IoFormat, MAX_CHANNELS, frame_queue};
+use audio_core::backend::{Backend, InputBinding, SampleFormat};
+use audio_core::{Consumer, IoFormat, MAX_CHANNELS};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use serde_json::{Value, json};
 use std::sync::{
@@ -33,7 +34,15 @@ pub fn validate(name: &str, channels: usize, format: &IoFormat) -> Result<(), St
     {
         return Err("live_input_configuration".into());
     }
-    format.validate(channels, 0).map_err(String::from)
+    InputBinding {
+        backend: Backend::Cpal,
+        device: name.into(),
+        device_channels: channels,
+        sample_format: SampleFormat::F32,
+        format: format.clone(),
+    }
+    .validate()
+    .map_err(String::from)
 }
 impl LiveInput {
     pub fn open(
@@ -64,7 +73,14 @@ impl LiveInput {
         {
             return Err("live_explicit_format_unsupported".into());
         }
-        let (mut tx, rx) = frame_queue(8192, channels, 48000.)?;
+        let binding = InputBinding {
+            backend: Backend::Cpal,
+            device: name.into(),
+            device_channels: channels,
+            sample_format: SampleFormat::F32,
+            format: format.clone(),
+        };
+        let (mut tx, rx) = binding.queue::<f32>(8192)?;
         let counters = Arc::new(Counters::default());
         let capture = counters.clone();
         let errors = counters.clone();
@@ -77,7 +93,7 @@ impl LiveInput {
                 },
                 move |data: &[f32], _: &cpal::InputCallbackInfo| {
                     // Backend timestamps are not a verified clock map. Preserve null.
-                    if tx.write(data, None, 0).is_err() {
+                    if tx.write_next(data, None, 0).is_err() {
                         capture.rejected.fetch_add(1, Relaxed);
                     }
                     capture.callbacks.fetch_add(1, Relaxed);
