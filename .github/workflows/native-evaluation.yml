@@ -1,20 +1,40 @@
 name: Native evaluation
+run-name: Native evaluation (${{ inputs.suite || 'all' }}) on ${{ github.head_ref || github.ref_name }}
 
 on:
-  push:
-    branches: ["codex/next-core-evaluation", "codex/migration-*"]
-    paths: ["native/**", "migration/**", "src/assets/lang/**", "src/core/export/**", "src/core/localization.py", "src/core/utils.py", "scripts/translation_utils.py", "scripts/check_trn_keys.py", "scripts/update_translations.py", "scripts/migration_*.py", "tests/logic_verification/test_migration_*.py", "tests/conftest.py", "pytest.ini", ".gitignore", ".github/workflows/native-evaluation.yml"]
+  # Explicit label requests work before this workflow reaches the default branch.
   pull_request:
     branches: ["main", "codex/next-core-evaluation", "codex/migration-*"]
-    paths: ["native/**", "migration/**", "src/assets/lang/**", "src/core/export/**", "src/core/localization.py", "src/core/utils.py", "scripts/translation_utils.py", "scripts/check_trn_keys.py", "scripts/update_translations.py", "scripts/migration_*.py", "tests/logic_verification/test_migration_*.py", "tests/conftest.py", "pytest.ini", ".gitignore", ".github/workflows/native-evaluation.yml"]
+    types: [labeled]
   workflow_dispatch:
+    inputs:
+      suite:
+        description: Native checks to run (use all at milestones)
+        type: choice
+        required: true
+        default: all
+        options:
+          - all
+          - probe-core
+          - audio-backend
+          - renderer-spike
+          - qt-boundary
 
 permissions:
   contents: read
 
+concurrency:
+  # Unrelated PR labels must not cancel an explicitly requested run.
+  group: native-evaluation-${{ (github.event_name == 'workflow_dispatch' || github.event.label.name == 'run-native-evaluation') && (github.head_ref || github.ref_name) || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   probe-core:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && (inputs.suite == 'all' || inputs.suite == 'probe-core')) ||
+      (github.event_name == 'pull_request' && github.event.label.name == 'run-native-evaluation')
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -61,7 +81,11 @@ jobs:
           ./.venv/bin/python scripts/migration_audio_route.py --portable --report route-candidate.json
 
   audio-backend:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && (inputs.suite == 'all' || inputs.suite == 'audio-backend')) ||
+      (github.event_name == 'pull_request' && github.event.label.name == 'run-native-evaluation')
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -85,7 +109,11 @@ jobs:
           python -m pytest -q tests/logic_verification/test_migration_filter_live.py
 
   renderer-spike:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && (inputs.suite == 'all' || inputs.suite == 'renderer-spike')) ||
+      (github.event_name == 'pull_request' && github.event.label.name == 'run-native-evaluation')
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     env:
       CARGO_BUILD_JOBS: "4"
     steps:
@@ -108,7 +136,11 @@ jobs:
           python -m pytest -q tests/logic_verification/test_migration_plot_renderer.py
 
   qt-boundary:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && (inputs.suite == 'all' || inputs.suite == 'qt-boundary')) ||
+      (github.event_name == 'pull_request' && github.event.label.name == 'run-native-evaluation')
     runs-on: ubuntu-24.04
+    timeout-minutes: 120
     env:
       CARGO_BUILD_JOBS: "4"
     steps:
@@ -149,6 +181,7 @@ jobs:
           cargo build --locked --workspace
           cargo clippy --locked --workspace --all-targets -- -D warnings
       - name: Run shared QML lifecycle checks
+        timeout-minutes: 90
         run: |
           python -m pip install numpy==2.2.6 pytest
           python scripts/check_trn_keys.py --strict
