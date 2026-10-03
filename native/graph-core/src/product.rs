@@ -31,12 +31,6 @@ const TRACE_KEYS: [&str; 13] = [
 ];
 static NEXT_TEMP: AtomicU64 = AtomicU64::new(1);
 
-mod import;
-pub use import::{
-    ImportedProduct, SampleRelation, import_csv, import_csv_pair, import_json, load_csv_with_spec,
-    load_import,
-};
-
 #[derive(Clone, Copy, Debug, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ProductFormat {
@@ -336,7 +330,7 @@ fn parse_json(bytes: &[u8]) -> Result<Value, String> {
     }
     // serde_json without arbitrary_precision promotes out-of-range integer
     // tokens to f64. Reject them before parsing, including nested metadata,
-    // rather than silently rounding a legacy observation or its descriptors.
+    // rather than silently rounding snapshot metadata or its descriptors.
     let (mut i, mut in_string) = (0, false);
     while i < bytes.len() {
         match bytes[i] {
@@ -532,13 +526,12 @@ fn csv_document(bytes: &[u8], opts: &Options, descriptors: Vec<Value>) -> Result
     if bytes.len() > MAX_BYTES {
         return Err("product_file_capacity".into());
     }
-    if !matches!(opts.layout.as_str(), "independent" | "merged")
+    if opts.layout != "independent"
         || !matches!(opts.delimiter.as_str(), "comma" | "tab")
         || descriptors.len() > 1024
     {
         return Err("unsupported_product_csv_spec".into());
     }
-    let independent = opts.layout == "independent";
     let mut traces = Vec::new();
     for mut value in descriptors {
         validate_trace_fields(&value, false)?;
@@ -600,11 +593,10 @@ fn csv_document(bytes: &[u8], opts: &Options, descriptors: Vec<Value>) -> Result
             }
         }
     }
-    let width: usize = usize::from(!independent)
-        + traces
-            .iter()
-            .map(|t| 1 + usize::from(independent) + usize::from(t.y2_axis.is_some()))
-            .sum::<usize>();
+    let width: usize = traces
+        .iter()
+        .map(|t| 2 + usize::from(t.y2_axis.is_some()))
+        .sum();
     if opts.include_headers
         && records
             .next()
@@ -628,14 +620,9 @@ fn csv_document(bytes: &[u8], opts: &Options, descriptors: Vec<Value>) -> Result
                 .filter(|f| f.is_finite())
                 .ok_or("product_csv_numeric")
         };
-        let shared_x = if independent {
-            None
-        } else {
-            Some(numeric(&row[0])?)
-        };
-        let mut offset = usize::from(!independent);
+        let mut offset = 0;
         for (i, t) in traces.iter_mut().enumerate() {
-            let size = 1 + usize::from(independent) + usize::from(t.y2_axis.is_some());
+            let size = 2 + usize::from(t.y2_axis.is_some());
             let cells: Vec<_> = row.iter().skip(offset).take(size).collect();
             offset += size;
             if cells.iter().all(|c| c.is_empty()) {
@@ -649,14 +636,14 @@ fn csv_document(bytes: &[u8], opts: &Options, descriptors: Vec<Value>) -> Result
                 .iter()
                 .map(|c| numeric(c))
                 .collect::<Result<Vec<_>, _>>()?;
-            count += values.len() + usize::from(!independent);
+            count += values.len();
             if count > MAX_VALUES {
                 return Err("product_numeric_capacity".into());
             }
-            t.x_data.push(shared_x.unwrap_or(values[0]));
-            t.y_data.push(values[usize::from(independent)]);
+            t.x_data.push(values[0]);
+            t.y_data.push(values[1]);
             if let Some(y2) = &mut t.y2_data {
-                y2.push(values[1 + usize::from(independent)]);
+                y2.push(values[2]);
             }
         }
     }

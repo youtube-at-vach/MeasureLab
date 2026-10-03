@@ -3,6 +3,8 @@
 [評価計画](../guide/RUST_QML_MIGRATION_PLAN.md)に従い、現行Spectrum Analyzerへの
 Rust FFT／共有result接続を次の対象とする。Python bindingと製品切替は未実装。
 現在地とMIG-008の結果は[進捗](../migration/status.md)を参照する。
+最初のPython境界、plan再利用と数値互換の差、短い計測は
+[実装境界の調査結果](../guide/RUST_QML_MIGRATION_PLAN.md#実装境界の調査結果)にまとめる。
 
 ## buildと検証
 
@@ -42,3 +44,5 @@ Qt SDK、CMake/Ninja、音声backend開発パッケージとPython検証用venv�
 
 Qt/QML・renderer・CPAL/PortAudio試作と評価CLIは削除済み。
 保存codecのunit testは残す。製品とのPython境界・同条件性能・配布保証は未検証。
+旧評価CLI専用のlegacy trace import adapterとmerged CSV読込は除去した。
+snapshotのJSON/独立CSV+sidecar保存と再読込は保持する。

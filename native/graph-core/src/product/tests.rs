@@ -9,6 +9,27 @@ use std::time::Duration;
 const TIMEOUT: Duration = Duration::from_secs(5);
 
 #[test]
+fn json_input_rejects_out_of_range_integer_tokens_without_rounding_metadata() {
+    // Retain the input precision regression from the retired legacy import adapter.
+    for token in [
+        "18446744073709551617",
+        "-9223372036854775809",
+        "100000000000000000000000000000000001",
+    ] {
+        let bytes = format!("{{\"metadata\":{{\"value\":{token}}}}}");
+        assert_eq!(
+            parse_json(bytes.as_bytes()).unwrap_err(),
+            "product_integer_outside_64_bit"
+        );
+    }
+    let value = json!({"metadata": {"text": "\\\"18446744073709551617\"", "value": u64::MAX}});
+    assert_eq!(
+        parse_json(&serde_json::to_vec(&value).unwrap()).unwrap(),
+        value
+    );
+}
+
+#[test]
 fn json_and_csv_preserve_all_values_null_reasons_and_profile_snapshot() {
     let result = snapshot(2.0);
     let doc = projection(&result).unwrap();
