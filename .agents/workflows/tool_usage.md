@@ -1,10 +1,44 @@
 ---
-description: Rust 移行準備中のサイト・文書ツールと検証コマンド
+description: Rust アプリ・サイト・文書の起動と検証コマンド
 ---
 
 # Tool Usage Guide
 
 共通ルールは [AGENTS.md](../../AGENTS.md) を参照する。以下のコマンドはリポジトリのルートで実行する。
+
+## Rust アプリ
+
+Rust 1.95 以降と OS のビルドツールを使う。`scripts/cargo.sh` は PATH 上の Cargo または `.tools/` にあるローカル環境を使う。
+
+```bash
+./scripts/cargo.sh run --release --locked
+./scripts/cargo.sh run --release --locked -- --demo
+```
+
+PR 前の検証:
+
+```bash
+./scripts/cargo.sh fmt --all -- --check
+./scripts/cargo.sh clippy --locked --all-targets --all-features -- -D warnings
+./scripts/cargo.sh test --locked --all-targets --all-features
+./scripts/cargo.sh build --release --locked
+```
+
+GPU が利用できる環境では、読み戻しとテスト信号による画面確認を実行できる。
+
+```bash
+./scripts/cargo.sh run --release --locked -- --gpu-smoke
+./scripts/cargo.sh run --locked --features qa -- --ui-smoke
+```
+
+macOS のローカルアプリバンドル:
+
+```bash
+./scripts/bundle-macos.sh
+open dist/RAS.app
+```
+
+Rust 実装の詳しい操作・計測・前提は [Rust README](../../guide/rust/README.md)、拡張計画は [Rust PLAN](../../guide/rust/PLAN.md) を参照する。
 
 ## ダウンロードサイト
 
@@ -48,7 +82,3 @@ npx markdownlint-cli2 "**/*.md" "#node_modules"
 ```
 
 GitHub Actions の変更時は、利用できる環境で `actionlint` を実行する。
-
-## Rust 実装の取り込み後
-
-Rust 実装と `Cargo.toml` はまだ存在しない。取り込み後に、実際の構成に合わせて起動・ビルド・テストのコマンドを記録する。

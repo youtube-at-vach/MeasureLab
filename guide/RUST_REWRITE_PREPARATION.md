@@ -33,6 +33,6 @@ Python remains a tool for the retained manuals and release-note extraction. The 
 
 ## Next stage
 
-The separate Rust implementation currently lives in `/Users/vach/RAS` on the preparation machine. It has not been imported by this commit. Its `src/`, Cargo files, scripts, and application workflows can now be brought into the cleared application paths.
+The `Begin Rust rewrite` commit did not import Rust source. The subsequent import brings in `/Users/vach/RAS` at commit `f29be2b08977700116f9119ea6ac08699b5ca1f4`, placing `src/`, Cargo files, benchmarks, scripts, and Rust CI in the cleared application paths. The original README, plan, and reference image are retained in `guide/rust/`. At the project owner's request, the Rust edition continues MeasureLab's **The Unlicense**, recorded in `Cargo.toml` and `LICENSE`. The application code, Cargo package, and `ras` executable keep their original names and behavior.
 
-When importing, review overlaps with the retained README, license information, ignore rules, and `.github/` files. Keep the original project's history and published website/manual paths. Replacing `main`, publishing releases, and importing Rust source are separate steps.
+Rust development uses topic branches and pull requests targeting `rewrite/rust`. The download website, Python manual, and `version.json` stay at their published state. Replacing `main` and publishing releases are separate steps.

@@ -12,6 +12,8 @@
   },
   "ignores": [
     ".legacy-python/", // Local backup, excluded from the Rust rewrite
+    ".tools/", // Local Rust toolchain and dependency cache
+    "target/", // Rust build output
     "site/",
     ".git/",
     "node_modules/",

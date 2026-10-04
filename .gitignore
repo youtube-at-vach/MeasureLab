@@ -3,6 +3,7 @@
 
 # Rust build output
 target/
+/.tools
 
 # Download site dependencies and output
 node_modules/
