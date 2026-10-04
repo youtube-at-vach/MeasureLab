@@ -1,72 +1,43 @@
 ---
-description: MeasureLab の共通ルールと作業別スキルの入口
+description: MeasureLab の Rust 移行準備中の共通ルール
 ---
 
 # Agent Guide
 
-コマンドはリポジトリのルートで実行する。まず `git status --short --branch` と対象コードを確認し、ユーザーの変更や無関係な変更を上書きしない。
+コマンドはリポジトリのルートで実行する。まず `git status --short --branch` と対象ファイルを確認し、ユーザーの変更や無関係な変更を上書きしない。
 
-## 作業の選び方
+## 現在の状態
 
-依頼に対応するスキルだけを読む。通常のコード修正に Issue 作成・Project 更新を強制しない。複数段階を依頼された場合は続けて進め、依頼にない次の段階へは自動的に進めない。
+* このブランチは Rust 実装の受け入れ準備中。Rust のソースと `Cargo.toml` はまだ取り込んでいない。
+* Python アプリの最終版は `v0.9.1` タグと `archive/python-v0.9.1` ブランチを参照する。
+* `.legacy-python/` はローカル専用の退避先で、Git 管理・通常の検索・検証の対象外。ここから旧実装やテスト環境を自動的に復元しない。
+* `docs/` は Python 最終版の公開マニュアル。Rust 版で未実装の機能を実装済みと説明しない。
+* Rust ソースの取り込み、main へのマージ、タグ作成、公開は依頼された段階だけ進める。
 
-| 依頼 | スキル | 完了時の成果 |
-| --- | --- | --- |
-| 提案から次の候補を選ぶ | [agent-proposal-backlog-issue](.agents/skills/agent-proposal-backlog-issue/SKILL.md) | 候補、登録依頼があれば Backlog Issue |
-| 小さな修正を Issue にする | [agent-simple-ready-issue](.agents/skills/agent-simple-ready-issue/SKILL.md) | Ready Issue |
-| Ready Issue の実装計画を作る | [agent-ready-task-planner](.agents/skills/agent-ready-task-planner/SKILL.md) | 計画コメントと Working、または理由と Blocked |
-| Working Issue を実装する | [agent-working-task-implement](.agents/skills/agent-working-task-implement/SKILL.md) | 検証済み PR と Review |
-| 翻訳を調査・修正する | [multilingual-translator](.agents/skills/multilingual-translator/SKILL.md) | 検査結果、必要な翻訳修正 |
-| リリースを準備する | [release-manager](.agents/skills/release-manager/SKILL.md) | バージョン・文書の更新と準備 PR |
-| PR 前の検証を行う | [ci-prechecker](.agents/skills/ci-prechecker/SKILL.md) | 検証結果と必要な修正 |
+## 残している構成
 
-## 必要な資料
-
-全資料の一括読み込みを避け、対象に関係する節を読む。既読内容は変更や不足がなければ再取得しない。
-
-| 判断・操作 | 参照先 |
+| 対象 | 用途 |
 | --- | --- |
-| 環境、起動、検証コマンド | [Tool Usage Guide](.agents/workflows/tool_usage.md) |
-| Issue・Project の確認と更新 | [GitHub 共通手順](.agents/workflows/github_project.md) |
-| 製品の方向性 | [Current Direction](guide/CURRENT_DIRECTION.md)の最新部分 |
-| 測定・GUI の設計 | [設計ガイドライン](guide/MEASUREMENT_INSTRUMENT_DESIGN_GUIDELINES.md)の判断優先順位・実装要件の境界と対象の節 |
-| UI の認知負荷と操作性 | [UI/UX 原則](guide/UIUX-Cognitive-Principles.md) |
-| 開発環境・貢献方法の詳細 | [開発ガイド](docs/development.en.md)、[Contributing](CONTRIBUTING.md) |
+| `download-site/`、`version.json` | Python 最終リリースのダウンロード案内 |
+| `docs/`、`mkdocs.yml`、`requirements-docs.txt` | 公開マニュアル・PDF の生成 |
+| `guide/`、`tech_docs/`、`.github/deepwiki/` | 製品・測定設計と旧版の参考資料 |
+| `misc/extract_changelog.py`、`CHANGELOG.md` | リリースノートの抽出と開発履歴 |
+| `.github/` | サイト・マニュアルの検証と公開、Issue、資金援助、レビュー、セキュリティ |
 
 ## 実装と検証
 
-* Python は3.12以降。Python・Pytest・Ruff・Mypy は `.venv/bin/` の実行ファイルを使う。
-* GUI 表示文字列は `tr()` で管理する。翻訳の基準は `src/assets/lang/en.json`、各言語は同じディレクトリの JSON。
-* 検証は変更した挙動と回帰リスクに合わせる。作業終了時は毎回 `./.venv/bin/ruff check .` と `./.venv/bin/ruff format --check .` を実行する。
-* 自動修正・整形は必要なファイルだけに限定する。全体フォーマットは専用 PR に分ける。
+* 検証は変更した挙動と回帰リスクに合わせる。コマンドは [Tool Usage Guide](.agents/workflows/tool_usage.md) を参照する。
+* 残る Python は文書・リリースノート用のツールのみ。Python 3.12 以降と `.venv/bin/` の実行ファイルを使い、旧アプリの依存関係・Pytest・Mypy・GUI 検証環境は導入しない。
+* 作業終了時は `./.venv/bin/ruff check .` と `./.venv/bin/ruff format --check .` を実行する。環境がない場合はその結果を明記する。
 * Markdown は見出し・コードブロック前後に空行を置き、行末空白を除く。リストマーカーと番号順を統一し、裸の URL は山括弧で囲む。変更後は Markdown lint を実行する。
+* 自動修正・整形は必要なファイルだけに限定する。
+* サイト変更時はサイトのテストとビルド、公開マニュアルやその生成設定の変更時は MkDocs ビルドを実行する。
+* `version.json` はサイトが配布する版を表す。Rust 移行準備だけでは更新しない。
 * 変更点、検証結果、未確認事項を報告する。失敗・未実施を成功扱いしない。
 
-### UIサイズの上限
+## GitHub と Pull Request
 
-Qt の各プラットフォームの既定フォントで、`minimumSizeHint` を次の上限内に収める。幅には Linux・macOS のフォント差と長い翻訳に備えた約80pxのバッファを含む。
-
-| 対象 | 幅 × 高さ |
-| --- | --- |
-| MainWindow | 1400 × 740 px |
-| 各モジュールのコンテンツWidget | 1180 × 690 px |
-
-レイアウト・翻訳の変更時、新規モジュールのリリース前、CI 相当の最終確認では、[全言語 UI サイズ検証](.agents/workflows/tool_usage.md#uiサイズ検証)を実行する。超過時はスクロール、タブ、折りたたみ、最小サイズ・サイズポリシーの見直しで対応する。
-
-## Pull Request
-
-* ブランチ名は指定がなければ `codex/<目的>` とする。
-* PR は Ready for review で作成し、作成後に `isDraft:false` を確認する。ユーザーが明示した場合だけ Draft にする。
-* PR 前は [CI Pre-checker](.agents/skills/ci-prechecker/SKILL.md)を実行する。検証に失敗したら原因を調べ、残る問題を明記する。
-
-## コードの入口
-
-| ファイル | 役割 |
-| --- | --- |
-| `main_gui.py` | 言語設定、スプラッシュ中の事前ロード、GUI 起動 |
-| `src/gui/main_window.py` | サイドバー、モジュール切替・遅延ロード |
-| `src/core/audio_engine.py` | `sounddevice` による Audio I/O |
-| `src/core/config_manager.py` | `config.json` の管理 |
-| `src/core/localization.py` | `LocalizationManager` と `tr()` |
-
-共通ルールはこのファイル、コマンドは Tool Usage Guide、GitHub 操作は共通手順、作業固有の判断は各スキルで管理する。更新はコード・設定で確認できた事実に基づく。
+* Issue 作成・Project 更新は依頼された場合だけ行う。[GitHub 共通手順](.agents/workflows/github_project.md) を参照する。
+* 新しいブランチ名は指定がなければ `codex/<目的>` とする。
+* PR を依頼された場合は、変更に必要な検証を行い、Ready for review で作成して `isDraft:false` を確認する。ユーザーが明示した場合だけ Draft にする。
+* 移行時の整理方針は [Rust rewrite preparation](guide/RUST_REWRITE_PREPARATION.md) を参照する。

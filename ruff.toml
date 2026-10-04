@@ -1,0 +1,12 @@
+# Python remains only in documentation and release-note tooling.
+line-length = 120
+target-version = "py312"
+extend-exclude = [".legacy-python"]
+
+[lint]
+select = [
+    "E9", "F", "E7", "E4", "W292", "W293", "B",
+    "S110", "S3", "S5", "S6",
+    "PLE", "PLW1510",
+    "RUF006", "RUF008", "RUF009", "RUF012", "RUF013", "RUF100",
+]

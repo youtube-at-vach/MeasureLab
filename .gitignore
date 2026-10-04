@@ -1,111 +1,29 @@
-# Byte-compiled / optimized / DLL files
-*/__pycache__/
+# Local backup of the final Python implementation
+/.legacy-python/
+
+# Rust build output
+target/
+
+# Download site dependencies and output
+node_modules/
+/download-site/dist/
+
+# Documentation tools and generated output
+/.venv/
+/.cache/
+/site/
+__pycache__/
 *.py[cod]
-*$py.class
-
-# Cython build artifacts
-*.c
-*.so
-
-# Distribution / packaging
-build/
-dist/
-*.egg-info/
-
-# Virtual environments
-.venv/
-venv/
-ENV/
-env/
-
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints/
-
-# PyInstaller
-*.spec
-!MeasureLab_macOS.spec
-
-# MyPy / Pyright
-.mypy_cache/
-.pyright/
-.pytest_cache/
 .ruff_cache/
-.coverage
+/docs/daily_check.log
+/docs/translation_check.log
 
-# VSCode settings
-#.vscode/
+# Release artifacts and local application configuration
+/dist/
+/config.json
+/calibration.json
 
-# Zed settings
-#.zed/*
-
-# Mac
+# Operating system metadata
 .DS_Store
-
-# Windows
 Thumbs.db
 ehthumbs.db
-
-*.wav
-
-# Ignore test result files
-*.csv
-*.png
-!src/assets/*.png
-!docs/**/*.png
-
-# Local GUI fuzz traces, failure reports, and screenshots
-/artifacts/gui_fuzz/
-
-# Calibration settings
-calibration_settings.ini
-
-# AppImage / Packaging
-AppDir/
-*.AppImage
-libs/
-venv_build/
-!app_icon.png
-
-# Local config
-config.json
-calibration.json
-lockin.json
-Impedance.json
-map_mic.json
-headphone.json
-calibration_pipewire.json
-pip_install.out
-walkthrough.md
-wisdom/pyfftw_wisdom
-
-# Documentation build artifacts
-site/
-
-# Local documentation viewer
-.obsidian/
-
-# Agent Local Rules
-.agent/rules/*
-report.json
-measurement_report.json
-thd.json
-.vscode/settings.json
-hammerstein_kernel_sample*.json
-inverse_hammerstein_model*.json
-
-# Auto-generated check logs
-docs/daily_check.log
-docs/translation_check.log
-
-temp_measured_hammerstein.json
-scripts/variability_results.json
-scripts/sss_hammerstein_verification_results.json
-scripts/sss_repeatability_results.json
-scripts/tsa_study_results.json
-scripts/lock_in_modeler_hammerstein_verification_results.json
-scripts/lock_in_modeler_repeatability_results.json
-scripts/hammerstein_optimization_summary.json
-scripts/adaptive_sweep_verification_results.json
-scripts/counter_model_verification_results.json
-kernel_sample*.json
-scripts/lock_in_modeler_hammerstein_sweep_results.json

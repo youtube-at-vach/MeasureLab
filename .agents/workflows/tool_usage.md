@@ -1,135 +1,54 @@
 ---
-description: MeasureLabの環境構築、起動、開発ツールと検証コマンド
+description: Rust 移行準備中のサイト・文書ツールと検証コマンド
 ---
 
 # Tool Usage Guide
 
-共通ルールと作業別スキルの入口は [AGENTS.md](../../AGENTS.md) を参照してください。
-以下はリポジトリのルートで実行するコマンドです。POSIXシェル（Linux・macOS）向けの表記です。
+共通ルールは [AGENTS.md](../../AGENTS.md) を参照する。以下のコマンドはリポジトリのルートで実行する。
 
-## 環境構築
+## ダウンロードサイト
 
-Python 3.12以降を使用します。仮想環境がない場合は作成し、アプリと開発ツールの依存関係を導入します。
-`requirements.txt` だけではRuff・Mypyなどが揃わないため、`dev` extrasもインストールします。
+Node.js と npm を使う。
+
+```bash
+npm --prefix download-site ci
+npm --prefix download-site test
+npm --prefix download-site run build
+```
+
+## マニュアル生成環境
+
+Python 3.12 以降を使う。これは公開マニュアル用の環境で、旧 Python アプリの依存関係やテスト環境は含めない。
 
 ```bash
 python3 -m venv .venv
-./.venv/bin/python -m pip install -U pip
-./.venv/bin/python -m pip install -r requirements.txt
-./.venv/bin/python -m pip install -c constraints.txt -e '.[dev]'
+./.venv/bin/python -m pip install -r requirements-docs.txt ruff
+./.venv/bin/mkdocs build
 ```
 
-以後はシステムの同名コマンドではなく、次の実行ファイルを使います。
-
-| ツール | 実行ファイル |
-| --- | --- |
-| Python | `./.venv/bin/python` |
-| Pytest | `./.venv/bin/pytest` |
-| Ruff | `./.venv/bin/ruff` |
-| Mypy | `./.venv/bin/mypy` |
-
-Markdown lintにはNode.jsとnpmが必要です。OSの依存ライブラリなどは
-[開発ガイド](../../docs/development.en.md)を参照してください。
-`PyWavelets` のPythonでのimport名は `pywt` です。
-
-## 起動とデバッグ
+PDF 生成は必要な場合だけ実行する。WeasyPrint のシステム依存関係は `.github/workflows/pdf_draft.yml` を参照する。
 
 ```bash
-./.venv/bin/python main_gui.py
+ENABLE_PDF_EXPORT=1 ./.venv/bin/mkdocs build
 ```
 
-* Linuxのオーディオ環境では、必要に応じてJACK / PipeWireと `ConfigManager` の `pipewire_jack_resident` 設定を確認します。
-* `MEASURELAB_DEBUG_WINDOWS=1` でウィンドウ挙動のログを出力します。
-* `MEASURELAB_DEBUG_WINDOWS_TRACE=1` でウィンドウ出現時のスタックトレースを出力します。
+## 検証
 
-## 開発中の検証
-
-作業終了時には、変更の種類にかかわらず両方を実行します。
+残る Python の文書・リリースノート用ツールを検証する。
 
 ```bash
 ./.venv/bin/ruff check .
 ./.venv/bin/ruff format --check .
 ```
 
-失敗した場合は今回の変更が原因か確認します。整形が必要なら変更したファイルだけを
-`./.venv/bin/ruff format <変更したファイル>` で整形し、全体フォーマットは専用PRに分けます。
-
-型チェック:
-
-```bash
-./.venv/bin/mypy src main_gui.py
-```
-
-Markdown変更時:
+Markdown 変更時は次を実行する。ローカル退避先は設定ファイルで除外している。
 
 ```bash
 npx markdownlint-cli2 "**/*.md" "#node_modules"
 ```
 
-### 翻訳キー
+GitHub Actions の変更時は、利用できる環境で `actionlint` を実行する。
 
-CIと同じ厳格な検査を使います。重複キーなど終了コードに反映されない警告も確認してください。
+## Rust 実装の取り込み後
 
-```bash
-./.venv/bin/python scripts/check_trn_keys.py --strict
-```
-
-修正方法は [翻訳スキル](../skills/multilingual-translator/SKILL.md)を参照してください。
-
-### テスト
-
-最小スモークテスト:
-
-```bash
-./.venv/bin/python -m pytest -q tests/logic_verification/core/test_config_manager.py tests/logic_verification/core/test_utils.py
-```
-
-メインウィンドウ周辺のテスト:
-
-```bash
-./.venv/bin/python -m pytest -q tests/logic_verification/gui/test_main_window_activity.py
-```
-
-全体テスト:
-
-```bash
-./.venv/bin/pytest -q
-```
-
-ハードウェアテストは通常スキップされます。対応機器を使用して明示的に検証する場合だけ
-`--hardware` を指定してください。このオプションではハードウェア以外のテストがスキップされるため、全体テストの代わりにはなりません。
-
-### UIサイズ検証
-
-レイアウト・翻訳の変更時、新規モジュールのリリース前、CI相当の最終確認では全言語を検証します。
-サイズ上限と超過時の対処は [AGENTS.md](../../AGENTS.md#uiサイズの上限) を参照してください。
-QApplicationやC拡張の競合を避けるため、Pytestとは独立して実行します。
-
-```bash
-./.venv/bin/python scripts/check_ui_size_limits.py
-```
-
-成功時は `Verification Passed!` と終了コード `0`、超過時は対象モジュールの詳細と終了コード `1` を返します。
-実装中に英語だけを確認する場合は次を使えますが、最終確認は引数なしで実行してください。
-
-```bash
-./.venv/bin/python scripts/check_ui_size_limits.py --quick
-```
-
-## PR前の検証
-
-次の順で実行し、各段階の終了コードと結果を確認します。コマンドは上記の各節を正本とします。
-
-1. [開発中の検証](#開発中の検証)の Ruff lint と Ruff format。
-2. 同節の Mypy。
-3. [翻訳キー](#翻訳キー)の厳格な検査。
-4. [開発中の検証](#開発中の検証)の Markdown lint。
-5. [テスト](#テスト)の全体テスト。
-6. [UIサイズ検証](#uiサイズ検証)の全言語検証。Pytest とは別プロセスで実行。
-
-GUI を表示できない環境では `QT_QPA_PLATFORM=offscreen` を設定します。CI の環境変数と
-実行条件は [.github/workflows/ci.yml](../../.github/workflows/ci.yml) で確認してください。
-CI は変更パスによりジョブを省略しますが、ローカルで CI 相当の最終確認を依頼された場合は全項目を実行します。
-
-失敗時の修正範囲と再実行の判断は [CI Pre-checker](../skills/ci-prechecker/SKILL.md)、
-PR の作成条件は [AGENTS.md](../../AGENTS.md#pull-request) に従います。
+Rust 実装と `Cargo.toml` はまだ存在しない。取り込み後に、実際の構成に合わせて起動・ビルド・テストのコマンドを記録する。

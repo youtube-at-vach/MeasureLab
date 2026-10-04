@@ -11,6 +11,7 @@
     }, // Unordered list indentation - user requested 4 spaces
   },
   "ignores": [
+    ".legacy-python/", // Local backup, excluded from the Rust rewrite
     "site/",
     ".git/",
     "node_modules/",

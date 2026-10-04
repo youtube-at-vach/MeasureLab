@@ -1,8 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=MeasureLab
-Comment=Audio measurement and analysis tools
-Exec=main_gui
-Icon=app_icon
-Categories=AudioVideo;Audio;Engineering;
-Terminal=false
