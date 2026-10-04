@@ -1393,7 +1393,28 @@ impl eframe::App for ScopeApp {
         egui::Panel::top("header").show(ui, |ui| {
             ui.add_space(4.0);
             ui.horizontal(|ui| {
-                ui.label(RichText::new("MeasureLab").size(26.0).strong().color(GREEN));
+                let mut title = egui::text::LayoutJob::default();
+                RichText::new("MeasureLab")
+                    .size(26.0)
+                    .strong()
+                    .color(GREEN)
+                    .append_to(
+                        &mut title,
+                        ui.style(),
+                        egui::FontSelection::Default,
+                        egui::Align::Center,
+                    );
+                RichText::new(" ⭐")
+                    .size(14.0)
+                    .raised()
+                    .color(YELLOW)
+                    .append_to(
+                        &mut title,
+                        ui.style(),
+                        egui::FontSelection::Default,
+                        egui::Align::Center,
+                    );
+                ui.label(title);
                 ui.label(
                     RichText::new("AUDIO MEASUREMENT LAB")
                         .size(12.0)
