@@ -6,6 +6,34 @@ CPALで実際のオーディオ入力を取り込み、`wgpu`で波形とFFTス�
 
 Rust 1.95以上と各OSのビルドツールが必要です。開発・検証にはRust 1.99を使用しています。
 
+### デバッグ時の簡単な起動
+
+リポジトリのルートにある **Debug-MeasureLab.command** をmacOSのFinderでダブルクリックすると、デバッグビルドを更新して内部デモ信号で起動します。ターミナルからは以下を使います。
+
+```sh
+./scripts/debug.sh
+./scripts/debug.sh --audio
+./scripts/debug.sh --compact
+./scripts/debug.sh --release
+```
+
+引数なしではマイク不要のデモが動きます。`--audio`では実入力を選ぶ画面で起動し、デバイスを選んで **Start input** を押します。通常はデバッグシンボルを残すdevビルドを使い、panic時のバックトレースを有効にします。`RUST_BACKTRACE`を指定済みならその値を使います。CPU処理時間などの性能確認には`--release`を使います。
+
+初回は依存関係のビルドに時間がかかり、以後は変更した部分を再ビルドします。スクリプトは作業ディレクトリに依存せず、`scripts/cargo.sh`経由でPATH上または`.tools/`のRust環境を使います。アプリを閉じるまでターミナルにビルド結果と実行時の出力が残ります。Finderからの起動に失敗した場合はEnterを押すまでエラーを確認できます。
+
+画面確認は次の1コマンドで実行できます。`--ui-smoke`の指定時は`qa`機能を自動的に有効にし、撮影後に終了します。画像は`dist/ui-smoke.png`へ保存されます。
+
+```sh
+./scripts/debug.sh --ui-smoke
+./scripts/debug.sh --ui-smoke --compact
+./scripts/debug.sh --gpu-smoke
+./scripts/debug.sh --help
+```
+
+`--compact`などのアプリ引数も渡せます。`--`以降はすべてアプリへ渡すため、アプリ自体のヘルプは`./scripts/debug.sh -- --help`で確認できます。
+
+### Cargoからの起動
+
 ```sh
 cargo run --release
 ```
