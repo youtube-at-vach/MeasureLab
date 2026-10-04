@@ -203,7 +203,7 @@ fn build_stream<T>(
 ) -> Result<cpal::Stream, cpal::Error>
 where
     T: cpal::SizedSample,
-    f32: cpal::FromSample<T>,
+    f64: cpal::FromSample<T>,
 {
     let channels = config.channels as usize;
     let failure = metrics.clone();
@@ -233,13 +233,13 @@ fn write_input<T: cpal::Sample>(
     sequence: &mut u64,
 ) -> u64
 where
-    f32: cpal::FromSample<T>,
+    f64: cpal::FromSample<T>,
 {
     let mut dropped = 0;
     for frame in input.chunks_exact(channels) {
         let mut samples = [0.0; MAX_CHANNELS];
         for (target, &sample) in samples.iter_mut().zip(frame) {
-            *target = sample.to_sample::<f32>();
+            *target = sample.to_sample::<f64>();
         }
         if producer
             .push(AudioFrame {
@@ -274,7 +274,7 @@ pub fn smoke_test(name: Option<&str>) -> Result<(), String> {
     let (_stream, mut capture) = start_device(&device)?;
     let deadline = std::time::Instant::now() + Duration::from_secs(2);
     let mut frames = 0;
-    let mut peaks = [0.0_f32; MAX_CHANNELS];
+    let mut peaks = [0.0_f64; MAX_CHANNELS];
     while std::time::Instant::now() < deadline {
         while let Ok(frame) = capture.consumer.pop() {
             frames += 1;
@@ -309,6 +309,13 @@ mod tests {
     use super::*;
 
     #[test]
+    fn f64_device_input_is_not_quantized_to_f32() {
+        let (mut producer, mut consumer) = RingBuffer::new(1);
+        write_input(&[1.0_f64 + 1e-8], 1, &mut producer, &mut 0);
+        assert_eq!(consumer.pop().unwrap().samples[0], 1.0 + 1e-8);
+    }
+
+    #[test]
     fn signed_stereo_conversion_and_overflow_sequence_are_correct() {
         let (mut producer, mut consumer) = RingBuffer::new(1);
         let mut sequence = 0;
@@ -332,7 +339,12 @@ mod tests {
         write_input(&[0.2_f32, -0.3, 0.9, 0.8], 4, &mut producer, &mut sequence);
         assert_eq!(
             &consumer.pop().unwrap().samples[..4],
-            &[0.2, -0.3, 0.9, 0.8]
+            &[
+                0.2_f32 as f64,
+                -0.3_f32 as f64,
+                0.9_f32 as f64,
+                0.8_f32 as f64
+            ]
         );
     }
 
@@ -340,7 +352,7 @@ mod tests {
     fn all_sixteen_channels_keep_the_same_frame_sequence() {
         let (mut producer, mut consumer) = RingBuffer::new(2);
         let mut sequence = 4000;
-        let input: Vec<_> = (0..32).map(|i| i as f32 / 32.0).collect();
+        let input: Vec<_> = (0..32).map(|i| i as f64 / 32.0).collect();
         assert_eq!(write_input(&input, 16, &mut producer, &mut sequence), 0);
         for frame_index in 0..2 {
             let frame = consumer.pop().unwrap();

@@ -15,6 +15,7 @@ fn main() {
             hop: size / 4,
             window: Window::Hann,
             remove_dc: true,
+            precision: measurelab::spectrum::Precision::F64,
         };
         let mut history = History::default();
         history.reset(1, config);

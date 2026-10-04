@@ -2,7 +2,7 @@
 //! storage are bounded; the producer never waits for analysis or result delivery.
 use crate::{
     signal::{History, MAX_CHANNELS},
-    spectrum::{Analyzer, FFT_SIZES, Settings, Window},
+    spectrum::{Analyzer, FFT_SIZES, Precision, Settings, Window},
 };
 use rtrb::{Consumer, Producer, RingBuffer};
 use std::{
@@ -29,6 +29,7 @@ pub struct Config {
     pub hop: usize,
     pub window: Window,
     pub remove_dc: bool,
+    pub precision: Precision,
 }
 
 impl Config {
@@ -97,7 +98,7 @@ struct InputBlock {
     dropped_before: u64,
     // All source channels remain in common history. Each analysis queue carries
     // only its selected channel, with its original source identity attached.
-    samples: [f32; BLOCK_FRAMES],
+    samples: [f64; BLOCK_FRAMES],
 }
 
 impl InputBlock {
@@ -135,6 +136,7 @@ impl Processor {
                     window: config.window,
                     averages: 1,
                     remove_dc: config.remove_dc,
+                    precision: config.precision,
                 },
                 config.sample_rate,
             ),
@@ -218,6 +220,7 @@ impl Worker {
             hop: 256,
             window: Window::Hann,
             remove_dc: true,
+            precision: Precision::F64,
         };
         for _ in 0..result_rows {
             recycle
@@ -307,7 +310,7 @@ impl Worker {
         self.pending = None;
     }
 
-    pub fn submit(&mut self, sequence: u64, samples: &[f32]) {
+    pub fn submit(&mut self, sequence: u64, samples: &[f64]) {
         let Some(block) = &self.pending else { return };
         assert!(samples.len() >= block.config.channels);
         if block.len > 0 && sequence != block.start + block.len as u64 {
@@ -392,6 +395,7 @@ pub fn smoke_test(device_name: Option<&str>, channel: usize) -> Result<(), Strin
         hop: 2048,
         window: Window::Hann,
         remove_dc: true,
+        precision: crate::spectrum::Precision::F64,
     };
     let mut worker = Worker::new();
     let generation = worker.configure(config)?;
@@ -463,7 +467,7 @@ pub fn smoke_test(device_name: Option<&str>, channel: usize) -> Result<(), Strin
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::f32::consts::TAU;
+    use std::f64::consts::TAU;
 
     fn config() -> Config {
         Config {
@@ -474,6 +478,7 @@ mod tests {
             hop: 256,
             window: Window::Hann,
             remove_dc: true,
+            precision: crate::spectrum::Precision::F64,
         }
     }
 
@@ -482,9 +487,36 @@ mod tests {
         block.start = start;
         block.len = len;
         for (i, sample) in block.samples[..len].iter_mut().enumerate() {
-            *sample = 0.5 * (TAU * 32.0 * (start + i as u64) as f32 / config.size as f32).cos();
+            *sample = 0.5 * (TAU * 32.0 * (start + i as u64) as f64 / config.size as f64).cos();
         }
         block
+    }
+
+    #[test]
+    fn both_fft_precisions_preserve_f64_input_and_window_metadata() {
+        for precision in [Precision::F64, Precision::F32] {
+            let cfg = Config {
+                precision,
+                ..config()
+            };
+            let mut processor = Processor::new(7, cfg);
+            let mut rows = 0;
+            for start in (0..2048).step_by(BLOCK_FRAMES) {
+                let mut input = block(start, BLOCK_FRAMES, cfg);
+                for sample in &mut input.samples {
+                    *sample = 1.0 + *sample * 2e-8;
+                }
+                processor.process(&input, |info, db| {
+                    assert_eq!(info.generation, 7);
+                    assert_eq!(info.config.precision, precision);
+                    assert_eq!(info.start, rows * cfg.hop as u64);
+                    assert!((db[32] + 160.0).abs() < 0.001);
+                    rows += 1;
+                    true
+                });
+            }
+            assert_eq!(rows, 5);
+        }
     }
 
     fn process_chunks(chunks: &[usize], config: Config) -> Vec<(RowInfo, Vec<f32>)> {
@@ -610,7 +642,7 @@ mod tests {
     fn submit(worker: &mut Worker, start: u64, count: usize) {
         for i in 0..count {
             let mut samples = [0.0; 16];
-            samples[15] = 0.5 * (TAU * 32.0 * (start + i as u64) as f32 / 1024.0).cos();
+            samples[15] = 0.5 * (TAU * 32.0 * (start + i as u64) as f64 / 1024.0).cos();
             worker.submit(start + i as u64, &samples);
         }
         worker.flush();
@@ -650,6 +682,7 @@ mod tests {
             channel: 0,
             size: 2048,
             hop: 512,
+            precision: Precision::F32,
             ..config()
         };
         let second = worker.configure(cfg).unwrap();

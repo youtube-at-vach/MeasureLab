@@ -199,6 +199,7 @@ mod tests {
             hop: 256,
             window: Window::Hann,
             remove_dc: true,
+            precision: crate::spectrum::Precision::F64,
         }
     }
     fn info(end: u64) -> RowInfo {

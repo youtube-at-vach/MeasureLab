@@ -259,6 +259,7 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
             hop: 8192,
             window: Window::Hann,
             remove_dc: true,
+            precision: crate::spectrum::Precision::F64,
         };
         let mut history = spectrogram::History::default();
         history.reset(1, config);

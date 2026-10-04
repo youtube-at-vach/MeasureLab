@@ -22,6 +22,7 @@ pub fn spectrogram_fixture(output: &mut crate::spectrogram::History) -> crate::s
         hop: settings.size / 4,
         window: settings.window,
         remove_dc: true,
+        precision: crate::spectrum::Precision::F64,
     };
     output.reset(1, config);
     let mut source = History::new(config.size);
@@ -61,6 +62,7 @@ pub struct Profile {
     started: Instant,
     duration: Duration,
     intervals_ms: Vec<f64>,
+    cpu_ms: Vec<f64>,
     pub device: Option<String>,
 }
 
@@ -75,16 +77,20 @@ impl Profile {
             started: Instant::now(),
             duration: Duration::from_secs(seconds + 2),
             intervals_ms: Vec::with_capacity(8192),
+            cpu_ms: Vec::with_capacity(8192),
             device: std::env::var("MEASURELAB_PROFILE_DEVICE").ok(),
         })
     }
 
-    pub fn record(&mut self, elapsed_seconds: f64, running: bool) {
+    pub fn record(&mut self, elapsed_seconds: f64, running: bool, cpu_seconds: Option<f32>) {
         if running
             && self.started.elapsed() >= Duration::from_secs(2)
             && self.intervals_ms.len() < self.intervals_ms.capacity()
         {
             self.intervals_ms.push(elapsed_seconds * 1000.0);
+            if let Some(cpu) = cpu_seconds {
+                self.cpu_ms.push(cpu as f64 * 1000.0);
+            }
         }
     }
 
@@ -94,6 +100,7 @@ impl Profile {
 
     pub fn report(&mut self, input_dropped: u64) {
         self.intervals_ms.sort_unstable_by(f64::total_cmp);
+        self.cpu_ms.sort_unstable_by(f64::total_cmp);
         if self.intervals_ms.is_empty() {
             println!("UI profile: no running frames recorded; input dropped {input_dropped}");
         } else {
@@ -102,6 +109,12 @@ impl Profile {
                 "UI profile: {} frames, frame interval p95 {p95:.3} ms, input dropped {input_dropped}",
                 self.intervals_ms.len()
             );
+            if !self.cpu_ms.is_empty() {
+                let cpu_p95 = self.cpu_ms[(self.cpu_ms.len() - 1) * 95 / 100];
+                println!(
+                    "UI CPU profile: frame work p95 {cpu_p95:.3} ms (eframe, excluding VSync wait)"
+                );
+            }
         }
     }
 }
@@ -186,6 +199,7 @@ pub fn multichannel_smoke_test() -> Result<(), Box<dyn std::error::Error>> {
         hop: 2048,
         window: Window::Hann,
         remove_dc: true,
+        precision: crate::spectrum::Precision::F64,
     })?;
     let mut last_db = None;
     let mut frames = 0;

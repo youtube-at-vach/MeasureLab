@@ -52,7 +52,7 @@ impl Demo {
         history: &mut History,
         count: usize,
         sample_rate: u32,
-        mut consume: impl FnMut(u64, &[f32]),
+        mut consume: impl FnMut(u64, &[f64]),
     ) {
         for _ in 0..count {
             let mut samples = [0.0; 2];
@@ -82,8 +82,8 @@ impl Demo {
                 self.random ^= self.random >> 17;
                 self.random ^= self.random << 5;
                 let noise = self.random as f64 / u32::MAX as f64 * 2.0 - 1.0;
-                *value = (signal * self.amplitude as f64 * if channel == 0 { 1.0 } else { 0.65 }
-                    + noise * self.noise as f64) as f32;
+                *value = signal * self.amplitude as f64 * if channel == 0 { 1.0 } else { 0.65 }
+                    + noise * self.noise as f64;
             }
             let sequence = history.range().end;
             history.push(samples);

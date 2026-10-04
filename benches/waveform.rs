@@ -5,7 +5,7 @@ fn main() {
     for count in [48_000, 192_000, 1_000_000] {
         let mut history = History::new(count);
         for i in 0..count {
-            let value = (i as f32 * 0.01).sin();
+            let value = (i as f64 * 0.01).sin();
             history.push([value, value * 0.5]);
         }
         let mut lines = Vec::with_capacity(8192);

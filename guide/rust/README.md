@@ -94,6 +94,7 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | グラフ上部のSettings / Collapse all | 左パネルの表示切り替え／設定項目をすべて閉じる |
 | Workspace & help | 配置の指定、ショートカット、測定単位 |
 | Spectrum Source / points / Window | FFTの入力CH（取得した全chから選択）、サイズ（1,024〜32,768点）、窓関数 |
+| Spectrum / Spectrogram FFT PRECISION | 各測定器のFFT精度。既定は64-bit、32-bit (fast FFT)を明示的に選択可能 |
 | Power average / Remove DC | 線形電力の指数平均、FFT前の平均値除去 |
 | Log Hz / Linear Hz / Span | 周波数軸と表示する上限周波数 |
 | Floor dBFS / Peak hold / Clear hold | 表示下限、最大値の保持、保持値のクリア |
@@ -139,7 +140,7 @@ Audio device → CPAL callback → bounded SPSC ring → common input (1–16ch)
 - **上限のあるメモリ使用**: 入力キューは約0.5秒（最大262,144フレーム）、履歴は2秒分（最大FFT長の32,768フレーム以上）です。溢れたフレーム数を表示し、連番の欠落を検出すると履歴をリセットして時間の連続性を保ちます。
 - **停止時の節電**: 停止中は連続再描画を止め、波形に変更がないフレームはGPUへの波形再転送を省略します。
 - **複数プロット**: WGSLパイプラインを共有し、各プロットのGPUバッファ・寸法・更新番号は独立。スペクトルも物理ピクセルごとの極値を保持し、対数軸で密集する狭いピークを残します。
-- **FFT**: [RustFFT](https://docs.rs/rustfft/6.4.1/rustfft/)の計画とscratchメモリを再利用します。窓・複素演算・電力平均はf64精度で処理し、実入力／現在の共通履歴からはf32を変換します。GPU表示用のdBFSはf32へ変換します。コアにはf64サンプルを直接解析する入口もあります。Spectrumは最新の完全な窓を最大30回/秒、かつN/4以上の新規サンプルごとに解析します。すべての連続窓を網羅するSTFTではありません。
+- **FFT**: [RustFFT](https://docs.rs/rustfft/6.4.1/rustfft/)の計画とscratchメモリを再利用します。取得キュー・共通履歴・トリガー・測定値・FFTはf64を標準とします。SpectrumとSpectrogramの「FFT PRECISION」で、それぞれ独立して32-bitの高速FFTを選択できます。DC除去と窓適用の後だけf32へ変換し、窓係数と電力平均はf64を維持します。FFTは実数入力をN/2点の複素変換へまとめ、片側ビンを復元します。GPU表示用のdBFSと座標はf32へ変換します。Spectrumのビン周波数とピクセルの対応は、周波数軸・表示範囲・幅・Fs・FFTサイズを変えたときだけ再計算し、通常のFFT更新とピーク保持で再利用します。Spectrumは最新の完全な窓を最大30回/秒、かつN/4以上の新規サンプルごとに解析します。すべての連続窓を網羅するSTFTではありません。
 - **連続STFT**: 別の専用ワーカーで選択した1chを解析します。UIで使うhopはN/4、FFTサイズ・窓関数・DC除去・対象chはSpectrogram設定から指定します。窓ごとのdBFSを生成し、平均・ピーク保持は適用しません。入力は256フレーム×64ブロック、結果は16行の固定プールで再利用します。入力ブロックと結果のFs・ch・世代・サンプル位置・欠落情報を保持し、欠落をまたぐ窓や古い世代を表示へ渡しません。Performanceで最新窓の位置とワーカーの欠落数を確認できます。Spectrumとは独立した解析設定を使い、GUI非依存の512行履歴と循環テクスチャへ渡します。
 
 スペクトログラムのR32Floatテクスチャには生のdBFSビンを格納し、最大FFTのNyquistビンまで保持します。1行を4,096列の複数走査線へ分割し、GPUのテクスチャ寸法上限を超えないようにします。変更された行だけを転送し、表示範囲・色・時間座標は描画時に適用します。周波数方向は物理ピクセルが覆うビンの最大値を使い、細いピークを残します。履歴とテクスチャのサイズはFFT設定に応じて固定され、既定の8,192点では各16 MiB、最大32,768点では各40 MiBです。
@@ -175,7 +176,7 @@ Audio device → CPAL callback → bounded SPSC ring → common input (1–16ch)
 
 `--gpu-smoke`はScope・Spectrum・Spectrogramを準備してから描画し、それぞれの領域をGPUから読み戻します。線分プロットの独立に加え、スペクトログラムの折り返し・行の順序・欠落・最大FFTのNyquistビン・表示変更時の再転送省略を検証します。`--ui-smoke`は入力を開始せず、明示的なテスト信号で3画面を短時間開いて閉じます。スペクトログラムの既知信号は周波数を変化させ、履歴の折り返しと意図的な入力欠落を含みます。`qa`機能を有効にすると、その表示を`dist/ui-smoke.png`へ保存します。通常起動時はオーディオ入力、`--demo`指定時は内部信号を使います。GPUやマイクを必要とする確認はCIでは実行しません。
 
-`qa`機能では、2秒の起動待ち後に最大60秒のUIフレーム間隔を記録できます。停止中のフレームは除外し、計測後にp95と欠落数を出力して終了します。以下はBlackHoleのCH 16を選び、10秒間計測する例です。`MEASURELAB_PROFILE_SETTINGS=spectrum`でSpectrum設定を開き、`MEASURELAB_PROFILE_SCREENSHOT=1`で途中の画面を`dist/ui-smoke.png`へ保存できます。
+`qa`機能では、2秒の起動待ち後に最大60秒のUIフレーム間隔を記録できます。停止中のフレームは除外し、計測後にUI間隔p95、VSync待ちを除いたeframeのフレーム処理時間p95、欠落数を出力して終了します。以下はBlackHoleのCH 16を選び、10秒間計測する例です。`MEASURELAB_PROFILE_SETTINGS=spectrum`でSpectrum設定を開き、`MEASURELAB_PROFILE_SCREENSHOT=1`で途中の画面を`dist/ui-smoke.png`へ保存できます。
 
 ```sh
 MEASURELAB_PROFILE_SECONDS=10 MEASURELAB_PROFILE_DEVICE="BlackHole 16ch" MEASURELAB_PROFILE_CHANNEL=16 \
@@ -188,6 +189,14 @@ MEASURELAB_PROFILE_SECONDS=10 ./scripts/cargo.sh run --release --features qa -- 
 ```sh
 MEASURELAB_PROFILE_SECONDS=5 MEASURELAB_PROFILE_LIFECYCLE=1 \
     ./scripts/cargo.sh run --release --features qa -- --demo
+```
+
+FFT精度と最大窓長を揃えた性能計測には、QA専用の環境変数を使えます。省略時はf64・8,192点です。`f32`は各FFTだけを変更し、共通履歴はf64のままです。VSync有効時と`--low-latency`の間隔を区別して比較します。
+
+```sh
+MEASURELAB_PROFILE_SECONDS=10 MEASURELAB_PROFILE_FFT_PRECISION=f64 \
+    MEASURELAB_PROFILE_FFT_SIZE=32768 \
+    ./scripts/cargo.sh run --release --locked --features qa -- --demo --low-latency
 ```
 
 ## コードの入口
@@ -205,6 +214,42 @@ MEASURELAB_PROFILE_SECONDS=5 MEASURELAB_PROFILE_LIFECYCLE=1 \
 - `src/app.rs`: 共通の入力操作UIと複数プロット表示。
 
 選定したライブラリの一次資料: [CPAL](https://docs.rs/cpal/0.18.2/cpal/)、[rtrb](https://docs.rs/rtrb/0.4.0/rtrb/)、[eframe](https://docs.rs/eframe/0.36.2/eframe/)、[egui-wgpu](https://docs.rs/egui-wgpu/0.36.2/egui_wgpu/)。
+
+## f64標準パイプラインの高速化（2026-10-04）
+
+macOS / Intel Iris Pro Graphics 6200 / Rust 1.99で確認しました。取得キュー・共通履歴・トリガー・Scope測定値をf64へ揃え、SpectrumとSpectrogramも既定のFFT精度をf64のまま維持しています。各測定器の設定からf32 FFTを明示的に選べます。変換はf64でのDC除去・窓適用の後に行い、電力平均は両モードともf64です。起動時のGPU準備時間をデモの入力欠落に数えていた初回時計も修正しました。
+
+実数入力をN/2点の複素FFTへまとめ、片側ビンを復元します。窓の振幅補正は設定時に計算し、履歴は循環位置を毎サンプル求める代わりに2つの連続スライスから読みます。Spectrumの周波数とピクセルの対応を再利用し、解析更新ごとの対数計算とピーク保持用の重複計算を省きました。周波数軸・範囲・幅・Fs・FFTサイズの変更では対応を作り直します。
+
+release・48 kHz・1,920物理ピクセル・対数軸・ピーク保持ありのCPU計測です。変更前は200回のFFT＋表示準備、変更後は初回のFFT計画・座標対応の準備を除いてFFTと表示準備をそれぞれ1,000回測り、平均を合計しました。変更後のCPUベンチは`--no-default-features`、UI検証はdesktop＋qa機能を使っています。以下はビルドや他のアプリ計測と重ねずに実行した値です。
+
+| FFTサイズ | 変更前 f64 FFT＋準備 | 変更後 f64 FFT＋準備 | 変更後 f32 FFT＋準備 |
+| --- | ---: | ---: | ---: |
+| 1,024 | 0.043 ms | 0.012 ms | 0.012 ms |
+| 8,192 | 0.347 ms | 0.098 ms | 0.092 ms |
+| 32,768 | 1.455 ms | 0.409 ms | 0.361 ms |
+
+最大窓のf64処理は、この計測で約72%短縮しました。変更後の内訳はf64 FFT 0.333 ms＋表示準備0.076 ms、f32 FFT 0.284 ms＋表示準備0.076 msです。Scopeのf64化後のrelease計測は48,000／192,000／1,000,000サンプルで0.331／1.111／5.245 msでした。以前の0.347／1.109／5.393 msと比べ、この条件では大きな低下は認めません。
+
+3画面・通常幅・起動後2秒を除外したUI計測を、表示同期とフレーム処理に分けました。UI間隔は描画開始間の実時間、フレーム処理はeframeが報告する描画処理を含むCPU時間（VSync待ちを除く）です。GPU実行時間そのものではありません。
+
+| 入力・FFT精度／サイズ | 表示同期 | 計測時間 | UI間隔p95 | eframe処理p95 | 取得／STFT入力／結果の欠落 |
+| --- | --- | ---: | ---: | ---: | --- |
+| デモ・f64・8,192 | VSync | 10秒 | 18.355 ms | 4.990 ms | 0 / 0 / 0 |
+| デモ・f64・8,192 | `--low-latency` | 30秒 | 5.779 ms | 1.294 ms | 0 / 0 / 0 |
+| デモ・f64・32,768 | `--low-latency` | 10秒 | 6.158 ms | 1.401 ms | 0 / 0 / 0 |
+| デモ・f32・32,768 | `--low-latency` | 10秒 | 6.407 ms | 1.596 ms | 0 / 0 / 0 |
+| BlackHole・96 kHz・16ch・CH 16・f64・32,768 | `--low-latency` | 10秒 | 6.321 ms | 1.901 ms | 0 / 0 / 0 |
+
+**通常のVSyncでUI間隔p95を16.7 ms未満にする目標は未達です。** 同条件の変更前は18.086 msで、CPU計算の短縮がUI間隔の同率の短縮にはなりませんでした。`--low-latency`ではf64の最大FFTでも16.7 ms未満です。VSyncを外した場合はGPU使用量が増えるため、既定の表示同期は維持しています。変更前の低遅延モードも8,192点・10秒で6.169 msだったので、同期設定による差と今回の計算最適化を区別します。f32のFFT時間は短縮しても、UI全体が必ず速くなるとは限りません。
+
+30秒のデモでは745行を生成し、512行で履歴が折り返しました。サンプル配列はf64化で旧版の2倍の容量を使います。96 kHz・16ch・2秒の共通履歴は23.44 MiB（旧11.72 MiB）で固定容量です。スペクトログラムの履歴／テクスチャは既定で各16 MiB、最大FFTで各40 MiBです。長時間のRSS推移、GPU実行時間、入力から表示までの遅延、物理デバイスとWindows／Linuxは未確認です。
+
+34件の単体テストは、全6種類のFFT長・3窓・DC除去あり／なし・f64／f32を通常の複素FFTと照合します。f64の振幅差は1e−13未満、f32は2e−7未満です。1 FSのDC上の1e−8 FS信号は、共通履歴・両FFTモード・STFTで−160 dBFSを維持します。f64トリガーと微小なP-P値、電力平均・ピーク保持、座標再利用中の軸・幅・Fs・窓長・振幅の変更、f32へ変えた世代の除外も検証しました。全ターゲット・全機能のテストとClippy、releaseデスクトップビルド、RuffとMarkdown lintが成功しました。
+
+MetalのGPU読み戻しでScope／Spectrumの所定色ピクセル各412個と、スペクトログラムの循環・順序・欠落・Nyquist・表示変更時の転送省略を確認しました。通常幅のSpectrum設定と狭い幅のSpectrogram設定を撮影し、既定の64-bit表示と3画面の配置を確認しました。アプリ内QAでは、Spectrumのみのf32切り替えがSTFTに干渉しないこと、停止・遅着結果の除外、表示変更、再開時のf32／f64切り替えを確認しました。
+
+BlackHole 16chの既知信号QAでは96 kHzで192,000フレームを取得し、全16chの対応・ビン周波数・振幅とCH 16のSTFT（−18.062 dBFS）を確認しました。2秒の測定区間のストリームエラー、取得／STFT入力／結果の欠落は0です。0.5秒の起動待ち中と終了時にCoreAudioのoverrun／underrun通知があり、測定区間とは分けて扱っています。
 
 ## スペクトログラムの確認結果（2026-10-04）
 

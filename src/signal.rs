@@ -1,11 +1,12 @@
 use std::ops::Range;
 
 pub const MAX_CHANNELS: usize = 16;
-pub type Samples = [f32; MAX_CHANNELS];
+/// Standard precision of the acquisition and measurement core.
+pub type Samples = [f64; MAX_CHANNELS];
 
 /// Fixed allocation, with absolute indices so wrapping never changes time ordering.
 pub struct History {
-    data: Vec<f32>,
+    data: Vec<f64>,
     channels: usize,
     end: u64,
     len: usize,
@@ -30,12 +31,12 @@ impl History {
         self.channels
     }
 
-    pub fn push(&mut self, samples: impl AsRef<[f32]>) {
+    pub fn push(&mut self, samples: impl AsRef<[f64]>) {
         self.push_at(self.end, samples);
     }
 
     /// Preserve source sample coordinates. Never join across missing frames.
-    pub fn push_at(&mut self, sequence: u64, samples: impl AsRef<[f32]>) {
+    pub fn push_at(&mut self, sequence: u64, samples: impl AsRef<[f64]>) {
         let samples = samples.as_ref();
         assert!(samples.len() >= self.channels);
         if sequence != self.end {
@@ -69,7 +70,7 @@ impl History {
     pub fn range(&self) -> Range<u64> {
         self.end - self.len as u64..self.end
     }
-    pub fn get(&self, index: u64) -> Option<&[f32]> {
+    pub fn get(&self, index: u64) -> Option<&[f64]> {
         self.range().contains(&index).then(|| {
             let capacity = self.data.len() / self.channels;
             let start = (index % capacity as u64) as usize * self.channels;
@@ -77,7 +78,9 @@ impl History {
         })
     }
 
-    fn samples(&self, range: Range<u64>) -> impl Iterator<Item = &[f32]> + '_ {
+    /// Caller validates that the complete range is retained. Walk the two
+    /// contiguous ring slices without a division or range check per sample.
+    pub(crate) fn samples(&self, range: Range<u64>) -> impl Iterator<Item = &[f64]> + '_ {
         let count = (range.end - range.start) as usize;
         let capacity = self.data.len() / self.channels;
         let start = (range.start % capacity as u64) as usize;
@@ -139,7 +142,7 @@ pub enum Edge {
 #[derive(Clone, Copy)]
 pub struct Trigger {
     pub edge: Edge,
-    pub level: f32,
+    pub level: f64,
     pub channel: usize,
 }
 
@@ -167,9 +170,9 @@ pub struct Line {
 
 #[derive(Clone, Copy, Default, Debug)]
 pub struct Measurement {
-    pub peak: f32,
-    pub rms: f32,
-    pub peak_to_peak: f32,
+    pub peak: f64,
+    pub rms: f64,
+    pub peak_to_peak: f64,
 }
 
 /// At low density, connect real samples. At high density, retain each pixel's
@@ -190,14 +193,14 @@ pub fn build_lines(
     }
     let count = (range.end - range.start) as usize;
     let scale = 1.0 / (fs_per_div.max(0.00001) * 8.0);
-    let y = |value: f32| 0.5 - value * scale;
+    let y = |value: f64| (0.5 - value * scale as f64) as f32;
     let mut result = [Measurement::default(); 2];
     for channel in 0..2 {
         if !enabled[channel] || channel >= history.channels() {
             continue;
         }
-        let mut min = f32::INFINITY;
-        let mut max = f32::NEG_INFINITY;
+        let mut min = f64::INFINITY;
+        let mut max = f64::NEG_INFINITY;
         let mut square_sum = 0.0_f64;
         if count <= pixels * 2 {
             let mut previous = None;
@@ -205,7 +208,7 @@ pub fn build_lines(
                 let value = frame[channel];
                 min = min.min(value);
                 max = max.max(value);
-                square_sum += (value as f64).powi(2);
+                square_sum += value * value;
                 let point = [offset as f32 / (count - 1) as f32, y(value)];
                 if let Some(a) = previous {
                     output.push(Line {
@@ -222,8 +225,8 @@ pub fn build_lines(
             for bucket in 0..pixels {
                 let begin = bucket * count / pixels;
                 let end = (bucket + 1) * count / pixels;
-                let mut lo = f32::INFINITY;
-                let mut hi = f32::NEG_INFINITY;
+                let mut lo = f64::INFINITY;
+                let mut hi = f64::NEG_INFINITY;
                 let mut first = 0.0;
                 let mut last = 0.0;
                 for offset in begin..end {
@@ -234,7 +237,7 @@ pub fn build_lines(
                     last = value;
                     lo = lo.min(value);
                     hi = hi.max(value);
-                    square_sum += (value as f64).powi(2);
+                    square_sum += value * value;
                 }
                 min = min.min(lo);
                 max = max.max(hi);
@@ -256,7 +259,7 @@ pub fn build_lines(
         }
         result[channel] = Measurement {
             peak: min.abs().max(max.abs()),
-            rms: (square_sum / count as f64).sqrt() as f32,
+            rms: (square_sum / count as f64).sqrt(),
             peak_to_peak: max - min,
         };
     }
@@ -268,12 +271,32 @@ mod tests {
     use super::*;
 
     #[test]
+    fn history_trigger_and_measurements_preserve_sub_f32_variations() {
+        let mut history = History::new(128);
+        for i in 0..128 {
+            history.push([if i % 16 < 8 { 1.0 - 1e-8 } else { 1.0 + 1e-8 }, 0.0]);
+        }
+        let sweep = history.sweep(
+            32,
+            Trigger {
+                level: 1.0,
+                ..Trigger::default()
+            },
+        );
+        assert!(sweep.triggered);
+        let mut lines = Vec::new();
+        let measured = build_lines(&history, sweep.range, 100, 0.25, [true, false], &mut lines);
+        assert!((measured[0].peak_to_peak - 2e-8).abs() < 1e-15);
+        assert!((measured[0].peak - (1.0 + 1e-8)).abs() < 1e-15);
+    }
+
+    #[test]
     fn sixteen_channel_history_preserves_absolute_coordinates_and_gaps() {
         let mut h = History::with_channels(4, 16);
         for sequence in 100..107 {
             h.push_at(
                 sequence,
-                std::array::from_fn::<_, 16, _>(|ch| sequence as f32 + ch as f32),
+                std::array::from_fn::<_, 16, _>(|ch| sequence as f64 + ch as f64),
             );
         }
         assert_eq!(h.range(), 103..107);
@@ -305,7 +328,7 @@ mod tests {
     fn history_wraps_and_clear_invalidates_old_samples() {
         let mut h = History::new(4);
         for i in 0..7 {
-            h.push([i as f32, 0.0]);
+            h.push([i as f64, 0.0]);
         }
         assert_eq!(h.range(), 3..7);
         assert_eq!(h.get(2), None);
@@ -371,7 +394,7 @@ mod tests {
     #[test]
     fn invalid_samples_and_short_captures_are_safe() {
         let mut h = History::new(10);
-        h.push([f32::NAN, f32::INFINITY]);
+        h.push([f64::NAN, f64::INFINITY]);
         assert_eq!(h.get(0), Some([0.0, 0.0].as_slice()));
         let mut lines = Vec::new();
         build_lines(

@@ -4,7 +4,7 @@ use crate::{
     gpu::{COLORS, PlotId, Segment, TraceCallback, TraceRenderer},
     signal::{Edge, History, Line, Measurement, Trigger, build_lines},
     spectrogram, spectrogram_gpu,
-    spectrum::{self, Analyzer, FFT_SIZES, FrequencyScale, Settings, View, Window},
+    spectrum::{self, Analyzer, FFT_SIZES, FrequencyScale, Precision, Settings, View, Window},
     stft::{self, RowInfo},
 };
 use eframe::{
@@ -131,7 +131,7 @@ pub struct ScopeApp {
     sidebar: Sidebar,
     demo: Demo,
     demo_running: bool,
-    demo_clock: Instant,
+    demo_clock: Option<Instant>,
     demo_fraction: f64,
     spectrum_settings: Settings,
     analyzer: Analyzer,
@@ -143,6 +143,7 @@ pub struct ScopeApp {
     spectrum_dirty: bool,
     spectrum_pixels: usize,
     spectrum_lines: Vec<Line>,
+    spectrum_line_builder: spectrum::LineBuilder,
     spectrum_segments: Arc<Vec<Segment>>,
     spectrum_revision: u64,
     last_spectrum: Instant,
@@ -251,7 +252,7 @@ impl ScopeApp {
             sidebar: Sidebar::default(),
             demo: Demo::default(),
             demo_running: demo && !smoke,
-            demo_clock: Instant::now(),
+            demo_clock: None,
             demo_fraction: 0.0,
             spectrum_settings: Settings::default(),
             analyzer: Analyzer::new(Settings::default(), 48000),
@@ -263,6 +264,7 @@ impl ScopeApp {
             spectrum_dirty: true,
             spectrum_pixels: 0,
             spectrum_lines: Vec::with_capacity(8192),
+            spectrum_line_builder: spectrum::LineBuilder::default(),
             spectrum_segments: Arc::new(Vec::with_capacity(8192)),
             spectrum_revision: 0,
             last_spectrum: Instant::now() - Duration::from_secs(1),
@@ -321,6 +323,23 @@ impl ScopeApp {
             #[cfg(feature = "qa")]
             lifecycle_held: None,
         };
+        #[cfg(feature = "qa")]
+        if app.profile.is_some() {
+            let precision = match std::env::var("MEASURELAB_PROFILE_FFT_PRECISION").as_deref() {
+                Ok("f32") => Precision::F32,
+                _ => Precision::F64,
+            };
+            let size = std::env::var("MEASURELAB_PROFILE_FFT_SIZE")
+                .ok()
+                .and_then(|size| size.parse::<usize>().ok())
+                .filter(|size| FFT_SIZES.contains(size))
+                .unwrap_or(8192);
+            app.spectrum_settings.precision = precision;
+            app.spectrogram_settings.precision = precision;
+            app.spectrum_settings.size = size;
+            app.spectrogram_settings.size = size;
+            app.reset_analysis();
+        }
         if demo || smoke {
             app.channels = 2;
             app.format = if smoke { "QA fixture" } else { "Internal demo" }.into();
@@ -373,6 +392,7 @@ impl ScopeApp {
                 self.lifecycle_held = Some((revision, latest));
                 self.spectrum_settings.size = 1024;
                 self.spectrum_settings.averages = 16;
+                self.spectrum_settings.precision = Precision::F32;
                 self.spectrum_channel = 1;
                 self.reset_analysis();
                 self.lifecycle_stage = 1;
@@ -394,6 +414,7 @@ impl ScopeApp {
                 self.spectrogram_scale = FrequencyScale::Linear;
                 self.spectrogram_floor = -100.0;
                 self.spectrogram_settings.size = 1024;
+                self.spectrogram_settings.precision = Precision::F32;
                 self.spectrogram_channel = 1;
                 self.visible = [true, false, false];
                 self.lifecycle_stage = 3;
@@ -412,8 +433,10 @@ impl ScopeApp {
                 assert_ne!(latest.generation, self.lifecycle_held.unwrap().1.generation);
                 assert_eq!(latest.config.channel, 1);
                 assert_eq!(latest.config.size, 1024);
+                assert_eq!(latest.config.precision, Precision::F32);
                 self.visible = [true; 3];
                 self.spectrogram_settings.size = 8192;
+                self.spectrogram_settings.precision = Precision::F64;
                 self.spectrogram_channel = 0;
                 self.reset_stft();
                 self.lifecycle_stage = 5;
@@ -421,6 +444,7 @@ impl ScopeApp {
             5 if elapsed > 2.3 => {
                 assert_eq!(latest.config.channel, 0);
                 assert_eq!(latest.config.size, 8192);
+                assert_eq!(latest.config.precision, Precision::F64);
                 println!(
                     "UI lifecycle OK: independent Spectrum settings, stop/late-result exclusion, held display changes, hide/show, restart epoch, STFT CH/FFT changes"
                 );
@@ -453,6 +477,7 @@ impl ScopeApp {
             hop: self.spectrogram_settings.size / 4,
             window: self.spectrogram_settings.window,
             remove_dc: self.spectrogram_settings.remove_dc,
+            precision: self.spectrogram_settings.precision,
         };
         let generation = self
             .stft
@@ -470,8 +495,12 @@ impl ScopeApp {
 
     fn poll_demo(&mut self) {
         let now = Instant::now();
-        let elapsed = now.duration_since(self.demo_clock).as_secs_f64();
-        self.demo_clock = now;
+        // Acquisition starts at the first poll, after window/GPU setup. Startup
+        // time is not a missing interval in a demo that has not produced input.
+        let elapsed = self
+            .demo_clock
+            .replace(now)
+            .map_or(0.0, |previous| now.duration_since(previous).as_secs_f64());
         if !self.demo_running {
             return;
         }
@@ -505,7 +534,7 @@ impl ScopeApp {
             self.format = "Internal demo".into();
             self.history = History::new(96000);
             self.demo_fraction = 0.0;
-            self.demo_clock = Instant::now();
+            self.demo_clock = None;
             self.demo_running = true;
             self.dropped = 0;
             self.error = None;
@@ -918,8 +947,8 @@ impl ScopeApp {
                 .measurements
                 .iter()
                 .map(|m| m.peak)
-                .fold(0.0_f32, f32::max);
-            self.fs_per_div = (peak / 3.5).clamp(0.001, 0.5);
+                .fold(0.0_f64, f64::max);
+            self.fs_per_div = (peak / 3.5).clamp(0.001, 0.5) as f32;
             self.dirty = true;
         }
         ui.separator();
@@ -951,6 +980,11 @@ impl ScopeApp {
 
     fn spectrum_controls(&mut self, ui: &mut egui::Ui) {
         let before = (self.spectrum_settings, self.spectrum_channel);
+        fft_precision(
+            ui,
+            "spectrum_precision",
+            &mut self.spectrum_settings.precision,
+        );
         setting_label(ui, "SOURCE CHANNEL");
         channel_select(
             ui,
@@ -1058,6 +1092,11 @@ impl ScopeApp {
 
     fn spectrogram_controls(&mut self, ui: &mut egui::Ui) {
         let before = (self.spectrogram_settings, self.spectrogram_channel);
+        fft_precision(
+            ui,
+            "spectrogram_precision",
+            &mut self.spectrogram_settings.precision,
+        );
         setting_label(ui, "SOURCE CHANNEL");
         channel_select(
             ui,
@@ -1601,7 +1640,7 @@ impl ScopeApp {
         self.spectrum_pixels = pixels;
         if self.spectrum_dirty {
             let started = Instant::now();
-            spectrum::build_lines(
+            self.spectrum_line_builder.build(
                 &self.analyzer,
                 view,
                 pixels,
@@ -1821,7 +1860,8 @@ impl ScopeApp {
                 egui::FontId::monospace(11.0),
                 GREEN,
             );
-            let ty = rect.center().y - self.trigger.level / (self.fs_per_div * 8.0) * rect.height();
+            let ty = rect.center().y
+                - (self.trigger.level / (self.fs_per_div as f64 * 8.0)) as f32 * rect.height();
             if rect.y_range().contains(ty) {
                 painter.line_segment(
                     [pos2(rect.right() - 12.0, ty), pos2(rect.right(), ty)],
@@ -1876,7 +1916,9 @@ impl ScopeApp {
 }
 
 impl eframe::App for ScopeApp {
-    fn ui(&mut self, ui: &mut egui::Ui, _: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        #[cfg(not(feature = "qa"))]
+        let _ = frame;
         let ctx = ui.ctx().clone();
         let now = Instant::now();
         let elapsed = now.duration_since(self.last_frame).as_secs_f64();
@@ -1903,17 +1945,19 @@ impl eframe::App for ScopeApp {
             self.check_lifecycle();
             let running = self.running();
             if let Some(profile) = &mut self.profile {
-                profile.record(elapsed, running);
+                profile.record(elapsed, running, frame.info().cpu_usage);
                 if profile.finished() {
                     if std::env::var_os("MEASURELAB_PROFILE_LIFECYCLE").is_some() {
                         assert_eq!(self.lifecycle_stage, 6, "UI lifecycle did not finish");
                     }
                     profile.report(self.dropped);
                     println!(
-                        "STFT profile: {} Hz, {} ch, CH {}, rows {}, input dropped {}, result dropped {}, worker CPU {:.3} ms total",
+                        "STFT profile: {} Hz, {} ch, CH {}, {}-point {:?}, rows {}, input dropped {}, result dropped {}, worker CPU {:.3} ms total",
                         self.sample_rate,
                         self.channels,
                         self.spectrogram_channel + 1,
+                        self.spectrogram_settings.size,
+                        self.spectrogram_settings.precision,
                         self.stft.metrics.produced.load(Ordering::Relaxed),
                         self.stft.metrics.input_dropped.load(Ordering::Relaxed),
                         self.stft.metrics.result_dropped.load(Ordering::Relaxed),
@@ -1928,7 +1972,7 @@ impl eframe::App for ScopeApp {
                     self.profile = None;
                     ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                 }
-                ctx.request_repaint_after(Duration::from_millis(8));
+                ctx.request_repaint();
                 if std::env::var_os("MEASURELAB_PROFILE_SCREENSHOT").is_some()
                     && !self.screenshot_requested
                     && self.created.elapsed() > Duration::from_secs(3)
@@ -2198,7 +2242,8 @@ impl eframe::App for ScopeApp {
                 });
         });
         if self.running() || self.busy {
-            ctx.request_repaint_after(Duration::from_millis(8));
+            // Let VSync pace acquisition frames without an additional timer.
+            ctx.request_repaint();
         }
         if self.smoke {
             #[cfg(feature = "qa")]
@@ -2227,6 +2272,20 @@ fn plot_size(ui: &egui::Ui) -> egui::Vec2 {
 
 fn setting_label(ui: &mut egui::Ui, text: &str) {
     ui.label(RichText::new(text).small().color(MUTED));
+}
+
+fn fft_precision(ui: &mut egui::Ui, id: &str, precision: &mut Precision) {
+    setting_label(ui, "FFT PRECISION");
+    egui::ComboBox::from_id_salt(id)
+        .width(ui.available_width())
+        .selected_text(precision.name())
+        .show_ui(ui, |ui| {
+            for mode in [Precision::F64, Precision::F32] {
+                ui.selectable_value(precision, mode, mode.name());
+            }
+        })
+        .response
+        .on_hover_text("Only this instrument's FFT changes precision. Input history, DC removal and power averaging use 64-bit.");
 }
 
 fn channel_select(ui: &mut egui::Ui, id: &str, selected: &mut usize, channels: u16) {
