@@ -20,6 +20,8 @@ A collection of DIY audio measurement and analysis tools, grown organically as n
 
 This project aims to reach more people as an alternative for audio enthusiasts who cannot afford expensive measurement equipment.
 
+**Final Python release:** [v0.9.1](https://github.com/youtube-at-vach/MeasureLab/releases/tag/v0.9.1) is the final release of the Python/PyQt6 edition. Development of this edition ends with this release.
+
 ## ✨ Features
 
 ### 🛠️ Widgets / Measurement Modules

@@ -1,5 +1,7 @@
 # 測定ツール マニュアル
 
+**Python 版の最終リリース:** [v0.9.1](https://github.com/youtube-at-vach/MeasureLab/releases/tag/v0.9.1) をもって、Python/PyQt6 版の開発を終了します。このマニュアルは Python 版の操作方法を説明しています。
+
 ![Welcome](assets/welcome.png)
 
 ## 概要

@@ -1,5 +1,7 @@
 # MeasureLab Operation Manual
 
+**Final Python release:** [v0.9.1](https://github.com/youtube-at-vach/MeasureLab/releases/tag/v0.9.1) is the final release of the Python/PyQt6 edition. Development of this edition ends with this release. This manual describes the Python edition.
+
 ![Welcome](assets/welcome.png)
 
 ## Overview

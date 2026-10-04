@@ -26,7 +26,9 @@ Specifies the destination folder for saving screenshots taken in each measuremen
 
 Performs optimization to improve the processing speed of FFT (Fast Fourier Transform).
 
-* **Regenerate Optimization**: Executes the optimization process. Execution may take several seconds to several minutes.
+Common FFT plans are prepared at startup. The standard, medium, and huge size indicators report measured (MEASURE) and estimated (ESTIMATE) plan coverage for both 32-bit and 64-bit processing. Hover over a status value to see the plan counts. Regenerate optimization if older optimization data has unknown coverage.
+
+* **Optimize FFT**: Executes the optimization process. Execution may take several seconds to several minutes.
 * **Include Huge Sizes**: If checked, it also performs optimization for very large data sizes (up to 4M samples). It takes time to process, but it is advantageous when performing huge FFTs.
 
 ## Audio

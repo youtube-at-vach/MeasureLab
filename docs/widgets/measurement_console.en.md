@@ -43,6 +43,7 @@ the order. Use **Layout → Reapply Layout** to restore proportions without chan
 | **2 x 2 Grid** | Two columns and two rows. |
 | **2 Columns x 3 Rows** | Six panes arranged vertically. |
 | **3 Columns x 2 Rows** | Six panes arranged horizontally. |
+| **2 Above + 3 Below** | Two panes above and three below, with the upper row using two thirds of the height. |
 | **Main + 3 Right** | A large main pane using two thirds of the width, with three stacked panes on the right. |
 | **Main + 3 Below** | A large main pane using two thirds of the height, with three panes below. |
 
