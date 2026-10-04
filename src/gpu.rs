@@ -39,11 +39,11 @@ struct TraceBuffers {
 impl TraceRenderer {
     pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("RAS trace shader"),
+            label: Some("MeasureLab trace shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("trace.wgsl").into()),
         });
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("RAS parameters"),
+            label: Some("MeasureLab parameters"),
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
                 visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
@@ -56,12 +56,12 @@ impl TraceRenderer {
             }],
         });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("RAS trace layout"),
+            label: Some("MeasureLab trace layout"),
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("RAS instanced anti-aliased traces"), layout: Some(&pipeline_layout),
+            label: Some("MeasureLab instanced anti-aliased traces"), layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader, entry_point: Some("vs_main"),
                 buffers: &[Some(wgpu::VertexBufferLayout {
@@ -101,12 +101,12 @@ impl TraceRenderer {
 impl TraceBuffers {
     fn new(device: &wgpu::Device, layout: &wgpu::BindGroupLayout) -> Self {
         let uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("RAS per-plot viewport parameters"),
+            label: Some("MeasureLab per-plot viewport parameters"),
             contents: bytemuck::cast_slice(&[1.0_f32, 1.0, 1.5, 0.0]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
         let binding = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("RAS per-plot parameters"),
+            label: Some("MeasureLab per-plot parameters"),
             layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
@@ -155,7 +155,7 @@ impl TraceBuffers {
 
 fn instance_buffer(device: &wgpu::Device, capacity: usize) -> wgpu::Buffer {
     device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("RAS reusable trace instances"),
+        label: Some("MeasureLab reusable trace instances"),
         size: (capacity * std::mem::size_of::<Segment>()) as u64,
         usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
@@ -247,7 +247,7 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
             1,
         );
         let texture = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("RAS smoke output"),
+            label: Some("MeasureLab smoke output"),
             size: wgpu::Extent3d {
                 width: 256,
                 height: 128,
@@ -262,7 +262,7 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
         });
         let view = texture.create_view(&Default::default());
         let readback = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("RAS smoke readback"),
+            label: Some("MeasureLab smoke readback"),
             size: 256 * 128 * 4,
             usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
             mapped_at_creation: false,
@@ -270,7 +270,7 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
         let mut encoder = device.create_command_encoder(&Default::default());
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("RAS smoke draw"),
+                label: Some("MeasureLab smoke draw"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
                     depth_slice: None,

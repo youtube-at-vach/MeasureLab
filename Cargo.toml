@@ -1,5 +1,5 @@
 [package]
-name = "ras"
+name = "measurelab"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.95"
@@ -21,7 +21,7 @@ pollster = { version = "1.0.1", optional = true }
 png = { version = "0.18", optional = true }
 
 [[bin]]
-name = "ras"
+name = "measurelab"
 path = "src/main.rs"
 required-features = ["desktop"]
 

@@ -36,7 +36,7 @@ macOSではマイクへのアクセスを許可する必要があります。許
 
 ```sh
 ./scripts/bundle-macos.sh
-open dist/*.app
+open dist/MeasureLab.app
 ```
 
 LinuxではALSAおよびウィンドウシステムの開発ライブラリが必要です。Ubuntuの場合:
@@ -120,7 +120,7 @@ Audio device → CPAL callback → bounded SPSC ring → sample history
 
 テストはリング履歴の折り返し、型変換、モノラル／多チャンネル処理、欠落検出用の連番、トリガー、スパイク保持を確認します。ベンチマークは48k・192k・100万サンプルを1920物理ピクセルへ集約するCPU時間を計測します。GPU描画の速度やデバイス入力の遅延を測定するものではありません。
 
-`qa`機能で`--ui-smoke`を使うと、内部テスト信号による画面を撮影できます。`--compact`との組み合わせで小さい画面も確認できます。
+`qa`機能で`--ui-smoke`を使うと、内部テスト信号による画面を撮影できます。`MEASURELAB_UI_SMOKE_SETTINGS=scope`（または`spectrum`、`workspace`、`collapsed`、`hidden`）を指定すると、その設定パネルの状態で撮影できます。`--compact`との組み合わせで小さい画面も確認できます。
 
 `--audio-smoke`は既定入力を2秒間取り込み、実際に届いたフレーム数を確認します。`--gpu-smoke`は二つのプロットを同じ更新番号で準備してから描画し、それぞれの領域をGPUから読み戻して状態の独立を検証します。`--ui-smoke`は入力を開始せず、明示的なテスト信号でScope＋Spectrumを短時間開いて閉じます。`qa`機能を有効にすると、その表示を`dist/ui-smoke.png`へ保存します。通常起動時はオーディオ入力、`--demo`指定時は内部信号を使います。GPUやマイクを必要とする確認はCIでは実行しません。
 

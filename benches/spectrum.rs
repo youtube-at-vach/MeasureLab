@@ -1,4 +1,4 @@
-use ras::{
+use measurelab::{
     demo::Demo,
     signal::History,
     spectrum::{Analyzer, FrequencyScale, Settings, View, build_lines},

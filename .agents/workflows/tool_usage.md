@@ -35,7 +35,7 @@ macOS のローカルアプリバンドル:
 
 ```bash
 ./scripts/bundle-macos.sh
-open dist/RAS.app
+open dist/MeasureLab.app
 ```
 
 Rust 実装の詳しい操作・計測・前提は [Rust README](../../guide/rust/README.md)、拡張計画は [Rust PLAN](../../guide/rust/PLAN.md) を参照する。
@@ -60,11 +60,7 @@ python3 -m venv .venv
 ./.venv/bin/mkdocs build
 ```
 
-PDF 生成は必要な場合だけ実行する。WeasyPrint のシステム依存関係は `.github/workflows/pdf_draft.yml` を参照する。
-
-```bash
-ENABLE_PDF_EXPORT=1 ./.venv/bin/mkdocs build
-```
+PDF 自動生成のワークフローは停止中。公開マニュアルの Web ビルドは継続する。
 
 ## 検証
 

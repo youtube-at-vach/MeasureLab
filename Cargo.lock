@@ -1254,6 +1254,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dae608c151f68243f2b000364e1f7b186d9c29845f7d2d85bd31b9ad77ad552b"
 
 [[package]]
+name = "measurelab"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "cpal",
+ "eframe",
+ "png",
+ "pollster",
+ "rtrb",
+ "rustfft",
+]
+
+[[package]]
 name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2043,19 +2056,6 @@ name = "range-alloc"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca45419789ae5a7899559e9512e58ca889e41f04f1f2445e9f4b290ceccd1d08"
-
-[[package]]
-name = "ras"
-version = "0.1.0"
-dependencies = [
- "bytemuck",
- "cpal",
- "eframe",
- "png",
- "pollster",
- "rtrb",
- "rustfft",
-]
 
 [[package]]
 name = "raw-window-handle"

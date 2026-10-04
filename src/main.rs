@@ -7,8 +7,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut compact = false;
     for arg in std::env::args().skip(1) {
         match arg.as_str() {
-            "--audio-smoke" => return ras::audio::smoke_test().map_err(Into::into),
-            "--gpu-smoke" => return ras::gpu::smoke_test(),
+            "--audio-smoke" => return measurelab::audio::smoke_test().map_err(Into::into),
+            "--gpu-smoke" => return measurelab::gpu::smoke_test(),
             "--list-devices" => {
                 use cpal::traits::HostTrait;
                 for (index, device) in cpal::default_host().input_devices()?.enumerate() {
@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "--compact" => compact = true,
             "--help" | "-h" => {
                 println!(
-                    "RAS — GPU audio measurement lab\n\nOptions:\n  --demo        Start with an internal signal (no microphone or audio output)\n  --compact     Start in a smaller window with stacked plots\n  --low-latency Disable VSync (higher GPU usage)\n  --list-devices List CPAL input devices\n  --audio-smoke Capture the default input for two seconds\n  --gpu-smoke   Validate independent GPU plots with offscreen readback\n  --ui-smoke    Open the scope + spectrum UI briefly, then close\n  --help       Show this help"
+                    "MeasureLab — GPU audio measurement lab\n\nOptions:\n  --demo        Start with an internal signal (no microphone or audio output)\n  --compact     Start in a smaller window with stacked plots\n  --low-latency Disable VSync (higher GPU usage)\n  --list-devices List CPAL input devices\n  --audio-smoke Capture the default input for two seconds\n  --gpu-smoke   Validate independent GPU plots with offscreen readback\n  --ui-smoke    Open the scope + spectrum UI briefly, then close\n  --help       Show this help"
                 );
                 return Ok(());
             }
@@ -37,7 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 [1440.0, 860.0]
             })
             .with_min_inner_size([900.0, 660.0])
-            .with_app_id("dev.ras.oscilloscope"),
+            .with_app_id("dev.measurelab.app"),
         renderer: eframe::Renderer::Wgpu,
         ..Default::default()
     };
@@ -54,9 +54,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let _ = std::fs::remove_file("dist/ui-smoke.png");
     }
     eframe::run_native(
-        "RAS · Audio Measurement Lab",
+        "MeasureLab · Audio Measurement Lab",
         options,
-        Box::new(move |cc| Ok(Box::new(ras::app::ScopeApp::new(cc, smoke, demo)?))),
+        Box::new(move |cc| Ok(Box::new(measurelab::app::ScopeApp::new(cc, smoke, demo)?))),
     )?;
     #[cfg(feature = "qa")]
     if smoke && !std::path::Path::new("dist/ui-smoke.png").exists() {

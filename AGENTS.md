@@ -8,7 +8,7 @@ description: MeasureLab の Rust 開発と公開サイトの共通ルール
 
 ## 現在の状態
 
-* Rust 実装は RAS の初期実装を取り込んだもの。Cargo パッケージ・実行ファイル名は現在 `ras`。Rust 1.95 以降を使う。
+* Rust アプリの表示名は MeasureLab、Cargo パッケージ・実行ファイル名は `measurelab`。Rust 1.95 以降を使う。
 * 開発用の PR は作業ブランチから `rewrite/rust` に向ける。main への切り替えは別途依頼された段階で行う。
 * Python アプリの最終版は `v0.9.1` タグと `archive/python-v0.9.1` ブランチを参照する。
 * `.legacy-python/` はローカル専用の退避先で、Git 管理・通常の検索・検証の対象外。ここから旧実装やテスト環境を自動的に復元しない。
@@ -22,7 +22,7 @@ description: MeasureLab の Rust 開発と公開サイトの共通ルール
 | `src/`、`Cargo.toml`、`Cargo.lock`、`benches/` | Rust アプリ、依存関係、数値テストとベンチマーク |
 | `scripts/`、`guide/rust/`、`LICENSE` | Rust 起動・macOS バンドル、操作・計画資料、The Unlicense |
 | `download-site/`、`version.json` | Python 最終リリースのダウンロード案内 |
-| `docs/`、`mkdocs.yml`、`requirements-docs.txt` | 公開マニュアル・PDF の生成 |
+| `docs/`、`mkdocs.yml`、`requirements-docs.txt` | 公開マニュアルの生成。PDF 自動生成のワークフローは停止中 |
 | `guide/`、`tech_docs/`、`.github/deepwiki/` | 製品・測定設計と旧版の参考資料 |
 | `misc/extract_changelog.py`、`CHANGELOG.md` | リリースノートの抽出と開発履歴 |
 | `.github/` | サイト・マニュアルの検証と公開、Issue、資金援助、レビュー、セキュリティ |

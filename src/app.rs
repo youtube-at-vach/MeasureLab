@@ -271,7 +271,7 @@ impl ScopeApp {
         #[cfg(feature = "qa")]
         if smoke {
             // Render every inspector with the same deterministic signal fixture.
-            match std::env::var("RAS_UI_SMOKE_SETTINGS").as_deref() {
+            match std::env::var("MEASURELAB_UI_SMOKE_SETTINGS").as_deref() {
                 Ok("scope") => app.sidebar.section = Some(SettingsSection::Scope),
                 Ok("spectrum") => app.sidebar.section = Some(SettingsSection::Spectrum),
                 Ok("workspace") => app.sidebar.section = Some(SettingsSection::Workspace),
@@ -1393,7 +1393,7 @@ impl eframe::App for ScopeApp {
         egui::Panel::top("header").show(ui, |ui| {
             ui.add_space(4.0);
             ui.horizontal(|ui| {
-                ui.label(RichText::new("RAS").size(26.0).strong().color(GREEN));
+                ui.label(RichText::new("MeasureLab").size(26.0).strong().color(GREEN));
                 ui.label(
                     RichText::new("AUDIO MEASUREMENT LAB")
                         .size(12.0)

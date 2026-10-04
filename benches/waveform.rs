@@ -1,4 +1,4 @@
-use ras::signal::{History, Trigger, build_lines};
+use measurelab::signal::{History, Trigger, build_lines};
 use std::{hint::black_box, time::Instant};
 
 fn main() {
