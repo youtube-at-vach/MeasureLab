@@ -197,6 +197,7 @@ def test_read_empty():
     assert read_data_again.shape == (0, 2)
     assert rb.available() == 0
 
+
 def test_stereo_to_quad_write():
     rb = RingBuffer(capacity=100, channels=4, dtype=np.float32)
     data = np.ones((10, 2), dtype=np.float32)

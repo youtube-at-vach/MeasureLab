@@ -750,10 +750,12 @@ def test_output_overload_warning_is_distinct_from_buffer_error(qtbot):
     window.io_error_button.click()
     assert window.io_error_button.isHidden()
 
+
 def test_format_compact_sample_rate():
     class MockMainWindow:
         def _format_compact_sample_rate(self, sample_rate):
             return MainWindow._format_compact_sample_rate(self, sample_rate)
+
     mw = MockMainWindow()
     assert mw._format_compact_sample_rate(48000) == "48 kHz"
     assert mw._format_compact_sample_rate(96000) == "96 kHz"
