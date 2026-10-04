@@ -246,11 +246,73 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
             2.0,
             1,
         );
+        use crate::{
+            spectrogram, spectrogram_gpu,
+            spectrum::{FrequencyScale, View, Window},
+            stft::{Config, Gap, RowInfo},
+        };
+        let config = Config {
+            sample_rate: 48000,
+            channels: 16,
+            channel: 15,
+            size: 32768,
+            hop: 8192,
+            window: Window::Hann,
+            remove_dc: true,
+        };
+        let mut history = spectrogram::History::default();
+        history.reset(1, config);
+        let mut db = vec![-120.0; config.size / 2 + 1];
+        for i in 0..spectrogram::ROWS + 3 {
+            let latest = i == spectrogram::ROWS + 2;
+            let previous = i == spectrogram::ROWS + 1;
+            db.fill(if latest {
+                0.0
+            } else if previous {
+                -60.0
+            } else {
+                -120.0
+            });
+            // A narrow peak in the final packed scanline, including Nyquist.
+            if previous {
+                db[config.size / 2] = 0.0;
+            }
+            let end = config.size as u64 + (i + usize::from(latest)) as u64 * config.hop as u64;
+            history.push(
+                RowInfo {
+                    generation: 1,
+                    config,
+                    start: end - config.size as u64,
+                    end,
+                    gap: Gap {
+                        result_rows: u64::from(latest),
+                        ..Gap::default()
+                    },
+                },
+                &db,
+            );
+        }
+        let mut image = spectrogram_gpu::Renderer::new(&device, format);
+        let mut image_view = View::full(config.sample_rate, FrequencyScale::Linear, -120.0);
+        image_view.ceiling_db = 0.0;
+        let seconds = 4.0 * config.hop as f64 / config.sample_rate as f64;
+        image.prepare(&device, &queue, &history, image_view, seconds, 256.0);
+        let uploads = image.uploaded_rows;
+        // Display-only and viewport changes must leave texture history intact.
+        let mut alternate = image_view;
+        alternate.scale = FrequencyScale::Log;
+        alternate.min_hz = 20.0;
+        alternate.floor_db = -100.0;
+        image.prepare(&device, &queue, &history, alternate, seconds * 2.0, 128.0);
+        image.prepare(&device, &queue, &history, image_view, seconds, 256.0);
+        if image.uploaded_rows != uploads || uploads != spectrogram::ROWS as u64 {
+            return Err("Spectrogram reuploaded unchanged texture rows".into());
+        }
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("MeasureLab smoke output"),
             size: wgpu::Extent3d {
                 width: 256,
-                height: 128,
+                height: 192,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
@@ -263,7 +325,7 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
         let view = texture.create_view(&Default::default());
         let readback = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("MeasureLab smoke readback"),
-            size: 256 * 128 * 4,
+            size: 256 * 192 * 4,
             usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
             mapped_at_creation: false,
         });
@@ -286,6 +348,8 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
             renderer.paint(PlotId::Scope, &mut pass);
             pass.set_viewport(0.0, 64.0, 256.0, 64.0, 0.0, 1.0);
             renderer.paint(PlotId::Spectrum, &mut pass);
+            pass.set_viewport(0.0, 128.0, 256.0, 64.0, 0.0, 1.0);
+            image.paint(&mut pass);
         }
         encoder.copy_texture_to_buffer(
             texture.as_image_copy(),
@@ -294,7 +358,7 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
                 layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(1024),
-                    rows_per_image: Some(128),
+                    rows_per_image: Some(192),
                 },
             },
             texture.size(),
@@ -315,7 +379,7 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
             .iter()
             .filter(|p| p[1] > 200 && p[0] < 100)
             .count();
-        let blue = pixels[256 * 64 * 4..]
+        let blue = pixels[256 * 64 * 4..256 * 128 * 4]
             .as_chunks::<4>()
             .0
             .iter()
@@ -324,8 +388,27 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
         if green < 200 || blue < 200 {
             return Err("GPU readback did not contain both traces".into());
         }
+        let pixel = |x: usize, y: usize| &pixels[(y * 256 + x) * 4..(y * 256 + x) * 4 + 4];
+        let newest = pixel(128, 136);
+        let missing = pixel(128, 152);
+        let older = pixel(128, 168);
+        let nyquist = pixel(255, 168);
+        let oldest = pixel(128, 184);
+        if newest[0] < 240
+            || newest[1] < 200
+            || older[2] < 190
+            || older[0] > 30
+            || missing[0] < 40
+            || missing[2] > 20
+            || oldest[0] > 15
+            || oldest[1] > 20
+            || nyquist[0] < 240
+            || nyquist[1] < 200
+        {
+            return Err(format!("Spectrogram wrap/order/gap/Nyquist readback failed: {newest:?}, {missing:?}, {older:?}, {oldest:?}, {nyquist:?}").into());
+        }
         println!(
-            "GPU OK: {:?}, {} / {} green / {} blue pixels",
+            "GPU OK: {:?}, {} / {} green / {} blue pixels / spectrogram wrap, order, gap, packed Nyquist, independent view changes, {uploads} row uploads",
             adapter.get_info().backend,
             adapter.get_info().name,
             green,

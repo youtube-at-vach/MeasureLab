@@ -1,6 +1,62 @@
 //! Opt-in, bounded UI measurements for local QA runs.
 use std::time::{Duration, Instant};
 
+/// A finite internal software fixture using the same FFT/history as live input.
+/// Includes texture wrapping, a changing tone and an explicit acquisition gap.
+pub fn spectrogram_fixture(output: &mut crate::spectrogram::History) -> crate::stft::RowInfo {
+    use crate::{
+        demo::Demo,
+        signal::History,
+        spectrum::{Analyzer, Settings},
+        stft::{Config, Gap, RowInfo},
+    };
+    let settings = Settings {
+        averages: 1,
+        ..Settings::default()
+    };
+    let config = Config {
+        sample_rate: 48000,
+        channels: 2,
+        channel: 0,
+        size: settings.size,
+        hop: settings.size / 4,
+        window: settings.window,
+        remove_dc: true,
+    };
+    output.reset(1, config);
+    let mut source = History::new(config.size);
+    let mut demo = Demo::default();
+    let mut analyzer = Analyzer::new(settings, config.sample_rate);
+    for i in 0..700 {
+        demo.frequency = 200.0 * 40_f32.powf(i as f32 / 699.0);
+        let mut gap = Gap::default();
+        let count = if i == 0 {
+            config.size
+        } else if i == 620 {
+            source.clear_at(source.range().end + 4 * config.hop as u64);
+            gap.input_frames = 4 * config.hop as u64;
+            gap.discontinuity = true;
+            config.size
+        } else {
+            config.hop
+        };
+        demo.append(&mut source, count, config.sample_rate);
+        let end = source.range().end;
+        assert!(analyzer.update_window(&source, end - config.size as u64..end, 0));
+        assert!(output.push(
+            RowInfo {
+                generation: 1,
+                config,
+                start: end - config.size as u64,
+                end,
+                gap
+            },
+            analyzer.db()
+        ));
+    }
+    output.latest().unwrap()
+}
+
 pub struct Profile {
     started: Instant,
     duration: Duration,

@@ -3,6 +3,7 @@ pub mod audio;
 pub mod demo;
 pub mod instance;
 pub mod signal;
+pub mod spectrogram;
 pub mod spectrum;
 pub mod stft;
 
@@ -13,3 +14,5 @@ pub mod qa;
 pub mod app;
 #[cfg(feature = "desktop")]
 pub mod gpu;
+#[cfg(feature = "desktop")]
+pub mod spectrogram_gpu;

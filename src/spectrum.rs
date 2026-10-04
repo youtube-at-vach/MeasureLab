@@ -1,8 +1,8 @@
 //! Windowed, one-sided amplitude spectra. A bin-centred sine with peak
 //! amplitude 1 FS reads 0 dBFS. This is not a PSD or a calibrated dBm meter.
 use crate::signal::{History, Line};
-use rustfft::{Fft, FftPlanner, num_complex::Complex32};
-use std::{f32::consts::TAU, ops::Range, sync::Arc};
+use rustfft::{Fft, FftPlanner, num_complex::Complex64};
+use std::{f64::consts::TAU, ops::Range, sync::Arc};
 
 pub const FFT_SIZES: [usize; 6] = [1024, 2048, 4096, 8192, 16384, 32768];
 pub const DB_MIN: f32 = -180.0;
@@ -24,8 +24,8 @@ impl Window {
         }
     }
 
-    fn weight(self, index: usize, size: usize) -> f32 {
-        let phase = TAU * index as f32 / size as f32;
+    fn weight(self, index: usize, size: usize) -> f64 {
+        let phase = TAU * index as f64 / size as f64;
         match self {
             Self::Rectangular => 1.0,
             Self::Hann => 0.5 - 0.5 * phase.cos(),
@@ -69,13 +69,13 @@ pub struct Peak {
 pub struct Analyzer {
     settings: Settings,
     sample_rate: u32,
-    fft: Arc<dyn Fft<f32>>,
-    buffer: Vec<Complex32>,
-    scratch: Vec<Complex32>,
-    weights: Vec<f32>,
-    weight_sum: f32,
+    fft: Arc<dyn Fft<f64>>,
+    buffer: Vec<Complex64>,
+    scratch: Vec<Complex64>,
+    weights: Vec<f64>,
+    weight_sum: f64,
     rbw: f32,
-    power: Vec<f32>,
+    power: Vec<f64>,
     db: Vec<f32>,
     hold: Vec<f32>,
     last_end: Option<u64>,
@@ -86,16 +86,16 @@ impl Analyzer {
     pub fn new(settings: Settings, sample_rate: u32) -> Self {
         assert!(FFT_SIZES.contains(&settings.size));
         assert!(sample_rate > 0 && settings.averages > 0);
-        let fft = FftPlanner::<f32>::new().plan_fft_forward(settings.size);
+        let fft = FftPlanner::<f64>::new().plan_fft_forward(settings.size);
         let weights: Vec<_> = (0..settings.size)
             .map(|i| settings.window.weight(i, settings.size))
             .collect();
-        let weight_sum = weights.iter().sum::<f32>();
-        let rbw = sample_rate as f32 * weights.iter().map(|v| v * v).sum::<f32>()
+        let weight_sum = weights.iter().sum::<f64>();
+        let rbw = sample_rate as f64 * weights.iter().map(|v| v * v).sum::<f64>()
             / (weight_sum * weight_sum);
         Self {
-            buffer: vec![Complex32::default(); settings.size],
-            scratch: vec![Complex32::default(); fft.get_inplace_scratch_len()],
+            buffer: vec![Complex64::default(); settings.size],
+            scratch: vec![Complex64::default(); fft.get_inplace_scratch_len()],
             power: vec![0.0; settings.size / 2 + 1],
             db: vec![DB_MIN; settings.size / 2 + 1],
             hold: vec![DB_MIN; settings.size / 2 + 1],
@@ -104,7 +104,7 @@ impl Analyzer {
             sample_rate,
             weights,
             weight_sum,
-            rbw,
+            rbw: rbw as f32,
             last_end: None,
             last_channel: 0,
         }
@@ -175,26 +175,44 @@ impl Analyzer {
         if channel != self.last_channel {
             self.reset();
         }
-        let start = range.start;
-        let end = range.end;
-        let mean = if self.settings.remove_dc {
-            (start..end)
-                .map(|i| history.get(i).unwrap()[channel] as f64)
-                .sum::<f64>() as f32
-                / self.settings.size as f32
-        } else {
-            0.0
-        };
         for (offset, value) in self.buffer.iter_mut().enumerate() {
-            *value = Complex32::new(
-                (history.get(start + offset as u64).unwrap()[channel] - mean)
-                    * self.weights[offset],
+            *value = Complex64::new(
+                history.get(range.start + offset as u64).unwrap()[channel] as f64,
                 0.0,
             );
         }
+        self.process_window(range.end, channel);
+        true
+    }
+
+    /// Direct 64bit core input, without quantizing through the capture history.
+    /// `end` is the exclusive source sample index of this complete window.
+    pub fn update_samples(&mut self, samples: &[f64], end: u64) -> bool {
+        if samples.len() != self.settings.size || end < samples.len() as u64 {
+            return false;
+        }
+        if self.last_channel != 0 {
+            self.reset();
+        }
+        for (value, &sample) in self.buffer.iter_mut().zip(samples) {
+            *value = Complex64::new(sample, 0.0);
+        }
+        self.process_window(end, 0);
+        true
+    }
+
+    fn process_window(&mut self, end: u64, channel: usize) {
+        let mean = if self.settings.remove_dc {
+            self.buffer.iter().map(|v| v.re).sum::<f64>() / self.settings.size as f64
+        } else {
+            0.0
+        };
+        for (value, weight) in self.buffer.iter_mut().zip(&self.weights) {
+            value.re = (value.re - mean) * weight;
+        }
         self.fft
             .process_with_scratch(&mut self.buffer, &mut self.scratch);
-        let alpha = 1.0 / self.settings.averages as f32;
+        let alpha = 1.0 / self.settings.averages as f64;
         for bin in 0..self.db.len() {
             // DC and Nyquist have no negative-frequency partner to fold in.
             let factor = if bin == 0 || bin == self.settings.size / 2 {
@@ -203,17 +221,16 @@ impl Analyzer {
                 2.0
             } / self.weight_sum;
             let power = self.buffer[bin].norm_sqr() * factor * factor;
-            self.power[bin] = if self.last_end.is_none() {
+            self.power[bin] = if self.last_end.is_none() || self.settings.averages == 1 {
                 power
             } else {
                 self.power[bin] + alpha * (power - self.power[bin])
             };
-            self.db[bin] = (10.0 * self.power[bin].max(1e-18).log10()).max(DB_MIN);
+            self.db[bin] = (10.0 * self.power[bin].max(1e-18).log10()) as f32;
             self.hold[bin] = self.hold[bin].max(self.db[bin]);
         }
         self.last_end = Some(end);
         self.last_channel = channel;
-        true
     }
 
     /// Strongest displayed bin, excluding DC. No sub-bin accuracy is claimed.
@@ -374,6 +391,33 @@ struct Bucket {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::f32::consts::TAU;
+
+    #[test]
+    fn direct_f64_input_preserves_small_ac_on_large_dc() {
+        let samples: Vec<_> = (0..1024)
+            .map(|i| 1.0 + 1e-8 * (std::f64::consts::TAU * 32.0 * i as f64 / 1024.0).cos())
+            .collect();
+        let mut analyzer = Analyzer::new(
+            Settings {
+                size: 1024,
+                averages: 1,
+                ..Settings::default()
+            },
+            48000,
+        );
+        assert!(analyzer.update_samples(&samples, 1024));
+        assert!((analyzer.db()[32] + 160.0).abs() < 0.001);
+        assert!(samples.iter().all(|v| *v as f32 == 1.0));
+        let loud: Vec<_> = (0..1024)
+            .map(|i| (std::f64::consts::TAU * 32.0 * i as f64 / 1024.0).cos())
+            .collect();
+        assert!(analyzer.update_samples(&loud, 2048));
+        assert!(analyzer.db()[32].abs() < 0.001);
+        assert!(analyzer.update_samples(&samples, 3072));
+        assert!((analyzer.db()[32] + 160.0).abs() < 0.001);
+        assert!(!analyzer.update_samples(&samples[..1023], 1024));
+    }
 
     fn tone(size: usize, bin: usize, amplitude: f32, dc: f32) -> History {
         let mut h = History::new(size * 2);

@@ -3,7 +3,7 @@ name = "measurelab"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.95"
-description = "GPU audio measurement workspace with oscilloscope and spectrum analyzer"
+description = "GPU audio measurement workspace with oscilloscope, spectrum and spectrogram"
 license = "Unlicense"
 
 [features]
@@ -31,6 +31,10 @@ harness = false
 
 [[bench]]
 name = "spectrum"
+harness = false
+
+[[bench]]
+name = "spectrogram"
 harness = false
 
 [profile.release]

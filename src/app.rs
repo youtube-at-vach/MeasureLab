@@ -3,6 +3,7 @@ use crate::{
     demo::{Demo, Waveform},
     gpu::{COLORS, PlotId, Segment, TraceCallback, TraceRenderer},
     signal::{Edge, History, Line, Measurement, Trigger, build_lines},
+    spectrogram, spectrogram_gpu,
     spectrum::{self, Analyzer, FFT_SIZES, FrequencyScale, Settings, View, Window},
     stft::{self, RowInfo},
 };
@@ -11,7 +12,7 @@ use eframe::{
     egui_wgpu,
 };
 use std::{
-    sync::{Arc, atomic::Ordering},
+    sync::{Arc, Mutex, atomic::Ordering},
     time::{Duration, Instant},
 };
 
@@ -29,10 +30,10 @@ enum Source {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Workspace {
-    Both,
+enum Instrument {
     Scope,
     Spectrum,
+    Spectrogram,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -61,22 +62,30 @@ impl PlotLayout {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 enum SettingsSection {
     Input,
     Scope,
     Spectrum,
+    Spectrogram,
     Workspace,
 }
 
 impl SettingsSection {
-    const ALL: [Self; 4] = [Self::Input, Self::Scope, Self::Spectrum, Self::Workspace];
+    const ALL: [Self; 5] = [
+        Self::Input,
+        Self::Scope,
+        Self::Spectrum,
+        Self::Spectrogram,
+        Self::Workspace,
+    ];
 
     fn title(self) -> &'static str {
         match self {
             Self::Input => "Input source",
             Self::Scope => "Oscilloscope",
             Self::Spectrum => "Spectrum analyzer",
+            Self::Spectrogram => "Spectrogram",
             Self::Workspace => "Workspace & help",
         }
     }
@@ -86,6 +95,7 @@ impl SettingsSection {
             Self::Input | Self::Workspace => Color32::from_rgb(192, 207, 217),
             Self::Scope => GREEN,
             Self::Spectrum => YELLOW,
+            Self::Spectrogram => BLUE,
         }
     }
 }
@@ -116,7 +126,7 @@ impl Sidebar {
 
 pub struct ScopeApp {
     source: Source,
-    workspace: Workspace,
+    visible: [bool; 3],
     plot_layout: PlotLayout,
     sidebar: Sidebar,
     demo: Demo,
@@ -140,6 +150,16 @@ pub struct ScopeApp {
     spectrum_build_ms: f64,
     stft: stft::Worker,
     last_stft: Option<RowInfo>,
+    spectrogram_history: Arc<Mutex<spectrogram::History>>,
+    spectrogram_settings: Settings,
+    spectrogram_channel: usize,
+    spectrogram_scale: FrequencyScale,
+    spectrogram_min_hz: f32,
+    spectrogram_max_hz: f32,
+    spectrogram_floor: f32,
+    spectrogram_ceiling: f32,
+    spectrogram_seconds: f64,
+    spectrogram_build_ms: f64,
     audio: AudioWorker,
     devices: Vec<DeviceInfo>,
     selected: usize,
@@ -173,6 +193,10 @@ pub struct ScopeApp {
     screenshot_requested: bool,
     #[cfg(feature = "qa")]
     profile: Option<crate::qa::Profile>,
+    #[cfg(feature = "qa")]
+    lifecycle_stage: u8,
+    #[cfg(feature = "qa")]
+    lifecycle_held: Option<(u64, RowInfo)>,
 }
 
 impl ScopeApp {
@@ -190,6 +214,14 @@ impl ScopeApp {
             .write()
             .callback_resources
             .insert(TraceRenderer::new(&render.device, render.target_format));
+        render
+            .renderer
+            .write()
+            .callback_resources
+            .insert(spectrogram_gpu::Renderer::new(
+                &render.device,
+                render.target_format,
+            ));
         let info = render.adapter.get_info();
         cc.egui_ctx.set_theme(egui::ThemePreference::Dark);
         let mut visuals = egui::Visuals::dark();
@@ -214,7 +246,7 @@ impl ScopeApp {
             } else {
                 Source::Live
             },
-            workspace: Workspace::Both,
+            visible: [true; 3],
             plot_layout: PlotLayout::Auto,
             sidebar: Sidebar::default(),
             demo: Demo::default(),
@@ -238,6 +270,19 @@ impl ScopeApp {
             spectrum_build_ms: 0.0,
             stft: stft::Worker::new(),
             last_stft: None,
+            spectrogram_history: Arc::new(Mutex::new(spectrogram::History::default())),
+            spectrogram_settings: Settings {
+                averages: 1,
+                ..Settings::default()
+            },
+            spectrogram_channel: 0,
+            spectrogram_scale: FrequencyScale::Log,
+            spectrogram_min_hz: 20.0,
+            spectrogram_max_hz: 0.0,
+            spectrogram_floor: -120.0,
+            spectrogram_ceiling: 0.0,
+            spectrogram_seconds: 5.0,
+            spectrogram_build_ms: 0.0,
             audio: AudioWorker::new(),
             devices: Vec::new(),
             selected: 0,
@@ -271,14 +316,19 @@ impl ScopeApp {
             screenshot_requested: false,
             #[cfg(feature = "qa")]
             profile: crate::qa::Profile::from_env(),
+            #[cfg(feature = "qa")]
+            lifecycle_stage: 0,
+            #[cfg(feature = "qa")]
+            lifecycle_held: None,
         };
         if demo || smoke {
             app.channels = 2;
             app.format = if smoke { "QA fixture" } else { "Internal demo" }.into();
             app.reset_analysis();
+            app.reset_stft();
             app.demo.append_with(
                 &mut app.history,
-                16384,
+                if smoke { 16384 } else { 0 },
                 app.sample_rate,
                 |sequence, samples| {
                     app.stft.submit(sequence, samples);
@@ -288,10 +338,15 @@ impl ScopeApp {
         }
         #[cfg(feature = "qa")]
         if smoke {
+            app.stft.pause();
+            app.last_stft = Some(crate::qa::spectrogram_fixture(
+                &mut app.spectrogram_history.lock().unwrap(),
+            ));
             // Render every inspector with the same deterministic signal fixture.
             match std::env::var("MEASURELAB_UI_SMOKE_SETTINGS").as_deref() {
                 Ok("scope") => app.sidebar.section = Some(SettingsSection::Scope),
                 Ok("spectrum") => app.sidebar.section = Some(SettingsSection::Spectrum),
+                Ok("spectrogram") => app.sidebar.section = Some(SettingsSection::Spectrogram),
                 Ok("workspace") => app.sidebar.section = Some(SettingsSection::Workspace),
                 Ok("collapsed") => app.sidebar.section = None,
                 Ok("hidden") => app.sidebar.visible = false,
@@ -299,6 +354,80 @@ impl ScopeApp {
             }
         }
         Ok(app)
+    }
+
+    #[cfg(feature = "qa")]
+    fn check_lifecycle(&mut self) {
+        if self.profile.is_none() || std::env::var_os("MEASURELAB_PROFILE_LIFECYCLE").is_none() {
+            return;
+        }
+        let elapsed = self.created.elapsed().as_secs_f64();
+        let history = self.spectrogram_history.lock().unwrap();
+        let Some(latest) = history.latest() else {
+            return;
+        };
+        let revision = history.revision();
+        drop(history);
+        match self.lifecycle_stage {
+            0 if elapsed > 0.6 => {
+                self.lifecycle_held = Some((revision, latest));
+                self.spectrum_settings.size = 1024;
+                self.spectrum_settings.averages = 16;
+                self.spectrum_channel = 1;
+                self.reset_analysis();
+                self.lifecycle_stage = 1;
+            }
+            1 if elapsed > 1.0 => {
+                assert_eq!(latest.config, self.lifecycle_held.unwrap().1.config);
+                assert_eq!(latest.generation, self.lifecycle_held.unwrap().1.generation);
+                self.stop();
+                self.lifecycle_held = Some((revision, latest));
+                self.lifecycle_stage = 2;
+            }
+            2 if elapsed > 1.3 => {
+                assert_eq!(
+                    revision,
+                    self.lifecycle_held.unwrap().0,
+                    "late result changed stopped image"
+                );
+                self.spectrogram_seconds = 2.0;
+                self.spectrogram_scale = FrequencyScale::Linear;
+                self.spectrogram_floor = -100.0;
+                self.spectrogram_settings.size = 1024;
+                self.spectrogram_channel = 1;
+                self.visible = [true, false, false];
+                self.lifecycle_stage = 3;
+            }
+            3 if elapsed > 1.6 => {
+                assert_eq!(
+                    revision,
+                    self.lifecycle_held.unwrap().0,
+                    "display-only change mutated held history"
+                );
+                self.visible = [false, false, true];
+                self.start();
+                self.lifecycle_stage = 4;
+            }
+            4 if elapsed > 2.0 => {
+                assert_ne!(latest.generation, self.lifecycle_held.unwrap().1.generation);
+                assert_eq!(latest.config.channel, 1);
+                assert_eq!(latest.config.size, 1024);
+                self.visible = [true; 3];
+                self.spectrogram_settings.size = 8192;
+                self.spectrogram_channel = 0;
+                self.reset_stft();
+                self.lifecycle_stage = 5;
+            }
+            5 if elapsed > 2.3 => {
+                assert_eq!(latest.config.channel, 0);
+                assert_eq!(latest.config.size, 8192);
+                println!(
+                    "UI lifecycle OK: independent Spectrum settings, stop/late-result exclusion, held display changes, hide/show, restart epoch, STFT CH/FFT changes"
+                );
+                self.lifecycle_stage = 6;
+            }
+            _ => {}
+        }
     }
 
     fn running(&self) -> bool {
@@ -310,20 +439,31 @@ impl ScopeApp {
         self.analyzer = Analyzer::new(self.spectrum_settings, self.sample_rate);
         self.spectrum_dirty = true;
         self.last_spectrum = Instant::now() - Duration::from_secs(1);
+    }
+
+    fn reset_stft(&mut self) {
+        self.spectrogram_channel = self
+            .spectrogram_channel
+            .min(self.channels.max(1) as usize - 1);
+        let config = stft::Config {
+            sample_rate: self.sample_rate,
+            channels: self.channels.max(1) as usize,
+            channel: self.spectrogram_channel,
+            size: self.spectrogram_settings.size,
+            hop: self.spectrogram_settings.size / 4,
+            window: self.spectrogram_settings.window,
+            remove_dc: self.spectrogram_settings.remove_dc,
+        };
+        let generation = self
+            .stft
+            .configure(config)
+            .expect("validated STFT settings");
+        self.spectrogram_history
+            .lock()
+            .unwrap()
+            .reset(generation, config);
         self.last_stft = None;
-        if self.running() {
-            self.stft
-                .configure(stft::Config {
-                    sample_rate: self.sample_rate,
-                    channels: self.channels as usize,
-                    channel: self.spectrum_channel,
-                    size: self.spectrum_settings.size,
-                    hop: self.spectrum_settings.size / 4,
-                    window: self.spectrum_settings.window,
-                    remove_dc: self.spectrum_settings.remove_dc,
-                })
-                .expect("validated acquisition and FFT settings");
-        } else {
+        if !self.running() && !self.smoke {
             self.stft.pause();
         }
     }
@@ -371,6 +511,7 @@ impl ScopeApp {
             self.error = None;
             self.dirty = true;
             self.reset_analysis();
+            self.reset_stft();
             return;
         }
         if self.devices.is_empty() || self.busy {
@@ -427,6 +568,7 @@ impl ScopeApp {
                             && let Ok(channel) = channel.parse::<usize>()
                         {
                             self.spectrum_channel = channel.saturating_sub(1);
+                            self.spectrogram_channel = channel.saturating_sub(1);
                         }
                         if std::env::var("MEASURELAB_PROFILE_SETTINGS").as_deref() == Ok("spectrum")
                         {
@@ -435,6 +577,7 @@ impl ScopeApp {
                     }
                     self.dirty = true;
                     self.reset_analysis();
+                    self.reset_stft();
                 }
                 Event::Stopped => {}
                 Event::Error(error) => {
@@ -499,6 +642,12 @@ impl ScopeApp {
                 self.spectrum_settings.size,
                 self.spectrum_settings.window.name()
             ),
+            SettingsSection::Spectrogram => format!(
+                "CH {} · {:.1} s · {} points",
+                self.spectrogram_channel + 1,
+                self.spectrogram_seconds,
+                self.spectrogram_settings.size
+            ),
             SettingsSection::Workspace => {
                 format!("{} layout · shortcuts & units", self.plot_layout.name())
             }
@@ -530,7 +679,7 @@ impl ScopeApp {
                             .color(section.color())
                             .strong(),
                     )
-                    .id_salt(("settings", section.title()))
+                    .id_salt(("settings", section))
                     .open(Some(open))
                     .show_unindented(ui, |ui| {
                         ui.spacing_mut().slider_width = (ui.available_width() - 140.0).max(75.0);
@@ -539,6 +688,7 @@ impl ScopeApp {
                             SettingsSection::Input => self.input_controls(ui),
                             SettingsSection::Scope => self.scope_controls(ui),
                             SettingsSection::Spectrum => self.spectrum_controls(ui),
+                            SettingsSection::Spectrogram => self.spectrogram_controls(ui),
                             SettingsSection::Workspace => self.workspace_controls(ui),
                         }
                         ui.add_space(4.0);
@@ -626,6 +776,7 @@ impl ScopeApp {
             self.dirty = true;
             self.error = None;
             self.reset_analysis();
+            self.reset_stft();
         }
         if self.source == Source::Live {
             setting_label(ui, "DEVICE");
@@ -905,8 +1056,317 @@ impl ScopeApp {
         );
     }
 
+    fn spectrogram_controls(&mut self, ui: &mut egui::Ui) {
+        let before = (self.spectrogram_settings, self.spectrogram_channel);
+        setting_label(ui, "SOURCE CHANNEL");
+        channel_select(
+            ui,
+            "spectrogram_channel",
+            &mut self.spectrogram_channel,
+            self.channels,
+        );
+        setting_label(ui, "FFT LENGTH");
+        egui::ComboBox::from_id_salt("stft_size")
+            .width(ui.available_width())
+            .selected_text(format!("{} points", self.spectrogram_settings.size))
+            .show_ui(ui, |ui| {
+                for size in FFT_SIZES {
+                    ui.selectable_value(
+                        &mut self.spectrogram_settings.size,
+                        size,
+                        format!("{size} points"),
+                    );
+                }
+            });
+        setting_label(ui, "WINDOW");
+        egui::ComboBox::from_id_salt("stft_window")
+            .width(ui.available_width())
+            .selected_text(self.spectrogram_settings.window.name())
+            .show_ui(ui, |ui| {
+                for window in [Window::Hann, Window::BlackmanHarris, Window::Rectangular] {
+                    ui.selectable_value(
+                        &mut self.spectrogram_settings.window,
+                        window,
+                        window.name(),
+                    );
+                }
+            });
+        ui.checkbox(&mut self.spectrogram_settings.remove_dc, "Remove DC offset");
+        if before != (self.spectrogram_settings, self.spectrogram_channel) && self.running() {
+            self.reset_stft();
+        }
+        if !self.running() {
+            ui.label(
+                RichText::new(
+                    "Analysis changes apply when input restarts. The captured image stays held.",
+                )
+                .small()
+                .color(MUTED),
+            );
+        }
+        ui.separator();
+        setting_label(ui, "TIME SPAN");
+        egui::ComboBox::from_id_salt("spectrogram_time")
+            .width(ui.available_width())
+            .selected_text(format!("{} s", self.spectrogram_seconds))
+            .show_ui(ui, |ui| {
+                for seconds in [0.5, 1.0, 2.0, 5.0, 10.0, 20.0] {
+                    ui.selectable_value(
+                        &mut self.spectrogram_seconds,
+                        seconds,
+                        format!("{seconds} s"),
+                    );
+                }
+            });
+        setting_label(ui, "FREQUENCY AXIS");
+        ui.horizontal(|ui| {
+            ui.selectable_value(&mut self.spectrogram_scale, FrequencyScale::Log, "Log Hz");
+            ui.selectable_value(
+                &mut self.spectrogram_scale,
+                FrequencyScale::Linear,
+                "Linear Hz",
+            );
+        });
+        let nyquist = self.sample_rate as f32 * 0.5;
+        ui.horizontal(|ui| {
+            ui.label("From");
+            ui.add(
+                egui::DragValue::new(&mut self.spectrogram_min_hz)
+                    .range(0.0..=nyquist)
+                    .suffix(" Hz"),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("To");
+            ui.add(
+                egui::DragValue::new(&mut self.spectrogram_max_hz)
+                    .range(0.0..=nyquist)
+                    .suffix(" Hz"),
+            );
+        });
+        ui.label(
+            RichText::new("To = 0 uses Nyquist. Log scale excludes DC.")
+                .small()
+                .color(MUTED),
+        );
+        setting_label(ui, "COLOR RANGE");
+        ui.add(egui::Slider::new(&mut self.spectrogram_floor, -180.0..=-20.0).text("Floor dBFS"));
+        ui.add(egui::Slider::new(&mut self.spectrogram_ceiling, -20.0..=6.0).text("Ceiling dBFS"));
+        self.spectrogram_ceiling = self.spectrogram_ceiling.max(self.spectrogram_floor + 1.0);
+        ui.label(
+            RichText::new(format!(
+                "Hop {} samples · {:.2} ms/row\nFixed {} rows · up to {:.1} s retained",
+                self.spectrogram_settings.size / 4,
+                self.spectrogram_settings.size as f64 / 4.0 / self.sample_rate as f64 * 1000.0,
+                spectrogram::ROWS,
+                spectrogram::ROWS as f64 * self.spectrogram_settings.size as f64
+                    / 4.0
+                    / self.sample_rate as f64
+            ))
+            .small()
+            .color(MUTED),
+        );
+        ui.label(RichText::new("Per-window bin amplitude, without power averaging or peak hold. Orange stripes mark missing STFT intervals.").small().color(MUTED));
+    }
+
+    fn spectrogram_view(&self) -> View {
+        let config = self.spectrogram_history.lock().unwrap().config();
+        let sample_rate = config.map_or(self.sample_rate, |c| c.sample_rate);
+        let bin_hz =
+            sample_rate as f32 / config.map_or(self.spectrogram_settings.size, |c| c.size) as f32;
+        let max_hz = if self.spectrogram_max_hz == 0.0 {
+            sample_rate as f32 * 0.5
+        } else {
+            self.spectrogram_max_hz
+                .clamp(bin_hz, sample_rate as f32 * 0.5)
+        };
+        let lower = if self.spectrogram_scale == FrequencyScale::Log {
+            bin_hz.min(1.0)
+        } else {
+            0.0
+        };
+        let max_hz = max_hz.max(bin_hz + lower);
+        let min_hz = self.spectrogram_min_hz.max(lower).min(max_hz - bin_hz);
+        View {
+            scale: self.spectrogram_scale,
+            min_hz,
+            max_hz,
+            floor_db: self.spectrogram_floor,
+            ceiling_db: self.spectrogram_ceiling,
+        }
+    }
+
+    fn spectrogram_panel(&mut self, ui: &mut egui::Ui) {
+        egui::Frame::new()
+            .fill(Color32::from_rgb(17, 27, 35))
+            .stroke(Stroke::new(1.0, BORDER))
+            .inner_margin(10.0)
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Spectrogram").size(18.0).strong());
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.small_button("Settings").clicked() {
+                            self.sidebar.reveal(SettingsSection::Spectrogram);
+                            ui.ctx().request_repaint();
+                        }
+                        let channel = self
+                            .last_stft
+                            .map_or(self.spectrogram_channel, |r| r.config.channel);
+                        ui.label(
+                            RichText::new(format!("CH {} · dBFS", channel + 1))
+                                .small()
+                                .color(BLUE),
+                        );
+                    });
+                });
+                {
+                    let history = self.spectrogram_history.lock().unwrap();
+                    ui.label(
+                        RichText::new(if let Some(row) = history.latest() {
+                            format!(
+                                "End {:.3} s · {} rows · {:.2} s retained · N {} / hop {}",
+                                row.end as f64 / row.config.sample_rate as f64,
+                                history.len(),
+                                history.retained_seconds(),
+                                row.config.size,
+                                row.config.hop
+                            )
+                        } else {
+                            "Continuous STFT · sample-clock time · newest at top".into()
+                        })
+                        .small()
+                        .color(MUTED),
+                    );
+                }
+                let view = self.spectrogram_view();
+                let (outer, response) = ui.allocate_exact_size(plot_size(ui), egui::Sense::hover());
+                let rect = egui::Rect::from_min_max(
+                    outer.min + vec2(46.0, 8.0),
+                    outer.max - vec2(16.0, 28.0),
+                );
+                let painter = ui.painter();
+                painter.rect_filled(rect, 0.0, Color32::from_rgb(7, 14, 19));
+                painter.add(egui_wgpu::Callback::new_paint_callback(
+                    rect,
+                    spectrogram_gpu::Callback {
+                        history: self.spectrogram_history.clone(),
+                        view,
+                        seconds: self.spectrogram_seconds,
+                        width: rect.width() * ui.ctx().pixels_per_point(),
+                    },
+                ));
+                for i in 0..=4 {
+                    let y = rect.top() + rect.height() * i as f32 / 4.0;
+                    painter.text(
+                        pos2(rect.left() - 6.0, y),
+                        egui::Align2::RIGHT_CENTER,
+                        format!(
+                            "{:.2}",
+                            if i == 0 {
+                                0.0
+                            } else {
+                                -(self.spectrogram_seconds * i as f64 / 4.0)
+                            }
+                        ),
+                        egui::FontId::monospace(10.0),
+                        MUTED,
+                    );
+                }
+                for i in 0..=5 {
+                    let x = i as f32 / 5.0;
+                    painter.text(
+                        pos2(rect.left() + rect.width() * x, rect.bottom() + 9.0),
+                        egui::Align2::CENTER_TOP,
+                        frequency_label(view.frequency(x)),
+                        egui::FontId::monospace(10.0),
+                        MUTED,
+                    );
+                }
+                let history = self.spectrogram_history.lock().unwrap();
+                if history.is_empty() {
+                    painter.text(
+                        rect.center(),
+                        egui::Align2::CENTER_CENTER,
+                        if self.running() {
+                            "Collecting a complete STFT window…"
+                        } else {
+                            "Start audio input or select Demo signal"
+                        },
+                        egui::FontId::proportional(14.0),
+                        MUTED,
+                    );
+                }
+                if let Some(position) = response.hover_pos().filter(|p| rect.contains(*p)) {
+                    let age = (position.y - rect.top()) as f64 / rect.height() as f64
+                        * self.spectrogram_seconds;
+                    let hz = view.frequency((position.x - rect.left()) / rect.width());
+                    let text = if let Some((row, db)) = history.at_age(age) {
+                        let bin = (hz * row.config.size as f32 / row.config.sample_rate as f32)
+                            .round() as usize;
+                        format!(
+                            "{:.1} Hz · {:.2} dBFS · samples {}..{}",
+                            bin as f32 * row.config.sample_rate as f32 / row.config.size as f32,
+                            db[bin.min(db.len() - 1)],
+                            row.start,
+                            row.end
+                        )
+                    } else {
+                        "No STFT data at this time".into()
+                    };
+                    response.clone().on_hover_text(text);
+                }
+                drop(history);
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Age / s").small().color(MUTED));
+                    let (legend, _) = ui.allocate_exact_size(vec2(76.0, 8.0), egui::Sense::hover());
+                    for i in 0..24 {
+                        let t = i as f32 / 23.0;
+                        let rgb = if t < 0.5 {
+                            [
+                                0.025 + 0.025 * t * 2.0,
+                                0.04 + 0.51 * t * 2.0,
+                                0.1 + 0.7 * t * 2.0,
+                            ]
+                        } else {
+                            [
+                                0.05 + 0.95 * (t - 0.5) * 2.0,
+                                0.55 + 0.3 * (t - 0.5) * 2.0,
+                                0.8 - 0.55 * (t - 0.5) * 2.0,
+                            ]
+                        };
+                        ui.painter().rect_filled(
+                            egui::Rect::from_min_max(
+                                pos2(
+                                    legend.left() + legend.width() * i as f32 / 24.0,
+                                    legend.top(),
+                                ),
+                                pos2(
+                                    legend.left() + legend.width() * (i + 1) as f32 / 24.0,
+                                    legend.bottom(),
+                                ),
+                            ),
+                            0.0,
+                            Color32::from_rgb(
+                                (rgb[0] * 255.0) as u8,
+                                (rgb[1] * 255.0) as u8,
+                                (rgb[2] * 255.0) as u8,
+                            ),
+                        );
+                    }
+                    ui.label(
+                        RichText::new(format!("{:.0}…{:.0} dBFS", view.floor_db, view.ceiling_db))
+                            .small()
+                            .color(MUTED),
+                    );
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.label(RichText::new("Frequency / Hz").small().color(MUTED));
+                    });
+                });
+            });
+    }
+
     fn workspace_controls(&mut self, ui: &mut egui::Ui) {
-        setting_label(ui, "TWO-INSTRUMENT LAYOUT");
+        setting_label(ui, "INSTRUMENT LAYOUT");
         egui::ComboBox::from_id_salt("plot_layout")
             .width(ui.available_width())
             .selected_text(self.plot_layout.name())
@@ -1290,13 +1750,22 @@ impl ScopeApp {
                     },
                 ),
             );
-            painter.text(
-                pos2(rect.left() - 8.0, py),
-                egui::Align2::RIGHT_CENTER,
-                format!("{:.3}", (4.0 - y as f32) * self.fs_per_div),
-                egui::FontId::monospace(10.0),
-                MUTED,
-            );
+            let label_step = if rect.height() < 96.0 {
+                4
+            } else if rect.height() < 160.0 {
+                2
+            } else {
+                1
+            };
+            if y % label_step == 0 {
+                painter.text(
+                    pos2(rect.left() - 8.0, py),
+                    egui::Align2::RIGHT_CENTER,
+                    format!("{:.3}", (4.0 - y as f32) * self.fs_per_div),
+                    egui::FontId::monospace(10.0),
+                    MUTED,
+                );
+            }
         }
         let ppp = ui.ctx().pixels_per_point();
         let pixels = (rect.width() * ppp).ceil().max(1.0) as usize;
@@ -1417,23 +1886,44 @@ impl eframe::App for ScopeApp {
         }
         self.poll_audio();
         self.poll_demo();
-        self.stft.drain(|row| self.last_stft = Some(row.info));
+        let started = Instant::now();
+        self.stft.drain(|row| {
+            if self
+                .spectrogram_history
+                .lock()
+                .unwrap()
+                .push(row.info, row.db())
+            {
+                self.last_stft = Some(row.info);
+            }
+        });
+        self.spectrogram_build_ms = started.elapsed().as_secs_f64() * 1000.0;
         #[cfg(feature = "qa")]
         {
+            self.check_lifecycle();
             let running = self.running();
             if let Some(profile) = &mut self.profile {
                 profile.record(elapsed, running);
                 if profile.finished() {
+                    if std::env::var_os("MEASURELAB_PROFILE_LIFECYCLE").is_some() {
+                        assert_eq!(self.lifecycle_stage, 6, "UI lifecycle did not finish");
+                    }
                     profile.report(self.dropped);
                     println!(
                         "STFT profile: {} Hz, {} ch, CH {}, rows {}, input dropped {}, result dropped {}, worker CPU {:.3} ms total",
                         self.sample_rate,
                         self.channels,
-                        self.spectrum_channel + 1,
+                        self.spectrogram_channel + 1,
                         self.stft.metrics.produced.load(Ordering::Relaxed),
                         self.stft.metrics.input_dropped.load(Ordering::Relaxed),
                         self.stft.metrics.result_dropped.load(Ordering::Relaxed),
                         self.stft.metrics.processing_nanos.load(Ordering::Relaxed) as f64 / 1e6
+                    );
+                    let history = self.spectrogram_history.lock().unwrap();
+                    println!(
+                        "Spectrogram profile: {} retained rows, {:.1} MiB CPU storage",
+                        history.len(),
+                        history.storage_bytes() as f64 / 1048576.0
                     );
                     self.profile = None;
                     ctx.send_viewport_cmd(egui::ViewportCommand::Close);
@@ -1570,6 +2060,17 @@ impl eframe::App for ScopeApp {
                         ui.label(format!("FFT {:.2} ms", self.fft_ms));
                         ui.label(format!("Spectrum prep {:.2} ms", self.spectrum_build_ms));
                         ui.label(format!(
+                            "Spectrogram history {:.2} ms",
+                            self.spectrogram_build_ms
+                        ));
+                        let history = self.spectrogram_history.lock().unwrap();
+                        ui.label(format!(
+                            "Spectrogram {} / {} rows · {:.1} MiB CPU storage",
+                            history.len(),
+                            spectrogram::ROWS,
+                            history.storage_bytes() as f64 / 1048576.0
+                        ));
+                        ui.label(format!(
                             "STFT input dropped {} · rows dropped {}",
                             self.stft.metrics.input_dropped.load(Ordering::Relaxed),
                             self.stft.metrics.result_dropped.load(Ordering::Relaxed)
@@ -1628,9 +2129,19 @@ impl eframe::App for ScopeApp {
         }
         egui::CentralPanel::default().show(ui, |ui| {
             ui.horizontal(|ui| {
-                ui.selectable_value(&mut self.workspace, Workspace::Both, "Scope + Spectrum");
-                ui.selectable_value(&mut self.workspace, Workspace::Scope, "Oscilloscope");
-                ui.selectable_value(&mut self.workspace, Workspace::Spectrum, "Spectrum");
+                for (index, title) in ["Scope", "Spectrum", "Spectrogram"].into_iter().enumerate() {
+                    let enabled =
+                        self.visible.iter().filter(|v| **v).count() > 1 || !self.visible[index];
+                    if ui
+                        .add_enabled(
+                            enabled,
+                            egui::Button::new(title).selected(self.visible[index]),
+                        )
+                        .clicked()
+                    {
+                        self.visible[index] = !self.visible[index];
+                    }
+                }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui
                         .selectable_label(self.sidebar.visible, "Settings")
@@ -1647,38 +2158,44 @@ impl eframe::App for ScopeApp {
             }
             ui.add_space(4.0);
             let available = ui.available_size();
-            match self.workspace {
-                Workspace::Scope => self.scope_panel(ui),
-                Workspace::Spectrum => self.spectrum_panel(ui),
-                Workspace::Both if self.plot_layout.columns(available.x) => {
-                    ui.horizontal_top(|ui| {
-                        let size = vec2((available.x - 10.0) * 0.5, available.y);
-                        ui.allocate_ui_with_layout(
-                            size,
-                            egui::Layout::top_down(egui::Align::Min),
-                            |ui| self.scope_panel(ui),
-                        );
-                        ui.allocate_ui_with_layout(
-                            size,
-                            egui::Layout::top_down(egui::Align::Min),
-                            |ui| self.spectrum_panel(ui),
-                        );
-                    });
-                }
-                Workspace::Both => {
-                    let size = vec2(available.x, (available.y - 10.0) * 0.5);
-                    ui.allocate_ui_with_layout(
-                        size,
-                        egui::Layout::top_down(egui::Align::Min),
-                        |ui| self.scope_panel(ui),
-                    );
-                    ui.allocate_ui_with_layout(
-                        size,
-                        egui::Layout::top_down(egui::Align::Min),
-                        |ui| self.spectrum_panel(ui),
-                    );
-                }
-            }
+            let instruments: Vec<_> = [
+                Instrument::Scope,
+                Instrument::Spectrum,
+                Instrument::Spectrogram,
+            ]
+            .into_iter()
+            .enumerate()
+            .filter_map(|(i, plot)| self.visible[i].then_some(plot))
+            .collect();
+            let columns = instruments.len() > 1 && self.plot_layout.columns(available.x);
+            let rows = if columns {
+                instruments.len().div_ceil(2)
+            } else {
+                instruments.len()
+            };
+            egui::ScrollArea::vertical()
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    let height =
+                        ((available.y - 10.0 * (rows - 1) as f32) / rows as f32).max(190.0);
+                    for plots in instruments.chunks(if columns { 2 } else { 1 }) {
+                        ui.horizontal_top(|ui| {
+                            let width = (available.x - 10.0 * (plots.len() - 1) as f32)
+                                / plots.len() as f32;
+                            for &plot in plots {
+                                ui.allocate_ui_with_layout(
+                                    vec2(width, height),
+                                    egui::Layout::top_down(egui::Align::Min),
+                                    |ui| match plot {
+                                        Instrument::Scope => self.scope_panel(ui),
+                                        Instrument::Spectrum => self.spectrum_panel(ui),
+                                        Instrument::Spectrogram => self.spectrogram_panel(ui),
+                                    },
+                                );
+                            }
+                        });
+                    }
+                });
         });
         if self.running() || self.busy {
             ctx.request_repaint_after(Duration::from_millis(8));
@@ -1704,7 +2221,7 @@ fn plot_size(ui: &egui::Ui) -> egui::Vec2 {
     let footer_height = ui.spacing().interact_size.y + ui.spacing().item_spacing.y;
     vec2(
         ui.available_width(),
-        (ui.available_height() - footer_height).max(120.0),
+        (ui.available_height() - footer_height).max(60.0),
     )
 }
 
@@ -1725,7 +2242,12 @@ fn channel_select(ui: &mut egui::Ui, id: &str, selected: &mut usize, channels: u
 
 fn frequency_label(hz: f32) -> String {
     if hz >= 1000.0 {
-        format!("{}k", hz / 1000.0)
+        format!(
+            "{}k",
+            format!("{:.2}", hz / 1000.0)
+                .trim_end_matches('0')
+                .trim_end_matches('.')
+        )
     } else {
         format!("{hz:.0}")
     }
