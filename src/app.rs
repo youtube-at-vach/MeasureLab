@@ -171,7 +171,9 @@ pub struct ScopeApp {
     spectrogram_seconds: f64,
     spectrogram_build_ms: f64,
     xy_settings: xy::Settings,
+    xy_cursor_mode: xy::CursorMode,
     xy_capture: xy::Capture,
+    xy_trace_range: std::ops::Range<u64>,
     xy_lines: Vec<Line>,
     xy_segments: Arc<Vec<Segment>>,
     xy_revision: u64,
@@ -311,7 +313,9 @@ impl ScopeApp {
             spectrogram_seconds: 5.0,
             spectrogram_build_ms: 0.0,
             xy_settings: xy::Settings::default(),
+            xy_cursor_mode: xy::CursorMode::default(),
             xy_capture: xy::Capture::default(),
+            xy_trace_range: 0..0,
             xy_lines: Vec::with_capacity(xy::MAX_POINTS),
             xy_segments: Arc::new(Vec::with_capacity(xy::MAX_POINTS)),
             xy_revision: 0,
@@ -437,8 +441,31 @@ impl ScopeApp {
                         index,
                         cursor::fraction_at_sample(sweep.range.clone(), sample).unwrap(),
                     );
+                    let frame = app.history.get(sample).unwrap();
+                    app.cursors.set_xy_point(index, [frame[0], frame[1]]);
                 }
                 app.cursors.frequency_hz = Some(app.demo.frequency as f64);
+                match std::env::var("MEASURELAB_UI_SMOKE_CURSOR_VIEW").as_deref() {
+                    Ok("spectrogram") => {
+                        app.spectrogram_seconds = 1.0;
+                        app.cursors.set_spectrogram_time(0, 0.2);
+                        app.cursors.set_spectrogram_time(1, 0.4);
+                    }
+                    Ok("trace") => {
+                        app.xy_cursor_mode = xy::CursorMode::TraceSnap;
+                        app.rebuild_xy();
+                        let reference =
+                            cursor::trigger_sample(app.xy_capture.range.clone()).unwrap();
+                        for (index, offset) in [4, 12].into_iter().enumerate() {
+                            app.cursors.set_trace_time(
+                                index,
+                                reference + offset,
+                                app.xy_capture.range.clone(),
+                            );
+                        }
+                    }
+                    _ => {}
+                }
             }
             // Render every inspector with the same deterministic signal fixture.
             match std::env::var("MEASURELAB_UI_SMOKE_SETTINGS").as_deref() {
@@ -668,12 +695,65 @@ impl ScopeApp {
                 assert!(self.last_stft.is_none());
                 self.source = Source::Demo;
                 self.switch_source();
-                println!(
-                    "UI lifecycle OK: fixed-X Scope cursors across live/hidden/held sweeps, independent Spectrum settings, all-instrument hold, stop/late-result exclusion, held FFT metadata/average, held demo edits, shared sample cursors, held display changes, hide/show, restart/source-switch cursor invalidation, STFT CH/FFT changes, XY hold/display/single view/restart"
-                );
+                self.xy_cursor_mode = xy::CursorMode::TraceSnap;
+                self.cursors.set_xy_point(0, [0.25, -0.125]);
+                self.cursors.set_xy_point(1, [-0.25, 0.125]);
+                self.spectrogram_seconds = 0.5;
+                self.cursors.set_spectrogram_time(0, 0.3);
                 self.lifecycle_stage = 6;
             }
+            6 if elapsed > 2.9 => {
+                self.refresh_scope_range();
+                self.xy_dirty = true;
+                self.rebuild_xy();
+                assert!(self.xy_capture.triggered);
+                let reference = cursor::trigger_sample(self.xy_capture.range.clone()).unwrap();
+                self.cursors
+                    .set_trace_time(1, reference + 5, self.xy_capture.range.clone());
+                self.lifecycle_scope_samples = self.cursor_samples();
+                assert!(self.lifecycle_scope_samples.iter().all(Option::is_some));
+                self.visible = [false, false, true, false];
+                self.lifecycle_stage = 7;
+            }
+            7 if elapsed > 3.5 => {
+                self.xy_dirty = true;
+                self.rebuild_xy();
+                let samples = self.cursor_samples();
+                for (index, sample) in samples.into_iter().enumerate() {
+                    assert!(sample.unwrap() > self.lifecycle_scope_samples[index].unwrap());
+                }
+                assert_eq!(self.cursors.times[0].unwrap().spectrogram_y(), Some(0.3));
+                assert_eq!(self.cursors.times[1].unwrap().trace_offset(), Some(5));
+                assert_eq!(
+                    self.cursors.xy_points,
+                    [Some([0.25, -0.125]), Some([-0.25, 0.125])]
+                );
+                self.stop();
+                self.lifecycle_scope_samples = self.cursor_samples();
+                // Mode changes preserve both Free positions and the trigger
+                // reference shared by the other instruments while stopped.
+                for mode in [xy::CursorMode::Free, xy::CursorMode::TraceSnap] {
+                    self.xy_cursor_mode = mode;
+                    self.xy_dirty = true;
+                    self.rebuild_xy();
+                    assert_eq!(self.cursor_samples(), self.lifecycle_scope_samples);
+                    assert_eq!(self.cursors.xy_points[0], Some([0.25, -0.125]));
+                }
+                self.start();
+                assert_eq!(self.cursor_samples(), [None; 2]);
+                assert_eq!(self.cursors.xy_points, [None; 2]);
+                self.visible = [true; 4];
+                println!(
+                    "UI lifecycle OK: fixed-X Scope and fixed-Y Spectrogram cursors, trigger-relative XY Trace Snap across live/hidden/held views, independent Free positions and mode switching, restart invalidation, independent Spectrum settings, all-instrument hold, stop/late-result exclusion, held FFT metadata/average and demo edits, shared samples, display changes, hide/show, source switching, STFT CH/FFT changes"
+                );
+                self.lifecycle_stage = 8;
+            }
             _ => {}
+        }
+        // An already queued immediate frame can consume the delayed repaint
+        // scheduled when stopping. Keep the held QA stages on a slow timer.
+        if matches!(self.lifecycle_stage, 2 | 3) {
+            ctx.request_repaint_after(Duration::from_millis(450));
         }
     }
 
@@ -686,6 +766,7 @@ impl ScopeApp {
         self.history.clear_at(0);
         self.scope_range = 0..0;
         self.xy_capture = xy::Capture::default();
+        self.xy_trace_range = 0..0;
         self.measurements = [Measurement::default(); 2];
         self.dirty = true;
         self.xy_dirty = true;
@@ -708,9 +789,34 @@ impl ScopeApp {
     }
 
     fn cursor_samples(&self) -> [Option<u64>; 2] {
-        self.cursors
-            .times
-            .map(|time| time.and_then(|time| self.cursors.sample(time, self.scope_range.clone())))
+        let latest = self.spectrogram_history.lock().unwrap().latest();
+        self.cursors.times.map(|time| {
+            let time = time?;
+            if time.spectrogram_y().is_some() {
+                let row = latest?;
+                self.cursors.spectrogram_sample(
+                    time,
+                    row.end,
+                    self.spectrogram_seconds,
+                    row.config.sample_rate,
+                )
+            } else {
+                self.cursors.sample(
+                    time,
+                    if time.trace_offset().is_some() {
+                        self.xy_trace_range.clone()
+                    } else {
+                        self.scope_range.clone()
+                    },
+                )
+            }
+        })
+    }
+
+    fn scope_cursor_seconds(&self, sample: u64) -> Option<f64> {
+        let trigger = cursor::trigger_sample(self.scope_range.clone())?;
+        (self.sample_rate > 0)
+            .then(|| cursor::signed_distance(sample, trigger) / self.sample_rate as f64)
     }
 
     fn scope_sample_count(&self) -> usize {
@@ -729,18 +835,11 @@ impl ScopeApp {
         }
     }
 
-    fn place_time_cursor(&mut self, ui: &egui::Ui, sample: u64) {
-        self.cursors.set_time(self.active_cursor, sample);
-        // Earlier panels in this frame also need to see the new shared cursor.
-        // No waveform is rebuilt or uploaded for this overlay-only change.
-        ui.ctx().request_repaint();
-    }
-
     fn cursor_controls(&mut self, ui: &mut egui::Ui) {
         ui.separator();
         for (index, title) in ["Cursor A", "B"].into_iter().enumerate() {
             ui.selectable_value(&mut self.active_cursor, index, title)
-                .on_hover_text("Scope fixes the cursor's X position and reads each new sweep. Spectrogram and XY pin a captured sample. Spectrum and Spectrogram also set the shared frequency.");
+                .on_hover_text("Scope and Spectrogram keep the cursor's plot position. XY Free keeps X/Y amplitudes; Trace Snap follows a trigger-relative sample. Spectrum and Spectrogram share frequency.");
         }
         if ui.small_button("Clear").clicked() {
             self.cursors.clear();
@@ -760,14 +859,26 @@ impl ScopeApp {
                         seconds * 1000.0
                     ));
                 }
+            } else if let Some(y) = time.spectrogram_y() {
+                text.push_str(&format!(
+                    "{} −{:.3} s  ",
+                    cursor_name(index),
+                    y * self.spectrogram_seconds
+                ));
+            } else if let Some(offset) = time.trace_offset() {
+                text.push_str(&format!(
+                    "{} T{:+.3} ms  ",
+                    cursor_name(index),
+                    offset as f64 * 1000.0 / self.sample_rate as f64
+                ));
             } else if let Some(sample) = self.cursors.sample(time, self.scope_range.clone()) {
                 text.push_str(&format!("{} #{sample}  ", cursor_name(index)));
             }
         }
-        if let Some(delta) = self
-            .cursors
-            .delta_seconds(self.sample_rate, self.scope_range.clone())
+        if let [Some(a), Some(b)] = self.cursor_samples()
+            && self.sample_rate > 0
         {
+            let delta = cursor::signed_distance(b, a) / self.sample_rate as f64;
             text.push_str(&format!("Δt {:+.3} ms", delta * 1000.0));
         }
         if !text.is_empty() {
@@ -1804,8 +1915,12 @@ impl ScopeApp {
         }
         for (index, time) in self.cursors.times.into_iter().enumerate() {
             let Some(time) = time else { continue };
-            let sample = self.cursors.sample(time, self.scope_range.clone());
-            let text = if let Some(x) = self.cursors.fraction(time, self.scope_range.clone()) {
+            let sample = self.cursor_samples()[index];
+            let fraction = time.scope_x().or_else(|| {
+                sample
+                    .and_then(|sample| cursor::fraction_at_sample(self.scope_range.clone(), sample))
+            });
+            let text = if let Some(x) = fraction {
                 cursor_line(ui, rect, x as f32, true, cursor_color(index));
                 if let Some(frame) = sample.and_then(|sample| self.history.get(sample)) {
                     for (channel, value) in frame.iter().take(2).enumerate() {
@@ -1824,9 +1939,7 @@ impl ScopeApp {
                     }
                 }
                 if let Some(sample) = sample
-                    && let Some(seconds) =
-                        self.cursors
-                            .scope_seconds(time, self.scope_range.clone(), self.sample_rate)
+                    && let Some(seconds) = self.scope_cursor_seconds(sample)
                 {
                     format!(
                         "{} {:+.3} ms · {}",
@@ -1904,24 +2017,21 @@ impl ScopeApp {
         view: View,
     ) {
         if let Some(position) = cursor_pointer(response, rect) {
-            let latest = self.spectrogram_history.lock().unwrap().latest();
-            if let Some(row) = latest {
-                let age = (position.y - rect.top()) as f64 / rect.height() as f64
-                    * self.spectrogram_seconds;
-                if let Some(sample) = cursor::sample_at_age(row.end, age, row.config.sample_rate) {
-                    self.place_time_cursor(ui, sample);
-                }
-            }
+            self.cursors.set_spectrogram_time(
+                self.active_cursor,
+                ((position.y - rect.top()) / rect.height()) as f64,
+            );
             self.cursors.frequency_hz =
                 Some(view.frequency((position.x - rect.left()) / rect.width()) as f64);
             ui.ctx().request_repaint();
         }
+        // Resolve shared times before taking the history lock.
+        let samples = self.cursor_samples();
         let history = self.spectrogram_history.lock().unwrap();
-        let Some(latest) = history.latest() else {
-            return;
-        };
+        let latest = history.latest();
         let frequency = self.cursors.frequency_hz;
         if let Some(hz) = frequency
+            && let Some(latest) = latest
             && let Some(bin) =
                 cursor::nearest_bin(hz, latest.config.size, latest.config.sample_rate)
         {
@@ -1930,16 +2040,22 @@ impl ScopeApp {
                 cursor_line(ui, rect, view.x(hz), true, YELLOW);
             }
         }
-        let mut samples = self.cursor_samples();
-        // A frequency cursor alone reads the latest row. Once a time is pinned,
-        // it must resolve that exact displayed interval, including gaps.
-        if samples.iter().all(Option::is_none) && frequency.is_some() {
-            samples[self.active_cursor] = latest.end.checked_sub(1);
-        }
-        for (index, sample) in samples.into_iter().enumerate() {
-            let Some(sample) = sample else { continue };
-            let age =
-                cursor::signed_distance(latest.end - 1, sample) / latest.config.sample_rate as f64;
+        let frequency_only = self.cursors.times.iter().all(Option::is_none) && frequency.is_some();
+        for (index, time) in self.cursors.times.into_iter().enumerate() {
+            let fixed_y = time.and_then(|time| time.spectrogram_y());
+            let sample = samples[index].or_else(|| {
+                (frequency_only && index == self.active_cursor)
+                    .then(|| latest?.end.checked_sub(1))
+                    .flatten()
+            });
+            let age = fixed_y.map(|y| y * self.spectrogram_seconds).or_else(|| {
+                let latest = latest?;
+                Some(
+                    cursor::signed_distance(latest.end - 1, sample?)
+                        / latest.config.sample_rate as f64,
+                )
+            });
+            let Some(age) = age else { continue };
             if age >= 0.0 && age <= self.spectrogram_seconds {
                 cursor_line(
                     ui,
@@ -1949,7 +2065,12 @@ impl ScopeApp {
                     cursor_color(index),
                 );
             }
-            let text = if let Some((row, db)) = history.at_sample(sample) {
+            let row = if fixed_y.is_some() {
+                history.at_age(age)
+            } else {
+                sample.and_then(|sample| history.at_sample(sample))
+            };
+            let text = if let Some((row, db)) = row {
                 if let Some(bin) = frequency
                     .and_then(|hz| cursor::nearest_bin(hz, row.config.size, row.config.sample_rate))
                 {
@@ -1964,7 +2085,7 @@ impl ScopeApp {
                     )
                 } else {
                     format!(
-                        "{} #{sample}\nCH {} · {}..{}",
+                        "{} −{age:.3} s\nCH {} · {}..{}",
                         cursor_name(index),
                         row.config.channel + 1,
                         row.start,
@@ -1973,7 +2094,7 @@ impl ScopeApp {
                 }
             } else {
                 format!(
-                    "{} #{sample}\nNo STFT row at this sample",
+                    "{} −{age:.3} s\nNo STFT row · gap or unavailable",
                     cursor_name(index)
                 )
             };
@@ -1981,58 +2102,173 @@ impl ScopeApp {
         }
     }
 
-    fn xy_cursors(&mut self, ui: &egui::Ui, response: &egui::Response, rect: egui::Rect) {
-        if let Some(position) = cursor_pointer(response, rect)
-            && let Some(sample) = xy::nearest_sample(
-                &self.history,
-                self.xy_capture.range.clone(),
-                self.xy_settings,
-                [
-                    ((position.x - rect.left()) / rect.width()) as f64,
-                    ((position.y - rect.top()) / rect.height()) as f64,
-                ],
-            )
-        {
-            self.place_time_cursor(ui, sample);
+    fn xy_cursors(
+        &mut self,
+        ui: &egui::Ui,
+        response: &egui::Response,
+        rect: egui::Rect,
+        bounds: egui::Rect,
+    ) {
+        if let Some(position) = cursor_pointer(response, rect) {
+            let fraction = [
+                ((position.x - rect.left()) / rect.width()) as f64,
+                ((position.y - rect.top()) / rect.height()) as f64,
+            ];
+            match self.xy_cursor_mode {
+                xy::CursorMode::Free => self.cursors.set_xy_point(
+                    self.active_cursor,
+                    self.xy_settings.point_at_fraction(fraction),
+                ),
+                xy::CursorMode::TraceSnap => {
+                    if let Some(sample) = xy::nearest_sample(
+                        &self.history,
+                        self.xy_capture.range.clone(),
+                        self.xy_settings,
+                        fraction,
+                    ) {
+                        self.cursors.set_trace_time(
+                            self.active_cursor,
+                            sample,
+                            self.xy_capture.range.clone(),
+                        );
+                    }
+                }
+            }
+            ui.ctx().request_repaint();
         }
-        let mut tooltip = String::from(
-            "Click selects the nearest captured pair; overlapping points select the latest sample.",
-        );
-        for (index, sample) in self.cursor_samples().into_iter().enumerate() {
-            let Some(sample) = sample else { continue };
-            if self.xy_capture.range.contains(&sample)
-                && let Some(frame) = self.history.get(sample).filter(|frame| frame.len() >= 2)
-            {
-                let point = pos2(
-                    rect.center().x
-                        + (frame[0] / (self.xy_settings.x_fs_per_div * 8.0)) as f32 * rect.width(),
-                    rect.center().y
-                        - (frame[1] / (self.xy_settings.y_fs_per_div * 8.0)) as f32 * rect.height(),
+        let samples = self.cursor_samples();
+        let points = match self.xy_cursor_mode {
+            xy::CursorMode::Free => self.cursors.xy_points,
+            xy::CursorMode::TraceSnap => samples.map(|sample| {
+                let sample = sample?;
+                if !self.xy_capture.range.contains(&sample) {
+                    return None;
+                }
+                let frame = self.history.get(sample).filter(|frame| frame.len() >= 2)?;
+                Some([frame[0], frame[1]])
+            }),
+        };
+        let painter = ui.painter().with_clip_rect(rect.intersect(ui.clip_rect()));
+        let position = |point| {
+            let [x, y] = self.xy_settings.fraction_at_point(point);
+            pos2(
+                rect.left() + x as f32 * rect.width(),
+                rect.top() + y as f32 * rect.height(),
+            )
+        };
+        if self.xy_cursor_mode == xy::CursorMode::TraceSnap
+            && self.xy_capture.triggered
+            && let Some(reference) = cursor::trigger_sample(self.xy_capture.range.clone())
+            && let Some(frame) = self.history.get(reference)
+        {
+            let at = position([frame[0], frame[1]]);
+            if rect.contains(at) {
+                painter.circle_stroke(at, 5.0, Stroke::new(1.5, TRIGGER));
+                painter.text(
+                    at + vec2(-7.0, 7.0),
+                    egui::Align2::RIGHT_TOP,
+                    "T",
+                    egui::FontId::monospace(10.0),
+                    TRIGGER,
                 );
-                if rect.contains(point) {
-                    ui.painter()
-                        .circle_stroke(point, 4.0, Stroke::new(2.0, cursor_color(index)));
-                    ui.painter().text(
-                        point + vec2(5.0, -5.0),
-                        egui::Align2::LEFT_BOTTOM,
-                        cursor_name(index),
-                        egui::FontId::monospace(10.0),
+            }
+        }
+        if let [Some(a), Some(b)] = points {
+            painter.line_segment([position(a), position(b)], Stroke::new(1.0, MUTED));
+        }
+        for (index, point) in points.into_iter().enumerate() {
+            let Some(point) = point else {
+                if self.xy_cursor_mode == xy::CursorMode::TraceSnap
+                    && self.cursors.times[index].is_some()
+                {
+                    cursor_note(
+                        ui,
+                        bounds,
+                        index,
+                        &format!("{} · outside XY window or unavailable", cursor_name(index)),
                         cursor_color(index),
                     );
                 }
-                tooltip.push_str(&format!(
-                    "\n{} {}",
+                continue;
+            };
+            let at = position(point);
+            if rect.contains(at) {
+                painter.circle_stroke(at, 4.0, Stroke::new(2.0, cursor_color(index)));
+                painter.line_segment(
+                    [at - vec2(7.0, 0.0), at + vec2(7.0, 0.0)],
+                    Stroke::new(1.0, cursor_color(index)),
+                );
+                painter.line_segment(
+                    [at - vec2(0.0, 7.0), at + vec2(0.0, 7.0)],
+                    Stroke::new(1.0, cursor_color(index)),
+                );
+                painter.text(
+                    at + vec2(6.0, -6.0),
+                    egui::Align2::LEFT_BOTTOM,
                     cursor_name(index),
-                    self.sample_text(sample)
-                ));
-            } else {
-                tooltip.push_str(&format!(
-                    "\n{} #{sample} · outside XY window",
-                    cursor_name(index)
-                ));
+                    egui::FontId::monospace(10.0),
+                    cursor_color(index),
+                );
             }
+            let detail = match self.xy_cursor_mode {
+                xy::CursorMode::Free => {
+                    if rect.contains(at) {
+                        "Free".into()
+                    } else {
+                        "Free · outside plot".into()
+                    }
+                }
+                xy::CursorMode::TraceSnap => {
+                    let sample = samples[index].unwrap();
+                    let reference = cursor::trigger_sample(self.xy_capture.range.clone()).unwrap();
+                    format!(
+                        "T{:+.3} ms · #{sample}",
+                        cursor::signed_distance(sample, reference) * 1000.0
+                            / self.sample_rate as f64
+                    )
+                }
+            };
+            cursor_note(
+                ui,
+                bounds,
+                index,
+                &format!(
+                    "{} X {:+.4} FS · Y {:+.4} FS\n{detail}",
+                    cursor_name(index),
+                    point[0],
+                    point[1]
+                ),
+                cursor_color(index),
+            );
         }
-        response.clone().on_hover_text(tooltip);
+        if let [Some(a), Some(b)] = points {
+            let delta = [b[0] - a[0], b[1] - a[1]];
+            cursor_note(
+                ui,
+                bounds,
+                2,
+                &format!("B−A ΔX {:+.4} · ΔY {:+.4} FS", delta[0], delta[1]),
+                MUTED,
+            );
+        }
+        response.clone().on_hover_text(match self.xy_cursor_mode {
+            xy::CursorMode::Free => "Free: click or drag to fix X/Y amplitudes. A/B measure ΔX and ΔY independently of the moving trace. Free positions are retained when switching to Trace Snap.",
+            xy::CursorMode::TraceSnap => "Trace Snap: selects the nearest actual CH 1/CH 2 pair and keeps its sample offset from the XY trigger. Uses Scope's trigger source, edge and level. Without a crossing, the reference moves with the latest window. Overlapping points select the latest sample; Stop freezes the capture.",
+        });
+    }
+
+    fn xy_cursor_mode_controls(&mut self, ui: &mut egui::Ui) {
+        let before = self.xy_cursor_mode;
+        ui.selectable_value(&mut self.xy_cursor_mode, xy::CursorMode::Free, "Free")
+            .on_hover_text(
+                "Fix X/Y amplitudes independently of the moving trace. Measure ΔX and ΔY.",
+            );
+        ui.selectable_value(&mut self.xy_cursor_mode, xy::CursorMode::TraceSnap, "Trace Snap")
+            .on_hover_text("Follow a real sample at a fixed time offset from the XY trigger. Uses Scope trigger settings.");
+        if self.xy_cursor_mode != before {
+            self.xy_dirty = true;
+            ui.ctx().request_repaint();
+        }
     }
 
     fn xy_controls(&mut self, ui: &mut egui::Ui) {
@@ -2041,6 +2277,12 @@ impl ScopeApp {
                 .small()
                 .color(PURPLE),
         );
+        setting_label(ui, "CURSOR MODE");
+        ui.horizontal(|ui| self.xy_cursor_mode_controls(ui));
+        ui.label(RichText::new(match self.xy_cursor_mode {
+            xy::CursorMode::Free => "Free keeps X/Y amplitudes fixed and reads ΔX/ΔY. Free positions and shared time cursors are retained separately when switching modes.",
+            xy::CursorMode::TraceSnap => "Trace Snap keeps time relative to the XY trigger. Source, edge and level use Scope settings. Auto/free run may move the marker; Stop freezes it.",
+        }).small().color(MUTED));
         if self.channels < 2 {
             ui.label(
                 RichText::new("XY requires at least two input channels.")
@@ -2071,7 +2313,7 @@ impl ScopeApp {
             self.xy_settings = xy::Settings::default();
         }
         self.xy_dirty |= self.xy_settings != before;
-        ui.label(RichText::new("The latest continuous samples are connected in time order. No trigger or persistence. Equal axis scales preserve circles on the square plot.").small().color(MUTED));
+        ui.label(RichText::new("Continuous samples are connected in time order. Free shows the latest window; Trace Snap uses a triggered window. Equal axis scales preserve circles on the square plot.").small().color(MUTED));
         ui.label(
             RichText::new(format!(
                 "Up to {} real sample pairs; longer windows show the latest contiguous portion.",
@@ -2087,12 +2329,41 @@ impl ScopeApp {
             return;
         }
         let started = Instant::now();
-        self.xy_capture = xy::build_lines(
+        self.xy_capture = xy::build_triggered_lines(
             &self.history,
             self.sample_rate,
             self.xy_settings,
+            if self.xy_cursor_mode == xy::CursorMode::TraceSnap {
+                self.trigger
+            } else {
+                Trigger {
+                    edge: Edge::Free,
+                    ..self.trigger
+                }
+            },
             &mut self.xy_lines,
         );
+        // Preserve the trigger reference of shared Trace Snap cursors while
+        // Free displays its independent latest-sample trajectory.
+        self.xy_trace_range = if self.xy_cursor_mode == xy::CursorMode::TraceSnap {
+            self.xy_capture.range.clone()
+        } else if self
+            .cursors
+            .times
+            .iter()
+            .flatten()
+            .any(|time| time.trace_offset().is_some())
+        {
+            xy::select_capture(
+                &self.history,
+                self.sample_rate,
+                self.xy_settings,
+                self.trigger,
+            )
+            .range
+        } else {
+            0..0
+        };
         let segments = Arc::make_mut(&mut self.xy_segments);
         segments.clear();
         segments.extend(self.xy_lines.iter().map(|line| Segment {
@@ -2114,6 +2385,7 @@ impl ScopeApp {
                 compact_plot_style(ui);
                 ui.horizontal(|ui| {
                     ui.label(RichText::new("XY / Lissajous").size(13.0).strong());
+                    self.xy_cursor_mode_controls(ui);
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui.small_button("Settings").clicked() {
                             self.sidebar.reveal(SettingsSection::Xy);
@@ -2221,20 +2493,11 @@ impl ScopeApp {
                             * 8.0,
                     ));
                 }
-                self.xy_cursors(ui, &response, rect);
-                for (index, sample) in self.cursor_samples().into_iter().enumerate() {
-                    let Some(sample) = sample else { continue };
-                    let text = if self.xy_capture.range.contains(&sample) {
-                        format!("{} {}", cursor_name(index), self.sample_text(sample))
-                    } else {
-                        format!("{} #{sample} · outside XY window", cursor_name(index))
-                    };
-                    cursor_note(ui, bounds, index, &text, cursor_color(index));
-                }
+                self.xy_cursors(ui, &response, rect, bounds);
                 let capture = &self.xy_capture;
                 ui.label(
                     RichText::new(format!(
-                        "{:.1} ms · samples {}..{}{}",
+                        "{:.1} ms · samples {}..{}{}{}",
                         (capture.range.end - capture.range.start) as f64 * 1000.0
                             / self.sample_rate as f64,
                         capture.range.start,
@@ -2243,6 +2506,15 @@ impl ScopeApp {
                             " · point limit"
                         } else {
                             ""
+                        },
+                        if self.xy_cursor_mode == xy::CursorMode::Free {
+                            ""
+                        } else if capture.triggered {
+                            " · Triggered"
+                        } else if self.trigger.edge == Edge::Free {
+                            " · Free run (moving reference)"
+                        } else {
+                            " · Auto (no crossing)"
                         }
                     ))
                     .small()
@@ -2817,7 +3089,7 @@ impl eframe::App for ScopeApp {
                 profile.record(elapsed, running, frame.info().cpu_usage);
                 if profile.finished() {
                     if std::env::var_os("MEASURELAB_PROFILE_LIFECYCLE").is_some() {
-                        assert_eq!(self.lifecycle_stage, 6, "UI lifecycle did not finish");
+                        assert_eq!(self.lifecycle_stage, 8, "UI lifecycle did not finish");
                     }
                     profile.report(self.dropped);
                     println!(
@@ -3048,6 +3320,18 @@ impl eframe::App for ScopeApp {
         // Resolve X-anchored cursors against this frame's sweep, including when
         // Scope is hidden. The other instruments must not read a stale ID.
         self.refresh_scope_range();
+        // Trace offsets must resolve against current XY samples even if XY is hidden.
+        if self.xy_cursor_mode == xy::CursorMode::TraceSnap
+            || self
+                .cursors
+                .times
+                .iter()
+                .flatten()
+                .any(|time| time.trace_offset().is_some())
+        {
+            self.xy_dirty |= self.dirty;
+            self.rebuild_xy();
+        }
         egui::CentralPanel::default().show(ui, |ui| {
             ui.spacing_mut().item_spacing = vec2(6.0, 4.0);
             ui.horizontal_wrapped(|ui| {

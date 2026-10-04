@@ -1,10 +1,17 @@
 //! Synchronous CH 1 / CH 2 trajectories, independent of the desktop UI.
-use crate::signal::{History, Line};
+use crate::signal::{Edge, History, Line, Trigger};
 use std::ops::Range;
 
 /// Bound geometry and GPU transfers without decimating into false trajectories.
 /// At longer windows, show the latest contiguous samples and report the limit.
 pub const MAX_POINTS: usize = 32_768;
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum CursorMode {
+    #[default]
+    Free,
+    TraceSnap,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Settings {
@@ -23,10 +30,27 @@ impl Default for Settings {
     }
 }
 
+impl Settings {
+    pub fn point_at_fraction(self, point: [f64; 2]) -> [f64; 2] {
+        [
+            (point[0] - 0.5) * self.x_fs_per_div.max(0.00001) * 8.0,
+            (0.5 - point[1]) * self.y_fs_per_div.max(0.00001) * 8.0,
+        ]
+    }
+
+    pub fn fraction_at_point(self, point: [f64; 2]) -> [f64; 2] {
+        [
+            0.5 + point[0] / (self.x_fs_per_div.max(0.00001) * 8.0),
+            0.5 - point[1] / (self.y_fs_per_div.max(0.00001) * 8.0),
+        ]
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct Capture {
     pub range: Range<u64>,
     pub limited: bool,
+    pub triggered: bool,
 }
 
 /// Select an actual synchronized pair. Resolve overlapping trajectory points
@@ -49,8 +73,7 @@ pub fn nearest_sample(
         .samples(range.clone())
         .enumerate()
         .map(|(i, frame)| {
-            let x = 0.5 + frame[0] / (settings.x_fs_per_div.max(0.00001) * 8.0);
-            let y = 0.5 - frame[1] / (settings.y_fs_per_div.max(0.00001) * 8.0);
+            let [x, y] = settings.fraction_at_point([frame[0], frame[1]]);
             (
                 range.start + i as u64,
                 (x - point[0]).powi(2) + (y - point[1]).powi(2),
@@ -69,25 +92,34 @@ pub fn build_lines(
     settings: Settings,
     output: &mut Vec<Line>,
 ) -> Capture {
+    build_triggered_lines(
+        history,
+        sample_rate,
+        settings,
+        Trigger {
+            edge: Edge::Free,
+            ..Trigger::default()
+        },
+        output,
+    )
+}
+
+/// Trace Snap uses the same trigger source, edge and level as Scope, with
+/// its own observation window. No crossing falls back to the latest interval.
+pub fn build_triggered_lines(
+    history: &History,
+    sample_rate: u32,
+    settings: Settings,
+    trigger: Trigger,
+    output: &mut Vec<Line>,
+) -> Capture {
     output.clear();
-    if history.channels() < 2 || history.len() < 2 || sample_rate == 0 {
-        return Capture::default();
-    }
-    let requested = (settings.milliseconds.max(0.0) * sample_rate as f64 / 1000.0)
-        .round()
-        .max(2.0) as usize;
-    let available = requested.min(history.len());
-    let count = available.min(MAX_POINTS);
-    let end = history.range().end;
-    let range = end - count as u64..end;
-    let x_scale = settings.x_fs_per_div.max(0.00001) * 8.0;
-    let y_scale = settings.y_fs_per_div.max(0.00001) * 8.0;
+    let capture = select_capture(history, sample_rate, settings, trigger);
     let mut previous = None;
-    for frame in history.samples(range.clone()) {
-        let point = [
-            (0.5 + frame[0] / x_scale) as f32,
-            (0.5 - frame[1] / y_scale) as f32,
-        ];
+    for frame in history.samples(capture.range.clone()) {
+        let point = settings
+            .fraction_at_point([frame[0], frame[1]])
+            .map(|v| v as f32);
         if let Some(a) = previous {
             output.push(Line {
                 a,
@@ -97,9 +129,28 @@ pub fn build_lines(
         }
         previous = Some(point);
     }
+    capture
+}
+
+pub fn select_capture(
+    history: &History,
+    sample_rate: u32,
+    settings: Settings,
+    trigger: Trigger,
+) -> Capture {
+    if history.channels() < 2 || history.len() < 2 || sample_rate == 0 {
+        return Capture::default();
+    }
+    let requested = (settings.milliseconds.max(0.0) * sample_rate as f64 / 1000.0)
+        .round()
+        .max(2.0) as usize;
+    let available = requested.min(history.len());
+    let count = available.min(MAX_POINTS);
+    let sweep = history.sweep(count, trigger);
     Capture {
-        range,
+        range: sweep.range,
         limited: available > MAX_POINTS,
+        triggered: sweep.triggered,
     }
 }
 
@@ -107,6 +158,104 @@ pub fn build_lines(
 mod tests {
     use super::*;
     use std::f64::consts::{FRAC_PI_2, PI, TAU};
+
+    #[test]
+    fn trace_snap_tracks_triggered_pairs_across_history_wrap_and_trigger_changes() {
+        use crate::cursor::{Cursors, trigger_sample};
+        let mut history = History::new(128);
+        let start = (1_u64 << 54) + 7;
+        let settings = Settings {
+            milliseconds: 40.0,
+            ..Settings::default()
+        };
+        let mut lines = Vec::new();
+        let mut cursors = Cursors::default();
+        for pass in 0..3 {
+            for i in pass * 160..(pass + 1) * 160 {
+                let phase = TAU * (i % 20) as f64 / 20.0;
+                history.push_at(start + i, [phase.sin(), phase.cos()]);
+            }
+            let capture =
+                build_triggered_lines(&history, 1000, settings, Trigger::default(), &mut lines);
+            assert!(capture.triggered);
+            let trigger = trigger_sample(capture.range.clone()).unwrap();
+            assert!(history.get(trigger - 1).unwrap()[0] < 0.0);
+            assert!(history.get(trigger).unwrap()[0] >= 0.0);
+            if pass == 0 {
+                cursors.set_trace_time(0, trigger + 3, capture.range.clone());
+            }
+            let sample = cursors
+                .sample(cursors.times[0].unwrap(), capture.range.clone())
+                .unwrap();
+            assert_eq!(sample, trigger + 3);
+            let frame = history.get(sample).unwrap();
+            assert!((frame[0] - (TAU * 3.0 / 20.0).sin()).abs() < 1e-14);
+            assert_eq!(
+                lines[(sample - capture.range.start) as usize].a,
+                settings
+                    .fraction_at_point([frame[0], frame[1]])
+                    .map(|v| v as f32)
+            );
+        }
+        for trigger in [
+            Trigger {
+                edge: Edge::Falling,
+                ..Trigger::default()
+            },
+            Trigger {
+                channel: 1,
+                level: 0.3,
+                ..Trigger::default()
+            },
+        ] {
+            let capture = select_capture(&history, 1000, settings, trigger);
+            assert!(capture.triggered);
+            let reference = trigger_sample(capture.range.clone()).unwrap();
+            let a = history.get(reference - 1).unwrap()[trigger.channel];
+            let b = history.get(reference).unwrap()[trigger.channel];
+            if trigger.edge == Edge::Falling {
+                assert!(a > trigger.level && b <= trigger.level);
+            } else {
+                assert!(a < trigger.level && b >= trigger.level);
+            }
+        }
+        let capture = select_capture(
+            &history,
+            1000,
+            settings,
+            Trigger {
+                level: 2.0,
+                ..Trigger::default()
+            },
+        );
+        assert!(!capture.triggered);
+        assert_eq!(capture.range.end, history.range().end);
+        // A gap cannot borrow a previous trigger or produce a connector.
+        history.push_at(history.range().end + 100, [0.0, 0.0]);
+        let capture =
+            build_triggered_lines(&history, 1000, settings, Trigger::default(), &mut lines);
+        assert!(capture.range.is_empty());
+        assert!(lines.is_empty());
+    }
+
+    #[test]
+    fn free_coordinates_retain_signal_values_when_axis_scales_change() {
+        let settings = Settings {
+            x_fs_per_div: 0.125,
+            y_fs_per_div: 0.25,
+            ..Settings::default()
+        };
+        let point = settings.point_at_fraction([0.75, 0.75]);
+        assert_eq!(point, [0.25, -0.5]);
+        assert_eq!(settings.fraction_at_point(point), [0.75, 0.75]);
+        let zoom = Settings {
+            x_fs_per_div: 0.25,
+            y_fs_per_div: 0.5,
+            ..settings
+        };
+        assert_eq!(zoom.fraction_at_point(point), [0.625, 0.625]);
+        assert_eq!(zoom.point_at_fraction([0.625, 0.625]), point);
+    }
 
     #[test]
     fn cursor_selects_actual_pair_and_latest_overlapping_point_with_no_gap_fallback() {
