@@ -2,7 +2,7 @@
 //! amplitude 1 FS reads 0 dBFS. This is not a PSD or a calibrated dBm meter.
 use crate::signal::{History, Line};
 use rustfft::{Fft, FftPlanner, num_complex::Complex32};
-use std::{f32::consts::TAU, sync::Arc};
+use std::{f32::consts::TAU, ops::Range, sync::Arc};
 
 pub const FFT_SIZES: [usize; 6] = [1024, 2048, 4096, 8192, 16384, 32768];
 pub const DB_MIN: f32 = -180.0;
@@ -145,9 +145,8 @@ impl Analyzer {
     }
 
     pub fn update(&mut self, history: &History, channel: usize) -> bool {
-        let channel = channel.min(1);
         let end = history.range().end;
-        if history.len() < self.settings.size {
+        if history.len() < self.settings.size || channel >= history.channels() {
             self.reset();
             return false;
         }
@@ -160,6 +159,24 @@ impl Analyzer {
             return false;
         }
         let start = end - self.settings.size as u64;
+        self.update_window(history, start..end, channel)
+    }
+
+    /// Analyze an explicit complete window without the snapshot hop gate.
+    /// Continuous STFT owns scheduling; FFT buffers and normalization are shared.
+    pub fn update_window(&mut self, history: &History, range: Range<u64>, channel: usize) -> bool {
+        if channel >= history.channels()
+            || range.end.checked_sub(range.start) != Some(self.settings.size as u64)
+            || range.start < history.range().start
+            || range.end > history.range().end
+        {
+            return false;
+        }
+        if channel != self.last_channel {
+            self.reset();
+        }
+        let start = range.start;
+        let end = range.end;
         let mean = if self.settings.remove_dc {
             (start..end)
                 .map(|i| history.get(i).unwrap()[channel] as f64)
@@ -392,6 +409,29 @@ mod tests {
                 .unwrap();
             assert!((peak.frequency - 996.09375).abs() < 0.01);
         }
+    }
+
+    #[test]
+    fn sixteenth_channel_is_analyzed_without_aliasing_to_stereo() {
+        let mut h = History::with_channels(1024, 16);
+        for i in 0..1024 {
+            let mut samples = [0.0; 16];
+            samples[15] = 0.5 * (TAU * 32.0 * i as f32 / 1024.0).cos();
+            h.push(samples);
+        }
+        let mut a = Analyzer::new(
+            Settings {
+                size: 1024,
+                ..Settings::default()
+            },
+            48000,
+        );
+        assert!(a.update(&h, 15));
+        assert!((a.db()[32] + 6.0206).abs() < 0.002);
+        assert!(a.update(&h, 1));
+        assert!(a.db().iter().all(|db| *db == DB_MIN));
+        assert!(!a.update(&h, 16));
+        assert!(!a.is_ready());
     }
 
     #[test]

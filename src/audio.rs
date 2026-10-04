@@ -8,12 +8,13 @@ use std::{
     time::Duration,
 };
 
+use crate::signal::{MAX_CHANNELS, Samples};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use rtrb::{Consumer, Producer, RingBuffer};
 
 #[derive(Clone, Copy, Debug)]
 pub struct AudioFrame {
-    pub samples: [f32; 2],
+    pub samples: Samples,
     pub sequence: u64,
 }
 
@@ -151,6 +152,12 @@ pub fn start_device(device: &cpal::Device) -> Result<(cpal::Stream, Capture), St
     if config.channels == 0 || config.sample_rate == 0 {
         return Err("Device returned an invalid audio configuration.".to_owned());
     }
+    if config.channels as usize > MAX_CHANNELS {
+        return Err(format!(
+            "Input has {} channels; at most {MAX_CHANNELS} are supported.",
+            config.channels
+        ));
+    }
     let (producer, consumer) =
         RingBuffer::new((config.sample_rate as usize / 2).clamp(1024, 262_144));
     let metrics = Arc::new(Metrics::default());
@@ -208,7 +215,11 @@ where
             metrics.dropped.fetch_add(dropped, Ordering::Relaxed);
             metrics.callbacks.fetch_add(1, Ordering::Relaxed);
         },
-        move |_| {
+        move |error| {
+            #[cfg(feature = "qa")]
+            eprintln!("Input stream error: {error}");
+            #[cfg(not(feature = "qa"))]
+            let _ = error;
             failure.failed.store(true, Ordering::Relaxed);
         },
         Some(Duration::from_secs(2)),
@@ -226,14 +237,10 @@ where
 {
     let mut dropped = 0;
     for frame in input.chunks_exact(channels) {
-        let samples = [
-            frame[0].to_sample::<f32>(),
-            if channels >= 2 {
-                frame[1].to_sample::<f32>()
-            } else {
-                0.0
-            },
-        ];
+        let mut samples = [0.0; MAX_CHANNELS];
+        for (target, &sample) in samples.iter_mut().zip(frame) {
+            *target = sample.to_sample::<f32>();
+        }
         if producer
             .push(AudioFrame {
                 samples,
@@ -249,19 +256,31 @@ where
 }
 
 /// Explicit CLI hardware check; no audio is written to disk.
-pub fn smoke_test() -> Result<(), String> {
+pub fn input_device(name: Option<&str>) -> Result<cpal::Device, String> {
     let host = cpal::default_host();
-    let device = host
-        .default_input_device()
-        .ok_or("No default input device")?;
+    if let Some(name) = name {
+        host.input_devices()
+            .map_err(|e| e.to_string())?
+            .find(|device| device.to_string() == name)
+            .ok_or_else(|| format!("Input device not found: {name}"))
+    } else {
+        host.default_input_device()
+            .ok_or_else(|| "No default input device".to_owned())
+    }
+}
+
+pub fn smoke_test(name: Option<&str>) -> Result<(), String> {
+    let device = input_device(name)?;
     let (_stream, mut capture) = start_device(&device)?;
     let deadline = std::time::Instant::now() + Duration::from_secs(2);
     let mut frames = 0;
-    let mut peak = 0.0_f32;
+    let mut peaks = [0.0_f32; MAX_CHANNELS];
     while std::time::Instant::now() < deadline {
         while let Ok(frame) = capture.consumer.pop() {
             frames += 1;
-            peak = peak.max(frame.samples[0].abs());
+            for (peak, sample) in peaks.iter_mut().zip(frame.samples) {
+                *peak = peak.max(sample.abs());
+            }
         }
         thread::sleep(Duration::from_millis(5));
     }
@@ -274,13 +293,13 @@ pub fn smoke_test() -> Result<(), String> {
         );
     }
     println!(
-        "Audio OK: {} / {} Hz / {} channels / {} frames / peak {:.5} FS / dropped {}",
+        "Audio OK: {} / {} Hz / {} channels / {} frames / dropped {} / channel peaks {:?} FS",
         device,
         capture.sample_rate,
         capture.channels,
         frames,
-        peak,
-        capture.metrics.dropped.load(Ordering::Relaxed)
+        capture.metrics.dropped.load(Ordering::Relaxed),
+        &peaks[..capture.channels as usize]
     );
     Ok(())
 }
@@ -298,7 +317,7 @@ mod tests {
             1
         );
         let first = consumer.pop().unwrap();
-        assert_eq!(first.samples, [-1.0, 0.0]);
+        assert_eq!(&first.samples[..2], &[-1.0, 0.0]);
         assert_eq!(first.sequence, 0);
         write_input(&[0_i16, 0], 2, &mut producer, &mut sequence);
         assert_eq!(consumer.pop().unwrap().sequence, 2);
@@ -309,8 +328,27 @@ mod tests {
         let (mut producer, mut consumer) = RingBuffer::new(4);
         let mut sequence = 0;
         write_input(&[32768_u16], 1, &mut producer, &mut sequence);
-        assert_eq!(consumer.pop().unwrap().samples, [0.0, 0.0]);
+        assert_eq!(consumer.pop().unwrap().samples, [0.0; MAX_CHANNELS]);
         write_input(&[0.2_f32, -0.3, 0.9, 0.8], 4, &mut producer, &mut sequence);
-        assert_eq!(consumer.pop().unwrap().samples, [0.2, -0.3]);
+        assert_eq!(
+            &consumer.pop().unwrap().samples[..4],
+            &[0.2, -0.3, 0.9, 0.8]
+        );
+    }
+
+    #[test]
+    fn all_sixteen_channels_keep_the_same_frame_sequence() {
+        let (mut producer, mut consumer) = RingBuffer::new(2);
+        let mut sequence = 4000;
+        let input: Vec<_> = (0..32).map(|i| i as f32 / 32.0).collect();
+        assert_eq!(write_input(&input, 16, &mut producer, &mut sequence), 0);
+        for frame_index in 0..2 {
+            let frame = consumer.pop().unwrap();
+            assert_eq!(frame.sequence, 4000 + frame_index as u64);
+            assert_eq!(
+                &frame.samples,
+                &input[frame_index * 16..(frame_index + 1) * 16]
+            );
+        }
     }
 }

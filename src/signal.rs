@@ -1,33 +1,64 @@
 use std::ops::Range;
 
-pub type Samples = [f32; 2];
+pub const MAX_CHANNELS: usize = 16;
+pub type Samples = [f32; MAX_CHANNELS];
 
 /// Fixed allocation, with absolute indices so wrapping never changes time ordering.
 pub struct History {
-    data: Vec<Samples>,
+    data: Vec<f32>,
+    channels: usize,
     end: u64,
     len: usize,
 }
 
 impl History {
     pub fn new(capacity: usize) -> Self {
-        assert!(capacity > 0);
+        Self::with_channels(capacity, 2)
+    }
+
+    pub fn with_channels(capacity: usize, channels: usize) -> Self {
+        assert!(capacity > 0 && (1..=MAX_CHANNELS).contains(&channels));
         Self {
-            data: vec![[0.0; 2]; capacity],
+            data: vec![0.0; capacity * channels],
+            channels,
             end: 0,
             len: 0,
         }
     }
 
-    pub fn push(&mut self, samples: Samples) {
-        let index = self.end as usize % self.data.len();
-        self.data[index] = samples.map(|v| if v.is_finite() { v } else { 0.0 });
-        self.end += 1;
-        self.len = (self.len + 1).min(self.data.len());
+    pub fn channels(&self) -> usize {
+        self.channels
+    }
+
+    pub fn push(&mut self, samples: impl AsRef<[f32]>) {
+        self.push_at(self.end, samples);
+    }
+
+    /// Preserve source sample coordinates. Never join across missing frames.
+    pub fn push_at(&mut self, sequence: u64, samples: impl AsRef<[f32]>) {
+        let samples = samples.as_ref();
+        assert!(samples.len() >= self.channels);
+        if sequence != self.end {
+            self.clear();
+        }
+        let capacity = self.data.len() / self.channels;
+        let index = (sequence % capacity as u64) as usize * self.channels;
+        for (target, &sample) in self.data[index..index + self.channels]
+            .iter_mut()
+            .zip(samples)
+        {
+            *target = if sample.is_finite() { sample } else { 0.0 };
+        }
+        self.end = sequence + 1;
+        self.len = (self.len + 1).min(capacity);
     }
 
     pub fn clear(&mut self) {
         self.len = 0;
+    }
+    pub fn clear_at(&mut self, next_sequence: u64) {
+        self.clear();
+        self.end = next_sequence;
     }
     pub fn len(&self) -> usize {
         self.len
@@ -38,20 +69,22 @@ impl History {
     pub fn range(&self) -> Range<u64> {
         self.end - self.len as u64..self.end
     }
-    pub fn get(&self, index: u64) -> Option<Samples> {
-        self.range()
-            .contains(&index)
-            .then(|| self.data[index as usize % self.data.len()])
+    pub fn get(&self, index: u64) -> Option<&[f32]> {
+        self.range().contains(&index).then(|| {
+            let capacity = self.data.len() / self.channels;
+            let start = (index % capacity as u64) as usize * self.channels;
+            &self.data[start..start + self.channels]
+        })
     }
 
-    fn samples(&self, range: Range<u64>) -> impl Iterator<Item = Samples> + '_ {
+    fn samples(&self, range: Range<u64>) -> impl Iterator<Item = &[f32]> + '_ {
         let count = (range.end - range.start) as usize;
-        let start = range.start as usize % self.data.len();
-        let first = count.min(self.data.len() - start);
-        self.data[start..start + first]
-            .iter()
-            .chain(self.data[..count - first].iter())
-            .copied()
+        let capacity = self.data.len() / self.channels;
+        let start = (range.start % capacity as u64) as usize;
+        let first = count.min(capacity - start);
+        self.data[start * self.channels..(start + first) * self.channels]
+            .chunks_exact(self.channels)
+            .chain(self.data[..(count - first) * self.channels].chunks_exact(self.channels))
     }
 
     /// Latest complete sweep. Trigger position is 20% from the left edge.
@@ -65,15 +98,15 @@ impl History {
         }
         let available = self.range();
         let latest_start = available.end - count as u64;
-        if trigger.edge != Edge::Free {
+        if trigger.edge != Edge::Free && trigger.channel < self.channels {
             let pre = (count / 5) as u64;
             let first = (available.start + pre).max(available.start + 1);
             let last = latest_start + pre;
             // A bounded backwards scan; old captures are not searched forever.
             let first = first.max(last.saturating_sub(count as u64 * 2));
             for index in (first..=last).rev() {
-                let a = self.get(index - 1).unwrap()[trigger.channel.min(1)];
-                let b = self.get(index).unwrap()[trigger.channel.min(1)];
+                let a = self.get(index - 1).unwrap()[trigger.channel];
+                let b = self.get(index).unwrap()[trigger.channel];
                 let crossed = match trigger.edge {
                     Edge::Rising => a < trigger.level && b >= trigger.level,
                     Edge::Falling => a > trigger.level && b <= trigger.level,
@@ -160,7 +193,7 @@ pub fn build_lines(
     let y = |value: f32| 0.5 - value * scale;
     let mut result = [Measurement::default(); 2];
     for channel in 0..2 {
-        if !enabled[channel] {
+        if !enabled[channel] || channel >= history.channels() {
             continue;
         }
         let mut min = f32::INFINITY;
@@ -235,6 +268,40 @@ mod tests {
     use super::*;
 
     #[test]
+    fn sixteen_channel_history_preserves_absolute_coordinates_and_gaps() {
+        let mut h = History::with_channels(4, 16);
+        for sequence in 100..107 {
+            h.push_at(
+                sequence,
+                std::array::from_fn::<_, 16, _>(|ch| sequence as f32 + ch as f32),
+            );
+        }
+        assert_eq!(h.range(), 103..107);
+        assert_eq!(h.get(103).unwrap()[15], 118.0);
+        assert_eq!(
+            h.samples(h.range()).map(|s| s[15]).collect::<Vec<_>>(),
+            [118.0, 119.0, 120.0, 121.0]
+        );
+        h.push_at(200, [0.0; 16]);
+        assert_eq!(h.range(), 200..201);
+        assert!(h.get(106).is_none());
+        for sequence in 201..210 {
+            let mut samples = [0.0; 16];
+            samples[15] = if sequence < 207 { -0.5 } else { 0.5 };
+            h.push_at(sequence, samples);
+        }
+        let sweep = h.sweep(
+            3,
+            Trigger {
+                channel: 15,
+                ..Trigger::default()
+            },
+        );
+        assert!(sweep.triggered);
+        assert_eq!(sweep.range, 207..210);
+    }
+
+    #[test]
     fn history_wraps_and_clear_invalidates_old_samples() {
         let mut h = History::new(4);
         for i in 0..7 {
@@ -242,7 +309,7 @@ mod tests {
         }
         assert_eq!(h.range(), 3..7);
         assert_eq!(h.get(2), None);
-        assert_eq!(h.get(3), Some([3.0, 0.0]));
+        assert_eq!(h.get(3), Some([3.0, 0.0].as_slice()));
         assert_eq!(
             h.samples(h.range()).map(|v| v[0]).collect::<Vec<_>>(),
             vec![3.0, 4.0, 5.0, 6.0]
@@ -305,7 +372,7 @@ mod tests {
     fn invalid_samples_and_short_captures_are_safe() {
         let mut h = History::new(10);
         h.push([f32::NAN, f32::INFINITY]);
-        assert_eq!(h.get(0), Some([0.0, 0.0]));
+        assert_eq!(h.get(0), Some([0.0, 0.0].as_slice()));
         let mut lines = Vec::new();
         build_lines(
             &h,

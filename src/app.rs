@@ -4,6 +4,7 @@ use crate::{
     gpu::{COLORS, PlotId, Segment, TraceCallback, TraceRenderer},
     signal::{Edge, History, Line, Measurement, Trigger, build_lines},
     spectrum::{self, Analyzer, FFT_SIZES, FrequencyScale, Settings, View, Window},
+    stft::{self, RowInfo},
 };
 use eframe::{
     egui::{self, Color32, RichText, Stroke, pos2, vec2},
@@ -137,6 +138,8 @@ pub struct ScopeApp {
     last_spectrum: Instant,
     fft_ms: f64,
     spectrum_build_ms: f64,
+    stft: stft::Worker,
+    last_stft: Option<RowInfo>,
     audio: AudioWorker,
     devices: Vec<DeviceInfo>,
     selected: usize,
@@ -168,6 +171,8 @@ pub struct ScopeApp {
     created: Instant,
     #[cfg(feature = "qa")]
     screenshot_requested: bool,
+    #[cfg(feature = "qa")]
+    profile: Option<crate::qa::Profile>,
 }
 
 impl ScopeApp {
@@ -231,6 +236,8 @@ impl ScopeApp {
             last_spectrum: Instant::now() - Duration::from_secs(1),
             fft_ms: 0.0,
             spectrum_build_ms: 0.0,
+            stft: stft::Worker::new(),
+            last_stft: None,
             audio: AudioWorker::new(),
             devices: Vec::new(),
             selected: 0,
@@ -262,11 +269,22 @@ impl ScopeApp {
             created: Instant::now(),
             #[cfg(feature = "qa")]
             screenshot_requested: false,
+            #[cfg(feature = "qa")]
+            profile: crate::qa::Profile::from_env(),
         };
         if demo || smoke {
             app.channels = 2;
             app.format = if smoke { "QA fixture" } else { "Internal demo" }.into();
-            app.demo.append(&mut app.history, 16384, app.sample_rate);
+            app.reset_analysis();
+            app.demo.append_with(
+                &mut app.history,
+                16384,
+                app.sample_rate,
+                |sequence, samples| {
+                    app.stft.submit(sequence, samples);
+                },
+            );
+            app.stft.flush();
         }
         #[cfg(feature = "qa")]
         if smoke {
@@ -288,9 +306,26 @@ impl ScopeApp {
     }
 
     fn reset_analysis(&mut self) {
+        self.spectrum_channel = self.spectrum_channel.min(self.channels.max(1) as usize - 1);
         self.analyzer = Analyzer::new(self.spectrum_settings, self.sample_rate);
         self.spectrum_dirty = true;
         self.last_spectrum = Instant::now() - Duration::from_secs(1);
+        self.last_stft = None;
+        if self.running() {
+            self.stft
+                .configure(stft::Config {
+                    sample_rate: self.sample_rate,
+                    channels: self.channels as usize,
+                    channel: self.spectrum_channel,
+                    size: self.spectrum_settings.size,
+                    hop: self.spectrum_settings.size / 4,
+                    window: self.spectrum_settings.window,
+                    remove_dc: self.spectrum_settings.remove_dc,
+                })
+                .expect("validated acquisition and FFT settings");
+        } else {
+            self.stft.pause();
+        }
     }
 
     fn poll_demo(&mut self) {
@@ -302,14 +337,24 @@ impl ScopeApp {
         }
         // Bound catch-up after window suspension, and never join a false gap.
         if elapsed > 0.25 {
-            self.history.clear();
+            let missing = ((elapsed - 0.25) * self.sample_rate as f64) as u64;
+            self.history.clear_at(self.history.range().end + missing);
+            self.dropped += missing;
             self.analyzer.reset();
             self.spectrum_dirty = true;
         }
         self.demo_fraction += elapsed.min(0.25) * self.sample_rate as f64;
         let count = self.demo_fraction as usize;
         self.demo_fraction -= count as f64;
-        self.demo.append(&mut self.history, count, self.sample_rate);
+        self.demo.append_with(
+            &mut self.history,
+            count,
+            self.sample_rate,
+            |sequence, samples| {
+                self.stft.submit(sequence, samples);
+            },
+        );
+        self.stft.flush();
         self.dirty |= count > 0;
     }
 
@@ -337,6 +382,7 @@ impl ScopeApp {
     }
 
     fn stop(&mut self) {
+        self.stft.pause();
         self.last_spectrum = Instant::now() - Duration::from_secs(1);
         if self.source == Source::Demo {
             self.demo_running = false;
@@ -354,21 +400,46 @@ impl ScopeApp {
                 Event::Devices(devices) => {
                     self.selected = devices.iter().position(|d| d.is_default).unwrap_or(0);
                     self.devices = devices;
+                    #[cfg(feature = "qa")]
+                    if let Some(name) = self.profile.as_ref().and_then(|p| p.device.as_ref()) {
+                        if let Some(index) = self.devices.iter().position(|d| &d.name == name) {
+                            self.selected = index;
+                            self.start();
+                        } else {
+                            self.error = Some(format!("QA input device not found: {name}"));
+                        }
+                    }
                 }
                 Event::Started(capture) => {
                     self.sample_rate = capture.sample_rate;
                     self.channels = capture.channels;
                     self.format = capture.format.clone();
-                    self.history = History::new((self.sample_rate as usize * 2).max(32768));
+                    self.history = History::with_channels(
+                        (self.sample_rate as usize * 2).max(32768),
+                        self.channels as usize,
+                    );
                     self.expected_sequence = None;
                     self.dropped = 0;
                     self.capture = Some(capture);
+                    #[cfg(feature = "qa")]
+                    if self.profile.is_some() {
+                        if let Ok(channel) = std::env::var("MEASURELAB_PROFILE_CHANNEL")
+                            && let Ok(channel) = channel.parse::<usize>()
+                        {
+                            self.spectrum_channel = channel.saturating_sub(1);
+                        }
+                        if std::env::var("MEASURELAB_PROFILE_SETTINGS").as_deref() == Ok("spectrum")
+                        {
+                            self.sidebar.section = Some(SettingsSection::Spectrum);
+                        }
+                    }
                     self.dirty = true;
                     self.reset_analysis();
                 }
                 Event::Stopped => {}
                 Event::Error(error) => {
                     self.capture = None;
+                    self.stft.pause();
                     self.error = Some(error);
                 }
             }
@@ -397,9 +468,12 @@ impl ScopeApp {
                     self.spectrum_dirty = true;
                 }
                 self.expected_sequence = Some(frame.sequence + 1);
-                self.history.push(frame.samples);
+                self.history.push_at(frame.sequence, frame.samples);
+                self.stft
+                    .submit(frame.sequence, &frame.samples[..self.channels as usize]);
             }
         }
+        self.stft.flush();
         self.dirty |= available > 0;
     }
 
@@ -712,12 +786,12 @@ impl ScopeApp {
                 ui.selectable_value(&mut self.trigger.edge, Edge::Rising, "Rising edge");
                 ui.selectable_value(&mut self.trigger.edge, Edge::Falling, "Falling edge");
             });
-        ui.horizontal(|ui| {
-            ui.selectable_value(&mut self.trigger.channel, 0, "CH 1");
-            ui.add_enabled_ui(self.channels >= 2, |ui| {
-                ui.selectable_value(&mut self.trigger.channel, 1, "CH 2");
-            });
-        });
+        channel_select(
+            ui,
+            "trigger_channel",
+            &mut self.trigger.channel,
+            self.channels,
+        );
         self.dirty |= before != (self.trigger.edge, self.trigger.channel);
         self.dirty |= ui
             .add(egui::Slider::new(&mut self.trigger.level, -1.0..=1.0).text("FS"))
@@ -726,13 +800,13 @@ impl ScopeApp {
 
     fn spectrum_controls(&mut self, ui: &mut egui::Ui) {
         let before = (self.spectrum_settings, self.spectrum_channel);
-        ui.horizontal(|ui| {
-            ui.label("Source");
-            ui.selectable_value(&mut self.spectrum_channel, 0, "CH 1");
-            ui.add_enabled_ui(self.channels >= 2, |ui| {
-                ui.selectable_value(&mut self.spectrum_channel, 1, "CH 2");
-            });
-        });
+        setting_label(ui, "SOURCE CHANNEL");
+        channel_select(
+            ui,
+            "spectrum_channel",
+            &mut self.spectrum_channel,
+            self.channels,
+        );
         setting_label(ui, "FFT LENGTH");
         egui::ComboBox::from_id_salt("fft_size")
             .width(ui.available_width())
@@ -999,13 +1073,7 @@ impl ScopeApp {
     }
 
     fn spectrum_plot(&mut self, ui: &mut egui::Ui, view: View) {
-        let (outer, response) = ui.allocate_exact_size(
-            vec2(
-                ui.available_width(),
-                (ui.available_height() - 28.0).max(120.0),
-            ),
-            egui::Sense::hover(),
-        );
+        let (outer, response) = ui.allocate_exact_size(plot_size(ui), egui::Sense::hover());
         let rect =
             egui::Rect::from_min_max(outer.min + vec2(38.0, 14.0), outer.max - vec2(18.0, 28.0));
         let painter = ui.painter();
@@ -1172,11 +1240,8 @@ impl ScopeApp {
     }
 
     fn plot(&mut self, ui: &mut egui::Ui) {
-        let size = vec2(
-            ui.available_width(),
-            (ui.available_height() - 36.0).max(120.0),
-        );
-        let (outer, response) = ui.allocate_exact_size(size, egui::Sense::click_and_drag());
+        let (outer, response) =
+            ui.allocate_exact_size(plot_size(ui), egui::Sense::click_and_drag());
         let rect =
             egui::Rect::from_min_max(outer.min + vec2(44.0, 14.0), outer.max - vec2(18.0, 28.0));
         if response.hovered() {
@@ -1352,19 +1417,51 @@ impl eframe::App for ScopeApp {
         }
         self.poll_audio();
         self.poll_demo();
+        self.stft.drain(|row| self.last_stft = Some(row.info));
+        #[cfg(feature = "qa")]
+        {
+            let running = self.running();
+            if let Some(profile) = &mut self.profile {
+                profile.record(elapsed, running);
+                if profile.finished() {
+                    profile.report(self.dropped);
+                    println!(
+                        "STFT profile: {} Hz, {} ch, CH {}, rows {}, input dropped {}, result dropped {}, worker CPU {:.3} ms total",
+                        self.sample_rate,
+                        self.channels,
+                        self.spectrum_channel + 1,
+                        self.stft.metrics.produced.load(Ordering::Relaxed),
+                        self.stft.metrics.input_dropped.load(Ordering::Relaxed),
+                        self.stft.metrics.result_dropped.load(Ordering::Relaxed),
+                        self.stft.metrics.processing_nanos.load(Ordering::Relaxed) as f64 / 1e6
+                    );
+                    self.profile = None;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                }
+                ctx.request_repaint_after(Duration::from_millis(8));
+                if std::env::var_os("MEASURELAB_PROFILE_SCREENSHOT").is_some()
+                    && !self.screenshot_requested
+                    && self.created.elapsed() > Duration::from_secs(3)
+                {
+                    self.screenshot_requested = true;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(Default::default()));
+                }
+            }
+        }
         // Input validity must not depend on whether its settings are expanded.
-        if self.channels < 2 {
-            if self.spectrum_channel != 0 {
-                self.spectrum_channel = 0;
+        {
+            let last_channel = self.channels.max(1) as usize - 1;
+            if self.spectrum_channel > last_channel {
+                self.spectrum_channel = last_channel;
                 self.reset_analysis();
             }
-            if self.trigger.channel != 0 {
-                self.trigger.channel = 0;
+            if self.trigger.channel > last_channel {
+                self.trigger.channel = last_channel;
                 self.dirty = true;
             }
         }
         #[cfg(feature = "qa")]
-        if self.smoke {
+        if self.smoke || self.profile.is_some() {
             let screenshot = ctx.input(|input| {
                 input.events.iter().find_map(|event| {
                     if let egui::Event::Screenshot { image, .. } = event {
@@ -1472,6 +1569,21 @@ impl eframe::App for ScopeApp {
                         ui.label(format!("Scope prep {:.2} ms", self.build_ms));
                         ui.label(format!("FFT {:.2} ms", self.fft_ms));
                         ui.label(format!("Spectrum prep {:.2} ms", self.spectrum_build_ms));
+                        ui.label(format!(
+                            "STFT input dropped {} · rows dropped {}",
+                            self.stft.metrics.input_dropped.load(Ordering::Relaxed),
+                            self.stft.metrics.result_dropped.load(Ordering::Relaxed)
+                        ));
+                        if let Some(row) = self.last_stft {
+                            ui.label(format!(
+                                "STFT CH {} · N {} / hop {} · samples {}..{}",
+                                row.config.channel + 1,
+                                row.config.size,
+                                row.config.hop,
+                                row.start,
+                                row.end
+                            ));
+                        }
                         ui.label(format!(
                             "{} GPU segments",
                             self.segments.len() + self.spectrum_segments.len()
@@ -1587,8 +1699,28 @@ impl eframe::App for ScopeApp {
     }
 }
 
+fn plot_size(ui: &egui::Ui) -> egui::Vec2 {
+    // Reserve the same horizontal footer row and spacing for both plots.
+    let footer_height = ui.spacing().interact_size.y + ui.spacing().item_spacing.y;
+    vec2(
+        ui.available_width(),
+        (ui.available_height() - footer_height).max(120.0),
+    )
+}
+
 fn setting_label(ui: &mut egui::Ui, text: &str) {
     ui.label(RichText::new(text).small().color(MUTED));
+}
+
+fn channel_select(ui: &mut egui::Ui, id: &str, selected: &mut usize, channels: u16) {
+    egui::ComboBox::from_id_salt(id)
+        .width(ui.available_width())
+        .selected_text(format!("CH {}", *selected + 1))
+        .show_ui(ui, |ui| {
+            for channel in 0..channels.max(1) as usize {
+                ui.selectable_value(selected, channel, format!("CH {}", channel + 1));
+            }
+        });
 }
 
 fn frequency_label(hz: f32) -> String {

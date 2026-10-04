@@ -44,6 +44,16 @@ impl Default for Demo {
 
 impl Demo {
     pub fn append(&mut self, history: &mut History, count: usize, sample_rate: u32) {
+        self.append_with(history, count, sample_rate, |_, _| {});
+    }
+
+    pub fn append_with(
+        &mut self,
+        history: &mut History,
+        count: usize,
+        sample_rate: u32,
+        mut consume: impl FnMut(u64, &[f32]),
+    ) {
         for _ in 0..count {
             let mut samples = [0.0; 2];
             for (channel, value) in samples.iter_mut().enumerate() {
@@ -75,7 +85,9 @@ impl Demo {
                 *value = (signal * self.amplitude as f64 * if channel == 0 { 1.0 } else { 0.65 }
                     + noise * self.noise as f64) as f32;
             }
+            let sequence = history.range().end;
             history.push(samples);
+            consume(sequence, &samples);
             self.phase = (self.phase + TAU * self.frequency as f64 / sample_rate as f64) % TAU;
         }
     }

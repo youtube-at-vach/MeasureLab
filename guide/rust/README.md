@@ -46,6 +46,8 @@ cargo run --release
 
 入力デバイスを選択して **Start input** を押してください。停止すると最後の波形が保持されます。再開時は新しい入力で履歴を作り直します。音声ファイルへの保存やオーディオ出力は行いません。
 
+通常の起動はユーザー単位のファイルロックで重複を防ぎ、2つ目は既に起動中と表示して終了します。意図的に複数起動する場合は`--new-instance`を追加してください。音声を取得するQAコマンドも同じロックを使い、デバイス列挙とGPU読み戻しは対象外です。起動制御は測定コアから分離しています。ロックファイルは残りますが、[OSのファイルロック](https://doc.rust-lang.org/std/fs/struct.File.html#method.try_lock)はプロセス終了時に解放されるため、異常終了後にファイルを手で削除する必要はありません。旧ビルドにはこの制御がないため、旧版との重複は防げません。
+
 マイクを使わず試すには、内部信号で起動します。起動後も左側の **Demo signal / Audio input** で入力を切り替えられます。
 
 ```sh
@@ -91,13 +93,13 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | 各グラフのSettings | 対象の設定を左パネルで開く |
 | グラフ上部のSettings / Collapse all | 左パネルの表示切り替え／設定項目をすべて閉じる |
 | Workspace & help | 配置の指定、ショートカット、測定単位 |
-| Spectrum Source / points / Window | FFTの入力CH、サイズ（1,024〜32,768点）、窓関数 |
+| Spectrum Source / points / Window | FFTの入力CH（取得した全chから選択）、サイズ（1,024〜32,768点）、窓関数 |
 | Power average / Remove DC | 線形電力の指数平均、FFT前の平均値除去 |
 | Log Hz / Linear Hz / Span | 周波数軸と表示する上限周波数 |
 | Floor dBFS / Peak hold / Clear hold | 表示下限、最大値の保持、保持値のクリア |
 | スペクトル上にマウスを置く | 最寄りのFFTビンの周波数と振幅 |
 
-画面は横10分割・縦8分割です。トリガーは横20%位置で、交差が見つからない場合は最新の波形を表示するAuto動作です。RMS・Peak・P-Pは表示範囲の実サンプルから計算します。モノラルデバイスではCH 2を無効にします。3チャンネル以上のデバイスでは最初の2チャンネルを表示します。
+画面は横10分割・縦8分割です。トリガーは横20%位置で、交差が見つからない場合は最新の波形を表示するAuto動作です。RMS・Peak・P-Pは表示範囲の実サンプルから計算します。モノラルデバイスではCH 2を無効にします。コアは1〜16chを保持します。Scopeは最初の2chを表示し、Spectrumとトリガーは取得した全chからソースを選択できます。16chを超える入力は切り捨てずエラーを表示します。
 
 振幅はCPALから取得したデジタル音声のフルスケール（FS）です。電圧への換算、外部ADCの制御、音声デバイス以外の入力は未実装です。サンプルレートはデバイス既定の設定を使用します。
 
@@ -110,13 +112,15 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 ## 高速描画の構成
 
 ```text
-Audio device → CPAL callback → bounded SPSC ring → sample history
-                                                   ↓
-                                    trigger / per-pixel extrema
-                                                   ↓
-                                  reusable GPU instance buffer
-                                                   ↓
-                                    wgpu shader + egui controls
+Audio device → CPAL callback → bounded SPSC ring → common input (1–16ch)
+                                                   ├→ sample history → Scope / Spectrum
+                                                   └→ selected CH → bounded block queue
+                                                                        ↓
+                                                             continuous STFT worker
+                                                                        ↓
+                                                             bounded, recycled rows
+                                                                        ↓
+                                                     spectrogram texture (next: 2b)
 ```
 
 - **CPAL 0.18**: CoreAudio / WASAPI / ALSAなどのネイティブ入力。デバイス列挙とストリーム作成はUIとは別スレッド。
@@ -128,6 +132,7 @@ Audio device → CPAL callback → bounded SPSC ring → sample history
 - **停止時の節電**: 停止中は連続再描画を止め、波形に変更がないフレームはGPUへの波形再転送を省略します。
 - **複数プロット**: WGSLパイプラインを共有し、各プロットのGPUバッファ・寸法・更新番号は独立。スペクトルも物理ピクセルごとの極値を保持し、対数軸で密集する狭いピークを残します。
 - **FFT**: [RustFFT](https://docs.rs/rustfft/6.4.1/rustfft/)の計画とscratchメモリを再利用します。最新の完全な窓を最大30回/秒、かつN/4以上の新規サンプルごとに解析します。すべての連続窓を網羅するSTFTではありません。
+- **連続STFT**: 別の専用ワーカーで選択した1chを解析します。UIで使うhopはN/4、FFTサイズ・窓関数・DC除去・対象chはSpectrum設定を共有します。窓ごとのdBFSを生成し、平均・ピーク保持は適用しません。入力は256フレーム×64ブロック、結果は16行の固定プールで再利用します。入力ブロックと結果のFs・ch・世代・サンプル位置・欠落情報を保持し、欠落をまたぐ窓や古い世代を表示へ渡しません。Performanceで最新窓の位置とワーカーの欠落数を確認できます。画像表示は次の2bで実装します。
 
 通常はVSyncを使用します。`--low-latency`ではVSyncを外します。実際の更新頻度はディスプレイ・GPU・OS・入力バッファに依存します。下部の**Performance**メニューにある`UI fps`はUI更新頻度、`Scope prep`・`FFT`・`Spectrum prep`はそれぞれの直近のCPU処理時間で、GPU実行時間ではありません。
 
@@ -141,6 +146,9 @@ Audio device → CPAL callback → bounded SPSC ring → sample history
 ./scripts/cargo.sh bench --bench spectrum --no-default-features
 ./scripts/cargo.sh run --release -- --list-devices
 ./scripts/cargo.sh run --release -- --audio-smoke
+./scripts/cargo.sh run --release -- --audio-smoke --input-device "BlackHole 16ch"
+./scripts/cargo.sh run --release -- --stft-smoke --input-device "BlackHole 16ch" --channel 16
+./scripts/cargo.sh run --release --features qa -- --multichannel-smoke
 ./scripts/cargo.sh run --release -- --gpu-smoke
 ./scripts/cargo.sh run --features qa -- --ui-smoke
 ./scripts/cargo.sh run --features qa -- --ui-smoke --compact
@@ -150,18 +158,52 @@ Audio device → CPAL callback → bounded SPSC ring → sample history
 
 `qa`機能で`--ui-smoke`を使うと、内部テスト信号による画面を撮影できます。`MEASURELAB_UI_SMOKE_SETTINGS=scope`（または`spectrum`、`workspace`、`collapsed`、`hidden`）を指定すると、その設定パネルの状態で撮影できます。`--compact`との組み合わせで小さい画面も確認できます。
 
-`--audio-smoke`は既定入力を2秒間取り込み、実際に届いたフレーム数を確認します。`--gpu-smoke`は二つのプロットを同じ更新番号で準備してから描画し、それぞれの領域をGPUから読み戻して状態の独立を検証します。`--ui-smoke`は入力を開始せず、明示的なテスト信号でScope＋Spectrumを短時間開いて閉じます。`qa`機能を有効にすると、その表示を`dist/ui-smoke.png`へ保存します。通常起動時はオーディオ入力、`--demo`指定時は内部信号を使います。GPUやマイクを必要とする確認はCIでは実行しません。
+`--audio-smoke`は入力を2秒間取り込み、フレーム数と全chのピークを確認します。`--input-device`を省略すると既定入力を使います。`--stft-smoke`は同じ入力から連続窓の順序・個数・欠落・ワーカーのCPU時間を確認し、`--channel`は1始まりです。無音でも取得と連続性の検証は可能です。
+
+`--multichannel-smoke`は`qa`機能でのみ使えるBlackHole 16ch専用の確認です。その仮想デバイスの16出力へ異なるビン中心周波数の正弦波（0.125 FS peak）を流し、0.5秒の起動待ち後、2秒間の取得で16入力すべてのch対応・周波数・振幅とCH 16のSTFTを検証します。起動待ち中のCoreAudio通知は別に出力し、測定区間のストリームエラーや欠落は失敗にします。通常アプリの出力機能ではなく、実デバイスを使うローカルQA用の既知信号です。
+
+`--gpu-smoke`は二つのプロットを同じ更新番号で準備してから描画し、それぞれの領域をGPUから読み戻して状態の独立を検証します。`--ui-smoke`は入力を開始せず、明示的なテスト信号でScope＋Spectrumを短時間開いて閉じます。`qa`機能を有効にすると、その表示を`dist/ui-smoke.png`へ保存します。通常起動時はオーディオ入力、`--demo`指定時は内部信号を使います。GPUやマイクを必要とする確認はCIでは実行しません。
+
+`qa`機能では、2秒の起動待ち後に最大60秒のUIフレーム間隔を記録できます。停止中のフレームは除外し、計測後にp95と欠落数を出力して終了します。以下はBlackHoleのCH 16を選び、10秒間計測する例です。`MEASURELAB_PROFILE_SETTINGS=spectrum`でSpectrum設定を開き、`MEASURELAB_PROFILE_SCREENSHOT=1`で途中の画面を`dist/ui-smoke.png`へ保存できます。
+
+```sh
+MEASURELAB_PROFILE_SECONDS=10 MEASURELAB_PROFILE_DEVICE="BlackHole 16ch" MEASURELAB_PROFILE_CHANNEL=16 \
+    ./scripts/cargo.sh run --release --features qa
+MEASURELAB_PROFILE_SECONDS=10 ./scripts/cargo.sh run --release --features qa -- --demo
+```
 
 ## コードの入口
 
 - `src/audio.rs`: CPALデバイス管理、入力コールバック、SPSC転送。
 - `src/signal.rs`: 固定容量履歴、トリガー、集約、測定。
 - `src/spectrum.rs`: 窓、FFT、dBFS補正、電力平均、ピーク保持、周波数軸と表示集約。
+- `src/stft.rs`: 連続窓のスケジューリング、世代・欠落情報、固定容量キューと結果プール、専用ワーカー。
+- `src/qa.rs`: 任意に有効化するUI計測とBlackHole 16ch既知信号確認。
+- `src/instance.rs`: OSのファイルロックを使う起動制御。
 - `src/demo.rs`: 外部出力を伴わない内部デモ信号。
 - `src/gpu.rs` / `src/trace.wgsl`: GPUリソースと専用描画パイプライン。
 - `src/app.rs`: 共通の入力操作UIと複数プロット表示。
 
 選定したライブラリの一次資料: [CPAL](https://docs.rs/cpal/0.18.2/cpal/)、[rtrb](https://docs.rs/rtrb/0.4.0/rtrb/)、[eframe](https://docs.rs/eframe/0.36.2/eframe/)、[egui-wgpu](https://docs.rs/egui-wgpu/0.36.2/egui_wgpu/)。
+
+## 連続STFTと16ch基盤の確認結果（2026-10-04）
+
+macOS / Intel Iris Pro Graphics 6200 / Rust 1.99で、23件の単体テストと全ターゲット・全機能のClippyが成功しました。追加分は16chの変換・履歴・CH 16のFFT、入力分割と履歴折り返しに依存しない窓列、hop 1／173／256／1,024での窓位置、窓ごとの振幅・DC/Nyquist補正、入力・結果キューの飽和、停止・再開とFs／ch／窓長の変更、世代の除外、起動ロックの解放を検証しています。
+
+BlackHole 16chを96 kHzで2秒間取得し、192,000フレームからN=8,192・hop=2,048のCH 16 STFTを90行、順序どおりに生成しました。取得・ワーカー入力・結果の欠落は0、ワーカーの処理経過時間は0.367 ms/行でした。この時間は入力履歴への追加・FFT・dBFS変換・結果コピーを含み、FFT計画作成・UI・GPU実行時間は含みません。
+
+仮想デバイスへ16種類の正弦波を流すQAでは、193,024フレームを取得し、全16chの対応・ビン周波数・0.125 FS peakの振幅を検証しました。CH 16のSTFTは−18.062 dBFS、測定区間のストリームエラーと全キューの欠落は0でした。CoreAudioは入出力を接続する起動時と終了時にoverload通知を出したため、0.5秒の起動待ち区間を別に記録し、その後の2秒間を検証対象としています。
+
+変更前後のUI計測はrelease・VSync・Scope＋Spectrum・通常幅・Input設定を開いた状態で行いました。変更前には既存のプロット高さ調整を含みます。起動後2秒を除外し、その後10秒間のUI呼び出し間隔を記録しました。変更後のBlackHoleはCH 16を解析し、ScopeはCH 1／CH 2を表示します。RSSは`/usr/bin/time -l`の最大常駐メモリで、MiBに換算しています。
+
+| 入力 | 変更前の間隔p95 | 変更後の間隔p95 | 変更前RSS | 変更後RSS | 変更後の取得／STFT入力／結果の欠落 |
+| --- | ---: | ---: | ---: | ---: | --- |
+| 内部デモ・48 kHz・2ch | 17.970 ms | 17.917 ms | 60.33 MiB | 60.81 MiB | 0 / 0 / 0 |
+| BlackHole・96 kHz・16ch | 17.903 ms | 17.973 ms | 62.88 MiB | 76.86 MiB | 0 / 0 / 0 |
+
+変更後のワーカー生成数はデモ286行、BlackHole536行（起動待ちを含む全実行区間）です。どちらもp95は約18 msで、60 Hzの16.7 msという目安を上回っています。10秒の単回計測であり、微小な差を改善・劣化の保証とは扱いません。16chを保持するため、BlackHoleの常駐メモリは増えています。長時間のメモリ推移、UIのCPU予算、GPU実行時間、入力から表示までの遅延は段階2eで引き続き計測します。
+
+Metalの二画面読み戻しで各412個の所定色ピクセルを確認しました。通常幅・狭い幅のデモ画面とBlackHoleのCH 16設定画面を撮影して確認しました。実プロセスでも通常の重複起動と音声QAの重複を拒否し、`--new-instance`による複数起動、プロセス終了後の再起動を確認しました。Windows / Linuxの実機確認は未実施です。
 
 ## スペクトル追加版の確認結果（2026-10-04）
 
