@@ -25,6 +25,8 @@ pub struct Demo {
     pub frequency: f32,
     pub amplitude: f32,
     pub noise: f32,
+    pub phase_degrees: f64,
+    pub channel_2_gain: f64,
     phase: f64,
     random: u32,
 }
@@ -36,6 +38,8 @@ impl Default for Demo {
             frequency: 1000.0,
             amplitude: 0.7,
             noise: 0.0002,
+            phase_degrees: 0.7_f64.to_degrees(),
+            channel_2_gain: 0.65,
             phase: 0.0,
             random: 0x12345678,
         }
@@ -57,7 +61,7 @@ impl Demo {
         for _ in 0..count {
             let mut samples = [0.0; 2];
             for (channel, value) in samples.iter_mut().enumerate() {
-                let phase = self.phase + channel as f64 * 0.7;
+                let phase = self.phase + channel as f64 * self.phase_degrees.to_radians();
                 let mut signal = phase.sin();
                 match self.waveform {
                     Waveform::Sine => {}
@@ -82,7 +86,13 @@ impl Demo {
                 self.random ^= self.random >> 17;
                 self.random ^= self.random << 5;
                 let noise = self.random as f64 / u32::MAX as f64 * 2.0 - 1.0;
-                *value = signal * self.amplitude as f64 * if channel == 0 { 1.0 } else { 0.65 }
+                *value = signal
+                    * self.amplitude as f64
+                    * if channel == 0 {
+                        1.0
+                    } else {
+                        self.channel_2_gain
+                    }
                     + noise * self.noise as f64;
             }
             let sequence = history.range().end;
@@ -109,6 +119,44 @@ mod tests {
         b.append(&mut chunks, 1337, 48000);
         for i in whole.range() {
             assert_eq!(whole.get(i), chunks.get(i));
+        }
+    }
+
+    #[test]
+    fn xy_phase_presets_and_channel_gain_produce_known_sample_pairs() {
+        for phase in [0.0, 90.0, 180.0] {
+            let mut demo = Demo {
+                waveform: Waveform::Sine,
+                frequency: 1000.0,
+                amplitude: 0.5,
+                noise: 0.0,
+                phase_degrees: phase,
+                channel_2_gain: 1.0,
+                ..Demo::default()
+            };
+            let mut history = History::new(48);
+            demo.append(&mut history, 13, 48000);
+            let initial = history.get(0).unwrap();
+            let quarter = history.get(12).unwrap();
+            assert!(initial[0].abs() < 1e-12);
+            assert!((quarter[0] - 0.5).abs() < 1e-12);
+            match phase {
+                0.0 => assert!((quarter[1] - 0.5).abs() < 1e-12),
+                90.0 => {
+                    assert!((initial[1] - 0.5).abs() < 1e-12);
+                    assert!(quarter[1].abs() < 1e-12);
+                }
+                _ => assert!((quarter[1] + 0.5).abs() < 1e-12),
+            }
+            demo.channel_2_gain = 0.5;
+            demo.append(&mut history, 48, 48000);
+            let rms = (history
+                .samples(history.range())
+                .map(|frame| frame[1].powi(2))
+                .sum::<f64>()
+                / 48.0)
+                .sqrt();
+            assert!((rms - 0.25 / 2.0_f64.sqrt()).abs() < 1e-12);
         }
     }
 

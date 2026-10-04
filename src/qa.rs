@@ -58,6 +58,64 @@ pub fn spectrogram_fixture(output: &mut crate::spectrogram::History) -> crate::s
     output.latest().unwrap()
 }
 
+/// Cursor screenshots use the same retained frames for every instrument,
+/// including an acquisition gap and a complete latest FFT window.
+pub fn cursor_fixture(
+    output: &mut crate::spectrogram::History,
+    source: &mut crate::signal::History,
+    demo: &mut crate::demo::Demo,
+    sample_rate: u32,
+) -> crate::stft::RowInfo {
+    use crate::{
+        spectrum::{Analyzer, Settings},
+        stft::{Config, Gap, RowInfo},
+    };
+    let settings = Settings {
+        averages: 1,
+        ..Settings::default()
+    };
+    let config = Config {
+        sample_rate,
+        channels: source.channels(),
+        channel: 0,
+        size: settings.size,
+        hop: settings.size / 4,
+        window: settings.window,
+        remove_dc: settings.remove_dc,
+        precision: settings.precision,
+    };
+    output.reset(1, config);
+    source.clear_at(0);
+    let mut analyzer = Analyzer::new(settings, sample_rate);
+    for index in 0..40 {
+        let mut gap = Gap::default();
+        let count = if index == 0 {
+            config.size
+        } else if index == 24 {
+            gap.input_frames = 2 * config.hop as u64;
+            gap.discontinuity = true;
+            source.clear_at(source.range().end + gap.input_frames);
+            config.size
+        } else {
+            config.hop
+        };
+        demo.append(source, count, sample_rate);
+        let end = source.range().end;
+        assert!(analyzer.update_window(source, end - config.size as u64..end, 0));
+        assert!(output.push(
+            RowInfo {
+                generation: 1,
+                config,
+                start: end - config.size as u64,
+                end,
+                gap
+            },
+            analyzer.db()
+        ));
+    }
+    output.latest().unwrap()
+}
+
 pub struct Profile {
     started: Instant,
     duration: Duration,
@@ -272,4 +330,52 @@ pub fn multichannel_smoke_test() -> Result<(), Box<dyn std::error::Error>> {
         capture.sample_rate
     );
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn shared_cursor_fixture_agrees_across_raw_scope_xy_and_frequency_windows() {
+        use crate::{
+            cursor::Cursors,
+            demo::{Demo, Waveform},
+            signal::{History, Trigger},
+            spectrum::{Analyzer, Settings},
+            xy,
+        };
+        let mut history = History::new(96000);
+        let mut spectrogram = crate::spectrogram::History::default();
+        let mut demo = Demo::default();
+        demo.frequency = 1500.0;
+        demo.waveform = Waveform::Sine;
+        demo.noise = 0.0;
+        demo.phase_degrees = 90.0;
+        demo.channel_2_gain = 1.0;
+        let row = super::cursor_fixture(&mut spectrogram, &mut history, &mut demo, 48000);
+        let mut analyzer = Analyzer::new(Settings::default(), 48000);
+        assert!(analyzer.update(&history, 0));
+        let scope = history.sweep(480, Trigger::default());
+        let mut cursors = Cursors::default();
+        cursors.set_time(0, scope.range.end - 240);
+        cursors.set_time(1, scope.range.end - 120);
+        let mut lines = Vec::new();
+        let xy = xy::build_lines(&history, 48000, xy::Settings::default(), &mut lines);
+        for time in cursors.times.into_iter().flatten() {
+            let sample = cursors.sample(time).unwrap();
+            assert!(scope.range.contains(&sample));
+            assert!(xy.range.contains(&sample));
+            let frame = history.get(sample).unwrap();
+            assert!(
+                (frame[0].powi(2) + frame[1].powi(2) - (demo.amplitude as f64).powi(2)).abs()
+                    < 1e-10
+            );
+            let (selected, db) = spectrogram.at_sample(sample).unwrap();
+            let reading = analyzer.cursor(1500.0).unwrap();
+            assert_eq!(selected.start, reading.window.start);
+            assert_eq!(selected.end, reading.window.end);
+            assert!((db[256] - reading.dbfs).abs() < 1e-5);
+        }
+        assert_eq!(analyzer.window().unwrap().end, row.end);
+        assert_eq!(cursors.delta_seconds(48000), Some(0.0025));
+    }
 }

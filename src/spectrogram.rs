@@ -184,12 +184,48 @@ impl History {
         }
         None
     }
+
+    /// Match the displayed hop interval, rather than any overlapping FFT
+    /// window. Missing rows must not borrow a measurement from a neighbour.
+    pub fn at_sample(&self, sample: u64) -> Option<(RowInfo, &[f32])> {
+        for index in 0..self.len {
+            let slot = (self.next + ROWS - 1 - index) % ROWS;
+            let (info, db) = self.row(slot)?;
+            if (info.end.saturating_sub(info.config.hop as u64)..info.end).contains(&sample) {
+                return Some((info, &db[..info.config.size / 2 + 1]));
+            }
+        }
+        None
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{spectrum::Window, stft::Gap};
+
+    #[test]
+    fn sample_cursor_matches_displayed_hops_and_never_reads_overlapping_gap_windows() {
+        let mut h = History::default();
+        h.reset(1, config());
+        let origin = 1_u64 << 54;
+        let mut db = vec![-80.0; 513];
+        for (end, value) in [
+            (origin + 1024, -10.0),
+            (origin + 1280, -20.0),
+            (origin + 2304, -30.0),
+        ] {
+            db[32] = value;
+            assert!(h.push(info(end), &db));
+        }
+        assert_eq!(h.at_sample(origin + 1023).unwrap().1[32], -10.0);
+        assert_eq!(h.at_sample(origin + 1024).unwrap().1[32], -20.0);
+        // The last FFT covers this sample, but its displayed row does not.
+        assert!(h.at_sample(origin + 1500).is_none());
+        assert_eq!(h.at_sample(origin + 2303).unwrap().1[32], -30.0);
+        assert!(h.at_sample(origin + 2304).is_none());
+        assert!(h.at_sample(origin + 767).is_none());
+    }
     fn config() -> Config {
         Config {
             sample_rate: 48000,

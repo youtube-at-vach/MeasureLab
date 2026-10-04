@@ -1,11 +1,13 @@
 use crate::{
     audio::{AudioWorker, Capture, Command, DeviceInfo, Event},
+    cursor::{self, Cursors},
     demo::{Demo, Waveform},
     gpu::{COLORS, PlotId, Segment, TraceCallback, TraceRenderer},
     signal::{Edge, History, Line, Measurement, Trigger, build_lines},
     spectrogram, spectrogram_gpu,
     spectrum::{self, Analyzer, FFT_SIZES, FrequencyScale, Precision, Settings, View, Window},
     stft::{self, RowInfo},
+    xy,
 };
 use eframe::{
     egui::{self, Color32, RichText, Stroke, pos2, vec2},
@@ -20,6 +22,7 @@ const GREEN: Color32 = Color32::from_rgb(56, 242, 173);
 const BLUE: Color32 = Color32::from_rgb(87, 166, 255);
 const YELLOW: Color32 = Color32::from_rgb(255, 211, 66);
 const HOLD: Color32 = Color32::from_rgb(179, 135, 65);
+const PURPLE: Color32 = Color32::from_rgb(204, 153, 255);
 const MUTED: Color32 = Color32::from_rgb(128, 147, 161);
 const BORDER: Color32 = Color32::from_rgb(48, 70, 82);
 
@@ -34,6 +37,7 @@ enum Instrument {
     Scope,
     Spectrum,
     Spectrogram,
+    Xy,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -68,15 +72,17 @@ enum SettingsSection {
     Scope,
     Spectrum,
     Spectrogram,
+    Xy,
     Workspace,
 }
 
 impl SettingsSection {
-    const ALL: [Self; 5] = [
+    const ALL: [Self; 6] = [
         Self::Input,
         Self::Scope,
         Self::Spectrum,
         Self::Spectrogram,
+        Self::Xy,
         Self::Workspace,
     ];
 
@@ -86,6 +92,7 @@ impl SettingsSection {
             Self::Scope => "Oscilloscope",
             Self::Spectrum => "Spectrum analyzer",
             Self::Spectrogram => "Spectrogram",
+            Self::Xy => "XY / Lissajous",
             Self::Workspace => "Workspace & help",
         }
     }
@@ -96,6 +103,7 @@ impl SettingsSection {
             Self::Scope => GREEN,
             Self::Spectrum => YELLOW,
             Self::Spectrogram => BLUE,
+            Self::Xy => PURPLE,
         }
     }
 }
@@ -126,7 +134,7 @@ impl Sidebar {
 
 pub struct ScopeApp {
     source: Source,
-    visible: [bool; 3],
+    visible: [bool; 4],
     plot_layout: PlotLayout,
     sidebar: Sidebar,
     demo: Demo,
@@ -161,6 +169,13 @@ pub struct ScopeApp {
     spectrogram_ceiling: f32,
     spectrogram_seconds: f64,
     spectrogram_build_ms: f64,
+    xy_settings: xy::Settings,
+    xy_capture: xy::Capture,
+    xy_lines: Vec<Line>,
+    xy_segments: Arc<Vec<Segment>>,
+    xy_revision: u64,
+    xy_dirty: bool,
+    xy_build_ms: f64,
     audio: AudioWorker,
     devices: Vec<DeviceInfo>,
     selected: usize,
@@ -168,6 +183,9 @@ pub struct ScopeApp {
     busy: bool,
     error: Option<String>,
     history: History,
+    cursors: Cursors,
+    active_cursor: usize,
+    scope_range: std::ops::Range<u64>,
     expected_sequence: Option<u64>,
     sample_rate: u32,
     channels: u16,
@@ -198,6 +216,10 @@ pub struct ScopeApp {
     lifecycle_stage: u8,
     #[cfg(feature = "qa")]
     lifecycle_held: Option<(u64, RowInfo)>,
+    #[cfg(feature = "qa")]
+    lifecycle_xy_held: Option<(u64, xy::Capture)>,
+    #[cfg(feature = "qa")]
+    lifecycle_spectrum_held: Option<(spectrum::WindowInfo, Vec<f32>, std::ops::Range<u64>)>,
 }
 
 impl ScopeApp {
@@ -238,8 +260,8 @@ impl ScopeApp {
         visuals.widgets.active.bg_fill = Color32::from_rgb(29, 107, 87);
         cc.egui_ctx.set_visuals(visuals);
         cc.egui_ctx.global_style_mut(|style| {
-            style.spacing.item_spacing = vec2(10.0, 10.0);
-            style.spacing.button_padding = vec2(12.0, 7.0);
+            style.spacing.item_spacing = vec2(6.0, 6.0);
+            style.spacing.button_padding = vec2(8.0, 4.0);
         });
         let mut app = Self {
             source: if demo || smoke {
@@ -247,7 +269,7 @@ impl ScopeApp {
             } else {
                 Source::Live
             },
-            visible: [true; 3],
+            visible: [true; 4],
             plot_layout: PlotLayout::Auto,
             sidebar: Sidebar::default(),
             demo: Demo::default(),
@@ -285,6 +307,13 @@ impl ScopeApp {
             spectrogram_ceiling: 0.0,
             spectrogram_seconds: 5.0,
             spectrogram_build_ms: 0.0,
+            xy_settings: xy::Settings::default(),
+            xy_capture: xy::Capture::default(),
+            xy_lines: Vec::with_capacity(xy::MAX_POINTS),
+            xy_segments: Arc::new(Vec::with_capacity(xy::MAX_POINTS)),
+            xy_revision: 0,
+            xy_dirty: true,
+            xy_build_ms: 0.0,
             audio: AudioWorker::new(),
             devices: Vec::new(),
             selected: 0,
@@ -292,6 +321,9 @@ impl ScopeApp {
             busy: true,
             error: None,
             history: History::new(96_000),
+            cursors: Cursors::default(),
+            active_cursor: 0,
+            scope_range: 0..0,
             expected_sequence: None,
             sample_rate: 48_000,
             channels: 0,
@@ -322,6 +354,10 @@ impl ScopeApp {
             lifecycle_stage: 0,
             #[cfg(feature = "qa")]
             lifecycle_held: None,
+            #[cfg(feature = "qa")]
+            lifecycle_xy_held: None,
+            #[cfg(feature = "qa")]
+            lifecycle_spectrum_held: None,
         };
         #[cfg(feature = "qa")]
         if app.profile.is_some() {
@@ -342,6 +378,22 @@ impl ScopeApp {
         }
         if demo || smoke {
             app.channels = 2;
+            #[cfg(feature = "qa")]
+            if smoke {
+                if let Ok(phase) = std::env::var("MEASURELAB_UI_SMOKE_XY_PHASE") {
+                    app.demo.phase_degrees = phase.parse::<f64>()?;
+                    app.demo.waveform = Waveform::Sine;
+                    app.demo.noise = 0.0;
+                    app.demo.channel_2_gain = 1.0;
+                }
+                if std::env::var("MEASURELAB_UI_SMOKE_CHANNELS").as_deref() == Ok("1") {
+                    app.channels = 1;
+                    app.history = History::with_channels(96000, 1);
+                }
+                if std::env::var_os("MEASURELAB_UI_SMOKE_XY_ONLY").is_some() {
+                    app.visible = [false, false, false, true];
+                }
+            }
             app.format = if smoke { "QA fixture" } else { "Internal demo" }.into();
             app.reset_analysis();
             app.reset_stft();
@@ -361,22 +413,38 @@ impl ScopeApp {
             app.last_stft = Some(crate::qa::spectrogram_fixture(
                 &mut app.spectrogram_history.lock().unwrap(),
             ));
+            if std::env::var_os("MEASURELAB_UI_SMOKE_CURSORS").is_some() {
+                app.last_stft = Some(crate::qa::cursor_fixture(
+                    &mut app.spectrogram_history.lock().unwrap(),
+                    &mut app.history,
+                    &mut app.demo,
+                    app.sample_rate,
+                ));
+                let sweep = app.history.sweep(480, app.trigger);
+                app.cursors.set_time(0, sweep.range.end - 240);
+                app.cursors.set_time(1, sweep.range.end - 120);
+                app.cursors.frequency_hz = Some(app.demo.frequency as f64);
+            }
             // Render every inspector with the same deterministic signal fixture.
             match std::env::var("MEASURELAB_UI_SMOKE_SETTINGS").as_deref() {
                 Ok("scope") => app.sidebar.section = Some(SettingsSection::Scope),
                 Ok("spectrum") => app.sidebar.section = Some(SettingsSection::Spectrum),
                 Ok("spectrogram") => app.sidebar.section = Some(SettingsSection::Spectrogram),
+                Ok("xy") => app.sidebar.section = Some(SettingsSection::Xy),
                 Ok("workspace") => app.sidebar.section = Some(SettingsSection::Workspace),
                 Ok("collapsed") => app.sidebar.section = None,
                 Ok("hidden") => app.sidebar.visible = false,
                 _ => {}
             }
         }
+        if smoke {
+            app.update_spectrum(true);
+        }
         Ok(app)
     }
 
     #[cfg(feature = "qa")]
-    fn check_lifecycle(&mut self) {
+    fn check_lifecycle(&mut self, ctx: &egui::Context, frame_interval: f64) {
         if self.profile.is_none() || std::env::var_os("MEASURELAB_PROFILE_LIFECYCLE").is_none() {
             return;
         }
@@ -401,10 +469,77 @@ impl ScopeApp {
                 assert_eq!(latest.config, self.lifecycle_held.unwrap().1.config);
                 assert_eq!(latest.generation, self.lifecycle_held.unwrap().1.generation);
                 self.stop();
+                self.rebuild_xy();
+                self.lifecycle_xy_held = Some((self.xy_revision, self.xy_capture.clone()));
+                self.lifecycle_spectrum_held = Some((
+                    self.analyzer.window().unwrap(),
+                    self.analyzer.db().to_vec(),
+                    self.history.range(),
+                ));
+                self.cursors.set_time(0, latest.end - 240);
+                self.cursors.set_time(1, latest.end - 120);
+                self.cursors.frequency_hz = Some(1000.0);
                 self.lifecycle_held = Some((revision, latest));
                 self.lifecycle_stage = 2;
+                ctx.request_repaint_after(Duration::from_millis(450));
             }
             2 if elapsed > 1.3 => {
+                if std::env::var_os("MEASURELAB_PROFILE_IDLE").is_some() {
+                    assert!(
+                        frame_interval > 0.25,
+                        "stopped UI kept repainting: {frame_interval:.3} s interval"
+                    );
+                    println!(
+                        "Stopped UI idle OK: {:.1} ms without a redraw",
+                        frame_interval * 1000.0
+                    );
+                }
+                self.update_spectrum(false);
+                let (held_window, held_db, held_range) =
+                    self.lifecycle_spectrum_held.as_ref().unwrap();
+                assert_eq!(self.analyzer.window(), Some(*held_window));
+                assert_eq!(self.analyzer.db(), held_db);
+                assert_eq!(self.history.range(), *held_range);
+                assert_eq!(
+                    self.cursors.delta_seconds(self.sample_rate),
+                    Some(120.0 / self.sample_rate as f64)
+                );
+                let sample = self.cursor_samples()[0].unwrap();
+                assert!(self.history.get(sample).is_some());
+                assert!(
+                    self.spectrogram_history
+                        .lock()
+                        .unwrap()
+                        .at_sample(sample)
+                        .is_some()
+                );
+                self.demo.frequency = 6000.0;
+                self.apply_demo_settings();
+                let (held_window, held_db, held_range) =
+                    self.lifecycle_spectrum_held.as_ref().unwrap();
+                assert_eq!(
+                    self.history.range(),
+                    *held_range,
+                    "stopped demo edit changed held samples"
+                );
+                assert_eq!(self.analyzer.window(), Some(*held_window));
+                assert_eq!(self.analyzer.db(), held_db);
+                self.rebuild_xy();
+                let (held_revision, held_capture) = self.lifecycle_xy_held.as_ref().unwrap();
+                assert_eq!(
+                    self.xy_revision, *held_revision,
+                    "stopped XY rebuilt unchanged samples"
+                );
+                assert_eq!(self.xy_capture.range, held_capture.range);
+                let held_range = held_capture.range.clone();
+                self.xy_settings.x_fs_per_div = 0.125;
+                self.xy_dirty = true;
+                self.rebuild_xy();
+                assert_eq!(
+                    self.xy_capture.range, held_range,
+                    "XY display change mutated held samples"
+                );
+                assert!(!self.xy_segments.is_empty());
                 assert_eq!(
                     revision,
                     self.lifecycle_held.unwrap().0,
@@ -416,25 +551,52 @@ impl ScopeApp {
                 self.spectrogram_settings.size = 1024;
                 self.spectrogram_settings.precision = Precision::F32;
                 self.spectrogram_channel = 1;
-                self.visible = [true, false, false];
+                self.spectrum_settings.size = 32768;
+                self.spectrum_channel = 0;
+                self.frequency_scale = FrequencyScale::Linear;
+                self.floor_db = -100.0;
+                self.spectrum_dirty = true;
+                self.visible = [false, false, false, true];
                 self.lifecycle_stage = 3;
+                ctx.request_repaint_after(Duration::from_millis(450));
             }
             3 if elapsed > 1.6 => {
+                self.update_spectrum(false);
+                let (held_window, held_db, _) = self.lifecycle_spectrum_held.as_ref().unwrap();
+                assert_eq!(
+                    self.analyzer.window(),
+                    Some(*held_window),
+                    "next-run settings changed held FFT metadata"
+                );
+                assert_eq!(
+                    self.analyzer.db(),
+                    held_db,
+                    "stopped display change re-averaged input"
+                );
                 assert_eq!(
                     revision,
                     self.lifecycle_held.unwrap().0,
                     "display-only change mutated held history"
                 );
-                self.visible = [false, false, true];
+                self.visible = [false, false, true, false];
                 self.start();
+                assert_eq!(self.cursor_samples(), [None; 2]);
+                assert!(self.cursors.frequency_hz.is_none());
+                assert!(self.analyzer.window().is_none());
                 self.lifecycle_stage = 4;
             }
             4 if elapsed > 2.0 => {
+                self.rebuild_xy();
+                assert!(
+                    self.xy_capture.range.end
+                        < self.lifecycle_xy_held.as_ref().unwrap().1.range.end,
+                    "XY restart retained source coordinates from the previous capture"
+                );
                 assert_ne!(latest.generation, self.lifecycle_held.unwrap().1.generation);
                 assert_eq!(latest.config.channel, 1);
                 assert_eq!(latest.config.size, 1024);
                 assert_eq!(latest.config.precision, Precision::F32);
-                self.visible = [true; 3];
+                self.visible = [true; 4];
                 self.spectrogram_settings.size = 8192;
                 self.spectrogram_settings.precision = Precision::F64;
                 self.spectrogram_channel = 0;
@@ -445,8 +607,18 @@ impl ScopeApp {
                 assert_eq!(latest.config.channel, 0);
                 assert_eq!(latest.config.size, 8192);
                 assert_eq!(latest.config.precision, Precision::F64);
+                self.cursors.set_time(0, self.history.range().end - 1);
+                self.source = Source::Live;
+                self.switch_source();
+                assert_eq!(self.cursor_samples(), [None; 2]);
+                assert!(self.cursors.frequency_hz.is_none());
+                assert!(self.history.is_empty());
+                assert!(self.analyzer.window().is_none());
+                assert!(self.last_stft.is_none());
+                self.source = Source::Demo;
+                self.switch_source();
                 println!(
-                    "UI lifecycle OK: independent Spectrum settings, stop/late-result exclusion, held display changes, hide/show, restart epoch, STFT CH/FFT changes"
+                    "UI lifecycle OK: independent Spectrum settings, all-instrument hold, stop/late-result exclusion, held FFT metadata/average, held demo edits, shared sample cursors, held display changes, hide/show, restart/source-switch cursor invalidation, STFT CH/FFT changes, XY hold/display/single view/restart"
                 );
                 self.lifecycle_stage = 6;
             }
@@ -458,11 +630,83 @@ impl ScopeApp {
         self.capture.is_some() || self.demo_running
     }
 
+    fn begin_observation(&mut self) {
+        self.cursors.new_epoch();
+        self.history.clear_at(0);
+        self.scope_range = 0..0;
+        self.xy_capture = xy::Capture::default();
+        self.measurements = [Measurement::default(); 2];
+        self.dirty = true;
+        self.xy_dirty = true;
+        self.reset_analysis();
+        self.reset_stft();
+    }
+
+    fn update_spectrum(&mut self, final_snapshot: bool) {
+        if (self.running() || final_snapshot)
+            && (final_snapshot
+                || self.last_spectrum.elapsed() >= Duration::from_secs_f64(1.0 / 30.0))
+        {
+            let started = Instant::now();
+            if self.analyzer.update(&self.history, self.spectrum_channel) {
+                self.fft_ms = started.elapsed().as_secs_f64() * 1000.0;
+                self.spectrum_dirty = true;
+                self.last_spectrum = Instant::now();
+            }
+        }
+    }
+
+    fn cursor_samples(&self) -> [Option<u64>; 2] {
+        self.cursors
+            .times
+            .map(|time| time.and_then(|time| self.cursors.sample(time)))
+    }
+
+    fn place_time_cursor(&mut self, ui: &egui::Ui, sample: u64) {
+        self.cursors.set_time(self.active_cursor, sample);
+        // Earlier panels in this frame also need to see the new shared cursor.
+        // No waveform is rebuilt or uploaded for this overlay-only change.
+        ui.ctx().request_repaint();
+    }
+
+    fn cursor_controls(&mut self, ui: &mut egui::Ui) {
+        ui.separator();
+        for (index, title) in ["Cursor A", "B"].into_iter().enumerate() {
+            ui.selectable_value(&mut self.active_cursor, index, title)
+                .on_hover_text("Click or drag Scope, Spectrogram or XY to place this sample cursor. Spectrum and Spectrogram also set the shared frequency.");
+        }
+        if ui.small_button("Clear").clicked() {
+            self.cursors.clear();
+            ui.ctx().request_repaint();
+        }
+        let times = self.cursor_samples();
+        let mut text = String::new();
+        for (index, sample) in times.into_iter().enumerate() {
+            if let Some(sample) = sample {
+                text.push_str(&format!("{} #{sample}  ", cursor_name(index)));
+            }
+        }
+        if let Some(delta) = self.cursors.delta_seconds(self.sample_rate) {
+            text.push_str(&format!("Δt {:+.3} ms", delta * 1000.0));
+        }
+        if !text.is_empty() {
+            ui.label(RichText::new(text).small().color(MUTED));
+        }
+    }
+
     fn reset_analysis(&mut self) {
         self.spectrum_channel = self.spectrum_channel.min(self.channels.max(1) as usize - 1);
         self.analyzer = Analyzer::new(self.spectrum_settings, self.sample_rate);
         self.spectrum_dirty = true;
         self.last_spectrum = Instant::now() - Duration::from_secs(1);
+    }
+
+    fn apply_demo_settings(&mut self) {
+        // New signal parameters enter the ordinary shared stream at the next
+        // poll. Never synthesize private Scope/Spectrum samples while stopped.
+        if self.running() {
+            self.reset_analysis();
+        }
     }
 
     fn reset_stft(&mut self) {
@@ -525,14 +769,17 @@ impl ScopeApp {
         );
         self.stft.flush();
         self.dirty |= count > 0;
+        self.xy_dirty |= count > 0;
     }
 
     fn start(&mut self) {
         if self.source == Source::Demo {
+            self.begin_observation();
             self.sample_rate = 48000;
             self.channels = 2;
             self.format = "Internal demo".into();
             self.history = History::new(96000);
+            self.xy_dirty = true;
             self.demo_fraction = 0.0;
             self.demo_clock = None;
             self.demo_running = true;
@@ -547,13 +794,17 @@ impl ScopeApp {
             return;
         }
         self.error = None;
+        self.capture = None;
+        self.begin_observation();
         self.busy = true;
         self.audio.send(Command::Start(self.selected));
     }
 
     fn stop(&mut self) {
+        // Complete a final bounded snapshot even for a hidden Spectrum. All
+        // subsequent repaints read the held analyzer, never re-average input.
+        self.update_spectrum(true);
         self.stft.pause();
-        self.last_spectrum = Instant::now() - Duration::from_secs(1);
         if self.source == Source::Demo {
             self.demo_running = false;
             return;
@@ -581,6 +832,7 @@ impl ScopeApp {
                     }
                 }
                 Event::Started(capture) => {
+                    self.xy_dirty = true;
                     self.sample_rate = capture.sample_rate;
                     self.channels = capture.channels;
                     self.format = capture.format.clone();
@@ -647,6 +899,7 @@ impl ScopeApp {
         }
         self.stft.flush();
         self.dirty |= available > 0;
+        self.xy_dirty |= available > 0;
     }
 
     fn section_summary(&self, section: SettingsSection) -> String {
@@ -677,6 +930,7 @@ impl ScopeApp {
                 self.spectrogram_seconds,
                 self.spectrogram_settings.size
             ),
+            SettingsSection::Xy => format!("CH 1 × CH 2 · {:.1} ms", self.xy_settings.milliseconds),
             SettingsSection::Workspace => {
                 format!("{} layout · shortcuts & units", self.plot_layout.name())
             }
@@ -718,6 +972,7 @@ impl ScopeApp {
                             SettingsSection::Scope => self.scope_controls(ui),
                             SettingsSection::Spectrum => self.spectrum_controls(ui),
                             SettingsSection::Spectrogram => self.spectrogram_controls(ui),
+                            SettingsSection::Xy => self.xy_controls(ui),
                             SettingsSection::Workspace => self.workspace_controls(ui),
                         }
                         ui.add_space(4.0);
@@ -776,6 +1031,32 @@ impl ScopeApp {
         }
     }
 
+    fn switch_source(&mut self) {
+        self.cursors.new_epoch();
+        self.scope_range = 0..0;
+        self.xy_dirty = true;
+        self.demo_running = false;
+        if self.capture.take().is_some() {
+            self.audio.send(Command::Stop);
+            self.busy = true;
+        }
+        self.history.clear();
+        self.channels = if self.source == Source::Demo { 2 } else { 0 };
+        if self.source == Source::Demo {
+            self.sample_rate = 48000;
+            self.format = "Internal demo".into();
+            self.start();
+        } else {
+            self.format.clear();
+            self.expected_sequence = None;
+            self.dropped = 0;
+        }
+        self.dirty = true;
+        self.error = None;
+        self.reset_analysis();
+        self.reset_stft();
+    }
+
     fn input_controls(&mut self, ui: &mut egui::Ui) {
         setting_label(ui, "SOURCE");
         let previous_source = self.source;
@@ -786,26 +1067,7 @@ impl ScopeApp {
             });
         });
         if previous_source != self.source {
-            self.demo_running = false;
-            if self.capture.take().is_some() {
-                self.audio.send(Command::Stop);
-                self.busy = true;
-            }
-            self.history.clear();
-            self.channels = if self.source == Source::Demo { 2 } else { 0 };
-            if self.source == Source::Demo {
-                self.sample_rate = 48000;
-                self.format = "Internal demo".into();
-                self.start();
-            } else {
-                self.format.clear();
-                self.expected_sequence = None;
-                self.dropped = 0;
-            }
-            self.dirty = true;
-            self.error = None;
-            self.reset_analysis();
-            self.reset_stft();
+            self.switch_source();
         }
         if self.source == Source::Live {
             setting_label(ui, "DEVICE");
@@ -853,6 +1115,8 @@ impl ScopeApp {
                 self.demo.frequency,
                 self.demo.amplitude,
                 self.demo.noise,
+                self.demo.phase_degrees,
+                self.demo.channel_2_gain,
             );
             setting_label(ui, "WAVEFORM");
             egui::ComboBox::from_id_salt("demo_waveform")
@@ -880,22 +1144,39 @@ impl ScopeApp {
                     .text("Noise"),
             )
             .on_hover_text("Noise amplitude in digital full scale (FS).");
+            setting_label(ui, "CH 2 PHASE / GAIN");
+            ui.add(egui::Slider::new(&mut self.demo.phase_degrees, -180.0..=180.0).text("degrees"));
+            ui.add(egui::Slider::new(&mut self.demo.channel_2_gain, 0.0..=1.0).text("CH 2 gain"));
+            ui.horizontal(|ui| {
+                for phase in [0.0, 90.0, 180.0] {
+                    if ui.small_button(format!("{phase:.0}°")).clicked() {
+                        self.demo.waveform = Waveform::Sine;
+                        self.demo.noise = 0.0;
+                        self.demo.phase_degrees = phase;
+                        self.demo.channel_2_gain = 1.0;
+                    }
+                }
+            }).response.on_hover_text("Equal-amplitude, noise-free sine signals for XY: in-phase, quadrature or opposite phase.");
             if before
                 != (
                     self.demo.waveform,
                     self.demo.frequency,
                     self.demo.amplitude,
                     self.demo.noise,
+                    self.demo.phase_degrees,
+                    self.demo.channel_2_gain,
                 )
             {
-                self.history.clear();
-                self.demo.append(
-                    &mut self.history,
-                    self.spectrum_settings.size,
-                    self.sample_rate,
+                self.apply_demo_settings();
+            }
+            if !self.running() {
+                ui.label(
+                    RichText::new(
+                        "Signal changes apply when input restarts. Captured samples stay held.",
+                    )
+                    .small()
+                    .color(MUTED),
                 );
-                self.dirty = true;
-                self.reset_analysis();
             }
             ui.label(
                 RichText::new("Internal source · no audio output")
@@ -1024,8 +1305,17 @@ impl ScopeApp {
                 }
             }).response.on_hover_text("Exponential average of linear power; alpha = 1 / count. Applied once per new FFT snapshot.");
         ui.checkbox(&mut self.spectrum_settings.remove_dc, "Remove DC offset");
-        if before != (self.spectrum_settings, self.spectrum_channel) {
+        if before != (self.spectrum_settings, self.spectrum_channel) && self.running() {
             self.reset_analysis();
+        }
+        if !self.running() {
+            ui.label(
+                RichText::new(
+                    "Analysis changes apply when input restarts. The captured spectrum stays held.",
+                )
+                .small()
+                .color(MUTED),
+            );
         }
         let view_before = (
             self.frequency_scale,
@@ -1083,7 +1373,7 @@ impl ScopeApp {
                 "Δf {:.2} Hz · RBW {:.2} Hz\nWindow {:.1} ms · up to 30 FFT/s",
                 self.analyzer.bin_hz(),
                 self.analyzer.rbw_hz(),
-                self.spectrum_settings.size as f32 / self.sample_rate as f32 * 1000.0
+                self.analyzer.settings().size as f32 / self.sample_rate as f32 * 1000.0
             ))
             .small()
             .color(MUTED),
@@ -1239,10 +1529,11 @@ impl ScopeApp {
         egui::Frame::new()
             .fill(Color32::from_rgb(17, 27, 35))
             .stroke(Stroke::new(1.0, BORDER))
-            .inner_margin(10.0)
+            .inner_margin(5.0)
             .show(ui, |ui| {
+                compact_plot_style(ui);
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new("Spectrogram").size(18.0).strong());
+                    ui.label(RichText::new("Spectrogram").size(13.0).strong());
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui.small_button("Settings").clicked() {
                             self.sidebar.reveal(SettingsSection::Spectrogram);
@@ -1278,10 +1569,11 @@ impl ScopeApp {
                     );
                 }
                 let view = self.spectrogram_view();
-                let (outer, response) = ui.allocate_exact_size(plot_size(ui), egui::Sense::hover());
+                let (outer, response) =
+                    ui.allocate_exact_size(plot_size(ui), egui::Sense::click_and_drag());
                 let rect = egui::Rect::from_min_max(
-                    outer.min + vec2(46.0, 8.0),
-                    outer.max - vec2(16.0, 28.0),
+                    outer.min + vec2(42.0, 4.0),
+                    outer.max - vec2(14.0, 18.0),
                 );
                 let painter = ui.painter();
                 painter.rect_filled(rect, 0.0, Color32::from_rgb(7, 14, 19));
@@ -1294,8 +1586,9 @@ impl ScopeApp {
                         width: rect.width() * ui.ctx().pixels_per_point(),
                     },
                 ));
-                for i in 0..=4 {
-                    let y = rect.top() + rect.height() * i as f32 / 4.0;
+                let age_divisions = if rect.height() < 72.0 { 2 } else { 4 };
+                for i in 0..=age_divisions {
+                    let y = rect.top() + rect.height() * i as f32 / age_divisions as f32;
                     painter.text(
                         pos2(rect.left() - 6.0, y),
                         egui::Align2::RIGHT_CENTER,
@@ -1304,7 +1597,7 @@ impl ScopeApp {
                             if i == 0 {
                                 0.0
                             } else {
-                                -(self.spectrogram_seconds * i as f64 / 4.0)
+                                -(self.spectrogram_seconds * i as f64 / age_divisions as f64)
                             }
                         ),
                         egui::FontId::monospace(10.0),
@@ -1314,13 +1607,14 @@ impl ScopeApp {
                 for i in 0..=5 {
                     let x = i as f32 / 5.0;
                     painter.text(
-                        pos2(rect.left() + rect.width() * x, rect.bottom() + 9.0),
+                        pos2(rect.left() + rect.width() * x, rect.bottom() + 4.0),
                         egui::Align2::CENTER_TOP,
                         frequency_label(view.frequency(x)),
                         egui::FontId::monospace(10.0),
                         MUTED,
                     );
                 }
+                self.spectrogram_cursors(ui, &response, rect, view);
                 let history = self.spectrogram_history.lock().unwrap();
                 if history.is_empty() {
                     painter.text(
@@ -1404,6 +1698,464 @@ impl ScopeApp {
             });
     }
 
+    fn sample_text(&self, sample: u64) -> String {
+        if let Some(frame) = self.history.get(sample) {
+            if self.channels >= 2 {
+                format!(
+                    "#{sample} · CH 1 {:+.5} · CH 2 {:+.5} FS",
+                    frame[0], frame[1]
+                )
+            } else {
+                format!("#{sample} · CH 1 {:+.5} FS", frame[0])
+            }
+        } else {
+            format!("#{sample} · raw sample unavailable")
+        }
+    }
+
+    fn scope_cursors(&mut self, ui: &egui::Ui, response: &egui::Response, rect: egui::Rect) {
+        if let Some(position) = cursor_pointer(response, rect)
+            && let Some(sample) = cursor::sample_at_fraction(
+                self.scope_range.clone(),
+                ((position.x - rect.left()) / rect.width()) as f64,
+            )
+        {
+            self.place_time_cursor(ui, sample);
+        }
+        for (index, sample) in self.cursor_samples().into_iter().enumerate() {
+            let Some(sample) = sample else { continue };
+            let text = if let Some(x) = cursor::fraction_at_sample(self.scope_range.clone(), sample)
+            {
+                cursor_line(ui, rect, x as f32, true, cursor_color(index));
+                if let Some(frame) = self.history.get(sample) {
+                    for (channel, value) in frame.iter().take(2).enumerate() {
+                        if !self.enabled[channel] {
+                            continue;
+                        }
+                        let position = pos2(
+                            rect.left() + x as f32 * rect.width(),
+                            rect.center().y
+                                - (*value / (self.fs_per_div as f64 * 8.0)) as f32 * rect.height(),
+                        );
+                        if rect.contains(position) {
+                            ui.painter()
+                                .circle_filled(position, 3.0, cursor_color(index));
+                        }
+                    }
+                }
+                format!("{} {}", cursor_name(index), self.sample_text(sample))
+            } else {
+                format!("{} #{sample} · outside sweep", cursor_name(index))
+            };
+            cursor_note(ui, rect, index, &text, cursor_color(index));
+        }
+    }
+
+    fn spectrum_cursors(
+        &mut self,
+        ui: &egui::Ui,
+        response: &egui::Response,
+        rect: egui::Rect,
+        view: View,
+    ) {
+        if let Some(position) = cursor_pointer(response, rect) {
+            self.cursors.frequency_hz =
+                Some(view.frequency((position.x - rect.left()) / rect.width()) as f64);
+            ui.ctx().request_repaint();
+        }
+        let Some(frequency) = self.cursors.frequency_hz else {
+            return;
+        };
+        let Some(reading) = self.analyzer.cursor(frequency) else {
+            return;
+        };
+        let hz = reading.frequency_hz as f32;
+        if hz >= view.min_hz && hz <= view.max_hz {
+            cursor_line(ui, rect, view.x(hz), true, YELLOW);
+        }
+        let window = reading.window;
+        let mut times = String::new();
+        for (index, sample) in self.cursor_samples().into_iter().enumerate() {
+            if let Some(sample) = sample {
+                times.push_str(&format!(
+                    " · {} {} window",
+                    cursor_name(index),
+                    if (window.start..window.end).contains(&sample) {
+                        "in"
+                    } else {
+                        "outside"
+                    }
+                ));
+            }
+        }
+        let text = format!(
+            "F {:.1} Hz · {:.2} dBFS\nCH {} · {}..{} · avg ×{}",
+            reading.frequency_hz,
+            reading.dbfs,
+            window.channel + 1,
+            window.start,
+            window.end,
+            window.settings.averages
+        );
+        cursor_note(ui, rect, 0, &text, YELLOW);
+        response.clone().on_hover_text(format!("Nearest bin of the displayed power spectrum. Latest contributing window: samples {}..{} (exclusive end), CH {}, {} Hz, {} points, {}, {}. Power average ×{}.{}", window.start, window.end, window.channel + 1, window.sample_rate, window.settings.size, window.settings.window.name(), window.settings.precision.name(), window.settings.averages, times));
+    }
+
+    fn spectrogram_cursors(
+        &mut self,
+        ui: &egui::Ui,
+        response: &egui::Response,
+        rect: egui::Rect,
+        view: View,
+    ) {
+        if let Some(position) = cursor_pointer(response, rect) {
+            let latest = self.spectrogram_history.lock().unwrap().latest();
+            if let Some(row) = latest {
+                let age = (position.y - rect.top()) as f64 / rect.height() as f64
+                    * self.spectrogram_seconds;
+                if let Some(sample) = cursor::sample_at_age(row.end, age, row.config.sample_rate) {
+                    self.place_time_cursor(ui, sample);
+                }
+            }
+            self.cursors.frequency_hz =
+                Some(view.frequency((position.x - rect.left()) / rect.width()) as f64);
+            ui.ctx().request_repaint();
+        }
+        let history = self.spectrogram_history.lock().unwrap();
+        let Some(latest) = history.latest() else {
+            return;
+        };
+        let frequency = self.cursors.frequency_hz;
+        if let Some(hz) = frequency
+            && let Some(bin) =
+                cursor::nearest_bin(hz, latest.config.size, latest.config.sample_rate)
+        {
+            let hz = bin as f32 * latest.config.sample_rate as f32 / latest.config.size as f32;
+            if hz >= view.min_hz && hz <= view.max_hz {
+                cursor_line(ui, rect, view.x(hz), true, YELLOW);
+            }
+        }
+        let mut samples = self.cursor_samples();
+        // A frequency cursor alone reads the latest row. Once a time is pinned,
+        // it must resolve that exact displayed interval, including gaps.
+        if samples.iter().all(Option::is_none) && frequency.is_some() {
+            samples[self.active_cursor] = latest.end.checked_sub(1);
+        }
+        for (index, sample) in samples.into_iter().enumerate() {
+            let Some(sample) = sample else { continue };
+            let age =
+                cursor::signed_distance(latest.end - 1, sample) / latest.config.sample_rate as f64;
+            if age >= 0.0 && age <= self.spectrogram_seconds {
+                cursor_line(
+                    ui,
+                    rect,
+                    (age / self.spectrogram_seconds) as f32,
+                    false,
+                    cursor_color(index),
+                );
+            }
+            let text = if let Some((row, db)) = history.at_sample(sample) {
+                if let Some(bin) = frequency
+                    .and_then(|hz| cursor::nearest_bin(hz, row.config.size, row.config.sample_rate))
+                {
+                    format!(
+                        "{} {:.1} Hz · {:.2} dBFS\nCH {} · {}..{}",
+                        cursor_name(index),
+                        bin as f64 * row.config.sample_rate as f64 / row.config.size as f64,
+                        db[bin],
+                        row.config.channel + 1,
+                        row.start,
+                        row.end
+                    )
+                } else {
+                    format!(
+                        "{} #{sample}\nCH {} · {}..{}",
+                        cursor_name(index),
+                        row.config.channel + 1,
+                        row.start,
+                        row.end
+                    )
+                }
+            } else {
+                format!(
+                    "{} #{sample}\nNo STFT row at this sample",
+                    cursor_name(index)
+                )
+            };
+            cursor_note(ui, rect, index, &text, cursor_color(index));
+        }
+    }
+
+    fn xy_cursors(&mut self, ui: &egui::Ui, response: &egui::Response, rect: egui::Rect) {
+        if let Some(position) = cursor_pointer(response, rect)
+            && let Some(sample) = xy::nearest_sample(
+                &self.history,
+                self.xy_capture.range.clone(),
+                self.xy_settings,
+                [
+                    ((position.x - rect.left()) / rect.width()) as f64,
+                    ((position.y - rect.top()) / rect.height()) as f64,
+                ],
+            )
+        {
+            self.place_time_cursor(ui, sample);
+        }
+        let mut tooltip = String::from(
+            "Click selects the nearest captured pair; overlapping points select the latest sample.",
+        );
+        for (index, sample) in self.cursor_samples().into_iter().enumerate() {
+            let Some(sample) = sample else { continue };
+            if self.xy_capture.range.contains(&sample)
+                && let Some(frame) = self.history.get(sample).filter(|frame| frame.len() >= 2)
+            {
+                let point = pos2(
+                    rect.center().x
+                        + (frame[0] / (self.xy_settings.x_fs_per_div * 8.0)) as f32 * rect.width(),
+                    rect.center().y
+                        - (frame[1] / (self.xy_settings.y_fs_per_div * 8.0)) as f32 * rect.height(),
+                );
+                if rect.contains(point) {
+                    ui.painter()
+                        .circle_stroke(point, 4.0, Stroke::new(2.0, cursor_color(index)));
+                    ui.painter().text(
+                        point + vec2(5.0, -5.0),
+                        egui::Align2::LEFT_BOTTOM,
+                        cursor_name(index),
+                        egui::FontId::monospace(10.0),
+                        cursor_color(index),
+                    );
+                }
+                tooltip.push_str(&format!(
+                    "\n{} {}",
+                    cursor_name(index),
+                    self.sample_text(sample)
+                ));
+            } else {
+                tooltip.push_str(&format!(
+                    "\n{} #{sample} · outside XY window",
+                    cursor_name(index)
+                ));
+            }
+        }
+        response.clone().on_hover_text(tooltip);
+    }
+
+    fn xy_controls(&mut self, ui: &mut egui::Ui) {
+        ui.label(
+            RichText::new("X = CH 1 · Y = CH 2 · synchronous frames")
+                .small()
+                .color(PURPLE),
+        );
+        if self.channels < 2 {
+            ui.label(
+                RichText::new("XY requires at least two input channels.")
+                    .small()
+                    .color(YELLOW),
+            );
+        }
+        let before = self.xy_settings;
+        setting_label(ui, "OBSERVATION WINDOW");
+        ui.add(
+            egui::Slider::new(&mut self.xy_settings.milliseconds, 0.5..=200.0)
+                .logarithmic(true)
+                .text("ms"),
+        );
+        setting_label(ui, "X AMPLITUDE");
+        ui.add(
+            egui::Slider::new(&mut self.xy_settings.x_fs_per_div, 0.001..=0.5)
+                .logarithmic(true)
+                .text("FS / div"),
+        );
+        setting_label(ui, "Y AMPLITUDE");
+        ui.add(
+            egui::Slider::new(&mut self.xy_settings.y_fs_per_div, 0.001..=0.5)
+                .logarithmic(true)
+                .text("FS / div"),
+        );
+        if ui.button("Reset XY scales").clicked() {
+            self.xy_settings = xy::Settings::default();
+        }
+        self.xy_dirty |= self.xy_settings != before;
+        ui.label(RichText::new("The latest continuous samples are connected in time order. No trigger or persistence. Equal axis scales preserve circles on the square plot.").small().color(MUTED));
+        ui.label(
+            RichText::new(format!(
+                "Up to {} real sample pairs; longer windows show the latest contiguous portion.",
+                xy::MAX_POINTS
+            ))
+            .small()
+            .color(MUTED),
+        );
+    }
+
+    fn rebuild_xy(&mut self) {
+        if !self.xy_dirty {
+            return;
+        }
+        let started = Instant::now();
+        self.xy_capture = xy::build_lines(
+            &self.history,
+            self.sample_rate,
+            self.xy_settings,
+            &mut self.xy_lines,
+        );
+        let segments = Arc::make_mut(&mut self.xy_segments);
+        segments.clear();
+        segments.extend(self.xy_lines.iter().map(|line| Segment {
+            a: line.a,
+            b: line.b,
+            color: crate::gpu::XY_COLOR,
+        }));
+        self.xy_revision = self.xy_revision.wrapping_add(1);
+        self.xy_dirty = false;
+        self.xy_build_ms = started.elapsed().as_secs_f64() * 1000.0;
+    }
+
+    fn xy_panel(&mut self, ui: &mut egui::Ui) {
+        egui::Frame::new()
+            .fill(Color32::from_rgb(17, 27, 35))
+            .stroke(Stroke::new(1.0, BORDER))
+            .inner_margin(5.0)
+            .show(ui, |ui| {
+                compact_plot_style(ui);
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("XY / Lissajous").size(13.0).strong());
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.small_button("Settings").clicked() {
+                            self.sidebar.reveal(SettingsSection::Xy);
+                            ui.ctx().request_repaint();
+                        }
+                    });
+                });
+                ui.label(
+                    RichText::new(format!(
+                        "X: CH 1 · {:.3} FS/div   Y: CH 2 · {:.3} FS/div",
+                        self.xy_settings.x_fs_per_div, self.xy_settings.y_fs_per_div
+                    ))
+                    .small()
+                    .color(PURPLE),
+                );
+                let (outer, response) =
+                    ui.allocate_exact_size(plot_size(ui), egui::Sense::click_and_drag());
+                if response.double_clicked() {
+                    self.xy_settings = xy::Settings::default();
+                    self.xy_dirty = true;
+                }
+                self.rebuild_xy();
+                let bounds = egui::Rect::from_min_max(
+                    outer.min + vec2(42.0, 4.0),
+                    outer.max - vec2(14.0, 18.0),
+                );
+                let side = bounds.width().min(bounds.height()).max(1.0);
+                let rect = egui::Rect::from_center_size(bounds.center(), vec2(side, side));
+                let painter = ui.painter();
+                painter.rect_filled(rect, 0.0, Color32::from_rgb(7, 14, 19));
+                for division in 0..=8 {
+                    let fraction = division as f32 / 8.0;
+                    let x = rect.left() + fraction * side;
+                    let y = rect.top() + fraction * side;
+                    let color = if division == 4 {
+                        BORDER
+                    } else {
+                        Color32::from_rgb(24, 39, 47)
+                    };
+                    painter.line_segment(
+                        [pos2(x, rect.top()), pos2(x, rect.bottom())],
+                        Stroke::new(1.0, color),
+                    );
+                    painter.line_segment(
+                        [pos2(rect.left(), y), pos2(rect.right(), y)],
+                        Stroke::new(1.0, color),
+                    );
+                    if division % 4 == 0 {
+                        painter.text(
+                            pos2(x, rect.bottom() + 4.0),
+                            egui::Align2::CENTER_TOP,
+                            format!(
+                                "{:.3}",
+                                (division as f64 - 4.0) * self.xy_settings.x_fs_per_div
+                            ),
+                            egui::FontId::monospace(10.0),
+                            MUTED,
+                        );
+                        painter.text(
+                            pos2(rect.left() - 8.0, y),
+                            egui::Align2::RIGHT_CENTER,
+                            format!(
+                                "{:.3}",
+                                (4.0 - division as f64) * self.xy_settings.y_fs_per_div
+                            ),
+                            egui::FontId::monospace(10.0),
+                            MUTED,
+                        );
+                    }
+                }
+                let ppp = ui.ctx().pixels_per_point();
+                painter.add(egui_wgpu::Callback::new_paint_callback(
+                    rect,
+                    TraceCallback {
+                        plot: PlotId::Xy,
+                        segments: self.xy_segments.clone(),
+                        dimensions: [side * ppp; 2],
+                        width: 1.3 * ppp,
+                        revision: self.xy_revision,
+                    },
+                ));
+                if self.channels < 2 || self.xy_segments.is_empty() {
+                    painter.text(
+                        outer.center(),
+                        egui::Align2::CENTER_CENTER,
+                        if self.channels == 1 {
+                            "XY unavailable: mono input"
+                        } else if self.channels == 0 {
+                            "XY requires two input channels"
+                        } else {
+                            "Waiting for sample pairs…"
+                        },
+                        egui::FontId::proportional(13.0),
+                        MUTED,
+                    );
+                }
+                if let Some(position) = response.hover_pos().filter(|point| rect.contains(*point)) {
+                    response.clone().on_hover_text(format!(
+                        "X {:+.4} FS · Y {:+.4} FS",
+                        (position.x - rect.center().x) as f64 / side as f64
+                            * self.xy_settings.x_fs_per_div
+                            * 8.0,
+                        (rect.center().y - position.y) as f64 / side as f64
+                            * self.xy_settings.y_fs_per_div
+                            * 8.0,
+                    ));
+                }
+                self.xy_cursors(ui, &response, rect);
+                for (index, sample) in self.cursor_samples().into_iter().enumerate() {
+                    let Some(sample) = sample else { continue };
+                    let text = if self.xy_capture.range.contains(&sample) {
+                        format!("{} {}", cursor_name(index), self.sample_text(sample))
+                    } else {
+                        format!("{} #{sample} · outside XY window", cursor_name(index))
+                    };
+                    cursor_note(ui, bounds, index, &text, cursor_color(index));
+                }
+                let capture = &self.xy_capture;
+                ui.label(
+                    RichText::new(format!(
+                        "{:.1} ms · samples {}..{}{}",
+                        (capture.range.end - capture.range.start) as f64 * 1000.0
+                            / self.sample_rate as f64,
+                        capture.range.start,
+                        capture.range.end,
+                        if capture.limited {
+                            " · point limit"
+                        } else {
+                            ""
+                        }
+                    ))
+                    .small()
+                    .color(MUTED),
+                );
+            });
+    }
+
     fn workspace_controls(&mut self, ui: &mut egui::Ui) {
         setting_label(ui, "INSTRUMENT LAYOUT");
         egui::ComboBox::from_id_salt("plot_layout")
@@ -1447,10 +2199,11 @@ impl ScopeApp {
         egui::Frame::new()
             .fill(Color32::from_rgb(17, 27, 35))
             .stroke(Stroke::new(1.0, Color32::from_rgb(48, 70, 82)))
-            .inner_margin(10.0)
+            .inner_margin(5.0)
             .show(ui, |ui| {
+                compact_plot_style(ui);
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new("Oscilloscope").size(18.0).strong());
+                    ui.label(RichText::new("Oscilloscope").size(13.0).strong());
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui
                             .small_button("Settings")
@@ -1514,21 +2267,15 @@ impl ScopeApp {
     }
 
     fn spectrum_panel(&mut self, ui: &mut egui::Ui) {
-        if self.last_spectrum.elapsed() >= Duration::from_secs_f64(1.0 / 30.0) {
-            let started = Instant::now();
-            if self.analyzer.update(&self.history, self.spectrum_channel) {
-                self.fft_ms = started.elapsed().as_secs_f64() * 1000.0;
-                self.spectrum_dirty = true;
-                self.last_spectrum = Instant::now();
-            }
-        }
+        self.update_spectrum(false);
         egui::Frame::new()
             .fill(Color32::from_rgb(17, 27, 35))
             .stroke(Stroke::new(1.0, Color32::from_rgb(48, 70, 82)))
-            .inner_margin(10.0)
+            .inner_margin(5.0)
             .show(ui, |ui| {
+                compact_plot_style(ui);
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new("Spectrum Analyzer").size(18.0).strong());
+                    ui.label(RichText::new("Spectrum Analyzer").size(13.0).strong());
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if ui
                             .small_button("Settings")
@@ -1539,9 +2286,15 @@ impl ScopeApp {
                             ui.ctx().request_repaint();
                         }
                         ui.label(
-                            RichText::new(format!("CH {} · dBFS", self.spectrum_channel + 1))
-                                .small()
-                                .color(YELLOW),
+                            RichText::new(format!(
+                                "CH {} · dBFS",
+                                self.analyzer
+                                    .window()
+                                    .map_or(self.spectrum_channel, |window| window.channel)
+                                    + 1
+                            ))
+                            .small()
+                            .color(YELLOW),
                         );
                     });
                 });
@@ -1572,11 +2325,16 @@ impl ScopeApp {
     }
 
     fn spectrum_plot(&mut self, ui: &mut egui::Ui, view: View) {
-        let (outer, response) = ui.allocate_exact_size(plot_size(ui), egui::Sense::hover());
+        let (outer, response) =
+            ui.allocate_exact_size(plot_size(ui), egui::Sense::click_and_drag());
         let rect =
-            egui::Rect::from_min_max(outer.min + vec2(38.0, 14.0), outer.max - vec2(18.0, 28.0));
+            egui::Rect::from_min_max(outer.min + vec2(32.0, 4.0), outer.max - vec2(14.0, 18.0));
         let painter = ui.painter();
         painter.rect_filled(rect, 0.0, Color32::from_rgb(7, 14, 19));
+        let label_step = (((view.ceiling_db - view.floor_db) * 14.0 / rect.height()) / 20.0)
+            .ceil()
+            .max(1.0) as i32
+            * 20;
         for db in (view.floor_db as i32..=0).filter(|db| db % 20 == 0) {
             let y = rect.top()
                 + (view.ceiling_db - db as f32) / (view.ceiling_db - view.floor_db) * rect.height();
@@ -1584,13 +2342,15 @@ impl ScopeApp {
                 [pos2(rect.left(), y), pos2(rect.right(), y)],
                 Stroke::new(1.0, Color32::from_rgb(24, 39, 47)),
             );
-            painter.text(
-                pos2(rect.left() - 7.0, y),
-                egui::Align2::RIGHT_CENTER,
-                db.to_string(),
-                egui::FontId::monospace(10.0),
-                MUTED,
-            );
+            if db % label_step == 0 || db == view.floor_db as i32 {
+                painter.text(
+                    pos2(rect.left() - 7.0, y),
+                    egui::Align2::RIGHT_CENTER,
+                    db.to_string(),
+                    egui::FontId::monospace(10.0),
+                    MUTED,
+                );
+            }
         }
         let ticks: Vec<(f32, bool)> = if view.scale == FrequencyScale::Linear {
             (0..=5)
@@ -1625,7 +2385,7 @@ impl ScopeApp {
             );
             if labelled && x - last_label >= 46.0 {
                 painter.text(
-                    pos2(x, rect.bottom() + 10.0),
+                    pos2(x, rect.bottom() + 4.0),
                     egui::Align2::CENTER_TOP,
                     frequency_label(hz),
                     egui::FontId::monospace(10.0),
@@ -1727,13 +2487,14 @@ impl ScopeApp {
                 YELLOW,
             );
         }
+        self.spectrum_cursors(ui, &response, rect, view);
         ui.horizontal(|ui| {
-            ui.label(RichText::new("Amplitude / dBFS").small().color(MUTED));
+            ui.label(RichText::new("dBFS").small().color(MUTED));
             if self.show_hold {
                 ui.label(RichText::new("Peak hold").small().color(HOLD));
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                ui.label(RichText::new("Frequency / Hz").small().color(MUTED));
+                ui.label(RichText::new("Hz").small().color(MUTED));
             });
         });
     }
@@ -1742,7 +2503,7 @@ impl ScopeApp {
         let (outer, response) =
             ui.allocate_exact_size(plot_size(ui), egui::Sense::click_and_drag());
         let rect =
-            egui::Rect::from_min_max(outer.min + vec2(44.0, 14.0), outer.max - vec2(18.0, 28.0));
+            egui::Rect::from_min_max(outer.min + vec2(42.0, 4.0), outer.max - vec2(14.0, 18.0));
         if response.hovered() {
             let (scroll, shift) = ui.input(|i| (i.smooth_scroll_delta.y, i.modifiers.shift));
             if scroll != 0.0 {
@@ -1769,7 +2530,7 @@ impl ScopeApp {
                 Stroke::new(1.0, Color32::from_rgb(24, 39, 47)),
             );
             painter.text(
-                pos2(px, rect.bottom() + 10.0),
+                pos2(px, rect.bottom() + 4.0),
                 egui::Align2::CENTER_TOP,
                 format!("{:.1}", (x as f32 - 2.0) * self.ms_per_div),
                 egui::FontId::monospace(10.0),
@@ -1818,9 +2579,10 @@ impl ScopeApp {
             let sweep = self.history.sweep(count, self.trigger);
             let ready = self.history.len() >= count;
             self.triggered = ready && sweep.triggered;
+            self.scope_range = if ready { sweep.range } else { 0..0 };
             self.measurements = build_lines(
                 &self.history,
-                if ready { sweep.range } else { 0..0 },
+                self.scope_range.clone(),
                 pixels,
                 self.fs_per_div,
                 [self.enabled[0], self.enabled[1] && self.channels >= 2],
@@ -1895,19 +2657,16 @@ impl ScopeApp {
                 ],
                 Stroke::new(1.0, Color32::from_white_alpha(65)),
             );
-            let time = ((position.x - rect.left()) / rect.width() - 0.2) * self.ms_per_div * 10.0;
-            let amplitude = (rect.center().y - position.y) / rect.height() * self.fs_per_div * 8.0;
-            painter.text(
-                rect.right_top() + vec2(-10.0, 10.0),
-                egui::Align2::RIGHT_TOP,
-                format!("{time:+.3} ms  {amplitude:+.4} FS"),
-                egui::FontId::monospace(11.0),
-                MUTED,
-            );
+            if let Some(sample) = cursor::sample_at_fraction(
+                self.scope_range.clone(),
+                ((position.x - rect.left()) / rect.width()) as f64,
+            ) {
+                response.clone().on_hover_text(self.sample_text(sample));
+            }
         }
+        self.scope_cursors(ui, &response, rect);
         ui.horizontal(|ui| {
             ui.label(RichText::new("FS").small().color(MUTED));
-            ui.label(RichText::new("10 × 8 divisions").small().color(MUTED));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 ui.label(RichText::new("time / ms").small().color(MUTED));
             });
@@ -1942,7 +2701,7 @@ impl eframe::App for ScopeApp {
         self.spectrogram_build_ms = started.elapsed().as_secs_f64() * 1000.0;
         #[cfg(feature = "qa")]
         {
-            self.check_lifecycle();
+            self.check_lifecycle(&ctx, elapsed);
             let running = self.running();
             if let Some(profile) = &mut self.profile {
                 profile.record(elapsed, running, frame.info().cpu_usage);
@@ -1972,7 +2731,9 @@ impl eframe::App for ScopeApp {
                     self.profile = None;
                     ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                 }
-                ctx.request_repaint();
+                if running || std::env::var_os("MEASURELAB_PROFILE_IDLE").is_none() {
+                    ctx.request_repaint();
+                }
                 if std::env::var_os("MEASURELAB_PROFILE_SCREENSHOT").is_some()
                     && !self.screenshot_requested
                     && self.created.elapsed() > Duration::from_secs(3)
@@ -2022,11 +2783,11 @@ impl eframe::App for ScopeApp {
             }
         }
         egui::Panel::top("header").show(ui, |ui| {
-            ui.add_space(4.0);
+            ui.add_space(2.0);
             ui.horizontal(|ui| {
                 let mut title = egui::text::LayoutJob::default();
                 RichText::new("MeasureLab")
-                    .size(26.0)
+                    .size(21.0)
                     .strong()
                     .color(GREEN)
                     .append_to(
@@ -2103,6 +2864,7 @@ impl eframe::App for ScopeApp {
                         ui.label(format!("Scope prep {:.2} ms", self.build_ms));
                         ui.label(format!("FFT {:.2} ms", self.fft_ms));
                         ui.label(format!("Spectrum prep {:.2} ms", self.spectrum_build_ms));
+                        ui.label(format!("XY prep {:.2} ms", self.xy_build_ms));
                         ui.label(format!(
                             "Spectrogram history {:.2} ms",
                             self.spectrogram_build_ms
@@ -2131,7 +2893,9 @@ impl eframe::App for ScopeApp {
                         }
                         ui.label(format!(
                             "{} GPU segments",
-                            self.segments.len() + self.spectrum_segments.len()
+                            self.segments.len()
+                                + self.spectrum_segments.len()
+                                + self.xy_segments.len()
                         ));
                         ui.label(
                             RichText::new("Timings are CPU work, not GPU execution.")
@@ -2172,8 +2936,12 @@ impl eframe::App for ScopeApp {
                 });
         }
         egui::CentralPanel::default().show(ui, |ui| {
-            ui.horizontal(|ui| {
-                for (index, title) in ["Scope", "Spectrum", "Spectrogram"].into_iter().enumerate() {
+            ui.spacing_mut().item_spacing = vec2(6.0, 4.0);
+            ui.horizontal_wrapped(|ui| {
+                for (index, title) in ["Scope", "Spectrum", "Spectrogram", "XY"]
+                    .into_iter()
+                    .enumerate()
+                {
                     let enabled =
                         self.visible.iter().filter(|v| **v).count() > 1 || !self.visible[index];
                     if ui
@@ -2186,6 +2954,7 @@ impl eframe::App for ScopeApp {
                         self.visible[index] = !self.visible[index];
                     }
                 }
+                self.cursor_controls(ui);
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui
                         .selectable_label(self.sidebar.visible, "Settings")
@@ -2206,6 +2975,7 @@ impl eframe::App for ScopeApp {
                 Instrument::Scope,
                 Instrument::Spectrum,
                 Instrument::Spectrogram,
+                Instrument::Xy,
             ]
             .into_iter()
             .enumerate()
@@ -2217,29 +2987,38 @@ impl eframe::App for ScopeApp {
             } else {
                 instruments.len()
             };
-            egui::ScrollArea::vertical()
-                .auto_shrink([false, false])
-                .show(ui, |ui| {
-                    let height =
-                        ((available.y - 10.0 * (rows - 1) as f32) / rows as f32).max(190.0);
-                    for plots in instruments.chunks(if columns { 2 } else { 1 }) {
-                        ui.horizontal_top(|ui| {
-                            let width = (available.x - 10.0 * (plots.len() - 1) as f32)
-                                / plots.len() as f32;
-                            for &plot in plots {
-                                ui.allocate_ui_with_layout(
-                                    vec2(width, height),
-                                    egui::Layout::top_down(egui::Align::Min),
-                                    |ui| match plot {
-                                        Instrument::Scope => self.scope_panel(ui),
-                                        Instrument::Spectrum => self.spectrum_panel(ui),
-                                        Instrument::Spectrogram => self.spectrogram_panel(ui),
-                                    },
-                                );
-                            }
-                        });
-                    }
-                });
+            let gap = ui.spacing().item_spacing;
+            let height = ((available.y - gap.y * (rows - 1) as f32) / rows as f32).max(132.0);
+            let scroll = egui::ScrollArea::vertical().auto_shrink([false, false]);
+            #[cfg(feature = "qa")]
+            let scroll = if self.smoke
+                && std::env::var_os("MEASURELAB_UI_SMOKE_SCROLL_END").is_some()
+            {
+                scroll
+                    .vertical_scroll_offset((rows as f32 * (height + gap.y) - available.y).max(0.0))
+            } else {
+                scroll
+            };
+            scroll.show(ui, |ui| {
+                for plots in instruments.chunks(if columns { 2 } else { 1 }) {
+                    ui.horizontal_top(|ui| {
+                        let width =
+                            (available.x - gap.x * (plots.len() - 1) as f32) / plots.len() as f32;
+                        for &plot in plots {
+                            ui.allocate_ui_with_layout(
+                                vec2(width, height),
+                                egui::Layout::top_down(egui::Align::Min),
+                                |ui| match plot {
+                                    Instrument::Scope => self.scope_panel(ui),
+                                    Instrument::Spectrum => self.spectrum_panel(ui),
+                                    Instrument::Spectrogram => self.spectrogram_panel(ui),
+                                    Instrument::Xy => self.xy_panel(ui),
+                                },
+                            );
+                        }
+                    });
+                }
+            });
         });
         if self.running() || self.busy {
             // Let VSync pace acquisition frames without an additional timer.
@@ -2261,12 +3040,59 @@ impl eframe::App for ScopeApp {
     }
 }
 
+fn compact_plot_style(ui: &mut egui::Ui) {
+    ui.spacing_mut().item_spacing = vec2(6.0, 3.0);
+    ui.spacing_mut().button_padding = vec2(4.0, 1.0);
+    ui.spacing_mut().interact_size.y = 16.0;
+}
+
+fn cursor_name(index: usize) -> &'static str {
+    if index == 0 { "A" } else { "B" }
+}
+
+fn cursor_color(index: usize) -> Color32 {
+    if index == 0 { GREEN } else { PURPLE }
+}
+
+fn cursor_pointer(response: &egui::Response, rect: egui::Rect) -> Option<egui::Pos2> {
+    if (response.clicked() || response.dragged()) && !response.double_clicked() {
+        response
+            .interact_pointer_pos()
+            .filter(|point| rect.contains(*point))
+    } else {
+        None
+    }
+}
+
+fn cursor_line(ui: &egui::Ui, rect: egui::Rect, fraction: f32, vertical: bool, color: Color32) {
+    let points = if vertical {
+        let x = rect.left() + fraction * rect.width();
+        [pos2(x, rect.top()), pos2(x, rect.bottom())]
+    } else {
+        let y = rect.top() + fraction * rect.height();
+        [pos2(rect.left(), y), pos2(rect.right(), y)]
+    };
+    ui.painter().line_segment(points, Stroke::new(1.0, color));
+}
+
+fn cursor_note(ui: &egui::Ui, rect: egui::Rect, index: usize, text: &str, color: Color32) {
+    let painter = ui.painter().with_clip_rect(rect.intersect(ui.clip_rect()));
+    let galley = painter.layout_no_wrap(text.into(), egui::FontId::monospace(10.0), color);
+    let position = rect.right_top() + vec2(-galley.size().x - 4.0, 4.0 + index as f32 * 26.0);
+    painter.rect_filled(
+        egui::Rect::from_min_size(position - vec2(2.0, 1.0), galley.size() + vec2(4.0, 2.0)),
+        2.0,
+        Color32::from_rgba_unmultiplied(7, 14, 19, 220),
+    );
+    painter.galley(position, galley, color);
+}
+
 fn plot_size(ui: &egui::Ui) -> egui::Vec2 {
-    // Reserve the same horizontal footer row and spacing for both plots.
+    // Reserve a compact footer without taking space from the data rectangle.
     let footer_height = ui.spacing().interact_size.y + ui.spacing().item_spacing.y;
     vec2(
         ui.available_width(),
-        (ui.available_height() - footer_height).max(60.0),
+        (ui.available_height() - footer_height).max(44.0),
     )
 }
 

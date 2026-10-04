@@ -1,11 +1,13 @@
 //! Acquisition and waveform processing, independent of the desktop UI.
 pub mod audio;
+pub mod cursor;
 pub mod demo;
 pub mod instance;
 pub mod signal;
 pub mod spectrogram;
 pub mod spectrum;
 pub mod stft;
+pub mod xy;
 
 #[cfg(feature = "qa")]
 pub mod qa;

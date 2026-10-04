@@ -82,6 +82,22 @@ pub struct Peak {
     pub dbfs: f32,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct WindowInfo {
+    pub start: u64,
+    pub end: u64,
+    pub sample_rate: u32,
+    pub channel: usize,
+    pub settings: Settings,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct CursorReading {
+    pub window: WindowInfo,
+    pub frequency_hz: f64,
+    pub dbfs: f32,
+}
+
 /// FFT plan, work buffers and output storage are allocated only at configuration
 /// changes. Acquisition never calls this analyzer. Analyze the newest complete
 /// window, at most once per quarter-window of new samples.
@@ -231,6 +247,31 @@ impl Analyzer {
     }
     pub fn hold(&self) -> &[f32] {
         &self.hold
+    }
+
+    /// Metadata belongs to the displayed result, including when next-run
+    /// settings are edited while input is stopped. Averaged values describe
+    /// the accumulated power; this is the latest contributing window.
+    pub fn window(&self) -> Option<WindowInfo> {
+        let end = self.last_end?;
+        Some(WindowInfo {
+            start: end - self.settings.size as u64,
+            end,
+            sample_rate: self.sample_rate,
+            channel: self.last_channel,
+            settings: self.settings,
+        })
+    }
+
+    pub fn cursor(&self, frequency_hz: f64) -> Option<CursorReading> {
+        let window = self.window()?;
+        let bin =
+            crate::cursor::nearest_bin(frequency_hz, window.settings.size, window.sample_rate)?;
+        Some(CursorReading {
+            window,
+            frequency_hz: bin as f64 * window.sample_rate as f64 / window.settings.size as f64,
+            dbfs: self.db[bin],
+        })
     }
 
     pub fn reset(&mut self) {
@@ -528,6 +569,38 @@ struct Bucket {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cursor_reports_actual_channel_window_and_average_without_reprocessing() {
+        let settings = Settings {
+            size: 1024,
+            averages: 4,
+            ..Settings::default()
+        };
+        let mut history = History::with_channels(2048, 16);
+        let origin = 1_u64 << 54;
+        for i in 0..2048 {
+            let mut frame = [0.0; 16];
+            frame[15] = 0.5 * (TAU * 32.0 * i as f64 / 1024.0).sin();
+            history.push_at(origin + i, frame);
+        }
+        let mut analyzer = Analyzer::new(settings, 48000);
+        assert!(analyzer.update(&history, 15));
+        let held = analyzer.db().to_vec();
+        let reading = analyzer.cursor(1501.0).unwrap();
+        assert_eq!(reading.frequency_hz, 1500.0);
+        assert!((reading.dbfs + 6.0206).abs() < 0.001);
+        assert_eq!(reading.window.start, origin + 1024);
+        assert_eq!(reading.window.end, origin + 2048);
+        assert_eq!(reading.window.channel, 15);
+        assert_eq!(reading.window.settings, settings);
+        for hz in [0.0, 200.0, 1000.0, 24000.0] {
+            assert!(analyzer.cursor(hz).is_some());
+        }
+        assert_eq!(analyzer.db(), held);
+        analyzer.reset();
+        assert!(analyzer.cursor(1500.0).is_none());
+    }
     use std::f64::consts::TAU;
 
     #[test]

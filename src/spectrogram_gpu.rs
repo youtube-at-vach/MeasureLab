@@ -26,6 +26,7 @@ pub struct Renderer {
     vertices: Vec<[f32; 4]>,
     parameters: [f32; 8],
     pub uploaded_rows: u64,
+    pub uploaded_buffers: u64,
 }
 
 impl Renderer {
@@ -122,6 +123,7 @@ impl Renderer {
             vertices: Vec::with_capacity(ROWS * 2),
             parameters: [0.0; 8],
             uploaded_rows: 0,
+            uploaded_buffers: 0,
         }
     }
 
@@ -190,6 +192,7 @@ impl Renderer {
             }));
             if !self.vertices.is_empty() {
                 queue.write_buffer(&self.instances, 0, bytemuck::cast_slice(&self.vertices));
+                self.uploaded_buffers += 1;
             }
             self.count = self.vertices.len() as u32;
             self.revision = history.revision();
@@ -211,6 +214,7 @@ impl Renderer {
         ];
         if self.parameters != parameters {
             queue.write_buffer(&self.uniform, 0, bytemuck::cast_slice(&parameters));
+            self.uploaded_buffers += 1;
             self.parameters = parameters;
         }
     }

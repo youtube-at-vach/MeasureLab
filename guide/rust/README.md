@@ -1,6 +1,6 @@
 # MeasureLab — Rust Audio Measurement Lab
 
-CPALで実際のオーディオ入力を取り込み、`wgpu`で波形・FFTスペクトル・スペクトログラムを同時に描画するデスクトップ測定ワークスペースです。最終イメージへ向けた段階的な拡張計画は [PLAN.md](PLAN.md) にまとめています。
+CPALで実際のオーディオ入力を取り込み、`wgpu`で波形・FFTスペクトル・スペクトログラム・XY / Lissajousを同時に描画するデスクトップ測定ワークスペースです。最終イメージへ向けた段階的な拡張計画は [PLAN.md](PLAN.md) にまとめています。
 
 ## 起動
 
@@ -56,11 +56,11 @@ cargo run --release
 
 `--compact`を追加すると、上下にプロットを配置する小さなウィンドウで起動します。
 
-デモでは周波数、振幅、ノイズを変更し、正弦波／高調波付き正弦波／帯域制限した矩形波を比較できます。CH 2はCH 1と位相・振幅が異なる信号です。デモ信号は内部だけで使い、スピーカーには出力しません。
+デモでは周波数、振幅、ノイズを変更し、正弦波／高調波付き正弦波／帯域制限した矩形波を比較できます。CH 2の位相と振幅比も変更できます。**0° / 90° / 180°** ボタンはノイズなし・同振幅の正弦波を設定し、XYの同相・円・逆相を確認できます。CH 2 gainを下げると楕円になります。デモ信号は内部だけで使い、スピーカーには出力しません。
 
-開始／停止は上部に固定しています。左の **Settings** は **Input source / Oscilloscope / Spectrum analyzer / Spectrogram / Workspace & help** のアコーディオンで、一つの項目を開いて設定します。閉じた項目にも現在値を表示します。各グラフの **Settings** を押すと、その設定を開いて該当位置へ移動します。
+開始／停止は上部に固定しています。左の **Settings** は **Input source / Oscilloscope / Spectrum analyzer / Spectrogram / XY / Lissajous / Workspace & help** のアコーディオンで、一つの項目を開いて設定します。閉じた項目にも現在値を表示します。各グラフの **Settings** を押すと、その設定を開いて該当位置へ移動します。
 
-グラフ上部の **Settings** で左パネルを非表示にでき、境界をドラッグすると幅を変更できます。**Collapse all** ですべての項目を閉じられます。**Workspace & help** では複数画面の配置を **Automatic / Side by side / Stacked** から選択し、ショートカットと測定単位を確認できます。3画面の場合、広い画面ではScopeとSpectrumを左右、Spectrogramをその下へ配置します。狭い画面では上下3段にし、最小高さで収まらない場合はプロット領域をスクロールできます。幅が不足する場合は左右指定でも上下に配置します。開閉や配置指定は現在のセッション内で保持します。
+グラフ上部の **Settings** で左パネルを非表示にでき、境界をドラッグすると幅を変更できます。**Collapse all** ですべての項目を閉じられます。**Workspace & help** では複数画面の配置を **Automatic / Side by side / Stacked** から選択し、ショートカットと測定単位を確認できます。4画面の場合、広い画面ではScopeとSpectrumを上段、SpectrogramとXYを下段の2列に配置します。狭い画面では上下4行に並べ、既定の`--compact`ウィンドウでは全体がスクロールなしで収まります。見出し・内側の余白・軸まわりをコンパクトにし、低いプロットでは軸ラベルを間引きます。最低高さで収まらない場合はプロット領域をスクロールできます。幅が不足する場合は左右指定でも上下に配置します。開閉や配置指定は現在のセッション内で保持します。
 
 macOSではマイクへのアクセスを許可する必要があります。許可がない場合は「システム設定 → プライバシーとセキュリティ → マイク」で、起動に使うアプリ／ターミナルを確認してください。独立したアプリとして起動するには以下を使います。
 
@@ -83,13 +83,18 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | --- | --- |
 | Input source / Refresh devices | CPAL入力デバイスの選択・再取得 |
 | Start input / Stop / Space | 入力開始・停止 |
+| Cursor A / B / Clear | 共通カーソルの選択／時間・周波数カーソルの解除 |
+| Scope上でクリック／ドラッグ | 表示している実サンプルに時間カーソルを固定。A/Bのサンプル番号とΔtを表示 |
+| Spectrum上でクリック／ドラッグ | 共通の周波数を固定。最寄りのビン振幅・対象CH・最新の解析窓を表示 |
+| Spectrogram上でクリック／ドラッグ | 同じサンプル座標の時間カーソルと共通周波数を固定。対応する行の解析窓・ビン振幅を表示 |
+| XY上でクリック／ドラッグ | 最も近い実サンプル組を選択。同じ位置が重なる場合は最新サンプルを選択 |
 | Horizontal / ホイール | 時間軸の変更（0.05〜100 ms/div） |
 | Vertical / Shift＋ホイール | 振幅の変更（0.001〜0.5 FS/div） |
 | Fit amplitude | 現在の表示振幅に合わせる |
 | CH 1 / CH 2 | 最初の2入力チャンネルの表示切り替え |
 | Trigger | フリーラン／立ち上がり／立ち下がり、ソースと閾値の設定 |
 | ダブルクリック | 時間軸と振幅を初期値へ戻す |
-| Scope / Spectrum / Spectrogram | 各測定器の表示切り替え。少なくとも一つを表示。広い画面では左右と上下、狭い画面では上下に配置 |
+| Scope / Spectrum / Spectrogram / XY | 各測定器の表示切り替え。少なくとも一つを表示。広い画面では左右と上下、狭い画面では上下に配置 |
 | 各グラフのSettings | 対象の設定を左パネルで開く |
 | グラフ上部のSettings / Collapse all | 左パネルの表示切り替え／設定項目をすべて閉じる |
 | Workspace & help | 配置の指定、ショートカット、測定単位 |
@@ -103,6 +108,10 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | Spectrogram Time span / From / To | 時間範囲（0.5〜20秒）と周波数範囲。To = 0はNyquist |
 | Spectrogram Floor / Ceiling | 色のdBFS範囲。表示変更ではFFT・履歴をリセットしない |
 | スペクトログラム上にマウスを置く | その行の最寄りビンの振幅・周波数と解析窓のサンプル番号 |
+| XY Observation window | 最新の連続したサンプルを表示する時間幅（0.5〜200 ms、既定50 ms） |
+| XY X amplitude / Y amplitude | 独立した両軸の振幅範囲（0.001〜0.5 FS/div） |
+| XY Reset XY scales / ダブルクリック | XYの観察窓と両軸を初期値へ戻す |
+| XY上にマウスを置く | プロット座標のX・Y振幅（実サンプルのカーソルではない） |
 
 画面は横10分割・縦8分割です。トリガーは横20%位置で、交差が見つからない場合は最新の波形を表示するAuto動作です。RMS・Peak・P-Pは表示範囲の実サンプルから計算します。モノラルデバイスではCH 2を無効にします。コアは1〜16chを保持します。Scopeは最初の2chを表示し、Spectrumとトリガーは取得した全chからソースを選択できます。16chを超える入力は切り捨てずエラーを表示します。
 
@@ -118,11 +127,21 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 
 履歴は512行で固定です。欠落がないときの保持時間は512 × hop / Fsです。48 kHz・8,192点では約21.85秒、1,024点では約2.73秒です。表示範囲を広げても履歴容量は増えません。非表示でもSTFTの履歴を更新し、再表示時に保持範囲を描画します。停止後は遅着結果を除外して画像を保持します。時間・周波数・色範囲は停止中も変更でき、解析CH・窓長などの変更は次の入力開始時に適用します。
 
+XY / Lissajousは共通履歴の同じフレームのCH 1をX、CH 2をYとして時間順に接続します。独立した観察窓と振幅範囲を使い、Scopeのトリガーや表示CH設定は影響しません。正方形の8 × 8分割プロットで両軸を同じスケールにすると、同振幅・90度位相差の正弦波が円になります。同相は右上がり、逆相は右下がりの直線です。モノラルでは無効にして理由を表示し、3ch以上でも最初の2chだけを使います。
+
+XYにはトリガー・残像保持・任意CHルーティングを追加していません。最新の連続区間だけを使い、欠落の前後を接続しません。描画量は最大32,768サンプル組／32,767線分に制限し、超える場合は間引かず最新の連続部分を表示します。XY下部の時間幅・サンプル区間（終端は含まない）と`point limit`で実際の範囲を確認できます。停止中も観察窓・振幅範囲を変更でき、設定や入力に変更がなければXYの線分生成・GPU線分転送を省略します。
+
+時間カーソルA/Bは入力ごとの世代と整数サンプル番号を保持します。Scopeの実振幅とXYの実サンプル組は同じ共通履歴から読みます。表示範囲を変更してもカーソルのサンプル番号は動かず、範囲外や保持していないサンプルはその理由を表示します。Spectrogramはそのサンプルが属する表示上のhop区間を選び、解析窓全体のサンプル番号（終端は含まない）を表示します。欠落区間には隣のFFT窓の値を代用しません。STFTの履歴だけが残って生サンプルがない場合は、Scope／XYの値を読み出せません。
+
+周波数カーソルはSpectrumとSpectrogramで共有します。各測定器が自身のFFTサイズ・Fsから最寄りビンを選ぶため、設定が異なる場合はビン周波数も異なります。Spectrumは表示中の電力平均と最新の寄与窓を読み、任意の時間カーソル位置でFFTを再実行しません。カーソルが最新窓の内側か外側かはSpectrum上の説明で確認できます。Spectrogramは固定した時間カーソルの行を読み、時間カーソルがない場合は最新行を読みます。
+
+上部のStopは全測定器の共通入力履歴・解析済みSpectrum・取り込み済みSTFT画像を保持します。非表示のSpectrumにも停止直前のスナップショットを用意します。停止中は遅着STFTを除外し、同じサンプルを再平均しません。表示範囲・色・配置・カーソルは変更でき、FFTの解析設定とデモ信号の変更は次回開始時に適用します。再開・入力ソース／デバイスの切り替えでは履歴とカーソルを無効化します。操作がない停止中は連続再描画せず、表示寸法が変わらないカーソル移動ではGPUの波形・テクスチャ・表示寸法を転送し直しません。
+
 ## 高速描画の構成
 
 ```text
 Audio device → CPAL callback → bounded SPSC ring → common input (1–16ch)
-                                                   ├→ sample history → Scope / Spectrum
+                                                   ├→ sample history → Scope / Spectrum / XY
                                                    └→ selected CH → bounded block queue
                                                                         ↓
                                                              continuous STFT worker
@@ -156,6 +175,7 @@ Audio device → CPAL callback → bounded SPSC ring → common input (1–16ch)
 ./scripts/cargo.sh bench --bench waveform --no-default-features
 ./scripts/cargo.sh bench --bench spectrum --no-default-features
 ./scripts/cargo.sh bench --bench spectrogram --no-default-features
+./scripts/cargo.sh bench --bench xy --no-default-features
 ./scripts/cargo.sh run --release -- --list-devices
 ./scripts/cargo.sh run --release -- --audio-smoke
 ./scripts/cargo.sh run --release -- --audio-smoke --input-device "BlackHole 16ch"
@@ -168,13 +188,15 @@ Audio device → CPAL callback → bounded SPSC ring → common input (1–16ch)
 
 テストはリング履歴の折り返し、型変換、モノラル／多チャンネル処理、欠落検出用の連番、トリガー、スパイク保持を確認します。ベンチマークは48k・192k・100万サンプルを1920物理ピクセルへ集約するCPU時間を計測します。GPU描画の速度やデバイス入力の遅延を測定するものではありません。
 
-`qa`機能で`--ui-smoke`を使うと、内部テスト信号による画面を撮影できます。`MEASURELAB_UI_SMOKE_SETTINGS=scope`（または`spectrum`、`spectrogram`、`workspace`、`collapsed`、`hidden`）を指定すると、その設定パネルの状態で撮影できます。`--compact`との組み合わせで小さい画面も確認できます。
+`qa`機能で`--ui-smoke`を使うと、内部テスト信号による画面を撮影できます。`MEASURELAB_UI_SMOKE_SETTINGS=scope`（または`spectrum`、`spectrogram`、`xy`、`workspace`、`collapsed`、`hidden`）を指定すると、その設定パネルの状態で撮影できます。`--compact`との組み合わせで小さい画面も確認できます。`MEASURELAB_UI_SMOKE_XY_PHASE=0`（または`90`、`180`）で同振幅の正弦波を選び、`MEASURELAB_UI_SMOKE_XY_ONLY=1`でXY単独、`MEASURELAB_UI_SMOKE_CHANNELS=1`でモノラル時の表示を確認できます。`MEASURELAB_UI_SMOKE_SCROLL_END=1`はプロット領域を下端へスクロールし、狭い画面の下段を撮影します。
+
+`MEASURELAB_UI_SMOKE_CURSORS=1`では、欠落を含む同じ有限の入力履歴から全測定器を準備し、A/B時間カーソル・Δt・共通周波数・解析窓・XYの実サンプル組を撮影します。波形・STFTの入力座標を揃えるため、このモードでは通常の循環STFT撮影用の信号を置き換えます。
 
 `--audio-smoke`は入力を2秒間取り込み、フレーム数と全chのピークを確認します。`--input-device`を省略すると既定入力を使います。`--stft-smoke`は同じ入力から連続窓の順序・個数・欠落・ワーカーのCPU時間を確認し、`--channel`は1始まりです。無音でも取得と連続性の検証は可能です。
 
 `--multichannel-smoke`は`qa`機能でのみ使えるBlackHole 16ch専用の確認です。その仮想デバイスの16出力へ異なるビン中心周波数の正弦波（0.125 FS peak）を流し、0.5秒の起動待ち後、2秒間の取得で16入力すべてのch対応・周波数・振幅とCH 16のSTFTを検証します。起動待ち中のCoreAudio通知は別に出力し、測定区間のストリームエラーや欠落は失敗にします。通常アプリの出力機能ではなく、実デバイスを使うローカルQA用の既知信号です。
 
-`--gpu-smoke`はScope・Spectrum・Spectrogramを準備してから描画し、それぞれの領域をGPUから読み戻します。線分プロットの独立に加え、スペクトログラムの折り返し・行の順序・欠落・最大FFTのNyquistビン・表示変更時の再転送省略を検証します。`--ui-smoke`は入力を開始せず、明示的なテスト信号で3画面を短時間開いて閉じます。スペクトログラムの既知信号は周波数を変化させ、履歴の折り返しと意図的な入力欠落を含みます。`qa`機能を有効にすると、その表示を`dist/ui-smoke.png`へ保存します。通常起動時はオーディオ入力、`--demo`指定時は内部信号を使います。GPUやマイクを必要とする確認はCIでは実行しません。
+`--gpu-smoke`はScope・Spectrum・Spectrogram・XYを準備してから描画し、それぞれの領域をGPUから読み戻します。線分プロットの独立、XYの円と更新番号が同じ場合の線分転送省略に加え、スペクトログラムの折り返し・行の順序・欠落・最大FFTのNyquistビン・表示変更時の再転送省略を検証します。`--ui-smoke`は入力を開始せず、明示的なテスト信号で4画面を短時間開いて閉じます。スペクトログラムの既知信号は周波数を変化させ、履歴の折り返しと意図的な入力欠落を含みます。`qa`機能を有効にすると、その表示を`dist/ui-smoke.png`へ保存します。通常起動時はオーディオ入力、`--demo`指定時は内部信号を使います。GPUやマイクを必要とする確認はCIでは実行しません。
 
 `qa`機能では、2秒の起動待ち後に最大60秒のUIフレーム間隔を記録できます。停止中のフレームは除外し、計測後にUI間隔p95、VSync待ちを除いたeframeのフレーム処理時間p95、欠落数を出力して終了します。以下はBlackHoleのCH 16を選び、10秒間計測する例です。`MEASURELAB_PROFILE_SETTINGS=spectrum`でSpectrum設定を開き、`MEASURELAB_PROFILE_SCREENSHOT=1`で途中の画面を`dist/ui-smoke.png`へ保存できます。
 
@@ -184,10 +206,10 @@ MEASURELAB_PROFILE_SECONDS=10 MEASURELAB_PROFILE_DEVICE="BlackHole 16ch" MEASURE
 MEASURELAB_PROFILE_SECONDS=10 ./scripts/cargo.sh run --release --features qa -- --demo
 ```
 
-`MEASURELAB_PROFILE_LIFECYCLE=1`を内部デモのUI計測へ追加すると、Spectrum設定の独立、停止後の遅着結果除外、停止中の表示変更、非表示・単独表示・再表示、世代を変えた再開、STFTのCH／FFT変更を実際のアプリ状態で確認します。計測区間は状態変更を含むため、通常の性能基準値とは別に扱います。
+`MEASURELAB_PROFILE_LIFECYCLE=1`を内部デモのUI計測へ追加すると、Spectrum設定の独立、停止後の遅着結果除外、停止中の解析窓・平均値・生サンプルの保持、デモ設定変更、共通カーソル、表示変更、非表示・単独表示・再表示、再開／入力切り替えでのカーソル無効化、STFTのCH／FFT変更、XYの保持・振幅変更・単独表示・再開を実際のアプリ状態で確認します。`MEASURELAB_PROFILE_IDLE=1`も指定すると、計測用の連続再描画を停止中だけ抑え、待機フレーム間隔を検証します。QAの次段階へ進むための一度のタイマーは残します。計測区間は状態変更を含むため、通常の性能基準値とは別に扱います。
 
 ```sh
-MEASURELAB_PROFILE_SECONDS=5 MEASURELAB_PROFILE_LIFECYCLE=1 \
+MEASURELAB_PROFILE_SECONDS=5 MEASURELAB_PROFILE_LIFECYCLE=1 MEASURELAB_PROFILE_IDLE=1 \
     ./scripts/cargo.sh run --release --features qa -- --demo
 ```
 
@@ -203,6 +225,8 @@ MEASURELAB_PROFILE_SECONDS=10 MEASURELAB_PROFILE_FFT_PRECISION=f64 \
 
 - `src/audio.rs`: CPALデバイス管理、入力コールバック、SPSC転送。
 - `src/signal.rs`: 固定容量履歴、トリガー、集約、測定。
+- `src/cursor.rs`: 入力世代付きの共通A/B時間カーソル、サンプル座標、Δt、最寄りFFTビン。
+- `src/xy.rs`: 同期したCH 1／CH 2の軌跡、独立した表示範囲、描画量の上限。
 - `src/spectrum.rs`: 窓、FFT、dBFS補正、電力平均、ピーク保持、周波数軸と表示集約。
 - `src/stft.rs`: 連続窓のスケジューリング、世代・欠落情報、固定容量キューと結果プール、専用ワーカー。
 - `src/spectrogram.rs`: 固定容量のSTFT履歴、サンプル時計の座標、欠落区間。
@@ -214,6 +238,47 @@ MEASURELAB_PROFILE_SECONDS=10 MEASURELAB_PROFILE_FFT_PRECISION=f64 \
 - `src/app.rs`: 共通の入力操作UIと複数プロット表示。
 
 選定したライブラリの一次資料: [CPAL](https://docs.rs/cpal/0.18.2/cpal/)、[rtrb](https://docs.rs/rtrb/0.4.0/rtrb/)、[eframe](https://docs.rs/eframe/0.36.2/eframe/)、[egui-wgpu](https://docs.rs/egui-wgpu/0.36.2/egui_wgpu/)。
+
+## 共通停止とカーソルの確認結果（2026-10-04）
+
+macOS / Intel Iris Pro Graphics 6200 / Rust 1.99で2dを確認しました。46件の単体テストと全ターゲット・全機能のClippyが成功しています。追加テストは2^54を超える隣接サンプルの座標・負のΔt、再開世代、周波数／Nyquistの境界、解析済みSpectrumのCH・窓・平均設定、Spectrogramのhop境界と欠落、XYの実サンプル組と重なる点の選択を検証します。同じ有限の入力からScope・XY・Spectrum・Spectrogramを準備するテストでは、共通カーソルの実振幅・解析窓・ビン振幅とA/Bの2.5 ms差が一致しました。
+
+MetalのGPU読み戻しはScope／Spectrumの各412個の所定色ピクセル、XYの985個の紫色ピクセル、Spectrogramの循環・順序・欠落・Nyquistで成功しました。停止データを同じ更新番号・寸法で再準備しても、3つの線分プロットの線分・寸法uniformと、Spectrogramのテクスチャ・時間区間・uniformの転送回数が増えないことを検証しました。初回のSTFT行転送は512行です。カーソルはeguiのオーバーレイとして描画し、解析やプロットの更新番号を変更しません。
+
+内部デモのライフサイクルQAでは、停止後の遅着結果の除外、生サンプル・Spectrumの解析窓・平均値・XY区間の保持、停止中のデモ編集と解析設定編集、表示範囲変更、非表示／単独表示、再開と入力ソース切り替えでの旧データ・カーソルの無効化が成功しました。停止中の計測用連続再描画を抑えたQAでは、再描画のない待機フレーム間隔1,619.0 msを記録しました。取得／STFT入力／結果の欠落は0 / 0 / 0です。これは状態変更を含む確認であり、通常のフレーム時間の性能基準には使いません。
+
+通常幅と1040 × 780の狭幅で4画面を撮影し、A/Bの同じサンプル番号・Δt、ScopeとXYの同じCH振幅、SpectrumとSpectrogramの同じ最新窓・ビン振幅、XYの円上の実サンプルマーカー、停止時の設定保留表示を目視確認しました。画像はローカルの`dist/ui-cursors-wide.png`と`dist/ui-cursors-compact.png`です。
+
+追加した統合テストの初回ビルドはDemoの非公開フィールドを使った初期化で失敗し、公開設定への代入へ修正しました。続いてClippyがテストモジュールの配置を指摘したためファイル末尾へ移し、全テスト・Clippyを再実行して成功しました。`cargo fmt`、releaseデスクトップビルド（通常版とqa版）、Ruffのチェック／整形確認、Markdown lintも成功しました。物理デバイス・仮想デバイスでの新しいカーソル操作、長時間のRSSと欠落、GPU実行時間、入力から表示までの遅延、Windows／Linux実機は未確認で、段階2全体の統合検証は2eに残します。
+
+## XY / Lissajousの確認結果（2026-10-04）
+
+macOS / Intel Iris Pro Graphics 6200 / Rust 1.99で確認しました。GUI非依存のf64コアが共通履歴のCH 1／CH 2を同じフレームから取り出し、独立した設定・更新番号・GPUバッファへ渡します。39件の単体テストが成功し、追加分は同相／逆相の直線、90度の円／楕円、最初の2chの対応、履歴の折り返し、欠落・再開後に古いサンプルを接続しないこと、モノラル、停止データの表示変更、描画量の上限、デモの位相とCH 2 gainを検証しています。
+
+MetalのGPU読み戻しでScope／Spectrumの各412個の所定色ピクセルと、独立したXYの985個の紫色ピクセルを確認しました。同じ更新番号での再準備では線分を転送し直さず、保持した軌跡を描画します。既存のスペクトログラムの循環・順序・欠落・Nyquistの読み戻しも成功しました。通常幅の4画面と90度の円、狭い幅の同相／逆相・単独表示・モノラルの理由表示を撮影しました。`Dream.png`の密度を参考に、全プロットの見出しを18から13ポイント、内側の余白を10から5ポイントへ縮めました。行間・ボタン・軸の上下の余白も小さくし、Scope／Spectrum／Spectrogramの縦軸ラベルを高さに応じて間引きます。パネルの最低高さは132ポイントで、1040 × 780の狭いウィンドウでも上下4行がスクロールなしで収まることを撮影して確認しました。
+
+アプリ内のライフサイクルQAで、停止中にXYのサンプル区間・更新番号を保持すること、停止中のXスケール変更でサンプルが変わらないこと、単独表示・非表示からの再表示、再開時に新しい履歴を使うことを確認しました。既存のSpectrum設定の独立、STFTの遅着結果除外・世代・CH／FFT切り替えも成功しました。狭幅4画面の撮影はビルドと重なった初回に2秒の期限内に画像を受信できず失敗し、ビルド終了後の再実行で成功しました。下段撮影補助のスクロール量はパネル高さから計算する有限値へ修正し、狭い4画面の下段でSpectrogramとXYの表示も確認しました。
+
+表示の密度調整前に、release・VSync・既定の64-bit FFT／8,192点・4画面・通常幅・Input設定を開いた状態で、起動後2秒を除外して内部デモを10秒計測しました。UI間隔p95は17.992 ms、eframeのフレーム処理p95は5.109 ms、取得／STFT入力／結果の欠落は0 / 0 / 0でした。従来の3画面・10秒・VSyncの参考値はUI間隔18.355 ms、フレーム処理4.990 msですが、画面数と設定パネルの条件が異なるため、この差を改善・劣化の保証とは扱いません。
+
+密度調整後も同じデモ・FFT・VSync・10秒の条件で、通常幅と狭い4行表示を計測しました。ビルドと計測は重ねていません。
+
+| 配置 | UI間隔p95 | eframe処理p95 | 取得／STFT入力／結果の欠落 |
+| --- | ---: | ---: | --- |
+| 通常幅・2列 × 2段 | 18.130 ms | 4.950 ms | 0 / 0 / 0 |
+| 狭い幅・上下4行 | 17.964 ms | 4.561 ms | 0 / 0 / 0 |
+
+60 Hzの16.7 msとCPU予算4 msの目安は引き続き上回っています。今回の単回の短時間計測は、性能の改善や長時間の安定動作を保証するものではありません。
+
+200 msの合成履歴からXY線分を生成するreleaseのCPUベンチマークです。作業配列を再利用し、他のビルド・UI計測を終えてから1,000回平均を測りました。192 kHz以上の行はサンプル組数の上限が適用されます。1 MHzは合成履歴の性能確認であり、現在の実入力仕様ではありません。
+
+| 合成履歴のFs | XY線分準備 | 線分数 |
+| --- | ---: | ---: |
+| 48 kHz | 0.036 ms | 9,599 |
+| 192 kHz | 0.126 ms | 32,767 |
+| 1 MHz | 0.122 ms | 32,767 |
+
+全ターゲット・全機能のテストとClippy、`cargo fmt`、releaseデスクトップビルド、Ruffのチェック／整形確認、Markdown lintが成功しました。GPU実行時間・入力から表示までの遅延、XYの物理／仮想デバイスでの目視確認、長時間のRSS推移、Windows／Linux実機は未確認です。共通カーソルを追加した後の確認は [2dの記録](#共通停止とカーソルの確認結果2026-10-04)、段階2全体の長時間検証は2eで扱います。
 
 ## f64標準パイプラインの高速化（2026-10-04）
 

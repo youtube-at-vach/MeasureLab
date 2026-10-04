@@ -7,6 +7,7 @@ use std::sync::Arc;
 use wgpu::util::DeviceExt;
 
 pub const COLORS: [[f32; 4]; 2] = [[0.22, 0.95, 0.68, 1.0], [0.34, 0.65, 1.0, 1.0]];
+pub const XY_COLOR: [f32; 4] = [0.8, 0.6, 1.0, 1.0];
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -20,11 +21,12 @@ pub struct Segment {
 pub enum PlotId {
     Scope = 0,
     Spectrum = 1,
+    Xy = 2,
 }
 
 pub struct TraceRenderer {
     pipeline: wgpu::RenderPipeline,
-    plots: [TraceBuffers; 2],
+    plots: [TraceBuffers; 3],
 }
 
 struct TraceBuffers {
@@ -34,6 +36,8 @@ struct TraceBuffers {
     capacity: usize,
     count: u32,
     revision: u64,
+    parameters: [f32; 4],
+    uploads: u64,
 }
 
 impl TraceRenderer {
@@ -121,6 +125,8 @@ impl TraceBuffers {
             capacity,
             count: 0,
             revision: u64::MAX,
+            parameters: [1.0, 1.0, 1.5, 0.0],
+            uploads: 0,
         }
     }
 
@@ -133,11 +139,12 @@ impl TraceBuffers {
         width: f32,
         revision: u64,
     ) {
-        queue.write_buffer(
-            &self.uniform,
-            0,
-            bytemuck::cast_slice(&[dimensions[0].max(1.0), dimensions[1].max(1.0), width, 0.0]),
-        );
+        let parameters = [dimensions[0].max(1.0), dimensions[1].max(1.0), width, 0.0];
+        if self.parameters != parameters {
+            queue.write_buffer(&self.uniform, 0, bytemuck::cast_slice(&parameters));
+            self.parameters = parameters;
+            self.uploads += 1;
+        }
         if self.revision == revision {
             return;
         }
@@ -147,6 +154,7 @@ impl TraceBuffers {
         }
         if !segments.is_empty() {
             queue.write_buffer(&self.instances, 0, bytemuck::cast_slice(segments));
+            self.uploads += 1;
         }
         self.count = segments.len() as u32;
         self.revision = revision;
@@ -246,6 +254,40 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
             2.0,
             1,
         );
+        let mut history = crate::signal::History::new(128);
+        for i in 0..128 {
+            let angle = std::f64::consts::TAU * i as f64 / 128.0;
+            history.push([0.7 * angle.sin(), 0.7 * angle.cos()]);
+        }
+        let mut lines = Vec::new();
+        crate::xy::build_lines(
+            &history,
+            1000,
+            crate::xy::Settings {
+                milliseconds: 128.0,
+                ..Default::default()
+            },
+            &mut lines,
+        );
+        let xy: Vec<_> = lines
+            .iter()
+            .map(|line| Segment {
+                a: line.a,
+                b: line.b,
+                color: XY_COLOR,
+            })
+            .collect();
+        renderer.plots[PlotId::Xy as usize].prepare(&device, &queue, &xy, [256.0, 64.0], 2.0, 1);
+        let trace_uploads = renderer.plots.each_ref().map(|plot| plot.uploads);
+        // Preparing an unchanged revision must retain the stopped instances.
+        for plot in &mut renderer.plots {
+            plot.prepare(&device, &queue, &[], [256.0, 64.0], 2.0, 1);
+        }
+        if trace_uploads != renderer.plots.each_ref().map(|plot| plot.uploads) {
+            return Err(
+                "Stopped traces reuploaded unchanged instances or viewport uniforms".into(),
+            );
+        }
         use crate::{
             spectrogram, spectrogram_gpu,
             spectrum::{FrequencyScale, View, Window},
@@ -309,11 +351,18 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
         if image.uploaded_rows != uploads || uploads != spectrogram::ROWS as u64 {
             return Err("Spectrogram reuploaded unchanged texture rows".into());
         }
+        let image_buffers = image.uploaded_buffers;
+        image.prepare(&device, &queue, &history, image_view, seconds, 256.0);
+        if image.uploaded_rows != uploads || image.uploaded_buffers != image_buffers {
+            return Err(
+                "Stopped spectrogram reuploaded unchanged texture, intervals or uniforms".into(),
+            );
+        }
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("MeasureLab smoke output"),
             size: wgpu::Extent3d {
                 width: 256,
-                height: 192,
+                height: 256,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
@@ -326,7 +375,7 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
         let view = texture.create_view(&Default::default());
         let readback = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("MeasureLab smoke readback"),
-            size: 256 * 192 * 4,
+            size: 256 * 256 * 4,
             usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
             mapped_at_creation: false,
         });
@@ -351,6 +400,8 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
             renderer.paint(PlotId::Spectrum, &mut pass);
             pass.set_viewport(0.0, 128.0, 256.0, 64.0, 0.0, 1.0);
             image.paint(&mut pass);
+            pass.set_viewport(0.0, 192.0, 256.0, 64.0, 0.0, 1.0);
+            renderer.paint(PlotId::Xy, &mut pass);
         }
         encoder.copy_texture_to_buffer(
             texture.as_image_copy(),
@@ -359,7 +410,7 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
                 layout: wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(1024),
-                    rows_per_image: Some(192),
+                    rows_per_image: Some(256),
                 },
             },
             texture.size(),
@@ -389,6 +440,15 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
         if green < 200 || blue < 200 {
             return Err("GPU readback did not contain both traces".into());
         }
+        let purple = pixels[256 * 192 * 4..]
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|p| p[0] > 180 && p[1] > 120 && p[2] > 220)
+            .count();
+        if purple < 200 {
+            return Err("GPU readback did not contain independent XY trajectory".into());
+        }
         let pixel = |x: usize, y: usize| &pixels[(y * 256 + x) * 4..(y * 256 + x) * 4 + 4];
         let newest = pixel(128, 136);
         let missing = pixel(128, 152);
@@ -409,11 +469,12 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
             return Err(format!("Spectrogram wrap/order/gap/Nyquist readback failed: {newest:?}, {missing:?}, {older:?}, {oldest:?}, {nyquist:?}").into());
         }
         println!(
-            "GPU OK: {:?}, {} / {} green / {} blue pixels / spectrogram wrap, order, gap, packed Nyquist, independent view changes, {uploads} row uploads",
+            "GPU OK: {:?}, {} / {} green / {} blue / {} XY purple pixels / stopped trace transfer exclusion / spectrogram wrap, order, gap, packed Nyquist, independent view changes, {uploads} row uploads",
             adapter.get_info().backend,
             adapter.get_info().name,
             green,
-            blue
+            blue,
+            purple
         );
         drop(pixels);
         readback.unmap();
