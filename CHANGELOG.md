@@ -1,5 +1,46 @@
 # Changelog
 
+## [v0.9.1] - 2026-10-04
+
+### Final Python Release
+
+* v0.9.1 is the final release of the Python/PyQt6 edition of MeasureLab. Development of this edition ends with this release.
+
+### Added
+
+* **Measurement Console**:
+    * Added a five-pane layout with two instruments above and three below.
+* **FFT Optimization**:
+    * Added optimization coverage indicators for standard, medium, and huge FFT sizes, including measured and estimated plans for both processing precisions.
+
+### Changed
+
+* **Startup and Navigation**:
+    * Displayed the splash screen earlier, prepared common FFT plans and up to four recent or basic modules during startup, and deferred the remaining pages until needed.
+    * Standardized the initial window size and improved lazy page loading and status refresh responsiveness.
+* **GUI Theme**:
+    * Refined measurement controls, menus, group boxes, and window styling across light, dark, and system themes.
+* **Documentation and Maintenance**:
+    * Documented the final Python release, refreshed affected widget screenshots, and strengthened lint, typing, and GUI regression checks.
+
+### Fixed
+
+* **GUI Shutdown**:
+    * Stopped module timers and background work during widget cleanup and canceled deferred page loading when the main window closes.
+* **Settings**:
+    * Refreshed calibration values when returning to Settings and used active double-precision FFT plans during optimization.
+* **Spectrum Analyzer**:
+    * Kept translated controls within the widget size limit while preserving accessible start/stop descriptions.
+* **Goniometer**:
+    * Kept the plot background and direction labels consistent across themes.
+* **Release Notes**:
+    * Preserved the complete changelog section when the version number is repeated in its body.
+
+### Removed
+
+* **Plot Comparer**:
+    * Removed the Plot Comparer module, comparison actions, and saved comparison-session state while retaining shared export utilities.
+
 ## [v0.9.0] - 2026-09-23
 
 ### Added
