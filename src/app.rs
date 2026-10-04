@@ -23,6 +23,7 @@ const BLUE: Color32 = Color32::from_rgb(87, 166, 255);
 const YELLOW: Color32 = Color32::from_rgb(255, 211, 66);
 const HOLD: Color32 = Color32::from_rgb(179, 135, 65);
 const PURPLE: Color32 = Color32::from_rgb(204, 153, 255);
+const TRIGGER: Color32 = Color32::from_rgb(255, 170, 116);
 const MUTED: Color32 = Color32::from_rgb(128, 147, 161);
 const BORDER: Color32 = Color32::from_rgb(48, 70, 82);
 
@@ -215,6 +216,8 @@ pub struct ScopeApp {
     #[cfg(feature = "qa")]
     lifecycle_stage: u8,
     #[cfg(feature = "qa")]
+    lifecycle_scope_samples: [Option<u64>; 2],
+    #[cfg(feature = "qa")]
     lifecycle_held: Option<(u64, RowInfo)>,
     #[cfg(feature = "qa")]
     lifecycle_xy_held: Option<(u64, xy::Capture)>,
@@ -353,6 +356,8 @@ impl ScopeApp {
             #[cfg(feature = "qa")]
             lifecycle_stage: 0,
             #[cfg(feature = "qa")]
+            lifecycle_scope_samples: [None; 2],
+            #[cfg(feature = "qa")]
             lifecycle_held: None,
             #[cfg(feature = "qa")]
             lifecycle_xy_held: None,
@@ -393,6 +398,9 @@ impl ScopeApp {
                 if std::env::var_os("MEASURELAB_UI_SMOKE_XY_ONLY").is_some() {
                     app.visible = [false, false, false, true];
                 }
+                if std::env::var_os("MEASURELAB_UI_SMOKE_SCOPE_ONLY").is_some() {
+                    app.visible = [true, false, false, false];
+                }
             }
             app.format = if smoke { "QA fixture" } else { "Internal demo" }.into();
             app.reset_analysis();
@@ -421,8 +429,15 @@ impl ScopeApp {
                     app.sample_rate,
                 ));
                 let sweep = app.history.sweep(480, app.trigger);
-                app.cursors.set_time(0, sweep.range.end - 240);
-                app.cursors.set_time(1, sweep.range.end - 120);
+                for (index, sample) in [sweep.range.end - 240, sweep.range.end - 120]
+                    .into_iter()
+                    .enumerate()
+                {
+                    app.cursors.set_scope_time(
+                        index,
+                        cursor::fraction_at_sample(sweep.range.clone(), sample).unwrap(),
+                    );
+                }
                 app.cursors.frequency_hz = Some(app.demo.frequency as f64);
             }
             // Render every inspector with the same deterministic signal fixture.
@@ -457,6 +472,12 @@ impl ScopeApp {
         drop(history);
         match self.lifecycle_stage {
             0 if elapsed > 0.6 => {
+                self.refresh_scope_range();
+                self.cursors.set_scope_time(0, 0.3);
+                self.cursors.set_scope_time(1, 0.7);
+                self.lifecycle_scope_samples = self.cursor_samples();
+                // Verify cross-instrument resolution with Scope hidden, too.
+                self.visible[0] = false;
                 self.lifecycle_held = Some((revision, latest));
                 self.spectrum_settings.size = 1024;
                 self.spectrum_settings.averages = 16;
@@ -466,6 +487,22 @@ impl ScopeApp {
                 self.lifecycle_stage = 1;
             }
             1 if elapsed > 1.0 => {
+                self.refresh_scope_range();
+                for (index, fraction) in [0.3, 0.7].into_iter().enumerate() {
+                    let time = self.cursors.times[index].unwrap();
+                    assert_eq!(
+                        self.cursors.fraction(time, self.scope_range.clone()),
+                        Some(fraction)
+                    );
+                    let sample = self.cursor_samples()[index].unwrap();
+                    assert!(
+                        sample > self.lifecycle_scope_samples[index].unwrap(),
+                        "Scope cursor retained an old sample ID"
+                    );
+                    assert!(self.scope_range.contains(&sample));
+                    assert!(self.history.get(sample).is_some());
+                }
+                self.visible[0] = true;
                 assert_eq!(latest.config, self.lifecycle_held.unwrap().1.config);
                 assert_eq!(latest.generation, self.lifecycle_held.unwrap().1.generation);
                 self.stop();
@@ -476,8 +513,7 @@ impl ScopeApp {
                     self.analyzer.db().to_vec(),
                     self.history.range(),
                 ));
-                self.cursors.set_time(0, latest.end - 240);
-                self.cursors.set_time(1, latest.end - 120);
+                self.lifecycle_scope_samples = self.cursor_samples();
                 self.cursors.frequency_hz = Some(1000.0);
                 self.lifecycle_held = Some((revision, latest));
                 self.lifecycle_stage = 2;
@@ -501,7 +537,22 @@ impl ScopeApp {
                 assert_eq!(self.analyzer.db(), held_db);
                 assert_eq!(self.history.range(), *held_range);
                 assert_eq!(
-                    self.cursors.delta_seconds(self.sample_rate),
+                    self.cursor_samples(),
+                    self.lifecycle_scope_samples,
+                    "stopped Scope cursors changed samples"
+                );
+                for (index, fraction) in [0.3, 0.7].into_iter().enumerate() {
+                    assert_eq!(
+                        self.cursors
+                            .fraction(self.cursors.times[index].unwrap(), self.scope_range.clone()),
+                        Some(fraction)
+                    );
+                }
+                self.cursors.set_time(0, latest.end - 240);
+                self.cursors.set_time(1, latest.end - 120);
+                assert_eq!(
+                    self.cursors
+                        .delta_seconds(self.sample_rate, self.scope_range.clone()),
                     Some(120.0 / self.sample_rate as f64)
                 );
                 let sample = self.cursor_samples()[0].unwrap();
@@ -618,7 +669,7 @@ impl ScopeApp {
                 self.source = Source::Demo;
                 self.switch_source();
                 println!(
-                    "UI lifecycle OK: independent Spectrum settings, all-instrument hold, stop/late-result exclusion, held FFT metadata/average, held demo edits, shared sample cursors, held display changes, hide/show, restart/source-switch cursor invalidation, STFT CH/FFT changes, XY hold/display/single view/restart"
+                    "UI lifecycle OK: fixed-X Scope cursors across live/hidden/held sweeps, independent Spectrum settings, all-instrument hold, stop/late-result exclusion, held FFT metadata/average, held demo edits, shared sample cursors, held display changes, hide/show, restart/source-switch cursor invalidation, STFT CH/FFT changes, XY hold/display/single view/restart"
                 );
                 self.lifecycle_stage = 6;
             }
@@ -659,7 +710,23 @@ impl ScopeApp {
     fn cursor_samples(&self) -> [Option<u64>; 2] {
         self.cursors
             .times
-            .map(|time| time.and_then(|time| self.cursors.sample(time)))
+            .map(|time| time.and_then(|time| self.cursors.sample(time, self.scope_range.clone())))
+    }
+
+    fn scope_sample_count(&self) -> usize {
+        (self.ms_per_div * 0.01 * self.sample_rate as f32)
+            .round()
+            .max(2.0) as usize
+    }
+
+    fn refresh_scope_range(&mut self) {
+        if self.dirty {
+            let count = self.scope_sample_count();
+            let sweep = self.history.sweep(count, self.trigger);
+            let ready = self.history.len() >= count;
+            self.triggered = ready && sweep.triggered;
+            self.scope_range = if ready { sweep.range } else { 0..0 };
+        }
     }
 
     fn place_time_cursor(&mut self, ui: &egui::Ui, sample: u64) {
@@ -673,20 +740,34 @@ impl ScopeApp {
         ui.separator();
         for (index, title) in ["Cursor A", "B"].into_iter().enumerate() {
             ui.selectable_value(&mut self.active_cursor, index, title)
-                .on_hover_text("Click or drag Scope, Spectrogram or XY to place this sample cursor. Spectrum and Spectrogram also set the shared frequency.");
+                .on_hover_text("Scope fixes the cursor's X position and reads each new sweep. Spectrogram and XY pin a captured sample. Spectrum and Spectrogram also set the shared frequency.");
         }
         if ui.small_button("Clear").clicked() {
             self.cursors.clear();
             ui.ctx().request_repaint();
         }
-        let times = self.cursor_samples();
         let mut text = String::new();
-        for (index, sample) in times.into_iter().enumerate() {
-            if let Some(sample) = sample {
+        for (index, time) in self.cursors.times.into_iter().enumerate() {
+            let Some(time) = time else { continue };
+            if time.scope_x().is_some() {
+                if let Some(seconds) =
+                    self.cursors
+                        .scope_seconds(time, self.scope_range.clone(), self.sample_rate)
+                {
+                    text.push_str(&format!(
+                        "{} {:+.3} ms  ",
+                        cursor_name(index),
+                        seconds * 1000.0
+                    ));
+                }
+            } else if let Some(sample) = self.cursors.sample(time, self.scope_range.clone()) {
                 text.push_str(&format!("{} #{sample}  ", cursor_name(index)));
             }
         }
-        if let Some(delta) = self.cursors.delta_seconds(self.sample_rate) {
+        if let Some(delta) = self
+            .cursors
+            .delta_seconds(self.sample_rate, self.scope_range.clone())
+        {
             text.push_str(&format!("Δt {:+.3} ms", delta * 1000.0));
         }
         if !text.is_empty() {
@@ -1714,20 +1795,19 @@ impl ScopeApp {
     }
 
     fn scope_cursors(&mut self, ui: &egui::Ui, response: &egui::Response, rect: egui::Rect) {
-        if let Some(position) = cursor_pointer(response, rect)
-            && let Some(sample) = cursor::sample_at_fraction(
-                self.scope_range.clone(),
+        if let Some(position) = cursor_pointer(response, rect) {
+            self.cursors.set_scope_time(
+                self.active_cursor,
                 ((position.x - rect.left()) / rect.width()) as f64,
-            )
-        {
-            self.place_time_cursor(ui, sample);
+            );
+            ui.ctx().request_repaint();
         }
-        for (index, sample) in self.cursor_samples().into_iter().enumerate() {
-            let Some(sample) = sample else { continue };
-            let text = if let Some(x) = cursor::fraction_at_sample(self.scope_range.clone(), sample)
-            {
+        for (index, time) in self.cursors.times.into_iter().enumerate() {
+            let Some(time) = time else { continue };
+            let sample = self.cursors.sample(time, self.scope_range.clone());
+            let text = if let Some(x) = self.cursors.fraction(time, self.scope_range.clone()) {
                 cursor_line(ui, rect, x as f32, true, cursor_color(index));
-                if let Some(frame) = self.history.get(sample) {
+                if let Some(frame) = sample.and_then(|sample| self.history.get(sample)) {
                     for (channel, value) in frame.iter().take(2).enumerate() {
                         if !self.enabled[channel] {
                             continue;
@@ -1743,9 +1823,24 @@ impl ScopeApp {
                         }
                     }
                 }
-                format!("{} {}", cursor_name(index), self.sample_text(sample))
+                if let Some(sample) = sample
+                    && let Some(seconds) =
+                        self.cursors
+                            .scope_seconds(time, self.scope_range.clone(), self.sample_rate)
+                {
+                    format!(
+                        "{} {:+.3} ms · {}",
+                        cursor_name(index),
+                        seconds * 1000.0,
+                        self.sample_text(sample)
+                    )
+                } else {
+                    format!("{} · waiting for sweep", cursor_name(index))
+                }
+            } else if let Some(sample) = sample {
+                format!("{} #{sample} · outside sweep", cursor_name(index),)
             } else {
-                format!("{} #{sample} · outside sweep", cursor_name(index))
+                continue;
             };
             cursor_note(ui, rect, index, &text, cursor_color(index));
         }
@@ -2503,7 +2598,7 @@ impl ScopeApp {
         let (outer, response) =
             ui.allocate_exact_size(plot_size(ui), egui::Sense::click_and_drag());
         let rect =
-            egui::Rect::from_min_max(outer.min + vec2(42.0, 4.0), outer.max - vec2(14.0, 18.0));
+            egui::Rect::from_min_max(outer.min + vec2(42.0, 4.0), outer.max - vec2(28.0, 18.0));
         if response.hovered() {
             let (scroll, shift) = ui.input(|i| (i.smooth_scroll_delta.y, i.modifiers.shift));
             if scroll != 0.0 {
@@ -2573,13 +2668,7 @@ impl ScopeApp {
         self.pixels = pixels;
         if self.dirty {
             let started = Instant::now();
-            let count = (self.ms_per_div * 0.01 * self.sample_rate as f32)
-                .round()
-                .max(2.0) as usize;
-            let sweep = self.history.sweep(count, self.trigger);
-            let ready = self.history.len() >= count;
-            self.triggered = ready && sweep.triggered;
-            self.scope_range = if ready { sweep.range } else { 0..0 };
+            self.refresh_scope_range();
             self.measurements = build_lines(
                 &self.history,
                 self.scope_range.clone(),
@@ -2613,30 +2702,51 @@ impl ScopeApp {
             let tx = rect.left() + rect.width() * 0.2;
             painter.line_segment(
                 [pos2(tx, rect.top()), pos2(tx, rect.top() + 12.0)],
-                Stroke::new(2.0, GREEN),
+                Stroke::new(2.0, TRIGGER),
             );
             painter.text(
                 pos2(tx, rect.top() + 17.0),
                 egui::Align2::CENTER_TOP,
                 "T",
                 egui::FontId::monospace(11.0),
-                GREEN,
+                TRIGGER,
             );
             let ty = rect.center().y
                 - (self.trigger.level / (self.fs_per_div as f64 * 8.0)) as f32 * rect.height();
             if rect.y_range().contains(ty) {
-                painter.line_segment(
-                    [pos2(rect.right() - 12.0, ty), pos2(rect.right(), ty)],
-                    Stroke::new(2.0, GREEN),
+                // Keep the trigger-level indicator outside the waveform area.
+                painter.add(egui::Shape::convex_polygon(
+                    vec![
+                        pos2(rect.right() + 2.0, ty),
+                        pos2(rect.right() + 9.0, ty - 4.0),
+                        pos2(rect.right() + 9.0, ty + 4.0),
+                    ],
+                    TRIGGER,
+                    Stroke::NONE,
+                ));
+                painter.text(
+                    pos2(rect.right() + 12.0, ty),
+                    egui::Align2::LEFT_CENTER,
+                    "T",
+                    egui::FontId::monospace(10.0),
+                    TRIGGER,
                 );
+                ui.interact(
+                    egui::Rect::from_min_max(
+                        pos2(rect.right(), ty - 8.0),
+                        pos2(rect.right() + 26.0, ty + 8.0),
+                    ),
+                    ui.id().with("trigger_level_marker"),
+                    egui::Sense::hover(),
+                )
+                .on_hover_text(format!(
+                    "Trigger level · CH {} · {:+.3} FS",
+                    self.trigger.channel + 1,
+                    self.trigger.level
+                ));
             }
         }
-        if self.segments.is_empty()
-            && self.history.len()
-                < (self.ms_per_div * 0.01 * self.sample_rate as f32)
-                    .round()
-                    .max(2.0) as usize
-        {
+        if self.segments.is_empty() && self.history.len() < self.scope_sample_count() {
             painter.text(
                 rect.center(),
                 egui::Align2::CENTER_CENTER,
@@ -2935,6 +3045,9 @@ impl eframe::App for ScopeApp {
                         .show(ui, |ui| self.controls(ui));
                 });
         }
+        // Resolve X-anchored cursors against this frame's sweep, including when
+        // Scope is hidden. The other instruments must not read a stale ID.
+        self.refresh_scope_range();
         egui::CentralPanel::default().show(ui, |ui| {
             ui.spacing_mut().item_spacing = vec2(6.0, 4.0);
             ui.horizontal_wrapped(|ui| {

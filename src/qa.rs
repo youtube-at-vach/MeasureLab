@@ -361,7 +361,7 @@ mod tests {
         let mut lines = Vec::new();
         let xy = xy::build_lines(&history, 48000, xy::Settings::default(), &mut lines);
         for time in cursors.times.into_iter().flatten() {
-            let sample = cursors.sample(time).unwrap();
+            let sample = cursors.sample(time, scope.range.clone()).unwrap();
             assert!(scope.range.contains(&sample));
             assert!(xy.range.contains(&sample));
             let frame = history.get(sample).unwrap();
@@ -376,6 +376,6 @@ mod tests {
             assert!((db[256] - reading.dbfs).abs() < 1e-5);
         }
         assert_eq!(analyzer.window().unwrap().end, row.end);
-        assert_eq!(cursors.delta_seconds(48000), Some(0.0025));
+        assert_eq!(cursors.delta_seconds(48000, scope.range), Some(0.0025));
     }
 }
