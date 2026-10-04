@@ -196,3 +196,17 @@ def test_read_empty():
     read_data_again = rb.read()
     assert read_data_again.shape == (0, 2)
     assert rb.available() == 0
+
+def test_stereo_to_quad_write():
+    from src.core.ring_buffer import RingBuffer
+    import pytest
+    import numpy as np
+
+    rb = RingBuffer(capacity=100, channels=4, dtype=np.float32)
+    data = np.ones((10, 2), dtype=np.float32)
+    # The original test noted this currently raises ValueError, but actually the implementation now zero-pads missing channels.
+    rb.write(data)
+    read_data = rb.read()
+    assert read_data.shape == (10, 4)
+    np.testing.assert_array_equal(read_data[:, :2], np.ones((10, 2), dtype=np.float32))
+    np.testing.assert_array_equal(read_data[:, 2:], np.zeros((10, 2), dtype=np.float32))
