@@ -116,61 +116,180 @@ pub fn cursor_fixture(
     output.latest().unwrap()
 }
 
+// Fixed-size histograms cover the entire run, including long and unthrottled
+// runs. Keeping only the first 8,192 frames hid later stalls and memory growth.
+const BUCKET_MS: f64 = 0.01;
+const BUCKETS: usize = 20_001;
+
+struct Distribution {
+    bins: Vec<u64>,
+    count: u64,
+    max: f64,
+}
+
+impl Default for Distribution {
+    fn default() -> Self {
+        Self {
+            bins: vec![0; BUCKETS],
+            count: 0,
+            max: 0.0,
+        }
+    }
+}
+
+impl Distribution {
+    fn record(&mut self, milliseconds: f64) {
+        if !milliseconds.is_finite() || milliseconds < 0.0 {
+            return;
+        }
+        let bucket = (milliseconds / BUCKET_MS).ceil() as usize;
+        self.bins[bucket.min(BUCKETS - 1)] += 1;
+        self.count += 1;
+        self.max = self.max.max(milliseconds);
+    }
+
+    fn p95(&self) -> Option<f64> {
+        if self.count == 0 {
+            return None;
+        }
+        let target = (self.count * 95).div_ceil(100);
+        let mut count = 0;
+        for (index, &bin) in self.bins.iter().enumerate() {
+            count += bin;
+            if count >= target {
+                // The overflow bucket gives a conservative upper bound.
+                return Some(if index == BUCKETS - 1 {
+                    self.max
+                } else {
+                    index as f64 * BUCKET_MS
+                });
+            }
+        }
+        unreachable!("histogram count");
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum Work {
+    Input,
+    Fft,
+    Scope,
+    Spectrum,
+    Spectrogram,
+    Xy,
+}
+
+impl Work {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Input => "input drain / demo generation",
+            Self::Fft => "Spectrum FFT",
+            Self::Scope => "Scope preparation",
+            Self::Spectrum => "Spectrum preparation",
+            Self::Spectrogram => "STFT result / history ingestion",
+            Self::Xy => "XY preparation",
+        }
+    }
+}
+
 pub struct Profile {
     started: Instant,
     duration: Duration,
-    intervals_ms: Vec<f64>,
-    cpu_ms: Vec<f64>,
+    intervals_ms: Distribution,
+    cpu_ms: Distribution,
+    work: [Distribution; 6],
+    input_dropped: u64,
+    previous_input_dropped: u64,
     pub device: Option<String>,
 }
 
 impl Profile {
-    pub fn from_env() -> Option<Self> {
-        let seconds = std::env::var("MEASURELAB_PROFILE_SECONDS")
-            .ok()?
+    pub fn from_env() -> Result<Option<Self>, String> {
+        let seconds = match std::env::var("MEASURELAB_PROFILE_SECONDS") {
+            Ok(seconds) => seconds,
+            Err(std::env::VarError::NotPresent) => return Ok(None),
+            Err(error) => return Err(error.to_string()),
+        };
+        let seconds = seconds
             .parse::<u64>()
-            .ok()?
-            .clamp(1, 60);
-        Some(Self {
+            .map_err(|_| "MEASURELAB_PROFILE_SECONDS must be 1..=3600".to_owned())?;
+        if !(1..=3600).contains(&seconds) {
+            return Err("MEASURELAB_PROFILE_SECONDS must be 1..=3600".into());
+        }
+        Ok(Some(Self {
             started: Instant::now(),
             duration: Duration::from_secs(seconds + 2),
-            intervals_ms: Vec::with_capacity(8192),
-            cpu_ms: Vec::with_capacity(8192),
+            intervals_ms: Distribution::default(),
+            cpu_ms: Distribution::default(),
+            work: std::array::from_fn(|_| Distribution::default()),
+            input_dropped: 0,
+            previous_input_dropped: 0,
             device: std::env::var("MEASURELAB_PROFILE_DEVICE").ok(),
-        })
+        }))
     }
 
     pub fn record(&mut self, elapsed_seconds: f64, running: bool, cpu_seconds: Option<f32>) {
-        if running
-            && self.started.elapsed() >= Duration::from_secs(2)
-            && self.intervals_ms.len() < self.intervals_ms.capacity()
-        {
-            self.intervals_ms.push(elapsed_seconds * 1000.0);
+        if running && self.started.elapsed() >= Duration::from_secs(2) {
+            self.intervals_ms.record(elapsed_seconds * 1000.0);
             if let Some(cpu) = cpu_seconds {
-                self.cpu_ms.push(cpu as f64 * 1000.0);
+                self.cpu_ms.record(cpu as f64 * 1000.0);
             }
         }
+    }
+
+    pub fn record_work(&mut self, work: Work, milliseconds: f64) {
+        if self.started.elapsed() >= Duration::from_secs(2) {
+            self.work[work as usize].record(milliseconds);
+        }
+    }
+
+    pub fn record_input_loss(&mut self, dropped: u64) {
+        self.input_dropped += dropped.saturating_sub(self.previous_input_dropped);
+        self.previous_input_dropped = dropped;
+    }
+
+    pub fn new_input(&mut self, dropped: u64) {
+        self.record_input_loss(dropped);
+        self.previous_input_dropped = 0;
     }
 
     pub fn finished(&self) -> bool {
         self.started.elapsed() >= self.duration
     }
 
-    pub fn report(&mut self, input_dropped: u64) {
-        self.intervals_ms.sort_unstable_by(f64::total_cmp);
-        self.cpu_ms.sort_unstable_by(f64::total_cmp);
-        if self.intervals_ms.is_empty() {
-            println!("UI profile: no running frames recorded; input dropped {input_dropped}");
-        } else {
-            let p95 = self.intervals_ms[(self.intervals_ms.len() - 1) * 95 / 100];
+    pub fn report(&self, input_dropped: u64) {
+        let input_dropped =
+            self.input_dropped + input_dropped.saturating_sub(self.previous_input_dropped);
+        let p95 = self
+            .intervals_ms
+            .p95()
+            .expect("QA recorded no running frames");
+        println!(
+            "UI profile: {} frames over {:.1} s, frame interval p95 {p95:.3} ms, max {:.3} ms, input dropped {input_dropped}",
+            self.intervals_ms.count,
+            self.started.elapsed().as_secs_f64(),
+            self.intervals_ms.max
+        );
+        if let Some(cpu_p95) = self.cpu_ms.p95() {
             println!(
-                "UI profile: {} frames, frame interval p95 {p95:.3} ms, input dropped {input_dropped}",
-                self.intervals_ms.len()
+                "UI CPU profile: frame work p95 {cpu_p95:.3} ms (eframe, excluding VSync wait)"
             );
-            if !self.cpu_ms.is_empty() {
-                let cpu_p95 = self.cpu_ms[(self.cpu_ms.len() - 1) * 95 / 100];
+        }
+        for work in [
+            Work::Input,
+            Work::Fft,
+            Work::Scope,
+            Work::Spectrum,
+            Work::Spectrogram,
+            Work::Xy,
+        ] {
+            let distribution = &self.work[work as usize];
+            if let Some(p95) = distribution.p95() {
                 println!(
-                    "UI CPU profile: frame work p95 {cpu_p95:.3} ms (eframe, excluding VSync wait)"
+                    "CPU component: {} / {} calls / p95 {p95:.3} ms / max {:.3} ms",
+                    work.name(),
+                    distribution.count,
+                    distribution.max
                 );
             }
         }
@@ -334,6 +453,48 @@ pub fn multichannel_smoke_test() -> Result<(), Box<dyn std::error::Error>> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn profile_keeps_late_frames_and_bounded_storage() {
+        let mut distribution = super::Distribution::default();
+        let capacity = distribution.bins.capacity();
+        for _ in 0..20_000 {
+            distribution.record(4.001);
+        }
+        for _ in 0..2_000 {
+            distribution.record(31.999);
+        }
+        assert_eq!(distribution.count, 22_000);
+        assert_eq!(distribution.p95(), Some(32.0));
+        assert_eq!(distribution.bins.capacity(), capacity);
+        assert_eq!(distribution.max, 31.999);
+        distribution.record(f64::NAN);
+        distribution.record(-1.0);
+        assert_eq!(distribution.count, 22_000);
+    }
+
+    #[test]
+    fn profile_accounts_for_overflow_and_capture_restarts() {
+        let mut distribution = super::Distribution::default();
+        assert_eq!(distribution.p95(), None);
+        distribution.record(1000.0);
+        assert_eq!(distribution.p95(), Some(1000.0));
+        let mut profile = super::Profile {
+            started: std::time::Instant::now(),
+            duration: std::time::Duration::from_secs(1),
+            intervals_ms: super::Distribution::default(),
+            cpu_ms: super::Distribution::default(),
+            work: std::array::from_fn(|_| super::Distribution::default()),
+            input_dropped: 0,
+            previous_input_dropped: 0,
+            device: None,
+        };
+        profile.record_input_loss(4);
+        profile.record_input_loss(4);
+        profile.new_input(6);
+        profile.record_input_loss(3);
+        assert_eq!(profile.input_dropped, 9);
+    }
+
     #[test]
     fn shared_cursor_fixture_agrees_across_raw_scope_xy_and_frequency_windows() {
         use crate::{

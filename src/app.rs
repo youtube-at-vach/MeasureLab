@@ -218,6 +218,8 @@ pub struct ScopeApp {
     #[cfg(feature = "qa")]
     lifecycle_stage: u8,
     #[cfg(feature = "qa")]
+    lifecycle_changed: Instant,
+    #[cfg(feature = "qa")]
     lifecycle_scope_samples: [Option<u64>; 2],
     #[cfg(feature = "qa")]
     lifecycle_held: Option<(u64, RowInfo)>,
@@ -356,9 +358,11 @@ impl ScopeApp {
             #[cfg(feature = "qa")]
             screenshot_requested: false,
             #[cfg(feature = "qa")]
-            profile: crate::qa::Profile::from_env(),
+            profile: crate::qa::Profile::from_env()?,
             #[cfg(feature = "qa")]
             lifecycle_stage: 0,
+            #[cfg(feature = "qa")]
+            lifecycle_changed: Instant::now(),
             #[cfg(feature = "qa")]
             lifecycle_scope_samples: [None; 2],
             #[cfg(feature = "qa")]
@@ -757,6 +761,167 @@ impl ScopeApp {
         }
     }
 
+    /// Exercise real CPAL capture through the UI's own asynchronous start/stop
+    /// path. This is separate from the deterministic internal-demo lifecycle.
+    #[cfg(feature = "qa")]
+    fn check_input_lifecycle(&mut self, ctx: &egui::Context) {
+        if self.profile.is_none()
+            || std::env::var_os("MEASURELAB_PROFILE_INPUT_LIFECYCLE").is_none()
+            || self.lifecycle_stage == 6
+        {
+            return;
+        }
+        assert!(
+            std::env::var_os("MEASURELAB_PROFILE_LIFECYCLE").is_none(),
+            "choose one lifecycle check"
+        );
+        assert!(
+            self.error.is_none(),
+            "input lifecycle error: {:?}",
+            self.error
+        );
+        let elapsed = self.lifecycle_changed.elapsed().as_secs_f64();
+        assert!(
+            elapsed < 15.0,
+            "input lifecycle stage {} timed out",
+            self.lifecycle_stage
+        );
+        let latest = self.spectrogram_history.lock().unwrap().latest();
+        let stage = self.lifecycle_stage;
+        match stage {
+            0 if elapsed > 0.8 && latest.is_some() && self.analyzer.window().is_some() => {
+                assert!(
+                    self.capture.is_some(),
+                    "input lifecycle requires a CPAL device"
+                );
+                let latest = latest.unwrap();
+                self.stop();
+                self.refresh_scope_range();
+                self.rebuild_xy();
+                self.cursors.set_time(0, latest.end - 240);
+                self.cursors.set_time(1, latest.end - 120);
+                self.cursors.frequency_hz = Some(1000.0);
+                self.lifecycle_scope_samples = self.cursor_samples();
+                assert!(self.lifecycle_scope_samples.iter().all(Option::is_some));
+                for sample in self.lifecycle_scope_samples.into_iter().flatten() {
+                    assert!(self.history.get(sample).is_some());
+                    assert!(
+                        self.spectrogram_history
+                            .lock()
+                            .unwrap()
+                            .at_sample(sample)
+                            .is_some()
+                    );
+                }
+                self.lifecycle_held =
+                    Some((self.spectrogram_history.lock().unwrap().revision(), latest));
+                self.lifecycle_xy_held = Some((self.xy_revision, self.xy_capture.clone()));
+                self.lifecycle_spectrum_held = Some((
+                    self.analyzer.window().unwrap(),
+                    self.analyzer.db().to_vec(),
+                    self.history.range(),
+                ));
+                self.lifecycle_stage = 1;
+            }
+            1 if elapsed > 0.4 && !self.busy => {
+                let (window, db, range) = self.lifecycle_spectrum_held.as_ref().unwrap();
+                assert_eq!(self.analyzer.window(), Some(*window));
+                assert_eq!(self.analyzer.db(), db);
+                assert_eq!(self.history.range(), *range);
+                assert_eq!(self.cursor_samples(), self.lifecycle_scope_samples);
+                let history = self.spectrogram_history.lock().unwrap();
+                assert_eq!(history.revision(), self.lifecycle_held.unwrap().0);
+                assert_eq!(history.latest(), Some(self.lifecycle_held.unwrap().1));
+                drop(history);
+                self.spectrogram_seconds = 2.0;
+                self.spectrogram_scale = FrequencyScale::Linear;
+                self.floor_db = -100.0;
+                self.spectrum_dirty = true;
+                self.spectrogram_settings.size = 1024;
+                self.spectrogram_channel = self.channels as usize - 1;
+                self.visible = [false, false, true, false];
+                self.lifecycle_stage = 2;
+            }
+            2 if elapsed > 0.4 => {
+                self.update_spectrum(false);
+                self.rebuild_xy();
+                let (window, db, range) = self.lifecycle_spectrum_held.as_ref().unwrap();
+                assert_eq!(self.analyzer.window(), Some(*window));
+                assert_eq!(self.analyzer.db(), db);
+                assert_eq!(self.history.range(), *range);
+                assert_eq!(self.xy_revision, self.lifecycle_xy_held.as_ref().unwrap().0);
+                assert_eq!(
+                    self.spectrogram_history.lock().unwrap().revision(),
+                    self.lifecycle_held.unwrap().0
+                );
+                self.visible = [true; 4];
+                self.start();
+                assert!(self.history.is_empty());
+                assert!(self.analyzer.window().is_none());
+                assert!(self.last_stft.is_none());
+                assert_eq!(self.cursor_samples(), [None; 2]);
+                assert!(self.cursors.frequency_hz.is_none());
+                self.lifecycle_stage = 3;
+            }
+            3 if elapsed > 0.8 && latest.is_some() && !self.busy => {
+                let latest = latest.unwrap();
+                assert_ne!(latest.generation, self.lifecycle_held.unwrap().1.generation);
+                assert_eq!(latest.config.size, 1024);
+                assert_eq!(latest.config.channel, self.channels as usize - 1);
+                self.cursors.set_scope_time(0, 0.5);
+                self.source = Source::Demo;
+                self.switch_source();
+                assert_eq!(self.cursor_samples(), [None; 2]);
+                self.lifecycle_stage = 4;
+            }
+            4 if elapsed > 0.8 && latest.is_some() && !self.busy => {
+                assert!(self.demo_running);
+                assert_eq!(self.channels, 2);
+                assert_eq!(self.sample_rate, 48000);
+                self.cursors.set_scope_time(0, 0.5);
+                self.source = Source::Live;
+                self.switch_source();
+                assert_eq!(self.cursor_samples(), [None; 2]);
+                assert!(self.history.is_empty());
+                if let Ok(name) = std::env::var("MEASURELAB_PROFILE_SWITCH_DEVICE") {
+                    self.selected = self
+                        .devices
+                        .iter()
+                        .position(|device| device.name == name)
+                        .expect("QA switch device not found");
+                }
+                self.start();
+                self.lifecycle_stage = 5;
+            }
+            5 if elapsed > 0.8 && latest.is_some() && !self.busy => {
+                let latest = latest.unwrap();
+                assert!(self.capture.is_some());
+                assert_eq!(latest.config.channels, self.channels as usize);
+                assert_eq!(latest.config.sample_rate, self.sample_rate);
+                assert_eq!(self.cursor_samples(), [None; 2]);
+                self.cursors.set_scope_time(0, 0.3);
+                self.cursors.set_scope_time(1, 0.7);
+                self.refresh_scope_range();
+                for sample in self.cursor_samples().into_iter().flatten() {
+                    assert!(self.history.get(sample).is_some());
+                }
+                println!(
+                    "Input lifecycle OK: CPAL hold, late-result exclusion, shared raw/STFT cursors, display and pending analysis edits, hide/show, restart invalidation, live/demo/device switching; final {} / {} Hz / {} ch",
+                    self.devices[self.selected].name, self.sample_rate, self.channels
+                );
+                self.lifecycle_stage = 6;
+            }
+            _ => {}
+        }
+        if self.lifecycle_stage != stage {
+            self.lifecycle_changed = Instant::now();
+        }
+        // Only the held stages need a timer; running capture already repaints.
+        if matches!(self.lifecycle_stage, 1 | 2) {
+            ctx.request_repaint_after(Duration::from_millis(450));
+        }
+    }
+
     fn running(&self) -> bool {
         self.capture.is_some() || self.demo_running
     }
@@ -782,6 +947,10 @@ impl ScopeApp {
             let started = Instant::now();
             if self.analyzer.update(&self.history, self.spectrum_channel) {
                 self.fft_ms = started.elapsed().as_secs_f64() * 1000.0;
+                #[cfg(feature = "qa")]
+                if let Some(profile) = &mut self.profile {
+                    profile.record_work(crate::qa::Work::Fft, self.fft_ms);
+                }
                 self.spectrum_dirty = true;
                 self.last_spectrum = Instant::now();
             }
@@ -965,6 +1134,10 @@ impl ScopeApp {
     }
 
     fn start(&mut self) {
+        #[cfg(feature = "qa")]
+        if let Some(profile) = &mut self.profile {
+            profile.new_input(self.dropped);
+        }
         if self.source == Source::Demo {
             self.begin_observation();
             self.sample_rate = 48000;
@@ -1239,6 +1412,10 @@ impl ScopeApp {
             self.format = "Internal demo".into();
             self.start();
         } else {
+            #[cfg(feature = "qa")]
+            if let Some(profile) = &mut self.profile {
+                profile.new_input(self.dropped);
+            }
             self.format.clear();
             self.expected_sequence = None;
             self.dropped = 0;
@@ -2374,6 +2551,10 @@ impl ScopeApp {
         self.xy_revision = self.xy_revision.wrapping_add(1);
         self.xy_dirty = false;
         self.xy_build_ms = started.elapsed().as_secs_f64() * 1000.0;
+        #[cfg(feature = "qa")]
+        if let Some(profile) = &mut self.profile {
+            profile.record_work(crate::qa::Work::Xy, self.xy_build_ms);
+        }
     }
 
     fn xy_panel(&mut self, ui: &mut egui::Ui) {
@@ -2796,6 +2977,10 @@ impl ScopeApp {
             self.spectrum_revision = self.spectrum_revision.wrapping_add(1);
             self.spectrum_dirty = false;
             self.spectrum_build_ms = started.elapsed().as_secs_f64() * 1000.0;
+            #[cfg(feature = "qa")]
+            if let Some(profile) = &mut self.profile {
+                profile.record_work(crate::qa::Work::Spectrum, self.spectrum_build_ms);
+            }
         }
         painter.add(egui_wgpu::Callback::new_paint_callback(
             rect,
@@ -2959,6 +3144,10 @@ impl ScopeApp {
             self.revision = self.revision.wrapping_add(1);
             self.dirty = false;
             self.build_ms = started.elapsed().as_secs_f64() * 1000.0;
+            #[cfg(feature = "qa")]
+            if let Some(profile) = &mut self.profile {
+                profile.record_work(crate::qa::Work::Scope, self.build_ms);
+            }
         }
         painter.add(egui_wgpu::Callback::new_paint_callback(
             rect,
@@ -3067,8 +3256,20 @@ impl eframe::App for ScopeApp {
         if elapsed > 0.0 && elapsed < 0.2 {
             self.fps = self.fps * 0.9 + 0.1 / elapsed;
         }
+        #[cfg(feature = "qa")]
+        let input_started = Instant::now();
         self.poll_audio();
         self.poll_demo();
+        #[cfg(feature = "qa")]
+        if self.running()
+            && let Some(profile) = &mut self.profile
+        {
+            profile.record_work(
+                crate::qa::Work::Input,
+                input_started.elapsed().as_secs_f64() * 1000.0,
+            );
+            profile.record_input_loss(self.dropped);
+        }
         let started = Instant::now();
         self.stft.drain(|row| {
             if self
@@ -3083,13 +3284,23 @@ impl eframe::App for ScopeApp {
         self.spectrogram_build_ms = started.elapsed().as_secs_f64() * 1000.0;
         #[cfg(feature = "qa")]
         {
+            if self.running()
+                && let Some(profile) = &mut self.profile
+            {
+                profile.record_work(crate::qa::Work::Spectrogram, self.spectrogram_build_ms);
+            }
             self.check_lifecycle(&ctx, elapsed);
+            self.check_input_lifecycle(&ctx);
             let running = self.running();
             if let Some(profile) = &mut self.profile {
                 profile.record(elapsed, running, frame.info().cpu_usage);
                 if profile.finished() {
+                    assert!(self.error.is_none(), "UI QA input failed: {:?}", self.error);
                     if std::env::var_os("MEASURELAB_PROFILE_LIFECYCLE").is_some() {
                         assert_eq!(self.lifecycle_stage, 8, "UI lifecycle did not finish");
+                    }
+                    if std::env::var_os("MEASURELAB_PROFILE_INPUT_LIFECYCLE").is_some() {
+                        assert_eq!(self.lifecycle_stage, 6, "input lifecycle did not finish");
                     }
                     profile.report(self.dropped);
                     println!(

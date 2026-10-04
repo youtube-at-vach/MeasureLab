@@ -42,6 +42,17 @@ GPU が利用できる環境では、読み戻しとテスト信号による画�
 ./scripts/cargo.sh run --locked --features qa -- --ui-smoke
 ```
 
+段階2のUIフレーム時間・処理別CPU時間・欠落・RSSの連続計測:
+
+```bash
+./scripts/cargo.sh build --release --locked --features qa
+MEASURELAB_PROFILE_SECONDS=600 MEASURELAB_PROFILE_DEVICE="BlackHole 16ch" \
+    MEASURELAB_PROFILE_CHANNEL=16 ./scripts/profile-stage2.sh blackhole16-600
+MEASURELAB_PROFILE_SECONDS=120 ./scripts/profile-stage2.sh demo-120 --demo
+```
+
+ログと1秒ごとのRSSは`dist/stage2-qa/`へ保存する。仮想入力の停止・再開やデバイス切り替えは [Rust READMEの検証・計測](../../guide/rust/README.md#検証計測) を参照する。
+
 macOS のローカルアプリバンドル:
 
 ```bash

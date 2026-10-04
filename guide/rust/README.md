@@ -1,6 +1,6 @@
 # MeasureLab — Rust Audio Measurement Lab
 
-CPALで実際のオーディオ入力を取り込み、`wgpu`で波形・FFTスペクトル・スペクトログラム・XY / Lissajousを同時に描画するデスクトップ測定ワークスペースです。最終イメージへ向けた段階的な拡張計画は [PLAN.md](PLAN.md) にまとめています。
+CPALで実際のオーディオ入力を取り込み、`wgpu`で波形・FFTスペクトル・スペクトログラム・XY / Lissajousを同時に描画するデスクトップ測定ワークスペースです。段階1・2a〜2eのプロトタイプは完了しました。[段階2の統合検証](#段階2の統合検証2026-10-05) に確認範囲・性能・未確認事項を記録し、今後の方向性と実装順序は [PLAN.md](PLAN.md) にまとめています。
 
 ## 起動
 
@@ -209,7 +209,9 @@ Audio device → CPAL callback → bounded SPSC ring → common input (1–16ch)
 
 `--gpu-smoke`はScope・Spectrum・Spectrogram・XYを準備してから描画し、それぞれの領域をGPUから読み戻します。線分プロットの独立、XYの円と更新番号が同じ場合の線分転送省略に加え、スペクトログラムの折り返し・行の順序・欠落・最大FFTのNyquistビン・表示変更時の再転送省略を検証します。`--ui-smoke`は入力を開始せず、明示的なテスト信号で4画面を短時間開いて閉じます。スペクトログラムの既知信号は周波数を変化させ、履歴の折り返しと意図的な入力欠落を含みます。`qa`機能を有効にすると、その表示を`dist/ui-smoke.png`へ保存します。通常起動時はオーディオ入力、`--demo`指定時は内部信号を使います。GPUやマイクを必要とする確認はCIでは実行しません。
 
-`qa`機能では、2秒の起動待ち後に最大60秒のUIフレーム間隔を記録できます。停止中のフレームは除外し、計測後にUI間隔p95、VSync待ちを除いたeframeのフレーム処理時間p95、欠落数を出力して終了します。以下はBlackHoleのCH 16を選び、10秒間計測する例です。`MEASURELAB_PROFILE_SETTINGS=spectrum`でSpectrum設定を開き、`MEASURELAB_PROFILE_SCREENSHOT=1`で途中の画面を`dist/ui-smoke.png`へ保存できます。
+`qa`機能では、2秒の起動待ち後に1〜3,600秒のUIフレーム間隔を記録できます。停止中のフレームは除外し、計測後にUI間隔p95と最大値、VSync待ちを除いたeframeのフレーム処理時間p95、欠落数を出力して終了します。固定容量のヒストグラムで全計測区間を集計し、長時間でも初めの8,192フレームだけに偏りません。p95は0.01 ms刻みの上側へ丸め、200 ms以上の区間がp95に達する場合は実測最大値を上限として報告します。入力処理・Spectrum FFT・各プロットの準備・STFT結果取り込みについても、実際に処理した呼び出しごとのp95と最大値を出します。処理ごとのp95を足してフレーム全体のp95にはできません。
+
+以下はBlackHoleのCH 16を選び、10秒間計測する例です。`MEASURELAB_PROFILE_SETTINGS=spectrum`でSpectrum設定を開き、`MEASURELAB_PROFILE_SCREENSHOT=1`で途中の画面を`dist/ui-smoke.png`へ保存できます。デバイスが見つからない、入力にエラーがある、動作中のフレームがない場合は検証を失敗にします。秒数が不正な場合や`qa`なしのビルドで計測を指定した場合もエラーになります。
 
 ```sh
 MEASURELAB_PROFILE_SECONDS=10 MEASURELAB_PROFILE_DEVICE="BlackHole 16ch" MEASURELAB_PROFILE_CHANNEL=16 \
@@ -224,6 +226,24 @@ ScopeのX固定カーソルが取得更新・非表示中も新しいサンプ�
 ```sh
 MEASURELAB_PROFILE_SECONDS=5 MEASURELAB_PROFILE_LIFECYCLE=1 MEASURELAB_PROFILE_IDLE=1 \
     ./scripts/cargo.sh run --release --features qa -- --demo
+```
+
+仮想デバイスを使う停止・再開の統合確認は`MEASURELAB_PROFILE_INPUT_LIFECYCLE=1`で実行します。共通の生サンプル／STFTカーソル、全測定器の保持、遅着結果の除外、停止中の表示・解析設定変更、非表示／再表示、再開時の世代更新、実入力→内部デモ→実入力の切り替えをアプリの入力経路で検証します。`MEASURELAB_PROFILE_SWITCH_DEVICE`を指定すると、最後に別のデバイスへ切り替えます。内部デモのライフサイクルとは別々に実行し、状態変更を含む性能値は通常の基準値と区別します。取得欠落は入力を切り替えてもQA全体で累積します。
+
+```sh
+MEASURELAB_PROFILE_SECONDS=12 MEASURELAB_PROFILE_DEVICE="BlackHole 16ch" \
+    MEASURELAB_PROFILE_CHANNEL=16 MEASURELAB_PROFILE_INPUT_LIFECYCLE=1 \
+    MEASURELAB_PROFILE_SWITCH_DEVICE="BlackHole 2ch" MEASURELAB_PROFILE_IDLE=1 \
+    ./scripts/cargo.sh run --release --locked --features qa
+```
+
+長時間の欠落とプロセスのRSSは`profile-stage2.sh`で記録します。事前にreleaseの`qa`版をビルドし、名前を指定して実行すると、アプリのログと1秒ごとのRSS（KiB）を`dist/stage2-qa/`へ保存します。秒数を省略すると600秒です。RSSは現在の常駐メモリであり、GPUの実行時間やVRAM使用量ではありません。履歴を満たす起動区間と、その後の周回区間を分けて比較してください。画面撮影・並行ビルドなど条件が異なる実行は直接比較しません。
+
+```sh
+./scripts/cargo.sh build --release --locked --features qa
+MEASURELAB_PROFILE_DEVICE="BlackHole 16ch" MEASURELAB_PROFILE_CHANNEL=16 \
+    ./scripts/profile-stage2.sh blackhole16-600
+MEASURELAB_PROFILE_SECONDS=120 ./scripts/profile-stage2.sh demo-120 --demo
 ```
 
 FFT精度と最大窓長を揃えた性能計測には、QA専用の環境変数を使えます。省略時はf64・8,192点です。`f32`は各FFTだけを変更し、共通履歴はf64のままです。VSync有効時と`--low-latency`の間隔を区別して比較します。
@@ -251,6 +271,58 @@ MEASURELAB_PROFILE_SECONDS=10 MEASURELAB_PROFILE_FFT_PRECISION=f64 \
 - `src/app.rs`: 共通の入力操作UIと複数プロット表示。
 
 選定したライブラリの一次資料: [CPAL](https://docs.rs/cpal/0.18.2/cpal/)、[rtrb](https://docs.rs/rtrb/0.4.0/rtrb/)、[eframe](https://docs.rs/eframe/0.36.2/eframe/)、[egui-wgpu](https://docs.rs/egui-wgpu/0.36.2/egui_wgpu/)。
+
+## 段階2の統合検証（2026-10-05）
+
+macOS / Intel Iris Pro Graphics 6200 / Rust 1.99で、Scope・Spectrum・Spectrogram・XYを同時に使う段階2のプロトタイプを確認しました。物理入力はユーザー確認済みとし、今回は内部デモとBlackHole 16ch／2chに絞って検証しています。
+
+54件の単体・統合テスト、全ターゲット・全機能のClippy、`cargo fmt --check`、通常版とqa版のreleaseデスクトップビルドが成功しました。追加した計測テストは、8,192フレームを超えた後の遅いフレームもp95へ反映すること、計測用メモリの固定容量、ヒストグラムの範囲外、入力切り替えをまたぐ欠落の累積を確認しています。macOSアプリバンドルも再ビルドし、署名検証とヘルプ起動が成功しました。
+
+MetalのGPU読み戻しではScope／Spectrumの各412個の所定色ピクセル、XYの985個の紫色ピクセル、Spectrogramの循環・時間順序・欠落・最大FFTのNyquistビンが成功しました。停止時の線分・寸法uniform・テクスチャ・時間区間の再転送省略も再確認しています。
+
+通常幅1440 × 860と狭幅1040 × 780を撮影し、広い画面の2列 × 2段と狭い画面の上下4行、A/Bの同じサンプルと2.5 ms差、共通周波数・解析窓、XYの90度位相差の円、欠落の縞と未保持の空白を目視確認しました。画像は`dist/stage2-qa/cursors-wide.png`と`cursors-compact.png`です。
+
+内部デモのライフサイクルQAでは、位置を保持するScope／Spectrogramカーソル、トリガー基準のTrace Snap、XY Freeとの切り替え、非表示中の新しいサンプルへの追従、全測定器の停止データ保持、次回開始用の設定、遅着結果除外、再開時の無効化が成功しました。停止中は433.6 ms再描画せず待機できました。
+
+実際のCPAL経路では、通常幅のBlackHole 16ch→停止→再開→内部デモ→BlackHole 2chと、狭幅の2ch→停止→再開→内部デモ→16chを確認しました。保持中の生サンプル・FFT窓／平均・STFT履歴・XY更新番号・カーソルの整合、表示変更、非表示／再表示、再開後の世代更新が成功し、取得／STFT入力／結果の欠落はどちらも0 / 0 / 0でした。設定を変更する検証なので、この実行の性能値は通常の基準値に含めません。
+
+BlackHoleの既知信号QAでは96 kHzで192,512フレームを取得し、全16chの異なる周波数と0.125 FS peak、CH 16のSTFT −18.062 dBFSを確認しました。測定区間の欠落とストリームエラーは0です。CoreAudioのoverload通知は起動待ちとストリーム終了時に出たため、測定区間と区別しています。
+
+### 4画面のフレーム時間と欠落
+
+すべてrelease・qa・4画面・Input設定を開いた状態で、起動後2秒を除外しました。指定の計測秒数にこの2秒を加えた時間でアプリを閉じます。両FFTの精度はf64、窓はHann、hopはN/4です。通常幅は2列 × 2段、狭幅は上下4行です。UI性能計測はビルド・他の測定アプリと重ねず、仮想入力の性能計測には既知信号QA用の出力を接続せず無音を使いました。信号ありの計算精度は既知信号QA、描画と継続更新は内部デモで確認しています。
+
+| 入力・FFT・配置 | 同期 | 計測秒数 | UI間隔p95 | eframe処理p95 | 取得／STFT入力／結果の欠落 |
+| --- | --- | ---: | ---: | ---: | --- |
+| デモ・48 kHz・8,192・通常幅 | VSync | 120 | 17.920 ms | 4.880 ms | 0 / 0 / 0 |
+| デモ・48 kHz・8,192・狭幅 | VSync | 30 | 17.720 ms | 3.990 ms | 0 / 0 / 0 |
+| デモ・48 kHz・32,768・通常幅 | VSync | 30 | 17.860 ms | 5.150 ms | 0 / 0 / 0 |
+| デモ・48 kHz・32,768・通常幅 | `--low-latency` | 30 | 7.380 ms | 1.670 ms | 0 / 0 / 0 |
+| BlackHole・96 kHz・16ch・CH 16・8,192・狭幅 | VSync | 30 | 17.760 ms | 4.890 ms | 0 / 0 / 0 |
+| BlackHole・96 kHz・16ch・CH 16・32,768・通常幅 | VSync | 30 | 17.940 ms | 6.120 ms | 0 / 0 / 0 |
+| BlackHole・96 kHz・16ch・CH 16・8,192・通常幅 | VSync | 600 | 17.880 ms | 5.630 ms | 0 / 0 / 0 |
+
+以前の4画面・f64・8,192点・VSync・10秒の基準は、通常幅18.130 / 4.950 ms、狭幅17.964 / 4.561 ms（UI間隔 / eframe処理）です。今回も同じ表示条件で近い値を記録しましたが、計測時間・カーソル実装・QAの集計方式が異なるので、微小な差を改善率とは扱いません。
+
+**通常VSyncのUI間隔p95 16.7 msと、フレーム全体のCPU処理4 ms程度の目安は、複数の条件で未達です。** 最大FFT・96 kHz／16chでeframe処理p95は6.120 msでした。この条件の呼び出しごとのCPU時間p95は、入力の取り込み0.670 ms、Spectrum FFT 2.640 ms、Scope準備0.440 ms、Spectrum準備0.260 ms、STFT結果取り込み0.080 ms、XY準備0.510 msです。計測した処理ではSpectrum FFTが最大で、後続の解析追加時のワーカー移行候補です。これらのp95は足してフレーム全体のp95にできず、eguiとレンダラーを含む残りの処理の詳しい内訳は未計測です。
+
+低遅延モードとの比較では表示同期による差が大きいため、CPU計算の短縮だけでVSync間隔が同じ比率で短縮するとは判断しません。GPU実行時間と取得から表示までの遅延は今回も未計測です。
+
+### 循環履歴とメモリ
+
+RSSは`profile-stage2.sh`で1秒ごとに採取しました。デモ120秒では2,855行を生成して512行の履歴が周回し、30〜122秒のRSSは81.18〜81.88 MiB、最後の30秒は81.80〜81.88 MiBでした。
+
+BlackHole 16chの600秒計測では35,972フレームと28,198行を処理し、512行の履歴が約55周分更新されました。RSSは30〜120秒で111.43〜111.80 MiB、121〜479秒で111.80〜112.19 MiB、480〜602秒で112.19〜112.28 MiBです。初期充填後にも約0.85 MiBの緩やかな増加を観測しましたが、最後の約2分の幅は約0.09 MiBでした。固定容量の履歴・キューの検証とプロセス全体のRSSの増減を区別し、メモリ増加が完全に0だったとは扱いません。取得・ワーカー入力・解析結果の欠落と入力ストリームエラーは0です。
+
+SpectrogramのCPU配列／GPUテクスチャは8,192点で各16 MiB、32,768点で各40 MiBです。履歴は512行、XYは最大32,768点、ワーカーの入力・結果キューも固定容量を維持しました。現在RSSと最大RSS、CPU配列のサイズとプロセス全体のRSSは別の指標です。今回の有限時間の確認から無期限のメモリ安定性を保証しません。
+
+### CPU単体ベンチマークと完了判断
+
+連続UI計測を終えてから、全4種類のrelease CPUベンチマークを単独で実行しました。FFT＋Spectrum準備の平均は、1,024 / 8,192 / 32,768点のf64で0.011 / 0.096 / 0.394 ms、f32で0.011 / 0.086 / 0.379 msです。最大f64の内訳はFFT 0.321 ms＋準備0.073 msでした。以前の最大f64 0.409 msと同程度で、単回の差を改善率とは扱いません。
+
+Scopeの48,000 / 192,000 / 1,000,000サンプルの極値準備は0.328 / 1.125 / 5.139 ms、Spectrogramの1,024 / 8,192 / 32,768点の履歴追加＋時間区間準備は0.003 / 0.003 / 0.006 ms/行です。200 msのXY準備は48 / 192 / 1,000 kHzで0.030 / 0.103 / 0.104 msでした。1 MHzは合成履歴の性能確認で、実入力仕様ではありません。ワーカーCPUの合計はデモ120秒で1,083.760 ms、BlackHole600秒で11,225.620 msでした。ワーカーの集計は入力ブロック処理を含み、FFT単体の実行時間とは区別します。
+
+数値・GPU・4画面・通常幅／狭幅・停止／再開・仮想入力切り替え・連続動作・性能／欠落／メモリの記録が揃ったため、段階2をプロトタイプとして完了とします。性能目標の未達、GPU実行時間、入力から表示までの遅延、Windows／Linux実機は後続の検証課題です。物理入力は今回の自動検証とは別にユーザー確認済みとして扱います。Ruffのチェック／整形確認とMarkdown lintも成功しています。ログとRSSのCSVはローカルの`dist/stage2-qa/`に保存しました。
 
 ## 共通停止とカーソルの確認結果（2026-10-04）
 
