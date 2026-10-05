@@ -201,7 +201,7 @@ mod tests {
             demo.append(&mut history, 48, 48000);
             let rms = (history
                 .samples(history.range())
-                .map(|frame| frame[1].powi(2))
+                .map(|frame| frame.unwrap()[1].powi(2))
                 .sum::<f64>()
                 / 48.0)
                 .sqrt();

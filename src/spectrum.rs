@@ -288,7 +288,9 @@ impl Analyzer {
 
     pub fn update(&mut self, history: &History, channel: usize) -> bool {
         let end = history.range().end;
-        if history.len() < self.settings.size || channel >= history.channels() {
+        if end - history.contiguous_range().start < self.settings.size as u64
+            || channel >= history.channels()
+        {
             self.reset();
             return false;
         }
@@ -318,6 +320,10 @@ impl Analyzer {
             self.reset();
         }
         for (value, frame) in self.samples.iter_mut().zip(history.samples(range.clone())) {
+            let Some(frame) = frame else {
+                self.reset();
+                return false;
+            };
             *value = frame[channel];
         }
         self.process_window(range.end, channel);
@@ -569,6 +575,45 @@ struct Bucket {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn missing_frames_reject_fft_windows_and_reset_averages_before_recovery() {
+        for precision in [Precision::F64, Precision::F32] {
+            let mut history = History::new(4096);
+            let mut analyzer = Analyzer::new(
+                Settings {
+                    size: 1024,
+                    averages: 4,
+                    precision,
+                    ..Settings::default()
+                },
+                48000,
+            );
+            let sample = |i: u64, amplitude: f64| {
+                amplitude * (std::f64::consts::TAU * 32.0 * i as f64 / 1024.0).cos()
+            };
+            for i in 0..1024 {
+                history.push_at(i, [sample(i, 0.5), 0.0]);
+            }
+            assert!(analyzer.update(&history, 0));
+            assert!((analyzer.db()[32] + 6.0206).abs() < 0.003);
+            // Even inside the snapshot hop gate, a loss invalidates the old result.
+            history.push_at(1025, [sample(1025, 0.25), 0.0]);
+            assert!(!analyzer.update(&history, 0));
+            assert!(analyzer.window().is_none());
+            assert!(history.get(1023).is_some());
+            assert!(history.get(1024).is_none());
+            assert!(!analyzer.update_window(&history, 2..1026, 0));
+            assert!(analyzer.window().is_none());
+            for i in 1026..2049 {
+                history.push_at(i, [sample(i, 0.25), 0.0]);
+            }
+            assert!(analyzer.update(&history, 0));
+            assert_eq!(analyzer.window().unwrap().start, 1025);
+            assert!((analyzer.db()[32] + 12.0412).abs() < 0.003);
+            assert_eq!(analyzer.hold()[32], analyzer.db()[32]);
+        }
+    }
 
     #[test]
     fn cursor_reports_actual_channel_window_and_average_without_reprocessing() {

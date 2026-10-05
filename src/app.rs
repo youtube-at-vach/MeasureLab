@@ -1116,7 +1116,7 @@ impl ScopeApp {
         // Bound catch-up after window suspension, and never join a false gap.
         if elapsed > 0.25 {
             let missing = ((elapsed - 0.25) * self.sample_rate as f64) as u64;
-            self.history.clear_at(self.history.range().end + missing);
+            self.history.advance_to(self.history.range().end + missing);
             self.dropped += missing;
             self.analyzer.reset();
             self.spectrum_dirty = true;
@@ -1247,8 +1247,8 @@ impl ScopeApp {
             return;
         }
         // Read only the currently available batch: UI work is bounded even if
-        // the producer keeps running. A gap clears history instead of drawing
-        // a false continuous signal across lost samples.
+        // the producer keeps running. History marks gaps without expiring
+        // retained samples; analysis must still reset across missing input.
         let available = capture.consumer.slots();
         if let Ok(chunk) = capture.consumer.read_chunk(available) {
             for frame in chunk {
@@ -1256,7 +1256,6 @@ impl ScopeApp {
                     .expected_sequence
                     .is_some_and(|expected| expected != frame.sequence)
                 {
-                    self.history.clear();
                     self.analyzer.reset();
                     self.spectrum_dirty = true;
                 }

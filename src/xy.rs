@@ -3,7 +3,7 @@ use crate::signal::{Edge, History, Line, Trigger};
 use std::ops::Range;
 
 /// Bound geometry and GPU transfers without decimating into false trajectories.
-/// At longer windows, show the latest contiguous samples and report the limit.
+/// At longer windows, show the latest retained time span and report the limit.
 pub const MAX_POINTS: usize = 32_768;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -72,19 +72,20 @@ pub fn nearest_sample(
     history
         .samples(range.clone())
         .enumerate()
-        .map(|(i, frame)| {
+        .filter_map(|(i, frame)| {
+            let frame = frame?;
             let [x, y] = settings.fraction_at_point([frame[0], frame[1]]);
-            (
+            Some((
                 range.start + i as u64,
                 (x - point[0]).powi(2) + (y - point[1]).powi(2),
-            )
+            ))
         })
         .min_by(|a, b| a.1.total_cmp(&b.1).then_with(|| b.0.cmp(&a.0)))
         .map(|(sample, _)| sample)
 }
 
-/// Each vertex uses both channels of the same frame. History retains only the
-/// latest continuous interval, so no connector can cross an acquisition gap.
+/// Each vertex uses both channels of the same frame. Missing positions break
+/// the trajectory, so no connector can cross an acquisition gap.
 /// Coordinates are calculated in f64 and converted only at the display boundary.
 pub fn build_lines(
     history: &History,
@@ -117,6 +118,10 @@ pub fn build_triggered_lines(
     let capture = select_capture(history, sample_rate, settings, trigger);
     let mut previous = None;
     for frame in history.samples(capture.range.clone()) {
+        let Some(frame) = frame else {
+            previous = None;
+            continue;
+        };
         let point = settings
             .fraction_at_point([frame[0], frame[1]])
             .map(|v| v as f32);
@@ -234,7 +239,8 @@ mod tests {
         history.push_at(history.range().end + 100, [0.0, 0.0]);
         let capture =
             build_triggered_lines(&history, 1000, settings, Trigger::default(), &mut lines);
-        assert!(capture.range.is_empty());
+        assert!(!capture.triggered);
+        assert_eq!(capture.range, start + 541..start + 581);
         assert!(lines.is_empty());
     }
 
@@ -349,6 +355,36 @@ mod tests {
         history.clear_at(0);
         build_lines(&history, 1000, settings, &mut lines);
         assert!(lines.is_empty());
+    }
+
+    #[test]
+    fn small_gap_preserves_both_trajectories_without_connecting_them() {
+        let mut history = History::new(16);
+        for i in [100, 101, 102, 104, 105, 106] {
+            history.push_at(i, [if i < 103 { -0.5 } else { 0.5 }, 0.0]);
+        }
+        let settings = Settings {
+            milliseconds: 1000.0,
+            ..Settings::default()
+        };
+        let mut lines = Vec::new();
+        let capture = build_lines(&history, 1000, settings, &mut lines);
+        assert_eq!(capture.range, 100..107);
+        assert_eq!(lines.len(), 4);
+        assert!(lines.iter().all(|line| line.a[0] == line.b[0]));
+        assert!(history.get(103).is_none());
+        assert_eq!(
+            nearest_sample(&history, capture.range.clone(), settings, [0.25, 0.5]),
+            Some(102)
+        );
+        assert_eq!(
+            nearest_sample(&history, capture.range, settings, [0.75, 0.5]),
+            Some(106)
+        );
+        assert_eq!(
+            nearest_sample(&history, 103..104, settings, [0.5, 0.5]),
+            None
+        );
     }
 
     #[test]

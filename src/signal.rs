@@ -7,9 +7,11 @@ pub type Samples = [f64; MAX_CHANNELS];
 /// Fixed allocation, with absolute indices so wrapping never changes time ordering.
 pub struct History {
     data: Vec<f64>,
+    valid: Vec<bool>,
     channels: usize,
     end: u64,
     len: usize,
+    contiguous_start: u64,
 }
 
 impl History {
@@ -21,9 +23,11 @@ impl History {
         assert!(capacity > 0 && (1..=MAX_CHANNELS).contains(&channels));
         Self {
             data: vec![0.0; capacity * channels],
+            valid: vec![false; capacity],
             channels,
             end: 0,
             len: 0,
+            contiguous_start: 0,
         }
     }
 
@@ -35,32 +39,62 @@ impl History {
         self.push_at(self.end, samples);
     }
 
-    /// Preserve source sample coordinates. Never join across missing frames.
+    /// Preserve source sample coordinates and retained frames around gaps.
+    /// Incomplete channel frames are discarded; they remain missing if input resumes.
     pub fn push_at(&mut self, sequence: u64, samples: impl AsRef<[f64]>) {
         let samples = samples.as_ref();
-        assert!(samples.len() >= self.channels);
-        if sequence != self.end {
-            self.clear();
+        if samples.len() < self.channels {
+            return;
         }
-        let capacity = self.data.len() / self.channels;
-        let index = (sequence % capacity as u64) as usize * self.channels;
+        self.advance_to(sequence);
+        let capacity = self.valid.len();
+        let slot = (sequence % capacity as u64) as usize;
+        let index = slot * self.channels;
         for (target, &sample) in self.data[index..index + self.channels]
             .iter_mut()
             .zip(samples)
         {
             *target = if sample.is_finite() { sample } else { 0.0 };
         }
+        self.valid[slot] = true;
         self.end = sequence + 1;
         self.len = (self.len + 1).min(capacity);
     }
 
+    /// Advance the source clock through missing frames with bounded work and
+    /// no allocation. A restart or gap beyond capacity expires all old frames.
+    pub fn advance_to(&mut self, next_sequence: u64) {
+        if next_sequence == self.end {
+            return;
+        }
+        let capacity = self.valid.len();
+        if self.is_empty()
+            || next_sequence < self.end
+            || next_sequence - self.end >= capacity as u64
+        {
+            self.clear_at(next_sequence);
+            return;
+        }
+        let missing = (next_sequence - self.end) as usize;
+        self.contiguous_start = next_sequence;
+        let start = (self.end % capacity as u64) as usize;
+        let first = missing.min(capacity - start);
+        self.valid[start..start + first].fill(false);
+        self.valid[..missing - first].fill(false);
+        self.len = (self.len + missing).min(capacity);
+        self.end = next_sequence;
+    }
+
     pub fn clear(&mut self) {
         self.len = 0;
+        self.contiguous_start = self.end;
     }
     pub fn clear_at(&mut self, next_sequence: u64) {
         self.clear();
         self.end = next_sequence;
+        self.contiguous_start = next_sequence;
     }
+    /// Retained time span in frames, including missing positions.
     pub fn len(&self) -> usize {
         self.len
     }
@@ -70,27 +104,40 @@ impl History {
     pub fn range(&self) -> Range<u64> {
         self.end - self.len as u64..self.end
     }
+    /// Latest uninterrupted input, suitable for complete FFT/trigger windows.
+    pub fn contiguous_range(&self) -> Range<u64> {
+        self.contiguous_start.max(self.range().start)..self.end
+    }
     pub fn get(&self, index: u64) -> Option<&[f64]> {
-        self.range().contains(&index).then(|| {
-            let capacity = self.data.len() / self.channels;
-            let start = (index % capacity as u64) as usize * self.channels;
-            &self.data[start..start + self.channels]
-        })
+        if !self.range().contains(&index) {
+            return None;
+        }
+        let slot = (index % self.valid.len() as u64) as usize;
+        let start = slot * self.channels;
+        self.valid[slot].then(|| &self.data[start..start + self.channels])
     }
 
     /// Caller validates that the complete range is retained. Walk the two
     /// contiguous ring slices without a division or range check per sample.
-    pub(crate) fn samples(&self, range: Range<u64>) -> impl Iterator<Item = &[f64]> + '_ {
+    /// Missing positions yield None rather than fabricated samples.
+    pub(crate) fn samples(&self, range: Range<u64>) -> impl Iterator<Item = Option<&[f64]>> + '_ {
         let count = (range.end - range.start) as usize;
         let capacity = self.data.len() / self.channels;
         let start = (range.start % capacity as u64) as usize;
         let first = count.min(capacity - start);
-        self.data[start * self.channels..(start + first) * self.channels]
+        let frames = self.data[start * self.channels..(start + first) * self.channels]
             .chunks_exact(self.channels)
-            .chain(self.data[..(count - first) * self.channels].chunks_exact(self.channels))
+            .chain(self.data[..(count - first) * self.channels].chunks_exact(self.channels));
+        let valid = self.valid[start..start + first]
+            .iter()
+            .chain(&self.valid[..count - first]);
+        frames
+            .zip(valid)
+            .map(|(frame, &valid)| valid.then_some(frame))
     }
 
-    /// Latest complete sweep. Trigger position is 20% from the left edge.
+    /// Latest complete triggered sweep, or latest time span with gaps in auto
+    /// mode. Trigger position is 20% from the left edge.
     pub fn sweep(&self, count: usize, trigger: Trigger) -> Sweep {
         let count = count.max(2).min(self.len);
         if count < 2 {
@@ -104,13 +151,17 @@ impl History {
         let latest_start = available.end - count as u64;
         if trigger.edge != Edge::Free && trigger.channel < self.channels {
             let pre = (count / 5) as u64;
-            let first = (available.start + pre).max(available.start + 1);
+            let start = self.contiguous_range().start;
+            let first = (start + pre).max(start + 1);
             let last = latest_start + pre;
             // A bounded backwards scan; old captures are not searched forever.
             let first = first.max(last.saturating_sub(count as u64 * 2));
             for index in (first..=last).rev() {
-                let a = self.get(index - 1).unwrap()[trigger.channel];
-                let b = self.get(index).unwrap()[trigger.channel];
+                let (Some(a), Some(b)) = (self.get(index - 1), self.get(index)) else {
+                    continue;
+                };
+                let a = a[trigger.channel];
+                let b = b[trigger.channel];
                 let crossed = match trigger.edge {
                     Edge::Rising => a < trigger.level && b >= trigger.level,
                     Edge::Falling => a > trigger.level && b <= trigger.level,
@@ -237,13 +288,19 @@ pub fn build_sweep_lines(
         let mut min = f64::INFINITY;
         let mut max = f64::NEG_INFINITY;
         let mut square_sum = 0.0_f64;
+        let mut valid_count = 0;
         if count <= pixels * 2 {
             let mut previous = None;
             for (offset, frame) in history.samples(range.clone()).enumerate() {
+                let Some(frame) = frame else {
+                    previous = None;
+                    continue;
+                };
                 let value = frame[channel];
                 min = min.min(value);
                 max = max.max(value);
                 square_sum += value * value;
+                valid_count += 1;
                 let point = [x(offset as f64), y(value)];
                 if let Some(a) = previous {
                     output.push(Line {
@@ -264,8 +321,13 @@ pub fn build_sweep_lines(
                 let mut hi = f64::NEG_INFINITY;
                 let mut first = 0.0;
                 let mut last = 0.0;
+                let mut missing = false;
                 for offset in begin..end {
-                    let value = samples.next().unwrap()[channel];
+                    let Some(frame) = samples.next().unwrap() else {
+                        missing = true;
+                        continue;
+                    };
+                    let value = frame[channel];
                     if offset == begin {
                         first = value;
                     }
@@ -273,9 +335,16 @@ pub fn build_sweep_lines(
                     lo = lo.min(value);
                     hi = hi.max(value);
                     square_sum += value * value;
+                    valid_count += 1;
                 }
                 min = min.min(lo);
                 max = max.max(hi);
+                // Omit a pixel bucket containing a gap: neither its envelope
+                // nor its connector may merge separate acquisition intervals.
+                if missing {
+                    previous = None;
+                    continue;
+                }
                 let x = x((begin + end - 1) as f64 * 0.5);
                 if let Some(a) = previous {
                     output.push(Line {
@@ -292,11 +361,13 @@ pub fn build_sweep_lines(
                 previous = Some([x, y(last)]);
             }
         }
-        result[channel] = Measurement {
-            peak: min.abs().max(max.abs()),
-            rms: (square_sum / count as f64).sqrt(),
-            peak_to_peak: max - min,
-        };
+        if valid_count > 0 {
+            result[channel] = Measurement {
+                peak: min.abs().max(max.abs()),
+                rms: (square_sum / valid_count as f64).sqrt(),
+                peak_to_peak: max - min,
+            };
+        }
     }
     result
 }
@@ -304,6 +375,138 @@ pub fn build_sweep_lines(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn gaps_preserve_retained_frames_and_invalidate_wrapped_slots_without_allocation() {
+        let mut history = History::new(8);
+        let storage = history.data.as_ptr();
+        let validity = history.valid.as_ptr();
+        for sequence in 100..108 {
+            history.push_at(sequence, [sequence as f64, 0.0]);
+        }
+        history.advance_to(110);
+        assert_eq!(history.range(), 102..110);
+        assert_eq!(history.contiguous_range(), 110..110);
+        history.push_at(110, [110.0, 0.0]);
+        assert_eq!(history.range(), 103..111);
+        assert_eq!(history.contiguous_range(), 110..111);
+        assert_eq!(
+            history
+                .samples(history.range())
+                .map(|s| s.map(|s| s[0]))
+                .collect::<Vec<_>>(),
+            [
+                Some(103.0),
+                Some(104.0),
+                Some(105.0),
+                Some(106.0),
+                Some(107.0),
+                None,
+                None,
+                Some(110.0)
+            ]
+        );
+        assert!(history.get(108).is_none());
+        assert!(history.get(109).is_none());
+        history.push_at(111, [111.0, 0.0]);
+        assert_eq!(history.get(107).unwrap()[0], 107.0);
+        for sequence in 112..119 {
+            history.push_at(sequence, [sequence as f64, 0.0]);
+        }
+        // This gap straddles the end of the validity ring.
+        history.push_at(122, [122.0, 0.0]);
+        assert_eq!(history.range(), 115..123);
+        assert_eq!(history.get(117).unwrap()[0], 117.0);
+        assert_eq!(history.get(118).unwrap()[0], 118.0);
+        for missing in 119..122 {
+            assert!(history.get(missing).is_none());
+        }
+        for sequence in 123..131 {
+            history.push_at(sequence, [sequence as f64, 0.0]);
+        }
+        assert_eq!(history.contiguous_range(), 123..131);
+        assert!(
+            history
+                .samples(history.range())
+                .all(|frame| frame.is_some())
+        );
+        // A jump far beyond capacity must not iterate over all missing frames.
+        history.push_at(1_u64 << 54, [0.25, 0.0]);
+        assert_eq!(history.len(), 1);
+        assert!(history.get(111).is_none());
+        history.push_at(3, [0.5, 0.0]);
+        assert_eq!(history.range(), 3..4);
+        assert_eq!(history.contiguous_range(), 3..4);
+        assert_eq!(history.data.as_ptr(), storage);
+        assert_eq!(history.valid.as_ptr(), validity);
+    }
+
+    #[test]
+    fn incomplete_channel_frames_are_discarded_and_become_gaps() {
+        let mut history = History::with_channels(8, 16);
+        history.push_at(100, [0.25; 16]);
+        history.push_at(101, [0.5; 15]);
+        assert_eq!(history.range(), 100..101);
+        assert_eq!(history.get(100).unwrap(), &[0.25; 16]);
+        history.push_at(102, [0.75; 16]);
+        assert_eq!(history.range(), 100..103);
+        assert!(history.get(101).is_none());
+        assert_eq!(history.get(102).unwrap(), &[0.75; 16]);
+    }
+
+    #[test]
+    fn scope_breaks_lines_at_gaps_and_measures_only_acquired_samples() {
+        let mut history = History::new(32);
+        for i in 0..16 {
+            if i != 7 {
+                history.push_at(i, [if i == 9 { 1.0 } else { 0.5 }, 0.0]);
+            }
+        }
+        for pixels in [4, 100] {
+            let mut lines = Vec::new();
+            let measured = build_lines(&history, 0..16, pixels, 0.25, [true, false], &mut lines);
+            assert_eq!(measured[0].peak, 1.0);
+            assert_eq!(measured[0].peak_to_peak, 0.5);
+            assert!((measured[0].rms - (4.5_f64 / 15.0).sqrt()).abs() < 1e-12);
+            let gap = 7.0 / 15.0;
+            assert!(
+                lines
+                    .iter()
+                    .all(|line| !(line.a[0] < gap && line.b[0] > gap))
+            );
+            assert!(lines.iter().any(|line| line.a[0] < gap));
+            assert!(lines.iter().any(|line| line.a[0] > gap));
+            assert!(lines.len() <= pixels * 2);
+            history.advance_to(20);
+            let empty = build_lines(&history, 16..20, pixels, 0.25, [true, false], &mut lines);
+            assert!(lines.is_empty());
+            assert_eq!(empty[0].peak, 0.0);
+            assert_eq!(empty[0].rms, 0.0);
+            assert_eq!(empty[0].peak_to_peak, 0.0);
+        }
+    }
+
+    #[test]
+    fn trigger_does_not_reuse_pre_gap_crossings_and_recovers_after_a_complete_window() {
+        let mut history = History::new(128);
+        for i in 0..64 {
+            if i != 60 {
+                history.push_at(i, [if i % 8 < 4 { -0.5 } else { 0.5 }, 0.0]);
+            }
+        }
+        let sweep = history.sweep(16, Trigger::default());
+        assert!(!sweep.triggered);
+        assert_eq!(sweep.range, 48..64);
+        assert!(history.get(59).is_some());
+        assert!(history.get(60).is_none());
+        for i in 64..96 {
+            history.push_at(i, [if i % 8 < 4 { -0.5 } else { 0.5 }, 0.0]);
+        }
+        let sweep = history.sweep(16, Trigger::default());
+        assert!(sweep.triggered);
+        assert!(sweep.range.start >= 61);
+        assert!(history.samples(sweep.range).all(|frame| frame.is_some()));
+    }
 
     #[test]
     fn fractional_trigger_alignment_preserves_raw_measurements_and_envelopes() {
@@ -419,7 +622,9 @@ mod tests {
         assert_eq!(h.range(), 103..107);
         assert_eq!(h.get(103).unwrap()[15], 118.0);
         assert_eq!(
-            h.samples(h.range()).map(|s| s[15]).collect::<Vec<_>>(),
+            h.samples(h.range())
+                .map(|s| s.unwrap()[15])
+                .collect::<Vec<_>>(),
             [118.0, 119.0, 120.0, 121.0]
         );
         h.push_at(200, [0.0; 16]);
@@ -451,7 +656,9 @@ mod tests {
         assert_eq!(h.get(2), None);
         assert_eq!(h.get(3), Some([3.0, 0.0].as_slice()));
         assert_eq!(
-            h.samples(h.range()).map(|v| v[0]).collect::<Vec<_>>(),
+            h.samples(h.range())
+                .map(|v| v.unwrap()[0])
+                .collect::<Vec<_>>(),
             vec![3.0, 4.0, 5.0, 6.0]
         );
         h.clear();

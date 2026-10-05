@@ -16,7 +16,8 @@ use std::{
 
 pub const BLOCK_FRAMES: usize = 256;
 pub const INPUT_BLOCKS: usize = 64;
-pub const RESULT_ROWS: usize = 16;
+/// About 0.68 s at 48 kHz / hop 256 (8 MiB at the maximum FFT size).
+pub const RESULT_ROWS: usize = 128;
 const MAX_BINS: usize = 32768 / 2 + 1;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -312,7 +313,14 @@ impl Worker {
 
     pub fn submit(&mut self, sequence: u64, samples: &[f64]) {
         let Some(block) = &self.pending else { return };
-        assert!(samples.len() >= block.config.channels);
+        if samples.len() < block.config.channels {
+            // Finish prior valid input; the malformed frame is a discontinuity,
+            // including when it precedes the first block of a generation.
+            self.flush();
+            self.pending.as_mut().unwrap().dropped_before += 1;
+            self.metrics.input_dropped.fetch_add(1, Ordering::Relaxed);
+            return;
+        }
         if block.len > 0 && sequence != block.start + block.len as u64 {
             self.flush();
         }
@@ -666,6 +674,63 @@ mod tests {
         });
         assert_eq!(next.unwrap().start, 1280);
         assert_eq!(next.unwrap().gap.result_rows, 4);
+    }
+
+    #[test]
+    fn default_result_pool_retains_more_than_100_ms_without_ui_recycling() {
+        let cfg = config();
+        let mut worker = Worker::new();
+        worker.configure(cfg).unwrap();
+        // 24 rows span 128 ms at 48 kHz / hop 256, exceeding the old 16-row pool.
+        let rows = 24;
+        let frames = cfg.size + (rows - 1) * cfg.hop;
+        submit(&mut worker, 0, frames);
+        wait_until(|| {
+            worker.metrics.produced.load(Ordering::Relaxed)
+                + worker.metrics.result_dropped.load(Ordering::Relaxed)
+                == rows as u64
+        });
+        assert_eq!(worker.metrics.result_dropped.load(Ordering::Relaxed), 0);
+        assert_eq!(worker.metrics.input_dropped.load(Ordering::Relaxed), 0);
+        let mut received = 0;
+        worker.drain(|row| {
+            assert_eq!(row.info.start, (received * cfg.hop) as u64);
+            assert_eq!(row.info.gap.result_rows, 0);
+            assert!((row.db()[32] + 6.0206).abs() < 0.003);
+            received += 1;
+        });
+        assert_eq!(received, rows);
+        submit(&mut worker, frames as u64, rows * cfg.hop);
+        wait_until(|| worker.metrics.produced.load(Ordering::Relaxed) == (rows * 2) as u64);
+        worker.drain(|row| {
+            assert_eq!(row.info.start, (received * cfg.hop) as u64);
+            assert_eq!(row.info.gap, Gap::default());
+            received += 1;
+        });
+        assert_eq!(received, rows * 2);
+    }
+
+    #[test]
+    fn incomplete_channel_frames_do_not_panic_or_enter_fft_windows() {
+        for malformed_at in [0, 128] {
+            let mut worker = Worker::new();
+            worker.configure(config()).unwrap();
+            submit(&mut worker, 0, malformed_at as usize);
+            worker.submit(malformed_at, &[0.5; 15]);
+            let start = malformed_at + 1;
+            submit(&mut worker, start, 1024);
+            wait_until(|| worker.metrics.produced.load(Ordering::Relaxed) == 1);
+            let mut received = 0;
+            worker.drain(|row| {
+                assert_eq!(row.info.start, start);
+                assert_eq!(row.info.end, start + 1024);
+                assert_eq!(row.info.gap.input_frames, 1);
+                assert!(row.info.gap.discontinuity);
+                received += 1;
+            });
+            assert_eq!(received, 1);
+            assert_eq!(worker.metrics.input_dropped.load(Ordering::Relaxed), 1);
+        }
     }
 
     #[test]
