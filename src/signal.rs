@@ -97,6 +97,7 @@ impl History {
             return Sweep {
                 range: self.range(),
                 triggered: false,
+                sample_offset: 0.0,
             };
         }
         let available = self.range();
@@ -120,6 +121,10 @@ impl History {
                     return Sweep {
                         range: start..start + count as u64,
                         triggered: true,
+                        // The crossing lies between a and b. Keeping that
+                        // fractional position avoids a full-sample jump when
+                        // noise changes the sign of a sample near the level.
+                        sample_offset: ((b - trigger.level) / (b - a)).clamp(0.0, 1.0),
                     };
                 }
             }
@@ -128,6 +133,7 @@ impl History {
         Sweep {
             range: latest_start..available.end,
             triggered: false,
+            sample_offset: 0.0,
         }
     }
 }
@@ -156,9 +162,13 @@ impl Default for Trigger {
     }
 }
 
+#[derive(Clone, Debug, Default)]
 pub struct Sweep {
     pub range: Range<u64>,
     pub triggered: bool,
+    /// Horizontal correction in sample units. The trigger crossing is this
+    /// far before `range.start + range.len() / 5`; acquired samples stay intact.
+    pub sample_offset: f64,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -186,12 +196,37 @@ pub fn build_lines(
     enabled: [bool; 2],
     output: &mut Vec<Line>,
 ) -> [Measurement; 2] {
+    build_sweep_lines(
+        history,
+        &Sweep {
+            range,
+            ..Sweep::default()
+        },
+        pixels,
+        fs_per_div,
+        enabled,
+        output,
+    )
+}
+
+/// Align real samples to the interpolated trigger time. Only the horizontal
+/// display coordinates change; measurements use the original samples.
+pub fn build_sweep_lines(
+    history: &History,
+    sweep: &Sweep,
+    pixels: usize,
+    fs_per_div: f32,
+    enabled: [bool; 2],
+    output: &mut Vec<Line>,
+) -> [Measurement; 2] {
     output.clear();
+    let range = sweep.range.clone();
     let range = range.start.max(history.range().start)..range.end.min(history.range().end);
     if range.end <= range.start + 1 || pixels == 0 {
         return [Measurement::default(); 2];
     }
     let count = (range.end - range.start) as usize;
+    let x = |offset: f64| ((offset + sweep.sample_offset) / (count - 1) as f64) as f32;
     let scale = 1.0 / (fs_per_div.max(0.00001) * 8.0);
     let y = |value: f64| (0.5 - value * scale as f64) as f32;
     let mut result = [Measurement::default(); 2];
@@ -209,7 +244,7 @@ pub fn build_lines(
                 min = min.min(value);
                 max = max.max(value);
                 square_sum += value * value;
-                let point = [offset as f32 / (count - 1) as f32, y(value)];
+                let point = [x(offset as f64), y(value)];
                 if let Some(a) = previous {
                     output.push(Line {
                         a,
@@ -241,7 +276,7 @@ pub fn build_lines(
                 }
                 min = min.min(lo);
                 max = max.max(hi);
-                let x = (begin + end - 1) as f32 * 0.5 / (count - 1) as f32;
+                let x = x((begin + end - 1) as f64 * 0.5);
                 if let Some(a) = previous {
                     output.push(Line {
                         a,
@@ -269,6 +304,88 @@ pub fn build_lines(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn fractional_trigger_alignment_preserves_raw_measurements_and_envelopes() {
+        let mut history = History::new(512);
+        for i in 0..512 {
+            let value = ((i % 16) as f64 - 4.25) * 0.05;
+            history.push([value, -value]);
+        }
+        for channel in 0..2 {
+            for edge in [Edge::Rising, Edge::Falling] {
+                for level in [0.0, 0.1, -0.1] {
+                    let sweep = history.sweep(
+                        80,
+                        Trigger {
+                            edge,
+                            level,
+                            channel,
+                        },
+                    );
+                    assert!(sweep.triggered);
+                    assert!(sweep.sample_offset > 0.0 && sweep.sample_offset < 1.0);
+                    let index = sweep.range.start + 16;
+                    let a = history.get(index - 1).unwrap()[channel];
+                    let b = history.get(index).unwrap()[channel];
+                    let crossing = a * sweep.sample_offset + b * (1.0 - sweep.sample_offset);
+                    assert!((crossing - level).abs() < 1e-15);
+                    for pixels in [8, 100] {
+                        let mut raw = Vec::new();
+                        let mut aligned = Vec::new();
+                        let expected = build_lines(
+                            &history,
+                            sweep.range.clone(),
+                            pixels,
+                            0.25,
+                            [true; 2],
+                            &mut raw,
+                        );
+                        let measured = build_sweep_lines(
+                            &history,
+                            &sweep,
+                            pixels,
+                            0.25,
+                            [true; 2],
+                            &mut aligned,
+                        );
+                        assert_eq!(raw.len(), aligned.len());
+                        for (raw, aligned) in raw.iter().zip(&aligned) {
+                            for (raw, aligned) in [(raw.a, aligned.a), (raw.b, aligned.b)] {
+                                assert_eq!(raw[1], aligned[1]);
+                                assert!(
+                                    ((aligned[0] - raw[0]) as f64 - sweep.sample_offset / 79.0)
+                                        .abs()
+                                        < 1e-7
+                                );
+                            }
+                        }
+                        for channel in 0..2 {
+                            assert_eq!(measured[channel].peak, expected[channel].peak);
+                            assert_eq!(measured[channel].rms, expected[channel].rms);
+                            assert_eq!(
+                                measured[channel].peak_to_peak,
+                                expected[channel].peak_to_peak
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        for edge in [Edge::Free, Edge::Rising] {
+            let sweep = history.sweep(
+                80,
+                Trigger {
+                    edge,
+                    level: 1.0,
+                    channel: 0,
+                },
+            );
+            assert!(!sweep.triggered);
+            assert_eq!(sweep.sample_offset, 0.0);
+            assert_eq!(sweep.range, 432..512);
+        }
+    }
 
     #[test]
     fn history_trigger_and_measurements_preserve_sub_f32_variations() {

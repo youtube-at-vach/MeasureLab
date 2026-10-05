@@ -106,7 +106,56 @@ impl Demo {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::signal::{Trigger, build_sweep_lines};
     use crate::spectrum::{Analyzer, Settings, Window};
+
+    #[test]
+    fn noisy_zero_trigger_keeps_subsample_alignment() {
+        let mut demo = Demo::default();
+        let mut history = History::new(2048);
+        let mut lines = Vec::new();
+        let mut min = f64::INFINITY;
+        let mut max = f64::NEG_INFINITY;
+        let mut amplitude_min = [f64::INFINITY; 2];
+        let mut amplitude_max = [f64::NEG_INFINITY; 2];
+        for _ in 0..128 {
+            demo.append(&mut history, 800, 48000);
+            let sweep = history.sweep(480, Trigger::default());
+            assert!(sweep.triggered);
+            build_sweep_lines(&history, &sweep, 1000, 0.25, [true; 2], &mut lines);
+            // Locate the rendered rising zero crossing nearest the trigger.
+            let crossing = lines
+                .iter()
+                .filter(|line| line.channel == 0 && line.a[1] > 0.5 && line.b[1] <= 0.5)
+                .map(|line| {
+                    let fraction = (line.a[1] as f64 - 0.5) / (line.a[1] as f64 - line.b[1] as f64);
+                    (line.a[0] as f64 + fraction * (line.b[0] as f64 - line.a[0] as f64)) * 479.0
+                })
+                .min_by(|a, b| (a - 96.0).abs().total_cmp(&(b - 96.0).abs()))
+                .unwrap();
+            min = min.min(crossing);
+            max = max.max(crossing);
+            assert!((crossing - 96.0).abs() < 0.001);
+            // Both displayed channels must stay stable away from the trigger,
+            // too. Small genuine noise remains, without sample-sized jumps.
+            let x = (96.0 + 5.5) / 479.0;
+            for channel in 0..2 {
+                let line = lines
+                    .iter()
+                    .find(|line| line.channel == channel && line.a[0] <= x && line.b[0] >= x)
+                    .unwrap();
+                let fraction = (x - line.a[0]) / (line.b[0] - line.a[0]);
+                let amplitude =
+                    (0.5 - (line.a[1] + fraction * (line.b[1] - line.a[1]))) as f64 * 2.0;
+                amplitude_min[channel] = amplitude_min[channel].min(amplitude);
+                amplitude_max[channel] = amplitude_max[channel].max(amplitude);
+            }
+        }
+        assert!(max - min < 0.01, "trigger moved by {} samples", max - min);
+        for channel in 0..2 {
+            assert!(amplitude_max[channel] - amplitude_min[channel] < 0.002);
+        }
+    }
 
     #[test]
     fn chunked_generation_keeps_phase_and_noise_continuous() {

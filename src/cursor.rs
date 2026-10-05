@@ -119,12 +119,23 @@ impl Cursors {
     }
 
     pub fn sample(&self, cursor: TimeCursor, scope: Range<u64>) -> Option<u64> {
+        self.sample_with_offset(cursor, scope, 0.0)
+    }
+
+    /// Resolve a fixed Scope X against fractional trigger alignment while
+    /// preserving absolute and XY trigger-relative sample selections.
+    pub fn sample_with_offset(
+        &self,
+        cursor: TimeCursor,
+        scope: Range<u64>,
+        sample_offset: f64,
+    ) -> Option<u64> {
         if cursor.epoch != self.epoch {
             return None;
         }
         match cursor.position {
             TimePosition::Sample(sample) => Some(sample),
-            TimePosition::ScopeX(x) => sample_at_fraction(scope, x),
+            TimePosition::ScopeX(x) => sample_at_fraction_with_offset(scope, x, sample_offset),
             TimePosition::SpectrogramY(_) => None,
             TimePosition::TraceOffset(offset) => trigger_sample(scope)?.checked_add_signed(offset),
         }
@@ -183,19 +194,37 @@ pub fn signed_distance(sample: u64, reference: u64) -> f64 {
 }
 
 pub fn sample_at_fraction(range: Range<u64>, fraction: f64) -> Option<u64> {
+    sample_at_fraction_with_offset(range, fraction, 0.0)
+}
+
+pub fn sample_at_fraction_with_offset(
+    range: Range<u64>,
+    fraction: f64,
+    sample_offset: f64,
+) -> Option<u64> {
     let count = range.end.checked_sub(range.start)?;
-    if count == 0 || !fraction.is_finite() {
+    if count == 0 || !fraction.is_finite() || !sample_offset.is_finite() {
         return None;
     }
-    let offset = (((count - 1) as f64 * fraction.clamp(0.0, 1.0)).round() as u64).min(count - 1);
+    let offset = (((count - 1) as f64 * fraction.clamp(0.0, 1.0) - sample_offset)
+        .round()
+        .clamp(0.0, (count - 1) as f64)) as u64;
     Some(range.start + offset)
 }
 
 pub fn fraction_at_sample(range: Range<u64>, sample: u64) -> Option<f64> {
-    if !range.contains(&sample) || range.end - range.start < 2 {
+    fraction_at_sample_with_offset(range, sample, 0.0)
+}
+
+pub fn fraction_at_sample_with_offset(
+    range: Range<u64>,
+    sample: u64,
+    sample_offset: f64,
+) -> Option<f64> {
+    if !range.contains(&sample) || range.end - range.start < 2 || !sample_offset.is_finite() {
         return None;
     }
-    Some((sample - range.start) as f64 / (range.end - range.start - 1) as f64)
+    Some(((sample - range.start) as f64 + sample_offset) / (range.end - range.start - 1) as f64)
 }
 
 /// Spectrogram rows occupy half-open sample intervals. Age zero selects the
@@ -222,6 +251,50 @@ pub fn nearest_bin(hz: f64, size: usize, sample_rate: u32) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn scope_cursor_resolves_aligned_samples_without_changing_xy_offsets() {
+        let start = (1_u64 << 54) + 5;
+        let range = start..start + 480;
+        let mut cursors = Cursors::default();
+        cursors.set_scope_time(0, 0.2);
+        let time = cursors.times[0].unwrap();
+        assert_eq!(cursors.sample(time, range.clone()), Some(start + 96));
+        assert_eq!(
+            cursors.sample_with_offset(time, range.clone(), 0.75),
+            Some(start + 95)
+        );
+        assert_eq!(cursors.fraction(time, range.clone()), Some(0.2));
+        for sample in [start, start + 95, range.end - 2] {
+            let fraction = fraction_at_sample_with_offset(range.clone(), sample, 0.75).unwrap();
+            assert_eq!(
+                sample_at_fraction_with_offset(range.clone(), fraction, 0.75),
+                Some(sample)
+            );
+        }
+        assert_eq!(
+            sample_at_fraction_with_offset(range.clone(), 0.0, 0.75),
+            Some(start)
+        );
+        assert_eq!(
+            sample_at_fraction_with_offset(range.clone(), 1.0, 0.75),
+            Some(range.end - 2)
+        );
+        cursors.set_time(0, start + 10);
+        assert_eq!(
+            cursors.sample_with_offset(cursors.times[0].unwrap(), range.clone(), 0.75),
+            Some(start + 10)
+        );
+        cursors.set_trace_time(0, start + 110, range.clone());
+        assert_eq!(
+            cursors.sample_with_offset(cursors.times[0].unwrap(), range.clone(), 0.75),
+            Some(start + 110)
+        );
+        cursors.new_epoch();
+        assert_eq!(cursors.sample_with_offset(time, range, 0.75), None);
+        assert_eq!(sample_at_fraction_with_offset(0..0, 0.2, 0.75), None);
+        assert_eq!(sample_at_fraction_with_offset(0..10, 0.2, f64::NAN), None);
+    }
 
     #[test]
     fn spectrogram_cursors_keep_y_through_updates_wrap_zoom_and_missing_data() {

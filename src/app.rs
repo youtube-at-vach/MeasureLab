@@ -3,7 +3,7 @@ use crate::{
     cursor::{self, Cursors},
     demo::{Demo, Waveform},
     gpu::{COLORS, PlotId, Segment, TraceCallback, TraceRenderer},
-    signal::{Edge, History, Line, Measurement, Trigger, build_lines},
+    signal::{Edge, History, Line, Measurement, Sweep, Trigger, build_sweep_lines},
     spectrogram, spectrogram_gpu,
     spectrum::{self, Analyzer, FFT_SIZES, FrequencyScale, Precision, Settings, View, Window},
     stft::{self, RowInfo},
@@ -189,6 +189,7 @@ pub struct ScopeApp {
     cursors: Cursors,
     active_cursor: usize,
     scope_range: std::ops::Range<u64>,
+    scope_sample_offset: f64,
     expected_sequence: Option<u64>,
     sample_rate: u32,
     channels: u16,
@@ -333,6 +334,7 @@ impl ScopeApp {
             cursors: Cursors::default(),
             active_cursor: 0,
             scope_range: 0..0,
+            scope_sample_offset: 0.0,
             expected_sequence: None,
             sample_rate: 48_000,
             channels: 0,
@@ -930,6 +932,7 @@ impl ScopeApp {
         self.cursors.new_epoch();
         self.history.clear_at(0);
         self.scope_range = 0..0;
+        self.scope_sample_offset = 0.0;
         self.xy_capture = xy::Capture::default();
         self.xy_trace_range = 0..0;
         self.measurements = [Measurement::default(); 2];
@@ -969,14 +972,13 @@ impl ScopeApp {
                     self.spectrogram_seconds,
                     row.config.sample_rate,
                 )
+            } else if time.trace_offset().is_some() {
+                self.cursors.sample(time, self.xy_trace_range.clone())
             } else {
-                self.cursors.sample(
+                self.cursors.sample_with_offset(
                     time,
-                    if time.trace_offset().is_some() {
-                        self.xy_trace_range.clone()
-                    } else {
-                        self.scope_range.clone()
-                    },
+                    self.scope_range.clone(),
+                    self.scope_sample_offset,
                 )
             }
         })
@@ -984,8 +986,10 @@ impl ScopeApp {
 
     fn scope_cursor_seconds(&self, sample: u64) -> Option<f64> {
         let trigger = cursor::trigger_sample(self.scope_range.clone())?;
-        (self.sample_rate > 0)
-            .then(|| cursor::signed_distance(sample, trigger) / self.sample_rate as f64)
+        (self.sample_rate > 0).then(|| {
+            (cursor::signed_distance(sample, trigger) + self.scope_sample_offset)
+                / self.sample_rate as f64
+        })
     }
 
     fn scope_sample_count(&self) -> usize {
@@ -1000,6 +1004,7 @@ impl ScopeApp {
             let sweep = self.history.sweep(count, self.trigger);
             let ready = self.history.len() >= count;
             self.triggered = ready && sweep.triggered;
+            self.scope_sample_offset = if ready { sweep.sample_offset } else { 0.0 };
             self.scope_range = if ready { sweep.range } else { 0..0 };
         }
     }
@@ -1018,9 +1023,8 @@ impl ScopeApp {
         for (index, time) in self.cursors.times.into_iter().enumerate() {
             let Some(time) = time else { continue };
             if time.scope_x().is_some() {
-                if let Some(seconds) =
-                    self.cursors
-                        .scope_seconds(time, self.scope_range.clone(), self.sample_rate)
+                if let Some(seconds) = self.cursor_samples()[index]
+                    .and_then(|sample| self.scope_cursor_seconds(sample))
                 {
                     text.push_str(&format!(
                         "{} {:+.3} ms  ",
@@ -1399,6 +1403,7 @@ impl ScopeApp {
     fn switch_source(&mut self) {
         self.cursors.new_epoch();
         self.scope_range = 0..0;
+        self.scope_sample_offset = 0.0;
         self.xy_dirty = true;
         self.demo_running = false;
         if self.capture.take().is_some() {
@@ -2094,8 +2099,13 @@ impl ScopeApp {
             let Some(time) = time else { continue };
             let sample = self.cursor_samples()[index];
             let fraction = time.scope_x().or_else(|| {
-                sample
-                    .and_then(|sample| cursor::fraction_at_sample(self.scope_range.clone(), sample))
+                sample.and_then(|sample| {
+                    cursor::fraction_at_sample_with_offset(
+                        self.scope_range.clone(),
+                        sample,
+                        self.scope_sample_offset,
+                    )
+                })
             });
             let text = if let Some(x) = fraction {
                 cursor_line(ui, rect, x as f32, true, cursor_color(index));
@@ -3126,9 +3136,13 @@ impl ScopeApp {
         if self.dirty {
             let started = Instant::now();
             self.refresh_scope_range();
-            self.measurements = build_lines(
+            self.measurements = build_sweep_lines(
                 &self.history,
-                self.scope_range.clone(),
+                &Sweep {
+                    range: self.scope_range.clone(),
+                    triggered: self.triggered,
+                    sample_offset: self.scope_sample_offset,
+                },
                 pixels,
                 self.fs_per_div,
                 [self.enabled[0], self.enabled[1] && self.channels >= 2],
@@ -3228,9 +3242,10 @@ impl ScopeApp {
                 ],
                 Stroke::new(1.0, Color32::from_white_alpha(65)),
             );
-            if let Some(sample) = cursor::sample_at_fraction(
+            if let Some(sample) = cursor::sample_at_fraction_with_offset(
                 self.scope_range.clone(),
                 ((position.x - rect.left()) / rect.width()) as f64,
+                self.scope_sample_offset,
             ) {
                 response.clone().on_hover_text(self.sample_text(sample));
             }
