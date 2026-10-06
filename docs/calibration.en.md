@@ -9,20 +9,20 @@ This allows you to associate digital values (dBFS) with physical units (V, dBu, 
 
 In digital audio, signal magnitude is typically expressed in **dBFS (Decibels relative to Full Scale)**. This is a relative value where the absolute digital limit is set to 0 dBFS. However, this alone does not tell you the actual physical magnitude (voltage or sound pressure), because the real-world value of 0 dBFS changes depending on your equipment and gain settings.
 
-Calibration is the process of measuring and setting the relationship between the digital 0 dBFS and its corresponding real-world physical value (Volts or Pascals). By doing this, you can read waveforms directly in actual physical units like "Voltage (V)" or "Sound Pressure (dB SPL)."
+Calibration measures and sets the relationship between digital 0 dBFS and its real-world equivalent in Volts or Pascals. This allows you to read waveforms directly in physical units like "Voltage (V)" or "Sound Pressure (dB SPL)."
 
 When input sensitivity is uncalibrated, oscilloscope amplitude is shown as `FS`, relative to digital full scale. MeasureLab does not display `V` until the relationship to physical voltage is known. After input sensitivity calibration, measurement and cursor readouts switch to voltage units.
 
-## Relationship between dBFS / dBV / dBu
+## Supported Units
 
-MeasureLab supports the following units.
+MeasureLab supports the following units:
 
 * **dBFS**: Relative level to digital full scale. Always available without calibration. The maximum value is 0 dBFS.
-* **dBV**: Unit of voltage where 1 Vrms is the reference (0 dBV). ($20 \log_{10}(V / 1.0)$) This is a standard commonly used in consumer (home) audio equipment.
-* **dBu**: Unit of voltage where 0.775 Vrms is the reference (0 dBu). ($20 \log_{10}(V / 0.775)$) This is the standard commonly used in professional audio equipment.
-* **dB SPL**: Sound Pressure Level. A unit of sound pressure where the reference extremely tiny pressure of $20 \mu Pa$ is set as 0 dB SPL. It becomes available after performing microphone input calibration (SPL calibration).
+* **dBV**: Unit of voltage where 1 Vrms is the reference (0 dBV) ($20 \log_{10}(V / 1.0)$). Commonly used in consumer audio equipment.
+* **dBu**: Unit of voltage where 0.775 Vrms is the reference (0 dBu) ($20 \log_{10}(V / 0.775)$). Standard for professional audio equipment.
+* **dB SPL**: Sound Pressure Level. A unit where the reference extremely tiny pressure ($20 \mu Pa$) is set as 0 dB SPL. Available after performing microphone input (SPL) calibration.
 
-To perform displays and measurements in these units, **Input Sensitivity** and **Output Gain** calibration are required.
+To display and measure in dBV, dBu, or dB SPL, you must calibrate **Input Sensitivity** and **Output Gain**.
 
 ## Required Equipment
 

@@ -4,15 +4,15 @@
 
 ## Overview
 
-The Log Viewer is a monitoring window that displays real-time messages about what is happening behind the scenes of the application (events, warnings, errors, etc.).
-While you don't normally need to keep it open, it is highly useful for diagnosing issues when something goes wrong or for checking the status of background operations.
+The Log Viewer is a monitoring window that displays real-time messages about background application events, warnings, and errors.
+While normally closed, it is useful for diagnosing issues or checking the status of background operations.
 
 ## Key Features
 
 * **Real-time Display**: Log messages appear immediately as they are generated.
-* **Filtering**: You can select the log level (importance of the information) to display, allowing you to focus only on relevant information.
-* **Color-Coded Messages**: Messages are color-coded based on their severity (e.g., errors in red, warnings in yellow) so you can quickly identify their importance at a glance.
-* **Clear Logs**: You can clear the currently displayed logs to focus only on new messages.
+* **Filtering**: Select the log level (importance) to display only relevant information.
+* **Color-Coded Messages**: Messages are color-coded by severity (e.g., errors in red, warnings in yellow) for quick identification.
+* **Clear Logs**: Clear the displayed logs to focus only on new messages.
 
 ## Operation
 
