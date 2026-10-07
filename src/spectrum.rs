@@ -98,6 +98,144 @@ pub struct CursorReading {
     pub dbfs: f32,
 }
 
+/// Immutable measurement output copied into a bounded display snapshot. FFT
+/// workspaces stay on the measurement worker; precision values stay f64.
+#[derive(Clone)]
+pub struct Result {
+    settings: Settings,
+    sample_rate: u32,
+    rbw: f32,
+    power: Vec<f64>,
+    db: Vec<f32>,
+    hold: Vec<f32>,
+    last_end: Option<u64>,
+    last_channel: usize,
+}
+
+impl Result {
+    pub fn empty(settings: Settings, sample_rate: u32) -> Self {
+        let sum: f64 = (0..settings.size)
+            .map(|i| settings.window.weight(i, settings.size))
+            .sum();
+        let squares: f64 = (0..settings.size)
+            .map(|i| settings.window.weight(i, settings.size).powi(2))
+            .sum();
+        Self {
+            settings,
+            sample_rate,
+            rbw: (sample_rate as f64 * squares / sum.powi(2)) as f32,
+            power: vec![0.0; settings.size / 2 + 1],
+            db: vec![DB_MIN; settings.size / 2 + 1],
+            hold: vec![DB_MIN; settings.size / 2 + 1],
+            last_end: None,
+            last_channel: 0,
+        }
+    }
+
+    pub fn power(&self) -> &[f64] {
+        &self.power
+    }
+    pub fn clear_hold(&mut self) {
+        self.hold.copy_from_slice(&self.db);
+    }
+    pub fn settings(&self) -> Settings {
+        self.settings
+    }
+    pub fn bin_hz(&self) -> f32 {
+        self.sample_rate as f32 / self.settings.size as f32
+    }
+    pub fn rbw_hz(&self) -> f32 {
+        self.rbw
+    }
+    pub fn nyquist(&self) -> f32 {
+        self.sample_rate as f32 * 0.5
+    }
+    pub fn is_ready(&self) -> bool {
+        self.last_end.is_some()
+    }
+    pub fn db(&self) -> &[f32] {
+        &self.db
+    }
+    pub fn hold(&self) -> &[f32] {
+        &self.hold
+    }
+
+    /// Metadata belongs to the displayed result, including when next-run
+    /// settings are edited while input is stopped. Averaged values describe
+    /// the accumulated power; this is the latest contributing window.
+    pub fn window(&self) -> Option<WindowInfo> {
+        let end = self.last_end?;
+        Some(WindowInfo {
+            start: end - self.settings.size as u64,
+            end,
+            sample_rate: self.sample_rate,
+            channel: self.last_channel,
+            settings: self.settings,
+        })
+    }
+
+    pub fn cursor(&self, frequency_hz: f64) -> Option<CursorReading> {
+        let window = self.window()?;
+        let bin =
+            crate::cursor::nearest_bin(frequency_hz, window.settings.size, window.sample_rate)?;
+        Some(CursorReading {
+            window,
+            frequency_hz: bin as f64 * window.sample_rate as f64 / window.settings.size as f64,
+            dbfs: self.db[bin],
+        })
+    }
+
+    /// Strongest displayed bin, excluding DC. No sub-bin accuracy is claimed.
+    pub fn peak(&self, view: View) -> Option<Peak> {
+        if !self.is_ready() {
+            return None;
+        }
+        self.db
+            .iter()
+            .enumerate()
+            .skip(1)
+            .filter(|(bin, _)| {
+                let hz = *bin as f32 * self.bin_hz();
+                hz >= view.min_hz && hz <= view.max_hz
+            })
+            .max_by(|a, b| a.1.total_cmp(b.1))
+            .filter(|(_, db)| **db > DB_MIN)
+            .map(|(bin, db)| Peak {
+                frequency: bin as f32 * self.bin_hz(),
+                dbfs: *db,
+            })
+    }
+}
+
+/// Shared rendering access for an analyzer or its published result.
+pub trait Trace {
+    fn is_ready(&self) -> bool;
+    fn bin_hz(&self) -> f32;
+    fn db(&self) -> &[f32];
+    fn hold(&self) -> &[f32];
+}
+
+macro_rules! impl_trace {
+    ($type:ty) => {
+        impl Trace for $type {
+            fn is_ready(&self) -> bool {
+                self.is_ready()
+            }
+            fn bin_hz(&self) -> f32 {
+                self.bin_hz()
+            }
+            fn db(&self) -> &[f32] {
+                self.db()
+            }
+            fn hold(&self) -> &[f32] {
+                self.hold()
+            }
+        }
+    };
+}
+impl_trace!(Result);
+impl_trace!(Analyzer);
+
 /// FFT plan, work buffers and output storage are allocated only at configuration
 /// changes. Acquisition never calls this analyzer. Analyze the newest complete
 /// window, at most once per quarter-window of new samples.
@@ -225,6 +363,18 @@ impl Analyzer {
             last_end: None,
             last_channel: 0,
         }
+    }
+
+    /// Reuse the result's allocation on each publication.
+    pub fn copy_result(&self, result: &mut Result) {
+        result.settings = self.settings;
+        result.sample_rate = self.sample_rate;
+        result.rbw = self.rbw;
+        result.power.clone_from(&self.power);
+        result.db.clone_from(&self.db);
+        result.hold.clone_from(&self.hold);
+        result.last_end = self.last_end;
+        result.last_channel = self.last_channel;
     }
 
     pub fn settings(&self) -> Settings {
@@ -457,7 +607,7 @@ impl LineBuilder {
     /// peaks on a log axis. New power/hold values never invalidate the x axis.
     pub fn build(
         &mut self,
-        analyzer: &Analyzer,
+        analyzer: &impl Trace,
         view: View,
         pixels: usize,
         show_hold: bool,
@@ -555,7 +705,7 @@ impl LineBuilder {
 
 /// One-shot projection for callers that do not retain display state.
 pub fn build_lines(
-    analyzer: &Analyzer,
+    analyzer: &impl Trace,
     view: View,
     pixels: usize,
     show_hold: bool,

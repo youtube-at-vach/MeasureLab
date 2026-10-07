@@ -1,8 +1,9 @@
 use crate::{
-    audio::{AudioWorker, Capture, Command, DeviceInfo, Event},
+    audio::{AudioWorker, Command, DeviceInfo, Event},
     cursor::{self, Cursors},
     demo::{Demo, Waveform},
     gpu::{COLORS, PlotId, Segment, TraceCallback, TraceRenderer},
+    measurement::{self, ScopeSettings, SpectrumMode},
     signal::{Edge, History, Line, Measurement, Sweep, Trigger, build_sweep_lines},
     spectrogram, spectrogram_gpu,
     spectrum::{self, Analyzer, FFT_SIZES, FrequencyScale, Precision, Settings, View, Window},
@@ -140,10 +141,15 @@ pub struct ScopeApp {
     sidebar: Sidebar,
     demo: Demo,
     demo_running: bool,
-    demo_clock: Option<Instant>,
-    demo_fraction: f64,
+    core: Option<measurement::Worker>,
+    input_generation: u64,
+    snapshot_revision: u64,
+    core_scope: ScopeSettings,
+    spectrum_mode: SpectrumMode,
+    spectrum_info: measurement::SpectrumInfo,
+    stft_generation: u64,
     spectrum_settings: Settings,
-    analyzer: Analyzer,
+    analyzer: spectrum::Result,
     spectrum_channel: usize,
     frequency_scale: FrequencyScale,
     floor_db: f32,
@@ -155,7 +161,6 @@ pub struct ScopeApp {
     spectrum_line_builder: spectrum::LineBuilder,
     spectrum_segments: Arc<Vec<Segment>>,
     spectrum_revision: u64,
-    last_spectrum: Instant,
     fft_ms: f64,
     spectrum_build_ms: f64,
     stft: stft::Worker,
@@ -182,7 +187,7 @@ pub struct ScopeApp {
     audio: AudioWorker,
     devices: Vec<DeviceInfo>,
     selected: usize,
-    capture: Option<Capture>,
+    capture: Option<()>,
     busy: bool,
     error: Option<String>,
     history: History,
@@ -190,7 +195,6 @@ pub struct ScopeApp {
     active_cursor: usize,
     scope_range: std::ops::Range<u64>,
     scope_sample_offset: f64,
-    expected_sequence: Option<u64>,
     sample_rate: u32,
     channels: u16,
     format: String,
@@ -202,6 +206,7 @@ pub struct ScopeApp {
     lines: Vec<Line>,
     segments: Arc<Vec<Segment>>,
     measurements: [Measurement; 2],
+    scope_missing: u64,
     dirty: bool,
     pixels: usize,
     revision: u64,
@@ -218,6 +223,8 @@ pub struct ScopeApp {
     profile: Option<crate::qa::Profile>,
     #[cfg(feature = "qa")]
     lifecycle_stage: u8,
+    #[cfg(feature = "qa")]
+    ui_stall_checked: bool,
     #[cfg(feature = "qa")]
     lifecycle_changed: Instant,
     #[cfg(feature = "qa")]
@@ -271,6 +278,8 @@ impl ScopeApp {
             style.spacing.item_spacing = vec2(6.0, 6.0);
             style.spacing.button_padding = vec2(8.0, 4.0);
         });
+        let mut stft = stft::Worker::new();
+        let core = (!smoke).then(|| measurement::Worker::new(stft.take_feeder()));
         let mut app = Self {
             source: if demo || smoke {
                 Source::Demo
@@ -282,10 +291,15 @@ impl ScopeApp {
             sidebar: Sidebar::default(),
             demo: Demo::default(),
             demo_running: demo && !smoke,
-            demo_clock: None,
-            demo_fraction: 0.0,
+            core,
+            input_generation: 1,
+            snapshot_revision: 0,
+            core_scope: ScopeSettings::default(),
+            spectrum_mode: SpectrumMode::Continuous,
+            spectrum_info: measurement::SpectrumInfo::default(),
+            stft_generation: 0,
             spectrum_settings: Settings::default(),
-            analyzer: Analyzer::new(Settings::default(), 48000),
+            analyzer: spectrum::Result::empty(Settings::default(), 48000),
             spectrum_channel: 0,
             frequency_scale: FrequencyScale::Log,
             floor_db: -120.0,
@@ -297,10 +311,9 @@ impl ScopeApp {
             spectrum_line_builder: spectrum::LineBuilder::default(),
             spectrum_segments: Arc::new(Vec::with_capacity(8192)),
             spectrum_revision: 0,
-            last_spectrum: Instant::now() - Duration::from_secs(1),
             fft_ms: 0.0,
             spectrum_build_ms: 0.0,
-            stft: stft::Worker::new(),
+            stft,
             last_stft: None,
             spectrogram_history: Arc::new(Mutex::new(spectrogram::History::default())),
             spectrogram_settings: Settings {
@@ -335,7 +348,6 @@ impl ScopeApp {
             active_cursor: 0,
             scope_range: 0..0,
             scope_sample_offset: 0.0,
-            expected_sequence: None,
             sample_rate: 48_000,
             channels: 0,
             format: String::new(),
@@ -347,6 +359,7 @@ impl ScopeApp {
             lines: Vec::with_capacity(8192),
             segments: Arc::new(Vec::with_capacity(8192)),
             measurements: [Measurement::default(); 2],
+            scope_missing: 0,
             dirty: true,
             pixels: 0,
             revision: 0,
@@ -363,6 +376,8 @@ impl ScopeApp {
             profile: crate::qa::Profile::from_env()?,
             #[cfg(feature = "qa")]
             lifecycle_stage: 0,
+            #[cfg(feature = "qa")]
+            ui_stall_checked: false,
             #[cfg(feature = "qa")]
             lifecycle_changed: Instant::now(),
             #[cfg(feature = "qa")]
@@ -415,15 +430,23 @@ impl ScopeApp {
             app.format = if smoke { "QA fixture" } else { "Internal demo" }.into();
             app.reset_analysis();
             app.reset_stft();
-            app.demo.append_with(
-                &mut app.history,
-                if smoke { 16384 } else { 0 },
-                app.sample_rate,
-                |sequence, samples| {
-                    app.stft.submit(sequence, samples);
-                },
-            );
-            app.stft.flush();
+            if smoke {
+                app.demo.append_with(
+                    &mut app.history,
+                    16384,
+                    app.sample_rate,
+                    |sequence, samples| {
+                        app.stft.submit(sequence, samples);
+                    },
+                );
+                app.stft.flush();
+            } else {
+                app.core.as_ref().unwrap().start_demo(
+                    app.input_generation,
+                    app.demo.clone(),
+                    app.core_config(),
+                );
+            }
         }
         #[cfg(feature = "qa")]
         if smoke {
@@ -930,33 +953,117 @@ impl ScopeApp {
 
     fn begin_observation(&mut self) {
         self.cursors.new_epoch();
+        self.input_generation += 1;
         self.history.clear_at(0);
         self.scope_range = 0..0;
         self.scope_sample_offset = 0.0;
         self.xy_capture = xy::Capture::default();
         self.xy_trace_range = 0..0;
         self.measurements = [Measurement::default(); 2];
+        self.scope_missing = 0;
         self.dirty = true;
         self.xy_dirty = true;
         self.reset_analysis();
         self.reset_stft();
     }
 
-    fn update_spectrum(&mut self, final_snapshot: bool) {
-        if (self.running() || final_snapshot)
-            && (final_snapshot
-                || self.last_spectrum.elapsed() >= Duration::from_secs_f64(1.0 / 30.0))
+    fn core_config(&self) -> measurement::Config {
+        measurement::Config {
+            spectrum: self.spectrum_settings,
+            spectrum_channel: self.spectrum_channel,
+            spectrum_mode: self.spectrum_mode,
+            scope: ScopeSettings {
+                samples: self.scope_sample_count(),
+                trigger: self.trigger,
+            },
+            stft_generation: self.stft_generation,
+            stft: self.stft_config(),
+        }
+    }
+
+    fn accept_snapshot(&mut self, snapshot: &mut measurement::Snapshot) {
+        if snapshot.generation != self.input_generation
+            || snapshot.revision <= self.snapshot_revision
         {
-            let started = Instant::now();
-            if self.analyzer.update(&self.history, self.spectrum_channel) {
-                self.fft_ms = started.elapsed().as_secs_f64() * 1000.0;
-                #[cfg(feature = "qa")]
-                if let Some(profile) = &mut self.profile {
-                    profile.record_work(crate::qa::Work::Fft, self.fft_ms);
-                }
-                self.spectrum_dirty = true;
-                self.last_spectrum = Instant::now();
-            }
+            return;
+        }
+        self.snapshot_revision = snapshot.revision;
+        let samples_changed = self.history.range() != snapshot.history.range();
+        self.sample_rate = snapshot.sample_rate;
+        std::mem::swap(&mut self.history, &mut snapshot.history);
+        std::mem::swap(&mut self.analyzer, &mut snapshot.spectrum);
+        self.spectrum_info = snapshot.spectrum_info.clone();
+        self.core_scope = snapshot.scope_settings;
+        self.scope_range = snapshot.sweep.range.clone();
+        self.scope_sample_offset = snapshot.sweep.sample_offset;
+        self.triggered = snapshot.sweep.triggered;
+        self.measurements = snapshot.measurements;
+        self.scope_missing = snapshot.scope_missing;
+        self.dropped = snapshot.input_dropped;
+        self.fft_ms = snapshot.fft_ms;
+        self.spectrum_dirty = true;
+        self.dirty |= samples_changed;
+        self.xy_dirty |= samples_changed;
+        if snapshot.failed && self.running() {
+            self.error = Some("Audio stream stopped. Check device connection and microphone permission, then restart.".into());
+            self.stop();
+        }
+    }
+
+    fn poll_measurement(&mut self) {
+        if let Some(mut snapshot) = self.core.as_mut().and_then(|core| core.take_latest()) {
+            self.accept_snapshot(&mut snapshot);
+            self.core.as_mut().unwrap().recycle(snapshot);
+        }
+        if self.running()
+            && self
+                .core
+                .as_ref()
+                .is_some_and(|core| core.metrics.failed.load(Ordering::Acquire))
+        {
+            self.error = Some("Audio stream stopped. Check device connection and microphone permission, then restart.".into());
+            self.stop();
+        }
+    }
+
+    #[cfg(feature = "qa")]
+    fn check_ui_stall(&mut self) {
+        if self.ui_stall_checked
+            || self.profile.is_none()
+            || !self.running()
+            || self.created.elapsed() < Duration::from_millis(800)
+            || std::env::var_os("MEASURELAB_PROFILE_UI_STALL").is_none()
+        {
+            return;
+        }
+        self.ui_stall_checked = true;
+        let core = self.core.as_ref().unwrap();
+        let frames = core.metrics.input_frames.load(Ordering::Relaxed);
+        let windows = core.metrics.spectrum_windows.load(Ordering::Relaxed);
+        std::thread::sleep(Duration::from_secs(1));
+        let frames = core.metrics.input_frames.load(Ordering::Relaxed) - frames;
+        let windows = core.metrics.spectrum_windows.load(Ordering::Relaxed) - windows;
+        assert!(
+            frames > self.sample_rate as u64 / 2,
+            "UI stall stopped acquisition"
+        );
+        assert!(windows > 0, "UI stall stopped Spectrum analysis");
+        assert!(core.metrics.display_skipped.load(Ordering::Relaxed) > 0);
+        let mut snapshot = core.scope(self.core_config().scope);
+        assert_eq!(snapshot.input_dropped, 0, "UI stall lost measurement input");
+        assert_eq!(snapshot.spectrum_info.missing_windows, 0);
+        self.accept_snapshot(&mut snapshot);
+        println!(
+            "UI stall OK: 1,000 ms without UI updates; {frames} input frames and {windows} FFT windows continued"
+        );
+    }
+
+    fn update_spectrum(&mut self, final_snapshot: bool) {
+        if self.smoke && final_snapshot {
+            let mut analyzer = Analyzer::new(self.spectrum_settings, self.sample_rate);
+            analyzer.update(&self.history, self.spectrum_channel);
+            analyzer.copy_result(&mut self.analyzer);
+            self.spectrum_dirty = true;
         }
     }
 
@@ -1000,12 +1107,23 @@ impl ScopeApp {
 
     fn refresh_scope_range(&mut self) {
         if self.dirty {
-            let count = self.scope_sample_count();
-            let sweep = self.history.sweep(count, self.trigger);
-            let ready = self.history.len() >= count;
-            self.triggered = ready && sweep.triggered;
-            self.scope_sample_offset = if ready { sweep.sample_offset } else { 0.0 };
-            self.scope_range = if ready { sweep.range } else { 0..0 };
+            let settings = ScopeSettings {
+                samples: self.scope_sample_count(),
+                trigger: self.trigger,
+            };
+            if let Some(core) = &self.core {
+                if settings != self.core_scope {
+                    let mut snapshot = core.scope(settings);
+                    self.accept_snapshot(&mut snapshot);
+                }
+            } else {
+                let sweep = self.history.sweep(settings.samples, self.trigger);
+                let ready = self.history.len() >= settings.samples;
+                self.triggered = ready && sweep.triggered;
+                self.scope_sample_offset = if ready { sweep.sample_offset } else { 0.0 };
+                self.scope_range = if ready { sweep.range } else { 0..0 };
+                self.measurements = crate::signal::measure(&self.history, self.scope_range.clone());
+            }
         }
     }
 
@@ -1061,15 +1179,22 @@ impl ScopeApp {
 
     fn reset_analysis(&mut self) {
         self.spectrum_channel = self.spectrum_channel.min(self.channels.max(1) as usize - 1);
-        self.analyzer = Analyzer::new(self.spectrum_settings, self.sample_rate);
+        self.analyzer = spectrum::Result::empty(self.spectrum_settings, self.sample_rate);
+        if let Some(core) = &self.core {
+            core.configure_spectrum(
+                self.spectrum_settings,
+                self.spectrum_channel,
+                self.spectrum_mode,
+            );
+        }
         self.spectrum_dirty = true;
-        self.last_spectrum = Instant::now() - Duration::from_secs(1);
     }
 
     fn apply_demo_settings(&mut self) {
-        // New signal parameters enter the ordinary shared stream at the next
-        // poll. Never synthesize private Scope/Spectrum samples while stopped.
         if self.running() {
+            if let Some(core) = &self.core {
+                core.configure_demo(self.demo.clone());
+            }
             self.reset_analysis();
         }
     }
@@ -1078,20 +1203,15 @@ impl ScopeApp {
         self.spectrogram_channel = self
             .spectrogram_channel
             .min(self.channels.max(1) as usize - 1);
-        let config = stft::Config {
-            sample_rate: self.sample_rate,
-            channels: self.channels.max(1) as usize,
-            channel: self.spectrogram_channel,
-            size: self.spectrogram_settings.size,
-            hop: self.spectrogram_settings.size / 4,
-            window: self.spectrogram_settings.window,
-            remove_dc: self.spectrogram_settings.remove_dc,
-            precision: self.spectrogram_settings.precision,
-        };
+        let config = self.stft_config();
         let generation = self
             .stft
             .configure(config)
             .expect("validated STFT settings");
+        self.stft_generation = generation;
+        if let Some(core) = &self.core {
+            core.configure_stft(generation, config);
+        }
         self.spectrogram_history
             .lock()
             .unwrap()
@@ -1102,39 +1222,17 @@ impl ScopeApp {
         }
     }
 
-    fn poll_demo(&mut self) {
-        let now = Instant::now();
-        // Acquisition starts at the first poll, after window/GPU setup. Startup
-        // time is not a missing interval in a demo that has not produced input.
-        let elapsed = self
-            .demo_clock
-            .replace(now)
-            .map_or(0.0, |previous| now.duration_since(previous).as_secs_f64());
-        if !self.demo_running {
-            return;
+    fn stft_config(&self) -> stft::Config {
+        stft::Config {
+            sample_rate: self.sample_rate,
+            channels: self.channels.max(1) as usize,
+            channel: self.spectrogram_channel,
+            size: self.spectrogram_settings.size,
+            hop: self.spectrogram_settings.size / 4,
+            window: self.spectrogram_settings.window,
+            remove_dc: self.spectrogram_settings.remove_dc,
+            precision: self.spectrogram_settings.precision,
         }
-        // Bound catch-up after window suspension, and never join a false gap.
-        if elapsed > 0.25 {
-            let missing = ((elapsed - 0.25) * self.sample_rate as f64) as u64;
-            self.history.advance_to(self.history.range().end + missing);
-            self.dropped += missing;
-            self.analyzer.reset();
-            self.spectrum_dirty = true;
-        }
-        self.demo_fraction += elapsed.min(0.25) * self.sample_rate as f64;
-        let count = self.demo_fraction as usize;
-        self.demo_fraction -= count as f64;
-        self.demo.append_with(
-            &mut self.history,
-            count,
-            self.sample_rate,
-            |sequence, samples| {
-                self.stft.submit(sequence, samples);
-            },
-        );
-        self.stft.flush();
-        self.dirty |= count > 0;
-        self.xy_dirty |= count > 0;
     }
 
     fn start(&mut self) {
@@ -1149,14 +1247,17 @@ impl ScopeApp {
             self.format = "Internal demo".into();
             self.history = History::new(96000);
             self.xy_dirty = true;
-            self.demo_fraction = 0.0;
-            self.demo_clock = None;
             self.demo_running = true;
             self.dropped = 0;
             self.error = None;
             self.dirty = true;
             self.reset_analysis();
             self.reset_stft();
+            self.core.as_ref().unwrap().start_demo(
+                self.input_generation,
+                self.demo.clone(),
+                self.core_config(),
+            );
             return;
         }
         if self.devices.is_empty() || self.busy {
@@ -1170,17 +1271,20 @@ impl ScopeApp {
     }
 
     fn stop(&mut self) {
-        // Complete a final bounded snapshot even for a hidden Spectrum. All
-        // subsequent repaints read the held analyzer, never re-average input.
-        self.update_spectrum(true);
         self.stft.pause();
-        if self.source == Source::Demo {
-            self.demo_running = false;
-            return;
+        let was_audio = self.capture.take().is_some();
+        self.demo_running = false;
+        if let Some(core) = &self.core {
+            let mut snapshot = core.stop();
+            self.accept_snapshot(&mut snapshot);
         }
-        self.capture = None;
-        self.busy = true;
-        self.audio.send(Command::Stop);
+        // The final raw snapshot may be newer than the last displayed XY
+        // capture. Freeze its trigger reference before any cursor readout.
+        self.rebuild_xy();
+        if was_audio {
+            self.busy = true;
+            self.audio.send(Command::Stop);
+        }
     }
 
     fn poll_audio(&mut self) {
@@ -1209,9 +1313,8 @@ impl ScopeApp {
                         (self.sample_rate as usize * 2).max(32768),
                         self.channels as usize,
                     );
-                    self.expected_sequence = None;
                     self.dropped = 0;
-                    self.capture = Some(capture);
+                    self.capture = Some(());
                     #[cfg(feature = "qa")]
                     if self.profile.is_some() {
                         if let Ok(channel) = std::env::var("MEASURELAB_PROFILE_CHANNEL")
@@ -1228,46 +1331,19 @@ impl ScopeApp {
                     self.dirty = true;
                     self.reset_analysis();
                     self.reset_stft();
+                    self.core.as_ref().unwrap().start_capture(
+                        self.input_generation,
+                        capture,
+                        self.core_config(),
+                    );
                 }
                 Event::Stopped => {}
                 Event::Error(error) => {
-                    self.capture = None;
-                    self.stft.pause();
+                    self.stop();
                     self.error = Some(error);
                 }
             }
         }
-        let Some(capture) = self.capture.as_mut() else {
-            return;
-        };
-        self.dropped = capture.metrics.dropped.load(Ordering::Relaxed);
-        if capture.metrics.failed.load(Ordering::Relaxed) {
-            self.error = Some("Audio stream stopped. Check device connection and microphone permission, then restart.".into());
-            self.stop();
-            return;
-        }
-        // Read only the currently available batch: UI work is bounded even if
-        // the producer keeps running. History marks gaps without expiring
-        // retained samples; analysis must still reset across missing input.
-        let available = capture.consumer.slots();
-        if let Ok(chunk) = capture.consumer.read_chunk(available) {
-            for frame in chunk {
-                if self
-                    .expected_sequence
-                    .is_some_and(|expected| expected != frame.sequence)
-                {
-                    self.analyzer.reset();
-                    self.spectrum_dirty = true;
-                }
-                self.expected_sequence = Some(frame.sequence + 1);
-                self.history.push_at(frame.sequence, frame.samples);
-                self.stft
-                    .submit(frame.sequence, &frame.samples[..self.channels as usize]);
-            }
-        }
-        self.stft.flush();
-        self.dirty |= available > 0;
-        self.xy_dirty |= available > 0;
     }
 
     fn section_summary(&self, section: SettingsSection) -> String {
@@ -1404,7 +1480,8 @@ impl ScopeApp {
         self.scope_range = 0..0;
         self.scope_sample_offset = 0.0;
         self.xy_dirty = true;
-        self.demo_running = false;
+        self.stop();
+        self.input_generation += 1;
         if self.capture.take().is_some() {
             self.audio.send(Command::Stop);
             self.busy = true;
@@ -1421,7 +1498,6 @@ impl ScopeApp {
                 profile.new_input(self.dropped);
             }
             self.format.clear();
-            self.expected_sequence = None;
             self.dropped = 0;
         }
         self.dirty = true;
@@ -1668,6 +1744,21 @@ impl ScopeApp {
                     ui.selectable_value(&mut self.spectrum_settings.window, window, window.name());
                 }
             });
+        setting_label(ui, "UPDATE MODE");
+        let old_mode = self.spectrum_mode;
+        ui.selectable_value(
+            &mut self.spectrum_mode,
+            SpectrumMode::Continuous,
+            "Continuous · N/4 hop",
+        );
+        ui.selectable_value(
+            &mut self.spectrum_mode,
+            SpectrumMode::Latest,
+            "Latest window · up to 30/s",
+        );
+        if old_mode != self.spectrum_mode && self.running() {
+            self.reset_analysis();
+        }
         setting_label(ui, "AVERAGING");
         egui::ComboBox::from_id_salt("fft_average")
             .width(ui.available_width())
@@ -1676,7 +1767,7 @@ impl ScopeApp {
                 for count in [1, 4, 16, 64] {
                     ui.selectable_value(&mut self.spectrum_settings.averages, count, format!("Power average ×{count}"));
                 }
-            }).response.on_hover_text("Exponential average of linear power; alpha = 1 / count. Applied once per new FFT snapshot.");
+            }).response.on_hover_text("Exponential average of linear power; alpha = 1 / count. Applied once per contributing FFT window, independently of display updates.");
         ui.checkbox(&mut self.spectrum_settings.remove_dc, "Remove DC offset");
         if before != (self.spectrum_settings, self.spectrum_channel) && self.running() {
             self.reset_analysis();
@@ -1728,9 +1819,15 @@ impl ScopeApp {
         ui.horizontal(|ui| {
             if ui.checkbox(&mut self.show_hold, "Peak hold").changed() && self.show_hold {
                 self.analyzer.clear_hold();
+                if let Some(core) = &self.core {
+                    core.clear_hold();
+                }
             }
             if ui.small_button("Clear hold").clicked() {
                 self.analyzer.clear_hold();
+                if let Some(core) = &self.core {
+                    core.clear_hold();
+                }
                 self.spectrum_dirty = true;
             }
         });
@@ -1743,10 +1840,11 @@ impl ScopeApp {
             );
         ui.label(
             RichText::new(format!(
-                "Δf {:.2} Hz · RBW {:.2} Hz\nWindow {:.1} ms · up to 30 FFT/s",
+                "Δf {:.2} Hz · RBW {:.2} Hz\nWindow {:.1} ms · {} contributing windows",
                 self.analyzer.bin_hz(),
                 self.analyzer.rbw_hz(),
-                self.analyzer.settings().size as f32 / self.sample_rate as f32 * 1000.0
+                self.analyzer.settings().size as f32 / self.sample_rate as f32 * 1000.0,
+                self.spectrum_info.updates
             ))
             .small()
             .color(MUTED),
@@ -2797,10 +2895,16 @@ impl ScopeApp {
                         let m = self.measurements[index];
                         ui.label(
                             RichText::new(format!(
-                                "CH {}  RMS {:.3} · P-P {:.3} FS",
+                                "CH {}  {}",
                                 index + 1,
-                                m.rms,
-                                m.peak_to_peak
+                                if self.scope_range.is_empty()
+                                    || self.scope_missing
+                                        >= self.scope_range.end - self.scope_range.start
+                                {
+                                    "unavailable".into()
+                                } else {
+                                    format!("RMS {:.3} · P-P {:.3} FS", m.rms, m.peak_to_peak)
+                                }
                             ))
                             .monospace()
                             .small()
@@ -2809,6 +2913,16 @@ impl ScopeApp {
                         .on_hover_text(format!("Peak {:.5} FS", m.peak));
                     }
                 });
+                if self.scope_missing > 0 {
+                    ui.label(
+                        RichText::new(format!(
+                            "Partial interval · {} missing samples",
+                            self.scope_missing
+                        ))
+                        .small()
+                        .color(YELLOW),
+                    );
+                }
                 self.plot(ui);
             });
     }
@@ -3135,7 +3249,7 @@ impl ScopeApp {
         if self.dirty {
             let started = Instant::now();
             self.refresh_scope_range();
-            self.measurements = build_sweep_lines(
+            build_sweep_lines(
                 &self.history,
                 &Sweep {
                     range: self.scope_range.clone(),
@@ -3259,6 +3373,12 @@ impl ScopeApp {
     }
 }
 
+impl Drop for ScopeApp {
+    fn drop(&mut self) {
+        self.core.take();
+    }
+}
+
 impl eframe::App for ScopeApp {
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         #[cfg(not(feature = "qa"))]
@@ -3271,9 +3391,11 @@ impl eframe::App for ScopeApp {
             self.fps = self.fps * 0.9 + 0.1 / elapsed;
         }
         #[cfg(feature = "qa")]
+        self.check_ui_stall();
+        #[cfg(feature = "qa")]
         let input_started = Instant::now();
         self.poll_audio();
-        self.poll_demo();
+        self.poll_measurement();
         #[cfg(feature = "qa")]
         if self.running()
             && let Some(profile) = &mut self.profile
@@ -3317,6 +3439,15 @@ impl eframe::App for ScopeApp {
                         assert_eq!(self.lifecycle_stage, 6, "input lifecycle did not finish");
                     }
                     profile.report(self.dropped);
+                    if let Some(core) = &self.core {
+                        println!(
+                            "Measurement worker: {} input frames, {} FFT windows, {} skipped display updates, CPU {:.3} ms total",
+                            core.metrics.input_frames.load(Ordering::Relaxed),
+                            core.metrics.spectrum_windows.load(Ordering::Relaxed),
+                            core.metrics.display_skipped.load(Ordering::Relaxed),
+                            core.metrics.processing_nanos.load(Ordering::Relaxed) as f64 / 1e6
+                        );
+                    }
                     println!(
                         "STFT profile: {} Hz, {} ch, CH {}, {}-point {:?}, rows {}, input dropped {}, result dropped {}, worker CPU {:.3} ms total",
                         self.sample_rate,
@@ -3469,7 +3600,19 @@ impl eframe::App for ScopeApp {
                         ui.separator();
                         ui.label(format!("UI {:.0} fps", self.fps));
                         ui.label(format!("Scope prep {:.2} ms", self.build_ms));
-                        ui.label(format!("FFT {:.2} ms", self.fft_ms));
+                        ui.label(format!("Worker FFT {:.2} ms", self.fft_ms));
+                        ui.label(format!(
+                            "Spectrum {:?} · {} windows · missing {}",
+                            self.spectrum_info.mode,
+                            self.spectrum_info.updates,
+                            self.spectrum_info.missing_windows
+                        ));
+                        if let Some(core) = &self.core {
+                            ui.label(format!(
+                                "Display updates skipped {}",
+                                core.metrics.display_skipped.load(Ordering::Relaxed)
+                            ));
+                        }
                         ui.label(format!("Spectrum prep {:.2} ms", self.spectrum_build_ms));
                         ui.label(format!("XY prep {:.2} ms", self.xy_build_ms));
                         ui.label(format!(

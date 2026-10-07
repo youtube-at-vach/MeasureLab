@@ -14,6 +14,27 @@ pub struct History {
     contiguous_start: u64,
 }
 
+impl Clone for History {
+    fn clone(&self) -> Self {
+        Self {
+            data: self.data.clone(),
+            valid: self.valid.clone(),
+            channels: self.channels,
+            end: self.end,
+            len: self.len,
+            contiguous_start: self.contiguous_start,
+        }
+    }
+    fn clone_from(&mut self, source: &Self) {
+        self.data.clone_from(&source.data);
+        self.valid.clone_from(&source.valid);
+        self.channels = source.channels;
+        self.end = source.end;
+        self.len = source.len;
+        self.contiguous_start = source.contiguous_start;
+    }
+}
+
 impl History {
     pub fn new(capacity: usize) -> Self {
         Self::with_channels(capacity, 2)
@@ -196,7 +217,7 @@ pub enum Edge {
     Falling,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Trigger {
     pub edge: Edge,
     pub level: f64,
@@ -234,6 +255,37 @@ pub struct Measurement {
     pub peak: f64,
     pub rms: f64,
     pub peak_to_peak: f64,
+}
+
+/// Measurements over retained raw samples, independently of visibility and
+/// pixel aggregation. Missing samples do not become zero-valued observations.
+pub fn measure(history: &History, range: Range<u64>) -> [Measurement; 2] {
+    let mut result = [Measurement::default(); 2];
+    let range = range.start.max(history.range().start)..range.end.min(history.range().end);
+    if range.end <= range.start {
+        return result;
+    }
+    for (channel, result) in result.iter_mut().enumerate().take(history.channels()) {
+        let mut min = f64::INFINITY;
+        let mut max = f64::NEG_INFINITY;
+        let mut square_sum = 0.0;
+        let mut count = 0;
+        for frame in history.samples(range.clone()).flatten() {
+            let value = frame[channel];
+            min = min.min(value);
+            max = max.max(value);
+            square_sum += value * value;
+            count += 1;
+        }
+        if count > 0 {
+            *result = Measurement {
+                peak: min.abs().max(max.abs()),
+                rms: (square_sum / count as f64).sqrt(),
+                peak_to_peak: max - min,
+            };
+        }
+    }
+    result
 }
 
 /// At low density, connect real samples. At high density, retain each pixel's

@@ -20,6 +20,7 @@ impl Waveform {
     }
 }
 
+#[derive(Clone)]
 pub struct Demo {
     pub waveform: Waveform,
     pub frequency: f32,
@@ -59,47 +60,62 @@ impl Demo {
         mut consume: impl FnMut(u64, &[f64]),
     ) {
         for _ in 0..count {
-            let mut samples = [0.0; 2];
-            for (channel, value) in samples.iter_mut().enumerate() {
-                let phase = self.phase + channel as f64 * self.phase_degrees.to_radians();
-                let mut signal = phase.sin();
-                match self.waveform {
-                    Waveform::Sine => {}
-                    Waveform::Harmonics => {
-                        for (harmonic, level) in [(2, 0.12), (3, 0.045), (5, 0.015), (7, 0.006)] {
-                            if harmonic as f32 * self.frequency < sample_rate as f32 * 0.5 {
-                                signal += level * (harmonic as f64 * phase).sin();
-                            }
-                        }
-                    }
-                    Waveform::Square => {
-                        for harmonic in (3..=63).step_by(2) {
-                            if harmonic as f32 * self.frequency >= sample_rate as f32 * 0.5 {
-                                break;
-                            }
-                            signal += (harmonic as f64 * phase).sin() / harmonic as f64;
-                        }
-                        signal *= 4.0 / std::f64::consts::PI;
-                    }
-                }
-                self.random ^= self.random << 13;
-                self.random ^= self.random >> 17;
-                self.random ^= self.random << 5;
-                let noise = self.random as f64 / u32::MAX as f64 * 2.0 - 1.0;
-                *value = signal
-                    * self.amplitude as f64
-                    * if channel == 0 {
-                        1.0
-                    } else {
-                        self.channel_2_gain
-                    }
-                    + noise * self.noise as f64;
-            }
+            let samples = self.next_frame(sample_rate);
             let sequence = history.range().end;
             history.push(samples);
             consume(sequence, &samples);
-            self.phase = (self.phase + TAU * self.frequency as f64 / sample_rate as f64) % TAU;
         }
+    }
+
+    pub fn next_frame(&mut self, sample_rate: u32) -> [f64; 2] {
+        let mut samples = [0.0; 2];
+        for (channel, value) in samples.iter_mut().enumerate() {
+            let phase = self.phase + channel as f64 * self.phase_degrees.to_radians();
+            let mut signal = phase.sin();
+            match self.waveform {
+                Waveform::Sine => {}
+                Waveform::Harmonics => {
+                    for (harmonic, level) in [(2, 0.12), (3, 0.045), (5, 0.015), (7, 0.006)] {
+                        if harmonic as f32 * self.frequency < sample_rate as f32 * 0.5 {
+                            signal += level * (harmonic as f64 * phase).sin();
+                        }
+                    }
+                }
+                Waveform::Square => {
+                    for harmonic in (3..=63).step_by(2) {
+                        if harmonic as f32 * self.frequency >= sample_rate as f32 * 0.5 {
+                            break;
+                        }
+                        signal += (harmonic as f64 * phase).sin() / harmonic as f64;
+                    }
+                    signal *= 4.0 / std::f64::consts::PI;
+                }
+            }
+            self.random ^= self.random << 13;
+            self.random ^= self.random >> 17;
+            self.random ^= self.random << 5;
+            let noise = self.random as f64 / u32::MAX as f64 * 2.0 - 1.0;
+            *value = signal
+                * self.amplitude as f64
+                * if channel == 0 {
+                    1.0
+                } else {
+                    self.channel_2_gain
+                }
+                + noise * self.noise as f64;
+        }
+        self.phase = (self.phase + TAU * self.frequency as f64 / sample_rate as f64) % TAU;
+        samples
+    }
+
+    /// Change controls without restarting the source phase or random sequence.
+    pub fn apply_settings(&mut self, settings: &Self) {
+        self.waveform = settings.waveform;
+        self.frequency = settings.frequency;
+        self.amplitude = settings.amplitude;
+        self.noise = settings.noise;
+        self.phase_degrees = settings.phase_degrees;
+        self.channel_2_gain = settings.channel_2_gain;
     }
 }
 

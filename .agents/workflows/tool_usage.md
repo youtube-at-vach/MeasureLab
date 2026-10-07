@@ -51,7 +51,7 @@ MEASURELAB_PROFILE_SECONDS=600 MEASURELAB_PROFILE_DEVICE="BlackHole 16ch" \
 MEASURELAB_PROFILE_SECONDS=120 ./scripts/profile-stage2.sh demo-120 --demo
 ```
 
-ログと1秒ごとのRSSは`dist/stage2-qa/`へ保存する。仮想入力の停止・再開やデバイス切り替えは [Rust READMEの検証・計測](../../guide/rust/README.md#検証計測) を参照する。内部デモ・既存QAの成功だけで、未実装のSoftware LoopbackやUI負荷からの独立を検証済みとしない。
+ログと1秒ごとのRSSは`dist/stage2-qa/`へ保存する。仮想入力の停止・再開やデバイス切り替えは [Rust READMEの検証・計測](../../guide/rust/README.md#検証計測) を参照する。`MEASURELAB_PROFILE_UI_STALL=1`を追加すると、UIを1秒止めて取得・解析の継続と表示更新の省略を検証する。内部デモ・既存QAの成功だけで、未実装のSoftware Loopbackや物理系の精度を検証済みとしない。
 
 macOS のローカルアプリバンドル:
 

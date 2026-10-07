@@ -172,7 +172,6 @@ impl Distribution {
 #[derive(Clone, Copy)]
 pub enum Work {
     Input,
-    Fft,
     Scope,
     Spectrum,
     Spectrogram,
@@ -182,8 +181,7 @@ pub enum Work {
 impl Work {
     fn name(self) -> &'static str {
         match self {
-            Self::Input => "input drain / demo generation",
-            Self::Fft => "Spectrum FFT",
+            Self::Input => "control events / snapshot ingestion",
             Self::Scope => "Scope preparation",
             Self::Spectrum => "Spectrum preparation",
             Self::Spectrogram => "STFT result / history ingestion",
@@ -197,7 +195,7 @@ pub struct Profile {
     duration: Duration,
     intervals_ms: Distribution,
     cpu_ms: Distribution,
-    work: [Distribution; 6],
+    work: [Distribution; 5],
     input_dropped: u64,
     previous_input_dropped: u64,
     pub device: Option<String>,
@@ -277,7 +275,6 @@ impl Profile {
         }
         for work in [
             Work::Input,
-            Work::Fft,
             Work::Scope,
             Work::Spectrum,
             Work::Spectrogram,

@@ -193,11 +193,20 @@ impl Processor {
     }
 }
 
-pub struct Worker {
+/// Input endpoint can be moved to the measurement worker while the UI retains
+/// result delivery and recycling. Neither endpoint waits for the other.
+pub struct Feeder {
     input: Producer<InputBlock>,
+    pending: Option<InputBlock>,
+    generation: Arc<AtomicU64>,
+    wake: thread::Thread,
+    metrics: Arc<Metrics>,
+}
+
+pub struct Worker {
+    feeder: Option<Feeder>,
     results: Consumer<Row>,
     recycle: Producer<Row>,
-    pending: Option<InputBlock>,
     generation: Arc<AtomicU64>,
     shutdown: Arc<AtomicBool>,
     handle: Option<JoinHandle<()>>,
@@ -285,10 +294,15 @@ impl Worker {
             }
         });
         Self {
-            input,
+            feeder: Some(Feeder {
+                input,
+                pending: None,
+                generation: generation.clone(),
+                wake: handle.thread().clone(),
+                metrics: metrics.clone(),
+            }),
             results,
             recycle,
-            pending: None,
             generation,
             shutdown,
             handle: Some(handle),
@@ -301,21 +315,65 @@ impl Worker {
     pub fn configure(&mut self, config: Config) -> Result<u64, &'static str> {
         config.validate()?;
         let generation = self.generation.fetch_add(1, Ordering::AcqRel) + 1;
-        self.pending = Some(InputBlock::empty(generation, config));
+        if let Some(feeder) = &mut self.feeder {
+            feeder.configure(generation, config);
+        }
         Ok(generation)
+    }
+
+    /// Move only the input endpoint; configuration epochs are still published by
+    /// this result owner and carried with measurement commands.
+    pub fn take_feeder(&mut self) -> Feeder {
+        self.feeder.take().expect("STFT feeder already transferred")
     }
 
     /// Invalidate even results already queued or currently being computed.
     pub fn pause(&mut self) {
         self.generation.fetch_add(1, Ordering::AcqRel);
-        self.pending = None;
+        if let Some(feeder) = &mut self.feeder {
+            feeder.pending = None;
+        }
+    }
+
+    pub fn submit(&mut self, sequence: u64, samples: &[f64]) {
+        self.feeder
+            .as_mut()
+            .expect("detached feeder")
+            .submit(sequence, samples);
+    }
+
+    pub fn flush(&mut self) {
+        self.feeder.as_mut().expect("detached feeder").flush();
+    }
+
+    /// Bounded drain, preserving every available row in order for future texture
+    /// history. The callback borrows pool storage; it cannot keep or grow the pool.
+    pub fn drain(&mut self, mut consume: impl FnMut(&Row)) {
+        let generation = self.generation.load(Ordering::Acquire);
+        for _ in 0..self.results.slots() {
+            let row = self.results.pop().unwrap();
+            if row.info.generation == generation {
+                consume(&row);
+            }
+            self.recycle
+                .push(row)
+                .unwrap_or_else(|_| unreachable!("result pool invariant"));
+        }
+    }
+}
+
+impl Feeder {
+    pub fn configure(&mut self, generation: u64, config: Config) {
+        config.validate().expect("validated STFT configuration");
+        self.pending = Some(InputBlock::empty(generation, config));
     }
 
     pub fn submit(&mut self, sequence: u64, samples: &[f64]) {
         let Some(block) = &self.pending else { return };
+        if block.generation != self.generation.load(Ordering::Acquire) {
+            return;
+        }
         if samples.len() < block.config.channels {
-            // Finish prior valid input; the malformed frame is a discontinuity,
-            // including when it precedes the first block of a generation.
             self.flush();
             self.pending.as_mut().unwrap().dropped_before += 1;
             self.metrics.input_dropped.fetch_add(1, Ordering::Relaxed);
@@ -342,22 +400,11 @@ impl Worker {
         if block.len == 0 {
             return;
         }
-        enqueue(&mut self.input, block, &self.metrics);
-        self.handle.as_ref().unwrap().thread().unpark();
-    }
-
-    /// Bounded drain, preserving every available row in order for future texture
-    /// history. The callback borrows pool storage; it cannot keep or grow the pool.
-    pub fn drain(&mut self, mut consume: impl FnMut(&Row)) {
-        let generation = self.generation.load(Ordering::Acquire);
-        for _ in 0..self.results.slots() {
-            let row = self.results.pop().unwrap();
-            if self.pending.is_some() && row.info.generation == generation {
-                consume(&row);
-            }
-            self.recycle
-                .push(row)
-                .unwrap_or_else(|_| unreachable!("result pool invariant"));
+        if block.generation == self.generation.load(Ordering::Acquire) {
+            enqueue(&mut self.input, block, &self.metrics);
+            self.wake.unpark();
+        } else {
+            block.len = 0;
         }
     }
 }

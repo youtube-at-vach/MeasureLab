@@ -101,6 +101,7 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | Workspace & help | 配置の指定、ショートカット、測定単位 |
 | Spectrum Source / points / Window | FFTの入力CH（取得した全chから選択）、サイズ（1,024〜32,768点）、窓関数 |
 | Spectrum / Spectrogram FFT PRECISION | 各測定器のFFT精度。既定は64-bit、32-bit (fast FFT)を明示的に選択可能 |
+| Continuous / Latest window | N/4 hopの連続解析（既定）／最新窓を最大30回/秒で観察。非表示でも平均・保持は継続 |
 | Power average / Remove DC | 線形電力の指数平均、FFT前の平均値除去 |
 | Log Hz / Linear Hz / Span | 周波数軸と表示する上限周波数 |
 | Floor dBFS / Peak hold / Clear hold | 表示下限、最大値の保持、保持値のクリア |
@@ -150,18 +151,20 @@ FreeとTrace Snapは各グラフの見出しとXY Settingsで切り替えられ�
 
 ## 現在の取得・解析・描画の構成
 
-入力キューの消費、共通履歴の更新、デモ生成、Scopeの測定、Spectrum FFTは現在UI更新から実行します。STFTは専用ワーカーですが、その入力供給はUI側です。GUI非依存の計算モジュールはあるものの、実行の分離は未完了です。UIの長い停止は取得キューの飽和につながり得るため、[PLANの3a](PLAN.md#3a取得測定コアをuiから独立させる)でこの経路を独立させます。
+入力キューの消費、共通履歴の更新、デモ生成、Scopeのトリガー・統計、Spectrum FFTは専用測定ワーカーで実行します。STFTへの入力供給も同じワーカーから行います。UIは結果の受信と描画・カーソル読み出しを行い、非表示化や表示更新の停止で測定を止めません。検証条件と残る境界は [PLAN](PLAN.md#現在の実行構造と残る境界) を参照してください。
 
 ```text
-Audio device → CPAL callback → bounded SPSC ring → UI: common input (1–16ch)
-                                                   ├→ sample history → Scope / Spectrum / XY
-                                                   └→ selected CH → bounded block queue
+Audio device → CPAL callback → bounded SPSC → measurement worker ← internal demo
+                                               ├→ common f64 history / Scope statistics
+                                               ├→ continuous or latest-window Spectrum
+                                               ├→ bounded snapshots → UI plots / cursors
+                                               └→ selected CH → bounded STFT queue
                                                                         ↓
-                                                             continuous STFT worker
+                                                              continuous STFT worker
                                                                         ↓
-                                                             bounded, recycled rows
+                                                              bounded, recycled rows
                                                                         ↓
-                                                     bounded spectrogram history → circular GPU texture
+                                                     UI history → circular GPU texture
 ```
 
 - **CPAL 0.18**: CoreAudio / WASAPI / ALSAなどのネイティブ入力。デバイス列挙とストリーム作成はUIとは別スレッド。
@@ -170,14 +173,15 @@ Audio device → CPAL callback → bounded SPSC ring → UI: common input (1–1
 - **専用WGSLシェーダー**: 線分をインスタンスとして送り、アンチエイリアス付きの三角形へGPU側で展開します。波形全体を1回のdraw callで描画します。
 - **サンプル集約**: 少数サンプルは直接接続。高密度では物理ピクセルごとの最小値・最大値を保持し、1サンプルの細いスパイクも残します。欠落位置で線を切り、欠落を含む集約区間は描画しません。Scopeのピーク・RMS・peak-to-peakは表示範囲の実サンプルだけから計算し、欠落をゼロで埋めません。描画・転送量は画面幅に比例します。集約と測定のCPU処理は表示サンプル数に比例します。
 - **上限のあるメモリ使用**: 入力キューは約0.5秒（最大262,144フレーム）、履歴は2秒分（最大FFT長の32,768フレーム以上）です。溢れたフレーム数を表示し、連番の欠落を固定容量の有効フラグで記録します。容量内の欠落前後のサンプルを保持し、描画とカーソルは欠落位置を実サンプルとして扱いません。トリガーと最新Spectrumは欠落後の連続区間が窓長に達してから再開します。履歴容量以上の欠落やサンプル番号の巻き戻りでは旧履歴を破棄します。
+- **測定と表示の分離**: 測定ワーカーが履歴・トリガー・実サンプル統計・Spectrum・STFTへの入力を所有します。3個の容量固定スナップショットを最大30回/秒で渡し、通常の履歴コピーではバッファを再利用します。UIが返却しない間は表示更新だけを省略します。STFTの結果プール飽和は表示行の欠落であり、入力欠落とは別に数えます。Stopは有限の取得済みバッチまでの生サンプルと解析結果を固定し、遅着結果と古い入力世代を除外します。
 - **停止時の節電**: 停止中は連続再描画を止め、波形に変更がないフレームはGPUへの波形再転送を省略します。
 - **複数プロット**: WGSLパイプラインを共有し、各プロットのGPUバッファ・寸法・更新番号は独立。スペクトルも物理ピクセルごとの極値を保持し、対数軸で密集する狭いピークを残します。
-- **FFT**: [RustFFT](https://docs.rs/rustfft/6.4.1/rustfft/)の計画とscratchメモリを再利用します。取得キュー・共通履歴・トリガー・測定値・FFTはf64を標準とします。SpectrumとSpectrogramの「FFT PRECISION」で、それぞれ独立して32-bitの高速FFTを選択できます。DC除去と窓適用の後だけf32へ変換し、窓係数と電力平均はf64を維持します。FFTは実数入力をN/2点の複素変換へまとめ、片側ビンを復元します。GPU表示用のdBFSと座標はf32へ変換します。Spectrumのビン周波数とピクセルの対応は、周波数軸・表示範囲・幅・Fs・FFTサイズを変えたときだけ再計算し、通常のFFT更新とピーク保持で再利用します。Spectrumは最新の完全な窓を最大30回/秒、かつN/4以上の新規サンプルごとに解析します。すべての連続窓を網羅するSTFTではありません。
-- **連続STFT**: 別の専用ワーカーで選択した1chを解析します。UIで使うhopはN/4、FFTサイズ・窓関数・DC除去・対象chはSpectrogram設定から指定します。窓ごとのdBFSを生成し、平均・ピーク保持は適用しません。入力は256フレーム×64ブロック、結果は128行の固定プール（約8 MiB）で再利用します。48 kHz・1,024点・hop 256では約0.68秒分の結果を保持できます。入力ブロックと結果のFs・ch・世代・サンプル位置・欠落情報を保持し、欠落をまたぐ窓や古い世代を表示へ渡しません。チャンネル数が不足した入力フレームはパニックせず破棄し、STFTの入力欠落数へ加算します。Performanceで最新窓の位置とワーカーの欠落数を確認できます。Spectrumとは独立した解析設定を使い、GUI非依存の512行履歴と循環テクスチャへ渡します。
+- **FFT**: [RustFFT](https://docs.rs/rustfft/6.4.1/rustfft/)の計画とscratchメモリを再利用します。取得キュー・共通履歴・トリガー・測定値・FFTはf64を標準とします。SpectrumとSpectrogramの「FFT PRECISION」で、それぞれ独立して32-bitの高速FFTを選択できます。DC除去と窓適用の後だけf32へ変換し、窓係数と電力平均はf64を維持します。FFTは実数入力をN/2点の複素変換へまとめ、片側ビンを復元します。GPU表示用のdBFSと座標はf32へ変換します。Spectrumのビン周波数とピクセルの対応は、周波数軸・表示範囲・幅・Fs・FFTサイズを変えたときだけ再計算し、通常のFFT更新とピーク保持で再利用します。Spectrumは既定でN/4 hopのすべての完全窓を測定ワーカーで解析します。Latest windowでは最新の完全窓を最大30回/秒、かつN/4以上の新規サンプルごとに観察します。電力平均とピーク保持は寄与した解析窓ごとに更新し、非表示でも継続します。入力欠落時は平均をリセットし、完全窓から回復します。Performanceには実際の寄与窓数と連続解析の無効窓数を表示します。f64電力結果と窓の由来をスナップショットに保持します。
+- **連続STFT**: 別の専用ワーカーで選択した1chを解析します。hopはN/4、FFTサイズ・窓関数・DC除去・対象chはSpectrogram設定から指定します。窓ごとのdBFSを生成し、平均・ピーク保持は適用しません。入力は256フレーム×64ブロック、結果は128行の固定プール（約8 MiB）で再利用します。48 kHz・1,024点・hop 256では約0.68秒分の結果を保持できます。入力ブロックと結果のFs・ch・世代・サンプル位置・欠落情報を保持し、欠落をまたぐ窓や古い世代を表示へ渡しません。チャンネル数が不足した入力フレームはパニックせず破棄し、STFTの入力欠落数へ加算します。Performanceで最新窓の位置とワーカーの欠落数を確認できます。Spectrumとは独立した解析設定を使い、GUI非依存の512行履歴と循環テクスチャへ渡します。
 
 スペクトログラムのR32Floatテクスチャには生のdBFSビンを格納し、最大FFTのNyquistビンまで保持します。1行を4,096列の複数走査線へ分割し、GPUのテクスチャ寸法上限を超えないようにします。変更された行だけを転送し、表示範囲・色・時間座標は描画時に適用します。周波数方向は物理ピクセルが覆うビンの最大値を使い、細いピークを残します。履歴とテクスチャのサイズはFFT設定に応じて固定され、既定の8,192点では各16 MiB、最大32,768点では各40 MiBです。
 
-通常はVSyncを使用します。`--low-latency`ではVSyncを外します。実際の更新頻度はディスプレイ・GPU・OS・入力バッファに依存します。下部の**Performance**メニューにある`UI fps`はUI更新頻度、`Scope prep`・`FFT`・`Spectrum prep`はそれぞれの直近のCPU処理時間で、GPU実行時間ではありません。
+通常はVSyncを使用します。`--low-latency`ではVSyncを外します。実際の更新頻度はディスプレイ・GPU・OS・入力バッファに依存します。下部の**Performance**メニューにある`UI fps`はUI更新頻度、`Scope prep`・`Worker FFT`・`Spectrum prep`はそれぞれの直近のCPU処理時間で、GPU実行時間ではありません。
 
 ## 検証・計測
 
@@ -211,7 +215,7 @@ Audio device → CPAL callback → bounded SPSC ring → UI: common input (1–1
 
 `--gpu-smoke`はScope・Spectrum・Spectrogram・XYを準備してから描画し、それぞれの領域をGPUから読み戻します。線分プロットの独立、XYの円と更新番号が同じ場合の線分転送省略に加え、スペクトログラムの折り返し・行の順序・欠落・最大FFTのNyquistビン・表示変更時の再転送省略を検証します。`--ui-smoke`は入力を開始せず、明示的なテスト信号で4画面を短時間開いて閉じます。スペクトログラムの既知信号は周波数を変化させ、履歴の折り返しと意図的な入力欠落を含みます。`qa`機能を有効にすると、その表示を`dist/ui-smoke.png`へ保存します。通常起動時はオーディオ入力、`--demo`指定時は内部信号を使います。GPUやマイクを必要とする確認はCIでは実行しません。
 
-`qa`機能では、2秒の起動待ち後に1〜3,600秒のUIフレーム間隔を記録できます。停止中のフレームは除外し、計測後にUI間隔p95と最大値、VSync待ちを除いたeframeのフレーム処理時間p95、欠落数を出力して終了します。固定容量のヒストグラムで全計測区間を集計し、長時間でも初めの8,192フレームだけに偏りません。p95は0.01 ms刻みの上側へ丸め、200 ms以上の区間がp95に達する場合は実測最大値を上限として報告します。入力処理・Spectrum FFT・各プロットの準備・STFT結果取り込みについても、実際に処理した呼び出しごとのp95と最大値を出します。処理ごとのp95を足してフレーム全体のp95にはできません。
+`qa`機能では、2秒の起動待ち後に1〜3,600秒のUIフレーム間隔を記録できます。停止中のフレームは除外し、計測後にUI間隔p95と最大値、VSync待ちを除いたeframeのフレーム処理時間p95、欠落数を出力して終了します。固定容量のヒストグラムで全計測区間を集計し、長時間でも初めの8,192フレームだけに偏りません。p95は0.01 ms刻みの上側へ丸め、200 ms以上の区間がp95に達する場合は実測最大値を上限として報告します。UIの操作イベント・スナップショット受信・各プロットの準備・STFT結果取り込みについて、呼び出しごとのp95と最大値を出します。測定ワーカーとSTFTワーカーのCPU時間はそれぞれ別の合計値として出します。処理ごとのp95を足してフレーム全体のp95にはできません。
 
 以下はBlackHoleのCH 16を選び、10秒間計測する例です。`MEASURELAB_PROFILE_SETTINGS=spectrum`でSpectrum設定を開き、`MEASURELAB_PROFILE_SCREENSHOT=1`で途中の画面を`dist/ui-smoke.png`へ保存できます。デバイスが見つからない、入力にエラーがある、動作中のフレームがない場合は検証を失敗にします。秒数が不正な場合や`qa`なしのビルドで計測を指定した場合もエラーになります。
 
@@ -219,6 +223,20 @@ Audio device → CPAL callback → bounded SPSC ring → UI: common input (1–1
 MEASURELAB_PROFILE_SECONDS=10 MEASURELAB_PROFILE_DEVICE="BlackHole 16ch" MEASURELAB_PROFILE_CHANNEL=16 \
     ./scripts/cargo.sh run --release --features qa
 MEASURELAB_PROFILE_SECONDS=10 ./scripts/cargo.sh run --release --features qa -- --demo
+```
+
+`MEASURELAB_PROFILE_UI_STALL=1`を追加すると、実際のUIスレッドを1秒止め、入力消費とSpectrum解析の継続・表示更新省略・入力欠落0を確認します。入力キューの保持時間より長い停止です。STFT結果プールが不足した場合の表示行欠落は別に計数します。通常の性能基準値とは条件を分けて扱ってください。
+
+```sh
+MEASURELAB_PROFILE_SECONDS=5 MEASURELAB_PROFILE_UI_STALL=1 \
+    MEASURELAB_PROFILE_FFT_SIZE=32768 \
+    ./scripts/cargo.sh run --release --locked --features qa -- --demo
+```
+
+GUIなしの既知入力・平均値の照合と、1ch／2ch／16ch・最大FFT・表示停止・飽和・停止／再開・ストリーム失敗の境界は`measurement`モジュールのテストでも検証できます。
+
+```sh
+./scripts/cargo.sh test --locked --lib --no-default-features measurement::tests
 ```
 
 `MEASURELAB_PROFILE_LIFECYCLE=1`を内部デモのUI計測へ追加すると、Spectrum設定の独立、停止後の遅着結果除外、停止中の解析窓・平均値・生サンプルの保持、デモ設定変更、共通カーソル、表示変更、非表示・単独表示・再表示、再開／入力切り替えでのカーソル無効化、STFTのCH／FFT変更、XYの保持・振幅変更・単独表示・再開を実際のアプリ状態で確認します。`MEASURELAB_PROFILE_IDLE=1`も指定すると、計測用の連続再描画を停止中だけ抑え、待機フレーム間隔を検証します。QAの次段階へ進むための一度のタイマーは残します。計測区間は状態変更を含むため、通常の性能基準値とは別に扱います。
@@ -259,6 +277,7 @@ MEASURELAB_PROFILE_SECONDS=10 MEASURELAB_PROFILE_FFT_PRECISION=f64 \
 ## コードの入口
 
 - `src/audio.rs`: CPALデバイス管理、入力コールバック、SPSC転送。
+- `src/measurement.rs`: GUI非依存の入力消費・共通履歴・デモ・Scope統計・Spectrumスケジュール、入力世代・欠落付きの容量固定スナップショット。
 - `src/signal.rs`: 固定容量履歴、トリガー、集約、測定。
 - `src/cursor.rs`: 入力世代付きの共通A/B時間カーソル、ScopeのX固定と履歴のサンプル固定、Δt、最寄りFFTビン。
 - `src/xy.rs`: 同期したCH 1／CH 2の軌跡、独立した表示範囲、描画量の上限。
@@ -270,7 +289,7 @@ MEASURELAB_PROFILE_SECONDS=10 MEASURELAB_PROFILE_FFT_PRECISION=f64 \
 - `src/instance.rs`: OSのファイルロックを使う起動制御。
 - `src/demo.rs`: 外部出力を伴わない内部デモ信号。
 - `src/gpu.rs` / `src/trace.wgsl`: GPUリソースと専用描画パイプライン。
-- `src/app.rs`: 入力キューの消費・デモ生成・解析の呼び出し、共通操作UIと複数プロット表示。
+- `src/app.rs`: 測定への操作要求・結果受信、共通操作UIと複数プロット表示。
 
 選定したライブラリの一次資料: [CPAL](https://docs.rs/cpal/0.18.2/cpal/)、[rtrb](https://docs.rs/rtrb/0.4.0/rtrb/)、[eframe](https://docs.rs/eframe/0.36.2/eframe/)、[egui-wgpu](https://docs.rs/egui-wgpu/0.36.2/egui_wgpu/)。
 
