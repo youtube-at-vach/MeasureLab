@@ -2,6 +2,8 @@
 
 `rewrite/rust` starts from the final Python release, `v0.9.1`. The `Begin Rust rewrite` commit clears the application paths for the new Rust implementation while keeping the project's website, published manuals, history, and reference material.
 
+This document records repository preparation and archive locations. For current product decisions and implementation priorities, read [Current direction](CURRENT_DIRECTION.md) and the [Rust plan](rust/PLAN.md). The preparation steps below are not a pending migration checklist.
+
 ## Python archive
 
 The complete Python edition remains available through the `v0.9.1` tag and the `archive/python-v0.9.1` branch.
@@ -15,15 +17,15 @@ In the preparation worktree, the original files were first moved into `.legacy-p
 | Paths | Purpose |
 | --- | --- |
 | `download-site/`, `version.json` | Download website and the published Python version |
-| `docs/`, `mkdocs.yml`, `requirements-docs.txt` | Existing online manuals, assets, math rendering, and PDF generation |
-| `guide/`, `tech_docs/`, `.github/deepwiki/` | Product direction, measurement principles, migration plans, and Python reference documentation |
+| `docs/`, `mkdocs.yml`, `requirements-docs.txt` | Existing online manuals, assets, and math rendering; automated PDF generation is stopped |
+| `guide/`, `tech_docs/`, `.github/deepwiki/` | Current direction and Rust guides, plus explicitly scoped Python and former migration references |
 | `CHANGELOG.md`, `misc/extract_changelog.py` | Historical release notes and their extraction tool |
 | `app_icon.png` | Project icon |
 | `README.md`, `README.ja.md`, `CONTRIBUTING.md`, `SECURITY.md` | Project information, license statement, contributor credits, and security policy |
 | Selected `.github/` files | Issue templates, funding, PR review, website/manual workflows, workflow linting, and security checks |
 | `AGENTS.md`, `.agents/workflows/`, lint configuration | Current working rules, GitHub procedures, and validation of retained tools and documentation |
 
-The manuals and technical references describe the Python edition. Their presence does not imply that those features are already available in Rust. `version.json` stays at `0.9.1` until the download website actually offers a new release.
+The published manuals and historical technical references describe the Python edition; `guide/CURRENT_DIRECTION.md` and `guide/rust/` describe current Rust work. The presence of a Python reference does not imply that its features are available in Rust. `version.json` stays at `0.9.1` until the download website actually offers a new release.
 
 ## Retired files
 
@@ -31,9 +33,9 @@ The Python application's `src/`, `main_gui.py`, tests, benchmarks, experiments, 
 
 Python remains a tool for the retained manuals and release-note extraction. The old application dependencies, Pytest, Mypy, Qt UI checks, and translation checks are no longer part of this branch's setup.
 
-## Next stage
+## Current Rust checkout
 
-The `Begin Rust rewrite` commit did not import Rust source. The subsequent import brings in `/Users/vach/RAS` at commit `f29be2b08977700116f9119ea6ac08699b5ca1f4`, placing `src/`, Cargo files, benchmarks, scripts, and Rust CI in the cleared application paths. The original README, plan, and reference image are retained in `guide/rust/`. At the project owner's request, the Rust edition continues MeasureLab's **The Unlicense**, recorded in `Cargo.toml` and `LICENSE`. The application is now named MeasureLab, with the Cargo package and executable named `measurelab` and the macOS bundle named `MeasureLab.app`.
+The Rust prototype has already been imported from RAS commit `f29be2b08977700116f9119ea6ac08699b5ca1f4`. The checkout contains `src/`, Cargo files, benchmarks, scripts, and Rust CI; no further source import is required to start normal development. The guides in `guide/rust/` now track this repository's current implementation and plan. At the project owner's request, the Rust edition continues MeasureLab's **The Unlicense**, recorded in `Cargo.toml` and `LICENSE`. The application is named MeasureLab, with the Cargo package and executable named `measurelab` and the macOS bundle named `MeasureLab.app`.
 
 Rust development uses topic branches and pull requests targeting `rewrite/rust`. The download website, Python manual, and `version.json` stay at their published state. Replacing `main` and publishing releases are separate steps.
 

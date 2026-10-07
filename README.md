@@ -2,7 +2,7 @@
 
 [日本語](README.ja.md)
 
-MeasureLab is a DIY audio measurement and analysis suite. This branch contains the initial Rust implementation, with live audio input, a GPU oscilloscope, FFT spectrum analysis, and internal demo signals.
+MeasureLab aims to make accurate measurement free and accessible to everyone. This branch contains a Rust prototype with 1–16-channel audio input, an oscilloscope, spectrum, spectrogram, XY display, and internal demo signals.
 
 The final Python/PyQt6 edition is [v0.9.1](https://github.com/youtube-at-vach/MeasureLab/releases/tag/v0.9.1). Its complete source remains available through that tag and the [archive/python-v0.9.1 branch](https://github.com/youtube-at-vach/MeasureLab/tree/archive/python-v0.9.1).
 
@@ -24,7 +24,7 @@ With Rust 1.95 or later and your operating system's build tools installed, run:
 ./scripts/cargo.sh run --release --locked -- --demo
 ```
 
-See the [Rust operation and build guide](guide/rust/README.md) and [development plan](guide/rust/PLAN.md) for supported features, live input, and platform requirements.
+See the [current direction](guide/CURRENT_DIRECTION.md) and [development plan](guide/rust/PLAN.md) for design principles, current limits, and the next milestones. The immediate priority is to separate acquisition and measurement execution from UI updates, then finish the Scope and Spectrum measurement use cases. The [Rust operation and build guide](guide/rust/README.md) covers supported features, live input, and platform requirements.
 
 This repository retains `download-site/`, the manual generation files, project history, measurement/design references, and the project icon. See [Rust rewrite preparation](guide/RUST_REWRITE_PREPARATION.md) for the retained files and archive details, and [Contributing](CONTRIBUTING.md) for the current validation commands.
 

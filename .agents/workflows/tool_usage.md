@@ -4,7 +4,7 @@ description: Rust アプリ・サイト・文書の起動と検証コマンド
 
 # Tool Usage Guide
 
-共通ルールは [AGENTS.md](../../AGENTS.md) を参照する。以下のコマンドはリポジトリのルートで実行する。
+共通ルールと文書を読む順序は [AGENTS.md](../../AGENTS.md)、測定の完了条件は [Rust PLAN](../../guide/rust/PLAN.md) を参照する。以下のコマンドはリポジトリのルートで実行する。この文書には再実行する手順を置き、実測結果を追記しない。
 
 ## Rust アプリ
 
@@ -42,7 +42,7 @@ GPU が利用できる環境では、読み戻しとテスト信号による画�
 ./scripts/cargo.sh run --locked --features qa -- --ui-smoke
 ```
 
-段階2のUIフレーム時間・処理別CPU時間・欠落・RSSの連続計測:
+既存プロトタイプとの比較に使うUIフレーム時間・処理別CPU時間・欠落・RSSの連続計測（スクリプト名は`profile-stage2.sh`を継続）:
 
 ```bash
 ./scripts/cargo.sh build --release --locked --features qa
@@ -51,7 +51,7 @@ MEASURELAB_PROFILE_SECONDS=600 MEASURELAB_PROFILE_DEVICE="BlackHole 16ch" \
 MEASURELAB_PROFILE_SECONDS=120 ./scripts/profile-stage2.sh demo-120 --demo
 ```
 
-ログと1秒ごとのRSSは`dist/stage2-qa/`へ保存する。仮想入力の停止・再開やデバイス切り替えは [Rust READMEの検証・計測](../../guide/rust/README.md#検証計測) を参照する。
+ログと1秒ごとのRSSは`dist/stage2-qa/`へ保存する。仮想入力の停止・再開やデバイス切り替えは [Rust READMEの検証・計測](../../guide/rust/README.md#検証計測) を参照する。内部デモ・既存QAの成功だけで、未実装のSoftware LoopbackやUI負荷からの独立を検証済みとしない。
 
 macOS のローカルアプリバンドル:
 

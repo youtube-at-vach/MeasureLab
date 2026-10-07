@@ -6,6 +6,13 @@ description: MeasureLab の Rust 開発と公開サイトの共通ルール
 
 コマンドはリポジトリのルートで実行する。まず `git status --short --branch` と対象ファイルを確認し、ユーザーの変更や無関係な変更を上書きしない。
 
+## 作業前に読む文書
+
+* Rust の計画・設計・実装では [現在の方針](guide/CURRENT_DIRECTION.md) → [Rust PLAN](guide/rust/PLAN.md) の順に読み、目的・不変条件と対象マイルストーンを確認する。操作・コードの入口は [Rust README](guide/rust/README.md) の必要な節を読む。
+* 現在は Scope／Spectrum を測定器として仕上げる段階。Audio I/O・測定演算・描画の実行分離、f64 基準、既知入力での精度・再現性を優先する。実装済みの 1〜16ch 基盤を維持し、まず 2ch の測定用途を完成させる。
+* 旧 Rust/QML 計画、旧 Python 版 GUI ガイド、`tech_docs/`、`.github/deepwiki/` は必要箇所だけ読む参考資料。旧版の構造・全機能移行・作業手順を現行の要件として適用しない。
+* 文書は現在有効な状態を更新する。作業日誌や会話ログを追記せず、実装状態・未解決問題・次の完了条件を正本へ反映する。実測記録は条件付きで分離し、未実施や過去の成功を現在の検証済みとしない。
+
 ## 現在の状態
 
 * Rust アプリの表示名は MeasureLab、Cargo パッケージ・実行ファイル名は `measurelab`。Rust 1.95 以降を使う。

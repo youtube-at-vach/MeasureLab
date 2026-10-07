@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-MeasureLab は DIY のオーディオ測定・解析ツール集です。このブランチには Rust の初期実装があります。実オーディオ入力、GPU オシロスコープ、FFT スペクトル解析、内部デモ信号に対応しています。
+MeasureLab は「正確な測定を、無料で、すべての人へ。」を目指すオーディオ測定・解析アプリです。このブランチには Rust のプロトタイプがあり、1〜16ch のオーディオ入力、オシロスコープ、スペクトル、スペクトログラム、XY 表示、内部デモ信号に対応しています。
 
 Python/PyQt6 版の最終リリースは [v0.9.1](https://github.com/youtube-at-vach/MeasureLab/releases/tag/v0.9.1) です。完全なソースはこのタグと [archive/python-v0.9.1 ブランチ](https://github.com/youtube-at-vach/MeasureLab/tree/archive/python-v0.9.1) から参照できます。
 
@@ -24,7 +24,7 @@ Rust 1.95 以降と OS のビルドツールを用意した環境では、次の
 ./scripts/cargo.sh run --release --locked -- --demo
 ```
 
-対応機能、実オーディオ入力、各 OS の前提は [Rust 版の操作・ビルドガイド](guide/rust/README.md)、拡張計画は [開発計画](guide/rust/PLAN.md) を参照してください。
+設計原則は [現在の方針](guide/CURRENT_DIRECTION.md)、実装の制限と次の完了条件は [開発計画](guide/rust/PLAN.md) を参照してください。当面は取得・測定演算を UI 更新から独立させ、Scope と Spectrum の測定用途を完成させます。対応機能、実オーディオ入力、各 OS の前提は [Rust 版の操作・ビルドガイド](guide/rust/README.md) にまとめています。
 
 `download-site/`、マニュアル生成用ファイル、開発履歴、測定・設計資料、アイコンを残しています。残したファイルと退避先の詳細は [Rust rewrite preparation](guide/RUST_REWRITE_PREPARATION.md)、現在の検証コマンドは [Contributing](CONTRIBUTING.md) を参照してください。
 

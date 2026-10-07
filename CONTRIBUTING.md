@@ -12,7 +12,7 @@ We welcome contributions of all kinds! This document provides guidelines for con
 >
 > You are encouraged to clone the repository using tools like GitHub Copilot or Antigravity and submit the results of your work with AI as a PR. A brief explanation of "what was done" and "why it was done" in the PR description is sufficient.
 >
-> Reviews involve both humans and AI. If CI tests pass successfully, changes will be merged into the `main` branch.
+> Reviews involve both humans and AI. Rust development PRs target `rewrite/rust`; passing CI is part of review, and merging is a separate decision.
 >
 > ---
 >
@@ -28,7 +28,7 @@ We welcome contributions of all kinds! This document provides guidelines for con
 > PR には「何をしたか」「なぜそうしたか」が軽く分かる説明があれば十分です。
 >
 > レビューには人間だけでなく AI も関与します。
-> CI などのテストが問題なく通過すれば、main ブランチにマージされます。
+> Rust 開発の PR は `rewrite/rust` に向けます。CI の成功はレビューの確認事項であり、マージは別途判断します。
 
 ---
 
@@ -39,6 +39,10 @@ This branch contains the initial Rust implementation of MeasureLab. The Python a
 For the old application environment, use the [Python v0.9.1 development guide](https://github.com/youtube-at-vach/MeasureLab/blob/v0.9.1/docs/development.en.md) from the archived edition.
 
 The published manuals still describe the Python edition. The [Rust guide](guide/rust/README.md) documents the new application's current behavior. Contributions to the download website, documentation, and measurement/design references remain possible during the rewrite.
+
+Before planning or changing Rust behavior, read the [current direction](guide/CURRENT_DIRECTION.md) and [Rust plan](guide/rust/PLAN.md). Build on the existing prototype and finish a small measurement use case with numerical validation before expanding the feature set. The former Rust/QML plan and Python GUI guide are reference material, not current implementation requirements.
+
+Keep working documents focused on current decisions, constraints, unresolved problems, and completion criteria. Update the relevant state instead of appending a work diary; retain detailed measurements separately with their conditions and verification limits.
 
 ## Rust checks
 
