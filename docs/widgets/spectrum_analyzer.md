@@ -10,6 +10,8 @@
 
 ## 操作方法
 
+スクリーンショット、ログ表示、ウィンドウの分離やコンパクトモードなどの機能については、[共通機能 (Common Features)](detachable_wrapper.md) を参照してください。
+
 ### 測定の開始と停止
 
 * **Start Analysis / Stop Analysis ボタン**: 測定の開始と停止を切り替えます。

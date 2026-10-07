@@ -10,6 +10,8 @@ It is ideal for observing the "transitions" of sound, such as voice intonation a
 
 ## Operation
 
+For features such as screenshots, logs, window separation, and compact mode, see [Common Features](detachable_wrapper.en.md).
+
 ### Starting and Stopping Measurements
 
 * **Start / Stop Button**: Toggles the measurement on and off.
