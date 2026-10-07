@@ -10,6 +10,8 @@ In addition to general FFT (Fast Fourier Transformation) analysis, it also featu
 
 ## Operation
 
+For features such as screenshots, logs, window separation, and compact mode, see [Common Features](detachable_wrapper.en.md).
+
 ### Starting and Stopping Measurement
 
 * **Start Analysis / Stop Analysis button**: Toggles the measurement start and stop.
