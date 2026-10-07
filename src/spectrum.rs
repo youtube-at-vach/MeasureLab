@@ -1,6 +1,9 @@
 //! Windowed, one-sided amplitude spectra. A bin-centred sine with peak
 //! amplitude 1 FS reads 0 dBFS. This is not a PSD or a calibrated dBm meter.
-use crate::signal::{History, Line};
+use crate::{
+    channel::ChannelId,
+    signal::{History, Line},
+};
 use rustfft::{Fft, FftNum, FftPlanner, num_complex::Complex, num_traits::ToPrimitive};
 use std::{f64::consts::TAU, ops::Range, sync::Arc};
 
@@ -87,7 +90,7 @@ pub struct WindowInfo {
     pub start: u64,
     pub end: u64,
     pub sample_rate: u32,
-    pub channel: usize,
+    pub channel: ChannelId,
     pub settings: Settings,
 }
 

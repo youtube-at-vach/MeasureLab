@@ -1,5 +1,6 @@
 //! Acquisition and waveform processing, independent of the desktop UI.
 pub mod audio;
+pub mod channel;
 pub mod cursor;
 pub mod demo;
 pub mod instance;

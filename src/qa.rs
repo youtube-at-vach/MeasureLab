@@ -441,6 +441,45 @@ pub fn multichannel_smoke_test() -> Result<(), Box<dyn std::error::Error>> {
     if (stft_db - expected_db).abs() > 0.02 {
         return Err(format!("CH 16 STFT amplitude failed: {stft_db:.3} dBFS").into());
     }
+    for pair in [crate::channel::Pair([15, 7]), crate::channel::Pair([7, 15])] {
+        let measurements = crate::signal::measure(&history, history.range(), pair);
+        for (channel, measurement) in pair.0.into_iter().zip(measurements) {
+            if measurement.samples != 8192
+                || (measurement.rms - 0.125 / 2.0_f64.sqrt()).abs() > 1e-8
+                || (measurement.peak - 0.125).abs() > 1e-5
+                || (measurement.peak_to_peak - 0.25).abs() > 2e-5
+            {
+                return Err(format!(
+                    "CH {} Scope raw statistics failed: {measurement:?}",
+                    channel + 1
+                )
+                .into());
+            }
+        }
+        let settings = crate::xy::Settings {
+            channels: pair,
+            milliseconds: 200.0,
+            ..Default::default()
+        };
+        let mut lines = Vec::new();
+        let xy = crate::xy::build_lines(&history, capture.sample_rate, settings, &mut lines);
+        if xy.range != history.range() || lines.len() != 8191 {
+            return Err("XY routed capture incomplete".into());
+        }
+        let sample = xy.range.end - 17;
+        let raw = pair
+            .values(history.get(sample).ok_or("XY sample missing")?)
+            .unwrap();
+        let point = settings.fraction_at_point(raw);
+        let nearest = crate::xy::nearest_sample(&history, xy.range, settings, point)
+            .ok_or("XY routed snap unavailable")?;
+        if pair.values(history.get(nearest).unwrap()) != Some(raw) {
+            return Err("XY routed snap selected a different pair".into());
+        }
+    }
+    println!(
+        "BlackHole routed Scope/XY OK: CH 16 / CH 8 and swapped sources; 0.125 FS peak, RMS 0.125/√2, P-P 0.25 FS, synchronous Trace Snap"
+    );
     println!(
         "BlackHole 16ch tones OK: {} Hz, {frames} frames, all 16 channel mappings / bin frequencies / amplitudes verified, CH 16 STFT {stft_db:.3} dBFS, no capture / worker / result losses",
         capture.sample_rate

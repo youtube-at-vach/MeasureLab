@@ -1,3 +1,4 @@
+use crate::channel::{self, ChannelId, Pair};
 use std::ops::Range;
 
 pub const MAX_CHANNELS: usize = 16;
@@ -221,7 +222,7 @@ pub enum Edge {
 pub struct Trigger {
     pub edge: Edge,
     pub level: f64,
-    pub channel: usize,
+    pub channel: ChannelId,
 }
 
 impl Default for Trigger {
@@ -247,25 +248,31 @@ pub struct Sweep {
 pub struct Line {
     pub a: [f32; 2],
     pub b: [f32; 2],
+    /// Display trace slot, independent of the assigned input channel ID.
     pub channel: usize,
 }
 
-#[derive(Clone, Copy, Default, Debug)]
+#[derive(Clone, Copy, Default, Debug, PartialEq)]
 pub struct Measurement {
     pub peak: f64,
     pub rms: f64,
     pub peak_to_peak: f64,
+    /// Acquired raw samples used; zero means no valid measurement.
+    pub samples: u64,
 }
 
 /// Measurements over retained raw samples, independently of visibility and
 /// pixel aggregation. Missing samples do not become zero-valued observations.
-pub fn measure(history: &History, range: Range<u64>) -> [Measurement; 2] {
+pub fn measure(history: &History, range: Range<u64>, channels: Pair) -> [Measurement; 2] {
     let mut result = [Measurement::default(); 2];
     let range = range.start.max(history.range().start)..range.end.min(history.range().end);
     if range.end <= range.start {
         return result;
     }
-    for (channel, result) in result.iter_mut().enumerate().take(history.channels()) {
+    for (channel, result) in channels.0.into_iter().zip(&mut result) {
+        if !channel::available(channel, history.channels()) {
+            continue;
+        }
         let mut min = f64::INFINITY;
         let mut max = f64::NEG_INFINITY;
         let mut square_sum = 0.0;
@@ -282,6 +289,7 @@ pub fn measure(history: &History, range: Range<u64>) -> [Measurement; 2] {
                 peak: min.abs().max(max.abs()),
                 rms: (square_sum / count as f64).sqrt(),
                 peak_to_peak: max - min,
+                samples: count,
             };
         }
     }
@@ -308,6 +316,7 @@ pub fn build_lines(
         pixels,
         fs_per_div,
         enabled,
+        Pair::default(),
         output,
     )
 }
@@ -320,6 +329,7 @@ pub fn build_sweep_lines(
     pixels: usize,
     fs_per_div: f32,
     enabled: [bool; 2],
+    channels: Pair,
     output: &mut Vec<Line>,
 ) -> [Measurement; 2] {
     output.clear();
@@ -333,8 +343,8 @@ pub fn build_sweep_lines(
     let scale = 1.0 / (fs_per_div.max(0.00001) * 8.0);
     let y = |value: f64| (0.5 - value * scale as f64) as f32;
     let mut result = [Measurement::default(); 2];
-    for channel in 0..2 {
-        if !enabled[channel] || channel >= history.channels() {
+    for (trace, channel) in channels.0.into_iter().enumerate() {
+        if !enabled[trace] || !channel::available(channel, history.channels()) {
             continue;
         }
         let mut min = f64::INFINITY;
@@ -358,7 +368,7 @@ pub fn build_sweep_lines(
                     output.push(Line {
                         a,
                         b: point,
-                        channel,
+                        channel: trace,
                     });
                 }
                 previous = Some(point);
@@ -402,22 +412,23 @@ pub fn build_sweep_lines(
                     output.push(Line {
                         a,
                         b: [x, y(first)],
-                        channel,
+                        channel: trace,
                     });
                 }
                 output.push(Line {
                     a: [x, y(lo)],
                     b: [x, y(hi)],
-                    channel,
+                    channel: trace,
                 });
                 previous = Some([x, y(last)]);
             }
         }
         if valid_count > 0 {
-            result[channel] = Measurement {
+            result[trace] = Measurement {
                 peak: min.abs().max(max.abs()),
                 rms: (square_sum / valid_count as f64).sqrt(),
                 peak_to_peak: max - min,
+                samples: valid_count,
             };
         }
     }
@@ -427,6 +438,99 @@ pub fn build_sweep_lines(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn routed_raw_statistics_and_cursor_values_survive_wrap_gaps_and_projection_changes() {
+        use crate::cursor::Cursors;
+        let mut history = History::with_channels(16, 16);
+        for sample in 100..125 {
+            if sample == 119 {
+                continue;
+            }
+            let mut frame = [42.0; 16];
+            frame[7] = 0.25;
+            frame[15] = if sample == 121 { -0.75 } else { 0.125 };
+            history.push_at(sample, frame);
+        }
+        let sweep = Sweep {
+            range: 112..125,
+            sample_offset: 0.25,
+            triggered: true,
+        };
+        let pair = Pair([15, 7]);
+        let measured = measure(&history, sweep.range.clone(), pair);
+        assert_eq!(measured[0].samples, 12);
+        assert_eq!(measured[0].peak, 0.75);
+        assert_eq!(measured[0].peak_to_peak, 0.875);
+        assert!(
+            (measured[0].rms - ((11.0 * 0.125_f64.powi(2) + 0.75_f64.powi(2)) / 12.0).sqrt()).abs()
+                < 1e-15
+        );
+        assert_eq!(measured[1].rms, 0.25);
+        assert_eq!(measured[1].peak_to_peak, 0.0);
+        for pixels in [2, 8, 1000] {
+            for scale in [0.125, 0.5] {
+                let mut lines = Vec::new();
+                assert_eq!(
+                    build_sweep_lines(&history, &sweep, pixels, scale, [true; 2], pair, &mut lines),
+                    measured
+                );
+                assert!(lines.iter().all(|line| line.channel < 2));
+                assert_eq!(
+                    measure(&history, sweep.range.clone(), Pair([7, 15])),
+                    [measured[1], measured[0]]
+                );
+            }
+        }
+        let mut cursors = Cursors::default();
+        cursors.set_time(0, 121);
+        let sample = cursors
+            .sample(cursors.times[0].unwrap(), sweep.range.clone())
+            .unwrap();
+        assert_eq!(
+            pair.values(history.get(sample).unwrap()),
+            Some([-0.75, 0.25])
+        );
+        cursors.set_time(0, 119);
+        let sample = cursors
+            .sample(cursors.times[0].unwrap(), sweep.range)
+            .unwrap();
+        assert!(history.get(sample).is_none());
+    }
+
+    #[test]
+    fn scope_assignments_preserve_f64_and_never_substitute_missing_channels() {
+        let mut history = History::with_channels(8, 1);
+        for sample in [1.0 - 1e-9, 1.0 + 1e-9] {
+            history.push([sample]);
+        }
+        let measured = measure(&history, history.range(), Pair([0, usize::MAX]));
+        assert_eq!(measured[0].samples, 2);
+        assert_eq!(measured[0].peak, 1.0 + 1e-9);
+        assert!((measured[0].peak_to_peak - 2e-9).abs() < 1e-16);
+        assert_eq!(measured[1], Measurement::default());
+        assert_eq!(
+            measure(&history, history.range(), Pair([0, 0])),
+            [measured[0]; 2]
+        );
+        let mut lines = Vec::new();
+        let sweep = history.sweep(2, Trigger::default());
+        build_sweep_lines(
+            &history,
+            &sweep,
+            10,
+            0.25,
+            [true; 2],
+            Pair([0, 15]),
+            &mut lines,
+        );
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0].channel, 0);
+        assert_eq!(
+            measure(&history, 50..60, Pair::default()),
+            [Measurement::default(); 2]
+        );
+    }
 
     #[test]
     fn gaps_preserve_retained_frames_and_invalidate_wrapped_slots_without_allocation() {
@@ -602,6 +706,7 @@ mod tests {
                             pixels,
                             0.25,
                             [true; 2],
+                            Pair::default(),
                             &mut aligned,
                         );
                         assert_eq!(raw.len(), aligned.len());

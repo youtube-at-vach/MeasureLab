@@ -1,6 +1,7 @@
 //! Continuous, sample-clocked STFT on a dedicated worker. All queues and result
 //! storage are bounded; the producer never waits for analysis or result delivery.
 use crate::{
+    channel::ChannelId,
     signal::{History, MAX_CHANNELS},
     spectrum::{Analyzer, FFT_SIZES, Precision, Settings, Window},
 };
@@ -25,7 +26,7 @@ pub struct Config {
     pub sample_rate: u32,
     pub channels: usize,
     /// Zero-based source channel, independent of the number of displayed traces.
-    pub channel: usize,
+    pub channel: ChannelId,
     pub size: usize,
     pub hop: usize,
     pub window: Window,

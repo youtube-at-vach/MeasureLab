@@ -1,5 +1,6 @@
 use crate::{
     audio::{AudioWorker, Command, DeviceInfo, Event},
+    channel::{self, ChannelId, Pair},
     cursor::{self, Cursors},
     demo::{Demo, Waveform},
     gpu::{COLORS, PlotId, Segment, TraceCallback, TraceRenderer},
@@ -145,12 +146,14 @@ pub struct ScopeApp {
     input_generation: u64,
     snapshot_revision: u64,
     core_scope: ScopeSettings,
+    scope_channels: Pair,
+    xy_channels: Pair,
     spectrum_mode: SpectrumMode,
     spectrum_info: measurement::SpectrumInfo,
     stft_generation: u64,
     spectrum_settings: Settings,
     analyzer: spectrum::Result,
-    spectrum_channel: usize,
+    spectrum_channel: ChannelId,
     frequency_scale: FrequencyScale,
     floor_db: f32,
     span_hz: f32,
@@ -167,7 +170,7 @@ pub struct ScopeApp {
     last_stft: Option<RowInfo>,
     spectrogram_history: Arc<Mutex<spectrogram::History>>,
     spectrogram_settings: Settings,
-    spectrogram_channel: usize,
+    spectrogram_channel: ChannelId,
     spectrogram_scale: FrequencyScale,
     spectrogram_min_hz: f32,
     spectrogram_max_hz: f32,
@@ -295,6 +298,8 @@ impl ScopeApp {
             input_generation: 1,
             snapshot_revision: 0,
             core_scope: ScopeSettings::default(),
+            scope_channels: Pair::default(),
+            xy_channels: Pair::default(),
             spectrum_mode: SpectrumMode::Continuous,
             spectrum_info: measurement::SpectrumInfo::default(),
             stft_generation: 0,
@@ -497,6 +502,23 @@ impl ScopeApp {
                 }
             }
             // Render every inspector with the same deterministic signal fixture.
+            if std::env::var_os("MEASURELAB_UI_SMOKE_ROUTING").is_some() {
+                app.channels = 16;
+                app.history = History::with_channels(96000, 16);
+                app.scope_channels = Pair([15, 7]);
+                app.xy_settings.channels = Pair([15, 7]);
+                app.trigger.channel = 15;
+                app.spectrum_channel = 15;
+                for sample in 0..16384 {
+                    let angle = std::f64::consts::TAU * sample as f64 / 48.0;
+                    let mut frame = [0.1; 16];
+                    frame[15] = 0.375 * angle.sin();
+                    frame[7] = 0.25 * angle.cos();
+                    app.history.push(frame);
+                }
+                app.cursors.set_scope_time(0, 0.3);
+                app.cursors.set_scope_time(1, 0.7);
+            }
             match std::env::var("MEASURELAB_UI_SMOKE_SETTINGS").as_deref() {
                 Ok("scope") => app.sidebar.section = Some(SettingsSection::Scope),
                 Ok("spectrum") => app.sidebar.section = Some(SettingsSection::Spectrum),
@@ -820,6 +842,14 @@ impl ScopeApp {
                     "input lifecycle requires a CPAL device"
                 );
                 let latest = latest.unwrap();
+                self.scope_channels = Pair([self.channels as usize - 1, 0]);
+                self.xy_settings.channels = Pair([0, self.channels as usize - 1]);
+                self.dirty = true;
+                self.refresh_scope_range();
+                self.core
+                    .as_ref()
+                    .unwrap()
+                    .configure_xy(self.xy_settings.channels);
                 self.stop();
                 self.refresh_scope_range();
                 self.rebuild_xy();
@@ -864,6 +894,10 @@ impl ScopeApp {
                 self.spectrum_dirty = true;
                 self.spectrogram_settings.size = 1024;
                 self.spectrogram_channel = self.channels as usize - 1;
+                self.scope_channels = Pair([0, self.channels as usize - 1]);
+                self.xy_settings.channels = Pair([self.channels as usize - 1, 0]);
+                self.dirty = true;
+                self.xy_dirty = true;
                 self.visible = [false, false, true, false];
                 self.lifecycle_stage = 2;
             }
@@ -874,7 +908,18 @@ impl ScopeApp {
                 assert_eq!(self.analyzer.window(), Some(*window));
                 assert_eq!(self.analyzer.db(), db);
                 assert_eq!(self.history.range(), *range);
-                assert_eq!(self.xy_revision, self.lifecycle_xy_held.as_ref().unwrap().0);
+                assert_eq!(
+                    self.scope_view_channels(),
+                    Pair([self.channels as usize - 1, 0])
+                );
+                assert_eq!(
+                    self.xy_capture.channels,
+                    self.lifecycle_xy_held.as_ref().unwrap().1.channels
+                );
+                assert_eq!(
+                    self.xy_capture.range,
+                    self.lifecycle_xy_held.as_ref().unwrap().1.range
+                );
                 assert_eq!(
                     self.spectrogram_history.lock().unwrap().revision(),
                     self.lifecycle_held.unwrap().0
@@ -893,6 +938,8 @@ impl ScopeApp {
                 assert_ne!(latest.generation, self.lifecycle_held.unwrap().1.generation);
                 assert_eq!(latest.config.size, 1024);
                 assert_eq!(latest.config.channel, self.channels as usize - 1);
+                assert_eq!(self.scope_view_channels(), self.scope_channels);
+                assert_eq!(self.xy_view_settings().channels, self.xy_settings.channels);
                 self.cursors.set_scope_time(0, 0.5);
                 self.source = Source::Demo;
                 self.switch_source();
@@ -903,6 +950,11 @@ impl ScopeApp {
                 assert!(self.demo_running);
                 assert_eq!(self.channels, 2);
                 assert_eq!(self.sample_rate, 48000);
+                if self.scope_channels.0[1] >= self.channels as usize {
+                    assert_eq!(self.measurements[1].samples, 0);
+                    self.rebuild_xy();
+                    assert!(self.xy_capture.range.is_empty());
+                }
                 self.cursors.set_scope_time(0, 0.5);
                 self.source = Source::Live;
                 self.switch_source();
@@ -927,6 +979,13 @@ impl ScopeApp {
                 self.cursors.set_scope_time(0, 0.3);
                 self.cursors.set_scope_time(1, 0.7);
                 self.refresh_scope_range();
+                assert_eq!(self.scope_view_channels(), self.scope_channels);
+                assert_eq!(self.xy_view_settings().channels, self.xy_settings.channels);
+                if self.scope_channels.0[1] >= self.channels as usize {
+                    assert_eq!(self.measurements[1].samples, 0);
+                    self.rebuild_xy();
+                    assert!(self.xy_capture.range.is_empty());
+                }
                 for sample in self.cursor_samples().into_iter().flatten() {
                     assert!(self.history.get(sample).is_some());
                 }
@@ -954,6 +1013,8 @@ impl ScopeApp {
     fn begin_observation(&mut self) {
         self.cursors.new_epoch();
         self.input_generation += 1;
+        self.core_scope.channels = self.scope_channels;
+        self.xy_channels = self.xy_settings.channels;
         self.history.clear_at(0);
         self.scope_range = 0..0;
         self.scope_sample_offset = 0.0;
@@ -973,9 +1034,11 @@ impl ScopeApp {
             spectrum_channel: self.spectrum_channel,
             spectrum_mode: self.spectrum_mode,
             scope: ScopeSettings {
+                channels: self.scope_channels,
                 samples: self.scope_sample_count(),
                 trigger: self.trigger,
             },
+            xy_channels: self.xy_settings.channels,
             stft_generation: self.stft_generation,
             stft: self.stft_config(),
         }
@@ -989,11 +1052,14 @@ impl ScopeApp {
         }
         self.snapshot_revision = snapshot.revision;
         let samples_changed = self.history.range() != snapshot.history.range();
+        self.dirty |= self.core_scope != snapshot.scope_settings;
+        self.xy_dirty |= self.xy_channels != snapshot.xy_channels;
         self.sample_rate = snapshot.sample_rate;
         std::mem::swap(&mut self.history, &mut snapshot.history);
         std::mem::swap(&mut self.analyzer, &mut snapshot.spectrum);
         self.spectrum_info = snapshot.spectrum_info.clone();
         self.core_scope = snapshot.scope_settings;
+        self.xy_channels = snapshot.xy_channels;
         self.scope_range = snapshot.sweep.range.clone();
         self.scope_sample_offset = snapshot.sweep.sample_offset;
         self.triggered = snapshot.sweep.triggered;
@@ -1105,9 +1171,33 @@ impl ScopeApp {
             .max(2.0) as usize
     }
 
+    fn scope_view_channels(&self) -> Pair {
+        if self.core.is_some() {
+            self.core_scope.channels
+        } else {
+            self.scope_channels
+        }
+    }
+
+    fn xy_view_settings(&self) -> xy::Settings {
+        xy::Settings {
+            channels: if self.core.is_some() {
+                self.xy_channels
+            } else {
+                self.xy_settings.channels
+            },
+            ..self.xy_settings
+        }
+    }
+
     fn refresh_scope_range(&mut self) {
         if self.dirty {
             let settings = ScopeSettings {
+                channels: if self.running() || self.core.is_none() {
+                    self.scope_channels
+                } else {
+                    self.core_scope.channels
+                },
                 samples: self.scope_sample_count(),
                 trigger: self.trigger,
             };
@@ -1122,7 +1212,12 @@ impl ScopeApp {
                 self.triggered = ready && sweep.triggered;
                 self.scope_sample_offset = if ready { sweep.sample_offset } else { 0.0 };
                 self.scope_range = if ready { sweep.range } else { 0..0 };
-                self.measurements = crate::signal::measure(&self.history, self.scope_range.clone());
+                self.core_scope = settings;
+                self.measurements = crate::signal::measure(
+                    &self.history,
+                    self.scope_range.clone(),
+                    settings.channels,
+                );
             }
         }
     }
@@ -1374,7 +1469,12 @@ impl ScopeApp {
                 self.spectrogram_seconds,
                 self.spectrogram_settings.size
             ),
-            SettingsSection::Xy => format!("CH 1 × CH 2 · {:.1} ms", self.xy_settings.milliseconds),
+            SettingsSection::Xy => format!(
+                "{} × {} · {:.1} ms",
+                channel::name(self.xy_settings.channels.0[0]),
+                channel::name(self.xy_settings.channels.0[1]),
+                self.xy_settings.milliseconds
+            ),
             SettingsSection::Workspace => {
                 format!("{} layout · shortcuts & units", self.plot_layout.name())
             }
@@ -1662,16 +1762,36 @@ impl ScopeApp {
                     .text("FS / div"),
             )
             .changed();
-        ui.horizontal(|ui| {
-            self.dirty |= ui
-                .checkbox(&mut self.enabled[0], RichText::new("CH 1").color(GREEN))
-                .changed();
-            ui.add_enabled_ui(self.channels >= 2, |ui| {
+        setting_label(ui, "TRACE SOURCES");
+        let before_channels = self.scope_channels;
+        for (trace, color) in [GREEN, BLUE].into_iter().enumerate() {
+            ui.horizontal(|ui| {
                 self.dirty |= ui
-                    .checkbox(&mut self.enabled[1], RichText::new("CH 2").color(BLUE))
+                    .checkbox(
+                        &mut self.enabled[trace],
+                        RichText::new(format!("Trace {}", trace + 1)).color(color),
+                    )
                     .changed();
+                channel_select(
+                    ui,
+                    if trace == 0 {
+                        "scope_trace_1"
+                    } else {
+                        "scope_trace_2"
+                    },
+                    &mut self.scope_channels.0[trace],
+                    self.channels,
+                );
             });
-        });
+        }
+        self.dirty |= self.scope_channels != before_channels;
+        if !self.running() && self.scope_channels != self.scope_view_channels() {
+            ui.label(
+                RichText::new("Source changes apply on Start. Held traces keep their channels.")
+                    .small()
+                    .color(YELLOW),
+            );
+        }
         if ui.button("Fit amplitude").clicked() {
             let peak = self
                 .measurements
@@ -2171,14 +2291,18 @@ impl ScopeApp {
 
     fn sample_text(&self, sample: u64) -> String {
         if let Some(frame) = self.history.get(sample) {
-            if self.channels >= 2 {
-                format!(
-                    "#{sample} · CH 1 {:+.5} · CH 2 {:+.5} FS",
-                    frame[0], frame[1]
-                )
-            } else {
-                format!("#{sample} · CH 1 {:+.5} FS", frame[0])
+            let mut text = format!("#{sample}");
+            for (trace, channel) in self.scope_view_channels().0.into_iter().enumerate() {
+                if !self.enabled[trace] {
+                    continue;
+                }
+                if let Some(value) = frame.get(channel) {
+                    text.push_str(&format!(" · {} {value:+.5} FS", channel::name(channel)));
+                } else {
+                    text.push_str(&format!(" · {} unavailable", channel::name(channel)));
+                }
             }
+            text
         } else {
             format!("#{sample} · raw sample unavailable")
         }
@@ -2207,10 +2331,13 @@ impl ScopeApp {
             let text = if let Some(x) = fraction {
                 cursor_line(ui, rect, x as f32, true, cursor_color(index));
                 if let Some(frame) = sample.and_then(|sample| self.history.get(sample)) {
-                    for (channel, value) in frame.iter().take(2).enumerate() {
-                        if !self.enabled[channel] {
+                    for (trace, channel) in self.scope_view_channels().0.into_iter().enumerate() {
+                        if !self.enabled[trace] {
                             continue;
                         }
+                        let Some(value) = frame.get(channel) else {
+                            continue;
+                        };
                         let position = pos2(
                             rect.left() + x as f32 * rect.width(),
                             rect.center().y
@@ -2407,7 +2534,7 @@ impl ScopeApp {
                     if let Some(sample) = xy::nearest_sample(
                         &self.history,
                         self.xy_capture.range.clone(),
-                        self.xy_settings,
+                        self.xy_view_settings(),
                         fraction,
                     ) {
                         self.cursors.set_trace_time(
@@ -2428,8 +2555,7 @@ impl ScopeApp {
                 if !self.xy_capture.range.contains(&sample) {
                     return None;
                 }
-                let frame = self.history.get(sample).filter(|frame| frame.len() >= 2)?;
-                Some([frame[0], frame[1]])
+                self.xy_capture.channels.values(self.history.get(sample)?)
             }),
         };
         let painter = ui.painter().with_clip_rect(rect.intersect(ui.clip_rect()));
@@ -2444,8 +2570,9 @@ impl ScopeApp {
             && self.xy_capture.triggered
             && let Some(reference) = cursor::trigger_sample(self.xy_capture.range.clone())
             && let Some(frame) = self.history.get(reference)
+            && let Some(point) = self.xy_capture.channels.values(frame)
         {
-            let at = position([frame[0], frame[1]]);
+            let at = position(point);
             if rect.contains(at) {
                 painter.circle_stroke(at, 5.0, Stroke::new(1.5, TRIGGER));
                 painter.text(
@@ -2517,9 +2644,11 @@ impl ScopeApp {
                 bounds,
                 index,
                 &format!(
-                    "{} X {:+.4} FS · Y {:+.4} FS\n{detail}",
+                    "{} X {} {:+.4} FS · Y {} {:+.4} FS\n{detail}",
                     cursor_name(index),
+                    channel::name(self.xy_capture.channels.0[0]),
                     point[0],
+                    channel::name(self.xy_capture.channels.0[1]),
                     point[1]
                 ),
                 cursor_color(index),
@@ -2537,7 +2666,7 @@ impl ScopeApp {
         }
         response.clone().on_hover_text(match self.xy_cursor_mode {
             xy::CursorMode::Free => "Free: click or drag to fix X/Y amplitudes. A/B measure ΔX and ΔY independently of the moving trace. Free positions are retained when switching to Trace Snap.",
-            xy::CursorMode::TraceSnap => "Trace Snap: selects the nearest actual CH 1/CH 2 pair and keeps its sample offset from the XY trigger. Uses Scope's trigger source, edge and level. Without a crossing, the reference moves with the latest window. Overlapping points select the latest sample; Stop freezes the capture.",
+            xy::CursorMode::TraceSnap => "Trace Snap: selects the nearest actual pair from the assigned X/Y channels and keeps its sample offset from the XY trigger. Uses Scope's trigger source, edge and level. Without a crossing, the reference moves with the latest window. Overlapping points select the latest sample; Stop freezes the capture.",
         });
     }
 
@@ -2556,8 +2685,38 @@ impl ScopeApp {
     }
 
     fn xy_controls(&mut self, ui: &mut egui::Ui) {
+        let before_channels = self.xy_settings.channels;
+        setting_label(ui, "X SOURCE");
+        channel_select(
+            ui,
+            "xy_x_source",
+            &mut self.xy_settings.channels.0[0],
+            self.channels,
+        );
+        setting_label(ui, "Y SOURCE");
+        channel_select(
+            ui,
+            "xy_y_source",
+            &mut self.xy_settings.channels.0[1],
+            self.channels,
+        );
+        if self.xy_settings.channels != before_channels {
+            if self.running()
+                && let Some(core) = &self.core
+            {
+                core.configure_xy(self.xy_settings.channels);
+            }
+            self.xy_dirty = true;
+        }
+        if !self.running() && self.xy_settings.channels != self.xy_view_settings().channels {
+            ui.label(
+                RichText::new("Source changes apply on Start. Held XY keeps its channels.")
+                    .small()
+                    .color(YELLOW),
+            );
+        }
         ui.label(
-            RichText::new("X = CH 1 · Y = CH 2 · synchronous frames")
+            RichText::new("X/Y use the same input frame.")
                 .small()
                 .color(PURPLE),
         );
@@ -2594,7 +2753,10 @@ impl ScopeApp {
                 .text("FS / div"),
         );
         if ui.button("Reset XY scales").clicked() {
-            self.xy_settings = xy::Settings::default();
+            self.xy_settings = xy::Settings {
+                channels: self.xy_settings.channels,
+                ..xy::Settings::default()
+            };
         }
         self.xy_dirty |= self.xy_settings != before;
         ui.label(RichText::new("Continuous samples are connected in time order. Free shows the latest window; Trace Snap uses a triggered window. Equal axis scales preserve circles on the square plot.").small().color(MUTED));
@@ -2616,7 +2778,7 @@ impl ScopeApp {
         self.xy_capture = xy::build_triggered_lines(
             &self.history,
             self.sample_rate,
-            self.xy_settings,
+            self.xy_view_settings(),
             if self.xy_cursor_mode == xy::CursorMode::TraceSnap {
                 self.trigger
             } else {
@@ -2641,7 +2803,7 @@ impl ScopeApp {
             xy::select_capture(
                 &self.history,
                 self.sample_rate,
-                self.xy_settings,
+                self.xy_view_settings(),
                 self.trigger,
             )
             .range
@@ -2683,8 +2845,11 @@ impl ScopeApp {
                 });
                 ui.label(
                     RichText::new(format!(
-                        "X: CH 1 · {:.3} FS/div   Y: CH 2 · {:.3} FS/div",
-                        self.xy_settings.x_fs_per_div, self.xy_settings.y_fs_per_div
+                        "X: {} · {:.3} FS/div   Y: {} · {:.3} FS/div",
+                        channel::name(self.xy_view_settings().channels.0[0]),
+                        self.xy_settings.x_fs_per_div,
+                        channel::name(self.xy_view_settings().channels.0[1]),
+                        self.xy_settings.y_fs_per_div
                     ))
                     .small()
                     .color(PURPLE),
@@ -2692,7 +2857,10 @@ impl ScopeApp {
                 let (outer, response) =
                     ui.allocate_exact_size(plot_size(ui), egui::Sense::click_and_drag());
                 if response.double_clicked() {
-                    self.xy_settings = xy::Settings::default();
+                    self.xy_settings = xy::Settings {
+                        channels: self.xy_settings.channels,
+                        ..xy::Settings::default()
+                    };
                     self.xy_dirty = true;
                 }
                 self.rebuild_xy();
@@ -2763,6 +2931,12 @@ impl ScopeApp {
                             "XY unavailable: mono input"
                         } else if self.channels == 0 {
                             "XY requires two input channels"
+                        } else if !self
+                            .xy_view_settings()
+                            .channels
+                            .available(self.channels as usize)
+                        {
+                            "XY unavailable: assigned channel missing"
                         } else {
                             "Waiting for sample pairs…"
                         },
@@ -2869,7 +3043,9 @@ impl ScopeApp {
                             ui.ctx().request_repaint();
                         }
                         ui.label(
-                            RichText::new(if self.triggered {
+                            RichText::new(if self.trigger.edge != Edge::Free && !channel::available(self.trigger.channel, self.channels as usize) {
+                                "TRIGGER SOURCE UNAVAILABLE"
+                            } else if self.triggered {
                                 "TRIGGERED"
                             } else {
                                 "AUTO / FREE"
@@ -2889,17 +3065,15 @@ impl ScopeApp {
                         .color(MUTED),
                     );
                     for (index, color) in [GREEN, BLUE].into_iter().enumerate() {
-                        if !self.enabled[index] || (index == 1 && self.channels < 2) {
+                        if !self.enabled[index] {
                             continue;
                         }
                         let m = self.measurements[index];
                         ui.label(
                             RichText::new(format!(
-                                "CH {}  {}",
-                                index + 1,
-                                if self.scope_range.is_empty()
-                                    || self.scope_missing
-                                        >= self.scope_range.end - self.scope_range.start
+                                "T{} · {}  {}",
+                                index + 1, channel::name(self.scope_view_channels().0[index]),
+                                if m.samples == 0
                                 {
                                     "unavailable".into()
                                 } else {
@@ -2910,7 +3084,7 @@ impl ScopeApp {
                             .small()
                             .color(color),
                         )
-                        .on_hover_text(format!("Peak {:.5} FS", m.peak));
+                        .on_hover_text(if m.samples > 0 { format!("Peak {:.5} FS · {} acquired samples · interval {}..{} (exclusive end)", m.peak, m.samples, self.scope_range.start, self.scope_range.end) } else { "No acquired samples for this channel and interval".into() });
                     }
                 });
                 if self.scope_missing > 0 {
@@ -3258,7 +3432,8 @@ impl ScopeApp {
                 },
                 pixels,
                 self.fs_per_div,
-                [self.enabled[0], self.enabled[1] && self.channels >= 2],
+                self.enabled,
+                self.scope_view_channels(),
                 &mut self.lines,
             );
             let segments = Arc::make_mut(&mut self.segments);
@@ -3487,10 +3662,6 @@ impl eframe::App for ScopeApp {
             if self.spectrum_channel > last_channel {
                 self.spectrum_channel = last_channel;
                 self.reset_analysis();
-            }
-            if self.trigger.channel > last_channel {
-                self.trigger.channel = last_channel;
-                self.dirty = true;
             }
         }
         #[cfg(feature = "qa")]
@@ -3879,13 +4050,17 @@ fn fft_precision(ui: &mut egui::Ui, id: &str, precision: &mut Precision) {
         .on_hover_text("Only this instrument's FFT changes precision. Input history, DC removal and power averaging use 64-bit.");
 }
 
-fn channel_select(ui: &mut egui::Ui, id: &str, selected: &mut usize, channels: u16) {
+fn channel_select(ui: &mut egui::Ui, id: &str, selected: &mut ChannelId, channels: u16) {
     egui::ComboBox::from_id_salt(id)
         .width(ui.available_width())
-        .selected_text(format!("CH {}", *selected + 1))
+        .selected_text(if channel::available(*selected, channels as usize) {
+            channel::name(*selected)
+        } else {
+            format!("{} · unavailable", channel::name(*selected))
+        })
         .show_ui(ui, |ui| {
-            for channel in 0..channels.max(1) as usize {
-                ui.selectable_value(selected, channel, format!("CH {}", channel + 1));
+            for channel in 0..channels as usize {
+                ui.selectable_value(selected, channel, channel::name(channel));
             }
         });
 }

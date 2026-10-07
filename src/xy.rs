@@ -1,5 +1,8 @@
-//! Synchronous CH 1 / CH 2 trajectories, independent of the desktop UI.
-use crate::signal::{Edge, History, Line, Trigger};
+//! Synchronous assigned-channel trajectories, independent of the desktop UI.
+use crate::{
+    channel::Pair,
+    signal::{Edge, History, Line, Trigger},
+};
 use std::ops::Range;
 
 /// Bound geometry and GPU transfers without decimating into false trajectories.
@@ -15,6 +18,7 @@ pub enum CursorMode {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Settings {
+    pub channels: Pair,
     pub milliseconds: f64,
     pub x_fs_per_div: f64,
     pub y_fs_per_div: f64,
@@ -23,6 +27,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            channels: Pair::default(),
             milliseconds: 50.0,
             x_fs_per_div: 0.25,
             y_fs_per_div: 0.25,
@@ -48,6 +53,7 @@ impl Settings {
 
 #[derive(Clone, Debug, Default)]
 pub struct Capture {
+    pub channels: Pair,
     pub range: Range<u64>,
     pub limited: bool,
     pub triggered: bool,
@@ -62,6 +68,7 @@ pub fn nearest_sample(
     point: [f64; 2],
 ) -> Option<u64> {
     if history.channels() < 2
+        || !settings.channels.available(history.channels())
         || range.start < history.range().start
         || range.end > history.range().end
         || range.is_empty()
@@ -74,7 +81,7 @@ pub fn nearest_sample(
         .enumerate()
         .filter_map(|(i, frame)| {
             let frame = frame?;
-            let [x, y] = settings.fraction_at_point([frame[0], frame[1]]);
+            let [x, y] = settings.fraction_at_point(settings.channels.values(frame)?);
             Some((
                 range.start + i as u64,
                 (x - point[0]).powi(2) + (y - point[1]).powi(2),
@@ -123,7 +130,7 @@ pub fn build_triggered_lines(
             continue;
         };
         let point = settings
-            .fraction_at_point([frame[0], frame[1]])
+            .fraction_at_point(settings.channels.values(frame).unwrap())
             .map(|v| v as f32);
         if let Some(a) = previous {
             output.push(Line {
@@ -143,8 +150,15 @@ pub fn select_capture(
     settings: Settings,
     trigger: Trigger,
 ) -> Capture {
-    if history.channels() < 2 || history.len() < 2 || sample_rate == 0 {
-        return Capture::default();
+    if history.channels() < 2
+        || !settings.channels.available(history.channels())
+        || history.len() < 2
+        || sample_rate == 0
+    {
+        return Capture {
+            channels: settings.channels,
+            ..Capture::default()
+        };
     }
     let requested = (settings.milliseconds.max(0.0) * sample_rate as f64 / 1000.0)
         .round()
@@ -153,6 +167,7 @@ pub fn select_capture(
     let count = available.min(MAX_POINTS);
     let sweep = history.sweep(count, trigger);
     Capture {
+        channels: settings.channels,
         range: sweep.range,
         limited: available > MAX_POINTS,
         triggered: sweep.triggered,
@@ -296,8 +311,8 @@ mod tests {
             for i in 0..1024 {
                 let angle = TAU * i as f64 / 1024.0;
                 let mut frame = [9.0; 16];
-                frame[0] = angle.sin();
-                frame[1] = (angle + phase).sin() * gain;
+                frame[15] = angle.sin();
+                frame[6] = (angle + phase).sin() * gain;
                 history.push(frame);
             }
             let mut lines = Vec::new();
@@ -305,12 +320,14 @@ mod tests {
                 &history,
                 1024,
                 Settings {
+                    channels: Pair([15, 6]),
                     milliseconds: 1000.0,
                     ..Settings::default()
                 },
                 &mut lines,
             );
             assert_eq!(capture.range, 0..1024);
+            assert_eq!(capture.channels, Pair([15, 6]));
             for point in lines.iter().flat_map(|line| [line.a, line.b]) {
                 let x = (point[0] as f64 - 0.5) * 2.0;
                 let y = (0.5 - point[1] as f64) * 2.0;
@@ -323,6 +340,75 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn xy_assignments_and_snap_use_one_frame_with_no_missing_channel_fallback() {
+        let mut history = History::with_channels(4, 16);
+        for sample in [100, 101, 102, 104, 105] {
+            let mut frame = [9.0; 16];
+            frame[15] = (sample - 100) as f64 * 0.125;
+            frame[7] = -(sample as f64 - 100.0) * 0.0625;
+            history.push_at(sample, frame);
+        }
+        let settings = Settings {
+            channels: Pair([15, 7]),
+            milliseconds: 1000.0,
+            ..Settings::default()
+        };
+        let mut lines = Vec::new();
+        let capture = build_lines(&history, 1000, settings, &mut lines);
+        assert_eq!(capture.range, 102..106);
+        assert_eq!(lines.len(), 1); // 104->105; the acquisition gap breaks 102->104.
+        let point = settings.fraction_at_point([0.25, -0.125]);
+        assert_eq!(
+            nearest_sample(&history, capture.range.clone(), settings, point),
+            Some(102)
+        );
+        let swapped = Settings {
+            channels: Pair([7, 15]),
+            ..settings
+        };
+        assert_eq!(
+            nearest_sample(
+                &history,
+                capture.range.clone(),
+                swapped,
+                swapped.fraction_at_point([-0.125, 0.25])
+            ),
+            Some(102)
+        );
+        assert_eq!(nearest_sample(&history, 103..104, settings, point), None);
+        for pair in [Pair([15, 16]), Pair([usize::MAX, 7])] {
+            let invalid = Settings {
+                channels: pair,
+                ..settings
+            };
+            let capture = build_lines(&history, 1000, invalid, &mut lines);
+            assert_eq!(capture.channels, pair);
+            assert!(capture.range.is_empty());
+            assert!(lines.is_empty());
+            assert_eq!(
+                nearest_sample(&history, history.range(), invalid, point),
+                None
+            );
+        }
+        let mut mono = History::with_channels(4, 1);
+        mono.push([0.25]);
+        mono.push([0.5]);
+        assert!(
+            build_lines(
+                &mono,
+                1000,
+                Settings {
+                    channels: Pair([0, 0]),
+                    ..settings
+                },
+                &mut lines
+            )
+            .range
+            .is_empty()
+        );
     }
 
     #[test]

@@ -2,6 +2,7 @@
 //! The callback transfers fixed frames; this worker never waits for a display.
 use crate::{
     audio::Capture,
+    channel::{ChannelId, Pair},
     demo::Demo,
     signal::{self, History, Measurement, Sweep, Trigger},
     spectrum::{self, Analyzer, Settings},
@@ -33,6 +34,7 @@ pub enum SpectrumMode {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ScopeSettings {
+    pub channels: Pair,
     pub samples: usize,
     pub trigger: Trigger,
 }
@@ -40,6 +42,7 @@ pub struct ScopeSettings {
 impl Default for ScopeSettings {
     fn default() -> Self {
         Self {
+            channels: Pair::default(),
             samples: 480,
             trigger: Trigger::default(),
         }
@@ -49,9 +52,10 @@ impl Default for ScopeSettings {
 #[derive(Clone, Copy, Debug)]
 pub struct Config {
     pub spectrum: Settings,
-    pub spectrum_channel: usize,
+    pub spectrum_channel: ChannelId,
     pub spectrum_mode: SpectrumMode,
     pub scope: ScopeSettings,
+    pub xy_channels: Pair,
     pub stft_generation: u64,
     pub stft: stft::Config,
 }
@@ -78,6 +82,7 @@ pub struct Snapshot {
     pub stft_generation: u64,
     pub stft_config: stft::Config,
     pub scope_settings: ScopeSettings,
+    pub xy_channels: Pair,
     pub sweep: Sweep,
     pub measurements: [Measurement; 2],
     pub scope_missing: u64,
@@ -112,6 +117,7 @@ enum Command {
     Stft(u64, stft::Config),
     Demo(Demo),
     Scope(ScopeSettings, mpsc::SyncSender<Snapshot>),
+    Xy(Pair),
     Hold,
     Stop(mpsc::SyncSender<Snapshot>),
     Shutdown,
@@ -145,6 +151,7 @@ impl Core {
             spectrum_channel: 0,
             spectrum_mode: SpectrumMode::Continuous,
             scope: ScopeSettings::default(),
+            xy_channels: Pair::default(),
             stft_generation: 0,
             stft: stft::Config {
                 sample_rate: 48000,
@@ -182,7 +189,6 @@ impl Core {
         self.sample_rate = sample_rate;
         self.history = History::with_channels((sample_rate as usize * 2).max(32768), channels);
         config.spectrum_channel = config.spectrum_channel.min(channels - 1);
-        config.scope.trigger.channel = config.scope.trigger.channel.min(channels - 1);
         config.stft.sample_rate = sample_rate;
         config.stft.channels = channels;
         config.stft.channel = config.stft.channel.min(channels - 1);
@@ -305,6 +311,7 @@ impl Core {
             stft_generation: self.config.stft_generation,
             stft_config: self.config.stft,
             scope_settings: self.config.scope,
+            xy_channels: self.config.xy_channels,
             sweep: Sweep::default(),
             measurements: [Measurement::default(); 2],
             scope_missing: 0,
@@ -327,13 +334,18 @@ impl Core {
         snapshot.stft_generation = self.config.stft_generation;
         snapshot.stft_config = self.config.stft;
         snapshot.scope_settings = self.config.scope;
+        snapshot.xy_channels = self.config.xy_channels;
         snapshot.sweep = if self.history.len() >= self.config.scope.samples {
             self.history
                 .sweep(self.config.scope.samples, self.config.scope.trigger)
         } else {
             Sweep::default()
         };
-        snapshot.measurements = signal::measure(&self.history, snapshot.sweep.range.clone());
+        snapshot.measurements = signal::measure(
+            &self.history,
+            snapshot.sweep.range.clone(),
+            self.config.scope.channels,
+        );
         snapshot.scope_missing = snapshot
             .sweep
             .range
@@ -409,8 +421,19 @@ impl Worker {
                                 }
                             }
                             Command::Scope(settings, reply) => {
+                                // Held data can be reprojected over a different
+                                // interval; channel provenance stays fixed.
+                                let channels = core.config.scope.channels;
                                 core.config.scope = settings;
+                                if matches!(input, Input::Idle) {
+                                    core.config.scope.channels = channels;
+                                }
                                 let _ = reply.try_send(core.snapshot());
+                            }
+                            Command::Xy(channels) => {
+                                if !matches!(input, Input::Idle) {
+                                    core.config.xy_channels = channels;
+                                }
                             }
                             Command::Hold => core.analyzer.clear_hold(),
                             Command::Stop(reply) => {
@@ -487,6 +510,9 @@ impl Worker {
     }
     pub fn configure_demo(&self, demo: Demo) {
         self.send(Command::Demo(demo));
+    }
+    pub fn configure_xy(&self, channels: Pair) {
+        self.send(Command::Xy(channels));
     }
     pub fn clear_hold(&self) {
         self.send(Command::Hold);
@@ -598,12 +624,14 @@ mod tests {
             spectrum_channel: channels - 1,
             spectrum_mode: SpectrumMode::Continuous,
             scope: ScopeSettings {
+                channels: Pair::default(),
                 samples: size,
                 trigger: Trigger {
                     edge: signal::Edge::Free,
                     ..Trigger::default()
                 },
             },
+            xy_channels: Pair::default(),
             stft_generation: 0,
             stft: stft::Config {
                 sample_rate: 48000,
@@ -876,6 +904,77 @@ mod tests {
         assert!((result.spectrum.power()[32] - 0.25).abs() < 1e-12);
         assert_eq!(result.scope_missing, 0);
         stft.pause();
+    }
+
+    #[test]
+    fn route_changes_hold_provenance_and_device_reduction_keeps_unavailable_ids() {
+        let (mut stft, core, mut config) = setup(1024, 16);
+        config.scope.channels = Pair([15, 7]);
+        config.xy_channels = Pair([7, 15]);
+        config.scope.trigger = Trigger {
+            edge: signal::Edge::Rising,
+            level: 0.0,
+            channel: 15,
+        };
+        let worker = Worker::new(core.feeder);
+        let (mut producer, consumer) = RingBuffer::new(2048);
+        for sequence in 0..2048 {
+            producer
+                .push(AudioFrame {
+                    sequence,
+                    samples: frame(sequence, 1024, 16, 0.25),
+                })
+                .unwrap();
+        }
+        worker.start_capture(
+            1,
+            Capture {
+                consumer,
+                sample_rate: 48000,
+                channels: 16,
+                format: "test f64".into(),
+                metrics: Arc::new(AudioMetrics::default()),
+            },
+            config,
+        );
+        wait_for_frames(&worker, 2048);
+        let first = worker.scope(config.scope);
+        assert_eq!(first.scope_settings.channels, Pair([15, 7]));
+        assert_eq!(first.xy_channels, Pair([7, 15]));
+        assert!(first.sweep.triggered);
+        assert_eq!(first.measurements[0].samples, 1024);
+        assert!((first.measurements[0].rms - 0.25 / 2.0_f64.sqrt()).abs() < 1e-14);
+        let swapped = ScopeSettings {
+            channels: Pair([7, 15]),
+            ..config.scope
+        };
+        worker.configure_xy(Pair([15, 7]));
+        let rerouted = worker.scope(swapped);
+        assert_eq!(
+            rerouted.measurements,
+            [first.measurements[1], first.measurements[0]]
+        );
+        assert_eq!(rerouted.xy_channels, Pair([15, 7]));
+        assert_eq!(rerouted.spectrum_info.updates, first.spectrum_info.updates);
+        let held = worker.stop();
+        worker.configure_xy(Pair([0, 1]));
+        let unchanged = worker.scope(config.scope);
+        assert_eq!(unchanged.scope_settings.channels, swapped.channels);
+        assert_eq!(unchanged.xy_channels, held.xy_channels);
+        assert_eq!(unchanged.measurements, held.measurements);
+        config.scope.channels = Pair([15, 0]);
+        config.xy_channels = Pair([15, 7]);
+        config.stft_generation = stft.configure(config.stft).unwrap();
+        worker.start_demo(2, Demo::default(), config);
+        let fresh = worker.scope(config.scope);
+        assert_eq!(fresh.generation, 2);
+        assert_eq!(fresh.history.channels(), 2);
+        assert_eq!(fresh.scope_settings.channels, Pair([15, 0]));
+        assert_eq!(fresh.scope_settings.trigger.channel, 15);
+        assert_eq!(fresh.xy_channels, Pair([15, 7]));
+        assert!(!fresh.sweep.triggered);
+        assert_eq!(fresh.measurements[0].samples, 0);
+        drop(worker);
     }
     #[test]
     fn stream_failure_is_observable_even_when_the_snapshot_pool_is_full() {

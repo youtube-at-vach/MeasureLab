@@ -138,7 +138,15 @@ mod tests {
             demo.append(&mut history, 800, 48000);
             let sweep = history.sweep(480, Trigger::default());
             assert!(sweep.triggered);
-            build_sweep_lines(&history, &sweep, 1000, 0.25, [true; 2], &mut lines);
+            build_sweep_lines(
+                &history,
+                &sweep,
+                1000,
+                0.25,
+                [true; 2],
+                crate::channel::Pair::default(),
+                &mut lines,
+            );
             // Locate the rendered rising zero crossing nearest the trigger.
             let crossing = lines
                 .iter()
