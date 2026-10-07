@@ -7,7 +7,9 @@ use crate::{
     measurement::{self, ScopeSettings, SpectrumMode},
     signal::{Edge, History, Line, Measurement, Sweep, Trigger, build_sweep_lines},
     spectrogram, spectrogram_gpu,
-    spectrum::{self, Analyzer, FFT_SIZES, FrequencyScale, Precision, Settings, View, Window},
+    spectrum::{
+        self, Analyzer, FFT_SIZES, FrequencyScale, Precision, Quantity, Settings, View, Window,
+    },
     stft::{self, RowInfo},
     xy,
 };
@@ -157,6 +159,9 @@ pub struct ScopeApp {
     frequency_scale: FrequencyScale,
     floor_db: f32,
     span_hz: f32,
+    band_min_hz: f64,
+    /// Zero selects the captured result's Nyquist frequency.
+    band_max_hz: f64,
     show_hold: bool,
     spectrum_dirty: bool,
     spectrum_pixels: usize,
@@ -309,6 +314,8 @@ impl ScopeApp {
             frequency_scale: FrequencyScale::Log,
             floor_db: -120.0,
             span_hz: 0.0,
+            band_min_hz: 0.0,
+            band_max_hz: 0.0,
             show_hold: false,
             spectrum_dirty: true,
             spectrum_pixels: 0,
@@ -409,6 +416,11 @@ impl ScopeApp {
             app.spectrogram_settings.precision = precision;
             app.spectrum_settings.size = size;
             app.spectrogram_settings.size = size;
+            app.reset_analysis();
+        }
+        #[cfg(feature = "qa")]
+        if std::env::var_os("MEASURELAB_SPECTRUM_PSD").is_some() {
+            app.spectrum_settings.quantity = Quantity::Psd;
             app.reset_analysis();
         }
         if demo || smoke {
@@ -681,6 +693,10 @@ impl ScopeApp {
                 self.spectrogram_settings.precision = Precision::F32;
                 self.spectrogram_channel = 1;
                 self.spectrum_settings.size = 32768;
+                self.spectrum_settings.quantity = match self.analyzer.settings().quantity {
+                    Quantity::Amplitude => Quantity::Psd,
+                    Quantity::Psd => Quantity::Amplitude,
+                };
                 self.spectrum_channel = 0;
                 self.frequency_scale = FrequencyScale::Linear;
                 self.floor_db = -100.0;
@@ -1129,6 +1145,10 @@ impl ScopeApp {
             let mut analyzer = Analyzer::new(self.spectrum_settings, self.sample_rate);
             analyzer.update(&self.history, self.spectrum_channel);
             analyzer.copy_result(&mut self.analyzer);
+            if let Some(average) = self.analyzer.average() {
+                self.spectrum_info.updates = average.updates;
+                self.spectrum_info.contributing = average.start..average.end;
+            }
             self.spectrum_dirty = true;
         }
     }
@@ -1461,7 +1481,7 @@ impl ScopeApp {
                 "CH {} · {} points · {}",
                 self.spectrum_channel + 1,
                 self.spectrum_settings.size,
-                self.spectrum_settings.window.name()
+                self.spectrum_settings.quantity.name()
             ),
             SettingsSection::Spectrogram => format!(
                 "CH {} · {:.1} s · {} points",
@@ -1830,6 +1850,19 @@ impl ScopeApp {
 
     fn spectrum_controls(&mut self, ui: &mut egui::Ui) {
         let before = (self.spectrum_settings, self.spectrum_channel);
+        setting_label(ui, "MEASUREMENT");
+        egui::ComboBox::from_id_salt("spectrum_quantity")
+            .width(ui.available_width())
+            .selected_text(self.spectrum_settings.quantity.name())
+            .show_ui(ui, |ui| {
+                for quantity in [Quantity::Amplitude, Quantity::Psd] {
+                    ui.selectable_value(
+                        &mut self.spectrum_settings.quantity,
+                        quantity,
+                        quantity.name(),
+                    );
+                }
+            });
         fft_precision(
             ui,
             "spectrum_precision",
@@ -1882,10 +1915,10 @@ impl ScopeApp {
         setting_label(ui, "AVERAGING");
         egui::ComboBox::from_id_salt("fft_average")
             .width(ui.available_width())
-            .selected_text(format!("Power average ×{}", self.spectrum_settings.averages))
+            .selected_text(format!("EMA α = 1/{}", self.spectrum_settings.averages))
             .show_ui(ui, |ui| {
                 for count in [1, 4, 16, 64] {
-                    ui.selectable_value(&mut self.spectrum_settings.averages, count, format!("Power average ×{count}"));
+                    ui.selectable_value(&mut self.spectrum_settings.averages, count, format!("EMA α = 1/{count}"));
                 }
             }).response.on_hover_text("Exponential average of linear power; alpha = 1 / count. Applied once per contributing FFT window, independently of display updates.");
         ui.checkbox(&mut self.spectrum_settings.remove_dc, "Remove DC offset");
@@ -1935,7 +1968,10 @@ impl ScopeApp {
                 }
             });
         setting_label(ui, "DISPLAY FLOOR");
-        ui.add(egui::Slider::new(&mut self.floor_db, -180.0..=-60.0).text("dBFS"));
+        ui.add(
+            egui::Slider::new(&mut self.floor_db, -180.0..=-60.0)
+                .text(self.analyzer.settings().quantity.db_unit()),
+        );
         ui.horizontal(|ui| {
             if ui.checkbox(&mut self.show_hold, "Peak hold").changed() && self.show_hold {
                 self.analyzer.clear_hold();
@@ -1960,7 +1996,7 @@ impl ScopeApp {
             );
         ui.label(
             RichText::new(format!(
-                "Δf {:.2} Hz · RBW {:.2} Hz\nWindow {:.1} ms · {} contributing windows",
+                "Δf {:.2} Hz · RBW {:.2} Hz\nWindow {:.1} ms · {} processed windows",
                 self.analyzer.bin_hz(),
                 self.analyzer.rbw_hz(),
                 self.analyzer.settings().size as f32 / self.sample_rate as f32 * 1000.0,
@@ -1969,6 +2005,30 @@ impl ScopeApp {
             .small()
             .color(MUTED),
         );
+        if self.analyzer.settings().quantity == Quantity::Psd {
+            ui.separator();
+            setting_label(ui, "POWER IN BAND");
+            let nyquist = self.analyzer.nyquist() as f64;
+            ui.horizontal(|ui| {
+                ui.label("From");
+                ui.add(
+                    egui::DragValue::new(&mut self.band_min_hz)
+                        .range(0.0..=nyquist)
+                        .speed(10.0)
+                        .suffix(" Hz"),
+                );
+            });
+            ui.horizontal(|ui| {
+                ui.label("To");
+                ui.add(
+                    egui::DragValue::new(&mut self.band_max_hz)
+                        .range(0.0..=nyquist)
+                        .speed(10.0)
+                        .suffix(" Hz"),
+                );
+            });
+            ui.label(RichText::new("To = 0 uses Nyquist. Inclusive bin centres; whole bins. Band changes read the held PSD without resetting the average.").small().color(MUTED));
+        }
     }
 
     fn spectrogram_controls(&mut self, ui: &mut egui::Ui) {
@@ -2408,16 +2468,17 @@ impl ScopeApp {
             }
         }
         let text = format!(
-            "F {:.1} Hz · {:.2} dBFS\nCH {} · {}..{} · avg ×{}",
+            "F {:.1} Hz · {:.2} {}\nCH {} · {}..{} · α 1/{}",
             reading.frequency_hz,
-            reading.dbfs,
+            reading.level_db,
+            window.settings.quantity.db_unit(),
             window.channel + 1,
             window.start,
             window.end,
             window.settings.averages
         );
         cursor_note(ui, rect, 0, &text, YELLOW);
-        response.clone().on_hover_text(format!("Nearest bin of the displayed power spectrum. Latest contributing window: samples {}..{} (exclusive end), CH {}, {} Hz, {} points, {}, {}. Power average ×{}.{}", window.start, window.end, window.channel + 1, window.sample_rate, window.settings.size, window.settings.window.name(), window.settings.precision.name(), window.settings.averages, times));
+        response.clone().on_hover_text(format!("Nearest bin: {:.6e} {}. Latest window: samples {}..{} (exclusive end), CH {}, {} Hz, {} points, {}, {}. EMA α = 1/{}; {} processed windows, contribution envelope {}..{} (exponential weights). Input generation {}; missing windows {}.{}", reading.value, window.settings.quantity.linear_unit(), window.start, window.end, window.channel + 1, window.sample_rate, window.settings.size, window.settings.window.name(), window.settings.precision.name(), window.settings.averages, reading.average.updates, reading.average.start, reading.average.end, self.input_generation, self.spectrum_info.missing_windows, times));
     }
 
     fn spectrogram_cursors(
@@ -3014,7 +3075,7 @@ impl ScopeApp {
             });
         ui.separator();
         setting_label(ui, "MEASUREMENT UNITS");
-        ui.label(RichText::new("Amplitude is digital full scale (FS). Spectrum is bin amplitude in dBFS: 0 dBFS = 1 FS sine peak. Δf is Fs / N; RBW is the window's equivalent noise bandwidth.").small().color(MUTED));
+        ui.label(RichText::new("Amplitude is digital full scale (FS). Spectrum: bin amplitude in dBFS (0 dBFS = 1 FS sine peak), or PSD in FS²/Hz. PSD band integration gives FS² and RMS FS. Δf is Fs / N; RBW is the window's equivalent noise bandwidth.").small().color(MUTED));
         ui.label(
             RichText::new(
                 "Audio input uses the device's native sample rate. Demo signals stay internal.",
@@ -3132,11 +3193,12 @@ impl ScopeApp {
                         }
                         ui.label(
                             RichText::new(format!(
-                                "CH {} · dBFS",
+                                "CH {} · {}",
                                 self.analyzer
                                     .window()
                                     .map_or(self.spectrum_channel, |window| window.channel)
-                                    + 1
+                                    + 1,
+                                self.analyzer.settings().quantity.db_unit()
                             ))
                             .small()
                             .color(YELLOW),
@@ -3147,9 +3209,10 @@ impl ScopeApp {
                 if let Some(peak) = self.analyzer.peak(view) {
                     ui.label(
                         RichText::new(format!(
-                            "Peak bin  {:.1} Hz · {:.2} dBFS    Δf {:.2} Hz",
+                            "Peak bin  {:.1} Hz · {:.2} {}    Δf {:.2} Hz",
                             peak.frequency,
-                            peak.dbfs,
+                            peak.level_db,
+                            self.analyzer.settings().quantity.db_unit(),
                             self.analyzer.bin_hz()
                         ))
                         .monospace()
@@ -3159,11 +3222,33 @@ impl ScopeApp {
                 } else {
                     ui.label(
                         RichText::new(
-                            "Windowed FFT · coherent gain corrected · 0 dBFS = 1 FS sine peak",
+                            match self.analyzer.settings().quantity {
+                                Quantity::Amplitude => "Windowed FFT · 0 dBFS = 1 FS sine peak",
+                                Quantity::Psd => "PSD · window power normalized · FS²/Hz",
+                            },
                         )
                         .small()
                         .color(MUTED),
                     );
+                }
+                if self.analyzer.settings().quantity == Quantity::Psd {
+                    let upper = if self.band_max_hz == 0.0 {
+                        self.analyzer.nyquist() as f64
+                    } else { self.band_max_hz };
+                    if let Some(band) = self.analyzer.band(self.band_min_hz, upper) {
+                        ui.label(RichText::new(format!(
+                            "Band {:.1}–{:.1} Hz · {:.4e} FS² · {:.5e} RMS FS",
+                            band.first_hz, band.last_hz, band.power_fs2, band.rms_fs
+                        )).monospace().small().color(YELLOW))
+                        .on_hover_text(format!(
+                            "Requested {}–{} Hz, inclusive centres of bins {}..={}. Sum of f64 PSD × Δf; full weight at DC/Nyquist. CH {}, generation {}, {} processed windows, contribution envelope {}..{}. Input loss {}; missing windows {}. Windowed mean-square after optional DC removal; not the Scope observation interval.",
+                            band.requested_hz[0], band.requested_hz[1], band.first_bin, band.last_bin,
+                            band.window.channel + 1, self.input_generation, band.average.updates,
+                            band.average.start, band.average.end, self.dropped, self.spectrum_info.missing_windows,
+                        ));
+                    } else {
+                        ui.label(RichText::new("Band power unavailable · require a PSD window and valid bin range").small().color(MUTED));
+                    }
                 }
                 self.spectrum_plot(ui, view);
             });
@@ -3290,7 +3375,7 @@ impl ScopeApp {
             },
         ));
         if let Some(peak) = self.analyzer.peak(view) {
-            let x = rect.left() + view.x(peak.frequency) * rect.width();
+            let x = rect.left() + view.x(peak.frequency as f32) * rect.width();
             painter.line_segment(
                 [pos2(x, rect.top()), pos2(x, rect.top() + 10.0)],
                 Stroke::new(2.0, YELLOW),
@@ -3311,7 +3396,6 @@ impl ScopeApp {
         }
         if let Some(position) = response.hover_pos().filter(|p| rect.contains(*p)) {
             let hz = view.frequency((position.x - rect.left()) / rect.width());
-            let bin = (hz / self.analyzer.bin_hz()).round() as usize;
             painter.line_segment(
                 [
                     pos2(position.x, rect.top()),
@@ -3319,26 +3403,28 @@ impl ScopeApp {
                 ],
                 Stroke::new(1.0, Color32::from_white_alpha(65)),
             );
-            let db = self
-                .analyzer
-                .db()
-                .get(bin)
-                .copied()
-                .unwrap_or(spectrum::DB_MIN);
-            painter.text(
-                rect.right_top() + vec2(-10.0, 10.0),
-                egui::Align2::RIGHT_TOP,
-                format!(
-                    "{:.1} Hz · {db:.2} dBFS",
-                    bin as f32 * self.analyzer.bin_hz()
-                ),
-                egui::FontId::monospace(11.0),
-                YELLOW,
-            );
+            if let Some(reading) = self.analyzer.cursor(hz as f64) {
+                painter.text(
+                    rect.right_top() + vec2(-10.0, 10.0),
+                    egui::Align2::RIGHT_TOP,
+                    format!(
+                        "{:.1} Hz · {:.2} {}",
+                        reading.frequency_hz,
+                        reading.level_db,
+                        reading.window.settings.quantity.db_unit()
+                    ),
+                    egui::FontId::monospace(11.0),
+                    YELLOW,
+                );
+            }
         }
         self.spectrum_cursors(ui, &response, rect, view);
         ui.horizontal(|ui| {
-            ui.label(RichText::new("dBFS").small().color(MUTED));
+            ui.label(
+                RichText::new(self.analyzer.settings().quantity.db_unit())
+                    .small()
+                    .color(MUTED),
+            );
             if self.show_hold {
                 ui.label(RichText::new("Peak hold").small().color(HOLD));
             }

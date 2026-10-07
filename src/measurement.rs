@@ -63,7 +63,7 @@ pub struct Config {
 #[derive(Clone, Debug, Default)]
 pub struct SpectrumInfo {
     pub mode: SpectrumMode,
-    /// Actual contributing windows since the last settings/input/gap reset.
+    /// Processed windows since the last settings/input/gap reset.
     pub updates: u64,
     pub contributing: Range<u64>,
     /// Scheduled windows invalidated by input discontinuities, across resets.
@@ -271,11 +271,9 @@ impl Core {
             .update_window(&self.history, start..end, self.config.spectrum_channel)
         {
             self.fft_ms = started.elapsed().as_secs_f64() * 1000.0;
-            if self.spectrum_info.updates == 0 {
-                self.spectrum_info.contributing.start = start;
-            }
-            self.spectrum_info.updates += 1;
-            self.spectrum_info.contributing.end = end;
+            let average = self.analyzer.average().unwrap();
+            self.spectrum_info.updates = average.updates;
+            self.spectrum_info.contributing = average.start..average.end;
             self.metrics
                 .spectrum_windows
                 .fetch_add(1, Ordering::Relaxed);
@@ -618,6 +616,7 @@ mod tests {
             averages: 4,
             remove_dc: false,
             precision: Precision::F64,
+            quantity: spectrum::Quantity::Amplitude,
         };
         let config = Config {
             spectrum,
@@ -662,69 +661,100 @@ mod tests {
 
     #[test]
     fn continuous_windows_and_power_average_are_independent_of_snapshot_delivery() {
-        for channels in [1, 2, 16] {
-            for size in [1024, 32768] {
-                let (_stft, mut core, config) = setup(size, channels);
-                let mut reference = Analyzer::new(config.spectrum, 48000);
-                let mut history = History::with_channels(size, channels);
-                let count = size * 3;
-                for sequence in 0..count as u64 {
-                    let amplitude = if sequence < size as u64 { 0.25 } else { 0.5 };
-                    let samples = frame(sequence, size, channels, amplitude);
-                    core.push(sequence, &samples[..channels]);
-                    history.push_at(sequence, samples);
-                    let end = sequence + 1;
-                    if end >= size as u64 && (end - size as u64).is_multiple_of((size / 4) as u64) {
-                        reference.update_window(&history, end - size as u64..end, channels - 1);
+        for quantity in [spectrum::Quantity::Amplitude, spectrum::Quantity::Psd] {
+            for channels in [1, 2, 16] {
+                for size in [1024, 32768] {
+                    let (_stft, mut core, mut config) = setup(size, channels);
+                    config.spectrum.quantity = quantity;
+                    core.configure_spectrum(
+                        config.spectrum,
+                        channels - 1,
+                        SpectrumMode::Continuous,
+                    );
+                    let mut reference = Analyzer::new(config.spectrum, 48000);
+                    let mut history = History::with_channels(size, channels);
+                    let count = size * 3;
+                    for sequence in 0..count as u64 {
+                        let amplitude = if sequence < size as u64 { 0.25 } else { 0.5 };
+                        let samples = frame(sequence, size, channels, amplitude);
+                        core.push(sequence, &samples[..channels]);
+                        history.push_at(sequence, samples);
+                        let end = sequence + 1;
+                        if end >= size as u64
+                            && (end - size as u64).is_multiple_of((size / 4) as u64)
+                        {
+                            reference.update_window(&history, end - size as u64..end, channels - 1);
+                        }
+                        // Delivery can be skipped or duplicated without updating an average.
+                        if sequence.is_multiple_of(size as u64 / 2 + 1) {
+                            core.snapshot();
+                        }
                     }
-                    // Delivery can be skipped or duplicated without updating an average.
-                    if sequence.is_multiple_of(size as u64 / 2 + 1) {
-                        core.snapshot();
+                    let result = core.snapshot();
+                    let mut expected = spectrum::Result::empty(config.spectrum, 48000);
+                    reference.copy_result(&mut expected);
+                    assert_eq!(result.spectrum.power(), expected.power());
+                    assert_eq!(result.spectrum.average(), expected.average());
+                    assert_eq!(result.spectrum.hold_power(), expected.hold_power());
+                    if quantity == spectrum::Quantity::Psd {
+                        assert!(result.spectrum.band(0.0, 24000.0).unwrap().power_fs2 > 0.0);
                     }
+                    assert_eq!(result.spectrum.db(), expected.db());
+                    assert_eq!(result.spectrum_info.updates, 9);
+                    assert_eq!(result.spectrum_info.contributing, 0..count as u64);
+                    assert_eq!(result.spectrum_info.missing_windows, 0);
+                    assert_eq!(result.input_dropped, 0);
+                    assert_eq!(result.scope_missing, 0);
+                    assert!(
+                        (result.measurements[0].rms - 0.5 / channels as f64 / 2.0_f64.sqrt()).abs()
+                            < 1e-12
+                    );
+                    assert_eq!(result.spectrum.window().unwrap().channel, channels - 1);
+                    assert_eq!(result.spectrum.window().unwrap().end, count as u64);
                 }
-                let result = core.snapshot();
-                let mut expected = spectrum::Result::empty(config.spectrum, 48000);
-                reference.copy_result(&mut expected);
-                assert_eq!(result.spectrum.power(), expected.power());
-                assert_eq!(result.spectrum.db(), expected.db());
-                assert_eq!(result.spectrum_info.updates, 9);
-                assert_eq!(result.spectrum_info.contributing, 0..count as u64);
-                assert_eq!(result.spectrum_info.missing_windows, 0);
-                assert_eq!(result.input_dropped, 0);
-                assert_eq!(result.scope_missing, 0);
-                assert!(
-                    (result.measurements[0].rms - 0.5 / channels as f64 / 2.0_f64.sqrt()).abs()
-                        < 1e-12
-                );
-                assert_eq!(result.spectrum.window().unwrap().channel, channels - 1);
-                assert_eq!(result.spectrum.window().unwrap().end, count as u64);
             }
         }
     }
 
     #[test]
     fn gaps_reset_averaging_count_invalid_windows_and_recover_after_a_full_window() {
-        let (_stft, mut core, _) = setup(1024, 2);
-        for sequence in 0..2048 {
-            core.push(sequence, &frame(sequence, 1024, 2, 0.25)[..2]);
+        for quantity in [spectrum::Quantity::Amplitude, spectrum::Quantity::Psd] {
+            let (_stft, mut core, mut config) = setup(1024, 2);
+            config.spectrum.quantity = quantity;
+            core.configure_spectrum(config.spectrum, 1, SpectrumMode::Continuous);
+            for sequence in 0..2048 {
+                core.push(sequence, &frame(sequence, 1024, 2, 0.25)[..2]);
+            }
+            let before = core.snapshot();
+            assert_eq!(before.spectrum_info.updates, 5);
+            for sequence in 2080..3103 {
+                core.push(sequence, &frame(sequence, 1024, 2, 0.5)[..2]);
+            }
+            let invalid = core.snapshot();
+            assert_eq!(invalid.input_dropped, 32);
+            assert_eq!(invalid.spectrum_info.missing_windows, 4);
+            assert!(invalid.spectrum.window().is_none());
+            assert_eq!(invalid.scope_missing, 1);
+            core.push(3103, &frame(3103, 1024, 2, 0.5)[..2]);
+            let recovered = core.snapshot();
+            assert_eq!(recovered.spectrum_info.updates, 1);
+            assert_eq!(recovered.spectrum_info.contributing, 2080..3104);
+            assert_eq!(recovered.spectrum_info.missing_windows, 4);
+            let expected = if quantity == spectrum::Quantity::Amplitude {
+                0.25
+            } else {
+                0.125 / (48000.0 / 1024.0)
+            };
+            assert!((recovered.spectrum.power()[32] - expected).abs() < 1e-12);
+            assert_eq!(recovered.spectrum.average().unwrap().updates, 1);
+            if quantity == spectrum::Quantity::Psd {
+                assert!(
+                    (recovered.spectrum.band(0.0, 24000.0).unwrap().power_fs2 - 0.125).abs()
+                        < 1e-12
+                );
+            }
+            assert_eq!(recovered.scope_missing, 0);
         }
-        let before = core.snapshot();
-        assert_eq!(before.spectrum_info.updates, 5);
-        for sequence in 2080..3103 {
-            core.push(sequence, &frame(sequence, 1024, 2, 0.5)[..2]);
-        }
-        let invalid = core.snapshot();
-        assert_eq!(invalid.input_dropped, 32);
-        assert_eq!(invalid.spectrum_info.missing_windows, 4);
-        assert!(invalid.spectrum.window().is_none());
-        assert_eq!(invalid.scope_missing, 1);
-        core.push(3103, &frame(3103, 1024, 2, 0.5)[..2]);
-        let recovered = core.snapshot();
-        assert_eq!(recovered.spectrum_info.updates, 1);
-        assert_eq!(recovered.spectrum_info.contributing, 2080..3104);
-        assert_eq!(recovered.spectrum_info.missing_windows, 4);
-        assert!((recovered.spectrum.power()[32] - 0.25).abs() < 1e-12);
-        assert_eq!(recovered.scope_missing, 0);
     }
 
     #[test]
@@ -748,6 +778,34 @@ mod tests {
         assert_eq!(after.spectrum_info.contributing, 3072..4096);
     }
 
+    #[test]
+    fn continuous_psd_observes_a_transient_that_latest_window_can_miss() {
+        for mode in [SpectrumMode::Continuous, SpectrumMode::Latest] {
+            let (_stft, mut core, mut config) = setup(1024, 1);
+            config.spectrum.quantity = spectrum::Quantity::Psd;
+            config.spectrum.averages = 1;
+            core.configure_spectrum(config.spectrum, 0, mode);
+            for sequence in 0..4096 {
+                core.push(sequence, &[if sequence == 1024 { 0.5 } else { 0.0 }]);
+            }
+            core.latest(true);
+            let result = core.snapshot();
+            assert_eq!(result.spectrum.band(0.0, 24000.0).unwrap().power_fs2, 0.0);
+            assert_eq!(result.spectrum_info.contributing, 3072..4096);
+            if mode == SpectrumMode::Continuous {
+                assert_eq!(result.spectrum_info.updates, 13);
+                // Rectangular-window impulse: interior density 2*A²/(Fs*N).
+                assert!(
+                    (result.spectrum.hold_power()[32] - 0.5 / (48000.0 * 1024.0)).abs() < 1e-20
+                );
+            } else {
+                assert_eq!(result.spectrum_info.updates, 1);
+                assert_eq!(result.spectrum.hold_power()[32], 0.0);
+            }
+            assert_eq!(result.spectrum_info.missing_windows, 0);
+        }
+    }
+
     fn wait_for_frames(worker: &Worker, count: u64) {
         let deadline = Instant::now() + Duration::from_secs(3);
         while worker.metrics.input_frames.load(Ordering::Relaxed) < count {
@@ -760,7 +818,11 @@ mod tests {
     }
 
     fn stalled_display(channels: usize, size: usize) {
-        let (mut stft, core, config) = setup(size, channels);
+        let (mut stft, core, mut config) = setup(size, channels);
+        // Exercise PSD at the maximum FFT while retaining amplitude regression.
+        if size == 32768 {
+            config.spectrum.quantity = spectrum::Quantity::Psd;
+        }
         let mut worker = Worker::new(core.feeder);
         let (mut producer, consumer) = RingBuffer::new(24000); // 0.5 seconds
         let capture_metrics = Arc::new(AudioMetrics::default());
@@ -807,7 +869,17 @@ mod tests {
             stopped.spectrum_info.updates,
             (1 + (total - size) / (size / 4)) as u64
         );
-        assert!((stopped.spectrum.power()[32] - 0.0625).abs() < 1e-12);
+        let expected = if config.spectrum.quantity == spectrum::Quantity::Psd {
+            0.03125 / (48000.0 / size as f64)
+        } else {
+            0.0625
+        };
+        assert!((stopped.spectrum.power()[32] - expected).abs() < 1e-12);
+        if config.spectrum.quantity == spectrum::Quantity::Psd {
+            assert!(
+                (stopped.spectrum.band(0.0, 24000.0).unwrap().power_fs2 - 0.03125).abs() < 1e-12
+            );
+        }
         assert!(worker.metrics.display_skipped.load(Ordering::Relaxed) > 0);
         assert_eq!(stft.metrics.input_dropped.load(Ordering::Relaxed), 0);
         if size == 1024 {
@@ -819,6 +891,9 @@ mod tests {
         assert_eq!(held.history.range(), stopped.history.range());
         assert_eq!(held.spectrum.window(), stopped.spectrum.window());
         assert_eq!(held.spectrum.power(), stopped.spectrum.power());
+        assert_eq!(held.spectrum.settings(), stopped.spectrum.settings());
+        assert_eq!(held.spectrum.average(), stopped.spectrum.average());
+        assert_eq!(held.spectrum.hold_power(), stopped.spectrum.hold_power());
         let old = worker.take_latest().unwrap();
         assert!(old.revision < held.revision);
         worker.recycle(old);

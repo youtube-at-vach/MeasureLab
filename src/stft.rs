@@ -134,6 +134,7 @@ impl Processor {
             history: History::with_channels(config.size, 1),
             analyzer: Analyzer::new(
                 Settings {
+                    quantity: crate::spectrum::Quantity::Amplitude,
                     size: config.size,
                     window: config.window,
                     averages: 1,

@@ -1,5 +1,5 @@
-//! Windowed, one-sided amplitude spectra. A bin-centred sine with peak
-//! amplitude 1 FS reads 0 dBFS. This is not a PSD or a calibrated dBm meter.
+//! One-sided bin amplitude (1 FS sine peak = 0 dBFS) or power spectral
+//! density (FS²/Hz). Numeric results and band integration stay f64.
 use crate::{
     channel::ChannelId,
     signal::{History, Line},
@@ -56,8 +56,39 @@ impl Precision {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Quantity {
+    #[default]
+    Amplitude,
+    Psd,
+}
+
+impl Quantity {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Amplitude => "Bin amplitude",
+            Self::Psd => "Power spectral density",
+        }
+    }
+
+    pub fn db_unit(self) -> &'static str {
+        match self {
+            Self::Amplitude => "dBFS",
+            Self::Psd => "dB re FS²/Hz",
+        }
+    }
+
+    pub fn linear_unit(self) -> &'static str {
+        match self {
+            Self::Amplitude => "FS peak",
+            Self::Psd => "FS²/Hz",
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Settings {
+    pub quantity: Quantity,
     pub size: usize,
     pub window: Window,
     /// Exponential power average, alpha = 1 / averages; not a batch count.
@@ -70,6 +101,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            quantity: Quantity::Amplitude,
             size: 8192,
             window: Window::Hann,
             averages: 4,
@@ -81,8 +113,8 @@ impl Default for Settings {
 
 #[derive(Clone, Copy, Debug)]
 pub struct Peak {
-    pub frequency: f32,
-    pub dbfs: f32,
+    pub frequency: f64,
+    pub level_db: f64,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -97,8 +129,131 @@ pub struct WindowInfo {
 #[derive(Clone, Copy, Debug)]
 pub struct CursorReading {
     pub window: WindowInfo,
+    pub average: AverageInfo,
     pub frequency_hz: f64,
-    pub dbfs: f32,
+    /// FS peak for amplitude, FS²/Hz for PSD; never reconstructed from f32.
+    pub value: f64,
+    pub level_db: f64,
+    pub hold_level_db: f64,
+}
+
+/// Envelope of contributing sample windows, not a claim of uniform weighting
+/// or continuous coverage in Latest mode. First window initializes the EMA;
+/// subsequent windows use alpha = 1 / settings.averages.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct AverageInfo {
+    pub start: u64,
+    pub end: u64,
+    pub updates: u64,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct BandReading {
+    pub window: WindowInfo,
+    pub average: AverageInfo,
+    pub requested_hz: [f64; 2],
+    pub first_bin: usize,
+    pub last_bin: usize,
+    pub first_hz: f64,
+    pub last_hz: f64,
+    pub power_fs2: f64,
+    pub rms_fs: f64,
+}
+
+/// Zero power is -infinity in numeric results. Only drawing has a dB floor.
+fn level_db(power: f64) -> f64 {
+    10.0 * power.log10()
+}
+
+// Both the analyzer and its immutable output expose identical numeric reads.
+macro_rules! numeric_reads {
+    () => {
+        /// Squared peak-bin amplitude (FS²) or density (FS²/Hz), per settings.
+        pub fn power(&self) -> &[f64] {
+            &self.power
+        }
+
+        /// Maximum of the averaged linear values since reset/Clear hold.
+        pub fn hold_power(&self) -> &[f64] {
+            &self.hold_power
+        }
+
+        pub fn average(&self) -> Option<AverageInfo> {
+            self.is_ready().then_some(self.average)
+        }
+
+        pub fn cursor(&self, frequency_hz: f64) -> Option<CursorReading> {
+            let window = self.window()?;
+            let bin =
+                crate::cursor::nearest_bin(frequency_hz, window.settings.size, window.sample_rate)?;
+            Some(CursorReading {
+                window,
+                average: self.average,
+                frequency_hz: bin as f64 * window.sample_rate as f64 / window.settings.size as f64,
+                value: match self.settings.quantity {
+                    Quantity::Amplitude => self.power[bin].sqrt(),
+                    Quantity::Psd => self.power[bin],
+                },
+                level_db: level_db(self.power[bin]),
+                hold_level_db: level_db(self.hold_power[bin]),
+            })
+        }
+
+        /// Whole-bin sum of averaged PSD * Fs/N. Both requested bounds are
+        /// inclusive bin centres. DC/Nyquist receive full bin weight, so the
+        /// full-band sum obeys discrete Parseval, without trapezoidal weighting.
+        /// No clipping, fractional-bin interpolation, or amplitude-bin summing.
+        pub fn band(&self, min_hz: f64, max_hz: f64) -> Option<BandReading> {
+            let window = self.window()?;
+            if self.settings.quantity != Quantity::Psd
+                || !min_hz.is_finite()
+                || !max_hz.is_finite()
+                || min_hz < 0.0
+                || max_hz < min_hz
+                || max_hz > window.sample_rate as f64 * 0.5
+            {
+                return None;
+            }
+            let bin_hz = window.sample_rate as f64 / window.settings.size as f64;
+            let first_bin = (min_hz / bin_hz).ceil() as usize;
+            let last_bin = (max_hz / bin_hz).floor() as usize;
+            if first_bin > last_bin || last_bin >= self.power.len() {
+                return None;
+            }
+            let power_fs2 = self.power[first_bin..=last_bin].iter().sum::<f64>() * bin_hz;
+            Some(BandReading {
+                window,
+                average: self.average,
+                requested_hz: [min_hz, max_hz],
+                first_bin,
+                last_bin,
+                first_hz: first_bin as f64 * bin_hz,
+                last_hz: last_bin as f64 * bin_hz,
+                power_fs2,
+                rms_fs: power_fs2.sqrt(),
+            })
+        }
+
+        /// Strongest numeric bin, excluding DC. No sub-bin accuracy is claimed.
+        pub fn peak(&self, view: View) -> Option<Peak> {
+            self.window()?;
+            let bin_hz = self.sample_rate as f64 / self.settings.size as f64;
+            self.power
+                .iter()
+                .enumerate()
+                .skip(1)
+                .filter(|(bin, _)| {
+                    let hz = *bin as f64 * bin_hz;
+                    hz >= view.min_hz as f64 && hz <= view.max_hz as f64
+                })
+                .max_by(|a, b| a.1.total_cmp(b.1))
+                .filter(|(_, power)| **power > 0.0)
+                .map(|(bin, power)| Peak {
+                    frequency: bin as f64 * bin_hz,
+                    level_db: level_db(*power),
+                })
+        }
+    };
 }
 
 /// Immutable measurement output copied into a bounded display snapshot. FFT
@@ -107,8 +262,10 @@ pub struct CursorReading {
 pub struct Result {
     settings: Settings,
     sample_rate: u32,
-    rbw: f32,
+    rbw: f64,
     power: Vec<f64>,
+    hold_power: Vec<f64>,
+    average: AverageInfo,
     db: Vec<f32>,
     hold: Vec<f32>,
     last_end: Option<u64>,
@@ -126,8 +283,10 @@ impl Result {
         Self {
             settings,
             sample_rate,
-            rbw: (sample_rate as f64 * squares / sum.powi(2)) as f32,
+            rbw: sample_rate as f64 * squares / sum.powi(2),
             power: vec![0.0; settings.size / 2 + 1],
+            hold_power: vec![0.0; settings.size / 2 + 1],
+            average: AverageInfo::default(),
             db: vec![DB_MIN; settings.size / 2 + 1],
             hold: vec![DB_MIN; settings.size / 2 + 1],
             last_end: None,
@@ -135,10 +294,10 @@ impl Result {
         }
     }
 
-    pub fn power(&self) -> &[f64] {
-        &self.power
-    }
+    numeric_reads!();
+
     pub fn clear_hold(&mut self) {
+        self.hold_power.copy_from_slice(&self.power);
         self.hold.copy_from_slice(&self.db);
     }
     pub fn settings(&self) -> Settings {
@@ -147,7 +306,7 @@ impl Result {
     pub fn bin_hz(&self) -> f32 {
         self.sample_rate as f32 / self.settings.size as f32
     }
-    pub fn rbw_hz(&self) -> f32 {
+    pub fn rbw_hz(&self) -> f64 {
         self.rbw
     }
     pub fn nyquist(&self) -> f32 {
@@ -175,38 +334,6 @@ impl Result {
             channel: self.last_channel,
             settings: self.settings,
         })
-    }
-
-    pub fn cursor(&self, frequency_hz: f64) -> Option<CursorReading> {
-        let window = self.window()?;
-        let bin =
-            crate::cursor::nearest_bin(frequency_hz, window.settings.size, window.sample_rate)?;
-        Some(CursorReading {
-            window,
-            frequency_hz: bin as f64 * window.sample_rate as f64 / window.settings.size as f64,
-            dbfs: self.db[bin],
-        })
-    }
-
-    /// Strongest displayed bin, excluding DC. No sub-bin accuracy is claimed.
-    pub fn peak(&self, view: View) -> Option<Peak> {
-        if !self.is_ready() {
-            return None;
-        }
-        self.db
-            .iter()
-            .enumerate()
-            .skip(1)
-            .filter(|(bin, _)| {
-                let hz = *bin as f32 * self.bin_hz();
-                hz >= view.min_hz && hz <= view.max_hz
-            })
-            .max_by(|a, b| a.1.total_cmp(b.1))
-            .filter(|(_, db)| **db > DB_MIN)
-            .map(|(bin, db)| Peak {
-                frequency: bin as f32 * self.bin_hz(),
-                dbfs: *db,
-            })
     }
 }
 
@@ -248,8 +375,10 @@ pub struct Analyzer {
     transform: Transform,
     samples: Vec<f64>,
     weights: Vec<f64>,
-    rbw: f32,
+    rbw: f64,
     power: Vec<f64>,
+    hold_power: Vec<f64>,
+    average: AverageInfo,
     db: Vec<f32>,
     hold: Vec<f32>,
     last_end: Option<u64>,
@@ -297,6 +426,7 @@ impl<T: FftNum + ToPrimitive> Workspace<T> {
         mean: f64,
         power: &mut [f64],
         alpha: f64,
+        factors: [f64; 2],
     ) {
         // DC subtraction precedes the optional narrowing, so a small AC signal
         // on a large DC offset is not erased by quantizing the raw input.
@@ -325,8 +455,12 @@ impl<T: FftNum + ToPrimitive> Workspace<T> {
                 let b = self.buffer[nyquist - bin].conj();
                 (a + b) * half + self.twiddles[bin] * (a - b)
             };
-            let factor = if bin == 0 || bin == nyquist { 1.0 } else { 4.0 };
-            let current = value.norm_sqr().to_f64().unwrap() * factor;
+            let endpoint = bin == 0 || bin == nyquist;
+            let factor = factors[usize::from(!endpoint)];
+            // Optional f32 FFT must not square weak bins in f32 and underflow
+            // before the f64 average/integration sees them.
+            let current =
+                (value.re.to_f64().unwrap().powi(2) + value.im.to_f64().unwrap().powi(2)) * factor;
             *averaged = if alpha == 1.0 {
                 current
             } else {
@@ -357,12 +491,14 @@ impl Analyzer {
                 Precision::F32 => Transform::F32(Workspace::new(settings.size)),
             },
             power: vec![0.0; settings.size / 2 + 1],
+            hold_power: vec![0.0; settings.size / 2 + 1],
+            average: AverageInfo::default(),
             db: vec![DB_MIN; settings.size / 2 + 1],
             hold: vec![DB_MIN; settings.size / 2 + 1],
             settings,
             sample_rate,
             weights,
-            rbw: rbw as f32,
+            rbw,
             last_end: None,
             last_channel: 0,
         }
@@ -374,11 +510,15 @@ impl Analyzer {
         result.sample_rate = self.sample_rate;
         result.rbw = self.rbw;
         result.power.clone_from(&self.power);
+        result.hold_power.clone_from(&self.hold_power);
+        result.average = self.average;
         result.db.clone_from(&self.db);
         result.hold.clone_from(&self.hold);
         result.last_end = self.last_end;
         result.last_channel = self.last_channel;
     }
+
+    numeric_reads!();
 
     pub fn settings(&self) -> Settings {
         self.settings
@@ -386,7 +526,7 @@ impl Analyzer {
     pub fn bin_hz(&self) -> f32 {
         self.sample_rate as f32 / self.settings.size as f32
     }
-    pub fn rbw_hz(&self) -> f32 {
+    pub fn rbw_hz(&self) -> f64 {
         self.rbw
     }
     pub fn nyquist(&self) -> f32 {
@@ -416,19 +556,9 @@ impl Analyzer {
         })
     }
 
-    pub fn cursor(&self, frequency_hz: f64) -> Option<CursorReading> {
-        let window = self.window()?;
-        let bin =
-            crate::cursor::nearest_bin(frequency_hz, window.settings.size, window.sample_rate)?;
-        Some(CursorReading {
-            window,
-            frequency_hz: bin as f64 * window.sample_rate as f64 / window.settings.size as f64,
-            dbfs: self.db[bin],
-        })
-    }
-
     pub fn reset(&mut self) {
         self.last_end = None;
+        self.average = AverageInfo::default();
         self.power.fill(0.0);
         self.db.fill(DB_MIN);
         self.clear_hold();
@@ -436,6 +566,7 @@ impl Analyzer {
 
     pub fn clear_hold(&mut self) {
         // Restart from the currently displayed trace, including while paused.
+        self.hold_power.copy_from_slice(&self.power);
         self.hold.copy_from_slice(&self.db);
     }
 
@@ -508,41 +639,40 @@ impl Analyzer {
         } else {
             1.0 / self.settings.averages as f64
         };
+        let factors = match self.settings.quantity {
+            Quantity::Amplitude => [1.0, 4.0],
+            Quantity::Psd => [1.0 / self.rbw, 2.0 / self.rbw],
+        };
         match &mut self.transform {
-            Transform::F64(workspace) => {
-                workspace.process(&self.samples, &self.weights, mean, &mut self.power, alpha)
-            }
-            Transform::F32(workspace) => {
-                workspace.process(&self.samples, &self.weights, mean, &mut self.power, alpha)
-            }
+            Transform::F64(workspace) => workspace.process(
+                &self.samples,
+                &self.weights,
+                mean,
+                &mut self.power,
+                alpha,
+                factors,
+            ),
+            Transform::F32(workspace) => workspace.process(
+                &self.samples,
+                &self.weights,
+                mean,
+                &mut self.power,
+                alpha,
+                factors,
+            ),
         }
         for bin in 0..self.db.len() {
-            self.db[bin] = (10.0 * self.power[bin].max(1e-18).log10()) as f32;
-            self.hold[bin] = self.hold[bin].max(self.db[bin]);
+            self.hold_power[bin] = self.hold_power[bin].max(self.power[bin]);
+            self.db[bin] = level_db(self.power[bin]).max(DB_MIN as f64) as f32;
+            self.hold[bin] = level_db(self.hold_power[bin]).max(DB_MIN as f64) as f32;
         }
+        if self.last_end.is_none() || self.settings.averages == 1 {
+            self.average.start = end - self.settings.size as u64;
+        }
+        self.average.end = end;
+        self.average.updates += 1;
         self.last_end = Some(end);
         self.last_channel = channel;
-    }
-
-    /// Strongest displayed bin, excluding DC. No sub-bin accuracy is claimed.
-    pub fn peak(&self, view: View) -> Option<Peak> {
-        if !self.is_ready() {
-            return None;
-        }
-        self.db
-            .iter()
-            .enumerate()
-            .skip(1)
-            .filter(|(bin, _)| {
-                let hz = *bin as f32 * self.bin_hz();
-                hz >= view.min_hz && hz <= view.max_hz
-            })
-            .max_by(|a, b| a.1.total_cmp(b.1))
-            .filter(|(_, db)| **db > DB_MIN)
-            .map(|(bin, db)| Peak {
-                frequency: bin as f32 * self.bin_hz(),
-                dbfs: *db,
-            })
     }
 }
 
@@ -787,7 +917,7 @@ mod tests {
         let held = analyzer.db().to_vec();
         let reading = analyzer.cursor(1501.0).unwrap();
         assert_eq!(reading.frequency_hz, 1500.0);
-        assert!((reading.dbfs + 6.0206).abs() < 0.001);
+        assert!((reading.level_db + 6.0206).abs() < 0.001);
         assert_eq!(reading.window.start, origin + 1024);
         assert_eq!(reading.window.end, origin + 2048);
         assert_eq!(reading.window.channel, 15);
@@ -800,6 +930,321 @@ mod tests {
         assert!(analyzer.cursor(1500.0).is_none());
     }
     use std::f64::consts::TAU;
+
+    #[test]
+    fn psd_full_band_obeys_parseval_for_off_bin_tones_dc_nyquist_and_transients() {
+        for size in FFT_SIZES {
+            let samples: Vec<_> = (0..size)
+                .map(|i| {
+                    let phase = TAU * i as f64 / size as f64;
+                    0.125
+                        + 0.4 * (31.5 * phase).cos()
+                        + 0.2 * (79.0 * phase).sin()
+                        + if i % 2 == 0 { 0.05 } else { -0.05 }
+                        + if i == size / 3 { 0.8 } else { 0.0 }
+                })
+                .collect();
+            for window in [Window::Rectangular, Window::Hann, Window::BlackmanHarris] {
+                for remove_dc in [false, true] {
+                    let mean = if remove_dc {
+                        samples.iter().sum::<f64>() / size as f64
+                    } else {
+                        0.0
+                    };
+                    let mut energy = 0.0;
+                    let mut weight_energy = 0.0;
+                    for (i, &sample) in samples.iter().enumerate() {
+                        let w2 = window.weight(i, size).powi(2);
+                        energy += (sample - mean).powi(2) * w2;
+                        weight_energy += w2;
+                    }
+                    let expected = energy / weight_energy;
+                    for precision in [Precision::F64, Precision::F32] {
+                        let settings = Settings {
+                            quantity: Quantity::Psd,
+                            size,
+                            window,
+                            remove_dc,
+                            precision,
+                            averages: 1,
+                        };
+                        let mut analyzer = Analyzer::new(settings, 48000);
+                        assert!(analyzer.update_samples(&samples, size as u64));
+                        let band = analyzer.band(0.0, 24000.0).unwrap();
+                        let tolerance = if precision == Precision::F64 {
+                            2e-13
+                        } else {
+                            5e-8
+                        };
+                        assert!(
+                            (band.power_fs2 - expected).abs() < tolerance,
+                            "{size} {window:?} {precision:?} DC={remove_dc}"
+                        );
+                        assert!((band.rms_fs.powi(2) - band.power_fs2).abs() < 1e-15);
+                        assert_eq!((band.first_bin, band.last_bin), (0, size / 2));
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn psd_tone_band_power_is_invariant_under_size_window_and_rate() {
+        for size in FFT_SIZES {
+            for sample_rate in [48000, 96000] {
+                let bin_hz = sample_rate as f64 / size as f64;
+                let samples: Vec<_> = (0..size)
+                    .map(|i| {
+                        let phase = TAU * i as f64 / size as f64;
+                        0.5 * (31.0 * phase).cos()
+                            + 0.25 * (79.0 * phase).sin()
+                            + 0.125
+                            + if i % 2 == 0 { 0.0625 } else { -0.0625 }
+                    })
+                    .collect();
+                for window in [Window::Rectangular, Window::Hann, Window::BlackmanHarris] {
+                    let mut analyzer = Analyzer::new(
+                        Settings {
+                            quantity: Quantity::Psd,
+                            size,
+                            window,
+                            remove_dc: false,
+                            averages: 1,
+                            ..Settings::default()
+                        },
+                        sample_rate,
+                    );
+                    assert!(analyzer.update_samples(&samples, size as u64));
+                    assert!(
+                        (analyzer
+                            .band(27.0 * bin_hz, 35.0 * bin_hz)
+                            .unwrap()
+                            .power_fs2
+                            - 0.125)
+                            .abs()
+                            < 1e-13
+                    );
+                    assert!(
+                        (analyzer
+                            .band(75.0 * bin_hz, 83.0 * bin_hz)
+                            .unwrap()
+                            .power_fs2
+                            - 0.03125)
+                            .abs()
+                            < 1e-13
+                    );
+                    assert!(
+                        (analyzer
+                            .band(0.0, sample_rate as f64 * 0.5)
+                            .unwrap()
+                            .power_fs2
+                            - 0.17578125)
+                            .abs()
+                            < 1e-13
+                    );
+                    assert!(
+                        (analyzer.cursor(31.0 * bin_hz).unwrap().value - 0.125 / analyzer.rbw_hz())
+                            .abs()
+                            < 1e-14
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn psd_band_uses_inclusive_centres_and_full_dc_nyquist_weights() {
+        let mut analyzer = Analyzer::new(
+            Settings {
+                quantity: Quantity::Psd,
+                size: 1024,
+                window: Window::Rectangular,
+                remove_dc: false,
+                averages: 1,
+                ..Settings::default()
+            },
+            48000,
+        );
+        assert!(analyzer.band(0.0, 24000.0).is_none());
+        assert!(analyzer.update(&tone(1024, 512, 0.25, 0.5), 0));
+        assert!((analyzer.band(0.0, 0.0).unwrap().power_fs2 - 0.25).abs() < 1e-14);
+        assert!((analyzer.band(24000.0, 24000.0).unwrap().power_fs2 - 0.0625).abs() < 1e-14);
+        assert!((analyzer.band(0.0, 24000.0).unwrap().power_fs2 - 0.3125).abs() < 1e-14);
+        let bin_hz = 48000.0 / 1024.0;
+        assert!(analyzer.band(0.1 * bin_hz, 0.9 * bin_hz).is_none());
+        for bounds in [
+            [-1.0, 24000.0],
+            [0.0, 24001.0],
+            [100.0, 1.0],
+            [f64::NAN, 10.0],
+            [0.0, f64::INFINITY],
+        ] {
+            assert!(analyzer.band(bounds[0], bounds[1]).is_none());
+        }
+        let selected = analyzer.band(bin_hz, 24000.0 - bin_hz).unwrap();
+        assert_eq!((selected.first_bin, selected.last_bin), (1, 511));
+        assert_eq!(selected.power_fs2, 0.0);
+        let mut amplitude = Analyzer::new(
+            Settings {
+                size: 1024,
+                ..Settings::default()
+            },
+            48000,
+        );
+        amplitude.update(&tone(1024, 32, 0.5, 0.0), 0);
+        assert!(amplitude.band(0.0, 24000.0).is_none());
+    }
+
+    #[test]
+    fn deterministic_white_noise_density_and_integral_match_known_variance() {
+        let variance = 0.2_f64.powi(2) / 3.0;
+        for size in [1024, 8192, 32768] {
+            for window in [Window::Rectangular, Window::Hann, Window::BlackmanHarris] {
+                let mut analyzer = Analyzer::new(
+                    Settings {
+                        quantity: Quantity::Psd,
+                        size,
+                        window,
+                        averages: 1,
+                        remove_dc: false,
+                        ..Settings::default()
+                    },
+                    48000,
+                );
+                let mut state = 0x5a71_eb09_1254_8123_u64;
+                let mut integral = 0.0;
+                let mut band_power = 0.0;
+                for frame in 1..=32 {
+                    let samples: Vec<_> = (0..size)
+                        .map(|_| {
+                            state ^= state << 13;
+                            state ^= state >> 7;
+                            state ^= state << 17;
+                            0.2 * (2.0 * (state >> 11) as f64 / (1_u64 << 53) as f64 - 1.0)
+                        })
+                        .collect();
+                    analyzer.update_samples(&samples, frame * size as u64);
+                    integral += analyzer.band(0.0, 24000.0).unwrap().power_fs2;
+                    band_power += analyzer.band(6000.0, 12000.0).unwrap().power_fs2;
+                }
+                assert!(
+                    (integral / 32.0 / variance - 1.0).abs() < 0.03,
+                    "{size} {window:?}"
+                );
+                // Expected one-sided white density is 2*variance/Fs. Account for
+                // the exact number of inclusive bins, rather than a drawn span.
+                let band = analyzer.band(6000.0, 12000.0).unwrap();
+                let bandwidth = (band.last_bin - band.first_bin + 1) as f64 * 48000.0 / size as f64;
+                let density = band_power / 32.0 / bandwidth;
+                assert!((density / (2.0 * variance / 48000.0) - 1.0).abs() < 0.08);
+            }
+        }
+    }
+
+    #[test]
+    fn numeric_cursor_band_average_and_hold_survive_the_display_floor_and_copy() {
+        for quantity in [Quantity::Amplitude, Quantity::Psd] {
+            let settings = Settings {
+                quantity,
+                size: 1024,
+                averages: 4,
+                ..Settings::default()
+            };
+            let mut analyzer = Analyzer::new(settings, 48000);
+            let small: Vec<_> = (0..1024)
+                .map(|i| 1e-12 * (TAU * 32.0 * i as f64 / 1024.0).cos())
+                .collect();
+            assert!(analyzer.update_samples(&small, 1024));
+            let initial = analyzer.power()[32];
+            assert_eq!(analyzer.db()[32], DB_MIN);
+            let first = analyzer.cursor(1501.0).unwrap();
+            assert_eq!(first.frequency_hz, 1500.0);
+            assert!(first.level_db < DB_MIN as f64);
+            assert!(first.value > 0.0);
+            assert!(
+                analyzer
+                    .peak(View::full(48000, FrequencyScale::Log, -120.0))
+                    .unwrap()
+                    .level_db
+                    < DB_MIN as f64
+            );
+            assert!(analyzer.update_samples(&vec![0.0; 1024], 2048));
+            assert!((analyzer.power()[32] / initial - 0.75).abs() < 1e-14);
+            assert_eq!(analyzer.hold_power()[32], initial);
+            assert_eq!(
+                analyzer.average(),
+                Some(AverageInfo {
+                    start: 0,
+                    end: 2048,
+                    updates: 2
+                })
+            );
+            let mut result = Result::empty(Settings::default(), 96000);
+            analyzer.copy_result(&mut result);
+            assert_eq!(result.settings(), settings);
+            assert_eq!(
+                result.cursor(1500.0).unwrap().value,
+                analyzer.cursor(1500.0).unwrap().value
+            );
+            assert_eq!(result.hold_power(), analyzer.hold_power());
+            if quantity == Quantity::Psd {
+                let power = result.band(0.0, 24000.0).unwrap().power_fs2;
+                assert!((power / (0.75e-24 / 2.0) - 1.0).abs() < 1e-13);
+            }
+            result.clear_hold();
+            assert_eq!(result.hold_power(), result.power());
+            assert_eq!(result.average(), analyzer.average());
+            analyzer.reset();
+            assert!(analyzer.average().is_none());
+            assert!(analyzer.cursor(1500.0).is_none());
+            assert!(result.cursor(1500.0).is_some());
+            assert!(analyzer.update_samples(&vec![0.0; 1024], 3072));
+            assert_eq!(analyzer.cursor(1500.0).unwrap().level_db, f64::NEG_INFINITY);
+        }
+    }
+
+    #[test]
+    fn averaging_off_reports_only_the_latest_contribution() {
+        let mut analyzer = Analyzer::new(
+            Settings {
+                size: 1024,
+                averages: 1,
+                ..Settings::default()
+            },
+            48000,
+        );
+        assert!(analyzer.update_samples(&vec![0.0; 1024], 1024));
+        assert!(analyzer.update_samples(&vec![0.0; 1024], 1280));
+        assert_eq!(
+            analyzer.average(),
+            Some(AverageInfo {
+                start: 256,
+                end: 1280,
+                updates: 2
+            })
+        );
+    }
+
+    #[test]
+    fn f32_fft_keeps_weak_psd_power_when_the_magnitude_is_squared_in_f64() {
+        let mut analyzer = Analyzer::new(
+            Settings {
+                quantity: Quantity::Psd,
+                size: 1024,
+                averages: 1,
+                precision: Precision::F32,
+                ..Settings::default()
+            },
+            48000,
+        );
+        let samples: Vec<_> = (0..1024)
+            .map(|i| 1e-24 * (TAU * 32.0 * i as f64 / 1024.0).cos())
+            .collect();
+        assert!(analyzer.update_samples(&samples, 1024));
+        let power = analyzer.band(0.0, 24000.0).unwrap().power_fs2;
+        assert!((power / 0.5e-48 - 1.0).abs() < 2e-6);
+        assert!(analyzer.cursor(1500.0).unwrap().level_db < -480.0);
+    }
 
     #[test]
     fn real_fft_matches_full_complex_reference_for_every_size_and_precision() {
@@ -830,35 +1275,45 @@ mod tests {
                     FftPlanner::<f64>::new()
                         .plan_fft_forward(size)
                         .process(&mut reference);
-                    for precision in [Precision::F64, Precision::F32] {
-                        let mut analyzer = Analyzer::new(
-                            Settings {
-                                size,
-                                window,
-                                remove_dc,
-                                precision,
-                                averages: 1,
-                            },
-                            48000,
-                        );
-                        assert!(analyzer.update_samples(&samples, size as u64));
-                        for (bin, &actual) in analyzer.power.iter().enumerate() {
-                            let factor = if bin == 0 || bin == size / 2 {
-                                1.0
-                            } else {
-                                4.0
-                            };
-                            let expected = reference[bin].norm_sqr() * factor;
-                            // Absolute amplitude error includes low bins at the f32 noise floor.
-                            let tolerance = if precision == Precision::F64 {
-                                1e-13
-                            } else {
-                                2e-7
-                            };
-                            assert!(
-                                (actual.sqrt() - expected.sqrt()).abs() < tolerance,
-                                "N={size}, {window:?}, {precision:?}, DC={remove_dc}, bin={bin}"
+                    let rbw = 48000.0 * weights.iter().map(|w| w * w).sum::<f64>() / sum.powi(2);
+                    for quantity in [Quantity::Amplitude, Quantity::Psd] {
+                        for precision in [Precision::F64, Precision::F32] {
+                            let mut analyzer = Analyzer::new(
+                                Settings {
+                                    quantity,
+                                    size,
+                                    window,
+                                    remove_dc,
+                                    precision,
+                                    averages: 1,
+                                },
+                                48000,
                             );
+                            assert!(analyzer.update_samples(&samples, size as u64));
+                            for (bin, &actual) in analyzer.power.iter().enumerate() {
+                                let endpoint = bin == 0 || bin == size / 2;
+                                let factor = match quantity {
+                                    Quantity::Amplitude => {
+                                        if endpoint {
+                                            1.0
+                                        } else {
+                                            4.0
+                                        }
+                                    }
+                                    Quantity::Psd => (if endpoint { 1.0 } else { 2.0 }) / rbw,
+                                };
+                                let expected = reference[bin].norm_sqr() * factor;
+                                // Absolute amplitude error includes low bins at the f32 noise floor.
+                                let tolerance = if precision == Precision::F64 {
+                                    1e-13
+                                } else {
+                                    2e-7
+                                };
+                                assert!(
+                                    (actual.sqrt() - expected.sqrt()).abs() < tolerance,
+                                    "N={size}, {window:?}, {precision:?}, DC={remove_dc}, {quantity:?}, bin={bin}"
+                                );
+                            }
                         }
                     }
                 }
@@ -1004,7 +1459,7 @@ mod tests {
             );
             assert!(a.update(&tone(4096, 85, 0.5, 0.0), 0));
             assert!((a.db()[85] + 6.0206).abs() < 0.002);
-            assert!((a.rbw_hz() / a.bin_hz() - enbw).abs() < 0.001);
+            assert!((a.rbw_hz() / a.bin_hz() as f64 - enbw).abs() < 0.001);
             let peak = a
                 .peak(View::full(48000, FrequencyScale::Log, -120.0))
                 .unwrap();

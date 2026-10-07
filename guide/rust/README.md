@@ -85,7 +85,7 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | Start input / Stop / Space | 入力開始・停止 |
 | Cursor A / B / Clear | カーソルの選択／時間・周波数・XY自由配置カーソルの解除 |
 | Scope上でクリック／ドラッグ | 時間カーソルのX位置を固定。各更新の波形から振幅・トリガー基準の時刻・Δtを表示 |
-| Spectrum上でクリック／ドラッグ | 共通の周波数を固定。最寄りのビン振幅・対象CH・最新の解析窓を表示 |
+| Spectrum上でクリック／ドラッグ | 共通の周波数を固定。最寄りビンの振幅／PSD・対象CH・最新窓と平均の寄与区間を表示 |
 | Spectrogram上でクリック／ドラッグ | 縦位置と共通周波数を固定。更新ごとにその位置の行の解析窓・ビン振幅を表示 |
 | XY Free / Trace Snap | 自由配置（既定）と実サンプルへのスナップを切り替え |
 | XY X Source / Y Source | X/Yへ入力CHを独立に割り当てる。Scopeの割当とは独立 |
@@ -103,10 +103,12 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | Spectrum Source / points / Window | FFTの入力CH（取得した全chから選択）、サイズ（1,024〜32,768点）、窓関数 |
 | Spectrum / Spectrogram FFT PRECISION | 各測定器のFFT精度。既定は64-bit、32-bit (fast FFT)を明示的に選択可能 |
 | Continuous / Latest window | N/4 hopの連続解析（既定）／最新窓を最大30回/秒で観察。非表示でも平均・保持は継続 |
-| Power average / Remove DC | 線形電力の指数平均、FFT前の平均値除去 |
+| Bin amplitude / Power spectral density | 振幅dBFS／PSD（FS²/Hz）の測定モード |
+| EMA α / Remove DC | 線形値の指数電力平均、FFT前の平均値除去 |
+| PSD Power in band / From / To | 指定した両端を含むビン中心のPSD積算。To = 0はNyquist。FS²とRMS FSを表示 |
 | Log Hz / Linear Hz / Span | 周波数軸と表示する上限周波数 |
-| Floor dBFS / Peak hold / Clear hold | 表示下限、最大値の保持、保持値のクリア |
-| スペクトル上にマウスを置く | 最寄りのFFTビンの周波数と振幅 |
+| Display floor / Peak hold / Clear hold | モードに応じたdB表示下限、平均後の最大値の保持、保持値のクリア |
+| スペクトル上にマウスを置く | 最寄りFFTビンの実周波数と振幅／PSDをf64で読み出す |
 | Spectrogram Source / FFT length / Window | Spectrumとは独立した対象CH・窓長・窓関数・DC除去 |
 | Spectrogram Time span / From / To | 時間範囲（0.5〜20秒）と周波数範囲。To = 0はNyquist |
 | Spectrogram Floor / Ceiling | 色のdBFS範囲。表示変更ではFFT・履歴をリセットしない |
@@ -126,11 +128,21 @@ RMS・Peak・P-PはScopeの整数サンプル区間内に取得した生のf64�
 
 振幅はCPALから取得したデジタル音声のフルスケール（FS）です。電圧への換算、外部ADCの制御、音声デバイス以外の入力は未実装です。サンプルレートはデバイス既定の設定を使用します。
 
-スペクトルは片側ビン振幅のdBFSです。窓のcoherent gainを補正し、ビン中心の1 FS peak正弦波を0 dBFSとします。DCとNyquistのビンは2倍しません。PSDやdBmではありません。**Δf** はFs/N、**RBW** は窓の等価雑音帯域です。48 kHz・8,192点・HannではΔf ≈ 5.86 Hz、RBW ≈ 8.79 Hz、窓時間 ≈ 170.7 ms。ピークは最大ビンの値なので、1 kHzの信号が1002.0 Hzのビンに表示される場合があります。
+Spectrumの既定モード **Bin amplitude** は片側ビン振幅のdBFSです。窓のcoherent gainを補正し、ビン中心の1 FS peak正弦波を0 dBFSとします。DCとNyquistのビンは2倍しません。振幅ビンを積算して雑音電力とは扱いません。**Δf** はFs/N、**RBW** は窓の等価雑音帯域です。48 kHz・8,192点・HannではΔf ≈ 5.86 Hz、RBW ≈ 8.79 Hz、窓時間 ≈ 170.7 ms。ピークは最大ビンの値なので、1 kHzの信号が1002.0 Hzのビンに表示される場合があります。
 
 ビンの間にある信号は複数のビンに分散するため、ピークの読み値が実振幅より低くなることがあります。
 
-平均はalpha = 1 / 指定値による指数的な電力平均です。ピーク保持は平均後のスペクトルの最大値を保持します。有効化またはClear holdで現在のスペクトルから保持を始めます。入力・FFT設定・入力CHの変更やデータ欠落で平均と保持値をリセットします。取得停止中の表示設定変更では同じサンプルを繰り返し平均しません。
+**Power spectral density** は片側PSDをFS²/Hzで測定し、表示は10 log10(PSD / 1 FS²/Hz)の **dB re FS²/Hz** です。周期窓w、正規化前のFFTをXとすると、PSDは`c × |X|² / (Fs × Σw²)`です。cはDC／Nyquistで1、その他で2です。Remove DCは窓を掛ける前に各窓の算術平均を引きます。振幅からPSDへ切り替えると平均・保持をリセットします。Spectrogramの振幅表示は変更しません。
+
+PSDの **Power in band** は、From〜Toの両端を含む中心周波数のビンを選び、`ΣPSD[k] × Δf`をf64で計算します。To = 0は取得時のNyquistです。実際に含めた最初／最後のビン周波数、電力FS²、平方根のRMS FSを表示します。電力とRMSは微小値も読める指数表記を使います。DC／Nyquistも全Δfの重みで含めます。半端なビンの補間や台形積分は使いません。範囲が不正、範囲内にビンがない、完全なPSD窓がない場合は利用不可とし、別範囲の値を代用しません。帯域指定と表示Spanは独立し、帯域を変えても平均はリセットしません。
+
+単一窓の全帯域積算はParsevalにより`Σw²(x−μ)² / Σw²`に一致します（DC除去なしはμ = 0）。Rectangularでは生サンプルの平均二乗、他の窓では窓付きの平均二乗です。定常正弦波・雑音の電力評価と短い過渡の窓位置依存を区別し、Scopeの観察区間のRMSと常に同一とは扱いません。ビン間正弦波では漏れを含む十分な帯域を選んで評価します。校正された電圧・dBmは未実装です。
+
+平均は **EMA α = 1/指定値** による指数的な線形電力平均です。最初の完全窓で初期化し、次の窓から`P ← P + α(Pnew − P)`を適用します。α = 1では最新窓だけを使います。処理窓数と最初〜最新の寄与区間を結果に保持しますが、均等な積算回数や区間全体の一様なRMSを意味しません。ContinuousはN/4 hop、Latestは最大30回/秒の最新窓だけを使い、過渡の捕捉を保証しません。カーソルの説明で最新窓・寄与区間・CH・設定・入力世代・欠落を確認できます。
+
+ピーク保持は平均後の各ビンの最大値を保持します。有効化またはClear holdで現在のスペクトルから保持を始めます。入力・FFT設定・測定モード・入力CHの変更やデータ欠落で平均と保持をリセットします。取得停止中の解析設定変更は次回開始に適用し、保持値のモード・単位・設定を変えません。停止中の表示・帯域変更では同じサンプルを繰り返し平均しません。
+
+数値電力・保持値・帯域積算・カーソル／ピークはf64で保持・読み出し、描画用のf32 dB配列から逆算しません。描画には−180 dBの下限がありますが、数値は下限で切り詰めません。電力0は数値上−∞ dBです。32-bit FFTは入力のDC除去後にf32へ変換し、複素結果の二乗と平均はf64で行います。f32 FFT自体の丸めや混在する強弱信号の制限は残り、微小信号の既定は64-bitです。定義・許容差と確認範囲は [Spectrumの検証](validation/SPECTRUM_2026-10.md) を参照してください。
 
 スペクトログラムは専用ワーカーの連続STFTを表示し、新しい行が上に来ます。縦軸は最新窓の終端からの相対秒、見出しのEndは入力開始からの窓終端の秒です。各行の位置はサンプル番号とFsから計算し、1行はhop = N/4の区間に対応します。各窓のビン振幅を表示し、電力平均とピーク保持は使いません。欠落によって解析できなかった区間はオレンジの縞、まだ取得・保持していない過去は空白です。
 
@@ -211,6 +223,8 @@ Audio device → CPAL callback → bounded SPSC → measurement worker ← inter
 テストはリング履歴の折り返し、型変換、モノラル／多チャンネル処理、欠落検出用の連番、トリガー、スパイク保持を確認します。ベンチマークは48k・192k・100万サンプルを1920物理ピクセルへ集約するCPU時間を計測します。GPU描画の速度やデバイス入力の遅延を測定するものではありません。
 
 `qa`機能で`--ui-smoke`を使うと、内部テスト信号による画面を撮影できます。`MEASURELAB_UI_SMOKE_SETTINGS=scope`（または`spectrum`、`spectrogram`、`xy`、`workspace`、`collapsed`、`hidden`）を指定すると、その設定パネルの状態で撮影できます。`--compact`との組み合わせで小さい画面も確認できます。`MEASURELAB_UI_SMOKE_XY_PHASE=0`（または`90`、`180`）で同振幅の正弦波を選び、`MEASURELAB_UI_SMOKE_XY_ONLY=1`でXY単独、`MEASURELAB_UI_SMOKE_CHANNELS=1`でモノラル時の表示を確認できます。`MEASURELAB_UI_SMOKE_SCROLL_END=1`はプロット領域を下端へスクロールし、狭い画面の下段を撮影します。
+
+`MEASURELAB_SPECTRUM_PSD=1`は`qa`ビルドでSpectrumをPSDに設定します。`--ui-smoke`やUI計測と組み合わせて、通常幅／狭幅・帯域表示・停止中のモード保持を確認できます。
 
 `MEASURELAB_UI_SMOKE_CURSORS=1`では、欠落を含む同じ有限の入力履歴から全測定器を準備し、ScopeのX位置に固定したA/B時間カーソル・Δt・共通周波数・解析窓・XYの実サンプル組を撮影します。波形・STFTの入力座標を揃えるため、このモードでは通常の循環STFT撮影用の信号を置き換えます。`MEASURELAB_UI_SMOKE_SCOPE_ONLY=1`との組み合わせでScope単独のカーソルとトリガーマーカーを確認できます。
 

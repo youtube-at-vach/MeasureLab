@@ -416,6 +416,14 @@ pub fn multichannel_smoke_test() -> Result<(), Box<dyn std::error::Error>> {
         capture.sample_rate,
     );
     let expected_db = 20.0 * 0.125_f32.log10();
+    let mut psd = Analyzer::new(
+        Settings {
+            quantity: crate::spectrum::Quantity::Psd,
+            averages: 1,
+            ..Settings::default()
+        },
+        capture.sample_rate,
+    );
     for ch in 0..16 {
         if !analyzer.update(&history, ch) {
             return Err(format!("CH {} has no complete FFT window", ch + 1).into());
@@ -436,7 +444,27 @@ pub fn multichannel_smoke_test() -> Result<(), Box<dyn std::error::Error>> {
             )
             .into());
         }
+        if !psd.update(&history, ch) {
+            return Err(format!("CH {} has no PSD window", ch + 1).into());
+        }
+        let delta_hz = capture.sample_rate as f64 / 8192.0;
+        let band = psd
+            .band((bin - 4) as f64 * delta_hz, (bin + 4) as f64 * delta_hz)
+            .ok_or("No PSD tone band")?;
+        let expected_power = 0.125_f64.powi(2) / 2.0;
+        let full = psd.band(0.0, capture.sample_rate as f64 * 0.5).unwrap();
+        let density = psd.cursor(bin as f64 * delta_hz).unwrap();
+        if (band.power_fs2 - expected_power).abs() > 1e-9
+            || (full.power_fs2 - expected_power).abs() > 1e-9
+            || (density.value - expected_power / psd.rbw_hz()).abs() > 1e-10
+            || density.window.channel != ch
+        {
+            return Err(format!("CH {} PSD density/band power failed: {band:?}", ch + 1).into());
+        }
     }
+    println!(
+        "BlackHole PSD OK: all 16 channels; tone band and full-band power 0.0078125 FS², window-normalized density, f64 readings"
+    );
     let stft_db = last_db.ok_or("No CH 16 STFT row received")?;
     if (stft_db - expected_db).abs() > 0.02 {
         return Err(format!("CH 16 STFT amplitude failed: {stft_db:.3} dBFS").into());
@@ -570,7 +598,7 @@ mod tests {
             let reading = analyzer.cursor(1500.0).unwrap();
             assert_eq!(selected.start, reading.window.start);
             assert_eq!(selected.end, reading.window.end);
-            assert!((db[256] - reading.dbfs).abs() < 1e-5);
+            assert!((db[256] as f64 - reading.level_db).abs() < 1e-5);
         }
         assert_eq!(analyzer.window().unwrap().end, row.end);
         assert_eq!(cursors.delta_seconds(48000, scope.range), Some(0.0025));
