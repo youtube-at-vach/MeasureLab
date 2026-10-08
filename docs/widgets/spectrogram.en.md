@@ -54,7 +54,7 @@ This vertical bar on the right side of the graph is a **"correspondence table be
     * Switches the display scale of the frequency axis.
     * **Linear**: Evenly spaced markings like a ruler. Suitable for observing high-frequency harmonics in detail.
     * **Log**: Logarithmic scale. Like a piano keyboard, the lower frequency range is displayed wider. Ideal when you want to see musical pitches.
-    * **Mel**: Mel scale. A slightly magical scale where intervals that the human ear perceives as "twice as high" are evenly spaced. Often used for voice analysis.
+    * **Mel**: Mel scale. A scale where intervals that the human ear perceives as "twice as high" are evenly spaced. Often used for voice analysis.
 
 * **Direction**
     * Selects the display orientation (waterfall direction) of the spectrogram.
