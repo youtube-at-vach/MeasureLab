@@ -18,6 +18,8 @@ Python/PyQt6 版の最終リリースは [v0.9.1](https://github.com/youtube-at-
 
 このブランチでは Python アプリ本体、テスト、アプリのビルド環境を退役させました。Rust 開発の PR は `rewrite/rust` に向け、配布済みの Python 版は別途維持します。
 
+新しいmacOS／Linux環境では [開発環境のセットアップ](guide/rust/SETUP.md) を参照し、`./scripts/setup_dev_env.sh --install-os-deps --verify`でローカルツールの導入とRust・サイト・文書のビルド検証を一括実行できます。
+
 Rust 1.95 以降と OS のビルドツールを用意した環境では、次のコマンドでデモを起動できます。
 
 ```sh

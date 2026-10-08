@@ -6,6 +6,17 @@ description: Rust アプリ・サイト・文書の起動と検証コマンド
 
 共通ルールと文書を読む順序は [AGENTS.md](../../AGENTS.md)、測定の完了条件は [Rust PLAN](../../guide/rust/PLAN.md) を参照する。以下のコマンドはリポジトリのルートで実行する。この文書には再実行する手順を置き、実測結果を追記しない。
 
+## 初回セットアップ
+
+macOS／LinuxでRust・サイト・文書用のローカル環境を構築する。OSの事前準備と手動導入は [開発環境のセットアップ](../../guide/rust/SETUP.md) を参照する。
+
+```bash
+./scripts/setup_dev_env.sh --install-os-deps --verify
+source .tools/env.sh
+```
+
+OSライブラリを導入済みなら`--install-os-deps`を省略できる。引数なしでは依存関係の導入・デバッグビルド・文書用ライブラリの読み込みを確認し、`--verify`で以下の検証を一括実行する。
+
 ## Rust アプリ
 
 Rust 1.95 以降と OS のビルドツールを使う。`scripts/cargo.sh` は PATH 上の Cargo または `.tools/` にあるローカル環境を使う。

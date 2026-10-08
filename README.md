@@ -18,6 +18,8 @@ The download website and existing manuals continue to describe the Python editio
 
 The Python application, tests, and application build environment have been retired from this branch. Rust development uses pull requests targeting `rewrite/rust`; the published Python edition remains available separately.
 
+For a new macOS or Linux environment, follow the [development environment setup guide](guide/rust/SETUP.md) and run `./scripts/setup_dev_env.sh --install-os-deps --verify` to install local tools and validate the Rust, website, and documentation builds.
+
 With Rust 1.95 or later and your operating system's build tools installed, run:
 
 ```sh

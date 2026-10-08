@@ -6,6 +6,8 @@ CPALで実際のオーディオ入力を取り込み、egui / eframeと`wgpu`で
 
 Rust 1.95以上と各OSのビルドツールが必要です。開発・検証にはRust 1.99を使用しています。
 
+新しいmacOS／Linux環境では`./scripts/setup_dev_env.sh --install-os-deps --verify`でRust・サイト・文書用ツールを導入できます。前提条件と導入先、手動設定は [開発環境のセットアップ](SETUP.md) を参照してください。
+
 ### デバッグ時の簡単な起動
 
 リポジトリのルートにある **Debug-MeasureLab.command** をmacOSのFinderでダブルクリックすると、デバッグビルドを更新して内部デモ信号で起動します。ターミナルからは以下を使います。

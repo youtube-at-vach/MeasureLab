@@ -44,6 +44,17 @@ Before planning or changing Rust behavior, read the [current direction](guide/CU
 
 Keep working documents focused on current decisions, constraints, unresolved problems, and completion criteria. Update the relevant state instead of appending a work diary; retain detailed measurements separately with their conditions and verification limits.
 
+## Development environment setup
+
+On macOS and Linux, use the [setup guide](guide/rust/SETUP.md) to prepare native prerequisites, then run:
+
+```sh
+./scripts/setup_dev_env.sh --install-os-deps --verify
+source .tools/env.sh
+```
+
+The script installs local Rust, Node.js, documentation Python, and lint tools. Omit `--install-os-deps` when native libraries are already installed. `--verify` runs the checks below and the desktop release build; without it, setup builds the debug application and checks the documentation runtime.
+
 ## Rust checks
 
 Use Rust 1.95 or later and your operating system's build tools. Run these commands from the repository root before opening a Rust PR:
