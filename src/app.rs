@@ -1,5 +1,6 @@
 use crate::{
     audio::{AudioWorker, Command, DeviceInfo, Event},
+    calibration::{self, Calibration, Reading},
     channel::{self, ChannelId, Pair},
     cursor::{self, Cursors},
     demo::{Demo, Waveform},
@@ -78,16 +79,18 @@ enum SettingsSection {
     Spectrum,
     Spectrogram,
     Xy,
+    Calibration,
     Workspace,
 }
 
 impl SettingsSection {
-    const ALL: [Self; 6] = [
+    const ALL: [Self; 7] = [
         Self::Input,
         Self::Scope,
         Self::Spectrum,
         Self::Spectrogram,
         Self::Xy,
+        Self::Calibration,
         Self::Workspace,
     ];
 
@@ -98,13 +101,14 @@ impl SettingsSection {
             Self::Spectrum => "Spectrum analyzer",
             Self::Spectrogram => "Spectrogram",
             Self::Xy => "XY / Lissajous",
+            Self::Calibration => "Scope calibration",
             Self::Workspace => "Workspace & help",
         }
     }
 
     fn color(self) -> Color32 {
         match self {
-            Self::Input | Self::Workspace => Color32::from_rgb(192, 207, 217),
+            Self::Input | Self::Calibration | Self::Workspace => Color32::from_rgb(192, 207, 217),
             Self::Scope => GREEN,
             Self::Spectrum => YELLOW,
             Self::Spectrogram => BLUE,
@@ -134,6 +138,83 @@ impl Sidebar {
         self.visible = true;
         self.section = Some(section);
         self.focus = true;
+    }
+}
+
+struct CalibrationEditor {
+    pending: calibration::Set,
+    captured: calibration::Set,
+    channel: ChannelId,
+    gain: f64,
+    offset: f64,
+    unit: String,
+    conditions: String,
+    session_id: String,
+    revision: u64,
+    error: Option<String>,
+}
+
+impl Default for CalibrationEditor {
+    fn default() -> Self {
+        Self {
+            pending: calibration::Set::default(),
+            captured: calibration::Set::default(),
+            channel: 0,
+            gain: 1.0,
+            offset: 0.0,
+            unit: "V".into(),
+            conditions: String::new(),
+            session_id: format!(
+                "scope-{}",
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_nanos()
+            ),
+            revision: 0,
+            error: None,
+        }
+    }
+}
+
+impl CalibrationEditor {
+    fn select(&mut self) {
+        if let Some(calibration) = self.pending.get(self.channel) {
+            self.gain = calibration.gain();
+            self.offset = calibration.offset();
+            self.unit = calibration.unit().into();
+            self.conditions = calibration.conditions().into();
+        } else {
+            self.gain = 1.0;
+            self.offset = 0.0;
+            self.unit = "V".into();
+            self.conditions.clear();
+        }
+        self.error = None;
+    }
+
+    fn clear_input(&mut self) {
+        self.pending = calibration::Set::default();
+        self.select();
+    }
+
+    fn apply(&mut self) -> Result<(), &'static str> {
+        let revision = self
+            .revision
+            .checked_add(1)
+            .ok_or("Calibration revision exhausted")?;
+        let calibration = Calibration::new(
+            format!("{}-ch{}", self.session_id, self.channel + 1),
+            revision,
+            self.gain,
+            self.offset,
+            self.unit.clone(),
+            self.conditions.clone(),
+        )?;
+        self.pending = self.pending.with(self.channel, Some(calibration))?;
+        self.revision = revision;
+        self.error = None;
+        Ok(())
     }
 }
 
@@ -214,6 +295,8 @@ pub struct ScopeApp {
     lines: Vec<Line>,
     segments: Arc<Vec<Segment>>,
     measurements: [Measurement; 2],
+    scope_readings: [Reading; 2],
+    calibration: CalibrationEditor,
     scope_missing: u64,
     dirty: bool,
     pixels: usize,
@@ -243,6 +326,8 @@ pub struct ScopeApp {
     lifecycle_xy_held: Option<(u64, xy::Capture)>,
     #[cfg(feature = "qa")]
     lifecycle_spectrum_held: Option<(spectrum::WindowInfo, Vec<f32>, std::ops::Range<u64>)>,
+    #[cfg(feature = "qa")]
+    lifecycle_calibration_held: Option<(calibration::Set, [Reading; 2], String)>,
 }
 
 impl ScopeApp {
@@ -371,6 +456,8 @@ impl ScopeApp {
             lines: Vec::with_capacity(8192),
             segments: Arc::new(Vec::with_capacity(8192)),
             measurements: [Measurement::default(); 2],
+            scope_readings: [Reading::Unavailable; 2],
+            calibration: CalibrationEditor::default(),
             scope_missing: 0,
             dirty: true,
             pixels: 0,
@@ -400,6 +487,8 @@ impl ScopeApp {
             lifecycle_xy_held: None,
             #[cfg(feature = "qa")]
             lifecycle_spectrum_held: None,
+            #[cfg(feature = "qa")]
+            lifecycle_calibration_held: None,
         };
         #[cfg(feature = "qa")]
         if app.profile.is_some() {
@@ -531,7 +620,20 @@ impl ScopeApp {
                 app.cursors.set_scope_time(0, 0.3);
                 app.cursors.set_scope_time(1, 0.7);
             }
+            if std::env::var_os("MEASURELAB_UI_SMOKE_CALIBRATION").is_some() {
+                app.calibration.channel = app.scope_channels.0[0];
+                app.calibration.gain = 4.0;
+                app.calibration.offset = 0.5;
+                app.calibration.conditions =
+                    "QA coefficients: 4 V/FS + 0.5 V; internal fixture, not a physical reference"
+                        .into();
+                app.calibration.apply()?;
+                app.calibration.captured = app.calibration.pending.clone();
+                app.cursors.set_scope_time(0, 0.3);
+                app.cursors.set_scope_time(1, 0.7);
+            }
             match std::env::var("MEASURELAB_UI_SMOKE_SETTINGS").as_deref() {
+                Ok("calibration") => app.sidebar.reveal(SettingsSection::Calibration),
                 Ok("scope") => app.sidebar.section = Some(SettingsSection::Scope),
                 Ok("spectrum") => app.sidebar.section = Some(SettingsSection::Spectrum),
                 Ok("spectrogram") => app.sidebar.section = Some(SettingsSection::Spectrogram),
@@ -605,11 +707,29 @@ impl ScopeApp {
                 ));
                 self.lifecycle_scope_samples = self.cursor_samples();
                 self.cursors.frequency_hz = Some(1000.0);
+                self.lifecycle_calibration_held = Some((
+                    self.calibration.captured.clone(),
+                    self.scope_readings,
+                    self.sample_text(self.cursor_samples()[0].unwrap()),
+                ));
+                self.calibration.channel = 0;
+                self.calibration.gain = 2.0;
+                self.calibration.offset = 0.5;
+                self.calibration.conditions = "Lifecycle QA: internal demo coefficients".into();
+                self.calibration.apply().unwrap();
                 self.lifecycle_held = Some((revision, latest));
                 self.lifecycle_stage = 2;
                 ctx.request_repaint_after(Duration::from_millis(450));
             }
             2 if elapsed > 1.3 => {
+                let (held_calibration, held_readings, held_cursor) =
+                    self.lifecycle_calibration_held.as_ref().unwrap();
+                assert_eq!(self.calibration.captured, *held_calibration);
+                assert_eq!(self.scope_readings, *held_readings);
+                assert_eq!(
+                    self.sample_text(self.cursor_samples()[0].unwrap()),
+                    *held_cursor
+                );
                 if std::env::var_os("MEASURELAB_PROFILE_IDLE").is_some() {
                     assert!(
                         frame_interval > 0.25,
@@ -725,12 +845,27 @@ impl ScopeApp {
                 );
                 self.visible = [false, false, true, false];
                 self.start();
+                assert_eq!(self.calibration.captured, self.calibration.pending);
+                assert_eq!(self.calibration.captured.get(0).unwrap().gain(), 2.0);
                 assert_eq!(self.cursor_samples(), [None; 2]);
                 assert!(self.cursors.frequency_hz.is_none());
                 assert!(self.analyzer.window().is_none());
                 self.lifecycle_stage = 4;
             }
             4 if elapsed > 2.0 => {
+                assert_eq!(self.calibration.captured.get(0).unwrap().offset(), 0.5);
+                assert_eq!(
+                    self.scope_readings,
+                    calibration::measure(
+                        &self.history,
+                        self.scope_range.clone(),
+                        self.scope_view_channels(),
+                        &self.calibration.captured,
+                    )
+                );
+                println!(
+                    "Scope calibration lifecycle OK: held readouts/cursors unchanged; queued calibration applied on restart"
+                );
                 self.rebuild_xy();
                 assert!(
                     self.xy_capture.range.end
@@ -755,6 +890,8 @@ impl ScopeApp {
                 self.cursors.set_time(0, self.history.range().end - 1);
                 self.source = Source::Live;
                 self.switch_source();
+                assert!(self.calibration.pending.get(0).is_none());
+                assert!(self.calibration.captured.get(0).is_none());
                 assert_eq!(self.cursor_samples(), [None; 2]);
                 assert!(self.cursors.frequency_hz.is_none());
                 assert!(self.history.is_empty());
@@ -1037,6 +1174,8 @@ impl ScopeApp {
         self.xy_capture = xy::Capture::default();
         self.xy_trace_range = 0..0;
         self.measurements = [Measurement::default(); 2];
+        self.scope_readings = [Reading::Unavailable; 2];
+        self.calibration.captured = self.calibration.pending.clone();
         self.scope_missing = 0;
         self.dirty = true;
         self.xy_dirty = true;
@@ -1054,6 +1193,7 @@ impl ScopeApp {
                 samples: self.scope_sample_count(),
                 trigger: self.trigger,
             },
+            calibrations: self.calibration.captured.clone(),
             xy_channels: self.xy_settings.channels,
             stft_generation: self.stft_generation,
             stft: self.stft_config(),
@@ -1080,6 +1220,8 @@ impl ScopeApp {
         self.scope_sample_offset = snapshot.sweep.sample_offset;
         self.triggered = snapshot.sweep.triggered;
         self.measurements = snapshot.measurements;
+        self.scope_readings = snapshot.scope_readings;
+        self.calibration.captured.clone_from(&snapshot.calibrations);
         self.scope_missing = snapshot.scope_missing;
         self.dropped = snapshot.input_dropped;
         self.fft_ms = snapshot.fft_ms;
@@ -1237,6 +1379,12 @@ impl ScopeApp {
                     &self.history,
                     self.scope_range.clone(),
                     settings.channels,
+                );
+                self.scope_readings = calibration::measure(
+                    &self.history,
+                    self.scope_range.clone(),
+                    settings.channels,
+                    &self.calibration.captured,
                 );
             }
         }
@@ -1407,6 +1555,9 @@ impl ScopeApp {
             self.busy = false;
             match event {
                 Event::Devices(devices) => {
+                    if self.source == Source::Live {
+                        self.calibration.clear_input();
+                    }
                     self.selected = devices.iter().position(|d| d.is_default).unwrap_or(0);
                     self.devices = devices;
                     #[cfg(feature = "qa")]
@@ -1498,6 +1649,7 @@ impl ScopeApp {
             SettingsSection::Workspace => {
                 format!("{} layout · shortcuts & units", self.plot_layout.name())
             }
+            SettingsSection::Calibration => "Scope numeric readouts · next Start".into(),
         }
     }
 
@@ -1537,6 +1689,7 @@ impl ScopeApp {
                             SettingsSection::Spectrum => self.spectrum_controls(ui),
                             SettingsSection::Spectrogram => self.spectrogram_controls(ui),
                             SettingsSection::Xy => self.xy_controls(ui),
+                            SettingsSection::Calibration => self.calibration_controls(ui),
                             SettingsSection::Workspace => self.workspace_controls(ui),
                         }
                         ui.add_space(4.0);
@@ -1596,6 +1749,7 @@ impl ScopeApp {
     }
 
     fn switch_source(&mut self) {
+        self.calibration.clear_input();
         self.cursors.new_epoch();
         self.scope_range = 0..0;
         self.scope_sample_offset = 0.0;
@@ -1607,6 +1761,10 @@ impl ScopeApp {
             self.busy = true;
         }
         self.history.clear();
+        self.scope_range = 0..0;
+        self.measurements = [Measurement::default(); 2];
+        self.scope_readings = [Reading::Unavailable; 2];
+        self.calibration.captured = calibration::Set::default();
         self.channels = if self.source == Source::Demo { 2 } else { 0 };
         if self.source == Source::Demo {
             self.sample_rate = 48000;
@@ -1662,8 +1820,11 @@ impl ScopeApp {
                         }
                     });
             });
-            if previous != self.selected && self.capture.is_some() {
-                self.start();
+            if previous != self.selected {
+                self.calibration.clear_input();
+                if self.capture.is_some() {
+                    self.start();
+                }
             }
         }
         if self.source == Source::Live
@@ -1846,6 +2007,97 @@ impl ScopeApp {
         self.dirty |= ui
             .add(egui::Slider::new(&mut self.trigger.level, -1.0..=1.0).text("FS"))
             .changed();
+    }
+
+    fn calibration_controls(&mut self, ui: &mut egui::Ui) {
+        ui.label(RichText::new("Scope RMS, Peak, P-P and cursor values use y = gain × FS + offset. Trace and trigger axes use FS.").small().color(MUTED));
+        ui.label(RichText::new("Queued definitions apply on the next Start. Source/device selection or device refresh clears the queue. Coefficients are supplied by you; reference conditions describe their validity.").small().color(MUTED));
+        setting_label(ui, "INPUT CHANNEL");
+        let before = self.calibration.channel;
+        egui::ComboBox::from_id_salt("calibration_channel")
+            .width(ui.available_width())
+            .selected_text(channel::name(self.calibration.channel))
+            .show_ui(ui, |ui| {
+                for channel in 0..crate::signal::MAX_CHANNELS {
+                    ui.selectable_value(
+                        &mut self.calibration.channel,
+                        channel,
+                        channel::name(channel),
+                    );
+                }
+            });
+        if before != self.calibration.channel {
+            self.calibration.select();
+        }
+        let channel = self.calibration.channel;
+        if !channel::available(channel, self.channels as usize) {
+            ui.label(
+                RichText::new("Channel unavailable in the current input")
+                    .small()
+                    .color(YELLOW),
+            );
+        }
+        setting_label(ui, "CAPTURED READOUT CONDITION");
+        ui.label(
+            RichText::new(calibration_description(&self.calibration.captured, channel))
+                .small()
+                .color(MUTED),
+        );
+        setting_label(ui, "QUEUED FOR NEXT START");
+        ui.label(
+            RichText::new(calibration_description(&self.calibration.pending, channel))
+                .small()
+                .color(MUTED),
+        );
+        ui.horizontal(|ui| {
+            ui.label("Gain");
+            ui.add(
+                egui::DragValue::new(&mut self.calibration.gain)
+                    .speed(0.01)
+                    .max_decimals(15)
+                    .range(-f64::MAX..=f64::MAX),
+            );
+            ui.label("unit/FS");
+        });
+        ui.horizontal(|ui| {
+            ui.label("Offset");
+            ui.add(
+                egui::DragValue::new(&mut self.calibration.offset)
+                    .speed(0.001)
+                    .max_decimals(15)
+                    .range(-f64::MAX..=f64::MAX),
+            );
+            ui.label("unit");
+        });
+        setting_label(ui, "PHYSICAL UNIT (E.G. V, A, Pa)");
+        ui.add(
+            egui::TextEdit::singleline(&mut self.calibration.unit)
+                .desired_width(f32::INFINITY)
+                .char_limit(24),
+        );
+        setting_label(ui, "REFERENCE CONDITIONS");
+        ui.add(
+            egui::TextEdit::singleline(&mut self.calibration.conditions)
+                .desired_width(f32::INFINITY)
+                .char_limit(1024)
+                .hint_text("Reference, device/range, date, uncertainty"),
+        );
+        if ui.button("Queue calibration").clicked()
+            && let Err(error) = self.calibration.apply()
+        {
+            self.calibration.error = Some(error.into());
+        }
+        if ui.button("Queue uncalibrated FS").clicked() {
+            self.calibration.pending = self
+                .calibration
+                .pending
+                .with(channel, None)
+                .expect("bounded UI channel");
+            self.calibration.select();
+        }
+        if let Some(error) = &self.calibration.error {
+            ui.label(RichText::new(error).small().color(YELLOW));
+        }
     }
 
     fn spectrum_controls(&mut self, ui: &mut egui::Ui) {
@@ -2357,7 +2609,15 @@ impl ScopeApp {
                     continue;
                 }
                 if let Some(value) = frame.get(channel) {
-                    text.push_str(&format!(" · {} {value:+.5} FS", channel::name(channel)));
+                    if let Some(value) = self.calibration.captured.value(channel, *value) {
+                        text.push_str(&format!(
+                            " · {} {value:+.5} {}",
+                            channel::name(channel),
+                            self.calibration.captured.unit(channel)
+                        ));
+                    } else {
+                        text.push_str(&format!(" · {} invalid value", channel::name(channel)));
+                    }
                 } else {
                     text.push_str(&format!(" · {} unavailable", channel::name(channel)));
                 }
@@ -3119,7 +3379,7 @@ impl ScopeApp {
                 ui.horizontal_wrapped(|ui| {
                     ui.label(
                         RichText::new(format!(
-                            "{} ms/div · {} FS/div",
+                            "Raw trace · {} ms/div · {} FS/div",
                             self.ms_per_div, self.fs_per_div
                         ))
                         .small()
@@ -3129,23 +3389,28 @@ impl ScopeApp {
                         if !self.enabled[index] {
                             continue;
                         }
-                        let m = self.measurements[index];
+                        let channel = self.scope_view_channels().0[index];
+                        let unit = self.calibration.captured.unit(channel);
+                        let reading = self.scope_readings[index];
                         ui.label(
                             RichText::new(format!(
                                 "T{} · {}  {}",
-                                index + 1, channel::name(self.scope_view_channels().0[index]),
-                                if m.samples == 0
-                                {
-                                    "unavailable".into()
-                                } else {
-                                    format!("RMS {:.3} · P-P {:.3} FS", m.rms, m.peak_to_peak)
+                                index + 1, channel::name(channel),
+                                match reading {
+                                    Reading::Unavailable => "unavailable".into(),
+                                    Reading::NonFinite => "invalid value".into(),
+                                    Reading::Valid(m) => format!("RMS {:.3} · P-P {:.3} {unit}", m.rms, m.peak_to_peak),
                                 }
                             ))
                             .monospace()
                             .small()
                             .color(color),
                         )
-                        .on_hover_text(if m.samples > 0 { format!("Peak {:.5} FS · {} acquired samples · interval {}..{} (exclusive end)", m.peak, m.samples, self.scope_range.start, self.scope_range.end) } else { "No acquired samples for this channel and interval".into() });
+                        .on_hover_text(match reading {
+                            Reading::Valid(m) => format!("Peak {:.5} {unit} · {} acquired samples · interval {}..{} (exclusive end) · generation {} · nominal {} Hz. {}. Trace coordinates and trigger level are in raw FS.", m.peak, m.samples, self.scope_range.start, self.scope_range.end, self.input_generation, self.sample_rate, calibration_description(&self.calibration.captured, channel)),
+                            Reading::Unavailable => "No acquired samples for this channel and interval".into(),
+                            Reading::NonFinite => "An acquired or calibrated value or statistic is nonfinite; no valid numeric readout".into(),
+                        });
                     }
                 });
                 if self.scope_missing > 0 {
@@ -4120,6 +4385,21 @@ fn plot_size(ui: &egui::Ui) -> egui::Vec2 {
 
 fn setting_label(ui: &mut egui::Ui, text: &str) {
     ui.label(RichText::new(text).small().color(MUTED));
+}
+
+fn calibration_description(set: &calibration::Set, channel: ChannelId) -> String {
+    match set.get(channel) {
+        Some(c) => format!(
+            "{} · revision {} · y = {:.6e} × FS + {:.6e} {} · {}",
+            c.id(),
+            c.revision(),
+            c.gain(),
+            c.offset(),
+            c.unit(),
+            c.conditions()
+        ),
+        None => "Uncalibrated · FS".into(),
+    }
 }
 
 fn fft_precision(ui: &mut egui::Ui, id: &str, precision: &mut Precision) {

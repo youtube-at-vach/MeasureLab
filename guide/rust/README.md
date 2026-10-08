@@ -58,7 +58,7 @@ cargo run --release
 
 デモでは周波数、振幅、ノイズを変更し、正弦波／高調波付き正弦波／帯域制限した矩形波を比較できます。CH 2の位相と振幅比も変更できます。**0° / 90° / 180°** ボタンはノイズなし・同振幅の正弦波を設定し、XYの同相・円・逆相を確認できます。CH 2 gainを下げると楕円になります。デモ信号は内部だけで使い、スピーカーには出力しません。
 
-開始／停止は上部に固定しています。左の **Settings** は **Input source / Oscilloscope / Spectrum analyzer / Spectrogram / XY / Lissajous / Workspace & help** のアコーディオンで、一つの項目を開いて設定します。閉じた項目にも現在値を表示します。各グラフの **Settings** を押すと、その設定を開いて該当位置へ移動します。
+開始／停止は上部に固定しています。左の **Settings** は **Input source / Oscilloscope / Spectrum analyzer / Spectrogram / XY / Lissajous / Scope calibration / Workspace & help** のアコーディオンで、一つの項目を開いて設定します。閉じた項目にも現在値を表示します。各グラフの **Settings** を押すと、その設定を開いて該当位置へ移動します。
 
 グラフ上部の **Settings** で左パネルを非表示にでき、境界をドラッグすると幅を変更できます。**Collapse all** ですべての項目を閉じられます。**Workspace & help** では複数画面の配置を **Automatic / Side by side / Stacked** から選択し、ショートカットと測定単位を確認できます。4画面の場合、広い画面ではScopeとSpectrumを上段、SpectrogramとXYを下段の2列に配置します。狭い画面では上下4行に並べ、既定の`--compact`ウィンドウでは全体がスクロールなしで収まります。見出し・内側の余白・軸まわりをコンパクトにし、低いプロットでは軸ラベルを間引きます。最低高さで収まらない場合はプロット領域をスクロールできます。幅が不足する場合は左右指定でも上下に配置します。開閉や配置指定は現在のセッション内で保持します。
 
@@ -100,6 +100,8 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | 各グラフのSettings | 対象の設定を左パネルで開く |
 | グラフ上部のSettings / Collapse all | 左パネルの表示切り替え／設定項目をすべて閉じる |
 | Workspace & help | 配置の指定、ショートカット、測定単位 |
+| Scope calibration / Queue calibration | CHごとのゲイン・オフセット・物理単位・参照条件を次回Start用に設定 |
+| Queue uncalibrated FS | 選択CHを次回Startから未校正FSへ戻す |
 | Spectrum Source / points / Window | FFTの入力CH（取得した全chから選択）、サイズ（1,024〜32,768点）、窓関数 |
 | Spectrum / Spectrogram FFT PRECISION | 各測定器のFFT精度。既定は64-bit、32-bit (fast FFT)を明示的に選択可能 |
 | Continuous / Latest window | N/4 hopの連続解析（既定）／最新窓を最大30回/秒で観察。非表示でも平均・保持は継続 |
@@ -126,7 +128,13 @@ RMS・Peak・P-PはScopeの整数サンプル区間内に取得した生のf64�
 
 トリガーの位置とレベルはオレンジの「T」で示し、レベルの三角マーカーは波形領域の右外側に表示します。
 
-振幅はCPALから取得したデジタル音声のフルスケール（FS）です。電圧への換算、外部ADCの制御、音声デバイス以外の入力は未実装です。サンプルレートはデバイス既定の設定を使用します。
+生サンプル・波形軸・トリガー閾値の振幅は、CPALから取得したデジタル音声のフルスケール（FS）です。サンプルレートはデバイス既定の公称値です。外部ADCの制御、音声デバイス以外の入力は未実装です。
+
+**Scope calibration** ではCH 1〜16の数値読み出しに `y = gain × x(FS) + offset` を適用できます。Gainは物理単位/FS、Offsetは同じ物理単位です。V、mV、Aなどの単位と、基準信号・デバイスレンジ・日付・不確かさなどの参照条件を入力し、**Queue calibration** を押して次回Start用に設定します。負のゲインも使えます。ゲイン0・非有限の係数・空の単位や参照条件は拒否します。**Queue uncalibrated FS** はそのCHの次回用校正を解除します。入力CHの位置をIDとして扱い、トレースを入れ替えても校正は入力CHへ対応します。
+
+校正はScopeのRMS・Peak・P-Pと時間カーソルの数値だけに適用します。RMSは各実サンプルを換算してから計算するため、オフセットを含みます。波形軸・カーソル点の位置・Fit amplitude・トリガー閾値はFSで、Spectrum／Spectrogram／XYもFS基準です。数値と軸の単位をそれぞれ表示します。校正による非有限値やP-Pのオーバーフローは **invalid value** とし、正常値へ置き換えません。欠落や存在しないCHは従来どおり利用不可・部分区間として扱います。
+
+校正のID・版・係数・単位・参照条件は取得世代のスナップショットへ固定します。Scope統計の説明と **Captured readout condition** で確認できます。取得中や停止後に新しい定義を設定しても、保持中の統計・カーソルの校正版は変わりません。Startで適用するまで **Queued for next Start** と区別します。入力ソース・デバイスを選び直したときと **Refresh devices** の再列挙では次回用の校正を解除し、別入力へ持ち越しません。校正の保存・復元と測定結果の書き出しは未実装で、終了すると設定は失われます。ユーザーが与えた係数による換算であり、ADCや物理基準の校正精度を検証済みとは扱いません。
 
 Spectrumの既定モード **Bin amplitude** は片側ビン振幅のdBFSです。窓のcoherent gainを補正し、ビン中心の1 FS peak正弦波を0 dBFSとします。DCとNyquistのビンは2倍しません。振幅ビンを積算して雑音電力とは扱いません。**Δf** はFs/N、**RBW** は窓の等価雑音帯域です。48 kHz・8,192点・HannではΔf ≈ 5.86 Hz、RBW ≈ 8.79 Hz、窓時間 ≈ 170.7 ms。ピークは最大ビンの値なので、1 kHzの信号が1002.0 Hzのビンに表示される場合があります。
 
@@ -226,6 +234,13 @@ Audio device → CPAL callback → bounded SPSC → measurement worker ← inter
 
 `MEASURELAB_SPECTRUM_PSD=1`は`qa`ビルドでSpectrumをPSDに設定します。`--ui-smoke`やUI計測と組み合わせて、通常幅／狭幅・帯域表示・停止中のモード保持を確認できます。
 
+`MEASURELAB_UI_SMOKE_CALIBRATION=1`はScopeのTrace 1の入力CHへ4 V/FS・オフセット0.5 Vの内部QA校正を適用します。`MEASURELAB_UI_SMOKE_SETTINGS=calibration`で校正パネルを開き、通常幅／狭幅でFSの波形軸・Vの数値・未校正CHのFS・A/Bカーソルを確認できます。物理校正の検証ではありません。
+
+```sh
+MEASURELAB_UI_SMOKE_CALIBRATION=1 MEASURELAB_UI_SMOKE_SETTINGS=calibration \
+    ./scripts/cargo.sh run --release --locked --features qa -- --ui-smoke
+```
+
 `MEASURELAB_UI_SMOKE_CURSORS=1`では、欠落を含む同じ有限の入力履歴から全測定器を準備し、ScopeのX位置に固定したA/B時間カーソル・Δt・共通周波数・解析窓・XYの実サンプル組を撮影します。波形・STFTの入力座標を揃えるため、このモードでは通常の循環STFT撮影用の信号を置き換えます。`MEASURELAB_UI_SMOKE_SCOPE_ONLY=1`との組み合わせでScope単独のカーソルとトリガーマーカーを確認できます。
 
 `MEASURELAB_UI_SMOKE_ROUTING=1`はScope／Spectrum／XYを共通の16ch履歴に置き換え、CH 16（0.375 FS peak正弦波）とCH 8（0.25 FS peak、90度位相差）をScopeとXYへ割り当てます。ScopeのA/Bカーソルも表示し、CHラベル・統計・波形と設定パネルの配置を確認できます。Spectrogramは独立した通常の撮影用信号を維持するため、このモードで全測定器の時間対応を検証しません。
@@ -306,6 +321,7 @@ MEASURELAB_PROFILE_SECONDS=10 MEASURELAB_PROFILE_FFT_PRECISION=f64 \
 
 - `src/audio.rs`: CPALデバイス管理、入力コールバック、SPSC転送。
 - `src/channel.rs`: 全測定器で使う0始まりの入力CH ID、表示名、Scope／XYの2ch割当と利用可能性。
+- `src/calibration.rs`: ID・版・参照条件付きのCH校正、Scope実サンプルの換算・RMS／Peak／P-P、非有限値の無効化。
 - `src/measurement.rs`: GUI非依存の入力消費・共通履歴・デモ・Scope統計・Spectrumスケジュール、入力世代・欠落付きの容量固定スナップショット。
 - `src/signal.rs`: 固定容量履歴、トリガー、集約、測定。
 - `src/cursor.rs`: 入力世代付きの共通A/B時間カーソル、ScopeのX固定と履歴のサンプル固定、Δt、最寄りFFTビン。

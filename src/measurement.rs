@@ -2,6 +2,7 @@
 //! The callback transfers fixed frames; this worker never waits for a display.
 use crate::{
     audio::Capture,
+    calibration::{self, Reading},
     channel::{ChannelId, Pair},
     demo::Demo,
     signal::{self, History, Measurement, Sweep, Trigger},
@@ -49,12 +50,14 @@ impl Default for ScopeSettings {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Config {
     pub spectrum: Settings,
     pub spectrum_channel: ChannelId,
     pub spectrum_mode: SpectrumMode,
     pub scope: ScopeSettings,
+    /// Scope numeric calibration, fixed for this input generation.
+    pub calibrations: calibration::Set,
     pub xy_channels: Pair,
     pub stft_generation: u64,
     pub stft: stft::Config,
@@ -85,6 +88,9 @@ pub struct Snapshot {
     pub xy_channels: Pair,
     pub sweep: Sweep,
     pub measurements: [Measurement; 2],
+    pub scope_readings: [Reading; 2],
+    /// Immutable coefficients/units/reference conditions for Scope readouts.
+    pub calibrations: calibration::Set,
     pub scope_missing: u64,
     /// Capture loss is separate from display publications and STFT delivery.
     pub input_dropped: u64,
@@ -151,6 +157,7 @@ impl Core {
             spectrum_channel: 0,
             spectrum_mode: SpectrumMode::Continuous,
             scope: ScopeSettings::default(),
+            calibrations: calibration::Set::default(),
             xy_channels: Pair::default(),
             stft_generation: 0,
             stft: stft::Config {
@@ -192,7 +199,6 @@ impl Core {
         config.stft.sample_rate = sample_rate;
         config.stft.channels = channels;
         config.stft.channel = config.stft.channel.min(channels - 1);
-        self.config = config;
         self.expected = None;
         self.dropped = 0;
         self.capture_dropped = 0;
@@ -205,6 +211,7 @@ impl Core {
             config.spectrum_mode,
         );
         self.feeder.configure(config.stft_generation, config.stft);
+        self.config = config;
     }
 
     fn configure_spectrum(&mut self, settings: Settings, channel: usize, mode: SpectrumMode) {
@@ -312,6 +319,8 @@ impl Core {
             xy_channels: self.config.xy_channels,
             sweep: Sweep::default(),
             measurements: [Measurement::default(); 2],
+            scope_readings: [Reading::Unavailable; 2],
+            calibrations: self.config.calibrations.clone(),
             scope_missing: 0,
             input_dropped: 0,
             failed: false,
@@ -343,6 +352,13 @@ impl Core {
             &self.history,
             snapshot.sweep.range.clone(),
             self.config.scope.channels,
+        );
+        snapshot.calibrations.clone_from(&self.config.calibrations);
+        snapshot.scope_readings = calibration::measure(
+            &self.history,
+            snapshot.sweep.range.clone(),
+            self.config.scope.channels,
+            &snapshot.calibrations,
         );
         snapshot.scope_missing = snapshot
             .sweep
@@ -630,6 +646,7 @@ mod tests {
                     ..Trigger::default()
                 },
             },
+            calibrations: calibration::Set::default(),
             xy_channels: Pair::default(),
             stft_generation: 0,
             stft: stft::Config {
@@ -646,7 +663,7 @@ mod tests {
         let mut config = config;
         config.stft_generation = stft.configure(config.stft).unwrap();
         let mut core = Core::new(stft.take_feeder(), Arc::new(Metrics::default()));
-        core.start(1, 48000, channels, config);
+        core.start(1, 48000, channels, config.clone());
         (stft, core, config)
     }
 
@@ -835,7 +852,7 @@ mod tests {
                 format: "test f64".into(),
                 metrics: capture_metrics.clone(),
             },
-            config,
+            config.clone(),
         );
         let total = if size == 1024 { 48000 } else { 49152 };
         let clock = Instant::now();
@@ -899,7 +916,7 @@ mod tests {
         worker.recycle(old);
         stft.pause();
         // A new input generation resets coordinates, averages and source CH.
-        let mut resumed = config;
+        let mut resumed = config.clone();
         resumed.stft_generation = stft.configure(config.stft).unwrap();
         worker.start_demo(11, Demo::default(), resumed);
         let fresh = worker.scope(config.scope);
@@ -952,7 +969,7 @@ mod tests {
                 format: "test".into(),
                 metrics: capture_metrics,
             },
-            config,
+            config.clone(),
         );
         wait_for_frames(&worker, 8);
         for sequence in 16..2064 {
@@ -1010,7 +1027,7 @@ mod tests {
                 format: "test f64".into(),
                 metrics: Arc::new(AudioMetrics::default()),
             },
-            config,
+            config.clone(),
         );
         wait_for_frames(&worker, 2048);
         let first = worker.scope(config.scope);
@@ -1040,7 +1057,7 @@ mod tests {
         config.scope.channels = Pair([15, 0]);
         config.xy_channels = Pair([15, 7]);
         config.stft_generation = stft.configure(config.stft).unwrap();
-        worker.start_demo(2, Demo::default(), config);
+        worker.start_demo(2, Demo::default(), config.clone());
         let fresh = worker.scope(config.scope);
         assert_eq!(fresh.generation, 2);
         assert_eq!(fresh.history.channels(), 2);
@@ -1066,7 +1083,7 @@ mod tests {
                 format: "test".into(),
                 metrics: audio_metrics.clone(),
             },
-            config,
+            config.clone(),
         );
         thread::sleep(Duration::from_millis(150));
         assert!(worker.metrics.display_skipped.load(Ordering::Relaxed) > 0);
@@ -1079,11 +1096,115 @@ mod tests {
         let result = worker.stop();
         assert_eq!(result.generation, 42);
         assert!(result.failed);
-        worker.start_demo(43, Demo::default(), config);
+        worker.start_demo(43, Demo::default(), config.clone());
         let resumed = worker.scope(config.scope);
         assert_eq!(resumed.generation, 43);
         assert!(!resumed.failed);
         drop(worker);
         drop(stft);
+    }
+
+    #[test]
+    fn scope_calibration_is_fixed_to_results_across_hold_route_and_restart() {
+        let (_stft, core, mut config) = setup(1024, 16);
+        config.scope.channels = Pair([15, 7]);
+        let definition = |revision, gain, offset| {
+            calibration::Calibration::new(
+                "known-input-ch16".into(),
+                revision,
+                gain,
+                offset,
+                "V".into(),
+                "Test: 0.25 FS peak sine, 48 kHz nominal, 16 synchronized channels".into(),
+            )
+            .unwrap()
+        };
+        config.calibrations = config
+            .calibrations
+            .with(15, Some(definition(1, 4.0, 0.5)))
+            .unwrap();
+        let worker = Worker::new(core.feeder);
+        let capture = || {
+            let (mut producer, consumer) = RingBuffer::new(2048);
+            for sequence in 0..2048 {
+                producer
+                    .push(AudioFrame {
+                        sequence,
+                        samples: frame(sequence, 1024, 16, 0.25),
+                    })
+                    .unwrap();
+            }
+            Capture {
+                consumer,
+                sample_rate: 48000,
+                channels: 16,
+                format: "test f64".into(),
+                metrics: Arc::new(AudioMetrics::default()),
+            }
+        };
+        worker.start_capture(1, capture(), config.clone());
+        wait_for_frames(&worker, 2048);
+        let measured = worker.scope(config.scope);
+        let Reading::Valid(m) = measured.scope_readings[0] else {
+            panic!("calibrated readout")
+        };
+        assert!((m.rms - 0.75_f64.sqrt()).abs() < 1e-14);
+        assert_eq!(m.peak, 1.5);
+        assert_eq!(m.peak_to_peak, 2.0);
+        assert_eq!(m.samples, 1024);
+        assert_eq!(measured.calibrations.get(15).unwrap().revision(), 1);
+        assert_eq!(measured.calibrations.unit(7), "FS");
+        assert!((measured.measurements[0].rms - 0.25 / 2.0_f64.sqrt()).abs() < 1e-14);
+        assert!((measured.spectrum.power()[32] - 0.0625).abs() < 1e-14);
+        assert_eq!(measured.history.get(8).unwrap()[15], 0.25);
+
+        let rerouted = worker.scope(ScopeSettings {
+            channels: Pair([7, 15]),
+            ..config.scope
+        });
+        assert_eq!(
+            rerouted.scope_readings,
+            [measured.scope_readings[1], measured.scope_readings[0]]
+        );
+        let held = worker.stop();
+        config.calibrations = config
+            .calibrations
+            .with(15, Some(definition(2, -8.0, -1.0)))
+            .unwrap();
+        let display = worker.scope(ScopeSettings {
+            samples: 2048,
+            ..config.scope
+        });
+        // Reprojecting retained data and editing the next input's calibration
+        // do not relabel or recalibrate the held generation.
+        assert_eq!(display.calibrations, held.calibrations);
+        assert_eq!(display.scope_settings.channels, Pair([7, 15]));
+        let Reading::Valid(m) = display.scope_readings[1] else {
+            panic!("held calibration")
+        };
+        assert!((m.rms - 0.75_f64.sqrt()).abs() < 1e-14);
+        assert_eq!(display.sweep.range, 0..2048);
+        assert_eq!(display.scope_missing, 0);
+        assert_eq!(display.input_dropped, 0);
+
+        worker.start_capture(2, capture(), config.clone());
+        wait_for_frames(&worker, 4096);
+        let fresh = worker.stop();
+        assert_eq!(fresh.generation, 2);
+        assert_eq!(fresh.calibrations.get(15).unwrap().revision(), 2);
+        let Reading::Valid(m) = fresh.scope_readings[0] else {
+            panic!("new calibration")
+        };
+        assert!((m.rms - 3.0_f64.sqrt()).abs() < 1e-14);
+        assert_eq!(m.peak, 3.0);
+        assert_eq!(m.peak_to_peak, 4.0);
+        // An already-delivered result still identifies its original revision.
+        assert_eq!(measured.calibrations.get(15).unwrap().gain(), 4.0);
+        assert_eq!(measured.calibrations.get(15).unwrap().revision(), 1);
+        worker.start_demo(3, Demo::default(), config.clone());
+        let reduced = worker.scope(config.scope);
+        assert_eq!(reduced.scope_readings[0], Reading::Unavailable);
+        assert_eq!(reduced.calibrations.get(15).unwrap().revision(), 2);
+        assert_eq!(reduced.history.channels(), 2);
     }
 }
