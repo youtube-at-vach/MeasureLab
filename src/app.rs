@@ -433,8 +433,14 @@ impl ScopeApp {
             core_scope: ScopeSettings::default(),
             scope_channels: Pair::default(),
             xy_channels: Pair::default(),
-            spectrum_mode: SpectrumMode::Continuous,
-            spectrum_info: measurement::SpectrumInfo::default(),
+            spectrum_mode: SpectrumMode::Live,
+            spectrum_info: measurement::SpectrumInfo {
+                mode: SpectrumMode::Live,
+                observation_ms: crate::spectrum_worker::LIVE_INTERVAL
+                    .as_micros()
+                    .div_ceil(1000) as u32,
+                ..Default::default()
+            },
             stft_generation: 0,
             spectrum_settings: Settings::default(),
             analyzer: spectrum::Result::empty(Settings::default(), 48000),
@@ -560,9 +566,11 @@ impl ScopeApp {
                 .and_then(|s| s.parse().ok())
                 .filter(|s| STFT_SIZES.contains(s))
                 .unwrap_or(size.min(32768));
-            if std::env::var("MEASURELAB_PROFILE_SPECTRUM_MODE").as_deref() == Ok("latest") {
-                app.spectrum_mode = SpectrumMode::Latest;
-            }
+            app.spectrum_mode = match std::env::var("MEASURELAB_PROFILE_SPECTRUM_MODE").as_deref() {
+                Ok("latest") => SpectrumMode::Latest,
+                Ok("continuous") => SpectrumMode::Continuous,
+                _ => SpectrumMode::Live,
+            };
             app.reset_analysis();
         }
         #[cfg(feature = "qa")]
@@ -1451,10 +1459,12 @@ impl ScopeApp {
             }
             1 if self.pending_stop.is_none() => {
                 let window = self.analyzer.window().unwrap();
-                assert_eq!(
-                    self.spectrum_info.updates,
-                    1 + (self.history.range().end - 524288) / 131072
-                );
+                if self.spectrum_info.mode == SpectrumMode::Continuous {
+                    assert_eq!(
+                        self.spectrum_info.updates,
+                        1 + (self.history.range().end - 524288) / 131072
+                    );
+                }
                 assert_eq!(self.spectrum_info.input_missing, 0);
                 assert_eq!(self.spectrum_info.missing_windows, 0);
                 self.lifecycle_spectrum_held =
@@ -1841,6 +1851,14 @@ impl ScopeApp {
                             self.selected = index;
                             self.requested_sample_rate =
                                 self.profile.as_ref().and_then(|p| p.sample_rate);
+                            if let Some((stream, failed)) = &self.known_output {
+                                use cpal::traits::StreamTrait;
+                                if let Err(error) = stream.play() {
+                                    failed.store(true, Ordering::Relaxed);
+                                    self.error = Some(format!("QA output start failed: {error}"));
+                                    continue;
+                                }
+                            }
                             self.start();
                         } else {
                             self.error = Some(format!("QA input device not found: {name}"));
@@ -2492,6 +2510,11 @@ impl ScopeApp {
         let old_mode = self.spectrum_mode;
         ui.selectable_value(
             &mut self.spectrum_mode,
+            SpectrumMode::Live,
+            "Live · up to 60 updates/s",
+        ).on_hover_text("Observe the newest complete window with a processing-time budget. Average and hold update per observed window, independently of drawing. Use Continuous to process every N/4 window.");
+        ui.selectable_value(
+            &mut self.spectrum_mode,
             SpectrumMode::Continuous,
             "Continuous · N/4 hop",
         );
@@ -2651,10 +2674,27 @@ impl ScopeApp {
                 .color(MUTED),
             );
         }
-        ui.label(RichText::new(format!("Hop {:.1} ms · Latest observation {} ms · missing input {} · missed observations {}",
-            self.analyzer.settings().size as f64 / 4.0 / self.sample_rate as f64 * 1000.0,
-            crate::spectrum_worker::observation_interval(self.analyzer.settings().size).as_millis(),
-            self.spectrum_info.input_missing, self.spectrum_info.missed_observations)).small().color(MUTED));
+        let cadence = match self.spectrum_info.mode {
+            SpectrumMode::Continuous => format!(
+                "Continuous · hop {:.1} ms",
+                self.analyzer.settings().size as f64 / 4.0 / self.sample_rate as f64 * 1000.0
+            ),
+            SpectrumMode::Live if self.spectrum_info.observation_ms == 0 => {
+                "Live · up to 60 updates/s".into()
+            }
+            SpectrumMode::Live => format!("Live · target {} ms", self.spectrum_info.observation_ms),
+            SpectrumMode::Latest => {
+                format!("Latest · target {} ms", self.spectrum_info.observation_ms)
+            }
+        };
+        ui.label(
+            RichText::new(format!(
+                "{cadence} · missing input {} · missed observations {}",
+                self.spectrum_info.input_missing, self.spectrum_info.missed_observations
+            ))
+            .small()
+            .color(MUTED),
+        );
         if let Some(window) = self.analyzer.window() {
             ui.label(RichText::new(format!("FFT end #{} · acquired end #{}", window.end, self.history.range().end)).small().color(MUTED))
                 .on_hover_text("Spectrum and Scope/XY have independent sample intervals. FFT processing time and the age of this window are separate conditions.");
@@ -4049,6 +4089,9 @@ impl ScopeApp {
             #[cfg(feature = "qa")]
             if let Some(profile) = &mut self.profile {
                 profile.record_work(crate::qa::Work::Spectrum, self.spectrum_build_ms);
+                if let Some(window) = self.analyzer.window() {
+                    profile.record_spectrum(self.input_generation, window.end);
+                }
             }
         }
         painter.add(egui_wgpu::Callback::new_paint_callback(

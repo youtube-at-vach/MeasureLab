@@ -196,6 +196,9 @@ pub struct Profile {
     intervals_ms: Distribution,
     cpu_ms: Distribution,
     work: [Distribution; 5],
+    spectrum_intervals_ms: Distribution,
+    spectrum_seconds: f64,
+    last_spectrum: Option<(u64, u64, Instant)>,
     input_dropped: u64,
     previous_input_dropped: u64,
     last_progress_seconds: u64,
@@ -230,6 +233,9 @@ impl Profile {
             intervals_ms: Distribution::default(),
             cpu_ms: Distribution::default(),
             work: std::array::from_fn(|_| Distribution::default()),
+            spectrum_intervals_ms: Distribution::default(),
+            spectrum_seconds: 0.0,
+            last_spectrum: None,
             input_dropped: 0,
             previous_input_dropped: 0,
             last_progress_seconds: 0,
@@ -258,9 +264,30 @@ impl Profile {
         self.previous_input_dropped = dropped;
     }
 
+    /// Count newly drawn FFT endpoints, excluding redraws for axis/hold edits.
+    /// UI frame rate alone does not describe the spectrum's update rate.
+    pub fn record_spectrum(&mut self, generation: u64, end: u64) {
+        if self.started.elapsed() < Duration::from_secs(2) {
+            return;
+        }
+        let now = Instant::now();
+        if let Some((previous_generation, previous_end, previous_time)) = self.last_spectrum {
+            if (generation, end) == (previous_generation, previous_end) {
+                return;
+            }
+            if generation == previous_generation {
+                let seconds = now.duration_since(previous_time).as_secs_f64();
+                self.spectrum_intervals_ms.record(seconds * 1000.0);
+                self.spectrum_seconds += seconds;
+            }
+        }
+        self.last_spectrum = Some((generation, end, now));
+    }
+
     pub fn new_input(&mut self, dropped: u64) {
         self.record_input_loss(dropped);
         self.previous_input_dropped = 0;
+        self.last_spectrum = None;
     }
 
     pub fn finished(&self) -> bool {
@@ -292,6 +319,14 @@ impl Profile {
         if let Some(cpu_p95) = self.cpu_ms.p95() {
             println!(
                 "UI CPU profile: frame work p95 {cpu_p95:.3} ms (eframe, excluding VSync wait)"
+            );
+        }
+        if let Some(p95) = self.spectrum_intervals_ms.p95() {
+            println!(
+                "Spectrum drawing: {} new-window intervals, {:.3} updates/s, interval p95 {p95:.3} ms, max {:.3} ms",
+                self.spectrum_intervals_ms.count,
+                self.spectrum_intervals_ms.count as f64 / self.spectrum_seconds,
+                self.spectrum_intervals_ms.max
             );
         }
         for work in [
@@ -537,12 +572,12 @@ pub fn multichannel_smoke_test() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 /// Opt-in virtual-I/O fixture for large FFT UI profiling. Never opens a
-/// physical output; the returned stream keeps distinct 0.125 FS tones running.
+/// physical output; the caller starts the prepared 0.125 FS tones after UI init.
 pub fn blackhole_tone_output(
     name: &str,
 ) -> Result<(cpal::Stream, std::sync::Arc<std::sync::atomic::AtomicBool>), Box<dyn std::error::Error>>
 {
-    use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+    use cpal::traits::{DeviceTrait, HostTrait};
     use std::{
         f64::consts::TAU,
         sync::{
@@ -564,17 +599,25 @@ pub fn blackhole_tone_output(
     let channels = supported.channels() as usize;
     let failed = Arc::new(AtomicBool::new(false));
     let error_flag = failed.clone();
-    let mut sequence = 0_u64;
+    // Build one exact periodic cycle before the stream is started. The
+    // callback only copies bounded slices, even for all sixteen channels.
+    let cycle: Vec<f32> = (0..8192)
+        .flat_map(|sequence| {
+            (0..channels).map(move |ch| {
+                (0.125 * (TAU * (32 + ch * 7) as f64 * sequence as f64 / 8192.0).sin()) as f32
+            })
+        })
+        .collect();
+    let mut head = 0;
     let stream = output.build_output_stream(
         supported.into(),
         move |data: &mut [f32], _| {
-            for frame in data.chunks_exact_mut(channels) {
-                for (ch, sample) in frame.iter_mut().enumerate() {
-                    *sample = (0.125
-                        * (TAU * (32 + ch * 7) as f64 * (sequence % 8192) as f64 / 8192.0).sin())
-                        as f32;
-                }
-                sequence += 1;
+            let mut offset = 0;
+            while offset < data.len() {
+                let count = (cycle.len() - head).min(data.len() - offset);
+                data[offset..offset + count].copy_from_slice(&cycle[head..head + count]);
+                offset += count;
+                head = (head + count) % cycle.len();
             }
         },
         move |error| {
@@ -583,7 +626,8 @@ pub fn blackhole_tone_output(
         },
         Some(Duration::from_secs(2)),
     )?;
-    stream.play()?;
+    // The app starts this immediately before requesting capture, after UI/GPU
+    // initialization; initialization must not compete with fixture deadlines.
     Ok((stream, failed))
 }
 
@@ -620,6 +664,9 @@ mod tests {
             intervals_ms: super::Distribution::default(),
             cpu_ms: super::Distribution::default(),
             work: std::array::from_fn(|_| super::Distribution::default()),
+            spectrum_intervals_ms: super::Distribution::default(),
+            spectrum_seconds: 0.0,
+            last_spectrum: None,
             input_dropped: 0,
             previous_input_dropped: 0,
             last_progress_seconds: 0,

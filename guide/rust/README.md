@@ -109,7 +109,7 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | Queue uncalibrated FS | 選択CHを次回Startから未校正FSへ戻す |
 | Spectrum Source / points / Window | FFTの入力CH（取得した全chから選択）、サイズ（1,024〜524,288点）、窓関数 |
 | Spectrum / Spectrogram FFT PRECISION | 各測定器のFFT精度。既定は64-bit、32-bit (fast FFT)を明示的に選択可能 |
-| Continuous / Latest window | N/4 hopの連続解析（既定）／新しい終端の完全窓を観察。32k以下は33 ms／N/4以上、新4サイズは100 ms。非表示でも平均・保持は継続 |
+| Live / Continuous / Latest window | Live（既定）は最新の完全窓を最大60回/秒、実測処理時間に応じて観察。ContinuousはN/4全窓。省負荷のLatestは32k以下33 ms／N/4以上、新4サイズ100 ms。非表示でも解析を継続 |
 | Bin amplitude / Power spectral density | 振幅dBFS／PSD（FS²/Hz）の測定モード |
 | EMA α / Remove DC | 線形値の指数電力平均、FFT前の平均値除去 |
 | PSD Power in band / From / To | 指定した両端を含むビン中心のPSD積算。To = 0はNyquist。FS²とRMS FSを表示 |
@@ -141,7 +141,7 @@ RMS・Peak・P-PはScopeの整数サンプル区間内に取得した生のf64�
 
 校正のID・版・係数・単位・参照条件は取得世代のスナップショットへ固定します。Scope統計の説明と **Captured readout condition** で確認できます。取得中や停止後に新しい定義を設定しても、保持中の統計・カーソルの校正版は変わりません。Startで適用するまで **Queued for next Start** と区別します。入力ソース・デバイスを選び直したときと **Refresh devices** の再列挙では次回用の校正を解除し、別入力へ持ち越しません。校正の保存・復元と測定結果の書き出しは未実装で、終了すると設定は失われます。ユーザーが与えた係数による換算であり、ADCや物理基準の校正精度を検証済みとは扱いません。
 
-524,288点は実入力の窓長です。48 kHzではΔf ≈ 0.091553 Hz、周期HannのRBW ≈ 0.137329 Hz、窓時間 ≈ 10.9227秒、ContinuousのN/4 hop ≈ 2.7307秒です。開始・解析条件変更・欠落後は完全な窓の充填を待ち、未取得分をゼロで代用しません。Latestの100 ms観察でも窓時間は変わらず、隣接窓は約99.1%重なります。同じEMA αでも解析間隔が変われば秒単位の応答が変わります。BIN幅・RBW・周波数読み値の精度・入力時計の誤差は区別します。Spectrogramは独立した1,024〜32,768点の上限を維持します。確認条件は [大きなFFTの検証](validation/LARGE_FFT_2026-10.md) に保持します。
+524,288点は実入力の窓長です。48 kHzではΔf ≈ 0.091553 Hz、周期HannのRBW ≈ 0.137329 Hz、窓時間 ≈ 10.9227秒、ContinuousのN/4 hop ≈ 2.7307秒です。開始・解析条件変更・欠落後は完全な窓の充填を待ち、未取得分をゼロで代用しません。Liveの高速観察でも完全窓の充填時間と窓時間は変わりません。Latestの100 ms観察では隣接窓が約99.1%重なります。同じEMA αでも解析間隔が変われば秒単位の応答が変わります。BIN幅・RBW・周波数読み値の精度・入力時計の誤差は区別します。Spectrogramは独立した1,024〜32,768点の上限を維持します。大きなFFTの基礎検証は [大きなFFTの検証](validation/LARGE_FFT_2026-10.md)、Liveと描画性能の条件・結果は [描画更新の検証](validation/SPECTRUM_PERFORMANCE_2026-10.md) に保持します。
 
 Spectrumの既定モード **Bin amplitude** は片側ビン振幅のdBFSです。窓のcoherent gainを補正し、ビン中心の1 FS peak正弦波を0 dBFSとします。DCとNyquistのビンは2倍しません。振幅ビンを積算して雑音電力とは扱いません。**Δf** はFs/N、**RBW** は窓の等価雑音帯域です。48 kHz・8,192点・HannではΔf ≈ 5.86 Hz、RBW ≈ 8.79 Hz、窓時間 ≈ 170.7 ms。ピークは最大ビンの値なので、1 kHzの信号が1002.0 Hzのビンに表示される場合があります。
 
@@ -153,7 +153,7 @@ PSDの **Power in band** は、From〜Toの両端を含む中心周波数のビ�
 
 単一窓の全帯域積算はParsevalにより`Σw²(x−μ)² / Σw²`に一致します（DC除去なしはμ = 0）。Rectangularでは生サンプルの平均二乗、他の窓では窓付きの平均二乗です。定常正弦波・雑音の電力評価と短い過渡の窓位置依存を区別し、Scopeの観察区間のRMSと常に同一とは扱いません。ビン間正弦波では漏れを含む十分な帯域を選んで評価します。校正された電圧・dBmは未実装です。
 
-平均は **EMA α = 1/指定値** による指数的な線形電力平均です。最初の完全窓で初期化し、次の窓から`P ← P + α(Pnew − P)`を適用します。α = 1では最新窓だけを使います。処理窓数と最初〜最新の寄与区間を結果に保持しますが、均等な積算回数や区間全体の一様なRMSを意味しません。ContinuousはN/4 hop、Latestは観察時点の最新窓だけを使い、過渡の捕捉を保証しません。32,768点以下の周期観察は33 ms以上かつN/4以上の進行を維持し、新4サイズは100 msでN/4の制限を外します。カーソルの説明で最新窓・寄与区間・CH・設定・入力世代・欠落を確認できます。
+平均は **EMA α = 1/指定値** による指数的な線形電力平均です。最初の完全窓で初期化し、次の窓から`P ← P + α(Pnew − P)`を適用します。α = 1では最新窓だけを使います。処理窓数と最初〜最新の寄与区間を結果に保持しますが、均等な積算回数や区間全体の一様なRMSを意味しません。Live（既定）は全サイズでN/4の進行を要求せず、最大60回/秒の最新窓観察です。解析総時間の2倍と16.67 msの大きい方を周期の下限にし、遅い処理では直ちに延長、回復時は徐々に短縮します。対象は新しい終端の完全窓だけで、描画回数や表示の開閉に依存しません。ContinuousはN/4の全完全窓を処理します。Liveと省負荷のLatestは観察時点の最新窓だけを使い、過渡の捕捉を保証しません。Latestの32,768点以下は33 ms以上かつN/4以上、新4サイズは100 msでN/4の制限を外します。カーソルの説明で最新窓・寄与区間・CH・設定・入力世代・欠落を確認できます。
 
 ピーク保持は平均後の各ビンの最大値を保持します。有効化またはClear holdで現在のスペクトルから保持を始めます。入力・FFT設定・測定モード・入力CHの変更やデータ欠落で平均と保持をリセットします。取得停止中の解析設定変更は次回開始に適用し、保持値のモード・単位・設定を変えません。停止中の表示・帯域変更では同じサンプルを繰り返し平均しません。
 
@@ -208,7 +208,7 @@ Audio device → CPAL callback → bounded SPSC → measurement worker ← inter
 - **測定と表示の分離**: 測定ワーカーが履歴・トリガー・実サンプル統計・Spectrum／STFTへの入力を所有します。3個の容量固定スナップショットを最大30回/秒で渡し、通常の履歴コピーではバッファを再利用します。UIが返却しない間は表示更新だけを省略します。Spectrumは別の3個の結果プールを使い、解析結果の更新番号が変わったときだけ配信・再集約します。STFTの結果プール飽和は表示行の欠落であり、入力欠落とは別に数えます。Stopは有限の取得済みバッチまでの生サンプルと解析結果を固定し、遅着結果と古い入力世代を除外します。
 - **停止時の節電**: 停止中は連続再描画を止め、波形に変更がないフレームはGPUへの波形再転送を省略します。
 - **複数プロット**: WGSLパイプラインを共有し、各プロットのGPUバッファ・寸法・更新番号は独立。スペクトルも物理ピクセルごとの極値を保持し、対数軸で密集する狭いピークを残します。
-- **FFT**: [RustFFT](https://docs.rs/rustfft/6.4.1/rustfft/)の計画とscratchメモリを再利用します。取得キュー・共通履歴・トリガー・測定値・FFTはf64を標準とします。SpectrumとSpectrogramの「FFT PRECISION」で、それぞれ独立して32-bitの高速FFTを選択できます。DC除去と窓適用の後だけf32へ変換し、窓係数と電力平均はf64を維持します。FFTは実数入力をN/2点の複素変換へまとめ、片側ビンを復元します。GPU表示用のdBFSと座標はf32へ変換します。Spectrumのビン周波数とピクセルの対応は、周波数軸・表示範囲・幅・Fs・FFTサイズを変えたときだけ再計算し、通常のFFT更新とピーク保持で再利用します。Spectrumは専用ワーカーで、既定のN/4 hopのすべての完全窓を解析します。Latest windowの新4サイズは100 msごとに新しい終端の完全窓を観察し、N/4の進行は要求しません。32,768点以下は従来の33 ms／N/4以上の周期観察を維持します。電力平均とピーク保持は寄与した解析窓ごとに更新し、非表示でも継続します。入力欠落時は平均をリセットし、完全窓から回復します。Performanceには実際の寄与窓数と連続解析の無効窓数を表示します。f64電力結果と窓の由来をスナップショットに保持します。
+- **FFT**: [RustFFT](https://docs.rs/rustfft/6.4.1/rustfft/)の計画とscratchメモリを再利用します。取得キュー・共通履歴・トリガー・測定値・FFTはf64を標準とします。SpectrumとSpectrogramの「FFT PRECISION」で、それぞれ独立して32-bitの高速FFTを選択できます。DC除去と窓適用の後だけf32へ変換し、窓係数と電力平均はf64を維持します。FFTは実数入力をN/2点の複素変換へまとめ、対称なビンを一緒に復元して複素乗算とtwiddle表を半減します。GPU表示用のdBFSと座標はf32へ変換します。Spectrumはピクセル列ごとの連続ビン範囲をキャッシュし、dB配列の極値をまとめます。狭い範囲では二分探索で対象ビンだけを処理し、保持dBは新しい最大値だけで更新します。ビン周波数とピクセルの対応は、周波数軸・表示範囲・幅・Fs・FFTサイズを変えたときだけ再計算し、通常のFFT更新とピーク保持で再利用します。Spectrumは専用ワーカーで、既定のLive観察とN/4全窓のContinuousを選べます。Latest windowの新4サイズは100 msごとに新しい終端の完全窓を観察し、N/4の進行は要求しません。32,768点以下は従来の33 ms／N/4以上の周期観察を維持します。電力平均とピーク保持は寄与した解析窓ごとに更新し、非表示でも継続します。入力欠落時は平均をリセットし、完全窓から回復します。Performanceには実際の寄与窓数と連続解析の無効窓数を表示します。f64電力結果と窓の由来をスナップショットに保持します。
 - **連続STFT**: 別の専用ワーカーで選択した1chを解析します。hopはN/4、FFTサイズ・窓関数・DC除去・対象chはSpectrogram設定から指定します。窓ごとのdBFSを生成し、平均・ピーク保持は適用しません。入力は256フレーム×64ブロック、結果は128行の固定プール（約8 MiB）で再利用します。48 kHz・1,024点・hop 256では約0.68秒分の結果を保持できます。入力ブロックと結果のFs・ch・世代・サンプル位置・欠落情報を保持し、欠落をまたぐ窓や古い世代を表示へ渡しません。チャンネル数が不足した入力フレームはパニックせず破棄し、STFTの入力欠落数へ加算します。Performanceで最新窓の位置とワーカーの欠落数を確認できます。Spectrumとは独立した解析設定を使い、GUI非依存の512行履歴と循環テクスチャへ渡します。
 
 スペクトログラムのR32Floatテクスチャには生のdBFSビンを格納し、最大FFTのNyquistビンまで保持します。1行を4,096列の複数走査線へ分割し、GPUのテクスチャ寸法上限を超えないようにします。変更された行だけを転送し、表示範囲・色・時間座標は描画時に適用します。周波数方向は物理ピクセルが覆うビンの最大値を使い、細いピークを残します。履歴とテクスチャのサイズはFFT設定に応じて固定され、既定の8,192点では各16 MiB、最大32,768点では各40 MiBです。
@@ -288,14 +288,14 @@ GUIなしの既知入力・平均値の照合と、1ch／2ch／16ch・最大FFT�
 ./scripts/cargo.sh test --locked --lib --no-default-features measurement::tests
 ```
 
-512kを含む性能計測では`MEASURELAB_PROFILE_FFT_SIZE`はSpectrumへ適用し、Spectrogramは最大32,768点に制限します。`MEASURELAB_PROFILE_STFT_SIZE`で独立した窓長、`MEASURELAB_PROFILE_SPECTRUM_MODE=latest`で100 ms観察を選べます。`MEASURELAB_PROFILE_UI_STALL=1`は完全窓の充填後に最大（1秒、3 hop）の間UIを止めます。512k・48 kHzでは約8.192秒です。
+512kを含む性能計測では`MEASURELAB_PROFILE_FFT_SIZE`はSpectrumへ適用し、Spectrogramは最大32,768点に制限します。`MEASURELAB_PROFILE_STFT_SIZE`で独立した窓長、`MEASURELAB_PROFILE_SPECTRUM_MODE=live`（既定）／`continuous`／`latest`で更新方式を選べます。Liveの実際の描画更新数・更新間隔はUIフレーム数とは別に`Spectrum drawing`へ出力します。`MEASURELAB_PROFILE_UI_STALL=1`は完全窓の充填後に最大（1秒、3 hop）の間UIを止めます。512k・48 kHzでは約8.192秒です。
 
 `MEASURELAB_PROFILE_KNOWN_OUTPUT=1`はQA専用で、指定したBlackHole 2ch／16chの仮想出力だけへ各CHで異なる0.125 FS peak正弦波を流します。測定終了時にSpectrumの振幅／PSD、CH、整数終端とContinuousの予定窓数を照合します。物理出力、通常のGenerator、Software Loopbackの実装ではありません。
 
 ```sh
 MEASURELAB_PROFILE_SECONDS=600 MEASURELAB_PROFILE_DEVICE="BlackHole 2ch" \
     MEASURELAB_PROFILE_FFT_SIZE=524288 MEASURELAB_PROFILE_STFT_SIZE=8192 \
-    MEASURELAB_PROFILE_KNOWN_OUTPUT=1 \
+    MEASURELAB_PROFILE_SPECTRUM_MODE=continuous MEASURELAB_PROFILE_KNOWN_OUTPUT=1 \
     ./scripts/profile-stage2.sh large-fft-continuous-600
 ```
 
@@ -349,7 +349,7 @@ MEASURELAB_PROFILE_SECONDS=10 MEASURELAB_PROFILE_FFT_PRECISION=f64 \
 - `src/signal.rs`: 固定容量履歴、トリガー、集約、測定。
 - `src/cursor.rs`: 入力世代付きの共通A/B時間カーソル、ScopeのX固定と履歴のサンプル固定、Δt、最寄りFFTビン。
 - `src/xy.rs`: 任意の2chを同じフレームから読む軌跡、割当付きの観察区間、独立した表示範囲、描画量の上限。
-- `src/spectrum_worker.rs`: 選択1chの大きな履歴、Continuous／Latest、固定容量入力・結果プール、非同期Stopの終端処理。
+- `src/spectrum_worker.rs`: 選択1chの大きな履歴、Live／Continuous／Latest、固定容量入力・結果プール、非同期Stopの終端処理。
 - `src/spectrum.rs`: 窓、FFT、dBFS補正、電力平均、ピーク保持、周波数軸と表示集約。
 - `src/stft.rs`: 連続窓のスケジューリング、世代・欠落情報、固定容量キューと結果プール、専用ワーカー。
 - `src/spectrogram.rs`: 固定容量のSTFT履歴、サンプル時計の座標、欠落区間。

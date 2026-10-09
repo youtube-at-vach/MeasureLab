@@ -27,10 +27,13 @@ const DISPLAY_INTERVAL: Duration = Duration::from_nanos(33_333_333);
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum SpectrumMode {
+    /// Responsive latest-window observation, up to 60 Hz with a CPU budget.
+    /// No transient coverage guarantee; independent of UI visibility/cadence.
+    Live,
     /// Every complete N/4-hop window; average/hold updates follow sample time.
     #[default]
     Continuous,
-    /// Newest complete window every 100 ms; transients can go unobserved.
+    /// Lower-load latest-window observation; transients can go unobserved.
     Latest,
 }
 
@@ -1222,6 +1225,7 @@ mod tests {
             (1, 44100, SpectrumMode::Continuous),
             (2, 48000, SpectrumMode::Continuous),
             (2, 96000, SpectrumMode::Latest),
+            (16, 192000, SpectrumMode::Live),
             (16, 192000, SpectrumMode::Continuous),
         ] {
             let (_stft, core, mut config, _unused_spectrum) = setup(1024, channels);

@@ -20,6 +20,14 @@ pub const BLOCK_FRAMES: usize = 1024;
 pub const INPUT_BLOCKS: usize = 256;
 pub const RESULT_SLOTS: usize = 3;
 pub const LATEST_INTERVAL: Duration = Duration::from_millis(100);
+pub const LIVE_INTERVAL: Duration = Duration::from_nanos(16_666_667);
+
+/// Leave at least half of a core for queue ingestion/publication and other
+/// instruments. Smooth the measured cost to avoid cadence jitter; a slow FFT
+/// immediately increases the budget, while recovery is gradual.
+fn live_interval(fft_ms: f64) -> Duration {
+    LIVE_INTERVAL.max(Duration::from_secs_f64(fft_ms * 2.0 / 1000.0))
+}
 
 pub fn observation_interval(size: usize) -> Duration {
     if size <= 32768 {
@@ -119,6 +127,7 @@ struct Processor {
     next_end: u64,
     revision: u64,
     fft_ms: f64,
+    budget_ms: f64,
     last_latest: Instant,
 }
 
@@ -132,10 +141,12 @@ impl Processor {
             analyzer: Analyzer::new(config.settings, config.rate),
             info: SpectrumInfo {
                 mode: config.mode,
-                observation_ms: if config.mode == SpectrumMode::Latest {
-                    observation_interval(config.settings.size).as_millis() as u32
-                } else {
-                    0
+                observation_ms: match config.mode {
+                    SpectrumMode::Live => LIVE_INTERVAL.as_micros().div_ceil(1000) as u32,
+                    SpectrumMode::Latest => {
+                        observation_interval(config.settings.size).as_millis() as u32
+                    }
+                    SpectrumMode::Continuous => 0,
                 },
                 ..SpectrumInfo::default()
             },
@@ -143,6 +154,7 @@ impl Processor {
             next_end: config.start + config.settings.size as u64,
             revision: 1,
             fft_ms: 0.0,
+            budget_ms: 0.0,
             last_latest: Instant::now() - observation_interval(config.settings.size),
         }
     }
@@ -212,11 +224,15 @@ impl Processor {
     }
 
     fn latest(&mut self, final_window: bool, metrics: &Metrics) {
-        if self.config.mode != SpectrumMode::Latest {
+        if self.config.mode == SpectrumMode::Continuous {
             return;
         }
         let elapsed = self.last_latest.elapsed();
-        let interval = observation_interval(self.config.settings.size);
+        let interval = if self.config.mode == SpectrumMode::Live {
+            live_interval(self.budget_ms)
+        } else {
+            observation_interval(self.config.settings.size)
+        };
         if !final_window && elapsed < interval {
             return;
         }
@@ -224,6 +240,7 @@ impl Processor {
         if end - self.history.contiguous_range().start < self.config.settings.size as u64
             || self.analyzer.window().is_some_and(|w| w.end == end)
             || (!final_window
+                && self.config.mode == SpectrumMode::Latest
                 && self.config.settings.size <= 32768
                 && self.analyzer.window().is_some_and(|w| {
                     end.saturating_sub(w.end) < (self.config.settings.size / 4) as u64
@@ -231,14 +248,22 @@ impl Processor {
         {
             return;
         }
-        if !final_window && self.analyzer.is_ready() && self.config.settings.size > 32768 {
+        if !final_window
+            && self.analyzer.is_ready()
+            && (self.config.mode == SpectrumMode::Live || self.config.settings.size > 32768)
+        {
             self.info.missed_observations +=
-                elapsed.as_millis().saturating_sub(interval.as_millis()) as u64
-                    / interval.as_millis() as u64;
+                (elapsed.as_nanos().saturating_sub(interval.as_nanos()) / interval.as_nanos())
+                    as u64;
         }
         let observed = Instant::now();
         self.analyze(end, metrics);
         self.last_latest = observed;
+        if self.config.mode == SpectrumMode::Live {
+            self.budget_ms = self.fft_ms.max(self.budget_ms * 0.9 + self.fft_ms * 0.1);
+            self.info.observation_ms =
+                (live_interval(self.budget_ms).as_secs_f64() * 1000.0).ceil() as u32;
+        }
     }
 
     fn copy(&self, publication: &mut Publication) {
@@ -774,6 +799,65 @@ mod tests {
             assert_eq!(p.info.observation_ms, 33);
             assert_eq!(p.info.missed_observations, 0);
         }
+    }
+
+    #[test]
+    fn live_observes_sub_hop_windows_with_exact_power_hold_and_gap_recovery() {
+        for size in [1024, 8192, 32768, 524288] {
+            for quantity in [Quantity::Amplitude, Quantity::Psd] {
+                let config = config(size, SpectrumMode::Live, quantity);
+                let mut p = Processor::new(config);
+                let mut reference = Analyzer::new(config.settings, config.rate);
+                let mut history = History::with_channels(size, 1);
+                let metrics = Metrics::default();
+                let mut end = 0;
+                // Observe several different complete windows below the N/4
+                // gate. Scheduling follows elapsed worker time, never drawing.
+                for count in [size, 97, 101] {
+                    for offset in (0..count).step_by(BLOCK_FRAMES) {
+                        let len = (count - offset).min(BLOCK_FRAMES);
+                        let b = block(config, end, len, if end < size as u64 { 0.5 } else { 0.25 });
+                        p.process(&b, &metrics);
+                        for (i, &sample) in b.samples[..len].iter().enumerate() {
+                            history.push_at(end + i as u64, [sample]);
+                        }
+                        end += len as u64;
+                    }
+                    p.last_latest = Instant::now() - live_interval(p.budget_ms);
+                    p.latest(false, &metrics);
+                    reference.update_window(&history, end - size as u64..end, 0);
+                    assert_eq!(p.analyzer.power(), reference.power());
+                    assert_eq!(p.analyzer.hold_power(), reference.hold_power());
+                    assert_eq!(p.analyzer.average(), reference.average());
+                }
+                assert_eq!(p.info.updates, 3);
+                p.latest(true, &metrics);
+                p.latest(true, &metrics);
+                assert_eq!(p.info.updates, 3, "Stop must not reaverage the same window");
+                p.process(&block(config, end + 12, 1, 0.125), &metrics);
+                p.latest(true, &metrics);
+                assert!(!p.analyzer.is_ready());
+                assert_eq!(p.info.input_missing, 12);
+                let start = end + 12;
+                end = start + 1;
+                for offset in (0..size - 1).step_by(BLOCK_FRAMES) {
+                    let len = (size - 1 - offset).min(BLOCK_FRAMES);
+                    p.process(&block(config, end, len, 0.125), &metrics);
+                    end += len as u64;
+                }
+                p.latest(true, &metrics);
+                assert_eq!(p.info.updates, 1);
+                assert_eq!(p.info.contributing, start..end);
+                assert_eq!(p.analyzer.hold_power(), p.analyzer.power());
+            }
+        }
+    }
+
+    #[test]
+    fn live_budget_leaves_half_a_core_and_does_not_gate_on_fft_length() {
+        assert_eq!(live_interval(0.2), LIVE_INTERVAL);
+        assert_eq!(live_interval(20.0), Duration::from_millis(40));
+        assert_eq!(live_interval(120.0), Duration::from_millis(240));
     }
 
     #[test]

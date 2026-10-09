@@ -256,18 +256,23 @@ macro_rules! numeric_reads {
         pub fn peak(&self, view: View) -> Option<Peak> {
             self.window()?;
             let bin_hz = self.sample_rate as f64 / self.settings.size as f64;
-            self.power
+            let first = bin_bound(self.power.len(), |bin| {
+                bin as f64 * bin_hz < view.min_hz as f64
+            })
+            .max(1);
+            let end = bin_bound(self.power.len(), |bin| {
+                bin as f64 * bin_hz <= view.max_hz as f64
+            });
+            if first >= end {
+                return None;
+            }
+            self.power[first..end]
                 .iter()
                 .enumerate()
-                .skip(1)
-                .filter(|(bin, _)| {
-                    let hz = *bin as f64 * bin_hz;
-                    hz >= view.min_hz as f64 && hz <= view.max_hz as f64
-                })
                 .max_by(|a, b| a.1.total_cmp(b.1))
                 .filter(|(_, power)| **power > 0.0)
                 .map(|(bin, power)| Peak {
-                    frequency: bin as f64 * bin_hz,
+                    frequency: (first + bin) as f64 * bin_hz,
                     level_db: level_db(*power),
                 })
         }
@@ -388,8 +393,8 @@ impl_trace!(Result);
 impl_trace!(Analyzer);
 
 /// FFT plan, work buffers and output storage are allocated only at configuration
-/// changes. Acquisition never calls this analyzer. Analyze the newest complete
-/// window, at most once per quarter-window of new samples.
+/// changes. Acquisition never calls this analyzer. The caller schedules explicit
+/// complete windows; `update` retains the N/4 gate for snapshot/STFT callers.
 pub struct Analyzer {
     settings: Settings,
     sample_rate: u32,
@@ -426,7 +431,7 @@ impl<T: FftNum + ToPrimitive> Workspace<T> {
         Self {
             buffer: vec![Complex::new(T::zero(), T::zero()); size / 2],
             scratch: vec![Complex::new(T::zero(), T::zero()); fft.get_inplace_scratch_len()],
-            twiddles: (0..=size / 2)
+            twiddles: (0..size / 4)
                 .map(|bin| {
                     let phase = -TAU * bin as f64 / size as f64;
                     // -i/2 * exp(-i * 2pi * k/N)
@@ -466,28 +471,40 @@ impl<T: FftNum + ToPrimitive> Workspace<T> {
             .process_with_scratch(&mut self.buffer, &mut self.scratch);
         let nyquist = samples.len() / 2;
         let half = T::from_f64(0.5).unwrap();
-        for (bin, averaged) in power.iter_mut().enumerate() {
-            let value = if bin == 0 {
-                Complex::new(self.buffer[0].re + self.buffer[0].im, T::zero())
-            } else if bin == nyquist {
-                Complex::new(self.buffer[0].re - self.buffer[0].im, T::zero())
-            } else {
-                let a = self.buffer[bin];
-                let b = self.buffer[nyquist - bin].conj();
-                (a + b) * half + self.twiddles[bin] * (a - b)
-            };
-            let endpoint = bin == 0 || bin == nyquist;
-            let factor = factors[usize::from(!endpoint)];
+        let mut average_bin = |bin: usize, value: Complex<T>, factor: f64| {
             // Optional f32 FFT must not square weak bins in f32 and underflow
             // before the f64 average/integration sees them.
             let current =
                 (value.re.to_f64().unwrap().powi(2) + value.im.to_f64().unwrap().powi(2)) * factor;
-            *averaged = if alpha == 1.0 {
+            power[bin] = if alpha == 1.0 {
                 current
             } else {
-                *averaged + alpha * (current - *averaged)
+                power[bin] + alpha * (current - power[bin])
             };
+        };
+        average_bin(
+            0,
+            Complex::new(self.buffer[0].re + self.buffer[0].im, T::zero()),
+            factors[0],
+        );
+        average_bin(
+            nyquist,
+            Complex::new(self.buffer[0].re - self.buffer[0].im, T::zero()),
+            factors[0],
+        );
+        // Recover conjugate partner bins together. The second result is the
+        // conjugate of (sum - rotated); its squared magnitude is unchanged.
+        // This halves the twiddle storage and complex reconstruction products.
+        for bin in 1..nyquist / 2 {
+            let a = self.buffer[bin];
+            let b = self.buffer[nyquist - bin].conj();
+            let sum = (a + b) * half;
+            let rotated = self.twiddles[bin] * (a - b);
+            average_bin(bin, sum + rotated, factors[1]);
+            average_bin(nyquist - bin, sum - rotated, factors[1]);
         }
+        // The self-paired N/4 bin needs only conjugation, irrelevant to power.
+        average_bin(nyquist / 2, self.buffer[nyquist / 2], factors[1]);
     }
 }
 
@@ -683,9 +700,13 @@ impl Analyzer {
             ),
         }
         for bin in 0..self.db.len() {
-            self.hold_power[bin] = self.hold_power[bin].max(self.power[bin]);
             self.db[bin] = level_db(self.power[bin]).max(DB_MIN as f64) as f32;
-            self.hold[bin] = level_db(self.hold_power[bin]).max(DB_MIN as f64) as f32;
+            // Hold changes only at a new maximum. Reuse the active trace's
+            // conversion instead of taking a second logarithm for every bin.
+            if self.power[bin] >= self.hold_power[bin] {
+                self.hold_power[bin] = self.power[bin];
+                self.hold[bin] = self.db[bin];
+            }
         }
         if self.last_end.is_none() || self.settings.averages == 1 {
             self.average.start = end - self.settings.size as u64;
@@ -748,12 +769,33 @@ impl View {
     }
 }
 
-/// Cached bin-to-pixel projection, independent of the GUI and FFT precision.
-/// Only frequency axis, sample rate, FFT length or width changes rebuild it.
+/// Cached bin ranges per physical pixel column, independent of FFT precision.
+/// Storage scales with screen width, rather than FFT length. Reductions walk
+/// contiguous dB slices without repeating coordinate transforms per bin.
 #[derive(Default)]
 pub struct LineBuilder {
     key: Option<(FrequencyScale, f32, f32, f32, usize, usize)>,
-    coordinates: Vec<(usize, f32, usize)>,
+    columns: Vec<Column>,
+}
+
+fn bin_bound(bins: usize, below: impl Fn(usize) -> bool) -> usize {
+    let (mut lo, mut hi) = (0, bins);
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if below(mid) {
+            lo = mid + 1;
+        } else {
+            hi = mid;
+        }
+    }
+    lo
+}
+
+struct Column {
+    bins: Range<usize>,
+    pixel: usize,
+    first_x: f32,
+    last_x: f32,
 }
 
 impl LineBuilder {
@@ -781,20 +823,34 @@ impl LineBuilder {
             pixels,
         );
         if self.key != Some(key) {
-            self.coordinates.clear();
+            self.columns.clear();
             let inverse_span = 1.0 / (view.max_hz - view.min_hz);
             let inverse_log_span = 1.0 / (view.max_hz / view.min_hz).ln();
-            for bin in 0..analyzer.db().len() {
+            // Binary search uses the same f32 bin coordinates as the plot,
+            // avoiding a full FFT scan even when zoomed into a few bins.
+            let bins = analyzer.db().len();
+            let first = bin_bound(bins, |bin| bin as f32 * bin_hz < view.min_hz);
+            let end = bin_bound(bins, |bin| bin as f32 * bin_hz <= view.max_hz);
+            for bin in first..end {
                 let hz = bin as f32 * bin_hz;
-                if hz < view.min_hz || hz > view.max_hz {
-                    continue;
-                }
                 let x = match view.scale {
                     FrequencyScale::Linear => (hz - view.min_hz) * inverse_span,
                     FrequencyScale::Log => (hz / view.min_hz).ln() * inverse_log_span,
                 };
-                let column = ((x * pixels as f32) as usize).min(pixels - 1);
-                self.coordinates.push((bin, x, column));
+                let pixel = ((x * pixels as f32) as usize).min(pixels - 1);
+                if let Some(column) = self.columns.last_mut()
+                    && column.pixel == pixel
+                {
+                    column.bins.end = bin + 1;
+                    column.last_x = x;
+                } else {
+                    self.columns.push(Column {
+                        bins: bin..bin + 1,
+                        pixel,
+                        first_x: x,
+                        last_x: x,
+                    });
+                }
             }
             self.key = Some(key);
         }
@@ -804,14 +860,16 @@ impl LineBuilder {
                 break;
             }
             let mut previous = None;
-            let mut bucket: Option<Bucket> = None;
-            let mut flush = |Bucket {
-                                 first,
-                                 last,
-                                 min_y,
-                                 max_y,
-                                 ..
-                             }: Bucket| {
+            for column in &self.columns {
+                let values = &values[column.bins.clone()];
+                let first = [
+                    column.first_x,
+                    (view.ceiling_db - values[0]) * inverse_db_span,
+                ];
+                let last = [
+                    column.last_x,
+                    (view.ceiling_db - values[values.len() - 1]) * inverse_db_span,
+                ];
                 if let Some(a) = previous {
                     output.push(Line {
                         a,
@@ -819,39 +877,20 @@ impl LineBuilder {
                         channel,
                     });
                 }
-                if min_y < max_y {
-                    let x = (first[0] + last[0]) * 0.5;
+                let (min_db, max_db) = values
+                    .iter()
+                    .fold((f32::INFINITY, f32::NEG_INFINITY), |(lo, hi), &db| {
+                        (lo.min(db), hi.max(db))
+                    });
+                if min_db < max_db {
+                    let x = (column.first_x + column.last_x) * 0.5;
                     output.push(Line {
-                        a: [x, min_y],
-                        b: [x, max_y],
+                        a: [x, (view.ceiling_db - max_db) * inverse_db_span],
+                        b: [x, (view.ceiling_db - min_db) * inverse_db_span],
                         channel,
                     });
                 }
                 previous = Some(last);
-            };
-            for &(bin, x, column) in &self.coordinates {
-                let point = [x, (view.ceiling_db - values[bin]) * inverse_db_span];
-                if let Some(current) = bucket.as_mut()
-                    && current.column == column
-                {
-                    current.last = point;
-                    current.min_y = current.min_y.min(point[1]);
-                    current.max_y = current.max_y.max(point[1]);
-                    continue;
-                }
-                if let Some(completed) = bucket.take() {
-                    flush(completed);
-                }
-                bucket = Some(Bucket {
-                    column,
-                    first: point,
-                    last: point,
-                    min_y: point[1],
-                    max_y: point[1],
-                });
-            }
-            if let Some(completed) = bucket {
-                flush(completed);
             }
         }
     }
@@ -866,14 +905,6 @@ pub fn build_lines(
     output: &mut Vec<Line>,
 ) {
     LineBuilder::default().build(analyzer, view, pixels, show_hold, output);
-}
-
-struct Bucket {
-    column: usize,
-    first: [f32; 2],
-    last: [f32; 2],
-    min_y: f32,
-    max_y: f32,
 }
 
 #[cfg(test)]
