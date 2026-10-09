@@ -3,7 +3,7 @@
 use crate::{
     channel::ChannelId,
     signal::{History, MAX_CHANNELS},
-    spectrum::{Analyzer, FFT_SIZES, Precision, Settings, Window},
+    spectrum::{Analyzer, Precision, STFT_SIZES, Settings, Window},
 };
 use rtrb::{Consumer, Producer, RingBuffer};
 use std::{
@@ -39,7 +39,7 @@ impl Config {
         if self.sample_rate == 0
             || !(1..=MAX_CHANNELS).contains(&self.channels)
             || self.channel >= self.channels
-            || !FFT_SIZES.contains(&self.size)
+            || !STFT_SIZES.contains(&self.size)
             || self.hop == 0
             || self.hop > self.size
         {
@@ -847,5 +847,11 @@ mod tests {
             assert!(worker.configure(cfg).is_err());
         }
         assert_eq!(worker.generation.load(Ordering::Relaxed), generation);
+    }
+    #[test]
+    fn spectrum_large_sizes_cannot_exceed_stft_result_or_texture_capacity() {
+        for size in [65536, 131072, 262144, 524288] {
+            assert!(Config { size, ..config() }.validate().is_err());
+        }
     }
 }

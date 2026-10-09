@@ -9,6 +9,7 @@ pub mod measurement;
 pub mod signal;
 pub mod spectrogram;
 pub mod spectrum;
+pub mod spectrum_worker;
 pub mod stft;
 pub mod xy;
 

@@ -246,10 +246,43 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
             2.0,
             1,
         );
+        let size = 524288;
+        let mut spectrum = crate::spectrum::Analyzer::new(
+            crate::spectrum::Settings {
+                size,
+                averages: 1,
+                ..Default::default()
+            },
+            48000,
+        );
+        let samples: Vec<_> = (0..size)
+            .map(|i| 0.5 * (std::f64::consts::TAU * 16384.0 * i as f64 / size as f64).sin())
+            .collect();
+        spectrum.update_samples(&samples, size as u64);
+        let mut spectrum_view =
+            crate::spectrum::View::full(48000, crate::spectrum::FrequencyScale::Linear, -120.0);
+        spectrum_view.min_hz = 1499.0;
+        spectrum_view.max_hz = 1501.0;
+        let mut spectrum_lines = Vec::new();
+        crate::spectrum::LineBuilder::default().build(
+            &spectrum,
+            spectrum_view,
+            256,
+            false,
+            &mut spectrum_lines,
+        );
+        let spectrum_segments: Vec<_> = spectrum_lines
+            .iter()
+            .map(|line| Segment {
+                a: line.a,
+                b: line.b,
+                color: COLORS[1],
+            })
+            .collect();
         renderer.plots[PlotId::Spectrum as usize].prepare(
             &device,
             &queue,
-            &segments[1..],
+            &spectrum_segments,
             [256.0, 64.0],
             2.0,
             1,
@@ -437,8 +470,17 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
             .iter()
             .filter(|p| p[2] > 200 && p[0] < 130)
             .count();
-        if green < 200 || blue < 200 {
+        if green < 200 || blue < 80 {
             return Err("GPU readback did not contain both traces".into());
+        }
+        let peak_visible = (124..=132).any(|x| {
+            (68..=74).any(|y| {
+                let p = &pixels[(y * 256 + x) * 4..(y * 256 + x) * 4 + 4];
+                p[2] > 200 && p[0] < 130
+            })
+        });
+        if !peak_visible {
+            return Err("512k Spectrum peak missing from GPU readback".into());
         }
         let purple = pixels[256 * 192 * 4..]
             .as_chunks::<4>()
@@ -469,7 +511,7 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
             return Err(format!("Spectrogram wrap/order/gap/Nyquist readback failed: {newest:?}, {missing:?}, {older:?}, {oldest:?}, {nyquist:?}").into());
         }
         println!(
-            "GPU OK: {:?}, {} / {} green / {} blue / {} XY purple pixels / stopped trace transfer exclusion / spectrogram wrap, order, gap, packed Nyquist, independent view changes, {uploads} row uploads",
+            "GPU OK: {:?}, {} / {} green / {} blue / {} XY purple pixels / 512k f64 Spectrum individual-bin peak / stopped trace transfer exclusion / spectrogram wrap, order, gap, packed Nyquist, independent view changes, {uploads} row uploads",
             adapter.get_info().backend,
             adapter.get_info().name,
             green,

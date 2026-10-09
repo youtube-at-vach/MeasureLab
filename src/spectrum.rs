@@ -7,7 +7,11 @@ use crate::{
 use rustfft::{Fft, FftNum, FftPlanner, num_complex::Complex, num_traits::ToPrimitive};
 use std::{f64::consts::TAU, ops::Range, sync::Arc};
 
-pub const FFT_SIZES: [usize; 6] = [1024, 2048, 4096, 8192, 16384, 32768];
+pub const FFT_SIZES: [usize; 10] = [
+    1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288,
+];
+/// STFT storage and GPU textures have a separate, verified capacity limit.
+pub const STFT_SIZES: [usize; 6] = [1024, 2048, 4096, 8192, 16384, 32768];
 pub const DB_MIN: f32 = -180.0;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -165,6 +169,20 @@ fn level_db(power: f64) -> f64 {
     10.0 * power.log10()
 }
 
+/// Compensated reductions keep normalization and integrated power stable as
+/// window length grows; input/FFT arithmetic remains f64.
+fn precise_sum(values: impl Iterator<Item = f64>) -> f64 {
+    let mut sum = 0.0;
+    let mut correction = 0.0;
+    for value in values {
+        let adjusted = value - correction;
+        let next = sum + adjusted;
+        correction = (next - sum) - adjusted;
+        sum = next;
+    }
+    sum
+}
+
 // Both the analyzer and its immutable output expose identical numeric reads.
 macro_rules! numeric_reads {
     () => {
@@ -220,7 +238,7 @@ macro_rules! numeric_reads {
             if first_bin > last_bin || last_bin >= self.power.len() {
                 return None;
             }
-            let power_fs2 = self.power[first_bin..=last_bin].iter().sum::<f64>() * bin_hz;
+            let power_fs2 = precise_sum(self.power[first_bin..=last_bin].iter().copied()) * bin_hz;
             Some(BandReading {
                 window,
                 average: self.average,
@@ -273,6 +291,9 @@ pub struct Result {
 }
 
 impl Result {
+    pub(crate) fn source_channel(&mut self, channel: ChannelId) {
+        self.last_channel = channel;
+    }
     pub fn empty(settings: Settings, sample_rate: u32) -> Self {
         let sum: f64 = (0..settings.size)
             .map(|i| settings.window.weight(i, settings.size))
@@ -477,8 +498,8 @@ impl Analyzer {
         let mut weights: Vec<_> = (0..settings.size)
             .map(|i| settings.window.weight(i, settings.size))
             .collect();
-        let weight_sum = weights.iter().sum::<f64>();
-        let rbw = sample_rate as f64 * weights.iter().map(|v| v * v).sum::<f64>()
+        let weight_sum = precise_sum(weights.iter().copied());
+        let rbw = sample_rate as f64 * precise_sum(weights.iter().map(|v| v * v))
             / (weight_sum * weight_sum);
         // Normalize once at configuration time instead of dividing every bin.
         for weight in &mut weights {
@@ -630,7 +651,7 @@ impl Analyzer {
 
     fn process_window(&mut self, end: u64, channel: usize) {
         let mean = if self.settings.remove_dc {
-            self.samples.iter().sum::<f64>() / self.settings.size as f64
+            precise_sum(self.samples.iter().copied()) / self.settings.size as f64
         } else {
             0.0
         };
@@ -951,13 +972,22 @@ mod tests {
                     } else {
                         0.0
                     };
-                    let mut energy = 0.0;
-                    let mut weight_energy = 0.0;
-                    for (i, &sample) in samples.iter().enumerate() {
-                        let w2 = window.weight(i, size).powi(2);
-                        energy += (sample - mean).powi(2) * w2;
-                        weight_energy += w2;
-                    }
+                    let weighted: Vec<_> = samples
+                        .iter()
+                        .enumerate()
+                        .map(|(i, &sample)| {
+                            let w2 = window.weight(i, size).powi(2);
+                            ((sample - mean).powi(2) * w2, w2)
+                        })
+                        .collect();
+                    let energy = weighted
+                        .chunks(256)
+                        .map(|c| c.iter().map(|v| v.0).sum::<f64>())
+                        .sum::<f64>();
+                    let weight_energy = weighted
+                        .chunks(256)
+                        .map(|c| c.iter().map(|v| v.1).sum::<f64>())
+                        .sum::<f64>();
                     let expected = energy / weight_energy;
                     for precision in [Precision::F64, Precision::F32] {
                         let settings = Settings {
@@ -991,7 +1021,7 @@ mod tests {
     #[test]
     fn psd_tone_band_power_is_invariant_under_size_window_and_rate() {
         for size in FFT_SIZES {
-            for sample_rate in [48000, 96000] {
+            for sample_rate in [44100, 48000, 96000, 192000] {
                 let bin_hz = sample_rate as f64 / size as f64;
                 let samples: Vec<_> = (0..size)
                     .map(|i| {
@@ -1043,9 +1073,11 @@ mod tests {
                             < 1e-13
                     );
                     assert!(
-                        (analyzer.cursor(31.0 * bin_hz).unwrap().value - 0.125 / analyzer.rbw_hz())
+                        (analyzer.cursor(31.0 * bin_hz).unwrap().value
+                            / (0.125 / analyzer.rbw_hz())
+                            - 1.0)
                             .abs()
-                            < 1e-14
+                            < 1e-13
                     );
                 }
             }
@@ -1098,7 +1130,7 @@ mod tests {
     #[test]
     fn deterministic_white_noise_density_and_integral_match_known_variance() {
         let variance = 0.2_f64.powi(2) / 3.0;
-        for size in [1024, 8192, 32768] {
+        for size in FFT_SIZES {
             for window in [Window::Rectangular, Window::Hann, Window::BlackmanHarris] {
                 let mut analyzer = Analyzer::new(
                     Settings {
@@ -1390,7 +1422,13 @@ mod tests {
     fn cached_projection_tracks_axes_rate_size_and_new_power_without_losing_peaks() {
         let mut builder = LineBuilder::default();
         let mut lines = Vec::new();
-        for (size, sample_rate) in [(1024, 48000), (8192, 96000), (32768, 48000)] {
+        for (size, sample_rate) in [
+            (1024, 48000),
+            (8192, 96000),
+            (32768, 48000),
+            (524288, 48000),
+        ] {
+            let bin = if size == 524288 { 1024 } else { 32 };
             let mut analyzer = Analyzer::new(
                 Settings {
                     size,
@@ -1399,7 +1437,7 @@ mod tests {
                 },
                 sample_rate,
             );
-            assert!(analyzer.update(&tone(size, 32, 0.5, 0.0), 0));
+            assert!(analyzer.update(&tone(size, bin, 0.5, 0.0), 0));
             for (scale, pixels) in [
                 (FrequencyScale::Linear, 100),
                 (FrequencyScale::Log, 100),
@@ -1413,8 +1451,8 @@ mod tests {
                     for floor in [-120.0, -60.0] {
                         view.floor_db = floor;
                         builder.build(&analyzer, view, pixels, true, &mut lines);
-                        let expected_x = view.x(32.0 * analyzer.bin_hz());
-                        let expected_y = view.y(analyzer.db()[32]);
+                        let expected_x = view.x(bin as f32 * analyzer.bin_hz());
+                        let expected_y = view.y(analyzer.db()[bin]);
                         assert!(lines.len() <= pixels * 4);
                         assert!(
                             lines
@@ -1427,7 +1465,7 @@ mod tests {
                     }
                 }
             }
-            assert!(analyzer.update_window(&tone(size, 32, 0.05, 0.0), 0..size as u64, 0));
+            assert!(analyzer.update_window(&tone(size, bin, 0.05, 0.0), 0..size as u64, 0));
             let view = View::full(sample_rate, FrequencyScale::Log, -120.0);
             builder.build(&analyzer, view, 100, true, &mut lines);
             for (channel, db) in [(0, -26.0206), (1, -6.0206)] {
@@ -1566,6 +1604,35 @@ mod tests {
                     .any(|y| (y - view.y(a.db()[170])).abs() < 1e-5)
             );
             assert!((view.frequency(view.x(1000.0)) - 1000.0).abs() < 0.01);
+        }
+    }
+    #[test]
+    fn large_f64_windows_preserve_weak_tone_beside_strong_tone_and_dc() {
+        for size in [65536, 131072, 262144, 524288] {
+            let samples: Vec<_> = (0..size)
+                .map(|i| {
+                    let phase = TAU * i as f64 / size as f64;
+                    1.0 + 0.5 * (31.0 * phase).cos() + 1e-8 * (123.0 * phase).sin()
+                })
+                .collect();
+            for window in [Window::Rectangular, Window::Hann, Window::BlackmanHarris] {
+                for remove_dc in [false, true] {
+                    let mut analyzer = Analyzer::new(
+                        Settings {
+                            size,
+                            window,
+                            remove_dc,
+                            averages: 1,
+                            precision: Precision::F64,
+                            quantity: Quantity::Amplitude,
+                        },
+                        48000,
+                    );
+                    analyzer.update_samples(&samples, size as u64);
+                    assert!((analyzer.power()[31].sqrt() - 0.5).abs() < 1e-12);
+                    assert!((analyzer.power()[123].sqrt() - 1e-8).abs() < 5e-15);
+                }
+            }
         }
     }
 }

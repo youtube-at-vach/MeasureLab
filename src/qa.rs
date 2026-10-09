@@ -198,6 +198,7 @@ pub struct Profile {
     work: [Distribution; 5],
     input_dropped: u64,
     previous_input_dropped: u64,
+    last_progress_seconds: u64,
     pub device: Option<String>,
 }
 
@@ -222,6 +223,7 @@ impl Profile {
             work: std::array::from_fn(|_| Distribution::default()),
             input_dropped: 0,
             previous_input_dropped: 0,
+            last_progress_seconds: 0,
             device: std::env::var("MEASURELAB_PROFILE_DEVICE").ok(),
         }))
     }
@@ -253,6 +255,15 @@ impl Profile {
 
     pub fn finished(&self) -> bool {
         self.started.elapsed() >= self.duration
+    }
+
+    pub fn progress_due(&mut self) -> bool {
+        let seconds = self.started.elapsed().as_secs();
+        if seconds < self.last_progress_seconds + 30 {
+            return false;
+        }
+        self.last_progress_seconds = seconds;
+        true
     }
 
     pub fn report(&self, input_dropped: u64) {
@@ -515,6 +526,57 @@ pub fn multichannel_smoke_test() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+/// Opt-in virtual-I/O fixture for large FFT UI profiling. Never opens a
+/// physical output; the returned stream keeps distinct 0.125 FS tones running.
+pub fn blackhole_tone_output(
+    name: &str,
+) -> Result<(cpal::Stream, std::sync::Arc<std::sync::atomic::AtomicBool>), Box<dyn std::error::Error>>
+{
+    use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+    use std::{
+        f64::consts::TAU,
+        sync::{
+            Arc,
+            atomic::{AtomicBool, Ordering},
+        },
+    };
+    if !["BlackHole 2ch", "BlackHole 16ch"].contains(&name) {
+        return Err("Known-output QA is restricted to BlackHole 2ch/16ch".into());
+    }
+    let output = cpal::default_host()
+        .output_devices()?
+        .find(|d| d.to_string() == name)
+        .ok_or("BlackHole fixture output was not found")?;
+    let supported = output.default_output_config()?;
+    if supported.sample_format() != cpal::SampleFormat::F32 {
+        return Err("BlackHole fixture requires f32 output".into());
+    }
+    let channels = supported.channels() as usize;
+    let failed = Arc::new(AtomicBool::new(false));
+    let error_flag = failed.clone();
+    let mut sequence = 0_u64;
+    let stream = output.build_output_stream(
+        supported.into(),
+        move |data: &mut [f32], _| {
+            for frame in data.chunks_exact_mut(channels) {
+                for (ch, sample) in frame.iter_mut().enumerate() {
+                    *sample = (0.125
+                        * (TAU * (32 + ch * 7) as f64 * (sequence % 8192) as f64 / 8192.0).sin())
+                        as f32;
+                }
+                sequence += 1;
+            }
+        },
+        move |error| {
+            eprintln!("BlackHole known-output error: {error}");
+            error_flag.store(true, Ordering::Relaxed);
+        },
+        Some(Duration::from_secs(2)),
+    )?;
+    stream.play()?;
+    Ok((stream, failed))
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -550,6 +612,7 @@ mod tests {
             work: std::array::from_fn(|_| super::Distribution::default()),
             input_dropped: 0,
             previous_input_dropped: 0,
+            last_progress_seconds: 0,
             device: None,
         };
         profile.record_input_loss(4);

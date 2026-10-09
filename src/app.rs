@@ -9,7 +9,8 @@ use crate::{
     signal::{Edge, History, Line, Measurement, Sweep, Trigger, build_sweep_lines},
     spectrogram, spectrogram_gpu,
     spectrum::{
-        self, Analyzer, FFT_SIZES, FrequencyScale, Precision, Quantity, Settings, View, Window,
+        self, Analyzer, FFT_SIZES, FrequencyScale, Precision, Quantity, STFT_SIZES, Settings, View,
+        Window,
     },
     stft::{self, RowInfo},
     xy,
@@ -226,6 +227,12 @@ pub struct ScopeApp {
     demo: Demo,
     demo_running: bool,
     core: Option<measurement::Worker>,
+    pending_stop: Option<measurement::PendingSnapshot>,
+    pending_scope: Option<measurement::PendingSnapshot>,
+    #[cfg(feature = "qa")]
+    known_output: Option<(cpal::Stream, Arc<std::sync::atomic::AtomicBool>)>,
+    start_after_stop: bool,
+    spectrum_publication: (u64, u64),
     input_generation: u64,
     snapshot_revision: u64,
     core_scope: ScopeSettings,
@@ -240,6 +247,10 @@ pub struct ScopeApp {
     frequency_scale: FrequencyScale,
     floor_db: f32,
     span_hz: f32,
+    spectrum_min_hz: f32,
+    spectrum_numeric_key: Option<(f32, f32, f64, f64)>,
+    spectrum_peak: Option<spectrum::Peak>,
+    spectrum_band: Option<spectrum::BandReading>,
     band_min_hz: f64,
     /// Zero selects the captured result's Nyquist frequency.
     band_max_hz: f64,
@@ -385,6 +396,12 @@ impl ScopeApp {
             demo: Demo::default(),
             demo_running: demo && !smoke,
             core,
+            pending_stop: None,
+            pending_scope: None,
+            #[cfg(feature = "qa")]
+            known_output: None,
+            start_after_stop: false,
+            spectrum_publication: (0, 0),
             input_generation: 1,
             snapshot_revision: 0,
             core_scope: ScopeSettings::default(),
@@ -399,6 +416,10 @@ impl ScopeApp {
             frequency_scale: FrequencyScale::Log,
             floor_db: -120.0,
             span_hz: 0.0,
+            spectrum_min_hz: 0.0,
+            spectrum_numeric_key: None,
+            spectrum_peak: None,
+            spectrum_band: None,
             band_min_hz: 0.0,
             band_max_hz: 0.0,
             show_hold: false,
@@ -492,6 +513,9 @@ impl ScopeApp {
         };
         #[cfg(feature = "qa")]
         if app.profile.is_some() {
+            if std::env::var_os("MEASURELAB_PROFILE_SPECTRUM_ONLY").is_some() {
+                app.visible = [false, true, false, false];
+            }
             let precision = match std::env::var("MEASURELAB_PROFILE_FFT_PRECISION").as_deref() {
                 Ok("f32") => Precision::F32,
                 _ => Precision::F64,
@@ -504,13 +528,39 @@ impl ScopeApp {
             app.spectrum_settings.precision = precision;
             app.spectrogram_settings.precision = precision;
             app.spectrum_settings.size = size;
-            app.spectrogram_settings.size = size;
+            app.spectrogram_settings.size = std::env::var("MEASURELAB_PROFILE_STFT_SIZE")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .filter(|s| STFT_SIZES.contains(s))
+                .unwrap_or(size.min(32768));
+            if std::env::var("MEASURELAB_PROFILE_SPECTRUM_MODE").as_deref() == Ok("latest") {
+                app.spectrum_mode = SpectrumMode::Latest;
+            }
             app.reset_analysis();
         }
         #[cfg(feature = "qa")]
         if std::env::var_os("MEASURELAB_SPECTRUM_PSD").is_some() {
             app.spectrum_settings.quantity = Quantity::Psd;
             app.reset_analysis();
+        }
+        #[cfg(feature = "qa")]
+        if std::env::var_os("MEASURELAB_PROFILE_KNOWN_OUTPUT").is_some() {
+            let name = app
+                .profile
+                .as_ref()
+                .and_then(|p| p.device.as_deref())
+                .ok_or("Known-output QA requires a BlackHole profile device")?;
+            app.known_output =
+                Some(crate::qa::blackhole_tone_output(name).map_err(|e| e.to_string())?);
+        }
+        #[cfg(feature = "qa")]
+        if demo && std::env::var_os("MEASURELAB_PROFILE_DEMO_BIN_TONE").is_some() {
+            app.demo.waveform = Waveform::Sine;
+            app.demo.frequency = 750.0;
+            app.demo.amplitude = 0.125;
+            app.demo.noise = 0.0;
+            app.demo.channel_2_gain = 1.0;
+            app.demo.phase_degrees = 90.0;
         }
         if demo || smoke {
             app.channels = 2;
@@ -1212,8 +1262,13 @@ impl ScopeApp {
         self.xy_dirty |= self.xy_channels != snapshot.xy_channels;
         self.sample_rate = snapshot.sample_rate;
         std::mem::swap(&mut self.history, &mut snapshot.history);
-        std::mem::swap(&mut self.analyzer, &mut snapshot.spectrum);
-        self.spectrum_info = snapshot.spectrum_info.clone();
+        if snapshot.has_spectrum {
+            std::mem::swap(&mut self.analyzer, &mut snapshot.spectrum);
+            self.spectrum_info = snapshot.spectrum_info.clone();
+            self.fft_ms = snapshot.fft_ms;
+            self.spectrum_dirty = true;
+            self.spectrum_numeric_key = None;
+        }
         self.core_scope = snapshot.scope_settings;
         self.xy_channels = snapshot.xy_channels;
         self.scope_range = snapshot.sweep.range.clone();
@@ -1224,8 +1279,6 @@ impl ScopeApp {
         self.calibration.captured.clone_from(&snapshot.calibrations);
         self.scope_missing = snapshot.scope_missing;
         self.dropped = snapshot.input_dropped;
-        self.fft_ms = snapshot.fft_ms;
-        self.spectrum_dirty = true;
         self.dirty |= samples_changed;
         self.xy_dirty |= samples_changed;
         if snapshot.failed && self.running() {
@@ -1235,8 +1288,50 @@ impl ScopeApp {
     }
 
     fn poll_measurement(&mut self) {
-        if let Some(mut snapshot) = self.core.as_mut().and_then(|core| core.take_latest()) {
+        if let Some(mut snapshot) = self.pending_scope.as_mut().and_then(|p| p.try_take()) {
+            self.pending_scope = None;
+            // Spectrum has its own delivery; a Scope setting reply must not
+            // replace a newer independently received Spectrum publication.
+            snapshot.has_spectrum = false;
             self.accept_snapshot(&mut snapshot);
+        }
+        if let Some(snapshot) = self.pending_stop.as_mut().and_then(|p| p.try_take()) {
+            self.pending_stop = None;
+            let mut snapshot = snapshot;
+            self.accept_snapshot(&mut snapshot);
+            self.rebuild_xy();
+            if self.start_after_stop {
+                self.start_after_stop = false;
+                self.start();
+            }
+        }
+        if self.running() && self.pending_stop.is_none() {
+            let publication = self
+                .core
+                .as_mut()
+                .and_then(|core| core.spectrum.take_latest());
+            if let Some(mut publication) = publication {
+                if publication.generation == self.input_generation
+                    && publication.channel == self.spectrum_channel
+                    && publication.result.settings() == self.spectrum_settings
+                    && publication.info.mode == self.spectrum_mode
+                    && (publication.epoch, publication.revision) > self.spectrum_publication
+                {
+                    self.spectrum_publication = (publication.epoch, publication.revision);
+                    std::mem::swap(&mut self.analyzer, &mut publication.result);
+                    self.spectrum_info.clone_from(&publication.info);
+                    self.fft_ms = publication.fft_ms;
+                    self.spectrum_dirty = true;
+                    self.spectrum_numeric_key = None;
+                }
+                self.core.as_mut().unwrap().spectrum.recycle(publication);
+            }
+        }
+
+        if let Some(mut snapshot) = self.core.as_mut().and_then(|core| core.take_latest()) {
+            if self.running() {
+                self.accept_snapshot(&mut snapshot);
+            }
             self.core.as_mut().unwrap().recycle(snapshot);
         }
         if self.running()
@@ -1255,7 +1350,8 @@ impl ScopeApp {
         if self.ui_stall_checked
             || self.profile.is_none()
             || !self.running()
-            || self.created.elapsed() < Duration::from_millis(800)
+            || self.created.elapsed().as_secs_f64()
+                < (self.spectrum_settings.size as f64 / self.sample_rate as f64 + 1.0).max(0.8)
             || std::env::var_os("MEASURELAB_PROFILE_UI_STALL").is_none()
         {
             return;
@@ -1263,10 +1359,13 @@ impl ScopeApp {
         self.ui_stall_checked = true;
         let core = self.core.as_ref().unwrap();
         let frames = core.metrics.input_frames.load(Ordering::Relaxed);
-        let windows = core.metrics.spectrum_windows.load(Ordering::Relaxed);
-        std::thread::sleep(Duration::from_secs(1));
+        let windows = core.spectrum.metrics.windows.load(Ordering::Relaxed);
+        let stall = Duration::from_secs_f64(
+            (3.0 * self.spectrum_settings.size as f64 / 4.0 / self.sample_rate as f64).max(1.0),
+        );
+        std::thread::sleep(stall);
         let frames = core.metrics.input_frames.load(Ordering::Relaxed) - frames;
-        let windows = core.metrics.spectrum_windows.load(Ordering::Relaxed) - windows;
+        let windows = core.spectrum.metrics.windows.load(Ordering::Relaxed) - windows;
         assert!(
             frames > self.sample_rate as u64 / 2,
             "UI stall stopped acquisition"
@@ -1276,10 +1375,110 @@ impl ScopeApp {
         let mut snapshot = core.scope(self.core_config().scope);
         assert_eq!(snapshot.input_dropped, 0, "UI stall lost measurement input");
         assert_eq!(snapshot.spectrum_info.missing_windows, 0);
+        assert_eq!(snapshot.spectrum_info.input_missing, 0);
+        if self.spectrum_mode == SpectrumMode::Continuous {
+            assert_eq!(
+                snapshot.spectrum_info.updates,
+                1 + (snapshot.history.range().end - self.spectrum_settings.size as u64)
+                    / (self.spectrum_settings.size / 4) as u64
+            );
+        }
         self.accept_snapshot(&mut snapshot);
         println!(
-            "UI stall OK: 1,000 ms without UI updates; {frames} input frames and {windows} FFT windows continued"
+            "UI stall OK: {:.3} ms without UI updates; {frames} input frames and {windows} FFT windows continued",
+            stall.as_secs_f64() * 1000.0
         );
+    }
+
+    #[cfg(feature = "qa")]
+    fn check_large_fft_lifecycle(&mut self, ctx: &egui::Context) {
+        if std::env::var_os("MEASURELAB_PROFILE_LARGE_LIFECYCLE").is_none() {
+            return;
+        }
+        assert_eq!(self.spectrum_settings.size, 524288);
+        match self.lifecycle_stage {
+            0 if self.analyzer.is_ready() && self.spectrum_info.updates >= 3 => {
+                self.lifecycle_changed = Instant::now();
+                self.stop();
+                assert!(self.pending_stop.is_some());
+                assert!(!self.running());
+                println!(
+                    "Large FFT Stop request accepted in {:.3} ms",
+                    self.lifecycle_changed.elapsed().as_secs_f64() * 1000.0
+                );
+                self.lifecycle_stage = 1;
+            }
+            1 if self.pending_stop.is_none() => {
+                let window = self.analyzer.window().unwrap();
+                assert_eq!(
+                    self.spectrum_info.updates,
+                    1 + (self.history.range().end - 524288) / 131072
+                );
+                assert_eq!(self.spectrum_info.input_missing, 0);
+                assert_eq!(self.spectrum_info.missing_windows, 0);
+                self.lifecycle_spectrum_held =
+                    Some((window, self.analyzer.db().to_vec(), self.history.range()));
+                println!(
+                    "Large FFT Stop completion observed after {:.3} ms",
+                    self.lifecycle_changed.elapsed().as_secs_f64() * 1000.0
+                );
+                self.spectrum_settings.quantity = Quantity::Psd;
+                self.spectrum_mode = SpectrumMode::Latest;
+                self.spectrum_channel = 1;
+                self.frequency_scale = FrequencyScale::Linear;
+                self.spectrum_min_hz = 749.5;
+                self.span_hz = 750.5;
+                self.spectrum_dirty = true;
+                self.lifecycle_changed = Instant::now();
+                self.lifecycle_stage = 2;
+            }
+            2 if self.lifecycle_changed.elapsed() > Duration::from_millis(150) => {
+                let (window, db, range) = self.lifecycle_spectrum_held.as_ref().unwrap();
+                assert_eq!(self.analyzer.window().unwrap(), *window);
+                assert_eq!(self.analyzer.db(), db);
+                assert_eq!(self.history.range(), *range);
+                self.analyzer.clear_hold();
+                self.core.as_ref().unwrap().clear_hold();
+                assert_eq!(self.analyzer.hold_power(), self.analyzer.power());
+                self.visible[1] = false;
+                self.start();
+                assert!(!self.analyzer.is_ready());
+                self.lifecycle_stage = 3;
+            }
+            3 if self.analyzer.is_ready() && self.spectrum_info.updates >= 10 => {
+                assert_eq!(self.spectrum_info.mode, SpectrumMode::Latest);
+                assert_eq!(self.analyzer.settings().quantity, Quantity::Psd);
+                assert_eq!(self.analyzer.window().unwrap().channel, 1);
+                assert!(
+                    (self.analyzer.band(0.0, 24000.0).unwrap().power_fs2 - 0.0078125).abs() < 1e-12
+                );
+                self.visible[1] = true;
+                self.stop();
+                self.lifecycle_stage = 4;
+            }
+            4 if self.pending_stop.is_none() => {
+                assert_eq!(self.spectrum_info.input_missing, 0);
+                assert_eq!(self.spectrum_info.missing_windows, 0);
+                assert_eq!(
+                    self.core
+                        .as_ref()
+                        .unwrap()
+                        .spectrum
+                        .metrics
+                        .input_dropped
+                        .load(Ordering::Relaxed),
+                    0
+                );
+                println!(
+                    "Large FFT UI lifecycle OK: asynchronous finite-end Stop, held settings/data, narrow individual-bin display, Clear hold, new generation/CH/PSD/Latest, hidden Spectrum continues, final Latest window"
+                );
+                self.lifecycle_stage = 5;
+            }
+            _ => {}
+        }
+        if self.lifecycle_stage < 5 {
+            ctx.request_repaint_after(Duration::from_millis(10));
+        }
     }
 
     fn update_spectrum(&mut self, final_snapshot: bool) {
@@ -1292,6 +1491,7 @@ impl ScopeApp {
                 self.spectrum_info.contributing = average.start..average.end;
             }
             self.spectrum_dirty = true;
+            self.spectrum_numeric_key = None;
         }
     }
 
@@ -1364,9 +1564,15 @@ impl ScopeApp {
                 trigger: self.trigger,
             };
             if let Some(core) = &self.core {
-                if settings != self.core_scope {
-                    let mut snapshot = core.scope(settings);
-                    self.accept_snapshot(&mut snapshot);
+                if settings != self.core_scope && self.pending_scope.is_none() {
+                    self.pending_scope = Some(core.scope_async(settings));
+                    #[cfg(feature = "qa")]
+                    if std::env::var_os("MEASURELAB_PROFILE_LIFECYCLE").is_some()
+                        || std::env::var_os("MEASURELAB_PROFILE_INPUT_LIFECYCLE").is_some()
+                    {
+                        let mut snapshot = self.pending_scope.take().unwrap().wait();
+                        self.accept_snapshot(&mut snapshot);
+                    }
                 }
             } else {
                 let sweep = self.history.sweep(settings.samples, self.trigger);
@@ -1443,6 +1649,11 @@ impl ScopeApp {
     fn reset_analysis(&mut self) {
         self.spectrum_channel = self.spectrum_channel.min(self.channels.max(1) as usize - 1);
         self.analyzer = spectrum::Result::empty(self.spectrum_settings, self.sample_rate);
+        self.spectrum_numeric_key = None;
+        self.spectrum_info = measurement::SpectrumInfo {
+            mode: self.spectrum_mode,
+            ..Default::default()
+        };
         if let Some(core) = &self.core {
             core.configure_spectrum(
                 self.spectrum_settings,
@@ -1499,6 +1710,10 @@ impl ScopeApp {
     }
 
     fn start(&mut self) {
+        if self.pending_stop.is_some() {
+            self.start_after_stop = true;
+            return;
+        }
         #[cfg(feature = "qa")]
         if let Some(profile) = &mut self.profile {
             profile.new_input(self.dropped);
@@ -1534,12 +1749,25 @@ impl ScopeApp {
     }
 
     fn stop(&mut self) {
+        self.start_after_stop = false;
         self.stft.pause();
         let was_audio = self.capture.take().is_some();
         self.demo_running = false;
-        if let Some(core) = &self.core {
-            let mut snapshot = core.stop();
-            self.accept_snapshot(&mut snapshot);
+        if self.pending_stop.is_none()
+            && let Some(core) = &self.core
+        {
+            self.pending_stop = Some(core.stop_async());
+        }
+        #[cfg(feature = "qa")]
+        if std::env::var_os("MEASURELAB_PROFILE_LIFECYCLE").is_some()
+            || std::env::var_os("MEASURELAB_PROFILE_INPUT_LIFECYCLE").is_some()
+        {
+            // Existing lifecycle assertions inspect the completed barrier. Normal
+            // UI Stop uses poll_measurement and never waits for this completion.
+            if let Some(pending) = self.pending_stop.take() {
+                let mut snapshot = pending.wait();
+                self.accept_snapshot(&mut snapshot);
+            }
         }
         // The final raw snapshot may be newer than the last displayed XY
         // capture. Freeze its trigger reference before any cursor readout.
@@ -1719,7 +1947,9 @@ impl ScopeApp {
     fn transport(&mut self, ui: &mut egui::Ui) {
         if ui
             .add_enabled(
-                !self.busy && (self.source == Source::Demo || !self.devices.is_empty()),
+                !self.busy
+                    && self.pending_stop.is_none()
+                    && (self.source == Source::Demo || !self.devices.is_empty()),
                 egui::Button::new(
                     RichText::new(if self.running() {
                         "■  Stop"
@@ -2159,7 +2389,11 @@ impl ScopeApp {
         ui.selectable_value(
             &mut self.spectrum_mode,
             SpectrumMode::Latest,
-            "Latest window · up to 30/s",
+            if self.spectrum_settings.size <= 32768 {
+                "Latest window · 33 ms / N/4 minimum"
+            } else {
+                "Latest window · 100 ms observation"
+            },
         );
         if old_mode != self.spectrum_mode && self.running() {
             self.reset_analysis();
@@ -2191,6 +2425,7 @@ impl ScopeApp {
             self.floor_db,
             self.show_hold,
             self.span_hz,
+            self.spectrum_min_hz,
         );
         ui.separator();
         setting_label(ui, "FREQUENCY AXIS");
@@ -2219,19 +2454,52 @@ impl ScopeApp {
                     );
                 }
             });
+        setting_label(ui, "DISPLAY FREQUENCY RANGE");
+        ui.horizontal(|ui| {
+            ui.label("From");
+            ui.add(
+                egui::DragValue::new(&mut self.spectrum_min_hz)
+                    .range(0.0..=self.sample_rate as f32 / 2.0)
+                    .speed(0.1)
+                    .suffix(" Hz"),
+            );
+        });
+        ui.horizontal(|ui| {
+            ui.label("To");
+            ui.add(
+                egui::DragValue::new(&mut self.span_hz)
+                    .range(0.0..=self.sample_rate as f32 / 2.0)
+                    .speed(0.1)
+                    .suffix(" Hz"),
+            );
+        });
+        ui.label(
+            RichText::new("To = 0 uses Nyquist. Narrow ranges show individual bins.")
+                .small()
+                .color(MUTED),
+        );
         setting_label(ui, "DISPLAY FLOOR");
         ui.add(
             egui::Slider::new(&mut self.floor_db, -180.0..=-60.0)
                 .text(self.analyzer.settings().quantity.db_unit()),
         );
         ui.horizontal(|ui| {
-            if ui.checkbox(&mut self.show_hold, "Peak hold").changed() && self.show_hold {
+            if ui.checkbox(&mut self.show_hold, "Peak hold").changed()
+                && self.show_hold
+                && self.pending_stop.is_none()
+            {
                 self.analyzer.clear_hold();
                 if let Some(core) = &self.core {
                     core.clear_hold();
                 }
             }
-            if ui.small_button("Clear hold").clicked() {
+            if ui
+                .add_enabled(
+                    self.pending_stop.is_none(),
+                    egui::Button::new("Clear hold").small(),
+                )
+                .clicked()
+            {
                 self.analyzer.clear_hold();
                 if let Some(core) = &self.core {
                     core.clear_hold();
@@ -2245,10 +2513,11 @@ impl ScopeApp {
                 self.floor_db,
                 self.show_hold,
                 self.span_hz,
+                self.spectrum_min_hz,
             );
         ui.label(
             RichText::new(format!(
-                "Δf {:.2} Hz · RBW {:.2} Hz\nWindow {:.1} ms · {} processed windows",
+                "Δf {:.6} Hz · RBW {:.6} Hz\nWindow {:.1} ms · {} processed windows",
                 self.analyzer.bin_hz(),
                 self.analyzer.rbw_hz(),
                 self.analyzer.settings().size as f32 / self.sample_rate as f32 * 1000.0,
@@ -2257,6 +2526,30 @@ impl ScopeApp {
             .small()
             .color(MUTED),
         );
+        if self.pending_stop.is_some() {
+            ui.label(
+                RichText::new("Stopping · finishing Spectrum windows")
+                    .small()
+                    .color(YELLOW),
+            );
+        } else if self.running() && !self.analyzer.is_ready() {
+            ui.label(
+                RichText::new(format!(
+                    "Filling window · {} / {} samples",
+                    self.spectrum_info.filled_samples, self.spectrum_settings.size
+                ))
+                .small()
+                .color(MUTED),
+            );
+        }
+        ui.label(RichText::new(format!("Hop {:.1} ms · Latest observation {} ms · missing input {} · missed observations {}",
+            self.analyzer.settings().size as f64 / 4.0 / self.sample_rate as f64 * 1000.0,
+            crate::spectrum_worker::observation_interval(self.analyzer.settings().size).as_millis(),
+            self.spectrum_info.input_missing, self.spectrum_info.missed_observations)).small().color(MUTED));
+        if let Some(window) = self.analyzer.window() {
+            ui.label(RichText::new(format!("FFT end #{} · acquired end #{}", window.end, self.history.range().end)).small().color(MUTED))
+                .on_hover_text("Spectrum and Scope/XY have independent sample intervals. FFT processing time and the age of this window are separate conditions.");
+        }
         if self.analyzer.settings().quantity == Quantity::Psd {
             ui.separator();
             setting_label(ui, "POWER IN BAND");
@@ -2302,7 +2595,7 @@ impl ScopeApp {
             .width(ui.available_width())
             .selected_text(format!("{} points", self.spectrogram_settings.size))
             .show_ui(ui, |ui| {
-                for size in FFT_SIZES {
+                for size in STFT_SIZES {
                     ui.selectable_value(
                         &mut self.spectrogram_settings.size,
                         size,
@@ -2728,7 +3021,7 @@ impl ScopeApp {
             }
         }
         let text = format!(
-            "F {:.1} Hz · {:.2} {}\nCH {} · {}..{} · α 1/{}",
+            "F {:.6} Hz · {:.2} {}\nCH {} · {}..{} · α 1/{}",
             reading.frequency_hz,
             reading.level_db,
             window.settings.quantity.db_unit(),
@@ -3432,9 +3725,28 @@ impl ScopeApp {
         if self.span_hz > 0.0 {
             view.max_hz = self.span_hz.min(view.max_hz);
         }
-        // Keep a valid log interval even for unusual low-rate input devices.
-        view.min_hz = view.min_hz.min(view.max_hz * 0.1);
+        // Preserve a finite interval under edited ranges or a changed input Fs.
+        let minimum_span = (self.analyzer.bin_hz() * 0.01).max(0.001);
+        view.max_hz = view.max_hz.max(minimum_span * 2.0);
+        view.min_hz = self
+            .spectrum_min_hz
+            .max(view.min_hz.min(view.max_hz * 0.1))
+            .min(view.max_hz - minimum_span);
         view
+    }
+
+    fn refresh_spectrum_readouts(&mut self, view: View) {
+        let upper = if self.band_max_hz == 0.0 {
+            self.analyzer.nyquist() as f64
+        } else {
+            self.band_max_hz
+        };
+        let key = (view.min_hz, view.max_hz, self.band_min_hz, upper);
+        if self.spectrum_numeric_key != Some(key) {
+            self.spectrum_peak = self.analyzer.peak(view);
+            self.spectrum_band = self.analyzer.band(self.band_min_hz, upper);
+            self.spectrum_numeric_key = Some(key);
+        }
     }
 
     fn spectrum_panel(&mut self, ui: &mut egui::Ui) {
@@ -3471,10 +3783,11 @@ impl ScopeApp {
                     });
                 });
                 let view = self.spectrum_view();
-                if let Some(peak) = self.analyzer.peak(view) {
+                self.refresh_spectrum_readouts(view);
+                if let Some(peak) = self.spectrum_peak {
                     ui.label(
                         RichText::new(format!(
-                            "Peak bin  {:.1} Hz · {:.2} {}    Δf {:.2} Hz",
+                            "Peak bin  {:.4} Hz · {:.2} {}    Δf {:.6} Hz",
                             peak.frequency,
                             peak.level_db,
                             self.analyzer.settings().quantity.db_unit(),
@@ -3497,10 +3810,7 @@ impl ScopeApp {
                     );
                 }
                 if self.analyzer.settings().quantity == Quantity::Psd {
-                    let upper = if self.band_max_hz == 0.0 {
-                        self.analyzer.nyquist() as f64
-                    } else { self.band_max_hz };
-                    if let Some(band) = self.analyzer.band(self.band_min_hz, upper) {
+                    if let Some(band) = self.spectrum_band {
                         ui.label(RichText::new(format!(
                             "Band {:.1}–{:.1} Hz · {:.4e} FS² · {:.5e} RMS FS",
                             band.first_hz, band.last_hz, band.power_fs2, band.rms_fs
@@ -3549,7 +3859,12 @@ impl ScopeApp {
         }
         let ticks: Vec<(f32, bool)> = if view.scale == FrequencyScale::Linear {
             (0..=5)
-                .map(|i| (view.max_hz * i as f32 / 5.0, true))
+                .map(|i| {
+                    (
+                        view.min_hz + (view.max_hz - view.min_hz) * i as f32 / 5.0,
+                        true,
+                    )
+                })
                 .collect()
         } else {
             (0..=5)
@@ -3639,7 +3954,7 @@ impl ScopeApp {
                 revision: self.spectrum_revision,
             },
         ));
-        if let Some(peak) = self.analyzer.peak(view) {
+        if let Some(peak) = self.spectrum_peak {
             let x = rect.left() + view.x(peak.frequency as f32) * rect.width();
             painter.line_segment(
                 [pos2(x, rect.top()), pos2(x, rect.top() + 10.0)],
@@ -3922,6 +4237,9 @@ impl eframe::App for ScopeApp {
         let input_started = Instant::now();
         self.poll_audio();
         self.poll_measurement();
+        if self.pending_stop.is_some() || self.pending_scope.is_some() {
+            ctx.request_repaint_after(Duration::from_millis(10));
+        }
         #[cfg(feature = "qa")]
         if self.running()
             && let Some(profile) = &mut self.profile
@@ -3951,11 +4269,24 @@ impl eframe::App for ScopeApp {
             {
                 profile.record_work(crate::qa::Work::Spectrogram, self.spectrogram_build_ms);
             }
+            self.check_large_fft_lifecycle(&ctx);
             self.check_lifecycle(&ctx, elapsed);
             self.check_input_lifecycle(&ctx);
             let running = self.running();
             if let Some(profile) = &mut self.profile {
                 profile.record(elapsed, running, frame.info().cpu_usage);
+                if profile.progress_due()
+                    && let Some(core) = &self.core
+                {
+                    println!(
+                        "QA progress: {} input frames, {} capture loss, {} FFT windows, demo poll interval max {:.3} ms, demo suspension gaps {}",
+                        core.metrics.input_frames.load(Ordering::Relaxed),
+                        self.dropped,
+                        core.spectrum.metrics.windows.load(Ordering::Relaxed),
+                        core.metrics.demo_interval_max_nanos.load(Ordering::Relaxed) as f64 / 1e6,
+                        core.metrics.demo_suspensions.load(Ordering::Relaxed)
+                    );
+                }
                 if profile.finished() {
                     assert!(self.error.is_none(), "UI QA input failed: {:?}", self.error);
                     if std::env::var_os("MEASURELAB_PROFILE_LIFECYCLE").is_some() {
@@ -3964,14 +4295,169 @@ impl eframe::App for ScopeApp {
                     if std::env::var_os("MEASURELAB_PROFILE_INPUT_LIFECYCLE").is_some() {
                         assert_eq!(self.lifecycle_stage, 6, "input lifecycle did not finish");
                     }
+                    if std::env::var_os("MEASURELAB_PROFILE_LARGE_LIFECYCLE").is_some() {
+                        assert_eq!(
+                            self.lifecycle_stage, 5,
+                            "large FFT lifecycle did not complete"
+                        );
+                    }
+                    // Terminal QA barrier fixes the finite endpoint before the
+                    // report. This wait is outside the UI timing interval.
+                    let finished = self.core.as_ref().map(|core| core.stop());
+                    if let Some(snapshot) = &finished {
+                        let result = &snapshot.spectrum;
+                        if result.is_ready() {
+                            let average = result.average().unwrap();
+                            let seconds =
+                                (average.end - average.start - result.settings().size as u64)
+                                    as f64
+                                    / snapshot.sample_rate as f64;
+                            println!(
+                                "Spectrum final: {} Hz, {} ch, CH {}, N {}, {:?}, {:?}, updates {}, missing windows {}, input missing {}, missed observations {}, latest end {}, acquired end {}, observed rate {:.3} Hz",
+                                snapshot.sample_rate,
+                                snapshot.history.channels(),
+                                result.window().unwrap().channel + 1,
+                                result.settings().size,
+                                result.settings().quantity,
+                                snapshot.spectrum_info.mode,
+                                average.updates,
+                                snapshot.spectrum_info.missing_windows,
+                                snapshot.spectrum_info.input_missing,
+                                snapshot.spectrum_info.missed_observations,
+                                result.window().unwrap().end,
+                                snapshot.history.range().end,
+                                if seconds > 0.0 {
+                                    (average.updates - 1) as f64 / seconds
+                                } else {
+                                    0.0
+                                }
+                            );
+                            if std::env::var_os("MEASURELAB_PROFILE_DEMO_BIN_TONE").is_some() {
+                                assert_eq!(snapshot.input_dropped, 0);
+                                assert_eq!(snapshot.spectrum_info.input_missing, 0);
+                                assert_eq!(snapshot.spectrum_info.missing_windows, 0);
+                                if snapshot.spectrum_info.mode == SpectrumMode::Continuous {
+                                    assert_eq!(
+                                        average.updates,
+                                        1 + (snapshot.history.range().end
+                                            - result.settings().size as u64)
+                                            / (result.settings().size / 4) as u64
+                                    );
+                                }
+                                match result.settings().quantity {
+                                    Quantity::Amplitude => assert!(
+                                        (result.cursor(750.0).unwrap().value - 0.125).abs() < 1e-12
+                                    ),
+                                    Quantity::Psd => assert!(
+                                        (result
+                                            .band(0.0, snapshot.sample_rate as f64 / 2.0)
+                                            .unwrap()
+                                            .power_fs2
+                                            - 0.0078125)
+                                            .abs()
+                                            < 1e-12
+                                    ),
+                                }
+                                println!(
+                                    "Known demo Spectrum OK: 750 Hz, 0.125 FS peak, no noise, 2ch / 90 degrees"
+                                );
+                            }
+                        }
+                    }
+                    if let Some((_, failed)) = &self.known_output {
+                        assert!(
+                            !failed.load(Ordering::Relaxed),
+                            "BlackHole fixture output failed"
+                        );
+                        let snapshot = finished.as_ref().unwrap();
+                        assert_eq!(snapshot.input_dropped, 0);
+                        assert_eq!(snapshot.spectrum_info.input_missing, 0);
+                        assert_eq!(snapshot.spectrum_info.missing_windows, 0);
+                        let result = &snapshot.spectrum;
+                        let bin = (32 + self.spectrum_channel * 7) * result.settings().size / 8192;
+                        let hz =
+                            bin as f64 * self.sample_rate as f64 / result.settings().size as f64;
+                        match result.settings().quantity {
+                            Quantity::Amplitude => {
+                                assert!((result.cursor(hz).unwrap().value - 0.125).abs() < 3e-8)
+                            }
+                            Quantity::Psd => assert!(
+                                (result
+                                    .band(0.0, self.sample_rate as f64 / 2.0)
+                                    .unwrap()
+                                    .power_fs2
+                                    - 0.0078125)
+                                    .abs()
+                                    < 1e-8
+                            ),
+                        }
+                        let end = snapshot.history.range().end;
+                        if self.spectrum_mode == SpectrumMode::Continuous {
+                            assert_eq!(
+                                snapshot.spectrum_info.updates,
+                                1 + (end - result.settings().size as u64)
+                                    / (result.settings().size / 4) as u64
+                            );
+                        }
+                        let average = result.average().unwrap();
+                        let seconds = (average.end - average.start - result.settings().size as u64)
+                            as f64
+                            / self.sample_rate as f64;
+                        println!(
+                            "Known Spectrum OK: {} Hz, {} ch, CH {}, N {}, {:?}, {:?}, {} windows, latest end {}, acquired end {}, observed rate {:.3} Hz",
+                            self.sample_rate,
+                            self.channels,
+                            self.spectrum_channel + 1,
+                            result.settings().size,
+                            result.settings().quantity,
+                            self.spectrum_mode,
+                            average.updates,
+                            result.window().unwrap().end,
+                            end,
+                            (average.updates - 1) as f64 / seconds
+                        );
+                    }
                     profile.report(self.dropped);
                     if let Some(core) = &self.core {
                         println!(
+                            "Spectrum transport: input dropped {}, high water {} / {}, skipped publications {}, FFT p95 {:.3} ms, FFT max {:.3} ms, planning max {:.3} ms, acquisition poll max {:.3} ms, Spectrum CPU {:.3} ms",
+                            core.spectrum.metrics.input_dropped.load(Ordering::Relaxed),
+                            core.spectrum
+                                .metrics
+                                .input_high_water
+                                .load(Ordering::Relaxed),
+                            crate::spectrum_worker::INPUT_BLOCKS,
+                            core.spectrum
+                                .metrics
+                                .display_skipped
+                                .load(Ordering::Relaxed),
+                            core.spectrum.metrics.fft_p95_ms(),
+                            core.spectrum.metrics.fft_max_nanos.load(Ordering::Relaxed) as f64
+                                / 1e6,
+                            core.spectrum
+                                .metrics
+                                .planning_max_nanos
+                                .load(Ordering::Relaxed) as f64
+                                / 1e6,
+                            core.metrics.input_poll_max_nanos.load(Ordering::Relaxed) as f64 / 1e6,
+                            core.spectrum
+                                .metrics
+                                .processing_nanos
+                                .load(Ordering::Relaxed) as f64
+                                / 1e6
+                        );
+                        println!(
                             "Measurement worker: {} input frames, {} FFT windows, {} skipped display updates, CPU {:.3} ms total",
                             core.metrics.input_frames.load(Ordering::Relaxed),
-                            core.metrics.spectrum_windows.load(Ordering::Relaxed),
+                            core.spectrum.metrics.windows.load(Ordering::Relaxed),
                             core.metrics.display_skipped.load(Ordering::Relaxed),
                             core.metrics.processing_nanos.load(Ordering::Relaxed) as f64 / 1e6
+                        );
+                        println!(
+                            "Demo source: poll interval max {:.3} ms, suspension gaps {}",
+                            core.metrics.demo_interval_max_nanos.load(Ordering::Relaxed) as f64
+                                / 1e6,
+                            core.metrics.demo_suspensions.load(Ordering::Relaxed)
                         );
                     }
                     println!(
@@ -3992,6 +4478,11 @@ impl eframe::App for ScopeApp {
                         history.len(),
                         history.storage_bytes() as f64 / 1048576.0
                     );
+                    if std::env::var_os("MEASURELAB_PROFILE_DEMO_BIN_TONE").is_some() {
+                        let snapshot = finished.as_ref().expect("known demo finite endpoint");
+                        assert_eq!(snapshot.input_dropped, 0, "known demo acquisition loss");
+                        assert!(snapshot.spectrum.is_ready(), "known demo incomplete FFT");
+                    }
                     self.profile = None;
                     ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                 }
@@ -4000,7 +4491,9 @@ impl eframe::App for ScopeApp {
                 }
                 if std::env::var_os("MEASURELAB_PROFILE_SCREENSHOT").is_some()
                     && !self.screenshot_requested
-                    && self.created.elapsed() > Duration::from_secs(3)
+                    && self.created.elapsed().as_secs_f64()
+                        > (self.spectrum_settings.size as f64 / self.sample_rate as f64 + 1.0)
+                            .max(3.0)
                 {
                     self.screenshot_requested = true;
                     ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(Default::default()));
@@ -4076,7 +4569,9 @@ impl eframe::App for ScopeApp {
                     self.transport(ui);
                     ui.separator();
                     ui.label(
-                        RichText::new(if self.busy {
+                        RichText::new(if self.pending_stop.is_some() {
+                            "FINISHING SPECTRUM…"
+                        } else if self.busy {
                             "OPENING DEVICE…"
                         } else if self.smoke {
                             "UI TEST FIXTURE"
