@@ -3755,31 +3755,34 @@ impl ScopeApp {
                 }
                 self.xy_cursors(ui, &response, rect, bounds);
                 let capture = &self.xy_capture;
-                ui.label(
-                    RichText::new(format!(
-                        "{:.1} ms · samples {}..{}{}{}",
-                        (capture.range.end - capture.range.start) as f64 * 1000.0
-                            / self.sample_rate as f64,
-                        capture.range.start,
-                        capture.range.end,
-                        if capture.limited {
-                            " · point limit"
-                        } else {
-                            ""
-                        },
-                        if self.xy_cursor_mode == xy::CursorMode::Free {
-                            ""
-                        } else if capture.triggered {
-                            " · Triggered"
-                        } else if self.trigger.edge == Edge::Free {
-                            " · Free run (moving reference)"
-                        } else {
-                            " · Auto (no crossing)"
-                        }
-                    ))
-                    .small()
-                    .color(MUTED),
-                );
+                // Use the same footer row height reserved by plot_size for the other plots.
+                ui.horizontal(|ui| {
+                    ui.label(
+                        RichText::new(format!(
+                            "{:.1} ms · samples {}..{}{}{}",
+                            (capture.range.end - capture.range.start) as f64 * 1000.0
+                                / self.sample_rate as f64,
+                            capture.range.start,
+                            capture.range.end,
+                            if capture.limited {
+                                " · point limit"
+                            } else {
+                                ""
+                            },
+                            if self.xy_cursor_mode == xy::CursorMode::Free {
+                                ""
+                            } else if capture.triggered {
+                                " · Triggered"
+                            } else if self.trigger.edge == Edge::Free {
+                                " · Free run (moving reference)"
+                            } else {
+                                " · Auto (no crossing)"
+                            }
+                        ))
+                        .small()
+                        .color(MUTED),
+                    );
+                });
             });
     }
 
