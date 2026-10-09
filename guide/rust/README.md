@@ -48,6 +48,8 @@ cargo run --release
 
 入力デバイスを選択して **Start input** を押してください。停止すると最後の波形が保持されます。再開時は新しい入力で履歴を作り直します。音声ファイルへの保存やオーディオ出力は行いません。
 
+**Input source / SAMPLE RATE** で **Device default** またはデバイスが対応する公称レートを選べます。選択肢の上限は768 kHzで、44.1／48／88.2／96／176.4／192／352.8／384／705.6／768 kHzなどから対応する値と、デバイス固有のレートを表示します。入力CH数を維持できる設定を使います。デバイス変更・再取得ではDevice defaultへ戻ります。取得中の変更は新しい入力世代で再開始し、履歴・平均・保持・カーソルをリセットします。停止中の変更は次回Startに適用し、保持結果のFsと時間・周波数軸は変えません。開始時に対応設定を再確認し、失敗時はエラーを表示します。
+
 通常の起動はユーザー単位のファイルロックで重複を防ぎ、2つ目は既に起動中と表示して終了します。意図的に複数起動する場合は`--new-instance`を追加してください。音声を取得するQAコマンドも同じロックを使い、デバイス列挙とGPU読み戻しは対象外です。起動制御は測定コアから分離しています。ロックファイルは残りますが、[OSのファイルロック](https://doc.rust-lang.org/std/fs/struct.File.html#method.try_lock)はプロセス終了時に解放されるため、異常終了後にファイルを手で削除する必要はありません。旧ビルドにはこの制御がないため、旧版との重複は防げません。
 
 マイクを使わず試すには、内部信号で起動します。起動後も左側の **Demo signal / Audio input** で入力を切り替えられます。
@@ -84,6 +86,7 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | 操作 | 内容 |
 | --- | --- |
 | Input source / Refresh devices | CPAL入力デバイスの選択・再取得 |
+| Input source / SAMPLE RATE | Device default／対応する公称Fsを選択。上限768 kHz |
 | Start input / Stop / Space | 入力開始・停止 |
 | Cursor A / B / Clear | カーソルの選択／時間・周波数・XY自由配置カーソルの解除 |
 | Scope上でクリック／ドラッグ | 時間カーソルのX位置を固定。各更新の波形から振幅・トリガー基準の時刻・Δtを表示 |
@@ -130,7 +133,7 @@ RMS・Peak・P-PはScopeの整数サンプル区間内に取得した生のf64�
 
 トリガーの位置とレベルはオレンジの「T」で示し、レベルの三角マーカーは波形領域の右外側に表示します。
 
-生サンプル・波形軸・トリガー閾値の振幅は、CPALから取得したデジタル音声のフルスケール（FS）です。サンプルレートはデバイス既定の公称値です。外部ADCの制御、音声デバイス以外の入力は未実装です。
+生サンプル・波形軸・トリガー閾値の振幅は、CPALから取得したデジタル音声のフルスケール（FS）です。サンプルレートは取得に使った公称値で、デバイスの時計を校正した実レートではありません。768 kHzは設定上限であり、実際に選べるレートはデバイス・OSの対応範囲に依存します。外部ADCの制御、音声デバイス以外の入力は未実装です。
 
 **Scope calibration** ではCH 1〜16の数値読み出しに `y = gain × x(FS) + offset` を適用できます。Gainは物理単位/FS、Offsetは同じ物理単位です。V、mV、Aなどの単位と、基準信号・デバイスレンジ・日付・不確かさなどの参照条件を入力し、**Queue calibration** を押して次回Start用に設定します。負のゲインも使えます。ゲイン0・非有限の係数・空の単位や参照条件は拒否します。**Queue uncalibrated FS** はそのCHの次回用校正を解除します。入力CHの位置をIDとして扱い、トレースを入れ替えても校正は入力CHへ対応します。
 
@@ -226,6 +229,7 @@ Audio device → CPAL callback → bounded SPSC → measurement worker ← inter
 ./scripts/cargo.sh run --release -- --audio-smoke
 ./scripts/cargo.sh run --release -- --audio-smoke --input-device "BlackHole 16ch"
 ./scripts/cargo.sh run --release -- --stft-smoke --input-device "BlackHole 16ch" --channel 16
+./scripts/cargo.sh run --release -- --stft-smoke --input-device "BlackHole 16ch" --channel 16 --sample-rate 192000
 ./scripts/cargo.sh run --release --features qa -- --multichannel-smoke
 ./scripts/cargo.sh run --release -- --gpu-smoke
 ./scripts/cargo.sh run --features qa -- --ui-smoke
@@ -254,7 +258,7 @@ MEASURELAB_UI_SMOKE_ROUTING=1 MEASURELAB_UI_SMOKE_SETTINGS=scope \
     ./scripts/cargo.sh run --release --locked --features qa -- --ui-smoke
 ```
 
-`--audio-smoke`は入力を2秒間取り込み、フレーム数と全chのピークを確認します。`--input-device`を省略すると既定入力を使います。`--stft-smoke`は同じ入力から連続窓の順序・個数・欠落・ワーカーのCPU時間を確認し、`--channel`は1始まりです。無音でも取得と連続性の検証は可能です。
+`--audio-smoke`は入力を2秒間取り込み、フレーム数と全chのピークを確認します。`--input-device`を省略すると既定入力を使います。`--stft-smoke`は同じ入力から連続窓の順序・個数・欠落・ワーカーのCPU時間を確認し、`--channel`は1始まりです。両方で`--sample-rate HZ`（上限768000）を指定でき、省略時はデバイス既定です。無音でも取得と連続性の検証は可能です。
 
 `--multichannel-smoke`は`qa`機能でのみ使えるBlackHole 16ch専用の確認です。その仮想デバイスの16出力へ異なるビン中心周波数の正弦波（0.125 FS peak）を流し、0.5秒の起動待ち後、2秒間の取得で16入力すべてのch対応・周波数・振幅とCH 16のSTFTを検証します。CH 16／CH 8とその入れ替えで、ScopeのRMS・Peak・P-PとXYの同一フレームのTrace Snapも照合します。起動待ち中のCoreAudio通知は別に出力し、測定区間のストリームエラーや欠落は失敗にします。通常アプリの出力機能ではなく、実デバイスを使うローカルQA用の既知信号です。
 
@@ -307,6 +311,8 @@ MEASURELAB_PROFILE_SECONDS=5 MEASURELAB_PROFILE_LIFECYCLE=1 MEASURELAB_PROFILE_I
 ```
 
 仮想デバイスを使う停止・再開の統合確認は`MEASURELAB_PROFILE_INPUT_LIFECYCLE=1`で実行します。共通の生サンプル／STFTカーソル、全測定器の保持、遅着結果の除外、停止中の表示・解析設定変更、非表示／再表示、再開時の世代更新、実入力→内部デモ→実入力の切り替えをアプリの入力経路で検証します。`MEASURELAB_PROFILE_SWITCH_DEVICE`を指定すると、最後に別のデバイスへ切り替えます。内部デモのライフサイクルとは別々に実行し、状態変更を含む性能値は通常の基準値と区別します。取得欠落は入力を切り替えてもQA全体で累積します。
+
+`MEASURELAB_PROFILE_SAMPLE_RATE=48000`は実入力の開始レートを指定します。上記ライフサイクルで`MEASURELAB_PROFILE_SWITCH_SAMPLE_RATE=192000`を追加すると、保持中に次回用Fsを変更し、保持値のFsを維持した後、再開したSpectrum／STFTが新しいFsを使うことを検証します。デバイス切り替えを指定した場合はDevice defaultへ戻ります。`MEASURELAB_PROFILE_SETTINGS=input`と`MEASURELAB_PROFILE_SCREENSHOT=1`で入力設定を撮影できます。
 
 このQAではScopeとXYへ最終CH／CH 1を割り当て、停止中に入れ替えた要求が保持中の割当を変えず、再開時に適用されることも確認します。BlackHole 16ch→デモ→BlackHole 2chでは、CH 16を利用不可のまま保持することを確認します。
 

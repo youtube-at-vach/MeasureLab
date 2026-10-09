@@ -441,9 +441,13 @@ impl Drop for Worker {
 
 /// Explicit local hardware check: validates window order on a chosen input CH.
 /// Silence is valid input; spectral accuracy is checked with synthetic signals.
-pub fn smoke_test(device_name: Option<&str>, channel: usize) -> Result<(), String> {
+pub fn smoke_test(
+    device_name: Option<&str>,
+    channel: usize,
+    sample_rate: Option<u32>,
+) -> Result<(), String> {
     let device = crate::audio::input_device(device_name)?;
-    let (_stream, mut capture) = crate::audio::start_device(&device)?;
+    let (_stream, mut capture) = crate::audio::start_device(&device, sample_rate)?;
     let config = Config {
         sample_rate: capture.sample_rate,
         channels: capture.channels as usize,

@@ -287,6 +287,7 @@ pub struct ScopeApp {
     audio: AudioWorker,
     devices: Vec<DeviceInfo>,
     selected: usize,
+    requested_sample_rate: Option<u32>,
     capture: Option<()>,
     busy: bool,
     error: Option<String>,
@@ -458,6 +459,7 @@ impl ScopeApp {
             audio: AudioWorker::new(),
             devices: Vec::new(),
             selected: 0,
+            requested_sample_rate: None,
             capture: None,
             busy: true,
             error: None,
@@ -1102,6 +1104,12 @@ impl ScopeApp {
                 self.dirty = true;
                 self.xy_dirty = true;
                 self.visible = [false, false, true, false];
+                if let Ok(rate) = std::env::var("MEASURELAB_PROFILE_SWITCH_SAMPLE_RATE") {
+                    let rate = rate.parse().expect("QA switch sample rate must be Hz");
+                    crate::audio::validate_sample_rate(rate)
+                        .expect("QA switch sample rate is invalid");
+                    self.requested_sample_rate = Some(rate);
+                }
                 self.lifecycle_stage = 2;
             }
             2 if elapsed > 0.4 => {
@@ -1109,6 +1117,7 @@ impl ScopeApp {
                 self.rebuild_xy();
                 let (window, db, range) = self.lifecycle_spectrum_held.as_ref().unwrap();
                 assert_eq!(self.analyzer.window(), Some(*window));
+                assert_eq!(self.sample_rate, window.sample_rate);
                 assert_eq!(self.analyzer.db(), db);
                 assert_eq!(self.history.range(), *range);
                 assert_eq!(
@@ -1138,6 +1147,11 @@ impl ScopeApp {
             }
             3 if elapsed > 0.8 && latest.is_some() && !self.busy => {
                 let latest = latest.unwrap();
+                if let Some(rate) = self.requested_sample_rate {
+                    assert_eq!(self.sample_rate, rate);
+                    assert_eq!(latest.config.sample_rate, rate);
+                    assert_eq!(self.analyzer.window().unwrap().sample_rate, rate);
+                }
                 assert_ne!(latest.generation, self.lifecycle_held.unwrap().1.generation);
                 assert_eq!(latest.config.size, 1024);
                 assert_eq!(latest.config.channel, self.channels as usize - 1);
@@ -1169,6 +1183,7 @@ impl ScopeApp {
                         .iter()
                         .position(|device| device.name == name)
                         .expect("QA switch device not found");
+                    self.requested_sample_rate = None;
                 }
                 self.start();
                 self.lifecycle_stage = 5;
@@ -1745,7 +1760,10 @@ impl ScopeApp {
         self.capture = None;
         self.begin_observation();
         self.busy = true;
-        self.audio.send(Command::Start(self.selected));
+        self.audio.send(Command::Start {
+            device: self.selected,
+            sample_rate: self.requested_sample_rate,
+        });
     }
 
     fn stop(&mut self) {
@@ -1787,11 +1805,14 @@ impl ScopeApp {
                         self.calibration.clear_input();
                     }
                     self.selected = devices.iter().position(|d| d.is_default).unwrap_or(0);
+                    self.requested_sample_rate = None;
                     self.devices = devices;
                     #[cfg(feature = "qa")]
                     if let Some(name) = self.profile.as_ref().and_then(|p| p.device.as_ref()) {
                         if let Some(index) = self.devices.iter().position(|d| &d.name == name) {
                             self.selected = index;
+                            self.requested_sample_rate =
+                                self.profile.as_ref().and_then(|p| p.sample_rate);
                             self.start();
                         } else {
                             self.error = Some(format!("QA input device not found: {name}"));
@@ -1817,9 +1838,12 @@ impl ScopeApp {
                             self.spectrum_channel = channel.saturating_sub(1);
                             self.spectrogram_channel = channel.saturating_sub(1);
                         }
-                        if std::env::var("MEASURELAB_PROFILE_SETTINGS").as_deref() == Ok("spectrum")
-                        {
-                            self.sidebar.section = Some(SettingsSection::Spectrum);
+                        match std::env::var("MEASURELAB_PROFILE_SETTINGS").as_deref() {
+                            Ok("input") => self.sidebar.section = Some(SettingsSection::Input),
+                            Ok("spectrum") => {
+                                self.sidebar.section = Some(SettingsSection::Spectrum)
+                            }
+                            _ => {}
                         }
                     }
                     self.dirty = true;
@@ -1851,7 +1875,7 @@ impl ScopeApp {
             SettingsSection::Input => self
                 .devices
                 .get(self.selected)
-                .map(|device| device.name.clone())
+                .map(|device| format!("{} · {}", device.name, self.input_rate_label()))
                 .unwrap_or_else(|| "Select an audio device".into()),
             SettingsSection::Scope => {
                 format!("{} ms/div · {} FS/div", self.ms_per_div, self.fs_per_div)
@@ -2052,9 +2076,47 @@ impl ScopeApp {
             });
             if previous != self.selected {
                 self.calibration.clear_input();
-                if self.capture.is_some() {
-                    self.start();
-                }
+                self.requested_sample_rate = None;
+            }
+            setting_label(ui, "SAMPLE RATE");
+            let previous_rate = self.requested_sample_rate;
+            ui.add_enabled_ui(!self.busy && !self.devices.is_empty(), |ui| {
+                egui::ComboBox::from_id_salt("input_sample_rate")
+                    .width(ui.available_width())
+                    .selected_text(self.input_rate_label())
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut self.requested_sample_rate,
+                            None,
+                            "Device default",
+                        );
+                        if let Some(device) = self.devices.get(self.selected) {
+                            for &rate in &device.sample_rates {
+                                ui.selectable_value(
+                                    &mut self.requested_sample_rate,
+                                    Some(rate),
+                                    format!("{} kHz", rate as f64 / 1000.0),
+                                );
+                            }
+                        }
+                    });
+            });
+            ui.label(
+                RichText::new("Supported device rates · up to 768 kHz")
+                    .small()
+                    .color(MUTED),
+            );
+            if !self.running() {
+                ui.label(
+                    RichText::new("Rate changes apply on Start. Held results keep their rate.")
+                        .small()
+                        .color(MUTED),
+                );
+            }
+            if (previous != self.selected || previous_rate != self.requested_sample_rate)
+                && self.capture.is_some()
+            {
+                self.start();
             }
         }
         if self.source == Source::Live
@@ -2149,6 +2211,19 @@ impl ScopeApp {
                 .small()
                 .color(MUTED),
         );
+    }
+
+    fn input_rate_label(&self) -> String {
+        self.requested_sample_rate.map_or_else(
+            || {
+                if self.capture.is_some() {
+                    format!("Device default ({} kHz)", self.sample_rate as f64 / 1000.0)
+                } else {
+                    "Device default".into()
+                }
+            },
+            |rate| format!("{} kHz", rate as f64 / 1000.0),
+        )
     }
 
     fn scope_controls(&mut self, ui: &mut egui::Ui) {

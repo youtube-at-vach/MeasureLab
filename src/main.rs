@@ -16,6 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut list_devices = false;
     let mut new_instance = false;
     let mut input_device = None;
+    let mut sample_rate = None;
     let mut channel = 0;
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
@@ -26,6 +27,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "--new-instance" => new_instance = true,
             "--input-device" => {
                 input_device = Some(args.next().ok_or("--input-device requires a name")?)
+            }
+            "--sample-rate" => {
+                let rate = args
+                    .next()
+                    .ok_or("--sample-rate requires a rate in Hz")?
+                    .parse()?;
+                measurelab::audio::validate_sample_rate(rate)?;
+                sample_rate = Some(rate);
             }
             "--channel" => {
                 channel = args
@@ -43,7 +52,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "--compact" => compact = true,
             "--help" | "-h" => {
                 println!(
-                    "MeasureLab — GPU audio measurement lab\n\nOptions:\n  --demo        Start with an internal signal (no microphone or audio output)\n  --new-instance Explicitly allow another application or audio-check instance\n  --compact     Start in a smaller window with stacked plots\n  --low-latency Disable VSync (higher GPU usage)\n  --list-devices List CPAL input devices\n  --audio-smoke Capture input for two seconds and report every channel\n  --stft-smoke  Validate continuous STFT window order for two seconds\n  --multichannel-smoke Validate 16 distinct BlackHole tones (requires qa)\n  --input-device NAME  Choose a device for --audio-smoke / --stft-smoke\n  --channel N   Source channel for --stft-smoke (1-based, default 1)\n  --gpu-smoke   Validate independent GPU plots with offscreen readback\n  --ui-smoke    Open the four-instrument UI briefly, then close\n  --help       Show this help"
+                    "MeasureLab — GPU audio measurement lab\n\nOptions:\n  --demo        Start with an internal signal (no microphone or audio output)\n  --new-instance Explicitly allow another application or audio-check instance\n  --compact     Start in a smaller window with stacked plots\n  --low-latency Disable VSync (higher GPU usage)\n  --list-devices List CPAL input devices\n  --audio-smoke Capture input for two seconds and report every channel\n  --stft-smoke  Validate continuous STFT window order for two seconds\n  --multichannel-smoke Validate 16 distinct BlackHole tones (requires qa)\n  --input-device NAME  Choose a device for --audio-smoke / --stft-smoke\n  --sample-rate HZ  Input rate for --audio-smoke / --stft-smoke (up to 768000)\n  --channel N   Source channel for --stft-smoke (1-based, default 1)\n  --gpu-smoke   Validate independent GPU plots with offscreen readback\n  --ui-smoke    Open the four-instrument UI briefly, then close\n  --help       Show this help"
                 );
                 return Ok(());
             }
@@ -65,9 +74,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         return Err("Choose one smoke check or --list-devices".into());
     }
-    if (input_device.is_some() && !audio_smoke && !stft_smoke) || (channel != 0 && !stft_smoke) {
+    if ((input_device.is_some() || sample_rate.is_some()) && !audio_smoke && !stft_smoke)
+        || (channel != 0 && !stft_smoke)
+    {
         return Err(
-            "--input-device requires --audio-smoke / --stft-smoke; --channel requires --stft-smoke"
+            "--input-device / --sample-rate require --audio-smoke / --stft-smoke; --channel requires --stft-smoke"
                 .into(),
         );
     }
@@ -102,10 +113,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return measurelab::qa::multichannel_smoke_test();
     }
     if audio_smoke {
-        return measurelab::audio::smoke_test(input_device.as_deref()).map_err(Into::into);
+        return measurelab::audio::smoke_test(input_device.as_deref(), sample_rate)
+            .map_err(Into::into);
     }
     if stft_smoke {
-        return measurelab::stft::smoke_test(input_device.as_deref(), channel).map_err(Into::into);
+        return measurelab::stft::smoke_test(input_device.as_deref(), channel, sample_rate)
+            .map_err(Into::into);
     }
     let mut options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()

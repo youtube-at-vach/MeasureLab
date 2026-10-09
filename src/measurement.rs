@@ -770,6 +770,70 @@ mod tests {
         }
     }
 
+    #[test]
+    fn live_rate_changes_update_analysis_and_preserve_held_conditions() {
+        let (_stft, core, config, _spectrum) = setup(1024, 2);
+        let worker = Worker::new(core.feeder);
+        let mut held: Option<Snapshot> = None;
+        for (index, rate) in [44_100, 48_000, 96_000, 192_000, 48_000]
+            .into_iter()
+            .enumerate()
+        {
+            let (mut producer, consumer) = RingBuffer::new(1024);
+            let generation = index as u64 + 10;
+            worker.start_capture(
+                generation,
+                Capture {
+                    consumer,
+                    sample_rate: rate,
+                    channels: 2,
+                    format: "test f64".into(),
+                    metrics: Arc::new(AudioMetrics::default()),
+                },
+                config.clone(),
+            );
+            let fresh = worker.scope(config.scope);
+            assert_eq!(fresh.generation, generation);
+            assert_eq!(fresh.sample_rate, rate);
+            assert_eq!(fresh.stft_config.sample_rate, rate);
+            assert!(fresh.history.is_empty());
+            assert!(!fresh.spectrum.is_ready());
+            if let Some(previous) = &held {
+                assert_eq!(
+                    previous.spectrum.window().unwrap().sample_rate,
+                    previous.sample_rate
+                );
+                assert_ne!(previous.generation, fresh.generation);
+                assert_eq!(previous.history.range(), 0..1024);
+            }
+            for sequence in 0..1024 {
+                producer
+                    .push(AudioFrame {
+                        sequence,
+                        samples: frame(sequence, 1024, 2, 0.25),
+                    })
+                    .unwrap();
+            }
+            let captured = worker.stop_async().wait();
+            assert_eq!(captured.sample_rate, rate);
+            assert_eq!(captured.stft_config.sample_rate, rate);
+            assert_eq!(captured.spectrum.window().unwrap().sample_rate, rate);
+            assert_eq!(captured.spectrum.average().unwrap().updates, 1);
+            assert_eq!(captured.spectrum_info.input_missing, 0);
+            assert_eq!(captured.history.range(), 0..1024);
+            let hz = 32.0 * rate as f64 / 1024.0;
+            let reading = captured.spectrum.cursor(hz).unwrap();
+            assert_eq!(reading.frequency_hz, hz);
+            assert!((reading.value - 0.25).abs() < 1e-13);
+            assert!((captured.measurements[1].rms - 0.25 / 2.0_f64.sqrt()).abs() < 1e-13);
+            assert_eq!(
+                crate::cursor::sample_at_age(1024, 511.5 / rate as f64, rate),
+                Some(512)
+            );
+            held = Some(captured);
+        }
+    }
+
     fn stalled_display(channels: usize, size: usize) {
         let (mut stft, core, mut config, _spectrum) = setup(size, channels);
         // Exercise PSD at the maximum FFT while retaining amplitude regression.

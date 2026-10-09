@@ -200,6 +200,7 @@ pub struct Profile {
     previous_input_dropped: u64,
     last_progress_seconds: u64,
     pub device: Option<String>,
+    pub sample_rate: Option<u32>,
 }
 
 impl Profile {
@@ -215,6 +216,14 @@ impl Profile {
         if !(1..=3600).contains(&seconds) {
             return Err("MEASURELAB_PROFILE_SECONDS must be 1..=3600".into());
         }
+        let sample_rate = std::env::var("MEASURELAB_PROFILE_SAMPLE_RATE")
+            .ok()
+            .map(|value| {
+                let rate = value.parse::<u32>().map_err(|e| e.to_string())?;
+                crate::audio::validate_sample_rate(rate)?;
+                Ok::<_, String>(rate)
+            })
+            .transpose()?;
         Ok(Some(Self {
             started: Instant::now(),
             duration: Duration::from_secs(seconds + 2),
@@ -225,6 +234,7 @@ impl Profile {
             previous_input_dropped: 0,
             last_progress_seconds: 0,
             device: std::env::var("MEASURELAB_PROFILE_DEVICE").ok(),
+            sample_rate,
         }))
     }
 
@@ -334,7 +344,7 @@ pub fn multichannel_smoke_test() -> Result<(), Box<dyn std::error::Error>> {
         return Err("BlackHole QA requires 16ch f32 output".into());
     }
     let output_rate = supported.sample_rate();
-    let (_input_stream, mut capture) = audio::start_device(&input)?;
+    let (_input_stream, mut capture) = audio::start_device(&input, None)?;
     if capture.channels != 16 || capture.sample_rate != output_rate {
         return Err("BlackHole QA requires matching input/output rates and 16ch input".into());
     }
@@ -614,6 +624,7 @@ mod tests {
             previous_input_dropped: 0,
             last_progress_seconds: 0,
             device: None,
+            sample_rate: None,
         };
         profile.record_input_loss(4);
         profile.record_input_loss(4);

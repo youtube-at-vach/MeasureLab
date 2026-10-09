@@ -12,6 +12,12 @@ use crate::signal::{MAX_CHANNELS, Samples};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use rtrb::{Consumer, Producer, RingBuffer};
 
+pub const MAX_SAMPLE_RATE: u32 = 768_000;
+const SAMPLE_RATES: &[u32] = &[
+    8_000, 11_025, 16_000, 22_050, 32_000, 44_100, 48_000, 88_200, 96_000, 176_400, 192_000,
+    352_800, 384_000, 705_600, 768_000,
+];
+
 #[derive(Clone, Copy, Debug)]
 pub struct AudioFrame {
     pub samples: Samples,
@@ -37,11 +43,15 @@ pub struct Capture {
 pub struct DeviceInfo {
     pub name: String,
     pub is_default: bool,
+    pub sample_rates: Vec<u32>,
 }
 
 pub enum Command {
     Refresh,
-    Start(usize),
+    Start {
+        device: usize,
+        sample_rate: Option<u32>,
+    },
     Stop,
     Shutdown,
 }
@@ -77,9 +87,20 @@ impl AudioWorker {
                                 devices = found.collect();
                                 let info = devices
                                     .iter()
-                                    .map(|d| DeviceInfo {
-                                        name: d.to_string(),
-                                        is_default: default.as_ref() == Some(d),
+                                    .map(|d| {
+                                        let config = d.default_input_config().ok();
+                                        let ranges = d
+                                            .supported_input_configs()
+                                            .map(|configs| configs.collect::<Vec<_>>())
+                                            .unwrap_or_default();
+                                        DeviceInfo {
+                                            name: d.to_string(),
+                                            is_default: default.as_ref() == Some(d),
+                                            sample_rates: available_sample_rates(
+                                                config.as_ref(),
+                                                &ranges,
+                                            ),
+                                        }
                                     })
                                     .collect();
                                 let _ = events.send(Event::Devices(info));
@@ -89,15 +110,18 @@ impl AudioWorker {
                             }
                         }
                     }
-                    Command::Start(index) => {
+                    Command::Start {
+                        device,
+                        sample_rate,
+                    } => {
                         // Release the old device before opening the new one.
                         stream.take();
                         let result = devices
-                            .get(index)
+                            .get(device)
                             .ok_or_else(|| {
                                 "Input device is unavailable. Refresh the device list.".to_owned()
                             })
-                            .and_then(start_device);
+                            .and_then(|device| start_device(device, sample_rate));
                         match result {
                             Ok((opened, capture)) => {
                                 stream = Some(opened);
@@ -145,19 +169,119 @@ impl Drop for AudioWorker {
     }
 }
 
-pub fn start_device(device: &cpal::Device) -> Result<(cpal::Stream, Capture), String> {
-    let supported = device.default_input_config().map_err(|e| e.to_string())?;
-    let format = supported.sample_format();
-    let config: cpal::StreamConfig = supported.into();
-    if config.channels == 0 || config.sample_rate == 0 {
-        return Err("Device returned an invalid audio configuration.".to_owned());
+pub fn validate_sample_rate(sample_rate: u32) -> Result<(), String> {
+    if (1..=MAX_SAMPLE_RATE).contains(&sample_rate) {
+        Ok(())
+    } else {
+        Err(format!(
+            "Sample rate must be between 1 and {MAX_SAMPLE_RATE} Hz."
+        ))
     }
-    if config.channels as usize > MAX_CHANNELS {
+}
+
+fn supported_pcm(format: cpal::SampleFormat) -> bool {
+    matches!(
+        format,
+        cpal::SampleFormat::I8
+            | cpal::SampleFormat::I16
+            | cpal::SampleFormat::I24
+            | cpal::SampleFormat::I32
+            | cpal::SampleFormat::I64
+            | cpal::SampleFormat::U8
+            | cpal::SampleFormat::U16
+            | cpal::SampleFormat::U24
+            | cpal::SampleFormat::U32
+            | cpal::SampleFormat::U64
+            | cpal::SampleFormat::F32
+            | cpal::SampleFormat::F64
+    )
+}
+
+fn available_sample_rates(
+    default: Option<&cpal::SupportedStreamConfig>,
+    ranges: &[cpal::SupportedStreamConfigRange],
+) -> Vec<u32> {
+    let Some(default) = default else {
+        return Vec::new();
+    };
+    if !(1..=MAX_CHANNELS as u16).contains(&default.channels()) {
+        return Vec::new();
+    }
+    let mut rates = Vec::new();
+    if supported_pcm(default.sample_format()) {
+        rates.push(default.sample_rate());
+    }
+    for range in ranges
+        .iter()
+        .filter(|r| r.channels() == default.channels() && supported_pcm(r.sample_format()))
+    {
+        rates.extend(
+            SAMPLE_RATES
+                .iter()
+                .copied()
+                .filter(|&rate| range.try_with_sample_rate(rate).is_some()),
+        );
+        // Keep nonstandard device rates as well as the common audio presets.
+        rates.extend([range.min_sample_rate(), range.max_sample_rate()]);
+    }
+    rates.retain(|&rate| validate_sample_rate(rate).is_ok());
+    rates.sort_unstable();
+    rates.dedup();
+    rates
+}
+
+fn select_input_config(
+    default: cpal::SupportedStreamConfig,
+    ranges: &[cpal::SupportedStreamConfigRange],
+    requested: Option<u32>,
+) -> Result<cpal::SupportedStreamConfig, String> {
+    if default.channels() == 0 {
+        return Err("Device returned an invalid audio configuration.".into());
+    }
+    if default.channels() as usize > MAX_CHANNELS {
         return Err(format!(
             "Input has {} channels; at most {MAX_CHANNELS} are supported.",
-            config.channels
+            default.channels()
         ));
     }
+    let rate = requested.unwrap_or(default.sample_rate());
+    validate_sample_rate(rate)?;
+    if rate == default.sample_rate() && supported_pcm(default.sample_format()) {
+        return Ok(default);
+    }
+    if requested.is_none() {
+        return Err(format!(
+            "Unsupported audio format: {}",
+            default.sample_format()
+        ));
+    }
+    ranges.iter()
+        // A rate change must not silently reduce the device's input channels.
+        .filter(|r| r.channels() == default.channels() && supported_pcm(r.sample_format()))
+        .filter_map(|r| r.try_with_sample_rate(rate))
+        .max_by_key(|c| c.sample_format() == default.sample_format())
+        .ok_or_else(|| format!(
+            "Input device does not support {rate} Hz with {} channels. Refresh the device list.",
+            default.channels()
+        ))
+}
+
+pub fn start_device(
+    device: &cpal::Device,
+    sample_rate: Option<u32>,
+) -> Result<(cpal::Stream, Capture), String> {
+    let default = device.default_input_config().map_err(|e| e.to_string())?;
+    let ranges = if sample_rate.is_some_and(|rate| rate != default.sample_rate()) {
+        device
+            .supported_input_configs()
+            .map_err(|e| e.to_string())?
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let supported = select_input_config(default, &ranges, sample_rate)?;
+    let format = supported.sample_format();
+    let config: cpal::StreamConfig = supported.into();
     let (producer, consumer) =
         RingBuffer::new((config.sample_rate as usize / 2).clamp(1024, 262_144));
     let metrics = Arc::new(Metrics::default());
@@ -269,9 +393,9 @@ pub fn input_device(name: Option<&str>) -> Result<cpal::Device, String> {
     }
 }
 
-pub fn smoke_test(name: Option<&str>) -> Result<(), String> {
+pub fn smoke_test(name: Option<&str>, sample_rate: Option<u32>) -> Result<(), String> {
     let device = input_device(name)?;
-    let (_stream, mut capture) = start_device(&device)?;
+    let (_stream, mut capture) = start_device(&device, sample_rate)?;
     let deadline = std::time::Instant::now() + Duration::from_secs(2);
     let mut frames = 0;
     let mut peaks = [0.0_f64; MAX_CHANNELS];
@@ -307,6 +431,106 @@ pub fn smoke_test(name: Option<&str>) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn config(channels: u16, rate: u32, format: cpal::SampleFormat) -> cpal::SupportedStreamConfig {
+        cpal::SupportedStreamConfig::new(channels, rate, cpal::SupportedBufferSize::Unknown, format)
+    }
+
+    fn range(
+        channels: u16,
+        min: u32,
+        max: u32,
+        format: cpal::SampleFormat,
+    ) -> cpal::SupportedStreamConfigRange {
+        cpal::SupportedStreamConfigRange::new(
+            channels,
+            min,
+            max,
+            cpal::SupportedBufferSize::Unknown,
+            format,
+        )
+    }
+
+    #[test]
+    fn rate_choices_keep_device_rates_and_stop_at_768_khz() {
+        let default = config(16, 96_000, cpal::SampleFormat::F32);
+        let ranges = [
+            range(16, 44_100, 1_536_000, cpal::SampleFormat::F32),
+            range(16, 100_000, 100_000, cpal::SampleFormat::F64),
+            range(2, 8_000, 192_000, cpal::SampleFormat::F32),
+            range(16, 4_000, 4_000, cpal::SampleFormat::DsdU8),
+        ];
+        assert_eq!(
+            available_sample_rates(Some(&default), &ranges),
+            vec![
+                44_100, 48_000, 88_200, 96_000, 100_000, 176_400, 192_000, 352_800, 384_000,
+                705_600, 768_000,
+            ]
+        );
+        assert_eq!(available_sample_rates(Some(&default), &[]), vec![96_000]);
+        assert!(available_sample_rates(None, &ranges).is_empty());
+        assert!(
+            available_sample_rates(Some(&config(32, 96_000, cpal::SampleFormat::F32)), &ranges)
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn requested_rates_preserve_channels_and_prefer_default_pcm_format() {
+        for channels in [1, 2, 16] {
+            let default = config(channels, 48_000, cpal::SampleFormat::F32);
+            let ranges = [
+                range(channels, 44_100, 768_000, cpal::SampleFormat::F32),
+                range(channels, 44_100, 768_000, cpal::SampleFormat::I16),
+            ];
+            for rate in [44_100, 48_000, 96_000, 192_000, 768_000] {
+                let selected = select_input_config(default, &ranges, Some(rate)).unwrap();
+                assert_eq!(selected.sample_rate(), rate);
+                assert_eq!(selected.channels(), channels);
+                assert_eq!(selected.sample_format(), cpal::SampleFormat::F32);
+            }
+            let automatic = select_input_config(default, &[], None).unwrap();
+            assert_eq!(automatic.sample_rate(), 48_000);
+            // Default-rate input still works when the driver cannot enumerate ranges.
+            assert_eq!(
+                select_input_config(default, &[], Some(48_000))
+                    .unwrap()
+                    .sample_rate(),
+                48_000
+            );
+        }
+    }
+
+    #[test]
+    fn unsupported_rates_are_rejected_without_fallback_or_channel_reduction() {
+        let default = config(16, 48_000, cpal::SampleFormat::F32);
+        let ranges = [
+            range(16, 48_000, 96_000, cpal::SampleFormat::F32),
+            range(2, 192_000, 192_000, cpal::SampleFormat::F32),
+            range(16, 192_000, 192_000, cpal::SampleFormat::DsdU8),
+        ];
+        for rate in [0, 44_100, 192_000, 768_001] {
+            assert!(select_input_config(default, &ranges, Some(rate)).is_err());
+        }
+        assert!(
+            select_input_config(config(0, 48_000, cpal::SampleFormat::F32), &ranges, None).is_err()
+        );
+        assert!(
+            select_input_config(
+                config(32, 48_000, cpal::SampleFormat::F32),
+                &ranges,
+                Some(96_000)
+            )
+            .is_err()
+        );
+        let alternate = [range(16, 192_000, 192_000, cpal::SampleFormat::F64)];
+        assert_eq!(
+            select_input_config(default, &alternate, Some(192_000))
+                .unwrap()
+                .sample_format(),
+            cpal::SampleFormat::F64
+        );
+    }
 
     #[test]
     fn f64_device_input_is_not_quantized_to_f32() {
