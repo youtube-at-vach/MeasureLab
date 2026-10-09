@@ -5,7 +5,7 @@
 ## Overview
 
 A tool that displays sound components in three dimensions: "Time (horizontal axis)," "Frequency (vertical axis)," and "Strength (color)".
-While a spectrum analyzer displays the "frequency distribution at the current moment," a spectrogram visualizes the ever-changing "audio signature (voiceprint)".
+While a spectrum analyzer displays the "frequency distribution at the current moment," a spectrogram visualizes the ever-changing frequency components.
 It is ideal for observing the "transitions" of sound, such as voice intonation analysis, time-based changes in instrument overtones, bird call analysis, and discovering intermittent noise.
 
 ## Operation
