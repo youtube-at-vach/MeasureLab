@@ -93,11 +93,11 @@ node --version
 python --version
 ```
 
-Rustだけなら、環境の読み込みなしでも既存の`./scripts/cargo.sh`と`./scripts/debug.sh`を使用できます。Finderでは`Debug-MeasureLab.command`から内部デモを起動できます。
+Rustだけなら、環境の読み込みなしでも既存の`./scripts/cargo.sh`と`./scripts/debug.sh`を使用できます。Finderでは`Debug-MeasureLab.command`から実入力を選ぶ画面を起動できます。内部デモは`--demo`を明示した検証用起動に限定しています。
 
 ```sh
 ./scripts/debug.sh
-./scripts/debug.sh --audio
+./scripts/debug.sh --demo
 ./scripts/debug.sh --ui-smoke
 ./scripts/debug.sh --gpu-smoke
 ./scripts/bundle-macos.sh

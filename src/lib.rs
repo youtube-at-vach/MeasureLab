@@ -3,6 +3,7 @@ pub mod audio;
 pub mod calibration;
 pub mod channel;
 pub mod cursor;
+#[cfg(any(test, feature = "qa"))]
 pub mod demo;
 pub mod instance;
 pub mod measurement;

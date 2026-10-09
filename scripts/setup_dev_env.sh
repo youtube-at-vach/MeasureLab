@@ -29,7 +29,8 @@ macOS: install Xcode Command Line Tools with xcode-select --install.
 Linux: see guide/rust/SETUP.md for native build/runtime libraries.
 
 After setup: source .tools/env.sh
-Start the internal demo: ./scripts/debug.sh
+Start MeasureLab: ./scripts/debug.sh
+Start the internal QA demo: ./scripts/debug.sh --demo
 HELP
             exit 0
             ;;
@@ -245,5 +246,6 @@ fi
 
 printf '\nDevelopment environment setup completed.\n'
 printf 'Activate tools: source .tools/env.sh\n'
-printf 'Start the demo: ./scripts/debug.sh\n'
+printf 'Start MeasureLab: ./scripts/debug.sh\n'
+printf 'Internal QA demo: ./scripts/debug.sh --demo\n'
 printf 'Full checks: ./scripts/setup_dev_env.sh --verify\n'

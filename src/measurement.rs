@@ -1,10 +1,11 @@
 //! UI-independent acquisition, shared f64 history and measurement scheduling.
 //! The callback transfers fixed frames; this worker never waits for a display.
+#[cfg(any(test, feature = "qa"))]
+use crate::demo::Demo;
 use crate::{
     audio::Capture,
     calibration::{self, Reading},
     channel::{ChannelId, Pair},
-    demo::Demo,
     signal::{self, History, Measurement, Sweep, Trigger},
     spectrum::{self, Settings},
     spectrum_worker, stft,
@@ -154,6 +155,7 @@ impl Drop for InputActivity {
 enum Input {
     Idle,
     Audio(Capture),
+    #[cfg(any(test, feature = "qa"))]
     Demo {
         signal: Demo,
         clock: Instant,
@@ -165,6 +167,7 @@ enum Command {
     Start(u64, Input, u32, usize, Config),
     Spectrum(Settings, usize, SpectrumMode),
     Stft(u64, stft::Config),
+    #[cfg(any(test, feature = "qa"))]
     Demo(Demo),
     Scope(ScopeSettings, mpsc::SyncSender<Reply>),
     Xy(Pair),
@@ -270,6 +273,7 @@ impl Core {
         );
     }
 
+    #[cfg(any(test, feature = "qa"))]
     fn reset_average(&mut self) {
         self.configure_spectrum(
             self.config.spectrum,
@@ -452,6 +456,7 @@ impl Worker {
                                 activity = Some(InputActivity::new());
                                 core.start(generation, rate, channels, config);
                                 input = source;
+                                #[cfg(any(test, feature = "qa"))]
                                 if let Input::Demo { clock, .. } = &mut input {
                                     *clock = Instant::now();
                                 }
@@ -467,6 +472,7 @@ impl Worker {
                                 core.config.stft = config;
                                 core.feeder.configure(generation, config);
                             }
+                            #[cfg(any(test, feature = "qa"))]
                             Command::Demo(settings) => {
                                 if let Input::Demo { signal, .. } = &mut input {
                                     signal.apply_settings(&settings);
@@ -545,6 +551,7 @@ impl Worker {
             config,
         ));
     }
+    #[cfg(any(test, feature = "qa"))]
     pub fn start_demo(&self, generation: u64, demo: Demo, config: Config) {
         self.running.store(true, Ordering::Release);
         self.send(Command::Start(
@@ -568,6 +575,7 @@ impl Worker {
     pub fn configure_stft(&self, generation: u64, config: stft::Config) {
         self.send(Command::Stft(generation, config));
     }
+    #[cfg(any(test, feature = "qa"))]
     pub fn configure_demo(&self, demo: Demo) {
         if self.running.load(Ordering::Acquire) {
             self.spectrum.invalidate();
@@ -643,6 +651,7 @@ fn poll_input(input: &mut Input, core: &mut Core) {
             core.failed = capture.metrics.failed.load(Ordering::Relaxed);
             core.metrics.failed.store(core.failed, Ordering::Release);
         }
+        #[cfg(any(test, feature = "qa"))]
         Input::Demo {
             signal,
             clock,

@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-MeasureLab は「正確な測定を、無料で、すべての人へ。」を目指すオーディオ測定・解析アプリです。このブランチには Rust のプロトタイプがあり、1〜16ch のオーディオ入力、オシロスコープ、スペクトル、スペクトログラム、XY 表示、内部デモ信号に対応しています。
+MeasureLab は「正確な測定を、無料で、すべての人へ。」を目指すオーディオ測定・解析アプリです。このブランチには Rust のプロトタイプがあり、1〜16ch のオーディオ入力、オシロスコープ、スペクトル、スペクトログラム、XY 表示に対応しています。内部デモ信号は明示的なQA用ビルドに限定しています。
 
 Python/PyQt6 版の最終リリースは [v0.9.1](https://github.com/youtube-at-vach/MeasureLab/releases/tag/v0.9.1) です。完全なソースはこのタグと [archive/python-v0.9.1 ブランチ](https://github.com/youtube-at-vach/MeasureLab/tree/archive/python-v0.9.1) から参照できます。
 
@@ -20,11 +20,13 @@ Python/PyQt6 版の最終リリースは [v0.9.1](https://github.com/youtube-at-
 
 新しいmacOS／Linux環境では [開発環境のセットアップ](guide/rust/SETUP.md) を参照し、`./scripts/setup_dev_env.sh --install-os-deps --verify`でローカルツールの導入とRust・サイト・文書のビルド検証を一括実行できます。
 
-Rust 1.95 以降と OS のビルドツールを用意した環境では、次のコマンドでデモを起動できます。
+Rust 1.95 以降と OS のビルドツールを用意した環境では、次のコマンドで起動できます。
 
 ```sh
-./scripts/cargo.sh run --release --locked -- --demo
+./scripts/cargo.sh run --release --locked
 ```
+
+入力デバイスを選んで **Start input** を押してください。マイクを使わず開発・検証するときは`./scripts/debug.sh --demo`でQA用ビルドを明示して起動します。通常ビルドには内部デモ生成や入力切り替えの設定を含めません。
 
 設計原則は [現在の方針](guide/CURRENT_DIRECTION.md)、実装の制限と次の完了条件は [開発計画](guide/rust/PLAN.md) を参照してください。当面は取得・測定演算を UI 更新から独立させ、Scope と Spectrum の測定用途を完成させます。対応機能、実オーディオ入力、各 OS の前提は [Rust 版の操作・ビルドガイド](guide/rust/README.md) にまとめています。
 

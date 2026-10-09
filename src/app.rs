@@ -1,9 +1,10 @@
+#[cfg(feature = "qa")]
+use crate::demo::{Demo, Waveform};
 use crate::{
     audio::{AudioWorker, Command, DeviceInfo, Event},
     calibration::{self, Calibration, Reading},
     channel::{self, ChannelId, Pair},
     cursor::{self, Cursors},
-    demo::{Demo, Waveform},
     gpu::{COLORS, PlotId, Segment, TraceCallback, TraceRenderer},
     measurement::{self, ScopeSettings, SpectrumMode},
     signal::{Edge, History, Line, Measurement, Sweep, Trigger, build_sweep_lines},
@@ -36,7 +37,28 @@ const BORDER: Color32 = Color32::from_rgb(48, 70, 82);
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Source {
     Live,
+    #[cfg(feature = "qa")]
     Demo,
+}
+
+impl Source {
+    fn on_startup(demo: bool, smoke: bool) -> Result<Self, &'static str> {
+        if demo || smoke {
+            #[cfg(feature = "qa")]
+            return Ok(Self::Demo);
+            #[cfg(not(feature = "qa"))]
+            return Err("Internal signals require --features qa");
+        }
+        Ok(Self::Live)
+    }
+
+    fn is_demo(self) -> bool {
+        match self {
+            Self::Live => false,
+            #[cfg(feature = "qa")]
+            Self::Demo => true,
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -224,7 +246,10 @@ pub struct ScopeApp {
     visible: [bool; 4],
     plot_layout: PlotLayout,
     sidebar: Sidebar,
+    #[cfg(feature = "qa")]
     demo: Demo,
+    #[cfg(feature = "qa")]
+    demo_enabled: bool,
     demo_running: bool,
     core: Option<measurement::Worker>,
     pending_stop: Option<measurement::PendingSnapshot>,
@@ -348,6 +373,7 @@ impl ScopeApp {
         smoke: bool,
         demo: bool,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+        let source = Source::on_startup(demo, smoke)?;
         let render = cc
             .wgpu_render_state
             .as_ref()
@@ -386,15 +412,14 @@ impl ScopeApp {
         let mut stft = stft::Worker::new();
         let core = (!smoke).then(|| measurement::Worker::new(stft.take_feeder()));
         let mut app = Self {
-            source: if demo || smoke {
-                Source::Demo
-            } else {
-                Source::Live
-            },
+            source,
             visible: [true; 4],
             plot_layout: PlotLayout::Auto,
             sidebar: Sidebar::default(),
+            #[cfg(feature = "qa")]
             demo: Demo::default(),
+            #[cfg(feature = "qa")]
+            demo_enabled: demo || smoke,
             demo_running: demo && !smoke,
             core,
             pending_stop: None,
@@ -564,6 +589,7 @@ impl ScopeApp {
             app.demo.channel_2_gain = 1.0;
             app.demo.phase_degrees = 90.0;
         }
+        #[cfg(feature = "qa")]
         if demo || smoke {
             app.channels = 2;
             #[cfg(feature = "qa")]
@@ -1679,6 +1705,7 @@ impl ScopeApp {
         self.spectrum_dirty = true;
     }
 
+    #[cfg(feature = "qa")]
     fn apply_demo_settings(&mut self) {
         if self.running() {
             if let Some(core) = &self.core {
@@ -1733,7 +1760,8 @@ impl ScopeApp {
         if let Some(profile) = &mut self.profile {
             profile.new_input(self.dropped);
         }
-        if self.source == Source::Demo {
+        #[cfg(feature = "qa")]
+        if self.source.is_demo() {
             self.begin_observation();
             self.sample_rate = 48000;
             self.channels = 2;
@@ -1866,7 +1894,8 @@ impl ScopeApp {
 
     fn section_summary(&self, section: SettingsSection) -> String {
         match section {
-            SettingsSection::Input if self.source == Source::Demo => {
+            #[cfg(feature = "qa")]
+            SettingsSection::Input if self.source.is_demo() => {
                 format!(
                     "Demo · {} Hz · {:.2} FS",
                     self.demo.frequency, self.demo.amplitude
@@ -1973,11 +2002,11 @@ impl ScopeApp {
             .add_enabled(
                 !self.busy
                     && self.pending_stop.is_none()
-                    && (self.source == Source::Demo || !self.devices.is_empty()),
+                    && (self.source.is_demo() || !self.devices.is_empty()),
                 egui::Button::new(
                     RichText::new(if self.running() {
                         "■  Stop"
-                    } else if self.source == Source::Demo {
+                    } else if self.source.is_demo() {
                         "▶  Start demo"
                     } else {
                         "▶  Start input"
@@ -2002,6 +2031,7 @@ impl ScopeApp {
         }
     }
 
+    #[cfg(feature = "qa")]
     fn switch_source(&mut self) {
         self.calibration.clear_input();
         self.cursors.new_epoch();
@@ -2019,8 +2049,8 @@ impl ScopeApp {
         self.measurements = [Measurement::default(); 2];
         self.scope_readings = [Reading::Unavailable; 2];
         self.calibration.captured = calibration::Set::default();
-        self.channels = if self.source == Source::Demo { 2 } else { 0 };
-        if self.source == Source::Demo {
+        self.channels = if self.source.is_demo() { 2 } else { 0 };
+        if self.source.is_demo() {
             self.sample_rate = 48000;
             self.format = "Internal demo".into();
             self.start();
@@ -2039,16 +2069,19 @@ impl ScopeApp {
     }
 
     fn input_controls(&mut self, ui: &mut egui::Ui) {
-        setting_label(ui, "SOURCE");
-        let previous_source = self.source;
-        ui.add_enabled_ui(!self.busy, |ui| {
-            ui.horizontal(|ui| {
-                ui.selectable_value(&mut self.source, Source::Live, "Audio input");
-                ui.selectable_value(&mut self.source, Source::Demo, "Demo signal");
+        #[cfg(feature = "qa")]
+        if self.demo_enabled {
+            setting_label(ui, "SOURCE");
+            let previous_source = self.source;
+            ui.add_enabled_ui(!self.busy, |ui| {
+                ui.horizontal(|ui| {
+                    ui.selectable_value(&mut self.source, Source::Live, "Audio input");
+                    ui.selectable_value(&mut self.source, Source::Demo, "Demo signal (QA)");
+                });
             });
-        });
-        if previous_source != self.source {
-            self.switch_source();
+            if previous_source != self.source {
+                self.switch_source();
+            }
         }
         if self.source == Source::Live {
             setting_label(ui, "DEVICE");
@@ -2131,7 +2164,8 @@ impl ScopeApp {
             self.error = None;
             self.audio.send(Command::Refresh);
         }
-        if self.source == Source::Demo {
+        #[cfg(feature = "qa")]
+        if self.source.is_demo() {
             let before = (
                 self.demo.waveform,
                 self.demo.frequency,
@@ -2894,7 +2928,7 @@ impl ScopeApp {
                         if self.running() {
                             "Collecting a complete STFT window…"
                         } else {
-                            "Start audio input or select Demo signal"
+                            "Start input to begin acquisition"
                         },
                         egui::FontId::proportional(14.0),
                         MUTED,
@@ -3705,11 +3739,9 @@ impl ScopeApp {
         setting_label(ui, "MEASUREMENT UNITS");
         ui.label(RichText::new("Amplitude is digital full scale (FS). Spectrum: bin amplitude in dBFS (0 dBFS = 1 FS sine peak), or PSD in FS²/Hz. PSD band integration gives FS² and RMS FS. Δf is Fs / N; RBW is the window's equivalent noise bandwidth.").small().color(MUTED));
         ui.label(
-            RichText::new(
-                "Audio input uses the device's native sample rate. Demo signals stay internal.",
-            )
-            .small()
-            .color(MUTED),
+            RichText::new("Audio input uses the selected nominal device sample rate.")
+                .small()
+                .color(MUTED),
         );
     }
 
@@ -4043,7 +4075,7 @@ impl ScopeApp {
                 if self.running() {
                     "Collecting a complete FFT window…"
                 } else {
-                    "Start audio input or select Demo signal"
+                    "Start input to begin acquisition"
                 },
                 egui::FontId::proportional(16.0),
                 MUTED,
@@ -4650,15 +4682,25 @@ impl eframe::App for ScopeApp {
                             "OPENING DEVICE…"
                         } else if self.smoke {
                             "UI TEST FIXTURE"
-                        } else if self.demo_running {
-                            "● DEMO SIGNAL"
+                        } else if self.source.is_demo() {
+                            if self.demo_running {
+                                "● DEMO SIGNAL (QA)"
+                            } else {
+                                "DEMO SIGNAL (QA) · HELD"
+                            }
                         } else if self.capture.is_some() {
                             "● LIVE INPUT"
                         } else {
                             "○ STOPPED"
                         })
                         .monospace()
-                        .color(if self.running() { GREEN } else { MUTED }),
+                        .color(if self.source.is_demo() {
+                            YELLOW
+                        } else if self.running() {
+                            GREEN
+                        } else {
+                            MUTED
+                        }),
                     );
                 });
             });

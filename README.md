@@ -2,7 +2,7 @@
 
 [日本語](README.ja.md)
 
-MeasureLab aims to make accurate measurement free and accessible to everyone. This branch contains a Rust prototype with 1–16-channel audio input, an oscilloscope, spectrum, spectrogram, XY display, and internal demo signals.
+MeasureLab aims to make accurate measurement free and accessible to everyone. This branch contains a Rust prototype with 1–16-channel audio input, an oscilloscope, spectrum, spectrogram, and XY display. Internal demo signals are available only in explicit QA builds.
 
 The final Python/PyQt6 edition is [v0.9.1](https://github.com/youtube-at-vach/MeasureLab/releases/tag/v0.9.1). Its complete source remains available through that tag and the [archive/python-v0.9.1 branch](https://github.com/youtube-at-vach/MeasureLab/tree/archive/python-v0.9.1).
 
@@ -23,8 +23,10 @@ For a new macOS or Linux environment, follow the [development environment setup 
 With Rust 1.95 or later and your operating system's build tools installed, run:
 
 ```sh
-./scripts/cargo.sh run --release --locked -- --demo
+./scripts/cargo.sh run --release --locked
 ```
+
+Select an audio input device and press **Start input**. For development without a microphone, use `./scripts/debug.sh --demo`; the launcher enables the QA build explicitly. Normal builds do not include the internal demo generator or its input controls.
 
 See the [current direction](guide/CURRENT_DIRECTION.md) and [development plan](guide/rust/PLAN.md) for design principles, current limits, and the next milestones. The immediate priority is to separate acquisition and measurement execution from UI updates, then finish the Scope and Spectrum measurement use cases. The [Rust operation and build guide](guide/rust/README.md) covers supported features, live input, and platform requirements.
 

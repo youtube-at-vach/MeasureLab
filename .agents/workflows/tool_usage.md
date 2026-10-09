@@ -21,20 +21,20 @@ OSライブラリを導入済みなら`--install-os-deps`を省略できる。�
 
 Rust 1.95 以降と OS のビルドツールを使う。`scripts/cargo.sh` は PATH 上の Cargo または `.tools/` にあるローカル環境を使う。
 
-デバッグ時は次のスクリプトでビルドと起動をまとめて実行する。引数なしでは内部デモ信号を使い、`--audio`で実入力、`--release`で性能確認用のビルドを選ぶ。macOSではルートの`Debug-MeasureLab.command`をダブルクリックしても起動できる。
+デバッグ時は次のスクリプトでビルドと起動をまとめて実行する。引数なしでは実入力を選んだ停止状態で起動する。`--demo`を明示すると`qa`機能を有効にして内部信号を使い、`--release`で性能確認用のビルドを選ぶ。macOSではルートの`Debug-MeasureLab.command`をダブルクリックしても実入力の画面を起動できる。
 
 ```bash
 ./scripts/debug.sh
-./scripts/debug.sh --audio
+./scripts/debug.sh --demo
 ./scripts/debug.sh --release
 ./scripts/debug.sh --ui-smoke
 ```
 
-`--ui-smoke`は`qa`機能を自動的に有効にする。詳細は`./scripts/debug.sh --help`を参照する。
+`--demo`と`--ui-smoke`は`qa`機能を自動的に有効にする。通常ビルドにデモの生成機能や入力選択肢は含めない。詳細は`./scripts/debug.sh --help`を参照する。
 
 ```bash
 ./scripts/cargo.sh run --release --locked
-./scripts/cargo.sh run --release --locked -- --demo
+./scripts/cargo.sh run --release --locked --features qa -- --demo
 ```
 
 PR 前の検証:

@@ -47,12 +47,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "--gpu-smoke" => gpu_smoke = true,
             "--list-devices" => list_devices = true,
             "--low-latency" => low_latency = true,
-            "--ui-smoke" => smoke = true,
-            "--demo" => demo = true,
+            "--ui-smoke" => {
+                if !cfg!(feature = "qa") {
+                    return Err("--ui-smoke requires --features qa".into());
+                }
+                smoke = true;
+            }
+            "--demo" => {
+                if !cfg!(feature = "qa") {
+                    return Err("--demo requires --features qa".into());
+                }
+                demo = true;
+            }
             "--compact" => compact = true,
             "--help" | "-h" => {
                 println!(
-                    "MeasureLab — GPU audio measurement lab\n\nOptions:\n  --demo        Start with an internal signal (no microphone or audio output)\n  --new-instance Explicitly allow another application or audio-check instance\n  --compact     Start in a smaller window with stacked plots\n  --low-latency Disable VSync (higher GPU usage)\n  --list-devices List CPAL input devices\n  --audio-smoke Capture input for two seconds and report every channel\n  --stft-smoke  Validate continuous STFT window order for two seconds\n  --multichannel-smoke Validate 16 distinct BlackHole tones (requires qa)\n  --input-device NAME  Choose a device for --audio-smoke / --stft-smoke\n  --sample-rate HZ  Input rate for --audio-smoke / --stft-smoke (up to 768000)\n  --channel N   Source channel for --stft-smoke (1-based, default 1)\n  --gpu-smoke   Validate independent GPU plots with offscreen readback\n  --ui-smoke    Open the four-instrument UI briefly, then close\n  --help       Show this help"
+                    "MeasureLab — GPU audio measurement lab\n\nOptions:\n  --new-instance Explicitly allow another application or audio-check instance\n  --compact     Start in a smaller window with stacked plots\n  --low-latency Disable VSync (higher GPU usage)\n  --list-devices List CPAL input devices\n  --audio-smoke Capture input for two seconds and report every channel\n  --stft-smoke  Validate continuous STFT window order for two seconds\n  --input-device NAME  Choose a device for --audio-smoke / --stft-smoke\n  --sample-rate HZ  Input rate for --audio-smoke / --stft-smoke (up to 768000)\n  --channel N   Source channel for --stft-smoke (1-based, default 1)\n  --gpu-smoke   Validate independent GPU plots with offscreen readback\n  --help       Show this help"
+                );
+                #[cfg(feature = "qa")]
+                println!(
+                    "\nQA options:\n  --demo        Enable and start an internal demo signal (no audio output)\n  --ui-smoke    Capture the four-instrument test UI briefly, then close\n  --multichannel-smoke Validate 16 distinct BlackHole tones"
                 );
                 return Ok(());
             }
