@@ -124,7 +124,7 @@ impl SettingsSection {
             Self::Spectrum => "Spectrum analyzer",
             Self::Spectrogram => "Spectrogram",
             Self::Xy => "XY / Lissajous",
-            Self::Calibration => "Scope calibration",
+            Self::Calibration => "Channel calibration",
             Self::Workspace => "Workspace & help",
         }
     }
@@ -271,6 +271,7 @@ pub struct ScopeApp {
     spectrum_channel: ChannelId,
     frequency_scale: FrequencyScale,
     floor_db: f32,
+    spectrum_ceiling_db: f32,
     span_hz: f32,
     spectrum_min_hz: f32,
     spectrum_numeric_key: Option<(f32, f32, f64, f64)>,
@@ -447,6 +448,7 @@ impl ScopeApp {
             spectrum_channel: 0,
             frequency_scale: FrequencyScale::Log,
             floor_db: -120.0,
+            spectrum_ceiling_db: 6.0,
             span_hz: 0.0,
             spectrum_min_hz: 0.0,
             spectrum_numeric_key: None,
@@ -829,7 +831,7 @@ impl ScopeApp {
                 self.update_spectrum(false);
                 let (held_window, held_db, held_range) =
                     self.lifecycle_spectrum_held.as_ref().unwrap();
-                assert_eq!(self.analyzer.window(), Some(*held_window));
+                assert_eq!(self.analyzer.window(), Some(held_window.clone()));
                 assert_eq!(self.analyzer.db(), held_db);
                 assert_eq!(self.history.range(), *held_range);
                 assert_eq!(
@@ -869,7 +871,7 @@ impl ScopeApp {
                     *held_range,
                     "stopped demo edit changed held samples"
                 );
-                assert_eq!(self.analyzer.window(), Some(*held_window));
+                assert_eq!(self.analyzer.window(), Some(held_window.clone()));
                 assert_eq!(self.analyzer.db(), held_db);
                 self.rebuild_xy();
                 let (held_revision, held_capture) = self.lifecycle_xy_held.as_ref().unwrap();
@@ -916,7 +918,7 @@ impl ScopeApp {
                 let (held_window, held_db, _) = self.lifecycle_spectrum_held.as_ref().unwrap();
                 assert_eq!(
                     self.analyzer.window(),
-                    Some(*held_window),
+                    Some(held_window.clone()),
                     "next-run settings changed held FFT metadata"
                 );
                 assert_eq!(
@@ -938,8 +940,18 @@ impl ScopeApp {
                 assert!(self.analyzer.window().is_none());
                 self.lifecycle_stage = 4;
             }
-            4 if elapsed > 2.0 => {
+            4 if elapsed > 2.0 && self.analyzer.is_ready() => {
                 assert_eq!(self.calibration.captured.get(0).unwrap().offset(), 0.5);
+                let calibration = self
+                    .analyzer
+                    .calibration()
+                    .expect("Spectrum calibration after restart");
+                assert_eq!(calibration, self.calibration.captured.get(0).unwrap());
+                assert_eq!(
+                    self.analyzer.window().unwrap().calibration.as_deref(),
+                    Some(calibration)
+                );
+                assert_eq!(self.analyzer.unit(), "V");
                 assert_eq!(
                     self.scope_readings,
                     calibration::measure(
@@ -950,7 +962,7 @@ impl ScopeApp {
                     )
                 );
                 println!(
-                    "Scope calibration lifecycle OK: held readouts/cursors unchanged; queued calibration applied on restart"
+                    "Channel calibration lifecycle OK: held Scope/Spectrum readouts and conditions unchanged; queued calibration applied on restart"
                 );
                 self.rebuild_xy();
                 assert!(
@@ -1119,7 +1131,7 @@ impl ScopeApp {
             }
             1 if elapsed > 0.4 && !self.busy => {
                 let (window, db, range) = self.lifecycle_spectrum_held.as_ref().unwrap();
-                assert_eq!(self.analyzer.window(), Some(*window));
+                assert_eq!(self.analyzer.window(), Some(window.clone()));
                 assert_eq!(self.analyzer.db(), db);
                 assert_eq!(self.history.range(), *range);
                 assert_eq!(self.cursor_samples(), self.lifecycle_scope_samples);
@@ -1150,7 +1162,7 @@ impl ScopeApp {
                 self.update_spectrum(false);
                 self.rebuild_xy();
                 let (window, db, range) = self.lifecycle_spectrum_held.as_ref().unwrap();
-                assert_eq!(self.analyzer.window(), Some(*window));
+                assert_eq!(self.analyzer.window(), Some(window.clone()));
                 assert_eq!(self.sample_rate, window.sample_rate);
                 assert_eq!(self.analyzer.db(), db);
                 assert_eq!(self.history.range(), *range);
@@ -1501,7 +1513,7 @@ impl ScopeApp {
                 assert_eq!(self.analyzer.settings().quantity, Quantity::Psd);
                 assert_eq!(self.analyzer.window().unwrap().channel, 1);
                 assert!(
-                    (self.analyzer.band(0.0, 24000.0).unwrap().power_fs2 - 0.0078125).abs() < 1e-12
+                    (self.analyzer.band(0.0, 24000.0).unwrap().power - 0.0078125).abs() < 1e-12
                 );
                 self.visible[1] = true;
                 self.stop();
@@ -1535,6 +1547,13 @@ impl ScopeApp {
     fn update_spectrum(&mut self, final_snapshot: bool) {
         if self.smoke && final_snapshot {
             let mut analyzer = Analyzer::new(self.spectrum_settings, self.sample_rate);
+            analyzer.set_calibration(
+                self.calibration
+                    .captured
+                    .get(self.spectrum_channel)
+                    .cloned()
+                    .map(Arc::new),
+            );
             analyzer.update(&self.history, self.spectrum_channel);
             analyzer.copy_result(&mut self.analyzer);
             if let Some(average) = self.analyzer.average() {
@@ -2367,7 +2386,7 @@ impl ScopeApp {
     }
 
     fn calibration_controls(&mut self, ui: &mut egui::Ui) {
-        ui.label(RichText::new("Scope RMS, Peak, P-P and cursor values use y = gain × FS + offset. Trace and trigger axes use FS.").small().color(MUTED));
+        ui.label(RichText::new("Scope readouts and Spectrum use y = gain × FS + offset. Spectrum Remove DC cancels offset. Scope trace/trigger, Spectrogram and XY axes use FS.").small().color(MUTED));
         ui.label(RichText::new("Queued definitions apply on the next Start. Source/device selection or device refresh clears the queue. Coefficients are supplied by you; reference conditions describe their validity.").small().color(MUTED));
         setting_label(ui, "INPUT CHANNEL");
         let before = self.calibration.channel;
@@ -2555,6 +2574,7 @@ impl ScopeApp {
         let view_before = (
             self.frequency_scale,
             self.floor_db,
+            self.spectrum_ceiling_db,
             self.show_hold,
             self.span_hz,
             self.spectrum_min_hz,
@@ -2611,10 +2631,11 @@ impl ScopeApp {
                 .color(MUTED),
         );
         setting_label(ui, "DISPLAY FLOOR");
-        ui.add(
-            egui::Slider::new(&mut self.floor_db, -180.0..=-60.0)
-                .text(self.analyzer.settings().quantity.db_unit()),
-        );
+        ui.add(egui::Slider::new(&mut self.floor_db, -180.0..=-60.0).text(self.analyzer.db_unit()));
+        setting_label(ui, "DISPLAY CEILING");
+        ui.add(egui::DragValue::new(&mut self.spectrum_ceiling_db)
+            .range(self.floor_db + 6.0..=3200.0).speed(1.0).suffix(" dB"))
+            .on_hover_text("Raise the display ceiling for calibrated levels above 0 dB. Display limits do not change numeric values.");
         ui.horizontal(|ui| {
             if ui.checkbox(&mut self.show_hold, "Peak hold").changed()
                 && self.show_hold
@@ -2643,6 +2664,7 @@ impl ScopeApp {
             != (
                 self.frequency_scale,
                 self.floor_db,
+                self.spectrum_ceiling_db,
                 self.show_hold,
                 self.span_hz,
                 self.spectrum_min_hz,
@@ -2661,6 +2683,12 @@ impl ScopeApp {
         if self.pending_stop.is_some() {
             ui.label(
                 RichText::new("Stopping · finishing Spectrum windows")
+                    .small()
+                    .color(YELLOW),
+            );
+        } else if self.analyzer.validity() == spectrum::Validity::NonFinite {
+            ui.label(
+                RichText::new("Invalid FFT window · nonfinite sample or calibrated power")
                     .small()
                     .color(YELLOW),
             );
@@ -2689,8 +2717,10 @@ impl ScopeApp {
         };
         ui.label(
             RichText::new(format!(
-                "{cadence} · missing input {} · missed observations {}",
-                self.spectrum_info.input_missing, self.spectrum_info.missed_observations
+                "{cadence} · missing input {} · invalid windows {} · missed observations {}",
+                self.spectrum_info.input_missing,
+                self.spectrum_info.invalid_windows,
+                self.spectrum_info.missed_observations
             ))
             .small()
             .color(MUTED),
@@ -3173,14 +3203,19 @@ impl ScopeApp {
             "F {:.6} Hz · {:.2} {}\nCH {} · {}..{} · α 1/{}",
             reading.frequency_hz,
             reading.level_db,
-            window.settings.quantity.db_unit(),
+            window.db_unit(),
             window.channel + 1,
             window.start,
             window.end,
             window.settings.averages
         );
         cursor_note(ui, rect, 0, &text, YELLOW);
-        response.clone().on_hover_text(format!("Nearest bin: {:.6e} {}. Latest window: samples {}..{} (exclusive end), CH {}, {} Hz, {} points, {}, {}. EMA α = 1/{}; {} processed windows, contribution envelope {}..{} (exponential weights). Input generation {}; missing windows {}.{}", reading.value, window.settings.quantity.linear_unit(), window.start, window.end, window.channel + 1, window.sample_rate, window.settings.size, window.settings.window.name(), window.settings.precision.name(), window.settings.averages, reading.average.updates, reading.average.start, reading.average.end, self.input_generation, self.spectrum_info.missing_windows, times));
+        response.clone().on_hover_text(format!("Nearest bin: {:.6e} {}. Latest window: samples {}..{} (exclusive end), CH {}, {} Hz, {} points, {}, {}. EMA α = 1/{}; {} processed windows, contribution envelope {}..{} (exponential weights). Input generation {}; missing windows {}.{}", reading.value, window.linear_unit(), window.start, window.end, window.channel + 1, window.sample_rate, window.settings.size, window.settings.window.name(), window.settings.precision.name(), window.settings.averages, reading.average.updates, reading.average.start, reading.average.end, self.input_generation, self.spectrum_info.missing_windows, times));
+        response
+            .clone()
+            .on_hover_text(spectrum_calibration_description(
+                self.analyzer.calibration(),
+            ));
     }
 
     fn spectrogram_cursors(
@@ -3777,7 +3812,7 @@ impl ScopeApp {
             });
         ui.separator();
         setting_label(ui, "MEASUREMENT UNITS");
-        ui.label(RichText::new("Amplitude is digital full scale (FS). Spectrum: bin amplitude in dBFS (0 dBFS = 1 FS sine peak), or PSD in FS²/Hz. PSD band integration gives FS² and RMS FS. Δf is Fs / N; RBW is the window's equivalent noise bandwidth.").small().color(MUTED));
+        ui.label(RichText::new("Raw amplitude is digital full scale (FS). Channel calibration applies to Scope readouts and Spectrum. Spectrum uses bin peak amplitude or PSD in unit²/Hz; band integration gives unit² and RMS unit. Uncalibrated Spectrum uses dBFS or FS²/Hz. Δf is Fs / N; RBW is the window's equivalent noise bandwidth.").small().color(MUTED));
         ui.label(
             RichText::new("Audio input uses the selected nominal device sample rate.")
                 .small()
@@ -3869,6 +3904,7 @@ impl ScopeApp {
 
     fn spectrum_view(&self) -> View {
         let mut view = View::full(self.sample_rate, self.frequency_scale, self.floor_db);
+        view.ceiling_db = self.spectrum_ceiling_db.max(self.floor_db + 6.0);
         if self.span_hz > 0.0 {
             view.max_hz = self.span_hz.min(view.max_hz);
         }
@@ -3922,7 +3958,7 @@ impl ScopeApp {
                                     .window()
                                     .map_or(self.spectrum_channel, |window| window.channel)
                                     + 1,
-                                self.analyzer.settings().quantity.db_unit()
+                                self.analyzer.db_unit()
                             ))
                             .small()
                             .color(YELLOW),
@@ -3937,7 +3973,7 @@ impl ScopeApp {
                             "Peak bin  {:.4} Hz · {:.2} {}    Δf {:.6} Hz",
                             peak.frequency,
                             peak.level_db,
-                            self.analyzer.settings().quantity.db_unit(),
+                            self.analyzer.db_unit(),
                             self.analyzer.bin_hz()
                         ))
                         .monospace()
@@ -3947,20 +3983,17 @@ impl ScopeApp {
                 } else {
                     ui.label(
                         RichText::new(
-                            match self.analyzer.settings().quantity {
-                                Quantity::Amplitude => "Windowed FFT · 0 dBFS = 1 FS sine peak",
-                                Quantity::Psd => "PSD · window power normalized · FS²/Hz",
-                            },
+                            format!("{} · {}", self.analyzer.settings().quantity.name(), self.analyzer.db_unit()),
                         )
                         .small()
                         .color(MUTED),
                     );
                 }
                 if self.analyzer.settings().quantity == Quantity::Psd {
-                    if let Some(band) = self.spectrum_band {
+                    if let Some(band) = &self.spectrum_band {
                         ui.label(RichText::new(format!(
-                            "Band {:.1}–{:.1} Hz · {:.4e} FS² · {:.5e} RMS FS",
-                            band.first_hz, band.last_hz, band.power_fs2, band.rms_fs
+                            "Band {:.1}–{:.1} Hz · {:.4e} {} · {:.5e} RMS {}",
+                            band.first_hz, band.last_hz, band.power, self.analyzer.power_unit(), band.rms, self.analyzer.unit()
                         )).monospace().small().color(YELLOW))
                         .on_hover_text(format!(
                             "Requested {}–{} Hz, inclusive centres of bins {}..={}. Sum of f64 PSD × Δf; full weight at DC/Nyquist. CH {}, generation {}, {} processed windows, contribution envelope {}..{}. Input loss {}; missing windows {}. Windowed mean-square after optional DC removal; not the Scope observation interval.",
@@ -3969,8 +4002,12 @@ impl ScopeApp {
                             band.average.start, band.average.end, self.dropped, self.spectrum_info.missing_windows,
                         ));
                     } else {
-                        ui.label(RichText::new("Band power unavailable · require a PSD window and valid bin range").small().color(MUTED));
+                        ui.label(RichText::new("Band power unavailable · invalid window, range or nonfinite sum").small().color(MUTED));
                     }
+                }
+                if let Some(c) = self.analyzer.calibration() {
+                    ui.label(RichText::new(format!("Calibration {} · rev {}", c.id(), c.revision())).small().color(MUTED))
+                        .on_hover_text(spectrum_calibration_description(Some(c)));
                 }
                 self.spectrum_plot(ui, view);
             });
@@ -3987,7 +4024,7 @@ impl ScopeApp {
             .ceil()
             .max(1.0) as i32
             * 20;
-        for db in (view.floor_db as i32..=0).filter(|db| db % 20 == 0) {
+        for db in (view.floor_db as i32..=view.ceiling_db as i32).filter(|db| db % 20 == 0) {
             let y = rect.top()
                 + (view.ceiling_db - db as f32) / (view.ceiling_db - view.floor_db) * rect.height();
             painter.line_segment(
@@ -4115,7 +4152,9 @@ impl ScopeApp {
             painter.text(
                 rect.center(),
                 egui::Align2::CENTER_CENTER,
-                if self.running() {
+                if self.analyzer.validity() == spectrum::Validity::NonFinite {
+                    "Invalid FFT window · nonfinite value"
+                } else if self.running() {
                     "Collecting a complete FFT window…"
                 } else {
                     "Start input to begin acquisition"
@@ -4141,7 +4180,7 @@ impl ScopeApp {
                         "{:.1} Hz · {:.2} {}",
                         reading.frequency_hz,
                         reading.level_db,
-                        reading.window.settings.quantity.db_unit()
+                        reading.window.db_unit()
                     ),
                     egui::FontId::monospace(11.0),
                     YELLOW,
@@ -4150,11 +4189,7 @@ impl ScopeApp {
         }
         self.spectrum_cursors(ui, &response, rect, view);
         ui.horizontal(|ui| {
-            ui.label(
-                RichText::new(self.analyzer.settings().quantity.db_unit())
-                    .small()
-                    .color(MUTED),
-            );
+            ui.label(RichText::new(self.analyzer.db_unit()).small().color(MUTED));
             if self.show_hold {
                 ui.label(RichText::new("Peak hold").small().color(HOLD));
             }
@@ -4502,7 +4537,7 @@ impl eframe::App for ScopeApp {
                                         (result
                                             .band(0.0, snapshot.sample_rate as f64 / 2.0)
                                             .unwrap()
-                                            .power_fs2
+                                            .power
                                             - 0.0078125)
                                             .abs()
                                             < 1e-12
@@ -4535,7 +4570,7 @@ impl eframe::App for ScopeApp {
                                 (result
                                     .band(0.0, self.sample_rate as f64 / 2.0)
                                     .unwrap()
-                                    .power_fs2
+                                    .power
                                     - 0.0078125)
                                     .abs()
                                     < 1e-8
@@ -5040,6 +5075,21 @@ fn plot_size(ui: &egui::Ui) -> egui::Vec2 {
 
 fn setting_label(ui: &mut egui::Ui, text: &str) {
     ui.label(RichText::new(text).small().color(MUTED));
+}
+
+fn spectrum_calibration_description(calibration: Option<&Calibration>) -> String {
+    match calibration {
+        Some(c) => format!(
+            "Calibration {} · rev {} · y = {} × FS + {} {} · {}",
+            c.id(),
+            c.revision(),
+            c.gain(),
+            c.offset(),
+            c.unit(),
+            c.conditions()
+        ),
+        None => "Uncalibrated · FS".into(),
+    }
 }
 
 fn calibration_description(set: &calibration::Set, channel: ChannelId) -> String {

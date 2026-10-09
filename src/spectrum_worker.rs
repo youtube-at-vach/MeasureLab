@@ -1,6 +1,7 @@
 //! Bounded selected-channel Spectrum transport. Acquisition never executes FFTs
 //! or waits for their completion; display pressure never skips continuous windows.
 use crate::{
+    calibration::Calibration,
     measurement::{SpectrumInfo, SpectrumMode},
     signal::History,
     spectrum::{self, Analyzer, Settings},
@@ -37,7 +38,14 @@ pub fn observation_interval(size: usize) -> Duration {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+pub struct Source {
+    pub generation: u64,
+    pub rate: u32,
+    pub channel: usize,
+    pub calibration: Option<Arc<Calibration>>,
+}
+
+#[derive(Clone, Debug)]
 struct Config {
     epoch: u64,
     generation: u64,
@@ -46,6 +54,7 @@ struct Config {
     settings: Settings,
     mode: SpectrumMode,
     start: u64,
+    calibration: Option<Arc<Calibration>>,
 }
 
 #[derive(Clone)]
@@ -129,16 +138,18 @@ struct Processor {
     fft_ms: f64,
     budget_ms: f64,
     last_latest: Instant,
+    last_nonfinite: Option<u64>,
 }
 
 impl Processor {
     fn new(config: Config) -> Self {
         let mut history = History::with_channels(config.settings.size, 1);
         history.clear_at(config.start);
+        let mut analyzer = Analyzer::new(config.settings, config.rate);
+        analyzer.set_calibration(config.calibration.clone());
         Self {
-            config,
             history,
-            analyzer: Analyzer::new(config.settings, config.rate),
+            analyzer,
             info: SpectrumInfo {
                 mode: config.mode,
                 observation_ms: match config.mode {
@@ -156,6 +167,8 @@ impl Processor {
             fft_ms: 0.0,
             budget_ms: 0.0,
             last_latest: Instant::now() - observation_interval(config.settings.size),
+            last_nonfinite: None,
+            config,
         }
     }
 
@@ -171,6 +184,7 @@ impl Processor {
                 .div_ceil((self.config.settings.size / 4) as u64);
         }
         self.history.clear_at(next);
+        self.last_nonfinite = None;
         self.analyzer.reset();
         self.info.updates = 0;
         self.info.contributing = 0..0;
@@ -183,6 +197,11 @@ impl Processor {
         self.gap_to(block.start);
         for (offset, &sample) in block.samples[..block.len].iter().enumerate() {
             let end = block.start + offset as u64 + 1;
+            if !sample.is_finite() {
+                // Shared History sanitizes nonfinite values for drawing. Keep
+                // the source position so Spectrum cannot measure that zero.
+                self.last_nonfinite = Some(end - 1);
+            }
             self.history.push_at(end - 1, [sample]);
             if self.config.mode == SpectrumMode::Continuous && end == self.next_end {
                 self.analyze(end, metrics);
@@ -208,7 +227,12 @@ impl Processor {
             return;
         };
         let clock = Instant::now();
-        if !self.analyzer.update_window(&self.history, start..end, 0) {
+        if self
+            .last_nonfinite
+            .is_some_and(|sample| (start..end).contains(&sample))
+        {
+            self.analyzer.invalidate(end, 0);
+        } else if !self.analyzer.update_window(&self.history, start..end, 0) {
             return;
         }
         let elapsed = clock.elapsed().as_nanos() as u64;
@@ -218,6 +242,9 @@ impl Processor {
             .fetch_add(1, Ordering::Relaxed);
         metrics.windows.fetch_add(1, Ordering::Relaxed);
         let average = self.analyzer.average().unwrap();
+        if self.analyzer.validity() == spectrum::Validity::NonFinite {
+            self.info.invalid_windows += 1;
+        }
         self.info.updates = average.updates;
         self.info.contributing = average.start..average.end;
         self.revision += 1;
@@ -267,8 +294,8 @@ impl Processor {
     }
 
     fn copy(&self, publication: &mut Publication) {
-        let copy_bins = self.analyzer.is_ready()
-            || publication.result.is_ready()
+        let copy_bins = self.analyzer.window().is_some()
+            || publication.result.window().is_some()
             || publication.epoch != self.config.epoch
             || publication.result.settings() != self.config.settings;
         publication.generation = self.config.generation;
@@ -319,7 +346,7 @@ impl Control {
     }
     fn config(&self) -> Config {
         match self {
-            Self::Inspect { config, .. } | Self::Clear { config, .. } => *config,
+            Self::Inspect { config, .. } | Self::Clear { config, .. } => config.clone(),
         }
     }
 }
@@ -362,8 +389,9 @@ impl Worker {
             settings: Settings::default(),
             mode: SpectrumMode::Continuous,
             start: 0,
+            calibration: None,
         };
-        let placeholder = Processor::new(config);
+        let placeholder = Processor::new(config.clone());
         for _ in 0..RESULT_SLOTS {
             recycle
                 .push(Box::new(placeholder.publication()))
@@ -419,7 +447,7 @@ impl Worker {
                     } else if let Ok(block) = incoming.pop() {
                         read += 1;
                         if block.config.epoch == epoch.load(Ordering::Acquire) {
-                            prepare(&mut processor, block.config, &counters);
+                            prepare(&mut processor, block.config.clone(), &counters);
                             let clock = Instant::now();
                             processor.as_mut().unwrap().process(&block, &counters);
                             counters
@@ -536,9 +564,7 @@ fn prepare(processor: &mut Option<Processor>, config: Config, metrics: &Metrics)
 impl Feeder {
     pub fn configure(
         &mut self,
-        generation: u64,
-        rate: u32,
-        channel: usize,
+        source: Source,
         settings: Settings,
         mode: SpectrumMode,
         start: u64,
@@ -547,12 +573,13 @@ impl Feeder {
         self.pending = Some(Block {
             config: Config {
                 epoch,
-                generation,
-                rate,
-                channel,
+                generation: source.generation,
+                rate: source.rate,
+                channel: source.channel,
                 settings,
                 mode,
                 start,
+                calibration: source.calibration,
             },
             start,
             len: 0,
@@ -604,7 +631,12 @@ impl Feeder {
     pub fn inspect(&mut self, end: u64, final_window: bool) -> mpsc::Receiver<Publication> {
         self.flush();
         let (reply, result) = mpsc::sync_channel(1);
-        let config = self.pending.as_ref().expect("configured Spectrum").config;
+        let config = self
+            .pending
+            .as_ref()
+            .expect("configured Spectrum")
+            .config
+            .clone();
         self.controls
             .try_send(Control::Inspect {
                 config,
@@ -622,7 +654,7 @@ impl Feeder {
         if let Some(block) = &self.pending {
             self.controls
                 .try_send(Control::Clear {
-                    config: block.config,
+                    config: block.config.clone(),
                     target: self.submitted,
                 })
                 .unwrap_or_else(|_| panic!("too many pending Spectrum barriers"));
@@ -653,11 +685,12 @@ mod tests {
             },
             mode,
             start: 0,
+            calibration: None,
         }
     }
     fn block(config: Config, start: u64, len: usize, amplitude: f64) -> Block {
         let mut block = Block {
-            config,
+            config: config.clone(),
             start,
             len,
             samples: [0.0; BLOCK_FRAMES],
@@ -670,17 +703,111 @@ mod tests {
     }
 
     #[test]
+    fn calibrated_transport_all_modes_keep_conditions_and_reset_after_gap() {
+        let definition = Arc::new(
+            Calibration::new(
+                "ch16-input".into(),
+                7,
+                -4.0,
+                0.5,
+                "V".into(),
+                "Known internal fixture".into(),
+            )
+            .unwrap(),
+        );
+        for mode in [
+            SpectrumMode::Continuous,
+            SpectrumMode::Live,
+            SpectrumMode::Latest,
+        ] {
+            for size in [1024, 524288] {
+                let mut config = config(size, mode, Quantity::Psd);
+                config.calibration = Some(definition.clone());
+                let mut p = Processor::new(config.clone());
+                let metrics = Metrics::default();
+                for start in (0..size).step_by(BLOCK_FRAMES) {
+                    p.process(
+                        &block(config.clone(), start as u64, BLOCK_FRAMES, 0.25),
+                        &metrics,
+                    );
+                }
+                p.latest(true, &metrics);
+                let held = p.publication();
+                let window = held.result.window().unwrap();
+                assert_eq!(window.channel, 15);
+                assert_eq!(window.calibration.as_deref(), Some(definition.as_ref()));
+                assert_eq!(held.generation, 7);
+                assert!((held.result.band(0.0, 24000.0).unwrap().power - 0.75).abs() < 1e-12);
+                let updates = held.info.updates;
+                p.latest(true, &metrics);
+                assert_eq!(
+                    p.info.updates, updates,
+                    "Stop must not average the same window twice"
+                );
+                let recovered = size as u64 + 12;
+                for offset in (0..size).step_by(BLOCK_FRAMES) {
+                    p.process(
+                        &block(
+                            config.clone(),
+                            recovered + offset as u64,
+                            BLOCK_FRAMES,
+                            0.125,
+                        ),
+                        &metrics,
+                    );
+                }
+                p.latest(true, &metrics);
+                let fresh = p.publication();
+                assert_eq!(fresh.info.input_missing, 12);
+                assert_eq!(fresh.info.invalid_windows, 0);
+                assert_eq!(fresh.info.updates, 1);
+                assert_eq!(fresh.info.contributing, recovered..recovered + size as u64);
+                assert_eq!(fresh.result.hold_power(), fresh.result.power());
+                assert!((fresh.result.band(0.0, 24000.0).unwrap().power - 0.375).abs() < 1e-12);
+                assert_eq!(held.result.window().unwrap(), window);
+                assert!((held.result.band(0.0, 24000.0).unwrap().power - 0.75).abs() < 1e-12);
+            }
+        }
+    }
+
+    #[test]
+    fn nonfinite_windows_count_separately_from_input_loss_and_recover() {
+        let config = config(1024, SpectrumMode::Continuous, Quantity::Psd);
+        let mut p = Processor::new(config.clone());
+        let metrics = Metrics::default();
+        p.process(&block(config.clone(), 0, BLOCK_FRAMES, 0.25), &metrics);
+        let mut bad = block(config.clone(), 1024, BLOCK_FRAMES, 0.25);
+        bad.samples[0] = f64::NAN;
+        p.process(&bad, &metrics);
+        let invalid = p.publication();
+        assert_eq!(invalid.result.validity(), spectrum::Validity::NonFinite);
+        assert_eq!(invalid.info.invalid_windows, 4);
+        assert_eq!(invalid.info.updates, 0);
+        assert_eq!(invalid.info.input_missing, 0);
+        assert_eq!(invalid.info.missing_windows, 0);
+        p.process(&block(config.clone(), 2048, BLOCK_FRAMES, 0.125), &metrics);
+        let recovered = p.publication();
+        assert_eq!(recovered.result.validity(), spectrum::Validity::Valid);
+        assert_eq!(recovered.info.invalid_windows, 4);
+        assert_eq!(recovered.info.updates, 4);
+        assert_eq!(recovered.info.contributing, 1280..3072);
+        assert!(
+            (recovered.result.band(0.0, 24000.0).unwrap().power - 0.017974853515625).abs() < 1e-12
+        );
+    }
+
+    #[test]
     fn continuous_all_windows_average_and_hold_match_headless_reference() {
         for size in [1024, 32768, 65536, 131072, 262144, 524288] {
             for quantity in [Quantity::Amplitude, Quantity::Psd] {
                 let config = config(size, SpectrumMode::Continuous, quantity);
-                let mut processor = Processor::new(config);
+                let mut processor = Processor::new(config.clone());
                 let mut reference = Analyzer::new(config.settings, config.rate);
                 let mut history = History::with_channels(size, 1);
                 let metrics = Metrics::default();
                 for start in (0..size * 3).step_by(BLOCK_FRAMES) {
                     let amplitude = if start < size { 0.25 } else { 0.5 };
-                    let block = block(config, start as u64, BLOCK_FRAMES, amplitude);
+                    let block = block(config.clone(), start as u64, BLOCK_FRAMES, amplitude);
                     processor.process(&block, &metrics);
                     for (offset, &sample) in block.samples.iter().enumerate() {
                         let end = start + offset + 1;
@@ -708,28 +835,34 @@ mod tests {
     fn gap_resets_average_and_hold_and_requires_a_complete_window() {
         for size in [1024, 524288] {
             let config = config(size, SpectrumMode::Continuous, Quantity::Psd);
-            let mut p = Processor::new(config);
+            let mut p = Processor::new(config.clone());
             let metrics = Metrics::default();
             for start in (0..size * 2).step_by(BLOCK_FRAMES) {
-                p.process(&block(config, start as u64, BLOCK_FRAMES, 0.25), &metrics);
+                p.process(
+                    &block(config.clone(), start as u64, BLOCK_FRAMES, 0.25),
+                    &metrics,
+                );
             }
             assert_eq!(p.info.updates, 5);
             let recovered = (size * 2 + 32) as u64;
             for offset in (0..size - BLOCK_FRAMES).step_by(BLOCK_FRAMES) {
                 p.process(
-                    &block(config, recovered + offset as u64, BLOCK_FRAMES, 0.5),
+                    &block(config.clone(), recovered + offset as u64, BLOCK_FRAMES, 0.5),
                     &metrics,
                 );
             }
             if size == BLOCK_FRAMES {
-                p.process(&block(config, recovered, BLOCK_FRAMES - 1, 0.5), &metrics);
+                p.process(
+                    &block(config.clone(), recovered, BLOCK_FRAMES - 1, 0.5),
+                    &metrics,
+                );
             }
             assert_eq!(p.info.input_missing, 32);
             assert_eq!(p.info.missing_windows, 4);
             assert!(!p.analyzer.is_ready());
             if size == BLOCK_FRAMES {
                 p.process(
-                    &block(config, recovered + size as u64 - 1, 1, 0.5),
+                    &block(config.clone(), recovered + size as u64 - 1, 1, 0.5),
                     &metrics,
                 );
             } else {
@@ -745,7 +878,7 @@ mod tests {
             }
             assert_eq!(p.info.updates, 1);
             assert_eq!(p.info.contributing, recovered..recovered + size as u64);
-            assert!((p.analyzer.band(0.0, 24000.0).unwrap().power_fs2 - 0.125).abs() < 1e-12);
+            assert!((p.analyzer.band(0.0, 24000.0).unwrap().power - 0.125).abs() < 1e-12);
             assert_eq!(p.analyzer.hold_power(), p.analyzer.power());
         }
     }
@@ -753,15 +886,18 @@ mod tests {
     #[test]
     fn latest_accepts_new_ends_below_hop_and_final_window_is_not_reaveraged() {
         let config = config(524288, SpectrumMode::Latest, Quantity::Amplitude);
-        let mut p = Processor::new(config);
+        let mut p = Processor::new(config.clone());
         let metrics = Metrics::default();
         for start in (0..config.settings.size).step_by(BLOCK_FRAMES) {
-            p.process(&block(config, start as u64, BLOCK_FRAMES, 0.5), &metrics);
+            p.process(
+                &block(config.clone(), start as u64, BLOCK_FRAMES, 0.5),
+                &metrics,
+            );
         }
         p.latest(false, &metrics);
         assert_eq!(p.info.updates, 1);
         p.process(
-            &block(config, 524288, 4800.min(BLOCK_FRAMES), 0.25),
+            &block(config.clone(), 524288, 4800.min(BLOCK_FRAMES), 0.25),
             &metrics,
         );
         p.last_latest -= LATEST_INTERVAL;
@@ -782,14 +918,17 @@ mod tests {
     fn small_latest_keeps_periodic_hop_gate_but_finishes_new_endpoint_once() {
         for size in [1024, 8192, 32768] {
             let config = config(size, SpectrumMode::Latest, Quantity::Amplitude);
-            let mut p = Processor::new(config);
+            let mut p = Processor::new(config.clone());
             let metrics = Metrics::default();
             for start in (0..size).step_by(BLOCK_FRAMES) {
-                p.process(&block(config, start as u64, BLOCK_FRAMES, 0.5), &metrics);
+                p.process(
+                    &block(config.clone(), start as u64, BLOCK_FRAMES, 0.5),
+                    &metrics,
+                );
             }
             p.latest(false, &metrics);
             assert_eq!(p.info.updates, 1);
-            p.process(&block(config, size as u64, 1, 0.25), &metrics);
+            p.process(&block(config.clone(), size as u64, 1, 0.25), &metrics);
             p.last_latest -= observation_interval(size);
             p.latest(false, &metrics);
             assert_eq!(p.info.updates, 1);
@@ -806,7 +945,7 @@ mod tests {
         for size in [1024, 8192, 32768, 524288] {
             for quantity in [Quantity::Amplitude, Quantity::Psd] {
                 let config = config(size, SpectrumMode::Live, quantity);
-                let mut p = Processor::new(config);
+                let mut p = Processor::new(config.clone());
                 let mut reference = Analyzer::new(config.settings, config.rate);
                 let mut history = History::with_channels(size, 1);
                 let metrics = Metrics::default();
@@ -816,7 +955,12 @@ mod tests {
                 for count in [size, 97, 101] {
                     for offset in (0..count).step_by(BLOCK_FRAMES) {
                         let len = (count - offset).min(BLOCK_FRAMES);
-                        let b = block(config, end, len, if end < size as u64 { 0.5 } else { 0.25 });
+                        let b = block(
+                            config.clone(),
+                            end,
+                            len,
+                            if end < size as u64 { 0.5 } else { 0.25 },
+                        );
                         p.process(&b, &metrics);
                         for (i, &sample) in b.samples[..len].iter().enumerate() {
                             history.push_at(end + i as u64, [sample]);
@@ -834,7 +978,7 @@ mod tests {
                 p.latest(true, &metrics);
                 p.latest(true, &metrics);
                 assert_eq!(p.info.updates, 3, "Stop must not reaverage the same window");
-                p.process(&block(config, end + 12, 1, 0.125), &metrics);
+                p.process(&block(config.clone(), end + 12, 1, 0.125), &metrics);
                 p.latest(true, &metrics);
                 assert!(!p.analyzer.is_ready());
                 assert_eq!(p.info.input_missing, 12);
@@ -842,7 +986,7 @@ mod tests {
                 end = start + 1;
                 for offset in (0..size - 1).step_by(BLOCK_FRAMES) {
                     let len = (size - 1 - offset).min(BLOCK_FRAMES);
-                    p.process(&block(config, end, len, 0.125), &metrics);
+                    p.process(&block(config.clone(), end, len, 0.125), &metrics);
                     end += len as u64;
                 }
                 p.latest(true, &metrics);
@@ -865,17 +1009,17 @@ mod tests {
         for mode in [SpectrumMode::Continuous, SpectrumMode::Latest] {
             let mut config = config(524288, mode, Quantity::Psd);
             config.settings.averages = 1;
-            let mut p = Processor::new(config);
+            let mut p = Processor::new(config.clone());
             let metrics = Metrics::default();
             for start in (0..config.settings.size * 4).step_by(BLOCK_FRAMES) {
-                let mut b = block(config, start as u64, BLOCK_FRAMES, 0.0);
+                let mut b = block(config.clone(), start as u64, BLOCK_FRAMES, 0.0);
                 if start == config.settings.size {
                     b.samples[0] = 0.5;
                 }
                 p.process(&b, &metrics);
             }
             p.latest(true, &metrics);
-            assert_eq!(p.analyzer.band(0.0, 24000.0).unwrap().power_fs2, 0.0);
+            assert_eq!(p.analyzer.band(0.0, 24000.0).unwrap().power, 0.0);
             if mode == SpectrumMode::Continuous {
                 assert_eq!(p.info.updates, 13);
                 assert!((p.analyzer.hold_power()[32] - 0.5 / (48000.0 * 524288.0)).abs() < 1e-20);
@@ -905,9 +1049,12 @@ mod tests {
             metrics: metrics.clone(),
         };
         feeder.configure(
-            7,
-            48000,
-            0,
+            Source {
+                generation: 7,
+                rate: 48000,
+                channel: 0,
+                calibration: None,
+            },
             config(1024, SpectrumMode::Continuous, Quantity::Amplitude).settings,
             SpectrumMode::Continuous,
             0,
@@ -916,7 +1063,7 @@ mod tests {
             feeder.submit(i, &[0.25]);
         }
         assert_eq!(metrics.input_dropped.load(Ordering::Relaxed), 1024);
-        let mut p = Processor::new(feeder.pending.as_ref().unwrap().config);
+        let mut p = Processor::new(feeder.pending.as_ref().unwrap().config.clone());
         p.process(&incoming.pop().unwrap(), &metrics);
         let reply = feeder.inspect(2048, true);
         let Control::Inspect {

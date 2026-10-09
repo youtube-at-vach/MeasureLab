@@ -510,8 +510,8 @@ pub fn multichannel_smoke_test() -> Result<(), Box<dyn std::error::Error>> {
         let expected_power = 0.125_f64.powi(2) / 2.0;
         let full = psd.band(0.0, capture.sample_rate as f64 * 0.5).unwrap();
         let density = psd.cursor(bin as f64 * delta_hz).unwrap();
-        if (band.power_fs2 - expected_power).abs() > 1e-9
-            || (full.power_fs2 - expected_power).abs() > 1e-9
+        if (band.power - expected_power).abs() > 1e-9
+            || (full.power - expected_power).abs() > 1e-9
             || (density.value - expected_power / psd.rbw_hz()).abs() > 1e-10
             || density.window.channel != ch
         {

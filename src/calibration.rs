@@ -1,5 +1,5 @@
-//! User-supplied affine channel calibration for Scope numeric readouts.
-//! Raw history, trace coordinates, triggers and FFT inputs remain in FS.
+//! User-supplied affine channel calibration for Scope readouts and Spectrum.
+//! Raw history, Scope trace coordinates and triggers remain in FS.
 use crate::{
     channel::{self, ChannelId, Pair},
     signal::{History, MAX_CHANNELS, Measurement},
@@ -71,6 +71,14 @@ impl Calibration {
     }
     pub fn unit(&self) -> &str {
         &self.unit
+    }
+    /// Square the complete supplied unit, including compound labels such as m/s.
+    pub fn squared_unit(&self) -> String {
+        if self.unit.chars().all(char::is_alphabetic) {
+            format!("{}²", self.unit)
+        } else {
+            format!("({})²", self.unit)
+        }
     }
     pub fn conditions(&self) -> &str {
         &self.conditions

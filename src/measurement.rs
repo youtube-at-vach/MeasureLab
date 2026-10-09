@@ -60,7 +60,7 @@ pub struct Config {
     pub spectrum_channel: ChannelId,
     pub spectrum_mode: SpectrumMode,
     pub scope: ScopeSettings,
-    /// Scope numeric calibration, fixed for this input generation.
+    /// Scope/Spectrum calibration, fixed for this input generation.
     pub calibrations: calibration::Set,
     pub xy_channels: Pair,
     pub stft_generation: u64,
@@ -75,6 +75,8 @@ pub struct SpectrumInfo {
     pub contributing: Range<u64>,
     /// Scheduled windows invalidated by input discontinuities, across resets.
     pub missing_windows: u64,
+    /// Complete windows invalidated by nonfinite samples/calibrated power.
+    pub invalid_windows: u64,
     pub observation_ms: u32,
     pub missed_observations: u64,
     /// Missing source samples observed by the Spectrum transport, separate from capture loss.
@@ -99,7 +101,7 @@ pub struct Snapshot {
     pub sweep: Sweep,
     pub measurements: [Measurement; 2],
     pub scope_readings: [Reading; 2],
-    /// Immutable coefficients/units/reference conditions for Scope readouts.
+    /// Immutable coefficients/units/reference conditions for numeric readouts.
     pub calibrations: calibration::Set,
     pub scope_missing: u64,
     /// Capture loss is separate from display publications and STFT delivery.
@@ -221,7 +223,17 @@ impl Core {
                 precision: spectrum::Precision::F64,
             },
         };
-        spectrum.configure(0, 48000, 0, config.spectrum, config.spectrum_mode, 0);
+        spectrum.configure(
+            spectrum_worker::Source {
+                generation: 0,
+                rate: 48000,
+                channel: 0,
+                calibration: None,
+            },
+            config.spectrum,
+            config.spectrum_mode,
+            0,
+        );
         Self {
             generation: 0,
             revision: 0,
@@ -253,6 +265,7 @@ impl Core {
         self.capture_dropped = 0;
         self.failed = false;
         self.metrics.failed.store(false, Ordering::Release);
+        self.config.calibrations = config.calibrations.clone();
         self.configure_spectrum(
             config.spectrum,
             config.spectrum_channel,
@@ -267,9 +280,17 @@ impl Core {
         self.config.spectrum_channel = channel.min(self.history.channels() - 1);
         self.config.spectrum_mode = mode;
         self.spectrum.configure(
-            self.generation,
-            self.sample_rate,
-            self.config.spectrum_channel,
+            spectrum_worker::Source {
+                generation: self.generation,
+                rate: self.sample_rate,
+                channel: self.config.spectrum_channel,
+                calibration: self
+                    .config
+                    .calibrations
+                    .get(self.config.spectrum_channel)
+                    .cloned()
+                    .map(Arc::new),
+            },
             settings,
             mode,
             self.history.range().end,
@@ -905,9 +926,7 @@ mod tests {
         };
         assert!((stopped.spectrum.power()[32] - expected).abs() < 1e-12);
         if config.spectrum.quantity == spectrum::Quantity::Psd {
-            assert!(
-                (stopped.spectrum.band(0.0, 24000.0).unwrap().power_fs2 - 0.03125).abs() < 1e-12
-            );
+            assert!((stopped.spectrum.band(0.0, 24000.0).unwrap().power - 0.03125).abs() < 1e-12);
         }
         assert!(worker.metrics.display_skipped.load(Ordering::Relaxed) > 0);
         assert_eq!(stft.metrics.input_dropped.load(Ordering::Relaxed), 0);
@@ -1117,7 +1136,7 @@ mod tests {
     }
 
     #[test]
-    fn scope_calibration_is_fixed_to_results_across_hold_route_and_restart() {
+    fn channel_calibration_is_fixed_to_scope_and_spectrum_across_hold_route_and_restart() {
         let (_stft, core, mut config, _spectrum) = setup(1024, 16);
         config.scope.channels = Pair([15, 7]);
         let definition = |revision, gain, offset| {
@@ -1167,7 +1186,11 @@ mod tests {
         assert_eq!(measured.calibrations.get(15).unwrap().revision(), 1);
         assert_eq!(measured.calibrations.unit(7), "FS");
         assert!((measured.measurements[0].rms - 0.25 / 2.0_f64.sqrt()).abs() < 1e-14);
-        assert!((measured.spectrum.power()[32] - 0.0625).abs() < 1e-14);
+        assert!((measured.spectrum.power()[32] - 1.0).abs() < 1e-14);
+        assert!((measured.spectrum.cursor(0.0).unwrap().value - 0.5).abs() < 1e-14);
+        assert_eq!(measured.spectrum.window().unwrap().channel, 15);
+        assert_eq!(measured.spectrum.calibration().unwrap().revision(), 1);
+        assert_eq!(measured.spectrum.db_unit(), "dB re 1 V peak");
         assert_eq!(measured.history.get(8).unwrap()[15], 0.25);
 
         let rerouted = worker.scope(ScopeSettings {
@@ -1198,7 +1221,11 @@ mod tests {
         assert_eq!(display.sweep.range, 0..2048);
         assert_eq!(display.scope_missing, 0);
         assert_eq!(display.input_dropped, 0);
+        assert_eq!(display.spectrum.window(), held.spectrum.window());
+        assert_eq!(display.spectrum.power(), held.spectrum.power());
+        assert_eq!(display.spectrum.hold_power(), held.spectrum.hold_power());
 
+        config.spectrum.quantity = spectrum::Quantity::Psd;
         worker.start_capture(2, capture(), config.clone());
         wait_for_frames(&worker, 4096);
         let fresh = worker.stop();
@@ -1210,14 +1237,30 @@ mod tests {
         assert!((m.rms - 3.0_f64.sqrt()).abs() < 1e-14);
         assert_eq!(m.peak, 3.0);
         assert_eq!(m.peak_to_peak, 4.0);
+        assert_eq!(fresh.spectrum.calibration().unwrap().revision(), 2);
+        assert_eq!(fresh.spectrum.db_unit(), "dB re 1 V²/Hz");
+        assert!((fresh.spectrum.band(0.0, 24000.0).unwrap().power - 3.0).abs() < 1e-14);
+        assert_eq!(fresh.spectrum_info.invalid_windows, 0);
         // An already-delivered result still identifies its original revision.
         assert_eq!(measured.calibrations.get(15).unwrap().gain(), 4.0);
         assert_eq!(measured.calibrations.get(15).unwrap().revision(), 1);
-        worker.start_demo(3, Demo::default(), config.clone());
+        assert_eq!(measured.spectrum.calibration().unwrap().revision(), 1);
+        config.spectrum_channel = 7;
+        worker.start_capture(3, capture(), config.clone());
+        wait_for_frames(&worker, 6144);
+        let uncalibrated = worker.stop();
+        assert_eq!(uncalibrated.spectrum.window().unwrap().channel, 7);
+        assert!(uncalibrated.spectrum.calibration().is_none());
+        assert_eq!(uncalibrated.spectrum.db_unit(), "dB re FS²/Hz");
+        assert!(
+            (uncalibrated.spectrum.band(0.0, 24000.0).unwrap().power - 0.0078125).abs() < 1e-14
+        );
+        worker.start_demo(4, Demo::default(), config.clone());
         let reduced = worker.scope(config.scope);
         assert_eq!(reduced.scope_readings[0], Reading::Unavailable);
         assert_eq!(reduced.calibrations.get(15).unwrap().revision(), 2);
         assert_eq!(reduced.history.channels(), 2);
+        assert!(reduced.spectrum.calibration().is_none());
     }
     #[test]
     fn large_fft_transport_stop_and_restart_keep_acquisition_history_bounded() {

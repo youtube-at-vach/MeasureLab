@@ -62,7 +62,7 @@ cargo run --release
 
 デモでは周波数、振幅、ノイズを変更し、正弦波／高調波付き正弦波／帯域制限した矩形波を比較できます。CH 2の位相と振幅比も変更できます。**0° / 90° / 180°** ボタンはノイズなし・同振幅の正弦波を設定し、XYの同相・円・逆相を確認できます。CH 2 gainを下げると楕円になります。デモ信号は内部だけで使い、スピーカーには出力しません。
 
-開始／停止は上部に固定しています。左の **Settings** は **Input source / Oscilloscope / Spectrum analyzer / Spectrogram / XY / Lissajous / Scope calibration / Workspace & help** のアコーディオンで、一つの項目を開いて設定します。閉じた項目にも現在値を表示します。各グラフの **Settings** を押すと、その設定を開いて該当位置へ移動します。
+開始／停止は上部に固定しています。左の **Settings** は **Input source / Oscilloscope / Spectrum analyzer / Spectrogram / XY / Lissajous / Channel calibration / Workspace & help** のアコーディオンで、一つの項目を開いて設定します。閉じた項目にも現在値を表示します。各グラフの **Settings** を押すと、その設定を開いて該当位置へ移動します。
 
 グラフ上部の **Settings** で左パネルを非表示にでき、境界をドラッグすると幅を変更できます。**Collapse all** ですべての項目を閉じられます。**Workspace & help** では複数画面の配置を **Automatic / Side by side / Stacked** から選択し、ショートカットと測定単位を確認できます。4画面の場合、広い画面ではScopeとSpectrumを上段、SpectrogramとXYを下段の2列に配置します。狭い画面では上下4行に並べ、既定の`--compact`ウィンドウでは全体がスクロールなしで収まります。見出し・内側の余白・軸まわりをコンパクトにし、低いプロットでは軸ラベルを間引きます。最低高さで収まらない場合はプロット領域をスクロールできます。幅が不足する場合は左右指定でも上下に配置します。開閉や配置指定は現在のセッション内で保持します。
 
@@ -105,16 +105,16 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | 各グラフのSettings | 対象の設定を左パネルで開く |
 | グラフ上部のSettings / Collapse all | 左パネルの表示切り替え／設定項目をすべて閉じる |
 | Workspace & help | 配置の指定、ショートカット、測定単位 |
-| Scope calibration / Queue calibration | CHごとのゲイン・オフセット・物理単位・参照条件を次回Start用に設定 |
+| Channel calibration / Queue calibration | CHごとのゲイン・オフセット・物理単位・参照条件を次回Start用に設定 |
 | Queue uncalibrated FS | 選択CHを次回Startから未校正FSへ戻す |
 | Spectrum Source / points / Window | FFTの入力CH（取得した全chから選択）、サイズ（1,024〜524,288点）、窓関数 |
 | Spectrum / Spectrogram FFT PRECISION | 各測定器のFFT精度。既定は64-bit、32-bit (fast FFT)を明示的に選択可能 |
 | Live / Continuous / Latest window | Live（既定）は最新の完全窓を最大60回/秒、実測処理時間に応じて観察。ContinuousはN/4全窓。省負荷のLatestは32k以下33 ms／N/4以上、新4サイズ100 ms。非表示でも解析を継続 |
-| Bin amplitude / Power spectral density | 振幅dBFS／PSD（FS²/Hz）の測定モード |
+| Bin amplitude / Power spectral density | ビン振幅／PSD。未校正はdBFS／FS²/Hz、校正CHは物理単位 |
 | EMA α / Remove DC | 線形値の指数電力平均、FFT前の平均値除去 |
-| PSD Power in band / From / To | 指定した両端を含むビン中心のPSD積算。To = 0はNyquist。FS²とRMS FSを表示 |
+| PSD Power in band / From / To | 指定した両端を含むビン中心のPSD積算。To = 0はNyquist。未校正はFS²とRMS FS、校正CHは単位²とRMS単位を表示 |
 | Log Hz / Linear Hz / From / To / Span | 周波数軸・表示範囲。To = 0はNyquist。狭帯域では実ビンを表示 |
-| Display floor / Peak hold / Clear hold | モードに応じたdB表示下限、平均後の最大値の保持、保持値のクリア |
+| Display floor / Display ceiling / Peak hold / Clear hold | 単位に対応するdB表示範囲、平均後の最大値の保持、保持値のクリア。校正後の正のdB値には天井を上げる |
 | スペクトル上にマウスを置く | 最寄りFFTビンの実周波数と振幅／PSDをf64で読み出す |
 | Spectrogram Source / FFT length / Window | Spectrumとは独立した対象CH・窓長・窓関数・DC除去 |
 | Spectrogram Time span / From / To | 時間範囲（0.5〜20秒）と周波数範囲。To = 0はNyquist |
@@ -135,15 +135,15 @@ RMS・Peak・P-PはScopeの整数サンプル区間内に取得した生のf64�
 
 生サンプル・波形軸・トリガー閾値の振幅は、CPALから取得したデジタル音声のフルスケール（FS）です。サンプルレートは取得に使った公称値で、デバイスの時計を校正した実レートではありません。768 kHzは設定上限であり、実際に選べるレートはデバイス・OSの対応範囲に依存します。外部ADCの制御、音声デバイス以外の入力は未実装です。
 
-**Scope calibration** ではCH 1〜16の数値読み出しに `y = gain × x(FS) + offset` を適用できます。Gainは物理単位/FS、Offsetは同じ物理単位です。V、mV、Aなどの単位と、基準信号・デバイスレンジ・日付・不確かさなどの参照条件を入力し、**Queue calibration** を押して次回Start用に設定します。負のゲインも使えます。ゲイン0・非有限の係数・空の単位や参照条件は拒否します。**Queue uncalibrated FS** はそのCHの次回用校正を解除します。入力CHの位置をIDとして扱い、トレースを入れ替えても校正は入力CHへ対応します。
+**Channel calibration** ではCH 1〜16のScope数値読み出しとSpectrumに `y = gain × x(FS) + offset` を適用できます。Gainは物理単位/FS、Offsetは同じ物理単位です。V、mV、Aなどの単位と、基準信号・デバイスレンジ・日付・不確かさなどの参照条件を入力し、**Queue calibration** を押して次回Start用に設定します。負のゲインも使えます。ゲイン0・非有限の係数・空の単位や参照条件は拒否します。**Queue uncalibrated FS** はそのCHの次回用校正を解除します。入力CHの位置をIDとして扱い、トレースを入れ替えても校正は入力CHへ対応します。
 
-校正はScopeのRMS・Peak・P-Pと時間カーソルの数値だけに適用します。RMSは各実サンプルを換算してから計算するため、オフセットを含みます。波形軸・カーソル点の位置・Fit amplitude・トリガー閾値はFSで、Spectrum／Spectrogram／XYもFS基準です。数値と軸の単位をそれぞれ表示します。校正による非有限値やP-Pのオーバーフローは **invalid value** とし、正常値へ置き換えません。欠落や存在しないCHは従来どおり利用不可・部分区間として扱います。
+ScopeではRMS・Peak・P-Pと時間カーソルの数値に校正を適用します。RMSは各実サンプルを換算してから計算するため、オフセットを含みます。Scopeの波形軸・カーソル点の位置・Fit amplitude・トリガー閾値とSpectrogram／XYはFS基準です。Spectrumは選択CHの校正を振幅・PSD・平均・ピーク保持・カーソル・帯域電力へ適用します。数値と軸の単位をそれぞれ表示します。校正による非有限値やP-Pのオーバーフローは **invalid value** とし、正常値へ置き換えません。欠落や存在しないCHは従来どおり利用不可・部分区間として扱います。
 
-校正のID・版・係数・単位・参照条件は取得世代のスナップショットへ固定します。Scope統計の説明と **Captured readout condition** で確認できます。取得中や停止後に新しい定義を設定しても、保持中の統計・カーソルの校正版は変わりません。Startで適用するまで **Queued for next Start** と区別します。入力ソース・デバイスを選び直したときと **Refresh devices** の再列挙では次回用の校正を解除し、別入力へ持ち越しません。校正の保存・復元と測定結果の書き出しは未実装で、終了すると設定は失われます。ユーザーが与えた係数による換算であり、ADCや物理基準の校正精度を検証済みとは扱いません。
+校正のID・版・係数・単位・参照条件は取得世代のスナップショットへ固定します。Scope統計の説明、**Captured readout condition**、Spectrumの校正表示・カーソルの説明で確認できます。取得中や停止後に新しい定義を設定しても、保持中のScope／Spectrum値と校正版は変わりません。Startで適用するまで **Queued for next Start** と区別します。入力ソース・デバイスを選び直したときと **Refresh devices** の再列挙では次回用の校正を解除し、別入力へ持ち越しません。校正の保存・復元と測定結果の書き出しは未実装で、終了すると設定は失われます。ユーザーが与えた係数による換算であり、ADCや物理基準の校正精度を検証済みとは扱いません。
 
 524,288点は実入力の窓長です。48 kHzではΔf ≈ 0.091553 Hz、周期HannのRBW ≈ 0.137329 Hz、窓時間 ≈ 10.9227秒、ContinuousのN/4 hop ≈ 2.7307秒です。開始・解析条件変更・欠落後は完全な窓の充填を待ち、未取得分をゼロで代用しません。Liveの高速観察でも完全窓の充填時間と窓時間は変わりません。Latestの100 ms観察では隣接窓が約99.1%重なります。同じEMA αでも解析間隔が変われば秒単位の応答が変わります。BIN幅・RBW・周波数読み値の精度・入力時計の誤差は区別します。Spectrogramは独立した1,024〜32,768点の上限を維持します。大きなFFTの基礎検証は [大きなFFTの検証](validation/LARGE_FFT_2026-10.md)、Liveと描画性能の条件・結果は [描画更新の検証](validation/SPECTRUM_PERFORMANCE_2026-10.md) に保持します。
 
-Spectrumの既定モード **Bin amplitude** は片側ビン振幅のdBFSです。窓のcoherent gainを補正し、ビン中心の1 FS peak正弦波を0 dBFSとします。DCとNyquistのビンは2倍しません。振幅ビンを積算して雑音電力とは扱いません。**Δf** はFs/N、**RBW** は窓の等価雑音帯域です。48 kHz・8,192点・HannではΔf ≈ 5.86 Hz、RBW ≈ 8.79 Hz、窓時間 ≈ 170.7 ms。ピークは最大ビンの値なので、1 kHzの信号が1002.0 Hzのビンに表示される場合があります。
+未校正のSpectrumの既定モード **Bin amplitude** は片側ビン振幅のdBFSです。窓のcoherent gainを補正し、ビン中心の1 FS peak正弦波を0 dBFSとします。DCとNyquistのビンは2倍しません。振幅ビンを積算して雑音電力とは扱いません。**Δf** はFs/N、**RBW** は窓の等価雑音帯域です。48 kHz・8,192点・HannではΔf ≈ 5.86 Hz、RBW ≈ 8.79 Hz、窓時間 ≈ 170.7 ms。ピークは最大ビンの値なので、1 kHzの信号が1002.0 Hzのビンに表示される場合があります。
 
 ビンの間にある信号は複数のビンに分散するため、ピークの読み値が実振幅より低くなることがあります。
 
@@ -151,7 +151,9 @@ Spectrumの既定モード **Bin amplitude** は片側ビン振幅のdBFSです�
 
 PSDの **Power in band** は、From〜Toの両端を含む中心周波数のビンを選び、`ΣPSD[k] × Δf`をf64で計算します。To = 0は取得時のNyquistです。実際に含めた最初／最後のビン周波数、電力FS²、平方根のRMS FSを表示します。電力とRMSは微小値も読める指数表記を使います。DC／Nyquistも全Δfの重みで含めます。半端なビンの補間や台形積分は使いません。範囲が不正、範囲内にビンがない、完全なPSD窓がない場合は利用不可とし、別範囲の値を代用しません。帯域指定と表示Spanは独立し、帯域を変えても平均はリセットしません。
 
-単一窓の全帯域積算はParsevalにより`Σw²(x−μ)² / Σw²`に一致します（DC除去なしはμ = 0）。Rectangularでは生サンプルの平均二乗、他の窓では窓付きの平均二乗です。定常正弦波・雑音の電力評価と短い過渡の窓位置依存を区別し、Scopeの観察区間のRMSと常に同一とは扱いません。ビン間正弦波では漏れを含む十分な帯域を選んで評価します。校正された電圧・dBmは未実装です。
+単一窓の全帯域積算はParsevalにより`Σw²(x−μ)² / Σw²`に一致します（DC除去なしはμ = 0）。Rectangularでは生サンプルの平均二乗、他の窓では窓付きの平均二乗です。定常正弦波・雑音の電力評価と短い過渡の窓位置依存を区別し、Scopeの観察区間のRMSと常に同一とは扱いません。ビン間正弦波では漏れを含む十分な帯域を選んで評価します。dBm・負荷インピーダンス換算は未実装です。
+
+Spectrumの校正CHは、振幅を物理単位peak、PSDを単位²/Hz、帯域積算を単位²とRMS単位で読み出します。dB表示はそれぞれ `20 log10(振幅 / 1 単位peak)`、`10 log10(PSD / 1 単位²/Hz)` です。たとえばVでは **dB re 1 V peak** と **dB re 1 V²/Hz** を使い、未校正CHは従来のdBFS／FS²/Hzを維持します。負のゲインも電力へ正しく反映します。Remove DCなしでは `y = gain × x + offset` を窓掛け前に計算し、校正したDCが窓によって隣接ビンへ広がることも含みます。Remove DCありでは `gain × (x − mean(x))` をf64で計算し、オフセットを相殺してから窓掛け・任意のf32変換を行います。全帯域PSD積算は校正した信号の窓付き平均二乗に対応します。Spectrumワーカーの入力、校正値、FFT電力が非有限なら **Invalid FFT window** とし、平均と保持をリセットして次の有効な完全窓から回復します。この無効窓数と入力欠落数を別に表示します。条件と許容差は [Spectrum校正の検証](validation/SPECTRUM_CALIBRATION_2026-10.md) に保持します。
 
 平均は **EMA α = 1/指定値** による指数的な線形電力平均です。最初の完全窓で初期化し、次の窓から`P ← P + α(Pnew − P)`を適用します。α = 1では最新窓だけを使います。処理窓数と最初〜最新の寄与区間を結果に保持しますが、均等な積算回数や区間全体の一様なRMSを意味しません。Live（既定）は全サイズでN/4の進行を要求せず、最大60回/秒の最新窓観察です。解析総時間の2倍と16.67 msの大きい方を周期の下限にし、遅い処理では直ちに延長、回復時は徐々に短縮します。対象は新しい終端の完全窓だけで、描画回数や表示の開閉に依存しません。ContinuousはN/4の全完全窓を処理します。Liveと省負荷のLatestは観察時点の最新窓だけを使い、過渡の捕捉を保証しません。Latestの32,768点以下は33 ms以上かつN/4以上、新4サイズは100 msでN/4の制限を外します。カーソルの説明で最新窓・寄与区間・CH・設定・入力世代・欠落を確認できます。
 
@@ -242,7 +244,7 @@ Audio device → CPAL callback → bounded SPSC → measurement worker ← inter
 
 `MEASURELAB_SPECTRUM_PSD=1`は`qa`ビルドでSpectrumをPSDに設定します。`--ui-smoke`やUI計測と組み合わせて、通常幅／狭幅・帯域表示・停止中のモード保持を確認できます。
 
-`MEASURELAB_UI_SMOKE_CALIBRATION=1`はScopeのTrace 1の入力CHへ4 V/FS・オフセット0.5 Vの内部QA校正を適用します。`MEASURELAB_UI_SMOKE_SETTINGS=calibration`で校正パネルを開き、通常幅／狭幅でFSの波形軸・Vの数値・未校正CHのFS・A/Bカーソルを確認できます。物理校正の検証ではありません。
+`MEASURELAB_UI_SMOKE_CALIBRATION=1`はScopeのTrace 1の入力CHへ4 V/FS・オフセット0.5 Vの内部QA校正を適用します。`MEASURELAB_UI_SMOKE_SETTINGS=calibration`で校正パネルを開き、通常幅／狭幅でFSの波形軸・Vの数値・未校正CHのFS・A/Bカーソルを確認できます。`MEASURELAB_UI_SMOKE_SETTINGS=spectrum`では校正したビン振幅、`MEASURELAB_SPECTRUM_PSD=1`との組み合わせではPSD・V²・RMS Vを確認できます。物理校正の検証ではありません。
 
 ```sh
 MEASURELAB_UI_SMOKE_CALIBRATION=1 MEASURELAB_UI_SMOKE_SETTINGS=calibration \
@@ -303,7 +305,7 @@ MEASURELAB_PROFILE_SECONDS=600 MEASURELAB_PROFILE_DEVICE="BlackHole 2ch" \
 
 `MEASURELAB_PROFILE_LIFECYCLE=1`を内部デモのUI計測へ追加すると、Spectrum設定の独立、停止後の遅着結果除外、停止中の解析窓・平均値・生サンプルの保持、デモ設定変更、共通カーソル、表示変更、非表示・単独表示・再表示、再開／入力切り替えでのカーソル無効化、STFTのCH／FFT変更、XYの保持・振幅変更・単独表示・再開を実際のアプリ状態で確認します。`MEASURELAB_PROFILE_IDLE=1`も指定すると、計測用の連続再描画を停止中だけ抑え、待機フレーム間隔を検証します。QAの次段階へ進むための一度のタイマーは残します。計測区間は状態変更を含むため、通常の性能基準値とは別に扱います。
 
-ScopeのX固定カーソルが取得更新・非表示中も新しいサンプルを参照することも、同じライフサイクルQAで確認します。
+ScopeのX固定カーソルが取得更新・非表示中も新しいサンプルを参照すること、停止中に次回用の校正を編集してもScope／Spectrumの保持条件が変わらず、再開時に適用されることも、同じライフサイクルQAで確認します。
 
 ```sh
 MEASURELAB_PROFILE_SECONDS=5 MEASURELAB_PROFILE_LIFECYCLE=1 MEASURELAB_PROFILE_IDLE=1 \
