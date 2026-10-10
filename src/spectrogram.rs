@@ -41,6 +41,17 @@ impl Default for History {
 }
 
 impl History {
+    /// Invalidate the old input without changing the queued next-start config
+    /// or allocating new texture storage. Late rows cannot repopulate it.
+    pub fn clear(&mut self) {
+        self.config = None;
+        self.rows.fill(None);
+        self.next = 0;
+        self.len = 0;
+        self.revision = self.revision.wrapping_add(1);
+        self.versions.fill(self.revision);
+    }
+
     pub fn reset(&mut self, generation: u64, config: Config) {
         config.validate().expect("valid STFT configuration");
         self.config = Some(config);
@@ -246,6 +257,28 @@ mod tests {
             end,
             gap: Gap::default(),
         }
+    }
+    #[test]
+    fn new_input_clears_rows_without_reallocation_or_accepting_late_results() {
+        let mut history = History::default();
+        history.reset(1, config());
+        let db = vec![-60.0; 513];
+        assert!(history.push(info(1024), &db));
+        let revision = history.revision();
+        let storage = history.db.as_ptr();
+        history.clear();
+        assert!(history.is_empty());
+        assert!(history.config().is_none());
+        assert!(history.latest().is_none());
+        assert!(history.revision() > revision);
+        assert_eq!(history.db.as_ptr(), storage);
+        assert!(!history.push(info(1280), &db));
+        history.reset(2, config());
+        assert!(!history.push(info(1024), &db));
+        let mut next = info(1024);
+        next.generation = 2;
+        assert!(history.push(next, &db));
+        assert_eq!(history.db.as_ptr(), storage);
     }
     #[test]
     fn wrap_keeps_source_time_bins_and_fixed_storage() {

@@ -64,7 +64,7 @@ cargo run --release
 
 開始／停止は上部に固定しています。左の **Settings** は **Input source / Oscilloscope / Spectrum analyzer / Spectrogram / XY / Lissajous / Channel calibration / Workspace & help** のアコーディオンで、一つの項目を開いて設定します。閉じた項目にも現在値を表示します。各グラフの **Settings** を押すと、その設定を開いて該当位置へ移動します。
 
-グラフ上部の **Settings** で左パネルを非表示にでき、境界をドラッグすると幅を変更できます。**Collapse all** ですべての項目を閉じられます。**Workspace & help** では複数画面の配置を **Automatic / Side by side / Stacked** から選択し、ショートカットと測定単位を確認できます。4画面の場合、広い画面ではScopeとSpectrumを上段、SpectrogramとXYを下段の2列に配置します。狭い画面では上下4行に並べ、既定の`--compact`ウィンドウでは全体がスクロールなしで収まります。見出し・内側の余白・軸まわりをコンパクトにし、低いプロットでは軸ラベルを間引きます。最低高さで収まらない場合はプロット領域をスクロールできます。幅が不足する場合は左右指定でも上下に配置します。開閉や配置指定は現在のセッション内で保持します。
+グラフ上部の **Settings** で左パネルを非表示にでき、境界をドラッグすると幅を変更できます。**Collapse all** ですべての項目を閉じられます。**Workspace & help** では複数画面の配置を **Automatic / Side by side / Stacked** から選択し、ショートカットと測定単位を確認できます。4画面の場合、広い画面ではScopeとSpectrumを上段、SpectrogramとXYを下段の2列に配置します。狭い画面では上下4行に並べ、既定の`--compact`ウィンドウでは全体がスクロールなしで収まります。見出し・内側の余白・軸まわりをコンパクトにし、低いプロットでは軸ラベルを間引きます。最低高さで収まらない場合はプロット領域をスクロールできます。幅が不足する場合は左右指定でも上下に配置します。配置・表示選択は測定設定ファイルへ保存・復元できます。アコーディオンの各項目の開閉は現在のセッション内で保持します。
 
 macOSではマイクへのアクセスを許可する必要があります。許可がない場合は「システム設定 → プライバシーとセキュリティ → マイク」で、起動に使うアプリ／ターミナルを確認してください。独立したアプリとして起動するには以下を使います。
 
@@ -104,7 +104,8 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | Scope / Spectrum / Spectrogram / XY | 各測定器の表示切り替え。少なくとも一つを表示。広い画面では左右と上下、狭い画面では上下に配置 |
 | 各グラフのSettings | 対象の設定を左パネルで開く |
 | グラフ上部のSettings / Collapse all | 左パネルの表示切り替え／設定項目をすべて閉じる |
-| Workspace & help | 配置の指定、ショートカット、測定単位 |
+| Workspace & help | 測定設定の手動保存・復元、配置の指定、ショートカット、測定単位 |
+| Save settings / Restore settings | 版付きJSONへ次回Start用の入力・CH・解析・校正と表示設定を保存。復元は入力停止中のみ |
 | Channel calibration / Queue calibration | CHごとのゲイン・オフセット・物理単位・参照条件を次回Start用に設定 |
 | Queue uncalibrated FS | 選択CHを次回Startから未校正FSへ戻す |
 | Spectrum Source / points / Window | FFTの入力CH（取得した全chから選択）、サイズ（1,024〜524,288点）、窓関数 |
@@ -139,7 +140,19 @@ RMS・Peak・P-PはScopeの整数サンプル区間内に取得した生のf64�
 
 ScopeではRMS・Peak・P-Pと時間カーソルの数値に校正を適用します。RMSは各実サンプルを換算してから計算するため、オフセットを含みます。Scopeの波形軸・カーソル点の位置・Fit amplitude・トリガー閾値とSpectrogram／XYはFS基準です。Spectrumは選択CHの校正を振幅・PSD・平均・ピーク保持・カーソル・帯域電力へ適用します。数値と軸の単位をそれぞれ表示します。校正による非有限値やP-Pのオーバーフローは **invalid value** とし、正常値へ置き換えません。欠落や存在しないCHは従来どおり利用不可・部分区間として扱います。
 
-校正のID・版・係数・単位・参照条件は取得世代のスナップショットへ固定します。Scope統計の説明、**Captured readout condition**、Spectrumの校正表示・カーソルの説明で確認できます。取得中や停止後に新しい定義を設定しても、保持中のScope／Spectrum値と校正版は変わりません。Startで適用するまで **Queued for next Start** と区別します。入力ソース・デバイスを選び直したときと **Refresh devices** の再列挙では次回用の校正を解除し、別入力へ持ち越しません。校正の保存・復元と測定結果の書き出しは未実装で、終了すると設定は失われます。ユーザーが与えた係数による換算であり、ADCや物理基準の校正精度を検証済みとは扱いません。
+校正のID・版・係数・単位・参照条件は取得世代のスナップショットへ固定します。Scope統計の説明、**Captured readout condition**、Spectrumの校正表示・カーソルの説明で確認できます。取得中や停止後に新しい定義を設定しても、保持中のScope／Spectrum値と校正版は変わりません。Startで適用するまで **Queued for next Start** と区別します。入力ソース・デバイスを選び直したときと **Refresh devices** の再列挙では次回用の校正を解除し、別入力へ持ち越しません。校正は下記の測定設定ファイルへ保存・復元できます。測定結果の書き出しは未実装です。ユーザーが与えた係数による換算であり、ADCや物理基準の校正精度を検証済みとは扱いません。
+
+### 測定設定の保存・復元
+
+**Workspace & help / MEASUREMENT SETTINGS** でファイルパスを確認し、**Save settings** を押します。次回Start用の入力デバイス・CH割当・トリガー・観察幅・Spectrum／Spectrogramの解析設定・PSD帯域・校正定義を版1のJSONへ保存します。取得中の保持結果や未確定の校正エディター入力を保存する操作ではありません。表示選択・配置・軸・表示範囲は別のWorkspaceブロックへ保存します。生サンプル・測定結果・カーソル位置・アコーディオン各項目の開閉は含めません。内部デモは保存対象外です。
+
+既定の保存先はmacOSで `~/Library/Application Support/MeasureLab/measurement-settings.json`、Windowsで `%APPDATA%/MeasureLab/measurement-settings.json`、Linuxで `$XDG_CONFIG_HOME/MeasureLab/measurement-settings.json`（未設定時は `~/.config/MeasureLab/measurement-settings.json`）です。別のパスも指定できます。自動保存・起動時の自動読み込みは行いません。
+
+再起動後、入力を停止した状態で同じパスを指定し、**Restore settings** を押します。Stopの解析完了・デバイス操作・Scopeの保留操作も完了するまで待ちます。復元だけでは取得・出力・記録を開始しません。校正と解析条件は次回Start用に適用し、保持結果のCH・公称Fs・入力世代・校正版は維持します。軸や観察幅などの表示操作は保持した生サンプルから再表示します。復元中はStartを受け付けません。
+
+入力は名前や列挙順でなくCPALの安定したデバイスIDを照合します。不在・重複ID、CH数の変化、指定レートの非対応、Device defaultで保存した既定Fsの変化では復元全体を拒否し、別のデバイスやレートへ置き換えません。接続を戻して **Refresh devices** を行い、再度復元してください。対応しない版・旧形式・不正値・64 KiBを超えるファイルや、セッション内で既知の校正ID／版と異なる定義も拒否します。保存失敗では以前のファイルを維持し、成功・失敗はパネルと下部の **Settings status / Settings error** から確認できます。デバイスIDの保証範囲はOS・バックエンドに依存します。条件付きの検証と未確認範囲は [設定保存の検証](validation/SETTINGS_2026-10.md) を参照してください。
+
+### Spectrumの測定定義
 
 524,288点は実入力の窓長です。48 kHzではΔf ≈ 0.091553 Hz、周期HannのRBW ≈ 0.137329 Hz、窓時間 ≈ 10.9227秒、ContinuousのN/4 hop ≈ 2.7307秒です。開始・解析条件変更・欠落後は完全な窓の充填を待ち、未取得分をゼロで代用しません。Liveの高速観察でも完全窓の充填時間と窓時間は変わりません。Latestの100 ms観察では隣接窓が約99.1%重なります。同じEMA αでも解析間隔が変われば秒単位の応答が変わります。BIN幅・RBW・周波数読み値の精度・入力時計の誤差は区別します。Spectrogramは独立した1,024〜32,768点の上限を維持します。大きなFFTの基礎検証は [大きなFFTの検証](validation/LARGE_FFT_2026-10.md)、Liveと描画性能の条件・結果は [描画更新の検証](validation/SPECTRUM_PERFORMANCE_2026-10.md) に保持します。
 
@@ -244,6 +257,12 @@ Audio device → CPAL callback → bounded SPSC → measurement worker ← inter
 
 `MEASURELAB_SPECTRUM_PSD=1`は`qa`ビルドでSpectrumをPSDに設定します。`--ui-smoke`やUI計測と組み合わせて、通常幅／狭幅・帯域表示・停止中のモード保持を確認できます。
 
+`MEASURELAB_UI_SMOKE_SETTINGS_RESTORE=1`は合成16chデバイスIDの設定ファイルを `dist/settings-restore-qa.json` へ保存・読み込みし、不在入力・校正衝突・取得中の復元拒否、復元中のStart拒否、保持データ・条件の不変性、開始準備でのCH 16維持をアプリ内で検証します。実入力は開始しません。
+
+```sh
+MEASURELAB_UI_SMOKE_SETTINGS_RESTORE=1 ./scripts/debug.sh --ui-smoke --low-latency
+```
+
 `MEASURELAB_UI_SMOKE_CALIBRATION=1`はScopeのTrace 1の入力CHへ4 V/FS・オフセット0.5 Vの内部QA校正を適用します。`MEASURELAB_UI_SMOKE_SETTINGS=calibration`で校正パネルを開き、通常幅／狭幅でFSの波形軸・Vの数値・未校正CHのFS・A/Bカーソルを確認できます。`MEASURELAB_UI_SMOKE_SETTINGS=spectrum`では校正したビン振幅、`MEASURELAB_SPECTRUM_PSD=1`との組み合わせではPSD・V²・RMS Vを確認できます。物理校正の検証ではありません。
 
 ```sh
@@ -346,6 +365,7 @@ MEASURELAB_PROFILE_SECONDS=10 MEASURELAB_PROFILE_FFT_PRECISION=f64 \
 
 - `src/audio.rs`: CPALデバイス管理、入力コールバック、SPSC転送。
 - `src/channel.rs`: 全測定器で使う0始まりの入力CH ID、表示名、Scope／XYの2ch割当と利用可能性。
+- `src/settings.rs`: 版付き測定設定・校正と表示設定のJSON、全体検証、デバイスID照合、容量制限付き読み込み・原子的保存、専用I/Oワーカー。
 - `src/calibration.rs`: ID・版・参照条件付きのCH校正、Scope実サンプルの換算・RMS／Peak／P-P、非有限値の無効化。
 - `src/measurement.rs`: GUI非依存の入力消費・共通履歴・デモ・Scope統計・解析への供給、入力世代・欠落付きの容量固定スナップショット。
 - `src/signal.rs`: 固定容量履歴、トリガー、集約、測定。

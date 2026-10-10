@@ -7,6 +7,7 @@ pub mod cursor;
 pub mod demo;
 pub mod instance;
 pub mod measurement;
+pub mod settings;
 pub mod signal;
 pub mod spectrogram;
 pub mod spectrum;

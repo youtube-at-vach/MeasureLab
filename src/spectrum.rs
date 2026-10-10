@@ -16,7 +16,8 @@ pub const FFT_SIZES: [usize; 10] = [
 pub const STFT_SIZES: [usize; 6] = [1024, 2048, 4096, 8192, 16384, 32768];
 pub const DB_MIN: f32 = -180.0;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Window {
     Rectangular,
     #[default]
@@ -46,7 +47,8 @@ impl Window {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Precision {
     F32,
     #[default]
@@ -62,7 +64,8 @@ impl Precision {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Quantity {
     #[default]
     Amplitude,
@@ -112,7 +115,8 @@ impl Quantity {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Settings {
     pub quantity: Quantity,
     pub size: usize,
@@ -855,7 +859,8 @@ impl Analyzer {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum FrequencyScale {
     Linear,
     #[default]

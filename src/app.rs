@@ -7,6 +7,7 @@ use crate::{
     cursor::{self, Cursors},
     gpu::{COLORS, PlotId, Segment, TraceCallback, TraceRenderer},
     measurement::{self, ScopeSettings, SpectrumMode},
+    settings::{self, PlotLayout},
     signal::{Edge, History, Line, Measurement, Sweep, Trigger, build_sweep_lines},
     spectrogram, spectrogram_gpu,
     spectrum::{
@@ -69,13 +70,6 @@ enum Instrument {
     Xy,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum PlotLayout {
-    Auto,
-    Columns,
-    Rows,
-}
-
 impl PlotLayout {
     fn name(self) -> &'static str {
         match self {
@@ -93,6 +87,12 @@ impl PlotLayout {
             Self::Rows => false,
         }
     }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum SettingsTask {
+    Save,
+    Restore,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -335,6 +335,12 @@ pub struct ScopeApp {
     measurements: [Measurement; 2],
     scope_readings: [Reading; 2],
     calibration: CalibrationEditor,
+    settings_worker: settings::Worker,
+    settings_path: String,
+    settings_task: Option<SettingsTask>,
+    settings_status: Option<String>,
+    settings_error: bool,
+    restored_input: Option<settings::Input>,
     scope_missing: u64,
     dirty: bool,
     pixels: usize,
@@ -514,6 +520,14 @@ impl ScopeApp {
             measurements: [Measurement::default(); 2],
             scope_readings: [Reading::Unavailable; 2],
             calibration: CalibrationEditor::default(),
+            settings_worker: settings::Worker::default(),
+            settings_path: settings::default_path()
+                .map(|path| path.to_string_lossy().into_owned())
+                .unwrap_or_default(),
+            settings_task: None,
+            settings_status: None,
+            settings_error: false,
+            restored_input: None,
             scope_missing: 0,
             dirty: true,
             pixels: 0,
@@ -734,8 +748,94 @@ impl ScopeApp {
         }
         if smoke {
             app.update_spectrum(true);
+            #[cfg(feature = "qa")]
+            if std::env::var_os("MEASURELAB_UI_SMOKE_SETTINGS_RESTORE").is_some() {
+                app.check_settings_restore()?;
+            }
         }
         Ok(app)
+    }
+
+    #[cfg(feature = "qa")]
+    fn check_settings_restore(&mut self) -> Result<(), String> {
+        // Synthetic device identity: this QA never opens an input stream.
+        self.source = Source::Live;
+        self.busy = false;
+        self.devices = vec![DeviceInfo {
+            id: Some("coreaudio:settings-qa-fixture".into()),
+            name: "Settings QA 16ch (synthetic)".into(),
+            channels: 16,
+            default_sample_rate: 48_000,
+            sample_rates: vec![48_000, 96_000],
+            is_default: true,
+        }];
+        self.selected = 0;
+        self.calibration.channel = 0;
+        self.calibration.conditions = "Settings QA pending calibration".into();
+        self.calibration.apply()?;
+        let original = self.capture_settings()?;
+        let mut invalid = original.clone();
+        invalid.measurement.input.device_id = "coreaudio:missing".into();
+        assert!(self.restore_settings(invalid).is_err());
+        assert_eq!(self.capture_settings()?, original);
+        let mut invalid = original.clone();
+        invalid.measurement.calibrations[0].gain += 1.0;
+        assert!(self.restore_settings(invalid).is_err());
+        assert_eq!(self.capture_settings()?, original);
+        self.demo_running = true;
+        assert!(self.restore_settings(original.clone()).is_err());
+        self.demo_running = false;
+        let generation = self.input_generation;
+        self.settings_task = Some(SettingsTask::Restore);
+        self.start();
+        assert_eq!(self.input_generation, generation);
+        assert!(!self.running());
+        assert!(!self.busy);
+        self.settings_task = None;
+        let captured = self.calibration.captured.clone();
+        let window = self.analyzer.window();
+        let power = self.analyzer.power().to_vec();
+        let range = self.history.range();
+        let sample_rate = self.sample_rate;
+        let channels = self.channels;
+        let mut document = original;
+        document.measurement.scope.channels = Pair([15, 7]);
+        document.measurement.spectrum.channel = 15;
+        document.measurement.spectrum.analysis.size = 1024;
+        document.measurement.spectrum.analysis.quantity = Quantity::Psd;
+        document.measurement.spectrum.mode = SpectrumMode::Latest;
+        document.measurement.spectrogram.channel = 15;
+        document.measurement.xy.channels = Pair([15, 7]);
+        document.measurement.input.sample_rate = Some(96_000);
+        document.workspace.sidebar_visible = true;
+        document.measurement.calibrations[0].revision += 1;
+        document.measurement.calibrations[0].gain = 8.0;
+        let path = std::path::PathBuf::from("dist/settings-restore-qa.json");
+        settings::save(&path, &document)?;
+        self.restore_settings(settings::load(&path)?)?;
+        assert_eq!(self.capture_settings()?, document);
+        assert_eq!(self.calibration.captured, captured);
+        assert_eq!(self.analyzer.window(), window);
+        assert_eq!(self.analyzer.power(), power);
+        assert_eq!(self.history.range(), range);
+        assert_eq!(self.sample_rate, sample_rate);
+        assert_eq!(self.channels, channels);
+        assert_eq!(self.input_generation, generation);
+        assert!(!self.running());
+        assert!(self.capture.is_none());
+        self.begin_observation();
+        assert_eq!(self.spectrum_channel, 15);
+        assert_eq!(self.spectrogram_channel, 15);
+        assert!(self.analyzer.window().is_none());
+        assert!(self.spectrogram_history.lock().unwrap().config().is_none());
+        assert_eq!(self.calibration.captured, self.calibration.pending);
+        self.settings_path = path.display().to_string();
+        self.settings_status = Some("Settings QA passed; input stays stopped".into());
+        self.sidebar.reveal(SettingsSection::Workspace);
+        println!(
+            "Settings restore UI QA OK: missing/conflicting/running restores rejected atomically, Start blocked during restore, held data/metadata preserved, CH 16 survives new observation without automatic capture"
+        );
+        Ok(())
     }
 
     #[cfg(feature = "qa")]
@@ -1290,8 +1390,18 @@ impl ScopeApp {
         self.scope_missing = 0;
         self.dirty = true;
         self.xy_dirty = true;
-        self.reset_analysis();
-        self.reset_stft();
+        // The new device topology is not known until Started. Preparing the
+        // old topology here used to clamp queued CH 16 back to CH 1 at startup.
+        self.analyzer = spectrum::Result::empty(self.spectrum_settings, self.sample_rate);
+        self.spectrum_numeric_key = None;
+        self.spectrum_info = measurement::SpectrumInfo {
+            mode: self.spectrum_mode,
+            ..Default::default()
+        };
+        self.spectrum_dirty = true;
+        self.stft.pause();
+        self.last_stft = None;
+        self.spectrogram_history.lock().unwrap().clear();
     }
 
     fn core_config(&self) -> measurement::Config {
@@ -1781,6 +1891,9 @@ impl ScopeApp {
     }
 
     fn start(&mut self) {
+        if self.settings_task == Some(SettingsTask::Restore) {
+            return;
+        }
         if self.pending_stop.is_some() {
             self.start_after_stop = true;
             return;
@@ -1812,6 +1925,20 @@ impl ScopeApp {
         }
         if self.devices.is_empty() || self.busy {
             return;
+        }
+        if let Some(input) = &self.restored_input {
+            match input.resolve(&self.devices) {
+                Ok(index) if index == self.selected => {}
+                Ok(_) => {
+                    self.error =
+                        Some("Restored input selection changed; restore settings again".into());
+                    return;
+                }
+                Err(error) => {
+                    self.error = Some(error);
+                    return;
+                }
+            }
         }
         self.error = None;
         self.capture = None;
@@ -1858,6 +1985,7 @@ impl ScopeApp {
             self.busy = false;
             match event {
                 Event::Devices(devices) => {
+                    self.restored_input = None;
                     if self.source == Source::Live {
                         self.calibration.clear_input();
                     }
@@ -1885,6 +2013,15 @@ impl ScopeApp {
                     }
                 }
                 Event::Started(capture) => {
+                    if self.restored_input.as_ref().is_some_and(|input| {
+                        input.channels != capture.channels
+                            || input.expected_sample_rate() != capture.sample_rate
+                    }) {
+                        self.audio.send(Command::Stop);
+                        self.busy = true;
+                        self.error = Some("Input conditions changed since restoration; refresh devices and restore again".into());
+                        continue;
+                    }
                     self.xy_dirty = true;
                     self.sample_rate = capture.sample_rate;
                     self.channels = capture.channels;
@@ -1972,6 +2109,10 @@ impl ScopeApp {
     }
 
     fn controls(&mut self, ui: &mut egui::Ui) {
+        if self.settings_task == Some(SettingsTask::Restore) {
+            ui.label("Restoring measurement settings…");
+            return;
+        }
         ui.spacing_mut().item_spacing = vec2(8.0, 8.0);
         ui.visuals_mut().collapsing_header_frame = true;
         for section in SettingsSection::ALL {
@@ -2038,6 +2179,7 @@ impl ScopeApp {
         if ui
             .add_enabled(
                 !self.busy
+                    && self.settings_task != Some(SettingsTask::Restore)
                     && self.pending_stop.is_none()
                     && (self.source.is_demo() || !self.devices.is_empty()),
                 egui::Button::new(
@@ -2070,6 +2212,7 @@ impl ScopeApp {
 
     #[cfg(feature = "qa")]
     fn switch_source(&mut self) {
+        self.restored_input = None;
         self.calibration.clear_input();
         self.cursors.new_epoch();
         self.scope_range = 0..0;
@@ -2145,6 +2288,7 @@ impl ScopeApp {
                     });
             });
             if previous != self.selected {
+                self.restored_input = None;
                 self.calibration.clear_input();
                 self.requested_sample_rate = None;
             }
@@ -2182,6 +2326,11 @@ impl ScopeApp {
                         .small()
                         .color(MUTED),
                 );
+            }
+            if previous_rate != self.requested_sample_rate
+                && let Some(input) = &mut self.restored_input
+            {
+                input.sample_rate = self.requested_sample_rate;
             }
             if (previous != self.selected || previous_rate != self.requested_sample_rate)
                 && self.capture.is_some()
@@ -3787,6 +3936,42 @@ impl ScopeApp {
     }
 
     fn workspace_controls(&mut self, ui: &mut egui::Ui) {
+        setting_label(ui, "MEASUREMENT SETTINGS");
+        ui.label(RichText::new("Save the queued input, channels, analysis and calibration for the next Start. Restore while stopped; then start input explicitly.").small().color(MUTED));
+        ui.add_enabled(
+            self.settings_task.is_none(),
+            egui::TextEdit::singleline(&mut self.settings_path)
+                .hint_text("Settings JSON file path")
+                .desired_width(f32::INFINITY),
+        );
+        ui.horizontal(|ui| {
+            if ui
+                .add_enabled(
+                    self.settings_task.is_none() && !self.busy && self.source == Source::Live,
+                    egui::Button::new("Save settings"),
+                )
+                .clicked()
+            {
+                self.request_settings(SettingsTask::Save);
+            }
+            if ui
+                .add_enabled(
+                    self.settings_task.is_none() && self.can_restore_settings(),
+                    egui::Button::new("Restore settings"),
+                )
+                .clicked()
+            {
+                self.request_settings(SettingsTask::Restore);
+            }
+        });
+        if let Some(status) = &self.settings_status {
+            ui.label(RichText::new(status).small().color(if self.settings_error {
+                YELLOW
+            } else {
+                MUTED
+            }));
+        }
+        ui.separator();
         setting_label(ui, "INSTRUMENT LAYOUT");
         egui::ComboBox::from_id_salt("plot_layout")
             .width(ui.available_width())
@@ -3821,6 +4006,191 @@ impl ScopeApp {
                 .small()
                 .color(MUTED),
         );
+    }
+
+    fn can_restore_settings(&self) -> bool {
+        self.source == Source::Live
+            && !self.running()
+            && !self.busy
+            && self.pending_stop.is_none()
+            && self.pending_scope.is_none()
+    }
+
+    fn capture_settings(&self) -> Result<settings::Document, String> {
+        let device = self
+            .devices
+            .get(self.selected)
+            .ok_or("Select an input device first")?;
+        let document = settings::Document {
+            version: settings::VERSION,
+            measurement: settings::Measurement {
+                input: settings::Input::from_device(device, self.requested_sample_rate)?,
+                scope: settings::Scope {
+                    channels: self.scope_channels,
+                    ms_per_div: self.ms_per_div,
+                    trigger: self.trigger,
+                },
+                spectrum: settings::Spectrum {
+                    channel: self.spectrum_channel,
+                    analysis: self.spectrum_settings,
+                    mode: self.spectrum_mode,
+                    band_min_hz: self.band_min_hz,
+                    band_max_hz: self.band_max_hz,
+                },
+                spectrogram: settings::Spectrogram {
+                    channel: self.spectrogram_channel,
+                    analysis: self.spectrogram_settings,
+                },
+                xy: settings::Xy {
+                    channels: self.xy_settings.channels,
+                    milliseconds: self.xy_settings.milliseconds,
+                },
+                calibrations: settings::ChannelCalibration::capture(&self.calibration.pending),
+            },
+            workspace: settings::Workspace {
+                visible: self.visible,
+                layout: self.plot_layout,
+                sidebar_visible: self.sidebar.visible,
+                scope_enabled: self.enabled,
+                scope_fs_per_div: self.fs_per_div,
+                spectrum_scale: self.frequency_scale,
+                spectrum_min_hz: self.spectrum_min_hz,
+                spectrum_max_hz: self.span_hz,
+                spectrum_floor_db: self.floor_db,
+                spectrum_ceiling_db: self.spectrum_ceiling_db,
+                spectrum_show_hold: self.show_hold,
+                spectrogram_scale: self.spectrogram_scale,
+                spectrogram_min_hz: self.spectrogram_min_hz,
+                spectrogram_max_hz: self.spectrogram_max_hz,
+                spectrogram_floor_db: self.spectrogram_floor,
+                spectrogram_ceiling_db: self.spectrogram_ceiling,
+                spectrogram_seconds: self.spectrogram_seconds,
+                xy_x_fs_per_div: self.xy_settings.x_fs_per_div,
+                xy_y_fs_per_div: self.xy_settings.y_fs_per_div,
+                xy_cursor_mode: self.xy_cursor_mode,
+            },
+        };
+        document.validate()?;
+        document.measurement.input.resolve(&self.devices)?;
+        if self.capture.is_some()
+            && (document.measurement.input.channels != self.channels
+                || document.measurement.input.expected_sample_rate() != self.sample_rate)
+        {
+            return Err(
+                "Active input differs from the device list; stop and refresh before saving".into(),
+            );
+        }
+        Ok(document)
+    }
+
+    /// Transactional restoration: all checks precede mutation, and only queued
+    /// conditions/display preferences change. Captured data keeps its metadata.
+    fn restore_settings(&mut self, document: settings::Document) -> Result<(), String> {
+        if !self.can_restore_settings() {
+            return Err("Stop input and wait for pending operations before restoring".into());
+        }
+        let calibrations = document.validate()?;
+        let selected = document.measurement.input.resolve(&self.devices)?;
+        for channel in 0..crate::signal::MAX_CHANNELS {
+            if let Some(new) = calibrations.get(channel) {
+                for known in [&self.calibration.pending, &self.calibration.captured] {
+                    for old_channel in 0..crate::signal::MAX_CHANNELS {
+                        if let Some(old) = known.get(old_channel)
+                            && old.id() == new.id()
+                            && old.revision() == new.revision()
+                            && old != new
+                        {
+                            return Err(
+                                "Saved calibration conflicts with an existing ID/revision".into()
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        let m = document.measurement;
+        let w = document.workspace;
+        self.selected = selected;
+        self.requested_sample_rate = m.input.sample_rate;
+        self.restored_input = Some(m.input);
+        self.scope_channels = m.scope.channels;
+        self.ms_per_div = m.scope.ms_per_div;
+        self.trigger = m.scope.trigger;
+        self.spectrum_channel = m.spectrum.channel;
+        self.spectrum_settings = m.spectrum.analysis;
+        self.spectrum_mode = m.spectrum.mode;
+        self.band_min_hz = m.spectrum.band_min_hz;
+        self.band_max_hz = m.spectrum.band_max_hz;
+        self.spectrogram_channel = m.spectrogram.channel;
+        self.spectrogram_settings = m.spectrogram.analysis;
+        self.xy_settings.channels = m.xy.channels;
+        self.xy_settings.milliseconds = m.xy.milliseconds;
+        self.calibration.pending = calibrations;
+        self.calibration.select();
+        self.visible = w.visible;
+        self.plot_layout = w.layout;
+        self.sidebar.visible = w.sidebar_visible;
+        self.enabled = w.scope_enabled;
+        self.fs_per_div = w.scope_fs_per_div;
+        self.frequency_scale = w.spectrum_scale;
+        self.spectrum_min_hz = w.spectrum_min_hz;
+        self.span_hz = w.spectrum_max_hz;
+        self.floor_db = w.spectrum_floor_db;
+        self.spectrum_ceiling_db = w.spectrum_ceiling_db;
+        self.show_hold = w.spectrum_show_hold;
+        self.spectrogram_scale = w.spectrogram_scale;
+        self.spectrogram_min_hz = w.spectrogram_min_hz;
+        self.spectrogram_max_hz = w.spectrogram_max_hz;
+        self.spectrogram_floor = w.spectrogram_floor_db;
+        self.spectrogram_ceiling = w.spectrogram_ceiling_db;
+        self.spectrogram_seconds = w.spectrogram_seconds;
+        self.xy_settings.x_fs_per_div = w.xy_x_fs_per_div;
+        self.xy_settings.y_fs_per_div = w.xy_y_fs_per_div;
+        self.xy_cursor_mode = w.xy_cursor_mode;
+        self.dirty = true;
+        self.xy_dirty = true;
+        self.spectrum_dirty = true;
+        Ok(())
+    }
+
+    fn request_settings(&mut self, task: SettingsTask) {
+        let result = (|| {
+            if self.settings_path.trim().is_empty() {
+                return Err("Enter a settings file path".to_owned());
+            }
+            let operation = match task {
+                SettingsTask::Save => settings::Operation::Save(Box::new(self.capture_settings()?)),
+                SettingsTask::Restore if self.can_restore_settings() => {
+                    settings::Operation::Restore
+                }
+                SettingsTask::Restore => return Err("Stop input before restoring settings".into()),
+            };
+            self.settings_worker
+                .submit(std::path::PathBuf::from(&self.settings_path), operation)
+        })();
+        self.settings_error = result.is_err();
+        match result {
+            Ok(()) => {
+                self.settings_task = Some(task);
+                self.settings_status = Some("Working…".into());
+            }
+            Err(error) => self.settings_status = Some(error),
+        }
+    }
+
+    fn poll_settings(&mut self) {
+        while let Ok(event) = self.settings_worker.events.try_recv() {
+            self.settings_task = None;
+            let result = match event {
+                settings::Event::Saved(path) => Ok(format!("Settings saved: {}", path.display())),
+                settings::Event::Restored(path, document) => self.restore_settings(*document)
+                    .map(|()| format!("Settings restored: {}. Input stays stopped; press Start input to measure.", path.display())),
+                settings::Event::Error(error) => Err(error),
+            };
+            self.settings_error = result.is_err();
+            self.settings_status =
+                Some(result.unwrap_or_else(|error| format!("Settings failed: {error}")));
+        }
     }
 
     fn scope_panel(&mut self, ui: &mut egui::Ui) {
@@ -4425,6 +4795,10 @@ impl eframe::App for ScopeApp {
         let input_started = Instant::now();
         self.poll_audio();
         self.poll_measurement();
+        self.poll_settings();
+        if self.settings_task.is_some() {
+            ctx.request_repaint_after(Duration::from_millis(25));
+        }
         if self.pending_stop.is_some() || self.pending_scope.is_some() {
             ctx.request_repaint_after(Duration::from_millis(10));
         }
@@ -4688,8 +5062,9 @@ impl eframe::App for ScopeApp {
                 }
             }
         }
-        // Input validity must not depend on whether its settings are expanded.
-        {
+        // Validate active input independently of the expanded settings panel.
+        // Stopped selections describe the next device, not the held topology.
+        if self.running() {
             let last_channel = self.channels.max(1) as usize - 1;
             if self.spectrum_channel > last_channel {
                 self.spectrum_channel = last_channel;
@@ -4698,6 +5073,11 @@ impl eframe::App for ScopeApp {
         }
         #[cfg(feature = "qa")]
         if self.smoke || self.profile.is_some() {
+            if self.smoke && std::env::var_os("MEASURELAB_UI_SMOKE_SETTINGS_RESTORE").is_some() {
+                assert_eq!(self.spectrum_channel, 15);
+                assert_eq!(self.spectrogram_channel, 15);
+                assert!(!self.running());
+            }
             let screenshot = ctx.input(|input| {
                 input.events.iter().find_map(|event| {
                     if let egui::Event::Screenshot { image, .. } = event {
@@ -4810,6 +5190,18 @@ impl eframe::App for ScopeApp {
                         .color(if self.dropped > 0 { YELLOW } else { MUTED }),
                 );
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if let Some(status) = &self.settings_status
+                        && ui
+                            .small_button(if self.settings_error {
+                                "Settings error"
+                            } else {
+                                "Settings status"
+                            })
+                            .on_hover_text(status)
+                            .clicked()
+                    {
+                        self.sidebar.reveal(SettingsSection::Workspace);
+                    }
                     ui.menu_button(RichText::new("Performance").small(), |ui| {
                         ui.label(RichText::new(&self.adapter).small().color(MUTED));
                         ui.separator();

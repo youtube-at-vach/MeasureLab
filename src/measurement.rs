@@ -25,7 +25,8 @@ use std::{
 const SNAPSHOTS: usize = 3;
 const DISPLAY_INTERVAL: Duration = Duration::from_nanos(33_333_333);
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum SpectrumMode {
     /// Responsive latest-window observation, up to 60 Hz with a CPU budget.
     /// No transient coverage guarantee; independent of UI visibility/cadence.

@@ -41,7 +41,11 @@ pub struct Capture {
 
 #[derive(Clone, Debug)]
 pub struct DeviceInfo {
+    /// Backend-qualified stable identity; names and enumeration order are not IDs.
+    pub id: Option<String>,
     pub name: String,
+    pub channels: u16,
+    pub default_sample_rate: u32,
     pub is_default: bool,
     pub sample_rates: Vec<u32>,
 }
@@ -94,7 +98,12 @@ impl AudioWorker {
                                             .map(|configs| configs.collect::<Vec<_>>())
                                             .unwrap_or_default();
                                         DeviceInfo {
+                                            id: d.id().ok().map(|id| id.to_string()),
                                             name: d.to_string(),
+                                            channels: config.as_ref().map_or(0, |c| c.channels()),
+                                            default_sample_rate: config
+                                                .as_ref()
+                                                .map_or(0, |c| c.sample_rate()),
                                             is_default: default.as_ref() == Some(d),
                                             sample_rates: available_sample_rates(
                                                 config.as_ref(),

@@ -12,7 +12,8 @@ pub fn name(channel: ChannelId) -> String {
 }
 
 /// Scope trace slots or XY axes, in order. Repeated IDs are allowed.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
 pub struct Pair(pub [ChannelId; 2]);
 
 impl Default for Pair {
