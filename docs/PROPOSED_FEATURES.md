@@ -56,6 +56,24 @@ Follow the [current direction](../guide/CURRENT_DIRECTION.md): improve useful me
 
 These ideas are separated from the implementation candidates. Each has a concrete experiment and a reuse check.
 
+### Distributed Wireless Sync Tracker — New Vision
+
+* **Concept:** Measure timing drift and absolute latency between independent wireless playback devices (e.g. Wi-Fi speakers) that lack a shared clock.
+* **Experiment:** Transmit a timestamped acoustic beacon from a central hub and capture the returned audio from multiple endpoints, measuring their differential drift over time.
+* **Reuse:** Extend Network Analyzer to track group delay changes dynamically and pair with Event Detector to spot dropouts during the sync process.
+
+### Nonlinear Hysteresis Visualizer — New Vision
+
+* **Concept:** Directly visualize the memory effects (hysteresis) of an amplifier or speaker suspension, where the distortion depends on the direction of signal movement.
+* **Experiment:** Map the instantaneous input vs. output of a low-frequency, high-amplitude sine wave to a 2D Lissajous-style plot, isolating the loop area which represents energy loss and nonlinear memory.
+* **Reuse:** Extend Nonlinear Analyzer to plot real-time phase-aligned I/O trajectories alongside the existing static Volterra/Hammerstein kernels.
+
+### Acoustic Reflection Surface Material Identifier — New Vision
+
+* **Concept:** Estimate the acoustic absorption profile (and thus potential material type) of a nearby wall or floor based on a single reflection.
+* **Experiment:** Play a calibrated broadband chirp, isolate the first strong reflection from the direct sound in the time domain, and compute the frequency-dependent absorption coefficient to match against a material database.
+* **Reuse:** Combine Network Analyzer's impulse response windowing with a new spectral subtraction and classification layer.
+
 ### Two-Input Noise Microscope — New Vision
 
 Make weak shared noise emerge as two synchronized input channels average complex cross-spectra. Noise Profiler currently averages one channel's magnitude; this would be a new estimator there, not another spectrum widget. [Published low-frequency experiments](https://arxiv.org/abs/1408.2470) support the principle, but do not establish performance on consumer interfaces. First test known common noise plus independent noise, then a split physical source. Display both auto-spectra, cross-spectrum phase/sign and convergence. Shared interference, loading and [cross-spectral cancellation](https://www.nist.gov/publications/phase-inversion-and-collapse-cross-spectral-function) must be characterized before claiming a lower usable noise floor.
