@@ -5,6 +5,7 @@ use crate::{
     calibration::{self, Calibration, Reading},
     channel::{self, ChannelId, Pair},
     cursor::{self, Cursors},
+    export,
     gpu::{COLORS, PlotId, Segment, TraceCallback, TraceRenderer},
     measurement::{self, ScopeSettings, SpectrumMode},
     settings::{self, PlotLayout},
@@ -341,6 +342,13 @@ pub struct ScopeApp {
     settings_status: Option<String>,
     settings_error: bool,
     restored_input: Option<settings::Input>,
+    held_input: Option<export::Input>,
+    input_failed: bool,
+    export_worker: export::Worker,
+    export_path: String,
+    export_pending: bool,
+    export_status: Option<String>,
+    export_error: bool,
     scope_missing: u64,
     dirty: bool,
     pixels: usize,
@@ -354,6 +362,8 @@ pub struct ScopeApp {
     created: Instant,
     #[cfg(feature = "qa")]
     screenshot_requested: bool,
+    #[cfg(feature = "qa")]
+    screenshot_received: bool,
     #[cfg(feature = "qa")]
     profile: Option<crate::qa::Profile>,
     #[cfg(feature = "qa")]
@@ -528,6 +538,19 @@ impl ScopeApp {
             settings_status: None,
             settings_error: false,
             restored_input: None,
+            held_input: None,
+            input_failed: false,
+            export_worker: export::Worker::default(),
+            export_path: settings::default_path()
+                .map(|path| {
+                    path.with_file_name("measurement-results.json")
+                        .to_string_lossy()
+                        .into_owned()
+                })
+                .unwrap_or_default(),
+            export_pending: false,
+            export_status: None,
+            export_error: false,
             scope_missing: 0,
             dirty: true,
             pixels: 0,
@@ -541,6 +564,8 @@ impl ScopeApp {
             created: Instant::now(),
             #[cfg(feature = "qa")]
             screenshot_requested: false,
+            #[cfg(feature = "qa")]
+            screenshot_received: false,
             #[cfg(feature = "qa")]
             profile: crate::qa::Profile::from_env()?,
             #[cfg(feature = "qa")]
@@ -636,6 +661,14 @@ impl ScopeApp {
                 }
             }
             app.format = if smoke { "QA fixture" } else { "Internal demo" }.into();
+            app.held_input = Some(export::Input {
+                generation: app.input_generation,
+                source: export::Source::InternalQa {
+                    description: app.format.clone(),
+                },
+                nominal_sample_rate_hz: app.sample_rate,
+                channels: app.channels as usize,
+            });
             app.reset_analysis();
             app.reset_stft();
             if smoke {
@@ -752,8 +785,81 @@ impl ScopeApp {
             if std::env::var_os("MEASURELAB_UI_SMOKE_SETTINGS_RESTORE").is_some() {
                 app.check_settings_restore()?;
             }
+            #[cfg(feature = "qa")]
+            if std::env::var_os("MEASURELAB_UI_SMOKE_EXPORT").is_some() {
+                app.refresh_scope_range();
+                app.check_results_export()?;
+            }
         }
         Ok(app)
+    }
+
+    #[cfg(feature = "qa")]
+    fn check_results_export(&mut self) -> Result<(), String> {
+        // The fixture is already populated before the first UI update, but
+        // AudioWorker's initial enumeration reply has not been polled yet.
+        self.busy = true;
+        assert!(!self.can_export());
+        self.busy = false;
+        assert!(self.can_export());
+        let expected = self.capture_results()?;
+        self.demo_running = true;
+        assert!(self.capture_results().is_err());
+        self.demo_running = false;
+        self.settings_task = Some(SettingsTask::Restore);
+        assert!(self.capture_results().is_err());
+        self.settings_task = None;
+        let path = std::path::PathBuf::from("dist/results-export-qa.json");
+        self.export_path = path.display().to_string();
+        self.request_export();
+        assert!(
+            self.export_pending,
+            "export request failed: {:?}",
+            self.export_status
+        );
+        // Change next-run conditions after the owned result crossed the I/O
+        // boundary. These choices must not relabel the in-flight document.
+        self.spectrum_settings.size = 1024;
+        self.spectrum_settings.quantity = Quantity::Psd;
+        self.spectrum_mode = SpectrumMode::Latest;
+        self.spectrum_channel = 15;
+        self.scope_channels = Pair([15, 7]);
+        self.requested_sample_rate = Some(96_000);
+        self.calibration.gain = 8.0;
+        self.calibration.conditions = "Next-run export QA calibration".into();
+        self.calibration.apply()?;
+        let event = self
+            .export_worker
+            .events
+            .recv_timeout(Duration::from_secs(10))
+            .map_err(|e| e.to_string())?;
+        match event {
+            export::Event::Saved(saved) => assert_eq!(saved, path),
+            export::Event::Error(error) => return Err(error),
+        }
+        self.export_pending = false;
+        let saved: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&path).map_err(|e| e.to_string())?)
+                .map_err(|e| e.to_string())?;
+        let expected = serde_json::to_value(expected).map_err(|e| e.to_string())?;
+        for key in ["input", "scope", "spectrum", "loss"] {
+            assert_eq!(saved[key], expected[key], "in-flight export changed {key}");
+        }
+        assert!(!self.running());
+        assert!(self.capture.is_none());
+        self.scope_channels = Pair([
+            saved["scope"]["traces"][0]["channel"].as_u64().unwrap() as usize,
+            saved["scope"]["traces"][1]["channel"].as_u64().unwrap() as usize,
+        ]);
+        self.export_status = Some("Export QA passed; captured conditions preserved".into());
+        self.sidebar.reveal(SettingsSection::Workspace);
+        // Start the screenshot interval after fixture setup and its bounded
+        // I/O wait, so requesting a screenshot cannot coincide with Close.
+        self.created = Instant::now();
+        println!(
+            "Results export UI QA OK: running/restoring requests rejected; owned f64 Scope/Spectrum, source identity, intervals and calibration preserved after next-run edits; input remains stopped"
+        );
+        Ok(())
     }
 
     #[cfg(feature = "qa")]
@@ -1377,6 +1483,8 @@ impl ScopeApp {
     fn begin_observation(&mut self) {
         self.cursors.new_epoch();
         self.input_generation += 1;
+        self.held_input = None;
+        self.input_failed = false;
         self.core_scope.channels = self.scope_channels;
         self.xy_channels = self.xy_settings.channels;
         self.history.clear_at(0);
@@ -1450,6 +1558,7 @@ impl ScopeApp {
         self.calibration.captured.clone_from(&snapshot.calibrations);
         self.scope_missing = snapshot.scope_missing;
         self.dropped = snapshot.input_dropped;
+        self.input_failed |= snapshot.failed;
         self.dirty |= samples_changed;
         self.xy_dirty |= samples_changed;
         if snapshot.failed && self.running() {
@@ -1908,6 +2017,14 @@ impl ScopeApp {
             self.sample_rate = 48000;
             self.channels = 2;
             self.format = "Internal demo".into();
+            self.held_input = Some(export::Input {
+                generation: self.input_generation,
+                source: export::Source::InternalQa {
+                    description: self.format.clone(),
+                },
+                nominal_sample_rate_hz: self.sample_rate,
+                channels: self.channels as usize,
+            });
             self.history = History::new(96000);
             self.xy_dirty = true;
             self.demo_running = true;
@@ -2026,6 +2143,17 @@ impl ScopeApp {
                     self.sample_rate = capture.sample_rate;
                     self.channels = capture.channels;
                     self.format = capture.format.clone();
+                    self.held_input = self.devices.get(self.selected).map(|device| export::Input {
+                        generation: self.input_generation,
+                        source: export::Source::Audio {
+                            device_id: device.id.clone(),
+                            device_name: device.name.clone(),
+                            sample_format: capture.format.clone(),
+                            requested_sample_rate_hz: self.requested_sample_rate,
+                        },
+                        nominal_sample_rate_hz: capture.sample_rate,
+                        channels: capture.channels as usize,
+                    });
                     self.history = History::with_channels(
                         (self.sample_rate as usize * 2).max(32768),
                         self.channels as usize,
@@ -3936,6 +4064,27 @@ impl ScopeApp {
     }
 
     fn workspace_controls(&mut self, ui: &mut egui::Ui) {
+        setting_label(ui, "HELD MEASUREMENT RESULTS");
+        ui.label(RichText::new("Stop input, then export Scope samples and statistics, Spectrum bins and their captured conditions to JSON.").small().color(MUTED));
+        ui.add_enabled(
+            !self.export_pending,
+            egui::TextEdit::singleline(&mut self.export_path)
+                .hint_text("Results JSON file path")
+                .desired_width(f32::INFINITY),
+        );
+        if ui.add_enabled(!self.export_pending && self.can_export(), egui::Button::new("Export held results"))
+            .on_hover_text("Exports the retained Scope interval and the independently timed Spectrum result. Missing samples stay null. Spectrogram, XY and cursors are not included.")
+            .clicked() {
+            self.request_export();
+        }
+        if let Some(status) = &self.export_status {
+            ui.label(RichText::new(status).small().color(if self.export_error {
+                YELLOW
+            } else {
+                MUTED
+            }));
+        }
+        ui.separator();
         setting_label(ui, "MEASUREMENT SETTINGS");
         ui.label(RichText::new("Save the queued input, channels, analysis and calibration for the next Start. Restore while stopped; then start input explicitly.").small().color(MUTED));
         ui.add_enabled(
@@ -4014,6 +4163,96 @@ impl ScopeApp {
             && !self.busy
             && self.pending_stop.is_none()
             && self.pending_scope.is_none()
+    }
+
+    fn can_export(&self) -> bool {
+        !self.running()
+            && !self.busy
+            && self.pending_stop.is_none()
+            && self.pending_scope.is_none()
+            && self.settings_task != Some(SettingsTask::Restore)
+            && self.held_input.is_some()
+            && (!self.history.is_empty() || self.analyzer.window().is_some())
+    }
+
+    fn capture_results(&self) -> Result<export::Document, String> {
+        if !self.can_export() {
+            return Err("Stop input and wait for the held measurement results".into());
+        }
+        let input = self.held_input.clone().ok_or("No held input conditions")?;
+        if input.generation != self.input_generation {
+            return Err("Held input generation does not match results".into());
+        }
+        export::Document::capture(
+            input,
+            export::ScopeView {
+                history: &self.history,
+                settings: self.core_scope,
+                sweep: Sweep {
+                    range: self.scope_range.clone(),
+                    triggered: self.triggered,
+                    sample_offset: self.scope_sample_offset,
+                },
+                calibrations: &self.calibration.captured,
+                measurements: self.measurements,
+                readings: self.scope_readings,
+            },
+            &self.analyzer,
+            &self.spectrum_info,
+            [
+                self.band_min_hz,
+                if self.band_max_hz == 0.0 {
+                    self.sample_rate as f64 / 2.0
+                } else {
+                    self.band_max_hz
+                },
+            ],
+            export::Loss {
+                capture_dropped_samples: self.dropped,
+                scope_missing_samples: self.scope_missing,
+                display_snapshots_skipped_since_worker_start: self
+                    .core
+                    .as_ref()
+                    .map_or(0, |core| {
+                        core.metrics.display_skipped.load(Ordering::Relaxed)
+                    }),
+                input_failed: self.input_failed,
+            },
+        )
+    }
+
+    fn request_export(&mut self) {
+        let result = (|| {
+            if self.export_pending {
+                return Err("An export is already in progress".into());
+            }
+            if self.export_path.trim().is_empty() {
+                return Err("Enter a results file path".into());
+            }
+            let document = self.capture_results()?;
+            self.export_worker
+                .submit(std::path::PathBuf::from(&self.export_path), document)
+        })();
+        self.export_error = result.is_err();
+        self.export_status = Some(match result {
+            Ok(()) => {
+                self.export_pending = true;
+                "Exporting held results…".into()
+            }
+            Err(error) => error,
+        });
+    }
+
+    fn poll_export(&mut self) {
+        while let Ok(event) = self.export_worker.events.try_recv() {
+            self.export_pending = false;
+            let result = match event {
+                export::Event::Saved(path) => Ok(format!("Results exported: {}", path.display())),
+                export::Event::Error(error) => Err(error),
+            };
+            self.export_error = result.is_err();
+            self.export_status = Some(result.unwrap_or_else(|error| error));
+        }
     }
 
     fn capture_settings(&self) -> Result<settings::Document, String> {
@@ -4796,7 +5035,8 @@ impl eframe::App for ScopeApp {
         self.poll_audio();
         self.poll_measurement();
         self.poll_settings();
-        if self.settings_task.is_some() {
+        self.poll_export();
+        if self.settings_task.is_some() || self.export_pending {
             ctx.request_repaint_after(Duration::from_millis(25));
         }
         if self.pending_stop.is_some() || self.pending_scope.is_some() {
@@ -4979,6 +5219,61 @@ impl eframe::App for ScopeApp {
                             (average.updates - 1) as f64 / seconds
                         );
                     }
+                    if let Some(path) = std::env::var_os("MEASURELAB_PROFILE_EXPORT") {
+                        // Terminal QA uses the same immutable finite Stop result;
+                        // this I/O is outside the UI performance measurement.
+                        let snapshot = finished.as_ref().expect("export QA needs a finite result");
+                        let document = export::Document::capture(
+                            self.held_input.clone().expect("captured input identity"),
+                            export::ScopeView {
+                                history: &snapshot.history,
+                                settings: snapshot.scope_settings,
+                                sweep: snapshot.sweep.clone(),
+                                calibrations: &snapshot.calibrations,
+                                measurements: snapshot.measurements,
+                                readings: snapshot.scope_readings,
+                            },
+                            &snapshot.spectrum,
+                            &snapshot.spectrum_info,
+                            [0.0, snapshot.sample_rate as f64 / 2.0],
+                            export::Loss {
+                                capture_dropped_samples: snapshot.input_dropped,
+                                scope_missing_samples: snapshot.scope_missing,
+                                display_snapshots_skipped_since_worker_start: self
+                                    .core
+                                    .as_ref()
+                                    .unwrap()
+                                    .metrics
+                                    .display_skipped
+                                    .load(Ordering::Relaxed),
+                                input_failed: snapshot.failed,
+                            },
+                        )
+                        .expect("capture finite export result");
+                        let expected = serde_json::to_value(&document).unwrap();
+                        let path = std::path::PathBuf::from(path);
+                        let worker = export::Worker::default();
+                        worker.submit(path.clone(), document).unwrap();
+                        match worker.events.recv_timeout(Duration::from_secs(30)).unwrap() {
+                            export::Event::Saved(saved) => assert_eq!(saved, path),
+                            export::Event::Error(error) => panic!("Export QA failed: {error}"),
+                        }
+                        let saved: serde_json::Value =
+                            serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+                        assert_eq!(
+                            saved, expected,
+                            "result file does not match finite Stop snapshot"
+                        );
+                        println!(
+                            "Finite result export OK: {} / generation {} / {} Hz / {} ch / Scope {:?} / Spectrum CH {:?}",
+                            path.display(),
+                            snapshot.generation,
+                            snapshot.sample_rate,
+                            snapshot.history.channels(),
+                            snapshot.sweep.range,
+                            snapshot.spectrum.window().map(|w| w.channel + 1)
+                        );
+                    }
                     profile.report(self.dropped);
                     if let Some(core) = &self.core {
                         println!(
@@ -5087,10 +5382,11 @@ impl eframe::App for ScopeApp {
                     }
                 })
             });
-            if let Some(image) = screenshot
-                && let Err(error) = save_screenshot(&image)
-            {
-                eprintln!("UI screenshot failed: {error}");
+            if let Some(image) = screenshot {
+                match save_screenshot(&image) {
+                    Ok(()) => self.screenshot_received = true,
+                    Err(error) => eprintln!("UI screenshot failed: {error}"),
+                }
             }
         }
         if ctx.input(|i| i.key_pressed(egui::Key::Space))
@@ -5134,6 +5430,18 @@ impl eframe::App for ScopeApp {
                         .color(MUTED),
                 );
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if let Some(status) = &self.export_status
+                        && ui
+                            .small_button(if self.export_error {
+                                "Export error"
+                            } else {
+                                "Export status"
+                            })
+                            .on_hover_text(status)
+                            .clicked()
+                    {
+                        self.sidebar.reveal(SettingsSection::Workspace);
+                    }
                     self.transport(ui);
                     ui.separator();
                     ui.label(
@@ -5402,7 +5710,12 @@ impl eframe::App for ScopeApp {
                 self.screenshot_requested = true;
                 ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(Default::default()));
             }
-            if self.created.elapsed() > Duration::from_secs(2) {
+            #[cfg(feature = "qa")]
+            let ready_to_close =
+                self.screenshot_received || self.created.elapsed() > Duration::from_secs(10);
+            #[cfg(not(feature = "qa"))]
+            let ready_to_close = true;
+            if self.created.elapsed() > Duration::from_secs(2) && ready_to_close {
                 println!("UI OK: {}", self.adapter);
                 ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             } else {

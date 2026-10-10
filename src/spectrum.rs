@@ -192,6 +192,15 @@ pub struct AverageInfo {
     pub updates: u64,
 }
 
+/// Envelope of raw samples contributing to any averaged trace considered by
+/// peak hold. Clear hold seeds it from the current EMA, not just its last FFT.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct HoldInfo {
+    pub start: u64,
+    pub end: u64,
+    pub spectra: u64,
+}
+
 #[derive(Clone, Debug)]
 pub struct BandReading {
     pub window: WindowInfo,
@@ -271,6 +280,14 @@ macro_rules! numeric_reads {
 
         pub fn average(&self) -> Option<AverageInfo> {
             self.last_end.map(|_| self.average)
+        }
+
+        pub fn hold_info(&self) -> Option<HoldInfo> {
+            self.is_ready().then_some(self.hold_info)
+        }
+
+        pub fn sample_rate(&self) -> u32 {
+            self.sample_rate
         }
 
         pub fn cursor(&self, frequency_hz: f64) -> Option<CursorReading> {
@@ -372,6 +389,7 @@ pub struct Result {
     power: Vec<f64>,
     hold_power: Vec<f64>,
     average: AverageInfo,
+    hold_info: HoldInfo,
     db: Vec<f32>,
     hold: Vec<f32>,
     last_end: Option<u64>,
@@ -398,6 +416,7 @@ impl Result {
             power: vec![0.0; settings.size / 2 + 1],
             hold_power: vec![0.0; settings.size / 2 + 1],
             average: AverageInfo::default(),
+            hold_info: HoldInfo::default(),
             db: vec![DB_MIN; settings.size / 2 + 1],
             hold: vec![DB_MIN; settings.size / 2 + 1],
             last_end: None,
@@ -412,6 +431,7 @@ impl Result {
     pub fn clear_hold(&mut self) {
         self.hold_power.copy_from_slice(&self.power);
         self.hold.copy_from_slice(&self.db);
+        self.hold_info = cleared_hold(self.validity, self.average);
     }
     pub fn settings(&self) -> Settings {
         self.settings
@@ -494,6 +514,7 @@ pub struct Analyzer {
     power: Vec<f64>,
     hold_power: Vec<f64>,
     average: AverageInfo,
+    hold_info: HoldInfo,
     db: Vec<f32>,
     hold: Vec<f32>,
     last_end: Option<u64>,
@@ -621,6 +642,7 @@ impl Analyzer {
             power: vec![0.0; settings.size / 2 + 1],
             hold_power: vec![0.0; settings.size / 2 + 1],
             average: AverageInfo::default(),
+            hold_info: HoldInfo::default(),
             db: vec![DB_MIN; settings.size / 2 + 1],
             hold: vec![DB_MIN; settings.size / 2 + 1],
             settings,
@@ -650,6 +672,7 @@ impl Analyzer {
         result.power.clone_from(&self.power);
         result.hold_power.clone_from(&self.hold_power);
         result.average = self.average;
+        result.hold_info = self.hold_info;
         result.db.clone_from(&self.db);
         result.hold.clone_from(&self.hold);
         result.last_end = self.last_end;
@@ -711,6 +734,7 @@ impl Analyzer {
         // Restart from the currently displayed trace, including while paused.
         self.hold_power.copy_from_slice(&self.power);
         self.hold.copy_from_slice(&self.db);
+        self.hold_info = cleared_hold(self.validity, self.average);
     }
 
     pub fn update(&mut self, history: &History, channel: usize) -> bool {
@@ -846,6 +870,11 @@ impl Analyzer {
         }
         self.average.end = end;
         self.average.updates += 1;
+        if self.hold_info.spectra == 0 {
+            self.hold_info.start = self.average.start;
+        }
+        self.hold_info.end = self.average.end;
+        self.hold_info.spectra += 1;
         self.last_end = Some(end);
         self.last_channel = channel;
         self.validity = Validity::Valid;
@@ -856,6 +885,18 @@ impl Analyzer {
         self.last_end = Some(end);
         self.last_channel = channel;
         self.validity = Validity::NonFinite;
+    }
+}
+
+fn cleared_hold(validity: Validity, average: AverageInfo) -> HoldInfo {
+    if validity == Validity::Valid {
+        HoldInfo {
+            start: average.start,
+            end: average.end,
+            spectra: 1,
+        }
+    } else {
+        HoldInfo::default()
     }
 }
 

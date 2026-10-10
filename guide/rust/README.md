@@ -106,6 +106,7 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | グラフ上部のSettings / Collapse all | 左パネルの表示切り替え／設定項目をすべて閉じる |
 | Workspace & help | 測定設定の手動保存・復元、配置の指定、ショートカット、測定単位 |
 | Save settings / Restore settings | 版付きJSONへ次回Start用の入力・CH・解析・校正と表示設定を保存。復元は入力停止中のみ |
+| Export held results | 停止完了後のScope生サンプル・統計とSpectrum全ビンを、取得時の入力・CH・校正・区間・欠落とともに版付きJSONへ書き出す |
 | Channel calibration / Queue calibration | CHごとのゲイン・オフセット・物理単位・参照条件を次回Start用に設定 |
 | Queue uncalibrated FS | 選択CHを次回Startから未校正FSへ戻す |
 | Spectrum Source / points / Window | FFTの入力CH（取得した全chから選択）、サイズ（1,024〜524,288点）、窓関数 |
@@ -140,7 +141,7 @@ RMS・Peak・P-PはScopeの整数サンプル区間内に取得した生のf64�
 
 ScopeではRMS・Peak・P-Pと時間カーソルの数値に校正を適用します。RMSは各実サンプルを換算してから計算するため、オフセットを含みます。Scopeの波形軸・カーソル点の位置・Fit amplitude・トリガー閾値とSpectrogram／XYはFS基準です。Spectrumは選択CHの校正を振幅・PSD・平均・ピーク保持・カーソル・帯域電力へ適用します。数値と軸の単位をそれぞれ表示します。校正による非有限値やP-Pのオーバーフローは **invalid value** とし、正常値へ置き換えません。欠落や存在しないCHは従来どおり利用不可・部分区間として扱います。
 
-校正のID・版・係数・単位・参照条件は取得世代のスナップショットへ固定します。Scope統計の説明、**Captured readout condition**、Spectrumの校正表示・カーソルの説明で確認できます。取得中や停止後に新しい定義を設定しても、保持中のScope／Spectrum値と校正版は変わりません。Startで適用するまで **Queued for next Start** と区別します。入力ソース・デバイスを選び直したときと **Refresh devices** の再列挙では次回用の校正を解除し、別入力へ持ち越しません。校正は下記の測定設定ファイルへ保存・復元できます。測定結果の書き出しは未実装です。ユーザーが与えた係数による換算であり、ADCや物理基準の校正精度を検証済みとは扱いません。
+校正のID・版・係数・単位・参照条件は取得世代のスナップショットへ固定します。Scope統計の説明、**Captured readout condition**、Spectrumの校正表示・カーソルの説明で確認できます。取得中や停止後に新しい定義を設定しても、保持中のScope／Spectrum値と校正版は変わりません。Startで適用するまで **Queued for next Start** と区別します。入力ソース・デバイスを選び直したときと **Refresh devices** の再列挙では次回用の校正を解除し、別入力へ持ち越しません。校正は下記の測定設定ファイルへ保存・復元でき、保持したScope／Spectrum結果の書き出しにも含めます。ユーザーが与えた係数による換算であり、ADCや物理基準の校正精度を検証済みとは扱いません。
 
 ### 測定設定の保存・復元
 
@@ -195,6 +196,18 @@ FreeとTrace Snapは各グラフの見出しとXY Settingsで切り替えられ�
 周波数カーソルはSpectrumとSpectrogramで共有します。各測定器が自身のFFTサイズ・Fsから最寄りビンを選ぶため、設定が異なる場合はビン周波数も異なります。Spectrumは表示中の電力平均と最新の寄与窓を読み、任意の時間カーソル位置でFFTを再実行しません。カーソルが最新窓の内側か外側かはSpectrum上の説明で確認できます。Spectrogramは時間カーソルに対応する行を読み、時間カーソルがない場合は最新行を読みます。
 
 上部のStopは全測定器の共通入力履歴・解析済みSpectrum・取り込み済みSTFT画像を保持します。Stopは有限の入力終端を固定し、Spectrumの処理完了まで **FINISHING SPECTRUM** を表示します。UIは待機中も操作でき、Continuousは終端までの全完全窓、Latestは最後の完全窓を一度だけ処理します。停止中は遅着STFTを除外し、同じサンプルを再平均しません。表示範囲・色・配置・カーソルは変更でき、Scope／XYのCH割当、FFTの解析設定とデモ信号の変更は次回開始時に適用します。再開・入力ソース／デバイスの切り替えでは履歴とカーソルを無効化します。操作がない停止中は連続再描画せず、表示寸法が変わらないカーソル移動ではGPUの波形・テクスチャ・表示寸法を転送し直しません。
+
+### 保持結果の書き出し
+
+**Stop** の解析完了を待ち、**Workspace & help / HELD MEASUREMENT RESULTS** で保存先を確認して **Export held results** を押します。入力開始前、取得中、StopやScopeの条件更新・設定復元が未完了の間は書き出せません。書き出し後は同じ場所に成功・失敗を表示し、上部の **Export status / Export error** から開けます。既定の保存先は設定ファイルと同じディレクトリの `measurement-results.json` です。ファイルは同じディレクトリの一時ファイルへの書き込みと同期後に置換し、失敗時は以前のファイルを残します。
+
+結果の形式は `format = measurelab-results`、`version = 1` のJSONです。復元用の測定設定JSONとは別の形式で、結果をアプリへ読み戻す機能はありません。入力世代・取得時のデバイスID／名前／入力形式・実際に選ばれた公称Fs・CH数を保持し、次回用の入力選択や解析設定・校正で保持結果を再ラベルしません。CH IDは0始まり、サンプル区間は開始を含み終端を含みません。サンプル時計は公称値です。
+
+Scopeは書き出し時に表示する整数区間・観察サンプル数・トリガー条件・補間した横位置と、2本の割当CHの生f64サンプル（FS）、生統計・校正後の統計を保持します。配列の位置 `i` は `sample_range.start + i` に対応し、欠落位置は `null`、存在しないCHは配列全体を `null` として状態を付けます。未取得・欠落・非有限の校正結果を正常なゼロと扱いません。校正はID・版・ゲイン・オフセット・単位・参照条件を含み、物理量は `gain × raw_fs + offset` から再現できます。停止後の観察幅・トリガー変更は保持サンプルから新しい区間を選ぶため、書き出すScope区間・条件もその選択に対応します。
+
+Spectrumは独立した最新FFT区間・解析設定・モード・観察間隔・Δf・RBW・校正・EMA係数／処理窓数／寄与区間・ピーク保持の対象スペクトル数／寄与区間を含みます。全ビンのf64線形値と保持値を保存し、配列の位置 `k` の周波数は `k × bin_width_hz` です。DCとNyquistを含み、振幅は平均したビン電力の平方根（単位peak）、PSDは平均した密度（単位²/Hz）です。表示用f32のdB値・表示下限へ変換せず、真のゼロは線形値0のまま保存します。PSDの指定帯域は書き出し時の範囲と両端を含む対象ビン・電力・RMSを保持します。帯域が不正・ビンを含まない場合や振幅モードでは帯域結果は `null` です。未取得／非有限のSpectrumは状態を付け、ビン・平均・保持・帯域の値を `null` とします。
+
+ScopeとSpectrumの区間は同時刻とは限らず、EMAとピーク保持の寄与区間は一様な重みや連続的な捕捉を示しません。取得欠落、Scope区間内の欠落、Spectrum入力欠落／無効窓／非有限窓／観察省略、ワーカー開始以来の表示スナップショット省略、入力失敗を分けます。Spectrogram、XY、カーソル、全CHの長時間記録やSpectrum窓の全生入力は含めません。書き出し用データは固定の上限を持つ保持区間とFFT全ビンから一度だけコピーし、JSON化・ファイルI/Oは専用ワーカーで行います。書き込み中に入力を再開しても書き出し対象は変わりません。検証条件は [結果書き出しの検証](validation/EXPORT_2026-10.md) を参照してください。
 
 ## 現在の取得・解析・描画の構成
 
@@ -258,6 +271,10 @@ Audio device → CPAL callback → bounded SPSC → measurement worker ← inter
 `MEASURELAB_SPECTRUM_PSD=1`は`qa`ビルドでSpectrumをPSDに設定します。`--ui-smoke`やUI計測と組み合わせて、通常幅／狭幅・帯域表示・停止中のモード保持を確認できます。
 
 `MEASURELAB_UI_SMOKE_SETTINGS_RESTORE=1`は合成16chデバイスIDの設定ファイルを `dist/settings-restore-qa.json` へ保存・読み込みし、不在入力・校正衝突・取得中の復元拒否、復元中のStart拒否、保持データ・条件の不変性、開始準備でのCH 16維持をアプリ内で検証します。実入力は開始しません。
+
+`MEASURELAB_UI_SMOKE_EXPORT=1`は内部QAの保持結果を `dist/results-export-qa.json` へ書き出します。取得中／設定復元中の拒否と、書き込み要求後の次回用CH・FFT・校正・公称Fsの編集で、ファイル内の保持値・条件が変わらないことを検証します。`MEASURELAB_UI_SMOKE_CALIBRATION=1`や`MEASURELAB_SPECTRUM_PSD=1`と併用できます。
+
+`MEASURELAB_PROFILE_EXPORT=dist/results-profile.json`は実時間QAの有限Stop結果を専用I/Oワーカーで書き出し、ファイルの全値・条件がスナップショットと一致することを確認します。終端の書き出しと照合はUI性能の計測区間外です。
 
 ```sh
 MEASURELAB_UI_SMOKE_SETTINGS_RESTORE=1 ./scripts/debug.sh --ui-smoke --low-latency
@@ -366,6 +383,7 @@ MEASURELAB_PROFILE_SECONDS=10 MEASURELAB_PROFILE_FFT_PRECISION=f64 \
 - `src/audio.rs`: CPALデバイス管理、入力コールバック、SPSC転送。
 - `src/channel.rs`: 全測定器で使う0始まりの入力CH ID、表示名、Scope／XYの2ch割当と利用可能性。
 - `src/settings.rs`: 版付き測定設定・校正と表示設定のJSON、全体検証、デバイスID照合、容量制限付き読み込み・原子的保存、専用I/Oワーカー。
+- `src/export.rs` / `src/file_io.rs`: 保持したScope／Spectrumと測定条件の版付きJSON、欠落・無効状態とf64線形値、専用I/Oワーカー、設定保存と共有する原子的ファイル置換。
 - `src/calibration.rs`: ID・版・参照条件付きのCH校正、Scope実サンプルの換算・RMS／Peak／P-P、非有限値の無効化。
 - `src/measurement.rs`: GUI非依存の入力消費・共通履歴・デモ・Scope統計・解析への供給、入力世代・欠落付きの容量固定スナップショット。
 - `src/signal.rs`: 固定容量履歴、トリガー、集約、測定。
