@@ -1,5 +1,12 @@
 # 開発者向けガイド (Development)
 
+以下は **Python最終版 v0.9.1** の手順です。Rustのチェックアウトでは実行せず、保存したタグを別ディレクトリへ取得してから使用してください。
+
+```sh
+git clone --branch v0.9.1 https://github.com/youtube-at-vach/MeasureLab.git MeasureLab-python
+cd MeasureLab-python
+```
+
 ## 概要
 
 ソースコードからの実行や、開発環境のセットアップ方法について説明します。

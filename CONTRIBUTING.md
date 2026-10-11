@@ -34,11 +34,11 @@ We welcome contributions of all kinds! This document provides guidelines for con
 
 ## Current development stage
 
-This branch contains the initial Rust implementation of MeasureLab. The Python application's source, dependencies, tests, packaging, and development tasks are archived in `v0.9.1` and `archive/python-v0.9.1`.
+This branch contains the Rust prototype of MeasureLab. The Python application's source, dependencies, tests, packaging, and development tasks are archived in `v0.9.1` and `archive/python-v0.9.1`.
 
 For the old application environment, use the [Python v0.9.1 development guide](https://github.com/youtube-at-vach/MeasureLab/blob/v0.9.1/docs/development.en.md) from the archived edition.
 
-The published manuals still describe the Python edition. The [Rust guide](guide/rust/README.md) documents the new application's current behavior. Contributions to the download website, documentation, and measurement/design references remain possible during the rewrite.
+The existing public manual describes Python v0.9.1; `docs-rust/` contains the separate Rust manual prepared for `/rust/`. The [Rust guide](guide/rust/README.md) documents the new application's current behavior. Contributions to the download website, documentation, and measurement/design references remain possible during the rewrite.
 
 Before planning or changing Rust behavior, read the [current direction](guide/CURRENT_DIRECTION.md) and [Rust plan](guide/rust/PLAN.md). Build on the existing prototype and finish a small measurement use case with numerical validation before expanding the feature set. The former Rust/QML plan and Python GUI guide are reference material, not current implementation requirements.
 
@@ -62,6 +62,8 @@ Use Rust 1.95 or later and your operating system's build tools. Run these comman
 ```sh
 ./scripts/cargo.sh fmt --all -- --check
 ./scripts/cargo.sh clippy --locked --all-targets --all-features -- -D warnings
+./scripts/cargo.sh test --locked --no-default-features
+./scripts/cargo.sh test --locked
 ./scripts/cargo.sh test --locked --all-targets --all-features
 ./scripts/cargo.sh build --release --locked
 ```
@@ -76,12 +78,12 @@ npm --prefix download-site test
 npm --prefix download-site run build
 ```
 
-For manual generation, create a documentation-only environment with Python 3.12 or later:
+For both manuals and the combined Pages output, use Python 3.12 or later and the Node.js environment above. PDF generation is retired; Pango/WeasyPrint are not required:
 
 ```bash
 python3 -m venv .venv
 ./.venv/bin/python -m pip install -r requirements-docs.txt ruff
-./.venv/bin/mkdocs build
+./.venv/bin/python scripts/build_pages.py
 ./.venv/bin/ruff check .
 ./.venv/bin/ruff format --check .
 ```
@@ -91,6 +93,12 @@ After Markdown changes, run:
 ```bash
 npx markdownlint-cli2 "**/*.md" "#node_modules"
 ```
+
+The shared build runs both MkDocs configurations with `--strict`, builds the download site and verifies preserved Python routes plus Rust routes in `site/`. The Pages workflow runs on PRs, uploads a preview, and deploys only from `main`. Keep Python v0.9.1 URLs and archive labels when changing documentation; do not describe its features as Rust features.
+
+Rust CI covers Linux/macOS/Windows on stable Rust, plus the declared Rust 1.95 minimum on Linux. Normal-build launch tests must run without `qa`; all-features testing alone cannot check that QA controls are excluded. Shared CI does not validate physical audio, GPU rendering, latency or long-duration performance. Record those conditions separately under `guide/rust/validation/`.
+
+Run `actionlint` after workflow changes. Dependency updates must preserve the locked build and minimum Rust version. See [publication preparation](guide/rust/RELEASE_PREPARATION.md) for packaging, signing, main transition and remaining checks.
 
 The `.legacy-python/` directory is a local backup excluded from version control and validation. It is not required by the website or documentation build.
 

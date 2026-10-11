@@ -1,13 +1,15 @@
 site_url: https://youtube-at-vach.github.io/MeasureLab/
 hooks:
   - docs/hooks/render_math.py
-site_name: MeasureLab オペレーションマニュアル
-site_description: 測定ツールの操作マニュアル
+site_name: MeasureLab Python v0.9.1 マニュアル
+site_description: Python最終版の保存版操作マニュアル
 site_author: ""
-repo_name: youtube-at-vach/MeasureLab
-repo_url: https://github.com/youtube-at-vach/MeasureLab
+edit_uri: ''
+exclude_docs: |
+  /overrides/
 theme:
   name: material
+  custom_dir: docs/overrides
   language: ja
   features:
     - navigation.tabs
@@ -54,13 +56,13 @@ plugins:
           name: 日本語
           default: true
           build: true
-          site_name: MeasureLab オペレーションマニュアル
-          site_description: 測定ツールの操作マニュアル
+          site_name: MeasureLab Python v0.9.1 マニュアル
+          site_description: Python最終版の保存版操作マニュアル
         - locale: en
           name: English
           build: true
-          site_name: MeasureLab Operation Manual
-          site_description: Operation manual for measurement tools
+          site_name: MeasureLab Python v0.9.1 Manual
+          site_description: Archived manual for the final Python edition
           nav_translations:
             ホーム: Home
             クイックスタート: Quick Start
@@ -136,15 +138,6 @@ plugins:
             提案機能: Proposed Features
             ダウンロード: Download
             リリースページ: Release Page
-  - with-pdf:
-      author: MeasureLab maintainers
-      copyright: Unlicense
-      cover: true
-      back_cover: true
-      cover_subtitle: "Open-source Audio & Signal Measurement Software for DIY and Research"
-      output_path: pdf/operation_manual.pdf
-      enabled_if_env: ENABLE_PDF_EXPORT
-
 extra_css:
   - stylesheets/extra.css
   - https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css
@@ -228,6 +221,7 @@ nav:
       - 開発情報: development.md
       - Windows配布方式とビルド: windows_packaging.md
       - 提案機能: PROPOSED_FEATURES.md
-      - リリースページ: https://github.com/youtube-at-vach/MeasureLab/releases/
-    
+      - Python v0.9.1 source: https://github.com/youtube-at-vach/MeasureLab/tree/v0.9.1
+      - リリースページ: https://github.com/youtube-at-vach/MeasureLab/releases/tag/v0.9.1
+
   - ダウンロード: https://youtube-at-vach.github.io/MeasureLab/download/

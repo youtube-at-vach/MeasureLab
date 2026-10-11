@@ -42,6 +42,8 @@ PR 前の検証:
 ```bash
 ./scripts/cargo.sh fmt --all -- --check
 ./scripts/cargo.sh clippy --locked --all-targets --all-features -- -D warnings
+./scripts/cargo.sh test --locked --no-default-features
+./scripts/cargo.sh test --locked
 ./scripts/cargo.sh test --locked --all-targets --all-features
 ./scripts/cargo.sh build --release --locked
 ```
@@ -90,10 +92,10 @@ Python 3.12 以降を使う。これは公開マニュアル用の環境で、�
 ```bash
 python3 -m venv .venv
 ./.venv/bin/python -m pip install -r requirements-docs.txt ruff
-./.venv/bin/mkdocs build
+./.venv/bin/python scripts/build_pages.py
 ```
 
-PDF 自動生成のワークフローは停止中。公開マニュアルの Web ビルドは継続する。
+Node.jsとサイト依存関係も必要。共通スクリプトで旧Pythonマニュアル、新Rustマニュアル、downloadを`site/`へ統合し、MkDocs strictと公開ルート保持を検証する。PDF自動生成は退役し、WebビルドにWeasyPrint・Pangoは不要。配置と公開条件は [公開準備](../../guide/rust/RELEASE_PREPARATION.md) を参照する。
 
 ## 検証
 

@@ -18,8 +18,8 @@ Set up Rust, Node.js, documentation Python, and lint tools locally in
 .tools/ and .venv/, then build the desktop application. Reruns reuse these
 directories. Shell profiles, Git identity, and OS defaults are not changed.
 
-  --install-os-deps  Install native libraries using MacPorts on macOS or
-                     apt-get on Linux (may prompt for a sudo password)
+  --install-os-deps  Check Xcode tools on macOS; install native libraries
+                     with apt-get on Linux (may prompt for sudo)
   --verify           Run Rust fmt/Clippy/tests/release build, website tests
                      and build, MkDocs, Ruff, Markdown lint, and actionlint
   --help, -h         Show this help without installing anything
@@ -88,17 +88,12 @@ measurelab_as_root() {
 
 if [ "$measurelab_install_os_deps" = true ]; then
     if [ "$measurelab_os" = Darwin ]; then
-        if ! command -v port >/dev/null 2>&1; then
-            printf 'MacPorts is required for --install-os-deps on macOS.\n' >&2
-            exit 1
-        fi
-        measurelab_as_root "$(command -v port)" install pango libffi
+        printf 'macOS uses the installed Xcode Command Line Tools.\n'
     elif command -v apt-get >/dev/null 2>&1; then
         measurelab_as_root apt-get update
         measurelab_as_root apt-get install -y build-essential pkg-config \
             libasound2-dev libxkbcommon-dev libwayland-dev libx11-dev \
-            libxrandr-dev libxi-dev libxcursor-dev libpango-1.0-0 \
-            libpangoft2-1.0-0 libharfbuzz-subset0 libffi-dev
+            libxrandr-dev libxi-dev libxcursor-dev
     else
         printf 'Install native libraries for your distribution manually; see guide/rust/SETUP.md.\n' >&2
         exit 1
@@ -211,10 +206,6 @@ fi
     printf 'export UV_PYTHON_BIN_DIR=%q\n' "$UV_PYTHON_BIN_DIR"
     printf 'export UV_CACHE_DIR=%q\n' "$UV_CACHE_DIR"
     printf 'export PATH=%q:"$PATH"\n' "$measurelab_root/.venv/bin:$measurelab_tools/bin:$measurelab_tools/node/bin:$CARGO_HOME/bin"
-    if [ "$measurelab_os" = Darwin ] && command -v port >/dev/null 2>&1; then
-        measurelab_ports_prefix=$(CDPATH='' cd -- "$(dirname -- "$(command -v port)")/.." && pwd)
-        printf 'export DYLD_FALLBACK_LIBRARY_PATH=%q:"${DYLD_FALLBACK_LIBRARY_PATH:-$HOME/lib:/usr/local/lib:/usr/lib}"\n' "$measurelab_ports_prefix/lib"
-    fi
 } > "$measurelab_tools/env.sh"
 # shellcheck source=/dev/null
 source "$measurelab_tools/env.sh"
@@ -223,23 +214,24 @@ if [ "$measurelab_verify" = true ]; then
     printf 'Verifying Rust, website, documentation, and lint tools\n'
     ./scripts/cargo.sh fmt --all -- --check
     ./scripts/cargo.sh clippy --locked --all-targets --all-features -- -D warnings
+    ./scripts/cargo.sh test --locked --no-default-features
+    ./scripts/cargo.sh test --locked
     ./scripts/cargo.sh test --locked --all-targets --all-features
     ./scripts/cargo.sh build --release --locked
     npm --prefix download-site test
-    npm --prefix download-site run build
     ./.venv/bin/ruff check .
     ./.venv/bin/ruff format --check .
     markdownlint-cli2 '**/*.md' '#node_modules'
     actionlint
-    ./.venv/bin/mkdocs build
+    ./.venv/bin/python scripts/build_pages.py
 else
     printf 'Building the desktop application\n'
     ./scripts/cargo.sh build --locked
 fi
 
-if ! .venv/bin/python -c 'import weasyprint' > "$measurelab_tools/doc-runtime.log" 2>&1; then
-    printf '\nDocumentation native libraries are missing; MkDocs is not ready.\n' >&2
-    printf 'Install them with --install-os-deps or follow guide/rust/SETUP.md.\n' >&2
+if ! .venv/bin/python -c 'import mkdocs, material, mkdocs_static_i18n; from py_mini_racer import MiniRacer' > "$measurelab_tools/doc-runtime.log" 2>&1; then
+    printf '\nDocumentation Python packages are missing; MkDocs is not ready.\n' >&2
+    printf 'Reinstall requirements-docs.txt or follow guide/rust/SETUP.md.\n' >&2
     printf 'Details: .tools/doc-runtime.log\n' >&2
     exit 1
 fi

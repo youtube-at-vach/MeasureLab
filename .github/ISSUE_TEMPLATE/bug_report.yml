@@ -15,12 +15,22 @@ body:
         Feel free to write in English if you prefer.
         Short descriptions are fine too 👍
 
+  - type: dropdown
+    id: edition
+    attributes:
+      label: Edition / 版
+      options:
+        - Rust prototype / Rustプロトタイプ
+        - Python v0.9.1 or earlier (archived) / Python旧版（開発終了）
+    validations:
+      required: true
+
   - type: input
     id: version
     attributes:
       label: Version / MeasureLab のバージョン
-      description: e.g. v0.13.0 / 例）v0.13.0
-      placeholder: "v0.xx.x"
+      description: Rust commit SHA or release tag; Python example v0.9.1 / RustはコミットSHAまたはタグ、Pythonの例はv0.9.1
+      placeholder: "Rust commit / v0.9.1"
     validations:
       required: true
 
@@ -43,11 +53,17 @@ body:
       options:
         - Built-in Sound / 内蔵サウンド
         - USB Audio Interface / USB オーディオIF
-        - ASIO
-        - WASAPI
+        - Software Loopback (Rust)
+        - Virtual audio device / 仮想オーディオデバイス
         - Unknown / 不明
     validations:
       required: true
+
+  - type: textarea
+    id: conditions
+    attributes:
+      label: Measurement conditions / 測定条件
+      description: Device/driver, OS version, GPU, sample rate, CH routing, FFT/window/update mode, calibration, loss/status, normal or QA build. Include only relevant conditions; no private recordings are needed. / 関係する条件だけで構いません。
 
   - type: textarea
     id: what_happened

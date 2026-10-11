@@ -12,9 +12,9 @@ source .tools/env.sh
 ./scripts/debug.sh
 ```
 
-`--install-os-deps`はOSのライブラリをMacPortsまたはapt-getで導入します。必要な場合はsudoのパスワード入力があります。スクリプト全体をsudoで実行せず、通常のユーザーで起動してください。
+`--install-os-deps`はLinuxでapt-getからOSライブラリを導入し、macOSではXcodeツールの導入を確認します。必要な場合はsudoのパスワード入力があります。スクリプト全体をsudoで実行せず、通常のユーザーで起動してください。
 
-`--verify`はRustのfmt・全ターゲット／全機能のClippyとテスト・releaseビルド、サイトのテストとビルド、MkDocs、Ruff、Markdown lint、actionlintを実行します。引数なしでは依存関係を整え、デスクトップのデバッグビルドと文書用ライブラリの読み込みを確認します。検証に失敗すると終了コードは非ゼロになります。
+`--verify`はRustのfmt・全ターゲット／全機能のClippyとテスト・GUIなし／通常構成のテスト・releaseビルド、サイトのテストと新旧マニュアルを含むPagesビルド、Ruff、Markdown lint、actionlintを実行します。引数なしでは依存関係を整え、デスクトップのデバッグビルドと文書用ライブラリの読み込みを確認します。検証に失敗すると終了コードは非ゼロになります。
 
 OSのライブラリを導入済みの場合、または自分で管理する場合は、次のコマンドを使います。
 
@@ -34,15 +34,7 @@ Git、curl、tar、SHA-256ツールとXcode Command Line Toolsが必要です。
 xcode-select --install
 ```
 
-OSライブラリの自動導入には [MacPorts](https://www.macports.org/install.php) を使います。`--install-os-deps`が導入するのは`pango`と`libffi`です。RustのAudio I/OはCoreAudioを使い、FFTはRustFFTを使います。
-
-既存のMkDocs PDFプラグインは、PDF生成を停止した状態でもWeasyPrintを読み込むため、文書のWebビルドにもPango・GLib・HarfBuzz等が必要です。管理者権限を使えない場合は、管理者に以下の導入を依頼してください。
-
-```sh
-sudo port install pango libffi
-```
-
-生成される`.tools/env.sh`は、MacPortsのライブラリディレクトリを`DYLD_FALLBACK_LIBRARY_PATH`へ追加します。別の方法でライブラリを管理する場合は、[WeasyPrintの導入・ライブラリ検索手順](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation) に従ってください。PDFの自動生成は引き続き停止中です。
+RustのAudio I/OはCoreAudio、FFTはRustFFTを使います。停止中のPDFプラグインをWebビルドから外したため、マニュアル生成にMacPorts・Pango・WeasyPrintは不要です。
 
 ### Linux
 
@@ -53,13 +45,12 @@ sudo apt-get update
 sudo apt-get install -y git curl ca-certificates tar build-essential pkg-config
 ```
 
-`--install-os-deps`はALSA、X11、Wayland、xkbcommonの開発用ライブラリと、文書生成用のPango・HarfBuzz・libffiを導入します。apt-get以外の環境では、次に相当するパッケージをディストリビューションの手順で導入し、このオプションを省略してください。
+`--install-os-deps`はALSA、X11、Wayland、xkbcommonの開発用ライブラリを導入します。apt-get以外の環境では、次に相当するパッケージをディストリビューションの手順で導入し、このオプションを省略してください。
 
 ```sh
 sudo apt-get install -y build-essential pkg-config \
     libasound2-dev libxkbcommon-dev libwayland-dev libx11-dev \
-    libxrandr-dev libxi-dev libxcursor-dev libpango-1.0-0 \
-    libpangoft2-1.0-0 libharfbuzz-subset0 libffi-dev
+    libxrandr-dev libxi-dev libxcursor-dev
 ```
 
 ### Windows・その他の環境

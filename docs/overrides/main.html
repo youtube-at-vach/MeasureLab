@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block announce %}
+  {% if config.theme.language == "ja" %}
+    Python v0.9.1 の保存版マニュアルです。
+    <a href="https://youtube-at-vach.github.io/MeasureLab/rust/">Rust プロトタイプはこちら</a>
+  {% else %}
+    Archived manual for Python v0.9.1.
+    <a href="https://youtube-at-vach.github.io/MeasureLab/rust/en/">Rust prototype documentation</a>
+  {% endif %}
+{% endblock %}

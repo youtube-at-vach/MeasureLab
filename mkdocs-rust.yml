@@ -1,0 +1,37 @@
+site_name: MeasureLab Rust プロトタイプ
+site_url: https://youtube-at-vach.github.io/MeasureLab/rust/
+site_description: Rust版MeasureLabの機能、使い方、確認範囲
+edit_uri: ''
+docs_dir: docs-rust
+site_dir: site/rust
+theme:
+  name: material
+  language: ja
+  features:
+    - navigation.sections
+    - navigation.top
+plugins:
+  - search
+  - i18n:
+      languages:
+        - locale: ja
+          name: 日本語
+          default: true
+          build: true
+        - locale: en
+          name: English
+          build: true
+          site_name: MeasureLab Rust Prototype
+          site_description: Features, usage and verification limits of MeasureLab for Rust
+          nav_translations:
+            概要と対応範囲: Overview and scope
+            クイックスタート: Quick start
+            Python v0.9.1 マニュアル: Python v0.9.1 manual
+markdown_extensions:
+  - admonition
+  - tables
+nav:
+  - 概要と対応範囲: index.md
+  - クイックスタート: quickstart.md
+  - GitHub: https://github.com/youtube-at-vach/MeasureLab
+  - Python v0.9.1 マニュアル: https://youtube-at-vach.github.io/MeasureLab/

@@ -1,57 +1,79 @@
-name: Deploy Docs
+name: Documentation and Pages
+
 on:
+  pull_request:
+    branches: [main, rewrite/rust]
   push:
-    branches:
-      - main
+    branches: [main, rewrite/rust]
+  workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v6
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: requirements-docs.txt
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: download-site/package-lock.json
+      - name: Install documentation tools
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install -r requirements-docs.txt ruff
+      - run: npm --prefix download-site ci
+      - name: Check documentation and release-note Python tools
+        run: |
+          .venv/bin/ruff check .
+          .venv/bin/ruff format --check .
+      - name: Check Markdown
+        run: npx --yes markdownlint-cli2@0.23.3 '**/*.md' '#node_modules'
+      - name: Test download selection
+        run: npm --prefix download-site test
+      - name: Build both manuals and download site; verify preserved routes
+        run: .venv/bin/python scripts/build_pages.py
+      - name: Upload preview for review
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pages-preview
+          path: site/
+          retention-days: 7
+      - name: Upload Pages artifact
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site/
+
   deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v6
-        with:
-          python-version: 3.x
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
-        with:
-          node-version: '20'
-          cache: npm
-          cache-dependency-path: download-site/package-lock.json
-      - run: echo "cache_id=$(date --utc '+%V')" >> "$GITHUB_ENV" 
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v5
-        with:
-          key: mkdocs-material-${{ env.cache_id }}
-          path: .cache
-          restore-keys: |
-            mkdocs-material-
-      - name: Install docs dependencies
-        run: pip install -r requirements-docs.txt
-      - name: Install download site dependencies
-        working-directory: download-site
-        run: npm ci
-      - name: Build download site
-        working-directory: download-site
-        run: npm run build
-      - name: Build docs
-        run: mkdocs build
-      - name: Merge download site into Pages output
-        run: |
-          mkdir -p site/download
-          cp -R download-site/dist/. site/download/
-          cp version.json site/version.json
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
-        with:
-          path: './site'
-      - name: Deploy to GitHub Pages
+      - name: Deploy the validated combined site
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
-

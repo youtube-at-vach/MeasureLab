@@ -2,35 +2,70 @@
 
 [日本語](README.ja.md)
 
-MeasureLab aims to make accurate measurement free and accessible to everyone. This branch contains a Rust prototype with 1–16-channel audio input, an oscilloscope, spectrum, spectrogram, and XY display. Internal demo signals are available only in explicit QA builds.
+**Accurate measurement, free and accessible to everyone.** MeasureLab is an audio measurement workspace for your PC. The Rust edition focuses on reproducible Scope and Spectrum measurements, with acquisition, analysis and GPU rendering running separately.
 
-The final Python/PyQt6 edition is [v0.9.1](https://github.com/youtube-at-vach/MeasureLab/releases/tag/v0.9.1). Its complete source remains available through that tag and the [archive/python-v0.9.1 branch](https://github.com/youtube-at-vach/MeasureLab/tree/archive/python-v0.9.1).
+**Status: Rust prototype, available from source.** Scope and Spectrum acquisition, calibration and result reuse are implemented. Software Loopback is available in normal builds; Lock-in is experimental. Hardware accuracy, long-duration behavior and platform coverage remain conditional. See the [roadmap](guide/rust/PLAN.md) and [validation records](guide/rust/validation/README.md).
 
-## Downloads and manuals
+## What you can use today
 
-- [Download website](https://youtube-at-vach.github.io/MeasureLab/download/)
-- [Online manual](https://youtube-at-vach.github.io/MeasureLab/)
-- [Python v0.9.1 source and development guide](https://github.com/youtube-at-vach/MeasureLab/blob/v0.9.1/docs/development.en.md)
+| Instrument / capability | Available in Rust |
+| --- | --- |
+| Audio input | 1–16 synchronous channels through CPAL; f64 samples after capture; supported nominal sample-rate selection |
+| Scope | Any two channels, Auto/Normal/Single, Autoset, RMS/Peak/P-P, time cursors and held acquisition |
+| Spectrum | 1,024–524,288 points, amplitude and PSD, band power/RMS, averaging, peak hold and frequency cursors |
+| Spectrogram and XY | Independent STFT display and synchronous two-channel XY routing |
+| Calibration and results | Channel gain/offset/unit definitions; versioned settings; held Scope/Spectrum JSON, CSV and PNG; reference comparison |
+| Software Loopback | Known gain, phase, delay and noise through the common input path without physical audio output |
+| Experimental Lock-in | Fundamental-frequency REF/response measurement, X/Y and R/θ, gain and settling status |
 
-The download website and existing manuals continue to describe the Python edition.
+The measurement core uses f64; an optional f32 FFT path is available with separate numerical limits. Hiding a display does not stop analysis or averaging. Results retain their acquisition conditions and distinguish missing or invalid data from valid zero.
 
-## Rust rewrite status
+Physical signal output, THD/FRF/IR, VST3, actual sample-clock calibration and the Python edition's wider instrument collection are not implemented in Rust. Scope waveform axes and triggers use FS even when numerical readouts are calibrated. Lock-in hardware REF/timing validation is still pending.
 
-The Python application, tests, and application build environment have been retired from this branch. Rust development uses pull requests targeting `rewrite/rust`; the published Python edition remains available separately.
+## Run the prototype
 
-For a new macOS or Linux environment, follow the [development environment setup guide](guide/rust/SETUP.md) and run `./scripts/setup_dev_env.sh --install-os-deps --verify` to install local tools and validate the Rust, website, and documentation builds.
-
-With Rust 1.95 or later and your operating system's build tools installed, run:
+Use Rust 1.95 or later and the native prerequisites for your OS. Rust integration currently targets `rewrite/rust`; this preparation does not yet move development to `main`.
 
 ```sh
-./scripts/cargo.sh run --release --locked
+git clone --branch rewrite/rust https://github.com/youtube-at-vach/MeasureLab.git
+cd MeasureLab
+cargo run --release --locked
 ```
 
-Select an audio input device and press **Start input**. For development without a microphone, use `./scripts/debug.sh --demo`; the launcher enables the QA build explicitly. Normal builds do not include the internal demo generator or its input controls.
+This checks out the integrated Rust branch; newer work on topic branches may not be included yet. For a new macOS/Linux development environment, the [setup guide](guide/rust/SETUP.md) covers local tool installation:
 
-See the [current direction](guide/CURRENT_DIRECTION.md) and [development plan](guide/rust/PLAN.md) for design principles, current limits, and the next milestones. The immediate priority is to separate acquisition and measurement execution from UI updates, then finish the Scope and Spectrum measurement use cases. The [Rust operation and build guide](guide/rust/README.md) covers supported features, live input, and platform requirements.
+```sh
+./scripts/setup_dev_env.sh --install-os-deps --verify
+source .tools/env.sh
+./scripts/debug.sh
+```
 
-This repository retains `download-site/`, the manual generation files, project history, measurement/design references, and the project icon. See [Rust rewrite preparation](guide/RUST_REWRITE_PREPARATION.md) for the retained files and archive details, and [Contributing](CONTRIBUTING.md) for the current validation commands.
+The application starts stopped. Select a device and press **Start input**, or choose **Input source → Software Loopback** to try it without hardware. Use **View → Scope + Spectrum**, adjust the plots through **Adjust**, then **Stop** and save settings/results through **File**. A complete 512k window at 48 kHz takes about 10.92 seconds even with frequent Live updates.
+
+| Platform | Build prerequisites and current verification scope |
+| --- | --- |
+| macOS | Xcode Command Line Tools; allow microphone access for physical input. Existing macOS/BlackHole/GPU records cover specified conditions |
+| Linux | C/C++ tools, pkg-config, ALSA, X11, Wayland and xkbcommon development libraries. CI target; device/GPU runtime verification remains pending |
+| Windows | Rust MSVC toolchain and Visual Studio C++ Build Tools. CI target; device/GPU runtime verification remains pending |
+
+The local macOS bundle script is `./scripts/bundle-macos.sh`. Public Rust installers, signing and supported OS/CPU combinations are part of [publication preparation](guide/rust/RELEASE_PREPARATION.md), not an available release promise. QA-only demo controls require `./scripts/debug.sh --demo`; Software Loopback does not require QA.
+
+## Documentation and Python v0.9.1
+
+| Edition | Start here | Distribution |
+| --- | --- | --- |
+| Rust prototype | [User manual source](docs-rust/index.en.md), [detailed operation guide](guide/rust/README.md), [setup](guide/rust/SETUP.md) | Build from source for now |
+| Final Python edition | [Preserved online manual](https://youtube-at-vach.github.io/MeasureLab/en/) | [Download site](https://youtube-at-vach.github.io/MeasureLab/download/) and [v0.9.1 release](https://github.com/youtube-at-vach/MeasureLab/releases/tag/v0.9.1) |
+
+Python development ended at v0.9.1. Its complete source and old build instructions remain in the [tag](https://github.com/youtube-at-vach/MeasureLab/tree/v0.9.1) and [archive branch](https://github.com/youtube-at-vach/MeasureLab/tree/archive/python-v0.9.1). Existing Python manual URLs will remain available when Rust is published. The new manual is prepared for `/MeasureLab/rust/` (English: `/MeasureLab/rust/en/`) and becomes public after the Pages deployment. Download links and `version.json` still describe Python v0.9.1.
+
+## Development and feedback
+
+Read [Current direction](guide/CURRENT_DIRECTION.md) → [implementation roadmap](guide/rust/PLAN.md). Repository, CI, packaging and documentation tasks live in [publication preparation](guide/rust/RELEASE_PREPARATION.md). The stack is Rust, CPAL, RustFFT, egui/eframe and wgpu; Python is used only for documentation and release tooling.
+
+[Contributions](CONTRIBUTING.md), including AI-assisted changes, are welcome. Current PRs target `rewrite/rust`. CI checks three operating systems, normal/QA/headless configurations, the declared minimum Rust version, workflows, both manuals and downloads. Local commands are in [Tool Usage Guide](.agents/workflows/tool_usage.md); CI success is not a physical measurement certificate.
+
+For [bug reports](https://github.com/youtube-at-vach/MeasureLab/issues), include the edition and commit/version, OS/GPU, input device, sample rate, channel routing, FFT settings and reproduction steps. Use the [security policy](SECURITY.md) for vulnerabilities.
 
 ## 📜 License
 
