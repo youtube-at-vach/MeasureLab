@@ -84,6 +84,8 @@ impl Input {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Scope {
+    #[serde(default)]
+    pub mode: crate::acquisition::Mode,
     pub channels: Pair,
     pub ms_per_div: f32,
     pub trigger: Trigger,
@@ -158,6 +160,10 @@ impl ChannelCalibration {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Measurement {
+    #[serde(default)]
+    pub software_loopback: Option<crate::loopback::Settings>,
+    #[serde(default)]
+    pub lockin: crate::lockin::Settings,
     pub input: Input,
     pub scope: Scope,
     pub spectrum: Spectrum,
@@ -215,6 +221,13 @@ impl Document {
             return Err(format!("Unsupported settings version: {}", self.version));
         }
         let m = &self.measurement;
+        m.lockin.validate(m.input.expected_sample_rate())?;
+        if let Some(software) = &m.software_loopback {
+            software.validate(m.input.expected_sample_rate())?;
+            if m.input.device_id != "measurelab:software-loopback" || m.input.channels != 2 {
+                return Err("Invalid software input identity".into());
+            }
+        }
         bounded_text(&m.input.device_id, 4096, "device ID")?;
         bounded_text(&m.input.device_name, 1024, "device name")?;
         if !(1..=MAX_CHANNELS as u16).contains(&m.input.channels) {
@@ -494,6 +507,8 @@ mod tests {
         Document {
             version: VERSION,
             measurement: Measurement {
+                software_loopback: None,
+                lockin: crate::lockin::Settings::default(),
                 input: Input {
                     device_id: "coreaudio:reference-device".into(),
                     device_name: "Reference 16ch".into(),
@@ -502,6 +517,7 @@ mod tests {
                     sample_rate: Some(48_000),
                 },
                 scope: Scope {
+                    mode: crate::acquisition::Mode::Auto,
                     channels: Pair([15, 7]),
                     ms_per_div: 10.0,
                     trigger: Trigger {

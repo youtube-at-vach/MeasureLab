@@ -78,7 +78,10 @@ impl History {
         {
             *target = if sample.is_finite() { sample } else { 0.0 };
         }
-        self.valid[slot] = true;
+        self.valid[slot] = samples[..self.channels].iter().all(|x| x.is_finite());
+        if !self.valid[slot] {
+            self.contiguous_start = sequence + 1;
+        }
         self.end = sequence + 1;
         self.len = (self.len + 1).min(capacity);
     }
@@ -878,7 +881,7 @@ mod tests {
     fn invalid_samples_and_short_captures_are_safe() {
         let mut h = History::new(10);
         h.push([f64::NAN, f64::INFINITY]);
-        assert_eq!(h.get(0), Some([0.0, 0.0].as_slice()));
+        assert_eq!(h.get(0), None);
         let mut lines = Vec::new();
         build_lines(
             &h,

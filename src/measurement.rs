@@ -3,9 +3,11 @@
 #[cfg(any(test, feature = "qa"))]
 use crate::demo::Demo;
 use crate::{
+    acquisition::{self, Acquisition},
     audio::Capture,
     calibration::{self, Reading},
     channel::{ChannelId, Pair},
+    lockin, lockin_worker, loopback,
     signal::{self, History, Measurement, Sweep, Trigger},
     spectrum::{self, Settings},
     spectrum_worker, stft,
@@ -40,6 +42,7 @@ pub enum SpectrumMode {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ScopeSettings {
+    pub mode: acquisition::Mode,
     pub channels: Pair,
     pub samples: usize,
     pub trigger: Trigger,
@@ -48,6 +51,7 @@ pub struct ScopeSettings {
 impl Default for ScopeSettings {
     fn default() -> Self {
         Self {
+            mode: acquisition::Mode::Auto,
             channels: Pair::default(),
             samples: 480,
             trigger: Trigger::default(),
@@ -57,6 +61,7 @@ impl Default for ScopeSettings {
 
 #[derive(Clone, Debug)]
 pub struct Config {
+    pub lockin: lockin::Settings,
     pub spectrum: Settings,
     pub spectrum_channel: ChannelId,
     pub spectrum_mode: SpectrumMode,
@@ -88,6 +93,9 @@ pub struct SpectrumInfo {
 
 #[derive(Clone)]
 pub struct Snapshot {
+    pub lockin: lockin::Result,
+    pub scope_capture: Option<History>,
+    pub acquisition_state: acquisition::State,
     pub generation: u64,
     pub revision: u64,
     pub sample_rate: u32,
@@ -115,6 +123,7 @@ pub struct Snapshot {
 
 #[derive(Default)]
 pub struct Metrics {
+    pub single_complete: AtomicBool,
     pub failed: AtomicBool,
     pub input_frames: AtomicU64,
     pub display_skipped: AtomicU64,
@@ -160,6 +169,11 @@ impl Drop for InputActivity {
 
 enum Input {
     Idle,
+    Software {
+        signal: loopback::Generator,
+        clock: Instant,
+        fraction: f64,
+    },
     Audio(Capture),
     #[cfg(any(test, feature = "qa"))]
     Demo {
@@ -170,7 +184,12 @@ enum Input {
 }
 
 enum Command {
-    Start(u64, Input, u32, usize, Config),
+    Lockin(lockin::Settings),
+    Autoset(
+        usize,
+        mpsc::SyncSender<Result<acquisition::Autoset, String>>,
+    ),
+    Start(u64, Input, u32, usize, Box<Config>),
     Spectrum(Settings, usize, SpectrumMode),
     Stft(u64, stft::Config),
     #[cfg(any(test, feature = "qa"))]
@@ -185,6 +204,8 @@ enum Command {
 /// GUI-free core also used directly by deterministic input tests. The worker is
 /// only the execution wrapper; all measurement scheduling lives here.
 struct Core {
+    lockin: lockin_worker::Worker,
+    acquisition: Acquisition,
     generation: u64,
     revision: u64,
     sample_rate: u32,
@@ -206,6 +227,7 @@ impl Core {
         metrics: Arc<Metrics>,
     ) -> Self {
         let config = Config {
+            lockin: lockin::Settings::default(),
             spectrum: Settings::default(),
             spectrum_channel: 0,
             spectrum_mode: SpectrumMode::Continuous,
@@ -236,6 +258,8 @@ impl Core {
             0,
         );
         Self {
+            lockin: lockin_worker::Worker::default(),
+            acquisition: Acquisition::new(acquisition::Mode::Auto, 480, 2),
             generation: 0,
             revision: 0,
             sample_rate: 48000,
@@ -254,6 +278,15 @@ impl Core {
     }
 
     fn start(&mut self, generation: u64, sample_rate: u32, channels: usize, mut config: Config) {
+        self.lockin.configure(
+            config.lockin,
+            sample_rate,
+            config.calibrations.clone(),
+            0,
+            channels,
+        );
+        self.acquisition = Acquisition::new(config.scope.mode, config.scope.samples, channels);
+        self.metrics.single_complete.store(false, Ordering::Release);
         self.generation = generation;
         self.sample_rate = sample_rate;
         self.history = History::with_channels((sample_rate as usize * 2).max(32768), channels);
@@ -308,6 +341,9 @@ impl Core {
     }
 
     fn push(&mut self, sequence: u64, samples: &[f64]) {
+        if self.acquisition.state == acquisition::State::Complete {
+            return;
+        }
         if self.expected != Some(sequence) {
             self.dropped += self
                 .expected
@@ -315,23 +351,50 @@ impl Core {
         }
         self.expected = Some(sequence + 1);
         self.history.push_at(sequence, samples);
+        self.lockin.submit(sequence, samples);
+        if samples.iter().all(|x| x.is_finite()) {
+            self.acquisition.push(
+                &self.history,
+                self.config.scope.samples,
+                self.config.scope.trigger,
+            );
+        } else {
+            self.acquisition.invalidate();
+        }
         self.feeder.submit(sequence, samples);
         self.spectrum.submit(sequence, samples);
         self.metrics.input_frames.fetch_add(1, Ordering::Relaxed);
+        self.metrics.single_complete.store(
+            self.acquisition.state == acquisition::State::Complete,
+            Ordering::Release,
+        );
     }
 
     fn reply(&mut self, final_window: bool) -> Reply {
         let spectrum = self
             .spectrum
             .inspect(self.history.range().end, final_window);
+        let lockin = if final_window {
+            self.lockin.inspect(self.history.range().end)
+        } else {
+            let (reply, result) = mpsc::sync_channel(1);
+            let _ = reply.try_send(self.lockin.latest());
+            result
+        };
         Reply {
             snapshot: self.snapshot(),
             spectrum,
+            lockin,
+            spectrum_value: None,
+            lockin_value: None,
         }
     }
 
     fn snapshot(&mut self) -> Snapshot {
         let mut snapshot = Snapshot {
+            lockin: self.lockin.latest(),
+            scope_capture: None,
+            acquisition_state: acquisition::State::Waiting,
             generation: 0,
             revision: 0,
             sample_rate: self.sample_rate,
@@ -365,6 +428,7 @@ impl Core {
     fn copy_snapshot(&mut self, snapshot: &mut Snapshot) {
         self.revision += 1;
         snapshot.generation = self.generation;
+        snapshot.lockin = self.lockin.latest();
         snapshot.revision = self.revision;
         snapshot.sample_rate = self.sample_rate;
         snapshot.history.clone_from(&self.history);
@@ -373,20 +437,32 @@ impl Core {
         snapshot.stft_config = self.config.stft;
         snapshot.scope_settings = self.config.scope;
         snapshot.xy_channels = self.config.xy_channels;
-        snapshot.sweep = if self.history.len() >= self.config.scope.samples {
+        snapshot.acquisition_state = self.acquisition.state;
+        if self.acquisition.mode != acquisition::Mode::Auto {
+            snapshot
+                .scope_capture
+                .get_or_insert_with(|| History::new(1))
+                .clone_from(&self.acquisition.capture);
+        } else {
+            snapshot.scope_capture = None;
+        }
+        let scope_history = snapshot.scope_capture.as_ref().unwrap_or(&self.history);
+        snapshot.sweep = if self.acquisition.mode != acquisition::Mode::Auto {
+            self.acquisition.sweep.clone()
+        } else if self.history.len() >= self.config.scope.samples {
             self.history
                 .sweep(self.config.scope.samples, self.config.scope.trigger)
         } else {
             Sweep::default()
         };
         snapshot.measurements = signal::measure(
-            &self.history,
+            scope_history,
             snapshot.sweep.range.clone(),
             self.config.scope.channels,
         );
         snapshot.calibrations.clone_from(&self.config.calibrations);
         snapshot.scope_readings = calibration::measure(
-            &self.history,
+            scope_history,
             snapshot.sweep.range.clone(),
             self.config.scope.channels,
             &snapshot.calibrations,
@@ -395,7 +471,7 @@ impl Core {
             .sweep
             .range
             .clone()
-            .filter(|&i| self.history.get(i).is_none())
+            .filter(|&i| scope_history.get(i).is_none())
             .count() as u64;
         snapshot.input_dropped = self.dropped.max(self.capture_dropped);
         snapshot.failed = self.failed;
@@ -405,6 +481,9 @@ impl Core {
 struct Reply {
     snapshot: Snapshot,
     spectrum: mpsc::Receiver<spectrum_worker::Publication>,
+    lockin: mpsc::Receiver<lockin::Result>,
+    spectrum_value: Option<spectrum_worker::Publication>,
+    lockin_value: Option<lockin::Result>,
 }
 
 pub struct PendingSnapshot {
@@ -416,17 +495,35 @@ impl PendingSnapshot {
         if self.reply.is_none() {
             self.reply = self.incoming.try_recv().ok();
         }
-        let publication = self.reply.as_ref()?.spectrum.try_recv().ok()?;
+        let reply = self.reply.as_mut()?;
+        if reply.spectrum_value.is_none() {
+            reply.spectrum_value = reply.spectrum.try_recv().ok();
+        }
+        if reply.lockin_value.is_none() {
+            reply.lockin_value = reply.lockin.try_recv().ok();
+        }
+        if reply.spectrum_value.is_none() || reply.lockin_value.is_none() {
+            return None;
+        }
+        let mut reply = self.reply.take().unwrap();
+        reply.snapshot.lockin = reply.lockin_value.take().unwrap();
         Some(Self::complete(
-            self.reply.take().unwrap().snapshot,
-            publication,
+            reply.snapshot,
+            reply.spectrum_value.take().unwrap(),
         ))
     }
     pub fn wait(self) -> Snapshot {
-        let reply = self
+        let mut reply = self
             .reply
             .unwrap_or_else(|| self.incoming.recv().expect("measurement reply"));
-        let publication = reply.spectrum.recv().expect("Spectrum barrier");
+        reply.snapshot.lockin = reply
+            .lockin_value
+            .take()
+            .unwrap_or_else(|| reply.lockin.recv().expect("Lock-in barrier"));
+        let publication = reply
+            .spectrum_value
+            .take()
+            .unwrap_or_else(|| reply.spectrum.recv().expect("Spectrum barrier"));
         Self::complete(reply.snapshot, publication)
     }
     fn complete(mut snapshot: Snapshot, publication: spectrum_worker::Publication) -> Snapshot {
@@ -477,10 +574,39 @@ impl Worker {
                     let started = Instant::now();
                     if let Some(command) = command {
                         match command {
+                            Command::Lockin(settings) => {
+                                if !matches!(input, Input::Idle) {
+                                    core.config.lockin = settings;
+                                    core.lockin.configure(
+                                        settings,
+                                        core.sample_rate,
+                                        core.config.calibrations.clone(),
+                                        core.history.range().end,
+                                        core.history.channels(),
+                                    );
+                                }
+                            }
+                            Command::Autoset(channel, reply) => {
+                                let history = if matches!(input, Input::Idle)
+                                    && !core.acquisition.capture.is_empty()
+                                {
+                                    &core.acquisition.capture
+                                } else {
+                                    &core.history
+                                };
+                                let _ = reply.try_send(acquisition::autoset(
+                                    history,
+                                    core.sample_rate,
+                                    channel,
+                                ));
+                            }
                             Command::Start(generation, source, rate, channels, config) => {
                                 activity = Some(InputActivity::new());
-                                core.start(generation, rate, channels, config);
+                                core.start(generation, rate, channels, *config);
                                 input = source;
+                                if let Input::Software { clock, .. } = &mut input {
+                                    *clock = Instant::now();
+                                }
                                 #[cfg(any(test, feature = "qa"))]
                                 if let Input::Demo { clock, .. } = &mut input {
                                     *clock = Instant::now();
@@ -508,7 +634,19 @@ impl Worker {
                                 // Held data can be reprojected over a different
                                 // interval; channel provenance stays fixed.
                                 let channels = core.config.scope.channels;
-                                core.config.scope = settings;
+                                if !matches!(input, Input::Idle) && settings != core.config.scope {
+                                    core.acquisition = Acquisition::new(
+                                        settings.mode,
+                                        settings.samples,
+                                        core.history.channels(),
+                                    );
+                                    counters.single_complete.store(false, Ordering::Release);
+                                }
+                                if !matches!(input, Input::Idle)
+                                    || core.acquisition.mode == acquisition::Mode::Auto
+                                {
+                                    core.config.scope = settings;
+                                }
                                 if matches!(input, Input::Idle) {
                                     core.config.scope.channels = channels;
                                 }
@@ -531,7 +669,7 @@ impl Worker {
                     }
                     if !matches!(input, Input::Idle) {
                         poll_input(&mut input, &mut core);
-                        if core.failed {
+                        if core.failed || core.acquisition.state == acquisition::State::Complete {
                             input = Input::Idle;
                             activity.take();
                         }
@@ -573,8 +711,41 @@ impl Worker {
             Input::Audio(capture),
             rate,
             channels,
-            config,
+            Box::new(config),
         ));
+    }
+
+    pub fn autoset(&self, channel: usize) -> mpsc::Receiver<Result<acquisition::Autoset, String>> {
+        let (reply, result) = mpsc::sync_channel(1);
+        self.send(Command::Autoset(channel, reply));
+        result
+    }
+
+    pub fn start_loopback(
+        &self,
+        generation: u64,
+        settings: loopback::Settings,
+        rate: u32,
+        config: Config,
+    ) -> Result<(), String> {
+        settings.validate(rate)?;
+        config.lockin.validate(rate)?;
+        self.running.store(true, Ordering::Release);
+        self.send(Command::Start(
+            generation,
+            Input::Software {
+                signal: loopback::Generator::new(settings),
+                clock: Instant::now(),
+                fraction: 0.0,
+            },
+            rate,
+            2,
+            Box::new(config),
+        ));
+        Ok(())
+    }
+    pub fn configure_lockin(&self, settings: lockin::Settings) {
+        self.send(Command::Lockin(settings));
     }
     #[cfg(any(test, feature = "qa"))]
     pub fn start_demo(&self, generation: u64, demo: Demo, config: Config) {
@@ -588,7 +759,7 @@ impl Worker {
             },
             48000,
             2,
-            config,
+            Box::new(config),
         ));
     }
     pub fn configure_spectrum(&self, settings: Settings, channel: usize, mode: SpectrumMode) {
@@ -665,6 +836,33 @@ fn poll_input(input: &mut Input, core: &mut Core) {
     let clock = Instant::now();
     match input {
         Input::Idle => {}
+        Input::Software {
+            signal,
+            clock,
+            fraction,
+        } => {
+            let now = Instant::now();
+            let elapsed = now.duration_since(*clock).as_secs_f64();
+            *clock = now;
+            if elapsed > 0.25 {
+                let missing = ((elapsed - 0.25) * core.sample_rate as f64) as u64;
+                signal.advance(missing);
+                let end = core.history.range().end + missing;
+                core.history.advance_to(end);
+            }
+            *fraction += elapsed.min(0.25) * core.sample_rate as f64;
+            let count = *fraction as usize;
+            *fraction -= count as f64;
+            for _ in 0..count {
+                if core.acquisition.state == acquisition::State::Complete {
+                    break;
+                }
+                core.push(
+                    core.history.range().end,
+                    &signal.next_frame(core.sample_rate),
+                );
+            }
+        }
         Input::Audio(capture) => {
             let available = capture.consumer.slots();
             if let Ok(chunk) = capture.consumer.read_chunk(available) {
@@ -733,6 +931,108 @@ mod tests {
     };
     use std::f64::consts::TAU;
 
+    fn finish(core: &mut Core) -> Snapshot {
+        core.feeder.flush();
+        core.spectrum.flush();
+        let mut reply = core.reply(true);
+        reply.snapshot.lockin = reply.lockin.recv().unwrap();
+        PendingSnapshot::complete(reply.snapshot, reply.spectrum.recv().unwrap())
+    }
+
+    #[test]
+    fn single_stops_at_exact_terminal_sample_and_does_not_fabricate_large_fft() {
+        let (_stft, mut core, mut config, _spectrum) = setup(1024, 16);
+        config.spectrum.size = 524288;
+        config.scope.samples = 10;
+        config.scope.mode = acquisition::Mode::Single;
+        config.scope.channels = Pair([15, 7]);
+        config.scope.trigger = Trigger {
+            channel: 15,
+            level: 0.5,
+            edge: signal::Edge::Rising,
+        };
+        core.start(8, 48000, 16, config);
+        for n in 0..1000 {
+            let mut frame = [0.0; 16];
+            if n == 12 {
+                frame[15] = 1.0;
+            }
+            core.push(n, &frame);
+        }
+        let result = finish(&mut core);
+        assert_eq!(result.history.range(), 0..20);
+        assert_eq!(result.sweep.range, 10..20);
+        assert_eq!(result.acquisition_state, acquisition::State::Complete);
+        assert_eq!(
+            result.scope_capture.as_ref().unwrap().get(12).unwrap()[15],
+            1.0
+        );
+        assert_eq!(result.measurements[0].samples, 10);
+        assert!(!result.spectrum.is_ready());
+        assert_eq!(result.spectrum_info.filled_samples, 20);
+    }
+
+    #[test]
+    fn normal_waits_and_keeps_fixed_capture_across_history_wrap_and_invalidates_on_gap() {
+        let (_stft, mut core, mut config, _spectrum) = setup(1024, 2);
+        config.scope.samples = 10;
+        config.scope.mode = acquisition::Mode::Normal;
+        config.scope.trigger = Trigger {
+            channel: 0,
+            level: 0.5,
+            edge: signal::Edge::Rising,
+        };
+        core.start(9, 48000, 2, config);
+        for n in 0..1000 {
+            core.push(n, &[0.0, 0.0]);
+        }
+        assert!(core.snapshot().sweep.range.is_empty());
+        for n in 1000..98000 {
+            core.push(n, &[if n == 1012 { 1.0 } else { 0.0 }, 0.0]);
+        }
+        let result = core.snapshot();
+        assert_eq!(result.sweep.range, 1010..1020);
+        assert!(result.history.get(1012).is_none());
+        assert_eq!(result.scope_capture.unwrap().get(1012).unwrap()[0], 1.0);
+        core.push(98010, &[0.0, 0.0]);
+        assert!(core.snapshot().sweep.range.is_empty());
+    }
+
+    #[test]
+    fn software_dut_common_input_lockin_and_fft_agree_without_ui() {
+        let (_stft, mut core, mut config, _spectrum) = setup(8192, 2);
+        config.spectrum_channel = 1;
+        config.spectrum.averages = 1;
+        config.spectrum_mode = SpectrumMode::Latest;
+        config.lockin = lockin::Settings {
+            enabled: true,
+            frequency_hz: 750.0,
+            integration_samples: 4096,
+            ..Default::default()
+        };
+        core.start(10, 48000, 2, config);
+        let mut generator = loopback::Generator::new(loopback::Settings {
+            frequency_hz: 750.0,
+            gain: 0.5,
+            phase_degrees: 30.0,
+            delay_samples: 3,
+            dc_offset: 0.2,
+            ..Default::default()
+        });
+        for n in 0..96000 {
+            core.push(n, &generator.next_frame(48000));
+        }
+        let result = finish(&mut core);
+        let r = &result.lockin;
+        assert_eq!(r.state, lockin::State::Valid);
+        assert_eq!(r.missing_samples, 0);
+        assert!((r.amplitude_peak.unwrap() - 0.0625).abs() < 1e-10);
+        assert!((r.phase_degrees.unwrap() - (30.0 - 360.0 * 750.0 * 3.0 / 48000.0)).abs() < 1e-7);
+        assert!((result.spectrum.power()[128].sqrt() - r.amplitude_peak.unwrap()).abs() < 1e-10);
+        assert_eq!(result.spectrum_info.input_missing, 0);
+        assert_eq!(result.history.range().end, 96000);
+    }
+
     fn setup(
         size: usize,
         channels: usize,
@@ -747,10 +1047,12 @@ mod tests {
             quantity: spectrum::Quantity::Amplitude,
         };
         let config = Config {
+            lockin: lockin::Settings::default(),
             spectrum,
             spectrum_channel: channels - 1,
             spectrum_mode: SpectrumMode::Continuous,
             scope: ScopeSettings {
+                mode: acquisition::Mode::Auto,
                 channels: Pair::default(),
                 samples: size,
                 trigger: Trigger {

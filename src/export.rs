@@ -8,7 +8,7 @@ use crate::{
     signal::{History, Measurement, Sweep},
     spectrum::{self, Quantity, Settings},
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{
     io::{BufWriter, Write},
     ops::Range,
@@ -20,9 +20,12 @@ use std::{
 pub const FORMAT: &str = "measurelab-results";
 pub const VERSION: u32 = 1;
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Source {
+    SoftwareLoopback {
+        settings: crate::loopback::Settings,
+    },
     Audio {
         device_id: Option<String>,
         device_name: String,
@@ -34,7 +37,8 @@ pub enum Source {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Input {
     pub generation: u64,
     pub source: Source,
@@ -52,7 +56,7 @@ pub struct ScopeView<'a> {
     pub readings: [calibration::Reading; 2],
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum State {
     Waiting,
@@ -62,7 +66,8 @@ pub enum State {
     Valid,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Statistics {
     pub state: State,
     pub unit: String,
@@ -70,7 +75,8 @@ pub struct Statistics {
     pub values: Option<Values>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Values {
     pub rms: f64,
     pub peak: f64,
@@ -115,7 +121,8 @@ impl Statistics {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Trace {
     pub channel: ChannelId,
     pub state: State,
@@ -128,8 +135,11 @@ pub struct Trace {
     pub calibrated_statistics: Statistics,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Scope {
+    #[serde(default)]
+    pub acquisition_mode: crate::acquisition::Mode,
     pub sample_range: Range<u64>,
     pub observation_samples: usize,
     pub trigger: crate::signal::Trigger,
@@ -139,21 +149,24 @@ pub struct Scope {
     pub traces: [Trace; 2],
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Average {
     pub alpha: f64,
     pub processed_windows: u64,
     pub contributing_envelope: Range<u64>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct PeakHold {
     pub considered_spectra: u64,
     pub contributing_envelope: Range<u64>,
     pub values: Vec<f64>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Diagnostics {
     pub processed_windows_since_reset: u64,
     pub missing_windows: u64,
@@ -164,7 +177,8 @@ pub struct Diagnostics {
     pub filled_samples: usize,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Band {
     pub requested_hz: [f64; 2],
     pub inclusive_bins: [usize; 2],
@@ -175,7 +189,8 @@ pub struct Band {
     pub rms_unit: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Spectrum {
     pub state: State,
     pub channel: Option<ChannelId>,
@@ -197,7 +212,8 @@ pub struct Spectrum {
     pub diagnostics: Diagnostics,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Loss {
     pub capture_dropped_samples: u64,
     pub scope_missing_samples: u64,
@@ -205,15 +221,18 @@ pub struct Loss {
     pub input_failed: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Document {
-    format: &'static str,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lockin: Option<Lockin>,
+    format: String,
     version: u32,
-    app_version: &'static str,
+    app_version: String,
     exported_unix_seconds: u64,
     channel_index_base: u8,
-    sample_range_convention: &'static str,
-    sample_clock: &'static str,
+    sample_range_convention: String,
+    sample_clock: String,
     pub input: Input,
     pub retained_history: Range<u64>,
     pub scope: Scope,
@@ -221,7 +240,28 @@ pub struct Document {
     pub loss: Loss,
 }
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Lockin {
+    pub result: crate::lockin::Result,
+    pub reference_calibration: Option<ChannelCalibration>,
+    pub response_calibration: Option<ChannelCalibration>,
+    pub response_unit_peak: String,
+    pub gain_unit: String,
+}
+
 impl Document {
+    pub(crate) fn validate_header(&self) -> Result<(), String> {
+        if self.format != FORMAT
+            || self.version != VERSION
+            || self.channel_index_base != 0
+            || self.sample_range_convention != "start inclusive, end exclusive"
+            || self.sample_clock != "nominal input sample rate; no clock calibration"
+        {
+            return Err("Unsupported result format, version or sample convention".into());
+        }
+        Ok(())
+    }
     pub fn capture(
         input: Input,
         scope: ScopeView<'_>,
@@ -374,19 +414,21 @@ impl Document {
             },
         };
         Ok(Self {
-            format: FORMAT,
+            lockin: None,
+            format: FORMAT.into(),
             version: VERSION,
-            app_version: env!("CARGO_PKG_VERSION"),
+            app_version: env!("CARGO_PKG_VERSION").into(),
             exported_unix_seconds: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .map_err(|e| e.to_string())?
                 .as_secs(),
             channel_index_base: 0,
-            sample_range_convention: "start inclusive, end exclusive",
-            sample_clock: "nominal input sample rate; no clock calibration",
+            sample_range_convention: "start inclusive, end exclusive".into(),
+            sample_clock: "nominal input sample rate; no clock calibration".into(),
             input,
             retained_history: retained,
             scope: Scope {
+                acquisition_mode: scope.settings.mode,
                 sample_range: range,
                 observation_samples: scope.settings.samples,
                 trigger: scope.settings.trigger,
@@ -519,7 +561,7 @@ impl Drop for Worker {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::{
         calibration::{Calibration, Set},
@@ -529,7 +571,7 @@ mod tests {
     };
     use std::{f64::consts::TAU, time::Duration};
 
-    fn input(channels: usize) -> Input {
+    pub(crate) fn input(channels: usize) -> Input {
         Input {
             generation: 42,
             source: Source::Audio {
@@ -543,7 +585,7 @@ mod tests {
         }
     }
 
-    fn document(
+    pub(crate) fn document(
         history: &History,
         result: &spectrum::Result,
         set: &Set,
@@ -554,6 +596,7 @@ mod tests {
             ScopeView {
                 history,
                 settings: ScopeSettings {
+                    mode: crate::acquisition::Mode::Auto,
                     channels,
                     samples: history.len(),
                     trigger: Trigger::default(),

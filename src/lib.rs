@@ -1,4 +1,5 @@
 //! Acquisition and waveform processing, independent of the desktop UI.
+pub mod acquisition;
 pub mod audio;
 pub mod calibration;
 pub mod channel;
@@ -8,7 +9,11 @@ pub mod demo;
 pub mod export;
 mod file_io;
 pub mod instance;
+pub mod lockin;
+pub mod lockin_worker;
+pub mod loopback;
 pub mod measurement;
+pub mod results;
 pub mod settings;
 pub mod signal;
 pub mod spectrogram;
@@ -25,4 +30,8 @@ pub mod app;
 #[cfg(feature = "desktop")]
 pub mod gpu;
 #[cfg(feature = "desktop")]
+pub mod result_image;
+#[cfg(feature = "desktop")]
 pub mod spectrogram_gpu;
+#[cfg(feature = "desktop")]
+pub mod workspace_io;

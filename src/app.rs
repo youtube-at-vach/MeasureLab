@@ -1,12 +1,14 @@
 #[cfg(feature = "qa")]
 use crate::demo::{Demo, Waveform};
 use crate::{
+    acquisition,
     audio::{AudioWorker, Command, DeviceInfo, Event},
     calibration::{self, Calibration, Reading},
     channel::{self, ChannelId, Pair},
     cursor::{self, Cursors},
     export,
     gpu::{COLORS, PlotId, Segment, TraceCallback, TraceRenderer},
+    lockin, loopback,
     measurement::{self, ScopeSettings, SpectrumMode},
     settings::{self, PlotLayout},
     signal::{Edge, History, Line, Measurement, Sweep, Trigger, build_sweep_lines},
@@ -16,7 +18,7 @@ use crate::{
         Window,
     },
     stft::{self, RowInfo},
-    xy,
+    workspace_io, xy,
 };
 use eframe::{
     egui::{self, Color32, RichText, Stroke, pos2, vec2},
@@ -26,6 +28,7 @@ use std::{
     sync::{Arc, Mutex, atomic::Ordering},
     time::{Duration, Instant},
 };
+mod workspace;
 
 const GREEN: Color32 = Color32::from_rgb(56, 242, 173);
 const BLUE: Color32 = Color32::from_rgb(87, 166, 255);
@@ -39,6 +42,7 @@ const BORDER: Color32 = Color32::from_rgb(48, 70, 82);
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Source {
     Live,
+    Software,
     #[cfg(feature = "qa")]
     Demo,
 }
@@ -56,7 +60,7 @@ impl Source {
 
     fn is_demo(self) -> bool {
         match self {
-            Self::Live => false,
+            Self::Live | Self::Software => false,
             #[cfg(feature = "qa")]
             Self::Demo => true,
         }
@@ -244,8 +248,22 @@ impl CalibrationEditor {
 
 pub struct ScopeApp {
     source: Source,
+    software_running: bool,
+    loopback_settings: loopback::Settings,
+    lockin_settings: lockin::Settings,
+    lockin_result: lockin::Result,
+    workspace_io: workspace_io::Worker,
+    workspace_pending: bool,
+    workspace_restoring: bool,
+    workspace_status: Option<String>,
+    reference: Option<Box<export::Document>>,
+    reference_label: String,
+    compare_open: bool,
+    comparison_current: Option<Box<export::Document>>,
     visible: [bool; 4],
     plot_layout: PlotLayout,
+    previous_view: Option<([bool; 4], PlotLayout)>,
+    spectrum_adjust_analysis: bool,
     sidebar: Sidebar,
     #[cfg(feature = "qa")]
     demo: Demo,
@@ -262,6 +280,11 @@ pub struct ScopeApp {
     input_generation: u64,
     snapshot_revision: u64,
     core_scope: ScopeSettings,
+    acquisition_mode: acquisition::Mode,
+    acquisition_state: acquisition::State,
+    scope_capture: Option<History>,
+    autoset_pending: Option<std::sync::mpsc::Receiver<Result<acquisition::Autoset, String>>>,
+    autoset_status: Option<String>,
     scope_channels: Pair,
     xy_channels: Pair,
     spectrum_mode: SpectrumMode,
@@ -359,6 +382,7 @@ pub struct ScopeApp {
     adapter: String,
     dropped: u64,
     smoke: bool,
+    #[cfg(feature = "qa")]
     created: Instant,
     #[cfg(feature = "qa")]
     screenshot_requested: bool,
@@ -430,8 +454,24 @@ impl ScopeApp {
         let core = (!smoke).then(|| measurement::Worker::new(stft.take_feeder()));
         let mut app = Self {
             source,
+            software_running: false,
+            loopback_settings: loopback::Settings::default(),
+            lockin_settings: lockin::Settings::default(),
+            lockin_result: lockin::Analyzer::new(lockin::Settings::default(), 48000)
+                .result()
+                .clone(),
+            workspace_io: workspace_io::Worker::default(),
+            workspace_pending: false,
+            workspace_restoring: false,
+            workspace_status: None,
+            reference: None,
+            reference_label: String::new(),
+            compare_open: false,
+            comparison_current: None,
             visible: [true; 4],
             plot_layout: PlotLayout::Auto,
+            previous_view: None,
+            spectrum_adjust_analysis: false,
             sidebar: Sidebar::default(),
             #[cfg(feature = "qa")]
             demo: Demo::default(),
@@ -448,6 +488,11 @@ impl ScopeApp {
             input_generation: 1,
             snapshot_revision: 0,
             core_scope: ScopeSettings::default(),
+            acquisition_mode: acquisition::Mode::Auto,
+            acquisition_state: acquisition::State::Waiting,
+            scope_capture: None,
+            autoset_pending: None,
+            autoset_status: None,
             scope_channels: Pair::default(),
             xy_channels: Pair::default(),
             spectrum_mode: SpectrumMode::Live,
@@ -561,6 +606,7 @@ impl ScopeApp {
             adapter: format!("{:?} · {}", info.backend, info.name),
             dropped: 0,
             smoke,
+            #[cfg(feature = "qa")]
             created: Instant::now(),
             #[cfg(feature = "qa")]
             screenshot_requested: false,
@@ -778,6 +824,14 @@ impl ScopeApp {
                 Ok("hidden") => app.sidebar.visible = false,
                 _ => {}
             }
+            match std::env::var("MEASURELAB_UI_SMOKE_VIEW").as_deref() {
+                Ok("scope") => app.select_view([true, false, false, false]),
+                Ok("spectrum") => app.select_view([false, true, false, false]),
+                Ok("pair") => app.select_view([true, true, false, false]),
+                _ => {}
+            }
+            app.spectrum_adjust_analysis =
+                std::env::var("MEASURELAB_UI_SMOKE_ADJUST").as_deref() == Ok("analysis");
         }
         if smoke {
             app.update_spectrum(true);
@@ -790,6 +844,10 @@ impl ScopeApp {
                 app.refresh_scope_range();
                 app.check_results_export()?;
             }
+        }
+        #[cfg(feature = "qa")]
+        if smoke && std::env::var_os("MEASURELAB_UI_SMOKE_STAGE3F").is_some() {
+            app.check_stage3f()?;
         }
         Ok(app)
     }
@@ -963,7 +1021,7 @@ impl ScopeApp {
                 self.cursors.set_scope_time(1, 0.7);
                 self.lifecycle_scope_samples = self.cursor_samples();
                 // Verify cross-instrument resolution with Scope hidden, too.
-                self.visible[0] = false;
+                self.select_view([false, true, false, false]);
                 self.lifecycle_held = Some((revision, latest));
                 self.spectrum_settings.size = 1024;
                 self.spectrum_settings.averages = 16;
@@ -988,7 +1046,7 @@ impl ScopeApp {
                     assert!(self.scope_range.contains(&sample));
                     assert!(self.history.get(sample).is_some());
                 }
-                self.visible[0] = true;
+                self.restore_view();
                 assert_eq!(latest.config, self.lifecycle_held.unwrap().1.config);
                 assert_eq!(latest.generation, self.lifecycle_held.unwrap().1.generation);
                 self.stop();
@@ -1040,6 +1098,24 @@ impl ScopeApp {
                 assert_eq!(self.analyzer.window(), Some(held_window.clone()));
                 assert_eq!(self.analyzer.db(), held_db);
                 assert_eq!(self.history.range(), *held_range);
+                let held_results = self.capture_results().unwrap();
+                let original_view = (self.visible, self.plot_layout);
+                for visible in [
+                    [true, false, false, false],
+                    [true, true, false, false],
+                    [false, true, false, false],
+                    [true; 4],
+                ] {
+                    self.select_view(visible);
+                    assert_eq!(self.capture_results().unwrap(), held_results);
+                    assert_eq!(self.cursor_samples(), self.lifecycle_scope_samples);
+                }
+                self.restore_view();
+                assert_eq!((self.visible, self.plot_layout), original_view);
+                assert_eq!(self.capture_results().unwrap(), held_results);
+                println!(
+                    "Quick views OK: hidden instruments continue; held f64 results, conditions and cursors survive single/pair/all views and original arrangement is restored"
+                );
                 assert_eq!(
                     self.cursor_samples(),
                     self.lifecycle_scope_samples,
@@ -1477,17 +1553,21 @@ impl ScopeApp {
     }
 
     fn running(&self) -> bool {
-        self.capture.is_some() || self.demo_running
+        self.capture.is_some() || self.demo_running || self.software_running
     }
 
     fn begin_observation(&mut self) {
         self.cursors.new_epoch();
         self.input_generation += 1;
         self.held_input = None;
+        self.lockin_result = lockin::Analyzer::new(self.lockin_settings, self.sample_rate)
+            .result()
+            .clone();
         self.input_failed = false;
         self.core_scope.channels = self.scope_channels;
         self.xy_channels = self.xy_settings.channels;
         self.history.clear_at(0);
+        self.scope_capture = None;
         self.scope_range = 0..0;
         self.scope_sample_offset = 0.0;
         self.xy_capture = xy::Capture::default();
@@ -1514,10 +1594,12 @@ impl ScopeApp {
 
     fn core_config(&self) -> measurement::Config {
         measurement::Config {
+            lockin: self.lockin_settings,
             spectrum: self.spectrum_settings,
             spectrum_channel: self.spectrum_channel,
             spectrum_mode: self.spectrum_mode,
             scope: ScopeSettings {
+                mode: self.acquisition_mode,
                 channels: self.scope_channels,
                 samples: self.scope_sample_count(),
                 trigger: self.trigger,
@@ -1536,9 +1618,11 @@ impl ScopeApp {
             return;
         }
         self.snapshot_revision = snapshot.revision;
+        self.comparison_current = None;
         let samples_changed = self.history.range() != snapshot.history.range();
         self.dirty |= self.core_scope != snapshot.scope_settings;
         self.xy_dirty |= self.xy_channels != snapshot.xy_channels;
+        self.lockin_result = snapshot.lockin.clone();
         self.sample_rate = snapshot.sample_rate;
         std::mem::swap(&mut self.history, &mut snapshot.history);
         if snapshot.has_spectrum {
@@ -1548,6 +1632,9 @@ impl ScopeApp {
             self.spectrum_dirty = true;
             self.spectrum_numeric_key = None;
         }
+        std::mem::swap(&mut self.scope_capture, &mut snapshot.scope_capture);
+        self.acquisition_state = snapshot.acquisition_state;
+        self.dirty = true;
         self.core_scope = snapshot.scope_settings;
         self.xy_channels = snapshot.xy_channels;
         self.scope_range = snapshot.sweep.range.clone();
@@ -1568,6 +1655,40 @@ impl ScopeApp {
     }
 
     fn poll_measurement(&mut self) {
+        if let Some(result) = self
+            .autoset_pending
+            .as_ref()
+            .and_then(|r| r.try_recv().ok())
+        {
+            self.autoset_pending = None;
+            self.autoset_status = Some(match result {
+                Ok(result) => {
+                    self.fs_per_div = result.fs_per_div as f32;
+                    self.ms_per_div = result.samples as f32 * 100.0 / self.sample_rate as f32;
+                    self.trigger = result.trigger;
+                    if self.running() || self.acquisition_mode == acquisition::Mode::Auto {
+                        self.ms_per_div = result.samples as f32 * 100.0 / self.sample_rate as f32;
+                        self.trigger = result.trigger;
+                        self.dirty = true;
+                        format!("Autoset: {:.3} Hz from raw crossings", result.frequency_hz)
+                    } else {
+                        format!(
+                            "Held capture amplitude fitted; time/trigger apply on next Start ({:.3} Hz)",
+                            result.frequency_hz
+                        )
+                    }
+                }
+                Err(error) => error,
+            });
+        }
+        if self.running()
+            && self
+                .core
+                .as_ref()
+                .is_some_and(|c| c.metrics.single_complete.load(Ordering::Acquire))
+        {
+            self.stop();
+        }
         if let Some(mut snapshot) = self.pending_scope.as_mut().and_then(|p| p.try_take()) {
             self.pending_scope = None;
             // Spectrum has its own delivery; a Scope setting reply must not
@@ -1816,6 +1937,18 @@ impl ScopeApp {
         })
     }
 
+    fn scope_history(&self) -> &History {
+        self.scope_capture.as_ref().unwrap_or(&self.history)
+    }
+
+    fn scope_display_ms_per_div(&self) -> f32 {
+        if !self.running() && self.core_scope.mode != acquisition::Mode::Auto {
+            self.core_scope.samples as f32 * 100.0 / self.sample_rate as f32
+        } else {
+            self.ms_per_div
+        }
+    }
+
     fn scope_sample_count(&self) -> usize {
         (self.ms_per_div * 0.01 * self.sample_rate as f32)
             .round()
@@ -1844,6 +1977,7 @@ impl ScopeApp {
     fn refresh_scope_range(&mut self) {
         if self.dirty {
             let settings = ScopeSettings {
+                mode: self.acquisition_mode,
                 channels: if self.running() || self.core.is_none() {
                     self.scope_channels
                 } else {
@@ -1853,7 +1987,10 @@ impl ScopeApp {
                 trigger: self.trigger,
             };
             if let Some(core) = &self.core {
-                if settings != self.core_scope && self.pending_scope.is_none() {
+                if settings != self.core_scope
+                    && self.pending_scope.is_none()
+                    && (self.running() || self.core_scope.mode == acquisition::Mode::Auto)
+                {
                     self.pending_scope = Some(core.scope_async(settings));
                     #[cfg(feature = "qa")]
                     if std::env::var_os("MEASURELAB_PROFILE_LIFECYCLE").is_some()
@@ -2000,11 +2137,52 @@ impl ScopeApp {
     }
 
     fn start(&mut self) {
-        if self.settings_task == Some(SettingsTask::Restore) {
+        if self.settings_task == Some(SettingsTask::Restore) || self.workspace_restoring {
             return;
         }
         if self.pending_stop.is_some() {
             self.start_after_stop = true;
+            return;
+        }
+        if self.source == Source::Software {
+            let rate = self.requested_sample_rate.unwrap_or(48000);
+            if let Err(e) = self
+                .loopback_settings
+                .validate(rate)
+                .and_then(|()| self.lockin_settings.validate(rate))
+            {
+                self.error = Some(e);
+                return;
+            }
+            self.begin_observation();
+            self.sample_rate = rate;
+            self.channels = 2;
+            self.format = "Software Loopback".into();
+            self.held_input = Some(export::Input {
+                generation: self.input_generation,
+                source: export::Source::SoftwareLoopback {
+                    settings: self.loopback_settings.clone(),
+                },
+                nominal_sample_rate_hz: rate,
+                channels: 2,
+            });
+            self.history = History::with_channels((rate as usize * 2).max(32768), 2);
+            self.scope_capture = None;
+            self.xy_dirty = true;
+            self.dirty = true;
+            self.dropped = 0;
+            self.error = None;
+            self.reset_analysis();
+            self.reset_stft();
+            match self.core.as_ref().unwrap().start_loopback(
+                self.input_generation,
+                self.loopback_settings.clone(),
+                rate,
+                self.core_config(),
+            ) {
+                Ok(()) => self.software_running = true,
+                Err(e) => self.error = Some(e),
+            }
             return;
         }
         #[cfg(feature = "qa")]
@@ -2072,6 +2250,7 @@ impl ScopeApp {
         self.stft.pause();
         let was_audio = self.capture.take().is_some();
         self.demo_running = false;
+        self.software_running = false;
         if self.pending_stop.is_none()
             && let Some(core) = &self.core
         {
@@ -2203,6 +2382,10 @@ impl ScopeApp {
                     self.demo.frequency, self.demo.amplitude
                 )
             }
+            SettingsSection::Input if self.source == Source::Software => format!(
+                "Software Loopback · {} Hz · 2 ch",
+                self.requested_sample_rate.unwrap_or(48000)
+            ),
             SettingsSection::Input => self
                 .devices
                 .get(self.selected)
@@ -2237,7 +2420,7 @@ impl ScopeApp {
     }
 
     fn controls(&mut self, ui: &mut egui::Ui) {
-        if self.settings_task == Some(SettingsTask::Restore) {
+        if self.settings_task == Some(SettingsTask::Restore) || self.workspace_restoring {
             ui.label("Restoring measurement settings…");
             return;
         }
@@ -2309,7 +2492,9 @@ impl ScopeApp {
                 !self.busy
                     && self.settings_task != Some(SettingsTask::Restore)
                     && self.pending_stop.is_none()
-                    && (self.source.is_demo() || !self.devices.is_empty()),
+                    && (self.source.is_demo()
+                        || self.source == Source::Software
+                        || !self.devices.is_empty()),
                 egui::Button::new(
                     RichText::new(if self.running() {
                         "■  Stop"
@@ -2338,11 +2523,11 @@ impl ScopeApp {
         }
     }
 
-    #[cfg(feature = "qa")]
     fn switch_source(&mut self) {
         self.restored_input = None;
         self.calibration.clear_input();
         self.cursors.new_epoch();
+        self.scope_capture = None;
         self.scope_range = 0..0;
         self.scope_sample_offset = 0.0;
         self.xy_dirty = true;
@@ -2353,6 +2538,7 @@ impl ScopeApp {
             self.busy = true;
         }
         self.history.clear();
+        self.scope_capture = None;
         self.scope_range = 0..0;
         self.measurements = [Measurement::default(); 2];
         self.scope_readings = [Reading::Unavailable; 2];
@@ -2377,6 +2563,21 @@ impl ScopeApp {
     }
 
     fn input_controls(&mut self, ui: &mut egui::Ui) {
+        self.lockin_controls(ui);
+        let old_source = self.source;
+        ui.add_enabled_ui(!self.busy && self.pending_stop.is_none(), |ui| {
+            ui.horizontal(|ui| {
+                ui.selectable_value(&mut self.source, Source::Live, "Audio input");
+                ui.selectable_value(&mut self.source, Source::Software, "Software Loopback");
+            });
+        });
+        if old_source != self.source {
+            self.switch_source();
+            self.requested_sample_rate = None;
+        }
+        if self.source == Source::Software {
+            self.software_controls(ui);
+        }
         #[cfg(feature = "qa")]
         if self.demo_enabled {
             setting_label(ui, "SOURCE");
@@ -2636,7 +2837,45 @@ impl ScopeApp {
             self.dirty = true;
         }
         ui.separator();
-        setting_label(ui, "TRIGGER · AUTO");
+        setting_label(ui, "ACQUISITION");
+        let old_mode = self.acquisition_mode;
+        ui.horizontal(|ui| {
+            ui.selectable_value(&mut self.acquisition_mode, acquisition::Mode::Auto, "Auto");
+            ui.selectable_value(
+                &mut self.acquisition_mode,
+                acquisition::Mode::Normal,
+                "Normal",
+            );
+            ui.selectable_value(
+                &mut self.acquisition_mode,
+                acquisition::Mode::Single,
+                "Single",
+            );
+        });
+        self.dirty |= old_mode != self.acquisition_mode;
+        ui.horizontal(|ui| {
+            if ui
+                .add_enabled(
+                    !self.running() && self.pending_stop.is_none(),
+                    egui::Button::new("Arm single"),
+                )
+                .clicked()
+            {
+                self.acquisition_mode = acquisition::Mode::Single;
+                self.start();
+            }
+            if ui
+                .add_enabled(self.autoset_pending.is_none(), egui::Button::new("Autoset"))
+                .clicked()
+                && let Some(core) = &self.core
+            {
+                self.autoset_pending = Some(core.autoset(self.scope_view_channels().0[0]));
+            }
+        });
+        if let Some(status) = &self.autoset_status {
+            ui.label(RichText::new(status).small());
+        }
+        setting_label(ui, "TRIGGER");
         let before = (self.trigger.edge, self.trigger.channel);
         egui::ComboBox::from_id_salt("edge")
             .width(ui.available_width())
@@ -2753,8 +2992,12 @@ impl ScopeApp {
         }
     }
 
-    fn spectrum_controls(&mut self, ui: &mut egui::Ui) {
-        let before = (self.spectrum_settings, self.spectrum_channel);
+    fn spectrum_analysis_controls(&mut self, ui: &mut egui::Ui) {
+        let before = (
+            self.spectrum_settings,
+            self.spectrum_channel,
+            self.spectrum_mode,
+        );
         setting_label(ui, "MEASUREMENT");
         egui::ComboBox::from_id_salt("spectrum_quantity")
             .width(ui.available_width())
@@ -2803,7 +3046,6 @@ impl ScopeApp {
                 }
             });
         setting_label(ui, "UPDATE MODE");
-        let old_mode = self.spectrum_mode;
         ui.selectable_value(
             &mut self.spectrum_mode,
             SpectrumMode::Live,
@@ -2823,9 +3065,6 @@ impl ScopeApp {
                 "Latest window · 100 ms observation"
             },
         );
-        if old_mode != self.spectrum_mode && self.running() {
-            self.reset_analysis();
-        }
         setting_label(ui, "AVERAGING");
         egui::ComboBox::from_id_salt("fft_average")
             .width(ui.available_width())
@@ -2836,7 +3075,14 @@ impl ScopeApp {
                 }
             }).response.on_hover_text("Exponential average of linear power; alpha = 1 / count. Applied once per contributing FFT window, independently of display updates.");
         ui.checkbox(&mut self.spectrum_settings.remove_dc, "Remove DC offset");
-        if before != (self.spectrum_settings, self.spectrum_channel) && self.running() {
+        if before
+            != (
+                self.spectrum_settings,
+                self.spectrum_channel,
+                self.spectrum_mode,
+            )
+            && self.running()
+        {
             self.reset_analysis();
         }
         if !self.running() {
@@ -2848,6 +3094,9 @@ impl ScopeApp {
                 .color(MUTED),
             );
         }
+    }
+
+    fn spectrum_display_controls(&mut self, ui: &mut egui::Ui) {
         let view_before = (
             self.frequency_scale,
             self.floor_db,
@@ -2856,7 +3105,6 @@ impl ScopeApp {
             self.span_hz,
             self.spectrum_min_hz,
         );
-        ui.separator();
         setting_label(ui, "FREQUENCY AXIS");
         ui.horizontal(|ui| {
             ui.selectable_value(&mut self.frequency_scale, FrequencyScale::Log, "Log Hz");
@@ -2946,6 +3194,12 @@ impl ScopeApp {
                 self.span_hz,
                 self.spectrum_min_hz,
             );
+    }
+
+    fn spectrum_controls(&mut self, ui: &mut egui::Ui) {
+        self.spectrum_analysis_controls(ui);
+        ui.separator();
+        self.spectrum_display_controls(ui);
         ui.label(
             RichText::new(format!(
                 "Δf {:.6} Hz · RBW {:.6} Hz\nWindow {:.1} ms · {} processed windows",
@@ -3006,6 +3260,10 @@ impl ScopeApp {
             ui.label(RichText::new(format!("FFT end #{} · acquired end #{}", window.end, self.history.range().end)).small().color(MUTED))
                 .on_hover_text("Spectrum and Scope/XY have independent sample intervals. FFT processing time and the age of this window are separate conditions.");
         }
+        self.spectrum_band_controls(ui);
+    }
+
+    fn spectrum_band_controls(&mut self, ui: &mut egui::Ui) {
         if self.analyzer.settings().quantity == Quantity::Psd {
             ui.separator();
             setting_label(ui, "POWER IN BAND");
@@ -3351,7 +3609,7 @@ impl ScopeApp {
     }
 
     fn sample_text(&self, sample: u64) -> String {
-        if let Some(frame) = self.history.get(sample) {
+        if let Some(frame) = self.scope_history().get(sample) {
             let mut text = format!("#{sample}");
             for (trace, channel) in self.scope_view_channels().0.into_iter().enumerate() {
                 if !self.enabled[trace] {
@@ -3399,7 +3657,7 @@ impl ScopeApp {
             });
             let text = if let Some(x) = fraction {
                 cursor_line(ui, rect, x as f32, true, cursor_color(index));
-                if let Some(frame) = sample.and_then(|sample| self.history.get(sample)) {
+                if let Some(frame) = sample.and_then(|sample| self.scope_history().get(sample)) {
                     for (trace, channel) in self.scope_view_channels().0.into_iter().enumerate() {
                         if !self.enabled[trace] {
                             continue;
@@ -4158,7 +4416,7 @@ impl ScopeApp {
     }
 
     fn can_restore_settings(&self) -> bool {
-        self.source == Source::Live
+        (self.source == Source::Live || self.source == Source::Software)
             && !self.running()
             && !self.busy
             && self.pending_stop.is_none()
@@ -4183,10 +4441,10 @@ impl ScopeApp {
         if input.generation != self.input_generation {
             return Err("Held input generation does not match results".into());
         }
-        export::Document::capture(
+        let mut document = export::Document::capture(
             input,
             export::ScopeView {
-                history: &self.history,
+                history: self.scope_history(),
                 settings: self.core_scope,
                 sweep: Sweep {
                     range: self.scope_range.clone(),
@@ -4218,7 +4476,31 @@ impl ScopeApp {
                     }),
                 input_failed: self.input_failed,
             },
-        )
+        )?;
+        if self.lockin_result.settings.enabled {
+            let definitions = settings::ChannelCalibration::capture(&self.calibration.captured);
+            let settings = self.lockin_result.settings;
+            let ref_unit = self.calibration.captured.unit(settings.reference_channel);
+            let sig_unit = self.calibration.captured.unit(settings.response_channel);
+            document.lockin = Some(export::Lockin {
+                result: self.lockin_result.clone(),
+                reference_calibration: definitions
+                    .iter()
+                    .find(|c| c.channel == settings.reference_channel)
+                    .cloned(),
+                response_calibration: definitions
+                    .iter()
+                    .find(|c| c.channel == settings.response_channel)
+                    .cloned(),
+                response_unit_peak: format!("{sig_unit} peak"),
+                gain_unit: if ref_unit == sig_unit {
+                    "ratio".into()
+                } else {
+                    format!("{sig_unit}/{ref_unit}")
+                },
+            });
+        }
+        Ok(document)
     }
 
     fn request_export(&mut self) {
@@ -4256,15 +4538,30 @@ impl ScopeApp {
     }
 
     fn capture_settings(&self) -> Result<settings::Document, String> {
-        let device = self
-            .devices
-            .get(self.selected)
-            .ok_or("Select an input device first")?;
+        let input = if self.source == Source::Software {
+            settings::Input {
+                device_id: "measurelab:software-loopback".into(),
+                device_name: "Software Loopback".into(),
+                channels: 2,
+                device_default_sample_rate: 48000,
+                sample_rate: self.requested_sample_rate,
+            }
+        } else {
+            let device = self
+                .devices
+                .get(self.selected)
+                .ok_or("Select an input device first")?;
+            settings::Input::from_device(device, self.requested_sample_rate)?
+        };
         let document = settings::Document {
             version: settings::VERSION,
             measurement: settings::Measurement {
-                input: settings::Input::from_device(device, self.requested_sample_rate)?,
+                software_loopback: (self.source == Source::Software)
+                    .then(|| self.loopback_settings.clone()),
+                lockin: self.lockin_settings,
+                input,
                 scope: settings::Scope {
+                    mode: self.acquisition_mode,
                     channels: self.scope_channels,
                     ms_per_div: self.ms_per_div,
                     trigger: self.trigger,
@@ -4310,7 +4607,9 @@ impl ScopeApp {
             },
         };
         document.validate()?;
-        document.measurement.input.resolve(&self.devices)?;
+        if document.measurement.software_loopback.is_none() {
+            document.measurement.input.resolve(&self.devices)?;
+        }
         if self.capture.is_some()
             && (document.measurement.input.channels != self.channels
                 || document.measurement.input.expected_sample_rate() != self.sample_rate)
@@ -4329,7 +4628,11 @@ impl ScopeApp {
             return Err("Stop input and wait for pending operations before restoring".into());
         }
         let calibrations = document.validate()?;
-        let selected = document.measurement.input.resolve(&self.devices)?;
+        let selected = if document.measurement.software_loopback.is_some() {
+            self.selected
+        } else {
+            document.measurement.input.resolve(&self.devices)?
+        };
         for channel in 0..crate::signal::MAX_CHANNELS {
             if let Some(new) = calibrations.get(channel) {
                 for known in [&self.calibration.pending, &self.calibration.captured] {
@@ -4351,7 +4654,17 @@ impl ScopeApp {
         let w = document.workspace;
         self.selected = selected;
         self.requested_sample_rate = m.input.sample_rate;
-        self.restored_input = Some(m.input);
+        self.source = if m.software_loopback.is_some() {
+            Source::Software
+        } else {
+            Source::Live
+        };
+        if let Some(software) = m.software_loopback {
+            self.loopback_settings = software;
+        }
+        self.lockin_settings = m.lockin;
+        self.restored_input = (self.source == Source::Live).then_some(m.input);
+        self.acquisition_mode = m.scope.mode;
         self.scope_channels = m.scope.channels;
         self.ms_per_div = m.scope.ms_per_div;
         self.trigger = m.scope.trigger;
@@ -4368,6 +4681,7 @@ impl ScopeApp {
         self.calibration.select();
         self.visible = w.visible;
         self.plot_layout = w.layout;
+        self.previous_view = None;
         self.sidebar.visible = w.sidebar_visible;
         self.enabled = w.scope_enabled;
         self.fs_per_div = w.scope_fs_per_div;
@@ -4432,6 +4746,112 @@ impl ScopeApp {
         }
     }
 
+    fn select_view(&mut self, visible: [bool; 4]) {
+        if self.visible == visible {
+            return;
+        }
+        self.previous_view
+            .get_or_insert((self.visible, self.plot_layout));
+        self.visible = visible;
+        self.plot_layout = PlotLayout::Auto;
+    }
+
+    fn restore_view(&mut self) {
+        if let Some((visible, layout)) = self.previous_view.take() {
+            self.visible = visible;
+            self.plot_layout = layout;
+        }
+    }
+
+    fn view_menu(&mut self, ui: &mut egui::Ui) {
+        ui.menu_button("View", |ui| {
+            for (title, visible) in [
+                ("Scope only", [true, false, false, false]),
+                ("Spectrum only", [false, true, false, false]),
+                ("Scope + Spectrum", [true, true, false, false]),
+                ("All instruments", [true; 4]),
+            ] {
+                if ui.selectable_label(self.visible == visible, title).clicked() {
+                    self.select_view(visible);
+                    ui.close();
+                }
+            }
+            if ui.add_enabled(self.previous_view.is_some(), egui::Button::new("Restore previous view")).clicked() {
+                self.restore_view();
+                ui.close();
+            }
+            ui.separator();
+            for layout in [PlotLayout::Auto, PlotLayout::Columns, PlotLayout::Rows] {
+                if ui.selectable_value(&mut self.plot_layout, layout, layout.name()).clicked() {
+                    ui.close();
+                }
+            }
+        }).response.on_hover_text("Switch display and arrangement. Hidden instruments continue measuring; Restore returns to the view before the first switch.");
+    }
+
+    fn adjust_menu(&mut self, ui: &mut egui::Ui, section: SettingsSection) {
+        let response = ui
+            .add_enabled(
+                self.settings_task != Some(SettingsTask::Restore),
+                egui::Button::new("Adjust").small(),
+            )
+            .on_hover_text("Adjust this instrument here, or open its sidebar settings");
+        #[cfg(feature = "qa")]
+        if self.smoke {
+            let requested = std::env::var("MEASURELAB_UI_SMOKE_ADJUST");
+            if matches!(
+                (section, requested.as_deref()),
+                (SettingsSection::Scope, Ok("scope"))
+                    | (SettingsSection::Spectrum, Ok("spectrum" | "analysis"))
+            ) {
+                egui::Popup::open_id(ui.ctx(), egui::Popup::default_response_id(&response));
+            }
+        }
+        egui::Popup::menu(&response)
+            .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+            .show(|ui| {
+                ui.set_width(300.0);
+                // Use distinct widget IDs from the simultaneously visible sidebar.
+                ui.push_id(("plot_adjust", section), |ui| {
+                    ui.spacing_mut().item_spacing = vec2(6.0, 5.0);
+                    ui.spacing_mut().slider_width = 150.0;
+                    if section == SettingsSection::Spectrum {
+                        ui.horizontal(|ui| {
+                            ui.selectable_value(
+                                &mut self.spectrum_adjust_analysis,
+                                false,
+                                "Display",
+                            );
+                            ui.selectable_value(
+                                &mut self.spectrum_adjust_analysis,
+                                true,
+                                "Analysis",
+                            );
+                        });
+                        ui.separator();
+                    }
+                    egui::ScrollArea::vertical()
+                        .max_height((ui.ctx().content_rect().height() - 160.0).max(200.0))
+                        .show(ui, |ui| match section {
+                            SettingsSection::Scope => self.scope_controls(ui),
+                            SettingsSection::Spectrum if self.spectrum_adjust_analysis => {
+                                self.spectrum_analysis_controls(ui)
+                            }
+                            SettingsSection::Spectrum => {
+                                self.spectrum_display_controls(ui);
+                                self.spectrum_band_controls(ui);
+                            }
+                            _ => unreachable!(),
+                        });
+                    ui.separator();
+                    if ui.button("Open sidebar settings").clicked() {
+                        self.sidebar.reveal(section);
+                        ui.close();
+                    }
+                });
+            });
+    }
+
     fn scope_panel(&mut self, ui: &mut egui::Ui) {
         egui::Frame::new()
             .fill(Color32::from_rgb(17, 27, 35))
@@ -4442,17 +4862,17 @@ impl ScopeApp {
                 ui.horizontal(|ui| {
                     ui.label(RichText::new("Oscilloscope").size(13.0).strong());
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui
-                            .small_button("Settings")
-                            .on_hover_text("Open timebase, amplitude and trigger settings")
-                            .clicked()
-                        {
-                            self.sidebar.reveal(SettingsSection::Scope);
-                            ui.ctx().request_repaint();
-                        }
+                        self.adjust_menu(ui, SettingsSection::Scope);
                         ui.label(
                             RichText::new(if self.trigger.edge != Edge::Free && !channel::available(self.trigger.channel, self.channels as usize) {
                                 "TRIGGER SOURCE UNAVAILABLE"
+                            } else if self.core_scope.mode != acquisition::Mode::Auto {
+                                match self.acquisition_state {
+                                    acquisition::State::Waiting => "WAITING FOR TRIGGER",
+                                    acquisition::State::Acquiring => "ACQUIRING POST-TRIGGER",
+                                    acquisition::State::WaitingWithCapture => "WAITING · PREVIOUS CAPTURE",
+                                    acquisition::State::Complete => if self.pending_stop.is_some() { "FINISHING" } else { "SINGLE COMPLETE" },
+                                }
                             } else if self.triggered {
                                 "TRIGGERED"
                             } else {
@@ -4467,7 +4887,7 @@ impl ScopeApp {
                     ui.label(
                         RichText::new(format!(
                             "Raw trace · {} ms/div · {} FS/div",
-                            self.ms_per_div, self.fs_per_div
+                            self.scope_display_ms_per_div(), self.fs_per_div
                         ))
                         .small()
                         .color(MUTED),
@@ -4555,14 +4975,7 @@ impl ScopeApp {
                 ui.horizontal(|ui| {
                     ui.label(RichText::new("Spectrum Analyzer").size(13.0).strong());
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui
-                            .small_button("Settings")
-                            .on_hover_text("Open FFT and spectrum display settings")
-                            .clicked()
-                        {
-                            self.sidebar.reveal(SettingsSection::Spectrum);
-                            ui.ctx().request_repaint();
-                        }
+                        self.adjust_menu(ui, SettingsSection::Spectrum);
                         ui.label(
                             RichText::new(format!(
                                 "CH {} · {}",
@@ -4768,6 +5181,8 @@ impl ScopeApp {
                     "Invalid FFT window · nonfinite value"
                 } else if self.running() {
                     "Collecting a complete FFT window…"
+                } else if self.acquisition_state == acquisition::State::Complete {
+                    "Single complete · FFT window was not filled"
                 } else {
                     "Start input to begin acquisition"
                 },
@@ -4844,7 +5259,7 @@ impl ScopeApp {
             painter.text(
                 pos2(px, rect.bottom() + 4.0),
                 egui::Align2::CENTER_TOP,
-                format!("{:.1}", (x as f32 - 2.0) * self.ms_per_div),
+                format!("{:.1}", (x as f32 - 2.0) * self.scope_display_ms_per_div()),
                 egui::FontId::monospace(10.0),
                 MUTED,
             );
@@ -4887,7 +5302,7 @@ impl ScopeApp {
             let started = Instant::now();
             self.refresh_scope_range();
             build_sweep_lines(
-                &self.history,
+                self.scope_capture.as_ref().unwrap_or(&self.history),
                 &Sweep {
                     range: self.scope_range.clone(),
                     triggered: self.triggered,
@@ -5036,7 +5451,13 @@ impl eframe::App for ScopeApp {
         self.poll_measurement();
         self.poll_settings();
         self.poll_export();
-        if self.settings_task.is_some() || self.export_pending {
+        self.poll_workspace();
+        self.compare_window(&ctx);
+        if self.settings_task.is_some()
+            || self.export_pending
+            || self.workspace_pending
+            || self.autoset_pending.is_some()
+        {
             ctx.request_repaint_after(Duration::from_millis(25));
         }
         if self.pending_stop.is_some() || self.pending_scope.is_some() {
@@ -5429,6 +5850,7 @@ impl eframe::App for ScopeApp {
                         .size(12.0)
                         .color(MUTED),
                 );
+                self.file_menu(ui);
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if let Some(status) = &self.export_status
                         && ui
@@ -5457,6 +5879,8 @@ impl eframe::App for ScopeApp {
                             } else {
                                 "DEMO SIGNAL (QA) · HELD"
                             }
+                        } else if self.software_running {
+                            "● SOFTWARE LOOPBACK"
                         } else if self.capture.is_some() {
                             "● LIVE INPUT"
                         } else {
@@ -5634,6 +6058,7 @@ impl eframe::App for ScopeApp {
                         self.visible[index] = !self.visible[index];
                     }
                 }
+                self.view_menu(ui);
                 self.cursor_controls(ui);
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui
@@ -5708,18 +6133,24 @@ impl eframe::App for ScopeApp {
             #[cfg(feature = "qa")]
             if !self.screenshot_requested && self.created.elapsed() > Duration::from_secs(1) {
                 self.screenshot_requested = true;
+                ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
                 ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(Default::default()));
+                // Slow first-frame GPU preparation must not request Screenshot
+                // and Close together. Allow a fresh readback interval.
+                self.created = Instant::now();
             }
             #[cfg(feature = "qa")]
             let ready_to_close =
                 self.screenshot_received || self.created.elapsed() > Duration::from_secs(10);
             #[cfg(not(feature = "qa"))]
             let ready_to_close = true;
-            if self.created.elapsed() > Duration::from_secs(2) && ready_to_close {
+            if ready_to_close {
                 println!("UI OK: {}", self.adapter);
                 ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             } else {
-                ctx.request_repaint_after(Duration::from_millis(16));
+                // Keep QA readback moving even when idle-window timers are
+                // coalesced by the desktop event loop; VSync still paces it.
+                ctx.request_repaint();
             }
         }
     }
