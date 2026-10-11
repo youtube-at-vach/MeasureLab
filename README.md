@@ -1,38 +1,82 @@
-# MeasureLab
+# MeasureLab — Audio Measurement Lab
 
 [日本語](README.ja.md)
 
-**Accurate measurement, free and accessible to everyone.** MeasureLab is an audio measurement workspace for your PC. The Rust edition focuses on reproducible Scope and Spectrum measurements, with acquisition, analysis and GPU rendering running separately.
+[![CI](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml?query=branch%3Amain)
+[![Rust 1.95+](https://img.shields.io/badge/Rust-1.95%2B-dea584?logo=rust&logoColor=white)](Cargo.toml)
+[![Rust prototype](https://img.shields.io/badge/status-Rust_prototype-8b5cf6)](guide/rust/PLAN.md)
+[![License: Unlicense](https://img.shields.io/badge/license-Unlicense-27d3a2)](LICENSE)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/youtube-at-vach/MeasureLab/badge)](https://securityscorecards.dev/viewer/?uri=github.com/youtube-at-vach/MeasureLab)
 
-**Status: Rust prototype, available from source; next version: v0.10.0.** Scope and Spectrum acquisition, calibration and result reuse are implemented. Software Loopback is available in normal builds; Lock-in is experimental. Hardware accuracy, long-duration behavior and platform coverage remain conditional. See the [roadmap](guide/rust/PLAN.md) and [validation records](guide/rust/validation/README.md).
+**Accurate measurement, free and accessible to everyone.**
+
+Turn your PC and audio interface into a place to explore signals. See the waveform, inspect its spectrum, watch frequencies evolve, and explore the relationship between two channels—all in one measurement workspace.
+
+**A new chapter for MeasureLab has begun: the Rust prototype is now on `main`.** We are rebuilding the audio lab around reproducible measurements, responsive controls and GPU plots. Scope, Spectrum, Spectrogram and XY are already running, and an experimental Lock-in is taking shape. You can build it from source today and help shape the next version, **v0.10.0**.
+
+[![Rust manual](https://img.shields.io/badge/Rust_Manual-Read_online-2563eb?style=for-the-badge)](https://youtube-at-vach.github.io/MeasureLab/rust/en/)
+[![Try the prototype](https://img.shields.io/badge/Try_the_Prototype-Build_from_source-16856b?style=for-the-badge)](#try-the-prototype)
+[![Roadmap](https://img.shields.io/badge/Roadmap-See_whats_next-7c3aed?style=for-the-badge)](guide/rust/PLAN.md)
+
+[![MeasureLab Rust workspace showing Scope, Spectrum, Spectrogram and XY plots](.github/assets/readme/rust-workspace.png)](.github/assets/readme/rust-workspace.png)
+
+*The current Rust workspace: four views of a signal, with room to focus on the measurement. This screenshot uses synthetic QA fixtures; the orange spectrogram band marks an intentional input gap. Click any screenshot to view it at full size.*
+
+## Built to measure, built to explore
+
+- **Follow the signal.** Move between time, frequency, time–frequency and XY views, or focus on Scope and Spectrum together. Choose the channels you need from a 1–16 channel input.
+- **Keep analysis moving.** Audio capture, measurement workers and GPU rendering run separately. Switching or hiding a view keeps analysis and averaging running.
+- **Keep more than a picture.** Hold a capture, save its settings and results, then load a reference for comparison. Channel calibration, units and acquisition conditions travel with the saved results.
+- **Start without extra hardware.** Software Loopback lets you explore known gain, phase, delay and noise through the common input path. It is available in normal builds and produces no physical audio output.
 
 ## What you can use today
 
-| Instrument / capability | Available in Rust |
+| Instrument / capability | Available in the Rust prototype |
 | --- | --- |
-| Audio input | 1–16 synchronous channels through CPAL; f64 samples after capture; supported nominal sample-rate selection |
-| Scope | Any two channels, Auto/Normal/Single, Autoset, RMS/Peak/P-P, time cursors and held acquisition |
-| Spectrum | 1,024–524,288 points, amplitude and PSD, band power/RMS, averaging, peak hold and frequency cursors |
-| Spectrogram and XY | Independent STFT display and synchronous two-channel XY routing |
-| Calibration and results | Channel gain/offset/unit definitions; versioned settings; held Scope/Spectrum JSON, CSV and PNG; reference comparison |
-| Software Loopback | Known gain, phase, delay and noise through the common input path without physical audio output |
+| Audio input | 1–16 synchronous channels through CPAL; supported nominal sample-rate selection |
+| Scope | Any two channels, Auto/Normal/Single triggers, Autoset, RMS/Peak/P-P, time cursors and held acquisition |
+| Spectrum | 1,024–524,288 point FFT, amplitude and PSD, band power/RMS, averaging, peak hold and frequency cursors |
+| Spectrogram | Independent STFT view of how frequency content changes over time, with input-gap display |
+| XY / Lissajous | Synchronous two-channel plots with selectable channel routing |
+| Calibration and results | Channel gain/offset/units, versioned settings, held Scope/Spectrum JSON, CSV and PNG, reference comparison |
+| Software Loopback | Known signals and a virtual DUT for exploring gain, phase, delay and noise |
 | Experimental Lock-in | Fundamental-frequency REF/response measurement, X/Y and R/θ, gain and settling status |
 
-The measurement core uses f64; an optional f32 FFT path is available with separate numerical limits. Hiding a display does not stop analysis or averaging. Results retain their acquisition conditions and distinguish missing or invalid data from valid zero.
+The measurement core uses **f64** after capture. An optional f32 FFT path has separate numerical limits. Results retain their acquisition conditions and distinguish missing or invalid data from valid zero.
 
-Physical signal output, THD/FRF/IR, VST3, actual sample-clock calibration and the Python edition's wider instrument collection are not implemented in Rust. Scope waveform axes and triggers use FS even when numerical readouts are calibrated. Lock-in hardware REF/timing validation is still pending.
+## A closer look
 
-## Run the prototype
+| Scope + Spectrum | Experimental Lock-in |
+| --- | --- |
+| [![Two-channel Scope with time cursors alongside a harmonic spectrum](.github/assets/readme/rust-scope-spectrum.png)](.github/assets/readme/rust-scope-spectrum.png) | [![Experimental Lock-in displaying amplitude and phase from Software Loopback](.github/assets/readme/rust-lockin.png)](.github/assets/readme/rust-lockin.png) |
+| Inspect a waveform and its frequency content, with readouts and cursors inside the plots. | Explore reference-based amplitude and phase measurement with dedicated R/θ and X/Y views. |
 
-Use Rust 1.95 or later and the native prerequisites for your OS. Rust integration currently targets `rewrite/rust`; this preparation does not yet move development to `main`.
+*Screenshots captured from the current Rust QA build. Scope/Spectrum uses synthetic fixtures; Lock-in uses Software Loopback. These illustrate the interface, not physical-device accuracy.*
+
+## Where we are heading
+
+The next step is to make a small audio measurement lab dependable from input to saved result. The [roadmap](guide/rust/PLAN.md) grows from that foundation:
+
+1. **Finish the essentials.** Refine two-channel Scope/Spectrum workflows and evaluate calibration, long runs, real devices and the experimental Lock-in.
+2. **Understand the connection between channels.** Develop cross-spectrum, phase and delay measurements around synchronous input.
+3. **Build complete measurement flows.** Add physical signal generation and response measurement, then evaluate candidates such as distortion, impulse response and sample-clock calibration.
+
+These are development directions; later features are not yet available. The immediate focus is accuracy, reproducibility and a useful two-channel workflow, while preserving the 1–16 channel foundation.
+
+> [!NOTE]
+> **This is a prototype available from source.** Hardware accuracy, long-duration behavior and OS/device coverage still have unverified areas; see the [validation records](guide/rust/validation/README.md). Physical signal output, THD/FRF/IR, VST3 and actual sample-clock calibration are not implemented in Rust. Scope waveform axes and triggers use FS even when numerical readouts are calibrated. Lock-in hardware REF/timing validation remains pending.
+
+## Try the prototype
+
+Use **Rust 1.95 or later** and the native prerequisites for your OS. The Rust prototype is available directly from `main`:
 
 ```sh
-git clone --branch rewrite/rust https://github.com/youtube-at-vach/MeasureLab.git
+git clone --branch main https://github.com/youtube-at-vach/MeasureLab.git
 cd MeasureLab
 cargo run --release --locked
 ```
 
-This checks out the integrated Rust branch; newer work on topic branches may not be included yet. For a new macOS/Linux development environment, the [setup guide](guide/rust/SETUP.md) covers local tool installation:
+For a new macOS/Linux development environment, the [setup guide](guide/rust/SETUP.md) covers local tool installation:
 
 ```sh
 ./scripts/setup_dev_env.sh --install-os-deps --verify
@@ -40,32 +84,39 @@ source .tools/env.sh
 ./scripts/debug.sh
 ```
 
-The application starts stopped. Select a device and press **Start input**, or choose **Input source → Software Loopback** to try it without hardware. Use **View → Scope + Spectrum**, adjust the plots through **Adjust**, then **Stop** and save settings/results through **File**. A complete 512k window at 48 kHz takes about 10.92 seconds even with frequent Live updates.
+Your first measurement:
+
+1. The app starts stopped. Select an input device, or choose **Input source → Software Loopback** to try it without hardware.
+2. Press **Start input**, then select **View → Scope + Spectrum**.
+3. Use **Adjust** beside each plot to explore the time scale, channels and FFT settings. Start with the default 8,192-point FFT.
+4. Press **Stop** to hold the result, then use **File** to save settings or export results.
+
+A complete 512k window at 48 kHz takes about 10.92 seconds; faster Live updates do not shorten that observation time. The [Rust manual](https://youtube-at-vach.github.io/MeasureLab/rust/en/) explains the controls and measurement conditions.
 
 | Platform | Build prerequisites and current verification scope |
 | --- | --- |
-| macOS | Xcode Command Line Tools; allow microphone access for physical input. Existing macOS/BlackHole/GPU records cover specified conditions |
+| macOS | Xcode Command Line Tools; microphone permission for physical input. Existing macOS/BlackHole/GPU records cover specified conditions |
 | Linux | C/C++ tools, pkg-config, ALSA, X11, Wayland and xkbcommon development libraries. CI target; device/GPU runtime verification remains pending |
 | Windows | Rust MSVC toolchain and Visual Studio C++ Build Tools. CI target; device/GPU runtime verification remains pending |
 
-The local macOS bundle script is `./scripts/bundle-macos.sh`. Public Rust installers, signing and supported OS/CPU combinations are part of [publication preparation](guide/rust/RELEASE_PREPARATION.md), not an available release promise. QA-only demo controls require `./scripts/debug.sh --demo`; Software Loopback does not require QA.
+The local macOS bundle script is `./scripts/bundle-macos.sh`. Public Rust installers, signing and supported OS/CPU combinations are part of [publication preparation](guide/rust/RELEASE_PREPARATION.md). QA-only demo controls require `./scripts/debug.sh --demo`; Software Loopback does not require QA.
 
-## Documentation and Python v0.9.1
+## Documentation and the Python edition
 
 | Edition | Start here | Distribution |
 | --- | --- | --- |
-| Rust prototype | [User manual source](docs-rust/index.en.md), [detailed operation guide](guide/rust/README.md), [setup](guide/rust/SETUP.md) | Build from source for now |
+| Rust prototype | [Online manual](https://youtube-at-vach.github.io/MeasureLab/rust/en/), [detailed operation guide](guide/rust/README.md), [setup](guide/rust/SETUP.md) | Build from source on `main`; v0.10.0 is in development |
 | Final Python edition | [Preserved online manual](https://youtube-at-vach.github.io/MeasureLab/en/) | [Download site](https://youtube-at-vach.github.io/MeasureLab/download/) and [v0.9.1 release](https://github.com/youtube-at-vach/MeasureLab/releases/tag/v0.9.1) |
 
-Python development ended at v0.9.1. Its complete source and old build instructions remain in the [tag](https://github.com/youtube-at-vach/MeasureLab/tree/v0.9.1) and [archive branch](https://github.com/youtube-at-vach/MeasureLab/tree/archive/python-v0.9.1). Existing Python manual URLs will remain available when Rust is published. The new manual is prepared for `/MeasureLab/rust/` (English: `/MeasureLab/rust/en/`) and becomes public after the Pages deployment. Download links and `version.json` still describe Python v0.9.1.
+Python development ended at **v0.9.1**. Its complete source and old build instructions remain in the [tag](https://github.com/youtube-at-vach/MeasureLab/tree/v0.9.1) and [archive branch](https://github.com/youtube-at-vach/MeasureLab/tree/archive/python-v0.9.1). The Python manual and downloads remain available alongside the new Rust manual. Download links and `version.json` still describe Python v0.9.1; the Python edition's wider instrument collection has not been ported to Rust.
 
-## Development and feedback
+## Help shape the next MeasureLab
 
-Read [Current direction](guide/CURRENT_DIRECTION.md) → [implementation roadmap](guide/rust/PLAN.md). Repository, CI, packaging and documentation tasks live in [publication preparation](guide/rust/RELEASE_PREPARATION.md). The stack is Rust, CPAL, RustFFT, egui/eframe and wgpu; Python is used only for documentation and release tooling.
-
-[Contributions](CONTRIBUTING.md), including AI-assisted changes, are welcome. Current PRs target `rewrite/rust`. Required CI checks cover Linux static analysis, normal/QA/headless numerical and regression tests, the minimum Rust version, workflows and documentation. Three-OS release builds and macOS/Windows tests run as optional checks. Expensive jobs follow changed files; full performance benchmarks are opt-in. Local commands are in [Tool Usage Guide](.agents/workflows/tool_usage.md); CI success is not a physical measurement certificate.
+Try the prototype, share a measurement use case, report a reproducible issue, or contribute code and documentation. Feedback from audio enthusiasts, builders and measurement users helps decide what to finish next. [Contributions](CONTRIBUTING.md), including AI-assisted changes, are welcome.
 
 For [bug reports](https://github.com/youtube-at-vach/MeasureLab/issues), include the edition and commit/version, OS/GPU, input device, sample rate, channel routing, FFT settings and reproduction steps. Use the [security policy](SECURITY.md) for vulnerabilities.
+
+For development, read [Current direction](guide/CURRENT_DIRECTION.md) → [implementation roadmap](guide/rust/PLAN.md). The stack is Rust, CPAL, RustFFT, egui/eframe and wgpu. CI covers static checks, normal/QA/headless numerical and regression tests, the minimum Rust version, workflows and documentation, with separate three-OS release builds. Local commands are in [Tool Usage Guide](.agents/workflows/tool_usage.md).
 
 ## 📜 License
 
