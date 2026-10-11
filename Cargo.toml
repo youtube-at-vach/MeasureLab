@@ -1,6 +1,6 @@
 [package]
 name = "measurelab"
-version = "0.1.0"
+version = "0.10.0"
 edition = "2024"
 rust-version = "1.95"
 description = "GPU audio measurement workspace with oscilloscope, spectrum, spectrogram and XY"

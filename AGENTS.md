@@ -15,7 +15,7 @@ description: MeasureLab の Rust 開発と公開サイトの共通ルール
 
 ## 現在の状態
 
-* Rust アプリの表示名は MeasureLab、Cargo パッケージ・実行ファイル名は `measurelab`。Rust 1.95 以降を使う。
+* Rust アプリの表示名は MeasureLab、Cargo パッケージ・実行ファイル名は `measurelab`。次の版は `v0.10.0`、Rust 1.95 以降を使う。
 * 開発用の PR は作業ブランチから `rewrite/rust` に向ける。main への切り替えは別途依頼された段階で行う。
 * Python アプリの最終版は `v0.9.1` タグと `archive/python-v0.9.1` ブランチを参照する。
 * `.legacy-python/` はローカル専用の退避先で、Git 管理・通常の検索・検証の対象外。ここから旧実装やテスト環境を自動的に復元しない。
@@ -37,8 +37,8 @@ description: MeasureLab の Rust 開発と公開サイトの共通ルール
 ## 実装と検証
 
 * 検証は変更した挙動と回帰リスクに合わせる。コマンドは [Tool Usage Guide](.agents/workflows/tool_usage.md) を参照する。
-* Rust の変更時と PR 前には `cargo fmt`、全ターゲット・全機能の Clippy とテスト、デスクトップのビルドを行う。GUIなしと通常（qaなし）のテストも実行する。`scripts/cargo.sh` は PATH 上の Cargo またはローカル `.tools/` の Rust 環境を使う。
-* 残る Python は文書・リリースノート用のツールのみ。Python 3.12 以降と `.venv/bin/` の実行ファイルを使い、旧アプリの依存関係・Pytest・Mypy・GUI 検証環境は導入しない。
+* Rust の変更時と PR 前には `cargo fmt`、全ターゲット・全機能の Clippy とテスト、デスクトップのビルドを行う。GUIなしと通常（qaなし）のテストも実行する。`cargo test`のbenchは各条件1回の動作確認とし、反復性能計測は`cargo bench`で明示的に実行する。CIの必須チェックはLinuxの静的・数値・回帰検証と関連変更のMSRV確認に集約し、3 OSのreleaseビルドは任意チェックとする。`scripts/cargo.sh` は PATH 上の Cargo またはローカル `.tools/` の Rust 環境を使う。
+* 残る Python は文書・リリースノート・CI用のツールのみ。Python 3.12 以降と `.venv/bin/` の実行ファイルを使い、旧アプリの依存関係・Pytest・Mypy・GUI 検証環境は導入しない。
 * 作業終了時は `./.venv/bin/ruff check .` と `./.venv/bin/ruff format --check .` を実行する。環境がない場合はその結果を明記する。
 * Markdown は見出し・コードブロック前後に空行を置き、行末空白を除く。リストマーカーと番号順を統一し、裸の URL は山括弧で囲む。変更後は Markdown lint を実行する。
 * 自動修正・整形は必要なファイルだけに限定する。

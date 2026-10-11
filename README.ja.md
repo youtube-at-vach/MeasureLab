@@ -4,7 +4,7 @@
 
 **正確な測定を、無料で、すべての人へ。** MeasureLabは、PCを使うオーディオ測定・解析アプリです。Rust版は取得・測定演算・GPU描画を分離し、ScopeとSpectrumで条件と結果を再現できる測定を目指しています。
 
-**現在はソースから試せるRustプロトタイプです。** Scope／Spectrumの捕捉・校正・結果再利用を実装し、通常ビルドでSoftware Loopbackを使えます。Lock-inは実験段階です。実機精度・長時間動作・OS対応には未確認の範囲があります。[実装計画](guide/rust/PLAN.md) と [検証記録](guide/rust/validation/README.md) を参照してください。
+**現在はソースから試せるRustプロトタイプで、次の版はv0.10.0です。** Scope／Spectrumの捕捉・校正・結果再利用を実装し、通常ビルドでSoftware Loopbackを使えます。Lock-inは実験段階です。実機精度・長時間動作・OS対応には未確認の範囲があります。[実装計画](guide/rust/PLAN.md) と [検証記録](guide/rust/validation/README.md) を参照してください。
 
 ## 現在使える機能
 
@@ -63,7 +63,7 @@ Python版の開発はv0.9.1で終了しました。完全なソースと旧ビ�
 
 [現在の方針](guide/CURRENT_DIRECTION.md) → [実装計画](guide/rust/PLAN.md) の順に参照してください。リポジトリ・CI・配布・オンライン文書のタスクは [公開準備](guide/rust/RELEASE_PREPARATION.md) に分けています。Rust、CPAL、RustFFT、egui / eframe、wgpuを使い、Pythonは文書・リリース用ツールだけに使用します。
 
-AI支援を含む [貢献](CONTRIBUTING.md) を歓迎します。PRの宛先は現在`rewrite/rust`です。CIは3 OS、通常／QA／GUIなしの構成、最小Rust版、workflow、新旧マニュアルとダウンロードを対象にします。ローカルの手順は [Tool Usage Guide](.agents/workflows/tool_usage.md) を参照してください。CIの成功は物理測定の精度保証ではありません。
+AI支援を含む [貢献](CONTRIBUTING.md) を歓迎します。PRの宛先は現在`rewrite/rust`です。CIの必須チェックはLinuxの静的チェック、通常／QA／GUIなしの数値・回帰テスト、最小Rust版、workflowと文書です。3 OSのreleaseビルドとmacOS／Windowsテストは任意チェックとして実行します。重いジョブは変更ファイルに応じて選び、反復性能計測は明示的に実行します。ローカルの手順は [Tool Usage Guide](.agents/workflows/tool_usage.md) を参照してください。CIの成功は物理測定の精度保証ではありません。
 
 [不具合報告](https://github.com/youtube-at-vach/MeasureLab/issues) には、版とコミット、OS・GPU、入力機器、Fs・CH・FFT設定、再現手順を添えてください。脆弱性の報告は [Security Policy](SECURITY.md) に従ってください。
 

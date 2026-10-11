@@ -1,4 +1,4 @@
-# Python remains only in documentation and release-note tooling.
+# Python remains only in documentation, release-note and CI tooling.
 line-length = 120
 target-version = "py312"
 extend-exclude = [".legacy-python"]

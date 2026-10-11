@@ -281,6 +281,7 @@ Audio device → CPAL callback → bounded SPSC → measurement worker ← inter
 ./scripts/cargo.sh fmt --all -- --check
 ./scripts/cargo.sh clippy --locked --all-targets --all-features -- -D warnings
 ./scripts/cargo.sh test --locked --all-targets --all-features
+./scripts/cargo.sh test --locked --doc --all-features
 ./scripts/cargo.sh bench --bench waveform --no-default-features
 ./scripts/cargo.sh bench --bench spectrum --no-default-features
 ./scripts/cargo.sh bench --bench spectrogram --no-default-features
@@ -297,6 +298,8 @@ Audio device → CPAL callback → bounded SPSC → measurement worker ← inter
 ```
 
 テストはリング履歴の折り返し、型変換、モノラル／多チャンネル処理、欠落検出用の連番、トリガー、スパイク保持を確認します。ベンチマークは48k・192k・100万サンプルを1920物理ピクセルへ集約するCPU時間を計測します。GPU描画の速度やデバイス入力の遅延を測定するものではありません。
+
+`cargo test`のbenchは各条件1回の動作確認で、出力された時間を性能評価に使いません。`cargo bench`は従来どおり反復計測します。数値テストの精度・FFTサイズ・窓・f64／f32の許容差は維持し、120／600秒の実時間負荷評価は下記の専用手順で実行します。
 
 `qa`機能で`--ui-smoke`を使うと、内部テスト信号による画面を撮影できます。`MEASURELAB_UI_SMOKE_SETTINGS=scope`（または`spectrum`、`spectrogram`、`xy`、`workspace`、`collapsed`、`hidden`）を指定すると、その設定パネルの状態で撮影できます。`--compact`との組み合わせで小さい画面も確認できます。`MEASURELAB_UI_SMOKE_XY_PHASE=0`（または`90`、`180`）で同振幅の正弦波を選び、`MEASURELAB_UI_SMOKE_XY_ONLY=1`でXY単独、`MEASURELAB_UI_SMOKE_CHANNELS=1`でモノラル時の表示を確認できます。`MEASURELAB_UI_SMOKE_SCROLL_END=1`はプロット領域を下端へスクロールし、狭い画面の下段を撮影します。
 

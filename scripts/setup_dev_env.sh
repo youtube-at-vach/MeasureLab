@@ -217,10 +217,12 @@ if [ "$measurelab_verify" = true ]; then
     ./scripts/cargo.sh test --locked --no-default-features
     ./scripts/cargo.sh test --locked
     ./scripts/cargo.sh test --locked --all-targets --all-features
+    ./scripts/cargo.sh test --locked --doc --all-features
     ./scripts/cargo.sh build --release --locked
     npm --prefix download-site test
     ./.venv/bin/ruff check .
     ./.venv/bin/ruff format --check .
+    ./.venv/bin/python -m unittest discover -s scripts -p 'test_ci_changes.py'
     markdownlint-cli2 '**/*.md' '#node_modules'
     actionlint
     ./.venv/bin/python scripts/build_pages.py

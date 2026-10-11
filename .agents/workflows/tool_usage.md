@@ -45,8 +45,17 @@ PR 前の検証:
 ./scripts/cargo.sh test --locked --no-default-features
 ./scripts/cargo.sh test --locked
 ./scripts/cargo.sh test --locked --all-targets --all-features
+./scripts/cargo.sh test --locked --doc --all-features
 ./scripts/cargo.sh build --release --locked
 ```
+
+全ターゲットのテストではbenchの各条件を1回だけ動かす。通常の数値・回帰テストは省略しない。反復した平均・p95・最大値の性能計測は、必要な変更や評価時に明示的に実行する。
+
+```bash
+./scripts/cargo.sh bench --locked --no-default-features
+```
+
+CIの必須チェック・任意ビルド・変更ファイルによる実行選択は [公開準備のCI方針](../../guide/rust/RELEASE_PREPARATION.md#ciの運用ポイント) を参照する。120／600秒の実時間評価はPRの自動テストから分離し、以下の専用コマンドで条件を記録する。
 
 GPU が利用できる環境では、読み戻しとテスト信号による画面確認を実行できる。
 
@@ -104,6 +113,7 @@ Node.jsとサイト依存関係も必要。共通スクリプトで旧Pythonマ�
 ```bash
 ./.venv/bin/ruff check .
 ./.venv/bin/ruff format --check .
+./.venv/bin/python -m unittest discover -s scripts -p 'test_ci_changes.py'
 ```
 
 Markdown 変更時は次を実行する。ローカル退避先は設定ファイルで除外している。

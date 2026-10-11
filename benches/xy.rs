@@ -4,6 +4,8 @@ use measurelab::{
 };
 use std::{hint::black_box, time::Instant};
 
+mod common;
+
 fn main() {
     for sample_rate in [48_000, 192_000, 1_000_000] {
         let count = sample_rate as usize / 5;
@@ -14,7 +16,7 @@ fn main() {
         }
         let mut lines = Vec::with_capacity(xy::MAX_POINTS);
         let start = Instant::now();
-        let iterations = 1000;
+        let iterations = common::iterations(1000);
         for _ in 0..iterations {
             black_box(xy::build_lines(
                 &history,

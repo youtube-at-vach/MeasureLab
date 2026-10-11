@@ -3,19 +3,23 @@ use measurelab::spectrum::{
 };
 use std::{f64::consts::TAU, hint::black_box, time::Instant};
 
+mod common;
+
 fn measure(mut work: impl FnMut()) -> (f64, f64, f64) {
-    for _ in 0..5 {
+    for _ in 0..common::iterations(5) {
         work();
     }
-    let mut times = Vec::with_capacity(200);
-    for _ in 0..200 {
+    let iterations = common::iterations(200);
+    let mut times = Vec::with_capacity(iterations);
+    for _ in 0..iterations {
         let clock = Instant::now();
         work();
         times.push(clock.elapsed().as_secs_f64() * 1000.0);
     }
     let mean = times.iter().sum::<f64>() / times.len() as f64;
     times.sort_by(f64::total_cmp);
-    (mean, times[189], times[199])
+    let p95 = (times.len() * 95).div_ceil(100) - 1;
+    (mean, times[p95], times[times.len() - 1])
 }
 
 fn main() {

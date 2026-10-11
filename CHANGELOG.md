@@ -1,5 +1,14 @@
 # Changelog
 
+## [v0.10.0] - Unreleased
+
+### Changed
+
+* **Rust Version**: Set the next MeasureLab application version to v0.10.0; the final Python distribution remains v0.9.1.
+* **CI**: Consolidate PR checks, cache Rust dependency builds, and require Linux static/numerical checks while keeping three-OS release builds optional. Run expensive jobs only for relevant changes.
+* **Tests**: Run each harness-free benchmark case once under `cargo test`; retain full repetitions under `cargo bench`. Keep numerical accuracy and regression assertions unchanged.
+* **macOS Bundle**: Read the bundle version from Cargo instead of maintaining a separate hard-coded version.
+
 ## [v0.9.1] - 2026-10-04
 
 ### Final Python Release

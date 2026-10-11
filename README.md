@@ -4,7 +4,7 @@
 
 **Accurate measurement, free and accessible to everyone.** MeasureLab is an audio measurement workspace for your PC. The Rust edition focuses on reproducible Scope and Spectrum measurements, with acquisition, analysis and GPU rendering running separately.
 
-**Status: Rust prototype, available from source.** Scope and Spectrum acquisition, calibration and result reuse are implemented. Software Loopback is available in normal builds; Lock-in is experimental. Hardware accuracy, long-duration behavior and platform coverage remain conditional. See the [roadmap](guide/rust/PLAN.md) and [validation records](guide/rust/validation/README.md).
+**Status: Rust prototype, available from source; next version: v0.10.0.** Scope and Spectrum acquisition, calibration and result reuse are implemented. Software Loopback is available in normal builds; Lock-in is experimental. Hardware accuracy, long-duration behavior and platform coverage remain conditional. See the [roadmap](guide/rust/PLAN.md) and [validation records](guide/rust/validation/README.md).
 
 ## What you can use today
 
@@ -63,7 +63,7 @@ Python development ended at v0.9.1. Its complete source and old build instructio
 
 Read [Current direction](guide/CURRENT_DIRECTION.md) → [implementation roadmap](guide/rust/PLAN.md). Repository, CI, packaging and documentation tasks live in [publication preparation](guide/rust/RELEASE_PREPARATION.md). The stack is Rust, CPAL, RustFFT, egui/eframe and wgpu; Python is used only for documentation and release tooling.
 
-[Contributions](CONTRIBUTING.md), including AI-assisted changes, are welcome. Current PRs target `rewrite/rust`. CI checks three operating systems, normal/QA/headless configurations, the declared minimum Rust version, workflows, both manuals and downloads. Local commands are in [Tool Usage Guide](.agents/workflows/tool_usage.md); CI success is not a physical measurement certificate.
+[Contributions](CONTRIBUTING.md), including AI-assisted changes, are welcome. Current PRs target `rewrite/rust`. Required CI checks cover Linux static analysis, normal/QA/headless numerical and regression tests, the minimum Rust version, workflows and documentation. Three-OS release builds and macOS/Windows tests run as optional checks. Expensive jobs follow changed files; full performance benchmarks are opt-in. Local commands are in [Tool Usage Guide](.agents/workflows/tool_usage.md); CI success is not a physical measurement certificate.
 
 For [bug reports](https://github.com/youtube-at-vach/MeasureLab/issues), include the edition and commit/version, OS/GPU, input device, sample rate, channel routing, FFT settings and reproduction steps. Use the [security policy](SECURITY.md) for vulnerabilities.
 

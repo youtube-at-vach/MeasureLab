@@ -1,6 +1,8 @@
 use measurelab::signal::{History, Trigger, build_lines};
 use std::{hint::black_box, time::Instant};
 
+mod common;
+
 fn main() {
     for count in [48_000, 192_000, 1_000_000] {
         let mut history = History::new(count);
@@ -10,7 +12,7 @@ fn main() {
         }
         let mut lines = Vec::with_capacity(8192);
         let start = Instant::now();
-        let iterations = 200;
+        let iterations = common::iterations(200);
         for _ in 0..iterations {
             let sweep = history.sweep(count, Trigger::default());
             black_box(build_lines(

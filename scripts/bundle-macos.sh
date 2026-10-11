@@ -7,10 +7,11 @@ if [ "$(uname -s)" != Darwin ]; then
     exit 1
 fi
 ./scripts/cargo.sh build --release --locked
+measurelab_version=$(./scripts/cargo.sh pkgid --locked | sed 's/.*@//')
 measurelab_bundle="$measurelab_root/dist/MeasureLab.app"
 mkdir -p "$measurelab_bundle/Contents/MacOS"
 cp target/release/measurelab "$measurelab_bundle/Contents/MacOS/measurelab"
-cat > "$measurelab_bundle/Contents/Info.plist" <<'PLIST'
+cat > "$measurelab_bundle/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
@@ -19,7 +20,7 @@ cat > "$measurelab_bundle/Contents/Info.plist" <<'PLIST'
     <key>CFBundleIdentifier</key><string>dev.measurelab.app</string>
     <key>CFBundleExecutable</key><string>measurelab</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.1.0</string>
+    <key>CFBundleShortVersionString</key><string>$measurelab_version</string>
     <key>CFBundleVersion</key><string>1</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSMicrophoneUsageDescription</key><string>オーディオ入力の波形と周波数スペクトルを表示するために使用します。</string>

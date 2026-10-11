@@ -65,8 +65,13 @@ Use Rust 1.95 or later and your operating system's build tools. Run these comman
 ./scripts/cargo.sh test --locked --no-default-features
 ./scripts/cargo.sh test --locked
 ./scripts/cargo.sh test --locked --all-targets --all-features
+./scripts/cargo.sh test --locked --doc --all-features
 ./scripts/cargo.sh build --release --locked
 ```
+
+`cargo test` exercises each harness-free benchmark case once. Use `./scripts/cargo.sh bench --locked --no-default-features` for repeated performance measurements; real-time 120/600-second profiling is separate from PR checks. Numerical assertions and FFT size/precision coverage remain part of the normal tests.
+
+The required statuses are `lint-and-test`, `docs-lint` and `actionlint`. Rust changes require Linux Clippy, normal/QA/headless tests and the applicable Rust 1.95 check. Three-OS release builds and macOS/Windows tests run separately and do not gate merging. The [CI policy](guide/rust/RELEASE_PREPARATION.md#ciの運用ポイント) describes triggers, caching, selected jobs and release review.
 
 ## Website and documentation checks
 
@@ -78,7 +83,7 @@ npm --prefix download-site test
 npm --prefix download-site run build
 ```
 
-For both manuals and the combined Pages output, use Python 3.12 or later and the Node.js environment above. PDF generation is retired; Pango/WeasyPrint are not required:
+For both manuals and the combined Pages output, use Python 3.12 or later and the Node.js environment above. CI helper tests use the standard library (`./.venv/bin/python -m unittest discover -s scripts -p 'test_ci_changes.py'`). PDF generation is retired; Pango/WeasyPrint are not required:
 
 ```bash
 python3 -m venv .venv

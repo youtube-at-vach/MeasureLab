@@ -5,6 +5,8 @@ use measurelab::{
 };
 use std::{hint::black_box, time::Instant};
 
+mod common;
+
 fn main() {
     for size in [1024, 8192, 32768] {
         let config = Config {
@@ -21,7 +23,7 @@ fn main() {
         history.reset(1, config);
         let db = vec![-80.0; size / 2 + 1];
         let mut placements = Vec::with_capacity(ROWS * 2);
-        let iterations = 10000;
+        let iterations = common::iterations(10000);
         let started = Instant::now();
         for i in 0..iterations {
             let end = (size + i * config.hop) as u64;
