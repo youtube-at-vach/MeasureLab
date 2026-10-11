@@ -1,5 +1,12 @@
 # Development Guide
 
+These instructions apply to the final **Python v0.9.1** source, not the Rust checkout. Clone the archived tag into a separate directory before using the commands below:
+
+```sh
+git clone --branch v0.9.1 https://github.com/youtube-at-vach/MeasureLab.git MeasureLab-python
+cd MeasureLab-python
+```
+
 ## Overview
 
 Instructions for running from source code and setting up the development environment.

@@ -1,5 +1,7 @@
 # Windows配布方式とビルド
 
+このページはPython v0.9.1の配布方式の記録です。ビルドは [開発ガイド](development.md) に従って旧版タグを取得したディレクトリで行ってください。Rust版の配布方式は別に設計します。
+
 ## 採用方式
 
 PyInstallerのonedir出力をInno Setup 6で包む、ユーザー単位のEXEインストーラーを標準とします。Pythonや依存ライブラリは同梱され、利用者によるPythonのインストールは不要です。フォルダー形式のonedir ZIPも継続します。

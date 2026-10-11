@@ -1,14 +1,15 @@
-# MeasureLab GUI Design Guideline v2.1
+# 旧Python版参考資料：MeasureLab GUI Design Guideline v2.1
 
 > [!IMPORTANT]
-> 本文書は、MeasureLab の GUI を新規実装、改修、レビューする際の規範文書である。
-> 一般的なデスクトップアプリの作法よりも、測定の完全性、安全性、再現性を優先する。
+> **現在のRust版には参考資料として適用する（2026-10-07整理）。** 以下はPython版の構造・機能を前提にした設計ガイドであり、本文中の「必須」「禁止」や作業手順をRust版へそのまま適用しない。現行の優先順位・不変条件は [現在の方針](CURRENT_DIRECTION.md)、実装範囲は [Rust PLAN](rust/PLAN.md) を正本とする。
+>
+> 測定値・単位・有効性・状態の一致、読みやすいプロットなどの原則を必要な箇所で参考にする。AudioEngine等の旧クラス、単一アクティブ画面、Detachable Wrapper、全機能共通化は現行の要件ではない。Rust版は複数Monitorを同時に使う構成を持ち、測定コアを表示から分離する。
 
 | 項目 | 内容 |
 | --- | --- |
 | 文書名 | MeasureLab GUI Design Guideline v2.1 |
-| ステータス | Normative |
-| 適用対象 | MeasureLab のメインウィンドウ、測定ウィジェット、共通 UI、プロット、ダイアログ |
+| ステータス | 旧Python版の参考資料（Rust版の規範文書ではない） |
+| 元の適用対象 | Python版のメインウィンドウ、測定ウィジェット、共通 UI、プロット、ダイアログ |
 | 基準日 | 2026-08-27 |
 | 主な入力資料 | [MeasureLab DeepWiki](../.github/deepwiki/README.md) と [`guide/` の調査資料](#参考資料) |
 

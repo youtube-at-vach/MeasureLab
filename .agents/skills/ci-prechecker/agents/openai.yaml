@@ -1,4 +1,0 @@
-interface:
-  display_name: "PR 前の検証"
-  short_description: "Ruff・型・翻訳・文書・テスト・UI サイズを検証し、失敗原因を確認します"
-  default_prompt: "$ci-prechecker を使って、PR 前の CI 相当チェックを実行し、必要な修正と結果の報告をしてください。"

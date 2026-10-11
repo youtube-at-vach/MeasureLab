@@ -4,6 +4,18 @@
 
 version: 2
 updates:
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 10
+    groups:
+      rust-dependencies:
+        patterns:
+          - "*"
+
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
@@ -11,11 +23,20 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 10
-    ignore:
-      - dependency-name: "numpy"
-      - dependency-name: "scipy"
     groups:
-      python-dependencies:
+      documentation-dependencies:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/download-site"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 10
+    groups:
+      download-site-dependencies:
         patterns:
           - "*"
 
@@ -30,4 +51,3 @@ updates:
       github-actions:
         patterns:
           - "*"
-

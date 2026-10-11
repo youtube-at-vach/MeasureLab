@@ -13,6 +13,16 @@ body:
         🇺🇸 English is also welcome.
         Simple questions like "Is this correct?" are also welcome.
 
+  - type: dropdown
+    id: edition
+    attributes:
+      label: Edition / 版
+      options:
+        - Rust prototype / Rustプロトタイプ
+        - Python v0.9.1 or earlier (archived) / Python旧版（開発終了）
+    validations:
+      required: true
+
   - type: textarea
     id: question
     attributes:

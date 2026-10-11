@@ -20,7 +20,7 @@ Using this loopback connection first allows you to test whether the basic input 
 ## Starting the Software
 
 MeasureLab works on Windows and Linux.
-Please download the latest version for your OS from the [Releases](https://github.com/youtube-at-vach/MeasureLab/releases) page.
+Please download the final Python v0.9.1 build for your OS from the [Releases](https://github.com/youtube-at-vach/MeasureLab/releases/tag/v0.9.1) page.
 
 ### Windows
 

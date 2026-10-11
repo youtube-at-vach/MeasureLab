@@ -1,135 +1,125 @@
 ---
-description: MeasureLabの環境構築、起動、開発ツールと検証コマンド
+description: Rust アプリ・サイト・文書の起動と検証コマンド
 ---
 
 # Tool Usage Guide
 
-共通ルールと作業別スキルの入口は [AGENTS.md](../../AGENTS.md) を参照してください。
-以下はリポジトリのルートで実行するコマンドです。POSIXシェル（Linux・macOS）向けの表記です。
+共通ルールと文書を読む順序は [AGENTS.md](../../AGENTS.md)、測定の完了条件は [Rust PLAN](../../guide/rust/PLAN.md) を参照する。以下のコマンドはリポジトリのルートで実行する。この文書には再実行する手順を置き、実測結果を追記しない。
 
-## 環境構築
+## 初回セットアップ
 
-Python 3.12以降を使用します。仮想環境がない場合は作成し、アプリと開発ツールの依存関係を導入します。
-`requirements.txt` だけではRuff・Mypyなどが揃わないため、`dev` extrasもインストールします。
+macOS／LinuxでRust・サイト・文書用のローカル環境を構築する。OSの事前準備と手動導入は [開発環境のセットアップ](../../guide/rust/SETUP.md) を参照する。
+
+```bash
+./scripts/setup_dev_env.sh --install-os-deps --verify
+source .tools/env.sh
+```
+
+OSライブラリを導入済みなら`--install-os-deps`を省略できる。引数なしでは依存関係の導入・デバッグビルド・文書用ライブラリの読み込みを確認し、`--verify`で以下の検証を一括実行する。
+
+## Rust アプリ
+
+Rust 1.95 以降と OS のビルドツールを使う。`scripts/cargo.sh` は PATH 上の Cargo または `.tools/` にあるローカル環境を使う。
+
+デバッグ時は次のスクリプトでビルドと起動をまとめて実行する。引数なしでは実入力を選んだ停止状態で起動する。`--demo`を明示すると`qa`機能を有効にして内部信号を使い、`--release`で性能確認用のビルドを選ぶ。macOSではルートの`Debug-MeasureLab.command`をダブルクリックしても実入力の画面を起動できる。
+
+```bash
+./scripts/debug.sh
+./scripts/debug.sh --demo
+./scripts/debug.sh --release
+./scripts/debug.sh --ui-smoke
+```
+
+`--demo`と`--ui-smoke`は`qa`機能を自動的に有効にする。通常ビルドにデモの生成機能や入力選択肢は含めない。詳細は`./scripts/debug.sh --help`を参照する。
+
+```bash
+./scripts/cargo.sh run --release --locked
+./scripts/cargo.sh run --release --locked --features qa -- --demo
+```
+
+PR 前の検証:
+
+```bash
+./scripts/cargo.sh fmt --all -- --check
+./scripts/cargo.sh clippy --locked --all-targets --all-features -- -D warnings
+./scripts/cargo.sh test --locked --no-default-features
+./scripts/cargo.sh test --locked
+./scripts/cargo.sh test --locked --all-targets --all-features
+./scripts/cargo.sh test --locked --doc --all-features
+./scripts/cargo.sh build --release --locked
+```
+
+全ターゲットのテストではbenchの各条件を1回だけ動かす。通常の数値・回帰テストは省略しない。反復した平均・p95・最大値の性能計測は、必要な変更や評価時に明示的に実行する。
+
+```bash
+./scripts/cargo.sh bench --locked --no-default-features
+```
+
+CIの必須チェック・任意ビルド・変更ファイルによる実行選択は [公開準備のCI方針](../../guide/rust/RELEASE_PREPARATION.md#ciの運用ポイント) を参照する。120／600秒の実時間評価はPRの自動テストから分離し、以下の専用コマンドで条件を記録する。
+
+GPU が利用できる環境では、読み戻しとテスト信号による画面確認を実行できる。
+
+```bash
+./scripts/cargo.sh run --release --locked -- --gpu-smoke
+./scripts/cargo.sh run --locked --features qa -- --ui-smoke
+```
+
+既存プロトタイプとの比較に使うUIフレーム時間・処理別CPU時間・欠落・RSSの連続計測（スクリプト名は`profile-stage2.sh`を継続）:
+
+```bash
+./scripts/cargo.sh build --release --locked --features qa
+MEASURELAB_PROFILE_SECONDS=600 MEASURELAB_PROFILE_DEVICE="BlackHole 16ch" \
+    MEASURELAB_PROFILE_CHANNEL=16 ./scripts/profile-stage2.sh blackhole16-600
+MEASURELAB_PROFILE_SECONDS=120 ./scripts/profile-stage2.sh demo-120 --demo
+```
+
+ログと1秒ごとのRSSは`dist/stage2-qa/`へ保存する。仮想入力の停止・再開やデバイス切り替えは [Rust READMEの検証・計測](../../guide/rust/README.md#検証計測) を参照する。`MEASURELAB_PROFILE_UI_STALL=1`を追加すると、UIを1秒止めて取得・解析の継続と表示更新の省略を検証する。内部デモ・既存QAの成功だけで、通常ビルドのSoftware Loopbackや物理系の精度を検証済みとしない。Software Loopbackの保存・再起動・再測定QAはREADMEを参照する。
+
+macOS のローカルアプリバンドル:
+
+```bash
+./scripts/bundle-macos.sh
+open dist/MeasureLab.app
+```
+
+Rust 実装の詳しい操作・計測・前提は [Rust README](../../guide/rust/README.md)、拡張計画は [Rust PLAN](../../guide/rust/PLAN.md) を参照する。
+
+## ダウンロードサイト
+
+Node.js と npm を使う。
+
+```bash
+npm --prefix download-site ci
+npm --prefix download-site test
+npm --prefix download-site run build
+```
+
+## マニュアル生成環境
+
+Python 3.12 以降を使う。これは公開マニュアル用の環境で、旧 Python アプリの依存関係やテスト環境は含めない。
 
 ```bash
 python3 -m venv .venv
-./.venv/bin/python -m pip install -U pip
-./.venv/bin/python -m pip install -r requirements.txt
-./.venv/bin/python -m pip install -c constraints.txt -e '.[dev]'
+./.venv/bin/python -m pip install -r requirements-docs.txt ruff
+./.venv/bin/python scripts/build_pages.py
 ```
 
-以後はシステムの同名コマンドではなく、次の実行ファイルを使います。
+Node.jsとサイト依存関係も必要。共通スクリプトで旧Pythonマニュアル、新Rustマニュアル、downloadを`site/`へ統合し、MkDocs strictと公開ルート保持を検証する。PDF自動生成は退役し、WebビルドにWeasyPrint・Pangoは不要。配置と公開条件は [公開準備](../../guide/rust/RELEASE_PREPARATION.md) を参照する。
 
-| ツール | 実行ファイル |
-| --- | --- |
-| Python | `./.venv/bin/python` |
-| Pytest | `./.venv/bin/pytest` |
-| Ruff | `./.venv/bin/ruff` |
-| Mypy | `./.venv/bin/mypy` |
+## 検証
 
-Markdown lintにはNode.jsとnpmが必要です。OSの依存ライブラリなどは
-[開発ガイド](../../docs/development.en.md)を参照してください。
-`PyWavelets` のPythonでのimport名は `pywt` です。
-
-## 起動とデバッグ
-
-```bash
-./.venv/bin/python main_gui.py
-```
-
-* Linuxのオーディオ環境では、必要に応じてJACK / PipeWireと `ConfigManager` の `pipewire_jack_resident` 設定を確認します。
-* `MEASURELAB_DEBUG_WINDOWS=1` でウィンドウ挙動のログを出力します。
-* `MEASURELAB_DEBUG_WINDOWS_TRACE=1` でウィンドウ出現時のスタックトレースを出力します。
-
-## 開発中の検証
-
-作業終了時には、変更の種類にかかわらず両方を実行します。
+残る Python の文書・リリースノート用ツールを検証する。
 
 ```bash
 ./.venv/bin/ruff check .
 ./.venv/bin/ruff format --check .
+./.venv/bin/python -m unittest discover -s scripts -p 'test_ci_changes.py'
 ```
 
-失敗した場合は今回の変更が原因か確認します。整形が必要なら変更したファイルだけを
-`./.venv/bin/ruff format <変更したファイル>` で整形し、全体フォーマットは専用PRに分けます。
-
-型チェック:
-
-```bash
-./.venv/bin/mypy src main_gui.py
-```
-
-Markdown変更時:
+Markdown 変更時は次を実行する。ローカル退避先は設定ファイルで除外している。
 
 ```bash
 npx markdownlint-cli2 "**/*.md" "#node_modules"
 ```
 
-### 翻訳キー
-
-CIと同じ厳格な検査を使います。重複キーなど終了コードに反映されない警告も確認してください。
-
-```bash
-./.venv/bin/python scripts/check_trn_keys.py --strict
-```
-
-修正方法は [翻訳スキル](../skills/multilingual-translator/SKILL.md)を参照してください。
-
-### テスト
-
-最小スモークテスト:
-
-```bash
-./.venv/bin/python -m pytest -q tests/logic_verification/core/test_config_manager.py tests/logic_verification/core/test_utils.py
-```
-
-メインウィンドウ周辺のテスト:
-
-```bash
-./.venv/bin/python -m pytest -q tests/logic_verification/gui/test_main_window_activity.py
-```
-
-全体テスト:
-
-```bash
-./.venv/bin/pytest -q
-```
-
-ハードウェアテストは通常スキップされます。対応機器を使用して明示的に検証する場合だけ
-`--hardware` を指定してください。このオプションではハードウェア以外のテストがスキップされるため、全体テストの代わりにはなりません。
-
-### UIサイズ検証
-
-レイアウト・翻訳の変更時、新規モジュールのリリース前、CI相当の最終確認では全言語を検証します。
-サイズ上限と超過時の対処は [AGENTS.md](../../AGENTS.md#uiサイズの上限) を参照してください。
-QApplicationやC拡張の競合を避けるため、Pytestとは独立して実行します。
-
-```bash
-./.venv/bin/python scripts/check_ui_size_limits.py
-```
-
-成功時は `Verification Passed!` と終了コード `0`、超過時は対象モジュールの詳細と終了コード `1` を返します。
-実装中に英語だけを確認する場合は次を使えますが、最終確認は引数なしで実行してください。
-
-```bash
-./.venv/bin/python scripts/check_ui_size_limits.py --quick
-```
-
-## PR前の検証
-
-次の順で実行し、各段階の終了コードと結果を確認します。コマンドは上記の各節を正本とします。
-
-1. [開発中の検証](#開発中の検証)の Ruff lint と Ruff format。
-2. 同節の Mypy。
-3. [翻訳キー](#翻訳キー)の厳格な検査。
-4. [開発中の検証](#開発中の検証)の Markdown lint。
-5. [テスト](#テスト)の全体テスト。
-6. [UIサイズ検証](#uiサイズ検証)の全言語検証。Pytest とは別プロセスで実行。
-
-GUI を表示できない環境では `QT_QPA_PLATFORM=offscreen` を設定します。CI の環境変数と
-実行条件は [.github/workflows/ci.yml](../../.github/workflows/ci.yml) で確認してください。
-CI は変更パスによりジョブを省略しますが、ローカルで CI 相当の最終確認を依頼された場合は全項目を実行します。
-
-失敗時の修正範囲と再実行の判断は [CI Pre-checker](../skills/ci-prechecker/SKILL.md)、
-PR の作成条件は [AGENTS.md](../../AGENTS.md#pull-request) に従います。
+GitHub Actions の変更時は、利用できる環境で `actionlint` を実行する。

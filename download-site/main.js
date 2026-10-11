@@ -1,6 +1,8 @@
 import { hasWindowsInstaller } from "./release-assets.js";
 
-const FALLBACK_VERSION = "v0.6.3";
+import publishedVersion from "../version.json" with { type: "json" };
+
+const FALLBACK_VERSION = `v${publishedVersion.version}`;
 const RELEASE_BASE_URL =
   "https://github.com/youtube-at-vach/MeasureLab/releases/download";
 const SUPPORTED_LANGS = ["ja", "zh", "en"];
@@ -23,7 +25,9 @@ const translations = {
     heroDescription: "高精度なオーディオ分析と測定を、あなたのPCで。",
     otherPlatforms: "その他のプラットフォーム",
     requirementsTitle: "ダウンロード前に確認",
-    docsLink: "ドキュメント",
+    docsLink: "Python v0.9.1 マニュアル",
+    editionNotice: "ここで配布しているのは Python 最終版 v0.9.1 です。",
+    rustDocsLink: "Rust プロトタイプの案内",
     loading: "読み込み中...",
     requirementData: {
       macOS: {
@@ -107,7 +111,9 @@ const translations = {
     heroDescription: "在你的电脑上进行高精度音频分析与测量。",
     otherPlatforms: "其他平台",
     requirementsTitle: "下载前请确认",
-    docsLink: "文档",
+    docsLink: "Python v0.9.1 文档",
+    editionNotice: "此页面提供 Python 最终版本 v0.9.1。",
+    rustDocsLink: "Rust 原型说明",
     loading: "加载中...",
     requirementData: {
       macOS: {
@@ -192,7 +198,9 @@ const translations = {
       "High-precision audio analysis and measurement on your computer.",
     otherPlatforms: "Other platforms",
     requirementsTitle: "Before you download",
-    docsLink: "Documentation",
+    docsLink: "Python v0.9.1 manual",
+    editionNotice: "These downloads are the final Python edition, v0.9.1.",
+    rustDocsLink: "About the Rust prototype",
     loading: "Loading...",
     requirementData: {
       macOS: {
