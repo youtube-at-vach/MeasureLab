@@ -28,6 +28,7 @@ use std::{
     sync::{Arc, Mutex, atomic::Ordering},
     time::{Duration, Instant},
 };
+mod lockin_panel;
 mod workspace;
 
 const GREEN: Color32 = Color32::from_rgb(56, 242, 173);
@@ -73,6 +74,7 @@ enum Instrument {
     Spectrum,
     Spectrogram,
     Xy,
+    Lockin,
 }
 
 impl PlotLayout {
@@ -107,17 +109,19 @@ enum SettingsSection {
     Spectrum,
     Spectrogram,
     Xy,
+    Lockin,
     Calibration,
     Workspace,
 }
 
 impl SettingsSection {
-    const ALL: [Self; 7] = [
+    const ALL: [Self; 8] = [
         Self::Input,
         Self::Scope,
         Self::Spectrum,
         Self::Spectrogram,
         Self::Xy,
+        Self::Lockin,
         Self::Calibration,
         Self::Workspace,
     ];
@@ -129,6 +133,7 @@ impl SettingsSection {
             Self::Spectrum => "Spectrum analyzer",
             Self::Spectrogram => "Spectrogram",
             Self::Xy => "XY / Lissajous",
+            Self::Lockin => "Lock-in amplifier",
             Self::Calibration => "Channel calibration",
             Self::Workspace => "Workspace & help",
         }
@@ -141,6 +146,7 @@ impl SettingsSection {
             Self::Spectrum => YELLOW,
             Self::Spectrogram => BLUE,
             Self::Xy => PURPLE,
+            Self::Lockin => YELLOW,
         }
     }
 }
@@ -252,6 +258,8 @@ pub struct ScopeApp {
     loopback_settings: loopback::Settings,
     lockin_settings: lockin::Settings,
     lockin_result: lockin::Result,
+    lockin_visible: bool,
+    lockin_display: settings::LockinDisplay,
     workspace_io: workspace_io::Worker,
     workspace_pending: bool,
     workspace_restoring: bool,
@@ -262,7 +270,7 @@ pub struct ScopeApp {
     comparison_current: Option<Box<export::Document>>,
     visible: [bool; 4],
     plot_layout: PlotLayout,
-    previous_view: Option<([bool; 4], PlotLayout)>,
+    previous_view: Option<([bool; 4], bool, PlotLayout)>,
     spectrum_adjust_analysis: bool,
     sidebar: Sidebar,
     #[cfg(feature = "qa")]
@@ -457,6 +465,8 @@ impl ScopeApp {
             software_running: false,
             loopback_settings: loopback::Settings::default(),
             lockin_settings: lockin::Settings::default(),
+            lockin_visible: false,
+            lockin_display: settings::LockinDisplay::Polar,
             lockin_result: lockin::Analyzer::new(lockin::Settings::default(), 48000)
                 .result()
                 .clone(),
@@ -819,6 +829,7 @@ impl ScopeApp {
                 Ok("spectrum") => app.sidebar.section = Some(SettingsSection::Spectrum),
                 Ok("spectrogram") => app.sidebar.section = Some(SettingsSection::Spectrogram),
                 Ok("xy") => app.sidebar.section = Some(SettingsSection::Xy),
+                Ok("lockin") => app.sidebar.section = Some(SettingsSection::Lockin),
                 Ok("workspace") => app.sidebar.section = Some(SettingsSection::Workspace),
                 Ok("collapsed") => app.sidebar.section = None,
                 Ok("hidden") => app.sidebar.visible = false,
@@ -848,6 +859,10 @@ impl ScopeApp {
         #[cfg(feature = "qa")]
         if smoke && std::env::var_os("MEASURELAB_UI_SMOKE_STAGE3F").is_some() {
             app.check_stage3f()?;
+        }
+        #[cfg(feature = "qa")]
+        if smoke && let Ok(mode) = std::env::var("MEASURELAB_UI_SMOKE_LOCKIN") {
+            app.check_lockin_ui(&mode)?;
         }
         Ok(app)
     }
@@ -2416,6 +2431,12 @@ impl ScopeApp {
                 format!("{} layout · shortcuts & units", self.plot_layout.name())
             }
             SettingsSection::Calibration => "Scope numeric readouts · next Start".into(),
+            SettingsSection::Lockin => format!(
+                "REF CH {} → SIG CH {} · τ {} s",
+                self.lockin_settings.reference_channel + 1,
+                self.lockin_settings.response_channel + 1,
+                self.lockin_settings.time_constant_seconds,
+            ),
         }
     }
 
@@ -2459,6 +2480,7 @@ impl ScopeApp {
                             SettingsSection::Spectrum => self.spectrum_controls(ui),
                             SettingsSection::Spectrogram => self.spectrogram_controls(ui),
                             SettingsSection::Xy => self.xy_controls(ui),
+                            SettingsSection::Lockin => self.lockin_controls(ui),
                             SettingsSection::Calibration => self.calibration_controls(ui),
                             SettingsSection::Workspace => self.workspace_controls(ui),
                         }
@@ -2533,6 +2555,9 @@ impl ScopeApp {
         self.xy_dirty = true;
         self.stop();
         self.input_generation += 1;
+        self.lockin_result = lockin::Analyzer::new(self.lockin_settings, self.sample_rate)
+            .result()
+            .clone();
         if self.capture.take().is_some() {
             self.audio.send(Command::Stop);
             self.busy = true;
@@ -2563,7 +2588,6 @@ impl ScopeApp {
     }
 
     fn input_controls(&mut self, ui: &mut egui::Ui) {
-        self.lockin_controls(ui);
         let old_source = self.source;
         ui.add_enabled_ui(!self.busy && self.pending_stop.is_none(), |ui| {
             ui.horizontal(|ui| {
@@ -4585,6 +4609,8 @@ impl ScopeApp {
             },
             workspace: settings::Workspace {
                 visible: self.visible,
+                lockin_visible: self.lockin_visible,
+                lockin_display: self.lockin_display,
                 layout: self.plot_layout,
                 sidebar_visible: self.sidebar.visible,
                 scope_enabled: self.enabled,
@@ -4680,6 +4706,8 @@ impl ScopeApp {
         self.calibration.pending = calibrations;
         self.calibration.select();
         self.visible = w.visible;
+        self.lockin_visible = w.lockin_visible;
+        self.lockin_display = w.lockin_display;
         self.plot_layout = w.layout;
         self.previous_view = None;
         self.sidebar.visible = w.sidebar_visible;
@@ -4747,18 +4775,20 @@ impl ScopeApp {
     }
 
     fn select_view(&mut self, visible: [bool; 4]) {
-        if self.visible == visible {
+        if self.visible == visible && !self.lockin_visible {
             return;
         }
         self.previous_view
-            .get_or_insert((self.visible, self.plot_layout));
+            .get_or_insert((self.visible, self.lockin_visible, self.plot_layout));
         self.visible = visible;
+        self.lockin_visible = false;
         self.plot_layout = PlotLayout::Auto;
     }
 
     fn restore_view(&mut self) {
-        if let Some((visible, layout)) = self.previous_view.take() {
+        if let Some((visible, lockin, layout)) = self.previous_view.take() {
             self.visible = visible;
+            self.lockin_visible = lockin;
             self.plot_layout = layout;
         }
     }
@@ -4769,10 +4799,16 @@ impl ScopeApp {
                 ("Scope only", [true, false, false, false]),
                 ("Spectrum only", [false, true, false, false]),
                 ("Scope + Spectrum", [true, true, false, false]),
-                ("All instruments", [true; 4]),
+                ("All monitors", [true; 4]),
             ] {
-                if ui.selectable_label(self.visible == visible, title).clicked() {
+                if ui.selectable_label(self.visible == visible && !self.lockin_visible, title).clicked() {
                     self.select_view(visible);
+                    ui.close();
+                }
+            }
+            for (title, scope) in [("Lock-in only", false), ("Scope + Lock-in", true)] {
+                if ui.selectable_label(self.lockin_visible && self.visible == [scope, false, false, false], title).clicked() {
+                    self.select_lockin_view(scope);
                     ui.close();
                 }
             }
@@ -5868,7 +5904,7 @@ impl eframe::App for ScopeApp {
                     ui.separator();
                     ui.label(
                         RichText::new(if self.pending_stop.is_some() {
-                            "FINISHING SPECTRUM…"
+                            "FINISHING ANALYSIS…"
                         } else if self.busy {
                             "OPENING DEVICE…"
                         } else if self.smoke {
@@ -6046,8 +6082,10 @@ impl eframe::App for ScopeApp {
                     .into_iter()
                     .enumerate()
                 {
-                    let enabled =
-                        self.visible.iter().filter(|v| **v).count() > 1 || !self.visible[index];
+                    let enabled = self.visible.iter().filter(|v| **v).count()
+                        + usize::from(self.lockin_visible)
+                        > 1
+                        || !self.visible[index];
                     if ui
                         .add_enabled(
                             enabled,
@@ -6058,8 +6096,19 @@ impl eframe::App for ScopeApp {
                         self.visible[index] = !self.visible[index];
                     }
                 }
+                if ui
+                    .add_enabled(
+                        self.visible.contains(&true) || !self.lockin_visible,
+                        egui::Button::new("Lock-in").selected(self.lockin_visible),
+                    )
+                    .clicked()
+                {
+                    self.lockin_visible = !self.lockin_visible;
+                }
                 self.view_menu(ui);
-                self.cursor_controls(ui);
+                if self.visible.contains(&true) {
+                    self.cursor_controls(ui);
+                }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui
                         .selectable_label(self.sidebar.visible, "Settings")
@@ -6085,6 +6134,7 @@ impl eframe::App for ScopeApp {
             .into_iter()
             .enumerate()
             .filter_map(|(i, plot)| self.visible[i].then_some(plot))
+            .chain(self.lockin_visible.then_some(Instrument::Lockin))
             .collect();
             let columns = instruments.len() > 1 && self.plot_layout.columns(available.x);
             let rows = if columns {
@@ -6118,6 +6168,7 @@ impl eframe::App for ScopeApp {
                                     Instrument::Spectrum => self.spectrum_panel(ui),
                                     Instrument::Spectrogram => self.spectrogram_panel(ui),
                                     Instrument::Xy => self.xy_panel(ui),
+                                    Instrument::Lockin => self.lockin_panel(ui),
                                 },
                             );
                         }

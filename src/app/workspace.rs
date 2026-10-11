@@ -207,35 +207,6 @@ impl ScopeApp {
         ui.checkbox(&mut s.reference_enabled, "Reference present");
     }
 
-    pub(super) fn lockin_controls(&mut self, ui: &mut egui::Ui) {
-        ui.collapsing("Lock-in · experimental 2ch",|ui| {
-            let running=self.running();
-            let before=self.lockin_settings;
-            let s=&mut self.lockin_settings;
-            ui.checkbox(&mut s.enabled,"Enable Lock-in");
-            channel_select(ui,"lockin_reference",&mut s.reference_channel,self.channels.max(2));
-            channel_select(ui,"lockin_response",&mut s.response_channel,self.channels.max(2));
-            ui.add(egui::DragValue::new(&mut s.frequency_hz).range(10.0..=80000.0).prefix("Demodulation Hz "));
-            ui.checkbox(&mut s.track_reference,"Track measured REF (±10% of hint)");
-            egui::ComboBox::from_id_salt("lockin_window").selected_text(format!("{} samples",s.integration_samples)).show_ui(ui,|ui| {for n in [1024,4096,16384,65536] {ui.selectable_value(&mut s.integration_samples,n,n.to_string());}});
-            ui.add(egui::DragValue::new(&mut s.time_constant_seconds).range(0.001..=10.0).speed(0.001).prefix("Time constant s "));
-            if before!=*s && running {
-                if let Err(e)=s.validate(self.sample_rate) {self.error=Some(e);self.lockin_settings=before;}
-                else if let Some(core)=&self.core {core.configure_lockin(*s);}
-            }
-            ui.label(RichText::new("Same-window periodic Hann weighted DC + sin + cos fit; measured input REF phase rotation, then two EMA poles. Settled after 10τ. X/Y are response peak units relative to reference; positive phase leads. Physical use is unverified. Current REF loss clears all filtered values.").small().color(MUTED));
-            let r=&self.lockin_result;
-            ui.label(format!("{:?} · interval {:?} · missing {}",r.state,r.sample_range,r.missing_samples));
-            ui.label(format!("Measured REF {:?} Hz | AC RMS {:?} FS | sinusoid fraction {:?}",r.reference_frequency_hz,r.reference_ac_rms_fs,r.reference_sinusoid_fraction));
-            if let (Some(x),Some(y),Some(a),Some(p))=(r.x,r.y,r.amplitude_peak,r.phase_degrees) {
-                let unit=self.calibration.captured.unit(r.settings.response_channel);
-                ui.label(format!("X {x:.9e} · Y {y:.9e} · peak {a:.9e} {unit}"));
-                ui.label(format!("Phase {p:+.6}° · gain {:.9e}",r.gain.unwrap_or(0.0)));
-                ui.label(RichText::new(format!("Captured {} Hz · τ {} s · nominal {} Hz · generation {}",r.settings.frequency_hz,r.settings.time_constant_seconds,self.sample_rate,self.input_generation)).small());
-            }
-        });
-    }
-
     pub(super) fn file_menu(&mut self, ui: &mut egui::Ui) {
         ui.menu_button("File", |ui| {
             ui.add_enabled_ui(!self.workspace_pending, |ui| {

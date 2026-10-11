@@ -185,6 +185,10 @@ pub enum PlotLayout {
 #[serde(deny_unknown_fields)]
 pub struct Workspace {
     pub visible: [bool; 4],
+    #[serde(default)]
+    pub lockin_visible: bool,
+    #[serde(default)]
+    pub lockin_display: LockinDisplay,
     pub layout: PlotLayout,
     pub sidebar_visible: bool,
     pub scope_enabled: [bool; 2],
@@ -204,6 +208,15 @@ pub struct Workspace {
     pub xy_x_fs_per_div: f64,
     pub xy_y_fs_per_div: f64,
     pub xy_cursor_mode: CursorMode,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LockinDisplay {
+    #[default]
+    Polar,
+    Cartesian,
+    All,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -291,7 +304,7 @@ impl Document {
                 .map_err(str::to_owned)?;
         }
         let w = &self.workspace;
-        if !w.visible.contains(&true) {
+        if !w.visible.contains(&true) && !w.lockin_visible {
             return Err("At least one instrument must be visible".into());
         }
         for scale in [
@@ -563,6 +576,8 @@ mod tests {
             },
             workspace: Workspace {
                 visible: [true; 4],
+                lockin_visible: false,
+                lockin_display: LockinDisplay::Polar,
                 layout: PlotLayout::Auto,
                 sidebar_visible: true,
                 scope_enabled: [true; 2],
@@ -595,6 +610,25 @@ mod tests {
             is_default: true,
             sample_rates: vec![48_000, 96_000],
         }
+    }
+
+    #[test]
+    fn lockin_only_workspace_roundtrips_and_older_files_keep_monitor_defaults() {
+        let mut document = fixture();
+        document.workspace.visible = [false; 4];
+        document.workspace.lockin_visible = true;
+        document.workspace.lockin_display = LockinDisplay::Cartesian;
+        assert_eq!(
+            Document::decode(&document.encode().unwrap()).unwrap(),
+            document
+        );
+        let mut older = serde_json::to_value(fixture()).unwrap();
+        let workspace = older["workspace"].as_object_mut().unwrap();
+        workspace.remove("lockin_visible");
+        workspace.remove("lockin_display");
+        let restored = Document::decode(&serde_json::to_vec(&older).unwrap()).unwrap();
+        assert!(!restored.workspace.lockin_visible);
+        assert_eq!(restored.workspace.lockin_display, LockinDisplay::Polar);
     }
 
     #[test]

@@ -163,7 +163,11 @@ ScopeではRMS・Peak・P-Pと時間カーソルの数値に校正を適用し�
 
 通常ビルドの **Input source / Software Loopback** を選び、Startを押すと2chの同期f64入力を生成します。CH 1はREF、CH 2は既知ゲイン・位相・整数サンプル遅延・DC・雑音を適用した正弦波DUTです。雑音は指定RMSの独立な一様乱数です。周波数・振幅・REFの有効／無効と応答周波数ずれも設定でき、条件は次回Startに適用します。公称Fsは44.1／48／96／192 kHzです。整数遅延は正弦波を解析的に遅らせ、開始直後の未到達応答は0とします。スピーカーや物理出力は使いません。
 
-Input source内の **EXPERIMENTAL LOCK-IN · SYNCHRONOUS 2CH** で有効化し、REF／Response CH、REF周波数ヒント、時定数、積分サンプル数を指定します。REFは常に入力サンプルを使用します。Trackingはヒントの±10%に限定し、REFのAC RMS不足・単一正弦波への適合率98%未満・一窓3周期未満は無効になります。既定のREF閾値は0.001 FS RMSです。同じCHをREF／応答へ選ぶ自己検査も可能です。
+上部の **Lock-in** で独立した測定画面を追加できます。**View / Lock-in only** は単独表示、**Scope + Lock-in** は波形と並べた表示です。左側の **Lock-in amplifier / Open Lock-in display** からも単独表示を開けます。表示を隠しても有効なロックイン演算は継続します。
+
+**Lock-in amplifier / Enable demodulator** または画面下の **Demodulate** で有効化し、Signal／Reference CH、REF周波数ヒント、時定数、積分サンプル数、REFのAC RMS閾値を指定します。画面下の **REF / Filter…** でも周波数・Tracking・時定数とプリセット・積分窓を調整できます。取得中の変更は平均をリセットして再整定し、停止中の変更は次回Start用です。保持中は取得時の条件を表示し、変更があると **Next Start settings changed** を併記します。REFは常に入力サンプルを使用します。Trackingはヒントの±10%に限定し、REFのAC RMS不足・単一正弦波への適合率98%未満・一窓3周期未満は無効になります。既定のREF閾値は0.001 FS RMSです。同じCHをREF／応答へ選ぶ自己検査も可能です。
+
+画面の **R / θ**、**X / Y**、**All four** で大きな数値表示を切り替えます。数値下のバーは表示専用の自動スケールで、入力感度や測定演算を変更しません。FS／校正後の単位、peak定義、REF周波数、Gain、取得時のτ・積分窓を併記します。Gainの単位は応答単位／REF単位です。**REF VALID**、**SETTLING** と10τの進捗、**REF LOST / UNSTABLE**、入力欠落・無効状態、**HOLD** を区別し、無効値はゼロで代用せず「—」とします。**Measurement details** で整数サンプル区間、REF強度・適合率、処理窓数・欠落数、校正ID／版を確認できます。Lock-inの表示選択・座標表示は測定設定JSONのWorkspaceへ保存され、旧版1ファイルでは非表示・R／θが既定です。
 
 基本波のX／Yは同じ非重複整数窓で測ったREF位相を補正してから二段の複素EMAで平均します。周期Hannの重み付きDC／sin／cos適合を使い、DCオフセットと校正オフセットはACから除外します。校正ゲインはREFと応答の両方へ適用します。Rはpeak振幅、正のY／位相は応答の進みです。複素応答/REFも平均してGainを表示します。フィルター係数は `1 − exp(−N/(Fs×τ))`、整定判定は連続有効入力10τで、UI時刻・壁時計には依存しません。窓平均も応答帯域・遅延に寄与し、τだけで帯域を決めたとは扱いません。欠落・非有限・REF喪失では古い平均と数値を破棄し、回復後に整定し直します。
 
@@ -302,6 +306,10 @@ Audio device → CPAL callback → bounded SPSC → measurement worker ← inter
 
 `MEASURELAB_UI_SMOKE_STAGE3F=1`は通常のSoftware Loopbackを起動・停止し、Scope統計、FFTと実験段階Lock-inの理論値、設定・参照結果の保存／読み込み／復元／再測定、CSV／PNG、Singleの480サンプル捕捉と未充填512kをアプリ状態で照合します。保存先は `dist/stage3f-*` です。続いて別プロセスで `MEASURELAB_UI_SMOKE_REPLAY=1` を指定すると前回ファイルから復元して再測定し、アプリ再起動後の再現を確認します。`MEASURELAB_UI_SMOKE_COMPARE=1` は比較画面を開きます。ネイティブ選択ダイアログはこのQAの自動操作対象外です。
 
+`MEASURELAB_UI_SMOKE_LOCKIN=polar` は通常のSoftware Loopback経路で750 Hz・0.0625 FS peak・30°を測定してStopし、Lock-in単独画面を撮影します。`cartesian`／`all`／`pair` はX／Y・4値・Scopeとの併用、`settling` は整定中、`ref-loss` はREF喪失、`held-edit` は保持した結果と次回Start用設定の区別、`live-edit` は取得中のτ変更と再整定、`source-change` は入力ソース切り替え時の旧値破棄を確認します。`--compact` で狭幅にします。撮影先は `dist/ui-smoke.png` です。
+
+GUIの条件付きの結果・画面寸法・未確認事項は [Lock-in GUIの確認](validation/LOCKIN_GUI_2026-10.md) に保持します。
+
 ```bash
 MEASURELAB_UI_SMOKE_STAGE3F=1 target/release/measurelab --ui-smoke --new-instance
 MEASURELAB_UI_SMOKE_STAGE3F=1 MEASURELAB_UI_SMOKE_REPLAY=1 \
@@ -424,6 +432,7 @@ MEASURELAB_PROFILE_SECONDS=10 MEASURELAB_PROFILE_FFT_PRECISION=f64 \
 - `src/results.rs` / `src/result_image.rs` / `src/workspace_io.rs`: 容量制限と整合検証付き参照読み込み、f64 CSV、PNG、ネイティブファイル選択とI/O。
 - `src/acquisition.rs`: サンプル時計のNormal／Single捕捉とAutoset。
 - `src/loopback.rs` / `src/lockin.rs` / `src/lockin_worker.rs`: 通常ビルドの仮想DUTと実験段階の同期REF Lock-in、固定容量の独立演算。
+- `src/app/lockin_panel.rs`: Lock-inのR／θ・X／Y・4値表示、参照状態・整定・保持、測定条件の操作と表示専用のバー。
 - `src/export.rs` / `src/file_io.rs`: 保持したScope／Spectrumと測定条件の版付きJSON、欠落・無効状態とf64線形値、専用I/Oワーカー、設定保存と共有する原子的ファイル置換。
 - `src/calibration.rs`: ID・版・参照条件付きのCH校正、Scope実サンプルの換算・RMS／Peak／P-P、非有限値の無効化。
 - `src/measurement.rs`: GUI非依存の入力消費・共通履歴・デモ・Scope統計・解析への供給、入力世代・欠落付きの容量固定スナップショット。
