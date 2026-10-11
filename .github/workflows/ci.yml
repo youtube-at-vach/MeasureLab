@@ -56,3 +56,22 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config libasound2-dev libxkbcommon-dev libwayland-dev libx11-dev libxrandr-dev libxi-dev libxcursor-dev
       - name: Check declared minimum Rust version including desktop and QA
         run: cargo check --locked --all-targets --all-features
+
+  # Keep the status name required by main's existing branch ruleset.
+  lint-and-test:
+    needs: [check, msrv]
+    # Report failure even when a dependency fails or is skipped.
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every Rust check to succeed
+        env:
+          CHECK_RESULT: ${{ needs.check.result }}
+          MSRV_RESULT: ${{ needs.msrv.result }}
+        run: |
+          if [[ "$CHECK_RESULT" != success || "$MSRV_RESULT" != success ]]; then
+            echo "Rust checks did not all succeed: check=$CHECK_RESULT, msrv=$MSRV_RESULT" >&2
+            exit 1
+          fi
+        shell: bash

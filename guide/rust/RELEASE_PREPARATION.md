@@ -9,15 +9,15 @@
 | 優先 | 項目・対象 | 現状と次の完了条件 |
 | --- | --- | --- |
 | P0 | 利用者向けREADME（日英） | 機能・起動・確認範囲・旧版リンクを整備済み。マージ対象の実装と表記を最後に照合する |
-| P0 | Rust CI | 3 OSのfmt／Clippy／通常・QA・GUIなしテスト／通常releaseビルド、LinuxのRust 1.95チェックを定義済み。GitHubの対象SHAで全ジョブ成功を確認する |
+| P0 | Rust CI | 3 OSのfmt／Clippy／通常・QA・GUIなしテスト／通常releaseビルド、LinuxのRust 1.95チェックを定義済み。全ジョブの成功を必須チェック`lint-and-test`へ集約し、失敗・キャンセル・スキップを成功扱いしない。GitHubの対象SHAで全ジョブ成功を確認する |
 | P0 | Web CI | 新旧MkDocs strictビルド・サイトテスト／ビルド・Ruff・Markdown lint・URL保持確認をPRで実行し、previewを保存する構成を整備済み。公開はmainからの独立deployジョブのみ |
 | P0 | 旧版の公開継続 | 下記URL構成と旧版ラベルを整備済み。統合成果物の全旧HTMLルート・画像・言語切り替えを比較し、公開前に主要導線を確認する |
-| P0 | 既存workflowの整理 | サイト検証をPages buildへ統合。退役したRelease依存のVirusTotal workflowを削除。actionlintは版指定・チェックサム確認へ変更。GitHubの必須チェック設定に旧job名が残らないか確認する |
+| P0 | 既存workflowの整理 | サイト検証をPages buildへ統合し、チェック名`docs-lint`を維持。退役したRelease依存のVirusTotal workflowを削除。actionlintは版指定・チェックサム確認へ変更。mainの必須チェック名と対象SHAの実行結果が一致することを確認する |
 | P0 | コミュニティ文書 | CONTRIBUTING、Security Policy、版・測定条件を区別するIssueフォーム、PRテンプレートを整備済み。サポート表記に配布・実機保証を混ぜない |
 | P0 | 履歴・ブランチ・GitHub設定 | `v0.9.1`の参照先と`archive/python-v0.9.1`はremoteで同じ`b7a10b1a`を保持。mainとの差分・未統合のRust作業を確認し、必要な保護ルール・Pages環境を設定してから依頼された移行を実行する |
 | P0 | 移行時のリンクと運用 | main移行コミットでAGENTS／CONTRIBUTING／README／オンライン文書の`rewrite/rust`を更新。clone手順・CI badge・Dependabot・PR base・Required checks・リポジトリ説明をmain運用に揃える |
 
-新CIはmainとrewrite/rustを対象にし、必須チェックを文書だけのPRでも返せるようpathsフィルターを外している。必須候補は`check (ubuntu-latest)`、`check (macos-latest)`、`check (windows-latest)`、`msrv`、Pagesの`build`、`actionlint`。実際にGitHubが返したチェック名を確認して保護設定へ登録し、推測した名前だけで設定しない。
+新CIはmainとrewrite/rustを対象にし、必須チェックを文書だけのPRでも返せるようpathsフィルターを外している。mainの既存rulesetが要求する`lint-and-test`、`docs-lint`、`actionlint`の名前を維持する。`lint-and-test`は3 OSの`check`と`msrv`がすべて成功した場合だけ成功し、`docs-lint`は新旧マニュアル・サイト・Pythonツール・Markdownの検証を実行する。Pagesのjob IDは`build`のままなので、deployの依存関係も維持する。必須チェック設定を変更するときは、実際にGitHubが返したチェック名を確認し、推測した名前だけで設定しない。
 
 ## 初回プロトタイプ配布前のタスク
 

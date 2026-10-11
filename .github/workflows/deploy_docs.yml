@@ -16,6 +16,8 @@ concurrency:
 
 jobs:
   build:
+    # Keep the status name required by main's existing branch ruleset.
+    name: docs-lint
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
