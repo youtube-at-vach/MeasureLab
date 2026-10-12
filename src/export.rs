@@ -1,4 +1,4 @@
-//! Finite, held Scope/Spectrum results with their acquisition conditions.
+//! Finite, held Scope/Spectrum/Lock-in results with their acquisition conditions.
 //! Only owned f64 results cross into the bounded file-I/O worker.
 use crate::{
     audio, calibration,
@@ -250,6 +250,33 @@ pub struct Lockin {
     pub gain_unit: String,
 }
 
+impl Lockin {
+    pub fn capture(result: crate::lockin::Result, calibrations: &calibration::Set) -> Self {
+        let definitions = ChannelCalibration::capture(calibrations);
+        let reference_channel = result.settings.reference_channel;
+        let response_channel = result.settings.response_channel;
+        let reference_unit = calibrations.unit(reference_channel);
+        let response_unit = calibrations.unit(response_channel);
+        Self {
+            result,
+            reference_calibration: definitions
+                .iter()
+                .find(|c| c.channel == reference_channel)
+                .cloned(),
+            response_calibration: definitions
+                .iter()
+                .find(|c| c.channel == response_channel)
+                .cloned(),
+            response_unit_peak: format!("{response_unit} peak"),
+            gain_unit: if reference_unit == response_unit {
+                "ratio".into()
+            } else {
+                format!("{response_unit}/{reference_unit}")
+            },
+        }
+    }
+}
+
 impl Document {
     pub(crate) fn validate_header(&self) -> Result<(), String> {
         if self.format != FORMAT
@@ -498,6 +525,13 @@ pub fn save(path: &Path, document: &Document) -> Result<(), String> {
         || !document.scope.trigger.level.is_finite()
     {
         return Err("Cannot export nonfinite numbers; invalidate the measurement first".into());
+    }
+    if let Some(lockin) = &document.lockin {
+        lockin.validate(
+            document.input.nominal_sample_rate_hz,
+            document.input.channels,
+            spectrum.diagnostics.input_end,
+        )?;
     }
     crate::file_io::atomic_write(path, |file| {
         let mut writer = BufWriter::new(file);

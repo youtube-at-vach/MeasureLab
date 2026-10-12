@@ -155,47 +155,170 @@ impl Document {
             }
         }
         if let Some(l) = &self.lockin {
-            let r = &l.result;
-            r.settings.validate(self.input.nominal_sample_rate_hz)?;
-            validate_calibration(
-                l.reference_calibration.as_ref(),
-                r.settings.reference_channel,
+            l.validate(
+                self.input.nominal_sample_rate_hz,
+                self.input.channels,
+                s.diagnostics.input_end,
             )?;
-            let has_values = r.state == crate::lockin::State::Valid
-                || (r.state == crate::lockin::State::Settling && r.processed_windows > 0);
-            if has_values != r.amplitude_peak.is_some()
-                || has_values != r.phase_degrees.is_some()
-                || has_values != r.x.is_some()
-                || has_values != r.y.is_some()
-                || has_values != r.gain.is_some()
-                || (has_values && r.processed_windows == 0)
-                || r.latest_window.end > s.diagnostics.input_end
-            {
-                return Err("Lock-in state disagrees with values/input endpoint".into());
-            }
-            validate_calibration(l.response_calibration.as_ref(), r.settings.response_channel)?;
-            if r.sample_range.end < r.sample_range.start
-                || r.latest_window.end < r.latest_window.start
-                || [
-                    r.reference_frequency_hz,
-                    r.reference_ac_rms_fs,
-                    r.reference_sinusoid_fraction,
-                    r.reference_peak,
-                    r.x,
-                    r.y,
-                    r.amplitude_peak,
-                    r.phase_degrees,
-                    r.gain,
-                ]
-                .iter()
-                .flatten()
-                .any(|v| !v.is_finite())
-            {
-                return Err("Invalid Lock-in result conditions".into());
-            }
         }
         Ok(())
     }
+}
+
+impl Lockin {
+    pub(crate) fn validate(
+        &self,
+        rate: u32,
+        channels: usize,
+        input_end: u64,
+    ) -> Result<(), String> {
+        use crate::lockin::State;
+        let r = &self.result;
+        r.settings.validate(rate)?;
+        validate_calibration(
+            self.reference_calibration.as_ref(),
+            r.settings.reference_channel,
+        )?;
+        validate_calibration(
+            self.response_calibration.as_ref(),
+            r.settings.response_channel,
+        )?;
+        let reference_unit = self
+            .reference_calibration
+            .as_ref()
+            .map_or("FS", |c| c.unit.as_str());
+        let response_unit = self
+            .response_calibration
+            .as_ref()
+            .map_or("FS", |c| c.unit.as_str());
+        let gain_unit = if reference_unit == response_unit {
+            "ratio".into()
+        } else {
+            format!("{response_unit}/{reference_unit}")
+        };
+        if self.response_unit_peak != format!("{response_unit} peak")
+            || self.gain_unit != gain_unit
+            || (r.settings.reference_channel == r.settings.response_channel
+                && self.reference_calibration != self.response_calibration)
+        {
+            return Err("Lock-in units disagree with calibration".into());
+        }
+        let has_values =
+            r.state == State::Valid || (r.state == State::Settling && r.processed_windows > 0);
+        let values = [
+            r.reference_frequency_hz,
+            r.reference_ac_rms_fs,
+            r.reference_sinusoid_fraction,
+            r.reference_peak,
+            r.x,
+            r.y,
+            r.amplitude_peak,
+            r.phase_degrees,
+            r.gain,
+        ];
+        let available =
+            r.settings.reference_channel < channels && r.settings.response_channel < channels;
+        if r.settings.enabled == (r.state == State::Disabled)
+            || (r.settings.enabled && !available && r.state != State::Unavailable)
+            || values.iter().any(|v| v.is_some() != has_values)
+            || values.iter().flatten().any(|v| !v.is_finite())
+            || r.sample_range.end < r.sample_range.start
+            || r.latest_window.end < r.latest_window.start
+            || r.latest_window.end > input_end
+            || (!r.latest_window.is_empty()
+                && r.latest_window.end - r.latest_window.start
+                    != r.settings.integration_samples as u64)
+        {
+            return Err("Lock-in state disagrees with values/interval/input endpoint".into());
+        }
+        if !has_values {
+            if r.processed_windows != 0 || r.sample_range != (0..0) {
+                return Err("Invalid Lock-in result retains an average".into());
+            }
+            return Ok(());
+        }
+        let samples = r.sample_range.end - r.sample_range.start;
+        if !available
+            || r.processed_windows == 0
+            || r.processed_windows
+                .checked_mul(r.settings.integration_samples as u64)
+                != Some(samples)
+            || r.latest_window.is_empty()
+            || r.latest_window.end != r.sample_range.end
+            || r.latest_window.start < r.sample_range.start
+            || (r.state == State::Valid)
+                != (samples as f64 >= 10.0 * r.settings.time_constant_seconds * rate as f64)
+        {
+            return Err("Lock-in average/settling disagrees with complete windows".into());
+        }
+        let frequency = r.reference_frequency_hz.unwrap();
+        let fraction = r.reference_sinusoid_fraction.unwrap();
+        let amplitude = r.amplitude_peak.unwrap();
+        let x = r.x.unwrap();
+        let y = r.y.unwrap();
+        let expected_amplitude = x.hypot(y);
+        let phase = r.phase_degrees.unwrap();
+        if frequency <= 0.0
+            || frequency >= rate as f64 / 2.0
+            || frequency * r.settings.integration_samples as f64 / (rate as f64) < 3.0
+            || (r.settings.track_reference
+                && !(r.settings.frequency_hz * 0.9..=r.settings.frequency_hz * 1.1)
+                    .contains(&frequency))
+            || (!r.settings.track_reference && frequency != r.settings.frequency_hz)
+            || r.reference_ac_rms_fs.unwrap() < r.settings.reference_min_rms_fs
+            || !(0.98..=1.0).contains(&fraction)
+            || r.reference_peak.unwrap() <= 0.0
+            || amplitude < 0.0
+            || !expected_amplitude.is_finite()
+            || r.gain.unwrap() < 0.0
+            || !(-180.0..=180.0).contains(&phase)
+            || (amplitude - expected_amplitude).abs() > expected_amplitude * 8.0 * f64::EPSILON
+            || phase_difference(phase, y.atan2(x).to_degrees()).abs() > 1e-10
+        {
+            return Err("Lock-in numeric values disagree with REF/peak/phase definitions".into());
+        }
+        Ok(())
+    }
+}
+
+/// Differences between settled measurements with matching definitions and calibrations.
+/// Independent sample-clock origins are intentionally not aligned.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LockinDifference {
+    pub x: f64,
+    pub y: f64,
+    pub amplitude_peak: f64,
+    pub phase_degrees: f64,
+    pub gain: f64,
+}
+
+pub fn lockin_difference(reference: &Document, current: &Document) -> Option<LockinDifference> {
+    let a = reference.lockin.as_ref()?;
+    let b = current.lockin.as_ref()?;
+    if reference.loss.input_failed
+        || current.loss.input_failed
+        || reference.input.nominal_sample_rate_hz != current.input.nominal_sample_rate_hz
+        || a.result.state != crate::lockin::State::Valid
+        || b.result.state != crate::lockin::State::Valid
+        || a.result.settings != b.result.settings
+        || a.reference_calibration != b.reference_calibration
+        || a.response_calibration != b.response_calibration
+        || a.response_unit_peak != b.response_unit_peak
+        || a.gain_unit != b.gain_unit
+    {
+        return None;
+    }
+    Some(LockinDifference {
+        x: b.result.x? - a.result.x?,
+        y: b.result.y? - a.result.y?,
+        amplitude_peak: b.result.amplitude_peak? - a.result.amplitude_peak?,
+        phase_degrees: phase_difference(b.result.phase_degrees?, a.result.phase_degrees?),
+        gain: b.result.gain? - a.result.gain?,
+    })
+}
+
+fn phase_difference(current: f64, reference: f64) -> f64 {
+    (current - reference + 180.0).rem_euclid(360.0) - 180.0
 }
 
 fn validate_calibration(
@@ -303,6 +426,54 @@ pub fn save_csv(path: &Path, doc: &Document) -> Result<(), String> {
                 )?;
             }
         }
+        if let Some(l) = &doc.lockin {
+            let r = &l.result;
+            writeln!(
+                w,
+                "section,reference_channel,response_channel,contributing_start,contributing_end,latest_start,latest_end,processed_windows,missing_samples,x_peak,y_peak,amplitude_peak,phase_lead_degrees,response_unit_peak,gain,gain_unit,reference_frequency_hz,reference_ac_rms_fs,reference_peak,reference_unit_peak,reference_sinusoid_fraction,state"
+            )?;
+            write!(
+                w,
+                "lockin,{},{},{},{},{},{},{},{}",
+                r.settings.reference_channel,
+                r.settings.response_channel,
+                r.sample_range.start,
+                r.sample_range.end,
+                r.latest_window.start,
+                r.latest_window.end,
+                r.processed_windows,
+                r.missing_samples
+            )?;
+            for v in [r.x, r.y, r.amplitude_peak, r.phase_degrees] {
+                write!(w, ",{}", v.map_or(String::new(), |v| v.to_string()))?;
+            }
+            write!(
+                w,
+                ",\"{}\",{},\"{}\"",
+                l.response_unit_peak.replace('"', "\"\""),
+                r.gain.map_or(String::new(), |v| v.to_string()),
+                l.gain_unit.replace('"', "\"\"")
+            )?;
+            for v in [
+                r.reference_frequency_hz,
+                r.reference_ac_rms_fs,
+                r.reference_peak,
+            ] {
+                write!(w, ",{}", v.map_or(String::new(), |v| v.to_string()))?;
+            }
+            let reference_unit = l
+                .reference_calibration
+                .as_ref()
+                .map_or("FS", |c| c.unit.as_str());
+            writeln!(
+                w,
+                ",\"{} peak\",{},{}",
+                reference_unit.replace('"', "\"\""),
+                r.reference_sinusoid_fraction
+                    .map_or(String::new(), |v| v.to_string()),
+                serde_json::to_string(&r.state).map_err(std::io::Error::other)?
+            )?;
+        }
         w.flush()
     })
 }
@@ -335,6 +506,265 @@ mod tests {
         let mut r = SpectrumResult::empty(s, 48000);
         a.copy_result(&mut r);
         crate::export::tests::document(&h, &r, &Set::default(), Pair([0, 1]))
+    }
+
+    fn lockin_fixture(
+        peak: f64,
+        phase: f64,
+        calibrations: &Set,
+        state: crate::lockin::State,
+    ) -> Document {
+        use crate::lockin;
+        let settings = lockin::Settings {
+            enabled: true,
+            frequency_hz: 750.0,
+            integration_samples: 1024,
+            track_reference: false,
+            time_constant_seconds: if state == lockin::State::Settling {
+                10.0
+            } else {
+                0.02
+            },
+            ..Default::default()
+        };
+        let mut detector = lockin::Analyzer::new(settings, 48000);
+        detector.set_calibrations(calibrations.clone());
+        let mut history = History::new(1024);
+        // Preserve exact integer clocks beyond f64's consecutive-integer range.
+        let first = (1u64 << 54) + 7;
+        for i in 0..65536 {
+            let angle = std::f64::consts::TAU * 750.0 * i as f64 / 48000.0;
+            let pair = [
+                if state == lockin::State::ReferenceLost {
+                    0.2
+                } else {
+                    0.125 * angle.sin()
+                },
+                0.1 + peak * (angle + phase.to_radians()).sin(),
+            ];
+            detector.push_pair(first + i, pair);
+            history.push_at(first + i, pair);
+        }
+        assert_eq!(detector.result().state, state);
+        let fft_settings = Settings {
+            size: 1024,
+            averages: 1,
+            ..Default::default()
+        };
+        let mut fft = Analyzer::new(fft_settings, 48000);
+        fft.update_window(&history, history.range(), 1);
+        let mut fft_result = SpectrumResult::empty(fft_settings, 48000);
+        fft.copy_result(&mut fft_result);
+        let mut doc =
+            crate::export::tests::document(&history, &fft_result, calibrations, Pair([0, 1]));
+        doc.lockin = Some(Lockin::capture(detector.result().clone(), calibrations));
+        doc.validate().unwrap();
+        doc
+    }
+
+    #[test]
+    fn lockin_json_csv_roundtrip_preserves_micro_signal_calibrations_and_invalid_states() {
+        use crate::lockin::State;
+        let calibrations = Set::default()
+            .with(
+                0,
+                Some(
+                    Calibration::new("ref".into(), 3, -2.0, 0.4, "A".into(), "Known REF".into())
+                        .unwrap(),
+                ),
+            )
+            .unwrap()
+            .with(
+                1,
+                Some(
+                    Calibration::new(
+                        "response".into(),
+                        7,
+                        4.0,
+                        0.8,
+                        "V".into(),
+                        "Known DUT".into(),
+                    )
+                    .unwrap(),
+                ),
+            )
+            .unwrap();
+        let path = std::env::temp_dir().join(format!(
+            "measurelab-lockin-roundtrip-{}.json",
+            std::process::id()
+        ));
+        let csv_path = path.with_extension("csv");
+        for state in [State::Valid, State::Settling, State::ReferenceLost] {
+            let doc = lockin_fixture(1.25e-8, 30.0, &calibrations, state);
+            crate::export::save(&path, &doc).unwrap();
+            let loaded = load(&path).unwrap();
+            assert_eq!(doc, loaded);
+            let l = loaded.lockin.as_ref().unwrap();
+            assert_eq!(l.response_unit_peak, "V peak");
+            assert_eq!(l.gain_unit, "V/A");
+            assert_eq!(l.reference_calibration.as_ref().unwrap().revision, 3);
+            assert_eq!(l.response_calibration.as_ref().unwrap().revision, 7);
+            if state == State::Valid {
+                // DC/calibration offsets are excluded; negative REF gain rotates 180°.
+                assert!((l.result.amplitude_peak.unwrap() - 5e-8).abs() < 1e-15);
+                assert!((l.result.phase_degrees.unwrap() + 150.0).abs() < 1e-6);
+                assert!((l.result.gain.unwrap() - 2e-7).abs() < 1e-14);
+            }
+            save_csv(&csv_path, &loaded).unwrap();
+            let csv = std::fs::read_to_string(&csv_path).unwrap();
+            let row: Vec<_> = csv
+                .lines()
+                .find(|line| line.starts_with("lockin,"))
+                .unwrap()
+                .split(',')
+                .collect();
+            assert_eq!(row.len(), 22);
+            assert_eq!(row[3].parse::<u64>().unwrap(), l.result.sample_range.start);
+            assert_eq!(row[6].parse::<u64>().unwrap(), l.result.latest_window.end);
+            assert_eq!(row[13], "\"V peak\"");
+            assert_eq!(row[15], "\"V/A\"");
+            for (column, value) in [
+                (9, l.result.x),
+                (10, l.result.y),
+                (11, l.result.amplitude_peak),
+                (12, l.result.phase_degrees),
+                (14, l.result.gain),
+                (16, l.result.reference_frequency_hz),
+                (17, l.result.reference_ac_rms_fs),
+                (18, l.result.reference_peak),
+                (20, l.result.reference_sinusoid_fraction),
+            ] {
+                if let Some(v) = value {
+                    assert_eq!(row[column].parse::<f64>().unwrap().to_bits(), v.to_bits());
+                } else {
+                    assert_eq!(row[column], "");
+                }
+            }
+            assert_eq!(row[21], serde_json::to_string(&state).unwrap());
+        }
+        std::fs::remove_file(path).unwrap();
+        std::fs::remove_file(csv_path).unwrap();
+    }
+
+    #[test]
+    fn lockin_rejects_corrupt_definitions_and_save_preserves_previous_file() {
+        let doc = lockin_fixture(0.0625, 30.0, &Set::default(), crate::lockin::State::Valid);
+        let path = std::env::temp_dir().join(format!(
+            "measurelab-lockin-corrupt-{}.json",
+            std::process::id()
+        ));
+        for corrupt in [
+            "unit",
+            "gain_unit",
+            "range",
+            "latest",
+            "windows",
+            "overflow",
+            "settling",
+            "state",
+            "channel",
+            "r",
+            "phase",
+            "gain",
+            "frequency",
+            "rms",
+            "fraction",
+            "peak",
+            "diagnostic",
+        ] {
+            let mut json = serde_json::to_value(&doc).unwrap();
+            let l = &mut json["lockin"];
+            match corrupt {
+                "unit" => l["response_unit_peak"] = "V RMS".into(),
+                "gain_unit" => l["gain_unit"] = "V/A".into(),
+                "range" => l["result"]["sample_range"]["start"] = 0.into(),
+                "latest" => l["result"]["latest_window"]["start"] = 0.into(),
+                "windows" => l["result"]["processed_windows"] = 1.into(),
+                "overflow" => l["result"]["processed_windows"] = u64::MAX.into(),
+                "settling" => l["result"]["settings"]["time_constant_seconds"] = 10.0.into(),
+                "state" => l["result"]["state"] = "reference_lost".into(),
+                "channel" => l["result"]["settings"]["response_channel"] = 15.into(),
+                "r" => l["result"]["amplitude_peak"] = 0.5.into(),
+                "phase" => l["result"]["phase_degrees"] = (-30.0).into(),
+                "gain" => l["result"]["gain"] = (-0.5).into(),
+                "frequency" => l["result"]["reference_frequency_hz"] = 751.0.into(),
+                "rms" => l["result"]["reference_ac_rms_fs"] = 0.0.into(),
+                "fraction" => l["result"]["reference_sinusoid_fraction"] = 0.97.into(),
+                "peak" => l["result"]["reference_peak"] = 0.0.into(),
+                _ => l["result"]["reference_frequency_hz"] = serde_json::Value::Null,
+            }
+            std::fs::write(&path, serde_json::to_vec(&json).unwrap()).unwrap();
+            assert!(load(&path).is_err(), "accepted {corrupt}");
+            crate::export::save(&path, &doc).unwrap();
+            let previous = std::fs::read(&path).unwrap();
+            let bad: Document = serde_json::from_value(json).unwrap();
+            assert!(crate::export::save(&path, &bad).is_err(), "saved {corrupt}");
+            assert_eq!(std::fs::read(&path).unwrap(), previous);
+        }
+        let mut bad = doc.clone();
+        bad.lockin.as_mut().unwrap().result.x = Some(f64::NAN);
+        assert!(crate::export::save(&path, &bad).is_err());
+        assert_eq!(load(&path).unwrap(), doc);
+        let mut old = serde_json::to_value(&doc).unwrap();
+        old.as_object_mut().unwrap().remove("lockin");
+        let old: Document = serde_json::from_value(old).unwrap();
+        old.validate().unwrap();
+        assert!(old.lockin.is_none());
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn lockin_comparison_wraps_phase_and_requires_matching_settled_conditions() {
+        let a = lockin_fixture(0.0625, 179.0, &Set::default(), crate::lockin::State::Valid);
+        let mut b = lockin_fixture(0.125, -179.0, &Set::default(), crate::lockin::State::Valid);
+        b.input.generation += 1;
+        let d = lockin_difference(&a, &b).unwrap();
+        assert!((d.phase_degrees - 2.0).abs() < 1e-10);
+        assert!((d.amplitude_peak - 0.0625).abs() < 1e-12);
+        assert!((d.gain - 0.5).abs() < 1e-12);
+        for mismatch in [
+            "rate",
+            "channel",
+            "tau",
+            "window",
+            "tracking",
+            "calibration",
+            "reference_calibration",
+            "state",
+            "input_failed",
+            "absent",
+        ] {
+            let mut b = b.clone();
+            let l = b.lockin.as_mut().unwrap();
+            match mismatch {
+                "rate" => b.input.nominal_sample_rate_hz = 96000,
+                "channel" => l.result.settings.reference_channel = 1,
+                "tau" => l.result.settings.time_constant_seconds = 0.03,
+                "window" => l.result.settings.integration_samples = 4096,
+                "tracking" => l.result.settings.track_reference = true,
+                "calibration" | "reference_calibration" => {
+                    let c = crate::settings::ChannelCalibration {
+                        channel: 1,
+                        id: "new".into(),
+                        revision: 2,
+                        gain: 2.0,
+                        offset: 0.0,
+                        unit: "FS".into(),
+                        conditions: "Different revision".into(),
+                    };
+                    if mismatch == "calibration" {
+                        l.response_calibration = Some(c);
+                    } else {
+                        l.reference_calibration =
+                            Some(crate::settings::ChannelCalibration { channel: 0, ..c });
+                    }
+                }
+                "state" => l.result.state = crate::lockin::State::Settling,
+                "input_failed" => b.loss.input_failed = true,
+                _ => b.lockin = None,
+            }
+            assert!(lockin_difference(&a, &b).is_none(), "compared {mismatch}");
+        }
     }
     #[test]
     fn result_roundtrip_is_bit_exact_and_rejects_corrupt_metadata_arrays_and_versions() {
@@ -412,7 +842,77 @@ mod tests {
         });
         doc.validate().unwrap();
         assert!(doc.lockin.as_ref().unwrap().result.x.is_none());
+        let path = std::env::temp_dir().join(format!(
+            "measurelab-lockin-unfilled-{}.json",
+            std::process::id()
+        ));
+        crate::export::save(&path, &doc).unwrap();
+        assert_eq!(load(&path).unwrap(), doc);
+        let csv_path = path.with_extension("csv");
+        save_csv(&csv_path, &doc).unwrap();
+        let csv = std::fs::read_to_string(&csv_path).unwrap();
+        let row: Vec<_> = csv
+            .lines()
+            .find(|line| line.starts_with("lockin,"))
+            .unwrap()
+            .split(',')
+            .collect();
+        assert_eq!(row[9], "");
+        assert_eq!(row[14], "");
+        assert_eq!(row[21], "\"settling\"");
+        std::fs::remove_file(path).unwrap();
+        std::fs::remove_file(csv_path).unwrap();
         doc.lockin.as_mut().unwrap().result.x = Some(0.0);
         assert!(doc.validate().is_err());
+    }
+
+    #[test]
+    fn lockin_gap_nonfinite_unavailable_and_disabled_results_roundtrip_without_old_values() {
+        use crate::lockin::{self, State};
+        let path = std::env::temp_dir().join(format!(
+            "measurelab-lockin-invalid-{}.json",
+            std::process::id()
+        ));
+        for state in [
+            State::Missing,
+            State::NonFinite,
+            State::Unavailable,
+            State::Disabled,
+        ] {
+            let mut doc = fixture();
+            let settings = lockin::Settings {
+                enabled: state != State::Disabled,
+                integration_samples: 1024,
+                track_reference: false,
+                ..Default::default()
+            };
+            let mut detector = lockin::Analyzer::new(settings, 48000);
+            for n in 0..1024 {
+                let tone = 0.125 * (std::f64::consts::TAU * 1000.0 * n as f64 / 48000.0).sin();
+                detector.push_pair(n, [tone, tone]);
+            }
+            match state {
+                State::Missing => detector.gap_to(1030),
+                State::NonFinite => detector.push_pair(1024, [f64::NAN, 0.0]),
+                State::Unavailable => detector.push(1024, &[]),
+                _ => {}
+            }
+            assert_eq!(detector.result().state, state);
+            assert_eq!(
+                detector.result().missing_samples,
+                if state == State::Missing { 6 } else { 0 }
+            );
+            doc.spectrum.diagnostics.input_end = 1030;
+            doc.lockin = Some(Lockin::capture(detector.result().clone(), &Set::default()));
+            crate::export::save(&path, &doc).unwrap();
+            assert_eq!(load(&path).unwrap(), doc);
+            let r = &doc.lockin.as_ref().unwrap().result;
+            assert!(r.x.is_none() && r.reference_peak.is_none());
+            assert_eq!(r.processed_windows, 0);
+            let mut bad = doc.clone();
+            bad.lockin.as_mut().unwrap().result.processed_windows = 1;
+            assert!(bad.validate().is_err());
+        }
+        std::fs::remove_file(path).unwrap();
     }
 }

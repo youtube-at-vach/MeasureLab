@@ -235,11 +235,15 @@ Scopeは書き出し時に表示する整数区間・観察サンプル数・ト
 
 Spectrumは独立した最新FFT区間・解析設定・モード・観察間隔・Δf・RBW・校正・EMA係数／処理窓数／寄与区間・ピーク保持の対象スペクトル数／寄与区間を含みます。全ビンのf64線形値と保持値を保存し、配列の位置 `k` の周波数は `k × bin_width_hz` です。DCとNyquistを含み、振幅は平均したビン電力の平方根（単位peak）、PSDは平均した密度（単位²/Hz）です。表示用f32のdB値・表示下限へ変換せず、真のゼロは線形値0のまま保存します。PSDの指定帯域は書き出し時の範囲と両端を含む対象ビン・電力・RMSを保持します。帯域が不正・ビンを含まない場合や振幅モードでは帯域結果は `null` です。未取得／非有限のSpectrumは状態を付け、ビン・平均・保持・帯域の値を `null` とします。
 
+取得時に有効化したLock-inは、X/Y・R（peak）・REFに対する進み位相・Gain、REF周波数／生AC RMS／正弦波適合率／校正後peak、τ・積分窓・追従設定・閾値、両CHの校正と単位を含みます。平均の寄与区間と最新完全窓は独立した整数区間です。整定中の値にはSettling状態を付け、未充填・REF喪失・欠落・非有限では数値を `null` とし、旧値を保存しません。停止中の次回用CH・Fs・校正・フィルター変更は保持結果を変更しません。保存・参照読み込みでは単位・状態・完全窓数・整定時間・区間・REF診断・X/Y/R/位相の整合を検証します。Lock-inを含まない旧版1の結果JSONも読み込めます。
+
 ScopeとSpectrumの区間は同時刻とは限らず、EMAとピーク保持の寄与区間は一様な重みや連続的な捕捉を示しません。取得欠落、Scope区間内の欠落、Spectrum入力欠落／無効窓／非有限窓／観察省略、ワーカー開始以来の表示スナップショット省略、入力失敗を分けます。Spectrogram、XY、カーソル、全CHの長時間記録やSpectrum窓の全生入力は含めません。書き出し用データは固定の上限を持つ保持区間とFFT全ビンから一度だけコピーし、JSON化・ファイルI/Oは専用ワーカーで行います。書き込み中に入力を再開しても書き出し対象は変わりません。検証条件は [結果書き出しの検証](validation/EXPORT_2026-10.md) を参照してください。
 
 参照結果は一件・128 MiB以下に制限します。版・配列長・CH・単位・校正・整数区間・有限値・欠落・Spectrum状態の整合を全体検証し、不正ファイルを一部だけ適用しません。読み込みは取得を開始せず、現在の保持結果を上書きしません。**Keep held result as reference** で現在の結果を参照へ固定することもできます。比較画面はScope生FS波形と統計、Spectrum線形ビンとPSD帯域・条件を併記します。Scopeの統計差は同じCH・単位、PSD帯域差は同じFs・CH・単位・解析設定・モード・対象ビンの場合だけ表示します。独立記録のサンプル時計を同期した波形差として扱いません。
 
 CSVは条件を含む `metadata_json` 行に続き、Scopeの整数サンプル番号・公称秒・生f64・校正値・単位・欠落、Spectrumのビン番号・周波数・線形値・保持値を出力します。PNGは1600×1160の独立したレポートで、主要統計・CH・単位・区間・FFT／窓／EMA・校正・欠落を付けます。PNG内にも数値配列を除いた条件を埋め込みます。精密な数値の正本はJSON／CSVです。
+
+Lock-inを含むCSVには `lockin` 行を追加し、整数区間・CH・完全窓数・欠落数・f64のX/Y/R/位相/Gain・REF診断値・単位・状態を出力します。無効値は空欄です。参照比較ではLock-inの取得条件・状態・校正版と数値を左右に表示し、両結果がValidで、公称Fs・CH・REF／フィルター設定・両CHの校正が一致し、入力失敗がない場合だけX/Y/R/Gainと位相の差を表示します。位相差は±180°へ折り返します。独立記録の入力時計は同期しません。PNGの描画対象はScope／Spectrumです。確認範囲は [Lock-in結果再利用の検証](validation/LOCKIN_RESULTS_2026-10.md) を参照してください。
 
 ## 現在の取得・解析・描画の構成
 
@@ -307,7 +311,7 @@ Audio device → CPAL callback → bounded SPSC → measurement worker ← inter
 
 `MEASURELAB_SPECTRUM_PSD=1`は`qa`ビルドでSpectrumをPSDに設定します。`--ui-smoke`やUI計測と組み合わせて、通常幅／狭幅・帯域表示・停止中のモード保持を確認できます。
 
-`MEASURELAB_UI_SMOKE_STAGE3F=1`は通常のSoftware Loopbackを起動・停止し、Scope統計、FFTと実験段階Lock-inの理論値、設定・参照結果の保存／読み込み／復元／再測定、CSV／PNG、Singleの480サンプル捕捉と未充填512kをアプリ状態で照合します。保存先は `dist/stage3f-*` です。続いて別プロセスで `MEASURELAB_UI_SMOKE_REPLAY=1` を指定すると前回ファイルから復元して再測定し、アプリ再起動後の再現を確認します。`MEASURELAB_UI_SMOKE_COMPARE=1` は比較画面を開きます。ネイティブ選択ダイアログはこのQAの自動操作対象外です。
+`MEASURELAB_UI_SMOKE_STAGE3F=1`は通常のSoftware Loopbackを起動・停止し、Scope統計、FFTと実験段階Lock-inの理論値、設定・参照結果の保存／読み込み／復元／再測定、CSV／PNG、Singleの480サンプル捕捉と未充填512k／Lock-inをアプリ状態で照合します。Lock-inの保持値・取得条件が停止中の次回用CH・Fs・校正・τ変更で変わらないことと、条件が一致する整定済み結果の比較も確認します。保存先は `dist/stage3f-*` です。続いて別プロセスで `MEASURELAB_UI_SMOKE_REPLAY=1` を指定すると前回ファイルから復元して再測定し、アプリ再起動後の再現を確認します。`MEASURELAB_UI_SMOKE_COMPARE=1` は比較画面を開きます。ネイティブ選択ダイアログはこのQAの自動操作対象外です。
 
 `MEASURELAB_UI_SMOKE_LOCKIN=polar` は通常のSoftware Loopback経路で750 Hz・0.0625 FS peak・30°を測定してStopし、Lock-in単独画面を撮影します。`cartesian`／`all`／`pair` はX／Y・4値・Scopeとの併用、`settling` は整定中、`ref-loss` はREF喪失、`held-edit` は保持した結果と次回Start用設定の区別、`live-edit` は取得中のτ変更と再整定、`source-change` は入力ソース切り替え時の旧値破棄を確認します。`--compact` で狭幅にします。撮影先は `dist/ui-smoke.png` です。
 

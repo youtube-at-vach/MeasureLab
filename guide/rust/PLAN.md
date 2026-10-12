@@ -1,6 +1,6 @@
 # MeasureLab Rust 開発計画
 
-更新日：2026-10-11。[現在の方針](../CURRENT_DIRECTION.md) を基準とし、この文書には現在の到達点、未解決問題、段階4以降の完了条件だけを保持する。操作・数値定義は [README](README.md)、過去の測定条件と証拠は [検証記録の索引](validation/README.md)、CI・配布・文書・main移行は [公開準備](RELEASE_PREPARATION.md) に分ける。
+更新日：2026-10-12。[現在の方針](../CURRENT_DIRECTION.md) を基準とし、この文書には現在の到達点、未解決問題、段階4以降の完了条件だけを保持する。操作・数値定義は [README](README.md)、過去の測定条件と証拠は [検証記録の索引](validation/README.md)、CI・配布・文書・main移行は [公開準備](RELEASE_PREPARATION.md) に分ける。
 
 ## 現在の到達点
 
@@ -12,7 +12,7 @@
 | Scope | 任意2ch、全CHトリガー、Auto／Normal／Single・Autoset、生サンプル統計・カーソル | 波形軸・トリガーはFS。微小値の書式・文字の視認性改善は保留 |
 | Spectrum | 1,024〜524,288点、振幅／PSD・帯域電力、f64数値、平均・保持、Live／Continuous／Latest | 512kの外部I/O・96 kHz実時間・16ch実機、反復した応答・遅延計測が残る |
 | Spectrogram／XY | 独立STFT、欠落表示、同期XY、任意CH割当 | 既存機能の回帰を維持。STFT上限拡張・XY残像は対象外 |
-| 校正・保存・比較 | CH校正、版付き設定、停止中復元、Scope／SpectrumのJSON・CSV・PNG、参照比較 | 物理校正精度と外部I/Oでの保存→再起動→再測定は未確認。Lock-in結果の保存は未実装 |
+| 校正・保存・比較 | CH校正、版付き設定、停止中復元、Scope／SpectrumのJSON・CSV・PNG、Lock-inの条件付きJSON・CSVと参照比較 | 物理校正精度と外部I/Oでの保存→再起動→再測定は未確認。PNGの表示対象はScope／Spectrum |
 | Software Loopback／Lock-in | 通常ビルドの仮想DUT、同期REFによる基本波f64 Lock-in、専用ワーカーと数値GUI | 実機REF・タイミング・整定・長時間安定性は未確認 |
 
 既存の数値定義・無効化・容量制限は実装と [操作ガイド](README.md#操作) に保持する。完了した3a〜3fの手順や途中の設計案は繰り返さず、履歴はGit、条件付き実測は検証記録を参照する。
@@ -46,6 +46,8 @@ SpectrumのContinuousはN/4の全窓、Live／Latestは最新窓の観察で、�
 ### 4：Software LoopbackとLock-inによる品質評価
 
 基本波の同期2ch Lock-inは実装済み。REFの強度・正弦波適合を確認し、同じ整数区間で位相補正してからサンプル時計による二段複素EMAへ渡す。X/Y・Rはpeak、正の位相は応答の進み。欠落・REF喪失では平均を破棄して再整定する。定義と許容差は [Lock-in検証](validation/LOCKIN_2026-10.md) を正本にする。
+
+4aの結果再利用では、Lock-inのf64値・REF診断・完全窓数・整数区間・取得時の設定と校正をJSON／CSVへ保持し、保存・参照読み込みで状態と数値定義の整合を検証する。比較画面は取得条件を併記し、整定済みで公称Fs・CH・REF／フィルター設定・両CHの校正が一致する場合だけ差を表示する。仮想系の確認条件は [結果再利用の検証](validation/LOCKIN_RESULTS_2026-10.md) に分ける。数値・保存再測定の照合は通過したが、画面撮影QAの未受信が残り、現行リビジョンのGUI視覚確認は未完了。外部I/O・実機・長時間の完了判定も残す。
 
 | 順序 | 次の作業 | 完了条件 |
 | --- | --- | --- |
