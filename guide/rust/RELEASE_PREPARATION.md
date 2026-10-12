@@ -1,6 +1,6 @@
 # Rust プロトタイプの公開準備
 
-更新日：2026-10-11。アプリ実装以外の現行タスクをここへ集約する。測定実装は [PLAN](PLAN.md)、判断基準は [現在の方針](../CURRENT_DIRECTION.md)、旧版の所在は [移行資料](../RUST_REWRITE_PREPARATION.md) を参照する。
+更新日：2026-10-12。アプリ実装以外の現行タスクをここへ集約する。測定実装は [PLAN](PLAN.md)、判断基準は [現在の方針](../CURRENT_DIRECTION.md)、旧版の所在は [移行資料](../RUST_REWRITE_PREPARATION.md) を参照する。
 
 **現在は準備段階。** PRのbaseは`rewrite/rust`のまま。mainマージ、既定ブランチ設定、タグ、Release、Pagesの実デプロイは別途依頼された段階で行う。以下の「整備済み」はファイル上の状態を表し、GitHub上のCI成功や公開済みを意味しない。
 
@@ -52,6 +52,8 @@ mainの既存rulesetが要求する`lint-and-test`、`docs-lint`、`actionlint`�
 | P1 | 公開候補の受け入れ | [PLANの段階4](PLAN.md#4software-loopbackとlock-inによる品質評価) の確認範囲を確定し、対象OSで通常起動→Software Loopback／実入力→停止→保存・復元を確認。Lock-in未完了なら実験段階の表記を維持する |
 
 配布版と性能・精度の検証対象SHAを一致させる。CIのビルド成果物、ローカル.app、署名・配布を確認したインストーラーは区別する。旧VirusTotal処理はアップロード結果だけで「重大なマルウェアなし」と記していたため継承しない。再導入する場合は、対象タグの明示と実際の解析状態・結果の表示を条件にする。
+
+段階4.5のGeneratorを含む公開候補では、[基本設計の受け入れ条件](GENERATOR_DESIGN.md#受け入れ試験) も対象SHAで確認し、通常版の出力先・レベル・開始／停止・切断・復元と対応OSの制限を文書へ反映する。計画を追加しただけでは実装済みとせず、公開時期・main移行・配布用`version.json`の変更判断とも分ける。
 
 ## 公開後・継続運用
 
