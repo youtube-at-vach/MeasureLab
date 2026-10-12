@@ -499,6 +499,7 @@ MEASURELAB_PROFILE_SECONDS=10 MEASURELAB_PROFILE_FFT_PRECISION=f64 \
 - `src/results.rs` / `src/result_image.rs` / `src/workspace_io.rs`: 容量制限と整合検証付き参照読み込み、f64 CSV、PNG、ネイティブファイル選択とI/O。
 - `src/acquisition.rs`: サンプル時計のNormal／Single捕捉とAutoset。
 - `src/loopback.rs` / `src/lockin.rs` / `src/lockin_worker.rs`: 通常ビルドの仮想DUTと実験段階の同期REF Lock-in、固定容量の独立演算。
+- `src/generator.rs` / `src/generator/control.rs`: GUI非依存の2ch正弦波コア、滑らかな設定変更、固定容量の制御・優先Stop。通常GUIと内部入力／CPAL出力へは未接続。
 - `src/app/lockin_panel.rs`: Lock-inのR／θ・X／Y・4値表示、参照状態・整定・保持、測定条件の操作と表示専用のバー。
 - `src/export.rs` / `src/file_io.rs`: 保持したScope／Spectrumと測定条件の版付きJSON、欠落・無効状態とf64線形値、専用I/Oワーカー、設定保存と共有する原子的ファイル置換。
 - `src/calibration.rs`: ID・版・参照条件付きのCH校正、Scope実サンプルの換算・RMS／Peak／P-P、非有限値の無効化。
