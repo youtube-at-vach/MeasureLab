@@ -20,6 +20,8 @@ use crate::{
     stft::{self, RowInfo},
     workspace_io, xy,
 };
+#[cfg(feature = "qa")]
+use eframe::egui_wgpu::wgpu;
 use eframe::{
     egui::{self, Color32, RichText, Stroke, pos2, vec2},
     egui_wgpu,
@@ -282,7 +284,7 @@ pub struct ScopeApp {
     pending_stop: Option<measurement::PendingSnapshot>,
     pending_scope: Option<measurement::PendingSnapshot>,
     #[cfg(feature = "qa")]
-    known_output: Option<(cpal::Stream, Arc<std::sync::atomic::AtomicBool>)>,
+    known_output: Option<crate::qa::output::Fixture>,
     start_after_stop: bool,
     spectrum_publication: (u64, u64),
     #[cfg(feature = "qa")]
@@ -397,7 +399,13 @@ pub struct ScopeApp {
     #[cfg(feature = "qa")]
     screenshot_requested: bool,
     #[cfg(feature = "qa")]
+    smoke_focused: bool,
+    #[cfg(feature = "qa")]
+    screenshot_attempts: u8,
+    #[cfg(feature = "qa")]
     screenshot_received: bool,
+    #[cfg(feature = "qa")]
+    screenshot_device: wgpu::Device,
     #[cfg(feature = "qa")]
     profile: Option<crate::qa::Profile>,
     #[cfg(feature = "qa")]
@@ -443,6 +451,10 @@ impl ScopeApp {
                 render.target_format,
             ));
         let info = render.adapter.get_info();
+        #[cfg(feature = "qa")]
+        if smoke {
+            println!("QA framebuffer format: {:?}", render.target_format);
+        }
         cc.egui_ctx.set_theme(egui::ThemePreference::Dark);
         let mut visuals = egui::Visuals::dark();
         visuals.panel_fill = Color32::from_rgb(15, 22, 29);
@@ -625,7 +637,13 @@ impl ScopeApp {
             #[cfg(feature = "qa")]
             screenshot_requested: false,
             #[cfg(feature = "qa")]
+            smoke_focused: false,
+            #[cfg(feature = "qa")]
+            screenshot_attempts: 0,
+            #[cfg(feature = "qa")]
             screenshot_received: false,
+            #[cfg(feature = "qa")]
+            screenshot_device: render.device.clone(),
             #[cfg(feature = "qa")]
             profile: crate::qa::Profile::from_env()?,
             #[cfg(feature = "qa")]
@@ -680,14 +698,26 @@ impl ScopeApp {
             app.reset_analysis();
         }
         #[cfg(feature = "qa")]
-        if std::env::var_os("MEASURELAB_PROFILE_KNOWN_OUTPUT").is_some() {
+        if std::env::var_os("MEASURELAB_PROFILE_KNOWN_OUTPUT").is_some()
+            || std::env::var_os("MEASURELAB_PROFILE_PHYSICAL_OUTPUT").is_some()
+        {
             let name = app
                 .profile
                 .as_ref()
                 .and_then(|p| p.device.as_deref())
                 .ok_or("Known-output QA requires a BlackHole profile device")?;
-            app.known_output =
-                Some(crate::qa::blackhole_tone_output(name).map_err(|e| e.to_string())?);
+            app.known_output = Some(crate::qa::output::Fixture::new(
+                name,
+                app.profile.as_ref().and_then(|p| p.sample_rate),
+                std::env::var_os("MEASURELAB_PROFILE_PHYSICAL_OUTPUT").is_some(),
+            )?);
+            if app.known_output.as_ref().unwrap().physical {
+                app.lockin_settings.enabled = true;
+                app.lockin_settings.frequency_hz = 1000.0;
+                app.lockin_settings.reference_channel = 1;
+                app.lockin_settings.response_channel = 0;
+                app.spectrum_channel = 0;
+            }
         }
         #[cfg(feature = "qa")]
         if demo && std::env::var_os("MEASURELAB_PROFILE_DEMO_BIN_TONE").is_some() {
@@ -863,7 +893,8 @@ impl ScopeApp {
         #[cfg(feature = "qa")]
         if smoke
             && (std::env::var_os("MEASURELAB_UI_SMOKE_STAGE3F").is_some()
-                || std::env::var_os("MEASURELAB_UI_SMOKE_BLACKHOLE").is_some())
+                || std::env::var_os("MEASURELAB_UI_SMOKE_BLACKHOLE").is_some()
+                || std::env::var_os("MEASURELAB_UI_SMOKE_PHYSICAL").is_some())
         {
             app.check_stage3f()?;
         }
@@ -2332,13 +2363,11 @@ impl ScopeApp {
                             self.selected = index;
                             self.requested_sample_rate =
                                 self.profile.as_ref().and_then(|p| p.sample_rate);
-                            if let Some((stream, failed)) = &self.known_output {
-                                use cpal::traits::StreamTrait;
-                                if let Err(error) = stream.play() {
-                                    failed.store(true, Ordering::Relaxed);
-                                    self.error = Some(format!("QA output start failed: {error}"));
-                                    continue;
-                                }
+                            if let Some(fixture) = &self.known_output
+                                && let Err(error) = fixture.start()
+                            {
+                                self.error = Some(error);
+                                continue;
                             }
                             self.start();
                         } else {
@@ -5581,6 +5610,7 @@ impl eframe::App for ScopeApp {
                     // report. This wait is outside the UI timing interval.
                     let finished = self.core.as_ref().map(|core| core.stop());
                     if let Some(snapshot) = &finished {
+                        assert!(!snapshot.failed, "UI QA finite input failed");
                         let result = &snapshot.spectrum;
                         if result.is_ready() {
                             let average = result.average().unwrap();
@@ -5640,64 +5670,68 @@ impl eframe::App for ScopeApp {
                             }
                         }
                     }
-                    if let Some((_, failed)) = &self.known_output {
-                        assert!(
-                            !failed.load(Ordering::Relaxed),
-                            "BlackHole fixture output failed"
-                        );
+                    if let Some(fixture) = &self.known_output {
+                        fixture.check().expect("QA output audit failed");
                         let snapshot = finished.as_ref().unwrap();
                         assert_eq!(snapshot.input_dropped, 0);
                         assert_eq!(snapshot.spectrum_info.input_missing, 0);
                         assert_eq!(snapshot.spectrum_info.missing_windows, 0);
-                        let result = &snapshot.spectrum;
-                        let bin = (32 + self.spectrum_channel * 7) * result.settings().size / 8192;
-                        let hz =
-                            bin as f64 * self.sample_rate as f64 / result.settings().size as f64;
-                        match result.settings().quantity {
-                            Quantity::Amplitude => {
-                                assert!((result.cursor(hz).unwrap().value - 0.125).abs() < 3e-8)
+                        assert_eq!(self.stft.metrics.input_dropped.load(Ordering::Relaxed), 0);
+                        if fixture.physical {
+                            crate::qa::physical_lockin::validate_gui(snapshot).unwrap();
+                        } else {
+                            let result = &snapshot.spectrum;
+                            let bin =
+                                (32 + self.spectrum_channel * 7) * result.settings().size / 8192;
+                            let hz = bin as f64 * self.sample_rate as f64
+                                / result.settings().size as f64;
+                            match result.settings().quantity {
+                                Quantity::Amplitude => {
+                                    assert!((result.cursor(hz).unwrap().value - 0.125).abs() < 3e-8)
+                                }
+                                Quantity::Psd => assert!(
+                                    (result
+                                        .band(0.0, self.sample_rate as f64 / 2.0)
+                                        .unwrap()
+                                        .power
+                                        - 0.0078125)
+                                        .abs()
+                                        < 1e-8
+                                ),
                             }
-                            Quantity::Psd => assert!(
-                                (result
-                                    .band(0.0, self.sample_rate as f64 / 2.0)
-                                    .unwrap()
-                                    .power
-                                    - 0.0078125)
-                                    .abs()
-                                    < 1e-8
-                            ),
-                        }
-                        let end = snapshot.history.range().end;
-                        if self.spectrum_mode == SpectrumMode::Continuous {
-                            assert_eq!(
-                                snapshot.spectrum_info.updates,
-                                1 + (end - result.settings().size as u64)
-                                    / (result.settings().size / 4) as u64
+                            let end = snapshot.history.range().end;
+                            if self.spectrum_mode == SpectrumMode::Continuous {
+                                assert_eq!(
+                                    snapshot.spectrum_info.updates,
+                                    1 + (end - result.settings().size as u64)
+                                        / (result.settings().size / 4) as u64
+                                );
+                            }
+                            let average = result.average().unwrap();
+                            let seconds =
+                                (average.end - average.start - result.settings().size as u64)
+                                    as f64
+                                    / self.sample_rate as f64;
+                            println!(
+                                "Known Spectrum OK: {} Hz, {} ch, CH {}, N {}, {:?}, {:?}, {} windows, latest end {}, acquired end {}, observed rate {:.3} Hz",
+                                self.sample_rate,
+                                self.channels,
+                                self.spectrum_channel + 1,
+                                result.settings().size,
+                                result.settings().quantity,
+                                self.spectrum_mode,
+                                average.updates,
+                                result.window().unwrap().end,
+                                end,
+                                (average.updates - 1) as f64 / seconds
                             );
                         }
-                        let average = result.average().unwrap();
-                        let seconds = (average.end - average.start - result.settings().size as u64)
-                            as f64
-                            / self.sample_rate as f64;
-                        println!(
-                            "Known Spectrum OK: {} Hz, {} ch, CH {}, N {}, {:?}, {:?}, {} windows, latest end {}, acquired end {}, observed rate {:.3} Hz",
-                            self.sample_rate,
-                            self.channels,
-                            self.spectrum_channel + 1,
-                            result.settings().size,
-                            result.settings().quantity,
-                            self.spectrum_mode,
-                            average.updates,
-                            result.window().unwrap().end,
-                            end,
-                            (average.updates - 1) as f64 / seconds
-                        );
                     }
                     if let Some(path) = std::env::var_os("MEASURELAB_PROFILE_EXPORT") {
                         // Terminal QA uses the same immutable finite Stop result;
                         // this I/O is outside the UI performance measurement.
                         let snapshot = finished.as_ref().expect("export QA needs a finite result");
-                        let document = export::Document::capture(
+                        let mut document = export::Document::capture(
                             self.held_input.clone().expect("captured input identity"),
                             export::ScopeView {
                                 history: &snapshot.history,
@@ -5724,6 +5758,13 @@ impl eframe::App for ScopeApp {
                             },
                         )
                         .expect("capture finite export result");
+                        if snapshot.lockin.settings.enabled {
+                            document.lockin = Some(export::Lockin::capture(
+                                snapshot.lockin.clone(),
+                                &snapshot.calibrations,
+                            ));
+                        }
+                        document.validate().unwrap();
                         let expected = serde_json::to_value(&document).unwrap();
                         let path = std::path::PathBuf::from(path);
                         let worker = export::Worker::default();
@@ -5809,11 +5850,19 @@ impl eframe::App for ScopeApp {
                         history.len(),
                         history.storage_bytes() as f64 / 1048576.0
                     );
+                    drop(history);
                     if std::env::var_os("MEASURELAB_PROFILE_DEMO_BIN_TONE").is_some() {
                         let snapshot = finished.as_ref().expect("known demo finite endpoint");
                         assert_eq!(snapshot.input_dropped, 0, "known demo acquisition loss");
                         assert!(snapshot.spectrum.is_ready(), "known demo incomplete FFT");
                     }
+                    self.busy = true;
+                    self.audio.send(Command::Stop);
+                    self.qa_wait_audio_idle().expect("QA input did not stop");
+                    if let Some(mut fixture) = self.known_output.take() {
+                        fixture.restore().expect("QA input rate restoration failed");
+                    }
+                    println!("UI QA profile complete: finite result audited and input stopped");
                     self.profile = None;
                     ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                 }
@@ -5842,6 +5891,11 @@ impl eframe::App for ScopeApp {
         }
         #[cfg(feature = "qa")]
         if self.smoke || self.profile.is_some() {
+            if self.screenshot_requested && !self.screenshot_received {
+                // wgpu map_async needs device polling. Submission/presentation
+                // alone does not reliably deliver Metal readback callbacks.
+                let _ = self.screenshot_device.poll(wgpu::PollType::Poll);
+            }
             if self.smoke && std::env::var_os("MEASURELAB_UI_SMOKE_SETTINGS_RESTORE").is_some() {
                 assert_eq!(self.spectrum_channel, 15);
                 assert_eq!(self.spectrogram_channel, 15);
@@ -6199,13 +6253,26 @@ impl eframe::App for ScopeApp {
         }
         if self.smoke {
             #[cfg(feature = "qa")]
-            if !self.screenshot_requested && self.created.elapsed() > Duration::from_secs(1) {
-                self.screenshot_requested = true;
+            if !self.smoke_focused {
+                self.smoke_focused = true;
                 ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+                self.created = Instant::now();
+            } else if !self.screenshot_requested && self.created.elapsed() > Duration::from_secs(1)
+            {
+                self.screenshot_requested = true;
+                self.screenshot_attempts = 1;
                 ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(Default::default()));
                 // Slow first-frame GPU preparation must not request Screenshot
                 // and Close together. Allow a fresh readback interval.
                 self.created = Instant::now();
+            } else if self.screenshot_requested
+                && !self.screenshot_received
+                && self.screenshot_attempts < 4
+                && self.created.elapsed() > Duration::from_secs(2 * self.screenshot_attempts as u64)
+            {
+                self.screenshot_attempts += 1;
+                println!("UI screenshot readback retry {}", self.screenshot_attempts);
+                ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(Default::default()));
             }
             #[cfg(feature = "qa")]
             let ready_to_close =

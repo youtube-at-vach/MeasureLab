@@ -18,9 +18,9 @@ Acquisition, measurement and rendering run separately. Hiding a display does not
 
 ## Platform and measurement limits
 
-Existing validation records cover specific macOS conditions. Windows and Linux are also CI build/test targets; CI success does not verify their GPUs or physical audio devices. Accuracy depends on the device, input range and calibration. The selectable ceiling of 768 kHz does not guarantee operation at that rate.
+Quality assessment currently focuses on macOS; Windows/Linux hardware acceptance is deferred to future work. Existing validation records cover specific macOS conditions. Windows and Linux are also CI build/test targets; CI success does not verify their GPUs or physical audio devices. Accuracy depends on the device, input range and calibration. The selectable ceiling of 768 kHz does not guarantee operation at that rate.
 
-Lock-in hardware REF, timing and long-term stability remain unverified. Physical audio output, THD/FRF/IR, VST3, actual sample-rate calibration, free layout and translated application UI are not implemented. This edition does not provide all Python features. Scope waveform axes and triggers use FS; calibrated numerical readouts can use physical units.
+BlackHole and UAC-232 physical loopback records on macOS cover input REF, independent numerical comparisons and conditional result reuse, including UAC-232 GUI save/restart/remeasurement. Earlier 600-second headless records and the current approximately 270-second GUI observation use different conditions. These are limited tests using nominal sample rates and uncalibrated FS; physical calibration accuracy, level-dependent phase, absolute delay and hardware guarantees on other operating systems remain unverified. Physical audio output, THD/FRF/IR, VST3, actual sample-rate calibration, free layout and translated application UI are not implemented. This edition does not provide all Python features. Scope waveform axes and triggers use FS; calibrated numerical readouts can use physical units.
 
 ## Try it and report problems
 

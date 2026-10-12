@@ -9,7 +9,7 @@ license = "Unlicense"
 [features]
 default = ["desktop"]
 desktop = ["dep:eframe", "dep:bytemuck", "dep:pollster", "dep:rfd", "dep:png", "dep:ab_glyph"]
-qa = ["desktop"]
+qa = ["desktop", "dep:log"]
 
 [dependencies]
 cpal = "0.18.2"
@@ -17,6 +17,7 @@ rtrb = "0.4.0"
 rustfft = "6.4.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip"] }
+log = { version = "0.4", optional = true }
 eframe = { version = "0.36.2", default-features = false, features = ["default_fonts", "wgpu", "x11", "wayland"], optional = true }
 bytemuck = { version = "1", features = ["derive"], optional = true }
 pollster = { version = "1.0.1", optional = true }

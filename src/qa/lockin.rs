@@ -346,7 +346,7 @@ pub(super) fn finish(worker: &measurement::Worker) -> Result<measurement::Snapsh
     Err("Finite Stop timed out".into())
 }
 
-pub(super) fn document(
+pub(crate) fn document(
     snapshot: &measurement::Snapshot,
     source: export::Input,
     worker: &measurement::Worker,

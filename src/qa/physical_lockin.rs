@@ -374,6 +374,84 @@ fn observe(label: &str, snapshot: &measurement::Snapshot) -> Result<Observation,
         dbfs_peak: 20.0 * amplitude.log10(),
     })
 }
+
+/// GUI profiling uses the same raw-window independent oracle as physical QA.
+pub fn validate_gui(snapshot: &measurement::Snapshot) -> Result<(), String> {
+    require(
+        !snapshot.failed && snapshot.input_dropped == 0,
+        "GUI physical input failed",
+    )?;
+    require(
+        snapshot.spectrum_info.input_missing == 0,
+        "GUI physical Spectrum lost input",
+    )?;
+    require(
+        snapshot.lockin.missing_samples == 0,
+        "GUI physical Lock-in lost input",
+    )?;
+    let observation = observe("GUI finite Stop", snapshot)?;
+    std::fs::create_dir_all("dist/stage4-macos-qa").map_err(|e| e.to_string())?;
+    std::fs::write(
+        "dist/stage4-macos-qa/physical-gui-oracle.json",
+        serde_json::to_vec_pretty(&observation).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())
+}
+
+pub fn validate_single(
+    snapshot: &measurement::Snapshot,
+    baseline: &export::Document,
+) -> Result<(), String> {
+    require(
+        !snapshot.failed && snapshot.input_dropped == 0 && snapshot.scope_missing == 0,
+        "External Single failed or lost input",
+    )?;
+    let old = &baseline
+        .lockin
+        .as_ref()
+        .ok_or("Single needs a baseline")?
+        .result;
+    let history = snapshot.scope_capture.as_ref().unwrap_or(&snapshot.history);
+    let frequency = old
+        .reference_frequency_hz
+        .ok_or("Missing baseline frequency")?;
+    let response = fit(
+        history,
+        snapshot.sweep.range.clone(),
+        old.settings.response_channel,
+        snapshot.sample_rate,
+        frequency,
+    )?;
+    let reference = fit(
+        history,
+        snapshot.sweep.range.clone(),
+        old.settings.reference_channel,
+        snapshot.sample_rate,
+        frequency,
+    )?;
+    require(reference.peak > 0.001, "Single REF is absent")?;
+    require(
+        (response.peak - old.amplitude_peak.unwrap()).abs()
+            < old.amplitude_peak.unwrap() * 0.01 + R_ABS_TOL
+            && wrap(response.phase - reference.phase - old.phase_degrees.unwrap()).abs() < 0.1,
+        &format!(
+            "Single raw input disagrees with baseline: R={}, expected {}; phase={}, expected {}; REF peak={}, SIG residual={}",
+            response.peak,
+            old.amplitude_peak.unwrap(),
+            wrap(response.phase - reference.phase),
+            old.phase_degrees.unwrap(),
+            reference.peak,
+            response.residual_rms
+        ),
+    )?;
+    println!(
+        "External Single raw oracle OK: {} samples, R={} FS peak, phase={} deg; detector remains settling, 512k unfilled",
+        snapshot.sweep.range.end - snapshot.sweep.range.start,
+        response.peak,
+        wrap(response.phase - reference.phase)
+    );
+    Ok(())
+}
 fn change(
     result: &lockin::Result,
     baseline: &lockin::Result,
@@ -425,7 +503,13 @@ pub fn smoke_test(name: &str, rate: u32) -> Result<(), Box<dyn std::error::Error
     println!(
         "Explicit physical QA: {name}, nominal Fs {rate} Hz, L signal / R REF, output <= {OUTPUT_PEAK} FS peak (-20 dBFS), no generated DC; knobs unchanged"
     );
-    let outcome = run(name, rate, seconds, &device);
+    let outcome = run(name, rate, seconds, &device).and_then(|()| {
+        if std::env::var_os("MEASURELAB_PHYSICAL_TRANSITIONS").is_some() {
+            transitions()
+        } else {
+            Ok(())
+        }
+    });
     // All output/input RAII streams have been dropped, including on failure.
     let restore = audio::start_device(&device, Some(original_rate));
     match restore {
@@ -438,6 +522,107 @@ pub fn smoke_test(name: &str, rate: u32) -> Result<(), Box<dyn std::error::Error
         }
     }
     outcome.map_err(Into::into)
+}
+
+/// Keep one measurement worker across physical Fs and physical/virtual changes.
+fn transitions() -> Result<(), String> {
+    let mut stft = stft::Worker::new();
+    let mut worker = measurement::Worker::new(stft.take_feeder());
+    for (index, (name, rate)) in [
+        (DEVICE, 48000),
+        (DEVICE, 96000),
+        (DEVICE, 44100),
+        (DEVICE, 192000),
+        ("BlackHole 2ch", 48000),
+        (DEVICE, 48000),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        use cpal::traits::DeviceTrait;
+        let device = audio::input_device(Some(name))?;
+        let original = device
+            .default_input_config()
+            .map_err(|e| e.to_string())?
+            .sample_rate();
+        let outcome: Result<(), String> = (|| {
+            let physical = (name == DEVICE)
+                .then(|| Fixture::new(name, rate))
+                .transpose()?;
+            let virtual_output = (name != DEVICE)
+                .then(|| super::lockin::Fixture::new(name, rate))
+                .transpose()?;
+            let (stream, capture) = attach(&device, rate)?;
+            let mut config = super::lockin::config(rate, 2);
+            if physical.is_some() {
+                config.lockin.frequency_hz = 1000.0;
+                config.lockin.reference_channel = 1;
+                config.lockin.response_channel = 0;
+            }
+            let generation = 100 + index as u64;
+            worker.start_capture(generation, capture, config.clone());
+            thread::sleep(Duration::from_millis(200));
+            if let Some(f) = &physical {
+                f.warmup();
+            }
+            if let Some(f) = &virtual_output {
+                f.end_warmup("physical/device transition");
+            }
+            worker.configure_lockin(config.lockin);
+            let deadline = Instant::now() + Duration::from_secs(5);
+            loop {
+                if Instant::now() > deadline {
+                    return Err("Physical/device transition timed out".into());
+                }
+                if let Some(snapshot) = worker.take_latest() {
+                    let ready = snapshot.generation == generation
+                        && snapshot.lockin.state == lockin::State::Valid
+                        && (snapshot.lockin.sample_range.end - snapshot.lockin.sample_range.start)
+                            as f64
+                            >= 0.6 * rate as f64;
+                    worker.recycle(snapshot);
+                    if ready {
+                        break;
+                    }
+                }
+                thread::sleep(Duration::from_millis(5));
+            }
+            let snapshot = super::lockin::finish(&worker)?;
+            require(
+                snapshot.generation == generation
+                    && snapshot.sample_rate == rate
+                    && snapshot.history.channels() == 2
+                    && snapshot.lockin.settings == config.lockin
+                    && !snapshot.failed
+                    && snapshot.input_dropped == 0
+                    && snapshot.lockin.missing_samples == 0,
+                "Physical/device transition mixed conditions or lost input",
+            )?;
+            if let Some(f) = &physical {
+                f.check()?;
+                observe("Fs/device transition", &snapshot)?;
+            }
+            if let Some(f) = &virtual_output {
+                require(
+                    !f.failed.load(Ordering::Relaxed),
+                    "Virtual transition output failed",
+                )?;
+                require(
+                    (snapshot.lockin.amplitude_peak.unwrap() - 0.0625).abs() < 1e-8
+                        && wrap(snapshot.lockin.phase_degrees.unwrap() - 13.125).abs() < 1e-4,
+                    "Virtual transition disagrees with theory",
+                )?;
+            }
+            println!("Physical/device transition OK: generation {generation}, {name}, {rate} Hz");
+            drop(stream);
+            Ok(())
+        })();
+        let _ = worker.stop();
+        let (stream, _) = audio::start_device(&device, Some(original))?;
+        drop(stream);
+        outcome?;
+    }
+    Ok(())
 }
 
 fn run(name: &str, rate: u32, seconds: u64, device: &cpal::Device) -> Result<(), String> {
