@@ -917,6 +917,34 @@ impl ScopeApp {
                     .send_viewport_cmd(egui::ViewportCommand::InnerSize(vec2(900.0, 660.0)));
             }
         }
+        #[cfg(feature = "qa")]
+        if app.profile.is_some()
+            && let Ok(name) = std::env::var("MEASURELAB_PROFILE_GENERATOR_DEVICE")
+        {
+            let rate = app
+                .profile
+                .as_ref()
+                .and_then(|p| p.sample_rate)
+                .unwrap_or(48000);
+            if app.profile.as_ref().and_then(|p| p.device.as_deref()) != Some(name.as_str()) {
+                return Err(
+                    "Generator profile requires the same explicit input/output device name".into(),
+                );
+            }
+            app.lockin_settings = lockin::Settings {
+                enabled: true,
+                frequency_hz: 750.0,
+                time_constant_seconds: 0.005,
+                ..Default::default()
+            };
+            app.spectrum_channel = 1;
+            app.spectrum_settings.window = Window::Rectangular;
+            app.spectrum_settings.averages = 1;
+            app.ms_per_div = 512.0 / 480.0;
+            app.fs_per_div = 0.05;
+            app.lockin_visible = true;
+            app.setup_generator_device(&name, rate, false)?;
+        }
         Ok(app)
     }
 
@@ -2239,6 +2267,10 @@ impl ScopeApp {
             return;
         }
         if self.source == Source::Generator {
+            if self.generator.target != output::Target::Internal {
+                self.error = Some("Select an audio input to observe Audio device output".into());
+                return;
+            }
             let rate = self.generator.status.nominal_sample_rate;
             if self.generator.pending || rate != self.generator.rate {
                 self.error = Some("Wait for the Generator settings to be applied".into());
@@ -2439,7 +2471,9 @@ impl ScopeApp {
                                 self.error = Some(error);
                                 continue;
                             }
-                            self.start();
+                            if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_DEVICE").is_none() {
+                                self.start();
+                            }
                         } else {
                             self.error = Some(format!("QA input device not found: {name}"));
                         }
@@ -4706,6 +4740,7 @@ impl ScopeApp {
             version: settings::VERSION,
             measurement: settings::Measurement {
                 generator: Some(output::Saved {
+                    target: self.generator.target.clone(),
                     nominal_sample_rate: self.generator.rate,
                     signals: self.generator.settings,
                     use_as_input: self.source == Source::Generator,
@@ -4791,6 +4826,7 @@ impl ScopeApp {
             || document
                 .measurement
                 .generator
+                .as_ref()
                 .is_some_and(|g| g.use_as_input)
         {
             self.selected
@@ -4816,9 +4852,10 @@ impl ScopeApp {
         }
         let m = document.measurement;
         let w = document.workspace;
-        let generator_input = m.generator.is_some_and(|g| g.use_as_input);
+        let generator_input = m.generator.as_ref().is_some_and(|g| g.use_as_input);
         self.generator
             .restore(m.generator.unwrap_or(output::Saved {
+                target: output::Target::Internal,
                 nominal_sample_rate: 48_000,
                 signals: crate::generator::Settings::default(),
                 use_as_input: false,
@@ -5664,6 +5701,8 @@ impl eframe::App for ScopeApp {
         let input_started = Instant::now();
         self.poll_audio();
         self.generator.poll();
+        #[cfg(feature = "qa")]
+        self.start_generator_profile_input();
         self.poll_measurement();
         self.poll_settings();
         self.poll_export();
@@ -5711,6 +5750,7 @@ impl eframe::App for ScopeApp {
             self.check_large_fft_lifecycle(&ctx);
             self.check_lifecycle(&ctx, elapsed);
             self.check_input_lifecycle(&ctx);
+            self.check_generator_edits();
             let running = self.running();
             if let Some(profile) = &mut self.profile {
                 profile.record(elapsed, running, frame.info().cpu_usage);
@@ -5993,6 +6033,12 @@ impl eframe::App for ScopeApp {
                     self.busy = true;
                     self.audio.send(Command::Stop);
                     self.qa_wait_audio_idle().expect("QA input did not stop");
+                    if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_DEVICE").is_some() {
+                        self.finish_generator_profile(
+                            finished.as_ref().expect("Generator input endpoint"),
+                        )
+                        .expect("Generator profile audit failed");
+                    }
                     if let Some(mut fixture) = self.known_output.take() {
                         fixture.restore().expect("QA input rate restoration failed");
                     }

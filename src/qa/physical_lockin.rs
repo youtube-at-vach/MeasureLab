@@ -377,6 +377,14 @@ fn observe(label: &str, snapshot: &measurement::Snapshot) -> Result<Observation,
 
 /// GUI profiling uses the same raw-window independent oracle as physical QA.
 pub fn validate_gui(snapshot: &measurement::Snapshot) -> Result<(), String> {
+    validate_generator(
+        snapshot,
+        Path::new("dist/stage4-macos-qa/physical-gui-oracle.json"),
+    )
+}
+
+/// Independent raw-input oracle, also for the normal Generator output path.
+pub fn validate_generator(snapshot: &measurement::Snapshot, path: &Path) -> Result<(), String> {
     require(
         !snapshot.failed && snapshot.input_dropped == 0,
         "GUI physical input failed",
@@ -390,9 +398,11 @@ pub fn validate_gui(snapshot: &measurement::Snapshot) -> Result<(), String> {
         "GUI physical Lock-in lost input",
     )?;
     let observation = observe("GUI finite Stop", snapshot)?;
-    std::fs::create_dir_all("dist/stage4-macos-qa").map_err(|e| e.to_string())?;
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
     std::fs::write(
-        "dist/stage4-macos-qa/physical-gui-oracle.json",
+        path,
         serde_json::to_vec_pretty(&observation).map_err(|e| e.to_string())?,
     )
     .map_err(|e| e.to_string())

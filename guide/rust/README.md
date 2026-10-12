@@ -46,7 +46,7 @@ cargo run --release
 ./scripts/cargo.sh run --release
 ```
 
-入力デバイスを選択して **Start input** を押してください。停止すると最後の波形が保持されます。再開時は新しい入力で履歴を作り直します。音声ファイルへの保存やオーディオ出力は行いません。
+入力デバイスを選択して **Start input** を押してください。停止すると最後の波形が保持されます。再開時は新しい入力で履歴を作り直します。音声ファイルへの保存は行いません。Generatorでは内部ループバックまたは音声デバイスへ正弦波を出力できます。
 
 **Input source / SAMPLE RATE** で **Device default** またはデバイスが対応する公称レートを選べます。選択肢の上限は768 kHzで、44.1／48／88.2／96／176.4／192／352.8／384／705.6／768 kHzなどから対応する値と、デバイス固有のレートを表示します。入力CH数を維持できる設定を使います。デバイス変更・再取得ではDevice defaultへ戻ります。取得中の変更は新しい入力世代で再開始し、履歴・平均・保持・カーソルをリセットします。停止中の変更は次回Startに適用し、保持結果のFsと時間・周波数軸は変えません。開始時に対応設定を再確認し、失敗時はエラーを表示します。
 
@@ -151,7 +151,7 @@ ScopeではRMS・Peak・P-Pと時間カーソルの数値に校正を適用し�
 
 ### 測定設定の保存・復元
 
-上部 **File / Save settings…** で保存先を選びます。**Restore settings…** は入力・出力停止中にファイルを選んで復元します。従来の **Workspace & help / MEASUREMENT SETTINGS** のパス指定も使えます。次回Start用の入力デバイス・CH割当・トリガー・観察幅・Spectrum／Spectrogramの解析設定・PSD帯域・校正定義を版2のJSONへ保存します。Generatorの内部出力Fs・信号条件・入力選択も保存し、版1の読み込みを維持します。取得中の保持結果や未確定の校正エディター入力を保存する操作ではありません。表示選択・配置・軸・表示範囲は別のWorkspaceブロックへ保存します。生サンプル・測定結果・カーソル位置・アコーディオン各項目の開閉は含めません。Software Loopbackの仮想DUT条件、Scope取得モードと実験段階Lock-inの設定も保存します。これらを含まない版1ファイルはAuto・Lock-in無効として読みます。QA専用内部デモは保存対象外です。
+上部 **File / Save settings…** で保存先を選びます。**Restore settings…** は入力・出力停止中にファイルを選んで復元します。従来の **Workspace & help / MEASUREMENT SETTINGS** のパス指定も使えます。次回Start用の入力デバイス・CH割当・トリガー・観察幅・Spectrum／Spectrogramの解析設定・PSD帯域・校正定義を版2のJSONへ保存します。Generatorの出力先・Fs・信号条件・内部入力選択、Audio deviceの安定ID・CH数・PCMも保存し、版1の読み込みを維持します。取得中の保持結果や未確定の校正エディター入力を保存する操作ではありません。表示選択・配置・軸・表示範囲は別のWorkspaceブロックへ保存します。生サンプル・測定結果・カーソル位置・アコーディオン各項目の開閉は含めません。Software Loopbackの仮想DUT条件、Scope取得モードと実験段階Lock-inの設定も保存します。これらを含まない版1ファイルはAuto・Lock-in無効として読みます。QA専用内部デモは保存対象外です。
 
 既定の保存先はmacOSで `~/Library/Application Support/MeasureLab/measurement-settings.json`、Windowsで `%APPDATA%/MeasureLab/measurement-settings.json`、Linuxで `$XDG_CONFIG_HOME/MeasureLab/measurement-settings.json`（未設定時は `~/.config/MeasureLab/measurement-settings.json`）です。別のパスも指定できます。自動保存・起動時の自動読み込みは行いません。
 
@@ -159,17 +159,19 @@ ScopeではRMS・Peak・P-Pと時間カーソルの数値に校正を適用し�
 
 入力は名前や列挙順でなくCPALの安定したデバイスIDを照合します。不在・重複ID、CH数の変化、指定レートの非対応、Device defaultで保存した既定Fsの変化では復元全体を拒否し、別のデバイスやレートへ置き換えません。接続を戻して **Refresh devices** を行い、再度復元してください。対応しない版・旧形式・不正値・64 KiBを超えるファイルや、セッション内で既知の校正ID／版と異なる定義も拒否します。保存失敗では以前のファイルを維持し、成功・失敗はパネルと下部の **Settings status / Settings error** から確認できます。デバイスIDの保証範囲はOS・バックエンドに依存します。条件付きの検証と未確認範囲は [設定保存の検証](validation/SETTINGS_2026-10.md) を参照してください。
 
-### Generatorの内部ループバック
+### Generatorの出力と内部ループバック
 
 **View / Generator + Scope**（またはSpectrum／Lock-in）で開きます。GEN 1／2の**ON**は出力対象の選択です。出力Fsを選び、周波数・振幅・位相を直接入力してEnterまたはフォーカス移動で確定します。入力途中の値は適用せず、Escで取り消します。**Step**で刻みを選び、＋／−／上下キーで値を調整できます。周波数は0.1 Hz以上・出力Fsの45%未満、振幅は−120〜0 dBFSのpeak基準、位相は±180°の進み位相です。出力CHの変更は停止中に行い、二重割当は拒否します。
 
 **Start output**で正弦波を生成します。**Observe Generator**で共通入力を選び、上部の**Start input**で実際のf64出力サンプルを取得します。両方を個別に開始します。プレビューは設定波形の2周期で、振幅に合わせた縦倍率とFS peakを表示します。実波形はScopeで確認してください。狭幅では縦配置またはCHタブに切り替え、両CHの状態を残します。
 
-出力状態は実行側の応答に基づくSTOPPED／STARTING／RUNNING／STOPPING／ERROR、設定はPENDING／APPLIED／TRANSITIONで表示します。詳細で最後の適用値と整数サンプル境界を確認できます。振幅・位相・ON／OFFは原則10 msの遷移で、周波数変更はcarrier位相を保持します。異なる周波数履歴の後は相対位相が自動では揃わないため、必要なら**Align phases**を使います。遷移中の実サンプルはScope／Spectrogramへ渡し、Spectrum平均・Lock-inは遷移終了後の完全窓から再開します。
+出力状態は実行側の応答に基づくSTOPPED／STARTING／RUNNING／STOPPING／ERROR、設定はPENDING／APPLIED／TRANSITIONで表示します。詳細で最後の適用値と整数サンプル境界を確認できます。振幅・位相・ON／OFFは原則10 msの遷移で、周波数変更はcarrier位相を保持します。異なる周波数履歴の後は相対位相が自動では揃わないため、必要なら**Align phases**を使います。内部接続では遷移中の実サンプルをScope／Spectrogramへ渡し、Spectrum平均・Lock-inは遷移終了後の完全窓から再開します。
 
 入力Stop／Single完了は結果を保持し、出力は続きます。**Stop output**はフェード後に停止し、入力が取得中なら無音の新しいフレームを続けます。Generatorを隠しても上部の出力状態と**Stop all outputs**は残ります。起動・復元・Fs変更で自動出力せず、アプリ終了時も停止します。
 
-現在の出力先は内部のみ、44.1／48／96／192 kHz・2chのf64です。CPAL／スピーカー／実デバイスへの出力、PCM変換、出力校正は未実装です。既存Software Loopbackの既知DUTとは別の入力モードです。設定・結果は版2で保存し、版1も読み込めます。結果には受信した最大128区間の出力条件を含め、履歴外・欠落した区間は対応不明とします。保持後のGenerator編集では結果を変更しません。Generator結果のRMS・PSD帯域電力・Lock-inの数値差は、両寄与区間が定常で設定・同一周波数の相対carrier位相が一致するときだけ表示します。
+内部出力は44.1／48／96／192 kHz・2chのf64です。出力先メニューで音声デバイスを選び、**Refresh outputs**で再取得できます。出力先・Fs／CH数／PCMは入力と出力を停止して選びます。デバイスの1〜16ch構成へ最大2信号を割り当て、未割当CHは無音にします。開始時に選択した安定IDと形式を再確認し、使えない設定は開始しません。**Input source**で接続先の実入力を選び、個別に**Start input**してください。**Observe Generator**は内部接続で使います。ストリーム通知・コールバック停止はERRORとなり、**Reset output (stays OFF)**後の明示Startで再開します。出力校正は未実装です。既存Software Loopbackの既知DUTとは別の入力モードです。設定・結果は版2で保存し、版1も読み込めます。内部接続の結果には受信した最大128区間の出力条件を含め、履歴外・欠落した区間は対応不明とします。保持後のGenerator編集では結果を変更しません。Generator結果のRMS・PSD帯域電力・Lock-inの数値差は、両寄与区間が定常で設定・同一周波数の相対carrier位相が一致するときだけ表示します。
+
+外部入力と出力の連番は別の時計です。外部Generator編集の遷移は入力窓と自動対応せず、Spectrum／Lock-inの入力解析を自動リセットしません。同期REFは実入力2chを使い、編集後は整定を待ってください。外部入力結果にGeneratorの出力条件区間は含めません。出力設定を別途保存し、校正していないDAC／ADC遅延やFSの絶対精度と区別します。
 
 ### Software Loopbackと実験段階Lock-in
 
@@ -183,7 +185,7 @@ ScopeではRMS・Peak・P-Pと時間カーソルの数値に校正を適用し�
 
 基本波のX／Yは同じ非重複整数窓で測ったREF位相を補正してから二段の複素EMAで平均します。周期Hannの重み付きDC／sin／cos適合を使い、DCオフセットと校正オフセットはACから除外します。校正ゲインはREFと応答の両方へ適用します。Rはpeak振幅、正のY／位相は応答の進みです。複素応答/REFも平均してGainを表示します。フィルター係数は `1 − exp(−N/(Fs×τ))`、整定判定は連続有効入力10τで、UI時刻・壁時計には依存しません。窓平均も応答帯域・遅延に寄与し、τだけで帯域を決めたとは扱いません。欠落・非有限・REF喪失では古い平均と数値を破棄し、回復後に整定し直します。
 
-**Lock-inは実験段階です。仮想系の精度確認は必須ですが、実機でREF・タイミングを含めて使用できるまで完了としません。** 高調波REF、広範囲PLL、異なる入出力時計の補正や物理出力は未実装です。旧版との対応・許容差・残る実機確認は [Lock-inの検証](validation/LOCKIN_2026-10.md) を参照してください。
+**Lock-inは実験段階です。仮想系の精度確認は必須ですが、実機でREF・タイミングを含めて使用できるまで完了としません。** 高調波REF、広範囲PLL、異なる入出力時計の補正や、Lock-inから励振を管理する測定フローは未実装です。旧版との対応・許容差・残る実機確認は [Lock-inの検証](validation/LOCKIN_2026-10.md) を参照してください。
 
 ### Scopeの取得とAutoset
 
@@ -325,7 +327,7 @@ Audio device → CPAL callback → bounded SPSC → measurement worker ← inter
 
 `MEASURELAB_SPECTRUM_PSD=1`は`qa`ビルドでSpectrumをPSDに設定します。`--ui-smoke`やUI計測と組み合わせて、通常幅／狭幅・帯域表示・停止中のモード保持を確認できます。
 
-`MEASURELAB_UI_SMOKE_GENERATOR=scope`（`spectrum`／`lockin`／`only`／`narrow`も可）を`--ui-smoke`へ指定すると、通常Generator経路の48 kHz・750 Hz・0.125／0.0625 FS peak・+30°をScope／8k Spectrum／Lock-inで照合し、1秒のUI受信停止・独立した入力／出力Stop・JSON／CSV・OFF復元を確認します。`narrow`は900×660の最小幅でSettingsとCHタブを表示します。成果物は`dist/generator-qa/`です。数値確認と画面撮影の成功は別に扱います。
+`MEASURELAB_UI_SMOKE_GENERATOR=scope`（`spectrum`／`lockin`／`only`／`narrow`も可）を`--ui-smoke`へ指定すると、通常Generator経路の48 kHz・750 Hz・0.125／0.0625 FS peak・+30°をScope／8k Spectrum／Lock-inで照合し、1秒のUI受信停止・独立した入力／出力Stop・JSON／CSV・OFF復元を確認します。`narrow`は900×660の最小幅でSettingsとCHタブを表示します。`MEASURELAB_UI_SMOKE_GENERATOR_DEVICE="ZOOM UAC-232"`（または`BlackHole 2ch`／`BlackHole 16ch`）を追加すると、通常CPAL出力の48 kHz・750 Hz・0.1／0.05 FS peak・+30°と実入力を照合します。物理出力はL–L／R–RのTRS接続を用意してから明示指定してください。成果物は`dist/generator-qa/`です。数値確認と画面撮影の成功は別に扱います。
 
 `MEASURELAB_UI_SMOKE_STAGE3F=1`は通常のSoftware Loopbackを起動・停止し、Scope統計、FFTと実験段階Lock-inの理論値、設定・参照結果の保存／読み込み／復元／再測定、CSV／PNG、Singleの480サンプル捕捉と未充填512k／Lock-inをアプリ状態で照合します。Lock-inの保持値・取得条件が停止中の次回用CH・Fs・校正・τ変更で変わらないことと、条件が一致する整定済み結果の比較も確認します。保存先は `dist/stage3f-*` です。続いて別プロセスで `MEASURELAB_UI_SMOKE_REPLAY=1` を指定すると前回ファイルから復元して再測定し、アプリ再起動後の再現を確認します。`MEASURELAB_UI_SMOKE_COMPARE=1` は比較画面を開きます。ネイティブ選択ダイアログはこのQAの自動操作対象外です。
 
@@ -505,6 +507,20 @@ MEASURELAB_PROFILE_SECONDS=10 MEASURELAB_PROFILE_FFT_PRECISION=f64 \
     ./scripts/cargo.sh run --release --locked --features qa -- --demo --low-latency
 ```
 
+通常GUIの連続出力・100回の位相編集を確認する場合:
+
+```sh
+MEASURELAB_PROFILE_SECONDS=300 MEASURELAB_PROFILE_DEVICE="ZOOM UAC-232" \
+    MEASURELAB_PROFILE_SAMPLE_RATE=48000 MEASURELAB_PROFILE_FFT_SIZE=8192 \
+    MEASURELAB_PROFILE_SPECTRUM_MODE=continuous MEASURELAB_PROFILE_UI_STALL=1 \
+    MEASURELAB_PROFILE_GENERATOR_DEVICE="ZOOM UAC-232" \
+    MEASURELAB_PROFILE_GENERATOR_EDITS=1 ./scripts/profile-stage2.sh generator-uac232-300
+```
+
+このQAは通常Generatorの制御・出力経路を使います。終了時は独立生入力照合、出力フェードの有限Stopと通知監査を行います。編集確定から実行応答までのp95はDAC遅延・遷移完了時間と分けて記録します。
+
+Generatorの連続QAは最初のGUI描画から2秒待って入力を開始し、0.5秒の入力取得後に出力を開始します。入出力の通知は起動時も失敗とし、自動再試行しません。このUAC-232条件はCoreAudio通知により未合格です。短時間確認と長時間試験の失敗・未確認範囲は [実出力の検証](validation/GENERATOR_DEVICE_2026-10.md) を参照してください。
+
 ## コードの入口
 
 - `src/audio.rs`: CPALデバイス管理、入力コールバック、SPSC転送。
@@ -514,7 +530,7 @@ MEASURELAB_PROFILE_SECONDS=10 MEASURELAB_PROFILE_FFT_PRECISION=f64 \
 - `src/acquisition.rs`: サンプル時計のNormal／Single捕捉とAutoset。
 - `src/loopback.rs` / `src/lockin.rs` / `src/lockin_worker.rs`: 通常ビルドの仮想DUTと実験段階の同期REF Lock-in、固定容量の独立演算。
 - `src/generator.rs` / `src/generator/control.rs`: GUI非依存の2ch正弦波コア、滑らかな設定変更、固定容量の制御・優先Stop。
-- `src/output.rs` / `src/app/generator_panel.rs`: 通常版の独立した内部生成ワーカー、出力条件付き共通入力、Generator GUI。CPAL出力は未実装。
+- `src/output.rs` / `src/app/generator_panel.rs`: 内部生成ワーカー、出力条件付き共通入力、Generator GUI。`src/output/device.rs` / `runtime.rs`は通常CPAL出力・PCM変換・非UIデバイス管理。
 - `src/app/lockin_panel.rs`: Lock-inのR／θ・X／Y・4値表示、参照状態・整定・保持、測定条件の操作と表示専用のバー。
 - `src/export.rs` / `src/file_io.rs`: 保持したScope／Spectrumと測定条件の版付きJSON、欠落・無効状態とf64線形値、専用I/Oワーカー、設定保存と共有する原子的ファイル置換。
 - `src/calibration.rs`: ID・版・参照条件付きのCH校正、Scope実サンプルの換算・RMS／Peak／P-P、非有限値の無効化。

@@ -64,7 +64,7 @@ The next step is to make a small audio measurement lab dependable from input to 
 These are development directions; later features are not yet available. The immediate focus is accuracy, reproducibility and a useful two-channel workflow, while preserving the 1–16 channel foundation.
 
 > [!NOTE]
-> **This is a prototype available from source.** Hardware accuracy, long-duration behavior and OS/device coverage still have unverified areas; see the [validation records](guide/rust/validation/README.md). Physical signal output, THD/FRF/IR, VST3 and actual sample-clock calibration are not implemented in Rust. Scope waveform axes and triggers use FS even when numerical readouts are calibrated. Lock-in hardware REF/timing validation remains pending.
+> **This is a prototype available from source.** Hardware accuracy, long-duration behavior and OS/device coverage still have unverified areas; see the [validation records](guide/rust/validation/README.md). Normal Generator audio output is experimental; THD/FRF/IR, VST3, output calibration and actual sample-clock calibration are not implemented in Rust. Scope waveform axes and triggers use FS even when numerical readouts are calibrated. Lock-in hardware REF/timing validation is limited to the documented conditions.
 
 ## Try the prototype
 

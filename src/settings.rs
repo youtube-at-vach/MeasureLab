@@ -241,7 +241,7 @@ impl Document {
         if self.version == 1 && (m.generator.is_some() || self.workspace.generator_visible) {
             return Err("Generator settings require version 2".into());
         }
-        if let Some(generator) = m.generator {
+        if let Some(generator) = &m.generator {
             generator.validate()?;
             if generator.use_as_input
                 && (m.software_loopback.is_some()
@@ -644,6 +644,7 @@ mod tests {
         let mut signals = crate::generator::Settings::default();
         signals.signals[0].enabled = true;
         doc.measurement.generator = Some(crate::output::Saved {
+            target: crate::output::Target::Internal,
             nominal_sample_rate: 48_000,
             signals,
             use_as_input: true,

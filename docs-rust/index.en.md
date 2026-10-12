@@ -12,7 +12,7 @@
 | Spectrogram / XY | Time-frequency view and synchronous two-channel XY display |
 | Save and compare | Channel calibration and versioned settings; held Scope/Spectrum results in JSON, CSV and PNG; reference JSON comparison |
 | Software Loopback | Known gain, phase, delay and noise through the common input path without hardware |
-| Generator (internal output) | Two sine signals with live frequency/amplitude/phase controls; actual generated f64 samples through the common input path. CPAL output is not implemented |
+| Generator (experimental) | Two sine signals with live frequency/amplitude/phase controls; actual generated f64 samples through the common input path. Output up to two signals internally or through a CPAL audio device, with device/format selection and OFF restoration |
 | Lock-in (experimental) | Fundamental-frequency measurement using synchronous REF and response; X/Y, R/θ, Gain, settling and REF status; JSON/CSV with conditions and reference comparison |
 
 Acquisition, measurement and rendering run separately. Hiding a display does not stop analysis or averaging. Held results retain their input, settings, calibration and loss information.
@@ -21,7 +21,7 @@ Acquisition, measurement and rendering run separately. Hiding a display does not
 
 Quality assessment currently focuses on macOS; Windows/Linux hardware acceptance is deferred to future work. Existing validation records cover specific macOS conditions. Windows and Linux are also CI build/test targets; CI success does not verify their GPUs or physical audio devices. Accuracy depends on the device, input range and calibration. The selectable ceiling of 768 kHz does not guarantee operation at that rate.
 
-BlackHole and UAC-232 physical loopback records on macOS cover input REF, independent numerical comparisons and conditional result reuse, including UAC-232 GUI save/restart/remeasurement. Earlier 600-second headless records and the current approximately 270-second GUI observation use different conditions. These are limited tests using nominal sample rates and uncalibrated FS; physical calibration accuracy, level-dependent phase, absolute delay and hardware guarantees on other operating systems remain unverified. Physical audio output, THD/FRF/IR, VST3, actual sample-rate calibration, free layout and translated application UI are not implemented. This edition does not provide all Python features. Scope waveform axes and triggers use FS; calibrated numerical readouts can use physical units.
+BlackHole and UAC-232 physical loopback records on macOS cover input REF, independent numerical comparisons and conditional result reuse, including UAC-232 GUI save/restart/remeasurement. Earlier 600-second headless records and the current approximately 270-second GUI observation use different conditions. These are limited tests using nominal sample rates and uncalibrated FS; physical calibration accuracy, level-dependent phase, absolute delay and hardware guarantees on other operating systems remain unverified. Normal Generator audio output is undergoing conditional stage 4.5 evaluation. Output calibration, output-history mapping to external results, THD/FRF/IR, VST3, actual sample-rate calibration, free layout and translated application UI are not implemented. This edition does not provide all Python features. Scope waveform axes and triggers use FS; calibrated numerical readouts can use physical units.
 
 ## Try it and report problems
 

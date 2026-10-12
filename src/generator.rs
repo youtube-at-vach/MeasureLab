@@ -119,6 +119,8 @@ pub enum Error {
     NonFiniteOutput,
     OutputRange,
     ProducerSuspended,
+    OutputStream,
+    CallbackStalled,
 }
 
 impl std::fmt::Display for Error {
@@ -165,6 +167,8 @@ impl std::fmt::Display for Error {
                 f,
                 "Internal generation was suspended for more than 250 ms; output stopped"
             ),
+            Self::OutputStream => write!(f, "Audio output failed; reset output before restarting"),
+            Self::CallbackStalled => write!(f, "Audio output callback timed out; output released"),
         }
     }
 }

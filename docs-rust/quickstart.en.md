@@ -31,7 +31,11 @@ A complete 524,288-point window takes about 10.92 seconds at 48 kHz. Faster Live
 4. Switch to **Generator + Spectrum/Lock-in** to inspect analysis. Live edits transition amplitude and phase smoothly; Spectrum/Lock-in restart averaging and settling after the transition.
 5. **Stop input** holds the measurement while output continues. **Stop output/Stop all outputs** stops generation; active input then receives new silent samples.
 
-Select an output rate of 44.1, 48, 96 or 192 kHz while both input and output are stopped. Restoring settings also requires both to be stopped and leaves output OFF. JSON/CSV results retain output conditions for the received intervals. Generator currently supports internal connections; audio-device output remains unimplemented.
+Select an output rate of 44.1, 48, 96 or 192 kHz while both input and output are stopped. Restoring settings also requires both to be stopped and leaves output OFF. Internal JSON/CSV results retain output conditions for the received intervals.
+
+For audio-device output, select a destination and its supported sample rate, channel count and PCM while stopped, then assign the OUT channels. Unassigned outputs are silent. Choose the connected physical input under **Input source**, then press **Start output** and **Start input** separately. **Observe Generator** uses the internal connection. Output notifications or stalled callbacks latch ERROR; use **Reset output (stays OFF)** and an explicit Start to recover. Settings retain the output identity and format and restore with output OFF.
+
+External input and output use separate clocks; output transitions are not automatically mapped to input analysis windows. Wait for input settling after edits and use two actual input channels for synchronous REF and response in Lock-in. External results do not include Generator output intervals. Output calibration and DAC/ADC latency remain unverified.
 
 ## Physical audio input
 
