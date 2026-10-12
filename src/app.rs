@@ -4502,27 +4502,10 @@ impl ScopeApp {
             },
         )?;
         if self.lockin_result.settings.enabled {
-            let definitions = settings::ChannelCalibration::capture(&self.calibration.captured);
-            let settings = self.lockin_result.settings;
-            let ref_unit = self.calibration.captured.unit(settings.reference_channel);
-            let sig_unit = self.calibration.captured.unit(settings.response_channel);
-            document.lockin = Some(export::Lockin {
-                result: self.lockin_result.clone(),
-                reference_calibration: definitions
-                    .iter()
-                    .find(|c| c.channel == settings.reference_channel)
-                    .cloned(),
-                response_calibration: definitions
-                    .iter()
-                    .find(|c| c.channel == settings.response_channel)
-                    .cloned(),
-                response_unit_peak: format!("{sig_unit} peak"),
-                gain_unit: if ref_unit == sig_unit {
-                    "ratio".into()
-                } else {
-                    format!("{sig_unit}/{ref_unit}")
-                },
-            });
+            document.lockin = Some(export::Lockin::capture(
+                self.lockin_result.clone(),
+                &self.calibration.captured,
+            ));
         }
         Ok(document)
     }

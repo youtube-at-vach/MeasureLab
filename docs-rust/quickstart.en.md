@@ -33,4 +33,6 @@ Changes to input, analysis or calibration while stopped apply to the next Start.
 
 Use Software Loopback to supply REF and response, and select the REF/Signal channels in the Lock-in display. X/Y and R use peak units; positive phase means the response leads REF. Settling, lost REF and missing input are not valid measurements. Hardware validation remains incomplete.
 
+After Stop finishes processing, use **File** to save Lock-in conditions, calibrations, state and f64 values as JSON or CSV. Invalid readings use JSON `null` or empty CSV cells. Reference comparison shows both results and their captured conditions; numerical differences require settled results with matching nominal sample rate, channels, REF/filter settings and calibrations. PNG displays Scope/Spectrum.
+
 See the [overview](index.md) for verification limits and unimplemented features.

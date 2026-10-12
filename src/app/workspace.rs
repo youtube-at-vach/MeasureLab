@@ -55,6 +55,7 @@ impl ScopeApp {
             self.accept_snapshot(&mut snapshot);
             let doc = self.capture_results()?;
             doc.validate()?;
+            assert_eq!(doc.lockin.as_ref().unwrap().result, self.lockin_result);
             assert_eq!(self.lockin_result.state, lockin::State::Valid);
             assert!((self.lockin_result.amplitude_peak.unwrap() - 0.0625).abs() < 1e-8);
             assert!((self.lockin_result.phase_degrees.unwrap() - 30.0).abs() < 1e-6);
@@ -77,12 +78,42 @@ impl ScopeApp {
                 let epoch = self.input_generation;
                 self.spectrum_settings.size = 1024;
                 self.scope_channels = Pair([15, 7]);
+                self.lockin_settings.time_constant_seconds = 0.1;
+                self.lockin_settings.reference_channel = 1;
+                self.requested_sample_rate = Some(96000);
+                self.calibration.pending = self
+                    .calibration
+                    .pending
+                    .clone()
+                    .with(
+                        1,
+                        Some(
+                            calibration::Calibration::new(
+                                "next-start-qa".into(),
+                                2,
+                                4.0,
+                                0.5,
+                                "V".into(),
+                                "Pending condition must not relabel held results".into(),
+                            )
+                            .unwrap(),
+                        ),
+                    )
+                    .unwrap();
+                let after_edit = self.capture_results()?;
+                assert_eq!(after_edit.input, doc.input);
+                assert_eq!(after_edit.lockin, doc.lockin);
                 self.restore_settings(settings::load(std::path::Path::new(
                     "dist/stage3f-settings.json",
                 ))?)?;
                 assert!(!self.running());
                 assert_eq!(self.input_generation, epoch);
                 assert_eq!(self.scope_channels, Pair([0, 1]));
+                assert_eq!(
+                    self.lockin_settings,
+                    doc.lockin.as_ref().unwrap().result.settings
+                );
+                assert_eq!(self.capture_results()?.lockin, doc.lockin);
                 assert_eq!(*self.reference.as_ref().unwrap().as_ref(), doc);
             } else {
                 let old = self.reference.as_ref().unwrap();
@@ -104,6 +135,14 @@ impl ScopeApp {
                         .abs()
                         < 1e-10
                 );
+                let difference = crate::results::lockin_difference(old, &doc)
+                    .ok_or("Remeasured Lock-in conditions no longer match saved reference")?;
+                assert!(difference.x.abs() < 1e-8);
+                assert!(difference.y.abs() < 1e-8);
+                assert!(difference.amplitude_peak.abs() < 1e-8);
+                assert!(difference.phase_degrees.abs() < 1e-6);
+                assert!(difference.gain.abs() < 1e-7);
+                self.comparison_current = Some(Box::new(doc));
             }
         }
         // Single uses the same source but ends before the 512k FFT is filled.
@@ -131,14 +170,20 @@ impl ScopeApp {
         assert_eq!(self.scope_range.end - self.scope_range.start, 480);
         assert!(!self.analyzer.is_ready());
         assert_eq!(self.scope_missing, 0);
-        self.capture_results()?.validate()?;
+        let single = self.capture_results()?;
+        single.validate()?;
+        assert_eq!(
+            single.lockin.as_ref().unwrap().result.state,
+            lockin::State::Settling
+        );
+        assert!(single.lockin.as_ref().unwrap().result.x.is_none());
         self.visible = [true, true, false, false];
         self.sidebar.section = Some(SettingsSection::Scope);
         if std::env::var_os("MEASURELAB_UI_SMOKE_COMPARE").is_some() {
             self.compare_open = true;
         }
         println!(
-            "Stage 3f virtual UI QA OK: software common input; settings/results JSON save-load-restore-remeasure; reference retains conditions; CSV/PNG; Single exact finite capture with unfilled 512k; experimental Lock-in amplitude/phase matches theory (physical use unverified)"
+            "Stage 4a virtual UI QA OK: software common input; settings/results JSON save-load-restore-remeasure; Lock-in values/conditions survive held edits and restart; matching settled reference comparison; CSV/PNG; Single exact finite capture with unfilled 512k/Lock-in; experimental Lock-in amplitude/phase matches theory (physical use unverified)"
         );
         self.created = Instant::now();
         Ok(())
@@ -368,6 +413,13 @@ impl ScopeApp {
                             && a.inclusive_bins==b.inclusive_bins && a.power_unit==b.power_unit {
                             ui.label(format!("PSD band power current − reference: {:.9e} {}",b.power-a.power,b.power_unit));
                         }
+                        if let Some(d) = crate::results::lockin_difference(reference, current) {
+                            let l = current.lockin.as_ref().unwrap();
+                            ui.label(format!("Lock-in current − reference (each result's own interval):\nΔX {:.9e} · ΔY {:.9e} · ΔR {:.9e} {}\nΔθ {:+.9}° (wrapped to ±180°) · ΔGain {:.9e} {}",
+                                d.x, d.y, d.amplitude_peak, l.response_unit_peak, d.phase_degrees, d.gain, l.gain_unit));
+                        } else if reference.lockin.is_some() || current.lockin.is_some() {
+                            ui.label("Lock-in difference requires two valid, settled results with matching nominal Fs, channels, REF/filter settings and calibrations, and no input failure.");
+                        }
                     }
                 }
             });
@@ -413,6 +465,9 @@ fn result_summary(ui: &mut egui::Ui, doc: &export::Document) {
                 }
             ));
         }
+    }
+    if let Some(l) = &doc.lockin {
+        lockin_summary(ui, l);
     }
     ui.label(format!(
         "Scope [{}, {}) | {:?} | trigger CH {} {:?} at {} FS",
@@ -511,6 +566,48 @@ fn result_summary(ui: &mut egui::Ui, doc: &export::Document) {
         s.diagnostics.missing_windows,s.diagnostics.nonfinite_windows,s.diagnostics.processed_windows_since_reset,
         s.diagnostics.input_end,s.diagnostics.filled_samples,doc.loss.input_failed
     ));
+}
+
+fn lockin_summary(ui: &mut egui::Ui, l: &export::Lockin) {
+    let r = &l.result;
+    let number = |value: Option<f64>| value.map_or("—".into(), |v| format!("{v:.9e}"));
+    ui.label(format!(
+        "Lock-in {:?} · experimental | SIG CH {} / REF CH {}\nτ {} s · N {} · hint {} Hz · {} · REF min {} FS RMS",
+        r.state, r.settings.response_channel + 1, r.settings.reference_channel + 1,
+        r.settings.time_constant_seconds, r.settings.integration_samples, r.settings.frequency_hz,
+        if r.settings.track_reference { "tracking ±10%" } else { "fixed frequency" },
+        r.settings.reference_min_rms_fs
+    ));
+    ui.monospace(format!(
+        "X {} · Y {} · R {} {}\nθ {}° (leads REF) · Gain {} {}",
+        number(r.x),
+        number(r.y),
+        number(r.amplitude_peak),
+        l.response_unit_peak,
+        number(r.phase_degrees),
+        number(r.gain),
+        l.gain_unit
+    ));
+    ui.label(format!(
+        "Envelope [{}, {}) · latest [{}, {})\n{} complete windows · {} missing samples\nREF {} Hz · AC RMS {} FS · sinusoid fit {}",
+        r.sample_range.start, r.sample_range.end, r.latest_window.start, r.latest_window.end,
+        r.processed_windows, r.missing_samples, number(r.reference_frequency_hz),
+        number(r.reference_ac_rms_fs), number(r.reference_sinusoid_fraction)
+    ));
+    for (label, calibration) in [
+        ("REF", &l.reference_calibration),
+        ("SIG", &l.response_calibration),
+    ] {
+        ui.label(calibration.as_ref().map_or_else(
+            || format!("{label}: uncalibrated · FS"),
+            |c| {
+                format!(
+                    "{label}: {} rev {} · gain {} offset {} {} · {}",
+                    c.id, c.revision, c.gain, c.offset, c.unit, c.conditions
+                )
+            },
+        ));
+    }
 }
 
 fn reference_plot(

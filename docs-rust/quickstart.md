@@ -33,4 +33,6 @@ macOS／Linuxのローカルセットアップ環境では`./scripts/cargo.sh ru
 
 Software LoopbackでREFと応答を用意し、Lock-in表示のREF／Signal CHを指定します。X/YとRはpeak単位、正の位相は応答の進みです。整定中・REF喪失・欠落を有効な測定値と扱わないでください。実機確認は未完了です。
 
+Stopの解析完了後、**File** からLock-inの条件・校正・状態とf64値をJSON／CSVへ保存できます。無効値はJSONの `null`、CSVの空欄になります。参照比較には両結果の数値・取得条件を表示し、整定済みで公称Fs・CH・REF／フィルター設定・校正が一致する場合だけ数値差を表示します。PNGの表示対象はScope／Spectrumです。
+
 確認範囲と未実装機能は [概要](index.md) を参照してください。
