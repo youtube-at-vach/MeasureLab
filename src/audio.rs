@@ -22,6 +22,9 @@ const SAMPLE_RATES: &[u32] = &[
 pub struct AudioFrame {
     pub samples: Samples,
     pub sequence: u64,
+    /// Host availability of this callback batch, not the ADC sampling time.
+    #[cfg(feature = "qa")]
+    pub available_at: Option<std::time::Instant>,
 }
 
 #[derive(Default)]
@@ -409,6 +412,10 @@ fn write_input<T: cpal::Sample>(
 where
     f64: cpal::FromSample<T>,
 {
+    // One clock read per callback, before PCM conversion/queueing. No per-frame
+    // clock access, allocation, locking or waiting in the real-time path.
+    #[cfg(feature = "qa")]
+    let available_at = Some(std::time::Instant::now());
     let mut dropped = 0;
     for frame in input.chunks_exact(channels) {
         let mut samples = [0.0; MAX_CHANNELS];
@@ -419,6 +426,8 @@ where
             .push(AudioFrame {
                 samples,
                 sequence: *sequence,
+                #[cfg(feature = "qa")]
+                available_at,
             })
             .is_err()
         {

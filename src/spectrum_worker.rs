@@ -63,6 +63,21 @@ struct Block {
     start: u64,
     len: usize,
     samples: [f64; BLOCK_FRAMES],
+    // A continuous window can end inside a block containing several callbacks.
+    // Keep the exact endpoint's timestamp rather than assigning the block tail.
+    #[cfg(feature = "qa")]
+    available_at: [Option<Instant>; BLOCK_FRAMES],
+}
+
+/// Monotonic host timestamps paired with one analysis window. QA only: these
+/// are neither ADC clock calibration nor GPU/display presentation timestamps.
+#[cfg(feature = "qa")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Timing {
+    pub epoch: u64,
+    pub end: u64,
+    pub input_available: Instant,
+    pub analysis_completed: Instant,
 }
 
 pub struct Publication {
@@ -73,6 +88,8 @@ pub struct Publication {
     pub result: spectrum::Result,
     pub info: SpectrumInfo,
     pub fft_ms: f64,
+    #[cfg(feature = "qa")]
+    pub timing: Option<Timing>,
 }
 
 pub struct Metrics {
@@ -139,6 +156,10 @@ struct Processor {
     budget_ms: f64,
     last_latest: Instant,
     last_nonfinite: Option<u64>,
+    #[cfg(feature = "qa")]
+    last_available: Option<Instant>,
+    #[cfg(feature = "qa")]
+    timing: Option<Timing>,
 }
 
 impl Processor {
@@ -168,6 +189,10 @@ impl Processor {
             budget_ms: 0.0,
             last_latest: Instant::now() - observation_interval(config.settings.size),
             last_nonfinite: None,
+            #[cfg(feature = "qa")]
+            last_available: None,
+            #[cfg(feature = "qa")]
+            timing: None,
             config,
         }
     }
@@ -185,6 +210,11 @@ impl Processor {
         }
         self.history.clear_at(next);
         self.last_nonfinite = None;
+        #[cfg(feature = "qa")]
+        {
+            self.last_available = None;
+            self.timing = None;
+        }
         self.analyzer.reset();
         self.info.updates = 0;
         self.info.contributing = 0..0;
@@ -203,6 +233,10 @@ impl Processor {
                 self.last_nonfinite = Some(end - 1);
             }
             self.history.push_at(end - 1, [sample]);
+            #[cfg(feature = "qa")]
+            {
+                self.last_available = block.available_at[offset];
+            }
             if self.config.mode == SpectrumMode::Continuous && end == self.next_end {
                 self.analyze(end, metrics);
                 self.next_end += (self.config.settings.size / 4) as u64;
@@ -236,6 +270,21 @@ impl Processor {
             return;
         }
         let elapsed = clock.elapsed().as_nanos() as u64;
+        #[cfg(feature = "qa")]
+        {
+            let completed = Instant::now();
+            self.timing = self
+                .last_available
+                .filter(|&available| {
+                    available <= completed && self.analyzer.validity() == spectrum::Validity::Valid
+                })
+                .map(|input_available| Timing {
+                    epoch: self.config.epoch,
+                    end,
+                    input_available,
+                    analysis_completed: completed,
+                });
+        }
         self.fft_ms = elapsed as f64 / 1e6;
         metrics.fft_max_nanos.fetch_max(elapsed, Ordering::Relaxed);
         metrics.fft_histogram[(elapsed / 100_000).min(999) as usize]
@@ -304,6 +353,10 @@ impl Processor {
         publication.channel = self.config.channel;
         publication.info.clone_from(&self.info);
         publication.fft_ms = self.fft_ms;
+        #[cfg(feature = "qa")]
+        {
+            publication.timing = self.timing;
+        }
         if copy_bins {
             self.analyzer.copy_result(&mut publication.result);
         }
@@ -319,6 +372,8 @@ impl Processor {
             result: spectrum::Result::empty(self.config.settings, self.config.rate),
             info: SpectrumInfo::default(),
             fft_ms: 0.0,
+            #[cfg(feature = "qa")]
+            timing: None,
         };
         self.copy(&mut publication);
         publication
@@ -584,9 +639,24 @@ impl Feeder {
             start,
             len: 0,
             samples: [0.0; BLOCK_FRAMES],
+            #[cfg(feature = "qa")]
+            available_at: [None; BLOCK_FRAMES],
         });
     }
     pub fn submit(&mut self, sequence: u64, samples: &[f64]) {
+        self.submit_frame(
+            sequence,
+            samples,
+            #[cfg(feature = "qa")]
+            None,
+        );
+    }
+    pub(crate) fn submit_frame(
+        &mut self,
+        sequence: u64,
+        samples: &[f64],
+        #[cfg(feature = "qa")] available_at: Option<Instant>,
+    ) {
         let Some(block) = self.pending.as_ref() else {
             return;
         };
@@ -602,6 +672,10 @@ impl Feeder {
             block.start = sequence;
         }
         block.samples[block.len] = sample;
+        #[cfg(feature = "qa")]
+        {
+            block.available_at[block.len] = available_at;
+        }
         block.len += 1;
         if block.len == BLOCK_FRAMES {
             self.flush();
@@ -694,12 +768,93 @@ mod tests {
             start,
             len,
             samples: [0.0; BLOCK_FRAMES],
+            #[cfg(feature = "qa")]
+            available_at: [None; BLOCK_FRAMES],
         };
         for (i, sample) in block.samples[..len].iter_mut().enumerate() {
             *sample = amplitude
                 * (TAU * 32.0 * (start + i as u64) as f64 / config.settings.size as f64).sin();
         }
         block
+    }
+
+    #[cfg(feature = "qa")]
+    #[test]
+    fn latency_follows_the_exact_window_endpoint_across_modes_and_gaps() {
+        for size in [1024, 524288] {
+            for mode in [
+                SpectrumMode::Continuous,
+                SpectrumMode::Live,
+                SpectrumMode::Latest,
+            ] {
+                let config = config(size, mode, Quantity::Amplitude);
+                let metrics = Metrics::default();
+                let mut p = Processor::new(config.clone());
+                let endpoint = Instant::now() - Duration::from_secs(2);
+                let tail = endpoint + Duration::from_millis(20);
+                let mut start = 0;
+                while start < size - 100 {
+                    let len = (size - 100 - start).min(BLOCK_FRAMES);
+                    let mut b = block(config.clone(), start as u64, len, 0.25);
+                    b.available_at[..len].fill(Some(endpoint - Duration::from_millis(10)));
+                    p.process(&b, &metrics);
+                    start += len;
+                }
+                assert!(
+                    p.publication().timing.is_none(),
+                    "unfilled window has no latency"
+                );
+                let mut b = block(config.clone(), start as u64, 137, 0.25);
+                b.available_at[..100].fill(Some(endpoint));
+                b.available_at[100..137].fill(Some(tail));
+                p.process(&b, &metrics);
+                p.latest(true, &metrics);
+                let publication = p.publication();
+                let timing = publication.timing.unwrap();
+                assert_eq!(timing.epoch, config.epoch);
+                assert_eq!(timing.end, publication.result.window().unwrap().end);
+                assert_eq!(
+                    (timing.end, timing.input_available),
+                    if mode == SpectrumMode::Continuous {
+                        (size as u64, endpoint)
+                    } else {
+                        (size as u64 + 37, tail)
+                    }
+                );
+                assert!(timing.analysis_completed >= timing.input_available);
+                // Republish/Clear hold must preserve the original analysis time.
+                p.analyzer.clear_hold();
+                p.revision += 1;
+                assert_eq!(p.publication().timing, Some(timing));
+                p.gap_to(size as u64 + 55);
+                assert!(p.publication().timing.is_none());
+                assert!(!p.publication().result.is_ready());
+                p.process(&block(config, size as u64 + 55, 100, 0.25), &metrics);
+                p.latest(true, &metrics);
+                assert!(
+                    p.publication().timing.is_none(),
+                    "gap cannot reuse a stale timestamp"
+                );
+            }
+        }
+    }
+
+    #[cfg(feature = "qa")]
+    #[test]
+    fn untimed_or_nonfinite_input_cannot_publish_a_latency() {
+        let config = config(1024, SpectrumMode::Continuous, Quantity::Amplitude);
+        let metrics = Metrics::default();
+        let mut p = Processor::new(config.clone());
+        p.process(&block(config.clone(), 0, 1024, 0.25), &metrics);
+        assert!(p.publication().result.is_ready());
+        assert!(p.publication().timing.is_none());
+        let mut b = block(config, 1024, 1024, 0.25);
+        b.samples[1023] = f64::NAN;
+        b.available_at
+            .fill(Some(Instant::now() - Duration::from_secs(1)));
+        p.process(&b, &metrics);
+        assert_eq!(p.analyzer.validity(), spectrum::Validity::NonFinite);
+        assert!(p.publication().timing.is_none());
     }
 
     #[test]

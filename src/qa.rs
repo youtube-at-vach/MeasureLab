@@ -202,6 +202,8 @@ pub struct Profile {
     spectrum_intervals_ms: Distribution,
     spectrum_seconds: f64,
     last_spectrum: Option<(u64, u64, Instant)>,
+    spectrum_latency: [Distribution; 3],
+    last_spectrum_latency: Option<(u64, u64, u64)>,
     input_dropped: u64,
     previous_input_dropped: u64,
     last_progress_seconds: u64,
@@ -230,21 +232,31 @@ impl Profile {
                 Ok::<_, String>(rate)
             })
             .transpose()?;
-        Ok(Some(Self {
+        Ok(Some(Self::new(
+            Duration::from_secs(seconds + 2),
+            std::env::var("MEASURELAB_PROFILE_DEVICE").ok(),
+            sample_rate,
+        )))
+    }
+
+    fn new(duration: Duration, device: Option<String>, sample_rate: Option<u32>) -> Self {
+        Self {
             started: Instant::now(),
-            duration: Duration::from_secs(seconds + 2),
+            duration,
             intervals_ms: Distribution::default(),
             cpu_ms: Distribution::default(),
             work: std::array::from_fn(|_| Distribution::default()),
             spectrum_intervals_ms: Distribution::default(),
             spectrum_seconds: 0.0,
             last_spectrum: None,
+            spectrum_latency: std::array::from_fn(|_| Distribution::default()),
+            last_spectrum_latency: None,
             input_dropped: 0,
             previous_input_dropped: 0,
             last_progress_seconds: 0,
-            device: std::env::var("MEASURELAB_PROFILE_DEVICE").ok(),
+            device,
             sample_rate,
-        }))
+        }
     }
 
     pub fn record(&mut self, elapsed_seconds: f64, running: bool, cpu_seconds: Option<f32>) {
@@ -291,6 +303,42 @@ impl Profile {
         self.record_input_loss(dropped);
         self.previous_input_dropped = 0;
         self.last_spectrum = None;
+        self.last_spectrum_latency = None;
+    }
+
+    /// All three distributions use the same displayed-window cohort. The total
+    /// is measured directly; percentiles of separate intervals cannot be added.
+    pub fn record_spectrum_latency(
+        &mut self,
+        generation: u64,
+        timing: crate::spectrum_worker::Timing,
+        submitted: Instant,
+    ) {
+        let key = (generation, timing.epoch, timing.end);
+        if self.started.elapsed() < Duration::from_secs(2)
+            || timing.input_available < self.started + Duration::from_secs(2)
+            || self.last_spectrum_latency == Some(key)
+        {
+            return;
+        }
+        let Some(analysis) = timing
+            .analysis_completed
+            .checked_duration_since(timing.input_available)
+        else {
+            return;
+        };
+        let Some(display) = submitted.checked_duration_since(timing.analysis_completed) else {
+            return;
+        };
+        let total = submitted.duration_since(timing.input_available);
+        for (distribution, duration) in self
+            .spectrum_latency
+            .iter_mut()
+            .zip([analysis, display, total])
+        {
+            distribution.record(duration.as_secs_f64() * 1000.0);
+        }
+        self.last_spectrum_latency = Some(key);
     }
 
     pub fn finished(&self) -> bool {
@@ -331,6 +379,24 @@ impl Profile {
                 self.spectrum_intervals_ms.count as f64 / self.spectrum_seconds,
                 self.spectrum_intervals_ms.max
             );
+        }
+        for (name, distribution) in [
+            "source availability -> analysis completion",
+            "analysis completion -> UI paint submission",
+            "source availability -> UI paint submission",
+        ]
+        .into_iter()
+        .zip(&self.spectrum_latency)
+        {
+            if let Some(p95) = distribution.p95() {
+                println!(
+                    "Spectrum latency: {name} / {} submitted windows / p95 {p95:.3} ms / max {:.3} ms (host CPU timestamps; excludes ADC and GPU/presentation)",
+                    distribution.count, distribution.max
+                );
+            }
+        }
+        if self.spectrum_latency[0].count == 0 {
+            println!("Spectrum latency: no timed windows submitted after warm-up");
         }
         for work in [
             Work::Input,
@@ -661,26 +727,89 @@ mod tests {
         assert_eq!(distribution.p95(), None);
         distribution.record(1000.0);
         assert_eq!(distribution.p95(), Some(1000.0));
-        let mut profile = super::Profile {
-            started: std::time::Instant::now(),
-            duration: std::time::Duration::from_secs(1),
-            intervals_ms: super::Distribution::default(),
-            cpu_ms: super::Distribution::default(),
-            work: std::array::from_fn(|_| super::Distribution::default()),
-            spectrum_intervals_ms: super::Distribution::default(),
-            spectrum_seconds: 0.0,
-            last_spectrum: None,
-            input_dropped: 0,
-            previous_input_dropped: 0,
-            last_progress_seconds: 0,
-            device: None,
-            sample_rate: None,
-        };
+        let mut profile = super::Profile::new(std::time::Duration::from_secs(1), None, None);
         profile.record_input_loss(4);
         profile.record_input_loss(4);
         profile.new_input(6);
         profile.record_input_loss(3);
         assert_eq!(profile.input_dropped, 9);
+    }
+
+    #[test]
+    fn latency_uses_paired_windows_instead_of_adding_percentiles() {
+        use std::time::{Duration, Instant};
+        let mut profile = super::Profile::new(Duration::from_secs(10), None, None);
+        profile.started = Instant::now() - Duration::from_secs(10);
+        let available = profile.started + Duration::from_secs(3);
+        for end in 0..100 {
+            // Slow analysis and slow UI affect different windows: p95(total)
+            // is 21 ms, whereas p95(analysis) + p95(UI) would falsely give 40 ms.
+            let analysis_ms = if end < 10 { 20 } else { 1 };
+            let ui_ms = if (10..20).contains(&end) { 20 } else { 1 };
+            let timing = crate::spectrum_worker::Timing {
+                epoch: 1,
+                end,
+                input_available: available,
+                analysis_completed: available + Duration::from_millis(analysis_ms),
+            };
+            let submitted = timing.analysis_completed + Duration::from_millis(ui_ms);
+            profile.record_spectrum_latency(1, timing, submitted);
+            profile.record_spectrum_latency(1, timing, submitted + Duration::from_secs(1));
+        }
+        assert_eq!(
+            profile.spectrum_latency.each_ref().map(|d| d.count),
+            [100; 3]
+        );
+        assert_eq!(
+            profile.spectrum_latency.each_ref().map(|d| d.p95()),
+            [Some(20.0), Some(20.0), Some(21.0)]
+        );
+        assert_eq!(profile.spectrum_latency[2].max, 21.0);
+    }
+
+    #[test]
+    fn latency_excludes_warmup_and_invalid_clocks_and_tracks_analysis_epochs() {
+        use std::time::{Duration, Instant};
+        let mut profile = super::Profile::new(Duration::from_secs(10), None, None);
+        profile.started = Instant::now() - Duration::from_secs(10);
+        let available = profile.started + Duration::from_secs(3);
+        let timing = crate::spectrum_worker::Timing {
+            epoch: 1,
+            end: 1024,
+            input_available: available,
+            analysis_completed: available + Duration::from_millis(1),
+        };
+        let submitted = timing.analysis_completed + Duration::from_millis(2);
+        // A pre-warm-up result can be redrawn much later; it still is excluded.
+        profile.record_spectrum_latency(
+            1,
+            crate::spectrum_worker::Timing {
+                input_available: profile.started,
+                ..timing
+            },
+            submitted,
+        );
+        profile.record_spectrum_latency(1, timing, available);
+        profile.record_spectrum_latency(
+            1,
+            crate::spectrum_worker::Timing {
+                analysis_completed: available - Duration::from_millis(1),
+                ..timing
+            },
+            submitted,
+        );
+        assert_eq!(profile.spectrum_latency[0].count, 0);
+        profile.record_spectrum_latency(1, timing, submitted);
+        // A new analysis configuration may finish at the same input endpoint.
+        profile.record_spectrum_latency(
+            1,
+            crate::spectrum_worker::Timing { epoch: 2, ..timing },
+            submitted,
+        );
+        // A restart may reuse the endpoint, but belongs to a new generation.
+        profile.new_input(0);
+        profile.record_spectrum_latency(2, timing, submitted);
+        assert_eq!(profile.spectrum_latency.each_ref().map(|d| d.count), [3; 3]);
     }
 
     #[test]

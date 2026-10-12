@@ -102,6 +102,8 @@ pub struct Snapshot {
     pub history: History,
     pub spectrum: spectrum::Result,
     pub spectrum_info: SpectrumInfo,
+    #[cfg(feature = "qa")]
+    pub spectrum_timing: Option<spectrum_worker::Timing>,
     /// Maps independently delivered STFT rows to this input generation.
     pub stft_generation: u64,
     pub stft_config: stft::Config,
@@ -340,7 +342,22 @@ impl Core {
         );
     }
 
+    #[cfg(test)]
     fn push(&mut self, sequence: u64, samples: &[f64]) {
+        self.push_frame(
+            sequence,
+            samples,
+            #[cfg(feature = "qa")]
+            None,
+        );
+    }
+
+    fn push_frame(
+        &mut self,
+        sequence: u64,
+        samples: &[f64],
+        #[cfg(feature = "qa")] available_at: Option<Instant>,
+    ) {
         if self.acquisition.state == acquisition::State::Complete {
             return;
         }
@@ -362,7 +379,12 @@ impl Core {
             self.acquisition.invalidate();
         }
         self.feeder.submit(sequence, samples);
-        self.spectrum.submit(sequence, samples);
+        self.spectrum.submit_frame(
+            sequence,
+            samples,
+            #[cfg(feature = "qa")]
+            available_at,
+        );
         self.metrics.input_frames.fetch_add(1, Ordering::Relaxed);
         self.metrics.single_complete.store(
             self.acquisition.state == acquisition::State::Complete,
@@ -407,6 +429,8 @@ impl Core {
                 self.sample_rate,
             ),
             spectrum_info: SpectrumInfo::default(),
+            #[cfg(feature = "qa")]
+            spectrum_timing: None,
             stft_generation: self.config.stft_generation,
             stft_config: self.config.stft,
             scope_settings: self.config.scope,
@@ -433,6 +457,10 @@ impl Core {
         snapshot.sample_rate = self.sample_rate;
         snapshot.history.clone_from(&self.history);
         snapshot.has_spectrum = false;
+        #[cfg(feature = "qa")]
+        {
+            snapshot.spectrum_timing = None;
+        }
         snapshot.stft_generation = self.config.stft_generation;
         snapshot.stft_config = self.config.stft;
         snapshot.scope_settings = self.config.scope;
@@ -530,6 +558,10 @@ impl PendingSnapshot {
         snapshot.spectrum = publication.result;
         snapshot.spectrum_info = publication.info;
         snapshot.fft_ms = publication.fft_ms;
+        #[cfg(feature = "qa")]
+        {
+            snapshot.spectrum_timing = publication.timing;
+        }
         snapshot.has_spectrum = true;
         snapshot
     }
@@ -857,9 +889,11 @@ fn poll_input(input: &mut Input, core: &mut Core, final_window: bool) {
                 if core.acquisition.state == acquisition::State::Complete {
                     break;
                 }
-                core.push(
+                core.push_frame(
                     core.history.range().end,
                     &signal.next_frame(core.sample_rate),
+                    #[cfg(feature = "qa")]
+                    Some(now),
                 );
             }
         }
@@ -877,7 +911,12 @@ fn poll_input(input: &mut Input, core: &mut Core, final_window: bool) {
             let available = capture.consumer.slots();
             if let Ok(chunk) = capture.consumer.read_chunk(available) {
                 for frame in chunk {
-                    core.push(frame.sequence, &frame.samples[..capture.channels as usize]);
+                    core.push_frame(
+                        frame.sequence,
+                        &frame.samples[..capture.channels as usize],
+                        #[cfg(feature = "qa")]
+                        frame.available_at,
+                    );
                 }
             }
             if final_window && core.acquisition.state != acquisition::State::Complete {
@@ -926,7 +965,12 @@ fn poll_input(input: &mut Input, core: &mut Core, final_window: bool) {
             *fraction -= count as f64;
             for _ in 0..count {
                 let frame = signal.next_frame(core.sample_rate);
-                core.push(core.history.range().end, &frame);
+                core.push_frame(
+                    core.history.range().end,
+                    &frame,
+                    #[cfg(feature = "qa")]
+                    Some(now),
+                );
             }
         }
     }
@@ -1306,13 +1350,21 @@ mod tests {
             assert!(fresh.lockin.amplitude_peak.is_none());
             assert!(fresh.history.is_empty());
             assert!(!fresh.spectrum.is_ready());
+            #[cfg(feature = "qa")]
+            assert!(fresh.spectrum_timing.is_none());
             let mut sequence = 0;
+            #[cfg(feature = "qa")]
+            let mut endpoint_callback = None;
             for count in [0, 1, 17, 63, 256, 511, 1025, 7].into_iter().cycle() {
                 let count = count.min(8229 - sequence as usize);
                 let end = sequence + count as u64;
                 let input: Vec<f64> = (sequence..end)
                     .flat_map(|n| (0..channels).map(move |ch| sample(n, ch)))
                     .collect();
+                #[cfg(feature = "qa")]
+                let before = Instant::now();
+                #[cfg(feature = "qa")]
+                let includes_endpoint = sequence < 8192 && end >= 8192;
                 crate::audio::write_callback(
                     &input,
                     channels,
@@ -1320,6 +1372,10 @@ mod tests {
                     &mut sequence,
                     &metrics,
                 );
+                #[cfg(feature = "qa")]
+                if includes_endpoint {
+                    endpoint_callback = Some((before, Instant::now()));
+                }
                 received += count as u64;
                 wait_for_frames(&worker, received);
                 stft.drain(|row| {
@@ -1358,6 +1414,17 @@ mod tests {
             assert_eq!(captured.spectrum_info.input_missing, 0);
             assert_eq!(captured.spectrum_info.updates, 29);
             assert_eq!(captured.spectrum.window().unwrap().end, 8192);
+            #[cfg(feature = "qa")]
+            {
+                let timing = captured.spectrum_timing.unwrap();
+                let (before, after) = endpoint_callback.unwrap();
+                assert_eq!(timing.end, 8192);
+                assert!((before..=after).contains(&timing.input_available));
+                assert!(timing.analysis_completed >= timing.input_available);
+                if let Some(previous) = &held {
+                    assert_ne!(timing.epoch, previous.spectrum_timing.unwrap().epoch);
+                }
+            }
             assert_eq!(captured.spectrum.window().unwrap().sample_rate, rate);
             assert_eq!(captured.spectrum.window().unwrap().channel, channels - 1);
             assert!((captured.spectrum.cursor(frequency).unwrap().value - amplitude).abs() < 1e-10);
@@ -1411,6 +1478,8 @@ mod tests {
             for sequence in 0..1024 {
                 producer
                     .push(AudioFrame {
+                        #[cfg(feature = "qa")]
+                        available_at: None,
                         sequence,
                         samples: frame(sequence, 1024, 2, 0.25),
                     })
@@ -1466,6 +1535,8 @@ mod tests {
                 assert!(
                     producer
                         .push(AudioFrame {
+                            #[cfg(feature = "qa")]
+                            available_at: None,
                             sequence: sequence as u64,
                             samples: frame(sequence as u64, size, channels, 0.25),
                         })
@@ -1552,6 +1623,8 @@ mod tests {
         for sequence in 0..16 {
             if producer
                 .push(AudioFrame {
+                    #[cfg(feature = "qa")]
+                    available_at: None,
                     sequence,
                     samples: frame(sequence, 1024, 1, 0.25),
                 })
@@ -1574,6 +1647,8 @@ mod tests {
         wait_for_frames(&worker, 8);
         for sequence in 16..2064 {
             let mut audio_frame = AudioFrame {
+                #[cfg(feature = "qa")]
+                available_at: None,
                 sequence,
                 samples: frame(sequence, 1024, 1, 0.5),
             };
@@ -1613,6 +1688,8 @@ mod tests {
         for sequence in 0..2048 {
             producer
                 .push(AudioFrame {
+                    #[cfg(feature = "qa")]
+                    available_at: None,
                     sequence,
                     samples: frame(sequence, 1024, 16, 0.25),
                 })
@@ -1729,6 +1806,8 @@ mod tests {
             for sequence in 0..2048 {
                 producer
                     .push(AudioFrame {
+                        #[cfg(feature = "qa")]
+                        available_at: None,
                         sequence,
                         samples: frame(sequence, 1024, 16, 0.25),
                     })
@@ -1863,6 +1942,8 @@ mod tests {
                     samples[channels - 1] = if sequence < 524288 { 0.25 } else { 0.5 };
                     producer
                         .push(AudioFrame {
+                            #[cfg(feature = "qa")]
+                            available_at: None,
                             sequence: sequence as u64,
                             samples,
                         })
