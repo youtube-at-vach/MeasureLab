@@ -28,6 +28,9 @@ pub struct AudioFrame {
 pub struct Metrics {
     pub dropped: AtomicU64,
     pub callbacks: AtomicU64,
+    /// Exclusive source-frame endpoint of the last completed callback,
+    /// including queue loss. Published after its frames and drop count.
+    pub input_end: AtomicU64,
     pub failed: AtomicBool,
     #[cfg(feature = "qa")]
     pub callback_min_frames: AtomicU64,
@@ -348,25 +351,7 @@ where
     device.build_input_stream(
         config,
         move |input: &[T], _| {
-            #[cfg(feature = "qa")]
-            {
-                let frames = (input.len() / channels) as u64;
-                let previous = metrics.callback_min_frames.load(Ordering::Relaxed);
-                metrics.callback_min_frames.store(
-                    if previous == 0 {
-                        frames
-                    } else {
-                        previous.min(frames)
-                    },
-                    Ordering::Relaxed,
-                );
-                metrics
-                    .callback_max_frames
-                    .fetch_max(frames, Ordering::Relaxed);
-            }
-            let dropped = write_input(input, channels, &mut producer, &mut sequence);
-            metrics.dropped.fetch_add(dropped, Ordering::Relaxed);
-            metrics.callbacks.fetch_add(1, Ordering::Relaxed);
+            write_callback(input, channels, &mut producer, &mut sequence, &metrics);
         },
         move |error| {
             #[cfg(feature = "qa")]
@@ -377,6 +362,42 @@ where
         },
         Some(Duration::from_secs(2)),
     )
+}
+
+/// The CPAL data path, also exercised by device-independent transport tests.
+/// No allocation, locks, waiting or analysis; callback size need not be fixed.
+pub(crate) fn write_callback<T: cpal::Sample>(
+    input: &[T],
+    channels: usize,
+    producer: &mut Producer<AudioFrame>,
+    sequence: &mut u64,
+    metrics: &Metrics,
+) where
+    f64: cpal::FromSample<T>,
+{
+    #[cfg(feature = "qa")]
+    {
+        let frames = (input.len() / channels) as u64;
+        // Zero means no nonempty callback observed yet.
+        if frames > 0 {
+            let previous = metrics.callback_min_frames.load(Ordering::Relaxed);
+            metrics.callback_min_frames.store(
+                if previous == 0 {
+                    frames
+                } else {
+                    previous.min(frames)
+                },
+                Ordering::Relaxed,
+            );
+            metrics
+                .callback_max_frames
+                .fetch_max(frames, Ordering::Relaxed);
+        }
+    }
+    let dropped = write_input(input, channels, producer, sequence);
+    metrics.dropped.fetch_add(dropped, Ordering::Relaxed);
+    metrics.callbacks.fetch_add(1, Ordering::Relaxed);
+    metrics.input_end.store(*sequence, Ordering::Release);
 }
 
 fn write_input<T: cpal::Sample>(
@@ -614,6 +635,110 @@ mod tests {
                 &frame.samples,
                 &input[frame_index * 16..(frame_index + 1) * 16]
             );
+        }
+    }
+
+    #[test]
+    fn variable_callbacks_preserve_pcm_conversion_channel_order_and_source_clock() {
+        fn check<T: cpal::Sample>(input: &[T], channels: usize)
+        where
+            f64: cpal::FromSample<T>,
+        {
+            let (mut producer, mut consumer) = RingBuffer::new(1025);
+            let metrics = Metrics::default();
+            let mut sequence = 0;
+            let mut start = 0;
+            for (index, count) in [0, 1, 17, 255, 512, 1025, 7, 0].into_iter().enumerate() {
+                let end = start + count;
+                write_callback(
+                    &input[start * channels..end * channels],
+                    channels,
+                    &mut producer,
+                    &mut sequence,
+                    &metrics,
+                );
+                assert_eq!(sequence, end as u64);
+                assert_eq!(metrics.input_end.load(Ordering::Acquire), end as u64);
+                assert_eq!(metrics.callbacks.load(Ordering::Relaxed), index as u64 + 1);
+                assert_eq!(metrics.dropped.load(Ordering::Relaxed), 0);
+                for n in start..end {
+                    let frame = consumer.pop().unwrap();
+                    assert_eq!(frame.sequence, n as u64);
+                    for ch in 0..channels {
+                        assert_eq!(
+                            frame.samples[ch],
+                            input[n * channels + ch].to_sample::<f64>()
+                        );
+                    }
+                    assert!(frame.samples[channels..].iter().all(|&v| v == 0.0));
+                }
+                assert!(consumer.is_empty());
+                start = end;
+            }
+            #[cfg(feature = "qa")]
+            {
+                assert_eq!(metrics.callback_min_frames.load(Ordering::Relaxed), 1);
+                assert_eq!(metrics.callback_max_frames.load(Ordering::Relaxed), 1025);
+            }
+        }
+        for channels in [1, 2, 16] {
+            let samples = 1817 * channels;
+            check(
+                &(0..samples)
+                    .map(|n| n as f64 * 1e-8 + 0.25)
+                    .collect::<Vec<_>>(),
+                channels,
+            );
+            check(
+                &(0..samples)
+                    .map(|n| n as f32 * 1e-5 - 0.5)
+                    .collect::<Vec<_>>(),
+                channels,
+            );
+            check(
+                &(0..samples).map(|n| n as i16 - 16384).collect::<Vec<_>>(),
+                channels,
+            );
+            check(
+                &(0..samples).map(|n| n as u16 + 32768).collect::<Vec<_>>(),
+                channels,
+            );
+        }
+    }
+
+    #[test]
+    fn callback_endpoint_includes_overflow_and_empty_callbacks_do_not_erase_it() {
+        let (mut producer, mut consumer) = RingBuffer::new(8);
+        let metrics = Metrics::default();
+        let mut sequence = 0;
+        for count in [2, 17, 0] {
+            write_callback(
+                &vec![0.125_f64; count * 2],
+                2,
+                &mut producer,
+                &mut sequence,
+                &metrics,
+            );
+        }
+        assert_eq!(metrics.input_end.load(Ordering::Acquire), 19);
+        assert_eq!(metrics.dropped.load(Ordering::Relaxed), 11);
+        for n in 0..8 {
+            assert_eq!(consumer.pop().unwrap().sequence, n);
+        }
+        write_callback(
+            &[0.125_f64, 0.0625],
+            2,
+            &mut producer,
+            &mut sequence,
+            &metrics,
+        );
+        assert_eq!(consumer.pop().unwrap().sequence, 19);
+        assert_eq!(metrics.input_end.load(Ordering::Acquire), 20);
+        assert_eq!(metrics.dropped.load(Ordering::Relaxed), 11);
+        #[cfg(feature = "qa")]
+        {
+            assert_eq!(metrics.callback_min_frames.load(Ordering::Relaxed), 1);
+            assert_eq!(metrics.callback_max_frames.load(Ordering::Relaxed), 17);
         }
     }
 }

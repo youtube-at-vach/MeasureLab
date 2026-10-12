@@ -5,7 +5,7 @@
 | 対象 | 記録 |
 | --- | --- |
 | 初期プロトタイプ・実行分離 | [初期統合](PROTOTYPE_2026-10.md)、[測定コア](CORE_2026-10.md) |
-| 入力とScope | [CHルーティング](ROUTING_2026-10.md)、[サンプルレート](SAMPLE_RATE_2026-10.md)、[Scope校正](CALIBRATION_2026-10.md) |
+| 入力とScope | [CHルーティング](ROUTING_2026-10.md)、[サンプルレート](SAMPLE_RATE_2026-10.md)、[Scope校正](CALIBRATION_2026-10.md)、[可変コールバックと有限終端](CAPTURE_BOUNDARIES_2026-10.md) |
 | Spectrum | [振幅・PSD](SPECTRUM_2026-10.md)、[校正](SPECTRUM_CALIBRATION_2026-10.md)、[512k](LARGE_FFT_2026-10.md)、[Live描画性能](SPECTRUM_PERFORMANCE_2026-10.md) |
 | 設定・結果・操作 | [設定保存](SETTINGS_2026-10.md)、[JSON書き出し](EXPORT_2026-10.md)、[グラフ操作](CONTROLS_2026-10.md)、[取得と再利用](ACQUISITION_RESULTS_2026-10.md) |
 | 段階4の入口 | [Lock-in数値と仮想系](LOCKIN_2026-10.md)、[Lock-in GUI](LOCKIN_GUI_2026-10.md)、[Lock-in結果再利用](LOCKIN_RESULTS_2026-10.md) |
