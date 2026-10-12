@@ -5,9 +5,12 @@ use crate::audio;
 impl ScopeApp {
     #[cfg(feature = "qa")]
     pub(super) fn check_stage3f(&mut self) -> Result<(), String> {
-        let restore = if let Ok(name) = std::env::var("MEASURELAB_UI_SMOKE_BLACKHOLE") {
-            if !["BlackHole 2ch", "BlackHole 16ch"].contains(&name.as_str()) {
-                return Err("Result reuse QA requires BlackHole 2ch/16ch".into());
+        let restore = if let Some(name) = std::env::var("MEASURELAB_UI_SMOKE_BLACKHOLE")
+            .ok()
+            .or_else(|| std::env::var("MEASURELAB_UI_SMOKE_PHYSICAL").ok())
+        {
+            if !["BlackHole 2ch", "BlackHole 16ch", "ZOOM UAC-232"].contains(&name.as_str()) {
+                return Err("Result reuse QA requires BlackHole 2ch/16ch or ZOOM UAC-232".into());
             }
             use cpal::traits::DeviceTrait;
             let device = audio::input_device(Some(&name))?;
@@ -29,7 +32,7 @@ impl ScopeApp {
             self.qa_wait_audio_idle()?;
             let (stream, _) = audio::start_device(&device, Some(rate))?;
             drop(stream);
-            println!("BlackHole application QA rate restored to {rate} Hz");
+            println!("Application QA nominal rate restored to {rate} Hz");
         }
         result
     }
@@ -38,8 +41,16 @@ impl ScopeApp {
     fn check_stage3f_results(&mut self) -> Result<(), String> {
         self.poll_audio();
         let blackhole = std::env::var("MEASURELAB_UI_SMOKE_BLACKHOLE").ok();
+        let physical = std::env::var("MEASURELAB_UI_SMOKE_PHYSICAL").ok();
+        if physical.as_deref().is_some_and(|n| n != "ZOOM UAC-232") {
+            return Err("Physical application QA requires ZOOM UAC-232".into());
+        }
+        if physical.is_some() && blackhole.is_some() {
+            return Err("Choose one application QA input".into());
+        }
+        let external = blackhole.as_ref().or(physical.as_ref());
         let deadline = Instant::now() + Duration::from_secs(5);
-        while blackhole.is_some() && self.devices.is_empty() {
+        while external.is_some() && self.devices.is_empty() {
             if Instant::now() > deadline {
                 return Err("BlackHole device enumeration timed out".into());
             }
@@ -50,26 +61,36 @@ impl ScopeApp {
             .as_ref()
             .map(|name| crate::qa::lockin::Fixture::new(name, 48000))
             .transpose()?;
-        self.source = if blackhole.is_some() {
+        let physical_fixture = physical
+            .as_ref()
+            .map(|name| crate::qa::output::Fixture::new(name, Some(48000), true))
+            .transpose()?;
+        self.source = if external.is_some() {
             Source::Live
         } else {
             Source::Software
         };
-        let response_channel = if let Some(name) = &blackhole {
+        let response_channel = if let Some(name) = external {
             self.selected = self
                 .devices
                 .iter()
                 .position(|d| &d.name == name)
                 .ok_or("BlackHole device was not found")?;
             self.requested_sample_rate = Some(48000);
-            self.devices[self.selected].channels as usize - 1
+            if physical.is_some() {
+                0
+            } else {
+                self.devices[self.selected].channels as usize - 1
+            }
         } else {
             1
         };
         let expected_phase = if blackhole.is_some() { 13.125 } else { 30.0 };
         let phase_tolerance = if blackhole.is_some() { 1e-4 } else { 1e-6 };
         let fft_tolerance = if blackhole.is_some() { 1e-8 } else { 1e-10 };
-        let stem = if blackhole.is_some() {
+        let stem = if physical.is_some() {
+            "dist/stage4b-physical".to_string()
+        } else if blackhole.is_some() {
             format!("dist/stage4b-{}ch", response_channel + 1)
         } else {
             "dist/stage3f".to_string()
@@ -81,7 +102,8 @@ impl ScopeApp {
         };
         self.lockin_settings = lockin::Settings {
             enabled: true,
-            frequency_hz: 750.0,
+            frequency_hz: if physical.is_some() { 1000.0 } else { 750.0 },
+            reference_channel: usize::from(physical.is_some()),
             response_channel,
             ..Default::default()
         };
@@ -89,7 +111,7 @@ impl ScopeApp {
         self.spectrum_settings.size = 8192;
         self.spectrum_settings.averages = 1;
         self.spectrum_channel = response_channel;
-        self.scope_channels = Pair([0, response_channel]);
+        self.scope_channels = Pair([self.lockin_settings.reference_channel, response_channel]);
         self.ms_per_div = 1.0;
         let replay = std::env::var_os("MEASURELAB_UI_SMOKE_REPLAY").is_some();
         if replay {
@@ -103,12 +125,17 @@ impl ScopeApp {
             assert!(!self.running());
         }
         for run in 0..if replay { 1 } else { 2 } {
+            if let Some(f) = &physical_fixture {
+                f.start()?;
+            }
             self.start();
-            if let Some(fixture) = &fixture {
+            if fixture.is_some() || physical_fixture.is_some() {
                 // Poll stream creation before the bounded attachment warm-up.
                 self.qa_wait_audio_idle()?;
                 std::thread::sleep(Duration::from_millis(500));
-                fixture.end_warmup("application Start");
+                if let Some(fixture) = &fixture {
+                    fixture.end_warmup("application Start");
+                }
                 self.core
                     .as_ref()
                     .unwrap()
@@ -136,18 +163,26 @@ impl ScopeApp {
             }
             self.stop();
             let mut snapshot = self.pending_stop.take().unwrap().wait();
+            if physical.is_some() {
+                crate::qa::physical_lockin::validate_gui(&snapshot)?;
+            }
             self.accept_snapshot(&mut snapshot);
             self.qa_wait_audio_idle()?;
             let doc = self.capture_results()?;
             doc.validate()?;
             assert_eq!(doc.lockin.as_ref().unwrap().result, self.lockin_result);
             assert_eq!(self.lockin_result.state, lockin::State::Valid);
-            assert!((self.lockin_result.amplitude_peak.unwrap() - 0.0625).abs() < 1e-8);
-            assert!(
-                (self.lockin_result.phase_degrees.unwrap() - expected_phase).abs()
-                    < phase_tolerance
-            );
-            assert!((self.analyzer.power()[128].sqrt() - 0.0625).abs() < fft_tolerance);
+            if physical.is_none() {
+                assert!((self.lockin_result.amplitude_peak.unwrap() - 0.0625).abs() < 1e-8);
+                assert!(
+                    (self.lockin_result.phase_degrees.unwrap() - expected_phase).abs()
+                        < phase_tolerance
+                );
+                assert!((self.analyzer.power()[128].sqrt() - 0.0625).abs() < fft_tolerance);
+            }
+            if let Some(f) = &physical_fixture {
+                f.check()?;
+            }
             if let Some(fixture) = &fixture
                 && fixture.failed.load(Ordering::Relaxed)
             {
@@ -174,7 +209,9 @@ impl ScopeApp {
                 self.reference = Some(Box::new(crate::results::load(std::path::Path::new(
                     &format!("{stem}-results.json"),
                 ))?));
-                self.reference_label = if blackhole.is_some() {
+                self.reference_label = if physical.is_some() {
+                    "Saved physical measurement before restore / remeasure"
+                } else if blackhole.is_some() {
                     "Saved BlackHole measurement before restore / remeasure"
                 } else {
                     "Saved software measurement before restore / remeasure"
@@ -213,7 +250,10 @@ impl ScopeApp {
                 )))?)?;
                 assert!(!self.running());
                 assert_eq!(self.input_generation, epoch);
-                assert_eq!(self.scope_channels, Pair([0, response_channel]));
+                assert_eq!(
+                    self.scope_channels,
+                    Pair([self.lockin_settings.reference_channel, response_channel])
+                );
                 assert_eq!(
                     self.lockin_settings,
                     doc.lockin.as_ref().unwrap().result.settings
@@ -231,32 +271,70 @@ impl ScopeApp {
                         (a.raw_statistics.values.as_ref().unwrap().rms
                             - b.raw_statistics.values.as_ref().unwrap().rms)
                             .abs()
-                            < if blackhole.is_some() { 0.01 } else { 1e-10 }
+                            < if external.is_some() { 0.01 } else { 1e-10 }
                     );
                 }
-                assert!(
-                    (old.spectrum.values.as_ref().unwrap()[128]
-                        - doc.spectrum.values.as_ref().unwrap()[128])
-                        .abs()
-                        < fft_tolerance
-                );
+                if physical.is_none() {
+                    assert!(
+                        (old.spectrum.values.as_ref().unwrap()[128]
+                            - doc.spectrum.values.as_ref().unwrap()[128])
+                            .abs()
+                            < fft_tolerance
+                    );
+                }
                 let difference = crate::results::lockin_difference(old, &doc)
                     .ok_or("Remeasured Lock-in conditions no longer match saved reference")?;
-                assert!(difference.x.abs() < 1e-8);
-                assert!(difference.y.abs() < 1e-8);
-                assert!(difference.amplitude_peak.abs() < 1e-8);
-                assert!(difference.phase_degrees.abs() < phase_tolerance);
-                assert!(difference.gain.abs() < 1e-7);
+                if physical.is_some() {
+                    assert!(
+                        difference.amplitude_peak.abs()
+                            < old.lockin.as_ref().unwrap().result.amplitude_peak.unwrap() * 0.01
+                                + 2e-6
+                    );
+                    assert!(difference.phase_degrees.abs() < 0.1);
+                } else {
+                    assert!(difference.x.abs() < 1e-8);
+                    assert!(difference.y.abs() < 1e-8);
+                    assert!(difference.amplitude_peak.abs() < 1e-8);
+                    assert!(difference.phase_degrees.abs() < phase_tolerance);
+                    assert!(difference.gain.abs() < 1e-7);
+                }
                 self.comparison_current = Some(Box::new(doc));
             }
         }
-        // A short external Single cannot separate the attachment warm-up and
-        // remains a stage 4c check. Keep the software Single regression.
-        if blackhole.is_none() {
-            // Single uses the same source but ends before the 512k FFT is filled.
-            self.acquisition_mode = acquisition::Mode::Single;
+        // External Single checks raw finite capture, not detector settling.
+        if external.is_none() || std::env::var_os("MEASURELAB_UI_SMOKE_EXTERNAL_SINGLE").is_some() {
+            // Physical/virtual I/O is armed on an already healthy stream. A
+            // new device connection can itself contain a real transient.
+            self.acquisition_mode = if external.is_some() {
+                acquisition::Mode::Auto
+            } else {
+                acquisition::Mode::Single
+            };
             self.spectrum_settings.size = 524288;
+            if external.is_some() {
+                self.lockin_settings.time_constant_seconds = 1.0;
+            }
+            if let Some(f) = &physical_fixture {
+                f.start()?;
+            }
+            if let Some(f) = &fixture {
+                f.end_warmup("before Single attachment");
+            }
             self.start();
+            if external.is_some() {
+                self.qa_wait_audio_idle()?;
+                std::thread::sleep(Duration::from_millis(500));
+                self.poll_measurement();
+                if let Some(error) = &self.error {
+                    return Err(error.clone());
+                }
+                if let Some(f) = &fixture {
+                    f.end_warmup("Auto before Single arm");
+                }
+                self.acquisition_mode = acquisition::Mode::Single;
+                let mut snapshot = self.core.as_ref().unwrap().scope(self.core_config().scope);
+                self.accept_snapshot(&mut snapshot);
+            }
             let deadline = Instant::now() + Duration::from_secs(5);
             while !self
                 .core
@@ -274,6 +352,21 @@ impl ScopeApp {
             }
             self.stop();
             let mut snapshot = self.pending_stop.take().unwrap().wait();
+            if external.is_some() {
+                let document = crate::qa::lockin::document(
+                    &snapshot,
+                    self.held_input.clone().unwrap(),
+                    self.core.as_ref().unwrap(),
+                )?;
+                export::save(
+                    std::path::Path::new(&format!("{stem}-single.json")),
+                    &document,
+                )?;
+                crate::qa::physical_lockin::validate_single(
+                    &snapshot,
+                    self.reference.as_ref().unwrap(),
+                )?;
+            }
             self.accept_snapshot(&mut snapshot);
             self.qa_wait_audio_idle()?;
             assert_eq!(self.acquisition_state, acquisition::State::Complete);
@@ -286,14 +379,28 @@ impl ScopeApp {
                 single.lockin.as_ref().unwrap().result.state,
                 lockin::State::Settling
             );
-            assert!(single.lockin.as_ref().unwrap().result.x.is_none());
+            if external.is_none() {
+                assert!(single.lockin.as_ref().unwrap().result.x.is_none());
+            }
+            export::save(
+                std::path::Path::new(&format!("{stem}-single.json")),
+                &single,
+            )?;
         }
         self.visible = [true, true, false, false];
         self.sidebar.section = Some(SettingsSection::Scope);
         if std::env::var_os("MEASURELAB_UI_SMOKE_COMPARE").is_some() {
             self.compare_open = true;
         }
-        if let Some(fixture) = fixture {
+        if let Some(mut fixture) = physical_fixture {
+            fixture.check()?;
+            fixture.restore()?;
+            self.select_lockin_view(true);
+            self.lockin_display = settings::LockinDisplay::All;
+            println!(
+                "Stage 4b physical UI QA OK: settings/results, held edits, restore/reference, restart/recapture comparison, independent raw-window oracle, CSV/PNG; uncalibrated nominal Fs"
+            );
+        } else if let Some(fixture) = fixture {
             if fixture.failed.load(Ordering::Relaxed) {
                 return Err("BlackHole fixture output failed".into());
             }
@@ -301,7 +408,7 @@ impl ScopeApp {
             self.select_lockin_view(true);
             self.lockin_display = settings::LockinDisplay::All;
             println!(
-                "Stage 4b external UI QA OK: {blackhole:?}; settings/result save, held edits, restore/reference, recapture/restart comparison, CSV/PNG; settled held Scope/Lock-in (Single startup remains unverified)"
+                "Stage 4b external UI QA OK: {blackhole:?}; settings/result save, held edits, restore/reference, recapture/restart comparison, CSV/PNG; Single, when requested, armed on healthy Auto input"
             );
         } else {
             println!(
@@ -312,7 +419,7 @@ impl ScopeApp {
         Ok(())
     }
     #[cfg(feature = "qa")]
-    fn qa_wait_audio_idle(&mut self) -> Result<(), String> {
+    pub(super) fn qa_wait_audio_idle(&mut self) -> Result<(), String> {
         let deadline = Instant::now() + Duration::from_secs(5);
         while self.busy {
             self.poll_audio();

@@ -2,7 +2,33 @@
 use std::time::{Duration, Instant};
 
 pub mod lockin;
+pub mod output;
 pub mod physical_lockin;
+
+/// Preserve renderer diagnostics in local QA logs without data-callback logging.
+pub fn init_logging() {
+    struct Logger;
+    impl log::Log for Logger {
+        fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
+            metadata.level() <= log::Level::Warn
+        }
+        fn log(&self, record: &log::Record<'_>) {
+            if self.enabled(record.metadata()) {
+                eprintln!(
+                    "QA {} {}: {}",
+                    record.level(),
+                    record.target(),
+                    record.args()
+                );
+            }
+        }
+        fn flush(&self) {}
+    }
+    static LOGGER: Logger = Logger;
+    if log::set_logger(&LOGGER).is_ok() {
+        log::set_max_level(log::LevelFilter::Warn);
+    }
+}
 
 /// A finite internal software fixture using the same FFT/history as live input.
 /// Includes texture wrapping, a changing tone and an explicit acquisition gap.
@@ -638,66 +664,6 @@ pub fn multichannel_smoke_test() -> Result<(), Box<dyn std::error::Error>> {
         capture.sample_rate
     );
     Ok(())
-}
-
-/// Opt-in virtual-I/O fixture for large FFT UI profiling. Never opens a
-/// physical output; the caller starts the prepared 0.125 FS tones after UI init.
-pub fn blackhole_tone_output(
-    name: &str,
-) -> Result<(cpal::Stream, std::sync::Arc<std::sync::atomic::AtomicBool>), Box<dyn std::error::Error>>
-{
-    use cpal::traits::{DeviceTrait, HostTrait};
-    use std::{
-        f64::consts::TAU,
-        sync::{
-            Arc,
-            atomic::{AtomicBool, Ordering},
-        },
-    };
-    if !["BlackHole 2ch", "BlackHole 16ch"].contains(&name) {
-        return Err("Known-output QA is restricted to BlackHole 2ch/16ch".into());
-    }
-    let output = cpal::default_host()
-        .output_devices()?
-        .find(|d| d.to_string() == name)
-        .ok_or("BlackHole fixture output was not found")?;
-    let supported = output.default_output_config()?;
-    if supported.sample_format() != cpal::SampleFormat::F32 {
-        return Err("BlackHole fixture requires f32 output".into());
-    }
-    let channels = supported.channels() as usize;
-    let failed = Arc::new(AtomicBool::new(false));
-    let error_flag = failed.clone();
-    // Build one exact periodic cycle before the stream is started. The
-    // callback only copies bounded slices, even for all sixteen channels.
-    let cycle: Vec<f32> = (0..8192)
-        .flat_map(|sequence| {
-            (0..channels).map(move |ch| {
-                (0.125 * (TAU * (32 + ch * 7) as f64 * sequence as f64 / 8192.0).sin()) as f32
-            })
-        })
-        .collect();
-    let mut head = 0;
-    let stream = output.build_output_stream(
-        supported.into(),
-        move |data: &mut [f32], _| {
-            let mut offset = 0;
-            while offset < data.len() {
-                let count = (cycle.len() - head).min(data.len() - offset);
-                data[offset..offset + count].copy_from_slice(&cycle[head..head + count]);
-                offset += count;
-                head = (head + count) % cycle.len();
-            }
-        },
-        move |error| {
-            eprintln!("BlackHole known-output error: {error}");
-            error_flag.store(true, Ordering::Relaxed);
-        },
-        Some(Duration::from_secs(2)),
-    )?;
-    // The app starts this immediately before requesting capture, after UI/GPU
-    // initialization; initialization must not compete with fixture deadlines.
-    Ok((stream, failed))
 }
 
 #[cfg(test)]

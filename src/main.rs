@@ -1,6 +1,8 @@
 use eframe::{egui, egui_wgpu::wgpu};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(feature = "qa")]
+    measurelab::qa::init_logging();
     #[cfg(not(feature = "qa"))]
     if std::env::var_os("MEASURELAB_PROFILE_SECONDS").is_some() {
         return Err("UI profiling requires --features qa".into());

@@ -24,7 +24,7 @@ measurelab_binary=${MEASURELAB_QA_BINARY:-target/release/measurelab}
 measurelab_pid=$!
 measurelab_awake_pid=
 if [ "${MEASURELAB_PROFILE_KEEP_AWAKE:-0}" = 1 ] && command -v caffeinate >/dev/null 2>&1; then
-    caffeinate -di -w "$measurelab_pid" &
+    caffeinate -diu -w "$measurelab_pid" &
     measurelab_awake_pid=$!
 fi
 trap 'kill "$measurelab_pid" ${measurelab_awake_pid:+"$measurelab_awake_pid"} 2>/dev/null || true' EXIT

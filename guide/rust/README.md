@@ -383,7 +383,7 @@ MEASURELAB_LOCKIN_SECONDS=600 MEASURELAB_PROFILE_KEEP_AWAKE=1 \
 
 出力・入出力通知・実測R（FS peak／dBFS）・DC・独立計算との差はログへ、数値・整数区間・条件付き結果は`dist/lockin-physical-qa/`へ保存します。`MEASURELAB_LOCKIN_SECONDS`は定常評価区間の長さです。Rの独立照合は相対0.2%＋2 µFS、位相0.05°、既知の高レベル変更は振幅1%＋2 µFS・位相0.1°を上限にします。起動待ちの通知と正常測定中の失敗を分け、正常区間の入力／Lock-in欠落と入出力失敗は0を要求します。実時間試験中にはビルド・別の音声試験を並行実行しません。
 
-`MEASURELAB_UI_SMOKE_BLACKHOLE="BlackHole 2ch"`（または`BlackHole 16ch`）は`--ui-smoke`の結果再利用QAを48 kHzの外部I/Oで実行します。アプリの設定・結果保存→停止中の次回用編集→設定復元・参照読み込み→再測定→比較を照合し、`dist/stage4b-*`へ保存します。同じデバイスで別プロセスから`MEASURELAB_UI_SMOKE_REPLAY=1`を指定すると、保存した条件で再測定します。画面撮影の成功と数値照合の成功は別に記録します。BlackHoleの短いSingleは起動通知との境界を4cの未確認事項として残し、このQAは整定済みの保持結果で終了します。通常のSoftware Loopback QAではSingleの回帰を継続します。
+`MEASURELAB_UI_SMOKE_BLACKHOLE="BlackHole 2ch"`（または`BlackHole 16ch`）は`--ui-smoke`の結果再利用QAを48 kHzの外部I/Oで実行します。アプリの設定・結果保存→停止中の次回用編集→設定復元・参照読み込み→再測定→比較を照合し、`dist/stage4b-*`へ保存します。同じデバイスで別プロセスから`MEASURELAB_UI_SMOKE_REPLAY=1`を指定すると、保存した条件で再測定します。画面撮影の成功と数値照合の成功は別に記録します。既定のQAは整定済みの保持結果で終了します。接続直後の短いSingleと起動時入力通知の安定性は未確認です。通常のSoftware Loopback QAではSingleの回帰を継続します。
 
 ```bash
 MEASURELAB_UI_SMOKE_BLACKHOLE="BlackHole 2ch" MEASURELAB_UI_SMOKE_COMPARE=1 \
@@ -391,6 +391,21 @@ MEASURELAB_UI_SMOKE_BLACKHOLE="BlackHole 2ch" MEASURELAB_UI_SMOKE_COMPARE=1 \
 MEASURELAB_UI_SMOKE_BLACKHOLE="BlackHole 2ch" MEASURELAB_UI_SMOKE_REPLAY=1 \
     MEASURELAB_UI_SMOKE_COMPARE=1 target/release/measurelab --ui-smoke --compact --new-instance
 ```
+
+macOSの段階4統合QAをまとめて実行するには、同じreleaseバイナリで次を使います。ビルドと別の音声試験は実時間計測へ並行させません。各試行の条件・終了コード・バイナリとソースのSHA-256・ログ・撮影画像は`dist/stage4-macos-qa/`へ保存します。失敗した試行で停止し、過去の撮影画像を成功扱いにしません。profileは有限結果の照合・入力停止後の完了記録を必須とし、途中終了の終了コード0だけでは成功にしません。`--case`を繰り返すと指定したケースだけを実行できます。macOSの画面スリープではウィンドウの読み戻しが返らないため、実行プロセスの生存中だけ`caffeinate -diu`で表示を起こしてスリープを抑止します。
+
+```bash
+./scripts/cargo.sh build --release --locked --features qa
+./.venv/bin/python scripts/validate_stage4_macos.py --suite ui
+./.venv/bin/python scripts/validate_stage4_macos.py --suite load --seconds 600
+./.venv/bin/python scripts/validate_stage4_macos.py --suite physical --physical --seconds 600
+```
+
+物理QAはUAC-232のL出力→L入力、R出力→R入力を接続して使います。最大0.1 FS peak・生成DCなしで、通常アプリの出力機能ではありません。`--suite physical`は設定・結果保存→別プロセスで復元・再測定と、4表示・512k・UI停止を確認し、有限StopのLock-inを同じ生入力窓の独立計算へ照合します。公称Fs・未校正FSの条件です。`MEASURELAB_PHYSICAL_TRANSITIONS=1`を`--physical-lockin-smoke`へ付けると、同一ワーカーでUAC-232の48／96／44.1／192 kHz→BlackHole 2ch→UAC-232を取得し、世代・条件・欠落と独立数値を照合します。
+
+`MEASURELAB_UI_SMOKE_EXTERNAL_SINGLE=1`は外部I/OのSingleを追加し、Autoで入力が安定した後にSingleを待機させ、480サンプルの有限捕捉を生入力の独立正弦波適合で照合します。τ=1秒のLock-inは整定途中の値を持つ場合がありますが、状態はSettlingのまま保持し、512kは未充填です。接続直後のSingleとは別条件です。`MEASURELAB_UI_SMOKE_PHYSICAL="ZOOM UAC-232"`は物理系の結果再利用、`MEASURELAB_PROFILE_PHYSICAL_OUTPUT=1`は同名のprofile入力への明示的な物理出力を有効にします。
+
+大きなFFTの既知出力QAでは、接続要求から0.5秒だけを出力の起動待ちとして通知時刻・件数を別記録します。その後の出力通知を失敗にし、入力の失敗・欠落判定は変更しません。要求したFsを入出力へ揃え、終了時に入力停止を待って開始前の公称Fsへ戻します。撮影待ちではQAだけでGPUを非ブロッキングpollし、非同期読み戻しを進めます。
 
 `--gpu-smoke`はScope・Spectrum・Spectrogram・XYを準備してから描画し、それぞれの領域をGPUから読み戻します。線分プロットの独立、XYの円と更新番号が同じ場合の線分転送省略に加え、スペクトログラムの折り返し・行の順序・欠落・最大FFTのNyquistビン・表示変更時の再転送省略を検証します。`--ui-smoke`は`qa`ビルド専用で、入力を開始せず、明示的なテスト信号で4画面を短時間開いて閉じ、`dist/ui-smoke.png`へ保存します。スペクトログラムの既知信号は周波数を変化させ、履歴の折り返しと意図的な入力欠落を含みます。通常起動時はオーディオ入力を選んだ停止状態、`qa`ビルドの`--demo`指定時は内部信号を使います。通常ビルドで`--demo`や`--ui-smoke`を指定すると、検証用ビルドが必要な旨を表示して終了します。GPUやマイクを必要とする確認はCIでは実行しません。
 
@@ -459,7 +474,7 @@ MEASURELAB_PROFILE_SECONDS=12 MEASURELAB_PROFILE_DEVICE="BlackHole 16ch" \
     ./scripts/cargo.sh run --release --locked --features qa
 ```
 
-長時間の欠落とプロセスのRSSは`profile-stage2.sh`で記録します。事前にreleaseの`qa`版をビルドし、名前を指定して実行すると、アプリのログと1秒ごとのRSS（KiB）、psのCPU使用率と累積CPU時間を`dist/stage2-qa/`へ保存します。秒数を省略すると600秒です。macOSの入力実行中はタイマー精度を要求するOS activityを保持し、Stop／失敗／終了で解除します。`MEASURELAB_PROFILE_KEEP_AWAKE=1`で計測中だけcaffeinateによるアイドルシステム／画面スリープ抑止を付けられます。抑止の有無を測定条件へ記録します。RSSは現在の常駐メモリであり、GPUの実行時間やVRAM使用量ではありません。履歴を満たす起動区間と、その後の周回区間を分けて比較してください。画面撮影・並行ビルドなど条件が異なる実行は直接比較しません。
+長時間の欠落とプロセスのRSSは`profile-stage2.sh`で記録します。事前にreleaseの`qa`版をビルドし、名前を指定して実行すると、アプリのログと1秒ごとのRSS（KiB）、psのCPU使用率と累積CPU時間を`dist/stage2-qa/`へ保存します。秒数を省略すると600秒です。macOSの入力実行中はタイマー精度を要求するOS activityを保持し、Stop／失敗／終了で解除します。`MEASURELAB_PROFILE_KEEP_AWAKE=1`で計測中だけcaffeinateによる画面の起動とアイドルシステム／画面スリープ抑止を付けられます。抑止の有無を測定条件へ記録します。RSSは現在の常駐メモリであり、GPUの実行時間やVRAM使用量ではありません。履歴を満たす起動区間と、その後の周回区間を分けて比較してください。画面撮影・並行ビルドなど条件が異なる実行は直接比較しません。
 
 ```sh
 ./scripts/cargo.sh build --release --locked --features qa
