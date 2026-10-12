@@ -14,12 +14,21 @@ fn help_exposes_internal_signals_only_in_qa_builds() {
     assert_eq!(help.contains("--demo"), cfg!(feature = "qa"));
     assert_eq!(help.contains("--ui-smoke"), cfg!(feature = "qa"));
     assert_eq!(help.contains("--lockin-smoke"), cfg!(feature = "qa"));
+    assert_eq!(
+        help.contains("--physical-lockin-smoke"),
+        cfg!(feature = "qa")
+    );
 }
 
 #[cfg(not(feature = "qa"))]
 #[test]
 fn normal_build_rejects_internal_signals_before_opening_ui() {
-    for option in ["--demo", "--ui-smoke", "--lockin-smoke"] {
+    for option in [
+        "--demo",
+        "--ui-smoke",
+        "--lockin-smoke",
+        "--physical-lockin-smoke",
+    ] {
         let output = Command::new(env!("CARGO_BIN_EXE_measurelab"))
             .args([option, "--help"])
             .env_remove("MEASURELAB_PROFILE_SECONDS")
@@ -29,6 +38,42 @@ fn normal_build_rejects_internal_signals_before_opening_ui() {
         let error = String::from_utf8(output.stderr).unwrap();
         assert!(error.contains(&format!("{option} requires --features qa")));
         assert!(output.stdout.is_empty());
+    }
+}
+
+#[cfg(feature = "qa")]
+#[test]
+fn physical_qa_requires_explicit_supported_device_and_valid_duration() {
+    for (arguments, seconds, expected) in [
+        (
+            vec!["--physical-lockin-smoke"],
+            "1",
+            "requires --input-device NAME",
+        ),
+        (
+            vec![
+                "--physical-lockin-smoke",
+                "--input-device",
+                "Built-in Output",
+            ],
+            "1",
+            "restricted to ZOOM UAC-232",
+        ),
+        (
+            vec!["--physical-lockin-smoke", "--input-device", "ZOOM UAC-232"],
+            "0",
+            "MEASURELAB_LOCKIN_SECONDS must be 1–3600",
+        ),
+    ] {
+        let output = Command::new(env!("CARGO_BIN_EXE_measurelab"))
+            .args(arguments)
+            .arg("--new-instance")
+            .env_remove("MEASURELAB_PROFILE_SECONDS")
+            .env("MEASURELAB_LOCKIN_SECONDS", seconds)
+            .output()
+            .unwrap();
+        assert!(!output.status.success());
+        assert!(String::from_utf8(output.stderr).unwrap().contains(expected));
     }
 }
 

@@ -366,6 +366,21 @@ MEASURELAB_LOCKIN_SECONDS=600 MEASURELAB_LOCKIN_TRANSITIONS=1 \
 
 `MEASURELAB_LOCKIN_SECONDS`は最後の定常信号による安定性評価区間だけの秒数で、既定10秒、1〜3,600秒です。信号変更・起動待ち・飽和確認を含む実行全体はそれより長くなります。`MEASURELAB_LOCKIN_TRANSITIONS=1`は同じ測定ワーカーを使って2ch・48→96 kHz→16ch・96 kHz→2ch・44.1 kHz→16ch・192 kHz→2ch・48 kHzを順に取得し、入力世代・Fs・CHと理論位相、2chでのCH 16の無効化を照合します。対応しないデバイス／Fsは成功扱いにしません。CPALで変更したBlackHoleの公称Fsは終了時に戻します。結果は`dist/lockin-blackhole-qa/`、ログ・RSSは上記スクリプト指定時に`dist/stage2-qa/`へ保存します。入力コールバック長の最小／最大を記録しますが、固定長しか観測されなければ可変長の外部I/O確認にはしません。このコマンドはGUI描画や物理I/Oの保証を含みません。
 
+`--physical-lockin-smoke`は物理ループ専用の明示的なQAです。`qa`ビルドで`--input-device "ZOOM UAC-232"`を必須とし、この機器の2ch出力だけへ最大0.1 FS peak（−20 dBFS）の正弦波を流します。L出力→L入力を応答、R出力→R入力をREFとして接続してください。生成DCはなく、入力モード・音量つまみを変更しません。終了・失敗で出力ストリームを解放し、公称Fsを開始前の値へ戻します。通常のGeneratorや物理校正機能ではありません。BlackHole専用QAの物理出力禁止は維持します。
+
+実際のADC入力をDC／sin／cosの独立した非加重最小二乗計算へ渡し、製品側のHann適合・二段EMAとR／位相を照合します。Spectrumは8,192点・Hann・f64のPSDをREF周波数±5ビンで積算し、RMS×√2をpeakとして比較します。両測定器の区間は別に保持します。振幅比・極性・＋30°・3サンプル相当の位相遅れ、1003 Hz追従、REF喪失／高調波不安定からの回復、CH入れ替え／自己検査、τ=0.1秒のステップ、有限Stop・JSON／CSV・再取得比較、意図的な入力キュー飽和を検証します。絶対ADC／DACゲインや実時計精度は未知として扱い、−40 dB応答の位相は実入力との一致だけを判定し、アナログ経路のレベル依存性を記録します。
+
+```bash
+./scripts/cargo.sh build --release --locked --features qa
+MEASURELAB_LOCKIN_SECONDS=10 target/release/measurelab --physical-lockin-smoke \
+    --input-device "ZOOM UAC-232" --sample-rate 48000
+MEASURELAB_LOCKIN_SECONDS=600 MEASURELAB_PROFILE_KEEP_AWAKE=1 \
+    ./scripts/profile-stage2.sh lockin-uac232-600 \
+    --physical-lockin-smoke --input-device "ZOOM UAC-232" --sample-rate 48000
+```
+
+出力・入出力通知・実測R（FS peak／dBFS）・DC・独立計算との差はログへ、数値・整数区間・条件付き結果は`dist/lockin-physical-qa/`へ保存します。`MEASURELAB_LOCKIN_SECONDS`は定常評価区間の長さです。Rの独立照合は相対0.2%＋2 µFS、位相0.05°、既知の高レベル変更は振幅1%＋2 µFS・位相0.1°を上限にします。起動待ちの通知と正常測定中の失敗を分け、正常区間の入力／Lock-in欠落と入出力失敗は0を要求します。実時間試験中にはビルド・別の音声試験を並行実行しません。
+
 `MEASURELAB_UI_SMOKE_BLACKHOLE="BlackHole 2ch"`（または`BlackHole 16ch`）は`--ui-smoke`の結果再利用QAを48 kHzの外部I/Oで実行します。アプリの設定・結果保存→停止中の次回用編集→設定復元・参照読み込み→再測定→比較を照合し、`dist/stage4b-*`へ保存します。同じデバイスで別プロセスから`MEASURELAB_UI_SMOKE_REPLAY=1`を指定すると、保存した条件で再測定します。画面撮影の成功と数値照合の成功は別に記録します。BlackHoleの短いSingleは起動通知との境界を4cの未確認事項として残し、このQAは整定済みの保持結果で終了します。通常のSoftware Loopback QAではSingleの回帰を継続します。
 
 ```bash

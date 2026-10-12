@@ -334,7 +334,7 @@ pub fn check_tone(result: &lockin::Result, tone: Tone, rate: u32) -> Result<(), 
     )
 }
 
-fn finish(worker: &measurement::Worker) -> Result<measurement::Snapshot, String> {
+pub(super) fn finish(worker: &measurement::Worker) -> Result<measurement::Snapshot, String> {
     let mut pending = worker.stop_async();
     let deadline = Instant::now() + Duration::from_secs(10);
     while Instant::now() < deadline {
@@ -346,7 +346,7 @@ fn finish(worker: &measurement::Worker) -> Result<measurement::Snapshot, String>
     Err("Finite Stop timed out".into())
 }
 
-fn document(
+pub(super) fn document(
     snapshot: &measurement::Snapshot,
     source: export::Input,
     worker: &measurement::Worker,
