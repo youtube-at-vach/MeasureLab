@@ -659,7 +659,7 @@ impl Worker {
                             }
                             Command::Hold => core.spectrum.clear_hold(),
                             Command::Stop(reply) => {
-                                poll_input(&mut input, &mut core);
+                                poll_input(&mut input, &mut core, true);
                                 input = Input::Idle;
                                 activity.take();
                                 let _ = reply.try_send(core.reply(true));
@@ -668,7 +668,7 @@ impl Worker {
                         }
                     }
                     if !matches!(input, Input::Idle) {
-                        poll_input(&mut input, &mut core);
+                        poll_input(&mut input, &mut core, false);
                         if core.failed || core.acquisition.state == acquisition::State::Complete {
                             input = Input::Idle;
                             activity.take();
@@ -832,7 +832,7 @@ impl Worker {
     }
 }
 
-fn poll_input(input: &mut Input, core: &mut Core) {
+fn poll_input(input: &mut Input, core: &mut Core, final_window: bool) {
     let clock = Instant::now();
     match input {
         Input::Idle => {}
@@ -864,14 +864,39 @@ fn poll_input(input: &mut Input, core: &mut Core) {
             }
         }
         Input::Audio(capture) => {
+            core.failed = capture.metrics.failed.load(Ordering::Relaxed);
+            let final_window = final_window || core.failed;
+            // Acquire before reading the queue: every accepted frame below this
+            // completed-callback endpoint has already been committed. Take one
+            // bounded queue snapshot; later callbacks cannot extend Stop forever.
+            let end = if final_window {
+                capture.metrics.input_end.load(Ordering::Acquire)
+            } else {
+                0
+            };
             let available = capture.consumer.slots();
             if let Ok(chunk) = capture.consumer.read_chunk(available) {
                 for frame in chunk {
                     core.push(frame.sequence, &frame.samples[..capture.channels as usize]);
                 }
             }
-            core.capture_dropped = capture.metrics.dropped.load(Ordering::Relaxed);
-            core.failed = capture.metrics.failed.load(Ordering::Relaxed);
+            if final_window && core.acquisition.state != acquisition::State::Complete {
+                let retained_end = core.history.range().end;
+                if end > retained_end {
+                    core.dropped += end - retained_end;
+                    core.expected = Some(end);
+                    core.history.advance_to(end);
+                    core.acquisition.invalidate();
+                }
+            }
+            core.capture_dropped =
+                if final_window || core.acquisition.state == acquisition::State::Complete {
+                    // Source gaps up to the finite end are exact. A live cumulative
+                    // callback counter may include drops after Stop or Single ended.
+                    core.dropped
+                } else {
+                    capture.metrics.dropped.load(Ordering::Relaxed)
+                };
             core.metrics.failed.store(core.failed, Ordering::Release);
         }
         #[cfg(any(test, feature = "qa"))]
@@ -1103,6 +1128,247 @@ mod tests {
                 "measurement worker stopped consuming input"
             );
             thread::sleep(Duration::from_millis(2));
+        }
+    }
+
+    #[test]
+    fn stop_and_stream_failure_include_capture_loss_after_the_last_accepted_frame() {
+        for failed in [false, true] {
+            let (_stft, core, mut config, _spectrum) = setup(1024, 2);
+            config.lockin = lockin::Settings {
+                enabled: true,
+                frequency_hz: 1500.0,
+                integration_samples: 1024,
+                time_constant_seconds: 0.001,
+                track_reference: false,
+                ..Default::default()
+            };
+            let worker = Worker::new(core.feeder);
+            let (mut producer, consumer) = RingBuffer::new(1024);
+            let metrics = Arc::new(AudioMetrics::default());
+            let input: Vec<f64> = (0..1055)
+                .flat_map(|n| {
+                    let x = (TAU * 1500.0 * n as f64 / 48000.0).sin();
+                    [0.125 * x, 0.0625 * x]
+                })
+                .collect();
+            crate::audio::write_callback(&input, 2, &mut producer, &mut 0, &metrics);
+            assert_eq!(metrics.dropped.load(Ordering::Relaxed), 31);
+            metrics.failed.store(failed, Ordering::Relaxed);
+            worker.start_capture(
+                17,
+                Capture {
+                    consumer,
+                    sample_rate: 48000,
+                    channels: 2,
+                    format: "test f64".into(),
+                    metrics,
+                },
+                config.clone(),
+            );
+            if failed {
+                wait_for_frames(&worker, 1024);
+                let automatic_stop = worker.scope(config.scope);
+                assert!(automatic_stop.failed);
+                assert_eq!(automatic_stop.history.range(), 0..1055);
+            }
+            let stopped = worker.stop();
+            assert_eq!(stopped.history.range(), 0..1055);
+            assert!(stopped.history.get(1023).is_some());
+            assert!(stopped.history.get(1024).is_none());
+            assert_eq!(stopped.input_dropped, 31);
+            assert_eq!(stopped.failed, failed);
+            assert_eq!(stopped.scope_missing, 31);
+            assert_eq!(stopped.lockin.state, lockin::State::Missing);
+            assert_eq!(stopped.lockin.missing_samples, 31);
+            assert_eq!(stopped.lockin.processed_windows, 0);
+            assert!(stopped.lockin.amplitude_peak.is_none());
+            assert!(stopped.lockin.x.is_none());
+            assert_eq!(stopped.spectrum_info.input_end, 1055);
+            assert_eq!(stopped.spectrum_info.input_missing, 31);
+            assert_eq!(stopped.spectrum_info.updates, 0);
+            assert!(!stopped.spectrum.is_ready());
+            let held = worker.stop();
+            assert_eq!(held.history.range(), stopped.history.range());
+            assert_eq!(held.input_dropped, 31);
+            assert_eq!(held.lockin, stopped.lockin);
+            assert_eq!(held.spectrum_info.input_missing, 31);
+        }
+    }
+
+    #[test]
+    fn capture_tail_loss_invalidates_normal_capture_but_does_not_extend_single() {
+        for mode in [acquisition::Mode::Normal, acquisition::Mode::Single] {
+            let (_stft, core, mut config, _spectrum) = setup(1024, 2);
+            config.scope.mode = mode;
+            config.scope.samples = 10;
+            config.scope.trigger = Trigger {
+                channel: 0,
+                level: 0.5,
+                edge: signal::Edge::Rising,
+            };
+            let worker = Worker::new(core.feeder);
+            let (mut producer, consumer) = RingBuffer::new(1024);
+            let metrics = Arc::new(AudioMetrics::default());
+            let input: Vec<f64> = (0..1055)
+                .flat_map(|n| [if n == 12 { 1.0 } else { 0.0 }, 0.0])
+                .collect();
+            crate::audio::write_callback(&input, 2, &mut producer, &mut 0, &metrics);
+            worker.start_capture(
+                18,
+                Capture {
+                    consumer,
+                    sample_rate: 48000,
+                    channels: 2,
+                    format: "test f64".into(),
+                    metrics: metrics.clone(),
+                },
+                config,
+            );
+            let stopped = worker.stop();
+            assert_eq!(metrics.dropped.load(Ordering::Relaxed), 31);
+            if mode == acquisition::Mode::Single {
+                assert_eq!(stopped.history.range(), 0..20);
+                assert_eq!(stopped.acquisition_state, acquisition::State::Complete);
+                assert_eq!(stopped.scope_capture.unwrap().range(), 10..20);
+                assert_eq!(stopped.input_dropped, 0);
+                assert_eq!(stopped.spectrum_info.input_end, 20);
+                assert_eq!(stopped.spectrum_info.input_missing, 0);
+            } else {
+                assert_eq!(stopped.history.range(), 0..1055);
+                assert_eq!(stopped.acquisition_state, acquisition::State::Waiting);
+                assert!(stopped.scope_capture.unwrap().is_empty());
+                assert_eq!(stopped.input_dropped, 31);
+                assert_eq!(stopped.spectrum_info.input_end, 1055);
+                assert_eq!(stopped.spectrum_info.input_missing, 31);
+            }
+        }
+    }
+
+    #[test]
+    fn variable_callbacks_keep_lockin_fft_and_history_consistent_across_input_changes() {
+        let (mut stft, core, mut config, _spectrum) = setup(1024, 2);
+        let worker = Worker::new(core.feeder);
+        let mut received = 0;
+        let mut held: Option<Snapshot> = None;
+        for (index, (channels, rate)) in
+            [(1, 48000), (2, 44100), (16, 96000), (2, 192000), (1, 48000)]
+                .into_iter()
+                .enumerate()
+        {
+            let generation = index as u64 + 30;
+            let frequency = 32.0 * rate as f64 / 1024.0;
+            let amplitude = if channels == 1 { 0.125 } else { 0.0625 };
+            let phase: f64 = if channels == 1 { 0.0 } else { 30.0 };
+            let sample = |n: u64, ch: usize| {
+                let angle = TAU * frequency * n as f64 / rate as f64;
+                if ch == 0 {
+                    0.1 + 0.125 * angle.sin()
+                } else if ch == channels - 1 {
+                    0.2 + amplitude * (angle + phase.to_radians()).sin()
+                } else {
+                    ch as f64 * 1e-8
+                }
+            };
+            config.lockin = lockin::Settings {
+                enabled: true,
+                frequency_hz: frequency,
+                reference_channel: 0,
+                response_channel: channels - 1,
+                integration_samples: 1024,
+                time_constant_seconds: 0.001,
+                track_reference: false,
+                ..Default::default()
+            };
+            config.spectrum_channel = channels - 1;
+            config.spectrum.remove_dc = true;
+            config.stft.sample_rate = rate;
+            config.stft.channels = channels;
+            config.stft.channel = channels - 1;
+            config.stft_generation = stft.configure(config.stft).unwrap();
+            let (mut producer, consumer) = RingBuffer::new(2048);
+            let metrics = Arc::new(AudioMetrics::default());
+            worker.start_capture(
+                generation,
+                Capture {
+                    consumer,
+                    sample_rate: rate,
+                    channels: channels as u16,
+                    format: "test f64".into(),
+                    metrics: metrics.clone(),
+                },
+                config.clone(),
+            );
+            let fresh = worker.scope(config.scope);
+            assert_eq!(fresh.generation, generation);
+            assert_eq!(fresh.sample_rate, rate);
+            assert_eq!(fresh.lockin.settings, config.lockin);
+            assert!(fresh.lockin.amplitude_peak.is_none());
+            assert!(fresh.history.is_empty());
+            assert!(!fresh.spectrum.is_ready());
+            let mut sequence = 0;
+            for count in [0, 1, 17, 63, 256, 511, 1025, 7].into_iter().cycle() {
+                let count = count.min(8229 - sequence as usize);
+                let end = sequence + count as u64;
+                let input: Vec<f64> = (sequence..end)
+                    .flat_map(|n| (0..channels).map(move |ch| sample(n, ch)))
+                    .collect();
+                crate::audio::write_callback(
+                    &input,
+                    channels,
+                    &mut producer,
+                    &mut sequence,
+                    &metrics,
+                );
+                received += count as u64;
+                wait_for_frames(&worker, received);
+                stft.drain(|row| {
+                    assert_eq!(row.info.generation, config.stft_generation);
+                    assert_eq!(row.info.config.sample_rate, rate);
+                    assert_eq!(row.info.config.channel, channels - 1);
+                    assert_eq!(row.info.gap.input_frames, 0);
+                });
+                if sequence == 8229 {
+                    break;
+                }
+            }
+            let captured = worker.stop();
+            assert_eq!(metrics.input_end.load(Ordering::Acquire), 8229);
+            assert_eq!(captured.history.range(), 0..8229);
+            assert_eq!(captured.history.channels(), channels);
+            assert_eq!(captured.input_dropped, 0);
+            assert_eq!(captured.scope_missing, 0);
+            assert!(!captured.failed);
+            for n in [0, 1, 1023, 1024, 8191, 8228] {
+                for ch in 0..channels {
+                    assert_eq!(captured.history.get(n).unwrap()[ch], sample(n, ch));
+                }
+            }
+            let r = &captured.lockin;
+            assert_eq!(r.state, lockin::State::Valid);
+            assert_eq!(r.settings, config.lockin);
+            assert_eq!(r.sample_range, 0..8192);
+            assert_eq!(r.latest_window, 7168..8192);
+            assert_eq!(r.processed_windows, 8);
+            assert_eq!(r.missing_samples, 0);
+            assert!((r.amplitude_peak.unwrap() - amplitude).abs() < 1e-10);
+            assert!((r.phase_degrees.unwrap() - phase).abs() < 1e-7);
+            assert!((r.gain.unwrap() - amplitude / 0.125).abs() < 1e-10);
+            assert_eq!(captured.spectrum_info.input_end, 8229);
+            assert_eq!(captured.spectrum_info.input_missing, 0);
+            assert_eq!(captured.spectrum_info.updates, 29);
+            assert_eq!(captured.spectrum.window().unwrap().end, 8192);
+            assert_eq!(captured.spectrum.window().unwrap().sample_rate, rate);
+            assert_eq!(captured.spectrum.window().unwrap().channel, channels - 1);
+            assert!((captured.spectrum.cursor(frequency).unwrap().value - amplitude).abs() < 1e-10);
+            assert_eq!(stft.metrics.input_dropped.load(Ordering::Relaxed), 0);
+            if let Some(previous) = &held {
+                assert_ne!(previous.generation, captured.generation);
+                assert_eq!(previous.history.range(), 0..8229);
+                assert_eq!(previous.lockin.processed_windows, 8);
+                assert_eq!(previous.spectrum_info.updates, 29);
+            }
+            held = Some(captured);
         }
     }
 
