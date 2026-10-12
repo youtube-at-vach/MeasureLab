@@ -1,4 +1,4 @@
-//! Acquisition and waveform processing, independent of the desktop UI.
+//! Audio acquisition, signal generation and measurement, independent of the desktop UI.
 pub mod acquisition;
 pub mod audio;
 pub mod calibration;
@@ -8,6 +8,7 @@ pub mod cursor;
 pub mod demo;
 pub mod export;
 mod file_io;
+pub mod generator;
 pub mod instance;
 pub mod lockin;
 pub mod lockin_worker;
