@@ -23,6 +23,16 @@ With the local macOS/Linux setup, `./scripts/cargo.sh run --release --locked` al
 
 A complete 524,288-point window takes about 10.92 seconds at 48 kHz. Faster Live updates do not shorten that observation time. Continuous analyzes every N/4-hop window; Live/Latest observe recent windows and do not guarantee transient capture.
 
+## Observe a Generator sine wave
+
+1. Choose **View / Generator + Scope**. The two-channel internal output is available in normal builds.
+2. Select **ON** and **OUT 1/2** for each GEN, then enter frequency (Hz), amplitude (dBFS peak) and phase (lead, degrees). Enter or leaving the field applies an edit; Esc cancels it. **Step** and the ± buttons also adjust values.
+3. Select **Observe Generator**, then press **Start output** and **Start input** separately. The settings preview and measured waveform are separate views.
+4. Switch to **Generator + Spectrum/Lock-in** to inspect analysis. Live edits transition amplitude and phase smoothly; Spectrum/Lock-in restart averaging and settling after the transition.
+5. **Stop input** holds the measurement while output continues. **Stop output/Stop all outputs** stops generation; active input then receives new silent samples.
+
+Select an output rate of 44.1, 48, 96 or 192 kHz while both input and output are stopped. Restoring settings also requires both to be stopped and leaves output OFF. JSON/CSV results retain output conditions for the received intervals. Generator currently supports internal connections; audio-device output remains unimplemented.
+
 ## Physical audio input
 
 Select the input device and a supported sample rate, then press **Start input**. On macOS, allow microphone access for the application or terminal used to launch it. Channel count and available sample rates depend on the device. Scope waveform axes and triggers remain in FS even when numerical readouts use calibration.

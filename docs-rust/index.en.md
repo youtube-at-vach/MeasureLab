@@ -12,6 +12,7 @@
 | Spectrogram / XY | Time-frequency view and synchronous two-channel XY display |
 | Save and compare | Channel calibration and versioned settings; held Scope/Spectrum results in JSON, CSV and PNG; reference JSON comparison |
 | Software Loopback | Known gain, phase, delay and noise through the common input path without hardware |
+| Generator (internal output) | Two sine signals with live frequency/amplitude/phase controls; actual generated f64 samples through the common input path. CPAL output is not implemented |
 | Lock-in (experimental) | Fundamental-frequency measurement using synchronous REF and response; X/Y, R/θ, Gain, settling and REF status; JSON/CSV with conditions and reference comparison |
 
 Acquisition, measurement and rendering run separately. Hiding a display does not stop analysis or averaging. Held results retain their input, settings, calibration and loss information.

@@ -643,14 +643,14 @@ impl ScopeApp {
                     if let Some(current)=&current {
                         ui.separator();
                         for (i,(a,b)) in reference.scope.traces.iter().zip(&current.scope.traces).enumerate() {
-                            if a.channel==b.channel && a.calibrated_statistics.unit==b.calibrated_statistics.unit {
+                            if a.channel==b.channel && a.calibrated_statistics.unit==b.calibrated_statistics.unit && crate::results::matching_excitation(reference, reference.scope.sample_range.clone(), current, current.scope.sample_range.clone()) {
                                 if let (Some(a),Some(b))=(&a.calibrated_statistics.values,&b.calibrated_statistics.values) {
                                     ui.label(format!("Trace {}: current − reference RMS {:.9e} (each result's own interval)",i+1,b.rms-a.rms));
                                 }
-                            }else{ui.label(format!("Trace {} differs in channel/unit; no numeric difference",i+1));}
+                            }else{ui.label(format!("Trace {} differs in channel, unit or known stationary excitation; no numeric difference",i+1));}
                         }
-                        if reference.spectrum.settings!=current.spectrum.settings || reference.spectrum.mode!=current.spectrum.mode || reference.spectrum.unit!=current.spectrum.unit || reference.spectrum.channel!=current.spectrum.channel || reference.input.nominal_sample_rate_hz!=current.input.nominal_sample_rate_hz {
-                            ui.label("Spectrum definitions differ; inspect each result's bins and band independently.");
+                        if reference.spectrum.settings!=current.spectrum.settings || reference.spectrum.mode!=current.spectrum.mode || reference.spectrum.unit!=current.spectrum.unit || reference.spectrum.channel!=current.spectrum.channel || reference.input.nominal_sample_rate_hz!=current.input.nominal_sample_rate_hz || !crate::results::matching_excitation(reference, reference.spectrum.average.as_ref().map_or(0..0, |a| a.contributing_envelope.clone()), current, current.spectrum.average.as_ref().map_or(0..0, |a| a.contributing_envelope.clone())) {
+                            ui.label("Spectrum definitions or known stationary excitation differ; inspect each result's bins and band independently.");
                         }else if let (Some(a),Some(b))=(&reference.spectrum.band,&current.spectrum.band)
                             && a.inclusive_bins==b.inclusive_bins && a.power_unit==b.power_unit {
                             ui.label(format!("PSD band power current − reference: {:.9e} {}",b.power-a.power,b.power_unit));
@@ -660,7 +660,7 @@ impl ScopeApp {
                             ui.label(format!("Lock-in current − reference (each result's own interval):\nΔX {:.9e} · ΔY {:.9e} · ΔR {:.9e} {}\nΔθ {:+.9}° (wrapped to ±180°) · ΔGain {:.9e} {}",
                                 d.x, d.y, d.amplitude_peak, l.response_unit_peak, d.phase_degrees, d.gain, l.gain_unit));
                         } else if reference.lockin.is_some() || current.lockin.is_some() {
-                            ui.label("Lock-in difference requires two valid, settled results with matching nominal Fs, channels, REF/filter settings and calibrations, and no input failure.");
+                            ui.label("Lock-in difference requires two valid, settled results with matching nominal Fs, channels, REF/filter settings and calibrations, no input failure, and known matching stationary excitation for Generator input.");
                         }
                     }
                 }
@@ -676,6 +676,17 @@ fn result_summary(ui: &mut egui::Ui, doc: &export::Document) {
         doc.input.generation, doc.input.nominal_sample_rate_hz, doc.input.channels
     ));
     match &doc.input.source {
+        export::Source::Generator => {
+            ui.label(
+                "Generator internal loopback · actual f64 output · shared integer sample clock",
+            );
+            if let Some(timeline) = &doc.generator_output {
+                ui.label(format!(
+                    "{} retained output condition intervals; missing/evicted intervals are unknown",
+                    timeline.spans.len()
+                ));
+            }
+        }
         export::Source::Audio {
             device_name,
             sample_format,

@@ -12,6 +12,21 @@ impl Document {
     pub fn validate(&self) -> Result<(), String> {
         self.validate_header()?;
         audio::validate_sample_rate(self.input.nominal_sample_rate_hz)?;
+        match (&self.input.source, &self.generator_output) {
+            (Source::Generator, Some(timeline)) if self.input.channels == 2 => {
+                timeline.validate(
+                    self.input.nominal_sample_rate_hz,
+                    self.spectrum
+                        .diagnostics
+                        .input_end
+                        .max(self.retained_history.end),
+                )?;
+            }
+            (Source::Generator, _) | (_, Some(_)) => {
+                return Err("Missing or mismatched Generator output conditions".into());
+            }
+            _ => {}
+        }
         if let Source::SoftwareLoopback { settings } = &self.input.source {
             settings.validate(self.input.nominal_sample_rate_hz)?;
         }
@@ -292,9 +307,41 @@ pub struct LockinDifference {
     pub gain: f64,
 }
 
+/// Generator comparisons require a known, stationary excitation over each
+/// result's entire contributing interval. Other sources retain their own rules.
+pub fn matching_excitation(
+    reference: &Document,
+    reference_range: std::ops::Range<u64>,
+    current: &Document,
+    current_range: std::ops::Range<u64>,
+) -> bool {
+    if matches!(reference.input.source, Source::Generator)
+        || matches!(current.input.source, Source::Generator)
+    {
+        let a_condition = reference
+            .generator_output
+            .as_ref()
+            .and_then(|t| t.stationary(reference_range));
+        let b_condition = current
+            .generator_output
+            .as_ref()
+            .and_then(|t| t.stationary(current_range));
+        return matches!((a_condition, b_condition), (Some(a), Some(b)) if a.same_excitation(b));
+    }
+    true
+}
+
 pub fn lockin_difference(reference: &Document, current: &Document) -> Option<LockinDifference> {
     let a = reference.lockin.as_ref()?;
     let b = current.lockin.as_ref()?;
+    if !matching_excitation(
+        reference,
+        a.result.sample_range.clone(),
+        current,
+        b.result.sample_range.clone(),
+    ) {
+        return None;
+    }
     if reference.loss.input_failed
         || current.loss.input_failed
         || reference.input.nominal_sample_rate_hz != current.input.nominal_sample_rate_hz
@@ -506,6 +553,70 @@ mod tests {
         let mut r = SpectrumResult::empty(s, 48000);
         a.copy_result(&mut r);
         crate::export::tests::document(&h, &r, &Set::default(), Pair([0, 1]))
+    }
+
+    #[test]
+    fn generator_conditions_roundtrip_and_differences_require_known_stationary_excitation() {
+        let mut doc = lockin_fixture(0.0625, 30.0, &Set::default(), crate::lockin::State::Valid);
+        doc.input.source = Source::Generator;
+        let range = doc.lockin.as_ref().unwrap().result.sample_range.clone();
+        let mut signals = crate::generator::Settings::default();
+        for s in &mut signals.signals {
+            s.enabled = true;
+            s.frequency_hz = 750.0;
+        }
+        let mut engine = crate::generator::Engine::new(48_000, 2, signals, 0).unwrap();
+        engine.start(signals, 1).unwrap();
+        for _ in 0..480 {
+            engine.next_frame().unwrap();
+        }
+        let condition = crate::output::Condition::from_status(engine.status());
+        doc.generator_output = Some(crate::output::Timeline {
+            spans: vec![crate::output::Span {
+                sample_range: range,
+                condition,
+            }],
+        });
+        doc.validate().unwrap();
+        let path = std::env::temp_dir().join(format!(
+            "measurelab-generator-reference-{}.json",
+            std::process::id()
+        ));
+        crate::export::save(&path, &doc).unwrap();
+        assert_eq!(load(&path).unwrap(), doc);
+        std::fs::remove_file(path).unwrap();
+        let mut next = doc.clone();
+        next.input.generation += 1;
+        assert!(lockin_difference(&doc, &next).is_some());
+        next.generator_output.as_mut().unwrap().spans[0]
+            .condition
+            .carrier_phase_cycles[1] = 0.25;
+        assert!(lockin_difference(&doc, &next).is_none());
+        next = doc.clone();
+        next.generator_output.as_mut().unwrap().spans[0]
+            .condition
+            .transitioning = true;
+        assert!(lockin_difference(&doc, &next).is_none());
+        next = doc.clone();
+        next.generator_output.as_mut().unwrap().spans.clear();
+        assert!(lockin_difference(&doc, &next).is_none());
+        let range = doc.lockin.as_ref().unwrap().result.sample_range.clone();
+        assert!(matching_excitation(
+            &doc,
+            range.clone(),
+            &doc,
+            range.clone()
+        ));
+        assert!(!matching_excitation(&doc, 0..480, &doc, range.clone()));
+        assert!(!matching_excitation(&doc, range, &fixture(), 0..1024));
+        next = doc.clone();
+        next.generator_output = None;
+        assert!(next.validate().is_err());
+        let mut old = serde_json::to_value(fixture()).unwrap();
+        old["version"] = 1.into();
+        old.as_object_mut().unwrap().remove("generator_output");
+        let old: Document = serde_json::from_value(old).unwrap();
+        old.validate().unwrap();
     }
 
     fn lockin_fixture(

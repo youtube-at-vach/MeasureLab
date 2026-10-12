@@ -4,10 +4,11 @@
 use crate::demo::Demo;
 use crate::{
     acquisition::{self, Acquisition},
+    activity::Activity,
     audio::Capture,
     calibration::{self, Reading},
     channel::{ChannelId, Pair},
-    lockin, lockin_worker, loopback,
+    lockin, lockin_worker, loopback, output,
     signal::{self, History, Measurement, Sweep, Trigger},
     spectrum::{self, Settings},
     spectrum_worker, stft,
@@ -93,6 +94,7 @@ pub struct SpectrumInfo {
 
 #[derive(Clone)]
 pub struct Snapshot {
+    pub generator_output: Option<output::Timeline>,
     pub lockin: lockin::Result,
     pub scope_capture: Option<History>,
     pub acquisition_state: acquisition::State,
@@ -135,42 +137,12 @@ pub struct Metrics {
     pub demo_suspensions: AtomicU64,
 }
 
-// Acquisition is a user-started, timing-sensitive operation even when its
-// window is occluded. Keep the OS activity scoped to the live input lifetime.
-#[cfg(target_os = "macos")]
-struct InputActivity {
-    process: objc2::rc::Retained<objc2_foundation::NSProcessInfo>,
-    token:
-        objc2::rc::Retained<objc2::runtime::ProtocolObject<dyn objc2::runtime::NSObjectProtocol>>,
-}
-#[cfg(not(target_os = "macos"))]
-struct InputActivity;
-impl InputActivity {
-    fn new() -> Self {
-        #[cfg(target_os = "macos")]
-        {
-            use objc2_foundation::{NSActivityOptions, NSProcessInfo, NSString};
-            let process = NSProcessInfo::processInfo();
-            let token = process.beginActivityWithOptions_reason(
-                NSActivityOptions::UserInitiated | NSActivityOptions::LatencyCritical,
-                &NSString::from_str("MeasureLab audio acquisition"),
-            );
-            Self { process, token }
-        }
-        #[cfg(not(target_os = "macos"))]
-        Self
-    }
-}
-#[cfg(target_os = "macos")]
-impl Drop for InputActivity {
-    fn drop(&mut self) {
-        // SAFETY: this is the activity token returned by this process above.
-        unsafe { self.process.endActivity(&self.token) };
-    }
-}
-
 enum Input {
     Idle,
+    Generator {
+        capture: output::Capture,
+        initialized: bool,
+    },
     Software {
         signal: loopback::Generator,
         clock: Instant,
@@ -206,6 +178,8 @@ enum Command {
 /// GUI-free core also used directly by deterministic input tests. The worker is
 /// only the execution wrapper; all measurement scheduling lives here.
 struct Core {
+    generator_output: Option<output::Timeline>,
+    output_condition: Option<output::Condition>,
     lockin: lockin_worker::Worker,
     acquisition: Acquisition,
     generation: u64,
@@ -260,6 +234,8 @@ impl Core {
             0,
         );
         Self {
+            generator_output: None,
+            output_condition: None,
             lockin: lockin_worker::Worker::default(),
             acquisition: Acquisition::new(acquisition::Mode::Auto, 480, 2),
             generation: 0,
@@ -280,6 +256,8 @@ impl Core {
     }
 
     fn start(&mut self, generation: u64, sample_rate: u32, channels: usize, mut config: Config) {
+        self.generator_output = None;
+        self.output_condition = None;
         self.lockin.configure(
             config.lockin,
             sample_rate,
@@ -315,6 +293,10 @@ impl Core {
         self.config.spectrum = settings;
         self.config.spectrum_channel = channel.min(self.history.channels() - 1);
         self.config.spectrum_mode = mode;
+        self.configure_spectrum_at(self.history.range().end);
+    }
+
+    fn configure_spectrum_at(&mut self, start: u64) {
         self.spectrum.configure(
             spectrum_worker::Source {
                 generation: self.generation,
@@ -327,9 +309,35 @@ impl Core {
                     .cloned()
                     .map(Arc::new),
             },
-            settings,
-            mode,
-            self.history.range().end,
+            self.config.spectrum,
+            self.config.spectrum_mode,
+            start,
+        );
+    }
+
+    fn push_generator(&mut self, frame: output::Frame) {
+        if self.acquisition.state == acquisition::State::Complete {
+            return;
+        }
+        if self.output_condition != Some(frame.condition) {
+            self.configure_spectrum_at(frame.sequence);
+            self.lockin.configure(
+                self.config.lockin,
+                self.sample_rate,
+                self.config.calibrations.clone(),
+                frame.sequence,
+                2,
+            );
+            self.output_condition = Some(frame.condition);
+        }
+        self.generator_output
+            .get_or_insert_with(Default::default)
+            .push(frame);
+        self.push_frame(
+            frame.sequence,
+            &frame.samples,
+            #[cfg(feature = "qa")]
+            Some(frame.available_at),
         );
     }
 
@@ -368,7 +376,10 @@ impl Core {
         }
         self.expected = Some(sequence + 1);
         self.history.push_at(sequence, samples);
-        self.lockin.submit(sequence, samples);
+        let stable = !self.output_condition.is_some_and(|c| c.transitioning);
+        if stable {
+            self.lockin.submit(sequence, samples);
+        }
         if samples.iter().all(|x| x.is_finite()) {
             self.acquisition.push(
                 &self.history,
@@ -379,12 +390,14 @@ impl Core {
             self.acquisition.invalidate();
         }
         self.feeder.submit(sequence, samples);
-        self.spectrum.submit_frame(
-            sequence,
-            samples,
-            #[cfg(feature = "qa")]
-            available_at,
-        );
+        if stable {
+            self.spectrum.submit_frame(
+                sequence,
+                samples,
+                #[cfg(feature = "qa")]
+                available_at,
+            );
+        }
         self.metrics.input_frames.fetch_add(1, Ordering::Relaxed);
         self.metrics.single_complete.store(
             self.acquisition.state == acquisition::State::Complete,
@@ -414,6 +427,7 @@ impl Core {
 
     fn snapshot(&mut self) -> Snapshot {
         let mut snapshot = Snapshot {
+            generator_output: self.generator_output.clone(),
             lockin: self.lockin.latest(),
             scope_capture: None,
             acquisition_state: acquisition::State::Waiting,
@@ -450,6 +464,7 @@ impl Core {
     }
 
     fn copy_snapshot(&mut self, snapshot: &mut Snapshot) {
+        snapshot.generator_output.clone_from(&self.generator_output);
         self.revision += 1;
         snapshot.generation = self.generation;
         snapshot.lockin = self.lockin.latest();
@@ -633,7 +648,7 @@ impl Worker {
                                 ));
                             }
                             Command::Start(generation, source, rate, channels, config) => {
-                                activity = Some(InputActivity::new());
+                                activity = Some(Activity::new("MeasureLab audio acquisition"));
                                 core.start(generation, rate, channels, *config);
                                 input = source;
                                 if let Input::Software { clock, .. } = &mut input {
@@ -776,6 +791,30 @@ impl Worker {
         ));
         Ok(())
     }
+    pub fn start_generator(
+        &self,
+        generation: u64,
+        capture: output::Capture,
+        rate: u32,
+        config: Config,
+    ) -> Result<(), String> {
+        if !output::RATES.contains(&rate) {
+            return Err("Unsupported Generator input rate".into());
+        }
+        config.lockin.validate(rate)?;
+        self.running.store(true, Ordering::Release);
+        self.send(Command::Start(
+            generation,
+            Input::Generator {
+                capture,
+                initialized: false,
+            },
+            rate,
+            2,
+            Box::new(config),
+        ));
+        Ok(())
+    }
     pub fn configure_lockin(&self, settings: lockin::Settings) {
         self.send(Command::Lockin(settings));
     }
@@ -868,6 +907,57 @@ fn poll_input(input: &mut Input, core: &mut Core, final_window: bool) {
     let clock = Instant::now();
     match input {
         Input::Idle => {}
+        Input::Generator {
+            capture,
+            initialized,
+        } => {
+            if !capture.metrics.ready.load(Ordering::Acquire) {
+                return;
+            }
+            if !*initialized {
+                if capture.metrics.nominal_sample_rate.load(Ordering::Relaxed)
+                    != core.sample_rate as u64
+                {
+                    core.failed = true;
+                    core.metrics.failed.store(true, Ordering::Release);
+                    return;
+                }
+                let first = capture.metrics.first_sample.load(Ordering::Relaxed);
+                core.expected = Some(first);
+                core.history.clear_at(first);
+                *initialized = true;
+            }
+            core.failed = capture.metrics.failed.load(Ordering::Acquire);
+            let final_window = final_window || core.failed;
+            let end = capture.metrics.input_end.load(Ordering::Acquire);
+            // Snapshot the queue once. A continuing output cannot extend input
+            // Stop forever, or contaminate its finite metadata and sample range.
+            let count = capture.consumer.slots();
+            for _ in 0..count {
+                if let Ok(frame) = capture.consumer.pop() {
+                    if final_window && frame.sequence >= end {
+                        break;
+                    }
+                    core.push_generator(frame);
+                }
+            }
+            if final_window && core.acquisition.state != acquisition::State::Complete {
+                let retained_end = core.history.range().end;
+                if end > retained_end {
+                    core.dropped += end - retained_end;
+                    core.expected = Some(end);
+                    core.history.advance_to(end);
+                    core.acquisition.invalidate();
+                }
+            }
+            core.capture_dropped =
+                if final_window || core.acquisition.state == acquisition::State::Complete {
+                    core.dropped
+                } else {
+                    capture.metrics.dropped.load(Ordering::Relaxed)
+                };
+            core.metrics.failed.store(core.failed, Ordering::Release);
+        }
         Input::Software {
             signal,
             clock,
@@ -1173,6 +1263,148 @@ mod tests {
             );
             thread::sleep(Duration::from_millis(2));
         }
+    }
+
+    #[test]
+    fn generator_live_changes_reset_spectrum_and_lockin_on_the_actual_sample_boundary() {
+        use crate::generator::{self, Settings as GeneratorSettings};
+        let (_stft, mut core, mut config, _spectrum) = setup(8192, 2);
+        config.lockin = lockin::Settings {
+            enabled: true,
+            frequency_hz: 750.0,
+            time_constant_seconds: 0.005,
+            ..Default::default()
+        };
+        config.scope.samples = 512;
+        core.start(81, 48_000, 2, config);
+        let mut settings = GeneratorSettings::default();
+        for (i, s) in settings.signals.iter_mut().enumerate() {
+            s.enabled = true;
+            s.frequency_hz = 750.0;
+            s.amplitude_dbfs = 20.0 * (0.125 / (i + 1) as f64).log10();
+        }
+        settings.signals[1].phase_degrees = 30.0;
+        let mut engine = generator::Engine::new(48_000, 2, settings, 0).unwrap();
+        engine.start(settings, 1).unwrap();
+        for sequence in 0..96_000 {
+            if sequence == 48_000 {
+                settings.signals[1].amplitude_dbfs = 20.0 * 0.03125_f64.log10();
+                settings.signals[1].phase_degrees = -90.0;
+                engine.configure(settings, 2).unwrap();
+            }
+            let condition = output::Condition::from_status(engine.status());
+            let f = engine.next_frame().unwrap();
+            core.push_generator(output::Frame {
+                sequence: f.sequence,
+                samples: [f.samples[0], f.samples[1]],
+                condition,
+                #[cfg(feature = "qa")]
+                available_at: Instant::now(),
+            });
+        }
+        let snapshot = finish(&mut core);
+        let timeline = snapshot.generator_output.as_ref().unwrap();
+        timeline.validate(48_000, 96_000).unwrap();
+        assert!(
+            timeline
+                .spans
+                .iter()
+                .any(|s| s.sample_range.start == 48_000 && s.condition.transitioning)
+        );
+        let condition = timeline
+            .stationary(snapshot.lockin.sample_range.clone())
+            .unwrap();
+        assert_eq!(condition.revision, 2);
+        assert_eq!(snapshot.lockin.state, lockin::State::Valid);
+        assert!(snapshot.lockin.sample_range.start >= 48_480);
+        assert!(snapshot.spectrum_info.contributing.start >= 48_480);
+        assert!((snapshot.lockin.amplitude_peak.unwrap() - 0.03125).abs() < 1e-8);
+        assert!((snapshot.lockin.phase_degrees.unwrap() + 90.0).abs() < 1e-6);
+        assert!((snapshot.lockin.reference_frequency_hz.unwrap() - 750.0).abs() < 1e-7);
+        assert!((snapshot.spectrum.power()[128].sqrt() - 0.03125).abs() < 1e-8);
+        assert!((snapshot.measurements[1].rms - 0.03125 / 2.0_f64.sqrt()).abs() < 1e-8);
+        assert_eq!(snapshot.input_dropped, 0);
+    }
+
+    #[test]
+    fn generator_input_and_output_stop_independently_with_held_conditions_and_continuing_silence() {
+        let (_stft, core, mut config, _spectrum) = setup(8192, 2);
+        config.lockin = lockin::Settings {
+            enabled: true,
+            frequency_hz: 750.0,
+            time_constant_seconds: 0.005,
+            ..Default::default()
+        };
+        let worker = Worker::new(core.feeder);
+        let mut output = output::Worker::new();
+        let mut settings = crate::generator::Settings::default();
+        for s in &mut settings.signals {
+            s.enabled = true;
+            s.frequency_hz = 750.0;
+        }
+        output.start(settings).unwrap();
+        worker
+            .start_generator(90, output.capture().unwrap(), 48_000, config.clone())
+            .unwrap();
+        wait_for_frames(&worker, 24_000);
+        let held = worker.stop();
+        assert_eq!(held.input_dropped, 0);
+        assert!(!held.failed);
+        assert_eq!(held.lockin.state, lockin::State::Valid);
+        assert!((held.spectrum.power()[128].sqrt() - 0.1).abs() < 1e-8);
+        let end = held.history.range().end;
+        let deadline = Instant::now() + Duration::from_secs(3);
+        loop {
+            if let Some(u) = output.poll()
+                && u.status.next_sample > end + 1024
+            {
+                assert_eq!(u.status.state, crate::generator::State::Running);
+                break;
+            }
+            assert!(Instant::now() < deadline);
+            thread::sleep(Duration::from_millis(2));
+        }
+        worker
+            .start_generator(91, output.capture().unwrap(), 48_000, config)
+            .unwrap();
+        wait_for_frames(&worker, 36_000);
+        output.stop();
+        let deadline = Instant::now() + Duration::from_secs(3);
+        loop {
+            if let Some(u) = output.poll()
+                && u.status.state == crate::generator::State::Stopped
+            {
+                break;
+            }
+            assert!(Instant::now() < deadline);
+            thread::sleep(Duration::from_millis(2));
+        }
+        let count = worker.metrics.input_frames.load(Ordering::Relaxed);
+        wait_for_frames(&worker, count + 10_000);
+        let silent = worker.stop();
+        assert!(silent.history.range().start > end);
+        assert_eq!(silent.input_dropped, 0);
+        assert!(!silent.failed);
+        assert_eq!(silent.measurements[0].rms, 0.0);
+        assert_eq!(silent.spectrum.power()[128], 0.0);
+        assert_eq!(silent.lockin.state, lockin::State::ReferenceLost);
+        assert!(
+            held.generator_output
+                .unwrap()
+                .spans
+                .iter()
+                .all(|s| s.condition.active)
+        );
+        assert!(
+            !silent
+                .generator_output
+                .unwrap()
+                .spans
+                .last()
+                .unwrap()
+                .condition
+                .active
+        );
     }
 
     #[test]
