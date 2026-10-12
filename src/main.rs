@@ -13,6 +13,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut stft_smoke = false;
     let mut multichannel_smoke = false;
     let mut lockin_smoke = false;
+    let mut physical_lockin_smoke = false;
     let mut gpu_smoke = false;
     let mut list_devices = false;
     let mut new_instance = false;
@@ -30,6 +31,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     return Err("--lockin-smoke requires --features qa".into());
                 }
                 lockin_smoke = true;
+            }
+            "--physical-lockin-smoke" => {
+                if !cfg!(feature = "qa") {
+                    return Err("--physical-lockin-smoke requires --features qa".into());
+                }
+                physical_lockin_smoke = true;
             }
             "--new-instance" => new_instance = true,
             "--input-device" => {
@@ -73,7 +80,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
                 #[cfg(feature = "qa")]
                 println!(
-                    "\nQA options:\n  --demo        Enable and start an internal demo signal (no audio output)\n  --ui-smoke    Capture the four-instrument test UI briefly, then close\n  --multichannel-smoke Validate 16 distinct BlackHole tones\n  --lockin-smoke Validate synchronous REF/response through BlackHole (default 2ch, 48000 Hz)"
+                    "\nQA options:\n  --demo        Enable and start an internal demo signal (no audio output)\n  --ui-smoke    Capture the four-instrument test UI briefly, then close\n  --multichannel-smoke Validate 16 distinct BlackHole tones\n  --lockin-smoke Validate synchronous REF/response through BlackHole (default 2ch, 48000 Hz)\n  --physical-lockin-smoke Explicitly drive ZOOM UAC-232 stereo loopback at 0.1 FS peak; requires --input-device NAME"
                 );
                 return Ok(());
             }
@@ -85,6 +92,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         stft_smoke,
         multichannel_smoke,
         lockin_smoke,
+        physical_lockin_smoke,
         gpu_smoke,
         list_devices,
         smoke,
@@ -99,11 +107,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if ((input_device.is_some() || sample_rate.is_some())
         && !audio_smoke
         && !stft_smoke
-        && !lockin_smoke)
+        && !lockin_smoke
+        && !physical_lockin_smoke)
         || (channel != 0 && !stft_smoke)
     {
         return Err(
-            "--input-device / --sample-rate require --audio-smoke / --stft-smoke / --lockin-smoke; --channel requires --stft-smoke"
+            "--input-device / --sample-rate require an audio or Lock-in smoke check; --channel requires --stft-smoke"
                 .into(),
         );
     }
@@ -126,7 +135,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         None if new_instance => None,
         None => {
             let message = "MeasureLab is already running. Close it first, or use --new-instance to open another instance.";
-            if audio_smoke || stft_smoke || multichannel_smoke || lockin_smoke || smoke {
+            if audio_smoke
+                || stft_smoke
+                || multichannel_smoke
+                || lockin_smoke
+                || physical_lockin_smoke
+                || smoke
+            {
                 return Err(message.into());
             }
             println!("{message}");
@@ -136,6 +151,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "qa")]
     if multichannel_smoke {
         return measurelab::qa::multichannel_smoke_test();
+    }
+    #[cfg(feature = "qa")]
+    if physical_lockin_smoke {
+        return measurelab::qa::physical_lockin::smoke_test(
+            input_device
+                .as_deref()
+                .ok_or("--physical-lockin-smoke requires --input-device NAME")?,
+            sample_rate.unwrap_or(48000),
+        );
     }
     #[cfg(feature = "qa")]
     if lockin_smoke {
