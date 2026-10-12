@@ -12,6 +12,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut audio_smoke = false;
     let mut stft_smoke = false;
     let mut multichannel_smoke = false;
+    let mut lockin_smoke = false;
     let mut gpu_smoke = false;
     let mut list_devices = false;
     let mut new_instance = false;
@@ -24,6 +25,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "--audio-smoke" => audio_smoke = true,
             "--stft-smoke" => stft_smoke = true,
             "--multichannel-smoke" => multichannel_smoke = true,
+            "--lockin-smoke" => {
+                if !cfg!(feature = "qa") {
+                    return Err("--lockin-smoke requires --features qa".into());
+                }
+                lockin_smoke = true;
+            }
             "--new-instance" => new_instance = true,
             "--input-device" => {
                 input_device = Some(args.next().ok_or("--input-device requires a name")?)
@@ -66,7 +73,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
                 #[cfg(feature = "qa")]
                 println!(
-                    "\nQA options:\n  --demo        Enable and start an internal demo signal (no audio output)\n  --ui-smoke    Capture the four-instrument test UI briefly, then close\n  --multichannel-smoke Validate 16 distinct BlackHole tones"
+                    "\nQA options:\n  --demo        Enable and start an internal demo signal (no audio output)\n  --ui-smoke    Capture the four-instrument test UI briefly, then close\n  --multichannel-smoke Validate 16 distinct BlackHole tones\n  --lockin-smoke Validate synchronous REF/response through BlackHole (default 2ch, 48000 Hz)"
                 );
                 return Ok(());
             }
@@ -77,6 +84,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         audio_smoke,
         stft_smoke,
         multichannel_smoke,
+        lockin_smoke,
         gpu_smoke,
         list_devices,
         smoke,
@@ -88,11 +96,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         return Err("Choose one smoke check or --list-devices".into());
     }
-    if ((input_device.is_some() || sample_rate.is_some()) && !audio_smoke && !stft_smoke)
+    if ((input_device.is_some() || sample_rate.is_some())
+        && !audio_smoke
+        && !stft_smoke
+        && !lockin_smoke)
         || (channel != 0 && !stft_smoke)
     {
         return Err(
-            "--input-device / --sample-rate require --audio-smoke / --stft-smoke; --channel requires --stft-smoke"
+            "--input-device / --sample-rate require --audio-smoke / --stft-smoke / --lockin-smoke; --channel requires --stft-smoke"
                 .into(),
         );
     }
@@ -115,7 +126,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         None if new_instance => None,
         None => {
             let message = "MeasureLab is already running. Close it first, or use --new-instance to open another instance.";
-            if audio_smoke || stft_smoke || multichannel_smoke || smoke {
+            if audio_smoke || stft_smoke || multichannel_smoke || lockin_smoke || smoke {
                 return Err(message.into());
             }
             println!("{message}");
@@ -125,6 +136,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "qa")]
     if multichannel_smoke {
         return measurelab::qa::multichannel_smoke_test();
+    }
+    #[cfg(feature = "qa")]
+    if lockin_smoke {
+        return measurelab::qa::lockin::smoke_test(
+            input_device.as_deref().unwrap_or("BlackHole 2ch"),
+            sample_rate.unwrap_or(48000),
+        );
     }
     if audio_smoke {
         return measurelab::audio::smoke_test(input_device.as_deref(), sample_rate)

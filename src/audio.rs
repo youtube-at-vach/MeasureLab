@@ -29,6 +29,10 @@ pub struct Metrics {
     pub dropped: AtomicU64,
     pub callbacks: AtomicU64,
     pub failed: AtomicBool,
+    #[cfg(feature = "qa")]
+    pub callback_min_frames: AtomicU64,
+    #[cfg(feature = "qa")]
+    pub callback_max_frames: AtomicU64,
 }
 
 pub struct Capture {
@@ -344,6 +348,22 @@ where
     device.build_input_stream(
         config,
         move |input: &[T], _| {
+            #[cfg(feature = "qa")]
+            {
+                let frames = (input.len() / channels) as u64;
+                let previous = metrics.callback_min_frames.load(Ordering::Relaxed);
+                metrics.callback_min_frames.store(
+                    if previous == 0 {
+                        frames
+                    } else {
+                        previous.min(frames)
+                    },
+                    Ordering::Relaxed,
+                );
+                metrics
+                    .callback_max_frames
+                    .fetch_max(frames, Ordering::Relaxed);
+            }
             let dropped = write_input(input, channels, &mut producer, &mut sequence);
             metrics.dropped.fetch_add(dropped, Ordering::Relaxed);
             metrics.callbacks.fetch_add(1, Ordering::Relaxed);
