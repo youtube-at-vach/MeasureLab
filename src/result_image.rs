@@ -143,6 +143,7 @@ pub fn render(doc: &Document) -> Result<(u32, u32, Vec<u8>), String> {
         "MeasureLab | Held Scope / Spectrum | JSON is the numeric master",
     );
     let source = match &doc.input.source {
+        crate::export::Source::Generator => "Generator internal loopback",
         crate::export::Source::Audio { device_name, .. } => device_name.as_str(),
         crate::export::Source::InternalQa { description } => description.as_str(),
         crate::export::Source::SoftwareLoopback { .. } => "Software Loopback",

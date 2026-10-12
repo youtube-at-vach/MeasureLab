@@ -118,6 +118,7 @@ pub enum Error {
     CounterExhausted,
     NonFiniteOutput,
     OutputRange,
+    ProducerSuspended,
 }
 
 impl std::fmt::Display for Error {
@@ -160,6 +161,10 @@ impl std::fmt::Display for Error {
             }
             Self::NonFiniteOutput => write!(f, "Nonfinite output; output stopped"),
             Self::OutputRange => write!(f, "Output exceeds full scale; output stopped"),
+            Self::ProducerSuspended => write!(
+                f,
+                "Internal generation was suspended for more than 250 ms; output stopped"
+            ),
         }
     }
 }
@@ -184,6 +189,9 @@ pub struct Status {
     pub revision: u64,
     /// First frame using this revision, never the UI request time.
     pub applied_sample: u64,
+    /// Carrier phases at applied_sample, before advancing that frame. Retained
+    /// with the revision to describe independent frequency histories.
+    pub carrier_phase_cycles: [f64; SIGNALS],
     /// Exclusive transition endpoints; the sample at each endpoint is stable.
     pub transition_end: [u64; SIGNALS],
     pub next_sample: u64,
@@ -322,6 +330,7 @@ impl Engine {
                 output_generation: previous_generation,
                 revision: 0,
                 applied_sample: first_sample,
+                carrier_phase_cycles: [0.0; SIGNALS],
                 transition_end: [first_sample; SIGNALS],
                 next_sample: first_sample,
                 stop_sample: None,
@@ -500,6 +509,7 @@ impl Engine {
         self.status.settings = settings;
         self.status.revision = revision;
         self.status.applied_sample = self.status.next_sample;
+        self.status.carrier_phase_cycles = self.oscillators.map(|o| o.carrier);
         self.update_endpoints();
     }
 

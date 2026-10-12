@@ -1,5 +1,6 @@
 //! Audio acquisition, signal generation and measurement, independent of the desktop UI.
 pub mod acquisition;
+mod activity;
 pub mod audio;
 pub mod calibration;
 pub mod channel;
@@ -14,6 +15,7 @@ pub mod lockin;
 pub mod lockin_worker;
 pub mod loopback;
 pub mod measurement;
+pub mod output;
 pub mod results;
 pub mod settings;
 pub mod signal;

@@ -18,7 +18,7 @@ use std::{
     thread::{self, JoinHandle},
 };
 
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 pub const MAX_BYTES: usize = 64 * 1024;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -161,6 +161,8 @@ impl ChannelCalibration {
 #[serde(deny_unknown_fields)]
 pub struct Measurement {
     #[serde(default)]
+    pub generator: Option<crate::output::Saved>,
+    #[serde(default)]
     pub software_loopback: Option<crate::loopback::Settings>,
     #[serde(default)]
     pub lockin: crate::lockin::Settings,
@@ -184,6 +186,8 @@ pub enum PlotLayout {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Workspace {
+    #[serde(default)]
+    pub generator_visible: bool,
     pub visible: [bool; 4],
     #[serde(default)]
     pub lockin_visible: bool,
@@ -230,10 +234,24 @@ pub struct Document {
 impl Document {
     /// Check the whole document before exposing any restored state to the app.
     pub fn validate(&self) -> Result<calibration::Set, String> {
-        if self.version != VERSION {
+        if ![1, VERSION].contains(&self.version) {
             return Err(format!("Unsupported settings version: {}", self.version));
         }
         let m = &self.measurement;
+        if self.version == 1 && (m.generator.is_some() || self.workspace.generator_visible) {
+            return Err("Generator settings require version 2".into());
+        }
+        if let Some(generator) = m.generator {
+            generator.validate()?;
+            if generator.use_as_input
+                && (m.software_loopback.is_some()
+                    || m.input.device_id != "measurelab:generator"
+                    || m.input.channels != 2
+                    || m.input.expected_sample_rate() != generator.nominal_sample_rate)
+            {
+                return Err("Invalid Generator input identity or rate".into());
+            }
+        }
         m.lockin.validate(m.input.expected_sample_rate())?;
         if let Some(software) = &m.software_loopback {
             software.validate(m.input.expected_sample_rate())?;
@@ -304,7 +322,7 @@ impl Document {
                 .map_err(str::to_owned)?;
         }
         let w = &self.workspace;
-        if !w.visible.contains(&true) && !w.lockin_visible {
+        if !w.visible.contains(&true) && !w.lockin_visible && !w.generator_visible {
             return Err("At least one instrument must be visible".into());
         }
         for scale in [
@@ -348,7 +366,7 @@ impl Document {
             version: u32,
         }
         let header: Header = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
-        if header.version != VERSION {
+        if ![1, VERSION].contains(&header.version) {
             return Err(format!("Unsupported settings version: {}", header.version));
         }
         let document: Self = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
@@ -520,6 +538,7 @@ mod tests {
         Document {
             version: VERSION,
             measurement: Measurement {
+                generator: None,
                 software_loopback: None,
                 lockin: crate::lockin::Settings::default(),
                 input: Input {
@@ -575,6 +594,7 @@ mod tests {
                 }],
             },
             workspace: Workspace {
+                generator_visible: false,
                 visible: [true; 4],
                 lockin_visible: false,
                 lockin_display: LockinDisplay::Polar,
@@ -610,6 +630,45 @@ mod tests {
             is_default: true,
             sample_rates: vec![48_000, 96_000],
         }
+    }
+
+    #[test]
+    fn generator_settings_roundtrip_without_start_commands_and_version_one_defaults_off() {
+        let mut doc = fixture();
+        doc.measurement.software_loopback = None;
+        doc.measurement.input.device_id = "measurelab:generator".into();
+        doc.measurement.input.channels = 2;
+        doc.measurement.scope.channels = Pair::default();
+        doc.measurement.spectrum.channel = 1;
+        doc.measurement.spectrogram.channel = 0;
+        let mut signals = crate::generator::Settings::default();
+        signals.signals[0].enabled = true;
+        doc.measurement.generator = Some(crate::output::Saved {
+            nominal_sample_rate: 48_000,
+            signals,
+            use_as_input: true,
+        });
+        doc.workspace.generator_visible = true;
+        doc.workspace.visible = [false; 4];
+        assert_eq!(Document::decode(&doc.encode().unwrap()).unwrap(), doc);
+        let mut invalid = doc.clone();
+        invalid.measurement.input.sample_rate = Some(96_000);
+        assert!(invalid.validate().is_err());
+        let mut old = serde_json::to_value(fixture()).unwrap();
+        old["version"] = 1.into();
+        old["measurement"]
+            .as_object_mut()
+            .unwrap()
+            .remove("generator");
+        old["workspace"]
+            .as_object_mut()
+            .unwrap()
+            .remove("generator_visible");
+        let restored = Document::decode(&serde_json::to_vec(&old).unwrap()).unwrap();
+        assert!(restored.measurement.generator.is_none());
+        assert!(!restored.workspace.generator_visible);
+        doc.version = 1;
+        assert!(doc.validate().is_err());
     }
 
     #[test]
@@ -689,7 +748,7 @@ mod tests {
                 .contains("version")
         );
         assert!(
-            Document::decode(br#"{"version":2}"#)
+            Document::decode(br#"{"version":3}"#)
                 .unwrap_err()
                 .contains("version")
         );

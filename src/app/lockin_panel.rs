@@ -174,7 +174,10 @@ impl ScopeApp {
     fn lockin_channel_count(&self) -> u16 {
         if self.running() || self.pending_stop.is_some() {
             self.channels
-        } else if self.source == Source::Software || self.source.is_demo() {
+        } else if self.source == Source::Software
+            || self.source == Source::Generator
+            || self.source.is_demo()
+        {
             2
         } else {
             self.devices
@@ -190,6 +193,8 @@ impl ScopeApp {
         }
         let rate = if self.running() {
             self.sample_rate
+        } else if self.source == Source::Generator {
+            self.generator.rate
         } else if self.source == Source::Software {
             self.requested_sample_rate.unwrap_or(48000)
         } else {

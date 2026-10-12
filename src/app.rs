@@ -10,6 +10,7 @@ use crate::{
     gpu::{COLORS, PlotId, Segment, TraceCallback, TraceRenderer},
     lockin, loopback,
     measurement::{self, ScopeSettings, SpectrumMode},
+    output,
     settings::{self, PlotLayout},
     signal::{Edge, History, Line, Measurement, Sweep, Trigger, build_sweep_lines},
     spectrogram, spectrogram_gpu,
@@ -30,6 +31,7 @@ use std::{
     sync::{Arc, Mutex, atomic::Ordering},
     time::{Duration, Instant},
 };
+mod generator_panel;
 mod lockin_panel;
 mod workspace;
 
@@ -46,6 +48,7 @@ const BORDER: Color32 = Color32::from_rgb(48, 70, 82);
 enum Source {
     Live,
     Software,
+    Generator,
     #[cfg(feature = "qa")]
     Demo,
 }
@@ -63,7 +66,7 @@ impl Source {
 
     fn is_demo(self) -> bool {
         match self {
-            Self::Live | Self::Software => false,
+            Self::Live | Self::Software | Self::Generator => false,
             #[cfg(feature = "qa")]
             Self::Demo => true,
         }
@@ -255,6 +258,8 @@ impl CalibrationEditor {
 }
 
 pub struct ScopeApp {
+    generator: generator_panel::GeneratorUi,
+    generator_output: Option<output::Timeline>,
     source: Source,
     software_running: bool,
     loopback_settings: loopback::Settings,
@@ -272,7 +277,7 @@ pub struct ScopeApp {
     comparison_current: Option<Box<export::Document>>,
     visible: [bool; 4],
     plot_layout: PlotLayout,
-    previous_view: Option<([bool; 4], bool, PlotLayout)>,
+    previous_view: Option<([bool; 4], bool, bool, PlotLayout)>,
     spectrum_adjust_analysis: bool,
     sidebar: Sidebar,
     #[cfg(feature = "qa")]
@@ -475,6 +480,8 @@ impl ScopeApp {
         let mut stft = stft::Worker::new();
         let core = (!smoke).then(|| measurement::Worker::new(stft.take_feeder()));
         let mut app = Self {
+            generator: generator_panel::GeneratorUi::default(),
+            generator_output: None,
             source,
             software_running: false,
             loopback_settings: loopback::Settings::default(),
@@ -901,6 +908,14 @@ impl ScopeApp {
         #[cfg(feature = "qa")]
         if smoke && let Ok(mode) = std::env::var("MEASURELAB_UI_SMOKE_LOCKIN") {
             app.check_lockin_ui(&mode)?;
+        }
+        #[cfg(feature = "qa")]
+        if smoke && let Ok(mode) = std::env::var("MEASURELAB_UI_SMOKE_GENERATOR") {
+            app.check_generator_ui(&mode)?;
+            if mode == "narrow" {
+                cc.egui_ctx
+                    .send_viewport_cmd(egui::ViewportCommand::InnerSize(vec2(900.0, 660.0)));
+            }
         }
         Ok(app)
     }
@@ -1605,11 +1620,20 @@ impl ScopeApp {
         }
     }
 
+    fn input_failure_message(&self) -> &'static str {
+        if self.source == Source::Generator {
+            "Generator input stopped. Check output status, stop input and reset output before restarting."
+        } else {
+            "Audio stream stopped. Check device connection and microphone permission, then restart."
+        }
+    }
+
     fn running(&self) -> bool {
         self.capture.is_some() || self.demo_running || self.software_running
     }
 
     fn begin_observation(&mut self) {
+        self.generator_output = None;
         self.cursors.new_epoch();
         self.input_generation += 1;
         self.held_input = None;
@@ -1675,6 +1699,7 @@ impl ScopeApp {
             return;
         }
         self.snapshot_revision = snapshot.revision;
+        self.generator_output.clone_from(&snapshot.generator_output);
         self.comparison_current = None;
         let samples_changed = self.history.range() != snapshot.history.range();
         self.dirty |= self.core_scope != snapshot.scope_settings;
@@ -1710,7 +1735,7 @@ impl ScopeApp {
         self.dirty |= samples_changed;
         self.xy_dirty |= samples_changed;
         if snapshot.failed && self.running() {
-            self.error = Some("Audio stream stopped. Check device connection and microphone permission, then restart.".into());
+            self.error = Some(self.input_failure_message().into());
             self.stop();
         }
     }
@@ -1806,7 +1831,7 @@ impl ScopeApp {
                 .as_ref()
                 .is_some_and(|core| core.metrics.failed.load(Ordering::Acquire))
         {
-            self.error = Some("Audio stream stopped. Check device connection and microphone permission, then restart.".into());
+            self.error = Some(self.input_failure_message().into());
             self.stop();
         }
     }
@@ -2213,6 +2238,51 @@ impl ScopeApp {
             self.start_after_stop = true;
             return;
         }
+        if self.source == Source::Generator {
+            let rate = self.generator.status.nominal_sample_rate;
+            if self.generator.pending || rate != self.generator.rate {
+                self.error = Some("Wait for the Generator settings to be applied".into());
+                return;
+            }
+            if let Err(e) = self.lockin_settings.validate(rate) {
+                self.error = Some(e);
+                return;
+            }
+            let capture = match self.generator.worker.capture() {
+                Ok(c) => c,
+                Err(e) => {
+                    self.error = Some(e);
+                    return;
+                }
+            };
+            self.begin_observation();
+            self.sample_rate = rate;
+            self.channels = 2;
+            self.format = "Generator internal loopback · f64".into();
+            self.held_input = Some(export::Input {
+                generation: self.input_generation,
+                source: export::Source::Generator,
+                nominal_sample_rate_hz: rate,
+                channels: 2,
+            });
+            self.history = History::with_channels((rate as usize * 2).max(32768), 2);
+            self.error = None;
+            self.dropped = 0;
+            self.dirty = true;
+            self.xy_dirty = true;
+            self.reset_analysis();
+            self.reset_stft();
+            match self.core.as_ref().unwrap().start_generator(
+                self.input_generation,
+                capture,
+                rate,
+                self.core_config(),
+            ) {
+                Ok(()) => self.software_running = true,
+                Err(e) => self.error = Some(e),
+            }
+            return;
+        }
         if self.source == Source::Software {
             let rate = self.requested_sample_rate.unwrap_or(48000);
             if let Err(e) = self
@@ -2568,6 +2638,7 @@ impl ScopeApp {
                     && self.pending_stop.is_none()
                     && (self.source.is_demo()
                         || self.source == Source::Software
+                        || self.source == Source::Generator
                         || !self.devices.is_empty()),
                 egui::Button::new(
                     RichText::new(if self.running() {
@@ -2642,9 +2713,10 @@ impl ScopeApp {
     fn input_controls(&mut self, ui: &mut egui::Ui) {
         let old_source = self.source;
         ui.add_enabled_ui(!self.busy && self.pending_stop.is_none(), |ui| {
-            ui.horizontal(|ui| {
+            ui.horizontal_wrapped(|ui| {
                 ui.selectable_value(&mut self.source, Source::Live, "Audio input");
                 ui.selectable_value(&mut self.source, Source::Software, "Software Loopback");
+                ui.selectable_value(&mut self.source, Source::Generator, "Generator loopback");
             });
         });
         if old_source != self.source {
@@ -2653,6 +2725,12 @@ impl ScopeApp {
         }
         if self.source == Source::Software {
             self.software_controls(ui);
+        }
+        if self.source == Source::Generator {
+            ui.label("Generator feeds both input channels. Configure the signal in the Generator panel and start input and output separately.");
+            if ui.button("Show Generator").clicked() {
+                self.generator.visible = true;
+            }
         }
         #[cfg(feature = "qa")]
         if self.demo_enabled {
@@ -4492,7 +4570,10 @@ impl ScopeApp {
     }
 
     fn can_restore_settings(&self) -> bool {
-        (self.source == Source::Live || self.source == Source::Software)
+        (self.source == Source::Live
+            || self.source == Source::Software
+            || self.source == Source::Generator)
+            && self.generator.stopped()
             && !self.running()
             && !self.busy
             && self.pending_stop.is_none()
@@ -4553,6 +4634,7 @@ impl ScopeApp {
                 input_failed: self.input_failed,
             },
         )?;
+        document.generator_output = self.generator_output.clone();
         if self.lockin_result.settings.enabled {
             document.lockin = Some(export::Lockin::capture(
                 self.lockin_result.clone(),
@@ -4597,7 +4679,15 @@ impl ScopeApp {
     }
 
     fn capture_settings(&self) -> Result<settings::Document, String> {
-        let input = if self.source == Source::Software {
+        let input = if self.source == Source::Generator {
+            settings::Input {
+                device_id: "measurelab:generator".into(),
+                device_name: "Generator internal loopback".into(),
+                channels: 2,
+                device_default_sample_rate: self.generator.rate,
+                sample_rate: Some(self.generator.rate),
+            }
+        } else if self.source == Source::Software {
             settings::Input {
                 device_id: "measurelab:software-loopback".into(),
                 device_name: "Software Loopback".into(),
@@ -4615,6 +4705,11 @@ impl ScopeApp {
         let document = settings::Document {
             version: settings::VERSION,
             measurement: settings::Measurement {
+                generator: Some(output::Saved {
+                    nominal_sample_rate: self.generator.rate,
+                    signals: self.generator.settings,
+                    use_as_input: self.source == Source::Generator,
+                }),
                 software_loopback: (self.source == Source::Software)
                     .then(|| self.loopback_settings.clone()),
                 lockin: self.lockin_settings,
@@ -4643,6 +4738,7 @@ impl ScopeApp {
                 calibrations: settings::ChannelCalibration::capture(&self.calibration.pending),
             },
             workspace: settings::Workspace {
+                generator_visible: self.generator.visible,
                 visible: self.visible,
                 lockin_visible: self.lockin_visible,
                 lockin_display: self.lockin_display,
@@ -4668,7 +4764,7 @@ impl ScopeApp {
             },
         };
         document.validate()?;
-        if document.measurement.software_loopback.is_none() {
+        if self.source == Source::Live {
             document.measurement.input.resolve(&self.devices)?;
         }
         if self.capture.is_some()
@@ -4686,10 +4782,17 @@ impl ScopeApp {
     /// conditions/display preferences change. Captured data keeps its metadata.
     fn restore_settings(&mut self, document: settings::Document) -> Result<(), String> {
         if !self.can_restore_settings() {
-            return Err("Stop input and wait for pending operations before restoring".into());
+            return Err(
+                "Stop input and output and wait for pending operations before restoring".into(),
+            );
         }
         let calibrations = document.validate()?;
-        let selected = if document.measurement.software_loopback.is_some() {
+        let selected = if document.measurement.software_loopback.is_some()
+            || document
+                .measurement
+                .generator
+                .is_some_and(|g| g.use_as_input)
+        {
             self.selected
         } else {
             document.measurement.input.resolve(&self.devices)?
@@ -4713,9 +4816,18 @@ impl ScopeApp {
         }
         let m = document.measurement;
         let w = document.workspace;
+        let generator_input = m.generator.is_some_and(|g| g.use_as_input);
+        self.generator
+            .restore(m.generator.unwrap_or(output::Saved {
+                nominal_sample_rate: 48_000,
+                signals: crate::generator::Settings::default(),
+                use_as_input: false,
+            }))?;
         self.selected = selected;
         self.requested_sample_rate = m.input.sample_rate;
-        self.source = if m.software_loopback.is_some() {
+        self.source = if generator_input {
+            Source::Generator
+        } else if m.software_loopback.is_some() {
             Source::Software
         } else {
             Source::Live
@@ -4741,6 +4853,7 @@ impl ScopeApp {
         self.calibration.pending = calibrations;
         self.calibration.select();
         self.visible = w.visible;
+        self.generator.visible = w.generator_visible;
         self.lockin_visible = w.lockin_visible;
         self.lockin_display = w.lockin_display;
         self.plot_layout = w.layout;
@@ -4810,26 +4923,45 @@ impl ScopeApp {
     }
 
     fn select_view(&mut self, visible: [bool; 4]) {
-        if self.visible == visible && !self.lockin_visible {
+        if self.visible == visible && !self.lockin_visible && !self.generator.visible {
             return;
         }
-        self.previous_view
-            .get_or_insert((self.visible, self.lockin_visible, self.plot_layout));
+        self.previous_view.get_or_insert((
+            self.visible,
+            self.lockin_visible,
+            self.generator.visible,
+            self.plot_layout,
+        ));
         self.visible = visible;
         self.lockin_visible = false;
+        self.generator.visible = false;
         self.plot_layout = PlotLayout::Auto;
     }
 
     fn restore_view(&mut self) {
-        if let Some((visible, lockin, layout)) = self.previous_view.take() {
+        if let Some((visible, lockin, generator, layout)) = self.previous_view.take() {
             self.visible = visible;
             self.lockin_visible = lockin;
+            self.generator.visible = generator;
             self.plot_layout = layout;
         }
     }
 
     fn view_menu(&mut self, ui: &mut egui::Ui) {
         ui.menu_button("View", |ui| {
+            for (title, visible, lockin) in [
+                ("Generator only", [false; 4], false),
+                ("Generator + Scope", [true, false, false, false], false),
+                ("Generator + Spectrum", [false, true, false, false], false),
+                ("Generator + Lock-in", [false; 4], true),
+            ] {
+                if ui.selectable_label(self.generator.visible && self.visible == visible && self.lockin_visible == lockin, title).clicked() {
+                    self.previous_view.get_or_insert((self.visible, self.lockin_visible, self.generator.visible, self.plot_layout));
+                    self.visible = visible; self.lockin_visible = lockin; self.generator.visible = true;
+                    self.plot_layout = PlotLayout::Auto;
+                    ui.close();
+                }
+            }
             for (title, visible) in [
                 ("Scope only", [true, false, false, false]),
                 ("Spectrum only", [false, true, false, false]),
@@ -5510,6 +5642,7 @@ impl ScopeApp {
 
 impl Drop for ScopeApp {
     fn drop(&mut self) {
+        self.generator.stop();
         self.core.take();
     }
 }
@@ -5530,6 +5663,7 @@ impl eframe::App for ScopeApp {
         #[cfg(feature = "qa")]
         let input_started = Instant::now();
         self.poll_audio();
+        self.generator.poll();
         self.poll_measurement();
         self.poll_settings();
         self.poll_export();
@@ -5986,6 +6120,8 @@ impl eframe::App for ScopeApp {
                             } else {
                                 "DEMO SIGNAL (QA) · HELD"
                             }
+                        } else if self.software_running && self.source == Source::Generator {
+                            "● GENERATOR INPUT"
                         } else if self.software_running {
                             "● SOFTWARE LOOPBACK"
                         } else if self.capture.is_some() {
@@ -6004,6 +6140,7 @@ impl eframe::App for ScopeApp {
                     );
                 });
             });
+            self.generator_transport(ui);
             ui.add_space(4.0);
         });
         egui::Panel::bottom("status").show(ui, |ui| {
@@ -6155,6 +6292,7 @@ impl eframe::App for ScopeApp {
                 {
                     let enabled = self.visible.iter().filter(|v| **v).count()
                         + usize::from(self.lockin_visible)
+                        + usize::from(self.generator.visible)
                         > 1
                         || !self.visible[index];
                     if ui
@@ -6169,12 +6307,25 @@ impl eframe::App for ScopeApp {
                 }
                 if ui
                     .add_enabled(
-                        self.visible.contains(&true) || !self.lockin_visible,
+                        self.visible.contains(&true)
+                            || self.generator.visible
+                            || !self.lockin_visible,
                         egui::Button::new("Lock-in").selected(self.lockin_visible),
                     )
                     .clicked()
                 {
                     self.lockin_visible = !self.lockin_visible;
+                }
+                if ui
+                    .add_enabled(
+                        self.visible.contains(&true)
+                            || self.lockin_visible
+                            || !self.generator.visible,
+                        egui::Button::new("Generator").selected(self.generator.visible),
+                    )
+                    .clicked()
+                {
+                    self.generator.visible = !self.generator.visible;
                 }
                 self.view_menu(ui);
                 if self.visible.contains(&true) {
@@ -6195,6 +6346,10 @@ impl eframe::App for ScopeApp {
                 ui.colored_label(Color32::from_rgb(255, 170, 116), error);
             }
             ui.add_space(4.0);
+            if self.generator.visible {
+                self.generator_panel(ui);
+                ui.add_space(4.0);
+            }
             let available = ui.available_size();
             let instruments: Vec<_> = [
                 Instrument::Scope,
@@ -6214,7 +6369,9 @@ impl eframe::App for ScopeApp {
                 instruments.len()
             };
             let gap = ui.spacing().item_spacing;
-            let height = ((available.y - gap.y * (rows - 1) as f32) / rows as f32).max(132.0);
+            let height = ((available.y - gap.y * rows.saturating_sub(1) as f32)
+                / rows.max(1) as f32)
+                .max(132.0);
             let scroll = egui::ScrollArea::vertical().auto_shrink([false, false]);
             #[cfg(feature = "qa")]
             let scroll = if self.smoke
@@ -6247,7 +6404,7 @@ impl eframe::App for ScopeApp {
                 }
             });
         });
-        if self.running() || self.busy {
+        if self.running() || self.busy || !self.generator.stopped() {
             // Let VSync pace acquisition frames without an additional timer.
             ctx.request_repaint();
         }

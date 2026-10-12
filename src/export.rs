@@ -18,11 +18,12 @@ use std::{
 };
 
 pub const FORMAT: &str = "measurelab-results";
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Source {
+    Generator,
     SoftwareLoopback {
         settings: crate::loopback::Settings,
     },
@@ -225,6 +226,8 @@ pub struct Loss {
 #[serde(deny_unknown_fields)]
 pub struct Document {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub generator_output: Option<crate::output::Timeline>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lockin: Option<Lockin>,
     format: String,
     version: u32,
@@ -280,7 +283,10 @@ impl Lockin {
 impl Document {
     pub(crate) fn validate_header(&self) -> Result<(), String> {
         if self.format != FORMAT
-            || self.version != VERSION
+            || ![1, VERSION].contains(&self.version)
+            || (self.version == 1
+                && (self.generator_output.is_some()
+                    || matches!(self.input.source, Source::Generator)))
             || self.channel_index_base != 0
             || self.sample_range_convention != "start inclusive, end exclusive"
             || self.sample_clock != "nominal input sample rate; no clock calibration"
@@ -442,6 +448,7 @@ impl Document {
         };
         Ok(Self {
             lockin: None,
+            generator_output: None,
             format: FORMAT.into(),
             version: VERSION,
             app_version: env!("CARGO_PKG_VERSION").into(),
@@ -533,6 +540,7 @@ pub fn save(path: &Path, document: &Document) -> Result<(), String> {
             spectrum.diagnostics.input_end,
         )?;
     }
+    document.validate()?;
     crate::file_io::atomic_write(path, |file| {
         let mut writer = BufWriter::new(file);
         serde_json::to_writer_pretty(&mut writer, document).map_err(std::io::Error::other)?;
@@ -705,7 +713,7 @@ pub(crate) mod tests {
         let json: serde_json::Value =
             serde_json::from_slice(&serde_json::to_vec(&doc).unwrap()).unwrap();
         assert_eq!(json["format"], FORMAT);
-        assert_eq!(json["version"], 1);
+        assert_eq!(json["version"], VERSION);
         assert_eq!(json["channel_index_base"], 0);
         assert_eq!(json["input"]["generation"], 42);
         assert_eq!(json["input"]["source"]["device_id"], "reference:16ch");
