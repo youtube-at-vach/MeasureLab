@@ -398,6 +398,12 @@ MEASURELAB_UI_SMOKE_BLACKHOLE="BlackHole 2ch" MEASURELAB_UI_SMOKE_REPLAY=1 \
 
 以下はBlackHoleのCH 16を選び、10秒間計測する例です。`MEASURELAB_PROFILE_SETTINGS=spectrum`でSpectrum設定を開き、`MEASURELAB_PROFILE_SCREENSHOT=1`で途中の画面を`dist/ui-smoke.png`へ保存できます。デバイスが見つからない、入力にエラーがある、動作中のフレームがない場合は検証を失敗にします。秒数が不正な場合や`qa`なしのビルドで計測を指定した場合もエラーになります。
 
+同じUI計測は、Spectrumの最新窓の整数終端と解析世代に対応する単調時計を追跡し、`Spectrum latency`に **入力利用可能→解析完了**、**解析完了→UI描画提出**、**入力利用可能→UI描画提出** の件数・p95・最大値を出します。3つともウォームアップ後に可視領域へ初めて提出した同じ結果群を使い、全区間を直接測ります。p95の差や合計は使いません。軸編集・Clear holdによる同じ窓の再描画は重複計数せず、非表示中の未提出結果は含めません。再表示で初めて提出した結果には、その待ち時間を含めます。未充填・無効・時刻情報なしは遅延0に置き換えません。
+
+実入力の開始時刻は、窓の最後のサンプルを含むコールバックでPCM変換前に読み取ったホスト時刻です。可変長コールバックとSpectrum転送ブロックの境界が異なっても、窓終端のサンプルへ対応させます。Software Loopbackと内部デモでは生成バッチを始める時刻です。終端はeguiへSpectrum描画を提出したCPU時刻で、ADCの取得時刻・物理経路の遅延・GPU実行完了・画面の実表示時刻は計測しません。解析後の遅延には結果のコピー・配信・UI待ち・描画準備を含み、解析の区間には入力転送・キュー待ち・FFT計画・観察待ちと演算を含みます。平均の整定やFFT窓の充填時間とは別の値です。
+
+時刻の保持と3つの容量固定ヒストグラムは`qa`ビルドだけに含まれます。Spectrum入力キューの追加容量は `256 × 1,024 × size_of::<Option<Instant>>()` byte（16 byteの環境なら4 MiB）、実入力キューは最大262,144フレームへ同じ型を追加します。コールバックの時計読み取りはバッチごとに1回です。通常ビルドに時刻保持・追加転送は含めません。以前のQAとのRSS・性能比較には、この計測負荷の違いも記録してください。条件付きの確認範囲は [Spectrum遅延計測](validation/SPECTRUM_LATENCY_2026-10.md) を参照してください。
+
 ```sh
 MEASURELAB_PROFILE_SECONDS=10 MEASURELAB_PROFILE_DEVICE="BlackHole 16ch" MEASURELAB_PROFILE_CHANNEL=16 \
     ./scripts/cargo.sh run --release --features qa

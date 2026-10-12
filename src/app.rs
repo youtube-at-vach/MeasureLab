@@ -285,6 +285,8 @@ pub struct ScopeApp {
     known_output: Option<(cpal::Stream, Arc<std::sync::atomic::AtomicBool>)>,
     start_after_stop: bool,
     spectrum_publication: (u64, u64),
+    #[cfg(feature = "qa")]
+    spectrum_timing: Option<crate::spectrum_worker::Timing>,
     input_generation: u64,
     snapshot_revision: u64,
     core_scope: ScopeSettings,
@@ -495,6 +497,8 @@ impl ScopeApp {
             known_output: None,
             start_after_stop: false,
             spectrum_publication: (0, 0),
+            #[cfg(feature = "qa")]
+            spectrum_timing: None,
             input_generation: 1,
             snapshot_revision: 0,
             core_scope: ScopeSettings::default(),
@@ -1599,6 +1603,10 @@ impl ScopeApp {
         // The new device topology is not known until Started. Preparing the
         // old topology here used to clamp queued CH 16 back to CH 1 at startup.
         self.analyzer = spectrum::Result::empty(self.spectrum_settings, self.sample_rate);
+        #[cfg(feature = "qa")]
+        {
+            self.spectrum_timing = None;
+        }
         self.spectrum_numeric_key = None;
         self.spectrum_info = measurement::SpectrumInfo {
             mode: self.spectrum_mode,
@@ -1647,6 +1655,10 @@ impl ScopeApp {
             std::mem::swap(&mut self.analyzer, &mut snapshot.spectrum);
             self.spectrum_info = snapshot.spectrum_info.clone();
             self.fft_ms = snapshot.fft_ms;
+            #[cfg(feature = "qa")]
+            {
+                self.spectrum_timing = snapshot.spectrum_timing;
+            }
             self.spectrum_dirty = true;
             self.spectrum_numeric_key = None;
         }
@@ -1740,6 +1752,10 @@ impl ScopeApp {
                     std::mem::swap(&mut self.analyzer, &mut publication.result);
                     self.spectrum_info.clone_from(&publication.info);
                     self.fft_ms = publication.fft_ms;
+                    #[cfg(feature = "qa")]
+                    {
+                        self.spectrum_timing = publication.timing;
+                    }
                     self.spectrum_dirty = true;
                     self.spectrum_numeric_key = None;
                 }
@@ -2093,6 +2109,10 @@ impl ScopeApp {
     fn reset_analysis(&mut self) {
         self.spectrum_channel = self.spectrum_channel.min(self.channels.max(1) as usize - 1);
         self.analyzer = spectrum::Result::empty(self.spectrum_settings, self.sample_rate);
+        #[cfg(feature = "qa")]
+        {
+            self.spectrum_timing = None;
+        }
         self.spectrum_numeric_key = None;
         self.spectrum_info = measurement::SpectrumInfo {
             mode: self.spectrum_mode,
@@ -5188,6 +5208,17 @@ impl ScopeApp {
                 revision: self.spectrum_revision,
             },
         ));
+        #[cfg(feature = "qa")]
+        if self.running()
+            && ui.is_rect_visible(rect)
+            && let Some(profile) = &mut self.profile
+            && let Some(window) = self.analyzer.window()
+            && let Some(timing) = self.spectrum_timing.filter(|t| t.end == window.end)
+        {
+            // CPU-side submission to egui. GPU execution/scanout need their own
+            // timestamps and must not be inferred from this latency.
+            profile.record_spectrum_latency(self.input_generation, timing, Instant::now());
+        }
         if let Some(peak) = self.spectrum_peak {
             let x = rect.left() + view.x(peak.frequency as f32) * rect.width();
             painter.line_segment(
