@@ -1,6 +1,8 @@
 //! Opt-in, bounded UI measurements for local QA runs.
 use std::time::{Duration, Instant};
 
+pub mod lockin;
+
 /// A finite internal software fixture using the same FFT/history as live input.
 /// Includes texture wrapping, a changing tone and an explicit acquisition gap.
 pub fn spectrogram_fixture(output: &mut crate::spectrogram::History) -> crate::stft::RowInfo {

@@ -857,7 +857,10 @@ impl ScopeApp {
             }
         }
         #[cfg(feature = "qa")]
-        if smoke && std::env::var_os("MEASURELAB_UI_SMOKE_STAGE3F").is_some() {
+        if smoke
+            && (std::env::var_os("MEASURELAB_UI_SMOKE_STAGE3F").is_some()
+                || std::env::var_os("MEASURELAB_UI_SMOKE_BLACKHOLE").is_some())
+        {
             app.check_stage3f()?;
         }
         #[cfg(feature = "qa")]

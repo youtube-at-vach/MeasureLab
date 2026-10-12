@@ -353,6 +353,28 @@ MEASURELAB_UI_SMOKE_ROUTING=1 MEASURELAB_UI_SMOKE_SETTINGS=scope \
 
 `--multichannel-smoke`は`qa`機能でのみ使えるBlackHole 16ch専用の確認です。その仮想デバイスの16出力へ異なるビン中心周波数の正弦波（0.125 FS peak）を流し、0.5秒の起動待ち後、2秒間の取得で16入力すべてのch対応・周波数・振幅とCH 16のSTFTを検証します。CH 16／CH 8とその入れ替えで、ScopeのRMS・Peak・P-PとXYの同一フレームのTrace Snapも照合します。起動待ち中のCoreAudio通知は別に出力し、測定区間のストリームエラーや欠落は失敗にします。通常アプリの出力機能ではなく、実デバイスを使うローカルQA用の既知信号です。
 
+`--lockin-smoke`も`qa`専用で、BlackHole 2ch／16chのCH 1をREF、最終CHを応答として共通入力・Lock-in専用ワーカーを検証します。750 Hz・REF 0.125 FS peak・応答gain 0.5・進み30°・3サンプル遅延・応答DC 0.2 FSが基準です。極性反転・微小応答・1003 Hzの追従・REF喪失／不安定からの再整定・CH入れ替え／自己検査・二段EMAのステップ応答・有限Stop・JSON／CSV保存と再取得比較・実入力キュー飽和と回復を照合します。接続ごとの0.5秒を起動待ちとして入出力通知を別記録します。最初の0.3秒は入力キューへ保持し、測定ワーカーへの引き渡し後に0.2秒待って平均をリセットします。サンプルを捨てたり連番を変更したりせず、その後の測定区間のエラー・欠落は失敗にします。意図的飽和では0.75秒入力キューを消費せず、欠落数と数値の破棄・回復を検証します。
+
+```bash
+./scripts/cargo.sh build --release --locked --features qa
+target/release/measurelab --lockin-smoke --input-device "BlackHole 2ch" --sample-rate 48000
+target/release/measurelab --lockin-smoke --input-device "BlackHole 16ch" --sample-rate 96000
+MEASURELAB_LOCKIN_SECONDS=600 MEASURELAB_LOCKIN_TRANSITIONS=1 \
+    MEASURELAB_PROFILE_KEEP_AWAKE=1 ./scripts/profile-stage2.sh lockin-blackhole2-600 \
+    --lockin-smoke --input-device "BlackHole 2ch" --sample-rate 48000
+```
+
+`MEASURELAB_LOCKIN_SECONDS`は最後の定常信号による安定性評価区間だけの秒数で、既定10秒、1〜3,600秒です。信号変更・起動待ち・飽和確認を含む実行全体はそれより長くなります。`MEASURELAB_LOCKIN_TRANSITIONS=1`は同じ測定ワーカーを使って2ch・48→96 kHz→16ch・96 kHz→2ch・44.1 kHz→16ch・192 kHz→2ch・48 kHzを順に取得し、入力世代・Fs・CHと理論位相、2chでのCH 16の無効化を照合します。対応しないデバイス／Fsは成功扱いにしません。CPALで変更したBlackHoleの公称Fsは終了時に戻します。結果は`dist/lockin-blackhole-qa/`、ログ・RSSは上記スクリプト指定時に`dist/stage2-qa/`へ保存します。入力コールバック長の最小／最大を記録しますが、固定長しか観測されなければ可変長の外部I/O確認にはしません。このコマンドはGUI描画や物理I/Oの保証を含みません。
+
+`MEASURELAB_UI_SMOKE_BLACKHOLE="BlackHole 2ch"`（または`BlackHole 16ch`）は`--ui-smoke`の結果再利用QAを48 kHzの外部I/Oで実行します。アプリの設定・結果保存→停止中の次回用編集→設定復元・参照読み込み→再測定→比較を照合し、`dist/stage4b-*`へ保存します。同じデバイスで別プロセスから`MEASURELAB_UI_SMOKE_REPLAY=1`を指定すると、保存した条件で再測定します。画面撮影の成功と数値照合の成功は別に記録します。BlackHoleの短いSingleは起動通知との境界を4cの未確認事項として残し、このQAは整定済みの保持結果で終了します。通常のSoftware Loopback QAではSingleの回帰を継続します。
+
+```bash
+MEASURELAB_UI_SMOKE_BLACKHOLE="BlackHole 2ch" MEASURELAB_UI_SMOKE_COMPARE=1 \
+    target/release/measurelab --ui-smoke --new-instance
+MEASURELAB_UI_SMOKE_BLACKHOLE="BlackHole 2ch" MEASURELAB_UI_SMOKE_REPLAY=1 \
+    MEASURELAB_UI_SMOKE_COMPARE=1 target/release/measurelab --ui-smoke --compact --new-instance
+```
+
 `--gpu-smoke`はScope・Spectrum・Spectrogram・XYを準備してから描画し、それぞれの領域をGPUから読み戻します。線分プロットの独立、XYの円と更新番号が同じ場合の線分転送省略に加え、スペクトログラムの折り返し・行の順序・欠落・最大FFTのNyquistビン・表示変更時の再転送省略を検証します。`--ui-smoke`は`qa`ビルド専用で、入力を開始せず、明示的なテスト信号で4画面を短時間開いて閉じ、`dist/ui-smoke.png`へ保存します。スペクトログラムの既知信号は周波数を変化させ、履歴の折り返しと意図的な入力欠落を含みます。通常起動時はオーディオ入力を選んだ停止状態、`qa`ビルドの`--demo`指定時は内部信号を使います。通常ビルドで`--demo`や`--ui-smoke`を指定すると、検証用ビルドが必要な旨を表示して終了します。GPUやマイクを必要とする確認はCIでは実行しません。
 
 `qa`機能では、2秒の起動待ち後に1〜3,600秒のUIフレーム間隔を記録できます。停止中のフレームは除外し、計測後にUI間隔p95と最大値、VSync待ちを除いたeframeのフレーム処理時間p95、欠落数を出力して終了します。固定容量のヒストグラムで全計測区間を集計し、長時間でも初めの8,192フレームだけに偏りません。p95は0.01 ms刻みの上側へ丸め、200 ms以上の区間がp95に達する場合は実測最大値を上限として報告します。UIの操作イベント・スナップショット受信・各プロットの準備・STFT結果取り込みについて、呼び出しごとのp95と最大値を出します。測定ワーカーとSTFTワーカーのCPU時間はそれぞれ別の合計値として出します。処理ごとのp95を足してフレーム全体のp95にはできません。
