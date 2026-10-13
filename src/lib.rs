@@ -3,6 +3,8 @@ pub mod acquisition;
 mod activity;
 pub mod audio;
 pub mod calibration;
+#[cfg(feature = "qa")]
+pub mod callback_profile;
 pub mod channel;
 pub mod cursor;
 #[cfg(any(test, feature = "qa"))]

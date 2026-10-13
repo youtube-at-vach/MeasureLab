@@ -18,6 +18,33 @@ const SAMPLE_RATES: &[u32] = &[
     352_800, 384_000, 705_600, 768_000,
 ];
 
+/// Measurement I/O favors callback headroom over monitoring latency. CoreAudio
+/// uses a device-wide buffer: request the same policy for input and output,
+/// bounded by the reported capability, without changing Fs, PCM or channels.
+pub(crate) fn measurement_stream_config(
+    supported: cpal::SupportedStreamConfig,
+) -> cpal::StreamConfig {
+    let buffer_size = if cfg!(target_os = "macos") {
+        measurement_buffer_size(supported.sample_rate(), supported.buffer_size())
+    } else {
+        cpal::BufferSize::Default
+    };
+    let mut config: cpal::StreamConfig = supported.into();
+    config.buffer_size = buffer_size;
+    config
+}
+
+fn measurement_buffer_size(rate: u32, limits: &cpal::SupportedBufferSize) -> cpal::BufferSize {
+    let cpal::SupportedBufferSize::Range { min, max } = *limits else {
+        return cpal::BufferSize::Default;
+    };
+    if min == 0 || min > max {
+        return cpal::BufferSize::Default;
+    }
+    let frames = rate.div_ceil(50).max(1).next_power_of_two();
+    cpal::BufferSize::Fixed(frames.clamp(min, max))
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct AudioFrame {
     pub samples: Samples,
@@ -35,6 +62,8 @@ pub struct Metrics {
     /// including queue loss. Published after its frames and drop count.
     pub input_end: AtomicU64,
     pub failed: AtomicBool,
+    #[cfg(feature = "qa")]
+    pub profile: crate::callback_profile::Metrics,
     #[cfg(feature = "qa")]
     pub callback_min_frames: AtomicU64,
     #[cfg(feature = "qa")]
@@ -300,7 +329,7 @@ pub fn start_device(
     };
     let supported = select_input_config(default, &ranges, sample_rate)?;
     let format = supported.sample_format();
-    let config: cpal::StreamConfig = supported.into();
+    let config = measurement_stream_config(supported);
     let (producer, consumer) =
         RingBuffer::new((config.sample_rate as usize / 2).clamp(1024, 262_144));
     let metrics = Arc::new(Metrics::default());
@@ -349,19 +378,27 @@ where
     f64: cpal::FromSample<T>,
 {
     let channels = config.channels as usize;
+    #[cfg(feature = "qa")]
+    let rate = config.sample_rate;
     let failure = metrics.clone();
     let mut sequence = 0;
     device.build_input_stream(
         config,
         move |input: &[T], _| {
+            #[cfg(feature = "qa")]
+            let started = std::time::Instant::now();
             write_callback(input, channels, &mut producer, &mut sequence, &metrics);
+            #[cfg(feature = "qa")]
+            metrics
+                .profile
+                .record(started.elapsed(), input.len() / channels, rate);
         },
         move |error| {
             #[cfg(feature = "qa")]
-            eprintln!("Input stream error: {error}");
+            failure.profile.notification(&error);
             #[cfg(not(feature = "qa"))]
             let _ = error;
-            failure.failed.store(true, Ordering::Relaxed);
+            failure.failed.store(true, Ordering::Release);
         },
         Some(Duration::from_secs(2)),
     )
@@ -490,6 +527,75 @@ pub fn smoke_test(name: Option<&str>, sample_rate: Option<u32>) -> Result<(), St
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn measurement_buffer_headroom_scales_with_fs_and_respects_device_limits() {
+        let limits = cpal::SupportedBufferSize::Range { min: 64, max: 4096 };
+        for (rate, frames) in [
+            (8000, 256),
+            (44100, 1024),
+            (48000, 1024),
+            (96000, 2048),
+            (192000, 4096),
+        ] {
+            assert_eq!(
+                measurement_buffer_size(rate, &limits),
+                cpal::BufferSize::Fixed(frames)
+            );
+        }
+        assert_eq!(
+            measurement_buffer_size(768000, &limits),
+            cpal::BufferSize::Fixed(4096)
+        );
+        assert_eq!(
+            measurement_buffer_size(
+                48000,
+                &cpal::SupportedBufferSize::Range { min: 64, max: 512 }
+            ),
+            cpal::BufferSize::Fixed(512)
+        );
+        assert_eq!(
+            measurement_buffer_size(
+                48000,
+                &cpal::SupportedBufferSize::Range {
+                    min: 2048,
+                    max: 4096
+                }
+            ),
+            cpal::BufferSize::Fixed(2048)
+        );
+        for limits in [
+            cpal::SupportedBufferSize::Unknown,
+            cpal::SupportedBufferSize::Range { min: 0, max: 0 },
+            cpal::SupportedBufferSize::Range { min: 512, max: 64 },
+        ] {
+            assert_eq!(
+                measurement_buffer_size(48000, &limits),
+                cpal::BufferSize::Default
+            );
+        }
+    }
+
+    #[test]
+    fn measurement_buffer_policy_preserves_selected_rate_and_topology() {
+        let supported = cpal::SupportedStreamConfig::new(
+            16,
+            96000,
+            cpal::SupportedBufferSize::Range { min: 64, max: 4096 },
+            cpal::SampleFormat::F64,
+        );
+        let selected = measurement_stream_config(supported);
+        assert_eq!(selected.sample_rate, 96000);
+        assert_eq!(selected.channels, 16);
+        assert_eq!(
+            selected.buffer_size,
+            if cfg!(target_os = "macos") {
+                cpal::BufferSize::Fixed(2048)
+            } else {
+                cpal::BufferSize::Default
+            }
+        );
+    }
 
     fn config(channels: u16, rate: u32, format: cpal::SampleFormat) -> cpal::SupportedStreamConfig {
         cpal::SupportedStreamConfig::new(channels, rate, cpal::SupportedBufferSize::Unknown, format)
