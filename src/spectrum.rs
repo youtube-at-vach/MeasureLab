@@ -34,7 +34,7 @@ impl Window {
         }
     }
 
-    fn weight(self, index: usize, size: usize) -> f64 {
+    pub(crate) fn weight(self, index: usize, size: usize) -> f64 {
         let phase = TAU * index as f64 / size as f64;
         match self {
             Self::Rectangular => 1.0,

@@ -8,7 +8,7 @@ use crate::{
     audio::Capture,
     calibration::{self, Reading},
     channel::{ChannelId, Pair},
-    lockin, lockin_worker, loopback, output,
+    comparison, comparison_worker, lockin, lockin_worker, loopback, output,
     signal::{self, History, Measurement, Sweep, Trigger},
     spectrum::{self, Settings},
     spectrum_worker, stft,
@@ -62,6 +62,7 @@ impl Default for ScopeSettings {
 
 #[derive(Clone, Debug)]
 pub struct Config {
+    pub comparison: comparison::Settings,
     pub lockin: lockin::Settings,
     pub spectrum: Settings,
     pub spectrum_channel: ChannelId,
@@ -96,6 +97,7 @@ pub struct SpectrumInfo {
 pub struct Snapshot {
     pub generator_output: Option<output::Timeline>,
     pub external_output: Option<output::history::ExternalOutput>,
+    pub comparison: Arc<comparison::Result>,
     pub lockin: lockin::Result,
     pub scope_capture: Option<History>,
     pub acquisition_state: acquisition::State,
@@ -159,6 +161,7 @@ enum Input {
 }
 
 enum Command {
+    Comparison(comparison::Settings),
     Lockin(lockin::Settings),
     Autoset(
         usize,
@@ -183,6 +186,7 @@ struct Core {
     external_session: Option<output::history::Session>,
     external_output: Option<output::history::ExternalOutput>,
     output_condition: Option<output::Condition>,
+    comparison: comparison_worker::Worker,
     lockin: lockin_worker::Worker,
     acquisition: Acquisition,
     generation: u64,
@@ -206,6 +210,7 @@ impl Core {
         metrics: Arc<Metrics>,
     ) -> Self {
         let config = Config {
+            comparison: comparison::Settings::default(),
             lockin: lockin::Settings::default(),
             spectrum: Settings::default(),
             spectrum_channel: 0,
@@ -241,6 +246,7 @@ impl Core {
             external_session: None,
             external_output: None,
             output_condition: None,
+            comparison: comparison_worker::Worker::default(),
             lockin: lockin_worker::Worker::default(),
             acquisition: Acquisition::new(acquisition::Mode::Auto, 480, 2),
             generation: 0,
@@ -265,6 +271,14 @@ impl Core {
         self.external_session = None;
         self.external_output = None;
         self.output_condition = None;
+        self.comparison.configure(
+            generation,
+            config.comparison,
+            sample_rate,
+            config.calibrations.clone(),
+            0,
+            channels,
+        );
         self.lockin.configure(
             config.lockin,
             sample_rate,
@@ -328,6 +342,14 @@ impl Core {
         }
         if self.output_condition != Some(frame.condition) {
             self.configure_spectrum_at(frame.sequence);
+            self.comparison.configure(
+                self.generation,
+                self.config.comparison,
+                self.sample_rate,
+                self.config.calibrations.clone(),
+                frame.sequence,
+                2,
+            );
             self.lockin.configure(
                 self.config.lockin,
                 self.sample_rate,
@@ -386,6 +408,7 @@ impl Core {
         let stable = !self.output_condition.is_some_and(|c| c.transitioning);
         if stable {
             self.lockin.submit(sequence, samples);
+            self.comparison.submit(sequence, samples);
         }
         if samples.iter().all(|x| x.is_finite()) {
             self.acquisition.push(
@@ -429,7 +452,16 @@ impl Core {
             let _ = reply.try_send(self.lockin.latest());
             result
         };
+        let comparison = if final_window {
+            self.comparison.inspect(self.history.range().end)
+        } else {
+            let (reply, result) = mpsc::sync_channel(1);
+            let _ = reply.try_send(self.comparison.latest());
+            result
+        };
         Reply {
+            comparison,
+            comparison_value: None,
             snapshot: self.snapshot(),
             spectrum,
             lockin,
@@ -442,6 +474,7 @@ impl Core {
         let mut snapshot = Snapshot {
             generator_output: self.generator_output.clone(),
             external_output: self.external_output.clone(),
+            comparison: self.comparison.latest(),
             lockin: self.lockin.latest(),
             scope_capture: None,
             acquisition_state: acquisition::State::Waiting,
@@ -482,6 +515,7 @@ impl Core {
         snapshot.external_output.clone_from(&self.external_output);
         self.revision += 1;
         snapshot.generation = self.generation;
+        snapshot.comparison = self.comparison.latest();
         snapshot.lockin = self.lockin.latest();
         snapshot.revision = self.revision;
         snapshot.sample_rate = self.sample_rate;
@@ -537,6 +571,8 @@ impl Core {
 }
 
 struct Reply {
+    comparison: mpsc::Receiver<Arc<comparison::Result>>,
+    comparison_value: Option<Arc<comparison::Result>>,
     snapshot: Snapshot,
     spectrum: mpsc::Receiver<spectrum_worker::Publication>,
     lockin: mpsc::Receiver<lockin::Result>,
@@ -560,10 +596,17 @@ impl PendingSnapshot {
         if reply.lockin_value.is_none() {
             reply.lockin_value = reply.lockin.try_recv().ok();
         }
-        if reply.spectrum_value.is_none() || reply.lockin_value.is_none() {
+        if reply.comparison_value.is_none() {
+            reply.comparison_value = reply.comparison.try_recv().ok();
+        }
+        if reply.spectrum_value.is_none()
+            || reply.lockin_value.is_none()
+            || reply.comparison_value.is_none()
+        {
             return None;
         }
         let mut reply = self.reply.take().unwrap();
+        reply.snapshot.comparison = reply.comparison_value.take().unwrap();
         reply.snapshot.lockin = reply.lockin_value.take().unwrap();
         Some(Self::complete(
             reply.snapshot,
@@ -574,6 +617,10 @@ impl PendingSnapshot {
         let mut reply = self
             .reply
             .unwrap_or_else(|| self.incoming.recv().expect("measurement reply"));
+        reply.snapshot.comparison = reply
+            .comparison_value
+            .take()
+            .unwrap_or_else(|| reply.comparison.recv().expect("Comparison barrier"));
         reply.snapshot.lockin = reply
             .lockin_value
             .take()
@@ -636,6 +683,19 @@ impl Worker {
                     let started = Instant::now();
                     if let Some(command) = command {
                         match command {
+                            Command::Comparison(settings) => {
+                                if !matches!(input, Input::Idle) {
+                                    core.config.comparison = settings;
+                                    core.comparison.configure(
+                                        core.generation,
+                                        settings,
+                                        core.sample_rate,
+                                        core.config.calibrations.clone(),
+                                        core.history.range().end,
+                                        core.history.channels(),
+                                    );
+                                }
+                            }
                             Command::Lockin(settings) => {
                                 if !matches!(input, Input::Idle) {
                                     core.config.lockin = settings;
@@ -807,6 +867,7 @@ impl Worker {
     ) -> Result<(), String> {
         settings.validate(rate)?;
         config.lockin.validate(rate)?;
+        config.comparison.validate(rate)?;
         self.running.store(true, Ordering::Release);
         self.send(Command::Start(
             generation,
@@ -832,6 +893,7 @@ impl Worker {
             return Err("Unsupported Generator input rate".into());
         }
         config.lockin.validate(rate)?;
+        config.comparison.validate(rate)?;
         self.running.store(true, Ordering::Release);
         self.send(Command::Start(
             generation,
@@ -844,6 +906,9 @@ impl Worker {
             Box::new(config),
         ));
         Ok(())
+    }
+    pub fn configure_comparison(&self, settings: comparison::Settings) {
+        self.send(Command::Comparison(settings));
     }
     pub fn configure_lockin(&self, settings: lockin::Settings) {
         self.send(Command::Lockin(settings));
@@ -1124,8 +1189,49 @@ mod tests {
         core.feeder.flush();
         core.spectrum.flush();
         let mut reply = core.reply(true);
+        reply.snapshot.comparison = reply.comparison.recv().unwrap();
         reply.snapshot.lockin = reply.lockin.recv().unwrap();
         PendingSnapshot::complete(reply.snapshot, reply.spectrum.recv().unwrap())
+    }
+
+    #[test]
+    fn comparison_routes_synchronous_ch16_and_ch8_and_survives_display_pause_and_restart() {
+        let (_stft, mut core, mut config, _spectrum) = setup(1024, 16);
+        config.comparison = comparison::Settings {
+            enabled: true,
+            size: 1024,
+            averages: 4,
+            reference_channel: 15,
+            response_channel: 7,
+            window: Window::Rectangular,
+            ..Default::default()
+        };
+        core.start(88, 48000, 16, config.clone());
+        for n in 0..8192 {
+            let p = TAU * 16.0 * n as f64 / 1024.0;
+            let mut frame = [0.0; 16];
+            frame[15] = 0.125 * p.sin();
+            frame[7] = 0.0625 * (p + 0.5).sin();
+            core.push_frame(
+                n,
+                &frame,
+                #[cfg(feature = "qa")]
+                None,
+            );
+        }
+        let held = finish(&mut core);
+        assert_eq!(held.comparison.generation, 88);
+        assert_eq!(held.comparison.state, comparison::State::Valid);
+        assert_eq!(held.comparison.processed_windows, 8);
+        assert_eq!(held.comparison.input_end, 8192);
+        assert!((held.comparison.bins[16].gain.unwrap() - 0.5).abs() < 1e-10);
+        assert_eq!(held.comparison, finish(&mut core).comparison);
+        core.start(89, 48000, 1, config);
+        let next = finish(&mut core);
+        assert_eq!(next.comparison.generation, 89);
+        assert_eq!(next.comparison.state, comparison::State::Unavailable);
+        assert!(next.comparison.bins.is_empty());
+        assert_eq!(held.comparison.generation, 88);
     }
 
     #[test]
@@ -1236,6 +1342,7 @@ mod tests {
             quantity: spectrum::Quantity::Amplitude,
         };
         let config = Config {
+            comparison: comparison::Settings::default(),
             lockin: lockin::Settings::default(),
             spectrum,
             spectrum_channel: channels - 1,

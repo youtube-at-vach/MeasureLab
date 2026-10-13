@@ -183,6 +183,12 @@ impl Document {
                 s.diagnostics.input_end,
             )?;
         }
+        if let Some(c) = &self.comparison {
+            c.validate(
+                &self.input,
+                s.diagnostics.input_end.max(self.retained_history.end),
+            )?;
+        }
         Ok(())
     }
 }
@@ -376,6 +382,189 @@ pub fn lockin_difference(reference: &Document, current: &Document) -> Option<Loc
     })
 }
 
+impl Comparison {
+    fn validate(&self, input: &Input, end: u64) -> Result<(), String> {
+        use crate::comparison::{self, State};
+        let r = &self.result;
+        r.settings.validate(input.nominal_sample_rate_hz)?;
+        let s = r.settings;
+        validate_calibration(self.reference_calibration.as_ref(), s.reference_channel)?;
+        validate_calibration(self.response_calibration.as_ref(), s.response_channel)?;
+        let mut set = crate::calibration::Set::default();
+        for c in [&self.reference_calibration, &self.response_calibration]
+            .into_iter()
+            .flatten()
+        {
+            set = set
+                .with(
+                    c.channel,
+                    Some(
+                        Calibration::new(
+                            c.id.clone(),
+                            c.revision,
+                            c.gain,
+                            c.offset,
+                            c.unit.clone(),
+                            c.conditions.clone(),
+                        )
+                        .map_err(str::to_owned)?,
+                    ),
+                )
+                .map_err(str::to_owned)?;
+        }
+        let expected = Comparison::capture(r.clone(), &set);
+        if self.reference_psd_unit != expected.reference_psd_unit
+            || self.response_psd_unit != expected.response_psd_unit
+            || self.cross_psd_unit != expected.cross_psd_unit
+            || self.gain_unit != expected.gain_unit
+            || self.limitations != COMPARISON_LIMITATIONS
+            || r.generation != input.generation
+            || r.nominal_sample_rate_hz != input.nominal_sample_rate_hz
+            || r.input_end > end
+            || (!s.enabled && r.state != State::Disabled)
+        {
+            return Err("Comparison input, units or limitations disagree".into());
+        }
+        if r.state != State::Valid {
+            if !r.bins.is_empty()
+                || r.delay.is_some()
+                || r.averaged_windows != 0
+                || r.sample_range != (0..0)
+                || r.latest_window != (0..0)
+                || (r.state != State::Averaging && r.processed_windows != 0)
+                || (r.state == State::Averaging
+                    && (r.processed_windows == 0 || r.processed_windows >= s.averages as u64))
+            {
+                return Err("Invalid comparison state carries stale values".into());
+            }
+            return Ok(());
+        }
+        if !s.enabled
+            || s.reference_channel >= input.channels
+            || s.response_channel >= input.channels
+            || r.sample_range.end < r.sample_range.start
+            || r.sample_range.end - r.sample_range.start != (s.size * s.averages) as u64
+            || r.sample_range.end > r.input_end
+            || r.latest_window.end != r.sample_range.end
+            || r.latest_window.end < r.latest_window.start
+            || r.latest_window.end - r.latest_window.start != s.size as u64
+            || r.averaged_windows != s.averages
+            || r.processed_windows < s.averages as u64
+            || r.bins.len() != s.size / 2 + 1
+        {
+            return Err("Invalid comparison window, channels or average".into());
+        }
+        let ref_gain = set.get(s.reference_channel).map_or(1.0, |c| c.gain());
+        let close = |a: f64, b: f64| {
+            a.is_finite() && b.is_finite() && (a - b).abs() <= b.abs() * 1e-10 + 1e-300
+        };
+        let option_close = |a: Option<f64>, b: Option<f64>| match (a, b) {
+            (Some(a), Some(b)) => close(a, b),
+            (None, None) => true,
+            _ => false,
+        };
+        for (k, b) in r.bins.iter().enumerate() {
+            if [b.reference_psd, b.response_psd, b.cross_re, b.cross_im]
+                .iter()
+                .any(|v| !v.is_finite())
+                || b.reference_psd < 0.0
+                || b.response_psd < 0.0
+                || ((b.reference_psd == 0.0 || b.response_psd == 0.0)
+                    && (b.cross_re != 0.0 || b.cross_im != 0.0))
+            {
+                return Err("Nonfinite or impossible comparison spectra".into());
+            }
+            if b.reference_psd > 0.0 && b.response_psd > 0.0 {
+                let magnitude = ((b.cross_re / b.reference_psd.sqrt()) / b.response_psd.sqrt())
+                    .hypot((b.cross_im / b.reference_psd.sqrt()) / b.response_psd.sqrt());
+                if !magnitude.is_finite() || magnitude > 1.0 + 1e-10 {
+                    return Err("Cross spectrum violates coherence bound".into());
+                }
+            }
+            let expected = comparison::make_bin(
+                [b.reference_psd, b.response_psd, b.cross_re, b.cross_im],
+                k,
+                s,
+                r.nominal_sample_rate_hz,
+                ref_gain,
+            );
+            if b.state != expected.state
+                || !option_close(b.coherence, expected.coherence)
+                || !option_close(b.transfer_re, expected.transfer_re)
+                || !option_close(b.transfer_im, expected.transfer_im)
+                || !option_close(b.gain, expected.gain)
+                || !option_close(b.phase_lead_degrees, expected.phase_lead_degrees)
+                || !option_close(b.phase_delay_seconds, expected.phase_delay_seconds)
+            {
+                return Err("Comparison derived values disagree with spectra".into());
+            }
+        }
+        let expected_delay = comparison::fit_delay(&r.bins, s, r.bin_width_hz());
+        match (&r.delay, expected_delay) {
+            (None, None) => {}
+            (Some(a), Some(b))
+                if a.inclusive_bins == b.inclusive_bins
+                    && close(a.seconds, b.seconds)
+                    && close(a.phase_residual_rms_degrees, b.phase_residual_rms_degrees) => {}
+            _ => return Err("Comparison delay disagrees with phase slope".into()),
+        }
+        Ok(())
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ComparisonDifference {
+    pub gain: f64,
+    pub phase_degrees: f64,
+    pub phase_delay_seconds: Option<f64>,
+}
+pub fn comparison_difference(
+    reference: &Document,
+    current: &Document,
+    bin: usize,
+) -> Option<ComparisonDifference> {
+    use crate::comparison::{BinState, State};
+    let a = reference.comparison.as_ref()?;
+    let b = current.comparison.as_ref()?;
+    if reference.loss.input_failed
+        || current.loss.input_failed
+        || a.result.state != State::Valid
+        || b.result.state != State::Valid
+        || a.result.settings != b.result.settings
+        || reference.input.source != current.input.source
+        || reference.input.channels != current.input.channels
+        || a.result.nominal_sample_rate_hz != b.result.nominal_sample_rate_hz
+        || a.reference_calibration != b.reference_calibration
+        || a.response_calibration != b.response_calibration
+        || a.gain_unit != b.gain_unit
+        || a.result.missing_samples != 0
+        || b.result.missing_samples != 0
+        || a.result.invalid_samples != 0
+        || b.result.invalid_samples != 0
+        || !matching_excitation(
+            reference,
+            a.result.sample_range.clone(),
+            current,
+            b.result.sample_range.clone(),
+        )
+    {
+        return None;
+    }
+    let a = a.result.bins.get(bin)?;
+    let b = b.result.bins.get(bin)?;
+    if a.state != BinState::Valid || b.state != BinState::Valid {
+        return None;
+    }
+    Some(ComparisonDifference {
+        gain: b.gain? - a.gain?,
+        phase_degrees: phase_difference(b.phase_lead_degrees?, a.phase_lead_degrees?),
+        phase_delay_seconds: b
+            .phase_delay_seconds
+            .zip(a.phase_delay_seconds)
+            .map(|(b, a)| b - a),
+    })
+}
+
 fn phase_difference(current: f64, reference: f64) -> f64 {
     (current - reference + 180.0).rem_euclid(360.0) - 180.0
 }
@@ -431,6 +620,9 @@ pub fn save_csv(path: &Path, doc: &Document) -> Result<(), String> {
         }
         metadata.spectrum.values = None;
         metadata.spectrum.peak_hold = None;
+        if let Some(c) = &mut metadata.comparison {
+            c.result.bins.clear();
+        }
         let json = serde_json::to_string(&metadata).map_err(std::io::Error::other)?;
         writeln!(w, "metadata_json,\"{}\"", json.replace('"', "\"\""))?;
         writeln!(
@@ -533,6 +725,38 @@ pub fn save_csv(path: &Path, doc: &Document) -> Result<(), String> {
                 serde_json::to_string(&r.state).map_err(std::io::Error::other)?
             )?;
         }
+        if let Some(c) = &doc.comparison {
+            writeln!(
+                w,
+                "section,bin,frequency_hz,reference_psd,response_psd,cross_re,cross_im,coherence,transfer_re,transfer_im,gain,phase_lead_degrees,phase_delay_seconds,state"
+            )?;
+            for (k, b) in c.result.bins.iter().enumerate() {
+                write!(
+                    w,
+                    "comparison,{k},{},{},{},{},{}",
+                    k as f64 * c.result.bin_width_hz(),
+                    b.reference_psd,
+                    b.response_psd,
+                    b.cross_re,
+                    b.cross_im
+                )?;
+                for v in [
+                    b.coherence,
+                    b.transfer_re,
+                    b.transfer_im,
+                    b.gain,
+                    b.phase_lead_degrees,
+                    b.phase_delay_seconds,
+                ] {
+                    write!(w, ",{}", v.map_or(String::new(), |v| v.to_string()))?;
+                }
+                writeln!(
+                    w,
+                    ",{}",
+                    serde_json::to_string(&b.state).map_err(std::io::Error::other)?
+                )?;
+            }
+        }
         w.flush()
     })
 }
@@ -546,6 +770,130 @@ mod tests {
         signal::History,
         spectrum::{Analyzer, Result as SpectrumResult, Settings, Window},
     };
+    fn comparison_fixture() -> Document {
+        let mut doc = fixture();
+        let s = crate::comparison::Settings {
+            enabled: true,
+            size: 1024,
+            averages: 4,
+            window: Window::Rectangular,
+            ..Default::default()
+        };
+        let mut a =
+            crate::comparison::Analyzer::new(s, 48000, doc.input.generation, 1, 2, Set::default());
+        for n in 0..4096 {
+            let p = std::f64::consts::TAU * 16.0 * n as f64 / 1024.0;
+            a.push_pair(n, [0.125 * p.sin(), 0.0625 * (p + 0.5).sin()]);
+        }
+        doc.spectrum.diagnostics.input_end = 4096;
+        doc.comparison = Some(Comparison::capture(a.result().clone(), &Set::default()));
+        doc
+    }
+    #[test]
+    fn comparison_roundtrip_csv_corruption_and_matching_conditions() {
+        let doc = comparison_fixture();
+        doc.validate().unwrap();
+        let path =
+            std::env::temp_dir().join(format!("measurelab-comparison-{}.json", std::process::id()));
+        crate::export::save(&path, &doc).unwrap();
+        let loaded = load(&path).unwrap();
+        assert_eq!(doc.comparison, loaded.comparison);
+        let csv = path.with_extension("csv");
+        save_csv(&csv, &doc).unwrap();
+        let text = std::fs::read_to_string(&csv).unwrap();
+        assert!(text.contains("comparison,16,750,"));
+        let difference = comparison_difference(&loaded, &doc, 16).unwrap();
+        assert_eq!(difference.gain, 0.0);
+        assert_eq!(difference.phase_degrees, 0.0);
+        for corruption in [
+            "generation",
+            "size",
+            "window",
+            "coherence",
+            "gain",
+            "phase",
+            "delay",
+            "unit",
+            "calibration",
+            "version",
+            "range",
+            "cross",
+        ] {
+            let mut value = serde_json::to_value(&doc).unwrap();
+            let c = &mut value["comparison"];
+            match corruption {
+                "generation" => c["result"]["generation"] = 999.into(),
+                "size" => c["result"]["settings"]["size"] = 2048.into(),
+                "window" => c["result"]["averaged_windows"] = 1.into(),
+                "coherence" => c["result"]["bins"][16]["coherence"] = 0.0.into(),
+                "gain" => c["result"]["bins"][16]["gain"] = 100.0.into(),
+                "phase" => c["result"]["bins"][16]["phase_lead_degrees"] = 90.0.into(),
+                "delay" => c["result"]["bins"][16]["phase_delay_seconds"] = 1.0.into(),
+                "unit" => c["gain_unit"] = "V/A".into(),
+                "calibration" => c["limitations"] = "calibrated".into(),
+                "version" => value["version"] = 3.into(),
+                "range" => c["result"]["sample_range"]["end"] = 4095.into(),
+                _ => c["result"]["bins"][16]["cross_re"] = 1e100.into(),
+            }
+            let bad: Document = serde_json::from_value(value).unwrap();
+            assert!(bad.validate().is_err(), "accepted {corruption}");
+        }
+        let mut bad = doc.clone();
+        bad.comparison.as_mut().unwrap().result.bins[16].gain = Some(f64::NAN);
+        assert!(crate::export::save(&path, &bad).is_err());
+        assert_eq!(load(&path).unwrap().comparison, doc.comparison);
+        for mismatch in [
+            "window",
+            "calibration",
+            "missing",
+            "failure",
+            "source",
+            "state",
+            "external",
+        ] {
+            let mut next = doc.clone();
+            let c = next.comparison.as_mut().unwrap();
+            match mismatch {
+                "window" => c.result.settings.window = Window::Hann,
+                "calibration" => c.gain_unit = "A/V".into(),
+                "missing" => c.result.missing_samples = 1,
+                "failure" => next.loss.input_failed = true,
+                "source" => {
+                    next.input.source = Source::InternalQa {
+                        description: "different".into(),
+                    }
+                }
+                "state" => c.result.state = crate::comparison::State::Missing,
+                _ => {
+                    next.external_output = Some(crate::output::history::ExternalOutput {
+                        input_generation: doc.input.generation,
+                        clock_relationship:
+                            crate::output::history::ClockRelationship::IndependentUncalibrated,
+                        observation_start_host_micros: 0,
+                        observation_end_host_micros: 0,
+                        initial: None,
+                        changes: Vec::new(),
+                        latest: None,
+                        evicted_changes: 0,
+                        lost_reports_since_output_worker_start: 0,
+                        notifications_since_output_worker_start: 0,
+                    })
+                }
+            }
+            assert!(
+                comparison_difference(&doc, &next, 16).is_none(),
+                "compared {mismatch}"
+            );
+        }
+        let mut old = serde_json::to_value(&doc).unwrap();
+        old["version"] = 3.into();
+        old.as_object_mut().unwrap().remove("comparison");
+        let old: Document = serde_json::from_value(old).unwrap();
+        old.validate().unwrap();
+        assert!(old.comparison.is_none());
+        std::fs::remove_file(path).unwrap();
+        std::fs::remove_file(csv).unwrap();
+    }
     fn fixture() -> Document {
         let mut h = History::new(1024);
         for n in 0..1024 {

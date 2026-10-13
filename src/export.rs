@@ -18,7 +18,7 @@ use std::{
 };
 
 pub const FORMAT: &str = "measurelab-results";
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
@@ -231,6 +231,8 @@ pub struct Document {
     pub generator_output: Option<crate::output::Timeline>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lockin: Option<Lockin>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub comparison: Option<Comparison>,
     format: String,
     version: u32,
     app_version: String,
@@ -253,6 +255,50 @@ pub struct Lockin {
     pub response_calibration: Option<ChannelCalibration>,
     pub response_unit_peak: String,
     pub gain_unit: String,
+}
+
+pub const COMPARISON_LIMITATIONS: &str = "nominal input clock; channel phase and timing calibration unverified; H1 estimate; wrapped phase delay is ambiguous by 1/f; slope fit requires 8 contiguous coherent bins at least 10% of peak reference PSD and adjacent phase steps below pi";
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Comparison {
+    pub result: crate::comparison::Result,
+    pub reference_calibration: Option<ChannelCalibration>,
+    pub response_calibration: Option<ChannelCalibration>,
+    pub reference_psd_unit: String,
+    pub response_psd_unit: String,
+    pub cross_psd_unit: String,
+    pub gain_unit: String,
+    pub limitations: String,
+}
+impl Comparison {
+    pub fn capture(result: crate::comparison::Result, calibrations: &calibration::Set) -> Self {
+        let s = result.settings;
+        let definitions = ChannelCalibration::capture(calibrations);
+        let unit = |ch| calibrations.unit(ch);
+        let reference = unit(s.reference_channel);
+        let response = unit(s.response_channel);
+        Self {
+            result,
+            reference_calibration: definitions
+                .iter()
+                .find(|c| c.channel == s.reference_channel)
+                .cloned(),
+            response_calibration: definitions
+                .iter()
+                .find(|c| c.channel == s.response_channel)
+                .cloned(),
+            reference_psd_unit: format!("({reference})²/Hz"),
+            response_psd_unit: format!("({response})²/Hz"),
+            cross_psd_unit: format!("({reference})({response})/Hz"),
+            gain_unit: if reference == response {
+                "ratio".into()
+            } else {
+                format!("{response}/{reference}")
+            },
+            limitations: COMPARISON_LIMITATIONS.into(),
+        }
+    }
 }
 
 impl Lockin {
@@ -285,7 +331,8 @@ impl Lockin {
 impl Document {
     pub(crate) fn validate_header(&self) -> Result<(), String> {
         if self.format != FORMAT
-            || ![1, 2, VERSION].contains(&self.version)
+            || !(1..=VERSION).contains(&self.version)
+            || (self.version < 4 && self.comparison.is_some())
             || (self.version < 3 && self.external_output.is_some())
             || (self.version == 1
                 && (self.generator_output.is_some()
@@ -451,6 +498,7 @@ impl Document {
         };
         Ok(Self {
             lockin: None,
+            comparison: None,
             generator_output: None,
             external_output: None,
             format: FORMAT.into(),

@@ -171,7 +171,7 @@ impl ScopeApp {
         ui.label(RichText::new("Physical REF and timing remain unverified. No physical oscillator output or selectable hardware sensitivity.").small().color(MUTED));
     }
 
-    fn lockin_channel_count(&self) -> u16 {
+    pub(super) fn lockin_channel_count(&self) -> u16 {
         if self.running() || self.pending_stop.is_some() {
             self.channels
         } else if self.source == Source::Software

@@ -662,6 +662,19 @@ impl ScopeApp {
                         } else if reference.lockin.is_some() || current.lockin.is_some() {
                             ui.label("Lock-in difference requires two valid, settled results with matching nominal Fs, channels, REF/filter settings and calibrations, no input failure, and known matching stationary excitation for Generator input.");
                         }
+                        if reference.comparison.is_some() || current.comparison.is_some() {
+                            let width=current.comparison.as_ref().map_or(1.0,|c|c.result.bin_width_hz());
+                            let bin=(self.comparison_frequency_hz/width).round() as usize;
+                            ui.label(format!("Synchronous comparison at bin {bin} ({:.3} Hz)",bin as f64*width));
+                            for (label,document) in [("Reference",reference.as_ref()),("Current",current.as_ref())] {
+                                if let Some(c)=&document.comparison {
+                                    ui.label(format!("{label}: {:?} · REF CH {} / SIG CH {} · {}..{} · {} windows · {}",c.result.state,c.result.settings.reference_channel+1,c.result.settings.response_channel+1,c.result.sample_range.start,c.result.sample_range.end,c.result.averaged_windows,c.gain_unit));
+                                    if let Some(b)=c.result.bins.get(bin) {ui.label(format!("Gain {:?} · phase {:?}° · coherence {:?} · {:?}",b.gain,b.phase_lead_degrees,b.coherence,b.state));}
+                                }
+                            }
+                            if let Some(d)=crate::results::comparison_difference(reference,current,bin) {ui.label(format!("Current − reference: gain {:.9e} · phase {:+.9}° · wrapped delay {:?} s",d.gain,d.phase_degrees,d.phase_delay_seconds));}
+                            else {ui.label("Difference requires valid matching input, analysis, calibration and excitation conditions without loss. Independent external output history does not establish matching excitation at input samples.");}
+                        }
                     }
                 }
             });

@@ -14,6 +14,7 @@
 | Software Loopback | Known gain, phase, delay and noise through the common input path without hardware |
 | Generator (experimental) | Two sine signals with live frequency/amplitude/phase controls; actual generated f64 samples through the common input path. Output up to two signals internally or through a CPAL audio device, with device/format selection and OFF restoration |
 | Lock-in (experimental) | Fundamental-frequency measurement using synchronous REF and response; X/Y, R/θ, Gain, settling and REF status; JSON/CSV with conditions and reference comparison |
+| Synchronous comparison (experimental) | Any REF/response pair; auto/cross PSD, H1 gain/phase, coherence, wrapped phase delay and conditional phase-slope fit; held JSON/CSV and reference comparison |
 
 Acquisition, measurement and rendering run separately. Hiding a display does not stop analysis or averaging. Held results retain their input, settings, calibration and loss information.
 
