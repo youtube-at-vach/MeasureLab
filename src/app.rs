@@ -5,6 +5,7 @@ use crate::{
     audio::{AudioWorker, Command, DeviceInfo, Event},
     calibration::{self, Calibration, Reading},
     channel::{self, ChannelId, Pair},
+    comparison,
     cursor::{self, Cursors},
     export,
     gpu::{COLORS, PlotId, Segment, TraceCallback, TraceRenderer},
@@ -31,6 +32,7 @@ use std::{
     sync::{Arc, Mutex, atomic::Ordering},
     time::{Duration, Instant},
 };
+mod comparison_panel;
 mod generator_panel;
 mod lockin_panel;
 mod workspace;
@@ -80,6 +82,7 @@ enum Instrument {
     Spectrogram,
     Xy,
     Lockin,
+    Comparison,
 }
 
 impl PlotLayout {
@@ -115,18 +118,20 @@ enum SettingsSection {
     Spectrogram,
     Xy,
     Lockin,
+    Comparison,
     Calibration,
     Workspace,
 }
 
 impl SettingsSection {
-    const ALL: [Self; 8] = [
+    const ALL: [Self; 9] = [
         Self::Input,
         Self::Scope,
         Self::Spectrum,
         Self::Spectrogram,
         Self::Xy,
         Self::Lockin,
+        Self::Comparison,
         Self::Calibration,
         Self::Workspace,
     ];
@@ -139,6 +144,7 @@ impl SettingsSection {
             Self::Spectrogram => "Spectrogram",
             Self::Xy => "XY / Lissajous",
             Self::Lockin => "Lock-in amplifier",
+            Self::Comparison => "Synchronous comparison",
             Self::Calibration => "Channel calibration",
             Self::Workspace => "Workspace & help",
         }
@@ -152,6 +158,7 @@ impl SettingsSection {
             Self::Spectrogram => BLUE,
             Self::Xy => PURPLE,
             Self::Lockin => YELLOW,
+            Self::Comparison => BLUE,
         }
     }
 }
@@ -266,6 +273,10 @@ pub struct ScopeApp {
     source: Source,
     software_running: bool,
     loopback_settings: loopback::Settings,
+    comparison_settings: comparison::Settings,
+    comparison_result: Arc<comparison::Result>,
+    comparison_visible: bool,
+    comparison_frequency_hz: f64,
     lockin_settings: lockin::Settings,
     lockin_result: lockin::Result,
     lockin_visible: bool,
@@ -280,7 +291,7 @@ pub struct ScopeApp {
     comparison_current: Option<Box<export::Document>>,
     visible: [bool; 4],
     plot_layout: PlotLayout,
-    previous_view: Option<([bool; 4], bool, bool, PlotLayout)>,
+    previous_view: Option<([bool; 4], bool, bool, bool, PlotLayout)>,
     spectrum_adjust_analysis: bool,
     sidebar: Sidebar,
     #[cfg(feature = "qa")]
@@ -417,6 +428,8 @@ pub struct ScopeApp {
     #[cfg(feature = "qa")]
     profile: Option<crate::qa::Profile>,
     #[cfg(feature = "qa")]
+    dpi_stage: u8,
+    #[cfg(feature = "qa")]
     lifecycle_stage: u8,
     #[cfg(feature = "qa")]
     ui_stall_checked: bool,
@@ -491,6 +504,16 @@ impl ScopeApp {
             source,
             software_running: false,
             loopback_settings: loopback::Settings::default(),
+            comparison_settings: comparison::Settings::default(),
+            comparison_result: Arc::new(comparison::Result::empty(
+                comparison::Settings::default(),
+                48000,
+                0,
+                0,
+                2,
+            )),
+            comparison_visible: false,
+            comparison_frequency_hz: 1000.0,
             lockin_settings: lockin::Settings::default(),
             lockin_visible: false,
             lockin_display: settings::LockinDisplay::Polar,
@@ -659,6 +682,8 @@ impl ScopeApp {
             screenshot_device: render.device.clone(),
             #[cfg(feature = "qa")]
             profile: crate::qa::Profile::from_env()?,
+            #[cfg(feature = "qa")]
+            dpi_stage: 0,
             #[cfg(feature = "qa")]
             lifecycle_stage: 0,
             #[cfg(feature = "qa")]
@@ -924,6 +949,10 @@ impl ScopeApp {
             }
         }
         #[cfg(feature = "qa")]
+        if smoke && let Ok(mode) = std::env::var("MEASURELAB_UI_SMOKE_COMPARISON") {
+            app.check_comparison_ui(&mode)?;
+        }
+        #[cfg(feature = "qa")]
         if app.profile.is_some()
             && let Ok(name) = std::env::var("MEASURELAB_PROFILE_GENERATOR_DEVICE")
         {
@@ -950,6 +979,26 @@ impl ScopeApp {
             app.fs_per_div = 0.05;
             app.lockin_visible = true;
             app.setup_generator_device(&name, rate, false)?;
+            if std::env::var_os("MEASURELAB_PROFILE_COMPARISON").is_some() {
+                app.comparison_settings = comparison::Settings {
+                    enabled: true,
+                    size: 8192,
+                    averages: 4,
+                    response_channel: app.lockin_settings.response_channel,
+                    ..Default::default()
+                };
+                app.comparison_frequency_hz = 750.0;
+                app.comparison_visible = true;
+                app.visible = [true, false, false, false];
+            }
+        }
+        #[cfg(feature = "qa")]
+        if let Ok(zoom) = std::env::var("MEASURELAB_UI_SMOKE_ZOOM") {
+            let zoom = zoom.parse::<f32>().map_err(|e| e.to_string())?;
+            if !zoom.is_finite() || !(0.5..=2.0).contains(&zoom) {
+                return Err("QA zoom must be 0.5..=2.0".into());
+            }
+            cc.egui_ctx.set_zoom_factor(zoom);
         }
         Ok(app)
     }
@@ -1672,6 +1721,13 @@ impl ScopeApp {
         self.cursors.new_epoch();
         self.input_generation += 1;
         self.held_input = None;
+        self.comparison_result = Arc::new(comparison::Result::empty(
+            self.comparison_settings,
+            self.sample_rate,
+            self.input_generation,
+            0,
+            self.channels as usize,
+        ));
         self.lockin_result = lockin::Analyzer::new(self.lockin_settings, self.sample_rate)
             .result()
             .clone();
@@ -1710,6 +1766,7 @@ impl ScopeApp {
 
     fn core_config(&self) -> measurement::Config {
         measurement::Config {
+            comparison: self.comparison_settings,
             lockin: self.lockin_settings,
             spectrum: self.spectrum_settings,
             spectrum_channel: self.spectrum_channel,
@@ -1740,6 +1797,7 @@ impl ScopeApp {
         let samples_changed = self.history.range() != snapshot.history.range();
         self.dirty |= self.core_scope != snapshot.scope_settings;
         self.xy_dirty |= self.xy_channels != snapshot.xy_channels;
+        self.comparison_result = snapshot.comparison.clone();
         self.lockin_result = snapshot.lockin.clone();
         self.sample_rate = snapshot.sample_rate;
         std::mem::swap(&mut self.history, &mut snapshot.history);
@@ -2623,8 +2681,15 @@ impl ScopeApp {
                 format!("{} layout · shortcuts & units", self.plot_layout.name())
             }
             SettingsSection::Calibration => "Scope numeric readouts · next Start".into(),
+            SettingsSection::Comparison => format!(
+                "REF CH {} / SIG CH {} · N {} × {}",
+                self.comparison_settings.reference_channel + 1,
+                self.comparison_settings.response_channel + 1,
+                self.comparison_settings.size,
+                self.comparison_settings.averages
+            ),
             SettingsSection::Lockin => format!(
-                "REF CH {} → SIG CH {} · τ {} s",
+                "REF CH {} / SIG CH {} · τ {} s",
                 self.lockin_settings.reference_channel + 1,
                 self.lockin_settings.response_channel + 1,
                 self.lockin_settings.time_constant_seconds,
@@ -2673,6 +2738,7 @@ impl ScopeApp {
                             SettingsSection::Spectrogram => self.spectrogram_controls(ui),
                             SettingsSection::Xy => self.xy_controls(ui),
                             SettingsSection::Lockin => self.lockin_controls(ui),
+                            SettingsSection::Comparison => self.comparison_controls(ui),
                             SettingsSection::Calibration => self.calibration_controls(ui),
                             SettingsSection::Workspace => self.workspace_controls(ui),
                         }
@@ -2748,6 +2814,13 @@ impl ScopeApp {
         self.xy_dirty = true;
         self.stop();
         self.input_generation += 1;
+        self.comparison_result = Arc::new(comparison::Result::empty(
+            self.comparison_settings,
+            self.sample_rate,
+            self.input_generation,
+            0,
+            self.channels as usize,
+        ));
         self.lockin_result = lockin::Analyzer::new(self.lockin_settings, self.sample_rate)
             .result()
             .clone();
@@ -4712,6 +4785,12 @@ impl ScopeApp {
                 &self.calibration.captured,
             ));
         }
+        if self.comparison_result.settings.enabled {
+            document.comparison = Some(export::Comparison::capture(
+                (*self.comparison_result).clone(),
+                &self.calibration.captured,
+            ));
+        }
         Ok(document)
     }
 
@@ -4784,6 +4863,7 @@ impl ScopeApp {
                 }),
                 software_loopback: (self.source == Source::Software)
                     .then(|| self.loopback_settings.clone()),
+                comparison: self.comparison_settings,
                 lockin: self.lockin_settings,
                 input,
                 scope: settings::Scope {
@@ -4813,6 +4893,7 @@ impl ScopeApp {
                 generator_visible: self.generator.visible,
                 visible: self.visible,
                 lockin_visible: self.lockin_visible,
+                comparison_visible: self.comparison_visible,
                 lockin_display: self.lockin_display,
                 layout: self.plot_layout,
                 sidebar_visible: self.sidebar.visible,
@@ -4910,6 +4991,7 @@ impl ScopeApp {
             self.loopback_settings = software;
         }
         self.lockin_settings = m.lockin;
+        self.comparison_settings = m.comparison;
         self.restored_input = (self.source == Source::Live).then_some(m.input);
         self.acquisition_mode = m.scope.mode;
         self.scope_channels = m.scope.channels;
@@ -4929,6 +5011,7 @@ impl ScopeApp {
         self.visible = w.visible;
         self.generator.visible = w.generator_visible;
         self.lockin_visible = w.lockin_visible;
+        self.comparison_visible = w.comparison_visible;
         self.lockin_display = w.lockin_display;
         self.plot_layout = w.layout;
         self.previous_view = None;
@@ -4997,26 +5080,33 @@ impl ScopeApp {
     }
 
     fn select_view(&mut self, visible: [bool; 4]) {
-        if self.visible == visible && !self.lockin_visible && !self.generator.visible {
+        if self.visible == visible
+            && !self.lockin_visible
+            && !self.generator.visible
+            && !self.comparison_visible
+        {
             return;
         }
         self.previous_view.get_or_insert((
             self.visible,
             self.lockin_visible,
             self.generator.visible,
+            self.comparison_visible,
             self.plot_layout,
         ));
         self.visible = visible;
         self.lockin_visible = false;
+        self.comparison_visible = false;
         self.generator.visible = false;
         self.plot_layout = PlotLayout::Auto;
     }
 
     fn restore_view(&mut self) {
-        if let Some((visible, lockin, generator, layout)) = self.previous_view.take() {
+        if let Some((visible, lockin, generator, comparison, layout)) = self.previous_view.take() {
             self.visible = visible;
             self.lockin_visible = lockin;
             self.generator.visible = generator;
+            self.comparison_visible = comparison;
             self.plot_layout = layout;
         }
     }
@@ -5030,8 +5120,8 @@ impl ScopeApp {
                 ("Generator + Lock-in", [false; 4], true),
             ] {
                 if ui.selectable_label(self.generator.visible && self.visible == visible && self.lockin_visible == lockin, title).clicked() {
-                    self.previous_view.get_or_insert((self.visible, self.lockin_visible, self.generator.visible, self.plot_layout));
-                    self.visible = visible; self.lockin_visible = lockin; self.generator.visible = true;
+                    self.previous_view.get_or_insert((self.visible, self.lockin_visible, self.generator.visible, self.comparison_visible, self.plot_layout));
+                    self.visible = visible; self.lockin_visible = lockin; self.generator.visible = true; self.comparison_visible = false;
                     self.plot_layout = PlotLayout::Auto;
                     ui.close();
                 }
@@ -5051,6 +5141,11 @@ impl ScopeApp {
                 if ui.selectable_label(self.lockin_visible && self.visible == [scope, false, false, false], title).clicked() {
                     self.select_lockin_view(scope);
                     ui.close();
+                }
+            }
+            for (title, scope) in [("Comparison only", false),("Scope + Comparison",true)] {
+                if ui.selectable_label(self.comparison_visible && self.visible == [scope,false,false,false],title).clicked() {
+                    self.select_view([scope,false,false,false]); self.comparison_visible=true; ui.close();
                 }
             }
             if ui.add_enabled(self.previous_view.is_some(), egui::Button::new("Restore previous view")).clicked() {
@@ -5727,6 +5822,24 @@ impl eframe::App for ScopeApp {
         let _ = frame;
         let ctx = ui.ctx().clone();
         let now = Instant::now();
+        #[cfg(feature = "qa")]
+        if self.profile.is_some() && std::env::var_os("MEASURELAB_PROFILE_DPI").is_some() {
+            let seconds = self.created.elapsed().as_secs_f64();
+            if self.dpi_stage == 0 && seconds >= 5.0 {
+                ctx.set_zoom_factor(1.5);
+                self.dpi_stage = 1;
+                println!(
+                    "GUI DPI QA: zoom 1.0 → 1.5 during running output/input; native pixels per point {}",
+                    ctx.native_pixels_per_point().unwrap_or(1.0)
+                );
+            } else if self.dpi_stage == 1 && seconds >= 10.0 {
+                ctx.set_zoom_factor(1.0);
+                self.dpi_stage = 2;
+                println!(
+                    "GUI DPI QA: zoom 1.5 → 1.0; input/output and captured conditions retained"
+                );
+            }
+        }
         let elapsed = now.duration_since(self.last_frame).as_secs_f64();
         self.last_frame = now;
         if elapsed > 0.0 && elapsed < 0.2 {
@@ -5787,9 +5900,16 @@ impl eframe::App for ScopeApp {
             self.check_large_fft_lifecycle(&ctx);
             self.check_lifecycle(&ctx, elapsed);
             self.check_input_lifecycle(&ctx);
-            self.check_generator_edits();
+            if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_DISCONNECT").is_some() {
+                self.check_generator_disconnect(&ctx)
+                    .expect("Physical Generator disconnect QA");
+            } else {
+                self.check_generator_edits();
+            }
             let running = self.running();
-            if let Some(profile) = &mut self.profile {
+            if let Some(profile) = &mut self.profile
+                && std::env::var_os("MEASURELAB_PROFILE_GENERATOR_DISCONNECT").is_none()
+            {
                 profile.record(elapsed, running, frame.info().cpu_usage);
                 if profile.progress_due()
                     && let Some(core) = &self.core
@@ -6376,6 +6496,7 @@ impl eframe::App for ScopeApp {
                     let enabled = self.visible.iter().filter(|v| **v).count()
                         + usize::from(self.lockin_visible)
                         + usize::from(self.generator.visible)
+                        + usize::from(self.comparison_visible)
                         > 1
                         || !self.visible[index];
                     if ui
@@ -6392,6 +6513,7 @@ impl eframe::App for ScopeApp {
                     .add_enabled(
                         self.visible.contains(&true)
                             || self.generator.visible
+                            || self.comparison_visible
                             || !self.lockin_visible,
                         egui::Button::new("Lock-in").selected(self.lockin_visible),
                     )
@@ -6403,6 +6525,7 @@ impl eframe::App for ScopeApp {
                     .add_enabled(
                         self.visible.contains(&true)
                             || self.lockin_visible
+                            || self.comparison_visible
                             || !self.generator.visible,
                         egui::Button::new("Generator").selected(self.generator.visible),
                     )
@@ -6413,6 +6536,18 @@ impl eframe::App for ScopeApp {
                 self.view_menu(ui);
                 if self.visible.contains(&true) {
                     self.cursor_controls(ui);
+                }
+                if ui
+                    .add_enabled(
+                        self.visible.contains(&true)
+                            || self.lockin_visible
+                            || self.generator.visible
+                            || !self.comparison_visible,
+                        egui::Button::new("Comparison").selected(self.comparison_visible),
+                    )
+                    .clicked()
+                {
+                    self.comparison_visible = !self.comparison_visible;
                 }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui
@@ -6444,6 +6579,7 @@ impl eframe::App for ScopeApp {
             .enumerate()
             .filter_map(|(i, plot)| self.visible[i].then_some(plot))
             .chain(self.lockin_visible.then_some(Instrument::Lockin))
+            .chain(self.comparison_visible.then_some(Instrument::Comparison))
             .collect();
             let columns = instruments.len() > 1 && self.plot_layout.columns(available.x);
             let rows = if columns {
@@ -6480,6 +6616,7 @@ impl eframe::App for ScopeApp {
                                     Instrument::Spectrogram => self.spectrogram_panel(ui),
                                     Instrument::Xy => self.xy_panel(ui),
                                     Instrument::Lockin => self.lockin_panel(ui),
+                                    Instrument::Comparison => self.comparison_panel(ui),
                                 },
                             );
                         }

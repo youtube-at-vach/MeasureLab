@@ -31,6 +31,28 @@ pub(super) struct GeneratorUi {
     profile_output_started: bool,
     #[cfg(feature = "qa")]
     device_metrics: Option<Arc<output::device::Metrics>>,
+    #[cfg(feature = "qa")]
+    disconnect: Option<DisconnectQa>,
+}
+#[cfg(feature = "qa")]
+struct DisconnectQa {
+    stage: u8,
+    since: Instant,
+    refreshed: Instant,
+    error_status: Option<generator::Status>,
+    notifications: u64,
+}
+#[cfg(feature = "qa")]
+impl Default for DisconnectQa {
+    fn default() -> Self {
+        Self {
+            stage: 0,
+            since: Instant::now(),
+            refreshed: Instant::now(),
+            error_status: None,
+            notifications: 0,
+        }
+    }
 }
 impl Default for GeneratorUi {
     fn default() -> Self {
@@ -69,6 +91,8 @@ impl Default for GeneratorUi {
             profile_output_started: false,
             #[cfg(feature = "qa")]
             device_metrics: None,
+            #[cfg(feature = "qa")]
+            disconnect: Some(DisconnectQa::default()),
         }
     }
 }
@@ -227,6 +251,117 @@ impl GeneratorUi {
 }
 
 impl ScopeApp {
+    #[cfg(feature = "qa")]
+    pub(super) fn check_generator_disconnect(&mut self, ctx: &egui::Context) -> Result<(), String> {
+        let mut qa = self.generator.disconnect.take().unwrap();
+        if qa.since.elapsed() > Duration::from_secs(180) {
+            return Err("Physical disconnect/reconnect QA timed out".into());
+        }
+        match qa.stage {
+            0 => {
+                self.check_generator_edits();
+                if self.generator.status.state == generator::State::Running
+                    && !self.generator.status.transitioning()
+                    && self
+                        .generator
+                        .device_metrics
+                        .as_ref()
+                        .is_some_and(|m| m.profile.frames() >= self.generator.rate as u64 * 2)
+                {
+                    qa.stage = 1;
+                    qa.since = Instant::now();
+                    println!(
+                        "Disconnect QA READY: normal GUI input/output RUNNING; unplug UAC-232 USB, leave it disconnected until ERROR is reported."
+                    );
+                }
+            }
+            1 => {
+                if matches!(self.generator.status.state, generator::State::Error(_)) {
+                    qa.error_status = Some(self.generator.status);
+                    qa.notifications = self
+                        .generator
+                        .device_metrics
+                        .as_ref()
+                        .map_or(0, |m| m.notifications.load(Ordering::Acquire));
+                    self.stop();
+                    self.generator.devices.clear();
+                    self.generator.worker.refresh()?;
+                    qa.stage = 2;
+                    qa.since = Instant::now();
+                    qa.refreshed = Instant::now();
+                    self.screenshot_requested = true;
+                    self.screenshot_received = false;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(Default::default()));
+                    println!(
+                        "Disconnect QA ERROR latched: {:?}; output notifications {}; reconnect USB now. No Start will be issued.",
+                        self.generator.status.state, qa.notifications
+                    );
+                }
+            }
+            2 => {
+                if !matches!(self.generator.status.state, generator::State::Error(_))
+                    || self.generator.starting
+                {
+                    return Err(
+                        "Output resumed or cleared ERROR without explicit reset after disconnect"
+                            .into(),
+                    );
+                }
+                if self.pending_stop.is_none()
+                    && qa.since.elapsed() > Duration::from_secs(1)
+                    && self
+                        .generator
+                        .devices
+                        .iter()
+                        .any(|d| d.name == "ZOOM UAC-232")
+                {
+                    self.generator.restore(output::Saved {
+                        target: self.generator.target.clone(),
+                        nominal_sample_rate: self.generator.rate,
+                        signals: self.generator.settings,
+                        use_as_input: false,
+                    })?;
+                    qa.stage = 3;
+                    qa.since = Instant::now();
+                    println!(
+                        "Disconnect QA reconnected; explicit saved-output restore requested, stays OFF."
+                    );
+                } else if qa.refreshed.elapsed() > Duration::from_secs(1) {
+                    self.generator.worker.refresh()?;
+                    qa.refreshed = Instant::now();
+                }
+            }
+            3 => {
+                if self.generator.pending {
+                } else if !self.generator.stopped() {
+                    return Err("Output restoration did not remain OFF".into());
+                } else if qa.since.elapsed() > Duration::from_secs(1) {
+                    let path = std::path::Path::new("dist/generator-qa/disconnect.json");
+                    std::fs::create_dir_all(path.parent().unwrap()).map_err(|e| e.to_string())?;
+                    std::fs::write(path,serde_json::to_vec_pretty(&serde_json::json!({"physical_usb_disconnect":true,
+                        "error_status":qa.error_status,"notifications_after_stream_release":qa.notifications,
+                        "restored_status":self.generator.status,"restored_target":self.generator.target,
+                        "input_stopped":!self.running(),"automatic_output_restart":false})).map_err(|e|e.to_string())?).map_err(|e|e.to_string())?;
+                    qa.stage = 4;
+                    qa.since = Instant::now();
+                    self.screenshot_requested = true;
+                    self.screenshot_received = false;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(Default::default()));
+                    println!(
+                        "Disconnect QA OK: real USB failure latched ERROR; stream released; reconnect did not restart; exact saved destination restored OFF; input held."
+                    );
+                }
+            }
+            _ => {
+                if qa.since.elapsed() > Duration::from_secs(2) {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                }
+            }
+        }
+        self.generator.disconnect = Some(qa);
+        ctx.request_repaint_after(Duration::from_millis(16));
+        Ok(())
+    }
     #[cfg(feature = "qa")]
     pub(super) fn start_generator_profile_input(&mut self) {
         if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_DEVICE").is_none()
@@ -427,6 +562,35 @@ impl ScopeApp {
             snapshot,
             std::path::Path::new("dist/generator-qa/profile-oracle.json"),
         )?;
+        if std::env::var_os("MEASURELAB_PROFILE_COMPARISON").is_some() {
+            crate::qa::comparison::validate(
+                snapshot,
+                std::path::Path::new("dist/comparison-qa/device-oracle.json"),
+            )?;
+            let document = crate::qa::lockin::document(
+                snapshot,
+                self.held_input
+                    .clone()
+                    .ok_or("Missing profile input conditions")?,
+                self.core.as_ref().unwrap(),
+            )?;
+            document.validate()?;
+            export::save(
+                std::path::Path::new("dist/comparison-qa/device-results.json"),
+                &document,
+            )?;
+            crate::results::save_csv(
+                std::path::Path::new("dist/comparison-qa/device-results.csv"),
+                &document,
+            )?;
+            assert_eq!(
+                crate::results::load(std::path::Path::new(
+                    "dist/comparison-qa/device-results.json"
+                ))?
+                .comparison,
+                document.comparison
+            );
+        }
         if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_EDITS").is_some() {
             if self.generator.edit_latencies.len() != 100 {
                 return Err("Generator edit trial did not complete 100 acknowledgements".into());
@@ -566,6 +730,12 @@ impl ScopeApp {
             time_constant_seconds: 0.005,
             ..Default::default()
         };
+        self.comparison_settings = comparison::Settings {
+            enabled: true,
+            size: 4096,
+            averages: 4,
+            ..Default::default()
+        };
         self.spectrum_channel = 1;
         self.spectrum_settings.size = 8192;
         self.spectrum_settings.averages = 1;
@@ -614,6 +784,7 @@ impl ScopeApp {
             assert!(self.generator.stopped());
             self.generator.start();
         }
+        self.comparison_settings.response_channel = self.lockin_settings.response_channel;
         self.start();
         let deadline = Instant::now() + Duration::from_secs(5);
         while self
@@ -683,6 +854,10 @@ impl ScopeApp {
                 }
             }
         }
+        crate::qa::comparison::validate(
+            &snapshot,
+            std::path::Path::new("dist/comparison-qa/generator-ui-oracle.json"),
+        )?;
         self.accept_snapshot(&mut snapshot);
         if audio_device.is_some() {
             self.qa_wait_audio_idle()?;

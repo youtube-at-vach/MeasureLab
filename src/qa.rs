@@ -1,6 +1,7 @@
 //! Opt-in, bounded UI measurements for local QA runs.
 use std::time::{Duration, Instant};
 
+pub mod comparison;
 pub mod lockin;
 pub mod output;
 pub mod physical_lockin;

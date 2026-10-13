@@ -151,7 +151,7 @@ ScopeではRMS・Peak・P-Pと時間カーソルの数値に校正を適用し�
 
 ### 測定設定の保存・復元
 
-上部 **File / Save settings…** で保存先を選びます。**Restore settings…** は入力・出力停止中にファイルを選んで復元します。従来の **Workspace & help / MEASUREMENT SETTINGS** のパス指定も使えます。次回Start用の入力デバイス・CH割当・トリガー・観察幅・Spectrum／Spectrogramの解析設定・PSD帯域・校正定義を版2のJSONへ保存します。Generatorの出力先・Fs・信号条件・内部入力選択、Audio deviceの安定ID・CH数・PCMも保存し、版1の読み込みを維持します。取得中の保持結果や未確定の校正エディター入力を保存する操作ではありません。表示選択・配置・軸・表示範囲は別のWorkspaceブロックへ保存します。生サンプル・測定結果・カーソル位置・アコーディオン各項目の開閉は含めません。Software Loopbackの仮想DUT条件、Scope取得モードと実験段階Lock-inの設定も保存します。これらを含まない版1ファイルはAuto・Lock-in無効として読みます。QA専用内部デモは保存対象外です。
+上部 **File / Save settings…** で保存先を選びます。**Restore settings…** は入力・出力停止中にファイルを選んで復元します。従来の **Workspace & help / MEASUREMENT SETTINGS** のパス指定も使えます。次回Start用の入力デバイス・CH割当・トリガー・観察幅・Spectrum／Spectrogramの解析設定・PSD帯域・校正定義を版3のJSONへ保存します。Generatorの出力先・Fs・信号条件・内部入力選択、Audio deviceの安定ID・CH数・PCMも保存し、版1の読み込みを維持します。取得中の保持結果や未確定の校正エディター入力を保存する操作ではありません。表示選択・配置・軸・表示範囲は別のWorkspaceブロックへ保存します。生サンプル・測定結果・カーソル位置・アコーディオン各項目の開閉は含めません。Software Loopbackの仮想DUT条件、Scope取得モードと実験段階Lock-inの設定も保存します。これらを含まない版1ファイルはAuto・Lock-in無効として読みます。QA専用内部デモは保存対象外です。
 
 既定の保存先はmacOSで `~/Library/Application Support/MeasureLab/measurement-settings.json`、Windowsで `%APPDATA%/MeasureLab/measurement-settings.json`、Linuxで `$XDG_CONFIG_HOME/MeasureLab/measurement-settings.json`（未設定時は `~/.config/MeasureLab/measurement-settings.json`）です。別のパスも指定できます。自動保存・起動時の自動読み込みは行いません。
 
@@ -169,7 +169,7 @@ ScopeではRMS・Peak・P-Pと時間カーソルの数値に校正を適用し�
 
 入力Stop／Single完了は結果を保持し、出力は続きます。**Stop output**はフェード後に停止し、入力が取得中なら無音の新しいフレームを続けます。Generatorを隠しても上部の出力状態と**Stop all outputs**は残ります。起動・復元・Fs変更で自動出力せず、アプリ終了時も停止します。
 
-内部出力は44.1／48／96／192 kHz・2chのf64です。出力先メニューで音声デバイスを選び、**Refresh outputs**で再取得できます。出力先・Fs／CH数／PCMは入力と出力を停止して選びます。デバイスの1〜16ch構成へ最大2信号を割り当て、未割当CHは無音にします。開始時に選択した安定IDと形式を再確認し、使えない設定は開始しません。**Input source**で接続先の実入力を選び、個別に**Start input**してください。**Observe Generator**は内部接続で使います。ストリーム通知・コールバック停止はERRORとなり、**Reset output (stays OFF)**後の明示Startで再開します。出力校正は未実装です。既存Software Loopbackの既知DUTとは別の入力モードです。設定は版2、結果は版3で保存し、旧設定版1・旧結果版1／2も読み込めます。内部接続の結果には受信した最大128区間の出力条件を含め、履歴外・欠落した区間は対応不明とします。保持後のGenerator編集では結果を変更しません。Generator結果のRMS・PSD帯域電力・Lock-inの数値差は、両寄与区間が定常で設定・同一周波数の相対carrier位相が一致するときだけ表示します。
+内部出力は44.1／48／96／192 kHz・2chのf64です。出力先メニューで音声デバイスを選び、**Refresh outputs**で再取得できます。出力先・Fs／CH数／PCMは入力と出力を停止して選びます。デバイスの1〜16ch構成へ最大2信号を割り当て、未割当CHは無音にします。開始時に選択した安定IDと形式を再確認し、使えない設定は開始しません。**Input source**で接続先の実入力を選び、個別に**Start input**してください。**Observe Generator**は内部接続で使います。ストリーム通知・コールバック停止はERRORとなり、**Reset output (stays OFF)**後の明示Startで再開します。出力校正は未実装です。既存Software Loopbackの既知DUTとは別の入力モードです。設定は版3、結果は版4で保存し、旧設定版1／2・旧結果版1〜3も読み込めます。内部接続の結果には受信した最大128区間の出力条件を含め、履歴外・欠落した区間は対応不明とします。保持後のGenerator編集では結果を変更しません。Generator結果のRMS・PSD帯域電力・Lock-inの数値差は、両寄与区間が定常で設定・同一周波数の相対carrier位相が一致するときだけ表示します。
 
 外部入力と出力の連番は別の時計です。外部Generator編集の遷移は入力窓と自動対応せず、Spectrum／Lock-inの入力解析を自動リセットしません。同期REFは実入力2chを使い、編集後は整定を待ってください。外部Generatorが選択・観測された実入力結果のJSON／CSVには、入力開始時と保持時の最新観測、取得中に管理ワーカーが観測した最大128件の出力状態変更、出力ID・Fs・CH数・PCM・実適用設定・出力世代・整数境界・失敗を保存します。ホスト観測時刻は出力ワーカー作成からの単調時間で、DAC／ADC時刻や入力サンプルとの対応ではありません。履歴退役数、報告された応答欠落数と出力通知のワーカー開始以来の累計を保持し、未観測区間を補完しません。入力Stop／Single／入力失敗で固定し、その後の編集・Reset・出力停止で変更しません。入力窓への対応は未校正として、これらの結果のRMS・PSD帯域電力・Lock-inの数値差を表示しません。出力の有限Stop・解放後の通知監査を完了した証拠とは分けます。
 
@@ -245,7 +245,7 @@ FreeとTrace Snapは各グラフの見出しとXY Settingsで切り替えられ�
 
 **Stop** の解析完了を待ち、上部 **File / Export results JSON… / CSV… / PNG…** で保存先を選べます。従来のパス指定は、**Workspace & help / HELD MEASUREMENT RESULTS** で保存先を確認して **Export held results** を押します。入力開始前、取得中、StopやScopeの条件更新・設定復元が未完了の間は書き出せません。書き出し後は同じ場所に成功・失敗を表示し、上部の **Export status / Export error** から開けます。既定の保存先は設定ファイルと同じディレクトリの `measurement-results.json` です。ファイルは同じディレクトリの一時ファイルへの書き込みと同期後に置換し、失敗時は以前のファイルを残します。
 
-結果の形式は `format = measurelab-results`、`version = 3` のJSONです。旧版1／2の読み込みを維持します。復元用の測定設定JSONとは別の形式で、**File / Load reference result…** から参照として読み込み、**Compare with reference** で現在の保持結果と並べて確認できます。入力世代・取得時のデバイスID／名前／入力形式・実際に選ばれた公称Fs・CH数を保持し、次回用の入力選択や解析設定・校正で保持結果を再ラベルしません。CH IDは0始まり、サンプル区間は開始を含み終端を含みません。サンプル時計は公称値です。
+結果の形式は `format = measurelab-results`、`version = 4` のJSONです。旧版1〜3の読み込みを維持します。復元用の測定設定JSONとは別の形式で、**File / Load reference result…** から参照として読み込み、**Compare with reference** で現在の保持結果と並べて確認できます。入力世代・取得時のデバイスID／名前／入力形式・実際に選ばれた公称Fs・CH数を保持し、次回用の入力選択や解析設定・校正で保持結果を再ラベルしません。CH IDは0始まり、サンプル区間は開始を含み終端を含みません。サンプル時計は公称値です。
 
 Scopeは書き出し時に表示する整数区間・観察サンプル数・トリガー条件・補間した横位置と、2本の割当CHの生f64サンプル（FS）、生統計・校正後の統計を保持します。配列の位置 `i` は `sample_range.start + i` に対応し、欠落位置は `null`、存在しないCHは配列全体を `null` として状態を付けます。未取得・欠落・非有限の校正結果を正常なゼロと扱いません。校正はID・版・ゲイン・オフセット・単位・参照条件を含み、物理量は `gain × raw_fs + offset` から再現できます。Autoの停止後の観察幅・トリガー変更は保持サンプルから新しい区間を選ぶため、書き出すScope区間・条件もその選択に対応します。Normal／Singleの捕捉区間・トリガー条件は停止後も固定し、編集は次回Startに適用します。
 
@@ -294,6 +294,16 @@ Audio device → CPAL callback → bounded SPSC → measurement worker ← inter
 スペクトログラムのR32Floatテクスチャには生のdBFSビンを格納し、最大FFTのNyquistビンまで保持します。1行を4,096列の複数走査線へ分割し、GPUのテクスチャ寸法上限を超えないようにします。変更された行だけを転送し、表示範囲・色・時間座標は描画時に適用します。周波数方向は物理ピクセルが覆うビンの最大値を使い、細いピークを残します。履歴とテクスチャのサイズはFFT設定に応じて固定され、既定の8,192点では各16 MiB、最大32,768点では各40 MiBです。
 
 通常はVSyncを使用します。`--low-latency`ではVSyncを外します。実際の更新頻度はディスプレイ・GPU・OS・入力バッファに依存します。下部の**Performance**メニューにある`UI fps`はUI更新頻度、`Scope prep`・`Worker FFT`・`Spectrum prep`はそれぞれの直近のCPU処理時間で、GPU実行時間ではありません。
+
+## 同期2chの比較
+
+上部の **Comparison**、**View / Comparison only** または **Scope + Comparison** で表示します。**Adjust / Analyze synchronous pair** を有効にし、異なるREF／SIG CHを指定して入力を開始します。入力は同じデバイスの同期フレームで、外部信号でも測定できます。既定N=4,096、平均8窓では48 kHzで初回に約0.683秒必要です。
+
+ゲイン・進み位相・コヒーレンスの曲線を表示し、**Read at** またはグラフのクリックで最寄りビンを選びます。生REFのPSD下限、平均窓数、窓、コヒーレンス下限、位相傾斜の帯域はAdjustで設定します。曲線のゲインは20 log10(|H1| / 1ゲイン単位)で−60〜+20 dBの表示範囲に制限しますが、数値・保存値は制限しません。低REF・低コヒーレンス・未充填・欠落では「—」を表示し、ゼロで置き換えません。正の位相はSIGの進み、正の遅延はSIGの遅れです。
+
+位相遅延は1/fの周期で曖昧です。位相傾斜は帯域内の最長の連続励振区間を使い、コヒーレンスとREF PSD（最大の10%以上）が有効な8ビン以上を必要とします。正弦波1本から広帯域遅延を表示しません。直線回帰の使用帯域と残差RMSを併記し、隣接位相差がπ未満という仮定と、CH間位相・時間校正が未確認であることを保持します。
+
+非表示でも解析は続きます。Stop後は最後の完全平均を保持し、停止中の解析・CH変更は次回Start用です。**File**から条件付きJSON／CSVを保存・読み戻して参照と比較できます。外部出力の観測履歴を含む結果は励振と入力窓の対応が未校正なので、両方の値を示して数値差を抑止します。AC比較・平均・単位・符号の正確な定義は [同期比較設計](COMPARISON_DESIGN.md)、条件付きの確認範囲は [検証記録](validation/COMPARISON_2026-10.md) を参照してください。
 
 ## 検証・計測
 
@@ -536,6 +546,7 @@ Generatorの連続QAは最初のGUI描画から2秒待って入力を開始し�
 - `src/settings.rs`: 版付き測定設定・校正と表示設定のJSON、全体検証、デバイスID照合、容量制限付き読み込み・原子的保存、専用I/Oワーカー。
 - `src/results.rs` / `src/result_image.rs` / `src/workspace_io.rs`: 容量制限と整合検証付き参照読み込み、f64 CSV、PNG、ネイティブファイル選択とI/O。
 - `src/acquisition.rs`: サンプル時計のNormal／Single捕捉とAutoset。
+- `src/comparison.rs` / `src/comparison_worker.rs` / `src/app/comparison_panel.rs`: 同期2chの自己／クロスPSD、H1、位相・遅延、専用ワーカーと表示。
 - `src/loopback.rs` / `src/lockin.rs` / `src/lockin_worker.rs`: 通常ビルドの仮想DUTと実験段階の同期REF Lock-in、固定容量の独立演算。
 - `src/generator.rs` / `src/generator/control.rs`: GUI非依存の2ch正弦波コア、滑らかな設定変更、固定容量の制御・優先Stop。
 - `src/output.rs` / `src/app/generator_panel.rs`: 内部生成ワーカー、出力条件付き共通入力、Generator GUI。`src/output/device.rs` / `runtime.rs`は通常CPAL出力・PCM変換・非UIデバイス管理。`src/output/history.rs`は独立時計の外部出力観測履歴と保持時の固定。

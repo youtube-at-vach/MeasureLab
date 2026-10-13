@@ -18,7 +18,7 @@ use std::{
     thread::{self, JoinHandle},
 };
 
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 3;
 pub const MAX_BYTES: usize = 64 * 1024;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -166,6 +166,8 @@ pub struct Measurement {
     pub software_loopback: Option<crate::loopback::Settings>,
     #[serde(default)]
     pub lockin: crate::lockin::Settings,
+    #[serde(default)]
+    pub comparison: crate::comparison::Settings,
     pub input: Input,
     pub scope: Scope,
     pub spectrum: Spectrum,
@@ -191,6 +193,8 @@ pub struct Workspace {
     pub visible: [bool; 4],
     #[serde(default)]
     pub lockin_visible: bool,
+    #[serde(default)]
+    pub comparison_visible: bool,
     #[serde(default)]
     pub lockin_display: LockinDisplay,
     pub layout: PlotLayout,
@@ -234,7 +238,7 @@ pub struct Document {
 impl Document {
     /// Check the whole document before exposing any restored state to the app.
     pub fn validate(&self) -> Result<calibration::Set, String> {
-        if ![1, VERSION].contains(&self.version) {
+        if !(1..=VERSION).contains(&self.version) {
             return Err(format!("Unsupported settings version: {}", self.version));
         }
         let m = &self.measurement;
@@ -253,6 +257,13 @@ impl Document {
             }
         }
         m.lockin.validate(m.input.expected_sample_rate())?;
+        m.comparison.validate(m.input.expected_sample_rate())?;
+        if self.version < 3
+            && (m.comparison != crate::comparison::Settings::default()
+                || self.workspace.comparison_visible)
+        {
+            return Err("Comparison settings require version 3".into());
+        }
         if let Some(software) = &m.software_loopback {
             software.validate(m.input.expected_sample_rate())?;
             if m.input.device_id != "measurelab:software-loopback" || m.input.channels != 2 {
@@ -322,7 +333,11 @@ impl Document {
                 .map_err(str::to_owned)?;
         }
         let w = &self.workspace;
-        if !w.visible.contains(&true) && !w.lockin_visible && !w.generator_visible {
+        if !w.visible.contains(&true)
+            && !w.lockin_visible
+            && !w.generator_visible
+            && !w.comparison_visible
+        {
             return Err("At least one instrument must be visible".into());
         }
         for scale in [
@@ -366,7 +381,7 @@ impl Document {
             version: u32,
         }
         let header: Header = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
-        if ![1, VERSION].contains(&header.version) {
+        if !(1..=VERSION).contains(&header.version) {
             return Err(format!("Unsupported settings version: {}", header.version));
         }
         let document: Self = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
@@ -541,6 +556,7 @@ mod tests {
                 generator: None,
                 software_loopback: None,
                 lockin: crate::lockin::Settings::default(),
+                comparison: crate::comparison::Settings::default(),
                 input: Input {
                     device_id: "coreaudio:reference-device".into(),
                     device_name: "Reference 16ch".into(),
@@ -597,6 +613,7 @@ mod tests {
                 generator_visible: false,
                 visible: [true; 4],
                 lockin_visible: false,
+                comparison_visible: false,
                 lockin_display: LockinDisplay::Polar,
                 layout: PlotLayout::Auto,
                 sidebar_visible: true,
@@ -690,6 +707,36 @@ mod tests {
         assert!(!restored.workspace.lockin_visible);
         assert_eq!(restored.workspace.lockin_display, LockinDisplay::Polar);
     }
+    #[test]
+    fn comparison_settings_and_visibility_roundtrip_and_older_versions_default_disabled() {
+        let mut doc = fixture();
+        doc.measurement.comparison.enabled = true;
+        doc.measurement.comparison.reference_channel = 15;
+        doc.measurement.comparison.response_channel = 7;
+        doc.workspace.visible = [false; 4];
+        doc.workspace.comparison_visible = true;
+        assert_eq!(Document::decode(&doc.encode().unwrap()).unwrap(), doc);
+        let mut invalid = doc.clone();
+        invalid.version = 2;
+        assert!(invalid.validate().is_err());
+        invalid = doc.clone();
+        invalid.measurement.comparison.response_channel = 15;
+        assert!(invalid.validate().is_err());
+        for version in [1, 2] {
+            let mut value = serde_json::to_value(fixture()).unwrap();
+            value["version"] = version.into();
+            value["measurement"]
+                .as_object_mut()
+                .unwrap()
+                .remove("comparison");
+            value["workspace"]
+                .as_object_mut()
+                .unwrap()
+                .remove("comparison_visible");
+            let loaded = Document::decode(&serde_json::to_vec(&value).unwrap()).unwrap();
+            assert!(!loaded.measurement.comparison.enabled && !loaded.workspace.comparison_visible);
+        }
+    }
 
     #[test]
     fn roundtrip_retains_f64_calibration_ids_and_all_analysis_choices() {
@@ -749,7 +796,7 @@ mod tests {
                 .contains("version")
         );
         assert!(
-            Document::decode(br#"{"version":3}"#)
+            Document::decode(br#"{"version":4}"#)
                 .unwrap_err()
                 .contains("version")
         );

@@ -13,6 +13,7 @@
 | 段階4bの物理ループ | [UAC-232 Lock-in](UAC232_LOCKIN_2026-10.md) |
 | 段階4cの統合計測 | [Spectrumの窓終端とCPU遅延](SPECTRUM_LATENCY_2026-10.md) |
 | 段階4のmacOS受け入れ | [GUI再利用・起動境界・統合評価](STAGE4_MACOS_2026-10.md) |
-| 段階4.5のGenerator | [内部接続・保存条件](GENERATOR_INTERNAL_2026-10.md)、[CPAL実出力・PCM・通常GUI](GENERATOR_DEVICE_2026-10.md)、[コールバック負荷・通知監査](GENERATOR_CALLBACK_2026-10.md) |
+| 段階4.5のGenerator | [内部接続・保存条件](GENERATOR_INTERNAL_2026-10.md)、[CPAL実出力・PCM・通常GUI](GENERATOR_DEVICE_2026-10.md)、[コールバック負荷・通知監査](GENERATOR_CALLBACK_2026-10.md)、[実USB切断・OFF復元](GENERATOR_DISCONNECT_2026-10.md) |
+| 段階5の同期2ch比較 | [数値・境界・GUI・内部／外部の同期比較](COMPARISON_2026-10.md) |
 
 旧手順の説明はGitへ委ねるが、これらの記録は誤差の根拠・既知の失敗・未確認層を失わないため残す。新しい測定は対象リビジョン、環境、条件、基準・許容差、結果、未確認事項を記録し、大量のログと画像はQA成果物へ分離する。

@@ -199,6 +199,7 @@ fn require(condition: bool, message: &str) -> Result<(), String> {
 
 pub fn config(rate: u32, channels: usize) -> measurement::Config {
     measurement::Config {
+        comparison: crate::comparison::Settings::default(),
         lockin: lockin::Settings {
             enabled: true,
             frequency_hz: 750.0,
@@ -378,6 +379,14 @@ pub(crate) fn document(
         snapshot.lockin.clone(),
         &snapshot.calibrations,
     ));
+    doc.generator_output = snapshot.generator_output.clone();
+    doc.external_output = snapshot.external_output.clone();
+    if snapshot.comparison.settings.enabled {
+        doc.comparison = Some(export::Comparison::capture(
+            (*snapshot.comparison).clone(),
+            &snapshot.calibrations,
+        ));
+    }
     doc.validate()?;
     Ok(doc)
 }

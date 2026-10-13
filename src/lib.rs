@@ -6,6 +6,8 @@ pub mod calibration;
 #[cfg(feature = "qa")]
 pub mod callback_profile;
 pub mod channel;
+pub mod comparison;
+pub mod comparison_worker;
 pub mod cursor;
 #[cfg(any(test, feature = "qa"))]
 pub mod demo;
