@@ -1,5 +1,5 @@
-//! Normal-build internal output. Generation has its own execution thread and
-//! never waits for measurement or UI consumers. This adapter has no DAC path.
+//! Normal-build output. Internal generation and device callbacks never wait
+//! for measurement or UI consumers; device management runs off the UI thread.
 use crate::generator::{self, Engine, Settings, State, Status, control};
 use rtrb::{Consumer, Producer, RingBuffer};
 use std::{
@@ -15,21 +15,71 @@ use std::{
 pub const CAPACITY: usize = 16_384;
 pub const CONDITION_CAPACITY: usize = 128;
 pub const RATES: [u32; 4] = [44_100, 48_000, 96_000, 192_000];
+pub mod device;
+mod runtime;
 
-#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "kind", deny_unknown_fields)]
+pub enum Target {
+    #[default]
+    Internal,
+    Audio {
+        device_id: String,
+        device_name: String,
+        channels: u16,
+        pcm: device::Pcm,
+    },
+}
+impl Target {
+    pub fn channels(&self) -> usize {
+        match self {
+            Self::Internal => 2,
+            Self::Audio { channels, .. } => *channels as usize,
+        }
+    }
+    pub fn label(&self) -> &str {
+        match self {
+            Self::Internal => "Internal loopback",
+            Self::Audio { device_name, .. } => device_name,
+        }
+    }
+    pub fn pcm_label(&self) -> &str {
+        match self {
+            Self::Internal => "f64",
+            Self::Audio { pcm, .. } => pcm.label(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Saved {
+    #[serde(default)]
+    pub target: Target,
     pub nominal_sample_rate: u32,
     pub signals: Settings,
     pub use_as_input: bool,
 }
 impl Saved {
-    pub fn validate(self) -> Result<(), String> {
-        if !RATES.contains(&self.nominal_sample_rate) {
-            return Err("Unsupported internal output rate".into());
+    pub fn validate(&self) -> Result<(), String> {
+        match &self.target {
+            Target::Internal if !RATES.contains(&self.nominal_sample_rate) => {
+                return Err("Unsupported internal output rate".into());
+            }
+            Target::Audio {
+                device_id,
+                device_name,
+                ..
+            } if device_id.trim().is_empty()
+                || device_name.trim().is_empty()
+                || self.use_as_input =>
+            {
+                return Err("Invalid audio output identity or internal input selection".into());
+            }
+            _ => {}
         }
         self.signals
-            .validate(self.nominal_sample_rate, 2)
+            .validate(self.nominal_sample_rate, self.target.channels())
             .map_err(|e| e.to_string())
     }
 }
@@ -186,7 +236,8 @@ enum Command {
     Configure(Settings),
     Start(Settings),
     Align,
-    Rate(u32, Settings),
+    Select(Target, u32, Settings),
+    Refresh,
     Attach(Producer<Frame>, Arc<Metrics>),
     Shutdown,
 }
@@ -196,12 +247,13 @@ struct Request {
     command: Command,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Update {
     pub acknowledged_request: u64,
     pub stop_epoch: u64,
     pub status: Status,
     pub error: Option<generator::Error>,
+    pub target: Target,
 }
 
 /// Non-real-time command adapter. Stop bypasses both queues and fences older
@@ -212,6 +264,12 @@ pub struct Worker {
     stop_epoch: Arc<AtomicU64>,
     updates: Consumer<Update>,
     handle: Option<JoinHandle<()>>,
+    pub events: mpsc::Receiver<Event>,
+}
+
+pub enum Event {
+    Devices(Vec<device::DeviceInfo>),
+    Error(String),
 }
 
 impl Default for Worker {
@@ -222,207 +280,13 @@ impl Default for Worker {
 impl Worker {
     pub fn new() -> Self {
         let (commands, requests) = mpsc::sync_channel::<Request>(16);
-        let (mut feedback, updates) = RingBuffer::new(4);
+        let (feedback, updates) = RingBuffer::new(4);
         let stop_epoch = Arc::new(AtomicU64::new(0));
         let stop = stop_epoch.clone();
+        let (events, receiver) = mpsc::sync_channel(4);
         let handle = thread::Builder::new()
             .name("measurelab-generator".into())
-            .spawn(move || {
-                let (mut controller, mut execution) =
-                    control::new(48_000, 2, Settings::default(), 0).unwrap();
-                let mut capture: Option<(Producer<Frame>, Arc<Metrics>)> = None;
-                let mut seen_stop = 0;
-                let mut clock = Instant::now();
-                let mut fraction = 0.0;
-                let mut error = None;
-                let mut acknowledged_request = 0;
-                let mut pending_request = 0;
-                let mut pending_revision = None;
-                let mut activity = None;
-                loop {
-                    let epoch = stop.load(Ordering::Acquire);
-                    if epoch != seen_stop {
-                        let _ = controller.stop();
-                        seen_stop = epoch;
-                        pending_revision = None;
-                    }
-                    for _ in 0..16 {
-                        let Ok(request) = requests.try_recv() else {
-                            break;
-                        };
-                        if matches!(request.command, Command::Shutdown) {
-                            return;
-                        }
-                        let epoch = stop.load(Ordering::Acquire);
-                        if epoch != seen_stop {
-                            let _ = controller.stop();
-                            seen_stop = epoch;
-                            pending_revision = None;
-                        }
-                        // Attach is input acquisition, independent of output Stop.
-                        if request.stop_epoch != epoch
-                            && !matches!(request.command, Command::Attach(..))
-                        {
-                            acknowledged_request = acknowledged_request.max(request.id);
-                            continue;
-                        }
-                        let is_control = !matches!(request.command, Command::Attach(..));
-                        if is_control {
-                            pending_request = request.id;
-                        }
-                        let result = match request.command {
-                            Command::Configure(settings) => controller
-                                .configure(settings)
-                                .map(|rev| pending_revision = Some(rev)),
-                            Command::Start(settings) => controller
-                                .start(settings)
-                                .map(|rev| pending_revision = Some(rev)),
-                            Command::Align => controller
-                                .align_phases()
-                                .map(|rev| pending_revision = Some(rev)),
-                            Command::Rate(rate, settings) => {
-                                if !matches!(
-                                    execution.status().state,
-                                    State::Stopped | State::Error(_)
-                                ) || pending_revision
-                                    .is_some_and(|rev| rev > execution.status().revision)
-                                    || capture
-                                        .as_ref()
-                                        .is_some_and(|(_, m)| m.active.load(Ordering::Acquire))
-                                {
-                                    Err(generator::Error::AlreadyActive)
-                                } else if !RATES.contains(&rate) {
-                                    Err(generator::Error::SampleRate)
-                                } else {
-                                    let s = execution.status();
-                                    Engine::with_clock(
-                                        rate,
-                                        2,
-                                        settings,
-                                        s.next_sample,
-                                        s.output_generation,
-                                    )
-                                    .map(|engine| {
-                                        (controller, execution) = control::from_engine(engine);
-                                        pending_revision = None;
-                                        clock = Instant::now();
-                                        fraction = 0.0;
-                                    })
-                                }
-                            }
-                            Command::Attach(producer, metrics) => {
-                                if let Some((_, old)) = &capture {
-                                    old.active.store(false, Ordering::Release);
-                                }
-                                let n = execution.status().next_sample;
-                                metrics.nominal_sample_rate.store(
-                                    execution.status().nominal_sample_rate as u64,
-                                    Ordering::Relaxed,
-                                );
-                                metrics.first_sample.store(n, Ordering::Relaxed);
-                                metrics.input_end.store(n, Ordering::Relaxed);
-                                metrics.ready.store(true, Ordering::Release);
-                                if capture.is_none() && execution.status().state == State::Stopped {
-                                    clock = Instant::now();
-                                    fraction = 0.0;
-                                }
-                                capture = Some((producer, metrics));
-                                Ok(())
-                            }
-                            Command::Shutdown => unreachable!(),
-                        };
-                        if is_control {
-                            error = result.err();
-                            if error.is_some() {
-                                pending_revision = None;
-                            }
-                        }
-                    }
-                    if capture
-                        .as_ref()
-                        .is_some_and(|(_, m)| !m.active.load(Ordering::Acquire))
-                    {
-                        capture = None;
-                    }
-                    controller.flush();
-                    execution.begin_block();
-                    let now = Instant::now();
-                    let elapsed = now.duration_since(clock).as_secs_f64();
-                    clock = now;
-                    let s = execution.status();
-                    if capture.is_some() || !matches!(s.state, State::Stopped | State::Error(_)) {
-                        if activity.is_none() {
-                            activity = Some(crate::activity::Activity::new(
-                                "MeasureLab signal generation",
-                            ));
-                        }
-                    } else {
-                        activity.take();
-                    }
-                    if capture.is_some() || !matches!(s.state, State::Stopped | State::Error(_)) {
-                        fraction += elapsed * s.nominal_sample_rate as f64;
-                        // A suspended producer cannot manufacture an arbitrarily
-                        // long catch-up batch. Fail and expose the input boundary.
-                        if fraction > s.nominal_sample_rate as f64 * 0.25 {
-                            execution.fail(generator::Error::ProducerSuspended);
-                            error = Some(generator::Error::ProducerSuspended);
-                            if let Some((_, m)) = &capture {
-                                m.failed.store(true, Ordering::Release);
-                            }
-                            fraction = 0.0;
-                        }
-                        let count = fraction as usize;
-                        fraction -= count as f64;
-                        for _ in 0..count {
-                            let condition = Condition::from_status(execution.status());
-                            match execution.next_frame() {
-                                Ok(frame) => {
-                                    if let Some((producer, m)) = &mut capture {
-                                        let frame = Frame {
-                                            sequence: frame.sequence,
-                                            samples: [frame.samples[0], frame.samples[1]],
-                                            condition,
-                                            #[cfg(feature = "qa")]
-                                            available_at: now,
-                                        };
-                                        if producer.push(frame).is_err() {
-                                            m.dropped.fetch_add(1, Ordering::Relaxed);
-                                        }
-                                        m.input_end.store(frame.sequence + 1, Ordering::Release);
-                                    }
-                                }
-                                Err(e) => {
-                                    error = Some(e);
-                                    if let Some((_, m)) = &capture {
-                                        m.failed.store(true, Ordering::Release);
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    execution.end_block();
-                    if let Some(report) = controller.poll()
-                        && let Some(rejected) = report.rejected
-                        && pending_revision == Some(rejected.revision)
-                    {
-                        error = Some(rejected.error);
-                        pending_revision = None;
-                    }
-                    if pending_revision
-                        .is_none_or(|revision| execution.status().revision >= revision)
-                    {
-                        acknowledged_request = acknowledged_request.max(pending_request);
-                    }
-                    let _ = feedback.push(Update {
-                        acknowledged_request,
-                        stop_epoch: seen_stop,
-                        status: execution.status(),
-                        error,
-                    });
-                    thread::sleep(Duration::from_millis(2));
-                }
-            })
+            .spawn(move || runtime::run(requests, feedback, stop, events))
             .expect("generator worker");
         Self {
             next_request: AtomicU64::new(0),
@@ -430,6 +294,7 @@ impl Worker {
             stop_epoch,
             updates,
             handle: Some(handle),
+            events: receiver,
         }
     }
     fn send(&self, command: Command) -> Result<u64, String> {
@@ -457,7 +322,20 @@ impl Worker {
             return Err(generator::Error::SampleRate.to_string());
         }
         settings.validate(rate, 2).map_err(|e| e.to_string())?;
-        self.send(Command::Rate(rate, settings))
+        self.select(Target::Internal, rate, settings)
+    }
+    pub fn select(&self, target: Target, rate: u32, settings: Settings) -> Result<u64, String> {
+        Saved {
+            target: target.clone(),
+            nominal_sample_rate: rate,
+            signals: settings,
+            use_as_input: false,
+        }
+        .validate()?;
+        self.send(Command::Select(target, rate, settings))
+    }
+    pub fn refresh(&self) -> Result<u64, String> {
+        self.send(Command::Refresh)
     }
     pub fn stop(&self) -> u64 {
         self.stop_epoch.fetch_add(1, Ordering::Release) + 1
@@ -502,11 +380,69 @@ mod tests {
         }
         s
     }
+    #[test]
+    fn saved_outputs_preserve_exact_device_config_and_old_internal_defaults() {
+        let old = serde_json::json!({"nominal_sample_rate":48000, "signals":settings(), "use_as_input":true});
+        let saved: Saved = serde_json::from_value(old).unwrap();
+        assert_eq!(saved.target, Target::Internal);
+        saved.validate().unwrap();
+        let audio = Saved {
+            target: Target::Audio {
+                device_id: "backend:stable-output".into(),
+                device_name: "Output".into(),
+                channels: 16,
+                pcm: device::Pcm::F32,
+            },
+            nominal_sample_rate: 96000,
+            signals: settings(),
+            use_as_input: false,
+        };
+        let decoded: Saved = serde_json::from_slice(&serde_json::to_vec(&audio).unwrap()).unwrap();
+        assert_eq!(decoded, audio);
+        decoded.validate().unwrap();
+        assert!(
+            Saved {
+                use_as_input: true,
+                ..audio.clone()
+            }
+            .validate()
+            .is_err()
+        );
+        assert!(
+            Saved {
+                target: Target::Internal,
+                nominal_sample_rate: 48001,
+                ..audio
+            }
+            .validate()
+            .is_err()
+        );
+    }
+    #[test]
+    fn shared_stop_fences_opening_and_pending_start_even_after_a_new_edit() {
+        let stop = Arc::new(AtomicU64::new(0));
+        let engine = Engine::new(48000, 2, settings(), 0).unwrap();
+        let (mut controller, mut execution) = control::from_engine_with_stop(engine, stop.clone());
+        for _ in 0..8 {
+            controller.start(settings()).unwrap();
+        }
+        stop.store(1, Ordering::Release);
+        // An edit after Stop must not inherit an older unsent Start.
+        controller.configure(settings()).unwrap();
+        execution.begin_block();
+        controller.flush();
+        execution.begin_block();
+        assert_eq!(execution.status().state, State::Stopped);
+        assert_eq!(execution.status().output_generation, 0);
+        controller.submit(settings(), true, false, 0).unwrap();
+        execution.begin_block();
+        assert_eq!(execution.status().state, State::Stopped);
+    }
     fn wait(worker: &mut Worker, predicate: impl Fn(Update) -> bool) -> Update {
         let deadline = Instant::now() + Duration::from_secs(3);
         loop {
             if let Some(update) = worker.poll()
-                && predicate(update)
+                && predicate(update.clone())
             {
                 return update;
             }

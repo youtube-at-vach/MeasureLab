@@ -7,6 +7,8 @@ pub(super) struct GeneratorUi {
     pub worker: output::Worker,
     pub settings: generator::Settings,
     pub rate: u32,
+    pub target: output::Target,
+    pub devices: Vec<output::device::DeviceInfo>,
     pub status: generator::Status,
     pub visible: bool,
     pub pending: bool,
@@ -19,14 +21,28 @@ pub(super) struct GeneratorUi {
     edited: [[bool; 3]; 2],
     selected: usize,
     step: f64,
+    #[cfg(feature = "qa")]
+    edit_latencies: Vec<f64>,
+    #[cfg(feature = "qa")]
+    edit_pending: Option<Instant>,
+    #[cfg(feature = "qa")]
+    profile_input_started: bool,
+    #[cfg(feature = "qa")]
+    profile_output_started: bool,
 }
 impl Default for GeneratorUi {
     fn default() -> Self {
         let settings = generator::Settings::default();
         Self {
-            worker: output::Worker::new(),
+            worker: {
+                let worker = output::Worker::new();
+                let _ = worker.refresh();
+                worker
+            },
             settings,
             rate: 48_000,
+            target: output::Target::Internal,
+            devices: Vec::new(),
             status: generator::Engine::new(48_000, 2, settings, 0)
                 .unwrap()
                 .status(),
@@ -41,6 +57,14 @@ impl Default for GeneratorUi {
             edited: [[false; 3]; 2],
             selected: 0,
             step: 1.0,
+            #[cfg(feature = "qa")]
+            edit_latencies: Vec::with_capacity(100),
+            #[cfg(feature = "qa")]
+            edit_pending: None,
+            #[cfg(feature = "qa")]
+            profile_input_started: false,
+            #[cfg(feature = "qa")]
+            profile_output_started: false,
         }
     }
 }
@@ -60,6 +84,7 @@ impl GeneratorUi {
             }
             if let Some(error) = update.error
                 && acknowledged
+                && (self.pending || self.starting || self.error.is_none())
             {
                 self.error = Some(error.to_string());
                 self.pending = false;
@@ -68,6 +93,11 @@ impl GeneratorUi {
             if acknowledged {
                 self.pending = false;
                 self.starting = false;
+                self.target = update.target;
+                self.rate = update.status.nominal_sample_rate;
+                if update.error.is_some() {
+                    self.settings = update.status.settings;
+                }
             }
             if update.stop_epoch >= self.stop_epoch
                 && matches!(
@@ -78,10 +108,30 @@ impl GeneratorUi {
                 self.stopping = false;
             }
         }
+        while let Ok(event) = self.worker.events.try_recv() {
+            match event {
+                output::Event::Devices(devices) => self.devices = devices,
+                output::Event::Error(error) => self.error = Some(error),
+            }
+        }
+    }
+    fn select(
+        &mut self,
+        target: output::Target,
+        rate: u32,
+        settings: generator::Settings,
+    ) -> Result<(), String> {
+        self.requested_id = self.worker.select(target.clone(), rate, settings)?;
+        self.target = target;
+        self.rate = rate;
+        self.settings = settings;
+        self.pending = true;
+        self.error = None;
+        Ok(())
     }
     fn configure(&mut self, settings: generator::Settings) {
         match settings
-            .validate(self.rate, 2)
+            .validate(self.rate, self.target.channels())
             .map_err(|e| e.to_string())
             .and_then(|()| self.worker.configure(settings))
         {
@@ -97,7 +147,7 @@ impl GeneratorUi {
     pub fn start(&mut self) {
         match self
             .settings
-            .validate(self.rate, 2)
+            .validate(self.rate, self.target.channels())
             .map_err(|e| e.to_string())
             .and_then(|()| self.worker.start(self.settings))
         {
@@ -132,18 +182,234 @@ impl GeneratorUi {
     }
     pub fn restore(&mut self, saved: output::Saved) -> Result<(), String> {
         saved.validate()?;
-        self.requested_id = self
-            .worker
-            .set_rate(saved.nominal_sample_rate, saved.signals)?;
-        self.rate = saved.nominal_sample_rate;
-        self.settings = saved.signals;
-        self.pending = true;
-        self.error = None;
+        // Resolve the exact saved identity/configuration before mutating UI.
+        if let output::Target::Audio {
+            device_id,
+            channels,
+            pcm,
+            ..
+        } = &saved.target
+        {
+            let config = output::device::Config {
+                rate: saved.nominal_sample_rate,
+                channels: *channels,
+                pcm: *pcm,
+            };
+            output::device::resolve(&self.devices, device_id, config)?;
+        }
+        self.select(saved.target, saved.nominal_sample_rate, saved.signals)?;
         Ok(())
     }
 }
 
 impl ScopeApp {
+    #[cfg(feature = "qa")]
+    pub(super) fn start_generator_profile_input(&mut self) {
+        if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_DEVICE").is_none()
+            || self.generator.profile_input_started
+            || self.created.elapsed() < Duration::from_secs(2)
+            || self.devices.is_empty()
+            || self.generator.starting
+            || self.generator.pending
+        {
+            return;
+        }
+        // Exercise Start after the first GUI frames, as a user would. Any
+        // notification after opening input remains a failure; none is ignored.
+        assert!(
+            self.generator.error.is_none(),
+            "Generator output failed: {:?}",
+            self.generator.error
+        );
+        self.generator.profile_input_started = true;
+        self.start();
+    }
+
+    #[cfg(feature = "qa")]
+    pub(super) fn check_generator_edits(&mut self) {
+        if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_DEVICE").is_none() {
+            return;
+        }
+        assert!(
+            self.error.is_none(),
+            "Generator profile input failed: {:?}",
+            self.error
+        );
+        if !self.running() {
+            return;
+        }
+        if !self.generator.profile_output_started {
+            if self
+                .core
+                .as_ref()
+                .unwrap()
+                .metrics
+                .input_frames
+                .load(Ordering::Relaxed)
+                >= self.sample_rate as u64 / 2
+            {
+                self.generator.start();
+                self.generator.profile_output_started = true;
+            }
+            return;
+        }
+        let g = &mut self.generator;
+        assert!(g.error.is_none(), "Generator output failed: {:?}", g.error);
+        if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_EDITS").is_none()
+            || g.starting
+            || g.pending
+            || g.status.state != generator::State::Running
+        {
+            return;
+        }
+        if let Some(sent) = g.edit_pending
+            && !g.pending
+        {
+            g.edit_latencies.push(sent.elapsed().as_secs_f64() * 1000.0);
+            g.edit_pending = None;
+        }
+        let count = g.edit_latencies.len();
+        if count < 100
+            && g.edit_pending.is_none()
+            && self.created.elapsed().as_secs_f64() >= 2.0 * (count + 1) as f64
+        {
+            let mut settings = g.settings;
+            settings.signals[1].phase_degrees = if count == 99 {
+                30.0
+            } else if count.is_multiple_of(2) {
+                20.0
+            } else {
+                40.0
+            };
+            g.configure(settings);
+            g.edit_pending = Some(Instant::now());
+        }
+    }
+
+    #[cfg(feature = "qa")]
+    pub(super) fn finish_generator_profile(
+        &mut self,
+        snapshot: &measurement::Snapshot,
+    ) -> Result<(), String> {
+        crate::qa::physical_lockin::validate_generator(
+            snapshot,
+            std::path::Path::new("dist/generator-qa/profile-oracle.json"),
+        )?;
+        if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_EDITS").is_some() {
+            if self.generator.edit_latencies.len() != 100 {
+                return Err("Generator edit trial did not complete 100 acknowledgements".into());
+            }
+            let mut values = self.generator.edit_latencies.clone();
+            values.sort_by(f64::total_cmp);
+            println!(
+                "Generator edits: {} acknowledgements, p95 {:.3} ms, maximum {:.3} ms",
+                values.len(),
+                values[94],
+                values[99]
+            );
+            std::fs::write(
+                "dist/generator-qa/edit-latencies.json",
+                serde_json::to_vec_pretty(&values).map_err(|e| e.to_string())?,
+            )
+            .map_err(|e| e.to_string())?;
+            if values[94] >= 100.0 {
+                return Err("Generator edit acknowledgement exceeded p95 100 ms".into());
+            }
+        }
+        self.generator.stop();
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while !self.generator.stopped() {
+            self.generator.poll();
+            if let Some(error) = &self.generator.error {
+                return Err(error.clone());
+            }
+            if Instant::now() > deadline {
+                return Err("Generator finite Stop timed out".into());
+            }
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        println!(
+            "Generator output finite Stop: generation {}, stop sample {:?}, terminal zero endpoint {:?}, next output frame {}",
+            self.generator.status.output_generation,
+            self.generator.status.stop_sample,
+            self.generator.status.stopped_at,
+            self.generator.status.next_sample
+        );
+        Ok(())
+    }
+
+    #[cfg(feature = "qa")]
+    pub(super) fn setup_generator_device(
+        &mut self,
+        name: &str,
+        rate: u32,
+        start: bool,
+    ) -> Result<(), String> {
+        if !["ZOOM UAC-232", "BlackHole 2ch", "BlackHole 16ch"].contains(&name) {
+            return Err(
+                "Generator output QA requires explicit UAC-232 or BlackHole selection".into(),
+            );
+        }
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            self.generator.poll();
+            if !self.generator.devices.is_empty() {
+                break;
+            }
+            if Instant::now() > deadline {
+                return Err("Output discovery timed out".into());
+            }
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        let device = self
+            .generator
+            .devices
+            .iter()
+            .find(|d| d.name == name)
+            .ok_or("QA output device unavailable")?;
+        let config = device
+            .configs
+            .iter()
+            .find(|c| c.rate == rate && c.pcm == output::device::Pcm::F32)
+            .ok_or("QA output config unavailable")?;
+        let target = output::Target::Audio {
+            device_id: device.id.clone(),
+            device_name: device.name.clone(),
+            channels: config.channels,
+            pcm: config.pcm,
+        };
+        let mut settings = generator::Settings::default();
+        for (i, s) in settings.signals.iter_mut().enumerate() {
+            s.enabled = true;
+            s.frequency_hz = 750.0;
+            s.amplitude_dbfs = 20.0 * (0.1 / (i + 1) as f64).log10();
+        }
+        settings.signals[1].phase_degrees = 30.0;
+        let response = config.channels as usize - 1;
+        settings.signals[1].output_channel = Some(response);
+        self.scope_channels = Pair([0, response]);
+        self.xy_settings.channels = Pair([0, response]);
+        self.spectrum_channel = response;
+        self.spectrogram_channel = response;
+        self.lockin_settings.response_channel = response;
+        self.generator.select(target, rate, settings)?;
+        while self.generator.pending {
+            self.generator.poll();
+            if Instant::now() > deadline {
+                return Err("Output selection timed out".into());
+            }
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        if let Some(error) = &self.generator.error {
+            return Err(error.clone());
+        }
+        self.generator.visible = true;
+        if start {
+            self.generator.start();
+        }
+        Ok(())
+    }
+
     #[cfg(feature = "qa")]
     pub(super) fn check_generator_ui(&mut self, mode: &str) -> Result<(), String> {
         self.poll_audio();
@@ -183,7 +449,27 @@ impl ScopeApp {
             s.amplitude_dbfs = 20.0 * (0.125 / (i + 1) as f64).log10();
         }
         settings.signals[1].phase_degrees = 30.0;
-        self.generator.configure(settings);
+        let audio_device = std::env::var("MEASURELAB_UI_SMOKE_GENERATOR_DEVICE").ok();
+        if let Some(name) = &audio_device {
+            self.setup_generator_device(name, 48000, true)?;
+            self.source = Source::Live;
+            let deadline = Instant::now() + Duration::from_secs(5);
+            while self.devices.is_empty() {
+                self.poll_audio();
+                if Instant::now() > deadline {
+                    return Err("Input discovery timed out".into());
+                }
+                std::thread::sleep(Duration::from_millis(2));
+            }
+            self.selected = self
+                .devices
+                .iter()
+                .position(|d| &d.name == name)
+                .ok_or("QA input device unavailable")?;
+            self.requested_sample_rate = Some(48000);
+        } else {
+            self.generator.configure(settings);
+        }
         let deadline = Instant::now() + Duration::from_secs(5);
         while self.generator.pending {
             self.generator.poll();
@@ -192,8 +478,10 @@ impl ScopeApp {
             }
             std::thread::sleep(Duration::from_millis(2));
         }
-        assert!(self.generator.stopped());
-        self.generator.start();
+        if audio_device.is_none() {
+            assert!(self.generator.stopped());
+            self.generator.start();
+        }
         self.start();
         let deadline = Instant::now() + Duration::from_secs(5);
         while self
@@ -206,11 +494,15 @@ impl ScopeApp {
             < 48_000
         {
             self.generator.poll();
+            self.poll_audio();
             self.poll_measurement();
             if Instant::now() > deadline {
                 return Err("Generator measurement timed out".into());
             }
             if let Some(e) = &self.error {
+                return Err(e.clone());
+            }
+            if let Some(e) = &self.generator.error {
                 return Err(e.clone());
             }
             std::thread::sleep(Duration::from_millis(5));
@@ -236,7 +528,33 @@ impl ScopeApp {
         );
         self.stop();
         let mut snapshot = self.pending_stop.take().unwrap().wait();
+        if audio_device.is_some() {
+            crate::qa::physical_lockin::validate_generator(
+                &snapshot,
+                std::path::Path::new("dist/generator-qa/device-oracle.json"),
+            )?;
+            if audio_device
+                .as_ref()
+                .is_some_and(|name| name.starts_with("BlackHole"))
+            {
+                let result = &snapshot.lockin;
+                assert!((result.amplitude_peak.unwrap() - 0.05).abs() < 3e-8);
+                assert!((result.phase_degrees.unwrap() - 30.0).abs() < 1e-6);
+                assert!((result.reference_frequency_hz.unwrap() - 750.0).abs() < 1e-7);
+                assert!((snapshot.measurements[1].rms - 0.05 / 2f64.sqrt()).abs() < 3e-8);
+                assert!((snapshot.spectrum.power()[128].sqrt() - 0.05).abs() < 3e-8);
+                let last = snapshot.history.channels() - 1;
+                for n in result.latest_window.clone() {
+                    for &sample in &snapshot.history.get(n).unwrap()[1..last] {
+                        assert_eq!(sample, 0.0);
+                    }
+                }
+            }
+        }
         self.accept_snapshot(&mut snapshot);
+        if audio_device.is_some() {
+            self.qa_wait_audio_idle()?;
+        }
         self.generator.poll();
         assert_eq!(
             self.generator.status.state,
@@ -246,19 +564,33 @@ impl ScopeApp {
         document.validate()?;
         assert_eq!(document.loss.capture_dropped_samples, 0);
         assert!(!document.loss.input_failed);
-        assert!((self.lockin_result.amplitude_peak.unwrap() - 0.0625).abs() < 1e-8);
-        assert!((self.lockin_result.phase_degrees.unwrap() - 30.0).abs() < 1e-6);
-        assert!((self.lockin_result.reference_frequency_hz.unwrap() - 750.0).abs() < 1e-7);
-        assert!((self.analyzer.power()[128].sqrt() - 0.0625).abs() < 1e-8);
-        assert!((self.measurements[1].rms - 0.0625 / 2.0_f64.sqrt()).abs() < 1e-8);
-        assert!(
-            document
-                .generator_output
-                .as_ref()
-                .unwrap()
-                .stationary(self.lockin_result.sample_range.clone())
-                .is_some()
-        );
+        if audio_device.is_none() {
+            assert!((self.lockin_result.amplitude_peak.unwrap() - 0.0625).abs() < 1e-8);
+            assert!((self.lockin_result.phase_degrees.unwrap() - 30.0).abs() < 1e-6);
+            assert!((self.lockin_result.reference_frequency_hz.unwrap() - 750.0).abs() < 1e-7);
+            assert!((self.analyzer.power()[128].sqrt() - 0.0625).abs() < 1e-8);
+            assert!((self.measurements[1].rms - 0.0625 / 2.0_f64.sqrt()).abs() < 1e-8);
+            assert!(
+                document
+                    .generator_output
+                    .as_ref()
+                    .unwrap()
+                    .stationary(self.lockin_result.sample_range.clone())
+                    .is_some()
+            );
+        } else {
+            assert!(
+                (self.generator.status.settings.signals[0].amplitude_peak() - 0.1).abs() < 1e-12
+            );
+            assert_eq!(self.generator.status.nominal_sample_rate, 48000);
+            let state = self.generator.status;
+            std::fs::write("dist/generator-qa/device-output.json", serde_json::to_vec_pretty(&serde_json::json!({
+                "target":self.generator.target, "applied_settings":state.settings,
+                "nominal_output_rate":state.nominal_sample_rate, "generation":state.output_generation,
+                "revision":state.revision, "applied_sample":state.applied_sample, "output_endpoint":state.next_sample,
+                "clock_relation":"Input and output sample positions are independent; no DAC/ADC latency calibration"
+            })).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+        }
         std::fs::create_dir_all("dist/generator-qa").map_err(|e| e.to_string())?;
         let saved = self.capture_settings()?;
         settings::save(
@@ -276,6 +608,9 @@ impl ScopeApp {
         let loaded = crate::results::load(std::path::Path::new("dist/generator-qa/results.json"))?;
         assert_eq!(loaded, document);
         self.generator.stop();
+        if audio_device.is_some() {
+            self.qa_wait_audio_idle()?;
+        }
         let deadline = Instant::now() + Duration::from_secs(5);
         while !self.generator.stopped() {
             self.generator.poll();
@@ -303,7 +638,8 @@ impl ScopeApp {
         // Leave a live Generator alongside held measurements for the screenshot.
         self.generator.start();
         println!(
-            "Generator UI OK: actual 2ch f64 frames, Scope/Spectrum/Lock-in, 1 s UI stall, independent input/output Stop, JSON/CSV roundtrip, OFF restore"
+            "Generator UI OK: {:?}, Scope/Spectrum/Lock-in, 1 s UI stall, independent input/output Stop, JSON/CSV roundtrip, OFF restore",
+            self.generator.target
         );
         Ok(())
     }
@@ -311,7 +647,7 @@ impl ScopeApp {
         let g = &mut self.generator;
         ui.horizontal_wrapped(|ui| {
             ui.label(
-                RichText::new(format!("OUTPUT · {} · Internal loopback", g.label()))
+                RichText::new(format!("OUTPUT · {} · {}", g.label(), g.target.label()))
                     .monospace()
                     .color(if g.stopped() { MUTED } else { GREEN }),
             );
@@ -338,29 +674,63 @@ impl ScopeApp {
             .show(ui, |ui| {
                 ui.horizontal_wrapped(|ui| {
                     ui.label(RichText::new("Generator").strong().color(GREEN));
-                    ui.label("Internal loopback · 2ch · f64 · nominal Fs");
                     let g = &mut self.generator;
-                    let mut rate = g.rate;
-                    ui.add_enabled_ui(g.stopped() && !input_running && !restoring, |ui| {
-                        egui::ComboBox::from_id_salt("generator_rate")
-                            .selected_text(format!("{} Hz", rate))
-                            .show_ui(ui, |ui| {
-                                for value in output::RATES {
-                                    ui.selectable_value(&mut rate, value, format!("{value} Hz"));
+                    ui.label(format!("{}ch · {} · nominal Fs", g.target.channels(), g.target.pcm_label()));
+                });
+                let g = &mut self.generator;
+                ui.add_enabled_ui(g.stopped() && !input_running && !restoring, |ui| {
+                    ui.horizontal_wrapped(|ui| {
+                        let mut selected = g.target.clone();
+                        let mut rate = g.rate;
+                        egui::ComboBox::from_id_salt("generator_destination")
+                            .width(180.0).truncate()
+                            .selected_text(g.target.label()).show_ui(ui, |ui| {
+                                ui.selectable_value(&mut selected, output::Target::Internal, "Internal loopback");
+                                for device in &g.devices {
+                                    let config = device.preferred;
+                                    let candidate = output::Target::Audio { device_id: device.id.clone(),
+                                        device_name: device.name.clone(), channels: config.channels, pcm: config.pcm };
+                                    let active = matches!(&g.target, output::Target::Audio { device_id, .. } if device_id == &device.id);
+                                    if ui.selectable_label(active, &device.name).clicked() && !active {
+                                        selected = candidate; rate = config.rate;
+                                    }
                                 }
                             });
-                    });
-                    if rate != g.rate {
-                        match g.worker.set_rate(rate, g.settings) {
-                            Ok(id) => {
-                                g.requested_id = id;
-                                g.rate = rate;
-                                g.pending = true;
-                                g.error = None;
+                        if ui.small_button("Refresh outputs").clicked()
+                            && let Err(e) = g.worker.refresh() { g.error = Some(e); }
+                        if selected != g.target {
+                            if selected == output::Target::Internal { rate = 48000; }
+                            let mut settings = g.settings;
+                            for signal in &mut settings.signals {
+                                if signal.output_channel.is_some_and(|ch| ch >= selected.channels()) {
+                                    signal.output_channel = None; signal.enabled = false;
+                                }
                             }
-                            Err(e) => g.error = Some(e),
+                            if let Err(e) = g.select(selected, rate, settings) { g.error = Some(e); }
                         }
-                    }
+                        let mut config = output::device::Config { rate: g.rate,
+                            channels: g.target.channels() as u16,
+                            pcm: match &g.target { output::Target::Audio { pcm, .. } => *pcm, _ => output::device::Pcm::F64 } };
+                        let before = config;
+                        egui::ComboBox::from_id_salt("generator_rate")
+                            .width(180.0).truncate()
+                            .selected_text(format!("{} Hz · {}ch · {}", config.rate, config.channels, config.pcm.label()))
+                            .show_ui(ui, |ui| {
+                                let configs: Vec<_> = match &g.target {
+                                    output::Target::Internal => output::RATES.into_iter().map(|rate| output::device::Config { rate, ..config }).collect(),
+                                    output::Target::Audio { device_id, .. } => g.devices.iter().find(|d| &d.id == device_id).map(|d| d.configs.clone()).unwrap_or_default(),
+                                };
+                                for value in configs { ui.selectable_value(&mut config, value,
+                                    format!("{} Hz · {}ch · {}", value.rate, value.channels, value.pcm.label())); }
+                            });
+                        if config != before {
+                            let mut target = g.target.clone();
+                            if let output::Target::Audio { channels, pcm, .. } = &mut target { *channels = config.channels; *pcm = config.pcm; }
+                            if let Err(e) = g.select(target, config.rate, g.settings) { g.error = Some(e); }
+                        }
+                    });
+                });
+                ui.horizontal_wrapped(|ui| {
                     ui.add_enabled_ui(!g.stopping && !restoring, |ui| {
                         if ui
                             .button(if g.stopped() {
@@ -396,7 +766,7 @@ impl ScopeApp {
                 ui.horizontal_wrapped(|ui| {
                     if ui
                         .add_enabled(
-                            !input_running && !self.busy && !restoring,
+                            !input_running && !self.busy && !restoring && self.generator.target == output::Target::Internal,
                             egui::Button::new("Observe Generator")
                                 .selected(self.source == Source::Generator),
                         )
@@ -441,7 +811,7 @@ impl ScopeApp {
                     && !input_running
                     && ui.button("Reset output (stays OFF)").clicked()
                 {
-                    match g.worker.set_rate(g.rate, g.settings) {
+                    match g.worker.select(g.target.clone(), g.rate, g.settings) {
                         Ok(id) => {
                             g.pending = true;
                             g.requested_id = id;
@@ -512,6 +882,10 @@ impl ScopeApp {
                     g.configure(settings);
                 }
             });
+        if self.source == Source::Generator && self.generator.target != output::Target::Internal {
+            self.source = Source::Live;
+            self.switch_source();
+        }
     }
 }
 
@@ -545,7 +919,7 @@ fn generator_card(
                         )
                         .show_ui(ui, |ui| {
                             ui.selectable_value(&mut s.output_channel, None, "Unassigned");
-                            for c in 0..2 {
+                            for c in 0..g.target.channels() {
                                 ui.selectable_value(
                                     &mut s.output_channel,
                                     Some(c),

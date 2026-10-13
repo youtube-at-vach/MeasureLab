@@ -72,13 +72,21 @@ pub fn new(
 
 /// Also accepts an engine constructed with a continued output generation.
 pub fn from_engine(engine: Engine) -> (Controller, Execution) {
+    from_engine_with_stop(engine, Arc::new(AtomicU64::new(0)))
+}
+
+/// The output manager and callback share the same Stop fence, including while
+/// a device is being opened. No queued Start can cross an intervening Stop.
+pub(crate) fn from_engine_with_stop(
+    engine: Engine,
+    stop_epoch: Arc<AtomicU64>,
+) -> (Controller, Execution) {
     let status = engine.status();
     let (requests, receiver) = RingBuffer::new(CAPACITY);
     let (reports, feedback) = RingBuffer::new(CAPACITY);
-    let stop_epoch = Arc::new(AtomicU64::new(0));
     let report = Report {
         status: engine.status(),
-        stop_epoch: 0,
+        stop_epoch: stop_epoch.load(Ordering::Acquire),
         rejected: None,
         superseded_requests: 0,
         lost_reports: 0,
@@ -119,6 +127,21 @@ impl Controller {
     }
 
     fn request(&mut self, settings: Settings, start: bool, align: bool) -> Result<u64, Error> {
+        self.submit(
+            settings,
+            start,
+            align,
+            self.stop_epoch.load(Ordering::Acquire),
+        )
+    }
+
+    pub(crate) fn submit(
+        &mut self,
+        settings: Settings,
+        start: bool,
+        align: bool,
+        stop_epoch: u64,
+    ) -> Result<u64, Error> {
         settings.validate(self.rate, self.channels)?;
         let revision = self
             .revision
@@ -129,12 +152,14 @@ impl Controller {
             settings,
             start,
             align,
-            stop_epoch: self.stop_epoch.load(Ordering::Acquire),
+            stop_epoch,
         };
         if let Some(old) = self.pending.take() {
             // Unsent Start/Align survives a newer edit of its settings.
-            request.start |= old.start;
-            request.align |= old.align;
+            if old.stop_epoch == stop_epoch {
+                request.start |= old.start;
+                request.align |= old.align;
+            }
             self.coalesced = self.coalesced.saturating_add(1);
         }
         self.settings = settings;
@@ -161,13 +186,18 @@ impl Controller {
 
     /// An independent priority fence also cancels all older queued Starts.
     pub fn stop(&mut self) -> Result<u64, Error> {
-        let epoch = self
-            .stop_epoch
-            .load(Ordering::Relaxed)
-            .checked_add(1)
-            .ok_or(Error::CounterExhausted)?;
+        let epoch = loop {
+            let current = self.stop_epoch.load(Ordering::Acquire);
+            let next = current.checked_add(1).ok_or(Error::CounterExhausted)?;
+            if self
+                .stop_epoch
+                .compare_exchange(current, next, Ordering::AcqRel, Ordering::Acquire)
+                .is_ok()
+            {
+                break next;
+            }
+        };
         self.pending = None;
-        self.stop_epoch.store(epoch, Ordering::Release);
         Ok(epoch)
     }
 
