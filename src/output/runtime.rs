@@ -58,6 +58,8 @@ pub(super) fn run(
     let mut status = execution.as_ref().unwrap().status();
     let mut target = Target::Internal;
     let mut stream: Option<(cpal::Stream, Arc<device::Metrics>)> = None;
+    #[cfg(feature = "qa")]
+    let mut device_metrics = None;
     let mut capture: Option<(Producer<Frame>, Arc<Metrics>)> = None;
     let mut clock = Instant::now();
     let mut fraction = 0.0;
@@ -116,6 +118,10 @@ pub(super) fn run(
                         rebuild(status, rate, new_target.channels(), settings, &stop).map(
                             |(c, e)| {
                                 stream.take();
+                                #[cfg(feature = "qa")]
+                                {
+                                    device_metrics = None;
+                                }
                                 controller = c;
                                 execution = Some(e);
                                 status = execution.as_ref().unwrap().status();
@@ -157,6 +163,10 @@ pub(super) fn run(
                                     match device::open(device_id, config, execution.take().unwrap())
                                     {
                                         Ok(opened) => {
+                                            #[cfg(feature = "qa")]
+                                            {
+                                                device_metrics = Some(opened.1.clone());
+                                            }
                                             stream = Some(opened);
                                             callbacks = 0;
                                             last_callback = Instant::now();
@@ -349,6 +359,8 @@ pub(super) fn run(
             status,
             error,
             target: target.clone(),
+            #[cfg(feature = "qa")]
+            device_metrics: device_metrics.clone(),
         });
         if shutdown
             && (matches!(status.state, State::Stopped | State::Error(_))

@@ -29,6 +29,8 @@ pub(super) struct GeneratorUi {
     profile_input_started: bool,
     #[cfg(feature = "qa")]
     profile_output_started: bool,
+    #[cfg(feature = "qa")]
+    device_metrics: Option<Arc<output::device::Metrics>>,
 }
 impl Default for GeneratorUi {
     fn default() -> Self {
@@ -65,10 +67,28 @@ impl Default for GeneratorUi {
             profile_input_started: false,
             #[cfg(feature = "qa")]
             profile_output_started: false,
+            #[cfg(feature = "qa")]
+            device_metrics: None,
         }
     }
 }
 impl GeneratorUi {
+    #[cfg(feature = "qa")]
+    pub(super) fn profile_stall_frames(&self) -> Option<u64> {
+        if self.starting
+            || self.pending
+            || self.error.is_some()
+            || self.status.state != generator::State::Running
+            || self.status.transitioning()
+        {
+            return None;
+        }
+        self.device_metrics
+            .as_ref()
+            .map(|m| m.profile.frames())
+            .filter(|&frames| frames >= self.rate as u64)
+    }
+
     pub fn stopped(&self) -> bool {
         self.status.state == generator::State::Stopped
             && !self.starting
@@ -77,6 +97,10 @@ impl GeneratorUi {
     }
     pub fn poll(&mut self) {
         if let Some(update) = self.worker.poll() {
+            #[cfg(feature = "qa")]
+            {
+                self.device_metrics = update.device_metrics;
+            }
             self.status = update.status;
             let acknowledged = update.acknowledged_request >= self.requested_id;
             if acknowledged && update.error.is_none() && (self.pending || self.starting) {
@@ -230,6 +254,13 @@ impl ScopeApp {
         if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_DEVICE").is_none() {
             return;
         }
+        if self.error.is_some() || self.generator.error.is_some() {
+            // Preserve diagnostics before the existing strict failure. Reading
+            // and serializing telemetry happens on the QA/UI side only.
+            if let Err(error) = self.generator_callback_report(false, false) {
+                eprintln!("Generator callback report failed: {error}");
+            }
+        }
         assert!(
             self.error.is_none(),
             "Generator profile input failed: {:?}",
@@ -291,6 +322,107 @@ impl ScopeApp {
         &mut self,
         snapshot: &measurement::Snapshot,
     ) -> Result<(), String> {
+        let result = self.audit_generator_profile(snapshot);
+        // Join releases the stream and its listeners before the notification
+        // audit, retaining the counters independently of device ownership.
+        self.generator.worker.finish_device_profile();
+        self.generator.poll();
+        let report = self.generator_callback_report(true, result.is_ok());
+        result.and(report)
+    }
+
+    #[cfg(feature = "qa")]
+    fn generator_callback_report(
+        &self,
+        streams_released: bool,
+        measurement_audit_passed: bool,
+    ) -> Result<(), String> {
+        let input = self
+            .input_callback_metrics
+            .as_ref()
+            .map(|m| m.profile.report());
+        let output = self
+            .generator
+            .device_metrics
+            .as_ref()
+            .map(|m| m.profile.report());
+        for (label, report) in [("input", &input), ("output", &output)] {
+            if let Some(r) = report {
+                println!(
+                    "Generator {label} callback: {} calls, {} frames, block {:?}..{} frames, elapsed p95 upper {:?} ms, max {:.3} ms, budget p95 upper {:?}%, max {:?}%, over budget {}, notifications {}, xruns {}",
+                    r.callbacks,
+                    r.frames,
+                    r.min_nonempty_frames,
+                    r.max_frames,
+                    r.processing_p95_upper_ns.map(|n| n as f64 / 1e6),
+                    r.processing_max_ns as f64 / 1e6,
+                    r.budget_fraction_p95_upper.map(|n| n * 100.0),
+                    r.budget_fraction_max.map(|n| n * 100.0),
+                    r.over_budget_callbacks,
+                    r.notifications,
+                    r.xruns,
+                );
+            }
+        }
+        let path = std::env::var_os("MEASURELAB_PROFILE_GENERATOR_CALLBACK_REPORT")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| "dist/generator-qa/callback-profile.json".into());
+        if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        let document = serde_json::json!({
+            "streams_released": streams_released,
+            "measurement_audit_passed": measurement_audit_passed,
+            "ui_stall_checked": self.ui_stall_checked,
+            "timing_basis": "application callback host elapsed time, including preemption; excludes backend wrapper, device latency and scanout",
+            "time_bucket_ns": 10000,
+            "budget_bucket_fraction": 0.001,
+            "nominal_sample_rate_hz": self.sample_rate,
+            "input_channels": self.channels,
+            "output_target": self.generator.target,
+            "output_state": format!("{:?}", self.generator.status.state),
+            "output_settings": self.generator.status.settings,
+            "output_generation": self.generator.status.output_generation,
+            "output_revision": self.generator.status.revision,
+            "output_stop_sample": self.generator.status.stop_sample,
+            "output_terminal_zero_endpoint": self.generator.status.stopped_at,
+            "input": input,
+            "output": output,
+        });
+        std::fs::write(
+            &path,
+            serde_json::to_vec_pretty(&document).map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())?;
+        println!(
+            "Generator callback report: {} (streams released: {streams_released})",
+            path.display()
+        );
+        if streams_released {
+            let input = input.ok_or("Missing input callback profile")?;
+            let output = output.ok_or("Missing output callback profile")?;
+            if self.generator.error.is_some()
+                || self.generator.status.state != generator::State::Stopped
+            {
+                return Err("Generator output failed before stream release completed".into());
+            }
+            if input.notifications != 0 || output.notifications != 0 {
+                return Err("Generator callback audit found stream notifications".into());
+            }
+            if output.budget_fraction_p95_upper.is_none_or(|n| n > 0.25) {
+                return Err(
+                    "Generator output callback elapsed p95 exceeded 25% of block duration".into(),
+                );
+            }
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "qa")]
+    fn audit_generator_profile(&mut self, snapshot: &measurement::Snapshot) -> Result<(), String> {
+        if std::env::var_os("MEASURELAB_PROFILE_UI_STALL").is_some() && !self.ui_stall_checked {
+            return Err("Generator profile did not exercise the running-output UI stall".into());
+        }
         crate::qa::physical_lockin::validate_generator(
             snapshot,
             std::path::Path::new("dist/generator-qa/profile-oracle.json"),

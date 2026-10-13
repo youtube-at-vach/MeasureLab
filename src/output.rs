@@ -254,6 +254,8 @@ pub struct Update {
     pub status: Status,
     pub error: Option<generator::Error>,
     pub target: Target,
+    #[cfg(feature = "qa")]
+    pub device_metrics: Option<Arc<device::Metrics>>,
 }
 
 /// Non-real-time command adapter. Stop bypasses both queues and fences older
@@ -354,18 +356,28 @@ impl Worker {
         }
         latest
     }
+    /// Terminal QA only. Counters retained by the caller remain readable after
+    /// the stream and all backend listeners have been released.
+    #[cfg(feature = "qa")]
+    pub fn finish_device_profile(&mut self) {
+        self.shutdown();
+    }
+
+    fn shutdown(&mut self) {
+        if let Some(handle) = self.handle.take() {
+            self.stop();
+            let _ = self.commands.send(Request {
+                id: 0,
+                stop_epoch: self.stop_epoch.load(Ordering::Acquire),
+                command: Command::Shutdown,
+            });
+            let _ = handle.join();
+        }
+    }
 }
 impl Drop for Worker {
     fn drop(&mut self) {
-        self.stop();
-        let _ = self.commands.send(Request {
-            id: 0,
-            stop_epoch: self.stop_epoch.load(Ordering::Acquire),
-            command: Command::Shutdown,
-        });
-        if let Some(handle) = self.handle.take() {
-            let _ = handle.join();
-        }
+        self.shutdown();
     }
 }
 

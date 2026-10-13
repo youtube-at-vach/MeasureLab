@@ -176,11 +176,13 @@ fn select(
         })
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Metrics {
     pub callbacks: AtomicU64,
     pub failed: AtomicBool,
     pub notifications: AtomicU64,
+    #[cfg(feature = "qa")]
+    pub profile: crate::callback_profile::Metrics,
 }
 
 pub(super) fn open(
@@ -204,7 +206,7 @@ pub(super) fn open(
         .map(|r| r.collect())
         .unwrap_or_default();
     let supported = select(default, &ranges, requested)?;
-    let config = supported.into();
+    let config = crate::audio::measurement_stream_config(supported);
     let metrics = Arc::new(Metrics::default());
     macro_rules! build {
         ($t:ty) => {
@@ -260,14 +262,28 @@ fn build<T: Sample>(
     metrics: Arc<Metrics>,
 ) -> Result<cpal::Stream, cpal::Error> {
     let channels = config.channels as usize;
+    #[cfg(feature = "qa")]
+    let rate = config.sample_rate;
     let failure = metrics.clone();
     device.build_output_stream(
         config,
-        move |output: &mut [T], _| render(output, channels, &mut execution, &metrics),
-        move |_| {
+        move |output: &mut [T], _| {
+            #[cfg(feature = "qa")]
+            let started = Instant::now();
+            render(output, channels, &mut execution, &metrics);
+            #[cfg(feature = "qa")]
+            metrics
+                .profile
+                .record(started.elapsed(), output.len() / channels, rate);
+        },
+        move |error| {
             // Even connection-time notifications latch failure. Recovery is
             // explicit; no allocation, logging or locking on this path.
             failure.notifications.fetch_add(1, Ordering::Relaxed);
+            #[cfg(feature = "qa")]
+            failure.profile.notification(&error);
+            #[cfg(not(feature = "qa"))]
+            let _ = error;
             failure.failed.store(true, Ordering::Release);
         },
         Some(Duration::from_secs(2)),

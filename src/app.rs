@@ -260,6 +260,8 @@ impl CalibrationEditor {
 pub struct ScopeApp {
     generator: generator_panel::GeneratorUi,
     generator_output: Option<output::Timeline>,
+    #[cfg(feature = "qa")]
+    input_callback_metrics: Option<Arc<crate::audio::Metrics>>,
     source: Source,
     software_running: bool,
     loopback_settings: loopback::Settings,
@@ -482,6 +484,8 @@ impl ScopeApp {
         let mut app = Self {
             generator: generator_panel::GeneratorUi::default(),
             generator_output: None,
+            #[cfg(feature = "qa")]
+            input_callback_metrics: None,
             source,
             software_running: false,
             loopback_settings: loopback::Settings::default(),
@@ -1875,6 +1879,17 @@ impl ScopeApp {
         {
             return;
         }
+        // For Generator QA, suspend UI only after both I/O paths are running.
+        // The old input-only gate stalled before Start output and never tested
+        // whether signal generation survives a paused feedback consumer.
+        let output_frames = if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_DEVICE").is_some() {
+            let Some(frames) = self.generator.profile_stall_frames() else {
+                return;
+            };
+            Some(frames)
+        } else {
+            None
+        };
         self.ui_stall_checked = true;
         let core = self.core.as_ref().unwrap();
         let frames = core.metrics.input_frames.load(Ordering::Relaxed);
@@ -1891,6 +1906,18 @@ impl ScopeApp {
         );
         assert!(windows > 0, "UI stall stopped Spectrum analysis");
         assert!(core.metrics.display_skipped.load(Ordering::Relaxed) > 0);
+        if let Some(before) = output_frames {
+            let after = self
+                .generator
+                .profile_stall_frames()
+                .expect("Generator output failed during UI stall");
+            let advanced = after.saturating_sub(before);
+            assert!(
+                advanced > self.generator.rate as u64 / 2,
+                "UI stall stopped output callbacks"
+            );
+            println!("Generator UI stall output: {advanced} PCM frames continued");
+        }
         let mut snapshot = core.scope(self.core_config().scope);
         assert_eq!(snapshot.input_dropped, 0, "UI stall lost measurement input");
         assert_eq!(snapshot.spectrum_info.missing_windows, 0);
@@ -2480,6 +2507,10 @@ impl ScopeApp {
                     }
                 }
                 Event::Started(capture) => {
+                    #[cfg(feature = "qa")]
+                    {
+                        self.input_callback_metrics = Some(capture.metrics.clone());
+                    }
                     if self.restored_input.as_ref().is_some_and(|input| {
                         input.channels != capture.channels
                             || input.expected_sample_rate() != capture.sample_rate
