@@ -697,6 +697,7 @@ impl ScopeApp {
         assert_eq!(document.loss.capture_dropped_samples, 0);
         assert!(!document.loss.input_failed);
         if audio_device.is_none() {
+            assert!(document.external_output.is_none());
             assert!((self.lockin_result.amplitude_peak.unwrap() - 0.0625).abs() < 1e-8);
             assert!((self.lockin_result.phase_degrees.unwrap() - 30.0).abs() < 1e-6);
             assert!((self.lockin_result.reference_frequency_hz.unwrap() - 750.0).abs() < 1e-7);
@@ -711,6 +712,28 @@ impl ScopeApp {
                     .is_some()
             );
         } else {
+            let history = document
+                .external_output
+                .as_ref()
+                .ok_or("Missing external Generator history")?;
+            let observed = history
+                .latest
+                .as_ref()
+                .ok_or("Missing observed output endpoint")?;
+            assert_eq!(history.input_generation, document.input.generation);
+            assert_eq!(observed.target, self.generator.target);
+            assert_eq!(observed.status.nominal_sample_rate, 48_000);
+            assert_eq!(observed.status.settings, self.generator.status.settings);
+            assert_eq!(
+                observed.status.output_generation,
+                self.generator.status.output_generation
+            );
+            assert!(!crate::results::matching_excitation(
+                &document,
+                document.scope.sample_range.clone(),
+                &document,
+                document.scope.sample_range.clone(),
+            ));
             assert!(
                 (self.generator.status.settings.signals[0].amplitude_peak() - 0.1).abs() < 1e-12
             );
@@ -766,6 +789,10 @@ impl ScopeApp {
         assert_eq!(
             self.capture_results()?.generator_output,
             document.generator_output
+        );
+        assert_eq!(
+            self.capture_results()?.external_output,
+            document.external_output
         );
         // Leave a live Generator alongside held measurements for the screenshot.
         self.generator.start();

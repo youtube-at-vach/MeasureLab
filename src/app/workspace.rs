@@ -722,6 +722,20 @@ fn result_summary(ui: &mut egui::Ui, doc: &export::Document) {
     if let Some(l) = &doc.lockin {
         lockin_summary(ui, l);
     }
+    if let Some(output) = &doc.external_output {
+        ui.label("External Generator history: independent, uncalibrated output clock; input-window correspondence unknown.");
+        ui.label(format!(
+            "{} observed changes | {} evicted | {} lost reports | {} output notifications since output worker start",
+            output.changes.len(), output.evicted_changes,
+            output.lost_reports_since_output_worker_start,
+            output.notifications_since_output_worker_start
+        ));
+        if let Some(o) = &output.latest {
+            ui.label(format!("Last observed output: {} | nominal {} Hz | {} | {:?} | generation {} revision {} | next output sample {}",
+                o.target.label(), o.status.nominal_sample_rate, o.target.pcm_label(), o.status.state,
+                o.status.output_generation, o.status.revision, o.status.next_sample));
+        }
+    }
     ui.label(format!(
         "Scope [{}, {}) | {:?} | trigger CH {} {:?} at {} FS",
         doc.scope.sample_range.start,

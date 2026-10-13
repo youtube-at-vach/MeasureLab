@@ -95,6 +95,7 @@ pub struct SpectrumInfo {
 #[derive(Clone)]
 pub struct Snapshot {
     pub generator_output: Option<output::Timeline>,
+    pub external_output: Option<output::history::ExternalOutput>,
     pub lockin: lockin::Result,
     pub scope_capture: Option<History>,
     pub acquisition_state: acquisition::State,
@@ -148,7 +149,7 @@ enum Input {
         clock: Instant,
         fraction: f64,
     },
-    Audio(Capture),
+    Audio(Capture, Option<Box<output::history::Session>>),
     #[cfg(any(test, feature = "qa"))]
     Demo {
         signal: Demo,
@@ -179,6 +180,8 @@ enum Command {
 /// only the execution wrapper; all measurement scheduling lives here.
 struct Core {
     generator_output: Option<output::Timeline>,
+    external_session: Option<output::history::Session>,
+    external_output: Option<output::history::ExternalOutput>,
     output_condition: Option<output::Condition>,
     lockin: lockin_worker::Worker,
     acquisition: Acquisition,
@@ -235,6 +238,8 @@ impl Core {
         );
         Self {
             generator_output: None,
+            external_session: None,
+            external_output: None,
             output_condition: None,
             lockin: lockin_worker::Worker::default(),
             acquisition: Acquisition::new(acquisition::Mode::Auto, 480, 2),
@@ -257,6 +262,8 @@ impl Core {
 
     fn start(&mut self, generation: u64, sample_rate: u32, channels: usize, mut config: Config) {
         self.generator_output = None;
+        self.external_session = None;
+        self.external_output = None;
         self.output_condition = None;
         self.lockin.configure(
             config.lockin,
@@ -405,6 +412,12 @@ impl Core {
         );
     }
 
+    fn freeze_external_output(&mut self) {
+        if let Some(session) = self.external_session.take() {
+            self.external_output = session.finish();
+        }
+    }
+
     fn reply(&mut self, final_window: bool) -> Reply {
         let spectrum = self
             .spectrum
@@ -428,6 +441,7 @@ impl Core {
     fn snapshot(&mut self) -> Snapshot {
         let mut snapshot = Snapshot {
             generator_output: self.generator_output.clone(),
+            external_output: self.external_output.clone(),
             lockin: self.lockin.latest(),
             scope_capture: None,
             acquisition_state: acquisition::State::Waiting,
@@ -465,6 +479,7 @@ impl Core {
 
     fn copy_snapshot(&mut self, snapshot: &mut Snapshot) {
         snapshot.generator_output.clone_from(&self.generator_output);
+        snapshot.external_output.clone_from(&self.external_output);
         self.revision += 1;
         snapshot.generation = self.generation;
         snapshot.lockin = self.lockin.latest();
@@ -647,9 +662,12 @@ impl Worker {
                                     channel,
                                 ));
                             }
-                            Command::Start(generation, source, rate, channels, config) => {
+                            Command::Start(generation, mut source, rate, channels, config) => {
                                 activity = Some(Activity::new("MeasureLab audio acquisition"));
                                 core.start(generation, rate, channels, *config);
+                                if let Input::Audio(_, session) = &mut source {
+                                    core.external_session = session.take().map(|s| *s);
+                                }
                                 input = source;
                                 if let Input::Software { clock, .. } = &mut input {
                                     *clock = Instant::now();
@@ -707,6 +725,7 @@ impl Worker {
                             Command::Hold => core.spectrum.clear_hold(),
                             Command::Stop(reply) => {
                                 poll_input(&mut input, &mut core, true);
+                                core.freeze_external_output();
                                 input = Input::Idle;
                                 activity.take();
                                 let _ = reply.try_send(core.reply(true));
@@ -717,6 +736,7 @@ impl Worker {
                     if !matches!(input, Input::Idle) {
                         poll_input(&mut input, &mut core, false);
                         if core.failed || core.acquisition.state == acquisition::State::Complete {
+                            core.freeze_external_output();
                             input = Input::Idle;
                             activity.take();
                         }
@@ -750,12 +770,22 @@ impl Worker {
     }
 
     pub fn start_capture(&self, generation: u64, capture: Capture, config: Config) {
+        self.start_capture_observed(generation, capture, config, None);
+    }
+
+    pub fn start_capture_observed(
+        &self,
+        generation: u64,
+        capture: Capture,
+        config: Config,
+        output: Option<&output::history::Handle>,
+    ) {
         self.running.store(true, Ordering::Release);
         let rate = capture.sample_rate;
         let channels = capture.channels as usize;
         self.send(Command::Start(
             generation,
-            Input::Audio(capture),
+            Input::Audio(capture, output.map(|h| Box::new(h.begin(generation)))),
             rate,
             channels,
             Box::new(config),
@@ -987,7 +1017,7 @@ fn poll_input(input: &mut Input, core: &mut Core, final_window: bool) {
                 );
             }
         }
-        Input::Audio(capture) => {
+        Input::Audio(capture, _) => {
             core.failed = capture.metrics.failed.load(Ordering::Relaxed);
             let final_window = final_window || core.failed;
             // Acquire before reading the queue: every accepted frame below this
@@ -1469,6 +1499,79 @@ mod tests {
             assert_eq!(held.input_dropped, 31);
             assert_eq!(held.lockin, stopped.lockin);
             assert_eq!(held.spectrum_info.input_missing, 31);
+        }
+    }
+
+    #[test]
+    fn external_output_is_frozen_at_input_stop_single_and_failure() {
+        for mode in ["stop", "single", "failure"] {
+            let (_stft, core, mut config, _spectrum) = setup(1024, 2);
+            if mode == "single" {
+                config.scope.mode = acquisition::Mode::Single;
+                config.scope.samples = 128;
+                config.scope.trigger.level = 0.0;
+                config.scope.trigger.channel = 0;
+                config.scope.trigger.edge = signal::Edge::Rising;
+            }
+            let mut worker = Worker::new(core.feeder);
+            let (mut producer, consumer) = RingBuffer::new(1024);
+            let metrics = Arc::new(AudioMetrics::default());
+            let input: Vec<f64> = (0..1024)
+                .flat_map(|n| {
+                    let x = (TAU * 1500.0 * n as f64 / 48000.0).sin();
+                    [0.125 * x, 0.0625 * x]
+                })
+                .collect();
+            crate::audio::write_callback(&input, 2, &mut producer, &mut 0, &metrics);
+            metrics.failed.store(mode == "failure", Ordering::Release);
+            let history = output::history::tests::fixture_handle();
+            worker.start_capture_observed(
+                51,
+                Capture {
+                    consumer,
+                    sample_rate: 48_000,
+                    channels: 2,
+                    format: "test f64".into(),
+                    metrics,
+                },
+                config.clone(),
+                Some(&history),
+            );
+            wait_for_frames(&worker, 128);
+            let held = worker.stop();
+            if mode == "single" {
+                assert_eq!(held.acquisition_state, acquisition::State::Complete);
+            }
+            if mode == "failure" {
+                assert!(held.failed);
+            }
+            let output = held.external_output.as_ref().unwrap();
+            output.validate(51).unwrap();
+            assert_eq!(
+                output.latest.as_ref().unwrap().status.nominal_sample_rate,
+                96_000
+            );
+            thread::sleep(Duration::from_millis(3));
+            let reprojected = worker.scope(config.scope);
+            assert_eq!(held.external_output, reprojected.external_output);
+            // A new unobserved input generation cannot inherit old evidence.
+            let (producer, consumer) = RingBuffer::new(4);
+            worker.start_capture(
+                52,
+                Capture {
+                    consumer,
+                    sample_rate: 48_000,
+                    channels: 2,
+                    format: "test f64".into(),
+                    metrics: Arc::new(AudioMetrics::default()),
+                },
+                config.clone(),
+            );
+            assert!(worker.stop().external_output.is_none());
+            drop(producer);
+            while let Some(snapshot) = worker.take_latest() {
+                worker.recycle(snapshot);
+            }
         }
     }
 
