@@ -215,6 +215,12 @@ impl Controller {
         }
         latest
     }
+
+    /// The non-real-time manager records every available report before
+    /// reducing feedback to the latest UI state. Overflow remains explicit.
+    pub(crate) fn pop_report(&mut self) -> Option<Report> {
+        self.reports.pop().ok()
+    }
 }
 
 impl Execution {

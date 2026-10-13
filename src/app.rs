@@ -260,6 +260,7 @@ impl CalibrationEditor {
 pub struct ScopeApp {
     generator: generator_panel::GeneratorUi,
     generator_output: Option<output::Timeline>,
+    external_output: Option<output::history::ExternalOutput>,
     #[cfg(feature = "qa")]
     input_callback_metrics: Option<Arc<crate::audio::Metrics>>,
     source: Source,
@@ -484,6 +485,7 @@ impl ScopeApp {
         let mut app = Self {
             generator: generator_panel::GeneratorUi::default(),
             generator_output: None,
+            external_output: None,
             #[cfg(feature = "qa")]
             input_callback_metrics: None,
             source,
@@ -1666,6 +1668,7 @@ impl ScopeApp {
 
     fn begin_observation(&mut self) {
         self.generator_output = None;
+        self.external_output = None;
         self.cursors.new_epoch();
         self.input_generation += 1;
         self.held_input = None;
@@ -1732,6 +1735,7 @@ impl ScopeApp {
         }
         self.snapshot_revision = snapshot.revision;
         self.generator_output.clone_from(&snapshot.generator_output);
+        self.external_output.clone_from(&snapshot.external_output);
         self.comparison_current = None;
         let samples_changed = self.history.range() != snapshot.history.range();
         self.dirty |= self.core_scope != snapshot.scope_settings;
@@ -2560,10 +2564,11 @@ impl ScopeApp {
                     self.dirty = true;
                     self.reset_analysis();
                     self.reset_stft();
-                    self.core.as_ref().unwrap().start_capture(
+                    self.core.as_ref().unwrap().start_capture_observed(
                         self.input_generation,
                         capture,
                         self.core_config(),
+                        Some(&self.generator.worker.history),
                     );
                 }
                 Event::Stopped => {}
@@ -4700,6 +4705,7 @@ impl ScopeApp {
             },
         )?;
         document.generator_output = self.generator_output.clone();
+        document.external_output = self.external_output.clone();
         if self.lockin_result.settings.enabled {
             document.lockin = Some(export::Lockin::capture(
                 self.lockin_result.clone(),

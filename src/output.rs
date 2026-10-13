@@ -16,6 +16,7 @@ pub const CAPACITY: usize = 16_384;
 pub const CONDITION_CAPACITY: usize = 128;
 pub const RATES: [u32; 4] = [44_100, 48_000, 96_000, 192_000];
 pub mod device;
+pub mod history;
 mod runtime;
 
 #[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -267,6 +268,7 @@ pub struct Worker {
     updates: Consumer<Update>,
     handle: Option<JoinHandle<()>>,
     pub events: mpsc::Receiver<Event>,
+    pub history: history::Handle,
 }
 
 pub enum Event {
@@ -286,9 +288,11 @@ impl Worker {
         let stop_epoch = Arc::new(AtomicU64::new(0));
         let stop = stop_epoch.clone();
         let (events, receiver) = mpsc::sync_channel(4);
+        let history = history::Handle::default();
+        let journal = history.clone();
         let handle = thread::Builder::new()
             .name("measurelab-generator".into())
-            .spawn(move || runtime::run(requests, feedback, stop, events))
+            .spawn(move || runtime::run(requests, feedback, stop, events, journal))
             .expect("generator worker");
         Self {
             next_request: AtomicU64::new(0),
@@ -297,6 +301,7 @@ impl Worker {
             updates,
             handle: Some(handle),
             events: receiver,
+            history,
         }
     }
     fn send(&self, command: Command) -> Result<u64, String> {
@@ -391,6 +396,43 @@ mod tests {
             signal.frequency_hz = 750.0;
         }
         s
+    }
+    #[test]
+    fn manager_records_device_start_failure_while_ui_feedback_is_unconsumed() {
+        let worker = Worker::new();
+        let session = worker.history.begin(31);
+        let target = Target::Audio {
+            device_id: "measurelab:test:nonexistent-output-device".into(),
+            device_name: "Missing test output".into(),
+            channels: 2,
+            pcm: device::Pcm::F32,
+        };
+        worker.select(target, 48_000, settings()).unwrap();
+        worker.start(settings()).unwrap();
+        // No poll of Worker feedback: its four UI slots saturate. The manager
+        // still records the failed open without ever creating an output stream.
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            if worker.history.begin(31).finish().is_some_and(|h| {
+                h.latest
+                    .is_some_and(|o| o.status.state == State::Error(generator::Error::OutputStream))
+            }) {
+                break;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "output open did not report failure"
+            );
+            thread::sleep(Duration::from_millis(2));
+        }
+        let held = session.finish().unwrap();
+        held.validate(31).unwrap();
+        assert!(
+            held.changes
+                .iter()
+                .any(|o| o.status.state == State::Error(generator::Error::OutputStream))
+        );
+        assert_eq!(held.latest.unwrap().status.output_generation, 0);
     }
     #[test]
     fn saved_outputs_preserve_exact_device_config_and_old_internal_defaults() {

@@ -51,6 +51,7 @@ pub(super) fn run(
     mut feedback: Producer<Update>,
     stop: Arc<AtomicU64>,
     events: mpsc::SyncSender<Event>,
+    history: history::Handle,
 ) {
     let engine = Engine::new(48000, 2, Settings::default(), 0).unwrap();
     let (mut controller, execution) = control::from_engine_with_stop(engine, stop.clone());
@@ -58,8 +59,9 @@ pub(super) fn run(
     let mut status = execution.as_ref().unwrap().status();
     let mut target = Target::Internal;
     let mut stream: Option<(cpal::Stream, Arc<device::Metrics>)> = None;
-    #[cfg(feature = "qa")]
-    let mut device_metrics = None;
+    let mut device_metrics: Option<Arc<device::Metrics>> = None;
+    let mut observed_lost_reports = 0;
+    let mut observed_notifications = 0;
     let mut capture: Option<(Producer<Frame>, Arc<Metrics>)> = None;
     let mut clock = Instant::now();
     let mut fraction = 0.0;
@@ -118,10 +120,15 @@ pub(super) fn run(
                         rebuild(status, rate, new_target.channels(), settings, &stop).map(
                             |(c, e)| {
                                 stream.take();
-                                #[cfg(feature = "qa")]
-                                {
-                                    device_metrics = None;
+                                // Audit notifications after backend listeners
+                                // have been released, before resetting counters.
+                                if let Some(m) = &device_metrics {
+                                    let count = m.notifications.load(Ordering::Acquire);
+                                    history.losses(0, count.saturating_sub(observed_notifications));
                                 }
+                                device_metrics = None;
+                                observed_notifications = 0;
+                                observed_lost_reports = 0;
                                 controller = c;
                                 execution = Some(e);
                                 status = execution.as_ref().unwrap().status();
@@ -163,10 +170,8 @@ pub(super) fn run(
                                     match device::open(device_id, config, execution.take().unwrap())
                                     {
                                         Ok(opened) => {
-                                            #[cfg(feature = "qa")]
-                                            {
-                                                device_metrics = Some(opened.1.clone());
-                                            }
+                                            device_metrics = Some(opened.1.clone());
+                                            observed_notifications = 0;
                                             stream = Some(opened);
                                             callbacks = 0;
                                             last_callback = Instant::now();
@@ -185,6 +190,7 @@ pub(super) fn run(
                                             .unwrap();
                                             e.fail(generator::Error::OutputStream);
                                             controller = c;
+                                            observed_lost_reports = 0;
                                             execution = Some(e);
                                             status = execution.as_ref().unwrap().status();
                                             return Err(generator::Error::OutputStream);
@@ -288,7 +294,19 @@ pub(super) fn run(
             }
             e.end_block();
         }
-        if let Some(report) = controller.poll() {
+        // Drain the bounded report queue before reducing to latest UI state.
+        // Neither UI stalls nor feedback saturation remove manager evidence.
+        for _ in 0..control::CAPACITY {
+            let Some(report) = controller.pop_report() else {
+                break;
+            };
+            history.losses(report.lost_reports.saturating_sub(observed_lost_reports), 0);
+            observed_lost_reports = report.lost_reports;
+            let report_error = match report.status.state {
+                State::Error(e) => Some(e),
+                _ => report.rejected.map(|r| r.error).or(error),
+            };
+            history.record(&target, report.status, report_error);
             status = report.status;
             acknowledged_stop = report.stop_epoch;
             if let Some(rejected) = report.rejected
@@ -325,6 +343,7 @@ pub(super) fn run(
                 .unwrap();
                 e.fail(failure);
                 controller = c;
+                observed_lost_reports = 0;
                 execution = Some(e);
                 status = execution.as_ref().unwrap().status();
                 error = Some(failure);
@@ -345,6 +364,12 @@ pub(super) fn run(
             error = Some(e);
             pending_revision = None;
         }
+        if let Some(m) = &device_metrics {
+            let count = m.notifications.load(Ordering::Acquire);
+            history.losses(0, count.saturating_sub(observed_notifications));
+            observed_notifications = count;
+        }
+        history.record(&target, status, error);
         if pending_revision.is_none_or(|rev| status.revision >= rev) {
             acknowledged_request = acknowledged_request.max(pending_request);
         }
@@ -366,6 +391,11 @@ pub(super) fn run(
             && (matches!(status.state, State::Stopped | State::Error(_))
                 || stop_started.is_some_and(|at| now.duration_since(at) > STOP_TIMEOUT))
         {
+            stream.take();
+            if let Some(m) = &device_metrics {
+                let count = m.notifications.load(Ordering::Acquire);
+                history.losses(0, count.saturating_sub(observed_notifications));
+            }
             return;
         }
         thread::sleep(Duration::from_millis(2));

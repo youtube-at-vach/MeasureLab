@@ -12,6 +12,13 @@ impl Document {
     pub fn validate(&self) -> Result<(), String> {
         self.validate_header()?;
         audio::validate_sample_rate(self.input.nominal_sample_rate_hz)?;
+        if let Some(output) = &self.external_output {
+            if !matches!(self.input.source, Source::Audio { .. }) || self.generator_output.is_some()
+            {
+                return Err("External output observations require audio input".into());
+            }
+            output.validate(self.input.generation)?;
+        }
         match (&self.input.source, &self.generator_output) {
             (Source::Generator, Some(timeline)) if self.input.channels == 2 => {
                 timeline.validate(
@@ -315,6 +322,11 @@ pub fn matching_excitation(
     current: &Document,
     current_range: std::ops::Range<u64>,
 ) -> bool {
+    // External output observations never establish the excitation at an ADC
+    // sample. Do not use identical latest settings as a stationary match.
+    if reference.external_output.is_some() || current.external_output.is_some() {
+        return false;
+    }
     if matches!(reference.input.source, Source::Generator)
         || matches!(current.input.source, Source::Generator)
     {
@@ -553,6 +565,88 @@ mod tests {
         let mut r = SpectrumResult::empty(s, 48000);
         a.copy_result(&mut r);
         crate::export::tests::document(&h, &r, &Set::default(), Pair([0, 1]))
+    }
+
+    #[test]
+    fn external_output_json_csv_preserve_independent_clock_without_numeric_matching() {
+        let mut doc = lockin_fixture(0.0625, 30.0, &Set::default(), crate::lockin::State::Valid);
+        doc.external_output = Some(crate::output::history::tests::fixture(doc.input.generation));
+        // Output is 96 kHz with a different integer origin; input remains 48 kHz.
+        doc.validate().unwrap();
+        let path = std::env::temp_dir().join(format!(
+            "measurelab-external-reference-{}.json",
+            std::process::id()
+        ));
+        crate::export::save(&path, &doc).unwrap();
+        assert_eq!(load(&path).unwrap(), doc);
+        std::fs::remove_file(&path).unwrap();
+        let csv = path.with_extension("csv");
+        save_csv(&csv, &doc).unwrap();
+        let contents = std::fs::read_to_string(&csv).unwrap();
+        let metadata = contents
+            .lines()
+            .next()
+            .unwrap()
+            .strip_prefix("metadata_json,\"")
+            .unwrap()
+            .strip_suffix('"')
+            .unwrap()
+            .replace("\"\"", "\"");
+        let metadata: Document = serde_json::from_str(&metadata).unwrap();
+        assert_eq!(metadata.external_output, doc.external_output);
+        std::fs::remove_file(csv).unwrap();
+        assert!(!matching_excitation(&doc, 0..1024, &doc, 0..1024));
+        assert!(lockin_difference(&doc, &doc).is_none());
+        let plain = fixture();
+        assert!(!matching_excitation(&doc, 0..1024, &plain, 0..1024));
+        assert!(!matching_excitation(&plain, 0..1024, &doc, 0..1024));
+    }
+
+    #[test]
+    fn external_output_rejects_bad_provenance_and_old_result_versions_still_load() {
+        let mut doc = fixture();
+        doc.external_output = Some(crate::output::history::tests::fixture(doc.input.generation));
+        for mutation in [
+            "generation",
+            "source",
+            "order",
+            "rate",
+            "channels",
+            "phase",
+            "version",
+        ] {
+            let mut invalid = serde_json::to_value(&doc).unwrap();
+            match mutation {
+                "generation" => invalid["external_output"]["input_generation"] = 0.into(),
+                "source" => {
+                    invalid["input"]["source"] =
+                        serde_json::json!({"kind":"internal_qa", "description":"test"})
+                }
+                "order" => invalid["external_output"]["observation_end_host_micros"] = 0.into(),
+                "rate" => {
+                    invalid["external_output"]["latest"]["status"]["nominal_sample_rate"] = 0.into()
+                }
+                "channels" => {
+                    invalid["external_output"]["latest"]["status"]["output_channels"] = 16.into()
+                }
+                "phase" => {
+                    invalid["external_output"]["latest"]["status"]["carrier_phase_cycles"][0] =
+                        1.0.into()
+                }
+                "version" => invalid["version"] = 2.into(),
+                _ => unreachable!(),
+            }
+            let invalid: Document = serde_json::from_value(invalid).unwrap();
+            assert!(invalid.validate().is_err(), "accepted {mutation}");
+        }
+        for version in [1, 2] {
+            let mut old = serde_json::to_value(fixture()).unwrap();
+            old["version"] = version.into();
+            old.as_object_mut().unwrap().remove("external_output");
+            let old: Document = serde_json::from_value(old).unwrap();
+            old.validate().unwrap();
+            assert!(old.external_output.is_none());
+        }
     }
 
     #[test]

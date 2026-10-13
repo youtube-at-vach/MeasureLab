@@ -18,7 +18,7 @@ use std::{
 };
 
 pub const FORMAT: &str = "measurelab-results";
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 3;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
@@ -226,6 +226,8 @@ pub struct Loss {
 #[serde(deny_unknown_fields)]
 pub struct Document {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub external_output: Option<crate::output::history::ExternalOutput>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub generator_output: Option<crate::output::Timeline>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub lockin: Option<Lockin>,
@@ -283,7 +285,8 @@ impl Lockin {
 impl Document {
     pub(crate) fn validate_header(&self) -> Result<(), String> {
         if self.format != FORMAT
-            || ![1, VERSION].contains(&self.version)
+            || ![1, 2, VERSION].contains(&self.version)
+            || (self.version < 3 && self.external_output.is_some())
             || (self.version == 1
                 && (self.generator_output.is_some()
                     || matches!(self.input.source, Source::Generator)))
@@ -449,6 +452,7 @@ impl Document {
         Ok(Self {
             lockin: None,
             generator_output: None,
+            external_output: None,
             format: FORMAT.into(),
             version: VERSION,
             app_version: env!("CARGO_PKG_VERSION").into(),
