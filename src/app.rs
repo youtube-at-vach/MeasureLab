@@ -34,6 +34,7 @@ use std::{
 };
 mod comparison_panel;
 mod generator_panel;
+mod io_panel;
 mod lockin_panel;
 mod workspace;
 
@@ -112,7 +113,8 @@ enum SettingsTask {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 enum SettingsSection {
-    Input,
+    Io,
+    Generator,
     Scope,
     Spectrum,
     Spectrogram,
@@ -124,8 +126,9 @@ enum SettingsSection {
 }
 
 impl SettingsSection {
-    const ALL: [Self; 9] = [
-        Self::Input,
+    const ALL: [Self; 10] = [
+        Self::Io,
+        Self::Generator,
         Self::Scope,
         Self::Spectrum,
         Self::Spectrogram,
@@ -138,7 +141,8 @@ impl SettingsSection {
 
     fn title(self) -> &'static str {
         match self {
-            Self::Input => "Input source",
+            Self::Io => "I/O",
+            Self::Generator => "Generator",
             Self::Scope => "Oscilloscope",
             Self::Spectrum => "Spectrum analyzer",
             Self::Spectrogram => "Spectrogram",
@@ -152,7 +156,8 @@ impl SettingsSection {
 
     fn color(self) -> Color32 {
         match self {
-            Self::Input | Self::Calibration | Self::Workspace => Color32::from_rgb(192, 207, 217),
+            Self::Io | Self::Calibration | Self::Workspace => Color32::from_rgb(192, 207, 217),
+            Self::Generator => GREEN,
             Self::Scope => GREEN,
             Self::Spectrum => YELLOW,
             Self::Spectrogram => BLUE,
@@ -167,14 +172,16 @@ struct Sidebar {
     visible: bool,
     section: Option<SettingsSection>,
     focus: bool,
+    io_output: bool,
 }
 
 impl Default for Sidebar {
     fn default() -> Self {
         Self {
             visible: true,
-            section: Some(SettingsSection::Input),
+            section: Some(SettingsSection::Io),
             focus: false,
+            io_output: false,
         }
     }
 }
@@ -896,6 +903,12 @@ impl ScopeApp {
                 app.cursors.set_scope_time(1, 0.7);
             }
             match std::env::var("MEASURELAB_UI_SMOKE_SETTINGS").as_deref() {
+                Ok("input" | "io") => app.sidebar.reveal(SettingsSection::Io),
+                Ok("output") => {
+                    app.sidebar.reveal(SettingsSection::Io);
+                    app.sidebar.io_output = true;
+                }
+                Ok("generator") => app.sidebar.reveal(SettingsSection::Generator),
                 Ok("calibration") => app.sidebar.reveal(SettingsSection::Calibration),
                 Ok("scope") => app.sidebar.section = Some(SettingsSection::Scope),
                 Ok("spectrum") => app.sidebar.section = Some(SettingsSection::Spectrum),
@@ -2612,7 +2625,7 @@ impl ScopeApp {
                             self.spectrogram_channel = channel.saturating_sub(1);
                         }
                         match std::env::var("MEASURELAB_PROFILE_SETTINGS").as_deref() {
-                            Ok("input") => self.sidebar.section = Some(SettingsSection::Input),
+                            Ok("input") => self.sidebar.section = Some(SettingsSection::Io),
                             Ok("spectrum") => {
                                 self.sidebar.section = Some(SettingsSection::Spectrum)
                             }
@@ -2641,21 +2654,31 @@ impl ScopeApp {
     fn section_summary(&self, section: SettingsSection) -> String {
         match section {
             #[cfg(feature = "qa")]
-            SettingsSection::Input if self.source.is_demo() => {
+            SettingsSection::Io if self.source.is_demo() => {
                 format!(
                     "Demo · {} Hz · {:.2} FS",
                     self.demo.frequency, self.demo.amplitude
                 )
             }
-            SettingsSection::Input if self.source == Source::Software => format!(
+            SettingsSection::Io if self.source == Source::Software => format!(
                 "Software Loopback · {} Hz · 2 ch",
                 self.requested_sample_rate.unwrap_or(48000)
             ),
-            SettingsSection::Input => self
+            SettingsSection::Io if self.source == Source::Generator => format!(
+                "Generator loopback · {} Hz · OUT {}",
+                self.generator.rate,
+                self.generator.label(),
+            ),
+            SettingsSection::Io => self
                 .devices
                 .get(self.selected)
                 .map(|device| format!("{} · {}", device.name, self.input_rate_label()))
                 .unwrap_or_else(|| "Select an audio device".into()),
+            SettingsSection::Generator => format!(
+                "2 sine signals · Step {} · {}",
+                self.generator.step_label(),
+                self.generator.label(),
+            ),
             SettingsSection::Scope => {
                 format!("{} ms/div · {} FS/div", self.ms_per_div, self.fs_per_div)
             }
@@ -2732,7 +2755,8 @@ impl ScopeApp {
                         ui.spacing_mut().slider_width = (ui.available_width() - 140.0).max(75.0);
                         ui.add_space(4.0);
                         match section {
-                            SettingsSection::Input => self.input_controls(ui),
+                            SettingsSection::Io => self.io_controls(ui),
+                            SettingsSection::Generator => self.generator_controls(ui),
                             SettingsSection::Scope => self.scope_controls(ui),
                             SettingsSection::Spectrum => self.spectrum_controls(ui),
                             SettingsSection::Spectrogram => self.spectrogram_controls(ui),
@@ -2851,212 +2875,6 @@ impl ScopeApp {
         self.error = None;
         self.reset_analysis();
         self.reset_stft();
-    }
-
-    fn input_controls(&mut self, ui: &mut egui::Ui) {
-        let old_source = self.source;
-        ui.add_enabled_ui(!self.busy && self.pending_stop.is_none(), |ui| {
-            ui.horizontal_wrapped(|ui| {
-                ui.selectable_value(&mut self.source, Source::Live, "Audio input");
-                ui.selectable_value(&mut self.source, Source::Software, "Software Loopback");
-                ui.selectable_value(&mut self.source, Source::Generator, "Generator loopback");
-            });
-        });
-        if old_source != self.source {
-            self.switch_source();
-            self.requested_sample_rate = None;
-        }
-        if self.source == Source::Software {
-            self.software_controls(ui);
-        }
-        if self.source == Source::Generator {
-            ui.label("Generator feeds both input channels. Configure the signal in the Generator panel and start input and output separately.");
-            if ui.button("Show Generator").clicked() {
-                self.generator.visible = true;
-            }
-        }
-        #[cfg(feature = "qa")]
-        if self.demo_enabled {
-            setting_label(ui, "SOURCE");
-            let previous_source = self.source;
-            ui.add_enabled_ui(!self.busy, |ui| {
-                ui.horizontal(|ui| {
-                    ui.selectable_value(&mut self.source, Source::Live, "Audio input");
-                    ui.selectable_value(&mut self.source, Source::Demo, "Demo signal (QA)");
-                });
-            });
-            if previous_source != self.source {
-                self.switch_source();
-            }
-        }
-        if self.source == Source::Live {
-            setting_label(ui, "DEVICE");
-            let selected_name = self
-                .devices
-                .get(self.selected)
-                .map(|d| d.name.as_str())
-                .unwrap_or("No input device");
-            let previous = self.selected;
-            ui.add_enabled_ui(!self.busy, |ui| {
-                egui::ComboBox::from_id_salt("input")
-                    .width(ui.available_width())
-                    .truncate()
-                    .selected_text(selected_name)
-                    .show_ui(ui, |ui| {
-                        for (index, device) in self.devices.iter().enumerate() {
-                            let name = if device.is_default {
-                                format!("{} (default)", device.name)
-                            } else {
-                                device.name.clone()
-                            };
-                            ui.selectable_value(&mut self.selected, index, name);
-                        }
-                    });
-            });
-            if previous != self.selected {
-                self.restored_input = None;
-                self.calibration.clear_input();
-                self.requested_sample_rate = None;
-            }
-            setting_label(ui, "SAMPLE RATE");
-            let previous_rate = self.requested_sample_rate;
-            ui.add_enabled_ui(!self.busy && !self.devices.is_empty(), |ui| {
-                egui::ComboBox::from_id_salt("input_sample_rate")
-                    .width(ui.available_width())
-                    .selected_text(self.input_rate_label())
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(
-                            &mut self.requested_sample_rate,
-                            None,
-                            "Device default",
-                        );
-                        if let Some(device) = self.devices.get(self.selected) {
-                            for &rate in &device.sample_rates {
-                                ui.selectable_value(
-                                    &mut self.requested_sample_rate,
-                                    Some(rate),
-                                    format!("{} kHz", rate as f64 / 1000.0),
-                                );
-                            }
-                        }
-                    });
-            });
-            ui.label(
-                RichText::new("Supported device rates · up to 768 kHz")
-                    .small()
-                    .color(MUTED),
-            );
-            if !self.running() {
-                ui.label(
-                    RichText::new("Rate changes apply on Start. Held results keep their rate.")
-                        .small()
-                        .color(MUTED),
-                );
-            }
-            if previous_rate != self.requested_sample_rate
-                && let Some(input) = &mut self.restored_input
-            {
-                input.sample_rate = self.requested_sample_rate;
-            }
-            if (previous != self.selected || previous_rate != self.requested_sample_rate)
-                && self.capture.is_some()
-            {
-                self.start();
-            }
-        }
-        if self.source == Source::Live
-            && ui
-                .add_enabled(
-                    !self.busy && self.capture.is_none(),
-                    egui::Button::new("Refresh devices"),
-                )
-                .clicked()
-        {
-            self.busy = true;
-            self.error = None;
-            self.audio.send(Command::Refresh);
-        }
-        #[cfg(feature = "qa")]
-        if self.source.is_demo() {
-            let before = (
-                self.demo.waveform,
-                self.demo.frequency,
-                self.demo.amplitude,
-                self.demo.noise,
-                self.demo.phase_degrees,
-                self.demo.channel_2_gain,
-            );
-            setting_label(ui, "WAVEFORM");
-            egui::ComboBox::from_id_salt("demo_waveform")
-                .width(ui.available_width())
-                .selected_text(self.demo.waveform.name())
-                .show_ui(ui, |ui| {
-                    for shape in [Waveform::Sine, Waveform::Harmonics, Waveform::Square] {
-                        ui.selectable_value(&mut self.demo.waveform, shape, shape.name());
-                    }
-                });
-            setting_label(ui, "FREQUENCY");
-            ui.add(
-                egui::Slider::new(&mut self.demo.frequency, 20.0..=10000.0)
-                    .logarithmic(true)
-                    .text("Hz"),
-            );
-            setting_label(ui, "AMPLITUDE");
-            ui.add(egui::Slider::new(&mut self.demo.amplitude, 0.01..=0.8).text("FS peak"));
-            setting_label(ui, "NOISE");
-            ui.add(
-                egui::Slider::new(&mut self.demo.noise, 0.0..=0.05)
-                    .logarithmic(true)
-                    .smallest_positive(0.000001)
-                    .fixed_decimals(4)
-                    .text("Noise"),
-            )
-            .on_hover_text("Noise amplitude in digital full scale (FS).");
-            setting_label(ui, "CH 2 PHASE / GAIN");
-            ui.add(egui::Slider::new(&mut self.demo.phase_degrees, -180.0..=180.0).text("degrees"));
-            ui.add(egui::Slider::new(&mut self.demo.channel_2_gain, 0.0..=1.0).text("CH 2 gain"));
-            ui.horizontal(|ui| {
-                for phase in [0.0, 90.0, 180.0] {
-                    if ui.small_button(format!("{phase:.0}°")).clicked() {
-                        self.demo.waveform = Waveform::Sine;
-                        self.demo.noise = 0.0;
-                        self.demo.phase_degrees = phase;
-                        self.demo.channel_2_gain = 1.0;
-                    }
-                }
-            }).response.on_hover_text("Equal-amplitude, noise-free sine signals for XY: in-phase, quadrature or opposite phase.");
-            if before
-                != (
-                    self.demo.waveform,
-                    self.demo.frequency,
-                    self.demo.amplitude,
-                    self.demo.noise,
-                    self.demo.phase_degrees,
-                    self.demo.channel_2_gain,
-                )
-            {
-                self.apply_demo_settings();
-            }
-            if !self.running() {
-                ui.label(
-                    RichText::new(
-                        "Signal changes apply when input restarts. Captured samples stay held.",
-                    )
-                    .small()
-                    .color(MUTED),
-                );
-            }
-            ui.label(
-                RichText::new("Internal source · no audio output")
-                    .small()
-                    .color(MUTED),
-            );
-        }
-        ui.label(
-            RichText::new("Start / stop is always in the top bar.")
-                .small()
-                .color(MUTED),
-        );
     }
 
     fn input_rate_label(&self) -> String {

@@ -163,7 +163,7 @@ impl GeneratorUi {
             }
         }
     }
-    fn select(
+    pub(super) fn select(
         &mut self,
         target: output::Target,
         rate: u32,
@@ -177,7 +177,7 @@ impl GeneratorUi {
         self.error = None;
         Ok(())
     }
-    fn configure(&mut self, settings: generator::Settings) {
+    pub(super) fn configure(&mut self, settings: generator::Settings) {
         match settings
             .validate(self.rate, self.target.channels())
             .map_err(|e| e.to_string())
@@ -213,7 +213,7 @@ impl GeneratorUi {
         self.stopping = true;
         self.starting = false;
     }
-    fn label(&self) -> &'static str {
+    pub(super) fn label(&self) -> &'static str {
         if self.stopping {
             return "STOPPING";
         }
@@ -226,6 +226,36 @@ impl GeneratorUi {
             generator::State::Running => "RUNNING",
             generator::State::Stopping => "STOPPING",
             generator::State::Error(_) => "ERROR",
+        }
+    }
+    pub(super) fn step_label(&self) -> String {
+        self.step.to_string()
+    }
+    fn state_color(&self) -> Color32 {
+        match self.status.state {
+            generator::State::Error(_) => TRIGGER,
+            _ if self.starting || self.stopping => YELLOW,
+            generator::State::Starting | generator::State::Stopping => YELLOW,
+            generator::State::Stopped => MUTED,
+            _ => GREEN,
+        }
+    }
+    fn application_label(&self) -> &'static str {
+        if self.pending || self.starting {
+            "PENDING"
+        } else if matches!(self.status.state, generator::State::Error(_)) {
+            "ERROR"
+        } else if self.status.transitioning() {
+            "TRANSITION"
+        } else {
+            "APPLIED"
+        }
+    }
+    fn application_color(&self) -> Color32 {
+        match self.application_label() {
+            "ERROR" => TRIGGER,
+            "PENDING" | "TRANSITION" => YELLOW,
+            _ => MUTED,
         }
     }
     pub fn restore(&mut self, saved: output::Saved) -> Result<(), String> {
@@ -713,15 +743,15 @@ impl ScopeApp {
         self.source = Source::Generator;
         self.demo_enabled = false;
         self.generator.visible = true;
-        self.sidebar.visible = mode == "narrow";
+        self.sidebar.visible = matches!(mode, "narrow" | "workspace");
         if mode == "narrow" {
             self.generator.selected = 1;
         }
         self.visible = [
-            mode == "scope" || mode == "narrow",
-            mode == "spectrum",
-            false,
-            false,
+            matches!(mode, "scope" | "narrow" | "workspace"),
+            matches!(mode, "spectrum" | "workspace"),
+            mode == "workspace",
+            mode == "workspace",
         ];
         self.lockin_visible = mode == "lockin";
         self.lockin_settings = lockin::Settings {
@@ -978,249 +1008,203 @@ impl ScopeApp {
         Ok(())
     }
     pub(super) fn generator_transport(&mut self, ui: &mut egui::Ui) {
-        let g = &mut self.generator;
         ui.horizontal_wrapped(|ui| {
+            let g = &mut self.generator;
             ui.label(
-                RichText::new(format!("OUTPUT · {} · {}", g.label(), g.target.label()))
+                RichText::new(format!("OUTPUT · {}", g.label()))
+                    .small()
                     .monospace()
-                    .color(if g.stopped() { MUTED } else { GREEN }),
-            );
+                    .color(g.state_color()),
+            )
+            .on_hover_text("Input Stop holds the measurement; output continues.");
+            if ui
+                .small_button("I/O")
+                .on_hover_text(format!(
+                    "{} · {} Hz · {}ch · {} — configure input and output",
+                    g.target.label(),
+                    g.rate,
+                    g.target.channels(),
+                    g.target.pcm_label()
+                ))
+                .clicked()
+            {
+                self.sidebar.io_output = true;
+                self.sidebar.reveal(SettingsSection::Io);
+            }
             if ui.small_button("Stop all outputs").clicked() {
                 g.stop();
             }
-            ui.label(
-                RichText::new("Input Stop holds the measurement; output continues.")
-                    .small()
-                    .color(MUTED),
+            ui.add(
+                egui::Label::new(RichText::new(g.target.label()).small().color(MUTED)).truncate(),
             );
         });
     }
 
-    pub(super) fn generator_panel(&mut self, ui: &mut egui::Ui) {
-        let input_running = self.running() || self.pending_stop.is_some();
+    pub(super) fn generator_controls(&mut self, ui: &mut egui::Ui) {
         let restoring =
             self.workspace_restoring || self.settings_task == Some(SettingsTask::Restore);
-        egui::Frame::new()
-            .fill(Color32::from_rgb(15, 22, 29))
-            .stroke(Stroke::new(1.0, BORDER))
-            .corner_radius(5.0)
-            .inner_margin(10.0)
-            .show(ui, |ui| {
-                ui.horizontal_wrapped(|ui| {
-                    ui.label(RichText::new("Generator").strong().color(GREEN));
-                    let g = &mut self.generator;
-                    ui.label(format!("{}ch · {} · nominal Fs", g.target.channels(), g.target.pcm_label()));
-                });
-                let g = &mut self.generator;
-                ui.add_enabled_ui(g.stopped() && !input_running && !restoring, |ui| {
-                    ui.horizontal_wrapped(|ui| {
-                        let mut selected = g.target.clone();
-                        let mut rate = g.rate;
-                        egui::ComboBox::from_id_salt("generator_destination")
-                            .width(180.0).truncate()
-                            .selected_text(g.target.label()).show_ui(ui, |ui| {
-                                ui.selectable_value(&mut selected, output::Target::Internal, "Internal loopback");
-                                for device in &g.devices {
-                                    let config = device.preferred;
-                                    let candidate = output::Target::Audio { device_id: device.id.clone(),
-                                        device_name: device.name.clone(), channels: config.channels, pcm: config.pcm };
-                                    let active = matches!(&g.target, output::Target::Audio { device_id, .. } if device_id == &device.id);
-                                    if ui.selectable_label(active, &device.name).clicked() && !active {
-                                        selected = candidate; rate = config.rate;
-                                    }
-                                }
-                            });
-                        if ui.small_button("Refresh outputs").clicked()
-                            && let Err(e) = g.worker.refresh() { g.error = Some(e); }
-                        if selected != g.target {
-                            if selected == output::Target::Internal { rate = 48000; }
-                            let mut settings = g.settings;
-                            for signal in &mut settings.signals {
-                                if signal.output_channel.is_some_and(|ch| ch >= selected.channels()) {
-                                    signal.output_channel = None; signal.enabled = false;
-                                }
-                            }
-                            if let Err(e) = g.select(selected, rate, settings) { g.error = Some(e); }
-                        }
-                        let mut config = output::device::Config { rate: g.rate,
-                            channels: g.target.channels() as u16,
-                            pcm: match &g.target { output::Target::Audio { pcm, .. } => *pcm, _ => output::device::Pcm::F64 } };
-                        let before = config;
-                        egui::ComboBox::from_id_salt("generator_rate")
-                            .width(180.0).truncate()
-                            .selected_text(format!("{} Hz · {}ch · {}", config.rate, config.channels, config.pcm.label()))
-                            .show_ui(ui, |ui| {
-                                let configs: Vec<_> = match &g.target {
-                                    output::Target::Internal => output::RATES.into_iter().map(|rate| output::device::Config { rate, ..config }).collect(),
-                                    output::Target::Audio { device_id, .. } => g.devices.iter().find(|d| &d.id == device_id).map(|d| d.configs.clone()).unwrap_or_default(),
-                                };
-                                for value in configs { ui.selectable_value(&mut config, value,
-                                    format!("{} Hz · {}ch · {}", value.rate, value.channels, value.pcm.label())); }
-                            });
-                        if config != before {
-                            let mut target = g.target.clone();
-                            if let output::Target::Audio { channels, pcm, .. } = &mut target { *channels = config.channels; *pcm = config.pcm; }
-                            if let Err(e) = g.select(target, config.rate, g.settings) { g.error = Some(e); }
-                        }
-                    });
-                });
-                ui.horizontal_wrapped(|ui| {
-                    ui.add_enabled_ui(!g.stopping && !restoring, |ui| {
-                        if ui
-                            .button(if g.stopped() {
-                                "Start output"
-                            } else {
-                                "Stop output"
-                            })
-                            .clicked()
-                        {
-                            if g.stopped() {
-                                g.start();
-                            } else {
-                                g.stop();
-                            }
-                        }
-                        if ui
-                            .add_enabled(
-                                !g.stopped() && !g.starting,
-                                egui::Button::new("Align phases"),
-                            )
-                            .clicked()
-                        {
-                            match g.worker.align() {
-                                Ok(id) => {
-                                    g.pending = true;
-                                    g.requested_id = id;
-                                }
-                                Err(e) => g.error = Some(e),
-                            }
-                        }
-                    });
-                });
-                ui.horizontal_wrapped(|ui| {
-                    if ui
-                        .add_enabled(
-                            !input_running && !self.busy && !restoring && self.generator.target == output::Target::Internal,
-                            egui::Button::new("Observe Generator")
-                                .selected(self.source == Source::Generator),
-                        )
-                        .clicked()
-                        && self.source != Source::Generator
-                    {
-                        self.source = Source::Generator;
-                        self.switch_source();
-                    }
-                    ui.label(
-                        RichText::new("Select ON channels, then Start output and Start input.")
-                            .small()
-                            .color(MUTED),
-                    );
-                });
-                let g = &mut self.generator;
-                ui.horizontal_wrapped(|ui| {
-                    ui.label(
-                        RichText::new(if g.pending {
-                            "PENDING"
-                        } else if g.status.transitioning() {
-                            "TRANSITION"
-                        } else {
-                            "APPLIED"
-                        })
-                        .monospace()
-                        .color(YELLOW),
-                    );
-                    ui.label(
-                        RichText::new(format!(
-                            "Applied Fs: {} Hz · sine amplitude uses FS peak",
-                            g.status.nominal_sample_rate,
-                        ))
-                        .small()
-                        .color(MUTED),
-                    );
-                });
-                if let Some(error) = &g.error {
-                    ui.colored_label(TRIGGER, error);
-                }
-                if matches!(g.status.state, generator::State::Error(_))
-                    && !input_running
-                    && ui.button("Reset output (stays OFF)").clicked()
-                {
-                    match g.worker.select(g.target.clone(), g.rate, g.settings) {
-                        Ok(id) => {
-                            g.pending = true;
-                            g.requested_id = id;
-                        }
-                        Err(e) => g.error = Some(e),
-                    }
-                }
-                ui.collapsing("Output details", |ui| {
-                    ui.label(format!(
-                        "generation {} · revision {} · applied sample {} · transition ends {}, {}",
-                        g.status.output_generation,
-                        g.status.revision,
-                        g.status.applied_sample,
-                        g.status.transition_end[0],
-                        g.status.transition_end[1]
-                    ));
-                    for (i, s) in g.status.settings.signals.iter().enumerate() {
-                        ui.label(format!(
-                            "Applied GEN {}: {} Hz · {} dBFS peak · {}° · {}",
-                            i + 1,
-                            s.frequency_hz,
-                            s.amplitude_dbfs,
-                            s.phase_degrees,
-                            if s.enabled { "ON" } else { "OFF" }
-                        ));
-                    }
-                });
-                let mut settings = g.settings;
-                let editable = !g.stopping
-                    && !restoring
-                    && !matches!(
-                        g.status.state,
-                        generator::State::Stopping | generator::State::Error(_)
-                    );
-                let routing = g.stopped();
-                ui.add_enabled_ui(editable, |ui| {
-                    if ui.available_width() >= 680.0 {
-                        ui.columns(2, |cols| {
-                            for (i, col) in cols.iter_mut().enumerate() {
-                                generator_card(col, g, &mut settings, i, routing);
-                            }
-                        });
-                    } else if ui.available_height() >= 620.0 {
-                        for i in 0..2 {
-                            generator_card(ui, g, &mut settings, i, routing);
-                        }
-                    } else {
-                        // One compact card with a fixed summary for both outputs.
-                        ui.horizontal(|ui| {
-                            for (i, s) in settings.signals.iter().enumerate() {
-                                ui.selectable_value(
-                                    &mut g.selected,
-                                    i,
-                                    format!(
-                                        "GEN {} · OUT {} · {}",
-                                        i + 1,
-                                        s.output_channel
-                                            .map_or("—".into(), |c| (c + 1).to_string()),
-                                        if s.enabled { "ON" } else { "OFF" }
-                                    ),
-                                );
-                            }
-                        });
-                        generator_card(ui, g, &mut settings, g.selected, routing);
-                    }
-                });
-                if settings != g.settings {
-                    g.configure(settings);
+        let g = &mut self.generator;
+        if ui.button("Show Generator").clicked() {
+            g.visible = true;
+        }
+        setting_label(ui, "EDIT STEP");
+        egui::ComboBox::from_id_salt("generator_step")
+            .width(ui.available_width())
+            .selected_text(g.step_label())
+            .show_ui(ui, |ui| {
+                for value in [0.01, 0.1, 1.0, 10.0, 100.0] {
+                    ui.selectable_value(&mut g.step, value, format!("{value}"));
                 }
             });
-        if self.source == Source::Generator && self.generator.target != output::Target::Internal {
-            self.source = Source::Live;
-            self.switch_source();
+        ui.label(
+            RichText::new(
+                "± buttons / Up / Down use this step in Hz, dBFS or degrees. Enter / focus applies; Esc cancels.",
+            )
+            .small()
+            .color(MUTED),
+        );
+        if ui.add_enabled(!g.stopped() && !g.starting && !g.stopping && !restoring
+            && !matches!(g.status.state, generator::State::Error(_)), egui::Button::new("Align phases"))
+            .on_hover_text("Restart both carriers from the same output sample, preserving each signal's phase setting.").clicked() {
+                match g.worker.align() {
+                    Ok(id) => { g.pending = true; g.requested_id = id; }
+                    Err(e) => g.error = Some(e),
+                }
+        }
+        setting_label(ui, "APPLIED OUTPUT");
+        ui.label(RichText::new(g.label()).monospace().color(g.state_color()));
+        ui.label(format!(
+            "{} Hz · {}ch · {} · nominal Fs",
+            g.status.nominal_sample_rate,
+            g.target.channels(),
+            g.target.pcm_label()
+        ));
+        ui.label(
+            RichText::new(g.application_label())
+                .monospace()
+                .color(g.application_color()),
+        );
+        for (i, s) in g.status.settings.signals.iter().enumerate() {
+            ui.label(
+                RichText::new(format!(
+                    "GEN {} · {} · {}",
+                    i + 1,
+                    output_channel_label(*s),
+                    if s.enabled { "ON" } else { "OFF" }
+                ))
+                .color(if i == 0 { GREEN } else { BLUE }),
+            );
+            ui.label(
+                RichText::new(format!(
+                    "{:.3} Hz · {:.3} dBFS peak · {:.3}° lead",
+                    s.frequency_hz, s.amplitude_dbfs, s.phase_degrees
+                ))
+                .small(),
+            )
+            .on_hover_text(format!(
+                "Applied: {} Hz · {} dBFS peak · {}° lead",
+                s.frequency_hz, s.amplitude_dbfs, s.phase_degrees
+            ));
+        }
+        ui.collapsing("Output details", |ui| {
+            ui.label(format!(
+                "Generation {} · revision {}",
+                g.status.output_generation, g.status.revision
+            ));
+            ui.label(format!("Applied sample {}", g.status.applied_sample));
+            ui.label(format!(
+                "Transition ends {}, {}",
+                g.status.transition_end[0], g.status.transition_end[1]
+            ));
+        });
+        self.generator_reset(ui);
+    }
+
+    pub(super) fn generator_reset(&mut self, ui: &mut egui::Ui) {
+        let enabled = !self.running()
+            && self.pending_stop.is_none()
+            && !self.workspace_restoring
+            && self.settings_task != Some(SettingsTask::Restore);
+        let g = &mut self.generator;
+        if let Some(error) = &g.error {
+            ui.colored_label(TRIGGER, error);
+        }
+        if matches!(g.status.state, generator::State::Error(_))
+            && ui
+                .add_enabled(enabled, egui::Button::new("Reset output (stays OFF)"))
+                .clicked()
+        {
+            match g.worker.select(g.target.clone(), g.rate, g.settings) {
+                Ok(id) => {
+                    g.pending = true;
+                    g.requested_id = id;
+                }
+                Err(e) => g.error = Some(e),
+            }
         }
     }
+
+    pub(super) fn generator_panel(&mut self, ui: &mut egui::Ui) {
+        let restoring =
+            self.workspace_restoring || self.settings_task == Some(SettingsTask::Restore);
+        egui::Frame::new().fill(Color32::from_rgb(15, 22, 29))
+            .stroke(Stroke::new(1.0, BORDER)).corner_radius(5.0).inner_margin(8.0)
+            .show(ui, |ui| {
+                ui.spacing_mut().item_spacing = vec2(6.0, 4.0);
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Generator").strong().color(GREEN));
+                    let g = &mut self.generator;
+                    ui.label(RichText::new(g.application_label()).small().monospace().color(g.application_color()))
+                        .on_hover_text(format!("Applied Fs: {} Hz (nominal). Settings preview uses FS peak; measured samples are shown in Scope.", g.status.nominal_sample_rate));
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.add_enabled(!g.stopping && !restoring, egui::Button::new(
+                            RichText::new(if g.stopped() { "▶ Start output" } else { "■ Stop output" })
+                                .color(if g.stopped() { GREEN } else { TRIGGER }))).clicked() {
+                            if g.stopped() { g.start(); } else { g.stop(); }
+                        }
+                        if ui.small_button("Adjust").on_hover_text(format!("Step {} · phase alignment and applied output details", g.step_label())).clicked() {
+                            self.sidebar.reveal(SettingsSection::Generator);
+                        }
+                        if ui.small_button("I/O").on_hover_text("Output device, format, channel routing and input connection").clicked() {
+                            self.sidebar.io_output = true;
+                            self.sidebar.reveal(SettingsSection::Io);
+                        }
+                    });
+                });
+                self.generator_reset(ui);
+                let g = &mut self.generator;
+                let mut settings = g.settings;
+                let editable = !g.stopping && !restoring
+                    && !matches!(g.status.state, generator::State::Stopping | generator::State::Error(_));
+                ui.add_enabled_ui(editable, |ui| {
+                    if ui.available_width() >= 760.0 {
+                        ui.columns(2, |cols| {
+                            for (i, col) in cols.iter_mut().enumerate() {
+                                generator_card(col, g, &mut settings, i);
+                            }
+                        });
+                    } else {
+                        // Keep the other channel's routing and state visible without
+                        // doubling the height or taking space from the measurements.
+                        ui.horizontal(|ui| {
+                            for (i, s) in settings.signals.iter().enumerate() {
+                                ui.selectable_value(&mut g.selected, i, RichText::new(format!(
+                                    "GEN {} · {} · {}", i + 1, output_channel_label(*s),
+                                    if s.enabled { "ON" } else { "OFF" }
+                                )).color(if i == 0 { GREEN } else { BLUE }));
+                            }
+                        });
+                        generator_card(ui, g, &mut settings, g.selected);
+                    }
+                });
+                if settings != g.settings { g.configure(settings); }
+            });
+    }
+}
+
+pub(super) fn output_channel_label(s: generator::Signal) -> String {
+    s.output_channel
+        .map_or("Unassigned".into(), |c| format!("OUT {}", c + 1))
 }
 
 fn generator_card(
@@ -1228,8 +1212,7 @@ fn generator_card(
     g: &mut GeneratorUi,
     settings: &mut generator::Settings,
     index: usize,
-    routing: bool,
-) {
+) -> egui::Response {
     let color = if index == 0 { GREEN } else { BLUE };
     let s = &mut settings.signals[index];
     egui::Frame::new()
@@ -1238,71 +1221,55 @@ fn generator_card(
         .corner_radius(4.0)
         .inner_margin(8.0)
         .show(ui, |ui| {
+            ui.set_min_width(ui.available_width());
+            ui.spacing_mut().item_spacing = vec2(5.0, 4.0);
             ui.horizontal(|ui| {
                 ui.label(
-                    RichText::new(format!("GEN {} · Sine", index + 1))
+                    RichText::new(format!("GEN {}", index + 1))
                         .strong()
                         .color(color),
                 );
-                ui.checkbox(&mut s.enabled, "ON");
-                ui.add_enabled_ui(routing, |ui| {
-                    egui::ComboBox::from_id_salt(("generator_channel", index))
-                        .selected_text(
-                            s.output_channel
-                                .map_or("Unassigned".into(), |c| format!("OUT {}", c + 1)),
-                        )
-                        .show_ui(ui, |ui| {
-                            ui.selectable_value(&mut s.output_channel, None, "Unassigned");
-                            for c in 0..g.target.channels() {
-                                ui.selectable_value(
-                                    &mut s.output_channel,
-                                    Some(c),
-                                    format!("OUT {}", c + 1),
-                                );
-                            }
-                        });
-                });
-            });
-            ui.horizontal(|ui| {
-                ui.label(RichText::new("Step").small().color(MUTED));
-                egui::ComboBox::from_id_salt(("generator_step", index))
-                    .selected_text(format!("{}", g.step))
-                    .show_ui(ui, |ui| {
-                        for value in [0.01, 0.1, 1.0, 10.0, 100.0] {
-                            ui.selectable_value(&mut g.step, value, format!("{value}"));
-                        }
-                    });
                 ui.label(
-                    RichText::new("Enter / focus to apply · Esc to cancel")
+                    RichText::new(format!("Sine · {}", output_channel_label(*s)))
                         .small()
                         .color(MUTED),
                 );
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.checkbox(&mut s.enabled, "ON");
+                });
             });
+            ui.separator();
             for (field, (title, unit, value)) in [
-                ("FREQUENCY", "Hz", &mut s.frequency_hz),
-                ("AMPLITUDE · PEAK", "dBFS", &mut s.amplitude_dbfs),
-                ("PHASE · LEAD", "°", &mut s.phase_degrees),
+                ("Frequency", "Hz", &mut s.frequency_hz),
+                ("Peak level", "dBFS", &mut s.amplitude_dbfs),
+                ("Phase lead", "°", &mut s.phase_degrees),
             ]
             .into_iter()
             .enumerate()
             {
-                ui.label(RichText::new(title).small().color(MUTED));
-                match numeric_field(
-                    ui,
-                    (index, field),
-                    &mut g.texts[index][field],
-                    &mut g.edited[index][field],
-                    *value,
-                    g.step,
-                    unit,
-                ) {
-                    Ok(Some(next)) => *value = next,
-                    Ok(None) => {}
-                    Err(e) => g.error = Some(e),
-                }
+                ui.horizontal(|ui| {
+                    ui.add_sized(
+                        vec2(72.0, 26.0),
+                        egui::Label::new(RichText::new(title).small().color(MUTED)),
+                    );
+                    match numeric_field(
+                        ui,
+                        (index, field),
+                        &mut g.texts[index][field],
+                        &mut g.edited[index][field],
+                        *value,
+                        g.step,
+                        unit,
+                    ) {
+                        Ok(Some(next)) => *value = next,
+                        Ok(None) => {}
+                        Err(e) => g.error = Some(e),
+                    }
+                });
             }
             preview(ui, *s, color);
-        });
+        })
+        .response
 }
 
 fn numeric_field(
@@ -1322,11 +1289,11 @@ fn numeric_field(
     let mut next = None;
     let mut invalid = false;
     ui.horizontal(|ui| {
-        let width = (ui.available_width() - 120.0).max(100.0);
+        let width = (ui.available_width() - 100.0).max(80.0);
         let response = ui.add(
             egui::TextEdit::singleline(text)
                 .id(widget_id)
-                .font(egui::FontId::monospace(27.0))
+                .font(egui::FontId::monospace(20.0))
                 .desired_width(width),
         );
         *edited |= response.changed();
@@ -1349,7 +1316,13 @@ fn numeric_field(
             }
             *edited = false;
         }
-        ui.label(RichText::new(unit).color(MUTED));
+        response
+            .clone()
+            .on_hover_text("Enter / focus to apply · Esc to cancel · Up / Down to step");
+        ui.add_sized(
+            vec2(34.0, 24.0),
+            egui::Label::new(RichText::new(unit).small().color(MUTED)),
+        );
         if ui.small_button("−").clicked() {
             next = Some(next.unwrap_or(value) - step);
         }
@@ -1399,7 +1372,7 @@ fn preview(ui: &mut egui::Ui, s: generator::Signal, color: Color32) {
         .small()
         .color(MUTED),
     );
-    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), 52.0), egui::Sense::hover());
+    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), 28.0), egui::Sense::hover());
     if !ui.is_rect_visible(rect) {
         return;
     }
@@ -1427,6 +1400,47 @@ fn preview(ui: &mut egui::Ui, s: generator::Signal, color: Color32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cards_fit_columns_without_consuming_the_measurement_height() {
+        let mut g = GeneratorUi::default();
+        let mut settings = g.settings;
+        settings.signals[0].frequency_hz = 345_599.999;
+        settings.signals[1].amplitude_dbfs = -120.0;
+        settings.signals[1].phase_degrees = -180.0;
+        for width in [370.0, 540.0, 700.0] {
+            let ctx = egui::Context::default();
+            for _ in 0..2 {
+                let output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            pos2(0.0, 0.0),
+                            vec2(1440.0, 860.0),
+                        )),
+                        ..Default::default()
+                    },
+                    |ui| {
+                        ui.set_width(width);
+                        for index in 0..2 {
+                            let response = generator_card(ui, &mut g, &mut settings, index);
+                            assert!(
+                                response.rect.width() <= width + 1.0,
+                                "card exceeds its column: {:?}",
+                                response.rect
+                            );
+                            assert!(
+                                response.rect.height() <= 210.0,
+                                "card leaves too little space for measurement: {:?}",
+                                response.rect
+                            );
+                        }
+                    },
+                );
+                output.drop_without_applying_deltas();
+            }
+        }
+    }
+
     fn key(key: egui::Key, modifiers: egui::Modifiers) -> egui::Event {
         egui::Event::Key {
             key,

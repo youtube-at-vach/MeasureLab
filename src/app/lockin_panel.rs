@@ -318,7 +318,8 @@ impl ScopeApp {
                     });
                     self.apply_lockin_controls(before);
                     if ui.small_button("Input…").clicked() {
-                        self.sidebar.reveal(SettingsSection::Input);
+                        self.sidebar.io_output = false;
+                        self.sidebar.reveal(SettingsSection::Io);
                     }
                 });
                 ui.collapsing("Measurement details", |ui| {

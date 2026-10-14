@@ -14,7 +14,7 @@ With the local macOS/Linux setup, `./scripts/cargo.sh run --release --locked` al
 
 ## First measurement without hardware
 
-1. Select **Software Loopback** under **Input source**. It is available in normal builds and does not drive a physical output.
+1. Select **Software Loopback** under **I/O / Input**. It is available in normal builds and does not drive a physical output.
 2. Start acquisition using the top control, then select **Scope + Spectrum** under **View**.
 3. Use **Adjust** beside each plot for time/amplitude scales and FFT/window/channel settings. Start with the default 8,192-point FFT.
 4. Press **Stop** to hold results, then inspect cursors, RMS, peaks or PSD band values.
@@ -26,14 +26,16 @@ A complete 524,288-point window takes about 10.92 seconds at 48 kHz. Faster Live
 ## Observe a Generator sine wave
 
 1. Choose **View / Generator + Scope**. The two-channel internal output is available in normal builds.
-2. Select **ON** and **OUT 1/2** for each GEN, then enter frequency (Hz), amplitude (dBFS peak) and phase (lead, degrees). Enter or leaving the field applies an edit; Esc cancels it. **Step** and the ± buttons also adjust values.
-3. Select **Observe Generator**, then press **Start output** and **Start input** separately. The settings preview and measured waveform are separate views.
+2. Assign **OUT 1/2** under **I/O / Output**, enable **ON** on each central GEN card, then enter frequency (Hz), amplitude (dBFS peak) and phase (lead, degrees). Enter or leaving the field applies an edit; Esc cancels it. Use **Adjust / Generator / EDIT STEP** to select a step for the ± buttons and arrow keys.
+3. Select **I/O / Output / Observe Generator**, then press **Start output** and **Start input** separately. The settings preview and measured waveform are separate views.
 4. Switch to **Generator + Spectrum/Lock-in** to inspect analysis. Live edits transition amplitude and phase smoothly; Spectrum/Lock-in restart averaging and settling after the transition.
 5. **Stop input** holds the measurement while output continues. **Stop output/Stop all outputs** stops generation; active input then receives new silent samples.
 
-Select an output rate of 44.1, 48, 96 or 192 kHz while both input and output are stopped. Restoring settings also requires both to be stopped and leaves output OFF. Internal JSON/CSV results retain output conditions for the received intervals.
+The central panel keeps compact numerical controls and settings previews. Wide windows show both channels side by side; narrow windows use tabs with both output states visible. **Adjust** opens phase alignment and applied output details.
 
-For audio-device output, select a destination and its supported sample rate, channel count and PCM while stopped, then assign the OUT channels. Unassigned outputs are silent. Choose the connected physical input under **Input source**, then press **Start output** and **Start input** separately. **Observe Generator** uses the internal connection. Output notifications or stalled callbacks latch ERROR; use **Reset output (stays OFF)** and an explicit Start to recover. Settings retain the output identity and format and restore with output OFF.
+Under **I/O / Output**, select an output rate of 44.1, 48, 96 or 192 kHz while both input and output are stopped. Restoring settings also requires both to be stopped and leaves output OFF. Internal JSON/CSV results retain output conditions for the received intervals.
+
+For audio-device output, select a destination under **I/O / Output** and its supported sample rate, channel count and PCM while stopped, then assign the OUT channels. Unassigned outputs are silent. Choose the connected physical input under **I/O / Input**, then press **Start output** and **Start input** separately. **Observe Generator** uses the internal connection. Output notifications or stalled callbacks latch ERROR; use **Reset output (stays OFF)** and an explicit Start to recover. Settings retain the output identity and format and restore with output OFF.
 
 External input and output use separate clocks; output transitions are not automatically mapped to input analysis windows. Wait for input settling after edits and use two actual input channels for synchronous REF and response in Lock-in. JSON/CSV results that observe an external Generator retain applied settings, output state, failures and up to 128 observed changes. Input Stop, Single completion or input failure freezes this evidence; later edits cannot change it. Input-window correspondence remains uncalibrated, so reference comparisons omit numerical differences. Host observation times are not DAC/ADC timestamps, and lost or evicted history is not reconstructed. Result format version 4 also reads versions 1–3. Output calibration and DAC/ADC latency remain unverified.
 

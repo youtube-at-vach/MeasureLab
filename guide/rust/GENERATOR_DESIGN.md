@@ -42,21 +42,23 @@
 
 ### 基本レイアウト
 
-既存の測定器選択へ`Generator`を追加し、単独表示と`Generator + Scope`／`Generator + Spectrum`／`Generator + Lock-in`を選べるようにする。主要な数値編集を左Settingsへ分散させず、Generatorの同じカード内で完結させる。
+既存の測定器選択へ`Generator`を追加し、単独表示と`Generator + Scope`／`Generator + Spectrum`／`Generator + Lock-in`を選べるようにする。主要な数値編集を左Settingsへ分散させず、Generatorの同じカード内で完結させる。デバイス・形式・出力CHの接続設定は入力と共通のI/Oへ、刻み幅・位相同期・適用詳細はGeneratorのサイドバー設定へ置く。中央のI/O／Adjustから直接開ける。
 
 ```text
-Generator   [Internal loopback / Audio device]   [Stop all outputs]
-Device [選択]   Fs [48 kHz]   PCM [f32]   OUTPUT: STOPPED
+上部: OUTPUT: STOPPED   [I/O]   [Stop all outputs]
+Settings: I/O [Input / Output] / Generator / 各測定器
+  I/O / Output: Device / Fs・CH数・PCM / GEN→OUT / Observe Generator
+  Generator: EDIT STEP / Align phases / 実適用値 / Output details
+中央:
+Generator  APPLIED                       [I/O] [Adjust] [Start output]
 ┌──────────────────────────────┬──────────────────────────────┐
-│ GEN 1 → OUT [1]  Sine   [OFF] │ GEN 2 → OUT [2]  Sine   [OFF] │
-│ FREQUENCY                    │ FREQUENCY                    │
-│          1 000.000 Hz         │          1 000.000 Hz         │
-│ AMPLITUDE          PHASE     │ AMPLITUDE          PHASE     │
-│    −20.00 dBFS       0.00°   │    −20.00 dBFS      90.00°   │
-│ [設定波形プレビュー・2周期]  │ [設定波形プレビュー・2周期]  │
-│ ±0.1 FS peak / 2 ms          │ ±0.1 FS peak / 2 ms          │
+│ GEN 1 · Sine · OUT 1    [OFF] │ GEN 2 · Sine · OUT 2    [OFF] │
+│ Frequency   1000.000 Hz  [±]  │ Frequency   1000.000 Hz  [±]  │
+│ Peak level   −20.000 dBFS [±] │ Peak level   −20.000 dBFS [±] │
+│ Phase lead     0.000 °   [±]  │ Phase lead    90.000 °   [±]  │
+│ 設定プレビュー ±0.1 FS peak  │ 設定プレビュー ±0.1 FS peak  │
+│ [静止波形・2周期 / 2 ms]     │ [静止波形・2周期 / 2 ms]     │
 └──────────────────────────────┴──────────────────────────────┘
-[Align phases]   Pending / Applied / Transition   [Start output]
 ──── 同じワークスペース内のScope／Spectrum／Lock-in ────────────
 ```
 
@@ -64,9 +66,9 @@ Device [選択]   Fs [48 kHz]   PCM [f32]   OUTPUT: STOPPED
 
 * 出力先は初期版では内部ループバックか1台の音声デバイスのどちらか。同時に両方へ出さない。`GEN 1/2 → OUT n`を明示し、入力側の`CH n`と混同させない。内部は2ch、音声デバイスは対応する1〜16chの出力構成から最大2chを選び、1ch機器では2つ目を選択不能にする。同じ出力CHへの二重割当は拒否し、未選択CHにはゼロを出す。16ch同時生成は後続とする。
 * 既存画面の濃紺背景（panel `#0f161d`、plot `#070e13`）、文字`#d9e4ea`、GEN 1の緑`#38f2ad`・GEN 2の青`#57a6ff`を使う。色だけに依存せず、番号・出力先・状態を文字で表示する。立体的なベゼルや常時アニメーションは追加しない。
-* 周波数は28〜32 pt、振幅・位相は24〜28 ptを初期の検討値とする。等幅数字と明確な単位、揃えた小数点、既存と同じ余白・境界線を使う。範囲・精度に応じて桁を決め、表示桁数を発振精度の保証として扱わない。Scope等の既存数値領域は移動しない。
-* 数値のクリックで直接入力し、Hz／kHz、dBFS、°を欄の近くに表示する。Enter／フォーカス確定で適用、Escで編集取消。矢印キーとドラッグの刻みを見える位置で選び、連続操作は最新要求へ集約する。入力途中の符号や小数点を出力へ流さない。
-* 2ch横並びは十分な幅があるときだけ使い、狭幅ではカードを縦に並べる。さらに高さが足りなければCHタブ＋両CHの固定状態行へ切り替え、選択CHの3値と全出力停止をスクロールなしで操作できるようにする。既存のAutomatic／Side by side／Stacked配置と整合させる。
+* 中央の数値は20 ptの等幅書体とし、固定幅ラベル・単位・±操作を揃えた3行で編集する。等幅数字と明確な単位、揃えた小数点、既存と同じ余白・境界線を使う。範囲・精度に応じて桁を決め、表示桁数を発振精度の保証として扱わない。Scope等の既存数値領域は移動しない。
+* 数値のクリックで直接入力し、Hz、dBFS、°を欄の近くに表示する。Enter／フォーカス確定で適用、Escで編集取消。矢印キーと±ボタンの刻みをGeneratorのEDIT STEPで選び、連続操作は最新要求へ集約する。入力途中の符号や小数点を出力へ流さない。
+* 2ch横並びは十分な幅があるときだけ使い、中央の内幅760 pt未満では高さによらずCHタブ＋両CHのOUT・ON／OFF行へ切り替え、選択CHの3値と全出力停止をスクロールなしで操作できるようにする。既存のAutomatic／Side by side／Stacked配置と整合させる。
 * プレビューは「設定波形」と明記し、同じ式・適用条件から作る2周期程度の静止波形とする。周期の時間、FS peak目盛、位相原点を示す。振幅で縦倍率を変えた場合は倍率を明示する。停止中でも見えるが、実測・DAC後のモニターとは扱わない。実波形はScopeで観測する。
 * `STOPPED / STARTING / RUNNING / STOPPING / ERROR`、CHのOFF、設定の`PENDING / APPLIED / TRANSITION`を区別する。実行側の応答が来る前に`RUNNING`や`APPLIED`を表示しない。非表示化しても出力状態と全出力停止は上部に残す。
 
@@ -87,7 +89,7 @@ Device [選択]   Fs [48 kHz]   PCM [f32]   OUTPUT: STOPPED
 `generator.rs`と`generator/control.rs`、`app/generator_panel.rs`と`output.rs`の内部生成ワーカー・共通入力接続は実装済み。`output/device.rs`は出力専用の列挙・設定再確認・PCM変換とCPALコールバック、`output/runtime.rs`は非UIの管理・期限付き停止・失敗保持を実装する。内部とAudio deviceの同時出力は行わず、接続中もコールバックと管理が同じ優先Stopを共有する。内部経路は44.1／48／96／192 kHz・2chのf64に限定し、生成・測定・描画を独立させる。起動時はOFF、停止中の復元・Fs変更もOFFを維持する。入力Stop後は出力を継続し、出力Stop後は取得中の新しい無音サンプルを供給する。macOSのスケジューリング活動も入力と出力で別に保持する。
 
 ```text
-egui Generatorパネル（app/generator_panel.rs）
+egui Generator / I/O（app/generator_panel.rs、app/io_panel.rs）
   → 検証済み設定要求 → 出力管理（output.rs、UIとは別スレッド）
   → 容量固定の制御転送 → generator.rs（f64、egui／CPALに非依存）
                            ├ Audio device: CPAL出力callbackが状態を所有
