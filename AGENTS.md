@@ -9,18 +9,18 @@ description: MeasureLab の Rust 開発と公開サイトの共通ルール
 ## 作業前に読む文書
 
 * Rust の計画・設計・実装では [現在の方針](guide/CURRENT_DIRECTION.md) → [Rust PLAN](guide/rust/PLAN.md) の順に読み、目的・不変条件と対象マイルストーンを確認する。操作・コードの入口は [Rust README](guide/rust/README.md) の必要な節を読む。
-* 現在は段階3の実装を基盤に、段階4の品質評価とRustプロトタイプの公開準備を進める。Audio I/O・測定演算・描画の実行分離、f64 基準、既知入力での精度・再現性を優先する。実装済みの 1〜16ch 基盤を維持し、まず 2ch の測定用途を完成させる。
-* 旧 Rust/QML 計画、旧 Python 版 GUI ガイド、`tech_docs/`、`.github/deepwiki/` は必要箇所だけ読む参考資料。旧版の構造・全機能移行・作業手順を現行の要件として適用しない。
-* 文書は現在有効な状態を更新する。作業日誌や会話ログを追記せず、実装状態・未解決問題・次の完了条件を正本へ反映する。実測記録は条件付きで分離し、未実施や過去の成功を現在の検証済みとしない。
+* Rust版はmainへ統合済み。現在はGeneratorと同期2ch比較の統合評価、Rustプロトタイプの配布準備を進める。Audio I/O・測定演算・描画の実行分離、f64 基準、既知入力での精度・再現性を優先する。実装済みの 1〜16ch 基盤を維持し、まず 2ch の測定用途を完成させる。
+* 旧 Python 版 GUI ガイド、`tech_docs/`、`.github/deepwiki/` は必要箇所だけ読む参考資料。旧版の構造・全機能移行・作業手順を現行の要件として適用しない。
+* 文書は現在有効な状態を更新する。作業日誌や会話ログを追記せず、実装状態・未解決問題・次の完了条件を正本へ反映する。テスト条件・許容差・合否はコードを正本とし、実機確認だけを短く残す。未実施や過去の成功を現在の検証済みとしない。
 
 ## 現在の状態
 
 * Rust アプリの表示名は MeasureLab、Cargo パッケージ・実行ファイル名は `measurelab`。次の版は `v0.10.0`、Rust 1.95 以降を使う。
-* 開発用の PR は作業ブランチから `rewrite/rust` に向ける。main への切り替えは別途依頼された段階で行う。
+* Rust版は `main` で開発し、開発用の PR は作業ブランチから `main` に向ける。
 * Python アプリの最終版は `v0.9.1` タグと `archive/python-v0.9.1` ブランチを参照する。
 * `.legacy-python/` はローカル専用の退避先で、Git 管理・通常の検索・検証の対象外。ここから旧実装やテスト環境を自動的に復元しない。
 * `docs/` は既存URLを維持する Python 最終版の公開マニュアル、`docs-rust/` は `/rust/` に分ける Rust マニュアル。Rust 版で未実装の機能を実装済みと説明しない。
-* Rust ソースの取り込み、main へのマージ、タグ作成、公開は依頼された段階だけ進める。
+* PR のマージ、タグ作成、公開は依頼された段階だけ進める。
 
 ## 残している構成
 
@@ -51,5 +51,5 @@ description: MeasureLab の Rust 開発と公開サイトの共通ルール
 * Issue 作成・Project 更新は依頼された場合だけ行う。[GitHub 共通手順](.agents/workflows/github_project.md) を参照する。
 * 新しいブランチ名は指定がなければ `codex/<目的>` とする。
 * PR を依頼された場合は、変更に必要な検証を行い、Ready for review で作成して `isDraft:false` を確認する。ユーザーが明示した場合だけ Draft にする。
-* PR 作成時は base が `rewrite/rust` であることを確認する。依頼がない限りマージは行わない。
-* 公開準備の現行タスクは [公開準備](guide/rust/RELEASE_PREPARATION.md)、完了した移行整理の所在は [Rust rewrite preparation](guide/RUST_REWRITE_PREPARATION.md) を参照する。
+* PR 作成時は base が `main` であることを確認する。依頼がない限りマージは行わない。
+* 配布・サイト運用は [公開準備](guide/rust/RELEASE_PREPARATION.md)、テストコード・実機QAの入口は [Rust の検証](guide/rust/VALIDATION.md) を対象作業時に参照する。

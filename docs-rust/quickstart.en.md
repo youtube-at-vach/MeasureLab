@@ -2,7 +2,7 @@
 
 ## Build from source
 
-Use a checkout containing the Rust edition and Rust 1.95 or later. Rust work targets `rewrite/rust` until the main transition. macOS needs Xcode Command Line Tools; Linux needs ALSA, X11 and Wayland development libraries; Windows needs MSVC and Visual Studio C++ Build Tools. See `guide/rust/SETUP.md` in the repository for details.
+Use a checkout containing the Rust edition and Rust 1.95 or later. The Rust edition is on `main`. macOS needs Xcode Command Line Tools; Linux needs ALSA, X11 and Wayland development libraries; Windows needs MSVC and Visual Studio C++ Build Tools. See `guide/rust/SETUP.md` in the repository for details.
 
 Run from the repository root:
 

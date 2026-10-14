@@ -157,7 +157,7 @@ ScopeではRMS・Peak・P-Pと時間カーソルの数値に校正を適用し�
 
 再起動後、入力と出力を停止した状態で同じパスを指定し、**Restore settings** を押します。Stopの解析完了・デバイス操作・Scopeの保留操作も完了するまで待ちます。復元だけでは取得・出力・記録を開始しません。校正と解析条件は次回Start用に適用し、保持結果のCH・公称Fs・入力世代・校正版は維持します。軸や観察幅などの表示操作は保持した生サンプルから再表示します。復元中はStartを受け付けません。
 
-入力は名前や列挙順でなくCPALの安定したデバイスIDを照合します。不在・重複ID、CH数の変化、指定レートの非対応、Device defaultで保存した既定Fsの変化では復元全体を拒否し、別のデバイスやレートへ置き換えません。接続を戻して **Refresh devices** を行い、再度復元してください。対応しない版・旧形式・不正値・64 KiBを超えるファイルや、セッション内で既知の校正ID／版と異なる定義も拒否します。保存失敗では以前のファイルを維持し、成功・失敗はパネルと下部の **Settings status / Settings error** から確認できます。デバイスIDの保証範囲はOS・バックエンドに依存します。条件付きの検証と未確認範囲は [設定保存の検証](validation/SETTINGS_2026-10.md) を参照してください。
+入力は名前や列挙順でなくCPALの安定したデバイスIDを照合します。不在・重複ID、CH数の変化、指定レートの非対応、Device defaultで保存した既定Fsの変化では復元全体を拒否し、別のデバイスやレートへ置き換えません。接続を戻して **Refresh devices** を行い、再度復元してください。対応しない版・旧形式・不正値・64 KiBを超えるファイルや、セッション内で既知の校正ID／版と異なる定義も拒否します。保存失敗では以前のファイルを維持し、成功・失敗はパネルと下部の **Settings status / Settings error** から確認できます。デバイスIDの保証範囲はOS・バックエンドに依存します。
 
 ### Generatorの出力と内部ループバック
 
@@ -187,7 +187,7 @@ macOSの実入出力は、コールバックの時間的余裕を確保するた
 
 基本波のX／Yは同じ非重複整数窓で測ったREF位相を補正してから二段の複素EMAで平均します。周期Hannの重み付きDC／sin／cos適合を使い、DCオフセットと校正オフセットはACから除外します。校正ゲインはREFと応答の両方へ適用します。Rはpeak振幅、正のY／位相は応答の進みです。複素応答/REFも平均してGainを表示します。フィルター係数は `1 − exp(−N/(Fs×τ))`、整定判定は連続有効入力10τで、UI時刻・壁時計には依存しません。窓平均も応答帯域・遅延に寄与し、τだけで帯域を決めたとは扱いません。欠落・非有限・REF喪失では古い平均と数値を破棄し、回復後に整定し直します。
 
-**Lock-inは実験段階です。仮想系の精度確認は必須ですが、実機でREF・タイミングを含めて使用できるまで完了としません。** 高調波REF、広範囲PLL、異なる入出力時計の補正や、Lock-inから励振を管理する測定フローは未実装です。旧版との対応・許容差・残る実機確認は [Lock-inの検証](validation/LOCKIN_2026-10.md) を参照してください。
+**Lock-inは実験段階です。仮想系の精度確認は必須ですが、実機でREF・タイミングを含めて使用できるまで完了としません。** 高調波REF、広範囲PLL、異なる入出力時計の補正や、Lock-inから励振を管理する測定フローは未実装です。
 
 ### Scopeの取得とAutoset
 
@@ -199,7 +199,7 @@ Singleは最初の有効区間を捕捉して共通入力を自動停止しま�
 
 ### Spectrumの測定定義
 
-524,288点は実入力の窓長です。48 kHzではΔf ≈ 0.091553 Hz、周期HannのRBW ≈ 0.137329 Hz、窓時間 ≈ 10.9227秒、ContinuousのN/4 hop ≈ 2.7307秒です。開始・解析条件変更・欠落後は完全な窓の充填を待ち、未取得分をゼロで代用しません。Liveの高速観察でも完全窓の充填時間と窓時間は変わりません。Latestの100 ms観察では隣接窓が約99.1%重なります。同じEMA αでも解析間隔が変われば秒単位の応答が変わります。BIN幅・RBW・周波数読み値の精度・入力時計の誤差は区別します。Spectrogramは独立した1,024〜32,768点の上限を維持します。大きなFFTの基礎検証は [大きなFFTの検証](validation/LARGE_FFT_2026-10.md)、Liveと描画性能の条件・結果は [描画更新の検証](validation/SPECTRUM_PERFORMANCE_2026-10.md) に保持します。
+524,288点は実入力の窓長です。48 kHzではΔf ≈ 0.091553 Hz、周期HannのRBW ≈ 0.137329 Hz、窓時間 ≈ 10.9227秒、ContinuousのN/4 hop ≈ 2.7307秒です。開始・解析条件変更・欠落後は完全な窓の充填を待ち、未取得分をゼロで代用しません。Liveの高速観察でも完全窓の充填時間と窓時間は変わりません。Latestの100 ms観察では隣接窓が約99.1%重なります。同じEMA αでも解析間隔が変われば秒単位の応答が変わります。BIN幅・RBW・周波数読み値の精度・入力時計の誤差は区別します。Spectrogramは独立した1,024〜32,768点の上限を維持します。
 
 未校正のSpectrumの既定モード **Bin amplitude** は片側ビン振幅のdBFSです。窓のcoherent gainを補正し、ビン中心の1 FS peak正弦波を0 dBFSとします。DCとNyquistのビンは2倍しません。振幅ビンを積算して雑音電力とは扱いません。**Δf** はFs/N、**RBW** は窓の等価雑音帯域です。48 kHz・8,192点・HannではΔf ≈ 5.86 Hz、RBW ≈ 8.79 Hz、窓時間 ≈ 170.7 ms。ピークは最大ビンの値なので、1 kHzの信号が1002.0 Hzのビンに表示される場合があります。
 
@@ -211,13 +211,13 @@ PSDの **Power in band** は、From〜Toの両端を含む中心周波数のビ�
 
 単一窓の全帯域積算はParsevalにより`Σw²(x−μ)² / Σw²`に一致します（DC除去なしはμ = 0）。Rectangularでは生サンプルの平均二乗、他の窓では窓付きの平均二乗です。定常正弦波・雑音の電力評価と短い過渡の窓位置依存を区別し、Scopeの観察区間のRMSと常に同一とは扱いません。ビン間正弦波では漏れを含む十分な帯域を選んで評価します。dBm・負荷インピーダンス換算は未実装です。
 
-Spectrumの校正CHは、振幅を物理単位peak、PSDを単位²/Hz、帯域積算を単位²とRMS単位で読み出します。dB表示はそれぞれ `20 log10(振幅 / 1 単位peak)`、`10 log10(PSD / 1 単位²/Hz)` です。たとえばVでは **dB re 1 V peak** と **dB re 1 V²/Hz** を使い、未校正CHは従来のdBFS／FS²/Hzを維持します。負のゲインも電力へ正しく反映します。Remove DCなしでは `y = gain × x + offset` を窓掛け前に計算し、校正したDCが窓によって隣接ビンへ広がることも含みます。Remove DCありでは `gain × (x − mean(x))` をf64で計算し、オフセットを相殺してから窓掛け・任意のf32変換を行います。全帯域PSD積算は校正した信号の窓付き平均二乗に対応します。Spectrumワーカーの入力、校正値、FFT電力が非有限なら **Invalid FFT window** とし、平均と保持をリセットして次の有効な完全窓から回復します。この無効窓数と入力欠落数を別に表示します。条件と許容差は [Spectrum校正の検証](validation/SPECTRUM_CALIBRATION_2026-10.md) に保持します。
+Spectrumの校正CHは、振幅を物理単位peak、PSDを単位²/Hz、帯域積算を単位²とRMS単位で読み出します。dB表示はそれぞれ `20 log10(振幅 / 1 単位peak)`、`10 log10(PSD / 1 単位²/Hz)` です。たとえばVでは **dB re 1 V peak** と **dB re 1 V²/Hz** を使い、未校正CHは従来のdBFS／FS²/Hzを維持します。負のゲインも電力へ正しく反映します。Remove DCなしでは `y = gain × x + offset` を窓掛け前に計算し、校正したDCが窓によって隣接ビンへ広がることも含みます。Remove DCありでは `gain × (x − mean(x))` をf64で計算し、オフセットを相殺してから窓掛け・任意のf32変換を行います。全帯域PSD積算は校正した信号の窓付き平均二乗に対応します。Spectrumワーカーの入力、校正値、FFT電力が非有限なら **Invalid FFT window** とし、平均と保持をリセットして次の有効な完全窓から回復します。この無効窓数と入力欠落数を別に表示します。
 
 平均は **EMA α = 1/指定値** による指数的な線形電力平均です。最初の完全窓で初期化し、次の窓から`P ← P + α(Pnew − P)`を適用します。α = 1では最新窓だけを使います。処理窓数と最初〜最新の寄与区間を結果に保持しますが、均等な積算回数や区間全体の一様なRMSを意味しません。Live（既定）は全サイズでN/4の進行を要求せず、最大60回/秒の最新窓観察です。解析総時間の2倍と16.67 msの大きい方を周期の下限にし、遅い処理では直ちに延長、回復時は徐々に短縮します。対象は新しい終端の完全窓だけで、描画回数や表示の開閉に依存しません。ContinuousはN/4の全完全窓を処理します。Liveと省負荷のLatestは観察時点の最新窓だけを使い、過渡の捕捉を保証しません。Latestの32,768点以下は33 ms以上かつN/4以上、新4サイズは100 msでN/4の制限を外します。カーソルの説明で最新窓・寄与区間・CH・設定・入力世代・欠落を確認できます。
 
 ピーク保持は平均後の各ビンの最大値を保持します。有効化またはClear holdで現在のスペクトルから保持を始めます。入力・FFT設定・測定モード・入力CHの変更やデータ欠落で平均と保持をリセットします。取得停止中の解析設定変更は次回開始に適用し、保持値のモード・単位・設定を変えません。停止中の表示・帯域変更では同じサンプルを繰り返し平均しません。
 
-数値電力・保持値・帯域積算・カーソル／ピークはf64で保持・読み出し、描画用のf32 dB配列から逆算しません。描画には−180 dBの下限がありますが、数値は下限で切り詰めません。電力0は数値上−∞ dBです。32-bit FFTは入力のDC除去後にf32へ変換し、複素結果の二乗と平均はf64で行います。f32 FFT自体の丸めや混在する強弱信号の制限は残り、微小信号の既定は64-bitです。定義・許容差と確認範囲は [Spectrumの検証](validation/SPECTRUM_2026-10.md) を参照してください。
+数値電力・保持値・帯域積算・カーソル／ピークはf64で保持・読み出し、描画用のf32 dB配列から逆算しません。描画には−180 dBの下限がありますが、数値は下限で切り詰めません。電力0は数値上−∞ dBです。32-bit FFTは入力のDC除去後にf32へ変換し、複素結果の二乗と平均はf64で行います。f32 FFT自体の丸めや混在する強弱信号の制限は残り、微小信号の既定は64-bitです。
 
 スペクトログラムは専用ワーカーの連続STFTを表示し、新しい行が上に来ます。縦軸は最新窓の終端からの相対秒、見出しのEndは入力開始からの窓終端の秒です。各行の位置はサンプル番号とFsから計算し、1行はhop = N/4の区間に対応します。各窓のビン振幅を表示し、電力平均とピーク保持は使いません。欠落によって解析できなかった区間はオレンジの縞、まだ取得・保持していない過去は空白です。
 
@@ -253,47 +253,33 @@ Spectrumは独立した最新FFT区間・解析設定・モード・観察間隔
 
 取得時に有効化したLock-inは、X/Y・R（peak）・REFに対する進み位相・Gain、REF周波数／生AC RMS／正弦波適合率／校正後peak、τ・積分窓・追従設定・閾値、両CHの校正と単位を含みます。平均の寄与区間と最新完全窓は独立した整数区間です。整定中の値にはSettling状態を付け、未充填・REF喪失・欠落・非有限では数値を `null` とし、旧値を保存しません。停止中の次回用CH・Fs・校正・フィルター変更は保持結果を変更しません。保存・参照読み込みでは単位・状態・完全窓数・整定時間・区間・REF診断・X/Y/R/位相の整合を検証します。Lock-inを含まない旧版1の結果JSONも読み込めます。
 
-ScopeとSpectrumの区間は同時刻とは限らず、EMAとピーク保持の寄与区間は一様な重みや連続的な捕捉を示しません。取得欠落、Scope区間内の欠落、Spectrum入力欠落／無効窓／非有限窓／観察省略、ワーカー開始以来の表示スナップショット省略、入力失敗を分けます。外部Generatorの観測履歴は入力区間に対応する内部接続用の`generator_output`と分け、`external_output`へ保存します。Spectrogram、XY、カーソル、全CHの長時間記録やSpectrum窓の全生入力は含めません。書き出し用データは固定の上限を持つ保持区間とFFT全ビンから一度だけコピーし、JSON化・ファイルI/Oは専用ワーカーで行います。書き込み中に入力を再開しても書き出し対象は変わりません。検証条件は [結果書き出しの検証](validation/EXPORT_2026-10.md) を参照してください。
+ScopeとSpectrumの区間は同時刻とは限らず、EMAとピーク保持の寄与区間は一様な重みや連続的な捕捉を示しません。取得欠落、Scope区間内の欠落、Spectrum入力欠落／無効窓／非有限窓／観察省略、ワーカー開始以来の表示スナップショット省略、入力失敗を分けます。外部Generatorの観測履歴は入力区間に対応する内部接続用の`generator_output`と分け、`external_output`へ保存します。Spectrogram、XY、カーソル、全CHの長時間記録やSpectrum窓の全生入力は含めません。書き出し用データは固定の上限を持つ保持区間とFFT全ビンから一度だけコピーし、JSON化・ファイルI/Oは専用ワーカーで行います。書き込み中に入力を再開しても書き出し対象は変わりません。
 
 参照結果は一件・128 MiB以下に制限します。版・配列長・CH・単位・校正・整数区間・有限値・欠落・Spectrum状態の整合を全体検証し、不正ファイルを一部だけ適用しません。読み込みは取得を開始せず、現在の保持結果を上書きしません。**Keep held result as reference** で現在の結果を参照へ固定することもできます。比較画面はScope生FS波形と統計、Spectrum線形ビンとPSD帯域・条件を併記します。Scopeの統計差は同じCH・単位、PSD帯域差は同じFs・CH・単位・解析設定・モード・対象ビンの場合だけ表示します。独立記録のサンプル時計を同期した波形差として扱いません。
 
 CSVは条件を含む `metadata_json` 行に続き、Scopeの整数サンプル番号・公称秒・生f64・校正値・単位・欠落、Spectrumのビン番号・周波数・線形値・保持値を出力します。PNGは1600×1160の独立したレポートで、主要統計・CH・単位・区間・FFT／窓／EMA・校正・欠落を付けます。PNG内にも数値配列を除いた条件を埋め込みます。精密な数値の正本はJSON／CSVです。
 
-Lock-inを含むCSVには `lockin` 行を追加し、整数区間・CH・完全窓数・欠落数・f64のX/Y/R/位相/Gain・REF診断値・単位・状態を出力します。無効値は空欄です。参照比較ではLock-inの取得条件・状態・校正版と数値を左右に表示し、両結果がValidで、公称Fs・CH・REF／フィルター設定・両CHの校正が一致し、入力失敗がない場合だけX/Y/R/Gainと位相の差を表示します。位相差は±180°へ折り返します。独立記録の入力時計は同期しません。PNGの描画対象はScope／Spectrumです。確認範囲は [Lock-in結果再利用の検証](validation/LOCKIN_RESULTS_2026-10.md) を参照してください。
+Lock-inを含むCSVには `lockin` 行を追加し、整数区間・CH・完全窓数・欠落数・f64のX/Y/R/位相/Gain・REF診断値・単位・状態を出力します。無効値は空欄です。参照比較ではLock-inの取得条件・状態・校正版と数値を左右に表示し、両結果がValidで、公称Fs・CH・REF／フィルター設定・両CHの校正が一致し、入力失敗がない場合だけX/Y/R/Gainと位相の差を表示します。位相差は±180°へ折り返します。独立記録の入力時計は同期しません。PNGの描画対象はScope／Spectrumです。
 
 ## 現在の取得・解析・描画の構成
 
-入力キューの消費、共通履歴の更新、デモ生成、Scopeのトリガー・統計は専用測定ワーカーで実行します。選択CHの固定長f64ブロックを、独立したSpectrum／STFTワーカーへ渡します。FFT計画・履歴・平均・保持はSpectrumワーカーが所有し、取得はFFT完了を待ちません。UIは結果の受信と描画・カーソル読み出しを行い、非表示化や表示更新の停止で測定を止めません。検証条件と残る境界は [PLAN](PLAN.md#現在の実行構造と残る境界) を参照してください。
+取得・共通履歴・Scope統計は専用測定ワーカー、FFT・Lock-in・同期比較・STFTはそれぞれ独立ワーカー、デバイス管理・ファイルI/Oは非UIの担当で実行します。UIは結果受信と描画を行い、非表示や受信停止で測定・生成を止めません。
 
 ```text
-Audio device → CPAL callback → bounded SPSC → measurement worker ← internal demo
-                                               ├→ common f64 history / Scope statistics
-                                               ├→ bounded blocks → Spectrum worker (continuous / latest)
-                                               ├→ bounded snapshots → UI plots / cursors
-                                               └→ selected CH → bounded STFT queue
-                                                                        ↓
-                                                              continuous STFT worker
-                                                                        ↓
-                                                              bounded, recycled rows
-                                                                        ↓
-                                                     UI history → circular GPU texture
+CPAL callback → 固定容量SPSC → 測定ワーカー ← Software Loopback / Generator内部接続
+                               ├→ 共通f64履歴 / Scope捕捉・統計
+                               ├→ 選択CH → Spectrumワーカー
+                               ├→ 同期2ch → Lock-in / Comparisonワーカー
+                               └→ 選択CH → STFTワーカー → 固定容量行プール
+各結果 → 世代・整数区間・条件付きスナップショット → UI / 非同期保存
+STFT行 → UI履歴 → 循環GPUテクスチャ
 ```
 
-- **CPAL 0.18**: CoreAudio / WASAPI / ALSAなどのネイティブ入力。デバイス列挙とストリーム作成はUIとは別スレッド。
-- **rtrb 0.4**: 固定容量のSPSCリング。音声データのコールバックでロック・待機・メモリ確保・ログ出力を行いません。
-- **egui / eframe 0.36 + wgpu**: ネイティブUIとGPUバックエンド。macOSではMetal、他の環境では対応するGPUバックエンドを選択します。
-- **専用WGSLシェーダー**: 線分をインスタンスとして送り、アンチエイリアス付きの三角形へGPU側で展開します。波形全体を1回のdraw callで描画します。
-- **サンプル集約**: 少数サンプルは直接接続。高密度では物理ピクセルごとの最小値・最大値を保持し、1サンプルの細いスパイクも残します。欠落位置で線を切り、欠落を含む集約区間は描画しません。Scopeのピーク・RMS・peak-to-peakは表示範囲の実サンプルだけから計算し、欠落をゼロで埋めません。描画・転送量は画面幅に比例します。集約と測定のCPU処理は表示サンプル数に比例します。
-- **上限のあるメモリ使用**: 入力キューは約0.5秒（最大262,144フレーム）、Scope／XYの全CH履歴は2秒分（最低32,768フレーム）です。溢れたフレーム数を表示し、連番の欠落を固定容量の有効フラグで記録します。容量内の欠落前後のサンプルを保持し、描画とカーソルは欠落位置を実サンプルとして扱いません。トリガーと最新Spectrumは欠落後の連続区間が窓長に達してから再開します。履歴容量以上の欠落やサンプル番号の巻き戻りでは旧履歴を破棄します。
-- **測定と表示の分離**: 測定ワーカーが履歴・トリガー・実サンプル統計・Spectrum／STFTへの入力を所有します。3個の容量固定スナップショットを最大30回/秒で渡し、通常の履歴コピーではバッファを再利用します。UIが返却しない間は表示更新だけを省略します。Spectrumは別の3個の結果プールを使い、解析結果の更新番号が変わったときだけ配信・再集約します。STFTの結果プール飽和は表示行の欠落であり、入力欠落とは別に数えます。Stopは有限の取得済みバッチまでの生サンプルと解析結果を固定し、遅着結果と古い入力世代を除外します。
-- **停止時の節電**: 停止中は連続再描画を止め、波形に変更がないフレームはGPUへの波形再転送を省略します。
-- **複数プロット**: WGSLパイプラインを共有し、各プロットのGPUバッファ・寸法・更新番号は独立。スペクトルも物理ピクセルごとの極値を保持し、対数軸で密集する狭いピークを残します。
-- **FFT**: [RustFFT](https://docs.rs/rustfft/6.4.1/rustfft/)の計画とscratchメモリを再利用します。取得キュー・共通履歴・トリガー・測定値・FFTはf64を標準とします。SpectrumとSpectrogramの「FFT PRECISION」で、それぞれ独立して32-bitの高速FFTを選択できます。DC除去と窓適用の後だけf32へ変換し、窓係数と電力平均はf64を維持します。FFTは実数入力をN/2点の複素変換へまとめ、対称なビンを一緒に復元して複素乗算とtwiddle表を半減します。GPU表示用のdBFSと座標はf32へ変換します。Spectrumはピクセル列ごとの連続ビン範囲をキャッシュし、dB配列の極値をまとめます。狭い範囲では二分探索で対象ビンだけを処理し、保持dBは新しい最大値だけで更新します。ビン周波数とピクセルの対応は、周波数軸・表示範囲・幅・Fs・FFTサイズを変えたときだけ再計算し、通常のFFT更新とピーク保持で再利用します。Spectrumは専用ワーカーで、既定のLive観察とN/4全窓のContinuousを選べます。Latest windowの新4サイズは100 msごとに新しい終端の完全窓を観察し、N/4の進行は要求しません。32,768点以下は従来の33 ms／N/4以上の周期観察を維持します。電力平均とピーク保持は寄与した解析窓ごとに更新し、非表示でも継続します。入力欠落時は平均をリセットし、完全窓から回復します。Performanceには実際の寄与窓数と連続解析の無効窓数を表示します。f64電力結果と窓の由来をスナップショットに保持します。
-- **連続STFT**: 別の専用ワーカーで選択した1chを解析します。hopはN/4、FFTサイズ・窓関数・DC除去・対象chはSpectrogram設定から指定します。窓ごとのdBFSを生成し、平均・ピーク保持は適用しません。入力は256フレーム×64ブロック、結果は128行の固定プール（約8 MiB）で再利用します。48 kHz・1,024点・hop 256では約0.68秒分の結果を保持できます。入力ブロックと結果のFs・ch・世代・サンプル位置・欠落情報を保持し、欠落をまたぐ窓や古い世代を表示へ渡しません。チャンネル数が不足した入力フレームはパニックせず破棄し、STFTの入力欠落数へ加算します。Performanceで最新窓の位置とワーカーの欠落数を確認できます。Spectrumとは独立した解析設定を使い、GUI非依存の512行履歴と循環テクスチャへ渡します。
+各転送・履歴・結果プールは固定容量です。入力・解析の欠落を結果へ伝え、表示更新・STFT表示行の省略と分けます。Stopは有限の入力終端まで処理して保持し、旧世代・遅着結果を除外します。具体的な容量と境界は下記の各モジュールとテストを参照してください。
 
-スペクトログラムのR32Floatテクスチャには生のdBFSビンを格納し、最大FFTのNyquistビンまで保持します。1行を4,096列の複数走査線へ分割し、GPUのテクスチャ寸法上限を超えないようにします。変更された行だけを転送し、表示範囲・色・時間座標は描画時に適用します。周波数方向は物理ピクセルが覆うビンの最大値を使い、細いピークを残します。履歴とテクスチャのサイズはFFT設定に応じて固定され、既定の8,192点では各16 MiB、最大32,768点では各40 MiBです。
+高密度の波形・Spectrumは物理ピクセルごとの極値を保ち、細いピークを残します。WGSLで線分を展開し、STFTは変更行だけを循環テクスチャへ転送します。数値測定は表示集約・描画用f32から逆算しません。停止中は連続再描画と不要なGPU転送を省略します。
 
-通常はVSyncを使用します。`--low-latency`ではVSyncを外します。実際の更新頻度はディスプレイ・GPU・OS・入力バッファに依存します。下部の**Performance**メニューにある`UI fps`はUI更新頻度、`Scope prep`・`Worker FFT`・`Spectrum prep`はそれぞれの直近のCPU処理時間で、GPU実行時間ではありません。
+通常はVSync、`--low-latency`で無効化します。PerformanceのUI fpsはUI更新頻度、Scope prep／Worker FFT／Spectrum prepはCPU処理時間で、GPU実行・実表示の遅延ではありません。残る評価は [PLAN](PLAN.md#継続する制限) に保持します。
 
 ## 同期2chの比較
 
@@ -303,241 +289,11 @@ Audio device → CPAL callback → bounded SPSC → measurement worker ← inter
 
 位相遅延は1/fの周期で曖昧です。位相傾斜は帯域内の最長の連続励振区間を使い、コヒーレンスとREF PSD（最大の10%以上）が有効な8ビン以上を必要とします。正弦波1本から広帯域遅延を表示しません。直線回帰の使用帯域と残差RMSを併記し、隣接位相差がπ未満という仮定と、CH間位相・時間校正が未確認であることを保持します。
 
-非表示でも解析は続きます。Stop後は最後の完全平均を保持し、停止中の解析・CH変更は次回Start用です。**File**から条件付きJSON／CSVを保存・読み戻して参照と比較できます。外部出力の観測履歴を含む結果は励振と入力窓の対応が未校正なので、両方の値を示して数値差を抑止します。AC比較・平均・単位・符号の正確な定義は [同期比較設計](COMPARISON_DESIGN.md)、条件付きの確認範囲は [検証記録](validation/COMPARISON_2026-10.md) を参照してください。
+非表示でも解析は続きます。Stop後は最後の完全平均を保持し、停止中の解析・CH変更は次回Start用です。**File**から条件付きJSON／CSVを保存・読み戻して参照と比較できます。外部出力の観測履歴を含む結果は励振と入力窓の対応が未校正なので、両方の値を示して数値差を抑止します。AC比較・平均・単位・符号の定義は [同期比較設計](COMPARISON_DESIGN.md) を参照してください。
 
 ## 検証・計測
 
-```sh
-./scripts/cargo.sh fmt --all -- --check
-./scripts/cargo.sh clippy --locked --all-targets --all-features -- -D warnings
-./scripts/cargo.sh test --locked --all-targets --all-features
-./scripts/cargo.sh test --locked --doc --all-features
-./scripts/cargo.sh bench --bench waveform --no-default-features
-./scripts/cargo.sh bench --bench spectrum --no-default-features
-./scripts/cargo.sh bench --bench spectrogram --no-default-features
-./scripts/cargo.sh bench --bench xy --no-default-features
-./scripts/cargo.sh run --release -- --list-devices
-./scripts/cargo.sh run --release -- --audio-smoke
-./scripts/cargo.sh run --release -- --audio-smoke --input-device "BlackHole 16ch"
-./scripts/cargo.sh run --release -- --stft-smoke --input-device "BlackHole 16ch" --channel 16
-./scripts/cargo.sh run --release -- --stft-smoke --input-device "BlackHole 16ch" --channel 16 --sample-rate 192000
-./scripts/cargo.sh run --release --features qa -- --multichannel-smoke
-./scripts/cargo.sh run --release -- --gpu-smoke
-./scripts/cargo.sh run --features qa -- --ui-smoke
-./scripts/cargo.sh run --features qa -- --ui-smoke --compact
-```
-
-テストはリング履歴の折り返し、型変換、モノラル／多チャンネル処理、欠落検出用の連番、トリガー、スパイク保持を確認します。製品と共通のコールバック転送に空／1〜1,025フレームの入力を送り、1／2／16ch・44.1〜192 kHzの切り替えでLock-in・Spectrum・履歴を照合します。Stopと入力失敗はコールバックが完了した整数終端とキュー内の取得済みフレームから有限終端を固定し、末尾の欠落も解析へ伝えます。Singleの捕捉終端より後の欠落は保持結果へ含めません。内部試験の条件と外部I/Oの未確認範囲は [入力境界の検証](validation/CAPTURE_BOUNDARIES_2026-10.md) を参照してください。
-
-ベンチマークは48k・192k・100万サンプルを1920物理ピクセルへ集約するCPU時間を計測します。GPU描画の速度やデバイス入力の遅延を測定するものではありません。
-
-`cargo test`のbenchは各条件1回の動作確認で、出力された時間を性能評価に使いません。`cargo bench`は従来どおり反復計測します。数値テストの精度・FFTサイズ・窓・f64／f32の許容差は維持し、120／600秒の実時間負荷評価は下記の専用手順で実行します。
-
-`qa`機能で`--ui-smoke`を使うと、内部テスト信号による画面を撮影できます。`MEASURELAB_UI_SMOKE_SETTINGS=scope`（または`spectrum`、`spectrogram`、`xy`、`workspace`、`collapsed`、`hidden`）を指定すると、その設定パネルの状態で撮影できます。`--compact`との組み合わせで小さい画面も確認できます。`MEASURELAB_UI_SMOKE_XY_PHASE=0`（または`90`、`180`）で同振幅の正弦波を選び、`MEASURELAB_UI_SMOKE_XY_ONLY=1`でXY単独、`MEASURELAB_UI_SMOKE_CHANNELS=1`でモノラル時の表示を確認できます。`MEASURELAB_UI_SMOKE_SCROLL_END=1`はプロット領域を下端へスクロールし、狭い画面の下段を撮影します。
-
-`MEASURELAB_UI_SMOKE_VIEW=scope`（または`spectrum`、`pair`）はViewの単独／2表示、`MEASURELAB_UI_SMOKE_ADJUST=scope`（または`spectrum`、`analysis`）はScopeの操作メニュー／SpectrumのDisplay／Analysisを開いた状態で撮影します。設定パネルの表示／非表示と組み合わせて重なり・幅・高さを確認できます。
-
-`MEASURELAB_SPECTRUM_PSD=1`は`qa`ビルドでSpectrumをPSDに設定します。`--ui-smoke`やUI計測と組み合わせて、通常幅／狭幅・帯域表示・停止中のモード保持を確認できます。
-
-`MEASURELAB_UI_SMOKE_GENERATOR=scope`（`spectrum`／`lockin`／`only`／`narrow`／`workspace`も可）を`--ui-smoke`へ指定すると、通常Generator経路の48 kHz・750 Hz・0.125／0.0625 FS peak・+30°をScope／8k Spectrum／Lock-inで照合し、1秒のUI受信停止・独立した入力／出力Stop・JSON／CSV・OFF復元を確認します。`narrow`は900×660の最小幅でSettingsとCHタブ、`workspace`はGeneratorと4測定画面を表示します。`MEASURELAB_UI_SMOKE_SETTINGS=output`／`generator`でI/OのOutputタブ／Generator調整を開き、`MEASURELAB_UI_SMOKE_ZOOM=1.25`で表示倍率を変えて確認できます。`MEASURELAB_UI_SMOKE_GENERATOR_DEVICE="ZOOM UAC-232"`（または`BlackHole 2ch`／`BlackHole 16ch`）を追加すると、通常CPAL出力の48 kHz・750 Hz・0.1／0.05 FS peak・+30°と実入力を照合します。物理出力はL–L／R–RのTRS接続を用意してから明示指定してください。成果物は`dist/generator-qa/`です。数値確認と画面撮影の成功は別に扱います。
-
-`MEASURELAB_UI_SMOKE_STAGE3F=1`は通常のSoftware Loopbackを起動・停止し、Scope統計、FFTと実験段階Lock-inの理論値、設定・参照結果の保存／読み込み／復元／再測定、CSV／PNG、Singleの480サンプル捕捉と未充填512k／Lock-inをアプリ状態で照合します。Lock-inの保持値・取得条件が停止中の次回用CH・Fs・校正・τ変更で変わらないことと、条件が一致する整定済み結果の比較も確認します。保存先は `dist/stage3f-*` です。続いて別プロセスで `MEASURELAB_UI_SMOKE_REPLAY=1` を指定すると前回ファイルから復元して再測定し、アプリ再起動後の再現を確認します。`MEASURELAB_UI_SMOKE_COMPARE=1` は比較画面を開きます。ネイティブ選択ダイアログはこのQAの自動操作対象外です。
-
-`MEASURELAB_UI_SMOKE_LOCKIN=polar` は通常のSoftware Loopback経路で750 Hz・0.0625 FS peak・30°を測定してStopし、Lock-in単独画面を撮影します。`cartesian`／`all`／`pair` はX／Y・4値・Scopeとの併用、`settling` は整定中、`ref-loss` はREF喪失、`held-edit` は保持した結果と次回Start用設定の区別、`live-edit` は取得中のτ変更と再整定、`source-change` は入力ソース切り替え時の旧値破棄を確認します。`--compact` で狭幅にします。撮影先は `dist/ui-smoke.png` です。
-
-GUIの条件付きの結果・画面寸法・未確認事項は [Lock-in GUIの確認](validation/LOCKIN_GUI_2026-10.md) に保持します。
-
-```bash
-MEASURELAB_UI_SMOKE_STAGE3F=1 target/release/measurelab --ui-smoke --new-instance
-MEASURELAB_UI_SMOKE_STAGE3F=1 MEASURELAB_UI_SMOKE_REPLAY=1 \
-    target/release/measurelab --ui-smoke --compact --new-instance
-```
-
-`MEASURELAB_UI_SMOKE_SETTINGS_RESTORE=1`は合成16chデバイスIDの設定ファイルを `dist/settings-restore-qa.json` へ保存・読み込みし、不在入力・校正衝突・取得中の復元拒否、復元中のStart拒否、保持データ・条件の不変性、開始準備でのCH 16維持をアプリ内で検証します。実入力は開始しません。
-
-`MEASURELAB_UI_SMOKE_EXPORT=1`は内部QAの保持結果を `dist/results-export-qa.json` へ書き出します。取得中／設定復元中の拒否と、書き込み要求後の次回用CH・FFT・校正・公称Fsの編集で、ファイル内の保持値・条件が変わらないことを検証します。`MEASURELAB_UI_SMOKE_CALIBRATION=1`や`MEASURELAB_SPECTRUM_PSD=1`と併用できます。
-
-`MEASURELAB_PROFILE_EXPORT=dist/results-profile.json`は実時間QAの有限Stop結果を専用I/Oワーカーで書き出し、ファイルの全値・条件がスナップショットと一致することを確認します。終端の書き出しと照合はUI性能の計測区間外です。
-
-```sh
-MEASURELAB_UI_SMOKE_SETTINGS_RESTORE=1 ./scripts/debug.sh --ui-smoke --low-latency
-```
-
-`MEASURELAB_UI_SMOKE_CALIBRATION=1`はScopeのTrace 1の入力CHへ4 V/FS・オフセット0.5 Vの内部QA校正を適用します。`MEASURELAB_UI_SMOKE_SETTINGS=calibration`で校正パネルを開き、通常幅／狭幅でFSの波形軸・Vの数値・未校正CHのFS・A/Bカーソルを確認できます。`MEASURELAB_UI_SMOKE_SETTINGS=spectrum`では校正したビン振幅、`MEASURELAB_SPECTRUM_PSD=1`との組み合わせではPSD・V²・RMS Vを確認できます。物理校正の検証ではありません。
-
-```sh
-MEASURELAB_UI_SMOKE_CALIBRATION=1 MEASURELAB_UI_SMOKE_SETTINGS=calibration \
-    ./scripts/cargo.sh run --release --locked --features qa -- --ui-smoke
-```
-
-`MEASURELAB_UI_SMOKE_CURSORS=1`では、欠落を含む同じ有限の入力履歴から全測定器を準備し、ScopeのX位置に固定したA/B時間カーソル・Δt・共通周波数・解析窓・XYの実サンプル組を撮影します。波形・STFTの入力座標を揃えるため、このモードでは通常の循環STFT撮影用の信号を置き換えます。`MEASURELAB_UI_SMOKE_SCOPE_ONLY=1`との組み合わせでScope単独のカーソルとトリガーマーカーを確認できます。
-
-`MEASURELAB_UI_SMOKE_ROUTING=1`はScope／Spectrum／XYを共通の16ch履歴に置き換え、CH 16（0.375 FS peak正弦波）とCH 8（0.25 FS peak、90度位相差）をScopeとXYへ割り当てます。ScopeのA/Bカーソルも表示し、CHラベル・統計・波形と設定パネルの配置を確認できます。Spectrogramは独立した通常の撮影用信号を維持するため、このモードで全測定器の時間対応を検証しません。
-
-```sh
-MEASURELAB_UI_SMOKE_ROUTING=1 MEASURELAB_UI_SMOKE_SETTINGS=scope \
-    ./scripts/cargo.sh run --release --locked --features qa -- --ui-smoke
-```
-
-`--audio-smoke`は入力を2秒間取り込み、フレーム数と全chのピークを確認します。`--input-device`を省略すると既定入力を使います。`--stft-smoke`は同じ入力から連続窓の順序・個数・欠落・ワーカーのCPU時間を確認し、`--channel`は1始まりです。両方で`--sample-rate HZ`（上限768000）を指定でき、省略時はデバイス既定です。無音でも取得と連続性の検証は可能です。
-
-`--multichannel-smoke`は`qa`機能でのみ使えるBlackHole 16ch専用の確認です。その仮想デバイスの16出力へ異なるビン中心周波数の正弦波（0.125 FS peak）を流し、0.5秒の起動待ち後、2秒間の取得で16入力すべてのch対応・周波数・振幅とCH 16のSTFTを検証します。CH 16／CH 8とその入れ替えで、ScopeのRMS・Peak・P-PとXYの同一フレームのTrace Snapも照合します。起動待ち中のCoreAudio通知は別に出力し、測定区間のストリームエラーや欠落は失敗にします。通常アプリの出力機能ではなく、実デバイスを使うローカルQA用の既知信号です。
-
-`--lockin-smoke`も`qa`専用で、BlackHole 2ch／16chのCH 1をREF、最終CHを応答として共通入力・Lock-in専用ワーカーを検証します。750 Hz・REF 0.125 FS peak・応答gain 0.5・進み30°・3サンプル遅延・応答DC 0.2 FSが基準です。極性反転・微小応答・1003 Hzの追従・REF喪失／不安定からの再整定・CH入れ替え／自己検査・二段EMAのステップ応答・有限Stop・JSON／CSV保存と再取得比較・実入力キュー飽和と回復を照合します。接続ごとの0.5秒を起動待ちとして入出力通知を別記録します。最初の0.3秒は入力キューへ保持し、測定ワーカーへの引き渡し後に0.2秒待って平均をリセットします。サンプルを捨てたり連番を変更したりせず、その後の測定区間のエラー・欠落は失敗にします。意図的飽和では0.75秒入力キューを消費せず、欠落数と数値の破棄・回復を検証します。
-
-```bash
-./scripts/cargo.sh build --release --locked --features qa
-target/release/measurelab --lockin-smoke --input-device "BlackHole 2ch" --sample-rate 48000
-target/release/measurelab --lockin-smoke --input-device "BlackHole 16ch" --sample-rate 96000
-MEASURELAB_LOCKIN_SECONDS=600 MEASURELAB_LOCKIN_TRANSITIONS=1 \
-    MEASURELAB_PROFILE_KEEP_AWAKE=1 ./scripts/profile-stage2.sh lockin-blackhole2-600 \
-    --lockin-smoke --input-device "BlackHole 2ch" --sample-rate 48000
-```
-
-`MEASURELAB_LOCKIN_SECONDS`は最後の定常信号による安定性評価区間だけの秒数で、既定10秒、1〜3,600秒です。信号変更・起動待ち・飽和確認を含む実行全体はそれより長くなります。`MEASURELAB_LOCKIN_TRANSITIONS=1`は同じ測定ワーカーを使って2ch・48→96 kHz→16ch・96 kHz→2ch・44.1 kHz→16ch・192 kHz→2ch・48 kHzを順に取得し、入力世代・Fs・CHと理論位相、2chでのCH 16の無効化を照合します。対応しないデバイス／Fsは成功扱いにしません。CPALで変更したBlackHoleの公称Fsは終了時に戻します。結果は`dist/lockin-blackhole-qa/`、ログ・RSSは上記スクリプト指定時に`dist/stage2-qa/`へ保存します。入力コールバック長の最小／最大を記録しますが、固定長しか観測されなければ可変長の外部I/O確認にはしません。このコマンドはGUI描画や物理I/Oの保証を含みません。
-
-`--physical-lockin-smoke`は物理ループ専用の明示的なQAです。`qa`ビルドで`--input-device "ZOOM UAC-232"`を必須とし、この機器の2ch出力だけへ最大0.1 FS peak（−20 dBFS）の正弦波を流します。L出力→L入力を応答、R出力→R入力をREFとして接続してください。生成DCはなく、入力モード・音量つまみを変更しません。終了・失敗で出力ストリームを解放し、公称Fsを開始前の値へ戻します。通常のGeneratorや物理校正機能ではありません。BlackHole専用QAの物理出力禁止は維持します。
-
-実際のADC入力をDC／sin／cosの独立した非加重最小二乗計算へ渡し、製品側のHann適合・二段EMAとR／位相を照合します。Spectrumは8,192点・Hann・f64のPSDをREF周波数±5ビンで積算し、RMS×√2をpeakとして比較します。両測定器の区間は別に保持します。振幅比・極性・＋30°・3サンプル相当の位相遅れ、1003 Hz追従、REF喪失／高調波不安定からの回復、CH入れ替え／自己検査、τ=0.1秒のステップ、有限Stop・JSON／CSV・再取得比較、意図的な入力キュー飽和を検証します。絶対ADC／DACゲインや実時計精度は未知として扱い、−40 dB応答の位相は実入力との一致だけを判定し、アナログ経路のレベル依存性を記録します。
-
-```bash
-./scripts/cargo.sh build --release --locked --features qa
-MEASURELAB_LOCKIN_SECONDS=10 target/release/measurelab --physical-lockin-smoke \
-    --input-device "ZOOM UAC-232" --sample-rate 48000
-MEASURELAB_LOCKIN_SECONDS=600 MEASURELAB_PROFILE_KEEP_AWAKE=1 \
-    ./scripts/profile-stage2.sh lockin-uac232-600 \
-    --physical-lockin-smoke --input-device "ZOOM UAC-232" --sample-rate 48000
-```
-
-出力・入出力通知・実測R（FS peak／dBFS）・DC・独立計算との差はログへ、数値・整数区間・条件付き結果は`dist/lockin-physical-qa/`へ保存します。`MEASURELAB_LOCKIN_SECONDS`は定常評価区間の長さです。Rの独立照合は相対0.2%＋2 µFS、位相0.05°、既知の高レベル変更は振幅1%＋2 µFS・位相0.1°を上限にします。起動待ちの通知と正常測定中の失敗を分け、正常区間の入力／Lock-in欠落と入出力失敗は0を要求します。実時間試験中にはビルド・別の音声試験を並行実行しません。
-
-`MEASURELAB_UI_SMOKE_BLACKHOLE="BlackHole 2ch"`（または`BlackHole 16ch`）は`--ui-smoke`の結果再利用QAを48 kHzの外部I/Oで実行します。アプリの設定・結果保存→停止中の次回用編集→設定復元・参照読み込み→再測定→比較を照合し、`dist/stage4b-*`へ保存します。同じデバイスで別プロセスから`MEASURELAB_UI_SMOKE_REPLAY=1`を指定すると、保存した条件で再測定します。画面撮影の成功と数値照合の成功は別に記録します。既定のQAは整定済みの保持結果で終了します。接続直後の短いSingleと起動時入力通知の安定性は未確認です。通常のSoftware Loopback QAではSingleの回帰を継続します。
-
-```bash
-MEASURELAB_UI_SMOKE_BLACKHOLE="BlackHole 2ch" MEASURELAB_UI_SMOKE_COMPARE=1 \
-    target/release/measurelab --ui-smoke --new-instance
-MEASURELAB_UI_SMOKE_BLACKHOLE="BlackHole 2ch" MEASURELAB_UI_SMOKE_REPLAY=1 \
-    MEASURELAB_UI_SMOKE_COMPARE=1 target/release/measurelab --ui-smoke --compact --new-instance
-```
-
-macOSの段階4統合QAをまとめて実行するには、同じreleaseバイナリで次を使います。ビルドと別の音声試験は実時間計測へ並行させません。各試行の条件・終了コード・バイナリとソースのSHA-256・ログ・撮影画像は`dist/stage4-macos-qa/`へ保存します。失敗した試行で停止し、過去の撮影画像を成功扱いにしません。profileは有限結果の照合・入力停止後の完了記録を必須とし、途中終了の終了コード0だけでは成功にしません。`--case`を繰り返すと指定したケースだけを実行できます。macOSの画面スリープではウィンドウの読み戻しが返らないため、実行プロセスの生存中だけ`caffeinate -diu`で表示を起こしてスリープを抑止します。
-
-```bash
-./scripts/cargo.sh build --release --locked --features qa
-./.venv/bin/python scripts/validate_stage4_macos.py --suite ui
-./.venv/bin/python scripts/validate_stage4_macos.py --suite load --seconds 600
-./.venv/bin/python scripts/validate_stage4_macos.py --suite physical --physical --seconds 600
-```
-
-物理QAはUAC-232のL出力→L入力、R出力→R入力を接続して使います。最大0.1 FS peak・生成DCなしで、通常アプリの出力機能ではありません。`--suite physical`は設定・結果保存→別プロセスで復元・再測定と、4表示・512k・UI停止を確認し、有限StopのLock-inを同じ生入力窓の独立計算へ照合します。公称Fs・未校正FSの条件です。`MEASURELAB_PHYSICAL_TRANSITIONS=1`を`--physical-lockin-smoke`へ付けると、同一ワーカーでUAC-232の48／96／44.1／192 kHz→BlackHole 2ch→UAC-232を取得し、世代・条件・欠落と独立数値を照合します。
-
-`MEASURELAB_UI_SMOKE_EXTERNAL_SINGLE=1`は外部I/OのSingleを追加し、Autoで入力が安定した後にSingleを待機させ、480サンプルの有限捕捉を生入力の独立正弦波適合で照合します。τ=1秒のLock-inは整定途中の値を持つ場合がありますが、状態はSettlingのまま保持し、512kは未充填です。接続直後のSingleとは別条件です。`MEASURELAB_UI_SMOKE_PHYSICAL="ZOOM UAC-232"`は物理系の結果再利用、`MEASURELAB_PROFILE_PHYSICAL_OUTPUT=1`は同名のprofile入力への明示的な物理出力を有効にします。
-
-大きなFFTの既知出力QAでは、接続要求から0.5秒だけを出力の起動待ちとして通知時刻・件数を別記録します。その後の出力通知を失敗にし、入力の失敗・欠落判定は変更しません。要求したFsを入出力へ揃え、終了時に入力停止を待って開始前の公称Fsへ戻します。撮影待ちではQAだけでGPUを非ブロッキングpollし、非同期読み戻しを進めます。
-
-`--gpu-smoke`はScope・Spectrum・Spectrogram・XYを準備してから描画し、それぞれの領域をGPUから読み戻します。線分プロットの独立、XYの円と更新番号が同じ場合の線分転送省略に加え、スペクトログラムの折り返し・行の順序・欠落・最大FFTのNyquistビン・表示変更時の再転送省略を検証します。`--ui-smoke`は`qa`ビルド専用で、入力を開始せず、明示的なテスト信号で4画面を短時間開いて閉じ、`dist/ui-smoke.png`へ保存します。スペクトログラムの既知信号は周波数を変化させ、履歴の折り返しと意図的な入力欠落を含みます。通常起動時はオーディオ入力を選んだ停止状態、`qa`ビルドの`--demo`指定時は内部信号を使います。通常ビルドで`--demo`や`--ui-smoke`を指定すると、検証用ビルドが必要な旨を表示して終了します。GPUやマイクを必要とする確認はCIでは実行しません。
-
-`qa`機能では、2秒の起動待ち後に1〜3,600秒のUIフレーム間隔を記録できます。停止中のフレームは除外し、計測後にUI間隔p95と最大値、VSync待ちを除いたeframeのフレーム処理時間p95、欠落数を出力して終了します。固定容量のヒストグラムで全計測区間を集計し、長時間でも初めの8,192フレームだけに偏りません。p95は0.01 ms刻みの上側へ丸め、200 ms以上の区間がp95に達する場合は実測最大値を上限として報告します。UIの操作イベント・スナップショット受信・各プロットの準備・STFT結果取り込みについて、呼び出しごとのp95と最大値を出します。測定ワーカーとSTFTワーカーのCPU時間はそれぞれ別の合計値として出します。処理ごとのp95を足してフレーム全体のp95にはできません。
-
-以下はBlackHoleのCH 16を選び、10秒間計測する例です。`MEASURELAB_PROFILE_SETTINGS=spectrum`でSpectrum設定を開き、`MEASURELAB_PROFILE_SCREENSHOT=1`で途中の画面を`dist/ui-smoke.png`へ保存できます。デバイスが見つからない、入力にエラーがある、動作中のフレームがない場合は検証を失敗にします。秒数が不正な場合や`qa`なしのビルドで計測を指定した場合もエラーになります。
-
-同じUI計測は、Spectrumの最新窓の整数終端と解析世代に対応する単調時計を追跡し、`Spectrum latency`に **入力利用可能→解析完了**、**解析完了→UI描画提出**、**入力利用可能→UI描画提出** の件数・p95・最大値を出します。3つともウォームアップ後に可視領域へ初めて提出した同じ結果群を使い、全区間を直接測ります。p95の差や合計は使いません。軸編集・Clear holdによる同じ窓の再描画は重複計数せず、非表示中の未提出結果は含めません。再表示で初めて提出した結果には、その待ち時間を含めます。未充填・無効・時刻情報なしは遅延0に置き換えません。
-
-実入力の開始時刻は、窓の最後のサンプルを含むコールバックでPCM変換前に読み取ったホスト時刻です。可変長コールバックとSpectrum転送ブロックの境界が異なっても、窓終端のサンプルへ対応させます。Software Loopbackと内部デモでは生成バッチを始める時刻です。終端はeguiへSpectrum描画を提出したCPU時刻で、ADCの取得時刻・物理経路の遅延・GPU実行完了・画面の実表示時刻は計測しません。解析後の遅延には結果のコピー・配信・UI待ち・描画準備を含み、解析の区間には入力転送・キュー待ち・FFT計画・観察待ちと演算を含みます。平均の整定やFFT窓の充填時間とは別の値です。
-
-時刻の保持と3つの容量固定ヒストグラムは`qa`ビルドだけに含まれます。Spectrum入力キューの追加容量は `256 × 1,024 × size_of::<Option<Instant>>()` byte（16 byteの環境なら4 MiB）、実入力キューは最大262,144フレームへ同じ型を追加します。コールバックの時計読み取りはバッチごとに1回です。通常ビルドに時刻保持・追加転送は含めません。以前のQAとのRSS・性能比較には、この計測負荷の違いも記録してください。条件付きの確認範囲は [Spectrum遅延計測](validation/SPECTRUM_LATENCY_2026-10.md) を参照してください。
-
-```sh
-MEASURELAB_PROFILE_SECONDS=10 MEASURELAB_PROFILE_DEVICE="BlackHole 16ch" MEASURELAB_PROFILE_CHANNEL=16 \
-    ./scripts/cargo.sh run --release --features qa
-MEASURELAB_PROFILE_SECONDS=10 ./scripts/cargo.sh run --release --features qa -- --demo
-```
-
-`MEASURELAB_PROFILE_UI_STALL=1`を追加すると、実際のUIスレッドを1秒止め、入力消費とSpectrum解析の継続・表示更新省略・入力欠落0を確認します。入力キューの保持時間より長い停止です。STFT結果プールが不足した場合の表示行欠落は別に計数します。通常の性能基準値とは条件を分けて扱ってください。
-
-```sh
-MEASURELAB_PROFILE_SECONDS=5 MEASURELAB_PROFILE_UI_STALL=1 \
-    MEASURELAB_PROFILE_FFT_SIZE=32768 \
-    ./scripts/cargo.sh run --release --locked --features qa -- --demo
-```
-
-GUIなしの既知入力・平均値の照合と、1ch／2ch／16ch・最大FFT・表示停止・飽和・停止／再開・ストリーム失敗の境界は`measurement`モジュールのテストでも検証できます。
-
-```sh
-./scripts/cargo.sh test --locked --lib --no-default-features measurement::tests
-```
-
-512kを含む性能計測では`MEASURELAB_PROFILE_FFT_SIZE`はSpectrumへ適用し、Spectrogramは最大32,768点に制限します。`MEASURELAB_PROFILE_STFT_SIZE`で独立した窓長、`MEASURELAB_PROFILE_SPECTRUM_MODE=live`（既定）／`continuous`／`latest`で更新方式を選べます。Liveの実際の描画更新数・更新間隔はUIフレーム数とは別に`Spectrum drawing`へ出力します。`MEASURELAB_PROFILE_UI_STALL=1`は完全窓の充填後に最大（1秒、3 hop）の間UIを止めます。512k・48 kHzでは約8.192秒です。
-
-`MEASURELAB_PROFILE_KNOWN_OUTPUT=1`はQA専用で、指定したBlackHole 2ch／16chの仮想出力だけへ各CHで異なる0.125 FS peak正弦波を流します。測定終了時にSpectrumの振幅／PSD、CH、整数終端とContinuousの予定窓数を照合します。物理出力、通常のGenerator、Software Loopbackの実装ではありません。
-
-```sh
-MEASURELAB_PROFILE_SECONDS=600 MEASURELAB_PROFILE_DEVICE="BlackHole 2ch" \
-    MEASURELAB_PROFILE_FFT_SIZE=524288 MEASURELAB_PROFILE_STFT_SIZE=8192 \
-    MEASURELAB_PROFILE_SPECTRUM_MODE=continuous MEASURELAB_PROFILE_KNOWN_OUTPUT=1 \
-    ./scripts/profile-stage2.sh large-fft-continuous-600
-```
-
-`MEASURELAB_PROFILE_DEMO_BIN_TONE=1`と`--demo`は、750 Hz・0.125 FS peak・雑音0・2chの90度位相差へQA入力を固定し、終端の振幅／PSDとContinuousの窓数を照合します。内部デモの確認であり、外部I/OやSoftware Loopbackの検証ではありません。`MEASURELAB_PROFILE_SPECTRUM_ONLY=1`でSpectrum 1個だけを表示できます。非表示の測定演算は継続します。`MEASURELAB_PROFILE_LARGE_LIFECYCLE=1`（512k、40秒以上）では通常の非同期Stop、保持、次回設定、再開、CH 2／PSD／Latest、非表示と再表示を検証します。
-
-`MEASURELAB_PROFILE_LIFECYCLE=1`を内部デモのUI計測へ追加すると、Spectrum設定の独立、停止後の遅着結果除外、停止中の解析窓・平均値・生サンプルの保持、デモ設定変更、共通カーソル、表示変更、非表示・単独表示・再表示、再開／入力切り替えでのカーソル無効化、STFTのCH／FFT変更、XYの保持・振幅変更・単独表示・再開を実際のアプリ状態で確認します。`MEASURELAB_PROFILE_IDLE=1`も指定すると、計測用の連続再描画を停止中だけ抑え、待機フレーム間隔を検証します。QAの次段階へ進むための一度のタイマーは残します。計測区間は状態変更を含むため、通常の性能基準値とは別に扱います。
-
-ScopeのX固定カーソルが取得更新・非表示中も新しいサンプルを参照すること、停止中に次回用の校正を編集してもScope／Spectrumの保持条件が変わらず、再開時に適用されることも、同じライフサイクルQAで確認します。Viewの単独／2表示／全表示と元の配置への復帰では、保持したf64結果・条件・カーソルが変わらないことを照合します。
-
-```sh
-MEASURELAB_PROFILE_SECONDS=5 MEASURELAB_PROFILE_LIFECYCLE=1 MEASURELAB_PROFILE_IDLE=1 \
-    ./scripts/cargo.sh run --release --features qa -- --demo
-```
-
-仮想デバイスを使う停止・再開の統合確認は`MEASURELAB_PROFILE_INPUT_LIFECYCLE=1`で実行します。共通の生サンプル／STFTカーソル、全測定器の保持、遅着結果の除外、停止中の表示・解析設定変更、非表示／再表示、再開時の世代更新、実入力→内部デモ→実入力の切り替えをアプリの入力経路で検証します。`MEASURELAB_PROFILE_SWITCH_DEVICE`を指定すると、最後に別のデバイスへ切り替えます。内部デモのライフサイクルとは別々に実行し、状態変更を含む性能値は通常の基準値と区別します。取得欠落は入力を切り替えてもQA全体で累積します。
-
-`MEASURELAB_PROFILE_SAMPLE_RATE=48000`は実入力の開始レートを指定します。上記ライフサイクルで`MEASURELAB_PROFILE_SWITCH_SAMPLE_RATE=192000`を追加すると、保持中に次回用Fsを変更し、保持値のFsを維持した後、再開したSpectrum／STFTが新しいFsを使うことを検証します。デバイス切り替えを指定した場合はDevice defaultへ戻ります。`MEASURELAB_PROFILE_SETTINGS=input`と`MEASURELAB_PROFILE_SCREENSHOT=1`で入力設定を撮影できます。
-
-このQAではScopeとXYへ最終CH／CH 1を割り当て、停止中に入れ替えた要求が保持中の割当を変えず、再開時に適用されることも確認します。BlackHole 16ch→デモ→BlackHole 2chでは、CH 16を利用不可のまま保持することを確認します。
-
-```sh
-MEASURELAB_PROFILE_SECONDS=12 MEASURELAB_PROFILE_DEVICE="BlackHole 16ch" \
-    MEASURELAB_PROFILE_CHANNEL=16 MEASURELAB_PROFILE_INPUT_LIFECYCLE=1 \
-    MEASURELAB_PROFILE_SWITCH_DEVICE="BlackHole 2ch" MEASURELAB_PROFILE_IDLE=1 \
-    ./scripts/cargo.sh run --release --locked --features qa
-```
-
-長時間の欠落とプロセスのRSSは`profile-stage2.sh`で記録します。事前にreleaseの`qa`版をビルドし、名前を指定して実行すると、アプリのログと1秒ごとのRSS（KiB）、psのCPU使用率と累積CPU時間を`dist/stage2-qa/`へ保存します。秒数を省略すると600秒です。macOSの入力実行中はタイマー精度を要求するOS activityを保持し、Stop／失敗／終了で解除します。`MEASURELAB_PROFILE_KEEP_AWAKE=1`で計測中だけcaffeinateによる画面の起動とアイドルシステム／画面スリープ抑止を付けられます。抑止の有無を測定条件へ記録します。RSSは現在の常駐メモリであり、GPUの実行時間やVRAM使用量ではありません。履歴を満たす起動区間と、その後の周回区間を分けて比較してください。画面撮影・並行ビルドなど条件が異なる実行は直接比較しません。
-
-```sh
-./scripts/cargo.sh build --release --locked --features qa
-MEASURELAB_PROFILE_DEVICE="BlackHole 16ch" MEASURELAB_PROFILE_CHANNEL=16 \
-    ./scripts/profile-stage2.sh blackhole16-600
-MEASURELAB_PROFILE_SECONDS=120 ./scripts/profile-stage2.sh demo-120 --demo
-```
-
-FFT精度と最大窓長を揃えた性能計測には、QA専用の環境変数を使えます。省略時はf64・8,192点です。`f32`は各FFTだけを変更し、共通履歴はf64のままです。VSync有効時と`--low-latency`の間隔を区別して比較します。
-
-```sh
-MEASURELAB_PROFILE_SECONDS=10 MEASURELAB_PROFILE_FFT_PRECISION=f64 \
-    MEASURELAB_PROFILE_FFT_SIZE=32768 \
-    ./scripts/cargo.sh run --release --locked --features qa -- --demo --low-latency
-```
-
-通常GUIの連続出力・100回の位相編集を確認する場合:
-
-```sh
-MEASURELAB_PROFILE_SECONDS=300 MEASURELAB_PROFILE_DEVICE="ZOOM UAC-232" \
-    MEASURELAB_PROFILE_SAMPLE_RATE=48000 MEASURELAB_PROFILE_FFT_SIZE=8192 \
-    MEASURELAB_PROFILE_SPECTRUM_MODE=continuous MEASURELAB_PROFILE_UI_STALL=1 \
-    MEASURELAB_PROFILE_GENERATOR_DEVICE="ZOOM UAC-232" \
-    MEASURELAB_PROFILE_GENERATOR_EDITS=1 ./scripts/profile-stage2.sh generator-uac232-300
-```
-
-このQAは通常Generatorの制御・出力経路を使います。終了時は独立生入力照合、出力フェードの有限Stopと、ストリーム・通知リスナー解放後の通知監査を行います。編集確定から実行応答までのp95はDAC遅延・遷移完了時間と分けて記録します。
-
-Generatorの`MEASURELAB_PROFILE_UI_STALL=1`は、出力がRUNNING・遷移外になり、出力コールバックが1秒分以上進んでからUI受信を停止します。停止中に入力・FFT窓と出力PCMフレームが進むことを別々に照合し、停止試験を実施できなかった場合も終端のQAを失敗にします。開始前の入力だけを停止して出力の継続と扱うことはありません。通知と欠落は開始時も監査対象のままです。
-
-入出力コールバックの処理時間・実ブロック長・ブロック時間に対する割合・最大値・通知／Xrun件数は、QAビルドだけで固定容量のカウンターとヒストグラムへ記録します。通知側でログ・ロック・待機を行わず、失敗判定は維持します。p95は時間10 µs、割合0.1%の区間上端で、上限区間は実測最大値を使います。割合は各コールバックの実フレーム数と公称Fsから計算し、時間のp95同士の比ではありません。空コールバックには処理可能時間の割合を付けません。時間はプリエンプションを含むアプリのコールバック本体のホスト経過時間で、スレッドCPU時間・CPAL内部処理・ADC／DAC遅延・表示遅延ではありません。
-
-ログと`dist/generator-qa/callback-profile.json`へ集計を保存し、`MEASURELAB_PROFILE_GENERATOR_CALLBACK_REPORT`でJSONの保存先を変更できます。取得・出力失敗時にも暫定集計を保存し、`streams_released`と`measurement_audit_passed`で終了後の監査と途中の記録を区別します。正常終了では出力の経過時間p95上端が実ブロック時間の25%以下で、入出力通知が0件であることを要求します。出力のERRORや解放後もカウンターを保持し、最新の設定値から時間・通知を推測しません。
-
-Generatorの連続QAは最初のGUI描画から2秒待って入力を開始し、0.5秒の入力取得後に出力を開始します。入出力の通知は起動時も失敗とし、自動再試行しません。修正前はBlackHole 2ch／16ch・UAC-232の開始時Xrunで失敗しました。約20 msのバッファ要求と出力RUNNING後のUI停止を追加したUAC-232・48 kHz・1,024フレームの条件で、300秒指定・100回編集・数値照合・有限Stop・通知監査を確認しました。すべての機器・Fs・起動の安定性保証ではありません。短時間確認と長時間試験の失敗・未確認範囲は [実出力の検証](validation/GENERATOR_DEVICE_2026-10.md) と [コールバック負荷・通知監査](validation/GENERATOR_CALLBACK_2026-10.md) を参照してください。
+共通のチェック・ビルドは [Tool Usage Guide](../../.agents/workflows/tool_usage.md)、機能別テスト・GUI／入出力QA・性能計測・過去の実機確認範囲は [VALIDATION](VALIDATION.md) を参照してください。条件・許容差・合否はテストコードとQAのassertionを正本とします。
 
 ## コードの入口
 
@@ -569,7 +325,3 @@ Generatorの連続QAは最初のGUI描画から2秒待って入力を開始し�
 - `src/app.rs`: 測定への操作要求・結果受信、共通操作UIと複数プロット表示。
 
 選定したライブラリの一次資料: [CPAL](https://docs.rs/cpal/0.18.2/cpal/)、[rtrb](https://docs.rs/rtrb/0.4.0/rtrb/)、[eframe](https://docs.rs/eframe/0.36.2/eframe/)、[egui-wgpu](https://docs.rs/egui-wgpu/0.36.2/egui_wgpu/)。
-
-## 既存の検証記録
-
-[2026-10のプロトタイプ検証](validation/PROTOTYPE_2026-10.md) に、数値テスト、GPU読み戻し、画面確認、仮想I/O、性能・欠落・RSSの条件と結果を保存しています。現在の制限と未確認事項は [PLAN](PLAN.md#既存の検証で分かっている範囲) を参照してください。過去の成功は、現在のリビジョンや別の機器での確認を代替しません。

@@ -10,4 +10,4 @@ List the checks run and their results, including unperformed checks. For measure
 
 Note affected platforms, hardware or file compatibility when relevant. / 関係するOS・機器・保存形式などの制限を記載してください。
 
-<!-- Current base: rewrite/rust. See CONTRIBUTING.md and guide/rust/RELEASE_PREPARATION.md. -->
+<!-- Current base: main. See CONTRIBUTING.md and guide/rust/RELEASE_PREPARATION.md. -->
