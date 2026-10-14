@@ -16,4 +16,4 @@ Replace the guidance below with concrete content; remove comments and empty sect
 
 <!-- Include relevant platform, hardware, file compatibility or verification limits. Omit this section if none apply. / OS・機器・保存形式・検証範囲の制限や未確認事項を記載してください。該当しなければ節を削除してください。 -->
 
-<!-- Current base: rewrite/rust. See CONTRIBUTING.md and guide/rust/RELEASE_PREPARATION.md. -->
+<!-- Current base: main. See CONTRIBUTING.md and guide/rust/RELEASE_PREPARATION.md. -->

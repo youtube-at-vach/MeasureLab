@@ -28,7 +28,7 @@ BlackHole and UAC-232 physical loopback records on macOS cover input REF, indepe
 
 Start with Software Loopback in the [quick start](quickstart.md) to acquire, stop and save a result. Include the Rust edition, commit, OS/GPU, audio device, sample rate, channels, FFT settings and reproduction steps in [bug reports](https://github.com/youtube-at-vach/MeasureLab/issues).
 
-Detailed operation, development and validation records live under `guide/rust/` in the [repository](https://github.com/youtube-at-vach/MeasureLab). Rust work targets `rewrite/rust` until the main transition.
+Detailed operation, development and validation guidance live under `guide/rust/` in the [repository](https://github.com/youtube-at-vach/MeasureLab). The Rust edition is developed on `main`.
 
 ## Final Python edition
 

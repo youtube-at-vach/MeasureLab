@@ -4,7 +4,7 @@
 
 | Edition | Status |
 | --- | --- |
-| Rust development branch (`rewrite/rust`, then `main` after transition) | Active prototype development; reports are welcome. No stable Rust release or support period is promised yet |
+| Rust prototype (`main`) | Active prototype development; reports are welcome. No stable Rust release or support period is promised yet |
 | Python v0.9.1 and earlier | Archived; development ended with v0.9.1. Downloads and manuals remain available, but no ongoing security-fix commitment is made |
 
 State the edition, version or commit, operating system, and affected input/file/network boundary when reporting. Do not attach confidential recordings, device credentials or private measurement data.

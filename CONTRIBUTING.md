@@ -12,7 +12,7 @@ We welcome contributions of all kinds! This document provides guidelines for con
 >
 > You are encouraged to clone the repository using tools like GitHub Copilot or Antigravity and submit the results of your work with AI as a PR. A brief explanation of "what was done" and "why it was done" in the PR description is sufficient.
 >
-> Reviews involve both humans and AI. Rust development PRs target `rewrite/rust`; passing CI is part of review, and merging is a separate decision.
+> Reviews involve both humans and AI. Rust development PRs target `main`; passing CI is part of review, and merging is a separate decision.
 >
 > ---
 >
@@ -28,7 +28,7 @@ We welcome contributions of all kinds! This document provides guidelines for con
 > PR には「何をしたか」「なぜそうしたか」が軽く分かる説明があれば十分です。
 >
 > レビューには人間だけでなく AI も関与します。
-> Rust 開発の PR は `rewrite/rust` に向けます。CI の成功はレビューの確認事項であり、マージは別途判断します。
+> Rust 開発の PR は `main` に向けます。CI の成功はレビューの確認事項であり、マージは別途判断します。
 
 ---
 
@@ -101,14 +101,14 @@ npx markdownlint-cli2 "**/*.md" "#node_modules"
 
 The shared build runs both MkDocs configurations with `--strict`, builds the download site and verifies preserved Python routes plus Rust routes in `site/`. The Pages workflow runs on PRs, uploads a preview, and deploys only from `main`. Keep Python v0.9.1 URLs and archive labels when changing documentation; do not describe its features as Rust features.
 
-Rust CI covers Linux/macOS/Windows on stable Rust, plus the declared Rust 1.95 minimum on Linux. Normal-build launch tests must run without `qa`; all-features testing alone cannot check that QA controls are excluded. Shared CI does not validate physical audio, GPU rendering, latency or long-duration performance. Record those conditions separately under `guide/rust/validation/`.
+Rust CI covers Linux/macOS/Windows on stable Rust, plus the declared Rust 1.95 minimum on Linux. Normal-build launch tests must run without `qa`; all-features testing alone cannot check that QA controls are excluded. Shared CI does not validate physical audio, GPU rendering, latency or long-duration performance. Use the test assertions as the source of numerical conditions and tolerances; keep only a compact summary of hardware observations in [validation](guide/rust/VALIDATION.md).
 
-Run `actionlint` after workflow changes. Dependency updates must preserve the locked build and minimum Rust version. See [publication preparation](guide/rust/RELEASE_PREPARATION.md) for packaging, signing, main transition and remaining checks.
+Run `actionlint` after workflow changes. Dependency updates must preserve the locked build and minimum Rust version. See [publication preparation](guide/rust/RELEASE_PREPARATION.md) for packaging, signing, website operation and remaining checks.
 
 The `.legacy-python/` directory is a local backup excluded from version control and validation. It is not required by the website or documentation build.
 
 ## Pull requests
 
-Create a focused branch from `rewrite/rust`, normally named `codex/<purpose>`, and open the PR with `rewrite/rust` as its base. Explain what changed, why it changed, and which checks passed or could not be run. Submit PRs ready for review unless a draft is explicitly requested. Moving the Rust edition into `main` is a separate step.
+Create a focused branch from `main`, normally named `codex/<purpose>`, and open the PR with `main` as its base. Explain what changed, why it changed, and which checks passed or could not be run. Submit PRs ready for review unless a draft is explicitly requested.
 
-See [AGENTS.md](AGENTS.md) for working rules, [Rust rewrite preparation](guide/RUST_REWRITE_PREPARATION.md) for the migration inventory, and the [Security Policy](SECURITY.md) for vulnerability reporting.
+See [AGENTS.md](AGENTS.md) for working rules, [Rust validation](guide/rust/VALIDATION.md) for tests and hardware QA, and the [Security Policy](SECURITY.md) for vulnerability reporting.

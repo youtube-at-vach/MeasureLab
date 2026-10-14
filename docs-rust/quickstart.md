@@ -2,7 +2,7 @@
 
 ## ソースから起動
 
-Rust版を含むチェックアウトとRust 1.95以降が必要です。統合先はmainへの切り替えまでは`rewrite/rust`です。macOSではXcode Command Line Tools、LinuxではALSA／X11／Waylandの開発ライブラリ、WindowsではMSVCとVisual Studio C++ Build Toolsを用意します。詳細はリポジトリの`guide/rust/SETUP.md`を参照してください。
+Rust版を含むチェックアウトとRust 1.95以降が必要です。Rust版は`main`にあります。macOSではXcode Command Line Tools、LinuxではALSA／X11／Waylandの開発ライブラリ、WindowsではMSVCとVisual Studio C++ Build Toolsを用意します。詳細はリポジトリの`guide/rust/SETUP.md`を参照してください。
 
 リポジトリのルートで実行します。
 

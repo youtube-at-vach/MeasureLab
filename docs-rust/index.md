@@ -28,7 +28,7 @@ macOSのBlackHoleとUAC-232物理ループでは、Lock-inの入力REF・独立�
 
 まず [クイックスタート](quickstart.md) のSoftware Loopbackで取得・停止・保存を試してください。不具合は [GitHub Issues](https://github.com/youtube-at-vach/MeasureLab/issues) へ、Rust版であること、コミット、OS・GPU・入力機器、Fs・CH・FFT設定、再現手順を添えて報告できます。
 
-開発情報・詳細な操作・検証記録は [リポジトリ](https://github.com/youtube-at-vach/MeasureLab) の`guide/rust/`にあります。Rustの統合先はmainへの切り替えまでは`rewrite/rust`です。
+開発情報・詳細な操作・検証方法は [リポジトリ](https://github.com/youtube-at-vach/MeasureLab) の`guide/rust/`にあります。Rust版は`main`で開発しています。
 
 ## Python最終版を使う場合
 
