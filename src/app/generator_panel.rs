@@ -10,7 +10,6 @@ pub(super) struct GeneratorUi {
     pub target: output::Target,
     pub devices: Vec<output::device::DeviceInfo>,
     pub status: generator::Status,
-    pub visible: bool,
     pub controls_expanded: bool,
     pub pending: bool,
     pub starting: bool,
@@ -71,7 +70,6 @@ impl Default for GeneratorUi {
             status: generator::Engine::new(48_000, 2, settings, 0)
                 .unwrap()
                 .status(),
-            visible: false,
             controls_expanded: true,
             pending: false,
             starting: false,
@@ -99,6 +97,10 @@ impl Default for GeneratorUi {
     }
 }
 impl GeneratorUi {
+    #[cfg(feature = "qa")]
+    pub(super) fn command_marker(&self) -> (u64, u64) {
+        (self.requested_id, self.stop_epoch)
+    }
     #[cfg(feature = "qa")]
     pub(super) fn profile_stall_frames(&self) -> Option<u64> {
         if self.starting
@@ -731,7 +733,7 @@ impl ScopeApp {
         if let Some(error) = &self.generator.error {
             return Err(error.clone());
         }
-        self.generator.visible = true;
+        self.qa_show(Instrument::Generator);
         if start {
             self.generator.start();
         }
@@ -744,18 +746,20 @@ impl ScopeApp {
         self.core = Some(measurement::Worker::new(self.stft.take_feeder()));
         self.source = Source::Generator;
         self.demo_enabled = false;
-        self.generator.visible = true;
-        self.sidebar.visible = matches!(mode, "narrow" | "workspace");
+        self.presentation.details_visible = matches!(mode, "narrow" | "workspace");
         if mode == "narrow" {
             self.generator.selected = 1;
         }
-        self.visible = [
+        self.select_view([
             matches!(mode, "scope" | "narrow" | "workspace"),
             matches!(mode, "spectrum" | "workspace"),
             mode == "workspace",
             mode == "workspace",
-        ];
-        self.lockin_visible = mode == "lockin";
+        ]);
+        self.qa_show(Instrument::Generator);
+        if mode == "lockin" {
+            self.qa_show(Instrument::Lockin);
+        }
         self.lockin_settings = lockin::Settings {
             enabled: true,
             frequency_hz: 750.0,
@@ -1010,45 +1014,28 @@ impl ScopeApp {
         Ok(())
     }
     pub(super) fn generator_transport(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal_wrapped(|ui| {
-            let g = &mut self.generator;
-            ui.label(
-                RichText::new(format!("OUTPUT · {}", g.label()))
-                    .small()
-                    .monospace()
-                    .color(g.state_color()),
-            )
-            .on_hover_text("Input Stop holds the measurement; output continues.");
-            if ui
-                .small_button("I/O")
-                .on_hover_text(format!(
-                    "{} · {} Hz · {}ch · {} — configure input and output",
-                    g.target.label(),
-                    g.rate,
-                    g.target.channels(),
-                    g.target.pcm_label()
-                ))
-                .clicked()
-            {
-                self.sidebar.io_output = true;
-                self.sidebar.reveal(SettingsSection::Io);
-            }
-            if ui.small_button("Stop all outputs").clicked() {
-                g.stop();
-            }
-            ui.add(
-                egui::Label::new(RichText::new(g.target.label()).small().color(MUTED)).truncate(),
-            );
-        });
+        let g = &mut self.generator;
+        ui.label(
+            RichText::new(format!("OUTPUT · {}", g.label()))
+                .small()
+                .monospace()
+                .color(g.state_color()),
+        )
+        .on_hover_text(format!(
+            "{} · {} Hz · {}ch. Input Stop holds the measurement; output continues.",
+            g.target.label(),
+            g.rate,
+            g.target.channels()
+        ));
+        if ui.button("Stop output").clicked() {
+            g.stop();
+        }
     }
 
     pub(super) fn generator_controls(&mut self, ui: &mut egui::Ui) {
         let restoring =
             self.workspace_restoring || self.settings_task == Some(SettingsTask::Restore);
         let g = &mut self.generator;
-        if ui.button("Show Generator").clicked() {
-            g.visible = true;
-        }
         setting_label(ui, "EDIT STEP");
         egui::ComboBox::from_id_salt("generator_step")
             .width(ui.available_width())
@@ -1163,13 +1150,6 @@ impl ScopeApp {
                             RichText::new(if g.stopped() { "▶ Start output" } else { "■ Stop output" })
                                 .color(if g.stopped() { GREEN } else { TRIGGER }))).clicked() {
                             if g.stopped() { g.start(); } else { g.stop(); }
-                        }
-                        if ui.small_button("Settings").on_hover_text(format!("Step {} · phase alignment and applied output details", g.step_label())).clicked() {
-                            self.sidebar.reveal(SettingsSection::Generator);
-                        }
-                        if ui.small_button("I/O").on_hover_text("Output device, format, channel routing and input connection").clicked() {
-                            self.sidebar.io_output = true;
-                            self.sidebar.reveal(SettingsSection::Io);
                         }
                     });
                 });

@@ -387,8 +387,8 @@ impl ScopeApp {
                 &single,
             )?;
         }
-        self.visible = [true, true, false, false];
-        self.sidebar.section = Some(SettingsSection::Scope);
+        self.select_view([true, true, false, false]);
+        self.presentation.details_visible = true;
         if std::env::var_os("MEASURELAB_UI_SMOKE_COMPARE").is_some() {
             self.compare_open = true;
         }
@@ -496,6 +496,10 @@ impl ScopeApp {
 
     pub(super) fn file_menu(&mut self, ui: &mut egui::Ui) {
         ui.menu_button("File", |ui| {
+            if ui.button("File paths & status…").clicked() {
+                self.shell.file_paths = true;
+                ui.close();
+            }
             ui.add_enabled_ui(!self.workspace_pending, |ui| {
                 if ui.button("Save settings…").clicked() {
                     match self.capture_settings() {
@@ -562,7 +566,7 @@ impl ScopeApp {
             if ui
                 .add_enabled(
                     self.reference.is_some(),
-                    egui::Button::new("Compare reference"),
+                    egui::Button::new("Compare saved reference"),
                 )
                 .clicked()
             {

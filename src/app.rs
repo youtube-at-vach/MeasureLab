@@ -12,7 +12,8 @@ use crate::{
     lockin, loopback,
     measurement::{self, ScopeSettings, SpectrumMode},
     output,
-    settings::{self, PlotLayout},
+    presentation::{Action, Console, InstrumentId as Instrument, Layout, Presentation, Screen},
+    settings,
     signal::{Edge, History, Line, Measurement, Sweep, Trigger, build_sweep_lines},
     spectrogram, spectrogram_gpu,
     spectrum::{
@@ -37,6 +38,8 @@ mod display;
 mod generator_panel;
 mod io_panel;
 mod lockin_panel;
+mod monitor_controls;
+mod shell;
 mod workspace;
 
 const GREEN: Color32 = Color32::from_rgb(56, 242, 173);
@@ -78,121 +81,9 @@ impl Source {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Instrument {
-    Scope,
-    Spectrum,
-    Spectrogram,
-    Xy,
-    Lockin,
-    Comparison,
-}
-
-impl PlotLayout {
-    fn name(self) -> &'static str {
-        match self {
-            Self::Auto => "Automatic",
-            Self::Columns => "Side by side",
-            Self::Rows => "Stacked",
-        }
-    }
-
-    fn columns(self, width: f32) -> bool {
-        match self {
-            Self::Auto => width >= 1000.0,
-            // Keep both plots readable when the window or sidebar is resized.
-            Self::Columns => width >= 800.0,
-            Self::Rows => false,
-        }
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
 enum SettingsTask {
     Save,
     Restore,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-enum SettingsSection {
-    Io,
-    Generator,
-    Scope,
-    Spectrum,
-    Spectrogram,
-    Xy,
-    Lockin,
-    Comparison,
-    Calibration,
-    Workspace,
-}
-
-impl SettingsSection {
-    const ALL: [Self; 10] = [
-        Self::Io,
-        Self::Generator,
-        Self::Scope,
-        Self::Spectrum,
-        Self::Spectrogram,
-        Self::Xy,
-        Self::Lockin,
-        Self::Comparison,
-        Self::Calibration,
-        Self::Workspace,
-    ];
-
-    fn title(self) -> &'static str {
-        match self {
-            Self::Io => "I/O",
-            Self::Generator => "Generator",
-            Self::Scope => "Oscilloscope",
-            Self::Spectrum => "Spectrum analyzer",
-            Self::Spectrogram => "Spectrogram",
-            Self::Xy => "XY / Lissajous",
-            Self::Lockin => "Lock-in amplifier",
-            Self::Comparison => "Synchronous comparison",
-            Self::Calibration => "Channel calibration",
-            Self::Workspace => "Workspace & help",
-        }
-    }
-
-    fn color(self) -> Color32 {
-        match self {
-            Self::Io | Self::Calibration | Self::Workspace => Color32::from_rgb(192, 207, 217),
-            Self::Generator => GREEN,
-            Self::Scope => GREEN,
-            Self::Spectrum => YELLOW,
-            Self::Spectrogram => BLUE,
-            Self::Xy => PURPLE,
-            Self::Lockin => YELLOW,
-            Self::Comparison => BLUE,
-        }
-    }
-}
-
-struct Sidebar {
-    visible: bool,
-    section: Option<SettingsSection>,
-    focus: bool,
-    io_output: bool,
-}
-
-impl Default for Sidebar {
-    fn default() -> Self {
-        Self {
-            visible: true,
-            section: Some(SettingsSection::Io),
-            focus: false,
-            io_output: false,
-        }
-    }
-}
-
-impl Sidebar {
-    fn reveal(&mut self, section: SettingsSection) {
-        self.visible = true;
-        self.section = Some(section);
-        self.focus = true;
-    }
 }
 
 struct CalibrationEditor {
@@ -283,12 +174,10 @@ pub struct ScopeApp {
     loopback_settings: loopback::Settings,
     comparison_settings: comparison::Settings,
     comparison_result: Arc<comparison::Result>,
-    comparison_visible: bool,
     comparison_frequency_hz: f64,
     comparison_display: comparison_panel::ComparisonDisplay,
     lockin_settings: lockin::Settings,
     lockin_result: lockin::Result,
-    lockin_visible: bool,
     lockin_display: settings::LockinDisplay,
     workspace_io: workspace_io::Worker,
     workspace_pending: bool,
@@ -298,10 +187,10 @@ pub struct ScopeApp {
     reference_label: String,
     compare_open: bool,
     comparison_current: Option<Box<export::Document>>,
-    visible: [bool; 4],
-    plot_layout: PlotLayout,
-    previous_view: Option<([bool; 4], bool, bool, bool, PlotLayout)>,
-    sidebar: Sidebar,
+    presentation: Presentation,
+    shell: shell::Shell,
+    #[cfg(feature = "qa")]
+    qa_previous_presentation: Option<Presentation>,
     #[cfg(feature = "qa")]
     demo: Demo,
     #[cfg(feature = "qa")]
@@ -520,11 +409,9 @@ impl ScopeApp {
                 0,
                 2,
             )),
-            comparison_visible: false,
             comparison_frequency_hz: 1000.0,
             comparison_display: comparison_panel::ComparisonDisplay::default(),
             lockin_settings: lockin::Settings::default(),
-            lockin_visible: false,
             lockin_display: settings::LockinDisplay::Polar,
             lockin_result: lockin::Analyzer::new(lockin::Settings::default(), 48000)
                 .result()
@@ -537,14 +424,10 @@ impl ScopeApp {
             reference_label: String::new(),
             compare_open: false,
             comparison_current: None,
-            visible: if smoke {
-                [true; 4]
-            } else {
-                [true, true, false, false]
-            },
-            plot_layout: PlotLayout::Auto,
-            previous_view: None,
-            sidebar: Sidebar::default(),
+            presentation: Presentation::default(),
+            shell: shell::Shell::default(),
+            #[cfg(feature = "qa")]
+            qa_previous_presentation: None,
             #[cfg(feature = "qa")]
             demo: Demo::default(),
             #[cfg(feature = "qa")]
@@ -716,7 +599,7 @@ impl ScopeApp {
         #[cfg(feature = "qa")]
         if app.profile.is_some() {
             if std::env::var_os("MEASURELAB_PROFILE_SPECTRUM_ONLY").is_some() {
-                app.visible = [false, true, false, false];
+                app.select_view([false, true, false, false]);
             }
             let precision = match std::env::var("MEASURELAB_PROFILE_FFT_PRECISION").as_deref() {
                 Ok("f32") => Precision::F32,
@@ -794,10 +677,10 @@ impl ScopeApp {
                     app.history = History::with_channels(96000, 1);
                 }
                 if std::env::var_os("MEASURELAB_UI_SMOKE_XY_ONLY").is_some() {
-                    app.visible = [false, false, false, true];
+                    app.select_view([false, false, false, true]);
                 }
                 if std::env::var_os("MEASURELAB_UI_SMOKE_SCOPE_ONLY").is_some() {
-                    app.visible = [true, false, false, false];
+                    app.select_view([true, false, false, false]);
                 }
             }
             app.format = if smoke { "QA fixture" } else { "Internal demo" }.into();
@@ -908,32 +791,72 @@ impl ScopeApp {
                 app.cursors.set_scope_time(1, 0.7);
             }
             match std::env::var("MEASURELAB_UI_SMOKE_SETTINGS").as_deref() {
-                Ok("input" | "io") => app.sidebar.reveal(SettingsSection::Io),
+                Ok("input" | "io") => app.shell.io = Some(shell::IoTab::Input),
                 Ok("output") => {
-                    app.sidebar.reveal(SettingsSection::Io);
-                    app.sidebar.io_output = true;
+                    app.shell.io = Some(shell::IoTab::Input);
+                    app.shell.io = Some(shell::IoTab::Output);
                 }
-                Ok("generator") => app.sidebar.reveal(SettingsSection::Generator),
-                Ok("calibration") => app.sidebar.reveal(SettingsSection::Calibration),
-                Ok("scope") => app.sidebar.section = Some(SettingsSection::Scope),
-                Ok("spectrum") => app.sidebar.section = Some(SettingsSection::Spectrum),
-                Ok("spectrogram") => app.sidebar.section = Some(SettingsSection::Spectrogram),
-                Ok("xy") => app.sidebar.section = Some(SettingsSection::Xy),
-                Ok("lockin") => app.sidebar.section = Some(SettingsSection::Lockin),
-                Ok("workspace") => app.sidebar.section = Some(SettingsSection::Workspace),
-                Ok("collapsed") => app.sidebar.section = None,
-                Ok("hidden") => app.sidebar.visible = false,
+                Ok("generator") => {
+                    app.presentation
+                        .apply(Action::OpenSingle(Instrument::Generator));
+                    app.presentation.details_visible = true;
+                }
+                Ok("calibration") => app.shell.io = Some(shell::IoTab::Calibration),
+                Ok("scope") => {
+                    app.presentation
+                        .apply(Action::OpenSingle(Instrument::Scope));
+                    app.presentation.details_visible = true;
+                }
+                Ok("spectrum") => {
+                    app.presentation
+                        .apply(Action::OpenSingle(Instrument::Spectrum));
+                    app.presentation.details_visible = true;
+                }
+                Ok("spectrogram") => {
+                    app.presentation
+                        .apply(Action::OpenSingle(Instrument::Spectrogram));
+                    app.presentation.details_visible = true;
+                }
+                Ok("xy") => {
+                    app.presentation.apply(Action::OpenSingle(Instrument::Xy));
+                    app.presentation.details_visible = true;
+                }
+                Ok("lockin") => {
+                    app.presentation
+                        .apply(Action::OpenSingle(Instrument::Lockin));
+                    app.presentation.details_visible = true;
+                }
+                Ok("workspace") => app.shell.file_paths = true,
+                Ok("collapsed") => app.presentation.details_visible = false,
+                Ok("hidden") => app.presentation.details_visible = false,
                 _ => {}
             }
             match std::env::var("MEASURELAB_UI_SMOKE_VIEW").as_deref() {
                 Ok("scope") => app.select_view([true, false, false, false]),
                 Ok("spectrum") => app.select_view([false, true, false, false]),
                 Ok("pair") => app.select_view([true, true, false, false]),
+                Ok("all") => app.select_view([true; 4]),
+                Ok("console") => {
+                    for i in Instrument::ALL {
+                        app.presentation.apply(Action::AddToConsole(i));
+                    }
+                    app.presentation.console.layout = Layout::Grid;
+                    app.presentation.apply(Action::FocusPane(Instrument::Scope));
+                }
+                Ok("empty") => app.presentation.apply(Action::OpenConsole),
                 _ => {}
             }
             match std::env::var("MEASURELAB_UI_SMOKE_ADJUST").as_deref() {
-                Ok("scope") => app.sidebar.reveal(SettingsSection::Scope),
-                Ok("spectrum" | "analysis") => app.sidebar.reveal(SettingsSection::Spectrum),
+                Ok("scope") => {
+                    app.presentation
+                        .apply(Action::OpenSingle(Instrument::Scope));
+                    app.presentation.details_visible = true;
+                }
+                Ok("spectrum" | "analysis") => {
+                    app.presentation
+                        .apply(Action::OpenSingle(Instrument::Spectrum));
+                    app.presentation.details_visible = true;
+                }
                 _ => {}
             }
         }
@@ -998,7 +921,7 @@ impl ScopeApp {
             app.spectrum_settings.averages = 1;
             app.ms_per_div = 512.0 / 480.0;
             app.fs_per_div = 0.05;
-            app.lockin_visible = true;
+            app.qa_show(Instrument::Lockin);
             app.setup_generator_device(&name, rate, false)?;
             if std::env::var_os("MEASURELAB_PROFILE_COMPARISON").is_some() {
                 app.comparison_settings = comparison::Settings {
@@ -1009,8 +932,8 @@ impl ScopeApp {
                     ..Default::default()
                 };
                 app.comparison_frequency_hz = 750.0;
-                app.comparison_visible = true;
-                app.visible = [true, false, false, false];
+                app.select_view([true, false, false, false]);
+                app.qa_show(Instrument::Comparison);
             }
         }
         #[cfg(feature = "qa")]
@@ -1040,12 +963,23 @@ impl ScopeApp {
             app.last_stft = None;
             app.spectrogram_history = Arc::new(Mutex::new(spectrogram::History::default()));
             app.xy_capture = xy::Capture::default();
-            app.visible = [true, true, false, false];
+            app.presentation
+                .apply(Action::OpenSingle(Instrument::Scope));
             app.dirty = true;
         }
         #[cfg(feature = "qa")]
         if smoke && std::env::var_os("MEASURELAB_UI_SMOKE_GENERATOR_COLLAPSED").is_some() {
             app.generator.controls_expanded = false;
+        }
+        #[cfg(feature = "qa")]
+        if smoke && std::env::var_os("MEASURELAB_UI_SMOKE_DETAILS").is_some() {
+            app.presentation.details_visible = true;
+            app.shell.narrow_details = true;
+        }
+        #[cfg(feature = "qa")]
+        if smoke {
+            app.check_redesign_navigation()?;
+            app.qa_previous_presentation = None;
         }
         Ok(app)
     }
@@ -1108,7 +1042,7 @@ impl ScopeApp {
             saved["scope"]["traces"][1]["channel"].as_u64().unwrap() as usize,
         ]);
         self.export_status = Some("Export QA passed; captured conditions preserved".into());
-        self.sidebar.reveal(SettingsSection::Workspace);
+        self.shell.file_paths = true;
         // Start the screenshot interval after fixture setup and its bounded
         // I/O wait, so requesting a screenshot cannot coincide with Close.
         self.created = Instant::now();
@@ -1169,7 +1103,7 @@ impl ScopeApp {
         document.measurement.spectrogram.channel = 15;
         document.measurement.xy.channels = Pair([15, 7]);
         document.measurement.input.sample_rate = Some(96_000);
-        document.workspace.sidebar_visible = true;
+        document.workspace.presentation.details_visible = true;
         document.measurement.calibrations[0].revision += 1;
         document.measurement.calibrations[0].gain = 8.0;
         let path = std::path::PathBuf::from("dist/settings-restore-qa.json");
@@ -1193,7 +1127,7 @@ impl ScopeApp {
         assert_eq!(self.calibration.captured, self.calibration.pending);
         self.settings_path = path.display().to_string();
         self.settings_status = Some("Settings QA passed; input stays stopped".into());
-        self.sidebar.reveal(SettingsSection::Workspace);
+        self.shell.file_paths = true;
         println!(
             "Settings restore UI QA OK: missing/conflicting/running restores rejected atomically, Start blocked during restore, held data/metadata preserved, CH 16 survives new observation without automatic capture"
         );
@@ -1297,7 +1231,8 @@ impl ScopeApp {
                 assert_eq!(self.analyzer.db(), held_db);
                 assert_eq!(self.history.range(), *held_range);
                 let held_results = self.capture_results().unwrap();
-                let original_view = (self.visible, self.plot_layout);
+                let original_view = self.presentation.clone();
+                self.qa_previous_presentation = None;
                 for visible in [
                     [true, false, false, false],
                     [true, true, false, false],
@@ -1309,7 +1244,7 @@ impl ScopeApp {
                     assert_eq!(self.cursor_samples(), self.lifecycle_scope_samples);
                 }
                 self.restore_view();
-                assert_eq!((self.visible, self.plot_layout), original_view);
+                assert_eq!(self.presentation.clone(), original_view);
                 assert_eq!(self.capture_results().unwrap(), held_results);
                 println!(
                     "Quick views OK: hidden instruments continue; held f64 results, conditions and cursors survive single/pair/all views and original arrangement is restored"
@@ -1389,7 +1324,7 @@ impl ScopeApp {
                 self.frequency_scale = FrequencyScale::Linear;
                 self.floor_db = -100.0;
                 self.spectrum_dirty = true;
-                self.visible = [false, false, false, true];
+                self.select_view([false, false, false, true]);
                 self.lifecycle_stage = 3;
                 ctx.request_repaint_after(Duration::from_millis(450));
             }
@@ -1411,7 +1346,7 @@ impl ScopeApp {
                     self.lifecycle_held.unwrap().0,
                     "display-only change mutated held history"
                 );
-                self.visible = [false, false, true, false];
+                self.select_view([false, false, true, false]);
                 self.start();
                 assert_eq!(self.calibration.captured, self.calibration.pending);
                 assert_eq!(self.calibration.captured.get(0).unwrap().gain(), 2.0);
@@ -1454,7 +1389,7 @@ impl ScopeApp {
                 assert_eq!(latest.config.channel, 1);
                 assert_eq!(latest.config.size, 1024);
                 assert_eq!(latest.config.precision, Precision::F32);
-                self.visible = [true; 4];
+                self.select_view([true; 4]);
                 self.spectrogram_settings.size = 8192;
                 self.spectrogram_settings.precision = Precision::F64;
                 self.spectrogram_channel = 0;
@@ -1494,7 +1429,7 @@ impl ScopeApp {
                     .set_trace_time(1, reference + 5, self.xy_capture.range.clone());
                 self.lifecycle_scope_samples = self.cursor_samples();
                 assert!(self.lifecycle_scope_samples.iter().all(Option::is_some));
-                self.visible = [false, false, true, false];
+                self.select_view([false, false, true, false]);
                 self.lifecycle_stage = 7;
             }
             7 if elapsed > 3.5 => {
@@ -1524,7 +1459,7 @@ impl ScopeApp {
                 self.start();
                 assert_eq!(self.cursor_samples(), [None; 2]);
                 assert_eq!(self.cursors.xy_points, [None; 2]);
-                self.visible = [true; 4];
+                self.select_view([true; 4]);
                 println!(
                     "UI lifecycle OK: fixed-X Scope and fixed-Y Spectrogram cursors, trigger-relative XY Trace Snap across live/hidden/held views, independent Free positions and mode switching, restart invalidation, independent Spectrum settings, all-instrument hold, stop/late-result exclusion, held FFT metadata/average and demo edits, shared samples, display changes, hide/show, source switching, STFT CH/FFT changes"
                 );
@@ -1629,7 +1564,7 @@ impl ScopeApp {
                 self.xy_settings.channels = Pair([self.channels as usize - 1, 0]);
                 self.dirty = true;
                 self.xy_dirty = true;
-                self.visible = [false, false, true, false];
+                self.select_view([false, false, true, false]);
                 if let Ok(rate) = std::env::var("MEASURELAB_PROFILE_SWITCH_SAMPLE_RATE") {
                     let rate = rate.parse().expect("QA switch sample rate must be Hz");
                     crate::audio::validate_sample_rate(rate)
@@ -1662,7 +1597,7 @@ impl ScopeApp {
                     self.spectrogram_history.lock().unwrap().revision(),
                     self.lifecycle_held.unwrap().0
                 );
-                self.visible = [true; 4];
+                self.select_view([true; 4]);
                 self.start();
                 assert!(self.history.is_empty());
                 assert!(self.analyzer.window().is_none());
@@ -2097,7 +2032,8 @@ impl ScopeApp {
                 self.analyzer.clear_hold();
                 self.core.as_ref().unwrap().clear_hold();
                 assert_eq!(self.analyzer.hold_power(), self.analyzer.power());
-                self.visible[1] = false;
+                self.presentation
+                    .apply(Action::OpenSingle(Instrument::Scope));
                 self.start();
                 assert!(!self.analyzer.is_ready());
                 self.lifecycle_stage = 3;
@@ -2109,7 +2045,7 @@ impl ScopeApp {
                 assert!(
                     (self.analyzer.band(0.0, 24000.0).unwrap().power - 0.0078125).abs() < 1e-12
                 );
-                self.visible[1] = true;
+                self.qa_show(Instrument::Spectrum);
                 self.stop();
                 self.lifecycle_stage = 4;
             }
@@ -2658,9 +2594,11 @@ impl ScopeApp {
                             self.spectrogram_channel = channel.saturating_sub(1);
                         }
                         match std::env::var("MEASURELAB_PROFILE_SETTINGS").as_deref() {
-                            Ok("input") => self.sidebar.section = Some(SettingsSection::Io),
+                            Ok("input") => self.shell.io = Some(shell::IoTab::Input),
                             Ok("spectrum") => {
-                                self.sidebar.section = Some(SettingsSection::Spectrum)
+                                self.presentation
+                                    .apply(Action::OpenSingle(Instrument::Spectrum));
+                                self.presentation.details_visible = true
                             }
                             _ => {}
                         }
@@ -2684,149 +2622,6 @@ impl ScopeApp {
         }
     }
 
-    fn section_summary(&self, section: SettingsSection) -> String {
-        match section {
-            #[cfg(feature = "qa")]
-            SettingsSection::Io if self.source.is_demo() => {
-                format!(
-                    "Demo · {} Hz · {:.2} FS",
-                    self.demo.frequency, self.demo.amplitude
-                )
-            }
-            SettingsSection::Io if self.source == Source::Software => format!(
-                "Software Loopback · {} Hz · 2 ch",
-                self.requested_sample_rate.unwrap_or(48000)
-            ),
-            SettingsSection::Io if self.source == Source::Generator => format!(
-                "Generator loopback · {} Hz · OUT {}",
-                self.generator.rate,
-                self.generator.label(),
-            ),
-            SettingsSection::Io => self
-                .devices
-                .get(self.selected)
-                .map(|device| format!("{} · {}", device.name, self.input_rate_label()))
-                .unwrap_or_else(|| "Select an audio device".into()),
-            SettingsSection::Generator => format!(
-                "2 sine signals · Step {} · {}",
-                self.generator.step_label(),
-                self.generator.label(),
-            ),
-            SettingsSection::Scope => {
-                format!(
-                    "{} ms/div · {} FS/div",
-                    display::number(Some(self.ms_per_div as f64)),
-                    display::number(Some(self.fs_per_div as f64))
-                )
-            }
-            SettingsSection::Spectrum => format!(
-                "CH {} · {} points · {}",
-                self.spectrum_channel + 1,
-                self.spectrum_settings.size,
-                self.spectrum_settings.quantity.name()
-            ),
-            SettingsSection::Spectrogram => format!(
-                "CH {} · {:.1} s · {} points",
-                self.spectrogram_channel + 1,
-                self.spectrogram_seconds,
-                self.spectrogram_settings.size
-            ),
-            SettingsSection::Xy => format!(
-                "{} × {} · {:.1} ms",
-                channel::name(self.xy_settings.channels.0[0]),
-                channel::name(self.xy_settings.channels.0[1]),
-                self.xy_settings.milliseconds
-            ),
-            SettingsSection::Workspace => {
-                format!("{} layout · shortcuts & units", self.plot_layout.name())
-            }
-            SettingsSection::Calibration => "Scope numeric readouts · next Start".into(),
-            SettingsSection::Comparison => format!(
-                "REF CH {} / SIG CH {} · N {} × {}",
-                self.comparison_settings.reference_channel + 1,
-                self.comparison_settings.response_channel + 1,
-                self.comparison_settings.size,
-                self.comparison_settings.averages
-            ),
-            SettingsSection::Lockin => format!(
-                "REF CH {} / SIG CH {} · τ {} s",
-                self.lockin_settings.reference_channel + 1,
-                self.lockin_settings.response_channel + 1,
-                self.lockin_settings.time_constant_seconds,
-            ),
-        }
-    }
-
-    fn controls(&mut self, ui: &mut egui::Ui) {
-        if self.settings_task == Some(SettingsTask::Restore) || self.workspace_restoring {
-            ui.label("Restoring measurement settings…");
-            return;
-        }
-        ui.spacing_mut().item_spacing = vec2(8.0, 8.0);
-        ui.visuals_mut().collapsing_header_frame = true;
-        for section in SettingsSection::ALL {
-            let summary = self.section_summary(section);
-            let open = self.sidebar.section == Some(section);
-            let response = egui::Frame::new()
-                .fill(Color32::from_rgb(17, 27, 35))
-                .stroke(Stroke::new(
-                    1.0,
-                    if open {
-                        section.color().gamma_multiply(0.6)
-                    } else {
-                        BORDER
-                    },
-                ))
-                .corner_radius(5.0)
-                .inner_margin(8.0)
-                .show(ui, |ui| {
-                    ui.set_min_width(ui.available_width());
-                    let header = egui::CollapsingHeader::new(
-                        RichText::new(section.title())
-                            .color(section.color())
-                            .strong(),
-                    )
-                    .id_salt(("settings", section))
-                    .open(Some(open))
-                    .show_unindented(ui, |ui| {
-                        ui.spacing_mut().slider_width = (ui.available_width() - 140.0).max(75.0);
-                        ui.add_space(4.0);
-                        match section {
-                            SettingsSection::Io => self.io_controls(ui),
-                            SettingsSection::Generator => self.generator_controls(ui),
-                            SettingsSection::Scope => self.scope_controls(ui),
-                            SettingsSection::Spectrum => self.spectrum_controls(ui),
-                            SettingsSection::Spectrogram => self.spectrogram_controls(ui),
-                            SettingsSection::Xy => self.xy_controls(ui),
-                            SettingsSection::Lockin => self.lockin_controls(ui),
-                            SettingsSection::Comparison => self.comparison_controls(ui),
-                            SettingsSection::Calibration => self.calibration_controls(ui),
-                            SettingsSection::Workspace => self.workspace_controls(ui),
-                        }
-                        ui.add_space(4.0);
-                    });
-                    if header.header_response.clicked() {
-                        self.sidebar.section = if open { None } else { Some(section) };
-                        self.sidebar.focus = !open;
-                        ui.ctx().request_repaint();
-                    }
-                    if !open {
-                        ui.add(
-                            egui::Label::new(RichText::new(summary).small().color(MUTED))
-                                .truncate(),
-                        )
-                        .on_hover_text(self.section_summary(section));
-                    }
-                    (header.header_response, header.openness)
-                });
-            if self.sidebar.focus && open {
-                response.inner.0.scroll_to_me(Some(egui::Align::Min));
-                self.sidebar.focus = response.inner.1 < 1.0;
-            }
-            ui.add_space(2.0);
-        }
-    }
-
     fn transport(&mut self, ui: &mut egui::Ui) {
         if ui
             .add_enabled(
@@ -2839,9 +2634,9 @@ impl ScopeApp {
                         || !self.devices.is_empty()),
                 egui::Button::new(
                     RichText::new(if self.running() {
-                        "■  Stop"
+                        "■  Stop input"
                     } else if self.source.is_demo() {
-                        "▶  Start demo"
+                        "▶  Start input (demo)"
                     } else {
                         "▶  Start input"
                     })
@@ -2853,7 +2648,7 @@ impl ScopeApp {
                 ),
             )
             .on_hover_text(
-                "Start or stop the shared input for every visible instrument. Shortcut: Space",
+                "Start or stop the shared input for all instruments; output is independent. Shortcut: Space",
             )
             .clicked()
         {
@@ -2928,61 +2723,6 @@ impl ScopeApp {
     }
 
     fn scope_controls(&mut self, ui: &mut egui::Ui) {
-        setting_label(ui, "TIMEBASE");
-        self.dirty |= ui
-            .add(
-                egui::Slider::new(&mut self.ms_per_div, 0.05..=100.0)
-                    .logarithmic(true)
-                    .text("ms / div"),
-            )
-            .changed();
-        ui.label(
-            RichText::new(format!("{:.2} ms across screen", self.ms_per_div * 10.0))
-                .small()
-                .color(MUTED),
-        );
-        setting_label(ui, "AMPLITUDE");
-        self.dirty |= ui
-            .add(
-                egui::Slider::new(&mut self.fs_per_div, 0.001..=0.5)
-                    .logarithmic(true)
-                    .text("FS / div"),
-            )
-            .changed();
-        setting_label(ui, "TRACE SOURCES");
-        let before_channels = self.scope_channels;
-        for (trace, color) in [GREEN, BLUE].into_iter().enumerate() {
-            ui.horizontal(|ui| {
-                self.dirty |= ui
-                    .checkbox(
-                        &mut self.enabled[trace],
-                        RichText::new(format!("Trace {}", trace + 1)).color(color),
-                    )
-                    .changed();
-                channel_select(
-                    ui,
-                    if trace == 0 {
-                        "scope_trace_1"
-                    } else {
-                        "scope_trace_2"
-                    },
-                    &mut self.scope_channels.0[trace],
-                    self.channels,
-                );
-            });
-        }
-        self.dirty |= self.scope_channels != before_channels;
-        if !self.running() && self.scope_channels != self.scope_view_channels() {
-            ui.label(
-                RichText::new("Source changes apply on Start. Held traces keep their channels.")
-                    .small()
-                    .color(YELLOW),
-            );
-        }
-        if ui.button("Fit amplitude").clicked() {
-            self.fit_scope_amplitude();
-        }
-        ui.separator();
         setting_label(ui, "ACQUISITION");
         let old_mode = self.acquisition_mode;
         ui.horizontal(|ui| {
@@ -3010,17 +2750,7 @@ impl ScopeApp {
                 self.acquisition_mode = acquisition::Mode::Single;
                 self.start();
             }
-            if ui
-                .add_enabled(self.autoset_pending.is_none(), egui::Button::new("Autoset"))
-                .clicked()
-                && let Some(core) = &self.core
-            {
-                self.autoset_pending = Some(core.autoset(self.scope_view_channels().0[0]));
-            }
         });
-        if let Some(status) = &self.autoset_status {
-            ui.label(RichText::new(status).small());
-        }
         setting_label(ui, "TRIGGER");
         let before = (self.trigger.edge, self.trigger.channel);
         egui::ComboBox::from_id_salt("edge")
@@ -3161,13 +2891,6 @@ impl ScopeApp {
             ui,
             "spectrum_precision",
             &mut self.spectrum_settings.precision,
-        );
-        setting_label(ui, "SOURCE CHANNEL");
-        channel_select(
-            ui,
-            "spectrum_channel",
-            &mut self.spectrum_channel,
-            self.channels,
         );
         setting_label(ui, "FFT LENGTH");
         egui::ComboBox::from_id_salt("fft_size")
@@ -3358,7 +3081,7 @@ impl ScopeApp {
     fn spectrum_controls(&mut self, ui: &mut egui::Ui) {
         self.spectrum_analysis_controls(ui);
         ui.separator();
-        self.spectrum_display_controls(ui);
+
         ui.label(
             RichText::new(format!(
                 "Δf {:.6} Hz · RBW {:.6} Hz\nWindow {:.1} ms · {} processed windows",
@@ -3456,13 +3179,6 @@ impl ScopeApp {
             "spectrogram_precision",
             &mut self.spectrogram_settings.precision,
         );
-        setting_label(ui, "SOURCE CHANNEL");
-        channel_select(
-            ui,
-            "spectrogram_channel",
-            &mut self.spectrogram_channel,
-            self.channels,
-        );
         setting_label(ui, "FFT LENGTH");
         egui::ComboBox::from_id_salt("stft_size")
             .width(ui.available_width())
@@ -3502,6 +3218,9 @@ impl ScopeApp {
                 .color(MUTED),
             );
         }
+    }
+
+    fn spectrogram_display_controls(&mut self, ui: &mut egui::Ui) {
         ui.separator();
         setting_label(ui, "TIME SPAN");
         egui::ComboBox::from_id_salt("spectrogram_time")
@@ -3610,10 +3329,6 @@ impl ScopeApp {
                         self.last_stft.is_some(),
                     );
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui.small_button("Settings").clicked() {
-                            self.sidebar.reveal(SettingsSection::Spectrogram);
-                            ui.ctx().request_repaint();
-                        }
                         let channel = self
                             .last_stft
                             .map_or(self.spectrogram_channel, |r| r.config.channel);
@@ -3643,6 +3358,7 @@ impl ScopeApp {
                         .color(MUTED),
                     );
                 }
+                self.spectrogram_primary(ui);
                 let view = self.spectrogram_view();
                 let (outer, response) =
                     ui.allocate_exact_size(plot_size(ui), egui::Sense::click_and_drag());
@@ -4220,7 +3936,7 @@ impl ScopeApp {
         }
     }
 
-    fn xy_controls(&mut self, ui: &mut egui::Ui) {
+    fn xy_primary_controls(&mut self, ui: &mut egui::Ui) {
         let before_channels = self.xy_settings.channels;
         setting_label(ui, "X SOURCE");
         channel_select(
@@ -4377,13 +4093,15 @@ impl ScopeApp {
                         self.pending_stop.is_some(),
                         !self.xy_capture.range.is_empty(),
                     );
-                    self.xy_cursor_mode_controls(ui);
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui.small_button("Settings").clicked() {
-                            self.sidebar.reveal(SettingsSection::Xy);
-                            ui.ctx().request_repaint();
-                        }
-                    });
+                    ui.menu_button("Source / display…", |ui| self.xy_primary_controls(ui));
+                });
+                ui.horizontal_wrapped(|ui| {
+                    ui.label(
+                        RichText::new("XY · X/Y or trigger-relative cursor")
+                            .small()
+                            .color(MUTED),
+                    );
+                    self.cursor_controls(ui);
                 });
                 ui.label(
                     RichText::new(format!(
@@ -4588,40 +4306,6 @@ impl ScopeApp {
             }));
         }
         ui.separator();
-        setting_label(ui, "INSTRUMENT LAYOUT");
-        egui::ComboBox::from_id_salt("plot_layout")
-            .width(ui.available_width())
-            .selected_text(self.plot_layout.name())
-            .show_ui(ui, |ui| {
-                for layout in [PlotLayout::Auto, PlotLayout::Columns, PlotLayout::Rows] {
-                    ui.selectable_value(&mut self.plot_layout, layout, layout.name());
-                }
-            });
-        ui.label(RichText::new("Side by side switches to stacked when space is limited. Hide Settings to give the plots more room.").small().color(MUTED));
-        ui.separator();
-        setting_label(ui, "SHORTCUTS");
-        egui::Grid::new("shortcuts")
-            .spacing(vec2(10.0, 8.0))
-            .show(ui, |ui| {
-                for (key, action) in [
-                    ("Space", "Start / stop"),
-                    ("Wheel", "Scope timebase"),
-                    ("Shift + wheel", "Scope amplitude"),
-                    ("Double click", "Reset scope scales"),
-                ] {
-                    ui.label(RichText::new(key).small().strong());
-                    ui.label(RichText::new(action).small().color(MUTED));
-                    ui.end_row();
-                }
-            });
-        ui.separator();
-        setting_label(ui, "MEASUREMENT UNITS");
-        ui.label(RichText::new("Raw amplitude is digital full scale (FS). Channel calibration applies to Scope readouts and Spectrum. Spectrum uses bin peak amplitude or PSD in unit²/Hz; band integration gives unit² and RMS unit. Uncalibrated Spectrum uses dBFS or FS²/Hz. Δf is Fs / N; RBW is the window's equivalent noise bandwidth.").small().color(MUTED));
-        ui.label(
-            RichText::new("Audio input uses the selected nominal device sample rate.")
-                .small()
-                .color(MUTED),
-        );
     }
 
     fn can_restore_settings(&self) -> bool {
@@ -4802,13 +4486,8 @@ impl ScopeApp {
                 calibrations: settings::ChannelCalibration::capture(&self.calibration.pending),
             },
             workspace: settings::Workspace {
-                generator_visible: self.generator.visible,
-                visible: self.visible,
-                lockin_visible: self.lockin_visible,
-                comparison_visible: self.comparison_visible,
+                presentation: self.presentation.clone(),
                 lockin_display: self.lockin_display,
-                layout: self.plot_layout,
-                sidebar_visible: self.sidebar.visible,
                 scope_enabled: self.enabled,
                 scope_fs_per_div: self.fs_per_div,
                 spectrum_scale: self.frequency_scale,
@@ -4920,14 +4599,10 @@ impl ScopeApp {
         self.xy_settings.milliseconds = m.xy.milliseconds;
         self.calibration.pending = calibrations;
         self.calibration.select();
-        self.visible = w.visible;
-        self.generator.visible = w.generator_visible;
-        self.lockin_visible = w.lockin_visible;
-        self.comparison_visible = w.comparison_visible;
+        self.presentation = w.presentation.clone();
+        self.presentation.repair();
+        self.shell.previous_console = None;
         self.lockin_display = w.lockin_display;
-        self.plot_layout = w.layout;
-        self.previous_view = None;
-        self.sidebar.visible = w.sidebar_visible;
         self.enabled = w.scope_enabled;
         self.fs_per_div = w.scope_fs_per_div;
         self.frequency_scale = w.spectrum_scale;
@@ -4991,102 +4666,6 @@ impl ScopeApp {
         }
     }
 
-    fn select_view(&mut self, visible: [bool; 4]) {
-        if self.visible == visible
-            && !self.lockin_visible
-            && !self.generator.visible
-            && !self.comparison_visible
-        {
-            return;
-        }
-        self.previous_view.get_or_insert((
-            self.visible,
-            self.lockin_visible,
-            self.generator.visible,
-            self.comparison_visible,
-            self.plot_layout,
-        ));
-        self.visible = visible;
-        self.lockin_visible = false;
-        self.comparison_visible = false;
-        self.generator.visible = false;
-        self.plot_layout = PlotLayout::Auto;
-    }
-
-    fn restore_view(&mut self) {
-        if let Some((visible, lockin, generator, comparison, layout)) = self.previous_view.take() {
-            self.visible = visible;
-            self.lockin_visible = lockin;
-            self.generator.visible = generator;
-            self.comparison_visible = comparison;
-            self.plot_layout = layout;
-        }
-    }
-
-    fn view_menu(&mut self, ui: &mut egui::Ui) {
-        ui.menu_button("View", |ui| {
-            for (title, visible, lockin) in [
-                ("Generator only", [false; 4], false),
-                ("Generator + Scope", [true, false, false, false], false),
-                ("Generator + Spectrum", [false, true, false, false], false),
-                ("Generator + Lock-in", [false; 4], true),
-            ] {
-                if ui.selectable_label(self.generator.visible && self.visible == visible && self.lockin_visible == lockin, title).clicked() {
-                    self.previous_view.get_or_insert((self.visible, self.lockin_visible, self.generator.visible, self.comparison_visible, self.plot_layout));
-                    self.visible = visible; self.lockin_visible = lockin; self.generator.visible = true; self.comparison_visible = false;
-                    self.plot_layout = PlotLayout::Auto;
-                    ui.close();
-                }
-            }
-            for (title, visible) in [
-                ("Scope only", [true, false, false, false]),
-                ("Spectrum only", [false, true, false, false]),
-                ("Scope + Spectrum", [true, true, false, false]),
-                ("All monitors", [true; 4]),
-            ] {
-                if ui.selectable_label(self.visible == visible && !self.lockin_visible, title).clicked() {
-                    self.select_view(visible);
-                    ui.close();
-                }
-            }
-            for (title, scope) in [("Lock-in only", false), ("Scope + Lock-in", true)] {
-                if ui.selectable_label(self.lockin_visible && self.visible == [scope, false, false, false], title).clicked() {
-                    self.select_lockin_view(scope);
-                    ui.close();
-                }
-            }
-            for (title, scope) in [("Comparison only", false),("Scope + Comparison",true)] {
-                if ui.selectable_label(self.comparison_visible && self.visible == [scope,false,false,false],title).clicked() {
-                    self.select_view([scope,false,false,false]); self.comparison_visible=true; ui.close();
-                }
-            }
-            if ui.add_enabled(self.previous_view.is_some(), egui::Button::new("Restore previous view")).clicked() {
-                self.restore_view();
-                ui.close();
-            }
-            ui.separator();
-            for layout in [PlotLayout::Auto, PlotLayout::Columns, PlotLayout::Rows] {
-                if ui.selectable_value(&mut self.plot_layout, layout, layout.name()).clicked() {
-                    ui.close();
-                }
-            }
-        }).response.on_hover_text("Switch display and arrangement. Hidden instruments continue measuring; Restore returns to the view before the first switch.");
-    }
-
-    fn instrument_settings(&mut self, ui: &mut egui::Ui, section: SettingsSection) {
-        if ui
-            .add_enabled(
-                self.settings_task != Some(SettingsTask::Restore),
-                egui::Button::new("Settings").small(),
-            )
-            .on_hover_text("Open this instrument's settings beside the plots")
-            .clicked()
-        {
-            self.sidebar.reveal(section);
-            ui.ctx().request_repaint();
-        }
-    }
-
     fn fit_scope_amplitude(&mut self) {
         let peak = self
             .measurements
@@ -5107,8 +4686,10 @@ impl ScopeApp {
                 ui.horizontal_wrapped(|ui| {
                     ui.label(RichText::new("Oscilloscope").size(13.0).strong());
                     display::activity_label(ui, self.running(), self.pending_stop.is_some(), !self.scope_range.is_empty());
-                    self.instrument_settings(ui, SettingsSection::Scope);
+
                 });
+                self.scope_sources(ui);
+                ui.horizontal_wrapped(|ui| { ui.label(RichText::new("Scope · time cursor").small().color(MUTED)); self.cursor_controls(ui); });
                 let trigger = if self.core.is_some() && !self.running() { self.core_scope.trigger } else { self.trigger };
                 let (trigger_text, trigger_color) = if trigger.edge != Edge::Free && !channel::available(trigger.channel, self.channels as usize) {
                     ("Trigger source unavailable", TRIGGER)
@@ -5212,9 +4793,10 @@ impl ScopeApp {
                 ui.horizontal_wrapped(|ui| {
                     ui.label(RichText::new("Spectrum Analyzer").size(13.0).strong());
                     display::activity_label(ui, self.running(), self.pending_stop.is_some(), self.analyzer.window().is_some());
-                    self.instrument_settings(ui, SettingsSection::Spectrum);
+
                     ui.label(RichText::new(format!("CH {} · {}", self.analyzer.window().map_or(self.spectrum_channel, |window| window.channel)+1, self.analyzer.db_unit())).small().color(YELLOW));
                 });
+                self.spectrum_primary(ui);
                 let view = self.spectrum_view();
                 self.refresh_spectrum_readouts(view);
                 if let Some(peak) = self.spectrum_peak {
@@ -6098,99 +5680,24 @@ impl eframe::App for ScopeApp {
                 }
             }
         }
-        if ctx.input(|i| i.key_pressed(egui::Key::Space))
-            && !self.busy
-            && !ctx.egui_wants_keyboard_input()
-        {
+        if shell::input_shortcut(&ctx, self.busy) {
             if self.running() {
                 self.stop();
             } else {
                 self.start();
             }
         }
-        egui::Panel::top("header").show(ui, |ui| {
-            ui.add_space(2.0);
-            ui.horizontal(|ui| {
-                let mut title = egui::text::LayoutJob::default();
-                RichText::new("MeasureLab")
-                    .size(21.0)
-                    .strong()
-                    .color(GREEN)
-                    .append_to(
-                        &mut title,
-                        ui.style(),
-                        egui::FontSelection::Default,
-                        egui::Align::Center,
-                    );
-                RichText::new(" ⭐")
-                    .size(14.0)
-                    .raised()
-                    .color(YELLOW)
-                    .append_to(
-                        &mut title,
-                        ui.style(),
-                        egui::FontSelection::Default,
-                        egui::Align::Center,
-                    );
-                ui.label(title);
-                ui.label(
-                    RichText::new("AUDIO MEASUREMENT LAB")
-                        .size(12.0)
-                        .color(MUTED),
-                );
-                self.file_menu(ui);
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if let Some(status) = &self.export_status
-                        && ui
-                            .small_button(if self.export_error {
-                                "Export error"
-                            } else {
-                                "Export status"
-                            })
-                            .on_hover_text(status)
-                            .clicked()
-                    {
-                        self.sidebar.reveal(SettingsSection::Workspace);
-                    }
-                    self.transport(ui);
-                    ui.separator();
-                    ui.label(
-                        RichText::new(if self.pending_stop.is_some() {
-                            "FINISHING ANALYSIS…"
-                        } else if self.busy {
-                            "OPENING DEVICE…"
-                        } else if self.smoke {
-                            "UI TEST FIXTURE"
-                        } else if self.source.is_demo() {
-                            if self.demo_running {
-                                "● DEMO SIGNAL (QA)"
-                            } else {
-                                "DEMO SIGNAL (QA) · HELD"
-                            }
-                        } else if self.software_running && self.source == Source::Generator {
-                            "● GENERATOR INPUT"
-                        } else if self.software_running {
-                            "● SOFTWARE LOOPBACK"
-                        } else if self.capture.is_some() {
-                            "● LIVE INPUT"
-                        } else {
-                            "○ STOPPED"
-                        })
-                        .monospace()
-                        .color(if self.source.is_demo() {
-                            YELLOW
-                        } else if self.running() {
-                            GREEN
-                        } else {
-                            MUTED
-                        }),
-                    );
-                });
-            });
-            self.generator_transport(ui);
-            ui.add_space(4.0);
-        });
+        self.shell_header(ui);
         egui::Panel::bottom("status").show(ui, |ui| {
+            ui.horizontal_wrapped(|ui| {
+                for status in [&self.export_status, &self.workspace_status]
+                    .into_iter()
+                    .flatten()
+                {
+                    ui.add(egui::Label::new(RichText::new(status).small().color(MUTED)).truncate())
+                        .on_hover_text(status);
+                }
+            });
             ui.horizontal_wrapped(|ui| {
                 ui.label(
                     RichText::new(if self.channels == 0 {
@@ -6228,7 +5735,7 @@ impl eframe::App for ScopeApp {
                             .on_hover_text(status)
                             .clicked()
                     {
-                        self.sidebar.reveal(SettingsSection::Workspace);
+                        self.shell.file_paths = true;
                     }
                     ui.menu_button(RichText::new("Performance").small(), |ui| {
                         ui.label(RichText::new(&self.adapter).small().color(MUTED));
@@ -6291,35 +5798,7 @@ impl eframe::App for ScopeApp {
                 });
             });
         });
-        if self.sidebar.visible {
-            egui::Panel::left("controls")
-                .default_size(280.0)
-                .size_range(260.0..=360.0)
-                .resizable(true)
-                .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new("SETTINGS").small().strong().color(MUTED));
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            if ui
-                                .add_enabled(
-                                    self.sidebar.section.is_some(),
-                                    egui::Button::new("Collapse all").small(),
-                                )
-                                .clicked()
-                            {
-                                self.sidebar.section = None;
-                                self.sidebar.focus = false;
-                                ui.ctx().request_repaint();
-                            }
-                        });
-                    });
-                    ui.separator();
-                    egui::ScrollArea::vertical()
-                        .id_salt("settings_scroll")
-                        .auto_shrink([false, false])
-                        .show(ui, |ui| self.controls(ui));
-                });
-        }
+        self.shell_sides(ui);
         // Resolve X-anchored cursors against this frame's sweep, including when
         // Scope is hidden. The other instruments must not read a stale ID.
         self.refresh_scope_range();
@@ -6335,150 +5814,7 @@ impl eframe::App for ScopeApp {
             self.xy_dirty |= self.dirty;
             self.rebuild_xy();
         }
-        egui::CentralPanel::default().show(ui, |ui| {
-            ui.spacing_mut().item_spacing = vec2(6.0, 4.0);
-            ui.horizontal_wrapped(|ui| {
-                for (index, title) in ["Scope", "Spectrum", "Spectrogram", "XY"]
-                    .into_iter()
-                    .enumerate()
-                {
-                    let enabled = self.visible.iter().filter(|v| **v).count()
-                        + usize::from(self.lockin_visible)
-                        + usize::from(self.generator.visible)
-                        + usize::from(self.comparison_visible)
-                        > 1
-                        || !self.visible[index];
-                    if ui
-                        .add_enabled(
-                            enabled,
-                            egui::Button::new(title).selected(self.visible[index]),
-                        )
-                        .clicked()
-                    {
-                        self.visible[index] = !self.visible[index];
-                    }
-                }
-                if ui
-                    .add_enabled(
-                        self.visible.contains(&true)
-                            || self.generator.visible
-                            || self.comparison_visible
-                            || !self.lockin_visible,
-                        egui::Button::new("Lock-in").selected(self.lockin_visible),
-                    )
-                    .clicked()
-                {
-                    self.lockin_visible = !self.lockin_visible;
-                }
-                if ui
-                    .add_enabled(
-                        self.visible.contains(&true)
-                            || self.lockin_visible
-                            || self.comparison_visible
-                            || !self.generator.visible,
-                        egui::Button::new("Generator").selected(self.generator.visible),
-                    )
-                    .clicked()
-                {
-                    self.generator.visible = !self.generator.visible;
-                }
-                if ui
-                    .add_enabled(
-                        self.visible.contains(&true)
-                            || self.lockin_visible
-                            || self.generator.visible
-                            || !self.comparison_visible,
-                        egui::Button::new("Comparison").selected(self.comparison_visible),
-                    )
-                    .clicked()
-                {
-                    self.comparison_visible = !self.comparison_visible;
-                }
-                self.view_menu(ui);
-                if ui
-                    .selectable_label(self.sidebar.visible, "Settings sidebar")
-                    .on_hover_text("Show or hide settings beside the plots")
-                    .clicked()
-                {
-                    self.sidebar.visible = !self.sidebar.visible;
-                    ui.ctx().request_repaint();
-                }
-            });
-            if self.visible.contains(&true) {
-                ui.horizontal_wrapped(|ui| {
-                    self.cursor_controls(ui);
-                });
-            }
-            if let Some(error) = &self.error {
-                ui.colored_label(Color32::from_rgb(255, 170, 116), error);
-            }
-            ui.add_space(4.0);
-            let available = ui.available_size();
-            let instruments: Vec<_> = [
-                Instrument::Scope,
-                Instrument::Spectrum,
-                Instrument::Spectrogram,
-                Instrument::Xy,
-            ]
-            .into_iter()
-            .enumerate()
-            .filter_map(|(i, plot)| self.visible[i].then_some(plot))
-            .chain(self.lockin_visible.then_some(Instrument::Lockin))
-            .chain(self.comparison_visible.then_some(Instrument::Comparison))
-            .collect();
-            let columns = instruments.len() > 1 && self.plot_layout.columns(available.x);
-            let rows = if columns {
-                instruments.len().div_ceil(2)
-            } else {
-                instruments.len()
-            };
-            let gap = ui.spacing().item_spacing;
-            let scroll = egui::ScrollArea::vertical().auto_shrink([false, false]);
-            scroll.show(ui, |ui| {
-                let content_top = ui.cursor().top();
-                if self.generator.visible {
-                    self.generator_panel(ui);
-                    ui.add_space(4.0);
-                }
-                let remaining_height = (available.y - (ui.cursor().top() - content_top)).max(0.0);
-                let height = ((remaining_height - gap.y * rows.saturating_sub(1) as f32)
-                    / rows.max(1) as f32)
-                    .max(280.0);
-                for plots in instruments.chunks(if columns { 2 } else { 1 }) {
-                    ui.horizontal_top(|ui| {
-                        let width = (ui.available_width() - gap.x * (plots.len() - 1) as f32)
-                            / plots.len() as f32;
-                        let height = plots
-                            .iter()
-                            .map(|plot| match plot {
-                                Instrument::Comparison => 580.0_f32,
-                                Instrument::Scope => 340.0,
-                                Instrument::Lockin => 330.0,
-                                _ => 280.0,
-                            })
-                            .fold(height, f32::max);
-                        for &plot in plots {
-                            ui.allocate_ui_with_layout(
-                                vec2(width, height),
-                                egui::Layout::top_down(egui::Align::Min),
-                                |ui| match plot {
-                                    Instrument::Scope => self.scope_panel(ui),
-                                    Instrument::Spectrum => self.spectrum_panel(ui),
-                                    Instrument::Spectrogram => self.spectrogram_panel(ui),
-                                    Instrument::Xy => self.xy_panel(ui),
-                                    Instrument::Lockin => self.lockin_panel(ui),
-                                    Instrument::Comparison => self.comparison_panel(ui),
-                                },
-                            );
-                        }
-                    });
-                }
-                #[cfg(feature = "qa")]
-                if self.smoke && std::env::var_os("MEASURELAB_UI_SMOKE_SCROLL_END").is_some() {
-                    ui.scroll_to_cursor(Some(egui::Align::BOTTOM));
-                }
-            });
-        });
+        self.shell_central(ui);
         if self.running() || self.busy || !self.generator.stopped() {
             // Let VSync pace acquisition frames without an additional timer.
             ctx.request_repaint();
@@ -6628,8 +5964,13 @@ fn fft_precision(ui: &mut egui::Ui, id: &str, precision: &mut Precision) {
 }
 
 fn channel_select(ui: &mut egui::Ui, id: &str, selected: &mut ChannelId, channels: u16) {
+    let width = if ui.layout().is_horizontal() {
+        ui.available_width().min(150.0)
+    } else {
+        ui.available_width()
+    };
     egui::ComboBox::from_id_salt(id)
-        .width(ui.available_width())
+        .width(width)
         .selected_text(if channel::available(*selected, channels as usize) {
             channel::name(*selected)
         } else {

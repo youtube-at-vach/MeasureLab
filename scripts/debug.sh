@@ -27,7 +27,7 @@ Launcher options:
 
 Application options include:
   --demo         Start an internal test signal (automatically enables qa)
-  --compact      Start in a smaller window with stacked plots
+  --compact      Start in a smaller window with responsive instrument views
   --low-latency  Disable VSync
   --ui-smoke     Capture the test UI and exit (automatically enables qa)
   --gpu-smoke    Validate GPU plots with offscreen readback and exit

@@ -15,25 +15,25 @@ With the local macOS/Linux setup, `./scripts/cargo.sh run --release --locked` al
 ## First measurement without hardware
 
 1. Select **Software Loopback** under **I/O / Input**. It is available in normal builds and does not drive a physical output.
-2. Start acquisition using the top control, then select **Scope + Spectrum** under **View**.
-3. Use **Settings** beside each plot to open its sidebar settings without covering the graph. Scope also provides inline time/amplitude scales and Autoset. Start with the default 8,192-point FFT.
-4. Press **Stop** to hold results, then inspect cursors, RMS, peaks or PSD band values.
+2. Use **Back to instruments**, open **Scope**, choose **Pair with… / Spectrum**, then press **Start input**.
+3. Click a pane to select its details. CH, time/amplitude scales, Autoset and cursors stay in the instrument; FFT/window/averaging settings are in the selected details. Start with the default 8,192-point FFT.
+4. Press **Stop input** to hold results, then inspect cursors, RMS, peaks or PSD band values.
 5. Use **File** to save settings and held results. JSON retains measurement conditions; CSV supports numerical reuse; PNG shares a view.
 6. After restarting, restore settings while stopped, load the reference JSON, and compare a new measurement. Restoring settings does not start acquisition.
 
 A complete 524,288-point window takes about 10.92 seconds at 48 kHz. Faster Live updates do not shorten that observation time. Continuous analyzes every N/4-hop window; Live/Latest observe recent windows and do not guarantee transient capture.
 
-Normal startup shows Scope + Spectrum. Display switches and cursor controls use separate rows and wrap in narrow windows. All-monitor views preserve a minimum graph height and scroll the central area. LIVE / HELD / WAITING / NOT ACQUIRED describe acquisition; trigger and REF validity are shown separately.
+Normal startup shows Scope alone, with input and output stopped. Selecting an instrument always opens its single view. **Measurement console / Add instrument…** retains up to seven instruments, using side-by-side, stacked, 2 × 2 or tabs. Narrow windows temporarily use tabs without changing the saved arrangement. **Open single** keeps the console for returning later. **Remove from view** leaves analysis and output running. The right details follow the selected pane; narrow windows use **Measurement / Details**. **Running…** shows hidden analysis and provides analysis stops; **Stop output** remains available on every screen. LIVE / HELD / WAITING / NOT ACQUIRED describe acquisition, separately from validity. Settings version 4 reads versions 1–3 and restores input/output stopped.
 
 ## Observe a Generator sine wave
 
-1. Choose **View / Generator + Scope**. The two-channel internal output is available in normal builds.
-2. Assign **OUT 1/2** under **I/O / Output**, enable **ON** on each central GEN card, then enter frequency (Hz), amplitude (dBFS peak) and phase (lead, degrees). Enter or leaving the field applies an edit; Esc cancels it. Use **Settings / Generator / EDIT STEP** to select a step for the ± buttons and arrow keys.
+1. Open **Generator**, then choose **Pair with… / Scope**. The two-channel internal output is available in normal builds.
+2. Assign **OUT 1/2** under **I/O / Output**, enable **ON** on each central GEN card, then enter frequency (Hz), amplitude (dBFS peak) and phase (lead, degrees). Enter or leaving the field applies an edit; Esc cancels it. Use the selected Generator details under **EDIT STEP** to select a step for the ± buttons and arrow keys.
 3. Select **I/O / Output / Observe Generator**, then press **Start output** and **Start input** separately. The settings preview and measured waveform are separate views.
-4. Switch to **Generator + Spectrum/Lock-in** to inspect analysis. Live edits transition amplitude and phase smoothly; Spectrum/Lock-in restart averaging and settling after the transition.
-5. **Stop input** holds the measurement while output continues. **Stop output/Stop all outputs** stops generation; active input then receives new silent samples.
+4. Select **Generator**, then pair it with Spectrum/Lock-in to inspect analysis. Live edits transition amplitude and phase smoothly; Spectrum/Lock-in restart averaging and settling after the transition.
+5. **Stop input** holds the measurement while output continues. **Stop output** stops generation; active input then receives new silent samples.
 
-The central panel keeps compact numerical controls and settings previews. Wide windows show both channels side by side; narrow windows use tabs with both output states visible. **Settings** opens phase alignment and applied output details. Use **Hide signal controls** to collapse the editors and give the measurement graphs more room.
+The central panel keeps compact numerical controls and settings previews. Wide windows show both channels side by side; narrow windows use tabs with both output states visible. Selecting the Generator pane exposes phase alignment and applied output details. Use **Hide signal controls** to collapse the editors and give the measurement graphs more room.
 
 Under **I/O / Output**, select an output rate of 44.1, 48, 96 or 192 kHz while both input and output are stopped. Restoring settings also requires both to be stopped and leaves output OFF. Internal JSON/CSV results retain output conditions for the received intervals.
 
@@ -51,14 +51,14 @@ Changes to input, analysis or calibration while stopped apply to the next Start.
 
 ## Experimental Lock-in
 
-Use Software Loopback to supply REF and response, and select the REF/Signal channels in the Lock-in display. X/Y and R use peak units; positive phase means the response leads REF. Settling, lost REF and missing input are not valid measurements. Hardware validation remains incomplete.
+Select **Lock-in**, supply REF and response with Software Loopback, set SIG/REF channels in the instrument, then press **Start analysis** and **Start input** separately. Set REF and filter conditions in the selected details. X/Y and R use peak units; positive phase means the response leads REF. Settling, lost REF and missing input are not valid measurements. Hardware validation remains incomplete.
 
 After Stop finishes processing, use **File** to save Lock-in conditions, calibrations, state and f64 values as JSON or CSV. Invalid readings use JSON `null` or empty CSV cells. Reference comparison shows both results and their captured conditions; numerical differences require settled results with matching nominal sample rate, channels, REF/filter settings and calibrations. PNG displays Scope/Spectrum.
 
 ## Compare synchronous gain, phase and delay
 
-1. Supply two synchronous channels with Software Loopback or a real input, then choose **View / Comparison only**.
-2. In **Settings**, enable **Analyze synchronous pair** and select different REF/response channels. The default 4,096 samples × 8 windows needs about 0.683 seconds at 48 kHz.
+1. Supply two synchronous channels with Software Loopback or a real input, then select **Synchronous 2ch**.
+2. Select different REF/SIG channels in the instrument, then press **Start analysis** and **Start input** separately. Set window and averaging in the selected details. The default 4,096 samples × 8 windows needs about 0.683 seconds at 48 kHz.
 3. Use **Read at** or click a graph to select a frequency bin. Positive phase leads REF; positive delay lags REF. Low reference, low coherence and missing data suppress readings.
 4. Stop, save JSON/CSV, restore settings while stopped and remeasure. Restoration starts neither input nor output. Reference differences require matching valid input, analysis, calibration and excitation conditions.
 

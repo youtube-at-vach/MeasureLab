@@ -38,13 +38,15 @@ target/release/measurelab --gpu-smoke
 target/release/measurelab --ui-smoke
 ```
 
+GUI smokeは7計器の選択・再選択、追加・除去、単独／コンソール往復、構成置換の取消が取得世代・解析設定・保持値・出力コマンドを変えないことも検証する。クリック・ホバーと入力欄編集中のSpaceは`app/shell.rs`のeguiイベントテスト、旧設定移行・版4往復は`settings.rs`を正本とする。
+
 `--gpu-smoke`は通常ビルドでも使える。`--ui-smoke`は画像を`dist/ui-smoke.png`へ保存する。数値照合と実際の撮影成功は別に確認する。通常起動は入力停止状態、`--demo`はQA専用。Software Loopbackと通常Generatorはqaなしでも使える。
 
 主要なGUI選択（詳細な選択肢は`src/app.rs`の同名環境変数を参照）:
 
 | 環境変数 | 確認すること |
 | --- | --- |
-| `MEASURELAB_UI_SMOKE_SETTINGS`／`VIEW`／`ADJUST` | 設定パネル・単独／併用表示・測定器のサイドバー設定。変数名の共通接頭辞は`MEASURELAB_UI_SMOKE_` |
+| `MEASURELAB_UI_SMOKE_SETTINGS`／`VIEW`／`ADJUST` | 共通入出力画面・単独／コンソール表示・選択中の詳細。`VIEW=all`は4区画、`console`は7計器、`empty`は空コンソール。`DETAILS=1`は狭幅の詳細編集。変数名の共通接頭辞は`MEASURELAB_UI_SMOKE_` |
 | `MEASURELAB_UI_SMOKE_ROUTING=1`／`CALIBRATION=1`／`CURSORS=1` | 16ch割当・内部校正・カーソル。物理校正の確認ではない |
 | `MEASURELAB_UI_SMOKE_STAGE3F=1`＋`REPLAY=1`／`COMPARE=1` | Software Loopbackの保存・別プロセス復元・再測定・参照比較 |
 | `MEASURELAB_UI_SMOKE_LOCKIN=polar` | R／θ。`cartesian`／`all`／`pair`／`settling`／`ref-loss`／`held-edit`／`live-edit`／`source-change`で他の状態 |
@@ -118,6 +120,7 @@ Spectrum遅延は同じ結果群の入力利用可能→解析完了→UI提出�
 
 | 対象・基点／条件 | 確認した範囲と制限 |
 | --- | --- |
+| GUI再構成、`1b9fc3d4`＋GUI作業差分／dev QA・新表示モデル・画面スリープ抑止 | 単独・並列・4区画・7計器・狭幅・倍率0.75／1.25の撮影と区画幅検証、表示変更による入力・解析・保持値・出力コマンド不変、Software Loopbackの保存・別プロセス復元・再測定を確認。BlackHole 2ch・48 kHz・f32通常Generator経路で同一入力窓のLock-in／比較独立照合・有限Stop・JSON／CSV・OFF復元を確認。実機の物理校正、最大Fs、動作中DPI切り替え・長時間の受け入れへ広げない。ソース・バイナリ識別とログ・画像は`dist/gui-redesign-qa/manifest.json` |
 | Lock-in、`a837b04c`／BlackHole 2ch・16ch、44.1／48／96／192 kHz | 短時間の数値・欠落回復・保存再測定。2ch・48 kHzはGUIなし600秒、正常測定区間の通知・欠落0。物理精度・通常GUI600秒の保証ではない |
 | Lock-in、`1c0373dc`／UAC-232 LL／RR TRS、同4レート | 同じ生入力窓の独立適合・保存再取得。48 kHzはGUIなし600秒、最大R差0.598 µFS peak・位相差0.0004101°。−40 dB応答で高レベル基準から約0.115〜0.155°の位相変化があり原因未確定 |
 | 段階4、`60021e3f`／Software Loopback・BlackHole・UAC-232 | 通常幅・狭幅、別プロセス復元・再測定、画像保存。BlackHole 16ch・96 kHz・512k Continuousは30秒、20予定窓・入力／解析欠落0。UAC-232・48 kHzの30秒はUI停止中の継続・有限Stop・独立照合・解放後監査を確認 |

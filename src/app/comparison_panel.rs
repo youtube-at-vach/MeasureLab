@@ -78,8 +78,8 @@ impl ScopeApp {
         assert!((b.phase_lead_degrees.unwrap() - 30.0).abs() < 1e-7);
         assert!(held.delay.is_none());
         self.select_view([mode == "pair", false, false, false]);
-        self.comparison_visible = true;
-        self.sidebar.visible = mode == "narrow";
+        self.qa_show(Instrument::Comparison);
+        self.presentation.details_visible = mode == "narrow";
         let settings = self.capture_settings()?;
         let doc = self.capture_results()?;
         doc.validate()?;
@@ -139,10 +139,6 @@ impl ScopeApp {
         Ok(())
     }
     pub(super) fn comparison_controls(&mut self, ui: &mut egui::Ui) {
-        if ui.button("Open comparison display").clicked() {
-            self.select_view([false; 4]);
-            self.comparison_visible = true;
-        }
         let before = self.comparison_settings;
         let channels = self.lockin_channel_count();
         ui.add_enabled_ui(
@@ -154,7 +150,7 @@ impl ScopeApp {
         self.apply_comparison_controls(before);
         ui.label(RichText::new("AC comparison · positive phase leads REF; positive delay lags REF. Stopped edits apply on the next Start.").small().color(MUTED));
     }
-    fn apply_comparison_controls(&mut self, before: comparison::Settings) {
+    pub(super) fn apply_comparison_controls(&mut self, before: comparison::Settings) {
         if before == self.comparison_settings {
             return;
         }
@@ -167,14 +163,57 @@ impl ScopeApp {
             core.configure_comparison(self.comparison_settings);
         }
     }
+    fn comparison_primary_controls(&mut self, ui: &mut egui::Ui) {
+        let before = self.comparison_settings;
+        let channels = self.lockin_channel_count();
+        ui.horizontal_wrapped(|ui| {
+            ui.add_enabled_ui(
+                !self.busy && self.pending_stop.is_none() && !self.workspace_restoring,
+                |ui| {
+                    ui.label("REF");
+                    channel_select(
+                        ui,
+                        "comparison_ref_primary",
+                        &mut self.comparison_settings.reference_channel,
+                        channels,
+                    );
+                    ui.label("SIG");
+                    channel_select(
+                        ui,
+                        "comparison_signal_primary",
+                        &mut self.comparison_settings.response_channel,
+                        channels,
+                    );
+                    if ui
+                        .button(if self.comparison_settings.enabled {
+                            "Stop analysis"
+                        } else {
+                            "Start analysis"
+                        })
+                        .clicked()
+                    {
+                        self.comparison_settings.enabled = !self.comparison_settings.enabled;
+                    }
+                },
+            );
+            ui.label(
+                RichText::new(self.analysis_state(self.comparison_settings.enabled))
+                    .small()
+                    .color(MUTED),
+            );
+        });
+        self.apply_comparison_controls(before);
+    }
+
     pub(super) fn comparison_panel(&mut self, ui: &mut egui::Ui) {
         egui::Frame::new().fill(Color32::from_rgb(17,27,35)).stroke(Stroke::new(1.0,BORDER))
             .inner_margin(8.0).show(ui, |ui| {
                 ui.horizontal_wrapped(|ui| {
                     ui.label(RichText::new("Synchronous comparison").strong().color(BLUE));
                     display::activity_label(ui, self.running(), self.pending_stop.is_some(), !self.comparison_result.sample_range.is_empty());
-                    self.instrument_settings(ui, SettingsSection::Comparison);
+
                 });
+                self.comparison_primary_controls(ui);
                 let r = Arc::clone(&self.comparison_result);
                 let s = r.settings;
                 let state_color = match r.state {
@@ -225,12 +264,8 @@ impl ScopeApp {
             });
     }
 }
-fn comparison_controls(ui: &mut egui::Ui, s: &mut comparison::Settings, channels: u16) {
-    ui.checkbox(&mut s.enabled, "Analyze synchronous pair");
-    ui.label("REFERENCE INPUT");
-    channel_select(ui, "comparison_ref", &mut s.reference_channel, channels);
-    ui.label("RESPONSE INPUT");
-    channel_select(ui, "comparison_sig", &mut s.response_channel, channels);
+fn comparison_controls(ui: &mut egui::Ui, s: &mut comparison::Settings, _channels: u16) {
+    setting_label(ui, "WINDOW / AVERAGING");
     egui::ComboBox::from_id_salt("comparison_size")
         .selected_text(format!("{} samples", s.size))
         .show_ui(ui, |ui| {

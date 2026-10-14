@@ -15,25 +15,25 @@ macOS／Linuxのローカルセットアップ環境では`./scripts/cargo.sh ru
 ## 機器なしで最初の測定
 
 1. **I/O / Input** で **Software Loopback** を選びます。これは通常ビルドで使え、物理出力は行いません。
-2. 上部の開始ボタンで取得を開始し、**View** で **Scope + Spectrum** を選びます。
-3. 各グラフの **Settings** でサイドバーを開き、時間軸・振幅、FFT・窓・CHを調整します。Scopeの時間軸・振幅・Autosetは常設操作列でも調整できます。最初は既定の8,192点を使ってください。
-4. **Stop** で結果を保持し、カーソルやRMS、ピーク、PSDの帯域値を読みます。
+2. **Back to instruments** で戻り、**Scope** の **Pair with… / Spectrum** で並べ、**Start input** を押します。
+3. 区画をクリックして詳細欄の対象を選びます。CH・時間軸・振幅・Autoset・カーソルは計器本体、FFT・窓・平均は選択中の詳細欄で調整します。最初は既定の8,192点を使ってください。
+4. **Stop input** で結果を保持し、カーソルやRMS、ピーク、PSDの帯域値を読みます。
 5. **File** から設定と保持結果を保存します。JSONは測定条件を含む正本、CSVは数値の再利用、PNGは表示の共有に使います。
 6. 再起動後、停止中に設定を復元し、参照JSONを読み込んで再測定結果と比較できます。設定復元だけで取得は始まりません。
 
 524,288点では48 kHzで完全窓の取得に約10.92秒必要です。Live表示を速くしても、この観測時間は短くなりません。ContinuousはN/4ごとの全窓を解析し、Live／Latestの最新窓観察は過渡の捕捉を保証しません。
 
-通常起動はScope＋Spectrumです。表示切替とカーソル操作を別の行に置き、狭幅では折り返します。全表示ではグラフの最小高さを確保し、中央領域をスクロールできます。LIVE／HELD／WAITING／NOT ACQUIREDは取得状態、トリガー・REF・有効性は別の表示です。
+通常起動は入力・出力停止のScope単独表示です。計器一覧を選ぶと常に単独表示し、**Measurement console / Add instrument…** で最大7計器を保持します。左右・上下・2×2・タブを選べ、狭幅では保存した配置を変えずタブへ退避します。**Open single** で単独表示へ戻ってもコンソール構成は残ります。**Remove from view** は解析・出力を停止しません。右の詳細欄は選択区画へ追従し、狭幅では **Measurement / Details** で切り替えます。**Running…** で非表示の解析を確認・停止し、**Stop output** はすべての画面で使えます。LIVE／HELD／WAITING／NOT ACQUIREDは取得状態、有効性は別表示です。設定は版4で旧版1〜3を読み、復元後の入出力は停止状態です。
 
 ## Generatorで正弦波を観測する
 
-1. **View / Generator + Scope** を選びます。通常ビルドで使える2chの内部出力です。
-2. **I/O / Output**で **OUT 1／2** を割り当て、中央の各GENを **ON** にして周波数（Hz）・振幅（dBFS peak）・位相（発振器に対する進み、°）を入力します。Enterまたはフォーカス移動で適用し、Escで編集を取り消します。**Settings**から **Generator / EDIT STEP**で刻みを選び、±ボタンや上下キーでも調整できます。
+1. **Generator** を選び、**Pair with… / Scope** で並べます。通常ビルドで使える2chの内部出力です。
+2. **I/O / Output**で **OUT 1／2** を割り当て、中央の各GENを **ON** にして周波数（Hz）・振幅（dBFS peak）・位相（発振器に対する進み、°）を入力します。Enterまたはフォーカス移動で適用し、Escで編集を取り消します。Generatorを選択して詳細欄の **EDIT STEP**で刻みを選び、±ボタンや上下キーでも調整できます。
 3. **I/O / Output / Observe Generator** で内部出力を入力に選び、**Start output** と **Start input** をそれぞれ押します。設定プレビューと実測波形は別です。
-4. **Generator + Spectrum／Lock-in** へ切り替えて解析できます。動作中の編集では振幅・位相を滑らかに遷移し、Spectrum／Lock-inは遷移後に平均・整定をやり直します。
-5. **Stop input** は結果を保持し、出力は継続します。**Stop output／Stop all outputs** で出力を停止すると、取得中の入力には新しい無音サンプルが届きます。
+4. Generator単独表示からSpectrum／Lock-inを並べて解析できます。動作中の編集では振幅・位相を滑らかに遷移し、Spectrum／Lock-inは遷移後に平均・整定をやり直します。
+5. **Stop input** は結果を保持し、出力は継続します。**Stop output** で出力を停止すると、取得中の入力には新しい無音サンプルが届きます。
 
-中央はコンパクトな数値編集と設定プレビューです。広い画面は2ch横並び、狭い画面は両CHの状態を残すタブ表示になります。位相同期と適用詳細は**Settings**から開きます。**Hide signal controls**で編集部を閉じ、測定グラフへ画面を割り当てられます。
+中央はコンパクトな数値編集と設定プレビューです。広い画面は2ch横並び、狭い画面は両CHの状態を残すタブ表示になります。位相同期と適用詳細はGeneratorを選択した詳細欄で編集・確認します。**Hide signal controls**で編集部を閉じ、測定グラフへ画面を割り当てられます。
 
 出力Fsは**I/O / Output**で44.1／48／96／192 kHzから、入力・出力を停止して選びます。設定の復元には両方の停止が必要で、復元後も出力はOFFです。内部接続のJSON／CSV結果には受信区間に対応する出力条件を保存します。
 
@@ -51,14 +51,14 @@ macOSの実入出力は、起動処理やスケジューリングに余裕を持
 
 ## 実験段階のLock-in
 
-Software LoopbackでREFと応答を用意し、Lock-in表示のREF／Signal CHを指定します。X/YとRはpeak単位、正の位相は応答の進みです。整定中・REF喪失・欠落を有効な測定値と扱わないでください。実機確認は未完了です。
+計器一覧の **Lock-in** を選び、Software LoopbackでREFと応答を用意して本体のSIG／REF CHを指定します。**Start analysis** と **Start input** を個別に開始し、REF・フィルターは詳細欄で調整します。X/YとRはpeak単位、正の位相は応答の進みです。整定中・REF喪失・欠落を有効な測定値と扱わないでください。実機確認は未完了です。
 
 Stopの解析完了後、**File** からLock-inの条件・校正・状態とf64値をJSON／CSVへ保存できます。無効値はJSONの `null`、CSVの空欄になります。参照比較には両結果の数値・取得条件を表示し、整定済みで公称Fs・CH・REF／フィルター設定・校正が一致する場合だけ数値差を表示します。PNGの表示対象はScope／Spectrumです。
 
 ## 同期2chのゲイン・位相・遅延を比べる
 
-1. Software Loopbackまたは実入力で同期2chを用意し、**View / Comparison only** を選びます。
-2. **Settings** で **Analyze synchronous pair** と異なるREF／SIG CHを設定します。既定N=4,096・平均8窓では48 kHzで約0.683秒の充填が必要です。
+1. Software Loopbackまたは実入力で同期2chを用意し、**Synchronous 2ch** を選びます。
+2. 本体で異なるREF／SIG CHを設定し、**Start analysis** と **Start input** を個別に開始します。窓・平均は詳細欄で調整します。既定N=4,096・平均8窓では48 kHzで約0.683秒の充填が必要です。
 3. **Read at** またはグラフをクリックして周波数ビンを選び、ゲイン・進み位相・コヒーレンスを読みます。正の位相はSIGの進み、正の遅延はSIGの遅れです。低REF・低コヒーレンス・欠落では数値を表示しません。
 4. Stop後にJSON／CSVへ保存し、停止中に設定を復元して再測定します。復元だけで入力・出力は始まりません。参照との差は条件・校正・励振が一致する有効結果に限ります。
 

@@ -4,20 +4,7 @@ use super::generator_panel::output_channel_label;
 use super::*;
 
 impl ScopeApp {
-    pub(super) fn io_controls(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
-            ui.selectable_value(&mut self.sidebar.io_output, false, "Input");
-            ui.selectable_value(&mut self.sidebar.io_output, true, "Output");
-        });
-        ui.separator();
-        if self.sidebar.io_output {
-            self.output_controls(ui);
-        } else {
-            self.input_controls(ui);
-        }
-    }
-
-    fn input_controls(&mut self, ui: &mut egui::Ui) {
+    pub(super) fn input_controls(&mut self, ui: &mut egui::Ui) {
         let old_source = self.source;
         ui.add_enabled_ui(!self.busy && self.pending_stop.is_none(), |ui| {
             ui.horizontal_wrapped(|ui| {
@@ -39,8 +26,10 @@ impl ScopeApp {
                     .small()
                     .color(MUTED),
             );
-            if ui.button("Show Generator").clicked() {
-                self.generator.visible = true;
+            if ui.button("Open Generator").clicked() {
+                self.presentation
+                    .apply(Action::OpenSingle(Instrument::Generator));
+                self.shell.io = None;
             }
         }
         #[cfg(feature = "qa")]
@@ -339,8 +328,10 @@ impl ScopeApp {
             self.source = Source::Live;
             self.switch_source();
         }
-        if ui.button("Show Generator").clicked() {
-            self.generator.visible = true;
+        if ui.button("Open Generator").clicked() {
+            self.presentation
+                .apply(Action::OpenSingle(Instrument::Generator));
+            self.shell.io = None;
         }
         self.generator_reset(ui);
     }

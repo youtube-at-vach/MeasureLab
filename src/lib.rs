@@ -20,6 +20,7 @@ pub mod lockin_worker;
 pub mod loopback;
 pub mod measurement;
 pub mod output;
+pub mod presentation;
 pub mod results;
 pub mod settings;
 pub mod signal;
