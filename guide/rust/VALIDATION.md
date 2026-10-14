@@ -40,23 +40,49 @@ target/release/measurelab --ui-smoke
 
 GUI smokeは7計器の選択・再選択、追加・除去、単独／コンソール往復、構成置換の取消が取得世代・解析設定・保持値・出力コマンドを変えないことも検証する。複数区画では実際の描画が割当寸法に収まることを確認する。クリック・ホバー、入力欄編集中・修飾キー付き・長押しのSpaceは`app/shell.rs`のeguiイベントテスト、旧設定移行・版4往復は`settings.rs`を正本とする。
 
-GUI再設計の内部受け入れをまとめて再実行する。7計器の未取得画面、通常幅・狭幅、コンソールの配置、共通入出力・詳細欄、通常Generatorの内部経路、同期比較、保持結果の保存・別プロセス復元・再測定を直列に実行し、ケースごとの画像・ログとバイナリ識別を`dist/gui-redesign-qa/`へ残す。
+GUI再設計の内部受け入れをまとめて再実行する。実際のshellウィジェットへのクリック・キーイベント、7計器の未取得画面、通常幅・狭幅、コンソールの配置、共通入出力・詳細欄、通常Generatorの内部経路、同期比較、保持結果の保存・別プロセス復元・再測定を直列に実行し、ケースごとの画像・ログとソース／バイナリ識別を`dist/gui-redesign-qa/`へ残す。
 
 ```sh
 ./.venv/bin/python scripts/qa_gui_redesign.py
+./.venv/bin/python scripts/qa_gui_redesign.py --device "BlackHole 2ch" --device "BlackHole 16ch"
+./.venv/bin/python scripts/qa_gui_redesign.py --device "ZOOM UAC-232"
 ```
 
-`--binary target/debug/measurelab`でQAの開発ビルドを使える。`--case scope-compact`等で一部だけ再実行できるが、`held-replay`は先に`held-save`を完了する。成功判定はassertionと撮影成功で、画像の読み取りやすさは別に確認する。通常GUIの手動操作、外部I/OとネイティブDPI切り替えの受け入れを代用しない。
+`--binary target/debug/measurelab`でQAの開発ビルドを使える。`--case scope-compact`等で一部だけ再実行できるが、`held-replay`は先に`held-save`を完了する。外部の`held-…-replay`も対応する`held-…-save`を先に実行する。`--device`を明示すると通常Generatorの実出力と外部保持結果の保存・別プロセス復元・再測定を追加する。`--device "ZOOM UAC-232"`にはL出力→L入力／R出力→R入力のTRS接続が必要で、最大0.1 FS peak・DCなしを出力する。
 
-macOSでは画面スリープ中にウィンドウの撮影が完了しない場合がある。`caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py`で実行中だけ画面スリープを抑止できる。読み戻しの再試行ログにはウィンドウの状態も残す。
+外部保持QAの固定信号出力も通常の入出力と同じ`audio::measurement_stream_config()`を使う。CoreAudioのバッファ設定は同一デバイスの入出力で共有されるため、一方だけ既定バッファへ戻さない。設定はログの`QA output configuration`で確認し、起動エラーや通知監査の失敗を除外して合格にしない。
+
+`widget-interactions`は [gui_qa.rs](../../src/app/gui_qa.rs) で実際の共通枠・メニュー・詳細欄をeguiイベントから操作する。構成置換の取消、7計器の追加・除去、キーボード選択、入出力画面からの復帰、狭幅・倍率・模擬native scaleへの往復で、入力世代・測定条件・保持結果・出力コマンドが変わらないことを検証する。前面のメニューや編集ウィンドウから背後の区画を選択しないことは`app/shell.rs`のイベントテストで確認する。
+
+成功判定はassertionと撮影成功で、画像の読み取りやすさは別に確認する。イベント試験・模擬scaleは、通常ビルドの手動操作と実モニター間のネイティブDPI切り替えの受け入れを代用しない。
+
+撮影できないデスクトップでは`--assertions-only --output dist/gui-redesign-assertions`で状態遷移・数値・描画寸法だけを実行できる。このモードは画像を要求せず、manifestの`screenshots_required: false`と各ログに未撮影を残す。撮影込みの失敗をこのモードの成功で置き換えず、画像・通常GUIの受け入れは未完了のまま扱う。
+
+macOSのMetalは、画面が点いていても他のウィンドウに覆われた計器を`Occluded`としてフレーム取得を省略する。eguiのviewport情報が`occluded: None`でも、この判定は起こる。撮影要求の後に取得が省略されると、GPU読み戻しが始まらず撮影を受信できない。`--ui-smoke`は短時間のQAウィンドウを前面に保持し、取得失敗の最初の4件と総数を記録する。フォーカス状態だけで撮影可否を判定しない。
+
+`caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py`は実行中だけ画面スリープを抑止する。遮蔽の診断は停止画面の`MEASURELAB_UI_SMOKE_IDLE=1`と`MEASURELAB_UI_SMOKE_FOREGROUND=0`（通常の重なり順）／`bottom`（背面固定）で再現できる。既定は前面保持。撮影失敗を`--assertions-only`で成功へ置き換えない。
 
 `--gpu-smoke`は通常ビルドでも使える。`--ui-smoke`は画像を`dist/ui-smoke.png`へ保存する。数値照合と実際の撮影成功は別に確認する。通常起動は入力停止状態、`--demo`はQA専用。Software Loopbackと通常Generatorはqaなしでも使える。
+
+### G4に残る手動受け入れ
+
+通常ビルドを`target/release/measurelab`で起動し、以下を確認する。音声デバイスを使わない操作確認は、I/OのSoftware LoopbackまたはGeneratorの内部接続で行える。
+
+1. 7計器の選択・再選択、コンソールへの追加・除去・単独表示との往復、詳細・入出力画面からの復帰を行い、選択対象と構成が保たれることを確認する。
+2. Generatorを内部接続で出力し、入力停止後やGenerator非表示中にも共通バーの出力状態を読め、Stop outputで停止できることを確認する。数値入力中のSpaceで入力が開始・停止しないことも確認する。
+3. 通常幅・最小幅付近・表示倍率変更で、対象名・主要値・有効性・停止操作を確認する。狭幅から戻したときにコンソールの希望配置・比率が戻ることを確認する。
+4. 異なるネイティブDPIの実モニター間でウィンドウを往復させ、同じ表示・操作を確認する。モニターの用意がない場合は未確認のまま残し、表示倍率や模擬scaleで代用しない。
+
+実施後は下記の要約に対象ビルド・モニター条件・結果を短く反映する。自動QAの成功だけでこの手動受け入れを完了にしない。
+
+### GUI QAの環境変数
 
 主要なGUI選択（詳細な選択肢は`src/app.rs`の同名環境変数を参照）:
 
 | 環境変数 | 確認すること |
 | --- | --- |
 | `MEASURELAB_UI_SMOKE_SETTINGS`／`VIEW`／`ADJUST` | 共通入出力画面・単独／コンソール表示・選択中の詳細。`VIEW=scope`／`spectrum`／`spectrogram`／`xy`／`lockin`／`comparison`／`generator`で単独、`all`は4区画、`console`は7計器、`empty`は空コンソール。`DETAILS=1`は狭幅の詳細編集。変数名の共通接頭辞は`MEASURELAB_UI_SMOKE_` |
+| `MEASURELAB_UI_SMOKE_INTERACTIONS=1` | 実際のshellウィジェットを使ったクリック・キー・狭幅・倍率・模擬native scaleの状態遷移。音声ランタイムを重複生成しない |
 | `MEASURELAB_UI_SMOKE_LAYOUT=columns`／`rows`／`grid`／`tabs` | コンソールの希望配置。タブ列の折り返し後の残り寸法で退避を判断し、描画と同じ区画寸法で検証 |
 | `MEASURELAB_UI_SMOKE_ROUTING=1`／`CALIBRATION=1`／`CURSORS=1` | 16ch割当・内部校正・カーソル。物理校正の確認ではない |
 | `MEASURELAB_UI_SMOKE_STAGE3F=1`＋`REPLAY=1`／`COMPARE=1` | Software Loopbackの保存・別プロセス復元・再測定・参照比較 |
@@ -127,11 +153,12 @@ Spectrum遅延は同じ結果群の入力利用可能→解析完了→UI提出�
 
 ## コードで代替できない確認の要約
 
-以下は2026-10-12〜14の過去の条件付き観測。共通環境はmacOS 14.8.9・x86_64・Rust 1.99、GUIはMetal／AMD Radeon R9 M290X。Fsは公称、入出力FS・物理時計・CH間校正は未校正。基点SHAの上の作業差分が対象であり、SHAだけを検証済みソースとしない。
+以下は2026-10-12〜15の条件付き観測。共通環境はmacOS 14.8.9・x86_64・Rust 1.99、GUIはMetal／AMD Radeon R9 M290X。Fsは公称、入出力FS・物理時計・CH間校正は未校正。基点SHAの上の作業差分が対象であり、SHAだけを検証済みソースとしない。
 
 | 対象・基点／条件 | 確認した範囲と制限 |
 | --- | --- |
-| GUI再構成、`304d2ee5`＋GUI作業差分／dev QA・画面スリープ抑止 | 7計器の単独・並列・4区画・狭幅・倍率0.75／1.25の撮影と区画幅・高さ検証、表示変更による入力・解析・保持値・出力コマンド不変、Software Loopbackの保存・別プロセス復元・再測定を確認。BlackHole 2ch／16ch・48 kHz・f32通常Generator経路で同一入力窓のLock-in／比較独立照合・UI停止中の継続・有限Stop・JSON／CSV・OFF復元を確認。物理I/O、最大Fs、ネイティブDPI切り替え・長時間の受け入れは残る。ソース差分・バイナリ識別とログ・画像は`dist/gui-redesign-qa/manifest.json`／`external-manifest.json` |
+| GUI G4、`32ec3f5d`＋G4差分／dev QA・native pixels per point 2.0・画面スリープ抑止 | 7計器、単独／コンソール・4区画・狭幅・倍率・詳細・入出力画面の画像を確認。内部経路とBlackHole 2ch／16ch・48 kHz・f32の通常Generator、独立Lock-in／比較照合、UI停止中の継続、有限Stop、保持・JSON／CSV・OFF復元・別プロセス再測定を確認。背面固定ではMetalの`Occluded`と撮影タイムアウト、前面保持では撮影成功を再現した。ソース／バイナリ識別・ログ・画像は`dist/gui-redesign-g4-acceptance/manifest.json`、遮蔽の比較は`dist/gui-capture-diagnosis/occlusion/`。通常ビルドの手動操作・実モニター間DPI切り替えは未確認 |
+| GUI G4のUAC-232、同差分／48 kHz・2ch・f32・L/L、R/R TRS・1,024 frames | 右経路の復旧後、通常Generatorの同じ生入力窓の独立Lock-in／同期比較照合、UI停止中の継続、有限Stop、保持・設定／結果・CSV／PNG保存、OFF復元・参照比較・別プロセス再測定を確認。固定信号のQA出力はバッファ要求を通常入力と統一し、起動／測定／解放後の通知監査も通過。証拠は同manifestの`generator-zoom-uac-232`と`held-zoom-uac-232-*`。未校正の物理振幅・時計、最大Fs、反復再接続、長時間は未受け入れ |
 | Lock-in、`a837b04c`／BlackHole 2ch・16ch、44.1／48／96／192 kHz | 短時間の数値・欠落回復・保存再測定。2ch・48 kHzはGUIなし600秒、正常測定区間の通知・欠落0。物理精度・通常GUI600秒の保証ではない |
 | Lock-in、`1c0373dc`／UAC-232 LL／RR TRS、同4レート | 同じ生入力窓の独立適合・保存再取得。48 kHzはGUIなし600秒、最大R差0.598 µFS peak・位相差0.0004101°。−40 dB応答で高レベル基準から約0.115〜0.155°の位相変化があり原因未確定 |
 | 段階4、`60021e3f`／Software Loopback・BlackHole・UAC-232 | 通常幅・狭幅、別プロセス復元・再測定、画像保存。BlackHole 16ch・96 kHz・512k Continuousは30秒、20予定窓・入力／解析欠落0。UAC-232・48 kHzの30秒はUI停止中の継続・有限Stop・独立照合・解放後監査を確認 |

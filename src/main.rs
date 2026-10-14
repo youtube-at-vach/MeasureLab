@@ -199,6 +199,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         options.wgpu_options.surface.desired_maximum_frame_latency = Some(1);
     }
     #[cfg(feature = "qa")]
+    let surface_skips = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
+    #[cfg(feature = "qa")]
+    if smoke {
+        let on_surface_status = options.wgpu_options.on_surface_status.clone();
+        let skipped = surface_skips.clone();
+        options.wgpu_options.on_surface_status = std::sync::Arc::new(move |status| {
+            let count = skipped.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+            if count <= 4 {
+                eprintln!("QA surface acquisition skipped #{count}: {status:?}");
+            }
+            on_surface_status(status)
+        });
+        // Metal skips frame acquisition for fully covered windows, so a smoke
+        // capture must remain visible while Codex or a terminal has focus.
+        // The alternate levels are opt-in diagnostics for reproducing this.
+        match std::env::var("MEASURELAB_UI_SMOKE_FOREGROUND").as_deref() {
+            Ok("0") => {}
+            Ok("bottom") => {
+                options.viewport = options
+                    .viewport
+                    .with_window_level(egui::WindowLevel::AlwaysOnBottom);
+            }
+            _ => options.viewport = options.viewport.with_always_on_top(),
+        }
+    }
+    #[cfg(feature = "qa")]
     if smoke {
         let _ = std::fs::remove_file("dist/ui-smoke.png");
     }
@@ -208,7 +234,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Box::new(move |cc| Ok(Box::new(measurelab::app::ScopeApp::new(cc, smoke, demo)?))),
     )?;
     #[cfg(feature = "qa")]
-    if smoke && !std::path::Path::new("dist/ui-smoke.png").exists() {
+    if smoke {
+        println!(
+            "QA skipped surface acquisitions: {}",
+            surface_skips.load(std::sync::atomic::Ordering::Relaxed)
+        );
+    }
+    #[cfg(feature = "qa")]
+    if smoke
+        && std::env::var_os("MEASURELAB_UI_SMOKE_ASSERTIONS_ONLY").is_none()
+        && !std::path::Path::new("dist/ui-smoke.png").exists()
+    {
         return Err("UI screenshot was not received".into());
     }
     Ok(())

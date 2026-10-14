@@ -535,7 +535,21 @@ impl ScopeApp {
                                                         .apply(Action::RemoveFromConsole(i));
                                                 }
                                             });
-                                            self.draw_instrument(ui, i);
+                                            // Expanded details and wrapped readouts must
+                                            // stay inside their pane, including a held
+                                            // Lock-in with all four values visible.
+                                            let available = ui.available_size();
+                                            egui::ScrollArea::vertical()
+                                                .id_salt(("console_contents", i))
+                                                .max_height(available.y)
+                                                .auto_shrink([false, true])
+                                                .show(ui, |ui| {
+                                                    ui.allocate_ui_with_layout(
+                                                        vec2(ui.available_width(), available.y),
+                                                        egui::Layout::top_down(egui::Align::Min),
+                                                        |ui| self.draw_instrument(ui, i),
+                                                    );
+                                                });
                                         });
                                     if pane_clicked(ui, frame.response.rect) {
                                         self.presentation.apply(Action::FocusPane(i));
@@ -735,13 +749,14 @@ fn pane_title(instrument: Instrument, selected: bool) -> String {
 }
 
 fn pane_clicked(ui: &egui::Ui, rect: egui::Rect) -> bool {
-    ui.input(|input| {
-        input.pointer.any_pressed()
-            && input
-                .pointer
-                .interact_pos()
-                .is_some_and(|p| rect.contains(p))
-    })
+    let position = ui.input(|input| {
+        input
+            .pointer
+            .any_pressed()
+            .then(|| input.pointer.interact_pos())
+            .flatten()
+    });
+    position.is_some_and(|p| rect.contains(p) && ui.ctx().layer_id_at(p) == Some(ui.layer_id()))
 }
 
 pub(super) fn input_shortcut(ctx: &egui::Context, enabled: bool) -> bool {
@@ -760,6 +775,54 @@ pub(super) fn input_shortcut(ctx: &egui::Context, enabled: bool) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn a_foreground_editor_does_not_select_the_console_pane_behind_it() {
+        let ctx = egui::Context::default();
+        let mut text = String::new();
+        let mut editor = egui::Rect::NOTHING;
+        let mut selected = false;
+        for frame in 0..3 {
+            let events = if frame == 2 {
+                vec![
+                    egui::Event::PointerMoved(editor.center()),
+                    egui::Event::PointerButton {
+                        pos: editor.center(),
+                        button: egui::PointerButton::Primary,
+                        pressed: true,
+                        modifiers: egui::Modifiers::NONE,
+                    },
+                ]
+            } else {
+                vec![]
+            };
+            ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        pos2(0.0, 0.0),
+                        vec2(900.0, 660.0),
+                    )),
+                    events,
+                    ..Default::default()
+                },
+                |ui| {
+                    let pane = egui::Rect::from_min_size(pos2(0.0, 0.0), vec2(600.0, 500.0));
+                    ui.allocate_rect(pane, egui::Sense::hover());
+                    selected |= pane_clicked(ui, pane);
+                    egui::Window::new("File editor")
+                        .fixed_pos(pos2(60.0, 60.0))
+                        .show(ui.ctx(), |ui| {
+                            editor = ui.text_edit_singleline(&mut text).rect;
+                        });
+                },
+            )
+            .drop_without_applying_deltas();
+        }
+        assert!(
+            !selected,
+            "the foreground edit must keep the selected instrument"
+        );
+    }
+
     #[test]
     fn real_pointer_events_select_without_toggling_and_hover_does_not_focus_a_pane() {
         let ctx = egui::Context::default();
@@ -831,6 +894,24 @@ mod tests {
         )
         .drop_without_applying_deltas();
         assert_eq!(presentation.selected(), selected);
+        ctx.run_ui(
+            egui::RawInput {
+                events: vec![egui::Event::PointerButton {
+                    pos: rect.center(),
+                    button: egui::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: egui::Modifiers::NONE,
+                }],
+                ..Default::default()
+            },
+            |ui| {
+                if pane_clicked(ui, rect) {
+                    presentation.apply(Action::FocusPane(Instrument::Spectrum));
+                }
+            },
+        )
+        .drop_without_applying_deltas();
+        assert_eq!(presentation.selected(), Some(Instrument::Spectrum));
     }
     #[test]
     fn space_in_a_text_editor_does_not_start_shared_input() {

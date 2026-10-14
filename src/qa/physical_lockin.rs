@@ -397,7 +397,41 @@ pub fn validate_generator(snapshot: &measurement::Snapshot, path: &Path) -> Resu
         snapshot.lockin.missing_samples == 0,
         "GUI physical Lock-in lost input",
     )?;
-    let observation = observe("GUI finite Stop", snapshot)?;
+    let observation = observe("GUI finite Stop", snapshot).inspect_err(|error| {
+        // Retain bounded input evidence on a failed physical oracle as well;
+        // a noise-only SIG or an unsettled REF must not become a passing run.
+        let result = &snapshot.lockin;
+        let samples: Vec<_> = result
+            .latest_window
+            .clone()
+            .map(|n| {
+                snapshot.history.get(n).map(|frame| {
+                    [
+                        frame.get(result.settings.reference_channel).copied(),
+                        frame.get(result.settings.response_channel).copied(),
+                    ]
+                })
+            })
+            .collect();
+        let diagnostic = serde_json::json!({
+            "error": error,
+            "nominal_sample_rate_hz": snapshot.sample_rate,
+            "detector": result,
+            "raw_ref_sig": samples,
+        });
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        let failure_path = path.with_extension("failure.json");
+        if let Ok(bytes) = serde_json::to_vec_pretty(&diagnostic)
+            && std::fs::write(&failure_path, bytes).is_ok()
+        {
+            eprintln!(
+                "Physical oracle failure evidence: {}",
+                failure_path.display()
+            );
+        }
+    })?;
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }

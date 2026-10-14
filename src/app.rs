@@ -36,6 +36,8 @@ use std::{
 mod comparison_panel;
 mod display;
 mod generator_panel;
+#[cfg(feature = "qa")]
+mod gui_qa;
 mod io_panel;
 mod lockin_panel;
 mod monitor_controls;
@@ -999,6 +1001,9 @@ impl ScopeApp {
         #[cfg(feature = "qa")]
         if smoke {
             app.check_redesign_navigation()?;
+            if std::env::var_os("MEASURELAB_UI_SMOKE_INTERACTIONS").is_some() {
+                app.check_redesign_interactions()?;
+            }
             app.qa_previous_presentation = None;
         }
         Ok(app)
@@ -5844,6 +5849,14 @@ impl eframe::App for ScopeApp {
             ctx.request_repaint();
         }
         if self.smoke {
+            #[cfg(feature = "qa")]
+            if std::env::var_os("MEASURELAB_UI_SMOKE_ASSERTIONS_ONLY").is_some() {
+                println!(
+                    "UI assertions only OK: rendered shell bounds checked; screenshot not requested"
+                );
+                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                return;
+            }
             #[cfg(feature = "qa")]
             if !self.smoke_focused {
                 self.smoke_focused = true;

@@ -25,6 +25,8 @@ A complete 524,288-point window takes about 10.92 seconds at 48 kHz. Faster Live
 
 Normal startup shows Scope alone, with input and output stopped. Selecting an instrument always opens its single view. **Measurement console / Add instrument…** retains up to seven instruments, using side-by-side, stacked, 2 × 2 or tabs. Narrow windows temporarily use tabs without changing the saved arrangement. **Open single** keeps the console for returning later. **Remove from view** leaves analysis and output running. The right details follow the selected pane; narrow windows use **Measurement / Details**. **Running…** shows hidden analysis and provides analysis stops; **Stop output** remains available on every screen. LIVE / HELD / WAITING / NOT ACQUIRED describe acquisition, separately from validity. Settings version 4 reads versions 1–3 and restores input/output stopped.
 
+When additional measurement details exceed a console pane's height, scroll within that pane. The pane title and shared input/output status and stop controls remain outside the scroll area.
+
 ## Observe a Generator sine wave
 
 1. Open **Generator**, then choose **Pair with… / Scope**. The two-channel internal output is available in normal builds.
