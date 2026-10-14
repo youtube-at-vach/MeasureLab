@@ -78,11 +78,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "--compact" => compact = true,
             "--help" | "-h" => {
                 println!(
-                    "MeasureLab — GPU audio measurement lab\n\nOptions:\n  --new-instance Explicitly allow another application or audio-check instance\n  --compact     Start in a smaller window with stacked plots\n  --low-latency Disable VSync (higher GPU usage)\n  --list-devices List CPAL input devices\n  --audio-smoke Capture input for two seconds and report every channel\n  --stft-smoke  Validate continuous STFT window order for two seconds\n  --input-device NAME  Choose a device for --audio-smoke / --stft-smoke\n  --sample-rate HZ  Input rate for --audio-smoke / --stft-smoke (up to 768000)\n  --channel N   Source channel for --stft-smoke (1-based, default 1)\n  --gpu-smoke   Validate independent GPU plots with offscreen readback\n  --help       Show this help"
+                    "MeasureLab — GPU audio measurement lab\n\nOptions:\n  --new-instance Explicitly allow another application or audio-check instance\n  --compact     Start in a smaller window with responsive instrument views\n  --low-latency Disable VSync (higher GPU usage)\n  --list-devices List CPAL input devices\n  --audio-smoke Capture input for two seconds and report every channel\n  --stft-smoke  Validate continuous STFT window order for two seconds\n  --input-device NAME  Choose a device for --audio-smoke / --stft-smoke\n  --sample-rate HZ  Input rate for --audio-smoke / --stft-smoke (up to 768000)\n  --channel N   Source channel for --stft-smoke (1-based, default 1)\n  --gpu-smoke   Validate independent GPU plots with offscreen readback\n  --help       Show this help"
                 );
                 #[cfg(feature = "qa")]
                 println!(
-                    "\nQA options:\n  --demo        Enable and start an internal demo signal (no audio output)\n  --ui-smoke    Capture the four-instrument test UI briefly, then close\n  --multichannel-smoke Validate 16 distinct BlackHole tones\n  --lockin-smoke Validate synchronous REF/response through BlackHole (default 2ch, 48000 Hz)\n  --physical-lockin-smoke Explicitly drive ZOOM UAC-232 stereo loopback at 0.1 FS peak; requires --input-device NAME"
+                    "\nQA options:\n  --demo        Enable and start an internal demo signal (no audio output)\n  --ui-smoke    Check instrument navigation and capture the test UI briefly, then close\n  --multichannel-smoke Validate 16 distinct BlackHole tones\n  --lockin-smoke Validate synchronous REF/response through BlackHole (default 2ch, 48000 Hz)\n  --physical-lockin-smoke Explicitly drive ZOOM UAC-232 stereo loopback at 0.1 FS peak; requires --input-device NAME"
                 );
                 return Ok(());
             }
@@ -199,6 +199,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         options.wgpu_options.surface.desired_maximum_frame_latency = Some(1);
     }
     #[cfg(feature = "qa")]
+    let surface_skips = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
+    #[cfg(feature = "qa")]
+    if smoke {
+        let on_surface_status = options.wgpu_options.on_surface_status.clone();
+        let skipped = surface_skips.clone();
+        options.wgpu_options.on_surface_status = std::sync::Arc::new(move |status| {
+            let count = skipped.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+            if count <= 4 {
+                eprintln!("QA surface acquisition skipped #{count}: {status:?}");
+            }
+            on_surface_status(status)
+        });
+        // Metal skips frame acquisition for fully covered windows, so a smoke
+        // capture must remain visible while Codex or a terminal has focus.
+        // The alternate levels are opt-in diagnostics for reproducing this.
+        match std::env::var("MEASURELAB_UI_SMOKE_FOREGROUND").as_deref() {
+            Ok("0") => {}
+            Ok("bottom") => {
+                options.viewport = options
+                    .viewport
+                    .with_window_level(egui::WindowLevel::AlwaysOnBottom);
+            }
+            _ => options.viewport = options.viewport.with_always_on_top(),
+        }
+    }
+    #[cfg(feature = "qa")]
     if smoke {
         let _ = std::fs::remove_file("dist/ui-smoke.png");
     }
@@ -208,7 +234,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Box::new(move |cc| Ok(Box::new(measurelab::app::ScopeApp::new(cc, smoke, demo)?))),
     )?;
     #[cfg(feature = "qa")]
-    if smoke && !std::path::Path::new("dist/ui-smoke.png").exists() {
+    if smoke {
+        println!(
+            "QA skipped surface acquisitions: {}",
+            surface_skips.load(std::sync::atomic::Ordering::Relaxed)
+        );
+    }
+    #[cfg(feature = "qa")]
+    if smoke
+        && std::env::var_os("MEASURELAB_UI_SMOKE_ASSERTIONS_ONLY").is_none()
+        && !std::path::Path::new("dist/ui-smoke.png").exists()
+    {
         return Err("UI screenshot was not received".into());
     }
     Ok(())

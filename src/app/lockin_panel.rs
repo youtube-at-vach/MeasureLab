@@ -79,16 +79,13 @@ impl ScopeApp {
             assert!(self.lockin_result.phase_degrees.is_none());
         }
         let held = self.lockin_result.clone();
-        let original_view = (self.visible, self.lockin_visible, self.plot_layout);
-        self.previous_view = None;
+        let original_view = self.presentation.clone();
+        self.qa_previous_presentation = None;
         self.select_lockin_view(false);
         self.lockin_display = LockinDisplay::All;
         self.select_view([true; 4]);
         self.restore_view();
-        assert_eq!(
-            (self.visible, self.lockin_visible, self.plot_layout),
-            original_view
-        );
+        assert_eq!(self.presentation, original_view);
         assert_eq!(self.lockin_result, held);
         self.select_lockin_view(mode == "pair");
         self.lockin_display = match mode {
@@ -104,7 +101,7 @@ impl ScopeApp {
             assert_eq!(self.lockin_result, held);
         }
         let settings = self.capture_settings()?;
-        assert!(settings.workspace.lockin_visible);
+        assert!(settings.workspace.presentation.contains(Instrument::Lockin));
         let decoded = settings::Document::decode(&settings.encode()?)?;
         assert_eq!(decoded.workspace.lockin_display, self.lockin_display);
         if mode == "source-change" {
@@ -114,7 +111,7 @@ impl ScopeApp {
             assert!(self.lockin_result.phase_degrees.is_none());
             assert_eq!(self.lockin_result.processed_windows, 0);
         }
-        self.sidebar.reveal(SettingsSection::Lockin);
+        self.presentation.details_visible = true;
         self.created = Instant::now();
         println!(
             "Lock-in UI QA OK: {mode}; common software input and finite stop; display switching preserves captured values/conditions; workspace roundtrip"
@@ -122,15 +119,13 @@ impl ScopeApp {
         Ok(())
     }
 
+    #[cfg(feature = "qa")]
     pub(super) fn select_lockin_view(&mut self, scope: bool) {
         self.select_view([scope, false, false, false]);
-        self.lockin_visible = true;
+        self.qa_show(Instrument::Lockin);
     }
 
     pub(super) fn lockin_controls(&mut self, ui: &mut egui::Ui) {
-        if ui.button("Open Lock-in display").clicked() {
-            self.select_lockin_view(false);
-        }
         ui.label(
             RichText::new("EXPERIMENTAL · INPUT REFERENCE")
                 .small()
@@ -140,13 +135,7 @@ impl ScopeApp {
         ui.add_enabled_ui(
             !self.busy && self.pending_stop.is_none() && !self.workspace_restoring,
             |ui| {
-                let channels = self.lockin_channel_count();
                 let s = &mut self.lockin_settings;
-                ui.checkbox(&mut s.enabled, "Enable demodulator");
-                setting_label(ui, "SIGNAL INPUT");
-                channel_select(ui, "lockin_response", &mut s.response_channel, channels);
-                setting_label(ui, "REFERENCE INPUT");
-                channel_select(ui, "lockin_reference", &mut s.reference_channel, channels);
                 ui.label(
                     RichText::new("REF and signal use the same input sample clock.")
                         .small()
@@ -187,7 +176,7 @@ impl ScopeApp {
         .max(1)
     }
 
-    fn apply_lockin_controls(&mut self, before: lockin::Settings) {
+    pub(super) fn apply_lockin_controls(&mut self, before: lockin::Settings) {
         if before == self.lockin_settings {
             return;
         }
@@ -216,6 +205,48 @@ impl ScopeApp {
         }
     }
 
+    fn lockin_primary_controls(&mut self, ui: &mut egui::Ui) {
+        let before = self.lockin_settings;
+        let channels = self.lockin_channel_count();
+        ui.horizontal_wrapped(|ui| {
+            ui.add_enabled_ui(
+                !self.busy && self.pending_stop.is_none() && !self.workspace_restoring,
+                |ui| {
+                    ui.label("SIG");
+                    channel_select(
+                        ui,
+                        "lockin_signal_primary",
+                        &mut self.lockin_settings.response_channel,
+                        channels,
+                    );
+                    ui.label("REF");
+                    channel_select(
+                        ui,
+                        "lockin_ref_primary",
+                        &mut self.lockin_settings.reference_channel,
+                        channels,
+                    );
+                    if ui
+                        .button(if self.lockin_settings.enabled {
+                            "Stop analysis"
+                        } else {
+                            "Start analysis"
+                        })
+                        .clicked()
+                    {
+                        self.lockin_settings.enabled = !self.lockin_settings.enabled;
+                    }
+                },
+            );
+            ui.label(
+                RichText::new(self.analysis_state(self.lockin_settings.enabled))
+                    .small()
+                    .color(MUTED),
+            );
+        });
+        self.apply_lockin_controls(before);
+    }
+
     pub(super) fn lockin_panel(&mut self, ui: &mut egui::Ui) {
         let height = ui.available_height();
         egui::Frame::new()
@@ -227,9 +258,6 @@ impl ScopeApp {
                 ui.horizontal_wrapped(|ui| {
                     ui.label(RichText::new("Lock-in amplifier").strong());
                     ui.label(RichText::new("EXPERIMENTAL").small().color(MUTED));
-                    if ui.small_button("Settings").clicked() {
-                        self.sidebar.reveal(SettingsSection::Lockin);
-                    }
                 });
                 ui.horizontal_wrapped(|ui| {
                     for (mode, label) in [(LockinDisplay::Polar, "R / θ"), (LockinDisplay::Cartesian, "X / Y"), (LockinDisplay::All, "All four")] {
@@ -247,12 +275,9 @@ impl ScopeApp {
                         state_label(self.lockin_result.state)
                     };
                     ui.label(RichText::new(label).strong().color(color));
-                    if self.pending_stop.is_some() {
-                        ui.label(RichText::new("FINISHING").small().color(YELLOW));
-                    } else if !self.running() {
-                        ui.label(RichText::new(if self.lockin_result.processed_windows > 0 { "HOLD" } else { "STOPPED" }).small().color(HOLD));
-                    }
+                    display::activity_label(ui, self.running(), self.pending_stop.is_some(), !self.lockin_result.latest_window.is_empty());
                 });
+                self.lockin_primary_controls(ui);
                 let r = &self.lockin_result;
                 let unit = self.calibration.captured.unit(r.settings.response_channel);
                 let usable = !self.input_failed && matches!(r.state, lockin::State::Valid | lockin::State::Settling);
@@ -308,20 +333,6 @@ impl ScopeApp {
                 } else if !usable {
                     ui.label(RichText::new(state_help(r.state)).small().color(MUTED));
                 }
-                ui.horizontal_wrapped(|ui| {
-                    let before = self.lockin_settings;
-                    ui.add_enabled_ui(!self.busy && self.pending_stop.is_none() && !self.workspace_restoring, |ui| {
-                        ui.checkbox(&mut self.lockin_settings.enabled, "Demodulate");
-                        ui.menu_button("REF / Filter…", |ui| {
-                            ui.push_id("lockin_front_panel", |ui| lockin_filter_controls(ui, &mut self.lockin_settings));
-                        });
-                    });
-                    self.apply_lockin_controls(before);
-                    if ui.small_button("Input…").clicked() {
-                        self.sidebar.io_output = false;
-                        self.sidebar.reveal(SettingsSection::Io);
-                    }
-                });
                 ui.collapsing("Measurement details", |ui| {
                     let r = &self.lockin_result;
                     ui.label(format!("Nominal Fs {} Hz · input generation {}", self.sample_rate, self.input_generation));

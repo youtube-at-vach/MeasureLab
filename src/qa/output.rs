@@ -92,9 +92,17 @@ impl Fixture {
         let status = Arc::new(Status::default());
         let errors = status.clone();
         let mut head = 0;
+        // CoreAudio's buffer is shared by both streams. Match the ordinary
+        // measurement input/output policy rather than resetting it to default
+        // when this fixture attaches alongside a live input.
+        let config = audio::measurement_stream_config(supported);
+        println!(
+            "QA output configuration: {} Hz, {}ch, {:?} buffer",
+            config.sample_rate, config.channels, config.buffer_size
+        );
         let stream = output
             .build_output_stream(
-                supported.into(),
+                config,
                 move |data: &mut [f32], _| {
                     let mut offset = 0;
                     while offset < data.len() {

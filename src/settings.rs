@@ -5,6 +5,7 @@ use crate::{
     calibration::{self, Calibration},
     channel::{ChannelId, Pair},
     measurement::SpectrumMode,
+    presentation::{Console, InstrumentId, Layout, Presentation, Screen},
     signal::{MAX_CHANNELS, Trigger},
     spectrum::{FFT_SIZES, FrequencyScale, Quantity, STFT_SIZES, Settings},
     xy::CursorMode,
@@ -18,7 +19,7 @@ use std::{
     thread::{self, JoinHandle},
 };
 
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
 pub const MAX_BYTES: usize = 64 * 1024;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -176,29 +177,13 @@ pub struct Measurement {
     pub calibrations: Vec<ChannelCalibration>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum PlotLayout {
-    Auto,
-    Columns,
-    Rows,
-}
-
 /// Display preferences are separate from input and analysis conditions.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Workspace {
-    #[serde(default)]
-    pub generator_visible: bool,
-    pub visible: [bool; 4],
-    #[serde(default)]
-    pub lockin_visible: bool,
-    #[serde(default)]
-    pub comparison_visible: bool,
+    pub presentation: Presentation,
     #[serde(default)]
     pub lockin_display: LockinDisplay,
-    pub layout: PlotLayout,
-    pub sidebar_visible: bool,
     pub scope_enabled: [bool; 2],
     pub scope_fs_per_div: f32,
     pub spectrum_scale: FrequencyScale,
@@ -242,7 +227,13 @@ impl Document {
             return Err(format!("Unsupported settings version: {}", self.version));
         }
         let m = &self.measurement;
-        if self.version == 1 && (m.generator.is_some() || self.workspace.generator_visible) {
+        if self.version == 1
+            && (m.generator.is_some()
+                || self
+                    .workspace
+                    .presentation
+                    .contains(InstrumentId::Generator))
+        {
             return Err("Generator settings require version 2".into());
         }
         if let Some(generator) = &m.generator {
@@ -260,7 +251,10 @@ impl Document {
         m.comparison.validate(m.input.expected_sample_rate())?;
         if self.version < 3
             && (m.comparison != crate::comparison::Settings::default()
-                || self.workspace.comparison_visible)
+                || self
+                    .workspace
+                    .presentation
+                    .contains(InstrumentId::Comparison))
         {
             return Err("Comparison settings require version 3".into());
         }
@@ -333,13 +327,6 @@ impl Document {
                 .map_err(str::to_owned)?;
         }
         let w = &self.workspace;
-        if !w.visible.contains(&true)
-            && !w.lockin_visible
-            && !w.generator_visible
-            && !w.comparison_visible
-        {
-            return Err("At least one instrument must be visible".into());
-        }
         for scale in [
             w.scope_fs_per_div as f64,
             w.xy_x_fs_per_div,
@@ -384,13 +371,23 @@ impl Document {
         if !(1..=VERSION).contains(&header.version) {
             return Err(format!("Unsupported settings version: {}", header.version));
         }
-        let document: Self = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
+        let mut value: serde_json::Value =
+            serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
+        if header.version < VERSION {
+            migrate_workspace(&mut value)?;
+        }
+        let mut document: Self = serde_json::from_value(value).map_err(|e| e.to_string())?;
         document.validate()?;
+        document.workspace.presentation.repair();
+        document.version = VERSION;
         Ok(document)
     }
 
     pub fn encode(&self) -> Result<Vec<u8>, String> {
         self.validate()?;
+        if self.version != VERSION {
+            return Err("Saving settings requires version 4".into());
+        }
         let mut bytes = serde_json::to_vec_pretty(self).map_err(|e| e.to_string())?;
         bytes.push(b'\n');
         if bytes.len() > MAX_BYTES {
@@ -398,6 +395,74 @@ impl Document {
         }
         Ok(bytes)
     }
+}
+
+/// Consume the old display flags once, preserving the old drawing order.
+/// Measurement fields are deserialized and validated independently afterward.
+fn migrate_workspace(value: &mut serde_json::Value) -> Result<(), String> {
+    let w = value
+        .get_mut("workspace")
+        .and_then(serde_json::Value::as_object_mut)
+        .ok_or("Missing settings workspace")?;
+    if w.contains_key("presentation") {
+        return Err("New display model requires version 4".into());
+    }
+    let flags: [bool; 4] =
+        serde_json::from_value(w.remove("visible").ok_or("Missing visible flags")?)
+            .map_err(|e| e.to_string())?;
+    let mut flag = |key: &str| -> Result<bool, String> {
+        serde_json::from_value(w.remove(key).unwrap_or(false.into())).map_err(|e| e.to_string())
+    };
+    let generator = flag("generator_visible")?;
+    let lockin = flag("lockin_visible")?;
+    let comparison = flag("comparison_visible")?;
+    let details_visible = serde_json::from_value(
+        w.remove("sidebar_visible")
+            .ok_or("Missing sidebar visibility")?,
+    )
+    .map_err(|e| e.to_string())?;
+    let layout = match w
+        .remove("layout")
+        .and_then(|v| v.as_str().map(str::to_owned))
+        .as_deref()
+    {
+        Some("auto") if flags.iter().filter(|f| **f).count() > 2 => Layout::Grid,
+        Some("auto" | "columns") => Layout::Columns,
+        Some("rows") => Layout::Rows,
+        _ => Layout::Tabs,
+    };
+    let instruments: Vec<_> = [
+        (generator, InstrumentId::Generator),
+        (flags[0], InstrumentId::Scope),
+        (flags[1], InstrumentId::Spectrum),
+        (flags[2], InstrumentId::Spectrogram),
+        (flags[3], InstrumentId::Xy),
+        (lockin, InstrumentId::Lockin),
+        (comparison, InstrumentId::Comparison),
+    ]
+    .into_iter()
+    .filter_map(|(on, i)| on.then_some(i))
+    .collect();
+    let screen = match instruments.as_slice() {
+        [] => Screen::Single(InstrumentId::Scope),
+        [i] => Screen::Single(*i),
+        _ => Screen::Console,
+    };
+    let presentation = Presentation {
+        screen,
+        details_visible,
+        console: Console {
+            selected: instruments.first().copied(),
+            instruments,
+            layout,
+            split: 0.5,
+        },
+    };
+    w.insert(
+        "presentation".into(),
+        serde_json::to_value(presentation).map_err(|e| e.to_string())?,
+    );
+    Ok(())
 }
 
 fn bounded_text(value: &str, max: usize, name: &str) -> Result<(), String> {
@@ -610,13 +675,8 @@ mod tests {
                 }],
             },
             workspace: Workspace {
-                generator_visible: false,
-                visible: [true; 4],
-                lockin_visible: false,
-                comparison_visible: false,
+                presentation: Presentation::default(),
                 lockin_display: LockinDisplay::Polar,
-                layout: PlotLayout::Auto,
-                sidebar_visible: true,
                 scope_enabled: [true; 2],
                 scope_fs_per_div: 0.25,
                 spectrum_scale: FrequencyScale::Log,
@@ -638,6 +698,23 @@ mod tests {
         }
     }
 
+    fn legacy_fixture(version: u32) -> serde_json::Value {
+        let mut value = serde_json::to_value(fixture()).unwrap();
+        value["version"] = version.into();
+        let w = value["workspace"].as_object_mut().unwrap();
+        w.remove("presentation");
+        w.insert(
+            "visible".into(),
+            serde_json::json!([true, true, true, true]),
+        );
+        w.insert("generator_visible".into(), false.into());
+        w.insert("lockin_visible".into(), false.into());
+        w.insert("comparison_visible".into(), false.into());
+        w.insert("layout".into(), "auto".into());
+        w.insert("sidebar_visible".into(), true.into());
+        value
+    }
+
     fn device(id: &str, name: &str) -> DeviceInfo {
         DeviceInfo {
             id: Some(id.into()),
@@ -647,6 +724,87 @@ mod tests {
             is_default: true,
             sample_rates: vec![48_000, 96_000],
         }
+    }
+
+    #[test]
+    fn legacy_display_migration_preserves_order_conditions_and_details() {
+        for version in 1..=3 {
+            for single in [false, true] {
+                let mut value = legacy_fixture(version);
+                let measurement = fixture().measurement;
+                let w = value["workspace"].as_object_mut().unwrap();
+                w.insert(
+                    "visible".into(),
+                    serde_json::json!([false, true, !single, false]),
+                );
+                w.insert("sidebar_visible".into(), false.into());
+                w.insert("layout".into(), "rows".into());
+                if !single && version >= 2 {
+                    w.insert("generator_visible".into(), true.into());
+                }
+                if !single && version >= 3 {
+                    w.insert("comparison_visible".into(), true.into());
+                }
+                let bytes = serde_json::to_vec(&value).unwrap();
+                let loaded = Document::decode(&bytes).unwrap();
+                assert_eq!(loaded.measurement, measurement);
+                assert_eq!(loaded.version, VERSION);
+                let p = &loaded.workspace.presentation;
+                assert!(!p.details_visible);
+                assert_eq!(p.console.layout, Layout::Rows);
+                if single {
+                    assert_eq!(p.screen, Screen::Single(InstrumentId::Spectrum));
+                } else {
+                    let mut expected = vec![InstrumentId::Spectrum, InstrumentId::Spectrogram];
+                    if version >= 2 {
+                        expected.insert(0, InstrumentId::Generator);
+                    }
+                    if version >= 3 {
+                        expected.push(InstrumentId::Comparison);
+                    }
+                    assert_eq!(p.screen, Screen::Console);
+                    assert_eq!(p.console.instruments, expected);
+                    assert_eq!(p.console.selected, expected.first().copied());
+                }
+                assert_eq!(Document::decode(&loaded.encode().unwrap()).unwrap(), loaded);
+                // Decode never mutates the original wire document or writes a file.
+                assert_eq!(serde_json::to_vec(&value).unwrap(), bytes);
+            }
+        }
+    }
+
+    #[test]
+    fn seven_instrument_and_empty_consoles_roundtrip_and_only_layout_damage_is_repaired() {
+        let mut document = fixture();
+        for i in InstrumentId::ALL {
+            document
+                .workspace
+                .presentation
+                .apply(crate::presentation::Action::AddToConsole(i));
+        }
+        document.workspace.presentation.console.layout = Layout::Grid;
+        document.workspace.presentation.console.split = 0.35;
+        assert_eq!(
+            Document::decode(&document.encode().unwrap()).unwrap(),
+            document
+        );
+        let mut damaged = serde_json::to_value(&document).unwrap();
+        damaged["workspace"]["presentation"]["console"]["layout"] = "unavailable_layout".into();
+        let loaded = Document::decode(&serde_json::to_vec(&damaged).unwrap()).unwrap();
+        assert_eq!(loaded.measurement, document.measurement);
+        assert_eq!(loaded.workspace.presentation.console.layout, Layout::Tabs);
+        damaged["measurement"]["spectrum"]["analysis"]["size"] = 1000.into();
+        assert!(Document::decode(&serde_json::to_vec(&damaged).unwrap()).is_err());
+        for i in InstrumentId::ALL {
+            document
+                .workspace
+                .presentation
+                .apply(crate::presentation::Action::RemoveFromConsole(i));
+        }
+        assert_eq!(
+            Document::decode(&document.encode().unwrap()).unwrap(),
+            document
+        );
     }
 
     #[test]
@@ -666,13 +824,12 @@ mod tests {
             signals,
             use_as_input: true,
         });
-        doc.workspace.generator_visible = true;
-        doc.workspace.visible = [false; 4];
+        doc.workspace.presentation.screen = Screen::Single(InstrumentId::Generator);
         assert_eq!(Document::decode(&doc.encode().unwrap()).unwrap(), doc);
         let mut invalid = doc.clone();
         invalid.measurement.input.sample_rate = Some(96_000);
         assert!(invalid.validate().is_err());
-        let mut old = serde_json::to_value(fixture()).unwrap();
+        let mut old = legacy_fixture(3);
         old["version"] = 1.into();
         old["measurement"]
             .as_object_mut()
@@ -684,7 +841,12 @@ mod tests {
             .remove("generator_visible");
         let restored = Document::decode(&serde_json::to_vec(&old).unwrap()).unwrap();
         assert!(restored.measurement.generator.is_none());
-        assert!(!restored.workspace.generator_visible);
+        assert!(
+            !restored
+                .workspace
+                .presentation
+                .contains(InstrumentId::Generator)
+        );
         doc.version = 1;
         assert!(doc.validate().is_err());
     }
@@ -692,19 +854,23 @@ mod tests {
     #[test]
     fn lockin_only_workspace_roundtrips_and_older_files_keep_monitor_defaults() {
         let mut document = fixture();
-        document.workspace.visible = [false; 4];
-        document.workspace.lockin_visible = true;
+        document.workspace.presentation.screen = Screen::Single(InstrumentId::Lockin);
         document.workspace.lockin_display = LockinDisplay::Cartesian;
         assert_eq!(
             Document::decode(&document.encode().unwrap()).unwrap(),
             document
         );
-        let mut older = serde_json::to_value(fixture()).unwrap();
+        let mut older = legacy_fixture(3);
         let workspace = older["workspace"].as_object_mut().unwrap();
         workspace.remove("lockin_visible");
         workspace.remove("lockin_display");
         let restored = Document::decode(&serde_json::to_vec(&older).unwrap()).unwrap();
-        assert!(!restored.workspace.lockin_visible);
+        assert!(
+            !restored
+                .workspace
+                .presentation
+                .contains(InstrumentId::Lockin)
+        );
         assert_eq!(restored.workspace.lockin_display, LockinDisplay::Polar);
     }
     #[test]
@@ -713,8 +879,7 @@ mod tests {
         doc.measurement.comparison.enabled = true;
         doc.measurement.comparison.reference_channel = 15;
         doc.measurement.comparison.response_channel = 7;
-        doc.workspace.visible = [false; 4];
-        doc.workspace.comparison_visible = true;
+        doc.workspace.presentation.screen = Screen::Single(InstrumentId::Comparison);
         assert_eq!(Document::decode(&doc.encode().unwrap()).unwrap(), doc);
         let mut invalid = doc.clone();
         invalid.version = 2;
@@ -723,7 +888,7 @@ mod tests {
         invalid.measurement.comparison.response_channel = 15;
         assert!(invalid.validate().is_err());
         for version in [1, 2] {
-            let mut value = serde_json::to_value(fixture()).unwrap();
+            let mut value = legacy_fixture(3);
             value["version"] = version.into();
             value["measurement"]
                 .as_object_mut()
@@ -734,7 +899,13 @@ mod tests {
                 .unwrap()
                 .remove("comparison_visible");
             let loaded = Document::decode(&serde_json::to_vec(&value).unwrap()).unwrap();
-            assert!(!loaded.measurement.comparison.enabled && !loaded.workspace.comparison_visible);
+            assert!(
+                !loaded.measurement.comparison.enabled
+                    && !loaded
+                        .workspace
+                        .presentation
+                        .contains(InstrumentId::Comparison)
+            );
         }
     }
 
@@ -796,7 +967,7 @@ mod tests {
                 .contains("version")
         );
         assert!(
-            Document::decode(br#"{"version":4}"#)
+            Document::decode(br#"{"version":5}"#)
                 .unwrap_err()
                 .contains("version")
         );
@@ -827,7 +998,6 @@ mod tests {
             |d: &mut Document| d.measurement.calibrations[0].gain = 0.0,
             |d: &mut Document| d.measurement.calibrations[0].unit = "FS".into(),
             |d: &mut Document| d.measurement.calibrations[0].revision = 0,
-            |d: &mut Document| d.workspace.visible = [false; 4],
             |d: &mut Document| d.workspace.spectrum_ceiling_db = -120.0,
         ] {
             let mut bad = good.clone();
