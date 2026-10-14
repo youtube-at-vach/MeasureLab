@@ -1,5 +1,6 @@
 //! Application chrome, navigation and console layout; measurement lives in ScopeApp.
 use super::*;
+use crate::presentation::PANE_CHROME;
 
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub(super) enum IoTab {
@@ -9,7 +10,7 @@ pub(super) enum IoTab {
     Calibration,
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(super) struct Shell {
     pub io: Option<IoTab>,
     pub help: bool,
@@ -445,10 +446,6 @@ impl ScopeApp {
             ui.label("Add instruments to observe and generate signals together. Removing a pane leaves its analysis and output running.");
             return;
         }
-        let layout = self
-            .presentation
-            .console
-            .effective_layout(ui.available_width(), ui.available_height() - 35.0);
         ui.horizontal_wrapped(|ui| {
             for i in self.presentation.console.instruments.clone() {
                 if ui
@@ -462,6 +459,13 @@ impl ScopeApp {
                 }
             }
         });
+        // The tab strip may wrap. Decide only after its actual height is known.
+        let gap = ui.spacing().item_spacing.x;
+        let layout = self.presentation.console.effective_layout(
+            ui.available_width(),
+            ui.available_height(),
+            gap,
+        );
         if layout == Layout::Tabs
             && self.presentation.console.layout != Layout::Tabs
             && self.presentation.console.instruments.len() > 1
@@ -474,38 +478,28 @@ impl ScopeApp {
         } else {
             1
         };
-        let rows = instruments.len().div_ceil(columns);
         let available = ui.available_size();
-        let split = self.presentation.console.split;
+        let sizes = self
+            .presentation
+            .console
+            .pane_sizes(layout, available.x, available.y, gap);
         egui::ScrollArea::vertical()
             .id_salt("console_scroll")
             .auto_shrink([false, false])
             .show(ui, |ui| {
+                ui.spacing_mut().item_spacing = vec2(gap, gap);
                 for (row, panes) in instruments.chunks(columns).enumerate() {
-                    let height = if rows == 1 {
-                        available.y
-                    } else {
-                        (available.y - 6.0) * if row == 0 { split } else { 1.0 - split }
-                    };
                     ui.horizontal_top(|ui| {
-                        let full_width = ui.available_width();
+                        ui.spacing_mut().item_spacing.x = gap;
                         for (column, &i) in panes.iter().enumerate() {
-                            let width = if columns == 1 || panes.len() == 1 {
-                                full_width
-                            } else {
-                                (full_width - 6.0) * if column == 0 { split } else { 1.0 - split }
-                            };
+                            let [width, height] = sizes[row * columns + column];
                             ui.allocate_ui_with_layout(
-                                vec2(width, height.max(i.minimum_size()[1])),
+                                vec2(width, height.max(i.minimum_size()[1] + PANE_CHROME[1])),
                                 egui::Layout::top_down(egui::Align::Min),
                                 |ui| {
                                     let frame = egui::Frame::new()
                                         .stroke(Stroke::new(
-                                            if self.presentation.console.selected == Some(i) {
-                                                2.0
-                                            } else {
-                                                1.0
-                                            },
+                                            2.0,
                                             if self.presentation.console.selected == Some(i) {
                                                 BLUE
                                             } else {
@@ -545,6 +539,21 @@ impl ScopeApp {
                                         });
                                     if pane_clicked(ui, frame.response.rect) {
                                         self.presentation.apply(Action::FocusPane(i));
+                                    }
+                                    #[cfg(feature = "qa")]
+                                    if self.smoke && layout != Layout::Tabs {
+                                        assert!(
+                                            frame.response.rect.width() <= width + 1.0,
+                                            "{} exceeds console width",
+                                            i.name()
+                                        );
+                                        assert!(
+                                            frame.response.rect.height() <= height + 1.0,
+                                            "{} exceeds console height: {} > {}",
+                                            i.name(),
+                                            frame.response.rect.height(),
+                                            height
+                                        );
                                     }
                                 },
                             );
@@ -588,8 +597,7 @@ impl ScopeApp {
     #[cfg(feature = "qa")]
     pub(super) fn check_redesign_navigation(&mut self) -> Result<(), String> {
         let saved = self.presentation.clone();
-        let previous = self.shell.previous_console.clone();
-        let io = self.shell.io;
+        let saved_shell = self.shell.clone();
         let running = self.running();
         let generation = self.input_generation;
         let range = self.history.range();
@@ -658,8 +666,7 @@ impl ScopeApp {
             assert_eq!(self.capture_results()?, held);
         }
         self.presentation = saved;
-        self.shell.previous_console = previous;
-        self.shell.io = io;
+        self.shell = saved_shell;
         println!(
             "GUI navigation OK: seven instruments, pair/console return, deduplication, replacement undo, empty console; input, DSP conditions, held values and output commands unchanged"
         );
@@ -737,8 +744,17 @@ fn pane_clicked(ui: &egui::Ui, rect: egui::Rect) -> bool {
     })
 }
 
-pub(super) fn input_shortcut(ctx: &egui::Context, busy: bool) -> bool {
-    ctx.input(|i| i.key_pressed(egui::Key::Space)) && !busy && !ctx.egui_wants_keyboard_input()
+pub(super) fn input_shortcut(ctx: &egui::Context, enabled: bool) -> bool {
+    if !enabled || ctx.egui_wants_keyboard_input() || ctx.any_popup_open() {
+        return false;
+    }
+    let pressed = ctx.input(|input| {
+        input.events.iter().any(|event| matches!(event,
+        egui::Event::Key { key: egui::Key::Space, pressed: true, repeat: false, modifiers, .. }
+            if *modifiers == egui::Modifiers::NONE
+    ))
+    });
+    pressed && ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Space))
 }
 
 #[cfg(test)]
@@ -836,10 +852,64 @@ mod tests {
                 ..Default::default()
             },
             |ui| {
-                assert!(!input_shortcut(ui.ctx(), false));
+                assert!(!input_shortcut(ui.ctx(), true));
                 ui.text_edit_singleline(&mut text);
             },
         )
         .drop_without_applying_deltas();
+    }
+
+    #[test]
+    fn input_space_requires_enabled_transport_and_a_fresh_unmodified_press() {
+        for (enabled, modifiers, repeat, expected) in [
+            (true, egui::Modifiers::NONE, false, true),
+            (false, egui::Modifiers::NONE, false, false),
+            (true, egui::Modifiers::CTRL, false, false),
+            (true, egui::Modifiers::SHIFT, false, false),
+            (true, egui::Modifiers::NONE, true, false),
+        ] {
+            let ctx = egui::Context::default();
+            if repeat {
+                // egui derives repetition from the preceding key-down state.
+                ctx.run_ui(
+                    egui::RawInput {
+                        events: vec![egui::Event::Key {
+                            key: egui::Key::Space,
+                            physical_key: None,
+                            pressed: true,
+                            repeat: false,
+                            modifiers,
+                        }],
+                        ..Default::default()
+                    },
+                    |_| {},
+                )
+                .drop_without_applying_deltas();
+            }
+            ctx.run_ui(
+                egui::RawInput {
+                    events: vec![egui::Event::Key {
+                        key: egui::Key::Space,
+                        physical_key: None,
+                        pressed: true,
+                        repeat,
+                        modifiers,
+                    }],
+                    ..Default::default()
+                },
+                |ui| {
+                    assert_eq!(
+                        input_shortcut(ui.ctx(), enabled),
+                        expected,
+                        "enabled={enabled}, modifiers={modifiers:?}, repeat={repeat}"
+                    );
+                    assert!(
+                        !input_shortcut(ui.ctx(), enabled),
+                        "one key event must not toggle twice"
+                    );
+                },
+            )
+            .drop_without_applying_deltas();
+        }
     }
 }

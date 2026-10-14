@@ -58,7 +58,7 @@ impl InstrumentId {
 
     pub fn minimum_size(self) -> [f32; 2] {
         match self {
-            Self::Comparison => [470.0, 580.0],
+            Self::Comparison => [470.0, 640.0],
             Self::Generator => [420.0, 360.0],
             Self::Scope => [400.0, 390.0],
             Self::Lockin => [380.0, 420.0],
@@ -139,34 +139,44 @@ impl Default for Console {
 }
 
 impl Console {
-    pub fn effective_layout(&self, width: f32, height: f32) -> Layout {
-        let panes = self.displayed(self.layout);
-        let count = panes.len();
-        if count < 2 || self.layout == Layout::Tabs {
-            return Layout::Tabs;
-        }
-        let fits = panes.iter().enumerate().all(|(index, i)| {
-            let [min_w, min_h] = i.minimum_size();
-            let share = |first| if first { self.split } else { 1.0 - self.split };
-            let (w, h) = match self.layout {
-                Layout::Columns => ((width - 14.0) * share(index == 0), height - 40.0),
-                Layout::Rows => (width - 14.0, (height - 14.0) * share(index == 0) - 40.0),
-                Layout::Grid => (
-                    if index == 2 && count == 3 {
-                        width - 14.0
+    /// Outer pane dimensions, shared by fit checks and rendering. A final grid
+    /// pane spans both columns; overflow keeps the selected instrument's group.
+    pub fn pane_sizes(&self, layout: Layout, width: f32, height: f32, gap: f32) -> Vec<[f32; 2]> {
+        let count = self.displayed(layout).len();
+        let share = |first| if first { self.split } else { 1.0 - self.split };
+        (0..count)
+            .map(|index| match layout {
+                Layout::Columns => [(width - gap) * share(index == 0), height],
+                Layout::Rows => [width, (height - gap) * share(index == 0)],
+                Layout::Grid => [
+                    if count == 1 || (index == 2 && count == 3) {
+                        width
                     } else {
-                        (width - 14.0) * share(index % 2 == 0)
+                        (width - gap) * share(index % 2 == 0)
                     },
                     if count <= 2 {
-                        height - 40.0
+                        height
                     } else {
-                        (height - 14.0) * share(index < 2) - 40.0
+                        (height - gap) * share(index < 2)
                     },
-                ),
-                Layout::Tabs => (width, height),
-            };
-            w >= min_w && h >= min_h
-        });
+                ],
+                Layout::Tabs => [width, height],
+            })
+            .collect()
+    }
+
+    pub fn effective_layout(&self, width: f32, height: f32, gap: f32) -> Layout {
+        let panes = self.displayed(self.layout);
+        if panes.len() < 2 || self.layout == Layout::Tabs {
+            return Layout::Tabs;
+        }
+        let fits = panes
+            .iter()
+            .zip(self.pane_sizes(self.layout, width, height, gap))
+            .all(|(i, [w, h])| {
+                let [min_w, min_h] = i.minimum_size();
+                w - PANE_CHROME[0] >= min_w && h - PANE_CHROME[1] >= min_h
+            });
         if fits { self.layout } else { Layout::Tabs }
     }
 
@@ -182,6 +192,9 @@ impl Console {
             [start.min(self.instruments.len())..(start + capacity).min(self.instruments.len())]
     }
 }
+
+/// Frame margins and the pane title/actions, outside the instrument itself.
+pub const PANE_CHROME: [f32; 2] = [12.0, 40.0];
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -327,13 +340,46 @@ mod tests {
         }
         p.apply(Action::SetLayout(Layout::Grid));
         let saved = p.clone();
-        assert_eq!(p.console.effective_layout(700.0, 500.0), Layout::Tabs);
+        assert_eq!(p.console.effective_layout(700.0, 500.0, 6.0), Layout::Tabs);
         assert_eq!(
             p.console.displayed(Layout::Tabs),
             &[InstrumentId::Generator]
         );
-        assert_eq!(p.console.effective_layout(1600.0, 1400.0), Layout::Grid);
+        assert_eq!(
+            p.console.effective_layout(1600.0, 1400.0, 6.0),
+            Layout::Grid
+        );
         assert_eq!(p.console.displayed(Layout::Grid).len(), 3);
+        assert_eq!(p, saved);
+    }
+
+    #[test]
+    fn asymmetric_panes_fit_only_when_every_instrument_has_its_minimum_space() {
+        let mut p = Presentation::default();
+        for i in [
+            InstrumentId::Scope,
+            InstrumentId::Spectrum,
+            InstrumentId::Comparison,
+        ] {
+            p.apply(Action::AddToConsole(i));
+        }
+        p.console.split = 0.4;
+        p.apply(Action::SetLayout(Layout::Grid));
+        let saved = p.clone();
+        let sizes = p.console.pane_sizes(Layout::Grid, 1100.0, 1180.0, 6.0);
+        assert_eq!(sizes[2][0], 1100.0);
+        assert_eq!(sizes[0][0] + sizes[1][0] + 6.0, 1100.0);
+        assert_eq!(sizes[0][1] + sizes[2][1] + 6.0, 1180.0);
+        assert_eq!(
+            p.console.effective_layout(1100.0, 1180.0, 6.0),
+            Layout::Grid
+        );
+        // Width alone fits, but the Comparison also needs room for three plots.
+        assert_eq!(
+            p.console.effective_layout(1100.0, 1000.0, 6.0),
+            Layout::Tabs
+        );
+        assert_eq!(p.console.effective_layout(900.0, 1180.0, 6.0), Layout::Tabs);
         assert_eq!(p, saved);
     }
 }

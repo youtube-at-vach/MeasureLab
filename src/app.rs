@@ -834,6 +834,19 @@ impl ScopeApp {
             match std::env::var("MEASURELAB_UI_SMOKE_VIEW").as_deref() {
                 Ok("scope") => app.select_view([true, false, false, false]),
                 Ok("spectrum") => app.select_view([false, true, false, false]),
+                Ok("spectrogram") => app
+                    .presentation
+                    .apply(Action::OpenSingle(Instrument::Spectrogram)),
+                Ok("xy") => app.presentation.apply(Action::OpenSingle(Instrument::Xy)),
+                Ok("lockin") => app
+                    .presentation
+                    .apply(Action::OpenSingle(Instrument::Lockin)),
+                Ok("comparison") => app
+                    .presentation
+                    .apply(Action::OpenSingle(Instrument::Comparison)),
+                Ok("generator") => app
+                    .presentation
+                    .apply(Action::OpenSingle(Instrument::Generator)),
                 Ok("pair") => app.select_view([true, true, false, false]),
                 Ok("all") => app.select_view([true; 4]),
                 Ok("console") => {
@@ -845,6 +858,15 @@ impl ScopeApp {
                 }
                 Ok("empty") => app.presentation.apply(Action::OpenConsole),
                 _ => {}
+            }
+            if let Ok(layout) = std::env::var("MEASURELAB_UI_SMOKE_LAYOUT") {
+                app.presentation.console.layout = match layout.as_str() {
+                    "columns" => Layout::Columns,
+                    "rows" => Layout::Rows,
+                    "grid" => Layout::Grid,
+                    "tabs" => Layout::Tabs,
+                    _ => return Err("QA layout must be columns, rows, grid or tabs".into()),
+                };
             }
             match std::env::var("MEASURELAB_UI_SMOKE_ADJUST").as_deref() {
                 Ok("scope") => {
@@ -963,8 +985,6 @@ impl ScopeApp {
             app.last_stft = None;
             app.spectrogram_history = Arc::new(Mutex::new(spectrogram::History::default()));
             app.xy_capture = xy::Capture::default();
-            app.presentation
-                .apply(Action::OpenSingle(Instrument::Scope));
             app.dirty = true;
         }
         #[cfg(feature = "qa")]
@@ -2622,16 +2642,20 @@ impl ScopeApp {
         }
     }
 
+    fn input_transport_enabled(&self) -> bool {
+        !self.busy
+            && self.settings_task != Some(SettingsTask::Restore)
+            && !self.workspace_restoring
+            && self.pending_stop.is_none()
+            && (self.source.is_demo()
+                || matches!(self.source, Source::Software | Source::Generator)
+                || !self.devices.is_empty())
+    }
+
     fn transport(&mut self, ui: &mut egui::Ui) {
         if ui
             .add_enabled(
-                !self.busy
-                    && self.settings_task != Some(SettingsTask::Restore)
-                    && self.pending_stop.is_none()
-                    && (self.source.is_demo()
-                        || self.source == Source::Software
-                        || self.source == Source::Generator
-                        || !self.devices.is_empty()),
+                self.input_transport_enabled(),
                 egui::Button::new(
                     RichText::new(if self.running() {
                         "■  Stop input"
@@ -5680,7 +5704,7 @@ impl eframe::App for ScopeApp {
                 }
             }
         }
-        if shell::input_shortcut(&ctx, self.busy) {
+        if shell::input_shortcut(&ctx, self.input_transport_enabled()) {
             if self.running() {
                 self.stop();
             } else {
@@ -5839,7 +5863,12 @@ impl eframe::App for ScopeApp {
                 && self.created.elapsed() > Duration::from_secs(2 * self.screenshot_attempts as u64)
             {
                 self.screenshot_attempts += 1;
-                println!("UI screenshot readback retry {}", self.screenshot_attempts);
+                println!(
+                    "UI screenshot readback retry {}: {:?}",
+                    self.screenshot_attempts,
+                    ctx.input(|input| input.viewport().clone())
+                );
+                ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
                 ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(Default::default()));
             }
             #[cfg(feature = "qa")]

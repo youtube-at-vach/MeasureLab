@@ -72,7 +72,7 @@ cargo run --release
 
 上部 **I/O / Input / Output / Calibration** は共通設定画面を開きます。**Back to instruments** またはEscで元の計器・選択区画へ戻ります。**Start input / Stop input** は共通入力、**Stop output** は独立したGenerator出力を扱います。出力状態と停止操作は計器や設定画面に関係なく常設です。**Running…** で非表示のLock-in／同期比較の解析状態を確認・停止できます。入力待ち、解析停止、取得状態、有効性を区別します。
 
-**File** は設定・保持結果の保存／復元と **Compare saved reference**、**View** は配置・詳細欄・倍率、**Help** はショートカット・単位・診断を扱います。Ctrl＋1〜7で一覧順に計器を選択し、Tab／Shift＋Tabで編集へ移動できます。入力欄編集中のSpaceは共通入力を開始／停止しません。
+**File** は設定・保持結果の保存／復元と **Compare saved reference**、**View** は配置・詳細欄・倍率、**Help** はショートカット・単位・診断を扱います。Ctrl＋1〜7で一覧順に計器を選択し、Tab／Shift＋Tabで編集へ移動できます。Spaceによる入力操作は入力ボタンが使える場合に限り、一押しで一度だけ切り替えます。入力欄・メニューの操作中、修飾キー付き・長押しの反復では取得状態を変えません。
 
 各測定器は取得状態を **LIVE / HELD / WAITING / NOT ACQUIRED / FINISHING** で示し、トリガーやREF・比較の有効性を別に表示します。起動直後のFsは未取得、停止後は保持入力の公称Fsです。Scopeは波形・トリガーがraw FS、RMS／P-PがCHごとの校正単位であることを同じ領域に表示します。主要数値は読みやすい桁数へ整え、詳細のホバーとJSON／CSVにはf64の精度を残します。
 

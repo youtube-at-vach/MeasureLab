@@ -38,7 +38,17 @@ target/release/measurelab --gpu-smoke
 target/release/measurelab --ui-smoke
 ```
 
-GUI smokeは7計器の選択・再選択、追加・除去、単独／コンソール往復、構成置換の取消が取得世代・解析設定・保持値・出力コマンドを変えないことも検証する。クリック・ホバーと入力欄編集中のSpaceは`app/shell.rs`のeguiイベントテスト、旧設定移行・版4往復は`settings.rs`を正本とする。
+GUI smokeは7計器の選択・再選択、追加・除去、単独／コンソール往復、構成置換の取消が取得世代・解析設定・保持値・出力コマンドを変えないことも検証する。複数区画では実際の描画が割当寸法に収まることを確認する。クリック・ホバー、入力欄編集中・修飾キー付き・長押しのSpaceは`app/shell.rs`のeguiイベントテスト、旧設定移行・版4往復は`settings.rs`を正本とする。
+
+GUI再設計の内部受け入れをまとめて再実行する。7計器の未取得画面、通常幅・狭幅、コンソールの配置、共通入出力・詳細欄、通常Generatorの内部経路、同期比較、保持結果の保存・別プロセス復元・再測定を直列に実行し、ケースごとの画像・ログとバイナリ識別を`dist/gui-redesign-qa/`へ残す。
+
+```sh
+./.venv/bin/python scripts/qa_gui_redesign.py
+```
+
+`--binary target/debug/measurelab`でQAの開発ビルドを使える。`--case scope-compact`等で一部だけ再実行できるが、`held-replay`は先に`held-save`を完了する。成功判定はassertionと撮影成功で、画像の読み取りやすさは別に確認する。通常GUIの手動操作、外部I/OとネイティブDPI切り替えの受け入れを代用しない。
+
+macOSでは画面スリープ中にウィンドウの撮影が完了しない場合がある。`caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py`で実行中だけ画面スリープを抑止できる。読み戻しの再試行ログにはウィンドウの状態も残す。
 
 `--gpu-smoke`は通常ビルドでも使える。`--ui-smoke`は画像を`dist/ui-smoke.png`へ保存する。数値照合と実際の撮影成功は別に確認する。通常起動は入力停止状態、`--demo`はQA専用。Software Loopbackと通常Generatorはqaなしでも使える。
 
@@ -46,7 +56,8 @@ GUI smokeは7計器の選択・再選択、追加・除去、単独／コンソ�
 
 | 環境変数 | 確認すること |
 | --- | --- |
-| `MEASURELAB_UI_SMOKE_SETTINGS`／`VIEW`／`ADJUST` | 共通入出力画面・単独／コンソール表示・選択中の詳細。`VIEW=all`は4区画、`console`は7計器、`empty`は空コンソール。`DETAILS=1`は狭幅の詳細編集。変数名の共通接頭辞は`MEASURELAB_UI_SMOKE_` |
+| `MEASURELAB_UI_SMOKE_SETTINGS`／`VIEW`／`ADJUST` | 共通入出力画面・単独／コンソール表示・選択中の詳細。`VIEW=scope`／`spectrum`／`spectrogram`／`xy`／`lockin`／`comparison`／`generator`で単独、`all`は4区画、`console`は7計器、`empty`は空コンソール。`DETAILS=1`は狭幅の詳細編集。変数名の共通接頭辞は`MEASURELAB_UI_SMOKE_` |
+| `MEASURELAB_UI_SMOKE_LAYOUT=columns`／`rows`／`grid`／`tabs` | コンソールの希望配置。タブ列の折り返し後の残り寸法で退避を判断し、描画と同じ区画寸法で検証 |
 | `MEASURELAB_UI_SMOKE_ROUTING=1`／`CALIBRATION=1`／`CURSORS=1` | 16ch割当・内部校正・カーソル。物理校正の確認ではない |
 | `MEASURELAB_UI_SMOKE_STAGE3F=1`＋`REPLAY=1`／`COMPARE=1` | Software Loopbackの保存・別プロセス復元・再測定・参照比較 |
 | `MEASURELAB_UI_SMOKE_LOCKIN=polar` | R／θ。`cartesian`／`all`／`pair`／`settling`／`ref-loss`／`held-edit`／`live-edit`／`source-change`で他の状態 |
@@ -120,7 +131,7 @@ Spectrum遅延は同じ結果群の入力利用可能→解析完了→UI提出�
 
 | 対象・基点／条件 | 確認した範囲と制限 |
 | --- | --- |
-| GUI再構成、`1b9fc3d4`＋GUI作業差分／dev QA・新表示モデル・画面スリープ抑止 | 単独・並列・4区画・7計器・狭幅・倍率0.75／1.25の撮影と区画幅検証、表示変更による入力・解析・保持値・出力コマンド不変、Software Loopbackの保存・別プロセス復元・再測定を確認。BlackHole 2ch・48 kHz・f32通常Generator経路で同一入力窓のLock-in／比較独立照合・有限Stop・JSON／CSV・OFF復元を確認。実機の物理校正、最大Fs、動作中DPI切り替え・長時間の受け入れへ広げない。ソース・バイナリ識別とログ・画像は`dist/gui-redesign-qa/manifest.json` |
+| GUI再構成、`304d2ee5`＋GUI作業差分／dev QA・画面スリープ抑止 | 7計器の単独・並列・4区画・狭幅・倍率0.75／1.25の撮影と区画幅・高さ検証、表示変更による入力・解析・保持値・出力コマンド不変、Software Loopbackの保存・別プロセス復元・再測定を確認。BlackHole 2ch／16ch・48 kHz・f32通常Generator経路で同一入力窓のLock-in／比較独立照合・UI停止中の継続・有限Stop・JSON／CSV・OFF復元を確認。物理I/O、最大Fs、ネイティブDPI切り替え・長時間の受け入れは残る。ソース差分・バイナリ識別とログ・画像は`dist/gui-redesign-qa/manifest.json`／`external-manifest.json` |
 | Lock-in、`a837b04c`／BlackHole 2ch・16ch、44.1／48／96／192 kHz | 短時間の数値・欠落回復・保存再測定。2ch・48 kHzはGUIなし600秒、正常測定区間の通知・欠落0。物理精度・通常GUI600秒の保証ではない |
 | Lock-in、`1c0373dc`／UAC-232 LL／RR TRS、同4レート | 同じ生入力窓の独立適合・保存再取得。48 kHzはGUIなし600秒、最大R差0.598 µFS peak・位相差0.0004101°。−40 dB応答で高レベル基準から約0.115〜0.155°の位相変化があり原因未確定 |
 | 段階4、`60021e3f`／Software Loopback・BlackHole・UAC-232 | 通常幅・狭幅、別プロセス復元・再測定、画像保存。BlackHole 16ch・96 kHz・512k Continuousは30秒、20予定窓・入力／解析欠落0。UAC-232・48 kHzの30秒はUI停止中の継続・有限Stop・独立照合・解放後監査を確認 |
