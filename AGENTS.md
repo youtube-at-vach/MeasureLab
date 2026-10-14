@@ -51,5 +51,6 @@ description: MeasureLab の Rust 開発と公開サイトの共通ルール
 * Issue 作成・Project 更新は依頼された場合だけ行う。[GitHub 共通手順](.agents/workflows/github_project.md) を参照する。
 * 新しいブランチ名は指定がなければ `codex/<目的>` とする。
 * PR を依頼された場合は、変更に必要な検証を行い、Ready for review で作成して `isDraft:false` を確認する。ユーザーが明示した場合だけ Draft にする。
+* PR 本文は実際の差分と検証結果から作成する。テンプレートの案内文・HTMLコメント・空の節を完成した説明として残さず、投稿後に本文が意図どおり保存されたことを確認する。
 * PR 作成時は base が `rewrite/rust` であることを確認する。依頼がない限りマージは行わない。
 * 公開準備の現行タスクは [公開準備](guide/rust/RELEASE_PREPARATION.md)、完了した移行整理の所在は [Rust rewrite preparation](guide/RUST_REWRITE_PREPARATION.md) を参照する。
