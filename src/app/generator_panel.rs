@@ -11,6 +11,7 @@ pub(super) struct GeneratorUi {
     pub devices: Vec<output::device::DeviceInfo>,
     pub status: generator::Status,
     pub visible: bool,
+    pub controls_expanded: bool,
     pub pending: bool,
     pub starting: bool,
     pub stopping: bool,
@@ -71,6 +72,7 @@ impl Default for GeneratorUi {
                 .unwrap()
                 .status(),
             visible: false,
+            controls_expanded: true,
             pending: false,
             starting: false,
             stopping: false,
@@ -1151,7 +1153,7 @@ impl ScopeApp {
             .stroke(Stroke::new(1.0, BORDER)).corner_radius(5.0).inner_margin(8.0)
             .show(ui, |ui| {
                 ui.spacing_mut().item_spacing = vec2(6.0, 4.0);
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     ui.label(RichText::new("Generator").strong().color(GREEN));
                     let g = &mut self.generator;
                     ui.label(RichText::new(g.application_label()).small().monospace().color(g.application_color()))
@@ -1162,7 +1164,7 @@ impl ScopeApp {
                                 .color(if g.stopped() { GREEN } else { TRIGGER }))).clicked() {
                             if g.stopped() { g.start(); } else { g.stop(); }
                         }
-                        if ui.small_button("Adjust").on_hover_text(format!("Step {} · phase alignment and applied output details", g.step_label())).clicked() {
+                        if ui.small_button("Settings").on_hover_text(format!("Step {} · phase alignment and applied output details", g.step_label())).clicked() {
                             self.sidebar.reveal(SettingsSection::Generator);
                         }
                         if ui.small_button("I/O").on_hover_text("Output device, format, channel routing and input connection").clicked() {
@@ -1171,6 +1173,15 @@ impl ScopeApp {
                         }
                     });
                 });
+                if ui.small_button(if self.generator.controls_expanded { "Hide signal controls" } else { "Show signal controls" }).clicked() {
+                    self.generator.controls_expanded = !self.generator.controls_expanded;
+                }
+                if !self.generator.controls_expanded {
+                    for (index, signal) in self.generator.settings.signals.iter().enumerate() {
+                        ui.label(RichText::new(format!("GEN {} · {} · {} · {} Hz · {} dBFS peak · {}°", index+1, output_channel_label(*signal), if signal.enabled { "ON" } else { "OFF" }, display::number(Some(signal.frequency_hz)), display::number(Some(signal.amplitude_dbfs)), display::number(Some(signal.phase_degrees)))).small().color(if index == 0 { GREEN } else { BLUE }));
+                    }
+                    return;
+                }
                 self.generator_reset(ui);
                 let g = &mut self.generator;
                 let mut settings = g.settings;

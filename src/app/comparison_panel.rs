@@ -122,6 +122,16 @@ impl ScopeApp {
         let difference = crate::results::comparison_difference(&loaded, &current, 64)
             .ok_or("Comparison conditions differ after restore")?;
         assert!(difference.gain.abs() < 1e-9 && difference.phase_degrees.abs() < 1e-7);
+        match std::env::var("MEASURELAB_UI_SMOKE_COMPARISON_AXIS").as_deref() {
+            Ok("log") => self.comparison_display.log = true,
+            Ok("full") => self.comparison_display.span = Span::Full,
+            Ok("custom") => {
+                self.comparison_display.span = Span::Custom;
+                self.comparison_display.from_hz = 700.0;
+                self.comparison_display.to_hz = 800.0;
+            }
+            _ => {}
+        }
         self.created = Instant::now();
         println!(
             "Comparison UI QA OK: {mode}; normal software input; finite stop; JSON/CSV; stopped edit; OFF restore and new-generation remeasurement; gain/phase match"
@@ -161,31 +171,49 @@ impl ScopeApp {
         egui::Frame::new().fill(Color32::from_rgb(17,27,35)).stroke(Stroke::new(1.0,BORDER))
             .inner_margin(8.0).show(ui, |ui| {
                 ui.horizontal_wrapped(|ui| {
-                    ui.label(RichText::new("SYNCHRONOUS COMPARISON").strong().color(BLUE));
-                    ui.label(format!("{:?}{}",self.comparison_result.state, if self.running() {""} else {" · HELD"}));
-                    ui.menu_button("Adjust", |ui| { self.comparison_controls(ui); });
+                    ui.label(RichText::new("Synchronous comparison").strong().color(BLUE));
+                    display::activity_label(ui, self.running(), self.pending_stop.is_some(), !self.comparison_result.sample_range.is_empty());
+                    self.instrument_settings(ui, SettingsSection::Comparison);
                 });
-                let r = self.comparison_result.clone();
+                let r = Arc::clone(&self.comparison_result);
                 let s = r.settings;
-                ui.label(format!("REF CH {} / SIG CH {} · N {} × {} · Δf {:.3} Hz",s.reference_channel+1,s.response_channel+1,s.size,s.averages,r.bin_width_hz()));
+                let state_color = match r.state {
+                    comparison::State::Valid => GREEN,
+                    comparison::State::Filling | comparison::State::Averaging => YELLOW,
+                    comparison::State::Disabled => MUTED,
+                    _ => TRIGGER,
+                };
+                ui.label(RichText::new(format!("{:?} · REF CH {} / SIG CH {} · N {} × {} · Δf {:.3} Hz",r.state,s.reference_channel+1,s.response_channel+1,s.size,s.averages,r.bin_width_hz())).small().color(state_color));
+                if !self.running() && s != self.comparison_settings {
+                    ui.label(RichText::new("HELD conditions retained · queued analysis settings apply on next Start").small().color(YELLOW));
+                }
                 ui.horizontal_wrapped(|ui| {
                     ui.label("Read at");
-                    ui.add(egui::DragValue::new(&mut self.comparison_frequency_hz).range(0.0..=r.nominal_sample_rate_hz as f64*0.5).speed(r.bin_width_hz()).suffix(" Hz"));
+                    ui.add(egui::DragValue::new(&mut self.comparison_frequency_hz).range(0.0..=r.nominal_sample_rate_hz as f64*0.5).speed(r.bin_width_hz()).max_decimals(3).suffix(" Hz"));
                     if let Some((k,b)) = r.bin_at(self.comparison_frequency_hz) {
-                        let number = comparison_reading;
-                        let ref_unit = self.calibration.captured.unit(s.reference_channel);
-                        let sig_unit = self.calibration.captured.unit(s.response_channel);
-                        let unit = if ref_unit==sig_unit {"ratio".into()} else {format!("{sig_unit}/{ref_unit}")};
-                        ui.label(format!("Bin {k} ({:.3} Hz) · {:?}\nGain {} {} · phase {}° · coherence {}",k as f64*r.bin_width_hz(),b.state,number(b.gain),unit,number(b.phase_lead_degrees),number(b.coherence)));
-                        ui.label(format!("Wrapped phase delay {} µs",number(b.phase_delay_seconds.map(|v|v*1e6))));
-                    } else { ui.label("Waiting for a complete average; no valid reading"); }
+                        ui.label(RichText::new(format!("Bin {k} · {:.3} Hz · {:?}", k as f64*r.bin_width_hz(), b.state)).small().color(if b.state == comparison::BinState::Valid { MUTED } else { YELLOW }));
+                    } else { ui.label(RichText::new("Waiting for a complete average").small().color(MUTED)); }
+                });
+                let reading = r.bin_at(self.comparison_frequency_hz).map(|(_,b)| b);
+                let ref_unit = self.calibration.captured.unit(s.reference_channel);
+                let sig_unit = self.calibration.captured.unit(s.response_channel);
+                let unit = if ref_unit==sig_unit {"ratio".into()} else {format!("{sig_unit}/{ref_unit}")};
+                ui.horizontal_wrapped(|ui| {
+                    display::metric(ui, "Gain", reading.and_then(|b| b.gain), &unit, GREEN);
+                    display::metric(ui, "Phase lead", reading.and_then(|b| b.phase_lead_degrees), "°", BLUE);
+                    display::metric(ui, "Coherence γ²", reading.and_then(|b| b.coherence), "", YELLOW);
+                    display::metric(ui, "Wrapped delay", reading.and_then(|b| b.phase_delay_seconds).map(|v| v*1e6), "µs", BLUE);
                 });
                 if let Some(d) = &r.delay {
-                    ui.label(format!("Linear phase slope: {:+.6} µs · {:.1}–{:.1} Hz · residual {:.6}° RMS",d.seconds*1e6,d.inclusive_bins[0] as f64*r.bin_width_hz(),d.inclusive_bins[1] as f64*r.bin_width_hz(),d.phase_residual_rms_degrees));
-                } else { ui.label("Phase slope: — (needs ≥8 contiguous excited, coherent bins)"); }
-                ui.label(RichText::new("Nominal Fs · CH phase/timing calibration unverified · phase delay wraps by 1/f").small().color(YELLOW));
-                let h = ((ui.available_height()-42.0)/3.0).clamp(35.0,180.0);
-                for plot in 0..3 { if let Some(hz) = comparison_plot(ui,&r,plot,h,self.comparison_frequency_hz) { self.comparison_frequency_hz=hz; } }
+                    ui.label(format!("Phase slope: {} µs · {:.1}–{:.1} Hz · residual {}° RMS",display::number(Some(d.seconds*1e6)),d.inclusive_bins[0] as f64*r.bin_width_hz(),d.inclusive_bins[1] as f64*r.bin_width_hz(),display::number(Some(d.phase_residual_rms_degrees))));
+                } else { ui.label(RichText::new("Phase slope: — · needs ≥8 contiguous excited, coherent bins").small().color(MUTED)); }
+                ui.label(RichText::new("Nominal Fs · CH phase/timing calibration unverified · delay wraps by 1/f").small().color(YELLOW));
+                self.comparison_display.controls(ui, r.nominal_sample_rate_hz as f64*0.5);
+                let view = self.comparison_display.range(&r, self.comparison_frequency_hz);
+                let valid = r.bins.iter().filter(|b| b.state == comparison::BinState::Valid).count();
+                ui.label(RichText::new(format!("{valid} valid transfer bins · gaps are not interpolated")).small().color(MUTED));
+                let h = ((ui.available_height()-32.0)/3.0).clamp(100.0,180.0);
+                for plot in 0..3 { if let Some(hz) = comparison_plot(ui,&r,plot,h,self.comparison_frequency_hz,view) { self.comparison_frequency_hz=hz; } }
                 ui.collapsing("Captured conditions", |ui| {
                     ui.label(format!("Input generation {} · analysis revision {} · {} Hz nominal · f64",r.generation,r.analysis_revision,r.nominal_sample_rate_hz));
                     ui.label(format!("Samples {}..{} · latest {}..{} · input end {}",r.sample_range.start,r.sample_range.end,r.latest_window.start,r.latest_window.end,r.input_end));
@@ -251,20 +279,139 @@ fn comparison_controls(ui: &mut egui::Ui, s: &mut comparison::Settings, channels
             .suffix(" Hz"),
     );
 }
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Span {
+    Reading,
+    Valid,
+    Full,
+    Custom,
+}
+
+pub(super) struct ComparisonDisplay {
+    span: Span,
+    log: bool,
+    from_hz: f64,
+    to_hz: f64,
+}
+impl Default for ComparisonDisplay {
+    fn default() -> Self {
+        Self {
+            span: Span::Reading,
+            log: false,
+            from_hz: 0.0,
+            to_hz: 2000.0,
+        }
+    }
+}
+impl ComparisonDisplay {
+    fn controls(&mut self, ui: &mut egui::Ui, nyquist: f64) {
+        ui.horizontal_wrapped(|ui| {
+            ui.label(RichText::new("Display range").small().color(MUTED));
+            egui::ComboBox::from_id_salt("comparison_span").selected_text(match self.span {
+                Span::Reading => "Around reading", Span::Valid => "Valid band", Span::Full => "Full / Nyquist", Span::Custom => "Custom",
+            }).show_ui(ui, |ui| {
+                for (span,label) in [(Span::Reading,"Around reading"),(Span::Valid,"Valid band"),(Span::Full,"Full / Nyquist"),(Span::Custom,"Custom")] {
+                    ui.selectable_value(&mut self.span, span, label);
+                }
+            });
+            ui.selectable_value(&mut self.log, false, "Linear Hz");
+            ui.selectable_value(&mut self.log, true, "Log Hz");
+            if self.span == Span::Custom {
+                ui.add(egui::DragValue::new(&mut self.from_hz).range(0.0..=nyquist).speed(1.0).prefix("From ").suffix(" Hz"));
+                ui.add(egui::DragValue::new(&mut self.to_hz).range(0.0..=nyquist).speed(1.0).prefix("To ").suffix(" Hz"));
+            }
+        }).response.on_hover_text("Display only: captured analysis, validity thresholds and the phase-slope band are unchanged. Log Hz omits DC.");
+    }
+    fn range(&self, result: &comparison::Result, selected: f64) -> FrequencyRange {
+        let nyquist = result.nominal_sample_rate_hz as f64 * 0.5;
+        let bin = result.bin_width_hz();
+        let focus = |low: f64, high: f64| {
+            let padding = ((high - low) * 0.15)
+                .max(bin * 8.0)
+                .max((low + high) * 0.25);
+            [(low - padding).max(0.0), (high + padding).min(nyquist)]
+        };
+        let [from, to] = match self.span {
+            Span::Reading => {
+                let selected = selected.clamp(0.0, nyquist);
+                focus(selected, selected)
+            }
+            Span::Valid => {
+                let mut bins = result
+                    .bins
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, b)| b.state == comparison::BinState::Valid)
+                    .map(|(k, _)| k as f64 * bin);
+                if let Some(first) = bins.next() {
+                    focus(first, bins.next_back().unwrap_or(first))
+                } else {
+                    [0.0, nyquist]
+                }
+            }
+            Span::Full => [0.0, nyquist],
+            Span::Custom => [self.from_hz, self.to_hz],
+        };
+        FrequencyRange::new(from, to, nyquist, bin, self.log)
+    }
+}
+
+#[derive(Clone, Copy)]
+struct FrequencyRange {
+    from: f64,
+    to: f64,
+    log: bool,
+}
+impl FrequencyRange {
+    fn new(from: f64, to: f64, nyquist: f64, bin: f64, log: bool) -> Self {
+        let minimum = if log {
+            bin.min(nyquist * 0.5).max(f64::MIN_POSITIVE)
+        } else {
+            0.0
+        };
+        let from = if from.is_finite() { from } else { 0.0 };
+        let to = if to.is_finite() { to } else { nyquist };
+        let low = from.min(to);
+        let high = from.max(to);
+        let from = low.clamp(minimum, nyquist - bin.min(nyquist * 0.5));
+        let to = high.max(from + bin.min(nyquist * 0.5)).min(nyquist);
+        Self { from, to, log }
+    }
+    fn fraction(self, hz: f64) -> f64 {
+        if self.log {
+            (hz / self.from).ln() / (self.to / self.from).ln()
+        } else {
+            (hz - self.from) / (self.to - self.from)
+        }
+    }
+    fn hz(self, fraction: f64) -> f64 {
+        let fraction = fraction.clamp(0.0, 1.0);
+        if self.log {
+            self.from * (self.to / self.from).powf(fraction)
+        } else {
+            self.from + fraction * (self.to - self.from)
+        }
+    }
+    fn contains(self, hz: f64) -> bool {
+        (self.from..=self.to).contains(&hz)
+    }
+}
+
 fn comparison_plot(
     ui: &mut egui::Ui,
     r: &comparison::Result,
     plot: usize,
     height: f32,
     selected: f64,
+    view: FrequencyRange,
 ) -> Option<f64> {
     let (rect, response) = ui.allocate_exact_size(
         vec2(ui.available_width(), height),
         egui::Sense::click_and_drag(),
     );
     let graph = egui::Rect::from_min_max(
-        rect.left_top() + vec2(58.0, 18.0),
-        rect.right_bottom() - vec2(8.0, 16.0),
+        rect.left_top() + vec2(58.0, 20.0),
+        rect.right_bottom() - vec2(8.0, 20.0),
     );
     if graph.width() <= 0.0 || graph.height() <= 0.0 {
         return None;
@@ -279,12 +426,12 @@ fn comparison_plot(
         rect.left_top(),
         egui::Align2::LEFT_TOP,
         title,
-        egui::FontId::monospace(10.0),
+        egui::FontId::monospace(11.0),
         color,
     );
-    let font = egui::FontId::monospace(9.0);
+    let font = egui::FontId::monospace(10.0);
     for i in 0..=4 {
-        if (graph.height() < 60.0 && matches!(i, 1 | 3)) || (graph.height() < 30.0 && i == 2) {
+        if graph.height() < 60.0 && matches!(i, 1 | 3) {
             continue;
         }
         let y = graph.top() + graph.height() * i as f32 / 4.0;
@@ -304,79 +451,145 @@ fn comparison_plot(
             MUTED,
         );
     }
-    let rate = r.nominal_sample_rate_hz as f64;
-    let project = |k: usize, v: f64| {
+    let divisions = if graph.width() >= 400.0 { 4 } else { 2 };
+    for i in 0..=divisions {
+        let fraction = i as f64 / divisions as f64;
+        let x = graph.left() + graph.width() * fraction as f32;
+        painter.line_segment(
+            [pos2(x, graph.top()), pos2(x, graph.bottom())],
+            Stroke::new(1.0, BORDER),
+        );
+        painter.text(
+            pos2(x, rect.bottom()),
+            if i == 0 {
+                egui::Align2::LEFT_BOTTOM
+            } else if i == divisions {
+                egui::Align2::RIGHT_BOTTOM
+            } else {
+                egui::Align2::CENTER_BOTTOM
+            },
+            format!("{} Hz", frequency_label(view.hz(fraction) as f32)),
+            font.clone(),
+            MUTED,
+        );
+    }
+    let project = |hz: f64, v: f64| {
         pos2(
-            graph.left() + graph.width() * k as f32 / (r.settings.size / 2) as f32,
+            graph.left() + graph.width() * view.fraction(hz) as f32,
             graph.bottom() - graph.height() * ((v - min) / (max - min)).clamp(0.0, 1.0) as f32,
         )
     };
+    let data_painter = painter.with_clip_rect(graph.intersect(ui.clip_rect()));
+    let value = |b: &comparison::Bin| match plot {
+        0 => b.gain.filter(|v| *v > 0.0).map(|v| 20.0 * v.log10()),
+        1 => b.phase_lead_degrees,
+        _ => b.coherence,
+    };
     let mut previous: Option<(egui::Pos2, f64)> = None;
     for (k, b) in r.bins.iter().enumerate() {
-        let value = match plot {
-            0 => b.gain.filter(|v| *v > 0.0).map(|v| 20.0 * v.log10()),
-            1 => b.phase_lead_degrees,
-            _ => b.coherence,
-        };
-        if let Some(value) = value {
-            let point = project(k, value);
+        let hz = k as f64 * r.bin_width_hz();
+        if !view.contains(hz) {
+            previous = None;
+            continue;
+        }
+        if let Some(v) = value(b).filter(|v| v.is_finite()) {
+            let point = project(hz, v);
             if let Some((old, old_value)) = previous
-                && !(plot == 1 && (value - old_value).abs() > 180.0)
+                && !(plot == 1 && (v - old_value).abs() > 180.0)
             {
-                painter.line_segment([old, point], Stroke::new(1.5, color));
+                data_painter.line_segment([old, point], Stroke::new(1.5, color));
             }
-            painter.circle_filled(point, 1.5, color);
-            previous = Some((point, value));
+            data_painter.circle_filled(point, 2.0, color);
+            previous = Some((point, v));
         } else {
             previous = None;
         }
     }
-    let x = graph.left() + graph.width() * (selected / (rate * 0.5)).clamp(0.0, 1.0) as f32;
-    painter.line_segment(
-        [pos2(x, graph.top()), pos2(x, graph.bottom())],
-        Stroke::new(1.0, MUTED),
-    );
-    painter.text(
-        pos2(graph.left(), rect.bottom()),
-        egui::Align2::LEFT_BOTTOM,
-        "0 Hz",
-        font.clone(),
-        MUTED,
-    );
-    painter.text(
-        pos2(graph.right(), rect.bottom()),
-        egui::Align2::RIGHT_BOTTOM,
-        format!("{:.0} Hz", rate * 0.5),
-        font,
-        MUTED,
-    );
+    // Mark the actual FFT bin used by the readout, not an unsnapped requested frequency.
+    let selected_hz = r
+        .bin_at(selected)
+        .map_or(selected, |(k, _)| k as f64 * r.bin_width_hz());
+    if view.contains(selected_hz) {
+        let x = project(selected_hz, min).x;
+        data_painter.line_segment(
+            [pos2(x, graph.top()), pos2(x, graph.bottom())],
+            Stroke::new(1.0, MUTED),
+        );
+        painter.text(
+            pos2(
+                x.clamp(graph.left() + 40.0, graph.right() - 40.0),
+                rect.top(),
+            ),
+            egui::Align2::CENTER_TOP,
+            format!("{} Hz", display::number(Some(selected_hz))),
+            font,
+            MUTED,
+        );
+        if let Some((_, b)) = r.bin_at(selected)
+            && let Some(v) = value(b)
+        {
+            data_painter.circle_filled(project(selected_hz, v), 4.0, color);
+        }
+    }
     if (response.clicked() || response.dragged())
-        && let Some(pos) = response.interact_pointer_pos()
+        && let Some(pos) = response
+            .interact_pointer_pos()
+            .filter(|pos| graph.contains(*pos))
     {
-        return Some(((pos.x - graph.left()) / graph.width()).clamp(0.0, 1.0) as f64 * rate * 0.5);
+        return Some(view.hz(((pos.x - graph.left()) / graph.width()) as f64));
     }
     None
 }
 
-fn comparison_reading(value: Option<f64>) -> String {
-    value.filter(|v| v.is_finite()).map_or("—".into(), |v| {
-        if v != 0.0 && !(1e-4..1e6).contains(&v.abs()) {
-            format!("{v:.6e}")
-        } else {
-            format!("{v:.6}")
-        }
-    })
-}
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
-    fn comparison_readout_preserves_weak_values_and_invalid_state() {
-        use super::comparison_reading as read;
-        assert_eq!(read(Some(1e-12)), "1.000000e-12");
-        assert_eq!(read(Some(-1e-7)), "-1.000000e-7");
-        assert_eq!(read(Some(0.0)), "0.000000");
-        assert_eq!(read(Some(0.5)), "0.500000");
-        assert_eq!(read(None), "—");
-        assert_eq!(read(Some(f64::NAN)), "—");
+    fn logarithmic_selection_roundtrips_and_excludes_dc() {
+        let view = FrequencyRange::new(0.0, 24000.0, 24000.0, 11.71875, true);
+        assert!(!view.contains(0.0));
+        for hz in [view.from, 750.0, 10000.0, view.to] {
+            assert!((view.hz(view.fraction(hz)) - hz).abs() < 1e-8);
+        }
+    }
+
+    #[test]
+    fn equal_reversed_and_out_of_range_spans_stay_finite() {
+        for (from, to) in [
+            (750.0, 750.0),
+            (5000.0, 100.0),
+            (48000.0, 48000.0),
+            (0.0, 0.0),
+        ] {
+            for log in [false, true] {
+                let view = FrequencyRange::new(from, to, 24000.0, 11.71875, log);
+                assert!(view.from < view.to && view.to <= 24000.0);
+                assert_eq!(view.hz(-1.0), view.from);
+                assert!((view.hz(2.0) - view.to).abs() < 1e-8);
+                assert!(view.fraction(view.hz(0.5)).is_finite());
+            }
+        }
+    }
+
+    #[test]
+    fn reading_zoom_keeps_the_tone_visible_without_changing_results() {
+        let r = comparison::Result::empty(
+            comparison::Settings {
+                size: 4096,
+                ..Default::default()
+            },
+            48000,
+            1,
+            1,
+            2,
+        );
+        let original = r.clone();
+        let view = ComparisonDisplay::default().range(&r, 750.0);
+        assert!((0.3..=0.7).contains(&view.fraction(750.0)));
+        assert!(view.to - view.from < 24000.0 * 0.1);
+        assert_eq!(r, original);
+        let reversed = FrequencyRange::new(5000.0, 100.0, 24000.0, 11.71875, false);
+        assert_eq!([reversed.from, reversed.to], [100.0, 5000.0]);
     }
 }

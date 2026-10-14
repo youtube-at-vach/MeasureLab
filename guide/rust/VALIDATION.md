@@ -44,13 +44,16 @@ target/release/measurelab --ui-smoke
 
 | 環境変数 | 確認すること |
 | --- | --- |
-| `MEASURELAB_UI_SMOKE_SETTINGS`／`VIEW`／`ADJUST` | 設定パネル・単独／併用表示・操作メニュー。変数名の共通接頭辞は`MEASURELAB_UI_SMOKE_` |
+| `MEASURELAB_UI_SMOKE_SETTINGS`／`VIEW`／`ADJUST` | 設定パネル・単独／併用表示・測定器のサイドバー設定。変数名の共通接頭辞は`MEASURELAB_UI_SMOKE_` |
 | `MEASURELAB_UI_SMOKE_ROUTING=1`／`CALIBRATION=1`／`CURSORS=1` | 16ch割当・内部校正・カーソル。物理校正の確認ではない |
 | `MEASURELAB_UI_SMOKE_STAGE3F=1`＋`REPLAY=1`／`COMPARE=1` | Software Loopbackの保存・別プロセス復元・再測定・参照比較 |
 | `MEASURELAB_UI_SMOKE_LOCKIN=polar` | R／θ。`cartesian`／`all`／`pair`／`settling`／`ref-loss`／`held-edit`／`live-edit`／`source-change`で他の状態 |
 | `MEASURELAB_UI_SMOKE_GENERATOR=scope` | 内部GeneratorとScope。`spectrum`／`lockin`／`only`／`narrow`／`workspace`で他の配置 |
 | `MEASURELAB_UI_SMOKE_GENERATOR_DEVICE="BlackHole 16ch"` | 通常GeneratorのCPAL出力と実入力。物理接続では`ZOOM UAC-232`を明示指定 |
 | `MEASURELAB_UI_SMOKE_COMPARISON=pair` | Software Loopbackによる比較のライブCH交換・保持・保存復元。`narrow`でサイドバー、その他の値で比較単独表示 |
+| `MEASURELAB_UI_SMOKE_IDLE=1` | 未取得の停止画面。実入力・出力は開始せず撮影 |
+| `MEASURELAB_UI_SMOKE_COMPARISON_AXIS=log`／`full`／`custom` | 比較の対数／Nyquist全域／700〜800 Hz表示。解析条件は保持 |
+| `MEASURELAB_UI_SMOKE_GENERATOR_COLLAPSED=1` | Generator信号編集部を閉じた状態でのグラフ配分 |
 | `MEASURELAB_UI_SMOKE_ZOOM=1.25`／`--compact` | 表示倍率／狭幅。DPI切り替えの実機確認は別途必要 |
 
 表で省略した環境変数名も共通接頭辞を付ける。再起動QAでは先に保存用実行を完了する。例:

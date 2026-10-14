@@ -247,11 +247,7 @@ impl ScopeApp {
                         state_label(self.lockin_result.state)
                     };
                     ui.label(RichText::new(label).strong().color(color));
-                    if self.pending_stop.is_some() {
-                        ui.label(RichText::new("FINISHING").small().color(YELLOW));
-                    } else if !self.running() {
-                        ui.label(RichText::new(if self.lockin_result.processed_windows > 0 { "HOLD" } else { "STOPPED" }).small().color(HOLD));
-                    }
+                    display::activity_label(ui, self.running(), self.pending_stop.is_some(), !self.lockin_result.latest_window.is_empty());
                 });
                 let r = &self.lockin_result;
                 let unit = self.calibration.captured.unit(r.settings.response_channel);

@@ -62,11 +62,13 @@ cargo run --release
 
 デモでは周波数、振幅、ノイズを変更し、正弦波／高調波付き正弦波／帯域制限した矩形波を比較できます。CH 2の位相と振幅比も変更できます。**0° / 90° / 180°** ボタンはノイズなし・同振幅の正弦波を設定し、XYの同相・円・逆相を確認できます。CH 2 gainを下げると楕円になります。デモ信号は内部だけで使い、スピーカーには出力しません。
 
-開始／停止は上部に固定しています。左の **Settings** は **I/O / Generator / Oscilloscope / Spectrum analyzer / Spectrogram / XY / Lissajous / Lock-in amplifier / Synchronous comparison / Channel calibration / Workspace & help** のアコーディオンで、一つの項目を開いて設定します。閉じた項目にも現在値を表示します。**I/O**は**Input / Output**タブで入力ソース・出力先・形式・GEN→OUT割当を設定し、**Generator**は刻み幅・位相同期・実適用値と詳細をまとめています。Scope／Spectrumの見出しの **Adjust** はその場で開く操作メニューです。Scopeは時間軸・振幅・トレースCH・トリガー、Spectrumは **Display / Analysis** で表示範囲・ピーク保持・PSD帯域とCH・FFT・窓・更新方式・平均を調整できます。クリックを続けてもメニューは開いたままで、外側のクリックまたはEscで閉じます。**Open sidebar settings** は左パネルの該当設定へ移動します。Spectrogram／XYは見出しの **Settings** から同じように移動します。
+開始／停止は上部に固定しています。左の **Settings** は **I/O / Generator / Oscilloscope / Spectrum analyzer / Spectrogram / XY / Lissajous / Lock-in amplifier / Synchronous comparison / Channel calibration / Workspace & help** のアコーディオンで、一つの項目を開いて設定します。閉じた項目にも現在値を表示します。**I/O**は**Input / Output**タブで入力ソース・出力先・形式・GEN→OUT割当を設定し、**Generator**は刻み幅・位相同期・実適用値と詳細をまとめています。各測定器の見出しの **Settings** は、グラフを覆わず左パネルの該当設定へ移動します。Scopeの時間軸・振幅・Fit amplitude・Autosetはグラフ上の操作列からも調整できます。
 
-上部の **View** で **Scope only / Spectrum only / Scope + Spectrum / All instruments** と配置を選べます。**Restore previous view** は最初の切り替え前の表示選択・配置へ戻します。設定ファイルの復元時はこの一時的な復帰先を解除します。切り替えは表示だけを変え、非表示の取得・解析・平均・保持は継続します。数値・カーソルの表示位置とプロット高さは維持し、操作メニューを閉じると波形全体を見られます。
+通常起動の表示は **Scope + Spectrum** です。上部の **View** で単独表示、Generator／Lock-in／Comparisonとの組合せ、**All monitors** と配置を選べます。表示切替とカーソル操作は別の行に分け、幅に応じて折り返します。**Restore previous view** は最初の切り替え前の表示選択・配置へ戻します。設定ファイルの復元時はこの一時的な復帰先を解除します。切り替えは表示だけを変え、非表示の取得・解析・平均・保持は継続します。
 
-グラフ上部の **Settings** で左パネルを非表示にでき、境界をドラッグすると幅を変更できます。**Collapse all** ですべての項目を閉じられます。**Workspace & help** では複数画面の配置を **Automatic / Side by side / Stacked** から選択し、ショートカットと測定単位を確認できます。4画面の場合、広い画面ではScopeとSpectrumを上段、SpectrogramとXYを下段の2列に配置します。狭い画面では上下4行に並べ、既定の`--compact`ウィンドウでは全体がスクロールなしで収まります。見出し・内側の余白・軸まわりをコンパクトにし、低いプロットでは軸ラベルを間引きます。最低高さで収まらない場合はプロット領域をスクロールできます。幅が不足する場合は左右指定でも上下に配置します。配置・表示選択は測定設定ファイルへ保存・復元できます。アコーディオンの各項目の開閉は現在のセッション内で保持します。
+グラフ上部の **Settings sidebar** で左パネルを非表示にでき、境界をドラッグすると幅を変更できます。**Collapse all** ですべての項目を閉じられます。**Workspace & help** では複数画面の配置を **Automatic / Side by side / Stacked** から選択し、ショートカットと測定単位を確認できます。4画面は広い画面では2列、狭い画面では上下4行です。グラフの最小高さを確保し、収まらない場合はGeneratorを含む中央領域をスクロールします。幅が不足する場合は左右指定でも上下に配置します。配置・表示選択は測定設定ファイルへ保存・復元できます。アコーディオンとGeneratorの信号編集部の開閉は現在のセッション内で保持します。
+
+各測定器は取得状態を **LIVE / HELD / WAITING / NOT ACQUIRED / FINISHING** で示し、トリガーやREF・比較の有効性を別に表示します。起動直後のFsは未取得、停止後は保持入力の公称Fsです。Scopeは波形・トリガーがraw FS、RMS／P-PがCHごとの校正単位であることを同じ領域に表示します。主要数値は読みやすい桁数へ整え、詳細のホバーとJSON／CSVにはf64の精度を残します。
 
 macOSではマイクへのアクセスを許可する必要があります。許可がない場合は「システム設定 → プライバシーとセキュリティ → マイク」で、起動に使うアプリ／ターミナルを確認してください。独立したアプリとして起動するには以下を使います。
 
@@ -105,7 +107,7 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | Acquisition / Arm single / Autoset | Auto／Normal／Single、一回取得の再待機、周期信号の時間軸・振幅・トリガー自動調整 |
 | ダブルクリック | 時間軸と振幅を初期値へ戻す |
 | Scope / Spectrum / Spectrogram / XY | 各測定器の表示切り替え。少なくとも一つを表示。広い画面では左右と上下、狭い画面では上下に配置 |
-| Scope / SpectrumのAdjust | 見出しから主要設定を調整。Open sidebar settingsで左パネルの設定へ移動 |
+| 各測定器のSettings | 対応するサイドバー設定へ移動。Scopeの時間軸・振幅・Autosetは常設操作列でも調整 |
 | Spectrogram / XYのSettings | 対象の設定を左パネルで開く |
 | View | 単独／Scope＋Spectrum／全表示と配置を選択。Restore previous viewで最初の切り替え前へ戻す |
 | グラフ上部のSettings / Collapse all | 左パネルの表示切り替え／設定項目をすべて閉じる |
@@ -119,7 +121,7 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | Spectrum / Spectrogram FFT PRECISION | 各測定器のFFT精度。既定は64-bit、32-bit (fast FFT)を明示的に選択可能 |
 | Live / Continuous / Latest window | Live（既定）は最新の完全窓を最大60回/秒、実測処理時間に応じて観察。ContinuousはN/4全窓。省負荷のLatestは32k以下33 ms／N/4以上、新4サイズ100 ms。非表示でも解析を継続 |
 | Bin amplitude / Power spectral density | ビン振幅／PSD。未校正はdBFS／FS²/Hz、校正CHは物理単位 |
-| EMA α / Remove DC | 線形値の指数電力平均、FFT前の平均値除去 |
+| No averaging / Smooth / Remove DC | 線形値の指数電力平均、FFT前の平均値除去 |
 | PSD Power in band / From / To | 指定した両端を含むビン中心のPSD積算。To = 0はNyquist。未校正はFS²とRMS FS、校正CHは単位²とRMS単位を表示 |
 | Log Hz / Linear Hz / From / To / Span | 周波数軸・表示範囲。To = 0はNyquist。狭帯域では実ビンを表示 |
 | Display floor / Display ceiling / Peak hold / Clear hold | 単位に対応するdB表示範囲、平均後の最大値の保持、保持値のクリア。校正後の正のdB値には天井を上げる |
@@ -161,9 +163,9 @@ ScopeではRMS・Peak・P-Pと時間カーソルの数値に校正を適用し�
 
 ### Generatorの出力と内部ループバック
 
-**View / Generator + Scope**（またはSpectrum／Lock-in）で開きます。GEN 1／2の**ON**は出力対象の選択です。**I/O / Output**で出力FsとOUT割当を選び、周波数・振幅・位相を直接入力してEnterまたはフォーカス移動で確定します。入力途中の値は適用せず、Escで取り消します。**Adjust**でサイドバーの**Generator / EDIT STEP**を開いて刻みを選び、＋／−／上下キーで値を調整できます。周波数は0.1 Hz以上・出力Fsの45%未満、振幅は−120〜0 dBFSのpeak基準、位相は±180°の進み位相です。出力CHの変更は停止中に行い、二重割当は拒否します。
+**View / Generator + Scope**（またはSpectrum／Lock-in）で開きます。GEN 1／2の**ON**は出力対象の選択です。**I/O / Output**で出力FsとOUT割当を選び、周波数・振幅・位相を直接入力してEnterまたはフォーカス移動で確定します。入力途中の値は適用せず、Escで取り消します。**Settings**でサイドバーの**Generator / EDIT STEP**を開いて刻みを選び、＋／−／上下キーで値を調整できます。周波数は0.1 Hz以上・出力Fsの45%未満、振幅は−120〜0 dBFSのpeak基準、位相は±180°の進み位相です。出力CHの変更は停止中に行い、二重割当は拒否します。
 
-**Start output**で正弦波を生成します。**I/O / Output / Observe Generator**で共通入力を選び、上部の**Start input**で実際のf64出力サンプルを取得します。両方を個別に開始します。プレビューは設定波形の2周期で、振幅に合わせた縦倍率とFS peakを表示します。実波形はScopeで確認してください。中央はラベル付きのコンパクトな3行編集と小さなプレビューです。十分な幅では2ch横並び、狭幅ではCHタブに切り替え、両CHのOUT割当とON／OFFを残します。刻み幅・Align phases・適用詳細は**Adjust**から開きます。
+**Start output**で正弦波を生成します。**I/O / Output / Observe Generator**で共通入力を選び、上部の**Start input**で実際のf64出力サンプルを取得します。両方を個別に開始します。プレビューは設定波形の2周期で、振幅に合わせた縦倍率とFS peakを表示します。実波形はScopeで確認してください。中央はラベル付きのコンパクトな3行編集と小さなプレビューです。十分な幅では2ch横並び、狭幅ではCHタブに切り替え、両CHのOUT割当とON／OFFを残します。刻み幅・Align phases・適用詳細は**Settings**から開きます。**Hide signal controls / Show signal controls**で編集欄とプレビューを開閉し、閉じた状態でも両信号の設定概要を確認できます。上部の出力停止操作は常設です。
 
 出力状態は実行側の応答に基づくSTOPPED／STARTING／RUNNING／STOPPING／ERROR、設定はPENDING／APPLIED／TRANSITIONで表示します。詳細で最後の適用値と整数サンプル境界を確認できます。振幅・位相・ON／OFFは原則10 msの遷移で、周波数変更はcarrier位相を保持します。異なる周波数履歴の後は相対位相が自動では揃わないため、必要なら**Align phases**を使います。内部接続では遷移中の実サンプルをScope／Spectrogramへ渡し、Spectrum平均・Lock-inは遷移終了後の完全窓から再開します。
 
@@ -183,7 +185,7 @@ macOSの実入出力は、コールバックの時間的余裕を確保するた
 
 **Lock-in amplifier / Enable demodulator** または画面下の **Demodulate** で有効化し、Signal／Reference CH、REF周波数ヒント、時定数、積分サンプル数、REFのAC RMS閾値を指定します。画面下の **REF / Filter…** でも周波数・Tracking・時定数とプリセット・積分窓を調整できます。取得中の変更は平均をリセットして再整定し、停止中の変更は次回Start用です。保持中は取得時の条件を表示し、変更があると **Next Start settings changed** を併記します。REFは常に入力サンプルを使用します。Trackingはヒントの±10%に限定し、REFのAC RMS不足・単一正弦波への適合率98%未満・一窓3周期未満は無効になります。既定のREF閾値は0.001 FS RMSです。同じCHをREF／応答へ選ぶ自己検査も可能です。
 
-画面の **R / θ**、**X / Y**、**All four** で大きな数値表示を切り替えます。数値下のバーは表示専用の自動スケールで、入力感度や測定演算を変更しません。FS／校正後の単位、peak定義、REF周波数、Gain、取得時のτ・積分窓を併記します。Gainの単位は応答単位／REF単位です。**REF VALID**、**SETTLING** と10τの進捗、**REF LOST / UNSTABLE**、入力欠落・無効状態、**HOLD** を区別し、無効値はゼロで代用せず「—」とします。**Measurement details** で整数サンプル区間、REF強度・適合率、処理窓数・欠落数、校正ID／版を確認できます。Lock-inの表示選択・座標表示は測定設定JSONのWorkspaceへ保存され、旧版1ファイルでは非表示・R／θが既定です。
+画面の **R / θ**、**X / Y**、**All four** で大きな数値表示を切り替えます。数値下のバーは表示専用の自動スケールで、入力感度や測定演算を変更しません。FS／校正後の単位、peak定義、REF周波数、Gain、取得時のτ・積分窓を併記します。Gainの単位は応答単位／REF単位です。**REF VALID**、**SETTLING** と10τの進捗、**REF LOST / UNSTABLE**、入力欠落・無効状態、**HELD** を区別し、無効値はゼロで代用せず「—」とします。**Measurement details** で整数サンプル区間、REF強度・適合率、処理窓数・欠落数、校正ID／版を確認できます。Lock-inの表示選択・座標表示は測定設定JSONのWorkspaceへ保存され、旧版1ファイルでは非表示・R／θが既定です。
 
 基本波のX／Yは同じ非重複整数窓で測ったREF位相を補正してから二段の複素EMAで平均します。周期Hannの重み付きDC／sin／cos適合を使い、DCオフセットと校正オフセットはACから除外します。校正ゲインはREFと応答の両方へ適用します。Rはpeak振幅、正のY／位相は応答の進みです。複素応答/REFも平均してGainを表示します。フィルター係数は `1 − exp(−N/(Fs×τ))`、整定判定は連続有効入力10τで、UI時刻・壁時計には依存しません。窓平均も応答帯域・遅延に寄与し、τだけで帯域を決めたとは扱いません。欠落・非有限・REF喪失では古い平均と数値を破棄し、回復後に整定し直します。
 
@@ -191,7 +193,7 @@ macOSの実入出力は、コールバックの時間的余裕を確保するた
 
 ### Scopeの取得とAutoset
 
-**Adjust / Acquisition** または左のOscilloscopeでモードを選びます。Autoは従来の最新区間観察です。Normalは指定エッジの交差を取得サンプルごとに検出し、前20%・後80%の完全な整数区間だけを更新します。トリガー待機中は最後の捕捉値を明示して保持し、まだ捕捉していないときは波形を代用しません。Normal／SingleでFree runを選ぶと次回の取得にはRising edgeを設定します。
+**Settings / Acquisition** または左のOscilloscopeでモードを選びます。Autoは従来の最新区間観察です。Normalは指定エッジの交差を取得サンプルごとに検出し、前20%・後80%の完全な整数区間だけを更新します。トリガー待機中は最後の捕捉値を明示して保持し、まだ捕捉していないときは波形を代用しません。Normal／SingleでFree runを選ぶと次回の取得にはRising edgeを設定します。
 
 Singleは最初の有効区間を捕捉して共通入力を自動停止します。**Arm single** またはStartで新しい世代を開始し、一回取得を待ち直せます。Scopeの区間は専用バッファで保持するため、UI更新の合間の単発現象も捕捉し、共有履歴の周回後も失いません。Spectrumは独立しているため、Singleが短く終了した場合はFFT窓が未充填になることがあります。
 
@@ -283,9 +285,9 @@ STFT行 → UI履歴 → 循環GPUテクスチャ
 
 ## 同期2chの比較
 
-上部の **Comparison**、**View / Comparison only** または **Scope + Comparison** で表示します。**Adjust / Analyze synchronous pair** を有効にし、異なるREF／SIG CHを指定して入力を開始します。入力は同じデバイスの同期フレームで、外部信号でも測定できます。既定N=4,096、平均8窓では48 kHzで初回に約0.683秒必要です。
+上部の **Comparison**、**View / Comparison only** または **Scope + Comparison** で表示します。**Settings / Analyze synchronous pair** を有効にし、異なるREF／SIG CHを指定して入力を開始します。入力は同じデバイスの同期フレームで、外部信号でも測定できます。既定N=4,096、平均8窓では48 kHzで初回に約0.683秒必要です。
 
-ゲイン・進み位相・コヒーレンスの曲線を表示し、**Read at** またはグラフのクリックで最寄りビンを選びます。生REFのPSD下限、平均窓数、窓、コヒーレンス下限、位相傾斜の帯域はAdjustで設定します。曲線のゲインは20 log10(|H1| / 1ゲイン単位)で−60〜+20 dBの表示範囲に制限しますが、数値・保存値は制限しません。低REF・低コヒーレンス・未充填・欠落では「—」を表示し、ゼロで置き換えません。正の位相はSIGの進み、正の遅延はSIGの遅れです。
+ゲイン・進み位相・コヒーレンスの曲線を表示し、**Read at** またはグラフのクリックで最寄りビンを選びます。主要数値を独立した読出しに表示し、選択した実ビンの周波数と有効transferビン数を示します。**Display range**は**Around reading**（既定）／**Valid band**／**Full / Nyquist**／**Custom**、軸は**Linear Hz / Log Hz**を選べます。Log HzはDCを除きます。範囲は表示だけを変更し、解析条件・位相傾斜の帯域・保存結果を変更しません。欠損ビンや位相の折返しを曲線でつなぎません。生REFのPSD下限、平均窓数、窓、コヒーレンス下限、位相傾斜の帯域はSettingsで設定します。曲線のゲインは20 log10(|H1| / 1ゲイン単位)で−60〜+20 dBの表示範囲に制限しますが、数値・保存値は制限しません。低REF・低コヒーレンス・未充填・欠落では「—」を表示し、ゼロで置き換えません。正の位相はSIGの進み、正の遅延はSIGの遅れです。
 
 位相遅延は1/fの周期で曖昧です。位相傾斜は帯域内の最長の連続励振区間を使い、コヒーレンスとREF PSD（最大の10%以上）が有効な8ビン以上を必要とします。正弦波1本から広帯域遅延を表示しません。直線回帰の使用帯域と残差RMSを併記し、隣接位相差がπ未満という仮定と、CH間位相・時間校正が未確認であることを保持します。
 
