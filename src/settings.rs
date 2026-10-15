@@ -3,10 +3,10 @@
 use crate::{
     audio::{self, DeviceInfo},
     calibration::{self, Calibration},
-    channel::{ChannelId, Pair},
+    channel::{ChannelId, Pair, SCOPE_CHANNELS, ScopeChannels},
     measurement::SpectrumMode,
     presentation::{Console, InstrumentId, Layout, Presentation, Screen},
-    signal::{MAX_CHANNELS, Trigger},
+    signal::{MAX_CHANNELS, Trigger, Vertical},
     spectrum::{FFT_SIZES, FrequencyScale, Quantity, STFT_SIZES, Settings},
     xy::CursorMode,
 };
@@ -19,7 +19,7 @@ use std::{
     thread::{self, JoinHandle},
 };
 
-pub const VERSION: u32 = 4;
+pub const VERSION: u32 = 5;
 pub const MAX_BYTES: usize = 64 * 1024;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -87,7 +87,7 @@ impl Input {
 pub struct Scope {
     #[serde(default)]
     pub mode: crate::acquisition::Mode,
-    pub channels: Pair,
+    pub channels: ScopeChannels,
     pub ms_per_div: f32,
     pub trigger: Trigger,
 }
@@ -184,8 +184,10 @@ pub struct Workspace {
     pub presentation: Presentation,
     #[serde(default)]
     pub lockin_display: LockinDisplay,
-    pub scope_enabled: [bool; 2],
-    pub scope_fs_per_div: f32,
+    pub scope_enabled: [bool; SCOPE_CHANNELS],
+    pub scope_vertical: [Vertical; SCOPE_CHANNELS],
+    pub scope_selected: usize,
+    pub scope_horizontal_position: f32,
     pub spectrum_scale: FrequencyScale,
     pub spectrum_min_hz: f32,
     pub spectrum_max_hz: f32,
@@ -327,13 +329,27 @@ impl Document {
                 .map_err(str::to_owned)?;
         }
         let w = &self.workspace;
-        for scale in [
-            w.scope_fs_per_div as f64,
-            w.xy_x_fs_per_div,
-            w.xy_y_fs_per_div,
-        ] {
+        for scale in [w.xy_x_fs_per_div, w.xy_y_fs_per_div] {
             in_range(scale, 0.001, 0.5, "amplitude scale")?;
         }
+        for vertical in w.scope_vertical {
+            in_range(
+                vertical.fs_per_div as f64,
+                0.001_f32 as f64,
+                0.5,
+                "Scope amplitude scale",
+            )?;
+            in_range(vertical.offset, -2.0, 2.0, "Scope centre offset")?;
+        }
+        if w.scope_selected >= SCOPE_CHANNELS {
+            return Err("Invalid selected Scope channel".into());
+        }
+        in_range(
+            w.scope_horizontal_position as f64,
+            -5.0,
+            5.0,
+            "Scope horizontal position",
+        )?;
         frequency_range(w.spectrum_min_hz as f64, w.spectrum_max_hz as f64)?;
         frequency_range(w.spectrogram_min_hz as f64, w.spectrogram_max_hz as f64)?;
         in_range(w.spectrum_floor_db as f64, -180.0, -60.0, "Spectrum floor")?;
@@ -373,8 +389,42 @@ impl Document {
         }
         let mut value: serde_json::Value =
             serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
-        if header.version < VERSION {
+        if header.version < 4 {
             migrate_workspace(&mut value)?;
+        }
+        if header.version < 5 {
+            let channels = value["measurement"]["scope"]["channels"]
+                .as_array_mut()
+                .ok_or("Missing Scope channel assignments")?;
+            if channels.len() != 2 {
+                return Err("Invalid legacy Scope assignment count".into());
+            }
+            channels.extend([2.into(), 3.into()]);
+            let w = value
+                .get_mut("workspace")
+                .and_then(serde_json::Value::as_object_mut)
+                .ok_or("Missing settings workspace")?;
+            let scale = w
+                .remove("scope_fs_per_div")
+                .ok_or("Missing Scope amplitude scale")?;
+            w.insert(
+                "scope_vertical".into(),
+                serde_json::Value::Array(
+                    (0..SCOPE_CHANNELS)
+                        .map(|_| serde_json::json!({"fs_per_div": scale, "offset": 0.0}))
+                        .collect(),
+                ),
+            );
+            w.insert("scope_selected".into(), 0.into());
+            w.insert("scope_horizontal_position".into(), 0.0.into());
+            let enabled = w
+                .get_mut("scope_enabled")
+                .and_then(serde_json::Value::as_array_mut)
+                .ok_or("Missing Scope visibility")?;
+            if enabled.len() != 2 {
+                return Err("Invalid legacy Scope visibility count".into());
+            }
+            enabled.extend([false.into(), false.into()]);
         }
         let mut document: Self = serde_json::from_value(value).map_err(|e| e.to_string())?;
         document.validate()?;
@@ -386,7 +436,7 @@ impl Document {
     pub fn encode(&self) -> Result<Vec<u8>, String> {
         self.validate()?;
         if self.version != VERSION {
-            return Err("Saving settings requires version 4".into());
+            return Err("Saving settings requires version 5".into());
         }
         let mut bytes = serde_json::to_vec_pretty(self).map_err(|e| e.to_string())?;
         bytes.push(b'\n');
@@ -631,7 +681,7 @@ mod tests {
                 },
                 scope: Scope {
                     mode: crate::acquisition::Mode::Auto,
-                    channels: Pair([15, 7]),
+                    channels: Pair([15, 7]).scope(),
                     ms_per_div: 10.0,
                     trigger: Trigger {
                         edge: Edge::Free,
@@ -677,8 +727,10 @@ mod tests {
             workspace: Workspace {
                 presentation: Presentation::default(),
                 lockin_display: LockinDisplay::Polar,
-                scope_enabled: [true; 2],
-                scope_fs_per_div: 0.25,
+                scope_enabled: [true; SCOPE_CHANNELS],
+                scope_vertical: [Vertical::default(); SCOPE_CHANNELS],
+                scope_selected: 0,
+                scope_horizontal_position: 0.0,
                 spectrum_scale: FrequencyScale::Log,
                 spectrum_min_hz: 0.0,
                 spectrum_max_hz: 0.0,
@@ -701,7 +753,13 @@ mod tests {
     fn legacy_fixture(version: u32) -> serde_json::Value {
         let mut value = serde_json::to_value(fixture()).unwrap();
         value["version"] = version.into();
+        value["measurement"]["scope"]["channels"] = serde_json::json!([15, 7]);
         let w = value["workspace"].as_object_mut().unwrap();
+        w.remove("scope_vertical");
+        w.remove("scope_selected");
+        w.remove("scope_horizontal_position");
+        w.insert("scope_fs_per_div".into(), 0.25.into());
+        w.insert("scope_enabled".into(), serde_json::json!([true, true]));
         w.remove("presentation");
         w.insert(
             "visible".into(),
@@ -723,6 +781,54 @@ mod tests {
             default_sample_rate: 48_000,
             is_default: true,
             sample_rates: vec![48_000, 96_000],
+        }
+    }
+
+    #[test]
+    fn version_four_scope_migrates_routing_and_scale_without_enabling_new_traces() {
+        let mut value = serde_json::to_value(fixture()).unwrap();
+        value["version"] = 4.into();
+        value["measurement"]["scope"]["channels"] = serde_json::json!([15, 7]);
+        let w = value["workspace"].as_object_mut().unwrap();
+        for key in [
+            "scope_vertical",
+            "scope_selected",
+            "scope_horizontal_position",
+        ] {
+            w.remove(key);
+        }
+        w.insert("scope_fs_per_div".into(), 0.125.into());
+        w.insert("scope_enabled".into(), serde_json::json!([false, true]));
+        let migrated = Document::decode(&serde_json::to_vec(&value).unwrap()).unwrap();
+        assert_eq!(migrated.measurement.scope.channels.0, [15, 7, 2, 3]);
+        assert_eq!(
+            migrated.workspace.scope_enabled,
+            [false, true, false, false]
+        );
+        assert_eq!(
+            migrated.workspace.scope_vertical,
+            [Vertical {
+                fs_per_div: 0.125,
+                offset: 0.0
+            }; 4]
+        );
+        let mut edited = migrated;
+        edited.workspace.scope_selected = 3;
+        edited.workspace.scope_horizontal_position = -1.25;
+        edited.workspace.scope_enabled[3] = true;
+        edited.workspace.scope_vertical[3] = Vertical {
+            fs_per_div: 0.05,
+            offset: -0.2,
+        };
+        assert_eq!(Document::decode(&edited.encode().unwrap()).unwrap(), edited);
+        for bad in [0, 1, 2] {
+            let mut invalid = edited.clone();
+            match bad {
+                0 => invalid.workspace.scope_selected = SCOPE_CHANNELS,
+                1 => invalid.workspace.scope_vertical[3].offset = f64::NAN,
+                _ => invalid.workspace.scope_vertical[3].fs_per_div = 0.0,
+            }
+            assert!(invalid.validate().is_err());
         }
     }
 
@@ -813,7 +919,7 @@ mod tests {
         doc.measurement.software_loopback = None;
         doc.measurement.input.device_id = "measurelab:generator".into();
         doc.measurement.input.channels = 2;
-        doc.measurement.scope.channels = Pair::default();
+        doc.measurement.scope.channels = ScopeChannels::default();
         doc.measurement.spectrum.channel = 1;
         doc.measurement.spectrogram.channel = 0;
         let mut signals = crate::generator::Settings::default();
@@ -967,7 +1073,7 @@ mod tests {
                 .contains("version")
         );
         assert!(
-            Document::decode(br#"{"version":5}"#)
+            Document::decode(br#"{"version":6}"#)
                 .unwrap_err()
                 .contains("version")
         );

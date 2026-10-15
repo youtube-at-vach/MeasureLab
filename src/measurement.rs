@@ -7,7 +7,7 @@ use crate::{
     activity::Activity,
     audio::Capture,
     calibration::{self, Reading},
-    channel::{ChannelId, Pair},
+    channel::{ChannelId, Pair, SCOPE_CHANNELS, ScopeChannels},
     comparison, comparison_worker, lockin, lockin_worker, loopback, output,
     signal::{self, History, Measurement, Sweep, Trigger},
     spectrum::{self, Settings},
@@ -44,7 +44,7 @@ pub enum SpectrumMode {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ScopeSettings {
     pub mode: acquisition::Mode,
-    pub channels: Pair,
+    pub channels: ScopeChannels,
     pub samples: usize,
     pub trigger: Trigger,
 }
@@ -53,7 +53,7 @@ impl Default for ScopeSettings {
     fn default() -> Self {
         Self {
             mode: acquisition::Mode::Auto,
-            channels: Pair::default(),
+            channels: ScopeChannels::default(),
             samples: 480,
             trigger: Trigger::default(),
         }
@@ -115,8 +115,8 @@ pub struct Snapshot {
     pub scope_settings: ScopeSettings,
     pub xy_channels: Pair,
     pub sweep: Sweep,
-    pub measurements: [Measurement; 2],
-    pub scope_readings: [Reading; 2],
+    pub measurements: [Measurement; SCOPE_CHANNELS],
+    pub scope_readings: [Reading; SCOPE_CHANNELS],
     /// Immutable coefficients/units/reference conditions for numeric readouts.
     pub calibrations: calibration::Set,
     pub scope_missing: u64,
@@ -217,7 +217,7 @@ impl Core {
             spectrum_mode: SpectrumMode::Continuous,
             scope: ScopeSettings::default(),
             calibrations: calibration::Set::default(),
-            xy_channels: Pair::default(),
+            xy_channels: Pair::<2>::default(),
             stft_generation: 0,
             stft: stft::Config {
                 sample_rate: 48000,
@@ -497,8 +497,8 @@ impl Core {
             scope_settings: self.config.scope,
             xy_channels: self.config.xy_channels,
             sweep: Sweep::default(),
-            measurements: [Measurement::default(); 2],
-            scope_readings: [Reading::Unavailable; 2],
+            measurements: [Measurement::default(); SCOPE_CHANNELS],
+            scope_readings: [Reading::Unavailable; SCOPE_CHANNELS],
             calibrations: self.config.calibrations.clone(),
             scope_missing: 0,
             input_dropped: 0,
@@ -1240,7 +1240,7 @@ mod tests {
         config.spectrum.size = 524288;
         config.scope.samples = 10;
         config.scope.mode = acquisition::Mode::Single;
-        config.scope.channels = Pair([15, 7]);
+        config.scope.channels = Pair([15, 7]).scope();
         config.scope.trigger = Trigger {
             channel: 15,
             level: 0.5,
@@ -1265,6 +1265,43 @@ mod tests {
         assert_eq!(result.measurements[0].samples, 10);
         assert!(!result.spectrum.is_ready());
         assert_eq!(result.spectrum_info.filled_samples, 20);
+    }
+
+    #[test]
+    fn four_channel_single_preserves_all_samples_statistics_and_channel_four_trigger() {
+        let (_stft, mut core, mut config, _spectrum) = setup(1024, 4);
+        config.scope.samples = 10;
+        config.scope.mode = acquisition::Mode::Single;
+        config.scope.trigger = Trigger {
+            channel: 3,
+            level: 0.5,
+            edge: signal::Edge::Rising,
+        };
+        core.start(8, 48000, 4, config.clone());
+        for n in 0..100 {
+            core.push(n, &[0.125, -0.25, 0.375, if n == 12 { 1.0 } else { 0.0 }]);
+        }
+        let held = finish(&mut core);
+        assert_eq!(held.sweep.range, 10..20);
+        assert_eq!(held.acquisition_state, acquisition::State::Complete);
+        for index in 0..4 {
+            assert_eq!(held.measurements[index].samples, 10);
+            assert!(matches!(held.scope_readings[index], Reading::Valid(_)));
+        }
+        assert_eq!(held.measurements[2].rms, 0.375);
+        assert!((held.measurements[3].rms - 0.1_f64.sqrt()).abs() < 1e-14);
+        assert_eq!(
+            held.scope_capture.as_ref().unwrap().get(12).unwrap()[3],
+            1.0
+        );
+        core.start(9, 48000, 2, config);
+        for n in 0..100 {
+            core.push(n, &[0.125, -0.25]);
+        }
+        let unavailable = finish(&mut core);
+        assert!(!unavailable.sweep.triggered);
+        assert_eq!(unavailable.scope_readings[2..], [Reading::Unavailable; 2]);
+        assert_eq!(held.scope_settings.channels.0, [0, 1, 2, 3]);
     }
 
     #[test]
@@ -1349,7 +1386,7 @@ mod tests {
             spectrum_mode: SpectrumMode::Continuous,
             scope: ScopeSettings {
                 mode: acquisition::Mode::Auto,
-                channels: Pair::default(),
+                channels: ScopeChannels::default(),
                 samples: size,
                 trigger: Trigger {
                     edge: signal::Edge::Free,
@@ -1357,7 +1394,7 @@ mod tests {
                 },
             },
             calibrations: calibration::Set::default(),
-            xy_channels: Pair::default(),
+            xy_channels: Pair::<2>::default(),
             stft_generation: 0,
             stft: stft::Config {
                 sample_rate: 48000,
@@ -2118,7 +2155,7 @@ mod tests {
     #[test]
     fn route_changes_hold_provenance_and_device_reduction_keeps_unavailable_ids() {
         let (mut stft, core, mut config, _spectrum) = setup(1024, 16);
-        config.scope.channels = Pair([15, 7]);
+        config.scope.channels = Pair([15, 7]).scope();
         config.xy_channels = Pair([7, 15]);
         config.scope.trigger = Trigger {
             edge: signal::Edge::Rising,
@@ -2150,20 +2187,25 @@ mod tests {
         );
         wait_for_frames(&worker, 2048);
         let first = worker.scope(config.scope);
-        assert_eq!(first.scope_settings.channels, Pair([15, 7]));
+        assert_eq!(first.scope_settings.channels, Pair([15, 7]).scope());
         assert_eq!(first.xy_channels, Pair([7, 15]));
         assert!(first.sweep.triggered);
         assert_eq!(first.measurements[0].samples, 1024);
         assert!((first.measurements[0].rms - 0.25 / 2.0_f64.sqrt()).abs() < 1e-14);
         let swapped = ScopeSettings {
-            channels: Pair([7, 15]),
+            channels: Pair([7, 15]).scope(),
             ..config.scope
         };
         worker.configure_xy(Pair([15, 7]));
         let rerouted = worker.scope(swapped);
         assert_eq!(
             rerouted.measurements,
-            [first.measurements[1], first.measurements[0]]
+            [
+                first.measurements[1],
+                first.measurements[0],
+                first.measurements[2],
+                first.measurements[3]
+            ]
         );
         assert_eq!(rerouted.xy_channels, Pair([15, 7]));
         assert_eq!(rerouted.spectrum_info.updates, first.spectrum_info.updates);
@@ -2173,14 +2215,14 @@ mod tests {
         assert_eq!(unchanged.scope_settings.channels, swapped.channels);
         assert_eq!(unchanged.xy_channels, held.xy_channels);
         assert_eq!(unchanged.measurements, held.measurements);
-        config.scope.channels = Pair([15, 0]);
+        config.scope.channels = Pair([15, 0]).scope();
         config.xy_channels = Pair([15, 7]);
         config.stft_generation = stft.configure(config.stft).unwrap();
         worker.start_demo(2, Demo::default(), config.clone());
         let fresh = worker.scope(config.scope);
         assert_eq!(fresh.generation, 2);
         assert_eq!(fresh.history.channels(), 2);
-        assert_eq!(fresh.scope_settings.channels, Pair([15, 0]));
+        assert_eq!(fresh.scope_settings.channels, Pair([15, 0]).scope());
         assert_eq!(fresh.scope_settings.trigger.channel, 15);
         assert_eq!(fresh.xy_channels, Pair([15, 7]));
         assert!(!fresh.sweep.triggered);
@@ -2226,7 +2268,7 @@ mod tests {
     #[test]
     fn channel_calibration_is_fixed_to_scope_and_spectrum_across_hold_route_and_restart() {
         let (_stft, core, mut config, _spectrum) = setup(1024, 16);
-        config.scope.channels = Pair([15, 7]);
+        config.scope.channels = Pair([15, 7]).scope();
         let definition = |revision, gain, offset| {
             calibration::Calibration::new(
                 "known-input-ch16".into(),
@@ -2284,12 +2326,17 @@ mod tests {
         assert_eq!(measured.history.get(8).unwrap()[15], 0.25);
 
         let rerouted = worker.scope(ScopeSettings {
-            channels: Pair([7, 15]),
+            channels: Pair([7, 15]).scope(),
             ..config.scope
         });
         assert_eq!(
             rerouted.scope_readings,
-            [measured.scope_readings[1], measured.scope_readings[0]]
+            [
+                measured.scope_readings[1],
+                measured.scope_readings[0],
+                measured.scope_readings[2],
+                measured.scope_readings[3]
+            ]
         );
         let held = worker.stop();
         config.calibrations = config
@@ -2303,7 +2350,7 @@ mod tests {
         // Reprojecting retained data and editing the next input's calibration
         // do not relabel or recalibrate the held generation.
         assert_eq!(display.calibrations, held.calibrations);
-        assert_eq!(display.scope_settings.channels, Pair([7, 15]));
+        assert_eq!(display.scope_settings.channels, Pair([7, 15]).scope());
         let Reading::Valid(m) = display.scope_readings[1] else {
             panic!("held calibration")
         };

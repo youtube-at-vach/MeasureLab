@@ -2,7 +2,7 @@
 //! Only owned f64 results cross into the bounded file-I/O worker.
 use crate::{
     audio, calibration,
-    channel::ChannelId,
+    channel::{ChannelId, SCOPE_CHANNELS},
     measurement::{ScopeSettings, SpectrumInfo, SpectrumMode},
     settings::ChannelCalibration,
     signal::{History, Measurement, Sweep},
@@ -18,7 +18,7 @@ use std::{
 };
 
 pub const FORMAT: &str = "measurelab-results";
-pub const VERSION: u32 = 4;
+pub const VERSION: u32 = 5;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
@@ -53,8 +53,8 @@ pub struct ScopeView<'a> {
     pub sweep: Sweep,
     pub calibrations: &'a calibration::Set,
     /// Already computed for this interval by the measurement worker.
-    pub measurements: [Measurement; 2],
-    pub readings: [calibration::Reading; 2],
+    pub measurements: [Measurement; SCOPE_CHANNELS],
+    pub readings: [calibration::Reading; SCOPE_CHANNELS],
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -147,7 +147,7 @@ pub struct Scope {
     pub triggered: bool,
     /// For horizontal display only, never applied to acquired sample indices.
     pub horizontal_sample_offset: f64,
-    pub traces: [Trace; 2],
+    pub traces: Vec<Trace>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -332,6 +332,7 @@ impl Document {
     pub(crate) fn validate_header(&self) -> Result<(), String> {
         if self.format != FORMAT
             || !(1..=VERSION).contains(&self.version)
+            || (self.version >= 5 && self.scope.traces.len() != SCOPE_CHANNELS)
             || (self.version < 4 && self.comparison.is_some())
             || (self.version < 3 && self.external_output.is_some())
             || (self.version == 1
@@ -372,46 +373,48 @@ impl Document {
         let definitions = ChannelCalibration::capture(scope.calibrations);
         let raw = scope.measurements;
         let calibrated = scope.readings;
-        let traces = std::array::from_fn(|i| {
-            let channel = scope.settings.channels.0[i];
-            let available = channel < input.channels;
-            let samples: Option<Vec<_>> = available.then(|| {
-                range
-                    .clone()
-                    .map(|n| scope.history.get(n).map(|f| f[channel]))
-                    .collect()
-            });
-            let missing = samples
-                .as_ref()
-                .map_or(0, |s| s.iter().filter(|v| v.is_none()).count() as u64);
-            let state = if !available {
-                State::Unavailable
-            } else if range.is_empty() {
-                State::Waiting
-            } else if missing != 0 {
-                State::Partial
-            } else {
-                State::Valid
-            };
-            let raw_reading = if raw[i].samples == 0 {
-                calibration::Reading::Unavailable
-            } else {
-                calibration::Reading::Valid(raw[i])
-            };
-            Trace {
-                channel,
-                state,
-                missing_samples: missing,
-                calibration: definitions.iter().find(|d| d.channel == channel).cloned(),
-                raw_samples_fs: samples,
-                raw_statistics: Statistics::capture(raw_reading, "FS", missing),
-                calibrated_statistics: Statistics::capture(
-                    calibrated[i],
-                    scope.calibrations.unit(channel),
-                    missing,
-                ),
-            }
-        });
+        let traces = (0..SCOPE_CHANNELS)
+            .map(|i| {
+                let channel = scope.settings.channels.0[i];
+                let available = channel < input.channels;
+                let samples: Option<Vec<_>> = available.then(|| {
+                    range
+                        .clone()
+                        .map(|n| scope.history.get(n).map(|f| f[channel]))
+                        .collect()
+                });
+                let missing = samples
+                    .as_ref()
+                    .map_or(0, |s| s.iter().filter(|v| v.is_none()).count() as u64);
+                let state = if !available {
+                    State::Unavailable
+                } else if range.is_empty() {
+                    State::Waiting
+                } else if missing != 0 {
+                    State::Partial
+                } else {
+                    State::Valid
+                };
+                let raw_reading = if raw[i].samples == 0 {
+                    calibration::Reading::Unavailable
+                } else {
+                    calibration::Reading::Valid(raw[i])
+                };
+                Trace {
+                    channel,
+                    state,
+                    missing_samples: missing,
+                    calibration: definitions.iter().find(|d| d.channel == channel).cloned(),
+                    raw_samples_fs: samples,
+                    raw_statistics: Statistics::capture(raw_reading, "FS", missing),
+                    calibrated_statistics: Statistics::capture(
+                        calibrated[i],
+                        scope.calibrations.unit(channel),
+                        missing,
+                    ),
+                }
+            })
+            .collect();
         let window = result.window();
         let state = match result.validity() {
             spectrum::Validity::Waiting => State::Waiting,
@@ -685,6 +688,7 @@ pub(crate) mod tests {
         set: &Set,
         channels: Pair,
     ) -> Document {
+        let channels = channels.scope();
         Document::capture(
             input(history.channels()),
             ScopeView {

@@ -28,7 +28,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            channels: Pair::default(),
+            channels: Pair::<2>::default(),
             milliseconds: 50.0,
             x_fs_per_div: 0.25,
             y_fs_per_div: 0.25,

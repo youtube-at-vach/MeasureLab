@@ -54,6 +54,9 @@ impl Document {
         {
             return Err("Invalid Scope conditions or interval".into());
         }
+        if ![2, crate::channel::SCOPE_CHANNELS].contains(&self.scope.traces.len()) {
+            return Err("Invalid Scope trace count".into());
+        }
         for t in &self.scope.traces {
             if t.channel >= 16 {
                 return Err("Invalid Scope channel".into());
@@ -913,6 +916,54 @@ mod tests {
         let mut r = SpectrumResult::empty(s, 48000);
         a.copy_result(&mut r);
         crate::export::tests::document(&h, &r, &Set::default(), Pair([0, 1]))
+    }
+
+    #[test]
+    fn four_scope_traces_roundtrip_all_raw_channels_and_legacy_stereo_stays_readable() {
+        let mut history = History::with_channels(1024, 4);
+        for n in 0..1024 {
+            history.push_at(n, [0.125, -0.25, 0.375, -0.5]);
+        }
+        let settings = Settings {
+            size: 1024,
+            window: Window::Rectangular,
+            averages: 1,
+            remove_dc: false,
+            ..Default::default()
+        };
+        let mut analyzer = Analyzer::new(settings, 48000);
+        analyzer.update_window(&history, history.range(), 3);
+        let mut result = SpectrumResult::empty(settings, 48000);
+        analyzer.copy_result(&mut result);
+        let doc = crate::export::tests::document(&history, &result, &Set::default(), Pair([0, 1]));
+        doc.validate().unwrap();
+        let loaded: Document = serde_json::from_slice(&serde_json::to_vec(&doc).unwrap()).unwrap();
+        loaded.validate().unwrap();
+        assert_eq!(loaded.scope.traces.len(), 4);
+        for (index, value) in [0.125_f64, -0.25, 0.375, -0.5].into_iter().enumerate() {
+            let trace = &loaded.scope.traces[index];
+            assert_eq!(trace.channel, index);
+            assert_eq!(
+                trace.raw_samples_fs.as_ref().unwrap(),
+                &vec![Some(value); 1024]
+            );
+            assert_eq!(
+                trace.raw_statistics.values.as_ref().unwrap().rms,
+                value.abs()
+            );
+        }
+        let mut legacy = serde_json::to_value(fixture()).unwrap();
+        legacy["version"] = 4.into();
+        legacy["scope"]["traces"]
+            .as_array_mut()
+            .unwrap()
+            .truncate(2);
+        let loaded: Document = serde_json::from_value(legacy).unwrap();
+        loaded.validate().unwrap();
+        assert_eq!(loaded.scope.traces.len(), 2);
+        let mut invalid = doc.clone();
+        invalid.scope.traces.pop();
+        assert!(invalid.validate().is_err());
     }
 
     #[test]

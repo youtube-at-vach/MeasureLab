@@ -215,7 +215,7 @@ pub fn config(rate: u32, channels: usize) -> measurement::Config {
         spectrum_mode: measurement::SpectrumMode::Latest,
         scope: measurement::ScopeSettings {
             samples: 8192,
-            channels: Pair([0, channels - 1]),
+            channels: Pair([0, channels - 1]).scope(),
             trigger: crate::signal::Trigger {
                 edge: crate::signal::Edge::Free,
                 ..Default::default()

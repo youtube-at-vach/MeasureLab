@@ -4,7 +4,7 @@ use crate::{
     acquisition,
     audio::{AudioWorker, Command, DeviceInfo, Event},
     calibration::{self, Calibration, Reading},
-    channel::{self, ChannelId, Pair},
+    channel::{self, ChannelId, Pair, SCOPE_CHANNELS, ScopeChannels},
     comparison,
     cursor::{self, Cursors},
     export,
@@ -14,7 +14,9 @@ use crate::{
     output,
     presentation::{Action, Console, InstrumentId as Instrument, Layout, Presentation, Screen},
     settings,
-    signal::{Edge, History, Line, Measurement, Sweep, Trigger, build_sweep_lines},
+    signal::{
+        Edge, History, Line, Measurement, Sweep, Trigger, Vertical, build_scaled_sweep_lines,
+    },
     spectrogram, spectrogram_gpu,
     spectrum::{
         self, Analyzer, FFT_SIZES, FrequencyScale, Precision, Quantity, STFT_SIZES, Settings, View,
@@ -215,7 +217,7 @@ pub struct ScopeApp {
     scope_capture: Option<History>,
     autoset_pending: Option<std::sync::mpsc::Receiver<Result<acquisition::Autoset, String>>>,
     autoset_status: Option<String>,
-    scope_channels: Pair,
+    scope_channels: ScopeChannels,
     xy_channels: Pair,
     spectrum_mode: SpectrumMode,
     spectrum_info: measurement::SpectrumInfo,
@@ -279,15 +281,17 @@ pub struct ScopeApp {
     sample_rate: u32,
     channels: u16,
     format: String,
-    enabled: [bool; 2],
+    enabled: [bool; SCOPE_CHANNELS],
     ms_per_div: f32,
-    fs_per_div: f32,
+    scope_vertical: [Vertical; SCOPE_CHANNELS],
+    scope_selected: usize,
+    scope_horizontal_position: f32,
     trigger: Trigger,
     triggered: bool,
     lines: Vec<Line>,
     segments: Arc<Vec<Segment>>,
-    measurements: [Measurement; 2],
-    scope_readings: [Reading; 2],
+    measurements: [Measurement; SCOPE_CHANNELS],
+    scope_readings: [Reading; SCOPE_CHANNELS],
     calibration: CalibrationEditor,
     settings_worker: settings::Worker,
     settings_path: String,
@@ -343,7 +347,7 @@ pub struct ScopeApp {
     #[cfg(feature = "qa")]
     lifecycle_spectrum_held: Option<(spectrum::WindowInfo, Vec<f32>, std::ops::Range<u64>)>,
     #[cfg(feature = "qa")]
-    lifecycle_calibration_held: Option<(calibration::Set, [Reading; 2], String)>,
+    lifecycle_calibration_held: Option<(calibration::Set, [Reading; SCOPE_CHANNELS], String)>,
 }
 
 impl ScopeApp {
@@ -452,8 +456,8 @@ impl ScopeApp {
             scope_capture: None,
             autoset_pending: None,
             autoset_status: None,
-            scope_channels: Pair::default(),
-            xy_channels: Pair::default(),
+            scope_channels: ScopeChannels::default(),
+            xy_channels: Pair::<2>::default(),
             spectrum_mode: SpectrumMode::Live,
             spectrum_info: measurement::SpectrumInfo {
                 mode: SpectrumMode::Live,
@@ -524,15 +528,17 @@ impl ScopeApp {
             sample_rate: 48_000,
             channels: 0,
             format: String::new(),
-            enabled: [true; 2],
+            enabled: [true; SCOPE_CHANNELS],
             ms_per_div: 1.0,
-            fs_per_div: 0.25,
+            scope_vertical: [Vertical::default(); SCOPE_CHANNELS],
+            scope_selected: 0,
+            scope_horizontal_position: 0.0,
             trigger: Trigger::default(),
             triggered: false,
             lines: Vec::with_capacity(8192),
             segments: Arc::new(Vec::with_capacity(8192)),
-            measurements: [Measurement::default(); 2],
-            scope_readings: [Reading::Unavailable; 2],
+            measurements: [Measurement::default(); SCOPE_CHANNELS],
+            scope_readings: [Reading::Unavailable; SCOPE_CHANNELS],
             calibration: CalibrationEditor::default(),
             settings_worker: settings::Worker::default(),
             settings_path: settings::default_path()
@@ -762,11 +768,28 @@ impl ScopeApp {
                     _ => {}
                 }
             }
+            if std::env::var_os("MEASURELAB_UI_SMOKE_SCOPE4").is_some() {
+                app.channels = 4;
+                app.history = History::with_channels(96000, 4);
+                app.scope_channels = ScopeChannels::default();
+                app.scope_selected = 2;
+                app.scope_vertical[2].fs_per_div = 0.125;
+                app.scope_vertical[3].offset = -0.25;
+                for n in 0..16384 {
+                    let p = std::f64::consts::TAU * n as f64 / 48.0;
+                    app.history.push([
+                        0.375 * p.sin(),
+                        0.25 * p.cos(),
+                        0.125 * (p + 0.8).sin(),
+                        0.0625 * (p - 0.4).cos(),
+                    ]);
+                }
+            }
             // Render every inspector with the same deterministic signal fixture.
             if std::env::var_os("MEASURELAB_UI_SMOKE_ROUTING").is_some() {
                 app.channels = 16;
                 app.history = History::with_channels(96000, 16);
-                app.scope_channels = Pair([15, 7]);
+                app.scope_channels = Pair([15, 7]).scope();
                 app.xy_settings.channels = Pair([15, 7]);
                 app.trigger.channel = 15;
                 app.spectrum_channel = 15;
@@ -944,7 +967,10 @@ impl ScopeApp {
             app.spectrum_settings.window = Window::Rectangular;
             app.spectrum_settings.averages = 1;
             app.ms_per_div = 512.0 / 480.0;
-            app.fs_per_div = 0.05;
+            app.scope_vertical.fill(Vertical {
+                fs_per_div: 0.05,
+                offset: 0.0,
+            });
             app.qa_show(Instrument::Lockin);
             app.setup_generator_device(&name, rate, false)?;
             if std::env::var_os("MEASURELAB_PROFILE_COMPARISON").is_some() {
@@ -979,7 +1005,7 @@ impl ScopeApp {
             app.history = History::with_channels(96000, 1);
             app.scope_range = 0..0;
             app.scope_capture = None;
-            app.scope_readings = [Reading::Unavailable; 2];
+            app.scope_readings = [Reading::Unavailable; SCOPE_CHANNELS];
             app.analyzer = spectrum::Result::empty(app.spectrum_settings, app.sample_rate);
             app.spectrum_peak = None;
             app.spectrum_band = None;
@@ -1038,7 +1064,7 @@ impl ScopeApp {
         self.spectrum_settings.quantity = Quantity::Psd;
         self.spectrum_mode = SpectrumMode::Latest;
         self.spectrum_channel = 15;
-        self.scope_channels = Pair([15, 7]);
+        self.scope_channels = Pair([15, 7]).scope();
         self.requested_sample_rate = Some(96_000);
         self.calibration.gain = 8.0;
         self.calibration.conditions = "Next-run export QA calibration".into();
@@ -1065,7 +1091,8 @@ impl ScopeApp {
         self.scope_channels = Pair([
             saved["scope"]["traces"][0]["channel"].as_u64().unwrap() as usize,
             saved["scope"]["traces"][1]["channel"].as_u64().unwrap() as usize,
-        ]);
+        ])
+        .scope();
         self.export_status = Some("Export QA passed; captured conditions preserved".into());
         self.shell.file_paths = true;
         // Start the screenshot interval after fixture setup and its bounded
@@ -1120,7 +1147,7 @@ impl ScopeApp {
         let sample_rate = self.sample_rate;
         let channels = self.channels;
         let mut document = original;
-        document.measurement.scope.channels = Pair([15, 7]);
+        document.measurement.scope.channels = Pair([15, 7]).scope();
         document.measurement.spectrum.channel = 15;
         document.measurement.spectrum.analysis.size = 1024;
         document.measurement.spectrum.analysis.quantity = Quantity::Psd;
@@ -1533,7 +1560,7 @@ impl ScopeApp {
                     "input lifecycle requires a CPAL device"
                 );
                 let latest = latest.unwrap();
-                self.scope_channels = Pair([self.channels as usize - 1, 0]);
+                self.scope_channels = Pair([self.channels as usize - 1, 0]).scope();
                 self.xy_settings.channels = Pair([0, self.channels as usize - 1]);
                 self.dirty = true;
                 self.refresh_scope_range();
@@ -1585,7 +1612,7 @@ impl ScopeApp {
                 self.spectrum_dirty = true;
                 self.spectrogram_settings.size = 1024;
                 self.spectrogram_channel = self.channels as usize - 1;
-                self.scope_channels = Pair([0, self.channels as usize - 1]);
+                self.scope_channels = Pair([0, self.channels as usize - 1]).scope();
                 self.xy_settings.channels = Pair([self.channels as usize - 1, 0]);
                 self.dirty = true;
                 self.xy_dirty = true;
@@ -1608,7 +1635,7 @@ impl ScopeApp {
                 assert_eq!(self.history.range(), *range);
                 assert_eq!(
                     self.scope_view_channels(),
-                    Pair([self.channels as usize - 1, 0])
+                    Pair([self.channels as usize - 1, 0]).scope()
                 );
                 assert_eq!(
                     self.xy_capture.channels,
@@ -1747,8 +1774,8 @@ impl ScopeApp {
         self.scope_sample_offset = 0.0;
         self.xy_capture = xy::Capture::default();
         self.xy_trace_range = 0..0;
-        self.measurements = [Measurement::default(); 2];
-        self.scope_readings = [Reading::Unavailable; 2];
+        self.measurements = [Measurement::default(); SCOPE_CHANNELS];
+        self.scope_readings = [Reading::Unavailable; SCOPE_CHANNELS];
         self.calibration.captured = self.calibration.pending.clone();
         self.scope_missing = 0;
         self.dirty = true;
@@ -1850,7 +1877,15 @@ impl ScopeApp {
             self.autoset_pending = None;
             self.autoset_status = Some(match result {
                 Ok(result) => {
-                    self.fs_per_div = result.fs_per_div as f32;
+                    for (index, channel) in self.scope_view_channels().0.into_iter().enumerate() {
+                        if channel == result.trigger.channel {
+                            self.scope_vertical[index] = Vertical {
+                                fs_per_div: result.fs_per_div as f32,
+                                offset: 0.0,
+                            };
+                        }
+                    }
+                    self.scope_horizontal_position = 0.0;
                     self.ms_per_div = result.samples as f32 * 100.0 / self.sample_rate as f32;
                     self.trigger = result.trigger;
                     if self.running() || self.acquisition_mode == acquisition::Mode::Auto {
@@ -2170,7 +2205,7 @@ impl ScopeApp {
             .max(2.0) as usize
     }
 
-    fn scope_view_channels(&self) -> Pair {
+    fn scope_view_channels(&self) -> ScopeChannels {
         if self.core.is_some() {
             self.core_scope.channels
         } else {
@@ -2716,8 +2751,8 @@ impl ScopeApp {
         self.history.clear();
         self.scope_capture = None;
         self.scope_range = 0..0;
-        self.measurements = [Measurement::default(); 2];
-        self.scope_readings = [Reading::Unavailable; 2];
+        self.measurements = [Measurement::default(); SCOPE_CHANNELS];
+        self.scope_readings = [Reading::Unavailable; SCOPE_CHANNELS];
         self.calibration.captured = calibration::Set::default();
         self.channels = if self.source.is_demo() { 2 } else { 0 };
         if self.source.is_demo() {
@@ -2780,6 +2815,54 @@ impl ScopeApp {
                 self.start();
             }
         });
+        setting_label(ui, "HORIZONTAL");
+        ui.label("Time scale");
+        self.dirty |= ui
+            .add(
+                egui::DragValue::new(&mut self.ms_per_div)
+                    .range(0.05..=100.0)
+                    .speed(0.05)
+                    .max_decimals(3)
+                    .suffix(" ms/div"),
+            )
+            .changed();
+        ui.label("Horizontal position");
+        self.dirty |= ui
+            .add(
+                egui::DragValue::new(&mut self.scope_horizontal_position)
+                    .range(-5.0..=5.0)
+                    .speed(0.1)
+                    .suffix(" div"),
+            )
+            .changed();
+        if ui.small_button("Centre horizontal").clicked() {
+            self.scope_horizontal_position = 0.0;
+            self.dirty = true;
+        }
+        if ui
+            .add_enabled(
+                self.autoset_pending.is_none() && self.core.is_some(),
+                egui::Button::new("Autoset"),
+            )
+            .clicked()
+        {
+            self.autoset_pending = Some(self.core.as_ref().unwrap().autoset(self.trigger.channel));
+        }
+        if let Some(status) = &self.autoset_status {
+            ui.label(RichText::new(status).small().color(MUTED));
+        }
+        ui.label(
+            RichText::new("Wheel: time scale · Shift+wheel: selected channel scale")
+                .small()
+                .color(MUTED),
+        );
+        if !self.running() && self.core_scope.mode != acquisition::Mode::Auto {
+            ui.label(
+                RichText::new("Time / trigger edits apply on next Start")
+                    .small()
+                    .color(YELLOW),
+            );
+        }
         setting_label(ui, "TRIGGER");
         let before = (self.trigger.edge, self.trigger.channel);
         egui::ComboBox::from_id_salt("edge")
@@ -2794,16 +2877,66 @@ impl ScopeApp {
                 ui.selectable_value(&mut self.trigger.edge, Edge::Rising, "Rising edge");
                 ui.selectable_value(&mut self.trigger.edge, Edge::Falling, "Falling edge");
             });
+        let trigger_channels = self.lockin_channel_count().max(self.scope_channel_count());
         channel_select(
             ui,
             "trigger_channel",
             &mut self.trigger.channel,
-            self.channels,
+            trigger_channels,
         );
         self.dirty |= before != (self.trigger.edge, self.trigger.channel);
         self.dirty |= ui
             .add(egui::Slider::new(&mut self.trigger.level, -1.0..=1.0).text("FS"))
             .changed();
+        setting_label(ui, "CHANNEL");
+        let index = self.scope_selected;
+        ui.colored_label(
+            monitor_controls::scope_color(index),
+            format!("CH{}", index + 1),
+        );
+        let before = self.scope_channels;
+        ui.label("Input source");
+        let channels = self.lockin_channel_count().max(self.scope_channel_count());
+        channel_select(
+            ui,
+            "scope_channel_source",
+            &mut self.scope_channels.0[index],
+            channels,
+        );
+        self.dirty |= self.scope_channels != before;
+        let channel = self.scope_view_channels().0[index];
+        if !channel::available(channel, self.scope_channel_count() as usize) {
+            ui.colored_label(
+                MUTED,
+                format!("{} · No input (unavailable)", channel::name(channel)),
+            );
+        }
+        ui.label("Vertical range");
+        self.dirty |= ui
+            .add(
+                egui::DragValue::new(&mut self.scope_vertical[index].fs_per_div)
+                    .range(0.001..=0.5)
+                    .speed(0.001)
+                    .max_decimals(3)
+                    .suffix(" FS/div"),
+            )
+            .changed();
+        ui.label("Centre offset");
+        self.dirty |= ui
+            .add(
+                egui::DragValue::new(&mut self.scope_vertical[index].offset)
+                    .range(-2.0..=2.0)
+                    .speed(0.001)
+                    .suffix(" FS"),
+            )
+            .changed();
+        if ui.small_button("Fit amplitude").clicked() {
+            self.fit_scope_amplitude();
+        }
+        ui.label(
+            RichText::new(self.scope_readout(index)).color(monitor_controls::scope_color(index)),
+        )
+        .on_hover_text(self.scope_readout_details(index));
     }
 
     fn calibration_controls(&mut self, ui: &mut egui::Ui) {
@@ -3546,10 +3679,16 @@ impl ScopeApp {
     }
 
     fn scope_cursors(&mut self, ui: &egui::Ui, response: &egui::Response, rect: egui::Rect) {
-        if let Some(position) = cursor_pointer(response, rect) {
+        if let Some(position) = cursor_pointer(response, rect)
+            && (0.0..=1.0).contains(
+                &((position.x - rect.left()) / rect.width()
+                    - self.scope_horizontal_position / 10.0),
+            )
+        {
             self.cursors.set_scope_time(
                 self.active_cursor,
-                ((position.x - rect.left()) / rect.width()) as f64,
+                ((position.x - rect.left()) / rect.width() - self.scope_horizontal_position / 10.0)
+                    as f64,
             );
             ui.ctx().request_repaint();
         }
@@ -3604,7 +3743,10 @@ impl ScopeApp {
                 })
             });
             let text = if let Some(x) = fraction {
-                cursor_line(ui, rect, x as f32, true, cursor_color(index));
+                let x = x + self.scope_horizontal_position as f64 / 10.0;
+                if (0.0..=1.0).contains(&x) {
+                    cursor_line(ui, rect, x as f32, true, cursor_color(index));
+                }
                 if let Some(frame) = sample.and_then(|sample| self.scope_history().get(sample)) {
                     for (trace, channel) in self.scope_view_channels().0.into_iter().enumerate() {
                         if !self.enabled[trace] {
@@ -3615,8 +3757,7 @@ impl ScopeApp {
                         };
                         let position = pos2(
                             rect.left() + x as f32 * rect.width(),
-                            rect.center().y
-                                - (*value / (self.fs_per_div as f64 * 8.0)) as f32 * rect.height(),
+                            rect.top() + self.scope_vertical[trace].y(*value) * rect.height(),
                         );
                         if rect.contains(position) {
                             ui.painter()
@@ -4518,7 +4659,9 @@ impl ScopeApp {
                 presentation: self.presentation.clone(),
                 lockin_display: self.lockin_display,
                 scope_enabled: self.enabled,
-                scope_fs_per_div: self.fs_per_div,
+                scope_vertical: self.scope_vertical,
+                scope_selected: self.scope_selected,
+                scope_horizontal_position: self.scope_horizontal_position,
                 spectrum_scale: self.frequency_scale,
                 spectrum_min_hz: self.spectrum_min_hz,
                 spectrum_max_hz: self.span_hz,
@@ -4633,7 +4776,9 @@ impl ScopeApp {
         self.shell.previous_console = None;
         self.lockin_display = w.lockin_display;
         self.enabled = w.scope_enabled;
-        self.fs_per_div = w.scope_fs_per_div;
+        self.scope_vertical = w.scope_vertical;
+        self.scope_selected = w.scope_selected;
+        self.scope_horizontal_position = w.scope_horizontal_position;
         self.frequency_scale = w.spectrum_scale;
         self.spectrum_min_hz = w.spectrum_min_hz;
         self.span_hz = w.spectrum_max_hz;
@@ -4696,31 +4841,28 @@ impl ScopeApp {
     }
 
     fn fit_scope_amplitude(&mut self) {
-        let peak = self
-            .measurements
-            .iter()
-            .map(|m| m.peak)
-            .fold(0.0_f64, f64::max);
-        self.fs_per_div = (peak / 3.5).clamp(0.001, 0.5) as f32;
+        let peak = self.measurements[self.scope_selected].peak;
+        self.scope_vertical[self.scope_selected] = Vertical {
+            fs_per_div: (peak / 3.5).clamp(0.001, 0.5) as f32,
+            offset: 0.0,
+        };
         self.dirty = true;
     }
 
     fn scope_panel(&mut self, ui: &mut egui::Ui) {
         egui::Frame::new()
             .fill(Color32::from_rgb(17, 27, 35))
-            .stroke(Stroke::new(1.0, Color32::from_rgb(48, 70, 82)))
+            .stroke(Stroke::new(1.0, BORDER))
             .inner_margin(5.0)
             .show(ui, |ui| {
                 compact_plot_style(ui);
                 ui.horizontal_wrapped(|ui| {
                     ui.label(RichText::new("Oscilloscope").size(13.0).strong());
                     display::activity_label(ui, self.running(), self.pending_stop.is_some(), !self.scope_range.is_empty());
-
+                    self.cursor_controls(ui);
                 });
-                self.scope_sources(ui);
-                ui.horizontal_wrapped(|ui| { ui.label(RichText::new("Scope · time cursor").small().color(MUTED)); self.cursor_controls(ui); });
                 let trigger = if self.core.is_some() && !self.running() { self.core_scope.trigger } else { self.trigger };
-                let (trigger_text, trigger_color) = if trigger.edge != Edge::Free && !channel::available(trigger.channel, self.channels as usize) {
+                let (trigger_text, trigger_color) = if trigger.edge != Edge::Free && !channel::available(trigger.channel, self.scope_channel_count() as usize) {
                     ("Trigger source unavailable", TRIGGER)
                 } else if self.core_scope.mode != acquisition::Mode::Auto {
                     match self.acquisition_state {
@@ -4730,54 +4872,20 @@ impl ScopeApp {
                         acquisition::State::Complete => ("Single complete", MUTED),
                     }
                 } else if self.triggered { ("Triggered", MUTED) } else { ("Auto / free", MUTED) };
-                ui.label(RichText::new(format!("Waveform & trigger: raw FS · {trigger_text}")).small().color(trigger_color));
                 ui.horizontal_wrapped(|ui| {
-                    ui.label(RichText::new(if !self.running() && self.core_scope.mode != acquisition::Mode::Auto { "Next timebase" } else { "Timebase" }).small().color(MUTED));
-                    self.dirty |= ui.add(egui::DragValue::new(&mut self.ms_per_div).range(0.05..=100.0).speed(0.05).max_decimals(3).suffix(" ms/div")).changed();
-                    self.dirty |= ui.add(egui::DragValue::new(&mut self.fs_per_div).range(0.001..=0.5).speed(0.001).max_decimals(3).suffix(" FS/div")).changed();
-                    if ui.small_button("Fit amplitude").clicked() { self.fit_scope_amplitude(); }
-                    if ui.add_enabled(self.autoset_pending.is_none() && self.core.is_some(), egui::Button::new("Autoset").small()).clicked() {
-                        self.autoset_pending = Some(self.core.as_ref().unwrap().autoset(self.scope_view_channels().0[0]));
-                    }
+                    ui.label(RichText::new(format!("{} ms/div · raw FS · {trigger_text}", display::number(Some(self.scope_display_ms_per_div() as f64)))).small().color(trigger_color))
+                        .on_hover_text("Wheel: time scale · Shift+wheel: selected channel scale · Double-click: reset view");
+                    if self.scope_missing > 0 { ui.colored_label(YELLOW, format!("Partial · {} missing samples", self.scope_missing)); }
                 });
-                if !self.running() && self.core_scope.mode != acquisition::Mode::Auto && !self.scope_range.is_empty() {
-                    ui.label(RichText::new(format!("Captured timebase: {} ms/div", display::number(Some(self.scope_display_ms_per_div() as f64)))).small().color(MUTED));
-                }
-                for (index, color) in [GREEN, BLUE].into_iter().enumerate() {
-                    if !self.enabled[index] { continue; }
-                    let channel = self.scope_view_channels().0[index];
-                    let unit = self.calibration.captured.unit(channel);
-                    let reading = self.scope_readings[index];
-                    let calibrated = self.calibration.captured.get(channel).is_some();
-                    ui.horizontal_wrapped(|ui| {
-                        ui.label(RichText::new(format!("T{} · {} · {}", index+1, channel::name(channel), if calibrated { "calibrated readout" } else { "uncalibrated" })).small().color(color));
-                        let text = match reading {
-                            Reading::Unavailable => "— · unavailable".into(),
-                            Reading::NonFinite => "— · invalid value".into(),
-                            Reading::Valid(m) => format!("RMS {} {unit} · P-P {} {unit}", display::number(Some(m.rms)), display::number(Some(m.peak_to_peak))),
-                        };
-                        ui.label(RichText::new(text).monospace().size(15.0).color(color))
-                            .on_hover_text(match reading {
-                                Reading::Valid(m) => format!("RMS {:.15e} {unit} · P-P {:.15e} {unit} · Peak {:.15e} {unit} · {} acquired samples · interval {}..{} (exclusive end) · generation {} · nominal {} Hz. {}. Waveform and trigger are in raw FS.", m.rms, m.peak_to_peak, m.peak, m.samples, self.scope_range.start, self.scope_range.end, self.input_generation, self.sample_rate, calibration_description(&self.calibration.captured, channel)),
-                                Reading::Unavailable => "No acquired samples for this channel and interval".into(),
-                                Reading::NonFinite => "An acquired or calibrated value or statistic is nonfinite; no valid numeric readout".into(),
-                            });
-                    });
-                }
                 if !self.running() && (self.core_scope.mode != self.acquisition_mode || self.scope_channels != self.scope_view_channels() || self.calibration.pending != self.calibration.captured) {
                     ui.label(RichText::new("HELD conditions retained · queued measurement settings apply on next Start").small().color(YELLOW));
                 }
-                if self.scope_missing > 0 {
-                    ui.label(
-                        RichText::new(format!(
-                            "Partial interval · {} missing samples",
-                            self.scope_missing
-                        ))
-                        .small()
-                        .color(YELLOW),
-                    );
-                }
-                self.plot(ui);
+                ui.label(RichText::new(format!("CH{} · {}", self.scope_selected + 1, self.scope_readout(self.scope_selected))).monospace().size(13.0).color(monitor_controls::scope_color(self.scope_selected)))
+                    .on_hover_text(self.scope_readout_details(self.scope_selected));
+                // Reserve a single 40-point channel strip immediately below the plot.
+                let height = (ui.available_height() - 40.0 - ui.spacing().item_spacing.y).max(40.0);
+                ui.scope_builder(egui::UiBuilder::new().max_rect(egui::Rect::from_min_size(ui.cursor().min, vec2(ui.available_width(), height))), |ui| self.plot(ui));
+                self.scope_channel_bar(ui);
             });
     }
 
@@ -5065,8 +5173,12 @@ impl ScopeApp {
     }
 
     fn plot(&mut self, ui: &mut egui::Ui) {
-        let (outer, response) =
-            ui.allocate_exact_size(plot_size(ui), egui::Sense::click_and_drag());
+        let footer = ui.spacing().interact_size.y + ui.spacing().item_spacing.y;
+        let size = vec2(
+            ui.available_width(),
+            (ui.available_height() - footer).max(40.0),
+        );
+        let (outer, response) = ui.allocate_exact_size(size, egui::Sense::click_and_drag());
         let rect =
             egui::Rect::from_min_max(outer.min + vec2(42.0, 4.0), outer.max - vec2(28.0, 18.0));
         if response.hovered() {
@@ -5074,7 +5186,8 @@ impl ScopeApp {
             if scroll != 0.0 {
                 let factor = (-scroll * 0.008).exp();
                 if shift {
-                    self.fs_per_div = (self.fs_per_div * factor).clamp(0.001, 0.5);
+                    let vertical = &mut self.scope_vertical[self.scope_selected];
+                    vertical.fs_per_div = (vertical.fs_per_div * factor).clamp(0.001, 0.5);
                 } else {
                     self.ms_per_div = (self.ms_per_div * factor).clamp(0.05, 100.0);
                 }
@@ -5083,7 +5196,8 @@ impl ScopeApp {
         }
         if response.double_clicked() {
             self.ms_per_div = 1.0;
-            self.fs_per_div = 0.25;
+            self.scope_vertical = [Vertical::default(); SCOPE_CHANNELS];
+            self.scope_horizontal_position = 0.0;
             self.dirty = true;
         }
         let painter = ui.painter();
@@ -5097,7 +5211,11 @@ impl ScopeApp {
             painter.text(
                 pos2(px, rect.bottom() + 4.0),
                 egui::Align2::CENTER_TOP,
-                format!("{:.1}", (x as f32 - 2.0) * self.scope_display_ms_per_div()),
+                format!(
+                    "{:.1}",
+                    (x as f32 - 2.0 - self.scope_horizontal_position)
+                        * self.scope_display_ms_per_div()
+                ),
                 egui::FontId::monospace(10.0),
                 MUTED,
             );
@@ -5126,7 +5244,12 @@ impl ScopeApp {
                 painter.text(
                     pos2(rect.left() - 8.0, py),
                     egui::Align2::RIGHT_CENTER,
-                    format!("{:.3}", (4.0 - y as f32) * self.fs_per_div),
+                    format!(
+                        "{:.3}",
+                        (4.0 - y as f32) as f64
+                            * self.scope_vertical[self.scope_selected].fs_per_div as f64
+                            + self.scope_vertical[self.scope_selected].offset
+                    ),
                     egui::FontId::monospace(10.0),
                     MUTED,
                 );
@@ -5139,7 +5262,7 @@ impl ScopeApp {
         if self.dirty {
             let started = Instant::now();
             self.refresh_scope_range();
-            build_sweep_lines(
+            build_scaled_sweep_lines(
                 self.scope_capture.as_ref().unwrap_or(&self.history),
                 &Sweep {
                     range: self.scope_range.clone(),
@@ -5147,7 +5270,7 @@ impl ScopeApp {
                     sample_offset: self.scope_sample_offset,
                 },
                 pixels,
-                self.fs_per_div,
+                self.scope_vertical,
                 self.enabled,
                 self.scope_view_channels(),
                 &mut self.lines,
@@ -5155,8 +5278,8 @@ impl ScopeApp {
             let segments = Arc::make_mut(&mut self.segments);
             segments.clear();
             segments.extend(self.lines.iter().map(|line| Segment {
-                a: line.a,
-                b: line.b,
+                a: [line.a[0] + self.scope_horizontal_position / 10.0, line.a[1]],
+                b: [line.b[0] + self.scope_horizontal_position / 10.0, line.b[1]],
                 color: COLORS[line.channel],
             }));
             self.revision = self.revision.wrapping_add(1);
@@ -5177,21 +5300,34 @@ impl ScopeApp {
                 revision: self.revision,
             },
         ));
-        if self.trigger.edge != Edge::Free {
-            let tx = rect.left() + rect.width() * 0.2;
-            painter.line_segment(
-                [pos2(tx, rect.top()), pos2(tx, rect.top() + 12.0)],
-                Stroke::new(2.0, TRIGGER),
-            );
-            painter.text(
-                pos2(tx, rect.top() + 17.0),
-                egui::Align2::CENTER_TOP,
-                "T",
-                egui::FontId::monospace(11.0),
-                TRIGGER,
-            );
-            let ty = rect.center().y
-                - (self.trigger.level / (self.fs_per_div as f64 * 8.0)) as f32 * rect.height();
+        let trigger = if self.core.is_some() && !self.running() {
+            self.core_scope.trigger
+        } else {
+            self.trigger
+        };
+        if trigger.edge != Edge::Free {
+            let tx = rect.left() + rect.width() * (0.2 + self.scope_horizontal_position / 10.0);
+            if rect.x_range().contains(tx) {
+                painter.line_segment(
+                    [pos2(tx, rect.top()), pos2(tx, rect.top() + 12.0)],
+                    Stroke::new(2.0, TRIGGER),
+                );
+                painter.text(
+                    pos2(tx, rect.top() + 17.0),
+                    egui::Align2::CENTER_TOP,
+                    "T",
+                    egui::FontId::monospace(11.0),
+                    TRIGGER,
+                );
+            }
+            let trigger_vertical = self
+                .scope_view_channels()
+                .0
+                .iter()
+                .position(|ch| *ch == trigger.channel)
+                .map(|i| self.scope_vertical[i])
+                .unwrap_or_default();
+            let ty = rect.top() + trigger_vertical.y(trigger.level) * rect.height();
             if rect.y_range().contains(ty) {
                 // Keep the trigger-level indicator outside the waveform area.
                 painter.add(egui::Shape::convex_polygon(
@@ -5220,8 +5356,8 @@ impl ScopeApp {
                 )
                 .on_hover_text(format!(
                     "Trigger level · CH {} · {:+.3} FS",
-                    self.trigger.channel + 1,
-                    self.trigger.level
+                    trigger.channel + 1,
+                    trigger.level
                 ));
             }
         }
@@ -5246,11 +5382,15 @@ impl ScopeApp {
                 ],
                 Stroke::new(1.0, Color32::from_white_alpha(65)),
             );
-            if let Some(sample) = cursor::sample_at_fraction_with_offset(
-                self.scope_range.clone(),
-                ((position.x - rect.left()) / rect.width()) as f64,
-                self.scope_sample_offset,
-            ) {
+            let fraction = ((position.x - rect.left()) / rect.width()
+                - self.scope_horizontal_position / 10.0) as f64;
+            if (0.0..=1.0).contains(&fraction)
+                && let Some(sample) = cursor::sample_at_fraction_with_offset(
+                    self.scope_range.clone(),
+                    fraction,
+                    self.scope_sample_offset,
+                )
+            {
                 response.clone().on_hover_text(self.sample_text(sample));
             }
         }

@@ -144,7 +144,7 @@ mod tests {
                 1000,
                 0.25,
                 [true; 2],
-                crate::channel::Pair::default(),
+                crate::channel::Pair::<2>::default(),
                 &mut lines,
             );
             // Locate the rendered rising zero crossing nearest the trigger.

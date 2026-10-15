@@ -717,7 +717,7 @@ impl ScopeApp {
         settings.signals[1].phase_degrees = 30.0;
         let response = config.channels as usize - 1;
         settings.signals[1].output_channel = Some(response);
-        self.scope_channels = Pair([0, response]);
+        self.scope_channels = Pair([0, response]).scope();
         self.xy_settings.channels = Pair([0, response]);
         self.spectrum_channel = response;
         self.spectrogram_channel = response;
@@ -778,7 +778,10 @@ impl ScopeApp {
         self.spectrum_settings.window = Window::Rectangular;
         self.spectrum_mode = SpectrumMode::Continuous;
         self.ms_per_div = 512.0 / 480.0;
-        self.fs_per_div = 0.05;
+        self.scope_vertical.fill(Vertical {
+            fs_per_div: 0.05,
+            offset: 0.0,
+        });
         self.acquisition_mode = acquisition::Mode::Auto;
         let mut settings = crate::generator::Settings::default();
         for (i, s) in settings.signals.iter_mut().enumerate() {

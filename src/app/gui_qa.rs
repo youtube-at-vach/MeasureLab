@@ -67,6 +67,11 @@ impl Driver {
 
     fn click(&mut self, app: &mut ScopeApp, label: &str) -> Result<(), String> {
         let pos = self.position(label)?;
+        self.click_at(app, pos);
+        Ok(())
+    }
+
+    fn click_at(&mut self, app: &mut ScopeApp, pos: egui::Pos2) {
         for pressed in [true, false] {
             self.frame(
                 app,
@@ -83,7 +88,6 @@ impl Driver {
         }
         // Panels and menus settle on the following frame, as in the desktop UI.
         self.frame(app, vec![]);
-        Ok(())
     }
 
     fn key(&mut self, app: &mut ScopeApp, key: egui::Key, modifiers: egui::Modifiers) {
@@ -137,6 +141,117 @@ impl ScopeApp {
         self.shell = shell::Shell::default();
         let mut driver = Driver::new();
         driver.frame(self, vec![]);
+        driver.frame(self, vec![]);
+
+        let scope_display = (self.enabled, self.scope_selected, self.scope_vertical);
+        let readings = self.scope_readings;
+        for index in 0..SCOPE_CHANNELS {
+            driver.click(self, &format!("CH{}", index + 1))?;
+            assert_eq!(self.scope_selected, index);
+            assert_eq!(self.enabled, scope_display.0);
+            let pos = driver.position(&format!("CH{}", index + 1))?;
+            let selection = driver
+                .ctx
+                .interactive_rects_last_pass()
+                .into_iter()
+                .find(|r| r.contains(pos) && (r.height() - 40.0).abs() < 1.0)
+                .ok_or("Scope channel selection area missing")?;
+            driver.click_at(self, pos2(selection.right() + 10.0, selection.top() + 13.0));
+            assert_ne!(self.enabled[index], scope_display.0[index]);
+            assert_eq!(self.scope_selected, index);
+            assert_eq!(self.scope_readings, readings);
+            driver.click_at(self, pos2(selection.right() + 10.0, selection.top() + 13.0));
+            assert_eq!(self.enabled, scope_display.0);
+        }
+        // Drag the actual right-side range control after selecting CH4.
+        let pos = driver
+            .output
+            .shapes
+            .iter()
+            .filter_map(|s| {
+                if let egui::Shape::Text(t) = &s.shape
+                    && t.galley.text().ends_with(" FS/div")
+                {
+                    Some(t.visual_bounding_rect().center())
+                } else {
+                    None
+                }
+            })
+            .max_by(|a, b| a.x.total_cmp(&b.x))
+            .ok_or("Scope vertical range control missing")?;
+        driver.frame(
+            self,
+            vec![
+                egui::Event::PointerMoved(pos),
+                egui::Event::PointerButton {
+                    pos,
+                    button: egui::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: egui::Modifiers::NONE,
+                },
+            ],
+        );
+        driver.frame(self, vec![egui::Event::PointerMoved(pos + vec2(30.0, 0.0))]);
+        driver.frame(
+            self,
+            vec![egui::Event::PointerButton {
+                pos: pos + vec2(30.0, 0.0),
+                button: egui::PointerButton::Primary,
+                pressed: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        assert_ne!(
+            self.scope_vertical[3].fs_per_div,
+            scope_display.2[3].fs_per_div
+        );
+        assert_eq!(self.scope_vertical[..3], scope_display.2[..3]);
+        assert_eq!(self.scope_readings, readings);
+        if held.is_none() && self.history.is_empty() {
+            let timebase = self.ms_per_div;
+            let vertical = self.scope_vertical;
+            let wave = pos2(driver.position("CH2")?.x, driver.position("CH2")?.y - 100.0);
+            driver.frame(
+                self,
+                vec![
+                    egui::Event::PointerMoved(wave),
+                    egui::Event::MouseWheel {
+                        unit: egui::MouseWheelUnit::Point,
+                        phase: egui::TouchPhase::Move,
+                        delta: vec2(0.0, 30.0),
+                        modifiers: egui::Modifiers::NONE,
+                    },
+                ],
+            );
+            assert_ne!(self.ms_per_div, timebase);
+            assert_eq!(self.scope_vertical, vertical);
+            let horizontal = self.ms_per_div;
+            driver.frame(
+                self,
+                vec![
+                    egui::Event::ModifiersChanged(egui::Modifiers::SHIFT),
+                    egui::Event::MouseWheel {
+                        unit: egui::MouseWheelUnit::Point,
+                        phase: egui::TouchPhase::Move,
+                        delta: vec2(0.0, 30.0),
+                        modifiers: egui::Modifiers::SHIFT,
+                    },
+                ],
+            );
+            assert_eq!(self.ms_per_div, horizontal);
+            assert_ne!(self.scope_vertical[3], vertical[3]);
+            assert_eq!(self.scope_vertical[..3], vertical[..3]);
+            driver.frame(
+                self,
+                vec![
+                    egui::Event::PointerMoved(pos2(0.0, 0.0)),
+                    egui::Event::ModifiersChanged(egui::Modifiers::NONE),
+                ],
+            );
+            self.ms_per_div = timebase;
+        }
+        (self.enabled, self.scope_selected, self.scope_vertical) = scope_display;
+        self.dirty = true;
         driver.frame(self, vec![]);
 
         for instrument in Instrument::ALL {
@@ -218,6 +333,9 @@ impl ScopeApp {
         ]) {
             driver.key(self, key, egui::Modifiers::CTRL);
             assert_eq!(self.presentation.screen, Screen::Single(instrument));
+            if instrument == Instrument::Scope {
+                driver.position("CH4")?;
+            }
             driver.click(self, "Details")?;
             assert!(self.shell.narrow_details);
             driver.position("Stop output")?;
