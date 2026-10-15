@@ -12,6 +12,7 @@
 | 履歴・トリガー・Scope統計・Single／Autoset・XY | [signal.rs](../../src/signal.rs)、[acquisition.rs](../../src/acquisition.rs)、[xy.rs](../../src/xy.rs)、[cursor.rs](../../src/cursor.rs) |
 | Spectrumの全サイズ・窓・精度・独立FFT／Parseval・校正、ESDのパルス窓長不変性・白色雑音 | [spectrum.rs](../../src/spectrum.rs)、[ESD数値テスト](../../src/spectrum/esd_tests.rs)、[calibration.rs](../../src/calibration.rs) |
 | 全窓／最新窓、欠落、UI受信停止・世代・有限Stop、STFT | [spectrum_worker.rs](../../src/spectrum_worker.rs)、[stft.rs](../../src/stft.rs)、[measurement.rs](../../src/measurement.rs) |
+| STFT表示要求・縮約・固定上端・キャッシュ容量 | [spectrogram/viewport.rs](../../src/spectrogram/viewport.rs)。GPU読み戻しは`--gpu-smoke`のラスタDC／Nyquistと転送省略 |
 | STFT数値履歴・UI受信停止・周回・不変参照・容量と世代 | [spectrogram/history.rs](../../src/spectrogram/history.rs)。実時間の収集継続は`MEASURELAB_PROFILE_UI_STALL` |
 | REF・局所位相・二段EMA・校正・無効化・専用転送 | [lockin.rs](../../src/lockin.rs)、[lockin_worker.rs](../../src/lockin_worker.rs)、[loopback.rs](../../src/loopback.rs) |
 | Generatorの独立式・遷移・長い整数時計・優先Stop | [generator/tests.rs](../../src/generator/tests.rs)、[generator/control.rs](../../src/generator/control.rs) |
@@ -85,7 +86,7 @@ macOSのMetalは、画面が点いていても他のウィンドウに覆われ�
 | `MEASURELAB_UI_SMOKE_SETTINGS`／`VIEW`／`ADJUST` | 共通入出力画面・単独／コンソール表示・選択中の詳細。`VIEW=scope`／`spectrum`／`spectrogram`／`xy`／`lockin`／`comparison`／`generator`で単独、`all`は4区画、`console`は7計器、`empty`は空コンソール。`DETAILS=1`は狭幅の詳細編集。変数名の共通接頭辞は`MEASURELAB_UI_SMOKE_` |
 | `MEASURELAB_UI_SMOKE_INTERACTIONS=1` | 実際のshellウィジェットを使ったクリック・キー・狭幅・倍率・模擬native scaleの状態遷移。音声ランタイムを重複生成しない |
 | `MEASURELAB_UI_SMOKE_LAYOUT=columns`／`rows`／`grid`／`tabs` | コンソールの希望配置。タブ列の折り返し後の残り寸法で退避を判断し、描画と同じ区画寸法で検証 |
-| `MEASURELAB_UI_SMOKE_SPECTROGRAM_DISPLAY=1` | Spectrogramの色・Auto・時間幅の実ウィジェット、ホイールズーム、横パン、カーソル線ドラッグ、ダブルクリック、狭幅・模擬DPI。STFT条件・世代・履歴・出力コマンド不変 |
+| `MEASURELAB_UI_SMOKE_SPECTROGRAM_DISPLAY=1` | Spectrogramの色・Auto・時間幅の実ウィジェット、ホイールズーム、横／縦パン、Shift＋ホイール、Hold／Live、f64実フレーム固定、カーソル線ドラッグ、ダブルクリック、狭幅・模擬DPI。STFT条件・世代・出力コマンド不変 |
 | `MEASURELAB_UI_SMOKE_SPECTRUM4=1` | 内部4chスペクトルの重ね表示・共通軸・下部CHバー。物理4ch入力の確認ではない |
 | `MEASURELAB_UI_SMOKE_SCOPE4=1` | 内部4ch波形、CH別レンジ・オフセットと下部バー。物理4ch入力の確認ではない |
 | `MEASURELAB_UI_SMOKE_ROUTING=1`／`CALIBRATION=1`／`CURSORS=1` | 16ch割当・内部校正・カーソル。物理校正の確認ではない |

@@ -49,6 +49,17 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         last = first;
     }
     let width = u32(textureDimensions(history).x);
+    if p.display.w < 0. {
+        let bin = min(u32(in.x * f32(width)), width - 1u);
+        let value = textureLoad(history, vec2<i32>(i32(bin), in.slot), 0).r;
+        let bits = bitcast<u32>(value);
+        if (bits & 0x7f800000u) == 0x7f800000u && bits != 0xff800000u {
+            let stripe = u32(in.position.x + in.position.y) % 12u < 3u;
+            return vec4(select(vec3(0.19, 0.075, 0.025), vec3(0.42, 0.19, 0.06), stripe), 1.);
+        }
+        let t = clamp((value - p.frequency.w) / (p.display.x - p.frequency.w), 0., 1.);
+        return vec4(color(t), 1.);
+    }
     var db = -3.402823e38;
     var valid = false;
     var invalid = false;

@@ -18,6 +18,7 @@ pub struct Renderer {
     binding: wgpu::BindGroup,
     instances: wgpu::Buffer,
     scanlines: usize,
+    texture_width: usize,
     versions: [u64; ROWS],
     revision: u64,
     seconds: f64,
@@ -100,7 +101,7 @@ impl Renderer {
             contents: bytemuck::cast_slice(&[0_f32; 20]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
-        let texture = texture(device, 1);
+        let texture = texture(device, TEXTURE_WIDTH, 1);
         let binding = binding(device, &layout, &uniform, &texture);
         let instances = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("MeasureLab spectrogram time intervals"),
@@ -116,6 +117,7 @@ impl Renderer {
             binding,
             instances,
             scanlines: 1,
+            texture_width: TEXTURE_WIDTH,
             versions: [0; ROWS],
             revision: u64::MAX,
             seconds: 0.0,
@@ -142,9 +144,17 @@ impl Renderer {
             self.count = 0;
             return;
         };
-        let scanlines = history.stride() / TEXTURE_WIDTH;
-        if self.scanlines != scanlines {
-            self.texture = texture(device, scanlines);
+        let texture_width = history.texture_width();
+        let scanlines = history.stride() / texture_width;
+        if scanlines == 0 {
+            self.count = 0;
+            return;
+        }
+        if self.scanlines != scanlines || self.texture_width != texture_width {
+            self.texture.destroy();
+            self.revision = u64::MAX;
+            self.texture = texture(device, texture_width, scanlines);
+            self.texture_width = texture_width;
             self.binding = binding(device, &self.layout, &self.uniform, &self.texture);
             self.scanlines = scanlines;
             self.versions.fill(0);
@@ -168,11 +178,11 @@ impl Renderer {
                     bytemuck::cast_slice(db),
                     wgpu::TexelCopyBufferLayout {
                         offset: 0,
-                        bytes_per_row: Some((TEXTURE_WIDTH * 4) as u32),
+                        bytes_per_row: Some((texture_width * 4) as u32),
                         rows_per_image: Some(scanlines as u32),
                     },
                     wgpu::Extent3d {
-                        width: TEXTURE_WIDTH as u32,
+                        width: texture_width as u32,
                         height: scanlines as u32,
                         depth_or_array_layers: 1,
                     },
@@ -213,7 +223,11 @@ impl Renderer {
                 0.0
             },
             width,
-            scanlines as f32,
+            if history.is_raster() {
+                -1.0
+            } else {
+                scanlines as f32
+            },
         ]);
         parameters[8..].copy_from_slice(self.color_map.stops().as_flattened());
         if self.parameters != parameters {
@@ -232,11 +246,11 @@ impl Renderer {
         pass.draw(0..6, 0..self.count);
     }
 }
-fn texture(device: &wgpu::Device, scanlines: usize) -> wgpu::Texture {
+fn texture(device: &wgpu::Device, texture_width: usize, scanlines: usize) -> wgpu::Texture {
     device.create_texture(&wgpu::TextureDescriptor {
         label: Some("MeasureLab bounded circular STFT texture"),
         size: wgpu::Extent3d {
-            width: TEXTURE_WIDTH as u32,
+            width: texture_width as u32,
             height: (ROWS * scanlines) as u32,
             depth_or_array_layers: 1,
         },

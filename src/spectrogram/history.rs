@@ -14,9 +14,13 @@ use std::{
 
 pub const RETENTION_SECONDS: u64 = 120;
 pub const HISTORY_BYTES: usize = 96 * 1024 * 1024;
-// Reserve 64 MiB for the existing display ring, f64 result pool and FFT work.
-// The S3 display-cache replacement will permit the planned 192 + 32 MiB split.
-pub const FRAME_BYTES: usize = 160 * 1024 * 1024;
+// Leave room for rows still referenced by the previous published snapshot.
+// Otherwise a full Hold + live ring could exhaust the frame budget during
+// publication exchange, even though both retained views fit individually.
+const RETAINED_BYTES: usize = HISTORY_BYTES - 2 * 1024 * 1024;
+// Latest and one Hold history share this aggregate frame allocation limit.
+// Rasters have a separate 8 MiB lease budget; FFT/result storage is independent.
+pub const FRAME_BYTES: usize = 192 * 1024 * 1024;
 const PUBLISH_INTERVAL: Duration = Duration::from_millis(20);
 
 #[derive(Default)]
@@ -153,7 +157,7 @@ impl Archive {
                 + size_of::<Arc<Frame>>();
             let by_time = (RETENTION_SECONDS * config.sample_rate as u64)
                 .div_ceil(config.hop as u64) as usize;
-            VecDeque::with_capacity((HISTORY_BYTES / bytes).min(by_time).max(1))
+            VecDeque::with_capacity((RETAINED_BYTES / bytes).min(by_time).max(1))
         });
         Self {
             snapshot: Snapshot {
@@ -195,7 +199,7 @@ impl Archive {
             let over_time = info.end - oldest.info.end + info.config.hop as u64 > span;
             let over_bytes =
                 self.bytes + bytes + self.snapshot.frames.capacity() * size_of::<Arc<Frame>>()
-                    > HISTORY_BYTES;
+                    > RETAINED_BYTES;
             if !over_time && !over_bytes {
                 break;
             }
@@ -409,6 +413,14 @@ impl Collector {
         state.accepting.then(|| state.snapshot.clone())
     }
 
+    /// Widget QA uses a deterministic finite source, never startup races.
+    #[cfg(feature = "qa")]
+    pub(crate) fn replace_frozen_snapshot(&self, snapshot: Arc<Snapshot>) -> Arc<Snapshot> {
+        let mut state = self.shared.lock().unwrap();
+        assert!(!state.accepting, "QA fixture requires a frozen collector");
+        std::mem::replace(&mut state.snapshot, snapshot)
+    }
+
     pub fn allocated_frame_bytes(&self) -> usize {
         self.budget.used.load(Ordering::Acquire)
     }
@@ -426,6 +438,20 @@ impl Drop for Collector {
             let _ = handle.join();
         }
     }
+}
+
+#[cfg(any(test, feature = "qa"))]
+pub(crate) fn fixture(
+    input_generation: u64,
+    generation: u64,
+    config: Config,
+    rows: impl IntoIterator<Item = (RowInfo, Vec<f64>)>,
+) -> Arc<Snapshot> {
+    let mut archive = Archive::new(input_generation, generation, Some(config), Arc::default());
+    for (info, power) in rows {
+        assert!(archive.push(info, &power));
+    }
+    Arc::new(archive.snapshot.clone())
 }
 
 #[cfg(test)]
@@ -572,6 +598,37 @@ mod tests {
         drop(held);
         drop(archive);
         assert_eq!(budget.used.load(Ordering::Relaxed), 0);
+    }
+
+    #[test]
+    fn full_hold_and_live_publication_exchange_do_not_collapse_retention() {
+        let config = Config {
+            sample_rate: 768000,
+            size: 32768,
+            hop: 8192,
+            ..config()
+        };
+        let budget = Arc::new(Budget::default());
+        let mut archive = Archive::new(1, 1, Some(config), budget.clone());
+        let power = vec![0.25; config.size / 2 + 1];
+        for index in 0..1000 {
+            assert!(archive.push(info(config, 1, 32768 + index * 8192), &power));
+        }
+        let held = archive.snapshot.clone();
+        let mut published = archive.snapshot.clone();
+        for index in 1000..2600 {
+            assert!(archive.push(info(config, 1, 32768 + index * 8192), &power));
+            assert!(
+                archive.snapshot.frames.len() > 700,
+                "publication exhausted live retention"
+            );
+            if index % 2 == 0 {
+                published = archive.snapshot.clone();
+            }
+        }
+        assert!(published.latest().unwrap().info.end > held.latest().unwrap().info.end);
+        assert_eq!(held.frames.front().unwrap().power()[32], 0.25);
+        assert!(budget.peak.load(Ordering::Relaxed) <= FRAME_BYTES);
     }
 
     #[test]
