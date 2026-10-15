@@ -105,6 +105,21 @@ impl ScopeApp {
                 &mut self.spectrogram_channel,
                 channels,
             );
+            if ui
+                .selectable_label(self.spectrogram_hold.is_none(), "Live")
+                .clicked()
+            {
+                self.live_spectrogram();
+            }
+            if ui
+                .add_enabled(
+                    self.spectrogram_snapshot.latest().is_some(),
+                    egui::Button::selectable(self.spectrogram_hold.is_some(), "Hold"),
+                )
+                .clicked()
+            {
+                self.hold_spectrogram();
+            }
             ui.label(
                 RichText::new("Spectrogram · time / Hz cursor")
                     .small()

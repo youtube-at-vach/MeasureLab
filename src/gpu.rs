@@ -610,8 +610,125 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
                 return Err("Palette change reuploaded spectral history".into());
             }
         }
+        // Exercise the production raster path through a real f64 STFT and
+        // independent collector, including DC/Nyquist and unchanged-row uploads.
+        let mut stft_worker = crate::stft::Worker::new();
+        let collector = spectrogram::history::Collector::new(stft_worker.take_results());
+        let raster_config = Config {
+            sample_rate: 1024,
+            size: 1024,
+            hop: 256,
+            channels: 1,
+            channel: 0,
+            window: Window::Rectangular,
+            remove_dc: false,
+            ..config
+        };
+        let generation = stft_worker.configure(raster_config)?;
+        collector.configure(11, generation, raster_config);
+        for n in 0..1024 {
+            stft_worker.submit(n, &[0.5 + if n % 2 == 0 { 0.25 } else { -0.25 }]);
+        }
+        stft_worker.flush();
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        while collector.snapshot().latest().is_none() {
+            if std::time::Instant::now() > deadline {
+                return Err("Raster STFT timed out".into());
+            }
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
+        collector.freeze();
+        let mut raster_worker = spectrogram::viewport::Worker::default();
+        let raster_view = View {
+            floor_db: -12.0,
+            ceiling_db: 0.0,
+            ..View::full(1024, FrequencyScale::Linear, -12.0)
+        };
+        raster_worker.submit(
+            collector.snapshot(),
+            spectrogram::viewport::Parameters {
+                anchor: None,
+                seconds: 0.25,
+                view: raster_view,
+                columns: 256,
+                rows: 64,
+                auto: false,
+                live: false,
+            },
+        );
+        let prepared = loop {
+            if let Some(prepared) = raster_worker.take() {
+                break prepared;
+            }
+            if std::time::Instant::now() > deadline {
+                return Err("Raster preparation timed out".into());
+            }
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        };
+        image.color_map = spectrogram::ColorMap::Grayscale;
+        image.prepare(&device, &queue, &prepared.history, raster_view, 0.25, 256.0);
+        let raster_uploads = image.uploaded_rows;
+        image.prepare(&device, &queue, &prepared.history, raster_view, 0.25, 256.0);
+        if image.uploaded_rows != raster_uploads {
+            return Err("Unchanged raster rows reuploaded".into());
+        }
+        let mut encoder = device.create_command_encoder(&Default::default());
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                ..Default::default()
+            });
+            image.paint(&mut pass);
+        }
+        encoder.copy_texture_to_buffer(
+            texture.as_image_copy(),
+            wgpu::TexelCopyBufferInfo {
+                buffer: &readback,
+                layout: wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(1024),
+                    rows_per_image: Some(256),
+                },
+            },
+            texture.size(),
+        );
+        queue.submit([encoder.finish()]);
+        let (sender, receiver) = std::sync::mpsc::channel();
+        readback
+            .slice(..)
+            .map_async(wgpu::MapMode::Read, move |result| {
+                let _ = sender.send(result);
+            });
+        device.poll(wgpu::PollType::wait_indefinitely())?;
+        receiver.recv()??;
+        let pixels = readback.slice(..).get_mapped_range()?;
+        for (x, db) in [(0, -6.0206_f32), (255, -12.0412)] {
+            let pixel = &pixels[(128 * 256 + x) * 4..(128 * 256 + x) * 4 + 3];
+            let expected =
+                spectrogram::ColorMap::Grayscale.rgb(((db + 12.0) / 12.0).clamp(0.0, 1.0));
+            if pixel
+                .iter()
+                .zip(expected)
+                .any(|(&actual, expected)| (actual as f32 - 255.0 * expected).abs() > 1.0)
+            {
+                return Err(format!(
+                    "Production raster DC/Nyquist readback failed at {x}: {pixel:?}"
+                )
+                .into());
+            }
+        }
+        drop(pixels);
+        readback.unmap();
         println!(
-            "GPU OK: {:?}, {} / {} green / {} blue / {} XY purple pixels / 512k f64 Spectrum individual-bin peak / stopped trace transfer exclusion / spectrogram wrap, order, gap, packed Nyquist, independent view changes, 3 shared palettes, {uploads} row uploads",
+            "GPU OK: {:?}, {} / {} green / {} blue / {} XY purple pixels / 512k f64 Spectrum individual-bin peak / stopped trace transfer exclusion / spectrogram wrap, order, gap, packed Nyquist, independent view changes, 3 shared palettes, production raster DC/Nyquist, {uploads} row uploads",
             adapter.get_info().backend,
             adapter.get_info().name,
             green,

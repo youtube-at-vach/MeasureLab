@@ -269,7 +269,16 @@ pub struct ScopeApp {
     spectrogram_seconds: f64,
     spectrogram_color_map: spectrogram::ColorMap,
     spectrogram_auto_color: bool,
-    spectrogram_auto_range: spectrogram::AutoRange,
+    spectrogram_view_worker: spectrogram::viewport::Worker,
+    spectrogram_snapshot: Arc<spectrogram::history::Snapshot>,
+    spectrogram_hold: Option<Arc<spectrogram::history::Snapshot>>,
+    spectrogram_hold_anchor: Option<u64>,
+    spectrogram_anchor: u64,
+    spectrogram_selected: [Option<Arc<spectrogram::history::Frame>>; 2],
+    spectrogram_auto_result: spectrogram::ColorRange,
+    spectrogram_prepared_id: u64,
+    spectrogram_pending_click: Option<spectrogram_controls::PendingClick>,
+    spectrogram_unavailable_selection: [bool; 2],
     spectrogram_color_error: bool,
     spectrogram_drag_cursor: Option<usize>,
     spectrogram_build_ms: f64,
@@ -532,7 +541,16 @@ impl ScopeApp {
             spectrogram_seconds: 5.0,
             spectrogram_color_map: spectrogram::ColorMap::Blue,
             spectrogram_auto_color: false,
-            spectrogram_auto_range: spectrogram::AutoRange::default(),
+            spectrogram_view_worker: spectrogram::viewport::Worker::default(),
+            spectrogram_snapshot: Arc::default(),
+            spectrogram_hold: None,
+            spectrogram_hold_anchor: None,
+            spectrogram_anchor: 0,
+            spectrogram_selected: [None, None],
+            spectrogram_auto_result: spectrogram::ColorRange::default(),
+            spectrogram_prepared_id: 0,
+            spectrogram_pending_click: None,
+            spectrogram_unavailable_selection: [false; 2],
             spectrogram_color_error: false,
             spectrogram_drag_cursor: None,
             spectrogram_build_ms: 0.0,
@@ -786,8 +804,14 @@ impl ScopeApp {
                     }
                     Ok("spectrogram") => {
                         app.spectrogram_seconds = 1.0;
-                        app.cursors.set_spectrogram_time(0, 0.2);
-                        app.cursors.set_spectrogram_time(1, 0.4);
+                        let row = app.last_stft.unwrap();
+                        for (index, age) in [0.2, 0.4].into_iter().enumerate() {
+                            if let Some(sample) =
+                                cursor::sample_at_age(row.end, age, row.config.sample_rate)
+                            {
+                                app.cursors.set_spectrogram_sample(index, sample);
+                            }
+                        }
                     }
                     Ok("trace") => {
                         app.xy_cursor_mode = xy::CursorMode::TraceSnap;
@@ -1533,7 +1557,7 @@ impl ScopeApp {
                 self.cursors.set_xy_point(0, [0.25, -0.125]);
                 self.cursors.set_xy_point(1, [-0.25, 0.125]);
                 self.spectrogram_seconds = 0.5;
-                self.cursors.set_spectrogram_time(0, 0.3);
+
                 self.lifecycle_stage = 6;
             }
             6 if elapsed > 2.9 => {
@@ -1544,6 +1568,8 @@ impl ScopeApp {
                 let reference = cursor::trigger_sample(self.xy_capture.range.clone()).unwrap();
                 self.cursors
                     .set_trace_time(1, reference + 5, self.xy_capture.range.clone());
+                let frame = self.stft_history.snapshot().latest().unwrap().clone();
+                self.cursors.set_spectrogram_sample(0, frame.info.end - 1);
                 self.lifecycle_scope_samples = self.cursor_samples();
                 assert!(self.lifecycle_scope_samples.iter().all(Option::is_some));
                 self.select_view([false, false, true, false]);
@@ -1554,9 +1580,16 @@ impl ScopeApp {
                 self.rebuild_xy();
                 let samples = self.cursor_samples();
                 for (index, sample) in samples.into_iter().enumerate() {
-                    assert!(sample.unwrap() > self.lifecycle_scope_samples[index].unwrap());
+                    if index == 0 {
+                        assert_eq!(sample, self.lifecycle_scope_samples[index]);
+                    } else {
+                        assert!(sample.unwrap() > self.lifecycle_scope_samples[index].unwrap());
+                    }
                 }
-                assert_eq!(self.cursors.times[0].unwrap().spectrogram_y(), Some(0.3));
+                assert_eq!(
+                    self.cursors.times[0].unwrap().spectrogram_sample(),
+                    self.lifecycle_scope_samples[0]
+                );
                 assert_eq!(self.cursors.times[1].unwrap().trace_offset(), Some(5));
                 assert_eq!(
                     self.cursors.xy_points,
@@ -1862,6 +1895,7 @@ impl ScopeApp {
         self.stft_history.freeze();
         self.stft.pause();
         self.last_stft = None;
+        self.clear_spectrogram_view();
         self.stft_history.clear();
         self.spectrogram_history.lock().unwrap().clear();
     }
@@ -2269,18 +2303,9 @@ impl ScopeApp {
     }
 
     fn cursor_samples(&self) -> [Option<u64>; 2] {
-        let latest = self.spectrogram_history.lock().unwrap().latest();
         self.cursors.times.map(|time| {
             let time = time?;
-            if time.spectrogram_y().is_some() {
-                let row = latest?;
-                self.cursors.spectrogram_sample(
-                    time,
-                    row.end,
-                    self.spectrogram_seconds,
-                    row.config.sample_rate,
-                )
-            } else if time.trace_offset().is_some() {
+            if time.trace_offset().is_some() {
                 self.cursors.sample(time, self.xy_trace_range.clone())
             } else {
                 self.cursors.sample_with_offset(
@@ -2388,10 +2413,13 @@ impl ScopeApp {
     fn cursor_controls(&mut self, ui: &mut egui::Ui) {
         for (index, title) in ["Cursor A", "Cursor B"].into_iter().enumerate() {
             ui.selectable_value(&mut self.active_cursor, index, title)
-                .on_hover_text("Scope and Spectrogram keep the cursor's plot position. XY Free keeps X/Y amplitudes; Trace Snap follows a trigger-relative sample. Spectrum and Spectrogram share frequency.");
+                .on_hover_text("Scope keeps the plot position. Spectrogram holds the selected FFT frame. XY Free keeps X/Y amplitudes; Trace Snap follows a trigger-relative sample. Spectrum and Spectrogram share frequency.");
         }
         if ui.small_button("Clear").clicked() {
             self.cursors.clear();
+            self.spectrogram_selected = [None, None];
+            self.spectrogram_unavailable_selection = [false; 2];
+            self.spectrogram_pending_click = None;
             ui.ctx().request_repaint();
         }
         let mut text = String::new();
@@ -2407,12 +2435,6 @@ impl ScopeApp {
                         seconds * 1000.0
                     ));
                 }
-            } else if let Some(y) = time.spectrogram_y() {
-                text.push_str(&format!(
-                    "{} −{:.3} s  ",
-                    cursor_name(index),
-                    y * self.spectrogram_seconds
-                ));
             } else if let Some(offset) = time.trace_offset() {
                 text.push_str(&format!(
                     "{} T{:+.3} ms  ",
@@ -2469,6 +2491,7 @@ impl ScopeApp {
     }
 
     fn reset_stft(&mut self) {
+        self.clear_spectrogram_view();
         self.spectrogram_channel = self
             .spectrogram_channel
             .min(self.channels.max(1) as usize - 1);
@@ -2483,10 +2506,7 @@ impl ScopeApp {
         if let Some(core) = &self.core {
             core.configure_stft(generation, config);
         }
-        self.spectrogram_history
-            .lock()
-            .unwrap()
-            .reset(generation, config);
+        self.spectrogram_history.lock().unwrap().clear();
         self.last_stft = None;
         if !self.running() && !self.smoke {
             self.stft_history.freeze();
@@ -3022,29 +3042,43 @@ impl ScopeApp {
                         );
                     });
                 });
-                {
-                    let history = self.spectrogram_history.lock().unwrap();
+                if let Some(row) = self.spectrogram_snapshot.latest() {
+                    let snapshot = &self.spectrogram_snapshot;
                     ui.label(
-                        RichText::new(if let Some(row) = history.latest() {
-                            format!(
-                                "End {:.3} s · {} rows · {:.2} s retained · N {} / hop {}",
-                                row.end as f64 / row.config.sample_rate as f64,
-                                history.len(),
-                                history.retained_seconds(),
-                                row.config.size,
-                                row.config.hop
-                            )
-                        } else {
-                            "Continuous STFT · sample-clock time · newest at top".into()
-                        })
+                        RichText::new(format!(
+                            "{} · End {:.3} s · {:.2} s retained · N {} / hop {}{}",
+                            if self.spectrogram_hold.is_some() {
+                                if self.running() {
+                                    "HOLD · input running"
+                                } else {
+                                    "HOLD · input stopped"
+                                }
+                            } else {
+                                "LIVE"
+                            },
+                            self.spectrogram_anchor as f64 / row.info.config.sample_rate as f64,
+                            snapshot.retained_seconds(),
+                            row.info.config.size,
+                            row.info.config.hop,
+                            if snapshot.capacity_limited {
+                                " · history limited by capacity"
+                            } else {
+                                ""
+                            },
+                        ))
                         .small()
                         .color(MUTED),
                     );
-                }
-                {
-                    let history = self.spectrogram_history.lock().unwrap();
-                    if !history.is_empty() && history.retained_seconds() < self.spectrogram_seconds {
-                        ui.label(RichText::new(format!("History available: {:.2} / {:.0} s · capacity 512 rows · unavailable time stays blank", history.retained_seconds(), self.spectrogram_seconds)).small().color(MUTED));
+                    if snapshot.retained_seconds() < self.spectrogram_seconds {
+                        ui.label(
+                            RichText::new(format!(
+                                "History available: {:.2} / {:.0} s · unavailable time stays blank",
+                                snapshot.retained_seconds(),
+                                self.spectrogram_seconds
+                            ))
+                            .small()
+                            .color(MUTED),
+                        );
                     }
                 }
                 self.spectrogram_primary(ui);
@@ -3055,28 +3089,38 @@ impl ScopeApp {
                     outer.max - vec2(70.0, 18.0),
                 );
                 self.spectrogram_interaction(ui, &response, rect);
+                let ready = self.request_spectrogram_view(rect, ui.ctx().pixels_per_point());
+                if !ready {
+                    ui.ctx().request_repaint_after(Duration::from_millis(20));
+                }
                 let view = self.spectrogram_display_view(ui);
                 let time_axis = {
                     let history = self.spectrogram_history.lock().unwrap();
                     let latest = history.latest();
                     spectrogram::TimeAxis::new(
-                        latest.map_or(0, |row| row.end),
+                        if self.spectrogram_snapshot.latest().is_some() {
+                            self.spectrogram_anchor
+                        } else {
+                            latest.map_or(0, |row| row.end)
+                        },
                         latest.map_or(self.sample_rate, |row| row.config.sample_rate),
                         self.spectrogram_seconds,
                     )
                 };
                 let painter = ui.painter();
                 painter.rect_filled(rect, 0.0, Color32::from_rgb(7, 14, 19));
-                painter.add(egui_wgpu::Callback::new_paint_callback(
-                    rect,
-                    spectrogram_gpu::Callback {
-                        history: self.spectrogram_history.clone(),
-                        view,
-                        seconds: self.spectrogram_seconds,
-                        color_map: self.spectrogram_color_map,
-                        width: rect.width() * ui.ctx().pixels_per_point(),
-                    },
-                ));
+                if ready {
+                    painter.add(egui_wgpu::Callback::new_paint_callback(
+                        rect,
+                        spectrogram_gpu::Callback {
+                            history: self.spectrogram_history.clone(),
+                            view,
+                            seconds: self.spectrogram_seconds,
+                            color_map: self.spectrogram_color_map,
+                            width: rect.width() * ui.ctx().pixels_per_point(),
+                        },
+                    ));
+                }
                 let age_divisions = if rect.height() < 72.0 { 2 } else { 4 };
                 for i in 0..=age_divisions {
                     let y = rect.top() + rect.height() * i as f32 / age_divisions as f32;
@@ -3108,11 +3152,13 @@ impl ScopeApp {
                 self.spectrogram_color_bar(ui, rect, view);
                 self.spectrogram_cursors(ui, &response, rect, view);
                 let history = self.spectrogram_history.lock().unwrap();
-                if history.is_empty() {
+                if !ready || history.is_empty() {
                     painter.text(
                         rect.center(),
                         egui::Align2::CENTER_CENTER,
-                        if self.running() {
+                        if !ready {
+                            "Preparing history view…"
+                        } else if self.running() {
                             "Collecting a complete STFT window…"
                         } else {
                             "Start input to begin acquisition"
@@ -3122,24 +3168,38 @@ impl ScopeApp {
                     );
                 }
                 if let Some(position) = response.hover_pos().filter(|p| rect.contains(*p)) {
-                    let age = time_axis.age_at((position.y - rect.top()) as f64 / rect.height() as f64);
+                    let age =
+                        time_axis.age_at((position.y - rect.top()) as f64 / rect.height() as f64);
                     let hz = view.frequency((position.x - rect.left()) / rect.width());
-                    let text = if let Some((row, db)) = history.at_age(age) {
-                        let bin = (hz * row.config.size as f32 / row.config.sample_rate as f32)
-                            .round() as usize;
-                        if db[bin.min(db.len() - 1)].is_nan() {
-                            format!("Invalid STFT window · non-finite input · samples {}..{}", row.start, row.end)
-                        } else { format!(
-                            "{:.1} Hz · {:.2} dBFS · samples {}..{}",
-                            bin as f32 * row.config.sample_rate as f32 / row.config.size as f32,
-                            db[bin.min(db.len() - 1)],
-                            row.start,
-                            row.end
-                        ) }
+                    let sample =
+                        cursor::sample_at_age(time_axis.anchor_end, age, time_axis.sample_rate);
+                    let text = if let Some(frame) =
+                        sample.and_then(|sample| self.spectrogram_snapshot.at_sample(sample))
+                    {
+                        let row = frame.info;
+                        let bin =
+                            cursor::nearest_bin(hz as f64, row.config.size, row.config.sample_rate)
+                                .unwrap_or(0);
+                        if !frame.power()[bin].is_finite() {
+                            format!(
+                                "Invalid STFT window · non-finite input · samples {}..{}",
+                                row.start, row.end
+                            )
+                        } else {
+                            format!(
+                                "{:.1} Hz · {:.6} dBFS · samples {}..{}",
+                                bin as f64 * row.config.sample_rate as f64 / row.config.size as f64,
+                                frame.level_db(bin).unwrap(),
+                                row.start,
+                                row.end
+                            )
+                        }
                     } else {
-                        "No STFT data at this time".into()
+                        "No STFT data at this time · gap or unavailable".into()
                     };
-                    response.clone().on_hover_text(format!("{text}\n{}", spectrogram_controls::GESTURES));
+                    response
+                        .clone()
+                        .on_hover_text(format!("{text}\n{}", spectrogram_controls::GESTURES));
                 }
                 drop(history);
                 ui.horizontal(|ui| {
@@ -3400,27 +3460,69 @@ impl ScopeApp {
         rect: egui::Rect,
         view: View,
     ) {
-        if let Some(position) = response
-            .interact_pointer_pos()
-            .filter(|p| response.clicked() && !response.double_clicked() && rect.contains(*p))
-        {
-            self.cursors.set_spectrogram_time(
-                self.active_cursor,
-                ((position.y - rect.top()) / rect.height()) as f64,
-            );
-            self.cursors.set_frequency(
-                self.active_cursor,
-                view.frequency((position.x - rect.left()) / rect.width()) as f64,
-            );
-            ui.ctx().request_repaint();
+        if response.double_clicked() || response.drag_started() {
+            self.spectrogram_pending_click = None;
         }
-        // Resolve shared times before taking the history lock.
-        let samples = self.cursor_samples();
-        let history = self.spectrogram_history.lock().unwrap();
-        let latest = history.latest();
-        let frequency = self.cursors.frequency_hz;
-        if let Some(hz) = frequency
-            && let Some(latest) = latest
+        if let Some(position) = response.interact_pointer_pos().filter(|p| {
+            response.clicked()
+                && !response.double_clicked()
+                && rect.contains(*p)
+                && self.spectrogram_prepared_id == self.spectrogram_view_worker.current_id()
+        }) {
+            self.spectrogram_pending_click = Some(spectrogram_controls::PendingClick {
+                snapshot: self.spectrogram_snapshot.clone(),
+                anchor: self.spectrogram_anchor,
+                sample: self.spectrogram_snapshot.config.and_then(|config| {
+                    cursor::sample_at_age(
+                        self.spectrogram_anchor,
+                        (position.y - rect.top()) as f64 / rect.height() as f64
+                            * self.spectrogram_seconds,
+                        config.sample_rate,
+                    )
+                }),
+                frequency: view.frequency((position.x - rect.left()) / rect.width()) as f64,
+                index: self.active_cursor,
+                time: ui.input(|i| i.time),
+            });
+        }
+        if self
+            .spectrogram_pending_click
+            .as_ref()
+            .is_some_and(|click| {
+                ui.input(|i| i.time) - click.time
+                    > ui.ctx().options(|o| o.input_options.max_double_click_delay)
+            })
+        {
+            let click = self.spectrogram_pending_click.take().unwrap();
+            if click.snapshot.latest().is_some() {
+                self.spectrogram_hold = Some(click.snapshot);
+                self.spectrogram_hold_anchor = Some(click.anchor);
+                if let Some(sample) = click.sample {
+                    self.select_spectrogram_sample(click.index, sample);
+                } else {
+                    self.spectrogram_unavailable_selection[click.index] = true;
+                    self.cursors.times[click.index] = None;
+                    self.spectrogram_selected[click.index] = None;
+                }
+                self.cursors.set_frequency(click.index, click.frequency);
+            }
+            ui.ctx().request_repaint();
+        } else if self.spectrogram_pending_click.is_some() {
+            ui.ctx().request_repaint_after(Duration::from_millis(20));
+        }
+        let mut samples = self.cursor_samples();
+        if self.cursors.times.iter().all(Option::is_none)
+            && self.cursors.frequency_hz.is_some()
+            && self.spectrogram_unavailable_selection == [false; 2]
+        {
+            samples[self.active_cursor] = self.spectrogram_anchor.checked_sub(1);
+        }
+        let latest = self
+            .spectrogram_snapshot
+            .latest()
+            .map(|f| f.info)
+            .or(self.last_stft);
+        if let (Some(hz), Some(latest)) = (self.cursors.frequency_hz, latest)
             && let Some(bin) =
                 cursor::nearest_bin(hz, latest.config.size, latest.config.sample_rate)
         {
@@ -3429,23 +3531,28 @@ impl ScopeApp {
                 cursor_line(ui, rect, view.x(hz), true, YELLOW);
             }
         }
-        let frequency_only = self.cursors.times.iter().all(Option::is_none) && frequency.is_some();
-        for (index, time) in self.cursors.times.into_iter().enumerate() {
-            let fixed_y = time.and_then(|time| time.spectrogram_y());
-            let sample = samples[index].or_else(|| {
-                (frequency_only && index == self.active_cursor)
-                    .then(|| latest?.end.checked_sub(1))
-                    .flatten()
-            });
-            let age = fixed_y.map(|y| y * self.spectrogram_seconds).or_else(|| {
-                let latest = latest?;
-                Some(
-                    cursor::signed_distance(latest.end - 1, sample?)
-                        / latest.config.sample_rate as f64,
-                )
-            });
-            let Some(age) = age else { continue };
-            if age >= 0.0 && age <= self.spectrogram_seconds {
+        for (index, sample) in samples.into_iter().enumerate() {
+            if self.spectrogram_unavailable_selection[index] {
+                cursor_note(
+                    ui,
+                    rect,
+                    index,
+                    &format!("{} No STFT row\nBefore input began", cursor_name(index)),
+                    cursor_color(index),
+                );
+                continue;
+            }
+            let (Some(sample), Some(latest)) = (sample, latest) else {
+                continue;
+            };
+            let anchor = if self.spectrogram_snapshot.latest().is_some() {
+                self.spectrogram_anchor
+            } else {
+                latest.end
+            };
+            let age = cursor::signed_distance(anchor.saturating_sub(1), sample)
+                / latest.config.sample_rate as f64;
+            if (0.0..=self.spectrogram_seconds).contains(&age) {
                 cursor_line(
                     ui,
                     rect,
@@ -3454,46 +3561,53 @@ impl ScopeApp {
                     cursor_color(index),
                 );
             }
-            let row = if fixed_y.is_some() {
-                history.at_age(age)
-            } else {
-                sample.and_then(|sample| history.at_sample(sample))
-            };
-            let text = if let Some((row, db)) = row {
-                if db[0].is_nan() {
-                    format!(
-                        "{} Invalid STFT window\nnon-finite input · {}..{}",
-                        cursor_name(index),
-                        row.start,
-                        row.end
-                    )
-                } else if let Some(bin) = frequency
-                    .and_then(|hz| cursor::nearest_bin(hz, row.config.size, row.config.sample_rate))
-                {
-                    format!(
-                        "{} {:.1} Hz · {:.2} dBFS\nCH {} · {}..{}",
-                        cursor_name(index),
-                        bin as f64 * row.config.sample_rate as f64 / row.config.size as f64,
-                        db[bin],
-                        row.config.channel + 1,
-                        row.start,
-                        row.end
-                    )
+            let frame = self.spectrogram_selected[index]
+                .as_ref()
+                .filter(|frame| {
+                    self.cursors.times[index].and_then(|t| t.spectrogram_sample())
+                        == Some(frame.info.end - 1)
+                })
+                .or_else(|| self.spectrogram_snapshot.at_sample(sample));
+            let mut text =
+                if let Some(frame) = frame {
+                    let row = frame.info;
+                    if !frame.valid() {
+                        format!(
+                            "{} Invalid STFT window\nnon-finite input · {}..{}",
+                            cursor_name(index),
+                            row.start,
+                            row.end
+                        )
+                    } else if let Some(bin) = self.cursors.frequency_hz.and_then(|hz| {
+                        cursor::nearest_bin(hz, row.config.size, row.config.sample_rate)
+                    }) {
+                        format!(
+                            "{} {:.1} Hz · {:.6} dBFS\nCH {} · {}..{}",
+                            cursor_name(index),
+                            bin as f64 * row.config.sample_rate as f64 / row.config.size as f64,
+                            frame.level_db(bin).unwrap(),
+                            row.config.channel + 1,
+                            row.start,
+                            row.end
+                        )
+                    } else {
+                        format!(
+                            "{} −{age:.3} s\nCH {} · {}..{}",
+                            cursor_name(index),
+                            row.config.channel + 1,
+                            row.start,
+                            row.end
+                        )
+                    }
                 } else {
                     format!(
-                        "{} −{age:.3} s\nCH {} · {}..{}",
-                        cursor_name(index),
-                        row.config.channel + 1,
-                        row.start,
-                        row.end
+                        "{} −{age:.3} s\nNo STFT row · gap or unavailable",
+                        cursor_name(index)
                     )
-                }
-            } else {
-                format!(
-                    "{} −{age:.3} s\nNo STFT row · gap or unavailable",
-                    cursor_name(index)
-                )
-            };
+                };
+            if !(0.0..=self.spectrogram_seconds).contains(&age) {
+                text.push_str("\nOutside visible time range");
+            }
             cursor_note(ui, rect, index, &text, cursor_color(index));
         }
     }
@@ -4363,7 +4477,6 @@ impl ScopeApp {
         self.spectrogram_seconds = w.spectrogram_seconds;
         self.spectrogram_color_map = w.spectrogram_color_map;
         self.spectrogram_auto_color = w.spectrogram_auto_color;
-        self.spectrogram_auto_range = spectrogram::AutoRange::default();
         self.spectrogram_color_error = false;
         self.xy_settings.x_fs_per_div = w.xy_x_fs_per_div;
         self.xy_settings.y_fs_per_div = w.xy_y_fs_per_div;
@@ -5121,31 +5234,8 @@ impl eframe::App for ScopeApp {
             profile.record_input_loss(self.dropped);
         }
         let started = Instant::now();
-        // The collector recycles STFT results even when this update is absent.
-        // Only the latest display-cache capacity is converted here. The full
-        // f64 retention remains independent and is ready for S3 history views.
-        if let Some(snapshot) = self.stft_history.live_snapshot()
-            && snapshot.generation == self.stft_generation
-            && snapshot.input_generation == self.input_generation
-        {
-            let last_end = self.last_stft.map_or(0, |row| row.end);
-            for frame in snapshot
-                .frames()
-                .skip(snapshot.frames().len().saturating_sub(spectrogram::ROWS))
-            {
-                if frame.info.end > last_end {
-                    let db = frame.db();
-                    if self
-                        .spectrogram_history
-                        .lock()
-                        .unwrap()
-                        .push(frame.info, &db)
-                    {
-                        self.last_stft = Some(frame.info);
-                    }
-                }
-            }
-        }
+        // Result collection and raster preparation continue outside this UI.
+        self.receive_spectrogram_view();
         self.spectrogram_build_ms = started.elapsed().as_secs_f64() * 1000.0;
         #[cfg(feature = "qa")]
         {
@@ -5634,6 +5724,14 @@ impl eframe::App for ScopeApp {
                         }
                         ui.label(format!("Spectrum prep {:.2} ms", self.spectrum_build_ms));
                         ui.label(format!("XY prep {:.2} ms", self.xy_build_ms));
+                        ui.label(format!(
+                            "STFT raster peak {:.1} MiB / 8 MiB · display requests replaced {}",
+                            self.spectrogram_view_worker.peak_cache_bytes() as f64 / 1048576.0,
+                            self.spectrogram_view_worker
+                                .replaced
+                                .load(Ordering::Relaxed)
+                        ));
+
                         ui.label(format!(
                             "Spectrogram history {:.2} ms",
                             self.spectrogram_build_ms

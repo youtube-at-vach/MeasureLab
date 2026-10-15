@@ -19,7 +19,15 @@ impl Driver {
         }
     }
 
-    fn frame(&mut self, app: &mut ScopeApp, events: Vec<egui::Event>) {
+    fn frame(&mut self, app: &mut ScopeApp, mut events: Vec<egui::Event>) {
+        let modifiers = events
+            .iter()
+            .find_map(|event| match event {
+                egui::Event::MouseWheel { modifiers, .. } => Some(*modifiers),
+                _ => None,
+            })
+            .unwrap_or_default();
+        events.insert(0, egui::Event::ModifiersChanged(modifiers));
         let mut input = egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(pos2(0.0, 0.0), self.size)),
             events,
@@ -136,11 +144,45 @@ impl ScopeApp {
             self.spectrogram_max_hz,
             self.spectrogram_seconds,
         );
+        let previous_history = self.spectrogram_history.clone();
+        let previous_snapshot = self.spectrogram_snapshot.clone();
+        let previous_hold = self.spectrogram_hold.take();
+        let previous_anchor = self.spectrogram_anchor;
+        let previous_hold_anchor = self.spectrogram_hold_anchor.take();
+        let previous_last = self.last_stft;
+        let previous_unavailable = self.spectrogram_unavailable_selection;
+        self.spectrogram_unavailable_selection = [false; 2];
+        let config = stft::Config {
+            size: 1024,
+            hop: 256,
+            ..self.stft_config()
+        };
+        self.spectrogram_snapshot = spectrogram::history::fixture(
+            self.input_generation,
+            self.stft_generation,
+            config,
+            (0..12000).map(|i| {
+                let end = 1024 + i * 256;
+                (
+                    RowInfo {
+                        generation: self.stft_generation,
+                        config,
+                        start: end - 1024,
+                        end,
+                        gap: stft::Gap::default(),
+                    },
+                    vec![0.25 + f64::EPSILON; 513],
+                )
+            }),
+        );
+        let previous_collector = self
+            .stft_history
+            .replace_frozen_snapshot(self.spectrogram_snapshot.clone());
+        self.spectrogram_anchor = self.spectrogram_snapshot.latest().unwrap().info.end;
         let conditions = (
             self.input_generation,
+            self.stft_generation,
             self.spectrogram_settings,
-            self.last_stft,
-            self.spectrogram_history.lock().unwrap().revision(),
             self.generator.command_marker(),
         );
         self.presentation
@@ -153,8 +195,20 @@ impl ScopeApp {
         self.spectrogram_min_hz = 20.0;
         self.spectrogram_max_hz = 0.0;
         let mut driver = Driver::new();
-        driver.frame(self, vec![]);
-        driver.frame(self, vec![]);
+        let settle = |driver: &mut Driver, app: &mut ScopeApp| {
+            let deadline = Instant::now() + Duration::from_secs(10);
+            loop {
+                driver.frame(app, vec![]);
+                if app.spectrogram_prepared_id == app.spectrogram_view_worker.current_id()
+                    && app.spectrogram_prepared_id != 0
+                {
+                    break;
+                }
+                assert!(Instant::now() < deadline, "Spectrogram raster timed out");
+                std::thread::sleep(Duration::from_millis(2));
+            }
+        };
+        settle(&mut driver, self);
         driver.click(self, "Blue")?;
         driver.click(self, "Heat")?;
         assert_eq!(self.spectrogram_color_map, spectrogram::ColorMap::Heat);
@@ -174,6 +228,7 @@ impl ScopeApp {
                 })
                 .ok_or("Spectrogram plot missing".into())
         };
+        settle(&mut driver, self);
         let rect = plot(&driver)?;
         let center = rect.center();
         let before = self.spectrogram_view();
@@ -196,9 +251,10 @@ impl ScopeApp {
         for _ in 0..30 {
             driver.frame(self, vec![]);
         }
+        settle(&mut driver, self);
         let rect = plot(&driver)?;
         let start = rect.center();
-        let destination = start + vec2(30.0, 20.0);
+        let destination = start + vec2(30.0, 0.0);
         let drag = |driver: &mut Driver, app: &mut ScopeApp, start, destination| {
             driver.frame(
                 app,
@@ -231,24 +287,77 @@ impl ScopeApp {
             self.cursors.times.iter().all(Option::is_none),
             "Background drag created a time cursor"
         );
+        assert!(
+            self.spectrogram_hold.is_none(),
+            "Horizontal pan entered Hold"
+        );
+        settle(&mut driver, self);
         driver.click_at(self, center);
+        for _ in 0..30 {
+            driver.frame(self, vec![]);
+        }
+        settle(&mut driver, self);
+        assert!(
+            self.spectrogram_hold.is_some(),
+            "Time selection did not enter Hold"
+        );
         let a = self.cursors.times[self.active_cursor]
             .unwrap()
-            .spectrogram_y()
+            .spectrogram_sample()
             .unwrap();
-        assert!((a - 0.5).abs() < 0.01);
+        let selected = self.spectrogram_selected[self.active_cursor]
+            .as_ref()
+            .unwrap()
+            .clone();
+        assert_eq!(
+            selected.power()[32].to_bits(),
+            (0.25 + f64::EPSILON).to_bits()
+        );
         let before_drag = self.spectrogram_view();
         drag(&mut driver, self, center, center + vec2(30.0, 40.0));
         let b = self.cursors.times[self.active_cursor]
             .unwrap()
-            .spectrogram_y()
+            .spectrogram_sample()
             .unwrap();
-        assert!(b > a);
+        assert!(b < a);
         assert_eq!(
             self.spectrogram_view(),
             before_drag,
             "Cursor drag panned frequency"
         );
+        settle(&mut driver, self);
+        let fixed_samples = self.cursor_samples();
+        let hold = self.spectrogram_hold.clone().unwrap();
+        let anchor = self.spectrogram_hold_anchor.unwrap();
+        let background = pos2(
+            rect.left() + rect.width() * 0.8,
+            rect.top() + rect.height() * 0.9,
+        );
+        drag(&mut driver, self, background, background + vec2(0.0, 30.0));
+        assert!(self.spectrogram_hold_anchor.unwrap() < anchor);
+        assert_eq!(self.cursor_samples(), fixed_samples);
+        assert!(Arc::ptr_eq(self.spectrogram_hold.as_ref().unwrap(), &hold));
+        let anchor = self.spectrogram_hold_anchor.unwrap();
+        let frequency = self.spectrogram_view();
+        driver.frame(
+            self,
+            vec![
+                egui::Event::PointerMoved(background),
+                egui::Event::MouseWheel {
+                    unit: egui::MouseWheelUnit::Point,
+                    phase: egui::TouchPhase::Move,
+                    delta: vec2(0.0, 60.0),
+                    modifiers: egui::Modifiers::SHIFT,
+                },
+            ],
+        );
+        assert!(self.spectrogram_hold_anchor.unwrap() < anchor);
+        assert_eq!(self.spectrogram_view(), frequency);
+        assert_eq!(self.cursor_samples(), fixed_samples);
+        for _ in 0..30 {
+            driver.frame(self, vec![]);
+        }
+        settle(&mut driver, self);
         // Keep this double-click distinct from the earlier cursor click.
         // egui otherwise recognizes a rapid third click as a triple-click.
         for _ in 0..50 {
@@ -263,21 +372,47 @@ impl ScopeApp {
         assert_eq!(self.spectrogram_max_hz, 0.0);
         assert_eq!(self.spectrogram_min_hz, 20.0);
         assert_eq!(self.spectrogram_seconds, 60.0);
+        assert!(
+            self.spectrogram_hold.is_some(),
+            "Double-click changed Hold mode"
+        );
+        driver.click(self, "Live")?;
+        assert!(self.spectrogram_hold.is_none());
+        assert!(self.cursors.times.iter().all(Option::is_none));
+        settle(&mut driver, self);
+        // Double-click while Live must cancel its deferred single click.
+        driver.click_at(self, no_cursor);
+        driver.click_at(self, no_cursor);
+        for _ in 0..30 {
+            driver.frame(self, vec![]);
+        }
+        assert!(self.spectrogram_hold.is_none());
         driver.resize(self, vec2(900.0, 700.0), 1.25, 2.0);
         driver.click(self, "Details")?;
         driver.position("Auto color range")?;
         driver.click(self, "Measurement")?;
+        settle(&mut driver, self);
         assert!(plot(&driver)?.width() > 100.0);
         assert_eq!(
             (
                 self.input_generation,
+                self.stft_generation,
                 self.spectrogram_settings,
-                self.last_stft,
-                self.spectrogram_history.lock().unwrap().revision(),
                 self.generator.command_marker()
             ),
             conditions
         );
+        self.spectrogram_view_worker.clear();
+        self.stft_history
+            .replace_frozen_snapshot(previous_collector);
+        self.spectrogram_unavailable_selection = previous_unavailable;
+        self.spectrogram_history = previous_history;
+        self.spectrogram_snapshot = previous_snapshot;
+        self.spectrogram_hold = previous_hold;
+        self.spectrogram_anchor = previous_anchor;
+        self.spectrogram_hold_anchor = previous_hold_anchor;
+        self.spectrogram_selected = [None, None];
+        self.last_stft = previous_last;
         (
             self.spectrogram_color_map,
             self.spectrogram_auto_color,
@@ -290,9 +425,9 @@ impl ScopeApp {
         self.shell = shell;
         self.cursors = cursors;
         self.active_cursor = active;
-        self.spectrogram_auto_range = spectrogram::AutoRange::default();
+        self.spectrogram_auto_result = spectrogram::ColorRange::default();
         println!(
-            "Spectrogram display UI OK: palette/Auto/time widgets, wheel zoom, background pan, cursor drag priority, double-click reset, narrow/DPI; STFT/history/generation/output unchanged"
+            "Spectrogram display UI OK: palette/Auto/time widgets, frequency/time pan, Shift+wheel, fixed f64 frame selection, Hold/Live, cursor drag priority, double-click reset, narrow/DPI; STFT/generation/output unchanged"
         );
         Ok(())
     }

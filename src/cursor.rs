@@ -11,7 +11,7 @@ pub struct TimeCursor {
 enum TimePosition {
     Sample(u64),
     ScopeX(f64),
-    SpectrogramY(f64),
+    SpectrogramSample(u64),
     TraceOffset(i64),
 }
 
@@ -23,9 +23,9 @@ impl TimeCursor {
         }
     }
 
-    pub fn spectrogram_y(self) -> Option<f64> {
+    pub fn spectrogram_sample(self) -> Option<u64> {
         match self.position {
-            TimePosition::SpectrogramY(y) => Some(y),
+            TimePosition::SpectrogramSample(sample) => Some(sample),
             _ => None,
         }
     }
@@ -87,13 +87,11 @@ impl Cursors {
         }
     }
 
-    pub fn set_spectrogram_time(&mut self, index: usize, fraction: f64) {
-        if fraction.is_finite() {
-            self.times[index] = Some(TimeCursor {
-                epoch: self.epoch,
-                position: TimePosition::SpectrogramY(fraction.clamp(0.0, 1.0)),
-            });
-        }
+    pub fn set_spectrogram_sample(&mut self, index: usize, sample: u64) {
+        self.times[index] = Some(TimeCursor {
+            epoch: self.epoch,
+            position: TimePosition::SpectrogramSample(sample),
+        });
     }
 
     /// Keep a sample offset from the XY sweep's trigger, not an aging sample ID.
@@ -115,19 +113,6 @@ impl Cursors {
         }
     }
 
-    pub fn spectrogram_sample(
-        &self,
-        cursor: TimeCursor,
-        end: u64,
-        seconds: f64,
-        sample_rate: u32,
-    ) -> Option<u64> {
-        if cursor.epoch != self.epoch || !seconds.is_finite() || seconds <= 0.0 {
-            return None;
-        }
-        sample_at_age(end, cursor.spectrogram_y()? * seconds, sample_rate)
-    }
-
     pub fn sample(&self, cursor: TimeCursor, scope: Range<u64>) -> Option<u64> {
         self.sample_with_offset(cursor, scope, 0.0)
     }
@@ -144,9 +129,8 @@ impl Cursors {
             return None;
         }
         match cursor.position {
-            TimePosition::Sample(sample) => Some(sample),
+            TimePosition::Sample(sample) | TimePosition::SpectrogramSample(sample) => Some(sample),
             TimePosition::ScopeX(x) => sample_at_fraction_with_offset(scope, x, sample_offset),
-            TimePosition::SpectrogramY(_) => None,
             TimePosition::TraceOffset(offset) => trigger_sample(scope)?.checked_add_signed(offset),
         }
     }
@@ -156,9 +140,10 @@ impl Cursors {
             return None;
         }
         match cursor.position {
-            TimePosition::Sample(sample) => fraction_at_sample(scope, sample),
+            TimePosition::Sample(sample) | TimePosition::SpectrogramSample(sample) => {
+                fraction_at_sample(scope, sample)
+            }
             TimePosition::ScopeX(x) => Some(x),
-            TimePosition::SpectrogramY(_) => None,
             TimePosition::TraceOffset(_) => {
                 fraction_at_sample(scope.clone(), self.sample(cursor, scope)?)
             }
@@ -307,84 +292,20 @@ mod tests {
     }
 
     #[test]
-    fn spectrogram_cursors_keep_y_through_updates_wrap_zoom_and_missing_data() {
-        use crate::{
-            spectrogram,
-            spectrum::{Precision, Window},
-            stft::{Config, Gap, RowInfo},
-        };
-        let config = Config {
-            sample_rate: 1024,
-            channels: 2,
-            channel: 0,
-            size: 1024,
-            hop: 256,
-            window: Window::Hann,
-            remove_dc: true,
-            precision: Precision::F64,
-        };
-        let mut history = spectrogram::History::default();
-        history.reset(1, config);
-        let start = (1_u64 << 54) + 7;
+    fn spectrogram_samples_stay_fixed_through_scope_updates_zoom_and_new_epoch() {
+        let sample = (1_u64 << 54) + 1023;
         let mut cursors = Cursors::default();
-        cursors.set_spectrogram_time(0, 0.25);
+        cursors.set_spectrogram_sample(0, sample);
+        cursors.set_spectrogram_sample(1, sample);
         let time = cursors.times[0].unwrap();
-        let mut db = vec![-80.0; 513];
-        for index in 0..spectrogram::ROWS * 2 {
-            let end = start + 1024 + index as u64 * 256;
-            db[32] = index as f32;
-            assert!(history.push(
-                RowInfo {
-                    generation: 1,
-                    config,
-                    start: end - 1024,
-                    end,
-                    gap: Gap::default(),
-                },
-                &db
-            ));
-            assert_eq!(time.spectrogram_y(), Some(0.25));
-            assert_eq!(
-                cursors.spectrogram_sample(time, end, 1.0, 1024),
-                Some(end - 257)
-            );
-            if index > 0 {
-                let sample = cursors.spectrogram_sample(time, end, 1.0, 1024).unwrap();
-                assert_eq!(history.at_sample(sample).unwrap().1[32], (index - 1) as f32);
-                assert_eq!(history.at_age(0.25).unwrap().1[32], (index - 1) as f32);
-            }
+        assert_eq!(time.spectrogram_sample(), Some(sample));
+        for scope in [sample - 100..sample + 100, sample + 1000..sample + 2000] {
+            assert_eq!(cursors.sample_with_offset(time, scope, 0.75), Some(sample));
         }
-        let end = history.latest().unwrap().end;
-        assert_eq!(
-            cursors.spectrogram_sample(time, end, 2.0, 1024),
-            Some(end - 513)
-        );
-        // The new FFT overlaps the missing interval, but its displayed hop does not.
-        history.push(
-            RowInfo {
-                generation: 1,
-                config,
-                start: end - 256,
-                end: end + 768,
-                gap: Gap {
-                    result_rows: 2,
-                    ..Gap::default()
-                },
-            },
-            &db,
-        );
-        let sample = cursors
-            .spectrogram_sample(time, end + 768, 1.0, 1024)
-            .unwrap();
-        assert!(history.at_sample(sample).is_none());
-        assert!(history.at_age(0.25).is_none());
-        assert_eq!(time.spectrogram_y(), Some(0.25));
-        assert_eq!(cursors.spectrogram_sample(time, 10, 1.0, 1024), None);
-        assert_eq!(cursors.spectrogram_sample(time, end, 0.0, 1024), None);
-        cursors.set_spectrogram_time(0, f64::NAN);
-        assert_eq!(cursors.times[0], Some(time));
+        assert_eq!(cursors.times[0], cursors.times[1]);
         cursors.new_epoch();
-        assert_eq!(cursors.spectrogram_sample(time, end, 1.0, 1024), None);
+        assert_eq!(cursors.sample(time, sample - 100..sample + 100), None);
+        assert_eq!(cursors.times, [None, None]);
     }
 
     #[test]

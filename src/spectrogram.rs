@@ -4,6 +4,7 @@ use crate::stft::{Config, RowInfo};
 
 mod display;
 pub mod history;
+pub mod viewport;
 pub use display::{AutoRange, ColorMap, ColorRange, FrequencyRange, TimeAxis};
 
 pub const ROWS: usize = 512;
@@ -27,6 +28,7 @@ pub struct History {
     next: usize,
     len: usize,
     revision: u64,
+    raster: Option<viewport::Raster>,
 }
 
 impl Default for History {
@@ -40,6 +42,7 @@ impl Default for History {
             next: 0,
             len: 0,
             revision: 0,
+            raster: None,
         }
     }
 }
@@ -48,6 +51,7 @@ impl History {
     /// Invalidate the old input without changing the queued next-start config
     /// or allocating new texture storage. Late rows cannot repopulate it.
     pub fn clear(&mut self) {
+        self.raster = None;
         self.config = None;
         self.rows.fill(None);
         self.next = 0;
@@ -58,6 +62,7 @@ impl History {
 
     pub fn reset(&mut self, generation: u64, config: Config) {
         config.validate().expect("valid STFT configuration");
+        self.raster = None;
         self.config = Some(config);
         self.generation = generation;
         let stride = (config.size / 2 + 1).div_ceil(TEXTURE_WIDTH) * TEXTURE_WIDTH;
@@ -86,6 +91,10 @@ impl History {
         {
             return false;
         }
+        if self.db.is_empty() {
+            let stride = (info.config.size / 2 + 1).div_ceil(TEXTURE_WIDTH) * TEXTURE_WIDTH;
+            self.db.resize(stride * ROWS, 0.0);
+        }
         let offset = self.next * self.stride();
         self.db[offset..offset + db.len()].copy_from_slice(db);
         self.rows[self.next] = Some(info);
@@ -108,31 +117,59 @@ impl History {
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }
+    pub fn texture_width(&self) -> usize {
+        self.raster.as_ref().map_or(TEXTURE_WIDTH, |r| r.width)
+    }
+    pub fn is_raster(&self) -> bool {
+        self.raster.is_some()
+    }
     pub fn stride(&self) -> usize {
-        self.db.len() / ROWS
+        self.raster
+            .as_ref()
+            .map_or(self.db.len() / ROWS, |r| r.width)
     }
     pub fn version(&self, slot: usize) -> u64 {
-        self.versions[slot]
+        self.raster
+            .as_ref()
+            .map_or(self.versions[slot], |r| r.versions[slot])
     }
     pub fn row(&self, slot: usize) -> Option<(RowInfo, &[f32])> {
+        if let Some(raster) = &self.raster {
+            return raster.rows.get(slot).copied().flatten().map(|info| {
+                (
+                    info,
+                    &raster.db[slot * raster.width..(slot + 1) * raster.width],
+                )
+            });
+        }
         self.rows[slot].map(|info| {
             let offset = slot * self.stride();
             (info, &self.db[offset..offset + self.stride()])
         })
     }
     pub fn latest(&self) -> Option<RowInfo> {
+        if let Some(raster) = &self.raster {
+            return Some(raster.latest);
+        }
         self.rows[(self.next + ROWS - 1) % ROWS]
     }
     pub fn retained_seconds(&self) -> f64 {
         let Some(latest) = self.latest() else {
             return 0.0;
         };
+        if let Some(raster) = &self.raster {
+            return raster.retained_seconds;
+        }
         let oldest = self.rows[(self.next + ROWS - self.len) % ROWS].unwrap();
         (latest.end - oldest.end + latest.config.hop as u64) as f64
             / latest.config.sample_rate as f64
     }
     pub fn storage_bytes(&self) -> usize {
-        self.db.capacity() * std::mem::size_of::<f32>()
+        self.raster
+            .as_ref()
+            .map_or(self.db.capacity() * std::mem::size_of::<f32>(), |r| {
+                r.db.capacity() * std::mem::size_of::<f32>()
+            })
     }
 
     /// Newest at top; each row occupies one hop ending at its window end.
@@ -140,6 +177,10 @@ impl History {
     /// Missing input/result intervals stay at their source-time positions.
     pub fn placements(&self, seconds: f64, output: &mut Vec<Placement>) {
         output.clear();
+        if let Some(raster) = &self.raster {
+            output.extend_from_slice(&raster.placements);
+            return;
+        }
         let Some(latest) = self.latest() else { return };
         if !seconds.is_finite() || seconds <= 0.0 {
             return;
@@ -190,6 +231,9 @@ impl History {
 
     /// Return the analyzed window at this age, or None for missing/unretained data.
     pub fn at_age(&self, age_seconds: f64) -> Option<(RowInfo, &[f32])> {
+        if self.raster.is_some() {
+            return None;
+        }
         let latest = self.latest()?;
         if !age_seconds.is_finite() || age_seconds < 0.0 {
             return None;
@@ -211,6 +255,9 @@ impl History {
     /// Match the displayed hop interval, rather than any overlapping FFT
     /// window. Missing rows must not borrow a measurement from a neighbour.
     pub fn at_sample(&self, sample: u64) -> Option<(RowInfo, &[f32])> {
+        if self.raster.is_some() {
+            return None;
+        }
         for index in 0..self.len {
             let slot = (self.next + ROWS - 1 - index) % ROWS;
             let (info, db) = self.row(slot)?;
