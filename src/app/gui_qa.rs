@@ -335,6 +335,7 @@ impl ScopeApp {
         self.spectrum_display = spectrum_display;
         self.spectrum_dirty = true;
         self.spectrum_numeric_key = None;
+        self.check_spectrum_interactions(&mut driver)?;
 
         for instrument in Instrument::ALL {
             driver.click(self, instrument.name())?;
@@ -457,6 +458,147 @@ impl ScopeApp {
         self.shell = saved_shell;
         println!(
             "GUI interactions OK: widget clicks, keyboard navigation, details, I/O return, resize/scale; measurement and output commands unchanged"
+        );
+        Ok(())
+    }
+
+    fn check_spectrum_interactions(&mut self, driver: &mut Driver) -> Result<(), String> {
+        let saved_settings = self.spectrum_settings;
+        let saved_display = self.spectrum_display;
+        let saved_axes = (self.frequency_scale, self.span_hz, self.spectrum_min_hz);
+        let saved_cursors = std::mem::take(&mut self.cursors);
+        let saved_active = self.active_cursor;
+        let settings = Settings {
+            averages: 1,
+            quantity: Quantity::Amplitude,
+            ..Settings::default()
+        };
+        let mut history = History::with_channels(settings.size, 2);
+        for n in 0..settings.size {
+            let phase = std::f64::consts::TAU * 128.0 * n as f64 / settings.size as f64;
+            history.push([
+                0.125 * phase.sin() + 0.0625 * (2.0 * phase).sin(),
+                0.25 * phase.sin(),
+            ]);
+        }
+        let mut analyzer = Analyzer::new(settings, self.sample_rate);
+        assert!(analyzer.update(&history, 0));
+        let mut result = spectrum::Result::empty(settings, self.sample_rate);
+        analyzer.copy_result(&mut result);
+        let saved_result = std::mem::replace(&mut self.analyzer, result);
+        self.spectrum_settings = settings;
+        self.spectrum_display = settings::SpectrumDisplay::default();
+        self.frequency_scale = FrequencyScale::Linear;
+        self.span_hz = 0.0;
+        self.spectrum_min_hz = 0.0;
+        self.active_cursor = 0;
+        self.spectrum_dirty = true;
+        self.spectrum_numeric_key = None;
+        driver.resize(self, vec2(1440.0, 860.0), 1.0, 1.0);
+
+        // All default groups fit the actual startup height without scrolling.
+        let quantity = driver.position("Amplitude")?;
+        let axis = driver.position("Log Hz")?;
+        let cursor_a = driver.position("Cursor A")?;
+        let average = driver.position("Average")?;
+        let advanced = driver.position("Advanced analysis / diagnostics")?;
+        assert!(
+            quantity.y < axis.y
+                && axis.y < cursor_a.y
+                && cursor_a.y < average.y
+                && average.y < advanced.y
+        );
+        driver.click(self, "PSD")?;
+        assert_eq!(self.spectrum_settings.quantity, Quantity::Psd);
+        assert_eq!(self.analyzer.settings().quantity, Quantity::Amplitude);
+        driver.click(self, "Amplitude")?;
+        driver.click(self, "Average")?;
+        assert_eq!(
+            self.spectrum_settings.averages,
+            self.spectrum_display.average_weight
+        );
+        driver.position("Advanced analysis / diagnostics")?;
+        driver.click(self, "Average")?;
+        assert_eq!(self.spectrum_settings.averages, 1);
+
+        let rect = driver
+            .output
+            .shapes
+            .iter()
+            .find_map(|s| {
+                if let egui::Shape::Callback(callback) = &s.shape {
+                    Some(callback.rect)
+                } else {
+                    None
+                }
+            })
+            .ok_or("Spectrum plot rectangle missing")?;
+        let view = self.spectrum_view();
+        let frequency = self.sample_rate as f64 * 128.0 / settings.size as f64;
+        let at = |hz: f64| {
+            pos2(
+                rect.left() + view.x(hz as f32) * rect.width(),
+                rect.center().y,
+            )
+        };
+        driver.click(self, "Cursor A")?;
+        driver.click_at(self, at(frequency));
+        let a = self.cursors.spectrum_frequencies_hz[0]
+            .ok_or("Spectrum A did not respond to plot click")?;
+        driver.click(self, "Cursor B")?;
+        driver.click_at(self, at(2.0 * frequency));
+        let b = self.cursors.spectrum_frequencies_hz[1]
+            .ok_or("Spectrum B did not respond to plot click")?;
+        assert_eq!(self.cursors.spectrum_frequencies_hz[0], Some(a));
+        let reading_a = self.analyzer.cursor(a).unwrap();
+        let reading_b = self.analyzer.cursor(b).unwrap();
+        assert_eq!(reading_a.frequency_hz, frequency);
+        assert_eq!(reading_b.frequency_hz, 2.0 * frequency);
+        assert!((reading_a.value - 0.125).abs() < 1e-10);
+        assert!((reading_b.value - 0.0625).abs() < 1e-10);
+        assert!(driver.output.shapes.iter().any(|s| matches!(&s.shape,
+            egui::Shape::Text(t) if t.galley.text().starts_with("Δf "))));
+
+        let destination = at(3.0 * frequency);
+        driver.frame(
+            self,
+            vec![
+                egui::Event::PointerMoved(at(b)),
+                egui::Event::PointerButton {
+                    pos: at(b),
+                    button: egui::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: egui::Modifiers::NONE,
+                },
+            ],
+        );
+        driver.frame(self, vec![egui::Event::PointerMoved(destination)]);
+        driver.frame(
+            self,
+            vec![egui::Event::PointerButton {
+                pos: destination,
+                button: egui::PointerButton::Primary,
+                pressed: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        assert_eq!(self.cursors.spectrum_frequencies_hz[0], Some(a));
+        assert_ne!(self.cursors.spectrum_frequencies_hz[1], Some(b));
+        driver.click(self, "Clear")?;
+        assert_eq!(self.cursors.spectrum_frequencies_hz, [None; 2]);
+        assert!(self.cursors.frequency_hz.is_none());
+
+        self.analyzer = saved_result;
+        self.spectrum_settings = saved_settings;
+        self.spectrum_display = saved_display;
+        (self.frequency_scale, self.span_hz, self.spectrum_min_hz) = saved_axes;
+        self.cursors = saved_cursors;
+        self.active_cursor = saved_active;
+        self.spectrum_dirty = true;
+        self.spectrum_numeric_key = None;
+        driver.resize(self, vec2(1440.0, 1000.0), 1.0, 1.0);
+        println!(
+            "Spectrum controls OK: default-height groups, PSD/Amplitude, averaging, independent A/B clicks and drag, known-bin readings, delta and Clear"
         );
         Ok(())
     }

@@ -6,11 +6,10 @@ impl ScopeApp {
     pub(super) fn spectrum_summary(&self, ui: &mut egui::Ui) {
         let result = self.selected_spectrum();
         let settings = result.settings();
-        let updates = self.selected_spectrum_info().updates;
         let averaging = if settings.averages == 1 {
             "AVG OFF".into()
         } else {
-            format!("EMA 1/{} · {updates} windows", settings.averages)
+            format!("EMA 1/{}", settings.averages)
         };
         ui.label(
             RichText::new(format!(
@@ -162,6 +161,15 @@ impl ScopeApp {
     pub(super) fn spectrum_controls(&mut self, ui: &mut egui::Ui) {
         let before = self.spectrum_settings;
         control_group(ui, "FFT", BLUE, |ui| {
+            ui.horizontal(|ui| {
+                ui.selectable_value(
+                    &mut self.spectrum_settings.quantity,
+                    Quantity::Amplitude,
+                    "Amplitude",
+                ).on_hover_text("Bin amplitude · 0 dBFS = 1 FS peak sine at a bin centre. Window coherent gain corrected; off-bin tones have scalloping loss.");
+                ui.selectable_value(&mut self.spectrum_settings.quantity, Quantity::Psd, "PSD")
+                    .on_hover_text("Power spectral density · power per Hz, with window noise-bandwidth correction");
+            });
             egui::ComboBox::from_id_salt("fft_size")
                 .width(ui.available_width())
                 .selected_text(format!("{} points", self.spectrum_settings.size))
@@ -186,15 +194,96 @@ impl ScopeApp {
                         );
                     }
                 });
-            ui.label(format!(
-                "Fs {} Hz · Δf {:.3} Hz",
-                self.sample_rate,
-                self.sample_rate as f64 / self.spectrum_settings.size as f64
-            ));
         });
+        control_group(ui, "FREQUENCY / SCALE", BLUE, |ui| {
+            self.spectrum_display_controls(ui)
+        });
+        let index = self.spectrum_display.selected;
+        control_group(
+            ui,
+            &format!("MEASUREMENT · CH{}", index + 1),
+            monitor_controls::scope_color(index),
+            |ui| {
+                let old_source = self.spectrum_source(index);
+                let channels = self.lockin_channel_count().max(self.scope_channel_count());
+                ui.horizontal(|ui| {
+                    ui.label("Input source");
+                    let source = if index == 0 {
+                        &mut self.spectrum_channel
+                    } else {
+                        &mut self.spectrum_display.overlay_channels[index - 1]
+                    };
+                    channel_select(ui, "spectrum_source", source, channels);
+                });
+                if old_source != self.spectrum_source(index) && self.running() {
+                    if index == 0 {
+                        self.analyzer =
+                            spectrum::Result::empty(self.spectrum_settings, self.sample_rate);
+                        self.spectrum_info = measurement::SpectrumInfo::default();
+                        if let Some(core) = &self.core {
+                            core.configure_spectrum(
+                                self.spectrum_settings,
+                                self.spectrum_channel,
+                                self.spectrum_mode,
+                            );
+                        }
+                        // The shared settings command restarts all traces.
+                        self.clear_spectrum_overlays();
+                    } else {
+                        self.spectrum_overlays[index - 1] =
+                            spectrum::Result::empty(self.spectrum_settings, self.sample_rate);
+                        self.spectrum_overlay_info[index - 1] =
+                            measurement::SpectrumInfo::default();
+                    }
+                    self.configure_spectrum_display();
+                    self.spectrum_numeric_key = None;
+                    self.spectrum_dirty = true;
+                }
+                self.spectrum_dirty |= ui
+                    .checkbox(&mut self.spectrum_display.peak_marker, "Peak markers")
+                    .changed();
+                self.spectrum_cursor_controls(ui);
+                if self.selected_spectrum().settings().quantity == Quantity::Psd {
+                    ui.collapsing("Power in band", |ui| self.spectrum_band_controls(ui));
+                }
+            },
+        );
         control_group(ui, "AVERAGING", GREEN, |ui| {
-            let mut enabled = self.spectrum_settings.averages > 1;
-            if ui.checkbox(&mut enabled, "Average linear power").changed() {
+            self.spectrum_average_controls(ui)
+        });
+        if before != self.spectrum_settings && self.running() {
+            self.reset_analysis();
+        }
+        ui.collapsing("Advanced analysis / diagnostics", |ui| {
+            self.spectrum_analysis_controls(ui);
+            self.spectrum_diagnostics(ui);
+            ui.label(
+                RichText::new("JSON / CSV / PNG use the selected trace.")
+                    .small()
+                    .color(MUTED),
+            );
+        });
+        if !self.running() {
+            ui.label(
+                RichText::new(
+                    "FFT edits apply on next Start; captured results retain their conditions.",
+                )
+                .small()
+                .color(MUTED),
+            );
+        }
+    }
+
+    fn spectrum_average_controls(&mut self, ui: &mut egui::Ui) {
+        let mut enabled = self.spectrum_settings.averages > 1;
+        ui.horizontal(|ui| {
+            if ui
+                .checkbox(&mut enabled, "Average")
+                .on_hover_text(
+                    "Exponential average of linear power. OFF uses the latest processed window.",
+                )
+                .changed()
+            {
                 self.spectrum_settings.averages = if enabled {
                     self.spectrum_display.average_weight
                 } else {
@@ -203,6 +292,7 @@ impl ScopeApp {
             }
             ui.add_enabled_ui(enabled, |ui| {
                 egui::ComboBox::from_id_salt("fft_average")
+                    .width(100.0)
                     .selected_text(format!("Weight {}", self.spectrum_display.average_weight))
                     .show_ui(ui, |ui| {
                         for count in [4, 16, 64] {
@@ -219,145 +309,53 @@ impl ScopeApp {
                         }
                     });
             });
-            let updates = self.selected_spectrum_info().updates;
-            ui.label(format!(
-                "CH{} · {updates} processed windows",
-                self.spectrum_display.selected + 1
-            ));
-            ui.label(
-                RichText::new(if enabled {
-                    format!(
-                        "Exponential power average · α = 1/{} · continuous",
-                        self.spectrum_settings.averages
-                    )
-                } else {
-                    "Averaging OFF · latest processed window".into()
-                })
-                .small()
-                .color(MUTED),
-            );
-            if enabled {
-                // EMA has no finite completion count: label progress as settling.
-                let weight = 1.0
-                    - (1.0 - 1.0 / self.spectrum_settings.averages as f64)
-                        .powf(updates.saturating_sub(1) as f64);
-                ui.add(
-                    egui::ProgressBar::new(if updates == 0 { 0.0 } else { weight as f32 })
-                        .text("EMA settling (95% ≈ 3 × weight windows)"),
-                );
-            }
             if ui
                 .add_enabled(
                     self.running() && self.pending_stop.is_none(),
-                    egui::Button::new("Reset averaging"),
+                    egui::Button::new("Reset").small(),
                 )
+                .on_hover_text("Reset averaging and peak hold for all Spectrum traces")
                 .clicked()
             {
                 self.reset_analysis();
             }
         });
-        if before != self.spectrum_settings && self.running() {
-            self.reset_analysis();
-        }
-        control_group(ui, "FREQUENCY / SCALE", BLUE, |ui| {
-            self.spectrum_display_controls(ui)
-        });
-        control_group(ui, "MEASUREMENT", YELLOW, |ui| {
-            let index = self.spectrum_display.selected;
-            ui.label(
-                RichText::new(format!("CH{}", index + 1))
-                    .color(monitor_controls::scope_color(index)),
-            );
-            let old_source = self.spectrum_source(index);
-            let channels = self.lockin_channel_count().max(self.scope_channel_count());
-            ui.horizontal(|ui| {
-                ui.label("Input source");
-                let source = if index == 0 {
-                    &mut self.spectrum_channel
-                } else {
-                    &mut self.spectrum_display.overlay_channels[index - 1]
-                };
-                channel_select(ui, "spectrum_source", source, channels);
-            });
-            if old_source != self.spectrum_source(index) && self.running() {
-                if index == 0 {
-                    self.analyzer =
-                        spectrum::Result::empty(self.spectrum_settings, self.sample_rate);
-                    self.spectrum_info = measurement::SpectrumInfo::default();
-                    if let Some(core) = &self.core {
-                        core.configure_spectrum(
-                            self.spectrum_settings,
-                            self.spectrum_channel,
-                            self.spectrum_mode,
-                        );
-                    }
-                    // The shared settings command restarts all traces.
-                    self.clear_spectrum_overlays();
-                } else {
-                    self.spectrum_overlays[index - 1] =
-                        spectrum::Result::empty(self.spectrum_settings, self.sample_rate);
-                    self.spectrum_overlay_info[index - 1] = measurement::SpectrumInfo::default();
-                }
-                self.configure_spectrum_display();
-                self.spectrum_numeric_key = None;
-                self.spectrum_dirty = true;
-            }
-            self.spectrum_dirty |= ui
-                .checkbox(&mut self.spectrum_display.peak_marker, "Peak markers")
-                .changed();
-            self.refresh_spectrum_readouts(self.spectrum_view());
-            let result = self.selected_spectrum();
-            if let Some(peak) = self.spectrum_peak {
-                ui.label(format!(
-                    "Peak {:.3} Hz · {:.2} {}",
-                    peak.frequency,
-                    peak.level_db,
-                    result.db_unit()
-                ));
-            } else {
-                ui.label("Peak — · no complete window");
-            }
-            self.cursor_controls(ui);
-            ui.label(RichText::new("0 dBFS = 1 FS peak sine at a bin centre. Window coherent gain corrected. Off-bin tones have scalloping loss.").small().color(MUTED));
-            ui.label(
-                RichText::new("JSON / CSV / PNG use the selected trace.")
-                    .small()
-                    .color(MUTED),
-            );
-        });
-        ui.collapsing("Advanced analysis / diagnostics", |ui| {
-            self.spectrum_analysis_controls(ui);
-            self.spectrum_diagnostics(ui);
-        });
-        if !self.running() {
-            ui.label(
-                RichText::new(
-                    "FFT edits apply on next Start; captured results retain their conditions.",
-                )
-                .small()
-                .color(MUTED),
-            );
+        if enabled {
+            let updates = self.selected_spectrum_info().updates;
+            // EMA has no finite completion count: label progress as settling.
+            let weight = 1.0
+                - (1.0 - 1.0 / self.spectrum_settings.averages as f64)
+                    .powf(updates.saturating_sub(1) as f64);
+            ui.add(egui::ProgressBar::new(if updates == 0 { 0.0 } else { weight as f32 })
+                .text("EMA settling"))
+                .on_hover_text(format!("Exponential power average · α = 1/{}. Approximately 95% settled after 3 × weight windows.", self.spectrum_settings.averages));
         }
     }
+
+    fn spectrum_cursor_controls(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            for (index, title) in ["Cursor A", "Cursor B"].into_iter().enumerate() {
+                ui.selectable_value(&mut self.active_cursor, index, title)
+                    .on_hover_text("Select a cursor, then click or drag on the spectrum. Both cursors read the selected channel's nearest FFT bin.");
+            }
+            if ui.small_button("Clear").clicked() {
+                self.cursors.clear();
+                ui.ctx().request_repaint();
+            }
+        });
+        ui.label(
+            RichText::new("Click / drag the plot to place a cursor")
+                .small()
+                .color(MUTED),
+        );
+    }
+
     fn spectrum_analysis_controls(&mut self, ui: &mut egui::Ui) {
         let before = (
             self.spectrum_settings,
             self.spectrum_channel,
             self.spectrum_mode,
         );
-        setting_label(ui, "MEASUREMENT");
-        egui::ComboBox::from_id_salt("spectrum_quantity")
-            .width(ui.available_width())
-            .selected_text(self.spectrum_settings.quantity.name())
-            .show_ui(ui, |ui| {
-                for quantity in [Quantity::Amplitude, Quantity::Psd] {
-                    ui.selectable_value(
-                        &mut self.spectrum_settings.quantity,
-                        quantity,
-                        quantity.name(),
-                    );
-                }
-            });
         fft_precision(
             ui,
             "spectrum_precision",
@@ -428,7 +426,6 @@ impl ScopeApp {
             self.span_hz,
             self.spectrum_min_hz,
         );
-        setting_label(ui, "FREQUENCY AXIS");
         ui.horizontal(|ui| {
             ui.selectable_value(&mut self.frequency_scale, FrequencyScale::Log, "Log Hz");
             ui.selectable_value(
@@ -454,36 +451,33 @@ impl ScopeApp {
                     );
                 }
             });
-        setting_label(ui, "DISPLAY FREQUENCY RANGE");
-        ui.horizontal(|ui| {
-            ui.label("From");
-            ui.add(
-                egui::DragValue::new(&mut self.spectrum_min_hz)
-                    .range(0.0..=self.sample_rate as f32 / 2.0)
-                    .speed(0.1)
-                    .suffix(" Hz"),
+        ui.collapsing("Custom frequency range", |ui| {
+            for (label, value) in [
+                ("From", &mut self.spectrum_min_hz),
+                ("To", &mut self.span_hz),
+            ] {
+                ui.horizontal(|ui| {
+                    ui.label(label);
+                    ui.add(
+                        egui::DragValue::new(value)
+                            .range(0.0..=self.sample_rate as f32 / 2.0)
+                            .speed(0.1)
+                            .suffix(" Hz"),
+                    );
+                });
+            }
+            ui.label(
+                RichText::new("To = 0 uses Nyquist. Narrow ranges show individual bins.")
+                    .small()
+                    .color(MUTED),
             );
         });
-        ui.horizontal(|ui| {
-            ui.label("To");
-            ui.add(
-                egui::DragValue::new(&mut self.span_hz)
-                    .range(0.0..=self.sample_rate as f32 / 2.0)
-                    .speed(0.1)
-                    .suffix(" Hz"),
-            );
-        });
-        ui.label(
-            RichText::new("To = 0 uses Nyquist. Narrow ranges show individual bins.")
-                .small()
-                .color(MUTED),
-        );
         ui.horizontal(|ui| {
             ui.label("Level axis");
             ui.selectable_value(&mut self.spectrum_display.auto_level, true, "Auto");
             ui.selectable_value(&mut self.spectrum_display.auto_level, false, "Manual");
         });
-        ui.add_enabled_ui(!self.spectrum_display.auto_level, |ui| {
+        if !self.spectrum_display.auto_level {
             ui.horizontal(|ui| {
                 ui.label("Bottom");
                 ui.add(
@@ -502,7 +496,7 @@ impl ScopeApp {
                         .suffix(" dB"),
                 );
             });
-        });
+        }
         ui.horizontal(|ui| {
             if ui.checkbox(&mut self.show_hold, "Peak hold").changed()
                 && self.show_hold
@@ -614,13 +608,10 @@ impl ScopeApp {
             ui.label(RichText::new(format!("FFT end #{} · acquired end #{}", window.end, self.history.range().end)).small().color(MUTED))
                 .on_hover_text("Spectrum and Scope/XY have independent sample intervals. FFT processing time and the age of this window are separate conditions.");
         }
-        self.spectrum_band_controls(ui);
     }
 
     fn spectrum_band_controls(&mut self, ui: &mut egui::Ui) {
         if self.selected_spectrum().settings().quantity == Quantity::Psd {
-            ui.separator();
-            setting_label(ui, "POWER IN BAND");
             let nyquist = self.selected_spectrum().nyquist() as f64;
             ui.horizontal(|ui| {
                 ui.label("From");
