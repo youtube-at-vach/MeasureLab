@@ -250,6 +250,50 @@ impl ScopeApp {
             );
             self.ms_per_div = timebase;
         }
+        // Merely showing the new sliders must preserve values produced by
+        // Autoset, wheel zoom and settings, beyond their displayed precision.
+        let saved_axes = (
+            self.ms_per_div,
+            self.scope_horizontal_position,
+            self.trigger,
+        );
+        self.ms_per_div = 1.234567;
+        self.scope_horizontal_position = -1.234567;
+        self.trigger.level = 0.123456789;
+        self.scope_vertical[3].fs_per_div = 0.1234567;
+        self.scope_vertical[3].offset = -0.123456789;
+        let unedited = (
+            self.ms_per_div,
+            self.scope_horizontal_position,
+            self.trigger,
+            self.scope_vertical,
+        );
+        driver.frame(self, vec![]);
+        assert_eq!(
+            (
+                self.ms_per_div,
+                self.scope_horizontal_position,
+                self.trigger,
+                self.scope_vertical
+            ),
+            unedited
+        );
+        driver.click(self, "Zero level")?;
+        assert_eq!(self.trigger.level, 0.0);
+        assert_eq!(self.scope_vertical, unedited.3);
+        driver.click(self, "Centre horizontal")?;
+        assert_eq!(self.scope_horizontal_position, 0.0);
+        assert_eq!(self.ms_per_div, unedited.0);
+        driver.click(self, "Zero offset")?;
+        assert_eq!(self.scope_vertical[3].offset, 0.0);
+        assert_eq!(self.scope_vertical[3].fs_per_div, unedited.3[3].fs_per_div);
+        assert_eq!(self.scope_vertical[..3], unedited.3[..3]);
+        assert_eq!(self.scope_readings, readings);
+        (
+            self.ms_per_div,
+            self.scope_horizontal_position,
+            self.trigger,
+        ) = saved_axes;
         (self.enabled, self.scope_selected, self.scope_vertical) = scope_display;
         self.dirty = true;
         driver.frame(self, vec![]);
