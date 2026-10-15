@@ -105,7 +105,6 @@ impl ScopeApp {
                 &mut self.spectrogram_channel,
                 channels,
             );
-            ui.menu_button("Display…", |ui| self.spectrogram_display_controls(ui));
             ui.label(
                 RichText::new("Spectrogram · time / Hz cursor")
                     .small()

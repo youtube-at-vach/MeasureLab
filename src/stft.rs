@@ -121,6 +121,7 @@ struct Processor {
     config: Config,
     history: History,
     analyzer: Analyzer,
+    display_db: Vec<f32>,
     expected: Option<u64>,
     next_end: u64,
     gap: Gap,
@@ -143,6 +144,7 @@ impl Processor {
                 },
                 config.sample_rate,
             ),
+            display_db: vec![0.0; config.size / 2 + 1],
             expected: None,
             next_end: 0,
             gap: Gap {
@@ -184,7 +186,20 @@ impl Processor {
                 end,
                 gap: self.gap,
             };
-            if emit(info, self.analyzer.db()) {
+            // Preserve silence and invalid data in the display cache so Auto
+            // cannot mistake either for a measured noise floor.
+            for (bin, value) in self.display_db.iter_mut().enumerate() {
+                *value = if self.analyzer.validity() != crate::spectrum::Validity::Valid {
+                    f32::NAN
+                } else if self.analyzer.power()[bin] == 0.0 {
+                    f32::NEG_INFINITY
+                } else if self.analyzer.db()[bin] <= crate::spectrum::DB_MIN {
+                    crate::spectrum::level_db(self.analyzer.power()[bin]) as f32
+                } else {
+                    self.analyzer.db()[bin]
+                };
+            }
+            if emit(info, &self.display_db) {
                 self.gap = Gap::default();
             } else {
                 self.gap.result_rows += 1;
@@ -529,6 +544,38 @@ pub fn smoke_test(
 mod tests {
     use super::*;
     use std::f64::consts::TAU;
+
+    #[test]
+    fn display_cache_distinguishes_silence_nonfinite_and_sub_floor_signal() {
+        for precision in [Precision::F64, Precision::F32] {
+            for value in [0.0, f64::NAN, f64::INFINITY, 1e-12] {
+                let cfg = Config {
+                    precision,
+                    ..config()
+                };
+                let mut processor = Processor::new(1, cfg);
+                let mut rows = 0;
+                for start in (0..1024).step_by(BLOCK_FRAMES) {
+                    let mut input = block(start, BLOCK_FRAMES, cfg);
+                    for sample in &mut input.samples {
+                        *sample *= value;
+                    }
+                    processor.process(&input, |_, db| {
+                        if value == 0.0 {
+                            assert!(db.iter().all(|v| *v == f32::NEG_INFINITY));
+                        } else if !value.is_finite() {
+                            assert!(db.iter().all(|v| v.is_nan()));
+                        } else {
+                            assert!((db[32] + 246.0206).abs() < 0.01);
+                        }
+                        rows += 1;
+                        true
+                    });
+                }
+                assert_eq!(rows, 1);
+            }
+        }
+    }
 
     fn config() -> Config {
         Config {

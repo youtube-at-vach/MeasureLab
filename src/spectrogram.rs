@@ -2,6 +2,9 @@
 //! dBFS is display data; raw samples and FFT calculations remain elsewhere.
 use crate::stft::{Config, RowInfo};
 
+mod display;
+pub use display::{AutoRange, ColorMap, ColorRange, FrequencyRange, TimeAxis};
+
 pub const ROWS: usize = 512;
 // Pack all 16,385 bins into <= 5 scanlines, below default GPU size limits.
 pub const TEXTURE_WIDTH: usize = 4096;
@@ -134,19 +137,19 @@ impl History {
         if !seconds.is_finite() || seconds <= 0.0 {
             return;
         }
-        let scale = latest.config.sample_rate as f64 * seconds;
+        let axis = TimeAxis::new(latest.end, latest.config.sample_rate, seconds);
         let mut previous = None;
         for index in 0..self.len {
             let slot = (self.next + ROWS - self.len + index) % ROWS;
             let info = self.rows[slot].unwrap();
             let start = info.end.saturating_sub(info.config.hop as u64);
-            let top = (latest.end - info.end) as f64 / scale;
-            let bottom = (latest.end - start) as f64 / scale;
+            let top = axis.fraction(info.end);
+            let bottom = axis.fraction(start);
             if top < 1.0 {
                 output.push(Placement {
                     slot: Some(slot),
-                    top: top as f32,
-                    bottom: bottom.min(1.0) as f32,
+                    top,
+                    bottom: bottom.min(1.0),
                 });
             }
             // A loss before the first delivered row is also known from metadata.
@@ -165,12 +168,12 @@ impl History {
             if let Some(end) = preceding
                 && end < start
             {
-                let gap_bottom = (latest.end - end) as f64 / scale;
+                let gap_bottom = axis.fraction(end);
                 if bottom < 1.0 {
                     output.push(Placement {
                         slot: None,
-                        top: bottom as f32,
-                        bottom: gap_bottom.min(1.0) as f32,
+                        top: bottom,
+                        bottom: gap_bottom.min(1.0),
                     });
                 }
             }
@@ -184,12 +187,14 @@ impl History {
         if !age_seconds.is_finite() || age_seconds < 0.0 {
             return None;
         }
-        let age = age_seconds * latest.config.sample_rate as f64;
+        let axis = TimeAxis::new(latest.end, latest.config.sample_rate, 1.0);
         for index in 0..self.len {
             let slot = (self.next + ROWS - 1 - index) % ROWS;
             let (info, db) = self.row(slot)?;
-            let top = (latest.end - info.end) as f64;
-            if age >= top && age < top + info.config.hop as f64 {
+            let top = axis.age(info.end);
+            if age_seconds >= top
+                && age_seconds < top + info.config.hop as f64 / info.config.sample_rate as f64
+            {
                 return Some((info, &db[..info.config.size / 2 + 1]));
             }
         }

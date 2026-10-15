@@ -1,6 +1,6 @@
 //! Desktop adapter for the GUI-independent, bounded spectrogram history.
 use crate::{
-    spectrogram::{History, Placement, ROWS, TEXTURE_WIDTH},
+    spectrogram::{ColorMap, History, Placement, ROWS, TEXTURE_WIDTH},
     spectrum::{FrequencyScale, View},
 };
 use eframe::{
@@ -24,7 +24,8 @@ pub struct Renderer {
     count: u32,
     placements: Vec<Placement>,
     vertices: Vec<[f32; 4]>,
-    parameters: [f32; 8],
+    parameters: [f32; 20],
+    pub color_map: ColorMap,
     pub uploaded_rows: u64,
     pub uploaded_buffers: u64,
 }
@@ -44,7 +45,7 @@ impl Renderer {
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        min_binding_size: std::num::NonZeroU64::new(32),
+                        min_binding_size: std::num::NonZeroU64::new(80),
                     },
                     count: None,
                 },
@@ -96,7 +97,7 @@ impl Renderer {
         });
         let uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("MeasureLab spectrogram parameters"),
-            contents: bytemuck::cast_slice(&[0_f32; 8]),
+            contents: bytemuck::cast_slice(&[0_f32; 20]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
         let texture = texture(device, 1);
@@ -121,7 +122,8 @@ impl Renderer {
             count: 0,
             placements: Vec::with_capacity(ROWS * 2),
             vertices: Vec::with_capacity(ROWS * 2),
-            parameters: [0.0; 8],
+            parameters: [0.0; 20],
+            color_map: ColorMap::Blue,
             uploaded_rows: 0,
             uploaded_buffers: 0,
         }
@@ -198,7 +200,8 @@ impl Renderer {
             self.revision = history.revision();
             self.seconds = seconds;
         }
-        let parameters = [
+        let mut parameters = [0.0; 20];
+        parameters[..8].copy_from_slice(&[
             view.min_hz,
             view.max_hz,
             config.sample_rate as f32 / config.size as f32,
@@ -211,7 +214,8 @@ impl Renderer {
             },
             width,
             scanlines as f32,
-        ];
+        ]);
+        parameters[8..].copy_from_slice(self.color_map.stops().as_flattened());
         if self.parameters != parameters {
             queue.write_buffer(&self.uniform, 0, bytemuck::cast_slice(&parameters));
             self.uploaded_buffers += 1;
@@ -274,6 +278,7 @@ pub struct Callback {
     pub view: View,
     pub seconds: f64,
     pub width: f32,
+    pub color_map: ColorMap,
 }
 impl egui_wgpu::CallbackTrait for Callback {
     fn prepare(
@@ -285,6 +290,7 @@ impl egui_wgpu::CallbackTrait for Callback {
         resources: &mut egui_wgpu::CallbackResources,
     ) -> Vec<wgpu::CommandBuffer> {
         if let Some(renderer) = resources.get_mut::<Renderer>() {
+            renderer.color_map = self.color_map;
             renderer.prepare(
                 device,
                 queue,

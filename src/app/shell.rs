@@ -396,6 +396,7 @@ impl ScopeApp {
             ui.label("Ctrl + 1…7: open an instrument. Ctrl + Left / Right: select a console pane.");
             ui.label("Tab / Shift + Tab: move keyboard focus. Enter / Space: activate a focused control.");
             ui.label("Escape: return from I/O or narrow details.");
+            ui.label(spectrogram_controls::GESTURES);
             ui.separator();
             ui.label("FS: digital full scale; physical amplitude and clocks require calibration.");
             ui.label("LIVE / HELD / WAITING describe acquisition; validity and calibration are shown separately.");

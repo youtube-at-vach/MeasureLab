@@ -105,7 +105,7 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | Cursor A / B / Clear | カーソルの選択／時間・周波数・XY自由配置カーソルの解除 |
 | Scope上でクリック／ドラッグ | 時間カーソルのX位置を固定。各更新の波形から振幅・トリガー基準の時刻・Δtを表示 |
 | Spectrum上でクリック／ドラッグ | 選択中のA／Bの周波数を独立に固定。選択CHの最寄りビンの振幅／PSD／ESD、Δf・ΔLを表示。最後に置いた周波数をSpectrogramと共有し、解析窓・平均の寄与区間はホバーで確認 |
-| Spectrogram上でクリック／ドラッグ | 縦位置と共通周波数を固定。更新ごとにその位置の行の解析窓・ビン振幅を表示 |
+| Spectrogram上でクリック／カーソル線をドラッグ | 縦位置と共通周波数を固定。更新ごとにその位置の行の解析窓・ビン振幅を表示。背景ドラッグは周波数パン |
 | XY Free / Trace Snap | 自由配置（既定）と実サンプルへのスナップを切り替え |
 | XY X Source / Y Source | X/Yへ入力CHを独立に割り当てる。Scopeの割当とは独立 |
 | XY上でクリック／ドラッグ | FreeはX・Y振幅を固定しΔX・ΔYを表示。Trace Snapは最寄りの実サンプル組を選び、トリガーからの時間差を保持 |
@@ -141,8 +141,8 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | Level axis / Auto / Manual / Peak hold / Clear hold | Autoは表示中CHからレベル範囲を調整。Manual選択時にBottom／Topを表示。平均後の最大値の保持とクリア |
 | スペクトル上にマウスを置く | 最寄りFFTビンの実周波数と振幅／PSD／ESDをf64で読み出す |
 | Spectrogram Source / FFT length / Window | Spectrumとは独立した対象CH・窓長・窓関数・DC除去 |
-| Spectrogram Time span / From / To | 時間範囲（0.5〜20秒）と周波数範囲。To = 0はNyquist |
-| Spectrogram Floor / Ceiling | 色のdBFS範囲。表示変更ではFFT・履歴をリセットしない |
+| Spectrogram Display / Time Range / From / To | 時間幅5／10／30／60秒と周波数範囲。旧設定の0.5／1／2／20秒は復元値を維持。To = 0はNyquist |
+| Spectrogram Display / Color Map / Color Range | Blue／Heat／Grayscale、Min／Maxと継続Auto、右端のdBFSカラーバー。表示変更ではFFT・履歴をリセットしない |
 | スペクトログラム上にマウスを置く | その行の最寄りビンの振幅・周波数と解析窓のサンプル番号 |
 | XY Observation window | XYの観察時間幅（0.5〜200 ms、既定50 ms）。Freeは最新区間、Trace Snapはトリガー基準の区間を表示 |
 | XY X amplitude / Y amplitude | 独立した両軸の振幅範囲（0.001〜0.5 FS/div） |
@@ -167,7 +167,7 @@ ScopeではRMS・Peak・P-Pと時間カーソルの数値に校正を適用し�
 
 ### 測定設定の保存・復元
 
-上部 **File / Save settings…** で保存先を選びます。**Restore settings…** は入力・出力停止中にファイルを選んで復元します。従来の **File / File paths & status… / MEASUREMENT SETTINGS** のパス指定も使えます。次回Start用の入力デバイス・CH割当・トリガー・観察幅・Spectrum／Spectrogramの解析設定・PSD帯域・校正定義を版6のJSONへ保存します。Generatorの出力先・Fs・信号条件・内部入力選択、Audio deviceの安定ID・CH数・PCMも保存し、版1〜5の読み込みを維持します。取得中の保持結果や未確定の校正エディター入力を保存する操作ではありません。単独表示／コンソール、計器順・選択区画・希望配置・比率・詳細欄の表示と軸・表示範囲は別のWorkspaceブロックへ保存します。旧2トレース設定は入力割当と倍率を保持して4トレースへ移行し、追加CH3／CH4は表示OFFにします。CHごとのレンジ・オフセット、選択CH、水平位置も保存します。SpectrumのCH別表示・入力割当・選択、Autoレベル・マーカーも保存し、版5以前は従来の1本表示を維持します。旧設定の表示順を引き継ぎ、単一計器は単独表示、複数計器はコンソールへ移行します。読込だけで旧ファイルを上書きしません。生サンプル・測定結果・カーソル位置・表示倍率は含めません。Software Loopbackの仮想DUT条件、Scope取得モードと実験段階Lock-inの設定も保存します。これらを含まない版1ファイルはAuto・Lock-in無効として読みます。QA専用内部デモは保存対象外です。
+上部 **File / Save settings…** で保存先を選びます。**Restore settings…** は入力・出力停止中にファイルを選んで復元します。従来の **File / File paths & status… / MEASUREMENT SETTINGS** のパス指定も使えます。次回Start用の入力デバイス・CH割当・トリガー・観察幅・Spectrum／Spectrogramの解析設定・PSD帯域・校正定義を版7のJSONへ保存します。Generatorの出力先・Fs・信号条件・内部入力選択、Audio deviceの安定ID・CH数・PCMも保存し、版1〜6の読み込みを維持します。取得中の保持結果や未確定の校正エディター入力を保存する操作ではありません。単独表示／コンソール、計器順・選択区画・希望配置・比率・詳細欄の表示と軸・表示範囲は別のWorkspaceブロックへ保存します。旧2トレース設定は入力割当と倍率を保持して4トレースへ移行し、追加CH3／CH4は表示OFFにします。CHごとのレンジ・オフセット、選択CH、水平位置も保存します。SpectrumのCH別表示・入力割当・選択、Autoレベル・マーカーも保存し、版5以前は従来の1本表示を維持します。旧設定の表示順を引き継ぎ、単一計器は単独表示、複数計器はコンソールへ移行します。Spectrogramの色・Manualレンジ・Auto・時間幅も保存し、新フィールドがない旧設定はBlue・Manualで復元します。読込だけで旧ファイルを上書きしません。生サンプル・測定結果・カーソル位置・表示倍率は含めません。Software Loopbackの仮想DUT条件、Scope取得モードと実験段階Lock-inの設定も保存します。これらを含まない版1ファイルはAuto・Lock-in無効として読みます。QA専用内部デモは保存対象外です。
 
 既定の保存先はmacOSで `~/Library/Application Support/MeasureLab/measurement-settings.json`、Windowsで `%APPDATA%/MeasureLab/measurement-settings.json`、Linuxで `$XDG_CONFIG_HOME/MeasureLab/measurement-settings.json`（未設定時は `~/.config/MeasureLab/measurement-settings.json`）です。別のパスも指定できます。自動保存・起動時の自動読み込みは行いません。
 
@@ -248,6 +248,10 @@ Spectrumの校正CHは、振幅を物理単位peak、PSDを単位²/Hz、帯域�
 数値電力・保持値・帯域積算・カーソル／ピークはf64で保持・読み出し、描画用のf32 dB配列から逆算しません。描画には−180 dBの下限がありますが、数値は下限で切り詰めません。電力0は数値上−∞ dBです。32-bit FFTは入力のDC除去後にf32へ変換し、複素結果の二乗と平均はf64で行います。f32 FFT自体の丸めや混在する強弱信号の制限は残り、微小信号の既定は64-bitです。
 
 スペクトログラムは専用ワーカーの連続STFTを表示し、新しい行が上に来ます。縦軸は最新窓の終端からの相対秒、見出しのEndは入力開始からの窓終端の秒です。各行の位置はサンプル番号とFsから計算し、1行はhop = N/4の区間に対応します。各窓のビン振幅を表示し、電力平均とピーク保持は使いません。欠落によって解析できなかった区間はオレンジの縞、まだ取得・保持していない過去は空白です。
+
+右側の **Display** で色・Min／Max・**Auto color range**・Log／Linear・周波数範囲・Time Rangeを編集し、**Analysis** でFFTを設定します。Autoは表示中の時間・周波数範囲にある有効なビンからレンジを求め、無音・非有限値・欠落を除外します。有効なデータが不足する場合は最後の有効レンジ、未確定なら−120〜0 dBFSを使います。手動のMin／Max編集でAutoを解除し、不正な範囲では直前の有効値を保持します。画像と右端のカラーバーは同じ色定義です。
+
+プロット内のホイールはポインターの周波数を中心にズームし、背景の横ドラッグは周波数をパンします。カーソル線付近からのドラッグはカーソル移動を優先します。ダブルクリックはLinearの0〜Nyquist／Logの20 Hz〜Nyquistへ戻し、Time Rangeは保持します。表示操作はSTFT設定・世代・履歴値を変えません。縦パン・Shift＋ホイールによる時間スクロールと、測定を続けたままのHoldはまだ使えません。
 
 履歴は512行で固定です。欠落がないときの保持時間は512 × hop / Fsです。48 kHz・8,192点では約21.85秒、1,024点では約2.73秒です。表示範囲を広げても履歴容量は増えません。非表示でもSTFTの履歴を更新し、再表示時に保持範囲を描画します。停止後は遅着結果を除外して画像を保持します。時間・周波数・色範囲は停止中も変更でき、解析CH・窓長などの変更は次の入力開始時に適用します。
 

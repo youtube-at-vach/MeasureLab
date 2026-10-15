@@ -7,6 +7,7 @@ use crate::{
     measurement::SpectrumMode,
     presentation::{Console, InstrumentId, Layout, Presentation, Screen},
     signal::{MAX_CHANNELS, Trigger, Vertical},
+    spectrogram::{ColorMap, ColorRange},
     spectrum::{FFT_SIZES, FrequencyScale, Quantity, STFT_SIZES, Settings},
     xy::CursorMode,
 };
@@ -19,7 +20,7 @@ use std::{
     thread::{self, JoinHandle},
 };
 
-pub const VERSION: u32 = 6;
+pub const VERSION: u32 = 7;
 pub const MAX_BYTES: usize = 64 * 1024;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -202,6 +203,10 @@ pub struct Workspace {
     pub spectrogram_floor_db: f32,
     pub spectrogram_ceiling_db: f32,
     pub spectrogram_seconds: f64,
+    #[serde(default)]
+    pub spectrogram_color_map: ColorMap,
+    #[serde(default)]
+    pub spectrogram_auto_color: bool,
     pub xy_x_fs_per_div: f64,
     pub xy_y_fs_per_div: f64,
     pub xy_cursor_mode: CursorMode,
@@ -395,19 +400,9 @@ impl Document {
             3200.0,
             "Spectrum ceiling",
         )?;
-        in_range(
-            w.spectrogram_floor_db as f64,
-            -180.0,
-            -20.0,
-            "Spectrogram floor",
-        )?;
-        in_range(
-            w.spectrogram_ceiling_db as f64,
-            -20.0,
-            6.0,
-            "Spectrogram ceiling",
-        )?;
-        in_range(w.spectrogram_seconds, 0.5, 20.0, "Spectrogram time span")?;
+        ColorRange::new(w.spectrogram_floor_db, w.spectrogram_ceiling_db)
+            .ok_or("Spectrogram color range requires finite Min < Max")?;
+        in_range(w.spectrogram_seconds, 0.5, 60.0, "Spectrogram time span")?;
         Ok(set)
     }
 
@@ -780,6 +775,8 @@ mod tests {
                 spectrogram_floor_db: -120.0,
                 spectrogram_ceiling_db: 0.0,
                 spectrogram_seconds: 5.0,
+                spectrogram_color_map: ColorMap::Blue,
+                spectrogram_auto_color: false,
                 xy_x_fs_per_div: 0.25,
                 xy_y_fs_per_div: 0.125,
                 xy_cursor_mode: CursorMode::TraceSnap,
@@ -808,6 +805,59 @@ mod tests {
         w.insert("layout".into(), "auto".into());
         w.insert("sidebar_visible".into(), true.into());
         value
+    }
+
+    #[test]
+    fn spectrogram_display_v7_roundtrip_and_v1_to_v6_defaults_preserve_old_ranges() {
+        for map in ColorMap::ALL {
+            let mut document = fixture();
+            document.workspace.spectrogram_color_map = map;
+            document.workspace.spectrogram_auto_color = true;
+            document.workspace.spectrogram_floor_db = -160.0;
+            document.workspace.spectrogram_ceiling_db = -40.0;
+            document.workspace.spectrogram_seconds = 60.0;
+            assert_eq!(
+                Document::decode(&document.encode().unwrap()).unwrap(),
+                document
+            );
+        }
+        for version in 1..=6 {
+            for seconds in [0.5, 1.0, 2.0, 20.0] {
+                let mut value = if version < 4 {
+                    legacy_fixture(version)
+                } else {
+                    serde_json::to_value(fixture()).unwrap()
+                };
+                value["version"] = version.into();
+                if version == 4 {
+                    value["measurement"]["scope"]["channels"] = serde_json::json!([15, 7]);
+                    let w = value["workspace"].as_object_mut().unwrap();
+                    w.remove("scope_vertical");
+                    w.remove("scope_selected");
+                    w.remove("scope_horizontal_position");
+                    w.insert("scope_fs_per_div".into(), 0.25.into());
+                    w.insert("scope_enabled".into(), serde_json::json!([true, true]));
+                }
+                let w = value["workspace"].as_object_mut().unwrap();
+                w.remove("spectrogram_color_map");
+                w.remove("spectrogram_auto_color");
+                w.insert("spectrogram_seconds".into(), serde_json::json!(seconds));
+                let bytes = serde_json::to_vec(&value).unwrap();
+                let restored = Document::decode(&bytes).unwrap();
+                assert_eq!(restored.workspace.spectrogram_color_map, ColorMap::Blue);
+                assert!(!restored.workspace.spectrogram_auto_color);
+                assert_eq!(restored.workspace.spectrogram_seconds, seconds);
+                assert_eq!(restored.workspace.spectrogram_floor_db, -120.0);
+                assert_eq!(
+                    restored.measurement.spectrogram,
+                    fixture().measurement.spectrogram
+                );
+                assert_eq!(serde_json::to_vec(&value).unwrap(), bytes);
+            }
+        }
+        let mut document = fixture();
+        document.workspace.spectrogram_ceiling_db = document.workspace.spectrogram_floor_db;
+        assert!(document.encode().is_err());
     }
 
     fn device(id: &str, name: &str) -> DeviceInfo {
