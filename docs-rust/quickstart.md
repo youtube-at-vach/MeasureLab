@@ -27,7 +27,9 @@ macOS／Linuxのローカルセットアップ環境では`./scripts/cargo.sh ru
 
 Scopeは波形直下のCH1〜CH4バーでCHを選び、チェックボックスで波形の表示を個別に切り替えます。選択と表示ON/OFFは独立し、2ch入力ではCH3／CH4を **No input** と表示します。右の **Acquisition / Horizontal / Trigger / Channel** で取得・時間軸・トリガー・選択CHのFSレンジとオフセットを編集します。時間軸は波形付近に常時表示し、波形上のホイールで変更できます。Shift＋ホイールは選択CHの縦軸です。各CHの入力割当は **Channel / Input source** で1〜16chから選べます。旧設定は2本の割当と倍率を保持し、追加CH3／CH4を表示OFFにして読み込みます。
 
-Spectrumは単一グラフに最大4chを重ねます。下部のCHバーで選択と表示ON/OFFを別々に操作し、右側のFFT／Averaging／Frequency・Scale／Measurementで共通の解析条件・表示軸を設定します。既定はCH1のみ表示です。平均は線形パワーの指数平均（EMA）で、Weightと処理窓数・整定目安を示します。OFFのCHはFFTを停止し、再ONで新しい平均を開始します。ピーク・カーソル・結果書き出しは選択CHを対象にします。未校正振幅の0 dBFSはビン中心の1 FS peak正弦波です。
+Spectrumは単一グラフに最大4chを重ねます。下部のCHバーで選択と表示ON/OFFを別々に操作します。右詳細欄はFFT→Frequency / Scale→Measurement→Averagingの順です。最上部の**Amplitude / PSD**で測定量を切り替え、共通のFFT条件・表示軸を設定します。細かな周波数範囲は**Custom frequency range**、手動レベルは**Manual**を選ぶと表示します。既定はCH1のみ表示です。
+
+**Cursor A / B**を選んでグラフをクリック／ドラッグすると、2つの周波数を独立に固定し、選択CHの最寄りビンの振幅／PSDとΔf・ΔLを読み取れます。**Clear**で解除します。平均は下部の**Average / Weight**で設定する線形パワーの指数平均（EMA）です。整定目安を表示し、処理窓数は**Advanced analysis / diagnostics**へまとめています。OFFのCHはFFTを停止し、再ONで新しい平均を開始します。ピーク・カーソル・結果書き出しは選択CHを対象にします。未校正振幅の0 dBFSはビン中心の1 FS peak正弦波です。
 
 コンソール内で追加の測定詳細が区画高を超える場合は、その区画内を縦にスクロールできます。区画名と共通の入出力状態・停止操作はスクロールの外に残ります。
 

@@ -35,7 +35,7 @@
 
 ### Spectrum GUI：4ch重ね表示
 
-単一グラフ、Scopeと同色の下部CHバー、独立した選択・表示ON/OFF、右側のFFT／Averaging／Frequency・Scale／Measurement、ピークマーカーを実装した。既存のf64・窓補正・線形パワーEMA・PSD・保持・結果保存を維持し、非表示CHのFFTを停止する。4画面分割や新しい解析方式は対象外とする。
+単一グラフ、Scopeと同色の下部CHバー、独立した選択・表示ON/OFF、右側のFFT／Frequency・Scale／Measurement／Averaging、ピークマーカーを実装した。振幅／PSD切り替えはFFTグループの先頭に置き、A／B周波数カーソルとΔf・ΔLを表示する。既存のf64・窓補正・線形パワーEMA・PSD・保持・結果保存を維持し、非表示CHのFFTを停止する。4画面分割や新しい解析方式は対象外とする。
 
 自動確認の正本は`measurement.rs`の4ch既知正弦波・独立ON/OFF・設定／世代変更、`settings.rs`の版6往復・旧版移行、`app/gui_qa.rs`の実ウィジェット操作。物理4chの数値照合と通常ビルドの手動操作は受け入れを残す。
 

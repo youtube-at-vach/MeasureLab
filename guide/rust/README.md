@@ -104,7 +104,7 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | Start input / Stop input / Space | 入力開始・停止 |
 | Cursor A / B / Clear | カーソルの選択／時間・周波数・XY自由配置カーソルの解除 |
 | Scope上でクリック／ドラッグ | 時間カーソルのX位置を固定。各更新の波形から振幅・トリガー基準の時刻・Δtを表示 |
-| Spectrum上でクリック／ドラッグ | 共通の周波数を固定。最寄りビンの振幅／PSD・対象CH・最新窓と平均の寄与区間を表示 |
+| Spectrum上でクリック／ドラッグ | 選択中のA／Bの周波数を独立に固定。選択CHの最寄りビンの振幅／PSD、Δf・ΔLを表示。最後に置いた周波数をSpectrogramと共有し、解析窓・平均の寄与区間はホバーで確認 |
 | Spectrogram上でクリック／ドラッグ | 縦位置と共通周波数を固定。更新ごとにその位置の行の解析窓・ビン振幅を表示 |
 | XY Free / Trace Snap | 自由配置（既定）と実サンプルへのスナップを切り替え |
 | XY X Source / Y Source | X/Yへ入力CHを独立に割り当てる。Scopeの割当とは独立 |
@@ -133,11 +133,12 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | Spectrum Source / points / Window | FFTの入力CH（取得した全chから選択）、サイズ（1,024〜524,288点）、窓関数 |
 | Spectrum / Spectrogram FFT PRECISION | 各測定器のFFT精度。既定は64-bit、32-bit (fast FFT)を明示的に選択可能 |
 | Live / Continuous / Latest window | Live（既定）は最新の完全窓を最大60回/秒、実測処理時間に応じて観察。ContinuousはN/4全窓。省負荷のLatestは32k以下33 ms／N/4以上、新4サイズ100 ms。非表示でも解析を継続 |
-| Bin amplitude / Power spectral density | ビン振幅／PSD。未校正はdBFS／FS²/Hz、校正CHは物理単位 |
-| No averaging / Smooth / Remove DC | 線形値の指数電力平均、FFT前の平均値除去 |
+| FFT / Amplitude / PSD | 右詳細欄の最上部でビン振幅／PSDを切り替え。未校正はdBFS／FS²/Hz、校正CHは物理単位 |
+| Averaging / Average / Weight / Reset | 右詳細欄の下部で線形電力の指数平均をON／OFF、重みを選択、平均・ピーク保持をリセット。処理窓数はAdvancedの診断で確認 |
+| Advanced analysis / diagnostics / Remove DC offset | FFT精度・更新モード・FFT前の平均値除去と診断 |
 | PSD Power in band / From / To | 指定した両端を含むビン中心のPSD積算。To = 0はNyquist。未校正はFS²とRMS FS、校正CHは単位²とRMS単位を表示 |
-| Log Hz / Linear Hz / From / To / Span | 周波数軸・表示範囲。To = 0はNyquist。狭帯域では実ビンを表示 |
-| Display floor / Display ceiling / Peak hold / Clear hold | 単位に対応するdB表示範囲、平均後の最大値の保持、保持値のクリア。校正後の正のdB値には天井を上げる |
+| Frequency / Scale / Log Hz / Linear Hz / Span / Custom frequency range | 周波数軸・表示範囲。細かなFrom／Toは折りたたみ内で指定。To = 0はNyquist。狭帯域では実ビンを表示 |
+| Level axis / Auto / Manual / Peak hold / Clear hold | Autoは表示中CHからレベル範囲を調整。Manual選択時にBottom／Topを表示。平均後の最大値の保持とクリア |
 | スペクトル上にマウスを置く | 最寄りFFTビンの実周波数と振幅／PSDをf64で読み出す |
 | Spectrogram Source / FFT length / Window | Spectrumとは独立した対象CH・窓長・窓関数・DC除去 |
 | Spectrogram Time span / From / To | 時間範囲（0.5〜20秒）と周波数範囲。To = 0はNyquist |

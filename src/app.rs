@@ -761,8 +761,12 @@ impl ScopeApp {
                     let frame = app.history.get(sample).unwrap();
                     app.cursors.set_xy_point(index, [frame[0], frame[1]]);
                 }
-                app.cursors.frequency_hz = Some(app.demo.frequency as f64);
+                app.cursors.set_frequency(0, app.demo.frequency as f64);
                 match std::env::var("MEASURELAB_UI_SMOKE_CURSOR_VIEW").as_deref() {
+                    Ok("spectrum") => {
+                        app.cursors
+                            .set_frequency(1, app.demo.frequency as f64 * 2.0);
+                    }
                     Ok("spectrogram") => {
                         app.spectrogram_seconds = 1.0;
                         app.cursors.set_spectrogram_time(0, 0.2);
@@ -3402,64 +3406,103 @@ impl ScopeApp {
         view: View,
     ) {
         if let Some(position) = cursor_pointer(response, rect) {
-            self.cursors.frequency_hz =
-                Some(view.frequency((position.x - rect.left()) / rect.width()) as f64);
+            self.cursors.set_frequency(
+                self.active_cursor,
+                view.frequency((position.x - rect.left()) / rect.width()) as f64,
+            );
             ui.ctx().request_repaint();
         }
-        let Some(frequency) = self.cursors.frequency_hz else {
-            return;
-        };
-        let Some(reading) = self.selected_spectrum().cursor(frequency) else {
-            return;
-        };
-        let hz = reading.frequency_hz as f32;
-        if hz >= view.min_hz && hz <= view.max_hz {
-            cursor_line(
-                ui,
-                rect,
-                view.x(hz),
-                true,
-                monitor_controls::scope_color(self.spectrum_display.selected),
-            );
-        }
-        let window = reading.window;
-        let mut times = String::new();
-        for (index, sample) in self.cursor_samples().into_iter().enumerate() {
-            if let Some(sample) = sample {
-                times.push_str(&format!(
-                    " · {} {} window",
+        let readings = self
+            .cursors
+            .spectrum_frequencies_hz
+            .map(|frequency| frequency.and_then(|hz| self.selected_spectrum().cursor(hz)));
+        for (index, reading) in readings.iter().enumerate() {
+            let Some(frequency) = self.cursors.spectrum_frequencies_hz[index] else {
+                continue;
+            };
+            let color = cursor_color(index);
+            let hz = reading.as_ref().map_or(frequency, |r| r.frequency_hz) as f32;
+            if hz >= view.min_hz && hz <= view.max_hz {
+                cursor_line(ui, rect, view.x(hz), true, color);
+                ui.painter().text(
+                    pos2(
+                        rect.left() + view.x(hz) * rect.width() + 4.0,
+                        rect.top() + 3.0,
+                    ),
+                    egui::Align2::LEFT_TOP,
                     cursor_name(index),
-                    if (window.start..window.end).contains(&sample) {
-                        "in"
-                    } else {
-                        "outside"
+                    egui::FontId::monospace(11.0),
+                    color,
+                );
+            }
+            let Some(reading) = reading else {
+                cursor_note(
+                    ui,
+                    rect,
+                    index,
+                    &format!(
+                        "{} {:.3} Hz · no complete window",
+                        cursor_name(index),
+                        frequency
+                    ),
+                    color,
+                );
+                continue;
+            };
+            let window = &reading.window;
+            let text = format!(
+                "{} {:.6} Hz · {:.2} {}\nCH {} · samples {}..{}",
+                cursor_name(index),
+                reading.frequency_hz,
+                reading.level_db,
+                window.db_unit(),
+                window.channel + 1,
+                window.start,
+                window.end,
+            );
+            cursor_note(ui, rect, index, &text, color);
+            if index == self.active_cursor {
+                let mut times = String::new();
+                for (index, sample) in self.cursor_samples().into_iter().enumerate() {
+                    if let Some(sample) = sample {
+                        times.push_str(&format!(
+                            " · {} {} window",
+                            cursor_name(index),
+                            if (window.start..window.end).contains(&sample) {
+                                "in"
+                            } else {
+                                "outside"
+                            }
+                        ));
                     }
-                ));
+                }
+                response.clone().on_hover_text(format!("Cursor {} · nearest bin: {:.6e} {}. Latest window: samples {}..{} (exclusive end), CH {}, {} Hz, {} points, {}, {}. EMA α = 1/{}; {} processed windows, contribution envelope {}..{} (exponential weights). Input generation {}; missing windows {}.{}", cursor_name(index), reading.value, window.linear_unit(), window.start, window.end, window.channel + 1, window.sample_rate, window.settings.size, window.settings.window.name(), window.settings.precision.name(), window.settings.averages, reading.average.updates, reading.average.start, reading.average.end, self.input_generation, self.selected_spectrum_info().missing_windows, times));
+                response
+                    .clone()
+                    .on_hover_text(spectrum_calibration_description(
+                        self.selected_spectrum().calibration(),
+                    ));
             }
         }
-        let text = format!(
-            "F {:.6} Hz · {:.2} {}\nCH {} · {}..{} · α 1/{}",
-            reading.frequency_hz,
-            reading.level_db,
-            window.db_unit(),
-            window.channel + 1,
-            window.start,
-            window.end,
-            window.settings.averages
-        );
-        cursor_note(
-            ui,
-            rect,
-            0,
-            &text,
-            monitor_controls::scope_color(self.spectrum_display.selected),
-        );
-        response.clone().on_hover_text(format!("Nearest bin: {:.6e} {}. Latest window: samples {}..{} (exclusive end), CH {}, {} Hz, {} points, {}, {}. EMA α = 1/{}; {} processed windows, contribution envelope {}..{} (exponential weights). Input generation {}; missing windows {}.{}", reading.value, window.linear_unit(), window.start, window.end, window.channel + 1, window.sample_rate, window.settings.size, window.settings.window.name(), window.settings.precision.name(), window.settings.averages, reading.average.updates, reading.average.start, reading.average.end, self.input_generation, self.selected_spectrum_info().missing_windows, times));
-        response
-            .clone()
-            .on_hover_text(spectrum_calibration_description(
-                self.selected_spectrum().calibration(),
-            ));
+        if let [Some(a), Some(b)] = readings {
+            let delta_db = b.level_db - a.level_db;
+            let delta_level = if delta_db.is_nan() {
+                "—".into()
+            } else {
+                format!("{delta_db:+.2}")
+            };
+            cursor_note(
+                ui,
+                rect,
+                2,
+                &format!(
+                    "Δf {:+.6} Hz · ΔL {} dB",
+                    b.frequency_hz - a.frequency_hz,
+                    delta_level
+                ),
+                YELLOW,
+            );
+        }
     }
 
     fn spectrogram_cursors(
@@ -3474,8 +3517,10 @@ impl ScopeApp {
                 self.active_cursor,
                 ((position.y - rect.top()) / rect.height()) as f64,
             );
-            self.cursors.frequency_hz =
-                Some(view.frequency((position.x - rect.left()) / rect.width()) as f64);
+            self.cursors.set_frequency(
+                self.active_cursor,
+                view.frequency((position.x - rect.left()) / rect.width()) as f64,
+            );
             ui.ctx().request_repaint();
         }
         // Resolve shared times before taking the history lock.
@@ -4836,8 +4881,8 @@ impl ScopeApp {
             );
             if let Some(reading) = self.selected_spectrum().cursor(hz as f64) {
                 painter.text(
-                    rect.right_top() + vec2(-10.0, 10.0),
-                    egui::Align2::RIGHT_TOP,
+                    rect.right_bottom() + vec2(-10.0, -10.0),
+                    egui::Align2::RIGHT_BOTTOM,
                     format!(
                         "{:.1} Hz · {:.2} {}",
                         reading.frequency_hz,

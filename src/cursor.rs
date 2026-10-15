@@ -45,6 +45,8 @@ impl TimeCursor {
 pub struct Cursors {
     epoch: u64,
     pub times: [Option<TimeCursor>; 2],
+    pub spectrum_frequencies_hz: [Option<f64>; 2],
+    /// Most recently placed frequency, shared with the Spectrogram.
     pub frequency_hz: Option<f64>,
     pub xy_points: [Option<[f64; 2]>; 2],
 }
@@ -57,8 +59,16 @@ impl Cursors {
 
     pub fn clear(&mut self) {
         self.times = [None; 2];
+        self.spectrum_frequencies_hz = [None; 2];
         self.frequency_hz = None;
         self.xy_points = [None; 2];
+    }
+
+    pub fn set_frequency(&mut self, index: usize, frequency_hz: f64) {
+        if frequency_hz.is_finite() && frequency_hz >= 0.0 {
+            self.spectrum_frequencies_hz[index] = Some(frequency_hz);
+            self.frequency_hz = Some(frequency_hz);
+        }
     }
 
     pub fn set_time(&mut self, index: usize, sample: u64) {
@@ -532,6 +542,26 @@ mod tests {
         assert_eq!(cursors.fraction(a, scope.clone()), None);
         assert_eq!(cursors.sample(a, scope), None);
         assert_eq!(cursors.times, [None; 2]);
+    }
+
+    #[test]
+    fn frequency_cursors_are_independent_share_latest_and_clear_on_restart() {
+        let mut cursors = Cursors::default();
+        cursors.set_scope_time(0, 0.25);
+        let time = cursors.times[0];
+        cursors.set_frequency(0, 750.0);
+        cursors.set_frequency(1, 1500.0);
+        cursors.set_frequency(1, f64::NAN);
+        cursors.set_frequency(0, -1.0);
+        assert_eq!(cursors.spectrum_frequencies_hz, [Some(750.0), Some(1500.0)]);
+        assert_eq!(cursors.frequency_hz, Some(1500.0));
+        assert_eq!(cursors.times[0], time);
+        cursors.set_frequency(0, 0.0);
+        assert_eq!(cursors.spectrum_frequencies_hz, [Some(0.0), Some(1500.0)]);
+        assert_eq!(cursors.frequency_hz, Some(0.0));
+        cursors.new_epoch();
+        assert_eq!(cursors.spectrum_frequencies_hz, [None; 2]);
+        assert!(cursors.frequency_hz.is_none());
     }
 
     #[test]
