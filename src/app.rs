@@ -356,6 +356,8 @@ pub struct ScopeApp {
     #[cfg(feature = "qa")]
     profile: Option<crate::qa::Profile>,
     #[cfg(feature = "qa")]
+    spectrogram_profile: spectrogram_controls::HistoryProfile,
+    #[cfg(feature = "qa")]
     dpi_stage: u8,
     #[cfg(feature = "qa")]
     lifecycle_stage: u8,
@@ -636,6 +638,8 @@ impl ScopeApp {
             #[cfg(feature = "qa")]
             profile: crate::qa::Profile::from_env()?,
             #[cfg(feature = "qa")]
+            spectrogram_profile: spectrogram_controls::HistoryProfile::default(),
+            #[cfg(feature = "qa")]
             dpi_stage: 0,
             #[cfg(feature = "qa")]
             lifecycle_stage: 0,
@@ -656,6 +660,15 @@ impl ScopeApp {
         };
         #[cfg(feature = "qa")]
         if app.profile.is_some() {
+            if let Ok(mode) = std::env::var("MEASURELAB_PROFILE_SPECTROGRAM") {
+                if !matches!(mode.as_str(), "live" | "stress") {
+                    return Err("MEASURELAB_PROFILE_SPECTROGRAM must be live or stress".into());
+                }
+                app.presentation
+                    .apply(Action::OpenSingle(Instrument::Spectrogram));
+                app.spectrogram_seconds = 60.0;
+                app.spectrogram_auto_color = true;
+            }
             if std::env::var_os("MEASURELAB_PROFILE_SPECTRUM_ONLY").is_some() {
                 app.select_view([false, true, false, false]);
             }
@@ -5245,6 +5258,7 @@ impl eframe::App for ScopeApp {
                 profile.record_work(crate::qa::Work::Spectrogram, self.spectrogram_build_ms);
             }
             self.check_large_fft_lifecycle(&ctx);
+            self.profile_spectrogram_history();
             self.check_lifecycle(&ctx, elapsed);
             self.check_input_lifecycle(&ctx);
             if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_DISCONNECT").is_some() {
@@ -5558,6 +5572,25 @@ impl eframe::App for ScopeApp {
                     );
                     drop(history);
                     let numeric = self.stft_history.snapshot();
+                    self.finish_spectrogram_profile();
+                    if let Some(render) = &frame.wgpu_render_state()
+                        && let Some(renderer) = render
+                            .renderer
+                            .read()
+                            .callback_resources
+                            .get::<spectrogram_gpu::Renderer>()
+                    {
+                        println!(
+                            "Spectrogram GPU payload: {} bytes current / {} bytes resize peak, {} uploaded bytes / {} rows",
+                            renderer.storage_bytes(),
+                            renderer.peak_storage_bytes,
+                            renderer.uploaded_bytes,
+                            renderer.uploaded_rows,
+                        );
+                        if std::env::var_os("MEASURELAB_PROFILE_SPECTROGRAM").is_some() {
+                            assert!(renderer.peak_storage_bytes <= 32 * 1024 * 1024);
+                        }
+                    }
                     println!(
                         "STFT history profile: {} retained frames, {:.3} s, {:.1} MiB retained / {:.1} MiB peak frames, {} retired, {} storage dropped, collector CPU {:.3} ms total",
                         numeric.frames().len(),

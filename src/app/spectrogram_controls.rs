@@ -13,7 +13,130 @@ pub(super) struct PendingClick {
     pub time: f64,
 }
 
+#[cfg(feature = "qa")]
+#[derive(Default)]
+pub(super) struct HistoryProfile {
+    conditions: Option<(u64, u64, stft::Config)>,
+    tick: u64,
+    operations: u64,
+    selected: Option<(u64, u64)>,
+}
+
 impl ScopeApp {
+    /// Repeat display operations in real time, through the same state changes
+    /// as widgets. Widget event routing is covered separately by GUI smoke QA.
+    #[cfg(feature = "qa")]
+    pub(super) fn profile_spectrogram_history(&mut self) {
+        if self.profile.is_none()
+            || !self.running()
+            || std::env::var_os("MEASURELAB_PROFILE_SPECTROGRAM").is_none()
+            || self.spectrogram_snapshot.latest().is_none()
+        {
+            return;
+        }
+        let conditions = (
+            self.input_generation,
+            self.stft_generation,
+            self.stft_config(),
+        );
+        let expected = self
+            .spectrogram_profile
+            .conditions
+            .get_or_insert(conditions);
+        assert_eq!(
+            *expected, conditions,
+            "display operations reconfigured STFT"
+        );
+        if std::env::var("MEASURELAB_PROFILE_SPECTROGRAM").as_deref() != Ok("stress") {
+            return;
+        }
+        let tick = self.created.elapsed().as_millis() as u64 / 100;
+        if tick == self.spectrogram_profile.tick {
+            return;
+        }
+        self.spectrogram_profile.tick = tick;
+        let phase = self.spectrogram_profile.operations % 20;
+        if let Some((end, power)) = self.spectrogram_profile.selected {
+            let selected = self.spectrogram_selected[0].as_ref().expect("fixed time A");
+            assert_eq!(selected.info.end, end);
+            assert_eq!(selected.power()[1].to_bits(), power);
+        }
+        match phase {
+            0 => {
+                self.hold_spectrogram();
+                let frame = self.spectrogram_hold.as_ref().unwrap().latest().unwrap();
+                let (end, power) = (frame.info.end, frame.power()[1].to_bits());
+                self.select_spectrogram_sample(0, end - 1);
+                self.spectrogram_profile.selected = Some((end, power));
+            }
+            1..=14 => {
+                self.pan_spectrogram_time(if phase.is_multiple_of(2) { -0.1 } else { 0.2 });
+                self.spectrogram_seconds = [5.0, 10.0, 30.0, 60.0][phase as usize % 4];
+                self.spectrogram_color_map = spectrogram::ColorMap::ALL[phase as usize % 3];
+                self.spectrogram_auto_color = phase.is_multiple_of(2);
+                let axis = self.spectrogram_frequency_range().zoom(0.5, 0.9).pan(0.02);
+                self.spectrogram_min_hz = axis.min as f32;
+                self.spectrogram_max_hz = axis.max as f32;
+            }
+            15 => {
+                self.live_spectrogram();
+                self.spectrogram_profile.selected = None;
+                assert!(self.spectrogram_selected.iter().all(Option::is_none));
+                assert!(self.spectrogram_hold.is_none());
+                self.reset_spectrogram_frequency();
+            }
+            _ => {}
+        }
+        self.spectrogram_profile.operations += 1;
+    }
+
+    #[cfg(feature = "qa")]
+    pub(super) fn finish_spectrogram_profile(&self) {
+        if std::env::var_os("MEASURELAB_PROFILE_SPECTROGRAM").is_none() {
+            return;
+        }
+        assert!(
+            self.spectrogram_profile.conditions.is_some(),
+            "no STFT frames profiled"
+        );
+        assert_eq!(self.stft.metrics.input_dropped.load(Ordering::Relaxed), 0);
+        assert_eq!(self.stft.metrics.result_dropped.load(Ordering::Relaxed), 0);
+        assert_eq!(
+            self.stft_history
+                .metrics
+                .storage_dropped
+                .load(Ordering::Relaxed),
+            0
+        );
+        assert!(self.stft_history.peak_frame_bytes() <= spectrogram::history::FRAME_BYTES);
+        assert!(
+            self.spectrogram_view_worker.peak_cache_bytes() <= spectrogram::viewport::CACHE_BYTES
+        );
+        let stress = std::env::var("MEASURELAB_PROFILE_SPECTROGRAM").as_deref() == Ok("stress");
+        assert!(
+            !stress || self.spectrogram_profile.operations >= 20,
+            "stress cycle incomplete"
+        );
+        println!(
+            "Spectrogram {} QA OK: {} display steps, unchanged input/analysis generations, no STFT input/result/storage losses; raster peak {:.3} MiB, replaced requests {}",
+            if stress { "stress" } else { "live" },
+            self.spectrogram_profile.operations,
+            self.spectrogram_view_worker.peak_cache_bytes() as f64 / 1048576.0,
+            self.spectrogram_view_worker
+                .replaced
+                .load(Ordering::Relaxed),
+        );
+        let metrics = &self.spectrogram_view_worker.metrics;
+        let completed = metrics.completed.load(Ordering::Acquire);
+        assert!(completed > 0, "no raster preparation completed");
+        println!(
+            "Spectrogram preparation: {completed} rasters, worker {:.3} ms total / {:.3} ms mean / {:.3} ms max",
+            metrics.processing_nanos.load(Ordering::Relaxed) as f64 / 1e6,
+            metrics.processing_nanos.load(Ordering::Relaxed) as f64 / 1e6 / completed as f64,
+            metrics.max_processing_nanos.load(Ordering::Relaxed) as f64 / 1e6,
+        );
+    }
+
     pub(super) fn spectrogram_controls(&mut self, ui: &mut egui::Ui) {
         egui::CollapsingHeader::new("Display")
             .default_open(true)

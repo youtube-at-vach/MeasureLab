@@ -22,7 +22,7 @@ const RASTER_BYTES: usize = ROWS * MAX_COLUMNS * size_of::<f32>()
             + 2 * size_of::<u64>()
             + size_of::<Option<(u64, u64)>>()
             + 1)
-    + MAX_COLUMNS * (2 * size_of::<usize>() + size_of::<f32>())
+    + MAX_COLUMNS * (2 * size_of::<usize>() + size_of::<f32>() + size_of::<f64>())
     + size_of::<History>()
     + size_of::<Raster>();
 
@@ -101,6 +101,12 @@ pub struct Prepared {
     pub processing_ms: f64,
 }
 #[derive(Default)]
+pub struct Metrics {
+    pub completed: AtomicU64,
+    pub processing_nanos: AtomicU64,
+    pub max_processing_nanos: AtomicU64,
+}
+#[derive(Default)]
 struct Mailbox {
     request: Option<Request>,
     response: Option<Prepared>,
@@ -117,6 +123,7 @@ pub struct Worker {
     budget: Arc<Budget>,
     pub replaced: Arc<AtomicU64>,
     retry: Arc<AtomicBool>,
+    pub metrics: Arc<Metrics>,
 }
 
 impl Default for Worker {
@@ -126,6 +133,8 @@ impl Default for Worker {
         let budget = Arc::new(Budget::default());
         let replaced = Arc::new(AtomicU64::new(0));
         let retry = Arc::new(AtomicBool::new(false));
+        let metrics = Arc::new(Metrics::default());
+        let counters = metrics.clone();
         let (queue, stop, allocation, retry_worker) = (
             mailbox.clone(),
             shutdown.clone(),
@@ -167,7 +176,15 @@ impl Default for Worker {
                     retry_worker.store(true, Ordering::Release);
                     continue;
                 };
-                prepared.processing_ms = started.elapsed().as_secs_f64() * 1000.0;
+                let nanos = started.elapsed().as_nanos() as u64;
+                prepared.processing_ms = nanos as f64 / 1e6;
+                counters
+                    .processing_nanos
+                    .fetch_add(nanos, Ordering::Relaxed);
+                counters
+                    .max_processing_nanos
+                    .fetch_max(nanos, Ordering::Relaxed);
+                counters.completed.fetch_add(1, Ordering::Release);
                 let previous = {
                     let mut queue = queue.lock().unwrap();
                     // A superseded pan or generation must never replace its view.
@@ -195,6 +212,7 @@ impl Default for Worker {
             budget,
             replaced,
             retry,
+            metrics,
         }
     }
 }
@@ -313,6 +331,12 @@ fn prepare(
         .max(1);
     let mut sampled = 0;
     let mut previous = None;
+    // With only a few frames per display row, crossing pixel boundaries adds
+    // more scans than it saves conversions. Keep the sparse path in that case.
+    let reduce_time = snapshot
+        .overlapping_hops(anchor as i128 - span, anchor as i128)
+        .len()
+        > height * 4;
     for (frame_index, frame) in snapshot.frames().enumerate() {
         let info = frame.info;
         let start = info.end - info.config.hop as u64;
@@ -343,18 +367,15 @@ fn prepare(
         if age_bottom <= 0 || age_top >= span {
             continue;
         }
-        let mut levels = Vec::with_capacity(width);
-        for &(first, last) in &bins {
-            let mut power = 0.0_f64;
-            for &value in &frame.power()[first..=last] {
-                if !value.is_finite() || value < 0.0 {
-                    power = f64::NAN;
-                    break;
-                }
-                power = power.max(value);
-            }
-            levels.push(crate::spectrum::level_db(power) as f32);
-        }
+        let levels = (!reduce_time).then(|| {
+            bins.iter()
+                .map(|&(first, last)| {
+                    let mut power = 0.0_f64;
+                    accumulate_power(&mut power, &frame.power()[first..=last]);
+                    crate::spectrum::level_db(power) as f32
+                })
+                .collect::<Vec<_>>()
+        });
         mark_interval(age_top, age_bottom, span, height, |y| {
             rows[y] = Some(info);
             coverage[y] = Some(
@@ -362,12 +383,14 @@ fn prepare(
                     (old_start.min(start), old_end.max(info.end))
                 }),
             );
-            for (out, &value) in db[y * width..(y + 1) * width].iter_mut().zip(&levels) {
-                *out = if out.is_nan() || value.is_nan() {
-                    f32::NAN
-                } else {
-                    out.max(value)
-                };
+            if let Some(levels) = &levels {
+                for (out, &value) in db[y * width..(y + 1) * width].iter_mut().zip(levels) {
+                    *out = if out.is_nan() || value.is_nan() {
+                        f32::NAN
+                    } else {
+                        out.max(value)
+                    };
+                }
             }
         });
         if p.auto && min <= max {
@@ -390,6 +413,29 @@ fn prepare(
                     histogram[(value.floor() + 3328.0).clamp(0.0, 6655.0) as usize] += 1;
                     count += 1;
                 }
+            }
+        }
+    }
+    if reduce_time {
+        // Reduce linear f64 powers over each display row before log10. Dense
+        // histories need one conversion per pixel, not one per input frame.
+        // Only one row of f64 scratch is needed; tiny powers and NaNs survive.
+        let mut powers = vec![0.0_f64; width];
+        for y in 0..height {
+            if rows[y].is_none() {
+                continue;
+            }
+            powers.fill(0.0);
+            let start =
+                anchor as i128 - ((y + 1) as i128 * span + height as i128 - 1) / height as i128;
+            let end = anchor as i128 - (y as i128 * span / height as i128);
+            for frame in snapshot.overlapping_hops(start, end) {
+                for (power, &(first, last)) in powers.iter_mut().zip(&bins) {
+                    accumulate_power(power, &frame.power()[first..=last]);
+                }
+            }
+            for (out, &power) in db[y * width..(y + 1) * width].iter_mut().zip(&powers) {
+                *out = crate::spectrum::level_db(power) as f32;
             }
         }
     }
@@ -483,6 +529,19 @@ fn prepare(
         range: range.unwrap_or_default(),
         processing_ms: 0.0,
     })
+}
+
+fn accumulate_power(power: &mut f64, values: &[f64]) {
+    if power.is_nan() {
+        return;
+    }
+    for &value in values {
+        if !value.is_finite() || value < 0.0 {
+            *power = f64::NAN;
+            return;
+        }
+        *power = power.max(value);
+    }
 }
 
 fn mark_interval(top: i128, bottom: i128, span: i128, height: usize, mut visit: impl FnMut(usize)) {
@@ -648,6 +707,51 @@ mod tests {
                 "{scale:?} leaked excluded bin: {peak}"
             );
         }
+    }
+
+    #[test]
+    fn dense_time_reduction_keeps_row_peaks_tiny_powers_and_invalid_bins() {
+        let config = config();
+        let origin = 1_u64 << 54;
+        let source = history::fixture(
+            73,
+            4,
+            config,
+            (0..64).map(|i| {
+                let end = origin + config.size as u64 + i * config.hop as u64;
+                let mut power = vec![1e-300; 513];
+                power[32] = (i + 1) as f64;
+                if i == 12 {
+                    power[64] = f64::NAN;
+                }
+                (
+                    RowInfo {
+                        generation: 4,
+                        config,
+                        start: end - config.size as u64,
+                        end,
+                        gap: Gap::default(),
+                    },
+                    power,
+                )
+            }),
+        );
+        let mut p = parameters();
+        p.seconds = 64.0 * config.hop as f64 / config.sample_rate as f64;
+        p.rows = 4;
+        p.columns = 513;
+        let prepared = prepare(&request(source.clone(), p), &Arc::default(), &mut None).unwrap();
+        let raster = prepared.history.raster.as_ref().unwrap();
+        for (y, peak) in [64.0_f64, 48.0, 32.0, 16.0].into_iter().enumerate() {
+            assert!((raster.db[y * 513 + 32] - (10.0 * peak.log10()) as f32).abs() < 1e-5);
+            if y == 3 {
+                assert!(raster.db[y * 513 + 64].is_nan());
+            } else {
+                assert!((raster.db[y * 513 + 64] + 3000.0).abs() < 1e-3);
+            }
+        }
+        assert_eq!(source.latest().unwrap().power()[32], 64.0);
+        assert_eq!(source.frames().next().unwrap().power()[64], 1e-300);
     }
 
     #[test]

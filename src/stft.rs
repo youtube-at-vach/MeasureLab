@@ -96,6 +96,9 @@ pub struct Metrics {
     pub input_dropped: AtomicU64,
     pub result_dropped: AtomicU64,
     pub produced: AtomicU64,
+    /// Accepted samples processed by the worker, across analysis generations.
+    /// Finite-input QA can await consumption without polling result delivery.
+    pub processed_frames: AtomicU64,
     pub processing_nanos: AtomicU64,
 }
 
@@ -313,6 +316,9 @@ impl Worker {
                     }
                     true
                 });
+                counters
+                    .processed_frames
+                    .fetch_add(block.len as u64, Ordering::Release);
                 counters
                     .processing_nanos
                     .fetch_add(started.elapsed().as_nanos() as u64, Ordering::Relaxed);

@@ -665,11 +665,47 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
             }
             std::thread::sleep(std::time::Duration::from_millis(1));
         };
+        // Start a production-only cache after the legacy raw-bin checks. Keep
+        // small and maximum rasters alive while repeatedly resizing the GPU
+        // texture, accounting for old + new payload at every exchange.
+        image = spectrogram_gpu::Renderer::new(&device, format);
+        for columns in [
+            spectrogram::viewport::MAX_COLUMNS,
+            1,
+            spectrogram::viewport::MAX_COLUMNS,
+        ] {
+            raster_worker.submit(
+                collector.snapshot(),
+                spectrogram::viewport::Parameters {
+                    anchor: None,
+                    seconds: 0.25,
+                    view: raster_view,
+                    columns,
+                    rows: spectrogram::ROWS,
+                    auto: false,
+                    live: false,
+                },
+            );
+            let resized = loop {
+                if let Some(resized) = raster_worker.take() {
+                    break resized;
+                }
+                if std::time::Instant::now() > deadline {
+                    return Err("Raster resize timed out".into());
+                }
+                std::thread::sleep(std::time::Duration::from_millis(1));
+            };
+            image.prepare(&device, &queue, &resized.history, raster_view, 0.25, 256.0);
+            if image.peak_storage_bytes > 32 * 1024 * 1024 {
+                return Err("Production raster GPU payload exceeded 32 MiB".into());
+            }
+        }
         image.color_map = spectrogram::ColorMap::Grayscale;
         image.prepare(&device, &queue, &prepared.history, raster_view, 0.25, 256.0);
         let raster_uploads = image.uploaded_rows;
+        let raster_bytes = image.uploaded_bytes;
         image.prepare(&device, &queue, &prepared.history, raster_view, 0.25, 256.0);
-        if image.uploaded_rows != raster_uploads {
+        if image.uploaded_rows != raster_uploads || image.uploaded_bytes != raster_bytes {
             return Err("Unchanged raster rows reuploaded".into());
         }
         let mut encoder = device.create_command_encoder(&Default::default());

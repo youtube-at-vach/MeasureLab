@@ -130,6 +130,22 @@ impl Snapshot {
         (sample >= frame.info.end - frame.info.config.hop as u64).then_some(frame)
     }
 
+    /// Half-open display hops intersecting a sample interval. Binary searches
+    /// keep viewport reduction independent of unshown older/newer frames.
+    pub(super) fn overlapping_hops(
+        &self,
+        start: i128,
+        end: i128,
+    ) -> impl ExactSizeIterator<Item = &Arc<Frame>> {
+        let first = self
+            .frames
+            .partition_point(|frame| frame.info.end as i128 <= start);
+        let last = self.frames.partition_point(|frame| {
+            frame.info.end as i128 - (frame.info.config.hop as i128) < end
+        });
+        self.frames.range(first..last)
+    }
+
     pub fn storage_bytes(&self) -> usize {
         self.frames.iter().map(|f| f.bytes).sum::<usize>()
             + self.frames.capacity() * size_of::<Arc<Frame>>()
