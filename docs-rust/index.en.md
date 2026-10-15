@@ -8,7 +8,7 @@
 | --- | --- |
 | Input | 1–16 synchronous channels through CPAL; f64 measurement after capture, using nominal sample rates |
 | Scope | Any four input channels, independent visibility and vertical scales, Auto/Normal/Single, Autoset, raw-sample RMS/Peak/P-P and cursors |
-| Spectrum | 1,024–524,288 points, amplitude/PSD, band power/RMS, averaging and peak hold |
+| Spectrum | 1,024–524,288 points, amplitude/PSD/ESD, band power/RMS or window energy, averaging and peak hold |
 | Spectrogram / XY | Time-frequency view and synchronous two-channel XY display |
 | Save and compare | Channel calibration and versioned settings; held Scope/Spectrum results in JSON, CSV and PNG; reference JSON comparison |
 | Software Loopback | Known gain, phase, delay and noise through the common input path without hardware |

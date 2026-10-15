@@ -1093,6 +1093,32 @@ mod tests {
     }
 
     #[test]
+    fn esd_settings_roundtrip_preserves_explicit_window_dc_and_averaging() {
+        for window in [Window::Rectangular, Window::Hann, Window::BlackmanHarris] {
+            let mut original = fixture();
+            original
+                .measurement
+                .spectrum
+                .analysis
+                .select_quantity(Quantity::Esd);
+            original.measurement.spectrum.analysis.window = window;
+            original.measurement.spectrum.analysis.remove_dc = true;
+            original.measurement.spectrum.analysis.averages = 16;
+            let restored = Document::decode(&original.encode().unwrap()).unwrap();
+            assert_eq!(restored, original);
+            assert_eq!(
+                restored.measurement.spectrum.analysis.quantity,
+                Quantity::Esd
+            );
+            // The Spectrogram retains its independent amplitude definition.
+            assert_eq!(
+                restored.measurement.spectrogram.analysis.quantity,
+                Quantity::Amplitude
+            );
+        }
+    }
+
+    #[test]
     fn roundtrip_retains_f64_calibration_ids_and_all_analysis_choices() {
         for size in FFT_SIZES {
             for precision in [Precision::F32, Precision::F64] {

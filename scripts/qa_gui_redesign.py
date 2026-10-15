@@ -23,6 +23,8 @@ def cases(devices=()):
     yield "spectrum-four-channel", False, {"VIEW": "spectrum", "SPECTRUM4": "1"}
     yield "spectrum-four-channel-compact", True, {"VIEW": "spectrum", "SPECTRUM4": "1", "ZOOM": "1.25"}
     yield "spectrum-details-compact", True, {"VIEW": "spectrum", "SPECTRUM4": "1", "DETAILS": "1", "ZOOM": "1.25"}
+    yield "spectrum-esd", False, {"VIEW": "spectrum", "ESD": "1"}
+    yield "spectrum-esd-compact", True, {"VIEW": "spectrum", "ESD": "1", "DETAILS": "1", "ZOOM": "1.25"}
     yield "scope-details-compact", True, {"VIEW": "scope", "DETAILS": "1", "IDLE": "1", "ZOOM": "1.25"}
     yield "console-grid", False, {"VIEW": "console", "ZOOM": "0.75"}
     yield "console-tabs", True, {"VIEW": "console", "ZOOM": "1.25"}
@@ -120,6 +122,8 @@ def main():
             passed = result.returncode == 0 and display_ok and "GUI navigation OK:" in log
             if "INTERACTIONS" in options:
                 passed = passed and "GUI interactions OK:" in log
+            if "ESD" in options:
+                passed = passed and "ESD UI OK:" in log
             returncode = result.returncode
         except subprocess.TimeoutExpired as error:
             log = f"GUI QA timed out: {error}"

@@ -161,15 +161,19 @@ impl ScopeApp {
     pub(super) fn spectrum_controls(&mut self, ui: &mut egui::Ui) {
         let before = self.spectrum_settings;
         control_group(ui, "FFT", BLUE, |ui| {
-            ui.horizontal(|ui| {
+            let mut quantity = self.spectrum_settings.quantity;
+            ui.horizontal_wrapped(|ui| {
                 ui.selectable_value(
-                    &mut self.spectrum_settings.quantity,
+                    &mut quantity,
                     Quantity::Amplitude,
                     "Amplitude",
                 ).on_hover_text("Bin amplitude · 0 dBFS = 1 FS peak sine at a bin centre. Window coherent gain corrected; off-bin tones have scalloping loss.");
-                ui.selectable_value(&mut self.spectrum_settings.quantity, Quantity::Psd, "PSD")
+                ui.selectable_value(&mut quantity, Quantity::Psd, "PSD")
                     .on_hover_text("Power spectral density · power per Hz, with window noise-bandwidth correction");
+                ui.selectable_value(&mut quantity, Quantity::Esd, "Transient (ESD)")
+                    .on_hover_text("Energy spectral density · energy per Hz. Selecting ESD presets Rectangular, Average OFF and Remove DC OFF for a single transient.");
             });
+            self.spectrum_settings.select_quantity(quantity);
             egui::ComboBox::from_id_salt("fft_size")
                 .width(ui.available_width())
                 .selected_text(format!("{} points", self.spectrum_settings.size))
@@ -182,6 +186,12 @@ impl ScopeApp {
                         );
                     }
                 });
+            if self.spectrum_settings.quantity == Quantity::Esd {
+                ui.label(RichText::new("Fit the entire transient inside one FFT window. Trigger capture is not linked.").small().color(MUTED));
+                if self.spectrum_settings.window != Window::Rectangular {
+                    ui.label(RichText::new("Rectangular recommended: other windows attenuate energy without correction.").small().color(YELLOW));
+                }
+            }
             egui::ComboBox::from_id_salt("fft_window")
                 .width(ui.available_width())
                 .selected_text(self.spectrum_settings.window.name())
@@ -394,7 +404,8 @@ impl ScopeApp {
                     .color(MUTED),
             );
         }
-        ui.checkbox(&mut self.spectrum_settings.remove_dc, "Remove DC offset");
+        ui.checkbox(&mut self.spectrum_settings.remove_dc, "Remove DC offset")
+            .on_hover_text("Subtracts each window's mean before windowing. In ESD this changes transient energy and its dependence on window length.");
         if before
             != (
                 self.spectrum_settings,

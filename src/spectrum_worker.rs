@@ -954,7 +954,7 @@ mod tests {
     #[test]
     fn continuous_all_windows_average_and_hold_match_headless_reference() {
         for size in [1024, 32768, 65536, 131072, 262144, 524288] {
-            for quantity in [Quantity::Amplitude, Quantity::Psd] {
+            for quantity in [Quantity::Amplitude, Quantity::Psd, Quantity::Esd] {
                 let config = config(size, SpectrumMode::Continuous, quantity);
                 let mut processor = Processor::new(config.clone());
                 let mut reference = Analyzer::new(config.settings, config.rate);
@@ -1098,7 +1098,7 @@ mod tests {
     #[test]
     fn live_observes_sub_hop_windows_with_exact_power_hold_and_gap_recovery() {
         for size in [1024, 8192, 32768, 524288] {
-            for quantity in [Quantity::Amplitude, Quantity::Psd] {
+            for quantity in [Quantity::Amplitude, Quantity::Psd, Quantity::Esd] {
                 let config = config(size, SpectrumMode::Live, quantity);
                 let mut p = Processor::new(config.clone());
                 let mut reference = Analyzer::new(config.settings, config.rate);

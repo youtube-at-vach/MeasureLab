@@ -27,9 +27,11 @@ macOS／Linuxのローカルセットアップ環境では`./scripts/cargo.sh ru
 
 Scopeは波形直下のCH1〜CH4バーでCHを選び、チェックボックスで波形の表示を個別に切り替えます。選択と表示ON/OFFは独立し、2ch入力ではCH3／CH4を **No input** と表示します。右の **Acquisition / Horizontal / Trigger / Channel** で取得・時間軸・トリガー・選択CHのFSレンジとオフセットを編集します。時間軸は波形付近に常時表示し、波形上のホイールで変更できます。Shift＋ホイールは選択CHの縦軸です。各CHの入力割当は **Channel / Input source** で1〜16chから選べます。旧設定は2本の割当と倍率を保持し、追加CH3／CH4を表示OFFにして読み込みます。
 
-Spectrumは単一グラフに最大4chを重ねます。下部のCHバーで選択と表示ON/OFFを別々に操作します。右詳細欄はFFT→Frequency / Scale→Measurement→Averagingの順です。最上部の**Amplitude / PSD**で測定量を切り替え、共通のFFT条件・表示軸を設定します。細かな周波数範囲は**Custom frequency range**、手動レベルは**Manual**を選ぶと表示します。既定はCH1のみ表示です。
+Spectrumは単一グラフに最大4chを重ねます。下部のCHバーで選択と表示ON/OFFを別々に操作します。右詳細欄はFFT→Frequency / Scale→Measurement→Averagingの順です。最上部の**Amplitude / PSD / Transient (ESD)**で測定量を切り替え、共通のFFT条件・表示軸を設定します。細かな周波数範囲は**Custom frequency range**、手動レベルは**Manual**を選ぶと表示します。既定はCH1のみ表示です。
 
-**Cursor A / B**を選んでグラフをクリック／ドラッグすると、2つの周波数を独立に固定し、選択CHの最寄りビンの振幅／PSDとΔf・ΔLを読み取れます。**Clear**で解除します。平均は下部の**Average / Weight**で設定する線形パワーの指数平均（EMA）です。整定目安を表示し、処理窓数は**Advanced analysis / diagnostics**へまとめています。OFFのCHはFFTを停止し、再ONで新しい平均を開始します。ピーク・カーソル・結果書き出しは選択CHを対象にします。未校正振幅の0 dBFSはビン中心の1 FS peak正弦波です。
+**Transient (ESD)** は過渡信号のエネルギー密度です。選択時に矩形窓・平均OFF・DC除去OFFへ切り替わります。打撃・減衰応答の全体を一つのFFT窓へ収めてください。電圧校正時はV²·s/Hz基準のdB表示、カーソル・JSON／CSVは線形値も扱い、**Window energy**は全周波数の積算V²·sです。Hann等の窓はエネルギーを減衰させ、その補正は行いません。DC除去もエネルギーを変えます。平均ONは各窓のエネルギーのEMAで、累積値ではありません。シングルショット・トリガー連携は未実装で、Live／Latestの過渡捕捉は保証しません。
+
+**Cursor A / B**を選んでグラフをクリック／ドラッグすると、2つの周波数を独立に固定し、選択CHの最寄りビンの振幅／PSD／ESDとΔf・ΔLを読み取れます。**Clear**で解除します。平均は下部の**Average / Weight**で設定する線形パワーの指数平均（EMA）です。整定目安を表示し、処理窓数は**Advanced analysis / diagnostics**へまとめています。OFFのCHはFFTを停止し、再ONで新しい平均を開始します。ピーク・カーソル・結果書き出しは選択CHを対象にします。未校正振幅の0 dBFSはビン中心の1 FS peak正弦波です。
 
 コンソール内で追加の測定詳細が区画高を超える場合は、その区画内を縦にスクロールできます。区画名と共通の入出力状態・停止操作はスクロールの外に残ります。
 

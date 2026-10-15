@@ -1,5 +1,6 @@
 //! One-sided bin amplitude (1 FS sine peak = 0 dBFS) or power spectral
-//! density (FS²/Hz), with optional affine physical-unit calibration.
+//! density (FS²/Hz) or energy spectral density (FS²·s/Hz), with optional
+//! affine physical-unit calibration.
 //! Numeric results and band integration stay f64.
 use crate::{
     calibration::Calibration,
@@ -15,6 +16,9 @@ pub const FFT_SIZES: [usize; 10] = [
 /// STFT storage and GPU textures have a separate, verified capacity limit.
 pub const STFT_SIZES: [usize; 6] = [1024, 2048, 4096, 8192, 16384, 32768];
 pub const DB_MIN: f32 = -180.0;
+
+#[cfg(test)]
+mod esd_tests;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -70,6 +74,7 @@ pub enum Quantity {
     #[default]
     Amplitude,
     Psd,
+    Esd,
 }
 
 impl Quantity {
@@ -77,6 +82,7 @@ impl Quantity {
         match self {
             Self::Amplitude => "Bin amplitude",
             Self::Psd => "Power spectral density",
+            Self::Esd => "Transient (ESD)",
         }
     }
 
@@ -84,6 +90,7 @@ impl Quantity {
         match self {
             Self::Amplitude => "dBFS",
             Self::Psd => "dB re FS²/Hz",
+            Self::Esd => "dB re FS²·s/Hz",
         }
     }
 
@@ -91,6 +98,7 @@ impl Quantity {
         match self {
             Self::Amplitude => "FS peak",
             Self::Psd => "FS²/Hz",
+            Self::Esd => "FS²·s/Hz",
         }
     }
 
@@ -101,6 +109,7 @@ impl Quantity {
         match self {
             Self::Amplitude => format!("dB re 1 {} peak", calibration.unit()),
             Self::Psd => format!("dB re 1 {}/Hz", calibration.squared_unit()),
+            Self::Esd => format!("dB re 1 {}·s/Hz", calibration.squared_unit()),
         }
     }
 
@@ -111,6 +120,7 @@ impl Quantity {
         match self {
             Self::Amplitude => format!("{} peak", calibration.unit()),
             Self::Psd => format!("{}/Hz", calibration.squared_unit()),
+            Self::Esd => format!("{}·s/Hz", calibration.squared_unit()),
         }
     }
 }
@@ -138,6 +148,19 @@ impl Default for Settings {
             remove_dc: true,
             precision: Precision::F64,
         }
+    }
+}
+
+impl Settings {
+    /// A transient preset must preserve the pulse's energy and DC content.
+    /// Apply only on entry; explicit window/DC/average edits remain available.
+    pub fn select_quantity(&mut self, quantity: Quantity) {
+        if self.quantity != quantity && quantity == Quantity::Esd {
+            self.window = Window::Rectangular;
+            self.averages = 1;
+            self.remove_dc = false;
+        }
+        self.quantity = quantity;
     }
 }
 
@@ -176,7 +199,7 @@ pub struct CursorReading {
     pub window: WindowInfo,
     pub average: AverageInfo,
     pub frequency_hz: f64,
-    /// Peak amplitude or PSD in the window's unit; never reconstructed from f32.
+    /// Peak amplitude or spectral density; never reconstructed from f32.
     pub value: f64,
     pub level_db: f64,
     pub hold_level_db: f64,
@@ -302,12 +325,24 @@ macro_rules! numeric_reads {
                 frequency_hz: bin as f64 * window.sample_rate as f64 / window.settings.size as f64,
                 value: match self.settings.quantity {
                     Quantity::Amplitude => self.power[bin].sqrt(),
-                    Quantity::Psd => self.power[bin],
+                    Quantity::Psd | Quantity::Esd => self.power[bin],
                 },
                 level_db: level_db(self.power[bin]),
                 hold_level_db: level_db(self.hold_power[bin]),
                 window,
             })
+        }
+
+        /// Full one-sided ESD integral, in unit²·s. With averaging this is
+        /// the EMA of window energies, not a sum over successive events.
+        /// Includes full DC/Nyquist bin weights for discrete Parseval.
+        pub fn energy(&self) -> Option<f64> {
+            if !self.is_ready() || self.settings.quantity != Quantity::Esd {
+                return None;
+            }
+            let energy = precise_sum(self.power.iter().copied()) * self.sample_rate as f64
+                / self.settings.size as f64;
+            energy.is_finite().then_some(energy)
         }
 
         /// Whole-bin sum of averaged PSD * Fs/N. Both requested bounds are
@@ -630,8 +665,15 @@ impl Analyzer {
         let rbw = sample_rate as f64 * precise_sum(weights.iter().map(|v| v * v))
             / (weight_sum * weight_sum);
         // Normalize once at configuration time instead of dividing every bin.
+        // Amplitude uses coherent gain; PSD additionally divides power by RBW
+        // below, giving |FFT(x*w)|² / (Fs * sum(w²)). ESD instead scales the
+        // input by 1/Fs: |FFT(x*w)|²/Fs², with no window energy correction.
+        let normalization = match settings.quantity {
+            Quantity::Amplitude | Quantity::Psd => weight_sum,
+            Quantity::Esd => sample_rate as f64,
+        };
         for weight in &mut weights {
-            *weight /= weight_sum;
+            *weight /= normalization;
         }
         Self {
             samples: vec![0.0; settings.size],
@@ -831,6 +873,7 @@ impl Analyzer {
         let factors = match self.settings.quantity {
             Quantity::Amplitude => [1.0, 4.0],
             Quantity::Psd => [1.0 / self.rbw, 2.0 / self.rbw],
+            Quantity::Esd => [1.0, 2.0],
         };
         match &mut self.transform {
             Transform::F64(workspace) => workspace.process(
@@ -1183,7 +1226,7 @@ mod tests {
                     FftPlanner::<f64>::new()
                         .plan_fft_forward(size)
                         .process(&mut complex);
-                    for quantity in [Quantity::Amplitude, Quantity::Psd] {
+                    for quantity in [Quantity::Amplitude, Quantity::Psd, Quantity::Esd] {
                         for precision in [Precision::F64, Precision::F32] {
                             let mut analyzer = Analyzer::new(
                                 Settings {
@@ -1209,6 +1252,9 @@ mod tests {
                                         Quantity::Psd => {
                                             (if edge { 1.0 } else { 2.0 }) / (48000.0 * squares)
                                         }
+                                        Quantity::Esd => {
+                                            (if edge { 1.0 } else { 2.0 }) / 48000.0_f64.powi(2)
+                                        }
                                     };
                                 let tolerance = match precision {
                                     Precision::F64 => 1e-13 + 2e-12 * expected,
@@ -1229,6 +1275,7 @@ mod tests {
                                 match quantity {
                                     Quantity::Amplitude => "V peak",
                                     Quantity::Psd => "V²/Hz",
+                                    Quantity::Esd => "V²·s/Hz",
                                 }
                             );
                             assert!(
@@ -1692,7 +1739,7 @@ mod tests {
 
     #[test]
     fn numeric_cursor_band_average_and_hold_survive_the_display_floor_and_copy() {
-        for quantity in [Quantity::Amplitude, Quantity::Psd] {
+        for quantity in [Quantity::Amplitude, Quantity::Psd, Quantity::Esd] {
             let settings = Settings {
                 quantity,
                 size: 1024,
@@ -1825,7 +1872,7 @@ mod tests {
                         .plan_fft_forward(size)
                         .process(&mut reference);
                     let rbw = 48000.0 * weights.iter().map(|w| w * w).sum::<f64>() / sum.powi(2);
-                    for quantity in [Quantity::Amplitude, Quantity::Psd] {
+                    for quantity in [Quantity::Amplitude, Quantity::Psd, Quantity::Esd] {
                         for precision in [Precision::F64, Precision::F32] {
                             let mut analyzer = Analyzer::new(
                                 Settings {
@@ -1850,6 +1897,9 @@ mod tests {
                                         }
                                     }
                                     Quantity::Psd => (if endpoint { 1.0 } else { 2.0 }) / rbw,
+                                    Quantity::Esd => {
+                                        (if endpoint { 1.0 } else { 2.0 }) * (sum / 48000.0).powi(2)
+                                    }
                                 };
                                 let expected = reference[bin].norm_sqr() * factor;
                                 // Absolute amplitude error includes low bins at the f32 noise floor.
@@ -1857,6 +1907,12 @@ mod tests {
                                     1e-13
                                 } else {
                                     2e-7
+                                } * if quantity == Quantity::Esd {
+                                    // The reference is coherent-gain normalized;
+                                    // ESD's sqrt-density carries sum(w)/Fs.
+                                    sum / 48000.0
+                                } else {
+                                    1.0
                                 };
                                 assert!(
                                     (actual.sqrt() - expected.sqrt()).abs() < tolerance,

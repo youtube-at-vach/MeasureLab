@@ -123,6 +123,43 @@ impl Driver {
 }
 
 impl ScopeApp {
+    pub(super) fn check_esd_ui(&mut self) -> Result<(), String> {
+        self.spectrum_settings.select_quantity(Quantity::Esd);
+        self.spectrum_channel = 0;
+        self.spectrum_display = settings::SpectrumDisplay::default();
+        self.spectrum_display.auto_level = true;
+        self.frequency_scale = FrequencyScale::Linear;
+        self.span_hz = 5000.0;
+        self.spectrum_min_hz = 0.0;
+        self.calibration.channel = 0;
+        self.calibration.gain = 4.0;
+        self.calibration.offset = 0.0;
+        self.calibration.unit = "V".into();
+        self.calibration.conditions = "Synthetic decaying impact; no physical ADC reference".into();
+        self.calibration.apply()?;
+        self.calibration.captured = self.calibration.pending.clone();
+        self.history.clear_at(0);
+        let mut time_energy = 0.0;
+        for n in 0..self.spectrum_settings.size {
+            let time = n as f64 / self.sample_rate as f64;
+            let sample =
+                0.25 * (-time * 100.0).exp() * (std::f64::consts::TAU * 1000.0 * time).sin();
+            self.history.push([sample, 0.0]);
+            time_energy += (4.0 * sample).powi(2) / self.sample_rate as f64;
+        }
+        self.update_spectrum(true);
+        self.refresh_spectrum_readouts(self.spectrum_view());
+        assert!((self.spectrum_energy.unwrap() / time_energy - 1.0).abs() < 1e-12);
+        assert_eq!(self.analyzer.db_unit(), "dB re 1 V²·s/Hz");
+        assert_eq!(self.analyzer.settings().quantity, Quantity::Esd);
+        self.cursors.set_frequency(0, 1000.0);
+        self.cursors.set_frequency(1, 1500.0);
+        println!(
+            "ESD UI OK: calibrated decaying impact, shared spectrum plot/cursors, V²·s/Hz, Parseval energy, rectangular/no-average/no-DC preset"
+        );
+        Ok(())
+    }
+
     pub(super) fn check_redesign_interactions(&mut self) -> Result<(), String> {
         let saved = self.presentation.clone();
         let saved_shell = self.shell.clone();
@@ -511,7 +548,15 @@ impl ScopeApp {
         driver.click(self, "PSD")?;
         assert_eq!(self.spectrum_settings.quantity, Quantity::Psd);
         assert_eq!(self.analyzer.settings().quantity, Quantity::Amplitude);
+        driver.click(self, "Transient (ESD)")?;
+        assert_eq!(self.spectrum_settings.quantity, Quantity::Esd);
+        assert_eq!(self.spectrum_settings.window, spectrum::Window::Rectangular);
+        assert_eq!(self.spectrum_settings.averages, 1);
+        assert!(!self.spectrum_settings.remove_dc);
+        assert_eq!(self.analyzer.settings().quantity, Quantity::Amplitude);
+        // Restore the held fixture's next-run settings before cursor checks.
         driver.click(self, "Amplitude")?;
+        self.spectrum_settings = settings;
         driver.click(self, "Average")?;
         assert_eq!(
             self.spectrum_settings.averages,
@@ -598,7 +643,7 @@ impl ScopeApp {
         self.spectrum_numeric_key = None;
         driver.resize(self, vec2(1440.0, 1000.0), 1.0, 1.0);
         println!(
-            "Spectrum controls OK: default-height groups, PSD/Amplitude, averaging, independent A/B clicks and drag, known-bin readings, delta and Clear"
+            "Spectrum controls OK: default-height groups, PSD/ESD/Amplitude, transient preset, averaging, independent A/B clicks and drag, known-bin readings, delta and Clear"
         );
         Ok(())
     }
