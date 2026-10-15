@@ -8,7 +8,7 @@ use crate::{
 use rtrb::{Consumer, Producer, RingBuffer};
 use std::{
     sync::{
-        Arc,
+        Arc, OnceLock,
         atomic::{AtomicBool, AtomicU64, Ordering},
     },
     thread::{self, JoinHandle},
@@ -17,7 +17,7 @@ use std::{
 
 pub const BLOCK_FRAMES: usize = 256;
 pub const INPUT_BLOCKS: usize = 64;
-/// About 0.68 s at 48 kHz / hop 256 (8 MiB at the maximum FFT size).
+/// About 0.68 s at 48 kHz / hop 256 (16 MiB of f64 values at maximum N).
 pub const RESULT_ROWS: usize = 128;
 const MAX_BINS: usize = 32768 / 2 + 1;
 
@@ -54,7 +54,7 @@ pub struct Gap {
     /// Source frames missing between consecutive input blocks, including losses
     /// in capture and in this worker's input queue. Time stays in sample indices.
     pub input_frames: u64,
-    /// Complete windows lost because the UI did not recycle result storage.
+    /// Complete windows lost because the result consumer did not recycle storage.
     pub result_rows: u64,
     /// First window of a generation, or first window after an input discontinuity.
     pub discontinuity: bool,
@@ -72,12 +72,22 @@ pub struct RowInfo {
 
 pub struct Row {
     pub info: RowInfo,
-    db: Box<[f32]>,
+    power: Box<[f64]>,
 }
 
 impl Row {
-    pub fn db(&self) -> &[f32] {
-        &self.db[..self.info.config.size / 2 + 1]
+    /// Squared peak-bin amplitude in uncalibrated FS², never reconstructed from dB.
+    pub fn power(&self) -> &[f64] {
+        &self.power[..self.info.config.size / 2 + 1]
+    }
+
+    /// Compatibility adapter for display-only consumers. Silence stays −∞,
+    /// invalid windows stay NaN, and no measurement floor is imposed.
+    pub fn db(&self) -> Vec<f32> {
+        self.power()
+            .iter()
+            .map(|&p| crate::spectrum::level_db(p) as f32)
+            .collect()
     }
 }
 
@@ -121,7 +131,7 @@ struct Processor {
     config: Config,
     history: History,
     analyzer: Analyzer,
-    display_db: Vec<f32>,
+    invalid_power: Box<[f64]>,
     expected: Option<u64>,
     next_end: u64,
     gap: Gap,
@@ -144,7 +154,7 @@ impl Processor {
                 },
                 config.sample_rate,
             ),
-            display_db: vec![0.0; config.size / 2 + 1],
+            invalid_power: vec![f64::NAN; config.size / 2 + 1].into_boxed_slice(),
             expected: None,
             next_end: 0,
             gap: Gap {
@@ -154,7 +164,7 @@ impl Processor {
         }
     }
 
-    fn process(&mut self, block: &InputBlock, mut emit: impl FnMut(RowInfo, &[f32]) -> bool) {
+    fn process(&mut self, block: &InputBlock, mut emit: impl FnMut(RowInfo, &[f64]) -> bool) {
         if block.len == 0 {
             return;
         }
@@ -186,20 +196,14 @@ impl Processor {
                 end,
                 gap: self.gap,
             };
-            // Preserve silence and invalid data in the display cache so Auto
-            // cannot mistake either for a measured noise floor.
-            for (bin, value) in self.display_db.iter_mut().enumerate() {
-                *value = if self.analyzer.validity() != crate::spectrum::Validity::Valid {
-                    f32::NAN
-                } else if self.analyzer.power()[bin] == 0.0 {
-                    f32::NEG_INFINITY
-                } else if self.analyzer.db()[bin] <= crate::spectrum::DB_MIN {
-                    crate::spectrum::level_db(self.analyzer.power()[bin]) as f32
-                } else {
-                    self.analyzer.db()[bin]
-                };
-            }
-            if emit(info, &self.display_db) {
+            // The shared Analyzer owns normalization and invalidity. Its f64
+            // power values are the numerical result; dB belongs to display.
+            let power = if self.analyzer.validity() == crate::spectrum::Validity::Valid {
+                self.analyzer.power()
+            } else {
+                &self.invalid_power
+            };
+            if emit(info, power) {
                 self.gap = Gap::default();
             } else {
                 self.gap.result_rows += 1;
@@ -210,8 +214,8 @@ impl Processor {
     }
 }
 
-/// Input endpoint can be moved to the measurement worker while the UI retains
-/// result delivery and recycling. Neither endpoint waits for the other.
+/// Input endpoint can be moved to the measurement worker while its owner retains
+/// result delivery and recycling elsewhere. Neither endpoint waits for the other.
 pub struct Feeder {
     input: Producer<InputBlock>,
     pending: Option<InputBlock>,
@@ -222,8 +226,7 @@ pub struct Feeder {
 
 pub struct Worker {
     feeder: Option<Feeder>,
-    results: Consumer<Row>,
-    recycle: Producer<Row>,
+    results: Option<Results>,
     generation: Arc<AtomicU64>,
     shutdown: Arc<AtomicBool>,
     handle: Option<JoinHandle<()>>,
@@ -259,12 +262,14 @@ impl Worker {
                         end: 0,
                         gap: Gap::default(),
                     },
-                    db: vec![0.0; MAX_BINS].into_boxed_slice(),
+                    power: vec![0.0; MAX_BINS].into_boxed_slice(),
                 })
                 .unwrap_or_else(|_| unreachable!("result pool capacity"));
         }
         let generation = Arc::new(AtomicU64::new(0));
         let shutdown = Arc::new(AtomicBool::new(false));
+        let result_wake = Arc::new(OnceLock::<thread::Thread>::new());
+        let notify = result_wake.clone();
         let metrics = Arc::new(Metrics::default());
         let active = generation.clone();
         let stop = shutdown.clone();
@@ -288,7 +293,7 @@ impl Worker {
                     processor = Some(Processor::new(block.generation, block.config));
                 }
                 let started = Instant::now();
-                processor.as_mut().unwrap().process(&block, |info, db| {
+                processor.as_mut().unwrap().process(&block, |info, power| {
                     if info.generation != active.load(Ordering::Acquire) {
                         return true; // obsolete data cannot become a visible result
                     }
@@ -297,12 +302,15 @@ impl Worker {
                         return false;
                     };
                     row.info = info;
-                    row.db[..db.len()].copy_from_slice(db);
+                    row.power[..power.len()].copy_from_slice(power);
                     // Pool size equals queue capacity: owning a free row guarantees a slot.
                     outgoing
                         .push(row)
                         .unwrap_or_else(|_| unreachable!("result pool invariant"));
                     counters.produced.fetch_add(1, Ordering::Relaxed);
+                    if let Some(wake) = notify.get() {
+                        wake.unpark();
+                    }
                     true
                 });
                 counters
@@ -318,8 +326,12 @@ impl Worker {
                 wake: handle.thread().clone(),
                 metrics: metrics.clone(),
             }),
-            results,
-            recycle,
+            results: Some(Results {
+                results,
+                recycle,
+                generation: generation.clone(),
+                wake: result_wake,
+            }),
             generation,
             shutdown,
             handle: Some(handle),
@@ -363,10 +375,45 @@ impl Worker {
         self.feeder.as_mut().expect("detached feeder").flush();
     }
 
-    /// Bounded drain, preserving every available row in order for future texture
-    /// history. The callback borrows pool storage; it cannot keep or grow the pool.
+    /// Transfer result collection independently of the input endpoint and FFT.
+    pub fn take_results(&mut self) -> Results {
+        self.results
+            .take()
+            .expect("STFT results already transferred")
+    }
+
+    pub fn drain(&mut self, consume: impl FnMut(&Row)) {
+        self.results
+            .as_mut()
+            .expect("detached STFT results")
+            .drain(consume);
+    }
+}
+
+/// Sole owner of result delivery/recycling. Moving this endpoint to a history
+/// collector does not change the nonblocking acquisition or FFT queues.
+pub struct Results {
+    results: Consumer<Row>,
+    recycle: Producer<Row>,
+    generation: Arc<AtomicU64>,
+    wake: Arc<OnceLock<thread::Thread>>,
+}
+
+impl Results {
+    /// Register the sole result consumer for event-driven collection. Results
+    /// already queued before registration are drained by its first iteration.
+    pub fn wake_on_result(&self, consumer: thread::Thread) {
+        self.wake
+            .set(consumer)
+            .expect("result consumer already registered");
+    }
+
+    pub fn generation(&self) -> u64 {
+        self.generation.load(Ordering::Acquire)
+    }
+
     pub fn drain(&mut self, mut consume: impl FnMut(&Row)) {
-        let generation = self.generation.load(Ordering::Acquire);
+        let generation = self.generation();
         for _ in 0..self.results.slots() {
             let row = self.results.pop().unwrap();
             if row.info.generation == generation {
@@ -560,7 +607,11 @@ mod tests {
                     for sample in &mut input.samples {
                         *sample *= value;
                     }
-                    processor.process(&input, |_, db| {
+                    processor.process(&input, |_, power| {
+                        let db: Vec<f32> = power
+                            .iter()
+                            .map(|&p| crate::spectrum::level_db(p) as f32)
+                            .collect();
                         if value == 0.0 {
                             assert!(db.iter().all(|v| *v == f32::NEG_INFINITY));
                         } else if !value.is_finite() {
@@ -614,7 +665,11 @@ mod tests {
                 for sample in &mut input.samples {
                     *sample = 1.0 + *sample * 2e-8;
                 }
-                processor.process(&input, |info, db| {
+                processor.process(&input, |info, power| {
+                    let db: Vec<f32> = power
+                        .iter()
+                        .map(|&p| crate::spectrum::level_db(p) as f32)
+                        .collect();
                     assert_eq!(info.generation, 7);
                     assert_eq!(info.config.precision, precision);
                     assert_eq!(info.start, rows * cfg.hop as u64);
@@ -632,8 +687,14 @@ mod tests {
         let mut start = 7000; // absolute coordinates must survive history wrapping
         let mut rows = Vec::new();
         for &len in chunks {
-            processor.process(&block(start, len, config), |info, db| {
-                rows.push((info, db.to_vec()));
+            processor.process(&block(start, len, config), |info, power| {
+                rows.push((
+                    info,
+                    power
+                        .iter()
+                        .map(|&p| crate::spectrum::level_db(p) as f32)
+                        .collect(),
+                ));
                 true
             });
             start += len as u64;
@@ -679,7 +740,11 @@ mod tests {
             for (i, sample) in b.samples.iter_mut().enumerate() {
                 *sample = 0.5 + if i % 2 == 0 { 0.25 } else { -0.25 };
             }
-            processor.process(&b, |_, db| {
+            processor.process(&b, |_, power| {
+                let db: Vec<f32> = power
+                    .iter()
+                    .map(|&p| crate::spectrum::level_db(p) as f32)
+                    .collect();
                 assert!((db[0] + 6.0206).abs() < 0.002);
                 assert!((db[512] + 12.0412).abs() < 0.002);
                 true

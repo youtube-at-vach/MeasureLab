@@ -3,6 +3,7 @@
 use crate::stft::{Config, RowInfo};
 
 mod display;
+pub mod history;
 pub use display::{AutoRange, ColorMap, ColorRange, FrequencyRange, TimeAxis};
 
 pub const ROWS: usize = 512;
@@ -60,7 +61,13 @@ impl History {
         self.config = Some(config);
         self.generation = generation;
         let stride = (config.size / 2 + 1).div_ceil(TEXTURE_WIDTH) * TEXTURE_WIDTH;
-        self.db.resize(stride * ROWS, 0.0);
+        if self.db.len() != stride * ROWS {
+            // Release the previous cache before allocating a different stride.
+            // Vec growth could otherwise keep excess capacity and briefly own
+            // both maximum-sized caches alongside the numerical history.
+            self.db = Vec::new();
+            self.db.resize(stride * ROWS, 0.0);
+        }
         self.rows.fill(None);
         self.next = 0;
         self.len = 0;

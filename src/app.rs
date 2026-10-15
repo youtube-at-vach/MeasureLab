@@ -256,6 +256,7 @@ pub struct ScopeApp {
     fft_ms: f64,
     spectrum_build_ms: f64,
     stft: stft::Worker,
+    stft_history: spectrogram::history::Collector,
     last_stft: Option<RowInfo>,
     spectrogram_history: Arc<Mutex<spectrogram::History>>,
     spectrogram_settings: Settings,
@@ -412,6 +413,7 @@ impl ScopeApp {
             style.spacing.button_padding = vec2(8.0, 4.0);
         });
         let mut stft = stft::Worker::new();
+        let stft_history = spectrogram::history::Collector::new(stft.take_results());
         let core = (!smoke).then(|| measurement::Worker::new(stft.take_feeder()));
         let mut app = Self {
             generator: generator_panel::GeneratorUi::default(),
@@ -514,6 +516,7 @@ impl ScopeApp {
             fft_ms: 0.0,
             spectrum_build_ms: 0.0,
             stft,
+            stft_history,
             last_stft: None,
             spectrogram_history: Arc::new(Mutex::new(spectrogram::History::default())),
             spectrogram_settings: Settings {
@@ -751,6 +754,7 @@ impl ScopeApp {
         }
         #[cfg(feature = "qa")]
         if smoke {
+            app.stft_history.freeze();
             app.stft.pause();
             app.last_stft = Some(crate::qa::spectrogram_fixture(
                 &mut app.spectrogram_history.lock().unwrap(),
@@ -1855,8 +1859,10 @@ impl ScopeApp {
             ..Default::default()
         };
         self.spectrum_dirty = true;
+        self.stft_history.freeze();
         self.stft.pause();
         self.last_stft = None;
+        self.stft_history.clear();
         self.spectrogram_history.lock().unwrap().clear();
     }
 
@@ -2066,6 +2072,13 @@ impl ScopeApp {
         let core = self.core.as_ref().unwrap();
         let frames = core.metrics.input_frames.load(Ordering::Relaxed);
         let windows = core.spectrum.metrics.windows.load(Ordering::Relaxed);
+        let stft_rows = self.stft_history.metrics.collected.load(Ordering::Relaxed);
+        let stft_end = self
+            .stft_history
+            .snapshot()
+            .latest()
+            .map(|frame| frame.info.end);
+        let stft_dropped = self.stft.metrics.result_dropped.load(Ordering::Relaxed);
         let stall = Duration::from_secs_f64(
             (3.0 * self.spectrum_settings.size as f64 / 4.0 / self.sample_rate as f64).max(1.0),
         );
@@ -2077,6 +2090,18 @@ impl ScopeApp {
             "UI stall stopped acquisition"
         );
         assert!(windows > 0, "UI stall stopped Spectrum analysis");
+        let stft_rows = self.stft_history.metrics.collected.load(Ordering::Relaxed) - stft_rows;
+        if let Some(before) = stft_end
+            && stall.as_secs_f64() > self.stft_config().hop as f64 / self.sample_rate as f64 + 0.04
+        {
+            assert!(stft_rows > 0, "UI stall stopped STFT history collection");
+            assert!(self.stft_history.snapshot().latest().unwrap().info.end > before);
+            assert_eq!(
+                self.stft.metrics.result_dropped.load(Ordering::Relaxed),
+                stft_dropped,
+                "UI stall exhausted STFT result storage"
+            );
+        }
         assert!(core.metrics.display_skipped.load(Ordering::Relaxed) > 0);
         if let Some(before) = output_frames {
             let after = self
@@ -2103,7 +2128,7 @@ impl ScopeApp {
         }
         self.accept_snapshot(&mut snapshot);
         println!(
-            "UI stall OK: {:.3} ms without UI updates; {frames} input frames and {windows} FFT windows continued",
+            "UI stall OK: {:.3} ms without UI updates; {frames} input frames, {windows} FFT windows and {stft_rows} collected STFT frames continued",
             stall.as_secs_f64() * 1000.0
         );
     }
@@ -2453,6 +2478,8 @@ impl ScopeApp {
             .configure(config)
             .expect("validated STFT settings");
         self.stft_generation = generation;
+        self.stft_history
+            .configure(self.input_generation, generation, config);
         if let Some(core) = &self.core {
             core.configure_stft(generation, config);
         }
@@ -2462,6 +2489,7 @@ impl ScopeApp {
             .reset(generation, config);
         self.last_stft = None;
         if !self.running() && !self.smoke {
+            self.stft_history.freeze();
             self.stft.pause();
         }
     }
@@ -2639,6 +2667,7 @@ impl ScopeApp {
 
     fn stop(&mut self) {
         self.start_after_stop = false;
+        self.stft_history.freeze();
         self.stft.pause();
         let was_audio = self.capture.take().is_some();
         self.demo_running = false;
@@ -5092,16 +5121,31 @@ impl eframe::App for ScopeApp {
             profile.record_input_loss(self.dropped);
         }
         let started = Instant::now();
-        self.stft.drain(|row| {
-            if self
-                .spectrogram_history
-                .lock()
-                .unwrap()
-                .push(row.info, row.db())
+        // The collector recycles STFT results even when this update is absent.
+        // Only the latest display-cache capacity is converted here. The full
+        // f64 retention remains independent and is ready for S3 history views.
+        if let Some(snapshot) = self.stft_history.live_snapshot()
+            && snapshot.generation == self.stft_generation
+            && snapshot.input_generation == self.input_generation
+        {
+            let last_end = self.last_stft.map_or(0, |row| row.end);
+            for frame in snapshot
+                .frames()
+                .skip(snapshot.frames().len().saturating_sub(spectrogram::ROWS))
             {
-                self.last_stft = Some(row.info);
+                if frame.info.end > last_end {
+                    let db = frame.db();
+                    if self
+                        .spectrogram_history
+                        .lock()
+                        .unwrap()
+                        .push(frame.info, &db)
+                    {
+                        self.last_stft = Some(frame.info);
+                    }
+                }
             }
-        });
+        }
         self.spectrogram_build_ms = started.elapsed().as_secs_f64() * 1000.0;
         #[cfg(feature = "qa")]
         {
@@ -5423,6 +5467,24 @@ impl eframe::App for ScopeApp {
                         history.storage_bytes() as f64 / 1048576.0
                     );
                     drop(history);
+                    let numeric = self.stft_history.snapshot();
+                    println!(
+                        "STFT history profile: {} retained frames, {:.3} s, {:.1} MiB retained / {:.1} MiB peak frames, {} retired, {} storage dropped, collector CPU {:.3} ms total",
+                        numeric.frames().len(),
+                        numeric.retained_seconds(),
+                        numeric.storage_bytes() as f64 / 1048576.0,
+                        self.stft_history.peak_frame_bytes() as f64 / 1048576.0,
+                        numeric.retired,
+                        self.stft_history
+                            .metrics
+                            .storage_dropped
+                            .load(Ordering::Relaxed),
+                        self.stft_history
+                            .metrics
+                            .processing_nanos
+                            .load(Ordering::Relaxed) as f64
+                            / 1e6,
+                    );
                     if std::env::var_os("MEASURELAB_PROFILE_DEMO_BIN_TONE").is_some() {
                         let snapshot = finished.as_ref().expect("known demo finite endpoint");
                         assert_eq!(snapshot.input_dropped, 0, "known demo acquisition loss");
@@ -5575,6 +5637,28 @@ impl eframe::App for ScopeApp {
                         ui.label(format!(
                             "Spectrogram history {:.2} ms",
                             self.spectrogram_build_ms
+                        ));
+                        let numeric = self.stft_history.snapshot();
+                        ui.label(format!(
+                            "STFT retention {:.2} s · {} frames · {:.1} MiB · retired {}{}",
+                            numeric.retained_seconds(),
+                            numeric.frames().len(),
+                            numeric.storage_bytes() as f64 / 1048576.0,
+                            numeric.retired,
+                            if numeric.capacity_limited {
+                                " · capacity limited"
+                            } else {
+                                ""
+                            },
+                        ));
+                        ui.label(format!(
+                            "STFT history storage losses {} · allocated {:.1} MiB / peak {:.1} MiB",
+                            self.stft_history
+                                .metrics
+                                .storage_dropped
+                                .load(Ordering::Relaxed),
+                            self.stft_history.allocated_frame_bytes() as f64 / 1048576.0,
+                            self.stft_history.peak_frame_bytes() as f64 / 1048576.0,
                         ));
                         let history = self.spectrogram_history.lock().unwrap();
                         ui.label(format!(
