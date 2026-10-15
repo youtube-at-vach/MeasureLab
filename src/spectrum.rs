@@ -247,7 +247,7 @@ pub enum Validity {
 }
 
 /// Zero power is -infinity in numeric results. Only drawing has a dB floor.
-fn level_db(power: f64) -> f64 {
+pub(crate) fn level_db(power: f64) -> f64 {
     10.0 * power.log10()
 }
 

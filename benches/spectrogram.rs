@@ -46,5 +46,20 @@ fn main() {
             history.len(),
             history.storage_bytes() as f64 / 1048576.0
         );
+        let view = measurelab::spectrum::View::full(
+            48000,
+            measurelab::spectrum::FrequencyScale::Linear,
+            -120.0,
+        );
+        let scans = common::iterations(50);
+        let started = Instant::now();
+        for _ in 0..scans {
+            black_box(history.auto_color_range(view, 60.0));
+        }
+        println!(
+            "{size:>5}-point spectrogram Auto range: {:.3} ms/scan (visible 60 s, {} rows)",
+            started.elapsed().as_secs_f64() * 1000.0 / scans as f64,
+            history.len()
+        );
     }
 }

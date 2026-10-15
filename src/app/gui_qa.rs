@@ -123,6 +123,180 @@ impl Driver {
 }
 
 impl ScopeApp {
+    pub(super) fn check_spectrogram_display_interactions(&mut self) -> Result<(), String> {
+        let presentation = self.presentation.clone();
+        let shell = self.shell.clone();
+        let cursors = std::mem::take(&mut self.cursors);
+        let active = self.active_cursor;
+        let saved = (
+            self.spectrogram_color_map,
+            self.spectrogram_auto_color,
+            self.spectrogram_scale,
+            self.spectrogram_min_hz,
+            self.spectrogram_max_hz,
+            self.spectrogram_seconds,
+        );
+        let conditions = (
+            self.input_generation,
+            self.spectrogram_settings,
+            self.last_stft,
+            self.spectrogram_history.lock().unwrap().revision(),
+            self.generator.command_marker(),
+        );
+        self.presentation
+            .apply(Action::OpenSingle(Instrument::Spectrogram));
+        self.presentation.details_visible = true;
+        self.spectrogram_color_map = spectrogram::ColorMap::Blue;
+        self.spectrogram_auto_color = false;
+        self.spectrogram_seconds = 5.0;
+        self.spectrogram_scale = FrequencyScale::Log;
+        self.spectrogram_min_hz = 20.0;
+        self.spectrogram_max_hz = 0.0;
+        let mut driver = Driver::new();
+        driver.frame(self, vec![]);
+        driver.frame(self, vec![]);
+        driver.click(self, "Blue")?;
+        driver.click(self, "Heat")?;
+        assert_eq!(self.spectrogram_color_map, spectrogram::ColorMap::Heat);
+        driver.click(self, "Auto color range")?;
+        assert!(self.spectrogram_auto_color);
+        driver.click(self, "5 s")?;
+        driver.click(self, "60 s")?;
+        assert_eq!(self.spectrogram_seconds, 60.0);
+        let plot = |driver: &Driver| -> Result<egui::Rect, String> {
+            driver
+                .output
+                .shapes
+                .iter()
+                .find_map(|s| match &s.shape {
+                    egui::Shape::Callback(callback) => Some(callback.rect),
+                    _ => None,
+                })
+                .ok_or("Spectrogram plot missing".into())
+        };
+        let rect = plot(&driver)?;
+        let center = rect.center();
+        let before = self.spectrogram_view();
+        driver.frame(
+            self,
+            vec![
+                egui::Event::PointerMoved(center),
+                egui::Event::MouseWheel {
+                    unit: egui::MouseWheelUnit::Point,
+                    phase: egui::TouchPhase::Move,
+                    delta: vec2(0.0, 60.0),
+                    modifiers: egui::Modifiers::NONE,
+                },
+            ],
+        );
+        let after = self.spectrogram_view();
+        assert!(after.max_hz / after.min_hz < before.max_hz / before.min_hz);
+        assert!(self.cursors.times.iter().all(Option::is_none));
+        // Settle the wheel before pointer gestures.
+        for _ in 0..30 {
+            driver.frame(self, vec![]);
+        }
+        let rect = plot(&driver)?;
+        let start = rect.center();
+        let destination = start + vec2(30.0, 20.0);
+        let drag = |driver: &mut Driver, app: &mut ScopeApp, start, destination| {
+            driver.frame(
+                app,
+                vec![
+                    egui::Event::PointerMoved(start),
+                    egui::Event::PointerButton {
+                        pos: start,
+                        button: egui::PointerButton::Primary,
+                        pressed: true,
+                        modifiers: egui::Modifiers::NONE,
+                    },
+                ],
+            );
+            driver.frame(app, vec![egui::Event::PointerMoved(destination)]);
+            driver.frame(
+                app,
+                vec![egui::Event::PointerButton {
+                    pos: destination,
+                    button: egui::PointerButton::Primary,
+                    pressed: false,
+                    modifiers: egui::Modifiers::NONE,
+                }],
+            );
+            driver.frame(app, vec![]);
+        };
+        let before_pan = self.spectrogram_view();
+        drag(&mut driver, self, start, destination);
+        assert!(self.spectrogram_view().min_hz < before_pan.min_hz);
+        assert!(
+            self.cursors.times.iter().all(Option::is_none),
+            "Background drag created a time cursor"
+        );
+        driver.click_at(self, center);
+        let a = self.cursors.times[self.active_cursor]
+            .unwrap()
+            .spectrogram_y()
+            .unwrap();
+        assert!((a - 0.5).abs() < 0.01);
+        let before_drag = self.spectrogram_view();
+        drag(&mut driver, self, center, center + vec2(30.0, 40.0));
+        let b = self.cursors.times[self.active_cursor]
+            .unwrap()
+            .spectrogram_y()
+            .unwrap();
+        assert!(b > a);
+        assert_eq!(
+            self.spectrogram_view(),
+            before_drag,
+            "Cursor drag panned frequency"
+        );
+        // Keep this double-click distinct from the earlier cursor click.
+        // egui otherwise recognizes a rapid third click as a triple-click.
+        for _ in 0..50 {
+            driver.frame(self, vec![]);
+        }
+        let no_cursor = pos2(
+            rect.left() + rect.width() * 0.2,
+            rect.top() + rect.height() * 0.2,
+        );
+        driver.click_at(self, no_cursor);
+        driver.click_at(self, no_cursor);
+        assert_eq!(self.spectrogram_max_hz, 0.0);
+        assert_eq!(self.spectrogram_min_hz, 20.0);
+        assert_eq!(self.spectrogram_seconds, 60.0);
+        driver.resize(self, vec2(900.0, 700.0), 1.25, 2.0);
+        driver.click(self, "Details")?;
+        driver.position("Auto color range")?;
+        driver.click(self, "Measurement")?;
+        assert!(plot(&driver)?.width() > 100.0);
+        assert_eq!(
+            (
+                self.input_generation,
+                self.spectrogram_settings,
+                self.last_stft,
+                self.spectrogram_history.lock().unwrap().revision(),
+                self.generator.command_marker()
+            ),
+            conditions
+        );
+        (
+            self.spectrogram_color_map,
+            self.spectrogram_auto_color,
+            self.spectrogram_scale,
+            self.spectrogram_min_hz,
+            self.spectrogram_max_hz,
+            self.spectrogram_seconds,
+        ) = saved;
+        self.presentation = presentation;
+        self.shell = shell;
+        self.cursors = cursors;
+        self.active_cursor = active;
+        self.spectrogram_auto_range = spectrogram::AutoRange::default();
+        println!(
+            "Spectrogram display UI OK: palette/Auto/time widgets, wheel zoom, background pan, cursor drag priority, double-click reset, narrow/DPI; STFT/history/generation/output unchanged"
+        );
+        Ok(())
+    }
+
     pub(super) fn check_esd_ui(&mut self) -> Result<(), String> {
         self.spectrum_settings.select_quantity(Quantity::Esd);
         self.spectrum_channel = 0;

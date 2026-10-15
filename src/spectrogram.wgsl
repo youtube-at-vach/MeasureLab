@@ -1,6 +1,7 @@
 struct Parameters {
     frequency: vec4<f32>, // min Hz, max Hz, bin Hz, floor dBFS
     display: vec4<f32>,   // ceiling dBFS, logarithmic, physical width, scanlines/row
+    colors: array<vec4<f32>, 3>, // Shared with the CPU color bar.
 }
 @group(0) @binding(0) var<uniform> p: Parameters;
 @group(0) @binding(1) var history: texture_2d<f32>;
@@ -29,8 +30,8 @@ fn frequency(x: f32) -> f32 {
     return mix(p.frequency.x, p.frequency.y, x);
 }
 fn color(t: f32) -> vec3<f32> {
-    if t < 0.5 { return mix(vec3(0.025, 0.04, 0.10), vec3(0.05, 0.55, 0.80), t * 2.); }
-    return mix(vec3(0.05, 0.55, 0.80), vec3(1.0, 0.85, 0.25), (t - 0.5) * 2.);
+    if t < 0.5 { return mix(p.colors[0].rgb, p.colors[1].rgb, t * 2.); }
+    return mix(p.colors[1].rgb, p.colors[2].rgb, (t - 0.5) * 2.);
 }
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
@@ -48,11 +49,24 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         last = first;
     }
     let width = u32(textureDimensions(history).x);
-    var db = -180.;
+    var db = -3.402823e38;
+    var valid = false;
+    var invalid = false;
     // Keep the strongest bin covered by this pixel, including on a log axis.
     for (var bin = first; bin <= last; bin += 1u) {
         let y = u32(in.slot) * u32(p.display.w) + bin / width;
-        db = max(db, textureLoad(history, vec2<i32>(i32(bin % width), i32(y)), 0).r);
+        let value = textureLoad(history, vec2<i32>(i32(bin % width), i32(y)), 0).r;
+        // Inspect bits: shader optimizations need not preserve NaN comparisons.
+        // -infinity is valid silence; NaN and +infinity are invalid.
+        let bits = bitcast<u32>(value);
+        if (bits & 0x7f800000u) != 0x7f800000u || bits == 0xff800000u {
+            valid = true;
+            db = max(db, value);
+        } else { invalid = true; }
+    }
+    if invalid || !valid {
+        let stripe = u32(in.position.x + in.position.y) % 12u < 3u;
+        return vec4(select(vec3(0.19, 0.075, 0.025), vec3(0.42, 0.19, 0.06), stripe), 1.);
     }
     let t = clamp((db - p.frequency.w) / (p.display.x - p.frequency.w), 0., 1.);
     return vec4(color(t), 1.);

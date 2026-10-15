@@ -515,16 +515,109 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
         {
             return Err(format!("Spectrogram wrap/order/gap/Nyquist readback failed: {newest:?}, {missing:?}, {older:?}, {oldest:?}, {nyquist:?}").into());
         }
+        drop(pixels);
+        readback.unmap();
+        // Read the same known dB values through each palette. The CPU color
+        // bar and shader must agree; recoloring must not upload history again.
+        for (map, special) in spectrogram::ColorMap::ALL
+            .into_iter()
+            .map(|map| (map, false))
+            .chain([(spectrogram::ColorMap::Grayscale, true)])
+        {
+            if special {
+                let previous = history.latest().unwrap();
+                db.fill(f32::NEG_INFINITY);
+                db[..config.size / 4].fill(f32::NAN);
+                history.push(
+                    RowInfo {
+                        start: previous.start + config.hop as u64,
+                        end: previous.end + config.hop as u64,
+                        gap: Gap::default(),
+                        ..previous
+                    },
+                    &db,
+                );
+            }
+            image.color_map = map;
+            image.prepare(&device, &queue, &history, image_view, seconds, 256.0);
+            let mut encoder = device.create_command_encoder(&Default::default());
+            {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &view,
+                        depth_slice: None,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    ..Default::default()
+                });
+                image.paint(&mut pass);
+            }
+            encoder.copy_texture_to_buffer(
+                texture.as_image_copy(),
+                wgpu::TexelCopyBufferInfo {
+                    buffer: &readback,
+                    layout: wgpu::TexelCopyBufferLayout {
+                        offset: 0,
+                        bytes_per_row: Some(1024),
+                        rows_per_image: Some(256),
+                    },
+                },
+                texture.size(),
+            );
+            queue.submit([encoder.finish()]);
+            let (sender, receiver) = std::sync::mpsc::channel();
+            readback
+                .slice(..)
+                .map_async(wgpu::MapMode::Read, move |result| {
+                    let _ = sender.send(result);
+                });
+            device.poll(wgpu::PollType::wait_indefinitely())?;
+            receiver.recv()??;
+            let pixels = readback.slice(..).get_mapped_range()?;
+            for (y, fraction) in if special {
+                &[(32, 0.0)][..]
+            } else {
+                &[(32, 1.0), (160, 0.5), (224, 0.0)][..]
+            } {
+                let x = if special { 224 } else { 128 };
+                let pixel = &pixels[(y * 256 + x) * 4..(y * 256 + x) * 4 + 3];
+                let expected = map.rgb(*fraction);
+                for (actual, expected) in pixel.iter().zip(expected) {
+                    if (*actual as f32 - expected * 255.0).abs() > 1.0 {
+                        return Err(format!(
+                            "Spectrogram {map:?} disagrees with color bar at {fraction}: {pixel:?}"
+                        )
+                        .into());
+                    }
+                }
+            }
+            if special {
+                let invalid = &pixels[(32 * 256 + 32) * 4..(32 * 256 + 32) * 4 + 3];
+                if invalid[0] < 40 || invalid[2] > 20 {
+                    return Err(format!(
+                        "Non-finite STFT window missing invalid stripe: {invalid:?}"
+                    )
+                    .into());
+                }
+            }
+            drop(pixels);
+            readback.unmap();
+            if image.uploaded_rows != uploads + u64::from(special) {
+                return Err("Palette change reuploaded spectral history".into());
+            }
+        }
         println!(
-            "GPU OK: {:?}, {} / {} green / {} blue / {} XY purple pixels / 512k f64 Spectrum individual-bin peak / stopped trace transfer exclusion / spectrogram wrap, order, gap, packed Nyquist, independent view changes, {uploads} row uploads",
+            "GPU OK: {:?}, {} / {} green / {} blue / {} XY purple pixels / 512k f64 Spectrum individual-bin peak / stopped trace transfer exclusion / spectrogram wrap, order, gap, packed Nyquist, independent view changes, 3 shared palettes, {uploads} row uploads",
             adapter.get_info().backend,
             adapter.get_info().name,
             green,
             blue,
             purple
         );
-        drop(pixels);
-        readback.unmap();
         Ok(())
     })
 }
