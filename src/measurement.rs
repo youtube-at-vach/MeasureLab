@@ -107,6 +107,8 @@ pub struct Snapshot {
     pub history: History,
     pub spectrum: spectrum::Result,
     pub spectrum_info: SpectrumInfo,
+    /// Additional display traces, delivered only by an explicit result barrier.
+    pub spectrum_overlays: Vec<(usize, spectrum::Result, SpectrumInfo)>,
     #[cfg(feature = "qa")]
     pub spectrum_timing: Option<spectrum_worker::Timing>,
     /// Maps independently delivered STFT rows to this input generation.
@@ -169,6 +171,7 @@ enum Command {
     ),
     Start(u64, Input, u32, usize, Box<Config>),
     Spectrum(Settings, usize, SpectrumMode),
+    SpectrumDisplay(bool, [Option<usize>; 3]),
     Stft(u64, stft::Config),
     #[cfg(any(test, feature = "qa"))]
     Demo(Demo),
@@ -194,6 +197,9 @@ struct Core {
     sample_rate: u32,
     history: History,
     spectrum: spectrum_worker::Feeder,
+    spectrum_enabled: bool,
+    overlay_channels: [Option<usize>; 3],
+    overlay_feeders: Vec<spectrum_worker::Feeder>,
     config: Config,
     expected: Option<u64>,
     dropped: u64,
@@ -254,6 +260,9 @@ impl Core {
             sample_rate: 48000,
             history: History::new(96000),
             spectrum,
+            spectrum_enabled: true,
+            overlay_channels: [None; 3],
+            overlay_feeders: Vec::new(),
             config,
 
             expected: None,
@@ -334,6 +343,53 @@ impl Core {
             self.config.spectrum_mode,
             start,
         );
+        for index in 0..self.overlay_feeders.len() {
+            self.configure_overlay(index, start);
+        }
+    }
+
+    fn configure_overlay(&mut self, index: usize, start: u64) {
+        let channel = self.overlay_channels[index].unwrap_or(index + 1);
+        self.overlay_feeders[index].configure(
+            spectrum_worker::Source {
+                generation: self.generation,
+                rate: self.sample_rate,
+                channel,
+                calibration: self.config.calibrations.get(channel).cloned().map(Arc::new),
+            },
+            self.config.spectrum,
+            self.config.spectrum_mode,
+            start,
+        );
+    }
+
+    fn spectrum_display(&mut self, enabled: bool, channels: [Option<usize>; 3]) {
+        if self.spectrum_enabled != enabled {
+            self.spectrum_enabled = enabled;
+            // Reset only this trace; toggling another trace preserves its EMA.
+            self.spectrum.configure(
+                spectrum_worker::Source {
+                    generation: self.generation,
+                    rate: self.sample_rate,
+                    channel: self.config.spectrum_channel,
+                    calibration: self
+                        .config
+                        .calibrations
+                        .get(self.config.spectrum_channel)
+                        .cloned()
+                        .map(Arc::new),
+                },
+                self.config.spectrum,
+                self.config.spectrum_mode,
+                self.history.range().end,
+            );
+        }
+        for (index, channel) in channels.into_iter().enumerate() {
+            if self.overlay_channels[index] != channel {
+                self.overlay_channels[index] = channel;
+                self.configure_overlay(index, self.history.range().end);
+            }
+        }
     }
 
     fn push_generator(&mut self, frame: output::Frame) {
@@ -420,13 +476,25 @@ impl Core {
             self.acquisition.invalidate();
         }
         self.feeder.submit(sequence, samples);
-        if stable {
+        if stable && self.spectrum_enabled {
             self.spectrum.submit_frame(
                 sequence,
                 samples,
                 #[cfg(feature = "qa")]
                 available_at,
             );
+        }
+        if stable {
+            for (index, feeder) in self.overlay_feeders.iter_mut().enumerate() {
+                if self.overlay_channels[index].is_some_and(|ch| ch < samples.len()) {
+                    feeder.submit_frame(
+                        sequence,
+                        samples,
+                        #[cfg(feature = "qa")]
+                        available_at,
+                    );
+                }
+            }
         }
         self.metrics.input_frames.fetch_add(1, Ordering::Relaxed);
         self.metrics.single_complete.store(
@@ -460,6 +528,19 @@ impl Core {
             result
         };
         Reply {
+            overlays: self
+                .overlay_feeders
+                .iter_mut()
+                .enumerate()
+                .filter(|(index, _)| {
+                    self.overlay_channels[*index].is_some_and(|ch| ch < self.history.channels())
+                })
+                .map(|(index, feeder)| OverlayReply {
+                    index,
+                    incoming: feeder.inspect(self.history.range().end, final_window),
+                    value: None,
+                })
+                .collect(),
             comparison,
             comparison_value: None,
             snapshot: self.snapshot(),
@@ -490,6 +571,7 @@ impl Core {
                 self.sample_rate,
             ),
             spectrum_info: SpectrumInfo::default(),
+            spectrum_overlays: Vec::new(),
             #[cfg(feature = "qa")]
             spectrum_timing: None,
             stft_generation: self.config.stft_generation,
@@ -521,6 +603,7 @@ impl Core {
         snapshot.sample_rate = self.sample_rate;
         snapshot.history.clone_from(&self.history);
         snapshot.has_spectrum = false;
+        snapshot.spectrum_overlays.clear();
         #[cfg(feature = "qa")]
         {
             snapshot.spectrum_timing = None;
@@ -571,6 +654,7 @@ impl Core {
 }
 
 struct Reply {
+    overlays: Vec<OverlayReply>,
     comparison: mpsc::Receiver<Arc<comparison::Result>>,
     comparison_value: Option<Arc<comparison::Result>>,
     snapshot: Snapshot,
@@ -578,6 +662,12 @@ struct Reply {
     lockin: mpsc::Receiver<lockin::Result>,
     spectrum_value: Option<spectrum_worker::Publication>,
     lockin_value: Option<lockin::Result>,
+}
+
+struct OverlayReply {
+    index: usize,
+    incoming: mpsc::Receiver<spectrum_worker::Publication>,
+    value: Option<spectrum_worker::Publication>,
 }
 
 pub struct PendingSnapshot {
@@ -590,6 +680,11 @@ impl PendingSnapshot {
             self.reply = self.incoming.try_recv().ok();
         }
         let reply = self.reply.as_mut()?;
+        for overlay in &mut reply.overlays {
+            if overlay.value.is_none() {
+                overlay.value = overlay.incoming.try_recv().ok();
+            }
+        }
         if reply.spectrum_value.is_none() {
             reply.spectrum_value = reply.spectrum.try_recv().ok();
         }
@@ -599,13 +694,21 @@ impl PendingSnapshot {
         if reply.comparison_value.is_none() {
             reply.comparison_value = reply.comparison.try_recv().ok();
         }
-        if reply.spectrum_value.is_none()
+        if reply.overlays.iter().any(|overlay| overlay.value.is_none())
+            || reply.spectrum_value.is_none()
             || reply.lockin_value.is_none()
             || reply.comparison_value.is_none()
         {
             return None;
         }
         let mut reply = self.reply.take().unwrap();
+        for overlay in reply.overlays.drain(..) {
+            let p = overlay.value.unwrap();
+            reply
+                .snapshot
+                .spectrum_overlays
+                .push((overlay.index, p.result, p.info));
+        }
         reply.snapshot.comparison = reply.comparison_value.take().unwrap();
         reply.snapshot.lockin = reply.lockin_value.take().unwrap();
         Some(Self::complete(
@@ -617,6 +720,15 @@ impl PendingSnapshot {
         let mut reply = self
             .reply
             .unwrap_or_else(|| self.incoming.recv().expect("measurement reply"));
+        for overlay in reply.overlays.drain(..) {
+            let p = overlay
+                .value
+                .unwrap_or_else(|| overlay.incoming.recv().expect("Spectrum overlay barrier"));
+            reply
+                .snapshot
+                .spectrum_overlays
+                .push((overlay.index, p.result, p.info));
+        }
         reply.snapshot.comparison = reply
             .comparison_value
             .take()
@@ -652,6 +764,8 @@ pub struct Worker {
     handle: Option<JoinHandle<()>>,
     pub metrics: Arc<Metrics>,
     pub spectrum: spectrum_worker::Worker,
+    pub spectrum_overlays: [spectrum_worker::Worker; 3],
+    spectrum_display: [AtomicU64; 4],
 }
 
 impl Worker {
@@ -663,6 +777,11 @@ impl Worker {
         let counters = metrics.clone();
         let mut spectrum = spectrum_worker::Worker::new();
         let mut core = Core::new(feeder, spectrum.take_feeder(), counters.clone());
+        let mut spectrum_overlays = std::array::from_fn(|_| spectrum_worker::Worker::new());
+        core.overlay_feeders = spectrum_overlays
+            .iter_mut()
+            .map(|worker| worker.take_feeder())
+            .collect();
         for _ in 0..SNAPSHOTS {
             recycle
                 .push(Box::new(core.snapshot()))
@@ -743,6 +862,9 @@ impl Worker {
                                     core.configure_spectrum(settings, channel, mode);
                                 }
                             }
+                            Command::SpectrumDisplay(enabled, channels) => {
+                                core.spectrum_display(enabled, channels)
+                            }
                             Command::Stft(generation, config) => {
                                 core.config.stft_generation = generation;
                                 core.config.stft = config;
@@ -782,7 +904,12 @@ impl Worker {
                                     core.config.xy_channels = channels;
                                 }
                             }
-                            Command::Hold => core.spectrum.clear_hold(),
+                            Command::Hold => {
+                                core.spectrum.clear_hold();
+                                for feeder in &mut core.overlay_feeders {
+                                    feeder.clear_hold();
+                                }
+                            }
                             Command::Stop(reply) => {
                                 poll_input(&mut input, &mut core, true);
                                 core.freeze_external_output();
@@ -826,6 +953,10 @@ impl Worker {
             handle: Some(handle),
             metrics,
             spectrum,
+            spectrum_overlays,
+            spectrum_display: std::array::from_fn(|i| {
+                AtomicU64::new(if i == 0 { 0 } else { u64::MAX })
+            }),
         }
     }
 
@@ -931,11 +1062,30 @@ impl Worker {
     pub fn configure_spectrum(&self, settings: Settings, channel: usize, mode: SpectrumMode) {
         if self.running.load(Ordering::Acquire) {
             self.spectrum.invalidate();
+            for worker in &self.spectrum_overlays {
+                worker.invalidate();
+            }
         }
         self.send(Command::Spectrum(settings, channel, mode));
     }
     pub fn configure_stft(&self, generation: u64, config: stft::Config) {
         self.send(Command::Stft(generation, config));
+    }
+    pub fn configure_spectrum_display(&self, enabled: bool, channels: [Option<usize>; 3]) {
+        for (index, value) in std::iter::once(enabled.then_some(0))
+            .chain(channels)
+            .enumerate()
+        {
+            let value = value.map_or(u64::MAX, |ch| ch as u64);
+            if self.spectrum_display[index].swap(value, Ordering::AcqRel) != value {
+                if index == 0 {
+                    self.spectrum.invalidate();
+                } else {
+                    self.spectrum_overlays[index - 1].invalidate();
+                }
+            }
+        }
+        self.send(Command::SpectrumDisplay(enabled, channels));
     }
     #[cfg(any(test, feature = "qa"))]
     pub fn configure_demo(&self, demo: Demo) {
@@ -1161,6 +1311,9 @@ fn poll_input(input: &mut Input, core: &mut Core, final_window: bool) {
     }
     core.feeder.flush();
     core.spectrum.flush();
+    for feeder in &mut core.overlay_feeders {
+        feeder.flush();
+    }
     core.metrics
         .input_poll_max_nanos
         .fetch_max(clock.elapsed().as_nanos() as u64, Ordering::Relaxed);
@@ -1192,6 +1345,101 @@ mod tests {
         reply.snapshot.comparison = reply.comparison.recv().unwrap();
         reply.snapshot.lockin = reply.lockin.recv().unwrap();
         PendingSnapshot::complete(reply.snapshot, reply.spectrum.recv().unwrap())
+    }
+
+    #[test]
+    fn four_spectrum_traces_share_conditions_and_toggle_without_resetting_peers() {
+        for size in [2048, 4096, 8192, 16384, 32768] {
+            for window in [Window::Hann, Window::Rectangular] {
+                let (_stft, mut core, mut config, _primary) = setup(size, 4);
+                let mut overlays: [spectrum_worker::Worker; 3] =
+                    std::array::from_fn(|_| spectrum_worker::Worker::new());
+                core.overlay_feeders = overlays
+                    .iter_mut()
+                    .map(|worker| worker.take_feeder())
+                    .collect();
+                config.spectrum_channel = 0;
+                config.spectrum.window = window;
+                core.start(50, 48000, 4, config.clone());
+                core.spectrum_display(true, [Some(1), Some(2), Some(3)]);
+                let push = |core: &mut Core, start: usize, end: usize| {
+                    for n in start..end {
+                        let samples: [f64; 4] = std::array::from_fn(|ch| {
+                            0.5_f64.powi(ch as i32 + 1)
+                                * (TAU * (32 + 8 * ch) as f64 * n as f64 / size as f64).sin()
+                        });
+                        core.push_frame(
+                            n as u64,
+                            &samples,
+                            #[cfg(feature = "qa")]
+                            None,
+                        );
+                    }
+                };
+                let capture = |core: &mut Core| {
+                    let (tx, rx) = mpsc::sync_channel(1);
+                    tx.send(core.reply(true))
+                        .unwrap_or_else(|_| panic!("test reply"));
+                    PendingSnapshot {
+                        incoming: rx,
+                        reply: None,
+                    }
+                    .wait()
+                };
+                push(&mut core, 0, size * 2);
+                let first = capture(&mut core);
+                assert_eq!(first.spectrum_overlays.len(), 3);
+                for ch in 0..4 {
+                    let result = if ch == 0 {
+                        &first.spectrum
+                    } else {
+                        &first.spectrum_overlays[ch - 1].1
+                    };
+                    let reading = result
+                        .cursor((32 + 8 * ch) as f64 * 48000.0 / size as f64)
+                        .unwrap();
+                    assert_eq!(reading.window.channel, ch);
+                    assert_eq!(reading.window.settings, config.spectrum);
+                    assert!(
+                        (reading.level_db - 20.0 * 0.5_f64.powi(ch as i32 + 1).log10()).abs()
+                            < 1e-10
+                    );
+                    assert_eq!(reading.average.updates, 5);
+                    assert_eq!(reading.window.end, (size * 2) as u64);
+                }
+                let disabled_windows = overlays[1].metrics.windows.load(Ordering::Relaxed);
+                core.spectrum_display(true, [Some(1), None, Some(3)]);
+                push(&mut core, size * 2, size * 3);
+                let second = capture(&mut core);
+                assert_eq!(
+                    overlays[1].metrics.windows.load(Ordering::Relaxed),
+                    disabled_windows
+                );
+                assert_eq!(second.spectrum_overlays.len(), 2);
+                assert_eq!(second.spectrum.average().unwrap().updates, 9);
+                assert_eq!(second.spectrum_overlays[0].1.average().unwrap().updates, 9);
+                core.spectrum_display(false, [Some(1), Some(2), Some(3)]);
+                push(&mut core, size * 3, size * 4);
+                let third = capture(&mut core);
+                assert!(!third.spectrum.is_ready());
+                assert_eq!(third.spectrum_overlays[0].1.average().unwrap().updates, 13);
+                assert_eq!(third.spectrum_overlays[1].1.average().unwrap().updates, 1);
+                assert_eq!(third.spectrum_overlays[2].1.average().unwrap().updates, 13);
+                // Changed FFT/window and a new input generation cannot retain averages.
+                config.spectrum.window = if window == Window::Hann {
+                    Window::Rectangular
+                } else {
+                    Window::Hann
+                };
+                core.start(51, 96000, 2, config);
+                push(&mut core, 0, size);
+                let fresh = capture(&mut core);
+                assert_eq!(fresh.spectrum_overlays.len(), 1);
+                assert_eq!(fresh.spectrum_overlays[0].1.average().unwrap().updates, 1);
+                assert_eq!(fresh.spectrum_overlays[0].1.sample_rate(), 96000);
+                assert_eq!(first.spectrum.average().unwrap().updates, 5);
+            }
+        }
     }
 
     #[test]

@@ -23,9 +23,11 @@ macOS／Linuxのローカルセットアップ環境では`./scripts/cargo.sh ru
 
 524,288点では48 kHzで完全窓の取得に約10.92秒必要です。Live表示を速くしても、この観測時間は短くなりません。ContinuousはN/4ごとの全窓を解析し、Live／Latestの最新窓観察は過渡の捕捉を保証しません。
 
-通常起動は入力・出力停止のScope単独表示です。計器一覧を選ぶと常に単独表示し、**Measurement console / Add instrument…** で最大7計器を保持します。左右・上下・2×2・タブを選べ、狭幅では保存した配置を変えずタブへ退避します。**Open single** で単独表示へ戻ってもコンソール構成は残ります。**Remove from view** は解析・出力を停止しません。右の詳細欄は選択区画へ追従し、狭幅では **Measurement / Details** で切り替えます。**Running…** で非表示の解析を確認・停止し、**Stop output** はすべての画面で使えます。LIVE／HELD／WAITING／NOT ACQUIREDは取得状態、有効性は別表示です。設定は版5で旧版1〜4を読み、復元後の入出力は停止状態です。
+通常起動は入力・出力停止のScope単独表示です。計器一覧を選ぶと常に単独表示し、**Measurement console / Add instrument…** で最大7計器を保持します。左右・上下・2×2・タブを選べ、狭幅では保存した配置を変えずタブへ退避します。**Open single** で単独表示へ戻ってもコンソール構成は残ります。**Remove from view** は解析・出力を停止しません。右の詳細欄は選択区画へ追従し、狭幅では **Measurement / Details** で切り替えます。**Running…** で非表示の解析を確認・停止し、**Stop output** はすべての画面で使えます。LIVE／HELD／WAITING／NOT ACQUIREDは取得状態、有効性は別表示です。設定は版6で旧版1〜5を読み、復元後の入出力は停止状態です。
 
 Scopeは波形直下のCH1〜CH4バーでCHを選び、チェックボックスで波形の表示を個別に切り替えます。選択と表示ON/OFFは独立し、2ch入力ではCH3／CH4を **No input** と表示します。右の **Acquisition / Horizontal / Trigger / Channel** で取得・時間軸・トリガー・選択CHのFSレンジとオフセットを編集します。時間軸は波形付近に常時表示し、波形上のホイールで変更できます。Shift＋ホイールは選択CHの縦軸です。各CHの入力割当は **Channel / Input source** で1〜16chから選べます。旧設定は2本の割当と倍率を保持し、追加CH3／CH4を表示OFFにして読み込みます。
+
+Spectrumは単一グラフに最大4chを重ねます。下部のCHバーで選択と表示ON/OFFを別々に操作し、右側のFFT／Averaging／Frequency・Scale／Measurementで共通の解析条件・表示軸を設定します。既定はCH1のみ表示です。平均は線形パワーの指数平均（EMA）で、Weightと処理窓数・整定目安を示します。OFFのCHはFFTを停止し、再ONで新しい平均を開始します。ピーク・カーソル・結果書き出しは選択CHを対象にします。未校正振幅の0 dBFSはビン中心の1 FS peak正弦波です。
 
 コンソール内で追加の測定詳細が区画高を超える場合は、その区画内を縦にスクロールできます。区画名と共通の入出力状態・停止操作はスクロールの外に残ります。
 

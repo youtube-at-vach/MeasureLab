@@ -166,7 +166,7 @@ ScopeではRMS・Peak・P-Pと時間カーソルの数値に校正を適用し�
 
 ### 測定設定の保存・復元
 
-上部 **File / Save settings…** で保存先を選びます。**Restore settings…** は入力・出力停止中にファイルを選んで復元します。従来の **File / File paths & status… / MEASUREMENT SETTINGS** のパス指定も使えます。次回Start用の入力デバイス・CH割当・トリガー・観察幅・Spectrum／Spectrogramの解析設定・PSD帯域・校正定義を版5のJSONへ保存します。Generatorの出力先・Fs・信号条件・内部入力選択、Audio deviceの安定ID・CH数・PCMも保存し、版1〜4の読み込みを維持します。取得中の保持結果や未確定の校正エディター入力を保存する操作ではありません。単独表示／コンソール、計器順・選択区画・希望配置・比率・詳細欄の表示と軸・表示範囲は別のWorkspaceブロックへ保存します。旧2トレース設定は入力割当と倍率を保持して4トレースへ移行し、追加CH3／CH4は表示OFFにします。CHごとのレンジ・オフセット、選択CH、水平位置も保存します。旧設定の表示順を引き継ぎ、単一計器は単独表示、複数計器はコンソールへ移行します。読込だけで旧ファイルを上書きしません。生サンプル・測定結果・カーソル位置・表示倍率は含めません。Software Loopbackの仮想DUT条件、Scope取得モードと実験段階Lock-inの設定も保存します。これらを含まない版1ファイルはAuto・Lock-in無効として読みます。QA専用内部デモは保存対象外です。
+上部 **File / Save settings…** で保存先を選びます。**Restore settings…** は入力・出力停止中にファイルを選んで復元します。従来の **File / File paths & status… / MEASUREMENT SETTINGS** のパス指定も使えます。次回Start用の入力デバイス・CH割当・トリガー・観察幅・Spectrum／Spectrogramの解析設定・PSD帯域・校正定義を版6のJSONへ保存します。Generatorの出力先・Fs・信号条件・内部入力選択、Audio deviceの安定ID・CH数・PCMも保存し、版1〜5の読み込みを維持します。取得中の保持結果や未確定の校正エディター入力を保存する操作ではありません。単独表示／コンソール、計器順・選択区画・希望配置・比率・詳細欄の表示と軸・表示範囲は別のWorkspaceブロックへ保存します。旧2トレース設定は入力割当と倍率を保持して4トレースへ移行し、追加CH3／CH4は表示OFFにします。CHごとのレンジ・オフセット、選択CH、水平位置も保存します。SpectrumのCH別表示・入力割当・選択、Autoレベル・マーカーも保存し、版5以前は従来の1本表示を維持します。旧設定の表示順を引き継ぎ、単一計器は単独表示、複数計器はコンソールへ移行します。読込だけで旧ファイルを上書きしません。生サンプル・測定結果・カーソル位置・表示倍率は含めません。Software Loopbackの仮想DUT条件、Scope取得モードと実験段階Lock-inの設定も保存します。これらを含まない版1ファイルはAuto・Lock-in無効として読みます。QA専用内部デモは保存対象外です。
 
 既定の保存先はmacOSで `~/Library/Application Support/MeasureLab/measurement-settings.json`、Windowsで `%APPDATA%/MeasureLab/measurement-settings.json`、Linuxで `$XDG_CONFIG_HOME/MeasureLab/measurement-settings.json`（未設定時は `~/.config/MeasureLab/measurement-settings.json`）です。別のパスも指定できます。自動保存・起動時の自動読み込みは行いません。
 
@@ -184,7 +184,7 @@ ScopeではRMS・Peak・P-Pと時間カーソルの数値に校正を適用し�
 
 入力Stop／Single完了は結果を保持し、出力は続きます。**Stop output**はフェード後に停止し、入力が取得中なら無音の新しいフレームを続けます。Generatorを隠しても上部の出力状態と**Stop output**は残ります。起動・復元・Fs変更で自動出力せず、アプリ終了時も停止します。
 
-内部出力は44.1／48／96／192 kHz・2chのf64です。**I/O / Output**で音声デバイスを選び、**Refresh outputs**で再取得できます。出力先・Fs／CH数／PCMは入力と出力を停止して選びます。デバイスの1〜16ch構成へ最大2信号を割り当て、未割当CHは無音にします。開始時に選択した安定IDと形式を再確認し、使えない設定は開始しません。**I/O / Input**で接続先の実入力を選び、個別に**Start input**してください。**Observe Generator**は内部接続で使います。ストリーム通知・コールバック停止はERRORとなり、**Reset output (stays OFF)**後の明示Startで再開します。出力校正は未実装です。既存Software Loopbackの既知DUTとは別の入力モードです。設定・結果はそれぞれ版5で保存し、旧設定・結果版1〜4も読み込めます。内部接続の結果には受信した最大128区間の出力条件を含め、履歴外・欠落した区間は対応不明とします。保持後のGenerator編集では結果を変更しません。Generator結果のRMS・PSD帯域電力・Lock-inの数値差は、両寄与区間が定常で設定・同一周波数の相対carrier位相が一致するときだけ表示します。
+内部出力は44.1／48／96／192 kHz・2chのf64です。**I/O / Output**で音声デバイスを選び、**Refresh outputs**で再取得できます。出力先・Fs／CH数／PCMは入力と出力を停止して選びます。デバイスの1〜16ch構成へ最大2信号を割り当て、未割当CHは無音にします。開始時に選択した安定IDと形式を再確認し、使えない設定は開始しません。**I/O / Input**で接続先の実入力を選び、個別に**Start input**してください。**Observe Generator**は内部接続で使います。ストリーム通知・コールバック停止はERRORとなり、**Reset output (stays OFF)**後の明示Startで再開します。出力校正は未実装です。既存Software Loopbackの既知DUTとは別の入力モードです。設定は版6、結果は版5で保存し、旧設定版1〜5・結果版1〜4も読み込めます。内部接続の結果には受信した最大128区間の出力条件を含め、履歴外・欠落した区間は対応不明とします。保持後のGenerator編集では結果を変更しません。Generator結果のRMS・PSD帯域電力・Lock-inの数値差は、両寄与区間が定常で設定・同一周波数の相対carrier位相が一致するときだけ表示します。
 
 外部入力と出力の連番は別の時計です。外部Generator編集の遷移は入力窓と自動対応せず、Spectrum／Lock-inの入力解析を自動リセットしません。同期REFは実入力2chを使い、編集後は整定を待ってください。外部Generatorが選択・観測された実入力結果のJSON／CSVには、入力開始時と保持時の最新観測、取得中に管理ワーカーが観測した最大128件の出力状態変更、出力ID・Fs・CH数・PCM・実適用設定・出力世代・整数境界・失敗を保存します。ホスト観測時刻は出力ワーカー作成からの単調時間で、DAC／ADC時刻や入力サンプルとの対応ではありません。履歴退役数、報告された応答欠落数と出力通知のワーカー開始以来の累計を保持し、未観測区間を補完しません。入力Stop／Single／入力失敗で固定し、その後の編集・Reset・出力停止で変更しません。入力窓への対応は未校正として、これらの結果のRMS・PSD帯域電力・Lock-inの数値差を表示しません。出力の有限Stop・解放後の通知監査を完了した証拠とは分けます。
 
@@ -213,6 +213,12 @@ Singleは最初の有効区間を捕捉して共通入力を自動停止しま�
 **Autoset** は選択したトリガーCHの直近最大200 msの生サンプルから安定した周期・振幅を評価し、約3周期の観察幅、トリガー入力を割り当てたCHのFS振幅軸、立ち上がり・中央レベルを設定します。DC・無信号・低振幅・クリップ・不安定な周期・欠落・存在しないCHでは設定を変えず理由を表示します。Normal／Singleの停止中は捕捉条件を固定し、時間軸・トリガーの変更を次回Startへ適用します。
 
 ### Spectrumの測定定義
+
+Spectrumは単一グラフに最大4本を重ねます。下部CH1〜CH4はScopeと同色で、クリックによる選択とチェックによる表示ON/OFFは独立しています。既定はCH1のみON、入力割当はCH1〜4です。右側Measurement / Input sourceで各トレースへ1〜16chの入力を割り当てます。入力のないCHはNo inputとして区別します。選択CHのピーク・カーソル・PSD帯域を読み出し、JSON／CSV／PNGも選択トレースを対象にします。異なる校正単位を重ねた場合はMixed level referencesを表示し、CHバーに各単位を示します。
+
+右側はFFT／Averaging／Frequency・Scale／Measurementに分けています。全CHで点数・窓・平均条件と表示軸を共有します。FsとΔf、取得結果のFFT条件・平均窓数はグラフ付近に表示します。Frequency / Scaleで上下限、Linear／Log、レベル軸Auto／Manualを設定でき、上限はNyquist以下に制限します。Autoは表示ONのCHの表示帯域を共通範囲へ収めます。MeasurementのPeak markersは表示ONの各CHの最大ビンを示します。既存のPSD、Blackman-Harris、追加FFTサイズ、精度・Live／Continuous／LatestはAdvanced analysis / diagnostics、ピーク保持はFrequency / Scaleに残しています。
+
+AveragingのON/OFF、Weight 4／16／64、Reset averagingを使えます。進捗は有限回数の完了ではなくEMAの整定目安で、処理窓数とαを併記します。OFFにしたCHへの転送・FFTは停止し、他CHの平均は継続します。再ONはそのCHの新しい完全窓から始めます。FFT条件・入力条件変更とReset averagingは平均をリセットします。入力停止後の表示変更は取得済み結果を再描画し、解析条件変更は次回Startへ予約します。
 
 524,288点は実入力の窓長です。48 kHzではΔf ≈ 0.091553 Hz、周期HannのRBW ≈ 0.137329 Hz、窓時間 ≈ 10.9227秒、ContinuousのN/4 hop ≈ 2.7307秒です。開始・解析条件変更・欠落後は完全な窓の充填を待ち、未取得分をゼロで代用しません。Liveの高速観察でも完全窓の充填時間と窓時間は変わりません。Latestの100 ms観察では隣接窓が約99.1%重なります。同じEMA αでも解析間隔が変われば秒単位の応答が変わります。BIN幅・RBW・周波数読み値の精度・入力時計の誤差は区別します。Spectrogramは独立した1,024〜32,768点の上限を維持します。
 

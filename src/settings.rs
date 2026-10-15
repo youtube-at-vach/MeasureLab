@@ -19,7 +19,7 @@ use std::{
     thread::{self, JoinHandle},
 };
 
-pub const VERSION: u32 = 5;
+pub const VERSION: u32 = 6;
 pub const MAX_BYTES: usize = 64 * 1024;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -181,6 +181,8 @@ pub struct Measurement {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Workspace {
+    #[serde(default)]
+    pub spectrum_display: SpectrumDisplay,
     pub presentation: Presentation,
     #[serde(default)]
     pub lockin_display: LockinDisplay,
@@ -203,6 +205,31 @@ pub struct Workspace {
     pub xy_x_fs_per_div: f64,
     pub xy_y_fs_per_div: f64,
     pub xy_cursor_mode: CursorMode,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpectrumDisplay {
+    pub enabled: [bool; 4],
+    /// Trace 1 retains measurement.spectrum.channel for backward compatibility.
+    pub overlay_channels: [usize; 3],
+    pub selected: usize,
+    pub auto_level: bool,
+    pub peak_marker: bool,
+    pub average_weight: u32,
+}
+
+impl Default for SpectrumDisplay {
+    fn default() -> Self {
+        Self {
+            enabled: [true, false, false, false],
+            overlay_channels: [1, 2, 3],
+            selected: 0,
+            auto_level: false,
+            peak_marker: true,
+            average_weight: 4,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -329,6 +356,15 @@ impl Document {
                 .map_err(str::to_owned)?;
         }
         let w = &self.workspace;
+        if w.spectrum_display.selected >= 4
+            || w.spectrum_display
+                .overlay_channels
+                .iter()
+                .any(|ch| *ch >= MAX_CHANNELS)
+            || ![4, 16, 64].contains(&w.spectrum_display.average_weight)
+        {
+            return Err("Invalid Spectrum display settings".into());
+        }
         for scale in [w.xy_x_fs_per_div, w.xy_y_fs_per_div] {
             in_range(scale, 0.001, 0.5, "amplitude scale")?;
         }
@@ -352,7 +388,7 @@ impl Document {
         )?;
         frequency_range(w.spectrum_min_hz as f64, w.spectrum_max_hz as f64)?;
         frequency_range(w.spectrogram_min_hz as f64, w.spectrogram_max_hz as f64)?;
-        in_range(w.spectrum_floor_db as f64, -180.0, -60.0, "Spectrum floor")?;
+        in_range(w.spectrum_floor_db as f64, -180.0, 3194.0, "Spectrum floor")?;
         in_range(
             w.spectrum_ceiling_db as f64,
             w.spectrum_floor_db as f64 + 6.0,
@@ -436,7 +472,7 @@ impl Document {
     pub fn encode(&self) -> Result<Vec<u8>, String> {
         self.validate()?;
         if self.version != VERSION {
-            return Err("Saving settings requires version 5".into());
+            return Err("Saving settings requires the current version".into());
         }
         let mut bytes = serde_json::to_vec_pretty(self).map_err(|e| e.to_string())?;
         bytes.push(b'\n');
@@ -725,6 +761,7 @@ mod tests {
                 }],
             },
             workspace: Workspace {
+                spectrum_display: SpectrumDisplay::default(),
                 presentation: Presentation::default(),
                 lockin_display: LockinDisplay::Polar,
                 scope_enabled: [true; SCOPE_CHANNELS],
@@ -781,6 +818,46 @@ mod tests {
             default_sample_rate: 48_000,
             is_default: true,
             sample_rates: vec![48_000, 96_000],
+        }
+    }
+
+    #[test]
+    fn spectrum_display_migrates_v5_and_roundtrips_routing_visibility_and_axes() {
+        let mut legacy = serde_json::to_value(fixture()).unwrap();
+        legacy["version"] = 5.into();
+        legacy["workspace"]
+            .as_object_mut()
+            .unwrap()
+            .remove("spectrum_display");
+        let mut document = Document::decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();
+        assert_eq!(
+            document.workspace.spectrum_display,
+            SpectrumDisplay::default()
+        );
+        assert_eq!(
+            document.measurement.spectrum.channel,
+            fixture().measurement.spectrum.channel
+        );
+        document.workspace.spectrum_display = SpectrumDisplay {
+            enabled: [false, true, false, true],
+            overlay_channels: [15, 7, 3],
+            selected: 3,
+            auto_level: true,
+            peak_marker: false,
+            average_weight: 64,
+        };
+        assert_eq!(
+            Document::decode(&document.encode().unwrap()).unwrap(),
+            document
+        );
+        for bad in 0..3 {
+            let mut invalid = document.clone();
+            match bad {
+                0 => invalid.workspace.spectrum_display.selected = 4,
+                1 => invalid.workspace.spectrum_display.overlay_channels[2] = MAX_CHANNELS,
+                _ => invalid.workspace.spectrum_display.average_weight = 0,
+            }
+            assert!(invalid.validate().is_err());
         }
     }
 
@@ -1073,7 +1150,7 @@ mod tests {
                 .contains("version")
         );
         assert!(
-            Document::decode(br#"{"version":6}"#)
+            Document::decode(format!("{{\"version\":{}}}", VERSION + 1).as_bytes())
                 .unwrap_err()
                 .contains("version")
         );

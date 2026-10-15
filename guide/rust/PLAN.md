@@ -8,7 +8,7 @@
 | --- | --- |
 | 入力・実行分離 | CPAL、1〜16ch同期フレーム、f64履歴、固定容量転送。取得・測定・各解析・描画・ファイルI/Oを分離 |
 | Scope | 任意4ch、独立した表示・縦軸と下部CHバー、全CHトリガー、Auto／Normal／Single、Autoset、生サンプル統計・カーソル |
-| Spectrum | 1,024〜524,288点、振幅／PSD・帯域電力、f64数値、平均・保持、Live／Continuous／Latest |
+| Spectrum | 共通FFT・軸の最大4ch重ね表示、独立ON/OFF・下部CHバー、Auto／Manualレベル、1,024〜524,288点、振幅／PSD・帯域電力、f64数値、平均・保持、Live／Continuous／Latest |
 | Spectrogram／XY | 独立STFT、欠落表示、同期XY、任意CH割当 |
 | 校正・結果再利用 | CH校正、版付き設定、停止中復元、条件付きJSON／CSV・参照比較。Scope／SpectrumのPNG |
 | Software Loopback／Lock-in | 既知DUT、同期入力REFによる基本波f64 Lock-in、専用ワーカー・数値GUI |
@@ -32,6 +32,12 @@
 * 内部経路、BlackHole 2ch／16ch、UAC-232の関連QAと画像確認を終えた。物理経路は利用した機器・Fs・接続条件に限る。QA撮影はウィンドウを前面に保ち、Metalの遮蔽によるフレーム省略を記録する。
 * G4の最終受け入れには通常ビルドの手動操作と実モニター間のDPI切り替えを残す。未実施と過去の旧GUI確認を現在の受け入れへ代用しない。
 * 段階4.5／5の数値・機器評価を新構成で進める。新しい測定機能は基本操作の受け入れ後に扱う。
+
+### Spectrum GUI：4ch重ね表示
+
+単一グラフ、Scopeと同色の下部CHバー、独立した選択・表示ON/OFF、右側のFFT／Averaging／Frequency・Scale／Measurement、ピークマーカーを実装した。既存のf64・窓補正・線形パワーEMA・PSD・保持・結果保存を維持し、非表示CHのFFTを停止する。4画面分割や新しい解析方式は対象外とする。
+
+自動確認の正本は`measurement.rs`の4ch既知正弦波・独立ON/OFF・設定／世代変更、`settings.rs`の版6往復・旧版移行、`app/gui_qa.rs`の実ウィジェット操作。物理4chの数値照合と通常ビルドの手動操作は受け入れを残す。
 
 ### 4.5：Generatorの統合評価
 

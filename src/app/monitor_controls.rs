@@ -94,30 +94,6 @@ impl ScopeApp {
         )
     }
 
-    pub(super) fn spectrum_primary(&mut self, ui: &mut egui::Ui) {
-        let before = self.spectrum_channel;
-        let channels = self.lockin_channel_count();
-        ui.horizontal_wrapped(|ui| {
-            ui.label("Source");
-            channel_select(
-                ui,
-                "spectrum_primary_source",
-                &mut self.spectrum_channel,
-                channels,
-            );
-            ui.menu_button("Display range…", |ui| self.spectrum_display_controls(ui));
-            ui.label(
-                RichText::new("Spectrum · frequency cursor")
-                    .small()
-                    .color(MUTED),
-            );
-            self.cursor_controls(ui);
-        });
-        if self.spectrum_channel != before && self.running() {
-            self.reset_analysis();
-        }
-    }
-
     pub(super) fn spectrogram_primary(&mut self, ui: &mut egui::Ui) {
         let before = self.spectrogram_channel;
         let channels = self.lockin_channel_count();
