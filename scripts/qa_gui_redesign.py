@@ -20,6 +20,7 @@ def cases(devices=()):
         yield f"{instrument}-wide", False, {"VIEW": instrument, "IDLE": "1"}
         yield f"{instrument}-compact", True, {"VIEW": instrument, "IDLE": "1", "ZOOM": "1.25"}
     yield "scope-four-channel", False, {"VIEW": "scope", "SCOPE4": "1"}
+    yield "scope-details-compact", True, {"VIEW": "scope", "DETAILS": "1", "IDLE": "1", "ZOOM": "1.25"}
     yield "console-grid", False, {"VIEW": "console", "ZOOM": "0.75"}
     yield "console-tabs", True, {"VIEW": "console", "ZOOM": "1.25"}
     yield "console-empty", True, {"VIEW": "empty"}

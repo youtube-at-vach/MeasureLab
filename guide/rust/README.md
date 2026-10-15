@@ -68,7 +68,11 @@ cargo run --release
 
 配置は **Side by side / Stacked / 2 × 2 / Tabs** を選びます。2区画／4区画を超えた計器は名前付きタブで選択します。寸法が不足するとタブ表示へ退避し、広げると希望配置へ戻ります。**View** の **First pane share** で分割比率、**Display scale** で表示倍率を調整できます。単独表示とコンソールの往復・リサイズで構成と比率は消えません。
 
-右の詳細欄は選択中の計器だけを扱い、ホバーでは対象を変えません。**View / Selected instrument details** で表示を切り替えます。狭幅では中央の **Measurement / Details** へ退避します。ScopeのCH選択と表示ON/OFFは波形直下の4chバー、カーソルは本体で操作します。右の詳細欄はAcquisition／Horizontal／Trigger／Channelの4区分で、時間軸・水平位置・Autosetと選択CHの振幅・オフセット・Fit amplitude・入力割当を編集します。FFT・窓・平均なども各計器の詳細欄です。Generatorの周波数・振幅・位相・ON／OFF・Start outputは本体、刻み幅・位相同期・適用値は詳細欄です。
+右の詳細欄は選択中の計器だけを扱い、ホバーでは対象を変えません。**View / Selected instrument details** で表示を切り替えます。狭幅では中央の **Measurement / Details** へ退避します。ScopeのCH選択と表示ON/OFFは波形直下の4chバー、カーソルは本体で操作します。
+
+Scopeの詳細欄はAcquisition／Trigger／Horizontal／Verticalの枠で区切り、Verticalには選択CHと同じ色を付けます。Acquisitionは取得モード・Arm single・Autoset、Triggerはエッジ・入力CH・レベル、Horizontalは時間軸・水平位置、Verticalは選択CHの振幅・オフセット・Fit amplitude・入力割当を扱います。時間軸と振幅は対数スライダー、位置・レベルは線形スライダーで調整し、値のドラッグやダブルクリックによる数値入力も使えます。
+
+FFT・窓・平均なども各計器の詳細欄です。Generatorの周波数・振幅・位相・ON／OFF・Start outputは本体、刻み幅・位相同期・適用値は詳細欄です。
 
 上部 **I/O / Input / Output / Calibration** は共通設定画面を開きます。**Back to instruments** またはEscで元の計器・選択区画へ戻ります。**Start input / Stop input** は共通入力、**Stop output** は独立したGenerator出力を扱います。出力状態と停止操作は計器や設定画面に関係なく常設です。**Running…** で非表示のLock-in／同期比較の解析状態を確認・停止できます。入力待ち、解析停止、取得状態、有効性を区別します。
 
@@ -106,13 +110,13 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | XY X Source / Y Source | X/Yへ入力CHを独立に割り当てる。Scopeの割当とは独立 |
 | XY上でクリック／ドラッグ | FreeはX・Y振幅を固定しΔX・ΔYを表示。Trace Snapは最寄りの実サンプル組を選び、トリガーからの時間差を保持 |
 | Horizontal / ホイール | 時間軸の変更（0.05〜100 ms/div） |
-| Channel / Vertical range / Shift＋ホイール | 選択中CHの振幅の変更（0.001〜0.5 FS/div） |
-| Channel / Fit amplitude | 選択中CHの生サンプルPeakに合わせ、オフセットを0へ戻す |
+| Vertical / Vertical range / Shift＋ホイール | 選択中CHの振幅の変更（0.001〜0.5 FS/div） |
+| Vertical / Fit amplitude | 選択中CHの生サンプルPeakに合わせ、オフセットを0へ戻す |
 | Scope下部 CH1〜CH4 / チェックボックス | CH選択と波形の表示ON/OFFを独立に操作。各CHのFS/div、入力なしを表示 |
-| Channel / Input source / Centre offset | 選択CHの入力を1〜16chから割当、波形中央のraw FS値を設定 |
-| Horizontal / Horizontal position / Centre horizontal | 波形を左右へ移動／位置を初期化。生サンプルと測定区間は変更しない |
-| Trigger | フリーラン／立ち上がり／立ち下がり、ソースと閾値の設定 |
-| Acquisition / Arm single、Horizontal / Autoset | Auto／Normal／Single、一回取得の再待機、周期信号の時間軸・振幅・トリガー自動調整 |
+| Vertical / Input source / Centre offset / Zero offset | 選択CHの入力を1〜16chから割当、波形中央のraw FS値を設定／0へ戻す |
+| Horizontal / Position / Centre horizontal | 波形を左右へ移動／位置を初期化。生サンプルと測定区間は変更しない |
+| Trigger / Edge / Source / Level / Zero level | フリーラン／立ち上がり／立ち下がり、ソースと閾値の設定／閾値を0へ戻す |
+| Acquisition / Arm single / Autoset | Auto／Normal／Single、一回取得の再待機、周期信号の時間軸・振幅・トリガー自動調整 |
 | ダブルクリック | 時間軸と振幅を初期値へ戻す |
 | 計器一覧／Instrumentメニュー | 選んだ計器の単独表示。再選択で解除しない |
 | Pair with… / Measurement console / Add instrument… | 2計器を並べる／保持構成へ戻る／計器を追加する |
@@ -144,7 +148,7 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | XY Reset XY scales / ダブルクリック | XYの観察窓と両軸を初期値へ戻す |
 | XY上にマウスを置く | プロット座標のX・Y振幅（実サンプルのカーソルではない） |
 
-画面は横10分割・縦8分割です。トリガーは横20%位置で、交差が見つからない場合は最新の波形を表示するAuto動作です。コアは1〜16chを保持し、Scopeの4本のトレース、Spectrum、Spectrogram、トリガーは取得した全chからソースを選択できます。Scope下部CH1〜CH4の既定入力は入力CH 1〜4です。Channel / Input sourceで同じ入力を複数トレースへ割り当てることもできます。波形・選択表示・測定値の色はトレースごとに統一し、縦軸目盛は選択CHのFSレンジとオフセットを示します。16chを超える入力は切り捨てずエラーを表示します。
+画面は横10分割・縦8分割です。トリガーは横20%位置で、交差が見つからない場合は最新の波形を表示するAuto動作です。コアは1〜16chを保持し、Scopeの4本のトレース、Spectrum、Spectrogram、トリガーは取得した全chからソースを選択できます。Scope下部CH1〜CH4の既定入力は入力CH 1〜4です。Vertical / Input sourceで同じ入力を複数トレースへ割り当てることもできます。波形・選択表示・測定値の色はトレースごとに統一し、縦軸目盛は選択CHのFSレンジとオフセットを示します。16chを超える入力は切り捨てずエラーを表示します。
 
 RMS・Peak・P-PはScopeの整数サンプル区間内に取得した生のf64サンプルから計算します。欠落は観測数へ含めず、部分区間であることを表示します。統計値の説明には対象区間と取得サンプル数を表示し、描画倍率・幅・トレースの非表示化では同じ区間の値を変えません。時間幅やトリガー条件を変えると測定区間も変わります。カーソルは割当先CHの実サンプルを読み、描画時の極値集約やトリガー補間から振幅を逆算しません。
 
