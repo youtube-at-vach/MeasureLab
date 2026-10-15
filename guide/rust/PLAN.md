@@ -39,6 +39,12 @@
 
 自動確認の正本は`measurement.rs`の4ch既知正弦波・独立ON/OFF・設定／世代変更、`settings.rs`の版6往復・旧版移行、`app/gui_qa.rs`の実ウィジェット操作。物理4chの数値照合と通常ビルドの手動操作は受け入れを残す。
 
+### Spectrogram MVP改善（計画作成済み、実装未着手）
+
+[Spectrogram MVP改善計画](SPECTROGRAM_MVP_PLAN.md) に従い、①カラースケール、②ズーム・表示範囲、③測定を続けたままのHold／履歴閲覧を先に完成させ、④Spectrumとの時刻A／B連動、⑤FFT Overlap調整へ進む。左の計器選択・中央のプロット・右の設定を維持し、既存のSTFT・Spectrum・Pair配置を再利用する。
+
+履歴はf64線形スペクトルと実サンプル区間を保持する有界リングへ拡張し、UI更新から履歴収集を分離する。表示色・ズーム・スクロールでは再解析しない。完了条件は、上限内での履歴保持、Live復帰、任意の有効時刻の精密なSpectrum読み出し、Overlap変更後の時間・周波数・振幅の正確さ、既存操作・測定性能の維持。GUI基本操作の受け入れとGenerator／同期比較の統合評価を完了済みとは扱わない。
+
 ### 4.5：Generatorの統合評価
 
 [Generator設計](GENERATOR_DESIGN.md) の契約を、通常Generatorの経路で確認する。
