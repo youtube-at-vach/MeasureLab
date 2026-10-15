@@ -269,7 +269,7 @@ mod tests {
                 crate::signal::measure(
                     &a.capture,
                     a.sweep.range.clone(),
-                    crate::channel::Pair::default()
+                    crate::channel::Pair::<2>::default()
                 )[0]
                 .samples,
                 10

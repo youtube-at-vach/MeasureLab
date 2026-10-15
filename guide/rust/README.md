@@ -68,7 +68,7 @@ cargo run --release
 
 配置は **Side by side / Stacked / 2 × 2 / Tabs** を選びます。2区画／4区画を超えた計器は名前付きタブで選択します。寸法が不足するとタブ表示へ退避し、広げると希望配置へ戻ります。**View** の **First pane share** で分割比率、**Display scale** で表示倍率を調整できます。単独表示とコンソールの往復・リサイズで構成と比率は消えません。
 
-右の詳細欄は選択中の計器だけを扱い、ホバーでは対象を変えません。**View / Selected instrument details** で表示を切り替えます。狭幅では中央の **Measurement / Details** へ退避します。ScopeのCH・時間軸・振幅・Fit amplitude・Autosetと各計器のカーソルは本体、FFT・窓・平均・トリガーなどは詳細欄で編集します。Generatorの周波数・振幅・位相・ON／OFF・Start outputは本体、刻み幅・位相同期・適用値は詳細欄です。
+右の詳細欄は選択中の計器だけを扱い、ホバーでは対象を変えません。**View / Selected instrument details** で表示を切り替えます。狭幅では中央の **Measurement / Details** へ退避します。ScopeのCH選択と表示ON/OFFは波形直下の4chバー、カーソルは本体で操作します。右の詳細欄はAcquisition／Horizontal／Trigger／Channelの4区分で、時間軸・水平位置・Autosetと選択CHの振幅・オフセット・Fit amplitude・入力割当を編集します。FFT・窓・平均なども各計器の詳細欄です。Generatorの周波数・振幅・位相・ON／OFF・Start outputは本体、刻み幅・位相同期・適用値は詳細欄です。
 
 上部 **I/O / Input / Output / Calibration** は共通設定画面を開きます。**Back to instruments** またはEscで元の計器・選択区画へ戻ります。**Start input / Stop input** は共通入力、**Stop output** は独立したGenerator出力を扱います。出力状態と停止操作は計器や設定画面に関係なく常設です。**Running…** で非表示のLock-in／同期比較の解析状態を確認・停止できます。入力待ち、解析停止、取得状態、有効性を区別します。
 
@@ -106,11 +106,13 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | XY X Source / Y Source | X/Yへ入力CHを独立に割り当てる。Scopeの割当とは独立 |
 | XY上でクリック／ドラッグ | FreeはX・Y振幅を固定しΔX・ΔYを表示。Trace Snapは最寄りの実サンプル組を選び、トリガーからの時間差を保持 |
 | Horizontal / ホイール | 時間軸の変更（0.05〜100 ms/div） |
-| Vertical / Shift＋ホイール | 振幅の変更（0.001〜0.5 FS/div） |
-| Fit amplitude | 現在の表示振幅に合わせる |
-| Scope Trace 1 / Trace 2 | 各トレースへの入力CH割当と表示切り替え。取得した1〜16chから選択 |
+| Channel / Vertical range / Shift＋ホイール | 選択中CHの振幅の変更（0.001〜0.5 FS/div） |
+| Channel / Fit amplitude | 選択中CHの生サンプルPeakに合わせ、オフセットを0へ戻す |
+| Scope下部 CH1〜CH4 / チェックボックス | CH選択と波形の表示ON/OFFを独立に操作。各CHのFS/div、入力なしを表示 |
+| Channel / Input source / Centre offset | 選択CHの入力を1〜16chから割当、波形中央のraw FS値を設定 |
+| Horizontal / Horizontal position / Centre horizontal | 波形を左右へ移動／位置を初期化。生サンプルと測定区間は変更しない |
 | Trigger | フリーラン／立ち上がり／立ち下がり、ソースと閾値の設定 |
-| Acquisition / Arm single / Autoset | Auto／Normal／Single、一回取得の再待機、周期信号の時間軸・振幅・トリガー自動調整 |
+| Acquisition / Arm single、Horizontal / Autoset | Auto／Normal／Single、一回取得の再待機、周期信号の時間軸・振幅・トリガー自動調整 |
 | ダブルクリック | 時間軸と振幅を初期値へ戻す |
 | 計器一覧／Instrumentメニュー | 選んだ計器の単独表示。再選択で解除しない |
 | Pair with… / Measurement console / Add instrument… | 2計器を並べる／保持構成へ戻る／計器を追加する |
@@ -142,11 +144,11 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | XY Reset XY scales / ダブルクリック | XYの観察窓と両軸を初期値へ戻す |
 | XY上にマウスを置く | プロット座標のX・Y振幅（実サンプルのカーソルではない） |
 
-画面は横10分割・縦8分割です。トリガーは横20%位置で、交差が見つからない場合は最新の波形を表示するAuto動作です。コアは1〜16chを保持し、Scopeの2本のトレース、Spectrum、Spectrogram、トリガーは取得した全chからソースを選択できます。Scopeの既定割当はTrace 1 = CH 1、Trace 2 = CH 2で、同じCHを両トレースへ割り当てることもできます。16chを超える入力は切り捨てずエラーを表示します。
+画面は横10分割・縦8分割です。トリガーは横20%位置で、交差が見つからない場合は最新の波形を表示するAuto動作です。コアは1〜16chを保持し、Scopeの4本のトレース、Spectrum、Spectrogram、トリガーは取得した全chからソースを選択できます。Scope下部CH1〜CH4の既定入力は入力CH 1〜4です。Channel / Input sourceで同じ入力を複数トレースへ割り当てることもできます。波形・選択表示・測定値の色はトレースごとに統一し、縦軸目盛は選択CHのFSレンジとオフセットを示します。16chを超える入力は切り捨てずエラーを表示します。
 
 RMS・Peak・P-PはScopeの整数サンプル区間内に取得した生のf64サンプルから計算します。欠落は観測数へ含めず、部分区間であることを表示します。統計値の説明には対象区間と取得サンプル数を表示し、描画倍率・幅・トレースの非表示化では同じ区間の値を変えません。時間幅やトリガー条件を変えると測定区間も変わります。カーソルは割当先CHの実サンプルを読み、描画時の極値集約やトリガー補間から振幅を逆算しません。
 
-入力CH数が減ったときもScope・XY・トリガーの割当IDを保持し、存在しないCHを別CHへ置き換えません。モノラルではScopeの既定Trace 2を利用不可とし、CH 1へ割り当てると表示できます。停止中のScope／XYのCH変更は次回Startに適用し、保持中のトレース・統計・カーソルは取得時のCHを表示します。
+入力CH数が減ったときもScope・XY・トリガーの割当IDを保持し、存在しないCHを別CHへ置き換えません。2ch入力では既定CH3／CH4をNo input、モノラルではCH2〜CH4を利用不可として示します。選択・表示ON/OFFの設定は保持し、別の入力へ自動で置き換えません。停止中のScope／XYのCH変更は次回Startに適用し、保持中のトレース・統計・カーソルは取得時のCHを表示します。
 
 トリガーの位置とレベルはオレンジの「T」で示し、レベルの三角マーカーは波形領域の右外側に表示します。
 
@@ -160,7 +162,7 @@ ScopeではRMS・Peak・P-Pと時間カーソルの数値に校正を適用し�
 
 ### 測定設定の保存・復元
 
-上部 **File / Save settings…** で保存先を選びます。**Restore settings…** は入力・出力停止中にファイルを選んで復元します。従来の **File / File paths & status… / MEASUREMENT SETTINGS** のパス指定も使えます。次回Start用の入力デバイス・CH割当・トリガー・観察幅・Spectrum／Spectrogramの解析設定・PSD帯域・校正定義を版4のJSONへ保存します。Generatorの出力先・Fs・信号条件・内部入力選択、Audio deviceの安定ID・CH数・PCMも保存し、版1〜3の読み込みを維持します。取得中の保持結果や未確定の校正エディター入力を保存する操作ではありません。単独表示／コンソール、計器順・選択区画・希望配置・比率・詳細欄の表示と軸・表示範囲は別のWorkspaceブロックへ保存します。旧設定の表示順を引き継ぎ、単一計器は単独表示、複数計器はコンソールへ移行します。読込だけで旧ファイルを上書きしません。生サンプル・測定結果・カーソル位置・表示倍率は含めません。Software Loopbackの仮想DUT条件、Scope取得モードと実験段階Lock-inの設定も保存します。これらを含まない版1ファイルはAuto・Lock-in無効として読みます。QA専用内部デモは保存対象外です。
+上部 **File / Save settings…** で保存先を選びます。**Restore settings…** は入力・出力停止中にファイルを選んで復元します。従来の **File / File paths & status… / MEASUREMENT SETTINGS** のパス指定も使えます。次回Start用の入力デバイス・CH割当・トリガー・観察幅・Spectrum／Spectrogramの解析設定・PSD帯域・校正定義を版5のJSONへ保存します。Generatorの出力先・Fs・信号条件・内部入力選択、Audio deviceの安定ID・CH数・PCMも保存し、版1〜4の読み込みを維持します。取得中の保持結果や未確定の校正エディター入力を保存する操作ではありません。単独表示／コンソール、計器順・選択区画・希望配置・比率・詳細欄の表示と軸・表示範囲は別のWorkspaceブロックへ保存します。旧2トレース設定は入力割当と倍率を保持して4トレースへ移行し、追加CH3／CH4は表示OFFにします。CHごとのレンジ・オフセット、選択CH、水平位置も保存します。旧設定の表示順を引き継ぎ、単一計器は単独表示、複数計器はコンソールへ移行します。読込だけで旧ファイルを上書きしません。生サンプル・測定結果・カーソル位置・表示倍率は含めません。Software Loopbackの仮想DUT条件、Scope取得モードと実験段階Lock-inの設定も保存します。これらを含まない版1ファイルはAuto・Lock-in無効として読みます。QA専用内部デモは保存対象外です。
 
 既定の保存先はmacOSで `~/Library/Application Support/MeasureLab/measurement-settings.json`、Windowsで `%APPDATA%/MeasureLab/measurement-settings.json`、Linuxで `$XDG_CONFIG_HOME/MeasureLab/measurement-settings.json`（未設定時は `~/.config/MeasureLab/measurement-settings.json`）です。別のパスも指定できます。自動保存・起動時の自動読み込みは行いません。
 
@@ -178,7 +180,7 @@ ScopeではRMS・Peak・P-Pと時間カーソルの数値に校正を適用し�
 
 入力Stop／Single完了は結果を保持し、出力は続きます。**Stop output**はフェード後に停止し、入力が取得中なら無音の新しいフレームを続けます。Generatorを隠しても上部の出力状態と**Stop output**は残ります。起動・復元・Fs変更で自動出力せず、アプリ終了時も停止します。
 
-内部出力は44.1／48／96／192 kHz・2chのf64です。**I/O / Output**で音声デバイスを選び、**Refresh outputs**で再取得できます。出力先・Fs／CH数／PCMは入力と出力を停止して選びます。デバイスの1〜16ch構成へ最大2信号を割り当て、未割当CHは無音にします。開始時に選択した安定IDと形式を再確認し、使えない設定は開始しません。**I/O / Input**で接続先の実入力を選び、個別に**Start input**してください。**Observe Generator**は内部接続で使います。ストリーム通知・コールバック停止はERRORとなり、**Reset output (stays OFF)**後の明示Startで再開します。出力校正は未実装です。既存Software Loopbackの既知DUTとは別の入力モードです。設定・結果はそれぞれ版4で保存し、旧設定・結果版1〜3も読み込めます。内部接続の結果には受信した最大128区間の出力条件を含め、履歴外・欠落した区間は対応不明とします。保持後のGenerator編集では結果を変更しません。Generator結果のRMS・PSD帯域電力・Lock-inの数値差は、両寄与区間が定常で設定・同一周波数の相対carrier位相が一致するときだけ表示します。
+内部出力は44.1／48／96／192 kHz・2chのf64です。**I/O / Output**で音声デバイスを選び、**Refresh outputs**で再取得できます。出力先・Fs／CH数／PCMは入力と出力を停止して選びます。デバイスの1〜16ch構成へ最大2信号を割り当て、未割当CHは無音にします。開始時に選択した安定IDと形式を再確認し、使えない設定は開始しません。**I/O / Input**で接続先の実入力を選び、個別に**Start input**してください。**Observe Generator**は内部接続で使います。ストリーム通知・コールバック停止はERRORとなり、**Reset output (stays OFF)**後の明示Startで再開します。出力校正は未実装です。既存Software Loopbackの既知DUTとは別の入力モードです。設定・結果はそれぞれ版5で保存し、旧設定・結果版1〜4も読み込めます。内部接続の結果には受信した最大128区間の出力条件を含め、履歴外・欠落した区間は対応不明とします。保持後のGenerator編集では結果を変更しません。Generator結果のRMS・PSD帯域電力・Lock-inの数値差は、両寄与区間が定常で設定・同一周波数の相対carrier位相が一致するときだけ表示します。
 
 外部入力と出力の連番は別の時計です。外部Generator編集の遷移は入力窓と自動対応せず、Spectrum／Lock-inの入力解析を自動リセットしません。同期REFは実入力2chを使い、編集後は整定を待ってください。外部Generatorが選択・観測された実入力結果のJSON／CSVには、入力開始時と保持時の最新観測、取得中に管理ワーカーが観測した最大128件の出力状態変更、出力ID・Fs・CH数・PCM・実適用設定・出力世代・整数境界・失敗を保存します。ホスト観測時刻は出力ワーカー作成からの単調時間で、DAC／ADC時刻や入力サンプルとの対応ではありません。履歴退役数、報告された応答欠落数と出力通知のワーカー開始以来の累計を保持し、未観測区間を補完しません。入力Stop／Single／入力失敗で固定し、その後の編集・Reset・出力停止で変更しません。入力窓への対応は未校正として、これらの結果のRMS・PSD帯域電力・Lock-inの数値差を表示しません。出力の有限Stop・解放後の通知監査を完了した証拠とは分けます。
 
@@ -204,7 +206,7 @@ Scopeを選択し、詳細欄の **ACQUISITION** でモードを選びます。A
 
 Singleは最初の有効区間を捕捉して共通入力を自動停止します。**Arm single** またはStartで新しい世代を開始し、一回取得を待ち直せます。Scopeの区間は専用バッファで保持するため、UI更新の合間の単発現象も捕捉し、共有履歴の周回後も失いません。Spectrumは独立しているため、Singleが短く終了した場合はFFT窓が未充填になることがあります。
 
-**Autoset** は選択したトリガーCHの直近最大200 msの生サンプルから安定した周期・振幅を評価し、約3周期の観察幅、FS振幅軸、立ち上がり・中央レベルを設定します。DC・無信号・低振幅・クリップ・不安定な周期・欠落・存在しないCHでは設定を変えず理由を表示します。Normal／Singleの停止中は捕捉条件を固定し、時間軸・トリガーの変更を次回Startへ適用します。
+**Autoset** は選択したトリガーCHの直近最大200 msの生サンプルから安定した周期・振幅を評価し、約3周期の観察幅、トリガー入力を割り当てたCHのFS振幅軸、立ち上がり・中央レベルを設定します。DC・無信号・低振幅・クリップ・不安定な周期・欠落・存在しないCHでは設定を変えず理由を表示します。Normal／Singleの停止中は捕捉条件を固定し、時間軸・トリガーの変更を次回Startへ適用します。
 
 ### Spectrumの測定定義
 
@@ -254,7 +256,7 @@ FreeとTrace SnapはXY本体の **Source / display…** で切り替えられま
 
 **Stop** の解析完了を待ち、上部 **File / Export results JSON… / CSV… / PNG…** で保存先を選べます。従来のパス指定は、**File / File paths & status… / HELD MEASUREMENT RESULTS** で保存先を確認して **Export held results** を押します。入力開始前、取得中、StopやScopeの条件更新・設定復元が未完了の間は書き出せません。書き出し後は同じ場所に成功・失敗を表示し、下部の保存通知 から開けます。既定の保存先は設定ファイルと同じディレクトリの `measurement-results.json` です。ファイルは同じディレクトリの一時ファイルへの書き込みと同期後に置換し、失敗時は以前のファイルを残します。
 
-結果の形式は `format = measurelab-results`、`version = 4` のJSONです。旧版1〜3の読み込みを維持します。復元用の測定設定JSONとは別の形式で、**File / Load reference result…** から参照として読み込み、**Compare saved reference** で現在の保持結果と並べて確認できます。入力世代・取得時のデバイスID／名前／入力形式・実際に選ばれた公称Fs・CH数を保持し、次回用の入力選択や解析設定・校正で保持結果を再ラベルしません。CH IDは0始まり、サンプル区間は開始を含み終端を含みません。サンプル時計は公称値です。
+結果の形式は `format = measurelab-results`、`version = 5` のJSONです。旧版1〜4の読み込みを維持します。復元用の測定設定JSONとは別の形式で、**File / Load reference result…** から参照として読み込み、**Compare saved reference** で現在の保持結果と並べて確認できます。入力世代・取得時のデバイスID／名前／入力形式・実際に選ばれた公称Fs・CH数を保持し、次回用の入力選択や解析設定・校正で保持結果を再ラベルしません。CH IDは0始まり、サンプル区間は開始を含み終端を含みません。サンプル時計は公称値です。
 
 Scopeは書き出し時に表示する整数区間・観察サンプル数・トリガー条件・補間した横位置と、2本の割当CHの生f64サンプル（FS）、生統計・校正後の統計を保持します。配列の位置 `i` は `sample_range.start + i` に対応し、欠落位置は `null`、存在しないCHは配列全体を `null` として状態を付けます。未取得・欠落・非有限の校正結果を正常なゼロと扱いません。校正はID・版・ゲイン・オフセット・単位・参照条件を含み、物理量は `gain × raw_fs + offset` から再現できます。Autoの停止後の観察幅・トリガー変更は保持サンプルから新しい区間を選ぶため、書き出すScope区間・条件もその選択に対応します。Normal／Singleの捕捉区間・トリガー条件は停止後も固定し、編集は次回Startに適用します。
 
@@ -307,7 +309,7 @@ STFT行 → UI履歴 → 循環GPUテクスチャ
 ## コードの入口
 
 - `src/audio.rs`: CPALデバイス管理、入力コールバック、SPSC転送。
-- `src/channel.rs`: 全測定器で使う0始まりの入力CH ID、表示名、Scope／XYの2ch割当と利用可能性。
+- `src/channel.rs`: 全測定器で使う0始まりの入力CH ID、表示名、Scopeの4ch／XYの2ch割当と利用可能性。
 - `src/settings.rs`: 版付き測定設定・校正と表示設定のJSON、全体検証、デバイスID照合、容量制限付き読み込み・原子的保存、専用I/Oワーカー。
 - `src/results.rs` / `src/result_image.rs` / `src/workspace_io.rs`: 容量制限と整合検証付き参照読み込み、f64 CSV、PNG、ネイティブファイル選択とI/O。
 - `src/acquisition.rs`: サンプル時計のNormal／Single捕捉とAutoset。

@@ -165,12 +165,12 @@ pub enum Reading {
 /// Apply calibration to each retained f64 sample, before computing statistics.
 /// In particular, RMS with an offset cannot be obtained by scaling raw RMS.
 /// Missing frames are excluded; the caller retains the interval/loss metadata.
-pub fn measure(
+pub fn measure<const N: usize>(
     history: &History,
     range: Range<u64>,
-    channels: Pair,
+    channels: Pair<N>,
     calibrations: &Set,
-) -> [Reading; 2] {
+) -> [Reading; N] {
     channels.0.map(|channel| {
         if !channel::available(channel, history.channels()) {
             return Reading::Unavailable;
@@ -281,7 +281,7 @@ mod tests {
             .with(0, Some(definition(1, 4.0, 2.0)))
             .unwrap();
         let [Reading::Valid(sine), Reading::Valid(tiny)] =
-            measure(&history, 0..1024, Pair::default(), &set)
+            measure(&history, 0..1024, Pair::<2>::default(), &set)
         else {
             panic!("valid measurements")
         };
@@ -353,7 +353,7 @@ mod tests {
             .with(0, Some(definition(1, 1e200, 0.0)))
             .unwrap();
         let [Reading::Valid(m), Reading::Unavailable] =
-            measure(&history, 0..2, Pair::default(), &extreme)
+            measure(&history, 0..2, Pair::<2>::default(), &extreme)
         else {
             panic!("finite RMS despite overflowing squares")
         };

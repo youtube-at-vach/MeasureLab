@@ -111,7 +111,8 @@ impl ScopeApp {
         self.spectrum_settings.size = 8192;
         self.spectrum_settings.averages = 1;
         self.spectrum_channel = response_channel;
-        self.scope_channels = Pair([self.lockin_settings.reference_channel, response_channel]);
+        self.scope_channels =
+            Pair([self.lockin_settings.reference_channel, response_channel]).scope();
         self.ms_per_div = 1.0;
         let replay = std::env::var_os("MEASURELAB_UI_SMOKE_REPLAY").is_some();
         if replay {
@@ -219,7 +220,7 @@ impl ScopeApp {
                 .into();
                 let epoch = self.input_generation;
                 self.spectrum_settings.size = 1024;
-                self.scope_channels = Pair([15, 7]);
+                self.scope_channels = Pair([15, 7]).scope();
                 self.lockin_settings.time_constant_seconds = 0.1;
                 self.lockin_settings.reference_channel = 1;
                 self.requested_sample_rate = Some(96000);
@@ -252,7 +253,7 @@ impl ScopeApp {
                 assert_eq!(self.input_generation, epoch);
                 assert_eq!(
                     self.scope_channels,
-                    Pair([self.lockin_settings.reference_channel, response_channel])
+                    Pair([self.lockin_settings.reference_channel, response_channel]).scope()
                 );
                 assert_eq!(
                     self.lockin_settings,
@@ -267,6 +268,15 @@ impl ScopeApp {
                 }
                 for (a, b) in old.scope.traces.iter().zip(&doc.scope.traces) {
                     assert_eq!(a.channel, b.channel);
+                    if a.channel >= doc.input.channels {
+                        assert_eq!(a.state, export::State::Unavailable);
+                        assert_eq!(b.state, export::State::Unavailable);
+                        assert!(a.raw_statistics.values.is_none());
+                        assert!(b.raw_statistics.values.is_none());
+                        assert!(a.raw_samples_fs.is_none());
+                        assert!(b.raw_samples_fs.is_none());
+                        continue;
+                    }
                     assert!(
                         (a.raw_statistics.values.as_ref().unwrap().rms
                             - b.raw_statistics.values.as_ref().unwrap().rms)

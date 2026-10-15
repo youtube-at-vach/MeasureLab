@@ -7,7 +7,7 @@
 | 機能 | 範囲 |
 | --- | --- |
 | 入力 | CPALによる1〜16chの同期入力。取得後の測定はf64、公称サンプルレートを使用 |
-| Scope | 任意の2ch、Auto／Normal／Single、Autoset、生サンプルのRMS・Peak・P-P、カーソル |
+| Scope | 任意の4ch、独立した表示・縦軸、Auto／Normal／Single、Autoset、生サンプルのRMS・Peak・P-P、カーソル |
 | Spectrum | 1,024〜524,288点、振幅／PSD、帯域電力・RMS、平均、ピーク保持 |
 | Spectrogram／XY | 時間周波数表示と同期2chのXY表示 |
 | 保存と比較 | CH校正と版付き設定の保存・復元、保持したScope／Spectrum結果のJSON・CSV・PNG、参照JSONとの比較 |

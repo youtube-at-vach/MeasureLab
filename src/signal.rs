@@ -266,10 +266,37 @@ pub struct Measurement {
     pub samples: u64,
 }
 
+/// Display-only raw FS transform. Offset is the value at the vertical centre.
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Vertical {
+    pub fs_per_div: f32,
+    pub offset: f64,
+}
+
+impl Default for Vertical {
+    fn default() -> Self {
+        Self {
+            fs_per_div: 0.25,
+            offset: 0.0,
+        }
+    }
+}
+
+impl Vertical {
+    pub fn y(self, value: f64) -> f32 {
+        (0.5 - (value - self.offset) / (self.fs_per_div.max(0.00001) as f64 * 8.0)) as f32
+    }
+}
+
 /// Measurements over retained raw samples, independently of visibility and
 /// pixel aggregation. Missing samples do not become zero-valued observations.
-pub fn measure(history: &History, range: Range<u64>, channels: Pair) -> [Measurement; 2] {
-    let mut result = [Measurement::default(); 2];
+pub fn measure<const N: usize>(
+    history: &History,
+    range: Range<u64>,
+    channels: Pair<N>,
+) -> [Measurement; N] {
+    let mut result = [Measurement::default(); N];
     let range = range.start.max(history.range().start)..range.end.min(history.range().end);
     if range.end <= range.start {
         return result;
@@ -321,37 +348,59 @@ pub fn build_lines(
         pixels,
         fs_per_div,
         enabled,
-        Pair::default(),
+        Pair::<2>::default(),
         output,
     )
 }
 
 /// Align real samples to the interpolated trigger time. Only the horizontal
 /// display coordinates change; measurements use the original samples.
-pub fn build_sweep_lines(
+pub fn build_sweep_lines<const N: usize>(
     history: &History,
     sweep: &Sweep,
     pixels: usize,
     fs_per_div: f32,
-    enabled: [bool; 2],
-    channels: Pair,
+    enabled: [bool; N],
+    channels: Pair<N>,
     output: &mut Vec<Line>,
-) -> [Measurement; 2] {
+) -> [Measurement; N] {
+    build_scaled_sweep_lines(
+        history,
+        sweep,
+        pixels,
+        [Vertical {
+            fs_per_div,
+            offset: 0.0,
+        }; N],
+        enabled,
+        channels,
+        output,
+    )
+}
+
+pub fn build_scaled_sweep_lines<const N: usize>(
+    history: &History,
+    sweep: &Sweep,
+    pixels: usize,
+    vertical: [Vertical; N],
+    enabled: [bool; N],
+    channels: Pair<N>,
+    output: &mut Vec<Line>,
+) -> [Measurement; N] {
     output.clear();
     let range = sweep.range.clone();
     let range = range.start.max(history.range().start)..range.end.min(history.range().end);
     if range.end <= range.start + 1 || pixels == 0 {
-        return [Measurement::default(); 2];
+        return [Measurement::default(); N];
     }
     let count = (range.end - range.start) as usize;
     let x = |offset: f64| ((offset + sweep.sample_offset) / (count - 1) as f64) as f32;
-    let scale = 1.0 / (fs_per_div.max(0.00001) * 8.0);
-    let y = |value: f64| (0.5 - value * scale as f64) as f32;
-    let mut result = [Measurement::default(); 2];
+    let mut result = [Measurement::default(); N];
     for (trace, channel) in channels.0.into_iter().enumerate() {
         if !enabled[trace] || !channel::available(channel, history.channels()) {
             continue;
         }
+        let y = |value: f64| vertical[trace].y(value);
         let mut min = f64::INFINITY;
         let mut max = f64::NEG_INFINITY;
         let mut square_sum = 0.0_f64;
@@ -445,6 +494,88 @@ mod tests {
     use super::*;
 
     #[test]
+    fn four_scope_channels_keep_raw_statistics_with_independent_display_transforms() {
+        let channels = crate::channel::ScopeChannels::default();
+        let mut history = History::with_channels(512, 4);
+        for n in 0..512 {
+            history.push_at(n, [0.125, -0.25, if n == 211 { 0.75 } else { 0.0 }, 0.5]);
+        }
+        let sweep = Sweep {
+            range: history.range(),
+            ..Default::default()
+        };
+        let expected = measure(&history, history.range(), channels);
+        let vertical = [
+            Vertical {
+                fs_per_div: 0.125,
+                offset: 0.125,
+            },
+            Vertical {
+                fs_per_div: 0.25,
+                offset: -0.25,
+            },
+            Vertical {
+                fs_per_div: 0.25,
+                offset: 0.0,
+            },
+            Vertical {
+                fs_per_div: 0.5,
+                offset: 0.0,
+            },
+        ];
+        let mut lines = Vec::new();
+        for pixels in [16, 1024] {
+            let measured = build_scaled_sweep_lines(
+                &history, &sweep, pixels, vertical, [true; 4], channels, &mut lines,
+            );
+            assert_eq!(measured, expected);
+            for trace in 0..4 {
+                assert!(lines.iter().any(|line| line.channel == trace));
+            }
+            assert!(
+                lines
+                    .iter()
+                    .filter(|line| line.channel == 0 || line.channel == 1)
+                    .all(|line| line.a[1] == 0.5 && line.b[1] == 0.5)
+            );
+            assert!(
+                lines
+                    .iter()
+                    .filter(|line| line.channel == 2)
+                    .any(|line| line.a[1] == 0.125 || line.b[1] == 0.125)
+            );
+            for hidden in 0..4 {
+                let mut enabled = [true; 4];
+                enabled[hidden] = false;
+                build_scaled_sweep_lines(
+                    &history, &sweep, pixels, vertical, enabled, channels, &mut lines,
+                );
+                assert!(lines.iter().all(|line| line.channel != hidden));
+                assert_eq!(measure(&history, history.range(), channels), expected);
+            }
+        }
+        let mut stereo = History::with_channels(16, 2);
+        for n in 0..16 {
+            stereo.push_at(n, [0.125, -0.25]);
+        }
+        let measured = measure(&stereo, stereo.range(), channels);
+        assert_eq!(measured[2..], [Measurement::default(); 2]);
+        build_scaled_sweep_lines(
+            &stereo,
+            &Sweep {
+                range: stereo.range(),
+                ..Default::default()
+            },
+            64,
+            vertical,
+            [true; 4],
+            channels,
+            &mut lines,
+        );
+        assert!(lines.iter().all(|line| line.channel < 2));
+    }
+
+    #[test]
     fn routed_raw_statistics_and_cursor_values_survive_wrap_gaps_and_projection_changes() {
         use crate::cursor::Cursors;
         let mut history = History::with_channels(16, 16);
@@ -532,7 +663,7 @@ mod tests {
         assert_eq!(lines.len(), 1);
         assert_eq!(lines[0].channel, 0);
         assert_eq!(
-            measure(&history, 50..60, Pair::default()),
+            measure(&history, 50..60, Pair::<2>::default()),
             [Measurement::default(); 2]
         );
     }
@@ -711,7 +842,7 @@ mod tests {
                             pixels,
                             0.25,
                             [true; 2],
-                            Pair::default(),
+                            Pair::<2>::default(),
                             &mut aligned,
                         );
                         assert_eq!(raw.len(), aligned.len());

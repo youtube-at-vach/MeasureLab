@@ -101,8 +101,8 @@ Rust版では、通常画面と別ウィンドウのコンソールを往復さ�
 
 | 対象 | 編集場所 |
 | --- | --- |
-| ScopeのCH、時間軸、振幅、Fit／Autoset | Scopeの主要操作列 |
-| Scopeのトリガー、取得モードなど | 選択中の詳細 |
+| ScopeのCH選択、表示ON/OFF、倍率の概要 | 波形直下の高さ40ptの4chバー。選択・可視・入力の有無を独立に扱う |
+| Scopeの取得、時間軸・水平位置・Autoset、トリガー、選択CHのレンジ・オフセット・Fit・入力割当 | 詳細欄のAcquisition／Horizontal／Trigger／Channel |
 | SpectrumのCH、表示範囲、カーソル | Spectrumの主要操作列・プロット |
 | SpectrumのFFT点数、窓、平均、更新モードなど | 選択中の詳細 |
 | Spectrogram／XYのCHと頻用する表示操作 | 各計器の主要操作列。解析条件は選択中の詳細 |
@@ -150,7 +150,7 @@ Rust版では、通常画面と別ウィンドウのコンソールを往復さ�
 
 ### 設定ファイルの移行
 
-現行の設定形式はversion 4。version 1〜3を読む移行処理と新形式の往復検証を`settings.rs`に置く。旧ファイルは保存操作まで書き換えない。
+現行の設定形式はversion 5。version 1〜4を読む移行処理と新形式の往復検証を`settings.rs`に置く。旧ファイルは保存操作まで書き換えない。
 
 * 旧設定で一つだけ表示される場合は、その計器の単独表示へ変換する。
 * 複数表示は同じ計器のコンソールへ変換する。旧画面の順序（Generator、Scope、Spectrum、Spectrogram、XY、Lock-in、Comparisonのうち表示対象）と対応可能な配置を保持する。

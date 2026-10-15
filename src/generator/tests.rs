@@ -518,7 +518,7 @@ fn generated_samples_match_existing_scope_spectrum_and_lockin_numerics() {
             lockin.push_pair(frame.sequence, [frame.samples[0], frame.samples[1]]);
         }
     }
-    let measured = measure(&history, history.range(), Pair::default());
+    let measured = measure(&history, history.range(), Pair::<2>::default());
     for (ch, peak) in [(0, 0.125), (1, 0.0625)] {
         assert!((measured[ch].rms - peak / 2.0_f64.sqrt()).abs() < 1e-8);
         let mut fft = spectrum::Analyzer::new(

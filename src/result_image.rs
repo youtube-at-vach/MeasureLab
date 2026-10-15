@@ -185,7 +185,7 @@ pub fn render(doc: &Document) -> Result<(u32, u32, Vec<u8>), String> {
         );
         c.text(
             30.0,
-            110.0 + i as f32 * 30.0,
+            106.0 + i as f32 * 19.0,
             &format!("Trace {} CH {} | {stats} | {cal}", i + 1, t.channel + 1),
         );
     }
@@ -198,7 +198,7 @@ pub fn render(doc: &Document) -> Result<(u32, u32, Vec<u8>), String> {
         .max(1e-9)
         * 1.1;
     c.grid(230.0, 490.0);
-    c.text(30.0,190.0,&format!("Scope raw FS | vertical [{:.6e}, {:.6e}] | horizontal sample offset from interval start",-peak,peak));
+    c.text(30.0,200.0,&format!("Scope raw FS | vertical [{:.6e}, {:.6e}] | horizontal sample offset from interval start",-peak,peak));
     for (i, t) in doc.scope.traces.iter().enumerate() {
         if let Some(s) = &t.raw_samples_fs {
             c.plot(
@@ -206,11 +206,12 @@ pub fn render(doc: &Document) -> Result<(u32, u32, Vec<u8>), String> {
                 s.len(),
                 [230.0, 490.0],
                 [-peak, peak],
-                if i == 0 {
-                    [56, 242, 173]
-                } else {
-                    [87, 166, 255]
-                },
+                [
+                    [56, 242, 173],
+                    [87, 166, 255],
+                    [255, 211, 66],
+                    [204, 153, 255],
+                ][i],
             );
         }
     }
