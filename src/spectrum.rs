@@ -908,7 +908,7 @@ pub enum FrequencyScale {
     Log,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct View {
     pub scale: FrequencyScale,
     pub min_hz: f32,

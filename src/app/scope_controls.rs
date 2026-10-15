@@ -207,7 +207,7 @@ impl ScopeApp {
     }
 }
 
-fn control_group(
+pub(super) fn control_group(
     ui: &mut egui::Ui,
     title: &str,
     accent: Color32,

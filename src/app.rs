@@ -45,6 +45,7 @@ mod lockin_panel;
 mod monitor_controls;
 mod scope_controls;
 mod shell;
+mod spectrum_controls;
 mod workspace;
 
 const GREEN: Color32 = Color32::from_rgb(56, 242, 173);
@@ -225,6 +226,11 @@ pub struct ScopeApp {
     stft_generation: u64,
     spectrum_settings: Settings,
     analyzer: spectrum::Result,
+    spectrum_display: settings::SpectrumDisplay,
+    spectrum_overlays: [spectrum::Result; 3],
+    spectrum_overlay_info: [measurement::SpectrumInfo; 3],
+    spectrum_overlay_publication: [(u64, u64); 3],
+    spectrum_last_view: Option<View>,
     spectrum_channel: ChannelId,
     frequency_scale: FrequencyScale,
     floor_db: f32,
@@ -233,6 +239,7 @@ pub struct ScopeApp {
     spectrum_min_hz: f32,
     spectrum_numeric_key: Option<(f32, f32, f64, f64)>,
     spectrum_peak: Option<spectrum::Peak>,
+    spectrum_peaks: [Option<spectrum::Peak>; 4],
     spectrum_band: Option<spectrum::BandReading>,
     band_min_hz: f64,
     /// Zero selects the captured result's Nyquist frequency.
@@ -471,6 +478,13 @@ impl ScopeApp {
             spectrum_settings: Settings::default(),
             analyzer: spectrum::Result::empty(Settings::default(), 48000),
             spectrum_channel: 0,
+            spectrum_display: settings::SpectrumDisplay::default(),
+            spectrum_overlays: std::array::from_fn(|_| {
+                spectrum::Result::empty(Settings::default(), 48000)
+            }),
+            spectrum_overlay_info: std::array::from_fn(|_| measurement::SpectrumInfo::default()),
+            spectrum_overlay_publication: [(0, 0); 3],
+            spectrum_last_view: None,
             frequency_scale: FrequencyScale::Log,
             floor_db: -120.0,
             spectrum_ceiling_db: 6.0,
@@ -478,6 +492,7 @@ impl ScopeApp {
             spectrum_min_hz: 0.0,
             spectrum_numeric_key: None,
             spectrum_peak: None,
+            spectrum_peaks: [None; 4],
             spectrum_band: None,
             band_min_hz: 0.0,
             band_max_hz: 0.0,
@@ -769,7 +784,9 @@ impl ScopeApp {
                     _ => {}
                 }
             }
-            if std::env::var_os("MEASURELAB_UI_SMOKE_SCOPE4").is_some() {
+            if std::env::var_os("MEASURELAB_UI_SMOKE_SCOPE4").is_some()
+                || std::env::var_os("MEASURELAB_UI_SMOKE_SPECTRUM4").is_some()
+            {
                 app.channels = 4;
                 app.history = History::with_channels(96000, 4);
                 app.scope_channels = ScopeChannels::default();
@@ -784,6 +801,24 @@ impl ScopeApp {
                         0.125 * (p + 0.8).sin(),
                         0.0625 * (p - 0.4).cos(),
                     ]);
+                }
+            }
+            if std::env::var_os("MEASURELAB_UI_SMOKE_SPECTRUM4").is_some() {
+                app.spectrum_display.enabled = [true; 4];
+                app.spectrum_display.selected = 1;
+                app.spectrum_display.auto_level = true;
+                app.spectrum_settings.averages = 16;
+                app.spectrum_display.average_weight = 16;
+                app.frequency_scale = FrequencyScale::Linear;
+                app.span_hz = 5000.0;
+                app.history.clear_at(0);
+                for n in 0..16384 {
+                    let samples: [f64; 4] = std::array::from_fn(|ch| {
+                        0.5_f64.powi(ch as i32 + 1)
+                            * (std::f64::consts::TAU * (128 * (ch + 1)) as f64 * n as f64 / 8192.0)
+                                .sin()
+                    });
+                    app.history.push(samples);
                 }
             }
             // Render every inspector with the same deterministic signal fixture.
@@ -1784,6 +1819,7 @@ impl ScopeApp {
         // The new device topology is not known until Started. Preparing the
         // old topology here used to clamp queued CH 16 back to CH 1 at startup.
         self.analyzer = spectrum::Result::empty(self.spectrum_settings, self.sample_rate);
+        self.clear_spectrum_overlays();
         #[cfg(feature = "qa")]
         {
             self.spectrum_timing = None;
@@ -1837,6 +1873,10 @@ impl ScopeApp {
         self.sample_rate = snapshot.sample_rate;
         std::mem::swap(&mut self.history, &mut snapshot.history);
         if snapshot.has_spectrum {
+            for (index, result, info) in snapshot.spectrum_overlays.drain(..) {
+                self.spectrum_overlays[index] = result;
+                self.spectrum_overlay_info[index] = info;
+            }
             std::mem::swap(&mut self.analyzer, &mut snapshot.spectrum);
             self.spectrum_info = snapshot.spectrum_info.clone();
             self.fft_ms = snapshot.fft_ms;
@@ -1930,12 +1970,14 @@ impl ScopeApp {
             }
         }
         if self.running() && self.pending_stop.is_none() {
+            self.receive_spectrum_overlays();
             let publication = self
                 .core
                 .as_mut()
                 .and_then(|core| core.spectrum.take_latest());
             if let Some(mut publication) = publication {
                 if publication.generation == self.input_generation
+                    && self.spectrum_display.enabled[0]
                     && publication.channel == self.spectrum_channel
                     && publication.result.settings() == self.spectrum_settings
                     && publication.info.mode == self.spectrum_mode
@@ -2151,6 +2193,26 @@ impl ScopeApp {
                 self.spectrum_info.updates = average.updates;
                 self.spectrum_info.contributing = average.start..average.end;
             }
+            for index in 0..3 {
+                if self.spectrum_display.enabled[index + 1]
+                    && self.spectrum_display.overlay_channels[index] < self.history.channels()
+                {
+                    let mut analyzer = Analyzer::new(self.spectrum_settings, self.sample_rate);
+                    analyzer.set_calibration(
+                        self.calibration
+                            .captured
+                            .get(self.spectrum_display.overlay_channels[index])
+                            .cloned()
+                            .map(Arc::new),
+                    );
+                    analyzer.update(&self.history, self.spectrum_display.overlay_channels[index]);
+                    analyzer.copy_result(&mut self.spectrum_overlays[index]);
+                    if let Some(average) = self.spectrum_overlays[index].average() {
+                        self.spectrum_overlay_info[index].updates = average.updates;
+                        self.spectrum_overlay_info[index].contributing = average.start..average.end;
+                    }
+                }
+            }
             self.spectrum_dirty = true;
             self.spectrum_numeric_key = None;
         }
@@ -2325,6 +2387,7 @@ impl ScopeApp {
     fn reset_analysis(&mut self) {
         self.spectrum_channel = self.spectrum_channel.min(self.channels.max(1) as usize - 1);
         self.analyzer = spectrum::Result::empty(self.spectrum_settings, self.sample_rate);
+        self.clear_spectrum_overlays();
         #[cfg(feature = "qa")]
         {
             self.spectrum_timing = None;
@@ -2342,6 +2405,7 @@ impl ScopeApp {
             );
         }
         self.spectrum_dirty = true;
+        self.configure_spectrum_display();
     }
 
     #[cfg(feature = "qa")]
@@ -2878,310 +2942,6 @@ impl ScopeApp {
         }
     }
 
-    fn spectrum_analysis_controls(&mut self, ui: &mut egui::Ui) {
-        let before = (
-            self.spectrum_settings,
-            self.spectrum_channel,
-            self.spectrum_mode,
-        );
-        setting_label(ui, "MEASUREMENT");
-        egui::ComboBox::from_id_salt("spectrum_quantity")
-            .width(ui.available_width())
-            .selected_text(self.spectrum_settings.quantity.name())
-            .show_ui(ui, |ui| {
-                for quantity in [Quantity::Amplitude, Quantity::Psd] {
-                    ui.selectable_value(
-                        &mut self.spectrum_settings.quantity,
-                        quantity,
-                        quantity.name(),
-                    );
-                }
-            });
-        fft_precision(
-            ui,
-            "spectrum_precision",
-            &mut self.spectrum_settings.precision,
-        );
-        setting_label(ui, "FFT LENGTH");
-        egui::ComboBox::from_id_salt("fft_size")
-            .width(ui.available_width())
-            .selected_text(format!("{} points", self.spectrum_settings.size))
-            .show_ui(ui, |ui| {
-                for size in FFT_SIZES {
-                    ui.selectable_value(
-                        &mut self.spectrum_settings.size,
-                        size,
-                        format!("{size} points"),
-                    );
-                }
-            });
-        setting_label(ui, "WINDOW");
-        egui::ComboBox::from_id_salt("fft_window")
-            .width(ui.available_width())
-            .selected_text(self.spectrum_settings.window.name())
-            .show_ui(ui, |ui| {
-                for window in [Window::Hann, Window::BlackmanHarris, Window::Rectangular] {
-                    ui.selectable_value(&mut self.spectrum_settings.window, window, window.name());
-                }
-            });
-        setting_label(ui, "UPDATE MODE");
-        ui.selectable_value(
-            &mut self.spectrum_mode,
-            SpectrumMode::Live,
-            "Live · observe newest window",
-        ).on_hover_text("Observe the newest complete window with a processing-time budget. Average and hold update per observed window, independently of drawing. Use Continuous to process every N/4 window.");
-        ui.selectable_value(
-            &mut self.spectrum_mode,
-            SpectrumMode::Continuous,
-            "Continuous · process every window",
-        );
-        ui.selectable_value(
-            &mut self.spectrum_mode,
-            SpectrumMode::Latest,
-            "Latest · observe at a limited rate",
-        ).on_hover_text("Newest complete window only; intermediate windows can be skipped. At least 33 ms / N/4 for small FFTs, 100 ms for large FFTs. Does not guarantee transient capture.");
-        if self.channels > 0 {
-            ui.label(
-                RichText::new(format!(
-                    "One complete window: {:.3} s · continuous step: {:.3} s (N/4)",
-                    self.spectrum_settings.size as f64 / self.sample_rate as f64,
-                    self.spectrum_settings.size as f64 / (4.0 * self.sample_rate as f64)
-                ))
-                .small()
-                .color(MUTED),
-            );
-        } else {
-            ui.label(
-                RichText::new("Window duration available after input starts")
-                    .small()
-                    .color(MUTED),
-            );
-        }
-        setting_label(ui, "AVERAGING");
-        egui::ComboBox::from_id_salt("fft_average")
-            .width(ui.available_width())
-            .selected_text(if self.spectrum_settings.averages == 1 { "No averaging".into() } else { format!("Smooth · {} window weighting", self.spectrum_settings.averages) })
-            .show_ui(ui, |ui| {
-                for count in [1, 4, 16, 64] {
-                    ui.selectable_value(&mut self.spectrum_settings.averages, count, if count == 1 { "No averaging".into() } else { format!("Smooth · {count} window weighting") });
-                }
-            }).response.on_hover_text("Exponential average of linear power; alpha = 1 / count. Applied once per contributing FFT window, independently of display updates.");
-        ui.checkbox(&mut self.spectrum_settings.remove_dc, "Remove DC offset");
-        if before
-            != (
-                self.spectrum_settings,
-                self.spectrum_channel,
-                self.spectrum_mode,
-            )
-            && self.running()
-        {
-            self.reset_analysis();
-        }
-        if !self.running() {
-            ui.label(
-                RichText::new(
-                    "Analysis changes apply when input restarts. The captured spectrum stays held.",
-                )
-                .small()
-                .color(MUTED),
-            );
-        }
-    }
-
-    fn spectrum_display_controls(&mut self, ui: &mut egui::Ui) {
-        let view_before = (
-            self.frequency_scale,
-            self.floor_db,
-            self.spectrum_ceiling_db,
-            self.show_hold,
-            self.span_hz,
-            self.spectrum_min_hz,
-        );
-        setting_label(ui, "FREQUENCY AXIS");
-        ui.horizontal(|ui| {
-            ui.selectable_value(&mut self.frequency_scale, FrequencyScale::Log, "Log Hz");
-            ui.selectable_value(
-                &mut self.frequency_scale,
-                FrequencyScale::Linear,
-                "Linear Hz",
-            );
-        });
-        egui::ComboBox::from_id_salt("spectrum_span")
-            .width(ui.available_width())
-            .selected_text(if self.span_hz == 0.0 {
-                "Full / Nyquist".into()
-            } else {
-                format!("Span {}", frequency_label(self.span_hz))
-            })
-            .show_ui(ui, |ui| {
-                ui.selectable_value(&mut self.span_hz, 0.0, "Full / Nyquist");
-                for hz in [1000.0, 2000.0, 5000.0, 10000.0, 20000.0] {
-                    ui.selectable_value(
-                        &mut self.span_hz,
-                        hz,
-                        format!("Span {}", frequency_label(hz)),
-                    );
-                }
-            });
-        setting_label(ui, "DISPLAY FREQUENCY RANGE");
-        ui.horizontal(|ui| {
-            ui.label("From");
-            ui.add(
-                egui::DragValue::new(&mut self.spectrum_min_hz)
-                    .range(0.0..=self.sample_rate as f32 / 2.0)
-                    .speed(0.1)
-                    .suffix(" Hz"),
-            );
-        });
-        ui.horizontal(|ui| {
-            ui.label("To");
-            ui.add(
-                egui::DragValue::new(&mut self.span_hz)
-                    .range(0.0..=self.sample_rate as f32 / 2.0)
-                    .speed(0.1)
-                    .suffix(" Hz"),
-            );
-        });
-        ui.label(
-            RichText::new("To = 0 uses Nyquist. Narrow ranges show individual bins.")
-                .small()
-                .color(MUTED),
-        );
-        setting_label(ui, "DISPLAY FLOOR");
-        ui.add(egui::Slider::new(&mut self.floor_db, -180.0..=-60.0).text(self.analyzer.db_unit()));
-        setting_label(ui, "DISPLAY CEILING");
-        ui.add(egui::DragValue::new(&mut self.spectrum_ceiling_db)
-            .range(self.floor_db + 6.0..=3200.0).speed(1.0).suffix(" dB"))
-            .on_hover_text("Raise the display ceiling for calibrated levels above 0 dB. Display limits do not change numeric values.");
-        ui.horizontal(|ui| {
-            if ui.checkbox(&mut self.show_hold, "Peak hold").changed()
-                && self.show_hold
-                && self.pending_stop.is_none()
-            {
-                self.analyzer.clear_hold();
-                if let Some(core) = &self.core {
-                    core.clear_hold();
-                }
-            }
-            if ui
-                .add_enabled(
-                    self.pending_stop.is_none(),
-                    egui::Button::new("Clear hold").small(),
-                )
-                .clicked()
-            {
-                self.analyzer.clear_hold();
-                if let Some(core) = &self.core {
-                    core.clear_hold();
-                }
-                self.spectrum_dirty = true;
-            }
-        });
-        self.spectrum_dirty |= view_before
-            != (
-                self.frequency_scale,
-                self.floor_db,
-                self.spectrum_ceiling_db,
-                self.show_hold,
-                self.span_hz,
-                self.spectrum_min_hz,
-            );
-    }
-
-    fn spectrum_controls(&mut self, ui: &mut egui::Ui) {
-        self.spectrum_analysis_controls(ui);
-        ui.separator();
-
-        ui.label(
-            RichText::new(format!(
-                "Δf {:.6} Hz · RBW {:.6} Hz\nWindow {:.1} ms · {} processed windows",
-                self.analyzer.bin_hz(),
-                self.analyzer.rbw_hz(),
-                self.analyzer.settings().size as f32 / self.sample_rate as f32 * 1000.0,
-                self.spectrum_info.updates
-            ))
-            .small()
-            .color(MUTED),
-        );
-        if self.pending_stop.is_some() {
-            ui.label(
-                RichText::new("Stopping · finishing Spectrum windows")
-                    .small()
-                    .color(YELLOW),
-            );
-        } else if self.analyzer.validity() == spectrum::Validity::NonFinite {
-            ui.label(
-                RichText::new("Invalid FFT window · nonfinite sample or calibrated power")
-                    .small()
-                    .color(YELLOW),
-            );
-        } else if self.running() && !self.analyzer.is_ready() {
-            ui.label(
-                RichText::new(format!(
-                    "Filling window · {} / {} samples",
-                    self.spectrum_info.filled_samples, self.spectrum_settings.size
-                ))
-                .small()
-                .color(MUTED),
-            );
-        }
-        let cadence = match self.spectrum_info.mode {
-            SpectrumMode::Continuous => format!(
-                "Continuous · hop {:.1} ms",
-                self.analyzer.settings().size as f64 / 4.0 / self.sample_rate as f64 * 1000.0
-            ),
-            SpectrumMode::Live if self.spectrum_info.observation_ms == 0 => {
-                "Live · up to 60 updates/s".into()
-            }
-            SpectrumMode::Live => format!("Live · target {} ms", self.spectrum_info.observation_ms),
-            SpectrumMode::Latest => {
-                format!("Latest · target {} ms", self.spectrum_info.observation_ms)
-            }
-        };
-        ui.label(
-            RichText::new(format!(
-                "{cadence} · missing input {} · invalid windows {} · missed observations {}",
-                self.spectrum_info.input_missing,
-                self.spectrum_info.invalid_windows,
-                self.spectrum_info.missed_observations
-            ))
-            .small()
-            .color(MUTED),
-        );
-        if let Some(window) = self.analyzer.window() {
-            ui.label(RichText::new(format!("FFT end #{} · acquired end #{}", window.end, self.history.range().end)).small().color(MUTED))
-                .on_hover_text("Spectrum and Scope/XY have independent sample intervals. FFT processing time and the age of this window are separate conditions.");
-        }
-        self.spectrum_band_controls(ui);
-    }
-
-    fn spectrum_band_controls(&mut self, ui: &mut egui::Ui) {
-        if self.analyzer.settings().quantity == Quantity::Psd {
-            ui.separator();
-            setting_label(ui, "POWER IN BAND");
-            let nyquist = self.analyzer.nyquist() as f64;
-            ui.horizontal(|ui| {
-                ui.label("From");
-                ui.add(
-                    egui::DragValue::new(&mut self.band_min_hz)
-                        .range(0.0..=nyquist)
-                        .speed(10.0)
-                        .suffix(" Hz"),
-                );
-            });
-            ui.horizontal(|ui| {
-                ui.label("To");
-                ui.add(
-                    egui::DragValue::new(&mut self.band_max_hz)
-                        .range(0.0..=nyquist)
-                        .speed(10.0)
-                        .suffix(" Hz"),
-                );
-            });
-            ui.label(RichText::new("To = 0 uses Nyquist. Inclusive bin centres; whole bins. Band changes read the held PSD without resetting the average.").small().color(MUTED));
-        }
-    }
-
     fn spectrogram_controls(&mut self, ui: &mut egui::Ui) {
         let before = (self.spectrogram_settings, self.spectrogram_channel);
         fft_precision(
@@ -3649,12 +3409,18 @@ impl ScopeApp {
         let Some(frequency) = self.cursors.frequency_hz else {
             return;
         };
-        let Some(reading) = self.analyzer.cursor(frequency) else {
+        let Some(reading) = self.selected_spectrum().cursor(frequency) else {
             return;
         };
         let hz = reading.frequency_hz as f32;
         if hz >= view.min_hz && hz <= view.max_hz {
-            cursor_line(ui, rect, view.x(hz), true, YELLOW);
+            cursor_line(
+                ui,
+                rect,
+                view.x(hz),
+                true,
+                monitor_controls::scope_color(self.spectrum_display.selected),
+            );
         }
         let window = reading.window;
         let mut times = String::new();
@@ -3681,12 +3447,18 @@ impl ScopeApp {
             window.end,
             window.settings.averages
         );
-        cursor_note(ui, rect, 0, &text, YELLOW);
-        response.clone().on_hover_text(format!("Nearest bin: {:.6e} {}. Latest window: samples {}..{} (exclusive end), CH {}, {} Hz, {} points, {}, {}. EMA α = 1/{}; {} processed windows, contribution envelope {}..{} (exponential weights). Input generation {}; missing windows {}.{}", reading.value, window.linear_unit(), window.start, window.end, window.channel + 1, window.sample_rate, window.settings.size, window.settings.window.name(), window.settings.precision.name(), window.settings.averages, reading.average.updates, reading.average.start, reading.average.end, self.input_generation, self.spectrum_info.missing_windows, times));
+        cursor_note(
+            ui,
+            rect,
+            0,
+            &text,
+            monitor_controls::scope_color(self.spectrum_display.selected),
+        );
+        response.clone().on_hover_text(format!("Nearest bin: {:.6e} {}. Latest window: samples {}..{} (exclusive end), CH {}, {} Hz, {} points, {}, {}. EMA α = 1/{}; {} processed windows, contribution envelope {}..{} (exponential weights). Input generation {}; missing windows {}.{}", reading.value, window.linear_unit(), window.start, window.end, window.channel + 1, window.sample_rate, window.settings.size, window.settings.window.name(), window.settings.precision.name(), window.settings.averages, reading.average.updates, reading.average.start, reading.average.end, self.input_generation, self.selected_spectrum_info().missing_windows, times));
         response
             .clone()
             .on_hover_text(spectrum_calibration_description(
-                self.analyzer.calibration(),
+                self.selected_spectrum().calibration(),
             ));
     }
 
@@ -4369,8 +4141,8 @@ impl ScopeApp {
                 measurements: self.measurements,
                 readings: self.scope_readings,
             },
-            &self.analyzer,
-            &self.spectrum_info,
+            self.selected_spectrum(),
+            self.selected_spectrum_info(),
             [
                 self.band_min_hz,
                 if self.band_max_hz == 0.0 {
@@ -4504,6 +4276,7 @@ impl ScopeApp {
                 calibrations: settings::ChannelCalibration::capture(&self.calibration.pending),
             },
             workspace: settings::Workspace {
+                spectrum_display: self.spectrum_display,
                 presentation: self.presentation.clone(),
                 lockin_display: self.lockin_display,
                 scope_enabled: self.enabled,
@@ -4628,6 +4401,10 @@ impl ScopeApp {
         self.scope_selected = w.scope_selected;
         self.scope_horizontal_position = w.scope_horizontal_position;
         self.frequency_scale = w.spectrum_scale;
+        self.spectrum_display = w.spectrum_display;
+        if [4, 16, 64].contains(&self.spectrum_settings.averages) {
+            self.spectrum_display.average_weight = self.spectrum_settings.averages;
+        }
         self.spectrum_min_hz = w.spectrum_min_hz;
         self.span_hz = w.spectrum_max_hz;
         self.floor_db = w.spectrum_floor_db;
@@ -4750,25 +4527,65 @@ impl ScopeApp {
             .spectrum_min_hz
             .max(view.min_hz.min(view.max_hz * 0.1))
             .min(view.max_hz - minimum_span);
+        if self.spectrum_display.auto_level {
+            if !self.spectrum_dirty
+                && let Some(cached) = self.spectrum_last_view
+                && cached.scale == view.scale
+                && cached.min_hz == view.min_hz
+                && cached.max_hz == view.max_hz
+            {
+                view.floor_db = cached.floor_db;
+                view.ceiling_db = cached.ceiling_db;
+                return view;
+            }
+            let mut maximum = f32::NEG_INFINITY;
+            let mut minimum = f32::INFINITY;
+            for index in 0..4 {
+                if !self.spectrum_display.enabled[index] {
+                    continue;
+                }
+                let result = self.spectrum_result(index);
+                if !result.is_ready() {
+                    continue;
+                }
+                let first = (view.min_hz / result.bin_hz()).ceil() as usize;
+                let last = (view.max_hz / result.bin_hz()).floor() as usize;
+                if let Some(bins) = result.db().get(first..=last) {
+                    for &db in bins {
+                        if db.is_finite() {
+                            maximum = maximum.max(db);
+                            minimum = minimum.min(db);
+                        }
+                    }
+                }
+            }
+            if maximum.is_finite() {
+                view.ceiling_db = ((maximum + 6.0) / 10.0).ceil() * 10.0;
+                view.floor_db = ((minimum.max(maximum - 120.0) - 6.0) / 10.0).floor() * 10.0;
+                view.floor_db = view.floor_db.min(view.ceiling_db - 20.0);
+            }
+        }
         view
     }
 
     fn refresh_spectrum_readouts(&mut self, view: View) {
         let upper = if self.band_max_hz == 0.0 {
-            self.analyzer.nyquist() as f64
+            self.selected_spectrum().nyquist() as f64
         } else {
             self.band_max_hz
         };
         let key = (view.min_hz, view.max_hz, self.band_min_hz, upper);
         if self.spectrum_numeric_key != Some(key) {
-            self.spectrum_peak = self.analyzer.peak(view);
-            self.spectrum_band = self.analyzer.band(self.band_min_hz, upper);
+            self.spectrum_peaks = std::array::from_fn(|i| self.spectrum_result(i).peak(view));
+            self.spectrum_peak = self.spectrum_peaks[self.spectrum_display.selected];
+            self.spectrum_band = self.selected_spectrum().band(self.band_min_hz, upper);
             self.spectrum_numeric_key = Some(key);
         }
     }
 
     fn spectrum_panel(&mut self, ui: &mut egui::Ui) {
         self.update_spectrum(false);
+        let color = monitor_controls::scope_color(self.spectrum_display.selected);
         egui::Frame::new()
             .fill(Color32::from_rgb(17, 27, 35))
             .stroke(Stroke::new(1.0, Color32::from_rgb(48, 70, 82)))
@@ -4777,32 +4594,32 @@ impl ScopeApp {
                 compact_plot_style(ui);
                 ui.horizontal_wrapped(|ui| {
                     ui.label(RichText::new("Spectrum Analyzer").size(13.0).strong());
-                    display::activity_label(ui, self.running(), self.pending_stop.is_some(), self.analyzer.window().is_some());
+                    display::activity_label(ui, self.running(), self.pending_stop.is_some(), self.selected_spectrum().window().is_some());
 
-                    ui.label(RichText::new(format!("CH {} · {}", self.analyzer.window().map_or(self.spectrum_channel, |window| window.channel)+1, self.analyzer.db_unit())).small().color(YELLOW));
+                    ui.label(RichText::new(format!("CH{} · Input {} · {}", self.spectrum_display.selected + 1, self.selected_spectrum().window().map_or(self.spectrum_source(self.spectrum_display.selected), |window| window.channel)+1, self.selected_spectrum().db_unit())).small().color(color));
                 });
-                self.spectrum_primary(ui);
+                self.spectrum_summary(ui);
                 let view = self.spectrum_view();
                 self.refresh_spectrum_readouts(view);
                 if let Some(peak) = self.spectrum_peak {
                     ui.horizontal_wrapped(|ui| {
-                        ui.add(egui::Label::new(RichText::new(format!("Peak bin {:.2} Hz", peak.frequency)).monospace().size(15.0).color(YELLOW)).wrap());
-                        ui.add(egui::Label::new(RichText::new(format!("{:.2} {}", peak.level_db, self.analyzer.db_unit())).monospace().size(15.0).color(YELLOW)).wrap());
-                        ui.label(RichText::new(format!("Δf {:.3} Hz", self.analyzer.bin_hz())).small().color(MUTED));
+                        ui.add(egui::Label::new(RichText::new(format!("Peak bin {:.2} Hz", peak.frequency)).monospace().size(15.0).color(color)).wrap());
+                        ui.add(egui::Label::new(RichText::new(format!("{:.2} {}", peak.level_db, self.selected_spectrum().db_unit())).monospace().size(15.0).color(color)).wrap());
+                        ui.label(RichText::new(format!("Δf {:.3} Hz", self.selected_spectrum().bin_hz())).small().color(MUTED));
                     });
                 } else {
                     ui.label(
                         RichText::new(
-                            format!("{} · {}", self.analyzer.settings().quantity.name(), self.analyzer.db_unit()),
+                            format!("{} · {}", self.selected_spectrum().settings().quantity.name(), self.selected_spectrum().db_unit()),
                         )
                         .small()
                         .color(MUTED),
                     );
                 }
-                if self.analyzer.settings().quantity == Quantity::Psd {
+                if self.selected_spectrum().settings().quantity == Quantity::Psd {
                     if let Some(band) = &self.spectrum_band {
-                        ui.label(RichText::new(format!("Band RMS {} {}", display::number(Some(band.rms)), self.analyzer.unit())).monospace().size(18.0).color(YELLOW));
-                        ui.label(RichText::new(format!("{:.1}–{:.1} Hz · power {} {}", band.first_hz, band.last_hz, display::number(Some(band.power)), self.analyzer.power_unit())).small().color(MUTED))
+                        ui.label(RichText::new(format!("Band RMS {} {}", display::number(Some(band.rms)), self.selected_spectrum().unit())).monospace().size(18.0).color(color));
+                        ui.label(RichText::new(format!("{:.1}–{:.1} Hz · power {} {}", band.first_hz, band.last_hz, display::number(Some(band.power)), self.selected_spectrum().power_unit())).small().color(MUTED))
                         .on_hover_text(format!(
                             "Requested {}–{} Hz, inclusive centres of bins {}..={}. Sum of f64 PSD × Δf; full weight at DC/Nyquist. CH {}, generation {}, {} processed windows, contribution envelope {}..{}. Input loss {}; missing windows {}. Windowed mean-square after optional DC removal; not the Scope observation interval.",
                             band.requested_hz[0], band.requested_hz[1], band.first_bin, band.last_bin,
@@ -4813,17 +4630,20 @@ impl ScopeApp {
                         ui.label(RichText::new("Band power unavailable · invalid window, range or nonfinite sum").small().color(MUTED));
                     }
                 }
-                if let Some(c) = self.analyzer.calibration() {
+                if let Some(c) = self.selected_spectrum().calibration() {
                     ui.label(RichText::new(format!("Calibration {} · rev {}", c.id(), c.revision())).small().color(MUTED))
                         .on_hover_text(spectrum_calibration_description(Some(c)));
                 }
                 self.spectrum_plot(ui, view);
+                self.spectrum_channel_bar(ui);
             });
     }
 
     fn spectrum_plot(&mut self, ui: &mut egui::Ui, view: View) {
-        let (outer, response) =
-            ui.allocate_exact_size(plot_size(ui), egui::Sense::click_and_drag());
+        let (outer, response) = ui.allocate_exact_size(
+            vec2(ui.available_width(), (plot_size(ui).y - 46.0).max(120.0)),
+            egui::Sense::click_and_drag(),
+        );
         let rect =
             egui::Rect::from_min_max(outer.min + vec2(32.0, 4.0), outer.max - vec2(14.0, 18.0));
         let painter = ui.painter();
@@ -4898,35 +4718,48 @@ impl ScopeApp {
         }
         let ppp = ui.ctx().pixels_per_point();
         let pixels = (rect.width() * ppp).ceil().max(1.0) as usize;
-        self.spectrum_dirty |= pixels != self.spectrum_pixels;
+        self.spectrum_dirty |=
+            pixels != self.spectrum_pixels || self.spectrum_last_view != Some(view);
+        self.spectrum_last_view = Some(view);
         self.spectrum_pixels = pixels;
         if self.spectrum_dirty {
             let started = Instant::now();
-            self.spectrum_line_builder.build(
-                &self.analyzer,
-                view,
-                pixels,
-                self.show_hold,
-                &mut self.spectrum_lines,
-            );
             let segments = Arc::make_mut(&mut self.spectrum_segments);
             segments.clear();
-            // Hold first, so the active trace remains bright wherever they overlap.
-            for channel in [1, 0] {
-                segments.extend(
-                    self.spectrum_lines
-                        .iter()
-                        .filter(|line| line.channel == channel)
-                        .map(|line| Segment {
-                            a: line.a,
-                            b: line.b,
-                            color: if channel == 0 {
-                                [1.0, 0.827, 0.259, 1.0]
-                            } else {
-                                [0.702, 0.529, 0.255, 0.7]
-                            },
-                        }),
+            for (index, &trace_color) in COLORS.iter().enumerate() {
+                if !self.spectrum_display.enabled[index] {
+                    continue;
+                }
+                let result = if index == 0 {
+                    &self.analyzer
+                } else {
+                    &self.spectrum_overlays[index - 1]
+                };
+                self.spectrum_line_builder.build(
+                    result,
+                    view,
+                    pixels,
+                    self.show_hold,
+                    &mut self.spectrum_lines,
                 );
+                for trace in [1, 0] {
+                    segments.extend(
+                        self.spectrum_lines
+                            .iter()
+                            .filter(|line| line.channel == trace)
+                            .map(|line| {
+                                let mut color = trace_color;
+                                if trace == 1 {
+                                    color[3] = 0.35;
+                                }
+                                Segment {
+                                    a: line.a,
+                                    b: line.b,
+                                    color,
+                                }
+                            }),
+                    );
+                }
             }
             self.spectrum_revision = self.spectrum_revision.wrapping_add(1);
             self.spectrum_dirty = false;
@@ -4960,18 +4793,26 @@ impl ScopeApp {
             // timestamps and must not be inferred from this latency.
             profile.record_spectrum_latency(self.input_generation, timing, Instant::now());
         }
-        if let Some(peak) = self.spectrum_peak {
-            let x = rect.left() + view.x(peak.frequency as f32) * rect.width();
-            painter.line_segment(
-                [pos2(x, rect.top()), pos2(x, rect.top() + 10.0)],
-                Stroke::new(2.0, YELLOW),
-            );
+        if self.spectrum_display.peak_marker {
+            for index in 0..4 {
+                if self.spectrum_display.enabled[index]
+                    && let Some(peak) = self.spectrum_peaks[index]
+                {
+                    let x = rect.left() + view.x(peak.frequency as f32) * rect.width();
+                    painter.line_segment(
+                        [pos2(x, rect.top()), pos2(x, rect.top() + 10.0)],
+                        Stroke::new(2.0, monitor_controls::scope_color(index)),
+                    );
+                }
+            }
         }
-        if !self.analyzer.is_ready() {
+        if !(0..4).any(|i| self.spectrum_display.enabled[i] && self.spectrum_result(i).is_ready()) {
             painter.text(
                 rect.center(),
                 egui::Align2::CENTER_CENTER,
-                if self.analyzer.validity() == spectrum::Validity::NonFinite {
+                if !self.spectrum_display.enabled.iter().any(|enabled| *enabled) {
+                    "All channels OFF"
+                } else if self.selected_spectrum().validity() == spectrum::Validity::NonFinite {
                     "Invalid FFT window · nonfinite value"
                 } else if self.running() {
                     "Collecting a complete FFT window…"
@@ -4993,7 +4834,7 @@ impl ScopeApp {
                 ],
                 Stroke::new(1.0, Color32::from_white_alpha(65)),
             );
-            if let Some(reading) = self.analyzer.cursor(hz as f64) {
+            if let Some(reading) = self.selected_spectrum().cursor(hz as f64) {
                 painter.text(
                     rect.right_top() + vec2(-10.0, 10.0),
                     egui::Align2::RIGHT_TOP,
@@ -5004,13 +4845,17 @@ impl ScopeApp {
                         reading.window.db_unit()
                     ),
                     egui::FontId::monospace(11.0),
-                    YELLOW,
+                    monitor_controls::scope_color(self.spectrum_display.selected),
                 );
             }
         }
         self.spectrum_cursors(ui, &response, rect, view);
         ui.horizontal(|ui| {
-            ui.label(RichText::new(self.analyzer.db_unit()).small().color(MUTED));
+            ui.label(
+                RichText::new(self.selected_spectrum().db_unit())
+                    .small()
+                    .color(MUTED),
+            );
             if self.show_hold {
                 ui.label(RichText::new("Peak hold").small().color(HOLD));
             }

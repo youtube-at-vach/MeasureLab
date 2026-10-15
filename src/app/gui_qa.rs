@@ -298,6 +298,44 @@ impl ScopeApp {
         self.dirty = true;
         driver.frame(self, vec![]);
 
+        let spectrum_display = self.spectrum_display;
+        self.spectrum_display.overlay_channels = [0, 0, 0];
+        driver.click(self, "Spectrum")?;
+        let average = self.analyzer.average();
+        for index in 0..4 {
+            driver.click(self, &format!("CH{}", index + 1))?;
+            assert_eq!(self.spectrum_display.selected, index);
+            assert_eq!(self.spectrum_display.enabled, spectrum_display.enabled);
+            let pos = driver.position(&format!("CH{}", index + 1))?;
+            let selection = driver
+                .ctx
+                .interactive_rects_last_pass()
+                .into_iter()
+                .find(|r| r.contains(pos) && (r.height() - 40.0).abs() < 1.0)
+                .ok_or("Spectrum channel selection area missing")?;
+            let toggle = pos2(selection.right() + 10.0, selection.top() + 13.0);
+            driver.click_at(self, toggle);
+            assert_ne!(
+                self.spectrum_display.enabled[index],
+                spectrum_display.enabled[index]
+            );
+            assert_eq!(self.spectrum_display.selected, index);
+            assert_eq!(self.analyzer.average(), average);
+            driver.click_at(self, toggle);
+            assert_eq!(self.spectrum_display.enabled, spectrum_display.enabled);
+        }
+        driver.click(self, "Auto")?;
+        assert!(self.spectrum_display.auto_level);
+        let view = self.spectrum_view();
+        assert!(view.max_hz <= self.sample_rate as f32 / 2.0);
+        assert!(view.min_hz >= 0.0 && view.min_hz < view.max_hz);
+        assert!(view.floor_db < view.ceiling_db);
+        driver.click(self, "Manual")?;
+        assert!(!self.spectrum_display.auto_level);
+        self.spectrum_display = spectrum_display;
+        self.spectrum_dirty = true;
+        self.spectrum_numeric_key = None;
+
         for instrument in Instrument::ALL {
             driver.click(self, instrument.name())?;
             assert_eq!(self.presentation.screen, Screen::Single(instrument));
