@@ -205,7 +205,7 @@ pub struct Spectrum {
     pub unit: String,
     pub average: Option<Average>,
     /// Entry k is at k * bin_width_hz, including DC and Nyquist.
-    /// Amplitude is sqrt(averaged peak-bin power); PSD is averaged density.
+    /// Amplitude is sqrt(averaged peak-bin power); PSD/ESD are averaged densities.
     pub values: Option<Vec<f64>>,
     pub peak_hold: Option<PeakHold>,
     pub requested_band_hz: [f64; 2],
@@ -433,7 +433,7 @@ impl Document {
         }
         let value = |power: f64| match result.settings().quantity {
             Quantity::Amplitude => power.sqrt(),
-            Quantity::Psd => power,
+            Quantity::Psd | Quantity::Esd => power,
         };
         let band = result
             .band(requested_band_hz[0], requested_band_hz[1])
@@ -725,6 +725,72 @@ pub(crate) mod tests {
             },
         )
         .unwrap()
+    }
+
+    #[test]
+    fn esd_calibrated_pulse_roundtrips_json_csv_and_keeps_density_values() {
+        let mut history = History::new(1024);
+        for n in 0..1024 {
+            history.push([if n == 17 { 0.25 } else { 0.0 }, 0.0]);
+        }
+        let set = Set::default()
+            .with(
+                0,
+                Some(
+                    Calibration::new(
+                        "voltage-pulse".into(),
+                        1,
+                        -4.0,
+                        0.0,
+                        "V".into(),
+                        "Known pulse".into(),
+                    )
+                    .unwrap(),
+                ),
+            )
+            .unwrap();
+        let mut settings = Settings {
+            size: 1024,
+            ..Settings::default()
+        };
+        settings.select_quantity(Quantity::Esd);
+        let mut analyzer = Analyzer::new(settings, 48000);
+        analyzer.set_calibration(set.get(0).cloned().map(std::sync::Arc::new));
+        analyzer.update_window(&history, 0..1024, 0);
+        let mut result = spectrum::Result::empty(settings, 48000);
+        analyzer.copy_result(&mut result);
+        let doc = document(&history, &result, &set, Pair([0, 1]));
+        doc.validate().unwrap();
+        let path = std::env::temp_dir().join(format!("measurelab-esd-{}.json", std::process::id()));
+        save(&path, &doc).unwrap();
+        let restored = crate::results::load(&path).unwrap();
+        assert_eq!(restored, doc);
+        assert_eq!(restored.spectrum.unit, "V²·s/Hz");
+        assert!(restored.spectrum.band.is_none());
+        assert_eq!(result.db_unit(), "dB re 1 V²·s/Hz");
+        let values = restored.spectrum.values.as_ref().unwrap();
+        assert_eq!(values, result.power());
+        assert_eq!(
+            restored.spectrum.peak_hold.as_ref().unwrap().values,
+            values.as_slice()
+        );
+        assert!(
+            (values.iter().sum::<f64>() * restored.spectrum.bin_width_hz - 1.0 / 48000.0).abs()
+                < 1e-17
+        );
+        let csv = path.with_extension("csv");
+        crate::results::save_csv(&csv, &restored).unwrap();
+        let text = std::fs::read_to_string(&csv).unwrap();
+        let row: Vec<_> = text
+            .lines()
+            .find(|line| line.starts_with("spectrum,0,1,"))
+            .unwrap()
+            .split(',')
+            .collect();
+        assert_eq!(row[4].parse::<f64>().unwrap(), values[1]);
+        assert_eq!(row[5], "\"V²·s/Hz\"");
+        std::fs::remove_file(path).unwrap();
+        std::fs::remove_file(csv).unwrap();
     }
 
     #[test]

@@ -8,7 +8,7 @@
 | --- | --- |
 | 入力・実行分離 | CPAL、1〜16ch同期フレーム、f64履歴、固定容量転送。取得・測定・各解析・描画・ファイルI/Oを分離 |
 | Scope | 任意4ch、独立した表示・縦軸と下部CHバー、全CHトリガー、Auto／Normal／Single、Autoset、生サンプル統計・カーソル |
-| Spectrum | 共通FFT・軸の最大4ch重ね表示、独立ON/OFF・下部CHバー、Auto／Manualレベル、1,024〜524,288点、振幅／PSD・帯域電力、f64数値、平均・保持、Live／Continuous／Latest |
+| Spectrum | 共通FFT・軸の最大4ch重ね表示、独立ON/OFF・下部CHバー、Auto／Manualレベル、1,024〜524,288点、振幅／PSD・帯域電力／ESD・窓エネルギー、f64数値、平均・保持、Live／Continuous／Latest |
 | Spectrogram／XY | 独立STFT、欠落表示、同期XY、任意CH割当 |
 | 校正・結果再利用 | CH校正、版付き設定、停止中復元、条件付きJSON／CSV・参照比較。Scope／SpectrumのPNG |
 | Software Loopback／Lock-in | 既知DUT、同期入力REFによる基本波f64 Lock-in、専用ワーカー・数値GUI |
@@ -35,7 +35,7 @@
 
 ### Spectrum GUI：4ch重ね表示
 
-単一グラフ、Scopeと同色の下部CHバー、独立した選択・表示ON/OFF、右側のFFT／Frequency・Scale／Measurement／Averaging、ピークマーカーを実装した。振幅／PSD切り替えはFFTグループの先頭に置き、A／B周波数カーソルとΔf・ΔLを表示する。既存のf64・窓補正・線形パワーEMA・PSD・保持・結果保存を維持し、非表示CHのFFTを停止する。4画面分割や新しい解析方式は対象外とする。
+単一グラフ、Scopeと同色の下部CHバー、独立した選択・表示ON/OFF、右側のFFT／Frequency・Scale／Measurement／Averaging、ピークマーカーを実装した。振幅／PSD／過渡信号（ESD）切り替えはFFTグループの先頭に置き、A／B周波数カーソルとΔf・ΔLを表示する。ESDは既存FFT・描画・結果保存を共用し、窓エネルギー補正を行わない独立した正規化と全帯域エネルギー読み出しを持つ。矩形窓・平均OFF・DC除去OFFを選択時の初期条件とする。非表示CHのFFTを停止する。4画面分割は対象外、ESDとシングルショット・トリガーの連携は後続とする。
 
 自動確認の正本は`measurement.rs`の4ch既知正弦波・独立ON/OFF・設定／世代変更、`settings.rs`の版6往復・旧版移行、`app/gui_qa.rs`の実ウィジェット操作。物理4chの数値照合と通常ビルドの手動操作は受け入れを残す。
 

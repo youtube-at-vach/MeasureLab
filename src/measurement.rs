@@ -1348,6 +1348,41 @@ mod tests {
     }
 
     #[test]
+    fn esd_pulse_uses_existing_worker_and_finite_stop_in_all_update_modes() {
+        for size in [1024, 8192] {
+            for mode in [
+                SpectrumMode::Live,
+                SpectrumMode::Continuous,
+                SpectrumMode::Latest,
+            ] {
+                let (_stft, mut core, mut config, _spectrum) = setup(size, 16);
+                config.spectrum.select_quantity(spectrum::Quantity::Esd);
+                config.spectrum_mode = mode;
+                core.start(71, 48000, 16, config);
+                for n in 0..size {
+                    let mut samples = [0.0; 16];
+                    samples[15] = if n == 17 { 0.75 } else { 0.0 };
+                    core.push_frame(
+                        n as u64,
+                        &samples,
+                        #[cfg(feature = "qa")]
+                        None,
+                    );
+                }
+                let held = finish(&mut core);
+                assert_eq!(held.spectrum.window().unwrap().channel, 15);
+                assert_eq!(held.spectrum.settings().quantity, spectrum::Quantity::Esd);
+                assert_eq!(held.spectrum_info.updates, 1);
+                assert!(
+                    (held.spectrum.energy().unwrap() / (0.75_f64.powi(2) / 48000.0) - 1.0).abs()
+                        < 1e-12
+                );
+                assert_eq!(held.spectrum.power(), finish(&mut core).spectrum.power());
+            }
+        }
+    }
+
+    #[test]
     fn four_spectrum_traces_share_conditions_and_toggle_without_resetting_peers() {
         for size in [2048, 4096, 8192, 16384, 32768] {
             for window in [Window::Hann, Window::Rectangular] {

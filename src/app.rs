@@ -241,6 +241,7 @@ pub struct ScopeApp {
     spectrum_peak: Option<spectrum::Peak>,
     spectrum_peaks: [Option<spectrum::Peak>; 4],
     spectrum_band: Option<spectrum::BandReading>,
+    spectrum_energy: Option<f64>,
     band_min_hz: f64,
     /// Zero selects the captured result's Nyquist frequency.
     band_max_hz: f64,
@@ -494,6 +495,7 @@ impl ScopeApp {
             spectrum_peak: None,
             spectrum_peaks: [None; 4],
             spectrum_band: None,
+            spectrum_energy: None,
             band_min_hz: 0.0,
             band_max_hz: 0.0,
             show_hold: false,
@@ -950,6 +952,10 @@ impl ScopeApp {
         if smoke {
             app.update_spectrum(true);
             #[cfg(feature = "qa")]
+            if std::env::var_os("MEASURELAB_UI_SMOKE_ESD").is_some() {
+                app.check_esd_ui()?;
+            }
+            #[cfg(feature = "qa")]
             if std::env::var_os("MEASURELAB_UI_SMOKE_SETTINGS_RESTORE").is_some() {
                 app.check_settings_restore()?;
             }
@@ -1049,6 +1055,7 @@ impl ScopeApp {
             app.analyzer = spectrum::Result::empty(app.spectrum_settings, app.sample_rate);
             app.spectrum_peak = None;
             app.spectrum_band = None;
+            app.spectrum_energy = None;
             app.spectrum_numeric_key = None;
             app.last_stft = None;
             app.spectrogram_history = Arc::new(Mutex::new(spectrogram::History::default()));
@@ -1410,7 +1417,7 @@ impl ScopeApp {
                 self.spectrum_settings.size = 32768;
                 self.spectrum_settings.quantity = match self.analyzer.settings().quantity {
                     Quantity::Amplitude => Quantity::Psd,
-                    Quantity::Psd => Quantity::Amplitude,
+                    Quantity::Psd | Quantity::Esd => Quantity::Amplitude,
                 };
                 self.spectrum_channel = 0;
                 self.frequency_scale = FrequencyScale::Linear;
@@ -4624,6 +4631,7 @@ impl ScopeApp {
             self.spectrum_peaks = std::array::from_fn(|i| self.spectrum_result(i).peak(view));
             self.spectrum_peak = self.spectrum_peaks[self.spectrum_display.selected];
             self.spectrum_band = self.selected_spectrum().band(self.band_min_hz, upper);
+            self.spectrum_energy = self.selected_spectrum().energy();
             self.spectrum_numeric_key = Some(key);
         }
     }
@@ -4674,6 +4682,10 @@ impl ScopeApp {
                     } else {
                         ui.label(RichText::new("Band power unavailable · invalid window, range or nonfinite sum").small().color(MUTED));
                     }
+                }
+                if self.selected_spectrum().settings().quantity == Quantity::Esd {
+                    ui.label(RichText::new(format!("Window energy {} {}·s", display::number(self.spectrum_energy), self.selected_spectrum().power_unit())).monospace().size(18.0).color(color))
+                        .on_hover_text("Sum of f64 ESD × Δf over all bins, including DC/Nyquist. Energy of the windowed waveform after optional DC removal. Averaging gives an EMA of window energies, not cumulative energy. Nominal input sample clock.");
                 }
                 if let Some(c) = self.selected_spectrum().calibration() {
                     ui.label(RichText::new(format!("Calibration {} · rev {}", c.id(), c.revision())).small().color(MUTED))
@@ -5327,6 +5339,20 @@ impl eframe::App for ScopeApp {
                                             .abs()
                                             < 1e-12
                                     ),
+                                    Quantity::Esd => assert!(
+                                        (result.energy().unwrap()
+                                            - 0.0078125
+                                                * (0..result.settings().size)
+                                                    .map(|i| result
+                                                        .settings()
+                                                        .window
+                                                        .weight(i, result.settings().size)
+                                                        .powi(2))
+                                                    .sum::<f64>()
+                                                / snapshot.sample_rate as f64)
+                                            .abs()
+                                            < 1e-12
+                                    ),
                                 }
                                 println!(
                                     "Known demo Spectrum OK: 750 Hz, 0.125 FS peak, no noise, 2ch / 90 degrees"
@@ -5359,6 +5385,20 @@ impl eframe::App for ScopeApp {
                                         .unwrap()
                                         .power
                                         - 0.0078125)
+                                        .abs()
+                                        < 1e-8
+                                ),
+                                Quantity::Esd => assert!(
+                                    (result.energy().unwrap()
+                                        - 0.0078125
+                                            * (0..result.settings().size)
+                                                .map(|i| result
+                                                    .settings()
+                                                    .window
+                                                    .weight(i, result.settings().size)
+                                                    .powi(2))
+                                                .sum::<f64>()
+                                            / self.sample_rate as f64)
                                         .abs()
                                         < 1e-8
                                 ),

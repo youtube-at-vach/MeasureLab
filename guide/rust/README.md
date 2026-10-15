@@ -104,7 +104,7 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | Start input / Stop input / Space | 入力開始・停止 |
 | Cursor A / B / Clear | カーソルの選択／時間・周波数・XY自由配置カーソルの解除 |
 | Scope上でクリック／ドラッグ | 時間カーソルのX位置を固定。各更新の波形から振幅・トリガー基準の時刻・Δtを表示 |
-| Spectrum上でクリック／ドラッグ | 選択中のA／Bの周波数を独立に固定。選択CHの最寄りビンの振幅／PSD、Δf・ΔLを表示。最後に置いた周波数をSpectrogramと共有し、解析窓・平均の寄与区間はホバーで確認 |
+| Spectrum上でクリック／ドラッグ | 選択中のA／Bの周波数を独立に固定。選択CHの最寄りビンの振幅／PSD／ESD、Δf・ΔLを表示。最後に置いた周波数をSpectrogramと共有し、解析窓・平均の寄与区間はホバーで確認 |
 | Spectrogram上でクリック／ドラッグ | 縦位置と共通周波数を固定。更新ごとにその位置の行の解析窓・ビン振幅を表示 |
 | XY Free / Trace Snap | 自由配置（既定）と実サンプルへのスナップを切り替え |
 | XY X Source / Y Source | X/Yへ入力CHを独立に割り当てる。Scopeの割当とは独立 |
@@ -133,13 +133,13 @@ WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを
 | Spectrum Source / points / Window | FFTの入力CH（取得した全chから選択）、サイズ（1,024〜524,288点）、窓関数 |
 | Spectrum / Spectrogram FFT PRECISION | 各測定器のFFT精度。既定は64-bit、32-bit (fast FFT)を明示的に選択可能 |
 | Live / Continuous / Latest window | Live（既定）は最新の完全窓を最大60回/秒、実測処理時間に応じて観察。ContinuousはN/4全窓。省負荷のLatestは32k以下33 ms／N/4以上、新4サイズ100 ms。非表示でも解析を継続 |
-| FFT / Amplitude / PSD | 右詳細欄の最上部でビン振幅／PSDを切り替え。未校正はdBFS／FS²/Hz、校正CHは物理単位 |
+| FFT / Amplitude / PSD / Transient (ESD) | 右詳細欄の最上部でビン振幅／PSD／過渡信号ESDを切り替え。ESDはFS²·s/Hz、電圧校正時はV²·s/Hzを基準とするdB表示 |
 | Averaging / Average / Weight / Reset | 右詳細欄の下部で線形電力の指数平均をON／OFF、重みを選択、平均・ピーク保持をリセット。処理窓数はAdvancedの診断で確認 |
 | Advanced analysis / diagnostics / Remove DC offset | FFT精度・更新モード・FFT前の平均値除去と診断 |
 | PSD Power in band / From / To | 指定した両端を含むビン中心のPSD積算。To = 0はNyquist。未校正はFS²とRMS FS、校正CHは単位²とRMS単位を表示 |
 | Frequency / Scale / Log Hz / Linear Hz / Span / Custom frequency range | 周波数軸・表示範囲。細かなFrom／Toは折りたたみ内で指定。To = 0はNyquist。狭帯域では実ビンを表示 |
 | Level axis / Auto / Manual / Peak hold / Clear hold | Autoは表示中CHからレベル範囲を調整。Manual選択時にBottom／Topを表示。平均後の最大値の保持とクリア |
-| スペクトル上にマウスを置く | 最寄りFFTビンの実周波数と振幅／PSDをf64で読み出す |
+| スペクトル上にマウスを置く | 最寄りFFTビンの実周波数と振幅／PSD／ESDをf64で読み出す |
 | Spectrogram Source / FFT length / Window | Spectrumとは独立した対象CH・窓長・窓関数・DC除去 |
 | Spectrogram Time span / From / To | 時間範囲（0.5〜20秒）と周波数範囲。To = 0はNyquist |
 | Spectrogram Floor / Ceiling | 色のdBFS範囲。表示変更ではFFT・履歴をリセットしない |
@@ -161,7 +161,7 @@ RMS・Peak・P-PはScopeの整数サンプル区間内に取得した生のf64�
 
 **I/O / Calibration** ではCH 1〜16のScope数値読み出しとSpectrumに `y = gain × x(FS) + offset` を適用できます。Gainは物理単位/FS、Offsetは同じ物理単位です。V、mV、Aなどの単位と、基準信号・デバイスレンジ・日付・不確かさなどの参照条件を入力し、**Queue calibration** を押して次回Start用に設定します。負のゲインも使えます。ゲイン0・非有限の係数・空の単位や参照条件は拒否します。**Queue uncalibrated FS** はそのCHの次回用校正を解除します。入力CHの位置をIDとして扱い、トレースを入れ替えても校正は入力CHへ対応します。
 
-ScopeではRMS・Peak・P-Pと時間カーソルの数値に校正を適用します。RMSは各実サンプルを換算してから計算するため、オフセットを含みます。Scopeの波形軸・カーソル点の位置・Fit amplitude・トリガー閾値とSpectrogram／XYはFS基準です。Spectrumは選択CHの校正を振幅・PSD・平均・ピーク保持・カーソル・帯域電力へ適用します。数値と軸の単位をそれぞれ表示します。校正による非有限値やP-Pのオーバーフローは **invalid value** とし、正常値へ置き換えません。欠落や存在しないCHは従来どおり利用不可・部分区間として扱います。
+ScopeではRMS・Peak・P-Pと時間カーソルの数値に校正を適用します。RMSは各実サンプルを換算してから計算するため、オフセットを含みます。Scopeの波形軸・カーソル点の位置・Fit amplitude・トリガー閾値とSpectrogram／XYはFS基準です。Spectrumは選択CHの校正を振幅・PSD・ESD・平均・ピーク保持・カーソル・帯域電力・窓エネルギーへ適用します。数値と軸の単位をそれぞれ表示します。校正による非有限値やP-Pのオーバーフローは **invalid value** とし、正常値へ置き換えません。欠落や存在しないCHは従来どおり利用不可・部分区間として扱います。
 
 校正のID・版・係数・単位・参照条件は取得世代のスナップショットへ固定します。Scope統計の説明、**Captured readout condition**、Spectrumの校正表示・カーソルの説明で確認できます。取得中や停止後に新しい定義を設定しても、保持中のScope／Spectrum値と校正版は変わりません。Startで適用するまで **Queued for next Start** と区別します。入力ソース・デバイスを選び直したときと **Refresh devices** の再列挙では次回用の校正を解除し、別入力へ持ち越しません。校正は下記の測定設定ファイルへ保存・復元でき、保持したScope／Spectrum結果の書き出しにも含めます。ユーザーが与えた係数による換算であり、ADCや物理基準の校正精度を検証済みとは扱いません。
 
@@ -215,9 +215,9 @@ Singleは最初の有効区間を捕捉して共通入力を自動停止しま�
 
 ### Spectrumの測定定義
 
-Spectrumは単一グラフに最大4本を重ねます。下部CH1〜CH4はScopeと同色で、クリックによる選択とチェックによる表示ON/OFFは独立しています。既定はCH1のみON、入力割当はCH1〜4です。右側Measurement / Input sourceで各トレースへ1〜16chの入力を割り当てます。入力のないCHはNo inputとして区別します。選択CHのピーク・カーソル・PSD帯域を読み出し、JSON／CSV／PNGも選択トレースを対象にします。異なる校正単位を重ねた場合はMixed level referencesを表示し、CHバーに各単位を示します。
+Spectrumは単一グラフに最大4本を重ねます。下部CH1〜CH4はScopeと同色で、クリックによる選択とチェックによる表示ON/OFFは独立しています。既定はCH1のみON、入力割当はCH1〜4です。右側Measurement / Input sourceで各トレースへ1〜16chの入力を割り当てます。入力のないCHはNo inputとして区別します。選択CHのピーク・カーソル・PSD帯域・ESD窓エネルギーを読み出し、JSON／CSV／PNGも選択トレースを対象にします。異なる校正単位を重ねた場合はMixed level referencesを表示し、CHバーに各単位を示します。
 
-右側はFFT／Averaging／Frequency・Scale／Measurementに分けています。全CHで点数・窓・平均条件と表示軸を共有します。FsとΔf、取得結果のFFT条件・平均窓数はグラフ付近に表示します。Frequency / Scaleで上下限、Linear／Log、レベル軸Auto／Manualを設定でき、上限はNyquist以下に制限します。Autoは表示ONのCHの表示帯域を共通範囲へ収めます。MeasurementのPeak markersは表示ONの各CHの最大ビンを示します。既存のPSD、Blackman-Harris、追加FFTサイズ、精度・Live／Continuous／LatestはAdvanced analysis / diagnostics、ピーク保持はFrequency / Scaleに残しています。
+右側はFFT／Frequency・Scale／Measurement／Averagingの順に並びます。全CHで点数・窓・平均条件と表示軸を共有します。FsとΔf、取得結果のFFT条件・平均窓数はグラフ付近に表示します。Frequency / Scaleで上下限、Linear／Log、レベル軸Auto／Manualを設定でき、上限はNyquist以下に制限します。Autoは表示ONのCHの表示帯域を共通範囲へ収めます。MeasurementのPeak markersは表示ONの各CHの最大ビンを示します。測定量・窓関数・FFTサイズはFFT、精度・Live／Continuous／LatestはAdvanced analysis / diagnostics、ピーク保持はFrequency / Scaleで設定します。
 
 AveragingのON/OFF、Weight 4／16／64、Reset averagingを使えます。進捗は有限回数の完了ではなくEMAの整定目安で、処理窓数とαを併記します。OFFにしたCHへの転送・FFTは停止し、他CHの平均は継続します。再ONはそのCHの新しい完全窓から始めます。FFT条件・入力条件変更とReset averagingは平均をリセットします。入力停止後の表示変更は取得済み結果を再描画し、解析条件変更は次回Startへ予約します。
 
@@ -228,6 +228,12 @@ AveragingのON/OFF、Weight 4／16／64、Reset averagingを使えます。進�
 ビンの間にある信号は複数のビンに分散するため、ピークの読み値が実振幅より低くなることがあります。
 
 **Power spectral density** は片側PSDをFS²/Hzで測定し、表示は10 log10(PSD / 1 FS²/Hz)の **dB re FS²/Hz** です。周期窓w、正規化前のFFTをXとすると、PSDは`c × |X|² / (Fs × Σw²)`です。cはDC／Nyquistで1、その他で2です。Remove DCは窓を掛ける前に各窓の算術平均を引きます。振幅からPSDへ切り替えると平均・保持をリセットします。Spectrogramの振幅表示は変更しません。
+
+**Transient (ESD)**（過渡信号・エネルギースペクトル密度）は、打撃・インパルス・減衰振動を一つのFFT窓に完全に収めて解析するモードです。同じ窓付きFFTを使い、`ESD[k] = c × |X[k]|² / Fs²`とします。PSDの窓エネルギー補正を適用しません。未校正はFS²·s/Hz、電圧校正時はV²·s/Hzです。既存の縦軸は`10 log10(ESD / 1 単位²·s/Hz)`のdB表示を共用し、カーソル・JSON／CSVにはf64線形密度も保持します。**Window energy** は全ビンの`ΣESD[k] × Δf`で、FS²·sまたはV²·sを表示します。負荷抵抗を使ったJへの換算ではありません。
+
+ESDへの切り替え時は **Rectangular / Average OFF / Remove DC OFF** を設定します。その後の手動変更・保存復元は維持します。矩形窓では全帯域エネルギーが`Σx[n]² / Fs`に一致し、完全に含まれた単発パルスは窓長を変えても同じ周波数で同じ密度になります。Hann等では`Σ(w[n]x[n])² / Fs`となり、信号の窓内位置に応じてエネルギーが減衰します。DC除去も信号のエネルギーを変えるため、意図した場合だけ有効にしてください。定常ホワイトノイズのPSDは窓長に対し平均的に一定、矩形窓のESDは窓時間N/Fsに比例します。平均をONにすると窓エネルギーのEMAであり、複数打撃の累積エネルギーにはなりません。
+
+ESDでも取得は既存のLive／Continuous／Latestです。シングルショット・トリガー連携は未実装で、過渡捕捉を保証しません。Live／Latestは途中の窓を観察しない場合があります。窓の全長と実際のサンプル区間を確認し、入力停止後は保持したESDを読み出せます。
 
 PSDの **Power in band** は、From〜Toの両端を含む中心周波数のビンを選び、`ΣPSD[k] × Δf`をf64で計算します。To = 0は取得時のNyquistです。実際に含めた最初／最後のビン周波数、電力FS²、平方根のRMS FSを表示します。電力とRMSは微小値も読める指数表記を使います。DC／Nyquistも全Δfの重みで含めます。半端なビンの補間や台形積分は使いません。範囲が不正、範囲内にビンがない、完全なPSD窓がない場合は利用不可とし、別範囲の値を代用しません。帯域指定と表示Spanは独立し、帯域を変えても平均はリセットしません。
 
@@ -271,7 +277,7 @@ FreeとTrace SnapはXY本体の **Source / display…** で切り替えられま
 
 Scopeは書き出し時に表示する整数区間・観察サンプル数・トリガー条件・補間した横位置と、2本の割当CHの生f64サンプル（FS）、生統計・校正後の統計を保持します。配列の位置 `i` は `sample_range.start + i` に対応し、欠落位置は `null`、存在しないCHは配列全体を `null` として状態を付けます。未取得・欠落・非有限の校正結果を正常なゼロと扱いません。校正はID・版・ゲイン・オフセット・単位・参照条件を含み、物理量は `gain × raw_fs + offset` から再現できます。Autoの停止後の観察幅・トリガー変更は保持サンプルから新しい区間を選ぶため、書き出すScope区間・条件もその選択に対応します。Normal／Singleの捕捉区間・トリガー条件は停止後も固定し、編集は次回Startに適用します。
 
-Spectrumは独立した最新FFT区間・解析設定・モード・観察間隔・Δf・RBW・校正・EMA係数／処理窓数／寄与区間・ピーク保持の対象スペクトル数／寄与区間を含みます。全ビンのf64線形値と保持値を保存し、配列の位置 `k` の周波数は `k × bin_width_hz` です。DCとNyquistを含み、振幅は平均したビン電力の平方根（単位peak）、PSDは平均した密度（単位²/Hz）です。表示用f32のdB値・表示下限へ変換せず、真のゼロは線形値0のまま保存します。PSDの指定帯域は書き出し時の範囲と両端を含む対象ビン・電力・RMSを保持します。帯域が不正・ビンを含まない場合や振幅モードでは帯域結果は `null` です。未取得／非有限のSpectrumは状態を付け、ビン・平均・保持・帯域の値を `null` とします。
+Spectrumは独立した最新FFT区間・解析設定・モード・観察間隔・Δf・RBW・校正・EMA係数／処理窓数／寄与区間・ピーク保持の対象スペクトル数／寄与区間を含みます。全ビンのf64線形値と保持値を保存し、配列の位置 `k` の周波数は `k × bin_width_hz` です。DCとNyquistを含み、振幅は平均したビン電力の平方根（単位peak）、PSDは平均した密度（単位²/Hz）、ESDは平均したエネルギー密度（単位²·s/Hz、`quantity: esd`）です。表示用f32のdB値・表示下限へ変換せず、真のゼロは線形値0のまま保存します。PSDの指定帯域は書き出し時の範囲と両端を含む対象ビン・電力・RMSを保持します。帯域が不正・ビンを含まない場合や振幅／ESDモードではPSD帯域結果は `null` です。ESDの窓エネルギーは全線形ビンとΔfから再現できます。未取得／非有限のSpectrumは状態を付け、ビン・平均・保持・帯域の値を `null` とします。
 
 取得時に有効化したLock-inは、X/Y・R（peak）・REFに対する進み位相・Gain、REF周波数／生AC RMS／正弦波適合率／校正後peak、τ・積分窓・追従設定・閾値、両CHの校正と単位を含みます。平均の寄与区間と最新完全窓は独立した整数区間です。整定中の値にはSettling状態を付け、未充填・REF喪失・欠落・非有限では数値を `null` とし、旧値を保存しません。停止中の次回用CH・Fs・校正・フィルター変更は保持結果を変更しません。保存・参照読み込みでは単位・状態・完全窓数・整定時間・区間・REF診断・X/Y/R/位相の整合を検証します。Lock-inを含まない旧版1の結果JSONも読み込めます。
 
