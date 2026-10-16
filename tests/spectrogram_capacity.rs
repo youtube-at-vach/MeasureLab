@@ -7,7 +7,7 @@ use measurelab::{
         viewport::{CACHE_BYTES, MAX_COLUMNS, Parameters, Prepared, Worker as ViewWorker},
     },
     spectrum::{FrequencyScale, Precision, View, Window},
-    stft::{Config, Worker},
+    stft::{Config, Overlap, Worker},
 };
 use std::{
     alloc::{GlobalAlloc, Layout, System},
@@ -149,10 +149,10 @@ fn full_pipeline_hold_wrap_reconfigure_and_release_fit_cpu_budget() {
     let collector = Collector::new(worker.take_results());
     let mut view = ViewWorker::default();
     let mut image = None;
-    for (index, (size, sample_rate, channels, precision)) in [
-        (32768, 768000, 16, Precision::F64),
-        (1024, 48000, 1, Precision::F32),
-        (32768, 768000, 16, Precision::F32),
+    for (index, (size, sample_rate, channels, precision, overlap)) in [
+        (32768, 768000, 16, Precision::F64, Overlap::Half),
+        (1024, 48000, 1, Precision::F32, Overlap::ThreeQuarters),
+        (32768, 768000, 16, Precision::F32, Overlap::SevenEighths),
     ]
     .into_iter()
     .enumerate()
@@ -162,7 +162,7 @@ fn full_pipeline_hold_wrap_reconfigure_and_release_fit_cpu_budget() {
             size,
             channels,
             channel: channels - 1,
-            hop: size / 4,
+            hop: overlap.hop(size),
             window: Window::Hann,
             remove_dc: false,
             precision,
@@ -187,6 +187,9 @@ fn full_pipeline_hold_wrap_reconfigure_and_release_fit_cpu_budget() {
         drop(image.replace(next_image));
         let held = snapshot;
         let selected = held.latest().unwrap().clone();
+        let spectra = std::array::from_fn::<_, 2, _>(|_| {
+            measurelab::spectrum::Result::from_stft(selected.info, selected.power()).unwrap()
+        });
         let selected_power = selected.power()[size / 256];
         assert!((selected_power - 0.25).abs() < 1e-6);
         let fixed_end = selected.info.end;
@@ -216,6 +219,7 @@ fn full_pipeline_hold_wrap_reconfigure_and_release_fit_cpu_budget() {
             selected_power.to_bits()
         );
         assert_eq!(held.latest().unwrap().info.end, fixed_end);
+        assert_eq!(spectra[0].power(), selected.power());
         assert!(collector.snapshot().at_sample(fixed_end - 1).is_none());
         assert!(collector.snapshot().retired > rows as u64);
         assert!(collector.peak_frame_bytes() <= FRAME_BYTES);

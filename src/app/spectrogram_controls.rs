@@ -295,6 +295,7 @@ impl ScopeApp {
     }
 
     pub(super) fn clear_spectrogram_view(&mut self) {
+        self.unlink_spectrum_history();
         self.spectrogram_pending_click = None;
         self.spectrogram_view_worker.clear();
         self.spectrogram_snapshot = Arc::default();
@@ -319,6 +320,7 @@ impl ScopeApp {
     }
 
     pub(super) fn live_spectrogram(&mut self) {
+        self.unlink_spectrum_history();
         self.spectrogram_pending_click = None;
         self.spectrogram_hold = None;
         self.spectrogram_hold_anchor = None;
@@ -599,7 +601,11 @@ impl ScopeApp {
     }
 
     fn spectrogram_analysis_controls(&mut self, ui: &mut egui::Ui) {
-        let before = (self.spectrogram_settings, self.spectrogram_channel);
+        let before = (
+            self.spectrogram_settings,
+            self.spectrogram_channel,
+            self.spectrogram_overlap,
+        );
         fft_precision(
             ui,
             "spectrogram_precision",
@@ -618,6 +624,22 @@ impl ScopeApp {
                     );
                 }
             });
+        setting_label(ui, "FFT OVERLAP");
+        egui::ComboBox::from_id_salt("stft_overlap")
+            .width(ui.available_width())
+            .selected_text(self.spectrogram_overlap.name())
+            .show_ui(ui, |ui| {
+                for overlap in stft::Overlap::ALL {
+                    ui.selectable_value(&mut self.spectrogram_overlap, overlap, overlap.name());
+                }
+            });
+        ui.label(
+            RichText::new(
+                "Higher overlap produces more FFT windows and uses history capacity sooner.",
+            )
+            .small()
+            .color(MUTED),
+        );
         setting_label(ui, "WINDOW");
         egui::ComboBox::from_id_salt("stft_window")
             .width(ui.available_width())
@@ -632,7 +654,14 @@ impl ScopeApp {
                 }
             });
         ui.checkbox(&mut self.spectrogram_settings.remove_dc, "Remove DC offset");
-        if before != (self.spectrogram_settings, self.spectrogram_channel) && self.running() {
+        if before
+            != (
+                self.spectrogram_settings,
+                self.spectrogram_channel,
+                self.spectrogram_overlap,
+            )
+            && self.running()
+        {
             self.reset_stft();
         }
         if !self.running() {

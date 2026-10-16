@@ -434,6 +434,52 @@ pub struct Result {
 }
 
 impl Result {
+    /// Read-only adapter for an already normalized STFT window. No FFT,
+    /// calibration or averaging is applied to the retained f64 bin powers.
+    pub fn from_stft(info: crate::stft::RowInfo, power: &[f64]) -> Option<Self> {
+        info.config.validate().ok()?;
+        if info.end.checked_sub(info.start) != Some(info.config.size as u64)
+            || power.len() != info.config.size / 2 + 1
+        {
+            return None;
+        }
+        let mut result = Self::empty(
+            Settings {
+                quantity: Quantity::Amplitude,
+                size: info.config.size,
+                window: info.config.window,
+                averages: 1,
+                remove_dc: info.config.remove_dc,
+                precision: info.config.precision,
+            },
+            info.config.sample_rate,
+        );
+        result.power.copy_from_slice(power);
+        result.hold_power.copy_from_slice(power);
+        result.last_end = Some(info.end);
+        result.last_channel = info.config.channel;
+        result.validity = if power.iter().all(|p| p.is_finite() && *p >= 0.0) {
+            Validity::Valid
+        } else {
+            Validity::NonFinite
+        };
+        result.average = AverageInfo {
+            start: info.start,
+            end: info.end,
+            updates: 1,
+        };
+        result.hold_info = HoldInfo {
+            start: info.start,
+            end: info.end,
+            spectra: 1,
+        };
+        for (db, &p) in result.db.iter_mut().zip(power) {
+            *db = level_db(p).max(DB_MIN as f64) as f32;
+        }
+        result.hold.copy_from_slice(&result.db);
+        Some(result)
+    }
+
     pub(crate) fn source_channel(&mut self, channel: ChannelId) {
         self.last_channel = channel;
     }

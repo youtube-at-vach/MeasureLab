@@ -20,7 +20,7 @@ use std::{
     thread::{self, JoinHandle},
 };
 
-pub const VERSION: u32 = 7;
+pub const VERSION: u32 = 8;
 pub const MAX_BYTES: usize = 64 * 1024;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -108,6 +108,8 @@ pub struct Spectrum {
 pub struct Spectrogram {
     pub channel: ChannelId,
     pub analysis: Settings,
+    #[serde(default)]
+    pub overlap: crate::stft::Overlap,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -735,6 +737,7 @@ mod tests {
                 },
                 spectrogram: Spectrogram {
                     channel: 7,
+                    overlap: crate::stft::Overlap::default(),
                     analysis: Settings {
                         averages: 1,
                         ..Settings::default()
@@ -805,6 +808,55 @@ mod tests {
         w.insert("layout".into(), "auto".into());
         w.insert("sidebar_visible".into(), true.into());
         value
+    }
+
+    #[test]
+    fn spectrogram_overlap_v8_roundtrip_and_legacy_default_preserve_conditions() {
+        use crate::stft::Overlap;
+        for overlap in Overlap::ALL {
+            let mut document = fixture();
+            document.measurement.spectrogram.overlap = overlap;
+            assert_eq!(
+                Document::decode(&document.encode().unwrap()).unwrap(),
+                document
+            );
+        }
+        for version in 1..=7 {
+            let mut value = if version < 4 {
+                legacy_fixture(version)
+            } else {
+                serde_json::to_value(fixture()).unwrap()
+            };
+            value["version"] = version.into();
+            if version == 4 {
+                value["measurement"]["scope"]["channels"] = serde_json::json!([15, 7]);
+                let w = value["workspace"].as_object_mut().unwrap();
+                w.remove("scope_vertical");
+                w.remove("scope_selected");
+                w.remove("scope_horizontal_position");
+                w.insert("scope_fs_per_div".into(), 0.25.into());
+                w.insert("scope_enabled".into(), serde_json::json!([true, true]));
+            }
+            let spectrogram = value["measurement"]["spectrogram"].as_object_mut().unwrap();
+            spectrogram.remove("overlap");
+            let restored = Document::decode(&serde_json::to_vec(&value).unwrap()).unwrap();
+            assert_eq!(
+                restored.measurement.spectrogram.overlap,
+                Overlap::ThreeQuarters
+            );
+            assert_eq!(
+                restored.measurement.spectrogram.analysis,
+                fixture().measurement.spectrogram.analysis
+            );
+            assert_eq!(restored.measurement.spectrogram.channel, 7);
+            assert_eq!(
+                restored.workspace.spectrogram_scale,
+                fixture().workspace.spectrogram_scale
+            );
+        }
+        let mut invalid = serde_json::to_value(fixture()).unwrap();
+        invalid["measurement"]["spectrogram"]["overlap"] = "rounded_percentage".into();
+        assert!(Document::decode(&serde_json::to_vec(&invalid).unwrap()).is_err());
     }
 
     #[test]

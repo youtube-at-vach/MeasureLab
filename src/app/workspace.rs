@@ -535,6 +535,9 @@ impl ScopeApp {
                     self.submit_workspace(workspace_io::Task::LoadResult);
                     ui.close();
                 }
+                if self.spectrum_history.linked {
+                    ui.label(spectrum_history::EXPORT_REASON);
+                }
                 if ui
                     .add_enabled(
                         self.can_export(),
@@ -570,6 +573,27 @@ impl ScopeApp {
                             Err(e) => self.workspace_status = Some(e),
                         }
                         ui.close();
+                    }
+                }
+                if self.spectrum_history.linked {
+                    for (label, format) in [
+                        ("Save held Scope JSON…", workspace_io::Format::Json),
+                        ("Export held Scope CSV…", workspace_io::Format::Csv),
+                        ("Export held Scope PNG…", workspace_io::Format::Png),
+                    ] {
+                        if ui
+                            .add_enabled(self.can_export_scope(), egui::Button::new(label))
+                            .clicked()
+                        {
+                            match self.capture_scope_results() {
+                                Ok(doc) => self.submit_workspace(workspace_io::Task::SaveResult(
+                                    Box::new(doc),
+                                    format,
+                                )),
+                                Err(e) => self.workspace_status = Some(e),
+                            }
+                            ui.close();
+                        }
                     }
                 }
             });

@@ -12,9 +12,10 @@
 | 履歴・トリガー・Scope統計・Single／Autoset・XY | [signal.rs](../../src/signal.rs)、[acquisition.rs](../../src/acquisition.rs)、[xy.rs](../../src/xy.rs)、[cursor.rs](../../src/cursor.rs) |
 | Spectrumの全サイズ・窓・精度・独立FFT／Parseval・校正、ESDのパルス窓長不変性・白色雑音 | [spectrum.rs](../../src/spectrum.rs)、[ESD数値テスト](../../src/spectrum/esd_tests.rs)、[calibration.rs](../../src/calibration.rs) |
 | 全窓／最新窓、欠落、UI受信停止・世代・有限Stop、STFT | [spectrum_worker.rs](../../src/spectrum_worker.rs)、[stft.rs](../../src/stft.rs)、[measurement.rs](../../src/measurement.rs) |
+| STFTの3 Overlap・全FFT長／精度・長いサンプル時刻・履歴Spectrumの微小値／無効値 | [stft.rs](../../src/stft.rs)のOverlap／retained_spectrumテスト。数値読出しは[spectrum.rs](../../src/spectrum.rs)の`Result::from_stft`を共有 |
 | STFT表示要求・縮約・固定上端・キャッシュ容量 | [spectrogram/viewport.rs](../../src/spectrogram/viewport.rs)。GPU読み戻しは`--gpu-smoke`のラスタDC／Nyquistと転送省略 |
 | STFT数値履歴・UI受信停止・周回・不変参照・容量と世代 | [spectrogram/history.rs](../../src/spectrogram/history.rs)。実時間の収集継続は`MEASURELAB_PROFILE_UI_STALL` |
-| STFTのCPU容量・旧新世代の交換・終了時解放 | [spectrogram_capacity.rs](../../tests/spectrogram_capacity.rs)。独立プロセスの計数アロケーターでFFT・結果プール・履歴・Hold・表示準備を合算。確保要求のpayloadとRSS・アロケーター管理費用を区別する |
+| STFTのCPU容量・旧新世代の交換・終了時解放 | [spectrogram_capacity.rs](../../tests/spectrogram_capacity.rs)。独立プロセスの計数アロケーターでFFT・結果プール・履歴・Hold・選択Spectrum A／B・表示準備を合算。確保要求のpayloadとRSS・アロケーター管理費用を区別する |
 | REF・局所位相・二段EMA・校正・無効化・専用転送 | [lockin.rs](../../src/lockin.rs)、[lockin_worker.rs](../../src/lockin_worker.rs)、[loopback.rs](../../src/loopback.rs) |
 | Generatorの独立式・遷移・長い整数時計・優先Stop | [generator/tests.rs](../../src/generator/tests.rs)、[generator/control.rs](../../src/generator/control.rs) |
 | 出力PCM・デバイス・通知・解放・外部履歴 | [output/device.rs](../../src/output/device.rs)、[output/runtime.rs](../../src/output/runtime.rs)、[output/history.rs](../../src/output/history.rs)、[callback_profile.rs](../../src/callback_profile.rs) |
@@ -80,14 +81,14 @@ macOSのMetalは、画面が点いていても他のウィンドウに覆われ�
 
 ### Spectrogramの容量・比較負荷
 
-S3の有限入力テストは独立したテストプロセスで実行する。最大FFT・高Fs・16chからの選択と最小FFT・48 kHz・1chを切り替え、時間上限／容量上限、Hold中の周回、未受信の表示応答、要求飽和、旧新世代の交換、Live復帰と全ワーカー終了後の解放を確認する。精度・容量の判定はテストコードを正本とする。有限入力のペーシングは実時間の性能保証ではない。
+S3〜S5の有限入力テストは独立したテストプロセスで実行する。最大FFT・高Fs・16chからの選択と最小FFT・48 kHz・1chを切り替え、時間上限／容量上限、Hold中の周回、未受信の表示応答、要求飽和、旧新世代の交換、Live復帰と全ワーカー終了後の解放を確認する。精度・容量の判定はテストコードを正本とする。有限入力のペーシングは実時間の性能保証ではない。
 
 ```sh
 ./scripts/cargo.sh test --locked --no-default-features --test spectrogram_capacity -- --nocapture
 ./scripts/cargo.sh bench --locked --no-default-features --bench spectrogram
 ```
 
-ベンチは実際のSTFT→数値履歴→表示準備ワーカーを使い、60秒の履歴から最大ラスタへの変換を測る。Autoの有無、平均・p95・最大時間を比較する。`cargo test --all-targets`では各条件1回だけ動作確認する。
+ベンチは実際のSTFT→数値履歴→表示準備ワーカーを使い、60秒の履歴から最大ラスタへの変換を測る。3 Overlap、Autoの有無、平均・p95・最大時間を比較する。`cargo test --all-targets`では各条件1回だけ動作確認する。
 
 実時間比較は同じ入力経路・Fs・FFT精度／長・表示寸法でLiveとstressを別々に実行する。`MEASURELAB_PROFILE_SPECTROGRAM=live`はSpectrogram単独・60秒・Autoの比較基準、`stress`は同じ表示からHold／固定時間A／パン／ズーム／色／時間幅／Liveを反復する。条件・世代不変とSTFTの入力／結果／保存欠落なしを判定し、UIフレーム時間、STFT／収集／表示準備時間、ラスタ容量、GPU payload／転送量を出力する。GPU容量はリサイズ時の旧新テクスチャを含み、ドライバー使用量は含めない。
 
@@ -110,6 +111,8 @@ MEASURELAB_PROFILE_SECONDS=120 MEASURELAB_PROFILE_SPECTROGRAM=stress \
     ./scripts/profile-stage2.sh spectrogram-blackhole16-stress
 ```
 
+Overlapを比較するときは`MEASURELAB_PROFILE_STFT_OVERLAP=50`／`75`／`87.5`を両条件へ同じ値で指定する。既定は75%。
+
 内部の既知正弦波には`MEASURELAB_PROFILE_DEMO_BIN_TONE=1`を追加する。外部I/Oでは`--demo`を外し、`MEASURELAB_PROFILE_DEVICE`・`SAMPLE_RATE`・`CHANNEL`を共通接頭辞付きで指定する。BlackHoleでは`MEASURELAB_PROFILE_KNOWN_OUTPUT=1`で仮想デバイスへの既知信号出力・既存Spectrum照合・出力通知監査を併用できる。内部デモ、Software Loopback、外部I/Oの結果を区別し、利用していない経路の成功へ広げない。ログとRSSは`dist/stage2-qa/`に保存し、数値の合否はログ内のQA判定と欠落を確認する。画面スリープを避ける実行では`MEASURELAB_PROFILE_KEEP_AWAKE=1`も指定する。描画が遮蔽された実行のUI時間を前面表示の性能へ代用しない。
 
 通常ビルドの手動操作と実モニター間DPIの受け入れは別に残る。自動の状態反復は実ウィジェットのイベント検証や手動確認の代用にしない。
@@ -125,7 +128,7 @@ MEASURELAB_PROFILE_SECONDS=120 MEASURELAB_PROFILE_SPECTROGRAM=stress \
 | `MEASURELAB_UI_SMOKE_SETTINGS`／`VIEW`／`ADJUST` | 共通入出力画面・単独／コンソール表示・選択中の詳細。`VIEW=scope`／`spectrum`／`spectrogram`／`xy`／`lockin`／`comparison`／`generator`で単独、`all`は4区画、`console`は7計器、`empty`は空コンソール。`DETAILS=1`は狭幅の詳細編集。変数名の共通接頭辞は`MEASURELAB_UI_SMOKE_` |
 | `MEASURELAB_UI_SMOKE_INTERACTIONS=1` | 実際のshellウィジェットを使ったクリック・キー・狭幅・倍率・模擬native scaleの状態遷移。音声ランタイムを重複生成しない |
 | `MEASURELAB_UI_SMOKE_LAYOUT=columns`／`rows`／`grid`／`tabs` | コンソールの希望配置。タブ列の折り返し後の残り寸法で退避を判断し、描画と同じ区画寸法で検証 |
-| `MEASURELAB_UI_SMOKE_SPECTROGRAM_DISPLAY=1` | Spectrogramの色・Auto・時間幅の実ウィジェット、ホイールズーム、横／縦パン、Shift＋ホイール、Hold／Live、f64実フレーム固定、カーソル線ドラッグ、ダブルクリック、狭幅・模擬DPI。STFT条件・世代・出力コマンド不変 |
+| `MEASURELAB_UI_SMOKE_SPECTROGRAM_DISPLAY=1`（`pair`で連携表示を撮影） | Spectrogramの色・Auto・時間幅の実ウィジェット、ホイールズーム、横／縦パン、Shift＋ホイール、Hold／Live、f64実フレーム固定、カーソル線ドラッグ、ダブルクリック、Pairの時間A／B Spectrum・f64値・通常結果維持・独立周波数カーソル・出力ガードとScope出力・Undo／解除、停止中のOverlap編集、狭幅・模擬DPI。表示操作でSTFT条件・世代・出力コマンド不変 |
 | `MEASURELAB_UI_SMOKE_SPECTRUM4=1` | 内部4chスペクトルの重ね表示・共通軸・下部CHバー。物理4ch入力の確認ではない |
 | `MEASURELAB_UI_SMOKE_SCOPE4=1` | 内部4ch波形、CH別レンジ・オフセットと下部バー。物理4ch入力の確認ではない |
 | `MEASURELAB_UI_SMOKE_ROUTING=1`／`CALIBRATION=1`／`CURSORS=1` | 16ch割当・内部校正・カーソル。物理校正の確認ではない |

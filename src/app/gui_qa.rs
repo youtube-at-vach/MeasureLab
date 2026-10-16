@@ -132,6 +132,10 @@ impl Driver {
 
 impl ScopeApp {
     pub(super) fn check_spectrogram_display_interactions(&mut self) -> Result<(), String> {
+        // The initial device enumeration reply is polled by the desktop update,
+        // not by this widget-only driver. It is unrelated to held fixture data.
+        let busy = self.busy;
+        self.busy = false;
         let presentation = self.presentation.clone();
         let shell = self.shell.clone();
         let cursors = std::mem::take(&mut self.cursors);
@@ -163,6 +167,9 @@ impl ScopeApp {
             config,
             (0..12000).map(|i| {
                 let end = 1024 + i * 256;
+                let mut power = vec![1e-18; 513];
+                power[32] = 0.25 + f64::EPSILON;
+                power[64] = 0.0625 * (1.0 + (i % 200) as f64 / 200.0);
                 (
                     RowInfo {
                         generation: self.stft_generation,
@@ -171,7 +178,7 @@ impl ScopeApp {
                         end,
                         gap: stft::Gap::default(),
                     },
-                    vec![0.25 + f64::EPSILON; 513],
+                    power,
                 )
             }),
         );
@@ -402,6 +409,177 @@ impl ScopeApp {
             ),
             conditions
         );
+        // S4 uses the actual Pair/Undo and source-selection widgets. The
+        // retained f64 frame is adapted once, never the reduced display raster.
+        self.refresh_scope_range();
+        driver.resize(self, vec2(1600.0, 1200.0), 1.0, 1.0);
+        let ordinary = self.analyzer.clone();
+        let ordinary_settings = self.spectrum_settings;
+        let ordinary_display = self.spectrum_display;
+        let ordinary_axes = (
+            self.frequency_scale,
+            self.floor_db,
+            self.spectrum_ceiling_db,
+            self.span_hz,
+            self.spectrum_min_hz,
+            self.show_hold,
+        );
+        let processed = self.stft.metrics.produced.load(Ordering::Relaxed);
+        self.presentation.console = Console {
+            instruments: vec![Instrument::Scope, Instrument::Generator],
+            selected: Some(Instrument::Scope),
+            layout: Layout::Rows,
+            split: 0.4,
+        };
+        let original_console = self.presentation.console.clone();
+        self.select_spectrogram_time(0, 0.1);
+        self.select_spectrogram_time(1, 0.4);
+        let frames: [_; 2] = std::array::from_fn(|i| self.spectrogram_selected[i].clone().unwrap());
+        driver.frame(self, vec![]);
+        driver.click(self, "Pair with…")?;
+        driver.click(self, "Spectrum")?;
+        assert!(self.spectrum_history.linked);
+        for (i, frame) in frames.iter().enumerate() {
+            assert_eq!(self.shown_spectrum(i).power(), frame.power());
+            assert_eq!(
+                self.shown_spectrum(i).window().unwrap().start,
+                frame.info.start
+            );
+            assert_eq!(
+                self.shown_spectrum(i).cursor(1500.0).unwrap().value,
+                frame.power()[32].sqrt()
+            );
+            assert!(self.shown_spectrum(i).calibration().is_none());
+        }
+        assert!(!self.can_export());
+        assert!(
+            self.capture_results()
+                .unwrap_err()
+                .contains("History Spectrum export")
+        );
+        let scope_export = self.capture_scope_results()?;
+        scope_export.validate()?;
+        assert_eq!(scope_export.spectrum.state, export::State::Unavailable);
+        assert!(scope_export.spectrum.values.is_none());
+        assert!(scope_export.spectrum.latest_window.is_none());
+        assert!(scope_export.spectrum.peak_hold.is_none());
+        let restored: export::Document =
+            serde_json::from_slice(&serde_json::to_vec(&scope_export).unwrap()).unwrap();
+        restored.validate()?;
+        assert_eq!(restored.scope, scope_export.scope);
+        crate::result_image::render(&scope_export)?;
+        let fixed_times = self.cursors.times;
+        let time_cursor = self.active_cursor;
+        driver.click(self, "Frequency B")?;
+        assert_eq!(
+            self.active_cursor, time_cursor,
+            "Frequency cursor changed active time cursor"
+        );
+        let spectrum_rect = driver
+            .output
+            .shapes
+            .iter()
+            .rev()
+            .find_map(|s| match &s.shape {
+                egui::Shape::Callback(c) => Some(c.rect),
+                _ => None,
+            })
+            .ok_or("Spectrum plot missing")?;
+        driver.click_at(self, spectrum_rect.center());
+        assert!(self.cursors.spectrum_frequencies_hz[1].is_some());
+        assert_eq!(self.cursors.times, fixed_times);
+        driver.click(self, "Clear frequency")?;
+        assert_eq!(
+            self.cursors.times, fixed_times,
+            "Frequency Clear discarded time selections"
+        );
+        assert!(
+            self.cursors
+                .spectrum_frequencies_hz
+                .iter()
+                .all(Option::is_none)
+        );
+        driver.click(self, "Time B")?;
+        assert_eq!(self.spectrum_history.selected, 1);
+        assert_eq!(
+            self.shown_selected_spectrum().window().unwrap().end,
+            frames[1].info.end
+        );
+        // Same frame for A/B is valid; unavailable selections never borrow A.
+        self.select_spectrogram_sample(1, frames[0].info.end - 1);
+        self.refresh_spectrum_history();
+        assert_eq!(
+            self.shown_spectrum(0).power(),
+            self.shown_spectrum(1).power()
+        );
+        self.select_spectrogram_sample(1, 0);
+        self.refresh_spectrum_history();
+        assert!(self.shown_spectrum(1).window().is_none());
+        assert!(self.shown_spectrum(1).cursor(1500.0).is_none());
+        driver.frame(self, vec![]);
+        driver.click(self, "Normal Spectrum")?;
+        assert!(!self.spectrum_history.linked);
+        assert_eq!(self.analyzer.power(), ordinary.power());
+        assert_eq!(self.analyzer.hold_power(), ordinary.hold_power());
+        assert_eq!(self.analyzer.average(), ordinary.average());
+        assert_eq!(self.analyzer.window(), ordinary.window());
+        assert_eq!(self.spectrum_settings, ordinary_settings);
+        assert_eq!(self.spectrum_display, ordinary_display);
+        assert_eq!(
+            (
+                self.frequency_scale,
+                self.floor_db,
+                self.spectrum_ceiling_db,
+                self.span_hz,
+                self.spectrum_min_hz,
+                self.show_hold
+            ),
+            ordinary_axes
+        );
+        driver.click(self, "Time A/B from Spectrogram")?;
+        assert!(self.spectrum_history.linked);
+        driver.click(self, "Undo replacement")?;
+        assert!(!self.spectrum_history.linked);
+        assert_eq!(self.presentation.console, original_console);
+        self.navigate(Action::OpenSingle(Instrument::Spectrogram));
+        driver.frame(self, vec![]);
+        driver.click(self, "Pair with…")?;
+        driver.click(self, "Spectrum")?;
+        self.live_spectrogram();
+        assert!(!self.spectrum_history.linked);
+        assert!(self.spectrogram_selected.iter().all(Option::is_none));
+        // Opening an existing layout or another Pair never changes the source.
+        self.navigate(Action::OpenSingle(Instrument::Scope));
+        self.navigate(Action::PairWith(Instrument::Spectrum));
+        assert!(!self.spectrum_history.linked);
+        self.navigate(Action::OpenSingle(Instrument::Spectrogram));
+        self.navigate(Action::PairWith(Instrument::Spectrum));
+        assert!(self.spectrum_history.linked);
+        self.clear_spectrogram_view();
+        assert!(!self.spectrum_history.linked);
+        assert_eq!(
+            self.stft.metrics.produced.load(Ordering::Relaxed),
+            processed
+        );
+        // S5 edits while stopped are next-run settings and leave held frames
+        // and the active STFT generation untouched.
+        self.navigate(Action::OpenSingle(Instrument::Spectrogram));
+        let previous_overlap = self.spectrogram_overlap;
+        driver.frame(self, vec![]);
+        for overlap in [
+            stft::Overlap::Half,
+            stft::Overlap::SevenEighths,
+            stft::Overlap::ThreeQuarters,
+        ] {
+            driver.click(self, self.spectrogram_overlap.name())?;
+            driver.click(self, overlap.name())?;
+            assert_eq!(
+                self.stft_config().hop,
+                overlap.hop(self.spectrogram_settings.size)
+            );
+            assert_eq!(self.stft_generation, conditions.1);
+        }
+        self.spectrogram_overlap = previous_overlap;
         self.spectrogram_view_worker.clear();
         self.stft_history
             .replace_frozen_snapshot(previous_collector);
@@ -426,8 +604,25 @@ impl ScopeApp {
         self.cursors = cursors;
         self.active_cursor = active;
         self.spectrogram_auto_result = spectrogram::ColorRange::default();
+        self.busy = busy;
+        if std::env::var("MEASURELAB_UI_SMOKE_SPECTROGRAM_DISPLAY").as_deref() == Ok("pair") {
+            self.spectrogram_snapshot = hold.clone();
+            self.spectrogram_hold = Some(hold);
+            self.spectrogram_anchor = self.spectrogram_snapshot.latest().unwrap().info.end;
+            self.spectrogram_hold_anchor = Some(self.spectrogram_anchor);
+            self.spectrogram_seconds = 5.0;
+            self.select_spectrogram_time(0, 0.2);
+            self.select_spectrogram_time(1, 0.6);
+            self.navigate(Action::OpenSingle(Instrument::Spectrogram));
+            self.navigate(Action::PairWith(Instrument::Spectrum));
+            self.spectrum_history.view =
+                View::full(config.sample_rate, FrequencyScale::Linear, -120.0);
+            self.presentation.details_visible = true;
+            self.cursors.set_frequency(0, 1500.0);
+            self.cursors.set_frequency(1, 3000.0);
+        }
         println!(
-            "Spectrogram display UI OK: palette/Auto/time widgets, frequency/time pan, Shift+wheel, fixed f64 frame selection, Hold/Live, cursor drag priority, double-click reset, narrow/DPI; STFT/generation/output unchanged"
+            "Spectrogram display UI OK: palette/Auto/time, pan/zoom, fixed f64 frames, Hold/Live, Pair Spectrum Time A/B, independent frequency cursors, normal result preservation, export guard, Undo/unlink, Overlap widgets, narrow/DPI; STFT/generation/output unchanged"
         );
         Ok(())
     }

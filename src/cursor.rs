@@ -71,6 +71,11 @@ impl Cursors {
         }
     }
 
+    pub fn clear_frequencies(&mut self) {
+        self.spectrum_frequencies_hz = [None; 2];
+        self.frequency_hz = None;
+    }
+
     pub fn set_time(&mut self, index: usize, sample: u64) {
         self.times[index] = Some(TimeCursor {
             epoch: self.epoch,

@@ -4,6 +4,10 @@ use super::*;
 
 impl ScopeApp {
     pub(super) fn spectrum_summary(&self, ui: &mut egui::Ui) {
+        if self.spectrum_history.linked {
+            self.history_spectrum_summary(ui);
+            return;
+        }
         let result = self.selected_spectrum();
         let settings = result.settings();
         let averaging = if settings.averages == 1 {
@@ -159,6 +163,11 @@ impl ScopeApp {
     }
 
     pub(super) fn spectrum_controls(&mut self, ui: &mut egui::Ui) {
+        self.refresh_spectrum_history();
+        if self.spectrum_history.linked {
+            self.history_spectrum_controls(ui);
+            return;
+        }
         let before = self.spectrum_settings;
         control_group(ui, "FFT", BLUE, |ui| {
             let mut quantity = self.spectrum_settings.quantity;
@@ -342,14 +351,16 @@ impl ScopeApp {
         }
     }
 
-    fn spectrum_cursor_controls(&mut self, ui: &mut egui::Ui) {
+    pub(super) fn spectrum_cursor_controls(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            for (index, title) in ["Cursor A", "Cursor B"].into_iter().enumerate() {
-                ui.selectable_value(&mut self.active_cursor, index, title)
+            let labels = if self.spectrum_history.linked { ["Frequency A", "Frequency B"] } else { ["Cursor A", "Cursor B"] };
+            for (index, title) in labels.into_iter().enumerate() {
+                let active = if self.spectrum_history.linked { &mut self.spectrum_history.frequency_cursor } else { &mut self.active_cursor };
+                ui.selectable_value(active, index, title)
                     .on_hover_text("Select a cursor, then click or drag on the spectrum. Both cursors read the selected channel's nearest FFT bin.");
             }
-            if ui.small_button("Clear").clicked() {
-                self.cursors.clear();
+            if ui.small_button(if self.spectrum_history.linked { "Clear frequency" } else { "Clear" }).clicked() {
+                self.cursors.clear_frequencies();
                 ui.ctx().request_repaint();
             }
         });
