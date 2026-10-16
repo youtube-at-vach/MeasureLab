@@ -201,11 +201,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "qa")]
     let surface_skips = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
     #[cfg(feature = "qa")]
-    if smoke {
+    let measured_surface_skips = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
+    #[cfg(feature = "qa")]
+    if smoke || std::env::var_os("MEASURELAB_PROFILE_FOREGROUND").is_some() {
         let on_surface_status = options.wgpu_options.on_surface_status.clone();
         let skipped = surface_skips.clone();
+        let measured = measured_surface_skips.clone();
+        let started = std::time::Instant::now();
         options.wgpu_options.on_surface_status = std::sync::Arc::new(move |status| {
             let count = skipped.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+            if started.elapsed() >= std::time::Duration::from_secs(2) {
+                measured.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            }
             if count <= 4 {
                 eprintln!("QA surface acquisition skipped #{count}: {status:?}");
             }
@@ -234,10 +241,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Box::new(move |cc| Ok(Box::new(measurelab::app::ScopeApp::new(cc, smoke, demo)?))),
     )?;
     #[cfg(feature = "qa")]
-    if smoke {
+    if smoke || std::env::var_os("MEASURELAB_PROFILE_FOREGROUND").is_some() {
         println!(
             "QA skipped surface acquisitions: {}",
             surface_skips.load(std::sync::atomic::Ordering::Relaxed)
+        );
+        println!(
+            "QA skipped surface acquisitions after warm-up: {}",
+            measured_surface_skips.load(std::sync::atomic::Ordering::Relaxed)
         );
     }
     #[cfg(feature = "qa")]

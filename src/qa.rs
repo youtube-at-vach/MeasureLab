@@ -5,6 +5,7 @@ pub mod comparison;
 pub mod lockin;
 pub mod output;
 pub mod physical_lockin;
+pub mod spectrogram;
 
 /// Preserve renderer diagnostics in local QA logs without data-callback logging.
 pub fn init_logging() {
@@ -49,7 +50,7 @@ pub fn spectrogram_fixture(output: &mut crate::spectrogram::History) -> crate::s
         channels: 2,
         channel: 0,
         size: settings.size,
-        hop: settings.size / 4,
+        hop: crate::stft::Overlap::default().hop(settings.size),
         window: settings.window,
         remove_dc: true,
         precision: crate::spectrum::Precision::F64,
@@ -109,7 +110,7 @@ pub fn cursor_fixture(
         channels: source.channels(),
         channel: 0,
         size: settings.size,
-        hop: settings.size / 4,
+        hop: crate::stft::Overlap::default().hop(settings.size),
         window: settings.window,
         remove_dc: settings.remove_dc,
         precision: settings.precision,
@@ -151,10 +152,10 @@ pub fn cursor_fixture(
 const BUCKET_MS: f64 = 0.01;
 const BUCKETS: usize = 20_001;
 
-struct Distribution {
+pub(crate) struct Distribution {
     bins: Vec<u64>,
-    count: u64,
-    max: f64,
+    pub(crate) count: u64,
+    pub(crate) max: f64,
 }
 
 impl Default for Distribution {
@@ -168,7 +169,7 @@ impl Default for Distribution {
 }
 
 impl Distribution {
-    fn record(&mut self, milliseconds: f64) {
+    pub(crate) fn record(&mut self, milliseconds: f64) {
         if !milliseconds.is_finite() || milliseconds < 0.0 {
             return;
         }
@@ -178,7 +179,7 @@ impl Distribution {
         self.max = self.max.max(milliseconds);
     }
 
-    fn p95(&self) -> Option<f64> {
+    pub(crate) fn p95(&self) -> Option<f64> {
         if self.count == 0 {
             return None;
         }
@@ -522,7 +523,7 @@ pub fn multichannel_smoke_test() -> Result<(), Box<dyn std::error::Error>> {
         channels: 16,
         channel: 15,
         size: 8192,
-        hop: 2048,
+        hop: stft::Overlap::default().hop(8192),
         window: Window::Hann,
         remove_dc: true,
         precision: crate::spectrum::Precision::F64,

@@ -21,13 +21,26 @@ pub(super) struct Shell {
 }
 
 impl ScopeApp {
-    fn navigate(&mut self, action: Action) {
+    pub(super) fn navigate(&mut self, action: Action) {
+        let link_history = self.presentation.screen == Screen::Single(Instrument::Spectrogram)
+            && matches!(action, Action::PairWith(Instrument::Spectrum));
+        if matches!(
+            action,
+            Action::OpenSingle(_)
+                | Action::PairWith(_)
+                | Action::RemoveFromConsole(Instrument::Spectrum | Instrument::Spectrogram)
+        ) {
+            self.unlink_spectrum_history();
+        }
         if matches!(action, Action::PairWith(_))
             && !self.presentation.console.instruments.is_empty()
         {
             self.shell.previous_console = Some(self.presentation.console.clone());
         }
         self.presentation.apply(action);
+        if link_history {
+            self.link_spectrum_history();
+        }
         self.shell.io = None;
         self.shell.narrow_details = false;
     }
@@ -433,6 +446,7 @@ impl ScopeApp {
                 && let Some(previous) = self.shell.previous_console.take()
             {
                 self.presentation.console = previous;
+                self.unlink_spectrum_history();
             }
             for layout in Layout::ALL {
                 if ui
@@ -534,6 +548,13 @@ impl ScopeApp {
                                                 {
                                                     self.presentation
                                                         .apply(Action::RemoveFromConsole(i));
+                                                    if matches!(
+                                                        i,
+                                                        Instrument::Spectrum
+                                                            | Instrument::Spectrogram
+                                                    ) {
+                                                        self.unlink_spectrum_history();
+                                                    }
                                                 }
                                             });
                                             // Expanded details and wrapped readouts must

@@ -47,6 +47,7 @@ mod scope_controls;
 mod shell;
 mod spectrogram_controls;
 mod spectrum_controls;
+mod spectrum_history;
 mod workspace;
 
 const GREEN: Color32 = Color32::from_rgb(56, 242, 173);
@@ -260,6 +261,8 @@ pub struct ScopeApp {
     last_stft: Option<RowInfo>,
     spectrogram_history: Arc<Mutex<spectrogram::History>>,
     spectrogram_settings: Settings,
+    spectrogram_overlap: stft::Overlap,
+    spectrum_history: spectrum_history::HistorySpectrum,
     spectrogram_channel: ChannelId,
     spectrogram_scale: FrequencyScale,
     spectrogram_min_hz: f32,
@@ -548,6 +551,8 @@ impl ScopeApp {
             spectrogram_hold: None,
             spectrogram_hold_anchor: None,
             spectrogram_anchor: 0,
+            spectrogram_overlap: stft::Overlap::default(),
+            spectrum_history: spectrum_history::HistorySpectrum::default(),
             spectrogram_selected: [None, None],
             spectrogram_auto_result: spectrogram::ColorRange::default(),
             spectrogram_prepared_id: 0,
@@ -689,12 +694,52 @@ impl ScopeApp {
                 .and_then(|s| s.parse().ok())
                 .filter(|s| STFT_SIZES.contains(s))
                 .unwrap_or(size.min(32768));
+            app.spectrogram_overlap = match std::env::var("MEASURELAB_PROFILE_STFT_OVERLAP")
+                .as_deref()
+            {
+                Ok("50") => stft::Overlap::Half,
+                Ok("75") | Err(_) => stft::Overlap::ThreeQuarters,
+                Ok("87.5") => stft::Overlap::SevenEighths,
+                _ => return Err("MEASURELAB_PROFILE_STFT_OVERLAP must be 50, 75 or 87.5".into()),
+            };
             app.spectrum_mode = match std::env::var("MEASURELAB_PROFILE_SPECTRUM_MODE").as_deref() {
                 Ok("latest") => SpectrumMode::Latest,
                 Ok("continuous") => SpectrumMode::Continuous,
                 _ => SpectrumMode::Live,
             };
             app.reset_analysis();
+        }
+        #[cfg(feature = "qa")]
+        if let Some(profile) = &app.profile
+            && std::env::var_os("MEASURELAB_PROFILE_SOFTWARE_LOOPBACK").is_some()
+        {
+            if demo || smoke || profile.device.is_some() {
+                return Err("Software Loopback profile requires its own input route".into());
+            }
+            app.source = Source::Software;
+            app.requested_sample_rate = profile.sample_rate;
+            app.loopback_settings.frequency_hz = 750.0;
+            app.spectrum_channel = 1;
+            app.spectrogram_channel = 1;
+            app.start();
+        }
+        #[cfg(feature = "qa")]
+        if let Some(profile) = &app.profile
+            && std::env::var_os("MEASURELAB_PROFILE_GENERATOR_INTERNAL").is_some()
+        {
+            if demo || smoke || profile.device.is_some() {
+                return Err("Internal Generator profile requires its own input route".into());
+            }
+            app.source = Source::Generator;
+            let rate = profile.sample_rate.unwrap_or(48000);
+            let mut settings = crate::generator::Settings::default();
+            for signal in &mut settings.signals {
+                signal.enabled = true;
+                signal.frequency_hz = 750.0;
+                signal.amplitude_dbfs = -20.0;
+            }
+            app.generator
+                .select(output::Target::Internal, rate, settings)?;
         }
         #[cfg(feature = "qa")]
         if std::env::var_os("MEASURELAB_SPECTRUM_PSD").is_some() {
@@ -2166,7 +2211,9 @@ impl ScopeApp {
         assert_eq!(snapshot.input_dropped, 0, "UI stall lost measurement input");
         assert_eq!(snapshot.spectrum_info.missing_windows, 0);
         assert_eq!(snapshot.spectrum_info.input_missing, 0);
-        if self.spectrum_mode == SpectrumMode::Continuous {
+        // Internal Generator retains its absolute output sample origin. Its
+        // finite profile barrier checks counts relative to that origin.
+        if self.spectrum_mode == SpectrumMode::Continuous && self.source != Source::Generator {
             assert_eq!(
                 snapshot.spectrum_info.updates,
                 1 + (snapshot.history.range().end - self.spectrum_settings.size as u64)
@@ -2533,7 +2580,7 @@ impl ScopeApp {
             channels: self.channels.max(1) as usize,
             channel: self.spectrogram_channel,
             size: self.spectrogram_settings.size,
-            hop: self.spectrogram_settings.size / 4,
+            hop: self.spectrogram_overlap.hop(self.spectrogram_settings.size),
             window: self.spectrogram_settings.window,
             remove_dc: self.spectrogram_settings.remove_dc,
             precision: self.spectrogram_settings.precision,
@@ -2584,16 +2631,19 @@ impl ScopeApp {
             self.dropped = 0;
             self.dirty = true;
             self.xy_dirty = true;
+            // reset_stft pauses a stopped input. Mark this start before
+            // configuring its worker, as the audio/demo paths already do.
+            self.software_running = true;
             self.reset_analysis();
             self.reset_stft();
-            match self.core.as_ref().unwrap().start_generator(
+            if let Err(error) = self.core.as_ref().unwrap().start_generator(
                 self.input_generation,
                 capture,
                 rate,
                 self.core_config(),
             ) {
-                Ok(()) => self.software_running = true,
-                Err(e) => self.error = Some(e),
+                self.stop();
+                self.error = Some(error);
             }
             return;
         }
@@ -2625,16 +2675,17 @@ impl ScopeApp {
             self.dirty = true;
             self.dropped = 0;
             self.error = None;
+            self.software_running = true;
             self.reset_analysis();
             self.reset_stft();
-            match self.core.as_ref().unwrap().start_loopback(
+            if let Err(error) = self.core.as_ref().unwrap().start_loopback(
                 self.input_generation,
                 self.loopback_settings.clone(),
                 rate,
                 self.core_config(),
             ) {
-                Ok(()) => self.software_running = true,
-                Err(e) => self.error = Some(e),
+                self.stop();
+                self.error = Some(error);
             }
             return;
         }
@@ -3366,9 +3417,14 @@ impl ScopeApp {
         rect: egui::Rect,
         view: View,
     ) {
+        let active = if self.spectrum_history.linked {
+            self.spectrum_history.frequency_cursor
+        } else {
+            self.active_cursor
+        };
         if let Some(position) = cursor_pointer(response, rect) {
             self.cursors.set_frequency(
-                self.active_cursor,
+                active,
                 view.frequency((position.x - rect.left()) / rect.width()) as f64,
             );
             ui.ctx().request_repaint();
@@ -3376,7 +3432,7 @@ impl ScopeApp {
         let readings = self
             .cursors
             .spectrum_frequencies_hz
-            .map(|frequency| frequency.and_then(|hz| self.selected_spectrum().cursor(hz)));
+            .map(|frequency| frequency.and_then(|hz| self.shown_selected_spectrum().cursor(hz)));
         for (index, reading) in readings.iter().enumerate() {
             let Some(frequency) = self.cursors.spectrum_frequencies_hz[index] else {
                 continue;
@@ -3422,7 +3478,13 @@ impl ScopeApp {
                 window.end,
             );
             cursor_note(ui, rect, index, &text, color);
-            if index == self.active_cursor {
+            if index == active {
+                if self.spectrum_history.linked {
+                    response.clone().on_hover_text(format!("Time {} · nearest bin {:.6e} {} · acquired samples {}..{} · {} Hz · {} points · {} · {} · no average, no calibration",
+                        cursor_name(self.spectrum_history.selected), reading.value, window.linear_unit(), window.start, window.end,
+                        window.sample_rate, window.settings.size, window.settings.window.name(), window.settings.precision.name()));
+                    continue;
+                }
                 let mut times = String::new();
                 for (index, sample) in self.cursor_samples().into_iter().enumerate() {
                     if let Some(sample) = sample {
@@ -3441,7 +3503,7 @@ impl ScopeApp {
                 response
                     .clone()
                     .on_hover_text(spectrum_calibration_description(
-                        self.selected_spectrum().calibration(),
+                        self.shown_selected_spectrum().calibration(),
                     ));
             }
         }
@@ -4110,6 +4172,13 @@ impl ScopeApp {
 
     fn workspace_controls(&mut self, ui: &mut egui::Ui) {
         setting_label(ui, "HELD MEASUREMENT RESULTS");
+        if self.spectrum_history.linked {
+            ui.label(
+                RichText::new(spectrum_history::EXPORT_REASON)
+                    .small()
+                    .color(YELLOW),
+            );
+        }
         ui.label(RichText::new("Stop input, then export Scope samples and statistics, Spectrum bins and their captured conditions to JSON.").small().color(MUTED));
         ui.add_enabled(
             !self.export_pending,
@@ -4120,6 +4189,16 @@ impl ScopeApp {
         if ui.add_enabled(!self.export_pending && self.can_export(), egui::Button::new("Export held results"))
             .on_hover_text("Exports the retained Scope interval and the independently timed Spectrum result. Missing samples stay null. Spectrogram, XY and cursors are not included.")
             .clicked() {
+            self.request_export();
+        }
+        if self.spectrum_history.linked
+            && ui
+                .add_enabled(
+                    !self.export_pending && self.can_export_scope(),
+                    egui::Button::new("Export held Scope only"),
+                )
+                .clicked()
+        {
             self.request_export();
         }
         if let Some(status) = &self.export_status {
@@ -4180,6 +4259,14 @@ impl ScopeApp {
     }
 
     fn can_export(&self) -> bool {
+        !self.spectrum_history.linked && self.held_results_ready()
+    }
+
+    fn can_export_scope(&self) -> bool {
+        self.held_results_ready() && !self.scope_range.is_empty()
+    }
+
+    fn held_results_ready(&self) -> bool {
         !self.running()
             && !self.busy
             && self.pending_stop.is_none()
@@ -4191,12 +4278,37 @@ impl ScopeApp {
 
     fn capture_results(&self) -> Result<export::Document, String> {
         if !self.can_export() {
+            if self.spectrum_history.linked {
+                return Err(spectrum_history::EXPORT_REASON.into());
+            }
             return Err("Stop input and wait for the held measurement results".into());
         }
+        self.capture_held_results(true)
+    }
+
+    fn capture_scope_results(&self) -> Result<export::Document, String> {
+        if !self.can_export_scope() {
+            return Err("Stop input and wait for held Scope samples".into());
+        }
+        self.capture_held_results(false)
+    }
+
+    fn capture_held_results(&self, include_spectrum: bool) -> Result<export::Document, String> {
         let input = self.held_input.clone().ok_or("No held input conditions")?;
         if input.generation != self.input_generation {
             return Err("Held input generation does not match results".into());
         }
+        let excluded = (!include_spectrum).then(|| {
+            spectrum::Result::empty(
+                Settings {
+                    size: 1024,
+                    averages: 1,
+                    ..Settings::default()
+                },
+                self.sample_rate,
+            )
+        });
+        let excluded_info = measurement::SpectrumInfo::default();
         let mut document = export::Document::capture(
             input,
             export::ScopeView {
@@ -4211,8 +4323,14 @@ impl ScopeApp {
                 measurements: self.measurements,
                 readings: self.scope_readings,
             },
-            self.selected_spectrum(),
-            self.selected_spectrum_info(),
+            excluded
+                .as_ref()
+                .unwrap_or_else(|| self.selected_spectrum()),
+            if include_spectrum {
+                self.selected_spectrum_info()
+            } else {
+                &excluded_info
+            },
             [
                 self.band_min_hz,
                 if self.band_max_hz == 0.0 {
@@ -4235,6 +4353,12 @@ impl ScopeApp {
         )?;
         document.generator_output = self.generator_output.clone();
         document.external_output = self.external_output.clone();
+        if !include_spectrum {
+            // Preserve the existing result schema, explicitly excluding every
+            // Spectrum value/window. No ordinary or historical FFT is exported.
+            document.spectrum.state = export::State::Unavailable;
+            return Ok(document);
+        }
         if self.lockin_result.settings.enabled {
             document.lockin = Some(export::Lockin::capture(
                 self.lockin_result.clone(),
@@ -4258,7 +4382,11 @@ impl ScopeApp {
             if self.export_path.trim().is_empty() {
                 return Err("Enter a results file path".into());
             }
-            let document = self.capture_results()?;
+            let document = if self.spectrum_history.linked {
+                self.capture_scope_results()?
+            } else {
+                self.capture_results()?
+            };
             self.export_worker
                 .submit(std::path::PathBuf::from(&self.export_path), document)
         })();
@@ -4338,6 +4466,7 @@ impl ScopeApp {
                 spectrogram: settings::Spectrogram {
                     channel: self.spectrogram_channel,
                     analysis: self.spectrogram_settings,
+                    overlap: self.spectrogram_overlap,
                 },
                 xy: settings::Xy {
                     channels: self.xy_settings.channels,
@@ -4460,6 +4589,7 @@ impl ScopeApp {
         self.band_max_hz = m.spectrum.band_max_hz;
         self.spectrogram_channel = m.spectrogram.channel;
         self.spectrogram_settings = m.spectrogram.analysis;
+        self.spectrogram_overlap = m.spectrogram.overlap;
         self.xy_settings.channels = m.xy.channels;
         self.xy_settings.milliseconds = m.xy.milliseconds;
         self.calibration.pending = calibrations;
@@ -4590,6 +4720,9 @@ impl ScopeApp {
     }
 
     fn spectrum_view(&self) -> View {
+        if self.spectrum_history.linked {
+            return self.history_spectrum_view();
+        }
         let mut view = View::full(self.sample_rate, self.frequency_scale, self.floor_db);
         view.ceiling_db = self.spectrum_ceiling_db.max(self.floor_db + 6.0);
         if self.span_hz > 0.0 {
@@ -4645,23 +4778,28 @@ impl ScopeApp {
 
     fn refresh_spectrum_readouts(&mut self, view: View) {
         let upper = if self.band_max_hz == 0.0 {
-            self.selected_spectrum().nyquist() as f64
+            self.shown_selected_spectrum().nyquist() as f64
         } else {
             self.band_max_hz
         };
         let key = (view.min_hz, view.max_hz, self.band_min_hz, upper);
         if self.spectrum_numeric_key != Some(key) {
-            self.spectrum_peaks = std::array::from_fn(|i| self.spectrum_result(i).peak(view));
-            self.spectrum_peak = self.spectrum_peaks[self.spectrum_display.selected];
-            self.spectrum_band = self.selected_spectrum().band(self.band_min_hz, upper);
-            self.spectrum_energy = self.selected_spectrum().energy();
+            self.spectrum_peaks = std::array::from_fn(|i| {
+                self.shown_spectrum_enabled(i)
+                    .then(|| self.shown_spectrum(i).peak(view))
+                    .flatten()
+            });
+            self.spectrum_peak = self.spectrum_peaks[self.shown_spectrum_index()];
+            self.spectrum_band = self.shown_selected_spectrum().band(self.band_min_hz, upper);
+            self.spectrum_energy = self.shown_selected_spectrum().energy();
             self.spectrum_numeric_key = Some(key);
         }
     }
 
     fn spectrum_panel(&mut self, ui: &mut egui::Ui) {
+        self.refresh_spectrum_history();
         self.update_spectrum(false);
-        let color = monitor_controls::scope_color(self.spectrum_display.selected);
+        let color = self.shown_spectrum_color(self.shown_spectrum_index());
         egui::Frame::new()
             .fill(Color32::from_rgb(17, 27, 35))
             .stroke(Stroke::new(1.0, Color32::from_rgb(48, 70, 82)))
@@ -4670,9 +4808,20 @@ impl ScopeApp {
                 compact_plot_style(ui);
                 ui.horizontal_wrapped(|ui| {
                     ui.label(RichText::new("Spectrum Analyzer").size(13.0).strong());
-                    display::activity_label(ui, self.running(), self.pending_stop.is_some(), self.selected_spectrum().window().is_some());
+                    display::activity_label(ui, self.running() && !self.spectrum_history.linked, self.pending_stop.is_some() && !self.spectrum_history.linked, self.shown_selected_spectrum().window().is_some());
 
-                    ui.label(RichText::new(format!("CH{} · Input {} · {}", self.spectrum_display.selected + 1, self.selected_spectrum().window().map_or(self.spectrum_source(self.spectrum_display.selected), |window| window.channel)+1, self.selected_spectrum().db_unit())).small().color(color));
+                    if !self.spectrum_history.linked {
+                    ui.label(RichText::new(format!("CH{} · Input {} · {}", self.shown_spectrum_index() + 1, self.shown_selected_spectrum().window().map_or(self.spectrum_source(self.shown_spectrum_index()), |window| window.channel)+1, self.shown_selected_spectrum().db_unit())).small().color(color));
+                    } else {
+                        ui.label(RichText::new("History · read-only").small().color(YELLOW));
+                    }
+                    if !self.spectrum_history.linked
+                        && self.presentation.screen == Screen::Console
+                        && self.presentation.contains(Instrument::Spectrogram)
+                        && ui.small_button("Time A/B from Spectrogram").clicked()
+                    {
+                        self.link_spectrum_history();
+                    }
                 });
                 self.spectrum_summary(ui);
                 let view = self.spectrum_view();
@@ -4680,22 +4829,22 @@ impl ScopeApp {
                 if let Some(peak) = self.spectrum_peak {
                     ui.horizontal_wrapped(|ui| {
                         ui.add(egui::Label::new(RichText::new(format!("Peak bin {:.2} Hz", peak.frequency)).monospace().size(15.0).color(color)).wrap());
-                        ui.add(egui::Label::new(RichText::new(format!("{:.2} {}", peak.level_db, self.selected_spectrum().db_unit())).monospace().size(15.0).color(color)).wrap());
-                        ui.label(RichText::new(format!("Δf {:.3} Hz", self.selected_spectrum().bin_hz())).small().color(MUTED));
+                        ui.add(egui::Label::new(RichText::new(format!("{:.2} {}", peak.level_db, self.shown_selected_spectrum().db_unit())).monospace().size(15.0).color(color)).wrap());
+                        ui.label(RichText::new(format!("Δf {:.3} Hz", self.shown_selected_spectrum().bin_hz())).small().color(MUTED));
                     });
                 } else {
                     ui.label(
                         RichText::new(
-                            format!("{} · {}", self.selected_spectrum().settings().quantity.name(), self.selected_spectrum().db_unit()),
+                            format!("{} · {}", self.shown_selected_spectrum().settings().quantity.name(), self.shown_selected_spectrum().db_unit()),
                         )
                         .small()
                         .color(MUTED),
                     );
                 }
-                if self.selected_spectrum().settings().quantity == Quantity::Psd {
+                if self.shown_selected_spectrum().settings().quantity == Quantity::Psd {
                     if let Some(band) = &self.spectrum_band {
-                        ui.label(RichText::new(format!("Band RMS {} {}", display::number(Some(band.rms)), self.selected_spectrum().unit())).monospace().size(18.0).color(color));
-                        ui.label(RichText::new(format!("{:.1}–{:.1} Hz · power {} {}", band.first_hz, band.last_hz, display::number(Some(band.power)), self.selected_spectrum().power_unit())).small().color(MUTED))
+                        ui.label(RichText::new(format!("Band RMS {} {}", display::number(Some(band.rms)), self.shown_selected_spectrum().unit())).monospace().size(18.0).color(color));
+                        ui.label(RichText::new(format!("{:.1}–{:.1} Hz · power {} {}", band.first_hz, band.last_hz, display::number(Some(band.power)), self.shown_selected_spectrum().power_unit())).small().color(MUTED))
                         .on_hover_text(format!(
                             "Requested {}–{} Hz, inclusive centres of bins {}..={}. Sum of f64 PSD × Δf; full weight at DC/Nyquist. CH {}, generation {}, {} processed windows, contribution envelope {}..{}. Input loss {}; missing windows {}. Windowed mean-square after optional DC removal; not the Scope observation interval.",
                             band.requested_hz[0], band.requested_hz[1], band.first_bin, band.last_bin,
@@ -4706,16 +4855,16 @@ impl ScopeApp {
                         ui.label(RichText::new("Band power unavailable · invalid window, range or nonfinite sum").small().color(MUTED));
                     }
                 }
-                if self.selected_spectrum().settings().quantity == Quantity::Esd {
-                    ui.label(RichText::new(format!("Window energy {} {}·s", display::number(self.spectrum_energy), self.selected_spectrum().power_unit())).monospace().size(18.0).color(color))
+                if self.shown_selected_spectrum().settings().quantity == Quantity::Esd {
+                    ui.label(RichText::new(format!("Window energy {} {}·s", display::number(self.spectrum_energy), self.shown_selected_spectrum().power_unit())).monospace().size(18.0).color(color))
                         .on_hover_text("Sum of f64 ESD × Δf over all bins, including DC/Nyquist. Energy of the windowed waveform after optional DC removal. Averaging gives an EMA of window energies, not cumulative energy. Nominal input sample clock.");
                 }
-                if let Some(c) = self.selected_spectrum().calibration() {
+                if let Some(c) = self.shown_selected_spectrum().calibration() {
                     ui.label(RichText::new(format!("Calibration {} · rev {}", c.id(), c.revision())).small().color(MUTED))
                         .on_hover_text(spectrum_calibration_description(Some(c)));
                 }
                 self.spectrum_plot(ui, view);
-                self.spectrum_channel_bar(ui);
+                if self.spectrum_history.linked { self.history_spectrum_bar(ui); } else { self.spectrum_channel_bar(ui); }
             });
     }
 
@@ -4807,10 +4956,21 @@ impl ScopeApp {
             let segments = Arc::make_mut(&mut self.spectrum_segments);
             segments.clear();
             for (index, &trace_color) in COLORS.iter().enumerate() {
-                if !self.spectrum_display.enabled[index] {
+                if !(if self.spectrum_history.linked {
+                    index < 2
+                } else {
+                    self.spectrum_display.enabled[index]
+                }) {
                     continue;
                 }
-                let result = if index == 0 {
+                let trace_color = if self.spectrum_history.linked {
+                    COLORS[if index == 0 { 0 } else { 3 }]
+                } else {
+                    trace_color
+                };
+                let result = if self.spectrum_history.linked {
+                    &self.spectrum_history.results[index]
+                } else if index == 0 {
                     &self.analyzer
                 } else {
                     &self.spectrum_overlays[index - 1]
@@ -4819,7 +4979,7 @@ impl ScopeApp {
                     result,
                     view,
                     pixels,
-                    self.show_hold,
+                    self.show_hold && !self.spectrum_history.linked,
                     &mut self.spectrum_lines,
                 );
                 for trace in [1, 0] {
@@ -4875,24 +5035,27 @@ impl ScopeApp {
         }
         if self.spectrum_display.peak_marker {
             for index in 0..4 {
-                if self.spectrum_display.enabled[index]
+                if self.shown_spectrum_enabled(index)
                     && let Some(peak) = self.spectrum_peaks[index]
                 {
                     let x = rect.left() + view.x(peak.frequency as f32) * rect.width();
                     painter.line_segment(
                         [pos2(x, rect.top()), pos2(x, rect.top() + 10.0)],
-                        Stroke::new(2.0, monitor_controls::scope_color(index)),
+                        Stroke::new(2.0, self.shown_spectrum_color(index)),
                     );
                 }
             }
         }
-        if !(0..4).any(|i| self.spectrum_display.enabled[i] && self.spectrum_result(i).is_ready()) {
+        if !(0..4).any(|i| self.shown_spectrum_enabled(i) && self.shown_spectrum(i).is_ready()) {
             painter.text(
                 rect.center(),
                 egui::Align2::CENTER_CENTER,
-                if !self.spectrum_display.enabled.iter().any(|enabled| *enabled) {
+                if self.spectrum_history.linked {
+                    self.history_spectrum_reason(self.spectrum_history.selected)
+                } else if !self.spectrum_display.enabled.iter().any(|enabled| *enabled) {
                     "All channels OFF"
-                } else if self.selected_spectrum().validity() == spectrum::Validity::NonFinite {
+                } else if self.shown_selected_spectrum().validity() == spectrum::Validity::NonFinite
+                {
                     "Invalid FFT window · nonfinite value"
                 } else if self.running() {
                     "Collecting a complete FFT window…"
@@ -4914,7 +5077,7 @@ impl ScopeApp {
                 ],
                 Stroke::new(1.0, Color32::from_white_alpha(65)),
             );
-            if let Some(reading) = self.selected_spectrum().cursor(hz as f64) {
+            if let Some(reading) = self.shown_selected_spectrum().cursor(hz as f64) {
                 painter.text(
                     rect.right_bottom() + vec2(-10.0, -10.0),
                     egui::Align2::RIGHT_BOTTOM,
@@ -4925,18 +5088,18 @@ impl ScopeApp {
                         reading.window.db_unit()
                     ),
                     egui::FontId::monospace(11.0),
-                    monitor_controls::scope_color(self.spectrum_display.selected),
+                    self.shown_spectrum_color(self.shown_spectrum_index()),
                 );
             }
         }
         self.spectrum_cursors(ui, &response, rect, view);
         ui.horizontal(|ui| {
             ui.label(
-                RichText::new(self.selected_spectrum().db_unit())
+                RichText::new(self.shown_selected_spectrum().db_unit())
                     .small()
                     .color(MUTED),
             );
-            if self.show_hold {
+            if self.show_hold && !self.spectrum_history.linked {
                 ui.label(RichText::new("Peak hold").small().color(HOLD));
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -5571,8 +5734,8 @@ impl eframe::App for ScopeApp {
                         history.storage_bytes() as f64 / 1048576.0
                     );
                     drop(history);
+                    self.finish_spectrogram_profile(finished.as_ref());
                     let numeric = self.stft_history.snapshot();
-                    self.finish_spectrogram_profile();
                     if let Some(render) = &frame.wgpu_render_state()
                         && let Some(renderer) = render
                             .renderer
@@ -5616,6 +5779,16 @@ impl eframe::App for ScopeApp {
                     self.busy = true;
                     self.audio.send(Command::Stop);
                     self.qa_wait_audio_idle().expect("QA input did not stop");
+                    if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_INTERNAL").is_some() {
+                        self.generator.stop();
+                        let deadline = Instant::now() + Duration::from_secs(5);
+                        while !self.generator.stopped() {
+                            self.generator.poll();
+                            assert!(Instant::now() < deadline, "internal output Stop timed out");
+                            std::thread::sleep(Duration::from_millis(2));
+                        }
+                        println!("Internal Generator Spectrogram output stopped");
+                    }
                     if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_DEVICE").is_some() {
                         self.finish_generator_profile(
                             finished.as_ref().expect("Generator input endpoint"),

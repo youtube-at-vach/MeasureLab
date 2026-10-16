@@ -5,7 +5,7 @@ use measurelab::{
         viewport::{MAX_COLUMNS, Parameters, Worker as ViewWorker},
     },
     spectrum::{FrequencyScale, Precision, View, Window},
-    stft::{Config, Worker},
+    stft::{Config, Overlap, Worker},
 };
 use std::{
     f64::consts::TAU,
@@ -26,13 +26,16 @@ fn wait(mut ready: impl FnMut() -> bool) {
 }
 
 fn main() {
-    for size in [1024, 8192, 32768] {
+    for (size, overlap) in [1024, 8192, 32768]
+        .into_iter()
+        .flat_map(|size| Overlap::ALL.map(|overlap| (size, overlap)))
+    {
         let config = Config {
             sample_rate: 48000,
             channels: 16,
             channel: 15,
             size,
-            hop: size / 4,
+            hop: overlap.hop(size),
             window: Window::Hann,
             remove_dc: true,
             precision: Precision::F64,
@@ -73,7 +76,8 @@ fn main() {
         collector.freeze();
         let snapshot = collector.snapshot();
         println!(
-            "{size:>5}-point f64 STFT + collector, CH 16 / 48000 Hz: {rows} FFTs, {:.3} ms/FFT, {:.3} ms/collected row, {:.3} s retained, {:.3} MiB frames",
+            "{size:>5}-point f64 STFT + collector, CH 16 / 48000 Hz: {rows} FFTs, overlap {}, {:.3} ms/FFT, {:.3} ms/collected row, {:.3} s retained, {:.3} MiB frames",
+            overlap.name(),
             stft.metrics.processing_nanos.load(Ordering::Relaxed) as f64 / 1e6 / rows as f64,
             collector.metrics.processing_nanos.load(Ordering::Relaxed) as f64 / 1e6 / rows as f64,
             snapshot.retained_seconds(),

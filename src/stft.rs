@@ -21,6 +21,36 @@ pub const INPUT_BLOCKS: usize = 64;
 pub const RESULT_ROWS: usize = 128;
 const MAX_BINS: usize = 32768 / 2 + 1;
 
+/// Spectrogram cadence only. Spectrum Continuous keeps its independent N/4 hop.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Overlap {
+    Half,
+    #[default]
+    ThreeQuarters,
+    SevenEighths,
+}
+
+impl Overlap {
+    pub const ALL: [Self; 3] = [Self::Half, Self::ThreeQuarters, Self::SevenEighths];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Half => "50%",
+            Self::ThreeQuarters => "75%",
+            Self::SevenEighths => "87.5%",
+        }
+    }
+
+    pub fn hop(self, size: usize) -> usize {
+        size / match self {
+            Self::Half => 2,
+            Self::ThreeQuarters => 4,
+            Self::SevenEighths => 8,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Config {
     pub sample_rate: u32,
@@ -521,7 +551,7 @@ pub fn smoke_test(
         channels: capture.channels as usize,
         channel,
         size: 8192,
-        hop: 2048,
+        hop: Overlap::default().hop(8192),
         window: Window::Hann,
         remove_dc: true,
         precision: crate::spectrum::Precision::F64,
@@ -597,6 +627,134 @@ pub fn smoke_test(
 mod tests {
     use super::*;
     use std::f64::consts::TAU;
+
+    #[test]
+    fn overlap_preserves_complete_windows_f64_levels_and_long_sample_times() {
+        let origin = (1_u64 << 54) + 137;
+        for size in STFT_SIZES {
+            for overlap in Overlap::ALL {
+                for precision in [Precision::F64, Precision::F32] {
+                    for window in [Window::Rectangular, Window::Hann, Window::BlackmanHarris] {
+                        for remove_dc in [false, true] {
+                            let cfg = Config {
+                                size,
+                                hop: overlap.hop(size),
+                                precision,
+                                window,
+                                remove_dc,
+                                ..config()
+                            };
+                            cfg.validate().unwrap();
+                            let mut processor = Processor::new(71, cfg);
+                            let mut rows = 0;
+                            for offset in (0..size + 2 * cfg.hop).step_by(BLOCK_FRAMES) {
+                                let mut input = InputBlock::empty(71, cfg);
+                                input.start = origin + offset as u64;
+                                input.len = BLOCK_FRAMES;
+                                for (i, value) in input.samples.iter_mut().enumerate() {
+                                    let n = offset + i;
+                                    *value = 0.125
+                                        + 0.5
+                                            * (TAU * 32.0 * (n % size) as f64 / size as f64).cos()
+                                        + if n.is_multiple_of(2) { 0.0625 } else { -0.0625 };
+                                }
+                                processor.process(&input, |info, power| {
+                                    assert_eq!(info.generation, 71);
+                                    assert_eq!(info.start, origin + (rows * cfg.hop) as u64);
+                                    assert_eq!(info.end, info.start + size as u64);
+                                    assert_eq!(info.config, cfg);
+                                    let tolerance = if precision == Precision::F64 {
+                                        2e-13
+                                    } else {
+                                        2e-7
+                                    };
+                                    for (bin, amplitude) in [
+                                        (0, if remove_dc { 0.0 } else { 0.125 }),
+                                        (32, 0.5),
+                                        (size / 2, 0.0625),
+                                    ] {
+                                        assert!(
+                                            (power[bin].sqrt() - amplitude).abs() < tolerance,
+                                            "{cfg:?}, bin {bin}"
+                                        );
+                                    }
+                                    let result =
+                                        crate::spectrum::Result::from_stft(info, power).unwrap();
+                                    assert_eq!(result.power(), power);
+                                    let reading = result
+                                        .cursor(32.0 * cfg.sample_rate as f64 / size as f64)
+                                        .unwrap();
+                                    assert_eq!(reading.window.start, info.start);
+                                    assert_eq!(reading.window.end, info.end);
+                                    assert_eq!(reading.window.channel, 15);
+                                    assert_eq!(reading.window.settings.averages, 1);
+                                    assert!(reading.window.calibration.is_none());
+                                    assert!((reading.value - 0.5).abs() < tolerance);
+                                    rows += 1;
+                                    true
+                                });
+                            }
+                            assert_eq!(rows, 3);
+                            // An acquisition gap requires another complete N,
+                            // independently of overlap; no partial/zero-filled FFT.
+                            let start = origin + (size * 3) as u64;
+                            let mut recovered = 0;
+                            for offset in (0..size).step_by(BLOCK_FRAMES) {
+                                let mut input = block(start + offset as u64, BLOCK_FRAMES, cfg);
+                                input.samples.fill(0.0);
+                                processor.process(&input, |info, power| {
+                                    assert_eq!(info.start, start);
+                                    assert_eq!(info.end, start + size as u64);
+                                    assert!(info.gap.discontinuity);
+                                    assert!(info.gap.input_frames > 0);
+                                    assert!(power.iter().all(|&p| p == 0.0));
+                                    recovered += 1;
+                                    true
+                                });
+                            }
+                            assert_eq!(recovered, 1);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn retained_spectrum_adapter_keeps_weak_bins_silence_and_invalidity() {
+        let cfg = config();
+        let info = RowInfo {
+            generation: 9,
+            config: cfg,
+            start: 1 << 54,
+            end: (1 << 54) + cfg.size as u64,
+            gap: Gap::default(),
+        };
+        let mut power = vec![0.0; cfg.size / 2 + 1];
+        power[32] = 1e-300 + f64::MIN_POSITIVE;
+        let result = crate::spectrum::Result::from_stft(info, &power).unwrap();
+        assert_eq!(result.power()[32].to_bits(), power[32].to_bits());
+        let reading = result.cursor(1500.0).unwrap();
+        assert_eq!(reading.value, power[32].sqrt());
+        assert_eq!(reading.level_db, 10.0 * power[32].log10());
+        assert_eq!(result.cursor(0.0).unwrap().level_db, f64::NEG_INFINITY);
+        assert_eq!(result.db()[32], crate::spectrum::DB_MIN);
+        power[32] = f64::NAN;
+        let invalid = crate::spectrum::Result::from_stft(info, &power).unwrap();
+        assert_eq!(invalid.validity(), crate::spectrum::Validity::NonFinite);
+        assert!(invalid.cursor(1500.0).is_none());
+        assert!(crate::spectrum::Result::from_stft(info, &power[..512]).is_none());
+        assert!(
+            crate::spectrum::Result::from_stft(
+                RowInfo {
+                    start: info.start + 1,
+                    ..info
+                },
+                &power
+            )
+            .is_none()
+        );
+    }
 
     #[test]
     fn display_cache_distinguishes_silence_nonfinite_and_sub_floor_signal() {
@@ -912,31 +1070,35 @@ mod tests {
         wait_until(|| worker.metrics.produced.load(Ordering::Relaxed) >= 1);
         worker.pause();
         worker.drain(|_| panic!("paused result changed the display"));
-        let cfg = Config {
-            sample_rate: 96000,
-            channels: 1,
-            channel: 0,
-            size: 2048,
-            hop: 512,
-            precision: Precision::F32,
-            ..config()
-        };
-        let second = worker.configure(cfg).unwrap();
-        assert!(second > first);
-        for sequence in 0..3072 {
-            worker.submit(sequence, &[0.0]);
-        }
-        worker.flush();
-        let mut received = 0;
-        wait_until(|| {
-            worker.drain(|row| {
-                assert_eq!(row.info.generation, second);
-                assert_eq!(row.info.config, cfg);
-                assert_eq!(row.info.start, received * 512);
-                received += 1;
+        let mut previous = first;
+        for overlap in Overlap::ALL {
+            let cfg = Config {
+                sample_rate: 96000,
+                channels: 1,
+                channel: 0,
+                size: 2048,
+                hop: overlap.hop(2048),
+                precision: Precision::F32,
+                ..config()
+            };
+            let generation = worker.configure(cfg).unwrap();
+            assert!(generation > previous);
+            previous = generation;
+            for sequence in 0..(cfg.size + 2 * cfg.hop) as u64 {
+                worker.submit(sequence, &[0.0]);
+            }
+            worker.flush();
+            let mut received = 0;
+            wait_until(|| {
+                worker.drain(|row| {
+                    assert_eq!(row.info.generation, generation);
+                    assert_eq!(row.info.config, cfg);
+                    assert_eq!(row.info.start, received * cfg.hop as u64);
+                    received += 1;
+                });
+                received == 3
             });
-            received == 3
-        });
+        }
     }
 
     #[test]

@@ -89,11 +89,14 @@ pub struct Parameters {
 
 struct Request {
     id: u64,
+    submitted_at: Instant,
     snapshot: Arc<Snapshot>,
     parameters: Parameters,
 }
 pub struct Prepared {
     pub id: u64,
+    /// Request to UI application latency includes queueing and preparation.
+    pub submitted_at: Instant,
     pub snapshot: Arc<Snapshot>,
     pub anchor: u64,
     pub history: History,
@@ -241,6 +244,7 @@ impl Worker {
         self.last_end = end;
         let previous = self.mailbox.lock().unwrap().request.replace(Request {
             id: self.id,
+            submitted_at: Instant::now(),
             snapshot,
             parameters,
         });
@@ -523,6 +527,7 @@ fn prepare(
 
     Some(Prepared {
         id: request.id,
+        submitted_at: request.submitted_at,
         snapshot: snapshot.clone(),
         anchor,
         history,
@@ -616,6 +621,7 @@ mod tests {
     }
     fn request(snapshot: Arc<Snapshot>, parameters: Parameters) -> Request {
         Request {
+            submitted_at: Instant::now(),
             id: 19,
             snapshot,
             parameters,
