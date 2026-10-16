@@ -14,6 +14,7 @@
 | 全窓／最新窓、欠落、UI受信停止・世代・有限Stop、STFT | [spectrum_worker.rs](../../src/spectrum_worker.rs)、[stft.rs](../../src/stft.rs)、[measurement.rs](../../src/measurement.rs) |
 | STFT表示要求・縮約・固定上端・キャッシュ容量 | [spectrogram/viewport.rs](../../src/spectrogram/viewport.rs)。GPU読み戻しは`--gpu-smoke`のラスタDC／Nyquistと転送省略 |
 | STFT数値履歴・UI受信停止・周回・不変参照・容量と世代 | [spectrogram/history.rs](../../src/spectrogram/history.rs)。実時間の収集継続は`MEASURELAB_PROFILE_UI_STALL` |
+| STFTのCPU容量・旧新世代の交換・終了時解放 | [spectrogram_capacity.rs](../../tests/spectrogram_capacity.rs)。独立プロセスの計数アロケーターでFFT・結果プール・履歴・Hold・表示準備を合算。確保要求のpayloadとRSS・アロケーター管理費用を区別する |
 | REF・局所位相・二段EMA・校正・無効化・専用転送 | [lockin.rs](../../src/lockin.rs)、[lockin_worker.rs](../../src/lockin_worker.rs)、[loopback.rs](../../src/loopback.rs) |
 | Generatorの独立式・遷移・長い整数時計・優先Stop | [generator/tests.rs](../../src/generator/tests.rs)、[generator/control.rs](../../src/generator/control.rs) |
 | 出力PCM・デバイス・通知・解放・外部履歴 | [output/device.rs](../../src/output/device.rs)、[output/runtime.rs](../../src/output/runtime.rs)、[output/history.rs](../../src/output/history.rs)、[callback_profile.rs](../../src/callback_profile.rs) |
@@ -76,6 +77,44 @@ macOSのMetalは、画面が点いていても他のウィンドウに覆われ�
 4. 異なるネイティブDPIの実モニター間でウィンドウを往復させ、同じ表示・操作を確認する。モニターの用意がない場合は未確認のまま残し、表示倍率や模擬scaleで代用しない。
 
 実施後は下記の要約に対象ビルド・モニター条件・結果を短く反映する。自動QAの成功だけでこの手動受け入れを完了にしない。
+
+### Spectrogramの容量・比較負荷
+
+S3の有限入力テストは独立したテストプロセスで実行する。最大FFT・高Fs・16chからの選択と最小FFT・48 kHz・1chを切り替え、時間上限／容量上限、Hold中の周回、未受信の表示応答、要求飽和、旧新世代の交換、Live復帰と全ワーカー終了後の解放を確認する。精度・容量の判定はテストコードを正本とする。有限入力のペーシングは実時間の性能保証ではない。
+
+```sh
+./scripts/cargo.sh test --locked --no-default-features --test spectrogram_capacity -- --nocapture
+./scripts/cargo.sh bench --locked --no-default-features --bench spectrogram
+```
+
+ベンチは実際のSTFT→数値履歴→表示準備ワーカーを使い、60秒の履歴から最大ラスタへの変換を測る。Autoの有無、平均・p95・最大時間を比較する。`cargo test --all-targets`では各条件1回だけ動作確認する。
+
+実時間比較は同じ入力経路・Fs・FFT精度／長・表示寸法でLiveとstressを別々に実行する。`MEASURELAB_PROFILE_SPECTROGRAM=live`はSpectrogram単独・60秒・Autoの比較基準、`stress`は同じ表示からHold／固定時間A／パン／ズーム／色／時間幅／Liveを反復する。条件・世代不変とSTFTの入力／結果／保存欠落なしを判定し、UIフレーム時間、STFT／収集／表示準備時間、ラスタ容量、GPU payload／転送量を出力する。GPU容量はリサイズ時の旧新テクスチャを含み、ドライバー使用量は含めない。
+
+```sh
+./scripts/cargo.sh build --release --locked --features qa
+MEASURELAB_PROFILE_SECONDS=120 MEASURELAB_PROFILE_SPECTROGRAM=live \
+    MEASURELAB_PROFILE_DEMO_BIN_TONE=1 MEASURELAB_PROFILE_SPECTRUM_MODE=continuous \
+    MEASURELAB_PROFILE_UI_STALL=1 MEASURELAB_PROFILE_KEEP_AWAKE=1 \
+    ./scripts/profile-stage2.sh spectrogram-live --demo
+MEASURELAB_PROFILE_SECONDS=120 MEASURELAB_PROFILE_SPECTROGRAM=stress \
+    MEASURELAB_PROFILE_DEMO_BIN_TONE=1 MEASURELAB_PROFILE_SPECTRUM_MODE=continuous \
+    MEASURELAB_PROFILE_UI_STALL=1 MEASURELAB_PROFILE_KEEP_AWAKE=1 \
+    ./scripts/profile-stage2.sh spectrogram-stress --demo
+MEASURELAB_PROFILE_SECONDS=120 MEASURELAB_PROFILE_SPECTROGRAM=stress \
+    MEASURELAB_PROFILE_DEVICE="BlackHole 16ch" MEASURELAB_PROFILE_SAMPLE_RATE=192000 \
+    MEASURELAB_PROFILE_CHANNEL=16 MEASURELAB_PROFILE_KNOWN_OUTPUT=1 \
+    MEASURELAB_PROFILE_FFT_SIZE=32768 MEASURELAB_PROFILE_STFT_SIZE=32768 \
+    MEASURELAB_PROFILE_SPECTRUM_MODE=continuous MEASURELAB_PROFILE_UI_STALL=1 \
+    MEASURELAB_PROFILE_KEEP_AWAKE=1 \
+    ./scripts/profile-stage2.sh spectrogram-blackhole16-stress
+```
+
+内部の既知正弦波には`MEASURELAB_PROFILE_DEMO_BIN_TONE=1`を追加する。外部I/Oでは`--demo`を外し、`MEASURELAB_PROFILE_DEVICE`・`SAMPLE_RATE`・`CHANNEL`を共通接頭辞付きで指定する。BlackHoleでは`MEASURELAB_PROFILE_KNOWN_OUTPUT=1`で仮想デバイスへの既知信号出力・既存Spectrum照合・出力通知監査を併用できる。内部デモ、Software Loopback、外部I/Oの結果を区別し、利用していない経路の成功へ広げない。ログとRSSは`dist/stage2-qa/`に保存し、数値の合否はログ内のQA判定と欠落を確認する。画面スリープを避ける実行では`MEASURELAB_PROFILE_KEEP_AWAKE=1`も指定する。描画が遮蔽された実行のUI時間を前面表示の性能へ代用しない。
+
+通常ビルドの手動操作と実モニター間DPIの受け入れは別に残る。自動の状態反復は実ウィジェットのイベント検証や手動確認の代用にしない。
+
+高Fsの反復操作は、欠落なしだけでUI応答の受け入れにしない。Liveとの差、GPU転送量、UI更新間隔と操作感を確認する。意図したUI停止時間を最大フレーム間隔の退行と取り違えず、取得・FFT窓の欠落と表示更新の省略を区別する。
 
 ### GUI QAの環境変数
 

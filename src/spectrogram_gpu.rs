@@ -29,6 +29,9 @@ pub struct Renderer {
     pub color_map: ColorMap,
     pub uploaded_rows: u64,
     pub uploaded_buffers: u64,
+    pub uploaded_bytes: u64,
+    /// Texture/buffer payload, including both textures at a resize boundary.
+    pub peak_storage_bytes: u64,
 }
 
 impl Renderer {
@@ -128,6 +131,8 @@ impl Renderer {
             color_map: ColorMap::Blue,
             uploaded_rows: 0,
             uploaded_buffers: 0,
+            uploaded_bytes: 0,
+            peak_storage_bytes: (TEXTURE_WIDTH * ROWS * 4 + ROWS * 2 * 16 + 80) as u64,
         }
     }
 
@@ -151,6 +156,10 @@ impl Renderer {
             return;
         }
         if self.scanlines != scanlines || self.texture_width != texture_width {
+            let next_bytes = (texture_width * scanlines * ROWS * 4) as u64;
+            self.peak_storage_bytes = self
+                .peak_storage_bytes
+                .max(self.storage_bytes() + next_bytes);
             self.texture.destroy();
             self.revision = u64::MAX;
             self.texture = texture(device, texture_width, scanlines);
@@ -188,6 +197,7 @@ impl Renderer {
                     },
                 );
                 self.uploaded_rows += 1;
+                self.uploaded_bytes += std::mem::size_of_val(db) as u64;
             }
             self.versions[slot] = history.version(slot);
         }
@@ -205,6 +215,7 @@ impl Renderer {
             if !self.vertices.is_empty() {
                 queue.write_buffer(&self.instances, 0, bytemuck::cast_slice(&self.vertices));
                 self.uploaded_buffers += 1;
+                self.uploaded_bytes += std::mem::size_of_val(self.vertices.as_slice()) as u64;
             }
             self.count = self.vertices.len() as u32;
             self.revision = history.revision();
@@ -233,8 +244,14 @@ impl Renderer {
         if self.parameters != parameters {
             queue.write_buffer(&self.uniform, 0, bytemuck::cast_slice(&parameters));
             self.uploaded_buffers += 1;
+            self.uploaded_bytes += std::mem::size_of_val(&parameters) as u64;
             self.parameters = parameters;
         }
+    }
+    pub fn storage_bytes(&self) -> u64 {
+        (self.texture_width * self.scanlines * ROWS * 4) as u64
+            + self.instances.size()
+            + self.uniform.size()
     }
     pub fn paint(&self, pass: &mut wgpu::RenderPass<'_>) {
         if self.count == 0 {
