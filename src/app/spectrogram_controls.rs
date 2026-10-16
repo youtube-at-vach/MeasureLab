@@ -20,6 +20,7 @@ pub(super) struct HistoryProfile {
     tick: u64,
     operations: u64,
     selected: Option<(u64, u64)>,
+    response: crate::qa::Distribution,
 }
 
 impl ScopeApp {
@@ -91,10 +92,35 @@ impl ScopeApp {
     }
 
     #[cfg(feature = "qa")]
-    pub(super) fn finish_spectrogram_profile(&self) {
+    pub(super) fn finish_spectrogram_profile(&self, input: Option<&measurement::Snapshot>) {
         if std::env::var_os("MEASURELAB_PROFILE_SPECTROGRAM").is_none() {
             return;
         }
+        let input = input.expect("finite Spectrogram input");
+        let config = input.stft_config;
+        let frames = self
+            .core
+            .as_ref()
+            .unwrap()
+            .metrics
+            .input_frames
+            .load(Ordering::Relaxed);
+        assert_eq!(input.input_dropped, 0);
+        let origin = input.history.range().end - frames;
+        let windows = 1 + (frames - config.size as u64) / config.hop as u64;
+        let expected = origin + config.size as u64 + (windows - 1) * config.hop as u64;
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while self
+            .stft_history
+            .snapshot()
+            .latest()
+            .is_none_or(|f| f.info.end < expected)
+        {
+            assert!(Instant::now() < deadline, "final STFT collection timed out");
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        assert_eq!(self.stft.metrics.produced.load(Ordering::Relaxed), windows);
+        crate::qa::spectrogram::validate(input, &self.stft_history.snapshot(), origin);
         assert!(
             self.spectrogram_profile.conditions.is_some(),
             "no STFT frames profiled"
@@ -129,6 +155,17 @@ impl ScopeApp {
         let metrics = &self.spectrogram_view_worker.metrics;
         let completed = metrics.completed.load(Ordering::Acquire);
         assert!(completed > 0, "no raster preparation completed");
+        let response = &self.spectrogram_profile.response;
+        assert!(
+            response.count >= self.spectrogram_profile.operations / 20,
+            "Spectrogram display failed to apply a response per stress cycle"
+        );
+        println!(
+            "Spectrogram response: {} applied, request-to-UI p95 {:.3} ms, max {:.3} ms",
+            response.count,
+            response.p95().expect("no Spectrogram response applied"),
+            response.max,
+        );
         println!(
             "Spectrogram preparation: {completed} rasters, worker {:.3} ms total / {:.3} ms mean / {:.3} ms max",
             metrics.processing_nanos.load(Ordering::Relaxed) as f64 / 1e6,
@@ -338,6 +375,12 @@ impl ScopeApp {
             && prepared.snapshot.generation == self.stft_generation
             && prepared.snapshot.input_generation == self.input_generation
         {
+            #[cfg(feature = "qa")]
+            if self.profile.is_some() {
+                self.spectrogram_profile
+                    .response
+                    .record(prepared.submitted_at.elapsed().as_secs_f64() * 1000.0);
+            }
             self.spectrogram_prepared_id = prepared.id;
             self.spectrogram_snapshot = prepared.snapshot;
             self.spectrogram_anchor = prepared.anchor;

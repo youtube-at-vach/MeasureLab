@@ -710,6 +710,38 @@ impl ScopeApp {
             app.reset_analysis();
         }
         #[cfg(feature = "qa")]
+        if let Some(profile) = &app.profile
+            && std::env::var_os("MEASURELAB_PROFILE_SOFTWARE_LOOPBACK").is_some()
+        {
+            if demo || smoke || profile.device.is_some() {
+                return Err("Software Loopback profile requires its own input route".into());
+            }
+            app.source = Source::Software;
+            app.requested_sample_rate = profile.sample_rate;
+            app.loopback_settings.frequency_hz = 750.0;
+            app.spectrum_channel = 1;
+            app.spectrogram_channel = 1;
+            app.start();
+        }
+        #[cfg(feature = "qa")]
+        if let Some(profile) = &app.profile
+            && std::env::var_os("MEASURELAB_PROFILE_GENERATOR_INTERNAL").is_some()
+        {
+            if demo || smoke || profile.device.is_some() {
+                return Err("Internal Generator profile requires its own input route".into());
+            }
+            app.source = Source::Generator;
+            let rate = profile.sample_rate.unwrap_or(48000);
+            let mut settings = crate::generator::Settings::default();
+            for signal in &mut settings.signals {
+                signal.enabled = true;
+                signal.frequency_hz = 750.0;
+                signal.amplitude_dbfs = -20.0;
+            }
+            app.generator
+                .select(output::Target::Internal, rate, settings)?;
+        }
+        #[cfg(feature = "qa")]
         if std::env::var_os("MEASURELAB_SPECTRUM_PSD").is_some() {
             app.spectrum_settings.quantity = Quantity::Psd;
             app.reset_analysis();
@@ -2179,7 +2211,9 @@ impl ScopeApp {
         assert_eq!(snapshot.input_dropped, 0, "UI stall lost measurement input");
         assert_eq!(snapshot.spectrum_info.missing_windows, 0);
         assert_eq!(snapshot.spectrum_info.input_missing, 0);
-        if self.spectrum_mode == SpectrumMode::Continuous {
+        // Internal Generator retains its absolute output sample origin. Its
+        // finite profile barrier checks counts relative to that origin.
+        if self.spectrum_mode == SpectrumMode::Continuous && self.source != Source::Generator {
             assert_eq!(
                 snapshot.spectrum_info.updates,
                 1 + (snapshot.history.range().end - self.spectrum_settings.size as u64)
@@ -2597,16 +2631,19 @@ impl ScopeApp {
             self.dropped = 0;
             self.dirty = true;
             self.xy_dirty = true;
+            // reset_stft pauses a stopped input. Mark this start before
+            // configuring its worker, as the audio/demo paths already do.
+            self.software_running = true;
             self.reset_analysis();
             self.reset_stft();
-            match self.core.as_ref().unwrap().start_generator(
+            if let Err(error) = self.core.as_ref().unwrap().start_generator(
                 self.input_generation,
                 capture,
                 rate,
                 self.core_config(),
             ) {
-                Ok(()) => self.software_running = true,
-                Err(e) => self.error = Some(e),
+                self.stop();
+                self.error = Some(error);
             }
             return;
         }
@@ -2638,16 +2675,17 @@ impl ScopeApp {
             self.dirty = true;
             self.dropped = 0;
             self.error = None;
+            self.software_running = true;
             self.reset_analysis();
             self.reset_stft();
-            match self.core.as_ref().unwrap().start_loopback(
+            if let Err(error) = self.core.as_ref().unwrap().start_loopback(
                 self.input_generation,
                 self.loopback_settings.clone(),
                 rate,
                 self.core_config(),
             ) {
-                Ok(()) => self.software_running = true,
-                Err(e) => self.error = Some(e),
+                self.stop();
+                self.error = Some(error);
             }
             return;
         }
@@ -5696,8 +5734,8 @@ impl eframe::App for ScopeApp {
                         history.storage_bytes() as f64 / 1048576.0
                     );
                     drop(history);
+                    self.finish_spectrogram_profile(finished.as_ref());
                     let numeric = self.stft_history.snapshot();
-                    self.finish_spectrogram_profile();
                     if let Some(render) = &frame.wgpu_render_state()
                         && let Some(renderer) = render
                             .renderer
@@ -5741,6 +5779,16 @@ impl eframe::App for ScopeApp {
                     self.busy = true;
                     self.audio.send(Command::Stop);
                     self.qa_wait_audio_idle().expect("QA input did not stop");
+                    if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_INTERNAL").is_some() {
+                        self.generator.stop();
+                        let deadline = Instant::now() + Duration::from_secs(5);
+                        while !self.generator.stopped() {
+                            self.generator.poll();
+                            assert!(Instant::now() < deadline, "internal output Stop timed out");
+                            std::thread::sleep(Duration::from_millis(2));
+                        }
+                        println!("Internal Generator Spectrogram output stopped");
+                    }
                     if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_DEVICE").is_some() {
                         self.finish_generator_profile(
                             finished.as_ref().expect("Generator input endpoint"),

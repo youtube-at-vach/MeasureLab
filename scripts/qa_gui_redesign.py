@@ -23,6 +23,20 @@ def cases(devices=()):
     yield "spectrum-four-channel", False, {"VIEW": "spectrum", "SPECTRUM4": "1"}
     yield "spectrum-four-channel-compact", True, {"VIEW": "spectrum", "SPECTRUM4": "1", "ZOOM": "1.25"}
     yield "spectrum-details-compact", True, {"VIEW": "spectrum", "SPECTRUM4": "1", "DETAILS": "1", "ZOOM": "1.25"}
+    for mode in ("1", "pair"):
+        for compact in (False, True):
+            name = "single" if mode == "1" else mode
+            yield (
+                f"spectrogram-display-{name}-{'compact' if compact else 'wide'}",
+                compact,
+                {"SPECTROGRAM_DISPLAY": mode, "VIEW": "spectrogram", "DETAILS": "1"}
+                | ({"ZOOM": "1.25"} if compact else {}),
+            )
+    yield (
+        "spectrogram-display-single-measurement-compact",
+        True,
+        {"SPECTROGRAM_DISPLAY": "1", "VIEW": "spectrogram", "ZOOM": "1.25"},
+    )
     yield "spectrum-esd", False, {"VIEW": "spectrum", "ESD": "1"}
     yield "spectrum-esd-compact", True, {"VIEW": "spectrum", "ESD": "1", "DETAILS": "1", "ZOOM": "1.25"}
     yield "scope-details-compact", True, {"VIEW": "scope", "DETAILS": "1", "IDLE": "1", "ZOOM": "1.25"}
@@ -124,6 +138,8 @@ def main():
                 passed = passed and "GUI interactions OK:" in log
             if "ESD" in options:
                 passed = passed and "ESD UI OK:" in log
+            if "SPECTROGRAM_DISPLAY" in options:
+                passed = passed and "Spectrogram display UI OK:" in log
             returncode = result.returncode
         except subprocess.TimeoutExpired as error:
             log = f"GUI QA timed out: {error}"

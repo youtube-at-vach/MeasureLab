@@ -45,6 +45,10 @@ Choose **Pair with… / Spectrum** to overlay the selected time A/B frames. **Ti
 
 **Details / Analysis / FFT Overlap** offers 50/75 (default)/87.5%, with integer hops N/2, N/4 and N/8. Frequency and amplitude definitions stay the same. Higher overlap increases analysis load and shortens retention within the memory limit. Changing it during acquisition clears old history and linking, then waits for a complete window. Edits while stopped apply on the next Start. Older settings restore 75%.
 
+Each row uses the complete N/Fs-second FFT window; rows are spaced hop/Fs seconds apart. Time A/B identifies the window endpoint and actual sample interval. Increasing overlap leaves window duration and frequency resolution unchanged.
+
+If data fills only the top of the image, compare the retained duration in the heading with **Time Range**. A view longer than the available history leaves the bottom blank. Choose a shorter range to inspect retained history at a larger scale.
+
 ## Observe a Generator sine wave
 
 1. Open **Generator**, then choose **Pair with… / Scope**. The two-channel internal output is available in normal builds.

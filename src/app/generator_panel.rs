@@ -398,13 +398,18 @@ impl ScopeApp {
     }
     #[cfg(feature = "qa")]
     pub(super) fn start_generator_profile_input(&mut self) {
-        if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_DEVICE").is_none()
+        let internal = std::env::var_os("MEASURELAB_PROFILE_GENERATOR_INTERNAL").is_some();
+        if (!internal && std::env::var_os("MEASURELAB_PROFILE_GENERATOR_DEVICE").is_none())
             || self.generator.profile_input_started
             || self.created.elapsed() < Duration::from_secs(2)
-            || self.devices.is_empty()
+            || (!internal && self.devices.is_empty())
             || self.generator.starting
             || self.generator.pending
         {
+            return;
+        }
+        if internal && self.generator.stopped() {
+            self.generator.start();
             return;
         }
         // Exercise Start after the first GUI frames, as a user would. Any
