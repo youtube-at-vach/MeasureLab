@@ -2,14 +2,24 @@
 
 Rust版は`main`へ統合済みで、開発PRのbaseも`main`とする。ここには配布前の未完了条件と公開運用を置く。測定機能の受け入れは [PLAN](PLAN.md)、実機の確認範囲は [VALIDATION](VALIDATION.md) を参照する。mainへの統合、CIビルド、ローカル.app作成を配布済みとは扱わない。
 
+## 初回公開に向けた準備範囲
+
+現在はリリース日・公開実行を決めず、公開できる状態への準備を進める。タグ作成・Draft作成・公開・Latest変更は依頼された段階で行う。
+
+* 配布候補はWindows 10／11 x64、glibc 2.35以降のLinux x86_64、macOS 13以降のIntel／Apple Silicon。形式は下記の既存パッケージを使う。ビルド下限と実機の確認済みOS・CPU・経路を区別し、未受け入れの組合せを動作保証へ広げない。
+* 初回の機能案内は1〜16ch入力、4ch Scope／Spectrum、Spectrogram／XY、校正・条件付き保存復元を基本とする。Generator・Lock-in・同期2ch比較は実装済みだが実験段階と明記する。Generator／同期比較の最大Fs・反復再接続・長時間・物理校正を受け入れ済みとはしない。[PLANの段階4.5／5](PLAN.md) の統合評価を残し、FRF／Bode等の新機能を初回準備の必須条件へ加えない。
+* 配布物の通常GUI、入出力の独立停止、保存復元・OFF復元、既知の欠落や高負荷停止の案内は公開候補で確認する。WindowsのGNU／dev-fast起動、Linuxの過去のAppImage起動、macOSの開発QAは、候補の同一SHA・配布実行ファイルの受け入れへ代用しない。
+* 初回は現在の署名状態を案内して準備する。WindowsはAuthenticode未署名、Linuxは発行元署名なし、macOSはad-hoc署名・Developer ID署名／公証なし。署名・公証の追加は後続改善とし、チェックサムとbuild-infoを発行元認証と説明しない。Sigstore・統合チェックサム・VirusTotalは任意の改善候補で、旧処理を自動復活させない。
+* 初回`v0.10.0`は**Prerelease、Latest=false**とする。Python v0.9.1のLatestと`version.json`を維持し、Rustは`rust-release.json`で別に管理する。公開前の`published:false`ではRustのダウンロードボタンを無効にする。
+
 ## 初回プロトタイプ配布前のタスク
 
 | 項目 | 完了条件 |
 | --- | --- |
-| 版番号・互換性・リリースノート | 次のRust版は`v0.10.0`。Cargoとバンドルの版、設定／結果スキーマの互換性、タグ衝突・GitHub Latestの扱いを確認する。Pythonの配布用`version.json`は別途配布変更まで`v0.9.1`を保持 |
+| 版番号・互換性・リリースノート | 次のRust版は`v0.10.0`。Cargoとバンドルの版、設定／結果スキーマの互換性、タグ衝突・GitHub Latestの扱いを確認する。Pythonの配布用`version.json`は`v0.9.1`を保持し、Rustは`rust-release.json`を使用 |
 | 対応OS／CPU・配布形式 | Windows x64はInno SetupとZIP、Linux x86_64はAppImageと同一AppDirのtar.gz、macOSはIntel／Apple Silicon別のDMGを実装。LinuxはUbuntu 22.04、macOSのdeployment targetは13.0。各OSの通常GUI・実入出力・保存、対応OS版ごとの受け入れを残す |
-| 配布ビルド・Release workflow | 3 OSとも通常desktop・`--locked`・qaなしのビルド、版・アイコン・ライセンス・SHA-256とビルド情報を揃え、検証後に共通Draft Releaseへ集約する。発行元署名・macOS公証・実機受け入れを残す。タグ・公開は依頼された段階で実行 |
-| ダウンロードの新旧選択 | Pythonを固定で残し、Rustへ明示的に切り替えるメタデータ・成果物選択テストを用意。単一`version.json`の置換で旧版導線を壊さない |
+| 配布ビルド・Release workflow | 3 OSとも通常desktop・`--locked`・qaなしのビルド、版・アイコン・ライセンス・SHA-256とビルド情報を揃え、検証後に共通Draft Releaseへ集約する。初回の署名状態は上記方針に従い、実機受け入れを残す。タグ・公開は依頼された段階で実行 |
+| ダウンロードの新旧選択 | Python固定とRust明示選択、別メタデータ、全CPU・形式の成果物選択テストを実装。Rustは未公開。公開後に全リンクと配布JSONを確認する |
 | 利用者向け文書 | Rustの実画面、OS別の起動・権限・入力不在、単位・校正境界・保存形式・既知の制限を実装と照合。旧Python画像をRustへ流用しない |
 | 公開候補の受け入れ | 対象SHAで通常起動→内部／実入出力→停止→保存・復元を確認。Generatorのレベル・切断・OFF復元、同期比較の確認範囲を明記。未確認機能は実験段階の表記を維持 |
 | GitHub上の確認 | 対象SHAの必須CI、関連するOS別ビルド、Pages公開結果と主要導線を確認。ローカル検証でremoteの成功を推測しない |
@@ -31,7 +41,7 @@ Inno Setup 6.7.3は公式配布のSHA-256を固定して取得する。Rust版�
 
 build-infoはソースSHA・ローカル変更の有無・対象・機能・Rust版・実行ファイルのSHA-256を記録し、ZIPとインストーラーにも同梱する。インストーラーとZIPのテストは日本語・空白を含むパス、実行ファイルの`--help`、QA専用オプションの拒否、ペイロードのハッシュ、ユーザー単位の登録、ショートカット、修復再インストール、データ保持、削除を検証する。通常GUI・GPU・音声の受け入れは別途必要である。
 
-現在の実行ファイルとインストーラーはAuthenticode未署名。SHA-256は同一性確認であり、Windowsの発行元認証ではない。署名証明書・SmartScreenでの扱い、MSVC版の通常GUI・実入出力・保存復元は配布前の確認として残す。ローカル作成は [Windows手順](WINDOWS.md#windows配布パッケージの作成) を参照する。
+初回は現在の実行ファイル・インストーラーのAuthenticode未署名状態を案内する。SHA-256は同一性確認であり、Windowsの発行元認証ではない。SmartScreenでの扱い、MSVC版の通常GUI・実入出力・保存復元は配布前の確認として残す。署名証明書の整備は後続改善とする。ローカル作成は [Windows手順](WINDOWS.md#windows配布パッケージの作成) を参照する。
 
 ## Linux配布
 
@@ -69,7 +79,7 @@ Ubuntu 22.04以外で作る場合もglibc条件を満たす必要がある。ロ
 
 実入力を開始した際はMeasureLabへのマイクアクセスを許可する。外部Core Audio入力も対象となる。拒否した場合は「システム設定 → プライバシーとセキュリティ → マイク」でMeasureLabを許可し、再起動する。アプリ起動とターミナル経由では権限の帰属が異なるため、配布受け入れではコピーした`.app`をFinderから起動し、初回の許可・拒否・設定変更後の再開を確認する。スクリプトはTCC設定を変更せず、この操作を自動検証済みとは扱わない。
 
-Developer ID署名・Appleの公証は未整備。ダウンロードしたアプリはGatekeeperで止まる場合があり、配布元とチェックサムを確認したうえで「プライバシーとセキュリティ」の「このまま開く」を使う。Gatekeeper全体を無効にする手順は配布しない。SHA-256とad-hoc署名は発行元認証の代わりにならない。
+Developer ID署名・Appleの公証は未整備で、初回はこの状態を明記して準備する。ダウンロードしたアプリはGatekeeperで止まる場合があり、配布元とチェックサムを確認したうえで「プライバシーとセキュリティ」の「このまま開く」を使う。Gatekeeper全体を無効にする手順は配布しない。SHA-256とad-hoc署名は発行元認証の代わりにならない。
 
 パッケージ検証ではチェックサム、ソースSHA・版・通常機能構成、DMGの整合性、Applicationsリンク、同梱物を確認する。マウント中と、日本語・空白を含むパスへのコピー・取り出し後の両方で、全ファイルのSHA-256、署名・Hardened Runtime・音声入力entitlement・利用目的文、`--help`とQA専用オプションの拒否を確認する。署名後の実行ファイル・署名リソース・埋め込みビルド情報のハッシュは、循環参照を避けるため外部manifestへ記録する。CIでのパッケージ検証は、通常GUI・初回権限ダイアログ・音声I/O・測定精度の受け入れとは分ける。
 
@@ -91,7 +101,26 @@ Developer ID署名・Appleの公証は未整備。ダウンロードしたアプ
 3. Windowsのインストーラー検証、Linuxの3環境のパッケージ検証、macOSのIntel／Apple Silicon別のDMG・署名・コピー後の起動検証が成功し、ダウンロードした全artifactのSHA-256・ソースSHA・対象・通常機能構成が一致している。
 4. 同じタグのReleaseがまだ存在しない。途中失敗でDraftが残った場合は内容を確認して削除後に再実行する。既存Releaseへの上書きや資産追加は行わない。
 
-リリースノートはCHANGELOGの対象版から抽出し、3 OSのプロトタイプの制限とソースSHAを加える。各OSはReleaseへ個別に書き込まず、全対象の検証後に単一jobで作成する。通常の`GITHUB_TOKEN`を使い、書き込み権限はDraft作成jobだけに付与する。追加の`RELEASE_TOKEN`は不要。ハイフン付きのCargo版はprereleaseにする。Draftの確認・公開は手動で行い、このworkflowはGitHub Latest、配布サイト、`version.json`を更新しない。
+リリースノートはCHANGELOGの対象版から抽出し、3 OSのプロトタイプの制限とソースSHAを加える。各OSはReleaseへ個別に書き込まず、全対象の検証後に単一jobで作成する。通常の`GITHUB_TOKEN`を使い、書き込み権限はDraft作成jobだけに付与する。追加の`RELEASE_TOKEN`は不要。初回`0.10.0`とハイフン付きのCargo版はprereleaseにする。Draftの確認・公開は手動で行い、このworkflowはGitHub Latest、配布サイト、`version.json`を更新しない。
+
+## 公開候補の通し確認と公開運用
+
+以下は実行時の手順であり、記載だけで実施済みとはしない。現段階では公開せず、候補SHAが決まった時点で開始する。
+
+1. 候補を`main`へ統合し、そのSHAの必須3チェックを確認する。ブランチのRelease workflowを手動実行する（例：`gh workflow run release.yml --ref main`）。実行詳細の`headSha`が候補SHAであることを確認する。ブランチ実行ではDraftを作らない。
+2. Windows、Linux、macOS Intel／Apple Siliconの4 artifactをダウンロードする。Windows 4、Linux 4、macOS各3の計14ファイル、版・ソースSHA・clean・release／desktop・対象CPU、全チェックサムを確認する。ソースをビルドし直した別実行ファイルで受け入れを置き換えない。
+3. [配布パッケージの受け入れ](VALIDATION.md#配布パッケージの受け入れ) を同じ配布実行ファイルで行う。OS・CPU別の未実施、失敗と既知の問題を区別し、受け入れ範囲を利用者文書とリリースノートへ反映する。ソース修正後は新しい候補SHAへ戻り、影響するパッケージを再確認する。
+4. リリースを依頼された段階でCargoと一致するタグを作り、タグのRelease workflowで共通Draftを作る。手動ビルドの成功はタグ時のCI・全資産検証・Draft作成の代わりにはならない。Draftの14ファイル・SHA・リリースノート・Prerelease=true・Latest=falseを確認する。Draftの再ビルド資産も受け入れた実行ファイルのハッシュと照合し、異なれば受け入れをやり直す。
+5. 公開を依頼された段階でDraftを公開する。ログアウト状態でもタグ別Releaseと全資産を取得でき、SHA-256が一致することを確認する。Python v0.9.1が引き続きLatestであることも確認する。
+6. 公開後、`rust-release.json`の`version`を公開したCargo版へ合わせ、`published:true`にする。`version.json`は変更しない。サイトテスト・新旧MkDocs strict・統合ビルドと必須CIを通し、サイト反映を依頼された段階でmainへ統合する。mainへの統合はPages公開を起こす。全資産の確認前に`published:true`にしない。
+7. Pages deploy成功後、`/version.json`と`/rust-release.json`、Python／Rustの切り替え、日英中、全OS・CPU・形式、マニュアルの導線を公開URLで確認する。Rustの全6パッケージを取得し、Releaseのチェックサムと一致することを確認する。Pythonの既存Intel DMG・Windows onedir ZIPも確認する。
+
+### 失敗・不完全Draft・問題版
+
+* パッケージ／チェックサム／SHA不一致で失敗した場合は公開しない。失敗runと資産を保存し、原因を直した候補SHAで通し確認へ戻る。
+* 同じタグのReleaseがあるとworkflowは上書きを拒否する。未公開の不完全Draftは資産・SHA・失敗runを確認し、削除を依頼された段階でDraftだけを削除してタグのworkflowを再実行する。正常な既存Releaseへの追加投稿や、移動したタグへの追随で資産を混ぜない。
+* 公開後の問題は対象版・OS／CPU・症状と回避策をRelease説明とRustマニュアルに明記する。配布停止が必要なら`rust-release.json`を`published:false`へ戻してサイトを反映する。修正版は新しい版・タグで準備し、公開済みの同じ名前の資産を差し替えない。
+* Rustメタデータが取得不能・不正の場合もRustのボタンは無効になる。Pythonの既存ダウンロードは独立して維持する。サイトをロールバックする際もPythonのURL・`version.json`を保持する。
 
 ## CIの運用ポイント
 
@@ -115,7 +144,7 @@ Developer ID署名・Appleの公証は未整備。ダウンロードしたアプ
 | --- | --- | --- |
 | `/`・`/en/`と既存ページ | `docs/`、`mkdocs.yml` | Python v0.9.1の本文・画像・検索・深いリンク、旧版ラベルとRustへのリンク |
 | `/rust/`・`/rust/en/` | `docs-rust/`、`mkdocs-rust.yml` | 現在使えるRust機能、独立した検索・ナビ |
-| `/download/`・`/version.json` | `download-site/`、`version.json` | 現在配布中のPython v0.9.1。Rust配布開始時もPythonへの導線を保持 |
+| `/download/`・`/version.json`・`/rust-release.json` | `download-site/`と新旧の配布JSON | Python v0.9.1を保持し、Rustは明示選択。Rust公開前は`published:false`でダウンロードを無効化 |
 
 [build_pages.py](../../scripts/build_pages.py) が旧マニュアル→Rust→downloadの順で`site/`へ組み立て、旧ページの日英ルート・主要資産・旧版ラベル・配布JSONと全生成HTMLの内部リンクを検証する。旧版を別ディレクトリへ移さない。PDF自動生成は退役済みで、既存ReleaseのPDF資産は保持する。
 

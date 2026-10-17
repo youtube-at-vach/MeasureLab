@@ -184,5 +184,5 @@ jobs:
             exit 1
           fi
           args=(--draft --verify-tag --latest=false --title "MeasureLab $RELEASE_TAG (Rust prototype)" --notes-file release-notes.md)
-          if [[ "$RELEASE_VERSION" == *-* ]]; then args+=(--prerelease); fi
+          if [[ "$RELEASE_VERSION" == "0.10.0" || "$RELEASE_VERSION" == *-* ]]; then args+=(--prerelease); fi
           gh release create "$RELEASE_TAG" "${args[@]}" release-assets/windows/* release-assets/linux/* release-assets/macos-x86_64/* release-assets/macos-arm64/*

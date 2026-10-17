@@ -19,7 +19,7 @@ def classify(paths: list[str]) -> dict[str, bool]:
         elif (
             path.startswith(("docs/", "docs-rust/", "download-site/", "overrides/"))
             or path.startswith("mkdocs")
-            or path in {"requirements-docs.txt", "version.json", "scripts/build_pages.py"}
+            or path in {"requirements-docs.txt", "version.json", "rust-release.json", "scripts/build_pages.py"}
         ):
             result["web"] = True
         elif path.startswith("scripts/") and not path.endswith(".md"):

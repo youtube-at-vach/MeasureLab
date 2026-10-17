@@ -28,7 +28,7 @@ description: MeasureLab の Rust 開発と公開サイトの共通ルール
 | --- | --- |
 | `src/`、`Cargo.toml`、`Cargo.lock`、`benches/` | Rust アプリ、依存関係、数値テストとベンチマーク |
 | `scripts/`、`guide/rust/`、`LICENSE` | Rust 起動・macOS バンドル、操作・計画資料、The Unlicense |
-| `download-site/`、`version.json` | Python 最終リリースのダウンロード案内 |
+| `download-site/`、`version.json`、`rust-release.json` | Python 最終版とRustの配布案内。Rust公開前はダウンロード無効 |
 | `docs/`、`docs-rust/`、`mkdocs*.yml`、`requirements-docs.txt` | 新旧マニュアルの生成。`scripts/build_pages.py`でサイトを統合。PDF自動生成は退役 |
 | `guide/`、`tech_docs/`、`.github/deepwiki/` | 製品・測定設計と旧版の参考資料 |
 | `misc/extract_changelog.py`、`CHANGELOG.md` | リリースノートの抽出と開発履歴 |
