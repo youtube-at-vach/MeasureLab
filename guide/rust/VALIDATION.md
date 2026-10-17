@@ -241,6 +241,12 @@ Spectrum遅延は同じ結果群の入力利用可能→解析完了→UI提出�
 
 ローカル証拠は`dist/windows-startup-qa/`の環境・バイナリSHA-256・ビルド／描画ログ。確認範囲は起動と基本的な画面応答に限る。MSVC版、release版、OpenGL、音声入力・出力、測定精度、保存復元、DPI切り替え、負荷・長時間動作は未確認とする。
 
+### Linux AppImageでの起動確認
+
+`2a50cd95`のソースをUbuntu 22.04.5のクラウドrunner・Rust 1.99.0で通常release・`desktop`のみ・`x86_64-unknown-linux-gnu`としてビルドしたAppImageを、Ubuntu 26.04.1 x86_64／X11で確認した。AppImageをFUSE経由で直接起動し、`--compact`の通常ウィンドウ生成を確認した。
+
+Intel Iris Pro Graphics 6200（BDW GT3）／Vulkanで同じ配布実行ファイルの`--gpu-smoke`が成功した。これは既知の内部データによるGPU読み戻しであり、物理音声経路の測定確認ではない。ローカル証拠は`dist/linux-package-qa/manifest.json`、`final-verification.log`、`final-gui.log`と配布物のbuild-info。実入出力、測定精度、通常GUIの包括的な操作、保存復元、DPI切り替え・再接続・長時間動作は未確認とする。
+
 ### macOSでの測定・GUI確認
 
 以下は2026-10-12〜16の条件付き観測。共通環境はmacOS 14.8.9・x86_64・Rust 1.99、GUIはMetal／AMD Radeon R9 M290X。Fsは公称、入出力FS・物理時計・CH間校正は未校正。基点SHAの上の作業差分が対象であり、SHAだけを検証済みソースとしない。
