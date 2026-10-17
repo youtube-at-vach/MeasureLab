@@ -233,6 +233,16 @@ Spectrum遅延は同じ結果群の入力利用可能→解析完了→UI提出�
 
 ## コードで代替できない確認の要約
 
+### Windows VMでの起動確認
+
+`7a7df79a`のソースを、Windows 11 Pro（10.0.26300 x64）／VMware20,1・2論理CPU・4 GiB RAMで確認した。Rust 1.99.0の`x86_64-pc-windows-gnu`、LLVM-MinGW 20261006の`llvm-dlltool`／LLDを使用し、`dev-fast`・既定`desktop`・`qa`なしでビルドした。[再現手順](WINDOWS.md) に従う通常GUI（`--compact`）のScope初期画面、入力・出力停止、Helpの開閉を確認した。
+
+描画は`Dx12 · Microsoft Basic Render Driver`で、OpenGL指定は不要だった。表示ドライバーはMicrosoft基本ディスプレイアダプターで、VMwareのハードウェア3D描画を受け入れた結果ではない。`--gpu-smoke`も同バックエンドで成功した。GNU既定リンカーの生成物は`--help`でも`0xC0000005`で終了したため、LLDを明示する。アプリのソース変更は不要だった。
+
+ローカル証拠は`dist/windows-startup-qa/`の環境・バイナリSHA-256・ビルド／描画ログ。確認範囲は起動と基本的な画面応答に限る。MSVC版、release版、OpenGL、音声入力・出力、測定精度、保存復元、DPI切り替え、負荷・長時間動作は未確認とする。
+
+### macOSでの測定・GUI確認
+
 以下は2026-10-12〜16の条件付き観測。共通環境はmacOS 14.8.9・x86_64・Rust 1.99、GUIはMetal／AMD Radeon R9 M290X。Fsは公称、入出力FS・物理時計・CH間校正は未校正。基点SHAの上の作業差分が対象であり、SHAだけを検証済みソースとしない。
 
 | 対象・基点／条件 | 確認した範囲と制限 |

@@ -53,9 +53,13 @@ sudo apt-get install -y build-essential pkg-config \
     libxrandr-dev libxi-dev libxcursor-dev
 ```
 
-### Windows・その他の環境
+### Windows
 
-このBashスクリプトによるネイティブWindowsのセットアップには対応していません。RustのMSVCツールチェーンとVisual Studio C++ Build Toolsを導入し、[Rust README](README.md#起動) と [Tool Usage Guide](../../.agents/workflows/tool_usage.md) の手動コマンドを使ってください。muslを使うLinuxやその他のCPUも手動セットアップの対象です。
+このBashスクリプトによるネイティブWindowsのセットアップには対応していません。標準構成はRustのMSVCツールチェーンとVisual Studio C++ Build Toolsです。Visual Studioを導入していないVMで起動を確認したGNUツールチェーン・LLDの構成とPowerShellのコマンドは [Windowsでのビルドと起動確認](WINDOWS.md) を参照してください。
+
+### その他の環境
+
+muslを使うLinuxやその他のCPUは手動セットアップの対象です。[Rust README](README.md#起動) と [Tool Usage Guide](../../.agents/workflows/tool_usage.md) を参照してください。
 
 ## 導入先とツール
 
