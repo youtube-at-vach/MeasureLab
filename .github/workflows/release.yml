@@ -130,7 +130,7 @@ jobs:
           These files are not Authenticode signed. Verify downloads with SHA256SUMS-windows-x64.txt.
           The final Python distribution remains v0.9.1.
           NOTES
-          printf '\nSource commit: `%s`\n' "$SOURCE_SHA" >> release-notes.md
+          printf '\nSource commit: %s\n' "$SOURCE_SHA" >> release-notes.md
       - name: Create a new draft with all tested assets
         run: |
           set -euo pipefail
