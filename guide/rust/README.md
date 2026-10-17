@@ -96,7 +96,7 @@ LinuxではALSAおよびウィンドウシステムの開発ライブラリが�
 sudo apt-get install build-essential pkg-config libasound2-dev libxkbcommon-dev libwayland-dev libx11-dev libxrandr-dev libxi-dev libxcursor-dev
 ```
 
-WindowsではRustのMSVCツールチェーンとVisual Studio C++ Build Toolsを使用します。
+Windowsの標準構成はRustのMSVCツールチェーンとVisual Studio C++ Build Toolsです。VMで起動を確認したGNU／LLDの構成とPowerShellの手順は [Windowsでのビルドと起動確認](WINDOWS.md) を参照してください。
 
 ## 操作
 
