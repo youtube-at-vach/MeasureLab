@@ -4,6 +4,7 @@
 
 ### Changed
 
+* **Linux Distribution**: Build the Rust prototype as an AppImage and matching portable tar.gz on Ubuntu 22.04, verify the packages on Ubuntu 22.04/24.04/26.04, and collect Windows and Linux assets in one draft release.
 * **Windows Distribution**: Build the Rust desktop as an x64 installer and ZIP, with embedded icon/version, static MSVC runtime, lifecycle checks, SHA-256 and source metadata. Prepare tagged releases as drafts after required CI passes; keep the Python installation separate.
 * **Rust Version**: Set the next MeasureLab application version to v0.10.0; the final Python distribution remains v0.9.1.
 * **CI**: Consolidate PR checks, cache Rust dependency builds, and require Linux static/numerical checks while keeping three-OS release builds optional. Run expensive jobs only for relevant changes.

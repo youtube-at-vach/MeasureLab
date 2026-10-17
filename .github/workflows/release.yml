@@ -1,4 +1,4 @@
-name: Release Windows
+name: Release
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-windows-${{ github.ref }}
+  group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -74,9 +74,13 @@ jobs:
     needs: prepare
     uses: ./.github/workflows/build_windows.yml
 
+  linux:
+    needs: prepare
+    uses: ./.github/workflows/build_linux.yml
+
   draft-release:
     if: github.ref_type == 'tag'
-    needs: [prepare, windows]
+    needs: [prepare, windows, linux]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -93,9 +97,13 @@ jobs:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.windows.outputs.artifact }}
-          path: release-assets
-      - name: Verify downloaded assets and build identity
-        working-directory: release-assets
+          path: release-assets/windows
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.linux.outputs.artifact }}
+          path: release-assets/linux
+      - name: Verify Windows assets and build identity
+        working-directory: release-assets/windows
         run: |
           set -euo pipefail
           sha256sum --check SHA256SUMS-windows-x64.txt
@@ -119,6 +127,8 @@ jobs:
               assert json.loads(archive.read('MeasureLab/build-info.json')) == info
               assert hashlib.sha256(archive.read('MeasureLab/measurelab.exe')).hexdigest() == info['executable_sha256']
           PY
+      - name: Verify Linux assets and build identity
+        run: python3 scripts/linux_package.py verify release-assets/linux --source-sha "$SOURCE_SHA" --require-clean
       - name: Prepare release notes
         run: |
           python3 misc/extract_changelog.py "$RELEASE_TAG" > release-notes.md
@@ -128,6 +138,11 @@ jobs:
           Windows x64 Rust prototype: user-scoped installer and portable ZIP.
           Windows audio/measurement acceptance remains in progress. See the Rust manual for current limitations.
           These files are not Authenticode signed. Verify downloads with SHA256SUMS-windows-x64.txt.
+
+          Linux x86_64 Rust prototype: AppImage and an equivalent tar.gz AppDir archive.
+          Built on Ubuntu 22.04, with glibc requirements checked against 2.35.
+          Ubuntu 22.04/24.04/26.04 package checks use a software Vulkan driver; physical audio and desktop acceptance remain in progress.
+          Verify Linux downloads with SHA256SUMS-linux-x86_64.txt. These assets do not include publisher signatures.
           The final Python distribution remains v0.9.1.
           NOTES
           printf '\nSource commit: %s\n' "$SOURCE_SHA" >> release-notes.md
@@ -145,6 +160,6 @@ jobs:
             echo 'A release already exists. Inspect it; remove an incomplete draft before retrying.' >&2
             exit 1
           fi
-          args=(--draft --verify-tag --latest=false --title "MeasureLab $RELEASE_TAG (Windows)" --notes-file release-notes.md)
+          args=(--draft --verify-tag --latest=false --title "MeasureLab $RELEASE_TAG (Rust prototype)" --notes-file release-notes.md)
           if [[ "$RELEASE_VERSION" == *-* ]]; then args+=(--prerelease); fi
-          gh release create "$RELEASE_TAG" "${args[@]}" release-assets/*
+          gh release create "$RELEASE_TAG" "${args[@]}" release-assets/windows/* release-assets/linux/*

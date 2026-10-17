@@ -7,8 +7,8 @@ Rust版は`main`へ統合済みで、開発PRのbaseも`main`とする。ここ�
 | 項目 | 完了条件 |
 | --- | --- |
 | 版番号・互換性・リリースノート | 次のRust版は`v0.10.0`。Cargoとバンドルの版、設定／結果スキーマの互換性、タグ衝突・GitHub Latestの扱いを確認する。Pythonの配布用`version.json`は別途配布変更まで`v0.9.1`を保持 |
-| 対応OS／CPU・配布形式 | Windows x64はユーザー単位のInno SetupインストーラーとZIPを実装。公式ビルドはMSVC・CRT静的リンク。macOS .app／DMG、Linuxの配布形式は未整備。各対象のクリーン環境で起動・入力許可・保存を確認 |
-| 配布ビルド・Release workflow | Windowsは通常desktop・`--locked`・qaなしのビルド、版・アイコン・ライセンス・SHA-256、インストール／再インストール／削除の検証とDraft Release作成を実装。MSVC配布版の受け入れ・署名、他OSの配布整備を残す。タグ・公開は依頼された段階で実行 |
+| 対応OS／CPU・配布形式 | Windows x64はInno SetupとZIP、Linux x86_64はAppImageと同一AppDirのtar.gzを実装。LinuxはUbuntu 22.04をビルド基準とし、ホストのALSA・表示・GPUライブラリを使う。macOS配布、各OSの通常GUI・実入出力・保存の受け入れを残す |
+| 配布ビルド・Release workflow | Windows／Linuxは通常desktop・`--locked`・qaなしのビルド、版・アイコン・ライセンス・SHA-256とビルド情報を揃え、検証後に共通Draft Releaseへ集約する。署名・実機受け入れ・macOS配布を残す。タグ・公開は依頼された段階で実行 |
 | ダウンロードの新旧選択 | Pythonを固定で残し、Rustへ明示的に切り替えるメタデータ・成果物選択テストを用意。単一`version.json`の置換で旧版導線を壊さない |
 | 利用者向け文書 | Rustの実画面、OS別の起動・権限・入力不在、単位・校正境界・保存形式・既知の制限を実装と照合。旧Python画像をRustへ流用しない |
 | 公開候補の受け入れ | 対象SHAで通常起動→内部／実入出力→停止→保存・復元を確認。Generatorのレベル・切断・OFF復元、同期比較の確認範囲を明記。未確認機能は実験段階の表記を維持 |
@@ -31,18 +31,44 @@ Inno Setup 6.7.3は公式配布のSHA-256を固定して取得する。Rust版�
 
 build-infoはソースSHA・ローカル変更の有無・対象・機能・Rust版・実行ファイルのSHA-256を記録し、ZIPとインストーラーにも同梱する。インストーラーとZIPのテストは日本語・空白を含むパス、実行ファイルの`--help`、QA専用オプションの拒否、ペイロードのハッシュ、ユーザー単位の登録、ショートカット、修復再インストール、データ保持、削除を検証する。通常GUI・GPU・音声の受け入れは別途必要である。
 
-### Release workflowの実行
+現在の実行ファイルとインストーラーはAuthenticode未署名。SHA-256は同一性確認であり、Windowsの発行元認証ではない。署名証明書・SmartScreenでの扱い、MSVC版の通常GUI・実入出力・保存復元は配布前の確認として残す。ローカル作成は [Windows手順](WINDOWS.md#windows配布パッケージの作成) を参照する。
 
-[Release Windows](../../.github/workflows/release.yml) をブランチで手動実行するとartifactだけを作る。`v*`タグのPushまたはタグを選んだ手動実行では、次の条件を満たして**Draft Release**を作る。
+## Linux配布
+
+[Linux Packages](../../.github/workflows/build_linux.yml) は関連変更のmain宛PR、手動実行、Release workflowから呼び出す。Rust 1.99.0の`x86_64-unknown-linux-gnu`をUbuntu 22.04で使い、`--release --locked --no-default-features --features desktop`でビルドする。日常開発のUbuntu 24.04／26.04環境に22.04を導入する必要はない。公式の基準環境はクラウドrunnerで用意する。
+
+`linux-x86_64` artifactは以下の4ファイルを含む。実行ごとの空のステージング先を使い、AppImageとtar.gzに同じ通常実行ファイル・AppRun・アイコン・版情報・ライセンス・起動説明を入れる。
+
+* `MeasureLab-v<version>-linux-x86_64.AppImage`
+* `MeasureLab-v<version>-linux-x86_64.tar.gz`
+* `MeasureLab-v<version>-linux-x86_64-build-info.json`
+* `SHA256SUMS-linux-x86_64.txt`
+
+[linux_package.py](../../scripts/linux_package.py) はCargoの版・ソースSHA・変更状態・コンパイラー・ビルドOS・機能・実行ファイルと全payloadのSHA-256、ELFのglibc要求と直接依存を記録する。glibc要求は2.35以下を条件とし、新しい依存ライブラリは明示的な確認なしに配布へ混ぜない。appimagetool 1.9.1とtype-2 runtime 20251108は公式の版付きURLとSHA-256を固定する。AppImage作成中のruntime自動更新を使わない。
+
+ALSA本体・設定・プラグイン、glibc、X11／Wayland、xkbcommon、GPUドライバーはホスト側を使い、ランチャーで`LD_LIBRARY_PATH`を変更しない。最小環境には対応するランタイムパッケージが必要である。musl／Alpine・ARM64はこの配布の対象外。GPUやALSAを同梱して全Linux対応と説明しない。
+
+パッケージ検証はUbuntu 22.04／24.04／26.04で同じartifactをダウンロードし、チェックサム、同梱情報とソースSHA、AppImage／tar.gzの全ファイル一致、日本語・空白を含む展開先、`--help`、QA専用オプションの拒否を確認する。ソフトウェアVulkanによる既存の`--gpu-smoke`も実行する。実GPUの通常GUI、Wayland／X11、音声デバイス、測定精度、保存復元、再接続・長時間の受け入れとは分ける。
+
+AppImageは実行権限を付けて起動する。FUSEマウントが使えない環境では`--appimage-extract-and-run`を使うか、tar.gzを展開して`MeasureLab/AppRun`を起動する。起動説明は各配布物の`README.txt`を参照する。ローカル作成はPython 3.12以降、Rust、ビルド依存と`desktop-file-validate`を用意して実行する。
+
+```bash
+./.venv/bin/python scripts/linux_package.py build
+./.venv/bin/python scripts/linux_package.py verify dist/linux-<id>/release --require-clean --runtime
+```
+
+Ubuntu 22.04以外で作る場合もglibc条件を満たす必要がある。ローカル確認のため`--max-glibc`を変更した成果物を、公式の22.04基準を満たした配布物として扱わない。CI成果物の保持期間は14日で、GitHub Releaseでの公開とは別である。Linux資産は発行元署名を付けていない。
+
+## Release workflowの実行
+
+[Release](../../.github/workflows/release.yml) をブランチで手動実行するとWindows／Linuxのartifactだけを作る。`v*`タグのPushまたはタグを選んだ手動実行では、次の条件を満たして両OS共通の**Draft Release**を作る。
 
 1. `v0.10.0`以降のRust版で、タグがCargoの版と一致している。
 2. タグのコミットが`origin/main`に含まれ、同じSHAのmain Push CIで`lint-and-test`・`docs-lint`・`actionlint`が成功している。CIが未完了なら、成功を待ってRelease workflowを再実行する。
-3. Windowsのビルド・インストーラー検証、ダウンロードしたartifactのSHA-256・ソースSHA・対象・通常機能構成が一致している。
+3. Windowsのビルド・インストーラー検証とLinuxのビルド・3環境のパッケージ検証が成功し、ダウンロードした全artifactのSHA-256・ソースSHA・対象・通常機能構成が一致している。
 4. 同じタグのReleaseがまだ存在しない。途中失敗でDraftが残った場合は内容を確認して削除後に再実行する。既存Releaseへの上書きや資産追加は行わない。
 
-リリースノートはCHANGELOGの対象版から抽出し、Windowsプロトタイプの制限とソースSHAを加える。通常の`GITHUB_TOKEN`を使い、書き込み権限はDraft作成jobだけに付与する。追加の`RELEASE_TOKEN`は不要。ハイフン付きのCargo版はprereleaseにする。Draftの確認・公開は手動で行い、このworkflowはGitHub Latest、配布サイト、`version.json`を更新しない。
-
-現在の実行ファイルとインストーラーはAuthenticode未署名。SHA-256は同一性確認であり、Windowsの発行元認証ではない。署名証明書・SmartScreenでの扱い、MSVC版の通常GUI・実入出力・保存復元は配布前の確認として残す。ローカル作成は [Windows手順](WINDOWS.md#windows配布パッケージの作成) を参照する。
+リリースノートはCHANGELOGの対象版から抽出し、Windows／Linuxプロトタイプの制限とソースSHAを加える。各OSはReleaseへ個別に書き込まず、全対象の検証後に単一jobで作成する。通常の`GITHUB_TOKEN`を使い、書き込み権限はDraft作成jobだけに付与する。追加の`RELEASE_TOKEN`は不要。ハイフン付きのCargo版はprereleaseにする。Draftの確認・公開は手動で行い、このworkflowはGitHub Latest、配布サイト、`version.json`を更新しない。
 
 ## CIの運用ポイント
 
