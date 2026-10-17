@@ -20,7 +20,7 @@ Rust版は`main`へ統合済みで、開発PRのbaseも`main`とする。ここ�
 
 [Windows Packages](../../.github/workflows/build_windows.yml) は関連変更のmain宛PR、手動実行、Release workflowから呼び出す。Rust 1.99.0の`x86_64-pc-windows-msvc`を使い、`--release --locked --no-default-features --features desktop`でビルドする。CRTを静的リンクし、利用者へのPython・Rust・Visual C++再頒布可能パッケージの別途導入を不要にする。Windows 10／11 x64を対象とし、ARM64上のx64エミュレーションは受け入れ対象に含めない。
 
-Inno Setup 6.7.3は公式配布のSHA-256を固定して取得する。Rust版のAppId、インストール先`%LOCALAPPDATA%\Programs\MeasureLab Rust`、ショートカット`MeasureLab (Rust)`はPython最終版と分ける。更新はRust版の同じ場所・タスクを引き継ぐ。アンインストールはパッケージ所有ファイルを削除し、設定・測定結果は残す。ASIO切り替え・PyInstaller・旧Pythonランタイムは含めない。
+Inno Setup 6.7.3は公式配布のSHA-256を固定して取得する。Rust版のAppId、新規インストール先`%LOCALAPPDATA%\Programs\MeasureLabRust`、ショートカット`MeasureLab (Rust)`はPython最終版と分ける。既定のフォルダー名は空白を含まない。更新はRust版の同じ場所・タスクを引き継ぎ、旧既定の`MeasureLab Rust`や利用者が選んだ場所も自動では移動しない。アンインストールはパッケージ所有ファイルを削除し、設定・測定結果は残す。ASIO切り替え・PyInstaller・旧Pythonランタイムは含めない。
 
 `windows-x64` artifactは以下の4ファイルを含む。版番号はCargoから取得し、タグ実行では完全一致を要求する。実行ごとに新しいステージングディレクトリを使い、過去の成果物を混ぜない。
 
