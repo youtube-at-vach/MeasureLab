@@ -69,7 +69,8 @@ class ChangesTests(unittest.TestCase):
                 result = subprocess.run(  # noqa: S603 - fixed local script and literal arguments
                     [sys.executable, script, *args], input=paths, capture_output=True, check=True
                 )
-                self.assertEqual(result.stdout.decode(), expected)
+                # Python writes native CRLF on Windows; the output fields are identical.
+                self.assertEqual(result.stdout.decode().replace("\r\n", "\n"), expected)
 
 
 if __name__ == "__main__":

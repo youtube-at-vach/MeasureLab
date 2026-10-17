@@ -112,6 +112,8 @@ fn feed(
         *sequence + rows as u64 * config.hop as u64
     };
     let before = collector.metrics.collected.load(Ordering::Acquire);
+    let mut publication_checkpoint = before;
+    let row_bytes = ((config.size / 2 + 1) * size_of::<f64>()) as u64;
     let wave: [f64; 256] = std::array::from_fn(|n| 0.5 * (TAU * n as f64 / 256.0).cos());
     while *sequence < target {
         // At most half the input queue; await processing and collection so a
@@ -129,6 +131,20 @@ fn feed(
         wait(|| worker.metrics.processed_frames.load(Ordering::Acquire) >= processed + count);
         let produced = worker.metrics.produced.load(Ordering::Acquire);
         wait(|| collector.metrics.collected.load(Ordering::Acquire) == produced);
+        // Publication is throttled to 20 ms independently of collection. Pace
+        // this accelerated source at about 1 MiB of new rows per publication:
+        // otherwise an old published snapshot can pin most of an extra ring
+        // alongside Hold + live, far beyond the real input rate.
+        if (produced - publication_checkpoint) * row_bytes >= 1024 * 1024 {
+            let latest_end = end - (end - config.size as u64) % config.hop as u64;
+            wait(|| {
+                collector
+                    .snapshot()
+                    .latest()
+                    .is_some_and(|f| f.info.end == latest_end)
+            });
+            publication_checkpoint = produced;
+        }
         *sequence = end;
         display(collector.snapshot());
     }
@@ -182,7 +198,14 @@ fn full_pipeline_hold_wrap_reconfigure_and_release_fit_cpu_budget() {
         assert!(snapshot.retired > 0);
         assert!(snapshot.storage_bytes() <= HISTORY_BYTES);
         assert!(snapshot.retained_seconds() <= 120.0);
-        assert!(snapshot.storage_bytes() > 80 * 1024 * 1024);
+        assert!(
+            snapshot.storage_bytes() > 80 * 1024 * 1024,
+            "history retention collapsed for {config:?}: {} bytes, {} rows, {} retired, {} allocated frame bytes",
+            snapshot.storage_bytes(),
+            snapshot.frames().len(),
+            snapshot.retired,
+            collector.allocated_frame_bytes(),
+        );
         if !snapshot.capacity_limited {
             assert_eq!(snapshot.retained_seconds(), 120.0);
         }
