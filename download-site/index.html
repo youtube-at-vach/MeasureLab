@@ -1,153 +1,479 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <link rel="icon" type="image/png" href="/favicon.png" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>MeasureLab - Audio Measurement Tool</title>
-        <!-- SEO Meta Tags -->
-        <meta
-            name="description"
-            content="MeasureLab is an open-source tool for high-precision audio analysis and measurement on macOS, Windows, and Linux."
-        />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-        <link
-            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;500;700;900&display=swap"
-            rel="stylesheet"
-        />
-        <link rel="stylesheet" href="./style.css" />
-    </head>
-    <body>
-        <!-- Background animations -->
-        <div class="background">
-            <div class="blob blob-1"></div>
-            <div class="blob blob-2"></div>
-            <div class="blob blob-3"></div>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b1012" />
+    <title>MeasureLab — Audio Measurement Tool</title>
+    <meta
+      name="description"
+      content="Your computer. Your measurement bench. Discover MeasureLab, the open-source audio measurement tool, and its new Rust edition in preparation."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#download" data-i18n="skipLink"
+      >Skip to downloads</a
+    >
+    <div class="site-shell">
+      <header class="site-header">
+        <a class="wordmark" href="#top" aria-label="MeasureLab">
+          <svg
+            class="brand-mark"
+            width="29"
+            height="28"
+            viewBox="0 0 29 28"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M1 17h5L10 4l7 21 4-13 3 5h4"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linejoin="round"
+            />
+          </svg>
+          MeasureLab<span class="wordmark-dot">.</span>
+        </a>
+        <nav class="header-nav" aria-label="Main">
+          <a href="#download" data-i18n="navDownload">Download</a>
+          <a
+            href="/MeasureLab/rust/"
+            class="rust-manual-link"
+            data-i18n="navManual"
+            >Manual</a
+          >
+          <a href="https://github.com/youtube-at-vach/MeasureLab"
+            >GitHub <span aria-hidden="true">↗</span></a
+          >
+        </nav>
+        <div
+          class="lang-switch"
+          role="group"
+          data-i18n-aria="languageLabel"
+          aria-label="Display language"
+        >
+          <button
+            type="button"
+            class="lang-btn"
+            data-lang="ja"
+            aria-label="日本語"
+          >
+            JA
+          </button>
+          <button
+            type="button"
+            class="lang-btn"
+            data-lang="en"
+            aria-label="English"
+          >
+            EN
+          </button>
+          <button
+            type="button"
+            class="lang-btn"
+            data-lang="zh"
+            aria-label="中文"
+          >
+            ZH
+          </button>
+        </div>
+      </header>
+
+      <main id="top">
+        <section class="hero" aria-labelledby="hero-title">
+          <div class="hero-copy">
+            <p class="eyebrow">
+              <span class="small-cross" aria-hidden="true">+</span> NEW
+              MEASURELAB <span class="eyebrow-separator">/</span> REBUILT IN
+              RUST
+            </p>
+            <h1 id="hero-title">
+              <span data-i18n="heroTitle">Every signal.</span
+              ><span class="accent" data-i18n="heroAccent"
+                >A clearer view.</span
+              >
+            </h1>
+            <p class="hero-intro" data-i18n="heroIntro">
+              Your computer. Your measurement bench.
+            </p>
+            <p class="hero-body" data-i18n="heroBody">
+              Meet the next MeasureLab. Open source, rebuilt in Rust. A new
+              foundation for observing, measuring and understanding your
+              signals.
+            </p>
+            <div class="hero-actions">
+              <a class="button-primary" id="hero-download-link" href="#download"
+                ><span id="hero-download-label" data-i18n="heroAction"
+                  >Get Python v0.9.1</span
+                ><span aria-hidden="true">↓</span></a
+              >
+              <a class="text-link rust-manual-link" href="/MeasureLab/rust/"
+                ><span data-i18n="heroSecondary">About the new MeasureLab</span
+                ><span aria-hidden="true">↗</span></a
+              >
+            </div>
+            <p class="release-status">
+              <span class="status-dot" aria-hidden="true"></span
+              ><span
+                id="hero-release-status"
+                role="status"
+                data-i18n="preparing"
+                >Rust edition in preparation</span
+              ><span class="status-version" id="hero-version">v0.10.0</span>
+            </p>
+          </div>
+
+          <section
+            id="download"
+            class="download-section"
+            aria-labelledby="download-title"
+          >
+            <div class="download-panel">
+              <div class="download-heading">
+                <h2 id="download-title" data-i18n="navDownload">Download</h2>
+                <span class="eyebrow">GET MEASURELAB</span>
+              </div>
+              <div
+                class="edition-picker"
+                role="group"
+                aria-labelledby="edition-label"
+              >
+                <span
+                  class="field-label"
+                  id="edition-label"
+                  data-i18n="editionLabel"
+                  >Edition</span
+                >
+                <div class="edition-buttons">
+                  <button
+                    type="button"
+                    class="edition-btn is-active"
+                    data-edition="python"
+                    aria-pressed="true"
+                  >
+                    <span class="edition-name"
+                      >Python
+                      <span id="python-edition-version">v0.9.1</span></span
+                    ><span
+                      class="edition-description"
+                      data-i18n="pythonAvailable"
+                      >Available now</span
+                    ><span class="edition-radio" aria-hidden="true"></span>
+                  </button>
+                  <button
+                    type="button"
+                    class="edition-btn"
+                    data-edition="rust"
+                    aria-pressed="false"
+                  >
+                    <span class="edition-name"
+                      >Rust <span id="rust-edition-version">v0.10.0</span></span
+                    ><span
+                      class="edition-description"
+                      id="rust-edition-status"
+                      data-i18n="unavailable"
+                      >In preparation</span
+                    ><span class="edition-radio" aria-hidden="true"></span>
+                  </button>
+                </div>
+              </div>
+              <div class="edition-notice" role="status">
+                <span class="status-dot" aria-hidden="true"></span>
+                <p id="edition-notice-text" data-i18n="legacyNotice">
+                  The current download is the final Python edition, v0.9.1.
+                </p>
+              </div>
+              <p
+                class="experimental-note"
+                id="experimental-note"
+                data-i18n="rustExperimental"
+                hidden
+              >
+                Generator, Lock-in and synchronous 2ch comparison are
+                experimental in the prototype.
+              </p>
+              <div
+                class="platform-picker"
+                role="group"
+                aria-labelledby="platform-label"
+              >
+                <p
+                  class="field-label"
+                  id="platform-label"
+                  data-i18n="platformLabel"
+                >
+                  Platform
+                </p>
+                <div class="os-buttons">
+                  <button type="button" class="os-button" data-os="macOS">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <rect x="3" y="3" width="18" height="13" rx="2" />
+                      <path d="M8 21h8m-4-5v5" /></svg
+                    >macOS
+                  </button>
+                  <button type="button" class="os-button" data-os="Windows">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M3 5l18-3v20L3 19V5zm9-1.5v17M3 12h18" /></svg
+                    >Windows
+                  </button>
+                  <button type="button" class="os-button" data-os="Linux">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <rect x="2" y="3" width="20" height="18" rx="2" />
+                      <path d="M6 8l4 4-4 4m7 0h5" /></svg
+                    >Linux
+                  </button>
+                </div>
+              </div>
+              <div class="package-field">
+                <p
+                  class="field-label"
+                  id="format-label"
+                  data-i18n="formatLabel"
+                >
+                  CPU &amp; package
+                </p>
+                <div
+                  class="variant-picker"
+                  id="variant-picker"
+                  role="group"
+                  aria-labelledby="format-label"
+                ></div>
+              </div>
+              <button
+                type="button"
+                id="main-download-btn"
+                class="download-button"
+                disabled
+              >
+                <span
+                  ><span id="download-action" data-i18n="downloadFor"
+                    >Download</span
+                  ><span class="download-platform" id="main-download-version"
+                    >v0.9.1</span
+                  ></span
+                ><svg
+                  id="download-arrow"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4" />
+                </svg>
+              </button>
+              <div class="download-meta">
+                <span id="main-variant"></span><span id="main-size"></span>
+              </div>
+              <a
+                id="release-details"
+                class="release-details"
+                data-i18n="releaseDetails"
+                hidden
+                >Release notes, checksums and build information</a
+              >
+              <details class="requirements">
+                <summary data-i18n="requirementsTitle">
+                  System requirements &amp; first launch
+                </summary>
+                <div class="requirements-content">
+                  <p id="requirements-lead"></p>
+                  <ul id="requirements-list"></ul>
+                </div>
+              </details>
+              <a href="/MeasureLab/" class="manual-link" id="manual-link"
+                ><span data-i18n="docsLink">Python v0.9.1 manual</span
+                ><span aria-hidden="true">↗</span></a
+              >
+            </div>
+          </section>
+
+          <figure class="signal-art">
+            <div class="signal-header">
+              <span>MEASURELAB / SIGNAL STUDY</span><span>01 — ∿</span>
+            </div>
+            <svg
+              class="signal-plot"
+              viewBox="0 55 560 260"
+              fill="none"
+              aria-hidden="true"
+            >
+              <defs>
+                <pattern
+                  id="minor-grid"
+                  width="28"
+                  height="28"
+                  patternUnits="userSpaceOnUse"
+                >
+                  <path d="M28 0H0V28" stroke="#c4d9d0" stroke-opacity=".055" />
+                </pattern>
+                <pattern
+                  id="major-grid"
+                  width="140"
+                  height="140"
+                  patternUnits="userSpaceOnUse"
+                >
+                  <rect width="140" height="140" fill="url(#minor-grid)" />
+                  <path
+                    d="M140 0H0V140"
+                    stroke="#c4d9d0"
+                    stroke-opacity=".10"
+                  />
+                </pattern>
+                <linearGradient
+                  id="trace-color"
+                  x1="0"
+                  y1="0"
+                  x2="560"
+                  y2="0"
+                  gradientUnits="userSpaceOnUse"
+                >
+                  <stop stop-color="#71edbc" stop-opacity=".15" />
+                  <stop offset=".25" stop-color="#71edbc" />
+                  <stop offset=".78" stop-color="#71edbc" />
+                  <stop offset="1" stop-color="#71edbc" stop-opacity=".2" />
+                </linearGradient>
+              </defs>
+              <rect width="560" height="370" fill="url(#major-grid)" />
+              <path
+                d="M0 185H560M280 0V370"
+                stroke="#9bb3ab"
+                stroke-opacity=".22"
+                stroke-dasharray="3 5"
+              />
+              <g stroke="#9bb3ab" stroke-opacity=".35">
+                <path d="M0 5V0H5M555 0H560V5M560 365V370H555M5 370H0V365" />
+              </g>
+              <path
+                class="trace-secondary"
+                d="M0,127.88 C9.33,133.62 18.67,141.69 28,151.16 C37.33,160.63 46.67,171.48 56,182.44 C65.33,193.40 74.67,204.46 84,214.32 C93.33,224.19 102.67,232.84 112,239.27 C121.33,245.71 130.67,249.91 140,251.39 C149.33,252.87 158.67,251.62 168,247.80 C177.33,243.98 186.67,237.59 196,229.36 C205.33,221.14 214.67,211.11 224,200.43 C233.33,189.76 242.67,178.46 252,167.86 C261.33,157.25 270.67,147.36 280,139.33 C289.33,131.30 298.67,125.16 308,121.61 C317.33,118.06 326.67,117.11 336,118.87 C345.33,120.64 354.67,125.12 364,131.78 C373.33,138.44 382.67,147.28 392,157.27 C401.33,167.26 410.67,178.37 420,189.32 C429.33,200.27 438.67,211.03 448,220.35 C457.33,229.67 466.67,237.53 476,243.02 C485.33,248.50 494.67,251.61 504,251.96 C513.33,252.32 522.67,249.93 532,245.08 C541.33,240.22 550.67,232.90 560,223.98"
+                stroke="#809d97"
+                stroke-width="1.5"
+                stroke-opacity=".5"
+              />
+              <path
+                class="trace-halo"
+                d="M0,75.23 C9.33,71.59 18.67,72.45 28,77.72 C37.33,82.99 46.67,92.65 56,105.58 C65.33,118.51 74.67,134.69 84,152.22 C93.33,169.76 102.67,188.62 112,206.62 C121.33,224.61 130.67,241.70 140,255.90 C149.33,270.10 158.67,281.37 168,288.41 C177.33,295.46 186.67,298.25 196,296.47 C205.33,294.69 214.67,288.35 224,278.17 C233.33,267.99 242.67,254.00 252,237.83 C261.33,221.66 270.67,203.34 280,185.00 C289.33,166.66 298.67,148.34 308,132.17 C317.33,116.00 326.67,102.01 336,91.83 C345.33,81.65 354.67,75.31 364,73.53 C373.33,71.75 382.67,74.54 392,81.59 C401.33,88.63 410.67,99.90 420,114.10 C429.33,128.30 438.67,145.39 448,163.38 C457.33,181.38 466.67,200.24 476,217.78 C485.33,235.31 494.67,251.49 504,264.42 C513.33,277.35 522.67,287.01 532,292.28 C541.33,297.55 550.67,298.41 560,294.77"
+                stroke="url(#trace-color)"
+                stroke-width="11"
+                stroke-opacity=".07"
+              />
+              <path
+                class="trace-primary"
+                d="M0,75.23 C9.33,71.59 18.67,72.45 28,77.72 C37.33,82.99 46.67,92.65 56,105.58 C65.33,118.51 74.67,134.69 84,152.22 C93.33,169.76 102.67,188.62 112,206.62 C121.33,224.61 130.67,241.70 140,255.90 C149.33,270.10 158.67,281.37 168,288.41 C177.33,295.46 186.67,298.25 196,296.47 C205.33,294.69 214.67,288.35 224,278.17 C233.33,267.99 242.67,254.00 252,237.83 C261.33,221.66 270.67,203.34 280,185.00 C289.33,166.66 298.67,148.34 308,132.17 C317.33,116.00 326.67,102.01 336,91.83 C345.33,81.65 354.67,75.31 364,73.53 C373.33,71.75 382.67,74.54 392,81.59 C401.33,88.63 410.67,99.90 420,114.10 C429.33,128.30 438.67,145.39 448,163.38 C457.33,181.38 466.67,200.24 476,217.78 C485.33,235.31 494.67,251.49 504,264.42 C513.33,277.35 522.67,287.01 532,292.28 C541.33,297.55 550.67,298.41 560,294.77"
+                stroke="url(#trace-color)"
+                stroke-width="2.2"
+              />
+              <circle
+                cx="280"
+                cy="185"
+                r="5"
+                fill="#71edbc"
+                stroke="#0b1012"
+                stroke-width="2"
+              />
+              <path
+                d="M280 173V140H339"
+                stroke="#71edbc"
+                stroke-opacity=".55"
+              />
+              <text
+                x="345"
+                y="144"
+                fill="#71edbc"
+                font-size="11"
+                font-family="monospace"
+              >
+                SIGNAL / REF
+              </text>
+              <text
+                x="9"
+                y="18"
+                fill="#83968e"
+                font-size="10"
+                font-family="monospace"
+              >
+                +
+              </text>
+              <text
+                x="9"
+                y="363"
+                fill="#83968e"
+                font-size="10"
+                font-family="monospace"
+              >
+                −
+              </text>
+              <text
+                x="542"
+                y="178"
+                fill="#83968e"
+                font-size="10"
+                font-family="monospace"
+              >
+                t
+              </text>
+            </svg>
+            <figcaption>
+              <span data-i18n="signalCaption">Look closer. See further.</span
+              ><span class="signal-note" data-i18n="signalNote"
+                >Illustrative waveform</span
+              >
+            </figcaption>
+          </figure>
+        </section>
+
+        <div class="principles" aria-label="MeasureLab philosophy">
+          <p>
+            <span class="index-label">01</span
+            ><span data-i18n="principleOne">Accurate measurement.</span>
+          </p>
+          <p>
+            <span class="index-label">02</span
+            ><span data-i18n="principleTwo">Free to use.</span>
+          </p>
+          <p>
+            <span class="index-label">03</span
+            ><span data-i18n="principleThree">For everyone.</span>
+          </p>
+          <span class="open-source-label">OPEN SOURCE / THE UNLICENSE</span>
         </div>
 
-        <div class="container">
-            <header>
-                <div class="lang-switch" aria-label="Language selector">
-                    <button type="button" class="lang-btn" data-lang="ja">
-                        JA
-                    </button>
-                    <button type="button" class="lang-btn" data-lang="zh">
-                        ZH
-                    </button>
-                    <button type="button" class="lang-btn" data-lang="en">
-                        EN
-                    </button>
-                </div>
-                <h1 class="logo">MeasureLab</h1>
-                <p class="subtitle" data-i18n="subtitle">
-                    Audio Measurement Tool
-                </p>
-            </header>
+        <noscript
+          ><p class="noscript-notice">
+            JavaScript is required to choose an edition and platform. /
+            ダウンロードの選択にはJavaScriptが必要です。<a
+              href="https://github.com/youtube-at-vach/MeasureLab/releases/tag/v0.9.1"
+              >Python v0.9.1 — GitHub Releases ↗</a
+            ><a href="/MeasureLab/rust/"
+              >Rust edition information / Rust版の案内 ↗</a
+            >
+          </p></noscript
+        >
+      </main>
 
-            <main>
-                <div class="edition-picker" role="group" aria-labelledby="edition-label">
-                    <p id="edition-label" data-i18n="editionLabel">Choose an edition</p>
-                    <div class="edition-buttons">
-                        <button type="button" class="variant-btn edition-btn is-active" data-edition="python" aria-pressed="true" data-i18n="pythonEdition">Final Python edition</button>
-                        <button type="button" class="variant-btn edition-btn" data-edition="rust" aria-pressed="false" data-i18n="rustEdition">Rust prototype</button>
-                    </div>
-                </div>
-                <p class="edition-notice" role="status">
-                    <span data-i18n="editionNotice">These downloads are the final Python edition, v0.9.1.</span>
-                    <a href="/MeasureLab/rust/" id="rust-info-link" data-i18n="rustDocsLink">About the Rust prototype</a>
-                </p>
-                <section class="download-section">
-                    <!-- Primary Download Button (Auto-detected OS) -->
-                    <div class="primary-download">
-                        <button id="main-download-btn" class="btn-large" disabled>
-                            <span class="os-icon" id="main-os-icon">🍎</span>
-                            <div class="btn-text">
-                                <span class="btn-title"
-                                    ><span data-i18n="downloadFor"
-                                        >Download for</span
-                                    >
-                                    <span id="main-os-name">macOS</span></span
-                                >
-                                <span class="btn-version" id="main-version"
-                                    >Loading...</span
-                                >
-                                <span
-                                    class="btn-variant"
-                                    id="main-variant"
-                                ></span>
-                            </div>
-                        </button>
-                        <div class="aux-info">
-                            <span class="file-size" id="main-size"></span>
-                            <p><a id="release-details" data-i18n="releaseDetails" hidden>Release notes, checksums and build information</a></p>
-                            <p class="desc" data-i18n="heroDescription">
-                                High-precision audio analysis and measurement on
-                                your computer.
-                            </p>
-                        </div>
-                        <div
-                            class="variant-picker"
-                            id="variant-picker"
-                            hidden
-                        ></div>
-                    </div>
-
-                    <!-- Other OS Options -->
-                    <div class="other-os">
-                        <h3 data-i18n="otherPlatforms">Other platforms</h3>
-                        <div class="os-buttons">
-                            <button class="btn-small" data-os="macOS">
-                                <span class="os-icon">🍎</span> macOS
-                            </button>
-                            <button class="btn-small" data-os="Windows">
-                                <span class="os-icon">🪟</span> Windows
-                            </button>
-                            <button class="btn-small" data-os="Linux">
-                                <span class="os-icon">🐧</span> Linux
-                            </button>
-                        </div>
-                    </div>
-
-                    <section
-                        class="requirements"
-                        aria-labelledby="requirements-title"
-                    >
-                        <h3
-                            id="requirements-title"
-                            data-i18n="requirementsTitle"
-                        >
-                            Before you download
-                        </h3>
-                        <p class="requirements-lead" id="requirements-lead"></p>
-                        <ul
-                            class="requirements-list"
-                            id="requirements-list"
-                        ></ul>
-                    </section>
-                </section>
-            </main>
-
-            <footer>
-                <a href="/MeasureLab/" class="footer-link" id="manual-link"
-                    >📖 <span data-i18n="docsLink">Documentation</span></a
-                >
-                <a
-                    href="https://github.com/youtube-at-vach/MeasureLab"
-                    class="footer-link"
-                    >🐙 GitHub</a
-                >
-                <a
-                    href="https://www.youtube.com/@va-ch"
-                    class="footer-link"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="YouTube channel where MeasureLab is being made"
-                    title="YouTube channel where MeasureLab is being made"
-                    >▶ YouTube</a
-                >
-            </footer>
+      <footer class="site-footer">
+        <div>
+          <a class="footer-wordmark" href="#top"
+            >MeasureLab<span class="wordmark-dot">.</span></a
+          >
+          <p data-i18n="footerNote">
+            Accurate measurement. Free. For everyone.
+          </p>
         </div>
-        <script type="module" src="./main.js"></script>
-    </body>
+        <div class="footer-links">
+          <a href="https://github.com/youtube-at-vach/MeasureLab"
+            ><span data-i18n="sourceLink">Source code</span> ↗</a
+          ><a href="https://www.youtube.com/@va-ch">YouTube ↗</a
+          ><span>OPEN SOURCE. ALWAYS.</span>
+        </div>
+      </footer>
+    </div>
+    <script type="module" src="./main.js"></script>
+  </body>
 </html>
