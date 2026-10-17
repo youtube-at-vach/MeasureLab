@@ -46,14 +46,21 @@
             </header>
 
             <main>
-                <p class="desc">
+                <div class="edition-picker" role="group" aria-labelledby="edition-label">
+                    <p id="edition-label" data-i18n="editionLabel">Choose an edition</p>
+                    <div class="edition-buttons">
+                        <button type="button" class="variant-btn edition-btn is-active" data-edition="python" aria-pressed="true" data-i18n="pythonEdition">Final Python edition</button>
+                        <button type="button" class="variant-btn edition-btn" data-edition="rust" aria-pressed="false" data-i18n="rustEdition">Rust prototype</button>
+                    </div>
+                </div>
+                <p class="edition-notice" role="status">
                     <span data-i18n="editionNotice">These downloads are the final Python edition, v0.9.1.</span>
-                    <a href="/MeasureLab/rust/" data-i18n="rustDocsLink">About the Rust prototype</a>
+                    <a href="/MeasureLab/rust/" id="rust-info-link" data-i18n="rustDocsLink">About the Rust prototype</a>
                 </p>
                 <section class="download-section">
                     <!-- Primary Download Button (Auto-detected OS) -->
                     <div class="primary-download">
-                        <button id="main-download-btn" class="btn-large pulse">
+                        <button id="main-download-btn" class="btn-large" disabled>
                             <span class="os-icon" id="main-os-icon">🍎</span>
                             <div class="btn-text">
                                 <span class="btn-title"
@@ -73,6 +80,7 @@
                         </button>
                         <div class="aux-info">
                             <span class="file-size" id="main-size"></span>
+                            <p><a id="release-details" data-i18n="releaseDetails" hidden>Release notes, checksums and build information</a></p>
                             <p class="desc" data-i18n="heroDescription">
                                 High-precision audio analysis and measurement on
                                 your computer.
@@ -121,7 +129,7 @@
             </main>
 
             <footer>
-                <a href="/MeasureLab/" class="footer-link"
+                <a href="/MeasureLab/" class="footer-link" id="manual-link"
                     >📖 <span data-i18n="docsLink">Documentation</span></a
                 >
                 <a

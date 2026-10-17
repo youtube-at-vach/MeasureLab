@@ -2,14 +2,28 @@
 
 ## [v0.10.0] - Unreleased
 
+### Added
+
+* **Rust Measurement Workspace**: Rebuild the application with CPAL, egui/eframe and wgpu. Separate audio I/O, f64 measurement workers, rendering and file I/O while retaining 1–16 synchronous input channels.
+* **Monitor Instruments**: Add four-channel Scope and overlaid Spectrum, amplitude/PSD/ESD, averaging, cursors, an independent Spectrogram with bounded history and time A/B Spectrum links, and synchronous XY.
+* **Measurement Reuse**: Add channel calibration, versioned settings (v8, reading v1–7), held JSON results (v5, reading v1–4), CSV/Scope-Spectrum PNG exports, and conditional saved-reference comparison.
+* **Experimental Instruments**: Add two-signal sine Generator with internal/CPAL output, live editing, independent Stop and OFF restoration; fundamental REF/response Lock-in; synchronous auto/cross PSD, H1, coherence and conditional phase/delay comparison. Integration and distributed-package hardware acceptance remain incomplete.
+* **Distribution Preparation**: Add an explicit Python/Rust selector with separate Rust publication metadata, keeping Python v0.9.1 available and Rust downloads disabled until publication. Document binary installation, permissions, signing limits and package acceptance.
+
+### Known limitations
+
+* Generator, Lock-in and synchronous comparison remain experimental. Physical amplitude accuracy remains unverified. Actual-clock, inter-channel and output calibration, THD/FRF/IR and complete response-measurement flows are not implemented.
+* High-load Spectrogram evaluation has shown long GUI stalls and STFT/Generator-input loss; device startup loss, reconnection, long-duration behavior, comprehensive manual GUI operation and real-monitor DPI acceptance remain open. Earlier development-build checks do not establish current release-package acceptance.
+* Windows packages are not Authenticode signed; Linux packages have no publisher signature; macOS uses ad-hoc signing without Developer ID signing or notarization. The initial v0.10.0 release is prepared as a Prerelease and does not replace Python v0.9.1 as Latest.
+
 ### Changed
 
-* **Linux Distribution**: Build the Rust prototype as an AppImage and matching portable tar.gz on Ubuntu 22.04, verify the packages on Ubuntu 22.04/24.04/26.04, and collect Windows and Linux assets in one draft release.
+* **Linux Distribution**: Build the Rust prototype as an AppImage and matching portable tar.gz on Ubuntu 22.04, verify the packages on Ubuntu 22.04/24.04/26.04, and collect Windows, Linux and both macOS architectures in one draft release.
 * **Windows Distribution**: Build the Rust desktop as an x64 installer and ZIP, with embedded icon/version, static MSVC runtime, lifecycle checks, SHA-256 and source metadata. Prepare tagged releases as drafts after required CI passes; keep the Python installation separate.
 * **Rust Version**: Set the next MeasureLab application version to v0.10.0; the final Python distribution remains v0.9.1.
 * **CI**: Consolidate PR checks, cache Rust dependency builds, and require Linux static/numerical checks while keeping three-OS release builds optional. Run expensive jobs only for relevant changes.
 * **Tests**: Run each harness-free benchmark case once under `cargo test`; retain full repetitions under `cargo bench`. Keep numerical accuracy and regression assertions unchanged.
-* **macOS Bundle**: Read the bundle version from Cargo instead of maintaining a separate hard-coded version.
+* **macOS Distribution**: Build separate Intel x86_64 and Apple Silicon arm64 DMGs with a macOS 13.0 deployment target, Cargo-derived version, Hardened Runtime/audio-input entitlement, ad-hoc signature, SHA-256/build identity and mounted/copied-app package checks. Finder first-run permissions, physical I/O and save/restore acceptance remain pending.
 
 ## [v0.9.1] - 2026-10-04
 

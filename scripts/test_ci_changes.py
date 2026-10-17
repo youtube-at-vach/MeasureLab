@@ -36,6 +36,7 @@ class ChangesTests(unittest.TestCase):
             "mkdocs-rust.yml",
             "requirements-docs.txt",
             "version.json",
+            "rust-release.json",
             "scripts/build_pages.py",
         ]:
             with self.subTest(path=path):

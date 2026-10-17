@@ -1,13 +1,15 @@
-import { hasWindowsInstaller } from "./release-assets.js";
+import { DOWNLOADS, downloadUrl, hasWindowsInstaller, loadRustRelease } from "./release-assets.js";
+import { rustMessages } from "./rust-messages.js";
+import plannedRustRelease from "../rust-release.json" with { type: "json" };
 
 import publishedVersion from "../version.json" with { type: "json" };
 
 const FALLBACK_VERSION = `v${publishedVersion.version}`;
-const RELEASE_BASE_URL =
-  "https://github.com/youtube-at-vach/MeasureLab/releases/download";
 const SUPPORTED_LANGS = ["ja", "zh", "en"];
 
+let currentEdition = "python";
 let currentVersion = FALLBACK_VERSION;
+let rustRelease = { ...plannedRustRelease, published: false };
 let currentVariantKey = null;
 let currentLang = "en";
 let currentOsName = "macOS";
@@ -61,12 +63,10 @@ const translations = {
           arm64: {
             label: "Apple Silicon",
             size: "約 90 MB",
-            assetName: "MeasureLab-{tag}-macos-arm64.dmg",
           },
           x64: {
             label: "Intel",
             size: "約 90 MB",
-            assetName: "MeasureLab-{tag}-macos-x64.dmg",
           },
         },
       },
@@ -78,12 +78,10 @@ const translations = {
           installer: {
             label: "インストーラー（推奨）",
             size: "サイズはリリースページを参照",
-            assetName: "MeasureLab-{tag}-windows-x64-setup.exe",
           },
           onedir: {
             label: "ZIP版 (onedir)",
             size: "約 120 MB",
-            assetName: "MeasureLab-{tag}-windows-x64-onedir.zip",
           },
         },
       },
@@ -95,7 +93,6 @@ const translations = {
           appimage: {
             label: "AppImage",
             size: "約 150 MB",
-            assetName: "MeasureLab-{tag}-linux-x86_64.AppImage",
           },
         },
       },
@@ -147,12 +144,10 @@ const translations = {
           arm64: {
             label: "Apple Silicon",
             size: "约 90 MB",
-            assetName: "MeasureLab-{tag}-macos-arm64.dmg",
           },
           x64: {
             label: "Intel",
             size: "约 90 MB",
-            assetName: "MeasureLab-{tag}-macos-x64.dmg",
           },
         },
       },
@@ -164,12 +159,10 @@ const translations = {
           installer: {
             label: "安装程序（推荐）",
             size: "大小请参阅发布页面",
-            assetName: "MeasureLab-{tag}-windows-x64-setup.exe",
           },
           onedir: {
             label: "ZIP 版 (onedir)",
             size: "约 120 MB",
-            assetName: "MeasureLab-{tag}-windows-x64-onedir.zip",
           },
         },
       },
@@ -181,7 +174,6 @@ const translations = {
           appimage: {
             label: "AppImage",
             size: "约 150 MB",
-            assetName: "MeasureLab-{tag}-linux-x86_64.AppImage",
           },
         },
       },
@@ -234,12 +226,10 @@ const translations = {
           arm64: {
             label: "Apple Silicon",
             size: "~90 MB",
-            assetName: "MeasureLab-{tag}-macos-arm64.dmg",
           },
           x64: {
             label: "Intel",
             size: "~90 MB",
-            assetName: "MeasureLab-{tag}-macos-x64.dmg",
           },
         },
       },
@@ -251,12 +241,10 @@ const translations = {
           installer: {
             label: "Installer (recommended)",
             size: "See release for size",
-            assetName: "MeasureLab-{tag}-windows-x64-setup.exe",
           },
           onedir: {
             label: "ZIP (onedir)",
             size: "~120 MB",
-            assetName: "MeasureLab-{tag}-windows-x64-onedir.zip",
           },
         },
       },
@@ -268,7 +256,6 @@ const translations = {
           appimage: {
             label: "AppImage",
             size: "~150 MB",
-            assetName: "MeasureLab-{tag}-linux-x86_64.AppImage",
           },
         },
       },
@@ -277,11 +264,31 @@ const translations = {
 };
 
 function getMessages() {
-  return translations[currentLang];
+  const extra = rustMessages[currentLang];
+  return {
+    ...translations[currentLang],
+    editionLabel: extra.editionLabel,
+    pythonEdition: extra.pythonEdition,
+    rustEdition: extra.rustEdition,
+    releaseDetails: extra.releaseDetails,
+    ...(currentEdition === "rust" ? {
+      docsLink: extra.docsLink,
+      editionNotice: rustRelease.published ? extra.publishedNotice : extra.unpublished,
+      requirementData: extra.requirementData,
+    } : {}),
+  };
 }
 
 function getOsData() {
-  return getMessages().osData;
+  const data = translations[currentLang].osData;
+  if (currentEdition === "python") return data;
+  const messages = rustMessages[currentLang];
+  return Object.fromEntries(Object.entries(data).map(([osName, os]) => [osName, {
+    ...os,
+    variants: Object.fromEntries(Object.keys(DOWNLOADS.rust[osName]).map((key) => [key, {
+      label: messages.labels[key], size: messages.releaseSize,
+    }])),
+  }]));
 }
 
 function normalizeVersionTag(version) {
@@ -299,22 +306,17 @@ function getVersionJsonUrl() {
 
 async function loadVersionTag() {
   try {
-    const response = await fetch(getVersionJsonUrl(), { cache: "no-cache" });
+    const response = await fetch(getVersionJsonUrl(), { cache: "no-cache", signal: AbortSignal.timeout(5000) });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
 
     const data = await response.json();
-    return normalizeVersionTag(data.version);
+    return data.version === publishedVersion.version ? normalizeVersionTag(data.version) : FALLBACK_VERSION;
   } catch (error) {
     console.warn("Failed to load version.json, using fallback version.", error);
     return FALLBACK_VERSION;
   }
-}
-
-function buildReleaseUrl(versionTag, assetNameTemplate) {
-  const assetName = assetNameTemplate.replace("{tag}", versionTag);
-  return `${RELEASE_BASE_URL}/${versionTag}/${assetName}`;
 }
 
 function getVariantEntries(osName) {
@@ -324,7 +326,7 @@ function getVariantEntries(osName) {
   }
 
   return Object.entries(data.variants).filter(
-    ([key]) => osName !== "Windows" || key !== "installer" || windowsInstallerAvailable,
+    ([key]) => currentEdition === "rust" || osName !== "Windows" || key !== "installer" || windowsInstallerAvailable,
   );
 }
 
@@ -413,6 +415,16 @@ function applyStaticTranslations() {
     }
   });
 
+  document.getElementById("manual-link").href = currentEdition === "rust"
+    ? (currentLang === "en" ? "/MeasureLab/rust/en/" : "/MeasureLab/rust/")
+    : (currentLang === "en" ? "/MeasureLab/en/" : "/MeasureLab/");
+  document.getElementById("rust-info-link").href = currentLang === "en" ? "/MeasureLab/rust/en/" : "/MeasureLab/rust/";
+  document.querySelectorAll(".edition-btn").forEach((button) => {
+    const active = button.dataset.edition === currentEdition;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+
   const versionElement = document.getElementById("main-version");
   if (versionElement && !versionLoaded) {
     versionElement.textContent = messages.loading;
@@ -442,6 +454,7 @@ function renderVariantPicker(osName) {
     button.textContent = variant.label;
     button.dataset.variant = variantKey;
 
+    button.setAttribute("aria-pressed", String(variantKey === currentVariantKey));
     if (variantKey === currentVariantKey) {
       button.classList.add("is-active");
     }
@@ -467,7 +480,7 @@ function renderRequirements(osName) {
   lead.textContent = requirement.lead;
   list.innerHTML = "";
 
-  const items = osName === "Windows" && windowsInstallerAvailable
+  const items = currentEdition === "python" && osName === "Windows" && windowsInstallerAvailable
     ? [requirement.installerHint, ...requirement.items]
     : requirement.items;
   items.forEach((item) => {
@@ -502,20 +515,26 @@ function updateMainDisplay(osName, requestedVariantKey = null) {
   currentOsName = osName;
   currentVariantKey = selectVariant(osName, requestedVariantKey);
   const variant = data.variants[currentVariantKey];
-  const downloadUrl = buildReleaseUrl(currentVersion, variant.assetName);
+  const url = downloadUrl(currentEdition,
+    currentEdition === "rust" ? rustRelease : publishedVersion, osName, currentVariantKey);
 
   document.getElementById("main-os-icon").textContent = data.icon;
   document.getElementById("main-os-name").textContent = data.name;
-  document.getElementById("main-version").textContent = currentVersion;
+  document.getElementById("main-version").textContent = currentEdition === "rust" ? `v${rustRelease.version}` : currentVersion;
   document.getElementById("main-variant").textContent = variant.label;
-  document.getElementById("main-size").textContent = variant.size;
+  document.getElementById("main-size").textContent = currentEdition === "rust" && !rustRelease.published ? "" : variant.size;
   renderVariantPicker(osName);
   renderRequirements(osName);
 
   const mainBtn = document.getElementById("main-download-btn");
-  mainBtn.onclick = () => {
-    window.location.href = downloadUrl;
-  };
+  mainBtn.disabled = !url;
+  mainBtn.classList.toggle("pulse", Boolean(url));
+  mainBtn.onclick = url ? () => { window.location.href = url; } : null;
+  const releaseDetails = document.getElementById("release-details");
+  releaseDetails.hidden = !url;
+  releaseDetails.href = url
+    ? `https://github.com/youtube-at-vach/MeasureLab/releases/tag/${currentEdition === "rust" ? `v${rustRelease.version}` : currentVersion}`
+    : "";
 }
 
 function setLanguage(lang, osName, requestedVariantKey = null) {
@@ -527,11 +546,27 @@ function setLanguage(lang, osName, requestedVariantKey = null) {
 
 document.addEventListener("DOMContentLoaded", async () => {
   currentLang = detectLanguage();
+  currentEdition = new URLSearchParams(window.location.search).get("edition") === "rust" ? "rust" : "python";
   applyStaticTranslations();
 
-  currentVersion = await loadVersionTag();
+  [currentVersion, rustRelease] = await Promise.all([
+    loadVersionTag(),
+    loadRustRelease(new URL("../rust-release.json", window.location.href), plannedRustRelease),
+  ]);
   windowsInstallerAvailable = await hasWindowsInstaller(currentVersion);
   versionLoaded = true;
+
+  applyStaticTranslations();
+  document.querySelectorAll(".edition-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      currentEdition = button.dataset.edition;
+      const url = new URL(window.location.href);
+      url.searchParams.set("edition", currentEdition);
+      window.history.replaceState({}, "", url);
+      applyStaticTranslations();
+      updateMainDisplay(currentOsName);
+    });
+  });
 
   const detectedOS = detectOS();
   updateMainDisplay(detectedOS);
@@ -544,7 +579,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const mainBtn = document.getElementById("main-download-btn");
       mainBtn.classList.remove("pulse");
       void mainBtn.offsetWidth;
-      mainBtn.classList.add("pulse");
+      mainBtn.classList.toggle("pulse", !mainBtn.disabled);
     });
   });
 

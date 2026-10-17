@@ -53,6 +53,7 @@ def main():
     site = ROOT / "site"
     shutil.copytree(ROOT / "download-site/dist", site / "download")
     shutil.copy2(ROOT / "version.json", site / "version.json")
+    shutil.copy2(ROOT / "rust-release.json", site / "rust-release.json")
     (site / ".nojekyll").touch()
 
     # Every legacy page remains at its current route in both languages, including
@@ -84,10 +85,14 @@ def main():
         "rust/en/index.html",
         "rust/quickstart/index.html",
         "rust/en/quickstart/index.html",
+        "rust/install/index.html",
+        "rust/en/install/index.html",
+        "rust/assets/workspace.png",
         "rust/search/search_index.json",
         "download/index.html",
         "download/favicon.png",
         "version.json",
+        "rust-release.json",
     ):
         if not (site / route).is_file():
             raise SystemExit(f"Missing published route: {route}")
@@ -97,6 +102,10 @@ def main():
     source_version = json.loads((ROOT / "version.json").read_text(encoding="utf-8"))
     if json.loads((site / "version.json").read_text(encoding="utf-8")) != source_version:
         raise SystemExit("Published download version differs from version.json")
+    if json.loads((site / "rust-release.json").read_text(encoding="utf-8")) != json.loads(
+        (ROOT / "rust-release.json").read_text(encoding="utf-8")
+    ):
+        raise SystemExit("Published Rust distribution metadata differs from rust-release.json")
     verify_local_links(site)
     print("Pages ready: Python manual at /, Rust manual at /rust/, downloads at /download/.")
 

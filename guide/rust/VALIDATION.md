@@ -231,6 +231,29 @@ Spectrum遅延は同じ結果群の入力利用可能→解析完了→UI提出�
 
 反復性能は`cargo bench --locked --no-default-features`で測る。`cargo test`によるbench各条件1回は動作確認で、性能判定には使わない。
 
+## 配布パッケージの受け入れ
+
+公開候補と同じソースSHA・通常release／desktop・qaなしの配布実行ファイルを使う。以下は未実施の手順であり、過去の開発QA・CIのパッケージ検証を合格へ代用しない。公開操作は [公開準備](RELEASE_PREPARATION.md#公開候補の通し確認と公開運用) に分ける。
+
+| 段階 | 確認内容 |
+| --- | --- |
+| 識別 | 配布ファイル名・SHA-256、build-infoのソースSHA・版・対象CPU・機能、展開後／コピー後の実行ファイルSHA-256を記録する |
+| 起動 | インストール／展開後の通常GUIを起動し、Scope単独、入力・出力停止、I/O・Help・計器選択、通常幅／狭幅の操作を確認する |
+| 内部経路 | Software Loopbackの取得→完全窓→停止→数値確認、Generator内部出力と入力の独立Start／Stop、Scope／Spectrum／Lock-in／同期比較の有効性・保持を確認する |
+| 実入出力 | 使用機器・配線・公称Fs・CH・PCM・バッファ・未校正条件を記録し、REF／応答を観測する。音声通知・欠落・整定・失敗を正常値へ置き換えない |
+| Generator | 周波数・peak振幅・位相の編集、入力Stop時の出力継続、出力Stop、切断ERRORと明示Reset／Start、設定復元・別プロセス復元後のOFFを確認する |
+| 同期比較 | 異なるREF／SIG、既知ゲイン・位相の照合、低REF／欠落時の無効化、有限Stopと条件付きJSON／CSV・参照比較を確認する。独立数値照合は既存の機能別QAを参照する |
+| 保存・再起動 | Fileで設定v8と保持JSON v5・CSV・対象PNGを保存し、アプリ終了後に同じ配布物を再起動する。停止中の設定復元、出力OFF、参照JSON読込、明示Start後の再測定と条件一致を確認する |
+| 負荷と表示 | 通常GUIの手動操作、実モニター間DPI、反復起動・再接続・長時間を条件別に判定する。既知の高負荷GUI停止・STFT／Generator欠落の再現条件と未確認条件を区別する |
+
+OS別には次を追加する。
+
+* Windows：配布するMSVC releaseのSetup／ZIPを使用し、ユーザー単位の導入とマイクアクセス、通常GUI・実入出力・保存復元を確認する。GNU／dev-fast VMの過去の起動を配布版の結果にしない。
+* Linux：AppImage／tar.gzの同じAppDirで実入出力・保存復元を確認する。FUSEあり／なし、X11／Wayland、実GPU、再接続・長時間はそれぞれ条件を残す。
+* macOS：Intel／Apple Silicon各DMGからコピーしたアプリをFinderで起動する。初回マイク許可、拒否、設定変更と再起動後の復帰、実入出力・保存復元を確認する。TCC操作は利用者が行い、ターミナル起動の権限で置き換えない。
+
+証拠はGit管理外の`dist/package-acceptance/<SHA>/<OS-CPU>/`に保存する。manifestには候補SHA、配布物／実行ファイルのハッシュ、OS版・CPU・GPU・表示サーバー、機器と配線・Fs・CH・PCM、試験名、pass／fail／not-run、保存先・ログ・画像、既知の制限を残す。短い実機確認の結論だけを下記の要約へ反映し、未実施や以前の成功を現在の受け入れとして追加しない。
+
 ## コードで代替できない確認の要約
 
 ### Windows VMでの起動確認

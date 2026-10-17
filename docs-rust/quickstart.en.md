@@ -1,5 +1,7 @@
 # Quick start
 
+For binary installation, OS permissions and signing limits, see [Install a binary](install.md). Rust downloads remain unpublished during preparation.
+
 ## Build from source
 
 Use a checkout containing the Rust edition and Rust 1.95 or later. The Rust edition is on `main`. macOS needs Xcode Command Line Tools; Linux needs ALSA, X11 and Wayland development libraries; Windows needs MSVC and Visual Studio C++ Build Tools. See `guide/rust/SETUP.md` in the repository for details.
@@ -20,6 +22,10 @@ With the local macOS/Linux setup, `./scripts/cargo.sh run --release --locked` al
 4. Press **Stop input** to hold results, then inspect cursors, RMS, peaks or PSD band values.
 5. Use **File** to save settings and held results. JSON retains measurement conditions; CSV supports numerical reuse; PNG shares a view.
 6. After restarting, restore settings while stopped, load the reference JSON, and compare a new measurement. Restoring settings does not start acquisition.
+
+![Current Rust Scope and Spectrum](assets/workspace.png)
+
+*Held synthetic input from the current QA build, showing Scope and Spectrum together. This illustrates the interface, not physical-device accuracy.*
 
 A complete 524,288-point window takes about 10.92 seconds at 48 kHz. Faster Live updates do not shorten that observation time. Continuous analyzes every N/4-hop window; Live/Latest observe recent windows and do not guarantee transient capture.
 
@@ -63,7 +69,7 @@ Under **I/O / Output**, select an output rate of 44.1, 48, 96 or 192 kHz while b
 
 For audio-device output, select a destination under **I/O / Output** and its supported sample rate, channel count and PCM while stopped, then assign the OUT channels. Unassigned outputs are silent. Choose the connected physical input under **I/O / Input**, then press **Start output** and **Start input** separately. **Observe Generator** uses the internal connection. Output notifications or stalled callbacks latch ERROR; use **Reset output (stays OFF)** and an explicit Start to recover. Settings retain the output identity and format and restore with output OFF.
 
-External input and output use separate clocks; output transitions are not automatically mapped to input analysis windows. Wait for input settling after edits and use two actual input channels for synchronous REF and response in Lock-in. JSON/CSV results that observe an external Generator retain applied settings, output state, failures and up to 128 observed changes. Input Stop, Single completion or input failure freezes this evidence; later edits cannot change it. Input-window correspondence remains uncalibrated, so reference comparisons omit numerical differences. Host observation times are not DAC/ADC timestamps, and lost or evicted history is not reconstructed. Result format version 4 also reads versions 1–3. Output calibration and DAC/ADC latency remain unverified.
+External input and output use separate clocks; output transitions are not automatically mapped to input analysis windows. Wait for input settling after edits and use two actual input channels for synchronous REF and response in Lock-in. JSON/CSV results that observe an external Generator retain applied settings, output state, failures and up to 128 observed changes. Input Stop, Single completion or input failure freezes this evidence; later edits cannot change it. Input-window correspondence remains uncalibrated, so reference comparisons omit numerical differences. Host observation times are not DAC/ADC timestamps, and lost or evicted history is not reconstructed. Result format version 5 also reads versions 1–4. Output calibration and DAC/ADC latency remain unverified.
 
 ## Physical audio input
 

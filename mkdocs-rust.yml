@@ -26,12 +26,14 @@ plugins:
           nav_translations:
             概要と対応範囲: Overview and scope
             クイックスタート: Quick start
+            配布版の導入: Install a binary
             Python v0.9.1 マニュアル: Python v0.9.1 manual
 markdown_extensions:
   - admonition
   - tables
 nav:
   - 概要と対応範囲: index.md
+  - 配布版の導入: install.md
   - クイックスタート: quickstart.md
   - GitHub: https://github.com/youtube-at-vach/MeasureLab
   - Python v0.9.1 マニュアル: https://youtube-at-vach.github.io/MeasureLab/
