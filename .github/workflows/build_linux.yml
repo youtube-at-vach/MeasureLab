@@ -1,0 +1,108 @@
+name: Build Linux Packages
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'build.rs'
+      - '.cargo/**'
+      - 'packaging/linux/**'
+      - 'scripts/linux_package.py'
+      - 'scripts/test_linux_package.py'
+      - 'scripts/cargo.sh'
+      - '.github/workflows/build_linux.yml'
+      - '.github/workflows/release.yml'
+      - 'app_icon.png'
+      - 'LICENSE'
+  workflow_dispatch:
+  workflow_call:
+    outputs:
+      artifact:
+        description: Linux AppImage, AppDir archive, build identity and checksums
+        value: ${{ jobs.build.outputs.artifact }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: linux-package-build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    outputs:
+      artifact: linux-x86_64
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v6
+        with:
+          python-version: '3.13'
+      - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable
+        with:
+          toolchain: '1.99.0'
+          targets: x86_64-unknown-linux-gnu
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: '. -> target/distribution-linux'
+          shared-key: linux-distribution-ubuntu22-x86_64
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Install build and packaging dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libasound2-dev libxkbcommon-dev libwayland-dev libx11-dev libxrandr-dev libxi-dev libxcursor-dev desktop-file-utils
+      - name: Test archive validation and launcher
+        run: python -m unittest discover -s scripts -p 'test_linux_package.py'
+      - name: Build normal desktop, AppImage, archive and SHA-256
+        id: package
+        run: python -u scripts/linux_package.py build
+      - name: Verify package identity and contents
+        env:
+          RELEASE_DIR: ${{ steps.package.outputs.release_dir }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: python scripts/linux_package.py verify "$RELEASE_DIR" --source-sha "$SOURCE_SHA" --require-clean
+      - name: Upload Linux distribution
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: linux-x86_64
+          path: ${{ steps.package.outputs.release_dir }}/*
+          if-no-files-found: error
+          retention-days: 14
+
+  verify:
+    name: linux-package-runtime (${{ matrix.os }})
+    needs: build
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04, ubuntu-26.04]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v6
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.build.outputs.artifact }}
+          path: release-assets
+      - name: Install runtime libraries and software Vulkan driver
+        run: |
+          sudo apt-get update
+          alsa=libasound2
+          if apt-cache show libasound2t64 >/dev/null 2>&1; then alsa=libasound2t64; fi
+          sudo apt-get install -y "$alsa" libx11-6 libxrandr2 libxi6 libxcursor1 libxkbcommon0 libxkbcommon-x11-0 libwayland-client0 libwayland-egl1 libegl1 libgl1 libvulkan1 mesa-vulkan-drivers
+          icds=(/usr/share/vulkan/icd.d/lvp_icd*.json)
+          test -f "${icds[0]}"
+          printf 'VK_ICD_FILENAMES=%s\n' "${icds[0]}" >> "$GITHUB_ENV"
+        shell: bash
+      - name: Verify extracted AppImage, archive, normal options and GPU readback
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: python -u scripts/linux_package.py verify release-assets --source-sha "$SOURCE_SHA" --require-clean --runtime --gpu
