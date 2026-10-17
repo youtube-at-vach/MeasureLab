@@ -8,12 +8,12 @@
     <title>MeasureLab — Audio Measurement Tool</title>
     <meta
       name="description"
-      content="Your computer. Your measurement bench. Discover MeasureLab, the open-source audio measurement tool, and its new Rust edition in preparation."
+      content="MeasureLab is open-source software for audio signal measurement and analysis. Download the final Python edition or read about the Rust prototype."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./style.css" />
@@ -40,7 +40,7 @@
               stroke-linejoin="round"
             />
           </svg>
-          MeasureLab<span class="wordmark-dot">.</span>
+          MeasureLab
         </a>
         <nav class="header-nav" aria-label="Main">
           <a href="#download" data-i18n="navDownload">Download</a>
@@ -90,31 +90,26 @@
       <main id="top">
         <section class="hero" aria-labelledby="hero-title">
           <div class="hero-copy">
-            <p class="eyebrow">
-              <span class="small-cross" aria-hidden="true">+</span> OPEN SOURCE
-              <span class="eyebrow-separator">/</span> AUDIO MEASUREMENT
-            </p>
+            <p class="eyebrow">AUDIO MEASUREMENT SOFTWARE</p>
             <h1 id="hero-title">
-              <span data-i18n="heroTitle">Every signal.</span
-              ><span class="accent" data-i18n="heroAccent"
-                >A clearer view.</span
-              >
+              <span data-i18n="heroTitle">Audio measurement</span
+              ><span data-i18n="heroAccent">and analysis</span>
             </h1>
             <p class="hero-intro" data-i18n="heroIntro">
-              Your computer. Your measurement bench.
+              Waveforms and spectra in one workspace.
             </p>
             <p class="hero-body" data-i18n="heroBody">
-              See your sound. Understand your signals. An open-source audio
-              measurement tool for your computer.
+              MeasureLab is open-source software for observing and analysing
+              signals from your computer’s audio inputs.
             </p>
             <div class="hero-actions">
               <a class="button-primary" id="hero-download-link" href="#download"
                 ><span id="hero-download-label" data-i18n="heroAction"
-                  >Get Python v0.9.1</span
+                  >Download Python v0.9.1</span
                 ><span aria-hidden="true">↓</span></a
               >
               <a class="text-link rust-manual-link" href="/MeasureLab/rust/"
-                ><span data-i18n="heroSecondary">About the new MeasureLab</span
+                ><span data-i18n="heroSecondary">Rust edition overview</span
                 ><span aria-hidden="true">↗</span></a
               >
             </div>
@@ -137,7 +132,6 @@
             <div class="download-panel">
               <div class="download-heading">
                 <h2 id="download-title" data-i18n="navDownload">Download</h2>
-                <span class="panel-mark" aria-hidden="true">↓</span>
               </div>
               <div
                 class="edition-picker"
@@ -338,166 +332,69 @@
             </div>
           </section>
 
-          <figure class="signal-art">
-            <div class="signal-header">
-              <span>MEASURELAB / SIGNAL STUDY</span><span>01 — ∿</span>
-            </div>
-            <svg
-              class="signal-plot"
-              viewBox="0 55 560 260"
-              fill="none"
-              aria-hidden="true"
+          <figure class="product-view">
+            <a
+              class="product-image-link edition-manual-link"
+              href="/MeasureLab/"
             >
-              <defs>
-                <pattern
-                  id="minor-grid"
-                  width="28"
-                  height="28"
-                  patternUnits="userSpaceOnUse"
-                >
-                  <path d="M28 0H0V28" stroke="#c4d9d0" stroke-opacity=".10" />
-                </pattern>
-                <pattern
-                  id="major-grid"
-                  width="140"
-                  height="140"
-                  patternUnits="userSpaceOnUse"
-                >
-                  <rect width="140" height="140" fill="url(#minor-grid)" />
-                  <path
-                    d="M140 0H0V140"
-                    stroke="#c4d9d0"
-                    stroke-opacity=".19"
-                  />
-                </pattern>
-                <linearGradient
-                  id="trace-color"
-                  x1="0"
-                  y1="0"
-                  x2="560"
-                  y2="0"
-                  gradientUnits="userSpaceOnUse"
-                >
-                  <stop stop-color="#71edbc" stop-opacity=".45" />
-                  <stop offset=".25" stop-color="#9af5d1" />
-                  <stop offset=".78" stop-color="#9af5d1" />
-                  <stop offset="1" stop-color="#71edbc" stop-opacity=".5" />
-                </linearGradient>
-                <radialGradient id="signal-glow">
-                  <stop stop-color="#5de0b4" stop-opacity=".10" />
-                  <stop offset="1" stop-color="#5de0b4" stop-opacity="0" />
-                </radialGradient>
-              </defs>
-              <ellipse
-                cx="280"
-                cy="185"
-                rx="280"
-                ry="150"
-                fill="url(#signal-glow)"
+              <img
+                id="edition-preview"
+                width="800"
+                height="450"
+                alt="Banner from the Python README showing multiple MeasureLab instruments"
+                data-i18n-alt="previewAlt"
               />
-              <rect width="560" height="370" fill="url(#major-grid)" />
-              <path
-                d="M0 185H560M280 0V370"
-                stroke="#9bb3ab"
-                stroke-opacity=".22"
-                stroke-dasharray="3 5"
-              />
-              <g stroke="#9bb3ab" stroke-opacity=".35">
-                <path d="M0 5V0H5M555 0H560V5M560 365V370H555M5 370H0V365" />
-              </g>
-              <path
-                class="trace-secondary"
-                d="M0,127.88 C9.33,133.62 18.67,141.69 28,151.16 C37.33,160.63 46.67,171.48 56,182.44 C65.33,193.40 74.67,204.46 84,214.32 C93.33,224.19 102.67,232.84 112,239.27 C121.33,245.71 130.67,249.91 140,251.39 C149.33,252.87 158.67,251.62 168,247.80 C177.33,243.98 186.67,237.59 196,229.36 C205.33,221.14 214.67,211.11 224,200.43 C233.33,189.76 242.67,178.46 252,167.86 C261.33,157.25 270.67,147.36 280,139.33 C289.33,131.30 298.67,125.16 308,121.61 C317.33,118.06 326.67,117.11 336,118.87 C345.33,120.64 354.67,125.12 364,131.78 C373.33,138.44 382.67,147.28 392,157.27 C401.33,167.26 410.67,178.37 420,189.32 C429.33,200.27 438.67,211.03 448,220.35 C457.33,229.67 466.67,237.53 476,243.02 C485.33,248.50 494.67,251.61 504,251.96 C513.33,252.32 522.67,249.93 532,245.08 C541.33,240.22 550.67,232.90 560,223.98"
-                stroke="#809d97"
-                stroke-width="1.5"
-                stroke-opacity=".5"
-              />
-              <path
-                class="trace-halo"
-                d="M0,75.23 C9.33,71.59 18.67,72.45 28,77.72 C37.33,82.99 46.67,92.65 56,105.58 C65.33,118.51 74.67,134.69 84,152.22 C93.33,169.76 102.67,188.62 112,206.62 C121.33,224.61 130.67,241.70 140,255.90 C149.33,270.10 158.67,281.37 168,288.41 C177.33,295.46 186.67,298.25 196,296.47 C205.33,294.69 214.67,288.35 224,278.17 C233.33,267.99 242.67,254.00 252,237.83 C261.33,221.66 270.67,203.34 280,185.00 C289.33,166.66 298.67,148.34 308,132.17 C317.33,116.00 326.67,102.01 336,91.83 C345.33,81.65 354.67,75.31 364,73.53 C373.33,71.75 382.67,74.54 392,81.59 C401.33,88.63 410.67,99.90 420,114.10 C429.33,128.30 438.67,145.39 448,163.38 C457.33,181.38 466.67,200.24 476,217.78 C485.33,235.31 494.67,251.49 504,264.42 C513.33,277.35 522.67,287.01 532,292.28 C541.33,297.55 550.67,298.41 560,294.77"
-                stroke="url(#trace-color)"
-                stroke-width="11"
-                stroke-opacity=".19"
-              />
-              <path
-                class="trace-primary"
-                d="M0,75.23 C9.33,71.59 18.67,72.45 28,77.72 C37.33,82.99 46.67,92.65 56,105.58 C65.33,118.51 74.67,134.69 84,152.22 C93.33,169.76 102.67,188.62 112,206.62 C121.33,224.61 130.67,241.70 140,255.90 C149.33,270.10 158.67,281.37 168,288.41 C177.33,295.46 186.67,298.25 196,296.47 C205.33,294.69 214.67,288.35 224,278.17 C233.33,267.99 242.67,254.00 252,237.83 C261.33,221.66 270.67,203.34 280,185.00 C289.33,166.66 298.67,148.34 308,132.17 C317.33,116.00 326.67,102.01 336,91.83 C345.33,81.65 354.67,75.31 364,73.53 C373.33,71.75 382.67,74.54 392,81.59 C401.33,88.63 410.67,99.90 420,114.10 C429.33,128.30 438.67,145.39 448,163.38 C457.33,181.38 466.67,200.24 476,217.78 C485.33,235.31 494.67,251.49 504,264.42 C513.33,277.35 522.67,287.01 532,292.28 C541.33,297.55 550.67,298.41 560,294.77"
-                stroke="url(#trace-color)"
-                stroke-width="2.2"
-              />
-              <circle
-                cx="280"
-                cy="185"
-                r="5"
-                fill="#71edbc"
-                stroke="#0b1012"
-                stroke-width="2"
-              />
-              <path
-                d="M280 173V140H339"
-                stroke="#71edbc"
-                stroke-opacity=".55"
-              />
-              <text
-                x="345"
-                y="144"
-                fill="#71edbc"
-                font-size="11"
-                font-family="monospace"
-              >
-                SIGNAL / REF
-              </text>
-              <text
-                x="9"
-                y="18"
-                fill="#83968e"
-                font-size="10"
-                font-family="monospace"
-              >
-                +
-              </text>
-              <text
-                x="9"
-                y="363"
-                fill="#83968e"
-                font-size="10"
-                font-family="monospace"
-              >
-                −
-              </text>
-              <text
-                x="542"
-                y="178"
-                fill="#83968e"
-                font-size="10"
-                font-family="monospace"
-              >
-                t
-              </text>
-            </svg>
+            </a>
             <figcaption>
-              <span data-i18n="signalCaption">Look closer. See further.</span
-              ><span class="signal-note" data-i18n="signalNote"
-                >Illustrative waveform</span
+              <span class="preview-title" data-i18n="previewTitle"
+                >Python edition · Overview</span
+              >
+              <span class="preview-note" data-i18n="previewNote"
+                >Banner from the final Python README</span
               >
             </figcaption>
           </figure>
         </section>
 
-        <div class="principles" aria-label="MeasureLab philosophy">
-          <p>
-            <span class="index-label">01</span
-            ><span data-i18n="principleOne">Accurate measurement.</span>
-          </p>
-          <p>
-            <span class="index-label">02</span
-            ><span data-i18n="principleTwo">Free to use.</span>
-          </p>
-          <p>
-            <span class="index-label">03</span
-            ><span data-i18n="principleThree">For everyone.</span>
-          </p>
-        </div>
+        <nav
+          class="project-resources"
+          data-i18n-aria="resourcesLabel"
+          aria-label="Documentation and project information"
+        >
+          <a href="/MeasureLab/" class="resource-link edition-manual-link">
+            <span class="resource-heading"
+              ><span data-i18n="resourceManual">Documentation</span
+              ><span aria-hidden="true">↗</span></span
+            >
+            <span class="resource-description" data-i18n="resourceManualBody"
+              >Operation, measurement conditions and known limitations.</span
+            >
+          </a>
+          <a
+            href="https://github.com/youtube-at-vach/MeasureLab/releases"
+            class="resource-link"
+          >
+            <span class="resource-heading"
+              ><span data-i18n="resourceReleases">Releases</span
+              ><span aria-hidden="true">↗</span></span
+            >
+            <span class="resource-description" data-i18n="resourceReleasesBody"
+              >Distribution files and release notes on GitHub.</span
+            >
+          </a>
+          <a
+            href="https://github.com/youtube-at-vach/MeasureLab"
+            class="resource-link"
+          >
+            <span class="resource-heading"
+              ><span data-i18n="sourceLink">Source code</span
+              ><span aria-hidden="true">↗</span></span
+            >
+            <span class="resource-description" data-i18n="resourceSourceBody"
+              >Source, development status and issue tracking.</span
+            >
+          </a>
+        </nav>
 
         <noscript
           ><p class="noscript-notice">
@@ -515,7 +412,7 @@
       <footer class="site-footer">
         <div class="footer-brand">
           <a class="footer-wordmark" href="#top"
-            >MeasureLab<span class="wordmark-dot">.</span></a
+            >MeasureLab</a
           >
           <a
             class="license-label"

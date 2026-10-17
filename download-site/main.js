@@ -7,6 +7,8 @@ import {
 import { rustMessages } from "./rust-messages.js";
 import { pageMessages } from "./page-messages.js";
 import { detectDesktopOS } from "./platform-detection.js";
+import pythonPreview from "../docs/assets/banner.png";
+import rustPreview from "../docs-rust/assets/workspace.png";
 import plannedRustRelease from "../rust-release.json" with { type: "json" };
 
 import publishedVersion from "../version.json" with { type: "json" };
@@ -29,7 +31,7 @@ const translations = {
     htmlLang: "ja",
     title: "MeasureLab - オーディオ測定ツール",
     metaDescription:
-      "MeasureLabは高精度なオーディオ分析と測定を行うためのオープンソースツールです。macOS、Windows、Linuxに対応。",
+      "MeasureLabはオーディオ信号の測定・解析を行うオープンソースソフトウェアです。Python最終版のダウンロードとRustプロトタイプの情報を案内します。",
     docsLink: "Python v0.9.1 マニュアル",
     requirementData: {
       macOS: {
@@ -98,7 +100,7 @@ const translations = {
     htmlLang: "zh-CN",
     title: "MeasureLab - 音频测量工具",
     metaDescription:
-      "MeasureLab 是一款开源工具，可在 macOS、Windows 和 Linux 上进行高精度音频分析与测量。",
+      "MeasureLab 是一款用于音频信号测量与分析的开源软件。提供 Python 最终版下载及 Rust 原型信息。",
     docsLink: "Python v0.9.1 文档",
     requirementData: {
       macOS: {
@@ -166,7 +168,7 @@ const translations = {
     htmlLang: "en",
     title: "MeasureLab - Audio Measurement Tool",
     metaDescription:
-      "MeasureLab is an open-source tool for high-precision audio analysis and measurement on macOS, Windows, and Linux.",
+      "MeasureLab is open-source software for audio signal measurement and analysis. Download the final Python edition or read about the Rust prototype.",
     docsLink: "Python v0.9.1 manual",
     requirementData: {
       macOS: {
@@ -235,9 +237,14 @@ const translations = {
 
 function getMessages() {
   const extra = rustMessages[currentLang];
+  const page = pageMessages[currentLang];
+  const preview = page.previews[currentEdition];
   return {
     ...translations[currentLang],
-    ...pageMessages[currentLang],
+    ...page,
+    previewTitle: preview.title,
+    previewNote: preview.note,
+    previewAlt: preview.alt,
     releaseDetails: extra.releaseDetails,
     ...(currentEdition === "rust"
       ? {
@@ -388,6 +395,11 @@ function syncLanguageQuery(lang) {
 
 function applyStaticTranslations() {
   const messages = getMessages();
+  const previewImage = document.getElementById("edition-preview");
+  const isPython = currentEdition === "python";
+  previewImage.src = isPython ? pythonPreview : rustPreview;
+  previewImage.width = isPython ? 800 : 2880;
+  previewImage.height = isPython ? 450 : 1720;
 
   document.documentElement.lang = messages.htmlLang;
   document.title = messages.title;
@@ -418,6 +430,9 @@ function applyStaticTranslations() {
   document.querySelectorAll(".rust-manual-link").forEach((link) => {
     link.href =
       currentLang === "en" ? "/MeasureLab/rust/en/" : "/MeasureLab/rust/";
+  });
+  document.querySelectorAll("[data-i18n-alt]").forEach((element) => {
+    element.alt = messages[element.dataset.i18nAlt];
   });
   document.querySelectorAll("[data-i18n-aria]").forEach((element) => {
     element.setAttribute("aria-label", messages[element.dataset.i18nAria]);
