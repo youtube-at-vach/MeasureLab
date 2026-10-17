@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0b1012" />
+    <meta name="theme-color" content="#0c1415" />
     <title>MeasureLab — Audio Measurement Tool</title>
     <meta
       name="description"
@@ -45,8 +45,8 @@
         <nav class="header-nav" aria-label="Main">
           <a href="#download" data-i18n="navDownload">Download</a>
           <a
-            href="/MeasureLab/rust/"
-            class="rust-manual-link"
+            href="/MeasureLab/"
+            class="edition-manual-link"
             data-i18n="navManual"
             >Manual</a
           >
@@ -91,9 +91,8 @@
         <section class="hero" aria-labelledby="hero-title">
           <div class="hero-copy">
             <p class="eyebrow">
-              <span class="small-cross" aria-hidden="true">+</span> NEW
-              MEASURELAB <span class="eyebrow-separator">/</span> REBUILT IN
-              RUST
+              <span class="small-cross" aria-hidden="true">+</span> OPEN SOURCE
+              <span class="eyebrow-separator">/</span> AUDIO MEASUREMENT
             </p>
             <h1 id="hero-title">
               <span data-i18n="heroTitle">Every signal.</span
@@ -105,9 +104,8 @@
               Your computer. Your measurement bench.
             </p>
             <p class="hero-body" data-i18n="heroBody">
-              Meet the next MeasureLab. Open source, rebuilt in Rust. A new
-              foundation for observing, measuring and understanding your
-              signals.
+              See your sound. Understand your signals. An open-source audio
+              measurement tool for your computer.
             </p>
             <div class="hero-actions">
               <a class="button-primary" id="hero-download-link" href="#download"
@@ -139,18 +137,16 @@
             <div class="download-panel">
               <div class="download-heading">
                 <h2 id="download-title" data-i18n="navDownload">Download</h2>
-                <span class="eyebrow">GET MEASURELAB</span>
+                <span class="panel-mark" aria-hidden="true">↓</span>
               </div>
               <div
                 class="edition-picker"
                 role="group"
                 aria-labelledby="edition-label"
               >
-                <span
-                  class="field-label"
-                  id="edition-label"
-                  data-i18n="editionLabel"
-                  >Edition</span
+                <span class="field-label" id="edition-label"
+                  ><span class="step-number" aria-hidden="true">01</span
+                  ><span data-i18n="editionLabel">Edition</span></span
                 >
                 <div class="edition-buttons">
                   <button
@@ -205,12 +201,9 @@
                 role="group"
                 aria-labelledby="platform-label"
               >
-                <p
-                  class="field-label"
-                  id="platform-label"
-                  data-i18n="platformLabel"
-                >
-                  Platform
+                <p class="field-label" id="platform-label">
+                  <span class="step-number" aria-hidden="true">02</span
+                  ><span data-i18n="platformLabel">Platform</span>
                 </p>
                 <div class="os-buttons">
                   <button type="button" class="os-button" data-os="macOS">
@@ -276,12 +269,9 @@
                 </div>
               </div>
               <div class="package-field">
-                <p
-                  class="field-label"
-                  id="format-label"
-                  data-i18n="formatLabel"
-                >
-                  CPU &amp; package
+                <p class="field-label" id="format-label">
+                  <span class="step-number" aria-hidden="true">03</span
+                  ><span data-i18n="formatLabel">CPU &amp; package</span>
                 </p>
                 <div
                   class="variant-picker"

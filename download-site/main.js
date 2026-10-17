@@ -412,6 +412,9 @@ function applyStaticTranslations() {
       : currentLang === "en"
         ? "/MeasureLab/en/"
         : "/MeasureLab/";
+  document.querySelectorAll(".edition-manual-link").forEach((link) => {
+    link.href = document.getElementById("manual-link").href;
+  });
   document.querySelectorAll(".rust-manual-link").forEach((link) => {
     link.href =
       currentLang === "en" ? "/MeasureLab/rust/en/" : "/MeasureLab/rust/";

@@ -8,12 +8,12 @@ export const pageMessages = {
     heroAccent: "もっと鮮明に。",
     heroIntro: "PCを、あなたの測定器に。",
     heroBody:
-      "Rustで生まれ変わる、オープンソースのMeasureLab。信号を観察し、測定し、確かめるための新しい基盤へ。",
+      "音を可視化し、信号を確かめる。オープンソースのオーディオ測定ツール、MeasureLab。",
     heroAction: "Python v0.9.1 を入手",
     heroRustAction: "Rust {version} を入手",
     pythonAvailable: "公開中・最終版",
     rustAvailable: "公開中・プロトタイプ",
-    heroSecondary: "新しいMeasureLabについて",
+    heroSecondary: "Rust版について",
     preparing: "Rust版は公開準備中",
     available: "Rustプロトタイプ公開中",
     signalCaption: "信号を見つめる、その先へ。",
@@ -24,8 +24,8 @@ export const pageMessages = {
     editionLabel: "エディション",
     platformLabel: "プラットフォーム",
     formatLabel: "CPU・パッケージ",
-    recommended: "✓ 推奨",
-    packageHelp: "どのパッケージを選ぶべきか？",
+    recommended: "この端末",
+    packageHelp: "パッケージの選び方",
     packageHelpData: {
       macOS:
         "メニュー →「このMacについて」で確認できます。「チップ」がApple Mシリーズなら Apple Silicon、「プロセッサ」がIntelなら Intel を選んでください。",
@@ -58,12 +58,12 @@ export const pageMessages = {
     heroAccent: "A clearer view.",
     heroIntro: "Your computer. Your measurement bench.",
     heroBody:
-      "Meet the next MeasureLab. Open source, rebuilt in Rust. A new foundation for observing, measuring and understanding your signals.",
+      "See your sound. Understand your signals. An open-source audio measurement tool for your computer.",
     heroAction: "Get Python v0.9.1",
     heroRustAction: "Get Rust {version}",
     pythonAvailable: "Available · final edition",
     rustAvailable: "Available · prototype",
-    heroSecondary: "About the new MeasureLab",
+    heroSecondary: "Explore Rust",
     preparing: "Rust edition in preparation",
     available: "Rust prototype available",
     signalCaption: "Look closer. See further.",
@@ -74,7 +74,7 @@ export const pageMessages = {
     editionLabel: "Edition",
     platformLabel: "Platform",
     formatLabel: "CPU & package",
-    recommended: "✓ Recommended",
+    recommended: "This device",
     packageHelp: "Which package should I choose?",
     packageHelpData: {
       macOS:
@@ -109,12 +109,12 @@ export const pageMessages = {
     heroAccent: "更加清晰。",
     heroIntro: "让你的电脑，成为你的测量仪器。",
     heroBody:
-      "以 Rust 重构的开源 MeasureLab。为观察、测量和理解信号，构建全新基础。",
+      "让声音可见，让信号易懂。MeasureLab，你的开源音频测量工具。",
     heroAction: "获取 Python v0.9.1",
     heroRustAction: "获取 Rust {version}",
     pythonAvailable: "已发布 · 最终版",
     rustAvailable: "已发布 · 原型",
-    heroSecondary: "了解全新 MeasureLab",
+    heroSecondary: "了解 Rust 版",
     preparing: "Rust 版正在准备发布",
     available: "Rust 原型已发布",
     signalCaption: "看得更细，理解更深。",
@@ -125,7 +125,7 @@ export const pageMessages = {
     editionLabel: "版本",
     platformLabel: "平台",
     formatLabel: "CPU 与软件包",
-    recommended: "✓ 推荐",
+    recommended: "当前设备",
     packageHelp: "应该选择哪个软件包？",
     packageHelpData: {
       macOS:
