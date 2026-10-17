@@ -1,0 +1,72 @@
+name: Build Windows Packages
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'build.rs'
+      - 'packaging/windows/**'
+      - 'scripts/*windows*.ps1'
+      - 'scripts/install_inno_setup.ps1'
+      - '.github/workflows/build_windows.yml'
+      - '.github/workflows/release.yml'
+      - 'LICENSE'
+  workflow_dispatch:
+  workflow_call:
+    outputs:
+      artifact:
+        description: Tested Windows release assets
+        value: ${{ jobs.build.outputs.artifact }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    outputs:
+      artifact: windows-x64
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable
+        with:
+          toolchain: '1.99.0'
+          targets: x86_64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          shared-key: windows-distribution-msvc-static-crt
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Install verified Inno Setup 6.7.3 compiler
+        run: ./scripts/install_inno_setup.ps1
+      - name: Build normal Rust desktop, installer, ZIP and SHA-256
+        id: package
+        run: ./scripts/build_windows_installer.ps1
+      - name: Test installer and portable ZIP lifecycle
+        env:
+          INSTALLER: ${{ steps.package.outputs.installer }}
+          SOURCE_DIR: ${{ steps.package.outputs.source_dir }}
+          ARCHIVE: ${{ steps.package.outputs.archive }}
+        run: ./scripts/test_windows_installer.ps1 -Installer $env:INSTALLER -SourceDir $env:SOURCE_DIR -Archive $env:ARCHIVE
+      - name: Upload lifecycle logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-installer-test-logs
+          path: dist/windows-installer-test/**/*.log
+          if-no-files-found: ignore
+      - name: Upload tested distribution
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-x64
+          path: ${{ steps.package.outputs.release_dir }}/*
+          if-no-files-found: error
+          retention-days: 14

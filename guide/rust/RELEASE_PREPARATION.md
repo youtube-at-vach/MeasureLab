@@ -7,14 +7,42 @@ Rust版は`main`へ統合済みで、開発PRのbaseも`main`とする。ここ�
 | 項目 | 完了条件 |
 | --- | --- |
 | 版番号・互換性・リリースノート | 次のRust版は`v0.10.0`。Cargoとバンドルの版、設定／結果スキーマの互換性、タグ衝突・GitHub Latestの扱いを確認する。Pythonの配布用`version.json`は別途配布変更まで`v0.9.1`を保持 |
-| 対応OS／CPU・配布形式 | 検証できる対象を選び、macOS .app／DMG、Windows ZIP等、Linuxの形式・ランタイム依存を定義。クリーン環境で起動・入力許可・保存を確認 |
-| 配布ビルド・Release workflow | 検証済みSHAの通常desktopを`--locked`・qaなしでビルドし、アイコン・版・ライセンス・成果物名・SHA-256を揃える。署名／公証・再実行時の混在防止を定義。タグ・公開は依頼された段階で実行 |
+| 対応OS／CPU・配布形式 | Windows x64はユーザー単位のInno SetupインストーラーとZIPを実装。公式ビルドはMSVC・CRT静的リンク。macOS .app／DMG、Linuxの配布形式は未整備。各対象のクリーン環境で起動・入力許可・保存を確認 |
+| 配布ビルド・Release workflow | Windowsは通常desktop・`--locked`・qaなしのビルド、版・アイコン・ライセンス・SHA-256、インストール／再インストール／削除の検証とDraft Release作成を実装。MSVC配布版の受け入れ・署名、他OSの配布整備を残す。タグ・公開は依頼された段階で実行 |
 | ダウンロードの新旧選択 | Pythonを固定で残し、Rustへ明示的に切り替えるメタデータ・成果物選択テストを用意。単一`version.json`の置換で旧版導線を壊さない |
 | 利用者向け文書 | Rustの実画面、OS別の起動・権限・入力不在、単位・校正境界・保存形式・既知の制限を実装と照合。旧Python画像をRustへ流用しない |
 | 公開候補の受け入れ | 対象SHAで通常起動→内部／実入出力→停止→保存・復元を確認。Generatorのレベル・切断・OFF復元、同期比較の確認範囲を明記。未確認機能は実験段階の表記を維持 |
 | GitHub上の確認 | 対象SHAの必須CI、関連するOS別ビルド、Pages公開結果と主要導線を確認。ローカル検証でremoteの成功を推測しない |
 
 配布版と性能・精度の検証対象SHAを一致させる。旧VirusTotal処理を再導入する場合は、アップロードだけで安全判定せず、対象タグと実際の解析状態・結果を表示する。
+
+## Windows配布
+
+[Windows Packages](../../.github/workflows/build_windows.yml) は関連変更のmain宛PR、手動実行、Release workflowから呼び出す。Rust 1.99.0の`x86_64-pc-windows-msvc`を使い、`--release --locked --no-default-features --features desktop`でビルドする。CRTを静的リンクし、利用者へのPython・Rust・Visual C++再頒布可能パッケージの別途導入を不要にする。Windows 10／11 x64を対象とし、ARM64上のx64エミュレーションは受け入れ対象に含めない。
+
+Inno Setup 6.7.3は公式配布のSHA-256を固定して取得する。Rust版のAppId、インストール先`%LOCALAPPDATA%\Programs\MeasureLab Rust`、ショートカット`MeasureLab (Rust)`はPython最終版と分ける。更新はRust版の同じ場所・タスクを引き継ぐ。アンインストールはパッケージ所有ファイルを削除し、設定・測定結果は残す。ASIO切り替え・PyInstaller・旧Pythonランタイムは含めない。
+
+`windows-x64` artifactは以下の4ファイルを含む。版番号はCargoから取得し、タグ実行では完全一致を要求する。実行ごとに新しいステージングディレクトリを使い、過去の成果物を混ぜない。
+
+* `MeasureLab-v<version>-windows-x64-setup.exe`
+* `MeasureLab-v<version>-windows-x64.zip`
+* `MeasureLab-v<version>-windows-x64-build-info.json`
+* `SHA256SUMS-windows-x64.txt`
+
+build-infoはソースSHA・ローカル変更の有無・対象・機能・Rust版・実行ファイルのSHA-256を記録し、ZIPとインストーラーにも同梱する。インストーラーとZIPのテストは日本語・空白を含むパス、実行ファイルの`--help`、QA専用オプションの拒否、ペイロードのハッシュ、ユーザー単位の登録、ショートカット、修復再インストール、データ保持、削除を検証する。通常GUI・GPU・音声の受け入れは別途必要である。
+
+### Release workflowの実行
+
+[Release Windows](../../.github/workflows/release.yml) をブランチで手動実行するとartifactだけを作る。`v*`タグのPushまたはタグを選んだ手動実行では、次の条件を満たして**Draft Release**を作る。
+
+1. `v0.10.0`以降のRust版で、タグがCargoの版と一致している。
+2. タグのコミットが`origin/main`に含まれ、同じSHAのmain Push CIで`lint-and-test`・`docs-lint`・`actionlint`が成功している。CIが未完了なら、成功を待ってRelease workflowを再実行する。
+3. Windowsのビルド・インストーラー検証、ダウンロードしたartifactのSHA-256・ソースSHA・対象・通常機能構成が一致している。
+4. 同じタグのReleaseがまだ存在しない。途中失敗でDraftが残った場合は内容を確認して削除後に再実行する。既存Releaseへの上書きや資産追加は行わない。
+
+リリースノートはCHANGELOGの対象版から抽出し、Windowsプロトタイプの制限とソースSHAを加える。通常の`GITHUB_TOKEN`を使い、書き込み権限はDraft作成jobだけに付与する。追加の`RELEASE_TOKEN`は不要。ハイフン付きのCargo版はprereleaseにする。Draftの確認・公開は手動で行い、このworkflowはGitHub Latest、配布サイト、`version.json`を更新しない。
+
+現在の実行ファイルとインストーラーはAuthenticode未署名。SHA-256は同一性確認であり、Windowsの発行元認証ではない。署名証明書・SmartScreenでの扱い、MSVC版の通常GUI・実入出力・保存復元は配布前の確認として残す。ローカル作成は [Windows手順](WINDOWS.md#windows配布パッケージの作成) を参照する。
 
 ## CIの運用ポイント
 

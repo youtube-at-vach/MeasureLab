@@ -1,3 +1,5 @@
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
+
 use eframe::{egui, egui_wgpu::wgpu};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

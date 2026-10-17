@@ -4,6 +4,7 @@
 
 ### Changed
 
+* **Windows Distribution**: Build the Rust desktop as an x64 installer and ZIP, with embedded icon/version, static MSVC runtime, lifecycle checks, SHA-256 and source metadata. Prepare tagged releases as drafts after required CI passes; keep the Python installation separate.
 * **Rust Version**: Set the next MeasureLab application version to v0.10.0; the final Python distribution remains v0.9.1.
 * **CI**: Consolidate PR checks, cache Rust dependency builds, and require Linux static/numerical checks while keeping three-OS release builds optional. Run expensive jobs only for relevant changes.
 * **Tests**: Run each harness-free benchmark case once under `cargo test`; retain full repetitions under `cargo bench`. Keep numerical accuracy and regression assertions unchanged.
