@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import tomllib
 from contextlib import contextmanager
 from pathlib import Path
@@ -311,6 +312,39 @@ def verify(args):
     print(f"Verified macOS {TARGETS[args.target]} assets, source {source_sha}", flush=True)
 
 
+def create_dmg(stage, image, value):
+    for attempt in range(3):
+        result = run(
+            [
+                "hdiutil",
+                "create",
+                "-volname",
+                f"MeasureLab {value}",
+                "-srcfolder",
+                stage,
+                "-fs",
+                "HFS+",
+                "-format",
+                "UDZO",
+                "-nospotlight",
+                image,
+            ],
+            check=False,
+        )
+        if result.returncode == 0:
+            return
+        output = result.stdout + result.stderr
+        print(output.decode(errors="replace"), file=sys.stderr)
+        if b"Resource busy" not in output or attempt == 2:
+            result.check_returncode()
+        # DiskImages can transiently report EBUSY on hosted macOS runners.
+        # A failed create may leave an incomplete image that blocks the retry.
+        image.unlink(missing_ok=True)
+        delay = 2 * (attempt + 1)
+        print(f"Retrying busy hdiutil create in {delay}s ({attempt + 2}/3)", file=sys.stderr, flush=True)
+        time.sleep(delay)
+
+
 def build(args):
     (ROOT / "dist").mkdir(exist_ok=True)
     work = Path(tempfile.mkdtemp(prefix=f"macos-{TARGETS[args.target]}-", dir=ROOT / "dist"))
@@ -322,22 +356,7 @@ def build(args):
     shutil.copyfile(ROOT / "packaging/macos/README.txt", stage / "README.txt")
     shutil.copyfile(ROOT / "LICENSE", stage / "LICENSE")
     image_name, info_name, checksum_name = asset_names(info["version"], args.target)
-    run(
-        [
-            "hdiutil",
-            "create",
-            "-volname",
-            f"MeasureLab {info['version']}",
-            "-srcfolder",
-            stage,
-            "-fs",
-            "HFS+",
-            "-format",
-            "UDZO",
-            "-nospotlight",
-            assets / image_name,
-        ]
-    )
+    create_dmg(stage, assets / image_name, info["version"])
     (assets / info_name).write_text(json.dumps(info, indent=2) + "\n", encoding="utf-8")
     (assets / checksum_name).write_text(
         "".join(f"{digest(assets / name)}  {name}\n" for name in (image_name, info_name)), encoding="ascii"

@@ -183,6 +183,42 @@ class MacosPackageTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "executable permission"):
             package.verify_bundle(self.bundle, copy.deepcopy(self.info))
 
+    def test_dmg_create_retries_busy_failure_and_removes_partial_image(self):
+        image = self.work / "retry.dmg"
+        calls = []
+
+        def create(args, **kwargs):
+            calls.append(args)
+            self.assertFalse(image.exists())
+            if len(calls) == 1:
+                image.write_bytes(b"incomplete image")
+                return subprocess.CompletedProcess(args, 1, b"", b"hdiutil: create failed - Resource busy\n")
+            image.write_bytes(b"complete image")
+            return subprocess.CompletedProcess(args, 0, b"", b"")
+
+        with patch.object(package, "run", side_effect=create), patch.object(package.time, "sleep") as sleep:
+            package.create_dmg(self.work, image, self.value)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0], calls[1])
+        self.assertEqual(image.read_bytes(), b"complete image")
+        sleep.assert_called_once_with(2)
+
+    def test_dmg_create_stops_after_three_busy_failures(self):
+        busy = subprocess.CompletedProcess([], 1, b"", b"hdiutil: create failed - Resource busy\n")
+        with patch.object(package, "run", return_value=busy) as run, patch.object(package.time, "sleep") as sleep:
+            with self.assertRaises(subprocess.CalledProcessError):
+                package.create_dmg(self.work, self.work / "busy.dmg", self.value)
+        self.assertEqual(run.call_count, 3)
+        self.assertEqual([call.args for call in sleep.call_args_list], [(2,), (4,)])
+
+    def test_dmg_create_does_not_retry_other_errors(self):
+        failed = subprocess.CompletedProcess([], 1, b"", b"hdiutil: create failed - Permission denied\n")
+        with patch.object(package, "run", return_value=failed) as run, patch.object(package.time, "sleep") as sleep:
+            with self.assertRaises(subprocess.CalledProcessError):
+                package.create_dmg(self.work, self.work / "denied.dmg", self.value)
+        run.assert_called_once()
+        sleep.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
