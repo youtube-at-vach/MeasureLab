@@ -90,6 +90,8 @@ macOSではマイクへのアクセスを許可する必要があります。許
 open dist/MeasureLab.app
 ```
 
+DMGを作る場合は`./.venv/bin/python scripts/macos_package.py build`を使います。Intel／Apple SiliconそれぞれのMacで通常版をビルドし、Applicationsへのコピー用リンクとマイク権限の説明を含めます。署名・公証の制限と検証手順は [macOS配布](RELEASE_PREPARATION.md#macos配布) を参照してください。
+
 LinuxではALSAおよびウィンドウシステムの開発ライブラリが必要です。Ubuntuの場合:
 
 ```sh

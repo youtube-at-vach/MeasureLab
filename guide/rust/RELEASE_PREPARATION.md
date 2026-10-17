@@ -7,8 +7,8 @@ Rust版は`main`へ統合済みで、開発PRのbaseも`main`とする。ここ�
 | 項目 | 完了条件 |
 | --- | --- |
 | 版番号・互換性・リリースノート | 次のRust版は`v0.10.0`。Cargoとバンドルの版、設定／結果スキーマの互換性、タグ衝突・GitHub Latestの扱いを確認する。Pythonの配布用`version.json`は別途配布変更まで`v0.9.1`を保持 |
-| 対応OS／CPU・配布形式 | Windows x64はInno SetupとZIP、Linux x86_64はAppImageと同一AppDirのtar.gzを実装。LinuxはUbuntu 22.04をビルド基準とし、ホストのALSA・表示・GPUライブラリを使う。macOS配布、各OSの通常GUI・実入出力・保存の受け入れを残す |
-| 配布ビルド・Release workflow | Windows／Linuxは通常desktop・`--locked`・qaなしのビルド、版・アイコン・ライセンス・SHA-256とビルド情報を揃え、検証後に共通Draft Releaseへ集約する。署名・実機受け入れ・macOS配布を残す。タグ・公開は依頼された段階で実行 |
+| 対応OS／CPU・配布形式 | Windows x64はInno SetupとZIP、Linux x86_64はAppImageと同一AppDirのtar.gz、macOSはIntel／Apple Silicon別のDMGを実装。LinuxはUbuntu 22.04、macOSのdeployment targetは13.0。各OSの通常GUI・実入出力・保存、対応OS版ごとの受け入れを残す |
+| 配布ビルド・Release workflow | 3 OSとも通常desktop・`--locked`・qaなしのビルド、版・アイコン・ライセンス・SHA-256とビルド情報を揃え、検証後に共通Draft Releaseへ集約する。発行元署名・macOS公証・実機受け入れを残す。タグ・公開は依頼された段階で実行 |
 | ダウンロードの新旧選択 | Pythonを固定で残し、Rustへ明示的に切り替えるメタデータ・成果物選択テストを用意。単一`version.json`の置換で旧版導線を壊さない |
 | 利用者向け文書 | Rustの実画面、OS別の起動・権限・入力不在、単位・校正境界・保存形式・既知の制限を実装と照合。旧Python画像をRustへ流用しない |
 | 公開候補の受け入れ | 対象SHAで通常起動→内部／実入出力→停止→保存・復元を確認。Generatorのレベル・切断・OFF復元、同期比較の確認範囲を明記。未確認機能は実験段階の表記を維持 |
@@ -59,16 +59,39 @@ AppImageは実行権限を付けて起動する。FUSEマウントが使えな�
 
 Ubuntu 22.04以外で作る場合もglibc条件を満たす必要がある。ローカル確認のため`--max-glibc`を変更した成果物を、公式の22.04基準を満たした配布物として扱わない。CI成果物の保持期間は14日で、GitHub Releaseでの公開とは別である。Linux資産は発行元署名を付けていない。
 
+## macOS配布
+
+[macOS Packages](../../.github/workflows/build_macos.yml) は関連変更のmain宛PR、手動実行、Release workflowから呼び出す。Rust 1.99.0でIntelの`x86_64-apple-darwin`とApple Siliconの`aarch64-apple-darwin`を各ネイティブrunnerでビルドする。通常desktopだけを`--release --locked --no-default-features --features desktop`で指定し、QA版と分けた`target/distribution-macos/`を使う。`MACOSX_DEPLOYMENT_TARGET=13.0`とInfo.plistの最低版を一致させ、Mach-OのCPU・最低OS版・システム外への動的リンクを検査する。13.0はビルド下限であり、全OS版・機器の動作確認を意味しない。
+
+配布物は`MeasureLab-v<版>-macos-<CPU>.dmg`、同名の`-build-info.json`、`SHA256SUMS-macos-<CPU>.txt`。CPUは`x86_64`／`arm64`で、Universal Binaryではない。DMGはmacOS標準の`hdiutil`で作り、`MeasureLab.app`、`/Applications`へのリンク、起動・権限の説明、The Unlicenseを含める。利用者は`.app`をApplicationsへコピーし、DMGを取り出してから起動する。Python・Rustの導入は不要。旧Python版も`MeasureLab.app`のため、併用時は先に別名・別フォルダーへ退避する。Rust版のbundle identifierは既存の`dev.measurelab.app`を保持し、旧Python版の`com.github_vach.measurelab`とは分ける。
+
+旧版`v0.9.1`の`MeasureLab_macOS.spec`と`entitlements_mac.plist`を参考に、`NSMicrophoneUsageDescription`と`com.apple.security.device.audio-input`を付け、Hardened Runtimeを有効にしてad-hoc署名する。利用目的文と音声入力entitlementは[Appleのマイク権限](https://developer.apple.com/documentation/bundleresources/information-property-list/nsmicrophoneusagedescription)・[音声入力entitlement](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.security.device.audio-input)の役割に合わせる。Python向けの動的ライブラリ検証緩和・未署名実行メモリーの例外、未実装のRemote Audio I/O用ローカルネットワーク利用目的は引き継がない。権限設定の正本は[entitlements.plist](../../packaging/macos/entitlements.plist)と[パッケージスクリプト](../../scripts/macos_package.py)。
+
+実入力を開始した際はMeasureLabへのマイクアクセスを許可する。外部Core Audio入力も対象となる。拒否した場合は「システム設定 → プライバシーとセキュリティ → マイク」でMeasureLabを許可し、再起動する。アプリ起動とターミナル経由では権限の帰属が異なるため、配布受け入れではコピーした`.app`をFinderから起動し、初回の許可・拒否・設定変更後の再開を確認する。スクリプトはTCC設定を変更せず、この操作を自動検証済みとは扱わない。
+
+Developer ID署名・Appleの公証は未整備。ダウンロードしたアプリはGatekeeperで止まる場合があり、配布元とチェックサムを確認したうえで「プライバシーとセキュリティ」の「このまま開く」を使う。Gatekeeper全体を無効にする手順は配布しない。SHA-256とad-hoc署名は発行元認証の代わりにならない。
+
+パッケージ検証ではチェックサム、ソースSHA・版・通常機能構成、DMGの整合性、Applicationsリンク、同梱物を確認する。マウント中と、日本語・空白を含むパスへのコピー・取り出し後の両方で、全ファイルのSHA-256、署名・Hardened Runtime・音声入力entitlement・利用目的文、`--help`とQA専用オプションの拒否を確認する。署名後の実行ファイル・署名リソース・埋め込みビルド情報のハッシュは、循環参照を避けるため外部manifestへ記録する。CIでのパッケージ検証は、通常GUI・初回権限ダイアログ・音声I/O・測定精度の受け入れとは分ける。
+
+ローカル作成にはmacOS、Xcode Command Line Tools、Rust、Python 3.12以降を使う。Pythonはビルド用で、配布アプリの実行依存には含めない。
+
+```bash
+./.venv/bin/python scripts/macos_package.py build
+./.venv/bin/python scripts/macos_package.py verify dist/macos-<CPU>-<id>/release --runtime
+```
+
+既定は実行中MacのCPU。明示する場合は`--target x86_64-apple-darwin`または`--target aarch64-apple-darwin`をbuild／verifyの両方へ付ける。`--require-clean`は未コミット差分を含む成果物を拒否し、`--runtime --gpu`はコピー後のアプリで既存GPU読み戻しも実行する。`.app`だけ必要なら従来の`./scripts/bundle-macos.sh`を使う。CI成果物の保持期間は14日で、GitHub Releaseでの公開とは別である。
+
 ## Release workflowの実行
 
-[Release](../../.github/workflows/release.yml) をブランチで手動実行するとWindows／Linuxのartifactだけを作る。`v*`タグのPushまたはタグを選んだ手動実行では、次の条件を満たして両OS共通の**Draft Release**を作る。
+[Release](../../.github/workflows/release.yml) をブランチで手動実行するとWindows／Linux／macOSのartifactだけを作る。`v*`タグのPushまたはタグを選んだ手動実行では、次の条件を満たして3 OS共通の**Draft Release**を作る。
 
 1. `v0.10.0`以降のRust版で、タグがCargoの版と一致している。
 2. タグのコミットが`origin/main`に含まれ、同じSHAのmain Push CIで`lint-and-test`・`docs-lint`・`actionlint`が成功している。CIが未完了なら、成功を待ってRelease workflowを再実行する。
-3. Windowsのビルド・インストーラー検証とLinuxのビルド・3環境のパッケージ検証が成功し、ダウンロードした全artifactのSHA-256・ソースSHA・対象・通常機能構成が一致している。
+3. Windowsのインストーラー検証、Linuxの3環境のパッケージ検証、macOSのIntel／Apple Silicon別のDMG・署名・コピー後の起動検証が成功し、ダウンロードした全artifactのSHA-256・ソースSHA・対象・通常機能構成が一致している。
 4. 同じタグのReleaseがまだ存在しない。途中失敗でDraftが残った場合は内容を確認して削除後に再実行する。既存Releaseへの上書きや資産追加は行わない。
 
-リリースノートはCHANGELOGの対象版から抽出し、Windows／Linuxプロトタイプの制限とソースSHAを加える。各OSはReleaseへ個別に書き込まず、全対象の検証後に単一jobで作成する。通常の`GITHUB_TOKEN`を使い、書き込み権限はDraft作成jobだけに付与する。追加の`RELEASE_TOKEN`は不要。ハイフン付きのCargo版はprereleaseにする。Draftの確認・公開は手動で行い、このworkflowはGitHub Latest、配布サイト、`version.json`を更新しない。
+リリースノートはCHANGELOGの対象版から抽出し、3 OSのプロトタイプの制限とソースSHAを加える。各OSはReleaseへ個別に書き込まず、全対象の検証後に単一jobで作成する。通常の`GITHUB_TOKEN`を使い、書き込み権限はDraft作成jobだけに付与する。追加の`RELEASE_TOKEN`は不要。ハイフン付きのCargo版はprereleaseにする。Draftの確認・公開は手動で行い、このworkflowはGitHub Latest、配布サイト、`version.json`を更新しない。
 
 ## CIの運用ポイント
 
