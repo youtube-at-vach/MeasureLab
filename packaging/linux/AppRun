@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+measurelab_appdir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec "$measurelab_appdir/usr/bin/measurelab" "$@"

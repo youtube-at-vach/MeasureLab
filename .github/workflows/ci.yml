@@ -171,6 +171,11 @@ jobs:
         if: runner.os == 'Linux' && github.event_name == 'workflow_dispatch' && inputs.benchmarks
         run: cargo bench --locked --no-default-features
 
+  # Allows cloud packaging from a work branch before the new workflow is on main.
+  linux-packages:
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/build_linux.yml
+
   actionlint:
     runs-on: ubuntu-latest
     timeout-minutes: 5
