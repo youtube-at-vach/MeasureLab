@@ -1,5 +1,7 @@
 """Exercise payload integrity, unsafe archives and the actual portable launcher."""
 
+import argparse
+import copy
 import io
 import json
 import tarfile
@@ -7,7 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from linux_package import CHECKSUMS, create_appdir, digest, run, verify_checksums, verify_tar
+from linux_package import CHECKSUMS, TARGET, create_appdir, digest, run, verify, verify_checksums, verify_tar
 
 
 class LinuxPackageTests(unittest.TestCase):
@@ -96,6 +98,58 @@ class LinuxPackageTests(unittest.TestCase):
         (assets / "stale.AppImage").touch()
         with self.assertRaisesRegex(ValueError, "asset set"):
             verify_checksums(assets, {payload.name})
+
+    def test_release_identity_rejects_wrong_source_qa_dirty_and_newer_glibc(self):
+        assets = self.work / "release"
+        assets.mkdir()
+        base = "MeasureLab-v0.10.0-linux-x86_64"
+        info = {
+            **self.info,
+            "target": TARGET,
+            "profile": "release",
+            "features": ["desktop"],
+            "source_dirty": False,
+            "glibc_required": "2.35",
+            "executable_sha256": self.info["payload_sha256"]["usr/bin/measurelab"],
+        }
+        (assets / f"{base}.AppImage").write_bytes(b"not executed by the identity check")
+        archive = assets / f"{base}.tar.gz"
+        identity = assets / f"{base}-build-info.json"
+
+        def write_assets(value):
+            identity.write_text(json.dumps(value))
+            (self.directory / "build-info.json").write_text(json.dumps(value))
+            with tarfile.open(archive, "w:gz") as stream:
+                stream.add(self.directory, arcname="MeasureLab")
+            (assets / CHECKSUMS).write_text(
+                "".join(f"{digest(path)}  {path.name}\n" for path in sorted(assets.iterdir()) if path.name != CHECKSUMS)
+            )
+
+        args = argparse.Namespace(
+            assets=assets,
+            source_sha=info["source_sha"],
+            require_clean=True,
+            max_glibc="2.35",
+            runtime=False,
+            gpu=False,
+        )
+        write_assets(info)
+        verify(args)
+        for key, value in [
+            ("source_sha", "another-source"),
+            ("source_dirty", True),
+            ("target", "aarch64-unknown-linux-gnu"),
+            ("features", ["desktop", "qa"]),
+            ("profile", "dev-fast"),
+            ("glibc_required", "2.36"),
+            ("executable_sha256", "0" * 64),
+        ]:
+            with self.subTest(key=key):
+                changed = copy.deepcopy(info)
+                changed[key] = value
+                write_assets(changed)
+                with self.assertRaisesRegex(ValueError, "build identity"):
+                    verify(args)
 
 
 if __name__ == "__main__":
