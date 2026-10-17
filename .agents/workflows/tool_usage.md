@@ -76,11 +76,14 @@ MEASURELAB_PROFILE_SECONDS=120 ./scripts/profile-stage2.sh demo-120 --demo
 
 ログと1秒ごとのRSSは`dist/stage2-qa/`へ保存する。仮想入力の停止・再開やデバイス切り替えは [機能別QA](../../guide/rust/VALIDATION.md) を参照する。`MEASURELAB_PROFILE_UI_STALL=1`を追加すると、UI停止中の取得・解析継続と表示更新の省略を検証する。停止時間は窓条件に依存する。内部デモ・既存QAの成功だけで、通常ビルドのSoftware Loopbackや物理系の精度を検証済みとしない。Software Loopbackの保存・再起動・再測定QAも同文書を参照する。
 
-macOS のローカルアプリバンドル:
+macOSのローカルアプリバンドルとDMG。ビルド用Python 3.12以降を使う（配布アプリの実行には不要）。DMGのCPUは実行中Macと一致させる。詳しい署名・マイク権限・配布前の確認は [macOS配布](../../guide/rust/RELEASE_PREPARATION.md#macos配布) を参照する。
 
 ```bash
 ./scripts/bundle-macos.sh
 open dist/MeasureLab.app
+./.venv/bin/python scripts/macos_package.py build
+./.venv/bin/python scripts/macos_package.py verify dist/macos-<CPU>-<id>/release --runtime
+./.venv/bin/python -m unittest discover -s scripts -p 'test_macos_package.py'
 ```
 
 Rust 実装の詳しい操作・計測・前提は [Rust README](../../guide/rust/README.md)、拡張計画は [Rust PLAN](../../guide/rust/PLAN.md) を参照する。

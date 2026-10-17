@@ -99,7 +99,7 @@ A complete 512k window at 48 kHz takes about 10.92 seconds; faster Live updates 
 | Linux | C/C++ tools, pkg-config, ALSA, X11, Wayland and xkbcommon development libraries. CI target; device/GPU runtime verification remains pending |
 | Windows | Rust MSVC toolchain and Visual Studio C++ Build Tools. CI target; device/GPU runtime verification remains pending |
 
-The local macOS bundle script is `./scripts/bundle-macos.sh`. Public Rust installers, signing and supported OS/CPU combinations are part of [publication preparation](guide/rust/RELEASE_PREPARATION.md). QA-only demo controls require `./scripts/debug.sh --demo`; Software Loopback does not require QA.
+The local macOS bundle script is `./scripts/bundle-macos.sh`; `./.venv/bin/python scripts/macos_package.py build` creates a DMG for the current Mac architecture. Windows, Linux and macOS prototype packages, microphone permissions, signing limitations and remaining acceptance checks are described in [publication preparation](guide/rust/RELEASE_PREPARATION.md). QA-only demo controls require `./scripts/debug.sh --demo`; Software Loopback does not require QA.
 
 ## Documentation and the Python edition
 

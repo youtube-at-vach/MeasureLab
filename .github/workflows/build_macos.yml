@@ -1,0 +1,84 @@
+name: Build macOS Packages
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'build.rs'
+      - '.cargo/**'
+      - 'packaging/macos/**'
+      - 'scripts/macos_package.py'
+      - 'scripts/test_macos_package.py'
+      - 'scripts/bundle-macos.sh'
+      - 'scripts/cargo.sh'
+      - '.github/workflows/build_macos.yml'
+      - '.github/workflows/release.yml'
+      - 'app_icon.png'
+      - 'LICENSE'
+  workflow_dispatch:
+  workflow_call:
+    outputs:
+      intel_artifact:
+        description: Verified Intel macOS DMG, build identity and checksums
+        value: macos-x86_64
+      arm64_artifact:
+        description: Verified Apple Silicon macOS DMG, build identity and checksums
+        value: macos-arm64
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: macos-package (${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+            arch: x86_64
+          - os: macos-15
+            target: aarch64-apple-darwin
+            arch: arm64
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v6
+        with:
+          python-version: '3.13'
+      - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable
+        with:
+          toolchain: '1.99.0'
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: '. -> target/distribution-macos'
+          shared-key: macos-distribution-${{ matrix.arch }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Test release integrity and macOS permission metadata
+        run: python -m unittest discover -s scripts -p 'test_macos_package.py'
+      - name: Build normal desktop, sign with audio-input entitlement, create and test DMG
+        id: package
+        env:
+          PACKAGE_TARGET: ${{ matrix.target }}
+        run: python -u scripts/macos_package.py build --target "$PACKAGE_TARGET"
+      - name: Verify clean source identity, mounted app and copied app after eject
+        env:
+          RELEASE_DIR: ${{ steps.package.outputs.release_dir }}
+          SOURCE_SHA: ${{ github.sha }}
+          PACKAGE_TARGET: ${{ matrix.target }}
+        run: python scripts/macos_package.py verify "$RELEASE_DIR" --target "$PACKAGE_TARGET" --source-sha "$SOURCE_SHA" --require-clean --runtime
+      - name: Upload verified macOS distribution
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: macos-${{ matrix.arch }}
+          path: ${{ steps.package.outputs.release_dir }}/*
+          if-no-files-found: error
+          retention-days: 14
