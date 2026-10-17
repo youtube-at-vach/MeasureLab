@@ -228,7 +228,7 @@ if [ "$measurelab_verify" = true ]; then
     ./.venv/bin/python scripts/build_pages.py
 else
     printf 'Building the desktop application\n'
-    ./scripts/cargo.sh build --locked
+    ./scripts/cargo.sh build --profile dev-fast --locked
 fi
 
 if ! .venv/bin/python -c 'import mkdocs, material, mkdocs_static_i18n; from py_mini_racer import MiniRacer' > "$measurelab_tools/doc-runtime.log" 2>&1; then

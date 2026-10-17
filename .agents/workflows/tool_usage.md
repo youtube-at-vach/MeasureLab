@@ -15,17 +15,18 @@ macOS／LinuxでRust・サイト・文書用のローカル環境を構築する
 source .tools/env.sh
 ```
 
-OSライブラリを導入済みなら`--install-os-deps`を省略できる。引数なしでは依存関係の導入・デバッグビルド・文書用ライブラリの読み込みを確認し、`--verify`で以下の検証を一括実行する。
+OSライブラリを導入済みなら`--install-os-deps`を省略できる。引数なしでは依存関係の導入・`dev-fast`ビルド・文書用ライブラリの読み込みを確認し、`--verify`で以下の検証を一括実行する。
 
 ## Rust アプリ
 
 Rust 1.95 以降と OS のビルドツールを使う。`scripts/cargo.sh` は PATH 上の Cargo または `.tools/` にあるローカル環境を使う。
 
-デバッグ時は次のスクリプトでビルドと起動をまとめて実行する。引数なしでは実入力を選んだ停止状態で起動する。`--demo`を明示すると`qa`機能を有効にして内部信号を使い、`--release`で性能確認用のビルドを選ぶ。macOSではルートの`Debug-MeasureLab.command`をダブルクリックしても実入力の画面を起動できる。
+デバッグ時は次のスクリプトで`dev-fast`のビルドと起動をまとめて実行する。引数なしでは実入力を選んだ停止状態で起動する。`--demo`を明示すると`qa`機能を有効にして内部信号を使い、`--full-debug`で完全なデバッガー情報、`--release`で性能確認用のビルドを選ぶ。macOSではルートの`Debug-MeasureLab.command`をダブルクリックしても実入力の画面を起動できる。
 
 ```bash
 ./scripts/debug.sh
 ./scripts/debug.sh --demo
+./scripts/debug.sh --full-debug
 ./scripts/debug.sh --release
 ./scripts/debug.sh --ui-smoke
 ```
@@ -61,7 +62,7 @@ GPU が利用できる環境では、読み戻しとテスト信号による画�
 
 ```bash
 ./scripts/cargo.sh run --release --locked -- --gpu-smoke
-./scripts/cargo.sh run --locked --features qa -- --ui-smoke
+./scripts/cargo.sh run --profile dev-fast --locked --features qa -- --ui-smoke
 ```
 
 既存プロトタイプとの比較に使うUIフレーム時間・処理別CPU時間・欠落・RSSの連続計測（スクリプト名は`profile-stage2.sh`を継続）:
@@ -83,6 +84,35 @@ open dist/MeasureLab.app
 ```
 
 Rust 実装の詳しい操作・計測・前提は [Rust README](../../guide/rust/README.md)、拡張計画は [Rust PLAN](../../guide/rust/PLAN.md) を参照する。
+
+### 開発ビルドと時間計測
+
+| 用途 | 起動 | 出力先 |
+| --- | --- | --- |
+| 日常のGUI確認・操作修正 | `./scripts/debug.sh` | `target/dev-fast/measurelab` |
+| デバッガーで型・変数も調べる | `./scripts/debug.sh --full-debug` | `target/debug/measurelab` |
+| 最終性能・欠落・実時間評価 | `./scripts/debug.sh --release` | `target/release/measurelab` |
+
+`dev-fast`はdevを継承し、アプリ最適化レベル1・依存ライブラリ2、インクリメンタルコンパイル、debug assertion・整数overflow検査を保つ。デバッグ情報を`line-tables-only`に絞り、LTOを`off`にする。設定の意味は [Cargo profiles](https://doc.rust-lang.org/cargo/reference/profiles.html) を参照する。`cargo test`・Clippyは従来の設定、配布・性能評価は従来のreleaseを使う。開発用ビルドの応答性をreleaseの受け入れ結果として扱わない。
+
+ビルドだけを行い、[Cargo timings](https://doc.rust-lang.org/cargo/reference/timings.html) でクレート別の時間を調べる場合:
+
+```bash
+./scripts/cargo.sh build --locked --profile dev-fast --timings
+./scripts/cargo.sh build --locked --profile dev --timings
+./scripts/cargo.sh build --locked --release --timings
+```
+
+レポートは`target/cargo-timings/`の時刻付きHTMLに残る。各プロファイルを一度ビルドした後、変更なしの再実行と、同じ小さなGUI変更を加えた差分ビルドを区別する。差分は複数回測って中央値を比較し、OS／CPU・Rust版・機能構成・キャッシュ条件を記録する。比較中は別のビルドや実時間QAを動かさない。
+
+依存関係からの初回ビルドは、既存キャッシュを消さず、未使用の出力先を指定して測る。次の出力先を再利用した場合は初回計測ではない。初回の依存関係ダウンロード時間も区別する。
+
+```bash
+./scripts/cargo.sh build --locked --release --timings --target-dir target/timing-release-cold
+./scripts/cargo.sh build --locked --profile dev-fast --timings --target-dir target/timing-dev-fast-cold
+```
+
+プロファイルの初回と通常／`qa`の切り替えには追加のコンパイルが必要。QA画面の反復確認は`--demo`／`--ui-smoke`で同じ機能構成を使い、性能評価はreleaseのQA版を一度ビルドして実行ファイルを直列に再利用する。
 
 ## ダウンロードサイト
 

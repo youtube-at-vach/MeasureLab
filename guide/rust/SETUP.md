@@ -14,7 +14,7 @@ source .tools/env.sh
 
 `--install-os-deps`はLinuxでapt-getからOSライブラリを導入し、macOSではXcodeツールの導入を確認します。必要な場合はsudoのパスワード入力があります。スクリプト全体をsudoで実行せず、通常のユーザーで起動してください。
 
-`--verify`はRustのfmt・全ターゲット／全機能のClippyとテスト・GUIなし／通常構成のテスト・releaseビルド、サイトのテストと新旧マニュアルを含むPagesビルド、Ruff、Markdown lint、actionlintを実行します。引数なしでは依存関係を整え、デスクトップのデバッグビルドと文書用ライブラリの読み込みを確認します。検証に失敗すると終了コードは非ゼロになります。
+`--verify`はRustのfmt・全ターゲット／全機能のClippyとテスト・GUIなし／通常構成のテスト・releaseビルド、サイトのテストと新旧マニュアルを含むPagesビルド、Ruff、Markdown lint、actionlintを実行します。引数なしでは依存関係を整え、デスクトップの`dev-fast`ビルドと文書用ライブラリの読み込みを確認します。検証に失敗すると終了コードは非ゼロになります。
 
 OSのライブラリを導入済みの場合、または自分で管理する場合は、次のコマンドを使います。
 
@@ -89,11 +89,15 @@ Rustだけなら、環境の読み込みなしでも既存の`./scripts/cargo.sh
 ```sh
 ./scripts/debug.sh
 ./scripts/debug.sh --demo
+./scripts/debug.sh --full-debug
+./scripts/debug.sh --release
 ./scripts/debug.sh --ui-smoke
 ./scripts/debug.sh --gpu-smoke
 ./scripts/bundle-macos.sh
 ```
 
 GPU／UI確認は画面と対応GPUを使うため、`--verify`とは別に実行します。実入力を使う際はmacOSのマイクアクセスを許可してください。BlackHole 2ch／16chや物理オーディオ機器は必要な入力試験に合わせて用意し、セットアップスクリプトでは導入しません。
+
+日常のGUI確認は`dev-fast`、完全なデバッガー情報は`--full-debug`、測定・描画の性能評価は`--release`で選びます。各プロファイルの初回は依存関係をコンパイルするため、差分ビルドと分けて考えてください。設定と計測手順は [Tool Usage Guide](../../.agents/workflows/tool_usage.md#開発ビルドと時間計測) を参照してください。
 
 コミット前にGitの名前・メールを、GitHubへの送信前に認証を確認してください。日常の検証コマンドは [Tool Usage Guide](../../.agents/workflows/tool_usage.md)、操作は [Rust README](README.md) を参照してください。

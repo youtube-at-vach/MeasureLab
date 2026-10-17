@@ -60,3 +60,11 @@ opt-level = 1
 
 [profile.dev.package."*"]
 opt-level = 2
+
+# Daily GUI iteration: retain optimized DSP/dependencies and runtime checks,
+# but emit only the debug information needed for file/line backtraces.
+# Use dev for full debugger information and release for performance acceptance.
+[profile.dev-fast]
+inherits = "dev"
+debug = "line-tables-only"
+lto = "off"

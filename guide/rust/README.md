@@ -10,16 +10,19 @@ Rust 1.95以上と各OSのビルドツールが必要です。開発・検証に
 
 ### デバッグ時の簡単な起動
 
-リポジトリのルートにある **Debug-MeasureLab.command** をmacOSのFinderでダブルクリックすると、デバッグビルドを更新して実入力を選ぶ画面で起動します。ターミナルからは以下を使います。
+リポジトリのルートにある **Debug-MeasureLab.command** をmacOSのFinderでダブルクリックすると、開発用の`dev-fast`ビルドを更新して実入力を選ぶ画面で起動します。ターミナルからは以下を使います。
 
 ```sh
 ./scripts/debug.sh
 ./scripts/debug.sh --demo
 ./scripts/debug.sh --compact
+./scripts/debug.sh --full-debug
 ./scripts/debug.sh --release
 ```
 
-引数なしでは実入力を選ぶ画面で停止した状態から始まります。デバイスを選んで **Start input** を押します。`--audio`も同じ動作です。`--demo`を明示すると、検証用の`qa`機能を有効にして内部信号で起動します。通常はデバッグシンボルを残すdevビルドを使い、panic時のバックトレースを有効にします。`RUST_BACKTRACE`を指定済みならその値を使います。CPU処理時間などの性能確認には`--release`を使います。
+引数なしでは実入力を選ぶ画面で停止した状態から始まります。デバイスを選んで **Start input** を押します。`--audio`も同じ動作です。`--demo`を明示すると、検証用の`qa`機能を有効にして内部信号で起動します。通常は差分ビルド向けの`dev-fast`を使い、panic時のファイル・行番号付きバックトレースを有効にします。`RUST_BACKTRACE`を指定済みならその値を使います。デバッガーで型・変数情報が必要なときは`--full-debug`、CPU処理時間や実時間の性能確認には`--release`を使います。
+
+`dev-fast`は既存devのアプリ最適化レベル1・依存ライブラリ2、インクリメンタルコンパイル、debug assertion・整数overflow検査を引き継ぎ、デバッグ情報を行番号中心に絞り、LTOを無効にします。出力は`target/dev-fast/measurelab`です。devの完全なデバッグ情報とreleaseのThin LTO・codegen-units=1は維持します。切り替えとビルド時間の調べ方は [Tool Usage Guide](../../.agents/workflows/tool_usage.md#開発ビルドと時間計測) を参照してください。
 
 初回は依存関係のビルドに時間がかかり、以後は変更した部分を再ビルドします。スクリプトは作業ディレクトリに依存せず、`scripts/cargo.sh`経由でPATH上または`.tools/`のRust環境を使います。アプリを閉じるまでターミナルにビルド結果と実行時の出力が残ります。Finderからの起動に失敗した場合はEnterを押すまでエラーを確認できます。
 

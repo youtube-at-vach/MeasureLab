@@ -114,8 +114,9 @@ fn feed(
     let before = collector.metrics.collected.load(Ordering::Acquire);
     let wave: [f64; 256] = std::array::from_fn(|n| 0.5 * (TAU * n as f64 / 256.0).cos());
     while *sequence < target {
-        // At most half the input queue; await actual worker consumption. This
-        // is accelerated finite input, not a real-time throughput assertion.
+        // At most half the input queue; await processing and collection so a
+        // slower collector cannot exhaust the finite result pool. This is
+        // accelerated finite input, not a real-time throughput assertion.
         let end = (*sequence + 8192).min(target);
         let processed = worker.metrics.processed_frames.load(Ordering::Acquire);
         let count = end - *sequence;
@@ -126,6 +127,8 @@ fn feed(
         }
         worker.flush();
         wait(|| worker.metrics.processed_frames.load(Ordering::Acquire) >= processed + count);
+        let produced = worker.metrics.produced.load(Ordering::Acquire);
+        wait(|| collector.metrics.collected.load(Ordering::Acquire) == produced);
         *sequence = end;
         display(collector.snapshot());
     }

@@ -4,26 +4,28 @@ set -e
 measurelab_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$measurelab_root"
 
-measurelab_release=false
+measurelab_profile=dev-fast
 measurelab_qa=false
 measurelab_app_args=()
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --audio) ;;
-        --release) measurelab_release=true ;;
+        --release) measurelab_profile=release ;;
+        --full-debug) measurelab_profile=dev ;;
         --help|-h)
             cat <<'HELP'
 Usage: ./scripts/debug.sh [launcher options] [application options]
 
 Build and start MeasureLab with audio input selected and acquisition stopped.
-The debug build keeps symbols and enables Rust panic backtraces.
+The dev-fast build keeps file/line backtraces and runtime checks.
 
 Launcher options:
-  --audio     Select audio input (the default; kept for compatibility)
-  --release   Use the optimized release build for performance checks
-  --help, -h  Show this help without building
-  --          Pass all remaining arguments directly to the application
+  --audio      Select audio input (the default; kept for compatibility)
+  --full-debug Use the dev build with full debugger information
+  --release    Use the optimized release build for performance checks
+  --help, -h   Show this help without building
+  --           Pass all remaining arguments directly to the application
 
 Application options include:
   --demo         Start an internal test signal (automatically enables qa)
@@ -38,6 +40,7 @@ Examples:
   ./scripts/debug.sh
   ./scripts/debug.sh --demo
   ./scripts/debug.sh --compact
+  ./scripts/debug.sh --full-debug
   ./scripts/debug.sh --release --compact
   ./scripts/debug.sh --ui-smoke
 HELP
@@ -59,10 +62,7 @@ for measurelab_arg in "${measurelab_app_args[@]}"; do
     fi
 done
 
-measurelab_cargo_args=(run --locked)
-if [ "$measurelab_release" = true ]; then
-    measurelab_cargo_args+=(--release)
-fi
+measurelab_cargo_args=(run --locked --profile "$measurelab_profile")
 if [ "$measurelab_qa" = true ]; then
     measurelab_cargo_args+=(--features qa)
 fi
