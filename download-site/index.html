@@ -214,21 +214,64 @@
                 </p>
                 <div class="os-buttons">
                   <button type="button" class="os-button" data-os="macOS">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <rect x="3" y="3" width="18" height="13" rx="2" />
-                      <path d="M8 21h8m-4-5v5" /></svg
-                    >macOS
+                    <svg
+                      class="platform-logo"
+                      viewBox="0 0 32 32"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M21.8 2c.2 2.2-1 4.5-2.4 5.8-1.3 1.2-3.2 2-5 1.8-.2-2.1 1.1-4.4 2.4-5.7C18.3 2.6 20.3 2 21.8 2ZM25.7 24.1c-1 2.1-2.4 5.9-5.1 5.9-1.6 0-2.3-1-4.5-1s-3 1-4.5 1c-2.5.1-4.1-3.4-5.2-5.5-2.9-5.7-2.9-12.4 1.8-14.6 2.2-1.1 4.2-.6 5.8.1 1.5.6 2 .6 3.5 0 2.1-.9 5.3-1.4 7.7 1.5-6.3 3.5-4.9 10.6.5 12.6Z"
+                      />
+                    </svg>
+                    <span>macOS</span>
+                    <span
+                      class="os-recommendation"
+                      data-i18n="recommended"
+                      hidden
+                      >Recommended</span
+                    >
                   </button>
                   <button type="button" class="os-button" data-os="Windows">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M3 5l18-3v20L3 19V5zm9-1.5v17M3 12h18" /></svg
-                    >Windows
+                    <svg
+                      class="platform-logo"
+                      viewBox="0 0 32 32"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M3 6l11-1.5V15H3Zm13-1.8L29 2.5V15H16ZM3 17h11v10.5L3 26Zm13 0h13v12.5l-13-1.7Z"
+                      />
+                    </svg>
+                    <span>Windows</span>
+                    <span
+                      class="os-recommendation"
+                      data-i18n="recommended"
+                      hidden
+                      >Recommended</span
+                    >
                   </button>
                   <button type="button" class="os-button" data-os="Linux">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <rect x="2" y="3" width="20" height="18" rx="2" />
-                      <path d="M6 8l4 4-4 4m7 0h5" /></svg
-                    >Linux
+                    <svg
+                      class="platform-logo linux-logo"
+                      viewBox="0 0 32 32"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M10 11V8a6 6 0 0 1 12 0v3c0 4 5 7 4 12l-4 3H10l-4-3c-1-5 4-8 4-12Z"
+                      />
+                      <ellipse cx="16" cy="20" rx="6" ry="7" />
+                      <path
+                        d="m12 11 4 3 4-3-4-2Zm-4 12-5 5 8 1 2-3m11-3 5 5-8 1-2-3"
+                      />
+                      <circle cx="13.5" cy="7.5" r=".9" class="linux-eye" />
+                      <circle cx="18.5" cy="7.5" r=".9" class="linux-eye" />
+                    </svg>
+                    <span>Linux</span>
+                    <span
+                      class="os-recommendation"
+                      data-i18n="recommended"
+                      hidden
+                      >Recommended</span
+                    >
                   </button>
                 </div>
               </div>
@@ -246,6 +289,18 @@
                   role="group"
                   aria-labelledby="format-label"
                 ></div>
+                <details class="package-help">
+                  <summary>
+                    <svg viewBox="0 0 20 20" aria-hidden="true">
+                      <circle cx="10" cy="10" r="7.5" />
+                      <path d="M8 7.5a2 2 0 0 1 4 .5c0 1.5-2 1.5-2 3m0 2v.5" />
+                    </svg>
+                    <span data-i18n="packageHelp"
+                      >Which package should I choose?</span
+                    >
+                  </summary>
+                  <p id="package-help-text"></p>
+                </details>
               </div>
               <button
                 type="button"
@@ -310,7 +365,7 @@
                   height="28"
                   patternUnits="userSpaceOnUse"
                 >
-                  <path d="M28 0H0V28" stroke="#c4d9d0" stroke-opacity=".055" />
+                  <path d="M28 0H0V28" stroke="#c4d9d0" stroke-opacity=".10" />
                 </pattern>
                 <pattern
                   id="major-grid"
@@ -322,7 +377,7 @@
                   <path
                     d="M140 0H0V140"
                     stroke="#c4d9d0"
-                    stroke-opacity=".10"
+                    stroke-opacity=".19"
                   />
                 </pattern>
                 <linearGradient
@@ -333,12 +388,23 @@
                   y2="0"
                   gradientUnits="userSpaceOnUse"
                 >
-                  <stop stop-color="#71edbc" stop-opacity=".15" />
-                  <stop offset=".25" stop-color="#71edbc" />
-                  <stop offset=".78" stop-color="#71edbc" />
-                  <stop offset="1" stop-color="#71edbc" stop-opacity=".2" />
+                  <stop stop-color="#71edbc" stop-opacity=".45" />
+                  <stop offset=".25" stop-color="#9af5d1" />
+                  <stop offset=".78" stop-color="#9af5d1" />
+                  <stop offset="1" stop-color="#71edbc" stop-opacity=".5" />
                 </linearGradient>
+                <radialGradient id="signal-glow">
+                  <stop stop-color="#5de0b4" stop-opacity=".10" />
+                  <stop offset="1" stop-color="#5de0b4" stop-opacity="0" />
+                </radialGradient>
               </defs>
+              <ellipse
+                cx="280"
+                cy="185"
+                rx="280"
+                ry="150"
+                fill="url(#signal-glow)"
+              />
               <rect width="560" height="370" fill="url(#major-grid)" />
               <path
                 d="M0 185H560M280 0V370"
@@ -361,7 +427,7 @@
                 d="M0,75.23 C9.33,71.59 18.67,72.45 28,77.72 C37.33,82.99 46.67,92.65 56,105.58 C65.33,118.51 74.67,134.69 84,152.22 C93.33,169.76 102.67,188.62 112,206.62 C121.33,224.61 130.67,241.70 140,255.90 C149.33,270.10 158.67,281.37 168,288.41 C177.33,295.46 186.67,298.25 196,296.47 C205.33,294.69 214.67,288.35 224,278.17 C233.33,267.99 242.67,254.00 252,237.83 C261.33,221.66 270.67,203.34 280,185.00 C289.33,166.66 298.67,148.34 308,132.17 C317.33,116.00 326.67,102.01 336,91.83 C345.33,81.65 354.67,75.31 364,73.53 C373.33,71.75 382.67,74.54 392,81.59 C401.33,88.63 410.67,99.90 420,114.10 C429.33,128.30 438.67,145.39 448,163.38 C457.33,181.38 466.67,200.24 476,217.78 C485.33,235.31 494.67,251.49 504,264.42 C513.33,277.35 522.67,287.01 532,292.28 C541.33,297.55 550.67,298.41 560,294.77"
                 stroke="url(#trace-color)"
                 stroke-width="11"
-                stroke-opacity=".07"
+                stroke-opacity=".19"
               />
               <path
                 class="trace-primary"
@@ -441,7 +507,6 @@
             <span class="index-label">03</span
             ><span data-i18n="principleThree">For everyone.</span>
           </p>
-          <span class="open-source-label">OPEN SOURCE / THE UNLICENSE</span>
         </div>
 
         <noscript
@@ -458,20 +523,25 @@
       </main>
 
       <footer class="site-footer">
-        <div>
+        <div class="footer-brand">
           <a class="footer-wordmark" href="#top"
             >MeasureLab<span class="wordmark-dot">.</span></a
           >
-          <p data-i18n="footerNote">
-            Accurate measurement. Free. For everyone.
-          </p>
+          <a
+            class="license-label"
+            href="https://github.com/youtube-at-vach/MeasureLab/blob/main/LICENSE"
+            >OPEN SOURCE / THE UNLICENSE</a
+          >
         </div>
-        <div class="footer-links">
+        <nav
+          class="footer-links"
+          data-i18n-aria="footerLinks"
+          aria-label="Explore"
+        >
           <a href="https://github.com/youtube-at-vach/MeasureLab"
             ><span data-i18n="sourceLink">Source code</span> ↗</a
-          ><a href="https://www.youtube.com/@va-ch">YouTube ↗</a
-          ><span>OPEN SOURCE. ALWAYS.</span>
-        </div>
+          ><a href="https://www.youtube.com/@va-ch">YouTube ↗</a>
+        </nav>
       </footer>
     </div>
     <script type="module" src="./main.js"></script>

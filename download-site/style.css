@@ -1,10 +1,10 @@
 :root {
   color-scheme: dark;
-  --bg: #0b1012;
-  --surface: #11191c;
+  --bg: #0d1416;
+  --surface: #182322;
   --text: #ecf2ef;
-  --muted: #9aa9a5;
-  --quiet: #7e928b;
+  --muted: #adbfba;
+  --quiet: #8daba1;
   --accent: #8cedc3;
   --line: #263431;
   --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
@@ -156,14 +156,27 @@ figure {
 }
 
 .hero {
+  position: relative;
+  isolation: isolate;
   display: grid;
   grid-template-columns: 1.04fr 1fr;
   grid-template-areas: "intro download" "signal download";
   grid-template-rows: auto 1fr;
-  column-gap: 70px;
-  row-gap: 36px;
+  column-gap: 64px;
+  row-gap: 44px;
   align-items: start;
-  padding: 70px 0;
+  padding: 64px 0 68px;
+}
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0 calc((min(1320px, 100vw - 112px) - 100vw) / 2);
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 28% 18%, #7caaa112, transparent 64%),
+    radial-gradient(ellipse at 74% 48%, #2dbb9312, transparent 62%),
+    linear-gradient(180deg, #b2c9c408, transparent 95%);
 }
 .hero-copy {
   grid-area: intro;
@@ -235,7 +248,7 @@ h1 .accent {
   color: var(--accent);
   font-size: 12px;
   font-weight: 600;
-  border: 1px solid #688a78;
+  border: 1px solid #688a7866;
   border-radius: 3px;
 }
 .button-primary:hover {
@@ -285,7 +298,7 @@ body[data-rust-published="true"] .release-status .status-dot {
   align-self: start;
   padding: 0;
   min-width: 0;
-  opacity: 0.85;
+  opacity: 1;
 }
 .signal-header {
   display: flex;
@@ -304,6 +317,12 @@ body[data-rust-published="true"] .release-status .status-dot {
   width: 100%;
   height: auto;
   overflow: visible;
+}
+.trace-halo {
+  filter: blur(4px);
+}
+.trace-primary {
+  filter: drop-shadow(0 0 5px #79edbf66);
 }
 .signal-art figcaption {
   display: flex;
@@ -352,13 +371,6 @@ body[data-rust-published="true"] .release-status .status-dot {
   color: var(--quiet);
   font: 9px var(--mono);
 }
-.open-source-label {
-  margin-left: auto;
-  color: var(--quiet);
-  font: 8px var(--mono);
-  letter-spacing: 1.3px;
-}
-
 .download-section {
   grid-area: download;
   min-width: 0;
@@ -492,10 +504,10 @@ body[data-edition="rust"][data-rust-published="true"]
 .download-panel {
   min-width: 0;
   align-self: start;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  background: var(--surface);
-  padding: 25px 28px 22px;
+  border: 1px solid #9fc8b824;
+  border-radius: 8px;
+  background: linear-gradient(145deg, #8fcdb609, #131e1d66);
+  padding: 29px 30px 26px;
 }
 .platform-picker {
   padding-top: 20px;
@@ -508,48 +520,99 @@ body[data-edition="rust"][data-rust-published="true"]
   gap: 8px;
 }
 .os-button {
+  position: relative;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 8px;
-  padding: 14px 5px;
-  border: 1px solid #34443d;
-  border-radius: 3px;
+  gap: 10px;
+  min-height: 110px;
+  padding: 22px 5px 16px;
+  border: 1px solid #89b09f40;
+  border-radius: 5px;
   color: var(--muted);
-  background: transparent;
-  font-size: 11px;
+  background: linear-gradient(145deg, #b0cfc708, #b0cfc702);
+  font-size: 12px;
 }
-.os-button svg {
-  width: 17px;
-  height: 17px;
+.os-button .platform-logo {
+  width: 32px;
+  height: 32px;
+  fill: currentColor;
+}
+.os-button .linux-logo {
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.5;
+  stroke-width: 1.3;
+  stroke-linejoin: round;
+}
+.linux-eye {
+  fill: currentColor;
+  stroke: none;
 }
 .os-button:hover {
   color: var(--text);
   border-color: #688a78;
 }
 .os-button.is-active {
-  color: var(--accent);
-  background: #1a2c24;
-  border-color: #688a78;
+  color: #092d24;
+  background: linear-gradient(135deg, #65d9b0, #9cf0ce);
+  border-color: #a2f2d3;
+  box-shadow: 0 0 24px #5ee6b31c;
+}
+.os-button.is-active::after {
+  content: "✓";
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.os-recommendation {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #233d33;
+  border: 1px solid #658f7e;
+  border-radius: 20px;
+  color: #baf5da;
+  padding: 3px 7px;
+  font-size: 8px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.os-button.is-active .os-recommendation {
+  background: #c2f7e0;
+  border-color: #b5f3d8;
+  color: #103b2c;
 }
 .package-field {
   margin-top: 23px;
 }
 .variant-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #84a79638;
+  border-radius: 6px;
+  background: #09151266;
 }
 .variant-btn {
+  min-width: 0;
+  min-height: 46px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   background: transparent;
   color: var(--muted);
-  border: 1px solid #34443d;
+  border: 1px solid transparent;
   border-radius: 3px;
-  padding: 10px 12px;
-  font-size: 10px;
+  padding: 8px;
+  font-size: 11px;
   line-height: 1.5;
 }
 .variant-btn:hover {
@@ -557,9 +620,58 @@ body[data-edition="rust"][data-rust-published="true"]
   color: var(--text);
 }
 .variant-btn.is-active {
-  color: var(--text);
-  border-color: #759586;
-  background: #203128;
+  color: #0d3326;
+  border-color: #8aebc5;
+  background: #8aebc5;
+  font-weight: 600;
+}
+.variant-btn.is-active .variant-label::before {
+  content: "✓";
+  margin-right: 5px;
+}
+.variant-detail {
+  font: 9px var(--mono);
+  opacity: 0.8;
+}
+.package-help {
+  margin-top: 12px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.package-help summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  max-width: 100%;
+  cursor: pointer;
+  list-style: none;
+  line-height: 1.6;
+  padding: 4px 0;
+}
+.package-help summary::-webkit-details-marker {
+  display: none;
+}
+.package-help summary:hover,
+.package-help[open] summary {
+  color: var(--accent);
+}
+.package-help svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+}
+.package-help p {
+  margin-top: 8px;
+  padding: 12px 14px;
+  border-left: 2px solid #78b39b;
+  background: #88c5aa0a;
+  font-size: 11px;
+  line-height: 1.9;
 }
 .download-button {
   display: flex;
@@ -567,12 +679,16 @@ body[data-edition="rust"][data-rust-published="true"]
   justify-content: space-between;
   gap: 10px;
   width: 100%;
-  border: 1px solid var(--accent);
-  border-radius: 3px;
-  background: var(--accent);
-  color: var(--bg);
-  padding: 17px 18px;
-  margin-top: 25px;
+  border: 1px solid #68f2c59e;
+  border-radius: 5px;
+  background: linear-gradient(110deg, #078c70, #129b76);
+  color: #fff;
+  box-shadow:
+    0 0 28px #35e8ac2e,
+    inset 0 1px 0 #d0ffec29;
+  padding: 18px 20px;
+  min-height: 69px;
+  margin-top: 24px;
   text-align: left;
 }
 .download-button > span {
@@ -582,28 +698,41 @@ body[data-edition="rust"][data-rust-published="true"]
   gap: 10px;
 }
 #download-action {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
 }
 .download-platform {
-  font-size: 11px;
+  font: 10px var(--mono);
+  padding: 4px 6px;
+  border-radius: 3px;
+  background: #07563f;
+  color: #effff8;
 }
 .download-button svg {
-  width: 19px;
-  height: 19px;
+  width: 28px;
+  height: 28px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.5;
+  stroke-width: 1.8;
   flex-shrink: 0;
 }
 .download-button:hover:enabled {
-  background: #b1f6d9;
+  background: linear-gradient(110deg, #078c70, #10a27d);
   border-color: #b1f6d9;
+  box-shadow:
+    0 0 34px #35e8ac45,
+    inset 0 1px 0 #d0ffec29;
 }
 .download-button:disabled {
   background: #26342e;
   color: #a6b6ad;
   border-color: #3a4c42;
+  box-shadow: none;
+}
+.download-button:disabled .download-platform {
+  background: transparent;
+  color: inherit;
 }
 .download-meta {
   display: flex;
@@ -703,6 +832,22 @@ body[data-edition="rust"][data-rust-published="true"]
   justify-content: space-between;
   gap: 30px;
 }
+.footer-brand {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px 22px;
+}
+.license-label {
+  max-width: 100%;
+  color: var(--quiet);
+  font: 9px var(--mono);
+  letter-spacing: 1px;
+  line-height: 1.8;
+}
+.license-label:hover {
+  color: var(--accent);
+}
 .footer-wordmark {
   font-size: 18px;
   font-weight: 600;
@@ -757,8 +902,9 @@ body[data-edition="rust"][data-rust-published="true"]
   .principles {
     gap: 27px;
   }
-  .open-source-label {
-    display: none;
+  .hero::before {
+    left: -36px;
+    right: -36px;
   }
   .download-panel {
     padding: 23px;
@@ -786,6 +932,10 @@ body[data-edition="rust"][data-rust-published="true"]
     grid-template-areas: "intro" "download" "signal";
     gap: 34px;
     padding: 49px 0 40px;
+  }
+  .hero::before {
+    left: -24px;
+    right: -24px;
   }
   .hero-copy {
     max-width: 580px;
@@ -861,6 +1011,10 @@ body[data-edition="rust"][data-rust-published="true"]
   .hero {
     padding-top: 49px;
     gap: 39px;
+  }
+  .hero::before {
+    left: -20px;
+    right: -20px;
   }
   .eyebrow {
     font-size: 8px;
@@ -957,13 +1111,34 @@ body[data-edition="rust"][data-rust-published="true"]
   }
   .os-button {
     font-size: 10px;
-    gap: 6px;
-  }
-  .os-button svg {
-    width: 15px;
+    gap: 9px;
+    min-height: 102px;
   }
   .variant-btn {
-    padding: 10px;
+    padding: 9px 5px;
+    font-size: 10px;
+  }
+  #download-action {
+    font-size: 19px;
+  }
+  .download-button {
+    padding: 16px 14px;
+  }
+  .download-button svg {
+    width: 25px;
+    height: 25px;
+  }
+  .os-recommendation {
+    font-size: 7px;
+    padding: 3px 5px;
+  }
+  .footer-brand {
+    display: grid;
+    gap: 9px;
+  }
+  .license-label {
+    font-size: 7px;
+    letter-spacing: 0.5px;
   }
   .site-footer {
     align-items: flex-start;

@@ -6,6 +6,7 @@ import {
 } from "./release-assets.js";
 import { rustMessages } from "./rust-messages.js";
 import { pageMessages } from "./page-messages.js";
+import { detectDesktopOS } from "./platform-detection.js";
 import plannedRustRelease from "../rust-release.json" with { type: "json" };
 
 import publishedVersion from "../version.json" with { type: "json" };
@@ -21,6 +22,7 @@ let variantSelectedByUser = false;
 let currentLang = "en";
 let currentOsName = "macOS";
 let windowsInstallerAvailable = false;
+const recommendedOsName = detectDesktopOS(window.navigator);
 
 const translations = {
   ja: {
@@ -466,8 +468,24 @@ function renderVariantPicker(osName) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "variant-btn";
-    button.textContent = variant.label;
+    let [label, ...details] = variant.label.split(" · ");
+    if (osName !== "macOS" && details.length) {
+      const architecture = label;
+      label = details.join(" · ");
+      details = [architecture];
+    }
+    const name = document.createElement("span");
+    name.className = "variant-label";
+    name.textContent = label;
+    button.appendChild(name);
+    if (details.length) {
+      const detail = document.createElement("span");
+      detail.className = "variant-detail";
+      detail.textContent = details.join(" · ");
+      button.appendChild(detail);
+    }
     button.dataset.variant = variantKey;
+    button.setAttribute("aria-label", variant.label);
 
     button.setAttribute(
       "aria-pressed",
@@ -515,19 +533,22 @@ function renderRequirements(osName) {
 }
 
 function detectOS() {
-  const userAgent = window.navigator.userAgent;
-  let os = "Windows";
+  return recommendedOsName ?? "Windows";
+}
 
-  if (userAgent.indexOf("Mac") !== -1) {
-    os = "macOS";
-  } else if (
-    userAgent.indexOf("Linux") !== -1 ||
-    userAgent.indexOf("X11") !== -1
+function renderPackageHelp(osName) {
+  const messages = getMessages();
+  let text = messages.packageHelpData[osName];
+  if (
+    osName === "Windows" &&
+    currentEdition === "python" &&
+    !windowsInstallerAvailable
   ) {
-    os = "Linux";
+    text = messages.windowsZipHelp;
+  } else if (osName === "Linux" && currentEdition === "rust") {
+    text = messages.linuxRustHelp;
   }
-
-  return os;
+  document.getElementById("package-help-text").textContent = text;
 }
 
 function updateMainDisplay(osName, requestedVariantKey = null) {
@@ -553,6 +574,7 @@ function updateMainDisplay(osName, requestedVariantKey = null) {
     currentEdition === "rust" && !rustRelease.published ? "" : variant.size;
   renderVariantPicker(osName);
   renderRequirements(osName);
+  renderPackageHelp(osName);
 
   const mainBtn = document.getElementById("main-download-btn");
   mainBtn.disabled = !url;
@@ -564,6 +586,14 @@ function updateMainDisplay(osName, requestedVariantKey = null) {
     const active = button.dataset.os === osName;
     button.classList.toggle("is-active", active);
     button.setAttribute("aria-pressed", String(active));
+    button.querySelector(".os-recommendation").hidden =
+      button.dataset.os !== recommendedOsName;
+    button.setAttribute(
+      "aria-label",
+      button.dataset.os === recommendedOsName
+        ? `${button.dataset.os} ${getMessages().recommended.replace("✓ ", "")}`
+        : button.dataset.os,
+    );
   });
   mainBtn.onclick = url
     ? () => {

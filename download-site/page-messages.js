@@ -24,6 +24,21 @@ export const pageMessages = {
     editionLabel: "エディション",
     platformLabel: "プラットフォーム",
     formatLabel: "CPU・パッケージ",
+    recommended: "✓ 推奨",
+    packageHelp: "どのパッケージを選ぶべきか？",
+    packageHelpData: {
+      macOS:
+        "メニュー →「このMacについて」で確認できます。「チップ」がApple Mシリーズなら Apple Silicon、「プロセッサ」がIntelなら Intel を選んでください。",
+      Windows:
+        "通常はインストーラーを選んでください。インストールせずに使う場合は、ZIP版を展開して起動します。いずれもx64向けです。",
+      Linux:
+        "AppImageに実行権限を付けて起動してください。x86_64向けのパッケージです。",
+    },
+    windowsZipHelp:
+      "ZIP版を展開し、MeasureLab.exeを起動してください。Windows x64向けのパッケージです。",
+    linuxRustHelp:
+      "通常はAppImageを選んで実行権限を付けてください。FUSEが使えない場合はtar.gzを展開し、MeasureLab/AppRunを起動します。いずれもx86_64向けです。",
+    footerLinks: "関連リンク",
     downloadFor: "{os}版をダウンロード",
     unavailable: "公開準備中",
     requirementsTitle: "動作環境と初回起動について",
@@ -59,6 +74,21 @@ export const pageMessages = {
     editionLabel: "Edition",
     platformLabel: "Platform",
     formatLabel: "CPU & package",
+    recommended: "✓ Recommended",
+    packageHelp: "Which package should I choose?",
+    packageHelpData: {
+      macOS:
+        "Open the Apple menu → About This Mac. Choose Apple Silicon if Chip shows an Apple M-series chip, or Intel if Processor shows Intel.",
+      Windows:
+        "Choose the installer for a standard installation. To use the app without installing it, extract the ZIP package and launch it. Both are for x64.",
+      Linux:
+        "Make the AppImage executable before launching it. This package is for x86_64.",
+    },
+    windowsZipHelp:
+      "Extract the ZIP package and launch MeasureLab.exe. This package is for Windows x64.",
+    linuxRustHelp:
+      "Choose AppImage and make it executable. If FUSE is unavailable, extract tar.gz and launch MeasureLab/AppRun. Both are for x86_64.",
+    footerLinks: "Explore",
     downloadFor: "Download for {os}",
     unavailable: "In preparation",
     requirementsTitle: "System requirements & first launch",
@@ -95,6 +125,20 @@ export const pageMessages = {
     editionLabel: "版本",
     platformLabel: "平台",
     formatLabel: "CPU 与软件包",
+    recommended: "✓ 推荐",
+    packageHelp: "应该选择哪个软件包？",
+    packageHelpData: {
+      macOS:
+        "打开苹果菜单 →“关于本机”。“芯片”显示 Apple M 系列时请选择 Apple Silicon；“处理器”显示 Intel 时请选择 Intel。",
+      Windows:
+        "通常请选择安装程序。如需免安装使用，请解压 ZIP 软件包后启动。两种软件包均适用于 x64。",
+      Linux: "请先为 AppImage 添加执行权限后再启动。此软件包适用于 x86_64。",
+    },
+    windowsZipHelp:
+      "请解压 ZIP 软件包并启动 MeasureLab.exe。此软件包适用于 Windows x64。",
+    linuxRustHelp:
+      "通常请选择 AppImage 并添加执行权限。无法使用 FUSE 时，请解压 tar.gz 并启动 MeasureLab/AppRun。两种软件包均适用于 x86_64。",
+    footerLinks: "相关链接",
     downloadFor: "下载 {os} 版",
     unavailable: "正在准备发布",
     requirementsTitle: "系统要求与首次启动",
