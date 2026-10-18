@@ -3,6 +3,9 @@
 [English](README.md)
 
 [![CI](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml?query=branch%3Amain)
+[![Windows release build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_windows.yml/badge.svg?event=pull_request)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_windows.yml?query=event%3Apull_request)
+[![Linux release build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_linux.yml/badge.svg?event=pull_request)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_linux.yml?query=event%3Apull_request)
+[![macOS release build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_macos.yml/badge.svg?event=pull_request)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_macos.yml?query=event%3Apull_request)
 [![Rust 1.95+](https://img.shields.io/badge/Rust-1.95%2B-dea584?logo=rust&logoColor=white)](Cargo.toml)
 [![Rust prototype](https://img.shields.io/badge/status-Rust_prototype-8b5cf6)](guide/rust/PLAN.md)
 [![License: Unlicense](https://img.shields.io/badge/license-Unlicense-27d3a2)](LICENSE)
@@ -12,7 +15,7 @@
 
 PCとオーディオインターフェースを、信号を探究する測定ラボに。波形を見る。スペクトルを調べる。周波数の変化を追う。2つのチャンネルの関係を確かめる。その一連の作業を、ひとつのワークスペースで。
 
-**MeasureLabの新しい開発が始まりました。Rustプロトタイプが、ついに`main`に入りました。** 測定条件と結果の再現性、応答性のある操作、GPUによる描画を土台に、オーディオ測定ツールを作り直しています。Scope・最大4chのSpectrum・Spectrogram・XYに加え、実験段階のGenerator・Lock-in・同期2ch比較を実装しています。今すぐソースから試し、次の版 **v0.10.0** を一緒に育てていけます。
+**MeasureLabは`main`でRust版を開発し、v0.10.0の公開を準備しています。** 測定条件と結果の再現性、応答性のある操作、GPUによる描画を土台にしたプロトタイプです。Scope・最大4chのSpectrum・Spectrogram・XYに加え、実験段階のGenerator・Lock-in・同期2ch比較を実装しています。今すぐソースから試し、次の版を一緒に育てていけます。
 
 [![Rust manual](https://img.shields.io/badge/Rust_Manual-Read_online-2563eb?style=for-the-badge)](https://youtube-at-vach.github.io/MeasureLab/rust/)
 [![Try the prototype](https://img.shields.io/badge/Try_the_Prototype-Build_from_source-16856b?style=for-the-badge)](#プロトタイプを試す)
@@ -25,8 +28,8 @@ PCとオーディオインターフェースを、信号を探究する測定ラ
 ## 測定を深める、新しい土台
 
 - **信号をいろいろな角度から。** 時間・周波数・時間と周波数・XYの表示を切り替えたり、ScopeとSpectrumに絞って観察したりできます。1〜16chの入力から、必要なチャンネルを選べます。
-- **表示を変えても、解析は続く。** オーディオ取得・測定ワーカー・GPU描画を分離しています。表示を切り替えたり閉じたりしても、解析と平均処理は続きます。
-- **画像の先まで、結果を残す。** 捕捉した信号を保持し、設定と結果を保存。参照結果を読み込んで比較できます。CH校正・単位・取得条件も結果に対応付けて保存します。
+- **表示を変えても、解析は続く。** オーディオ取得・測定ワーカー・GPU描画を分離しています。表示を切り替えたり閉じたりしても、有効な解析と平均処理は続きます。Spectrumの個別CHをOFFにすると、そのCHのFFT処理を止めます。
+- **画像の先まで、結果を残す。** 測定設定の保存、保持したScope／SpectrumのJSON・CSV・PNG書き出し、保存済みJSONの参照比較に対応します。JSONの結果にはCH校正・単位・取得条件も保存します。
 - **機器なしでも、まず触れる。** Software Loopbackで、既知のゲイン・位相・遅延・雑音を共通入力経路から観察できます。通常ビルドで使え、物理的な音声出力は行いません。
 
 ## 現在使える機能
@@ -70,7 +73,9 @@ Generatorと同期比較は統合評価中の実験段階です。応答測定�
 
 ## プロトタイプを試す
 
-[ダウンロード画面](https://youtube-at-vach.github.io/MeasureLab/download/?edition=rust&lang=ja)でRustとPython最終版を区別します。現在は公開準備中で、Rustバイナリのダウンロードは無効です。配布候補はWindows 10／11 x64のSetup／ZIP、glibc 2.35以降のLinux x86_64のAppImage／tar.gz、macOS 13以降のIntel／Apple Silicon別DMGです。実行にはPython・Rustの導入は不要です。[バイナリ導入ガイド](https://youtube-at-vach.github.io/MeasureLab/rust/install/)で権限と署名状態を案内します。配布物での実機受け入れは未完了です。
+[ダウンロード画面](https://youtube-at-vach.github.io/MeasureLab/download/?edition=rust&lang=ja)でRustとPython最終版を区別します。Rust v0.10.0は未公開で、ダウンロードボタンは無効です。Windows 10／11 x64のSetup／ZIP、glibc 2.35以降のLinux x86_64のAppImage／tar.gz、macOS 13以降のIntel／Apple Silicon別DMGの作成は実装済みです。実行にはPython・Rustの導入は不要です。[バイナリ導入ガイド](https://youtube-at-vach.github.io/MeasureLab/rust/install/)で権限と署名状態を案内します。配布物での実機受け入れは未完了です。
+
+冒頭のリリースビルドバッジは、各OSの最新PRでのパッケージ検証結果を示します。通常デスクトップ版のビルドとパッケージ検証を行い、試用用の成果物を14日間保存します。macOSはIntelとApple Siliconの両方を確認します。残る受け入れ条件と公開手順は [公開準備](guide/rust/RELEASE_PREPARATION.md) を参照してください。
 
 ソースから試す場合は **Rust 1.95以降** と各OSのビルド環境が必要です。Rustプロトタイプを`main`から取得できます。
 
@@ -139,5 +144,5 @@ Python版の開発は **v0.9.1** で終了しました。完全なソースと�
 ### 🤖 AI パートナー
 
 - OpenAI: GPT-4.1, GPT-5, GPT-5.1 Codex Max, GPT-5.2, GPT-5.2 Codex, GPT-5.3-Codex, GPT-5.4, GPT-5.5, GPT-5.6, GPT-6, GPT-6.1, GPT-6 Astra
-- Google: Gemini 2.5 Pro, Gemini 3 Pro, Gemini 3 Flash, Gemini 3.1 Pro, Gemini 3.5 Frash
+- Google: Gemini 2.5 Pro, Gemini 3 Pro, Gemini 3 Flash, Gemini 3.1 Pro, Gemini 3.5 Flash
 - Anthropic: Claude 4.5 Sonnet
