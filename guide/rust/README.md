@@ -153,7 +153,7 @@ Windowsの標準構成はRustのMSVCツールチェーンとVisual Studio C++ Bu
 | スペクトル上にマウスを置く | 最寄りFFTビンの実周波数と振幅／PSD／ESDをf64で読み出す |
 | Spectrogram Source / FFT length / Overlap / Window | Spectrumとは独立した対象CH・窓長・窓関数・DC除去。Overlapは50／75（既定）／87.5% |
 | Spectrogram Display / Time Range / From / To | 時間幅5／10／30／60秒と周波数範囲。旧設定の0.5／1／2／20秒は復元値を維持。To = 0はNyquist |
-| Spectrogram Display / Color Map / Color Range | Blue／Heat／Grayscale、Min／Maxと継続Auto、右端のdBFSカラーバー。表示変更ではFFT・履歴をリセットしない |
+| Spectrogram Display / Color Map / Color Range | Turbo／Viridis／Inferno／Magma／Grayscale／Hot／Copper、既存のBlue／Heat。Min／Maxと継続Auto、右端のdBFSカラーバー。表示変更ではFFT・履歴をリセットしない |
 | スペクトログラム上にマウスを置く | その行の最寄りビンの振幅・周波数と解析窓のサンプル番号 |
 | XY Observation window | XYの観察時間幅（0.5〜200 ms、既定50 ms）。Freeは最新区間、Trace Snapはトリガー基準の区間を表示 |
 | XY X amplitude / Y amplitude | 独立した両軸の振幅範囲（0.001〜0.5 FS/div） |

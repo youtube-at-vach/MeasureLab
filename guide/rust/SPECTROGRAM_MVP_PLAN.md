@@ -12,7 +12,7 @@
 
 | 対象 | 現在の実装 | 今回の変更 |
 | --- | --- | --- |
-| 色 | 共通色定義のカラーバー、Blue／Heat／Grayscale、Min／Max／Auto | Hold・表示要求経路へAutoを接続済み |
+| 色 | 共通色定義のカラーバー、Turbo／Viridis／Inferno／Magma／Grayscale／Hot／Copperと既存のBlue／Heat、Min／Max／Auto | Hold・表示要求経路へAutoを接続済み |
 | 表示範囲 | Log／Linear、From／To、ホイールズーム・横パン、5／10／30／60秒、ダブルクリックリセット | 縦パン・時間スクロールを実装。旧時間幅は復元値として維持 |
 | 履歴 | 数値履歴は120秒・96 MiBの有界リング。表示は最大512行・1,024列へ縮約し最新が上 | Live／Hold・過去への移動、容量・基本実時間比較を確認。高負荷耐性は継続課題 |
 | 保存データ | f64線形スペクトルと入力／解析世代、整数サンプル区間・設定・欠落。描画用f32 dBは別キャッシュ | 不変スナップショットをHold・実フレーム選択へ接続済み |
@@ -233,7 +233,7 @@ Rust変更時の共通検証は [Tool Usage Guide](../../.agents/workflows/tool_
 
 ## 最終完了条件と対象外
 
-1. Blue／Heat／Grayscale、Min／Max／Auto、カラーバーを使え、色・範囲操作でFFTを再実行しない。
+1. Turbo／Viridis／Inferno／Magma／Grayscale／Hot／Copperと既存のBlue／Heat、Min／Max／Auto、カラーバーを使え、色・範囲操作でFFTを再実行しない。
 2. Log／Linear、ホイールズーム、パン、5／10／30／60秒、ダブルクリックリセットを使え、軸・ホバー・選択時刻が一致する。
 3. 入力・測定を止めずにHoldと過去のスクロールを使え、履歴周回後も保持表示が変わらず、Live復帰で最新を表示する。保持範囲と容量制限を確認できる。
 4. 保持範囲内の任意の有効時刻をA／Bで選び、PairしたSpectrumで元のFFTの周波数・f64レベルを確認できる。

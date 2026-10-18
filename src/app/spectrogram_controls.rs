@@ -73,7 +73,8 @@ impl ScopeApp {
             1..=14 => {
                 self.pan_spectrogram_time(if phase.is_multiple_of(2) { -0.1 } else { 0.2 });
                 self.spectrogram_seconds = [5.0, 10.0, 30.0, 60.0][phase as usize % 4];
-                self.spectrogram_color_map = spectrogram::ColorMap::ALL[phase as usize % 3];
+                self.spectrogram_color_map =
+                    spectrogram::ColorMap::ALL[phase as usize % spectrogram::ColorMap::ALL.len()];
                 self.spectrogram_auto_color = phase.is_multiple_of(2);
                 let axis = self.spectrogram_frequency_range().zoom(0.5, 0.9).pan(0.02);
                 self.spectrogram_min_hz = axis.min as f32;

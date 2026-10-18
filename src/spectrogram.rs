@@ -2,6 +2,7 @@
 //! dBFS is display data; raw samples and FFT calculations remain elsewhere.
 use crate::stft::{Config, RowInfo};
 
+mod colormaps;
 mod display;
 pub mod history;
 pub mod viewport;
