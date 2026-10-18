@@ -519,10 +519,13 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
         readback.unmap();
         // Read the same known dB values through each palette. The CPU color
         // bar and shader must agree; recoloring must not upload history again.
-        for (map, special) in spectrogram::ColorMap::ALL
+        for (map, special, fraction) in spectrogram::ColorMap::ALL
             .into_iter()
-            .map(|map| (map, false))
-            .chain([(spectrogram::ColorMap::Grayscale, true)])
+            .flat_map(|map| {
+                [0.0_f32, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0]
+                    .map(|fraction| (map, false, fraction))
+            })
+            .chain([(spectrogram::ColorMap::Grayscale, true, 1.0)])
         {
             if special {
                 let previous = history.latest().unwrap();
@@ -539,7 +542,17 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
             image.color_map = map;
-            image.prepare(&device, &queue, &history, image_view, seconds, 256.0);
+            // The latest 0 dB row samples the full palette, including colors
+            // between table entries. Older rows also check lower saturation.
+            let mut palette_view = image_view;
+            palette_view.floor_db = -120.0 * fraction;
+            palette_view.ceiling_db = 120.0 * (1.0 - fraction);
+            image.prepare(&device, &queue, &history, palette_view, seconds, 256.0);
+            let buffers = image.uploaded_buffers;
+            image.prepare(&device, &queue, &history, palette_view, seconds, 256.0);
+            if image.uploaded_buffers != buffers {
+                return Err("Unchanged palette reuploaded uniforms".into());
+            }
             let mut encoder = device.create_command_encoder(&Default::default());
             {
                 let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -578,10 +591,11 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
             device.poll(wgpu::PollType::wait_indefinitely())?;
             receiver.recv()??;
             let pixels = readback.slice(..).get_mapped_range()?;
+            let checks = [(32, fraction), (160, (fraction - 0.5).max(0.0)), (224, 0.0)];
             for (y, fraction) in if special {
                 &[(32, 0.0)][..]
             } else {
-                &[(32, 1.0), (160, 0.5), (224, 0.0)][..]
+                &checks[..]
             } {
                 let x = if special { 224 } else { 128 };
                 let pixel = &pixels[(y * 256 + x) * 4..(y * 256 + x) * 4 + 3];
@@ -764,12 +778,13 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
         drop(pixels);
         readback.unmap();
         println!(
-            "GPU OK: {:?}, {} / {} green / {} blue / {} XY purple pixels / 512k f64 Spectrum individual-bin peak / stopped trace transfer exclusion / spectrogram wrap, order, gap, packed Nyquist, independent view changes, 3 shared palettes, production raster DC/Nyquist, {uploads} row uploads",
+            "GPU OK: {:?}, {} / {} green / {} blue / {} XY purple pixels / 512k f64 Spectrum individual-bin peak / stopped trace transfer exclusion / spectrogram wrap, order, gap, packed Nyquist, independent view changes, {} shared palettes, production raster DC/Nyquist, {uploads} row uploads",
             adapter.get_info().backend,
             adapter.get_info().name,
             green,
             blue,
-            purple
+            purple,
+            spectrogram::ColorMap::ALL.len()
         );
         Ok(())
     })

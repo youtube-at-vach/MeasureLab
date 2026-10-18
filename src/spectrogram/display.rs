@@ -1,5 +1,5 @@
 //! Display transforms never modify the STFT or its history.
-use super::History;
+use super::{History, colormaps};
 use crate::spectrum::{FrequencyScale, View};
 use serde::{Deserialize, Serialize};
 
@@ -9,48 +9,97 @@ pub enum ColorMap {
     Blue,
     Heat,
     Grayscale,
+    Turbo,
+    Viridis,
+    Inferno,
+    Magma,
+    Hot,
+    Copper,
 }
 
 impl ColorMap {
-    pub const ALL: [Self; 3] = [Self::Blue, Self::Heat, Self::Grayscale];
+    pub const ALL: [Self; 9] = [
+        Self::Turbo,
+        Self::Viridis,
+        Self::Inferno,
+        Self::Magma,
+        Self::Grayscale,
+        Self::Hot,
+        Self::Copper,
+        Self::Blue,
+        Self::Heat,
+    ];
+    pub const MAX_STOPS: usize = 256;
 
     pub fn name(self) -> &'static str {
         match self {
             Self::Blue => "Blue",
             Self::Heat => "Heat",
             Self::Grayscale => "Grayscale",
+            Self::Turbo => "Turbo",
+            Self::Viridis => "Viridis",
+            Self::Inferno => "Inferno",
+            Self::Magma => "Magma",
+            Self::Hot => "Hot",
+            Self::Copper => "Copper",
         }
     }
 
     /// These same stops are uploaded to the shader and used by the color bar.
-    pub fn stops(self) -> [[f32; 4]; 3] {
+    pub fn stops(self) -> &'static [[f32; 4]] {
         match self {
-            Self::Blue => [
+            Self::Blue => &[
                 [0.025, 0.04, 0.10, 0.0],
                 [0.05, 0.55, 0.80, 0.0],
                 [1.0, 0.85, 0.25, 0.0],
             ],
-            Self::Heat => [
+            Self::Heat => &[
                 [0.015, 0.005, 0.005, 0.0],
                 [0.8, 0.15, 0.015, 0.0],
                 [1.0, 1.0, 0.85, 0.0],
             ],
-            Self::Grayscale => [
-                [0.025, 0.025, 0.025, 0.0],
-                [0.5125, 0.5125, 0.5125, 0.0],
+            Self::Grayscale => &[[0.0; 4], [1.0, 1.0, 1.0, 0.0]],
+            Self::Turbo => &colormaps::TURBO,
+            Self::Viridis => &colormaps::VIRIDIS,
+            Self::Inferno => &colormaps::INFERNO,
+            Self::Magma => &colormaps::MAGMA,
+            Self::Hot => &[
+                [0.0; 4],
+                [1.0, 0.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0, 0.0],
                 [1.0, 1.0, 1.0, 0.0],
             ],
+            Self::Copper => &COPPER,
         }
     }
 
     pub fn rgb(self, fraction: f32) -> [f32; 3] {
         let stops = self.stops();
-        let t = fraction.clamp(0.0, 1.0) * 2.0;
-        let index = usize::from(t >= 1.0);
+        let t = fraction.clamp(0.0, 1.0) * (stops.len() - 1) as f32;
+        let index = (t as usize).min(stops.len() - 2);
         let t = t - index as f32;
         std::array::from_fn(|i| stops[index][i] + (stops[index + 1][i] - stops[index][i]) * t)
     }
 }
+
+// Sample the conventional copper ramp once at compile time. The red channel
+// saturates before green/blue; a two-color ramp would lose that distinction.
+const COPPER: [[f32; 4]; ColorMap::MAX_STOPS] = {
+    let mut colors = [[0.0; 4]; ColorMap::MAX_STOPS];
+    let mut i = 0;
+    while i < colors.len() {
+        let t = i as f32 / (colors.len() - 1) as f32;
+        let red = t * 1.25;
+        colors[i] = [
+            if red > 1.0 { 1.0 } else { red },
+            t * 0.7812,
+            t * 0.4975,
+            0.0,
+        ];
+        i += 1;
+    }
+    colors
+};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ColorRange {
@@ -387,17 +436,23 @@ mod tests {
     fn shared_palette_normalization_and_luminance() {
         let range = ColorRange::new(-120.0, 0.0).unwrap();
         for map in ColorMap::ALL {
-            for (db, stop) in [(-120.0, 0), (-60.0, 1), (0.0, 2)] {
-                assert_eq!(map.rgb(range.fraction(db)), map.stops()[stop][..3]);
-            }
+            let stops = map.stops();
+            assert!((2..=ColorMap::MAX_STOPS).contains(&stops.len()));
+            assert_eq!(map.rgb(range.fraction(-120.0)), stops[0][..3]);
+            assert_eq!(map.rgb(range.fraction(0.0)), stops.last().unwrap()[..3]);
             let mut previous = 0.0;
-            for i in 0..=256 {
-                let rgb = map.rgb(i as f32 / 256.0);
+            for i in 0..=4096 {
+                let rgb = map.rgb(i as f32 / 4096.0);
+                assert!(rgb.iter().all(|c| c.is_finite() && (0.0..=1.0).contains(c)));
                 let luminance = rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
-                assert!(luminance >= previous);
+                // Turbo is a rainbow with a bright center and a dark red end.
+                if map != ColorMap::Turbo {
+                    assert!(luminance >= previous, "{map:?} at {i}");
+                }
                 previous = luminance;
             }
             assert_eq!(map.rgb(range.fraction(f32::NEG_INFINITY)), map.rgb(0.0));
+            assert_eq!(map.rgb(range.fraction(f32::INFINITY)), map.rgb(1.0));
         }
         for (min, max) in [
             (0.0, 0.0),
@@ -408,6 +463,76 @@ mod tests {
         ] {
             assert!(ColorRange::new(min, max).is_none());
         }
+    }
+
+    #[test]
+    fn standard_palettes_match_reference_colors_and_interpolate_between_samples() {
+        // Independent reference samples from the published sRGB tables, covering
+        // the full rainbow and the low/mid/high levels of the sequential maps.
+        for (map, samples) in [
+            (
+                ColorMap::Turbo,
+                [
+                    [0.18995, 0.07176, 0.23217],
+                    [0.15844, 0.73551, 0.92305],
+                    [0.64362, 0.98999, 0.23356],
+                    [0.98360, 0.49291, 0.12849],
+                    [0.47960, 0.01583, 0.01055],
+                ],
+            ),
+            (
+                ColorMap::Viridis,
+                [
+                    [0.267004, 0.004874, 0.329415],
+                    [0.229739, 0.322361, 0.545706],
+                    [0.127568, 0.566949, 0.550556],
+                    [0.369214, 0.788888, 0.382914],
+                    [0.993248, 0.906157, 0.143936],
+                ],
+            ),
+            (
+                ColorMap::Inferno,
+                [
+                    [0.001462, 0.000466, 0.013866],
+                    [0.341500, 0.062325, 0.429425],
+                    [0.735683, 0.215906, 0.330245],
+                    [0.978422, 0.557937, 0.034931],
+                    [0.988362, 0.998364, 0.644924],
+                ],
+            ),
+            (
+                ColorMap::Magma,
+                [
+                    [0.001462, 0.000466, 0.013866],
+                    [0.316654, 0.071690, 0.485380],
+                    [0.716387, 0.214982, 0.475290],
+                    [0.986700, 0.535582, 0.382210],
+                    [0.987053, 0.991438, 0.749504],
+                ],
+            ),
+        ] {
+            for (index, expected) in [0, 64, 128, 192, 255].into_iter().zip(samples) {
+                let actual = map.rgb(index as f32 / 255.0);
+                for (actual, expected) in actual.into_iter().zip(expected) {
+                    assert!((actual - expected).abs() < 1e-6, "{map:?} at {index}");
+                }
+            }
+            let between = map.rgb(100.5 / 255.0);
+            for (i, actual) in between.into_iter().enumerate() {
+                let expected = (map.stops()[100][i] + map.stops()[101][i]) * 0.5;
+                assert!((actual - expected).abs() < 1e-6);
+            }
+        }
+        assert_eq!(ColorMap::Grayscale.rgb(0.0), [0.0; 3]);
+        assert_eq!(ColorMap::Grayscale.rgb(0.5), [0.5; 3]);
+        assert_eq!(ColorMap::Grayscale.rgb(1.0), [1.0; 3]);
+        assert_eq!(ColorMap::Hot.rgb(0.0), [0.0; 3]);
+        assert_eq!(ColorMap::Hot.rgb(1.0 / 3.0), [1.0, 0.0, 0.0]);
+        assert_eq!(ColorMap::Hot.rgb(2.0 / 3.0), [1.0, 1.0, 0.0]);
+        assert_eq!(ColorMap::Hot.rgb(1.0), [1.0; 3]);
+        assert_eq!(ColorMap::Copper.rgb(0.0), [0.0; 3]);
+        assert_eq!(ColorMap::Copper.rgb(1.0), [1.0, 0.7812, 0.4975]);
+        assert_eq!(ColorMap::Copper.rgb(0.9)[0], 1.0);
     }
 
     #[test]

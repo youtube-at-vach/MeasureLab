@@ -10,6 +10,10 @@ use eframe::{
 use std::sync::{Arc, Mutex};
 use wgpu::util::DeviceExt;
 
+// Three vec4 parameters, followed by the shared palette (WGSL uniform layout).
+const PARAMETER_FLOATS: usize = 12 + ColorMap::MAX_STOPS * 4;
+const PARAMETER_BYTES: u64 = (PARAMETER_FLOATS * std::mem::size_of::<f32>()) as u64;
+
 pub struct Renderer {
     pipeline: wgpu::RenderPipeline,
     layout: wgpu::BindGroupLayout,
@@ -25,7 +29,7 @@ pub struct Renderer {
     count: u32,
     placements: Vec<Placement>,
     vertices: Vec<[f32; 4]>,
-    parameters: [f32; 20],
+    parameters: [f32; PARAMETER_FLOATS],
     pub color_map: ColorMap,
     pub uploaded_rows: u64,
     pub uploaded_buffers: u64,
@@ -49,7 +53,7 @@ impl Renderer {
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
-                        min_binding_size: std::num::NonZeroU64::new(80),
+                        min_binding_size: std::num::NonZeroU64::new(PARAMETER_BYTES),
                     },
                     count: None,
                 },
@@ -101,7 +105,7 @@ impl Renderer {
         });
         let uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("MeasureLab spectrogram parameters"),
-            contents: bytemuck::cast_slice(&[0_f32; 20]),
+            contents: bytemuck::cast_slice(&[0_f32; PARAMETER_FLOATS]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
         let texture = texture(device, TEXTURE_WIDTH, 1);
@@ -127,12 +131,12 @@ impl Renderer {
             count: 0,
             placements: Vec::with_capacity(ROWS * 2),
             vertices: Vec::with_capacity(ROWS * 2),
-            parameters: [0.0; 20],
+            parameters: [0.0; PARAMETER_FLOATS],
             color_map: ColorMap::Blue,
             uploaded_rows: 0,
             uploaded_buffers: 0,
             uploaded_bytes: 0,
-            peak_storage_bytes: (TEXTURE_WIDTH * ROWS * 4 + ROWS * 2 * 16 + 80) as u64,
+            peak_storage_bytes: (TEXTURE_WIDTH * ROWS * 4 + ROWS * 2 * 16) as u64 + PARAMETER_BYTES,
         }
     }
 
@@ -221,7 +225,7 @@ impl Renderer {
             self.revision = history.revision();
             self.seconds = seconds;
         }
-        let mut parameters = [0.0; 20];
+        let mut parameters = [0.0; PARAMETER_FLOATS];
         parameters[..8].copy_from_slice(&[
             view.min_hz,
             view.max_hz,
@@ -240,7 +244,9 @@ impl Renderer {
                 scanlines as f32
             },
         ]);
-        parameters[8..].copy_from_slice(self.color_map.stops().as_flattened());
+        let stops = self.color_map.stops();
+        parameters[8] = (stops.len() - 1) as f32;
+        parameters[12..12 + stops.len() * 4].copy_from_slice(stops.as_flattened());
         if self.parameters != parameters {
             queue.write_buffer(&self.uniform, 0, bytemuck::cast_slice(&parameters));
             self.uploaded_buffers += 1;

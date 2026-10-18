@@ -43,7 +43,7 @@ When additional measurement details exceed a console pane's height, scroll withi
 
 ## Read time and frequency changes
 
-Select **Spectrogram** and open **Details / Display**. Choose Blue, Heat or Grayscale, set Min/Max in dBFS, or enable **Auto color range**. Editing Min/Max returns to Manual. The color bar shows the active range; these controls leave analysis and history intact.
+Select **Spectrogram** and open **Details / Display**. Choose Turbo, Viridis, Inferno, Magma, Grayscale, Hot or Copper (Blue and Heat also remain available), set Min/Max in dBFS, or enable **Auto color range**. Editing Min/Max returns to Manual. The color bar shows the active range; these controls leave analysis and history intact.
 
 Wheel over the plot to zoom frequency; drag the background to pan frequency and time. Shift+wheel also scrolls time. Click to enter Hold and pin an actual FFT frame to time A/B. Acquisition continues during Hold; **Live** releases held history and time selections. Double-click resets frequency and returns to the newest end of the current mode. **Time Range** offers 5/10/30/60 seconds. Numerical history retains up to 120 seconds or 96 MiB; display reduction uses at most 512 rows and 1,024 columns. Actual retention and capacity limits are shown, with unavailable time left blank.
 

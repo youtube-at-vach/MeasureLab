@@ -43,7 +43,7 @@ Spectrumは単一グラフに最大4chを重ねます。下部のCHバーで選�
 
 ## 時間・周波数の変化を読む
 
-**Spectrogram** を選び、**Details / Display** でBlue／Heat／Grayscale、dBFSのMin／Max、**Auto color range**を設定します。Min／Maxを編集するとManualへ戻ります。右端のカラーバーは有効な色範囲を示し、表示操作で解析・履歴は変更しません。
+**Spectrogram** を選び、**Details / Display** でTurbo／Viridis／Inferno／Magma／Grayscale／Hot／Copper（既存のBlue／Heatも選択可）、dBFSのMin／Max、**Auto color range**を設定します。Min／Maxを編集するとManualへ戻ります。右端のカラーバーは有効な色範囲を示し、表示操作で解析・履歴は変更しません。
 
 プロット上のホイールで周波数をズームし、背景ドラッグで周波数・時間をパンします。Shift＋ホイールでも時間をスクロールできます。クリックでHoldへ入り、実FFTフレームを時間A／Bへ固定します。Hold中も測定は続き、**Live** で履歴と時間選択を解放します。ダブルクリックは周波数全体と現在モードの最新端へ戻ります。**Time Range** は5／10／30／60秒です。履歴は最大120秒・96 MiBで、表示は512行・1,024列以内へ縮約します。実際の保持秒数と容量制限を表示し、不足分を補完しません。
 

@@ -216,9 +216,11 @@ impl ScopeApp {
             }
         };
         settle(&mut driver, self);
-        driver.click(self, "Blue")?;
-        driver.click(self, "Heat")?;
-        assert_eq!(self.spectrogram_color_map, spectrogram::ColorMap::Heat);
+        for map in spectrogram::ColorMap::ALL {
+            driver.click(self, self.spectrogram_color_map.name())?;
+            driver.click(self, map.name())?;
+            assert_eq!(self.spectrogram_color_map, map);
+        }
         driver.click(self, "Auto color range")?;
         assert!(self.spectrogram_auto_color);
         driver.click(self, "5 s")?;
@@ -606,6 +608,7 @@ impl ScopeApp {
         self.spectrogram_auto_result = spectrogram::ColorRange::default();
         self.busy = busy;
         if std::env::var("MEASURELAB_UI_SMOKE_SPECTROGRAM_DISPLAY").as_deref() == Ok("pair") {
+            self.spectrogram_color_map = spectrogram::ColorMap::Turbo;
             self.spectrogram_snapshot = hold.clone();
             self.spectrogram_hold = Some(hold);
             self.spectrogram_anchor = self.spectrogram_snapshot.latest().unwrap().info.end;

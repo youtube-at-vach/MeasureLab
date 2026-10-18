@@ -1,7 +1,8 @@
 struct Parameters {
     frequency: vec4<f32>, // min Hz, max Hz, bin Hz, floor dBFS
     display: vec4<f32>,   // ceiling dBFS, logarithmic, physical width, scanlines/row
-    colors: array<vec4<f32>, 3>, // Shared with the CPU color bar.
+    palette: vec4<f32>,   // last color index, reserved, reserved, reserved
+    colors: array<vec4<f32>, 256>, // Shared with the CPU color bar.
 }
 @group(0) @binding(0) var<uniform> p: Parameters;
 @group(0) @binding(1) var history: texture_2d<f32>;
@@ -30,8 +31,9 @@ fn frequency(x: f32) -> f32 {
     return mix(p.frequency.x, p.frequency.y, x);
 }
 fn color(t: f32) -> vec3<f32> {
-    if t < 0.5 { return mix(p.colors[0].rgb, p.colors[1].rgb, t * 2.); }
-    return mix(p.colors[1].rgb, p.colors[2].rgb, (t - 0.5) * 2.);
+    let position = clamp(t, 0., 1.) * p.palette.x;
+    let index = min(u32(position), u32(p.palette.x) - 1u);
+    return mix(p.colors[index].rgb, p.colors[index + 1u].rgb, position - f32(index));
 }
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
