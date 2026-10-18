@@ -1,6 +1,6 @@
 //! Application chrome, navigation and console layout; measurement lives in ScopeApp.
 use super::*;
-use crate::presentation::PANE_CHROME;
+use crate::{generator, presentation::PANE_CHROME};
 
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub(super) enum IoTab {
@@ -236,6 +236,7 @@ impl ScopeApp {
     }
 
     fn instrument_list(&mut self, ui: &mut egui::Ui, close_menu: bool) {
+        ui.set_min_width(188.0);
         ui.add(
             egui::TextEdit::singleline(&mut self.shell.search)
                 .hint_text("Find an instrument")
@@ -243,6 +244,7 @@ impl ScopeApp {
         );
         let query = self.shell.search.trim().to_lowercase();
         let mut group = "";
+        let mut matches = 0;
         for instrument in Instrument::ALL {
             if !format!("{} {}", instrument.name(), instrument.purpose())
                 .to_lowercase()
@@ -250,38 +252,63 @@ impl ScopeApp {
             {
                 continue;
             }
+            matches += 1;
             if group != instrument.group() {
                 group = instrument.group();
-                ui.add_space(8.0);
-                setting_label(ui, group);
+                ui.add_space(12.0);
+                ui.horizontal(|ui| {
+                    setting_label(ui, group);
+                    if group == Instrument::Scope.group() {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            ui.label(self.input_navigation_status().text())
+                                .on_hover_text("Shared input for Scope, Spectrum, Spectrogram and XY. Acquisition and held results are shown inside each instrument.");
+                        });
+                    }
+                });
             }
-            if instrument_button(ui, &self.presentation, instrument, self.shell.io.is_none())
-                .clicked()
+            let status = match instrument {
+                Instrument::Generator => Some(self.output_navigation_status()),
+                Instrument::Lockin => {
+                    Some(self.analysis_navigation_status(self.lockin_settings.enabled))
+                }
+                Instrument::Comparison => {
+                    Some(self.analysis_navigation_status(self.comparison_settings.enabled))
+                }
+                _ => None,
+            };
+            if instrument_button(
+                ui,
+                &self.presentation,
+                instrument,
+                self.shell.io.is_none(),
+                status,
+            )
+            .clicked()
             {
                 self.navigate(Action::OpenSingle(instrument));
                 if close_menu {
                     ui.close();
                 }
             }
-            let state = match instrument {
-                Instrument::Generator => self.generator.label(),
-                Instrument::Lockin => self.analysis_state(self.lockin_settings.enabled),
-                Instrument::Comparison => self.analysis_state(self.comparison_settings.enabled),
-                _ => {
-                    if self.running() {
-                        "INPUT LIVE"
-                    } else {
-                        "INPUT STOPPED"
-                    }
-                }
-            };
-            ui.label(RichText::new(state).small().color(MUTED));
         }
+        if matches == 0 {
+            ui.add_space(8.0);
+            ui.label(
+                RichText::new("No matching instruments")
+                    .small()
+                    .color(MUTED),
+            );
+        }
+        ui.add_space(12.0);
         ui.separator();
         if ui
-            .selectable_label(
-                self.presentation.screen == Screen::Console && self.shell.io.is_none(),
-                "Measurement console",
+            .add(
+                egui::Button::selectable(
+                    self.presentation.screen == Screen::Console && self.shell.io.is_none(),
+                    "Measurement console",
+                )
+                .right_text("")
+                .min_size(vec2(ui.available_width(), 30.0)),
             )
             .clicked()
         {
@@ -292,18 +319,62 @@ impl ScopeApp {
         }
     }
 
+    fn input_navigation_status(&self) -> NavigationStatus {
+        if self.pending_stop.is_some() {
+            NavigationStatus("… Finishing", YELLOW, "Input · finishing analysis")
+        } else if self.busy {
+            NavigationStatus("… Opening", YELLOW, "Input · opening device")
+        } else if self.running() {
+            NavigationStatus("▶ Input live", GREEN, "Shared input · live")
+        } else {
+            NavigationStatus("■ Input stopped", MUTED, "Shared input · stopped")
+        }
+    }
+
+    fn analysis_navigation_status(&self, enabled: bool) -> NavigationStatus {
+        if !enabled {
+            NavigationStatus("■ Off", MUTED, "Analysis · stopped")
+        } else if self.running() {
+            NavigationStatus("▶ On", GREEN, "Analysis enabled · input live")
+        } else {
+            NavigationStatus("… Wait", YELLOW, "Analysis enabled · waiting for input")
+        }
+    }
+
+    fn output_navigation_status(&self) -> NavigationStatus {
+        let g = &self.generator;
+        if g.stopping {
+            return NavigationStatus("… Stopping", YELLOW, "Output · stopping");
+        }
+        if g.starting {
+            return NavigationStatus("… Starting", YELLOW, "Output · start pending");
+        }
+        match g.status.state {
+            generator::State::Stopped => NavigationStatus("■ Stopped", MUTED, "Output · stopped"),
+            generator::State::Starting => {
+                NavigationStatus("… Starting", YELLOW, "Output · starting")
+            }
+            generator::State::Running => NavigationStatus("▶ Running", GREEN, "Output · running"),
+            generator::State::Stopping => {
+                NavigationStatus("… Stopping", YELLOW, "Output · stopping")
+            }
+            generator::State::Error(_) => NavigationStatus("! Error", TRIGGER, "Output · error"),
+        }
+    }
+
     pub(super) fn shell_sides(&mut self, ui: &mut egui::Ui) {
         if ui.max_rect().width() < 1180.0 {
             return;
         }
         egui::Panel::left("instrument_list")
-            .default_size(164.0)
-            .size_range(150.0..=220.0)
+            .default_size(208.0)
+            .size_range(204.0..=260.0)
             .resizable(true)
             .show(ui, |ui| {
                 setting_label(ui, "INSTRUMENTS");
                 egui::ScrollArea::vertical()
                     .id_salt("instrument_list_scroll")
+                    .auto_shrink([false, false])
                     .show(ui, |ui| self.instrument_list(ui, false));
             });
         if self.presentation.details_visible && self.shell.io.is_none() {
@@ -749,17 +820,42 @@ impl ScopeApp {
     }
 }
 
+#[derive(Clone, Copy)]
+struct NavigationStatus(&'static str, Color32, &'static str);
+
+impl NavigationStatus {
+    fn text(self) -> RichText {
+        RichText::new(self.0).small().color(self.1)
+    }
+}
+
 fn instrument_button(
     ui: &mut egui::Ui,
     presentation: &Presentation,
     instrument: Instrument,
     active: bool,
+    status: Option<NavigationStatus>,
 ) -> egui::Response {
-    ui.selectable_label(
-        active && presentation.screen == Screen::Single(instrument),
-        instrument.name(),
+    let selected = active && presentation.screen == Screen::Single(instrument);
+    let mut button = egui::Button::selectable(
+        selected,
+        RichText::new(instrument.name()).color(if selected {
+            GREEN
+        } else {
+            ui.visuals().text_color()
+        }),
     )
-    .on_hover_text(instrument.purpose())
+    .min_size(vec2(ui.available_width(), 30.0))
+    .corner_radius(5);
+    button = if let Some(status) = status {
+        button.right_text(status.text())
+    } else {
+        button.right_text("")
+    };
+    ui.add(button).on_hover_text(status.map_or_else(
+        || instrument.purpose().to_owned(),
+        |status| format!("{}\n{}", instrument.purpose(), status.2),
+    ))
 }
 
 fn pane_title(instrument: Instrument, selected: bool) -> String {
@@ -850,32 +946,34 @@ mod tests {
         let ctx = egui::Context::default();
         let mut presentation = Presentation::default();
         let mut rect = egui::Rect::NOTHING;
-        let run = |events: Vec<egui::Event>,
-                   presentation: &mut Presentation,
-                   rect: &mut egui::Rect| {
-            ctx.run_ui(
-                egui::RawInput {
-                    screen_rect: Some(egui::Rect::from_min_size(
-                        pos2(0.0, 0.0),
-                        vec2(900.0, 660.0),
-                    )),
-                    events,
-                    ..Default::default()
-                },
-                |ui| {
-                    let button = instrument_button(ui, presentation, Instrument::Spectrum, true);
-                    *rect = button.rect;
-                    if button.clicked() {
-                        presentation.apply(Action::OpenSingle(Instrument::Spectrum));
-                    }
-                },
-            )
-            .drop_without_applying_deltas();
-        };
+        let run =
+            |events: Vec<egui::Event>, presentation: &mut Presentation, rect: &mut egui::Rect| {
+                ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            pos2(0.0, 0.0),
+                            vec2(900.0, 660.0),
+                        )),
+                        events,
+                        ..Default::default()
+                    },
+                    |ui| {
+                        let button =
+                            instrument_button(ui, presentation, Instrument::Spectrum, true, None);
+                        *rect = button.rect;
+                        if button.clicked() {
+                            presentation.apply(Action::OpenSingle(Instrument::Spectrum));
+                        }
+                    },
+                )
+                .drop_without_applying_deltas();
+            };
         run(vec![], &mut presentation, &mut rect);
         run(vec![], &mut presentation, &mut rect);
         for _ in 0..2 {
-            let pos = rect.center();
+            // The entire row, including the space to the right of the name,
+            // selects the instrument without toggling it off on a second click.
+            let pos = pos2(rect.right() - 4.0, rect.center().y);
             run(
                 vec![
                     egui::Event::PointerMoved(pos),
@@ -935,6 +1033,74 @@ mod tests {
         .drop_without_applying_deltas();
         assert_eq!(presentation.selected(), Some(Instrument::Spectrum));
     }
+
+    #[test]
+    fn navigation_names_and_status_fit_on_one_line_at_minimum_sidebar_width() {
+        let ctx = egui::Context::default();
+        ctx.global_style_mut(|style| {
+            style.spacing.button_padding = vec2(8.0, 4.0);
+        });
+        let cases = [
+            (
+                Instrument::Comparison,
+                NavigationStatus("… Wait", YELLOW, ""),
+            ),
+            (
+                Instrument::Generator,
+                NavigationStatus("… Starting", YELLOW, ""),
+            ),
+            (
+                Instrument::Generator,
+                NavigationStatus("… Stopping", YELLOW, ""),
+            ),
+            (
+                Instrument::Generator,
+                NavigationStatus("▶ Running", GREEN, ""),
+            ),
+        ];
+        for width in [188.0, 244.0] {
+            let mut rows = Vec::new();
+            let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
+                ui.set_width(width);
+                for (instrument, status) in cases {
+                    let row = instrument_button(
+                        ui,
+                        &Presentation::default(),
+                        instrument,
+                        true,
+                        Some(status),
+                    );
+                    rows.push(row.rect);
+                }
+            });
+            output.textures_delta.clear();
+            for ((instrument, status), row) in cases.into_iter().zip(rows) {
+                assert!((row.width() - width).abs() < 1.0);
+                let text_rect = |label: &str| {
+                    output
+                        .shapes
+                        .iter()
+                        .find_map(|shape| {
+                            if let egui::Shape::Text(text) = &shape.shape
+                                && text.galley.text() == label
+                                && row.contains(text.pos)
+                            {
+                                Some(text.visual_bounding_rect())
+                            } else {
+                                None
+                            }
+                        })
+                        .unwrap_or_else(|| panic!("Missing navigation text: {label}"))
+                };
+                let name = text_rect(instrument.name());
+                let state = text_rect(status.0);
+                assert!(row.contains_rect(name) && row.contains_rect(state));
+                assert!(name.right() + 4.0 <= state.left());
+                assert!((name.center().y - state.center().y).abs() < 2.0);
+            }
+        }
+    }
+
     #[test]
     fn space_in_a_text_editor_does_not_start_shared_input() {
         let ctx = egui::Context::default();
