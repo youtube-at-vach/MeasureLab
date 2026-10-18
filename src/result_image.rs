@@ -1,25 +1,20 @@
 //! Annotated reports drawn from owned f64 results, independent of live UI/GPU.
 use crate::export::Document;
-use ab_glyph::{Font, FontArc, ScaleFont};
+use eframe::egui::{Color32, FontDefinitions, FontId, epaint::text::Fonts};
 use std::path::Path;
 
 const W: usize = 1600;
 const H: usize = 1160;
 struct Canvas {
     data: Vec<u8>,
-    font: FontArc,
+    fonts: Fonts,
 }
 impl Canvas {
-    fn new() -> Result<Self, String> {
-        let fonts = eframe::egui::FontDefinitions::default();
-        let font = fonts
-            .font_data
-            .get("Hack")
-            .ok_or("Report font unavailable")?;
-        Ok(Self {
+    fn new() -> Self {
+        Self {
             data: vec![17; W * H * 3],
-            font: FontArc::try_from_vec(font.font.to_vec()).map_err(|e| e.to_string())?,
-        })
+            fonts: Fonts::new(Default::default(), FontDefinitions::default()),
+        }
     }
     fn pixel(&mut self, x: i32, y: i32, c: [u8; 3]) {
         if x >= 0 && y >= 0 && x < W as i32 && y < H as i32 {
@@ -39,30 +34,40 @@ impl Canvas {
         }
     }
     fn text(&mut self, x: f32, y: f32, text: &str) {
-        let font = self.font.clone();
-        let scaled = font.as_scaled(19.0);
-        let mut x = x;
-        for c in text.chars() {
-            let glyph = scaled.scaled_glyph(c);
-            let advance = scaled.h_advance(glyph.id);
-            let glyph = ab_glyph::Glyph {
-                position: ab_glyph::point(x, y + scaled.ascent()),
-                ..glyph
-            };
-            if let Some(outline) = font.outline_glyph(glyph) {
-                let b = outline.px_bounds();
-                outline.draw(|dx, dy, coverage| {
-                    let v = (17.0 + 218.0 * coverage) as u8;
-                    self.pixel(
-                        b.min.x as i32 + dx as i32,
-                        b.min.y as i32 + dy as i32,
-                        [v; 3],
-                    );
-                });
-            }
-            x += advance;
-            if x > W as f32 - 25.0 {
-                break;
+        // Use egui's maintained font parser and CPU rasterizer, with a private
+        // atlas so report export needs neither a live UI nor a GPU context.
+        let galley = self.fonts.with_pixels_per_point(1.0).layout_job(
+            eframe::egui::text::LayoutJob::simple_singleline(
+                text.chars().take(W).collect(),
+                FontId::monospace(16.0), // Fits the report's 19 px trace spacing.
+                Color32::WHITE,
+            ),
+        );
+        let atlas = self.fonts.texture_atlas().image();
+        for row in &galley.rows {
+            for glyph in &row.glyphs {
+                if x + row.pos.x + glyph.pos.x > W as f32 - 25.0 {
+                    break;
+                }
+                let uv = glyph.uv_rect;
+                let left = (x + row.pos.x + glyph.pos.x + uv.offset.x).round() as i32;
+                let top = (y + row.pos.y + glyph.pos.y + uv.offset.y).round() as i32;
+                for sy in uv.min[1]..uv.max[1] {
+                    for sx in uv.min[0]..uv.max[0] {
+                        let dx = left + i32::from(sx - uv.min[0]);
+                        let dy = top + i32::from(sy - uv.min[1]);
+                        if dx >= 0 && dy >= 0 && dx < W as i32 && dy < H as i32 {
+                            let alpha = u32::from(atlas[(sx as usize, sy as usize)].a());
+                            if alpha != 0 {
+                                let i = (dy as usize * W + dx as usize) * 3;
+                                for v in &mut self.data[i..i + 3] {
+                                    *v =
+                                        ((235 * alpha + u32::from(*v) * (255 - alpha)) / 255) as u8;
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -136,7 +141,7 @@ impl Canvas {
 
 pub fn render(doc: &Document) -> Result<(u32, u32, Vec<u8>), String> {
     doc.validate()?;
-    let mut c = Canvas::new()?;
+    let mut c = Canvas::new();
     c.text(
         30.0,
         20.0,
@@ -342,4 +347,92 @@ pub fn save(path: &Path, doc: &Document) -> Result<(), String> {
             .write_image_data(&data)
             .map_err(std::io::Error::other)
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{calibration::Set, channel::Pair, signal::History, spectrum};
+
+    #[test]
+    fn report_text_is_visible_antialiased_and_fits_the_trace_rows() {
+        let mut canvas = Canvas::new();
+        canvas.text(30.0, 20.0, "   ");
+        assert!(canvas.data.iter().all(|&v| v == 17));
+        canvas.text(30.0, 20.0, "CH 1 | RMS 1.234e-9 V | uncalibrated");
+        assert!(canvas.data.iter().any(|&v| v > 17 && v < 235));
+        assert!(canvas.data.contains(&235));
+        for (i, rgb) in canvas.data.as_chunks::<3>().0.iter().enumerate() {
+            if *rgb != [17; 3] {
+                assert!((30..500).contains(&(i % W)));
+                assert!((20..39).contains(&(i / W)));
+                assert_eq!(*rgb, [rgb[0]; 3]);
+            }
+        }
+        // Clipped glyphs and a long imported label must stay inside the canvas.
+        canvas.text(-5.0, -5.0, "RMS");
+        canvas.text(W as f32 - 30.0, H as f32 - 5.0, "RMS");
+        canvas.text(30.0, 50.0, &"W".repeat(10_000));
+        assert!(canvas.data[50 * W * 3..70 * W * 3].iter().any(|&v| v > 17));
+    }
+
+    #[test]
+    fn png_report_preserves_pixels_and_measurement_metadata_without_ui_or_gpu() {
+        let mut history = History::new(1024);
+        for n in 0..1024 {
+            let v = (std::f64::consts::TAU * 16.0 * n as f64 / 1024.0).sin();
+            history.push([0.25 * v, 0.125 * v]);
+        }
+        let settings = spectrum::Settings {
+            size: 1024,
+            window: spectrum::Window::Rectangular,
+            averages: 1,
+            ..Default::default()
+        };
+        let mut analyzer = spectrum::Analyzer::new(settings, 48_000);
+        analyzer.update_window(&history, history.range(), 0);
+        let mut result = spectrum::Result::empty(settings, 48_000);
+        analyzer.copy_result(&mut result);
+        let doc = crate::export::tests::document(&history, &result, &Set::default(), Pair([0, 1]));
+        let original = serde_json::to_value(&doc).unwrap();
+        let (w, h, pixels) = render(&doc).unwrap();
+        assert_eq!((w, h, pixels.len()), (1600, 1160, W * H * 3));
+        // Every annotation band contains text; plot pixels cannot satisfy this.
+        for (top, bottom) in [(20, 40), (106, 125), (125, 144), (550, 570), (1070, 1090)] {
+            assert!(pixels[top * W * 3..bottom * W * 3].iter().any(|&v| v > 17));
+        }
+        let path =
+            std::env::temp_dir().join(format!("measurelab-report-{}.png", std::process::id()));
+        save(&path, &doc).unwrap();
+        let decoder =
+            png::Decoder::new(std::io::BufReader::new(std::fs::File::open(&path).unwrap()));
+        let mut reader = decoder.read_info().unwrap();
+        let mut decoded = vec![0; reader.output_buffer_size().unwrap()];
+        let info = reader.next_frame(&mut decoded).unwrap();
+        assert_eq!((info.width, info.height), (w, h));
+        assert_eq!(info.color_type, png::ColorType::Rgb);
+        assert_eq!(info.bit_depth, png::BitDepth::Eight);
+        assert_eq!(&decoded[..info.buffer_size()], pixels);
+        let metadata = reader
+            .info()
+            .utf8_text
+            .iter()
+            .find(|chunk| chunk.keyword == "measurelab_conditions")
+            .unwrap()
+            .get_text()
+            .unwrap();
+        let mut expected = original.clone();
+        for trace in expected["scope"]["traces"].as_array_mut().unwrap() {
+            trace["raw_samples_fs"] = serde_json::Value::Null;
+        }
+        expected["spectrum"]["values"] = serde_json::Value::Null;
+        expected["spectrum"]["peak_hold"] = serde_json::Value::Null;
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&metadata).unwrap(),
+            expected
+        );
+        assert_eq!(serde_json::to_value(&doc).unwrap(), original);
+        drop(reader);
+        std::fs::remove_file(path).unwrap();
+    }
 }
