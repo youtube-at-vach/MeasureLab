@@ -1,6 +1,5 @@
 //! Shared input/output connection settings. Signal edits remain in the
 //! Generator panel; device, format and channel routing live together here.
-use super::generator_panel::output_channel_label;
 use super::*;
 
 impl ScopeApp {
@@ -294,22 +293,18 @@ impl ScopeApp {
         setting_label(ui, "OUTPUT ROUTING");
         let mut settings = g.settings;
         ui.add_enabled_ui(g.stopped() && !restoring, |ui| {
-            for (i, signal) in settings.signals.iter_mut().enumerate() {
+            for i in 0..settings.signals.len() {
                 ui.horizontal(|ui| {
-                    ui.colored_label(if i == 0 { GREEN } else { BLUE }, format!("GEN {}", i + 1));
-                    egui::ComboBox::from_id_salt(("generator_channel", i))
-                        .width(140.0)
-                        .selected_text(output_channel_label(*signal))
-                        .show_ui(ui, |ui| {
-                            ui.selectable_value(&mut signal.output_channel, None, "Unassigned");
-                            for c in 0..g.target.channels() {
-                                ui.selectable_value(
-                                    &mut signal.output_channel,
-                                    Some(c),
-                                    format!("OUT {}", c + 1),
-                                );
-                            }
-                        });
+                    ui.colored_label(
+                        if i == 0 { GREEN } else { BLUE },
+                        format!("GEN {}", settings.signals[i].id),
+                    );
+                    super::generator_panel::routing_selector(
+                        ui,
+                        &mut settings,
+                        i,
+                        g.target.channels(),
+                    );
                 });
             }
         });

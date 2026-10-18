@@ -14,7 +14,7 @@
 | Spectrogram／XY | 時間周波数表示と同期2chのXY表示 |
 | 保存と比較 | CH校正と版付き設定の保存・復元、保持したScope／Spectrum結果のJSON・CSV・PNG、参照JSONとの比較 |
 | Software Loopback | 機器なしで既知のゲイン・位相・遅延・雑音を共通入力から評価 |
-| Generator（実験段階） | 2ch正弦波の周波数・振幅・位相をライブ編集し、実際のf64生成サンプルを共通入力で観測。内部出力またはCPAL音声デバイスへ最大2信号を出力。出力先・形式の選択とOFF復元に対応 |
+| Generator（実験段階） | 最大16カードを追加・削除・複製・並べ替え、Sine／Square／Triangle／Noiseと独立したOUTを選択。内部2ch／CPAL最大16ch、f64生成・ライブ数値編集・OFF復元。動的カードと多波形の実機・手動受け入れは未確認 |
 | Lock-in（実験段階） | 同期REFと応答の基本波を測定。X/Y、R/θ、Gain、整定・REF状態、条件付きJSON／CSV保存と参照比較 |
 | 同期2ch比較（実験段階） | 任意REF／SIGの自己・クロスPSD、H1ゲイン・位相、コヒーレンス、位相遅延・条件付き傾斜、停止・JSON／CSV・参照比較 |
 

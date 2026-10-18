@@ -1078,6 +1078,26 @@ mod tests {
         crate::export::save(&path, &doc).unwrap();
         assert_eq!(load(&path).unwrap(), doc);
         std::fs::remove_file(path).unwrap();
+        let mut legacy = serde_json::to_value(&doc).unwrap();
+        legacy["version"] = 5.into();
+        for span in legacy["generator_output"]["spans"].as_array_mut().unwrap() {
+            let condition = &mut span["condition"];
+            for key in ["carrier_phase_cycles", "transition_end"] {
+                condition[key].as_array_mut().unwrap().truncate(2);
+            }
+            condition["settings"]
+                .as_object_mut()
+                .unwrap()
+                .remove("next_id");
+            for signal in condition["settings"]["signals"].as_array_mut().unwrap() {
+                for key in ["id", "waveform", "noise_seed"] {
+                    signal.as_object_mut().unwrap().remove(key);
+                }
+            }
+        }
+        let legacy: Document = serde_json::from_value(legacy).unwrap();
+        legacy.validate().unwrap();
+        assert_eq!(legacy.generator_output, doc.generator_output);
         let mut next = doc.clone();
         next.input.generation += 1;
         assert!(lockin_difference(&doc, &next).is_some());

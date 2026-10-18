@@ -18,7 +18,7 @@ use std::{
 };
 
 pub const FORMAT: &str = "measurelab-results";
-pub const VERSION: u32 = 5;
+pub const VERSION: u32 = 6;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]

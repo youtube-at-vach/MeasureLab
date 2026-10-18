@@ -4,7 +4,13 @@
 
 ## 範囲と信号
 
-初期用途は独立した2正弦波と、内部ループバックまたは1台の音声デバイスへの出力。対応する1〜16出力CHへ最大2信号を割り当て、未割当CHは無音、二重割当は拒否する。多波形・ノイズ・スイープ・変調・出力校正・自動FRFは後続候補とする。
+信号源は最大16枚のGENカードとして追加・削除・複製・並べ替えできる。Sine／Square／Triangle／Noiseを選び、内部ループバック（2ch）または1台の音声デバイス（利用可能な1〜16ch）へ出力する。1信号につき1出力CH、未割当CHは無音、OFFのカードを含め二重割当は拒否する。永続的なGEN IDとOUT番号・表示順を分離し、削除・並べ替えで他カードの出力先を変えない。複製は新しいID・OFF・空きOUT（なければ未割当）を持つ。削除したIDは再利用せず、カード0枚も保存できる。
+
+旧Python版の [信号生成と位相の定義](https://github.com/youtube-at-vach/MeasureLab/blob/v0.9.1/src/gui/widgets/signal_generator.py) を参考にする。Sine／Squareは0°で上向きのゼロ交差、Triangleは0°で正のpeakとする。旧版の全機能・出力構造は移植しない。
+
+* SquareはFejer重み付き、Triangleはpeak正規化した奇数次Fourier級数。定常状態で0.45 Fs未満の高調波を最大16本使う。Squareの実peakと両波形のRMSは周波数・高調波数で変わり、dBFS peakは振幅の上限を表す。
+* Noiseは非ゼロのu64 seedを持つ連続一様白色雑音（−1以上1未満）で、RMSの期待値はpeak上限/√3。旧Python版のGaussianバッファをpeak正規化する方式とは異なり、有限バッファを反復しない。Startでseedを再生し、OFF中も乱数状態を進める。周波数・位相は適用しない。
+* スイープ、同期・グループ化、ステレオ／多chリンク、1信号から複数CH、同一CHのMix、変調・出力校正・自動FRFは今回の対象外。実操作で必要性が明らかになるまで同期・Mixの汎用構造を作らない。
 
 ```text
 x[n] = A[n] × sin(θ[n] + φ[n])
@@ -17,7 +23,7 @@ Fs_outは出力の公称値。f64の有限範囲の蓄積位相と整数連番�
 * 設定範囲は0.1 Hz以上・0.45×Fs_out未満、−120〜0 dBFS、±180°の進み位相。既定は1 kHz・−20 dBFS・0°・出力OFF。設定範囲・表示桁数を物理精度の保証にしない。
 * 非有限・範囲外の要求は全体を拒否し、最後の適用値を維持する。別Fs・別形式・既定スピーカーへ暗黙に切り替えない。
 * 周波数変更はcarrier位相を保持する。振幅・開始／停止・CH ON／OFFは原則10 msのraised-cosine遷移。位相は最短方向、半周の同距離は正方向へ補間する。上限近傍では位相増分がNyquist未満になるよう遷移を延長する。
-* 遷移は適用境界の現在値から始め、`[applied_sample, transition_end)`を記録する。片CH OFF中も位相を進め、同周波数へ戻すだけで相対位相を揃えない。Align phasesは共通原点へ滑らかに整列する。
+* 遷移は適用境界の現在値から始め、`[applied_sample, transition_end)`を記録する。カードOFF中も位相を進め、同周波数へ戻すだけで相対位相を揃えない。独立した位相編集は維持し、同期操作はMVPのGUIに置かない。
 
 ## 実行と制御
 
@@ -52,12 +58,12 @@ macOS実入出力は共通のバッファ方針で約20 ms以上に相当する�
 * 外部入出力は別の整数時計。同じ機器名・公称Fsで同期を仮定せず、実入力REFを使う。出力編集とADC入力窓は自動対応せず、入力解析を自動リセットしない。安定した入力と整定を確認して読む。
 * 設定保存には出力先・Fs・PCM・CH割当と信号条件を含め、Start命令を保存しない。内部結果の`generator_output`は受信した区間の世代・適用版・境界・carrier・遷移を保持し、履歴外・欠落の条件をUI最新値から補わない。
 * 外部結果の`external_output`は管理ワーカーの観測履歴と開始／保持時の観測を保存する。退役・報告された応答欠落・通知累計を残し、入力Stop／Single／失敗で固定する。ホスト観測時刻はDAC／ADC時刻ではなく、完全な設定履歴・解放後監査の証拠でもない。
-* 内部の参照差は寄与区間が定常で、設定・同周波数の相対carrier位相が一致する場合だけ表示する。外部観測履歴の入力窓対応は未校正なので数値差を抑止する。保存形式・旧版互換性は [settings.rs](../../src/settings.rs)、[export.rs](../../src/export.rs)、[results.rs](../../src/results.rs) とそのテストが正本。
+* 内部の参照差は2カードのSine構成に限り、寄与区間が定常で、設定・同周波数の相対carrier位相が一致する場合だけ表示する。外部観測履歴の入力窓対応は未校正なので数値差を抑止する。保存形式・旧版互換性は [settings.rs](../../src/settings.rs)、[export.rs](../../src/export.rs)、[results.rs](../../src/results.rs) とそのテストが正本。
 
 ## 開始・停止とGUI
 
-起動・復元・再接続はOFF。入力／出力を停止して出力先・形式・CH割当を変え、再出力には明示Startを要求する。Start inputとStart outputは別操作で、入力Stop／Single完了後も出力は継続する。アプリ終了・出力エラーでは出力を止める。
+起動・復元・再接続はOFF。入力／出力を停止して出力デバイス・形式を変え、出力停止中にカード構成・CH割当・波形・seedを変える。再出力には明示Startを要求する。Start inputとStart outputは別操作で、入力Stop／Single完了後も出力は継続する。アプリ終了・出力エラーでは出力を止める。
 
 通常Stopはフェード応答後にストリームを解放する。応答なしの有期限解放を成功扱いしない。ERRORは明示Resetまで保持し、Resetや設定復元だけで開始しない。OSへ提出済みのバッファ・DAC端子での停止時刻は別に評価する。
 
-GUIは設定値／実適用値、GEN／OUT／入力CH、STOPPED／STARTING／RUNNING／STOPPING／ERRORとPENDING／APPLIED／TRANSITIONを区別する。非表示時も出力状態と全出力停止を残す。数値編集は同じカードで完結し、狭幅はCHタブへ切り替える。プレビューは設定波形であり実測ではない。レイアウト・色・閾値の具体値は [generator_panel.rs](../../src/app/generator_panel.rs)、[io_panel.rs](../../src/app/io_panel.rs) を参照する。
+GUIは設定値／実適用値、GEN／OUT／入力CH、STOPPED／STARTING／RUNNING／STOPPING／ERRORとPENDING／APPLIED／TRANSITIONを区別する。非表示時も出力状態と全出力停止を残す。周波数・peak振幅・位相の編集と波形・OUT選択はカード内で完結する。広幅は2列のカード一覧、狭幅はGEN ID・OUT・ON/OFFを残すカード選択へ切り替える。右の詳細は選択中カードのseed・適用値を表示する。プレビューは設定波形であり実測ではない。レイアウト・色・閾値の具体値は [generator_panel.rs](../../src/app/generator_panel.rs)、[io_panel.rs](../../src/app/io_panel.rs) を参照する。

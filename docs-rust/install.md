@@ -55,6 +55,6 @@ FUSEを利用できない場合は`--appimage-extract-and-run`を付けるか、
 
 入力・出力は停止状態で起動します。デバイスがない場合は [Software Loopback](quickstart.md) で機器なしの取得・停止・保存を試せます。実入力でデバイスが表示されない場合は、OSの権限・接続・デバイスの対応FsとCHを確認します。Generatorの出力開始と入力開始は独立しています。
 
-設定は版8（旧版1〜7を読み込み）、結果JSONは版5（旧版1〜4を読み込み）です。設定は停止中に復元し、復元だけでは入出力を開始しません。Fileで保存先を選び、Python版とは別のファイルに保存してください。Windowsの既定設定先は`%APPDATA%\MeasureLab\measurement-settings.json`です。
+設定は版9（旧版1〜8を読み込み）、結果JSONは版6（旧版1〜5を読み込み）です。設定は停止中に復元し、復元だけでは入出力を開始しません。Fileで保存先を選び、Python版とは別のファイルに保存してください。Windowsの既定設定先は`%APPDATA%\MeasureLab\measurement-settings.json`です。
 
 Scope／Spectrumは保持結果のJSON・CSVと表示PNG、Lock-in／同期比較は条件付きJSON・CSVを扱います。Spectrogram／XY・カーソル・全CHの長時間記録は結果保存の対象外です。アプリを更新・削除しても外部へ保存したファイルは保持します。更新前に必要な設定と結果を保存し、再起動後に停止状態で復元してください。

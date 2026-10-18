@@ -95,13 +95,21 @@ pub struct Condition {
     pub active: bool,
     pub transitioning: bool,
     pub applied_sample: u64,
-    pub carrier_phase_cycles: [f64; 2],
-    pub transition_end: [u64; 2],
+    #[serde(deserialize_with = "crate::generator::clock_array")]
+    pub carrier_phase_cycles: [f64; crate::generator::SIGNALS],
+    #[serde(deserialize_with = "crate::generator::clock_array")]
+    pub transition_end: [u64; crate::generator::SIGNALS],
 }
 impl Condition {
     /// Compare relative phase only for equal frequencies and carrier histories.
     pub fn same_excitation(self, other: Self) -> bool {
-        if self.settings != other.settings
+        if self.settings.signals.len() != 2
+            || self.settings != other.settings
+            || self
+                .settings
+                .signals
+                .iter()
+                .any(|s| s.waveform != crate::generator::Waveform::Sine)
             || self.settings.signals[0].frequency_hz != self.settings.signals[1].frequency_hz
         {
             return false;

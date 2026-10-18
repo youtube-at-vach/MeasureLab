@@ -55,6 +55,6 @@ The host supplies glibc, ALSA configuration/plugins, X11/Wayland, xkbcommon and 
 
 Input and output start stopped. Without a device, try acquisition, stop and save through [Software Loopback](quickstart.md). If a real device is missing, check OS permissions, connections and supported sample rates/channels. Starting Generator output and starting input are independent actions.
 
-Settings use version 8 (reading versions 1–7); result JSON uses version 5 (reading versions 1–4). Restore settings while stopped; restoration alone never starts input or output. Choose file destinations under File and keep Python files separate. The default Windows settings path is `%APPDATA%\MeasureLab\measurement-settings.json`.
+Settings use version 9 (reading versions 1–8); result JSON uses version 6 (reading versions 1–5). Restore settings while stopped; restoration alone never starts input or output. Choose file destinations under File and keep Python files separate. The default Windows settings path is `%APPDATA%\MeasureLab\measurement-settings.json`.
 
 Scope/Spectrum support held JSON/CSV results and view PNGs; Lock-in/comparison support conditional JSON/CSV. Spectrogram/XY, cursors and long-duration recordings of all channels are outside result export. Updating or deleting the application preserves files saved outside its package. Save needed settings/results before updating, then restore them while stopped after relaunch.
