@@ -3,6 +3,9 @@
 [日本語](README.ja.md)
 
 [![CI](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml?query=branch%3Amain)
+[![Windows release build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_windows.yml/badge.svg?event=pull_request)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_windows.yml?query=event%3Apull_request)
+[![Linux release build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_linux.yml/badge.svg?event=pull_request)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_linux.yml?query=event%3Apull_request)
+[![macOS release build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_macos.yml/badge.svg?event=pull_request)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_macos.yml?query=event%3Apull_request)
 [![Rust 1.95+](https://img.shields.io/badge/Rust-1.95%2B-dea584?logo=rust&logoColor=white)](Cargo.toml)
 [![Rust prototype](https://img.shields.io/badge/status-Rust_prototype-8b5cf6)](guide/rust/PLAN.md)
 [![License: Unlicense](https://img.shields.io/badge/license-Unlicense-27d3a2)](LICENSE)
@@ -12,7 +15,7 @@
 
 Turn your PC and audio interface into a place to explore signals. See the waveform, inspect its spectrum, watch frequencies evolve, and explore the relationship between two channels—all in one measurement workspace.
 
-**A new chapter for MeasureLab has begun: the Rust prototype is now on `main`.** We are rebuilding the audio lab around reproducible measurements, responsive controls and GPU plots. Scope, four-channel Spectrum, Spectrogram and XY are implemented, together with experimental Generator, Lock-in and synchronous two-channel comparison. You can build it from source today and help shape the next version, **v0.10.0**.
+**MeasureLab is developed in Rust on `main`, with v0.10.0 in preparation.** The prototype combines reproducible measurements, responsive controls and GPU plots. Scope, four-channel Spectrum, Spectrogram and XY are implemented, together with experimental Generator, Lock-in and synchronous two-channel comparison. You can build it from source today and help shape the next version.
 
 [![Rust manual](https://img.shields.io/badge/Rust_Manual-Read_online-2563eb?style=for-the-badge)](https://youtube-at-vach.github.io/MeasureLab/rust/en/)
 [![Try the prototype](https://img.shields.io/badge/Try_the_Prototype-Build_from_source-16856b?style=for-the-badge)](#try-the-prototype)
@@ -25,8 +28,8 @@ Turn your PC and audio interface into a place to explore signals. See the wavefo
 ## Built to measure, built to explore
 
 - **Follow the signal.** Move between time, frequency, time–frequency and XY views, or focus on Scope and Spectrum together. Choose the channels you need from a 1–16 channel input.
-- **Keep analysis moving.** Audio capture, measurement workers and GPU rendering run separately. Switching or hiding a view keeps analysis and averaging running.
-- **Keep more than a picture.** Hold a capture, save its settings and results, then load a reference for comparison. Channel calibration, units and acquisition conditions travel with the saved results.
+- **Keep analysis moving.** Audio capture, measurement workers and GPU rendering run separately. Switching or hiding a view keeps enabled analysis and averaging running; individual Spectrum channels can be turned off to stop their FFT processing.
+- **Keep more than a picture.** Save measurement settings, export held Scope/Spectrum results as JSON, CSV or PNG, then load a saved JSON reference for comparison. JSON results retain channel calibration, units and acquisition conditions.
 - **Start without extra hardware.** Software Loopback lets you explore known gain, phase, delay and noise through the common input path. It is available in normal builds and produces no physical audio output.
 
 ## What you can use today
@@ -74,7 +77,9 @@ Generator and synchronous comparison remain experimental while integration accep
 
 ## Try the prototype
 
-The [download selector](https://youtube-at-vach.github.io/MeasureLab/download/?edition=rust&lang=en) distinguishes the Rust prototype from the final Python edition. Rust binary downloads remain disabled until publication. Planned packages are Windows 10/11 x64 Setup/ZIP, glibc 2.35+ Linux x86_64 AppImage/tar.gz, and macOS 13+ Intel/Apple Silicon DMGs. No Python or Rust installation is needed to run a binary. See the [binary installation guide](https://youtube-at-vach.github.io/MeasureLab/rust/en/install/) for permissions and signing limits. Package-level hardware acceptance is still pending.
+The [download selector](https://youtube-at-vach.github.io/MeasureLab/download/?edition=rust&lang=en) distinguishes the Rust prototype from the final Python edition. Rust v0.10.0 is not yet published, and its download buttons remain disabled. Packaging is implemented for Windows 10/11 x64 Setup/ZIP, glibc 2.35+ Linux x86_64 AppImage/tar.gz, and macOS 13+ Intel/Apple Silicon DMGs. No Python or Rust installation is needed to run a binary. See the [binary installation guide](https://youtube-at-vach.github.io/MeasureLab/rust/en/install/) for permissions and signing limits. Package-level hardware acceptance is still pending.
+
+The release-build badges above show the latest pull-request package checks. These workflows build the normal desktop app, verify the packages and retain preview artifacts for 14 days. macOS checks cover both Intel and Apple Silicon. See [publication preparation](guide/rust/RELEASE_PREPARATION.md) for the remaining acceptance checks and release process.
 
 To build from source, use **Rust 1.95 or later** and the native prerequisites for your OS. The Rust prototype is available directly from `main`:
 
