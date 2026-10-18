@@ -8,7 +8,7 @@ license = "Unlicense"
 
 [features]
 default = ["desktop"]
-desktop = ["dep:eframe", "dep:bytemuck", "dep:pollster", "dep:rfd", "dep:png"]
+desktop = ["dep:eframe", "dep:bytemuck", "dep:pollster", "dep:rfd", "dep:png", "dep:winresource"]
 qa = ["desktop", "dep:log"]
 
 [dependencies]
@@ -21,11 +21,13 @@ log = { version = "0.4", optional = true }
 eframe = { version = "0.36.2", default-features = false, features = ["default_fonts", "wgpu", "x11", "wayland"], optional = true }
 bytemuck = { version = "1", features = ["derive"], optional = true }
 pollster = { version = "1.0.1", optional = true }
-rfd = { version = "0.17.2", optional = true }
+# Parentless dialogs use the portal on both X11 and Wayland, without handle export.
+rfd = { version = "0.17.2", default-features = false, features = ["xdg-portal"], optional = true }
 png = { version = "0.18", optional = true }
 
 [build-dependencies]
-winresource = { version = "0.1.34", default-features = false }
+# Keep this host-independent so Windows cross-compilation can embed resources.
+winresource = { version = "0.1.34", default-features = false, optional = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6.4"
