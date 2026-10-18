@@ -40,6 +40,8 @@ def cases(devices=()):
     yield "spectrum-esd", False, {"VIEW": "spectrum", "ESD": "1"}
     yield "spectrum-esd-compact", True, {"VIEW": "spectrum", "ESD": "1", "DETAILS": "1", "ZOOM": "1.25"}
     yield "scope-details-compact", True, {"VIEW": "scope", "DETAILS": "1", "IDLE": "1", "ZOOM": "1.25"}
+    yield "xy-details-compact", True, {"VIEW": "xy", "DETAILS": "1", "IDLE": "1", "ZOOM": "1.25"}
+    yield "xy-trace-wide", False, {"VIEW": "xy", "CURSORS": "1", "CURSOR_VIEW": "trace", "XY_PHASE": "90"}
     yield "console-grid", False, {"VIEW": "console", "ZOOM": "0.75"}
     yield "console-tabs", True, {"VIEW": "console", "ZOOM": "1.25"}
     yield "console-empty", True, {"VIEW": "empty"}

@@ -468,10 +468,7 @@ impl ScopeApp {
             Instrument::Scope => self.scope_controls(ui),
             Instrument::Spectrum => self.spectrum_controls(ui),
             Instrument::Spectrogram => self.spectrogram_controls(ui),
-            Instrument::Xy => {
-                ui.label("X and Y use the same input frame. Trace Snap shares the Scope trigger; Free keeps amplitude coordinates.");
-                ui.label("Source and display controls are in the XY instrument.");
-            }
+            Instrument::Xy => self.xy_controls(ui),
             Instrument::Lockin => self.lockin_controls(ui),
             Instrument::Comparison => self.comparison_controls(ui),
             Instrument::Generator => self.generator_controls(ui),

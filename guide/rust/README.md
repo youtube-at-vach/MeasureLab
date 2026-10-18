@@ -77,6 +77,8 @@ cargo run --release
 
 Scopeの詳細欄はAcquisition／Trigger／Horizontal／Verticalの枠で区切り、Verticalには選択CHと同じ色を付けます。Acquisitionは取得モード・Arm single・Autoset、Triggerはエッジ・入力CH・レベル、Horizontalは時間軸・水平位置、Verticalは選択CHの振幅・オフセット・Fit amplitude・入力割当を扱います。時間軸と振幅は対数スライダー、位置・レベルは線形スライダーで調整し、値のドラッグやダブルクリックによる数値入力も使えます。
 
+XYの詳細欄も枠で区切り、Observationで観察時間幅とスケールのリセット、X Axis／Y Axisでそれぞれの入力CHと振幅範囲、CursorsでFree／Trace Snapを設定します。Trace SnapではScopeと共通のTriggerも同じ詳細欄で編集できます。狭幅では **Details** で開きます。カーソルA／Bの選択・Clearと読み値はグラフ側に残ります。
+
 FFT・窓・平均なども各計器の詳細欄です。Generatorの周波数・振幅・位相・波形・OUT・カード管理・ON／OFF・Start outputは本体、刻み幅・Noiseのseed・選択カードの適用値は詳細欄です。
 
 上部 **I/O / Input / Output / Calibration** は共通設定画面を開きます。**Back to instruments** またはEscで元の計器・選択区画へ戻ります。**Start input / Stop input** は共通入力、**Stop output** は独立したGenerator出力を扱います。出力状態と停止操作は計器や設定画面に関係なく常設です。**Running…** で非表示のLock-in／同期比較の解析状態を確認・停止できます。入力待ち、解析停止、取得状態、有効性を区別します。
@@ -282,7 +284,7 @@ XYの**Free**ではクリックした位置のX・Y振幅を保持し、軌跡�
 
 **Trace Snap**では最も近い実サンプル組を選び、XYスイープのトリガー位置（観察窓の20%）からの整数サンプル差を保持します。重なる点は最新サンプルを選びます。各更新で同じトリガー基準の時間差にある割当先X/YのCHを読み直すため、周期信号をトリガーできている間は位置が安定します。実際の交差をオレンジの`T`で示し、`Triggered`を表示します。交差が見つからない場合は最新区間を使う`Auto (no crossing)`、フリーランの場合は`Free run (moving reference)`となり、マーカーが動く場合があります。Stopで取得を止めるとその区間と読み値を保持します。観察窓を短くして選択時刻が範囲外になった場合は実サンプルを代用しません。
 
-FreeとTrace SnapはXY本体の **Source / display…** で切り替えられます。自由配置の点と共通時間カーソルは別に保持し、切り替えて戻すとそれぞれの選択を再利用します。Clear、入力再開、ソース変更では両方を解除します。ScopeとTrace Snapの実振幅は同じ共通履歴から読みます。XYのトリガー区間は独自の観察時間幅で選ぶため、Scopeの区間と同じ交差になるとは限りません。Scope・Spectrogram・Trace Snapは現在解決した整数サンプルを他の測定器と共有し、範囲外では理由を表示します。STFTの履歴だけが残って生サンプルがない場合は、Scope／Trace Snapの値を読み出せません。
+FreeとTrace SnapはXYの右側詳細欄の **Cursors**（狭幅では **Details / Cursors**）で切り替えられます。自由配置の点と共通時間カーソルは別に保持し、切り替えて戻すとそれぞれの選択を再利用します。Clear、入力再開、ソース変更では両方を解除します。ScopeとTrace Snapの実振幅は同じ共通履歴から読みます。XYのトリガー区間は独自の観察時間幅で選ぶため、Scopeの区間と同じ交差になるとは限りません。Scope・Spectrogram・Trace Snapは現在解決した整数サンプルを他の測定器と共有し、範囲外では理由を表示します。STFTの履歴だけが残って生サンプルがない場合は、Scope／Trace Snapの値を読み出せません。
 
 周波数カーソルはSpectrumとSpectrogramで共有します。各測定器が自身のFFTサイズ・Fsから最寄りビンを選ぶため、設定が異なる場合はビン周波数も異なります。Spectrumは表示中の電力平均と最新の寄与窓を読み、任意の時間カーソル位置でFFTを再実行しません。カーソルが最新窓の内側か外側かはSpectrum上の説明で確認できます。Spectrogramは時間カーソルに対応する行を読み、時間カーソルがない場合は最新行を読みます。
 

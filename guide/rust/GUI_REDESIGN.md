@@ -105,7 +105,8 @@ Rust版では、通常画面と別ウィンドウのコンソールを往復さ�
 | Scopeの取得、時間軸・水平位置・Autoset、トリガー、選択CHのレンジ・オフセット・Fit・入力割当 | 詳細欄のAcquisition／Horizontal／Trigger／Channel |
 | SpectrumのCH、表示範囲、カーソル | Spectrumの主要操作列・プロット |
 | SpectrumのFFT点数、窓、平均、更新モードなど | 選択中の詳細 |
-| Spectrogram／XYのCHと頻用する表示操作 | 各計器の主要操作列。解析条件は選択中の詳細 |
+| SpectrogramのCHと頻用する表示操作 | 計器の主要操作列。解析条件は選択中の詳細 |
+| XYの入力CH・観察時間・両軸の振幅範囲・カーソルモード | 詳細欄のObservation／X Axis／Y Axis／Cursors。Trace SnapではScopeと共通のTriggerも編集。A／B選択・Clear・読み値はプロット側 |
 | Lock-in／同期比較のREF・SIG、解析開始／停止 | 各計器の主要操作列。フィルター、窓、平均などは選択中の詳細 |
 | Generatorの周波数・振幅・位相、信号の有効状態、出力開始 | Generator本体。波形・OUT選択・カード管理も本体、刻み幅・seed・実適用値は選択中の詳細 |
 | 入力・出力デバイス、Fs、出力CH割当、Software Loopback、CH校正 | 上部の「入出力」から開く共通設定。「入力／出力／校正」で整理 |

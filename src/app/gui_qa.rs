@@ -888,6 +888,7 @@ impl ScopeApp {
         self.spectrum_dirty = true;
         self.spectrum_numeric_key = None;
         self.check_spectrum_interactions(&mut driver)?;
+        self.check_xy_controls_interactions(&mut driver)?;
 
         for instrument in Instrument::ALL {
             driver.click(self, instrument.name())?;
@@ -1071,6 +1072,84 @@ impl ScopeApp {
         self.shell = saved_shell;
         println!(
             "GUI interactions OK: widget clicks, keyboard navigation, details, I/O return, resize/scale; measurement and output commands unchanged"
+        );
+        Ok(())
+    }
+
+    fn check_xy_controls_interactions(&mut self, driver: &mut Driver) -> Result<(), String> {
+        let saved = (self.xy_settings, self.xy_cursor_mode, self.trigger);
+        let presentation = self.presentation.clone();
+        let shell = self.shell.clone();
+        let cursors = std::mem::take(&mut self.cursors);
+        let scope = (self.scope_channels, self.ms_per_div, self.scope_vertical);
+        self.xy_settings.channels = Pair([1, 0]);
+        self.xy_settings.milliseconds = 12.3456789;
+        self.xy_settings.x_fs_per_div = 0.123456789;
+        self.xy_settings.y_fs_per_div = 0.234567891;
+        self.xy_cursor_mode = xy::CursorMode::Free;
+        self.cursors.set_xy_point(0, [0.125, -0.25]);
+        self.cursors.set_xy_point(1, [-0.5, 0.0625]);
+        let points = self.cursors.xy_points;
+        self.navigate(Action::OpenSingle(Instrument::Xy));
+        self.presentation.details_visible = true;
+        driver.resize(self, vec2(1440.0, 1000.0), 1.0, 1.0);
+        let unedited = self.xy_settings;
+        driver.frame(self, vec![]);
+        assert_eq!(
+            self.xy_settings, unedited,
+            "Showing XY sliders rounded f64 settings"
+        );
+
+        let reset = driver.position("Reset XY scales")?;
+        let snap = driver.position("Trace Snap")?;
+        assert!(
+            reset.x > 1100.0 && snap.x > 1100.0,
+            "XY settings are not in the right sidebar"
+        );
+        driver.click(self, "Trace Snap")?;
+        assert_eq!(self.xy_cursor_mode, xy::CursorMode::TraceSnap);
+        assert_eq!(self.cursors.xy_points, points);
+        self.trigger.level = 0.125;
+        driver.frame(self, vec![]);
+        driver.click(self, "Zero level")?;
+        assert_eq!(self.trigger.level, 0.0);
+        assert_eq!(self.xy_settings, unedited);
+        driver.click(self, "Free")?;
+        assert_eq!(self.xy_cursor_mode, xy::CursorMode::Free);
+        assert_eq!(self.cursors.xy_points, points);
+
+        driver.click(self, "Reset XY scales")?;
+        assert_eq!(
+            self.xy_settings,
+            xy::Settings {
+                channels: unedited.channels,
+                ..xy::Settings::default()
+            }
+        );
+        assert_eq!(self.cursors.xy_points, points);
+        assert_eq!(
+            (self.scope_channels, self.ms_per_div, self.scope_vertical),
+            scope
+        );
+
+        // The same controls remain reachable via Details at compact widths.
+        driver.resize(self, vec2(980.0, 760.0), 1.25, 1.0);
+        driver.click(self, "Details")?;
+        driver.click(self, "Trace Snap")?;
+        assert_eq!(self.xy_cursor_mode, xy::CursorMode::TraceSnap);
+        driver.click(self, "Free")?;
+        driver.key(self, egui::Key::Escape, egui::Modifiers::NONE);
+        assert!(!self.shell.narrow_details);
+        driver.position("Cursor A")?;
+        (self.xy_settings, self.xy_cursor_mode, self.trigger) = saved;
+        self.cursors = cursors;
+        self.xy_dirty = true;
+        self.dirty = true;
+        self.presentation = presentation;
+        self.shell = shell;
+        driver.resize(self, vec2(1440.0, 1000.0), 1.0, 1.0);
+        println!(
+            "XY controls UI OK: right sidebar and narrow Details, f64 settings preserved, cursor modes, shared trigger, scale reset preserves sources/cursors/Scope axes"
         );
         Ok(())
     }
