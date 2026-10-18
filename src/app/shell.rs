@@ -2,6 +2,9 @@
 use super::*;
 use crate::{generator, presentation::PANE_CHROME};
 
+const HELP_WINDOW: &str = "help_window";
+const FILE_PATHS_WINDOW: &str = "file_paths_window";
+
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub(super) enum IoTab {
     #[default]
@@ -18,6 +21,95 @@ pub(super) struct Shell {
     pub search: String,
     pub narrow_details: bool,
     pub previous_console: Option<Console>,
+    editor_focused_last_frame: bool,
+}
+
+impl Shell {
+    pub(super) fn auxiliary_window_open(&self) -> bool {
+        self.help || self.file_paths
+    }
+
+    fn finish_keyboard_frame(&mut self, ctx: &egui::Context) {
+        if self.editor_focused_last_frame || ctx.any_popup_open() {
+            // Editors and popups have now handled Escape. Consume it before
+            // another layout pass could navigate after focus/menu dismissal.
+            ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
+        }
+        self.editor_focused_last_frame = ctx.text_edit_focused();
+    }
+
+    fn navigation_shortcut(
+        &mut self,
+        ctx: &egui::Context,
+        presentation: &Presentation,
+    ) -> Option<Action> {
+        if popup_open(ctx) || ctx.text_edit_focused() {
+            return None;
+        }
+        // egui releases editor focus before widgets see Escape. Leave that
+        // press to the editor so cancelling a draft cannot also leave its page.
+        if self.editor_focused_last_frame && ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
+            return None;
+        }
+        if self.auxiliary_window_open() {
+            if fresh_key(ctx, egui::Key::Escape, egui::Modifiers::NONE) {
+                let help = egui::Id::new(HELP_WINDOW);
+                let paths = egui::Id::new(FILE_PATHS_WINDOW);
+                let top = ctx.memory(|memory| {
+                    memory
+                        .layer_ids()
+                        .filter(|layer| {
+                            (self.help && layer.id == help)
+                                || (self.file_paths && layer.id == paths)
+                        })
+                        .last()
+                });
+                if self.file_paths && top.is_some_and(|layer| layer.id == paths) {
+                    self.file_paths = false;
+                } else if self.help {
+                    self.help = false;
+                } else {
+                    self.file_paths = false;
+                }
+            }
+            return None;
+        }
+        if fresh_key(ctx, egui::Key::Escape, egui::Modifiers::NONE) {
+            self.io = None;
+            self.narrow_details = false;
+            return None;
+        }
+        for (instrument, key) in Instrument::ALL.into_iter().zip([
+            egui::Key::Num1,
+            egui::Key::Num2,
+            egui::Key::Num3,
+            egui::Key::Num4,
+            egui::Key::Num5,
+            egui::Key::Num6,
+            egui::Key::Num7,
+        ]) {
+            if fresh_key(ctx, key, egui::Modifiers::CTRL) {
+                return Some(Action::OpenSingle(instrument));
+            }
+        }
+        if self.io.is_none() && presentation.screen == Screen::Console {
+            let console = &presentation.console;
+            let index = console
+                .selected
+                .and_then(|selected| console.instruments.iter().position(|i| *i == selected))?;
+            let step = if fresh_key(ctx, egui::Key::ArrowRight, egui::Modifiers::CTRL) {
+                1
+            } else if fresh_key(ctx, egui::Key::ArrowLeft, egui::Modifiers::CTRL) {
+                -1
+            } else {
+                return None;
+            };
+            let index =
+                (index as isize + step).rem_euclid(console.instruments.len() as isize) as usize;
+            return Some(Action::FocusPane(console.instruments[index]));
+        }
+        None
+    }
 }
 
 impl ScopeApp {
@@ -47,47 +139,11 @@ impl ScopeApp {
 
     pub(super) fn shell_header(&mut self, ui: &mut egui::Ui) {
         let ctx = ui.ctx().clone();
-        if !ctx.text_edit_focused() {
-            for (index, key) in [
-                egui::Key::Num1,
-                egui::Key::Num2,
-                egui::Key::Num3,
-                egui::Key::Num4,
-                egui::Key::Num5,
-                egui::Key::Num6,
-                egui::Key::Num7,
-            ]
-            .into_iter()
-            .enumerate()
-            {
-                if ctx.input(|i| i.modifiers.ctrl && i.key_pressed(key)) {
-                    self.navigate(Action::OpenSingle(Instrument::ALL[index]));
-                }
-            }
-            if ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
-                self.shell.io = None;
-                self.shell.narrow_details = false;
-            }
-            let step = ctx.input(|i| {
-                if i.modifiers.ctrl && i.key_pressed(egui::Key::ArrowRight) {
-                    1
-                } else if i.modifiers.ctrl && i.key_pressed(egui::Key::ArrowLeft) {
-                    -1
-                } else {
-                    0
-                }
-            });
-            if step != 0 && self.presentation.screen == Screen::Console {
-                let c = &self.presentation.console;
-                if let Some(index) = c
-                    .selected
-                    .and_then(|s| c.instruments.iter().position(|i| *i == s))
-                {
-                    let index =
-                        (index as isize + step).rem_euclid(c.instruments.len() as isize) as usize;
-                    self.presentation
-                        .apply(Action::FocusPane(c.instruments[index]));
-                }
+        if let Some(action) = self.shell.navigation_shortcut(&ctx, &self.presentation) {
+            if matches!(action, Action::FocusPane(_)) {
+                self.presentation.apply(action);
+            } else {
+                self.navigate(action);
             }
         }
         egui::Panel::top("header").show(ui, |ui| {
@@ -475,11 +531,11 @@ impl ScopeApp {
         });
         let ctx = ui.ctx().clone();
         let mut help = self.shell.help;
-        egui::Window::new("Help").open(&mut help).resizable(true).show(&ctx, |ui| {
+        egui::Window::new("Help").id(egui::Id::new(HELP_WINDOW)).open(&mut help).resizable(true).show(&ctx, |ui| {
             ui.label("Space: start / stop shared input. Typing in an editor leaves input unchanged.");
             ui.label("Ctrl + 1…7: open an instrument. Ctrl + Left / Right: select a console pane.");
             ui.label("Tab / Shift + Tab: move keyboard focus. Enter / Space: activate a focused control.");
-            ui.label("Escape: return from I/O or narrow details.");
+            ui.label("Escape: cancel editing, close the front menu/window, then return from I/O or narrow details.");
             ui.label(spectrogram_controls::GESTURES);
             ui.separator();
             ui.label("FS: digital full scale; physical amplitude and clocks require calibration.");
@@ -489,12 +545,14 @@ impl ScopeApp {
         self.shell.help = help;
         let mut paths = self.shell.file_paths;
         egui::Window::new("File paths & status")
+            .id(egui::Id::new(FILE_PATHS_WINDOW))
             .open(&mut paths)
             .default_width(440.0)
             .show(&ctx, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| self.workspace_controls(ui));
             });
         self.shell.file_paths = paths;
+        self.shell.finish_keyboard_frame(&ctx);
     }
 
     fn console(&mut self, ui: &mut egui::Ui) {
@@ -878,21 +936,175 @@ fn pane_clicked(ui: &egui::Ui, rect: egui::Rect) -> bool {
 }
 
 pub(super) fn input_shortcut(ctx: &egui::Context, enabled: bool) -> bool {
-    if !enabled || ctx.egui_wants_keyboard_input() || ctx.any_popup_open() {
+    if !enabled || ctx.egui_wants_keyboard_input() || popup_open(ctx) {
         return false;
     }
+    fresh_key(ctx, egui::Key::Space, egui::Modifiers::NONE)
+}
+
+fn popup_open(ctx: &egui::Context) -> bool {
+    // Shortcuts run before menus are drawn. Context reports only popups shown
+    // in this pass; Popup also reports the persisted state of shell menus.
+    egui::Popup::is_any_open(ctx) || ctx.any_popup_open()
+}
+
+fn fresh_key(ctx: &egui::Context, key: egui::Key, modifiers: egui::Modifiers) -> bool {
     let pressed = ctx.input(|input| {
         input.events.iter().any(|event| matches!(event,
-        egui::Event::Key { key: egui::Key::Space, pressed: true, repeat: false, modifiers, .. }
-            if *modifiers == egui::Modifiers::NONE
-    ))
+            egui::Event::Key { key: event_key, pressed: true, repeat: false, modifiers: event_modifiers, .. }
+                if *event_key == key && *event_modifiers == modifiers
+        ))
     });
-    pressed && ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Space))
+    pressed && ctx.input_mut(|input| input.consume_key(modifiers, key))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn key_event(key: egui::Key, modifiers: egui::Modifiers) -> egui::Event {
+        egui::Event::Key {
+            key,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers,
+        }
+    }
+
+    #[test]
+    fn navigation_requires_a_fresh_press_with_exact_modifiers_and_consumes_it() {
+        for (modifiers, repeat, expected) in [
+            (egui::Modifiers::CTRL, false, true),
+            (egui::Modifiers::CTRL, true, false),
+            (egui::Modifiers::CTRL | egui::Modifiers::SHIFT, false, false),
+            (egui::Modifiers::CTRL | egui::Modifiers::ALT, false, false),
+            (egui::Modifiers::NONE, false, false),
+        ] {
+            let ctx = egui::Context::default();
+            let mut shell = Shell::default();
+            let presentation = Presentation::default();
+            if repeat {
+                ctx.run_ui(
+                    egui::RawInput {
+                        events: vec![key_event(egui::Key::Num2, modifiers)],
+                        ..Default::default()
+                    },
+                    |_| {},
+                )
+                .drop_without_applying_deltas();
+            }
+            ctx.run_ui(
+                egui::RawInput {
+                    events: vec![key_event(egui::Key::Num2, modifiers)],
+                    ..Default::default()
+                },
+                |ui| {
+                    let action = shell.navigation_shortcut(ui.ctx(), &presentation);
+                    assert_eq!(
+                        matches!(action, Some(Action::OpenSingle(Instrument::Spectrum))),
+                        expected
+                    );
+                    assert!(shell.navigation_shortcut(ui.ctx(), &presentation).is_none());
+                },
+            )
+            .drop_without_applying_deltas();
+        }
+    }
+
+    #[test]
+    fn an_open_menu_blocks_input_and_navigation_before_it_is_drawn() {
+        for key in [egui::Key::Space, egui::Key::Num2, egui::Key::Escape] {
+            let ctx = egui::Context::default();
+            let popup = egui::Id::new("menu");
+            egui::Popup::open_id(&ctx, popup);
+            let mut shell = Shell {
+                io: Some(IoTab::Output),
+                ..Default::default()
+            };
+            ctx.run_ui(
+                egui::RawInput {
+                    events: vec![key_event(
+                        key,
+                        if key == egui::Key::Num2 {
+                            egui::Modifiers::CTRL
+                        } else {
+                            egui::Modifiers::NONE
+                        },
+                    )],
+                    ..Default::default()
+                },
+                |ui| {
+                    assert!(!ui.ctx().any_popup_open(), "menu has not been drawn yet");
+                    assert!(!input_shortcut(ui.ctx(), true));
+                    assert!(
+                        shell
+                            .navigation_shortcut(ui.ctx(), &Presentation::default())
+                            .is_none()
+                    );
+                    assert!(matches!(shell.io, Some(IoTab::Output)));
+                    assert!(egui::Popup::is_id_open(ui.ctx(), popup));
+                },
+            )
+            .drop_without_applying_deltas();
+        }
+    }
+
+    #[test]
+    fn escape_leaves_an_editor_before_leaving_its_details_page() {
+        let ctx = egui::Context::default();
+        let mut shell = Shell {
+            narrow_details: true,
+            ..Default::default()
+        };
+        let presentation = Presentation::default();
+        let mut text = "draft".to_owned();
+        ctx.run_ui(egui::RawInput::default(), |ui| {
+            ui.text_edit_singleline(&mut text).request_focus();
+            shell.finish_keyboard_frame(ui.ctx());
+        })
+        .drop_without_applying_deltas();
+        assert!(shell.editor_focused_last_frame);
+        for (events, expected_details) in [
+            (
+                vec![key_event(egui::Key::Num2, egui::Modifiers::CTRL)],
+                true,
+            ),
+            (
+                vec![key_event(egui::Key::Escape, egui::Modifiers::NONE)],
+                true,
+            ),
+            (
+                vec![egui::Event::Key {
+                    key: egui::Key::Escape,
+                    physical_key: None,
+                    pressed: false,
+                    repeat: false,
+                    modifiers: egui::Modifiers::NONE,
+                }],
+                true,
+            ),
+            (
+                vec![key_event(egui::Key::Escape, egui::Modifiers::NONE)],
+                false,
+            ),
+        ] {
+            ctx.run_ui(
+                egui::RawInput {
+                    events,
+                    ..Default::default()
+                },
+                |ui| {
+                    assert!(shell.navigation_shortcut(ui.ctx(), &presentation).is_none());
+                    ui.text_edit_singleline(&mut text);
+                    shell.finish_keyboard_frame(ui.ctx());
+                    assert_eq!(shell.narrow_details, expected_details);
+                },
+            )
+            .drop_without_applying_deltas();
+        }
+    }
+
     #[test]
     fn a_foreground_editor_does_not_select_the_console_pane_behind_it() {
         let ctx = egui::Context::default();

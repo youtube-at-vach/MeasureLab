@@ -912,6 +912,55 @@ impl ScopeApp {
         assert_eq!(self.presentation.selected(), Some(Instrument::Scope));
         driver.key(self, egui::Key::ArrowRight, egui::Modifiers::CTRL);
         assert_eq!(self.presentation.selected(), Some(Instrument::Generator));
+        // Foreground menus/windows own keyboard input. Escape dismisses just
+        // that layer, preserving both the console and an underlying I/O page.
+        for menu in ["File", "View", "I/O", "Running…", "Add instrument…"] {
+            driver.click(self, menu)?;
+            assert!(driver.ctx.any_popup_open());
+            driver.key(self, egui::Key::Num2, egui::Modifiers::CTRL);
+            driver.key(self, egui::Key::ArrowLeft, egui::Modifiers::CTRL);
+            assert_eq!(self.presentation.screen, Screen::Console);
+            assert_eq!(self.presentation.console, pair);
+            driver.key(self, egui::Key::Escape, egui::Modifiers::NONE);
+            assert!(!driver.ctx.any_popup_open());
+        }
+        driver.click(self, "I/O")?;
+        driver.click(self, "Output")?;
+        driver.key(self, egui::Key::ArrowLeft, egui::Modifiers::CTRL);
+        assert_eq!(self.presentation.console, pair);
+        driver.click(self, "I/O")?;
+        driver.key(self, egui::Key::Escape, egui::Modifiers::NONE);
+        assert!(!driver.ctx.any_popup_open() && self.shell.io.is_some());
+        driver.click(self, "Help")?;
+        driver.key(self, egui::Key::Num2, egui::Modifiers::CTRL);
+        driver.key(self, egui::Key::ArrowLeft, egui::Modifiers::CTRL);
+        assert_eq!(self.presentation.screen, Screen::Console);
+        assert_eq!(self.presentation.console, pair);
+        assert!(matches!(self.shell.io, Some(shell::IoTab::Output)));
+        driver.click(self, "File")?;
+        driver.click(self, "File paths & status…")?;
+        assert!(self.shell.file_paths && self.shell.help);
+        driver.key(self, egui::Key::Num2, egui::Modifiers::CTRL);
+        assert_eq!(self.presentation.screen, Screen::Console);
+        driver.key(self, egui::Key::Escape, egui::Modifiers::NONE);
+        assert!(
+            !self.shell.file_paths && self.shell.help,
+            "Escape must close the front file window: paths={}, help={}, editor={}",
+            self.shell.file_paths,
+            self.shell.help,
+            driver.ctx.text_edit_focused()
+        );
+        assert!(self.shell.io.is_some());
+        driver.key(self, egui::Key::Escape, egui::Modifiers::NONE);
+        assert!(!self.shell.help && self.shell.io.is_some());
+        driver.key(self, egui::Key::Escape, egui::Modifiers::NONE);
+        assert!(self.shell.io.is_none());
+        assert_eq!(self.presentation.console, pair);
+        // Let the closed auxiliary windows finish fading before clicking
+        // controls underneath their former screen area.
+        for _ in 0..10 {
+            driver.frame(self, vec![]);
+        }
         driver.key(self, egui::Key::Num1, egui::Modifiers::CTRL);
         driver.click(self, "Pair with…")?;
         driver.click(self, "Spectrum")?;

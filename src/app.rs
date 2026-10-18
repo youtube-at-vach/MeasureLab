@@ -5853,7 +5853,10 @@ impl eframe::App for ScopeApp {
                 }
             }
         }
-        if shell::input_shortcut(&ctx, self.input_transport_enabled()) {
+        if shell::input_shortcut(
+            &ctx,
+            self.input_transport_enabled() && !self.shell.auxiliary_window_open(),
+        ) {
             if self.running() {
                 self.stop();
             } else {
