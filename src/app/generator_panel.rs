@@ -1440,12 +1440,18 @@ fn generator_card(
                     routing_selector(ui, settings, index, g.target.channels());
                 });
                 let s = &mut settings.signals[index];
-                ui.add_enabled_ui(s.output_channel.is_some(), |ui| {
-                    ui.checkbox(&mut s.enabled, "ON");
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.add_enabled_ui(s.output_channel.is_some(), |ui| {
+                        ui.checkbox(&mut s.enabled, "ON");
+                    });
                 });
             });
             ui.horizontal(|ui| {
-                ui.label(RichText::new("Waveform").small().color(MUTED));
+                ui.add_sized(
+                    vec2(72.0, 26.0),
+                    egui::Label::new(RichText::new("Waveform").small().color(MUTED))
+                        .halign(egui::Align::Min),
+                );
                 let s = &mut settings.signals[index];
                 ui.add_enabled_ui(g.stopped(), |ui| {
                     egui::ComboBox::from_id_salt(("generator_waveform", s.id))
@@ -1471,7 +1477,8 @@ fn generator_card(
                 ui.horizontal(|ui| {
                     ui.add_sized(
                         vec2(72.0, 26.0),
-                        egui::Label::new(RichText::new(title).small().color(MUTED)),
+                        egui::Label::new(RichText::new(title).small().color(MUTED))
+                            .halign(egui::Align::Min),
                     );
                     ui.add_enabled_ui(
                         s.waveform != generator::Waveform::Noise || field == 1,
@@ -1805,14 +1812,31 @@ mod tests {
 
     #[test]
     fn cards_fit_columns_without_consuming_the_measurement_height() {
+        fn text_rects(shape: &egui::Shape, rects: &mut Vec<(String, egui::Rect)>) {
+            match shape {
+                egui::Shape::Text(text) => {
+                    rects.push((text.galley.text().into(), text.visual_bounding_rect()));
+                }
+                egui::Shape::Vec(shapes) => {
+                    for shape in shapes {
+                        text_rects(shape, rects);
+                    }
+                }
+                _ => {}
+            }
+        }
         let mut g = GeneratorUi::default();
         let mut settings = g.settings;
         settings.signals[0].frequency_hz = 345_599.999;
         settings.signals[1].amplitude_dbfs = -120.0;
         settings.signals[1].phase_degrees = -180.0;
-        for width in [370.0, 540.0, 700.0] {
+        for width in [320.0, 370.0, 540.0, 700.0] {
             let ctx = egui::Context::default();
+            ctx.global_style_mut(|style| {
+                style.spacing.button_padding = vec2(8.0, 4.0);
+            });
             for _ in 0..2 {
+                let mut cards = Vec::new();
                 let output = ctx.run_ui(
                     egui::RawInput {
                         screen_rect: Some(egui::Rect::from_min_size(
@@ -1826,6 +1850,7 @@ mod tests {
                         for index in 0..2 {
                             let response =
                                 generator_card(ui, &mut g, &mut settings, index, &mut None);
+                            cards.push(response.rect);
                             assert!(
                                 response.rect.width() <= width + 1.0,
                                 "card exceeds its column: {:?}",
@@ -1839,9 +1864,59 @@ mod tests {
                         }
                     },
                 );
+                let mut texts = Vec::new();
+                for shape in &output.shapes {
+                    text_rects(&shape.shape, &mut texts);
+                }
+                for (index, card) in cards.iter().enumerate() {
+                    let rect = |label: &str| {
+                        texts
+                            .iter()
+                            .find(|(text, rect)| text == label && card.contains(rect.center()))
+                            .unwrap_or_else(|| panic!("Card control not visible: {label}"))
+                            .1
+                    };
+                    let title = rect(&format!("GEN {}", settings.signals[index].id));
+                    let on = rect("ON");
+                    assert!(
+                        (card.right() - 8.0 - on.right()).abs() <= 2.0,
+                        "ON must stay at the card's right edge: {on:?}, {card:?}"
+                    );
+                    assert!((title.center().y - on.center().y).abs() <= 2.0);
+                    let waveform = rect("Waveform");
+                    for label in ["Frequency", "Peak level", "Phase lead"] {
+                        assert!((rect(label).left() - waveform.left()).abs() <= 1.0);
+                    }
+                    for (_, text) in texts.iter().filter(|(_, r)| card.contains(r.center())) {
+                        assert!(card.expand(1.0).contains_rect(*text));
+                    }
+                }
                 output.drop_without_applying_deltas();
             }
         }
+    }
+
+    #[test]
+    fn on_checkbox_changes_only_its_card_and_requires_an_output() {
+        let ctx = egui::Context::default();
+        let mut g = GeneratorUi::default();
+        for _ in 0..2 {
+            cards_frame(&ctx, &mut g, vec![]).drop_without_applying_deltas();
+        }
+        cards_click(&ctx, &mut g, "ON");
+        assert!(g.settings.signals[0].enabled);
+        assert!(!g.settings.signals[1].enabled);
+        cards_click(&ctx, &mut g, "GEN 2 · OUT 2 · OFF");
+        cards_click(&ctx, &mut g, "ON");
+        assert!(g.settings.signals.iter().all(|s| s.enabled));
+        assert_eq!(g.selected, 1);
+        cards_click(&ctx, &mut g, "OUT 2");
+        cards_click(&ctx, &mut g, "Unassigned");
+        cards_click(&ctx, &mut g, "ON");
+        assert_eq!(g.settings.signals[1].output_channel, None);
+        assert!(!g.settings.signals[1].enabled);
+        assert!(g.settings.signals[0].enabled);
+        g.settings.validate(g.rate, g.target.channels()).unwrap();
     }
 
     fn key(key: egui::Key, modifiers: egui::Modifiers) -> egui::Event {
