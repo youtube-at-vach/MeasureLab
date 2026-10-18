@@ -46,7 +46,7 @@ impl Driver {
         self.output.textures_delta.clear();
     }
 
-    fn position(&self, label: &str) -> Result<egui::Pos2, String> {
+    fn text_positions(&self, label: &str) -> Vec<egui::Pos2> {
         fn locate(shape: &egui::Shape, clip: egui::Rect, label: &str) -> Option<egui::Pos2> {
             match shape {
                 egui::Shape::Text(text) if text.galley.text() == label => {
@@ -64,6 +64,12 @@ impl Driver {
             .iter()
             .rev()
             .filter_map(|s| locate(&s.shape, s.clip_rect, label))
+            .collect()
+    }
+
+    fn position(&self, label: &str) -> Result<egui::Pos2, String> {
+        self.text_positions(label)
+            .into_iter()
             .find(|p| {
                 self.ctx
                     .interactive_rects_last_pass()
@@ -131,6 +137,220 @@ impl Driver {
 }
 
 impl ScopeApp {
+    pub(super) fn check_common_io_interactions(&mut self) -> Result<(), String> {
+        let saved = (
+            self.source,
+            self.devices.clone(),
+            self.selected,
+            self.requested_sample_rate,
+            self.restored_input.clone(),
+            self.busy,
+            self.shell.clone(),
+        );
+        let output = self.generator.rate;
+        let held = (self.input_generation, self.sample_rate, self.scope_readings);
+        let settle = |app: &mut ScopeApp| {
+            let deadline = Instant::now() + Duration::from_secs(2);
+            while app.generator.pending {
+                app.generator.poll();
+                assert!(
+                    Instant::now() < deadline,
+                    "Common I/O rate acknowledgement timed out"
+                );
+                std::thread::sleep(Duration::from_millis(2));
+            }
+            assert!(app.generator.stopped());
+            assert!(app.generator.error.is_none());
+        };
+        settle(self);
+        assert!(!self.running() && self.pending_stop.is_none());
+        self.source = Source::Live;
+        self.busy = false;
+        self.devices = vec![DeviceInfo {
+            id: Some("coreaudio:common-io-qa".into()),
+            name: "Common I/O QA (synthetic)".into(),
+            channels: 2,
+            default_sample_rate: 48_000,
+            sample_rates: vec![48_000, 96_000],
+            is_default: true,
+        }];
+        self.selected = 0;
+        self.requested_sample_rate = Some(48_000);
+        self.shell.io = Some(shell::IoTab::Connections);
+        self.shell.separate_io_rates = false;
+        let mut driver = Driver::new();
+        driver.frame(self, vec![]);
+        driver.frame(self, vec![]);
+        driver.click(self, "48000 Hz")?;
+        driver.click(self, "96000 Hz")?;
+        assert_eq!(self.requested_sample_rate, Some(96_000));
+        assert_eq!(self.generator.rate, 96_000);
+        settle(self);
+        let command = self.generator.command_marker();
+        assert!(self.apply_common_io_rate(44_100).is_err());
+        self.busy = true;
+        assert!(self.apply_common_io_rate(48_000).is_err());
+        self.busy = false;
+        let settings = self.generator.settings;
+        self.generator.settings.signals[0].frequency_hz = 30_000.0;
+        assert!(self.apply_common_io_rate(48_000).is_err());
+        self.generator.settings = settings;
+        assert_eq!(self.generator.command_marker(), command);
+        assert_eq!(self.requested_sample_rate, Some(96_000));
+        assert_eq!(self.generator.rate, 96_000);
+        driver.frame(self, vec![]);
+        driver.click(self, "Separate sample rates")?;
+        driver.click(self, "96 kHz")?;
+        driver.click(self, "Device default")?;
+        assert_eq!(self.requested_sample_rate, None);
+        assert_eq!(self.generator.rate, 96_000);
+        driver.click(self, "Separate sample rates")?;
+        assert!(!driver.text_positions("Select common rate").is_empty());
+        assert_eq!(self.generator.command_marker(), command);
+        driver.click(self, "Select common rate")?;
+        driver.click(self, "48000 Hz")?;
+        settle(self);
+        assert_eq!(self.requested_sample_rate, Some(48_000));
+        assert_eq!(self.generator.rate, 48_000);
+        assert!(!self.running());
+        assert_eq!(
+            (self.input_generation, self.sample_rate, self.scope_readings),
+            held
+        );
+        self.check_output_format_interactions(&mut driver)?;
+        if self.generator.rate != output {
+            self.generator.select(
+                self.generator.target.clone(),
+                output,
+                self.generator.settings,
+            )?;
+            settle(self);
+        }
+        (
+            self.source,
+            self.devices,
+            self.selected,
+            self.requested_sample_rate,
+            self.restored_input,
+            self.busy,
+            self.shell,
+        ) = saved;
+        println!(
+            "Shared I/O controls OK: common rate applies to both, unsupported/busy/invalid requests leave both unchanged, separate/default/mixed rates preserve held conditions and stay stopped"
+        );
+        Ok(())
+    }
+
+    fn check_output_format_interactions(&mut self, driver: &mut Driver) -> Result<(), String> {
+        let saved = (
+            self.generator.target.clone(),
+            self.generator.rate,
+            self.generator.settings,
+            self.generator.devices.clone(),
+        );
+        let config = output::device::Config {
+            rate: 48_000,
+            channels: 16,
+            pcm: output::device::Pcm::F32,
+        };
+        let target = output::Target::Audio {
+            device_id: "common-io-output-qa".into(),
+            device_name: "Output format QA (synthetic)".into(),
+            channels: config.channels,
+            pcm: config.pcm,
+        };
+        self.generator.devices = vec![output::device::DeviceInfo {
+            id: "common-io-output-qa".into(),
+            name: "Output format QA (synthetic)".into(),
+            configs: vec![
+                config,
+                output::device::Config {
+                    channels: 2,
+                    ..config
+                },
+                output::device::Config {
+                    channels: 1,
+                    ..config
+                },
+            ],
+            preferred: config,
+        }];
+        let mut settings = self.generator.settings;
+        settings.signals[0].output_channel = Some(0);
+        settings.signals[1].output_channel = Some(15);
+        settings.signals[1].enabled = true;
+        self.generator.select(target, config.rate, settings)?;
+        let settle = |app: &mut ScopeApp| {
+            let deadline = Instant::now() + Duration::from_secs(2);
+            while app.generator.pending {
+                app.generator.poll();
+                assert!(
+                    Instant::now() < deadline,
+                    "Output format acknowledgement timed out"
+                );
+                std::thread::sleep(Duration::from_millis(2));
+            }
+            assert!(app.generator.stopped());
+            assert!(app.generator.error.is_none());
+        };
+        settle(self);
+        let held = (self.input_generation, self.sample_rate, self.scope_readings);
+        for guard in 0..3 {
+            self.busy = guard == 0;
+            self.workspace_restoring = guard == 1;
+            self.settings_task = (guard == 2).then_some(SettingsTask::Restore);
+            driver.frame(self, vec![]);
+            for label in ["16ch · f32", "Output format QA (synthetic)", "48000 Hz"] {
+                driver.click_at(self, driver.text_positions(label)[0]);
+                assert!(
+                    !driver.ctx.any_popup_open(),
+                    "I/O selector opened during pending operation: {label}"
+                );
+            }
+            driver.click_at(self, driver.text_positions("Software Loopback")[0]);
+            assert!(
+                self.source == Source::Live,
+                "Input source changed during pending operation"
+            );
+        }
+        self.busy = false;
+        self.workspace_restoring = false;
+        self.settings_task = None;
+        driver.frame(self, vec![]);
+        driver.click(self, "16ch · f32")?;
+        driver.click(self, "2ch · f32")?;
+        assert_eq!(self.generator.target.channels(), 2);
+        let mut expected = settings;
+        expected.signals[1].output_channel = None;
+        expected.signals[1].enabled = false;
+        assert_eq!(self.generator.settings, expected);
+        settle(self);
+        // OFF cards also reserve an OUT and must be unassigned on mono output.
+        let mut mono = expected;
+        mono.signals[1].output_channel = Some(1);
+        self.generator.configure(mono);
+        settle(self);
+        driver.frame(self, vec![]);
+        driver.click(self, "Separate sample rates")?;
+        driver.click(self, "48000 Hz · 2ch · f32")?;
+        driver.click(self, "48000 Hz · 1ch · f32")?;
+        assert_eq!(self.generator.target.channels(), 1);
+        assert_eq!(self.generator.settings, expected);
+        settle(self);
+        driver.click(self, "Separate sample rates")?;
+        assert_eq!(
+            (self.input_generation, self.sample_rate, self.scope_readings),
+            held
+        );
+        self.generator.select(saved.0, saved.1, saved.2)?;
+        settle(self);
+        self.generator.devices = saved.3;
+        println!(
+            "Output format controls OK: 16/2/1ch keeps GEN IDs, unassigns unavailable OUTs and stays OFF; refresh/restore guards preserve held input"
+        );
+        Ok(())
+    }
+
     pub(super) fn check_spectrogram_display_interactions(&mut self) -> Result<(), String> {
         // The initial device enumeration reply is polled by the desktop update,
         // not by this widget-only driver. It is unrelated to held fixture data.
@@ -929,7 +1149,15 @@ impl ScopeApp {
             assert!(!driver.ctx.any_popup_open());
         }
         driver.click(self, "I/O")?;
-        driver.click(self, "Output")?;
+        driver.click(self, "Input / output")?;
+        // Both connection directions are available on the same page.
+        assert!(!driver.text_positions("Audio input").is_empty());
+        assert!(
+            !driver
+                .text_positions("SAMPLE RATE · INPUT + OUTPUT")
+                .is_empty()
+        );
+        assert!(!driver.text_positions("OUTPUT DEVICE").is_empty());
         driver.key(self, egui::Key::ArrowLeft, egui::Modifiers::CTRL);
         assert_eq!(self.presentation.console, pair);
         driver.click(self, "I/O")?;
@@ -940,7 +1168,7 @@ impl ScopeApp {
         driver.key(self, egui::Key::ArrowLeft, egui::Modifiers::CTRL);
         assert_eq!(self.presentation.screen, Screen::Console);
         assert_eq!(self.presentation.console, pair);
-        assert!(matches!(self.shell.io, Some(shell::IoTab::Output)));
+        assert!(matches!(self.shell.io, Some(shell::IoTab::Connections)));
         driver.click(self, "File")?;
         driver.click(self, "File paths & status…")?;
         assert!(self.shell.file_paths && self.shell.help);
@@ -999,7 +1227,7 @@ impl ScopeApp {
             driver.resize(self, vec2(1440.0, 1000.0), 1.0, 1.0);
             assert_eq!(self.presentation.console, console);
         }
-        for tab in ["Input", "Output", "Calibration"] {
+        for tab in ["Input / output", "Calibration"] {
             driver.click(self, "I/O")?;
             driver.click(self, tab)?;
             assert!(self.shell.io.is_some());

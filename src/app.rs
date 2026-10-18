@@ -956,10 +956,8 @@ impl ScopeApp {
                 app.cursors.set_scope_time(1, 0.7);
             }
             match std::env::var("MEASURELAB_UI_SMOKE_SETTINGS").as_deref() {
-                Ok("input" | "io") => app.shell.io = Some(shell::IoTab::Input),
-                Ok("output") => {
-                    app.shell.io = Some(shell::IoTab::Input);
-                    app.shell.io = Some(shell::IoTab::Output);
+                Ok("input" | "output" | "io") => {
+                    app.shell.io = Some(shell::IoTab::Connections);
                 }
                 Ok("generator") => {
                     app.presentation
@@ -1177,6 +1175,7 @@ impl ScopeApp {
             }
             if std::env::var_os("MEASURELAB_UI_SMOKE_INTERACTIONS").is_some() {
                 app.check_redesign_interactions()?;
+                app.check_common_io_interactions()?;
             }
             app.qa_previous_presentation = None;
         }
@@ -2790,9 +2789,9 @@ impl ScopeApp {
                     self.restored_input = None;
                     if self.source == Source::Live {
                         self.calibration.clear_input();
+                        self.requested_sample_rate = None;
                     }
                     self.selected = devices.iter().position(|d| d.is_default).unwrap_or(0);
-                    self.requested_sample_rate = None;
                     self.devices = devices;
                     #[cfg(feature = "qa")]
                     if let Some(name) = self.profile.as_ref().and_then(|p| p.device.as_ref()) {
@@ -2858,7 +2857,7 @@ impl ScopeApp {
                             self.spectrogram_channel = channel.saturating_sub(1);
                         }
                         match std::env::var("MEASURELAB_PROFILE_SETTINGS").as_deref() {
-                            Ok("input") => self.shell.io = Some(shell::IoTab::Input),
+                            Ok("input") => self.shell.io = Some(shell::IoTab::Connections),
                             Ok("spectrum") => {
                                 self.presentation
                                     .apply(Action::OpenSingle(Instrument::Spectrum));

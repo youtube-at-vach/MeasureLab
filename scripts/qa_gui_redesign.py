@@ -47,8 +47,9 @@ def cases(devices=()):
     yield "console-empty", True, {"VIEW": "empty"}
     for layout in ("columns", "rows", "tabs"):
         yield f"pair-{layout}", False, {"VIEW": "pair", "LAYOUT": layout, "ZOOM": "0.75"}
-    for tab in ("input", "output", "calibration"):
-        yield f"io-{tab}", True, {"SETTINGS": tab, "IDLE": "1", "ZOOM": "1.25"}
+    yield "io-wide", False, {"SETTINGS": "io", "IDLE": "1"}
+    yield "io-compact", True, {"SETTINGS": "io", "IDLE": "1", "ZOOM": "1.25"}
+    yield "io-calibration", True, {"SETTINGS": "calibration", "IDLE": "1", "ZOOM": "1.25"}
     yield "selected-details", True, {"VIEW": "spectrum", "DETAILS": "1", "ZOOM": "1.25"}
     yield "generator-internal", False, {"GENERATOR": "scope"}
     yield "comparison-internal", True, {"COMPARISON": "pair"}
@@ -137,7 +138,7 @@ def main():
             display_ok = "UI assertions only OK:" in log if args.assertions_only else screenshot.is_file()
             passed = result.returncode == 0 and display_ok and "GUI navigation OK:" in log
             if "INTERACTIONS" in options:
-                passed = passed and "GUI interactions OK:" in log
+                passed = passed and "GUI interactions OK:" in log and "Shared I/O controls OK:" in log
             if "ESD" in options:
                 passed = passed and "ESD UI OK:" in log
             if "SPECTROGRAM_DISPLAY" in options:
