@@ -59,44 +59,7 @@ impl ScopeApp {
             }
         });
 
-        control_group(ui, "TRIGGER", TRIGGER, |ui| {
-            let before = (self.trigger.edge, self.trigger.channel);
-            ui.horizontal(|ui| {
-                ui.label("Edge");
-                egui::ComboBox::from_id_salt("edge")
-                    .width(ui.available_width())
-                    .selected_text(match self.trigger.edge {
-                        Edge::Free => "Free run",
-                        Edge::Rising => "Rising edge",
-                        Edge::Falling => "Falling edge",
-                    })
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut self.trigger.edge, Edge::Free, "Free run");
-                        ui.selectable_value(&mut self.trigger.edge, Edge::Rising, "Rising edge");
-                        ui.selectable_value(&mut self.trigger.edge, Edge::Falling, "Falling edge");
-                    });
-            });
-            ui.horizontal(|ui| {
-                ui.label("Source");
-                let channels = self.lockin_channel_count().max(self.scope_channel_count());
-                channel_select(ui, "trigger_channel", &mut self.trigger.channel, channels);
-            });
-            self.dirty |= before != (self.trigger.edge, self.trigger.channel);
-            let (changed, zero) = control_slider(
-                ui,
-                "Level",
-                egui::Slider::new(&mut self.trigger.level, -1.0..=1.0)
-                    .suffix(" FS")
-                    .max_decimals(3)
-                    .drag_value_speed(0.001)
-                    .trailing_fill(false),
-                Some("Zero level"),
-            );
-            if zero {
-                self.trigger.level = 0.0;
-            }
-            self.dirty |= changed || zero;
-        });
+        control_group(ui, "TRIGGER", TRIGGER, |ui| self.trigger_controls(ui));
 
         control_group(ui, "HORIZONTAL", BLUE, |ui| {
             self.dirty |= control_slider(
@@ -205,6 +168,45 @@ impl ScopeApp {
                 .color(MUTED),
         );
     }
+
+    pub(super) fn trigger_controls(&mut self, ui: &mut egui::Ui) {
+        let before = (self.trigger.edge, self.trigger.channel);
+        ui.horizontal(|ui| {
+            ui.label("Edge");
+            egui::ComboBox::from_id_salt("edge")
+                .width(ui.available_width())
+                .selected_text(match self.trigger.edge {
+                    Edge::Free => "Free run",
+                    Edge::Rising => "Rising edge",
+                    Edge::Falling => "Falling edge",
+                })
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut self.trigger.edge, Edge::Free, "Free run");
+                    ui.selectable_value(&mut self.trigger.edge, Edge::Rising, "Rising edge");
+                    ui.selectable_value(&mut self.trigger.edge, Edge::Falling, "Falling edge");
+                });
+        });
+        ui.horizontal(|ui| {
+            ui.label("Source");
+            let channels = self.lockin_channel_count().max(self.scope_channel_count());
+            channel_select(ui, "trigger_channel", &mut self.trigger.channel, channels);
+        });
+        self.dirty |= before != (self.trigger.edge, self.trigger.channel);
+        let (changed, zero) = control_slider(
+            ui,
+            "Level",
+            egui::Slider::new(&mut self.trigger.level, -1.0..=1.0)
+                .suffix(" FS")
+                .max_decimals(3)
+                .drag_value_speed(0.001)
+                .trailing_fill(false),
+            Some("Zero level"),
+        );
+        if zero {
+            self.trigger.level = 0.0;
+        }
+        self.dirty |= changed || zero;
+    }
 }
 
 pub(super) fn control_group(
@@ -230,7 +232,7 @@ pub(super) fn control_group(
 
 /// Keep units with the editable value and give every rail the same width.
 /// The value retains egui's drag and keyboard entry, alongside the slider.
-fn control_slider(
+pub(super) fn control_slider(
     ui: &mut egui::Ui,
     label: &str,
     slider: egui::Slider<'_>,

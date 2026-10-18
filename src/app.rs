@@ -49,6 +49,7 @@ mod spectrogram_controls;
 mod spectrum_controls;
 mod spectrum_history;
 mod workspace;
+mod xy_controls;
 
 const GREEN: Color32 = Color32::from_rgb(56, 242, 173);
 const BLUE: Color32 = Color32::from_rgb(87, 166, 255);
@@ -3844,106 +3845,6 @@ impl ScopeApp {
         });
     }
 
-    fn xy_cursor_mode_controls(&mut self, ui: &mut egui::Ui) {
-        let before = self.xy_cursor_mode;
-        ui.selectable_value(&mut self.xy_cursor_mode, xy::CursorMode::Free, "Free")
-            .on_hover_text(
-                "Fix X/Y amplitudes independently of the moving trace. Measure ΔX and ΔY.",
-            );
-        ui.selectable_value(&mut self.xy_cursor_mode, xy::CursorMode::TraceSnap, "Trace Snap")
-            .on_hover_text("Follow a real sample at a fixed time offset from the XY trigger. Uses Scope trigger settings.");
-        if self.xy_cursor_mode != before {
-            self.xy_dirty = true;
-            ui.ctx().request_repaint();
-        }
-    }
-
-    fn xy_primary_controls(&mut self, ui: &mut egui::Ui) {
-        let before_channels = self.xy_settings.channels;
-        setting_label(ui, "X SOURCE");
-        channel_select(
-            ui,
-            "xy_x_source",
-            &mut self.xy_settings.channels.0[0],
-            self.channels,
-        );
-        setting_label(ui, "Y SOURCE");
-        channel_select(
-            ui,
-            "xy_y_source",
-            &mut self.xy_settings.channels.0[1],
-            self.channels,
-        );
-        if self.xy_settings.channels != before_channels {
-            if self.running()
-                && let Some(core) = &self.core
-            {
-                core.configure_xy(self.xy_settings.channels);
-            }
-            self.xy_dirty = true;
-        }
-        if !self.running() && self.xy_settings.channels != self.xy_view_settings().channels {
-            ui.label(
-                RichText::new("Source changes apply on Start. Held XY keeps its channels.")
-                    .small()
-                    .color(YELLOW),
-            );
-        }
-        ui.label(
-            RichText::new("X/Y use the same input frame.")
-                .small()
-                .color(PURPLE),
-        );
-        setting_label(ui, "CURSOR MODE");
-        ui.horizontal(|ui| self.xy_cursor_mode_controls(ui));
-        ui.label(RichText::new(match self.xy_cursor_mode {
-            xy::CursorMode::Free => "Free keeps X/Y amplitudes fixed and reads ΔX/ΔY. Free positions and shared time cursors are retained separately when switching modes.",
-            xy::CursorMode::TraceSnap => "Trace Snap keeps time relative to the XY trigger. Source, edge and level use Scope settings. Auto/free run may move the marker; Stop freezes it.",
-        }).small().color(MUTED));
-        if self.channels < 2 {
-            ui.label(
-                RichText::new("XY requires at least two input channels.")
-                    .small()
-                    .color(YELLOW),
-            );
-        }
-        let before = self.xy_settings;
-        setting_label(ui, "OBSERVATION WINDOW");
-        ui.add(
-            egui::Slider::new(&mut self.xy_settings.milliseconds, 0.5..=200.0)
-                .logarithmic(true)
-                .text("ms"),
-        );
-        setting_label(ui, "X AMPLITUDE");
-        ui.add(
-            egui::Slider::new(&mut self.xy_settings.x_fs_per_div, 0.001..=0.5)
-                .logarithmic(true)
-                .text("FS / div"),
-        );
-        setting_label(ui, "Y AMPLITUDE");
-        ui.add(
-            egui::Slider::new(&mut self.xy_settings.y_fs_per_div, 0.001..=0.5)
-                .logarithmic(true)
-                .text("FS / div"),
-        );
-        if ui.button("Reset XY scales").clicked() {
-            self.xy_settings = xy::Settings {
-                channels: self.xy_settings.channels,
-                ..xy::Settings::default()
-            };
-        }
-        self.xy_dirty |= self.xy_settings != before;
-        ui.label(RichText::new("Continuous samples are connected in time order. Free shows the latest window; Trace Snap uses a triggered window. Equal axis scales preserve circles on the square plot.").small().color(MUTED));
-        ui.label(
-            RichText::new(format!(
-                "Up to {} real sample pairs; longer windows show the latest contiguous portion.",
-                xy::MAX_POINTS
-            ))
-            .small()
-            .color(MUTED),
-        );
-    }
-
     fn rebuild_xy(&mut self) {
         if !self.xy_dirty {
             return;
@@ -4015,13 +3916,15 @@ impl ScopeApp {
                         self.pending_stop.is_some(),
                         !self.xy_capture.range.is_empty(),
                     );
-                    ui.menu_button("Source / display…", |ui| self.xy_primary_controls(ui));
                 });
                 ui.horizontal_wrapped(|ui| {
                     ui.label(
-                        RichText::new("XY · X/Y or trigger-relative cursor")
-                            .small()
-                            .color(MUTED),
+                        RichText::new(match self.xy_cursor_mode {
+                            xy::CursorMode::Free => "XY · Free cursor",
+                            xy::CursorMode::TraceSnap => "XY · Trace Snap cursor",
+                        })
+                        .small()
+                        .color(MUTED),
                     );
                     self.cursor_controls(ui);
                 });
