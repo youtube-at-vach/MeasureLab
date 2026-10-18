@@ -58,13 +58,13 @@ jobs:
         run: ./scripts/test_windows_installer.ps1 -Installer $env:INSTALLER -SourceDir $env:SOURCE_DIR -Archive $env:ARCHIVE
       - name: Upload lifecycle logs
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-installer-test-logs
           path: dist/windows-installer-test/**/*.log
           if-no-files-found: ignore
       - name: Upload tested distribution
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-x64
           path: ${{ steps.package.outputs.release_dir }}/*
