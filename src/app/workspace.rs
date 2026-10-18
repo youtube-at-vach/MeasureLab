@@ -443,20 +443,22 @@ impl ScopeApp {
     pub(super) fn software_controls(&mut self, ui: &mut egui::Ui) {
         setting_label(ui, "SOFTWARE LOOPBACK · CH 1 REF / CH 2 DUT");
         ui.label(RichText::new("Known sine → gain / phase / delay / noise DUT → common input. Conditions apply on Start.").small().color(MUTED));
-        egui::ComboBox::from_id_salt("software_rate")
-            .selected_text(format!(
-                "{} Hz",
-                self.requested_sample_rate.unwrap_or(48000)
-            ))
-            .show_ui(ui, |ui| {
-                for rate in [44100, 48000, 96000, 192000] {
-                    ui.selectable_value(
-                        &mut self.requested_sample_rate,
-                        Some(rate),
-                        format!("{rate} Hz"),
-                    );
-                }
-            });
+        if self.shell.separate_io_rates {
+            egui::ComboBox::from_id_salt("software_rate")
+                .selected_text(format!(
+                    "{} Hz",
+                    self.requested_sample_rate.unwrap_or(48000)
+                ))
+                .show_ui(ui, |ui| {
+                    for rate in [44100, 48000, 96000, 192000] {
+                        ui.selectable_value(
+                            &mut self.requested_sample_rate,
+                            Some(rate),
+                            format!("{rate} Hz"),
+                        );
+                    }
+                });
+        }
         let s = &mut self.loopback_settings;
         ui.add(
             egui::DragValue::new(&mut s.frequency_hz)

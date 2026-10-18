@@ -8,8 +8,7 @@ const FILE_PATHS_WINDOW: &str = "file_paths_window";
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub(super) enum IoTab {
     #[default]
-    Input,
-    Output,
+    Connections,
     Calibration,
 }
 
@@ -20,6 +19,7 @@ pub(super) struct Shell {
     pub file_paths: bool,
     pub search: String,
     pub narrow_details: bool,
+    pub separate_io_rates: bool,
     pub previous_console: Option<Console>,
     editor_focused_last_frame: bool,
 }
@@ -153,8 +153,7 @@ impl ScopeApp {
                 self.view_menu(ui);
                 ui.menu_button("I/O", |ui| {
                     for (tab, name) in [
-                        (IoTab::Input, "Input"),
-                        (IoTab::Output, "Output"),
+                        (IoTab::Connections, "Input / output"),
                         (IoTab::Calibration, "Calibration"),
                     ] {
                         if ui.button(name).clicked() {
@@ -482,15 +481,20 @@ impl ScopeApp {
             if let Some(error) = &self.error { ui.colored_label(TRIGGER, error); }
             if let Some(tab) = self.shell.io {
                 ui.horizontal_wrapped(|ui| {
-                    ui.heading("Input / output");
+                    ui.heading("I/O settings");
                     if ui.button("Back to instruments").clicked() { self.shell.io = None; }
-                    for (t, name) in [(IoTab::Input, "Input"), (IoTab::Output, "Output"), (IoTab::Calibration, "Calibration")] {
+                    for (t, name) in [(IoTab::Connections, "Input / output"), (IoTab::Calibration, "Calibration")] {
                         if ui.selectable_label(tab == t, name).clicked() { self.shell.io = Some(t); }
                     }
                 });
                 egui::ScrollArea::vertical().id_salt("common_io").show(ui, |ui| {
-                    ui.set_max_width(720.0);
-                    match self.shell.io.unwrap_or(tab) { IoTab::Input => self.input_controls(ui), IoTab::Output => self.output_controls(ui), IoTab::Calibration => self.calibration_controls(ui) }
+                    match self.shell.io.unwrap_or(tab) {
+                        IoTab::Connections => self.io_controls(ui),
+                        IoTab::Calibration => {
+                            ui.set_max_width(ui.available_width().min(720.0));
+                            self.calibration_controls(ui);
+                        }
+                    }
                 });
                 return;
             }
@@ -1016,7 +1020,7 @@ mod tests {
             let popup = egui::Id::new("menu");
             egui::Popup::open_id(&ctx, popup);
             let mut shell = Shell {
-                io: Some(IoTab::Output),
+                io: Some(IoTab::Connections),
                 ..Default::default()
             };
             ctx.run_ui(
@@ -1039,7 +1043,7 @@ mod tests {
                             .navigation_shortcut(ui.ctx(), &Presentation::default())
                             .is_none()
                     );
-                    assert!(matches!(shell.io, Some(IoTab::Output)));
+                    assert!(matches!(shell.io, Some(IoTab::Connections)));
                     assert!(egui::Popup::is_id_open(ui.ctx(), popup));
                 },
             )

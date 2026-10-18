@@ -16,7 +16,9 @@ With the local macOS/Linux setup, `./scripts/cargo.sh run --release --locked` al
 
 ## First measurement without hardware
 
-1. Select **Software Loopback** under **I/O / Input**. It is available in normal builds and does not drive a physical output.
+**I/O → Input / output** shows both connection directions on one page, side by side in wide windows and stacked in narrow windows. Input selects the source and device; Output selects the output device, channel count and PCM. Select a supported rate for both in **SAMPLE RATE · INPUT + OUTPUT** while stopped; **Refresh devices** refreshes both lists. Enable **Separate sample rates** to set rates independently. Signal settings, ON/OFF and OUT assignments remain on the Generator cards.
+
+1. Select **Software Loopback** under **I/O → Input / output**. It is available in normal builds and does not drive a physical output.
 2. Use **Back to instruments**, open **Scope**, choose **Pair with… / Spectrum**, then press **Start input**.
 3. Click a pane to select its details. CH, time/amplitude scales, Autoset and cursors stay in the instrument; FFT/window/averaging settings are in the selected details. Start with the default 8,192-point FFT.
 4. Press **Stop input** to hold results, then inspect cursors, RMS, peaks or PSD band values.
@@ -59,7 +61,7 @@ If data fills only the top of the image, compare the retained duration in the he
 
 1. Open **Generator**, then choose **Pair with… / Scope**. The two-channel internal output is available in normal builds.
 2. Select **Waveform / Sine** and **OUT 1/2** on the central cards, enable **ON**, then enter frequency (Hz), amplitude (dBFS peak) and phase (lead, degrees). Enter or leaving the field applies an edit; Esc cancels it. Use **EDIT STEP** in the details to select a step for the ± buttons and arrow keys.
-3. Select **I/O / Output / Observe Generator**, then press **Start output** and **Start input** separately. The settings preview and measured waveform are separate views.
+3. Select **I/O → Input / output → Generator loopback**, then press **Start output** and **Start input** separately. The settings preview and measured waveform are separate views.
 4. Select **Generator**, then pair it with Spectrum/Lock-in to inspect analysis. Live edits transition amplitude and phase smoothly; Spectrum/Lock-in restart averaging and settling after the transition.
 5. **Stop input** holds the measurement while output continues. **Stop output** stops generation; active input then receives new silent samples.
 
@@ -69,9 +71,9 @@ Waveforms are Sine, Square, Triangle and Noise. Square/Triangle retain up to 16 
 
 The central panel keeps the existing three numerical controls and settings preview. Wide windows show cards in two columns; narrow windows offer card selection with GEN ID, OUT and ON/OFF visible. **Hide signal controls** shows summaries for all cards.
 
-Under **I/O / Output**, select an output rate of 44.1, 48, 96 or 192 kHz while both input and output are stopped. Restoring settings also requires both to be stopped and leaves output OFF. Internal JSON/CSV results retain output conditions for the received intervals.
+In the shared section of **I/O → Input / output**, select a common rate of 44.1, 48, 96 or 192 kHz while both input and output are stopped. Restoring settings also requires both to be stopped and leaves output OFF. Internal JSON/CSV results retain output conditions for the received intervals.
 
-For audio-device output, select a destination under **I/O / Output** and its supported sample rate, channel count and PCM while stopped, then assign the OUT channels. Unassigned outputs are silent. Choose the connected physical input under **I/O / Input**, then press **Start output** and **Start input** separately. **Observe Generator** uses the internal connection. Output notifications or stalled callbacks latch ERROR; use **Reset output (stays OFF)** and an explicit Start to recover. Settings retain the output identity and format and restore with output OFF.
+For audio-device output, select a destination, channel count and PCM in the Output section of **I/O → Input / output**, and a sample rate in the shared section while stopped, then assign OUT on the Generator cards. Unassigned outputs are silent. Choose the connected physical input in the Input section, then press **Start output** and **Start input** separately. **Generator loopback** uses the internal connection. Output notifications or stalled callbacks latch ERROR; use **Reset output (stays OFF)** and an explicit Start to recover. Settings retain the output identity and format and restore with output OFF.
 
 External input and output use separate clocks; output transitions are not automatically mapped to input analysis windows. Wait for input settling after edits and use two actual input channels for synchronous REF and response in Lock-in. JSON/CSV results that observe an external Generator retain applied settings, output state, failures and up to 128 observed changes. Input Stop, Single completion or input failure freezes this evidence; later edits cannot change it. Input-window correspondence remains uncalibrated, so reference comparisons omit numerical differences. Host observation times are not DAC/ADC timestamps, and lost or evicted history is not reconstructed. Result format version 6 also reads versions 1–5. Output calibration and DAC/ADC latency remain unverified.
 

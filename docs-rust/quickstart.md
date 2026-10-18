@@ -16,7 +16,9 @@ macOS／Linuxのローカルセットアップ環境では`./scripts/cargo.sh ru
 
 ## 機器なしで最初の測定
 
-1. **I/O / Input** で **Software Loopback** を選びます。これは通常ビルドで使え、物理出力は行いません。
+**I/O → Input / output** で入力と出力を一画面に表示します。Input欄は入力元・デバイス、Output欄は出力デバイス・CH数・PCMを扱います。共通の **SAMPLE RATE · INPUT + OUTPUT** で両方が対応するFsを停止中に一度選び、**Refresh devices** で両方を再取得します。**Separate sample rates** ではFsを個別に設定できます。信号条件・ON／OFF・OUT割当はGeneratorカードで設定します。広幅は左右、狭幅は上下に並びます。
+
+1. **I/O → Input / output** で **Software Loopback** を選びます。これは通常ビルドで使え、物理出力は行いません。
 2. **Back to instruments** で戻り、**Scope** の **Pair with… / Spectrum** で並べ、**Start input** を押します。
 3. 区画をクリックして詳細欄の対象を選びます。CH・時間軸・振幅・Autoset・カーソルは計器本体、FFT・窓・平均は選択中の詳細欄で調整します。最初は既定の8,192点を使ってください。
 4. **Stop input** で結果を保持し、カーソルやRMS、ピーク、PSDの帯域値を読みます。
@@ -59,7 +61,7 @@ Spectrumは単一グラフに最大4chを重ねます。下部のCHバーで選�
 
 1. **Generator** を選び、**Pair with… / Scope** で並べます。通常ビルドで使える2chの内部出力です。
 2. 中央のカードで **Waveform / Sine** と **OUT 1／2** を選び、各GENを **ON** にして周波数（Hz）・振幅（dBFS peak）・位相（発振器に対する進み、°）を入力します。Enterまたはフォーカス移動で適用し、Escで編集を取り消します。詳細欄の **EDIT STEP**で刻みを選び、±ボタンや上下キーでも調整できます。
-3. **I/O / Output / Observe Generator** で内部出力を入力に選び、**Start output** と **Start input** をそれぞれ押します。設定プレビューと実測波形は別です。
+3. **I/O → Input / output → Generator loopback** で内部出力を入力に選び、**Start output** と **Start input** をそれぞれ押します。設定プレビューと実測波形は別です。
 4. Generator単独表示からSpectrum／Lock-inを並べて解析できます。動作中の編集では振幅・位相を滑らかに遷移し、Spectrum／Lock-inは遷移後に平均・整定をやり直します。
 5. **Stop input** は結果を保持し、出力は継続します。**Stop output** で出力を停止すると、取得中の入力には新しい無音サンプルが届きます。
 
@@ -69,9 +71,9 @@ Spectrumは単一グラフに最大4chを重ねます。下部のCHバーで選�
 
 中央は従来の3行編集と設定プレビューを保ちます。広い画面はカードを2列に並べ、狭い画面はGEN ID・OUT・ON/OFFを残すカード選択になります。**Hide signal controls**で全カードを概要表示にできます。
 
-出力Fsは**I/O / Output**で44.1／48／96／192 kHzから、入力・出力を停止して選びます。設定の復元には両方の停止が必要で、復元後も出力はOFFです。内部接続のJSON／CSV結果には受信区間に対応する出力条件を保存します。
+共通Fsは**I/O → Input / output**の共通欄で44.1／48／96／192 kHzから、入力・出力を停止して選びます。設定の復元には両方の停止が必要で、復元後も出力はOFFです。内部接続のJSON／CSV結果には受信区間に対応する出力条件を保存します。
 
-実デバイスへ出力する場合は、停止中に**I/O / Output**でデバイスを選び、対応するFs・CH数・PCMとOUTを設定します。未割当CHは無音です。**I/O / Input**で接続先の実入力を選び、**Start output**／**Start input**を個別に開始します。**Observe Generator**は内部接続専用です。出力通知・コールバック停止はERRORとして保持し、**Reset output (stays OFF)**と明示Startで復帰します。設定は出力先・形式を保存し、復元後はOFFです。
+実デバイスへ出力する場合は、停止中に**I/O → Input / output**のOutput欄でデバイス・CH数・PCM、共通欄でFsを選び、GeneratorカードでOUTを設定します。未割当CHは無音です。**I/O → Input / output**のInput欄で接続先の実入力を選び、**Start output**／**Start input**を個別に開始します。**Generator loopback**は内部接続専用です。出力通知・コールバック停止はERRORとして保持し、**Reset output (stays OFF)**と明示Startで復帰します。設定は出力先・形式を保存し、復元後はOFFです。
 
 外部入出力は別の時計で、出力遷移と入力解析窓は自動対応しません。編集後は入力側の整定を待ち、Lock-inは同期REFの実入力2chを使ってください。外部Generatorを観測した結果のJSON／CSVには、実適用設定・出力状態・失敗と最大128件の観測履歴を保存します。入力Stop／Single／失敗後の編集では履歴を変更しません。履歴と入力窓の対応は未校正として参照との数値差を表示しません。ホストで応答を観測した時刻はDAC／ADC時刻ではなく、欠落・退役した履歴も補完しません。結果形式は版6で、旧版1〜5も読み込めます。出力校正・DAC／ADC遅延は未確認です。
 

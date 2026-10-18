@@ -1,15 +1,260 @@
 //! Shared input/output connection settings. Signal edits remain in the
-//! Generator panel; device, format and channel routing live together here.
+//! Generator panel; this page handles input sources and output devices/formats.
+use super::generator_panel::GeneratorUi;
 use super::*;
+use crate::generator;
+
+fn output_config(g: &GeneratorUi) -> output::device::Config {
+    output::device::Config {
+        rate: g.rate,
+        channels: g.target.channels() as u16,
+        pcm: match g.target {
+            output::Target::Audio { pcm, .. } => pcm,
+            output::Target::Internal => output::device::Pcm::F64,
+        },
+    }
+}
+
+fn output_configs(g: &GeneratorUi) -> Vec<output::device::Config> {
+    match &g.target {
+        output::Target::Internal => output::RATES
+            .into_iter()
+            .map(|rate| output::device::Config {
+                rate,
+                ..output_config(g)
+            })
+            .collect(),
+        output::Target::Audio { device_id, .. } => g
+            .devices
+            .iter()
+            .find(|d| &d.id == device_id)
+            .map(|d| d.configs.clone())
+            .unwrap_or_default(),
+    }
+}
+
+fn common_rates(
+    input: &[u32],
+    configs: &[output::device::Config],
+    current: output::device::Config,
+) -> Vec<u32> {
+    let mut rates: Vec<_> = configs
+        .iter()
+        .filter(|c| {
+            c.channels == current.channels && c.pcm == current.pcm && input.contains(&c.rate)
+        })
+        .map(|c| c.rate)
+        .collect();
+    rates.sort_unstable();
+    rates.dedup();
+    rates
+}
+
+fn config_label(config: output::device::Config, include_rate: bool) -> String {
+    let format = format!("{}ch · {}", config.channels, config.pcm.label());
+    if include_rate {
+        format!("{} Hz · {format}", config.rate)
+    } else {
+        format
+    }
+}
+
+fn settings_for_output_channels(
+    mut settings: generator::Settings,
+    channels: usize,
+) -> generator::Settings {
+    for signal in &mut settings.signals {
+        if signal.output_channel.is_some_and(|ch| ch >= channels) {
+            signal.output_channel = None;
+            signal.enabled = false;
+        }
+    }
+    settings
+}
 
 impl ScopeApp {
+    pub(super) fn io_controls(&mut self, ui: &mut egui::Ui) {
+        ui.set_max_width(ui.available_width().min(1200.0));
+        self.common_io_controls(ui);
+        ui.add_space(8.0);
+        if ui.available_width() >= 900.0 {
+            ui.columns(2, |columns| {
+                self.io_section(&mut columns[0], false);
+                self.io_section(&mut columns[1], true);
+            });
+        } else {
+            self.io_section(ui, false);
+            ui.add_space(8.0);
+            self.io_section(ui, true);
+        }
+    }
+
+    fn io_editable(&self) -> bool {
+        self.io_input_editable() && !self.running() && self.generator.stopped()
+    }
+
+    fn io_input_editable(&self) -> bool {
+        self.pending_stop.is_none()
+            && !self.busy
+            && !self.workspace_restoring
+            && self.settings_task != Some(SettingsTask::Restore)
+    }
+
+    fn io_input_rates(&self) -> Vec<u32> {
+        match self.source {
+            Source::Live => self
+                .devices
+                .get(self.selected)
+                .map(|d| d.sample_rates.clone())
+                .unwrap_or_default(),
+            Source::Software | Source::Generator => output::RATES.to_vec(),
+            #[cfg(feature = "qa")]
+            Source::Demo => vec![48_000],
+        }
+    }
+
+    fn io_input_rate(&self) -> Option<u32> {
+        match self.source {
+            Source::Live => self.requested_sample_rate.or_else(|| {
+                self.devices
+                    .get(self.selected)
+                    .map(|d| d.default_sample_rate)
+                    .filter(|&r| r != 0)
+            }),
+            Source::Software => Some(self.requested_sample_rate.unwrap_or(48_000)),
+            Source::Generator => Some(self.generator.rate),
+            #[cfg(feature = "qa")]
+            Source::Demo => Some(48_000),
+        }
+    }
+
+    fn common_io_rates(&self) -> Vec<u32> {
+        common_rates(
+            &self.io_input_rates(),
+            &output_configs(&self.generator),
+            output_config(&self.generator),
+        )
+    }
+
+    pub(super) fn apply_common_io_rate(&mut self, rate: u32) -> Result<(), String> {
+        if !self.io_editable() || !self.common_io_rates().contains(&rate) {
+            return Err("Stop input and output and select a supported common rate.".into());
+        }
+        if self.source == Source::Software {
+            self.loopback_settings.validate(rate)?;
+        }
+        let g = &mut self.generator;
+        // Reject incompatible signal conditions before changing either side.
+        g.settings
+            .validate(rate, g.target.channels())
+            .map_err(|e| e.to_string())?;
+        if g.rate != rate {
+            g.select(g.target.clone(), rate, g.settings)?;
+        }
+        g.error = None;
+        if matches!(self.source, Source::Live | Source::Software) {
+            self.requested_sample_rate = Some(rate);
+            if let Some(input) = &mut self.restored_input {
+                input.sample_rate = Some(rate);
+            }
+        }
+        Ok(())
+    }
+
+    fn common_io_controls(&mut self, ui: &mut egui::Ui) {
+        egui::Frame::group(ui.style()).show(ui, |ui| {
+            ui.set_min_width(ui.available_width());
+            ui.horizontal_wrapped(|ui| {
+                ui.checkbox(&mut self.shell.separate_io_rates, "Separate sample rates");
+                if ui
+                    .add_enabled(self.io_editable(), egui::Button::new("Refresh devices"))
+                    .clicked()
+                {
+                    match self.generator.worker.refresh() {
+                        Ok(_) => {
+                            self.busy = true;
+                            self.error = None;
+                            self.audio.send(Command::Refresh);
+                        }
+                        Err(e) => self.generator.error = Some(e),
+                    }
+                }
+            });
+            if !self.shell.separate_io_rates {
+                setting_label(ui, "SAMPLE RATE · INPUT + OUTPUT");
+                let rates = self.common_io_rates();
+                let current = self
+                    .io_input_rate()
+                    .filter(|&rate| rate == self.generator.rate);
+                let mut chosen = None;
+                ui.add_enabled_ui(self.io_editable() && !rates.is_empty(), |ui| {
+                    egui::ComboBox::from_id_salt("common_io_rate")
+                        .width(ui.available_width())
+                        .selected_text(
+                            current
+                                .map_or_else(|| "Select common rate".into(), |r| format!("{r} Hz")),
+                        )
+                        .show_ui(ui, |ui| {
+                            for rate in rates.iter().copied() {
+                                if ui
+                                    .selectable_label(current == Some(rate), format!("{rate} Hz"))
+                                    .clicked()
+                                {
+                                    chosen = Some(rate);
+                                }
+                            }
+                        });
+                });
+                if let Some(rate) = chosen
+                    && let Err(e) = self.apply_common_io_rate(rate)
+                {
+                    self.generator.error = Some(e);
+                }
+                if current.is_none() {
+                    ui.label(format!(
+                        "Input: {} · Output: {} Hz",
+                        self.io_input_rate()
+                            .map_or("Unavailable".into(), |r| format!("{r} Hz")),
+                        self.generator.rate
+                    ));
+                }
+                ui.label(RichText::new(if rates.is_empty() {
+                    "No common rate for these devices and output format. Use separate sample rates."
+                } else {
+                    "Applies to both while stopped. Held results keep their rate."
+                }).small().color(MUTED));
+            }
+        });
+    }
+
+    fn io_section(&mut self, ui: &mut egui::Ui, output: bool) {
+        egui::Frame::group(ui.style()).show(ui, |ui| {
+            ui.set_min_width(ui.available_width());
+            ui.heading(if output { "Output" } else { "Input" });
+            ui.separator();
+            if output {
+                self.output_controls(ui);
+            } else {
+                self.input_controls(ui);
+            }
+        });
+    }
+
     pub(super) fn input_controls(&mut self, ui: &mut egui::Ui) {
+        ui.add_enabled_ui(self.io_input_editable(), |ui| self.input_settings(ui));
+    }
+
+    fn input_settings(&mut self, ui: &mut egui::Ui) {
         let old_source = self.source;
         ui.add_enabled_ui(!self.busy && self.pending_stop.is_none(), |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.selectable_value(&mut self.source, Source::Live, "Audio input");
                 ui.selectable_value(&mut self.source, Source::Software, "Software Loopback");
-                ui.selectable_value(&mut self.source, Source::Generator, "Generator loopback");
+                ui.add_enabled_ui(self.generator.target == output::Target::Internal, |ui| {
+                    ui.selectable_value(&mut self.source, Source::Generator, "Generator loopback");
+                })
+                .response
+                .on_hover_text("Available with the Internal loopback output device.");
             });
         });
         if old_source != self.source {
@@ -21,15 +266,10 @@ impl ScopeApp {
         }
         if self.source == Source::Generator {
             ui.label(
-                RichText::new("2ch internal connection · Start input and output separately.")
+                RichText::new("OUT 1 → CH 1 · OUT 2 → CH 2 · Start input and output separately.")
                     .small()
                     .color(MUTED),
             );
-            if ui.button("Open Generator").clicked() {
-                self.presentation
-                    .apply(Action::OpenSingle(Instrument::Generator));
-                self.shell.io = None;
-            }
         }
         #[cfg(feature = "qa")]
         if self.demo_enabled {
@@ -74,40 +314,42 @@ impl ScopeApp {
                 self.calibration.clear_input();
                 self.requested_sample_rate = None;
             }
-            setting_label(ui, "SAMPLE RATE");
             let previous_rate = self.requested_sample_rate;
-            ui.add_enabled_ui(!self.busy && !self.devices.is_empty(), |ui| {
-                egui::ComboBox::from_id_salt("input_sample_rate")
-                    .width(ui.available_width())
-                    .selected_text(self.input_rate_label())
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(
-                            &mut self.requested_sample_rate,
-                            None,
-                            "Device default",
-                        );
-                        if let Some(device) = self.devices.get(self.selected) {
-                            for &rate in &device.sample_rates {
-                                ui.selectable_value(
-                                    &mut self.requested_sample_rate,
-                                    Some(rate),
-                                    format!("{} kHz", rate as f64 / 1000.0),
-                                );
+            if self.shell.separate_io_rates {
+                setting_label(ui, "SAMPLE RATE");
+                ui.add_enabled_ui(!self.busy && !self.devices.is_empty(), |ui| {
+                    egui::ComboBox::from_id_salt("input_sample_rate")
+                        .width(ui.available_width())
+                        .selected_text(self.input_rate_label())
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(
+                                &mut self.requested_sample_rate,
+                                None,
+                                "Device default",
+                            );
+                            if let Some(device) = self.devices.get(self.selected) {
+                                for &rate in &device.sample_rates {
+                                    ui.selectable_value(
+                                        &mut self.requested_sample_rate,
+                                        Some(rate),
+                                        format!("{} kHz", rate as f64 / 1000.0),
+                                    );
+                                }
                             }
-                        }
-                    });
-            });
-            ui.label(
-                RichText::new("Supported device rates · up to 768 kHz")
-                    .small()
-                    .color(MUTED),
-            );
-            if !self.running() {
+                        });
+                });
                 ui.label(
-                    RichText::new("Rate changes apply on Start. Held results keep their rate.")
+                    RichText::new("Supported device rates · up to 768 kHz")
                         .small()
                         .color(MUTED),
                 );
+                if !self.running() {
+                    ui.label(
+                        RichText::new("Rate changes apply on Start. Held results keep their rate.")
+                            .small()
+                            .color(MUTED),
+                    );
+                }
             }
             if previous_rate != self.requested_sample_rate
                 && let Some(input) = &mut self.restored_input
@@ -119,18 +361,6 @@ impl ScopeApp {
             {
                 self.start();
             }
-        }
-        if self.source == Source::Live
-            && ui
-                .add_enabled(
-                    !self.busy && self.capture.is_none(),
-                    egui::Button::new("Refresh devices"),
-                )
-                .clicked()
-        {
-            self.busy = true;
-            self.error = None;
-            self.audio.send(Command::Refresh);
         }
         #[cfg(feature = "qa")]
         if self.source.is_demo() {
@@ -216,11 +446,9 @@ impl ScopeApp {
     }
 
     pub(super) fn output_controls(&mut self, ui: &mut egui::Ui) {
-        let input_running = self.running() || self.pending_stop.is_some();
-        let restoring =
-            self.workspace_restoring || self.settings_task == Some(SettingsTask::Restore);
+        let selectable = self.io_editable();
         let g = &mut self.generator;
-        let selectable = g.stopped() && !input_running && !restoring;
+        let separate_rates = self.shell.separate_io_rates;
         ui.add_enabled_ui(selectable, |ui| {
             setting_label(ui, "OUTPUT DEVICE");
             let mut selected = g.target.clone();
@@ -244,33 +472,18 @@ impl ScopeApp {
                 });
             if selected != g.target {
                 if selected == output::Target::Internal { rate = 48000; }
-                let mut settings = g.settings;
-                for signal in &mut settings.signals {
-                    if signal.output_channel.is_some_and(|ch| ch >= selected.channels()) {
-                        signal.output_channel = None;
-                        signal.enabled = false;
-                    }
-                }
+                let settings = settings_for_output_channels(g.settings, selected.channels());
                 if let Err(e) = g.select(selected, rate, settings) { g.error = Some(e); }
             }
-            setting_label(ui, "SAMPLE RATE / CHANNELS / PCM");
-            let mut config = output::device::Config {
-                rate: g.rate, channels: g.target.channels() as u16,
-                pcm: match &g.target { output::Target::Audio { pcm, .. } => *pcm, _ => output::device::Pcm::F64 },
-            };
+            setting_label(ui, if separate_rates { "SAMPLE RATE / CHANNELS / PCM" } else { "CHANNELS / PCM" });
+            let mut config = output_config(g);
             let before = config;
             egui::ComboBox::from_id_salt("generator_rate")
                 .width(ui.available_width()).truncate()
-                .selected_text(format!("{} Hz · {}ch · {}", config.rate, config.channels, config.pcm.label()))
+                .selected_text(config_label(config, separate_rates))
                 .show_ui(ui, |ui| {
-                    let configs: Vec<_> = match &g.target {
-                        output::Target::Internal => output::RATES.into_iter()
-                            .map(|rate| output::device::Config { rate, ..config }).collect(),
-                        output::Target::Audio { device_id, .. } => g.devices.iter()
-                            .find(|d| &d.id == device_id).map(|d| d.configs.clone()).unwrap_or_default(),
-                    };
-                    for value in configs {
-                        ui.selectable_value(&mut config, value, format!("{} Hz · {}ch · {}", value.rate, value.channels, value.pcm.label()));
+                    for value in output_configs(g).into_iter().filter(|c| separate_rates || c.rate == g.rate) {
+                        ui.selectable_value(&mut config, value, config_label(value, separate_rates));
                     }
                 });
             if config != before {
@@ -278,10 +491,9 @@ impl ScopeApp {
                 if let output::Target::Audio { channels, pcm, .. } = &mut target {
                     *channels = config.channels; *pcm = config.pcm;
                 }
-                if let Err(e) = g.select(target, config.rate, g.settings) { g.error = Some(e); }
+                let settings = settings_for_output_channels(g.settings, target.channels());
+                if let Err(e) = g.select(target, config.rate, settings) { g.error = Some(e); }
             }
-            if ui.button("Refresh outputs").clicked()
-                && let Err(e) = g.worker.refresh() { g.error = Some(e); }
         });
         if !selectable {
             ui.label(
@@ -290,44 +502,52 @@ impl ScopeApp {
                     .color(MUTED),
             );
         }
-        setting_label(ui, "OUTPUT ROUTING");
-        let mut settings = g.settings;
-        ui.add_enabled_ui(g.stopped() && !restoring, |ui| {
-            for i in 0..settings.signals.len() {
-                ui.horizontal(|ui| {
-                    ui.colored_label(
-                        if i == 0 { GREEN } else { BLUE },
-                        format!("GEN {}", settings.signals[i].id),
-                    );
-                    super::generator_panel::routing_selector(
-                        ui,
-                        &mut settings,
-                        i,
-                        g.target.channels(),
-                    );
-                });
-            }
-        });
-        if settings != g.settings {
-            g.configure(settings);
-        }
-        ui.separator();
-        if ui.add_enabled(!input_running && !self.busy && !restoring && g.target == output::Target::Internal,
-            egui::Button::new("Observe Generator").selected(self.source == Source::Generator))
-            .on_hover_text("Select the generated f64 samples as the shared 2ch input. Start input and output separately.").clicked()
-            && self.source != Source::Generator {
-                self.source = Source::Generator;
-                self.switch_source();
-        }
         if self.source == Source::Generator && self.generator.target != output::Target::Internal {
             self.source = Source::Live;
             self.switch_source();
         }
-        if ui.button("Open Generator").clicked() {
-            self.presentation
-                .apply(Action::OpenSingle(Instrument::Generator));
-            self.shell.io = None;
-        }
         self.generator_reset(ui);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn common_rates_require_both_devices_and_preserve_output_channels_and_pcm() {
+        let current = output::device::Config {
+            rate: 48_000,
+            channels: 2,
+            pcm: output::device::Pcm::F64,
+        };
+        let configs = [
+            current,
+            output::device::Config {
+                rate: 96_000,
+                ..current
+            },
+            output::device::Config {
+                rate: 96_000,
+                ..current
+            },
+            output::device::Config {
+                rate: 192_000,
+                channels: 16,
+                ..current
+            },
+            output::device::Config {
+                rate: 192_000,
+                pcm: output::device::Pcm::F32,
+                ..current
+            },
+        ];
+        assert_eq!(
+            common_rates(&[44_100, 48_000, 96_000, 192_000], &configs, current),
+            [48_000, 96_000]
+        );
+        assert!(common_rates(&[44_100], &configs, current).is_empty());
+        assert!(common_rates(&[], &configs, current).is_empty());
+        assert!(common_rates(&[48_000], &[], current).is_empty());
     }
 }
