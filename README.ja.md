@@ -55,6 +55,10 @@ PCとオーディオインターフェースを、信号を探究する測定ラ
 
 *現行RustのQAビルドで撮影。Scope／Spectrumは合成信号、Lock-inはSoftware Loopbackを使っています。操作画面の紹介であり、物理デバイスの精度を示す画像ではありません。*
 
+[![開発中のRust版が出力したScope／SpectrumのPNGレポート](.github/assets/readme/rust-results-report.png)](.github/assets/readme/rust-results-report.png)
+
+*開発中のRust版で、既知のテスト信号から生成したScope／SpectrumのPNGレポート。波形・スペクトル・数値・取得条件を1枚の画像にまとめて保存できます。*
+
 ## これからのMeasureLab
 
 次の目標は、入力から結果の保存まで、安心して使える小さなオーディオ測定ラボを仕上げることです。[実装計画](guide/rust/PLAN.md) は、その土台から段階的に広げていきます。
