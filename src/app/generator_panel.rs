@@ -1436,13 +1436,14 @@ fn generator_card(
                 {
                     g.selected = index;
                 }
-                ui.add_enabled_ui(g.stopped(), |ui| {
-                    routing_selector(ui, settings, index, g.target.channels());
-                });
-                let s = &mut settings.signals[index];
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.spacing_mut().item_spacing.x = 8.0;
+                    let s = &mut settings.signals[index];
                     ui.add_enabled_ui(s.output_channel.is_some(), |ui| {
                         ui.checkbox(&mut s.enabled, "ON");
+                    });
+                    ui.add_enabled_ui(g.stopped(), |ui| {
+                        routing_selector(ui, settings, index, g.target.channels());
                     });
                 });
             });
