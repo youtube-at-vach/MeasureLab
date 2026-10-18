@@ -684,6 +684,17 @@ impl ScopeApp {
         driver.frame(self, vec![]);
         driver.frame(self, vec![]);
 
+        let shared_input_labels = driver
+            .output
+            .shapes
+            .iter()
+            .filter(|shape| {
+                matches!(&shape.shape, egui::Shape::Text(text) if matches!(text.galley.text(),
+                    "■ Input stopped" | "▶ Input live" | "… Opening" | "… Finishing"))
+            })
+            .count();
+        assert_eq!(shared_input_labels, 1, "Monitor shares one input status");
+
         let scope_display = (self.enabled, self.scope_selected, self.scope_vertical);
         let readings = self.scope_readings;
         for index in 0..SCOPE_CHANNELS {
@@ -946,6 +957,18 @@ impl ScopeApp {
         }
         driver.resize(self, vec2(720.0, 528.0), 1.25, 1.0);
         self.presentation.details_visible = true;
+        let menu_title = self
+            .presentation
+            .selected()
+            .map_or("Console".into(), |i| format!("Instrument: {}", i.name()));
+        driver.click(self, &menu_title)?;
+        driver.click(self, "Generator")?;
+        assert_eq!(
+            self.presentation.screen,
+            Screen::Single(Instrument::Generator)
+        );
+        driver.frame(self, vec![]);
+        assert!(!driver.ctx.any_popup_open());
         for (instrument, key) in Instrument::ALL.into_iter().zip([
             egui::Key::Num1,
             egui::Key::Num2,
