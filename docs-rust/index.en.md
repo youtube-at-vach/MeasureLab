@@ -14,7 +14,7 @@ Binary packages are in preparation and remain unpublished. See [Install a binary
 | Spectrogram / XY | Time-frequency view and synchronous two-channel XY display |
 | Save and compare | Channel calibration and versioned settings; held Scope/Spectrum results in JSON, CSV and PNG; reference JSON comparison |
 | Software Loopback | Known gain, phase, delay and noise through the common input path without hardware |
-| Generator (experimental) | Two sine signals with live frequency/amplitude/phase controls; actual generated f64 samples through the common input path. Output up to two signals internally or through a CPAL audio device, with device/format selection and OFF restoration |
+| Generator (experimental) | Add, remove, duplicate and reorder up to 16 cards; select Sine/Square/Triangle/Noise and independent OUT assignments. Internal 2ch or CPAL up to 16ch, f64 generation, live numerical edits and OFF restoration. Dynamic cards and new waveforms await hardware/manual acceptance |
 | Lock-in (experimental) | Fundamental-frequency measurement using synchronous REF and response; X/Y, R/θ, Gain, settling and REF status; JSON/CSV with conditions and reference comparison |
 | Synchronous comparison (experimental) | Any REF/response pair; auto/cross PSD, H1 gain/phase, coherence, wrapped phase delay and conditional phase-slope fit; held JSON/CSV and reference comparison |
 

@@ -20,7 +20,7 @@ use std::{
     thread::{self, JoinHandle},
 };
 
-pub const VERSION: u32 = 8;
+pub const VERSION: u32 = 9;
 pub const MAX_BYTES: usize = 64 * 1024;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -1111,6 +1111,19 @@ mod tests {
         });
         doc.workspace.presentation.screen = Screen::Single(InstrumentId::Generator);
         assert_eq!(Document::decode(&doc.encode().unwrap()).unwrap(), doc);
+        let mut legacy = serde_json::to_value(&doc).unwrap();
+        legacy["version"] = 8.into();
+        let legacy_signals = &mut legacy["measurement"]["generator"]["signals"];
+        legacy_signals.as_object_mut().unwrap().remove("next_id");
+        for signal in legacy_signals["signals"].as_array_mut().unwrap() {
+            for key in ["id", "waveform", "noise_seed"] {
+                signal.as_object_mut().unwrap().remove(key);
+            }
+        }
+        assert_eq!(
+            Document::decode(&serde_json::to_vec(&legacy).unwrap()).unwrap(),
+            doc
+        );
         let mut invalid = doc.clone();
         invalid.measurement.input.sample_rate = Some(96_000);
         assert!(invalid.validate().is_err());
@@ -1134,6 +1147,38 @@ mod tests {
         );
         doc.version = 1;
         assert!(doc.validate().is_err());
+    }
+
+    #[test]
+    fn dynamic_generator_settings_roundtrip_all_cards_waveforms_ids_and_empty_list() {
+        let mut doc = fixture();
+        let mut signals = crate::generator::Settings::default();
+        while signals.signals.len() < 16 {
+            signals.add(None, 16).unwrap();
+        }
+        for (i, signal) in signals.signals.iter_mut().enumerate() {
+            signal.waveform = crate::generator::Waveform::ALL[i % 4];
+            signal.noise_seed = i as u64 + 1;
+            signal.enabled = true;
+        }
+        signals.signals.swap(0, 15);
+        doc.measurement.generator = Some(crate::output::Saved {
+            target: crate::output::Target::Audio {
+                device_id: "test:16ch".into(),
+                device_name: "16ch".into(),
+                channels: 16,
+                pcm: crate::output::device::Pcm::F64,
+            },
+            nominal_sample_rate: 48000,
+            signals,
+            use_as_input: false,
+        });
+        assert_eq!(Document::decode(&doc.encode().unwrap()).unwrap(), doc);
+        while !signals.signals.is_empty() {
+            signals.signals.remove(0);
+        }
+        doc.measurement.generator.as_mut().unwrap().signals = signals;
+        assert_eq!(Document::decode(&doc.encode().unwrap()).unwrap(), doc);
     }
 
     #[test]

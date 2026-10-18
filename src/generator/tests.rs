@@ -59,13 +59,222 @@ fn defaults_restore_silent_and_mono_has_no_second_route() {
 }
 
 #[test]
+fn cards_keep_identity_and_routing_across_duplicate_remove_reorder_and_restore() {
+    let mut settings = tones(750.0);
+    settings.signals[0].waveform = Waveform::Triangle;
+    let index = settings.add(Some(0), 16).unwrap();
+    assert_eq!(index, 2);
+    assert_eq!(settings.signals[2].id, 3);
+    assert_eq!(settings.signals[2].output_channel, Some(2));
+    assert_eq!(settings.signals[2].waveform, Waveform::Triangle);
+    assert!(!settings.signals[2].enabled);
+    settings.signals.remove(1);
+    settings.signals.swap(0, 1);
+    settings.validate(48000, 16).unwrap();
+    assert_eq!(
+        (settings.signals[0].id, settings.signals[0].output_channel),
+        (3, Some(2))
+    );
+    assert_eq!(
+        (settings.signals[1].id, settings.signals[1].output_channel),
+        (1, Some(0))
+    );
+    let mut restored: Settings =
+        serde_json::from_slice(&serde_json::to_vec(&settings).unwrap()).unwrap();
+    assert_eq!(restored, settings);
+    let i = restored.add(None, 16).unwrap();
+    assert_eq!(
+        (restored.signals[i].id, restored.signals[i].output_channel),
+        (4, Some(1))
+    );
+    while restored.signals.len() < SIGNALS {
+        restored.add(None, 16).unwrap();
+    }
+    let before = restored;
+    assert_eq!(restored.add(None, 16), Err(Error::SignalCount));
+    assert_eq!(restored, before);
+    let mut duplicate = restored;
+    duplicate.signals[15].output_channel = Some(0);
+    assert_eq!(duplicate.validate(48000, 16), Err(Error::DuplicateRouting));
+    duplicate = restored;
+    duplicate.signals[15].id = duplicate.signals[0].id;
+    assert_eq!(duplicate.validate(48000, 16), Err(Error::SignalIdentity));
+    let mut engine = Engine::new(48000, 16, settings, 0).unwrap();
+    engine.start(settings, 1).unwrap();
+    advance(&mut engine, 600);
+    let frame = engine.next_frame().unwrap();
+    assert!(
+        (frame.samples[0]
+            - 0.1 * Waveform::Triangle.periodic(600.0 * 750.0 / 48000.0, 750.0, 48000))
+        .abs()
+            < 1e-13
+    );
+    assert_eq!(frame.samples[1..], [0.0; 15]);
+    engine.stop().unwrap();
+    advance(&mut engine, 481);
+    let mut empty = settings;
+    while !empty.signals.is_empty() {
+        empty.signals.remove(0);
+    }
+    engine.configure(empty, 2).unwrap();
+    assert_eq!(engine.start(empty, 3), Err(Error::NoEnabledSignals));
+    assert_eq!(empty.add(None, 16), Ok(0));
+    assert_eq!(empty.signals[0].id, 4);
+}
+
+#[test]
+fn sixteen_independent_cards_render_to_the_assigned_output_only() {
+    let mut settings = Settings::default();
+    while settings.signals.len() < SIGNALS {
+        settings.add(None, 16).unwrap();
+    }
+    for (i, signal) in settings.signals.iter_mut().enumerate() {
+        signal.enabled = true;
+        signal.frequency_hz = 100.0 * (i + 1) as f64;
+        signal.output_channel = Some(15 - i);
+        signal.phase_degrees = i as f64;
+    }
+    let mut engine = Engine::new(48000, 16, settings, 0).unwrap();
+    engine.start(settings, 1).unwrap();
+    for n in 0..1024 {
+        let frame = engine.next_frame().unwrap();
+        for (i, s) in settings.signals.iter().enumerate() {
+            let expected = fade(n, 480) * wave(48000, s.frequency_hz, n, 0.1, s.phase_degrees);
+            assert!((frame.samples[15 - i] - expected).abs() < 1e-13);
+        }
+    }
+    let before = engine.status();
+    for mutation in [0, 1, 2, 3] {
+        let mut changed = settings;
+        match mutation {
+            0 => changed.signals.swap(0, 1),
+            1 => changed.signals.remove(0),
+            2 => changed.signals[0].waveform = Waveform::Square,
+            _ => changed.signals[0].noise_seed = 2,
+        }
+        assert_eq!(engine.configure(changed, 2), Err(Error::RoutingWhileActive));
+        assert_eq!(engine.status(), before);
+    }
+}
+
+#[test]
+fn legacy_two_signal_settings_and_result_clocks_remain_readable() {
+    let mut json = serde_json::to_value(tones(750.0)).unwrap();
+    json.as_object_mut().unwrap().remove("next_id");
+    for s in json["signals"].as_array_mut().unwrap() {
+        for key in ["id", "waveform", "noise_seed"] {
+            s.as_object_mut().unwrap().remove(key);
+        }
+    }
+    let settings: Settings = serde_json::from_value(json).unwrap();
+    assert_eq!(settings, tones(750.0));
+    let engine = Engine::new(48000, 2, settings, 0).unwrap();
+    let mut old = serde_json::to_value(engine.status()).unwrap();
+    old["carrier_phase_cycles"] = serde_json::json!([0.0, 0.0]);
+    old["transition_end"] = serde_json::json!([0, 0]);
+    assert_eq!(
+        serde_json::from_value::<Status>(old).unwrap(),
+        engine.status()
+    );
+    let mut json = serde_json::to_value(settings).unwrap();
+    let cards = json["signals"].as_array_mut().unwrap();
+    let first = cards[0].clone();
+    cards.resize(17, first);
+    assert!(serde_json::from_value::<Settings>(json).is_err());
+}
+
+#[test]
+fn periodic_waveforms_match_independent_fourier_definitions_and_stay_below_full_scale() {
+    for rate in [44100, 48000, 192000] {
+        for hz in [0.1, 1000.0, 0.15 * rate as f64, 0.449 * rate as f64] {
+            let harmonics: Vec<_> = (1..=31)
+                .step_by(2)
+                .filter(|&k| k as f64 * hz < 0.45 * rate as f64)
+                .collect();
+            for n in 0..1024 {
+                let cycles = n as f64 / 1024.0;
+                let square: f64 = harmonics
+                    .iter()
+                    .map(|&k| {
+                        4.0 / PI
+                            * (1.0 - k as f64 / (2 * harmonics.len()) as f64)
+                            * (TAU * k as f64 * cycles).sin()
+                            / k as f64
+                    })
+                    .sum();
+                let norm: f64 = harmonics.iter().map(|&k| 1.0 / (k * k) as f64).sum();
+                let triangle: f64 = harmonics
+                    .iter()
+                    .map(|&k| (TAU * k as f64 * cycles).cos() / (k * k) as f64 / norm)
+                    .sum();
+                for (kind, expected) in [(Waveform::Square, square), (Waveform::Triangle, triangle)]
+                {
+                    let actual = kind.periodic(cycles, hz, rate);
+                    assert!(
+                        (actual - expected).abs() < 2e-14,
+                        "{kind:?}: {actual} != {expected}"
+                    );
+                    assert!(actual.abs() <= 1.0 + 1e-14);
+                }
+            }
+        }
+    }
+    // Preserve the Python triangle's phase convention: +peak at 0°, -peak at 180°.
+    assert!((Waveform::Triangle.periodic(0.0, 1000.0, 48000) - 1.0).abs() < 1e-14);
+    assert!((Waveform::Triangle.periodic(0.5, 1000.0, 48000) + 1.0).abs() < 1e-14);
+    for waveform in [Waveform::Square, Waveform::Triangle] {
+        let mut settings = tones(1000.0);
+        settings.signals[0].waveform = waveform;
+        settings.signals[0].amplitude_dbfs = 0.0;
+        settings.signals[1].enabled = false;
+        let mut engine = Engine::new(48000, 2, settings, 0).unwrap();
+        engine.start(settings, 1).unwrap();
+        for n in 0..4800 {
+            let frame = engine.next_frame().unwrap();
+            let expected = waveform.periodic(n as f64 / 48.0, 1000.0, 48000) * fade(n, 480);
+            assert!((frame.samples[0] - expected).abs() < 1e-12);
+            assert_eq!(frame.samples[1], 0.0);
+        }
+    }
+}
+
+#[test]
+fn white_noise_is_bounded_repeatable_and_has_the_expected_mean_and_power() {
+    let mut settings = tones(1000.0);
+    settings.signals[0].waveform = Waveform::Noise;
+    settings.signals[0].amplitude_dbfs = 0.0;
+    settings.signals[0].noise_seed = 42;
+    settings.signals[1].enabled = false;
+    let mut a = Engine::new(48000, 2, settings, 0).unwrap();
+    let mut b = Engine::new(48000, 2, settings, 1_000_000).unwrap();
+    a.start(settings, 1).unwrap();
+    b.start(settings, 1).unwrap();
+    let mut sum = 0.0;
+    let mut power = 0.0;
+    for n in 0..100_000 {
+        let x = a.next_frame().unwrap().samples[0];
+        assert_eq!(x, b.next_frame().unwrap().samples[0]);
+        assert!(x.abs() <= 1.0);
+        if n >= 480 {
+            sum += x;
+            power += x * x;
+        }
+    }
+    assert!((sum / 99520.0).abs() < 0.006);
+    assert!((power / 99520.0 - 1.0 / 3.0).abs() < 0.006);
+    let mut invalid = settings;
+    invalid.signals[0].noise_seed = 0;
+    assert_eq!(invalid.validate(48000, 2), Err(Error::Waveform(0)));
+}
+
+#[test]
 fn validation_rejects_nonfinite_ranges_and_routes_without_mutating_applied_state() {
     let settings = tones(997.1);
     let mut engine = Engine::new(48000, 2, settings, 0).unwrap();
     engine.start(settings, 1).unwrap();
     advance(&mut engine, 600);
     let before = engine.status();
-    for i in 0..SIGNALS {
+    for i in 0..settings.signals.len() {
         for bad in [
             f64::NAN,
             f64::INFINITY,

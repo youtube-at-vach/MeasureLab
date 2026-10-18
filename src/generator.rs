@@ -1,19 +1,31 @@
-//! Two independent sine signals on one integer output clock (stage 4.5b).
+//! Independent generator cards on one integer output clock.
 //! This core owns no device, thread, UI, or measurement state. Construction may
 //! allocate in the control adapter; rendering and applying settings never do.
 use crate::{audio::MAX_SAMPLE_RATE, channel::ChannelId, signal::Samples};
 use std::f64::consts::{PI, TAU};
 
 pub mod control;
+mod signals;
+mod waveform;
+pub use signals::Signals;
+pub(crate) use signals::clock_array;
+pub use waveform::Waveform;
 #[cfg(test)]
 mod tests;
 
-pub const SIGNALS: usize = 2;
+pub const SIGNALS: usize = 16;
 pub const TRANSITION_SECONDS: f64 = 0.010;
 
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Signal {
+    /// Stable card identity, never an output channel or display position.
+    #[serde(default)]
+    pub id: u64,
+    #[serde(default)]
+    pub waveform: Waveform,
+    #[serde(default = "default_seed")]
+    pub noise_seed: u64,
     pub frequency_hz: f64,
     /// Peak reference: 0 dBFS = 1 FS peak, sine RMS = peak / sqrt(2).
     pub amplitude_dbfs: f64,
@@ -27,6 +39,9 @@ pub struct Signal {
 impl Default for Signal {
     fn default() -> Self {
         Self {
+            id: 0,
+            waveform: Waveform::Sine,
+            noise_seed: default_seed(),
             frequency_hz: 1000.0,
             amplitude_dbfs: -20.0,
             phase_degrees: 0.0,
@@ -34,6 +49,12 @@ impl Default for Signal {
             output_channel: None,
         }
     }
+}
+fn default_seed() -> u64 {
+    1
+}
+fn default_next_id() -> u64 {
+    3
 }
 
 impl Signal {
@@ -45,7 +66,9 @@ impl Signal {
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Settings {
-    pub signals: [Signal; SIGNALS],
+    pub signals: Signals,
+    #[serde(default = "default_next_id")]
+    pub next_id: u64,
 }
 
 impl Default for Settings {
@@ -57,16 +80,40 @@ impl Default for Settings {
 impl Settings {
     /// The second signal stays unassigned on a mono device. Output is OFF.
     pub fn for_channels(channels: usize) -> Self {
-        Self {
-            signals: std::array::from_fn(|i| Signal {
-                output_channel: (i < channels).then_some(i),
-                ..Signal::default()
-            }),
+        let mut signals = Signals::empty();
+        for i in 0..2 {
+            signals
+                .push(Signal {
+                    id: i as u64 + 1,
+                    output_channel: (i < channels).then_some(i),
+                    ..Signal::default()
+                })
+                .unwrap();
         }
+        Self {
+            signals,
+            next_id: 3,
+        }
+    }
+
+    /// New/duplicated cards are OFF and use a free output, or remain unassigned.
+    pub fn add(&mut self, duplicate: Option<usize>, channels: usize) -> Result<usize, Error> {
+        let next_id = self.next_id.checked_add(1).ok_or(Error::CounterExhausted)?;
+        let mut signal = duplicate.map_or_else(Signal::default, |i| self.signals[i]);
+        signal.id = self.next_id;
+        signal.enabled = false;
+        signal.output_channel =
+            (0..channels).find(|&ch| !self.signals.iter().any(|s| s.output_channel == Some(ch)));
+        self.signals.push(signal)?;
+        self.next_id = next_id;
+        Ok(self.signals.len() - 1)
     }
 
     /// Fixed-size errors can also be returned at the real-time boundary.
     pub fn validate(self, rate: u32, channels: usize) -> Result<(), Error> {
+        if self.next_id == 0 {
+            return Err(Error::SignalIdentity);
+        }
         if !(1..=MAX_SAMPLE_RATE).contains(&rate) {
             return Err(Error::SampleRate);
         }
@@ -74,6 +121,12 @@ impl Settings {
             return Err(Error::ChannelCount);
         }
         for (i, s) in self.signals.iter().enumerate() {
+            if s.id == 0
+                || s.id >= self.next_id
+                || self.signals[..i].iter().any(|old| old.id == s.id)
+            {
+                return Err(Error::SignalIdentity);
+            }
             if !s.frequency_hz.is_finite()
                 || s.frequency_hz < 0.1
                 || s.frequency_hz >= rate as f64 * 0.45
@@ -86,16 +139,21 @@ impl Settings {
             if !s.phase_degrees.is_finite() || !(-180.0..=180.0).contains(&s.phase_degrees) {
                 return Err(Error::Phase(i));
             }
+            if s.noise_seed == 0 {
+                return Err(Error::Waveform(i));
+            }
             if s.output_channel.is_some_and(|ch| ch >= channels)
                 || (s.enabled && s.output_channel.is_none())
             {
                 return Err(Error::Routing(i));
             }
-        }
-        if self.signals[0].output_channel.is_some()
-            && self.signals[0].output_channel == self.signals[1].output_channel
-        {
-            return Err(Error::DuplicateRouting);
+            if s.output_channel.is_some()
+                && self.signals[..i]
+                    .iter()
+                    .any(|old| old.output_channel == s.output_channel)
+            {
+                return Err(Error::DuplicateRouting);
+            }
         }
         Ok(())
     }
@@ -103,6 +161,9 @@ impl Settings {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Error {
+    SignalCount,
+    SignalIdentity,
+    Waveform(usize),
     SampleRate,
     ChannelCount,
     Frequency(usize),
@@ -126,31 +187,42 @@ pub enum Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::SignalCount => write!(f, "Generator supports at most 16 cards"),
+            Self::SignalIdentity => write!(
+                f,
+                "Generator card IDs must be unique and precede the next ID"
+            ),
+            Self::Waveform(i) => {
+                write!(f, "Card at position {}: noise seed must be nonzero", i + 1)
+            }
             Self::SampleRate => write!(f, "Unsupported nominal output sample rate"),
             Self::ChannelCount => write!(f, "Output requires 1–16 channels"),
             Self::Frequency(i) => write!(
                 f,
-                "GEN {}: frequency must be >= 0.1 Hz and < 0.45 × output Fs",
+                "Card at position {}: frequency must be >= 0.1 Hz and < 0.45 × output Fs",
                 i + 1
             ),
             Self::Amplitude(i) => write!(
                 f,
-                "GEN {}: amplitude must be finite and within -120–0 dBFS peak",
+                "Card at position {}: amplitude must be finite and within -120–0 dBFS peak",
                 i + 1
             ),
             Self::Phase(i) => write!(
                 f,
-                "GEN {}: phase must be finite and within -180–180°",
+                "Card at position {}: phase must be finite and within -180–180°",
                 i + 1
             ),
             Self::Routing(i) => write!(
                 f,
-                "GEN {}: output channel is unavailable or unassigned",
+                "Card at position {}: output channel is unavailable or unassigned",
                 i + 1
             ),
             Self::DuplicateRouting => write!(f, "Two signals cannot use the same output channel"),
             Self::RoutingWhileActive => {
-                write!(f, "Stop output before changing channel assignments")
+                write!(
+                    f,
+                    "Stop output before changing cards, waveform details or channel assignments"
+                )
             }
             Self::NoEnabledSignals => {
                 write!(f, "Select at least one signal before starting output")
@@ -196,8 +268,10 @@ pub struct Status {
     pub applied_sample: u64,
     /// Carrier phases at applied_sample, before advancing that frame. Retained
     /// with the revision to describe independent frequency histories.
+    #[serde(deserialize_with = "clock_array")]
     pub carrier_phase_cycles: [f64; SIGNALS],
     /// Exclusive transition endpoints; the sample at each endpoint is stable.
+    #[serde(deserialize_with = "clock_array")]
     pub transition_end: [u64; SIGNALS],
     pub next_sample: u64,
     pub stop_sample: Option<u64>,
@@ -268,6 +342,7 @@ struct Oscillator {
     compensation: f64,
     amplitude: Ramp,
     phase: Ramp,
+    noise: u64,
 }
 
 impl Oscillator {
@@ -342,11 +417,18 @@ impl Engine {
                 stopped_at: Some(first_sample),
                 settings,
             },
-            oscillators: settings.signals.map(|s| Oscillator {
+            oscillators: std::array::from_fn(|i| Oscillator {
                 carrier: 0.0,
                 compensation: 0.0,
                 amplitude: Ramp::constant(0.0, first_sample),
-                phase: Ramp::constant(s.phase_degrees / 360.0, first_sample),
+                phase: Ramp::constant(
+                    settings
+                        .signals
+                        .get(i)
+                        .map_or(0.0, |s| s.phase_degrees / 360.0),
+                    first_sample,
+                ),
+                noise: settings.signals.get(i).map_or(1, |s| s.noise_seed),
             }),
         })
     }
@@ -391,16 +473,33 @@ impl Engine {
         self.check_revision(settings, revision)?;
         let n = self.status.next_sample;
         let rate = self.status.nominal_sample_rate;
+        if self.status.state != State::Stopped
+            && (settings.signals.len() != self.status.settings.signals.len()
+                || settings
+                    .signals
+                    .iter()
+                    .zip(&self.status.settings.signals)
+                    .any(|(s, old)| {
+                        s.id != old.id
+                            || s.output_channel != old.output_channel
+                            || s.waveform != old.waveform
+                            || s.noise_seed != old.noise_seed
+                    }))
+        {
+            return Err(Error::RoutingWhileActive);
+        }
         let mut next = self.oscillators;
-        for (i, o) in next.iter_mut().enumerate() {
-            let old = self.status.settings.signals[i];
-            let s = settings.signals[i];
+        for (i, (o, &s)) in next.iter_mut().zip(settings.signals.iter()).enumerate() {
+            let old = self
+                .status
+                .settings
+                .signals
+                .get(i)
+                .copied()
+                .unwrap_or_default();
             if self.status.state == State::Stopped {
                 o.phase = Ramp::constant(s.phase_degrees / 360.0, n);
             } else {
-                if old.output_channel != s.output_channel {
-                    return Err(Error::RoutingWhileActive);
-                }
                 let target = if s.enabled { s.amplitude_peak() } else { 0.0 };
                 if target != o.amplitude.to {
                     o.amplitude = Ramp::new(o.amplitude.at(n), target, n, self.length())?;
@@ -444,7 +543,7 @@ impl Engine {
         Ok(())
     }
 
-    /// Explicit Start resets both carriers at the same integer boundary and
+    /// Explicit Start resets all carriers at the same integer boundary and
     /// increments the output generation without rewinding the sample clock.
     pub fn start(&mut self, settings: Settings, revision: u64) -> Result<(), Error> {
         self.check_revision(settings, revision)?;
@@ -461,7 +560,7 @@ impl Engine {
             .checked_add(1)
             .ok_or(Error::CounterExhausted)?;
         let mut next = self.oscillators;
-        for (o, s) in next.iter_mut().zip(settings.signals) {
+        for (o, s) in next.iter_mut().zip(&settings.signals) {
             *o = Oscillator {
                 carrier: 0.0,
                 compensation: 0.0,
@@ -472,6 +571,7 @@ impl Engine {
                     self.length(),
                 )?,
                 phase: Ramp::constant(s.phase_degrees / 360.0, n),
+                noise: s.noise_seed,
             };
         }
         self.oscillators = next;
@@ -483,7 +583,7 @@ impl Engine {
         Ok(())
     }
 
-    /// Align the two carrier histories smoothly. The configured phase offsets
+    /// Align the carrier histories smoothly. The configured phase offsets
     /// remain intact; different frequencies will subsequently diverge again.
     pub fn align_phases(&mut self, revision: u64) -> Result<(), Error> {
         self.configure_and_align(self.status.settings, revision)
@@ -549,16 +649,25 @@ impl Engine {
         for (o, s) in self
             .oscillators
             .iter_mut()
-            .zip(self.status.settings.signals)
+            .zip(&self.status.settings.signals)
         {
             let amplitude = o.amplitude.at(n);
+            let rate = self.status.nominal_sample_rate;
+            let hz = s.frequency_hz;
+            // Noise advances while OFF too; every explicit Start replays the seed.
+            let value = if s.waveform == Waveform::Noise {
+                waveform::noise(&mut o.noise)
+            } else if amplitude != 0.0 {
+                s.waveform.periodic(o.carrier + o.phase.at(n), hz, rate)
+            } else {
+                0.0
+            };
             if amplitude != 0.0
                 && let Some(ch) = s.output_channel
             {
-                frame.samples[ch] =
-                    amplitude * (TAU * (o.carrier + o.phase.at(n)).rem_euclid(1.0)).sin();
+                frame.samples[ch] = amplitude * value;
             }
-            o.advance(s.frequency_hz / self.status.nominal_sample_rate as f64);
+            o.advance(hz / rate as f64);
         }
         if frame.samples.iter().any(|x| !x.is_finite()) {
             self.fail(Error::NonFiniteOutput);

@@ -91,7 +91,7 @@ impl ExternalOutput {
                     && s.output_generation == 0
                 || s.carrier_phase_cycles.iter().any(|p| !p.is_finite() || !(0.0..1.0).contains(p))
                 || [observation.control_or_output_error, match s.state { State::Error(e) => Some(e), _ => None }]
-                    .into_iter().flatten().any(|e| matches!(e, Error::Frequency(i) | Error::Amplitude(i) | Error::Phase(i) | Error::Routing(i) if i >= 2))
+                    .into_iter().flatten().any(|e| matches!(e, Error::Frequency(i) | Error::Amplitude(i) | Error::Phase(i) | Error::Routing(i) | Error::Waveform(i) if i >= crate::generator::SIGNALS))
             {
                 return Err("Invalid external output execution observation".into());
             }

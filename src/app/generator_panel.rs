@@ -17,8 +17,8 @@ pub(super) struct GeneratorUi {
     pub error: Option<String>,
     requested_id: u64,
     stop_epoch: u64,
-    texts: [[String; 3]; 2],
-    edited: [[bool; 3]; 2],
+    texts: [[String; 3]; generator::SIGNALS],
+    edited: [[bool; 3]; generator::SIGNALS],
     selected: usize,
     step: f64,
     #[cfg(feature = "qa")]
@@ -78,7 +78,7 @@ impl Default for GeneratorUi {
             requested_id: 0,
             stop_epoch: 0,
             texts: std::array::from_fn(|_| std::array::from_fn(|_| String::new())),
-            edited: [[false; 3]; 2],
+            edited: [[false; 3]; generator::SIGNALS],
             selected: 0,
             step: 1.0,
             #[cfg(feature = "qa")]
@@ -149,6 +149,10 @@ impl GeneratorUi {
                 self.rate = update.status.nominal_sample_rate;
                 if update.error.is_some() {
                     self.settings = update.status.settings;
+                    self.selected = self
+                        .selected
+                        .min(self.settings.signals.len().saturating_sub(1));
+                    self.edited = [[false; 3]; generator::SIGNALS];
                 }
             }
             if update.stop_epoch >= self.stop_epoch
@@ -177,6 +181,9 @@ impl GeneratorUi {
         self.target = target;
         self.rate = rate;
         self.settings = settings;
+        self.selected = self.selected.min(settings.signals.len().saturating_sub(1));
+        self.texts = std::array::from_fn(|_| std::array::from_fn(|_| String::new()));
+        self.edited = [[false; 3]; generator::SIGNALS];
         self.pending = true;
         self.error = None;
         Ok(())
@@ -188,12 +195,28 @@ impl GeneratorUi {
             .and_then(|()| self.worker.configure(settings))
         {
             Ok(id) => {
+                if self
+                    .settings
+                    .signals
+                    .iter()
+                    .map(|s| s.id)
+                    .ne(settings.signals.iter().map(|s| s.id))
+                {
+                    self.texts = std::array::from_fn(|_| std::array::from_fn(|_| String::new()));
+                    self.edited = [[false; 3]; generator::SIGNALS];
+                }
+                self.selected = self.selected.min(settings.signals.len().saturating_sub(1));
                 self.requested_id = id;
                 self.settings = settings;
                 self.pending = true;
                 self.error = None;
             }
-            Err(e) => self.error = Some(e),
+            Err(e) => {
+                self.selected = self
+                    .selected
+                    .min(self.settings.signals.len().saturating_sub(1));
+                self.error = Some(e);
+            }
         }
     }
     pub fn start(&mut self) {
@@ -1060,13 +1083,33 @@ impl ScopeApp {
             .small()
             .color(MUTED),
         );
-        if ui.add_enabled(!g.stopped() && !g.starting && !g.stopping && !restoring
-            && !matches!(g.status.state, generator::State::Error(_)), egui::Button::new("Align phases"))
-            .on_hover_text("Restart both carriers from the same output sample, preserving each signal's phase setting.").clicked() {
-                match g.worker.align() {
-                    Ok(id) => { g.pending = true; g.requested_id = id; }
-                    Err(e) => g.error = Some(e),
+        let mut settings = g.settings;
+        if let Some(signal) = settings.signals.get_mut(g.selected) {
+            setting_label(
+                ui,
+                &format!("GEN {} · {}", signal.id, signal.waveform.label()),
+            );
+            ui.add_enabled_ui(g.stopped() && !restoring, |ui| {
+                match signal.waveform {
+                    generator::Waveform::Noise => {
+                        ui.label("White noise · uniform · peak bounded");
+                        ui.horizontal(|ui| {
+                            ui.label("Seed");
+                            ui.add(egui::DragValue::new(&mut signal.noise_seed).range(1..=u64::MAX));
+                        });
+                        ui.label("Start replays the seed. Frequency and phase do not affect noise.");
+                    }
+                    generator::Waveform::Square | generator::Waveform::Triangle => {
+                        ui.label("Up to 16 odd harmonics below 0.45 Fs. Peak level is the full-scale ceiling; RMS depends on frequency.");
+                    }
+                    generator::Waveform::Sine => {}
                 }
+            });
+        } else {
+            ui.label("Add a signal in the Generator panel.");
+        }
+        if settings != g.settings {
+            g.configure(settings);
         }
         setting_label(ui, "APPLIED OUTPUT");
         ui.label(RichText::new(g.label()).monospace().color(g.state_color()));
@@ -1081,11 +1124,24 @@ impl ScopeApp {
                 .monospace()
                 .color(g.application_color()),
         );
-        for (i, s) in g.status.settings.signals.iter().enumerate() {
+        for (i, s) in g
+            .status
+            .settings
+            .signals
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| {
+                g.settings
+                    .signals
+                    .get(g.selected)
+                    .is_some_and(|selected| selected.id == s.id)
+            })
+        {
             ui.label(
                 RichText::new(format!(
-                    "GEN {} · {} · {}",
-                    i + 1,
+                    "GEN {} · {} · {} · {}",
+                    s.id,
+                    s.waveform.label(),
                     output_channel_label(*s),
                     if s.enabled { "ON" } else { "OFF" }
                 ))
@@ -1102,6 +1158,9 @@ impl ScopeApp {
                 "Applied: {} Hz · {} dBFS peak · {}° lead",
                 s.frequency_hz, s.amplitude_dbfs, s.phase_degrees
             ));
+            if s.waveform == generator::Waveform::Noise {
+                ui.label(format!("Applied seed {}", s.noise_seed));
+            }
         }
         ui.collapsing("Output details", |ui| {
             ui.label(format!(
@@ -1110,8 +1169,17 @@ impl ScopeApp {
             ));
             ui.label(format!("Applied sample {}", g.status.applied_sample));
             ui.label(format!(
-                "Transition ends {}, {}",
-                g.status.transition_end[0], g.status.transition_end[1]
+                "Selected transition ends {}",
+                g.settings
+                    .signals
+                    .get(g.selected)
+                    .and_then(|selected| g
+                        .status
+                        .settings
+                        .signals
+                        .iter()
+                        .position(|s| s.id == selected.id))
+                    .map_or(0, |i| g.status.transition_end[i])
             ));
         });
         self.generator_reset(ui);
@@ -1164,37 +1232,13 @@ impl ScopeApp {
                 if ui.small_button(if self.generator.controls_expanded { "Hide signal controls" } else { "Show signal controls" }).clicked() {
                     self.generator.controls_expanded = !self.generator.controls_expanded;
                 }
-                if !self.generator.controls_expanded {
-                    for (index, signal) in self.generator.settings.signals.iter().enumerate() {
-                        ui.label(RichText::new(format!("GEN {} · {} · {} · {} Hz · {} dBFS peak · {}°", index+1, output_channel_label(*signal), if signal.enabled { "ON" } else { "OFF" }, display::number(Some(signal.frequency_hz)), display::number(Some(signal.amplitude_dbfs)), display::number(Some(signal.phase_degrees)))).small().color(if index == 0 { GREEN } else { BLUE }));
-                    }
-                    return;
-                }
                 self.generator_reset(ui);
                 let g = &mut self.generator;
                 let mut settings = g.settings;
                 let editable = !g.stopping && !restoring
                     && !matches!(g.status.state, generator::State::Stopping | generator::State::Error(_));
                 ui.add_enabled_ui(editable, |ui| {
-                    if ui.available_width() >= 760.0 {
-                        ui.columns(2, |cols| {
-                            for (i, col) in cols.iter_mut().enumerate() {
-                                generator_card(col, g, &mut settings, i);
-                            }
-                        });
-                    } else {
-                        // Keep the other channel's routing and state visible without
-                        // doubling the height or taking space from the measurements.
-                        ui.horizontal(|ui| {
-                            for (i, s) in settings.signals.iter().enumerate() {
-                                ui.selectable_value(&mut g.selected, i, RichText::new(format!(
-                                    "GEN {} · {} · {}", i + 1, output_channel_label(*s),
-                                    if s.enabled { "ON" } else { "OFF" }
-                                )).color(if i == 0 { GREEN } else { BLUE }));
-                            }
-                        });
-                        generator_card(ui, g, &mut settings, g.selected);
-                    }
+                    generator_cards(ui, g, &mut settings);
                 });
                 if settings != g.settings { g.configure(settings); }
             });
@@ -1206,14 +1250,172 @@ pub(super) fn output_channel_label(s: generator::Signal) -> String {
         .map_or("Unassigned".into(), |c| format!("OUT {}", c + 1))
 }
 
+#[derive(Clone, Copy)]
+enum CardAction {
+    Add,
+    Duplicate(usize),
+    Remove(usize),
+    Move(usize, usize),
+}
+
+fn apply_card_action(g: &mut GeneratorUi, settings: &mut generator::Settings, action: CardAction) {
+    match action {
+        CardAction::Add | CardAction::Duplicate(_) => {
+            let source = match action {
+                CardAction::Duplicate(i) => Some(i),
+                _ => None,
+            };
+            match settings.add(source, g.target.channels()) {
+                Ok(index) => g.selected = index,
+                Err(error) => g.error = Some(error.to_string()),
+            }
+        }
+        CardAction::Remove(i) => {
+            let selected_id = settings.signals.get(g.selected).map(|s| s.id);
+            settings.signals.remove(i);
+            g.selected = settings
+                .signals
+                .iter()
+                .position(|s| Some(s.id) == selected_id)
+                .unwrap_or(i.min(settings.signals.len().saturating_sub(1)));
+        }
+        CardAction::Move(from, to) => {
+            let id = settings.signals[g.selected].id;
+            settings.signals.swap(from, to);
+            g.selected = settings.signals.iter().position(|s| s.id == id).unwrap();
+        }
+    }
+}
+
+fn generator_cards(ui: &mut egui::Ui, g: &mut GeneratorUi, settings: &mut generator::Settings) {
+    let mut action = None;
+    if ui
+        .add_enabled(
+            g.stopped() && settings.signals.len() < generator::SIGNALS,
+            egui::Button::new("+ Add signal"),
+        )
+        .clicked()
+    {
+        action = Some(CardAction::Add);
+    }
+    if !g.stopped() {
+        ui.label(
+            RichText::new(
+                "Stop output to add, remove, duplicate, reorder or change waveform / routing.",
+            )
+            .small()
+            .color(MUTED),
+        );
+    }
+    egui::ScrollArea::vertical()
+        .id_salt("generator_cards")
+        .show(ui, |ui| {
+            if !g.controls_expanded {
+                for (index, signal) in settings.signals.iter().enumerate() {
+                    if ui
+                        .selectable_label(
+                            g.selected == index,
+                            format!(
+                                "GEN {} · {} · {} · {} · {} Hz · {} dBFS peak · {}°",
+                                signal.id,
+                                signal.waveform.label(),
+                                output_channel_label(*signal),
+                                if signal.enabled { "ON" } else { "OFF" },
+                                display::number(Some(signal.frequency_hz)),
+                                display::number(Some(signal.amplitude_dbfs)),
+                                display::number(Some(signal.phase_degrees))
+                            ),
+                        )
+                        .clicked()
+                    {
+                        g.selected = index;
+                    }
+                }
+            } else if ui.available_width() >= 760.0 {
+                for row in 0..settings.signals.len().div_ceil(2) {
+                    ui.columns(2, |cols| {
+                        for (col, column) in cols.iter_mut().enumerate() {
+                            let index = row * 2 + col;
+                            if index < settings.signals.len() {
+                                generator_card(column, g, settings, index, &mut action);
+                            }
+                        }
+                    });
+                    ui.add_space(6.0);
+                }
+            } else {
+                ui.horizontal_wrapped(|ui| {
+                    for (i, s) in settings.signals.iter().enumerate() {
+                        ui.selectable_value(
+                            &mut g.selected,
+                            i,
+                            format!(
+                                "GEN {} · {} · {}",
+                                s.id,
+                                output_channel_label(*s),
+                                if s.enabled { "ON" } else { "OFF" }
+                            ),
+                        );
+                    }
+                });
+                if !settings.signals.is_empty() {
+                    generator_card(ui, g, settings, g.selected, &mut action);
+                }
+            }
+            if settings.signals.is_empty() {
+                ui.label("No signals. Add a signal to choose its waveform and output.");
+            }
+        });
+    if let Some(action) = action {
+        apply_card_action(g, settings, action);
+    }
+}
+
+pub(super) fn routing_selector(
+    ui: &mut egui::Ui,
+    settings: &mut generator::Settings,
+    index: usize,
+    channels: usize,
+) {
+    let occupied: [bool; 16] = std::array::from_fn(|ch| {
+        settings
+            .signals
+            .iter()
+            .enumerate()
+            .any(|(i, s)| i != index && s.output_channel == Some(ch))
+    });
+    let signal = &mut settings.signals[index];
+    egui::ComboBox::from_id_salt(("generator_channel", signal.id))
+        .width(110.0)
+        .selected_text(output_channel_label(*signal))
+        .show_ui(ui, |ui| {
+            if ui
+                .selectable_value(&mut signal.output_channel, None, "Unassigned")
+                .changed()
+            {
+                signal.enabled = false;
+            }
+            for (ch, &used) in occupied.iter().enumerate().take(channels) {
+                ui.add_enabled_ui(!used, |ui| {
+                    ui.selectable_value(
+                        &mut signal.output_channel,
+                        Some(ch),
+                        format!("OUT {}{}", ch + 1, if used { " · in use" } else { "" }),
+                    );
+                });
+            }
+        });
+}
+
 fn generator_card(
     ui: &mut egui::Ui,
     g: &mut GeneratorUi,
     settings: &mut generator::Settings,
     index: usize,
+    action: &mut Option<CardAction>,
 ) -> egui::Response {
-    let color = if index == 0 { GREEN } else { BLUE };
-    let s = &mut settings.signals[index];
+    let color = if g.selected == index { GREEN } else { BLUE };
+    let len = settings.signals.len();
     egui::Frame::new()
         .fill(Color32::from_rgb(7, 14, 19))
         .stroke(Stroke::new(1.0, color.gamma_multiply(0.45)))
@@ -1223,20 +1425,40 @@ fn generator_card(
             ui.set_min_width(ui.available_width());
             ui.spacing_mut().item_spacing = vec2(5.0, 4.0);
             ui.horizontal(|ui| {
-                ui.label(
-                    RichText::new(format!("GEN {}", index + 1))
-                        .strong()
-                        .color(color),
-                );
-                ui.label(
-                    RichText::new(format!("Sine · {}", output_channel_label(*s)))
-                        .small()
-                        .color(MUTED),
-                );
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ui
+                    .selectable_label(
+                        g.selected == index,
+                        RichText::new(format!("GEN {}", settings.signals[index].id))
+                            .strong()
+                            .color(color),
+                    )
+                    .clicked()
+                {
+                    g.selected = index;
+                }
+                ui.add_enabled_ui(g.stopped(), |ui| {
+                    routing_selector(ui, settings, index, g.target.channels());
+                });
+                let s = &mut settings.signals[index];
+                ui.add_enabled_ui(s.output_channel.is_some(), |ui| {
                     ui.checkbox(&mut s.enabled, "ON");
                 });
             });
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("Waveform").small().color(MUTED));
+                let s = &mut settings.signals[index];
+                ui.add_enabled_ui(g.stopped(), |ui| {
+                    egui::ComboBox::from_id_salt(("generator_waveform", s.id))
+                        .width(130.0)
+                        .selected_text(s.waveform.label())
+                        .show_ui(ui, |ui| {
+                            for waveform in generator::Waveform::ALL {
+                                ui.selectable_value(&mut s.waveform, waveform, waveform.label());
+                            }
+                        });
+                });
+            });
+            let s = &mut settings.signals[index];
             ui.separator();
             for (field, (title, unit, value)) in [
                 ("Frequency", "Hz", &mut s.frequency_hz),
@@ -1251,22 +1473,53 @@ fn generator_card(
                         vec2(72.0, 26.0),
                         egui::Label::new(RichText::new(title).small().color(MUTED)),
                     );
-                    match numeric_field(
-                        ui,
-                        (index, field),
-                        &mut g.texts[index][field],
-                        &mut g.edited[index][field],
-                        *value,
-                        g.step,
-                        unit,
-                    ) {
-                        Ok(Some(next)) => *value = next,
-                        Ok(None) => {}
-                        Err(e) => g.error = Some(e),
-                    }
+                    ui.add_enabled_ui(
+                        s.waveform != generator::Waveform::Noise || field == 1,
+                        |ui| match numeric_field(
+                            ui,
+                            (s.id as usize, field),
+                            &mut g.texts[index][field],
+                            &mut g.edited[index][field],
+                            *value,
+                            g.step,
+                            unit,
+                        ) {
+                            Ok(Some(next)) => *value = next,
+                            Ok(None) => {}
+                            Err(e) => g.error = Some(e),
+                        },
+                    );
                 });
             }
-            preview(ui, *s, color);
+            preview(ui, *s, g.rate, color);
+            ui.add_enabled_ui(g.stopped(), |ui| {
+                ui.horizontal(|ui| {
+                    if ui
+                        .add_enabled(
+                            len < generator::SIGNALS,
+                            egui::Button::new("Duplicate").small(),
+                        )
+                        .clicked()
+                    {
+                        *action = Some(CardAction::Duplicate(index));
+                    }
+                    if ui.small_button("Remove").clicked() {
+                        *action = Some(CardAction::Remove(index));
+                    }
+                    if ui
+                        .add_enabled(index > 0, egui::Button::new("Up").small())
+                        .clicked()
+                    {
+                        *action = Some(CardAction::Move(index, index - 1));
+                    }
+                    if ui
+                        .add_enabled(index + 1 < len, egui::Button::new("Down").small())
+                        .clicked()
+                    {
+                        *action = Some(CardAction::Move(index, index + 1));
+                    }
+                });
+            });
         })
         .response
 }
@@ -1361,12 +1614,15 @@ fn numeric_field(
     }
 }
 
-fn preview(ui: &mut egui::Ui, s: generator::Signal, color: Color32) {
+fn preview(ui: &mut egui::Ui, s: generator::Signal, rate: u32, color: Color32) {
     ui.label(
         RichText::new(format!(
-            "Settings preview · ±{:.6} FS peak · {:.3} ms / 2 cycles",
+            "Settings preview · ±{:.6} FS ceiling · {}",
             s.amplitude_peak(),
-            2000.0 / s.frequency_hz
+            match s.waveform {
+                generator::Waveform::Noise => "white noise".into(),
+                _ => format!("{:.3} ms / 2 cycles", 2000.0 / s.frequency_hz),
+            }
         ))
         .small()
         .color(MUTED),
@@ -1383,10 +1639,22 @@ fn preview(ui: &mut egui::Ui, s: generator::Signal, color: Color32) {
         ],
         Stroke::new(1.0, BORDER),
     );
+    let mut noise = s.noise_seed;
     let points: Vec<_> = (0..=128)
         .map(|n| {
             let x = n as f64 / 128.0;
-            let y = (std::f64::consts::TAU * 2.0 * x + s.phase_degrees.to_radians()).sin();
+            let y = if s.waveform == generator::Waveform::Noise {
+                // A deterministic settings sketch, independent of live output state.
+                noise ^= noise >> 12;
+                noise ^= noise << 25;
+                noise ^= noise >> 27;
+                2.0 * (noise.wrapping_mul(0x2545_f491_4f6c_dd1d) >> 11) as f64
+                    / (1_u64 << 53) as f64
+                    - 1.0
+            } else {
+                s.waveform
+                    .periodic(2.0 * x + s.phase_degrees / 360.0, s.frequency_hz, rate)
+            };
             pos2(
                 rect.left() + x as f32 * rect.width(),
                 rect.center().y - y as f32 * rect.height() * 0.45,
@@ -1399,6 +1667,141 @@ fn preview(ui: &mut egui::Ui, s: generator::Signal, color: Color32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn cards_frame(
+        ctx: &egui::Context,
+        g: &mut GeneratorUi,
+        events: Vec<egui::Event>,
+    ) -> egui::FullOutput {
+        let mut settings = g.settings;
+        let mut output = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    pos2(0.0, 0.0),
+                    vec2(580.0, 760.0),
+                )),
+                events,
+                ..Default::default()
+            },
+            |ui| {
+                generator_cards(ui, g, &mut settings);
+            },
+        );
+        // Exercise the actual card widgets without issuing audio commands.
+        g.settings = settings;
+        output.textures_delta.clear();
+        output
+    }
+
+    fn cards_click(ctx: &egui::Context, g: &mut GeneratorUi, label: &str) {
+        fn find(shape: &egui::Shape, label: &str) -> Option<egui::Pos2> {
+            match shape {
+                egui::Shape::Text(text) if text.galley.text() == label => {
+                    Some(text.visual_bounding_rect().center())
+                }
+                egui::Shape::Vec(shapes) => shapes.iter().find_map(|s| find(s, label)),
+                _ => None,
+            }
+        }
+        let output = cards_frame(ctx, g, vec![]);
+        let pos = output
+            .shapes
+            .iter()
+            .rev()
+            .find_map(|s| find(&s.shape, label).filter(|p| s.clip_rect.contains(*p)))
+            .unwrap_or_else(|| panic!("Card control not visible: {label}"));
+        for pressed in [true, false] {
+            cards_frame(
+                ctx,
+                g,
+                vec![
+                    egui::Event::PointerMoved(pos),
+                    egui::Event::PointerButton {
+                        pos,
+                        button: egui::PointerButton::Primary,
+                        pressed,
+                        modifiers: egui::Modifiers::NONE,
+                    },
+                ],
+            )
+            .drop_without_applying_deltas();
+        }
+    }
+
+    #[test]
+    fn card_widgets_select_waveforms_reject_occupied_outputs_and_manage_stable_ids() {
+        let ctx = egui::Context::default();
+        let mut g = GeneratorUi::default();
+        for _ in 0..2 {
+            cards_frame(&ctx, &mut g, vec![]).drop_without_applying_deltas();
+        }
+        cards_click(&ctx, &mut g, "Sine");
+        cards_click(&ctx, &mut g, "Square");
+        assert_eq!(g.settings.signals[0].waveform, generator::Waveform::Square);
+        cards_click(&ctx, &mut g, "OUT 1");
+        cards_click(&ctx, &mut g, "OUT 2 · in use");
+        assert_eq!(g.settings.signals[0].output_channel, Some(0));
+        cards_frame(
+            &ctx,
+            &mut g,
+            vec![key(egui::Key::Escape, egui::Modifiers::NONE)],
+        )
+        .drop_without_applying_deltas();
+        cards_click(&ctx, &mut g, "Duplicate");
+        assert_eq!(g.settings.signals.len(), 3);
+        assert_eq!(
+            (
+                g.settings.signals[2].id,
+                g.settings.signals[2].output_channel
+            ),
+            (3, None)
+        );
+        assert_eq!(g.settings.signals[2].waveform, generator::Waveform::Square);
+        assert_eq!(g.selected, 2);
+        cards_click(&ctx, &mut g, "Up");
+        assert_eq!((g.selected, g.settings.signals[1].id), (1, 3));
+        cards_click(&ctx, &mut g, "Remove");
+        assert_eq!(
+            g.settings
+                .signals
+                .iter()
+                .map(|s| (s.id, s.output_channel))
+                .collect::<Vec<_>>(),
+            vec![(1, Some(0)), (2, Some(1))]
+        );
+        cards_click(&ctx, &mut g, "+ Add signal");
+        assert_eq!(g.settings.signals[2].id, 4);
+        for _ in 0..3 {
+            cards_click(&ctx, &mut g, "Remove");
+        }
+        assert!(g.settings.signals.is_empty());
+        cards_click(&ctx, &mut g, "+ Add signal");
+        assert_eq!(
+            (
+                g.settings.signals[0].id,
+                g.settings.signals[0].output_channel
+            ),
+            (5, Some(0))
+        );
+        cards_click(&ctx, &mut g, "Sine");
+        cards_click(&ctx, &mut g, "Noise");
+        assert_eq!(g.settings.signals[0].waveform, generator::Waveform::Noise);
+        g.settings.validate(48000, 2).unwrap();
+        assert_eq!((g.requested_id, g.stop_epoch), (0, 0));
+    }
+
+    #[test]
+    fn rejected_edit_keeps_card_selection_inside_the_applied_list() {
+        let mut g = GeneratorUi::default();
+        let mut candidate = g.settings;
+        g.selected = candidate.add(None, 2).unwrap();
+        candidate.signals[0].frequency_hz = -1.0;
+        g.configure(candidate);
+        assert_eq!(g.settings.signals.len(), 2);
+        assert!(g.selected < g.settings.signals.len());
+        assert!(g.error.is_some());
+        assert_eq!((g.requested_id, g.stop_epoch), (0, 0));
+    }
 
     #[test]
     fn cards_fit_columns_without_consuming_the_measurement_height() {
@@ -1421,14 +1824,15 @@ mod tests {
                     |ui| {
                         ui.set_width(width);
                         for index in 0..2 {
-                            let response = generator_card(ui, &mut g, &mut settings, index);
+                            let response =
+                                generator_card(ui, &mut g, &mut settings, index, &mut None);
                             assert!(
                                 response.rect.width() <= width + 1.0,
                                 "card exceeds its column: {:?}",
                                 response.rect
                             );
                             assert!(
-                                response.rect.height() <= 210.0,
+                                response.rect.height() <= 280.0,
                                 "card leaves too little space for measurement: {:?}",
                                 response.rect
                             );
