@@ -340,6 +340,7 @@ impl ScopeApp {
         self.spectrogram_hold = None;
         self.spectrogram_hold_anchor = None;
         self.spectrogram_anchor = 0;
+        self.spectrogram_scroll.reset();
         self.spectrogram_selected = [None, None];
         self.spectrogram_unavailable_selection = [false; 2];
         self.spectrogram_auto_result = ColorRange::default();
@@ -358,6 +359,7 @@ impl ScopeApp {
     }
 
     pub(super) fn live_spectrogram(&mut self) {
+        self.spectrogram_scroll.reset();
         self.unlink_spectrum_history();
         self.spectrogram_pending_click = None;
         self.spectrogram_hold = None;
@@ -372,6 +374,7 @@ impl ScopeApp {
     }
 
     pub(super) fn receive_spectrogram_view(&mut self) {
+        let mut observed_at = self.last_frame;
         if let Some(prepared) = self.spectrogram_view_worker.take()
             && prepared.snapshot.generation == self.stft_generation
             && prepared.snapshot.input_generation == self.input_generation
@@ -383,12 +386,26 @@ impl ScopeApp {
                     .record(prepared.submitted_at.elapsed().as_secs_f64() * 1000.0);
             }
             self.spectrogram_prepared_id = prepared.id;
+            observed_at = prepared.submitted_at;
             self.spectrogram_snapshot = prepared.snapshot;
             self.spectrogram_anchor = prepared.anchor;
             self.spectrogram_auto_result = prepared.range;
             self.spectrogram_build_ms = prepared.processing_ms;
             self.last_stft = self.spectrogram_snapshot.latest().map(|f| f.info);
             self.spectrogram_history = Arc::new(Mutex::new(prepared.history));
+        }
+        // A Live transition must establish its clock from the new Live image,
+        // never from an older Hold snapshot while its replacement is pending.
+        if self.spectrogram_prepared_id == self.spectrogram_view_worker.current_id()
+            && let Some(latest) = self.spectrogram_snapshot.latest()
+        {
+            self.spectrogram_anchor = self.spectrogram_scroll.anchor(
+                self.spectrogram_hold_anchor.unwrap_or(latest.info.end),
+                latest.info.config,
+                observed_at,
+                self.last_frame,
+                self.running() && self.spectrogram_hold.is_none(),
+            );
         }
         for (i, selection) in self.spectrogram_selected.iter_mut().enumerate() {
             if self.cursors.times[i].is_some() {

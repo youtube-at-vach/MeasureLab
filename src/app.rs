@@ -278,6 +278,7 @@ pub struct ScopeApp {
     spectrogram_hold: Option<Arc<spectrogram::history::Snapshot>>,
     spectrogram_hold_anchor: Option<u64>,
     spectrogram_anchor: u64,
+    spectrogram_scroll: spectrogram::ScrollClock,
     spectrogram_selected: [Option<Arc<spectrogram::history::Frame>>; 2],
     spectrogram_auto_result: spectrogram::ColorRange,
     spectrogram_prepared_id: u64,
@@ -552,6 +553,7 @@ impl ScopeApp {
             spectrogram_hold: None,
             spectrogram_hold_anchor: None,
             spectrogram_anchor: 0,
+            spectrogram_scroll: spectrogram::ScrollClock::default(),
             spectrogram_overlap: stft::Overlap::default(),
             spectrum_history: spectrum_history::HistorySpectrum::default(),
             spectrogram_selected: [None, None],
@@ -3178,6 +3180,7 @@ impl ScopeApp {
                         rect,
                         spectrogram_gpu::Callback {
                             history: self.spectrogram_history.clone(),
+                            anchor: self.spectrogram_anchor,
                             view,
                             seconds: self.spectrogram_seconds,
                             color_map: self.spectrogram_color_map,

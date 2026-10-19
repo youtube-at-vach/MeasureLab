@@ -25,7 +25,7 @@
 | Spectrumの全サイズ・窓・精度・独立FFT／Parseval・校正、ESDのパルス窓長不変性・白色雑音 | [spectrum.rs](../../src/spectrum.rs)、[ESD数値テスト](../../src/spectrum/esd_tests.rs)、[calibration.rs](../../src/calibration.rs) |
 | 全窓／最新窓、欠落、UI受信停止・世代・有限Stop、STFT | [spectrum_worker.rs](../../src/spectrum_worker.rs)、[stft.rs](../../src/stft.rs)、[measurement.rs](../../src/measurement.rs) |
 | STFTの3 Overlap・全FFT長／精度・長いサンプル時刻・履歴Spectrumの微小値／無効値 | [stft.rs](../../src/stft.rs)のOverlap／retained_spectrumテスト。数値読出しは[spectrum.rs](../../src/spectrum.rs)の`Result::from_stft`を共有 |
-| STFT表示要求・縮約・固定上端・キャッシュ容量 | [spectrogram/viewport.rs](../../src/spectrogram/viewport.rs)。GPU読み戻しは`--gpu-smoke`のラスタDC／Nyquistと転送省略 |
+| STFT表示要求・縮約・固定上端・不規則FPSのスクロール・Liveの描画先端と下端の被覆・キャッシュ容量 | [spectrogram/viewport.rs](../../src/spectrogram/viewport.rs)、[spectrogram/scroll.rs](../../src/spectrogram/scroll.rs)。GPU読み戻しは`--gpu-smoke`のラスタDC／Nyquist、時間移動・未取得区間の空白と転送省略 |
 | STFT数値履歴・UI受信停止・周回・不変参照・容量と世代 | [spectrogram/history.rs](../../src/spectrogram/history.rs)。実時間の収集継続は`MEASURELAB_PROFILE_UI_STALL` |
 | STFTのCPU容量・旧新世代の交換・終了時解放 | [spectrogram_capacity.rs](../../tests/spectrogram_capacity.rs)。独立プロセスの計数アロケーターでFFT・結果プール・履歴・Hold・選択Spectrum A／B・表示準備を合算。確保要求のpayloadとRSS・アロケーター管理費用を区別する |
 | REF・局所位相・二段EMA・校正・無効化・専用転送 | [lockin.rs](../../src/lockin.rs)、[lockin_worker.rs](../../src/lockin_worker.rs)、[loopback.rs](../../src/loopback.rs) |

@@ -1,7 +1,7 @@
 struct Parameters {
     frequency: vec4<f32>, // min Hz, max Hz, bin Hz, floor dBFS
     display: vec4<f32>,   // ceiling dBFS, logarithmic, physical width, scanlines/row
-    palette: vec4<f32>,   // last color index, reserved, reserved, reserved
+    palette: vec4<f32>,   // last color index, time offset, time scale, reserved
     colors: array<vec4<f32>, 256>, // Shared with the CPU color bar.
 }
 @group(0) @binding(0) var<uniform> p: Parameters;
@@ -17,7 +17,7 @@ fn vs_main(@builtin(vertex_index) vertex: u32, @location(0) row: vec4<f32>) -> V
     let corners = array<vec2<f32>, 6>(vec2(0., 0.), vec2(1., 0.), vec2(0., 1.),
                                      vec2(0., 1.), vec2(1., 0.), vec2(1., 1.));
     let corner = corners[vertex];
-    let y = mix(row.y, row.z, corner.y);
+    let y = mix(row.y, row.z, corner.y) * p.palette.z + p.palette.y;
     var out: VertexOut;
     out.position = vec4(corner.x * 2. - 1., 1. - y * 2., 0., 1.);
     out.x = corner.x;

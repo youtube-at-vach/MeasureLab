@@ -722,61 +722,81 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
         if image.uploaded_rows != raster_uploads || image.uploaded_bytes != raster_bytes {
             return Err("Unchanged raster rows reuploaded".into());
         }
-        let mut encoder = device.create_command_encoder(&Default::default());
-        {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                ..Default::default()
-            });
-            image.paint(&mut pass);
-        }
-        encoder.copy_texture_to_buffer(
-            texture.as_image_copy(),
-            wgpu::TexelCopyBufferInfo {
-                buffer: &readback,
-                layout: wgpu::TexelCopyBufferLayout {
-                    offset: 0,
-                    bytes_per_row: Some(1024),
-                    rows_per_image: Some(256),
-                },
-            },
-            texture.size(),
-        );
-        queue.submit([encoder.finish()]);
-        let (sender, receiver) = std::sync::mpsc::channel();
-        readback
-            .slice(..)
-            .map_async(wgpu::MapMode::Read, move |result| {
-                let _ = sender.send(result);
-            });
-        device.poll(wgpu::PollType::wait_indefinitely())?;
-        receiver.recv()??;
-        let pixels = readback.slice(..).get_mapped_range()?;
-        for (x, db) in [(0, -6.0206_f32), (255, -12.0412)] {
-            let pixel = &pixels[(128 * 256 + x) * 4..(128 * 256 + x) * 4 + 3];
-            let expected =
-                spectrogram::ColorMap::Grayscale.rgb(((db + 12.0) / 12.0).clamp(0.0, 1.0));
-            if pixel
-                .iter()
-                .zip(expected)
-                .any(|(&actual, expected)| (actual as f32 - 255.0 * expected).abs() > 1.0)
+        for (shift, sample_y, blank_y) in [
+            (0_i64, 128, None),
+            (64, 160, Some(32)),
+            (-64, 96, Some(224)),
+        ] {
+            let buffers = image.uploaded_buffers;
+            image.anchor = Some(prepared.anchor.checked_add_signed(shift).unwrap());
+            image.prepare(&device, &queue, &prepared.history, raster_view, 0.25, 256.0);
+            if image.uploaded_rows != raster_uploads
+                || image.uploaded_buffers != buffers + u64::from(shift != 0)
             {
-                return Err(format!(
-                    "Production raster DC/Nyquist readback failed at {x}: {pixel:?}"
-                )
-                .into());
+                return Err("Spectrogram scrolling must update only the time uniform".into());
             }
+            let mut encoder = device.create_command_encoder(&Default::default());
+            {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &view,
+                        depth_slice: None,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    ..Default::default()
+                });
+                image.paint(&mut pass);
+            }
+            encoder.copy_texture_to_buffer(
+                texture.as_image_copy(),
+                wgpu::TexelCopyBufferInfo {
+                    buffer: &readback,
+                    layout: wgpu::TexelCopyBufferLayout {
+                        offset: 0,
+                        bytes_per_row: Some(1024),
+                        rows_per_image: Some(256),
+                    },
+                },
+                texture.size(),
+            );
+            queue.submit([encoder.finish()]);
+            let (sender, receiver) = std::sync::mpsc::channel();
+            readback
+                .slice(..)
+                .map_async(wgpu::MapMode::Read, move |result| {
+                    let _ = sender.send(result);
+                });
+            device.poll(wgpu::PollType::wait_indefinitely())?;
+            receiver.recv()??;
+            let pixels = readback.slice(..).get_mapped_range()?;
+            for (x, db) in [(0, -6.0206_f32), (255, -12.0412)] {
+                let pixel = &pixels[(sample_y * 256 + x) * 4..(sample_y * 256 + x) * 4 + 3];
+                let expected =
+                    spectrogram::ColorMap::Grayscale.rgb(((db + 12.0) / 12.0).clamp(0.0, 1.0));
+                if pixel
+                    .iter()
+                    .zip(expected)
+                    .any(|(&actual, expected)| (actual as f32 - 255.0 * expected).abs() > 1.0)
+                {
+                    return Err(format!(
+                        "Production raster DC/Nyquist scroll readback failed at {x}: {pixel:?}"
+                    )
+                    .into());
+                }
+            }
+            if let Some(y) = blank_y {
+                let pixel = &pixels[(y * 256 + 128) * 4..(y * 256 + 128) * 4 + 3];
+                if pixel != [0, 0, 0] {
+                    return Err(format!("Scrolling painted unacquired time: {pixel:?}").into());
+                }
+            }
+            drop(pixels);
+            readback.unmap();
         }
-        drop(pixels);
-        readback.unmap();
         println!(
             "GPU OK: {:?}, {} / {} green / {} blue / {} XY purple pixels / 512k f64 Spectrum individual-bin peak / stopped trace transfer exclusion / spectrogram wrap, order, gap, packed Nyquist, independent view changes, {} shared palettes, production raster DC/Nyquist, {uploads} row uploads",
             adapter.get_info().backend,

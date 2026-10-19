@@ -65,6 +65,8 @@ impl Budget {
 }
 
 pub(super) struct Raster {
+    pub anchor: u64,
+    pub span: u64,
     pub width: usize,
     pub db: Vec<f32>,
     pub rows: Vec<Option<RowInfo>>,
@@ -293,13 +295,30 @@ fn prepare(
     if !p.seconds.is_finite() || p.seconds <= 0.0 {
         return None;
     }
-    let anchor = p.anchor.unwrap_or(latest.end);
-
-    let span = (p.seconds * latest.config.sample_rate as f64)
+    let requested_anchor = p.anchor.unwrap_or(latest.end);
+    let delay = if p.live {
+        super::scroll::live_delay_samples(latest.config)
+    } else {
+        0
+    };
+    let visible_anchor = requested_anchor.saturating_sub(delay);
+    let visible_span = (p.seconds * latest.config.sample_rate as f64)
         .round()
         .max(1.0) as i128;
+    let mut span = visible_span;
     let width = p.columns.clamp(1, MAX_COLUMNS);
     let height = p.rows.clamp(1, ROWS);
+    // Retain the Live presentation delay below the viewport as well, so its
+    // bottom stays covered when a new image arrives. A sample-aligned grid
+    // prevents old peaks changing shape when the raster's time phase changes.
+    let anchor = if p.live {
+        span += delay as i128;
+        let step = (span + height as i128 - 1) / height as i128;
+        span = step * height as i128;
+        ((requested_anchor as i128 + step - 1) / step * step).min(u64::MAX as i128) as u64
+    } else {
+        requested_anchor
+    };
     let lease = budget.lease()?;
     let mut db = vec![f32::NEG_INFINITY; width * height];
     let mut rows = vec![None; height];
@@ -397,7 +416,11 @@ fn prepare(
                 }
             }
         });
-        if p.auto && min <= max {
+        if p.auto
+            && min <= max
+            && info.end as i128 > visible_anchor as i128 - visible_span
+            && start < visible_anchor
+        {
             for &power in &frame.power()[min..=max] {
                 if power.is_finite() && power > 0.0 {
                     peak_power = peak_power.max(power);
@@ -513,6 +536,8 @@ fn prepare(
         len: rows.iter().flatten().count(),
         revision: REVISION.fetch_add(1, Ordering::Relaxed),
         raster: Some(Raster {
+            anchor,
+            span: span as u64,
             width,
             db,
             rows,
@@ -529,7 +554,7 @@ fn prepare(
         id: request.id,
         submitted_at: request.submitted_at,
         snapshot: snapshot.clone(),
-        anchor,
+        anchor: requested_anchor,
         history,
         range: range.unwrap_or_default(),
         processing_ms: 0.0,
@@ -771,6 +796,182 @@ mod tests {
         assert_eq!(placements[0].top, 0.0);
         let actual = config().hop as f32 / config().sample_rate as f32 / 60.0;
         assert!((placements[0].bottom - actual).abs() < 1e-9);
+    }
+
+    #[test]
+    fn live_rasters_keep_a_fixed_sample_grid_and_scroll_without_changing_readouts() {
+        let origin = 1_u64 << 54;
+        let mut p = parameters();
+        p.live = true;
+        p.seconds = 1.0;
+        p.rows = 64;
+        let first = prepare(
+            &request(snapshot(7, origin, 1000), p),
+            &Arc::default(),
+            &mut None,
+        )
+        .unwrap();
+        let second = prepare(
+            &request(snapshot(7, origin, 1039), p),
+            &Arc::default(),
+            &mut None,
+        )
+        .unwrap();
+        let first_raster = first.history.raster.as_ref().unwrap();
+        let second_raster = second.history.raster.as_ref().unwrap();
+        let step = first_raster.span / p.rows as u64;
+        assert_eq!(first_raster.span, second_raster.span);
+        assert_eq!(first_raster.anchor % step, 0);
+        assert_eq!(second_raster.anchor % step, 0);
+        assert!(first_raster.span as f64 > p.seconds * 48000.0);
+
+        // The same grid edge lands at the same screen coordinate across a
+        // raster replacement, including a fractional pixel offset past 2^53.
+        let displayed = first.anchor + 137;
+        let shared_edge = first_raster.anchor - 20 * step;
+        let position = |prepared: &Prepared| {
+            let raster = prepared.history.raster.as_ref().unwrap();
+            let [offset, scale] = prepared.history.display_transform(displayed, p.seconds);
+            let row = (raster.anchor - shared_edge) / step;
+            offset + row as f32 / p.rows as f32 * scale
+        };
+        let expected = (displayed - shared_edge) as f32 / 48000.0;
+        assert!((position(&first) - expected).abs() < 1e-6);
+        assert!((position(&second) - expected).abs() < 1e-6);
+
+        // Original frames remain the sole source for numerical reads, even
+        // while the presentation clock advances beyond delivered data.
+        let sample = first.anchor - 1;
+        let frame = first.snapshot.at_sample(sample).unwrap();
+        let bits = frame.power()[32].to_bits();
+        for advance in [1, 1600, 10000] {
+            let [offset, scale] = first
+                .history
+                .display_transform(first.anchor + advance, p.seconds);
+            let newest = first_raster.placements.first().unwrap();
+            assert!((offset + newest.top * scale - advance as f32 / 48000.0).abs() < 1e-6);
+            assert_eq!(
+                first.snapshot.at_sample(sample).unwrap().power()[32].to_bits(),
+                bits
+            );
+            assert!(first.snapshot.at_sample(first.anchor + advance).is_none());
+        }
+    }
+
+    #[test]
+    fn buffered_live_scroll_keeps_the_write_edge_above_the_plot_and_covers_the_bottom() {
+        use crate::{spectrogram::ScrollClock, stft::Overlap};
+
+        for (sample_rate, size, overlap) in [
+            (48000, 1024, Overlap::Half),
+            (48000, 8192, Overlap::ThreeQuarters),
+            (44100, 32768, Overlap::Half),
+            (192000, 1024, Overlap::SevenEighths),
+        ] {
+            let config = Config {
+                sample_rate,
+                size,
+                hop: overlap.hop(size),
+                ..config()
+            };
+            let origin = 1_u64 << 54;
+            let source = history::fixture(
+                73,
+                7,
+                config,
+                (0..(sample_rate as usize * 2 / config.hop + 1)).map(|i| {
+                    let end = origin + size as u64 + i as u64 * config.hop as u64;
+                    (
+                        RowInfo {
+                            generation: 7,
+                            config,
+                            start: end - size as u64,
+                            end,
+                            gap: Gap::default(),
+                        },
+                        vec![0.25; size / 2 + 1],
+                    )
+                }),
+            );
+            let mut p = parameters();
+            p.live = true;
+            p.auto = false;
+            p.seconds = 1.0;
+            p.rows = 64;
+            p.view = View::full(sample_rate, FrequencyScale::Linear, -120.0);
+            let request = request(source, p);
+            let prepared = prepare(&request, &Arc::default(), &mut None).unwrap();
+            let raster = prepared.history.raster.as_ref().unwrap();
+            let newest = raster.placements.first().unwrap();
+            let oldest = raster.placements.last().unwrap();
+            let mut clock = ScrollClock::default();
+            // Includes the initial worker latency and a pause between raster
+            // deliveries, across small/large hops and the longest sample clock.
+            for ms in [75, 116, 199] {
+                let anchor = clock.anchor(
+                    prepared.anchor,
+                    config,
+                    request.submitted_at,
+                    request.submitted_at + Duration::from_millis(ms),
+                    true,
+                );
+                let [offset, scale] = prepared.history.display_transform(anchor, p.seconds);
+                assert!(
+                    offset + newest.top * scale < 0.0,
+                    "write edge entered plot: {config:?}"
+                );
+                assert!(
+                    offset + oldest.bottom * scale >= 1.0 - 1e-6,
+                    "bottom uncovered: {config:?}"
+                );
+                let top_frame = prepared.snapshot.at_sample(anchor - 1).unwrap();
+                assert_eq!(top_frame.power()[32], 0.25);
+            }
+            // A delivery stall exceeding the buffer remains visibly missing;
+            // no repeated row or invented numerical frame fills that time.
+            let anchor = clock.anchor(
+                prepared.anchor,
+                config,
+                request.submitted_at,
+                request.submitted_at + Duration::from_secs(2),
+                true,
+            );
+            let [offset, scale] = prepared.history.display_transform(anchor, p.seconds);
+            assert!(offset + newest.top * scale > 0.0);
+            assert!(prepared.snapshot.at_sample(anchor - 1).is_none());
+        }
+    }
+
+    #[test]
+    fn live_auto_range_excludes_the_buffered_rows_above_the_plot() {
+        let config = config();
+        let source = history::fixture(
+            73,
+            7,
+            config,
+            (0..400).map(|i| {
+                let end = 1024 + i * 256;
+                let power = if i >= 380 { 1.0 } else { 1e-4 };
+                (
+                    RowInfo {
+                        generation: 7,
+                        config,
+                        start: end - 1024,
+                        end,
+                        gap: Gap::default(),
+                    },
+                    vec![power; 513],
+                )
+            }),
+        );
+        let mut p = parameters();
+        p.live = true;
+        p.seconds = 1.0;
+        let prepared = prepare(&request(source, p), &Arc::default(), &mut None).unwrap();
+        // A full-scale transient is already in the raster's hidden upper
+        // margin, but the visible quiet history still controls the color bar.
+        assert!(prepared.history.raster.as_ref().unwrap().db.contains(&0.0));
+        assert!((prepared.range.max - (-37.0)).abs() < 1e-5);
     }
 
     #[test]
