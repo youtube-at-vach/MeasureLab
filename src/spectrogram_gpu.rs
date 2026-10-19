@@ -31,6 +31,7 @@ pub struct Renderer {
     vertices: Vec<[f32; 4]>,
     parameters: [f32; PARAMETER_FLOATS],
     pub color_map: ColorMap,
+    pub anchor: Option<u64>,
     pub uploaded_rows: u64,
     pub uploaded_buffers: u64,
     pub uploaded_bytes: u64,
@@ -133,6 +134,7 @@ impl Renderer {
             vertices: Vec::with_capacity(ROWS * 2),
             parameters: [0.0; PARAMETER_FLOATS],
             color_map: ColorMap::Blue,
+            anchor: None,
             uploaded_rows: 0,
             uploaded_buffers: 0,
             uploaded_bytes: 0,
@@ -246,6 +248,13 @@ impl Renderer {
         ]);
         let stops = self.color_map.stops();
         parameters[8] = (stops.len() - 1) as f32;
+        parameters[9..11].copy_from_slice(
+            &history.display_transform(
+                self.anchor
+                    .unwrap_or_else(|| history.latest().map_or(0, |row| row.end)),
+                seconds,
+            ),
+        );
         parameters[12..12 + stops.len() * 4].copy_from_slice(stops.as_flattened());
         if self.parameters != parameters {
             queue.write_buffer(&self.uniform, 0, bytemuck::cast_slice(&parameters));
@@ -316,6 +325,7 @@ pub struct Callback {
     pub seconds: f64,
     pub width: f32,
     pub color_map: ColorMap,
+    pub anchor: u64,
 }
 impl egui_wgpu::CallbackTrait for Callback {
     fn prepare(
@@ -328,6 +338,7 @@ impl egui_wgpu::CallbackTrait for Callback {
     ) -> Vec<wgpu::CommandBuffer> {
         if let Some(renderer) = resources.get_mut::<Renderer>() {
             renderer.color_map = self.color_map;
+            renderer.anchor = Some(self.anchor);
             renderer.prepare(
                 device,
                 queue,

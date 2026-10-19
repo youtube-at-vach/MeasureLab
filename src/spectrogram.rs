@@ -5,8 +5,10 @@ use crate::stft::{Config, RowInfo};
 mod colormaps;
 mod display;
 pub mod history;
+mod scroll;
 pub mod viewport;
 pub use display::{AutoRange, ColorMap, ColorRange, FrequencyRange, TimeAxis};
+pub use scroll::ScrollClock;
 
 pub const ROWS: usize = 512;
 // Pack all 16,385 bins into <= 5 scanlines, below default GPU size limits.
@@ -228,6 +230,26 @@ impl History {
             }
             previous = Some(info.end);
         }
+    }
+
+    /// Map cached row positions to the current presentation time without
+    /// rebuilding or uploading the image. The GPU clips unavailable edges.
+    pub fn display_transform(&self, anchor: u64, seconds: f64) -> [f32; 2] {
+        let Some(latest) = self.latest() else {
+            return [0.0, 1.0];
+        };
+        let span = seconds * latest.config.sample_rate as f64;
+        if !span.is_finite() || span <= 0.0 {
+            return [0.0, 1.0];
+        }
+        let (cached_anchor, cached_span) =
+            self.raster.as_ref().map_or((latest.end, span), |raster| {
+                (raster.anchor, raster.span as f64)
+            });
+        [
+            ((anchor as i128 - cached_anchor as i128) as f64 / span) as f32,
+            (cached_span / span) as f32,
+        ]
     }
 
     /// Return the analyzed window at this age, or None for missing/unretained data.
