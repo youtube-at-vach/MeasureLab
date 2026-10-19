@@ -432,6 +432,85 @@ impl FrequencyRange {
     }
 }
 
+fn comparison_axis(plot: usize) -> (&'static str, f64, f64, Color32) {
+    match plot {
+        0 => ("Gain dB", -60.0, 20.0, GREEN),
+        1 => ("Phase °", -180.0, 180.0, BLUE),
+        _ => ("γ²", 0.0, 1.0, YELLOW),
+    }
+}
+
+fn comparison_value(b: &comparison::Bin, plot: usize) -> Option<f64> {
+    match plot {
+        0 => b.gain.filter(|v| *v > 0.0).map(|v| 20.0 * v.log10()),
+        1 => b.phase_lead_degrees,
+        _ => b.coherence,
+    }
+    .filter(|v| v.is_finite())
+}
+
+fn comparison_point(
+    graph: egui::Rect,
+    view: FrequencyRange,
+    hz: f64,
+    value: f64,
+    plot: usize,
+) -> egui::Pos2 {
+    let (_, min, max, _) = comparison_axis(plot);
+    // Clip the actual segment at the graph boundary. Clamping vertices would
+    // turn an off-scale response into a false horizontal plateau on the frame.
+    pos2(
+        graph.left() + graph.width() * view.fraction(hz) as f32,
+        graph.bottom() - graph.height() * ((value - min) / (max - min)) as f32,
+    )
+}
+
+fn comparison_trace(
+    r: &comparison::Result,
+    plot: usize,
+    view: FrequencyRange,
+    graph: egui::Rect,
+) -> Vec<egui::Shape> {
+    let (_, _, _, color) = comparison_axis(plot);
+    let bin = r.bin_width_hz();
+    // Retain the neighboring bins so a custom range cuts through the curve
+    // instead of leaving a blank strip between the frame and the first bin.
+    let first = ((view.from / bin).floor() as usize).max(usize::from(view.log));
+    let end = ((view.to / bin).ceil() as usize + 1).min(r.bins.len());
+    let joins = |a: f64, b: f64| plot != 1 || (b - a).abs() <= 180.0;
+    let mut previous: Option<(egui::Pos2, f64)> = None;
+    let mut shapes = Vec::new();
+    for k in first..end {
+        let Some(value) = comparison_value(&r.bins[k], plot) else {
+            previous = None;
+            continue;
+        };
+        let point = comparison_point(graph, view, k as f64 * bin, value, plot);
+        let connected = previous.filter(|(_, old)| joins(*old, value));
+        if let Some((old, _)) = connected {
+            shapes.push(egui::Shape::line_segment(
+                [old, point],
+                Stroke::new(1.5, color),
+            ));
+        }
+        let close_before = connected.is_some_and(|(old, _)| (point.x - old.x).abs() < 8.0);
+        let close_after = k + 1 < end
+            && comparison_value(&r.bins[k + 1], plot).is_some_and(|next| {
+                joins(value, next)
+                    && (comparison_point(graph, view, (k + 1) as f64 * bin, next, plot).x - point.x)
+                        .abs()
+                        < 8.0
+            });
+        // Sparse and isolated bins remain identifiable; dense curves retain
+        // the line's stroke width instead of becoming a band of round markers.
+        if !close_before && !close_after && graph.contains(point) {
+            shapes.push(egui::Shape::circle_filled(point, 2.0, color));
+        }
+        previous = Some((point, value));
+    }
+    shapes
+}
+
 fn comparison_plot(
     ui: &mut egui::Ui,
     r: &comparison::Result,
@@ -452,11 +531,7 @@ fn comparison_plot(
         return None;
     }
     let painter = ui.painter().with_clip_rect(rect.intersect(ui.clip_rect()));
-    let (title, min, max, color) = match plot {
-        0 => ("Gain dB", -60.0, 20.0, GREEN),
-        1 => ("Phase °", -180.0, 180.0, BLUE),
-        _ => ("γ²", 0.0, 1.0, YELLOW),
-    };
+    let (title, min, max, color) = comparison_axis(plot);
     painter.text(
         rect.left_top(),
         egui::Align2::LEFT_TOP,
@@ -487,6 +562,7 @@ fn comparison_plot(
         );
     }
     let divisions = if graph.width() >= 400.0 { 4 } else { 2 };
+    let mut labels = Vec::new();
     for i in 0..=divisions {
         let fraction = i as f64 / divisions as f64;
         let x = graph.left() + graph.width() * fraction as f32;
@@ -494,52 +570,22 @@ fn comparison_plot(
             [pos2(x, graph.top()), pos2(x, graph.bottom())],
             Stroke::new(1.0, BORDER),
         );
-        painter.text(
-            pos2(x, rect.bottom()),
-            if i == 0 {
-                egui::Align2::LEFT_BOTTOM
-            } else if i == divisions {
-                egui::Align2::RIGHT_BOTTOM
-            } else {
-                egui::Align2::CENTER_BOTTOM
-            },
+        labels.push((
+            x,
             format!("{} Hz", frequency_label(view.hz(fraction) as f32)),
-            font.clone(),
-            MUTED,
-        );
+        ));
     }
-    let project = |hz: f64, v: f64| {
-        pos2(
-            graph.left() + graph.width() * view.fraction(hz) as f32,
-            graph.bottom() - graph.height() * ((v - min) / (max - min)).clamp(0.0, 1.0) as f32,
-        )
-    };
+    plot_labels::horizontal(
+        &painter,
+        egui::Rect::from_min_max(
+            pos2(graph.left(), graph.bottom() + 4.0),
+            pos2(graph.right(), rect.bottom()),
+        ),
+        labels,
+    );
+    let project = |hz, v| comparison_point(graph, view, hz, v, plot);
     let data_painter = painter.with_clip_rect(graph.intersect(ui.clip_rect()));
-    let value = |b: &comparison::Bin| match plot {
-        0 => b.gain.filter(|v| *v > 0.0).map(|v| 20.0 * v.log10()),
-        1 => b.phase_lead_degrees,
-        _ => b.coherence,
-    };
-    let mut previous: Option<(egui::Pos2, f64)> = None;
-    for (k, b) in r.bins.iter().enumerate() {
-        let hz = k as f64 * r.bin_width_hz();
-        if !view.contains(hz) {
-            previous = None;
-            continue;
-        }
-        if let Some(v) = value(b).filter(|v| v.is_finite()) {
-            let point = project(hz, v);
-            if let Some((old, old_value)) = previous
-                && !(plot == 1 && (v - old_value).abs() > 180.0)
-            {
-                data_painter.line_segment([old, point], Stroke::new(1.5, color));
-            }
-            data_painter.circle_filled(point, 2.0, color);
-            previous = Some((point, v));
-        } else {
-            previous = None;
-        }
-    }
+    data_painter.extend(comparison_trace(r, plot, view, graph));
     // Mark the actual FFT bin used by the readout, not an unsnapped requested frequency.
     let selected_hz = r
         .bin_at(selected)
@@ -550,18 +596,14 @@ fn comparison_plot(
             [pos2(x, graph.top()), pos2(x, graph.bottom())],
             Stroke::new(1.0, MUTED),
         );
-        painter.text(
-            pos2(
-                x.clamp(graph.left() + 40.0, graph.right() - 40.0),
-                rect.top(),
-            ),
-            egui::Align2::CENTER_TOP,
-            format!("{} Hz", display::number(Some(selected_hz))),
-            font,
-            MUTED,
+        plot_labels::horizontal(
+            &painter,
+            egui::Rect::from_min_max(pos2(graph.left(), rect.top()), graph.right_top()),
+            [(x, format!("{} Hz", display::number(Some(selected_hz))))],
         );
         if let Some((_, b)) = r.bin_at(selected)
-            && let Some(v) = value(b)
+            && let Some(v) = comparison_value(b, plot)
+            && graph.contains(project(selected_hz, v))
         {
             data_painter.circle_filled(project(selected_hz, v), 4.0, color);
         }
@@ -579,6 +621,127 @@ fn comparison_plot(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn fixture(values: &[Option<f64>]) -> comparison::Result {
+        let mut r = comparison::Result::empty(
+            comparison::Settings {
+                size: 1024,
+                ..Default::default()
+            },
+            1024,
+            1,
+            1,
+            2,
+        );
+        r.bins = values
+            .iter()
+            .map(|&value| comparison::Bin {
+                reference_psd: 1.0,
+                response_psd: 1.0,
+                cross_re: 1.0,
+                cross_im: 0.0,
+                coherence: value.map(|_| 1.0),
+                transfer_re: None,
+                transfer_im: None,
+                gain: value.map(|db| 10.0_f64.powf(db / 20.0)),
+                phase_lead_degrees: value,
+                phase_delay_seconds: None,
+                state: if value.is_some() {
+                    comparison::BinState::Valid
+                } else {
+                    comparison::BinState::ReferenceLost
+                },
+            })
+            .collect();
+        r
+    }
+
+    #[test]
+    fn off_scale_gain_keeps_its_slope_and_custom_ranges_reach_the_frame() {
+        let r = fixture(&[None, Some(-100.0), Some(-20.0), Some(-100.0)]);
+        let original = r.clone();
+        let graph = egui::Rect::from_min_size(pos2(0.0, 0.0), vec2(100.0, 100.0));
+        for log in [false, true] {
+            let view = FrequencyRange::new(1.25, 2.75, 512.0, 1.0, log);
+            let shapes = comparison_trace(&r, 0, view, graph);
+            let lines: Vec<_> = shapes
+                .iter()
+                .filter_map(|s| match s {
+                    egui::Shape::LineSegment { points, .. } => Some(points),
+                    _ => None,
+                })
+                .collect();
+            assert_eq!(lines.len(), 2);
+            assert!(lines[0][0].x < graph.left());
+            assert!(lines[1][1].x > graph.right());
+            // -100 dB is 40 dB below the frame, rather than stuck at -60 dB.
+            assert_eq!(lines[0][0].y, 150.0);
+            assert_eq!(lines[0][1].y, 50.0);
+            assert_eq!(lines[1][1].y, 150.0);
+        }
+        let below = fixture(&[Some(-100.0), Some(-80.0)]);
+        let shapes = comparison_trace(
+            &below,
+            0,
+            FrequencyRange::new(0.0, 1.0, 512.0, 1.0, false),
+            graph,
+        );
+        assert_eq!(shapes.len(), 1);
+        assert!(!shapes[0].visual_bounding_rect().intersects(graph));
+        assert_eq!(r, original);
+    }
+
+    #[test]
+    fn dense_curves_omit_bin_discs_but_keep_isolated_bins_and_gaps() {
+        let graph = egui::Rect::from_min_size(pos2(0.0, 0.0), vec2(100.0, 100.0));
+        let view = FrequencyRange::new(0.0, 511.0, 512.0, 1.0, false);
+        let mut values = vec![Some(0.0); 512];
+        values[256] = None;
+        let shapes = comparison_trace(&fixture(&values), 0, view, graph);
+        assert_eq!(shapes.len(), 509);
+        assert!(
+            shapes
+                .iter()
+                .all(|s| matches!(s, egui::Shape::LineSegment { .. }))
+        );
+        values.fill(None);
+        values[256] = Some(0.0);
+        let isolated = comparison_trace(&fixture(&values), 0, view, graph);
+        assert_eq!(isolated.len(), 1);
+        assert!(matches!(isolated[0], egui::Shape::Circle(_)));
+    }
+
+    #[test]
+    fn phase_wraps_and_missing_bins_do_not_gain_connectors() {
+        let r = fixture(&[Some(170.0), Some(-170.0), None, Some(15.0)]);
+        let graph = egui::Rect::from_min_size(pos2(0.0, 0.0), vec2(300.0, 100.0));
+        let view = FrequencyRange::new(0.0, 3.0, 512.0, 1.0, false);
+        let shapes = comparison_trace(&r, 1, view, graph);
+        assert_eq!(shapes.len(), 3);
+        assert!(shapes.iter().all(|s| matches!(s, egui::Shape::Circle(_))));
+    }
+
+    #[test]
+    fn selected_frequency_in_a_very_narrow_graph_does_not_panic() {
+        let ctx = egui::Context::default();
+        let r = fixture(&[Some(0.0), Some(0.0)]);
+        let view = FrequencyRange::new(0.0, 1.0, 512.0, 1.0, false);
+        ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    pos2(0.0, 0.0),
+                    vec2(100.0, 400.0),
+                )),
+                ..Default::default()
+            },
+            |ui| {
+                for plot in 0..3 {
+                    comparison_plot(ui, &r, plot, 100.0, 1.0, view);
+                }
+            },
+        )
+        .drop_without_applying_deltas();
+    }
 
     #[test]
     fn logarithmic_selection_roundtrips_and_excludes_dc() {
