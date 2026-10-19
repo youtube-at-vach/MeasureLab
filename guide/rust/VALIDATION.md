@@ -2,6 +2,18 @@
 
 合否・試験条件・許容差はテストコードとQAのassertionを正本とする。過去のテスト件数・ビルド成功を現行版の保証にしない。共通チェックは [Tool Usage Guide](../../.agents/workflows/tool_usage.md)、次の受け入れ条件は [PLAN](PLAN.md)。以下は必要な確認を選ぶための入口で、全作業で実機QAを実行する指示ではない。
 
+## 検証対象環境と既存成果物
+
+現在のIntel MacではGUI操作手段の技術的制約により、通常ビルドの手動GUI操作チェックと実モニター間DPI操作を検証計画から除外する。この環境の手動操作を公開前の未完了条件に数えず、対象外として記録する。以下の手動確認手順は操作可能な他環境を対象とする。実行可能な自動イベント・撮影・数値照合・連続動作評価は継続し、対象外を合格として扱わない。測定精度・実入出力・配布物の同一性などの条件は維持する。
+
+既存の成功ログと実行ファイルは、対象ソース・機能構成・プロファイル・バイナリのハッシュが一致することを確認して再利用する。同じ条件のビルド・テストを重複実行せず、未実施条件と変更の影響範囲を追加検証する。文書だけの更新でRustの実装・依存・ビルド条件が変わらない場合は、その範囲を明記する。QA版の結果をqaなし配布物の受け入れへ、別SHAの結果を公開候補へ読み替えない。
+
+## 物理デバイスの安全制約
+
+測定・出力中のUSB抜去試験は機器を破損する可能性があるため、今後実施しない。これは物理デバイスの安全上の必須制約であり、検証項目・P1の未確認範囲・公開判断の例外として残さない。接続を変更するときは、入力と出力の両方を停止し、ストリームの解放を確認してから行う。
+
+エラー処理は模擬通知・callback停止のコード検証で確認する。実機での再接続は上記の停止・解放後に行い、復元後OFF→明示Start→再測定を別に確認する。模擬エラーの成功を物理抜去の確認済みとは説明しない。旧`MEASURELAB_PROFILE_GENERATOR_DISCONNECT`は廃止し、設定されていれば通常版・QA版とも入出力やGUIの起動前に拒否する。
+
 ## テストコードの入口
 
 各モジュールの`#[cfg(test)]`／`tests`と独立参照式を読む。条件を変えるときは根拠と許容差もコードへ反映し、文書へ同じ数値表を複製しない。
@@ -52,7 +64,7 @@ GUI再設計の内部受け入れをまとめて再実行する。実際のshell
 ./.venv/bin/python scripts/qa_gui_redesign.py --device "ZOOM UAC-232"
 ```
 
-`./scripts/cargo.sh build --profile dev-fast --locked --features qa`でQAの開発ビルドを用意し、`--binary target/dev-fast/measurelab`で画面・操作を確認できる。実時間・性能の受け入れはreleaseを使う。`--case scope-compact`等で一部だけ再実行できるが、`held-replay`は先に`held-save`を完了する。外部の`held-…-replay`も対応する`held-…-save`を先に実行する。`--device`を明示すると通常Generatorの実出力と外部保持結果の保存・別プロセス復元・再測定を追加する。`--device "ZOOM UAC-232"`にはL出力→L入力／R出力→R入力のTRS接続が必要で、最大0.1 FS peak・DCなしを出力する。
+`./scripts/cargo.sh build --profile dev-fast --locked --features qa`でQAの開発ビルドを用意し、`--binary target/dev-fast/measurelab`で画面・操作を確認できる。実時間・性能の受け入れはreleaseを使う。`--case scope-compact`等で一部だけ再実行できるが、`held-replay`は先に`held-save`を完了する。外部の`held-…-replay`も対応する`held-…-save`を先に実行する。`--device`を明示すると通常Generatorの実出力と外部保持結果の保存・別プロセス復元・再測定を追加する。`--device "ZOOM UAC-232"`にはL出力→L入力／R出力→R入力の接続が必要で、最大0.1 FS peak・DCなしを出力する。両CH TRSとL-L TRS／R-R XLR（−20 dB）のような異なる経路を区別して成果物に記録する。照合は同じ生入力窓に対して行い、減衰器の公称値から物理校正済みのゲインを仮定しない。
 
 外部保持QAの固定信号出力も通常の入出力と同じ`audio::measurement_stream_config()`を使う。CoreAudioのバッファ設定は同一デバイスの入出力で共有されるため、一方だけ既定バッファへ戻さない。設定はログの`QA output configuration`で確認し、起動エラーや通知監査の失敗を除外して合格にしない。
 
@@ -62,7 +74,7 @@ GUI再設計の内部受け入れをまとめて再実行する。実際のshell
 
 成功判定はassertionと撮影成功で、画像の読み取りやすさは別に確認する。イベント試験・模擬scaleは、通常ビルドの手動操作と実モニター間のネイティブDPI切り替えの受け入れを代用しない。
 
-撮影できないデスクトップでは`--assertions-only --output dist/gui-redesign-assertions`で状態遷移・数値・描画寸法だけを実行できる。このモードは画像を要求せず、manifestの`screenshots_required: false`と各ログに未撮影を残す。撮影込みの失敗をこのモードの成功で置き換えず、画像・通常GUIの受け入れは未完了のまま扱う。
+撮影できないデスクトップでは`--assertions-only --output dist/gui-redesign-assertions`で状態遷移・数値・描画寸法だけを実行できる。このモードは画像を要求せず、manifestの`screenshots_required: false`と各ログに未撮影を残す。撮影込みの失敗をこのモードの成功で置き換えず、対象環境で未実施の画像・手動操作と、Intel Macの手動操作の対象外を区別する。
 
 macOSのMetalは、画面が点いていても他のウィンドウに覆われた計器を`Occluded`としてフレーム取得を省略する。eguiのviewport情報が`occluded: None`でも、この判定は起こる。撮影要求の後に取得が省略されると、GPU読み戻しが始まらず撮影を受信できない。`--ui-smoke`は短時間のQAウィンドウを前面に保持し、取得失敗の最初の4件と総数を記録する。フォーカス状態だけで撮影可否を判定しない。
 
@@ -72,7 +84,7 @@ macOSのMetalは、画面が点いていても他のウィンドウに覆われ�
 
 ### G4に残る手動受け入れ
 
-通常ビルドを`target/release/measurelab`で起動し、以下を確認する。音声デバイスを使わない操作確認は、I/OのSoftware LoopbackまたはGeneratorの内部接続で行える。
+操作可能な環境で通常ビルドを`target/release/measurelab`から起動し、以下を確認する。現在のIntel Macではこの節の手動操作チェックを実施せず、受け入れ待ちにも残さない。音声デバイスを使わない操作確認は、I/OのSoftware LoopbackまたはGeneratorの内部接続で行える。
 
 1. 7計器の選択・再選択、コンソールへの追加・除去・単独表示との往復、詳細・入出力画面からの復帰を行い、選択対象と構成が保たれることを確認する。
 2. Generatorを内部接続で出力し、入力停止後やGenerator非表示中にも共通バーの出力状態を読め、Stop outputで停止できることを確認する。数値入力中のSpaceで入力が開始・停止しないことも確認する。
@@ -139,13 +151,13 @@ Overlapを比較するときは`MEASURELAB_PROFILE_STFT_OVERLAP=50`／`75`／`87
 
 内部の既知正弦波には`MEASURELAB_PROFILE_DEMO_BIN_TONE=1`を追加する。外部I/Oでは`--demo`を外し、`MEASURELAB_PROFILE_DEVICE`・`SAMPLE_RATE`・`CHANNEL`を共通接頭辞付きで指定する。BlackHoleでは`MEASURELAB_PROFILE_KNOWN_OUTPUT=1`で仮想デバイスへの既知信号出力・既存Spectrum照合・出力通知監査を併用できる。内部デモ、Software Loopback、外部I/Oの結果を区別し、利用していない経路の成功へ広げない。ログとRSSは`dist/stage2-qa/`に保存し、数値の合否はログ内のQA判定と欠落を確認する。画面スリープを避ける実行では`MEASURELAB_PROFILE_KEEP_AWAKE=1`も指定する。描画が遮蔽された実行のUI時間を前面表示の性能へ代用しない。
 
-MVPの基本受け入れと、長時間・他の高負荷操作への耐性を分ける。撮影操作が重なった実行では、長いGUI更新間隔、STFT転送とGenerator内部入力の欠落を観測している。取得・表示停止の原因と負荷耐性の改善は継続課題とし、基本検証の成功を高負荷時の保証に広げない。通常ビルドの包括的な手動操作と実モニター間DPIの受け入れも別に残る。
+MVPの基本受け入れと、長時間・他の高負荷操作への耐性を分ける。撮影操作が重なった実行では、長いGUI更新間隔、STFT転送とGenerator内部入力の欠落を観測している。取得・表示停止の原因と負荷耐性の改善は継続課題とし、基本検証の成功を高負荷時の保証に広げない。通常ビルドの包括的な手動操作と実モニター間DPIは、上記の対象環境に限って確認する。
 
 高Fsの反復操作は、欠落なしだけでUI応答の受け入れにしない。Liveとの差、GPU転送量、UI更新間隔と操作感を確認する。意図したUI停止時間を最大フレーム間隔の退行と取り違えず、取得・FFT窓の欠落と表示更新の省略を区別する。
 
 ### Spectrogramの追加手動確認
 
-MVP基本受け入れとは別に、QAなしの通常ビルドで、通常幅・最小幅付近・倍率変更に対して次を確認する。自動イベント・画像検証の成功だけで手動受け入れを完了にしない。
+MVP基本受け入れとは別に、操作可能な環境のQAなし通常ビルドで、通常幅・最小幅付近・倍率変更に対して次を確認する。現在のIntel Macはこの手動確認の対象外とする。自動イベント・画像検証の成功を手動確認済みへ読み替えない。
 
 1. Software Loopbackを開始し、色・Min／Max／Auto・周波数ズーム／パン・Time Rangeを操作する。カラーバー・単位・主要値と共通入力の状態を読めることを確認する。
 2. Hold中に時間をスクロールし、測定が続くこと、時間A／Bが勝手に移動しないこと、Liveで最新へ戻ることを確認する。
@@ -227,7 +239,7 @@ MEASURELAB_PROFILE_SECONDS=300 MEASURELAB_PROFILE_DEVICE="ZOOM UAC-232" \
     MEASURELAB_PROFILE_GENERATOR_EDITS=1 ./scripts/profile-stage2.sh generator-uac232-300
 ```
 
-GeneratorのUI停止はRUNNING・遷移外・1秒分以上のPCM進行後に行い、入力・出力・解析の継続をそれぞれ判定する。有限Stop、独立数値照合、ストリーム／通知リスナー解放後の通知監査までを必要とし、途中終了・ログの欠落0だけで合格にしない。実USB切断の選択は`MEASURELAB_PROFILE_GENERATOR_DISCONNECT=1`で、準備完了後の手動切断・再接続を伴う。
+GeneratorのUI停止はRUNNING・遷移外・1秒分以上のPCM進行後に行い、入力・出力・解析の継続をそれぞれ判定する。有限Stop、独立数値照合、ストリーム／通知リスナー解放後の通知監査までを必要とし、途中終了・ログの欠落0だけで合格にしない。USB抜去を伴う試験は実施しない。
 
 Spectrum遅延は同じ結果群の入力利用可能→解析完了→UI提出をCPU時刻で直接集計する。p95の合計・差は使わず、ADC取得時刻・GPU完了・scanout・窓充填／平均整定とは区別する。コールバック計測はプリエンプション込みのホスト経過時間で、厳密なスレッドCPU時間ではない。QA計測の追加メモリ・転送負荷も条件へ含める。
 
@@ -237,15 +249,17 @@ Spectrum遅延は同じ結果群の入力利用可能→解析完了→UI提出�
 
 公開候補と同じソースSHA・通常release／desktop・qaなしの配布実行ファイルを使う。以下は未実施の手順であり、過去の開発QA・CIのパッケージ検証を合格へ代用しない。公開操作は [公開準備](RELEASE_PREPARATION.md#公開候補の通し確認と公開運用) に分ける。
 
+手動GUI操作に関する行は操作可能な環境に適用する。現在のIntel Macでは上記の環境除外に従い、手動GUI操作を未完了条件に数えない。配布実行ファイル・実入出力・保存データの検証と、手動操作の対象外を分けて判定する。
+
 | 段階 | 確認内容 |
 | --- | --- |
 | 識別 | 配布ファイル名・SHA-256、build-infoのソースSHA・版・対象CPU・機能、展開後／コピー後の実行ファイルSHA-256を記録する |
 | 起動 | インストール／展開後の通常GUIを起動し、Scope単独、入力・出力停止、I/O・Help・計器選択、通常幅／狭幅の操作を確認する |
 | 内部経路 | Software Loopbackの取得→完全窓→停止→数値確認、Generator内部出力と入力の独立Start／Stop、Scope／Spectrum／Lock-in／同期比較の有効性・保持を確認する |
 | 実入出力 | 使用機器・配線・公称Fs・CH・PCM・バッファ・未校正条件を記録し、REF／応答を観測する。音声通知・欠落・整定・失敗を正常値へ置き換えない |
-| Generator | 周波数・peak振幅・位相の編集、入力Stop時の出力継続、出力Stop、切断ERRORと明示Reset／Start、設定復元・別プロセス復元後のOFFを確認する |
+| Generator | 周波数・peak振幅・位相の編集、入力Stop時の出力継続、出力Stop、設定復元・別プロセス復元後のOFFを確認する。再接続は入出力停止・ストリーム解放後に限り、明示Start後の再測定を確認する。ERROR処理は模擬条件で別判定する |
 | 同期比較 | 異なるREF／SIG、既知ゲイン・位相の照合、低REF／欠落時の無効化、有限Stopと条件付きJSON／CSV・参照比較を確認する。独立数値照合は既存の機能別QAを参照する |
-| 保存・再起動 | Fileで設定v8と保持JSON v5・CSV・対象PNGを保存し、アプリ終了後に同じ配布物を再起動する。停止中の設定復元、出力OFF、参照JSON読込、明示Start後の再測定と条件一致を確認する |
+| 保存・再起動 | Fileで設定v9と保持JSON v6・CSV・対象PNGを保存し、アプリ終了後に同じ配布物を再起動する。停止中の設定復元、出力OFF、参照JSON読込、明示Start後の再測定と条件一致を確認する |
 | 負荷と表示 | 通常GUIの手動操作、実モニター間DPI、反復起動・再接続・長時間を条件別に判定する。既知の高負荷GUI停止・STFT／Generator欠落の再現条件と未確認条件を区別する |
 
 OS別には次を追加する。
@@ -274,23 +288,23 @@ Intel Iris Pro Graphics 6200（BDW GT3）／Vulkanで同じ配布実行ファイ
 
 ### macOSでの測定・GUI確認
 
-以下は2026-10-12〜16の条件付き観測。共通環境はmacOS 14.8.9・x86_64・Rust 1.99、GUIはMetal／AMD Radeon R9 M290X。Fsは公称、入出力FS・物理時計・CH間校正は未校正。基点SHAの上の作業差分が対象であり、SHAだけを検証済みソースとしない。
+共通環境はmacOS 14.8.9・x86_64・Rust 1.99、GUIはMetal／AMD Radeon R9 M290X。Fsは公称、入出力FS・物理時計・CH間校正は未校正。差分を記した行は基点SHAの上の作業差分が対象であり、SHAだけを検証済みソースとしない。現在のIntel Macの手動GUI操作は上記の計画除外に従う。
 
 | 対象・基点／条件 | 確認した範囲と制限 |
 | --- | --- |
 | Spectrogram S6、`514ff17a`＋S6差分／release QA・内蔵5K・native scale 2.0 | MVP基本受け入れを完了。内部デモ3 Overlap、Software Loopback・通常Generator内部入力・BlackHole 16chの192 kHz、BlackHole 2ch・UAC-232の48 kHzでLive／反復操作・UI停止中の継続・独立数値照合を確認。UAC-232はL-L TRS、R-Rは−20 dBアッテネーター付きXLR。証拠は`dist/spectrogram-s6-basic/manifest.json`の内部／BlackHoleと`dist/spectrogram-s6-basic-uac48/manifest.json`。単独／Pair・通常幅／狭幅の画像とイベントは`dist/spectrogram-s6-ui/`・`dist/spectrogram-s6-ui-measurement/`。通常ビルドの包括的手動操作・実モニター間DPIは未確認 |
 | 同S6の制限／高負荷・物理192 kHz | 撮影操作が重なった長時間評価でGUI更新の長い停止、STFT転送とGenerator内部入力の欠落を観測。原因切り分け・耐性改善は残る。失敗・中断は`dist/spectrogram-s6/manifest-audited.json`等に保存。UAC-232の192 kHzは起動時STFT転送欠落が再現し、Live／反復操作の比較を不合格として`dist/spectrogram-s6-basic/`・`dist/spectrogram-s6-basic-uac-recheck/`に保存。48 kHzの基本成功で置き換えない |
 | GUI G4、`32ec3f5d`＋G4差分／dev QA・native pixels per point 2.0・画面スリープ抑止 | 7計器、単独／コンソール・4区画・狭幅・倍率・詳細・入出力画面の画像を確認。内部経路とBlackHole 2ch／16ch・48 kHz・f32の通常Generator、独立Lock-in／比較照合、UI停止中の継続、有限Stop、保持・JSON／CSV・OFF復元・別プロセス再測定を確認。背面固定ではMetalの`Occluded`と撮影タイムアウト、前面保持では撮影成功を再現した。ソース／バイナリ識別・ログ・画像は`dist/gui-redesign-g4-acceptance/manifest.json`、遮蔽の比較は`dist/gui-capture-diagnosis/occlusion/`。通常ビルドの手動操作・実モニター間DPI切り替えは未確認 |
-| GUI G4のUAC-232、同差分／48 kHz・2ch・f32・L/L、R/R TRS・1,024 frames | 右経路の復旧後、通常Generatorの同じ生入力窓の独立Lock-in／同期比較照合、UI停止中の継続、有限Stop、保持・設定／結果・CSV／PNG保存、OFF復元・参照比較・別プロセス再測定を確認。固定信号のQA出力はバッファ要求を通常入力と統一し、起動／測定／解放後の通知監査も通過。証拠は同manifestの`generator-zoom-uac-232`と`held-zoom-uac-232-*`。未校正の物理振幅・時計、最大Fs、反復再接続、長時間は未受け入れ |
+| UAC-232統合QA、`4741b5dc`／release・desktop + qa、48 kHz・2ch・f32・L-L TRS／R-R XLR（−20 dB）・1,024 frames | 通常Generatorの同じ生入力窓の独立Lock-in／同期比較DFT照合、独立Stop、保持・JSON／CSV／PNG・別プロセス復元・OFF復元・再測定、Singleの生入力照合を確認。固定信号の保存QAは宣言した接続待機区間に通知1件、測定区間0件。GUIなしのLock-in QAはREF消失／不安定REF・CH交換・二段EMA・転送飽和後の無効化と回復まで通過。小信号の位相変化は原因未確定。ソース／バイナリ識別と証拠は`dist/package-acceptance/4741b5dce794e6007962b2438972a85fb8f7f9a9/macos-x86_64/uac232-20261019/manifest.json`。同じソースの既存ビルド・Rustチェック・内部／BlackHole QA・DMG検証はハッシュ照合して再利用し、重複実行していない。qaなし配布物・最大Fs・実機再接続は未受け入れ |
 | Lock-in、`a837b04c`／BlackHole 2ch・16ch、44.1／48／96／192 kHz | 短時間の数値・欠落回復・保存再測定。2ch・48 kHzはGUIなし600秒、正常測定区間の通知・欠落0。物理精度・通常GUI600秒の保証ではない |
 | Lock-in、`1c0373dc`／UAC-232 LL／RR TRS、同4レート | 同じ生入力窓の独立適合・保存再取得。48 kHzはGUIなし600秒、最大R差0.598 µFS peak・位相差0.0004101°。−40 dB応答で高レベル基準から約0.115〜0.155°の位相変化があり原因未確定 |
 | 段階4、`60021e3f`／Software Loopback・BlackHole・UAC-232 | 通常幅・狭幅、別プロセス復元・再測定、画像保存。BlackHole 16ch・96 kHz・512k Continuousは30秒、20予定窓・入力／解析欠落0。UAC-232・48 kHzの30秒はUI停止中の継続・有限Stop・独立照合・解放後監査を確認 |
 | 同段階4、UAC-232・48 kHz・4表示・512k | 約270秒・95窓・捕捉欠落0までの観測を受け入れ。中断時に入力通知2件、最終有限照合・監査なし。600秒完走の成功ではない |
 | 内部Generator、`6c6feaad`／2ch・48 kHz・f64 | 750 Hz・0.125／0.0625 FS peak・+30°、Scope／Spectrum／Lock-in、1秒UI受信停止・独立Stop・JSON／CSV・OFF復元を確認 |
 | 通常Generator実出力、`03622c6f`／BlackHole 2ch・16ch・UAC-232、48 kHz・f32 | 750 Hz・0.1／0.05 FS peak・+30°、Scope／Spectrum／Lock-in、独立Stop、JSON／CSV・OFF復元を条件付き確認。通常幅1440×860・狭幅900×660の旧GUI確認で、後の表示変更・DPI切り替えの確認ではない |
-| Generator負荷、`2b723c2e`／UAC-232・48 kHz・f32・1,024 frames | 300秒指定（取得約299.82秒・出力約299.33秒）・100編集、入出力通知と取得／解析欠落0、1秒UI停止・最終独立照合・有限Stop・解放後監査。編集応答p95 33.601 ms、出力callback経過時間p95上端0.07 ms・実ブロック時間の0.4% |
-| 実USB切断、`83a0421b`／UAC-232・48 kHz・2ch・f32・dev QA | ERROR保持・入力停止・出力解放、再接続と同じ出力条件の復元でOFFを確認。再接続後のStart・測定・反復切断は未確認 |
-| 同期比較、`83a0421b`／Software Loopback・48 kHz・750 Hz、N=4,096・平均4 | ゲイン0.5・+30°、CH交換で2.0・−30°、有限Stop・保存・OFF復元・再測定を確認。後の表示修正、通常Generator内部／BlackHole／UAC-232の独立DFT統合は未確認 |
+| Generator連続評価、`4741b5dc`／同UAC-232配線・release QA・48 kHz・f32・1,024 frames・画面スリープ抑止 | 600秒指定・100編集、入出力通知と取得／Spectrum／STFT入力・結果・履歴保存の欠落0。1秒UI停止中も入出力・FFT・STFT収集が継続し、最終独立Lock-in／比較DFT・保持JSON／CSV・有限Stop・解放後監査まで通過。撮影・並行ビルド・別音声試験なし。最大UIフレーム間隔約29秒を観測し、表示応答の受け入れにはしない。Spectrogramの前面描画は対象外。証拠は上記manifestの`generator-600`とcallback report |
+| 廃止した実USB切断試験の過去記録、`83a0421b`／UAC-232・48 kHz・2ch・f32・dev QA | ERROR保持・入力停止・出力解放、再接続と同じ出力条件の復元でOFFを観測。安全制約により今後の抜去試験・反復抜去は実施しない。停止・解放後の安全な再接続と明示Start後の再測定は別に未確認 |
+| 同期比較、`83a0421b`／Software Loopback・48 kHz・750 Hz、N=4,096・平均4 | ゲイン0.5・+30°、CH交換で2.0・−30°、有限Stop・保存・OFF復元・再測定を確認。この旧SHAの結果を現行版の受け入れへ代用しない |
 
 CoreAudioの起動／再接続XrunはBlackHole・UAC-232で発生した。バッファ要求変更後の上記UAC-232成功は全起動・他Fsの保証ではなく、初期試験の操作介入の可能性と原因は未確定。接続直後のSingle・外部可変callback・物理16ch・他OS／機器・実時計／物理校正・GPU実行／実表示遅延は確認を残す。
 

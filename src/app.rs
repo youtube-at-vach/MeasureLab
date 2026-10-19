@@ -5326,16 +5326,9 @@ impl eframe::App for ScopeApp {
             self.profile_spectrogram_history();
             self.check_lifecycle(&ctx, elapsed);
             self.check_input_lifecycle(&ctx);
-            if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_DISCONNECT").is_some() {
-                self.check_generator_disconnect(&ctx)
-                    .expect("Physical Generator disconnect QA");
-            } else {
-                self.check_generator_edits();
-            }
+            self.check_generator_edits();
             let running = self.running();
-            if let Some(profile) = &mut self.profile
-                && std::env::var_os("MEASURELAB_PROFILE_GENERATOR_DISCONNECT").is_none()
-            {
+            if let Some(profile) = &mut self.profile {
                 profile.record(elapsed, running, frame.info().cpu_usage);
                 if profile.progress_due()
                     && let Some(core) = &self.core
