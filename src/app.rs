@@ -547,7 +547,7 @@ impl ScopeApp {
             spectrogram_floor: -120.0,
             spectrogram_ceiling: 0.0,
             spectrogram_seconds: 5.0,
-            spectrogram_color_map: spectrogram::ColorMap::Blue,
+            spectrogram_color_map: spectrogram::ColorMap::default(),
             spectrogram_auto_color: false,
             spectrogram_view_worker: spectrogram::viewport::Worker::default(),
             spectrogram_snapshot: Arc::default(),

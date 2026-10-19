@@ -5,11 +5,11 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ColorMap {
-    #[default]
     Blue,
     Heat,
     Grayscale,
     Turbo,
+    #[default]
     Viridis,
     Inferno,
     Magma,
@@ -19,15 +19,15 @@ pub enum ColorMap {
 
 impl ColorMap {
     pub const ALL: [Self; 9] = [
-        Self::Turbo,
         Self::Viridis,
         Self::Inferno,
+        Self::Turbo,
         Self::Magma,
         Self::Grayscale,
-        Self::Hot,
-        Self::Copper,
         Self::Blue,
         Self::Heat,
+        Self::Hot,
+        Self::Copper,
     ];
     pub const MAX_STOPS: usize = 256;
 

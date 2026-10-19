@@ -374,6 +374,8 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
             );
         }
         let mut image = spectrogram_gpu::Renderer::new(&device, format);
+        // Keep the wrap/order fixture on its known palette as defaults change.
+        image.color_map = spectrogram::ColorMap::Blue;
         let mut image_view = View::full(config.sample_rate, FrequencyScale::Linear, -120.0);
         image_view.ceiling_db = 0.0;
         let seconds = 4.0 * config.hop as f64 / config.sample_rate as f64;
