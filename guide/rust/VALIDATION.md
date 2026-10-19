@@ -2,6 +2,12 @@
 
 合否・試験条件・許容差はテストコードとQAのassertionを正本とする。過去のテスト件数・ビルド成功を現行版の保証にしない。共通チェックは [Tool Usage Guide](../../.agents/workflows/tool_usage.md)、次の受け入れ条件は [PLAN](PLAN.md)。以下は必要な確認を選ぶための入口で、全作業で実機QAを実行する指示ではない。
 
+## 物理デバイスの安全制約
+
+測定・出力中のUSB抜去試験は機器を破損する可能性があるため、今後実施しない。これは物理デバイスの安全上の必須制約であり、検証項目・P1の未確認範囲・公開判断の例外として残さない。接続を変更するときは、入力と出力の両方を停止し、ストリームの解放を確認してから行う。
+
+エラー処理は模擬通知・callback停止のコード検証で確認する。実機での再接続は上記の停止・解放後に行い、復元後OFF→明示Start→再測定を別に確認する。模擬エラーの成功を物理抜去の確認済みとは説明しない。旧`MEASURELAB_PROFILE_GENERATOR_DISCONNECT`は廃止し、設定されていれば通常版・QA版とも入出力やGUIの起動前に拒否する。
+
 ## テストコードの入口
 
 各モジュールの`#[cfg(test)]`／`tests`と独立参照式を読む。条件を変えるときは根拠と許容差もコードへ反映し、文書へ同じ数値表を複製しない。
@@ -227,7 +233,7 @@ MEASURELAB_PROFILE_SECONDS=300 MEASURELAB_PROFILE_DEVICE="ZOOM UAC-232" \
     MEASURELAB_PROFILE_GENERATOR_EDITS=1 ./scripts/profile-stage2.sh generator-uac232-300
 ```
 
-GeneratorのUI停止はRUNNING・遷移外・1秒分以上のPCM進行後に行い、入力・出力・解析の継続をそれぞれ判定する。有限Stop、独立数値照合、ストリーム／通知リスナー解放後の通知監査までを必要とし、途中終了・ログの欠落0だけで合格にしない。実USB切断の選択は`MEASURELAB_PROFILE_GENERATOR_DISCONNECT=1`で、準備完了後の手動切断・再接続を伴う。
+GeneratorのUI停止はRUNNING・遷移外・1秒分以上のPCM進行後に行い、入力・出力・解析の継続をそれぞれ判定する。有限Stop、独立数値照合、ストリーム／通知リスナー解放後の通知監査までを必要とし、途中終了・ログの欠落0だけで合格にしない。USB抜去を伴う試験は実施しない。
 
 Spectrum遅延は同じ結果群の入力利用可能→解析完了→UI提出をCPU時刻で直接集計する。p95の合計・差は使わず、ADC取得時刻・GPU完了・scanout・窓充填／平均整定とは区別する。コールバック計測はプリエンプション込みのホスト経過時間で、厳密なスレッドCPU時間ではない。QA計測の追加メモリ・転送負荷も条件へ含める。
 
@@ -243,7 +249,7 @@ Spectrum遅延は同じ結果群の入力利用可能→解析完了→UI提出�
 | 起動 | インストール／展開後の通常GUIを起動し、Scope単独、入力・出力停止、I/O・Help・計器選択、通常幅／狭幅の操作を確認する |
 | 内部経路 | Software Loopbackの取得→完全窓→停止→数値確認、Generator内部出力と入力の独立Start／Stop、Scope／Spectrum／Lock-in／同期比較の有効性・保持を確認する |
 | 実入出力 | 使用機器・配線・公称Fs・CH・PCM・バッファ・未校正条件を記録し、REF／応答を観測する。音声通知・欠落・整定・失敗を正常値へ置き換えない |
-| Generator | 周波数・peak振幅・位相の編集、入力Stop時の出力継続、出力Stop、切断ERRORと明示Reset／Start、設定復元・別プロセス復元後のOFFを確認する |
+| Generator | 周波数・peak振幅・位相の編集、入力Stop時の出力継続、出力Stop、設定復元・別プロセス復元後のOFFを確認する。再接続は入出力停止・ストリーム解放後に限り、明示Start後の再測定を確認する。ERROR処理は模擬条件で別判定する |
 | 同期比較 | 異なるREF／SIG、既知ゲイン・位相の照合、低REF／欠落時の無効化、有限Stopと条件付きJSON／CSV・参照比較を確認する。独立数値照合は既存の機能別QAを参照する |
 | 保存・再起動 | Fileで設定v8と保持JSON v5・CSV・対象PNGを保存し、アプリ終了後に同じ配布物を再起動する。停止中の設定復元、出力OFF、参照JSON読込、明示Start後の再測定と条件一致を確認する |
 | 負荷と表示 | 通常GUIの手動操作、実モニター間DPI、反復起動・再接続・長時間を条件別に判定する。既知の高負荷GUI停止・STFT／Generator欠落の再現条件と未確認条件を区別する |
@@ -289,7 +295,7 @@ Intel Iris Pro Graphics 6200（BDW GT3）／Vulkanで同じ配布実行ファイ
 | 内部Generator、`6c6feaad`／2ch・48 kHz・f64 | 750 Hz・0.125／0.0625 FS peak・+30°、Scope／Spectrum／Lock-in、1秒UI受信停止・独立Stop・JSON／CSV・OFF復元を確認 |
 | 通常Generator実出力、`03622c6f`／BlackHole 2ch・16ch・UAC-232、48 kHz・f32 | 750 Hz・0.1／0.05 FS peak・+30°、Scope／Spectrum／Lock-in、独立Stop、JSON／CSV・OFF復元を条件付き確認。通常幅1440×860・狭幅900×660の旧GUI確認で、後の表示変更・DPI切り替えの確認ではない |
 | Generator負荷、`2b723c2e`／UAC-232・48 kHz・f32・1,024 frames | 300秒指定（取得約299.82秒・出力約299.33秒）・100編集、入出力通知と取得／解析欠落0、1秒UI停止・最終独立照合・有限Stop・解放後監査。編集応答p95 33.601 ms、出力callback経過時間p95上端0.07 ms・実ブロック時間の0.4% |
-| 実USB切断、`83a0421b`／UAC-232・48 kHz・2ch・f32・dev QA | ERROR保持・入力停止・出力解放、再接続と同じ出力条件の復元でOFFを確認。再接続後のStart・測定・反復切断は未確認 |
+| 廃止した実USB切断試験の過去記録、`83a0421b`／UAC-232・48 kHz・2ch・f32・dev QA | ERROR保持・入力停止・出力解放、再接続と同じ出力条件の復元でOFFを観測。安全制約により今後の抜去試験・反復抜去は実施しない。停止・解放後の安全な再接続と明示Start後の再測定は別に未確認 |
 | 同期比較、`83a0421b`／Software Loopback・48 kHz・750 Hz、N=4,096・平均4 | ゲイン0.5・+30°、CH交換で2.0・−30°、有限Stop・保存・OFF復元・再測定を確認。後の表示修正、通常Generator内部／BlackHole／UAC-232の独立DFT統合は未確認 |
 
 CoreAudioの起動／再接続XrunはBlackHole・UAC-232で発生した。バッファ要求変更後の上記UAC-232成功は全起動・他Fsの保証ではなく、初期試験の操作介入の可能性と原因は未確定。接続直後のSingle・外部可変callback・物理16ch・他OS／機器・実時計／物理校正・GPU実行／実表示遅延は確認を残す。

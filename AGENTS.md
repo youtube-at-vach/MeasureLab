@@ -36,6 +36,7 @@ description: MeasureLab の Rust 開発と公開サイトの共通ルール
 
 ## 実装と検証
 
+* 物理デバイスの安全上の必須制約として、測定・出力中のUSB抜去試験は実施しない。接続変更は入出力の停止・ストリーム解放後に行う。抜去試験を計画・受け入れ条件へ再導入せず、エラー処理は模擬通知で確認する。
 * 検証は変更した挙動と回帰リスクに合わせる。コマンドは [Tool Usage Guide](.agents/workflows/tool_usage.md) を参照する。
 * Rust の変更時と PR 前には `cargo fmt`、全ターゲット・全機能の Clippy とテスト、デスクトップのビルドを行う。GUIなしと通常（qaなし）のテストも実行する。`cargo test`のbenchは各条件1回の動作確認とし、反復性能計測は`cargo bench`で明示的に実行する。CIの必須チェックはLinuxの静的・数値・回帰検証と関連変更のMSRV確認に集約し、3 OSのreleaseビルドは任意チェックとする。`scripts/cargo.sh` は PATH 上の Cargo またはローカル `.tools/` の Rust 環境を使う。
 * 残る Python は文書・リリースノート・CI用のツールのみ。Python 3.12 以降と `.venv/bin/` の実行ファイルを使い、旧アプリの依存関係・Pytest・Mypy・GUI 検証環境は導入しない。

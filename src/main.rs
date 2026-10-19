@@ -3,6 +3,9 @@
 use eframe::{egui, egui_wgpu::wgpu};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_DISCONNECT").is_some() {
+        return Err("Live USB disconnect QA is prohibited for physical device safety. Stop and release input/output before changing connections.".into());
+    }
     #[cfg(feature = "qa")]
     measurelab::qa::init_logging();
     #[cfg(not(feature = "qa"))]

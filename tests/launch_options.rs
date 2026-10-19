@@ -3,6 +3,26 @@
 use std::process::Command;
 
 #[test]
+fn retired_usb_disconnect_qa_is_rejected_before_any_audio_or_ui_start() {
+    for value in ["", "0", "1"] {
+        let output = Command::new(env!("CARGO_BIN_EXE_measurelab"))
+            .args(["--physical-lockin-smoke", "--input-device", "ZOOM UAC-232"])
+            .env("MEASURELAB_PROFILE_GENERATOR_DISCONNECT", value)
+            .env("MEASURELAB_PROFILE_GENERATOR_DEVICE", "ZOOM UAC-232")
+            .env("MEASURELAB_PROFILE_SECONDS", "300")
+            .output()
+            .unwrap();
+        assert!(!output.status.success());
+        assert!(output.stdout.is_empty());
+        assert!(
+            String::from_utf8(output.stderr)
+                .unwrap()
+                .contains("Live USB disconnect QA is prohibited for physical device safety")
+        );
+    }
+}
+
+#[test]
 fn help_exposes_internal_signals_only_in_qa_builds() {
     let output = Command::new(env!("CARGO_BIN_EXE_measurelab"))
         .arg("--help")
