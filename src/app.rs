@@ -43,6 +43,7 @@ mod gui_qa;
 mod io_panel;
 mod lockin_panel;
 mod monitor_controls;
+mod plot_labels;
 mod scope_controls;
 mod shell;
 mod spectrogram_controls;
@@ -3978,16 +3979,6 @@ impl ScopeApp {
                     );
                     if division % 4 == 0 {
                         painter.text(
-                            pos2(x, rect.bottom() + 4.0),
-                            egui::Align2::CENTER_TOP,
-                            format!(
-                                "{:.3}",
-                                (division as f64 - 4.0) * self.xy_settings.x_fs_per_div
-                            ),
-                            egui::FontId::monospace(10.0),
-                            MUTED,
-                        );
-                        painter.text(
                             pos2(rect.left() - 8.0, y),
                             egui::Align2::RIGHT_CENTER,
                             format!(
@@ -3999,6 +3990,22 @@ impl ScopeApp {
                         );
                     }
                 }
+                plot_labels::horizontal(
+                    painter,
+                    egui::Rect::from_min_max(
+                        pos2(outer.left(), rect.bottom() + 4.0),
+                        outer.right_bottom(),
+                    ),
+                    (0..=2).map(|i| {
+                        (
+                            rect.left() + side * i as f32 / 2.0,
+                            format!(
+                                "{:.3}",
+                                (i as f64 - 1.0) * 4.0 * self.xy_settings.x_fs_per_div
+                            ),
+                        )
+                    }),
+                );
                 let ppp = ui.ctx().pixels_per_point();
                 painter.add(egui_wgpu::Callback::new_paint_callback(
                     rect,
@@ -4825,7 +4832,7 @@ impl ScopeApp {
                 .filter(|(hz, _)| *hz >= view.min_hz && *hz <= view.max_hz)
                 .collect()
         };
-        let mut last_label = f32::NEG_INFINITY;
+        let mut labels = Vec::new();
         for (hz, labelled) in ticks {
             let x = rect.left() + view.x(hz) * rect.width();
             painter.line_segment(
@@ -4839,17 +4846,18 @@ impl ScopeApp {
                     },
                 ),
             );
-            if labelled && x - last_label >= 46.0 {
-                painter.text(
-                    pos2(x, rect.bottom() + 4.0),
-                    egui::Align2::CENTER_TOP,
-                    frequency_label(hz),
-                    egui::FontId::monospace(10.0),
-                    MUTED,
-                );
-                last_label = x;
+            if labelled {
+                labels.push((x, frequency_label(hz)));
             }
         }
+        plot_labels::horizontal(
+            painter,
+            egui::Rect::from_min_max(
+                pos2(outer.left(), rect.bottom() + 4.0),
+                outer.right_bottom(),
+            ),
+            labels,
+        );
         let ppp = ui.ctx().pixels_per_point();
         let pixels = (rect.width() * ppp).ceil().max(1.0) as usize;
         self.spectrum_dirty |=
@@ -5049,18 +5057,24 @@ impl ScopeApp {
                 [pos2(px, rect.top()), pos2(px, rect.bottom())],
                 Stroke::new(1.0, Color32::from_rgb(24, 39, 47)),
             );
-            painter.text(
-                pos2(px, rect.bottom() + 4.0),
-                egui::Align2::CENTER_TOP,
-                format!(
-                    "{:.1}",
-                    (x as f32 - 2.0 - self.scope_horizontal_position)
-                        * self.scope_display_ms_per_div()
-                ),
-                egui::FontId::monospace(10.0),
-                MUTED,
-            );
         }
+        plot_labels::horizontal(
+            painter,
+            egui::Rect::from_min_max(
+                pos2(outer.left(), rect.bottom() + 4.0),
+                outer.right_bottom(),
+            ),
+            (0..=10).map(|x| {
+                (
+                    rect.left() + rect.width() * x as f32 / 10.0,
+                    format!(
+                        "{:.1}",
+                        (x as f32 - 2.0 - self.scope_horizontal_position)
+                            * self.scope_display_ms_per_div()
+                    ),
+                )
+            }),
+        );
         for y in 0..=8 {
             let py = rect.top() + rect.height() * y as f32 / 8.0;
             painter.line_segment(
