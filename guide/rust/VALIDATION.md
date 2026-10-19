@@ -43,6 +43,24 @@
 ./scripts/cargo.sh test --locked --lib --no-default-features measurement::tests
 ```
 
+## コア解析の負荷耐性QA
+
+[analysis_resilience.rs](../../tests/analysis_resilience.rs)は、通常版と共通の入力転送・取得・Spectrum・STFT履歴収集・Lock-in・同期比較をGUIなしで同時実行する。既知f64信号、2／16ch、表示受信停止、有限Stop、同じワーカーの再開後の数値と世代分離を確認する。短い回帰は通常の`cargo test`に含まれる。
+
+実時間試験はrelease・qaなしで明示的に実行する。CPU競合スレッドを継続実行し、取得・各解析の欠落、窓数、STFTキューの最大滞留、取得の進捗、Stop時間を`ANALYSIS_RESILIENCE`のJSONへ出力する。`processing_seconds`は計測区間の経過時間の合計で、スレッドCPU時間ではない。`core_max_lag_frames`は生成数と取得処理数の最大差で、受付欠落を含み、キュー滞留だけを表さない。欠落時のSpectrum・Lock-in・同期比較の更新窓数はリセット後の値とする。
+
+```sh
+MEASURELAB_STRESS_SECONDS=120 MEASURELAB_STRESS_RATE=192000 \
+    MEASURELAB_STRESS_CHANNELS=16 MEASURELAB_STRESS_COMPETITORS=3 \
+    MEASURELAB_STRESS_REQUIRE_CONTINUOUS=true \
+    ./scripts/cargo.sh test --release --locked --no-default-features \
+    --test analysis_resilience -- --ignored --nocapture
+```
+
+無欠落を受け入れる条件では`MEASURELAB_STRESS_REQUIRE_CONTINUOUS=true`を指定する。限界探索では省略し、欠落を含む結果を記録する。その場合も解析エラー・進捗停止・有限終端の不一致・再開後の数値不一致は失敗とする。入力レート・CH数・競合数・時間を変更し、同一条件の改善前後を複数回比較する。試験中はビルド・他の音声試験を並行実行せず、OS／CPU・Rust版・ソース差分・実行ファイル識別とログを`dist/`へ保存する。
+
+実入力と同じワーカーへの模擬フレーム供給であり、OSの音声callback・物理入出力・GPU／表示応答の受け入れは別に行う。STFTは短時間の取得滞留に備える固定容量と、小さいFFTの高い行頻度に対応する小容量行の追加プールを持つ。大きいFFTは従来のフルサイズ行だけを使い、持続的な処理能力超過では欠落を明示する。CPU側の既定メモリ上限は容量テストで確認する。容量・負荷条件・許容差の正本はコードとする。
+
 ## GUI・入出力QAの再実行
 
 リポジトリのルートでQA版を一度ビルドし、同じ実行ファイルを直列で使う。異なる機能構成のビルドは同じ実行ファイルを上書きするため並行実行しない。実時間試験中はビルド・別の音声試験を並行させず、画面スリープ抑止・並行作業の有無を条件に残す。

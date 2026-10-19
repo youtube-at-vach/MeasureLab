@@ -16,10 +16,18 @@ use std::{
 };
 
 pub const BLOCK_FRAMES: usize = 256;
-pub const INPUT_BLOCKS: usize = 64;
+/// Match the maximum capture/Spectrum backlog (262144 selected-channel frames).
+/// The former 16384-frame queue covered only 21 ms at 768 kHz and lost STFT
+/// input while acquisition caught up after scheduling or allocation stalls.
+/// This remains bounded, at about 2 MiB rather than copying all source channels.
+pub const INPUT_BLOCKS: usize = 1024;
 /// About 0.68 s at 48 kHz / hop 256 (16 MiB of f64 values at maximum N).
 pub const RESULT_ROWS: usize = 128;
 const MAX_BINS: usize = 32768 / 2 + 1;
+/// Small/high-cadence FFTs need more scheduling headroom without reserving
+/// another full-size buffer per row. This tier adds only about 8 MiB.
+pub const SMALL_RESULT_ROWS: usize = 512;
+const SMALL_BINS: usize = 4096 / 2 + 1;
 
 /// Spectrogram cadence only. Spectrum Continuous keeps its independent N/4 hop.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -124,6 +132,8 @@ impl Row {
 #[derive(Default)]
 pub struct Metrics {
     pub input_dropped: AtomicU64,
+    /// Peak queued blocks; each contains at most BLOCK_FRAMES source frames.
+    pub input_high_water: AtomicU64,
     pub result_dropped: AtomicU64,
     pub produced: AtomicU64,
     /// Accepted samples processed by the worker, across analysis generations.
@@ -268,10 +278,16 @@ pub struct Worker {
 
 impl Worker {
     pub fn new() -> Self {
-        Self::with_capacity(INPUT_BLOCKS, RESULT_ROWS)
+        Self::with_pools(INPUT_BLOCKS, RESULT_ROWS, SMALL_RESULT_ROWS)
     }
 
+    #[cfg(test)]
     fn with_capacity(input_blocks: usize, result_rows: usize) -> Self {
+        Self::with_pools(input_blocks, result_rows, 0)
+    }
+
+    fn with_pools(input_blocks: usize, full_rows: usize, small_rows: usize) -> Self {
+        let result_rows = full_rows + small_rows;
         let (input, mut incoming) = RingBuffer::<InputBlock>::new(input_blocks);
         let (mut outgoing, results) = RingBuffer::new(result_rows);
         let (mut recycle, mut free) = RingBuffer::new(result_rows);
@@ -285,7 +301,7 @@ impl Worker {
             remove_dc: true,
             precision: Precision::F64,
         };
-        for _ in 0..result_rows {
+        for index in 0..result_rows {
             recycle
                 .push(Row {
                     info: RowInfo {
@@ -295,7 +311,15 @@ impl Worker {
                         end: 0,
                         gap: Gap::default(),
                     },
-                    power: vec![0.0; MAX_BINS].into_boxed_slice(),
+                    power: vec![
+                        0.0;
+                        if index < full_rows {
+                            MAX_BINS
+                        } else {
+                            SMALL_BINS
+                        }
+                    ]
+                    .into_boxed_slice(),
                 })
                 .unwrap_or_else(|_| unreachable!("result pool capacity"));
         }
@@ -309,6 +333,9 @@ impl Worker {
         let counters = metrics.clone();
         let handle = thread::spawn(move || {
             let mut processor: Option<Processor> = None;
+            // Park the small tier while a large FFT is active. The vector is
+            // reserved once; rows always return through the same recycle ring.
+            let mut parked = Vec::with_capacity(small_rows);
             while !stop.load(Ordering::Acquire) {
                 let Ok(block) = incoming.pop() else {
                     // unpark retains a token even if it precedes park, so an
@@ -330,7 +357,7 @@ impl Worker {
                     if info.generation != active.load(Ordering::Acquire) {
                         return true; // obsolete data cannot become a visible result
                     }
-                    let Ok(mut row) = free.pop() else {
+                    let Some(mut row) = take_row(&mut free, &mut parked, power.len()) else {
                         counters.result_dropped.fetch_add(1, Ordering::Relaxed);
                         return false;
                     };
@@ -426,6 +453,21 @@ impl Worker {
     }
 }
 
+fn take_row(free: &mut Consumer<Row>, parked: &mut Vec<Row>, bins: usize) -> Option<Row> {
+    if bins <= SMALL_BINS
+        && let Some(row) = parked.pop()
+    {
+        return Some(row);
+    }
+    while let Ok(row) = free.pop() {
+        if row.power.len() >= bins {
+            return Some(row);
+        }
+        parked.push(row);
+    }
+    None
+}
+
 /// Sole owner of result delivery/recycling. Moving this endpoint to a history
 /// collector does not change the nonblocking acquisition or FFT queues.
 pub struct Results {
@@ -517,6 +559,10 @@ fn enqueue(input: &mut Producer<InputBlock>, block: &mut InputBlock, metrics: &M
         block.dropped_before += block.len as u64;
     } else {
         block.dropped_before = 0;
+        metrics.input_high_water.fetch_max(
+            (input.buffer().capacity() - input.slots()) as u64,
+            Ordering::Relaxed,
+        );
     }
     block.len = 0;
 }
@@ -937,6 +983,31 @@ mod tests {
     }
 
     #[test]
+    fn capture_catch_up_has_three_hundred_ms_of_high_rate_headroom() {
+        let cfg = config();
+        let (mut input, mut incoming) = RingBuffer::new(INPUT_BLOCKS);
+        let metrics = Metrics::default();
+        // Pause the consumer while acquisition delivers a catch-up burst.
+        // At the supported ceiling the old queue covered only ~21 ms.
+        let frames = 768000 * 3 / 10;
+        for start in (0..frames).step_by(BLOCK_FRAMES) {
+            enqueue(
+                &mut input,
+                &mut block(start as u64, BLOCK_FRAMES, cfg),
+                &metrics,
+            );
+        }
+        assert_eq!(metrics.input_dropped.load(Ordering::Relaxed), 0);
+        assert!(std::mem::size_of::<InputBlock>() * INPUT_BLOCKS <= 3 * 1024 * 1024);
+        for start in (0..frames).step_by(BLOCK_FRAMES) {
+            let next = incoming.pop().unwrap();
+            assert_eq!(next.start, start as u64);
+            assert_eq!(next.dropped_before, 0);
+        }
+        assert!(incoming.is_empty());
+    }
+
+    #[test]
     fn queue_saturation_is_nonblocking_and_reports_losses_even_before_first_block() {
         let cfg = config();
         let (mut input, mut incoming) = RingBuffer::new(1);
@@ -983,6 +1054,77 @@ mod tests {
             worker.submit(start + i as u64, &samples);
         }
         worker.flush();
+    }
+
+    #[test]
+    fn high_rate_small_fft_retains_one_hundred_ms_without_result_recycling() {
+        let cfg = Config {
+            sample_rate: 768000,
+            hop: 128,
+            ..config()
+        };
+        let mut worker = Worker::new();
+        worker.configure(cfg).unwrap();
+        let rows = 600;
+        let frames = cfg.size + (rows - 1) * cfg.hop;
+        submit(&mut worker, 0, frames);
+        wait_until(|| {
+            worker.metrics.produced.load(Ordering::Relaxed)
+                + worker.metrics.result_dropped.load(Ordering::Relaxed)
+                == rows as u64
+        });
+        assert_eq!(worker.metrics.result_dropped.load(Ordering::Relaxed), 0);
+        assert_eq!(worker.metrics.input_dropped.load(Ordering::Relaxed), 0);
+        let mut received = 0;
+        worker.drain(|row| {
+            assert_eq!(row.info.start, (received * cfg.hop) as u64);
+            assert_eq!(row.info.gap.result_rows, 0);
+            assert!((row.power()[32] - 0.25).abs() < 1e-10);
+            received += 1;
+        });
+        assert_eq!(received, rows);
+    }
+
+    #[test]
+    fn small_result_tier_survives_large_fft_saturation_and_reconfiguration() {
+        let mut worker = Worker::with_pools(256, 1, 2);
+        let small = config();
+        worker.configure(small).unwrap();
+        submit(&mut worker, 0, small.size + 2 * small.hop);
+        wait_until(|| worker.metrics.produced.load(Ordering::Relaxed) == 3);
+        worker.drain(|_| {});
+        let large = Config {
+            size: 8192,
+            hop: 8192,
+            ..small
+        };
+        let generation = worker.configure(large).unwrap();
+        submit(&mut worker, 0, 16384);
+        wait_until(|| {
+            worker.metrics.produced.load(Ordering::Relaxed)
+                + worker.metrics.result_dropped.load(Ordering::Relaxed)
+                == 5
+        });
+        assert_eq!(worker.metrics.result_dropped.load(Ordering::Relaxed), 1);
+        let mut received = 0;
+        worker.drain(|row| {
+            assert_eq!(row.info.generation, generation);
+            assert_eq!(row.power().len(), 4097);
+            assert!((row.power()[256] - 0.25).abs() < 1e-10);
+            received += 1;
+        });
+        assert_eq!(received, 1);
+        let generation = worker.configure(small).unwrap();
+        submit(&mut worker, 0, small.size + 2 * small.hop);
+        wait_until(|| worker.metrics.produced.load(Ordering::Relaxed) == 7);
+        let mut received = 0;
+        worker.drain(|row| {
+            assert_eq!(row.info.generation, generation);
+            assert_eq!(row.power().len(), 513);
+            assert_eq!(row.info.gap.result_rows, 0);
+            received += 1;
+        });
+        assert_eq!(received, 3);
     }
 
     #[test]

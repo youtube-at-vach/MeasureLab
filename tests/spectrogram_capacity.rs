@@ -20,7 +20,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-const CPU_BYTES: usize = 224 * 1024 * 1024;
+// 192 MiB for retained frames plus 48 MiB for bounded working storage,
+// including the ~2 MiB input queue and ~8 MiB small-FFT result tier.
+const CPU_BYTES: usize = 240 * 1024 * 1024;
 static LIVE: AtomicUsize = AtomicUsize::new(0);
 static PEAK: AtomicUsize = AtomicUsize::new(0);
 struct CountingAllocator;
@@ -272,7 +274,8 @@ fn full_pipeline_hold_wrap_reconfigure_and_release_fit_cpu_budget() {
         "STFT allocations retained after shutdown: {remaining}"
     );
     println!(
-        "STFT CPU allocation payload peak: {:.3} MiB / 224 MiB; after shutdown: {remaining} bytes",
-        (PEAK.load(Ordering::SeqCst) - baseline) as f64 / 1048576.0
+        "STFT CPU allocation payload peak: {:.3} MiB / {} MiB; after shutdown: {remaining} bytes",
+        (PEAK.load(Ordering::SeqCst) - baseline) as f64 / 1048576.0,
+        CPU_BYTES / 1048576,
     );
 }
