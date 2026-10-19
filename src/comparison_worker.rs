@@ -88,8 +88,25 @@ impl Default for Worker {
                     calibration::Set::default(),
                 );
                 let mut publish = Instant::now();
+                let mut worked = false;
+                let mut pending = None;
                 loop {
-                    match receiver.recv_timeout(Duration::from_millis(2)) {
+                    if let Some(config) = requested.lock().unwrap().take() {
+                        pending = Some(config);
+                    }
+                    // Drain a backlog without an extra timer wait per batch;
+                    // commands still take priority at every bounded batch.
+                    let command = if worked || pending.is_some() {
+                        receiver.try_recv().map_err(|error| match error {
+                            mpsc::TryRecvError::Empty => mpsc::RecvTimeoutError::Timeout,
+                            mpsc::TryRecvError::Disconnected => {
+                                mpsc::RecvTimeoutError::Disconnected
+                            }
+                        })
+                    } else {
+                        receiver.recv_timeout(Duration::from_millis(2))
+                    };
+                    match command {
                         Ok(Command::Inspect(config, end, reply)) => {
                             configure(&mut analyzer, &mut epoch, config.clone());
                             drain(&mut source, source_capacity(), epoch, &mut analyzer);
@@ -97,17 +114,21 @@ impl Default for Worker {
                                 analyzer.gap_to(end);
                                 let _ = reply.try_send(Arc::new(analyzer.result().clone()));
                             }
+                            // Preserve FIFO barriers before applying a newer
+                            // coalesced configuration from the same producer.
+                            continue;
                         }
                         Err(mpsc::RecvTimeoutError::Disconnected) => break,
                         Err(mpsc::RecvTimeoutError::Timeout) => {}
                     }
-                    let pending = requested.lock().unwrap().take();
-                    if let Some(config) = pending {
+                    if let Some(config) = pending.take() {
                         configure(&mut analyzer, &mut epoch, config);
                     }
-                    drain(&mut source, 4096, epoch, &mut analyzer);
-                    if publish.elapsed() >= Duration::from_millis(20) {
-                        *shared.lock().unwrap() = (epoch, Arc::new(analyzer.result().clone()));
+                    worked = drain(&mut source, 4096, epoch, &mut analyzer) > 0;
+                    if publish.elapsed() >= Duration::from_millis(20)
+                        && let Ok(mut latest) = shared.try_lock()
+                    {
+                        *latest = (epoch, Arc::new(analyzer.result().clone()));
                         publish = Instant::now();
                     }
                 }
@@ -135,7 +156,7 @@ fn drain(
     limit: usize,
     epoch: u64,
     analyzer: &mut comparison::Analyzer,
-) {
+) -> usize {
     let count = source.slots().min(limit);
     if let Ok(chunk) = source.read_chunk(count) {
         let (a, b) = chunk.as_slices();
@@ -153,7 +174,9 @@ fn drain(
             consumed += 1;
         }
         chunk.commit(consumed);
+        return consumed;
     }
+    0
 }
 impl Worker {
     pub fn configure(
@@ -247,6 +270,55 @@ mod tests {
             window: crate::spectrum::Window::Rectangular,
             ..Default::default()
         }
+    }
+    #[test]
+    fn coalesced_settings_do_not_overtake_queued_stop_barriers() {
+        let mut worker = Worker::default();
+        let desired = worker.desired.clone();
+        let mut mailbox = desired.lock().unwrap();
+        thread::sleep(Duration::from_millis(40));
+        worker.configure(1, settings(), 48000, calibration::Set::default(), 0, 2);
+        let replies = [worker.inspect(0), worker.inspect(0)];
+        worker.configure(2, settings(), 48000, calibration::Set::default(), 0, 2);
+        *mailbox = Some(worker.configuration.clone());
+        worker.pending_configuration = false;
+        drop(mailbox);
+        for reply in replies {
+            assert_eq!(
+                reply
+                    .recv_timeout(Duration::from_secs(10))
+                    .unwrap()
+                    .generation,
+                1
+            );
+        }
+        assert_eq!(
+            worker
+                .inspect(0)
+                .recv_timeout(Duration::from_secs(10))
+                .unwrap()
+                .generation,
+            2
+        );
+    }
+    #[test]
+    fn result_reader_cannot_block_analysis_or_the_finite_stop_barrier() {
+        let mut worker = Worker::default();
+        worker.configure(1, settings(), 48000, calibration::Set::default(), 0, 2);
+        let shared = worker.latest.clone();
+        let _reader = shared.lock().unwrap();
+        for n in 0..2048 {
+            let x = (std::f64::consts::TAU * n as f64 / 64.0).sin();
+            worker.submit(n, &[0.125 * x, -0.0625 * x]);
+        }
+        thread::sleep(Duration::from_millis(40));
+        let result = worker
+            .inspect(2048)
+            .recv_timeout(Duration::from_secs(10))
+            .unwrap();
+        assert_eq!(result.processed_windows, 2);
+        assert_eq!(result.missing_samples, 0);
+        assert_eq!(result.state, comparison::State::Valid);
     }
     #[test]
     fn rapid_changes_coalesce_without_waiting_or_mixing_epochs_and_stop_drains_finite_end() {

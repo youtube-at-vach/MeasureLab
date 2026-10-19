@@ -2287,7 +2287,13 @@ mod tests {
             },
             config.clone(),
         );
-        let total = if size == 1024 { 48000 } else { 49152 };
+        let total = if size == 1024 {
+            // Leave more than the full small-FFT tier unread so this remains
+            // a saturation test as the bounded result headroom improves.
+            config.stft.size + (stft::RESULT_ROWS + stft::SMALL_RESULT_ROWS + 16) * config.stft.hop
+        } else {
+            49152
+        };
         let clock = Instant::now();
         // No display snapshot or STFT result is consumed for over twice the
         // audio queue duration. Real input is paced separately from the UI.
@@ -2333,6 +2339,11 @@ mod tests {
         assert!(worker.metrics.display_skipped.load(Ordering::Relaxed) > 0);
         assert_eq!(stft.metrics.input_dropped.load(Ordering::Relaxed), 0);
         if size == 1024 {
+            let deadline = Instant::now() + Duration::from_secs(5);
+            while stft.metrics.processed_frames.load(Ordering::Acquire) < total as u64 {
+                assert!(Instant::now() < deadline);
+                thread::sleep(Duration::from_millis(1));
+            }
             assert!(stft.metrics.result_dropped.load(Ordering::Relaxed) > 0);
         }
         // Next-run edits and unread old publications cannot change held input.
