@@ -6,7 +6,12 @@ use std::process::Command;
 fn retired_usb_disconnect_qa_is_rejected_before_any_audio_or_ui_start() {
     for value in ["", "0", "1"] {
         let output = Command::new(env!("CARGO_BIN_EXE_measurelab"))
-            .args(["--physical-lockin-smoke", "--input-device", "ZOOM UAC-232"])
+            .args([
+                "--physical-lockin-smoke",
+                "--input-device",
+                "ZOOM UAC-232",
+                "--invalid-disconnect-qa-probe",
+            ])
             .env("MEASURELAB_PROFILE_GENERATOR_DISCONNECT", value)
             .env("MEASURELAB_PROFILE_GENERATOR_DEVICE", "ZOOM UAC-232")
             .env("MEASURELAB_PROFILE_SECONDS", "300")
