@@ -16,11 +16,10 @@ use std::{
 };
 
 pub const BLOCK_FRAMES: usize = 256;
-/// Match the maximum capture/Spectrum backlog (262144 selected-channel frames).
-/// The former 16384-frame queue covered only 21 ms at 768 kHz and lost STFT
-/// input while acquisition caught up after scheduling or allocation stalls.
-/// This remains bounded, at about 2 MiB rather than copying all source channels.
-pub const INPUT_BLOCKS: usize = 1024;
+// Capture may already be full when measurement starts (or resumes after a
+// scheduling delay). Accept that bounded burst even before FFT planning runs,
+// plus a partially flushed block from the preceding poll. No producer waits.
+pub const INPUT_BLOCKS: usize = crate::audio::MAX_CAPTURE_FRAMES.div_ceil(BLOCK_FRAMES) + 1;
 /// About 0.68 s at 48 kHz / hop 256 (16 MiB of f64 values at maximum N).
 pub const RESULT_ROWS: usize = 128;
 const MAX_BINS: usize = 32768 / 2 + 1;
@@ -134,6 +133,7 @@ pub struct Metrics {
     pub input_dropped: AtomicU64,
     /// Peak queued blocks; each contains at most BLOCK_FRAMES source frames.
     pub input_high_water: AtomicU64,
+    pub planning_max_nanos: AtomicU64,
     pub result_dropped: AtomicU64,
     pub produced: AtomicU64,
     /// Accepted samples processed by the worker, across analysis generations.
@@ -350,7 +350,11 @@ impl Worker {
                     .as_ref()
                     .is_none_or(|p| p.generation != block.generation)
                 {
+                    let started = Instant::now();
                     processor = Some(Processor::new(block.generation, block.config));
+                    counters
+                        .planning_max_nanos
+                        .fetch_max(started.elapsed().as_nanos() as u64, Ordering::Relaxed);
                 }
                 let started = Instant::now();
                 processor.as_mut().unwrap().process(&block, |info, power| {
@@ -1044,6 +1048,62 @@ mod tests {
         while !condition() {
             assert!(Instant::now() < deadline, "worker timed out");
             thread::sleep(Duration::from_millis(1));
+        }
+    }
+
+    #[test]
+    fn capture_backlog_survives_delayed_stft_start_without_losing_windows() {
+        // Audio starts before the GUI hands Capture to the measurement worker.
+        // Its first drain can therefore contain an entire capture queue. Keep
+        // the FFT consumer unscheduled until that finite burst has been sent.
+        for rate in [192_000, 768_000] {
+            let cfg = Config {
+                sample_rate: rate,
+                size: 32768,
+                hop: 4096,
+                ..config()
+            };
+            let frames = crate::audio::capture_capacity(rate);
+            let (input, mut incoming) = RingBuffer::new(INPUT_BLOCKS);
+            let metrics = Arc::new(Metrics::default());
+            let mut feeder = Feeder {
+                input,
+                pending: None,
+                generation: Arc::new(AtomicU64::new(1)),
+                wake: thread::current(),
+                metrics: metrics.clone(),
+            };
+            feeder.configure(1, cfg);
+            let mut first = [0.0; 16];
+            first[15] = 0.5;
+            feeder.submit(0, &first);
+            feeder.flush();
+            for n in 1..=frames {
+                let mut samples = [0.0; 16];
+                samples[15] = 0.5 * (TAU * 32.0 * (n % cfg.size) as f64 / cfg.size as f64).cos();
+                feeder.submit(n as u64, &samples);
+            }
+            feeder.flush();
+            assert_eq!(
+                metrics.input_dropped.load(Ordering::Relaxed),
+                0,
+                "{rate} Hz backlog"
+            );
+            let mut processor = Processor::new(1, cfg);
+            let mut rows = 0;
+            while let Ok(block) = incoming.pop() {
+                processor.process(&block, |info, power| {
+                    assert_eq!(info.start, rows * cfg.hop as u64);
+                    assert_eq!(info.end, info.start + cfg.size as u64);
+                    assert_eq!(info.gap.input_frames, 0);
+                    assert_eq!(info.gap.result_rows, 0);
+                    assert_eq!(info.gap.discontinuity, rows == 0);
+                    assert!((power[32].sqrt() - 0.5).abs() < 2e-13);
+                    rows += 1;
+                    true
+                });
+            }
+            assert_eq!(rows as usize, 1 + (frames + 1 - cfg.size) / cfg.hop);
         }
     }
 

@@ -13,6 +13,11 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use rtrb::{Consumer, Producer, RingBuffer};
 
 pub const MAX_SAMPLE_RATE: u32 = 768_000;
+pub(crate) const MAX_CAPTURE_FRAMES: usize = 262_144;
+
+pub(crate) fn capture_capacity(rate: u32) -> usize {
+    (rate as usize / 2).clamp(1024, MAX_CAPTURE_FRAMES)
+}
 const SAMPLE_RATES: &[u32] = &[
     8_000, 11_025, 16_000, 22_050, 32_000, 44_100, 48_000, 88_200, 96_000, 176_400, 192_000,
     352_800, 384_000, 705_600, 768_000,
@@ -330,8 +335,7 @@ pub fn start_device(
     let supported = select_input_config(default, &ranges, sample_rate)?;
     let format = supported.sample_format();
     let config = measurement_stream_config(supported);
-    let (producer, consumer) =
-        RingBuffer::new((config.sample_rate as usize / 2).clamp(1024, 262_144));
+    let (producer, consumer) = RingBuffer::new(capture_capacity(config.sample_rate));
     let metrics = Arc::new(Metrics::default());
     macro_rules! build {
         ($ty:ty) => {

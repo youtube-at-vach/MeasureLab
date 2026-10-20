@@ -24,6 +24,8 @@
 | 履歴・トリガー・Scope統計・Single／Autoset・XY | [signal.rs](../../src/signal.rs)、[acquisition.rs](../../src/acquisition.rs)、[xy.rs](../../src/xy.rs)、[cursor.rs](../../src/cursor.rs) |
 | Spectrumの全サイズ・窓・精度・独立FFT／Parseval・校正、ESDのパルス窓長不変性・白色雑音 | [spectrum.rs](../../src/spectrum.rs)、[ESD数値テスト](../../src/spectrum/esd_tests.rs)、[calibration.rs](../../src/calibration.rs) |
 | 全窓／最新窓、欠落、UI受信停止・世代・有限Stop、STFT | [spectrum_worker.rs](../../src/spectrum_worker.rs)、[stft.rs](../../src/stft.rs)、[measurement.rs](../../src/measurement.rs) |
+| 起動時の取得バックログ・STFT消費の遅延 | [stft.rs](../../src/stft.rs)の`capture_backlog_survives_delayed_stft_start_without_losing_windows`。192／768 kHz・CH 16で取得キュー全量と端数ブロックを先行投入し、整数窓・f64振幅・欠落なしを確認 |
+| QA撮影の遅い保存・有界転送・保存失敗 | [qa/screenshot.rs](../../src/qa/screenshot.rs)。PNG・ファイルI/OはGUI外で最大1件、完了を受信するまで次の画像を受け付けない |
 | STFTの3 Overlap・全FFT長／精度・長いサンプル時刻・履歴Spectrumの微小値／無効値 | [stft.rs](../../src/stft.rs)のOverlap／retained_spectrumテスト。数値読出しは[spectrum.rs](../../src/spectrum.rs)の`Result::from_stft`を共有 |
 | STFT表示要求・縮約・固定上端・不規則FPSのスクロール・Liveの描画先端と下端の被覆・キャッシュ容量 | [spectrogram/viewport.rs](../../src/spectrogram/viewport.rs)、[spectrogram/scroll.rs](../../src/spectrogram/scroll.rs)。GPU読み戻しは`--gpu-smoke`のラスタDC／Nyquist、時間移動・未取得区間の空白と転送省略 |
 | STFT数値履歴・UI受信停止・周回・不変参照・容量と世代 | [spectrogram/history.rs](../../src/spectrogram/history.rs)。実時間の収集継続は`MEASURELAB_PROFILE_UI_STALL` |
@@ -169,7 +171,9 @@ Overlapを比較するときは`MEASURELAB_PROFILE_STFT_OVERLAP=50`／`75`／`87
 
 内部の既知正弦波には`MEASURELAB_PROFILE_DEMO_BIN_TONE=1`を追加する。外部I/Oでは`--demo`を外し、`MEASURELAB_PROFILE_DEVICE`・`SAMPLE_RATE`・`CHANNEL`を共通接頭辞付きで指定する。BlackHoleでは`MEASURELAB_PROFILE_KNOWN_OUTPUT=1`で仮想デバイスへの既知信号出力・既存Spectrum照合・出力通知監査を併用できる。内部デモ、Software Loopback、外部I/Oの結果を区別し、利用していない経路の成功へ広げない。ログとRSSは`dist/stage2-qa/`に保存し、数値の合否はログ内のQA判定と欠落を確認する。画面スリープを避ける実行では`MEASURELAB_PROFILE_KEEP_AWAKE=1`も指定する。描画が遮蔽された実行のUI時間を前面表示の性能へ代用しない。
 
-MVPの基本受け入れと、長時間・他の高負荷操作への耐性を分ける。撮影操作が重なった実行では、長いGUI更新間隔、STFT転送とGenerator内部入力の欠落を観測している。取得・表示停止の原因と負荷耐性の改善は継続課題とし、基本検証の成功を高負荷時の保証に広げない。通常ビルドの包括的な手動操作と実モニター間DPIは、上記の対象環境に限って確認する。
+MVPの基本受け入れと、長時間・他の高負荷操作への耐性を分ける。撮影操作が重なった過去の実行では、長いGUI更新間隔、STFT転送とGenerator内部入力の欠落を観測している。起動時に取得キューを一括排出するとSTFTの旧16,384サンプル分のキューが先に飽和するため、取得キューの上限と端数ブロックを受けられる固定容量へ変更した。QA撮影受信後のPNG保存もGUI外へ分離した。通常ビルドの包括的な手動操作と実モニター間DPIは、上記の対象環境に限って確認する。
+
+撮影を伴う比較は`qa_spectrogram.py`へ`--screenshots`を追加する。GPU読み戻しとPNG保存を約1秒ごとに反復し、完了した保存数も合否へ含める。直接profileを起動する場合は`MEASURELAB_PROFILE_SCREENSHOT=repeat`を使う。`STFT transport`はキューの最大使用ブロック数と初期化時間、撮影ログはGUI外での保存時間を記録する。実GPU読み戻し待ち・OS全体の停止とPNG保存を区別し、過去の長いGUI停止やGenerator入力欠落をこの修正だけで解決済みにしない。UAC-232の192 kHzは機器を接続して起動と、入出力停止・ストリーム解放後の再接続を再確認する。
 
 高Fsの反復操作は、欠落なしだけでUI応答の受け入れにしない。Liveとの差、GPU転送量、UI更新間隔と操作感を確認する。意図したUI停止時間を最大フレーム間隔の退行と取り違えず、取得・FFT窓の欠落と表示更新の省略を区別する。
 
@@ -311,7 +315,8 @@ Intel Iris Pro Graphics 6200（BDW GT3）／Vulkanで同じ配布実行ファイ
 | 対象・基点／条件 | 確認した範囲と制限 |
 | --- | --- |
 | Spectrogram S6、`514ff17a`＋S6差分／release QA・内蔵5K・native scale 2.0 | MVP基本受け入れを完了。内部デモ3 Overlap、Software Loopback・通常Generator内部入力・BlackHole 16chの192 kHz、BlackHole 2ch・UAC-232の48 kHzでLive／反復操作・UI停止中の継続・独立数値照合を確認。UAC-232はL-L TRS、R-Rは−20 dBアッテネーター付きXLR。証拠は`dist/spectrogram-s6-basic/manifest.json`の内部／BlackHoleと`dist/spectrogram-s6-basic-uac48/manifest.json`。単独／Pair・通常幅／狭幅の画像とイベントは`dist/spectrogram-s6-ui/`・`dist/spectrogram-s6-ui-measurement/`。通常ビルドの包括的手動操作・実モニター間DPIは未確認 |
-| 同S6の制限／高負荷・物理192 kHz | 撮影操作が重なった長時間評価でGUI更新の長い停止、STFT転送とGenerator内部入力の欠落を観測。原因切り分け・耐性改善は残る。失敗・中断は`dist/spectrogram-s6/manifest-audited.json`等に保存。UAC-232の192 kHzは起動時STFT転送欠落が再現し、Live／反復操作の比較を不合格として`dist/spectrogram-s6-basic/`・`dist/spectrogram-s6-basic-uac-recheck/`に保存。48 kHzの基本成功で置き換えない |
+| 同S6で観測した制限／高負荷・物理192 kHz | 撮影操作が重なった長時間評価でGUI更新の長い停止、STFT転送とGenerator内部入力の欠落を観測。失敗・中断は`dist/spectrogram-s6/manifest-audited.json`等に保存。UAC-232の192 kHz起動時のSTFT転送欠落は`dist/spectrogram-s6-basic/`・`dist/spectrogram-s6-basic-uac-recheck/`で不合格。下記の修正後も物理192 kHzは再確認が必要で、48 kHzや仮想入力の成功で置き換えない |
+| Spectrogram負荷修正、`f06d68946`＋修正差分／release QA・Metal Intel Iris Pro 6200・native scale 2.0 | BlackHole 16ch・192 kHzの入力専用起動でSTFT転送欠落を再現し、修正後は同条件で欠落なし。Software Loopback・通常Generator内部入力・BlackHole 16chの192 kHzで反復撮影を含むLive／表示操作、Generatorでは各120秒、独立DFT・UI停止中の継続・有限Stopを確認。I/O統合操作・単独／Pair表示・Generator操作・GPU読み戻しも確認。証拠は`dist/spectrogram-stall-fix/`の`baseline.json`、`repeat-basic/manifest.json`、`generator-120/manifest.json`、`gui/manifest.json`。UAC-232は接続できず未実施。過去の長いGUI停止・Generator入力欠落は今回再現せず、他負荷・物理系を含む解決判定は残る |
 | GUI G4、`32ec3f5d`＋G4差分／dev QA・native pixels per point 2.0・画面スリープ抑止 | 7計器、単独／コンソール・4区画・狭幅・倍率・詳細・入出力画面の画像を確認。内部経路とBlackHole 2ch／16ch・48 kHz・f32の通常Generator、独立Lock-in／比較照合、UI停止中の継続、有限Stop、保持・JSON／CSV・OFF復元・別プロセス再測定を確認。背面固定ではMetalの`Occluded`と撮影タイムアウト、前面保持では撮影成功を再現した。ソース／バイナリ識別・ログ・画像は`dist/gui-redesign-g4-acceptance/manifest.json`、遮蔽の比較は`dist/gui-capture-diagnosis/occlusion/`。通常ビルドの手動操作・実モニター間DPI切り替えは未確認 |
 | UAC-232統合QA、`4741b5dc`／release・desktop + qa、48 kHz・2ch・f32・L-L TRS／R-R XLR（−20 dB）・1,024 frames | 通常Generatorの同じ生入力窓の独立Lock-in／同期比較DFT照合、独立Stop、保持・JSON／CSV／PNG・別プロセス復元・OFF復元・再測定、Singleの生入力照合を確認。固定信号の保存QAは宣言した接続待機区間に通知1件、測定区間0件。GUIなしのLock-in QAはREF消失／不安定REF・CH交換・二段EMA・転送飽和後の無効化と回復まで通過。小信号の位相変化は原因未確定。ソース／バイナリ識別と証拠は`dist/package-acceptance/4741b5dce794e6007962b2438972a85fb8f7f9a9/macos-x86_64/uac232-20261019/manifest.json`。同じソースの既存ビルド・Rustチェック・内部／BlackHole QA・DMG検証はハッシュ照合して再利用し、重複実行していない。qaなし配布物・最大Fs・実機再接続は未受け入れ |
 | Lock-in、`a837b04c`／BlackHole 2ch・16ch、44.1／48／96／192 kHz | 短時間の数値・欠落回復・保存再測定。2ch・48 kHzはGUIなし600秒、正常測定区間の通知・欠落0。物理精度・通常GUI600秒の保証ではない |
