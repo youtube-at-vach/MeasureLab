@@ -36,6 +36,14 @@ class ProfileAcceptance(unittest.TestCase):
     def test_failed_baseline_cannot_accept_the_stress_comparison(self):
         self.assertFalse(assess(LOG, "stress", 120, 0, None)[0])
 
+    def test_repeated_capture_requires_completed_writes_and_still_rejects_gui_stalls(self):
+        captures = LOG + "UI screenshot: dist/ui-smoke.png (worker 80.0 ms)\n" * 100
+        args = ("stress", 120, 0, {"ui_p95_ms": 27.0}, True)
+        self.assertFalse(assess(LOG, *args)[0])
+        self.assertTrue(assess(captures, *args)[0])
+        self.assertFalse(assess(captures.replace("max 1020.0", "max 5000.0"), *args)[0])
+        self.assertFalse(assess(captures + "UI screenshot failed: disk unavailable\n", *args)[0])
+
 
 if __name__ == "__main__":
     unittest.main()

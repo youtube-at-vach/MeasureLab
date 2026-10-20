@@ -358,6 +358,10 @@ pub struct ScopeApp {
     #[cfg(feature = "qa")]
     screenshot_received: bool,
     #[cfg(feature = "qa")]
+    screenshot_writer: crate::qa::screenshot::Writer,
+    #[cfg(feature = "qa")]
+    screenshot_requested_at: Option<Instant>,
+    #[cfg(feature = "qa")]
     screenshot_device: wgpu::Device,
     #[cfg(feature = "qa")]
     profile: Option<crate::qa::Profile>,
@@ -547,7 +551,7 @@ impl ScopeApp {
             spectrogram_floor: -120.0,
             spectrogram_ceiling: 0.0,
             spectrogram_seconds: 5.0,
-            spectrogram_color_map: spectrogram::ColorMap::Blue,
+            spectrogram_color_map: spectrogram::ColorMap::default(),
             spectrogram_auto_color: false,
             spectrogram_view_worker: spectrogram::viewport::Worker::default(),
             spectrogram_snapshot: Arc::default(),
@@ -642,6 +646,10 @@ impl ScopeApp {
             screenshot_attempts: 0,
             #[cfg(feature = "qa")]
             screenshot_received: false,
+            #[cfg(feature = "qa")]
+            screenshot_writer: crate::qa::screenshot::Writer::default(),
+            #[cfg(feature = "qa")]
+            screenshot_requested_at: None,
             #[cfg(feature = "qa")]
             screenshot_device: render.device.clone(),
             #[cfg(feature = "qa")]
@@ -5359,7 +5367,11 @@ impl eframe::App for ScopeApp {
                         core.metrics.demo_suspensions.load(Ordering::Relaxed)
                     );
                 }
-                if profile.finished() {
+                let profile_finished = profile.finished();
+                if profile_finished
+                    && !self.screenshot_writer.pending()
+                    && (!self.screenshot_requested || self.screenshot_received)
+                {
                     assert!(self.error.is_none(), "UI QA input failed: {:?}", self.error);
                     if std::env::var_os("MEASURELAB_PROFILE_LIFECYCLE").is_some() {
                         assert_eq!(self.lifecycle_stage, 8, "UI lifecycle did not finish");
@@ -5639,6 +5651,12 @@ impl eframe::App for ScopeApp {
                         self.stft.metrics.result_dropped.load(Ordering::Relaxed),
                         self.stft.metrics.processing_nanos.load(Ordering::Relaxed) as f64 / 1e6
                     );
+                    println!(
+                        "STFT transport: high water {} / {}, planning max {:.3} ms",
+                        self.stft.metrics.input_high_water.load(Ordering::Relaxed),
+                        stft::INPUT_BLOCKS,
+                        self.stft.metrics.planning_max_nanos.load(Ordering::Relaxed) as f64 / 1e6,
+                    );
                     let history = self.spectrogram_history.lock().unwrap();
                     println!(
                         "Spectrogram profile: {} retained rows, {:.1} MiB CPU storage",
@@ -5718,12 +5736,21 @@ impl eframe::App for ScopeApp {
                     ctx.request_repaint();
                 }
                 if std::env::var_os("MEASURELAB_PROFILE_SCREENSHOT").is_some()
-                    && !self.screenshot_requested
+                    && !profile_finished
+                    && (!self.screenshot_requested
+                        || (std::env::var("MEASURELAB_PROFILE_SCREENSHOT").as_deref()
+                            == Ok("repeat")
+                            && self.screenshot_received
+                            && self
+                                .screenshot_requested_at
+                                .is_some_and(|at| at.elapsed() >= Duration::from_secs(1))))
                     && self.created.elapsed().as_secs_f64()
                         > (self.spectrum_settings.size as f64 / self.sample_rate as f64 + 1.0)
                             .max(3.0)
                 {
                     self.screenshot_requested = true;
+                    self.screenshot_received = false;
+                    self.screenshot_requested_at = Some(Instant::now());
                     ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(Default::default()));
                 }
             }
@@ -5739,7 +5766,25 @@ impl eframe::App for ScopeApp {
         }
         #[cfg(feature = "qa")]
         if self.smoke || self.profile.is_some() {
-            if self.screenshot_requested && !self.screenshot_received {
+            if let Some(result) = self.screenshot_writer.poll() {
+                if self.profile.is_some() {
+                    assert!(result.is_ok(), "UI screenshot failed: {result:?}");
+                }
+                match result {
+                    Ok(duration) => {
+                        self.screenshot_received = true;
+                        println!(
+                            "UI screenshot: dist/ui-smoke.png (worker {:.3} ms)",
+                            duration.as_secs_f64() * 1000.0
+                        );
+                    }
+                    Err(error) => eprintln!("UI screenshot failed: {error}"),
+                }
+            }
+            if self.screenshot_requested
+                && !self.screenshot_received
+                && !self.screenshot_writer.pending()
+            {
                 // wgpu map_async needs device polling. Submission/presentation
                 // alone does not reliably deliver Metal readback callbacks.
                 let _ = self.screenshot_device.poll(wgpu::PollType::Poll);
@@ -5758,11 +5803,13 @@ impl eframe::App for ScopeApp {
                     }
                 })
             });
-            if let Some(image) = screenshot {
-                match save_screenshot(&image) {
-                    Ok(()) => self.screenshot_received = true,
-                    Err(error) => eprintln!("UI screenshot failed: {error}"),
-                }
+            if let Some(image) = screenshot
+                && !self.screenshot_received
+            {
+                self.screenshot_writer.submit(image);
+            }
+            if self.screenshot_writer.pending() {
+                ctx.request_repaint_after(Duration::from_millis(10));
             }
         }
         if shell::input_shortcut(
@@ -5961,6 +6008,7 @@ impl eframe::App for ScopeApp {
                 self.created = Instant::now();
             } else if self.screenshot_requested
                 && !self.screenshot_received
+                && !self.screenshot_writer.pending()
                 && self.screenshot_attempts < 4
                 && self.created.elapsed() > Duration::from_secs(2 * self.screenshot_attempts as u64)
             {
@@ -6125,16 +6173,4 @@ fn frequency_label(hz: f32) -> String {
     } else {
         format!("{hz:.0}")
     }
-}
-
-#[cfg(feature = "qa")]
-fn save_screenshot(image: &egui::ColorImage) -> Result<(), Box<dyn std::error::Error>> {
-    std::fs::create_dir_all("dist")?;
-    let file = std::fs::File::create("dist/ui-smoke.png")?;
-    let mut encoder = png::Encoder::new(file, image.width() as u32, image.height() as u32);
-    encoder.set_color(png::ColorType::Rgba);
-    encoder.set_depth(png::BitDepth::Eight);
-    encoder.write_header()?.write_image_data(image.as_raw())?;
-    println!("UI screenshot: dist/ui-smoke.png");
-    Ok(())
 }

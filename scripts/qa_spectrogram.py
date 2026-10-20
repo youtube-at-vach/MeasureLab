@@ -78,18 +78,23 @@ def metrics(log):
         "display_steps": number(r"Spectrogram (?:live|stress) QA OK: (\d+) display steps"),
         "gpu_uploaded_bytes": number(r"Spectrogram GPU payload: .*?, (\d+) uploaded bytes"),
         "peak_frame_mib": number(r"MiB retained / ([\d.]+) MiB peak frames"),
+        "screenshots": len(re.findall(r"UI screenshot: dist/ui-smoke\.png", log)),
     }
 
 
-def assess(log, mode, seconds, returncode, baseline):
-    if returncode != 0 or not all(
-        marker in log
-        for marker in (
-            f"Spectrogram {mode} QA OK:",
-            "Spectrogram numerical QA OK:",
-            "UI stall OK:",
-            "UI QA profile complete: finite result audited and input stopped",
-            "QA skipped surface acquisitions after warm-up: 0",
+def assess(log, mode, seconds, returncode, baseline, screenshots=False):
+    if (
+        returncode != 0
+        or "UI screenshot failed:" in log
+        or not all(
+            marker in log
+            for marker in (
+                f"Spectrogram {mode} QA OK:",
+                "Spectrogram numerical QA OK:",
+                "UI stall OK:",
+                "UI QA profile complete: finite result audited and input stopped",
+                "QA skipped surface acquisitions after warm-up: 0",
+            )
         )
     ):
         return False, {}
@@ -109,6 +114,8 @@ def assess(log, mode, seconds, returncode, baseline):
             and baseline is not None
             and values["ui_p95_ms"] <= baseline["ui_p95_ms"] + STRESS_EXTRA_MS
         )
+    if screenshots:
+        passed = passed and values["screenshots"] >= seconds // 2
     return passed, values
 
 
@@ -125,7 +132,14 @@ def audit_manifest(path):
         route, mode = case["name"].rsplit("-", 1)
         log = (path.parent / case["log"]).read_text()
         try:
-            passed, values = assess(log, mode, original["duration_seconds"], case["returncode"], baselines.get(route))
+            passed, values = assess(
+                log,
+                mode,
+                original["duration_seconds"],
+                case["returncode"],
+                baselines.get(route),
+                original.get("repeated_screenshots", False),
+            )
             error = None
         except ValueError as exception:
             passed, values, error = False, {}, str(exception)
@@ -172,6 +186,9 @@ def main():
         "--basic", action="store_true", help="Use 20-second MVP acceptance, with physical I/O at 48 kHz"
     )
     parser.add_argument("--seconds", type=int, help="Duration per case (default: 120 seconds, or 20 with --basic)")
+    parser.add_argument(
+        "--screenshots", action="store_true", help="Repeat GPU readback and PNG writing during each case"
+    )
     parser.add_argument("--physical-connection", help="Record the actual UAC-232 cabling and attenuation")
     parser.add_argument("--route", action="append", help="Run only named routes (repeatable)")
     parser.add_argument(
@@ -233,6 +250,7 @@ def main():
         "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "os": platform.platform(),
         "duration_seconds": args.seconds,
+        "repeated_screenshots": args.screenshots,
         "acceptance_scope": "basic" if args.basic else "extended",
         "acceptance_duration": args.seconds >= (20 if args.basic else 120),
         "physical_connection": args.physical_connection,
@@ -256,6 +274,8 @@ def main():
                 "FOREGROUND": "1",
                 "FFT_SIZE": "32768" if options.get("SAMPLE_RATE") == "192000" else "8192",
             } | options
+            if args.screenshots:
+                case_options["SCREENSHOT"] = "repeat"
             case_env = env | {PREFIX + key: value for key, value in case_options.items()}
             started = time.monotonic()
             command = [str(ROOT / "scripts/profile-stage2.sh"), name, *app_args]
@@ -270,7 +290,7 @@ def main():
             try:
                 result = run_profile(command, case_env, args.seconds + 90)
                 log = result.stdout
-                passed, values = assess(log, mode, args.seconds, result.returncode, baseline)
+                passed, values = assess(log, mode, args.seconds, result.returncode, baseline, args.screenshots)
                 if mode == "live":
                     baseline = values if passed else None
                 returncode = result.returncode

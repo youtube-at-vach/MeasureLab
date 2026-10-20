@@ -205,13 +205,19 @@ pub struct Workspace {
     pub spectrogram_floor_db: f32,
     pub spectrogram_ceiling_db: f32,
     pub spectrogram_seconds: f64,
-    #[serde(default)]
+    #[serde(default = "legacy_spectrogram_color_map")]
     pub spectrogram_color_map: ColorMap,
     #[serde(default)]
     pub spectrogram_auto_color: bool,
     pub xy_x_fs_per_div: f64,
     pub xy_y_fs_per_div: f64,
     pub xy_cursor_mode: CursorMode,
+}
+
+// Settings predating the saved color map used Blue. Keep that appearance even
+// when the initial color map for a new workspace changes.
+fn legacy_spectrogram_color_map() -> ColorMap {
+    ColorMap::Blue
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -860,18 +866,26 @@ mod tests {
     }
 
     #[test]
-    fn spectrogram_display_v7_roundtrip_and_v1_to_v6_defaults_preserve_old_ranges() {
-        for map in ColorMap::ALL {
-            let mut document = fixture();
-            document.workspace.spectrogram_color_map = map;
-            document.workspace.spectrogram_auto_color = true;
-            document.workspace.spectrogram_floor_db = -160.0;
-            document.workspace.spectrogram_ceiling_db = -40.0;
-            document.workspace.spectrogram_seconds = 60.0;
-            assert_eq!(
-                Document::decode(&document.encode().unwrap()).unwrap(),
-                document
-            );
+    fn spectrogram_display_saved_colors_auto_and_legacy_ranges_are_preserved() {
+        for version in [7, VERSION] {
+            for map in ColorMap::ALL {
+                for auto in [false, true] {
+                    let mut document = fixture();
+                    document.workspace.spectrogram_color_map = map;
+                    document.workspace.spectrogram_auto_color = auto;
+                    document.workspace.spectrogram_floor_db = -110.0;
+                    document.workspace.spectrogram_ceiling_db = -80.0;
+                    document.workspace.spectrogram_seconds = 60.0;
+                    let mut value = serde_json::to_value(&document).unwrap();
+                    value["version"] = version.into();
+                    let restored = Document::decode(&serde_json::to_vec(&value).unwrap()).unwrap();
+                    assert_eq!(restored, document);
+                    assert_eq!(
+                        Document::decode(&restored.encode().unwrap()).unwrap(),
+                        document
+                    );
+                }
+            }
         }
         for version in 1..=6 {
             for seconds in [0.5, 1.0, 2.0, 20.0] {
@@ -893,13 +907,16 @@ mod tests {
                 let w = value["workspace"].as_object_mut().unwrap();
                 w.remove("spectrogram_color_map");
                 w.remove("spectrogram_auto_color");
+                w.insert("spectrogram_floor_db".into(), (-140.0).into());
+                w.insert("spectrogram_ceiling_db".into(), (-20.0).into());
                 w.insert("spectrogram_seconds".into(), serde_json::json!(seconds));
                 let bytes = serde_json::to_vec(&value).unwrap();
                 let restored = Document::decode(&bytes).unwrap();
                 assert_eq!(restored.workspace.spectrogram_color_map, ColorMap::Blue);
                 assert!(!restored.workspace.spectrogram_auto_color);
                 assert_eq!(restored.workspace.spectrogram_seconds, seconds);
-                assert_eq!(restored.workspace.spectrogram_floor_db, -120.0);
+                assert_eq!(restored.workspace.spectrogram_floor_db, -140.0);
+                assert_eq!(restored.workspace.spectrogram_ceiling_db, -20.0);
                 assert_eq!(
                     restored.measurement.spectrogram,
                     fixture().measurement.spectrogram

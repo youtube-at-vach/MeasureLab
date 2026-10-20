@@ -5,6 +5,7 @@ pub mod comparison;
 pub mod lockin;
 pub mod output;
 pub mod physical_lockin;
+pub mod screenshot;
 pub mod spectrogram;
 
 /// Preserve renderer diagnostics in local QA logs without data-callback logging.

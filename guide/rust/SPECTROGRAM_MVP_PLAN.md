@@ -12,7 +12,7 @@
 
 | 対象 | 現在の実装 | 今回の変更 |
 | --- | --- | --- |
-| 色 | 共通色定義のカラーバー、Turbo／Viridis／Inferno／Magma／Grayscale／Hot／Copperと既存のBlue／Heat、Min／Max／Auto | Hold・表示要求経路へAutoを接続済み |
+| 色 | 共通色定義のカラーバー、Viridis → Inferno → Turbo → Magma → Grayscale → Blue → Heat → Hot → Copper、Min／Max／Auto | 初期設定はViridis・−120〜0 dBFS・Auto OFF、保存済み設定は維持。Hold・表示要求経路へAutoを接続済み |
 | 表示範囲 | Log／Linear、From／To、ホイールズーム・横パン、5／10／30／60秒、ダブルクリックリセット | 縦パン・時間スクロールを実装。旧時間幅は復元値として維持 |
 | 履歴 | 数値履歴は120秒・96 MiBの有界リング。表示は最大512行・1,024列へ縮約し最新が上 | Live／Hold・過去への移動、容量・基本実時間比較を確認。高負荷耐性は継続課題 |
 | 保存データ | f64線形スペクトルと入力／解析世代、整数サンプル区間・設定・欠落。描画用f32 dBは別キャッシュ | 不変スナップショットをHold・実フレーム選択へ接続済み |
@@ -37,7 +37,7 @@ Live／Hold、背景の縦パン、Shift＋ホイール／時間軸ホイール�
 
 実時間比較は`MEASURELAB_PROFILE_SPECTROGRAM=live`／`stress`で同一条件の基準表示と反復操作を選ぶ。内部の既知正弦波、Software Loopback、通常Generatorの内部入力、BlackHole 2ch／16ch、UAC-232で、表示準備時間・要求応答・GPU転送、UI停止中の収集継続・STFTの世代不変・欠落を判定する。基本条件の物理I/Oは48 kHz、高Fsは内部経路とBlackHole 16chで扱う。保持した生入力からの独立DFTと、整数hop・予定窓数・元のf64 Spectrum読出しを照合する。Software Loopback／Generator開始時にSTFTが停止したままになる不具合も修正した。再現コマンドは[VALIDATION](VALIDATION.md#spectrogramの容量比較負荷)、条件・数値・操作応答の正本はテスト／QAコードに置く。
 
-MVPの基本検証と長時間・他の高負荷操作への耐性を分ける。撮影操作が重なった長時間評価ではGUI更新の長い停止、STFT転送・Generator内部入力の欠落を観測した。UAC-232の192 kHz起動時にもSTFT転送欠落が再現し、原因切り分けと耐性改善を残す。短時間の成功をこれらの条件の保証に広げない。単独／Pair・通常幅／狭幅の実ウィジェット操作と画像は確認したが、通常ビルドの包括的な手動操作と実モニター間DPIは未確認。長い時間幅・高Overlapでは、入力／解析欠落と表示の追従遅延を別に扱う。
+MVPの基本検証と長時間・他の高負荷操作への耐性を分ける。撮影操作が重なった長時間評価ではGUI更新の長い停止、STFT転送・Generator内部入力の欠落を観測した。起動時の取得バックログによるSTFT転送飽和を修正し、QA撮影のPNG保存をGUI外へ分離した。過去の長いGUI停止・Generator内部入力欠落の再現条件とUAC-232の192 kHz実機再確認は残す。短時間の成功をこれらの条件の保証に広げない。単独／Pair・通常幅／狭幅の実ウィジェット操作と画像は確認したが、通常ビルドの包括的な手動操作と実モニター間DPIは未確認。長い時間幅・高Overlapでは、入力／解析欠落と表示の追従遅延を別に扱う。
 
 ## UIと操作仕様
 
@@ -233,7 +233,7 @@ Rust変更時の共通検証は [Tool Usage Guide](../../.agents/workflows/tool_
 
 ## 最終完了条件と対象外
 
-1. Turbo／Viridis／Inferno／Magma／Grayscale／Hot／Copperと既存のBlue／Heat、Min／Max／Auto、カラーバーを使え、色・範囲操作でFFTを再実行しない。
+1. Viridis → Inferno → Turbo → Magma → Grayscale → Blue → Heat → Hot → Copperの順に配色を選べ、Min／Max／Auto、カラーバーを使える。初期設定はViridis・−120〜0 dBFS・Auto OFF、保存済み設定は維持し、色・範囲操作でFFTを再実行しない。
 2. Log／Linear、ホイールズーム、パン、5／10／30／60秒、ダブルクリックリセットを使え、軸・ホバー・選択時刻が一致する。
 3. 入力・測定を止めずにHoldと過去のスクロールを使え、履歴周回後も保持表示が変わらず、Live復帰で最新を表示する。保持範囲と容量制限を確認できる。
 4. 保持範囲内の任意の有効時刻をA／Bで選び、PairしたSpectrumで元のFFTの周波数・f64レベルを確認できる。

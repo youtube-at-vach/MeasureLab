@@ -155,7 +155,7 @@ Windowsの標準構成はRustのMSVCツールチェーンとVisual Studio C++ Bu
 | スペクトル上にマウスを置く | 最寄りFFTビンの実周波数と振幅／PSD／ESDをf64で読み出す |
 | Spectrogram Source / FFT length / Overlap / Window | Spectrumとは独立した対象CH・窓長・窓関数・DC除去。Overlapは50／75（既定）／87.5% |
 | Spectrogram Display / Time Range / From / To | 時間幅5／10／30／60秒と周波数範囲。旧設定の0.5／1／2／20秒は復元値を維持。To = 0はNyquist |
-| Spectrogram Display / Color Map / Color Range | Turbo／Viridis／Inferno／Magma／Grayscale／Hot／Copper、既存のBlue／Heat。Min／Maxと継続Auto、右端のdBFSカラーバー。表示変更ではFFT・履歴をリセットしない |
+| Spectrogram Display / Color Map / Color Range | Viridis → Inferno → Turbo → Magma → Grayscale → Blue → Heat → Hot → Copper。初期設定はViridis・−120〜0 dBFS・Auto OFF。Min／Maxと継続Auto、右端のdBFSカラーバー。保存済み設定は維持し、表示変更ではFFT・履歴をリセットしない |
 | スペクトログラム上にマウスを置く | その行の最寄りビンの振幅・周波数と解析窓のサンプル番号 |
 | XY Observation window | XYの観察時間幅（0.5〜200 ms、既定50 ms）。Freeは最新区間、Trace Snapはトリガー基準の区間を表示 |
 | XY X amplitude / Y amplitude | 独立した両軸の振幅範囲（0.001〜0.5 FS/div） |
@@ -265,6 +265,8 @@ Spectrumの校正CHは、振幅を物理単位peak、PSDを単位²/Hz、帯域�
 数値電力・保持値・帯域積算・カーソル／ピークはf64で保持・読み出し、描画用のf32 dB配列から逆算しません。描画には−180 dBの下限がありますが、数値は下限で切り詰めません。電力0は数値上−∞ dBです。32-bit FFTは入力のDC除去後にf32へ変換し、複素結果の二乗と平均はf64で行います。f32 FFT自体の丸めや混在する強弱信号の制限は残り、微小信号の既定は64-bitです。
 
 スペクトログラムは専用ワーカーの連続STFTを表示し、新しい行が上に来ます。縦軸は表示上端からの相対秒、見出しのEndは入力開始からの表示上端の秒です。Liveは描画途中の先端を枠の上に隠すため、1行間隔＋約250 ms遅らせた位置を表示します。上端は公称Fsと経過時間で進み、画像の更新間隔やFPSによらず一定の速度でスクロールします。表示の待ち時間を超える遅延では未到着の区間を空白のまま残します。Holdはその時点の表示位置を固定し、入力停止中のLiveは最新窓の終端に揃えます。各行の位置はサンプル番号とFsから計算し、1行は取得時のhop区間に対応します。**Analysis / FFT Overlap** は50／75／87.5%（hop = N/2／N/4／N/8）で、既定は75%です。窓時間N/Fs・行間隔hop/Fs・ビン間隔Fs/Nは別です。Overlapを増やすと解析回数と履歴生成量が増え、容量内で保持できる秒数は短くなります。取得中の変更では旧行・Hold・履歴連携を解除して新世代の完全窓を待ち、停止中の編集は次回Start用です。SpectrumのContinuousのN/4は変えません。各窓のビン振幅を表示し、電力平均とピーク保持は使いません。欠落によって解析できなかった区間はオレンジの縞、まだ取得・保持していない過去は空白です。
+
+配色の初期設定は **Viridis、−120〜0 dBFS、Auto OFF** です。保存済みの配色・表示レンジ・Autoは維持し、配色の項目がない旧設定は従来のBlueで復元します。暗騒音・微弱成分を見るときは、配色を切り替える前にMin／Maxで表示レンジを絞ってください。[説明書の配色比較図](../../docs-rust/quickstart.md#時間周波数の変化を読む)では−110〜−80 dBFSも使っています。ノイズ床付近の成分は、配色だけで確実に判別できるわけではありません。
 
 右側の **Display** で色・Min／Max・**Auto color range**・Log／Linear・周波数範囲・Time Rangeを編集し、**Analysis** でFFTを設定します。Autoは表示中の時間・周波数範囲にある有効なビンからレンジを求め、無音・非有限値・欠落を除外します。有効なデータが不足する場合は最後の有効レンジ、未確定なら−120〜0 dBFSを使います。手動のMin／Max編集でAutoを解除し、不正な範囲では直前の有効値を保持します。画像と右端のカラーバーは同じ色定義です。
 

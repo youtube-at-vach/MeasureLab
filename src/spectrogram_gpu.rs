@@ -133,7 +133,7 @@ impl Renderer {
             placements: Vec::with_capacity(ROWS * 2),
             vertices: Vec::with_capacity(ROWS * 2),
             parameters: [0.0; PARAMETER_FLOATS],
-            color_map: ColorMap::Blue,
+            color_map: ColorMap::default(),
             anchor: None,
             uploaded_rows: 0,
             uploaded_buffers: 0,

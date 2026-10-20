@@ -45,7 +45,13 @@ Spectrumは単一グラフに最大4chを重ねます。下部のCHバーで選�
 
 ## 時間・周波数の変化を読む
 
-**Spectrogram** を選び、**Details / Display** でTurbo／Viridis／Inferno／Magma／Grayscale／Hot／Copper（既存のBlue／Heatも選択可）、dBFSのMin／Max、**Auto color range**を設定します。Min／Maxを編集するとManualへ戻ります。右端のカラーバーは有効な色範囲を示し、表示操作で解析・履歴は変更しません。
+**Spectrogram** を選び、**Details / Display** で配色、dBFSのMin／Max、**Auto color range**を設定します。初期設定は **Viridis、−120〜0 dBFS、Auto OFF** です。保存済みの配色・表示レンジ・Auto設定は復元時に維持し、配色の項目がない旧設定は従来のBlueで復元します。Min／Maxを編集するとManualへ戻ります。右端のカラーバーは有効な色範囲を示し、表示操作で解析・履歴は変更しません。
+
+配色の切替順は **Viridis → Inferno → Turbo → Magma → Grayscale → Blue → Heat → Hot → Copper** です。暗騒音・微弱成分を見るときは、まず表示レンジを絞ってください。下の比較図では通常の−120〜0 dBFSに加え、−110〜−80 dBFSでも比較しています。ノイズ床付近の成分は、配色だけで確実に判別できるわけではありません。
+
+![同じ合成音声とSTFTによる9種類のスペクトログラム配色比較](assets/spectrogram-colormap-comparison.png)
+
+*AIで作成した説明用の比較図。各配色の主図は−120〜0 dBFS、下段の微弱成分用パネルは−110〜−80 dBFSで、AutoはOFFです。アプリのスクリーンショットや実機測定、視認性を保証する評価結果ではありません。*
 
 プロット上のホイールで周波数をズームし、背景ドラッグで周波数・時間をパンします。Shift＋ホイールでも時間をスクロールできます。クリックでHoldへ入り、実FFTフレームを時間A／Bへ固定します。Hold中も測定は続き、**Live** で履歴と時間選択を解放します。ダブルクリックは周波数全体と現在モードの最新端へ戻ります。**Time Range** は5／10／30／60秒です。履歴は最大120秒・96 MiBで、表示は512行・1,024列以内へ縮約します。実際の保持秒数と容量制限を表示し、不足分を補完しません。
 
