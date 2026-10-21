@@ -134,6 +134,53 @@ impl Driver {
             self.frame(app, vec![]);
         }
     }
+
+    fn check_header(&self) -> Result<(), String> {
+        let menu = self.position("Menu").or_else(|_| self.position("File"))?;
+        let output = self.position("Stop output")?;
+        let input = ["▶  Start input", "▶  Start input (demo)", "■  Stop input"]
+            .into_iter()
+            .find_map(|label| self.text_positions(label).first().copied())
+            .ok_or("Shared input control missing from header")?;
+        assert!((menu.y - input.y).abs() < 2.0);
+        assert!((output.y - input.y).abs() < 2.0);
+        assert!(menu.x < output.x && output.x < input.x);
+        assert!(input.x > self.size.x - 100.0);
+        assert!(self.text_positions("MeasureLab").is_empty());
+        for text in [menu, output] {
+            let rect = self
+                .ctx
+                .interactive_rects_last_pass()
+                .into_iter()
+                .filter(|rect| rect.contains(text) && rect.height() < 80.0)
+                .min_by(|a, b| a.width().total_cmp(&b.width()))
+                .ok_or("Header control has no interactive bounds")?;
+            assert!(rect.left() >= 0.0 && rect.right() <= self.size.x);
+        }
+        let mut texts: Vec<_> = self
+            .output
+            .shapes
+            .iter()
+            .filter_map(|shape| {
+                if let egui::Shape::Text(text) = &shape.shape
+                    && text.visual_bounding_rect().top() < 20.0
+                {
+                    Some(text.visual_bounding_rect())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        texts.sort_by(|a, b| a.left().total_cmp(&b.left()));
+        for rect in &texts {
+            assert!(rect.left() >= 0.0 && rect.right() <= self.size.x);
+            assert!((rect.center().y - input.y).abs() < 2.0);
+        }
+        for pair in texts.windows(2) {
+            assert!(pair[0].right() < pair[1].left(), "Header texts overlap");
+        }
+        Ok(())
+    }
 }
 
 impl ScopeApp {
@@ -181,6 +228,8 @@ impl ScopeApp {
         let mut driver = Driver::new();
         driver.frame(self, vec![]);
         driver.frame(self, vec![]);
+
+        driver.check_header()?;
         driver.click(self, "48000 Hz")?;
         driver.click(self, "96000 Hz")?;
         assert_eq!(self.requested_sample_rate, Some(96_000));
@@ -1164,6 +1213,35 @@ impl ScopeApp {
         driver.key(self, egui::Key::Escape, egui::Modifiers::NONE);
         assert!(!driver.ctx.any_popup_open() && self.shell.io.is_some());
         driver.click(self, "Help")?;
+        // Keep the floating window's resize corner clear of the header while
+        // checking keyboard priority and opening another auxiliary window.
+        let help_title = driver
+            .text_positions("Help")
+            .into_iter()
+            .find(|pos| pos.y > 20.0)
+            .ok_or("Help window title missing")?;
+        driver.frame(self, vec![egui::Event::PointerMoved(help_title)]);
+        driver.frame(
+            self,
+            vec![egui::Event::PointerButton {
+                pos: help_title,
+                button: egui::PointerButton::Primary,
+                pressed: true,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        let moved = help_title + vec2(300.0, 100.0);
+        driver.frame(self, vec![egui::Event::PointerMoved(moved)]);
+        driver.frame(
+            self,
+            vec![egui::Event::PointerButton {
+                pos: moved,
+                button: egui::PointerButton::Primary,
+                pressed: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+        driver.frame(self, vec![]);
         driver.key(self, egui::Key::Num2, egui::Modifiers::CTRL);
         driver.key(self, egui::Key::ArrowLeft, egui::Modifiers::CTRL);
         assert_eq!(self.presentation.screen, Screen::Console);
@@ -1221,10 +1299,13 @@ impl ScopeApp {
         driver.frame(self, vec![]);
         let console = self.presentation.console.clone();
         for native_scale in [1.0, 2.0] {
-            driver.resize(self, vec2(720.0, 528.0), 1.25, native_scale);
-            driver.position("Stop output")?;
-            assert_eq!(self.presentation.console, console);
+            for width in [514.0, 720.0, 1040.0, 1180.0, 1200.0] {
+                driver.resize(self, vec2(width, 528.0), 1.25, native_scale);
+                driver.check_header()?;
+                assert_eq!(self.presentation.console, console);
+            }
             driver.resize(self, vec2(1440.0, 1000.0), 1.0, 1.0);
+            driver.check_header()?;
             assert_eq!(self.presentation.console, console);
         }
         for tab in ["Input / output", "Calibration"] {
@@ -1242,6 +1323,7 @@ impl ScopeApp {
             .presentation
             .selected()
             .map_or("Console".into(), |i| format!("Instrument: {}", i.name()));
+        driver.click(self, "Menu")?;
         driver.click(self, &menu_title)?;
         driver.click(self, "Generator")?;
         assert_eq!(

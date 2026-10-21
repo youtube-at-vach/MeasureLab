@@ -147,94 +147,110 @@ impl ScopeApp {
             }
         }
         egui::Panel::top("header").show(ui, |ui| {
-            ui.horizontal_wrapped(|ui| {
-                ui.label(RichText::new("MeasureLab").strong().color(GREEN));
-                self.file_menu(ui);
-                self.view_menu(ui);
-                ui.menu_button("I/O", |ui| {
-                    for (tab, name) in [
-                        (IoTab::Connections, "Input / output"),
-                        (IoTab::Calibration, "Calibration"),
-                    ] {
-                        if ui.button(name).clicked() {
-                            self.shell.io = Some(tab);
-                            ui.close();
-                        }
-                    }
-                });
-                if ui.button("Help").clicked() {
-                    self.shell.help = true;
+            let compact = ui.available_width() < 1180.0;
+            ui.horizontal(|ui| {
+                if compact {
+                    ui.menu_button("Menu", |ui| self.shell_menus(ui, true));
+                } else {
+                    self.shell_menus(ui, false);
                 }
-                if ui.max_rect().width() < 1180.0 {
-                    self.instrument_menu(ui);
-                }
-            });
-            ui.horizontal_wrapped(|ui| {
-                ui.label(
-                    RichText::new(if self.pending_stop.is_some() {
-                        "INPUT · FINISHING"
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    self.transport(ui);
+                    let state = if self.pending_stop.is_some() {
+                        "FINISHING"
                     } else if self.busy {
-                        "INPUT · OPENING"
+                        "OPENING"
                     } else if self.running() {
-                        "INPUT · LIVE"
+                        "LIVE"
                     } else {
-                        "INPUT · STOPPED"
-                    })
-                    .small()
-                    .monospace()
-                    .color(if self.running() { GREEN } else { MUTED }),
-                );
-                self.transport(ui);
-                ui.separator();
-                self.generator_transport(ui);
-                ui.menu_button("Running…", |ui| {
-                    ui.label(if self.running() {
-                        "Scope / Spectrum / STFT / XY · input running"
-                    } else {
-                        "Shared input · stopped"
-                    });
-                    ui.label("Display selection does not start or stop measurement.");
+                        "STOPPED"
+                    };
+                    ui.label(
+                        RichText::new(format!(
+                            "{} · {state}",
+                            if compact { "IN" } else { "INPUT" }
+                        ))
+                        .small()
+                        .monospace()
+                        .color(if self.running() { GREEN } else { MUTED }),
+                    )
+                    .on_hover_text(format!("Shared input · {state}"));
                     ui.separator();
-                    let before = self.lockin_settings;
-                    ui.label(format!(
-                        "Lock-in · {}",
-                        self.analysis_state(self.lockin_settings.enabled)
-                    ));
-                    if ui
-                        .add_enabled(
-                            self.lockin_settings.enabled
-                                && !self.busy
-                                && self.pending_stop.is_none()
-                                && !self.workspace_restoring
-                                && self.settings_task != Some(SettingsTask::Restore),
-                            egui::Button::new("Stop Lock-in analysis"),
-                        )
-                        .clicked()
-                    {
-                        self.lockin_settings.enabled = false;
-                        self.apply_lockin_controls(before);
-                    }
-                    let before = self.comparison_settings;
-                    ui.label(format!(
-                        "Synchronous 2ch · {}",
-                        self.analysis_state(self.comparison_settings.enabled)
-                    ));
-                    if ui
-                        .add_enabled(
-                            self.comparison_settings.enabled
-                                && !self.busy
-                                && self.pending_stop.is_none()
-                                && !self.workspace_restoring
-                                && self.settings_task != Some(SettingsTask::Restore),
-                            egui::Button::new("Stop synchronous analysis"),
-                        )
-                        .clicked()
-                    {
-                        self.comparison_settings.enabled = false;
-                        self.apply_comparison_controls(before);
-                    }
+                    self.generator_transport(ui, compact);
                 });
             });
+        });
+    }
+
+    fn shell_menus(&mut self, ui: &mut egui::Ui, instruments: bool) {
+        self.file_menu(ui);
+        self.view_menu(ui);
+        ui.menu_button("I/O", |ui| {
+            for (tab, name) in [
+                (IoTab::Connections, "Input / output"),
+                (IoTab::Calibration, "Calibration"),
+            ] {
+                if ui.button(name).clicked() {
+                    self.shell.io = Some(tab);
+                    ui.close();
+                }
+            }
+        });
+        if ui.button("Help").clicked() {
+            self.shell.help = true;
+            if ui.layout().is_vertical() {
+                ui.close();
+            }
+        }
+        if instruments {
+            self.instrument_menu(ui);
+        }
+        ui.menu_button("Running…", |ui| {
+            ui.label(if self.running() {
+                "Scope / Spectrum / STFT / XY · input running"
+            } else {
+                "Shared input · stopped"
+            });
+            ui.label("Display selection does not start or stop measurement.");
+            ui.separator();
+            let before = self.lockin_settings;
+            ui.label(format!(
+                "Lock-in · {}",
+                self.analysis_state(self.lockin_settings.enabled)
+            ));
+            if ui
+                .add_enabled(
+                    self.lockin_settings.enabled
+                        && !self.busy
+                        && self.pending_stop.is_none()
+                        && !self.workspace_restoring
+                        && self.settings_task != Some(SettingsTask::Restore),
+                    egui::Button::new("Stop Lock-in analysis"),
+                )
+                .clicked()
+            {
+                self.lockin_settings.enabled = false;
+                self.apply_lockin_controls(before);
+            }
+            let before = self.comparison_settings;
+            ui.label(format!(
+                "Synchronous 2ch · {}",
+                self.analysis_state(self.comparison_settings.enabled)
+            ));
+            if ui
+                .add_enabled(
+                    self.comparison_settings.enabled
+                        && !self.busy
+                        && self.pending_stop.is_none()
+                        && !self.workspace_restoring
+                        && self.settings_task != Some(SettingsTask::Restore),
+                    egui::Button::new("Stop synchronous analysis"),
+                )
+                .clicked()
+            {
+                self.comparison_settings.enabled = false;
+                self.apply_comparison_controls(before);
+            }
         });
     }
 
