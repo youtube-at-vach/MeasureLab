@@ -1258,6 +1258,7 @@ impl ScopeApp {
         self.check_sidebar_interactions(&mut driver)?;
         self.check_output_stop_interactions(&mut driver)?;
         self.check_cursor_placement_interactions(&mut driver)?;
+        self.check_trigger_display_interactions(&mut driver)?;
 
         let shared_input_labels = driver
             .output

@@ -33,6 +33,8 @@ def cases(devices=()):
         yield f"{instrument}-wide", False, {"VIEW": instrument, "IDLE": "1"}
         yield f"{instrument}-compact", True, {"VIEW": instrument, "IDLE": "1", "ZOOM": "1.25"}
     yield "scope-four-channel", False, {"VIEW": "scope", "SCOPE4": "1"}
+    for display in ("guides", "off"):
+        yield f"scope-trigger-{display}", False, {"VIEW": "scope", "DETAILS": "1", "TRIGGER_DISPLAY": display}
     yield "spectrum-four-channel", False, {"VIEW": "spectrum", "SPECTRUM4": "1"}
     yield "spectrum-four-channel-compact", True, {"VIEW": "spectrum", "SPECTRUM4": "1", "ZOOM": "1.25"}
     yield "spectrum-details-compact", True, {"VIEW": "spectrum", "SPECTRUM4": "1", "DETAILS": "1", "ZOOM": "1.25"}

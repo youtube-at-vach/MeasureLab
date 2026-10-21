@@ -59,7 +59,29 @@ impl ScopeApp {
             }
         });
 
-        control_group(ui, "TRIGGER", TRIGGER, |ui| self.trigger_controls(ui));
+        control_group(ui, "TRIGGER", TRIGGER, |ui| {
+            self.trigger_controls(ui);
+            ui.horizontal(|ui| {
+                ui.label("Display");
+                egui::ComboBox::from_id_salt("scope_trigger_display")
+                    .selected_text(match self.scope_trigger_display {
+                        settings::TriggerDisplay::Markers => "Markers",
+                        settings::TriggerDisplay::Guides => "Guides",
+                        settings::TriggerDisplay::Off => "Off",
+                    })
+                    .show_ui(ui, |ui| {
+                        for (mode, label) in [
+                            (settings::TriggerDisplay::Markers, "Markers"),
+                            (settings::TriggerDisplay::Guides, "Guides"),
+                            (settings::TriggerDisplay::Off, "Off"),
+                        ] {
+                            ui.selectable_value(&mut self.scope_trigger_display, mode, label);
+                        }
+                    })
+                    .response
+                    .on_hover_text("Markers: T markers only. Guides: T markers and dotted time/level guides. Off: hide both. A horizontal guide appears while editing Level in any mode.");
+            });
+        });
 
         control_group(ui, "HORIZONTAL", BLUE, |ui| {
             self.dirty |= control_slider(
@@ -202,7 +224,7 @@ impl ScopeApp {
             channel_select(ui, "trigger_channel", &mut self.trigger.channel, channels);
         });
         self.dirty |= before != (self.trigger.edge, self.trigger.channel);
-        let (changed, zero) = control_slider(
+        let (response, zero) = control_slider_response(
             ui,
             "Level",
             egui::Slider::new(&mut self.trigger.level, -1.0..=1.0)
@@ -215,7 +237,22 @@ impl ScopeApp {
         if zero {
             self.trigger.level = 0.0;
         }
-        self.dirty |= changed || zero;
+        #[cfg(feature = "qa")]
+        if self.smoke {
+            ui.ctx().data_mut(|data| {
+                data.insert_temp(egui::Id::new("qa_trigger_level"), response.rect);
+            });
+        }
+        self.dirty |= response.changed() || zero;
+        if response.is_pointer_button_down_on()
+            || (response.has_focus() && ui.ctx().text_edit_focused())
+            || response.changed()
+            || zero
+        {
+            self.scope_trigger_level_edit_frame = Some(ui.ctx().cumulative_frame_nr());
+            // A stopped input need not otherwise repaint after the edit ends.
+            ui.ctx().request_repaint();
+        }
         ui.add(egui::Label::new("T markers: top = 0 ms · right = level").wrap())
             .on_hover_text(self.scope_trigger_marker_help());
     }
@@ -250,6 +287,16 @@ pub(super) fn control_slider(
     slider: egui::Slider<'_>,
     reset: Option<&str>,
 ) -> (bool, bool) {
+    let (response, reset_clicked) = control_slider_response(ui, label, slider, reset);
+    (response.changed(), reset_clicked)
+}
+
+fn control_slider_response(
+    ui: &mut egui::Ui,
+    label: &str,
+    slider: egui::Slider<'_>,
+    reset: Option<&str>,
+) -> (egui::Response, bool) {
     let mut reset_clicked = false;
     let label = ui
         .horizontal(|ui| {
@@ -271,5 +318,5 @@ pub(super) fn control_slider(
         .on_hover_text(
             "Drag the slider or value to adjust. Double-click the value to type a number.",
         );
-    (response.changed(), reset_clicked)
+    (response, reset_clicked)
 }

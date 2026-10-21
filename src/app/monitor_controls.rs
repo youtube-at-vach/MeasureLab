@@ -199,3 +199,103 @@ pub(super) fn scope_color(index: usize) -> Color32 {
         (b * 255.0).round() as u8,
     )
 }
+
+impl ScopeApp {
+    pub(super) fn scope_trigger_overlay(&self, ui: &egui::Ui, rect: egui::Rect) {
+        let painter = ui.painter();
+        let trigger = self.scope_display_trigger();
+        let guides = self.scope_trigger_display == settings::TriggerDisplay::Guides;
+        let editing = self.scope_trigger_level_edit_frame == Some(ui.ctx().cumulative_frame_nr());
+        let level_y = |trigger: Trigger| {
+            let vertical = self
+                .scope_view_channels()
+                .0
+                .iter()
+                .position(|ch| *ch == trigger.channel)
+                .map(|i| self.scope_vertical[i])
+                .unwrap_or_default();
+            rect.top() + vertical.y(trigger.level) * rect.height()
+        };
+        let guide_color = TRIGGER.gamma_multiply(0.65);
+        if editing || (guides && trigger.edge != Edge::Free) {
+            // Preview the edited setting even while a held capture retains its
+            // original trigger. Only this preview follows next-Start edits.
+            let ty = level_y(if editing { self.trigger } else { trigger });
+            if rect.y_range().contains(ty) {
+                painter
+                    .with_clip_rect(rect)
+                    .extend(egui::Shape::dotted_line(
+                        &[pos2(rect.left(), ty), pos2(rect.right(), ty)],
+                        guide_color,
+                        6.0,
+                        1.0,
+                    ));
+            }
+        }
+        if trigger.edge != Edge::Free && self.scope_trigger_display != settings::TriggerDisplay::Off
+        {
+            let tx = rect.left() + rect.width() * (0.2 + self.scope_horizontal_position / 10.0);
+            if rect.x_range().contains(tx) {
+                if guides {
+                    painter
+                        .with_clip_rect(rect)
+                        .extend(egui::Shape::dotted_line(
+                            &[pos2(tx, rect.top()), pos2(tx, rect.bottom())],
+                            guide_color,
+                            6.0,
+                            1.0,
+                        ));
+                }
+                painter.line_segment(
+                    [pos2(tx, rect.top()), pos2(tx, rect.top() + 12.0)],
+                    Stroke::new(2.0, TRIGGER),
+                );
+                painter.text(
+                    pos2(tx, rect.top() + 17.0),
+                    egui::Align2::CENTER_TOP,
+                    "T",
+                    egui::FontId::monospace(11.0),
+                    TRIGGER,
+                );
+                ui.interact(
+                    egui::Rect::from_min_max(
+                        pos2(tx - 12.0, rect.top()),
+                        pos2(tx + 12.0, rect.top() + 32.0),
+                    ),
+                    ui.id().with("trigger_time_marker"),
+                    egui::Sense::hover(),
+                )
+                .on_hover_text(self.scope_trigger_marker_help());
+            }
+            let ty = level_y(trigger);
+            if rect.y_range().contains(ty) {
+                // Keep the trigger-level indicator outside the waveform area.
+                painter.add(egui::Shape::convex_polygon(
+                    vec![
+                        pos2(rect.right() + 2.0, ty),
+                        pos2(rect.right() + 9.0, ty - 4.0),
+                        pos2(rect.right() + 9.0, ty + 4.0),
+                    ],
+                    TRIGGER,
+                    Stroke::NONE,
+                ));
+                painter.text(
+                    pos2(rect.right() + 12.0, ty),
+                    egui::Align2::LEFT_CENTER,
+                    "T",
+                    egui::FontId::monospace(10.0),
+                    TRIGGER,
+                );
+                ui.interact(
+                    egui::Rect::from_min_max(
+                        pos2(rect.right(), ty - 8.0),
+                        pos2(rect.right() + 26.0, ty + 8.0),
+                    ),
+                    ui.id().with("trigger_level_marker"),
+                    egui::Sense::hover(),
+                )
+                .on_hover_text(self.scope_trigger_marker_help());
+            }
+        }
+    }
+}

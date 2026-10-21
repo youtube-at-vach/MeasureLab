@@ -193,6 +193,8 @@ pub struct Workspace {
     pub scope_vertical: [Vertical; SCOPE_CHANNELS],
     pub scope_selected: usize,
     pub scope_horizontal_position: f32,
+    #[serde(default)]
+    pub scope_trigger_display: TriggerDisplay,
     pub spectrum_scale: FrequencyScale,
     pub spectrum_min_hz: f32,
     pub spectrum_max_hz: f32,
@@ -218,6 +220,15 @@ pub struct Workspace {
 // when the initial color map for a new workspace changes.
 fn legacy_spectrogram_color_map() -> ColorMap {
     ColorMap::Blue
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TriggerDisplay {
+    #[default]
+    Markers,
+    Guides,
+    Off,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -772,6 +783,7 @@ mod tests {
                 scope_vertical: [Vertical::default(); SCOPE_CHANNELS],
                 scope_selected: 0,
                 scope_horizontal_position: 0.0,
+                scope_trigger_display: TriggerDisplay::default(),
                 spectrum_scale: FrequencyScale::Log,
                 spectrum_min_hz: 0.0,
                 spectrum_max_hz: 0.0,
@@ -814,6 +826,35 @@ mod tests {
         w.insert("layout".into(), "auto".into());
         w.insert("sidebar_visible".into(), true.into());
         value
+    }
+
+    #[test]
+    fn scope_trigger_display_roundtrips_and_missing_field_preserves_markers() {
+        let mut document = fixture();
+        for mode in [
+            TriggerDisplay::Markers,
+            TriggerDisplay::Guides,
+            TriggerDisplay::Off,
+        ] {
+            document.workspace.scope_trigger_display = mode;
+            assert_eq!(
+                Document::decode(&document.encode().unwrap()).unwrap(),
+                document
+            );
+        }
+        let mut value = serde_json::to_value(&document).unwrap();
+        value["workspace"]
+            .as_object_mut()
+            .unwrap()
+            .remove("scope_trigger_display");
+        let restored = Document::decode(&serde_json::to_vec(&value).unwrap()).unwrap();
+        assert_eq!(
+            restored.workspace.scope_trigger_display,
+            TriggerDisplay::Markers
+        );
+        assert_eq!(restored.measurement, document.measurement);
+        value["workspace"]["scope_trigger_display"] = "unknown".into();
+        assert!(Document::decode(&serde_json::to_vec(&value).unwrap()).is_err());
     }
 
     #[test]
