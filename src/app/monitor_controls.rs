@@ -2,12 +2,28 @@
 use super::*;
 
 impl ScopeApp {
-    pub(super) fn scope_channel_count(&self) -> u16 {
-        if self.core.is_some() || !self.history.is_empty() {
-            self.channels
+    pub(super) fn scope_input_channels(&self) -> Option<u16> {
+        if let Some(input) = self
+            .held_input
+            .as_ref()
+            .filter(|input| input.generation == self.input_generation)
+        {
+            Some(input.channels as u16)
+        } else if self.busy {
+            None
+        } else if self.source == Source::Live {
+            self.devices
+                .get(self.selected)
+                .map(|d| d.channels)
+                .filter(|count| *count > 0)
         } else {
-            self.lockin_channel_count()
+            Some(2)
         }
+    }
+
+    pub(super) fn scope_channel_count(&self) -> u16 {
+        self.scope_input_channels()
+            .unwrap_or_else(|| self.lockin_channel_count())
     }
 
     pub(super) fn scope_channel_bar(&mut self, ui: &mut egui::Ui) {
@@ -20,7 +36,8 @@ impl ScopeApp {
             for index in 0..SCOPE_CHANNELS {
                 let color = scope_color(index);
                 let channel = sources.0[index];
-                let available = channel::available(channel, self.scope_channel_count() as usize);
+                let out_of_range = self.scope_input_channels().is_some_and(|count| !channel::available(channel, count as usize));
+                let show_range = out_of_range && self.scope_notice().is_none();
                 let selected = index == self.scope_selected;
                 let (rect, _) = ui.allocate_exact_size(vec2(width, 40.0), egui::Sense::hover());
                 ui.painter().rect(rect, 3.0,
@@ -34,20 +51,20 @@ impl ScopeApp {
                     self.dirty = true;
                 }
                 ui.painter().text(rect.min + vec2(6.0, 4.0), egui::Align2::LEFT_TOP,
-                    format!("CH{}{}", index + 1, if !available && width <= 125.0 { " —" } else { "" }), egui::FontId::proportional(12.0), color);
+                    format!("CH{}{}", index + 1, if show_range && width <= 150.0 { " —" } else { "" }), egui::FontId::proportional(12.0), color);
                 ui.painter().text(rect.min + vec2(6.0, 23.0), egui::Align2::LEFT_TOP,
                     format!("{} FS/div", display::number(Some(self.scope_vertical[index].fs_per_div as f64))),
                     egui::FontId::monospace(10.0), color);
-                if !available && width > 125.0 {
+                if show_range && width > 150.0 {
                     ui.painter().text(rect.min + vec2(44.0, 5.0), egui::Align2::LEFT_TOP,
-                        "No input", egui::FontId::proportional(10.0), MUTED);
+                        "Out of range", egui::FontId::proportional(10.0), MUTED);
                 }
                 response.on_hover_text(format!("CH{} · {}{}\n{}\nSelect to edit this channel in Channel settings. Display on/off is independent.", index + 1,
-                    channel::name(channel), if available { "" } else { " · No input (unavailable)" }, self.scope_readout_details(index)));
+                    channel::name(channel), if out_of_range { " · outside input channel range" } else { "" }, self.scope_readout_details(index)));
                 let toggle = egui::Rect::from_min_size(rect.right_top() + vec2(-23.0, 3.0), vec2(20.0, 20.0));
                 self.dirty |= ui.put(toggle, egui::Checkbox::without_text(&mut self.enabled[index]))
                     .on_hover_text(format!("Show CH{} waveform (keeps selection and measurements)", index + 1)).changed();
-                if !available {
+                if show_range {
                     ui.painter().line_segment([rect.right_bottom() - vec2(18.0, 7.0), rect.right_bottom() - vec2(6.0, 7.0)], Stroke::new(1.5, MUTED));
                 }
             }
@@ -60,7 +77,15 @@ impl ScopeApp {
             .captured
             .unit(self.scope_view_channels().0[index]);
         match self.scope_readings[index] {
-            Reading::Unavailable => "— · unavailable".into(),
+            Reading::Unavailable if self.scope_notice().is_some() => "—".into(),
+            Reading::Unavailable
+                if self.scope_input_channels().is_some_and(|count| {
+                    !channel::available(self.scope_view_channels().0[index], count as usize)
+                }) =>
+            {
+                "— · channel out of range".into()
+            }
+            Reading::Unavailable => "— · no samples in this interval".into(),
             Reading::NonFinite => "— · invalid value".into(),
             Reading::Valid(m) => format!(
                 "RMS {} {unit} · P-P {} {unit}",
@@ -72,6 +97,12 @@ impl ScopeApp {
 
     pub(super) fn scope_readout_details(&self, index: usize) -> String {
         let channel = self.scope_view_channels().0[index];
+        if self.scope_range.is_empty() && self.held_input.is_none() {
+            return format!(
+                "{} · No acquired samples\nInput conditions are not acquired. Waveform and trigger settings use raw FS.",
+                channel::name(channel)
+            );
+        }
         let unit = self.calibration.captured.unit(channel);
         let reading = match self.scope_readings[index] {
             Reading::Valid(m) => format!(

@@ -153,7 +153,7 @@ impl ScopeApp {
                 < (run + 1) * 48000
             {
                 self.poll_audio();
-                if let Some(error) = &self.error {
+                if let Some(error) = self.input_error.as_ref().or(self.error.as_ref()) {
                     return Err(error.clone());
                 }
                 if Instant::now() > deadline {
@@ -335,7 +335,7 @@ impl ScopeApp {
                 self.qa_wait_audio_idle()?;
                 std::thread::sleep(Duration::from_millis(500));
                 self.poll_measurement();
-                if let Some(error) = &self.error {
+                if let Some(error) = self.input_error.as_ref().or(self.error.as_ref()) {
                     return Err(error.clone());
                 }
                 if let Some(f) = &fixture {

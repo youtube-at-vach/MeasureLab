@@ -184,6 +184,227 @@ impl Driver {
 }
 
 impl ScopeApp {
+    pub(super) fn check_input_guidance(&mut self) -> Result<(), String> {
+        use display::ScopeNotice;
+        assert!(self.core.is_none() && !self.running() && self.pending_stop.is_none());
+        let saved = (
+            self.source,
+            self.busy,
+            self.input_error.take(),
+            self.input_failed,
+            self.channels,
+            self.held_input.take(),
+            std::mem::take(&mut self.devices),
+            self.selected,
+            self.enabled,
+            self.scope_channels,
+            self.core_scope,
+            self.acquisition_mode,
+            self.acquisition_state,
+            self.scope_missing,
+            self.dropped,
+            self.scope_readings,
+            self.measurements,
+            self.trigger,
+        );
+        let history = std::mem::replace(&mut self.history, History::with_channels(96000, 2));
+        let capture = self.scope_capture.take();
+        let range = std::mem::replace(&mut self.scope_range, 0..0);
+        let presentation = self.presentation.clone();
+        let shell = self.shell.clone();
+        let generation = self.input_generation;
+        let command = self.generator.command_marker();
+        self.presentation = Presentation::default();
+        self.shell = shell::Shell::default();
+        self.source = Source::Live;
+        self.busy = false;
+        self.input_failed = false;
+        self.channels = 0;
+        self.scope_channels = ScopeChannels::default();
+        self.enabled = [true; SCOPE_CHANNELS];
+        self.acquisition_mode = acquisition::Mode::Auto;
+        self.scope_readings = [Reading::Unavailable; SCOPE_CHANNELS];
+        self.dirty = true;
+        let mut driver = Driver::new();
+        let check = |app: &mut ScopeApp, driver: &mut Driver, reason: ScopeNotice| {
+            driver.frame(app, vec![]);
+            driver.frame(app, vec![]);
+            assert_eq!(app.scope_notice(), Some(reason));
+            assert_eq!(driver.text_positions(reason.title()).len(), 1);
+            assert!(
+                driver
+                    .text_positions("Trigger source unavailable")
+                    .is_empty()
+            );
+            assert!(driver.text_positions("No input").is_empty());
+            assert!(
+                driver
+                    .text_positions("Fs not acquired · no input samples")
+                    .is_empty()
+            );
+            let title = driver.text_positions(reason.title())[0];
+            let button = driver.position("Open input settings").unwrap();
+            let plot = driver
+                .output
+                .shapes
+                .iter()
+                .find_map(|s| {
+                    if let egui::Shape::Callback(callback) = &s.shape {
+                        Some(callback.rect)
+                    } else {
+                        None
+                    }
+                })
+                .unwrap();
+            let card = driver
+                .output
+                .shapes
+                .iter()
+                .find_map(|s| {
+                    if let egui::Shape::Rect(shape) = &s.shape
+                        && shape.fill == Color32::from_rgb(20, 32, 42)
+                        && shape.rect.contains(title)
+                    {
+                        Some(shape.rect)
+                    } else {
+                        None
+                    }
+                })
+                .unwrap();
+            assert!((card.center() - plot.center()).length() < 2.0);
+            assert!(plot.contains_rect(card) && card.contains(button));
+        };
+        check(self, &mut driver, ScopeNotice::NoDevice);
+        assert_eq!(self.scope_input_channels(), None);
+        driver.click(self, "Open input settings")?;
+        assert!(self.shell.io == Some(shell::IoTab::Connections));
+        assert_eq!(self.presentation, Presentation::default());
+        driver.click(self, "Back to instruments")?;
+        self.devices.push(DeviceInfo {
+            id: Some("guidance-qa".into()),
+            name: "Guidance input (synthetic)".into(),
+            channels: 0,
+            default_sample_rate: 48000,
+            sample_rates: vec![48000],
+            is_default: true,
+        });
+        self.selected = 0;
+        check(self, &mut driver, ScopeNotice::Stopped);
+        assert_eq!(self.scope_input_channels(), None);
+        self.devices[0].channels = 16;
+        self.busy = true;
+        check(self, &mut driver, ScopeNotice::Opening);
+        assert_eq!(self.scope_input_channels(), None);
+        assert_eq!(self.input_status_text(), "Input conditions: —");
+        self.busy = false;
+        self.source = Source::Software;
+        self.software_running = true;
+        check(self, &mut driver, ScopeNotice::WaitingForSamples);
+        assert_eq!(self.scope_input_channels(), Some(2));
+        self.scope_channels.0 = [15; SCOPE_CHANNELS];
+        check(self, &mut driver, ScopeNotice::ChannelRange);
+        self.scope_channels = ScopeChannels::default();
+        self.trigger.channel = 15;
+        self.trigger.edge = Edge::Rising;
+        self.dirty = true;
+        check(self, &mut driver, ScopeNotice::TriggerRange);
+        self.trigger.channel = 0;
+        self.acquisition_mode = acquisition::Mode::Single;
+        self.acquisition_state = acquisition::State::Waiting;
+        self.history.push([0.25, -0.25]);
+        self.dirty = true;
+        check(self, &mut driver, ScopeNotice::WaitingForTrigger);
+        self.acquisition_state = acquisition::State::Acquiring;
+        check(self, &mut driver, ScopeNotice::PostTrigger);
+        self.stop();
+        check(self, &mut driver, ScopeNotice::Incomplete);
+        self.history.clear_at(0);
+        self.fail_input("Simulated input error · no device was opened".into());
+        for (width, height, zoom) in [(1440.0, 860.0, 1.0), (720.0, 640.0, 1.25)] {
+            driver.resize(self, vec2(width, height), zoom, 1.0);
+            check(self, &mut driver, ScopeNotice::Failed);
+            assert_eq!(
+                driver
+                    .text_positions(self.input_error.as_ref().unwrap())
+                    .len(),
+                1
+            );
+            driver.position("Open input settings")?;
+        }
+        // Exercise the same failure handler used by AudioWorker notifications,
+        // with an acquired interval and loss information already present.
+        self.input_error = None;
+        self.acquisition_mode = acquisition::Mode::Auto;
+        for _ in 0..1024 {
+            self.history.push([0.25, -0.25]);
+        }
+        self.dirty = true;
+        self.refresh_scope_range();
+        self.scope_missing = 7;
+        self.dropped = 11;
+        let held = (
+            self.scope_range.clone(),
+            self.scope_readings,
+            self.history.len(),
+        );
+        self.fail_input("Simulated failure after acquisition".into());
+        driver.resize(self, vec2(1440.0, 1000.0), 1.0, 1.0);
+        assert_eq!(self.scope_notice(), None);
+        assert_eq!(
+            driver
+                .text_positions("Simulated failure after acquisition")
+                .len(),
+            1
+        );
+        assert_eq!(
+            driver.text_positions("Partial · 7 missing samples").len(),
+            1
+        );
+        assert_eq!(
+            (
+                self.scope_range.clone(),
+                self.scope_readings,
+                self.history.len()
+            ),
+            held
+        );
+        assert_eq!(self.dropped, 11);
+        assert_eq!(self.input_generation, generation);
+        assert_eq!(self.generator.command_marker(), command);
+        self.history = history;
+        self.scope_capture = capture;
+        self.scope_range = range;
+        self.presentation = presentation;
+        self.shell = shell;
+        (
+            self.source,
+            self.busy,
+            self.input_error,
+            self.input_failed,
+            self.channels,
+            self.held_input,
+            self.devices,
+            self.selected,
+            self.enabled,
+            self.scope_channels,
+            self.core_scope,
+            self.acquisition_mode,
+            self.acquisition_state,
+            self.scope_missing,
+            self.dropped,
+            self.scope_readings,
+            self.measurements,
+            self.trigger,
+        ) = saved;
+        self.dirty = true;
+        self.xy_dirty = true;
+        self.rebuild_xy();
+        println!(
+            "Input guidance UI OK: startup/unknown channels, opening, no samples, trigger wait, channel range, simulated failure, held data/loss and settings button; generation/output unchanged"
+        );
+        Ok(())
+    }
+
     pub(super) fn check_common_io_interactions(&mut self) -> Result<(), String> {
         let saved = (
             self.source,
@@ -1189,7 +1410,7 @@ impl ScopeApp {
         assert_eq!(self.presentation.selected(), Some(Instrument::Generator));
         // Foreground menus/windows own keyboard input. Escape dismisses just
         // that layer, preserving both the console and an underlying I/O page.
-        for menu in ["File", "View", "I/O", "Running…", "Add instrument…"] {
+        for menu in ["File", "View", "Audio I/O", "Running…", "Add instrument…"] {
             driver.click(self, menu)?;
             assert!(driver.ctx.any_popup_open());
             driver.key(self, egui::Key::Num2, egui::Modifiers::CTRL);
@@ -1199,7 +1420,7 @@ impl ScopeApp {
             driver.key(self, egui::Key::Escape, egui::Modifiers::NONE);
             assert!(!driver.ctx.any_popup_open());
         }
-        driver.click(self, "I/O")?;
+        driver.click(self, "Audio I/O")?;
         driver.click(self, "Input / output")?;
         // Both connection directions are available on the same page.
         assert!(!driver.text_positions("Audio input").is_empty());
@@ -1211,7 +1432,7 @@ impl ScopeApp {
         assert!(!driver.text_positions("OUTPUT DEVICE").is_empty());
         driver.key(self, egui::Key::ArrowLeft, egui::Modifiers::CTRL);
         assert_eq!(self.presentation.console, pair);
-        driver.click(self, "I/O")?;
+        driver.click(self, "Audio I/O")?;
         driver.key(self, egui::Key::Escape, egui::Modifiers::NONE);
         assert!(!driver.ctx.any_popup_open() && self.shell.io.is_some());
         driver.click(self, "Help")?;
@@ -1311,7 +1532,7 @@ impl ScopeApp {
             assert_eq!(self.presentation.console, console);
         }
         for tab in ["Input / output", "Calibration"] {
-            driver.click(self, "I/O")?;
+            driver.click(self, "Audio I/O")?;
             driver.click(self, tab)?;
             assert!(self.shell.io.is_some());
             driver.position("Stop output")?;

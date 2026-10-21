@@ -316,7 +316,7 @@ impl ScopeApp {
         if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_DEVICE").is_none() {
             return;
         }
-        if self.error.is_some() || self.generator.error.is_some() {
+        if self.error.is_some() || self.input_error.is_some() || self.generator.error.is_some() {
             // Preserve diagnostics before the existing strict failure. Reading
             // and serializing telemetry happens on the QA/UI side only.
             if let Err(error) = self.generator_callback_report(false, false) {
@@ -324,9 +324,10 @@ impl ScopeApp {
             }
         }
         assert!(
-            self.error.is_none(),
-            "Generator profile input failed: {:?}",
-            self.error
+            self.error.is_none() && self.input_error.is_none(),
+            "Generator profile input failed: {:?} / {:?}",
+            self.error,
+            self.input_error
         );
         if !self.running() {
             return;

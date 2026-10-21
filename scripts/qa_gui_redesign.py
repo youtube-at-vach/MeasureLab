@@ -139,6 +139,8 @@ def main():
             passed = result.returncode == 0 and display_ok and "GUI navigation OK:" in log
             if "INTERACTIONS" in options:
                 passed = passed and "GUI interactions OK:" in log and "Shared I/O controls OK:" in log
+                if "IDLE" in options:
+                    passed = passed and "Input guidance UI OK:" in log
             if "ESD" in options:
                 passed = passed and "ESD UI OK:" in log
             if "SPECTROGRAM_DISPLAY" in options:
