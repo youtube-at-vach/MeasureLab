@@ -4,6 +4,7 @@ use super::*;
 use crate::generator;
 
 mod scope;
+mod sidebar;
 
 struct Driver {
     ctx: egui::Context,
@@ -1254,6 +1255,7 @@ impl ScopeApp {
         driver.frame(self, vec![]);
 
         self.check_display_scale_interactions(&mut driver)?;
+        self.check_sidebar_interactions(&mut driver)?;
         self.check_output_stop_interactions(&mut driver)?;
         self.check_cursor_placement_interactions(&mut driver)?;
 

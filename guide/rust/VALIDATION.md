@@ -96,6 +96,8 @@ GUI再設計の内部受け入れをまとめて再実行する。実際のshell
 
 共通I/Oの実ウィジェットでは共通Fs・個別Fs・Device defaultの切り替え、不正条件の拒否、再取得・復元待機中の操作抑止も確認する。合成した出力能力を使う16→2→1chの変更では、範囲外OUTの未割当・OFF、GEN ID・利用可能な割当・保持入力の維持を検証する。合成デバイスの試験では音声ストリームを開かず、実機の対応形式・測定精度の確認とは分ける。
 
+サイドバーは [sidebar.rs](../../src/app/gui_qa/sidebar.rs) で通常／コンパクト切り替え、7計器の固定順序・再選択・名称ツールチップ、入出力画面からの復帰、コンソール、プロット幅の拡大、狭幅・模擬native scale往復と測定条件・保持結果・出力コマンドの維持を確認する。自動保存の既定値・不正値・往復は`app/shell.rs`のStorageテストを正本とする。`sidebar-expanded`／`sidebar-compact`／`sidebar-compact-held`／`sidebar-compact-running`で画面を撮影できる。
+
 成功判定はassertionと撮影成功で、画像の読み取りやすさは別に確認する。イベント試験・模擬scaleは、通常ビルドの手動操作と実モニター間のネイティブDPI切り替えの受け入れを代用しない。
 
 撮影できないデスクトップでは`--assertions-only --output dist/gui-redesign-assertions`で状態遷移・数値・描画寸法だけを実行できる。このモードは画像を要求せず、manifestの`screenshots_required: false`と各ログに未撮影を残す。撮影込みの失敗をこのモードの成功で置き換えず、対象環境で未実施の画像・手動操作と、Intel Macの手動操作の対象外を区別する。

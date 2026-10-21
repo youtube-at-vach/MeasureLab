@@ -16,6 +16,10 @@ PREFIX = "MEASURELAB_UI_SMOKE_"
 
 def cases(devices=()):
     yield "widget-interactions", False, {"INTERACTIONS": "1", "IDLE": "1"}
+    yield "sidebar-expanded", False, {"VIEW": "scope", "IDLE": "1"}
+    yield "sidebar-compact", False, {"VIEW": "scope", "IDLE": "1", "SIDEBAR": "compact"}
+    yield "sidebar-compact-held", False, {"SCOPE_FLOW": "held", "SIDEBAR": "compact", "IDLE": "1"}
+    yield "sidebar-compact-running", False, {"GENERATOR": "scope", "SIDEBAR": "compact"}
     for state in ("held", "waiting", "single", "error", "error-empty"):
         for compact in (False, True):
             yield (

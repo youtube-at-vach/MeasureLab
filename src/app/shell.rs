@@ -2,6 +2,8 @@
 use super::*;
 use crate::{generator, presentation::PANE_CHROME};
 
+mod sidebar;
+
 const HELP_WINDOW: &str = "help_window";
 const FILE_PATHS_WINDOW: &str = "file_paths_window";
 
@@ -18,6 +20,7 @@ pub(super) struct Shell {
     pub help: bool,
     pub file_paths: bool,
     pub search: String,
+    pub sidebar_compact: bool,
     pub narrow_details: bool,
     pub separate_io_rates: bool,
     pub previous_console: Option<Console>,
@@ -25,6 +28,21 @@ pub(super) struct Shell {
 }
 
 impl Shell {
+    const SIDEBAR_KEY: &str = "measurelab.sidebar_compact";
+
+    pub(super) fn from_storage(storage: Option<&dyn eframe::Storage>) -> Self {
+        Self {
+            sidebar_compact: storage
+                .and_then(|storage| storage.get_string(Self::SIDEBAR_KEY))
+                .is_some_and(|value| value == "true"),
+            ..Self::default()
+        }
+    }
+
+    pub(super) fn save_sidebar(&self, storage: &mut dyn eframe::Storage) {
+        storage.set_string(Self::SIDEBAR_KEY, self.sidebar_compact.to_string());
+    }
+
     pub(super) fn auxiliary_window_open(&self) -> bool {
         self.help || self.file_paths
     }
@@ -266,6 +284,7 @@ impl ScopeApp {
 
     fn view_menu(&mut self, ui: &mut egui::Ui) {
         ui.menu_button("View", |ui| {
+            ui.checkbox(&mut self.shell.sidebar_compact, "Compact sidebar");
             ui.checkbox(
                 &mut self.presentation.details_visible,
                 "Selected instrument details",
@@ -318,7 +337,7 @@ impl ScopeApp {
     }
 
     fn instrument_list(&mut self, ui: &mut egui::Ui, close_menu: bool) {
-        ui.set_min_width(188.0);
+        ui.set_min_width(212.0);
         ui.add(
             egui::TextEdit::singleline(&mut self.shell.search)
                 .hint_text("Find an instrument")
@@ -348,16 +367,7 @@ impl ScopeApp {
                     }
                 });
             }
-            let status = match instrument {
-                Instrument::Generator => Some(self.output_navigation_status()),
-                Instrument::Lockin => {
-                    Some(self.analysis_navigation_status(self.lockin_settings.enabled))
-                }
-                Instrument::Comparison => {
-                    Some(self.analysis_navigation_status(self.comparison_settings.enabled))
-                }
-                _ => None,
-            };
+            let status = self.instrument_navigation_status(instrument, false);
             if instrument_button(
                 ui,
                 &self.presentation,
@@ -383,21 +393,37 @@ impl ScopeApp {
         }
         ui.add_space(12.0);
         ui.separator();
-        if ui
-            .add(
-                egui::Button::selectable(
-                    self.presentation.screen == Screen::Console && self.shell.io.is_none(),
-                    "Multi-instrument view",
-                )
-                .right_text("")
-                .min_size(vec2(ui.available_width(), 30.0)),
-            )
-            .clicked()
+        if sidebar::navigation_button(
+            ui,
+            &self.presentation,
+            None,
+            self.shell.io.is_none(),
+            None,
+            false,
+        )
+        .clicked()
         {
             self.navigate(Action::OpenConsole);
             if close_menu {
                 ui.close();
             }
+        }
+    }
+
+    fn instrument_navigation_status(
+        &self,
+        instrument: Instrument,
+        compact: bool,
+    ) -> Option<NavigationStatus> {
+        match instrument {
+            Instrument::Generator => Some(self.output_navigation_status()),
+            Instrument::Lockin => {
+                Some(self.analysis_navigation_status(self.lockin_settings.enabled))
+            }
+            Instrument::Comparison => {
+                Some(self.analysis_navigation_status(self.comparison_settings.enabled))
+            }
+            _ => compact.then(|| self.input_navigation_status()),
         }
     }
 
@@ -448,17 +474,7 @@ impl ScopeApp {
         if ui.max_rect().width() < 1180.0 {
             return;
         }
-        egui::Panel::left("instrument_list")
-            .default_size(208.0)
-            .size_range(204.0..=260.0)
-            .resizable(true)
-            .show(ui, |ui| {
-                setting_label(ui, "INSTRUMENTS");
-                egui::ScrollArea::vertical()
-                    .id_salt("instrument_list_scroll")
-                    .auto_shrink([false, false])
-                    .show(ui, |ui| self.instrument_list(ui, false));
-            });
+        self.sidebar(ui);
         if self.presentation.details_visible && self.shell.io.is_none() {
             egui::Panel::right("instrument_details")
                 .default_size(290.0)
@@ -931,26 +947,7 @@ fn instrument_button(
     active: bool,
     status: Option<NavigationStatus>,
 ) -> egui::Response {
-    let selected = active && presentation.screen == Screen::Single(instrument);
-    let mut button = egui::Button::selectable(
-        selected,
-        RichText::new(instrument.name()).color(if selected {
-            GREEN
-        } else {
-            ui.visuals().text_color()
-        }),
-    )
-    .min_size(vec2(ui.available_width(), 30.0))
-    .corner_radius(5);
-    button = if let Some(status) = status {
-        button.right_text(status.text())
-    } else {
-        button.right_text("")
-    };
-    ui.add(button).on_hover_text(status.map_or_else(
-        || instrument.purpose().to_owned(),
-        |status| format!("{}\n{}", instrument.purpose(), status.2),
-    ))
+    sidebar::navigation_button(ui, presentation, Some(instrument), active, status, false)
 }
 
 fn pane_title(instrument: Instrument, selected: bool) -> String {
@@ -1307,7 +1304,7 @@ mod tests {
                 NavigationStatus("▶ Running", GREEN, ""),
             ),
         ];
-        for width in [188.0, 244.0] {
+        for width in [212.0, 264.0] {
             let mut rows = Vec::new();
             let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
                 ui.set_width(width);
@@ -1348,6 +1345,47 @@ mod tests {
                 assert!((name.center().y - state.center().y).abs() < 2.0);
             }
         }
+    }
+
+    #[derive(Default)]
+    struct MemoryStorage(std::collections::BTreeMap<String, String>);
+
+    impl eframe::Storage for MemoryStorage {
+        fn get_string(&self, key: &str) -> Option<String> {
+            self.0.get(key).cloned()
+        }
+        fn set_string(&mut self, key: &str, value: String) {
+            self.0.insert(key.into(), value);
+        }
+        fn remove_string(&mut self, key: &str) {
+            self.0.remove(key);
+        }
+        fn flush(&mut self) {}
+    }
+
+    #[test]
+    fn sidebar_preference_restores_independently_of_measurement_settings() {
+        assert!(!Shell::from_storage(None).sidebar_compact);
+        let mut storage = MemoryStorage::default();
+        assert!(!Shell::from_storage(Some(&storage)).sidebar_compact);
+        for compact in [true, false] {
+            let shell = Shell {
+                sidebar_compact: compact,
+                search: "Spectrum".into(),
+                ..Shell::default()
+            };
+            shell.save_sidebar(&mut storage);
+            let restored = Shell::from_storage(Some(&storage));
+            assert_eq!(restored.sidebar_compact, compact);
+            assert!(restored.search.is_empty() && restored.io.is_none());
+            assert_eq!(
+                storage.0.len(),
+                1,
+                "Only the display preference is persisted"
+            );
+        }
+        eframe::Storage::set_string(&mut storage, Shell::SIDEBAR_KEY, "invalid".into());
+        assert!(!Shell::from_storage(Some(&storage)).sidebar_compact);
     }
 
     #[test]
