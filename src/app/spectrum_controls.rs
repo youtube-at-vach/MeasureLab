@@ -352,17 +352,21 @@ impl ScopeApp {
     }
 
     pub(super) fn spectrum_cursor_controls(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
-            let labels = if self.spectrum_history.linked { ["Frequency A", "Frequency B"] } else { ["Cursor A", "Cursor B"] };
-            for (index, title) in labels.into_iter().enumerate() {
+        ui.horizontal_wrapped(|ui| {
+            ui.label(if self.spectrum_history.linked { "Place frequency cursor:" } else { "Place cursor:" });
+            for (index, title) in ["A", "B"].into_iter().enumerate() {
                 let active = if self.spectrum_history.linked { &mut self.spectrum_history.frequency_cursor } else { &mut self.active_cursor };
                 ui.selectable_value(active, index, title)
-                    .on_hover_text("Select a cursor, then click or drag on the spectrum. Both cursors read the selected channel's nearest FFT bin.");
+                    .on_hover_text("Choose which cursor the next spectrum click or drag places; selecting A or B does not place it. Both cursors read the selected channel's nearest FFT bin.");
             }
-            if ui.small_button(if self.spectrum_history.linked { "Clear frequency" } else { "Clear" }).clicked() {
+            if ui.small_button(if self.spectrum_history.linked { "Clear frequency" } else { "Clear cursors" })
+                .on_hover_text("Clear both frequency cursors shared by Spectrum and Spectrogram. Time cursors, Spectrogram frame selections, XY Free points and acquired data are kept.")
+                .clicked()
+            {
                 self.cursors.clear_frequencies();
                 ui.ctx().request_repaint();
             }
+            ui.label(RichText::new(cursor_placement_label(self.cursors.spectrum_frequencies_hz.map(|frequency| frequency.is_some()))).small().color(MUTED));
         });
         ui.label(
             RichText::new("Click / drag the plot to place a cursor")

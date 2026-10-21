@@ -205,7 +205,7 @@ impl ScopeApp {
         if instruments {
             self.instrument_menu(ui);
         }
-        ui.menu_button("Running…", |ui| {
+        ui.menu_button("Analysis status…", |ui| {
             ui.label(if self.running() {
                 "Scope / Spectrum / STFT / XY · input running"
             } else {
@@ -271,7 +271,7 @@ impl ScopeApp {
                 "Selected instrument details",
             );
             ui.separator();
-            ui.label("Console arrangement");
+            ui.label("Multi-instrument arrangement");
             for layout in Layout::ALL {
                 if ui
                     .selectable_label(self.presentation.console.layout == layout, layout.name())
@@ -310,7 +310,9 @@ impl ScopeApp {
         } else {
             self.presentation
                 .selected()
-                .map_or("Console".into(), |i| format!("Instrument: {}", i.name()))
+                .map_or("Multi-instrument view".into(), |i| {
+                    format!("Instrument: {}", i.name())
+                })
         };
         ui.menu_button(title, |ui| self.instrument_list(ui, true));
     }
@@ -385,7 +387,7 @@ impl ScopeApp {
             .add(
                 egui::Button::selectable(
                     self.presentation.screen == Screen::Console && self.shell.io.is_none(),
-                    "Measurement console",
+                    "Multi-instrument view",
                 )
                 .right_text("")
                 .min_size(vec2(ui.available_width(), 30.0)),
@@ -545,9 +547,9 @@ impl ScopeApp {
                 Screen::Single(i) => {
                     ui.horizontal_wrapped(|ui| {
                         ui.heading(i.name());
-                        ui.menu_button("Pair with…", |ui| {
+                        ui.menu_button("Split view with…", |ui| {
                             if !self.presentation.console.instruments.is_empty() {
-                                ui.label("This replaces the saved console. Undo is available in the console."); ui.separator();
+                                ui.label("This replaces the saved multi-instrument view. Use Undo replacement there to restore it."); ui.separator();
                             }
                             for other in Instrument::ALL {
                                 if other != i && ui.button(other.name()).clicked() { self.navigate(Action::PairWith(other)); ui.close(); }
@@ -590,7 +592,7 @@ impl ScopeApp {
 
     fn console(&mut self, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
-            ui.heading("Measurement console");
+            ui.heading("Multi-instrument view");
             ui.menu_button("Add instrument…", |ui| {
                 for i in Instrument::ALL {
                     if ui.button(i.name()).clicked() {

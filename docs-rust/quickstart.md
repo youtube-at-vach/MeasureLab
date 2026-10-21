@@ -21,7 +21,7 @@ macOS／Linuxのローカルセットアップ環境では`./scripts/cargo.sh ru
 **Audio I/O → Input / output** で入力と出力を一画面に表示します。Input欄は入力元・デバイス、Output欄は出力デバイス・CH数・PCMを扱います。共通の **SAMPLE RATE · INPUT + OUTPUT** で両方が対応するFsを停止中に一度選び、**Refresh devices** で両方を再取得します。**Separate sample rates** ではFsを個別に設定できます。信号条件・ON／OFF・OUT割当はGeneratorカードで設定します。広幅は左右、狭幅は上下に並びます。
 
 1. **Audio I/O → Input / output** で **Software Loopback** を選びます。これは通常ビルドで使え、物理出力は行いません。
-2. **Back to instruments** で戻り、**Scope** の **Pair with… / Spectrum** で並べ、**Start input** を押します。
+2. **Back to instruments** で戻り、**Scope** の **Split view with… / Spectrum** で並べ、**Start input** を押します。
 3. 区画をクリックして詳細欄の対象を選びます。CH・時間軸・振幅・Autoset・カーソルは計器本体、FFT・窓・平均は選択中の詳細欄で調整します。最初は既定の8,192点を使ってください。
 4. **Stop input** で結果を保持し、カーソルやRMS、ピーク、PSDの帯域値を読みます。
 5. **File** から設定と保持結果を保存します。JSONは測定条件を含む正本、CSVは数値の再利用、PNGは表示の共有に使います。
@@ -33,7 +33,7 @@ macOS／Linuxのローカルセットアップ環境では`./scripts/cargo.sh ru
 
 524,288点では48 kHzで完全窓の取得に約10.92秒必要です。Live表示を速くしても、この観測時間は短くなりません。ContinuousはN/4ごとの全窓を解析し、Live／Latestの最新窓観察は過渡の捕捉を保証しません。
 
-通常起動は入力・出力停止のScope単独表示です。計器一覧を選ぶと常に単独表示し、**Measurement console / Add instrument…** で最大7計器を保持します。左右・上下・2×2・タブを選べ、狭幅では保存した配置を変えずタブへ退避します。**Open single** で単独表示へ戻ってもコンソール構成は残ります。**Remove from view** は解析・出力を停止しません。右の詳細欄は選択区画へ追従し、狭幅では **Measurement / Details** で切り替えます。**Running…** で非表示の解析を確認・停止し、**Stop output** はすべての画面で使えます。LIVE／HELD／WAITING／NOT ACQUIREDは取得状態、有効性は別表示です。設定は版9で旧版1〜8を読み、復元後の入出力は停止状態です。
+通常起動は入力・出力停止のScope単独表示です。計器一覧を選ぶと常に単独表示し、**Multi-instrument view / Add instrument…** で最大7計器を保持します。左右・上下・2×2・タブを選べ、狭幅では保存した配置を変えずタブへ退避します。**Open single** で単独表示へ戻ってもコンソール構成は残ります。**Remove from view** は解析・出力を停止しません。右の詳細欄は選択区画へ追従し、狭幅では **Measurement / Details** で切り替えます。**Analysis status…** で非表示の解析を確認・停止し、**Stop output** はすべての画面にあり、完全停止時だけ無効です。開始待ち・設定適用待ち・停止処理中やエラー時も停止要求を送れます。LIVE／HELD／WAITING／NOT ACQUIREDは取得状態、有効性は別表示です。設定は版9で旧版1〜8を読み、復元後の入出力は停止状態です。
 
 Scopeは波形直下のCH1〜CH4バーでCHを選び、チェックボックスで波形の表示を個別に切り替えます。選択と表示ON/OFFは独立し、取得済みの2ch入力では範囲外のCH3／CH4を **Out of range**（狭幅では **—**）で示します。未取得の理由は中央の案内にまとめます。右の **Acquisition / Horizontal / Trigger / Channel** で取得・時間軸・トリガー・選択CHのFSレンジとオフセットを編集します。時間軸は波形付近に常時表示し、波形上のホイールで変更できます。Shift＋ホイールは選択CHの縦軸です。各CHの入力割当は **Channel / Input source** で1〜16chから選べます。旧設定は2本の割当と倍率を保持し、追加CH3／CH4を表示OFFにして読み込みます。
 
@@ -41,7 +41,7 @@ Spectrumは単一グラフに最大4chを重ねます。下部のCHバーで選�
 
 **Transient (ESD)** は過渡信号のエネルギー密度です。選択時に矩形窓・平均OFF・DC除去OFFへ切り替わります。打撃・減衰応答の全体を一つのFFT窓へ収めてください。電圧校正時はV²·s/Hz基準のdB表示、カーソル・JSON／CSVは線形値も扱い、**Window energy**は全周波数の積算V²·sです。Hann等の窓はエネルギーを減衰させ、その補正は行いません。DC除去もエネルギーを変えます。平均ONは各窓のエネルギーのEMAで、累積値ではありません。シングルショット・トリガー連携は未実装で、Live／Latestの過渡捕捉は保証しません。
 
-**Cursor A / B**を選んでグラフをクリック／ドラッグすると、2つの周波数を独立に固定し、選択CHの最寄りビンの振幅／PSD／ESDとΔf・ΔLを読み取れます。**Clear**で解除します。平均は下部の**Average / Weight**で設定する線形パワーの指数平均（EMA）です。整定目安を表示し、処理窓数は**Advanced analysis / diagnostics**へまとめています。OFFのCHはFFTを停止し、再ONで新しい平均を開始します。ピーク・カーソル・結果書き出しは選択CHを対象にします。未校正振幅の0 dBFSはビン中心の1 FS peak正弦波です。
+**Place cursor: A / B**を選んでグラフをクリック／ドラッグすると、2つの周波数を独立に固定し、選択CHの最寄りビンの振幅／PSD／ESDとΔf・ΔLを読み取れます。A／Bの選択は次の配置対象を選ぶ操作で、配置済みの対象は **Placed** に表示します。ここでの **Clear cursors** は共通の周波数だけを解除し、時間選択とXYの点を保ちます。Scope・Spectrogram・XYでは全種類のカーソルとSpectrogramフレーム選択を解除します。取得済みデータは消去しません。平均は下部の**Average / Weight**で設定する線形パワーの指数平均（EMA）です。整定目安を表示し、処理窓数は**Advanced analysis / diagnostics**へまとめています。OFFのCHはFFTを停止し、再ONで新しい平均を開始します。ピーク・カーソル・結果書き出しは選択CHを対象にします。未校正振幅の0 dBFSはビン中心の1 FS peak正弦波です。
 
 コンソール内で追加の測定詳細が区画高を超える場合は、その区画内を縦にスクロールできます。区画名と共通の入出力状態・停止操作はスクロールの外に残ります。
 
@@ -57,7 +57,7 @@ Spectrumは単一グラフに最大4chを重ねます。下部のCHバーで選�
 
 プロット上のホイールで周波数をズームし、背景ドラッグで周波数・時間をパンします。Shift＋ホイールでも時間をスクロールできます。クリックでHoldへ入り、実FFTフレームを時間A／Bへ固定します。Hold中も測定は続き、**Live** で履歴と時間選択を解放します。ダブルクリックは周波数全体と現在モードの最新端へ戻ります。**Time Range** は5／10／30／60秒です。履歴は最大120秒・96 MiBで、表示は512行・1,024列以内へ縮約します。実際の保持秒数と容量制限を表示し、不足分を補完しません。
 
-**Pair with… / Spectrum** で選択した時間A／Bを重ね、**Time A／Time B** でピーク・周波数カーソルの対象を選びます。元のf64値と取得時の窓区間・CH・Fs・FFT条件を使う未校正FS／dBFS・平均なしの表示です。未選択・欠落には理由を表示します。**Normal Spectrum**、Live、Undo、入力再開で通常Spectrumへ戻り、通常の設定・平均・保持を維持します。履歴Spectrumの出力は対象外で、FileのScopeのみの出力は使えます。
+**Split view with… / Spectrum** で選択した時間A／Bを重ね、**Time A／Time B** でピーク・周波数カーソルの対象を選びます。元のf64値と取得時の窓区間・CH・Fs・FFT条件を使う未校正FS／dBFS・平均なしの表示です。未選択・欠落には理由を表示します。**Normal Spectrum**、Live、Undo、入力再開で通常Spectrumへ戻り、通常の設定・平均・保持を維持します。履歴Spectrumの出力は対象外で、FileのScopeのみの出力は使えます。
 
 **Details / Analysis / FFT Overlap** は50／75（既定）／87.5%です。行間隔はN/2／N/4／N/8サンプルで、周波数・振幅の定義は変わりません。高Overlapでは解析量が増え、容量内の保持秒数が短くなります。取得中の変更は旧履歴と連携を解除して完全窓を待ちます。停止中の編集は次回Start用です。旧設定のOverlapは75%で復元します。
 
@@ -67,7 +67,7 @@ Spectrumは単一グラフに最大4chを重ねます。下部のCHバーで選�
 
 ## Generatorで正弦波を観測する
 
-1. **Generator** を選び、**Pair with… / Scope** で並べます。通常ビルドで使える2chの内部出力です。
+1. **Generator** を選び、**Split view with… / Scope** で並べます。通常ビルドで使える2chの内部出力です。
 2. 中央のカードで **Waveform / Sine** と **OUT 1／2** を選び、各GENを **ON** にして周波数（Hz）・振幅（dBFS peak）・位相（発振器に対する進み、°）を入力します。Enterまたはフォーカス移動で適用し、Escで編集を取り消します。詳細欄の **EDIT STEP**で刻みを選び、±ボタンや上下キーでも調整できます。
 3. **Audio I/O → Input / output → Generator loopback** で内部出力を入力に選び、**Start output** と **Start input** をそれぞれ押します。設定プレビューと実測波形は別です。
 4. Generator単独表示からSpectrum／Lock-inを並べて解析できます。動作中の編集では振幅・位相を滑らかに遷移し、Spectrum／Lock-inは遷移後に平均・整定をやり直します。
