@@ -478,12 +478,11 @@ impl ScopeApp {
             ui.label("Add an instrument to edit its details.");
             return;
         };
-        ui.heading(instrument.name());
-        ui.label(
-            RichText::new("SELECTED INSTRUMENT · DETAILS")
-                .small()
-                .color(MUTED),
-        );
+        ui.heading(if instrument == Instrument::Scope {
+            "Scope settings"
+        } else {
+            instrument.name()
+        });
         ui.separator();
         if self.settings_task == Some(SettingsTask::Restore) || self.workspace_restoring {
             ui.label("Restoring settings…");
@@ -573,7 +572,10 @@ impl ScopeApp {
             ui.label("Escape: cancel editing, close the front menu/window, then return from I/O or narrow details.");
             ui.label(spectrogram_controls::GESTURES);
             ui.separator();
-            ui.label("FS: digital full scale; physical amplitude and clocks require calibration.");
+            ui.label(display::AMPLITUDE_HELP);
+            ui.label(display::SAMPLE_RATE_HELP);
+            ui.label(display::DIV_HELP);
+            ui.label(display::TRIGGER_HELP);
             ui.label("LIVE / HELD / WAITING describe acquisition; validity and calibration are shown separately.");
             ui.label(format!("{} · UI {:.0} fps · CPU FFT {:.2} ms", self.adapter, self.fps, self.fft_ms));
         });

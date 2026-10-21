@@ -4635,11 +4635,10 @@ impl ScopeApp {
             .show(ui, |ui| {
                 compact_plot_style(ui);
                 ui.horizontal_wrapped(|ui| {
-                    ui.label(RichText::new("Oscilloscope").size(13.0).strong());
                     display::activity_label(ui, self.running(), self.pending_stop.is_some(), !self.scope_range.is_empty());
                     self.cursor_controls(ui, Instrument::Scope);
                 });
-                let trigger = if self.core.is_some() && !self.running() { self.core_scope.trigger } else { self.trigger };
+                let trigger = self.scope_display_trigger();
                 let (trigger_text, trigger_color) = if self.scope_notice().is_some() {
                     ("Trigger settings", MUTED)
                 } else if trigger.edge != Edge::Free && self.scope_input_channels().is_some_and(|count| !channel::available(trigger.channel, count as usize)) {
@@ -4653,14 +4652,19 @@ impl ScopeApp {
                     }
                 } else if self.triggered { ("Triggered", MUTED) } else { ("Auto / free", MUTED) };
                 ui.horizontal_wrapped(|ui| {
-                    ui.label(RichText::new(format!("{} ms/div · raw FS · {trigger_text}", display::number(Some(self.scope_display_ms_per_div() as f64)))).small().color(trigger_color))
-                        .on_hover_text("Wheel: time scale · Shift+wheel: selected channel scale · Double-click: reset view");
+                    ui.label(RichText::new(format!("{} ms/div · waveform: raw FS", display::number(Some(self.scope_display_ms_per_div() as f64)))).size(13.0))
+                        .on_hover_text(format!("{}\n{}\nWheel: time scale · Shift+wheel: selected channel scale · Double-click: reset view", display::DIV_HELP, display::AMPLITUDE_HELP));
+                    ui.label(RichText::new(trigger_text).size(13.0).color(trigger_color));
+                    if trigger.edge != Edge::Free {
+                        ui.label(RichText::new(self.scope_trigger_marker_status()).size(13.0).color(TRIGGER))
+                            .on_hover_text(self.scope_trigger_marker_help());
+                    }
                     if self.scope_missing > 0 { ui.colored_label(YELLOW, format!("Partial · {} missing samples", self.scope_missing)); }
                 });
                 if !self.scope_range.is_empty() && !self.running() && (self.core_scope.mode != self.acquisition_mode || self.scope_channels != self.scope_view_channels() || self.calibration.pending != self.calibration.captured) {
                     ui.label(RichText::new("HELD conditions retained · queued measurement settings apply on next Start").small().color(YELLOW));
                 }
-                ui.label(RichText::new(format!("CH{} · {}", self.scope_selected + 1, self.scope_readout(self.scope_selected))).monospace().size(13.0).color(monitor_controls::scope_color(self.scope_selected)))
+                ui.add(egui::Label::new(RichText::new(format!("CH{} · {}", self.scope_selected + 1, self.scope_readout(self.scope_selected))).monospace().size(13.0).color(monitor_controls::scope_color(self.scope_selected))).wrap())
                     .on_hover_text(self.scope_readout_details(self.scope_selected));
                 // Reserve a single 40-point channel strip immediately below the plot.
                 let height = (ui.available_height() - 40.0 - ui.spacing().item_spacing.y).max(40.0);
@@ -5193,11 +5197,7 @@ impl ScopeApp {
                 revision: self.revision,
             },
         ));
-        let trigger = if self.core.is_some() && !self.running() {
-            self.core_scope.trigger
-        } else {
-            self.trigger
-        };
+        let trigger = self.scope_display_trigger();
         if trigger.edge != Edge::Free {
             let tx = rect.left() + rect.width() * (0.2 + self.scope_horizontal_position / 10.0);
             if rect.x_range().contains(tx) {
@@ -5212,6 +5212,15 @@ impl ScopeApp {
                     egui::FontId::monospace(11.0),
                     TRIGGER,
                 );
+                ui.interact(
+                    egui::Rect::from_min_max(
+                        pos2(tx - 12.0, rect.top()),
+                        pos2(tx + 12.0, rect.top() + 32.0),
+                    ),
+                    ui.id().with("trigger_time_marker"),
+                    egui::Sense::hover(),
+                )
+                .on_hover_text(self.scope_trigger_marker_help());
             }
             let trigger_vertical = self
                 .scope_view_channels()
@@ -5247,11 +5256,7 @@ impl ScopeApp {
                     ui.id().with("trigger_level_marker"),
                     egui::Sense::hover(),
                 )
-                .on_hover_text(format!(
-                    "Trigger level · CH {} · {:+.3} FS",
-                    trigger.channel + 1,
-                    trigger.level
-                ));
+                .on_hover_text(self.scope_trigger_marker_help());
             }
         }
         if let Some(position) = response.hover_pos().filter(|p| rect.contains(*p)) {
@@ -5277,9 +5282,18 @@ impl ScopeApp {
         self.scope_cursors(ui, &response, rect);
         self.scope_notice_ui(ui, rect.shrink(8.0));
         ui.horizontal(|ui| {
-            ui.label(RichText::new("FS").small().color(MUTED));
+            ui.label(RichText::new("Amplitude [FS]").size(12.0))
+                .on_hover_text(format!(
+                    "Selected CH{} axis. {}",
+                    self.scope_selected + 1,
+                    display::AMPLITUDE_HELP
+                ));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                ui.label(RichText::new("time / ms").small().color(MUTED));
+                ui.label(RichText::new("Time [ms]").size(12.0))
+                    .on_hover_text(format!(
+                        "Time relative to the sweep reference (T, 0 ms). {}",
+                        display::SAMPLE_RATE_HELP
+                    ));
             });
         });
     }
@@ -5857,7 +5871,8 @@ impl eframe::App for ScopeApp {
                 }
             });
             ui.horizontal_wrapped(|ui| {
-                ui.label(RichText::new(self.input_status_text()).small().color(MUTED));
+                ui.label(RichText::new(self.input_status_text()).small().color(MUTED))
+                    .on_hover_text(display::SAMPLE_RATE_HELP);
                 ui.separator();
                 ui.label(
                     RichText::new(format!("Dropped {}", self.dropped))
