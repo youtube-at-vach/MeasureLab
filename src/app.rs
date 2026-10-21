@@ -317,6 +317,8 @@ pub struct ScopeApp {
     scope_vertical: [Vertical; SCOPE_CHANNELS],
     scope_selected: usize,
     scope_horizontal_position: f32,
+    scope_trigger_display: settings::TriggerDisplay,
+    scope_trigger_level_edit_frame: Option<u64>,
     trigger: Trigger,
     triggered: bool,
     lines: Vec<Line>,
@@ -599,6 +601,8 @@ impl ScopeApp {
             scope_vertical: [Vertical::default(); SCOPE_CHANNELS],
             scope_selected: 0,
             scope_horizontal_position: 0.0,
+            scope_trigger_display: settings::TriggerDisplay::default(),
+            scope_trigger_level_edit_frame: None,
             trigger: Trigger::default(),
             triggered: false,
             lines: Vec::with_capacity(8192),
@@ -1180,6 +1184,15 @@ impl ScopeApp {
         if smoke && std::env::var_os("MEASURELAB_UI_SMOKE_DETAILS").is_some() {
             app.presentation.details_visible = true;
             app.shell.narrow_details = true;
+        }
+        #[cfg(feature = "qa")]
+        if smoke && let Ok(mode) = std::env::var("MEASURELAB_UI_SMOKE_TRIGGER_DISPLAY") {
+            app.scope_trigger_display = match mode.as_str() {
+                "markers" => settings::TriggerDisplay::Markers,
+                "guides" => settings::TriggerDisplay::Guides,
+                "off" => settings::TriggerDisplay::Off,
+                _ => return Err("QA trigger display must be markers, guides or off".into()),
+            };
         }
         #[cfg(feature = "qa")]
         if smoke {
@@ -4436,6 +4449,7 @@ impl ScopeApp {
                 scope_vertical: self.scope_vertical,
                 scope_selected: self.scope_selected,
                 scope_horizontal_position: self.scope_horizontal_position,
+                scope_trigger_display: self.scope_trigger_display,
                 spectrum_scale: self.frequency_scale,
                 spectrum_min_hz: self.spectrum_min_hz,
                 spectrum_max_hz: self.span_hz,
@@ -4556,6 +4570,8 @@ impl ScopeApp {
         self.scope_vertical = w.scope_vertical;
         self.scope_selected = w.scope_selected;
         self.scope_horizontal_position = w.scope_horizontal_position;
+        self.scope_trigger_display = w.scope_trigger_display;
+        self.scope_trigger_level_edit_frame = None;
         self.frequency_scale = w.spectrum_scale;
         self.spectrum_display = w.spectrum_display;
         if [4, 16, 64].contains(&self.spectrum_settings.averages) {
@@ -5209,68 +5225,7 @@ impl ScopeApp {
                 revision: self.revision,
             },
         ));
-        let trigger = self.scope_display_trigger();
-        if trigger.edge != Edge::Free {
-            let tx = rect.left() + rect.width() * (0.2 + self.scope_horizontal_position / 10.0);
-            if rect.x_range().contains(tx) {
-                painter.line_segment(
-                    [pos2(tx, rect.top()), pos2(tx, rect.top() + 12.0)],
-                    Stroke::new(2.0, TRIGGER),
-                );
-                painter.text(
-                    pos2(tx, rect.top() + 17.0),
-                    egui::Align2::CENTER_TOP,
-                    "T",
-                    egui::FontId::monospace(11.0),
-                    TRIGGER,
-                );
-                ui.interact(
-                    egui::Rect::from_min_max(
-                        pos2(tx - 12.0, rect.top()),
-                        pos2(tx + 12.0, rect.top() + 32.0),
-                    ),
-                    ui.id().with("trigger_time_marker"),
-                    egui::Sense::hover(),
-                )
-                .on_hover_text(self.scope_trigger_marker_help());
-            }
-            let trigger_vertical = self
-                .scope_view_channels()
-                .0
-                .iter()
-                .position(|ch| *ch == trigger.channel)
-                .map(|i| self.scope_vertical[i])
-                .unwrap_or_default();
-            let ty = rect.top() + trigger_vertical.y(trigger.level) * rect.height();
-            if rect.y_range().contains(ty) {
-                // Keep the trigger-level indicator outside the waveform area.
-                painter.add(egui::Shape::convex_polygon(
-                    vec![
-                        pos2(rect.right() + 2.0, ty),
-                        pos2(rect.right() + 9.0, ty - 4.0),
-                        pos2(rect.right() + 9.0, ty + 4.0),
-                    ],
-                    TRIGGER,
-                    Stroke::NONE,
-                ));
-                painter.text(
-                    pos2(rect.right() + 12.0, ty),
-                    egui::Align2::LEFT_CENTER,
-                    "T",
-                    egui::FontId::monospace(10.0),
-                    TRIGGER,
-                );
-                ui.interact(
-                    egui::Rect::from_min_max(
-                        pos2(rect.right(), ty - 8.0),
-                        pos2(rect.right() + 26.0, ty + 8.0),
-                    ),
-                    ui.id().with("trigger_level_marker"),
-                    egui::Sense::hover(),
-                )
-                .on_hover_text(self.scope_trigger_marker_help());
-            }
-        }
+        self.scope_trigger_overlay(ui, rect);
         if let Some(position) = response.hover_pos().filter(|p| rect.contains(*p)) {
             painter.line_segment(
                 [

@@ -65,6 +65,188 @@ impl Driver {
 }
 
 impl ScopeApp {
+    pub(super) fn check_trigger_display_interactions(
+        &mut self,
+        driver: &mut Driver,
+    ) -> Result<(), String> {
+        let saved = (self.scope_trigger_display, self.trigger);
+        let conditions = self.core_config().scope;
+        let generation = self.input_generation;
+        let command = self.generator.command_marker();
+        let readings = self.scope_readings;
+        let overlay = |driver: &Driver| {
+            let rect = driver.scope_plot().unwrap();
+            let dots: Vec<_> = driver
+                .output
+                .shapes
+                .iter()
+                .filter_map(|s| {
+                    if let egui::Shape::Circle(circle) = &s.shape
+                        && circle.fill == TRIGGER.gamma_multiply(0.65)
+                    {
+                        assert!(rect.expand(0.1).contains(circle.center));
+                        Some(circle.center)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            let markers = driver.output.shapes.iter().filter(|s| {
+                matches!(&s.shape, egui::Shape::Text(t) if t.galley.text() == "T" && t.fallback_color == TRIGGER)
+            }).count();
+            (dots, markers)
+        };
+        driver.resize(self, vec2(1440.0, 1200.0), 1.0, 1.0);
+        // Select through the real combo, then inspect the plot commands.
+        for (label, mode) in [
+            ("Guides", settings::TriggerDisplay::Guides),
+            ("Off", settings::TriggerDisplay::Off),
+            ("Markers", settings::TriggerDisplay::Markers),
+        ] {
+            let current = match self.scope_trigger_display {
+                settings::TriggerDisplay::Markers => "Markers",
+                settings::TriggerDisplay::Guides => "Guides",
+                settings::TriggerDisplay::Off => "Off",
+            };
+            driver.click(self, current)?;
+            driver.click(self, label)?;
+            assert_eq!(self.scope_trigger_display, mode);
+            let (dots, markers) = overlay(driver);
+            assert_eq!(
+                markers,
+                if mode == settings::TriggerDisplay::Off {
+                    0
+                } else {
+                    2
+                }
+            );
+            if mode == settings::TriggerDisplay::Guides {
+                let rect = driver.scope_plot()?;
+                let trigger = self.scope_display_trigger();
+                let source = self
+                    .scope_view_channels()
+                    .0
+                    .iter()
+                    .position(|ch| *ch == trigger.channel);
+                let vertical = source.map(|i| self.scope_vertical[i]).unwrap_or_default();
+                let tx = rect.left() + rect.width() * (0.2 + self.scope_horizontal_position / 10.0);
+                let ty = rect.top() + vertical.y(trigger.level) * rect.height();
+                assert!(
+                    dots.iter()
+                        .any(|p| (p.x - tx).abs() < 0.1 && p.y > rect.center().y)
+                );
+                assert!(
+                    dots.iter()
+                        .any(|p| (p.y - ty).abs() < 0.1 && p.x > rect.center().x)
+                );
+            } else {
+                assert!(dots.is_empty());
+            }
+            assert_eq!(self.core_config().scope, conditions);
+        }
+        // A real rail drag previews in both otherwise-hidden modes, including
+        // when the held capture's trigger differs from the next-Start setting.
+        for mode in [
+            settings::TriggerDisplay::Markers,
+            settings::TriggerDisplay::Off,
+        ] {
+            self.scope_trigger_display = mode;
+            driver.frame(self, vec![]);
+            let rail = driver
+                .ctx
+                .data(|data| data.get_temp::<egui::Rect>(egui::Id::new("qa_trigger_level")))
+                .ok_or("Trigger level control missing")?;
+            let start = rail.left_center() + vec2(20.0, 0.0);
+            let end = start + vec2(50.0, 0.0);
+            driver.frame(
+                self,
+                vec![
+                    egui::Event::PointerMoved(start),
+                    egui::Event::PointerButton {
+                        pos: start,
+                        button: egui::PointerButton::Primary,
+                        pressed: true,
+                        modifiers: egui::Modifiers::NONE,
+                    },
+                ],
+            );
+            driver.frame(self, vec![egui::Event::PointerMoved(end)]);
+            let (dots, markers) = overlay(driver);
+            assert!(!dots.is_empty(), "No horizontal preview during level drag");
+            assert!(dots.iter().all(|p| (p.y - dots[0].y).abs() < 0.1));
+            assert_eq!(
+                markers,
+                if mode == settings::TriggerDisplay::Off {
+                    0
+                } else {
+                    2
+                }
+            );
+            let source = self
+                .scope_view_channels()
+                .0
+                .iter()
+                .position(|ch| *ch == self.trigger.channel);
+            let vertical = source.map(|i| self.scope_vertical[i]).unwrap_or_default();
+            let rect = driver.scope_plot()?;
+            assert!(
+                (dots[0].y - (rect.top() + vertical.y(self.trigger.level) * rect.height())).abs()
+                    < 0.1
+            );
+            driver.frame(
+                self,
+                vec![egui::Event::PointerButton {
+                    pos: end,
+                    button: egui::PointerButton::Primary,
+                    pressed: false,
+                    modifiers: egui::Modifiers::NONE,
+                }],
+            );
+            driver.frame(self, vec![egui::Event::PointerGone]);
+            assert!(
+                overlay(driver).0.is_empty(),
+                "Level preview survived drag release"
+            );
+            let value = rail.right_center() - vec2(20.0, 0.0);
+            driver.click_at(self, value);
+            assert!(
+                driver.ctx.text_edit_focused(),
+                "Level value editor did not open"
+            );
+            assert!(
+                !overlay(driver).0.is_empty(),
+                "No preview during level text entry"
+            );
+            driver.key(
+                self,
+                egui::Key::A,
+                egui::Modifiers {
+                    command: true,
+                    ..Default::default()
+                },
+            );
+            driver.frame(self, vec![egui::Event::Text("0.125".into())]);
+            driver.key(self, egui::Key::Enter, egui::Modifiers::NONE);
+            assert!((self.trigger.level - 0.125).abs() < 1e-12);
+            assert!(
+                overlay(driver).0.is_empty(),
+                "Level preview survived text commit"
+            );
+        }
+        (self.scope_trigger_display, self.trigger) = saved;
+        self.scope_trigger_level_edit_frame = None;
+        self.dirty = true;
+        driver.resize(self, vec2(1440.0, 1000.0), 1.0, 1.0);
+        assert_eq!(self.core_config().scope, conditions);
+        assert_eq!(self.input_generation, generation);
+        assert_eq!(self.generator.command_marker(), command);
+        assert_eq!(self.scope_readings, readings);
+        println!(
+            "Scope trigger display UI OK: Markers/Guides/Off, source-scaled dotted guides, temporary horizontal level preview and removal after release; measurement/output preserved"
+        );
+        Ok(())
+    }
+
     pub(in crate::app) fn check_analysis_guidance(&mut self) -> Result<(), String> {
         let saved = (
             self.presentation.clone(),
