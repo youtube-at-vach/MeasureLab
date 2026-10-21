@@ -1192,7 +1192,11 @@ impl ScopeApp {
                 app.check_common_io_interactions()?;
                 if std::env::var_os("MEASURELAB_UI_SMOKE_IDLE").is_some() {
                     app.check_input_guidance()?;
+                    app.check_analysis_guidance()?;
                 }
+            }
+            if let Ok(mode) = std::env::var("MEASURELAB_UI_SMOKE_SCOPE_FLOW") {
+                app.check_scope_workflow(&mode)?;
             }
             app.qa_previous_presentation = None;
         }
@@ -5072,6 +5076,12 @@ impl ScopeApp {
         let (outer, response) = ui.allocate_exact_size(size, egui::Sense::click_and_drag());
         let rect =
             egui::Rect::from_min_max(outer.min + vec2(42.0, 4.0), outer.max - vec2(28.0, 18.0));
+        #[cfg(feature = "qa")]
+        if self.smoke {
+            ui.ctx().data_mut(|data| {
+                data.insert_temp(egui::Id::new("qa_scope_plot"), rect);
+            });
+        }
         if response.hovered() {
             let (scroll, shift) = ui.input(|i| (i.smooth_scroll_delta.y, i.modifiers.shift));
             if scroll != 0.0 {
@@ -5307,6 +5317,29 @@ impl Drop for ScopeApp {
 }
 
 impl eframe::App for ScopeApp {
+    #[cfg(feature = "qa")]
+    fn raw_input_hook(&mut self, ctx: &egui::Context, input: &mut egui::RawInput) {
+        if self.smoke
+            && let Ok(pointer) = std::env::var("MEASURELAB_UI_SMOKE_POINTER")
+            && let Some(rect) =
+                ctx.data(|data| data.get_temp::<egui::Rect>(egui::Id::new("qa_scope_plot")))
+        {
+            input.events.retain(|event| {
+                !matches!(
+                    event,
+                    egui::Event::PointerMoved(_)
+                        | egui::Event::PointerGone
+                        | egui::Event::PointerButton { .. }
+                )
+            });
+            input.events.push(if pointer == "inside" {
+                egui::Event::PointerMoved(rect.lerp_inside(vec2(0.65, 0.6)))
+            } else {
+                egui::Event::PointerGone
+            });
+        }
+    }
+
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         #[cfg(not(feature = "qa"))]
         let _ = frame;

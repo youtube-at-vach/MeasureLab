@@ -16,6 +16,15 @@ PREFIX = "MEASURELAB_UI_SMOKE_"
 
 def cases(devices=()):
     yield "widget-interactions", False, {"INTERACTIONS": "1", "IDLE": "1"}
+    for state in ("held", "waiting", "single", "error", "error-empty"):
+        for compact in (False, True):
+            yield (
+                f"scope-flow-{state}-{'compact' if compact else 'wide'}",
+                compact,
+                {"SCOPE_FLOW": state, "IDLE": "1", "POINTER": "outside"} | ({"ZOOM": "1.25"} if compact else {}),
+            )
+    yield "scope-pointer-inside", False, {"SCOPE_FLOW": "held", "IDLE": "1", "POINTER": "inside"}
+    yield "scope-generator-views", False, {"GENERATOR": "scope", "SCOPE_GENERATOR_VIEWS": "1"}
     for instrument in ("scope", "spectrum", "spectrogram", "xy", "lockin", "comparison", "generator"):
         yield f"{instrument}-wide", False, {"VIEW": instrument, "IDLE": "1"}
         yield f"{instrument}-compact", True, {"VIEW": instrument, "IDLE": "1", "ZOOM": "1.25"}
@@ -140,11 +149,15 @@ def main():
             if "INTERACTIONS" in options:
                 passed = passed and "GUI interactions OK:" in log and "Shared I/O controls OK:" in log
                 if "IDLE" in options:
-                    passed = passed and "Input guidance UI OK:" in log
+                    passed = passed and "Input guidance UI OK:" in log and "Analysis guidance UI OK:" in log
             if "ESD" in options:
                 passed = passed and "ESD UI OK:" in log
             if "SPECTROGRAM_DISPLAY" in options:
                 passed = passed and "Spectrogram display UI OK:" in log
+            if "SCOPE_FLOW" in options:
+                passed = passed and f"Scope workflow UI OK: {options['SCOPE_FLOW']};" in log
+            if "SCOPE_GENERATOR_VIEWS" in options:
+                passed = passed and "Generator view UI OK:" in log
             returncode = result.returncode
         except subprocess.TimeoutExpired as error:
             log = f"GUI QA timed out: {error}"

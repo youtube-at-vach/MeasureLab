@@ -3,6 +3,8 @@
 use super::*;
 use crate::generator;
 
+mod scope;
+
 struct Driver {
     ctx: egui::Context,
     size: egui::Vec2,

@@ -92,6 +92,8 @@ GUI再設計の内部受け入れをまとめて再実行する。実際のshell
 
 停止中の`widget-interactions`は、Scope中央案内の未選択・CH数未確定・開始待ち・未取得・トリガー待ち・CH範囲外と、入力設定ボタンを検証する。模擬取得エラーの表示、停止後の波形・f64数値・欠落情報の保持、通常幅／狭幅での案内の配置・ボタン到達性、軸名の表示領域、用途説明が常時表示されないこと、単独／複数計器の見出しとトリガー設定／取得済みの区別も実ウィジェットで照合する。音声デバイスは開かず、撮影・手動操作の確認と分ける。
 
+`scope-flow-*`は [Scope通しQA](../../src/app/gui_qa/scope.rs) で中央案内→入力設定→Software Loopback→取得→Stop・保持→Singleの待機・途中停止・完了→模擬エラー・再開を実ウィジェットと測定ワーカーで照合する。単独／複数計器、狭幅・倍率・模擬native scaleで条件・f64保持結果・出力コマンドを維持し、取得中の入力フレームとSpectrum解析の継続を確認する。`scope-generator-views`では通常Generatorの内部接続の取得中に同じ表示操作を行い、入力・Spectrum解析・出力サンプルの進行と出力世代・条件の維持を確認する。縦ガイド線はポインターの内外・退出と配置済みA／Bを区別して描画命令を検証し、`scope-pointer-inside`と`scope-flow-held-wide`の画像でも比較する。物理入出力は使わない。`widget-interactions`ではLock-inのStart analysis案内と同期比較の無効・入力停止・平均待ち・欠落・無効入力の説明も照合する。
+
 共通I/Oの実ウィジェットでは共通Fs・個別Fs・Device defaultの切り替え、不正条件の拒否、再取得・復元待機中の操作抑止も確認する。合成した出力能力を使う16→2→1chの変更では、範囲外OUTの未割当・OFF、GEN ID・利用可能な割当・保持入力の維持を検証する。合成デバイスの試験では音声ストリームを開かず、実機の対応形式・測定精度の確認とは分ける。
 
 成功判定はassertionと撮影成功で、画像の読み取りやすさは別に確認する。イベント試験・模擬scaleは、通常ビルドの手動操作と実モニター間のネイティブDPI切り替えの受け入れを代用しない。
@@ -185,7 +187,7 @@ MVP基本受け入れとは別に、操作可能な環境のQAなし通常ビル
 
 1. Software Loopbackを開始し、色・Min／Max／Auto・周波数ズーム／パン・Time Rangeを操作する。カラーバー・単位・主要値と共通入力の状態を読めることを確認する。
 2. Hold中に時間をスクロールし、測定が続くこと、時間A／Bが勝手に移動しないこと、Liveで最新へ戻ることを確認する。
-3. Pair with…からSpectrumを並べ、時間A／Bと独立した周波数カーソルを操作する。Normal Spectrum・Undo・Liveで通常表示へ戻り、表示対象と入力停止操作を見失わないことを確認する。
+3. Split view with…からSpectrumを並べ、時間A／Bと独立した周波数カーソルを操作する。Normal Spectrum・Undo・Liveで通常表示へ戻り、表示対象と入力停止操作を見失わないことを確認する。
 4. 取得中と停止中にOverlapを変更し、旧履歴の解除と次回Start用の編集を区別できることを確認する。
 
 異なるネイティブDPIの実モニター間での移動は、用意できた環境で別に確認する。1画面の倍率変更で代用しない。
@@ -198,6 +200,8 @@ MVP基本受け入れとは別に、操作可能な環境のQAなし通常ビル
 | --- | --- |
 | `MEASURELAB_UI_SMOKE_SETTINGS`／`VIEW`／`ADJUST` | 共通入出力画面・単独／コンソール表示・選択中の詳細。`VIEW=scope`／`spectrum`／`spectrogram`／`xy`／`lockin`／`comparison`／`generator`で単独、`all`は4区画、`console`は7計器、`empty`は空コンソール。`DETAILS=1`は狭幅の詳細編集。変数名の共通接頭辞は`MEASURELAB_UI_SMOKE_` |
 | `MEASURELAB_UI_SMOKE_INTERACTIONS=1` | 実際のshellウィジェットを使ったクリック・キー・狭幅・倍率・模擬native scaleの状態遷移。音声ランタイムを重複生成しない |
+| `MEASURELAB_UI_SMOKE_SCOPE_FLOW=held`／`waiting`／`single`／`error`／`error-empty` | `IDLE=1`と併用し、実ウィジェットからSoftware Loopbackを取得する通しQA。指定した状態まで進めて撮影。`POINTER=inside`／`outside`でScopeのポインターを固定し、縦ガイド線を比較 |
+| `MEASURELAB_UI_SMOKE_SCOPE_GENERATOR_VIEWS=1` | `GENERATOR=scope`と併用し、通常Generatorの内部接続を動かしたままScope・複数計器・狭幅・倍率変更の独立性を照合 |
 | `MEASURELAB_UI_SMOKE_LAYOUT=columns`／`rows`／`grid`／`tabs` | コンソールの希望配置。タブ列の折り返し後の残り寸法で退避を判断し、描画と同じ区画寸法で検証 |
 | `MEASURELAB_UI_SMOKE_SPECTROGRAM_DISPLAY=1`（`pair`で連携表示を撮影） | Spectrogramの色・Auto・時間幅の実ウィジェット、ホイールズーム、横／縦パン、Shift＋ホイール、Hold／Live、f64実フレーム固定、カーソル線ドラッグ、ダブルクリック、Pairの時間A／B Spectrum・f64値・通常結果維持・独立周波数カーソル・出力ガードとScope出力・Undo／解除、停止中のOverlap編集、狭幅・模擬DPI。表示操作でSTFT条件・世代・出力コマンド不変 |
 | `MEASURELAB_UI_SMOKE_SPECTRUM4=1` | 内部4chスペクトルの重ね表示・共通軸・下部CHバー。物理4ch入力の確認ではない |

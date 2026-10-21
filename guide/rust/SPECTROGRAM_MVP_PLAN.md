@@ -45,13 +45,13 @@ MVPの基本検証と長時間・他の高負荷操作への耐性を分ける�
 
 | 場所 | 項目と順序 |
 | --- | --- |
-| 中央プロット上部 | Source、Live／Hold、Cursor A／B、Pair with… |
+| 中央プロット上部 | Source、Live／Hold、Cursor A／B、Split view with… |
 | プロット右端 | 細いカラーバー、dBFS、Min／Maxと中間目盛 |
 | 右サイドバー・Display | Color Map、Color Range（Min／Max／Auto）、Frequency Scale（Log／Linear）、Time Range |
 | 右サイドバー・Analysis | FFT Precision、FFT Length、FFT Overlap、Window、Remove DC Offset |
 | プロット付近の既存情報欄 | 表示基準時刻、保持できている秒数、必要時のみ欠落・履歴上限の状態 |
 
-現在の上部`Display…`メニューは右側Displayへ統合する。周波数のFrom／ToはFrequency Scale内の範囲編集として維持する。`Pair with…`は既存の共通枠と共有し、同じ画面へ二重に置かない。カーソル解除は既存のClearを再利用する。解析条件の説明は短い情報欄とホバーへまとめる。
+現在の上部`Display…`メニューは右側Displayへ統合する。周波数のFrom／ToはFrequency Scale内の範囲編集として維持する。`Split view with…`は既存の共通枠と共有し、同じ画面へ二重に置かない。カーソル解除は共通のClear cursorsを使う。解析条件の説明は短い情報欄とホバーへまとめる。
 
 狭幅は既存のDetails退避・折り返し・コンソールのタブを使う。Source、表示状態、カーソル、単位を見失わず、カラーバーがプロットを過度に狭めないことを確認する。
 
@@ -162,7 +162,7 @@ GPUは必要な行だけをキャッシュし、同じ行の再転送を避け�
 
 ## Spectrum連動
 
-Spectrogramの`Pair with… → Spectrum`で既存の2計器配置を開き、履歴選択の連携を有効にする。コンソール構成置換の表示・Undoは既存の契約を維持する。他の計器とのPairや既存レイアウトを開くだけの操作では、Spectrumのデータ源を勝手に変更しない。
+Spectrogramの`Split view with… → Spectrum`で既存の2計器配置を開き、履歴選択の連携を有効にする。コンソール構成置換の表示・Undoは既存の契約を維持する。他の計器とのPairや既存レイアウトを開くだけの操作では、Spectrumのデータ源を勝手に変更しない。
 
 * 時間Cursor A／Bは選択時点の実フレームを保持し、対応する水平ラインを表示する。選択した窓区間、CH、Fs、FFT条件、Δtを確認できるようにする。パンで画面外へ出ても時刻を別フレームへ置き換えない。
 * 連携Spectrumでは選択したA／Bの最大2本を重ね、`Time A`／`Time B`と取得時刻を示す。既存のSpectrumプロット、周波数軸、ピーク・周波数カーソルの読み出しを再利用する。
