@@ -285,13 +285,22 @@ impl ScopeApp {
                     .text("First pane share"),
             );
             ui.separator();
-            let mut zoom = ui.ctx().zoom_factor();
-            if ui
-                .add(egui::Slider::new(&mut zoom, 0.75..=1.75).text("Display scale"))
-                .changed()
-            {
-                ui.ctx().set_zoom_factor(zoom);
-            }
+            ui.menu_button("Display scale", |ui| {
+                let current = ui.ctx().zoom_factor();
+                for percent in [75, 90, 100, 110, 125, 150, 175] {
+                    let scale = percent as f32 / 100.0;
+                    if ui
+                        .selectable_label((current - scale).abs() < 0.001, format!("{percent}%"))
+                        .clicked()
+                    {
+                        // Commit after selection, so scaling cannot move an
+                        // active control underneath the pointer.
+                        ui.ctx().set_zoom_factor(scale);
+                        ui.close();
+                        egui::Popup::close_all(ui.ctx());
+                    }
+                }
+            });
         });
     }
 

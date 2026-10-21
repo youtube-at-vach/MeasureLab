@@ -956,6 +956,8 @@ impl ScopeApp {
         driver.frame(self, vec![]);
         driver.frame(self, vec![]);
 
+        self.check_display_scale_interactions(&mut driver)?;
+
         let shared_input_labels = driver
             .output
             .shapes
@@ -1385,6 +1387,54 @@ impl ScopeApp {
         self.shell = saved_shell;
         println!(
             "GUI interactions OK: widget clicks, keyboard navigation, details, I/O return, resize/scale; measurement and output commands unchanged"
+        );
+        Ok(())
+    }
+
+    fn check_display_scale_interactions(&mut self, driver: &mut Driver) -> Result<(), String> {
+        // Use the actual nested menus, including the compact header and a
+        // simulated native DPI change. Opening/hovering must not apply zoom.
+        for (width, native_scale) in [(1440.0, 1.0), (720.0, 2.0)] {
+            driver.resize(self, vec2(width, 1000.0), 1.0, native_scale);
+            for percent in [175, 75, 150, 90, 125, 110, 100] {
+                let before = driver.ctx.zoom_factor();
+                if width < 1180.0 {
+                    driver.click(self, "Menu")?;
+                }
+                driver.click(self, "View")?;
+                driver.click(self, "Display scale")?;
+                for label in ["75%", "90%", "100%", "110%", "125%", "150%", "175%"] {
+                    let pos = driver.position(label)?;
+                    driver.frame(self, vec![egui::Event::PointerMoved(pos)]);
+                    assert_eq!(driver.ctx.zoom_factor(), before);
+                }
+                driver.click(self, &format!("{percent}%"))?;
+                assert_eq!(driver.ctx.zoom_factor(), percent as f32 / 100.0);
+                assert!(
+                    !egui::Popup::is_any_open(&driver.ctx),
+                    "Scale selection left a menu open: {width}, {percent}%"
+                );
+                // Let the menu's closing animation finish after the zoom
+                // changes its area coordinates.
+                for _ in 0..10 {
+                    driver.frame(self, vec![]);
+                }
+                assert!(!driver.ctx.any_popup_open());
+                driver.check_header()?;
+            }
+            // Dismissing the scale choices keeps the applied value.
+            if width < 1180.0 {
+                driver.click(self, "Menu")?;
+            }
+            driver.click(self, "View")?;
+            driver.click(self, "Display scale")?;
+            driver.key(self, egui::Key::Escape, egui::Modifiers::NONE);
+            assert_eq!(driver.ctx.zoom_factor(), 1.0);
+            assert!(!driver.ctx.any_popup_open());
+        }
+        driver.resize(self, vec2(1440.0, 1000.0), 1.0, 1.0);
+        println!(
+            "Display scale UI OK: seven presets, hover/dismiss unchanged, selection commits and closes menus, wide/compact/native scale"
         );
         Ok(())
     }
