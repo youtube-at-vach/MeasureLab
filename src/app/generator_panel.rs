@@ -909,13 +909,20 @@ impl ScopeApp {
         );
         Ok(())
     }
-    pub(super) fn generator_transport(&mut self, ui: &mut egui::Ui) {
+    pub(super) fn generator_transport(&mut self, ui: &mut egui::Ui, compact: bool) {
         let g = &mut self.generator;
+        if ui.button("Stop output").clicked() {
+            g.stop();
+        }
         ui.label(
-            RichText::new(format!("OUTPUT · {}", g.label()))
-                .small()
-                .monospace()
-                .color(g.state_color()),
+            RichText::new(format!(
+                "{} · {}",
+                if compact { "OUT" } else { "OUTPUT" },
+                g.label()
+            ))
+            .small()
+            .monospace()
+            .color(g.state_color()),
         )
         .on_hover_text(format!(
             "{} · {} Hz · {}ch. Input Stop holds the measurement; output continues.",
@@ -923,9 +930,6 @@ impl ScopeApp {
             g.rate,
             g.target.channels()
         ));
-        if ui.button("Stop output").clicked() {
-            g.stop();
-        }
     }
 
     pub(super) fn generator_controls(&mut self, ui: &mut egui::Ui) {
