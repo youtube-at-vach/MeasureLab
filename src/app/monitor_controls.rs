@@ -2,6 +2,33 @@
 use super::*;
 
 impl ScopeApp {
+    pub(super) fn scope_display_trigger(&self) -> Trigger {
+        if self.core.is_some() && !self.running() {
+            self.core_scope.trigger
+        } else {
+            self.trigger
+        }
+    }
+
+    pub(super) fn scope_trigger_marker_status(&self) -> &'static str {
+        if self.triggered && !self.scope_range.is_empty() {
+            "T markers: captured"
+        } else {
+            "T markers: settings only"
+        }
+    }
+
+    pub(super) fn scope_trigger_marker_help(&self) -> String {
+        let trigger = self.scope_display_trigger();
+        format!(
+            "{}\n{} · source {} · level {:+.3} raw FS. The level follows the source channel's vertical range, which may differ from the selected channel's axis.",
+            display::TRIGGER_HELP,
+            self.scope_trigger_marker_status(),
+            channel::name(trigger.channel),
+            trigger.level,
+        )
+    }
+
     pub(super) fn scope_input_channels(&self) -> Option<u16> {
         if let Some(input) = self
             .held_input
@@ -59,8 +86,8 @@ impl ScopeApp {
                     ui.painter().text(rect.min + vec2(44.0, 5.0), egui::Align2::LEFT_TOP,
                         "Out of range", egui::FontId::proportional(10.0), MUTED);
                 }
-                response.on_hover_text(format!("CH{} · {}{}\n{}\nSelect to edit this channel in Channel settings. Display on/off is independent.", index + 1,
-                    channel::name(channel), if out_of_range { " · outside input channel range" } else { "" }, self.scope_readout_details(index)));
+                response.on_hover_text(format!("CH{} · {}{}\n{}\nSelect to edit this channel in Scope settings. Display on/off is independent.\n{}", index + 1,
+                    channel::name(channel), if out_of_range { " · outside input channel range" } else { "" }, self.scope_readout_details(index), display::DIV_HELP));
                 let toggle = egui::Rect::from_min_size(rect.right_top() + vec2(-23.0, 3.0), vec2(20.0, 20.0));
                 self.dirty |= ui.put(toggle, egui::Checkbox::without_text(&mut self.enabled[index]))
                     .on_hover_text(format!("Show CH{} waveform (keeps selection and measurements)", index + 1)).changed();

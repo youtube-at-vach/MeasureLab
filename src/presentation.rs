@@ -38,13 +38,13 @@ impl InstrumentId {
 
     pub fn purpose(self) -> &'static str {
         match self {
-            Self::Scope => "Waveform · time and amplitude",
-            Self::Spectrum => "Frequency · amplitude and power",
-            Self::Spectrogram => "Frequency over time",
-            Self::Xy => "Synchronous X/Y trajectory",
-            Self::Lockin => "Reference amplitude and phase",
-            Self::Comparison => "Gain · phase · coherence · delay",
-            Self::Generator => "Two sine signals",
+            Self::Scope => "Waveform over time",
+            Self::Spectrum => "Frequency levels and power",
+            Self::Spectrogram => "Frequency changes over time",
+            Self::Xy => "Two-channel X/Y relationship",
+            Self::Lockin => "Tone amplitude and phase vs REF",
+            Self::Comparison => "REF / SIG gain, phase and delay",
+            Self::Generator => "Generate signals on output channels",
         }
     }
 

@@ -1,6 +1,11 @@
 //! Display-only formatting and acquisition state; never modifies captured values.
 use super::*;
 
+pub(super) const AMPLITUDE_HELP: &str = "FS = digital full scale. Waveform and trigger levels use raw FS. RMS / P-P readouts use the captured channel calibration and show their own units.";
+pub(super) const SAMPLE_RATE_HELP: &str = "Fs = nominal sample rate in samples/s (Sa/s). Captured time and frequency use this rate; the physical sample clock is not calibrated.";
+pub(super) const DIV_HELP: &str = "div = one grid division. ms/div sets time per horizontal division; FS/div sets raw amplitude per vertical division for each Scope channel.";
+pub(super) const TRIGGER_HELP: &str = "T at the top marks the time reference (0 ms); T on the right marks the trigger level in raw FS for its source channel. Without a confirmed trigger, both are settings only.";
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum ScopeNotice {
     Stopped,
@@ -56,7 +61,7 @@ impl ScopeNotice {
                 "Input stopped before a complete sweep was available. Check Scope settings, then press Start input to acquire again."
             }
             Self::ChannelRange => {
-                "Choose available sources in Channel settings, or change the input source in Audio I/O."
+                "Select a channel below the plot and choose its Input source in Scope settings, or change the input source in Audio I/O."
             }
             Self::TriggerRange => {
                 "Choose an available trigger source in Scope settings, or change the input source in Audio I/O."
@@ -157,6 +162,7 @@ impl ScopeApp {
                 .max_rect(card)
                 .layout(egui::Layout::top_down(egui::Align::Min)),
         );
+        notice_ui.spacing_mut().interact_size.y = 26.0;
         notice_ui.set_clip_rect(ui.clip_rect().intersect(rect));
         let response = egui::Frame::new()
             .fill(Color32::from_rgb(20, 32, 42))
@@ -170,17 +176,31 @@ impl ScopeApp {
                     .id_salt("scope_notice_text")
                     .max_height((rect.height() - 26.0 - button_height).max(20.0))
                     .show(ui, |ui| {
-                        ui.label(RichText::new(notice.title()).strong().size(17.0));
-                        ui.add(egui::Label::new(self.input_source_label()).wrap());
-                        ui.add(egui::Label::new(notice.instruction()).wrap());
+                        ui.label(RichText::new(notice.title()).strong().size(18.0));
+                        ui.add(
+                            egui::Label::new(RichText::new(self.input_source_label()).size(13.0))
+                                .wrap(),
+                        );
+                        ui.add(
+                            egui::Label::new(RichText::new(notice.instruction()).size(14.0)).wrap(),
+                        );
                         if notice == ScopeNotice::Failed
                             && self.presentation.screen == Screen::Single(Instrument::Scope)
                             && let Some(error) = &self.input_error
                         {
-                            ui.add(egui::Label::new(RichText::new(error).color(TRIGGER)).wrap());
+                            ui.add(
+                                egui::Label::new(RichText::new(error).size(14.0).color(TRIGGER))
+                                    .wrap(),
+                            );
                         }
                     });
-                if ui.button("Open input settings").clicked() {
+                if ui
+                    .add(
+                        egui::Button::new(RichText::new("Open input settings").size(14.0))
+                            .min_size(vec2(0.0, 26.0)),
+                    )
+                    .clicked()
+                {
                     self.shell.io = Some(shell::IoTab::Connections);
                     self.shell.narrow_details = false;
                 }

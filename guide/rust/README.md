@@ -69,7 +69,7 @@ cargo run --release
 
 通常起動は入力・出力停止の **Scope単独表示** です。左の計器一覧からScope／Spectrum／Spectrogram／XY／Lock-in／Synchronous 2ch／Generatorを選ぶと、その計器だけを表示します。同じ名前を再選択しても解除しません。名称・用途で検索できます。狭幅では上部の **Instrument** メニューから選びます。表示操作で取得・解析・出力を開始／停止しません。
 
-一覧は1計器1行で、選択行全体を強調します。Monitorの共通入力状態は見出しにまとめ、Lock-in／Synchronous 2chの解析ON・OFF・入力待ちとGeneratorの出力状態は各行の右端に表示します。状態は色・記号・短い文字で区別し、ホバーで意味を確認できます。保持結果や測定の有効性は各計器内で確認します。
+一覧は1計器1行で、選択行全体を強調します。用途説明は一覧・狭幅のInstrumentメニューともツールチップにまとめ、ホバーで確認できます。XYは同期した2CHのX/Y関係、Lock-inは入力REFに対する特定周波数の振幅・位相、Synchronous 2chはREF／SIGのゲイン・位相・遅延を調べます。Monitorの共通入力状態は見出しにまとめ、Lock-in／Synchronous 2chの解析ON・OFF・入力待ちとGeneratorの出力状態は各行の右端に表示します。状態は色・記号・短い文字で区別し、ホバーで意味を確認できます。保持結果や測定の有効性は各計器内で確認します。
 
 単独表示の **Split view with…** は現在の計器と選んだ計器の2区画を作ります。既存コンソールを置き換える場合はメニューで案内し、コンソールの **Undo replacement** で直前の構成へ戻せます。**Multi-instrument view** は保持した構成を開き、**Add instrument…** で追加します。同じ計器は複製せず選択します。区画のクリック、名前付きタブ、Ctrl＋左右キーで対象を選び、**Open single** で単独表示へ戻ります。**Remove from view** は表示からだけ外し、解析やGenerator出力は続きます。最後の区画を外すと追加案内を表示します。
 
@@ -77,7 +77,11 @@ cargo run --release
 
 右の詳細欄は選択中の計器だけを扱い、ホバーでは対象を変えません。**View / Selected instrument details** で表示を切り替えます。狭幅では中央の **Measurement / Details** へ退避します。ScopeのCH選択と表示ON/OFFは波形直下の4chバー、カーソルは本体で操作します。
 
-Scopeの詳細欄はAcquisition／Trigger／Horizontal／Verticalの枠で区切り、Verticalには選択CHと同じ色を付けます。Acquisitionは取得モード・Start single capture・Autoset、Triggerはエッジ・入力CH・レベル、Horizontalは時間軸・水平位置、Verticalは選択CHの振幅・オフセット・Fit amplitude・入力割当を扱います。時間軸と振幅は対数スライダー、位置・レベルは線形スライダーで調整し、値のドラッグやダブルクリックによる数値入力も使えます。
+Scopeの見出しは単独表示で一つにまとめ、複数計器表示では区画名を残します。詳細欄の **Scope settings** はAcquisition／Trigger／Horizontal／Verticalの枠で区切り、Verticalには選択CHと同じ色を付けます。Acquisitionは取得モード・Start single capture・Autoset、Triggerはエッジ・入力CH・レベル、Horizontalは時間軸・水平位置、Verticalは選択CHの振幅・オフセット・Fit amplitude・入力割当を扱います。時間軸と振幅は対数スライダー、位置・レベルは線形スライダーで調整し、値のドラッグやダブルクリックによる数値入力も使えます。
+
+波形の **Amplitude [FS]** は選択CHのraw FS、**Time [ms]** はトリガー基準からの時刻です。**FS** はデジタルのフルスケール、**Fs** は公称サンプルレート、**div** はグリッドの1目盛りを表します。RMS／P-Pは取得時のCH校正を適用した数値で、各値に単位を表示します。波形軸・トリガーレベルのraw FSと区別してください。時刻・周波数は取得時の公称Fsに基づき、実時計の校正済み値ではありません。
+
+上端の **T** は時刻0 ms、右端の **T** はトリガーソースCHのraw FSレベルを示します。右端の位置はソースCHの縦軸設定に従い、選択CHの振幅軸と異なる場合があります。未取得やトリガー未成立では **T markers: settings only**、トリガー成立済みの区間では **T markers: captured** と表示します。マーカーへのホバー、Scope settings、Helpで意味を確認できます。
 
 XYの詳細欄も枠で区切り、Observationで観察時間幅とスケールのリセット、X Axis／Y Axisでそれぞれの入力CHと振幅範囲、CursorsでFree／Trace Snapを設定します。Trace SnapではScopeと共通のTriggerも同じ詳細欄で編集できます。狭幅では **Details** で開きます。**Place cursor: A / B**・**Clear cursors** と読み値はグラフ側に残ります。
 

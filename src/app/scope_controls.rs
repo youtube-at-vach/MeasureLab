@@ -170,6 +170,13 @@ impl ScopeApp {
                 .small()
                 .color(MUTED),
         );
+        ui.add(egui::Label::new("FS = full scale · Fs = sample rate · div = grid division").wrap())
+            .on_hover_text(format!(
+                "{}\n{}\n{}",
+                display::AMPLITUDE_HELP,
+                display::SAMPLE_RATE_HELP,
+                display::DIV_HELP
+            ));
     }
 
     pub(super) fn trigger_controls(&mut self, ui: &mut egui::Ui) {
@@ -209,6 +216,8 @@ impl ScopeApp {
             self.trigger.level = 0.0;
         }
         self.dirty |= changed || zero;
+        ui.add(egui::Label::new("T markers: top = 0 ms · right = level").wrap())
+            .on_hover_text(self.scope_trigger_marker_help());
     }
 }
 

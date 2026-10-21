@@ -87,6 +87,27 @@ impl Driver {
             .ok_or_else(|| format!("GUI text not visible: {label}"))
     }
 
+    fn visible_text_rect(&self, label: &str) -> Result<egui::Rect, String> {
+        self.output
+            .shapes
+            .iter()
+            .find_map(|s| {
+                if let egui::Shape::Text(text) = &s.shape
+                    && text.galley.text() == label
+                    && s.clip_rect.contains_rect(text.visual_bounding_rect())
+                    && self
+                        .ctx
+                        .content_rect()
+                        .contains_rect(text.visual_bounding_rect())
+                {
+                    Some(text.visual_bounding_rect())
+                } else {
+                    None
+                }
+            })
+            .ok_or_else(|| format!("GUI text clipped or missing: {label}"))
+    }
+
     fn click(&mut self, app: &mut ScopeApp, label: &str) -> Result<(), String> {
         let pos = self.position(label)?;
         self.click_at(app, pos);
@@ -212,6 +233,7 @@ impl ScopeApp {
             self.scope_readings,
             self.measurements,
             self.trigger,
+            self.triggered,
         );
         let history = std::mem::replace(&mut self.history, History::with_channels(96000, 2));
         let capture = self.scope_capture.take();
@@ -237,6 +259,9 @@ impl ScopeApp {
             driver.frame(app, vec![]);
             assert_eq!(app.scope_notice(), Some(reason));
             assert_eq!(driver.text_positions(reason.title()).len(), 1);
+            assert!(driver.text_positions("Oscilloscope").is_empty());
+            driver.visible_text_rect("Amplitude [FS]").unwrap();
+            driver.visible_text_rect("Time [ms]").unwrap();
             assert!(
                 driver
                     .text_positions("Trigger source unavailable")
@@ -279,8 +304,14 @@ impl ScopeApp {
                 .unwrap();
             assert!((card.center() - plot.center()).length() < 2.0);
             assert!(plot.contains_rect(card) && card.contains(button));
+            assert!(card.contains_rect(driver.visible_text_rect(reason.title()).unwrap()));
+            assert!(card.contains_rect(driver.visible_text_rect("Open input settings").unwrap()));
         };
         check(self, &mut driver, ScopeNotice::NoDevice);
+        driver.visible_text_rect("Scope settings")?;
+        for instrument in Instrument::ALL {
+            assert!(driver.text_positions(instrument.purpose()).is_empty());
+        }
         assert_eq!(self.scope_input_channels(), None);
         driver.click(self, "Open input settings")?;
         assert!(self.shell.io == Some(shell::IoTab::Connections));
@@ -314,6 +345,7 @@ impl ScopeApp {
         self.trigger.edge = Edge::Rising;
         self.dirty = true;
         check(self, &mut driver, ScopeNotice::TriggerRange);
+        driver.visible_text_rect("T markers: settings only")?;
         self.trigger.channel = 0;
         self.acquisition_mode = acquisition::Mode::Single;
         self.acquisition_state = acquisition::State::Waiting;
@@ -326,7 +358,11 @@ impl ScopeApp {
         check(self, &mut driver, ScopeNotice::Incomplete);
         self.history.clear_at(0);
         self.fail_input("Simulated input error · no device was opened".into());
-        for (width, height, zoom) in [(1440.0, 860.0, 1.0), (720.0, 640.0, 1.25)] {
+        for (width, height, zoom) in [
+            (1440.0, 860.0, 1.0),
+            (720.0, 640.0, 1.25),
+            (514.0, 528.0, 1.25),
+        ] {
             driver.resize(self, vec2(width, height), zoom, 1.0);
             check(self, &mut driver, ScopeNotice::Failed);
             assert_eq!(
@@ -375,6 +411,26 @@ impl ScopeApp {
             held
         );
         assert_eq!(self.dropped, 11);
+        self.triggered = true;
+        driver.frame(self, vec![]);
+        driver.visible_text_rect("T markers: captured")?;
+        assert!(driver.text_positions("T markers: settings only").is_empty());
+        self.presentation
+            .apply(Action::PairWith(Instrument::Spectrum));
+        self.presentation
+            .apply(Action::FocusPane(Instrument::Scope));
+        driver.frame(self, vec![]);
+        driver.visible_text_rect("Scope · Selected")?;
+        driver.visible_text_rect("Amplitude [FS]")?;
+        assert!(driver.text_positions("Oscilloscope").is_empty());
+        assert_eq!(
+            (
+                self.scope_range.clone(),
+                self.scope_readings,
+                self.history.len()
+            ),
+            held
+        );
         assert_eq!(self.input_generation, generation);
         assert_eq!(self.generator.command_marker(), command);
         self.history = history;
@@ -401,12 +457,13 @@ impl ScopeApp {
             self.scope_readings,
             self.measurements,
             self.trigger,
+            self.triggered,
         ) = saved;
         self.dirty = true;
         self.xy_dirty = true;
         self.rebuild_xy();
         println!(
-            "Input guidance UI OK: startup/unknown channels, opening, no samples, trigger wait, channel range, simulated failure, held data/loss and settings button; generation/output unchanged"
+            "Input guidance UI OK: startup/unknown channels, opening, no samples, trigger wait, channel range, simulated failure, held data/loss, settings button; readable notices/axes, tooltip-only purposes, single/console headings and trigger settings/capture distinction; generation/output unchanged"
         );
         Ok(())
     }
@@ -1575,6 +1632,10 @@ impl ScopeApp {
             });
         driver.click(self, "Menu")?;
         driver.click(self, &menu_title)?;
+        for instrument in Instrument::ALL {
+            driver.visible_text_rect(instrument.name())?;
+            assert!(driver.text_positions(instrument.purpose()).is_empty());
+        }
         driver.click(self, "Generator")?;
         assert_eq!(
             self.presentation.screen,
