@@ -470,7 +470,7 @@ impl ScopeApp {
             compare_open: false,
             comparison_current: None,
             presentation: Presentation::default(),
-            shell: shell::Shell::default(),
+            shell: shell::Shell::from_storage(if smoke { None } else { cc.storage }),
             #[cfg(feature = "qa")]
             qa_previous_presentation: None,
             #[cfg(feature = "qa")]
@@ -1198,6 +1198,8 @@ impl ScopeApp {
             if let Ok(mode) = std::env::var("MEASURELAB_UI_SMOKE_SCOPE_FLOW") {
                 app.check_scope_workflow(&mode)?;
             }
+            app.shell.sidebar_compact =
+                std::env::var("MEASURELAB_UI_SMOKE_SIDEBAR").as_deref() == Ok("compact");
             app.qa_previous_presentation = None;
         }
         Ok(app)
@@ -5317,6 +5319,16 @@ impl Drop for ScopeApp {
 }
 
 impl eframe::App for ScopeApp {
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        if !self.smoke {
+            self.shell.save_sidebar(storage);
+        }
+    }
+
+    fn persist_egui_memory(&self) -> bool {
+        false
+    }
+
     #[cfg(feature = "qa")]
     fn raw_input_hook(&mut self, ctx: &egui::Context, input: &mut egui::RawInput) {
         if self.smoke

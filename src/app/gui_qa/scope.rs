@@ -2,7 +2,7 @@
 use super::*;
 
 impl Driver {
-    fn scope_plot(&self) -> Result<egui::Rect, String> {
+    pub(super) fn scope_plot(&self) -> Result<egui::Rect, String> {
         self.output
             .shapes
             .iter()
@@ -260,6 +260,13 @@ impl ScopeApp {
         driver.key(self, egui::Key::Num1, egui::Modifiers::CTRL);
         assert_eq!(self.presentation.screen, Screen::Single(Instrument::Scope));
         driver.resize(self, vec2(1440.0, 1000.0), 1.0, 1.0);
+        for compact in [true, false] {
+            driver.click_at(self, driver.sidebar_toggle()?.center());
+            assert_eq!(self.shell.sidebar_compact, compact);
+            driver.visible_text_rect("Amplitude [FS]")?;
+            driver.visible_text_rect("Time [ms]")?;
+            driver.text_position("Stop output")?;
+        }
         assert_eq!(self.input_generation, generation);
         assert_eq!(self.running(), running);
         assert_eq!(self.generator.command_marker(), command);

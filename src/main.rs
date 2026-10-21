@@ -193,6 +193,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_min_inner_size([900.0, 660.0])
             .with_app_id("dev.measurelab.app"),
         renderer: eframe::Renderer::Wgpu,
+        // Only the sidebar preference is restored automatically.
+        persist_window: false,
         ..Default::default()
     };
     options.wgpu_options.surface.present_mode = if low_latency {
