@@ -41,6 +41,21 @@ GUI再構成の実装・自動統合確認とSpectrogram S1〜S6のMVP基本受�
 
 手動確認は操作可能な環境を対象とし、通常幅・狭幅・実モニター間DPIで上記の主要手順を確認する。現在のIntel Macは [検証対象環境](VALIDATION.md#検証対象環境と既存成果物) に従って対象外とする。見つかった問題の修正は関連する実ウィジェット・状態遷移の回帰検証へ反映する。確認した環境を明記し、対象外と未実施を区別する。G4の自動QAや [Spectrogram MVP](SPECTROGRAM_MVP_PLAN.md) の基本成功を、他環境の手動確認済みへ広げない。
 
+#### 起動案内・表記・Scope表示の改善順序
+
+上部メニュー・左の計器一覧・Scope画面を対象に、以下の順でPRを分けて進める。各PRは未着手。先行PRの変更を基盤にし、関連する回帰検証・操作文書の更新を各PRに含める。
+
+| 順序 | PRの変更範囲 | 主な対象 | 完了条件 |
+| --- | --- | --- | --- |
+| 1 | **起動案内と未取得理由を整理する。** 入力停止・開始待ち・未取得・CH範囲外・取得エラー・停止後の保持を区別する。中央の背景付き案内に現在の入力元、未取得理由、入力設定を開くボタンをまとめ、上部を`Audio I/O`にする | `src/app.rs`、`src/app/display.rs`、`src/app/io_panel.rs`、`src/app/monitor_controls.rs`、`src/app/shell.rs` | 起動直後に次の操作が読める。デバイス未選択やCH数未確定をCH範囲外と扱わず、同じ理由を中央・CHカード・下部で反復しない。取得済みデータとエラー・欠落の情報は維持する |
+| 2 | **操作名と操作可能状態をそろえる。** `Running…`→`Analysis status…`、`Pair with…`→`Split view with…`、`Measurement console`→`Multi-instrument view`、`Arm single`→`Start single capture`、`Clear`→`Clear cursors`、`Centre horizontal`→`Reset time position`。カーソルは`Place cursor: A / B`とし、`Stop output`は完全停止時だけ無効にする | `src/app/shell.rs`、`src/app/scope_controls.rs`、`src/app/generator_panel.rs`、`src/app.rs`、`src/app/gui_qa.rs` | 名前から対象と結果が予測できる。カーソル配置対象と配置済み状態を区別し、消去の影響範囲を説明する。出力開始待ちなど停止要求が必要な状態では停止操作を維持する。構成置換・Undo・SpectrogramからSpectrumへの既存連携を保つ |
+| 3 | **重複と視認性を整える。** 単独表示のScope／Oscilloscope見出しを整理し、詳細欄は`Scope settings`にする。未取得理由・次の操作・左の用途説明を読みやすくし、XY／Lock-in／Synchronous 2chの用途を伝える。軸に`Amplitude [FS]`／`Time [ms]`を置き、FS／Fs／divと時刻・レベルの両トリガーマーカーの意味を補う | `src/app.rs`、`src/app/shell.rs`、`src/app/scope_controls.rs`、`src/app/monitor_controls.rs`、`src/presentation.rs` | 複数計器表示では区画名を残す。案内とグリッドが重ならず、狭幅でも主要値・単位・停止操作が読める。波形のraw FSと校正後の数値、公称Fs、未取得時の設定マーカーを混同させない |
+| 4 | **一連の操作と描画を通して確認する。** 起動→入力設定→取得→停止・保持、Single、模擬エラー、単独／複数計器、通常幅／狭幅・倍率変更を照合し、残る問題を修正する。ポインターの内外で縦ガイド線を比較し、現行文書の表記を最終照合する | `src/app/gui_qa.rs`、`src/app/shell.rs`、`guide/rust/README.md`、必要に応じて`docs-rust/` | 各状態の理由・次の操作・無効表示が一貫する。表示変更で取得・解析・生成・保持条件が変わらない。自動QA・画像確認・操作可能な環境の手動確認を区別して報告する |
+
+各PRで [Tool Usage Guide](../../.agents/workflows/tool_usage.md) に従い、変更した状態遷移・実ウィジェットの回帰検証、Rustの整形・全ターゲット全機能Clippy／テスト・GUIなし／通常テスト・desktopビルド、Ruff、Markdown lintを行う。名称変更では表示名を参照するGUI QAも同じPRで更新する。公開マニュアルを変更したPRはMkDocsビルドも行う。具体的なテスト条件・許容差・合否はテスト／QAコードを正本とする。
+
+状態の整理は既存の入力・結果情報を表示へ対応付け、Audio I/O・測定演算・描画の実行分離、f64基準、1〜16ch基盤を維持する。模擬エラーで確認し、測定・出力中のUSB抜去試験は行わない。現在のIntel Macの手動GUI操作は上記の環境除外に従う。PR作成・マージ・公開は、それぞれ依頼された段階で行う。
+
 ### 4.5：Generatorの統合評価
 
 [Generator設計](GENERATOR_DESIGN.md) の契約を、動的カード・多波形を含む現在の通常Generatorの経路で確認する。
