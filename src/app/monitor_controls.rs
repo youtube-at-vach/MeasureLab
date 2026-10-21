@@ -156,7 +156,7 @@ impl ScopeApp {
                     .small()
                     .color(MUTED),
             );
-            self.cursor_controls(ui);
+            self.cursor_controls(ui, Instrument::Spectrogram);
         });
         if self.spectrogram_channel != before && self.running() {
             self.reset_stft();

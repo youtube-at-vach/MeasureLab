@@ -2493,18 +2493,30 @@ impl ScopeApp {
         }
     }
 
-    fn cursor_controls(&mut self, ui: &mut egui::Ui) {
-        for (index, title) in ["Cursor A", "Cursor B"].into_iter().enumerate() {
+    fn cursor_controls(&mut self, ui: &mut egui::Ui, instrument: Instrument) {
+        ui.label("Place cursor:");
+        for (index, title) in ["A", "B"].into_iter().enumerate() {
             ui.selectable_value(&mut self.active_cursor, index, title)
-                .on_hover_text("Scope keeps the plot position. Spectrogram holds the selected FFT frame. XY Free keeps X/Y amplitudes; Trace Snap follows a trigger-relative sample. Spectrum and Spectrogram share frequency.");
+                .on_hover_text("Choose which cursor the next plot click or drag places; selecting A or B does not place it. Scope keeps the plot position. Spectrogram holds the selected FFT frame. XY Free keeps X/Y amplitudes; Trace Snap follows a trigger-relative sample.");
         }
-        if ui.small_button("Clear").clicked() {
+        if ui.small_button("Clear cursors")
+            .on_hover_text("Clear both A/B time cursors, Spectrum/Spectrogram frequency cursors, XY Free points and Spectrogram frame selections across all instruments. Acquired data is kept.")
+            .clicked()
+        {
             self.cursors.clear();
             self.spectrogram_selected = [None, None];
             self.spectrogram_unavailable_selection = [false; 2];
             self.spectrogram_pending_click = None;
             ui.ctx().request_repaint();
         }
+        let placed = if instrument == Instrument::Xy && self.xy_cursor_mode == xy::CursorMode::Free
+        {
+            self.cursors.xy_points.map(|point| point.is_some())
+        } else {
+            self.cursors.times.map(|time| time.is_some())
+        };
+        ui.label(RichText::new(cursor_placement_label(placed)).small().color(MUTED))
+            .on_hover_text("Stored cursor positions for this view; readings can be unavailable outside the acquired data.");
         let mut text = String::new();
         for (index, time) in self.cursors.times.into_iter().enumerate() {
             let Some(time) = time else { continue };
@@ -3953,7 +3965,7 @@ impl ScopeApp {
                         .small()
                         .color(MUTED),
                     );
-                    self.cursor_controls(ui);
+                    self.cursor_controls(ui, Instrument::Xy);
                 });
                 ui.label(
                     RichText::new(format!(
@@ -4625,7 +4637,7 @@ impl ScopeApp {
                 ui.horizontal_wrapped(|ui| {
                     ui.label(RichText::new("Oscilloscope").size(13.0).strong());
                     display::activity_label(ui, self.running(), self.pending_stop.is_some(), !self.scope_range.is_empty());
-                    self.cursor_controls(ui);
+                    self.cursor_controls(ui, Instrument::Scope);
                 });
                 let trigger = if self.core.is_some() && !self.running() { self.core_scope.trigger } else { self.trigger };
                 let (trigger_text, trigger_color) = if self.scope_notice().is_some() {
@@ -6039,6 +6051,15 @@ fn compact_plot_style(ui: &mut egui::Ui) {
 
 fn cursor_name(index: usize) -> &'static str {
     if index == 0 { "A" } else { "B" }
+}
+
+fn cursor_placement_label(placed: [bool; 2]) -> &'static str {
+    match placed {
+        [false, false] => "Placed: none",
+        [true, false] => "Placed: A",
+        [false, true] => "Placed: B",
+        [true, true] => "Placed: A, B",
+    }
 }
 
 fn cursor_color(index: usize) -> Color32 {

@@ -31,8 +31,8 @@ impl ScopeApp {
             ui.horizontal(|ui| {
                 if ui
                     .add_enabled(
-                        !self.running() && self.pending_stop.is_none(),
-                        egui::Button::new("Arm single"),
+                        !self.running() && self.input_transport_enabled(),
+                        egui::Button::new("Start single capture"),
                     )
                     .on_hover_text("Start input and wait for a single triggered capture")
                     .clicked()
@@ -81,7 +81,7 @@ impl ScopeApp {
                     .max_decimals(2)
                     .drag_value_speed(0.1)
                     .trailing_fill(false),
-                Some("Centre horizontal"),
+                Some("Reset time position"),
             );
             if centre {
                 self.scope_horizontal_position = 0.0;

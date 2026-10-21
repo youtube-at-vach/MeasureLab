@@ -912,7 +912,11 @@ impl ScopeApp {
     }
     pub(super) fn generator_transport(&mut self, ui: &mut egui::Ui, compact: bool) {
         let g = &mut self.generator;
-        if ui.button("Stop output").clicked() {
+        if ui
+            .add_enabled(!g.stopped(), egui::Button::new("Stop output"))
+            .on_hover_text("Stop Generator output independently of input and analysis")
+            .clicked()
+        {
             g.stop();
         }
         ui.label(
@@ -1092,7 +1096,7 @@ impl ScopeApp {
                     ui.label(RichText::new(g.application_label()).small().monospace().color(g.application_color()))
                         .on_hover_text(format!("Applied Fs: {} Hz (nominal). Settings preview uses FS peak; measured samples are shown in Scope.", g.status.nominal_sample_rate));
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui.add_enabled(!g.stopping && !restoring, egui::Button::new(
+                        if ui.add_enabled(!g.stopped() || !restoring, egui::Button::new(
                             RichText::new(if g.stopped() { "▶ Start output" } else { "■ Stop output" })
                                 .color(if g.stopped() { GREEN } else { TRIGGER }))).clicked() {
                             if g.stopped() { g.start(); } else { g.stop(); }

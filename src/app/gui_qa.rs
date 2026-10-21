@@ -1,6 +1,7 @@
 //! Drive the real shell widgets with egui events, without a second audio runtime.
 //! Rendered text locates controls; assertions inspect the resulting app state.
 use super::*;
+use crate::generator;
 
 struct Driver {
     ctx: egui::Context,
@@ -79,6 +80,13 @@ impl Driver {
             .ok_or_else(|| format!("GUI interaction control not visible: {label}"))
     }
 
+    fn text_position(&self, label: &str) -> Result<egui::Pos2, String> {
+        self.text_positions(label)
+            .into_iter()
+            .next()
+            .ok_or_else(|| format!("GUI text not visible: {label}"))
+    }
+
     fn click(&mut self, app: &mut ScopeApp, label: &str) -> Result<(), String> {
         let pos = self.position(label)?;
         self.click_at(app, pos);
@@ -137,7 +145,7 @@ impl Driver {
 
     fn check_header(&self) -> Result<(), String> {
         let menu = self.position("Menu").or_else(|_| self.position("File"))?;
-        let output = self.position("Stop output")?;
+        let output = self.text_position("Stop output")?;
         let input = ["▶  Start input", "▶  Start input (demo)", "■  Stop input"]
             .into_iter()
             .find_map(|label| self.text_positions(label).first().copied())
@@ -147,16 +155,14 @@ impl Driver {
         assert!(menu.x < output.x && output.x < input.x);
         assert!(input.x > self.size.x - 100.0);
         assert!(self.text_positions("MeasureLab").is_empty());
-        for text in [menu, output] {
-            let rect = self
-                .ctx
-                .interactive_rects_last_pass()
-                .into_iter()
-                .filter(|rect| rect.contains(text) && rect.height() < 80.0)
-                .min_by(|a, b| a.width().total_cmp(&b.width()))
-                .ok_or("Header control has no interactive bounds")?;
-            assert!(rect.left() >= 0.0 && rect.right() <= self.size.x);
-        }
+        let rect = self
+            .ctx
+            .interactive_rects_last_pass()
+            .into_iter()
+            .filter(|rect| rect.contains(menu) && rect.height() < 80.0)
+            .min_by(|a, b| a.width().total_cmp(&b.width()))
+            .ok_or("Header menu has no interactive bounds")?;
+        assert!(rect.left() >= 0.0 && rect.right() <= self.size.x);
         let mut texts: Vec<_> = self
             .output
             .shapes
@@ -928,7 +934,7 @@ impl ScopeApp {
         self.select_spectrogram_time(1, 0.4);
         let frames: [_; 2] = std::array::from_fn(|i| self.spectrogram_selected[i].clone().unwrap());
         driver.frame(self, vec![]);
-        driver.click(self, "Pair with…")?;
+        driver.click(self, "Split view with…")?;
         driver.click(self, "Spectrum")?;
         assert!(self.spectrum_history.linked);
         for (i, frame) in frames.iter().enumerate() {
@@ -962,7 +968,18 @@ impl ScopeApp {
         crate::result_image::render(&scope_export)?;
         let fixed_times = self.cursors.times;
         let time_cursor = self.active_cursor;
-        driver.click(self, "Frequency B")?;
+        // Both panes have A/B controls. Locate the frequency target beside its
+        // own label rather than clicking the shared time target in Spectrogram.
+        let frequency_label = driver.text_position("Place frequency cursor:")?;
+        let frequency_b = driver
+            .text_positions("B")
+            .into_iter()
+            .min_by(|a, b| {
+                a.distance_sq(frequency_label)
+                    .total_cmp(&b.distance_sq(frequency_label))
+            })
+            .ok_or("Frequency cursor B missing")?;
+        driver.click_at(self, frequency_b);
         assert_eq!(
             self.active_cursor, time_cursor,
             "Frequency cursor changed active time cursor"
@@ -1035,7 +1052,7 @@ impl ScopeApp {
         assert_eq!(self.presentation.console, original_console);
         self.navigate(Action::OpenSingle(Instrument::Spectrogram));
         driver.frame(self, vec![]);
-        driver.click(self, "Pair with…")?;
+        driver.click(self, "Split view with…")?;
         driver.click(self, "Spectrum")?;
         self.live_spectrogram();
         assert!(!self.spectrum_history.linked);
@@ -1178,6 +1195,8 @@ impl ScopeApp {
         driver.frame(self, vec![]);
 
         self.check_display_scale_interactions(&mut driver)?;
+        self.check_output_stop_interactions(&mut driver)?;
+        self.check_cursor_placement_interactions(&mut driver)?;
 
         let shared_input_labels = driver
             .output
@@ -1328,7 +1347,7 @@ impl ScopeApp {
         driver.click(self, "Zero level")?;
         assert_eq!(self.trigger.level, 0.0);
         assert_eq!(self.scope_vertical, unedited.3);
-        driver.click(self, "Centre horizontal")?;
+        driver.click(self, "Reset time position")?;
         assert_eq!(self.scope_horizontal_position, 0.0);
         assert_eq!(self.ms_per_div, unedited.0);
         driver.click(self, "Zero offset")?;
@@ -1390,10 +1409,10 @@ impl ScopeApp {
             assert_eq!(self.presentation.screen, Screen::Single(instrument));
             driver.click(self, instrument.name())?;
             assert_eq!(self.presentation.screen, Screen::Single(instrument));
-            driver.position("Stop output")?;
+            driver.text_position("Stop output")?;
         }
         driver.key(self, egui::Key::Num1, egui::Modifiers::CTRL);
-        driver.click(self, "Pair with…")?;
+        driver.click(self, "Split view with…")?;
         driver.click(self, "Generator")?;
         assert_eq!(
             self.presentation.console.instruments,
@@ -1402,7 +1421,7 @@ impl ScopeApp {
         assert_eq!(self.presentation.selected(), Some(Instrument::Generator));
         let pair = self.presentation.console.clone();
         driver.key(self, egui::Key::Num1, egui::Modifiers::CTRL);
-        driver.click(self, "Measurement console")?;
+        driver.click(self, "Multi-instrument view")?;
         assert_eq!(self.presentation.console, pair);
         driver.key(self, egui::Key::ArrowLeft, egui::Modifiers::CTRL);
         assert_eq!(self.presentation.selected(), Some(Instrument::Scope));
@@ -1410,7 +1429,13 @@ impl ScopeApp {
         assert_eq!(self.presentation.selected(), Some(Instrument::Generator));
         // Foreground menus/windows own keyboard input. Escape dismisses just
         // that layer, preserving both the console and an underlying I/O page.
-        for menu in ["File", "View", "Audio I/O", "Running…", "Add instrument…"] {
+        for menu in [
+            "File",
+            "View",
+            "Audio I/O",
+            "Analysis status…",
+            "Add instrument…",
+        ] {
             driver.click(self, menu)?;
             assert!(driver.ctx.any_popup_open());
             driver.key(self, egui::Key::Num2, egui::Modifiers::CTRL);
@@ -1495,7 +1520,7 @@ impl ScopeApp {
             driver.frame(self, vec![]);
         }
         driver.key(self, egui::Key::Num1, egui::Modifiers::CTRL);
-        driver.click(self, "Pair with…")?;
+        driver.click(self, "Split view with…")?;
         driver.click(self, "Spectrum")?;
         driver.click(self, "Undo replacement")?;
         assert_eq!(self.presentation.console, pair);
@@ -1515,7 +1540,7 @@ impl ScopeApp {
         // Requested layout and ratio survive a round trip through a small view,
         // app zoom, and simulated native scale events. Native monitor QA is separate.
         driver.key(self, egui::Key::Num1, egui::Modifiers::CTRL);
-        driver.click(self, "Pair with…")?;
+        driver.click(self, "Split view with…")?;
         driver.click(self, "Generator")?;
         self.presentation.details_visible = false;
         self.presentation.console.split = 0.4;
@@ -1535,7 +1560,7 @@ impl ScopeApp {
             driver.click(self, "Audio I/O")?;
             driver.click(self, tab)?;
             assert!(self.shell.io.is_some());
-            driver.position("Stop output")?;
+            driver.text_position("Stop output")?;
             driver.click(self, "Back to instruments")?;
             assert!(self.shell.io.is_none());
             assert_eq!(self.presentation.console, console);
@@ -1545,7 +1570,9 @@ impl ScopeApp {
         let menu_title = self
             .presentation
             .selected()
-            .map_or("Console".into(), |i| format!("Instrument: {}", i.name()));
+            .map_or("Multi-instrument view".into(), |i| {
+                format!("Instrument: {}", i.name())
+            });
         driver.click(self, "Menu")?;
         driver.click(self, &menu_title)?;
         driver.click(self, "Generator")?;
@@ -1571,7 +1598,7 @@ impl ScopeApp {
             }
             driver.click(self, "Details")?;
             assert!(self.shell.narrow_details);
-            driver.position("Stop output")?;
+            driver.text_position("Stop output")?;
             driver.key(self, egui::Key::Escape, egui::Modifiers::NONE);
             assert!(!self.shell.narrow_details);
         }
@@ -1608,6 +1635,110 @@ impl ScopeApp {
         self.shell = saved_shell;
         println!(
             "GUI interactions OK: widget clicks, keyboard navigation, details, I/O return, resize/scale; measurement and output commands unchanged"
+        );
+        Ok(())
+    }
+
+    fn check_output_stop_interactions(&mut self, driver: &mut Driver) -> Result<(), String> {
+        // Synthetic UI states only: never start an output stream. In particular,
+        // a Start request can be pending while the last status still says Stopped.
+        let saved = std::mem::take(&mut self.generator);
+        let presentation = self.presentation.clone();
+        let restoring = self.workspace_restoring;
+        self.presentation
+            .apply(Action::OpenSingle(Instrument::Generator));
+        for (state, pending, starting, stopping) in [
+            (generator::State::Stopped, false, false, false),
+            (generator::State::Stopped, true, false, false),
+            (generator::State::Stopped, false, true, false),
+            (generator::State::Stopped, false, false, true),
+            (generator::State::Starting, false, false, false),
+            (generator::State::Running, false, false, false),
+            (generator::State::Stopping, false, false, false),
+            (
+                generator::State::Error(generator::Error::OutputStream),
+                false,
+                false,
+                false,
+            ),
+        ] {
+            for restore in [false, true] {
+                self.workspace_restoring = restore;
+                self.generator.status.state = state;
+                self.generator.pending = pending;
+                self.generator.starting = starting;
+                self.generator.stopping = stopping;
+                let stopped = self.generator.stopped();
+                driver.frame(self, vec![]);
+                driver.frame(self, vec![]);
+                driver.text_position("Stop output")?;
+                assert_eq!(driver.position("Stop output").is_err(), stopped);
+                let marker = self.generator.command_marker();
+                // Click the disabled button too; it must not send a command.
+                driver.click_at(self, driver.text_position("Stop output")?);
+                assert_eq!(self.generator.command_marker().0, marker.0);
+                assert_eq!(self.generator.command_marker().1 > marker.1, !stopped);
+                if !stopped {
+                    driver.click(self, "■ Stop output")?;
+                    assert!(self.generator.command_marker().1 > marker.1 + 1);
+                }
+            }
+        }
+        self.generator = saved;
+        self.presentation = presentation;
+        self.workspace_restoring = restoring;
+        driver.frame(self, vec![]);
+        println!(
+            "Output Stop UI OK: disabled only when fully stopped; pending Start/configuration, transitions, errors and restore remain stoppable; no output started"
+        );
+        Ok(())
+    }
+
+    fn check_cursor_placement_interactions(&mut self, driver: &mut Driver) -> Result<(), String> {
+        let saved = std::mem::take(&mut self.cursors);
+        let active = self.active_cursor;
+        let selected = self.spectrogram_selected.clone();
+        let unavailable = self.spectrogram_unavailable_selection;
+        let pending = self.spectrogram_pending_click.take();
+        driver.frame(self, vec![]);
+        driver.text_position("Place cursor:")?;
+        driver.text_position("Placed: none")?;
+        driver.text_position("Start single capture")?;
+        assert_eq!(
+            driver.position("Start single capture").is_ok(),
+            !self.running() && self.input_transport_enabled()
+        );
+        driver.click(self, "B")?;
+        assert_eq!(self.active_cursor, 1);
+        assert!(self.cursors.times.iter().all(Option::is_none));
+        self.cursors.set_scope_time(0, 0.25);
+        self.cursors.set_frequency(1, 1500.0);
+        self.cursors.set_xy_point(1, [0.125, -0.25]);
+        self.spectrogram_unavailable_selection = [true; 2];
+        driver.frame(self, vec![]);
+        driver.text_position("Placed: A")?;
+        driver.click(self, "A")?;
+        assert_eq!(self.active_cursor, 0);
+        assert!(self.cursors.times[0].is_some());
+        assert!(self.cursors.times[1].is_none());
+        driver.click(self, "Clear cursors")?;
+        driver.text_position("Placed: none")?;
+        assert!(self.cursors.times.iter().all(Option::is_none));
+        assert_eq!(self.cursors.spectrum_frequencies_hz, [None; 2]);
+        assert!(self.cursors.frequency_hz.is_none());
+        assert_eq!(self.cursors.xy_points, [None; 2]);
+        assert!(self.spectrogram_selected.iter().all(Option::is_none));
+        assert_eq!(self.spectrogram_unavailable_selection, [false; 2]);
+        assert!(self.spectrogram_pending_click.is_none());
+        assert_eq!(self.active_cursor, 0);
+        self.cursors = saved;
+        self.active_cursor = active;
+        self.spectrogram_selected = selected;
+        self.spectrogram_unavailable_selection = unavailable;
+        self.spectrogram_pending_click = pending;
+        driver.frame(self, vec![]);
+        println!(
+            "Cursor placement UI OK: target selection does not place cursors; placed status and shared Clear cursors scope"
         );
         Ok(())
     }
@@ -1724,7 +1855,7 @@ impl ScopeApp {
         driver.click(self, "Free")?;
         driver.key(self, egui::Key::Escape, egui::Modifiers::NONE);
         assert!(!self.shell.narrow_details);
-        driver.position("Cursor A")?;
+        driver.position("A")?;
         (self.xy_settings, self.xy_cursor_mode, self.trigger) = saved;
         self.cursors = cursors;
         self.xy_dirty = true;
@@ -1775,7 +1906,7 @@ impl ScopeApp {
         // All default groups fit the actual startup height without scrolling.
         let quantity = driver.position("Amplitude")?;
         let axis = driver.position("Log Hz")?;
-        let cursor_a = driver.position("Cursor A")?;
+        let cursor_a = driver.position("A")?;
         let average = driver.position("Average")?;
         let advanced = driver.position("Advanced analysis / diagnostics")?;
         assert!(
@@ -1825,11 +1956,13 @@ impl ScopeApp {
                 rect.center().y,
             )
         };
-        driver.click(self, "Cursor A")?;
+        driver.click(self, "A")?;
+        driver.text_position("Placed: none")?;
         driver.click_at(self, at(frequency));
         let a = self.cursors.spectrum_frequencies_hz[0]
             .ok_or("Spectrum A did not respond to plot click")?;
-        driver.click(self, "Cursor B")?;
+        driver.text_position("Placed: A")?;
+        driver.click(self, "B")?;
         driver.click_at(self, at(2.0 * frequency));
         let b = self.cursors.spectrum_frequencies_hz[1]
             .ok_or("Spectrum B did not respond to plot click")?;
@@ -1868,9 +2001,17 @@ impl ScopeApp {
         );
         assert_eq!(self.cursors.spectrum_frequencies_hz[0], Some(a));
         assert_ne!(self.cursors.spectrum_frequencies_hz[1], Some(b));
-        driver.click(self, "Clear")?;
+        self.cursors.set_scope_time(0, 0.25);
+        self.cursors.set_xy_point(1, [0.125, -0.25]);
+        let times = self.cursors.times;
+        let points = self.cursors.xy_points;
+        driver.text_position("Placed: A, B")?;
+        driver.click(self, "Clear cursors")?;
         assert_eq!(self.cursors.spectrum_frequencies_hz, [None; 2]);
         assert!(self.cursors.frequency_hz.is_none());
+        assert_eq!(self.cursors.times, times);
+        assert_eq!(self.cursors.xy_points, points);
+        driver.text_position("Placed: none")?;
 
         self.analyzer = saved_result;
         self.spectrum_settings = saved_settings;

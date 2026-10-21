@@ -71,19 +71,21 @@ cargo run --release
 
 一覧は1計器1行で、選択行全体を強調します。Monitorの共通入力状態は見出しにまとめ、Lock-in／Synchronous 2chの解析ON・OFF・入力待ちとGeneratorの出力状態は各行の右端に表示します。状態は色・記号・短い文字で区別し、ホバーで意味を確認できます。保持結果や測定の有効性は各計器内で確認します。
 
-単独表示の **Pair with…** は現在の計器と選んだ計器の2区画を作ります。既存コンソールを置き換える場合はメニューで案内し、コンソールの **Undo replacement** で直前の構成へ戻せます。**Measurement console** は保持した構成を開き、**Add instrument…** で追加します。同じ計器は複製せず選択します。区画のクリック、名前付きタブ、Ctrl＋左右キーで対象を選び、**Open single** で単独表示へ戻ります。**Remove from view** は表示からだけ外し、解析やGenerator出力は続きます。最後の区画を外すと追加案内を表示します。
+単独表示の **Split view with…** は現在の計器と選んだ計器の2区画を作ります。既存コンソールを置き換える場合はメニューで案内し、コンソールの **Undo replacement** で直前の構成へ戻せます。**Multi-instrument view** は保持した構成を開き、**Add instrument…** で追加します。同じ計器は複製せず選択します。区画のクリック、名前付きタブ、Ctrl＋左右キーで対象を選び、**Open single** で単独表示へ戻ります。**Remove from view** は表示からだけ外し、解析やGenerator出力は続きます。最後の区画を外すと追加案内を表示します。
 
 配置は **Side by side / Stacked / 2 × 2 / Tabs** を選びます。2区画／4区画を超えた計器は名前付きタブで選択します。寸法が不足するとタブ表示へ退避し、広げると希望配置へ戻ります。**View** の **First pane share** で分割比率、**Display scale** で表示倍率を調整できます。倍率は75／90／100／110／125／150／175%から選び、クリックで確定したときだけ画面へ反映してメニューを閉じます。候補へのホバーやEscで閉じる操作では倍率は変わりません。100%を選ぶと標準倍率へ戻ります。狭幅では **Menu → View → Display scale** から選びます。単独表示とコンソールの往復・リサイズで構成と比率は消えません。
 
 右の詳細欄は選択中の計器だけを扱い、ホバーでは対象を変えません。**View / Selected instrument details** で表示を切り替えます。狭幅では中央の **Measurement / Details** へ退避します。ScopeのCH選択と表示ON/OFFは波形直下の4chバー、カーソルは本体で操作します。
 
-Scopeの詳細欄はAcquisition／Trigger／Horizontal／Verticalの枠で区切り、Verticalには選択CHと同じ色を付けます。Acquisitionは取得モード・Arm single・Autoset、Triggerはエッジ・入力CH・レベル、Horizontalは時間軸・水平位置、Verticalは選択CHの振幅・オフセット・Fit amplitude・入力割当を扱います。時間軸と振幅は対数スライダー、位置・レベルは線形スライダーで調整し、値のドラッグやダブルクリックによる数値入力も使えます。
+Scopeの詳細欄はAcquisition／Trigger／Horizontal／Verticalの枠で区切り、Verticalには選択CHと同じ色を付けます。Acquisitionは取得モード・Start single capture・Autoset、Triggerはエッジ・入力CH・レベル、Horizontalは時間軸・水平位置、Verticalは選択CHの振幅・オフセット・Fit amplitude・入力割当を扱います。時間軸と振幅は対数スライダー、位置・レベルは線形スライダーで調整し、値のドラッグやダブルクリックによる数値入力も使えます。
 
-XYの詳細欄も枠で区切り、Observationで観察時間幅とスケールのリセット、X Axis／Y Axisでそれぞれの入力CHと振幅範囲、CursorsでFree／Trace Snapを設定します。Trace SnapではScopeと共通のTriggerも同じ詳細欄で編集できます。狭幅では **Details** で開きます。カーソルA／Bの選択・Clearと読み値はグラフ側に残ります。
+XYの詳細欄も枠で区切り、Observationで観察時間幅とスケールのリセット、X Axis／Y Axisでそれぞれの入力CHと振幅範囲、CursorsでFree／Trace Snapを設定します。Trace SnapではScopeと共通のTriggerも同じ詳細欄で編集できます。狭幅では **Details** で開きます。**Place cursor: A / B**・**Clear cursors** と読み値はグラフ側に残ります。
+
+**Place cursor: A / B** は次にクリック／ドラッグで配置する対象です。A／Bを選ぶだけでは配置せず、**Placed: none / A / B / A, B** が配置済みの対象を示します。Scope・Spectrogram・XYの **Clear cursors** は共通の時間・周波数・XY自由配置とSpectrogramフレーム選択を解除します。Spectrumの **Clear cursors** と履歴Spectrumの **Clear frequency** は周波数だけを解除し、時間・フレーム選択・XY自由配置を保ちます。取得済みのデータは消去しません。
 
 FFT・窓・平均なども各計器の詳細欄です。Generatorの周波数・振幅・位相・波形・OUT・カード管理・ON／OFF・Start outputは本体、刻み幅・Noiseのseed・選択カードの適用値は詳細欄です。
 
-上部は左のメニューと右の入出力操作を1行にまとめ、**Start input / Stop input** を右端に置きます。狭幅ではメニューを **Menu** にまとめ、状態の接頭辞を **IN / OUT** に短縮します。**Audio I/O** の **Input / output** と **Calibration** は共通設定画面を開きます。**Back to instruments** またはEscで元の計器・選択区画へ戻ります。**Start input / Stop input** は共通入力、**Stop output** は独立したGenerator出力を扱います。出力状態と停止操作は計器や設定画面に関係なく常設です。**Running…** で非表示のLock-in／同期比較の解析状態を確認・停止できます。入力待ち、解析停止、取得状態、有効性を区別します。
+上部は左のメニューと右の入出力操作を1行にまとめ、**Start input / Stop input** を右端に置きます。狭幅ではメニューを **Menu** にまとめ、状態の接頭辞を **IN / OUT** に短縮します。**Audio I/O** の **Input / output** と **Calibration** は共通設定画面を開きます。**Back to instruments** またはEscで元の計器・選択区画へ戻ります。**Start input / Stop input** は共通入力、**Stop output** は独立したGenerator出力を扱います。出力状態と停止操作は計器や設定画面に関係なく常設です。**Stop output** は完全停止時だけ無効になり、開始待ち・設定適用待ち・停止処理中やエラー時には停止要求を送れます。**Analysis status…** で非表示のLock-in／同期比較の解析状態を確認・停止できます。入力待ち、解析停止、取得状態、有効性を区別します。
 
 **File** は設定・保持結果の保存／復元と **Compare saved reference**、**View** は配置・詳細欄・倍率、**Help** はショートカット・単位・診断を扱います。Ctrl＋1〜7で一覧順に計器を選択し、Tab／Shift＋Tabで編集へ移動できます。Spaceによる入力操作は入力ボタンが使える場合に限り、一押しで一度だけ切り替えます。入力欄・メニューの操作中、修飾キー付き・長押しの反復では取得状態を変えません。
 
@@ -115,7 +117,7 @@ Windowsの標準構成はRustのMSVCツールチェーンとVisual Studio C++ Bu
 | Audio I/O → Input / output → Refresh devices | 停止中に入力・出力デバイスを再取得 |
 | Audio I/O → Input / output → SAMPLE RATE · INPUT + OUTPUT | 入出力共通の公称Fs。Separate sample ratesで個別設定。入力の選択肢は上限768 kHz |
 | Start input / Stop input / Space | 入力開始・停止 |
-| Cursor A / B / Clear | カーソルの選択／時間・周波数・XY自由配置カーソルの解除 |
+| Place cursor: A / B / Clear cursors | 次の配置対象を選ぶ／Scope・Spectrogram・XYでは全計器の時間・周波数・XY自由配置とSpectrogramフレーム選択を解除。Spectrumでは周波数だけを解除 |
 | Scope上でクリック／ドラッグ | 時間カーソルのX位置を固定。各更新の波形から振幅・トリガー基準の時刻・Δtを表示 |
 | Spectrum上でクリック／ドラッグ | 選択中のA／Bの周波数を独立に固定。選択CHの最寄りビンの振幅／PSD／ESD、Δf・ΔLを表示。最後に置いた周波数をSpectrogramと共有し、解析窓・平均の寄与区間はホバーで確認 |
 | Spectrogram上でクリック／カーソル線をドラッグ | Holdへ入り実フレームを時間A／Bへ固定。背景ドラッグは周波数・時間パン。Liveで履歴と時間選択を解放 |
@@ -127,12 +129,12 @@ Windowsの標準構成はRustのMSVCツールチェーンとVisual Studio C++ Bu
 | Vertical / Fit amplitude | 選択中CHの生サンプルPeakに合わせ、オフセットを0へ戻す |
 | Scope下部 CH1〜CH4 / チェックボックス | CH選択と波形の表示ON/OFFを独立に操作。各CHのFS/div、入力なしを表示 |
 | Vertical / Input source / Centre offset / Zero offset | 選択CHの入力を1〜16chから割当、波形中央のraw FS値を設定／0へ戻す |
-| Horizontal / Position / Centre horizontal | 波形を左右へ移動／位置を初期化。生サンプルと測定区間は変更しない |
+| Horizontal / Position / Reset time position | 波形を左右へ移動／位置を初期化。生サンプルと測定区間は変更しない |
 | Trigger / Edge / Source / Level / Zero level | フリーラン／立ち上がり／立ち下がり、ソースと閾値の設定／閾値を0へ戻す |
-| Acquisition / Arm single / Autoset | Auto／Normal／Single、一回取得の再待機、周期信号の時間軸・振幅・トリガー自動調整 |
+| Acquisition / Start single capture / Autoset | Auto／Normal／Single、入力を開始して一回取得を待つ、周期信号の時間軸・振幅・トリガー自動調整 |
 | ダブルクリック | 時間軸と振幅を初期値へ戻す |
 | 計器一覧／Instrumentメニュー | 選んだ計器の単独表示。再選択で解除しない |
-| Pair with… / Measurement console / Add instrument… | 2計器を並べる／保持構成へ戻る／計器を追加する |
+| Split view with… / Multi-instrument view / Add instrument… | 2計器を並べる／保持構成へ戻る／計器を追加する |
 | Open single / Remove from view | 単独表示へ移る／表示だけを外す。解析・出力は継続 |
 | Details / Measurement | 選択中の詳細の表示、狭幅の測定／詳細切り替え |
 | View | 左右／上下／2×2／タブ、詳細欄、分割比率、表示倍率 |
@@ -190,7 +192,7 @@ ScopeではRMS・Peak・P-Pと時間カーソルの数値に校正を適用し�
 
 ### Generatorの出力と内部ループバック
 
-計器一覧で **Generator** を選び、**Pair with… / Scope**（またはSpectrum／Lock-in）で並べます。**+ Add signal**で最大16枚まで追加し、各カードの**Duplicate／Remove／Up／Down**で複製・削除・並べ替えます。GEN IDとOUTは独立し、他カードの削除・並べ替えでも出力先を保ちます。複製は新しいID・OFF・空きOUT（なければ未割当）になります。カードの**Waveform**でSine／Square／Triangle／Noise、**OUT**で出力先、**ON**で出力対象を選びます。使用中のOUTは選べません。**Audio I/O → Input / output**の共通欄でFsを選び、周波数・振幅・位相を直接入力してEnterまたはフォーカス移動で確定します。入力途中の値は適用せず、Escで取り消します。詳細欄の**EDIT STEP**で刻みを選び、＋／−／上下キーで値を調整できます。周波数は0.1 Hz以上・出力Fsの45%未満、振幅は−120〜0 dBFSのpeak基準、位相は±180°です。カード構成・波形・seed・出力CHは出力停止中に変更し、二重割当はOFFのカードも含め拒否します。
+計器一覧で **Generator** を選び、**Split view with… / Scope**（またはSpectrum／Lock-in）で並べます。**+ Add signal**で最大16枚まで追加し、各カードの**Duplicate／Remove／Up／Down**で複製・削除・並べ替えます。GEN IDとOUTは独立し、他カードの削除・並べ替えでも出力先を保ちます。複製は新しいID・OFF・空きOUT（なければ未割当）になります。カードの**Waveform**でSine／Square／Triangle／Noise、**OUT**で出力先、**ON**で出力対象を選びます。使用中のOUTは選べません。**Audio I/O → Input / output**の共通欄でFsを選び、周波数・振幅・位相を直接入力してEnterまたはフォーカス移動で確定します。入力途中の値は適用せず、Escで取り消します。詳細欄の**EDIT STEP**で刻みを選び、＋／−／上下キーで値を調整できます。周波数は0.1 Hz以上・出力Fsの45%未満、振幅は−120〜0 dBFSのpeak基準、位相は±180°です。カード構成・波形・seed・出力CHは出力停止中に変更し、二重割当はOFFのカードも含め拒否します。
 
 **Start output**で選択した信号を生成します。**Audio I/O → Input / output → Generator loopback**で共通入力を選び、上部の**Start input**で実際のf64出力サンプルを取得します。両方を個別に開始します。周期波形のプレビューは設定の2周期、Noiseはseedからの設定スケッチで、振幅に合わせた縦倍率とFS上限を表示します。実波形はScopeで確認してください。中央は従来の3行編集と小さなプレビューを保ち、十分な幅ではカードを2列に並べ、狭幅ではGEN ID・OUT・ON／OFFを残すカード選択へ切り替えます。GEN見出しでカードを選び、刻み幅・Noiseのseed・適用詳細は右の詳細欄で操作します。**Hide signal controls / Show signal controls**で編集欄とプレビューを開閉し、閉じた状態でも全カードの設定概要を確認できます。上部の出力停止操作は常設です。
 
@@ -212,7 +214,7 @@ macOSの実入出力は、コールバックの時間的余裕を確保するた
 
 通常ビルドの **Audio I/O → Input / output → Software Loopback** を選び、Startを押すと2chの同期f64入力を生成します。CH 1はREF、CH 2は既知ゲイン・位相・整数サンプル遅延・DC・雑音を適用した正弦波DUTです。雑音は指定RMSの独立な一様乱数です。周波数・振幅・REFの有効／無効と応答周波数ずれも設定でき、条件は次回Startに適用します。公称Fsは44.1／48／96／192 kHzです。整数遅延は正弦波を解析的に遅らせ、開始直後の未到達応答は0とします。スピーカーや物理出力は使いません。
 
-計器一覧の **Lock-in** で単独表示します。**Pair with… / Scope** で波形と並べます。表示を外しても有効な解析は継続します。
+計器一覧の **Lock-in** で単独表示します。**Split view with… / Scope** で波形と並べます。表示を外しても有効な解析は継続します。
 
 本体の **Start analysis / Stop analysis** とSIG／REF CHを使い、詳細欄でREF周波数ヒント、時定数、積分サンプル数、REFのAC RMS閾値を指定します。入力停止中の有効な解析は **WAITING FOR INPUT** と表示し、入力は **Start input** で明示的に開始します。取得中の変更は平均をリセットして再整定し、停止中の変更は次回Start用です。保持中は取得時の条件を表示し、変更があると **Next Start settings changed** を併記します。REFは常に入力サンプルを使用します。Trackingはヒントの±10%に限定し、REFのAC RMS不足・単一正弦波への適合率98%未満・一窓3周期未満は無効になります。既定のREF閾値は0.001 FS RMSです。同じCHをREF／応答へ選ぶ自己検査も可能です。
 
@@ -226,7 +228,7 @@ macOSの実入出力は、コールバックの時間的余裕を確保するた
 
 Scopeを選択し、詳細欄の **ACQUISITION** でモードを選びます。Autoは従来の最新区間観察です。Normalは指定エッジの交差を取得サンプルごとに検出し、前20%・後80%の完全な整数区間だけを更新します。トリガー待機中は最後の捕捉値を明示して保持し、まだ捕捉していないときは波形を代用しません。Normal／SingleでFree runを選ぶと次回の取得にはRising edgeを設定します。
 
-Singleは最初の有効区間を捕捉して共通入力を自動停止します。**Arm single** またはStartで新しい世代を開始し、一回取得を待ち直せます。Scopeの区間は専用バッファで保持するため、UI更新の合間の単発現象も捕捉し、共有履歴の周回後も失いません。Spectrumは独立しているため、Singleが短く終了した場合はFFT窓が未充填になることがあります。
+Singleは最初の有効区間を捕捉して共通入力を自動停止します。**Start single capture** またはStartで新しい世代を開始し、一回取得を待ち直せます。Scopeの区間は専用バッファで保持するため、UI更新の合間の単発現象も捕捉し、共有履歴の周回後も失いません。Spectrumは独立しているため、Singleが短く終了した場合はFFT窓が未充填になることがあります。
 
 **Autoset** は選択したトリガーCHの直近最大200 msの生サンプルから安定した周期・振幅を評価し、約3周期の観察幅、トリガー入力を割り当てたCHのFS振幅軸、立ち上がり・中央レベルを設定します。DC・無信号・低振幅・クリップ・不安定な周期・欠落・存在しないCHでは設定を変えず理由を表示します。Normal／Singleの停止中は捕捉条件を固定し、時間軸・トリガーの変更を次回Startへ適用します。
 
@@ -284,13 +286,13 @@ XYの残像保持は未実装です。保持範囲内の実サンプル組を使
 
 Scopeで置いた時間カーソルA/Bは、プロット内のX位置を保持します。入力の更新・循環履歴の折り返し・時間幅の変更・画面サイズの変更でも同じ横位置に残り、各スイープの最寄り実サンプルから振幅・トリガー基準の時刻・Δtを読み直します。時間幅を変更すると時刻とΔtも変わります。Scopeを非表示にしても現在のスイープに対応するサンプルを他の測定器と共有します。取得不足でスイープがない間はカーソル線を残して待機を表示し、カーソル位置が欠落しているときは生サンプルが利用できないことを表示します。古いサンプルは代用しません。
 
-SpectrogramをクリックするとHoldへ入り、時間カーソルA／Bがその時点の実フレームへ固定されます。ダブルクリックと区別してから選択するため、単クリックの反映には短い判定待ちがあります。カーソルは整数サンプル・元のf64スペクトルと窓区間（終端は含まない）を保持し、履歴周回・表示幅の変更・パンで別のフレームへ置き換わりません。画面外でも選択と読み値を保持し、線は表示範囲内だけに描画します。欠落・未取得では理由を表示し、隣のFFT窓の値を代用しません。Live復帰・Clear・入力再開で時間選択を解除します。Spectrogramから **Pair with… / Spectrum** を選ぶとHoldへ入り、時間A／Bの最大2本を元のf64値で重ねます。取得時刻、窓区間、CH、Fs、窓・精度、Δtを表示し、**Time A／Time B** でピーク・周波数カーソルの対象を選びます。時間選択と **Frequency A／Frequency B** は独立し、**Clear frequency** は時間選択を消しません。未選択・欠落・無効窓には理由を表示します。
+SpectrogramをクリックするとHoldへ入り、時間カーソルA／Bがその時点の実フレームへ固定されます。ダブルクリックと区別してから選択するため、単クリックの反映には短い判定待ちがあります。カーソルは整数サンプル・元のf64スペクトルと窓区間（終端は含まない）を保持し、履歴周回・表示幅の変更・パンで別のフレームへ置き換わりません。画面外でも選択と読み値を保持し、線は表示範囲内だけに描画します。欠落・未取得では理由を表示し、隣のFFT窓の値を代用しません。Live復帰・Clear cursors・入力再開で時間選択を解除します。Spectrogramから **Split view with… / Spectrum** を選ぶとHoldへ入り、時間A／Bの最大2本を元のf64値で重ねます。取得時刻、窓区間、CH、Fs、窓・精度、Δtを表示し、**Time A／Time B** でピーク・周波数カーソルの対象を選びます。時間選択と **Place frequency cursor: A / B** は独立し、**Clear frequency** は時間選択を消しません。未選択・欠落・無効窓には理由を表示します。
 
 XYの**Free**ではクリックした位置のX・Y振幅を保持し、軌跡の更新に追従しません。A/BのX・Y値、B−AのΔX・ΔYを表示します。振幅スケールを変えると同じFS値に対応する画面位置へ移動し、範囲外の点はその旨を表示します。自由配置の点は時間サンプルを選びません。
 
 **Trace Snap**では最も近い実サンプル組を選び、XYスイープのトリガー位置（観察窓の20%）からの整数サンプル差を保持します。重なる点は最新サンプルを選びます。各更新で同じトリガー基準の時間差にある割当先X/YのCHを読み直すため、周期信号をトリガーできている間は位置が安定します。実際の交差をオレンジの`T`で示し、`Triggered`を表示します。交差が見つからない場合は最新区間を使う`Auto (no crossing)`、フリーランの場合は`Free run (moving reference)`となり、マーカーが動く場合があります。Stopで取得を止めるとその区間と読み値を保持します。観察窓を短くして選択時刻が範囲外になった場合は実サンプルを代用しません。
 
-FreeとTrace SnapはXYの右側詳細欄の **Cursors**（狭幅では **Details / Cursors**）で切り替えられます。自由配置の点と共通時間カーソルは別に保持し、切り替えて戻すとそれぞれの選択を再利用します。Clear、入力再開、ソース変更では両方を解除します。ScopeとTrace Snapの実振幅は同じ共通履歴から読みます。XYのトリガー区間は独自の観察時間幅で選ぶため、Scopeの区間と同じ交差になるとは限りません。Scope・Spectrogram・Trace Snapは現在解決した整数サンプルを他の測定器と共有し、範囲外では理由を表示します。STFTの履歴だけが残って生サンプルがない場合は、Scope／Trace Snapの値を読み出せません。
+FreeとTrace SnapはXYの右側詳細欄の **Cursors**（狭幅では **Details / Cursors**）で切り替えられます。自由配置の点と共通時間カーソルは別に保持し、切り替えて戻すとそれぞれの選択を再利用します。Clear cursors、入力再開、ソース変更では両方を解除します。ScopeとTrace Snapの実振幅は同じ共通履歴から読みます。XYのトリガー区間は独自の観察時間幅で選ぶため、Scopeの区間と同じ交差になるとは限りません。Scope・Spectrogram・Trace Snapは現在解決した整数サンプルを他の測定器と共有し、範囲外では理由を表示します。STFTの履歴だけが残って生サンプルがない場合は、Scope／Trace Snapの値を読み出せません。
 
 周波数カーソルはSpectrumとSpectrogramで共有します。各測定器が自身のFFTサイズ・Fsから最寄りビンを選ぶため、設定が異なる場合はビン周波数も異なります。Spectrumは表示中の電力平均と最新の寄与窓を読み、任意の時間カーソル位置でFFTを再実行しません。カーソルが最新窓の内側か外側かはSpectrum上の説明で確認できます。Spectrogramは時間カーソルに対応する行を読み、時間カーソルがない場合は最新行を読みます。
 
@@ -342,7 +344,7 @@ STFT行（f64線形値） → 履歴収集ワーカー → 不変フレーム公
 
 ## 同期2chの比較
 
-計器一覧の **Synchronous 2ch** で単独表示します。**Pair with… / Scope** で波形と並べます。本体で異なるREF／SIG CHを指定し、**Start analysis** と **Start input** をそれぞれ開始します。入力は同じデバイスの同期フレームで、外部信号でも測定できます。既定N=4,096、平均8窓では48 kHzで初回に約0.683秒必要です。
+計器一覧の **Synchronous 2ch** で単独表示します。**Split view with… / Scope** で波形と並べます。本体で異なるREF／SIG CHを指定し、**Start analysis** と **Start input** をそれぞれ開始します。入力は同じデバイスの同期フレームで、外部信号でも測定できます。既定N=4,096、平均8窓では48 kHzで初回に約0.683秒必要です。
 
 ゲイン・進み位相・コヒーレンスの曲線を表示し、**Read at** またはグラフのクリックで最寄りビンを選びます。主要数値を独立した読出しに表示し、選択した実ビンの周波数と有効transferビン数を示します。**Display range**は**Around reading**（既定）／**Valid band**／**Full / Nyquist**／**Custom**、軸は**Linear Hz / Log Hz**を選べます。Log HzはDCを除きます。範囲は表示だけを変更し、解析条件・位相傾斜の帯域・保存結果を変更しません。欠損ビンや位相の折返しを曲線でつなぎません。生REFのPSD下限、平均窓数、窓、コヒーレンス下限、位相傾斜の帯域は選択中の詳細欄で設定します。曲線のゲインは20 log10(|H1| / 1ゲイン単位)で−60〜+20 dBの表示範囲に制限しますが、数値・保存値は制限しません。低REF・低コヒーレンス・未充填・欠落では「—」を表示し、ゼロで置き換えません。正の位相はSIGの進み、正の遅延はSIGの遅れです。
 
