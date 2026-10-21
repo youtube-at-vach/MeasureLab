@@ -743,6 +743,9 @@ impl ScopeApp {
             }
             std::thread::sleep(Duration::from_millis(5));
         }
+        if std::env::var_os("MEASURELAB_UI_SMOKE_SCOPE_GENERATOR_VIEWS").is_some() {
+            self.check_generator_scope_views()?;
+        }
         // No UI result/feedback consumption for a full second. Both execution
         // and the common input/analysis workers must continue independently.
         let count = self

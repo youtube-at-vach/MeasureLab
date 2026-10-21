@@ -231,7 +231,7 @@ impl ScopeApp {
                     ui.add(egui::DragValue::new(&mut self.comparison_frequency_hz).range(0.0..=r.nominal_sample_rate_hz as f64*0.5).speed(r.bin_width_hz()).max_decimals(3).suffix(" Hz"));
                     if let Some((k,b)) = r.bin_at(self.comparison_frequency_hz) {
                         ui.label(RichText::new(format!("Bin {k} · {:.3} Hz · {:?}", k as f64*r.bin_width_hz(), b.state)).small().color(if b.state == comparison::BinState::Valid { MUTED } else { YELLOW }));
-                    } else { ui.label(RichText::new("Waiting for a complete average").small().color(MUTED)); }
+                    } else { ui.label(RichText::new(self.comparison_wait_help(&r)).small().color(MUTED)); }
                 });
                 let reading = r.bin_at(self.comparison_frequency_hz).map(|(_,b)| b);
                 let ref_unit = self.calibration.captured.unit(s.reference_channel);
@@ -262,6 +262,30 @@ impl ScopeApp {
                     for ch in [s.reference_channel,s.response_channel] { if let Some(c)=self.calibration.captured.get(ch) {ui.label(format!("CH {}: {} / revision {} · {} {} / FS",ch+1,c.id(),c.revision(),c.gain(),c.unit()));} }
                 });
             });
+    }
+
+    fn comparison_wait_help(&self, result: &comparison::Result) -> &'static str {
+        match result.state {
+            comparison::State::Disabled => "Select REF / SIG channels, then press Start analysis.",
+            comparison::State::Unavailable => {
+                "Check REF / SIG channels, FFT and nominal Fs settings."
+            }
+            comparison::State::Missing if self.running() => {
+                "Input gap · waiting for a new complete average."
+            }
+            comparison::State::Missing => "Input gap · press Start input to acquire again.",
+            comparison::State::NonFinite => "Invalid input · no valid comparison is available.",
+            comparison::State::Valid => "Selected frequency is outside the captured result.",
+            comparison::State::Filling | comparison::State::Averaging => {
+                if self.pending_stop.is_some() {
+                    "Finishing analysis before holding the result."
+                } else if !self.running() {
+                    "Press Start input to acquire a complete average."
+                } else {
+                    "Waiting for a complete average."
+                }
+            }
+        }
     }
 }
 fn comparison_controls(ui: &mut egui::Ui, s: &mut comparison::Settings, _channels: u16) {

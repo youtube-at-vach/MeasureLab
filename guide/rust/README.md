@@ -83,6 +83,8 @@ Scopeの見出しは単独表示で一つにまとめ、複数計器表示では
 
 上端の **T** は時刻0 ms、右端の **T** はトリガーソースCHのraw FSレベルを示します。右端の位置はソースCHの縦軸設定に従い、選択CHの振幅軸と異なる場合があります。未取得やトリガー未成立では **T markers: settings only**、トリガー成立済みの区間では **T markers: captured** と表示します。マーカーへのホバー、Scope settings、Helpで意味を確認できます。
 
+ポインターが波形内にある間だけ、読み取り位置を示す薄い縦ガイド線を表示します。プロット外へ移動すると消え、配置したA／Bカーソルと取得データは保持します。Tマーカーは短い印で、縦ガイド線やA／Bカーソルとは別です。
+
 XYの詳細欄も枠で区切り、Observationで観察時間幅とスケールのリセット、X Axis／Y Axisでそれぞれの入力CHと振幅範囲、CursorsでFree／Trace Snapを設定します。Trace SnapではScopeと共通のTriggerも同じ詳細欄で編集できます。狭幅では **Details** で開きます。**Place cursor: A / B**・**Clear cursors** と読み値はグラフ側に残ります。
 
 **Place cursor: A / B** は次にクリック／ドラッグで配置する対象です。A／Bを選ぶだけでは配置せず、**Placed: none / A / B / A, B** が配置済みの対象を示します。Scope・Spectrogram・XYの **Clear cursors** は共通の時間・周波数・XY自由配置とSpectrogramフレーム選択を解除します。Spectrumの **Clear cursors** と履歴Spectrumの **Clear frequency** は周波数だけを解除し、時間・フレーム選択・XY自由配置を保ちます。取得済みのデータは消去しません。

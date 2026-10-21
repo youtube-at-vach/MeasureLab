@@ -419,7 +419,7 @@ fn state_label(state: lockin::State) -> (&'static str, Color32) {
 fn state_help(state: lockin::State) -> &'static str {
     match state {
         lockin::State::Disabled => {
-            "Enable Demodulate, select SIG / REF channels, then Start input."
+            "Select SIG / REF channels, press Start analysis, then Start input if input is stopped."
         }
         lockin::State::Unavailable => {
             "Check SIG / REF channel availability and frequency against nominal Fs."

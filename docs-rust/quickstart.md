@@ -22,7 +22,7 @@ macOS／Linuxのローカルセットアップ環境では`./scripts/cargo.sh ru
 
 1. **Audio I/O → Input / output** で **Software Loopback** を選びます。これは通常ビルドで使え、物理出力は行いません。
 2. **Back to instruments** で戻り、**Scope** の **Split view with… / Spectrum** で並べ、**Start input** を押します。
-3. 区画をクリックして詳細欄の対象を選びます。CH・時間軸・振幅・Autoset・カーソルは計器本体、FFT・窓・平均は選択中の詳細欄で調整します。最初は既定の8,192点を使ってください。
+3. 区画をクリックして詳細欄の対象を選びます。CH選択・表示ON/OFF・カーソルは計器本体、時間軸・振幅・Autosetは **Scope settings**、FFT・窓・平均はSpectrumの詳細欄で調整します。最初は既定の8,192点を使ってください。
 4. **Stop input** で結果を保持し、カーソルやRMS、ピーク、PSDの帯域値を読みます。
 5. **File** から設定と保持結果を保存します。JSONは測定条件を含む正本、CSVは数値の再利用、PNGは表示の共有に使います。
 6. 再起動後、停止中に設定を復元し、参照JSONを読み込んで再測定結果と比較できます。設定復元だけで取得は始まりません。
@@ -35,7 +35,9 @@ macOS／Linuxのローカルセットアップ環境では`./scripts/cargo.sh ru
 
 通常起動は入力・出力停止のScope単独表示です。計器一覧を選ぶと常に単独表示し、**Multi-instrument view / Add instrument…** で最大7計器を保持します。左右・上下・2×2・タブを選べ、狭幅では保存した配置を変えずタブへ退避します。**Open single** で単独表示へ戻ってもコンソール構成は残ります。**Remove from view** は解析・出力を停止しません。右の詳細欄は選択区画へ追従し、狭幅では **Measurement / Details** で切り替えます。**Analysis status…** で非表示の解析を確認・停止し、**Stop output** はすべての画面にあり、完全停止時だけ無効です。開始待ち・設定適用待ち・停止処理中やエラー時も停止要求を送れます。LIVE／HELD／WAITING／NOT ACQUIREDは取得状態、有効性は別表示です。設定は版9で旧版1〜8を読み、復元後の入出力は停止状態です。
 
-Scopeは波形直下のCH1〜CH4バーでCHを選び、チェックボックスで波形の表示を個別に切り替えます。選択と表示ON/OFFは独立し、取得済みの2ch入力では範囲外のCH3／CH4を **Out of range**（狭幅では **—**）で示します。未取得の理由は中央の案内にまとめます。右の **Acquisition / Horizontal / Trigger / Channel** で取得・時間軸・トリガー・選択CHのFSレンジとオフセットを編集します。時間軸は波形付近に常時表示し、波形上のホイールで変更できます。Shift＋ホイールは選択CHの縦軸です。各CHの入力割当は **Channel / Input source** で1〜16chから選べます。旧設定は2本の割当と倍率を保持し、追加CH3／CH4を表示OFFにして読み込みます。
+Scopeは波形直下のCH1〜CH4バーでCHを選び、チェックボックスで波形の表示を個別に切り替えます。選択と表示ON/OFFは独立し、取得済みの2ch入力では範囲外のCH3／CH4を **Out of range**（狭幅では **—**）で示します。未取得の理由は中央の案内にまとめます。詳細欄の **Scope settings / Acquisition / Trigger / Horizontal / Vertical** で取得・トリガー・時間軸・選択CHのFSレンジとオフセットを編集します。停止中の **Start single capture** は入力を開始して1回の捕捉を待ち、完了後は自動停止して波形を保持します。時間軸は波形付近に常時表示し、波形上のホイールで変更できます。Shift＋ホイールは選択CHの縦軸です。各CHの入力割当は **Vertical / Input source** で1〜16chから選べます。旧設定は2本の割当と倍率を保持し、追加CH3／CH4を表示OFFにして読み込みます。
+
+**Amplitude [FS]** は選択CHのraw FS、**Time [ms]** はトリガー基準の時間です。**FS** はフルスケール、**Fs** は公称サンプルレート、**div** はグリッドの1目盛りを表します。RMS／P-Pは取得時の校正と単位を使い、波形軸・トリガーレベルとは区別します。上端の **T** は0 ms、右端の **T** はソースCHのレベルで、未成立時は **T markers: settings only**、捕捉済みは **T markers: captured** と示します。薄い縦ガイド線はポインターが波形内にある間だけ表示し、外へ動かしても配置済みA／Bカーソルと取得データは保持します。
 
 Spectrumは単一グラフに最大4chを重ねます。下部のCHバーで選択と表示ON/OFFを別々に操作します。右詳細欄はFFT→Frequency / Scale→Measurement→Averagingの順です。最上部の**Amplitude / PSD / Transient (ESD)**で測定量を切り替え、共通のFFT条件・表示軸を設定します。細かな周波数範囲は**Custom frequency range**、手動レベルは**Manual**を選ぶと表示します。既定はCH1のみ表示です。
 
