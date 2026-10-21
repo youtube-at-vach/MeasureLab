@@ -105,10 +105,13 @@ impl ScopeApp {
                 self.dirty |= self.scope_channels != before;
             });
             let channel = self.scope_view_channels().0[index];
-            if !channel::available(channel, self.scope_channel_count() as usize) {
+            if self
+                .scope_input_channels()
+                .is_some_and(|count| !channel::available(channel, count as usize))
+            {
                 ui.label(
                     RichText::new(format!(
-                        "{} · No input (unavailable)",
+                        "{} · outside input channel range",
                         channel::name(channel)
                     ))
                     .small()

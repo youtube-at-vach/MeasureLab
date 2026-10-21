@@ -332,6 +332,7 @@ pub struct ScopeApp {
     restored_input: Option<settings::Input>,
     held_input: Option<export::Input>,
     input_failed: bool,
+    input_error: Option<String>,
     export_worker: export::Worker,
     export_path: String,
     export_pending: bool,
@@ -615,6 +616,7 @@ impl ScopeApp {
             restored_input: None,
             held_input: None,
             input_failed: false,
+            input_error: None,
             export_worker: export::Worker::default(),
             export_path: settings::default_path()
                 .map(|path| {
@@ -903,6 +905,7 @@ impl ScopeApp {
                 || std::env::var_os("MEASURELAB_UI_SMOKE_SPECTRUM4").is_some()
             {
                 app.channels = 4;
+                app.held_input.as_mut().unwrap().channels = 4;
                 app.history = History::with_channels(96000, 4);
                 app.scope_channels = ScopeChannels::default();
                 app.scope_selected = 2;
@@ -1187,6 +1190,9 @@ impl ScopeApp {
             if std::env::var_os("MEASURELAB_UI_SMOKE_INTERACTIONS").is_some() {
                 app.check_redesign_interactions()?;
                 app.check_common_io_interactions()?;
+                if std::env::var_os("MEASURELAB_UI_SMOKE_IDLE").is_some() {
+                    app.check_input_guidance()?;
+                }
             }
             app.qa_previous_presentation = None;
         }
@@ -1708,9 +1714,10 @@ impl ScopeApp {
             "choose one lifecycle check"
         );
         assert!(
-            self.error.is_none(),
-            "input lifecycle error: {:?}",
-            self.error
+            self.error.is_none() && self.input_error.is_none(),
+            "input lifecycle error: {:?} / {:?}",
+            self.error,
+            self.input_error
         );
         let elapsed = self.lifecycle_changed.elapsed().as_secs_f64();
         assert!(
@@ -1916,7 +1923,13 @@ impl ScopeApp {
         self.capture.is_some() || self.demo_running || self.software_running
     }
 
+    fn fail_input(&mut self, error: String) {
+        self.input_error = Some(error);
+        self.stop();
+    }
+
     fn begin_observation(&mut self) {
+        self.error = None;
         self.generator_output = None;
         self.external_output = None;
         self.cursors.new_epoch();
@@ -1933,6 +1946,7 @@ impl ScopeApp {
             .result()
             .clone();
         self.input_failed = false;
+        self.input_error = None;
         self.core_scope.channels = self.scope_channels;
         self.xy_channels = self.xy_settings.channels;
         self.history.clear_at(0);
@@ -2038,8 +2052,7 @@ impl ScopeApp {
         self.dirty |= samples_changed;
         self.xy_dirty |= samples_changed;
         if snapshot.failed && self.running() {
-            self.error = Some(self.input_failure_message().into());
-            self.stop();
+            self.fail_input(self.input_failure_message().into());
         }
     }
 
@@ -2144,8 +2157,7 @@ impl ScopeApp {
                 .as_ref()
                 .is_some_and(|core| core.metrics.failed.load(Ordering::Acquire))
         {
-            self.error = Some(self.input_failure_message().into());
-            self.stop();
+            self.fail_input(self.input_failure_message().into());
         }
     }
 
@@ -2608,22 +2620,23 @@ impl ScopeApp {
         }
         if self.source == Source::Generator {
             if self.generator.target != output::Target::Internal {
-                self.error = Some("Select an audio input to observe Audio device output".into());
+                self.input_error =
+                    Some("Select an audio input to observe Audio device output".into());
                 return;
             }
             let rate = self.generator.status.nominal_sample_rate;
             if self.generator.pending || rate != self.generator.rate {
-                self.error = Some("Wait for the Generator settings to be applied".into());
+                self.input_error = Some("Wait for the Generator settings to be applied".into());
                 return;
             }
             if let Err(e) = self.lockin_settings.validate(rate) {
-                self.error = Some(e);
+                self.input_error = Some(e);
                 return;
             }
             let capture = match self.generator.worker.capture() {
                 Ok(c) => c,
                 Err(e) => {
-                    self.error = Some(e);
+                    self.input_error = Some(e);
                     return;
                 }
             };
@@ -2638,7 +2651,7 @@ impl ScopeApp {
                 channels: 2,
             });
             self.history = History::with_channels((rate as usize * 2).max(32768), 2);
-            self.error = None;
+            self.input_error = None;
             self.dropped = 0;
             self.dirty = true;
             self.xy_dirty = true;
@@ -2654,7 +2667,7 @@ impl ScopeApp {
                 self.core_config(),
             ) {
                 self.stop();
-                self.error = Some(error);
+                self.input_error = Some(error);
             }
             return;
         }
@@ -2665,7 +2678,7 @@ impl ScopeApp {
                 .validate(rate)
                 .and_then(|()| self.lockin_settings.validate(rate))
             {
-                self.error = Some(e);
+                self.input_error = Some(e);
                 return;
             }
             self.begin_observation();
@@ -2685,7 +2698,7 @@ impl ScopeApp {
             self.xy_dirty = true;
             self.dirty = true;
             self.dropped = 0;
-            self.error = None;
+            self.input_error = None;
             self.software_running = true;
             self.reset_analysis();
             self.reset_stft();
@@ -2696,7 +2709,7 @@ impl ScopeApp {
                 self.core_config(),
             ) {
                 self.stop();
-                self.error = Some(error);
+                self.input_error = Some(error);
             }
             return;
         }
@@ -2722,7 +2735,7 @@ impl ScopeApp {
             self.xy_dirty = true;
             self.demo_running = true;
             self.dropped = 0;
-            self.error = None;
+            self.input_error = None;
             self.dirty = true;
             self.reset_analysis();
             self.reset_stft();
@@ -2740,17 +2753,17 @@ impl ScopeApp {
             match input.resolve(&self.devices) {
                 Ok(index) if index == self.selected => {}
                 Ok(_) => {
-                    self.error =
+                    self.input_error =
                         Some("Restored input selection changed; restore settings again".into());
                     return;
                 }
                 Err(error) => {
-                    self.error = Some(error);
+                    self.input_error = Some(error);
                     return;
                 }
             }
         }
-        self.error = None;
+        self.input_error = None;
         self.capture = None;
         self.begin_observation();
         self.busy = true;
@@ -2813,14 +2826,14 @@ impl ScopeApp {
                             if let Some(fixture) = &self.known_output
                                 && let Err(error) = fixture.start()
                             {
-                                self.error = Some(error);
+                                self.input_error = Some(error);
                                 continue;
                             }
                             if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_DEVICE").is_none() {
                                 self.start();
                             }
                         } else {
-                            self.error = Some(format!("QA input device not found: {name}"));
+                            self.input_error = Some(format!("QA input device not found: {name}"));
                         }
                     }
                 }
@@ -2835,7 +2848,7 @@ impl ScopeApp {
                     }) {
                         self.audio.send(Command::Stop);
                         self.busy = true;
-                        self.error = Some("Input conditions changed since restoration; refresh devices and restore again".into());
+                        self.input_error = Some("Input conditions changed since restoration; refresh devices and restore again".into());
                         continue;
                     }
                     self.xy_dirty = true;
@@ -2889,8 +2902,7 @@ impl ScopeApp {
                 }
                 Event::Stopped => {}
                 Event::Error(error) => {
-                    self.stop();
-                    self.error = Some(error);
+                    self.fail_input(error);
                 }
             }
         }
@@ -2983,6 +2995,7 @@ impl ScopeApp {
         }
         self.dirty = true;
         self.error = None;
+        self.input_error = None;
         self.reset_analysis();
         self.reset_stft();
     }
@@ -3021,7 +3034,10 @@ impl ScopeApp {
             self.calibration.select();
         }
         let channel = self.calibration.channel;
-        if !channel::available(channel, self.channels as usize) {
+        if self
+            .scope_input_channels()
+            .is_some_and(|count| !channel::available(channel, count as usize))
+        {
             ui.label(
                 RichText::new("Channel unavailable in the current input")
                     .small()
@@ -4612,7 +4628,9 @@ impl ScopeApp {
                     self.cursor_controls(ui);
                 });
                 let trigger = if self.core.is_some() && !self.running() { self.core_scope.trigger } else { self.trigger };
-                let (trigger_text, trigger_color) = if trigger.edge != Edge::Free && !channel::available(trigger.channel, self.scope_channel_count() as usize) {
+                let (trigger_text, trigger_color) = if self.scope_notice().is_some() {
+                    ("Trigger settings", MUTED)
+                } else if trigger.edge != Edge::Free && self.scope_input_channels().is_some_and(|count| !channel::available(trigger.channel, count as usize)) {
                     ("Trigger source unavailable", TRIGGER)
                 } else if self.core_scope.mode != acquisition::Mode::Auto {
                     match self.acquisition_state {
@@ -4627,7 +4645,7 @@ impl ScopeApp {
                         .on_hover_text("Wheel: time scale · Shift+wheel: selected channel scale · Double-click: reset view");
                     if self.scope_missing > 0 { ui.colored_label(YELLOW, format!("Partial · {} missing samples", self.scope_missing)); }
                 });
-                if !self.running() && (self.core_scope.mode != self.acquisition_mode || self.scope_channels != self.scope_view_channels() || self.calibration.pending != self.calibration.captured) {
+                if !self.scope_range.is_empty() && !self.running() && (self.core_scope.mode != self.acquisition_mode || self.scope_channels != self.scope_view_channels() || self.calibration.pending != self.calibration.captured) {
                     ui.label(RichText::new("HELD conditions retained · queued measurement settings apply on next Start").small().color(YELLOW));
                 }
                 ui.label(RichText::new(format!("CH{} · {}", self.scope_selected + 1, self.scope_readout(self.scope_selected))).monospace().size(13.0).color(monitor_controls::scope_color(self.scope_selected)))
@@ -5224,19 +5242,6 @@ impl ScopeApp {
                 ));
             }
         }
-        if self.segments.is_empty() && self.history.len() < self.scope_sample_count() {
-            painter.text(
-                rect.center(),
-                egui::Align2::CENTER_CENTER,
-                if self.running() {
-                    "Waiting for audio samples…"
-                } else {
-                    "Choose an audio input and press Start input"
-                },
-                egui::FontId::proportional(17.0),
-                MUTED,
-            );
-        }
         if let Some(position) = response.hover_pos().filter(|p| rect.contains(*p)) {
             painter.line_segment(
                 [
@@ -5258,6 +5263,7 @@ impl ScopeApp {
             }
         }
         self.scope_cursors(ui, &response, rect);
+        self.scope_notice_ui(ui, rect.shrink(8.0));
         ui.horizontal(|ui| {
             ui.label(RichText::new("FS").small().color(MUTED));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -5372,7 +5378,12 @@ impl eframe::App for ScopeApp {
                     && !self.screenshot_writer.pending()
                     && (!self.screenshot_requested || self.screenshot_received)
                 {
-                    assert!(self.error.is_none(), "UI QA input failed: {:?}", self.error);
+                    assert!(
+                        self.error.is_none() && self.input_error.is_none(),
+                        "UI QA input failed: {:?} / {:?}",
+                        self.error,
+                        self.input_error
+                    );
                     if std::env::var_os("MEASURELAB_PROFILE_LIFECYCLE").is_some() {
                         assert_eq!(self.lifecycle_stage, 8, "UI lifecycle did not finish");
                     }
@@ -5834,25 +5845,7 @@ impl eframe::App for ScopeApp {
                 }
             });
             ui.horizontal_wrapped(|ui| {
-                ui.label(
-                    RichText::new(if self.channels == 0 {
-                        "Fs not acquired · no input samples".into()
-                    } else {
-                        format!(
-                            "{} · {:.1} kSa/s nominal · {} ch · {}",
-                            if self.running() {
-                                "LIVE input"
-                            } else {
-                                "HELD input"
-                            },
-                            self.sample_rate as f32 / 1000.0,
-                            self.channels,
-                            self.format
-                        )
-                    })
-                    .small()
-                    .color(MUTED),
-                );
+                ui.label(RichText::new(self.input_status_text()).small().color(MUTED));
                 ui.separator();
                 ui.label(
                     RichText::new(format!("Dropped {}", self.dropped))

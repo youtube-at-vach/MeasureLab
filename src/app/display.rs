@@ -1,6 +1,217 @@
 //! Display-only formatting and acquisition state; never modifies captured values.
 use super::*;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum ScopeNotice {
+    Stopped,
+    NoDevice,
+    Opening,
+    Finishing,
+    WaitingForSamples,
+    WaitingForTrigger,
+    PostTrigger,
+    Incomplete,
+    ChannelRange,
+    TriggerRange,
+    ChannelsOff,
+    Failed,
+}
+
+impl ScopeNotice {
+    pub(super) fn title(self) -> &'static str {
+        match self {
+            Self::Stopped => "Input stopped",
+            Self::NoDevice => "Select an input source",
+            Self::Opening => "Preparing input…",
+            Self::Finishing => "Finishing acquisition…",
+            Self::WaitingForSamples => "No samples acquired yet",
+            Self::WaitingForTrigger => "Waiting for trigger",
+            Self::PostTrigger => "Acquiring post-trigger samples…",
+            Self::Incomplete => "No complete sweep captured",
+            Self::ChannelRange => "Channels outside the input range",
+            Self::TriggerRange => "Trigger source outside the input range",
+            Self::ChannelsOff => "All Scope channels OFF",
+            Self::Failed => "Input acquisition failed",
+        }
+    }
+
+    fn instruction(self) -> &'static str {
+        match self {
+            Self::Stopped => {
+                "Open input settings to choose the source, then press Start input in the top bar."
+            }
+            Self::NoDevice => {
+                "Open input settings to select or refresh an audio device, or choose Software Loopback. Then press Start input."
+            }
+            Self::Opening => "Waiting for the input source and its channel count to be ready.",
+            Self::Finishing => "Waiting for the final measurement. Acquired data will be retained.",
+            Self::WaitingForSamples => {
+                "Input is active. Waiting for enough samples to draw a complete sweep."
+            }
+            Self::WaitingForTrigger => {
+                "Input is active. Check the trigger source, level and edge in Scope settings, or use Auto mode."
+            }
+            Self::PostTrigger => "Input is active. Waiting for the rest of the triggered sweep.",
+            Self::Incomplete => {
+                "Input stopped before a complete sweep was available. Check Scope settings, then press Start input to acquire again."
+            }
+            Self::ChannelRange => {
+                "Choose available sources in Channel settings, or change the input source in Audio I/O."
+            }
+            Self::TriggerRange => {
+                "Choose an available trigger source in Scope settings, or change the input source in Audio I/O."
+            }
+            Self::ChannelsOff => "Turn on a channel using the checkboxes below the plot.",
+            Self::Failed => {
+                "Check input settings and the acquisition error, then press Start input to try again."
+            }
+        }
+    }
+}
+
+impl ScopeApp {
+    pub(super) fn scope_notice(&self) -> Option<ScopeNotice> {
+        use ScopeNotice::*;
+        // A captured interval remains visible after Stop or failure, including
+        // partial/gapped data. A notice must never cover acquired values.
+        if !self.scope_range.is_empty() {
+            if !self.enabled.iter().any(|enabled| *enabled) {
+                return Some(ChannelsOff);
+            }
+            return self.scope_sources_out_of_range().then_some(ChannelRange);
+        }
+        if self.input_error.is_some() || self.input_failed {
+            return Some(Failed);
+        }
+        if self.pending_stop.is_some() {
+            return Some(Finishing);
+        }
+        if self.busy {
+            return Some(Opening);
+        }
+        if !self.running() {
+            return Some(if !self.history.is_empty() {
+                Incomplete
+            } else if self.source == Source::Live && self.devices.get(self.selected).is_none() {
+                NoDevice
+            } else {
+                Stopped
+            });
+        }
+        if !self.enabled.iter().any(|enabled| *enabled) {
+            return Some(ChannelsOff);
+        }
+        if self.scope_sources_out_of_range() {
+            return Some(ChannelRange);
+        }
+        let trigger = self.core_scope.trigger;
+        if trigger.edge != Edge::Free
+            && self
+                .scope_input_channels()
+                .is_some_and(|count| !channel::available(trigger.channel, count as usize))
+        {
+            return Some(TriggerRange);
+        }
+        Some(if self.history.is_empty() {
+            WaitingForSamples
+        } else if self.core_scope.mode != acquisition::Mode::Auto {
+            if self.acquisition_state == acquisition::State::Acquiring {
+                PostTrigger
+            } else {
+                WaitingForTrigger
+            }
+        } else {
+            WaitingForSamples
+        })
+    }
+
+    fn scope_sources_out_of_range(&self) -> bool {
+        self.scope_input_channels().is_some_and(|channels| {
+            self.scope_view_channels()
+                .0
+                .iter()
+                .zip(self.enabled)
+                .all(|(&source, enabled)| {
+                    !enabled || !channel::available(source, channels as usize)
+                })
+        })
+    }
+
+    pub(super) fn scope_notice_ui(&mut self, ui: &mut egui::Ui, rect: egui::Rect) {
+        let Some(notice) = self.scope_notice() else {
+            return;
+        };
+        // A real child UI gives the button keyboard/pointer semantics and wraps
+        // long source/error names. Its opaque frame masks the grid underneath.
+        let size_id = ui.id().with("scope_notice_size");
+        let width = rect.width().clamp(40.0, 466.0);
+        let previous_height = ui
+            .ctx()
+            .data_mut(|data| data.get_temp::<f32>(size_id))
+            .unwrap_or(180.0);
+        let height = previous_height.min(rect.height());
+        let card = egui::Rect::from_center_size(rect.center(), vec2(width, height));
+        let mut notice_ui = ui.new_child(
+            egui::UiBuilder::new()
+                .id_salt("scope_notice")
+                .max_rect(card)
+                .layout(egui::Layout::top_down(egui::Align::Min)),
+        );
+        notice_ui.set_clip_rect(ui.clip_rect().intersect(rect));
+        let response = egui::Frame::new()
+            .fill(Color32::from_rgb(20, 32, 42))
+            .stroke(Stroke::new(1.0, BORDER))
+            .corner_radius(6.0)
+            .inner_margin(12.0)
+            .show(&mut notice_ui, |ui| {
+                ui.set_width((width - 26.0).max(14.0));
+                let button_height = ui.spacing().interact_size.y + ui.spacing().item_spacing.y;
+                egui::ScrollArea::vertical()
+                    .id_salt("scope_notice_text")
+                    .max_height((rect.height() - 26.0 - button_height).max(20.0))
+                    .show(ui, |ui| {
+                        ui.label(RichText::new(notice.title()).strong().size(17.0));
+                        ui.add(egui::Label::new(self.input_source_label()).wrap());
+                        ui.add(egui::Label::new(notice.instruction()).wrap());
+                        if notice == ScopeNotice::Failed
+                            && self.presentation.screen == Screen::Single(Instrument::Scope)
+                            && let Some(error) = &self.input_error
+                        {
+                            ui.add(egui::Label::new(RichText::new(error).color(TRIGGER)).wrap());
+                        }
+                    });
+                if ui.button("Open input settings").clicked() {
+                    self.shell.io = Some(shell::IoTab::Connections);
+                    self.shell.narrow_details = false;
+                }
+            })
+            .response;
+        ui.ctx()
+            .data_mut(|data| data.insert_temp(size_id, response.rect.height()));
+        if (previous_height - response.rect.height()).abs() > 0.5 {
+            ui.ctx().request_repaint();
+        }
+    }
+
+    pub(super) fn input_status_text(&self) -> String {
+        let Some(input) = self
+            .held_input
+            .as_ref()
+            .filter(|input| input.generation == self.input_generation)
+        else {
+            return "Input conditions: —".into();
+        };
+        let captured = !self.history.is_empty() || !self.scope_range.is_empty();
+        let (state, _) = activity(self.running(), self.pending_stop.is_some(), captured);
+        format!(
+            "{state} input · {:.1} kSa/s nominal · {} ch · {}",
+            input.nominal_sample_rate_hz as f64 / 1000.0,
+            input.channels,
+            self.format
+        )
+    }
+}
+
 pub(super) fn activity(running: bool, finishing: bool, captured: bool) -> (&'static str, Color32) {
     if finishing {
         ("FINISHING", YELLOW)

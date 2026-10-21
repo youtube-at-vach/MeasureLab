@@ -73,6 +73,20 @@ fn settings_for_output_channels(
 }
 
 impl ScopeApp {
+    pub(super) fn input_source_label(&self) -> String {
+        let source = match self.source {
+            Source::Live => self
+                .devices
+                .get(self.selected)
+                .map_or("Audio input · no device selected", |d| d.name.as_str()),
+            Source::Software => "Software Loopback",
+            Source::Generator => "Generator loopback · OUT 1 / 2",
+            #[cfg(feature = "qa")]
+            Source::Demo => "Demo signal (QA)",
+        };
+        format!("Input source: {source}")
+    }
+
     pub(super) fn io_controls(&mut self, ui: &mut egui::Ui) {
         ui.set_max_width(ui.available_width().min(1200.0));
         self.common_io_controls(ui);

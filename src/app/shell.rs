@@ -185,7 +185,7 @@ impl ScopeApp {
     fn shell_menus(&mut self, ui: &mut egui::Ui, instruments: bool) {
         self.file_menu(ui);
         self.view_menu(ui);
-        ui.menu_button("I/O", |ui| {
+        ui.menu_button("Audio I/O", |ui| {
             for (tab, name) in [
                 (IoTab::Connections, "Input / output"),
                 (IoTab::Calibration, "Calibration"),
@@ -504,9 +504,16 @@ impl ScopeApp {
         egui::CentralPanel::default().show(ui, |ui| {
             ui.spacing_mut().item_spacing = vec2(6.0, 5.0);
             if let Some(error) = &self.error { ui.colored_label(TRIGGER, error); }
+            if let Some(error) = &self.input_error {
+                let notice_shown = self.shell.io.is_none()
+                    && !(narrow && self.presentation.details_visible && self.shell.narrow_details)
+                    && self.presentation.screen == Screen::Single(Instrument::Scope)
+                    && self.scope_notice() == Some(display::ScopeNotice::Failed);
+                if !notice_shown { ui.colored_label(TRIGGER, error); }
+            }
             if let Some(tab) = self.shell.io {
                 ui.horizontal_wrapped(|ui| {
-                    ui.heading("I/O settings");
+                    ui.heading("Audio I/O settings");
                     if ui.button("Back to instruments").clicked() { self.shell.io = None; }
                     for (t, name) in [(IoTab::Connections, "Input / output"), (IoTab::Calibration, "Calibration")] {
                         if ui.selectable_label(tab == t, name).clicked() { self.shell.io = Some(t); }

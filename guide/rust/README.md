@@ -49,15 +49,15 @@ cargo run --release
 ./scripts/cargo.sh run --release
 ```
 
-入力デバイスを選択して **Start input** を押してください。停止すると最後の波形が保持されます。再開時は新しい入力で履歴を作り直します。音声ファイルへの保存は行いません。Generatorでは内部ループバックまたは音声デバイスへ正弦波を出力できます。
+起動直後のScope中央には、背景付きの案内に現在の入力元・未取得理由と **Open input settings** を表示します。このボタンまたは **Audio I/O → Input / output** から入力を選び、上部の **Start input** を押してください。CH数の確定前は範囲外と表示せず、開始待ち・サンプル待ち・トリガー待ち・CH範囲外・取得エラーを区別します。取得済みの波形には案内を重ねず、エラー・欠落情報を残します。停止すると最後の波形が保持されます。再開時は新しい入力で履歴を作り直します。音声ファイルへの保存は行いません。Generatorでは内部ループバックまたは音声デバイスへ正弦波を出力できます。
 
-**I/O → Input / output** の **SAMPLE RATE · INPUT + OUTPUT** は、入力と現在の出力CH数・PCMの両方が対応する公称Fsを一か所で選びます。入力・出力を停止して適用し、保持結果のFsは変えません。**Separate sample rates** をONにすると、Input欄で **Device default** または対応する公称レート、Output欄で個別のFs／CH数／PCMを選べます。選択肢の上限は768 kHzで、44.1／48／88.2／96／176.4／192／352.8／384／705.6／768 kHzなどから対応する値と、デバイス固有のレートを表示します。入力CH数を維持できる設定を使います。デバイス変更・再取得ではDevice defaultへ戻ります。個別設定での入力取得中の変更は新しい入力世代で再開始し、履歴・平均・保持・カーソルをリセットします。停止中の変更は次回Startに適用し、保持結果のFsと時間・周波数軸は変えません。開始時に対応設定を再確認し、失敗時はエラーを表示します。
+**Audio I/O → Input / output** の **SAMPLE RATE · INPUT + OUTPUT** は、入力と現在の出力CH数・PCMの両方が対応する公称Fsを一か所で選びます。入力・出力を停止して適用し、保持結果のFsは変えません。**Separate sample rates** をONにすると、Input欄で **Device default** または対応する公称レート、Output欄で個別のFs／CH数／PCMを選べます。選択肢の上限は768 kHzで、44.1／48／88.2／96／176.4／192／352.8／384／705.6／768 kHzなどから対応する値と、デバイス固有のレートを表示します。入力CH数を維持できる設定を使います。デバイス変更・再取得ではDevice defaultへ戻ります。個別設定での入力取得中の変更は新しい入力世代で再開始し、履歴・平均・保持・カーソルをリセットします。停止中の変更は次回Startに適用し、保持結果のFsと時間・周波数軸は変えません。開始時に対応設定を再確認し、失敗時はエラーを表示します。
 
-**I/O → Input / output** は共通の入出力設定です。広幅ではInput／Outputを左右に、狭幅では上下に表示します。Inputで入力元・入力デバイス、Outputで出力デバイス・CH数・PCMを設定し、Fsと **Refresh devices** は共通欄にまとめます。レートが異なる既存設定を開くだけでは変更せず、共通の値を明示選択するまで両方の値を表示します。**Separate sample rates** で個別設定に切り替えられます。GENカードの追加・信号条件・ON／OFF・OUT割当はGeneratorで操作し、Output欄には表示しません。内部接続はInputの **Generator loopback** を選び、OUT 1／2を入力CH 1／2へ対応させます。Calibrationは同じI/Oメニューの別画面です。
+**Audio I/O → Input / output** は共通の入出力設定です。広幅ではInput／Outputを左右に、狭幅では上下に表示します。Inputで入力元・入力デバイス、Outputで出力デバイス・CH数・PCMを設定し、Fsと **Refresh devices** は共通欄にまとめます。レートが異なる既存設定を開くだけでは変更せず、共通の値を明示選択するまで両方の値を表示します。**Separate sample rates** で個別設定に切り替えられます。GENカードの追加・信号条件・ON／OFF・OUT割当はGeneratorで操作し、Output欄には表示しません。内部接続はInputの **Generator loopback** を選び、OUT 1／2を入力CH 1／2へ対応させます。Calibrationは同じAudio I/Oメニューの別画面です。
 
 通常の起動はユーザー単位のファイルロックで重複を防ぎ、2つ目は既に起動中と表示して終了します。意図的に複数起動する場合は`--new-instance`を追加してください。音声を取得するQAコマンドも同じロックを使い、デバイス列挙とGPU読み戻しは対象外です。起動制御は測定コアから分離しています。ロックファイルは残りますが、[OSのファイルロック](https://doc.rust-lang.org/std/fs/struct.File.html#method.try_lock)はプロセス終了時に解放されるため、異常終了後にファイルを手で削除する必要はありません。旧ビルドにはこの制御がないため、旧版との重複は防げません。
 
-通常ビルドの **I/O → Input / output → Software Loopback** から、マイクを使わず共通入力経路で既知信号を測定できます。条件の詳細は下記のSoftware Loopback節を参照してください。旧QA専用の内部デモは、`qa`機能を有効にしたビルドへ`--demo`を明示して使います。この起動時だけ左側の **Demo signal (QA) / Audio input** で入力を切り替えられます。`qa`ビルドでも、通常起動ではデモの選択肢を表示しません。
+通常ビルドの **Audio I/O → Input / output → Software Loopback** から、マイクを使わず共通入力経路で既知信号を測定できます。条件の詳細は下記のSoftware Loopback節を参照してください。旧QA専用の内部デモは、`qa`機能を有効にしたビルドへ`--demo`を明示して使います。この起動時だけ左側の **Demo signal (QA) / Audio input** で入力を切り替えられます。`qa`ビルドでも、通常起動ではデモの選択肢を表示しません。
 
 ```sh
 ./scripts/cargo.sh run --release --features qa -- --demo
@@ -83,7 +83,7 @@ XYの詳細欄も枠で区切り、Observationで観察時間幅とスケール�
 
 FFT・窓・平均なども各計器の詳細欄です。Generatorの周波数・振幅・位相・波形・OUT・カード管理・ON／OFF・Start outputは本体、刻み幅・Noiseのseed・選択カードの適用値は詳細欄です。
 
-上部は左のメニューと右の入出力操作を1行にまとめ、**Start input / Stop input** を右端に置きます。狭幅ではメニューを **Menu** にまとめ、状態の接頭辞を **IN / OUT** に短縮します。**I/O** の **Input / output** と **Calibration** は共通設定画面を開きます。**Back to instruments** またはEscで元の計器・選択区画へ戻ります。**Start input / Stop input** は共通入力、**Stop output** は独立したGenerator出力を扱います。出力状態と停止操作は計器や設定画面に関係なく常設です。**Running…** で非表示のLock-in／同期比較の解析状態を確認・停止できます。入力待ち、解析停止、取得状態、有効性を区別します。
+上部は左のメニューと右の入出力操作を1行にまとめ、**Start input / Stop input** を右端に置きます。狭幅ではメニューを **Menu** にまとめ、状態の接頭辞を **IN / OUT** に短縮します。**Audio I/O** の **Input / output** と **Calibration** は共通設定画面を開きます。**Back to instruments** またはEscで元の計器・選択区画へ戻ります。**Start input / Stop input** は共通入力、**Stop output** は独立したGenerator出力を扱います。出力状態と停止操作は計器や設定画面に関係なく常設です。**Running…** で非表示のLock-in／同期比較の解析状態を確認・停止できます。入力待ち、解析停止、取得状態、有効性を区別します。
 
 **File** は設定・保持結果の保存／復元と **Compare saved reference**、**View** は配置・詳細欄・倍率、**Help** はショートカット・単位・診断を扱います。Ctrl＋1〜7で一覧順に計器を選択し、Tab／Shift＋Tabで編集へ移動できます。Spaceによる入力操作は入力ボタンが使える場合に限り、一押しで一度だけ切り替えます。入力欄・メニューの操作中、修飾キー付き・長押しの反復では取得状態を変えません。
 
@@ -112,8 +112,8 @@ Windowsの標準構成はRustのMSVCツールチェーンとVisual Studio C++ Bu
 
 | 操作 | 内容 |
 | --- | --- |
-| I/O → Input / output → Refresh devices | 停止中に入力・出力デバイスを再取得 |
-| I/O → Input / output → SAMPLE RATE · INPUT + OUTPUT | 入出力共通の公称Fs。Separate sample ratesで個別設定。入力の選択肢は上限768 kHz |
+| Audio I/O → Input / output → Refresh devices | 停止中に入力・出力デバイスを再取得 |
+| Audio I/O → Input / output → SAMPLE RATE · INPUT + OUTPUT | 入出力共通の公称Fs。Separate sample ratesで個別設定。入力の選択肢は上限768 kHz |
 | Start input / Stop input / Space | 入力開始・停止 |
 | Cursor A / B / Clear | カーソルの選択／時間・周波数・XY自由配置カーソルの解除 |
 | Scope上でクリック／ドラッグ | 時間カーソルのX位置を固定。各更新の波形から振幅・トリガー基準の時刻・Δtを表示 |
@@ -166,13 +166,13 @@ Windowsの標準構成はRustのMSVCツールチェーンとVisual Studio C++ Bu
 
 RMS・Peak・P-PはScopeの整数サンプル区間内に取得した生のf64サンプルから計算します。欠落は観測数へ含めず、部分区間であることを表示します。統計値の説明には対象区間と取得サンプル数を表示し、描画倍率・幅・トレースの非表示化では同じ区間の値を変えません。時間幅やトリガー条件を変えると測定区間も変わります。カーソルは割当先CHの実サンプルを読み、描画時の極値集約やトリガー補間から振幅を逆算しません。
 
-入力CH数が減ったときもScope・XY・トリガーの割当IDを保持し、存在しないCHを別CHへ置き換えません。2ch入力では既定CH3／CH4をNo input、モノラルではCH2〜CH4を利用不可として示します。選択・表示ON/OFFの設定は保持し、別の入力へ自動で置き換えません。停止中のScope／XYのCH変更は次回Startに適用し、保持中のトレース・統計・カーソルは取得時のCHを表示します。
+入力CH数が減ったときもScope・XY・トリガーの割当IDを保持し、存在しないCHを別CHへ置き換えません。取得済みの2ch入力では既定CH3／CH4、モノラルではCH2〜CH4をOut of range（狭幅では—）で示します。未取得の理由は中央の案内にまとめます。選択・表示ON/OFFの設定は保持し、別の入力へ自動で置き換えません。停止中のScope／XYのCH変更は次回Startに適用し、保持中のトレース・統計・カーソルは取得時のCHを表示します。
 
 トリガーの位置とレベルはオレンジの「T」で示し、レベルの三角マーカーは波形領域の右外側に表示します。
 
 生サンプル・波形軸・トリガー閾値の振幅は、CPALから取得したデジタル音声のフルスケール（FS）です。サンプルレートは取得に使った公称値で、デバイスの時計を校正した実レートではありません。768 kHzは設定上限であり、実際に選べるレートはデバイス・OSの対応範囲に依存します。外部ADCの制御、音声デバイス以外の入力は未実装です。
 
-**I/O / Calibration** ではCH 1〜16のScope数値読み出しとSpectrumに `y = gain × x(FS) + offset` を適用できます。Gainは物理単位/FS、Offsetは同じ物理単位です。V、mV、Aなどの単位と、基準信号・デバイスレンジ・日付・不確かさなどの参照条件を入力し、**Queue calibration** を押して次回Start用に設定します。負のゲインも使えます。ゲイン0・非有限の係数・空の単位や参照条件は拒否します。**Queue uncalibrated FS** はそのCHの次回用校正を解除します。入力CHの位置をIDとして扱い、トレースを入れ替えても校正は入力CHへ対応します。
+**Audio I/O / Calibration** ではCH 1〜16のScope数値読み出しとSpectrumに `y = gain × x(FS) + offset` を適用できます。Gainは物理単位/FS、Offsetは同じ物理単位です。V、mV、Aなどの単位と、基準信号・デバイスレンジ・日付・不確かさなどの参照条件を入力し、**Queue calibration** を押して次回Start用に設定します。負のゲインも使えます。ゲイン0・非有限の係数・空の単位や参照条件は拒否します。**Queue uncalibrated FS** はそのCHの次回用校正を解除します。入力CHの位置をIDとして扱い、トレースを入れ替えても校正は入力CHへ対応します。
 
 ScopeではRMS・Peak・P-Pと時間カーソルの数値に校正を適用します。RMSは各実サンプルを換算してから計算するため、オフセットを含みます。Scopeの波形軸・カーソル点の位置・Fit amplitude・トリガー閾値とSpectrogram／XYはFS基準です。Spectrumは選択CHの校正を振幅・PSD・ESD・平均・ピーク保持・カーソル・帯域電力・窓エネルギーへ適用します。数値と軸の単位をそれぞれ表示します。校正による非有限値やP-Pのオーバーフローは **invalid value** とし、正常値へ置き換えません。欠落や存在しないCHは従来どおり利用不可・部分区間として扱います。
 
@@ -190,9 +190,9 @@ ScopeではRMS・Peak・P-Pと時間カーソルの数値に校正を適用し�
 
 ### Generatorの出力と内部ループバック
 
-計器一覧で **Generator** を選び、**Pair with… / Scope**（またはSpectrum／Lock-in）で並べます。**+ Add signal**で最大16枚まで追加し、各カードの**Duplicate／Remove／Up／Down**で複製・削除・並べ替えます。GEN IDとOUTは独立し、他カードの削除・並べ替えでも出力先を保ちます。複製は新しいID・OFF・空きOUT（なければ未割当）になります。カードの**Waveform**でSine／Square／Triangle／Noise、**OUT**で出力先、**ON**で出力対象を選びます。使用中のOUTは選べません。**I/O → Input / output**の共通欄でFsを選び、周波数・振幅・位相を直接入力してEnterまたはフォーカス移動で確定します。入力途中の値は適用せず、Escで取り消します。詳細欄の**EDIT STEP**で刻みを選び、＋／−／上下キーで値を調整できます。周波数は0.1 Hz以上・出力Fsの45%未満、振幅は−120〜0 dBFSのpeak基準、位相は±180°です。カード構成・波形・seed・出力CHは出力停止中に変更し、二重割当はOFFのカードも含め拒否します。
+計器一覧で **Generator** を選び、**Pair with… / Scope**（またはSpectrum／Lock-in）で並べます。**+ Add signal**で最大16枚まで追加し、各カードの**Duplicate／Remove／Up／Down**で複製・削除・並べ替えます。GEN IDとOUTは独立し、他カードの削除・並べ替えでも出力先を保ちます。複製は新しいID・OFF・空きOUT（なければ未割当）になります。カードの**Waveform**でSine／Square／Triangle／Noise、**OUT**で出力先、**ON**で出力対象を選びます。使用中のOUTは選べません。**Audio I/O → Input / output**の共通欄でFsを選び、周波数・振幅・位相を直接入力してEnterまたはフォーカス移動で確定します。入力途中の値は適用せず、Escで取り消します。詳細欄の**EDIT STEP**で刻みを選び、＋／−／上下キーで値を調整できます。周波数は0.1 Hz以上・出力Fsの45%未満、振幅は−120〜0 dBFSのpeak基準、位相は±180°です。カード構成・波形・seed・出力CHは出力停止中に変更し、二重割当はOFFのカードも含め拒否します。
 
-**Start output**で選択した信号を生成します。**I/O → Input / output → Generator loopback**で共通入力を選び、上部の**Start input**で実際のf64出力サンプルを取得します。両方を個別に開始します。周期波形のプレビューは設定の2周期、Noiseはseedからの設定スケッチで、振幅に合わせた縦倍率とFS上限を表示します。実波形はScopeで確認してください。中央は従来の3行編集と小さなプレビューを保ち、十分な幅ではカードを2列に並べ、狭幅ではGEN ID・OUT・ON／OFFを残すカード選択へ切り替えます。GEN見出しでカードを選び、刻み幅・Noiseのseed・適用詳細は右の詳細欄で操作します。**Hide signal controls / Show signal controls**で編集欄とプレビューを開閉し、閉じた状態でも全カードの設定概要を確認できます。上部の出力停止操作は常設です。
+**Start output**で選択した信号を生成します。**Audio I/O → Input / output → Generator loopback**で共通入力を選び、上部の**Start input**で実際のf64出力サンプルを取得します。両方を個別に開始します。周期波形のプレビューは設定の2周期、Noiseはseedからの設定スケッチで、振幅に合わせた縦倍率とFS上限を表示します。実波形はScopeで確認してください。中央は従来の3行編集と小さなプレビューを保ち、十分な幅ではカードを2列に並べ、狭幅ではGEN ID・OUT・ON／OFFを残すカード選択へ切り替えます。GEN見出しでカードを選び、刻み幅・Noiseのseed・適用詳細は右の詳細欄で操作します。**Hide signal controls / Show signal controls**で編集欄とプレビューを開閉し、閉じた状態でも全カードの設定概要を確認できます。上部の出力停止操作は常設です。
 
 Square／Triangleは定常状態で0.45 Fs未満の奇数次高調波を最大16本使い、SquareはFejer重みでpeakを抑え、Triangleはpeakを正規化します。peak欄はFS上限で、RMSとSquareの実peakは周波数で変わります。Triangleの0°は正のpeakです。Noiseはseed付きの連続一様白色雑音で、Startで再生します。Noiseの周波数・位相欄は値を保持して無効表示とし、右側でseedを編集します。Sweep・同期／グループ・リンク・複数OUT・Mixは未実装です。
 
@@ -200,7 +200,7 @@ Square／Triangleは定常状態で0.45 Fs未満の奇数次高調波を最大16
 
 入力Stop／Single完了は結果を保持し、出力は続きます。**Stop output**はフェード後に停止し、入力が取得中なら無音の新しいフレームを続けます。Generatorを隠しても上部の出力状態と**Stop output**は残ります。起動・復元・Fs変更で自動出力せず、アプリ終了時も停止します。
 
-内部出力は44.1／48／96／192 kHz・2chのf64です。**I/O → Input / output**のOutput欄で音声デバイスを選び、共通の **Refresh devices** で入出力を再取得できます。出力先・Fs／CH数／PCMは入力と出力を停止して選びます。Generatorカードでデバイスの1〜16ch構成へ各信号を1対1で割り当て、未割当CHは無音にします。開始時に選択した安定IDと形式を再確認し、使えない設定は開始しません。**I/O → Input / output**のInput欄で接続先の実入力を選び、個別に**Start input**してください。**Generator loopback**は内部接続で使います。ストリーム通知・コールバック停止はERRORとなり、**Reset output (stays OFF)**後の明示Startで再開します。出力校正は未実装です。既存Software Loopbackの既知DUTとは別の入力モードです。設定は版9、結果は版6で保存し、旧設定版1〜8・結果版1〜5も読み込めます。内部接続の結果には受信した最大128区間の出力条件を含め、履歴外・欠落した区間は対応不明とします。保持後のGenerator編集では結果を変更しません。Generator結果のRMS・PSD帯域電力・Lock-inの参照との数値差は2カードのSine構成に限り、両寄与区間が定常で設定・同一周波数の相対carrier位相が一致するときだけ表示します。
+内部出力は44.1／48／96／192 kHz・2chのf64です。**Audio I/O → Input / output**のOutput欄で音声デバイスを選び、共通の **Refresh devices** で入出力を再取得できます。出力先・Fs／CH数／PCMは入力と出力を停止して選びます。Generatorカードでデバイスの1〜16ch構成へ各信号を1対1で割り当て、未割当CHは無音にします。開始時に選択した安定IDと形式を再確認し、使えない設定は開始しません。**Audio I/O → Input / output**のInput欄で接続先の実入力を選び、個別に**Start input**してください。**Generator loopback**は内部接続で使います。ストリーム通知・コールバック停止はERRORとなり、**Reset output (stays OFF)**後の明示Startで再開します。出力校正は未実装です。既存Software Loopbackの既知DUTとは別の入力モードです。設定は版9、結果は版6で保存し、旧設定版1〜8・結果版1〜5も読み込めます。内部接続の結果には受信した最大128区間の出力条件を含め、履歴外・欠落した区間は対応不明とします。保持後のGenerator編集では結果を変更しません。Generator結果のRMS・PSD帯域電力・Lock-inの参照との数値差は2カードのSine構成に限り、両寄与区間が定常で設定・同一周波数の相対carrier位相が一致するときだけ表示します。
 
 出力デバイスやCH数を変更したときは、範囲外になるOUT割当を未割当・OFFにします。GEN ID・信号条件と利用可能なOUT割当は保持し、出力は自動開始しません。デバイス再取得・入力停止処理・設定復元の待機中は入出力の接続設定を変更できません。
 
@@ -210,7 +210,7 @@ macOSの実入出力は、コールバックの時間的余裕を確保するた
 
 ### Software Loopbackと実験段階Lock-in
 
-通常ビルドの **I/O → Input / output → Software Loopback** を選び、Startを押すと2chの同期f64入力を生成します。CH 1はREF、CH 2は既知ゲイン・位相・整数サンプル遅延・DC・雑音を適用した正弦波DUTです。雑音は指定RMSの独立な一様乱数です。周波数・振幅・REFの有効／無効と応答周波数ずれも設定でき、条件は次回Startに適用します。公称Fsは44.1／48／96／192 kHzです。整数遅延は正弦波を解析的に遅らせ、開始直後の未到達応答は0とします。スピーカーや物理出力は使いません。
+通常ビルドの **Audio I/O → Input / output → Software Loopback** を選び、Startを押すと2chの同期f64入力を生成します。CH 1はREF、CH 2は既知ゲイン・位相・整数サンプル遅延・DC・雑音を適用した正弦波DUTです。雑音は指定RMSの独立な一様乱数です。周波数・振幅・REFの有効／無効と応答周波数ずれも設定でき、条件は次回Startに適用します。公称Fsは44.1／48／96／192 kHzです。整数遅延は正弦波を解析的に遅らせ、開始直後の未到達応答は0とします。スピーカーや物理出力は使いません。
 
 計器一覧の **Lock-in** で単独表示します。**Pair with… / Scope** で波形と並べます。表示を外しても有効な解析は継続します。
 
