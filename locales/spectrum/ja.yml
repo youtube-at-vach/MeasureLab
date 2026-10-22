@@ -1,0 +1,144 @@
+_version: 1
+spectrum.advanced_analysis_diagnostics: 高度な解析／診断
+spectrum.amplitude: 振幅
+spectrum.analysis_changes_apply_when_input_restarts_the_captured_spectrum: 解析設定の変更は入力を再開したときに適用します。取得済みスペクトラムは保持します。
+spectrum.auto: 自動
+spectrum.average: 平均化
+spectrum.averaging: 平均化
+spectrum.avg_off: 平均化OFF
+spectrum.band_power_unavailable_invalid_window_range_or_nonfinite_sum: 帯域電力を利用できません
+  · 窓または範囲が無効、もしくは合計が非有限です
+spectrum.band_rms: 帯域RMS %{rms} %{unit}
+spectrum.before_input_began_no_stft_frame: 入力開始前 · STFTフレームなし
+spectrum.bin_amplitude_dbfs_fs_peak_sine_at_a_bin: ビン振幅 · 0 dBFS = ビン中心の正弦波1 FS peak。窓のコヒーレントゲインを補正します。ビン中心から外れた信号にはスカロッピング損失があります。
+spectrum.bottom: 下限
+spectrum.calibration_rev: 校正 %{id} · 版 %{revision}
+spectrum.captured_fft_source_units_and_averaging_are_read_only: 取得時のFFT、入力元、単位、平均化設定は読み取り専用です。通常スペクトラムの解析は独立して続きます。
+spectrum.ch: CH%{index}
+spectrum.ch_input: CH%{shown_spectrum_index} · 入力 %{channel} · %{db_unit}
+spectrum.ch_input_select_for_peak_cursor_and_export_display: 'CH%{index} · 入力 %{source}
+  · %{db_unit}
+
+  ピーク／カーソルの読出しとエクスポート対象に選択します。表示ON／OFFは独立しています。再度表示をONにすると平均を新しく開始します。'
+spectrum.choose_which_cursor_the_next_spectrum_click_or_drag: 次のスペクトラム上のクリック／ドラッグで配置するカーソルを選びます。AまたはBを選ぶだけではカーソルは配置されません。両カーソルは選択CHの最寄りFFTビンを読み取ります。
+spectrum.clear_both_frequency_cursors_shared_by_spectrum_and_spectrogram: スペクトラムとスペクトログラムで共有する両方の周波数カーソルを消去します。時間カーソル、スペクトログラムのフレーム選択、XY
+  Freeの点、取得済みデータは保持します。
+spectrum.clear_frequency: 周波数カーソルを消去
+spectrum.clear_hold: ピーク保持を消去
+spectrum.click_drag_the_plot_to_place_a_cursor: プロットをクリック／ドラッグしてカーソルを配置
+spectrum.continuous_hop_ms: 連続 · ホップ %{sample_rate} ms
+spectrum.continuous_process_every_window: 連続 · すべての窓を処理
+spectrum.cursor_nearest_bin_latest_window_samples_exclusive_end_ch: カーソル %{index}
+  · 最寄りビン：%{value} %{linear_unit}。最新窓：サンプル %{start}..%{end}（終端を含まない）、CH %{channel}、%{sample_rate}
+  Hz、%{size}点、%{name}、%{name_2}。EMA α = 1/%{averages}；処理窓 %{updates}、寄与区間 %{start_2}..%{end_2}（指数重み）。入力世代
+  %{input_generation}；欠落窓 %{missing_windows}。%{times}
+spectrum.custom_frequency_range: 周波数範囲を指定
+spectrum.ema: EMA 1/%{averages}
+spectrum.ema_settling: EMA整定中
+spectrum.energy_spectral_density_energy_per_hz_selecting_esd_presets: エネルギースペクトル密度
+  · Hzあたりのエネルギー。過渡信号を1回測定するには、ESDを選ぶと矩形窓、平均化OFF、DC除去OFFに設定されます。
+spectrum.exponential_average_of_linear_power_off_uses_the_latest: 線形電力の指数平均です。OFFでは最新の処理済み窓を使います。
+spectrum.exponential_power_average_approximately_settled_after_weight_windows: 指数電力平均
+  · α = 1/%{averages}。重み窓数の3倍で約95%整定します。
+spectrum.export_reason: 履歴スペクトラムはエクスポートできません。入力停止後もScopeのみのJSON／CSV／PNGは使用できます。通常スペクトラムに戻すと統合エクスポートを利用できます。
+spectrum.f_hz: Δf %{bin_hz} Hz
+spectrum.f_hz_l_db: Δf %{frequency_hz} Hz · ΔL %{delta_level} dB
+spectrum.f_hz_rbw_hz_window_ms_processed_windows: 'Δf %{bin_hz} Hz · RBW %{rbw_hz}
+  Hz
+
+  窓時間 %{sample_rate} ms · 処理窓 %{updates}'
+spectrum.fft: FFT
+spectrum.fft_edits_apply_on_next_start_captured_results_retain: FFT設定の変更は次回開始時に適用します。取得済み結果の条件は維持します。
+spectrum.fft_end_acquired_end: 'FFT終端 #%{end} · 取得終端 #%{end_2}'
+spectrum.filling_window_samples: FFT窓のサンプル収集中 · %{filled_samples}／%{size}サンプル
+spectrum.fit_the_entire_transient_inside_one_fft_window_trigger: 過渡全体を1つのFFT窓に収めてください。トリガー捕捉とは連動しません。
+spectrum.frequency_scale: 周波数／スケール
+spectrum.from: 下限
+spectrum.full_nyquist: 全域／Nyquist
+spectrum.history_read_only: 履歴 · 読み取り専用
+spectrum.hz_ch_samples: '%{index} %{frequency_hz} Hz · %{level_db} %{db_unit}
+
+  CH %{channel} · サンプル %{start}..%{end}'
+spectrum.hz_no_complete_window: '%{index} %{frequency} Hz · 完全なFFT窓なし'
+spectrum.hz_power: '%{first_hz}–%{last_hz} Hz · 電力 %{power} %{power_unit}'
+spectrum.input_source: 入力元
+spectrum.invalid_fft_window_nonfinite_sample_or_calibrated_power: 無効なFFT窓 · サンプルまたは校正後の電力が非有限です
+spectrum.invalid_stft_window_nonfinite_input: 無効なSTFT窓 · 入力が非有限です
+spectrum.json_csv_png_use_the_selected_trace: JSON／CSV／PNGには選択中のトレースを使います。
+spectrum.latest_observe_at_a_limited_rate: 最新 · 更新頻度を制限して観察
+spectrum.latest_target_ms: 最新 · 目標 %{observation_ms} ms
+spectrum.level_axis: レベル軸
+spectrum.linear_hz: Hz（線形）
+spectrum.live_observe_newest_window: ライブ · 最新窓を観察
+spectrum.live_target_ms: ライブ · 目標 %{observation_ms} ms
+spectrum.live_up_to_updates_s: ライブ · 最大60回/秒で更新
+spectrum.log_hz: Hz（対数）
+spectrum.manual: 手動
+spectrum.measurement_ch: 測定 · CH%{index}
+spectrum.missing_input_invalid_windows_missed_observations: '%{cadence} · 入力欠落 %{input_missing}
+  · 無効窓 %{invalid_windows} · 観察漏れ %{missed_observations}'
+spectrum.mixed_level_references_units_shown_per_channel: レベル基準が混在 · 単位はチャンネルごとに表示
+spectrum.mode_names.continuous: 連続
+spectrum.mode_names.latest: 最新
+spectrum.mode_names.live: ライブ
+spectrum.newest_complete_window_only_intermediate_windows_can_be_skipped: 最新の完全窓のみを使い、中間窓はスキップされることがあります。小サイズのFFTは33
+  ms／N/4以上、大サイズは100 msです。過渡捕捉を保証しません。
+spectrum.no_input: 入力なし
+spectrum.no_stft_frame_gap_unavailable_or_different_generation: STFTフレームなし · 欠落、利用不可、または別の世代
+spectrum.normal_spectrum: 通常スペクトラム
+spectrum.observe_the_newest_complete_window_with_a_processing_time: 処理時間の上限内で最新の完全窓を観察します。平均化とピーク保持は描画とは独立し、観察した窓ごとに更新します。N/4窓をすべて処理するには「連続」を使います。
+spectrum.off: 'OFF'
+spectrum.one_complete_window_s_continuous_step_s_n: 完全な窓1つ：%{sample_rate} s · 連続ステップ：%{sample_rate_2}
+  s（N/4）
+spectrum.peak_bin_hz: ピークビン %{frequency} Hz
+spectrum.peak_hold: ピーク保持
+spectrum.peak_markers: ピークマーカー
+spectrum.place_cursor: カーソルを配置：
+spectrum.place_frequency_cursor: 周波数カーソルを配置：
+spectrum.points: '%{size}点'
+spectrum.power_in_band: 帯域電力
+spectrum.power_spectral_density_power_per_hz_with_window_noise: パワースペクトル密度 · 窓の雑音帯域幅を補正したHzあたりの電力
+spectrum.psd: PSD
+spectrum.pt_fs_hz_f_hz: '%{size}点 · %{name} · Fs %{sample_rate} Hz · Δf %{bin_hz}
+  Hz · %{averaging}'
+spectrum.quantity.amplitude: ビン振幅
+spectrum.quantity.esd: 過渡信号（ESD）
+spectrum.quantity.psd: パワースペクトル密度
+spectrum.rectangular_recommended_other_windows_attenuate_energy_without_correction: 矩形窓を推奨します。他の窓関数では補正なしの場合にエネルギーが減衰します。
+spectrum.remove_dc_offset: DCオフセットを除去
+spectrum.requested_hz_inclusive_centres_of_bins_sum_of_f64: 要求範囲 %{requested_hz}–%{requested_hz_2}
+  Hz。ビン中心 %{first_bin}..=%{last_bin} を両端含めます。f64 PSD × Δfの和。DC／NyquistもΔf全量を重み付けします。CH
+  %{channel}、世代 %{input_generation}、処理窓 %{updates}、寄与区間 %{start}..%{end}。入力欠落 %{dropped}、欠落窓
+  %{missing_windows}。任意のDC除去後に窓関数を掛けた平均二乗で、Scopeの観察区間とは異なります。
+spectrum.reset: リセット
+spectrum.reset_averaging_and_peak_hold_for_all_spectrum_traces: すべてのスペクトラムトレースの平均化とピーク保持をリセットします
+spectrum.select_a_time_frame_in_spectrogram: スペクトログラムで時間フレームを選択
+spectrum.show_ch_spectrum: CH%{index}のスペクトラムを表示
+spectrum.span: 表示範囲 %{hz}
+spectrum.span_2: 表示範囲 %{span_hz}
+spectrum.spectrogram_history_bin_amplitude_fs_dbfs_avg_off_uncalibrated: スペクトログラム履歴
+  · ビン振幅 · FS／dBFS · 平均化OFF · 未校正
+spectrum.spectrum_analyzer: スペクトラムアナライザー
+spectrum.spectrum_and_scope_xy_have_independent_sample_intervals_fft: スペクトラムとScope／XYのサンプル区間は独立しています。FFTの処理時間とこの窓の経過時間も別の条件です。
+spectrum.stopping_finishing_spectrum_windows: 停止処理中 · スペクトラム窓の処理を完了中
+spectrum.subtracts_each_window_s_mean_before_windowing_in_esd: 窓関数を掛ける前に各窓の平均値を差し引きます。ESDでは過渡エネルギーと窓長への依存が変わります。
+spectrum.sum_of_f64_esd_f_over_all_bins_including: DC／Nyquistを含む全ビンのf64 ESD × Δfを合計します。任意のDC除去後に窓関数を掛けた波形のエネルギーです。平均化は窓ごとのエネルギーのEMAで、累積エネルギーではありません。入力サンプル時計は公称値です。
+spectrum.time: 時間 %{i}
+spectrum.time_2: 時間 %{i} · %{i_2}
+spectrum.time_a_b_from_spectrogram: スペクトログラムからの時間A／B
+spectrum.time_end_s_ch_samples_hz_pt_dc: 時間 %{i} · 終端 %{sample_rate} s · CH %{channel}
+  · サンプル %{start}..%{end} · %{sample_rate_2} Hz · %{size}点 · %{name} · %{name_2} ·
+  DC %{retained}
+spectrum.time_nearest_bin_acquired_samples_hz_points_no_average: 時間 %{selected} ·
+  最寄りビン %{value} %{linear_unit} · 取得サンプル %{start}..%{end} · %{sample_rate} Hz · %{size}点
+  · %{name} · %{name_2} · 平均なし、校正なし
+spectrum.to: 上限
+spectrum.to_uses_nyquist_inclusive_bin_centres_whole_bins_band: 上限を0にするとNyquistを使います。ビン中心を両端含め、全ビン単位で計算します。帯域を変更しても平均はリセットせず、保持中のPSDを読み直します。
+spectrum.to_uses_nyquist_narrow_ranges_show_individual_bins: 上限を0にするとNyquistを使います。狭い範囲では個々のビンを表示します。
+spectrum.top: 上限
+spectrum.update_mode: 更新モード
+spectrum.weight: 重み %{count}
+spectrum.weight_2: 重み %{average_weight}
+spectrum.window: ' · %{index} %{outside}窓'
+spectrum.window_duration_available_after_input_starts: FFT窓の時間幅は入力開始後に確認できます
+spectrum.window_energy_s: 窓エネルギー %{spectrum_energy} %{power_unit}·s

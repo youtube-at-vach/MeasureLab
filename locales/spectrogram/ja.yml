@@ -1,0 +1,79 @@
+_version: 1
+spectrogram.age_s: 経過時間／s
+spectrogram.analysis: 解析
+spectrogram.analysis_changes_apply_when_input_restarts_the_captured_image: 解析設定の変更は入力を再開したときに適用します。取得済みの画像は保持します。
+spectrogram.auto_color_range: 色範囲を自動調整
+spectrogram.captured_nominal_hz_window_s_row_ms_bin_hz: 取得時：公称 %{sample_rate} Hz ·
+  窓時間 %{sample_rate_2} s · 行間隔 %{sample_rate_3} ms · ビン幅 %{size} Hz
+spectrogram.ch_dbfs: CH %{channel} · dBFS
+spectrogram.collecting_a_complete_stft_window: 完全なSTFT窓を取得中…
+spectrogram.color_map: カラーマップ
+spectrogram.color_maps.blue: 青
+spectrogram.color_maps.copper: 銅色
+spectrogram.color_maps.grayscale: グレースケール
+spectrogram.color_maps.heat: ヒート
+spectrogram.color_maps.hot: ホット
+spectrogram.color_maps.inferno: Inferno
+spectrogram.color_maps.magma: Magma
+spectrogram.color_maps.turbo: Turbo
+spectrogram.color_maps.viridis: Viridis
+spectrogram.color_range_dbfs: 色範囲 · dBFS
+spectrogram.display: 表示
+spectrogram.end_s_s_retained_n_hop: '%{live} · 終端 %{sample_rate} s · %{retained_seconds}
+  s保持 · N %{size} / ホップ %{hop}%{else}'
+spectrogram.fft_length: FFT長
+spectrogram.fft_overlap: FFTオーバーラップ
+spectrogram.frequency_hz: 周波数／Hz
+spectrogram.frequency_scale: 周波数スケール
+spectrogram.from: 下限
+spectrogram.gestures: スペクトログラム：ホイールで周波数をズーム、ドラッグで周波数／時間をパンします。Shift＋ホイールまたは時間軸上のホイールで履歴をスクロールします。クリックで履歴を保持してフレームを選択し、カーソル線のドラッグで位置を移動します。ライブで履歴固定を解除します。ダブルクリックで周波数／時間位置をリセットします。
+spectrogram.higher_overlap_produces_more_fft_windows_and_uses_history: オーバーラップを大きくするとFFT窓が増え、履歴容量を早く使い切ります。
+spectrogram.history_available_s_unavailable_time_stays_blank: 利用可能な履歴：%{retained_seconds}／%{spectrogram_seconds}
+  s · 利用できない時間は空白のままです
+spectrogram.history_limited_by_capacity: ' · 履歴保持は容量で制限'
+spectrogram.hold_action: 保持
+spectrogram.hold_input_running: 保持 · 入力中
+spectrogram.hold_input_stopped: 保持 · 入力停止中
+spectrogram.hz_dbfs_ch: '%{index} %{size} Hz · %{bin} dBFS
+
+  CH %{channel} · %{start}..%{end}'
+spectrogram.hz_dbfs_samples: '%{size} Hz · %{bin} dBFS · サンプル %{start}..%{end}'
+spectrogram.invalid_stft_window_non_finite_input: '%{index} 無効なSTFT窓
+
+  非有限の入力値 · %{start}..%{end}'
+spectrogram.invalid_stft_window_non_finite_input_samples: 無効なSTFT窓 · 非有限の入力値 · サンプル
+  %{start}..%{end}
+spectrogram.linear_hz: Hz（線形）
+spectrogram.live: ライブ
+spectrogram.live_action: ライブ
+spectrogram.log_hz: Hz（対数）
+spectrogram.max: 最大
+spectrogram.min: 最小
+spectrogram.min_and_max_must_be_finite_with_min_max: 最小値と最大値は有限値で、最小値 < 最大値にしてください。直前の範囲を維持します。
+spectrogram.no_stft_data_at_this_time_gap_or_unavailable: この時刻のSTFTデータなし · 欠落または利用不可
+spectrogram.no_stft_row_before_input_began: '%{index} STFT行なし
+
+  入力開始前'
+spectrogram.outside_visible_time_range: '
+
+  表示時間範囲外'
+spectrogram.overlap.half: 50%
+spectrogram.overlap.seven_eighths: 87.5%
+spectrogram.overlap.three_quarters: 75%
+spectrogram.per_window_bin_amplitude_uncalibrated_fs_orange_stripes_missing: 各窓のビン振幅
+  · 未校正FS。オレンジの縞：STFTの欠落または無効。空白：利用できない履歴。
+spectrogram.points: '%{size}点'
+spectrogram.preparing_history_view: 履歴表示を準備中…
+spectrogram.remove_dc_offset: DCオフセットを除去
+spectrogram.s_ch: '%{index} −%{age} s
+
+  CH %{channel} · %{start}..%{end}'
+spectrogram.s_no_stft_row_gap_or_unavailable: '%{index} −%{age} s
+
+  STFT行なし · 欠落または利用不可'
+spectrogram.spectrogram: スペクトログラム
+spectrogram.start_input_to_begin_acquisition: 取得を始めるには入力を開始してください
+spectrogram.time_range: 時間範囲
+spectrogram.to: 上限
+spectrogram.to_uses_nyquist_log_excludes_dc: 上限を0にするとナイキスト周波数を使います。対数表示ではDCを除きます。
+spectrogram.window: 窓関数

@@ -1,0 +1,79 @@
+_version: 1
+comparison.ac_comparison_positive_phase_leads_ref_positive_delay_lags: AC比較 · 正の位相はSIGの進み、正の遅延はSIGの遅れ。停止中の変更は次回開始時に適用します。
+comparison.ac_mean_removed_disjoint_arithmetic_batches_ref_floor_fs: '%{name} · 各窓の平均値を除去
+  · 重複なしの算術平均バッチ · REF下限 %{reference_min_psd_fs2_hz} FS²/Hz · コヒーレンス ≥%{minimum_coherence}'
+comparison.around_reading: 読み値周辺
+comparison.average_windows: '平均窓数 '
+comparison.averaged_windows_processed_missing_invalid_samples: 平均窓 %{averaged_windows}
+  · 処理済み %{processed_windows} · 欠落 %{missing_samples} · 無効サンプル %{invalid_samples}
+comparison.bin_hz: ビン %{k} · %{bin_width_hz} Hz · %{state}
+comparison.bin_states.averaging: 平均中
+comparison.bin_states.incoherent: 非コヒーレント
+comparison.bin_states.reference_lost: REF信号不足
+comparison.bin_states.response_lost: SIG応答なし
+comparison.bin_states.valid: 有効
+comparison.captured_conditions: 取得条件
+comparison.ch_revision_fs: 'CH %{ch}: %{id} / リビジョン %{revision} · %{gain} %{unit}
+  / FS'
+comparison.check_ref_sig_channels_fft_and_nominal_fs_settings: REF／SIGチャンネル、FFT、公称Fsの設定を確認してください。
+comparison.coherence: コヒーレンス γ²
+comparison.custom: カスタム
+comparison.display_only_captured_analysis_validity_thresholds_and_the_phase: 表示範囲だけを変更します。取得済み解析、妥当性のしきい値、位相傾斜の帯域は変わりません。Log
+  HzではDCを除外します。
+comparison.display_range: 表示範囲
+comparison.finishing_analysis_before_holding_the_result: 結果を保持する前に解析を完了しています。
+comparison.from: '下限 '
+comparison.fs_hz: ' FS²/Hz'
+comparison.full_nyquist: 全域／ナイキスト
+comparison.gain: ゲイン
+comparison.gain_db: ゲイン dB
+comparison.h1_pxy_pxx_scope_spectrum_and_comparison_each_retain: H1 = Pxy/Pxx。Scope、Spectrum、同期2ch比較はそれぞれ独立した区間を保持します。傾斜の回帰では隣接位相差がπ未満と仮定します。周期的／位相折返しデータから絶対遅延は求められません。
+comparison.held_conditions_retained_queued_analysis_settings_apply_on_next: 保持結果の条件を維持
+  · 適用待ちの解析設定は次回開始時に反映
+comparison.hz: '%{selected_hz} Hz'
+comparison.hz_2: '%{fraction} Hz'
+comparison.input_gap_press_start_input_to_acquire_again: 入力の途切れ · 再取得するには「入力を開始」を押してください。
+comparison.input_gap_waiting_for_a_new_complete_average: 入力の途切れ · 新しい完全平均の取得待ちです。
+comparison.input_generation_analysis_revision_hz_nominal_f64: 入力世代 %{generation} ·
+  解析リビジョン %{analysis_revision} · 公称 %{nominal_sample_rate_hz} Hz · f64
+comparison.invalid_input_no_valid_comparison_is_available: 入力が無効です · 有効な比較結果はありません。
+comparison.linear_hz: Hz（線形）
+comparison.log_hz: Hz（対数）
+comparison.min_coherence: 'コヒーレンス下限 '
+comparison.min_ref: 'REF下限 '
+comparison.nominal_fs_ch_phase_timing_calibration_unverified_delay_wraps: 公称Fs · CH間位相／時間の校正は未確認
+  · 遅延は1/f周期で折り返します
+comparison.phase: 位相 °
+comparison.phase_lead: 進み位相
+comparison.phase_slope_needs_contiguous_excited_coherent_bins: 位相傾斜：— · 励振・コヒーレンスが有効な8ビン以上の連続区間が必要
+comparison.phase_slope_s_hz_residual_rms: 位相傾斜：%{e6} µs · %{bin_width_hz}–%{bin_width_hz_2}
+  Hz · 残差RMS %{phase_residual_rms_degrees}°
+comparison.press_start_input_to_acquire_a_complete_average: 完全な平均を取得するには「入力を開始」を押してください。
+comparison.read_at: 読取位置
+comparison.ref: REF
+comparison.ref_ch_sig_ch_n_f_hz: '%{state} · REF CH %{reference_channel} / SIG CH
+  %{response_channel} · N %{size} × %{averages} · Δf %{bin_width_hz} Hz'
+comparison.samples: '%{size} サンプル'
+comparison.samples_latest_input_end: サンプル %{start}..%{end} · 最新 %{start_2}..%{end_2}
+  · 入力終端 %{input_end}
+comparison.select_ref_sig_channels_then_press_start_analysis: REF／SIGチャンネルを選択し、「解析を開始」を押してください。
+comparison.selected_frequency_is_outside_the_captured_result: 選択した周波数は取得済み結果の範囲外です。
+comparison.sig: SIG
+comparison.slope_from: '傾斜の下限 '
+comparison.slope_to: '傾斜の上限 '
+comparison.start_analysis: 解析を開始
+comparison.state_names.averaging: 平均中
+comparison.state_names.disabled: 無効
+comparison.state_names.filling: 充填中
+comparison.state_names.missing: 欠落
+comparison.state_names.non_finite: 非有限
+comparison.state_names.unavailable: 利用不可
+comparison.state_names.valid: 有効
+comparison.stop_analysis: 解析を停止
+comparison.synchronous_comparison: 同期2ch比較
+comparison.to: '上限 '
+comparison.valid_band: 有効帯域
+comparison.valid_transfer_bins_gaps_are_not_interpolated: '%{valid}個の有効な伝達関数ビン · 欠落箇所は補間しません'
+comparison.waiting_for_a_complete_average: 完全な平均の取得を待っています。
+comparison.window_averaging: 窓／平均化
+comparison.wrapped_delay: 折り返し遅延
