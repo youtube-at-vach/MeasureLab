@@ -52,7 +52,7 @@ class ChangesTests(unittest.TestCase):
         for path in ["locales/common/ja.yml", "i18n/source-hashes.json", "i18n/translation-task.json"]:
             with self.subTest(path=path):
                 self.assertEqual(classify([path]), dict(rust=True, msrv=False, web=False, i18n=True))
-        for path in ["scripts/i18n.py", "scripts/test_i18n.py"]:
+        for path in ["scripts/i18n.py", "scripts/test_i18n.py", "scripts/translate.py"]:
             with self.subTest(path=path):
                 self.assertEqual(classify([path]), dict(rust=False, msrv=False, web=False, i18n=True))
         self.assertTrue(classify(["src/i18n.rs"])["i18n"])

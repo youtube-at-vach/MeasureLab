@@ -1218,6 +1218,12 @@ impl ScopeApp {
             }
             app.shell.sidebar_compact =
                 std::env::var("MEASURELAB_UI_SMOKE_SIDEBAR").as_deref() == Ok("compact");
+            if let Ok(locale) = std::env::var("MEASURELAB_UI_SMOKE_LOCALE") {
+                if !i18n::Locale::ALL.iter().any(|value| value.id() == locale) {
+                    return Err("QA locale must be a supported identifier".into());
+                }
+                i18n::set_locale(&cc.egui_ctx, &locale);
+            }
             app.qa_previous_presentation = None;
         }
         Ok(app)

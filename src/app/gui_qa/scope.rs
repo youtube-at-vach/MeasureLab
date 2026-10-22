@@ -365,6 +365,7 @@ impl ScopeApp {
         let frames = core.metrics.input_frames.load(Ordering::Relaxed);
         let windows = core.spectrum.metrics.windows.load(Ordering::Relaxed);
         self.check_scope_views(&mut Driver::new())?;
+        self.check_language_interactions(&mut Driver::new())?;
         self.wait_scope(|app| {
             let core = app.core.as_ref().unwrap();
             core.metrics.input_frames.load(Ordering::Relaxed) > frames
@@ -465,6 +466,9 @@ impl ScopeApp {
             assert_eq!(after.input, held.input);
             assert_eq!(after.scope, held.scope);
             assert_eq!(after.loss, held.loss);
+        }
+        if !running {
+            self.check_language_interactions(driver)?;
         }
         Ok(())
     }

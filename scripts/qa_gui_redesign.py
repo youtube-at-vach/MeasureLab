@@ -16,6 +16,8 @@ PREFIX = "MEASURELAB_UI_SMOKE_"
 
 def cases(devices=()):
     yield "widget-interactions", False, {"INTERACTIONS": "1", "IDLE": "1"}
+    yield "language-ja-wide", False, {"VIEW": "scope", "IDLE": "1", "LOCALE": "ja"}
+    yield "language-ja-compact", True, {"SETTINGS": "io", "IDLE": "1", "ZOOM": "1.25", "LOCALE": "ja"}
     yield "sidebar-expanded", False, {"VIEW": "scope", "IDLE": "1"}
     yield "sidebar-compact", False, {"VIEW": "scope", "IDLE": "1", "SIDEBAR": "compact"}
     yield "sidebar-compact-held", False, {"SCOPE_FLOW": "held", "SIDEBAR": "compact", "IDLE": "1"}
@@ -127,6 +129,11 @@ def main():
             str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
             for path in sorted((ROOT / "src").rglob("*.rs"))
         },
+        "catalog_sha256": {
+            str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in sorted((ROOT / "locales").rglob("*.yml"))
+        },
+        "translation_metadata_sha256": hashlib.sha256((ROOT / "i18n/source-hashes.json").read_bytes()).hexdigest(),
         "os": platform.platform(),
         "devices": args.device,
         "screenshots_required": not args.assertions_only,

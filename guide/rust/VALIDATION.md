@@ -108,6 +108,25 @@ macOSのMetalは、画面が点いていても他のウィンドウに覆われ�
 
 `--gpu-smoke`は通常ビルドでも使える。`--ui-smoke`は画像を`dist/ui-smoke.png`へ保存する。数値照合と実際の撮影成功は別に確認する。通常起動は入力停止状態、`--demo`はQA専用。Software Loopbackと通常Generatorはqaなしでも使える。
 
+### 多言語基盤（I5）
+
+I5の独立した受け入れは完了し、以下を回帰検証の入口とする。APIの保存復元・未知locale・欠落／古い訳のフォールバック・固定／動的文言キャッシュ・編集IDとフォーカス、9localeの解決済みカタログ全文字の比例／等幅フォントを`src/i18n.rs`で検査する。翻訳タスクの準備・適用と、誤回答時にカタログを書かない条件は`scripts/test_i18n.py`で検査する。
+
+```sh
+./.venv/bin/python -m unittest discover -s scripts -p 'test_i18n.py'
+./scripts/cargo.sh test --locked i18n::tests
+./scripts/cargo.sh build --release --locked --features qa
+caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
+    --case widget-interactions --case scope-generator-views --case scope-flow-held-wide \
+    --output dist/i18n-i5
+```
+
+`gui_qa/language.rs`は実メニューへのクリックで全9localeを切り替え、通常幅・狭幅・zoom・模擬native scaleで停止操作の到達性、選択・測定設定・校正・入力世代・出力コマンドを維持する。保持中は入力条件・Scope生サンプル・欠落も比較する。通常Generatorの内部接続では入力フレームとSpectrum窓、出力の進行を確認し、既存の有限Stop・独立DFT／Lock-in照合・JSON／CSV再利用へ続ける。物理出力を使わない。
+
+フレームCPUはフォント・レイアウトをウォームアップして、各localeと同じ画面の英語p95を比較する。メニュー切り替えに要した時間は別に記録し、GPU・scanout・物理入出力や、i18n導入前の性能を保証しない。試験中はビルド・別の音声試験を並行しない。許容差・合否はQAコードを正本とする。ログ・画像・ソース／バイナリ識別はGit管理外の指定出力先へ保存する。
+
+通常desktop（qaなし）のAPIテスト・releaseビルドと`--gpu-smoke`も共通検証に含める。現在のIntel Macの手動操作・実モニター間DPIは既存方針により対象外。今後の翻訳は1言語・1グループの訳文・変数・用語・対象差分と共通検証を各PRで確認し、I5を翻訳ごとの手動受け入れ待ちへ戻さない。未翻訳は英語へ戻し、9言語の全文翻訳済みとは扱わない。
+
 ### G4に残る手動受け入れ
 
 操作可能な環境で通常ビルドを`target/release/measurelab`から起動し、以下を確認する。現在のIntel Macではこの節の手動操作チェックを実施せず、受け入れ待ちにも残さない。音声デバイスを使わない操作確認は、I/OのSoftware LoopbackまたはGeneratorの内部接続で行える。

@@ -18,7 +18,7 @@ def classify(paths: list[str]) -> dict[str, bool]:
             result.update(rust=True, i18n=True)
         elif path == "requirements-i18n.txt":
             result.update(i18n=True, web=True)
-        elif path in {"scripts/i18n.py", "scripts/test_i18n.py"}:
+        elif path in {"scripts/i18n.py", "scripts/test_i18n.py", "scripts/translate.py"}:
             result["i18n"] = True
         elif path.startswith(("src/", "tests/", "benches/")):
             # A new API in source can raise the MSRV without a manifest edit.
