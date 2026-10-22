@@ -168,8 +168,10 @@ impl Driver {
     }
 
     fn check_header(&self) -> Result<(), String> {
-        let menu = self.position("Menu").or_else(|_| self.position("File"))?;
-        let output = self.text_position("Stop output")?;
+        let menu = self
+            .position(i18n::text("shell.menu"))
+            .or_else(|_| self.position(i18n::text("common.file")))?;
+        let output = self.text_position(i18n::text("generator.stop_output_2"))?;
         let input = ["▶  Start input", "▶  Start input (demo)", "■  Stop input"]
             .into_iter()
             .find_map(|label| self.text_positions(label).first().copied())
@@ -263,8 +265,12 @@ impl ScopeApp {
             assert_eq!(app.scope_notice(), Some(reason));
             assert_eq!(driver.text_positions(reason.title()).len(), 1);
             assert!(driver.text_positions("Oscilloscope").is_empty());
-            driver.visible_text_rect("Amplitude [FS]").unwrap();
-            driver.visible_text_rect("Time [ms]").unwrap();
+            driver
+                .visible_text_rect(i18n::text("common.amplitude_fs"))
+                .unwrap();
+            driver
+                .visible_text_rect(i18n::text("common.time_ms"))
+                .unwrap();
             assert!(
                 driver
                     .text_positions("Trigger source unavailable")
@@ -277,7 +283,9 @@ impl ScopeApp {
                     .is_empty()
             );
             let title = driver.text_positions(reason.title())[0];
-            let button = driver.position("Open input settings").unwrap();
+            let button = driver
+                .position(i18n::text("common.open_input_settings"))
+                .unwrap();
             let plot = driver
                 .output
                 .shapes
@@ -311,15 +319,19 @@ impl ScopeApp {
             assert!(card.contains_rect(driver.visible_text_rect("Open input settings").unwrap()));
         };
         check(self, &mut driver, ScopeNotice::NoDevice);
-        driver.visible_text_rect("Scope settings")?;
+        driver.visible_text_rect(i18n::text("shell.scope_settings"))?;
         for instrument in Instrument::ALL {
-            assert!(driver.text_positions(instrument.purpose()).is_empty());
+            assert!(
+                driver
+                    .text_positions(instrument.display_purpose())
+                    .is_empty()
+            );
         }
         assert_eq!(self.scope_input_channels(), None);
-        driver.click(self, "Open input settings")?;
+        driver.click(self, i18n::text("common.open_input_settings"))?;
         assert!(self.shell.io == Some(shell::IoTab::Connections));
         assert_eq!(self.presentation, Presentation::default());
-        driver.click(self, "Back to instruments")?;
+        driver.click(self, i18n::text("shell.back_to_instruments"))?;
         self.devices.push(DeviceInfo {
             id: Some("guidance-qa".into()),
             name: "Guidance input (synthetic)".into(),
@@ -348,7 +360,7 @@ impl ScopeApp {
         self.trigger.edge = Edge::Rising;
         self.dirty = true;
         check(self, &mut driver, ScopeNotice::TriggerRange);
-        driver.visible_text_rect("T markers: settings only")?;
+        driver.visible_text_rect(i18n::text("oscilloscope.t_markers_settings_only"))?;
         self.trigger.channel = 0;
         self.acquisition_mode = acquisition::Mode::Single;
         self.acquisition_state = acquisition::State::Waiting;
@@ -374,7 +386,7 @@ impl ScopeApp {
                     .len(),
                 1
             );
-            driver.position("Open input settings")?;
+            driver.position(i18n::text("common.open_input_settings"))?;
         }
         // Exercise the same failure handler used by AudioWorker notifications,
         // with an acquired interval and loss information already present.
@@ -416,7 +428,7 @@ impl ScopeApp {
         assert_eq!(self.dropped, 11);
         self.triggered = true;
         driver.frame(self, vec![]);
-        driver.visible_text_rect("T markers: captured")?;
+        driver.visible_text_rect(i18n::text("oscilloscope.t_markers_captured"))?;
         assert!(driver.text_positions("T markers: settings only").is_empty());
         self.presentation
             .apply(Action::PairWith(Instrument::Spectrum));
@@ -424,7 +436,7 @@ impl ScopeApp {
             .apply(Action::FocusPane(Instrument::Scope));
         driver.frame(self, vec![]);
         driver.visible_text_rect("Scope · Selected")?;
-        driver.visible_text_rect("Amplitude [FS]")?;
+        driver.visible_text_rect(i18n::text("common.amplitude_fs"))?;
         assert!(driver.text_positions("Oscilloscope").is_empty());
         assert_eq!(
             (
@@ -535,15 +547,15 @@ impl ScopeApp {
         assert_eq!(self.requested_sample_rate, Some(96_000));
         assert_eq!(self.generator.rate, 96_000);
         driver.frame(self, vec![]);
-        driver.click(self, "Separate sample rates")?;
+        driver.click(self, i18n::text("io.separate_sample_rates"))?;
         driver.click(self, "96 kHz")?;
-        driver.click(self, "Device default")?;
+        driver.click(self, i18n::text("io.device_default"))?;
         assert_eq!(self.requested_sample_rate, None);
         assert_eq!(self.generator.rate, 96_000);
-        driver.click(self, "Separate sample rates")?;
+        driver.click(self, i18n::text("io.separate_sample_rates"))?;
         assert!(!driver.text_positions("Select common rate").is_empty());
         assert_eq!(self.generator.command_marker(), command);
-        driver.click(self, "Select common rate")?;
+        driver.click(self, i18n::text("io.select_common_rate"))?;
         driver.click(self, "48000 Hz")?;
         settle(self);
         assert_eq!(self.requested_sample_rate, Some(48_000));
@@ -643,7 +655,10 @@ impl ScopeApp {
                     "I/O selector opened during pending operation: {label}"
                 );
             }
-            driver.click_at(self, driver.text_positions("Software Loopback")[0]);
+            driver.click_at(
+                self,
+                driver.text_positions(i18n::text("io.software_loopback"))[0],
+            );
             assert!(
                 self.source == Source::Live,
                 "Input source changed during pending operation"
@@ -667,13 +682,13 @@ impl ScopeApp {
         self.generator.configure(mono);
         settle(self);
         driver.frame(self, vec![]);
-        driver.click(self, "Separate sample rates")?;
+        driver.click(self, i18n::text("io.separate_sample_rates"))?;
         driver.click(self, "48000 Hz · 2ch · f32")?;
         driver.click(self, "48000 Hz · 1ch · f32")?;
         assert_eq!(self.generator.target.channels(), 1);
         assert_eq!(self.generator.settings, expected);
         settle(self);
-        driver.click(self, "Separate sample rates")?;
+        driver.click(self, i18n::text("io.separate_sample_rates"))?;
         assert_eq!(
             (self.input_generation, self.sample_rate, self.scope_readings),
             held
@@ -773,11 +788,11 @@ impl ScopeApp {
         };
         settle(&mut driver, self);
         for map in spectrogram::ColorMap::ALL {
-            driver.click(self, self.spectrogram_color_map.name())?;
-            driver.click(self, map.name())?;
+            driver.click(self, self.spectrogram_color_map.display_name())?;
+            driver.click(self, map.display_name())?;
             assert_eq!(self.spectrogram_color_map, map);
         }
-        driver.click(self, "Auto color range")?;
+        driver.click(self, i18n::text("spectrogram.auto_color_range"))?;
         assert!(self.spectrogram_auto_color);
         driver.click(self, "5 s")?;
         driver.click(self, "60 s")?;
@@ -941,7 +956,7 @@ impl ScopeApp {
             self.spectrogram_hold.is_some(),
             "Double-click changed Hold mode"
         );
-        driver.click(self, "Live")?;
+        driver.click(self, i18n::text("spectrogram.live_action"))?;
         assert!(self.spectrogram_hold.is_none());
         assert!(self.cursors.times.iter().all(Option::is_none));
         settle(&mut driver, self);
@@ -953,9 +968,9 @@ impl ScopeApp {
         }
         assert!(self.spectrogram_hold.is_none());
         driver.resize(self, vec2(900.0, 700.0), 1.25, 2.0);
-        driver.click(self, "Details")?;
-        driver.position("Auto color range")?;
-        driver.click(self, "Measurement")?;
+        driver.click(self, i18n::text("shell.details"))?;
+        driver.position(i18n::text("spectrogram.auto_color_range"))?;
+        driver.click(self, i18n::text("shell.measurement"))?;
         settle(&mut driver, self);
         assert!(plot(&driver)?.width() > 100.0);
         assert_eq!(
@@ -994,8 +1009,8 @@ impl ScopeApp {
         self.select_spectrogram_time(1, 0.4);
         let frames: [_; 2] = std::array::from_fn(|i| self.spectrogram_selected[i].clone().unwrap());
         driver.frame(self, vec![]);
-        driver.click(self, "Split view with…")?;
-        driver.click(self, "Spectrum")?;
+        driver.click(self, i18n::text("shell.split_view_with"))?;
+        driver.click(self, i18n::text("shell.instrument_names.spectrum"))?;
         assert!(self.spectrum_history.linked);
         for (i, frame) in frames.iter().enumerate() {
             assert_eq!(self.shown_spectrum(i).power(), frame.power());
@@ -1030,7 +1045,8 @@ impl ScopeApp {
         let time_cursor = self.active_cursor;
         // Both panes have A/B controls. Locate the frequency target beside its
         // own label rather than clicking the shared time target in Spectrogram.
-        let frequency_label = driver.text_position("Place frequency cursor:")?;
+        let frequency_label =
+            driver.text_position(i18n::text("spectrum.place_frequency_cursor"))?;
         let frequency_b = driver
             .text_positions("B")
             .into_iter()
@@ -1057,7 +1073,7 @@ impl ScopeApp {
         driver.click_at(self, spectrum_rect.center());
         assert!(self.cursors.spectrum_frequencies_hz[1].is_some());
         assert_eq!(self.cursors.times, fixed_times);
-        driver.click(self, "Clear frequency")?;
+        driver.click(self, i18n::text("spectrum.clear_frequency"))?;
         assert_eq!(
             self.cursors.times, fixed_times,
             "Frequency Clear discarded time selections"
@@ -1086,7 +1102,7 @@ impl ScopeApp {
         assert!(self.shown_spectrum(1).window().is_none());
         assert!(self.shown_spectrum(1).cursor(1500.0).is_none());
         driver.frame(self, vec![]);
-        driver.click(self, "Normal Spectrum")?;
+        driver.click(self, i18n::text("spectrum.normal_spectrum"))?;
         assert!(!self.spectrum_history.linked);
         assert_eq!(self.analyzer.power(), ordinary.power());
         assert_eq!(self.analyzer.hold_power(), ordinary.hold_power());
@@ -1105,15 +1121,15 @@ impl ScopeApp {
             ),
             ordinary_axes
         );
-        driver.click(self, "Time A/B from Spectrogram")?;
+        driver.click(self, i18n::text("spectrum.time_a_b_from_spectrogram"))?;
         assert!(self.spectrum_history.linked);
-        driver.click(self, "Undo replacement")?;
+        driver.click(self, i18n::text("shell.undo_replacement"))?;
         assert!(!self.spectrum_history.linked);
         assert_eq!(self.presentation.console, original_console);
         self.navigate(Action::OpenSingle(Instrument::Spectrogram));
         driver.frame(self, vec![]);
-        driver.click(self, "Split view with…")?;
-        driver.click(self, "Spectrum")?;
+        driver.click(self, i18n::text("shell.split_view_with"))?;
+        driver.click(self, i18n::text("shell.instrument_names.spectrum"))?;
         self.live_spectrogram();
         assert!(!self.spectrum_history.linked);
         assert!(self.spectrogram_selected.iter().all(Option::is_none));
@@ -1140,8 +1156,8 @@ impl ScopeApp {
             stft::Overlap::SevenEighths,
             stft::Overlap::ThreeQuarters,
         ] {
-            driver.click(self, self.spectrogram_overlap.name())?;
-            driver.click(self, overlap.name())?;
+            driver.click(self, self.spectrogram_overlap.display_name())?;
+            driver.click(self, overlap.display_name())?;
             assert_eq!(
                 self.stft_config().hop,
                 overlap.hop(self.spectrogram_settings.size)
@@ -1407,13 +1423,13 @@ impl ScopeApp {
             ),
             unedited
         );
-        driver.click(self, "Zero level")?;
+        driver.click(self, i18n::text("oscilloscope.zero_level"))?;
         assert_eq!(self.trigger.level, 0.0);
         assert_eq!(self.scope_vertical, unedited.3);
-        driver.click(self, "Reset time position")?;
+        driver.click(self, i18n::text("oscilloscope.reset_time_position"))?;
         assert_eq!(self.scope_horizontal_position, 0.0);
         assert_eq!(self.ms_per_div, unedited.0);
-        driver.click(self, "Zero offset")?;
+        driver.click(self, i18n::text("oscilloscope.zero_offset"))?;
         assert_eq!(self.scope_vertical[3].offset, 0.0);
         assert_eq!(self.scope_vertical[3].fs_per_div, unedited.3[3].fs_per_div);
         assert_eq!(self.scope_vertical[..3], unedited.3[..3]);
@@ -1429,7 +1445,7 @@ impl ScopeApp {
 
         let spectrum_display = self.spectrum_display;
         self.spectrum_display.overlay_channels = [0, 0, 0];
-        driver.click(self, "Spectrum")?;
+        driver.click(self, i18n::text("shell.instrument_names.spectrum"))?;
         let average = self.analyzer.average();
         for index in 0..4 {
             driver.click(self, &format!("CH{}", index + 1))?;
@@ -1453,13 +1469,13 @@ impl ScopeApp {
             driver.click_at(self, toggle);
             assert_eq!(self.spectrum_display.enabled, spectrum_display.enabled);
         }
-        driver.click(self, "Auto")?;
+        driver.click(self, i18n::text("spectrum.auto"))?;
         assert!(self.spectrum_display.auto_level);
         let view = self.spectrum_view();
         assert!(view.max_hz <= self.sample_rate as f32 / 2.0);
         assert!(view.min_hz >= 0.0 && view.min_hz < view.max_hz);
         assert!(view.floor_db < view.ceiling_db);
-        driver.click(self, "Manual")?;
+        driver.click(self, i18n::text("spectrum.manual"))?;
         assert!(!self.spectrum_display.auto_level);
         self.spectrum_display = spectrum_display;
         self.spectrum_dirty = true;
@@ -1468,15 +1484,15 @@ impl ScopeApp {
         self.check_xy_controls_interactions(&mut driver)?;
 
         for instrument in Instrument::ALL {
-            driver.click(self, instrument.name())?;
+            driver.click(self, instrument.display_name())?;
             assert_eq!(self.presentation.screen, Screen::Single(instrument));
-            driver.click(self, instrument.name())?;
+            driver.click(self, instrument.display_name())?;
             assert_eq!(self.presentation.screen, Screen::Single(instrument));
-            driver.text_position("Stop output")?;
+            driver.text_position(i18n::text("generator.stop_output_2"))?;
         }
         driver.key(self, egui::Key::Num1, egui::Modifiers::CTRL);
-        driver.click(self, "Split view with…")?;
-        driver.click(self, "Generator")?;
+        driver.click(self, i18n::text("shell.split_view_with"))?;
+        driver.click(self, i18n::text("shell.instrument_names.generator"))?;
         assert_eq!(
             self.presentation.console.instruments,
             [Instrument::Scope, Instrument::Generator]
@@ -1484,7 +1500,7 @@ impl ScopeApp {
         assert_eq!(self.presentation.selected(), Some(Instrument::Generator));
         let pair = self.presentation.console.clone();
         driver.key(self, egui::Key::Num1, egui::Modifiers::CTRL);
-        driver.click(self, "Multi-instrument view")?;
+        driver.click(self, i18n::text("shell.multi_instrument_view"))?;
         assert_eq!(self.presentation.console, pair);
         driver.key(self, egui::Key::ArrowLeft, egui::Modifiers::CTRL);
         assert_eq!(self.presentation.selected(), Some(Instrument::Scope));
@@ -1508,8 +1524,8 @@ impl ScopeApp {
             driver.key(self, egui::Key::Escape, egui::Modifiers::NONE);
             assert!(!driver.ctx.any_popup_open());
         }
-        driver.click(self, "Audio I/O")?;
-        driver.click(self, "Input / output")?;
+        driver.click(self, i18n::text("shell.audio_i_o"))?;
+        driver.click(self, i18n::text("shell.input_output"))?;
         // Both connection directions are available on the same page.
         assert!(!driver.text_positions("Audio input").is_empty());
         assert!(
@@ -1520,14 +1536,14 @@ impl ScopeApp {
         assert!(!driver.text_positions("OUTPUT DEVICE").is_empty());
         driver.key(self, egui::Key::ArrowLeft, egui::Modifiers::CTRL);
         assert_eq!(self.presentation.console, pair);
-        driver.click(self, "Audio I/O")?;
+        driver.click(self, i18n::text("shell.audio_i_o"))?;
         driver.key(self, egui::Key::Escape, egui::Modifiers::NONE);
         assert!(!driver.ctx.any_popup_open() && self.shell.io.is_some());
-        driver.click(self, "Help")?;
+        driver.click(self, i18n::text("shell.help"))?;
         // Keep the floating window's resize corner clear of the header while
         // checking keyboard priority and opening another auxiliary window.
         let help_title = driver
-            .text_positions("Help")
+            .text_positions(i18n::text("shell.help"))
             .into_iter()
             .find(|pos| pos.y > 20.0)
             .ok_or("Help window title missing")?;
@@ -1558,8 +1574,8 @@ impl ScopeApp {
         assert_eq!(self.presentation.screen, Screen::Console);
         assert_eq!(self.presentation.console, pair);
         assert!(matches!(self.shell.io, Some(shell::IoTab::Connections)));
-        driver.click(self, "File")?;
-        driver.click(self, "File paths & status…")?;
+        driver.click(self, i18n::text("common.file"))?;
+        driver.click(self, i18n::text("common.file_paths_status"))?;
         assert!(self.shell.file_paths && self.shell.help);
         driver.key(self, egui::Key::Num2, egui::Modifiers::CTRL);
         assert_eq!(self.presentation.screen, Screen::Console);
@@ -1583,19 +1599,19 @@ impl ScopeApp {
             driver.frame(self, vec![]);
         }
         driver.key(self, egui::Key::Num1, egui::Modifiers::CTRL);
-        driver.click(self, "Split view with…")?;
-        driver.click(self, "Spectrum")?;
-        driver.click(self, "Undo replacement")?;
+        driver.click(self, i18n::text("shell.split_view_with"))?;
+        driver.click(self, i18n::text("shell.instrument_names.spectrum"))?;
+        driver.click(self, i18n::text("shell.undo_replacement"))?;
         assert_eq!(self.presentation.console, pair);
         for instrument in Instrument::ALL {
-            driver.click(self, "Add instrument…")?;
-            driver.click(self, instrument.name())?;
+            driver.click(self, i18n::text("shell.add_instrument"))?;
+            driver.click(self, instrument.display_name())?;
             assert_eq!(self.presentation.selected(), Some(instrument));
         }
         assert_eq!(self.presentation.console.instruments.len(), 7);
-        driver.click(self, "Tabs")?;
+        driver.click(self, i18n::text("shell.layout_names.tabs"))?;
         for _ in 0..7 {
-            driver.click(self, "Remove from view")?;
+            driver.click(self, i18n::text("shell.remove_from_view"))?;
         }
         assert!(self.presentation.console.instruments.is_empty());
         assert_eq!(self.presentation.selected(), None);
@@ -1603,8 +1619,8 @@ impl ScopeApp {
         // Requested layout and ratio survive a round trip through a small view,
         // app zoom, and simulated native scale events. Native monitor QA is separate.
         driver.key(self, egui::Key::Num1, egui::Modifiers::CTRL);
-        driver.click(self, "Split view with…")?;
-        driver.click(self, "Generator")?;
+        driver.click(self, i18n::text("shell.split_view_with"))?;
+        driver.click(self, i18n::text("shell.instrument_names.generator"))?;
         self.presentation.details_visible = false;
         self.presentation.console.split = 0.4;
         driver.frame(self, vec![]);
@@ -1620,11 +1636,11 @@ impl ScopeApp {
             assert_eq!(self.presentation.console, console);
         }
         for tab in ["Input / output", "Calibration"] {
-            driver.click(self, "Audio I/O")?;
+            driver.click(self, i18n::text("shell.audio_i_o"))?;
             driver.click(self, tab)?;
             assert!(self.shell.io.is_some());
-            driver.text_position("Stop output")?;
-            driver.click(self, "Back to instruments")?;
+            driver.text_position(i18n::text("generator.stop_output_2"))?;
+            driver.click(self, i18n::text("shell.back_to_instruments"))?;
             assert!(self.shell.io.is_none());
             assert_eq!(self.presentation.console, console);
         }
@@ -1634,15 +1650,19 @@ impl ScopeApp {
             .presentation
             .selected()
             .map_or("Multi-instrument view".into(), |i| {
-                format!("Instrument: {}", i.name())
+                format!("Instrument: {}", i.display_name())
             });
-        driver.click(self, "Menu")?;
+        driver.click(self, i18n::text("shell.menu"))?;
         driver.click(self, &menu_title)?;
         for instrument in Instrument::ALL {
-            driver.visible_text_rect(instrument.name())?;
-            assert!(driver.text_positions(instrument.purpose()).is_empty());
+            driver.visible_text_rect(instrument.display_name())?;
+            assert!(
+                driver
+                    .text_positions(instrument.display_purpose())
+                    .is_empty()
+            );
         }
-        driver.click(self, "Generator")?;
+        driver.click(self, i18n::text("shell.instrument_names.generator"))?;
         assert_eq!(
             self.presentation.screen,
             Screen::Single(Instrument::Generator)
@@ -1663,9 +1683,9 @@ impl ScopeApp {
             if instrument == Instrument::Scope {
                 driver.position("CH4")?;
             }
-            driver.click(self, "Details")?;
+            driver.click(self, i18n::text("shell.details"))?;
             assert!(self.shell.narrow_details);
-            driver.text_position("Stop output")?;
+            driver.text_position(i18n::text("generator.stop_output_2"))?;
             driver.key(self, egui::Key::Escape, egui::Modifiers::NONE);
             assert!(!self.shell.narrow_details);
         }
@@ -1716,10 +1736,10 @@ impl ScopeApp {
             driver.resize(self, vec2(width, 1000.0), zoom, native);
             for locale in i18n::Locale::ALL {
                 if width < 1180.0 {
-                    driver.click(self, "Menu")?;
+                    driver.click(self, i18n::text("shell.menu"))?;
                 }
-                driver.click(self, "View")?;
-                driver.click(self, "Language")?;
+                driver.click(self, i18n::text("shell.view"))?;
+                driver.click(self, i18n::text("shell.language"))?;
                 driver.visible_text_rect(locale.native_name())?;
                 driver.click(self, locale.native_name())?;
                 assert_eq!(i18n::locale(), locale);
@@ -1727,7 +1747,7 @@ impl ScopeApp {
                 assert_eq!(self.input_generation, generation);
                 assert_eq!(self.generator.command_marker(), command);
                 assert!(!egui::Popup::is_any_open(&driver.ctx));
-                driver.text_position("Stop output")?;
+                driver.text_position(i18n::text("generator.stop_output_2"))?;
             }
         }
         i18n::set_locale(&driver.ctx, selected.id());
@@ -1770,15 +1790,18 @@ impl ScopeApp {
                 let stopped = self.generator.stopped();
                 driver.frame(self, vec![]);
                 driver.frame(self, vec![]);
-                driver.text_position("Stop output")?;
+                driver.text_position(i18n::text("generator.stop_output_2"))?;
                 assert_eq!(driver.position("Stop output").is_err(), stopped);
                 let marker = self.generator.command_marker();
                 // Click the disabled button too; it must not send a command.
-                driver.click_at(self, driver.text_position("Stop output")?);
+                driver.click_at(
+                    self,
+                    driver.text_position(i18n::text("generator.stop_output_2"))?,
+                );
                 assert_eq!(self.generator.command_marker().0, marker.0);
                 assert_eq!(self.generator.command_marker().1 > marker.1, !stopped);
                 if !stopped {
-                    driver.click(self, "■ Stop output")?;
+                    driver.click(self, i18n::text("generator.stop_output"))?;
                     assert!(self.generator.command_marker().1 > marker.1 + 1);
                 }
             }
@@ -1800,9 +1823,9 @@ impl ScopeApp {
         let unavailable = self.spectrogram_unavailable_selection;
         let pending = self.spectrogram_pending_click.take();
         driver.frame(self, vec![]);
-        driver.text_position("Place cursor:")?;
-        driver.text_position("Placed: none")?;
-        driver.text_position("Start single capture")?;
+        driver.text_position(i18n::text("common.place_cursor"))?;
+        driver.text_position(i18n::text("common.placed_none"))?;
+        driver.text_position(i18n::text("oscilloscope.start_single_capture"))?;
         assert_eq!(
             driver.position("Start single capture").is_ok(),
             !self.running() && self.input_transport_enabled()
@@ -1815,13 +1838,13 @@ impl ScopeApp {
         self.cursors.set_xy_point(1, [0.125, -0.25]);
         self.spectrogram_unavailable_selection = [true; 2];
         driver.frame(self, vec![]);
-        driver.text_position("Placed: A")?;
+        driver.text_position(i18n::text("common.placed_a"))?;
         driver.click(self, "A")?;
         assert_eq!(self.active_cursor, 0);
         assert!(self.cursors.times[0].is_some());
         assert!(self.cursors.times[1].is_none());
-        driver.click(self, "Clear cursors")?;
-        driver.text_position("Placed: none")?;
+        driver.click(self, i18n::text("common.clear_cursors"))?;
+        driver.text_position(i18n::text("common.placed_none"))?;
         assert!(self.cursors.times.iter().all(Option::is_none));
         assert_eq!(self.cursors.spectrum_frequencies_hz, [None; 2]);
         assert!(self.cursors.frequency_hz.is_none());
@@ -1850,10 +1873,10 @@ impl ScopeApp {
             for percent in [175, 75, 150, 90, 125, 110, 100] {
                 let before = driver.ctx.zoom_factor();
                 if width < 1180.0 {
-                    driver.click(self, "Menu")?;
+                    driver.click(self, i18n::text("shell.menu"))?;
                 }
-                driver.click(self, "View")?;
-                driver.click(self, "Display scale")?;
+                driver.click(self, i18n::text("shell.view"))?;
+                driver.click(self, i18n::text("shell.display_scale"))?;
                 for label in ["75%", "90%", "100%", "110%", "125%", "150%", "175%"] {
                     let pos = driver.position(label)?;
                     driver.frame(self, vec![egui::Event::PointerMoved(pos)]);
@@ -1875,10 +1898,10 @@ impl ScopeApp {
             }
             // Dismissing the scale choices keeps the applied value.
             if width < 1180.0 {
-                driver.click(self, "Menu")?;
+                driver.click(self, i18n::text("shell.menu"))?;
             }
-            driver.click(self, "View")?;
-            driver.click(self, "Display scale")?;
+            driver.click(self, i18n::text("shell.view"))?;
+            driver.click(self, i18n::text("shell.display_scale"))?;
             driver.key(self, egui::Key::Escape, egui::Modifiers::NONE);
             assert_eq!(driver.ctx.zoom_factor(), 1.0);
             assert!(!driver.ctx.any_popup_open());
@@ -1914,25 +1937,25 @@ impl ScopeApp {
             "Showing XY sliders rounded f64 settings"
         );
 
-        let reset = driver.position("Reset XY scales")?;
-        let snap = driver.position("Trace Snap")?;
+        let reset = driver.position(i18n::text("xy.reset_xy_scales"))?;
+        let snap = driver.position(i18n::text("xy.trace_snap"))?;
         assert!(
             reset.x > 1100.0 && snap.x > 1100.0,
             "XY settings are not in the right sidebar"
         );
-        driver.click(self, "Trace Snap")?;
+        driver.click(self, i18n::text("xy.trace_snap"))?;
         assert_eq!(self.xy_cursor_mode, xy::CursorMode::TraceSnap);
         assert_eq!(self.cursors.xy_points, points);
         self.trigger.level = 0.125;
         driver.frame(self, vec![]);
-        driver.click(self, "Zero level")?;
+        driver.click(self, i18n::text("oscilloscope.zero_level"))?;
         assert_eq!(self.trigger.level, 0.0);
         assert_eq!(self.xy_settings, unedited);
-        driver.click(self, "Free")?;
+        driver.click(self, i18n::text("xy.free"))?;
         assert_eq!(self.xy_cursor_mode, xy::CursorMode::Free);
         assert_eq!(self.cursors.xy_points, points);
 
-        driver.click(self, "Reset XY scales")?;
+        driver.click(self, i18n::text("xy.reset_xy_scales"))?;
         assert_eq!(
             self.xy_settings,
             xy::Settings {
@@ -1948,10 +1971,10 @@ impl ScopeApp {
 
         // The same controls remain reachable via Details at compact widths.
         driver.resize(self, vec2(980.0, 760.0), 1.25, 1.0);
-        driver.click(self, "Details")?;
-        driver.click(self, "Trace Snap")?;
+        driver.click(self, i18n::text("shell.details"))?;
+        driver.click(self, i18n::text("xy.trace_snap"))?;
         assert_eq!(self.xy_cursor_mode, xy::CursorMode::TraceSnap);
-        driver.click(self, "Free")?;
+        driver.click(self, i18n::text("xy.free"))?;
         driver.key(self, egui::Key::Escape, egui::Modifiers::NONE);
         assert!(!self.shell.narrow_details);
         driver.position("A")?;
@@ -2003,36 +2026,36 @@ impl ScopeApp {
         driver.resize(self, vec2(1440.0, 860.0), 1.0, 1.0);
 
         // All default groups fit the actual startup height without scrolling.
-        let quantity = driver.position("Amplitude")?;
-        let axis = driver.position("Log Hz")?;
+        let quantity = driver.position(i18n::text("spectrum.amplitude"))?;
+        let axis = driver.position(i18n::text("spectrogram.log_hz"))?;
         let cursor_a = driver.position("A")?;
-        let average = driver.position("Average")?;
-        let advanced = driver.position("Advanced analysis / diagnostics")?;
+        let average = driver.position(i18n::text("spectrum.average"))?;
+        let advanced = driver.position(i18n::text("spectrum.advanced_analysis_diagnostics"))?;
         assert!(
             quantity.y < axis.y
                 && axis.y < cursor_a.y
                 && cursor_a.y < average.y
                 && average.y < advanced.y
         );
-        driver.click(self, "PSD")?;
+        driver.click(self, i18n::text("spectrum.psd"))?;
         assert_eq!(self.spectrum_settings.quantity, Quantity::Psd);
         assert_eq!(self.analyzer.settings().quantity, Quantity::Amplitude);
-        driver.click(self, "Transient (ESD)")?;
+        driver.click(self, i18n::text("spectrum.quantity.esd"))?;
         assert_eq!(self.spectrum_settings.quantity, Quantity::Esd);
         assert_eq!(self.spectrum_settings.window, spectrum::Window::Rectangular);
         assert_eq!(self.spectrum_settings.averages, 1);
         assert!(!self.spectrum_settings.remove_dc);
         assert_eq!(self.analyzer.settings().quantity, Quantity::Amplitude);
         // Restore the held fixture's next-run settings before cursor checks.
-        driver.click(self, "Amplitude")?;
+        driver.click(self, i18n::text("spectrum.amplitude"))?;
         self.spectrum_settings = settings;
-        driver.click(self, "Average")?;
+        driver.click(self, i18n::text("spectrum.average"))?;
         assert_eq!(
             self.spectrum_settings.averages,
             self.spectrum_display.average_weight
         );
-        driver.position("Advanced analysis / diagnostics")?;
-        driver.click(self, "Average")?;
+        driver.position(i18n::text("spectrum.advanced_analysis_diagnostics"))?;
+        driver.click(self, i18n::text("spectrum.average"))?;
         assert_eq!(self.spectrum_settings.averages, 1);
 
         let rect = driver
@@ -2056,11 +2079,11 @@ impl ScopeApp {
             )
         };
         driver.click(self, "A")?;
-        driver.text_position("Placed: none")?;
+        driver.text_position(i18n::text("common.placed_none"))?;
         driver.click_at(self, at(frequency));
         let a = self.cursors.spectrum_frequencies_hz[0]
             .ok_or("Spectrum A did not respond to plot click")?;
-        driver.text_position("Placed: A")?;
+        driver.text_position(i18n::text("common.placed_a"))?;
         driver.click(self, "B")?;
         driver.click_at(self, at(2.0 * frequency));
         let b = self.cursors.spectrum_frequencies_hz[1]
@@ -2104,13 +2127,13 @@ impl ScopeApp {
         self.cursors.set_xy_point(1, [0.125, -0.25]);
         let times = self.cursors.times;
         let points = self.cursors.xy_points;
-        driver.text_position("Placed: A, B")?;
-        driver.click(self, "Clear cursors")?;
+        driver.text_position(i18n::text("common.placed_a_b"))?;
+        driver.click(self, i18n::text("common.clear_cursors"))?;
         assert_eq!(self.cursors.spectrum_frequencies_hz, [None; 2]);
         assert!(self.cursors.frequency_hz.is_none());
         assert_eq!(self.cursors.times, times);
         assert_eq!(self.cursors.xy_points, points);
-        driver.text_position("Placed: none")?;
+        driver.text_position(i18n::text("common.placed_none"))?;
 
         self.analyzer = saved_result;
         self.spectrum_settings = saved_settings;

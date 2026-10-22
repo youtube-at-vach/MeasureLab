@@ -105,12 +105,12 @@ impl ScopeApp {
         // Narrow layout temporarily hides the rail; its preference survives resizing/scale.
         driver.size = vec2(1040.0, 780.0);
         driver.frame(self, vec![]);
-        driver.text_position("Menu")?;
+        driver.text_position(i18n::text("shell.menu"))?;
         assert!(self.shell.sidebar_compact);
         for compact in [false, true] {
-            driver.click(self, "Menu")?;
-            driver.click(self, "View")?;
-            driver.click(self, "Compact sidebar")?;
+            driver.click(self, i18n::text("shell.menu"))?;
+            driver.click(self, i18n::text("shell.view"))?;
+            driver.click(self, i18n::text("shell.compact_sidebar"))?;
             assert_eq!(self.shell.sidebar_compact, compact);
             driver.key(self, egui::Key::Escape, egui::Modifiers::NONE);
             driver.key(self, egui::Key::Escape, egui::Modifiers::NONE);

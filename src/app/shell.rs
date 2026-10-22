@@ -169,31 +169,37 @@ impl ScopeApp {
             let compact = ui.available_width() < 1180.0;
             ui.horizontal(|ui| {
                 if compact {
-                    ui.menu_button("Menu", |ui| self.shell_menus(ui, true));
+                    ui.menu_button(i18n::text("shell.menu"), |ui| self.shell_menus(ui, true));
                 } else {
                     self.shell_menus(ui, false);
                 }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     self.transport(ui);
                     let state = if self.pending_stop.is_some() {
-                        "FINISHING"
+                        i18n::text("shell.finishing_2")
                     } else if self.busy {
-                        "OPENING"
+                        i18n::text("shell.opening_2")
                     } else if self.running() {
-                        "LIVE"
+                        i18n::text("shell.live")
                     } else {
-                        "STOPPED"
+                        i18n::text("shell.stopped_2")
                     };
                     ui.label(
                         RichText::new(format!(
                             "{} · {state}",
-                            if compact { "IN" } else { "INPUT" }
+                            if compact {
+                                i18n::text("shell.in")
+                            } else {
+                                i18n::text("shell.input")
+                            }
                         ))
                         .small()
                         .monospace()
                         .color(if self.running() { GREEN } else { MUTED }),
                     )
-                    .on_hover_text(format!("Shared input · {state}"));
+                    .on_hover_text(
+                        i18n::format("shell.shared_input", &[("state", (state))]).as_ref(),
+                    );
                     ui.separator();
                     self.generator_transport(ui, compact);
                 });
@@ -204,10 +210,10 @@ impl ScopeApp {
     fn shell_menus(&mut self, ui: &mut egui::Ui, instruments: bool) {
         self.file_menu(ui);
         self.view_menu(ui);
-        ui.menu_button("Audio I/O", |ui| {
+        ui.menu_button(i18n::text("shell.audio_i_o"), |ui| {
             for (tab, name) in [
-                (IoTab::Connections, "Input / output"),
-                (IoTab::Calibration, "Calibration"),
+                (IoTab::Connections, i18n::text("shell.input_output")),
+                (IoTab::Calibration, i18n::text("shell.calibration")),
             ] {
                 if ui.button(name).clicked() {
                     self.shell.io = Some(tab);
@@ -215,7 +221,7 @@ impl ScopeApp {
                 }
             }
         });
-        if ui.button("Help").clicked() {
+        if ui.button(i18n::text("shell.help")).clicked() {
             self.shell.help = true;
             if ui.layout().is_vertical() {
                 ui.close();
@@ -224,19 +230,27 @@ impl ScopeApp {
         if instruments {
             self.instrument_menu(ui);
         }
-        ui.menu_button("Analysis status…", |ui| {
+        ui.menu_button(i18n::text("shell.analysis_status"), |ui| {
             ui.label(if self.running() {
-                "Scope / Spectrum / STFT / XY · input running"
+                i18n::text("shell.scope_spectrum_stft_xy_input_running")
             } else {
-                "Shared input · stopped"
+                i18n::text("shell.shared_input_stopped")
             });
-            ui.label("Display selection does not start or stop measurement.");
+            ui.label(i18n::text(
+                "shell.display_selection_does_not_start_or_stop_measurement",
+            ));
             ui.separator();
             let before = self.lockin_settings;
-            ui.label(format!(
-                "Lock-in · {}",
-                self.analysis_state(self.lockin_settings.enabled)
-            ));
+            ui.label(
+                i18n::format(
+                    "shell.lock_in",
+                    &[(
+                        "enabled",
+                        (self.analysis_state(self.lockin_settings.enabled)),
+                    )],
+                )
+                .as_ref(),
+            );
             if ui
                 .add_enabled(
                     self.lockin_settings.enabled
@@ -244,7 +258,7 @@ impl ScopeApp {
                         && self.pending_stop.is_none()
                         && !self.workspace_restoring
                         && self.settings_task != Some(SettingsTask::Restore),
-                    egui::Button::new("Stop Lock-in analysis"),
+                    egui::Button::new(i18n::text("shell.stop_lock_in_analysis")),
                 )
                 .clicked()
             {
@@ -252,10 +266,16 @@ impl ScopeApp {
                 self.apply_lockin_controls(before);
             }
             let before = self.comparison_settings;
-            ui.label(format!(
-                "Synchronous 2ch · {}",
-                self.analysis_state(self.comparison_settings.enabled)
-            ));
+            ui.label(
+                i18n::format(
+                    "shell.synchronous_ch",
+                    &[(
+                        "enabled",
+                        (self.analysis_state(self.comparison_settings.enabled)),
+                    )],
+                )
+                .as_ref(),
+            );
             if ui
                 .add_enabled(
                     self.comparison_settings.enabled
@@ -263,7 +283,7 @@ impl ScopeApp {
                         && self.pending_stop.is_none()
                         && !self.workspace_restoring
                         && self.settings_task != Some(SettingsTask::Restore),
-                    egui::Button::new("Stop synchronous analysis"),
+                    egui::Button::new(i18n::text("shell.stop_synchronous_analysis")),
                 )
                 .clicked()
             {
@@ -275,26 +295,32 @@ impl ScopeApp {
 
     pub(super) fn analysis_state(&self, enabled: bool) -> &'static str {
         if !enabled {
-            "STOPPED"
+            i18n::text("shell.stopped_2")
         } else if self.running() {
-            "ANALYSIS ON"
+            i18n::text("shell.analysis_on")
         } else {
-            "WAITING FOR INPUT"
+            i18n::text("shell.waiting_for_input")
         }
     }
 
     fn view_menu(&mut self, ui: &mut egui::Ui) {
-        ui.menu_button("View", |ui| {
-            ui.checkbox(&mut self.shell.sidebar_compact, "Compact sidebar");
+        ui.menu_button(i18n::text("shell.view"), |ui| {
+            ui.checkbox(
+                &mut self.shell.sidebar_compact,
+                i18n::text("shell.compact_sidebar"),
+            );
             ui.checkbox(
                 &mut self.presentation.details_visible,
-                "Selected instrument details",
+                i18n::text("shell.selected_instrument_details"),
             );
             ui.separator();
-            ui.label("Multi-instrument arrangement");
+            ui.label(i18n::text("shell.multi_instrument_arrangement"));
             for layout in Layout::ALL {
                 if ui
-                    .selectable_label(self.presentation.console.layout == layout, layout.name())
+                    .selectable_label(
+                        self.presentation.console.layout == layout,
+                        layout.display_name(),
+                    )
                     .clicked()
                 {
                     self.presentation.apply(Action::SetLayout(layout));
@@ -302,10 +328,10 @@ impl ScopeApp {
             }
             ui.add(
                 egui::Slider::new(&mut self.presentation.console.split, 0.2..=0.8)
-                    .text("First pane share"),
+                    .text(i18n::text("shell.first_pane_share")),
             );
             ui.separator();
-            ui.menu_button("Display scale", |ui| {
+            ui.menu_button(i18n::text("shell.display_scale"), |ui| {
                 let current = ui.ctx().zoom_factor();
                 for percent in [75, 90, 100, 110, 125, 150, 175] {
                     let scale = percent as f32 / 100.0;
@@ -327,12 +353,12 @@ impl ScopeApp {
 
     fn instrument_menu(&mut self, ui: &mut egui::Ui) {
         let title = if self.shell.io.is_some() {
-            "Instruments".into()
+            i18n::text("shell.instruments").into()
         } else {
             self.presentation
                 .selected()
-                .map_or("Multi-instrument view".into(), |i| {
-                    format!("Instrument: {}", i.name())
+                .map_or(i18n::text("shell.multi_instrument_view").into(), |i| {
+                    i18n::format("shell.instrument", &[("name", (i.display_name()))]).to_string()
                 })
         };
         ui.menu_button(title, |ui| self.instrument_list(ui, true));
@@ -342,16 +368,20 @@ impl ScopeApp {
         ui.set_min_width(212.0);
         ui.add(
             egui::TextEdit::singleline(&mut self.shell.search)
-                .hint_text("Find an instrument")
+                .hint_text(i18n::text("shell.find_an_instrument"))
                 .desired_width(ui.available_width()),
         );
         let query = self.shell.search.trim().to_lowercase();
         let mut group = "";
         let mut matches = 0;
         for instrument in Instrument::ALL {
-            if !format!("{} {}", instrument.name(), instrument.purpose())
-                .to_lowercase()
-                .contains(&query)
+            if !format!(
+                "{} {}",
+                instrument.display_name(),
+                instrument.display_purpose()
+            )
+            .to_lowercase()
+            .contains(&query)
             {
                 continue;
             }
@@ -360,11 +390,11 @@ impl ScopeApp {
                 group = instrument.group();
                 ui.add_space(12.0);
                 ui.horizontal(|ui| {
-                    setting_label(ui, group);
+                    setting_label(ui, instrument.display_group());
                     if group == Instrument::Scope.group() {
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             ui.label(self.input_navigation_status().text())
-                                .on_hover_text("Shared input for Scope, Spectrum, Spectrogram and XY. Acquisition and held results are shown inside each instrument.");
+                                .on_hover_text(i18n::text("shell.shared_input_for_scope_spectrum_spectrogram_and_xy_acquisition"));
                         });
                     }
                 });
@@ -388,7 +418,7 @@ impl ScopeApp {
         if matches == 0 {
             ui.add_space(8.0);
             ui.label(
-                RichText::new("No matching instruments")
+                RichText::new(i18n::text("shell.no_matching_instruments"))
                     .small()
                     .color(MUTED),
             );
@@ -431,44 +461,96 @@ impl ScopeApp {
 
     fn input_navigation_status(&self) -> NavigationStatus {
         if self.pending_stop.is_some() {
-            NavigationStatus("… Finishing", YELLOW, "Input · finishing analysis")
+            NavigationStatus(
+                i18n::text("shell.finishing"),
+                YELLOW,
+                i18n::text("shell.input_finishing_analysis"),
+            )
         } else if self.busy {
-            NavigationStatus("… Opening", YELLOW, "Input · opening device")
+            NavigationStatus(
+                i18n::text("shell.opening"),
+                YELLOW,
+                i18n::text("shell.input_opening_device"),
+            )
         } else if self.running() {
-            NavigationStatus("▶ Input live", GREEN, "Shared input · live")
+            NavigationStatus(
+                i18n::text("shell.input_live"),
+                GREEN,
+                i18n::text("shell.shared_input_live"),
+            )
         } else {
-            NavigationStatus("■ Input stopped", MUTED, "Shared input · stopped")
+            NavigationStatus(
+                i18n::text("shell.input_stopped"),
+                MUTED,
+                i18n::text("shell.shared_input_stopped"),
+            )
         }
     }
 
     fn analysis_navigation_status(&self, enabled: bool) -> NavigationStatus {
         if !enabled {
-            NavigationStatus("■ Off", MUTED, "Analysis · stopped")
+            NavigationStatus(
+                i18n::text("shell.off"),
+                MUTED,
+                i18n::text("shell.analysis_stopped"),
+            )
         } else if self.running() {
-            NavigationStatus("▶ On", GREEN, "Analysis enabled · input live")
+            NavigationStatus(
+                i18n::text("shell.on"),
+                GREEN,
+                i18n::text("shell.analysis_enabled_input_live"),
+            )
         } else {
-            NavigationStatus("… Wait", YELLOW, "Analysis enabled · waiting for input")
+            NavigationStatus(
+                i18n::text("shell.wait"),
+                YELLOW,
+                i18n::text("shell.analysis_enabled_waiting_for_input"),
+            )
         }
     }
 
     fn output_navigation_status(&self) -> NavigationStatus {
         let g = &self.generator;
         if g.stopping {
-            return NavigationStatus("… Stopping", YELLOW, "Output · stopping");
+            return NavigationStatus(
+                i18n::text("shell.stopping"),
+                YELLOW,
+                i18n::text("shell.output_stopping"),
+            );
         }
         if g.starting {
-            return NavigationStatus("… Starting", YELLOW, "Output · start pending");
+            return NavigationStatus(
+                i18n::text("shell.starting"),
+                YELLOW,
+                i18n::text("shell.output_start_pending"),
+            );
         }
         match g.status.state {
-            generator::State::Stopped => NavigationStatus("■ Stopped", MUTED, "Output · stopped"),
-            generator::State::Starting => {
-                NavigationStatus("… Starting", YELLOW, "Output · starting")
-            }
-            generator::State::Running => NavigationStatus("▶ Running", GREEN, "Output · running"),
-            generator::State::Stopping => {
-                NavigationStatus("… Stopping", YELLOW, "Output · stopping")
-            }
-            generator::State::Error(_) => NavigationStatus("! Error", TRIGGER, "Output · error"),
+            generator::State::Stopped => NavigationStatus(
+                i18n::text("shell.stopped"),
+                MUTED,
+                i18n::text("shell.output_stopped"),
+            ),
+            generator::State::Starting => NavigationStatus(
+                i18n::text("shell.starting"),
+                YELLOW,
+                i18n::text("shell.output_starting"),
+            ),
+            generator::State::Running => NavigationStatus(
+                i18n::text("shell.running"),
+                GREEN,
+                i18n::text("shell.output_running"),
+            ),
+            generator::State::Stopping => NavigationStatus(
+                i18n::text("shell.stopping"),
+                YELLOW,
+                i18n::text("shell.output_stopping"),
+            ),
+            generator::State::Error(_) => NavigationStatus(
+                i18n::text("shell.error"),
+                TRIGGER,
+                i18n::text("shell.output_error"),
+            ),
         }
     }
 
@@ -493,17 +575,17 @@ impl ScopeApp {
 
     fn selected_details(&mut self, ui: &mut egui::Ui) {
         let Some(instrument) = self.presentation.selected() else {
-            ui.label("Add an instrument to edit its details.");
+            ui.label(i18n::text("shell.add_an_instrument_to_edit_its_details"));
             return;
         };
         ui.heading(if instrument == Instrument::Scope {
-            "Scope settings"
+            i18n::text("shell.scope_settings")
         } else {
-            instrument.name()
+            instrument.display_name()
         });
         ui.separator();
         if self.settings_task == Some(SettingsTask::Restore) || self.workspace_restoring {
-            ui.label("Restoring settings…");
+            ui.label(i18n::text("shell.restoring_settings"));
             return;
         }
         ui.spacing_mut().slider_width = (ui.available_width() - 140.0).max(75.0);
@@ -522,89 +604,156 @@ impl ScopeApp {
         let narrow = ui.max_rect().width() < 1180.0;
         egui::CentralPanel::default().show(ui, |ui| {
             ui.spacing_mut().item_spacing = vec2(6.0, 5.0);
-            if let Some(error) = &self.error { ui.colored_label(TRIGGER, error); }
+            if let Some(error) = &self.error {
+                ui.colored_label(TRIGGER, error);
+            }
             if let Some(error) = &self.input_error {
                 let notice_shown = self.shell.io.is_none()
                     && !(narrow && self.presentation.details_visible && self.shell.narrow_details)
                     && self.presentation.screen == Screen::Single(Instrument::Scope)
                     && self.scope_notice() == Some(display::ScopeNotice::Failed);
-                if !notice_shown { ui.colored_label(TRIGGER, error); }
+                if !notice_shown {
+                    ui.colored_label(TRIGGER, error);
+                }
             }
             if let Some(tab) = self.shell.io {
                 ui.horizontal_wrapped(|ui| {
-                    ui.heading("Audio I/O settings");
-                    if ui.button("Back to instruments").clicked() { self.shell.io = None; }
-                    for (t, name) in [(IoTab::Connections, "Input / output"), (IoTab::Calibration, "Calibration")] {
-                        if ui.selectable_label(tab == t, name).clicked() { self.shell.io = Some(t); }
+                    ui.heading(i18n::text("shell.audio_i_o_settings"));
+                    if ui.button(i18n::text("shell.back_to_instruments")).clicked() {
+                        self.shell.io = None;
+                    }
+                    for (t, name) in [
+                        (IoTab::Connections, i18n::text("shell.input_output")),
+                        (IoTab::Calibration, i18n::text("shell.calibration")),
+                    ] {
+                        if ui.selectable_label(tab == t, name).clicked() {
+                            self.shell.io = Some(t);
+                        }
                     }
                 });
-                egui::ScrollArea::vertical().id_salt("common_io").show(ui, |ui| {
-                    match self.shell.io.unwrap_or(tab) {
+                egui::ScrollArea::vertical()
+                    .id_salt("common_io")
+                    .show(ui, |ui| match self.shell.io.unwrap_or(tab) {
                         IoTab::Connections => self.io_controls(ui),
                         IoTab::Calibration => {
                             ui.set_max_width(ui.available_width().min(720.0));
                             self.calibration_controls(ui);
                         }
-                    }
-                });
+                    });
                 return;
             }
             if narrow && self.presentation.details_visible {
                 ui.horizontal(|ui| {
-                    ui.selectable_value(&mut self.shell.narrow_details, false, "Measurement");
-                    ui.selectable_value(&mut self.shell.narrow_details, true, "Details");
-                    if let Some(i) = self.presentation.selected() { ui.label(i.name()); }
+                    ui.selectable_value(
+                        &mut self.shell.narrow_details,
+                        false,
+                        i18n::text("shell.measurement"),
+                    );
+                    ui.selectable_value(
+                        &mut self.shell.narrow_details,
+                        true,
+                        i18n::text("shell.details"),
+                    );
+                    if let Some(i) = self.presentation.selected() {
+                        ui.label(i.display_name());
+                    }
                 });
                 if self.shell.narrow_details {
-                    egui::ScrollArea::vertical().id_salt("narrow_details").show(ui, |ui| self.selected_details(ui));
+                    egui::ScrollArea::vertical()
+                        .id_salt("narrow_details")
+                        .show(ui, |ui| self.selected_details(ui));
                     return;
                 }
             }
             match self.presentation.screen {
                 Screen::Single(i) => {
                     ui.horizontal_wrapped(|ui| {
-                        ui.heading(i.name());
-                        ui.menu_button("Split view with…", |ui| {
+                        ui.heading(i.display_name());
+                        ui.menu_button(i18n::text("shell.split_view_with"), |ui| {
                             if !self.presentation.console.instruments.is_empty() {
-                                ui.label("This replaces the saved multi-instrument view. Use Undo replacement there to restore it."); ui.separator();
+                                ui.label(i18n::text(
+                                    "shell.this_replaces_the_saved_multi_instrument_view_use_undo",
+                                ));
+                                ui.separator();
                             }
                             for other in Instrument::ALL {
-                                if other != i && ui.button(other.name()).clicked() { self.navigate(Action::PairWith(other)); ui.close(); }
+                                if other != i && ui.button(other.display_name()).clicked() {
+                                    self.navigate(Action::PairWith(other));
+                                    ui.close();
+                                }
                             }
                         });
                     });
                     let available = ui.available_size();
-                    egui::ScrollArea::vertical().id_salt(("single", i)).auto_shrink([false, false]).show(ui, |ui| {
-                        ui.allocate_ui_with_layout(vec2(ui.available_width().min(available.x), available.y.max(i.minimum_size()[1])), egui::Layout::top_down(egui::Align::Min), |ui| self.draw_instrument(ui, i));
-                    });
+                    egui::ScrollArea::vertical()
+                        .id_salt(("single", i))
+                        .auto_shrink([false, false])
+                        .show(ui, |ui| {
+                            ui.allocate_ui_with_layout(
+                                vec2(
+                                    ui.available_width().min(available.x),
+                                    available.y.max(i.minimum_size()[1]),
+                                ),
+                                egui::Layout::top_down(egui::Align::Min),
+                                |ui| self.draw_instrument(ui, i),
+                            );
+                        });
                 }
                 Screen::Console => self.console(ui),
             }
         });
         let ctx = ui.ctx().clone();
         let mut help = self.shell.help;
-        egui::Window::new("Help").id(egui::Id::new(HELP_WINDOW)).open(&mut help).resizable(true).show(&ctx, |ui| {
-            ui.label("Space: start / stop shared input. Typing in an editor leaves input unchanged.");
-            ui.label("Ctrl + 1…7: open an instrument. Ctrl + Left / Right: select a console pane.");
-            ui.label("Tab / Shift + Tab: move keyboard focus. Enter / Space: activate a focused control.");
-            ui.label("Escape: cancel editing, close the front menu/window, then return from I/O or narrow details.");
-            ui.label(spectrogram_controls::GESTURES);
-            ui.separator();
-            ui.label(display::AMPLITUDE_HELP);
-            ui.label(display::SAMPLE_RATE_HELP);
-            ui.label(display::DIV_HELP);
-            ui.label(display::TRIGGER_HELP);
-            ui.label("LIVE / HELD / WAITING describe acquisition; validity and calibration are shown separately.");
-            ui.label(format!("{} · UI {:.0} fps · CPU FFT {:.2} ms", self.adapter, self.fps, self.fft_ms));
-            egui::CollapsingHeader::new(i18n::text("shell.font_license")).id_salt("font_license").show(ui, |ui| {
-                egui::ScrollArea::vertical().max_height(200.0).show(ui, |ui| {
-                    ui.label(include_str!("../../assets/fonts/OFL.txt"));
-                });
+        egui::Window::new(i18n::text("shell.help"))
+            .id(egui::Id::new(HELP_WINDOW))
+            .open(&mut help)
+            .resizable(true)
+            .show(&ctx, |ui| {
+                ui.label(i18n::text(
+                    "shell.space_start_stop_shared_input_typing_in_an_editor",
+                ));
+                ui.label(i18n::text(
+                    "shell.ctrl_open_an_instrument_ctrl_left_right_select_a",
+                ));
+                ui.label(i18n::text(
+                    "shell.tab_shift_tab_move_keyboard_focus_enter_space_activate",
+                ));
+                ui.label(i18n::text(
+                    "shell.escape_cancel_editing_close_the_front_menu_window_then",
+                ));
+                ui.label(spectrogram_controls::gestures());
+                ui.separator();
+                ui.label(display::amplitude_help());
+                ui.label(display::sample_rate_help());
+                ui.label(display::div_help());
+                ui.label(display::trigger_help());
+                ui.label(i18n::text(
+                    "shell.live_held_waiting_describe_acquisition_validity_and_calibration_are",
+                ));
+                ui.label(
+                    i18n::format(
+                        "shell.ui_fps_cpu_fft_ms",
+                        &[
+                            ("adapter", &(self.adapter).to_string()),
+                            ("fps", &format!("{:.0}", self.fps)),
+                            ("fft_ms", &format!("{:.2}", self.fft_ms)),
+                        ],
+                    )
+                    .as_ref(),
+                );
+                egui::CollapsingHeader::new(i18n::text("shell.font_license"))
+                    .id_salt("font_license")
+                    .show(ui, |ui| {
+                        egui::ScrollArea::vertical()
+                            .max_height(200.0)
+                            .show(ui, |ui| {
+                                ui.label(include_str!("../../assets/fonts/OFL.txt"));
+                            });
+                    });
             });
-        });
         self.shell.help = help;
         let mut paths = self.shell.file_paths;
-        egui::Window::new("File paths & status")
+        egui::Window::new(i18n::text("shell.file_paths_status"))
             .id(egui::Id::new(FILE_PATHS_WINDOW))
             .open(&mut paths)
             .default_width(440.0)
@@ -617,10 +766,10 @@ impl ScopeApp {
 
     fn console(&mut self, ui: &mut egui::Ui) {
         ui.horizontal_wrapped(|ui| {
-            ui.heading("Multi-instrument view");
-            ui.menu_button("Add instrument…", |ui| {
+            ui.heading(i18n::text("shell.multi_instrument_view"));
+            ui.menu_button(i18n::text("shell.add_instrument"), |ui| {
                 for i in Instrument::ALL {
-                    if ui.button(i.name()).clicked() {
+                    if ui.button(i.display_name()).clicked() {
                         self.navigate(Action::AddToConsole(i));
                         ui.close();
                     }
@@ -629,7 +778,7 @@ impl ScopeApp {
             if ui
                 .add_enabled(
                     self.shell.previous_console.is_some(),
-                    egui::Button::new("Undo replacement"),
+                    egui::Button::new(i18n::text("shell.undo_replacement")),
                 )
                 .clicked()
                 && let Some(previous) = self.shell.previous_console.take()
@@ -639,7 +788,10 @@ impl ScopeApp {
             }
             for layout in Layout::ALL {
                 if ui
-                    .selectable_label(self.presentation.console.layout == layout, layout.name())
+                    .selectable_label(
+                        self.presentation.console.layout == layout,
+                        layout.display_name(),
+                    )
                     .clicked()
                 {
                     self.presentation.apply(Action::SetLayout(layout));
@@ -647,7 +799,9 @@ impl ScopeApp {
             }
         });
         if self.presentation.console.instruments.is_empty() {
-            ui.label("Add instruments to observe and generate signals together. Removing a pane leaves its analysis and output running.");
+            ui.label(i18n::text(
+                "shell.add_instruments_to_observe_and_generate_signals_together_removing",
+            ));
             return;
         }
         ui.horizontal_wrapped(|ui| {
@@ -674,7 +828,13 @@ impl ScopeApp {
             && self.presentation.console.layout != Layout::Tabs
             && self.presentation.console.instruments.len() > 1
         {
-            ui.label(RichText::new("Tabs keep controls and readings visible at this size. The requested arrangement returns when space allows.").small().color(MUTED));
+            ui.label(
+                RichText::new(i18n::text(
+                    "shell.tabs_keep_controls_and_readings_visible_at_this_size",
+                ))
+                .small()
+                .color(MUTED),
+            );
         }
         let instruments = self.presentation.console.displayed(layout).to_vec();
         let columns = if matches!(layout, Layout::Columns | Layout::Grid) {
@@ -727,12 +887,19 @@ impl ScopeApp {
                                                 {
                                                     self.presentation.apply(Action::FocusPane(i));
                                                 }
-                                                if ui.small_button("Open single").clicked() {
+                                                if ui
+                                                    .small_button(i18n::text("shell.open_single"))
+                                                    .clicked()
+                                                {
                                                     self.navigate(Action::OpenSingle(i));
                                                 }
                                                 if ui
-                                                    .small_button("Remove from view")
-                                                    .on_hover_text("Analysis and output continue")
+                                                    .small_button(i18n::text(
+                                                        "shell.remove_from_view",
+                                                    ))
+                                                    .on_hover_text(i18n::text(
+                                                        "shell.analysis_and_output_continue",
+                                                    ))
                                                     .clicked()
                                                 {
                                                     self.presentation
@@ -770,12 +937,12 @@ impl ScopeApp {
                                         assert!(
                                             frame.response.rect.width() <= width + 1.0,
                                             "{} exceeds console width",
-                                            i.name()
+                                            i.display_name()
                                         );
                                         assert!(
                                             frame.response.rect.height() <= height + 1.0,
                                             "{} exceeds console height: {} > {}",
-                                            i.name(),
+                                            i.display_name(),
                                             frame.response.rect.height(),
                                             height
                                         );
@@ -805,12 +972,12 @@ impl ScopeApp {
             assert!(
                 response.response.rect.is_finite(),
                 "{} produced nonfinite display bounds",
-                instrument.name()
+                instrument.display_name()
             );
             assert!(
                 response.response.rect.width() <= width + 1.0,
                 "{} exceeds its pane: {} > {}",
-                instrument.name(),
+                instrument.display_name(),
                 response.response.rect.width(),
                 width
             );
@@ -959,9 +1126,9 @@ fn instrument_button(
 
 fn pane_title(instrument: Instrument, selected: bool) -> String {
     if selected {
-        format!("{} · Selected", instrument.name())
+        i18n::format("shell.selected", &[("name", (instrument.display_name()))]).to_string()
     } else {
-        instrument.name().into()
+        instrument.display_name().into()
     }
 }
 
@@ -1345,7 +1512,7 @@ mod tests {
                         })
                         .unwrap_or_else(|| panic!("Missing navigation text: {label}"))
                 };
-                let name = text_rect(instrument.name());
+                let name = text_rect(instrument.display_name());
                 let state = text_rect(status.0);
                 assert!(row.contains_rect(name) && row.contains_rect(state));
                 assert!(name.right() + 4.0 <= state.left());

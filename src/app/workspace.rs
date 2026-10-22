@@ -441,20 +441,32 @@ impl ScopeApp {
         Ok(())
     }
     pub(super) fn software_controls(&mut self, ui: &mut egui::Ui) {
-        setting_label(ui, "SOFTWARE LOOPBACK · CH 1 REF / CH 2 DUT");
-        ui.label(RichText::new("Known sine → gain / phase / delay / noise DUT → common input. Conditions apply on Start.").small().color(MUTED));
+        setting_label(ui, i18n::text("common.software_loopback_ch_ref_ch_dut"));
+        ui.label(
+            RichText::new(i18n::text(
+                "common.known_sine_gain_phase_delay_noise_dut_common_input",
+            ))
+            .small()
+            .color(MUTED),
+        );
         if self.shell.separate_io_rates {
             egui::ComboBox::from_id_salt("software_rate")
-                .selected_text(format!(
-                    "{} Hz",
-                    self.requested_sample_rate.unwrap_or(48000)
-                ))
+                .selected_text(
+                    i18n::format(
+                        "common.hz_4",
+                        &[(
+                            "unwrap_or",
+                            &(self.requested_sample_rate.unwrap_or(48000)).to_string(),
+                        )],
+                    )
+                    .as_ref(),
+                )
                 .show_ui(ui, |ui| {
                     for rate in [44100, 48000, 96000, 192000] {
                         ui.selectable_value(
                             &mut self.requested_sample_rate,
                             Some(rate),
-                            format!("{rate} Hz"),
+                            i18n::format("common.hz_3", &[("rate", &(rate).to_string())]).as_ref(),
                         );
                     }
                 });
@@ -463,69 +475,72 @@ impl ScopeApp {
         ui.add(
             egui::DragValue::new(&mut s.frequency_hz)
                 .range(10.0..=80000.0)
-                .prefix("Frequency Hz "),
+                .prefix(i18n::text("common.frequency_hz")),
         );
         ui.add(
             egui::DragValue::new(&mut s.amplitude_peak)
                 .range(0.0..=1.0)
                 .speed(0.001)
-                .prefix("Reference peak FS "),
+                .prefix(i18n::text("common.reference_peak_fs")),
         );
         ui.add(
             egui::DragValue::new(&mut s.gain)
                 .range(-100.0..=100.0)
                 .speed(0.01)
-                .prefix("DUT gain "),
+                .prefix(i18n::text("common.dut_gain")),
         );
         ui.add(
             egui::DragValue::new(&mut s.phase_degrees)
                 .speed(1.0)
-                .prefix("Phase lead ° "),
+                .prefix(i18n::text("common.phase_lead")),
         );
         ui.add(
             egui::DragValue::new(&mut s.delay_samples)
                 .range(0..=384000)
-                .prefix("Delay samples "),
+                .prefix(i18n::text("common.delay_samples")),
         );
         ui.add(
             egui::DragValue::new(&mut s.dc_offset)
                 .speed(0.001)
-                .prefix("DUT DC FS "),
+                .prefix(i18n::text("common.dut_dc_fs")),
         );
         ui.add(
             egui::DragValue::new(&mut s.noise_rms)
                 .range(0.0..=1.0)
                 .speed(0.00001)
-                .prefix("Noise RMS FS "),
+                .prefix(i18n::text("common.noise_rms_fs")),
         );
         ui.add(
             egui::DragValue::new(&mut s.frequency_offset_hz)
                 .speed(0.1)
-                .prefix("DUT frequency offset Hz "),
+                .prefix(i18n::text("common.dut_frequency_offset_hz")),
         );
-        ui.checkbox(&mut s.reference_enabled, "Reference present");
+        ui.checkbox(
+            &mut s.reference_enabled,
+            i18n::text("common.reference_present"),
+        );
     }
 
     pub(super) fn file_menu(&mut self, ui: &mut egui::Ui) {
-        ui.menu_button("File", |ui| {
-            if ui.button("File paths & status…").clicked() {
+        ui.menu_button(i18n::text("common.file"), |ui| {
+            if ui.button(i18n::text("common.file_paths_status")).clicked() {
                 self.shell.file_paths = true;
                 ui.close();
             }
             ui.add_enabled_ui(!self.workspace_pending, |ui| {
-                if ui.button("Save settings…").clicked() {
+                if ui.button(i18n::text("common.save_settings_2")).clicked() {
                     match self.capture_settings() {
                         Ok(doc) => {
                             self.submit_workspace(workspace_io::Task::SaveSettings(Box::new(doc)))
                         }
-                        Err(e) => self.workspace_status = Some(e),
+                        Err(e) => self.workspace_status = Some(e.into()),
                     }
                     ui.close();
                 }
                 if ui
                     .add_enabled(
                         self.can_restore_settings(),
-                        egui::Button::new("Restore settings…"),
+                        egui::Button::new(i18n::text("common.restore_settings_2")),
                     )
                     .clicked()
                 {
@@ -533,35 +548,47 @@ impl ScopeApp {
                     ui.close();
                 }
                 ui.separator();
-                if ui.button("Load reference result…").clicked() {
+                if ui
+                    .button(i18n::text("common.load_reference_result"))
+                    .clicked()
+                {
                     self.submit_workspace(workspace_io::Task::LoadResult);
                     ui.close();
                 }
                 if self.spectrum_history.linked {
-                    ui.label(spectrum_history::EXPORT_REASON);
+                    ui.label(spectrum_history::export_reason());
                 }
                 if ui
                     .add_enabled(
                         self.can_export(),
-                        egui::Button::new("Keep held result as reference"),
+                        egui::Button::new(i18n::text("common.keep_held_result_as_reference")),
                     )
                     .clicked()
                 {
                     match self.capture_results() {
                         Ok(doc) => {
                             self.reference = Some(Box::new(doc));
-                            self.reference_label = "Previous held result".into();
+                            self.reference_label = i18n::text("common.previous_held_result").into();
                             self.comparison_current = None;
                             self.compare_open = true;
                         }
-                        Err(e) => self.workspace_status = Some(e),
+                        Err(e) => self.workspace_status = Some(e.into()),
                     }
                     ui.close();
                 }
                 for (label, format) in [
-                    ("Save held result JSON…", workspace_io::Format::Json),
-                    ("Export held result CSV…", workspace_io::Format::Csv),
-                    ("Export annotated PNG…", workspace_io::Format::Png),
+                    (
+                        i18n::text("common.save_held_result_json"),
+                        workspace_io::Format::Json,
+                    ),
+                    (
+                        i18n::text("common.export_held_result_csv"),
+                        workspace_io::Format::Csv,
+                    ),
+                    (
+                        i18n::text("common.export_annotated_png"),
+                        workspace_io::Format::Png,
+                    ),
                 ] {
                     if ui
                         .add_enabled(self.can_export(), egui::Button::new(label))
@@ -572,16 +599,25 @@ impl ScopeApp {
                                 Box::new(doc),
                                 format,
                             )),
-                            Err(e) => self.workspace_status = Some(e),
+                            Err(e) => self.workspace_status = Some(e.into()),
                         }
                         ui.close();
                     }
                 }
                 if self.spectrum_history.linked {
                     for (label, format) in [
-                        ("Save held Scope JSON…", workspace_io::Format::Json),
-                        ("Export held Scope CSV…", workspace_io::Format::Csv),
-                        ("Export held Scope PNG…", workspace_io::Format::Png),
+                        (
+                            i18n::text("common.save_held_scope_json"),
+                            workspace_io::Format::Json,
+                        ),
+                        (
+                            i18n::text("common.export_held_scope_csv"),
+                            workspace_io::Format::Csv,
+                        ),
+                        (
+                            i18n::text("common.export_held_scope_png"),
+                            workspace_io::Format::Png,
+                        ),
                     ] {
                         if ui
                             .add_enabled(self.can_export_scope(), egui::Button::new(label))
@@ -592,7 +628,7 @@ impl ScopeApp {
                                     Box::new(doc),
                                     format,
                                 )),
-                                Err(e) => self.workspace_status = Some(e),
+                                Err(e) => self.workspace_status = Some(e.into()),
                             }
                             ui.close();
                         }
@@ -602,7 +638,7 @@ impl ScopeApp {
             if ui
                 .add_enabled(
                     self.reference.is_some(),
-                    egui::Button::new("Compare saved reference"),
+                    egui::Button::new(i18n::text("common.compare_saved_reference")),
                 )
                 .clicked()
             {
@@ -613,7 +649,7 @@ impl ScopeApp {
             if ui
                 .add_enabled(
                     self.reference.is_some(),
-                    egui::Button::new("Clear reference"),
+                    egui::Button::new(i18n::text("common.clear_reference")),
                 )
                 .clicked()
             {
@@ -622,7 +658,7 @@ impl ScopeApp {
             }
             if let Some(status) = &self.workspace_status {
                 ui.separator();
-                ui.label(status);
+                ui.label(status.render().as_ref());
             }
         });
     }
@@ -633,9 +669,9 @@ impl ScopeApp {
             Ok(()) => {
                 self.workspace_pending = true;
                 self.workspace_restoring = restore;
-                self.workspace_status = Some("Selecting file…".into());
+                self.workspace_status = Some(UiStatus::SelectingFile);
             }
-            Err(e) => self.workspace_status = Some(e),
+            Err(e) => self.workspace_status = Some(e.into()),
         }
     }
     pub(super) fn poll_workspace(&mut self) {
@@ -643,19 +679,19 @@ impl ScopeApp {
             self.workspace_pending = false;
             self.workspace_restoring = false;
             self.workspace_status = Some(match event {
-                workspace_io::Event::Saved(path) => format!("Saved {}", path.display()),
-                workspace_io::Event::Cancelled => "File selection cancelled".into(),
-                workspace_io::Event::Error(e) => e,
+                workspace_io::Event::Saved(path) => UiStatus::Saved(path),
+                workspace_io::Event::Cancelled => UiStatus::Cancelled,
+                workspace_io::Event::Error(e) => e.into(),
                 workspace_io::Event::Settings(doc) => match self.restore_settings(*doc) {
-                    Ok(()) => "Settings restored; input stopped".into(),
-                    Err(e) => e,
+                    Ok(()) => UiStatus::Restored,
+                    Err(e) => e.into(),
                 },
                 workspace_io::Event::Reference(doc, path) => {
                     self.reference = Some(doc);
                     self.reference_label = path.display().to_string();
                     self.comparison_current = None;
                     self.compare_open = true;
-                    "Reference loaded; captured input conditions preserved".into()
+                    UiStatus::ReferenceLoaded
                 }
             });
         }
@@ -670,50 +706,49 @@ impl ScopeApp {
         }
         let current = &self.comparison_current;
         let mut open = self.compare_open;
-        egui::Window::new("Reference comparison").open(&mut open).default_size(vec2(930.0,680.0)).show(ctx,|ui| {
+        egui::Window::new(i18n::text("common.reference_comparison")).id(egui::Id::new("Reference comparison")).open(&mut open).default_size(vec2(930.0,680.0)).show(ctx,|ui| {
             ui.label(RichText::new(&self.reference_label).small().color(MUTED));
-            ui.label("One reference is retained. Recordings use independent sample-clock origins; plots are shown separately.");
+            ui.label(i18n::text("common.one_reference_is_retained_recordings_use_independent_sample_clock"));
             egui::ScrollArea::vertical().show(ui,|ui| {
                 if let Some(reference)=&self.reference {
                     ui.columns(2,|cols| {
-                        cols[0].heading("Reference");result_summary(&mut cols[0],reference);
-                        cols[1].heading("Current held result");
-                        if let Some(current)=&current {result_summary(&mut cols[1],current);}else{cols[1].label("Stop input to compare the current result.");}
+                        cols[0].heading(i18n::text("common.reference"));result_summary(&mut cols[0],reference);
+                        cols[1].heading(i18n::text("common.current_held_result"));
+                        if let Some(current)=&current {result_summary(&mut cols[1],current);}else{cols[1].label(i18n::text("common.stop_input_to_compare_the_current_result"));}
                     });
                     if let Some(current)=&current {
                         ui.separator();
                         for (i,(a,b)) in reference.scope.traces.iter().zip(&current.scope.traces).enumerate() {
                             if a.channel==b.channel && a.calibrated_statistics.unit==b.calibrated_statistics.unit && crate::results::matching_excitation(reference, reference.scope.sample_range.clone(), current, current.scope.sample_range.clone()) {
                                 if let (Some(a),Some(b))=(&a.calibrated_statistics.values,&b.calibrated_statistics.values) {
-                                    ui.label(format!("Trace {}: current − reference RMS {:.9e} (each result's own interval)",i+1,b.rms-a.rms));
+                                    ui.label(i18n::format("common.trace_current_reference_rms_each_result_s_own_interval", &[("i", &(i+1).to_string()), ("rms", &format!("{:.9e}", b.rms-a.rms))]).as_ref());
                                 }
-                            }else{ui.label(format!("Trace {} differs in channel, unit or known stationary excitation; no numeric difference",i+1));}
+                            }else{ui.label(i18n::format("common.trace_differs_in_channel_unit_or_known_stationary_excitation", &[("i", &(i+1).to_string())]).as_ref());}
                         }
                         if reference.spectrum.settings!=current.spectrum.settings || reference.spectrum.mode!=current.spectrum.mode || reference.spectrum.unit!=current.spectrum.unit || reference.spectrum.channel!=current.spectrum.channel || reference.input.nominal_sample_rate_hz!=current.input.nominal_sample_rate_hz || !crate::results::matching_excitation(reference, reference.spectrum.average.as_ref().map_or(0..0, |a| a.contributing_envelope.clone()), current, current.spectrum.average.as_ref().map_or(0..0, |a| a.contributing_envelope.clone())) {
-                            ui.label("Spectrum definitions or known stationary excitation differ; inspect each result's bins and band independently.");
+                            ui.label(i18n::text("common.spectrum_definitions_or_known_stationary_excitation_differ_inspect_each"));
                         }else if let (Some(a),Some(b))=(&reference.spectrum.band,&current.spectrum.band)
                             && a.inclusive_bins==b.inclusive_bins && a.power_unit==b.power_unit {
-                            ui.label(format!("PSD band power current − reference: {:.9e} {}",b.power-a.power,b.power_unit));
+                            ui.label(i18n::format("common.psd_band_power_current_reference", &[("power", &format!("{:.9e}", b.power-a.power)), ("power_unit", &(b.power_unit).to_string())]).as_ref());
                         }
                         if let Some(d) = crate::results::lockin_difference(reference, current) {
                             let l = current.lockin.as_ref().unwrap();
-                            ui.label(format!("Lock-in current − reference (each result's own interval):\nΔX {:.9e} · ΔY {:.9e} · ΔR {:.9e} {}\nΔθ {:+.9}° (wrapped to ±180°) · ΔGain {:.9e} {}",
-                                d.x, d.y, d.amplitude_peak, l.response_unit_peak, d.phase_degrees, d.gain, l.gain_unit));
+                            ui.label(i18n::format("common.lock_in_current_reference_each_result_s_own_interval", &[("x", &format!("{:.9e}", d.x)), ("y", &format!("{:.9e}", d.y)), ("amplitude_peak", &format!("{:.9e}", d.amplitude_peak)), ("response_unit_peak", &(l.response_unit_peak).to_string()), ("phase_degrees", &format!("{:+.9}", d.phase_degrees)), ("gain", &format!("{:.9e}", d.gain)), ("gain_unit", &(l.gain_unit).to_string())]).as_ref());
                         } else if reference.lockin.is_some() || current.lockin.is_some() {
-                            ui.label("Lock-in difference requires two valid, settled results with matching nominal Fs, channels, REF/filter settings and calibrations, no input failure, and known matching stationary excitation for Generator input.");
+                            ui.label(i18n::text("common.lock_in_difference_requires_two_valid_settled_results_with"));
                         }
                         if reference.comparison.is_some() || current.comparison.is_some() {
                             let width=current.comparison.as_ref().map_or(1.0,|c|c.result.bin_width_hz());
                             let bin=(self.comparison_frequency_hz/width).round() as usize;
-                            ui.label(format!("Synchronous comparison at bin {bin} ({:.3} Hz)",bin as f64*width));
-                            for (label,document) in [("Reference",reference.as_ref()),("Current",current.as_ref())] {
+                            ui.label(i18n::format("common.synchronous_comparison_at_bin_hz", &[("bin", &(bin).to_string()), ("width", &format!("{:.3}", bin as f64*width))]).as_ref());
+                            for (label,document) in [(i18n::text("common.reference"),reference.as_ref()),(i18n::text("common.current"),current.as_ref())] {
                                 if let Some(c)=&document.comparison {
-                                    ui.label(format!("{label}: {:?} · REF CH {} / SIG CH {} · {}..{} · {} windows · {}",c.result.state,c.result.settings.reference_channel+1,c.result.settings.response_channel+1,c.result.sample_range.start,c.result.sample_range.end,c.result.averaged_windows,c.gain_unit));
-                                    if let Some(b)=c.result.bins.get(bin) {ui.label(format!("Gain {:?} · phase {:?}° · coherence {:?} · {:?}",b.gain,b.phase_lead_degrees,b.coherence,b.state));}
+                                    ui.label(i18n::format("common.ref_ch_sig_ch_windows", &[("label", (label)), ("state", c.result.state.display_name()), ("reference_channel", &(c.result.settings.reference_channel+1).to_string()), ("response_channel", &(c.result.settings.response_channel+1).to_string()), ("start", &(c.result.sample_range.start).to_string()), ("end", &(c.result.sample_range.end).to_string()), ("averaged_windows", &(c.result.averaged_windows).to_string()), ("gain_unit", &(c.gain_unit).to_string())]).as_ref());
+                                    if let Some(b)=c.result.bins.get(bin) {ui.label(i18n::format("common.gain_phase_coherence", &[("gain", &format!("{:?}", b.gain)), ("phase_lead_degrees", &format!("{:?}", b.phase_lead_degrees)), ("coherence", &format!("{:?}", b.coherence)), ("state", b.state.display_name())]).as_ref());}
                                 }
                             }
-                            if let Some(d)=crate::results::comparison_difference(reference,current,bin) {ui.label(format!("Current − reference: gain {:.9e} · phase {:+.9}° · wrapped delay {:?} s",d.gain,d.phase_degrees,d.phase_delay_seconds));}
-                            else {ui.label("Difference requires valid matching input, analysis, calibration and excitation conditions without loss. Independent external output history does not establish matching excitation at input samples.");}
+                            if let Some(d)=crate::results::comparison_difference(reference,current,bin) {ui.label(i18n::format("common.current_reference_gain_phase_wrapped_delay_s", &[("gain", &format!("{:.9e}", d.gain)), ("phase_degrees", &format!("{:+.9}", d.phase_degrees)), ("phase_delay_seconds", &format!("{:?}", d.phase_delay_seconds))]).as_ref());}
+                            else {ui.label(i18n::text("common.difference_requires_valid_matching_input_analysis_calibration_and_excitation"));}
                         }
                     }
                 }
@@ -724,20 +759,27 @@ impl ScopeApp {
 }
 
 fn result_summary(ui: &mut egui::Ui, doc: &export::Document) {
-    ui.label(format!(
-        "Generation {} | nominal {} Hz | {}ch",
-        doc.input.generation, doc.input.nominal_sample_rate_hz, doc.input.channels
-    ));
+    ui.label(
+        i18n::format(
+            "common.generation_nominal_hz_ch",
+            &[
+                ("generation", &(doc.input.generation).to_string()),
+                (
+                    "nominal_sample_rate_hz",
+                    &(doc.input.nominal_sample_rate_hz).to_string(),
+                ),
+                ("channels", &(doc.input.channels).to_string()),
+            ],
+        )
+        .as_ref(),
+    );
     match &doc.input.source {
         export::Source::Generator => {
-            ui.label(
-                "Generator internal loopback · actual f64 output · shared integer sample clock",
-            );
+            ui.label(i18n::text(
+                "common.generator_internal_loopback_actual_f64_output_shared_integer_sample",
+            ));
             if let Some(timeline) = &doc.generator_output {
-                ui.label(format!(
-                    "{} retained output condition intervals; missing/evicted intervals are unknown",
-                    timeline.spans.len()
-                ));
+                ui.label(i18n::format("common.retained_output_condition_intervals_missing_evicted_intervals_are_unknown", &[("len", &(timeline.spans.len()).to_string())]).as_ref());
             }
         }
         export::Source::Audio {
@@ -745,186 +787,428 @@ fn result_summary(ui: &mut egui::Ui, doc: &export::Document) {
             sample_format,
             ..
         } => {
-            ui.label(format!("Input {device_name} | {sample_format}"));
+            ui.label(
+                i18n::format(
+                    "common.input",
+                    &[
+                        ("device_name", &(device_name).to_string()),
+                        ("sample_format", &(sample_format).to_string()),
+                    ],
+                )
+                .as_ref(),
+            );
         }
         export::Source::InternalQa { description } => {
             ui.label(description);
         }
         export::Source::SoftwareLoopback { settings: s } => {
-            ui.label(format!(
-                "Software Loopback | {:.6} Hz | REF {:.9e} FS peak",
-                s.frequency_hz, s.amplitude_peak
-            ));
-            ui.label(format!(
-                "DUT gain {} | phase {}° | delay {} samples",
-                s.gain, s.phase_degrees, s.delay_samples
-            ));
-            ui.label(format!(
-                "DC {} FS | noise RMS {} FS | frequency offset {} Hz | REF {}",
-                s.dc_offset,
-                s.noise_rms,
-                s.frequency_offset_hz,
-                if s.reference_enabled {
-                    "enabled"
-                } else {
-                    "disabled"
-                }
-            ));
+            ui.label(
+                i18n::format(
+                    "common.software_loopback_hz_ref_fs_peak",
+                    &[
+                        ("frequency_hz", &format!("{:.6}", s.frequency_hz)),
+                        ("amplitude_peak", &format!("{:.9e}", s.amplitude_peak)),
+                    ],
+                )
+                .as_ref(),
+            );
+            ui.label(
+                i18n::format(
+                    "common.dut_gain_phase_delay_samples",
+                    &[
+                        ("gain", &(s.gain).to_string()),
+                        ("phase_degrees", &(s.phase_degrees).to_string()),
+                        ("delay_samples", &(s.delay_samples).to_string()),
+                    ],
+                )
+                .as_ref(),
+            );
+            ui.label(
+                i18n::format(
+                    "common.dc_fs_noise_rms_fs_frequency_offset_hz_ref",
+                    &[
+                        ("dc_offset", &(s.dc_offset).to_string()),
+                        ("noise_rms", &(s.noise_rms).to_string()),
+                        ("frequency_offset_hz", &(s.frequency_offset_hz).to_string()),
+                        (
+                            "disabled",
+                            (if s.reference_enabled {
+                                i18n::text("common.enabled")
+                            } else {
+                                i18n::text("common.disabled")
+                            }),
+                        ),
+                    ],
+                )
+                .as_ref(),
+            );
         }
     }
     if let Some(l) = &doc.lockin {
         lockin_summary(ui, l);
     }
     if let Some(output) = &doc.external_output {
-        ui.label("External Generator history: independent, uncalibrated output clock; input-window correspondence unknown.");
-        ui.label(format!(
-            "{} observed changes | {} evicted | {} lost reports | {} output notifications since output worker start",
-            output.changes.len(), output.evicted_changes,
-            output.lost_reports_since_output_worker_start,
-            output.notifications_since_output_worker_start
+        ui.label(i18n::text(
+            "common.external_generator_history_independent_uncalibrated_output_clock_input_window",
         ));
+        ui.label(
+            i18n::format(
+                "common.observed_changes_evicted_lost_reports_output_notifications_since_output",
+                &[
+                    ("len", &(output.changes.len()).to_string()),
+                    ("evicted_changes", &(output.evicted_changes).to_string()),
+                    (
+                        "lost_reports_since_output_worker_start",
+                        &(output.lost_reports_since_output_worker_start).to_string(),
+                    ),
+                    (
+                        "notifications_since_output_worker_start",
+                        &(output.notifications_since_output_worker_start).to_string(),
+                    ),
+                ],
+            )
+            .as_ref(),
+        );
         if let Some(o) = &output.latest {
-            ui.label(format!("Last observed output: {} | nominal {} Hz | {} | {:?} | generation {} revision {} | next output sample {}",
-                o.target.label(), o.status.nominal_sample_rate, o.target.pcm_label(), o.status.state,
-                o.status.output_generation, o.status.revision, o.status.next_sample));
+            ui.label(
+                i18n::format(
+                    "common.last_observed_output_nominal_hz_generation_revision_next_output",
+                    &[
+                        ("label", (text::output_target(&o.target))),
+                        (
+                            "nominal_sample_rate",
+                            &(o.status.nominal_sample_rate).to_string(),
+                        ),
+                        ("pcm_label", (o.target.pcm_label())),
+                        ("state", &format!("{:?}", o.status.state)),
+                        (
+                            "output_generation",
+                            &(o.status.output_generation).to_string(),
+                        ),
+                        ("revision", &(o.status.revision).to_string()),
+                        ("next_sample", &(o.status.next_sample).to_string()),
+                    ],
+                )
+                .as_ref(),
+            );
         }
     }
-    ui.label(format!(
-        "Scope [{}, {}) | {:?} | trigger CH {} {:?} at {} FS",
-        doc.scope.sample_range.start,
-        doc.scope.sample_range.end,
-        doc.scope.acquisition_mode,
-        doc.scope.trigger.channel + 1,
-        doc.scope.trigger.edge,
-        doc.scope.trigger.level
-    ));
+    ui.label(
+        i18n::format(
+            "common.scope_trigger_ch_at_fs",
+            &[
+                ("start", &(doc.scope.sample_range.start).to_string()),
+                ("end", &(doc.scope.sample_range.end).to_string()),
+                (
+                    "acquisition_mode",
+                    doc.scope.acquisition_mode.display_name(),
+                ),
+                ("channel", &(doc.scope.trigger.channel + 1).to_string()),
+                ("edge", doc.scope.trigger.edge.display_name()),
+                ("level", &(doc.scope.trigger.level).to_string()),
+            ],
+        )
+        .as_ref(),
+    );
     for (i, t) in doc.scope.traces.iter().enumerate() {
-        ui.label(format!(
-            "Trace {} CH {} {:?} | {}",
-            i + 1,
-            t.channel + 1,
-            t.state,
-            t.calibrated_statistics.unit
-        ));
-        if let Some(v) = &t.calibrated_statistics.values {
-            ui.monospace(format!(
-                "RMS {:.9e}\nPeak {:.9e}\nP-P {:.9e}",
-                v.rms, v.peak, v.peak_to_peak
-            ));
-        }
-        ui.label(t.calibration.as_ref().map_or("Uncalibrated".into(), |c| {
-            format!(
-                "Calibration {} rev {} | gain {} offset {} | {}",
-                c.id, c.revision, c.gain, c.offset, c.conditions
+        ui.label(
+            i18n::format(
+                "common.trace_ch",
+                &[
+                    ("i", &(i + 1).to_string()),
+                    ("channel", &(t.channel + 1).to_string()),
+                    ("state", t.state.display_name()),
+                    ("unit", &(t.calibrated_statistics.unit).to_string()),
+                ],
             )
-        }));
+            .as_ref(),
+        );
+        if let Some(v) = &t.calibrated_statistics.values {
+            ui.monospace(
+                i18n::format(
+                    "common.rms_peak_p_p",
+                    &[
+                        ("rms", &format!("{:.9e}", v.rms)),
+                        ("peak", &format!("{:.9e}", v.peak)),
+                        ("peak_to_peak", &format!("{:.9e}", v.peak_to_peak)),
+                    ],
+                )
+                .to_string(),
+            );
+        }
+        ui.label(
+            t.calibration
+                .as_ref()
+                .map_or(i18n::text("common.uncalibrated").into(), |c| {
+                    i18n::format(
+                        "common.calibration_rev_gain_offset_2",
+                        &[
+                            ("id", &(c.id).to_string()),
+                            ("revision", &(c.revision).to_string()),
+                            ("gain", &(c.gain).to_string()),
+                            ("offset", &(c.offset).to_string()),
+                            ("conditions", &(c.conditions).to_string()),
+                        ],
+                    )
+                    .to_string()
+                }),
+        );
         if let Some(samples) = &t.raw_samples_fs {
             reference_plot(
                 ui,
                 samples.iter().copied(),
                 samples.len(),
                 false,
-                "Raw Scope FS · relative sample position",
+                i18n::text("common.raw_scope_fs_relative_sample_position"),
             );
         }
     }
     let s = &doc.spectrum;
-    ui.label(format!(
-        "Spectrum {:?} | CH {}\n{} | {} points | {}\n{:?} | DC removal {} | {}",
-        s.state,
-        s.channel
-            .map_or("unavailable".into(), |c| (c + 1).to_string()),
-        s.latest_window
-            .as_ref()
-            .map_or("No complete FFT window".into(), |w| format!(
-                "Window [{}, {})",
-                w.start, w.end
-            )),
-        s.settings.size,
-        s.settings.window.name(),
-        s.mode,
-        s.settings.remove_dc,
-        s.unit
-    ));
-    ui.label(format!(
-        "Δf {:.9} Hz | RBW {:.9} Hz",
-        s.bin_width_hz, s.rbw_hz
-    ));
-    if let Some(a) = &s.average {
-        ui.label(format!(
-            "EMA α {:.9} | {} windows | envelope [{}, {})",
-            a.alpha,
-            a.processed_windows,
-            a.contributing_envelope.start,
-            a.contributing_envelope.end
-        ));
-    }
-    ui.label(s.calibration.as_ref().map_or("Uncalibrated".into(), |c| {
-        format!(
-            "Calibration {} rev {} | gain {} offset {} {} | {}",
-            c.id, c.revision, c.gain, c.offset, c.unit, c.conditions
+    ui.label(
+        i18n::format(
+            "common.spectrum_ch_points_dc_removal",
+            &[
+                ("state", s.state.display_name()),
+                (
+                    "c",
+                    &(s.channel
+                        .map_or("unavailable".into(), |c| (c + 1).to_string()))
+                    .to_string(),
+                ),
+                (
+                    "end",
+                    &(s.latest_window.as_ref().map_or(
+                        i18n::text("common.no_complete_fft_window").into(),
+                        |w| {
+                            i18n::format(
+                                "common.window",
+                                &[
+                                    ("start", &(w.start).to_string()),
+                                    ("end", &(w.end).to_string()),
+                                ],
+                            )
+                            .to_string()
+                        },
+                    ))
+                    .to_string(),
+                ),
+                ("size", &(s.settings.size).to_string()),
+                ("name", (s.settings.window.display_name())),
+                ("mode", s.mode.display_name()),
+                ("remove_dc", &(s.settings.remove_dc).to_string()),
+                ("unit", &(s.unit).to_string()),
+            ],
         )
-    }));
+        .as_ref(),
+    );
+    ui.label(
+        i18n::format(
+            "common.f_hz_rbw_hz",
+            &[
+                ("bin_width_hz", &format!("{:.9}", s.bin_width_hz)),
+                ("rbw_hz", &format!("{:.9}", s.rbw_hz)),
+            ],
+        )
+        .as_ref(),
+    );
+    if let Some(a) = &s.average {
+        ui.label(
+            i18n::format(
+                "common.ema_windows_envelope",
+                &[
+                    ("alpha", &format!("{:.9}", a.alpha)),
+                    ("processed_windows", &(a.processed_windows).to_string()),
+                    ("start", &(a.contributing_envelope.start).to_string()),
+                    ("end", &(a.contributing_envelope.end).to_string()),
+                ],
+            )
+            .as_ref(),
+        );
+    }
+    ui.label(
+        s.calibration
+            .as_ref()
+            .map_or(i18n::text("common.uncalibrated").into(), |c| {
+                i18n::format(
+                    "common.calibration_rev_gain_offset",
+                    &[
+                        ("id", &(c.id).to_string()),
+                        ("revision", &(c.revision).to_string()),
+                        ("gain", &(c.gain).to_string()),
+                        ("offset", &(c.offset).to_string()),
+                        ("unit", &(c.unit).to_string()),
+                        ("conditions", &(c.conditions).to_string()),
+                    ],
+                )
+                .to_string()
+            }),
+    );
     if let Some(v) = &s.values {
         reference_plot(
             ui,
             v.iter().copied().map(Some),
             v.len(),
             true,
-            "Spectrum linear values · bin position",
+            i18n::text("common.spectrum_linear_values_bin_position"),
         );
     }
     if let Some(b) = &s.band {
-        ui.label(format!(
-            "Band {:?} Hz | power {:.9e} {} | RMS {:.9e} {}",
-            b.bin_centres_hz, b.power, b.power_unit, b.rms, b.rms_unit
-        ));
+        ui.label(
+            i18n::format(
+                "common.band_hz_power_rms",
+                &[
+                    ("bin_centres_hz", &format!("{:?}", b.bin_centres_hz)),
+                    ("power", &format!("{:.9e}", b.power)),
+                    ("power_unit", &(b.power_unit).to_string()),
+                    ("rms", &format!("{:.9e}", b.rms)),
+                    ("rms_unit", &(b.rms_unit).to_string()),
+                ],
+            )
+            .as_ref(),
+        );
     }
-    ui.label(format!(
-        "Loss: capture {} | Scope {} | FFT input {}\nFFT windows: missing {} | nonfinite {} | observed {}\nInput end {} | filled {} | input failed {}",
-        doc.loss.capture_dropped_samples,doc.loss.scope_missing_samples,s.diagnostics.missing_input_samples,
-        s.diagnostics.missing_windows,s.diagnostics.nonfinite_windows,s.diagnostics.processed_windows_since_reset,
-        s.diagnostics.input_end,s.diagnostics.filled_samples,doc.loss.input_failed
-    ));
+    ui.label(
+        i18n::format(
+            "common.loss_capture_scope_fft_input_fft_windows_missing_nonfinite",
+            &[
+                (
+                    "capture_dropped_samples",
+                    &(doc.loss.capture_dropped_samples).to_string(),
+                ),
+                (
+                    "scope_missing_samples",
+                    &(doc.loss.scope_missing_samples).to_string(),
+                ),
+                (
+                    "missing_input_samples",
+                    &(s.diagnostics.missing_input_samples).to_string(),
+                ),
+                (
+                    "missing_windows",
+                    &(s.diagnostics.missing_windows).to_string(),
+                ),
+                (
+                    "nonfinite_windows",
+                    &(s.diagnostics.nonfinite_windows).to_string(),
+                ),
+                (
+                    "processed_windows_since_reset",
+                    &(s.diagnostics.processed_windows_since_reset).to_string(),
+                ),
+                ("input_end", &(s.diagnostics.input_end).to_string()),
+                (
+                    "filled_samples",
+                    &(s.diagnostics.filled_samples).to_string(),
+                ),
+                ("input_failed", &(doc.loss.input_failed).to_string()),
+            ],
+        )
+        .as_ref(),
+    );
 }
 
 fn lockin_summary(ui: &mut egui::Ui, l: &export::Lockin) {
     let r = &l.result;
     let number = |value: Option<f64>| value.map_or("—".into(), |v| format!("{v:.9e}"));
-    ui.label(format!(
-        "Lock-in {:?} · experimental | SIG CH {} / REF CH {}\nτ {} s · N {} · hint {} Hz · {} · REF min {} FS RMS",
-        r.state, r.settings.response_channel + 1, r.settings.reference_channel + 1,
-        r.settings.time_constant_seconds, r.settings.integration_samples, r.settings.frequency_hz,
-        if r.settings.track_reference { "tracking ±10%" } else { "fixed frequency" },
-        r.settings.reference_min_rms_fs
-    ));
-    ui.monospace(format!(
-        "X {} · Y {} · R {} {}\nθ {}° (leads REF) · Gain {} {}",
-        number(r.x),
-        number(r.y),
-        number(r.amplitude_peak),
-        l.response_unit_peak,
-        number(r.phase_degrees),
-        number(r.gain),
-        l.gain_unit
-    ));
-    ui.label(format!(
-        "Envelope [{}, {}) · latest [{}, {})\n{} complete windows · {} missing samples\nREF {} Hz · AC RMS {} FS · sinusoid fit {}",
-        r.sample_range.start, r.sample_range.end, r.latest_window.start, r.latest_window.end,
-        r.processed_windows, r.missing_samples, number(r.reference_frequency_hz),
-        number(r.reference_ac_rms_fs), number(r.reference_sinusoid_fraction)
-    ));
+    ui.label(
+        i18n::format(
+            "common.lock_in_experimental_sig_ch_ref_ch_s_n",
+            &[
+                ("state", r.state.display_name()),
+                (
+                    "response_channel",
+                    &(r.settings.response_channel + 1).to_string(),
+                ),
+                (
+                    "reference_channel",
+                    &(r.settings.reference_channel + 1).to_string(),
+                ),
+                (
+                    "time_constant_seconds",
+                    &(r.settings.time_constant_seconds).to_string(),
+                ),
+                (
+                    "integration_samples",
+                    &(r.settings.integration_samples).to_string(),
+                ),
+                ("frequency_hz", &(r.settings.frequency_hz).to_string()),
+                (
+                    "fixed_frequency",
+                    (if r.settings.track_reference {
+                        i18n::text("common.tracking")
+                    } else {
+                        i18n::text("common.fixed_frequency")
+                    }),
+                ),
+                (
+                    "reference_min_rms_fs",
+                    &(r.settings.reference_min_rms_fs).to_string(),
+                ),
+            ],
+        )
+        .as_ref(),
+    );
+    ui.monospace(
+        i18n::format(
+            "common.x_y_r_leads_ref_gain",
+            &[
+                ("x", &(number(r.x)).to_string()),
+                ("y", &(number(r.y)).to_string()),
+                ("amplitude_peak", &(number(r.amplitude_peak)).to_string()),
+                ("response_unit_peak", &(l.response_unit_peak).to_string()),
+                ("phase_degrees", &(number(r.phase_degrees)).to_string()),
+                ("gain", &(number(r.gain)).to_string()),
+                ("gain_unit", &(l.gain_unit).to_string()),
+            ],
+        )
+        .to_string(),
+    );
+    ui.label(
+        i18n::format(
+            "common.envelope_latest_complete_windows_missing_samples_ref_hz_ac",
+            &[
+                ("start", &(r.sample_range.start).to_string()),
+                ("end", &(r.sample_range.end).to_string()),
+                ("start_2", &(r.latest_window.start).to_string()),
+                ("end_2", &(r.latest_window.end).to_string()),
+                ("processed_windows", &(r.processed_windows).to_string()),
+                ("missing_samples", &(r.missing_samples).to_string()),
+                (
+                    "reference_frequency_hz",
+                    &(number(r.reference_frequency_hz)).to_string(),
+                ),
+                (
+                    "reference_ac_rms_fs",
+                    &(number(r.reference_ac_rms_fs)).to_string(),
+                ),
+                (
+                    "reference_sinusoid_fraction",
+                    &(number(r.reference_sinusoid_fraction)).to_string(),
+                ),
+            ],
+        )
+        .as_ref(),
+    );
     for (label, calibration) in [
-        ("REF", &l.reference_calibration),
-        ("SIG", &l.response_calibration),
+        (i18n::text("common.ref"), &l.reference_calibration),
+        (i18n::text("common.sig"), &l.response_calibration),
     ] {
         ui.label(calibration.as_ref().map_or_else(
-            || format!("{label}: uncalibrated · FS"),
+            || i18n::format("common.uncalibrated_fs_2", &[("label", (label))]).to_string(),
             |c| {
-                format!(
-                    "{label}: {} rev {} · gain {} offset {} {} · {}",
-                    c.id, c.revision, c.gain, c.offset, c.unit, c.conditions
+                i18n::format(
+                    "common.rev_gain_offset",
+                    &[
+                        ("label", (label)),
+                        ("id", &(c.id).to_string()),
+                        ("revision", &(c.revision).to_string()),
+                        ("gain", &(c.gain).to_string()),
+                        ("offset", &(c.offset).to_string()),
+                        ("unit", &(c.unit).to_string()),
+                        ("conditions", &(c.conditions).to_string()),
+                    ],
                 )
+                .to_string()
             },
         ));
     }

@@ -51,9 +51,23 @@ fn common_rates(
 }
 
 fn config_label(config: output::device::Config, include_rate: bool) -> String {
-    let format = format!("{}ch · {}", config.channels, config.pcm.label());
+    let format = i18n::format(
+        "io.ch",
+        &[
+            ("channels", &(config.channels).to_string()),
+            ("label", (config.pcm.label())),
+        ],
+    )
+    .to_string();
     if include_rate {
-        format!("{} Hz · {format}", config.rate)
+        i18n::format(
+            "io.hz_4",
+            &[
+                ("rate", &(config.rate).to_string()),
+                ("format", &(format).to_string()),
+            ],
+        )
+        .to_string()
     } else {
         format
     }
@@ -78,13 +92,15 @@ impl ScopeApp {
             Source::Live => self
                 .devices
                 .get(self.selected)
-                .map_or("Audio input · no device selected", |d| d.name.as_str()),
-            Source::Software => "Software Loopback",
-            Source::Generator => "Generator loopback · OUT 1 / 2",
+                .map_or(i18n::text("io.audio_input_no_device_selected"), |d| {
+                    d.name.as_str()
+                }),
+            Source::Software => i18n::text("io.software_loopback"),
+            Source::Generator => i18n::text("io.generator_loopback_out"),
             #[cfg(feature = "qa")]
-            Source::Demo => "Demo signal (QA)",
+            Source::Demo => i18n::text("io.demo_signal_qa"),
         };
-        format!("Input source: {source}")
+        i18n::format("io.input_source", &[("source", (source))]).to_string()
     }
 
     pub(super) fn io_controls(&mut self, ui: &mut egui::Ui) {
@@ -152,7 +168,9 @@ impl ScopeApp {
 
     pub(super) fn apply_common_io_rate(&mut self, rate: u32) -> Result<(), String> {
         if !self.io_editable() || !self.common_io_rates().contains(&rate) {
-            return Err("Stop input and output and select a supported common rate.".into());
+            return Err(
+                i18n::text("io.stop_input_and_output_and_select_a_supported_common").into(),
+            );
         }
         if self.source == Source::Software {
             self.loopback_settings.validate(rate)?;
@@ -161,7 +179,7 @@ impl ScopeApp {
         // Reject incompatible signal conditions before changing either side.
         g.settings
             .validate(rate, g.target.channels())
-            .map_err(|e| e.to_string())?;
+            .map_err(text::generator_error)?;
         if g.rate != rate {
             g.select(g.target.clone(), rate, g.settings)?;
         }
@@ -179,9 +197,15 @@ impl ScopeApp {
         egui::Frame::group(ui.style()).show(ui, |ui| {
             ui.set_min_width(ui.available_width());
             ui.horizontal_wrapped(|ui| {
-                ui.checkbox(&mut self.shell.separate_io_rates, "Separate sample rates");
+                ui.checkbox(
+                    &mut self.shell.separate_io_rates,
+                    i18n::text("io.separate_sample_rates"),
+                );
                 if ui
-                    .add_enabled(self.io_editable(), egui::Button::new("Refresh devices"))
+                    .add_enabled(
+                        self.io_editable(),
+                        egui::Button::new(i18n::text("io.refresh_devices")),
+                    )
                     .clicked()
                 {
                     match self.generator.worker.refresh() {
@@ -195,7 +219,7 @@ impl ScopeApp {
                 }
             });
             if !self.shell.separate_io_rates {
-                setting_label(ui, "SAMPLE RATE · INPUT + OUTPUT");
+                setting_label(ui, i18n::text("io.sample_rate_input_output"));
                 let rates = self.common_io_rates();
                 let current = self
                     .io_input_rate()
@@ -204,14 +228,18 @@ impl ScopeApp {
                 ui.add_enabled_ui(self.io_editable() && !rates.is_empty(), |ui| {
                     egui::ComboBox::from_id_salt("common_io_rate")
                         .width(ui.available_width())
-                        .selected_text(
-                            current
-                                .map_or_else(|| "Select common rate".into(), |r| format!("{r} Hz")),
-                        )
+                        .selected_text(current.map_or_else(
+                            || i18n::text("io.select_common_rate").into(),
+                            |r| i18n::format("io.hz_2", &[("r", &(r).to_string())]).to_string(),
+                        ))
                         .show_ui(ui, |ui| {
                             for rate in rates.iter().copied() {
                                 if ui
-                                    .selectable_label(current == Some(rate), format!("{rate} Hz"))
+                                    .selectable_label(
+                                        current == Some(rate),
+                                        i18n::format("io.hz_3", &[("rate", &(rate).to_string())])
+                                            .as_ref(),
+                                    )
                                     .clicked()
                                 {
                                     chosen = Some(rate);
@@ -225,18 +253,36 @@ impl ScopeApp {
                     self.generator.error = Some(e);
                 }
                 if current.is_none() {
-                    ui.label(format!(
-                        "Input: {} · Output: {} Hz",
-                        self.io_input_rate()
-                            .map_or("Unavailable".into(), |r| format!("{r} Hz")),
-                        self.generator.rate
-                    ));
+                    ui.label(
+                        i18n::format(
+                            "io.input_output_hz",
+                            &[
+                                (
+                                    "r",
+                                    &(self.io_input_rate().map_or(
+                                        i18n::text("io.unavailable").into(),
+                                        |r| {
+                                            i18n::format("io.hz_2", &[("r", &(r).to_string())])
+                                                .to_string()
+                                        },
+                                    ))
+                                    .to_string(),
+                                ),
+                                ("rate", &(self.generator.rate).to_string()),
+                            ],
+                        )
+                        .as_ref(),
+                    );
                 }
-                ui.label(RichText::new(if rates.is_empty() {
-                    "No common rate for these devices and output format. Use separate sample rates."
-                } else {
-                    "Applies to both while stopped. Held results keep their rate."
-                }).small().color(MUTED));
+                ui.label(
+                    RichText::new(if rates.is_empty() {
+                        i18n::text("io.no_common_rate_for_these_devices_and_output_format")
+                    } else {
+                        i18n::text("io.applies_to_both_while_stopped_held_results_keep_their")
+                    })
+                    .small()
+                    .color(MUTED),
+                );
             }
         });
     }
@@ -244,7 +290,11 @@ impl ScopeApp {
     fn io_section(&mut self, ui: &mut egui::Ui, output: bool) {
         egui::Frame::group(ui.style()).show(ui, |ui| {
             ui.set_min_width(ui.available_width());
-            ui.heading(if output { "Output" } else { "Input" });
+            ui.heading(if output {
+                i18n::text("io.output")
+            } else {
+                i18n::text("io.input")
+            });
             ui.separator();
             if output {
                 self.output_controls(ui);
@@ -262,13 +312,23 @@ impl ScopeApp {
         let old_source = self.source;
         ui.add_enabled_ui(!self.busy && self.pending_stop.is_none(), |ui| {
             ui.horizontal_wrapped(|ui| {
-                ui.selectable_value(&mut self.source, Source::Live, "Audio input");
-                ui.selectable_value(&mut self.source, Source::Software, "Software Loopback");
+                ui.selectable_value(&mut self.source, Source::Live, i18n::text("io.audio_input"));
+                ui.selectable_value(
+                    &mut self.source,
+                    Source::Software,
+                    i18n::text("io.software_loopback"),
+                );
                 ui.add_enabled_ui(self.generator.target == output::Target::Internal, |ui| {
-                    ui.selectable_value(&mut self.source, Source::Generator, "Generator loopback");
+                    ui.selectable_value(
+                        &mut self.source,
+                        Source::Generator,
+                        i18n::text("io.generator_loopback"),
+                    );
                 })
                 .response
-                .on_hover_text("Available with the Internal loopback output device.");
+                .on_hover_text(i18n::text(
+                    "io.available_with_the_internal_loopback_output_device",
+                ));
             });
         });
         if old_source != self.source {
@@ -280,19 +340,29 @@ impl ScopeApp {
         }
         if self.source == Source::Generator {
             ui.label(
-                RichText::new("OUT 1 → CH 1 · OUT 2 → CH 2 · Start input and output separately.")
-                    .small()
-                    .color(MUTED),
+                RichText::new(i18n::text(
+                    "io.out_ch_out_ch_start_input_and_output_separately",
+                ))
+                .small()
+                .color(MUTED),
             );
         }
         #[cfg(feature = "qa")]
         if self.demo_enabled {
-            setting_label(ui, "SOURCE");
+            setting_label(ui, i18n::text("io.source"));
             let previous_source = self.source;
             ui.add_enabled_ui(!self.busy, |ui| {
                 ui.horizontal(|ui| {
-                    ui.selectable_value(&mut self.source, Source::Live, "Audio input");
-                    ui.selectable_value(&mut self.source, Source::Demo, "Demo signal (QA)");
+                    ui.selectable_value(
+                        &mut self.source,
+                        Source::Live,
+                        i18n::text("io.audio_input"),
+                    );
+                    ui.selectable_value(
+                        &mut self.source,
+                        Source::Demo,
+                        i18n::text("io.demo_signal_qa"),
+                    );
                 });
             });
             if previous_source != self.source {
@@ -300,12 +370,12 @@ impl ScopeApp {
             }
         }
         if self.source == Source::Live {
-            setting_label(ui, "DEVICE");
+            setting_label(ui, i18n::text("io.device"));
             let selected_name = self
                 .devices
                 .get(self.selected)
                 .map(|d| d.name.as_str())
-                .unwrap_or("No input device");
+                .unwrap_or(i18n::text("io.no_input_device"));
             let previous = self.selected;
             ui.add_enabled_ui(!self.busy, |ui| {
                 egui::ComboBox::from_id_salt("input")
@@ -315,7 +385,8 @@ impl ScopeApp {
                     .show_ui(ui, |ui| {
                         for (index, device) in self.devices.iter().enumerate() {
                             let name = if device.is_default {
-                                format!("{} (default)", device.name)
+                                i18n::format("io.default", &[("name", &(device.name).to_string())])
+                                    .to_string()
                             } else {
                                 device.name.clone()
                             };
@@ -330,7 +401,7 @@ impl ScopeApp {
             }
             let previous_rate = self.requested_sample_rate;
             if self.shell.separate_io_rates {
-                setting_label(ui, "SAMPLE RATE");
+                setting_label(ui, i18n::text("io.sample_rate"));
                 ui.add_enabled_ui(!self.busy && !self.devices.is_empty(), |ui| {
                     egui::ComboBox::from_id_salt("input_sample_rate")
                         .width(ui.available_width())
@@ -339,29 +410,35 @@ impl ScopeApp {
                             ui.selectable_value(
                                 &mut self.requested_sample_rate,
                                 None,
-                                "Device default",
+                                i18n::text("io.device_default"),
                             );
                             if let Some(device) = self.devices.get(self.selected) {
                                 for &rate in &device.sample_rates {
                                     ui.selectable_value(
                                         &mut self.requested_sample_rate,
                                         Some(rate),
-                                        format!("{} kHz", rate as f64 / 1000.0),
+                                        i18n::format(
+                                            "io.khz",
+                                            &[("rate", &(rate as f64 / 1000.0).to_string())],
+                                        )
+                                        .as_ref(),
                                     );
                                 }
                             }
                         });
                 });
                 ui.label(
-                    RichText::new("Supported device rates · up to 768 kHz")
+                    RichText::new(i18n::text("io.supported_device_rates_up_to_khz"))
                         .small()
                         .color(MUTED),
                 );
                 if !self.running() {
                     ui.label(
-                        RichText::new("Rate changes apply on Start. Held results keep their rate.")
-                            .small()
-                            .color(MUTED),
+                        RichText::new(i18n::text(
+                            "io.rate_changes_apply_on_start_held_results_keep_their",
+                        ))
+                        .small()
+                        .color(MUTED),
                     );
                 }
             }
@@ -386,35 +463,44 @@ impl ScopeApp {
                 self.demo.phase_degrees,
                 self.demo.channel_2_gain,
             );
-            setting_label(ui, "WAVEFORM");
+            setting_label(ui, i18n::text("io.waveform"));
             egui::ComboBox::from_id_salt("demo_waveform")
                 .width(ui.available_width())
-                .selected_text(self.demo.waveform.name())
+                .selected_text(self.demo.waveform.display_name())
                 .show_ui(ui, |ui| {
                     for shape in [Waveform::Sine, Waveform::Harmonics, Waveform::Square] {
-                        ui.selectable_value(&mut self.demo.waveform, shape, shape.name());
+                        ui.selectable_value(&mut self.demo.waveform, shape, shape.display_name());
                     }
                 });
-            setting_label(ui, "FREQUENCY");
+            setting_label(ui, i18n::text("io.frequency"));
             ui.add(
                 egui::Slider::new(&mut self.demo.frequency, 20.0..=10000.0)
                     .logarithmic(true)
                     .text("Hz"),
             );
-            setting_label(ui, "AMPLITUDE");
-            ui.add(egui::Slider::new(&mut self.demo.amplitude, 0.01..=0.8).text("FS peak"));
-            setting_label(ui, "NOISE");
+            setting_label(ui, i18n::text("io.amplitude"));
+            ui.add(
+                egui::Slider::new(&mut self.demo.amplitude, 0.01..=0.8)
+                    .text(i18n::text("io.fs_peak")),
+            );
+            setting_label(ui, i18n::text("io.noise_2"));
             ui.add(
                 egui::Slider::new(&mut self.demo.noise, 0.0..=0.05)
                     .logarithmic(true)
                     .smallest_positive(0.000001)
                     .fixed_decimals(4)
-                    .text("Noise"),
+                    .text(i18n::text("io.noise")),
             )
-            .on_hover_text("Noise amplitude in digital full scale (FS).");
-            setting_label(ui, "CH 2 PHASE / GAIN");
-            ui.add(egui::Slider::new(&mut self.demo.phase_degrees, -180.0..=180.0).text("degrees"));
-            ui.add(egui::Slider::new(&mut self.demo.channel_2_gain, 0.0..=1.0).text("CH 2 gain"));
+            .on_hover_text(i18n::text("io.noise_amplitude_in_digital_full_scale_fs"));
+            setting_label(ui, i18n::text("io.ch_phase_gain"));
+            ui.add(
+                egui::Slider::new(&mut self.demo.phase_degrees, -180.0..=180.0)
+                    .text(i18n::text("io.degrees")),
+            );
+            ui.add(
+                egui::Slider::new(&mut self.demo.channel_2_gain, 0.0..=1.0)
+                    .text(i18n::text("io.ch_gain")),
+            );
             ui.horizontal(|ui| {
                 for phase in [0.0, 90.0, 180.0] {
                     if ui.small_button(format!("{phase:.0}°")).clicked() {
@@ -424,7 +510,11 @@ impl ScopeApp {
                         self.demo.channel_2_gain = 1.0;
                     }
                 }
-            }).response.on_hover_text("Equal-amplitude, noise-free sine signals for XY: in-phase, quadrature or opposite phase.");
+            })
+            .response
+            .on_hover_text(i18n::text(
+                "io.equal_amplitude_noise_free_sine_signals_for_xy_in",
+            ));
             if before
                 != (
                     self.demo.waveform,
@@ -439,21 +529,21 @@ impl ScopeApp {
             }
             if !self.running() {
                 ui.label(
-                    RichText::new(
-                        "Signal changes apply when input restarts. Captured samples stay held.",
-                    )
+                    RichText::new(i18n::text(
+                        "io.signal_changes_apply_when_input_restarts_captured_samples_stay",
+                    ))
                     .small()
                     .color(MUTED),
                 );
             }
             ui.label(
-                RichText::new("Internal source · no audio output")
+                RichText::new(i18n::text("io.internal_source_no_audio_output"))
                     .small()
                     .color(MUTED),
             );
         }
         ui.label(
-            RichText::new("Start / stop is always in the top bar.")
+            RichText::new(i18n::text("io.start_stop_is_always_in_the_top_bar"))
                 .small()
                 .color(MUTED),
         );
@@ -464,13 +554,13 @@ impl ScopeApp {
         let g = &mut self.generator;
         let separate_rates = self.shell.separate_io_rates;
         ui.add_enabled_ui(selectable, |ui| {
-            setting_label(ui, "OUTPUT DEVICE");
+            setting_label(ui, i18n::text("io.output_device"));
             let mut selected = g.target.clone();
             let mut rate = g.rate;
             egui::ComboBox::from_id_salt("generator_destination")
                 .width(ui.available_width()).truncate()
-                .selected_text(g.target.label()).show_ui(ui, |ui| {
-                    ui.selectable_value(&mut selected, output::Target::Internal, "Internal loopback");
+                .selected_text(text::output_target(&g.target)).show_ui(ui, |ui| {
+                    ui.selectable_value(&mut selected, output::Target::Internal, i18n::text("io.internal_loopback"));
                     for device in &g.devices {
                         let config = device.preferred;
                         let candidate = output::Target::Audio {
@@ -489,7 +579,7 @@ impl ScopeApp {
                 let settings = settings_for_output_channels(g.settings, selected.channels());
                 if let Err(e) = g.select(selected, rate, settings) { g.error = Some(e); }
             }
-            setting_label(ui, if separate_rates { "SAMPLE RATE / CHANNELS / PCM" } else { "CHANNELS / PCM" });
+            setting_label(ui, if separate_rates { i18n::text("io.sample_rate_channels_pcm") } else { i18n::text("io.channels_pcm") });
             let mut config = output_config(g);
             let before = config;
             egui::ComboBox::from_id_salt("generator_rate")
@@ -511,9 +601,11 @@ impl ScopeApp {
         });
         if !selectable {
             ui.label(
-                RichText::new("Stop input and output to change the device or format.")
-                    .small()
-                    .color(MUTED),
+                RichText::new(i18n::text(
+                    "io.stop_input_and_output_to_change_the_device_or",
+                ))
+                .small()
+                .color(MUTED),
             );
         }
         if self.source == Source::Generator && self.generator.target != output::Target::Internal {

@@ -12,21 +12,27 @@ impl ScopeApp {
 
     pub(super) fn scope_trigger_marker_status(&self) -> &'static str {
         if self.triggered && !self.scope_range.is_empty() {
-            "T markers: captured"
+            i18n::text("oscilloscope.t_markers_captured")
         } else {
-            "T markers: settings only"
+            i18n::text("oscilloscope.t_markers_settings_only")
         }
     }
 
     pub(super) fn scope_trigger_marker_help(&self) -> String {
         let trigger = self.scope_display_trigger();
-        format!(
-            "{}\n{} · source {} · level {:+.3} raw FS. The level follows the source channel's vertical range, which may differ from the selected channel's axis.",
-            display::TRIGGER_HELP,
-            self.scope_trigger_marker_status(),
-            channel::name(trigger.channel),
-            trigger.level,
+        i18n::format(
+            "oscilloscope.source_level_raw_fs_the_level_follows_the_source",
+            &[
+                ("display", (display::trigger_help())),
+                (
+                    "scope_trigger_marker_status",
+                    (self.scope_trigger_marker_status()),
+                ),
+                ("channel", &(channel::name(trigger.channel)).to_string()),
+                ("level", &format!("{:+.3}", trigger.level)),
+            ],
         )
+        .to_string()
     }
 
     pub(super) fn scope_input_channels(&self) -> Option<u16> {
@@ -63,36 +69,126 @@ impl ScopeApp {
             for index in 0..SCOPE_CHANNELS {
                 let color = scope_color(index);
                 let channel = sources.0[index];
-                let out_of_range = self.scope_input_channels().is_some_and(|count| !channel::available(channel, count as usize));
+                let out_of_range = self
+                    .scope_input_channels()
+                    .is_some_and(|count| !channel::available(channel, count as usize));
                 let show_range = out_of_range && self.scope_notice().is_none();
                 let selected = index == self.scope_selected;
                 let (rect, _) = ui.allocate_exact_size(vec2(width, 40.0), egui::Sense::hover());
-                ui.painter().rect(rect, 3.0,
-                    if selected { color.gamma_multiply(0.12) } else { Color32::from_rgb(22, 34, 43) },
-                    Stroke::new(if selected { 1.5 } else { 1.0 }, if selected { color } else { BORDER }),
-                    egui::StrokeKind::Inside);
+                ui.painter().rect(
+                    rect,
+                    3.0,
+                    if selected {
+                        color.gamma_multiply(0.12)
+                    } else {
+                        Color32::from_rgb(22, 34, 43)
+                    },
+                    Stroke::new(
+                        if selected { 1.5 } else { 1.0 },
+                        if selected { color } else { BORDER },
+                    ),
+                    egui::StrokeKind::Inside,
+                );
                 let selection = egui::Rect::from_min_max(rect.min, rect.max - vec2(24.0, 0.0));
-                let response = ui.interact(selection, ui.id().with(("scope_select", index)), egui::Sense::click());
+                let response = ui.interact(
+                    selection,
+                    ui.id().with(("scope_select", index)),
+                    egui::Sense::click(),
+                );
                 if response.clicked() {
                     self.scope_selected = index;
                     self.dirty = true;
                 }
-                ui.painter().text(rect.min + vec2(6.0, 4.0), egui::Align2::LEFT_TOP,
-                    format!("CH{}{}", index + 1, if show_range && width <= 150.0 { " —" } else { "" }), egui::FontId::proportional(12.0), color);
-                ui.painter().text(rect.min + vec2(6.0, 23.0), egui::Align2::LEFT_TOP,
-                    format!("{} FS/div", display::number(Some(self.scope_vertical[index].fs_per_div as f64))),
-                    egui::FontId::monospace(10.0), color);
+                ui.painter().text(
+                    rect.min + vec2(6.0, 4.0),
+                    egui::Align2::LEFT_TOP,
+                    i18n::format(
+                        "oscilloscope.ch_2",
+                        &[
+                            ("index", &(index + 1).to_string()),
+                            (
+                                "else",
+                                (if show_range && width <= 150.0 {
+                                    " —"
+                                } else {
+                                    ""
+                                }),
+                            ),
+                        ],
+                    )
+                    .to_string(),
+                    egui::FontId::proportional(12.0),
+                    color,
+                );
+                ui.painter().text(
+                    rect.min + vec2(6.0, 23.0),
+                    egui::Align2::LEFT_TOP,
+                    i18n::format(
+                        "oscilloscope.fs_div",
+                        &[(
+                            "fs_per_div",
+                            &(display::number(Some(self.scope_vertical[index].fs_per_div as f64)))
+                                .to_string(),
+                        )],
+                    )
+                    .to_string(),
+                    egui::FontId::monospace(10.0),
+                    color,
+                );
                 if show_range && width > 150.0 {
-                    ui.painter().text(rect.min + vec2(44.0, 5.0), egui::Align2::LEFT_TOP,
-                        "Out of range", egui::FontId::proportional(10.0), MUTED);
+                    ui.painter().text(
+                        rect.min + vec2(44.0, 5.0),
+                        egui::Align2::LEFT_TOP,
+                        i18n::text("oscilloscope.out_of_range"),
+                        egui::FontId::proportional(10.0),
+                        MUTED,
+                    );
                 }
-                response.on_hover_text(format!("CH{} · {}{}\n{}\nSelect to edit this channel in Scope settings. Display on/off is independent.\n{}", index + 1,
-                    channel::name(channel), if out_of_range { " · outside input channel range" } else { "" }, self.scope_readout_details(index), display::DIV_HELP));
-                let toggle = egui::Rect::from_min_size(rect.right_top() + vec2(-23.0, 3.0), vec2(20.0, 20.0));
-                self.dirty |= ui.put(toggle, egui::Checkbox::without_text(&mut self.enabled[index]))
-                    .on_hover_text(format!("Show CH{} waveform (keeps selection and measurements)", index + 1)).changed();
+                response.on_hover_text(
+                    i18n::format(
+                        "oscilloscope.ch_select_to_edit_this_channel_in_scope_settings",
+                        &[
+                            ("index", &(index + 1).to_string()),
+                            ("channel", &(channel::name(channel)).to_string()),
+                            (
+                                "else",
+                                (if out_of_range {
+                                    i18n::text("oscilloscope.outside_input_channel_range")
+                                } else {
+                                    ""
+                                }),
+                            ),
+                            ("index_2", &(self.scope_readout_details(index)).to_string()),
+                            ("display", (display::div_help())),
+                        ],
+                    )
+                    .as_ref(),
+                );
+                let toggle = egui::Rect::from_min_size(
+                    rect.right_top() + vec2(-23.0, 3.0),
+                    vec2(20.0, 20.0),
+                );
+                self.dirty |= ui
+                    .put(
+                        toggle,
+                        egui::Checkbox::without_text(&mut self.enabled[index]),
+                    )
+                    .on_hover_text(
+                        i18n::format(
+                            "oscilloscope.show_ch_waveform_keeps_selection_and_measurements",
+                            &[("index", &(index + 1).to_string())],
+                        )
+                        .as_ref(),
+                    )
+                    .changed();
                 if show_range {
-                    ui.painter().line_segment([rect.right_bottom() - vec2(18.0, 7.0), rect.right_bottom() - vec2(6.0, 7.0)], Stroke::new(1.5, MUTED));
+                    ui.painter().line_segment(
+                        [
+                            rect.right_bottom() - vec2(18.0, 7.0),
+                            rect.right_bottom() - vec2(6.0, 7.0),
+                        ],
+                        Stroke::new(1.5, MUTED),
+                    );
                 }
             }
         });
@@ -110,53 +206,78 @@ impl ScopeApp {
                     !channel::available(self.scope_view_channels().0[index], count as usize)
                 }) =>
             {
-                "— · channel out of range".into()
+                i18n::text("oscilloscope.channel_out_of_range").into()
             }
-            Reading::Unavailable => "— · no samples in this interval".into(),
-            Reading::NonFinite => "— · invalid value".into(),
-            Reading::Valid(m) => format!(
-                "RMS {} {unit} · P-P {} {unit}",
-                display::number(Some(m.rms)),
-                display::number(Some(m.peak_to_peak))
-            ),
+            Reading::Unavailable => i18n::text("oscilloscope.no_samples_in_this_interval").into(),
+            Reading::NonFinite => i18n::text("oscilloscope.invalid_value").into(),
+            Reading::Valid(m) => i18n::format(
+                "oscilloscope.rms_p_p",
+                &[
+                    ("rms", &(display::number(Some(m.rms))).to_string()),
+                    ("unit", (unit)),
+                    (
+                        "peak_to_peak",
+                        &(display::number(Some(m.peak_to_peak))).to_string(),
+                    ),
+                ],
+            )
+            .to_string(),
         }
     }
 
     pub(super) fn scope_readout_details(&self, index: usize) -> String {
         let channel = self.scope_view_channels().0[index];
         if self.scope_range.is_empty() && self.held_input.is_none() {
-            return format!(
-                "{} · No acquired samples\nInput conditions are not acquired. Waveform and trigger settings use raw FS.",
-                channel::name(channel)
-            );
+            return i18n::format(
+                "oscilloscope.no_acquired_samples_input_conditions_are_not_acquired_waveform",
+                &[("channel", &(channel::name(channel)).to_string())],
+            )
+            .to_string();
         }
         let unit = self.calibration.captured.unit(channel);
         let reading = match self.scope_readings[index] {
-            Reading::Valid(m) => format!(
-                "RMS {:.15e} {unit} · P-P {:.15e} {unit} · Peak {:.15e} {unit} · {} acquired samples",
-                m.rms, m.peak_to_peak, m.peak, m.samples
-            ),
-            Reading::Unavailable => "No acquired samples for this channel and interval".into(),
+            Reading::Valid(m) => i18n::format(
+                "oscilloscope.rms_p_p_peak_acquired_samples",
+                &[
+                    ("rms", &format!("{:.15e}", m.rms)),
+                    ("unit", (unit)),
+                    ("peak_to_peak", &format!("{:.15e}", m.peak_to_peak)),
+                    ("peak", &format!("{:.15e}", m.peak)),
+                    ("samples", &(m.samples).to_string()),
+                ],
+            )
+            .to_string(),
+            Reading::Unavailable => {
+                i18n::text("oscilloscope.no_acquired_samples_for_this_channel_and_interval").into()
+            }
             Reading::NonFinite => {
-                "An acquired or calibrated value is nonfinite; no valid numeric readout".into()
+                i18n::text("oscilloscope.an_acquired_or_calibrated_value_is_nonfinite_no_valid")
+                    .into()
             }
         };
-        format!(
-            "{} · {reading}\nInterval {}..{} (exclusive end) · generation {} · nominal {} Hz. {}. Waveform and trigger are raw FS.",
-            channel::name(channel),
-            self.scope_range.start,
-            self.scope_range.end,
-            self.input_generation,
-            self.sample_rate,
-            calibration_description(&self.calibration.captured, channel)
+        i18n::format(
+            "oscilloscope.interval_exclusive_end_generation_nominal_hz_waveform_and_trigger",
+            &[
+                ("channel", &(channel::name(channel)).to_string()),
+                ("reading", &(reading).to_string()),
+                ("start", &(self.scope_range.start).to_string()),
+                ("end", &(self.scope_range.end).to_string()),
+                ("input_generation", &(self.input_generation).to_string()),
+                ("sample_rate", &(self.sample_rate).to_string()),
+                (
+                    "channel_2",
+                    &(calibration_description(&self.calibration.captured, channel)).to_string(),
+                ),
+            ],
         )
+        .to_string()
     }
 
     pub(super) fn spectrogram_primary(&mut self, ui: &mut egui::Ui) {
         let before = self.spectrogram_channel;
         let channels = self.lockin_channel_count();
         ui.horizontal_wrapped(|ui| {
-            ui.label("Source");
+            ui.label(i18n::text("oscilloscope.source"));
             channel_select(
                 ui,
                 "spectrogram_primary_source",
@@ -164,7 +285,10 @@ impl ScopeApp {
                 channels,
             );
             if ui
-                .selectable_label(self.spectrogram_hold.is_none(), "Live")
+                .selectable_label(
+                    self.spectrogram_hold.is_none(),
+                    i18n::text("spectrogram.live_action"),
+                )
                 .clicked()
             {
                 self.live_spectrogram();
@@ -172,14 +296,17 @@ impl ScopeApp {
             if ui
                 .add_enabled(
                     self.spectrogram_snapshot.latest().is_some(),
-                    egui::Button::selectable(self.spectrogram_hold.is_some(), "Hold"),
+                    egui::Button::selectable(
+                        self.spectrogram_hold.is_some(),
+                        i18n::text("spectrogram.hold_action"),
+                    ),
                 )
                 .clicked()
             {
                 self.hold_spectrogram();
             }
             ui.label(
-                RichText::new("Spectrogram · time / Hz cursor")
+                RichText::new(i18n::text("oscilloscope.spectrogram_time_hz_cursor"))
                     .small()
                     .color(MUTED),
             );
