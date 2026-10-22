@@ -17,7 +17,7 @@ impl ScopeApp {
         panel.show(ui, |ui| {
             ui.horizontal(|ui| {
                 if !compact {
-                    setting_label(ui, "INSTRUMENTS");
+                    setting_label(ui, i18n::text("shell.instruments_2"));
                 }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let id = egui::Id::new("sidebar_toggle_icon");
@@ -28,9 +28,9 @@ impl ScopeApp {
                         paint_toggle(ui.painter(), rect, compact, ui.visuals().text_color());
                     }
                     let label = if compact {
-                        "Expand sidebar"
+                        i18n::text("shell.expand_sidebar")
                     } else {
-                        "Compact sidebar"
+                        i18n::text("shell.compact_sidebar")
                     };
                     button.response.widget_info(|| {
                         egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label)
@@ -100,7 +100,9 @@ pub(super) fn navigation_button(
 ) -> egui::Response {
     let screen = instrument.map_or(Screen::Console, Screen::Single);
     let selected = active && presentation.screen == screen;
-    let name = instrument.map_or("Multi-instrument view", Instrument::name);
+    let name = instrument.map_or(i18n::text("shell.multi_instrument_view"), |i| {
+        i.display_name()
+    });
     let color = if selected {
         GREEN
     } else {

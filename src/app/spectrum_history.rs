@@ -2,7 +2,9 @@
 //! by the normal measurement path, including while this source is displayed.
 use super::*;
 
-pub(super) const EXPORT_REASON: &str = "History Spectrum export is unavailable. Scope-only JSON / CSV / PNG remain available after input stops; Normal Spectrum restores combined export.";
+pub(super) fn export_reason() -> &'static str {
+    i18n::text("spectrum.export_reason")
+}
 
 pub(super) struct HistorySpectrum {
     pub linked: bool,
@@ -143,50 +145,62 @@ impl ScopeApp {
 
     pub(super) fn history_spectrum_reason(&self, index: usize) -> &'static str {
         if self.shown_spectrum(index).validity() == spectrum::Validity::NonFinite {
-            "Invalid STFT window · nonfinite input"
+            i18n::text("spectrum.invalid_stft_window_nonfinite_input")
         } else if self.spectrogram_unavailable_selection[index] {
-            "Before input began · no STFT frame"
+            i18n::text("spectrum.before_input_began_no_stft_frame")
         } else if self.cursors.times[index].is_some() {
-            "No STFT frame · gap, unavailable or different generation"
+            i18n::text("spectrum.no_stft_frame_gap_unavailable_or_different_generation")
         } else {
-            "Select a time frame in Spectrogram"
+            i18n::text("spectrum.select_a_time_frame_in_spectrogram")
         }
     }
 
     pub(super) fn history_spectrum_summary(&self, ui: &mut egui::Ui) {
         ui.label(
-            RichText::new(
-                "Spectrogram history · Bin amplitude · FS / dBFS · AVG OFF · uncalibrated",
-            )
+            RichText::new(i18n::text(
+                "spectrum.spectrogram_history_bin_amplitude_fs_dbfs_avg_off_uncalibrated",
+            ))
             .small()
             .color(MUTED),
         );
         for i in 0..2 {
             let result = self.shown_spectrum(i);
             let text = if let Some(w) = result.window() {
-                format!(
-                    "Time {} · end {:.6} s · CH {} · samples {}..{} · {} Hz · {} pt · {} · {} · DC {}",
-                    cursor_name(i),
-                    w.end as f64 / w.sample_rate as f64,
-                    w.channel + 1,
-                    w.start,
-                    w.end,
-                    w.sample_rate,
-                    w.settings.size,
-                    w.settings.window.name(),
-                    w.settings.precision.name(),
-                    if w.settings.remove_dc {
-                        "removed"
-                    } else {
-                        "retained"
-                    }
+                i18n::format(
+                    "spectrum.time_end_s_ch_samples_hz_pt_dc",
+                    &[
+                        ("i", (cursor_name(i))),
+                        (
+                            "sample_rate",
+                            &format!("{:.6}", w.end as f64 / w.sample_rate as f64),
+                        ),
+                        ("channel", &(w.channel + 1).to_string()),
+                        ("start", &(w.start).to_string()),
+                        ("end", &(w.end).to_string()),
+                        ("sample_rate_2", &(w.sample_rate).to_string()),
+                        ("size", &(w.settings.size).to_string()),
+                        ("name", (w.settings.window.display_name())),
+                        ("name_2", (w.settings.precision.display_name())),
+                        (
+                            "retained",
+                            (if w.settings.remove_dc {
+                                "removed"
+                            } else {
+                                "retained"
+                            }),
+                        ),
+                    ],
                 )
+                .to_string()
             } else {
-                format!(
-                    "Time {} · {}",
-                    cursor_name(i),
-                    self.history_spectrum_reason(i)
+                i18n::format(
+                    "spectrum.time_2",
+                    &[
+                        ("i", (cursor_name(i))),
+                        ("i_2", (self.history_spectrum_reason(i))),
+                    ],
                 )
+                .to_string()
             };
             let text = if result.window().is_some() && !result.is_ready() {
                 format!("{text} · {}", self.history_spectrum_reason(i))
@@ -214,14 +228,17 @@ impl ScopeApp {
                     .selectable_value(
                         &mut self.spectrum_history.selected,
                         i,
-                        RichText::new(format!("Time {}", cursor_name(i))).color(cursor_color(i)),
+                        RichText::new(
+                            i18n::format("spectrum.time", &[("i", (cursor_name(i)))]).as_ref(),
+                        )
+                        .color(cursor_color(i)),
                     )
                     .changed()
                 {
                     self.spectrum_numeric_key = None;
                 }
             }
-            if ui.button("Normal Spectrum").clicked() {
+            if ui.button(i18n::text("spectrum.normal_spectrum")).clicked() {
                 self.unlink_spectrum_history();
             }
         });
@@ -229,7 +246,13 @@ impl ScopeApp {
 
     pub(super) fn history_spectrum_controls(&mut self, ui: &mut egui::Ui) {
         self.history_spectrum_summary(ui);
-        ui.label(RichText::new("Captured FFT, Source, units and averaging are read-only. Normal Spectrum continues independently.").small().color(MUTED));
+        ui.label(
+            RichText::new(i18n::text(
+                "spectrum.captured_fft_source_units_and_averaging_are_read_only",
+            ))
+            .small()
+            .color(MUTED),
+        );
         self.history_spectrum_bar(ui);
         let before = self.spectrum_history.view;
         self.spectrum_history.view = self.history_spectrum_view();
@@ -239,17 +262,25 @@ impl ScopeApp {
             .map_or(self.sample_rate as f32 * 0.5, |r| r.nyquist());
         let view = &mut self.spectrum_history.view;
         ui.horizontal_wrapped(|ui| {
-            ui.selectable_value(&mut view.scale, FrequencyScale::Log, "Log Hz");
-            ui.selectable_value(&mut view.scale, FrequencyScale::Linear, "Linear Hz");
+            ui.selectable_value(
+                &mut view.scale,
+                FrequencyScale::Log,
+                i18n::text("spectrum.log_hz"),
+            );
+            ui.selectable_value(
+                &mut view.scale,
+                FrequencyScale::Linear,
+                i18n::text("spectrum.linear_hz"),
+            );
         });
         ui.horizontal_wrapped(|ui| {
-            ui.label("From");
+            ui.label(i18n::text("spectrum.from"));
             ui.add(
                 egui::DragValue::new(&mut view.min_hz)
                     .range(0.0..=view.max_hz)
                     .suffix(" Hz"),
             );
-            ui.label("To");
+            ui.label(i18n::text("spectrum.to"));
             ui.add(
                 egui::DragValue::new(&mut view.max_hz)
                     .range(view.min_hz + 0.001..=nyquist)
@@ -257,13 +288,13 @@ impl ScopeApp {
             );
         });
         ui.horizontal_wrapped(|ui| {
-            ui.label("Bottom");
+            ui.label(i18n::text("spectrum.bottom"));
             ui.add(
                 egui::DragValue::new(&mut view.floor_db)
                     .range(-180.0..=-6.0)
                     .suffix(" dBFS"),
             );
-            ui.label("Top");
+            ui.label(i18n::text("spectrum.top"));
             ui.add(
                 egui::DragValue::new(&mut view.ceiling_db)
                     .range(view.floor_db + 6.0..=60.0)
@@ -272,6 +303,6 @@ impl ScopeApp {
         });
         self.spectrum_dirty |= before != self.spectrum_history.view;
         self.spectrum_cursor_controls(ui);
-        ui.label(RichText::new(EXPORT_REASON).small().color(MUTED));
+        ui.label(RichText::new(export_reason()).small().color(MUTED));
     }
 }

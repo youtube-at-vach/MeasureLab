@@ -38,6 +38,8 @@ pub mod app;
 #[cfg(feature = "desktop")]
 pub mod gpu;
 #[cfg(feature = "desktop")]
+pub mod i18n;
+#[cfg(feature = "desktop")]
 pub mod result_image;
 #[cfg(feature = "desktop")]
 pub mod spectrogram_gpu;

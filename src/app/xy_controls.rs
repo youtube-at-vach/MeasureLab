@@ -5,10 +5,10 @@ use super::*;
 impl ScopeApp {
     pub(super) fn xy_controls(&mut self, ui: &mut egui::Ui) {
         let before = self.xy_settings;
-        control_group(ui, "OBSERVATION", BLUE, |ui| {
+        control_group(ui, i18n::text("xy.observation"), BLUE, |ui| {
             control_slider(
                 ui,
-                "Observation window",
+                i18n::text("xy.observation_window"),
                 egui::Slider::new(&mut self.xy_settings.milliseconds, 0.5..=200.0)
                     .logarithmic(true)
                     .suffix(" ms")
@@ -16,7 +16,7 @@ impl ScopeApp {
                     .drag_value_speed(0.5),
                 None,
             );
-            if ui.button("Reset XY scales").clicked() {
+            if ui.button(i18n::text("xy.reset_xy_scales")).clicked() {
                 self.xy_settings = xy::Settings {
                     channels: self.xy_settings.channels,
                     ..xy::Settings::default()
@@ -25,10 +25,13 @@ impl ScopeApp {
         });
 
         let channels = self.lockin_channel_count().max(self.scope_channel_count());
-        for (index, title, color) in [(0, "X AXIS", BLUE), (1, "Y AXIS", PURPLE)] {
+        for (index, title, color) in [
+            (0, i18n::text("xy.x_axis"), BLUE),
+            (1, i18n::text("xy.y_axis"), PURPLE),
+        ] {
             control_group(ui, title, color, |ui| {
                 ui.horizontal(|ui| {
-                    ui.label("Input source");
+                    ui.label(i18n::text("xy.input_source"));
                     channel_select(
                         ui,
                         if index == 0 {
@@ -42,7 +45,7 @@ impl ScopeApp {
                 });
                 control_slider(
                     ui,
-                    "Amplitude range",
+                    i18n::text("xy.amplitude_range"),
                     egui::Slider::new(
                         if index == 0 {
                             &mut self.xy_settings.x_fs_per_div
@@ -68,45 +71,76 @@ impl ScopeApp {
         self.xy_dirty |= self.xy_settings != before;
         if !self.running() && self.xy_settings.channels != self.xy_view_settings().channels {
             ui.label(
-                RichText::new("Source changes apply on Start. Held XY keeps its channels.")
-                    .small()
-                    .color(YELLOW),
+                RichText::new(i18n::text(
+                    "xy.source_changes_apply_on_start_held_xy_keeps_its",
+                ))
+                .small()
+                .color(YELLOW),
             );
         }
         if channels < 2 {
             ui.label(
-                RichText::new("XY requires at least two input channels.")
+                RichText::new(i18n::text("xy.xy_requires_at_least_two_input_channels"))
                     .small()
                     .color(YELLOW),
             );
         }
 
-        control_group(ui, "CURSORS", PURPLE, |ui| {
+        control_group(ui, i18n::text("xy.cursors"), PURPLE, |ui| {
             let before = self.xy_cursor_mode;
             ui.horizontal_wrapped(|ui| {
-                ui.selectable_value(&mut self.xy_cursor_mode, xy::CursorMode::Free, "Free")
-                    .on_hover_text("Fix X/Y amplitudes independently of the moving trace. Measure ΔX and ΔY.");
-                ui.selectable_value(&mut self.xy_cursor_mode, xy::CursorMode::TraceSnap, "Trace Snap")
-                    .on_hover_text("Follow a real sample at a fixed time offset from the XY trigger. Uses Scope trigger settings.");
+                ui.selectable_value(
+                    &mut self.xy_cursor_mode,
+                    xy::CursorMode::Free,
+                    i18n::text("xy.free"),
+                )
+                .on_hover_text(i18n::text(
+                    "xy.fix_x_y_amplitudes_independently_of_the_moving_trace",
+                ));
+                ui.selectable_value(
+                    &mut self.xy_cursor_mode,
+                    xy::CursorMode::TraceSnap,
+                    i18n::text("xy.trace_snap"),
+                )
+                .on_hover_text(i18n::text("xy.follow_a_real_sample_at_a_fixed_time_offset"));
             });
             self.xy_dirty |= self.xy_cursor_mode != before;
-            ui.label(RichText::new(match self.xy_cursor_mode {
-                xy::CursorMode::Free => "Free keeps X/Y amplitudes fixed and reads ΔX/ΔY. Cursor positions are retained when switching modes.",
-                xy::CursorMode::TraceSnap => "Trace Snap follows a trigger-relative sample. Auto/free run may move the marker; Stop freezes it.",
-            }).small().color(MUTED));
+            ui.label(
+                RichText::new(match self.xy_cursor_mode {
+                    xy::CursorMode::Free => {
+                        i18n::text("xy.free_keeps_x_y_amplitudes_fixed_and_reads_x")
+                    }
+                    xy::CursorMode::TraceSnap => {
+                        i18n::text("xy.trace_snap_follows_a_trigger_relative_sample_auto_free")
+                    }
+                })
+                .small()
+                .color(MUTED),
+            );
         });
         if self.xy_cursor_mode == xy::CursorMode::TraceSnap {
-            control_group(ui, "TRIGGER", TRIGGER, |ui| {
-                ui.label(RichText::new("Shared with Scope").small().color(MUTED));
+            control_group(ui, i18n::text("xy.trigger"), TRIGGER, |ui| {
+                ui.label(
+                    RichText::new(i18n::text("xy.shared_with_scope"))
+                        .small()
+                        .color(MUTED),
+                );
                 self.trigger_controls(ui);
             });
         }
-        ui.label(RichText::new("X/Y use the same input frame. Equal axis scales preserve circles on the square plot.").small().color(MUTED));
         ui.label(
-            RichText::new(format!(
-                "Up to {} real sample pairs; longer windows show the latest portion.",
-                xy::MAX_POINTS
-            ))
+            RichText::new(i18n::text("xy.x_y_use_the_same_input_frame_equal_axis"))
+                .small()
+                .color(MUTED),
+        );
+        ui.label(
+            RichText::new(
+                i18n::format(
+                    "xy.up_to_real_sample_pairs_longer_windows_show_the",
+                    &[("xy", &(xy::MAX_POINTS).to_string())],
+                )
+                .as_ref(),
+            )
             .small()
             .color(MUTED),
         );

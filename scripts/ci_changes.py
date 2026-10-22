@@ -5,17 +5,24 @@ import sys
 
 
 def classify(paths: list[str]) -> dict[str, bool]:
-    result = dict.fromkeys(("rust", "msrv", "web"), False)
+    result = dict.fromkeys(("rust", "msrv", "web", "i18n"), False)
     for path in paths:
         if (
             path in {"Cargo.toml", "Cargo.lock", "rust-toolchain", "rust-toolchain.toml"}
             or path.startswith((".cargo/", ".github/workflows/"))
             or path in {"scripts/ci_changes.py", "scripts/test_ci_changes.py"}
         ):
-            result.update(rust=True, msrv=True, web=True)
+            result.update(rust=True, msrv=True, web=True, i18n=True)
+        elif path.startswith(("locales/", "i18n/")):
+            # Embedded catalogs/metadata need compilation and the dedicated scope checks.
+            result.update(rust=True, i18n=True)
+        elif path == "requirements-i18n.txt":
+            result.update(i18n=True, web=True)
+        elif path in {"scripts/i18n.py", "scripts/test_i18n.py"}:
+            result["i18n"] = True
         elif path.startswith(("src/", "tests/", "benches/")):
             # A new API in source can raise the MSRV without a manifest edit.
-            result.update(rust=True, msrv=True)
+            result.update(rust=True, msrv=True, i18n=True)
         elif (
             path.startswith(("docs/", "docs-rust/", "download-site/", "overrides/"))
             or path.startswith("mkdocs")
@@ -41,7 +48,7 @@ def classify(paths: list[str]) -> dict[str, bool]:
             continue
         else:
             # New or unrecognized build inputs must not silently bypass checks.
-            result.update(rust=True, msrv=True, web=True)
+            result.update(rust=True, msrv=True, web=True, i18n=True)
     return result
 
 
@@ -51,7 +58,7 @@ def main() -> None:
     parser.add_argument("--web", action="store_true")
     args = parser.parse_args()
     if args.all:
-        result = dict.fromkeys(("rust", "msrv", "web"), True)
+        result = dict.fromkeys(("rust", "msrv", "web", "i18n"), True)
     else:
         paths = sys.stdin.buffer.read().decode("utf-8", errors="surrogateescape")
         result = classify([path for path in paths.split("\0") if path])

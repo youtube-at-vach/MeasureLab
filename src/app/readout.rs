@@ -1,5 +1,6 @@
 //! Display-only formatting and sample reads. Never feed rounded values back
 //! into measurement, calibration, or export.
+use crate::i18n;
 use crate::{calibration, channel::ChannelId, signal::History};
 use std::ops::Range;
 
@@ -7,7 +8,7 @@ use std::ops::Range;
 /// units. Compound/custom units keep their spelling and use scientific notation.
 pub(crate) fn value(value: f64, unit: &str) -> String {
     if !value.is_finite() {
-        return "invalid value".into();
+        return i18n::text("common.invalid_value").into();
     }
     if value == 0.0 {
         return format!("0 {unit}");
@@ -52,11 +53,11 @@ pub(crate) fn signed(value: f64, unit: &str) -> String {
 
 pub(crate) fn db(value: f64, unit: &str) -> String {
     if value == f64::NEG_INFINITY {
-        format!("−∞ {unit} (zero)")
+        i18n::format("common.zero_db_readout", &[("unit", unit)]).to_string()
     } else if value.is_finite() {
         format!("{value:.2} {unit}")
     } else {
-        "invalid value".into()
+        i18n::text("common.invalid_value").into()
     }
 }
 
@@ -73,10 +74,10 @@ impl Sample {
     pub(crate) fn text(self, unit: &str) -> String {
         match self {
             Self::Value(value) => signed(value, unit),
-            Self::Outside => "outside sweep".into(),
-            Self::Missing => "missing sample".into(),
-            Self::Unavailable => "CH unavailable".into(),
-            Self::NonFinite => "invalid value".into(),
+            Self::Outside => i18n::text("common.outside_sweep").into(),
+            Self::Missing => i18n::text("common.missing_sample").into(),
+            Self::Unavailable => i18n::text("common.channel_unavailable").into(),
+            Self::NonFinite => i18n::text("common.invalid_value").into(),
         }
     }
 

@@ -4,7 +4,7 @@ use crate::settings::LockinDisplay;
 
 // Reuse scalar formatting; the file also contains future monitor cursor helpers.
 #[expect(dead_code, reason = "Lock-in uses scalar formatting only")]
-#[path = "../readout.rs"]
+#[path = "readout.rs"]
 mod readout;
 
 impl ScopeApp {
@@ -127,7 +127,7 @@ impl ScopeApp {
 
     pub(super) fn lockin_controls(&mut self, ui: &mut egui::Ui) {
         ui.label(
-            RichText::new("EXPERIMENTAL · INPUT REFERENCE")
+            RichText::new(i18n::text("lockin.experimental_input_reference"))
                 .small()
                 .color(YELLOW),
         );
@@ -137,27 +137,41 @@ impl ScopeApp {
             |ui| {
                 let s = &mut self.lockin_settings;
                 ui.label(
-                    RichText::new("REF and signal use the same input sample clock.")
-                        .small()
-                        .color(MUTED),
+                    RichText::new(i18n::text(
+                        "lockin.ref_and_signal_use_the_same_input_sample_clock",
+                    ))
+                    .small()
+                    .color(MUTED),
                 );
-                setting_label(ui, "REFERENCE & FILTER");
+                setting_label(ui, i18n::text("lockin.reference_filter"));
                 lockin_filter_controls(ui, s);
-                setting_label(ui, "REFERENCE VALIDITY");
+                setting_label(ui, i18n::text("lockin.reference_validity"));
                 ui.add(
                     egui::DragValue::new(&mut s.reference_min_rms_fs)
                         .range(1e-12..=1.0)
                         .speed(0.0001)
                         .max_decimals(12)
-                        .prefix("Min REF ")
-                        .suffix(" FS RMS"),
+                        .prefix(i18n::text("lockin.min_ref"))
+                        .suffix(i18n::text("lockin.fs_rms")),
                 );
             },
         );
         self.apply_lockin_controls(before);
         ui.separator();
-        ui.label(RichText::new("R, X and Y are peak amplitudes. Positive phase leads REF. The filter has two fixed EMA poles and settles after 10τ of valid samples. Settings changed while stopped apply on the next Start.").small().color(MUTED));
-        ui.label(RichText::new("Physical REF and timing remain unverified. No physical oscillator output or selectable hardware sensitivity.").small().color(MUTED));
+        ui.label(
+            RichText::new(i18n::text(
+                "lockin.r_x_and_y_are_peak_amplitudes_positive_phase",
+            ))
+            .small()
+            .color(MUTED),
+        );
+        ui.label(
+            RichText::new(i18n::text(
+                "lockin.physical_ref_and_timing_remain_unverified_no_physical_oscillator",
+            ))
+            .small()
+            .color(MUTED),
+        );
     }
 
     pub(super) fn lockin_channel_count(&self) -> u16 {
@@ -195,9 +209,16 @@ impl ScopeApp {
         };
         if let Err(error) = self.lockin_settings.validate(rate) {
             self.lockin_settings = before;
-            self.error = Some(format!(
-                "{error}: frequency must be below 0.45 × nominal Fs ({rate} Hz)"
-            ));
+            self.error = Some(
+                i18n::format(
+                    "lockin.frequency_must_be_below_nominal_fs_hz",
+                    &[
+                        ("error", &(error).to_string()),
+                        ("rate", &(rate).to_string()),
+                    ],
+                )
+                .to_string(),
+            );
         } else if self.running()
             && let Some(core) = &self.core
         {
@@ -212,14 +233,14 @@ impl ScopeApp {
             ui.add_enabled_ui(
                 !self.busy && self.pending_stop.is_none() && !self.workspace_restoring,
                 |ui| {
-                    ui.label("SIG");
+                    ui.label(i18n::text("lockin.sig"));
                     channel_select(
                         ui,
                         "lockin_signal_primary",
                         &mut self.lockin_settings.response_channel,
                         channels,
                     );
-                    ui.label("REF");
+                    ui.label(i18n::text("lockin.ref"));
                     channel_select(
                         ui,
                         "lockin_ref_primary",
@@ -228,9 +249,9 @@ impl ScopeApp {
                     );
                     if ui
                         .button(if self.lockin_settings.enabled {
-                            "Stop analysis"
+                            i18n::text("lockin.stop_analysis")
                         } else {
-                            "Start analysis"
+                            i18n::text("lockin.start_analysis")
                         })
                         .clicked()
                     {
@@ -256,11 +277,11 @@ impl ScopeApp {
             .show(ui, |ui| {
                 ui.set_min_width((ui.available_width() - 1.0).max(0.0));
                 ui.horizontal_wrapped(|ui| {
-                    ui.label(RichText::new("Lock-in amplifier").strong());
-                    ui.label(RichText::new("EXPERIMENTAL").small().color(MUTED));
+                    ui.label(RichText::new(i18n::text("lockin.lock_in_amplifier")).strong());
+                    ui.label(RichText::new(i18n::text("lockin.experimental")).small().color(MUTED));
                 });
                 ui.horizontal_wrapped(|ui| {
-                    for (mode, label) in [(LockinDisplay::Polar, "R / θ"), (LockinDisplay::Cartesian, "X / Y"), (LockinDisplay::All, "All four")] {
+                    for (mode, label) in [(LockinDisplay::Polar, "R / θ"), (LockinDisplay::Cartesian, "X / Y"), (LockinDisplay::All, i18n::text("lockin.all_four"))] {
                         ui.selectable_value(&mut self.lockin_display, mode, label);
                     }
                     ui.separator();
@@ -268,9 +289,9 @@ impl ScopeApp {
                         && self.lockin_result.latest_window.is_empty()
                         && !self.running();
                     let (label, color) = if self.input_failed {
-                        ("INPUT FAILED", TRIGGER)
+                        (i18n::text("lockin.input_failed"), TRIGGER)
                     } else if no_capture {
-                        ("NO CAPTURE", MUTED)
+                        (i18n::text("lockin.no_capture"), MUTED)
                     } else {
                         state_label(self.lockin_result.state)
                     };
@@ -296,8 +317,8 @@ impl ScopeApp {
                     .inner_margin(8.0).corner_radius(4.0)
                     .show(ui, |ui| {
                         ui.horizontal_wrapped(|ui| {
-                            ui.label(RichText::new(format!("SIG CH {}   /   REF CH {}", r.settings.response_channel + 1, r.settings.reference_channel + 1)).small().color(Color32::LIGHT_GRAY));
-                            ui.label(RichText::new(if self.calibration.captured.get(r.settings.response_channel).is_some() { "CALIBRATED" } else { "UNCALIBRATED · FS" }).small().color(MUTED));
+                            ui.label(RichText::new(i18n::format("lockin.sig_ch_ref_ch", &[("response_channel", &(r.settings.response_channel + 1).to_string()), ("reference_channel", &(r.settings.reference_channel + 1).to_string())]).as_ref()).small().color(Color32::LIGHT_GRAY));
+                            ui.label(RichText::new(if self.calibration.captured.get(r.settings.response_channel).is_some() { i18n::text("lockin.calibrated") } else { i18n::text("lockin.uncalibrated_fs") }).small().color(MUTED));
                         });
                         for row in cells.chunks(columns) {
                             ui.horizontal(|ui| {
@@ -313,39 +334,39 @@ impl ScopeApp {
                         }
                         ui.separator();
                         ui.horizontal_wrapped(|ui| {
-                            ui.label(RichText::new(format!("f REF  {}", option_value(read(r.reference_frequency_hz), "Hz"))).monospace().color(Color32::WHITE));
+                            ui.label(RichText::new(i18n::format("lockin.f_ref", &[("hz_2", &(option_value(read(r.reference_frequency_hz), "Hz")).to_string())]).as_ref()).monospace().color(Color32::WHITE));
                             let gain_unit = format!("{}/{}", unit, self.calibration.captured.unit(r.settings.reference_channel));
                             let gain = read(r.gain).map_or_else(|| format!("— {gain_unit}"), |v| format!("{v:.5} {gain_unit}"));
-                            ui.label(RichText::new(format!("Gain  {gain}")).monospace().color(Color32::WHITE));
+                            ui.label(RichText::new(i18n::format("lockin.gain", &[("gain", &(gain).to_string())]).as_ref()).monospace().color(Color32::WHITE));
                         });
                         ui.horizontal_wrapped(|ui| {
-                            ui.label(RichText::new(format!("τ {}   ·   2 poles   ·   N {}   ·   {}", readout::value(r.settings.time_constant_seconds, "s"), r.settings.integration_samples, if r.settings.track_reference { "TRACK REF" } else { "FIXED FREQUENCY" })).small().color(Color32::LIGHT_GRAY));
+                            ui.label(RichText::new(i18n::format("lockin.poles_n", &[("s", &(readout::value(r.settings.time_constant_seconds, "s")).to_string()), ("integration_samples", &(r.settings.integration_samples).to_string()), ("fixed_frequency", (if r.settings.track_reference { i18n::text("lockin.track_ref") } else { i18n::text("lockin.fixed_frequency") }))]).as_ref()).small().color(Color32::LIGHT_GRAY));
                         });
                     });
                 if r.settings != self.lockin_settings {
-                    ui.label(RichText::new(if self.running() { "Applying settings · display retains its captured conditions" } else { "Next Start settings changed · display retains captured conditions" }).small().color(YELLOW));
+                    ui.label(RichText::new(if self.running() { i18n::text("lockin.applying_settings_display_retains_its_captured_conditions") } else { i18n::text("lockin.next_start_settings_changed_display_retains_captured_conditions") }).small().color(YELLOW));
                 }
                 if !self.running() && r.latest_window.is_empty() && r.state == lockin::State::Settling {
-                    ui.label(RichText::new("Start input to acquire a synchronous SIG / REF window.").small().color(MUTED));
+                    ui.label(RichText::new(i18n::text("lockin.start_input_to_acquire_a_synchronous_sig_ref_window")).small().color(MUTED));
                 } else if r.state == lockin::State::Settling {
                     let progress = settling_fraction(r, self.sample_rate);
-                    ui.add(egui::ProgressBar::new(progress as f32).text(format!("Settling · {:.0}% of 10τ", progress * 100.0)));
+                    ui.add(egui::ProgressBar::new(progress as f32).text(i18n::format("lockin.settling_of", &[("progress", &format!("{:.0}", progress * 100.0))]).to_string()));
                 } else if !usable {
                     ui.label(RichText::new(state_help(r.state)).small().color(MUTED));
                 }
-                ui.collapsing("Measurement details", |ui| {
+                egui::CollapsingHeader::new(i18n::text("lockin.measurement_details")).id_salt("Measurement details").show(ui, |ui| {
                     let r = &self.lockin_result;
-                    ui.label(format!("Nominal Fs {} Hz · input generation {}", self.sample_rate, self.input_generation));
-                    ui.label(format!("Captured hint {} · τ {} · REF threshold {}", readout::value(r.settings.frequency_hz, "Hz"), readout::value(r.settings.time_constant_seconds, "s"), readout::value(r.settings.reference_min_rms_fs, "FS")));
-                    ui.label(format!("REF AC RMS {} · sinusoid fit {}", option_value(r.reference_ac_rms_fs, "FS"), r.reference_sinusoid_fraction.map_or_else(|| "—".into(), |v| format!("{:.3}%", v * 100.0))));
-                    ui.label(format!("Averaged samples {}..{} · latest window {}..{}", r.sample_range.start, r.sample_range.end, r.latest_window.start, r.latest_window.end));
-                    ui.label(format!("{} complete windows · {} missing samples", r.processed_windows, r.missing_samples));
+                    ui.label(i18n::format("lockin.nominal_fs_hz_input_generation", &[("sample_rate", &(self.sample_rate).to_string()), ("input_generation", &(self.input_generation).to_string())]).as_ref());
+                    ui.label(i18n::format("lockin.captured_hint_ref_threshold", &[("hz_2", &(readout::value(r.settings.frequency_hz, "Hz")).to_string()), ("s", &(readout::value(r.settings.time_constant_seconds, "s")).to_string()), ("fs", &(readout::value(r.settings.reference_min_rms_fs, "FS")).to_string())]).as_ref());
+                    ui.label(i18n::format("lockin.ref_ac_rms_sinusoid_fit", &[("fs", &(option_value(r.reference_ac_rms_fs, "FS")).to_string()), ("v", &(r.reference_sinusoid_fraction.map_or_else(|| "—".into(), |v| format!("{:.3}%", v * 100.0))).to_string())]).as_ref());
+                    ui.label(i18n::format("lockin.averaged_samples_latest_window", &[("start", &(r.sample_range.start).to_string()), ("end", &(r.sample_range.end).to_string()), ("start_2", &(r.latest_window.start).to_string()), ("end_2", &(r.latest_window.end).to_string())]).as_ref());
+                    ui.label(i18n::format("lockin.complete_windows_missing_samples", &[("processed_windows", &(r.processed_windows).to_string()), ("missing_samples", &(r.missing_samples).to_string())]).as_ref());
                     for ch in [r.settings.response_channel, r.settings.reference_channel] {
                         if let Some(c) = self.calibration.captured.get(ch) {
-                            ui.label(format!("CH {} calibration {} / revision {} · gain {} {} / FS", ch + 1, c.id(), c.revision(), c.gain(), c.unit()));
+                            ui.label(i18n::format("lockin.ch_calibration_revision_gain_fs", &[("ch", &(ch + 1).to_string()), ("id", (c.id())), ("revision", &(c.revision()).to_string()), ("gain", &(c.gain()).to_string()), ("unit", (c.unit()))]).as_ref());
                         }
                     }
-                    ui.label("Display bars auto-scale; they do not change input sensitivity. Periodic Hann fit + two EMA poles. Physical REF / timing unverified.");
+                    ui.label(i18n::text("lockin.display_bars_auto_scale_they_do_not_change_input"));
                 });
             });
     }
@@ -356,10 +377,13 @@ fn lockin_filter_controls(ui: &mut egui::Ui, s: &mut lockin::Settings) {
         egui::DragValue::new(&mut s.frequency_hz)
             .range(10.0..=345599.0)
             .speed(1.0)
-            .prefix("REF hint ")
+            .prefix(i18n::text("lockin.ref_hint"))
             .suffix(" Hz"),
     );
-    ui.checkbox(&mut s.track_reference, "Track input REF (hint ±10%)");
+    ui.checkbox(
+        &mut s.track_reference,
+        i18n::text("lockin.track_input_ref_hint"),
+    );
     ui.add(
         egui::DragValue::new(&mut s.time_constant_seconds)
             .range(0.001..=10.0)
@@ -369,21 +393,31 @@ fn lockin_filter_controls(ui: &mut egui::Ui, s: &mut lockin::Settings) {
             .suffix(" s"),
     );
     egui::ComboBox::from_id_salt("lockin_tau_presets")
-        .selected_text("Time constant presets")
+        .selected_text(i18n::text("lockin.time_constant_presets"))
         .show_ui(ui, |ui| {
             for tau in [0.001, 0.003, 0.01, 0.02, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0] {
                 ui.selectable_value(&mut s.time_constant_seconds, tau, readout::value(tau, "s"));
             }
         });
     egui::ComboBox::from_id_salt("lockin_window")
-        .selected_text(format!("Integration: {} samples", s.integration_samples))
+        .selected_text(
+            i18n::format(
+                "lockin.integration_samples",
+                &[("integration_samples", &(s.integration_samples).to_string())],
+            )
+            .as_ref(),
+        )
         .show_ui(ui, |ui| {
             for n in [1024, 4096, 16384, 65536] {
-                ui.selectable_value(&mut s.integration_samples, n, format!("{n} samples"));
+                ui.selectable_value(
+                    &mut s.integration_samples,
+                    n,
+                    i18n::format("lockin.samples", &[("n", &(n).to_string())]).as_ref(),
+                );
             }
         });
     ui.label(
-        RichText::new("2 EMA poles · 10τ settling · fundamental only")
+        RichText::new(i18n::text("lockin.ema_poles_settling_fundamental_only"))
             .small()
             .color(MUTED),
     );
@@ -405,38 +439,40 @@ fn option_value(value: Option<f64>, unit: &str) -> String {
 
 fn state_label(state: lockin::State) -> (&'static str, Color32) {
     match state {
-        lockin::State::Valid => ("REF VALID", GREEN),
-        lockin::State::Settling => ("SETTLING", YELLOW),
-        lockin::State::Disabled => ("DISABLED", MUTED),
-        lockin::State::Unavailable => ("CH / SETTINGS UNAVAILABLE", TRIGGER),
-        lockin::State::ReferenceLost => ("REF LOST", TRIGGER),
-        lockin::State::ReferenceUnstable => ("REF UNSTABLE", TRIGGER),
-        lockin::State::Missing => ("INPUT GAP", TRIGGER),
-        lockin::State::NonFinite => ("INVALID INPUT", TRIGGER),
+        lockin::State::Valid => (i18n::text("lockin.ref_valid"), GREEN),
+        lockin::State::Settling => (i18n::text("lockin.settling"), YELLOW),
+        lockin::State::Disabled => (i18n::text("lockin.disabled"), MUTED),
+        lockin::State::Unavailable => (i18n::text("lockin.ch_settings_unavailable"), TRIGGER),
+        lockin::State::ReferenceLost => (i18n::text("lockin.ref_lost"), TRIGGER),
+        lockin::State::ReferenceUnstable => (i18n::text("lockin.ref_unstable"), TRIGGER),
+        lockin::State::Missing => (i18n::text("lockin.input_gap"), TRIGGER),
+        lockin::State::NonFinite => (i18n::text("lockin.invalid_input"), TRIGGER),
     }
 }
 
 fn state_help(state: lockin::State) -> &'static str {
     match state {
         lockin::State::Disabled => {
-            "Select SIG / REF channels, press Start analysis, then Start input if input is stopped."
+            i18n::text("lockin.select_sig_ref_channels_press_start_analysis_then_start")
         }
         lockin::State::Unavailable => {
-            "Check SIG / REF channel availability and frequency against nominal Fs."
+            i18n::text("lockin.check_sig_ref_channel_availability_and_frequency_against_nominal")
         }
         lockin::State::ReferenceLost => {
-            "REF is below its AC RMS threshold. Values clear until REF recovers."
+            i18n::text("lockin.ref_is_below_its_ac_rms_threshold_values_clear")
         }
         lockin::State::ReferenceUnstable => {
-            "REF needs ≥3 cycles/window, ≥98% sinusoid fit and frequency within the hint range."
+            i18n::text("lockin.ref_needs_cycles_window_sinusoid_fit_and_frequency_within")
         }
         lockin::State::Missing => {
-            "Input samples are missing. The filter clears and settles again after recovery."
+            i18n::text("lockin.input_samples_are_missing_the_filter_clears_and_settles")
         }
         lockin::State::NonFinite => {
-            "Input or calculation is nonfinite. No valid measurement is available."
+            i18n::text("lockin.input_or_calculation_is_nonfinite_no_valid_measurement_is")
         }
-        lockin::State::Settling => "Waiting for a complete synchronous input window.",
+        lockin::State::Settling => {
+            i18n::text("lockin.waiting_for_a_complete_synchronous_input_window")
+        }
         lockin::State::Valid => "",
     }
 }
@@ -600,8 +636,14 @@ fn numeric_cell(ui: &mut egui::Ui, size: egui::Vec2, cell: NumericCell<'_>) {
         white,
     );
     response.on_hover_text(cell.value.map_or_else(
-        || "No valid reading; no bar marker is shown".into(),
-        |v| format!("{v:+.12e} {} · display scale only", cell.unit),
+        || i18n::text("lockin.no_valid_reading_no_bar_marker_is_shown").into(),
+        |v| {
+            i18n::format(
+                "lockin.display_scale_only",
+                &[("v", &format!("{:+.12e}", v)), ("unit", (cell.unit))],
+            )
+            .to_string()
+        },
     ));
 }
 

@@ -148,7 +148,13 @@ impl ScopeApp {
             },
         );
         self.apply_comparison_controls(before);
-        ui.label(RichText::new("AC comparison · positive phase leads REF; positive delay lags REF. Stopped edits apply on the next Start.").small().color(MUTED));
+        ui.label(
+            RichText::new(i18n::text(
+                "comparison.ac_comparison_positive_phase_leads_ref_positive_delay_lags",
+            ))
+            .small()
+            .color(MUTED),
+        );
     }
     pub(super) fn apply_comparison_controls(&mut self, before: comparison::Settings) {
         if before == self.comparison_settings {
@@ -170,14 +176,14 @@ impl ScopeApp {
             ui.add_enabled_ui(
                 !self.busy && self.pending_stop.is_none() && !self.workspace_restoring,
                 |ui| {
-                    ui.label("REF");
+                    ui.label(i18n::text("comparison.ref"));
                     channel_select(
                         ui,
                         "comparison_ref_primary",
                         &mut self.comparison_settings.reference_channel,
                         channels,
                     );
-                    ui.label("SIG");
+                    ui.label(i18n::text("comparison.sig"));
                     channel_select(
                         ui,
                         "comparison_signal_primary",
@@ -186,9 +192,9 @@ impl ScopeApp {
                     );
                     if ui
                         .button(if self.comparison_settings.enabled {
-                            "Stop analysis"
+                            i18n::text("comparison.stop_analysis")
                         } else {
-                            "Start analysis"
+                            i18n::text("comparison.start_analysis")
                         })
                         .clicked()
                     {
@@ -209,7 +215,7 @@ impl ScopeApp {
         egui::Frame::new().fill(Color32::from_rgb(17,27,35)).stroke(Stroke::new(1.0,BORDER))
             .inner_margin(8.0).show(ui, |ui| {
                 ui.horizontal_wrapped(|ui| {
-                    ui.label(RichText::new("Synchronous comparison").strong().color(BLUE));
+                    ui.label(RichText::new(i18n::text("comparison.synchronous_comparison")).strong().color(BLUE));
                     display::activity_label(ui, self.running(), self.pending_stop.is_some(), !self.comparison_result.sample_range.is_empty());
 
                 });
@@ -222,15 +228,15 @@ impl ScopeApp {
                     comparison::State::Disabled => MUTED,
                     _ => TRIGGER,
                 };
-                ui.label(RichText::new(format!("{:?} · REF CH {} / SIG CH {} · N {} × {} · Δf {:.3} Hz",r.state,s.reference_channel+1,s.response_channel+1,s.size,s.averages,r.bin_width_hz())).small().color(state_color));
+                ui.label(RichText::new(i18n::format("comparison.ref_ch_sig_ch_n_f_hz", &[("state", r.state.display_name()), ("reference_channel", &(s.reference_channel+1).to_string()), ("response_channel", &(s.response_channel+1).to_string()), ("size", &(s.size).to_string()), ("averages", &(s.averages).to_string()), ("bin_width_hz", &format!("{:.3}", r.bin_width_hz()))]).as_ref()).small().color(state_color));
                 if !self.running() && s != self.comparison_settings {
-                    ui.label(RichText::new("HELD conditions retained · queued analysis settings apply on next Start").small().color(YELLOW));
+                    ui.label(RichText::new(i18n::text("comparison.held_conditions_retained_queued_analysis_settings_apply_on_next")).small().color(YELLOW));
                 }
                 ui.horizontal_wrapped(|ui| {
-                    ui.label("Read at");
+                    ui.label(i18n::text("comparison.read_at"));
                     ui.add(egui::DragValue::new(&mut self.comparison_frequency_hz).range(0.0..=r.nominal_sample_rate_hz as f64*0.5).speed(r.bin_width_hz()).max_decimals(3).suffix(" Hz"));
                     if let Some((k,b)) = r.bin_at(self.comparison_frequency_hz) {
-                        ui.label(RichText::new(format!("Bin {k} · {:.3} Hz · {:?}", k as f64*r.bin_width_hz(), b.state)).small().color(if b.state == comparison::BinState::Valid { MUTED } else { YELLOW }));
+                        ui.label(RichText::new(i18n::format("comparison.bin_hz", &[("k", &(k).to_string()), ("bin_width_hz", &format!("{:.3}", k as f64*r.bin_width_hz())), ("state", b.state.display_name())]).as_ref()).small().color(if b.state == comparison::BinState::Valid { MUTED } else { YELLOW }));
                     } else { ui.label(RichText::new(self.comparison_wait_help(&r)).small().color(MUTED)); }
                 });
                 let reading = r.bin_at(self.comparison_frequency_hz).map(|(_,b)| b);
@@ -238,103 +244,113 @@ impl ScopeApp {
                 let sig_unit = self.calibration.captured.unit(s.response_channel);
                 let unit = if ref_unit==sig_unit {"ratio".into()} else {format!("{sig_unit}/{ref_unit}")};
                 ui.horizontal_wrapped(|ui| {
-                    display::metric(ui, "Gain", reading.and_then(|b| b.gain), &unit, GREEN);
-                    display::metric(ui, "Phase lead", reading.and_then(|b| b.phase_lead_degrees), "°", BLUE);
-                    display::metric(ui, "Coherence γ²", reading.and_then(|b| b.coherence), "", YELLOW);
-                    display::metric(ui, "Wrapped delay", reading.and_then(|b| b.phase_delay_seconds).map(|v| v*1e6), "µs", BLUE);
+                    display::metric(ui, i18n::text("comparison.gain"), reading.and_then(|b| b.gain), &unit, GREEN);
+                    display::metric(ui, i18n::text("comparison.phase_lead"), reading.and_then(|b| b.phase_lead_degrees), "°", BLUE);
+                    display::metric(ui, i18n::text("comparison.coherence"), reading.and_then(|b| b.coherence), "", YELLOW);
+                    display::metric(ui, i18n::text("comparison.wrapped_delay"), reading.and_then(|b| b.phase_delay_seconds).map(|v| v*1e6), "µs", BLUE);
                 });
                 if let Some(d) = &r.delay {
-                    ui.label(format!("Phase slope: {} µs · {:.1}–{:.1} Hz · residual {}° RMS",display::number(Some(d.seconds*1e6)),d.inclusive_bins[0] as f64*r.bin_width_hz(),d.inclusive_bins[1] as f64*r.bin_width_hz(),display::number(Some(d.phase_residual_rms_degrees))));
-                } else { ui.label(RichText::new("Phase slope: — · needs ≥8 contiguous excited, coherent bins").small().color(MUTED)); }
-                ui.label(RichText::new("Nominal Fs · CH phase/timing calibration unverified · delay wraps by 1/f").small().color(YELLOW));
+                    ui.label(i18n::format("comparison.phase_slope_s_hz_residual_rms", &[("e6", &(display::number(Some(d.seconds*1e6))).to_string()), ("bin_width_hz", &format!("{:.1}", d.inclusive_bins[0] as f64*r.bin_width_hz())), ("bin_width_hz_2", &format!("{:.1}", d.inclusive_bins[1] as f64*r.bin_width_hz())), ("phase_residual_rms_degrees", &(display::number(Some(d.phase_residual_rms_degrees))).to_string())]).as_ref());
+                } else { ui.label(RichText::new(i18n::text("comparison.phase_slope_needs_contiguous_excited_coherent_bins")).small().color(MUTED)); }
+                ui.label(RichText::new(i18n::text("comparison.nominal_fs_ch_phase_timing_calibration_unverified_delay_wraps")).small().color(YELLOW));
                 self.comparison_display.controls(ui, r.nominal_sample_rate_hz as f64*0.5);
                 let view = self.comparison_display.range(&r, self.comparison_frequency_hz);
                 let valid = r.bins.iter().filter(|b| b.state == comparison::BinState::Valid).count();
-                ui.label(RichText::new(format!("{valid} valid transfer bins · gaps are not interpolated")).small().color(MUTED));
+                ui.label(RichText::new(i18n::format("comparison.valid_transfer_bins_gaps_are_not_interpolated", &[("valid", &(valid).to_string())]).as_ref()).small().color(MUTED));
                 let h = ((ui.available_height()-32.0)/3.0).clamp(100.0,180.0);
                 for plot in 0..3 { if let Some(hz) = comparison_plot(ui,&r,plot,h,self.comparison_frequency_hz,view) { self.comparison_frequency_hz=hz; } }
-                ui.collapsing("Captured conditions", |ui| {
-                    ui.label(format!("Input generation {} · analysis revision {} · {} Hz nominal · f64",r.generation,r.analysis_revision,r.nominal_sample_rate_hz));
-                    ui.label(format!("Samples {}..{} · latest {}..{} · input end {}",r.sample_range.start,r.sample_range.end,r.latest_window.start,r.latest_window.end,r.input_end));
-                    ui.label(format!("{} averaged windows · {} processed · {} missing · {} invalid samples",r.averaged_windows,r.processed_windows,r.missing_samples,r.invalid_samples));
-                    ui.label(format!("{} · AC mean removed · disjoint arithmetic batches · REF floor {} FS²/Hz · coherence ≥{}",s.window.name(),s.reference_min_psd_fs2_hz,s.minimum_coherence));
-                    ui.label("H1 = Pxy/Pxx. Scope, Spectrum and comparison each retain their own intervals. Slope fit assumes adjacent phase steps below π; periodic/wrapped data cannot determine absolute latency.");
-                    for ch in [s.reference_channel,s.response_channel] { if let Some(c)=self.calibration.captured.get(ch) {ui.label(format!("CH {}: {} / revision {} · {} {} / FS",ch+1,c.id(),c.revision(),c.gain(),c.unit()));} }
+                egui::CollapsingHeader::new(i18n::text("comparison.captured_conditions")).id_salt("Captured conditions").show(ui, |ui| {
+                    ui.label(i18n::format("comparison.input_generation_analysis_revision_hz_nominal_f64", &[("generation", &(r.generation).to_string()), ("analysis_revision", &(r.analysis_revision).to_string()), ("nominal_sample_rate_hz", &(r.nominal_sample_rate_hz).to_string())]).as_ref());
+                    ui.label(i18n::format("comparison.samples_latest_input_end", &[("start", &(r.sample_range.start).to_string()), ("end", &(r.sample_range.end).to_string()), ("start_2", &(r.latest_window.start).to_string()), ("end_2", &(r.latest_window.end).to_string()), ("input_end", &(r.input_end).to_string())]).as_ref());
+                    ui.label(i18n::format("comparison.averaged_windows_processed_missing_invalid_samples", &[("averaged_windows", &(r.averaged_windows).to_string()), ("processed_windows", &(r.processed_windows).to_string()), ("missing_samples", &(r.missing_samples).to_string()), ("invalid_samples", &(r.invalid_samples).to_string())]).as_ref());
+                    ui.label(i18n::format("comparison.ac_mean_removed_disjoint_arithmetic_batches_ref_floor_fs", &[("name", (s.window.display_name())), ("reference_min_psd_fs2_hz", &(s.reference_min_psd_fs2_hz).to_string()), ("minimum_coherence", &(s.minimum_coherence).to_string())]).as_ref());
+                    ui.label(i18n::text("comparison.h1_pxy_pxx_scope_spectrum_and_comparison_each_retain"));
+                    for ch in [s.reference_channel,s.response_channel] { if let Some(c)=self.calibration.captured.get(ch) {ui.label(i18n::format("comparison.ch_revision_fs", &[("ch", &(ch+1).to_string()), ("id", (c.id())), ("revision", &(c.revision()).to_string()), ("gain", &(c.gain()).to_string()), ("unit", (c.unit()))]).as_ref());} }
                 });
             });
     }
 
     fn comparison_wait_help(&self, result: &comparison::Result) -> &'static str {
         match result.state {
-            comparison::State::Disabled => "Select REF / SIG channels, then press Start analysis.",
+            comparison::State::Disabled => {
+                i18n::text("comparison.select_ref_sig_channels_then_press_start_analysis")
+            }
             comparison::State::Unavailable => {
-                "Check REF / SIG channels, FFT and nominal Fs settings."
+                i18n::text("comparison.check_ref_sig_channels_fft_and_nominal_fs_settings")
             }
             comparison::State::Missing if self.running() => {
-                "Input gap · waiting for a new complete average."
+                i18n::text("comparison.input_gap_waiting_for_a_new_complete_average")
             }
-            comparison::State::Missing => "Input gap · press Start input to acquire again.",
-            comparison::State::NonFinite => "Invalid input · no valid comparison is available.",
-            comparison::State::Valid => "Selected frequency is outside the captured result.",
+            comparison::State::Missing => {
+                i18n::text("comparison.input_gap_press_start_input_to_acquire_again")
+            }
+            comparison::State::NonFinite => {
+                i18n::text("comparison.invalid_input_no_valid_comparison_is_available")
+            }
+            comparison::State::Valid => {
+                i18n::text("comparison.selected_frequency_is_outside_the_captured_result")
+            }
             comparison::State::Filling | comparison::State::Averaging => {
                 if self.pending_stop.is_some() {
-                    "Finishing analysis before holding the result."
+                    i18n::text("comparison.finishing_analysis_before_holding_the_result")
                 } else if !self.running() {
-                    "Press Start input to acquire a complete average."
+                    i18n::text("comparison.press_start_input_to_acquire_a_complete_average")
                 } else {
-                    "Waiting for a complete average."
+                    i18n::text("comparison.waiting_for_a_complete_average")
                 }
             }
         }
     }
 }
 fn comparison_controls(ui: &mut egui::Ui, s: &mut comparison::Settings, _channels: u16) {
-    setting_label(ui, "WINDOW / AVERAGING");
+    setting_label(ui, i18n::text("comparison.window_averaging"));
     egui::ComboBox::from_id_salt("comparison_size")
-        .selected_text(format!("{} samples", s.size))
+        .selected_text(
+            i18n::format("comparison.samples", &[("size", &(s.size).to_string())]).as_ref(),
+        )
         .show_ui(ui, |ui| {
             for n in comparison::SIZES {
                 ui.selectable_value(&mut s.size, n, n.to_string());
             }
         });
     egui::ComboBox::from_id_salt("comparison_window")
-        .selected_text(s.window.name())
+        .selected_text(s.window.display_name())
         .show_ui(ui, |ui| {
             for w in [Window::Rectangular, Window::Hann, Window::BlackmanHarris] {
-                ui.selectable_value(&mut s.window, w, w.name());
+                ui.selectable_value(&mut s.window, w, w.display_name());
             }
         });
     ui.add(
         egui::DragValue::new(&mut s.averages)
             .range(2..=256)
-            .prefix("Average windows "),
+            .prefix(i18n::text("comparison.average_windows")),
     );
     ui.add(
         egui::DragValue::new(&mut s.minimum_coherence)
             .range(0.0..=1.0)
             .speed(0.01)
-            .prefix("Min coherence "),
+            .prefix(i18n::text("comparison.min_coherence")),
     );
     ui.add(
         egui::DragValue::new(&mut s.reference_min_psd_fs2_hz)
             .range(1e-30..=1.0)
             .speed(1e-13)
             .max_decimals(20)
-            .prefix("Min REF ")
-            .suffix(" FS²/Hz"),
+            .prefix(i18n::text("comparison.min_ref"))
+            .suffix(i18n::text("comparison.fs_hz")),
     );
     ui.add(
         egui::DragValue::new(&mut s.delay_band_hz[0])
             .range(0.0..=383999.0)
             .speed(10.0)
-            .prefix("Slope from ")
+            .prefix(i18n::text("comparison.slope_from"))
             .suffix(" Hz"),
     );
     ui.add(
         egui::DragValue::new(&mut s.delay_band_hz[1])
             .range(1.0..=384000.0)
             .speed(10.0)
-            .prefix("Slope to ")
+            .prefix(i18n::text("comparison.slope_to"))
             .suffix(" Hz"),
     );
 }
@@ -365,21 +381,51 @@ impl Default for ComparisonDisplay {
 impl ComparisonDisplay {
     fn controls(&mut self, ui: &mut egui::Ui, nyquist: f64) {
         ui.horizontal_wrapped(|ui| {
-            ui.label(RichText::new("Display range").small().color(MUTED));
-            egui::ComboBox::from_id_salt("comparison_span").selected_text(match self.span {
-                Span::Reading => "Around reading", Span::Valid => "Valid band", Span::Full => "Full / Nyquist", Span::Custom => "Custom",
-            }).show_ui(ui, |ui| {
-                for (span,label) in [(Span::Reading,"Around reading"),(Span::Valid,"Valid band"),(Span::Full,"Full / Nyquist"),(Span::Custom,"Custom")] {
-                    ui.selectable_value(&mut self.span, span, label);
-                }
-            });
-            ui.selectable_value(&mut self.log, false, "Linear Hz");
-            ui.selectable_value(&mut self.log, true, "Log Hz");
+            ui.label(
+                RichText::new(i18n::text("comparison.display_range"))
+                    .small()
+                    .color(MUTED),
+            );
+            egui::ComboBox::from_id_salt("comparison_span")
+                .selected_text(match self.span {
+                    Span::Reading => i18n::text("comparison.around_reading"),
+                    Span::Valid => i18n::text("comparison.valid_band"),
+                    Span::Full => i18n::text("comparison.full_nyquist"),
+                    Span::Custom => i18n::text("comparison.custom"),
+                })
+                .show_ui(ui, |ui| {
+                    for (span, label) in [
+                        (Span::Reading, i18n::text("comparison.around_reading")),
+                        (Span::Valid, i18n::text("comparison.valid_band")),
+                        (Span::Full, i18n::text("comparison.full_nyquist")),
+                        (Span::Custom, i18n::text("comparison.custom")),
+                    ] {
+                        ui.selectable_value(&mut self.span, span, label);
+                    }
+                });
+            ui.selectable_value(&mut self.log, false, i18n::text("comparison.linear_hz"));
+            ui.selectable_value(&mut self.log, true, i18n::text("comparison.log_hz"));
             if self.span == Span::Custom {
-                ui.add(egui::DragValue::new(&mut self.from_hz).range(0.0..=nyquist).speed(1.0).prefix("From ").suffix(" Hz"));
-                ui.add(egui::DragValue::new(&mut self.to_hz).range(0.0..=nyquist).speed(1.0).prefix("To ").suffix(" Hz"));
+                ui.add(
+                    egui::DragValue::new(&mut self.from_hz)
+                        .range(0.0..=nyquist)
+                        .speed(1.0)
+                        .prefix(i18n::text("comparison.from"))
+                        .suffix(" Hz"),
+                );
+                ui.add(
+                    egui::DragValue::new(&mut self.to_hz)
+                        .range(0.0..=nyquist)
+                        .speed(1.0)
+                        .prefix(i18n::text("comparison.to"))
+                        .suffix(" Hz"),
+                );
             }
-        }).response.on_hover_text("Display only: captured analysis, validity thresholds and the phase-slope band are unchanged. Log Hz omits DC.");
+        })
+        .response
+        .on_hover_text(i18n::text(
+            "comparison.display_only_captured_analysis_validity_thresholds_and_the_phase",
+        ));
     }
     fn range(&self, result: &comparison::Result, selected: f64) -> FrequencyRange {
         let nyquist = result.nominal_sample_rate_hz as f64 * 0.5;
@@ -458,8 +504,8 @@ impl FrequencyRange {
 
 fn comparison_axis(plot: usize) -> (&'static str, f64, f64, Color32) {
     match plot {
-        0 => ("Gain dB", -60.0, 20.0, GREEN),
-        1 => ("Phase °", -180.0, 180.0, BLUE),
+        0 => (i18n::text("comparison.gain_db"), -60.0, 20.0, GREEN),
+        1 => (i18n::text("comparison.phase"), -180.0, 180.0, BLUE),
         _ => ("γ²", 0.0, 1.0, YELLOW),
     }
 }
@@ -596,7 +642,14 @@ fn comparison_plot(
         );
         labels.push((
             x,
-            format!("{} Hz", frequency_label(view.hz(fraction) as f32)),
+            i18n::format(
+                "comparison.hz_2",
+                &[(
+                    "fraction",
+                    &(frequency_label(view.hz(fraction) as f32)).to_string(),
+                )],
+            )
+            .to_string(),
         ));
     }
     plot_labels::horizontal(
@@ -623,7 +676,17 @@ fn comparison_plot(
         plot_labels::horizontal(
             &painter,
             egui::Rect::from_min_max(pos2(graph.left(), rect.top()), graph.right_top()),
-            [(x, format!("{} Hz", display::number(Some(selected_hz))))],
+            [(
+                x,
+                i18n::format(
+                    "comparison.hz",
+                    &[(
+                        "selected_hz",
+                        &(display::number(Some(selected_hz))).to_string(),
+                    )],
+                )
+                .to_string(),
+            )],
         );
         if let Some((_, b)) = r.bin_at(selected)
             && let Some(v) = comparison_value(b, plot)

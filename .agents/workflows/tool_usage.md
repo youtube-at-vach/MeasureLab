@@ -147,7 +147,11 @@ Node.jsとサイト依存関係も必要。共通スクリプトで旧Pythonマ�
 ./.venv/bin/ruff check .
 ./.venv/bin/ruff format --check .
 ./.venv/bin/python -m unittest discover -s scripts -p 'test_ci_changes.py'
+./.venv/bin/python -m unittest discover -s scripts -p 'test_i18n.py'
+./.venv/bin/python scripts/i18n.py check
 ```
+
+Rust GUIの英語カタログ変更・翻訳PRは [開発・翻訳手順](../../guide/rust/I18N.md) に従い、`check --base <基準SHA>`で変更範囲も検査する。検査用依存だけを導入する場合は`./.venv/bin/python -m pip install -r requirements-i18n.txt`を使う。検査・差分・CSV出力はカタログを変更しない。
 
 Markdown 変更時は次を実行する。ローカル退避先は設定ファイルで除外している。
 

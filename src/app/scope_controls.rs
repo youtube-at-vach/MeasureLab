@@ -3,24 +3,26 @@ use super::*;
 
 impl ScopeApp {
     pub(super) fn scope_controls(&mut self, ui: &mut egui::Ui) {
-        control_group(ui, "ACQUISITION", MUTED, |ui| {
+        control_group(ui, i18n::text("oscilloscope.acquisition"), MUTED, |ui| {
             let old_mode = self.acquisition_mode;
             ui.horizontal(|ui| {
                 for (mode, label, help) in [
                     (
                         acquisition::Mode::Auto,
-                        "Auto",
-                        "Update even without a trigger crossing",
+                        i18n::text("oscilloscope.auto"),
+                        i18n::text("oscilloscope.update_even_without_a_trigger_crossing"),
                     ),
                     (
                         acquisition::Mode::Normal,
-                        "Normal",
-                        "Update on trigger crossings; hold the last capture while waiting",
+                        i18n::text("oscilloscope.normal"),
+                        i18n::text(
+                            "oscilloscope.update_on_trigger_crossings_hold_the_last_capture_while",
+                        ),
                     ),
                     (
                         acquisition::Mode::Single,
-                        "Single",
-                        "Capture once on the next trigger crossing",
+                        i18n::text("oscilloscope.single"),
+                        i18n::text("oscilloscope.capture_once_on_the_next_trigger_crossing"),
                     ),
                 ] {
                     ui.selectable_value(&mut self.acquisition_mode, mode, label)
@@ -32,9 +34,11 @@ impl ScopeApp {
                 if ui
                     .add_enabled(
                         !self.running() && self.input_transport_enabled(),
-                        egui::Button::new("Start single capture"),
+                        egui::Button::new(i18n::text("oscilloscope.start_single_capture")),
                     )
-                    .on_hover_text("Start input and wait for a single triggered capture")
+                    .on_hover_text(i18n::text(
+                        "oscilloscope.start_input_and_wait_for_a_single_triggered_capture",
+                    ))
                     .clicked()
                 {
                     self.acquisition_mode = acquisition::Mode::Single;
@@ -43,11 +47,11 @@ impl ScopeApp {
                 if ui
                     .add_enabled(
                         self.autoset_pending.is_none() && self.core.is_some(),
-                        egui::Button::new("Autoset"),
+                        egui::Button::new(i18n::text("oscilloscope.autoset")),
                     )
-                    .on_hover_text(
-                        "Automatically set time scale, amplitude and trigger for a periodic signal",
-                    )
+                    .on_hover_text(i18n::text(
+                        "oscilloscope.automatically_set_time_scale_amplitude_and_trigger_for_a",
+                    ))
                     .clicked()
                 {
                     self.autoset_pending =
@@ -55,38 +59,49 @@ impl ScopeApp {
                 }
             });
             if let Some(status) = &self.autoset_status {
-                ui.label(RichText::new(status).small().color(MUTED));
+                ui.label(RichText::new(status.render().as_ref()).small().color(MUTED));
             }
         });
 
-        control_group(ui, "TRIGGER", TRIGGER, |ui| {
+        control_group(ui, i18n::text("oscilloscope.trigger"), TRIGGER, |ui| {
             self.trigger_controls(ui);
             ui.horizontal(|ui| {
-                ui.label("Display");
+                ui.label(i18n::text("oscilloscope.display"));
                 egui::ComboBox::from_id_salt("scope_trigger_display")
                     .selected_text(match self.scope_trigger_display {
-                        settings::TriggerDisplay::Markers => "Markers",
-                        settings::TriggerDisplay::Guides => "Guides",
-                        settings::TriggerDisplay::Off => "Off",
+                        settings::TriggerDisplay::Markers => i18n::text("oscilloscope.markers"),
+                        settings::TriggerDisplay::Guides => i18n::text("oscilloscope.guides"),
+                        settings::TriggerDisplay::Off => i18n::text("oscilloscope.off"),
                     })
                     .show_ui(ui, |ui| {
                         for (mode, label) in [
-                            (settings::TriggerDisplay::Markers, "Markers"),
-                            (settings::TriggerDisplay::Guides, "Guides"),
-                            (settings::TriggerDisplay::Off, "Off"),
+                            (
+                                settings::TriggerDisplay::Markers,
+                                i18n::text("oscilloscope.markers"),
+                            ),
+                            (
+                                settings::TriggerDisplay::Guides,
+                                i18n::text("oscilloscope.guides"),
+                            ),
+                            (
+                                settings::TriggerDisplay::Off,
+                                i18n::text("oscilloscope.off"),
+                            ),
                         ] {
                             ui.selectable_value(&mut self.scope_trigger_display, mode, label);
                         }
                     })
                     .response
-                    .on_hover_text("Markers: T markers only. Guides: T markers and dotted time/level guides. Off: hide both. A horizontal guide appears while editing Level in any mode.");
+                    .on_hover_text(i18n::text(
+                        "oscilloscope.markers_t_markers_only_guides_t_markers_and_dotted",
+                    ));
             });
         });
 
-        control_group(ui, "HORIZONTAL", BLUE, |ui| {
+        control_group(ui, i18n::text("oscilloscope.horizontal"), BLUE, |ui| {
             self.dirty |= control_slider(
                 ui,
-                "Time scale",
+                i18n::text("oscilloscope.time_scale"),
                 egui::Slider::new(&mut self.ms_per_div, 0.05..=100.0)
                     .logarithmic(true)
                     .suffix(" ms/div")
@@ -97,13 +112,13 @@ impl ScopeApp {
             .0;
             let (changed, centre) = control_slider(
                 ui,
-                "Position",
+                i18n::text("oscilloscope.position"),
                 egui::Slider::new(&mut self.scope_horizontal_position, -5.0..=5.0)
                     .suffix(" div")
                     .max_decimals(2)
                     .drag_value_speed(0.1)
                     .trailing_fill(false),
-                Some("Reset time position"),
+                Some(i18n::text("oscilloscope.reset_time_position")),
             );
             if centre {
                 self.scope_horizontal_position = 0.0;
@@ -113,126 +128,161 @@ impl ScopeApp {
 
         let index = self.scope_selected;
         let color = monitor_controls::scope_color(index);
-        control_group(ui, &format!("VERTICAL · CH{}", index + 1), color, |ui| {
-            ui.horizontal(|ui| {
-                ui.label("Input source");
-                let before = self.scope_channels;
-                let channels = self.lockin_channel_count().max(self.scope_channel_count());
-                channel_select(
+        control_group(
+            ui,
+            i18n::format(
+                "oscilloscope.vertical_ch",
+                &[("index", &(index + 1).to_string())],
+            )
+            .as_ref(),
+            color,
+            |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(i18n::text("oscilloscope.input_source"));
+                    let before = self.scope_channels;
+                    let channels = self.lockin_channel_count().max(self.scope_channel_count());
+                    channel_select(
+                        ui,
+                        "scope_channel_source",
+                        &mut self.scope_channels.0[index],
+                        channels,
+                    );
+                    self.dirty |= self.scope_channels != before;
+                });
+                let channel = self.scope_view_channels().0[index];
+                if self
+                    .scope_input_channels()
+                    .is_some_and(|count| !channel::available(channel, count as usize))
+                {
+                    ui.label(
+                        RichText::new(
+                            i18n::format(
+                                "oscilloscope.outside_input_channel_range_2",
+                                &[("channel", &(channel::name(channel)).to_string())],
+                            )
+                            .as_ref(),
+                        )
+                        .small()
+                        .color(MUTED),
+                    );
+                }
+                self.dirty |= control_slider(
                     ui,
-                    "scope_channel_source",
-                    &mut self.scope_channels.0[index],
-                    channels,
+                    i18n::text("oscilloscope.vertical_range"),
+                    egui::Slider::new(&mut self.scope_vertical[index].fs_per_div, 0.001..=0.5)
+                        .logarithmic(true)
+                        .suffix(" FS/div")
+                        .max_decimals(3)
+                        .drag_value_speed(0.001),
+                    None,
+                )
+                .0;
+                let (changed, zero) = control_slider(
+                    ui,
+                    i18n::text("oscilloscope.centre_offset"),
+                    egui::Slider::new(&mut self.scope_vertical[index].offset, -2.0..=2.0)
+                        .suffix(" FS")
+                        .max_decimals(3)
+                        .drag_value_speed(0.001)
+                        .trailing_fill(false),
+                    Some(i18n::text("oscilloscope.zero_offset")),
                 );
-                self.dirty |= self.scope_channels != before;
-            });
-            let channel = self.scope_view_channels().0[index];
-            if self
-                .scope_input_channels()
-                .is_some_and(|count| !channel::available(channel, count as usize))
-            {
-                ui.label(
-                    RichText::new(format!(
-                        "{} · outside input channel range",
-                        channel::name(channel)
+                if zero {
+                    self.scope_vertical[index].offset = 0.0;
+                }
+                self.dirty |= changed || zero;
+                if ui
+                    .button(i18n::text("oscilloscope.fit_amplitude"))
+                    .on_hover_text(i18n::text(
+                        "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre",
                     ))
-                    .small()
-                    .color(MUTED),
-                );
-            }
-            self.dirty |= control_slider(
-                ui,
-                "Vertical range",
-                egui::Slider::new(&mut self.scope_vertical[index].fs_per_div, 0.001..=0.5)
-                    .logarithmic(true)
-                    .suffix(" FS/div")
-                    .max_decimals(3)
-                    .drag_value_speed(0.001),
-                None,
-            )
-            .0;
-            let (changed, zero) = control_slider(
-                ui,
-                "Centre offset",
-                egui::Slider::new(&mut self.scope_vertical[index].offset, -2.0..=2.0)
-                    .suffix(" FS")
-                    .max_decimals(3)
-                    .drag_value_speed(0.001)
-                    .trailing_fill(false),
-                Some("Zero offset"),
-            );
-            if zero {
-                self.scope_vertical[index].offset = 0.0;
-            }
-            self.dirty |= changed || zero;
-            if ui
-                .button("Fit amplitude")
-                .on_hover_text("Fit the selected channel's raw peak and centre its offset")
-                .clicked()
-            {
-                self.fit_scope_amplitude();
-            }
-            ui.label(
-                RichText::new(self.scope_readout(index))
-                    .small()
-                    .color(color),
-            )
-            .on_hover_text(self.scope_readout_details(index));
-        });
+                    .clicked()
+                {
+                    self.fit_scope_amplitude();
+                }
+                ui.label(
+                    RichText::new(self.scope_readout(index))
+                        .small()
+                        .color(color),
+                )
+                .on_hover_text(self.scope_readout_details(index));
+            },
+        );
 
         if !self.running() && self.core_scope.mode != acquisition::Mode::Auto {
             ui.label(
-                RichText::new("Time / trigger edits apply on next Start")
-                    .small()
-                    .color(YELLOW),
+                RichText::new(i18n::text(
+                    "oscilloscope.time_trigger_edits_apply_on_next_start",
+                ))
+                .small()
+                .color(YELLOW),
             );
         }
         ui.label(
-            RichText::new("Wheel: time scale · Shift+wheel: selected channel scale")
-                .small()
-                .color(MUTED),
+            RichText::new(i18n::text(
+                "oscilloscope.wheel_time_scale_shift_wheel_selected_channel_scale",
+            ))
+            .small()
+            .color(MUTED),
         );
-        ui.add(egui::Label::new("FS = full scale · Fs = sample rate · div = grid division").wrap())
-            .on_hover_text(format!(
-                "{}\n{}\n{}",
-                display::AMPLITUDE_HELP,
-                display::SAMPLE_RATE_HELP,
-                display::DIV_HELP
-            ));
+        ui.add(
+            egui::Label::new(i18n::text(
+                "oscilloscope.fs_full_scale_fs_sample_rate_div_grid_division",
+            ))
+            .wrap(),
+        )
+        .on_hover_text(format!(
+            "{}\n{}\n{}",
+            display::amplitude_help(),
+            display::sample_rate_help(),
+            display::div_help()
+        ));
     }
 
     pub(super) fn trigger_controls(&mut self, ui: &mut egui::Ui) {
         let before = (self.trigger.edge, self.trigger.channel);
         ui.horizontal(|ui| {
-            ui.label("Edge");
+            ui.label(i18n::text("oscilloscope.edge"));
             egui::ComboBox::from_id_salt("edge")
                 .width(ui.available_width())
                 .selected_text(match self.trigger.edge {
-                    Edge::Free => "Free run",
-                    Edge::Rising => "Rising edge",
-                    Edge::Falling => "Falling edge",
+                    Edge::Free => i18n::text("oscilloscope.free_run"),
+                    Edge::Rising => i18n::text("oscilloscope.rising_edge"),
+                    Edge::Falling => i18n::text("oscilloscope.falling_edge"),
                 })
                 .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut self.trigger.edge, Edge::Free, "Free run");
-                    ui.selectable_value(&mut self.trigger.edge, Edge::Rising, "Rising edge");
-                    ui.selectable_value(&mut self.trigger.edge, Edge::Falling, "Falling edge");
+                    ui.selectable_value(
+                        &mut self.trigger.edge,
+                        Edge::Free,
+                        i18n::text("oscilloscope.free_run"),
+                    );
+                    ui.selectable_value(
+                        &mut self.trigger.edge,
+                        Edge::Rising,
+                        i18n::text("oscilloscope.rising_edge"),
+                    );
+                    ui.selectable_value(
+                        &mut self.trigger.edge,
+                        Edge::Falling,
+                        i18n::text("oscilloscope.falling_edge"),
+                    );
                 });
         });
         ui.horizontal(|ui| {
-            ui.label("Source");
+            ui.label(i18n::text("oscilloscope.source"));
             let channels = self.lockin_channel_count().max(self.scope_channel_count());
             channel_select(ui, "trigger_channel", &mut self.trigger.channel, channels);
         });
         self.dirty |= before != (self.trigger.edge, self.trigger.channel);
         let (response, zero) = control_slider_response(
             ui,
-            "Level",
+            i18n::text("oscilloscope.level"),
             egui::Slider::new(&mut self.trigger.level, -1.0..=1.0)
                 .suffix(" FS")
                 .max_decimals(3)
                 .drag_value_speed(0.001)
                 .trailing_fill(false),
-            Some("Zero level"),
+            Some(i18n::text("oscilloscope.zero_level")),
         );
         if zero {
             self.trigger.level = 0.0;
@@ -253,7 +303,7 @@ impl ScopeApp {
             // A stopped input need not otherwise repaint after the edit ends.
             ui.ctx().request_repaint();
         }
-        ui.add(egui::Label::new("T markers: top = 0 ms · right = level").wrap())
+        ui.add(egui::Label::new(i18n::text("oscilloscope.t_markers_top_ms_right_level")).wrap())
             .on_hover_text(self.scope_trigger_marker_help());
     }
 }
@@ -315,8 +365,8 @@ fn control_slider_response(
     let response = ui
         .add(slider.clamping(egui::SliderClamping::Edits))
         .labelled_by(label.id)
-        .on_hover_text(
-            "Drag the slider or value to adjust. Double-click the value to type a number.",
-        );
+        .on_hover_text(i18n::text(
+            "oscilloscope.drag_the_slider_or_value_to_adjust_double_click",
+        ));
     (response, reset_clicked)
 }

@@ -9,7 +9,7 @@ use crate::{
     cursor::{self, Cursors},
     export,
     gpu::{COLORS, PlotId, Segment, TraceCallback, TraceRenderer},
-    lockin, loopback,
+    i18n, lockin, loopback,
     measurement::{self, ScopeSettings, SpectrumMode},
     output,
     presentation::{Action, Console, InstrumentId as Instrument, Layout, Presentation, Screen},
@@ -37,6 +37,10 @@ use std::{
 };
 mod comparison_panel;
 mod display;
+mod status_text;
+use status_text::Status as UiStatus;
+mod text;
+use text::{DisplayName, InstrumentText};
 mod generator_panel;
 #[cfg(feature = "qa")]
 mod gui_qa;
@@ -157,7 +161,7 @@ impl CalibrationEditor {
         let revision = self
             .revision
             .checked_add(1)
-            .ok_or("Calibration revision exhausted")?;
+            .ok_or(i18n::text("common.calibration_revision_exhausted"))?;
         let calibration = Calibration::new(
             format!("{}-ch{}", self.session_id, self.channel + 1),
             revision,
@@ -192,7 +196,7 @@ pub struct ScopeApp {
     workspace_io: workspace_io::Worker,
     workspace_pending: bool,
     workspace_restoring: bool,
-    workspace_status: Option<String>,
+    workspace_status: Option<UiStatus>,
     reference: Option<Box<export::Document>>,
     reference_label: String,
     compare_open: bool,
@@ -222,7 +226,7 @@ pub struct ScopeApp {
     acquisition_state: acquisition::State,
     scope_capture: Option<History>,
     autoset_pending: Option<std::sync::mpsc::Receiver<Result<acquisition::Autoset, String>>>,
-    autoset_status: Option<String>,
+    autoset_status: Option<UiStatus>,
     scope_channels: ScopeChannels,
     xy_channels: Pair,
     spectrum_mode: SpectrumMode,
@@ -329,7 +333,7 @@ pub struct ScopeApp {
     settings_worker: settings::Worker,
     settings_path: String,
     settings_task: Option<SettingsTask>,
-    settings_status: Option<String>,
+    settings_status: Option<UiStatus>,
     settings_error: bool,
     restored_input: Option<settings::Input>,
     held_input: Option<export::Input>,
@@ -338,7 +342,7 @@ pub struct ScopeApp {
     export_worker: export::Worker,
     export_path: String,
     export_pending: bool,
-    export_status: Option<String>,
+    export_status: Option<UiStatus>,
     export_error: bool,
     scope_missing: u64,
     dirty: bool,
@@ -436,6 +440,7 @@ impl ScopeApp {
             style.spacing.item_spacing = vec2(6.0, 6.0);
             style.spacing.button_padding = vec2(8.0, 4.0);
         });
+        i18n::initialize(&cc.egui_ctx, if smoke { None } else { cc.storage });
         let mut stft = stft::Worker::new();
         let stft_history = spectrogram::history::Collector::new(stft.take_results());
         let core = (!smoke).then(|| measurement::Worker::new(stft.take_feeder()));
@@ -1932,9 +1937,9 @@ impl ScopeApp {
 
     fn input_failure_message(&self) -> &'static str {
         if self.source == Source::Generator {
-            "Generator input stopped. Check output status, stop input and reset output before restarting."
+            i18n::text("io.generator_input_stopped_check_output_status_stop_input_and")
         } else {
-            "Audio stream stopped. Check device connection and microphone permission, then restart."
+            i18n::text("io.audio_stream_stopped_check_device_connection_and_microphone_permission")
         }
     }
 
@@ -2099,15 +2104,18 @@ impl ScopeApp {
                         self.ms_per_div = result.samples as f32 * 100.0 / self.sample_rate as f32;
                         self.trigger = result.trigger;
                         self.dirty = true;
-                        format!("Autoset: {:.3} Hz from raw crossings", result.frequency_hz)
+                        UiStatus::Autoset {
+                            frequency_hz: result.frequency_hz,
+                            held: false,
+                        }
                     } else {
-                        format!(
-                            "Held capture amplitude fitted; time/trigger apply on next Start ({:.3} Hz)",
-                            result.frequency_hz
-                        )
+                        UiStatus::Autoset {
+                            frequency_hz: result.frequency_hz,
+                            held: true,
+                        }
                     }
                 }
-                Err(error) => error,
+                Err(error) => error.into(),
             });
         }
         if self.running()
@@ -2513,13 +2521,18 @@ impl ScopeApp {
     }
 
     fn cursor_controls(&mut self, ui: &mut egui::Ui, instrument: Instrument) {
-        ui.label("Place cursor:");
+        ui.label(i18n::text("common.place_cursor"));
         for (index, title) in ["A", "B"].into_iter().enumerate() {
             ui.selectable_value(&mut self.active_cursor, index, title)
-                .on_hover_text("Choose which cursor the next plot click or drag places; selecting A or B does not place it. Scope keeps the plot position. Spectrogram holds the selected FFT frame. XY Free keeps X/Y amplitudes; Trace Snap follows a trigger-relative sample.");
+                .on_hover_text(i18n::text(
+                    "common.choose_which_cursor_the_next_plot_click_or_drag",
+                ));
         }
-        if ui.small_button("Clear cursors")
-            .on_hover_text("Clear both A/B time cursors, Spectrum/Spectrogram frequency cursors, XY Free points and Spectrogram frame selections across all instruments. Acquired data is kept.")
+        if ui
+            .small_button(i18n::text("common.clear_cursors"))
+            .on_hover_text(i18n::text(
+                "common.clear_both_a_b_time_cursors_spectrum_spectrogram_frequency",
+            ))
             .clicked()
         {
             self.cursors.clear();
@@ -2534,8 +2547,14 @@ impl ScopeApp {
         } else {
             self.cursors.times.map(|time| time.is_some())
         };
-        ui.label(RichText::new(cursor_placement_label(placed)).small().color(MUTED))
-            .on_hover_text("Stored cursor positions for this view; readings can be unavailable outside the acquired data.");
+        ui.label(
+            RichText::new(cursor_placement_label(placed))
+                .small()
+                .color(MUTED),
+        )
+        .on_hover_text(i18n::text(
+            "common.stored_cursor_positions_for_this_view_readings_can_be",
+        ));
         let mut text = String::new();
         for (index, time) in self.cursors.times.into_iter().enumerate() {
             let Some(time) = time else { continue };
@@ -2543,18 +2562,34 @@ impl ScopeApp {
                 if let Some(seconds) = self.cursor_samples()[index]
                     .and_then(|sample| self.scope_cursor_seconds(sample))
                 {
-                    text.push_str(&format!(
-                        "{} {:+.3} ms  ",
-                        cursor_name(index),
-                        seconds * 1000.0
-                    ));
+                    text.push_str(
+                        i18n::format(
+                            "common.ms",
+                            &[
+                                ("index", (cursor_name(index))),
+                                ("seconds", &format!("{:+.3}", seconds * 1000.0)),
+                            ],
+                        )
+                        .as_ref(),
+                    );
                 }
             } else if let Some(offset) = time.trace_offset() {
-                text.push_str(&format!(
-                    "{} T{:+.3} ms  ",
-                    cursor_name(index),
-                    offset as f64 * 1000.0 / self.sample_rate as f64
-                ));
+                text.push_str(
+                    i18n::format(
+                        "common.t_ms_2",
+                        &[
+                            ("index", (cursor_name(index))),
+                            (
+                                "sample_rate",
+                                &format!(
+                                    "{:+.3}",
+                                    offset as f64 * 1000.0 / self.sample_rate as f64
+                                ),
+                            ),
+                        ],
+                    )
+                    .as_ref(),
+                );
             } else if let Some(sample) = self.cursors.sample(time, self.scope_range.clone()) {
                 text.push_str(&format!("{} #{sample}  ", cursor_name(index)));
             }
@@ -2563,7 +2598,13 @@ impl ScopeApp {
             && self.sample_rate > 0
         {
             let delta = cursor::signed_distance(b, a) / self.sample_rate as f64;
-            text.push_str(&format!("Δt {:+.3} ms", delta * 1000.0));
+            text.push_str(
+                i18n::format(
+                    "common.t_ms",
+                    &[("delta", &format!("{:+.3}", delta * 1000.0))],
+                )
+                .as_ref(),
+            );
         }
         if !text.is_empty() {
             ui.label(RichText::new(text).small().color(MUTED));
@@ -2651,13 +2692,16 @@ impl ScopeApp {
         }
         if self.source == Source::Generator {
             if self.generator.target != output::Target::Internal {
-                self.input_error =
-                    Some("Select an audio input to observe Audio device output".into());
+                self.input_error = Some(
+                    i18n::text("common.select_an_audio_input_to_observe_audio_device_output")
+                        .into(),
+                );
                 return;
             }
             let rate = self.generator.status.nominal_sample_rate;
             if self.generator.pending || rate != self.generator.rate {
-                self.input_error = Some("Wait for the Generator settings to be applied".into());
+                self.input_error =
+                    Some(i18n::text("common.wait_for_the_generator_settings_to_be_applied").into());
                 return;
             }
             if let Err(e) = self.lockin_settings.validate(rate) {
@@ -2784,8 +2828,12 @@ impl ScopeApp {
             match input.resolve(&self.devices) {
                 Ok(index) if index == self.selected => {}
                 Ok(_) => {
-                    self.input_error =
-                        Some("Restored input selection changed; restore settings again".into());
+                    self.input_error = Some(
+                        i18n::text(
+                            "common.restored_input_selection_changed_restore_settings_again",
+                        )
+                        .into(),
+                    );
                     return;
                 }
                 Err(error) => {
@@ -2879,7 +2927,7 @@ impl ScopeApp {
                     }) {
                         self.audio.send(Command::Stop);
                         self.busy = true;
-                        self.input_error = Some("Input conditions changed since restoration; refresh devices and restore again".into());
+                        self.input_error = Some(i18n::text("common.input_conditions_changed_since_restoration_refresh_devices_and_restore").into());
                         continue;
                     }
                     self.xy_dirty = true;
@@ -2955,11 +3003,11 @@ impl ScopeApp {
                 self.input_transport_enabled(),
                 egui::Button::new(
                     RichText::new(if self.running() {
-                        "■  Stop input"
+                        i18n::text("io.stop_input")
                     } else if self.source.is_demo() {
-                        "▶  Start input (demo)"
+                        i18n::text("io.start_input_demo")
                     } else {
-                        "▶  Start input"
+                        i18n::text("io.start_input")
                     })
                     .color(if self.running() {
                         Color32::from_rgb(255, 170, 116)
@@ -2968,9 +3016,9 @@ impl ScopeApp {
                     }),
                 ),
             )
-            .on_hover_text(
-                "Start or stop the shared input for all instruments; output is independent. Shortcut: Space",
-            )
+            .on_hover_text(i18n::text(
+                "io.start_or_stop_the_shared_input_for_all_instruments",
+            ))
             .clicked()
         {
             if self.running() {
@@ -3035,19 +3083,40 @@ impl ScopeApp {
         self.requested_sample_rate.map_or_else(
             || {
                 if self.capture.is_some() {
-                    format!("Device default ({} kHz)", self.sample_rate as f64 / 1000.0)
+                    i18n::format(
+                        "io.device_default_khz",
+                        &[(
+                            "sample_rate",
+                            &(self.sample_rate as f64 / 1000.0).to_string(),
+                        )],
+                    )
+                    .to_string()
                 } else {
-                    "Device default".into()
+                    i18n::text("io.device_default").into()
                 }
             },
-            |rate| format!("{} kHz", rate as f64 / 1000.0),
+            |rate| {
+                i18n::format("io.khz", &[("rate", &(rate as f64 / 1000.0).to_string())]).to_string()
+            },
         )
     }
 
     fn calibration_controls(&mut self, ui: &mut egui::Ui) {
-        ui.label(RichText::new("Scope readouts and Spectrum use y = gain × FS + offset. Spectrum Remove DC cancels offset. Scope trace/trigger, Spectrogram and XY axes use FS.").small().color(MUTED));
-        ui.label(RichText::new("Queued definitions apply on the next Start. Source/device selection or device refresh clears the queue. Coefficients are supplied by you; reference conditions describe their validity.").small().color(MUTED));
-        setting_label(ui, "INPUT CHANNEL");
+        ui.label(
+            RichText::new(i18n::text(
+                "io.scope_readouts_and_spectrum_use_y_gain_fs_offset",
+            ))
+            .small()
+            .color(MUTED),
+        );
+        ui.label(
+            RichText::new(i18n::text(
+                "io.queued_definitions_apply_on_the_next_start_source_device",
+            ))
+            .small()
+            .color(MUTED),
+        );
+        setting_label(ui, i18n::text("io.input_channel"));
         let before = self.calibration.channel;
         egui::ComboBox::from_id_salt("calibration_channel")
             .width(ui.available_width())
@@ -3070,62 +3139,62 @@ impl ScopeApp {
             .is_some_and(|count| !channel::available(channel, count as usize))
         {
             ui.label(
-                RichText::new("Channel unavailable in the current input")
+                RichText::new(i18n::text("io.channel_unavailable_in_the_current_input"))
                     .small()
                     .color(YELLOW),
             );
         }
-        setting_label(ui, "CAPTURED READOUT CONDITION");
+        setting_label(ui, i18n::text("io.captured_readout_condition"));
         ui.label(
             RichText::new(calibration_description(&self.calibration.captured, channel))
                 .small()
                 .color(MUTED),
         );
-        setting_label(ui, "QUEUED FOR NEXT START");
+        setting_label(ui, i18n::text("io.queued_for_next_start"));
         ui.label(
             RichText::new(calibration_description(&self.calibration.pending, channel))
                 .small()
                 .color(MUTED),
         );
         ui.horizontal(|ui| {
-            ui.label("Gain");
+            ui.label(i18n::text("io.gain"));
             ui.add(
                 egui::DragValue::new(&mut self.calibration.gain)
                     .speed(0.01)
                     .max_decimals(15)
                     .range(-f64::MAX..=f64::MAX),
             );
-            ui.label("unit/FS");
+            ui.label(i18n::text("io.unit_fs"));
         });
         ui.horizontal(|ui| {
-            ui.label("Offset");
+            ui.label(i18n::text("io.offset"));
             ui.add(
                 egui::DragValue::new(&mut self.calibration.offset)
                     .speed(0.001)
                     .max_decimals(15)
                     .range(-f64::MAX..=f64::MAX),
             );
-            ui.label("unit");
+            ui.label(i18n::text("io.unit"));
         });
-        setting_label(ui, "PHYSICAL UNIT (E.G. V, A, Pa)");
+        setting_label(ui, i18n::text("io.physical_unit_e_g_v_a_pa"));
         ui.add(
             egui::TextEdit::singleline(&mut self.calibration.unit)
                 .desired_width(f32::INFINITY)
                 .char_limit(24),
         );
-        setting_label(ui, "REFERENCE CONDITIONS");
+        setting_label(ui, i18n::text("io.reference_conditions"));
         ui.add(
             egui::TextEdit::singleline(&mut self.calibration.conditions)
                 .desired_width(f32::INFINITY)
                 .char_limit(1024)
-                .hint_text("Reference, device/range, date, uncertainty"),
+                .hint_text(i18n::text("io.reference_device_range_date_uncertainty")),
         );
-        if ui.button("Queue calibration").clicked()
+        if ui.button(i18n::text("io.queue_calibration")).clicked()
             && let Err(error) = self.calibration.apply()
         {
             self.calibration.error = Some(error.into());
         }
-        if ui.button("Queue uncalibrated FS").clicked() {
+        if ui.button(i18n::text("io.queue_uncalibrated_fs")).clicked() {
             self.calibration.pending = self
                 .calibration
                 .pending
@@ -3146,7 +3215,11 @@ impl ScopeApp {
             .show(ui, |ui| {
                 compact_plot_style(ui);
                 ui.horizontal_wrapped(|ui| {
-                    ui.label(RichText::new("Spectrogram").size(13.0).strong());
+                    ui.label(
+                        RichText::new(i18n::text("spectrogram.spectrogram"))
+                            .size(13.0)
+                            .strong(),
+                    );
                     display::activity_label(
                         ui,
                         self.running(),
@@ -3158,46 +3231,84 @@ impl ScopeApp {
                             .last_stft
                             .map_or(self.spectrogram_channel, |r| r.config.channel);
                         ui.label(
-                            RichText::new(format!("CH {} · dBFS", channel + 1))
-                                .small()
-                                .color(BLUE),
+                            RichText::new(
+                                i18n::format(
+                                    "spectrogram.ch_dbfs",
+                                    &[("channel", &(channel + 1).to_string())],
+                                )
+                                .as_ref(),
+                            )
+                            .small()
+                            .color(BLUE),
                         );
                     });
                 });
                 if let Some(row) = self.spectrogram_snapshot.latest() {
                     let snapshot = &self.spectrogram_snapshot;
                     ui.label(
-                        RichText::new(format!(
-                            "{} · End {:.3} s · {:.2} s retained · N {} / hop {}{}",
-                            if self.spectrogram_hold.is_some() {
-                                if self.running() {
-                                    "HOLD · input running"
-                                } else {
-                                    "HOLD · input stopped"
-                                }
-                            } else {
-                                "LIVE"
-                            },
-                            self.spectrogram_anchor as f64 / row.info.config.sample_rate as f64,
-                            snapshot.retained_seconds(),
-                            row.info.config.size,
-                            row.info.config.hop,
-                            if snapshot.capacity_limited {
-                                " · history limited by capacity"
-                            } else {
-                                ""
-                            },
-                        ))
+                        RichText::new(
+                            i18n::format(
+                                "spectrogram.end_s_s_retained_n_hop",
+                                &[
+                                    (
+                                        "live",
+                                        (if self.spectrogram_hold.is_some() {
+                                            if self.running() {
+                                                i18n::text("spectrogram.hold_input_running")
+                                            } else {
+                                                i18n::text("spectrogram.hold_input_stopped")
+                                            }
+                                        } else {
+                                            i18n::text("spectrogram.live")
+                                        }),
+                                    ),
+                                    (
+                                        "sample_rate",
+                                        &format!(
+                                            "{:.3}",
+                                            self.spectrogram_anchor as f64
+                                                / row.info.config.sample_rate as f64
+                                        ),
+                                    ),
+                                    (
+                                        "retained_seconds",
+                                        &format!("{:.2}", snapshot.retained_seconds()),
+                                    ),
+                                    ("size", &(row.info.config.size).to_string()),
+                                    ("hop", &(row.info.config.hop).to_string()),
+                                    (
+                                        "else",
+                                        (if snapshot.capacity_limited {
+                                            i18n::text("spectrogram.history_limited_by_capacity")
+                                        } else {
+                                            ""
+                                        }),
+                                    ),
+                                ],
+                            )
+                            .as_ref(),
+                        )
                         .small()
                         .color(MUTED),
                     );
                     if snapshot.retained_seconds() < self.spectrogram_seconds {
                         ui.label(
-                            RichText::new(format!(
-                                "History available: {:.2} / {:.0} s · unavailable time stays blank",
-                                snapshot.retained_seconds(),
-                                self.spectrogram_seconds
-                            ))
+                            RichText::new(
+                                i18n::format(
+                                    "spectrogram.history_available_s_unavailable_time_stays_blank",
+                                    &[
+                                        (
+                                            "retained_seconds",
+                                            &format!("{:.2}", snapshot.retained_seconds()),
+                                        ),
+                                        (
+                                            "spectrogram_seconds",
+                                            &format!("{:.0}", self.spectrogram_seconds),
+                                        ),
+                                    ],
+                                )
+                                .as_ref(),
+                            )
                             .small()
                             .color(MUTED),
                         );
@@ -3280,11 +3391,11 @@ impl ScopeApp {
                         rect.center(),
                         egui::Align2::CENTER_CENTER,
                         if !ready {
-                            "Preparing history view…"
+                            i18n::text("spectrogram.preparing_history_view")
                         } else if self.running() {
-                            "Collecting a complete STFT window…"
+                            i18n::text("spectrogram.collecting_a_complete_stft_window")
                         } else {
-                            "Start input to begin acquisition"
+                            i18n::text("spectrogram.start_input_to_begin_acquisition")
                         },
                         egui::FontId::proportional(14.0),
                         MUTED,
@@ -3304,31 +3415,54 @@ impl ScopeApp {
                             cursor::nearest_bin(hz as f64, row.config.size, row.config.sample_rate)
                                 .unwrap_or(0);
                         if !frame.power()[bin].is_finite() {
-                            format!(
-                                "Invalid STFT window · non-finite input · samples {}..{}",
-                                row.start, row.end
+                            i18n::format(
+                                "spectrogram.invalid_stft_window_non_finite_input_samples",
+                                &[
+                                    ("start", &(row.start).to_string()),
+                                    ("end", &(row.end).to_string()),
+                                ],
                             )
+                            .to_string()
                         } else {
-                            format!(
-                                "{:.1} Hz · {:.6} dBFS · samples {}..{}",
-                                bin as f64 * row.config.sample_rate as f64 / row.config.size as f64,
-                                frame.level_db(bin).unwrap(),
-                                row.start,
-                                row.end
+                            i18n::format(
+                                "spectrogram.hz_dbfs_samples",
+                                &[
+                                    (
+                                        "size",
+                                        &format!(
+                                            "{:.1}",
+                                            bin as f64 * row.config.sample_rate as f64
+                                                / row.config.size as f64
+                                        ),
+                                    ),
+                                    ("bin", &format!("{:.6}", frame.level_db(bin).unwrap())),
+                                    ("start", &(row.start).to_string()),
+                                    ("end", &(row.end).to_string()),
+                                ],
                             )
+                            .to_string()
                         }
                     } else {
-                        "No STFT data at this time · gap or unavailable".into()
+                        i18n::text("spectrogram.no_stft_data_at_this_time_gap_or_unavailable")
+                            .into()
                     };
                     response
                         .clone()
-                        .on_hover_text(format!("{text}\n{}", spectrogram_controls::GESTURES));
+                        .on_hover_text(format!("{text}\n{}", spectrogram_controls::gestures()));
                 }
                 drop(history);
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new("Age / s").small().color(MUTED));
+                    ui.label(
+                        RichText::new(i18n::text("spectrogram.age_s"))
+                            .small()
+                            .color(MUTED),
+                    );
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        ui.label(RichText::new("Frequency / Hz").small().color(MUTED));
+                        ui.label(
+                            RichText::new(i18n::text("spectrogram.frequency_hz"))
+                                .small()
+                                .color(MUTED),
+                        );
                     });
                 });
             });
@@ -3349,15 +3483,31 @@ impl ScopeApp {
                             self.calibration.captured.unit(channel)
                         ));
                     } else {
-                        text.push_str(&format!(" · {} invalid value", channel::name(channel)));
+                        text.push_str(
+                            i18n::format(
+                                "common.cursor_channel_invalid",
+                                &[("channel", &(channel::name(channel)).to_string())],
+                            )
+                            .as_ref(),
+                        );
                     }
                 } else {
-                    text.push_str(&format!(" · {} unavailable", channel::name(channel)));
+                    text.push_str(
+                        i18n::format(
+                            "common.unavailable_2",
+                            &[("channel", &(channel::name(channel)).to_string())],
+                        )
+                        .as_ref(),
+                    );
                 }
             }
             text
         } else {
-            format!("#{sample} · raw sample unavailable")
+            i18n::format(
+                "common.raw_sample_unavailable",
+                &[("sample", &(sample).to_string())],
+            )
+            .to_string()
         }
     }
 
@@ -3393,20 +3543,30 @@ impl ScopeApp {
                         }
                         let raw = frame.get(channel)?;
                         let value = self.calibration.captured.value(channel, *raw)?;
-                        Some(format!(
-                            "{}: {} FS → {} {}",
-                            channel::name(channel),
-                            display::number(Some(*raw)),
-                            display::number(Some(value)),
-                            self.calibration.captured.unit(channel)
-                        ))
+                        Some(
+                            i18n::format(
+                                "oscilloscope.fs",
+                                &[
+                                    ("channel", &(channel::name(channel)).to_string()),
+                                    ("raw", &(display::number(Some(*raw))).to_string()),
+                                    ("value", &(display::number(Some(value))).to_string()),
+                                    ("channel_2", (self.calibration.captured.unit(channel))),
+                                ],
+                            )
+                            .to_string(),
+                        )
                     })
                     .collect();
-                Some(format!(
-                    "Cursor {} · {}",
-                    cursor_name(index),
-                    values.join(" · ")
-                ))
+                Some(
+                    i18n::format(
+                        "oscilloscope.cursor",
+                        &[
+                            ("index", (cursor_name(index))),
+                            ("join", &(values.join(" · ")).to_string()),
+                        ],
+                    )
+                    .to_string(),
+                )
             })
             .collect::<Vec<_>>()
             .join("\n");
@@ -3451,17 +3611,31 @@ impl ScopeApp {
                 if let Some(sample) = sample
                     && let Some(seconds) = self.scope_cursor_seconds(sample)
                 {
-                    format!(
-                        "{} {:+.3} ms · {}",
-                        cursor_name(index),
-                        seconds * 1000.0,
-                        self.sample_text(sample)
+                    i18n::format(
+                        "oscilloscope.ms",
+                        &[
+                            ("index", (cursor_name(index))),
+                            ("seconds", &format!("{:+.3}", seconds * 1000.0)),
+                            ("sample", &(self.sample_text(sample)).to_string()),
+                        ],
                     )
+                    .to_string()
                 } else {
-                    format!("{} · waiting for sweep", cursor_name(index))
+                    i18n::format(
+                        "oscilloscope.waiting_for_sweep",
+                        &[("index", (cursor_name(index)))],
+                    )
+                    .to_string()
                 }
             } else if let Some(sample) = sample {
-                format!("{} #{sample} · outside sweep", cursor_name(index),)
+                i18n::format(
+                    "oscilloscope.outside_sweep",
+                    &[
+                        ("index", (cursor_name(index))),
+                        ("sample", &(sample).to_string()),
+                    ],
+                )
+                .to_string()
             } else {
                 continue;
             };
@@ -3516,49 +3690,104 @@ impl ScopeApp {
                     ui,
                     rect,
                     index,
-                    &format!(
-                        "{} {:.3} Hz · no complete window",
-                        cursor_name(index),
-                        frequency
-                    ),
+                    i18n::format(
+                        "spectrum.hz_no_complete_window",
+                        &[
+                            ("index", (cursor_name(index))),
+                            ("frequency", &format!("{:.3}", frequency)),
+                        ],
+                    )
+                    .as_ref(),
                     color,
                 );
                 continue;
             };
             let window = &reading.window;
-            let text = format!(
-                "{} {:.6} Hz · {:.2} {}\nCH {} · samples {}..{}",
-                cursor_name(index),
-                reading.frequency_hz,
-                reading.level_db,
-                window.db_unit(),
-                window.channel + 1,
-                window.start,
-                window.end,
-            );
+            let text = i18n::format(
+                "spectrum.hz_ch_samples",
+                &[
+                    ("index", (cursor_name(index))),
+                    ("frequency_hz", &format!("{:.6}", reading.frequency_hz)),
+                    ("level_db", &format!("{:.2}", reading.level_db)),
+                    ("db_unit", &(window.db_unit()).to_string()),
+                    ("channel", &(window.channel + 1).to_string()),
+                    ("start", &(window.start).to_string()),
+                    ("end", &(window.end).to_string()),
+                ],
+            )
+            .to_string();
             cursor_note(ui, rect, index, &text, color);
             if index == active {
                 if self.spectrum_history.linked {
-                    response.clone().on_hover_text(format!("Time {} · nearest bin {:.6e} {} · acquired samples {}..{} · {} Hz · {} points · {} · {} · no average, no calibration",
-                        cursor_name(self.spectrum_history.selected), reading.value, window.linear_unit(), window.start, window.end,
-                        window.sample_rate, window.settings.size, window.settings.window.name(), window.settings.precision.name()));
+                    response.clone().on_hover_text(
+                        i18n::format(
+                            "spectrum.time_nearest_bin_acquired_samples_hz_points_no_average",
+                            &[
+                                ("selected", (cursor_name(self.spectrum_history.selected))),
+                                ("value", &format!("{:.6e}", reading.value)),
+                                ("linear_unit", &(window.linear_unit()).to_string()),
+                                ("start", &(window.start).to_string()),
+                                ("end", &(window.end).to_string()),
+                                ("sample_rate", &(window.sample_rate).to_string()),
+                                ("size", &(window.settings.size).to_string()),
+                                ("name", (window.settings.window.display_name())),
+                                ("name_2", (window.settings.precision.display_name())),
+                            ],
+                        )
+                        .as_ref(),
+                    );
                     continue;
                 }
                 let mut times = String::new();
                 for (index, sample) in self.cursor_samples().into_iter().enumerate() {
                     if let Some(sample) = sample {
-                        times.push_str(&format!(
-                            " · {} {} window",
-                            cursor_name(index),
-                            if (window.start..window.end).contains(&sample) {
-                                "in"
-                            } else {
-                                "outside"
-                            }
-                        ));
+                        times.push_str(
+                            i18n::format(
+                                "spectrum.window",
+                                &[
+                                    ("index", (cursor_name(index))),
+                                    (
+                                        "outside",
+                                        (if (window.start..window.end).contains(&sample) {
+                                            "in"
+                                        } else {
+                                            "outside"
+                                        }),
+                                    ),
+                                ],
+                            )
+                            .as_ref(),
+                        );
                     }
                 }
-                response.clone().on_hover_text(format!("Cursor {} · nearest bin: {:.6e} {}. Latest window: samples {}..{} (exclusive end), CH {}, {} Hz, {} points, {}, {}. EMA α = 1/{}; {} processed windows, contribution envelope {}..{} (exponential weights). Input generation {}; missing windows {}.{}", cursor_name(index), reading.value, window.linear_unit(), window.start, window.end, window.channel + 1, window.sample_rate, window.settings.size, window.settings.window.name(), window.settings.precision.name(), window.settings.averages, reading.average.updates, reading.average.start, reading.average.end, self.input_generation, self.selected_spectrum_info().missing_windows, times));
+                response.clone().on_hover_text(
+                    i18n::format(
+                        "spectrum.cursor_nearest_bin_latest_window_samples_exclusive_end_ch",
+                        &[
+                            ("index", (cursor_name(index))),
+                            ("value", &format!("{:.6e}", reading.value)),
+                            ("linear_unit", &(window.linear_unit()).to_string()),
+                            ("start", &(window.start).to_string()),
+                            ("end", &(window.end).to_string()),
+                            ("channel", &(window.channel + 1).to_string()),
+                            ("sample_rate", &(window.sample_rate).to_string()),
+                            ("size", &(window.settings.size).to_string()),
+                            ("name", (window.settings.window.display_name())),
+                            ("name_2", (window.settings.precision.display_name())),
+                            ("averages", &(window.settings.averages).to_string()),
+                            ("updates", &(reading.average.updates).to_string()),
+                            ("start_2", &(reading.average.start).to_string()),
+                            ("end_2", &(reading.average.end).to_string()),
+                            ("input_generation", &(self.input_generation).to_string()),
+                            (
+                                "missing_windows",
+                                &(self.selected_spectrum_info().missing_windows).to_string(),
+                            ),
+                            ("times", &(times).to_string()),
+                        ],
+                    )
+                    .as_ref(),
+                );
                 response
                     .clone()
                     .on_hover_text(spectrum_calibration_description(
@@ -3577,11 +3806,17 @@ impl ScopeApp {
                 ui,
                 rect,
                 2,
-                &format!(
-                    "Δf {:+.6} Hz · ΔL {} dB",
-                    b.frequency_hz - a.frequency_hz,
-                    delta_level
-                ),
+                i18n::format(
+                    "spectrum.f_hz_l_db",
+                    &[
+                        (
+                            "frequency_hz",
+                            &format!("{:+.6}", b.frequency_hz - a.frequency_hz),
+                        ),
+                        ("delta_level", &(delta_level).to_string()),
+                    ],
+                )
+                .as_ref(),
                 YELLOW,
             );
         }
@@ -3671,7 +3906,11 @@ impl ScopeApp {
                     ui,
                     rect,
                     index,
-                    &format!("{} No STFT row\nBefore input began", cursor_name(index)),
+                    i18n::format(
+                        "spectrogram.no_stft_row_before_input_began",
+                        &[("index", (cursor_name(index)))],
+                    )
+                    .as_ref(),
                     cursor_color(index),
                 );
                 continue;
@@ -3706,41 +3945,62 @@ impl ScopeApp {
                 if let Some(frame) = frame {
                     let row = frame.info;
                     if !frame.valid() {
-                        format!(
-                            "{} Invalid STFT window\nnon-finite input · {}..{}",
-                            cursor_name(index),
-                            row.start,
-                            row.end
+                        i18n::format(
+                            "spectrogram.invalid_stft_window_non_finite_input",
+                            &[
+                                ("index", (cursor_name(index))),
+                                ("start", &(row.start).to_string()),
+                                ("end", &(row.end).to_string()),
+                            ],
                         )
+                        .to_string()
                     } else if let Some(bin) = self.cursors.frequency_hz.and_then(|hz| {
                         cursor::nearest_bin(hz, row.config.size, row.config.sample_rate)
                     }) {
-                        format!(
-                            "{} {:.1} Hz · {:.6} dBFS\nCH {} · {}..{}",
-                            cursor_name(index),
-                            bin as f64 * row.config.sample_rate as f64 / row.config.size as f64,
-                            frame.level_db(bin).unwrap(),
-                            row.config.channel + 1,
-                            row.start,
-                            row.end
+                        i18n::format(
+                            "spectrogram.hz_dbfs_ch",
+                            &[
+                                ("index", (cursor_name(index))),
+                                (
+                                    "size",
+                                    &format!(
+                                        "{:.1}",
+                                        bin as f64 * row.config.sample_rate as f64
+                                            / row.config.size as f64
+                                    ),
+                                ),
+                                ("bin", &format!("{:.6}", frame.level_db(bin).unwrap())),
+                                ("channel", &(row.config.channel + 1).to_string()),
+                                ("start", &(row.start).to_string()),
+                                ("end", &(row.end).to_string()),
+                            ],
                         )
+                        .to_string()
                     } else {
-                        format!(
-                            "{} −{age:.3} s\nCH {} · {}..{}",
-                            cursor_name(index),
-                            row.config.channel + 1,
-                            row.start,
-                            row.end
+                        i18n::format(
+                            "spectrogram.s_ch",
+                            &[
+                                ("index", (cursor_name(index))),
+                                ("age", &format!("{:.3}", age)),
+                                ("channel", &(row.config.channel + 1).to_string()),
+                                ("start", &(row.start).to_string()),
+                                ("end", &(row.end).to_string()),
+                            ],
                         )
+                        .to_string()
                     }
                 } else {
-                    format!(
-                        "{} −{age:.3} s\nNo STFT row · gap or unavailable",
-                        cursor_name(index)
+                    i18n::format(
+                        "spectrogram.s_no_stft_row_gap_or_unavailable",
+                        &[
+                            ("index", (cursor_name(index))),
+                            ("age", &format!("{:.3}", age)),
+                        ],
                     )
+                    .to_string()
                 };
             if !(0.0..=self.spectrogram_seconds).contains(&age) {
-                text.push_str("\nOutside visible time range");
+                text.push_str(i18n::text("spectrogram.outside_visible_time_range"));
             }
             cursor_note(ui, rect, index, &text, cursor_color(index));
         }
@@ -3829,7 +4089,11 @@ impl ScopeApp {
                         ui,
                         bounds,
                         index,
-                        &format!("{} · outside XY window or unavailable", cursor_name(index)),
+                        i18n::format(
+                            "xy.outside_xy_window_or_unavailable",
+                            &[("index", (cursor_name(index)))],
+                        )
+                        .as_ref(),
                         cursor_color(index),
                     );
                 }
@@ -3857,33 +4121,53 @@ impl ScopeApp {
             let detail = match self.xy_cursor_mode {
                 xy::CursorMode::Free => {
                     if rect.contains(at) {
-                        "Free".into()
+                        i18n::text("xy.free").into()
                     } else {
-                        "Free · outside plot".into()
+                        i18n::text("xy.free_outside_plot").into()
                     }
                 }
                 xy::CursorMode::TraceSnap => {
                     let sample = samples[index].unwrap();
                     let reference = cursor::trigger_sample(self.xy_capture.range.clone()).unwrap();
-                    format!(
-                        "T{:+.3} ms · #{sample}",
-                        cursor::signed_distance(sample, reference) * 1000.0
-                            / self.sample_rate as f64
+                    i18n::format(
+                        "xy.t_ms",
+                        &[
+                            (
+                                "sample_rate",
+                                &format!(
+                                    "{:+.3}",
+                                    cursor::signed_distance(sample, reference) * 1000.0
+                                        / self.sample_rate as f64
+                                ),
+                            ),
+                            ("sample", &(sample).to_string()),
+                        ],
                     )
+                    .to_string()
                 }
             };
             cursor_note(
                 ui,
                 bounds,
                 index,
-                &format!(
-                    "{} X {} {:+.4} FS · Y {} {:+.4} FS\n{detail}",
-                    cursor_name(index),
-                    channel::name(self.xy_capture.channels.0[0]),
-                    point[0],
-                    channel::name(self.xy_capture.channels.0[1]),
-                    point[1]
-                ),
+                i18n::format(
+                    "xy.x_fs_y_fs_2",
+                    &[
+                        ("index", (cursor_name(index))),
+                        (
+                            "channels",
+                            &(channel::name(self.xy_capture.channels.0[0])).to_string(),
+                        ),
+                        ("point", &format!("{:+.4}", point[0])),
+                        (
+                            "channels_2",
+                            &(channel::name(self.xy_capture.channels.0[1])).to_string(),
+                        ),
+                        ("point_2", &format!("{:+.4}", point[1])),
+                        ("detail", &(detail).to_string()),
+                    ],
+                )
+                .as_ref(),
                 cursor_color(index),
             );
         }
@@ -3893,13 +4177,22 @@ impl ScopeApp {
                 ui,
                 bounds,
                 2,
-                &format!("B−A ΔX {:+.4} · ΔY {:+.4} FS", delta[0], delta[1]),
+                i18n::format(
+                    "xy.b_a_x_y_fs",
+                    &[
+                        ("delta", &format!("{:+.4}", delta[0])),
+                        ("delta_2", &format!("{:+.4}", delta[1])),
+                    ],
+                )
+                .as_ref(),
                 MUTED,
             );
         }
         response.clone().on_hover_text(match self.xy_cursor_mode {
-            xy::CursorMode::Free => "Free: click or drag to fix X/Y amplitudes. A/B measure ΔX and ΔY independently of the moving trace. Free positions are retained when switching to Trace Snap.",
-            xy::CursorMode::TraceSnap => "Trace Snap: selects the nearest actual pair from the assigned X/Y channels and keeps its sample offset from the XY trigger. Uses Scope's trigger source, edge and level. Without a crossing, the reference moves with the latest window. Overlapping points select the latest sample; Stop freezes the capture.",
+            xy::CursorMode::Free => i18n::text("xy.free_click_or_drag_to_fix_x_y_amplitudes"),
+            xy::CursorMode::TraceSnap => {
+                i18n::text("xy.trace_snap_selects_the_nearest_actual_pair_from_the")
+            }
         });
     }
 
@@ -3967,7 +4260,11 @@ impl ScopeApp {
             .show(ui, |ui| {
                 compact_plot_style(ui);
                 ui.horizontal_wrapped(|ui| {
-                    ui.label(RichText::new("XY / Lissajous").size(13.0).strong());
+                    ui.label(
+                        RichText::new(i18n::text("xy.xy_lissajous"))
+                            .size(13.0)
+                            .strong(),
+                    );
                     display::activity_label(
                         ui,
                         self.running(),
@@ -3978,8 +4275,8 @@ impl ScopeApp {
                 ui.horizontal_wrapped(|ui| {
                     ui.label(
                         RichText::new(match self.xy_cursor_mode {
-                            xy::CursorMode::Free => "XY · Free cursor",
-                            xy::CursorMode::TraceSnap => "XY · Trace Snap cursor",
+                            xy::CursorMode::Free => i18n::text("xy.xy_free_cursor"),
+                            xy::CursorMode::TraceSnap => i18n::text("xy.xy_trace_snap_cursor"),
                         })
                         .small()
                         .color(MUTED),
@@ -3987,13 +4284,32 @@ impl ScopeApp {
                     self.cursor_controls(ui, Instrument::Xy);
                 });
                 ui.label(
-                    RichText::new(format!(
-                        "X: {} · {:.3} FS/div   Y: {} · {:.3} FS/div",
-                        channel::name(self.xy_view_settings().channels.0[0]),
-                        self.xy_settings.x_fs_per_div,
-                        channel::name(self.xy_view_settings().channels.0[1]),
-                        self.xy_settings.y_fs_per_div
-                    ))
+                    RichText::new(
+                        i18n::format(
+                            "xy.x_fs_div_y_fs_div",
+                            &[
+                                (
+                                    "channels",
+                                    &(channel::name(self.xy_view_settings().channels.0[0]))
+                                        .to_string(),
+                                ),
+                                (
+                                    "x_fs_per_div",
+                                    &format!("{:.3}", self.xy_settings.x_fs_per_div),
+                                ),
+                                (
+                                    "channels_2",
+                                    &(channel::name(self.xy_view_settings().channels.0[1]))
+                                        .to_string(),
+                                ),
+                                (
+                                    "y_fs_per_div",
+                                    &format!("{:.3}", self.xy_settings.y_fs_per_div),
+                                ),
+                            ],
+                        )
+                        .as_ref(),
+                    )
                     .small()
                     .color(PURPLE),
                 );
@@ -4077,59 +4393,94 @@ impl ScopeApp {
                         outer.center(),
                         egui::Align2::CENTER_CENTER,
                         if self.channels == 1 {
-                            "XY unavailable: mono input"
+                            i18n::text("xy.xy_unavailable_mono_input")
                         } else if self.channels == 0 {
-                            "XY requires two input channels"
+                            i18n::text("xy.xy_requires_two_input_channels")
                         } else if !self
                             .xy_view_settings()
                             .channels
                             .available(self.channels as usize)
                         {
-                            "XY unavailable: assigned channel missing"
+                            i18n::text("xy.xy_unavailable_assigned_channel_missing")
                         } else {
-                            "Waiting for sample pairs…"
+                            i18n::text("xy.waiting_for_sample_pairs")
                         },
                         egui::FontId::proportional(13.0),
                         MUTED,
                     );
                 }
                 if let Some(position) = response.hover_pos().filter(|point| rect.contains(*point)) {
-                    response.clone().on_hover_text(format!(
-                        "X {:+.4} FS · Y {:+.4} FS",
-                        (position.x - rect.center().x) as f64 / side as f64
-                            * self.xy_settings.x_fs_per_div
-                            * 8.0,
-                        (rect.center().y - position.y) as f64 / side as f64
-                            * self.xy_settings.y_fs_per_div
-                            * 8.0,
-                    ));
+                    response.clone().on_hover_text(
+                        i18n::format(
+                            "xy.x_fs_y_fs",
+                            &[
+                                (
+                                    "x_fs_per_div",
+                                    &format!(
+                                        "{:+.4}",
+                                        (position.x - rect.center().x) as f64 / side as f64
+                                            * self.xy_settings.x_fs_per_div
+                                            * 8.0
+                                    ),
+                                ),
+                                (
+                                    "y_fs_per_div",
+                                    &format!(
+                                        "{:+.4}",
+                                        (rect.center().y - position.y) as f64 / side as f64
+                                            * self.xy_settings.y_fs_per_div
+                                            * 8.0
+                                    ),
+                                ),
+                            ],
+                        )
+                        .as_ref(),
+                    );
                 }
                 self.xy_cursors(ui, &response, rect, bounds);
                 let capture = &self.xy_capture;
                 // Use the same footer row height reserved by plot_size for the other plots.
                 ui.horizontal(|ui| {
                     ui.label(
-                        RichText::new(format!(
-                            "{:.1} ms · samples {}..{}{}{}",
-                            (capture.range.end - capture.range.start) as f64 * 1000.0
-                                / self.sample_rate as f64,
-                            capture.range.start,
-                            capture.range.end,
-                            if capture.limited {
-                                " · point limit"
-                            } else {
-                                ""
-                            },
-                            if self.xy_cursor_mode == xy::CursorMode::Free {
-                                ""
-                            } else if capture.triggered {
-                                " · Triggered"
-                            } else if self.trigger.edge == Edge::Free {
-                                " · Free run (moving reference)"
-                            } else {
-                                " · Auto (no crossing)"
-                            }
-                        ))
+                        RichText::new(
+                            i18n::format(
+                                "xy.ms_samples",
+                                &[
+                                    (
+                                        "sample_rate",
+                                        &format!(
+                                            "{:.1}",
+                                            (capture.range.end - capture.range.start) as f64
+                                                * 1000.0
+                                                / self.sample_rate as f64
+                                        ),
+                                    ),
+                                    ("start", &(capture.range.start).to_string()),
+                                    ("end", &(capture.range.end).to_string()),
+                                    (
+                                        "else",
+                                        (if capture.limited {
+                                            i18n::text("xy.point_limit")
+                                        } else {
+                                            ""
+                                        }),
+                                    ),
+                                    (
+                                        "auto_no_crossing",
+                                        (if self.xy_cursor_mode == xy::CursorMode::Free {
+                                            ""
+                                        } else if capture.triggered {
+                                            i18n::text("xy.triggered")
+                                        } else if self.trigger.edge == Edge::Free {
+                                            i18n::text("xy.free_run_moving_reference")
+                                        } else {
+                                            i18n::text("xy.auto_no_crossing")
+                                        }),
+                                    ),
+                                ],
+                            )
+                            .as_ref(),
+                        )
                         .small()
                         .color(MUTED),
                     );
@@ -4138,57 +4489,76 @@ impl ScopeApp {
     }
 
     fn workspace_controls(&mut self, ui: &mut egui::Ui) {
-        setting_label(ui, "HELD MEASUREMENT RESULTS");
+        setting_label(ui, i18n::text("common.held_measurement_results"));
         if self.spectrum_history.linked {
             ui.label(
-                RichText::new(spectrum_history::EXPORT_REASON)
+                RichText::new(spectrum_history::export_reason())
                     .small()
                     .color(YELLOW),
             );
         }
-        ui.label(RichText::new("Stop input, then export Scope samples and statistics, Spectrum bins and their captured conditions to JSON.").small().color(MUTED));
+        ui.label(
+            RichText::new(i18n::text(
+                "common.stop_input_then_export_scope_samples_and_statistics_spectrum",
+            ))
+            .small()
+            .color(MUTED),
+        );
         ui.add_enabled(
             !self.export_pending,
             egui::TextEdit::singleline(&mut self.export_path)
-                .hint_text("Results JSON file path")
+                .hint_text(i18n::text("common.results_json_file_path"))
                 .desired_width(f32::INFINITY),
         );
-        if ui.add_enabled(!self.export_pending && self.can_export(), egui::Button::new("Export held results"))
-            .on_hover_text("Exports the retained Scope interval and the independently timed Spectrum result. Missing samples stay null. Spectrogram, XY and cursors are not included.")
-            .clicked() {
+        if ui
+            .add_enabled(
+                !self.export_pending && self.can_export(),
+                egui::Button::new(i18n::text("common.export_held_results")),
+            )
+            .on_hover_text(i18n::text(
+                "common.exports_the_retained_scope_interval_and_the_independently_timed",
+            ))
+            .clicked()
+        {
             self.request_export();
         }
         if self.spectrum_history.linked
             && ui
                 .add_enabled(
                     !self.export_pending && self.can_export_scope(),
-                    egui::Button::new("Export held Scope only"),
+                    egui::Button::new(i18n::text("common.export_held_scope_only")),
                 )
                 .clicked()
         {
             self.request_export();
         }
         if let Some(status) = &self.export_status {
-            ui.label(RichText::new(status).small().color(if self.export_error {
-                YELLOW
-            } else {
-                MUTED
-            }));
+            ui.label(
+                RichText::new(status.render().as_ref())
+                    .small()
+                    .color(if self.export_error { YELLOW } else { MUTED }),
+            );
         }
         ui.separator();
-        setting_label(ui, "MEASUREMENT SETTINGS");
-        ui.label(RichText::new("Save the queued input, channels, analysis and calibration for the next Start. Restore while stopped; then start input explicitly.").small().color(MUTED));
+        setting_label(ui, i18n::text("common.measurement_settings"));
+        ui.label(
+            RichText::new(i18n::text(
+                "common.save_the_queued_input_channels_analysis_and_calibration_for",
+            ))
+            .small()
+            .color(MUTED),
+        );
         ui.add_enabled(
             self.settings_task.is_none(),
             egui::TextEdit::singleline(&mut self.settings_path)
-                .hint_text("Settings JSON file path")
+                .hint_text(i18n::text("common.settings_json_file_path"))
                 .desired_width(f32::INFINITY),
         );
         ui.horizontal(|ui| {
             if ui
                 .add_enabled(
                     self.settings_task.is_none() && !self.busy && self.source == Source::Live,
-                    egui::Button::new("Save settings"),
+                    egui::Button::new(i18n::text("common.save_settings")),
                 )
                 .clicked()
             {
@@ -4197,7 +4567,7 @@ impl ScopeApp {
             if ui
                 .add_enabled(
                     self.settings_task.is_none() && self.can_restore_settings(),
-                    egui::Button::new("Restore settings"),
+                    egui::Button::new(i18n::text("common.restore_settings")),
                 )
                 .clicked()
             {
@@ -4205,11 +4575,11 @@ impl ScopeApp {
             }
         });
         if let Some(status) = &self.settings_status {
-            ui.label(RichText::new(status).small().color(if self.settings_error {
-                YELLOW
-            } else {
-                MUTED
-            }));
+            ui.label(
+                RichText::new(status.render().as_ref())
+                    .small()
+                    .color(if self.settings_error { YELLOW } else { MUTED }),
+            );
         }
         ui.separator();
     }
@@ -4246,24 +4616,29 @@ impl ScopeApp {
     fn capture_results(&self) -> Result<export::Document, String> {
         if !self.can_export() {
             if self.spectrum_history.linked {
-                return Err(spectrum_history::EXPORT_REASON.into());
+                return Err(spectrum_history::export_reason().into());
             }
-            return Err("Stop input and wait for the held measurement results".into());
+            return Err(
+                i18n::text("common.stop_input_and_wait_for_the_held_measurement_results").into(),
+            );
         }
         self.capture_held_results(true)
     }
 
     fn capture_scope_results(&self) -> Result<export::Document, String> {
         if !self.can_export_scope() {
-            return Err("Stop input and wait for held Scope samples".into());
+            return Err(i18n::text("common.stop_input_and_wait_for_held_scope_samples").into());
         }
         self.capture_held_results(false)
     }
 
     fn capture_held_results(&self, include_spectrum: bool) -> Result<export::Document, String> {
-        let input = self.held_input.clone().ok_or("No held input conditions")?;
+        let input = self
+            .held_input
+            .clone()
+            .ok_or(i18n::text("common.no_held_input_conditions"))?;
         if input.generation != self.input_generation {
-            return Err("Held input generation does not match results".into());
+            return Err(i18n::text("common.held_input_generation_does_not_match_results").into());
         }
         let excluded = (!include_spectrum).then(|| {
             spectrum::Result::empty(
@@ -4344,10 +4719,10 @@ impl ScopeApp {
     fn request_export(&mut self) {
         let result = (|| {
             if self.export_pending {
-                return Err("An export is already in progress".into());
+                return Err(i18n::text("common.an_export_is_already_in_progress").into());
             }
             if self.export_path.trim().is_empty() {
-                return Err("Enter a results file path".into());
+                return Err(i18n::text("common.enter_a_results_file_path").into());
             }
             let document = if self.spectrum_history.linked {
                 self.capture_scope_results()?
@@ -4361,9 +4736,9 @@ impl ScopeApp {
         self.export_status = Some(match result {
             Ok(()) => {
                 self.export_pending = true;
-                "Exporting held results…".into()
+                UiStatus::Exporting
             }
-            Err(error) => error,
+            Err(error) => error.into(),
         });
     }
 
@@ -4371,8 +4746,8 @@ impl ScopeApp {
         while let Ok(event) = self.export_worker.events.try_recv() {
             self.export_pending = false;
             let result = match event {
-                export::Event::Saved(path) => Ok(format!("Results exported: {}", path.display())),
-                export::Event::Error(error) => Err(error),
+                export::Event::Saved(path) => Ok(UiStatus::ResultsExported(path)),
+                export::Event::Error(error) => Err(UiStatus::Detail(error)),
             };
             self.export_error = result.is_err();
             self.export_status = Some(result.unwrap_or_else(|error| error));
@@ -4400,7 +4775,7 @@ impl ScopeApp {
             let device = self
                 .devices
                 .get(self.selected)
-                .ok_or("Select an input device first")?;
+                .ok_or(i18n::text("common.select_an_input_device_first"))?;
             settings::Input::from_device(device, self.requested_sample_rate)?
         };
         let document = settings::Document {
@@ -4478,7 +4853,7 @@ impl ScopeApp {
                 || document.measurement.input.expected_sample_rate() != self.sample_rate)
         {
             return Err(
-                "Active input differs from the device list; stop and refresh before saving".into(),
+                i18n::text("common.active_input_differs_from_the_device_list_stop_and").into(),
             );
         }
         Ok(document)
@@ -4489,7 +4864,7 @@ impl ScopeApp {
     fn restore_settings(&mut self, document: settings::Document) -> Result<(), String> {
         if !self.can_restore_settings() {
             return Err(
-                "Stop input and output and wait for pending operations before restoring".into(),
+                i18n::text("common.stop_input_and_output_and_wait_for_pending_operations").into(),
             );
         }
         let calibrations = document.validate()?;
@@ -4513,9 +4888,10 @@ impl ScopeApp {
                             && old.revision() == new.revision()
                             && old != new
                         {
-                            return Err(
-                                "Saved calibration conflicts with an existing ID/revision".into()
-                            );
+                            return Err(i18n::text(
+                                "common.saved_calibration_conflicts_with_an_existing_id_revision",
+                            )
+                            .into());
                         }
                     }
                 }
@@ -4603,14 +4979,16 @@ impl ScopeApp {
     fn request_settings(&mut self, task: SettingsTask) {
         let result = (|| {
             if self.settings_path.trim().is_empty() {
-                return Err("Enter a settings file path".to_owned());
+                return Err(i18n::text("common.enter_a_settings_file_path").to_owned());
             }
             let operation = match task {
                 SettingsTask::Save => settings::Operation::Save(Box::new(self.capture_settings()?)),
                 SettingsTask::Restore if self.can_restore_settings() => {
                     settings::Operation::Restore
                 }
-                SettingsTask::Restore => return Err("Stop input before restoring settings".into()),
+                SettingsTask::Restore => {
+                    return Err(i18n::text("common.stop_input_before_restoring_settings").into());
+                }
             };
             self.settings_worker
                 .submit(std::path::PathBuf::from(&self.settings_path), operation)
@@ -4619,9 +4997,9 @@ impl ScopeApp {
         match result {
             Ok(()) => {
                 self.settings_task = Some(task);
-                self.settings_status = Some("Working…".into());
+                self.settings_status = Some(UiStatus::Working);
             }
-            Err(error) => self.settings_status = Some(error),
+            Err(error) => self.settings_status = Some(error.into()),
         }
     }
 
@@ -4629,14 +5007,14 @@ impl ScopeApp {
         while let Ok(event) = self.settings_worker.events.try_recv() {
             self.settings_task = None;
             let result = match event {
-                settings::Event::Saved(path) => Ok(format!("Settings saved: {}", path.display())),
-                settings::Event::Restored(path, document) => self.restore_settings(*document)
-                    .map(|()| format!("Settings restored: {}. Input stays stopped; press Start input to measure.", path.display())),
+                settings::Event::Saved(path) => Ok(UiStatus::SettingsSaved(path)),
+                settings::Event::Restored(path, document) => self
+                    .restore_settings(*document)
+                    .map(|()| UiStatus::SettingsRestored(path)),
                 settings::Event::Error(error) => Err(error),
             };
             self.settings_error = result.is_err();
-            self.settings_status =
-                Some(result.unwrap_or_else(|error| format!("Settings failed: {error}")));
+            self.settings_status = Some(result.unwrap_or_else(UiStatus::SettingsFailed));
         }
     }
 
@@ -4662,31 +5040,31 @@ impl ScopeApp {
                 });
                 let trigger = self.scope_display_trigger();
                 let (trigger_text, trigger_color) = if self.scope_notice().is_some() {
-                    ("Trigger settings", MUTED)
+                    (i18n::text("oscilloscope.trigger_settings"), MUTED)
                 } else if trigger.edge != Edge::Free && self.scope_input_channels().is_some_and(|count| !channel::available(trigger.channel, count as usize)) {
-                    ("Trigger source unavailable", TRIGGER)
+                    (i18n::text("oscilloscope.trigger_source_unavailable"), TRIGGER)
                 } else if self.core_scope.mode != acquisition::Mode::Auto {
                     match self.acquisition_state {
-                        acquisition::State::Waiting => ("Waiting for trigger", YELLOW),
-                        acquisition::State::Acquiring => ("Acquiring post-trigger", YELLOW),
-                        acquisition::State::WaitingWithCapture => ("Waiting · previous capture", YELLOW),
-                        acquisition::State::Complete => ("Single complete", MUTED),
+                        acquisition::State::Waiting => (i18n::text("oscilloscope.waiting_for_trigger"), YELLOW),
+                        acquisition::State::Acquiring => (i18n::text("oscilloscope.acquiring_post_trigger"), YELLOW),
+                        acquisition::State::WaitingWithCapture => (i18n::text("oscilloscope.waiting_previous_capture"), YELLOW),
+                        acquisition::State::Complete => (i18n::text("oscilloscope.single_complete"), MUTED),
                     }
-                } else if self.triggered { ("Triggered", MUTED) } else { ("Auto / free", MUTED) };
+                } else if self.triggered { (i18n::text("oscilloscope.triggered"), MUTED) } else { (i18n::text("oscilloscope.auto_free"), MUTED) };
                 ui.horizontal_wrapped(|ui| {
-                    ui.label(RichText::new(format!("{} ms/div · waveform: raw FS", display::number(Some(self.scope_display_ms_per_div() as f64)))).size(13.0))
-                        .on_hover_text(format!("{}\n{}\nWheel: time scale · Shift+wheel: selected channel scale · Double-click: reset view", display::DIV_HELP, display::AMPLITUDE_HELP));
+                    ui.label(RichText::new(i18n::format("oscilloscope.ms_div_waveform_raw_fs", &[("scope_display_ms_per_div", &(display::number(Some(self.scope_display_ms_per_div() as f64))).to_string())]).as_ref()).size(13.0))
+                        .on_hover_text(i18n::format("oscilloscope.wheel_time_scale_shift_wheel_selected_channel_scale_double", &[("display", (display::div_help())), ("display_2", (display::amplitude_help()))]).as_ref());
                     ui.label(RichText::new(trigger_text).size(13.0).color(trigger_color));
                     if trigger.edge != Edge::Free {
                         ui.label(RichText::new(self.scope_trigger_marker_status()).size(13.0).color(TRIGGER))
                             .on_hover_text(self.scope_trigger_marker_help());
                     }
-                    if self.scope_missing > 0 { ui.colored_label(YELLOW, format!("Partial · {} missing samples", self.scope_missing)); }
+                    if self.scope_missing > 0 { ui.colored_label(YELLOW, i18n::format("oscilloscope.partial_missing_samples", &[("scope_missing", &(self.scope_missing).to_string())]).to_string()); }
                 });
                 if !self.scope_range.is_empty() && !self.running() && (self.core_scope.mode != self.acquisition_mode || self.scope_channels != self.scope_view_channels() || self.calibration.pending != self.calibration.captured) {
-                    ui.label(RichText::new("HELD conditions retained · queued measurement settings apply on next Start").small().color(YELLOW));
+                    ui.label(RichText::new(i18n::text("oscilloscope.held_conditions_retained_queued_measurement_settings_apply_on_next")).small().color(YELLOW));
                 }
-                ui.add(egui::Label::new(RichText::new(format!("CH{} · {}", self.scope_selected + 1, self.scope_readout(self.scope_selected))).monospace().size(13.0).color(monitor_controls::scope_color(self.scope_selected))).wrap())
+                ui.add(egui::Label::new(RichText::new(i18n::format("oscilloscope.ch", &[("scope_selected", &(self.scope_selected + 1).to_string()), ("scope_selected_2", &(self.scope_readout(self.scope_selected)).to_string())]).as_ref()).monospace().size(13.0).color(monitor_controls::scope_color(self.scope_selected))).wrap())
                     .on_hover_text(self.scope_readout_details(self.scope_selected));
                 // Reserve a single 40-point channel strip immediately below the plot.
                 let height = (ui.available_height() - 40.0 - ui.spacing().item_spacing.y).max(40.0);
@@ -4783,18 +5161,18 @@ impl ScopeApp {
             .show(ui, |ui| {
                 compact_plot_style(ui);
                 ui.horizontal_wrapped(|ui| {
-                    ui.label(RichText::new("Spectrum Analyzer").size(13.0).strong());
+                    ui.label(RichText::new(i18n::text("spectrum.spectrum_analyzer")).size(13.0).strong());
                     display::activity_label(ui, self.running() && !self.spectrum_history.linked, self.pending_stop.is_some() && !self.spectrum_history.linked, self.shown_selected_spectrum().window().is_some());
 
                     if !self.spectrum_history.linked {
-                    ui.label(RichText::new(format!("CH{} · Input {} · {}", self.shown_spectrum_index() + 1, self.shown_selected_spectrum().window().map_or(self.spectrum_source(self.shown_spectrum_index()), |window| window.channel)+1, self.shown_selected_spectrum().db_unit())).small().color(color));
+                    ui.label(RichText::new(i18n::format("spectrum.ch_input", &[("shown_spectrum_index", &(self.shown_spectrum_index() + 1).to_string()), ("channel", &(self.shown_selected_spectrum().window().map_or(self.spectrum_source(self.shown_spectrum_index()), |window| window.channel)+1).to_string()), ("db_unit", &(self.shown_selected_spectrum().db_unit()).to_string())]).as_ref()).small().color(color));
                     } else {
-                        ui.label(RichText::new("History · read-only").small().color(YELLOW));
+                        ui.label(RichText::new(i18n::text("spectrum.history_read_only")).small().color(YELLOW));
                     }
                     if !self.spectrum_history.linked
                         && self.presentation.screen == Screen::Console
                         && self.presentation.contains(Instrument::Spectrogram)
-                        && ui.small_button("Time A/B from Spectrogram").clicked()
+                        && ui.small_button(i18n::text("spectrum.time_a_b_from_spectrogram")).clicked()
                     {
                         self.link_spectrum_history();
                     }
@@ -4804,14 +5182,14 @@ impl ScopeApp {
                 self.refresh_spectrum_readouts(view);
                 if let Some(peak) = self.spectrum_peak {
                     ui.horizontal_wrapped(|ui| {
-                        ui.add(egui::Label::new(RichText::new(format!("Peak bin {:.2} Hz", peak.frequency)).monospace().size(15.0).color(color)).wrap());
+                        ui.add(egui::Label::new(RichText::new(i18n::format("spectrum.peak_bin_hz", &[("frequency", &format!("{:.2}", peak.frequency))]).as_ref()).monospace().size(15.0).color(color)).wrap());
                         ui.add(egui::Label::new(RichText::new(format!("{:.2} {}", peak.level_db, self.shown_selected_spectrum().db_unit())).monospace().size(15.0).color(color)).wrap());
-                        ui.label(RichText::new(format!("Δf {:.3} Hz", self.shown_selected_spectrum().bin_hz())).small().color(MUTED));
+                        ui.label(RichText::new(i18n::format("spectrum.f_hz", &[("bin_hz", &format!("{:.3}", self.shown_selected_spectrum().bin_hz()))]).as_ref()).small().color(MUTED));
                     });
                 } else {
                     ui.label(
                         RichText::new(
-                            format!("{} · {}", self.shown_selected_spectrum().settings().quantity.name(), self.shown_selected_spectrum().db_unit()),
+                            format!("{} · {}", self.shown_selected_spectrum().settings().quantity.display_name(), self.shown_selected_spectrum().db_unit()),
                         )
                         .small()
                         .color(MUTED),
@@ -4819,24 +5197,19 @@ impl ScopeApp {
                 }
                 if self.shown_selected_spectrum().settings().quantity == Quantity::Psd {
                     if let Some(band) = &self.spectrum_band {
-                        ui.label(RichText::new(format!("Band RMS {} {}", display::number(Some(band.rms)), self.shown_selected_spectrum().unit())).monospace().size(18.0).color(color));
-                        ui.label(RichText::new(format!("{:.1}–{:.1} Hz · power {} {}", band.first_hz, band.last_hz, display::number(Some(band.power)), self.shown_selected_spectrum().power_unit())).small().color(MUTED))
-                        .on_hover_text(format!(
-                            "Requested {}–{} Hz, inclusive centres of bins {}..={}. Sum of f64 PSD × Δf; full weight at DC/Nyquist. CH {}, generation {}, {} processed windows, contribution envelope {}..{}. Input loss {}; missing windows {}. Windowed mean-square after optional DC removal; not the Scope observation interval.",
-                            band.requested_hz[0], band.requested_hz[1], band.first_bin, band.last_bin,
-                            band.window.channel + 1, self.input_generation, band.average.updates,
-                            band.average.start, band.average.end, self.dropped, self.spectrum_info.missing_windows,
-                        ));
+                        ui.label(RichText::new(i18n::format("spectrum.band_rms", &[("rms", &(display::number(Some(band.rms))).to_string()), ("unit", (self.shown_selected_spectrum().unit()))]).as_ref()).monospace().size(18.0).color(color));
+                        ui.label(RichText::new(i18n::format("spectrum.hz_power", &[("first_hz", &format!("{:.1}", band.first_hz)), ("last_hz", &format!("{:.1}", band.last_hz)), ("power", &(display::number(Some(band.power))).to_string()), ("power_unit", &(self.shown_selected_spectrum().power_unit()).to_string())]).as_ref()).small().color(MUTED))
+                        .on_hover_text(i18n::format("spectrum.requested_hz_inclusive_centres_of_bins_sum_of_f64", &[("requested_hz", &(band.requested_hz[0]).to_string()), ("requested_hz_2", &(band.requested_hz[1]).to_string()), ("first_bin", &(band.first_bin).to_string()), ("last_bin", &(band.last_bin).to_string()), ("channel", &(band.window.channel + 1).to_string()), ("input_generation", &(self.input_generation).to_string()), ("updates", &(band.average.updates).to_string()), ("start", &(band.average.start).to_string()), ("end", &(band.average.end).to_string()), ("dropped", &(self.dropped).to_string()), ("missing_windows", &(self.spectrum_info.missing_windows).to_string())]).as_ref());
                     } else {
-                        ui.label(RichText::new("Band power unavailable · invalid window, range or nonfinite sum").small().color(MUTED));
+                        ui.label(RichText::new(i18n::text("spectrum.band_power_unavailable_invalid_window_range_or_nonfinite_sum")).small().color(MUTED));
                     }
                 }
                 if self.shown_selected_spectrum().settings().quantity == Quantity::Esd {
-                    ui.label(RichText::new(format!("Window energy {} {}·s", display::number(self.spectrum_energy), self.shown_selected_spectrum().power_unit())).monospace().size(18.0).color(color))
-                        .on_hover_text("Sum of f64 ESD × Δf over all bins, including DC/Nyquist. Energy of the windowed waveform after optional DC removal. Averaging gives an EMA of window energies, not cumulative energy. Nominal input sample clock.");
+                    ui.label(RichText::new(i18n::format("spectrum.window_energy_s", &[("spectrum_energy", &(display::number(self.spectrum_energy)).to_string()), ("power_unit", &(self.shown_selected_spectrum().power_unit()).to_string())]).as_ref()).monospace().size(18.0).color(color))
+                        .on_hover_text(i18n::text("spectrum.sum_of_f64_esd_f_over_all_bins_including"));
                 }
                 if let Some(c) = self.shown_selected_spectrum().calibration() {
-                    ui.label(RichText::new(format!("Calibration {} · rev {}", c.id(), c.revision())).small().color(MUTED))
+                    ui.label(RichText::new(i18n::format("spectrum.calibration_rev", &[("id", (c.id())), ("revision", &(c.revision()).to_string())]).as_ref()).small().color(MUTED))
                         .on_hover_text(spectrum_calibration_description(Some(c)));
                 }
                 self.spectrum_plot(ui, view);
@@ -5030,16 +5403,16 @@ impl ScopeApp {
                 if self.spectrum_history.linked {
                     self.history_spectrum_reason(self.spectrum_history.selected)
                 } else if !self.spectrum_display.enabled.iter().any(|enabled| *enabled) {
-                    "All channels OFF"
+                    i18n::text("common.all_channels_off")
                 } else if self.shown_selected_spectrum().validity() == spectrum::Validity::NonFinite
                 {
-                    "Invalid FFT window · nonfinite value"
+                    i18n::text("common.invalid_fft_window_nonfinite_value")
                 } else if self.running() {
-                    "Collecting a complete FFT window…"
+                    i18n::text("common.collecting_a_complete_fft_window")
                 } else if self.acquisition_state == acquisition::State::Complete {
-                    "Single complete · FFT window was not filled"
+                    i18n::text("common.single_complete_fft_window_was_not_filled")
                 } else {
-                    "Start input to begin acquisition"
+                    i18n::text("common.start_input_to_begin_acquisition")
                 },
                 egui::FontId::proportional(16.0),
                 MUTED,
@@ -5058,12 +5431,15 @@ impl ScopeApp {
                 painter.text(
                     rect.right_bottom() + vec2(-10.0, -10.0),
                     egui::Align2::RIGHT_BOTTOM,
-                    format!(
-                        "{:.1} Hz · {:.2} {}",
-                        reading.frequency_hz,
-                        reading.level_db,
-                        reading.window.db_unit()
-                    ),
+                    i18n::format(
+                        "common.hz_2",
+                        &[
+                            ("frequency_hz", &format!("{:.1}", reading.frequency_hz)),
+                            ("level_db", &format!("{:.2}", reading.level_db)),
+                            ("db_unit", &(reading.window.db_unit()).to_string()),
+                        ],
+                    )
+                    .to_string(),
                     egui::FontId::monospace(11.0),
                     self.shown_spectrum_color(self.shown_spectrum_index()),
                 );
@@ -5077,7 +5453,11 @@ impl ScopeApp {
                     .color(MUTED),
             );
             if self.show_hold && !self.spectrum_history.linked {
-                ui.label(RichText::new("Peak hold").small().color(HOLD));
+                ui.label(
+                    RichText::new(i18n::text("common.peak_hold"))
+                        .small()
+                        .color(HOLD),
+                );
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 ui.label(RichText::new("Hz").small().color(MUTED));
@@ -5249,18 +5629,26 @@ impl ScopeApp {
         self.scope_cursors(ui, &response, rect);
         self.scope_notice_ui(ui, rect.shrink(8.0));
         ui.horizontal(|ui| {
-            ui.label(RichText::new("Amplitude [FS]").size(12.0))
-                .on_hover_text(format!(
-                    "Selected CH{} axis. {}",
-                    self.scope_selected + 1,
-                    display::AMPLITUDE_HELP
-                ));
+            ui.label(RichText::new(i18n::text("common.amplitude_fs")).size(12.0))
+                .on_hover_text(
+                    i18n::format(
+                        "common.selected_ch_axis",
+                        &[
+                            ("scope_selected", &(self.scope_selected + 1).to_string()),
+                            ("display", (display::amplitude_help())),
+                        ],
+                    )
+                    .as_ref(),
+                );
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                ui.label(RichText::new("Time [ms]").size(12.0))
-                    .on_hover_text(format!(
-                        "Time relative to the sweep reference (T, 0 ms). {}",
-                        display::SAMPLE_RATE_HELP
-                    ));
+                ui.label(RichText::new(i18n::text("common.time_ms")).size(12.0))
+                    .on_hover_text(
+                        i18n::format(
+                            "common.time_relative_to_the_sweep_reference_t_ms",
+                            &[("display", (display::sample_rate_help()))],
+                        )
+                        .as_ref(),
+                    );
             });
         });
     }
@@ -5277,6 +5665,7 @@ impl eframe::App for ScopeApp {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         if !self.smoke {
             self.shell.save_sidebar(storage);
+            i18n::save(storage);
         }
     }
 
@@ -5866,120 +6255,293 @@ impl eframe::App for ScopeApp {
                     .into_iter()
                     .flatten()
                 {
-                    ui.add(egui::Label::new(RichText::new(status).small().color(MUTED)).truncate())
-                        .on_hover_text(status);
+                    ui.add(
+                        egui::Label::new(
+                            RichText::new(status.render().as_ref()).small().color(MUTED),
+                        )
+                        .truncate(),
+                    )
+                    .on_hover_text(status.render().as_ref());
                 }
             });
             ui.horizontal_wrapped(|ui| {
                 ui.label(RichText::new(self.input_status_text()).small().color(MUTED))
-                    .on_hover_text(display::SAMPLE_RATE_HELP);
+                    .on_hover_text(display::sample_rate_help());
                 ui.separator();
                 ui.label(
-                    RichText::new(format!("Dropped {}", self.dropped))
-                        .small()
-                        .color(if self.dropped > 0 { YELLOW } else { MUTED }),
+                    RichText::new(
+                        i18n::format(
+                            "common.dropped",
+                            &[("dropped", &(self.dropped).to_string())],
+                        )
+                        .as_ref(),
+                    )
+                    .small()
+                    .color(if self.dropped > 0 { YELLOW } else { MUTED }),
                 );
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if let Some(status) = &self.settings_status
                         && ui
                             .small_button(if self.settings_error {
-                                "Settings error"
+                                i18n::text("common.settings_error")
                             } else {
-                                "Settings status"
+                                i18n::text("common.settings_status")
                             })
-                            .on_hover_text(status)
+                            .on_hover_text(status.render().as_ref())
                             .clicked()
                     {
                         self.shell.file_paths = true;
                     }
-                    ui.menu_button(RichText::new("Performance").small(), |ui| {
-                        ui.label(RichText::new(&self.adapter).small().color(MUTED));
-                        ui.separator();
-                        ui.label(format!("UI {:.0} fps", self.fps));
-                        ui.label(format!("Scope prep {:.2} ms", self.build_ms));
-                        ui.label(format!("Worker FFT {:.2} ms", self.fft_ms));
-                        ui.label(format!(
-                            "Spectrum {:?} · {} windows · missing {}",
-                            self.spectrum_info.mode,
-                            self.spectrum_info.updates,
-                            self.spectrum_info.missing_windows
-                        ));
-                        if let Some(core) = &self.core {
-                            ui.label(format!(
-                                "Display updates skipped {}",
-                                core.metrics.display_skipped.load(Ordering::Relaxed)
-                            ));
-                        }
-                        ui.label(format!("Spectrum prep {:.2} ms", self.spectrum_build_ms));
-                        ui.label(format!("XY prep {:.2} ms", self.xy_build_ms));
-                        ui.label(format!(
-                            "STFT raster peak {:.1} MiB / 8 MiB · display requests replaced {}",
-                            self.spectrogram_view_worker.peak_cache_bytes() as f64 / 1048576.0,
-                            self.spectrogram_view_worker
-                                .replaced
-                                .load(Ordering::Relaxed)
-                        ));
+                    ui.menu_button(
+                        RichText::new(i18n::text("common.performance")).small(),
+                        |ui| {
+                            ui.label(RichText::new(&self.adapter).small().color(MUTED));
+                            ui.separator();
+                            ui.label(
+                                i18n::format(
+                                    "common.ui_fps",
+                                    &[("fps", &format!("{:.0}", self.fps))],
+                                )
+                                .as_ref(),
+                            );
+                            ui.label(
+                                i18n::format(
+                                    "common.scope_prep_ms",
+                                    &[("build_ms", &format!("{:.2}", self.build_ms))],
+                                )
+                                .as_ref(),
+                            );
+                            ui.label(
+                                i18n::format(
+                                    "common.worker_fft_ms",
+                                    &[("fft_ms", &format!("{:.2}", self.fft_ms))],
+                                )
+                                .as_ref(),
+                            );
+                            ui.label(
+                                i18n::format(
+                                    "common.spectrum_windows_missing",
+                                    &[
+                                        ("mode", self.spectrum_info.mode.display_name()),
+                                        ("updates", &(self.spectrum_info.updates).to_string()),
+                                        (
+                                            "missing_windows",
+                                            &(self.spectrum_info.missing_windows).to_string(),
+                                        ),
+                                    ],
+                                )
+                                .as_ref(),
+                            );
+                            if let Some(core) = &self.core {
+                                ui.label(
+                                    i18n::format(
+                                        "common.display_updates_skipped",
+                                        &[(
+                                            "elaxed",
+                                            &(core.metrics.display_skipped.load(Ordering::Relaxed))
+                                                .to_string(),
+                                        )],
+                                    )
+                                    .as_ref(),
+                                );
+                            }
+                            ui.label(
+                                i18n::format(
+                                    "common.spectrum_prep_ms",
+                                    &[(
+                                        "spectrum_build_ms",
+                                        &format!("{:.2}", self.spectrum_build_ms),
+                                    )],
+                                )
+                                .as_ref(),
+                            );
+                            ui.label(
+                                i18n::format(
+                                    "common.xy_prep_ms",
+                                    &[("xy_build_ms", &format!("{:.2}", self.xy_build_ms))],
+                                )
+                                .as_ref(),
+                            );
+                            ui.label(
+                                i18n::format(
+                                    "common.stft_raster_peak_mib_mib_display_requests_replaced",
+                                    &[
+                                        (
+                                            "peak_cache_bytes",
+                                            &format!(
+                                                "{:.1}",
+                                                self.spectrogram_view_worker.peak_cache_bytes()
+                                                    as f64
+                                                    / 1048576.0
+                                            ),
+                                        ),
+                                        (
+                                            "elaxed",
+                                            &(self
+                                                .spectrogram_view_worker
+                                                .replaced
+                                                .load(Ordering::Relaxed))
+                                            .to_string(),
+                                        ),
+                                    ],
+                                )
+                                .as_ref(),
+                            );
 
-                        ui.label(format!(
-                            "Spectrogram history {:.2} ms",
-                            self.spectrogram_build_ms
-                        ));
-                        let numeric = self.stft_history.snapshot();
-                        ui.label(format!(
-                            "STFT retention {:.2} s · {} frames · {:.1} MiB · retired {}{}",
-                            numeric.retained_seconds(),
-                            numeric.frames().len(),
-                            numeric.storage_bytes() as f64 / 1048576.0,
-                            numeric.retired,
-                            if numeric.capacity_limited {
-                                " · capacity limited"
-                            } else {
-                                ""
-                            },
-                        ));
-                        ui.label(format!(
-                            "STFT history storage losses {} · allocated {:.1} MiB / peak {:.1} MiB",
-                            self.stft_history
-                                .metrics
-                                .storage_dropped
-                                .load(Ordering::Relaxed),
-                            self.stft_history.allocated_frame_bytes() as f64 / 1048576.0,
-                            self.stft_history.peak_frame_bytes() as f64 / 1048576.0,
-                        ));
-                        let history = self.spectrogram_history.lock().unwrap();
-                        ui.label(format!(
-                            "Spectrogram {} / {} rows · {:.1} MiB CPU storage",
-                            history.len(),
-                            spectrogram::ROWS,
-                            history.storage_bytes() as f64 / 1048576.0
-                        ));
-                        ui.label(format!(
-                            "STFT input dropped {} · rows dropped {}",
-                            self.stft.metrics.input_dropped.load(Ordering::Relaxed),
-                            self.stft.metrics.result_dropped.load(Ordering::Relaxed)
-                        ));
-                        if let Some(row) = self.last_stft {
-                            ui.label(format!(
-                                "STFT CH {} · N {} / hop {} · samples {}..{}",
-                                row.config.channel + 1,
-                                row.config.size,
-                                row.config.hop,
-                                row.start,
-                                row.end
-                            ));
-                        }
-                        ui.label(format!(
-                            "{} GPU segments",
-                            self.segments.len()
-                                + self.spectrum_segments.len()
-                                + self.xy_segments.len()
-                        ));
-                        ui.label(
-                            RichText::new("Timings are CPU work, not GPU execution.")
+                            ui.label(
+                                i18n::format(
+                                    "common.spectrogram_history_ms",
+                                    &[(
+                                        "spectrogram_build_ms",
+                                        &format!("{:.2}", self.spectrogram_build_ms),
+                                    )],
+                                )
+                                .as_ref(),
+                            );
+                            let numeric = self.stft_history.snapshot();
+                            ui.label(
+                                i18n::format(
+                                    "common.stft_retention_s_frames_mib_retired",
+                                    &[
+                                        (
+                                            "retained_seconds",
+                                            &format!("{:.2}", numeric.retained_seconds()),
+                                        ),
+                                        ("len", &(numeric.frames().len()).to_string()),
+                                        (
+                                            "storage_bytes",
+                                            &format!(
+                                                "{:.1}",
+                                                numeric.storage_bytes() as f64 / 1048576.0
+                                            ),
+                                        ),
+                                        ("retired", &(numeric.retired).to_string()),
+                                        (
+                                            "else",
+                                            (if numeric.capacity_limited {
+                                                i18n::text("common.capacity_limited")
+                                            } else {
+                                                ""
+                                            }),
+                                        ),
+                                    ],
+                                )
+                                .as_ref(),
+                            );
+                            ui.label(
+                                i18n::format(
+                                    "common.stft_history_storage_losses_allocated_mib_peak_mib",
+                                    &[
+                                        (
+                                            "elaxed",
+                                            &(self
+                                                .stft_history
+                                                .metrics
+                                                .storage_dropped
+                                                .load(Ordering::Relaxed))
+                                            .to_string(),
+                                        ),
+                                        (
+                                            "allocated_frame_bytes",
+                                            &format!(
+                                                "{:.1}",
+                                                self.stft_history.allocated_frame_bytes() as f64
+                                                    / 1048576.0
+                                            ),
+                                        ),
+                                        (
+                                            "peak_frame_bytes",
+                                            &format!(
+                                                "{:.1}",
+                                                self.stft_history.peak_frame_bytes() as f64
+                                                    / 1048576.0
+                                            ),
+                                        ),
+                                    ],
+                                )
+                                .as_ref(),
+                            );
+                            let history = self.spectrogram_history.lock().unwrap();
+                            ui.label(
+                                i18n::format(
+                                    "common.spectrogram_rows_mib_cpu_storage",
+                                    &[
+                                        ("len", &(history.len()).to_string()),
+                                        ("spectrogram", &(spectrogram::ROWS).to_string()),
+                                        (
+                                            "storage_bytes",
+                                            &format!(
+                                                "{:.1}",
+                                                history.storage_bytes() as f64 / 1048576.0
+                                            ),
+                                        ),
+                                    ],
+                                )
+                                .as_ref(),
+                            );
+                            ui.label(
+                                i18n::format(
+                                    "common.stft_input_dropped_rows_dropped",
+                                    &[
+                                        (
+                                            "elaxed",
+                                            &(self
+                                                .stft
+                                                .metrics
+                                                .input_dropped
+                                                .load(Ordering::Relaxed))
+                                            .to_string(),
+                                        ),
+                                        (
+                                            "elaxed_2",
+                                            &(self
+                                                .stft
+                                                .metrics
+                                                .result_dropped
+                                                .load(Ordering::Relaxed))
+                                            .to_string(),
+                                        ),
+                                    ],
+                                )
+                                .as_ref(),
+                            );
+                            if let Some(row) = self.last_stft {
+                                ui.label(
+                                    i18n::format(
+                                        "common.stft_ch_n_hop_samples",
+                                        &[
+                                            ("channel", &(row.config.channel + 1).to_string()),
+                                            ("size", &(row.config.size).to_string()),
+                                            ("hop", &(row.config.hop).to_string()),
+                                            ("start", &(row.start).to_string()),
+                                            ("end", &(row.end).to_string()),
+                                        ],
+                                    )
+                                    .as_ref(),
+                                );
+                            }
+                            ui.label(
+                                i18n::format(
+                                    "common.gpu_segments",
+                                    &[(
+                                        "len",
+                                        &(self.segments.len()
+                                            + self.spectrum_segments.len()
+                                            + self.xy_segments.len())
+                                        .to_string(),
+                                    )],
+                                )
+                                .as_ref(),
+                            );
+                            ui.label(
+                                RichText::new(i18n::text(
+                                    "common.timings_are_cpu_work_not_gpu_execution",
+                                ))
                                 .small()
                                 .color(MUTED),
-                        );
-                    });
+                            );
+                        },
+                    );
                 });
             });
         });
@@ -6070,10 +6632,10 @@ fn cursor_name(index: usize) -> &'static str {
 
 fn cursor_placement_label(placed: [bool; 2]) -> &'static str {
     match placed {
-        [false, false] => "Placed: none",
-        [true, false] => "Placed: A",
-        [false, true] => "Placed: B",
-        [true, true] => "Placed: A, B",
+        [false, false] => i18n::text("common.placed_none"),
+        [true, false] => i18n::text("common.placed_a"),
+        [false, true] => i18n::text("common.placed_b"),
+        [true, true] => i18n::text("common.placed_a_b"),
     }
 }
 
@@ -6129,46 +6691,54 @@ fn setting_label(ui: &mut egui::Ui, text: &str) {
 
 fn spectrum_calibration_description(calibration: Option<&Calibration>) -> String {
     match calibration {
-        Some(c) => format!(
-            "Calibration {} · rev {} · y = {} × FS + {} {} · {}",
-            c.id(),
-            c.revision(),
-            c.gain(),
-            c.offset(),
-            c.unit(),
-            c.conditions()
-        ),
-        None => "Uncalibrated · FS".into(),
+        Some(c) => i18n::format(
+            "common.calibration_rev_y_fs",
+            &[
+                ("id", (c.id())),
+                ("revision", &(c.revision()).to_string()),
+                ("gain", &(c.gain()).to_string()),
+                ("offset", &(c.offset()).to_string()),
+                ("unit", (c.unit())),
+                ("conditions", (c.conditions())),
+            ],
+        )
+        .to_string(),
+        None => i18n::text("common.uncalibrated_fs").into(),
     }
 }
 
 fn calibration_description(set: &calibration::Set, channel: ChannelId) -> String {
     match set.get(channel) {
-        Some(c) => format!(
-            "{} · revision {} · y = {:.6e} × FS + {:.6e} {} · {}",
-            c.id(),
-            c.revision(),
-            c.gain(),
-            c.offset(),
-            c.unit(),
-            c.conditions()
-        ),
-        None => "Uncalibrated · FS".into(),
+        Some(c) => i18n::format(
+            "common.revision_y_fs",
+            &[
+                ("id", (c.id())),
+                ("revision", &(c.revision()).to_string()),
+                ("gain", &format!("{:.6e}", c.gain())),
+                ("offset", &format!("{:.6e}", c.offset())),
+                ("unit", (c.unit())),
+                ("conditions", (c.conditions())),
+            ],
+        )
+        .to_string(),
+        None => i18n::text("common.uncalibrated_fs").into(),
     }
 }
 
 fn fft_precision(ui: &mut egui::Ui, id: &str, precision: &mut Precision) {
-    setting_label(ui, "FFT PRECISION");
+    setting_label(ui, i18n::text("common.fft_precision"));
     egui::ComboBox::from_id_salt(id)
         .width(ui.available_width())
-        .selected_text(precision.name())
+        .selected_text(precision.display_name())
         .show_ui(ui, |ui| {
             for mode in [Precision::F64, Precision::F32] {
-                ui.selectable_value(precision, mode, mode.name());
+                ui.selectable_value(precision, mode, mode.display_name());
             }
         })
         .response
-        .on_hover_text("Only this instrument's FFT changes precision. Input history, DC removal and power averaging use 64-bit.");
+        .on_hover_text(i18n::text(
+            "common.only_this_instrument_s_fft_changes_precision_input_history",
+        ));
 }
 
 fn channel_select(ui: &mut egui::Ui, id: &str, selected: &mut ChannelId, channels: u16) {
@@ -6182,7 +6752,11 @@ fn channel_select(ui: &mut egui::Ui, id: &str, selected: &mut ChannelId, channel
         .selected_text(if channel::available(*selected, channels as usize) {
             channel::name(*selected)
         } else {
-            format!("{} · unavailable", channel::name(*selected))
+            i18n::format(
+                "common.unavailable",
+                &[("selected", &(channel::name(*selected)).to_string())],
+            )
+            .to_string()
         })
         .show_ui(ui, |ui| {
             for channel in 0..channels as usize {

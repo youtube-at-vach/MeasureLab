@@ -2,7 +2,9 @@
 use super::*;
 use spectrogram::{ColorRange, FrequencyRange};
 
-pub(super) const GESTURES: &str = "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.";
+pub(super) fn gestures() -> &'static str {
+    i18n::text("spectrogram.gestures")
+}
 
 pub(super) struct PendingClick {
     pub snapshot: Arc<spectrogram::history::Snapshot>,
@@ -176,27 +178,32 @@ impl ScopeApp {
     }
 
     pub(super) fn spectrogram_controls(&mut self, ui: &mut egui::Ui) {
-        egui::CollapsingHeader::new("Display")
+        egui::CollapsingHeader::new(i18n::text("spectrogram.display"))
+            .id_salt("Display")
             .default_open(true)
             .show(ui, |ui| self.spectrogram_display_controls(ui));
-        egui::CollapsingHeader::new("Analysis")
+        egui::CollapsingHeader::new(i18n::text("spectrogram.analysis"))
+            .id_salt("Analysis")
             .default_open(true)
             .show(ui, |ui| self.spectrogram_analysis_controls(ui));
     }
 
     fn spectrogram_display_controls(&mut self, ui: &mut egui::Ui) {
-        setting_label(ui, "COLOR MAP");
+        setting_label(ui, i18n::text("spectrogram.color_map"));
         egui::ComboBox::from_id_salt("spectrogram_color_map")
             .width(ui.available_width())
-            .selected_text(self.spectrogram_color_map.name())
+            .selected_text(self.spectrogram_color_map.display_name())
             .show_ui(ui, |ui| {
                 for map in spectrogram::ColorMap::ALL {
-                    ui.selectable_value(&mut self.spectrogram_color_map, map, map.name());
+                    ui.selectable_value(&mut self.spectrogram_color_map, map, map.display_name());
                 }
             });
-        setting_label(ui, "COLOR RANGE · dBFS");
+        setting_label(ui, i18n::text("spectrogram.color_range_dbfs"));
         if ui
-            .checkbox(&mut self.spectrogram_auto_color, "Auto color range")
+            .checkbox(
+                &mut self.spectrogram_auto_color,
+                i18n::text("spectrogram.auto_color_range"),
+            )
             .changed()
         {
             self.spectrogram_auto_result = ColorRange::default();
@@ -204,11 +211,11 @@ impl ScopeApp {
         let before = (self.spectrogram_floor, self.spectrogram_ceiling);
         let mut changed = false;
         ui.horizontal(|ui| {
-            ui.label("Min");
+            ui.label(i18n::text("spectrogram.min"));
             changed |= ui
                 .add(egui::DragValue::new(&mut self.spectrogram_floor).speed(0.5))
                 .changed();
-            ui.label("Max");
+            ui.label(i18n::text("spectrogram.max"));
             changed |= ui
                 .add(egui::DragValue::new(&mut self.spectrogram_ceiling).speed(0.5))
                 .changed();
@@ -225,13 +232,17 @@ impl ScopeApp {
         if self.spectrogram_color_error {
             ui.colored_label(
                 YELLOW,
-                "Min and Max must be finite, with Min < Max. Previous range retained.",
+                i18n::text("spectrogram.min_and_max_must_be_finite_with_min_max"),
             );
         }
-        setting_label(ui, "FREQUENCY SCALE");
+        setting_label(ui, i18n::text("spectrogram.frequency_scale"));
         ui.horizontal(|ui| {
             if ui
-                .selectable_value(&mut self.spectrogram_scale, FrequencyScale::Log, "Log Hz")
+                .selectable_value(
+                    &mut self.spectrogram_scale,
+                    FrequencyScale::Log,
+                    i18n::text("spectrogram.log_hz"),
+                )
                 .changed()
             {
                 self.reset_spectrogram_frequency();
@@ -240,7 +251,7 @@ impl ScopeApp {
                 .selectable_value(
                     &mut self.spectrogram_scale,
                     FrequencyScale::Linear,
-                    "Linear Hz",
+                    i18n::text("spectrogram.linear_hz"),
                 )
                 .changed()
             {
@@ -249,7 +260,7 @@ impl ScopeApp {
         });
         let axis = self.spectrogram_frequency_range();
         ui.horizontal(|ui| {
-            ui.label("From");
+            ui.label(i18n::text("spectrogram.from"));
             ui.add(
                 egui::DragValue::new(&mut self.spectrogram_min_hz)
                     .range(0.0..=axis.max)
@@ -258,7 +269,7 @@ impl ScopeApp {
         });
         let nyquist = self.spectrogram_sample_rate() as f64 * 0.5;
         ui.horizontal(|ui| {
-            ui.label("To");
+            ui.label(i18n::text("spectrogram.to"));
             ui.add(
                 egui::DragValue::new(&mut self.spectrogram_max_hz)
                     .range(0.0..=nyquist)
@@ -266,11 +277,11 @@ impl ScopeApp {
             );
         });
         ui.label(
-            RichText::new("To = 0 uses Nyquist. Log excludes DC.")
+            RichText::new(i18n::text("spectrogram.to_uses_nyquist_log_excludes_dc"))
                 .small()
                 .color(MUTED),
         );
-        setting_label(ui, "TIME RANGE");
+        setting_label(ui, i18n::text("spectrogram.time_range"));
         egui::ComboBox::from_id_salt("spectrogram_time")
             .width(ui.available_width())
             .selected_text(format!("{} s", self.spectrogram_seconds))
@@ -283,7 +294,7 @@ impl ScopeApp {
                     );
                 }
             });
-        ui.label(RichText::new(GESTURES).small().color(MUTED));
+        ui.label(RichText::new(gestures()).small().color(MUTED));
     }
 
     fn spectrogram_sample_rate(&self) -> u32 {
@@ -672,49 +683,63 @@ impl ScopeApp {
             "spectrogram_precision",
             &mut self.spectrogram_settings.precision,
         );
-        setting_label(ui, "FFT LENGTH");
+        setting_label(ui, i18n::text("spectrogram.fft_length"));
         egui::ComboBox::from_id_salt("stft_size")
             .width(ui.available_width())
-            .selected_text(format!("{} points", self.spectrogram_settings.size))
+            .selected_text(
+                i18n::format(
+                    "spectrogram.points",
+                    &[("size", &(self.spectrogram_settings.size).to_string())],
+                )
+                .as_ref(),
+            )
             .show_ui(ui, |ui| {
                 for size in STFT_SIZES {
                     ui.selectable_value(
                         &mut self.spectrogram_settings.size,
                         size,
-                        format!("{size} points"),
+                        i18n::format("spectrogram.points", &[("size", &(size).to_string())])
+                            .as_ref(),
                     );
                 }
             });
-        setting_label(ui, "FFT OVERLAP");
+        setting_label(ui, i18n::text("spectrogram.fft_overlap"));
         egui::ComboBox::from_id_salt("stft_overlap")
             .width(ui.available_width())
-            .selected_text(self.spectrogram_overlap.name())
+            .selected_text(self.spectrogram_overlap.display_name())
             .show_ui(ui, |ui| {
                 for overlap in stft::Overlap::ALL {
-                    ui.selectable_value(&mut self.spectrogram_overlap, overlap, overlap.name());
+                    ui.selectable_value(
+                        &mut self.spectrogram_overlap,
+                        overlap,
+                        overlap.display_name(),
+                    );
                 }
             });
         ui.label(
-            RichText::new(
-                "Higher overlap produces more FFT windows and uses history capacity sooner.",
-            )
+            RichText::new(i18n::text(
+                "spectrogram.higher_overlap_produces_more_fft_windows_and_uses_history",
+            ))
             .small()
             .color(MUTED),
         );
-        setting_label(ui, "WINDOW");
+        setting_label(ui, i18n::text("spectrogram.window"));
         egui::ComboBox::from_id_salt("stft_window")
             .width(ui.available_width())
-            .selected_text(self.spectrogram_settings.window.name())
+            .selected_text(self.spectrogram_settings.window.display_name())
             .show_ui(ui, |ui| {
                 for window in [Window::Hann, Window::BlackmanHarris, Window::Rectangular] {
                     ui.selectable_value(
                         &mut self.spectrogram_settings.window,
                         window,
-                        window.name(),
+                        window.display_name(),
                     );
                 }
             });
-        ui.checkbox(&mut self.spectrogram_settings.remove_dc, "Remove DC offset");
+        ui.checkbox(
+            &mut self.spectrogram_settings.remove_dc,
+            i18n::text("spectrogram.remove_dc_offset"),
+        );
         if before
             != (
                 self.spectrogram_settings,
@@ -727,9 +752,9 @@ impl ScopeApp {
         }
         if !self.running() {
             ui.label(
-                RichText::new(
-                    "Analysis changes apply when input restarts. The captured image stays held.",
-                )
+                RichText::new(i18n::text(
+                    "spectrogram.analysis_changes_apply_when_input_restarts_the_captured_image",
+                ))
                 .small()
                 .color(MUTED),
             );
@@ -737,17 +762,40 @@ impl ScopeApp {
         let captured = self.spectrogram_history.lock().unwrap().config();
         if let Some(config) = captured {
             ui.label(
-                RichText::new(format!(
-                    "Captured: nominal {} Hz · window {:.3} s · row {:.2} ms · bin {:.3} Hz",
-                    config.sample_rate,
-                    config.size as f64 / config.sample_rate as f64,
-                    config.hop as f64 / config.sample_rate as f64 * 1000.0,
-                    config.sample_rate as f64 / config.size as f64,
-                ))
+                RichText::new(
+                    i18n::format(
+                        "spectrogram.captured_nominal_hz_window_s_row_ms_bin_hz",
+                        &[
+                            ("sample_rate", &(config.sample_rate).to_string()),
+                            (
+                                "sample_rate_2",
+                                &format!("{:.3}", config.size as f64 / config.sample_rate as f64),
+                            ),
+                            (
+                                "sample_rate_3",
+                                &format!(
+                                    "{:.2}",
+                                    config.hop as f64 / config.sample_rate as f64 * 1000.0
+                                ),
+                            ),
+                            (
+                                "size",
+                                &format!("{:.3}", config.sample_rate as f64 / config.size as f64),
+                            ),
+                        ],
+                    )
+                    .as_ref(),
+                )
                 .small()
                 .color(MUTED),
             );
         }
-        ui.label(RichText::new("Per-window bin amplitude · uncalibrated FS. Orange stripes: missing or invalid STFT. Blank: unavailable history.").small().color(MUTED));
+        ui.label(
+            RichText::new(i18n::text(
+                "spectrogram.per_window_bin_amplitude_uncalibrated_fs_orange_stripes_missing",
+            ))
+            .small()
+            .color(MUTED),
+        );
     }
 }

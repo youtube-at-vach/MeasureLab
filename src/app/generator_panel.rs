@@ -114,7 +114,7 @@ impl GeneratorUi {
                 && acknowledged
                 && (self.pending || self.starting || self.error.is_none())
             {
-                self.error = Some(error.to_string());
+                self.error = Some(text::generator_error(error));
                 self.pending = false;
                 self.starting = false;
             }
@@ -167,7 +167,7 @@ impl GeneratorUi {
     pub(super) fn configure(&mut self, settings: generator::Settings) {
         match settings
             .validate(self.rate, self.target.channels())
-            .map_err(|e| e.to_string())
+            .map_err(text::generator_error)
             .and_then(|()| self.worker.configure(settings))
         {
             Ok(id) => {
@@ -199,7 +199,7 @@ impl GeneratorUi {
         match self
             .settings
             .validate(self.rate, self.target.channels())
-            .map_err(|e| e.to_string())
+            .map_err(text::generator_error)
             .and_then(|()| self.worker.start(self.settings))
         {
             Ok(id) => {
@@ -218,17 +218,17 @@ impl GeneratorUi {
     }
     pub(super) fn label(&self) -> &'static str {
         if self.stopping {
-            return "STOPPING";
+            return i18n::text("generator.stopping");
         }
         if self.starting {
-            return "STARTING · pending";
+            return i18n::text("generator.starting_pending");
         }
         match self.status.state {
-            generator::State::Stopped => "STOPPED",
-            generator::State::Starting => "STARTING",
-            generator::State::Running => "RUNNING",
-            generator::State::Stopping => "STOPPING",
-            generator::State::Error(_) => "ERROR",
+            generator::State::Stopped => i18n::text("generator.stopped"),
+            generator::State::Starting => i18n::text("generator.starting"),
+            generator::State::Running => i18n::text("generator.running"),
+            generator::State::Stopping => i18n::text("generator.stopping"),
+            generator::State::Error(_) => i18n::text("generator.error"),
         }
     }
     pub(super) fn step_label(&self) -> String {
@@ -245,20 +245,25 @@ impl GeneratorUi {
     }
     fn application_label(&self) -> &'static str {
         if self.pending || self.starting {
-            "PENDING"
+            i18n::text("generator.pending")
         } else if matches!(self.status.state, generator::State::Error(_)) {
-            "ERROR"
+            i18n::text("generator.error")
         } else if self.status.transitioning() {
-            "TRANSITION"
+            i18n::text("generator.transition")
         } else {
-            "APPLIED"
+            i18n::text("generator.applied")
         }
     }
     fn application_color(&self) -> Color32 {
-        match self.application_label() {
-            "ERROR" => TRIGGER,
-            "PENDING" | "TRANSITION" => YELLOW,
-            _ => MUTED,
+        if matches!(self.status.state, generator::State::Error(_))
+            && !self.pending
+            && !self.starting
+        {
+            TRIGGER
+        } else if self.pending || self.starting || self.status.transitioning() {
+            YELLOW
+        } else {
+            MUTED
         }
     }
     pub fn restore(&mut self, saved: output::Saved) -> Result<(), String> {
@@ -916,8 +921,13 @@ impl ScopeApp {
     pub(super) fn generator_transport(&mut self, ui: &mut egui::Ui, compact: bool) {
         let g = &mut self.generator;
         if ui
-            .add_enabled(!g.stopped(), egui::Button::new("Stop output"))
-            .on_hover_text("Stop Generator output independently of input and analysis")
+            .add_enabled(
+                !g.stopped(),
+                egui::Button::new(i18n::text("generator.stop_output_2")),
+            )
+            .on_hover_text(i18n::text(
+                "generator.stop_generator_output_independently_of_input_and_analysis",
+            ))
             .clicked()
         {
             g.stop();
@@ -925,26 +935,35 @@ impl ScopeApp {
         ui.label(
             RichText::new(format!(
                 "{} · {}",
-                if compact { "OUT" } else { "OUTPUT" },
+                if compact {
+                    i18n::text("generator.out_3")
+                } else {
+                    i18n::text("generator.output")
+                },
                 g.label()
             ))
             .small()
             .monospace()
             .color(g.state_color()),
         )
-        .on_hover_text(format!(
-            "{} · {} Hz · {}ch. Input Stop holds the measurement; output continues.",
-            g.target.label(),
-            g.rate,
-            g.target.channels()
-        ));
+        .on_hover_text(
+            i18n::format(
+                "generator.hz_ch_input_stop_holds_the_measurement_output_continues",
+                &[
+                    ("label", (text::output_target(&g.target))),
+                    ("rate", &(g.rate).to_string()),
+                    ("channels", &(g.target.channels()).to_string()),
+                ],
+            )
+            .as_ref(),
+        );
     }
 
     pub(super) fn generator_controls(&mut self, ui: &mut egui::Ui) {
         let restoring =
             self.workspace_restoring || self.settings_task == Some(SettingsTask::Restore);
         let g = &mut self.generator;
-        setting_label(ui, "EDIT STEP");
+        setting_label(ui, i18n::text("generator.edit_step"));
         egui::ComboBox::from_id_salt("generator_step")
             .width(ui.available_width())
             .selected_text(g.step_label())
@@ -954,9 +973,9 @@ impl ScopeApp {
                 }
             });
         ui.label(
-            RichText::new(
-                "± buttons / Up / Down use this step in Hz, dBFS or degrees. Enter / focus applies; Esc cancels.",
-            )
+            RichText::new(i18n::text(
+                "generator.buttons_up_down_use_this_step_in_hz_dbfs",
+            ))
             .small()
             .color(MUTED),
         );
@@ -964,38 +983,55 @@ impl ScopeApp {
         if let Some(signal) = settings.signals.get_mut(g.selected) {
             setting_label(
                 ui,
-                &format!("GEN {} · {}", signal.id, signal.waveform.label()),
+                i18n::format(
+                    "generator.gen_4",
+                    &[
+                        ("id", &(signal.id).to_string()),
+                        ("label", (signal.waveform.display_name())),
+                    ],
+                )
+                .as_ref(),
             );
-            ui.add_enabled_ui(g.stopped() && !restoring, |ui| {
-                match signal.waveform {
-                    generator::Waveform::Noise => {
-                        ui.label("White noise · uniform · peak bounded");
-                        ui.horizontal(|ui| {
-                            ui.label("Seed");
-                            ui.add(egui::DragValue::new(&mut signal.noise_seed).range(1..=u64::MAX));
-                        });
-                        ui.label("Start replays the seed. Frequency and phase do not affect noise.");
-                    }
-                    generator::Waveform::Square | generator::Waveform::Triangle => {
-                        ui.label("Up to 16 odd harmonics below 0.45 Fs. Peak level is the full-scale ceiling; RMS depends on frequency.");
-                    }
-                    generator::Waveform::Sine => {}
+            ui.add_enabled_ui(g.stopped() && !restoring, |ui| match signal.waveform {
+                generator::Waveform::Noise => {
+                    ui.label(i18n::text("generator.white_noise_uniform_peak_bounded"));
+                    ui.horizontal(|ui| {
+                        ui.label(i18n::text("generator.seed"));
+                        ui.add(egui::DragValue::new(&mut signal.noise_seed).range(1..=u64::MAX));
+                    });
+                    ui.label(i18n::text(
+                        "generator.start_replays_the_seed_frequency_and_phase_do_not",
+                    ));
                 }
+                generator::Waveform::Square | generator::Waveform::Triangle => {
+                    ui.label(i18n::text(
+                        "generator.up_to_odd_harmonics_below_fs_peak_level_is",
+                    ));
+                }
+                generator::Waveform::Sine => {}
             });
         } else {
-            ui.label("Add a signal in the Generator panel.");
+            ui.label(i18n::text("generator.add_a_signal_in_the_generator_panel"));
         }
         if settings != g.settings {
             g.configure(settings);
         }
-        setting_label(ui, "APPLIED OUTPUT");
+        setting_label(ui, i18n::text("generator.applied_output"));
         ui.label(RichText::new(g.label()).monospace().color(g.state_color()));
-        ui.label(format!(
-            "{} Hz · {}ch · {} · nominal Fs",
-            g.status.nominal_sample_rate,
-            g.target.channels(),
-            g.target.pcm_label()
-        ));
+        ui.label(
+            i18n::format(
+                "generator.hz_ch_nominal_fs",
+                &[
+                    (
+                        "nominal_sample_rate",
+                        &(g.status.nominal_sample_rate).to_string(),
+                    ),
+                    ("channels", &(g.target.channels()).to_string()),
+                    ("pcm_label", (g.target.pcm_label())),
+                ],
+            )
+            .as_ref(),
+        );
         ui.label(
             RichText::new(g.application_label())
                 .monospace()
@@ -1015,50 +1051,107 @@ impl ScopeApp {
             })
         {
             ui.label(
-                RichText::new(format!(
-                    "GEN {} · {} · {} · {}",
-                    s.id,
-                    s.waveform.label(),
-                    output_channel_label(*s),
-                    if s.enabled { "ON" } else { "OFF" }
-                ))
+                RichText::new(
+                    i18n::format(
+                        "generator.gen_3",
+                        &[
+                            ("id", &(s.id).to_string()),
+                            ("label", (s.waveform.display_name())),
+                            ("s", &(output_channel_label(*s)).to_string()),
+                            (
+                                "off",
+                                (if s.enabled {
+                                    i18n::text("generator.on")
+                                } else {
+                                    i18n::text("generator.off")
+                                }),
+                            ),
+                        ],
+                    )
+                    .as_ref(),
+                )
                 .color(if i == 0 { GREEN } else { BLUE }),
             );
             ui.label(
-                RichText::new(format!(
-                    "{:.3} Hz · {:.3} dBFS peak · {:.3}° lead",
-                    s.frequency_hz, s.amplitude_dbfs, s.phase_degrees
-                ))
+                RichText::new(
+                    i18n::format(
+                        "generator.hz_dbfs_peak_lead",
+                        &[
+                            ("frequency_hz", &format!("{:.3}", s.frequency_hz)),
+                            ("amplitude_dbfs", &format!("{:.3}", s.amplitude_dbfs)),
+                            ("phase_degrees", &format!("{:.3}", s.phase_degrees)),
+                        ],
+                    )
+                    .as_ref(),
+                )
                 .small(),
             )
-            .on_hover_text(format!(
-                "Applied: {} Hz · {} dBFS peak · {}° lead",
-                s.frequency_hz, s.amplitude_dbfs, s.phase_degrees
-            ));
+            .on_hover_text(
+                i18n::format(
+                    "generator.applied_hz_dbfs_peak_lead",
+                    &[
+                        ("frequency_hz", &(s.frequency_hz).to_string()),
+                        ("amplitude_dbfs", &(s.amplitude_dbfs).to_string()),
+                        ("phase_degrees", &(s.phase_degrees).to_string()),
+                    ],
+                )
+                .as_ref(),
+            );
             if s.waveform == generator::Waveform::Noise {
-                ui.label(format!("Applied seed {}", s.noise_seed));
+                ui.label(
+                    i18n::format(
+                        "generator.applied_seed",
+                        &[("noise_seed", &(s.noise_seed).to_string())],
+                    )
+                    .as_ref(),
+                );
             }
         }
-        ui.collapsing("Output details", |ui| {
-            ui.label(format!(
-                "Generation {} · revision {}",
-                g.status.output_generation, g.status.revision
-            ));
-            ui.label(format!("Applied sample {}", g.status.applied_sample));
-            ui.label(format!(
-                "Selected transition ends {}",
-                g.settings
-                    .signals
-                    .get(g.selected)
-                    .and_then(|selected| g
-                        .status
-                        .settings
-                        .signals
-                        .iter()
-                        .position(|s| s.id == selected.id))
-                    .map_or(0, |i| g.status.transition_end[i])
-            ));
-        });
+        egui::CollapsingHeader::new(i18n::text("generator.output_details"))
+            .id_salt("Output details")
+            .show(ui, |ui| {
+                ui.label(
+                    i18n::format(
+                        "generator.generation_revision",
+                        &[
+                            (
+                                "output_generation",
+                                &(g.status.output_generation).to_string(),
+                            ),
+                            ("revision", &(g.status.revision).to_string()),
+                        ],
+                    )
+                    .as_ref(),
+                );
+                ui.label(
+                    i18n::format(
+                        "generator.applied_sample",
+                        &[("applied_sample", &(g.status.applied_sample).to_string())],
+                    )
+                    .as_ref(),
+                );
+                ui.label(
+                    i18n::format(
+                        "generator.selected_transition_ends",
+                        &[(
+                            "i",
+                            &(g.settings
+                                .signals
+                                .get(g.selected)
+                                .and_then(|selected| {
+                                    g.status
+                                        .settings
+                                        .signals
+                                        .iter()
+                                        .position(|s| s.id == selected.id)
+                                })
+                                .map_or(0, |i| g.status.transition_end[i]))
+                            .to_string(),
+                        )],
+                    )
+                    .as_ref(),
+                );
+            });
         self.generator_reset(ui);
     }
 
@@ -1073,7 +1166,10 @@ impl ScopeApp {
         }
         if matches!(g.status.state, generator::State::Error(_))
             && ui
-                .add_enabled(enabled, egui::Button::new("Reset output (stays OFF)"))
+                .add_enabled(
+                    enabled,
+                    egui::Button::new(i18n::text("generator.reset_output_stays_off")),
+                )
                 .clicked()
         {
             match g.worker.select(g.target.clone(), g.rate, g.settings) {
@@ -1089,42 +1185,97 @@ impl ScopeApp {
     pub(super) fn generator_panel(&mut self, ui: &mut egui::Ui) {
         let restoring =
             self.workspace_restoring || self.settings_task == Some(SettingsTask::Restore);
-        egui::Frame::new().fill(Color32::from_rgb(15, 22, 29))
-            .stroke(Stroke::new(1.0, BORDER)).corner_radius(5.0).inner_margin(8.0)
+        egui::Frame::new()
+            .fill(Color32::from_rgb(15, 22, 29))
+            .stroke(Stroke::new(1.0, BORDER))
+            .corner_radius(5.0)
+            .inner_margin(8.0)
             .show(ui, |ui| {
                 ui.spacing_mut().item_spacing = vec2(6.0, 4.0);
                 ui.horizontal_wrapped(|ui| {
-                    ui.label(RichText::new("Generator").strong().color(GREEN));
+                    ui.label(
+                        RichText::new(i18n::text("shell.instrument_names.generator"))
+                            .strong()
+                            .color(GREEN),
+                    );
                     let g = &mut self.generator;
-                    ui.label(RichText::new(g.application_label()).small().monospace().color(g.application_color()))
-                        .on_hover_text(format!("Applied Fs: {} Hz (nominal). Settings preview uses FS peak; measured samples are shown in Scope.", g.status.nominal_sample_rate));
+                    ui.label(
+                        RichText::new(g.application_label())
+                            .small()
+                            .monospace()
+                            .color(g.application_color()),
+                    )
+                    .on_hover_text(
+                        i18n::format(
+                            "generator.applied_fs_hz_nominal_settings_preview_uses_fs_peak",
+                            &[(
+                                "nominal_sample_rate",
+                                &(g.status.nominal_sample_rate).to_string(),
+                            )],
+                        )
+                        .as_ref(),
+                    );
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui.add_enabled(!g.stopped() || !restoring, egui::Button::new(
-                            RichText::new(if g.stopped() { "▶ Start output" } else { "■ Stop output" })
-                                .color(if g.stopped() { GREEN } else { TRIGGER }))).clicked() {
-                            if g.stopped() { g.start(); } else { g.stop(); }
+                        if ui
+                            .add_enabled(
+                                !g.stopped() || !restoring,
+                                egui::Button::new(
+                                    RichText::new(if g.stopped() {
+                                        i18n::text("generator.start_output")
+                                    } else {
+                                        i18n::text("generator.stop_output")
+                                    })
+                                    .color(if g.stopped() {
+                                        GREEN
+                                    } else {
+                                        TRIGGER
+                                    }),
+                                ),
+                            )
+                            .clicked()
+                        {
+                            if g.stopped() {
+                                g.start();
+                            } else {
+                                g.stop();
+                            }
                         }
                     });
                 });
-                if ui.small_button(if self.generator.controls_expanded { "Hide signal controls" } else { "Show signal controls" }).clicked() {
+                if ui
+                    .small_button(if self.generator.controls_expanded {
+                        i18n::text("generator.hide_signal_controls")
+                    } else {
+                        i18n::text("generator.show_signal_controls")
+                    })
+                    .clicked()
+                {
                     self.generator.controls_expanded = !self.generator.controls_expanded;
                 }
                 self.generator_reset(ui);
                 let g = &mut self.generator;
                 let mut settings = g.settings;
-                let editable = !g.stopping && !restoring
-                    && !matches!(g.status.state, generator::State::Stopping | generator::State::Error(_));
+                let editable = !g.stopping
+                    && !restoring
+                    && !matches!(
+                        g.status.state,
+                        generator::State::Stopping | generator::State::Error(_)
+                    );
                 ui.add_enabled_ui(editable, |ui| {
                     generator_cards(ui, g, &mut settings);
                 });
-                if settings != g.settings { g.configure(settings); }
+                if settings != g.settings {
+                    g.configure(settings);
+                }
             });
     }
 }
 
 pub(super) fn output_channel_label(s: generator::Signal) -> String {
     s.output_channel
-        .map_or("Unassigned".into(), |c| format!("OUT {}", c + 1))
+        .map_or(i18n::text("generator.unassigned").into(), |c| {
+            i18n::format("generator.out_2", &[("c", &(c + 1).to_string())]).to_string()
+        })
 }
 
 #[derive(Clone, Copy)]
@@ -1169,7 +1320,7 @@ fn generator_cards(ui: &mut egui::Ui, g: &mut GeneratorUi, settings: &mut genera
     if ui
         .add_enabled(
             g.stopped() && settings.signals.len() < generator::SIGNALS,
-            egui::Button::new("+ Add signal"),
+            egui::Button::new(i18n::text("generator.add_signal")),
         )
         .clicked()
     {
@@ -1177,9 +1328,9 @@ fn generator_cards(ui: &mut egui::Ui, g: &mut GeneratorUi, settings: &mut genera
     }
     if !g.stopped() {
         ui.label(
-            RichText::new(
-                "Stop output to add, remove, duplicate, reorder or change waveform / routing.",
-            )
+            RichText::new(i18n::text(
+                "generator.stop_output_to_add_remove_duplicate_reorder_or_change",
+            ))
             .small()
             .color(MUTED),
         );
@@ -1192,16 +1343,35 @@ fn generator_cards(ui: &mut egui::Ui, g: &mut GeneratorUi, settings: &mut genera
                     if ui
                         .selectable_label(
                             g.selected == index,
-                            format!(
-                                "GEN {} · {} · {} · {} · {} Hz · {} dBFS peak · {}°",
-                                signal.id,
-                                signal.waveform.label(),
-                                output_channel_label(*signal),
-                                if signal.enabled { "ON" } else { "OFF" },
-                                display::number(Some(signal.frequency_hz)),
-                                display::number(Some(signal.amplitude_dbfs)),
-                                display::number(Some(signal.phase_degrees))
-                            ),
+                            i18n::format(
+                                "generator.gen_hz_dbfs_peak",
+                                &[
+                                    ("id", &(signal.id).to_string()),
+                                    ("label", (signal.waveform.display_name())),
+                                    ("signal", &(output_channel_label(*signal)).to_string()),
+                                    (
+                                        "off",
+                                        (if signal.enabled {
+                                            i18n::text("generator.on")
+                                        } else {
+                                            i18n::text("generator.off")
+                                        }),
+                                    ),
+                                    (
+                                        "frequency_hz",
+                                        &(display::number(Some(signal.frequency_hz))).to_string(),
+                                    ),
+                                    (
+                                        "amplitude_dbfs",
+                                        &(display::number(Some(signal.amplitude_dbfs))).to_string(),
+                                    ),
+                                    (
+                                        "phase_degrees",
+                                        &(display::number(Some(signal.phase_degrees))).to_string(),
+                                    ),
+                                ],
+                            )
+                            .as_ref(),
                         )
                         .clicked()
                     {
@@ -1226,12 +1396,22 @@ fn generator_cards(ui: &mut egui::Ui, g: &mut GeneratorUi, settings: &mut genera
                         ui.selectable_value(
                             &mut g.selected,
                             i,
-                            format!(
-                                "GEN {} · {} · {}",
-                                s.id,
-                                output_channel_label(*s),
-                                if s.enabled { "ON" } else { "OFF" }
-                            ),
+                            i18n::format(
+                                "generator.gen_2",
+                                &[
+                                    ("id", &(s.id).to_string()),
+                                    ("s", &(output_channel_label(*s)).to_string()),
+                                    (
+                                        "off",
+                                        (if s.enabled {
+                                            i18n::text("generator.on")
+                                        } else {
+                                            i18n::text("generator.off")
+                                        }),
+                                    ),
+                                ],
+                            )
+                            .as_ref(),
                         );
                     }
                 });
@@ -1240,7 +1420,9 @@ fn generator_cards(ui: &mut egui::Ui, g: &mut GeneratorUi, settings: &mut genera
                 }
             }
             if settings.signals.is_empty() {
-                ui.label("No signals. Add a signal to choose its waveform and output.");
+                ui.label(i18n::text(
+                    "generator.no_signals_add_a_signal_to_choose_its_waveform",
+                ));
             }
         });
     if let Some(action) = action {
@@ -1267,7 +1449,11 @@ pub(super) fn routing_selector(
         .selected_text(output_channel_label(*signal))
         .show_ui(ui, |ui| {
             if ui
-                .selectable_value(&mut signal.output_channel, None, "Unassigned")
+                .selectable_value(
+                    &mut signal.output_channel,
+                    None,
+                    i18n::text("generator.unassigned"),
+                )
                 .changed()
             {
                 signal.enabled = false;
@@ -1277,7 +1463,21 @@ pub(super) fn routing_selector(
                     ui.selectable_value(
                         &mut signal.output_channel,
                         Some(ch),
-                        format!("OUT {}{}", ch + 1, if used { " · in use" } else { "" }),
+                        i18n::format(
+                            "generator.out",
+                            &[
+                                ("ch", &(ch + 1).to_string()),
+                                (
+                                    "else",
+                                    (if used {
+                                        i18n::text("generator.in_use")
+                                    } else {
+                                        ""
+                                    }),
+                                ),
+                            ],
+                        )
+                        .as_ref(),
                     );
                 });
             }
@@ -1305,9 +1505,15 @@ fn generator_card(
                 if ui
                     .selectable_label(
                         g.selected == index,
-                        RichText::new(format!("GEN {}", settings.signals[index].id))
-                            .strong()
-                            .color(color),
+                        RichText::new(
+                            i18n::format(
+                                "generator.gen",
+                                &[("id", &(settings.signals[index].id).to_string())],
+                            )
+                            .as_ref(),
+                        )
+                        .strong()
+                        .color(color),
                     )
                     .clicked()
                 {
@@ -1317,7 +1523,7 @@ fn generator_card(
                     ui.spacing_mut().item_spacing.x = 8.0;
                     let s = &mut settings.signals[index];
                     ui.add_enabled_ui(s.output_channel.is_some(), |ui| {
-                        ui.checkbox(&mut s.enabled, "ON");
+                        ui.checkbox(&mut s.enabled, i18n::text("generator.on"));
                     });
                     ui.add_enabled_ui(g.stopped(), |ui| {
                         routing_selector(ui, settings, index, g.target.channels());
@@ -1327,17 +1533,25 @@ fn generator_card(
             ui.horizontal(|ui| {
                 ui.add_sized(
                     vec2(72.0, 26.0),
-                    egui::Label::new(RichText::new("Waveform").small().color(MUTED))
-                        .halign(egui::Align::Min),
+                    egui::Label::new(
+                        RichText::new(i18n::text("generator.waveform"))
+                            .small()
+                            .color(MUTED),
+                    )
+                    .halign(egui::Align::Min),
                 );
                 let s = &mut settings.signals[index];
                 ui.add_enabled_ui(g.stopped(), |ui| {
                     egui::ComboBox::from_id_salt(("generator_waveform", s.id))
                         .width(130.0)
-                        .selected_text(s.waveform.label())
+                        .selected_text(s.waveform.display_name())
                         .show_ui(ui, |ui| {
                             for waveform in generator::Waveform::ALL {
-                                ui.selectable_value(&mut s.waveform, waveform, waveform.label());
+                                ui.selectable_value(
+                                    &mut s.waveform,
+                                    waveform,
+                                    waveform.display_name(),
+                                );
                             }
                         });
                 });
@@ -1345,9 +1559,17 @@ fn generator_card(
             let s = &mut settings.signals[index];
             ui.separator();
             for (field, (title, unit, value)) in [
-                ("Frequency", "Hz", &mut s.frequency_hz),
-                ("Peak level", "dBFS", &mut s.amplitude_dbfs),
-                ("Phase lead", "°", &mut s.phase_degrees),
+                (i18n::text("generator.frequency"), "Hz", &mut s.frequency_hz),
+                (
+                    i18n::text("generator.peak_level"),
+                    "dBFS",
+                    &mut s.amplitude_dbfs,
+                ),
+                (
+                    i18n::text("generator.phase_lead"),
+                    "°",
+                    &mut s.phase_degrees,
+                ),
             ]
             .into_iter()
             .enumerate()
@@ -1382,23 +1604,29 @@ fn generator_card(
                     if ui
                         .add_enabled(
                             len < generator::SIGNALS,
-                            egui::Button::new("Duplicate").small(),
+                            egui::Button::new(i18n::text("generator.duplicate")).small(),
                         )
                         .clicked()
                     {
                         *action = Some(CardAction::Duplicate(index));
                     }
-                    if ui.small_button("Remove").clicked() {
+                    if ui.small_button(i18n::text("generator.remove")).clicked() {
                         *action = Some(CardAction::Remove(index));
                     }
                     if ui
-                        .add_enabled(index > 0, egui::Button::new("Up").small())
+                        .add_enabled(
+                            index > 0,
+                            egui::Button::new(i18n::text("generator.up")).small(),
+                        )
                         .clicked()
                     {
                         *action = Some(CardAction::Move(index, index - 1));
                     }
                     if ui
-                        .add_enabled(index + 1 < len, egui::Button::new("Down").small())
+                        .add_enabled(
+                            index + 1 < len,
+                            egui::Button::new(i18n::text("generator.down")).small(),
+                        )
                         .clicked()
                     {
                         *action = Some(CardAction::Move(index, index + 1));
@@ -1453,9 +1681,9 @@ fn numeric_field(
             }
             *edited = false;
         }
-        response
-            .clone()
-            .on_hover_text("Enter / focus to apply · Esc to cancel · Up / Down to step");
+        response.clone().on_hover_text(i18n::text(
+            "generator.enter_focus_to_apply_esc_to_cancel_up_down",
+        ));
         ui.add_sized(
             vec2(34.0, 24.0),
             egui::Label::new(RichText::new(unit).small().color(MUTED)),
@@ -1493,7 +1721,7 @@ fn numeric_field(
         }
     });
     if invalid {
-        Err("Enter a finite number; settings were not applied".into())
+        Err(i18n::text("generator.enter_a_finite_number_settings_were_not_applied").into())
     } else {
         Ok(next)
     }
@@ -1501,14 +1729,29 @@ fn numeric_field(
 
 fn preview(ui: &mut egui::Ui, s: generator::Signal, rate: u32, color: Color32) {
     ui.label(
-        RichText::new(format!(
-            "Settings preview · ±{:.6} FS ceiling · {}",
-            s.amplitude_peak(),
-            match s.waveform {
-                generator::Waveform::Noise => "white noise".into(),
-                _ => format!("{:.3} ms / 2 cycles", 2000.0 / s.frequency_hz),
-            }
-        ))
+        RichText::new(
+            i18n::format(
+                "generator.settings_preview_fs_ceiling",
+                &[
+                    ("amplitude_peak", &format!("{:.6}", s.amplitude_peak())),
+                    (
+                        "frequency_hz",
+                        &(match s.waveform {
+                            generator::Waveform::Noise => {
+                                i18n::text("generator.white_noise").into()
+                            }
+                            _ => i18n::format(
+                                "generator.ms_cycles",
+                                &[("frequency_hz", &format!("{:.3}", 2000.0 / s.frequency_hz))],
+                            )
+                            .to_string(),
+                        })
+                        .to_string(),
+                    ),
+                ],
+            )
+            .as_ref(),
+        )
         .small()
         .color(MUTED),
     );
@@ -1620,8 +1863,8 @@ mod tests {
         for _ in 0..2 {
             cards_frame(&ctx, &mut g, vec![]).drop_without_applying_deltas();
         }
-        cards_click(&ctx, &mut g, "Sine");
-        cards_click(&ctx, &mut g, "Square");
+        cards_click(&ctx, &mut g, i18n::text("generator.waveform_names.sine"));
+        cards_click(&ctx, &mut g, i18n::text("generator.waveform_names.square"));
         assert_eq!(g.settings.signals[0].waveform, generator::Waveform::Square);
         cards_click(&ctx, &mut g, "OUT 1");
         cards_click(&ctx, &mut g, "OUT 2 · in use");
@@ -1632,7 +1875,7 @@ mod tests {
             vec![key(egui::Key::Escape, egui::Modifiers::NONE)],
         )
         .drop_without_applying_deltas();
-        cards_click(&ctx, &mut g, "Duplicate");
+        cards_click(&ctx, &mut g, i18n::text("generator.duplicate"));
         assert_eq!(g.settings.signals.len(), 3);
         assert_eq!(
             (
@@ -1643,9 +1886,9 @@ mod tests {
         );
         assert_eq!(g.settings.signals[2].waveform, generator::Waveform::Square);
         assert_eq!(g.selected, 2);
-        cards_click(&ctx, &mut g, "Up");
+        cards_click(&ctx, &mut g, i18n::text("generator.up"));
         assert_eq!((g.selected, g.settings.signals[1].id), (1, 3));
-        cards_click(&ctx, &mut g, "Remove");
+        cards_click(&ctx, &mut g, i18n::text("generator.remove"));
         assert_eq!(
             g.settings
                 .signals
@@ -1654,13 +1897,13 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![(1, Some(0)), (2, Some(1))]
         );
-        cards_click(&ctx, &mut g, "+ Add signal");
+        cards_click(&ctx, &mut g, i18n::text("generator.add_signal"));
         assert_eq!(g.settings.signals[2].id, 4);
         for _ in 0..3 {
-            cards_click(&ctx, &mut g, "Remove");
+            cards_click(&ctx, &mut g, i18n::text("generator.remove"));
         }
         assert!(g.settings.signals.is_empty());
-        cards_click(&ctx, &mut g, "+ Add signal");
+        cards_click(&ctx, &mut g, i18n::text("generator.add_signal"));
         assert_eq!(
             (
                 g.settings.signals[0].id,
@@ -1668,8 +1911,8 @@ mod tests {
             ),
             (5, Some(0))
         );
-        cards_click(&ctx, &mut g, "Sine");
-        cards_click(&ctx, &mut g, "Noise");
+        cards_click(&ctx, &mut g, i18n::text("generator.waveform_names.sine"));
+        cards_click(&ctx, &mut g, i18n::text("io.noise"));
         assert_eq!(g.settings.signals[0].waveform, generator::Waveform::Noise);
         g.settings.validate(48000, 2).unwrap();
         assert_eq!((g.requested_id, g.stop_epoch), (0, 0));
@@ -1755,13 +1998,13 @@ mod tests {
                             .1
                     };
                     let title = rect(&format!("GEN {}", settings.signals[index].id));
-                    let on = rect("ON");
+                    let on = rect(i18n::text("generator.on"));
                     assert!(
                         (card.right() - 8.0 - on.right()).abs() <= 2.0,
                         "ON must stay at the card's right edge: {on:?}, {card:?}"
                     );
                     assert!((title.center().y - on.center().y).abs() <= 2.0);
-                    let waveform = rect("Waveform");
+                    let waveform = rect(i18n::text("generator.waveform"));
                     for label in ["Frequency", "Peak level", "Phase lead"] {
                         assert!((rect(label).left() - waveform.left()).abs() <= 1.0);
                     }
@@ -1781,16 +2024,16 @@ mod tests {
         for _ in 0..2 {
             cards_frame(&ctx, &mut g, vec![]).drop_without_applying_deltas();
         }
-        cards_click(&ctx, &mut g, "ON");
+        cards_click(&ctx, &mut g, i18n::text("generator.on"));
         assert!(g.settings.signals[0].enabled);
         assert!(!g.settings.signals[1].enabled);
         cards_click(&ctx, &mut g, "GEN 2 · OUT 2 · OFF");
-        cards_click(&ctx, &mut g, "ON");
+        cards_click(&ctx, &mut g, i18n::text("generator.on"));
         assert!(g.settings.signals.iter().all(|s| s.enabled));
         assert_eq!(g.selected, 1);
         cards_click(&ctx, &mut g, "OUT 2");
-        cards_click(&ctx, &mut g, "Unassigned");
-        cards_click(&ctx, &mut g, "ON");
+        cards_click(&ctx, &mut g, i18n::text("generator.unassigned"));
+        cards_click(&ctx, &mut g, i18n::text("generator.on"));
         assert_eq!(g.settings.signals[1].output_channel, None);
         assert!(!g.settings.signals[1].enabled);
         assert!(g.settings.signals[0].enabled);

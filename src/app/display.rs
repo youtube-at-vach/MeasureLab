@@ -1,10 +1,18 @@
 //! Display-only formatting and acquisition state; never modifies captured values.
 use super::*;
 
-pub(super) const AMPLITUDE_HELP: &str = "FS = digital full scale. Waveform and trigger levels use raw FS. RMS / P-P readouts use the captured channel calibration and show their own units.";
-pub(super) const SAMPLE_RATE_HELP: &str = "Fs = nominal sample rate in samples/s (Sa/s). Captured time and frequency use this rate; the physical sample clock is not calibrated.";
-pub(super) const DIV_HELP: &str = "div = one grid division. ms/div sets time per horizontal division; FS/div sets raw amplitude per vertical division for each Scope channel.";
-pub(super) const TRIGGER_HELP: &str = "T at the top marks the time reference (0 ms); T on the right marks the trigger level in raw FS for its source channel. Without a confirmed trigger, both are settings only.";
+pub(super) fn amplitude_help() -> &'static str {
+    i18n::text("common.amplitude_help")
+}
+pub(super) fn sample_rate_help() -> &'static str {
+    i18n::text("common.sample_rate_help")
+}
+pub(super) fn div_help() -> &'static str {
+    i18n::text("common.div_help")
+}
+pub(super) fn trigger_help() -> &'static str {
+    i18n::text("common.trigger_help")
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum ScopeNotice {
@@ -25,50 +33,56 @@ pub(super) enum ScopeNotice {
 impl ScopeNotice {
     pub(super) fn title(self) -> &'static str {
         match self {
-            Self::Stopped => "Input stopped",
-            Self::NoDevice => "Select an input source",
-            Self::Opening => "Preparing input…",
-            Self::Finishing => "Finishing acquisition…",
-            Self::WaitingForSamples => "No samples acquired yet",
-            Self::WaitingForTrigger => "Waiting for trigger",
-            Self::PostTrigger => "Acquiring post-trigger samples…",
-            Self::Incomplete => "No complete sweep captured",
-            Self::ChannelRange => "Channels outside the input range",
-            Self::TriggerRange => "Trigger source outside the input range",
-            Self::ChannelsOff => "All Scope channels OFF",
-            Self::Failed => "Input acquisition failed",
+            Self::Stopped => i18n::text("common.input_stopped"),
+            Self::NoDevice => i18n::text("common.select_an_input_source"),
+            Self::Opening => i18n::text("common.preparing_input"),
+            Self::Finishing => i18n::text("common.finishing_acquisition"),
+            Self::WaitingForSamples => i18n::text("common.no_samples_acquired_yet"),
+            Self::WaitingForTrigger => i18n::text("common.waiting_for_trigger"),
+            Self::PostTrigger => i18n::text("common.acquiring_post_trigger_samples"),
+            Self::Incomplete => i18n::text("common.no_complete_sweep_captured"),
+            Self::ChannelRange => i18n::text("common.channels_outside_the_input_range"),
+            Self::TriggerRange => i18n::text("common.trigger_source_outside_the_input_range"),
+            Self::ChannelsOff => i18n::text("common.all_scope_channels_off"),
+            Self::Failed => i18n::text("common.input_acquisition_failed"),
         }
     }
 
     fn instruction(self) -> &'static str {
         match self {
             Self::Stopped => {
-                "Open input settings to choose the source, then press Start input in the top bar."
+                i18n::text("common.open_input_settings_to_choose_the_source_then_press")
             }
             Self::NoDevice => {
-                "Open input settings to select or refresh an audio device, or choose Software Loopback. Then press Start input."
+                i18n::text("common.open_input_settings_to_select_or_refresh_an_audio")
             }
-            Self::Opening => "Waiting for the input source and its channel count to be ready.",
-            Self::Finishing => "Waiting for the final measurement. Acquired data will be retained.",
+            Self::Opening => {
+                i18n::text("common.waiting_for_the_input_source_and_its_channel_count")
+            }
+            Self::Finishing => {
+                i18n::text("common.waiting_for_the_final_measurement_acquired_data_will_be")
+            }
             Self::WaitingForSamples => {
-                "Input is active. Waiting for enough samples to draw a complete sweep."
+                i18n::text("common.input_is_active_waiting_for_enough_samples_to_draw")
             }
             Self::WaitingForTrigger => {
-                "Input is active. Check the trigger source, level and edge in Scope settings, or use Auto mode."
+                i18n::text("common.input_is_active_check_the_trigger_source_level_and")
             }
-            Self::PostTrigger => "Input is active. Waiting for the rest of the triggered sweep.",
+            Self::PostTrigger => i18n::text("common.input_is_active_waiting_for_the_rest_of_the"),
             Self::Incomplete => {
-                "Input stopped before a complete sweep was available. Check Scope settings, then press Start input to acquire again."
+                i18n::text("common.input_stopped_before_a_complete_sweep_was_available_check")
             }
             Self::ChannelRange => {
-                "Select a channel below the plot and choose its Input source in Scope settings, or change the input source in Audio I/O."
+                i18n::text("common.select_a_channel_below_the_plot_and_choose_its")
             }
             Self::TriggerRange => {
-                "Choose an available trigger source in Scope settings, or change the input source in Audio I/O."
+                i18n::text("common.choose_an_available_trigger_source_in_scope_settings_or")
             }
-            Self::ChannelsOff => "Turn on a channel using the checkboxes below the plot.",
+            Self::ChannelsOff => {
+                i18n::text("common.turn_on_a_channel_using_the_checkboxes_below_the")
+            }
             Self::Failed => {
-                "Check input settings and the acquisition error, then press Start input to try again."
+                i18n::text("common.check_input_settings_and_the_acquisition_error_then_press")
             }
         }
     }
@@ -196,8 +210,10 @@ impl ScopeApp {
                     });
                 if ui
                     .add(
-                        egui::Button::new(RichText::new("Open input settings").size(14.0))
-                            .min_size(vec2(0.0, 26.0)),
+                        egui::Button::new(
+                            RichText::new(i18n::text("common.open_input_settings")).size(14.0),
+                        )
+                        .min_size(vec2(0.0, 26.0)),
                     )
                     .clicked()
                 {
@@ -219,32 +235,39 @@ impl ScopeApp {
             .as_ref()
             .filter(|input| input.generation == self.input_generation)
         else {
-            return "Input conditions: —".into();
+            return i18n::text("common.input_conditions").into();
         };
         let captured = !self.history.is_empty() || !self.scope_range.is_empty();
         let (state, _) = activity(self.running(), self.pending_stop.is_some(), captured);
-        format!(
-            "{state} input · {:.1} kSa/s nominal · {} ch · {}",
-            input.nominal_sample_rate_hz as f64 / 1000.0,
-            input.channels,
-            self.format
+        i18n::format(
+            "common.input_ksa_s_nominal_ch",
+            &[
+                ("state", (state)),
+                (
+                    "nominal_sample_rate_hz",
+                    &format!("{:.1}", input.nominal_sample_rate_hz as f64 / 1000.0),
+                ),
+                ("channels", &(input.channels).to_string()),
+                ("format", &(self.format).to_string()),
+            ],
         )
+        .to_string()
     }
 }
 
 pub(super) fn activity(running: bool, finishing: bool, captured: bool) -> (&'static str, Color32) {
     if finishing {
-        ("FINISHING", YELLOW)
+        (i18n::text("common.finishing"), YELLOW)
     } else if running {
         if captured {
-            ("LIVE", GREEN)
+            (i18n::text("common.live"), GREEN)
         } else {
-            ("WAITING", YELLOW)
+            (i18n::text("common.waiting"), YELLOW)
         }
     } else if captured {
-        ("HELD", HOLD)
+        (i18n::text("common.held"), HOLD)
     } else {
-        ("NOT ACQUIRED", MUTED)
+        (i18n::text("common.not_acquired"), MUTED)
     }
 }
 
@@ -285,13 +308,16 @@ pub(super) fn metric(
             )
             .wrap(),
         )
-        .on_hover_text(
-            value
-                .filter(|v| v.is_finite())
-                .map_or("No valid captured value".into(), |v| {
-                    format!("Captured f64: {v:.15e} {unit}")
-                }),
-        );
+        .on_hover_text(value.filter(|v| v.is_finite()).map_or(
+            i18n::text("common.no_valid_captured_value").into(),
+            |v| {
+                i18n::format(
+                    "common.captured_f64",
+                    &[("v", &format!("{:.15e}", v)), ("unit", (unit))],
+                )
+                .to_string()
+            },
+        ));
     });
 }
 

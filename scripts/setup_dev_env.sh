@@ -223,6 +223,8 @@ if [ "$measurelab_verify" = true ]; then
     ./.venv/bin/ruff check .
     ./.venv/bin/ruff format --check .
     ./.venv/bin/python -m unittest discover -s scripts -p 'test_ci_changes.py'
+    ./.venv/bin/python -m unittest discover -s scripts -p 'test_i18n.py'
+    ./.venv/bin/python scripts/i18n.py check
     markdownlint-cli2 '**/*.md' '#node_modules'
     actionlint
     ./.venv/bin/python scripts/build_pages.py
