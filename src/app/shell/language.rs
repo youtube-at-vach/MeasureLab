@@ -88,7 +88,7 @@ mod tests {
             }
             for locale in i18n::Locale::ALL {
                 let output = frame(&ctx, vec![]);
-                let pos = label(&ctx, &output, "Language");
+                let pos = label(&ctx, &output, i18n::text("shell.language"));
                 click(&ctx, pos);
                 let output = frame(&ctx, vec![]);
                 let pos = label(&ctx, &output, locale.native_name());

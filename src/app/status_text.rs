@@ -113,14 +113,18 @@ mod tests {
         };
         assert!(Arc::ptr_eq(&first, &second));
         assert_eq!(first.as_ref(), "Settings saved: capture α.json");
-        // No product translations are installed yet. Selecting another locale
-        // must resolve English again without losing the held path or old text.
+        // Resolve the selected catalog without losing the held path or old text.
         i18n::set_locale(&ctx, "ja");
         let Rendered::Formatted(after) = notice.render() else {
             panic!("dynamic notice")
         };
-        assert_eq!(after, first);
+        assert_eq!(
+            after,
+            i18n::format("common.settings_saved", &[("path", "capture α.json")])
+        );
         assert!(!Arc::ptr_eq(&after, &first));
+        assert_eq!(first.as_ref(), "Settings saved: capture α.json");
+        i18n::set_locale(&ctx, "en-US");
         assert_eq!(
             Status::Autoset {
                 frequency_hz: 750.1254,
