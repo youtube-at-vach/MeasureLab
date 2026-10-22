@@ -2,5 +2,5 @@ mkdocs
 mkdocs-material
 mkdocs-static-i18n
 mini-racer
-pyyaml
+-r requirements-i18n.txt
 qrcode
