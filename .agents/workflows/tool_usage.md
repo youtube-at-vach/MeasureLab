@@ -153,6 +153,8 @@ Node.jsとサイト依存関係も必要。共通スクリプトで旧Pythonマ�
 
 Rust GUIの英語カタログ変更・翻訳PRは [開発・翻訳手順](../../guide/rust/I18N.md) に従い、`check --base <基準SHA>`で変更範囲も検査する。検査用依存だけを導入する場合は`./.venv/bin/python -m pip install -r requirements-i18n.txt`を使う。検査・差分・CSV出力はカタログを変更しない。
 
+翻訳タスクでは専用の`scripts/translate.py prepare --locale <言語> --group <グループ>`で対象を準備し、`dist/i18n/answers.json`の`text`だけを編集して`apply`→`verify`を行う。ハッシュは専用ツールが計算する。通常開発・CIから`prepare`／`apply`を呼ばない。
+
 Markdown 変更時は次を実行する。ローカル退避先は設定ファイルで除外している。
 
 ```bash

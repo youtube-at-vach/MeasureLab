@@ -508,7 +508,7 @@ mod tests {
     #[test]
     fn bundled_fonts_cover_native_names_cjk_cyrillic_accents_and_units() {
         let ctx = egui::Context::default();
-        for locale in [Locale::Japanese, Locale::Chinese, Locale::Korean] {
+        for locale in Locale::ALL {
             ctx.set_fonts(fonts(locale));
             let output = ctx.run_ui(Default::default(), |ui| {
                 ui.ctx().fonts_mut(|fonts| {
@@ -517,12 +517,13 @@ mod tests {
                         for sample in Locale::ALL.into_iter().map(Locale::native_name).chain([
                             "入力停止 測定準備 输入停止 测量 준비 측정 정지",
                             "Амплитуда частота Français Español Português äöüß éèà µΩ°− 48 kHz FS",
-                        ]) {
+                        ]).chain(CATALOG.resolved[locale as usize].values().map(|text| text.as_ref())) {
                             // egui 0.36's has_glyph compares the owning face to
                             // the replacement face, rejecting valid Latin from
                             // that same face. glyph_width returns zero when the
                             // requested character has no actual glyph.
-                            for glyph in sample.chars() {
+                            // Line breaks/tabs are layout controls, not font glyphs.
+                            for glyph in sample.chars().filter(|c| !matches!(c, '\n' | '\r' | '\t')) {
                                 assert!(
                                     fonts.glyph_width(&id, glyph) > 0.0,
                                     "Missing glyph in {locale:?}: {glyph} ({sample})"
