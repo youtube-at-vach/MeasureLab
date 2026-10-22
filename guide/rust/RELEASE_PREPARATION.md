@@ -146,7 +146,7 @@ Developer ID署名・Appleの公証は未整備で、初回はこの状態を明
 
 ## CIの運用ポイント
 
-実行条件とコマンドの正本は [ci.yml](../../.github/workflows/ci.yml)、変更分類は [ci_changes.py](../../scripts/ci_changes.py) と [回帰テスト](../../scripts/test_ci_changes.py)。ローカル手順は [Tool Usage Guide](../../.agents/workflows/tool_usage.md)。main宛PRとmainへのPush、手動実行を使い、PRの旧実行はキャンセルする。mainのPages公開は中断しない。
+実行条件とコマンドの正本は [ci.yml](../../.github/workflows/ci.yml)、変更分類は [ci_changes.py](../../scripts/ci_changes.py) と [回帰テスト](../../scripts/test_ci_changes.py)。ローカル手順は [Tool Usage Guide](../../.agents/workflows/tool_usage.md)。main宛PRとmainへのPush、手動実行を使い、PRの旧実行はキャンセルする。PRの`edited`も監視し、前提PRの統合後に宛先をmainへ変更した場合も検証する。本文・タイトルの編集も再実行になる。mainのPages公開は中断しない。
 
 | ステータス | 役割 |
 | --- | --- |

@@ -5,6 +5,8 @@ on:
   push:
     branches: [main]
   pull_request:
+    # Retargeting a stacked PR to main emits edited, not opened/synchronize.
+    types: [opened, synchronize, reopened, edited]
     branches: [main, rewrite/rust]
   workflow_dispatch:
     inputs:
