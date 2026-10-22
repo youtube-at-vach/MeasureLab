@@ -1,0 +1,47 @@
+_version: 1
+xy.amplitude_range: 振幅範囲
+xy.auto_no_crossing: ' · Auto（トリガー交差なし）'
+xy.b_a_x_y_fs: B−A ΔX %{delta} · ΔY %{delta_2} FS
+xy.cursors: カーソル
+xy.fix_x_y_amplitudes_independently_of_the_moving_trace: 移動する軌跡とは独立してX/Yの振幅を固定します。ΔXとΔYを測定します。
+xy.follow_a_real_sample_at_a_fixed_time_offset: XYトリガーから一定の時間差にある実サンプルに追従します。スコープのトリガー設定を使います。
+xy.free: Free
+xy.free_click_or_drag_to_fix_x_y_amplitudes: Free：クリックまたはドラッグしてX/Yの振幅を固定します。A/Bで移動する軌跡とは独立してΔXとΔYを測定します。Trace
+  Snapに切り替えてもFreeの位置は保持されます。
+xy.free_keeps_x_y_amplitudes_fixed_and_reads_x: FreeではX/Yの振幅を固定し、ΔX/ΔYを読み取ります。モードを切り替えてもカーソル位置は保持されます。
+xy.free_outside_plot: Free · プロット外
+xy.free_run_moving_reference: ' · Free run（参照位置が移動）'
+xy.input_source: 入力元
+xy.ms_samples: '%{sample_rate} ms · サンプル %{start}..%{end}%{else}%{auto_no_crossing}'
+xy.observation: 観測
+xy.observation_window: 観測時間
+xy.outside_xy_window_or_unavailable: '%{index} · XYの観測範囲外、または利用できません'
+xy.point_limit: ' · 点数上限'
+xy.reset_xy_scales: XYスケールをリセット
+xy.shared_with_scope: スコープと共有
+xy.source_changes_apply_on_start_held_xy_keeps_its: 入力元の変更はStart時に適用されます。保持中のXYは取得時のチャンネルを維持します。
+xy.t_ms: 'T%{sample_rate} ms · #%{sample}'
+xy.trace_snap: Trace Snap
+xy.trace_snap_follows_a_trigger_relative_sample_auto_free: Trace Snapはトリガー基準のサンプルに追従します。Auto／Free
+  runではマーカーが移動する場合があります。Stopすると固定されます。
+xy.trace_snap_selects_the_nearest_actual_pair_from_the: Trace Snap：割り当てたX/Yチャンネルの実サンプル対から最も近い点を選び、そのサンプルのXYトリガーからのオフセットを保ちます。スコープのトリガー元・エッジ・レベルを使います。トリガー交差がない場合は、参照位置が最新ウィンドウに合わせて移動します。点が重なる場合は最新サンプルを選びます。Stopすると取得結果を固定します。
+xy.trigger: トリガー
+xy.triggered: ' · トリガー成立'
+xy.up_to_real_sample_pairs_longer_windows_show_the: 実サンプル対は最大%{xy}点です。観測時間が長い場合は最新部分を表示します。
+xy.waiting_for_sample_pairs: サンプル対を待機中…
+xy.x_axis: X軸
+xy.x_fs_div_y_fs_div: 'X: %{channels} · %{x_fs_per_div} FS/div   Y: %{channels_2}
+  · %{y_fs_per_div} FS/div'
+xy.x_fs_y_fs: X %{x_fs_per_div} FS · Y %{y_fs_per_div} FS
+xy.x_fs_y_fs_2: '%{index} X %{channels} %{point} FS · Y %{channels_2} %{point_2} FS
+
+  %{detail}'
+xy.x_y_use_the_same_input_frame_equal_axis: X/Yは同じ入力フレームを使います。軸スケールを等しくすると、正方形のプロット上で円形を保てます。
+xy.xy_free_cursor: XY · Freeカーソル
+xy.xy_lissajous: XY／リサジュー図
+xy.xy_requires_at_least_two_input_channels: XYには2つ以上の入力チャンネルが必要です。
+xy.xy_requires_two_input_channels: XYには2つの入力チャンネルが必要です
+xy.xy_trace_snap_cursor: XY · Trace Snapカーソル
+xy.xy_unavailable_assigned_channel_missing: XYを利用できません：割り当てたチャンネルがありません
+xy.xy_unavailable_mono_input: XYを利用できません：モノ入力です
+xy.y_axis: Y軸
