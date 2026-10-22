@@ -1,535 +1,845 @@
 {
   "version": 1,
-  "base_revision": "5ccaac9ec673b15df78a0e4e4be17d271974f633",
+  "base_revision": "a4b0723ad8e2f8d43d97d4f304e20c427f258a4e",
   "locale": "ja",
   "groups": [
-    "comparison"
+    "generator"
   ],
   "entries": [
     {
-      "key": "comparison.ac_comparison_positive_phase_leads_ref_positive_delay_lags",
-      "group": "comparison",
+      "key": "generator.add_a_signal_in_the_generator_panel",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "AC comparison · positive phase leads REF; positive delay lags REF. Stopped edits apply on the next Start.",
-      "new_english": "AC comparison · positive phase leads REF; positive delay lags REF. Stopped edits apply on the next Start.",
+      "old_english": "Add a signal in the Generator panel.",
+      "new_english": "Add a signal in the Generator panel.",
       "variables": [],
       "translation": null,
-      "source_hash": "849635e04bd615dd2337a411ee2e40f5e86b5b0c482f6b16080a7f88cee2ca8a",
+      "source_hash": "08d4ab181512fc611404795a35ae2547b08170050bbbb9d10ec98914e2122163",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.ac_mean_removed_disjoint_arithmetic_batches_ref_floor_fs",
-      "group": "comparison",
+      "key": "generator.add_signal",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "%{name} · AC mean removed · disjoint arithmetic batches · REF floor %{reference_min_psd_fs2_hz} FS²/Hz · coherence ≥%{minimum_coherence}",
-      "new_english": "%{name} · AC mean removed · disjoint arithmetic batches · REF floor %{reference_min_psd_fs2_hz} FS²/Hz · coherence ≥%{minimum_coherence}",
+      "old_english": "+ Add signal",
+      "new_english": "+ Add signal",
+      "variables": [],
+      "translation": null,
+      "source_hash": "27f6249621d37556e0f5ab0c97c34022cb62f56080373392104b2026185bb8c8",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.applied",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "APPLIED",
+      "new_english": "APPLIED",
+      "variables": [],
+      "translation": null,
+      "source_hash": "79dfd370bb43b580583faab3785ab434b1683578cb8b5649d5a3495ca987e1ac",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.applied_fs_hz_nominal_settings_preview_uses_fs_peak",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Applied Fs: %{nominal_sample_rate} Hz (nominal). Settings preview uses FS peak; measured samples are shown in Scope.",
+      "new_english": "Applied Fs: %{nominal_sample_rate} Hz (nominal). Settings preview uses FS peak; measured samples are shown in Scope.",
       "variables": [
-        "minimum_coherence",
-        "name",
-        "reference_min_psd_fs2_hz"
+        "nominal_sample_rate"
       ],
       "translation": null,
-      "source_hash": "dc597c2eebb9e4eae0a5faabcf795730d3b0ac58a3d42d71ac763230e6745569",
+      "source_hash": "8087b2ecdb2d1959ec54d4fe3341718b24793c42546ea6f07746df0add7bc02f",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.around_reading",
-      "group": "comparison",
+      "key": "generator.applied_hz_dbfs_peak_lead",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Around reading",
-      "new_english": "Around reading",
-      "variables": [],
-      "translation": null,
-      "source_hash": "c3282ce89567af063e57a96812a478c0a0844b45c61344f6a79e1107c47bbfa5",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.average_windows",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Average windows ",
-      "new_english": "Average windows ",
-      "variables": [],
-      "translation": null,
-      "source_hash": "82a915b0392f23fbf5aa5cb1b6e24daffe718884e5b25ae0bf654c7ccc21fa6f",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.averaged_windows_processed_missing_invalid_samples",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{averaged_windows} averaged windows · %{processed_windows} processed · %{missing_samples} missing · %{invalid_samples} invalid samples",
-      "new_english": "%{averaged_windows} averaged windows · %{processed_windows} processed · %{missing_samples} missing · %{invalid_samples} invalid samples",
+      "old_english": "Applied: %{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}° lead",
+      "new_english": "Applied: %{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}° lead",
       "variables": [
-        "averaged_windows",
-        "invalid_samples",
-        "missing_samples",
-        "processed_windows"
+        "amplitude_dbfs",
+        "frequency_hz",
+        "phase_degrees"
       ],
       "translation": null,
-      "source_hash": "d4a13275dc89e92c42baade2e8370d4172357fe5e1c81e8e164467102c9fb4ea",
+      "source_hash": "3a8c6668d0816701b2d2790157e9cdb1963fb20220b87bafe96272b6f9e6b81f",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.bin_hz",
-      "group": "comparison",
+      "key": "generator.applied_output",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Bin %{k} · %{bin_width_hz} Hz · %{state}",
-      "new_english": "Bin %{k} · %{bin_width_hz} Hz · %{state}",
+      "old_english": "APPLIED OUTPUT",
+      "new_english": "APPLIED OUTPUT",
+      "variables": [],
+      "translation": null,
+      "source_hash": "c41174d4bb607fa123cb381f2fa9dfa6a6e7c8364c7fba9ca47184abab382e0e",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.applied_sample",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Applied sample %{applied_sample}",
+      "new_english": "Applied sample %{applied_sample}",
       "variables": [
-        "bin_width_hz",
-        "k",
-        "state"
+        "applied_sample"
       ],
       "translation": null,
-      "source_hash": "aa8c40181fc59f9fad9c0be8bb32f583e9387beb007c2f9c27ef2188a49b9fc2",
+      "source_hash": "ff3a3637f968e4c455d5669b0712c351d41f2bfdfc6f32ecd957e63a8b43ea7b",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.bin_states.averaging",
-      "group": "comparison",
+      "key": "generator.applied_seed",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Averaging",
-      "new_english": "Averaging",
+      "old_english": "Applied seed %{noise_seed}",
+      "new_english": "Applied seed %{noise_seed}",
+      "variables": [
+        "noise_seed"
+      ],
+      "translation": null,
+      "source_hash": "e901e9c6eac08da85b644b8f451194848864d04b51df72b8ebfaa0151733a52b",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.buttons_up_down_use_this_step_in_hz_dbfs",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "± buttons / Up / Down use this step in Hz, dBFS or degrees. Enter / focus applies; Esc cancels.",
+      "new_english": "± buttons / Up / Down use this step in Hz, dBFS or degrees. Enter / focus applies; Esc cancels.",
       "variables": [],
       "translation": null,
-      "source_hash": "687df0b852a36e61eaac0ff3ef6ad85a8d0c8c319e480ba0d6c9fd94cb74bdb7",
+      "source_hash": "74c8b24d55691e41a6ff601d57e00e608fcc0747528916f9cc4b0febe8f931fc",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.bin_states.incoherent",
-      "group": "comparison",
+      "key": "generator.down",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Incoherent",
-      "new_english": "Incoherent",
+      "old_english": "Down",
+      "new_english": "Down",
       "variables": [],
       "translation": null,
-      "source_hash": "4a32c9fb49be4f5be91ec27e84be2239358e49a43ed4dcd5db0c1dbbd3bed354",
+      "source_hash": "b86d11af79188e58af384b421f2799b08bfb151939b4404679d948aae2720b0b",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.bin_states.reference_lost",
-      "group": "comparison",
+      "key": "generator.duplicate",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "ReferenceLost",
-      "new_english": "ReferenceLost",
+      "old_english": "Duplicate",
+      "new_english": "Duplicate",
       "variables": [],
       "translation": null,
-      "source_hash": "bca7e65e599cdb217c6085a764ba06e339c5cf18ad0f6dd5f49c9e68567d75cc",
+      "source_hash": "02cdaabfca805d6ab75d81043998bdc733451b9ea48958ebf8098022d102ba2e",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.bin_states.response_lost",
-      "group": "comparison",
+      "key": "generator.edit_step",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "ResponseLost",
-      "new_english": "ResponseLost",
+      "old_english": "EDIT STEP",
+      "new_english": "EDIT STEP",
       "variables": [],
       "translation": null,
-      "source_hash": "906a2d2434d3cfa61e2d34617baf0e39d0417069cf011346f82775444a14f2c3",
+      "source_hash": "f0c22175d30f2c14737a686de7df055959770eb0b28eb34f25772de9050e12db",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.bin_states.valid",
-      "group": "comparison",
+      "key": "generator.enter_a_finite_number_settings_were_not_applied",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Valid",
-      "new_english": "Valid",
+      "old_english": "Enter a finite number; settings were not applied",
+      "new_english": "Enter a finite number; settings were not applied",
       "variables": [],
       "translation": null,
-      "source_hash": "f5162206318ee96491108354ae7361db244d6a013aa32185216b5f15ac544f4c",
+      "source_hash": "888779db32a39e675fcada643f227c0da1ab0926b6c216a2a5886004ed2878d8",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.captured_conditions",
-      "group": "comparison",
+      "key": "generator.enter_focus_to_apply_esc_to_cancel_up_down",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Captured conditions",
-      "new_english": "Captured conditions",
+      "old_english": "Enter / focus to apply · Esc to cancel · Up / Down to step",
+      "new_english": "Enter / focus to apply · Esc to cancel · Up / Down to step",
       "variables": [],
       "translation": null,
-      "source_hash": "47bab890ad28a3ba805e4c4c1c008f60a582480c327d875cd0f2266091225fb3",
+      "source_hash": "67121de8706ebf0cf8ce4468d3d39e922a1ac5f8069aa397da16e49d668fa5c4",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.ch_revision_fs",
-      "group": "comparison",
+      "key": "generator.error",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "CH %{ch}: %{id} / revision %{revision} · %{gain} %{unit} / FS",
-      "new_english": "CH %{ch}: %{id} / revision %{revision} · %{gain} %{unit} / FS",
+      "old_english": "ERROR",
+      "new_english": "ERROR",
+      "variables": [],
+      "translation": null,
+      "source_hash": "d98ee0e5f9399db9381014c9f890f896d3fcb272c2a7a521d0a13aa23085a284",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.already_active",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Output is already active",
+      "new_english": "Output is already active",
+      "variables": [],
+      "translation": null,
+      "source_hash": "9905ced78cf509bcd43ce5975d8ee295a1997570e33213869f4302ac43f4ce0d",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.amplitude",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Card at position %{position}: amplitude must be finite and within -120–0 dBFS peak",
+      "new_english": "Card at position %{position}: amplitude must be finite and within -120–0 dBFS peak",
+      "variables": [
+        "position"
+      ],
+      "translation": null,
+      "source_hash": "27fa8a514b53646af1d054844176a7ba733c95f747d06d5e26afec059dd7cdd9",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.callback_stalled",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Audio output callback timed out; output released",
+      "new_english": "Audio output callback timed out; output released",
+      "variables": [],
+      "translation": null,
+      "source_hash": "67cd9304695cb8c6aa0bbe805325ae2f1541c7ea67fb2dcf9d1a65198a66ce87",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.channel_count",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Output requires 1–16 channels",
+      "new_english": "Output requires 1–16 channels",
+      "variables": [],
+      "translation": null,
+      "source_hash": "3da960c1df55e6abb8d28fc386017c2b0926fd34e674f78097365bd8c7d4987f",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.counter_exhausted",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Output sample, generation or control counter exhausted",
+      "new_english": "Output sample, generation or control counter exhausted",
+      "variables": [],
+      "translation": null,
+      "source_hash": "2cdf0228e3ef04524400fc0466790714a679924eed53631ac361d48e36d1c4e1",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.duplicate_routing",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Two signals cannot use the same output channel",
+      "new_english": "Two signals cannot use the same output channel",
+      "variables": [],
+      "translation": null,
+      "source_hash": "1325bafda14f128eb6dc0b6843485e895d8fb526666d27ee83528d666e9ccff7",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.frequency",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Card at position %{position}: frequency must be >= 0.1 Hz and < 0.45 × output Fs",
+      "new_english": "Card at position %{position}: frequency must be >= 0.1 Hz and < 0.45 × output Fs",
+      "variables": [
+        "position"
+      ],
+      "translation": null,
+      "source_hash": "66fd90c28021e61f191c94a86ddec9d10307d08a3c87b8b8eb9e167c7386b525",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.no_enabled_signals",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Select at least one signal before starting output",
+      "new_english": "Select at least one signal before starting output",
+      "variables": [],
+      "translation": null,
+      "source_hash": "429f5017d334fabd47b3914fb2cc383610feb193fc9ca2966c497bedd0140dfa",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.non_finite_output",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Nonfinite output; output stopped",
+      "new_english": "Nonfinite output; output stopped",
+      "variables": [],
+      "translation": null,
+      "source_hash": "12f6ea67aff3053b40d203bf70793af5a6e49dfe3800da3e9c9af1e3921e8cea",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.output_range",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Output exceeds full scale; output stopped",
+      "new_english": "Output exceeds full scale; output stopped",
+      "variables": [],
+      "translation": null,
+      "source_hash": "b44c7af6f781f2e8228b7fde173be88bd285190dd7735fc1fa94b2f254b72a52",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.output_stream",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Audio output failed; reset output before restarting",
+      "new_english": "Audio output failed; reset output before restarting",
+      "variables": [],
+      "translation": null,
+      "source_hash": "b0b9ae3be8822a3753b1b28aac76d68a81cb0808eed59528d64399e9baf30f14",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.phase",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Card at position %{position}: phase must be finite and within -180–180°",
+      "new_english": "Card at position %{position}: phase must be finite and within -180–180°",
+      "variables": [
+        "position"
+      ],
+      "translation": null,
+      "source_hash": "2c3dd5cb69ea20a38d47e031e9378b1dc8191ae108e76e25957f075034526543",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.producer_suspended",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Internal generation was suspended for more than 250 ms; output stopped",
+      "new_english": "Internal generation was suspended for more than 250 ms; output stopped",
+      "variables": [],
+      "translation": null,
+      "source_hash": "dcbb7b5707de39f4d5908dcd2bdfaf8e6c6cf381d14c4aff7ccdb39e3b019e7b",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.revision",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Settings revision must increase",
+      "new_english": "Settings revision must increase",
+      "variables": [],
+      "translation": null,
+      "source_hash": "2e79475c29168bbcbbf5ce70c8b9fd45166d0ab4e7d648737f1973888410749e",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.routing",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Card at position %{position}: output channel is unavailable or unassigned",
+      "new_english": "Card at position %{position}: output channel is unavailable or unassigned",
+      "variables": [
+        "position"
+      ],
+      "translation": null,
+      "source_hash": "6790b280b283ce5ca60cf0de10f9e0da3de618b5bcf23f354d8414206bef8f07",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.routing_while_active",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Stop output before changing cards, waveform details or channel assignments",
+      "new_english": "Stop output before changing cards, waveform details or channel assignments",
+      "variables": [],
+      "translation": null,
+      "source_hash": "8253aed910415ad77bd13d0c26971d4275eba3587559c78ee13527ccd55e16b8",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.sample_rate",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Unsupported nominal output sample rate",
+      "new_english": "Unsupported nominal output sample rate",
+      "variables": [],
+      "translation": null,
+      "source_hash": "5b058fe4a2b2d4aab80661563733e82922f2e4980018c5eb0e71e0a298158e09",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.signal_count",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Generator supports at most 16 cards",
+      "new_english": "Generator supports at most 16 cards",
+      "variables": [],
+      "translation": null,
+      "source_hash": "ac19ffd2460b1d552fc5533bf5af9a0df40e47160b74565fa20a9eabf68d8c68",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.signal_identity",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Generator card IDs must be unique and precede the next ID",
+      "new_english": "Generator card IDs must be unique and precede the next ID",
+      "variables": [],
+      "translation": null,
+      "source_hash": "387946d821d93bc27bce9de6f57c0419b000c5b6478899cbd8e5e8d35e0311b3",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.stopping",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Wait for the output fade to finish",
+      "new_english": "Wait for the output fade to finish",
+      "variables": [],
+      "translation": null,
+      "source_hash": "383a48e03869fcf5c17a6db60b7a05074f939b916e1bfe60a3b9fc5ad2cb4601",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.waveform",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Card at position %{position}: noise seed must be nonzero",
+      "new_english": "Card at position %{position}: noise seed must be nonzero",
+      "variables": [
+        "position"
+      ],
+      "translation": null,
+      "source_hash": "9c7d29d10da9b5da381a3012a05a7c0b0a773825d1d44b05e472d7035914395a",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.frequency",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Frequency",
+      "new_english": "Frequency",
+      "variables": [],
+      "translation": null,
+      "source_hash": "16b6668d9831a1b8d2d003496db6a62b7f525df6c556d7c04681fbed2251c845",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.gen",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "GEN %{id}",
+      "new_english": "GEN %{id}",
+      "variables": [
+        "id"
+      ],
+      "translation": null,
+      "source_hash": "c4284625e30731b9381acb6245c2672eac4f288e4970616221bb370a3c615886",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.gen_2",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "GEN %{id} · %{s} · %{off}",
+      "new_english": "GEN %{id} · %{s} · %{off}",
+      "variables": [
+        "id",
+        "off",
+        "s"
+      ],
+      "translation": null,
+      "source_hash": "bbc5148969a01f219040ed2fed536b4ad6904dbd61c0ec17e1bef8114f9f9596",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.gen_3",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "GEN %{id} · %{label} · %{s} · %{off}",
+      "new_english": "GEN %{id} · %{label} · %{s} · %{off}",
+      "variables": [
+        "id",
+        "label",
+        "off",
+        "s"
+      ],
+      "translation": null,
+      "source_hash": "68674db9200d645fddd3a2fb1a4a82c23ed04fd0aebdbaa67bce6b31b4f29703",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.gen_4",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "GEN %{id} · %{label}",
+      "new_english": "GEN %{id} · %{label}",
+      "variables": [
+        "id",
+        "label"
+      ],
+      "translation": null,
+      "source_hash": "c452767d90c8d103d6c5dbfa0e1f0ea85c49c49949bd0ecb34e90995089c0426",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.gen_hz_dbfs_peak",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "GEN %{id} · %{label} · %{signal} · %{off} · %{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}°",
+      "new_english": "GEN %{id} · %{label} · %{signal} · %{off} · %{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}°",
+      "variables": [
+        "amplitude_dbfs",
+        "frequency_hz",
+        "id",
+        "label",
+        "off",
+        "phase_degrees",
+        "signal"
+      ],
+      "translation": null,
+      "source_hash": "9b82d78a59b44fad2fda4efa705552f7626b585ad8f9a981cdd00678656e9b10",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.generation_revision",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Generation %{output_generation} · revision %{revision}",
+      "new_english": "Generation %{output_generation} · revision %{revision}",
+      "variables": [
+        "output_generation",
+        "revision"
+      ],
+      "translation": null,
+      "source_hash": "04fc36488300d3b7f73bce794b912b5e415133c1475c8895e20cd642ae23e621",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.hide_signal_controls",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Hide signal controls",
+      "new_english": "Hide signal controls",
+      "variables": [],
+      "translation": null,
+      "source_hash": "9204d7b2dc3f07874147b9448d12bae2fddfdf4f2cb64cd22505eac112ca8d51",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.hz_ch_input_stop_holds_the_measurement_output_continues",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "%{label} · %{rate} Hz · %{channels}ch. Input Stop holds the measurement; output continues.",
+      "new_english": "%{label} · %{rate} Hz · %{channels}ch. Input Stop holds the measurement; output continues.",
+      "variables": [
+        "channels",
+        "label",
+        "rate"
+      ],
+      "translation": null,
+      "source_hash": "7a8d86e98ccad5a001ef58e39ee1d998fe01ec07fd34f9b36a6a217bdaac903c",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.hz_ch_nominal_fs",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "%{nominal_sample_rate} Hz · %{channels}ch · %{pcm_label} · nominal Fs",
+      "new_english": "%{nominal_sample_rate} Hz · %{channels}ch · %{pcm_label} · nominal Fs",
+      "variables": [
+        "channels",
+        "nominal_sample_rate",
+        "pcm_label"
+      ],
+      "translation": null,
+      "source_hash": "cbd0ea6ed9b2d84097803c1cf072d05d00c35513982ecb55b370e510d695a09c",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.hz_dbfs_peak_lead",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "%{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}° lead",
+      "new_english": "%{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}° lead",
+      "variables": [
+        "amplitude_dbfs",
+        "frequency_hz",
+        "phase_degrees"
+      ],
+      "translation": null,
+      "source_hash": "ab150ed72a13edd1f5acd0324a7ece78a73edad831ce43b0ea41335d5af8ce06",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.in_use",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": " · in use",
+      "new_english": " · in use",
+      "variables": [],
+      "translation": null,
+      "source_hash": "518f64ecd723183d9e08d09241450c48e7d954d882bb3d911b78a2c917eff5bf",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.ms_cycles",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "%{frequency_hz} ms / 2 cycles",
+      "new_english": "%{frequency_hz} ms / 2 cycles",
+      "variables": [
+        "frequency_hz"
+      ],
+      "translation": null,
+      "source_hash": "2d1518c843062e29c0e320dd0de469c78782782fe53b17af72779cc13d76a9a4",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.no_signals_add_a_signal_to_choose_its_waveform",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "No signals. Add a signal to choose its waveform and output.",
+      "new_english": "No signals. Add a signal to choose its waveform and output.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "48d0d86981b79b0d654d1d6e66103f369e13db04ee512636625b795fc2a4d03f",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.off",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "OFF",
+      "new_english": "OFF",
+      "variables": [],
+      "translation": null,
+      "source_hash": "38cca6bea010af8adaf4be7d270456fa9adef8c0252db91f2767c607d077319b",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.on",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "ON",
+      "new_english": "ON",
+      "variables": [],
+      "translation": null,
+      "source_hash": "e8a01133b1351e5fa434167135400d1998d3daa8ce74e3dd9bb57582fa4d7b97",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.out",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "OUT %{ch}%{else}",
+      "new_english": "OUT %{ch}%{else}",
       "variables": [
         "ch",
-        "gain",
-        "id",
-        "revision",
-        "unit"
+        "else"
       ],
       "translation": null,
-      "source_hash": "50742159ea88143a83bcd855db0c19a78f1865443432a30f86ef0d417038967d",
+      "source_hash": "2f957b96e0a4f3c8e8f1ee4f42782f7fd0f123e25b565eb4fc08fc9cd8f09b27",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.check_ref_sig_channels_fft_and_nominal_fs_settings",
-      "group": "comparison",
+      "key": "generator.out_2",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Check REF / SIG channels, FFT and nominal Fs settings.",
-      "new_english": "Check REF / SIG channels, FFT and nominal Fs settings.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "9a7fef1925df13d90eb57d6add39ea1c9929940ee7eb6c1e0ed900fe35a5600e",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.coherence",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Coherence γ²",
-      "new_english": "Coherence γ²",
-      "variables": [],
-      "translation": null,
-      "source_hash": "f418486f71510320162dbcc5d07575195d7f04543dd40962e9ff6b3b5cc4469d",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.custom",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Custom",
-      "new_english": "Custom",
-      "variables": [],
-      "translation": null,
-      "source_hash": "494ca78f7374e46fb2de9ad9f2dbd4aaae89b50b2ca044177a1566a59e06627e",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.display_only_captured_analysis_validity_thresholds_and_the_phase",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Display only: captured analysis, validity thresholds and the phase-slope band are unchanged. Log Hz omits DC.",
-      "new_english": "Display only: captured analysis, validity thresholds and the phase-slope band are unchanged. Log Hz omits DC.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "051a0536aefd367db9a50e84ac6889a18e2c4f3c666bf36746ee5f60a2204e17",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.display_range",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Display range",
-      "new_english": "Display range",
-      "variables": [],
-      "translation": null,
-      "source_hash": "7c1540cb135c9fe28cf259bf8d5e52d8a32f108b9f1c9915591a521911372300",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.finishing_analysis_before_holding_the_result",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Finishing analysis before holding the result.",
-      "new_english": "Finishing analysis before holding the result.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "0e2a31120745ccf5f4a81dfdc910f3819e1f78519eabae70ed2496bdfd6ed0c6",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.from",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "From ",
-      "new_english": "From ",
-      "variables": [],
-      "translation": null,
-      "source_hash": "e484a95dcc85865b7e2bf8a9726935f1a5d9f90a056afcea487f88756039cc17",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.fs_hz",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": " FS²/Hz",
-      "new_english": " FS²/Hz",
-      "variables": [],
-      "translation": null,
-      "source_hash": "8ab07b56deb066cd8f2c1310da544ee686382093bfb606200b91139303c6b210",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.full_nyquist",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Full / Nyquist",
-      "new_english": "Full / Nyquist",
-      "variables": [],
-      "translation": null,
-      "source_hash": "c72ac558bb67db6413fb8859ec89c90da2597b7c22fb4e033449be27b747c29e",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.gain",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Gain",
-      "new_english": "Gain",
-      "variables": [],
-      "translation": null,
-      "source_hash": "4e125a3ef68a00b029459c9aa8aa94aa07e74cc54188ffef7f60f38f016e61ca",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.gain_db",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Gain dB",
-      "new_english": "Gain dB",
-      "variables": [],
-      "translation": null,
-      "source_hash": "f6da0953508c7b318c8dec06de0dab55859b30d6c150cad90e50b1be592add99",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.h1_pxy_pxx_scope_spectrum_and_comparison_each_retain",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "H1 = Pxy/Pxx. Scope, Spectrum and comparison each retain their own intervals. Slope fit assumes adjacent phase steps below π; periodic/wrapped data cannot determine absolute latency.",
-      "new_english": "H1 = Pxy/Pxx. Scope, Spectrum and comparison each retain their own intervals. Slope fit assumes adjacent phase steps below π; periodic/wrapped data cannot determine absolute latency.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "7d4f361c12e8da0f54b91a650e24b35c3cf6bbffd70bb8db0d84b32bdfa1c8db",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.held_conditions_retained_queued_analysis_settings_apply_on_next",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "HELD conditions retained · queued analysis settings apply on next Start",
-      "new_english": "HELD conditions retained · queued analysis settings apply on next Start",
-      "variables": [],
-      "translation": null,
-      "source_hash": "56fb11bb8b06a061d81eae2512943e23a9f892dfb2d46a6e4a210ade91aa4c6d",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.hz",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{selected_hz} Hz",
-      "new_english": "%{selected_hz} Hz",
+      "old_english": "OUT %{c}",
+      "new_english": "OUT %{c}",
       "variables": [
-        "selected_hz"
+        "c"
       ],
       "translation": null,
-      "source_hash": "33276a15f6a87aacc765c617cdae50285e248d651045e4c3af7f1d04bb29afc5",
+      "source_hash": "61fa404b3f1295cd107d52c19d212b1d31a9703244b5c2a47f80ff254336397b",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.hz_2",
-      "group": "comparison",
+      "key": "generator.out_3",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "%{fraction} Hz",
-      "new_english": "%{fraction} Hz",
-      "variables": [
-        "fraction"
-      ],
-      "translation": null,
-      "source_hash": "2f19044b1656de9eb975de295330122254e5456868b25eea4341c19698810615",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.input_gap_press_start_input_to_acquire_again",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Input gap · press Start input to acquire again.",
-      "new_english": "Input gap · press Start input to acquire again.",
+      "old_english": "OUT",
+      "new_english": "OUT",
       "variables": [],
       "translation": null,
-      "source_hash": "488c2d4328ef6803413591ee3518c0c018e49cdbd9063996ea0fa812191a796b",
+      "source_hash": "c57929ed14088114883b23815775f37cb9f7d10c96f23b3cb2c1a3e375a6bbcc",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.input_gap_waiting_for_a_new_complete_average",
-      "group": "comparison",
+      "key": "generator.output",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Input gap · waiting for a new complete average.",
-      "new_english": "Input gap · waiting for a new complete average.",
+      "old_english": "OUTPUT",
+      "new_english": "OUTPUT",
       "variables": [],
       "translation": null,
-      "source_hash": "a1ff83b724a3a6529d46ddbc84c1a70d86bbbcbdb016d8edef79c1a9a9a64892",
+      "source_hash": "5dbf351336f2e66ee89266f3853594ff717c7c5e05724ad4b0047bd31e78658c",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.input_generation_analysis_revision_hz_nominal_f64",
-      "group": "comparison",
+      "key": "generator.output_details",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Input generation %{generation} · analysis revision %{analysis_revision} · %{nominal_sample_rate_hz} Hz nominal · f64",
-      "new_english": "Input generation %{generation} · analysis revision %{analysis_revision} · %{nominal_sample_rate_hz} Hz nominal · f64",
-      "variables": [
-        "analysis_revision",
-        "generation",
-        "nominal_sample_rate_hz"
-      ],
-      "translation": null,
-      "source_hash": "c50693963f23c73c41bb00bebaeb5ae587a6bde2f58d51d105c0531cff21e9ef",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.invalid_input_no_valid_comparison_is_available",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Invalid input · no valid comparison is available.",
-      "new_english": "Invalid input · no valid comparison is available.",
+      "old_english": "Output details",
+      "new_english": "Output details",
       "variables": [],
       "translation": null,
-      "source_hash": "9cadda887f9d413d19ab498004e166ba0ccf75f0accf4dfd4be087042d649e3e",
+      "source_hash": "81b0bd8db74fb271ee941a5f32dca26fb6277c83d5f230800614c6a2366694f9",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.linear_hz",
-      "group": "comparison",
+      "key": "generator.peak_level",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Linear Hz",
-      "new_english": "Linear Hz",
+      "old_english": "Peak level",
+      "new_english": "Peak level",
       "variables": [],
       "translation": null,
-      "source_hash": "d35293c5b6027d55300797c15a83bdd1c89c75b00947f5fa7afcb2fa92932fbf",
+      "source_hash": "5745a3b5118ae30bbeced4f0e6bfc0e3bfacd3775b1ba9168e22fd2b13080166",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.log_hz",
-      "group": "comparison",
+      "key": "generator.pending",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Log Hz",
-      "new_english": "Log Hz",
+      "old_english": "PENDING",
+      "new_english": "PENDING",
       "variables": [],
       "translation": null,
-      "source_hash": "7b91026010d597a53c425c595786148a71e5a567e1427bb7f5925143f270d734",
+      "source_hash": "332011b91ccd9887592cd7072f12da38748e37ee1af81985f9c8e1f066aec6fb",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.min_coherence",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Min coherence ",
-      "new_english": "Min coherence ",
-      "variables": [],
-      "translation": null,
-      "source_hash": "1d16eca5bca303648987a81a85bbd242d48051bf53ba8ee00aedd2170adbf392",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.min_ref",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Min REF ",
-      "new_english": "Min REF ",
-      "variables": [],
-      "translation": null,
-      "source_hash": "f9847355d20c1fdf11caed7d373bfefedf729038bc887a146b22cf9cb01e44c3",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.nominal_fs_ch_phase_timing_calibration_unverified_delay_wraps",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Nominal Fs · CH phase/timing calibration unverified · delay wraps by 1/f",
-      "new_english": "Nominal Fs · CH phase/timing calibration unverified · delay wraps by 1/f",
-      "variables": [],
-      "translation": null,
-      "source_hash": "277ca326a6c092e2388f4979870d1fb2f49c4edd92e6413395f61563834affe9",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.phase",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Phase °",
-      "new_english": "Phase °",
-      "variables": [],
-      "translation": null,
-      "source_hash": "26305faffcd48209829558a71db6a7dc390fbde05877a9efe0d7c6f06a6c8166",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.phase_lead",
-      "group": "comparison",
+      "key": "generator.phase_lead",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
@@ -541,402 +851,372 @@
       "translated_source_hash": null
     },
     {
-      "key": "comparison.phase_slope_needs_contiguous_excited_coherent_bins",
-      "group": "comparison",
+      "key": "generator.remove",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Phase slope: — · needs ≥8 contiguous excited, coherent bins",
-      "new_english": "Phase slope: — · needs ≥8 contiguous excited, coherent bins",
+      "old_english": "Remove",
+      "new_english": "Remove",
       "variables": [],
       "translation": null,
-      "source_hash": "9f9b28fea91312f4033d371f10d3d72479126096051396975fab9da2dbc6ff58",
+      "source_hash": "c3812fc4acb861d5182fc2b8155f327f736fbe5e5eb86a7bd7afcb6dc5497282",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.phase_slope_s_hz_residual_rms",
-      "group": "comparison",
+      "key": "generator.reset_output_stays_off",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Phase slope: %{e6} µs · %{bin_width_hz}–%{bin_width_hz_2} Hz · residual %{phase_residual_rms_degrees}° RMS",
-      "new_english": "Phase slope: %{e6} µs · %{bin_width_hz}–%{bin_width_hz_2} Hz · residual %{phase_residual_rms_degrees}° RMS",
+      "old_english": "Reset output (stays OFF)",
+      "new_english": "Reset output (stays OFF)",
+      "variables": [],
+      "translation": null,
+      "source_hash": "56b489db5055689648eba13d52b2d9737eb03dba0c8579491513998c51db40c5",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.running",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "RUNNING",
+      "new_english": "RUNNING",
+      "variables": [],
+      "translation": null,
+      "source_hash": "d80ffc8dc07953482a2f9f5fbff9a9cecea5d0022155f32af0b56e91d1bee7d3",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.seed",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Seed",
+      "new_english": "Seed",
+      "variables": [],
+      "translation": null,
+      "source_hash": "367ef06b8fbf3aaaccd9cff1301628fae45901ccd9661b5a1b256c7cc5314d24",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.selected_transition_ends",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Selected transition ends %{i}",
+      "new_english": "Selected transition ends %{i}",
       "variables": [
-        "bin_width_hz",
-        "bin_width_hz_2",
-        "e6",
-        "phase_residual_rms_degrees"
+        "i"
       ],
       "translation": null,
-      "source_hash": "54ef18b4f14df9175edf4faa2cddfe9042e5bfb63a4e95a37b6b70f7a01b152e",
+      "source_hash": "620510f2f8e1c9efe37e66cf1b6a0f509cf3e3a72f9b233a99bf7315a561e7a2",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.press_start_input_to_acquire_a_complete_average",
-      "group": "comparison",
+      "key": "generator.settings_preview_fs_ceiling",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Press Start input to acquire a complete average.",
-      "new_english": "Press Start input to acquire a complete average.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "baf80dd07e31ccb4e21986ebce52eb0fdd176be4325cc58f010f01d166add7cc",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.read_at",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Read at",
-      "new_english": "Read at",
-      "variables": [],
-      "translation": null,
-      "source_hash": "a4874894d75434e94dde904dd97e3ce58a17ad621b1d9c50b79edce8f3421ce6",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.ref",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "REF",
-      "new_english": "REF",
-      "variables": [],
-      "translation": null,
-      "source_hash": "4943e8f40e898cf65a89387defce6ac48c7f3701870945d3d33757aee614ea2b",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.ref_ch_sig_ch_n_f_hz",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{state} · REF CH %{reference_channel} / SIG CH %{response_channel} · N %{size} × %{averages} · Δf %{bin_width_hz} Hz",
-      "new_english": "%{state} · REF CH %{reference_channel} / SIG CH %{response_channel} · N %{size} × %{averages} · Δf %{bin_width_hz} Hz",
+      "old_english": "Settings preview · ±%{amplitude_peak} FS ceiling · %{frequency_hz}",
+      "new_english": "Settings preview · ±%{amplitude_peak} FS ceiling · %{frequency_hz}",
       "variables": [
-        "averages",
-        "bin_width_hz",
-        "reference_channel",
-        "response_channel",
-        "size",
-        "state"
+        "amplitude_peak",
+        "frequency_hz"
       ],
       "translation": null,
-      "source_hash": "5794389025b279a9e186a7412117ddb796674c462c6714d2b6a69cea0fca5760",
+      "source_hash": "90d74a7d4f6d4faffac095b66e8f2a763fdf58f8ce8ab3e8cc5e37749c2adfb4",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.samples",
-      "group": "comparison",
+      "key": "generator.show_signal_controls",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "%{size} samples",
-      "new_english": "%{size} samples",
-      "variables": [
-        "size"
-      ],
-      "translation": null,
-      "source_hash": "26e308cd3e4ef1205e2d91e376b26401ed276a1c0b5a7f56fa4f5b371d2c6c3a",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.samples_latest_input_end",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Samples %{start}..%{end} · latest %{start_2}..%{end_2} · input end %{input_end}",
-      "new_english": "Samples %{start}..%{end} · latest %{start_2}..%{end_2} · input end %{input_end}",
-      "variables": [
-        "end",
-        "end_2",
-        "input_end",
-        "start",
-        "start_2"
-      ],
-      "translation": null,
-      "source_hash": "c7b0aedcdeabdf1d92d865b65cc7a0413810c5ea817668a7e2f56927d74459c1",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.select_ref_sig_channels_then_press_start_analysis",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Select REF / SIG channels, then press Start analysis.",
-      "new_english": "Select REF / SIG channels, then press Start analysis.",
+      "old_english": "Show signal controls",
+      "new_english": "Show signal controls",
       "variables": [],
       "translation": null,
-      "source_hash": "6285b18b86c0a4bd8360b14ebead298cd3e90f5d53b9cfc1730418d1f6281cb3",
+      "source_hash": "07e5b7465e5120b326d9bf4807121aee94c21d62189ee20bfab177d5e958fabf",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.selected_frequency_is_outside_the_captured_result",
-      "group": "comparison",
+      "key": "generator.start_output",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Selected frequency is outside the captured result.",
-      "new_english": "Selected frequency is outside the captured result.",
+      "old_english": "▶ Start output",
+      "new_english": "▶ Start output",
       "variables": [],
       "translation": null,
-      "source_hash": "77d3ac91d539ca5110b135fe0d3c9ceef5545f5c6d56c086faa819145a5823d4",
+      "source_hash": "d7bd76b4b8685a1bdf5be8baa0687f81173f386a75b4126bb4ad24a2f50e5474",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.sig",
-      "group": "comparison",
+      "key": "generator.start_replays_the_seed_frequency_and_phase_do_not",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "SIG",
-      "new_english": "SIG",
+      "old_english": "Start replays the seed. Frequency and phase do not affect noise.",
+      "new_english": "Start replays the seed. Frequency and phase do not affect noise.",
       "variables": [],
       "translation": null,
-      "source_hash": "cc71096a4704326ea71ccc01985f841a8219653132992dede069d092971c61ce",
+      "source_hash": "b6341a0e8592cbc0bdf512ff1833f53b4aad9af6498198e35deb3a631d83b61a",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.slope_from",
-      "group": "comparison",
+      "key": "generator.starting",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Slope from ",
-      "new_english": "Slope from ",
+      "old_english": "STARTING",
+      "new_english": "STARTING",
       "variables": [],
       "translation": null,
-      "source_hash": "ca79d068aa32c49467052ddc238d4a9822b78520c82ee48b25b401d7293df4ce",
+      "source_hash": "8a19079ce69d165aaa75c11932dbf4672b48cbdb6647b8ed5a5f40caacbabe7c",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.slope_to",
-      "group": "comparison",
+      "key": "generator.starting_pending",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Slope to ",
-      "new_english": "Slope to ",
+      "old_english": "STARTING · pending",
+      "new_english": "STARTING · pending",
       "variables": [],
       "translation": null,
-      "source_hash": "d08a0b06290a451205f42de4f96a7cd255307b581520960ce3c3b65c4e9b95f7",
+      "source_hash": "080a3fbbb191a8cfefa25a436bea70518a7efc621bd4a064436afc747a3e8906",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.start_analysis",
-      "group": "comparison",
+      "key": "generator.stop_generator_output_independently_of_input_and_analysis",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Start analysis",
-      "new_english": "Start analysis",
+      "old_english": "Stop Generator output independently of input and analysis",
+      "new_english": "Stop Generator output independently of input and analysis",
       "variables": [],
       "translation": null,
-      "source_hash": "fd46355dd422d985735b936e6b8c43efce52da6a0aa54a7882c3f784f9feec98",
+      "source_hash": "4b2558f0694bff9cf19594589c0da1211c25f35027bbb96b3151a587f7d5c843",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.state_names.averaging",
-      "group": "comparison",
+      "key": "generator.stop_output",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Averaging",
-      "new_english": "Averaging",
+      "old_english": "■ Stop output",
+      "new_english": "■ Stop output",
       "variables": [],
       "translation": null,
-      "source_hash": "687df0b852a36e61eaac0ff3ef6ad85a8d0c8c319e480ba0d6c9fd94cb74bdb7",
+      "source_hash": "06647c69fa33e881b5630ef931774d5b2ad94d1068884f2a5ccc43b9763f6763",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.state_names.disabled",
-      "group": "comparison",
+      "key": "generator.stop_output_2",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Disabled",
-      "new_english": "Disabled",
+      "old_english": "Stop output",
+      "new_english": "Stop output",
       "variables": [],
       "translation": null,
-      "source_hash": "75081b593d15cf6e631971bc6768723f593b88b172477e40ae7d363e4829816d",
+      "source_hash": "514482acc7968df8cb1bcdcfe734a4259ecd3f849faf53ba0b383acdce3f22fe",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.state_names.filling",
-      "group": "comparison",
+      "key": "generator.stop_output_to_add_remove_duplicate_reorder_or_change",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Filling",
-      "new_english": "Filling",
+      "old_english": "Stop output to add, remove, duplicate, reorder or change waveform / routing.",
+      "new_english": "Stop output to add, remove, duplicate, reorder or change waveform / routing.",
       "variables": [],
       "translation": null,
-      "source_hash": "7fcb95a3a3dc4070b34692d1a70c316d0892655315b1f8bc48cc9fb68f03aaa6",
+      "source_hash": "33629c3575f954dab2c9a7c0c48db71fbbbf2f1c5669c6542aabe6d49ed35794",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.state_names.missing",
-      "group": "comparison",
+      "key": "generator.stopped",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Missing",
-      "new_english": "Missing",
+      "old_english": "STOPPED",
+      "new_english": "STOPPED",
       "variables": [],
       "translation": null,
-      "source_hash": "6be36ca49ee85210c5d1ad9c377d90a9859c66d889110a2a5b0dccd390d12e20",
+      "source_hash": "133c49456b6509109d9feb7f177f09ed2feca968952482454b134c7b49c4ff06",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.state_names.non_finite",
-      "group": "comparison",
+      "key": "generator.stopping",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "NonFinite",
-      "new_english": "NonFinite",
+      "old_english": "STOPPING",
+      "new_english": "STOPPING",
       "variables": [],
       "translation": null,
-      "source_hash": "5cc9c7200631482f91b1b5d48900c1fb069d49cc06004a2bb7421b0e3d9dc64c",
+      "source_hash": "5444fbff498ad0e3a4021272831d26013c66dc21c5af98c08241e69443ecdccd",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.state_names.unavailable",
-      "group": "comparison",
+      "key": "generator.transition",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Unavailable",
-      "new_english": "Unavailable",
+      "old_english": "TRANSITION",
+      "new_english": "TRANSITION",
       "variables": [],
       "translation": null,
-      "source_hash": "ca184496974204a0bd3fd4925e0540bc4b0df6fcc232994d29754272b7183812",
+      "source_hash": "9acdd42860905afad73201a889f2bcb27f8ea016ff24f6e482774623e5f67f29",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.state_names.valid",
-      "group": "comparison",
+      "key": "generator.unassigned",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Valid",
-      "new_english": "Valid",
+      "old_english": "Unassigned",
+      "new_english": "Unassigned",
       "variables": [],
       "translation": null,
-      "source_hash": "f5162206318ee96491108354ae7361db244d6a013aa32185216b5f15ac544f4c",
+      "source_hash": "14d33bd014e6b4e7c3590a8a12e1ec4951d777593d6d6aef9ebe5faac9c8dac0",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.stop_analysis",
-      "group": "comparison",
+      "key": "generator.up",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Stop analysis",
-      "new_english": "Stop analysis",
+      "old_english": "Up",
+      "new_english": "Up",
       "variables": [],
       "translation": null,
-      "source_hash": "658fada64b415b3626449cf4d1982c2e74c5f465f5431f2eff2917f5c4d337f7",
+      "source_hash": "55490a4bf3a8e8cb5eed69720293a700ff01ef7da2bfc749f332f626cb584916",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.synchronous_comparison",
-      "group": "comparison",
+      "key": "generator.up_to_odd_harmonics_below_fs_peak_level_is",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Synchronous comparison",
-      "new_english": "Synchronous comparison",
+      "old_english": "Up to 16 odd harmonics below 0.45 Fs. Peak level is the full-scale ceiling; RMS depends on frequency.",
+      "new_english": "Up to 16 odd harmonics below 0.45 Fs. Peak level is the full-scale ceiling; RMS depends on frequency.",
       "variables": [],
       "translation": null,
-      "source_hash": "7884d1c3c2e2d3681248eb45639ac4db3c12f32a67d3c6d8ae0af3ea2e1cb181",
+      "source_hash": "a72dc9626af8dd55765d86717b1e44d143263db0a9c36870464b765ff4cceb52",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.to",
-      "group": "comparison",
+      "key": "generator.waveform",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "To ",
-      "new_english": "To ",
+      "old_english": "Waveform",
+      "new_english": "Waveform",
       "variables": [],
       "translation": null,
-      "source_hash": "81dcbe958121a9b1eceb8ab2bd605ab0dfaed3482e5e4266fdcba6ade2343086",
+      "source_hash": "f274deed1b737eeb689cce76fe83eb166bc698f4a7523fe7259ce199eb6a6a93",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.valid_band",
-      "group": "comparison",
+      "key": "generator.waveform_names.noise",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Valid band",
-      "new_english": "Valid band",
+      "old_english": "Noise",
+      "new_english": "Noise",
       "variables": [],
       "translation": null,
-      "source_hash": "99e83a6ef2f9bddbf823b52ca67c24a82b5f6d2953e54e40c4b488e480e0f071",
+      "source_hash": "9ada8e83c1186cd632fb2ac8195abc11596b4a6cea30900c55d23a44c2724770",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.valid_transfer_bins_gaps_are_not_interpolated",
-      "group": "comparison",
+      "key": "generator.waveform_names.sine",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "%{valid} valid transfer bins · gaps are not interpolated",
-      "new_english": "%{valid} valid transfer bins · gaps are not interpolated",
-      "variables": [
-        "valid"
-      ],
-      "translation": null,
-      "source_hash": "a9aa769f0efeaff709f9345e4a52c2c797c5cf7640557abda0aa32ef34a14230",
-      "translated_source_hash": null
-    },
-    {
-      "key": "comparison.waiting_for_a_complete_average",
-      "group": "comparison",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Waiting for a complete average.",
-      "new_english": "Waiting for a complete average.",
+      "old_english": "Sine",
+      "new_english": "Sine",
       "variables": [],
       "translation": null,
-      "source_hash": "b3b41682bda6afe169a2da8b70ddaa81239471effecf3e4166708cae018acd3c",
+      "source_hash": "37573a14aab690d3814c933aa5024839d58f7ffd700eaf1b0075d1445f12d631",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.window_averaging",
-      "group": "comparison",
+      "key": "generator.waveform_names.square",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "WINDOW / AVERAGING",
-      "new_english": "WINDOW / AVERAGING",
+      "old_english": "Square",
+      "new_english": "Square",
       "variables": [],
       "translation": null,
-      "source_hash": "551f916bcab6bae8ad5171d95f75ee8d7c45bdf6e73584ec32df5ec304564abf",
+      "source_hash": "c11092bc0861591e9ce5d9a97e83d4fae3c6954a318977865fa85f5b3eeafda8",
       "translated_source_hash": null
     },
     {
-      "key": "comparison.wrapped_delay",
-      "group": "comparison",
+      "key": "generator.waveform_names.triangle",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Wrapped delay",
-      "new_english": "Wrapped delay",
+      "old_english": "Triangle",
+      "new_english": "Triangle",
       "variables": [],
       "translation": null,
-      "source_hash": "4b36dc4d6910aef6d886b106dc560c2cc1c0c4630bd71bbf44fd4a741f4c43e5",
+      "source_hash": "a0252691b5dc54b1d67f9d35a120e8c49187f20f0735574a61713c6317df6f72",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.white_noise",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "white noise",
+      "new_english": "white noise",
+      "variables": [],
+      "translation": null,
+      "source_hash": "46cfb0b609bd245ffb81a9190626f8c856f3eb594086e350d4707f47677ca2e8",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.white_noise_uniform_peak_bounded",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "White noise · uniform · peak bounded",
+      "new_english": "White noise · uniform · peak bounded",
+      "variables": [],
+      "translation": null,
+      "source_hash": "1d10f26f7581a16bc01f54266a61f908f090b4e1feeb87373eaac8bf8d454bc2",
       "translated_source_hash": null
     }
   ]

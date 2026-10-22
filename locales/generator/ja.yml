@@ -1,0 +1,96 @@
+_version: 1
+generator.add_a_signal_in_the_generator_panel: 信号発生器パネルで信号を追加してください。
+generator.add_signal: + 信号を追加
+generator.applied: 適用済み
+generator.applied_fs_hz_nominal_settings_preview_uses_fs_peak: '適用Fs: %{nominal_sample_rate}
+  Hz（公称）。設定プレビューはFSピーク値を使い、実測サンプルはScopeに表示します。'
+generator.applied_hz_dbfs_peak_lead: '適用値: %{frequency_hz} Hz · %{amplitude_dbfs}
+  dBFS peak · %{phase_degrees}° 進み位相'
+generator.applied_output: 適用済み出力
+generator.applied_sample: 適用サンプル番号 %{applied_sample}
+generator.applied_seed: 適用した乱数シード %{noise_seed}
+generator.buttons_up_down_use_this_step_in_hz_dbfs: ±ボタン／↑／↓でHz、dBFS、度の増減幅を使います。Enterまたはフォーカスを外すと適用、Escで取り消します。
+generator.down: 下へ
+generator.duplicate: 複製
+generator.edit_step: 増減幅を編集
+generator.enter_a_finite_number_settings_were_not_applied: 有限の数値を入力してください。設定は適用されていません。
+generator.enter_focus_to_apply_esc_to_cancel_up_down: Enter／フォーカスを外すと適用 · Escで取り消し
+  · ↑／↓で増減
+generator.error: エラー
+generator.error_reason.already_active: 出力はすでに動作中です
+generator.error_reason.amplitude: 'カード位置 %{position}: 振幅は有限値で、−120〜0 dBFS peakの範囲にしてください'
+generator.error_reason.callback_stalled: オーディオ出力コールバックがタイムアウトしたため、出力ストリームを解放しました
+generator.error_reason.channel_count: 出力には1〜16チャンネルが必要です
+generator.error_reason.counter_exhausted: 出力サンプル、世代、または制御カウンターが上限に達しました
+generator.error_reason.duplicate_routing: 複数の信号を同じ出力チャンネルに割り当てることはできません
+generator.error_reason.frequency: 'カード位置 %{position}: 周波数は0.1 Hz以上、出力Fsの0.45倍未満にしてください'
+generator.error_reason.no_enabled_signals: 出力を開始する前に、1つ以上の信号を選択してください
+generator.error_reason.non_finite_output: 出力値が有限ではないため、出力を停止しました
+generator.error_reason.output_range: 出力がフルスケールを超えたため、出力を停止しました
+generator.error_reason.output_stream: オーディオ出力に失敗しました。再開する前に出力をリセットしてください
+generator.error_reason.phase: 'カード位置 %{position}: 位相は有限値で、−180〜180°の範囲にしてください'
+generator.error_reason.producer_suspended: 内部信号生成が250 msを超えて中断したため、出力を停止しました
+generator.error_reason.revision: 設定リビジョンは増加する必要があります
+generator.error_reason.routing: 'カード位置 %{position}: 出力チャンネルを利用できないか、未割当です'
+generator.error_reason.routing_while_active: カード、波形の詳細、チャンネル割当を変更する前に出力を停止してください
+generator.error_reason.sample_rate: 対応していない公称出力サンプルレートです
+generator.error_reason.signal_count: 信号発生器で使えるカードは最大16枚です
+generator.error_reason.signal_identity: 信号発生器のカードIDは重複せず、次のIDより小さい必要があります
+generator.error_reason.stopping: 出力のフェードが終わるまでお待ちください
+generator.error_reason.waveform: 'カード位置 %{position}: ノイズの乱数シードは0以外にしてください'
+generator.frequency: 周波数
+generator.gen: GEN %{id}
+generator.gen_2: GEN %{id} · %{s} · %{off}
+generator.gen_3: GEN %{id} · %{label} · %{s} · %{off}
+generator.gen_4: GEN %{id} · %{label}
+generator.gen_hz_dbfs_peak: GEN %{id} · %{label} · %{signal} · %{off} · %{frequency_hz}
+  Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}°
+generator.generation_revision: 出力世代 %{output_generation} · リビジョン %{revision}
+generator.hide_signal_controls: 信号の操作欄を隠す
+generator.hz_ch_input_stop_holds_the_measurement_output_continues: '%{label} · %{rate}
+  Hz · %{channels}ch。入力を停止しても測定結果を保持し、出力は継続します。'
+generator.hz_ch_nominal_fs: '%{nominal_sample_rate} Hz · %{channels}ch · %{pcm_label}
+  · 公称Fs'
+generator.hz_dbfs_peak_lead: '%{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}°
+  進み位相'
+generator.in_use: ' · 使用中'
+generator.ms_cycles: '%{frequency_hz} ms／2周期'
+generator.no_signals_add_a_signal_to_choose_its_waveform: 信号がありません。信号を追加して波形と出力先を選択してください。
+generator.off: 'OFF'
+generator.on: 'ON'
+generator.out: OUT %{ch}%{else}
+generator.out_2: OUT %{c}
+generator.out_3: OUT
+generator.output: 出力
+generator.output_details: 出力の詳細
+generator.peak_level: ピークレベル
+generator.pending: 適用待ち
+generator.phase_lead: 進み位相
+generator.remove: 削除
+generator.reset_output_stays_off: 出力をリセット（OFFのまま）
+generator.running: 動作中
+generator.seed: 乱数シード
+generator.selected_transition_ends: 選択中の遷移はサンプル %{i} で終了
+generator.settings_preview_fs_ceiling: 設定プレビュー · ±%{amplitude_peak} FS上限 · %{frequency_hz}
+generator.show_signal_controls: 信号の操作欄を表示
+generator.start_output: ▶ 出力を開始
+generator.start_replays_the_seed_frequency_and_phase_do_not: Startのたびに乱数シードから信号列を再生します。周波数と位相はノイズに影響しません。
+generator.starting: 開始処理中
+generator.starting_pending: 開始処理中 · 適用待ち
+generator.stop_generator_output_independently_of_input_and_analysis: 入力と解析を継続したまま、信号発生器の出力を停止
+generator.stop_output: ■ 出力を停止
+generator.stop_output_2: 出力を停止
+generator.stop_output_to_add_remove_duplicate_reorder_or_change: 追加、削除、複製、並べ替え、波形または出力先の変更には、出力を停止してください。
+generator.stopped: 停止中
+generator.stopping: 停止処理中
+generator.transition: 遷移中
+generator.unassigned: 未割当
+generator.up: 上へ
+generator.up_to_odd_harmonics_below_fs_peak_level_is: 0.45 Fs未満の奇数次高調波を最大16個まで含みます。ピークレベルはフルスケールの上限で、RMSは周波数によって変わります。
+generator.waveform: 波形
+generator.waveform_names.noise: ノイズ
+generator.waveform_names.sine: 正弦波
+generator.waveform_names.square: 矩形波
+generator.waveform_names.triangle: 三角波
+generator.white_noise: 白色雑音
+generator.white_noise_uniform_peak_bounded: 白色雑音 · 一様分布 · ピーク上限あり
