@@ -9,7 +9,7 @@ use crate::{
     cursor::{self, Cursors},
     export,
     gpu::{COLORS, PlotId, Segment, TraceCallback, TraceRenderer},
-    lockin, loopback,
+    i18n, lockin, loopback,
     measurement::{self, ScopeSettings, SpectrumMode},
     output,
     presentation::{Action, Console, InstrumentId as Instrument, Layout, Presentation, Screen},
@@ -436,6 +436,7 @@ impl ScopeApp {
             style.spacing.item_spacing = vec2(6.0, 6.0);
             style.spacing.button_padding = vec2(8.0, 4.0);
         });
+        i18n::initialize(&cc.egui_ctx, if smoke { None } else { cc.storage });
         let mut stft = stft::Worker::new();
         let stft_history = spectrogram::history::Collector::new(stft.take_results());
         let core = (!smoke).then(|| measurement::Worker::new(stft.take_feeder()));
@@ -5277,6 +5278,7 @@ impl eframe::App for ScopeApp {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         if !self.smoke {
             self.shell.save_sidebar(storage);
+            i18n::save(storage);
         }
     }
 

@@ -2,6 +2,7 @@
 use super::*;
 use crate::{generator, presentation::PANE_CHROME};
 
+mod language;
 mod sidebar;
 
 const HELP_WINDOW: &str = "help_window";
@@ -320,6 +321,7 @@ impl ScopeApp {
                     }
                 }
             });
+            language::menu(ui);
         });
     }
 
@@ -594,6 +596,11 @@ impl ScopeApp {
             ui.label(display::TRIGGER_HELP);
             ui.label("LIVE / HELD / WAITING describe acquisition; validity and calibration are shown separately.");
             ui.label(format!("{} · UI {:.0} fps · CPU FFT {:.2} ms", self.adapter, self.fps, self.fft_ms));
+            egui::CollapsingHeader::new(i18n::text("shell.font_license")).id_salt("font_license").show(ui, |ui| {
+                egui::ScrollArea::vertical().max_height(200.0).show(ui, |ui| {
+                    ui.label(include_str!("../../assets/fonts/OFL.txt"));
+                });
+            });
         });
         self.shell.help = help;
         let mut paths = self.shell.file_paths;

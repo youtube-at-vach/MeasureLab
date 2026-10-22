@@ -1,0 +1,10 @@
+_version: 1
+common:
+  ready: QA準備完了
+  greeting: "%{name}、入力%{channel}"
+  stale: 古い訳
+  empty: " "
+  unreviewed: 未確認の訳
+  tampered: 書き換えた訳
+  variables: "誤った変数：%{wrong}"
+  obsolete: 削除されたキー

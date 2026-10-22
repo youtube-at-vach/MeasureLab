@@ -1255,6 +1255,7 @@ impl ScopeApp {
         driver.frame(self, vec![]);
 
         self.check_display_scale_interactions(&mut driver)?;
+        self.check_language_interactions(&mut driver)?;
         self.check_sidebar_interactions(&mut driver)?;
         self.check_output_stop_interactions(&mut driver)?;
         self.check_cursor_placement_interactions(&mut driver)?;
@@ -1701,6 +1702,38 @@ impl ScopeApp {
         self.shell = saved_shell;
         println!(
             "GUI interactions OK: widget clicks, keyboard navigation, details, I/O return, resize/scale; measurement and output commands unchanged"
+        );
+        Ok(())
+    }
+
+    fn check_language_interactions(&mut self, driver: &mut Driver) -> Result<(), String> {
+        let selected = i18n::locale();
+        let screen = self.presentation.screen;
+        let generation = self.input_generation;
+        let command = self.generator.command_marker();
+        i18n::initialize(&driver.ctx, None);
+        for (width, zoom, native) in [(1440.0, 1.0, 1.0), (900.0, 1.25, 2.0)] {
+            driver.resize(self, vec2(width, 1000.0), zoom, native);
+            for locale in i18n::Locale::ALL {
+                if width < 1180.0 {
+                    driver.click(self, "Menu")?;
+                }
+                driver.click(self, "View")?;
+                driver.click(self, "Language")?;
+                driver.visible_text_rect(locale.native_name())?;
+                driver.click(self, locale.native_name())?;
+                assert_eq!(i18n::locale(), locale);
+                assert_eq!(self.presentation.screen, screen);
+                assert_eq!(self.input_generation, generation);
+                assert_eq!(self.generator.command_marker(), command);
+                assert!(!egui::Popup::is_any_open(&driver.ctx));
+                driver.text_position("Stop output")?;
+            }
+        }
+        i18n::set_locale(&driver.ctx, selected.id());
+        driver.resize(self, vec2(1440.0, 1000.0), 1.0, 1.0);
+        println!(
+            "Language UI OK: nine locales, English fallback, wide/narrow/zoom/native scale; selection, input generation and output commands unchanged"
         );
         Ok(())
     }

@@ -1,0 +1,10 @@
+_version: 1
+common:
+  ready: Ready for QA
+  greeting: "Hello, %{name}; input %{channel}"
+  stale: Current source
+  empty: Empty translation
+  unreviewed: Unreviewed translation
+  tampered: Translation changed after review
+  variables: "Value: %{value}"
+  removed_value: Kept source

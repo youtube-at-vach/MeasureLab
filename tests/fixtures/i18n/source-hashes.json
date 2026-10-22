@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "translations": {
+    "ja": {
+      "common.ready": {
+        "source": "Ready for QA",
+        "source_hash": "3ccb4d4495004f35004846e659d09dabbbb6142dd3ef61556073923cd9bf7765",
+        "translation_hash": "55b4cdbf5f5f4c2d8215b62492b518cd316d5094f7fe17e2dd703e3b2bf86d32"
+      },
+      "common.greeting": {
+        "source": "Hello, %{name}; input %{channel}",
+        "source_hash": "d59936de111420d655d72e62f01da4aaf58b2505a3bbb1b2edcd9c0fb42a6822",
+        "translation_hash": "b2e56f67bf8b190dcddbdd2ce7686f079e54e2e531497eeedb133f7990821726"
+      },
+      "common.stale": {
+        "source": "Old source",
+        "source_hash": "baa2dbe4761fe966bf6d7562d5060c4f019586829a75a84e19bc453ad8422d1a",
+        "translation_hash": "68c43a505c663979bff0530312b44be9692daf5f60fcc2e2ff2e3d41729414cc"
+      },
+      "common.empty": {
+        "source": "Empty translation",
+        "source_hash": "bb637f563194e424f8650f6eda3bccc8788a9b53500204670ded049c4f367435",
+        "translation_hash": "36a9e7f1c95b82ffb99743e0c5c4ce95d83c9a430aac59f84ef3cbfab6145068"
+      },
+      "common.tampered": {
+        "source": "Translation changed after review",
+        "source_hash": "43e8219ca7648126fb7c31737fa8476b92c81727e636e2958ab7755686a53d8c",
+        "translation_hash": "3f4efebd959a083cf9a7ca356e72ac76fbefe623cf56e70dc9673d89b03f8a9b"
+      },
+      "common.variables": {
+        "source": "Value: %{value}",
+        "source_hash": "9bf4cd770421b29bbbd6bac2dadef5694e7a2dc53b9573dc6b2ce45fdfc930fa",
+        "translation_hash": "7f7e25390547a58895b917bb25772eddfb2267995b2e791554e7d86a940d1f42"
+      }
+    }
+  }
+}

@@ -193,7 +193,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_min_inner_size([900.0, 660.0])
             .with_app_id("dev.measurelab.app"),
         renderer: eframe::Renderer::Wgpu,
-        // Only the sidebar preference is restored automatically.
+        // Display preferences (sidebar/language) are restored by the app.
         persist_window: false,
         ..Default::default()
     };

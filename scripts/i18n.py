@@ -275,6 +275,14 @@ def check_calls(files: dict[str, str], catalog: Catalog) -> None:
             continue
         tokens = rust_tokens(source)
         for index, token in enumerate(tokens):
+            if token == Token("rust_i18n"):
+                raise InvalidCatalog(f"{path}: rust-i18n is private to src/i18n.rs")
+            if (
+                token == Token("i18n")
+                and not (path in {"src/app.rs", "src/main.rs"} or path.startswith("src/app/"))
+                and not (path == "src/lib.rs" and index > 0 and tokens[index - 1] == Token("mod"))
+            ):
+                raise InvalidCatalog(f"{path}: locale/translation state belongs to the GUI boundary")
             if token == Token("i18n") and tokens[index + 1 : index + 2] == [Token("as")]:
                 raise InvalidCatalog(f"{path}: do not alias the i18n module")
             if token != Token("i18n") or tokens[index + 1 : index + 2] != [Token("::")]:

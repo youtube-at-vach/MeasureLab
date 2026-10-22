@@ -177,6 +177,20 @@ class CallTests(unittest.TestCase):
             with self.subTest(source=source), self.assertRaises(InvalidCatalog):
                 self.check_source(source)
 
+    def test_library_backend_and_locale_state_stay_at_the_gui_boundary(self):
+        for path, source in [
+            ("src/audio.rs", 'i18n::text("common.ready")'),
+            ("src/measurement.rs", "let locale = i18n::locale();"),
+            ("src/generator/control.rs", "use crate::i18n;"),
+            ("src/app.rs", 'rust_i18n::set_locale("ja");'),
+            ("src/app/shell.rs", "use rust_i18n::t;"),
+        ]:
+            with self.subTest(path=path, source=source), self.assertRaises(InvalidCatalog):
+                check_calls({path: source}, self.catalog)
+        check_calls({"src/i18n.rs": "use rust_i18n::Backend;"}, self.catalog)
+        check_calls({"src/lib.rs": "pub mod i18n;"}, self.catalog)
+        check_calls({"src/app/shell/language.rs": "i18n::locale();"}, self.catalog)
+
     def test_comments_normal_and_raw_strings_do_not_create_false_calls(self):
         self.check_source(
             '// i18n::text("missing.key")\n'
