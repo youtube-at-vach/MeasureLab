@@ -1,0 +1,378 @@
+_version: 1
+common.acquiring_post_trigger_samples: Acquisition des échantillons après déclenchement…
+common.active_input_differs_from_the_device_list_stop_and: L’entrée active diffère
+  de la liste des périphériques ; arrêtez et actualisez avant d’enregistrer
+common.all_channels_off: Tous les canaux désactivés
+common.all_scope_channels_off: Tous les canaux de l’oscilloscope désactivés
+common.amplitude_fs: Amplitude [FS]
+common.amplitude_help: FS = pleine échelle numérique. Les formes d’onde et les niveaux
+  de déclenchement utilisent le FS brut. Les mesures RMS / crête à crête utilisent
+  l’étalonnage du canal capturé et affichent leurs propres unités.
+common.an_export_is_already_in_progress: Un export est déjà en cours
+common.band_hz_power_rms: Bande %{bin_centres_hz} Hz | puissance %{power} %{power_unit}
+  | RMS %{rms} %{rms_unit}
+common.calibration_rev_gain_offset: Étalonnage %{id} rév. %{revision} | gain %{gain}
+  décalage %{offset} %{unit} | %{conditions}
+common.calibration_rev_gain_offset_2: Étalonnage %{id} rév. %{revision} | gain %{gain}
+  décalage %{offset} | %{conditions}
+common.calibration_rev_y_fs: Étalonnage %{id} · rév. %{revision} · y = %{gain} × FS
+  + %{offset} %{unit} · %{conditions}
+common.calibration_revision_exhausted: Numéro de révision d’étalonnage épuisé
+common.capacity_limited: ' · limité par la capacité'
+common.captured_f64: 'Valeur f64 capturée : %{v} %{unit}'
+common.channel_unavailable: CH indisponible
+common.channels_outside_the_input_range: Canaux hors de la plage d’entrée
+common.check_input_settings_and_the_acquisition_error_then_press: Vérifiez les paramètres
+  d’entrée et l’erreur d’acquisition, puis appuyez sur Démarrer l’entrée pour réessayer.
+common.choose_an_available_trigger_source_in_scope_settings_or: Choisissez une source
+  de déclenchement disponible dans les paramètres de l’oscilloscope ou modifiez la
+  source d’entrée dans Audio I/O.
+common.choose_which_cursor_the_next_plot_click_or_drag: Choisissez le curseur que
+  le prochain clic ou glissement sur le graphique placera ; sélectionner A ou B ne
+  le place pas. L’oscilloscope conserve la position sur le graphique. Le spectrogramme
+  conserve la trame FFT sélectionnée. XY Free conserve les amplitudes X/Y ; Trace
+  Snap suit un échantillon relatif au déclenchement.
+common.clear_both_a_b_time_cursors_spectrum_spectrogram_frequency: Effacer les deux
+  curseurs temporels A/B, les curseurs de fréquence du spectre et du spectrogramme,
+  les points XY Free et les sélections de trame du spectrogramme sur tous les instruments.
+  Les données acquises sont conservées.
+common.clear_cursors: Effacer les curseurs
+common.clear_reference: Effacer la référence
+common.collecting_a_complete_fft_window: Acquisition d’une fenêtre FFT complète…
+common.compare_saved_reference: Comparer la référence enregistrée
+common.current: Actuel
+common.current_held_result: Résultat actuel maintenu
+common.current_reference_gain_phase_wrapped_delay_s: 'Actuel − référence : gain %{gain}
+  · phase %{phase_degrees}° · retard replié %{phase_delay_seconds} s'
+common.cursor_channel_invalid: ' · valeur %{channel} invalide'
+common.dc_fs_noise_rms_fs_frequency_offset_hz_ref: CC %{dc_offset} FS | bruit RMS
+  %{noise_rms} FS | décalage de fréquence %{frequency_offset_hz} Hz | REF %{disabled}
+common.delay_samples: 'Échantillons de retard '
+common.difference_requires_valid_matching_input_analysis_calibration_and_excitation: La
+  différence exige des conditions valides et concordantes pour l’entrée, l’analyse,
+  l’étalonnage et l’excitation, sans perte. L’historique indépendant de la sortie
+  externe ne permet pas d’établir une excitation concordante aux échantillons d’entrée.
+common.disabled: désactivé
+common.display_updates_skipped: 'Mises à jour de l’affichage ignorées : %{elaxed}'
+common.div_help: div = une division de la grille. ms/div définit le temps par division
+  horizontale ; FS/div définit l’amplitude brute par division verticale pour chaque
+  canal de l’oscilloscope.
+common.dropped: 'Échantillons perdus : %{dropped}'
+common.dut_dc_fs: 'CC DUT FS '
+common.dut_frequency_offset_hz: 'Décalage de fréquence DUT Hz '
+common.dut_gain: 'Gain DUT '
+common.dut_gain_phase_delay_samples: Gain DUT %{gain} | phase %{phase_degrees}° |
+  retard %{delay_samples} échantillons
+common.ema_windows_envelope: EMA α %{alpha} | %{processed_windows} fenêtres | enveloppe
+  [%{start}, %{end})
+common.enabled: activé
+common.enter_a_results_file_path: Saisissez un chemin de fichier de résultats
+common.enter_a_settings_file_path: Saisissez un chemin de fichier de paramètres
+common.envelope_latest_complete_windows_missing_samples_ref_hz_ac: 'Enveloppe [%{start},
+  %{end}) · dernière [%{start_2}, %{end_2})
+
+  %{processed_windows} fenêtres complètes · %{missing_samples} échantillons manquants
+
+  REF %{reference_frequency_hz} Hz · RMS CA %{reference_ac_rms_fs} FS · ajustement
+  sinusoïdal %{reference_sinusoid_fraction}'
+common.export_annotated_png: Exporter le PNG annoté…
+common.export_held_result_csv: Exporter le CSV du résultat maintenu…
+common.export_held_results: Exporter les résultats maintenus
+common.export_held_scope_csv: Exporter le CSV de l’oscilloscope maintenu…
+common.export_held_scope_only: Exporter uniquement l’oscilloscope maintenu
+common.export_held_scope_png: Exporter le PNG de l’oscilloscope maintenu…
+common.exporting_results: Export des résultats maintenus…
+common.exports_the_retained_scope_interval_and_the_independently_timed: Exporte l’intervalle
+  conservé de l’oscilloscope et le résultat du spectre, horodaté indépendamment. Les
+  échantillons manquants restent null. Le spectrogramme, XY et les curseurs ne sont
+  pas inclus.
+common.external_generator_history_independent_uncalibrated_output_clock_input_window: 'Historique
+  du générateur externe : horloge de sortie indépendante et non étalonnée ; correspondance
+  avec la fenêtre d’entrée inconnue.'
+common.f_hz_rbw_hz: Δf %{bin_width_hz} Hz | RBW %{rbw_hz} Hz
+common.fft_precision: PRÉCISION FFT
+common.file: Fichier
+common.file_paths_status: Chemins et état des fichiers…
+common.file_selection_cancelled: Sélection de fichier annulée
+common.finishing: FINALISATION
+common.finishing_acquisition: Finalisation de l’acquisition…
+common.fixed_frequency: fréquence fixe
+common.frequency_hz: 'Fréquence Hz '
+common.gain_phase_coherence: Gain %{gain} · phase %{phase_lead_degrees}° · cohérence
+  %{coherence} · %{state}
+common.generation_nominal_hz_ch: Génération %{generation} | nominale %{nominal_sample_rate_hz}
+  Hz | %{channels} canaux
+common.generator_internal_loopback_actual_f64_output_shared_integer_sample: Bouclage
+  interne du générateur · sortie f64 réelle · horloge d’échantillonnage entière partagée
+common.gpu_segments: 'Segments GPU : %{len}'
+common.held: MAINTENU
+common.held_input_generation_does_not_match_results: La génération de l’entrée maintenue
+  ne correspond pas aux résultats
+common.held_measurement_results: RÉSULTATS DE MESURE MAINTENUS
+common.hz_2: '%{frequency_hz} Hz · %{level_db} %{db_unit}'
+common.hz_3: '%{rate} Hz'
+common.hz_4: '%{unwrap_or} Hz'
+common.input: Entrée %{device_name} | %{sample_format}
+common.input_acquisition_failed: Échec de l’acquisition d’entrée
+common.input_conditions: 'Conditions d’entrée : —'
+common.input_conditions_changed_since_restoration_refresh_devices_and_restore: Les
+  conditions d’entrée ont changé depuis la restauration ; actualisez les périphériques
+  et restaurez à nouveau
+common.input_is_active_check_the_trigger_source_level_and: L’entrée est active. Vérifiez
+  la source, le niveau et le front du déclenchement dans les paramètres de l’oscilloscope,
+  ou utilisez le mode Auto.
+common.input_is_active_waiting_for_enough_samples_to_draw: L’entrée est active. En
+  attente d’un nombre suffisant d’échantillons pour tracer un balayage complet.
+common.input_is_active_waiting_for_the_rest_of_the: L’entrée est active. En attente
+  du reste du balayage déclenché.
+common.input_ksa_s_nominal_ch: Entrée %{state} · %{nominal_sample_rate_hz} kSa/s nominal
+  · %{channels} canaux · %{format}
+common.input_stopped: Entrée arrêtée
+common.input_stopped_before_a_complete_sweep_was_available_check: L’entrée s’est arrêtée
+  avant qu’un balayage complet soit disponible. Vérifiez les paramètres de l’oscilloscope,
+  puis appuyez sur Démarrer l’entrée pour acquérir à nouveau.
+common.invalid_fft_window_nonfinite_value: Fenêtre FFT invalide · valeur non finie
+common.invalid_value: valeur invalide
+common.keep_held_result_as_reference: Conserver le résultat maintenu comme référence
+common.known_sine_gain_phase_delay_noise_dut_common_input: Sinusoïde connue → gain
+  / phase / retard / bruit DUT → entrée commune. Les conditions s’appliquent au démarrage.
+common.language_fallback: Le texte non traduit s’affiche en anglais. La traduction
+  des instruments est en préparation.
+common.last_observed_output_nominal_hz_generation_revision_next_output: 'Dernière
+  sortie observée : %{label} | nominale %{nominal_sample_rate} Hz | %{pcm_label} |
+  %{state} | génération %{output_generation} révision %{revision} | prochain échantillon
+  de sortie %{next_sample}'
+common.live: EN DIRECT
+common.load_reference_result: Charger le résultat de référence…
+common.lock_in_current_reference_each_result_s_own_interval: 'Différence Lock-in actuelle
+  − référence (intervalle propre à chaque résultat) :
+
+  ΔX %{x} · ΔY %{y} · ΔR %{amplitude_peak} %{response_unit_peak}
+
+  Δθ %{phase_degrees}° (repliée à ±180°) · ΔGain %{gain} %{gain_unit}'
+common.lock_in_difference_requires_two_valid_settled_results_with: La différence Lock-in
+  exige deux résultats valides et stabilisés avec Fs nominal, canaux, paramètres REF/filtre
+  et étalonnages concordants, sans échec d’entrée, et avec une excitation stationnaire
+  concordante connue pour l’entrée du générateur.
+common.lock_in_experimental_sig_ch_ref_ch_s_n: 'Lock-in %{state} · expérimental |
+  SIG CH %{response_channel} / REF CH %{reference_channel}
+
+  τ %{time_constant_seconds} s · N %{integration_samples} · fréquence indicative %{frequency_hz}
+  Hz · %{fixed_frequency} · REF min %{reference_min_rms_fs} FS RMS'
+common.loss_capture_scope_fft_input_fft_windows_missing_nonfinite: 'Pertes : capture
+  %{capture_dropped_samples} | oscilloscope %{scope_missing_samples} échantillons
+  manquants | entrée FFT %{missing_input_samples} échantillons manquants
+
+  Fenêtres FFT : %{missing_windows} manquantes | %{nonfinite_windows} non finies |
+  %{processed_windows_since_reset} observées
+
+  Fin d’entrée %{input_end} | %{filled_samples} échantillons remplis | échec d’entrée
+  %{input_failed}'
+common.measurement_settings: PARAMÈTRES DE MESURE
+common.missing_sample: échantillon manquant
+common.ms: '%{index} %{seconds} ms  '
+common.no_complete_fft_window: Aucune fenêtre FFT complète
+common.no_complete_sweep_captured: Aucun balayage complet capturé
+common.no_held_input_conditions: Aucune condition d’entrée maintenue
+common.no_samples_acquired_yet: Aucun échantillon acquis pour l’instant
+common.no_valid_captured_value: Aucune valeur capturée valide
+common.noise_rms_fs: 'Bruit RMS FS '
+common.not_acquired: NON ACQUIS
+common.observed_changes_evicted_lost_reports_output_notifications_since_output: '%{len}
+  changements observés | %{evicted_changes} évincés | %{lost_reports_since_output_worker_start}
+  rapports perdus | %{notifications_since_output_worker_start} notifications de sortie
+  depuis le démarrage du processus de sortie'
+common.one_reference_is_retained_recordings_use_independent_sample_clock: Une référence
+  est conservée. Les enregistrements ont des origines d’horloge d’échantillonnage
+  indépendantes ; les graphiques sont affichés séparément.
+common.only_this_instrument_s_fft_changes_precision_input_history: Seule la précision
+  FFT de cet instrument change. L’historique d’entrée, la suppression du CC et la
+  moyenne de puissance utilisent 64 bits.
+common.open_input_settings: Ouvrir les paramètres d’entrée
+common.open_input_settings_to_choose_the_source_then_press: Ouvrez les paramètres
+  d’entrée pour choisir la source, puis appuyez sur Démarrer l’entrée dans la barre
+  supérieure.
+common.open_input_settings_to_select_or_refresh_an_audio: Ouvrez les paramètres d’entrée
+  pour sélectionner ou actualiser un périphérique audio, ou choisissez le bouclage
+  logiciel. Appuyez ensuite sur Démarrer l’entrée.
+common.outside_sweep: hors du balayage
+common.peak_hold: Maintien du pic
+common.performance: Performances
+common.phase_lead: 'Avance de phase ° '
+common.place_cursor: 'Placer le curseur :'
+common.placed_a: 'Placé : A'
+common.placed_a_b: 'Placé : A, B'
+common.placed_b: 'Placé : B'
+common.placed_none: 'Placé : aucun'
+common.precision.f32: 32 bits (FFT rapide)
+common.precision.f64: 64 bits
+common.preparing_input: Préparation de l’entrée…
+common.previous_held_result: Résultat précédent maintenu
+common.psd_band_power_current_reference: 'Puissance de bande PSD actuelle − référence
+  : %{power} %{power_unit}'
+common.raw_sample_unavailable: '#%{sample} · échantillon brut indisponible'
+common.raw_scope_fs_relative_sample_position: FS brut de l’oscilloscope · position
+  relative de l’échantillon
+common.ref: REF
+common.ref_ch_sig_ch_windows: '%{label} : %{state} · REF CH %{reference_channel} /
+  SIG CH %{response_channel} · %{start}..%{end} · %{averaged_windows} fenêtres moyennées
+  · %{gain_unit}'
+common.reference: Référence
+common.reference_comparison: Comparaison à la référence
+common.reference_loaded_captured_input_conditions_preserved: Référence chargée ; conditions
+  d’entrée capturées conservées
+common.reference_peak_fs: 'Pic de référence FS '
+common.reference_present: Référence présente
+common.restore_settings: Restaurer les paramètres
+common.restore_settings_2: Restaurer les paramètres…
+common.restored_input_selection_changed_restore_settings_again: La sélection d’entrée
+  restaurée a changé ; restaurez à nouveau les paramètres
+common.result_states.non_finite: Non fini
+common.result_states.partial: Partiel
+common.result_states.unavailable: Indisponible
+common.result_states.valid: Valide
+common.result_states.waiting: En attente
+common.results_exported: 'Résultats exportés : %{path}'
+common.results_json_file_path: Chemin du fichier JSON des résultats
+common.retained_output_condition_intervals_missing_evicted_intervals_are_unknown: '%{len}
+  intervalles de conditions de sortie conservés ; les intervalles manquants ou évincés
+  sont inconnus'
+common.rev_gain_offset: '%{label} : %{id} rév. %{revision} · gain %{gain} décalage
+  %{offset} %{unit} · %{conditions}'
+common.revision_y_fs: '%{id} · révision %{revision} · y = %{gain} × FS + %{offset}
+  %{unit} · %{conditions}'
+common.rms_peak_p_p: 'RMS %{rms}
+
+  Crête %{peak}
+
+  Crête-à-crête %{peak_to_peak}'
+common.sample_rate_help: Fs = fréquence d’échantillonnage nominale en échantillons/s
+  (Sa/s). Le temps et la fréquence capturés utilisent cette fréquence ; l’horloge
+  physique d’échantillonnage n’est pas étalonnée.
+common.save_held_result_json: Enregistrer le résultat maintenu au format JSON…
+common.save_held_scope_json: Enregistrer l’oscilloscope maintenu au format JSON…
+common.save_settings: Enregistrer les paramètres
+common.save_settings_2: Enregistrer les paramètres…
+common.save_the_queued_input_channels_analysis_and_calibration_for: Enregistrer l’entrée
+  en attente, les canaux, l’analyse et l’étalonnage pour le prochain démarrage. Restaurer
+  à l’arrêt ; démarrer ensuite explicitement l’entrée.
+common.saved: Enregistré %{display}
+common.saved_calibration_conflicts_with_an_existing_id_revision: L’étalonnage enregistré
+  entre en conflit avec un ID/révision existant
+common.scope_prep_ms: Préparation oscilloscope %{build_ms} ms
+common.scope_trigger_ch_at_fs: Oscilloscope [%{start}, %{end}) | %{acquisition_mode}
+  | déclenchement CH %{channel} %{edge} à %{level} FS
+common.select_a_channel_below_the_plot_and_choose_its: Sélectionnez un canal sous
+  le graphique et choisissez sa source d’entrée dans les paramètres de l’oscilloscope,
+  ou modifiez la source d’entrée dans Audio I/O.
+common.select_an_audio_input_to_observe_audio_device_output: Sélectionnez une entrée
+  audio pour observer la sortie du périphérique audio
+common.select_an_input_device_first: Sélectionnez d’abord un périphérique d’entrée
+common.select_an_input_source: Sélectionner une source d’entrée
+common.selected_ch_axis: Axe CH%{scope_selected} sélectionné. %{display}
+common.selecting_file: Sélection du fichier…
+common.settings_error: Erreur de paramètres
+common.settings_failed: 'Échec des paramètres : %{detail}'
+common.settings_json_file_path: Chemin du fichier JSON des paramètres
+common.settings_restored: 'Paramètres restaurés : %{path}. L’entrée reste arrêtée
+  ; appuyez sur Démarrer l’entrée pour mesurer.'
+common.settings_restored_input_stopped: Paramètres restaurés ; entrée arrêtée
+common.settings_saved: 'Paramètres enregistrés : %{path}'
+common.settings_status: État des paramètres
+common.sig: SIG
+common.single_complete_fft_window_was_not_filled: Acquisition unique terminée · fenêtre
+  FFT non remplie
+common.software_loopback_ch_ref_ch_dut: BOUCLAGE LOGICIEL · CH 1 REF / CH 2 DUT
+common.software_loopback_hz_ref_fs_peak: Bouclage logiciel | %{frequency_hz} Hz |
+  REF %{amplitude_peak} FS crête
+common.spectrogram_history_ms: Historique du spectrogramme %{spectrogram_build_ms}
+  ms
+common.spectrogram_rows_mib_cpu_storage: Spectrogramme %{len} / %{spectrogram} lignes
+  · stockage CPU %{storage_bytes} MiB
+common.spectrum_ch_points_dc_removal: 'Spectre %{state} | CH %{c}
+
+  %{end} | %{size} points | %{name}
+
+  %{mode} | suppression du CC %{remove_dc} | %{unit}'
+common.spectrum_definitions_or_known_stationary_excitation_differ_inspect_each: Les
+  définitions du spectre ou l’excitation stationnaire connue diffèrent ; examinez
+  séparément les bins et bandes de chaque résultat.
+common.spectrum_linear_values_bin_position: Valeurs linéaires du spectre · position
+  du bin
+common.spectrum_prep_ms: Préparation du spectre %{spectrum_build_ms} ms
+common.spectrum_windows_missing: Spectre %{mode} · %{updates} fenêtres · %{missing_windows}
+  manquantes
+common.start_input_to_begin_acquisition: Démarrer l’entrée pour commencer l’acquisition
+common.stft_ch_n_hop_samples: STFT CH %{channel} · N %{size} / pas %{hop} · échantillons
+  %{start}..%{end}
+common.stft_history_storage_losses_allocated_mib_peak_mib: Pertes de stockage de l’historique
+  STFT %{elaxed} · alloué %{allocated_frame_bytes} MiB / pic %{peak_frame_bytes} MiB
+common.stft_input_dropped_rows_dropped: Entrée STFT ignorée %{elaxed} · lignes ignorées
+  %{elaxed_2}
+common.stft_raster_peak_mib_mib_display_requests_replaced: Pic du raster STFT %{peak_cache_bytes}
+  MiB / 8 MiB · demandes d’affichage remplacées %{elaxed}
+common.stft_retention_s_frames_mib_retired: Rétention STFT %{retained_seconds} s ·
+  %{len} trames · %{storage_bytes} MiB · retirées %{retired}%{else}
+common.stop_input_and_output_and_wait_for_pending_operations: Arrêtez l’entrée et
+  la sortie et attendez la fin des opérations en attente avant de restaurer
+common.stop_input_and_wait_for_held_scope_samples: Arrêtez l’entrée et attendez les
+  échantillons maintenus de l’oscilloscope
+common.stop_input_and_wait_for_the_held_measurement_results: Arrêtez l’entrée et attendez
+  les résultats de mesure maintenus
+common.stop_input_before_restoring_settings: Arrêtez l’entrée avant de restaurer les
+  paramètres
+common.stop_input_then_export_scope_samples_and_statistics_spectrum: Arrêtez l’entrée,
+  puis exportez au format JSON les échantillons et statistiques de l’oscilloscope,
+  les bins du spectre et leurs conditions capturées.
+common.stop_input_to_compare_the_current_result: Arrêtez l’entrée pour comparer le
+  résultat actuel.
+common.stored_cursor_positions_for_this_view_readings_can_be: Positions des curseurs
+  enregistrées pour cette vue ; les mesures peuvent être indisponibles hors des données
+  acquises.
+common.synchronous_comparison_at_bin_hz: Comparaison synchrone au bin %{bin} (%{width}
+  Hz)
+common.t_ms: Δt %{delta} ms
+common.t_ms_2: '%{index} T%{sample_rate} ms  '
+common.time_ms: Temps [ms]
+common.time_relative_to_the_sweep_reference_t_ms: Temps relatif à la référence du
+  balayage (T, 0 ms). %{display}
+common.timings_are_cpu_work_not_gpu_execution: Les durées mesurent le travail du CPU,
+  pas l’exécution GPU.
+common.trace_ch: Trace %{i} CH %{channel} %{state} | %{unit}
+common.trace_current_reference_rms_each_result_s_own_interval: 'Trace %{i} : RMS actuelle
+  − référence %{rms} (intervalle propre à chaque résultat)'
+common.trace_differs_in_channel_unit_or_known_stationary_excitation: 'Trace %{i} :
+  canal, unité ou excitation stationnaire connue différente ; aucune différence numérique'
+common.tracking: Suivi ±10 %
+common.trigger_help: T en haut indique la référence temporelle (0 ms) ; T à droite
+  indique le niveau de déclenchement en FS brut pour son canal source. Sans déclenchement
+  confirmé, les deux ne sont que des paramètres.
+common.trigger_source_outside_the_input_range: Source de déclenchement hors de la
+  plage d’entrée
+common.turn_on_a_channel_using_the_checkboxes_below_the: Activez un canal à l’aide
+  des cases à cocher sous le graphique.
+common.ui_fps: UI %{fps} fps
+common.unavailable: '%{selected} · indisponible'
+common.unavailable_2: ' · %{channel} indisponible'
+common.uncalibrated: Non étalonné
+common.uncalibrated_fs: Non étalonné · FS
+common.uncalibrated_fs_2: '%{label} : non étalonné · FS'
+common.wait_for_the_generator_settings_to_be_applied: Attendez que les paramètres
+  du générateur soient appliqués
+common.waiting: EN ATTENTE
+common.waiting_for_the_final_measurement_acquired_data_will_be: En attente de la mesure
+  finale. Les données acquises seront conservées.
+common.waiting_for_the_input_source_and_its_channel_count: En attente que la source
+  d’entrée et son nombre de canaux soient prêts.
+common.waiting_for_trigger: En attente du déclenchement
+common.window: Fenêtre [%{start}, %{end})
+common.window_names.blackman_harris: Blackman-Harris
+common.window_names.hann: Hann
+common.window_names.rectangular: Rectangulaire
+common.worker_fft_ms: FFT du processus %{fft_ms} ms
+common.working: En cours…
+common.x_y_r_leads_ref_gain: 'X %{x} · Y %{y} · R %{amplitude_peak} %{response_unit_peak}
+
+  θ %{phase_degrees}° (avance sur REF) · Gain %{gain} %{gain_unit}'
+common.xy_prep_ms: Préparation XY %{xy_build_ms} ms
+common.zero_db_readout: −∞ %{unit} (zéro)
