@@ -479,7 +479,10 @@ mod tests {
         assert_eq!(locale(), Locale::English);
         for selected in Locale::ALL {
             set_locale(&ctx, selected.id());
+            let selected_label = text("shell.language");
             save(&mut storage);
+            initialize(&ctx, None);
+            assert_eq!(locale(), Locale::English);
             initialize(&ctx, Some(&storage));
             assert_eq!(locale(), selected);
             assert_eq!(
@@ -490,7 +493,7 @@ mod tests {
                     "Ready for QA"
                 }
             );
-            assert_eq!(text("shell.language"), "Language");
+            assert_eq!(text("shell.language"), selected_label);
             assert_eq!(storage.0["measurement-sentinel"], "unchanged");
             assert_eq!(storage.0.len(), 2);
         }

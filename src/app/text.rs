@@ -287,43 +287,61 @@ mod tests {
     #[test]
     fn localized_enum_names_preserve_english_and_the_core_identifiers() {
         let ctx = eframe::egui::Context::default();
+        i18n::set_locale(&ctx, "en-US");
+        let core_instruments = InstrumentId::ALL.map(|instrument| {
+            (
+                serde_json::to_string(&instrument).unwrap(),
+                instrument.name(),
+                instrument.purpose(),
+                instrument.group(),
+            )
+        });
+        for instrument in InstrumentId::ALL {
+            assert_eq!(instrument.display_name(), instrument.name());
+            assert_eq!(instrument.display_purpose(), instrument.purpose());
+            assert_eq!(instrument.display_group(), instrument.group());
+        }
+        for layout in Layout::ALL {
+            assert_eq!(layout.display_name(), layout.name());
+        }
+        for window in [Window::Rectangular, Window::Hann, Window::BlackmanHarris] {
+            assert_eq!(window.display_name(), window.name());
+        }
+        for precision in [Precision::F32, Precision::F64] {
+            assert_eq!(precision.display_name(), precision.name());
+        }
+        for quantity in [Quantity::Amplitude, Quantity::Psd, Quantity::Esd] {
+            assert_eq!(quantity.display_name(), quantity.name());
+        }
+        for map in ColorMap::ALL {
+            assert_eq!(map.display_name(), map.name());
+        }
+        for overlap in Overlap::ALL {
+            assert_eq!(overlap.display_name(), overlap.name());
+        }
+        for waveform in generator::Waveform::ALL {
+            assert_eq!(waveform.display_name(), waveform.label());
+        }
+        assert_eq!(
+            generator_error(generator::Error::Frequency(15)),
+            generator::Error::Frequency(15).to_string()
+        );
+        assert_eq!(
+            generator_error(generator::Error::CallbackStalled),
+            generator::Error::CallbackStalled.to_string()
+        );
         for locale in i18n::Locale::ALL {
             i18n::set_locale(&ctx, locale.id());
-            for instrument in InstrumentId::ALL {
-                let encoded = serde_json::to_string(&instrument).unwrap();
-                assert_eq!(instrument.display_name(), instrument.name());
-                assert_eq!(instrument.display_purpose(), instrument.purpose());
-                assert_eq!(instrument.display_group(), instrument.group());
-                assert_eq!(encoded, serde_json::to_string(&instrument).unwrap());
-            }
-            for layout in Layout::ALL {
-                assert_eq!(layout.display_name(), layout.name());
-            }
-            for window in [Window::Rectangular, Window::Hann, Window::BlackmanHarris] {
-                assert_eq!(window.display_name(), window.name());
-            }
-            for precision in [Precision::F32, Precision::F64] {
-                assert_eq!(precision.display_name(), precision.name());
-            }
-            for quantity in [Quantity::Amplitude, Quantity::Psd, Quantity::Esd] {
-                assert_eq!(quantity.display_name(), quantity.name());
-            }
-            for map in ColorMap::ALL {
-                assert_eq!(map.display_name(), map.name());
-            }
-            for overlap in Overlap::ALL {
-                assert_eq!(overlap.display_name(), overlap.name());
-            }
-            for waveform in generator::Waveform::ALL {
-                assert_eq!(waveform.display_name(), waveform.label());
-            }
             assert_eq!(
-                generator_error(generator::Error::Frequency(15)),
-                generator::Error::Frequency(15).to_string()
-            );
-            assert_eq!(
-                generator_error(generator::Error::CallbackStalled),
-                generator::Error::CallbackStalled.to_string()
+                InstrumentId::ALL.map(|instrument| {
+                    (
+                        serde_json::to_string(&instrument).unwrap(),
+                        instrument.name(),
+                        instrument.purpose(),
+                        instrument.group(),
+                    )
+                }),
+                core_instruments
             );
         }
         i18n::set_locale(&ctx, "en-US");
