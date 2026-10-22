@@ -2,6 +2,7 @@ name: Build macOS Packages
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited]
     branches: [main]
     paths:
       - 'src/**'

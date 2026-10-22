@@ -14,6 +14,8 @@ cargo run --release --locked
 
 With the local macOS/Linux setup, `./scripts/cargo.sh run --release --locked` also works. Normal startup leaves acquisition stopped.
 
+Choose a display language from nine identifiers in **View → Language**, or **Menu → View → Language** in narrow windows. The selection is saved for the next launch. First launch and unknown preferences use English; missing, unreviewed or outdated translations also fall back to English. Changing language affects display only: acquisition, output, measurement conditions and held results stay unchanged. Control names in this manual use English. Translation text is being added in separate updates.
+
 ## First measurement without hardware
 
 On startup, the Scope plot shows the current input source, the reason no sweep is available, and an **Open input settings** button. Select an input, then press **Start input** in the top bar. Opening, sample collection, trigger waiting, channels outside the input range, and input errors have distinct messages. Stopping retains acquired waveforms and loss information.

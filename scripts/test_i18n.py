@@ -27,6 +27,7 @@ from i18n import (
     snapshot,
     warnings,
 )
+from translate import ANSWERS, apply, prepare, verify
 
 
 def catalog_files(english=None, translation=None, source=None):
@@ -447,6 +448,114 @@ class RepositoryTests(unittest.TestCase):
         self.write(catalog_files({"common.ready": "Ready", "common.other": "Other"}, {"common.ready": "準備完了"}))
         with self.assertRaisesRegex(InvalidCatalog, "current source hash"):
             check_scope(self.root, *self.catalogs(), task)
+
+    def prepared_answers(self):
+        # Match the repository's ignored output directory.
+        self.write({".gitignore": "dist/\n"})
+        self.commit()
+        task = prepare(self.root, "ja", "common")
+        answers = json.loads((self.root / ANSWERS).read_text(encoding="utf-8"))
+        return task, answers
+
+    def save_answers(self, answers):
+        self.write({ANSWERS: json.dumps(answers, ensure_ascii=False)})
+
+    def test_simple_workflow_applies_partial_answers_and_computes_both_hashes(self):
+        task, answers = self.prepared_answers()
+        answers["entries"][1]["text"] = "準備完了"
+        self.save_answers(answers)
+        self.assertEqual(apply(self.root), 1)
+        base, old, current = self.catalogs()
+        check_scope(self.root, base, old, current, task)
+        self.assertEqual(current.state("ja", "common.ready"), "current")
+        self.assertEqual(current.state("ja", "common.other"), "missing")
+        self.assertEqual(current.records["ja"]["common.ready"]["translation_hash"], digest("準備完了"))
+        self.assertEqual(verify(self.root), (1, 1))
+        # Reapplying cannot overwrite an applied catalog or manual work.
+        with self.assertRaisesRegex(InvalidCatalog, "unchanged catalogs"):
+            apply(self.root)
+        self.commit()
+        self.assertEqual(verify(self.root), (1, 1))
+
+    def test_simple_workflow_rejects_every_invalid_answer_before_writing_assets(self):
+        _, original = self.prepared_answers()
+        before = snapshot(self.root)
+        for change in ("english", "variable", "empty", "type", "duplicate", "missing", "key", "locale", "base"):
+            answers = json.loads(json.dumps(original))
+            answers["entries"][0]["text"] = "他"
+            row = answers["entries"][1]
+            row["text"] = "準備完了"
+            if change == "english":
+                row["english"] = "Changed English"
+            elif change == "variable":
+                row["text"] = "準備完了 %{extra}"
+            elif change == "empty":
+                row["text"] = " "
+            elif change == "type":
+                row["text"] = 1
+            elif change == "duplicate":
+                answers["entries"].append(row)
+            elif change == "missing":
+                answers["entries"].pop()
+            elif change == "key":
+                row["key"] = "io.unscoped"
+            elif change == "locale":
+                answers["locale"] = "fr"
+            else:
+                answers["base_revision"] = "stale"
+            self.save_answers(answers)
+            with self.subTest(change=change), self.assertRaises(InvalidCatalog):
+                apply(self.root)
+            self.assertEqual(snapshot(self.root), before)
+
+    def test_simple_workflow_preserves_reviewed_keys_and_cleans_removed_keys(self):
+        self.translate()
+        self.commit()
+        self.write({"locales/common/en-US.yml": "_version: 1\ncommon.other: Other\n"})
+        self.commit()
+        task, answers = self.prepared_answers()
+        answers["entries"][0]["text"] = "他"
+        self.save_answers(answers)
+        apply(self.root)
+        current = self.catalogs()[2]
+        self.assertNotIn("common.ready", current.texts["ja"])
+        self.assertNotIn("common.ready", current.records["ja"])
+        check_scope(self.root, *self.catalogs(), task)
+        self.commit()
+        self.write({"locales/common/en-US.yml": "_version: 1\ncommon.other: Other\ncommon.new: New\n"})
+        self.commit()
+        task = prepare(self.root, "ja", "common")
+        answers = json.loads((self.root / ANSWERS).read_text(encoding="utf-8"))
+        self.assertEqual([row["key"] for row in answers["entries"]], ["common.new"])
+        record = current.records["ja"]["common.other"]
+        answers["entries"][0]["text"] = "新規"
+        self.save_answers(answers)
+        apply(self.root)
+        self.assertEqual(self.catalogs()[2].records["ja"]["common.other"], record)
+        check_scope(self.root, *self.catalogs(), task)
+
+    def test_simple_workflow_rejects_dirty_prepare_stale_tasks_and_feature_edits(self):
+        self.write({"untracked.txt": "user work"})
+        with self.assertRaisesRegex(InvalidCatalog, "clean working tree"):
+            prepare(self.root, "ja", "common")
+        (self.root / "untracked.txt").unlink()
+        _, answers = self.prepared_answers()
+        answers["entries"][0]["text"] = "他"
+        self.save_answers(answers)
+        self.write({"src/app.rs": "fn main() {}"})
+        with self.assertRaisesRegex(InvalidCatalog, "mixes feature"):
+            apply(self.root)
+        (self.root / "src/app.rs").unlink()
+        self.write({"locales/common/en-US.yml": "_version: 1\ncommon.ready: Changed\n"})
+        self.commit()
+        with self.assertRaisesRegex(InvalidCatalog, "base snapshot"):
+            apply(self.root)
+
+    def test_simple_workflow_does_not_write_an_empty_task(self):
+        before = set(self.root.rglob("*"))
+        with self.assertRaisesRegex(InvalidCatalog, "no pending translation"):
+            prepare(self.root, "ja", "io")
+        self.assertEqual(set(self.root.rglob("*")), before)
 
 
 if __name__ == "__main__":
