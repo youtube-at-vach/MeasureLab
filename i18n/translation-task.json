@@ -1,1222 +1,953 @@
 {
   "version": 1,
-  "base_revision": "a4b0723ad8e2f8d43d97d4f304e20c427f258a4e",
+  "base_revision": "9302721f89b2989bf7a529a9530d3363a822a424",
   "locale": "ja",
   "groups": [
-    "generator"
+    "lockin"
   ],
   "entries": [
     {
-      "key": "generator.add_a_signal_in_the_generator_panel",
-      "group": "generator",
+      "key": "lockin.all_four",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "Add a signal in the Generator panel.",
-      "new_english": "Add a signal in the Generator panel.",
+      "old_english": "All four",
+      "new_english": "All four",
       "variables": [],
       "translation": null,
-      "source_hash": "08d4ab181512fc611404795a35ae2547b08170050bbbb9d10ec98914e2122163",
+      "source_hash": "e5b50efb51e139314e6cd3e96a34b3471697984635529b86bef22413dfd7e962",
       "translated_source_hash": null
     },
     {
-      "key": "generator.add_signal",
-      "group": "generator",
+      "key": "lockin.applying_settings_display_retains_its_captured_conditions",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "+ Add signal",
-      "new_english": "+ Add signal",
+      "old_english": "Applying settings · display retains its captured conditions",
+      "new_english": "Applying settings · display retains its captured conditions",
       "variables": [],
       "translation": null,
-      "source_hash": "27f6249621d37556e0f5ab0c97c34022cb62f56080373392104b2026185bb8c8",
+      "source_hash": "58a77c71f25a19abcc8122327eb340d925d98f18b7ffb20eac6555740d644d27",
       "translated_source_hash": null
     },
     {
-      "key": "generator.applied",
-      "group": "generator",
+      "key": "lockin.averaged_samples_latest_window",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "APPLIED",
-      "new_english": "APPLIED",
-      "variables": [],
-      "translation": null,
-      "source_hash": "79dfd370bb43b580583faab3785ab434b1683578cb8b5649d5a3495ca987e1ac",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.applied_fs_hz_nominal_settings_preview_uses_fs_peak",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Applied Fs: %{nominal_sample_rate} Hz (nominal). Settings preview uses FS peak; measured samples are shown in Scope.",
-      "new_english": "Applied Fs: %{nominal_sample_rate} Hz (nominal). Settings preview uses FS peak; measured samples are shown in Scope.",
+      "old_english": "Averaged samples %{start}..%{end} · latest window %{start_2}..%{end_2}",
+      "new_english": "Averaged samples %{start}..%{end} · latest window %{start_2}..%{end_2}",
       "variables": [
-        "nominal_sample_rate"
+        "end",
+        "end_2",
+        "start",
+        "start_2"
       ],
       "translation": null,
-      "source_hash": "8087b2ecdb2d1959ec54d4fe3341718b24793c42546ea6f07746df0add7bc02f",
+      "source_hash": "19d6eb91dc9389da3e849d96e174e000e76c4d067e16240f69c53f6ae84241be",
       "translated_source_hash": null
     },
     {
-      "key": "generator.applied_hz_dbfs_peak_lead",
-      "group": "generator",
+      "key": "lockin.calibrated",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "Applied: %{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}° lead",
-      "new_english": "Applied: %{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}° lead",
+      "old_english": "CALIBRATED",
+      "new_english": "CALIBRATED",
+      "variables": [],
+      "translation": null,
+      "source_hash": "b71f2fdd9e5f38df73e5c896dec624bdc93b701a20a66b05baf530ca5d1e1e66",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.captured_hint_ref_threshold",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Captured hint %{hz_2} · τ %{s} · REF threshold %{fs}",
+      "new_english": "Captured hint %{hz_2} · τ %{s} · REF threshold %{fs}",
       "variables": [
-        "amplitude_dbfs",
-        "frequency_hz",
-        "phase_degrees"
-      ],
-      "translation": null,
-      "source_hash": "3a8c6668d0816701b2d2790157e9cdb1963fb20220b87bafe96272b6f9e6b81f",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.applied_output",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "APPLIED OUTPUT",
-      "new_english": "APPLIED OUTPUT",
-      "variables": [],
-      "translation": null,
-      "source_hash": "c41174d4bb607fa123cb381f2fa9dfa6a6e7c8364c7fba9ca47184abab382e0e",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.applied_sample",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Applied sample %{applied_sample}",
-      "new_english": "Applied sample %{applied_sample}",
-      "variables": [
-        "applied_sample"
-      ],
-      "translation": null,
-      "source_hash": "ff3a3637f968e4c455d5669b0712c351d41f2bfdfc6f32ecd957e63a8b43ea7b",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.applied_seed",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Applied seed %{noise_seed}",
-      "new_english": "Applied seed %{noise_seed}",
-      "variables": [
-        "noise_seed"
-      ],
-      "translation": null,
-      "source_hash": "e901e9c6eac08da85b644b8f451194848864d04b51df72b8ebfaa0151733a52b",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.buttons_up_down_use_this_step_in_hz_dbfs",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "± buttons / Up / Down use this step in Hz, dBFS or degrees. Enter / focus applies; Esc cancels.",
-      "new_english": "± buttons / Up / Down use this step in Hz, dBFS or degrees. Enter / focus applies; Esc cancels.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "74c8b24d55691e41a6ff601d57e00e608fcc0747528916f9cc4b0febe8f931fc",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.down",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Down",
-      "new_english": "Down",
-      "variables": [],
-      "translation": null,
-      "source_hash": "b86d11af79188e58af384b421f2799b08bfb151939b4404679d948aae2720b0b",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.duplicate",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Duplicate",
-      "new_english": "Duplicate",
-      "variables": [],
-      "translation": null,
-      "source_hash": "02cdaabfca805d6ab75d81043998bdc733451b9ea48958ebf8098022d102ba2e",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.edit_step",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "EDIT STEP",
-      "new_english": "EDIT STEP",
-      "variables": [],
-      "translation": null,
-      "source_hash": "f0c22175d30f2c14737a686de7df055959770eb0b28eb34f25772de9050e12db",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.enter_a_finite_number_settings_were_not_applied",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Enter a finite number; settings were not applied",
-      "new_english": "Enter a finite number; settings were not applied",
-      "variables": [],
-      "translation": null,
-      "source_hash": "888779db32a39e675fcada643f227c0da1ab0926b6c216a2a5886004ed2878d8",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.enter_focus_to_apply_esc_to_cancel_up_down",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Enter / focus to apply · Esc to cancel · Up / Down to step",
-      "new_english": "Enter / focus to apply · Esc to cancel · Up / Down to step",
-      "variables": [],
-      "translation": null,
-      "source_hash": "67121de8706ebf0cf8ce4468d3d39e922a1ac5f8069aa397da16e49d668fa5c4",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.error",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "ERROR",
-      "new_english": "ERROR",
-      "variables": [],
-      "translation": null,
-      "source_hash": "d98ee0e5f9399db9381014c9f890f896d3fcb272c2a7a521d0a13aa23085a284",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.error_reason.already_active",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Output is already active",
-      "new_english": "Output is already active",
-      "variables": [],
-      "translation": null,
-      "source_hash": "9905ced78cf509bcd43ce5975d8ee295a1997570e33213869f4302ac43f4ce0d",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.error_reason.amplitude",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Card at position %{position}: amplitude must be finite and within -120–0 dBFS peak",
-      "new_english": "Card at position %{position}: amplitude must be finite and within -120–0 dBFS peak",
-      "variables": [
-        "position"
-      ],
-      "translation": null,
-      "source_hash": "27fa8a514b53646af1d054844176a7ba733c95f747d06d5e26afec059dd7cdd9",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.error_reason.callback_stalled",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Audio output callback timed out; output released",
-      "new_english": "Audio output callback timed out; output released",
-      "variables": [],
-      "translation": null,
-      "source_hash": "67cd9304695cb8c6aa0bbe805325ae2f1541c7ea67fb2dcf9d1a65198a66ce87",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.error_reason.channel_count",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Output requires 1–16 channels",
-      "new_english": "Output requires 1–16 channels",
-      "variables": [],
-      "translation": null,
-      "source_hash": "3da960c1df55e6abb8d28fc386017c2b0926fd34e674f78097365bd8c7d4987f",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.error_reason.counter_exhausted",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Output sample, generation or control counter exhausted",
-      "new_english": "Output sample, generation or control counter exhausted",
-      "variables": [],
-      "translation": null,
-      "source_hash": "2cdf0228e3ef04524400fc0466790714a679924eed53631ac361d48e36d1c4e1",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.error_reason.duplicate_routing",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Two signals cannot use the same output channel",
-      "new_english": "Two signals cannot use the same output channel",
-      "variables": [],
-      "translation": null,
-      "source_hash": "1325bafda14f128eb6dc0b6843485e895d8fb526666d27ee83528d666e9ccff7",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.error_reason.frequency",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Card at position %{position}: frequency must be >= 0.1 Hz and < 0.45 × output Fs",
-      "new_english": "Card at position %{position}: frequency must be >= 0.1 Hz and < 0.45 × output Fs",
-      "variables": [
-        "position"
-      ],
-      "translation": null,
-      "source_hash": "66fd90c28021e61f191c94a86ddec9d10307d08a3c87b8b8eb9e167c7386b525",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.error_reason.no_enabled_signals",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Select at least one signal before starting output",
-      "new_english": "Select at least one signal before starting output",
-      "variables": [],
-      "translation": null,
-      "source_hash": "429f5017d334fabd47b3914fb2cc383610feb193fc9ca2966c497bedd0140dfa",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.error_reason.non_finite_output",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Nonfinite output; output stopped",
-      "new_english": "Nonfinite output; output stopped",
-      "variables": [],
-      "translation": null,
-      "source_hash": "12f6ea67aff3053b40d203bf70793af5a6e49dfe3800da3e9c9af1e3921e8cea",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.error_reason.output_range",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Output exceeds full scale; output stopped",
-      "new_english": "Output exceeds full scale; output stopped",
-      "variables": [],
-      "translation": null,
-      "source_hash": "b44c7af6f781f2e8228b7fde173be88bd285190dd7735fc1fa94b2f254b72a52",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.error_reason.output_stream",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Audio output failed; reset output before restarting",
-      "new_english": "Audio output failed; reset output before restarting",
-      "variables": [],
-      "translation": null,
-      "source_hash": "b0b9ae3be8822a3753b1b28aac76d68a81cb0808eed59528d64399e9baf30f14",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.error_reason.phase",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Card at position %{position}: phase must be finite and within -180–180°",
-      "new_english": "Card at position %{position}: phase must be finite and within -180–180°",
-      "variables": [
-        "position"
-      ],
-      "translation": null,
-      "source_hash": "2c3dd5cb69ea20a38d47e031e9378b1dc8191ae108e76e25957f075034526543",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.error_reason.producer_suspended",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Internal generation was suspended for more than 250 ms; output stopped",
-      "new_english": "Internal generation was suspended for more than 250 ms; output stopped",
-      "variables": [],
-      "translation": null,
-      "source_hash": "dcbb7b5707de39f4d5908dcd2bdfaf8e6c6cf381d14c4aff7ccdb39e3b019e7b",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.error_reason.revision",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Settings revision must increase",
-      "new_english": "Settings revision must increase",
-      "variables": [],
-      "translation": null,
-      "source_hash": "2e79475c29168bbcbbf5ce70c8b9fd45166d0ab4e7d648737f1973888410749e",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.error_reason.routing",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Card at position %{position}: output channel is unavailable or unassigned",
-      "new_english": "Card at position %{position}: output channel is unavailable or unassigned",
-      "variables": [
-        "position"
-      ],
-      "translation": null,
-      "source_hash": "6790b280b283ce5ca60cf0de10f9e0da3de618b5bcf23f354d8414206bef8f07",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.error_reason.routing_while_active",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Stop output before changing cards, waveform details or channel assignments",
-      "new_english": "Stop output before changing cards, waveform details or channel assignments",
-      "variables": [],
-      "translation": null,
-      "source_hash": "8253aed910415ad77bd13d0c26971d4275eba3587559c78ee13527ccd55e16b8",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.error_reason.sample_rate",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Unsupported nominal output sample rate",
-      "new_english": "Unsupported nominal output sample rate",
-      "variables": [],
-      "translation": null,
-      "source_hash": "5b058fe4a2b2d4aab80661563733e82922f2e4980018c5eb0e71e0a298158e09",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.error_reason.signal_count",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Generator supports at most 16 cards",
-      "new_english": "Generator supports at most 16 cards",
-      "variables": [],
-      "translation": null,
-      "source_hash": "ac19ffd2460b1d552fc5533bf5af9a0df40e47160b74565fa20a9eabf68d8c68",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.error_reason.signal_identity",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Generator card IDs must be unique and precede the next ID",
-      "new_english": "Generator card IDs must be unique and precede the next ID",
-      "variables": [],
-      "translation": null,
-      "source_hash": "387946d821d93bc27bce9de6f57c0419b000c5b6478899cbd8e5e8d35e0311b3",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.error_reason.stopping",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Wait for the output fade to finish",
-      "new_english": "Wait for the output fade to finish",
-      "variables": [],
-      "translation": null,
-      "source_hash": "383a48e03869fcf5c17a6db60b7a05074f939b916e1bfe60a3b9fc5ad2cb4601",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.error_reason.waveform",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Card at position %{position}: noise seed must be nonzero",
-      "new_english": "Card at position %{position}: noise seed must be nonzero",
-      "variables": [
-        "position"
-      ],
-      "translation": null,
-      "source_hash": "9c7d29d10da9b5da381a3012a05a7c0b0a773825d1d44b05e472d7035914395a",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.frequency",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Frequency",
-      "new_english": "Frequency",
-      "variables": [],
-      "translation": null,
-      "source_hash": "16b6668d9831a1b8d2d003496db6a62b7f525df6c556d7c04681fbed2251c845",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.gen",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "GEN %{id}",
-      "new_english": "GEN %{id}",
-      "variables": [
-        "id"
-      ],
-      "translation": null,
-      "source_hash": "c4284625e30731b9381acb6245c2672eac4f288e4970616221bb370a3c615886",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.gen_2",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "GEN %{id} · %{s} · %{off}",
-      "new_english": "GEN %{id} · %{s} · %{off}",
-      "variables": [
-        "id",
-        "off",
+        "fs",
+        "hz_2",
         "s"
       ],
       "translation": null,
-      "source_hash": "bbc5148969a01f219040ed2fed536b4ad6904dbd61c0ec17e1bef8114f9f9596",
+      "source_hash": "b1c2bef16eb919333354089fbdf7183ccc82883d4750cdeb614c1b2bb678af3c",
       "translated_source_hash": null
     },
     {
-      "key": "generator.gen_3",
-      "group": "generator",
+      "key": "lockin.ch_calibration_revision_gain_fs",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "GEN %{id} · %{label} · %{s} · %{off}",
-      "new_english": "GEN %{id} · %{label} · %{s} · %{off}",
+      "old_english": "CH %{ch} calibration %{id} / revision %{revision} · gain %{gain} %{unit} / FS",
+      "new_english": "CH %{ch} calibration %{id} / revision %{revision} · gain %{gain} %{unit} / FS",
       "variables": [
+        "ch",
+        "gain",
         "id",
-        "label",
-        "off",
-        "s"
+        "revision",
+        "unit"
       ],
       "translation": null,
-      "source_hash": "68674db9200d645fddd3a2fb1a4a82c23ed04fd0aebdbaa67bce6b31b4f29703",
+      "source_hash": "560349fef9e4d09af14e70aedd5f0ec479fc78add0cf6b6106639614c22d338b",
       "translated_source_hash": null
     },
     {
-      "key": "generator.gen_4",
-      "group": "generator",
+      "key": "lockin.ch_settings_unavailable",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "GEN %{id} · %{label}",
-      "new_english": "GEN %{id} · %{label}",
-      "variables": [
-        "id",
-        "label"
-      ],
-      "translation": null,
-      "source_hash": "c452767d90c8d103d6c5dbfa0e1f0ea85c49c49949bd0ecb34e90995089c0426",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.gen_hz_dbfs_peak",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "GEN %{id} · %{label} · %{signal} · %{off} · %{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}°",
-      "new_english": "GEN %{id} · %{label} · %{signal} · %{off} · %{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}°",
-      "variables": [
-        "amplitude_dbfs",
-        "frequency_hz",
-        "id",
-        "label",
-        "off",
-        "phase_degrees",
-        "signal"
-      ],
-      "translation": null,
-      "source_hash": "9b82d78a59b44fad2fda4efa705552f7626b585ad8f9a981cdd00678656e9b10",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.generation_revision",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Generation %{output_generation} · revision %{revision}",
-      "new_english": "Generation %{output_generation} · revision %{revision}",
-      "variables": [
-        "output_generation",
-        "revision"
-      ],
-      "translation": null,
-      "source_hash": "04fc36488300d3b7f73bce794b912b5e415133c1475c8895e20cd642ae23e621",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.hide_signal_controls",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Hide signal controls",
-      "new_english": "Hide signal controls",
+      "old_english": "CH / SETTINGS UNAVAILABLE",
+      "new_english": "CH / SETTINGS UNAVAILABLE",
       "variables": [],
       "translation": null,
-      "source_hash": "9204d7b2dc3f07874147b9448d12bae2fddfdf4f2cb64cd22505eac112ca8d51",
+      "source_hash": "e23447c656421de2d35be048f4b6e7bd05fe97e29b619c03e6f48a08a0d0369d",
       "translated_source_hash": null
     },
     {
-      "key": "generator.hz_ch_input_stop_holds_the_measurement_output_continues",
-      "group": "generator",
+      "key": "lockin.check_sig_ref_channel_availability_and_frequency_against_nominal",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "%{label} · %{rate} Hz · %{channels}ch. Input Stop holds the measurement; output continues.",
-      "new_english": "%{label} · %{rate} Hz · %{channels}ch. Input Stop holds the measurement; output continues.",
+      "old_english": "Check SIG / REF channel availability and frequency against nominal Fs.",
+      "new_english": "Check SIG / REF channel availability and frequency against nominal Fs.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "e8009d86c647693a9d8997a6f11ec8e38c2c5953d0f833c7464f3694c47735ad",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.complete_windows_missing_samples",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "%{processed_windows} complete windows · %{missing_samples} missing samples",
+      "new_english": "%{processed_windows} complete windows · %{missing_samples} missing samples",
       "variables": [
-        "channels",
-        "label",
+        "missing_samples",
+        "processed_windows"
+      ],
+      "translation": null,
+      "source_hash": "301a7b73e63a3e70ae96b56e59cb8107daa17af3001b6022b47204e5d267439a",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.disabled",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "DISABLED",
+      "new_english": "DISABLED",
+      "variables": [],
+      "translation": null,
+      "source_hash": "0c7ef33e451eadb5c230e83d5155fe481df0dccf42529851a31110a88a776d12",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.display_bars_auto_scale_they_do_not_change_input",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Display bars auto-scale; they do not change input sensitivity. Periodic Hann fit + two EMA poles. Physical REF / timing unverified.",
+      "new_english": "Display bars auto-scale; they do not change input sensitivity. Periodic Hann fit + two EMA poles. Physical REF / timing unverified.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "a1d07184d7c638b6820086ed7a3295e2ee7de2c1c3be198a20884f97898a0cac",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.display_scale_only",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "%{v} %{unit} · display scale only",
+      "new_english": "%{v} %{unit} · display scale only",
+      "variables": [
+        "unit",
+        "v"
+      ],
+      "translation": null,
+      "source_hash": "58af75a0855d06edb33d8dc90834ecf94a7f2f9ce6ab6ee681a13632301c602b",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.ema_poles_settling_fundamental_only",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "2 EMA poles · 10τ settling · fundamental only",
+      "new_english": "2 EMA poles · 10τ settling · fundamental only",
+      "variables": [],
+      "translation": null,
+      "source_hash": "48ec18b634303a2713ca0d8335de9b49e0a5061b0d999ca63ef6078028eb7392",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.experimental",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "EXPERIMENTAL",
+      "new_english": "EXPERIMENTAL",
+      "variables": [],
+      "translation": null,
+      "source_hash": "da8d62a8d6ae22a3b0d58296336a2eae8860a7665f33931fa12f44f33a72a80b",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.experimental_input_reference",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "EXPERIMENTAL · INPUT REFERENCE",
+      "new_english": "EXPERIMENTAL · INPUT REFERENCE",
+      "variables": [],
+      "translation": null,
+      "source_hash": "ec577715bfe01a0a3b00e336ef695eaf54c4a4319ab922b2412ff740bcfae93b",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.f_ref",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "f REF  %{hz_2}",
+      "new_english": "f REF  %{hz_2}",
+      "variables": [
+        "hz_2"
+      ],
+      "translation": null,
+      "source_hash": "9b9d7d322f846220a3d208131b6e0a10efa53b19fcab8f444e1356498fd44caa",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.fixed_frequency",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "FIXED FREQUENCY",
+      "new_english": "FIXED FREQUENCY",
+      "variables": [],
+      "translation": null,
+      "source_hash": "61c461b58b22d28485e15f1c9b88be32be9be3141ec64e700b1ee903ad247f8d",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.frequency_must_be_below_nominal_fs_hz",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "%{error}: frequency must be below 0.45 × nominal Fs (%{rate} Hz)",
+      "new_english": "%{error}: frequency must be below 0.45 × nominal Fs (%{rate} Hz)",
+      "variables": [
+        "error",
         "rate"
       ],
       "translation": null,
-      "source_hash": "7a8d86e98ccad5a001ef58e39ee1d998fe01ec07fd34f9b36a6a217bdaac903c",
+      "source_hash": "f5b1399ad7f237fbe3e20aa859fb4b79e367029d90a391ba66f9f0989acf91c8",
       "translated_source_hash": null
     },
     {
-      "key": "generator.hz_ch_nominal_fs",
-      "group": "generator",
+      "key": "lockin.fs_rms",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "%{nominal_sample_rate} Hz · %{channels}ch · %{pcm_label} · nominal Fs",
-      "new_english": "%{nominal_sample_rate} Hz · %{channels}ch · %{pcm_label} · nominal Fs",
+      "old_english": " FS RMS",
+      "new_english": " FS RMS",
+      "variables": [],
+      "translation": null,
+      "source_hash": "019172d433d62e0cc34c687aa6f3398a90567b5b602b9e5e705d6ae8c3aeefc2",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.gain",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Gain  %{gain}",
+      "new_english": "Gain  %{gain}",
       "variables": [
-        "channels",
-        "nominal_sample_rate",
-        "pcm_label"
+        "gain"
       ],
       "translation": null,
-      "source_hash": "cbd0ea6ed9b2d84097803c1cf072d05d00c35513982ecb55b370e510d695a09c",
+      "source_hash": "b027d790ec6bb66000ef184e85da22e42a61550ddf41cbe3a943d067c38e08be",
       "translated_source_hash": null
     },
     {
-      "key": "generator.hz_dbfs_peak_lead",
-      "group": "generator",
+      "key": "lockin.input_failed",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "%{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}° lead",
-      "new_english": "%{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}° lead",
+      "old_english": "INPUT FAILED",
+      "new_english": "INPUT FAILED",
+      "variables": [],
+      "translation": null,
+      "source_hash": "aa17b9fb21bf159e747220162bb56fe17c5d1b149648dc85114056a6e09a6d13",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.input_gap",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "INPUT GAP",
+      "new_english": "INPUT GAP",
+      "variables": [],
+      "translation": null,
+      "source_hash": "23fba561104a5fe80c0e6fae346214728655c28d9ae944f936bfd34456287e27",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.input_or_calculation_is_nonfinite_no_valid_measurement_is",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Input or calculation is nonfinite. No valid measurement is available.",
+      "new_english": "Input or calculation is nonfinite. No valid measurement is available.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "4fa1f20ef6f934387c91063a4a65dcf8bbad42d7a501addac6ae53897bfde0e6",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.input_samples_are_missing_the_filter_clears_and_settles",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Input samples are missing. The filter clears and settles again after recovery.",
+      "new_english": "Input samples are missing. The filter clears and settles again after recovery.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "38670e1ad909f544b7b2e559fed2f80565aad10494daa6de5363d5c604eb02b4",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.integration_samples",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Integration: %{integration_samples} samples",
+      "new_english": "Integration: %{integration_samples} samples",
       "variables": [
-        "amplitude_dbfs",
-        "frequency_hz",
-        "phase_degrees"
+        "integration_samples"
       ],
       "translation": null,
-      "source_hash": "ab150ed72a13edd1f5acd0324a7ece78a73edad831ce43b0ea41335d5af8ce06",
+      "source_hash": "17560e61dc22bfa42f5a6527ef8c277e07b7a71f6e8359acaaa1890e2b105302",
       "translated_source_hash": null
     },
     {
-      "key": "generator.in_use",
-      "group": "generator",
+      "key": "lockin.invalid_input",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": " · in use",
-      "new_english": " · in use",
+      "old_english": "INVALID INPUT",
+      "new_english": "INVALID INPUT",
       "variables": [],
       "translation": null,
-      "source_hash": "518f64ecd723183d9e08d09241450c48e7d954d882bb3d911b78a2c917eff5bf",
+      "source_hash": "d0f66ac4568a3581e5a7f777fb27c9ffdb5485941875e6ac5cb648e30ce576a0",
       "translated_source_hash": null
     },
     {
-      "key": "generator.ms_cycles",
-      "group": "generator",
+      "key": "lockin.lock_in_amplifier",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "%{frequency_hz} ms / 2 cycles",
-      "new_english": "%{frequency_hz} ms / 2 cycles",
+      "old_english": "Lock-in amplifier",
+      "new_english": "Lock-in amplifier",
+      "variables": [],
+      "translation": null,
+      "source_hash": "fd18f54bfb11f9060f10a41f1718be309beaf095fa30e113733d44b5b07a7b1a",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.measurement_details",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Measurement details",
+      "new_english": "Measurement details",
+      "variables": [],
+      "translation": null,
+      "source_hash": "f36cfff6c97e2c228a1d55145150c784552f4baf5804585fac7fdb4813ca9b71",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.min_ref",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Min REF ",
+      "new_english": "Min REF ",
+      "variables": [],
+      "translation": null,
+      "source_hash": "f9847355d20c1fdf11caed7d373bfefedf729038bc887a146b22cf9cb01e44c3",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.next_start_settings_changed_display_retains_captured_conditions",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Next Start settings changed · display retains captured conditions",
+      "new_english": "Next Start settings changed · display retains captured conditions",
+      "variables": [],
+      "translation": null,
+      "source_hash": "e70e895e91294b145237a99c1761ec51fb4ab0dc7dff0d5a50fce4b459533d5f",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.no_capture",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "NO CAPTURE",
+      "new_english": "NO CAPTURE",
+      "variables": [],
+      "translation": null,
+      "source_hash": "81679ab818274cd4c9d87dcedb55d9433d9563a0ab78822c1c80d6127031df57",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.no_valid_reading_no_bar_marker_is_shown",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "No valid reading; no bar marker is shown",
+      "new_english": "No valid reading; no bar marker is shown",
+      "variables": [],
+      "translation": null,
+      "source_hash": "1b39be3e2a41a7e05c884132be1623c91943e93c615060bb99dfc604abec85c6",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.nominal_fs_hz_input_generation",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Nominal Fs %{sample_rate} Hz · input generation %{input_generation}",
+      "new_english": "Nominal Fs %{sample_rate} Hz · input generation %{input_generation}",
       "variables": [
-        "frequency_hz"
+        "input_generation",
+        "sample_rate"
       ],
       "translation": null,
-      "source_hash": "2d1518c843062e29c0e320dd0de469c78782782fe53b17af72779cc13d76a9a4",
+      "source_hash": "491fa1c0dd9b31e7b6592f0b73c9ba4068b80ca09425066ee330bae2b81a3ba5",
       "translated_source_hash": null
     },
     {
-      "key": "generator.no_signals_add_a_signal_to_choose_its_waveform",
-      "group": "generator",
+      "key": "lockin.physical_ref_and_timing_remain_unverified_no_physical_oscillator",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "No signals. Add a signal to choose its waveform and output.",
-      "new_english": "No signals. Add a signal to choose its waveform and output.",
+      "old_english": "Physical REF and timing remain unverified. No physical oscillator output or selectable hardware sensitivity.",
+      "new_english": "Physical REF and timing remain unverified. No physical oscillator output or selectable hardware sensitivity.",
       "variables": [],
       "translation": null,
-      "source_hash": "48d0d86981b79b0d654d1d6e66103f369e13db04ee512636625b795fc2a4d03f",
+      "source_hash": "4fdb62ac260cd32154eecc2d5c77954298f3e84751d1b9d6540dcabd02671671",
       "translated_source_hash": null
     },
     {
-      "key": "generator.off",
-      "group": "generator",
+      "key": "lockin.poles_n",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "OFF",
-      "new_english": "OFF",
-      "variables": [],
-      "translation": null,
-      "source_hash": "38cca6bea010af8adaf4be7d270456fa9adef8c0252db91f2767c607d077319b",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.on",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "ON",
-      "new_english": "ON",
-      "variables": [],
-      "translation": null,
-      "source_hash": "e8a01133b1351e5fa434167135400d1998d3daa8ce74e3dd9bb57582fa4d7b97",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.out",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "OUT %{ch}%{else}",
-      "new_english": "OUT %{ch}%{else}",
+      "old_english": "τ %{s}   ·   2 poles   ·   N %{integration_samples}   ·   %{fixed_frequency}",
+      "new_english": "τ %{s}   ·   2 poles   ·   N %{integration_samples}   ·   %{fixed_frequency}",
       "variables": [
-        "ch",
-        "else"
+        "fixed_frequency",
+        "integration_samples",
+        "s"
       ],
       "translation": null,
-      "source_hash": "2f957b96e0a4f3c8e8f1ee4f42782f7fd0f123e25b565eb4fc08fc9cd8f09b27",
+      "source_hash": "77023899bb2652d270f1968eb99a77c293e635ebb90ec0b979d1cc37259f086b",
       "translated_source_hash": null
     },
     {
-      "key": "generator.out_2",
-      "group": "generator",
+      "key": "lockin.r_x_and_y_are_peak_amplitudes_positive_phase",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "OUT %{c}",
-      "new_english": "OUT %{c}",
+      "old_english": "R, X and Y are peak amplitudes. Positive phase leads REF. The filter has two fixed EMA poles and settles after 10τ of valid samples. Settings changed while stopped apply on the next Start.",
+      "new_english": "R, X and Y are peak amplitudes. Positive phase leads REF. The filter has two fixed EMA poles and settles after 10τ of valid samples. Settings changed while stopped apply on the next Start.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "696842b78c7c8664c300a8397c73041dc53448919d1e14b6aaca10779be2daa2",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.ref",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "REF",
+      "new_english": "REF",
+      "variables": [],
+      "translation": null,
+      "source_hash": "4943e8f40e898cf65a89387defce6ac48c7f3701870945d3d33757aee614ea2b",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.ref_ac_rms_sinusoid_fit",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "REF AC RMS %{fs} · sinusoid fit %{v}",
+      "new_english": "REF AC RMS %{fs} · sinusoid fit %{v}",
       "variables": [
-        "c"
+        "fs",
+        "v"
       ],
       "translation": null,
-      "source_hash": "61fa404b3f1295cd107d52c19d212b1d31a9703244b5c2a47f80ff254336397b",
+      "source_hash": "16d24c427a55de17f5e98edce74d4b42a8a3f55d7ef4ddf9ebeda3721735ee27",
       "translated_source_hash": null
     },
     {
-      "key": "generator.out_3",
-      "group": "generator",
+      "key": "lockin.ref_and_signal_use_the_same_input_sample_clock",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "OUT",
-      "new_english": "OUT",
+      "old_english": "REF and signal use the same input sample clock.",
+      "new_english": "REF and signal use the same input sample clock.",
       "variables": [],
       "translation": null,
-      "source_hash": "c57929ed14088114883b23815775f37cb9f7d10c96f23b3cb2c1a3e375a6bbcc",
+      "source_hash": "8b87925bfa6ebc6ac0cd25dddefbddc2be6142017ae06fad8ae35115e16d70a8",
       "translated_source_hash": null
     },
     {
-      "key": "generator.output",
-      "group": "generator",
+      "key": "lockin.ref_hint",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "OUTPUT",
-      "new_english": "OUTPUT",
+      "old_english": "REF hint ",
+      "new_english": "REF hint ",
       "variables": [],
       "translation": null,
-      "source_hash": "5dbf351336f2e66ee89266f3853594ff717c7c5e05724ad4b0047bd31e78658c",
+      "source_hash": "573aa933ca4a53b73d90dd496edb5f7a8093772117064e4ab6fcf18db78dfb17",
       "translated_source_hash": null
     },
     {
-      "key": "generator.output_details",
-      "group": "generator",
+      "key": "lockin.ref_is_below_its_ac_rms_threshold_values_clear",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "Output details",
-      "new_english": "Output details",
+      "old_english": "REF is below its AC RMS threshold. Values clear until REF recovers.",
+      "new_english": "REF is below its AC RMS threshold. Values clear until REF recovers.",
       "variables": [],
       "translation": null,
-      "source_hash": "81b0bd8db74fb271ee941a5f32dca26fb6277c83d5f230800614c6a2366694f9",
+      "source_hash": "65fcd1b0d6594a90034deadd370f58f4915b2bb2aa325f71c60125ac5e1e511d",
       "translated_source_hash": null
     },
     {
-      "key": "generator.peak_level",
-      "group": "generator",
+      "key": "lockin.ref_lost",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "Peak level",
-      "new_english": "Peak level",
+      "old_english": "REF LOST",
+      "new_english": "REF LOST",
       "variables": [],
       "translation": null,
-      "source_hash": "5745a3b5118ae30bbeced4f0e6bfc0e3bfacd3775b1ba9168e22fd2b13080166",
+      "source_hash": "5a5d3b40f7b7e7377c9d3307c02a4af3999477ff55d4dc62d3c81ee5aae6d344",
       "translated_source_hash": null
     },
     {
-      "key": "generator.pending",
-      "group": "generator",
+      "key": "lockin.ref_needs_cycles_window_sinusoid_fit_and_frequency_within",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "PENDING",
-      "new_english": "PENDING",
+      "old_english": "REF needs ≥3 cycles/window, ≥98% sinusoid fit and frequency within the hint range.",
+      "new_english": "REF needs ≥3 cycles/window, ≥98% sinusoid fit and frequency within the hint range.",
       "variables": [],
       "translation": null,
-      "source_hash": "332011b91ccd9887592cd7072f12da38748e37ee1af81985f9c8e1f066aec6fb",
+      "source_hash": "f96a41192cab331648f03f0ac1c3d5e355e6072855e91c24731ff6709b2b1ae2",
       "translated_source_hash": null
     },
     {
-      "key": "generator.phase_lead",
-      "group": "generator",
+      "key": "lockin.ref_unstable",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "Phase lead",
-      "new_english": "Phase lead",
+      "old_english": "REF UNSTABLE",
+      "new_english": "REF UNSTABLE",
       "variables": [],
       "translation": null,
-      "source_hash": "9bffba7a09a6995aaf857276ae7c9cc5539bced73ae247600cb0a92a716d898b",
+      "source_hash": "d7d688a9d49f87aac457b8eb30db867b40b7d59f406707229bd4bba173b8bc30",
       "translated_source_hash": null
     },
     {
-      "key": "generator.remove",
-      "group": "generator",
+      "key": "lockin.ref_valid",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "Remove",
-      "new_english": "Remove",
+      "old_english": "REF VALID",
+      "new_english": "REF VALID",
       "variables": [],
       "translation": null,
-      "source_hash": "c3812fc4acb861d5182fc2b8155f327f736fbe5e5eb86a7bd7afcb6dc5497282",
+      "source_hash": "af9b761c4ce500e256c84bae586ece57081f6911e3fa20d7407a7aa0a8a89ddd",
       "translated_source_hash": null
     },
     {
-      "key": "generator.reset_output_stays_off",
-      "group": "generator",
+      "key": "lockin.reference_filter",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "Reset output (stays OFF)",
-      "new_english": "Reset output (stays OFF)",
+      "old_english": "REFERENCE & FILTER",
+      "new_english": "REFERENCE & FILTER",
       "variables": [],
       "translation": null,
-      "source_hash": "56b489db5055689648eba13d52b2d9737eb03dba0c8579491513998c51db40c5",
+      "source_hash": "e2479dcee7fec078f73c9aeb64b0c4348c298fd304ca59ec484f65956d3ae5d1",
       "translated_source_hash": null
     },
     {
-      "key": "generator.running",
-      "group": "generator",
+      "key": "lockin.reference_validity",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "RUNNING",
-      "new_english": "RUNNING",
+      "old_english": "REFERENCE VALIDITY",
+      "new_english": "REFERENCE VALIDITY",
       "variables": [],
       "translation": null,
-      "source_hash": "d80ffc8dc07953482a2f9f5fbff9a9cecea5d0022155f32af0b56e91d1bee7d3",
+      "source_hash": "39aec79525893adb02172aa98be81fc07507cdd0ff682cbbd7fb06f5594de3a9",
       "translated_source_hash": null
     },
     {
-      "key": "generator.seed",
-      "group": "generator",
+      "key": "lockin.samples",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "Seed",
-      "new_english": "Seed",
-      "variables": [],
-      "translation": null,
-      "source_hash": "367ef06b8fbf3aaaccd9cff1301628fae45901ccd9661b5a1b256c7cc5314d24",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.selected_transition_ends",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Selected transition ends %{i}",
-      "new_english": "Selected transition ends %{i}",
+      "old_english": "%{n} samples",
+      "new_english": "%{n} samples",
       "variables": [
-        "i"
+        "n"
       ],
       "translation": null,
-      "source_hash": "620510f2f8e1c9efe37e66cf1b6a0f509cf3e3a72f9b233a99bf7315a561e7a2",
+      "source_hash": "d6373315ba1e8ea7ed6450746df8a4b14f02bc5282b73a70e710d9e780cf7726",
       "translated_source_hash": null
     },
     {
-      "key": "generator.settings_preview_fs_ceiling",
-      "group": "generator",
+      "key": "lockin.select_sig_ref_channels_press_start_analysis_then_start",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "Settings preview · ±%{amplitude_peak} FS ceiling · %{frequency_hz}",
-      "new_english": "Settings preview · ±%{amplitude_peak} FS ceiling · %{frequency_hz}",
+      "old_english": "Select SIG / REF channels, press Start analysis, then Start input if input is stopped.",
+      "new_english": "Select SIG / REF channels, press Start analysis, then Start input if input is stopped.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "b66c2df415a1c81206a41ed72b5c72c7a40743d5433221860554befc8c3c365e",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.settling",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "SETTLING",
+      "new_english": "SETTLING",
+      "variables": [],
+      "translation": null,
+      "source_hash": "fd754227f33333495f545ee8fa326a7398a82b37d46fd9578b3d6b2dd9a0e3ce",
+      "translated_source_hash": null
+    },
+    {
+      "key": "lockin.settling_of",
+      "group": "lockin",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Settling · %{progress}% of 10τ",
+      "new_english": "Settling · %{progress}% of 10τ",
       "variables": [
-        "amplitude_peak",
-        "frequency_hz"
+        "progress"
       ],
       "translation": null,
-      "source_hash": "90d74a7d4f6d4faffac095b66e8f2a763fdf58f8ce8ab3e8cc5e37749c2adfb4",
+      "source_hash": "501134ec0571793e47eada23c7182e882cf4ebecc5178aa05f3773431a96bfd0",
       "translated_source_hash": null
     },
     {
-      "key": "generator.show_signal_controls",
-      "group": "generator",
+      "key": "lockin.sig",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "Show signal controls",
-      "new_english": "Show signal controls",
+      "old_english": "SIG",
+      "new_english": "SIG",
       "variables": [],
       "translation": null,
-      "source_hash": "07e5b7465e5120b326d9bf4807121aee94c21d62189ee20bfab177d5e958fabf",
+      "source_hash": "cc71096a4704326ea71ccc01985f841a8219653132992dede069d092971c61ce",
       "translated_source_hash": null
     },
     {
-      "key": "generator.start_output",
-      "group": "generator",
+      "key": "lockin.sig_ch_ref_ch",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "▶ Start output",
-      "new_english": "▶ Start output",
-      "variables": [],
+      "old_english": "SIG CH %{response_channel}   /   REF CH %{reference_channel}",
+      "new_english": "SIG CH %{response_channel}   /   REF CH %{reference_channel}",
+      "variables": [
+        "reference_channel",
+        "response_channel"
+      ],
       "translation": null,
-      "source_hash": "d7bd76b4b8685a1bdf5be8baa0687f81173f386a75b4126bb4ad24a2f50e5474",
+      "source_hash": "a66a0bb657b1ee9312a445da14a90f6ad8aa73a6f8de88d916743260c20444c5",
       "translated_source_hash": null
     },
     {
-      "key": "generator.start_replays_the_seed_frequency_and_phase_do_not",
-      "group": "generator",
+      "key": "lockin.start_analysis",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "Start replays the seed. Frequency and phase do not affect noise.",
-      "new_english": "Start replays the seed. Frequency and phase do not affect noise.",
+      "old_english": "Start analysis",
+      "new_english": "Start analysis",
       "variables": [],
       "translation": null,
-      "source_hash": "b6341a0e8592cbc0bdf512ff1833f53b4aad9af6498198e35deb3a631d83b61a",
+      "source_hash": "fd46355dd422d985735b936e6b8c43efce52da6a0aa54a7882c3f784f9feec98",
       "translated_source_hash": null
     },
     {
-      "key": "generator.starting",
-      "group": "generator",
+      "key": "lockin.start_input_to_acquire_a_synchronous_sig_ref_window",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "STARTING",
-      "new_english": "STARTING",
+      "old_english": "Start input to acquire a synchronous SIG / REF window.",
+      "new_english": "Start input to acquire a synchronous SIG / REF window.",
       "variables": [],
       "translation": null,
-      "source_hash": "8a19079ce69d165aaa75c11932dbf4672b48cbdb6647b8ed5a5f40caacbabe7c",
+      "source_hash": "249cfcea81a3b09184f1634e674fb69428b62d496b80300347892d60c0645fce",
       "translated_source_hash": null
     },
     {
-      "key": "generator.starting_pending",
-      "group": "generator",
+      "key": "lockin.state_names.disabled",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "STARTING · pending",
-      "new_english": "STARTING · pending",
+      "old_english": "Disabled",
+      "new_english": "Disabled",
       "variables": [],
       "translation": null,
-      "source_hash": "080a3fbbb191a8cfefa25a436bea70518a7efc621bd4a064436afc747a3e8906",
+      "source_hash": "75081b593d15cf6e631971bc6768723f593b88b172477e40ae7d363e4829816d",
       "translated_source_hash": null
     },
     {
-      "key": "generator.stop_generator_output_independently_of_input_and_analysis",
-      "group": "generator",
+      "key": "lockin.state_names.missing",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "Stop Generator output independently of input and analysis",
-      "new_english": "Stop Generator output independently of input and analysis",
+      "old_english": "Missing",
+      "new_english": "Missing",
       "variables": [],
       "translation": null,
-      "source_hash": "4b2558f0694bff9cf19594589c0da1211c25f35027bbb96b3151a587f7d5c843",
+      "source_hash": "6be36ca49ee85210c5d1ad9c377d90a9859c66d889110a2a5b0dccd390d12e20",
       "translated_source_hash": null
     },
     {
-      "key": "generator.stop_output",
-      "group": "generator",
+      "key": "lockin.state_names.non_finite",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "■ Stop output",
-      "new_english": "■ Stop output",
+      "old_english": "NonFinite",
+      "new_english": "NonFinite",
       "variables": [],
       "translation": null,
-      "source_hash": "06647c69fa33e881b5630ef931774d5b2ad94d1068884f2a5ccc43b9763f6763",
+      "source_hash": "5cc9c7200631482f91b1b5d48900c1fb069d49cc06004a2bb7421b0e3d9dc64c",
       "translated_source_hash": null
     },
     {
-      "key": "generator.stop_output_2",
-      "group": "generator",
+      "key": "lockin.state_names.reference_lost",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "Stop output",
-      "new_english": "Stop output",
+      "old_english": "ReferenceLost",
+      "new_english": "ReferenceLost",
       "variables": [],
       "translation": null,
-      "source_hash": "514482acc7968df8cb1bcdcfe734a4259ecd3f849faf53ba0b383acdce3f22fe",
+      "source_hash": "bca7e65e599cdb217c6085a764ba06e339c5cf18ad0f6dd5f49c9e68567d75cc",
       "translated_source_hash": null
     },
     {
-      "key": "generator.stop_output_to_add_remove_duplicate_reorder_or_change",
-      "group": "generator",
+      "key": "lockin.state_names.reference_unstable",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "Stop output to add, remove, duplicate, reorder or change waveform / routing.",
-      "new_english": "Stop output to add, remove, duplicate, reorder or change waveform / routing.",
+      "old_english": "ReferenceUnstable",
+      "new_english": "ReferenceUnstable",
       "variables": [],
       "translation": null,
-      "source_hash": "33629c3575f954dab2c9a7c0c48db71fbbbf2f1c5669c6542aabe6d49ed35794",
+      "source_hash": "3c6d1ade0e240d294b3ebcc2e857b4b55eab5f90afa8253a2edfea91d154587b",
       "translated_source_hash": null
     },
     {
-      "key": "generator.stopped",
-      "group": "generator",
+      "key": "lockin.state_names.settling",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "STOPPED",
-      "new_english": "STOPPED",
+      "old_english": "Settling",
+      "new_english": "Settling",
       "variables": [],
       "translation": null,
-      "source_hash": "133c49456b6509109d9feb7f177f09ed2feca968952482454b134c7b49c4ff06",
+      "source_hash": "c5fd7cc168faf8cf8bccca1021a3960d8613b2199a17929a5aea94124f04be05",
       "translated_source_hash": null
     },
     {
-      "key": "generator.stopping",
-      "group": "generator",
+      "key": "lockin.state_names.unavailable",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "STOPPING",
-      "new_english": "STOPPING",
+      "old_english": "Unavailable",
+      "new_english": "Unavailable",
       "variables": [],
       "translation": null,
-      "source_hash": "5444fbff498ad0e3a4021272831d26013c66dc21c5af98c08241e69443ecdccd",
+      "source_hash": "ca184496974204a0bd3fd4925e0540bc4b0df6fcc232994d29754272b7183812",
       "translated_source_hash": null
     },
     {
-      "key": "generator.transition",
-      "group": "generator",
+      "key": "lockin.state_names.valid",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "TRANSITION",
-      "new_english": "TRANSITION",
+      "old_english": "Valid",
+      "new_english": "Valid",
       "variables": [],
       "translation": null,
-      "source_hash": "9acdd42860905afad73201a889f2bcb27f8ea016ff24f6e482774623e5f67f29",
+      "source_hash": "f5162206318ee96491108354ae7361db244d6a013aa32185216b5f15ac544f4c",
       "translated_source_hash": null
     },
     {
-      "key": "generator.unassigned",
-      "group": "generator",
+      "key": "lockin.stop_analysis",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "Unassigned",
-      "new_english": "Unassigned",
+      "old_english": "Stop analysis",
+      "new_english": "Stop analysis",
       "variables": [],
       "translation": null,
-      "source_hash": "14d33bd014e6b4e7c3590a8a12e1ec4951d777593d6d6aef9ebe5faac9c8dac0",
+      "source_hash": "658fada64b415b3626449cf4d1982c2e74c5f465f5431f2eff2917f5c4d337f7",
       "translated_source_hash": null
     },
     {
-      "key": "generator.up",
-      "group": "generator",
+      "key": "lockin.time_constant_presets",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "Up",
-      "new_english": "Up",
+      "old_english": "Time constant presets",
+      "new_english": "Time constant presets",
       "variables": [],
       "translation": null,
-      "source_hash": "55490a4bf3a8e8cb5eed69720293a700ff01ef7da2bfc749f332f626cb584916",
+      "source_hash": "c1014c9ccd408eea60e77dd472be968d33dab73a97cd99a2bfec28b2064bb687",
       "translated_source_hash": null
     },
     {
-      "key": "generator.up_to_odd_harmonics_below_fs_peak_level_is",
-      "group": "generator",
+      "key": "lockin.track_input_ref_hint",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "Up to 16 odd harmonics below 0.45 Fs. Peak level is the full-scale ceiling; RMS depends on frequency.",
-      "new_english": "Up to 16 odd harmonics below 0.45 Fs. Peak level is the full-scale ceiling; RMS depends on frequency.",
+      "old_english": "Track input REF (hint ±10%)",
+      "new_english": "Track input REF (hint ±10%)",
       "variables": [],
       "translation": null,
-      "source_hash": "a72dc9626af8dd55765d86717b1e44d143263db0a9c36870464b765ff4cceb52",
+      "source_hash": "5a8c1830108dfb05536a3ec69d04e8c54920c3833f57f09e536f16d58a5d1dee",
       "translated_source_hash": null
     },
     {
-      "key": "generator.waveform",
-      "group": "generator",
+      "key": "lockin.track_ref",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "Waveform",
-      "new_english": "Waveform",
+      "old_english": "TRACK REF",
+      "new_english": "TRACK REF",
       "variables": [],
       "translation": null,
-      "source_hash": "f274deed1b737eeb689cce76fe83eb166bc698f4a7523fe7259ce199eb6a6a93",
+      "source_hash": "e8c226dde224bc8dd2eda8e0be867a36ac1ce0305b6d4c3a1ed5ad3c1425ea46",
       "translated_source_hash": null
     },
     {
-      "key": "generator.waveform_names.noise",
-      "group": "generator",
+      "key": "lockin.uncalibrated_fs",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "Noise",
-      "new_english": "Noise",
+      "old_english": "UNCALIBRATED · FS",
+      "new_english": "UNCALIBRATED · FS",
       "variables": [],
       "translation": null,
-      "source_hash": "9ada8e83c1186cd632fb2ac8195abc11596b4a6cea30900c55d23a44c2724770",
+      "source_hash": "8b681436a1153a9e2ca513af14cb4bced4306d06923cb0b301d0be830d33d5dd",
       "translated_source_hash": null
     },
     {
-      "key": "generator.waveform_names.sine",
-      "group": "generator",
+      "key": "lockin.waiting_for_a_complete_synchronous_input_window",
+      "group": "lockin",
       "reasons": [
         "missing"
       ],
-      "old_english": "Sine",
-      "new_english": "Sine",
+      "old_english": "Waiting for a complete synchronous input window.",
+      "new_english": "Waiting for a complete synchronous input window.",
       "variables": [],
       "translation": null,
-      "source_hash": "37573a14aab690d3814c933aa5024839d58f7ffd700eaf1b0075d1445f12d631",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.waveform_names.square",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Square",
-      "new_english": "Square",
-      "variables": [],
-      "translation": null,
-      "source_hash": "c11092bc0861591e9ce5d9a97e83d4fae3c6954a318977865fa85f5b3eeafda8",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.waveform_names.triangle",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Triangle",
-      "new_english": "Triangle",
-      "variables": [],
-      "translation": null,
-      "source_hash": "a0252691b5dc54b1d67f9d35a120e8c49187f20f0735574a61713c6317df6f72",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.white_noise",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "white noise",
-      "new_english": "white noise",
-      "variables": [],
-      "translation": null,
-      "source_hash": "46cfb0b609bd245ffb81a9190626f8c856f3eb594086e350d4707f47677ca2e8",
-      "translated_source_hash": null
-    },
-    {
-      "key": "generator.white_noise_uniform_peak_bounded",
-      "group": "generator",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "White noise · uniform · peak bounded",
-      "new_english": "White noise · uniform · peak bounded",
-      "variables": [],
-      "translation": null,
-      "source_hash": "1d10f26f7581a16bc01f54266a61f908f090b4e1feeb87373eaac8bf8d454bc2",
+      "source_hash": "38a13276b3f715c2d9794d7ae54824f20e09a3e659a08409c88fb391413305e8",
       "translated_source_hash": null
     }
   ]

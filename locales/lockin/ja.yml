@@ -1,0 +1,72 @@
+_version: 1
+lockin.all_four: 4値すべて
+lockin.applying_settings_display_retains_its_captured_conditions: 設定を適用中 · 表示は取得時の条件を維持
+lockin.averaged_samples_latest_window: 平均対象サンプル %{start}..%{end} · 最新窓 %{start_2}..%{end_2}
+lockin.calibrated: 校正済み
+lockin.captured_hint_ref_threshold: 取得時のヒント %{hz_2} · τ %{s} · REFしきい値 %{fs}
+lockin.ch_calibration_revision_gain_fs: CH %{ch} 校正 %{id} / 版 %{revision} · ゲイン %{gain}
+  %{unit} / FS
+lockin.ch_settings_unavailable: CH／設定を利用できません
+lockin.check_sig_ref_channel_availability_and_frequency_against_nominal: SIG／REFチャンネルの利用可否と、公称Fsに対する周波数を確認してください。
+lockin.complete_windows_missing_samples: 完全な窓 %{processed_windows} · 欠落サンプル %{missing_samples}
+lockin.disabled: 無効
+lockin.display_bars_auto_scale_they_do_not_change_input: 表示バーは自動スケールで、入力感度は変更しません。周期Hann適合＋2段のEMAフィルター。実機REF／タイミングは未確認です。
+lockin.display_scale_only: '%{v} %{unit} · 表示スケールのみ'
+lockin.ema_poles_settling_fundamental_only: EMA 2段 · 10τで整定 · 基本波のみ
+lockin.experimental: 実験段階
+lockin.experimental_input_reference: 実験段階 · 入力REF
+lockin.f_ref: f REF  %{hz_2}
+lockin.fixed_frequency: 固定周波数
+lockin.frequency_must_be_below_nominal_fs_hz: '%{error}: 周波数は公称Fsの0.45倍（%{rate} Hz）未満にしてください'
+lockin.fs_rms: ' FS RMS'
+lockin.gain: ゲイン  %{gain}
+lockin.input_failed: 入力失敗
+lockin.input_gap: 入力欠落
+lockin.input_or_calculation_is_nonfinite_no_valid_measurement_is: 入力または計算結果が有限値ではありません。有効な測定値はありません。
+lockin.input_samples_are_missing_the_filter_clears_and_settles: 入力サンプルが欠落しました。復旧後、フィルターをリセットして再整定します。
+lockin.integration_samples: '積分サンプル数: %{integration_samples}'
+lockin.invalid_input: 入力無効
+lockin.lock_in_amplifier: ロックインアンプ
+lockin.measurement_details: 測定の詳細
+lockin.min_ref: 'REF下限 '
+lockin.next_start_settings_changed_display_retains_captured_conditions: 次回開始用の設定を変更済み
+  · 表示は取得時の条件を維持
+lockin.no_capture: 取得窓なし
+lockin.no_valid_reading_no_bar_marker_is_shown: 有効な読み値がないため、バーのマーカーは表示しません
+lockin.nominal_fs_hz_input_generation: 公称Fs %{sample_rate} Hz · 入力世代 %{input_generation}
+lockin.physical_ref_and_timing_remain_unverified_no_physical_oscillator: 実機のREFとタイミングは未確認です。物理発振器の出力や、ハードウェア感度を選択する機能はありません。
+lockin.poles_n: τ %{s}   ·   2段フィルター   ·   N %{integration_samples}   ·   %{fixed_frequency}
+lockin.r_x_and_y_are_peak_amplitudes_positive_phase: R、X、Yはピーク振幅です。正の位相はREFに対する進みです。フィルターは固定の2段EMAで、有効サンプルの10τ後に整定します。停止中に変更した設定は次回の開始時に適用します。
+lockin.ref: REF
+lockin.ref_ac_rms_sinusoid_fit: REF AC RMS %{fs} · 正弦波適合率 %{v}
+lockin.ref_and_signal_use_the_same_input_sample_clock: REFと信号は同じ入力サンプル時計を使います。
+lockin.ref_hint: 'REF周波数ヒント '
+lockin.ref_is_below_its_ac_rms_threshold_values_clear: REFがAC RMSしきい値を下回っています。REFが回復するまで測定値を消去します。
+lockin.ref_lost: REF喪失
+lockin.ref_needs_cycles_window_sinusoid_fit_and_frequency_within: REFには、窓あたり3周期以上、正弦波適合率98%以上、ヒント範囲内の周波数が必要です。
+lockin.ref_unstable: REF不安定
+lockin.ref_valid: REF有効
+lockin.reference_filter: REF／フィルター
+lockin.reference_validity: REFの有効性
+lockin.samples: '%{n} サンプル'
+lockin.select_sig_ref_channels_press_start_analysis_then_start: SIG／REFチャンネルを選択し、「解析を開始」を押します。入力が停止中なら「入力を開始」を押してください。
+lockin.settling: 整定中
+lockin.settling_of: 整定中 · 10τの %{progress}%
+lockin.sig: SIG
+lockin.sig_ch_ref_ch: SIG CH %{response_channel}   /   REF CH %{reference_channel}
+lockin.start_analysis: 解析を開始
+lockin.start_input_to_acquire_a_synchronous_sig_ref_window: 同期したSIG／REFの入力窓を取得するには、「入力を開始」を押してください。
+lockin.state_names.disabled: 無効
+lockin.state_names.missing: 欠落
+lockin.state_names.non_finite: 非有限
+lockin.state_names.reference_lost: REF喪失
+lockin.state_names.reference_unstable: REF不安定
+lockin.state_names.settling: 整定中
+lockin.state_names.unavailable: 利用不可
+lockin.state_names.valid: 有効
+lockin.stop_analysis: 解析を停止
+lockin.time_constant_presets: 時定数プリセット
+lockin.track_input_ref_hint: 入力REFを追従（ヒント±10%）
+lockin.track_ref: REFを追従
+lockin.uncalibrated_fs: 未校正 · FS
+lockin.waiting_for_a_complete_synchronous_input_window: 完全な同期入力窓の取得を待っています。
