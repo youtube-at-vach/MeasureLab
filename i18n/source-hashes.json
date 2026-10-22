@@ -1,4 +1,2057 @@
 {
   "version": 1,
-  "translations": {}
+  "translations": {
+    "ja": {
+      "common.acquiring_post_trigger_samples": {
+        "source": "Acquiring post-trigger samples…",
+        "source_hash": "f57e8f3e30ef88e77df0abfdc5e9ec4fe8bc079acff9ca33d837156a76a94372",
+        "translation_hash": "a429e68f1f6d976b396389905f5e0c016d4a5454fc1f20473113b91c0f29a2a9"
+      },
+      "common.active_input_differs_from_the_device_list_stop_and": {
+        "source": "Active input differs from the device list; stop and refresh before saving",
+        "source_hash": "c12f5a8ccab26f1e6560d9f8bf7dfc1e282e3ccfba86a339c3bcc9f45dca4b1c",
+        "translation_hash": "b4e2557031a11ce1336922c5c38b2c019cf3a990a5612c7799df506de55e40af"
+      },
+      "common.all_channels_off": {
+        "source": "All channels OFF",
+        "source_hash": "d413b0d753f3051ccfe01454795cd6c9b14f2782690c2f0eb8df89cc2a183778",
+        "translation_hash": "d1f99e43ca73d599e5e91af12d51771061c34e94264724bd0747cf421b695d44"
+      },
+      "common.all_scope_channels_off": {
+        "source": "All Scope channels OFF",
+        "source_hash": "89a6d0dc80f94eaea53ff94577d0a26e2585b6c5987557093109e1d55276af4b",
+        "translation_hash": "aa75ea910232e56dea434c0500b881a7b19546fbcbbdb34a9615d265480f2bfc"
+      },
+      "common.amplitude_fs": {
+        "source": "Amplitude [FS]",
+        "source_hash": "eec96f85228a28eede5bd714cc1016be8d446d7db19ada3ac26efc6ebbf653dc",
+        "translation_hash": "a0a6e493b9671da0b81c811ece873095571e6807be83378bed0ff09c19d0f5ce"
+      },
+      "common.amplitude_help": {
+        "source": "FS = digital full scale. Waveform and trigger levels use raw FS. RMS / P-P readouts use the captured channel calibration and show their own units.",
+        "source_hash": "453bc0fcc1cb56dad8b5727b414e37b31ad8961fd77705cb384a8d7abe2ce6e1",
+        "translation_hash": "e22a199dc6ca1f5667b20bdb3a59ce3c1b7b47ea720cede953f17ea9f5d67ff8"
+      },
+      "common.an_export_is_already_in_progress": {
+        "source": "An export is already in progress",
+        "source_hash": "afe8e295de59fee676b87efa833fde2af5bf262b38c3a46f24d36067311a97e6",
+        "translation_hash": "29012a4a9f9cf030cb04d28f48813af5fc690a992f46350edc4e2dce73d0af82"
+      },
+      "common.band_hz_power_rms": {
+        "source": "Band %{bin_centres_hz} Hz | power %{power} %{power_unit} | RMS %{rms} %{rms_unit}",
+        "source_hash": "94a1cf5ba6d19142ff60aa157b090457df97b19090b21db1f8358d14482b5772",
+        "translation_hash": "b851e38c82a655b015d8818910c778923bcae12b699dd32ce25306b4e99e4def"
+      },
+      "common.calibration_rev_gain_offset": {
+        "source": "Calibration %{id} rev %{revision} | gain %{gain} offset %{offset} %{unit} | %{conditions}",
+        "source_hash": "e7716f0094378529b883529bbe08beaf2be1dd77897e2e6f256ce2a1ea2ce5a7",
+        "translation_hash": "e3126e0a53371adaa33febfdb5560605ef61a737bcf40d186989e13a1196c0bd"
+      },
+      "common.calibration_rev_gain_offset_2": {
+        "source": "Calibration %{id} rev %{revision} | gain %{gain} offset %{offset} | %{conditions}",
+        "source_hash": "64c10b2a8fdc94eefa1e843c53a1721e9646add1cc2b9b55b9c9cf533b002f1d",
+        "translation_hash": "87825ba27eed41d35c520652f46aa201a90fc7119820f58292bcf8a9c8abc1e7"
+      },
+      "common.calibration_rev_y_fs": {
+        "source": "Calibration %{id} · rev %{revision} · y = %{gain} × FS + %{offset} %{unit} · %{conditions}",
+        "source_hash": "93829634bd54af5053ac8696a8fb6b8558732eb28bc4ed72eb06344db829e1e6",
+        "translation_hash": "95406400fd3a908e2cb725fe9333ac93e846b66186171b8f8f32978e6bf06b49"
+      },
+      "common.calibration_revision_exhausted": {
+        "source": "Calibration revision exhausted",
+        "source_hash": "eae9a99d6388ffaa49ddc0b3ee34d9f95a52f4287f9334593fef0257b97e6a1e",
+        "translation_hash": "03bf12e139ec2b1c236b73d4d290ec981119d0055badd8c8975626db85935c2e"
+      },
+      "common.capacity_limited": {
+        "source": " · capacity limited",
+        "source_hash": "45deae7458ec5fa7f27ff4034b4cd9e85e736924fca10c6bf0826282c5a30a05",
+        "translation_hash": "a7cf2755f94117b3e42fad85e3a6f606e27a2e79c45a16b7f20c8cc6c4b3f2c1"
+      },
+      "common.captured_f64": {
+        "source": "Captured f64: %{v} %{unit}",
+        "source_hash": "f0579e43c35e9939fa1404ac90bbf45c40866c862bf47bbc2bc7b0ec76a0e61c",
+        "translation_hash": "47e8b393375ff42f47538cbb0a9fd3d6616cf7f72dc98be9ac393508588326a3"
+      },
+      "common.channel_unavailable": {
+        "source": "CH unavailable",
+        "source_hash": "657ee1564b4500e35ed30c7420b3c58ff6715ba91fcebc75f62f643fa440f999",
+        "translation_hash": "14b82accffd490dea6fc08b08f77eb990101d2ac00580da6679c1c1875a51884"
+      },
+      "common.channels_outside_the_input_range": {
+        "source": "Channels outside the input range",
+        "source_hash": "c256928cf28ee7fd339f974075e76129afd939afc79ce879c1046d9c4074595a",
+        "translation_hash": "b637356308094c5fd2d5039127d2f1b4a7adc1db865759837af346bc0fcfc150"
+      },
+      "common.check_input_settings_and_the_acquisition_error_then_press": {
+        "source": "Check input settings and the acquisition error, then press Start input to try again.",
+        "source_hash": "b7e0a9cfc63bd61f1f4530cb07afc0d875652aab85c3230c314c44bddc35d4d8",
+        "translation_hash": "4b58bf03fa280b8fa03776281f870444a4e8e507f41faac1e9ab85b41fedb5ad"
+      },
+      "common.choose_an_available_trigger_source_in_scope_settings_or": {
+        "source": "Choose an available trigger source in Scope settings, or change the input source in Audio I/O.",
+        "source_hash": "a1de7ea47b21c5e0d54d08a9d75481f9645fff627fca62ed3a8f1a471e2ce655",
+        "translation_hash": "c25c83b1dae99036859a51876dfe881540a65a661bade02221e9b9e306ca2ebf"
+      },
+      "common.choose_which_cursor_the_next_plot_click_or_drag": {
+        "source": "Choose which cursor the next plot click or drag places; selecting A or B does not place it. Scope keeps the plot position. Spectrogram holds the selected FFT frame. XY Free keeps X/Y amplitudes; Trace Snap follows a trigger-relative sample.",
+        "source_hash": "e2cdd553058f57e8a7c824bd1549b4a461981fd953e90d0f415d0e69c73c1be7",
+        "translation_hash": "35f34aec21cd811895b7b4979be0f3998d9af55ed63efe4cefc7fc2744fd3210"
+      },
+      "common.clear_both_a_b_time_cursors_spectrum_spectrogram_frequency": {
+        "source": "Clear both A/B time cursors, Spectrum/Spectrogram frequency cursors, XY Free points and Spectrogram frame selections across all instruments. Acquired data is kept.",
+        "source_hash": "d69e03f3cd6182dc90db2ec9d5373d6608f19be2709d228fb67073547dfcf59e",
+        "translation_hash": "20dd7c19d1c0cb78ed10a2ad1d299f8a2fc64ae344419fb6808773a67cdf126b"
+      },
+      "common.clear_cursors": {
+        "source": "Clear cursors",
+        "source_hash": "51643a053af737116f84a9961d6d26174ea805652f7846379768ff1216a72a3f",
+        "translation_hash": "a2c167ad349a272859a432e3e7a201bc56d4168eec36bb7cbfd236b09e736607"
+      },
+      "common.clear_reference": {
+        "source": "Clear reference",
+        "source_hash": "e9a760b7c86b59e1353c201c56f0bd00751acc8a8a1519090af9ea85237e9f2e",
+        "translation_hash": "03abb4bdecf75c41a19fe9da831b9f705003e8bc52eb5b78c56589bc8a0b0f42"
+      },
+      "common.collecting_a_complete_fft_window": {
+        "source": "Collecting a complete FFT window…",
+        "source_hash": "492a8cd90a5972a909c93c510192e6fc76dd7a0c809eb704206cb8391c1ca5bb",
+        "translation_hash": "f079f84297fe7c5e81f664c4a106f309e43295ae5a47ead8747547b016094a18"
+      },
+      "common.compare_saved_reference": {
+        "source": "Compare saved reference",
+        "source_hash": "837b219deaeae6aba7265864102b11c909e9aad9520d0a9d0de1ed96847eeb19",
+        "translation_hash": "dc69d541718f71bb978a942ff1d095b3b29a58ff7dbefa1ea5f86501fbefeb8f"
+      },
+      "common.current": {
+        "source": "Current",
+        "source_hash": "e0d1b68224bf0b31ef16b206c65b5f8f6b89d18161f4a7cdcb8d0ac8d952549a",
+        "translation_hash": "83aeddd37528580b70fce851c83c2cc1904a76f701df59ac56d227bad1b96887"
+      },
+      "common.current_held_result": {
+        "source": "Current held result",
+        "source_hash": "ee10ac95cf9606638b9b5b974b890297947032e13aecb232eda82e7e6f0f3424",
+        "translation_hash": "a0cd4bdaa71c167855afe2090490e95446453304a14fe0ea1a074d3c44c78f61"
+      },
+      "common.current_reference_gain_phase_wrapped_delay_s": {
+        "source": "Current − reference: gain %{gain} · phase %{phase_degrees}° · wrapped delay %{phase_delay_seconds} s",
+        "source_hash": "9c57380a3c0537381f67d57f6578d379fc8c2186c6a232d811c5606804002620",
+        "translation_hash": "4cabe07315e6c24220be4b611b99355cda1fbdfb9a3aa0c428d0238ddc75e166"
+      },
+      "common.cursor_channel_invalid": {
+        "source": " · %{channel} invalid value",
+        "source_hash": "727a9565c12b37dc0028c781f0b601a1d5ad91c9ff27c180bb6e3e105c7feb8f",
+        "translation_hash": "0458a58e27521101ff059b0db470dbf7cfdb020946000a27bc6852bd8b0ee2f6"
+      },
+      "common.dc_fs_noise_rms_fs_frequency_offset_hz_ref": {
+        "source": "DC %{dc_offset} FS | noise RMS %{noise_rms} FS | frequency offset %{frequency_offset_hz} Hz | REF %{disabled}",
+        "source_hash": "e78d64ece3e6a9c1205717ff4b5bcac0a7d87c03bdd5c58af4e6db63c18bdb85",
+        "translation_hash": "4d9597e9258c211899c15a9904a005719ce65c94b3bdfbb0c715da08c7a743e2"
+      },
+      "common.delay_samples": {
+        "source": "Delay samples ",
+        "source_hash": "e1a1e9d1b2329b9d0bdf0e77e222769015dbce90eb65e775f92ef67558627576",
+        "translation_hash": "558c173d13f1ae61b528b0670a131fd6a65fe543f4b7950001ecf19968c6a793"
+      },
+      "common.difference_requires_valid_matching_input_analysis_calibration_and_excitation": {
+        "source": "Difference requires valid matching input, analysis, calibration and excitation conditions without loss. Independent external output history does not establish matching excitation at input samples.",
+        "source_hash": "f9433cb846fd519b7847e84dc4688da61368a555face65f431376936ca902e7c",
+        "translation_hash": "74dd279aa2ef47d174925a7f2a8e35459dbc1f9a36200bc7cea04e1652c548af"
+      },
+      "common.disabled": {
+        "source": "disabled",
+        "source_hash": "17eb3c0168d0d7b21ede5481150f17233427d89833ec121b4dbc4fb96cfab71e",
+        "translation_hash": "383bbb5e8490445a209b509cb1df049413a7b9a53a859c268ffbd3e841b46a9d"
+      },
+      "common.display_updates_skipped": {
+        "source": "Display updates skipped %{elaxed}",
+        "source_hash": "ab223c1cbbec92dc38ce07640bbb58d8960fef2af267d1dbc506bf8d7646c09d",
+        "translation_hash": "c197b8491264451638a91262c6b47cdb917e9209ae7bfd5d55157f6d5fe87734"
+      },
+      "common.div_help": {
+        "source": "div = one grid division. ms/div sets time per horizontal division; FS/div sets raw amplitude per vertical division for each Scope channel.",
+        "source_hash": "e9fc55d1dd6178dc5566e8f5f2a8be75d7ddf5876ab7ff20e2d8fd71df585c74",
+        "translation_hash": "f37f3a4a4c4bf82dcfb0f8b981b6f0cfc7c26245e35262afccc5941f56a788a2"
+      },
+      "common.dropped": {
+        "source": "Dropped %{dropped}",
+        "source_hash": "d6bff459f1c48d4cdd39c0e8899c3000cbb4de6ba1194e2ca3fa1c1d7d908d0c",
+        "translation_hash": "50960e5efcda7bc857099fb2835253972996f7af352bb45527550386f837e0ea"
+      },
+      "common.dut_dc_fs": {
+        "source": "DUT DC FS ",
+        "source_hash": "168ae111a8d6794ddbf47bd3cc1ded360a0e84a487e3882eeafc874dde96b55b",
+        "translation_hash": "168ae111a8d6794ddbf47bd3cc1ded360a0e84a487e3882eeafc874dde96b55b"
+      },
+      "common.dut_frequency_offset_hz": {
+        "source": "DUT frequency offset Hz ",
+        "source_hash": "4c30793575c447989f497f79fa6d0ebe45616114c60a8778f587fc879f98bde6",
+        "translation_hash": "f9910b0d266ea3bdcb2274190f18543dcc21d53d65e29b9d9daf2e057d23073c"
+      },
+      "common.dut_gain": {
+        "source": "DUT gain ",
+        "source_hash": "3b71a95d14de41e1669ce6551761f205119a130851199d083d1e82b6dc971e83",
+        "translation_hash": "ba82f000a94c44ba3172cd1a5cbc6cdd1ea496cfbdbd94531485985098523f24"
+      },
+      "common.dut_gain_phase_delay_samples": {
+        "source": "DUT gain %{gain} | phase %{phase_degrees}° | delay %{delay_samples} samples",
+        "source_hash": "94ecedb42ba9711f99521b2dc43f2a6a5e943eb21f19f49630320944b988edbd",
+        "translation_hash": "2944daee7c14c6b95203208d4b08800b5622da5fa0aa99df627a986dddf6f151"
+      },
+      "common.ema_windows_envelope": {
+        "source": "EMA α %{alpha} | %{processed_windows} windows | envelope [%{start}, %{end})",
+        "source_hash": "5283d5376fbf932484b655c686b0cdabb82e730f5ddaeee818aa5ef02f9a37ce",
+        "translation_hash": "97f8af455e9016b41af349ae29113b7894903982544a6774b6f926a26c171518"
+      },
+      "common.enabled": {
+        "source": "enabled",
+        "source_hash": "fb9cf75606b4070dd6a9705810906bba28d0e2ea74ff301b999a91dbb68c7d98",
+        "translation_hash": "3ac909bffc994b065cfcab040b7ea03c48e81a273ce8a227722d31e2318af3cc"
+      },
+      "common.enter_a_results_file_path": {
+        "source": "Enter a results file path",
+        "source_hash": "fac88bba18087185a6be80ca340ff695b6653ac5efb2e7dc6a431250c38512f4",
+        "translation_hash": "db10565348f66dfc86c3362f2919f850b558dd5519b043a74199e24a365965b2"
+      },
+      "common.enter_a_settings_file_path": {
+        "source": "Enter a settings file path",
+        "source_hash": "c5e253054f60dc150bed4d3868d58ce5ea1583fe4a37b672920888a532482feb",
+        "translation_hash": "87be6c9cf24003c1e4810a675235b6ed6e80fb16c61865ac0b9f79ba0fd607f9"
+      },
+      "common.envelope_latest_complete_windows_missing_samples_ref_hz_ac": {
+        "source": "Envelope [%{start}, %{end}) · latest [%{start_2}, %{end_2})\n%{processed_windows} complete windows · %{missing_samples} missing samples\nREF %{reference_frequency_hz} Hz · AC RMS %{reference_ac_rms_fs} FS · sinusoid fit %{reference_sinusoid_fraction}",
+        "source_hash": "a5cd0e5e5a4fdc23d2d73f6318974cf5331ad32aa2b05e224109d59a53e97277",
+        "translation_hash": "a63f27408bf2fac5a96cc3f8fccccc6ed5d652ffa017597bbd1e079863a10169"
+      },
+      "common.export_annotated_png": {
+        "source": "Export annotated PNG…",
+        "source_hash": "9903fe1856e18310fbc8fb57f0e4c4dcb92a55ac81201b46dd85f2c0a3f772ea",
+        "translation_hash": "ebf15103014ac516f3f883aaa9a3db57d8e14288787ba50151fc1f277eaada24"
+      },
+      "common.export_held_result_csv": {
+        "source": "Export held result CSV…",
+        "source_hash": "17883f5b4247db6476812ba88fd2f841c7007205e3ef8338e53319b79da8c555",
+        "translation_hash": "bb6a5015130103587fc809bd495d7d7bb7b0eb5521a6e59180d66300bdf279ee"
+      },
+      "common.export_held_results": {
+        "source": "Export held results",
+        "source_hash": "8293f240e18ec013436295f72c6d881cb804a2f2fdd434ecca1eb042baf31a7e",
+        "translation_hash": "cd59fad33399bacca5d319352b08114554de4820f9993e92df4a9df2c50e2e63"
+      },
+      "common.export_held_scope_csv": {
+        "source": "Export held Scope CSV…",
+        "source_hash": "3d684a919ce5e8e35d2d8df6266d5daf21bbee26a564aa5623a5b713ab496ef3",
+        "translation_hash": "fd6fc3bd8b2abadf52df55d2b3f6c7f8c528a4fd6ca62cda1aa02160e1a15006"
+      },
+      "common.export_held_scope_only": {
+        "source": "Export held Scope only",
+        "source_hash": "82b9e020f5b0727d1bd3ed6d0d986d5e9370c26de2f3dcb8b2883ce17e2a4998",
+        "translation_hash": "f01de993a3847096f22cd2f786df7bd062d0a14cdd7e7f45f69ef29bb8a9944e"
+      },
+      "common.export_held_scope_png": {
+        "source": "Export held Scope PNG…",
+        "source_hash": "7d04e6589837ef126dbdba53357ed57b0cd9ee6f72c4f0e55ce4869e1185715c",
+        "translation_hash": "d55ac01a3fa4333051607348f20a6d53c9ee0222b0b6e7f2b75bba4463d76407"
+      },
+      "common.exporting_results": {
+        "source": "Exporting held results…",
+        "source_hash": "259887a7e65fd278ff17b9e7cec8a954a6b45e8f7b5e2912503a4a401947fde8",
+        "translation_hash": "d6963f73d00c44d9698789aecb899e8c5e7679230ab3b805bfc53adeed52a158"
+      },
+      "common.exports_the_retained_scope_interval_and_the_independently_timed": {
+        "source": "Exports the retained Scope interval and the independently timed Spectrum result. Missing samples stay null. Spectrogram, XY and cursors are not included.",
+        "source_hash": "41a291813c8e9f960ca20cf848a079d7d590e76d44c8033d6a81513cc8e72fdb",
+        "translation_hash": "7835b748d8c7961a3905a9df5077b457fb9303f4e46cd5f95980909947702590"
+      },
+      "common.external_generator_history_independent_uncalibrated_output_clock_input_window": {
+        "source": "External Generator history: independent, uncalibrated output clock; input-window correspondence unknown.",
+        "source_hash": "68496362f5283de28e3ab9ed468714ea0585731d4934b2e91386a6310f77a014",
+        "translation_hash": "b113d81259785280d2eaefce7526f5283692d1a0897bd66aa6777ee6596afb8e"
+      },
+      "common.f_hz_rbw_hz": {
+        "source": "Δf %{bin_width_hz} Hz | RBW %{rbw_hz} Hz",
+        "source_hash": "e1b74ec6007fe2aa080476fef8daf15f60e3f575eca1985e3981b665b6d229c9",
+        "translation_hash": "e1b74ec6007fe2aa080476fef8daf15f60e3f575eca1985e3981b665b6d229c9"
+      },
+      "common.fft_precision": {
+        "source": "FFT PRECISION",
+        "source_hash": "08f6354734ebcc672c902fcff3e6776ef5f5d3aca7ebffca03255de749d4e048",
+        "translation_hash": "c7a2c55426117176d9a65222ed7748227765c2dfc4c81d355ff0154ec88d89f5"
+      },
+      "common.file": {
+        "source": "File",
+        "source_hash": "50009ce1da4d15e1c4a04024df691eed5f0d598e2c4c67092f205366d0adf99e",
+        "translation_hash": "2b39ec3da17eef3982b84bc544c1ee0010438b9f7480914d7382fad80c8504d1"
+      },
+      "common.file_paths_status": {
+        "source": "File paths & status…",
+        "source_hash": "8037e6963553f54a598181212849e5be8c0ab35250a38fb1deb3cc24e1f5666b",
+        "translation_hash": "f7c8c1a3ed327fcd7392c5165872f0b8d59458805a73bdb796be8681f251bd1e"
+      },
+      "common.file_selection_cancelled": {
+        "source": "File selection cancelled",
+        "source_hash": "7e1c47a9219f9cf1495c9c0412306d82898e3f8a66fb9fb88fe249bf9c3db281",
+        "translation_hash": "86143122c8080345bba45bcc04a623635254a6aa26fa29baab5b60c884c73fd6"
+      },
+      "common.finishing": {
+        "source": "FINISHING",
+        "source_hash": "76aa96241d34f2654f9a9f0921e34878dafdaa94f4175cf991c89a200fa83267",
+        "translation_hash": "13674e35d1ed27530c5933441c84d8b55a5cac6dbf12aa169fe935330d606b38"
+      },
+      "common.finishing_acquisition": {
+        "source": "Finishing acquisition…",
+        "source_hash": "d4b1292466e71711292e0e8eeae78f36d709032c07216c809c75da0539b1bb38",
+        "translation_hash": "07506c6a7a4af2bb99254f8bc9e8e2c059eb3cfedf271a660bd8a809a3306f63"
+      },
+      "common.fixed_frequency": {
+        "source": "fixed frequency",
+        "source_hash": "5a23b6b2b542b31dd03681c2629cf3bb4e4703ce19ac3707e5dbf9a26787fc21",
+        "translation_hash": "6a253acafd78727c67d6104df40d2029efb26c7992f4762bf75d64459eba8775"
+      },
+      "common.frequency_hz": {
+        "source": "Frequency Hz ",
+        "source_hash": "c78fd4403d603ba9a20d86107475fa86d106091d35da1fc2225a3a2550340831",
+        "translation_hash": "dad763cf3caaefeabfeda9901aabb6c8b80393d1f00557d2034b207d2142fba9"
+      },
+      "common.gain_phase_coherence": {
+        "source": "Gain %{gain} · phase %{phase_lead_degrees}° · coherence %{coherence} · %{state}",
+        "source_hash": "478ec537daf1b583091104b8db2d5316428bee276a7e7c79769eafa92133f8e8",
+        "translation_hash": "a1d11c6acec50f55ce7ebf4bda1a27696e046b07732146e9e21bf977e1c34241"
+      },
+      "common.generation_nominal_hz_ch": {
+        "source": "Generation %{generation} | nominal %{nominal_sample_rate_hz} Hz | %{channels}ch",
+        "source_hash": "580874dbd7bc325c6d70f380755309de550c197d9015cd1963cd5e3b0d2beca3",
+        "translation_hash": "1854e11f8e138bec7647a97732fbab4059133a5de9906cd2011ee264b75ff15d"
+      },
+      "common.generator_internal_loopback_actual_f64_output_shared_integer_sample": {
+        "source": "Generator internal loopback · actual f64 output · shared integer sample clock",
+        "source_hash": "6694d5c4dd1d63f0c32484330f1e00cb3379c16e41e803cf100c33485a7f2c42",
+        "translation_hash": "80f2348aeb9659b98f0d6ec27d095bc91136e58cce8a58940f6c79800ed20d85"
+      },
+      "common.gpu_segments": {
+        "source": "%{len} GPU segments",
+        "source_hash": "d095ba26111eab97203677d99bded15831ecc05e6d959908e1199bbb518aa3c7",
+        "translation_hash": "d9172e1d520bcd70512d4e9fd777ef66316ed9a637bd157ca52968921f2d3f79"
+      },
+      "common.held": {
+        "source": "HELD",
+        "source_hash": "0b6463c43302171e8a8a76146f2e45c471999bd4f2bded4a86b87a10838b3ac2",
+        "translation_hash": "9fdbd574134bba1960b47f2b00876bf264226d8c705300dce9db5e98e7df5a9f"
+      },
+      "common.held_input_generation_does_not_match_results": {
+        "source": "Held input generation does not match results",
+        "source_hash": "deb9310645f0f2b447f5c6814184ae645230ce3b78c427a9e05fb5134fd61474",
+        "translation_hash": "21eebc5d08956bb506f63e777efdcfaa62ce153fc2702df3d771d4fcfa90b988"
+      },
+      "common.held_measurement_results": {
+        "source": "HELD MEASUREMENT RESULTS",
+        "source_hash": "173705ee9f21fc5e1e3f42b4131de3ac8585ecfeef56426cdc54c4655bedd402",
+        "translation_hash": "d0f757237ef0a23c75bff8c93c956c848764e54f8c747bc4c7700e54bf2cbe1d"
+      },
+      "common.hz_2": {
+        "source": "%{frequency_hz} Hz · %{level_db} %{db_unit}",
+        "source_hash": "35f2680f8e4d6286ff8872a3eb2657678a1042ff76fde64100cef779b8e37394",
+        "translation_hash": "35f2680f8e4d6286ff8872a3eb2657678a1042ff76fde64100cef779b8e37394"
+      },
+      "common.hz_3": {
+        "source": "%{rate} Hz",
+        "source_hash": "9a2852cf0c807d06c8c28a629b5579b6ad76962224c66c32fea476380e301800",
+        "translation_hash": "9a2852cf0c807d06c8c28a629b5579b6ad76962224c66c32fea476380e301800"
+      },
+      "common.hz_4": {
+        "source": "%{unwrap_or} Hz",
+        "source_hash": "cd3121b17f17d66a37be158c801cfbae17ef43136498f1418239f4a2a843af1f",
+        "translation_hash": "cd3121b17f17d66a37be158c801cfbae17ef43136498f1418239f4a2a843af1f"
+      },
+      "common.input": {
+        "source": "Input %{device_name} | %{sample_format}",
+        "source_hash": "c01f6491fa8153d8c4c5987dfeefcf044c01f85c4c194bc0c007017a5b969bcb",
+        "translation_hash": "ac7bae44c88627c7137b05f2e22c62fa494c6b3d8c24a0c55c22573066331d25"
+      },
+      "common.input_acquisition_failed": {
+        "source": "Input acquisition failed",
+        "source_hash": "032d5911522e65b07e3d0f5f808aa806546fe126ee9703330541962c5fc773e6",
+        "translation_hash": "cc689c64b5c8151c0a85437b6b820782fdf7ff694784831c421ce85dfcb019d5"
+      },
+      "common.input_conditions": {
+        "source": "Input conditions: —",
+        "source_hash": "812cbfe916bd6531878bc998f8d1082a59c5447869c7cbc2fee43032814adab7",
+        "translation_hash": "f06ba2db8ced1db868e5a4cb8d178fc41f7d35d81cce04f84a867544f247acef"
+      },
+      "common.input_conditions_changed_since_restoration_refresh_devices_and_restore": {
+        "source": "Input conditions changed since restoration; refresh devices and restore again",
+        "source_hash": "13c015b974ac3dafa1da13aade48bdb7eda43ea07816b21106119c494f487edd",
+        "translation_hash": "5b42c8ed9c30a43ddcf48c5f5b7937ba5f4a40d3103f504aa3225c80ac93b53b"
+      },
+      "common.input_is_active_check_the_trigger_source_level_and": {
+        "source": "Input is active. Check the trigger source, level and edge in Scope settings, or use Auto mode.",
+        "source_hash": "a9b71b1e6bf93ffb4ff6de96b6d1cdca34d58337407e4803c81376c40ef0e15d",
+        "translation_hash": "f1d1c46555be44e3ba892b491b3b3d7c2302be52ecb98ded57b127e34233f732"
+      },
+      "common.input_is_active_waiting_for_enough_samples_to_draw": {
+        "source": "Input is active. Waiting for enough samples to draw a complete sweep.",
+        "source_hash": "45aabc1d7827a17fc7e07d29654c9445d405dd31897b35cff640a82222b5f528",
+        "translation_hash": "1eb0ec52befbf2f7f698467f752a12f3fb09d66b1a752787c75843beff3c7c9f"
+      },
+      "common.input_is_active_waiting_for_the_rest_of_the": {
+        "source": "Input is active. Waiting for the rest of the triggered sweep.",
+        "source_hash": "12db6692f1870d6786252a0bae4451d5bb222df9f243ff21f979737f800e340f",
+        "translation_hash": "a4fb755821e5b051c967728dfbc8c543fbe5c13dbad470f59c63673a23f6f86d"
+      },
+      "common.input_ksa_s_nominal_ch": {
+        "source": "%{state} input · %{nominal_sample_rate_hz} kSa/s nominal · %{channels} ch · %{format}",
+        "source_hash": "82374c92e117a27f9edc08515cee3a3f7022cc13da9716d82ee8f1360333bd26",
+        "translation_hash": "7f7dde2c0e69dce0ab2fcf6e4250cd97415e393cb58d01852bc1a08f65182a96"
+      },
+      "common.input_stopped": {
+        "source": "Input stopped",
+        "source_hash": "21cb16e80ad4e66bba99a4c46224234724e360b0ea6fc3ffcd5661cad53eb0b0",
+        "translation_hash": "b17522ab861719fcf1a5c4fe68f1ab5c4b2371522a0d28d51ac06b250e812ac9"
+      },
+      "common.input_stopped_before_a_complete_sweep_was_available_check": {
+        "source": "Input stopped before a complete sweep was available. Check Scope settings, then press Start input to acquire again.",
+        "source_hash": "ff257446fc123dce371e1e778287edd8a64b94868b4567dfbe7770728f236fd2",
+        "translation_hash": "d35e03eb82077fc67de13e41528b46b0b303819ffad1c258b940783520aff70a"
+      },
+      "common.invalid_fft_window_nonfinite_value": {
+        "source": "Invalid FFT window · nonfinite value",
+        "source_hash": "6a7a3d7d96a2dc855b6fa30b9ca2f7c975c61d023c8be81e44feb0ce57a0ab83",
+        "translation_hash": "7e1f74e847eb6b3e66f60f258b786796a2c7339bb0bb3bd4388d004f10525d2b"
+      },
+      "common.invalid_value": {
+        "source": "invalid value",
+        "source_hash": "194570380f6c1016a639759ce0d158e53e96279f3306c3d69aed2f6fc443eedc",
+        "translation_hash": "d986b66599b52768a7b406a3963fe4f9e4e36887bc1e08b96c12c12b078faa10"
+      },
+      "common.keep_held_result_as_reference": {
+        "source": "Keep held result as reference",
+        "source_hash": "d210d78e47ba8e883bdc90ede6a4f4c92424006df66824c3a7bb727fd0e9c0dc",
+        "translation_hash": "4c40c9f65e18b64e5b3d7950e6fa65c364a76c9ad6e3c60ca584320926a3cdff"
+      },
+      "common.known_sine_gain_phase_delay_noise_dut_common_input": {
+        "source": "Known sine → gain / phase / delay / noise DUT → common input. Conditions apply on Start.",
+        "source_hash": "6ec6f6743e4262be0afbd216e4cb4db74278e3c5314cd9b78d86969348ba7b8b",
+        "translation_hash": "0f94329d09c65b878a61bff6431555c9e6493ac7d1ba52f3ddd9ac35b6ae04b9"
+      },
+      "common.language_fallback": {
+        "source": "Untranslated text uses English. Instrument translation is in preparation.",
+        "source_hash": "9eb65ce533e6616c5a4b794ce6f42b95350c97c0890aced506c7aff1e5e677f9",
+        "translation_hash": "f7b37fb1f7e4dc255faa0f4a22ef75fca4320aa24e87d4881b5c997bc1bf458d"
+      },
+      "common.last_observed_output_nominal_hz_generation_revision_next_output": {
+        "source": "Last observed output: %{label} | nominal %{nominal_sample_rate} Hz | %{pcm_label} | %{state} | generation %{output_generation} revision %{revision} | next output sample %{next_sample}",
+        "source_hash": "408392ae4f95e4f308ddb2024d4c5d6a33d67204dfa9282aaa86be01cd58ffc9",
+        "translation_hash": "5c62c70c45584892b984547f60cc633219f182fc6199f6d730458485f59cff27"
+      },
+      "common.live": {
+        "source": "LIVE",
+        "source_hash": "35e0d0360a0af6d115f9df30e1b00b5b544ebf4bb93272aa02cd5d64b064a64b",
+        "translation_hash": "eccfefff38f59e4efd1aed0a0eeb1dee91fc438fc005801a8ab5f79f006b12f7"
+      },
+      "common.load_reference_result": {
+        "source": "Load reference result…",
+        "source_hash": "ba6a40d5fcdb5bca07dbb1ab92ae97ff187f497960d1cc7019575ed63382ca50",
+        "translation_hash": "256c07cdde709a6fbe9b644f45b8218708d353c91ec65f3453dfd12adaed46a9"
+      },
+      "common.lock_in_current_reference_each_result_s_own_interval": {
+        "source": "Lock-in current − reference (each result's own interval):\nΔX %{x} · ΔY %{y} · ΔR %{amplitude_peak} %{response_unit_peak}\nΔθ %{phase_degrees}° (wrapped to ±180°) · ΔGain %{gain} %{gain_unit}",
+        "source_hash": "63f31184a6424978c15d175d367262a923a5f75045e16c14d21b5280952c46dd",
+        "translation_hash": "b0377461f04d62627f72f41955bde5521b998f378ecab2ae3f4cbc19380dbb24"
+      },
+      "common.lock_in_difference_requires_two_valid_settled_results_with": {
+        "source": "Lock-in difference requires two valid, settled results with matching nominal Fs, channels, REF/filter settings and calibrations, no input failure, and known matching stationary excitation for Generator input.",
+        "source_hash": "be70df0831bd1f6c42631490dcbb19a8dce2d84a1360c42ba7b98a071b5ff3ab",
+        "translation_hash": "27676baf938d438a647f7bb5d50b162140150b872e89702852b92870808699a0"
+      },
+      "common.lock_in_experimental_sig_ch_ref_ch_s_n": {
+        "source": "Lock-in %{state} · experimental | SIG CH %{response_channel} / REF CH %{reference_channel}\nτ %{time_constant_seconds} s · N %{integration_samples} · hint %{frequency_hz} Hz · %{fixed_frequency} · REF min %{reference_min_rms_fs} FS RMS",
+        "source_hash": "611ed6c486d53c9f8f85d40ff38ebcd28cd90f63ffac48b37c2d7cbbdcc92ec4",
+        "translation_hash": "02d0b9d7829574205e2e94bc2d4322b29382e9fbe4c45ee87aa2b7a2e5f6d9a6"
+      },
+      "common.loss_capture_scope_fft_input_fft_windows_missing_nonfinite": {
+        "source": "Loss: capture %{capture_dropped_samples} | Scope %{scope_missing_samples} | FFT input %{missing_input_samples}\nFFT windows: missing %{missing_windows} | nonfinite %{nonfinite_windows} | observed %{processed_windows_since_reset}\nInput end %{input_end} | filled %{filled_samples} | input failed %{input_failed}",
+        "source_hash": "8cde2b25fcdd26986a4362bb768f1b2e945164a8c8568eb00132be50e4693a2b",
+        "translation_hash": "5dc1faf4690efccf426ff946e09e53999e3ce1ca8ea0d930edb74735d958338c"
+      },
+      "common.measurement_settings": {
+        "source": "MEASUREMENT SETTINGS",
+        "source_hash": "c19d46d24833291d027716313ad040a75cf957bf9633aa8101f755b4ba80775f",
+        "translation_hash": "6528688e567eff1f231d147b7069150cc94f94e70a75e77611b3c8729f17b0c9"
+      },
+      "common.missing_sample": {
+        "source": "missing sample",
+        "source_hash": "9683d0ec3a9507917b7fb26a0ba25b16c8c7754be92fa51cabd493c2cfb6e4d5",
+        "translation_hash": "14f90929606c72edc9688ccda1bc8f1c2100c04c75976111dfae1be1633abca1"
+      },
+      "common.ms": {
+        "source": "%{index} %{seconds} ms  ",
+        "source_hash": "07ceda62f3408d04a987bf054c7a4a09447f8a2b6feaacabd9b39371e7a4d570",
+        "translation_hash": "07ceda62f3408d04a987bf054c7a4a09447f8a2b6feaacabd9b39371e7a4d570"
+      },
+      "common.no_complete_fft_window": {
+        "source": "No complete FFT window",
+        "source_hash": "16ffff24d20cbe011fe72d57a123d1839062f92b8023e8f57fd69c7d04464455",
+        "translation_hash": "75a5e29ea1cf25a9cab2525716a0f0c937b80a6e0382712997539a4180ffda2e"
+      },
+      "common.no_complete_sweep_captured": {
+        "source": "No complete sweep captured",
+        "source_hash": "84c5338d24904c3a1df7a4574816e35d336cfe3532e2f7a4f96dedb8aeec9dc5",
+        "translation_hash": "a38c1ac13f39124c849da0ba0055da44a5207ea12d3c793c9f5a16e9aeb66b11"
+      },
+      "common.no_held_input_conditions": {
+        "source": "No held input conditions",
+        "source_hash": "862afd57a4e318df9fc75e5d9a574e54c61f84d8a4ebc4c603ba73010266559f",
+        "translation_hash": "96762fc4b9192481a49efda5eb08713194c70e64e6bad31b32f7515d5fa6ff68"
+      },
+      "common.no_samples_acquired_yet": {
+        "source": "No samples acquired yet",
+        "source_hash": "78a96c105243f7b0373f500cfac6f8bd1b4fbbcc69bca8f1f14e60894b6309ec",
+        "translation_hash": "f5ea3a4b41aba92dd31ec3e23bb97974e6cd070f266440bf6f32f08d876478a0"
+      },
+      "common.no_valid_captured_value": {
+        "source": "No valid captured value",
+        "source_hash": "892c9eac833d615eba89a9517c06ff75996127e40973078d86f75dfebfe2ec2c",
+        "translation_hash": "b7253fea6fa59325a78d1240f103ce60d1221bc7f49e0d6577d289e63f988a07"
+      },
+      "common.noise_rms_fs": {
+        "source": "Noise RMS FS ",
+        "source_hash": "e91f607f0bff4aa3e15d08bb249273a08de0323b9b101d74fc56f56e349862e6",
+        "translation_hash": "ee028d47152fc022a24c6ddbcdb8f5e8447aa4aa42fdcac58eef821e6d5d21d3"
+      },
+      "common.not_acquired": {
+        "source": "NOT ACQUIRED",
+        "source_hash": "db37dae713a3767f2e105a2daafaf032bb12a481db01654bc0f33539f78b3761",
+        "translation_hash": "e7954a2f3acea1ee2a7aa5e09e3a06d880cb9de1258eae353e0196f951674505"
+      },
+      "common.observed_changes_evicted_lost_reports_output_notifications_since_output": {
+        "source": "%{len} observed changes | %{evicted_changes} evicted | %{lost_reports_since_output_worker_start} lost reports | %{notifications_since_output_worker_start} output notifications since output worker start",
+        "source_hash": "38d13ebfe1cc11f4eec351cbf5d8d0d6c0747b363fc132160c81224532513d82",
+        "translation_hash": "a5f94e1337be7f82455e157eefdbdc74dad251443a4a69db0f29c6e43be0f4d9"
+      },
+      "common.one_reference_is_retained_recordings_use_independent_sample_clock": {
+        "source": "One reference is retained. Recordings use independent sample-clock origins; plots are shown separately.",
+        "source_hash": "2a4649b70ac07c644481ade6074f63363111c3edc33de2932e0ed8d5751a15c4",
+        "translation_hash": "0574b441b2fd6cf530ce507ce3e35ef54c5fae41c5304cb802b461b466587819"
+      },
+      "common.only_this_instrument_s_fft_changes_precision_input_history": {
+        "source": "Only this instrument's FFT changes precision. Input history, DC removal and power averaging use 64-bit.",
+        "source_hash": "7c6a842fb7ab5fc2233fada2f5a9a36c7811ad82afb4175881b76a5ab5ebdb08",
+        "translation_hash": "a1b8bea44b228d74a8ade1d6ddf46c2cedb4567dbd8c8eea826ef475f15841b6"
+      },
+      "common.open_input_settings": {
+        "source": "Open input settings",
+        "source_hash": "75a6277bdac490f7ede798400c699779f8bb0f0ed95e0ea98643ae0c26b0609e",
+        "translation_hash": "651a86a7a6bf97bea1233390daa080cd962eb6c9bc57ac0423255875904fe51f"
+      },
+      "common.open_input_settings_to_choose_the_source_then_press": {
+        "source": "Open input settings to choose the source, then press Start input in the top bar.",
+        "source_hash": "b866cfc60be8771b45c1f65e10b9fa83cb644af332e6a63a565683df5328d366",
+        "translation_hash": "3f4b407173ae308197f2304f31a79d5e7711705de303dc39af23439aba3546ba"
+      },
+      "common.open_input_settings_to_select_or_refresh_an_audio": {
+        "source": "Open input settings to select or refresh an audio device, or choose Software Loopback. Then press Start input.",
+        "source_hash": "1515a6d11b24042c0bed31e2b7721f2481203c86ebe6b66fba1b2b6bb4737bda",
+        "translation_hash": "2081057a1a2af60cd07f39a078748d1e64b158326a11306f8b9af16ccaddd265"
+      },
+      "common.outside_sweep": {
+        "source": "outside sweep",
+        "source_hash": "2d161fc20f5be20e6439aa785e118f96fb2f10328e0bdef33651f4924749c026",
+        "translation_hash": "b40d196ce39cc520604ab98cad062a62f2c4be4ff91cf4491e1c9d89d8761b1d"
+      },
+      "common.peak_hold": {
+        "source": "Peak hold",
+        "source_hash": "7af3e1b50bc9afb8786cde12f32d492ef605d287b3658368e558a37e1e170fed",
+        "translation_hash": "24f63772e7f580e9e4d7d5eddfcd34df12ab73eaf27148920015c0d57c1e4307"
+      },
+      "common.performance": {
+        "source": "Performance",
+        "source_hash": "442aded87a55aa8c8f7d5ff0c30228150d4b1cb8756e4be138d615ca4708fc26",
+        "translation_hash": "8aef07d6e5fc588f721fe70334e074b9ff11baf65345116c3339a060769b4ace"
+      },
+      "common.phase_lead": {
+        "source": "Phase lead ° ",
+        "source_hash": "65f024d620f802a120ee716b87b74ef24fafad22d8a1c61208bc0b0b03b3c6ba",
+        "translation_hash": "4580ea93a7b674b68fe1d6f0d9b133556a5f8e8fb606c4aa35a7c4898ef9fe8b"
+      },
+      "common.place_cursor": {
+        "source": "Place cursor:",
+        "source_hash": "aeab96caf722280489829d478a2ee0fee2492f4d800c795dee6b58e8013704de",
+        "translation_hash": "e27d2c7faab88a93348ed7f7d00a0223ae0902dca2ccab26b553c7b69de454e0"
+      },
+      "common.placed_a": {
+        "source": "Placed: A",
+        "source_hash": "d4b0ce8210b7bfcd2ca8f0bb596535a63961c17dda2d307d6e132f3c5a3f4f8a",
+        "translation_hash": "61ae2042c8bf245c49585f6c51cdf73e3a3c4851d5f47b0ce78f288f41ddbad6"
+      },
+      "common.placed_a_b": {
+        "source": "Placed: A, B",
+        "source_hash": "eafa67f7973ba295059498c69905458b6c35b298197cb39761c891301c8d8893",
+        "translation_hash": "d890ae314877d4ce24101948b956ba5b5a3eb38d06474800ec2373b3cf62b43b"
+      },
+      "common.placed_b": {
+        "source": "Placed: B",
+        "source_hash": "243a709b9de220d8330a2476edfb8eae9e5730a98d565bb69e7db4a534a59480",
+        "translation_hash": "e121dbcb994e93b70e5acc3c5385ab4aacf2963d63d1dbb052c62d448bdd5ff4"
+      },
+      "common.placed_none": {
+        "source": "Placed: none",
+        "source_hash": "d1756a4908f2d5f39997581801b08ca794745ece855c5e33b550296c17c06ea4",
+        "translation_hash": "4d235da17d1ce3815675931912ca566f9b51ffc606ad1d0bbb4b86ff314007da"
+      },
+      "common.precision.f32": {
+        "source": "32-bit (fast FFT)",
+        "source_hash": "320a7d084e34d69ccf2351699bde0afba84334cda0e60ebbc7ff40881ef3afe0",
+        "translation_hash": "e891f6002f0e1ed4f32149ff42302005a0e9c3295f1b6e2deadf2a9e86b37b76"
+      },
+      "common.precision.f64": {
+        "source": "64-bit",
+        "source_hash": "25de446bd5103a01b28c24ebd0400c8c3e6aa517916ca6242814ab47b81ec1ec",
+        "translation_hash": "60e40a5d3656a05036c03b1476b31b5cd4ffebf55d40bd5ad05fce8f5550ca75"
+      },
+      "common.preparing_input": {
+        "source": "Preparing input…",
+        "source_hash": "e944e0053ac7b7f17e655ed2f6e1c14326bf0d5a86759e546785f948740f8d56",
+        "translation_hash": "ccb2cdedb4f3dce0187f637ed888f0a0f70edbbb8ee682698f84549852c97d61"
+      },
+      "common.previous_held_result": {
+        "source": "Previous held result",
+        "source_hash": "91241f7c595462f822d2ed625d3beca140321f5bf8ce39557f717a7359d7be2e",
+        "translation_hash": "05ec6074a92481afccb92d255eab9340b1c21e3839de60bf941b5e15e8cdbcbb"
+      },
+      "common.psd_band_power_current_reference": {
+        "source": "PSD band power current − reference: %{power} %{power_unit}",
+        "source_hash": "d69211496a95029a68d39ec73f2aa9349b4c51291d3246ee45f6db633e3d9397",
+        "translation_hash": "21840a49c04527c5aff6fe84f5968728bf9a131c95f9e5734458a987fb7100af"
+      },
+      "common.raw_sample_unavailable": {
+        "source": "#%{sample} · raw sample unavailable",
+        "source_hash": "86dad14b23d9c3a5f16230ca8ec2b3efa5f8ce13c1776f7c2784d79eab486cd4",
+        "translation_hash": "731aff4f1510ece3d92960179c424596880f86e028d51094b9d5ea043e32f857"
+      },
+      "common.raw_scope_fs_relative_sample_position": {
+        "source": "Raw Scope FS · relative sample position",
+        "source_hash": "f1318d5af8acc86fc938d554418b8a6f4f207203ce141fc1216c530e1770e67b",
+        "translation_hash": "dd17d27ca4b3384a351e2bbe54bd4ce967bce8d0f1f19e10f4da1a2d1949f111"
+      },
+      "common.ref": {
+        "source": "REF",
+        "source_hash": "4943e8f40e898cf65a89387defce6ac48c7f3701870945d3d33757aee614ea2b",
+        "translation_hash": "4943e8f40e898cf65a89387defce6ac48c7f3701870945d3d33757aee614ea2b"
+      },
+      "common.ref_ch_sig_ch_windows": {
+        "source": "%{label}: %{state} · REF CH %{reference_channel} / SIG CH %{response_channel} · %{start}..%{end} · %{averaged_windows} windows · %{gain_unit}",
+        "source_hash": "a486334e2d866be3a29849b0db660010cf0631a994adb55c2e03fda93004d106",
+        "translation_hash": "2c051dc2522a7a563863b91a5f7026383cedf49642e7536bdbef29f7a0a77503"
+      },
+      "common.reference": {
+        "source": "Reference",
+        "source_hash": "71bf90935fc231d20126e2087eeb583c6aa419fc3dd1b6847bfe376b9200eaa0",
+        "translation_hash": "ad087912287e41795bba7946ca085eb01e51f36921a08ea6185251a137e8cf8c"
+      },
+      "common.reference_comparison": {
+        "source": "Reference comparison",
+        "source_hash": "f67da2af5b01b45bd93f3c3365d78c10bb057beba4897dd2241685aabd18b51a",
+        "translation_hash": "76343f216716ec118a37e1a6273f795eb4d38e7e0c283b1fa668d6efe9bbd3a3"
+      },
+      "common.reference_loaded_captured_input_conditions_preserved": {
+        "source": "Reference loaded; captured input conditions preserved",
+        "source_hash": "d40fd2e2ab18e327ec7e5c9ff8fa1589f0d23918fe86cea51534b3d2b956645b",
+        "translation_hash": "5388c272deed016e93d2a9959faec0702eed87214e4ea40d0b966422f376f244"
+      },
+      "common.reference_peak_fs": {
+        "source": "Reference peak FS ",
+        "source_hash": "4c245f38c80afe352bcd9246dff61700836e8e377baa17f13d4d9ac25441895f",
+        "translation_hash": "2a4afd2cbdf6cb2600cc6b17de044e528b0d8d77b7970163daea4a90a4154fd9"
+      },
+      "common.reference_present": {
+        "source": "Reference present",
+        "source_hash": "f3b79f0d068877e08b3312150d1971cbb4f9f04ce71e92989245f886e0bbcfd2",
+        "translation_hash": "ec759cad05ee817e6b63d3fc06f7addf11c36519b48e1121d6a252ee18464553"
+      },
+      "common.restore_settings": {
+        "source": "Restore settings",
+        "source_hash": "630015ca48f704e795c9c42fa97bd70f135fc6b7f692cd6c1b66f860077d807e",
+        "translation_hash": "9ec2f3b93a17ce9da9b71daca412ca68c665f7db4eb89817fe79f03b8925e339"
+      },
+      "common.restore_settings_2": {
+        "source": "Restore settings…",
+        "source_hash": "3c25bcde3ae50c146addf1ea531392224684125ccb2b6b87fee31b9bacd58693",
+        "translation_hash": "8ecd64099bcb1cc22599a96f902675bfa4b0db661740558f57756697a0e58afd"
+      },
+      "common.restored_input_selection_changed_restore_settings_again": {
+        "source": "Restored input selection changed; restore settings again",
+        "source_hash": "b9627932cdd81f336ba6df23d472eea46f8cf7e5fac982ee0f74abd8c0f2e929",
+        "translation_hash": "634f042d9770e26d0f7802f99f146a1b16353bfa11432411c3dff041611086b8"
+      },
+      "common.result_states.non_finite": {
+        "source": "NonFinite",
+        "source_hash": "5cc9c7200631482f91b1b5d48900c1fb069d49cc06004a2bb7421b0e3d9dc64c",
+        "translation_hash": "fc6aa7193f8cf8fc7653e3e742b0a3e674204c889e2d24525c1ccd3edbaa0e95"
+      },
+      "common.result_states.partial": {
+        "source": "Partial",
+        "source_hash": "a4d50fb85403654840e078e3ffe72dffe37df3ae280c6d98f39a41d346c88a14",
+        "translation_hash": "c9f5b12c53dc470dd05db7cf5f7809d6674609f0e52d80c9a133875edfc462c2"
+      },
+      "common.result_states.unavailable": {
+        "source": "Unavailable",
+        "source_hash": "ca184496974204a0bd3fd4925e0540bc4b0df6fcc232994d29754272b7183812",
+        "translation_hash": "5eea1bb027d56cc1c0d6b77768bdf11d11d1b31319f9f5bb994cd42a3727cd3e"
+      },
+      "common.result_states.valid": {
+        "source": "Valid",
+        "source_hash": "f5162206318ee96491108354ae7361db244d6a013aa32185216b5f15ac544f4c",
+        "translation_hash": "3ac909bffc994b065cfcab040b7ea03c48e81a273ce8a227722d31e2318af3cc"
+      },
+      "common.result_states.waiting": {
+        "source": "Waiting",
+        "source_hash": "6e293a8c009e001103199768f7bcbea1729c59f9fc1ef2748958757f47ab99ed",
+        "translation_hash": "5abb716b4f16a5e455779fff872a6e04c401795bd930c401d613db1057ad8f24"
+      },
+      "common.results_exported": {
+        "source": "Results exported: %{path}",
+        "source_hash": "81333bd0f620269dbdeb2cece05d8e0c540ae55c6598bc55edc2f5df29949960",
+        "translation_hash": "c6de17ec2b89d67d98abb448480aacdf081c70584bb665f690a8a6607627bcc4"
+      },
+      "common.results_json_file_path": {
+        "source": "Results JSON file path",
+        "source_hash": "8299bb95eab8e0934cdc09a3593b00ca902195c75094bb20a813cb26f8fa08fc",
+        "translation_hash": "93eb7a494ebfa60e06642f46b3a5424086cf7529b0976f44e9d8f39a1b8cb0a2"
+      },
+      "common.retained_output_condition_intervals_missing_evicted_intervals_are_unknown": {
+        "source": "%{len} retained output condition intervals; missing/evicted intervals are unknown",
+        "source_hash": "48cfff11eec40f9f3fed52005507d61d0bf48a74810247b3e072929f564fa659",
+        "translation_hash": "161fe26f45eeb89c0749adcc55a7f0416536a4abdcfc66bff51e5c64ba7ead14"
+      },
+      "common.rev_gain_offset": {
+        "source": "%{label}: %{id} rev %{revision} · gain %{gain} offset %{offset} %{unit} · %{conditions}",
+        "source_hash": "115892c6835f587b31f7269c443dfae96a82b3f1f303a3245273fa3fb8fdb38f",
+        "translation_hash": "aac16ff20943733c4806c9978f3207456c72dca89d856cbf177ba40cc20a857a"
+      },
+      "common.revision_y_fs": {
+        "source": "%{id} · revision %{revision} · y = %{gain} × FS + %{offset} %{unit} · %{conditions}",
+        "source_hash": "52dde51950b7ece82557f4faf761db6fc144ea4cf18c23a2d746844a8084acf5",
+        "translation_hash": "79c1f919f2c77fbc30db148ea254bea9d0058dfbdd239aed57039a72df07efab"
+      },
+      "common.rms_peak_p_p": {
+        "source": "RMS %{rms}\nPeak %{peak}\nP-P %{peak_to_peak}",
+        "source_hash": "6a20060cb002a6a076cb89f07dfccae46d546530dfaa8fcf6b6e73358d757210",
+        "translation_hash": "e6af93301acab471e17c9cda7266970b5fef3b3b3dce13732615eb5ab634d329"
+      },
+      "common.sample_rate_help": {
+        "source": "Fs = nominal sample rate in samples/s (Sa/s). Captured time and frequency use this rate; the physical sample clock is not calibrated.",
+        "source_hash": "ba3a8943b06ec5d31b1982a9470b0dd026cc03db77151e266c379e3a57ad31c2",
+        "translation_hash": "5a3b3c4d33619c75ecfe8fe3751cffdfc64b57a796c147ebcd204bdd3928da0f"
+      },
+      "common.save_held_result_json": {
+        "source": "Save held result JSON…",
+        "source_hash": "ac3a8871cdf88a71762f3bbd0e97b0fbf5c6f14deff755fd20ad508f0c083faa",
+        "translation_hash": "acf2405fa65749fcfc37daa2c557982cd45d9ae00d2ead0006ee7047aa9fb1ad"
+      },
+      "common.save_held_scope_json": {
+        "source": "Save held Scope JSON…",
+        "source_hash": "aac4718a648cf76d61592052b5df68f65e54f9c887bbdf203226df5197f92177",
+        "translation_hash": "6fc16b2edb8f957af7ca3c62c5c1189bd1b7de1f2c400021a580ffeaafd1a9ef"
+      },
+      "common.save_settings": {
+        "source": "Save settings",
+        "source_hash": "7f3a3b142814581a71f2032f731864663fb63db33a0b1f177ac010f01e75f966",
+        "translation_hash": "b4fd2d361a819697ba05890051408c28baffe859dcaecc6286fd5e16d1656038"
+      },
+      "common.save_settings_2": {
+        "source": "Save settings…",
+        "source_hash": "43146f5b59efe1c74bfdd736ecae703d74dd9d4be35b48a167d42aa8f736db0b",
+        "translation_hash": "5fe7f2eab1114ac5ba358963260dc4ece3a530d2cb6971730a7670a648037518"
+      },
+      "common.save_the_queued_input_channels_analysis_and_calibration_for": {
+        "source": "Save the queued input, channels, analysis and calibration for the next Start. Restore while stopped; then start input explicitly.",
+        "source_hash": "9376693319fbd398e547ba8fb14c564a803ed6c1f3e6b72c81a905e8dd096faa",
+        "translation_hash": "465c9b3b75c5e04177d16b74ec85764d15130ce3111fb095f2ca981f6bf66cfb"
+      },
+      "common.saved": {
+        "source": "Saved %{display}",
+        "source_hash": "15d527dcaac4604351d6050ff68818ea4f603b9c9392bf9855421f75aa86eb2e",
+        "translation_hash": "fcbd682af1446adb68e4f578ead624ef5ce38963f70be4ec6fcd89518a482584"
+      },
+      "common.saved_calibration_conflicts_with_an_existing_id_revision": {
+        "source": "Saved calibration conflicts with an existing ID/revision",
+        "source_hash": "1f2cfd45c4cb7e776a4c7626985f2c60fe7d5f069dc73c0305328796b7658510",
+        "translation_hash": "01dcedf2c6f9a530865598d4a90e504d1fdb31d2a2b29e29649679dc67f5fbf5"
+      },
+      "common.scope_prep_ms": {
+        "source": "Scope prep %{build_ms} ms",
+        "source_hash": "37d73fac5861199dff2f9579c40f36bb810c822b894e8979008ec5d035743911",
+        "translation_hash": "5dd544f4f322fdbc0ec163c140f806b99d5069ac8d2f7d8073be52d959ea572e"
+      },
+      "common.scope_trigger_ch_at_fs": {
+        "source": "Scope [%{start}, %{end}) | %{acquisition_mode} | trigger CH %{channel} %{edge} at %{level} FS",
+        "source_hash": "89202659aed16b22303bcf8bbc0868ca2a16477b614ebf50a57d6bec3407b22c",
+        "translation_hash": "99bff9e6fd889c3a0d7874f879c7dad7463066c79c0f4ebeab64bf83b873bcb5"
+      },
+      "common.select_a_channel_below_the_plot_and_choose_its": {
+        "source": "Select a channel below the plot and choose its Input source in Scope settings, or change the input source in Audio I/O.",
+        "source_hash": "890c83c345ee63570142f8e15f1cf30312c0af9b9b3d12e654c70a4e300c491f",
+        "translation_hash": "703e946553fca985950f09eb13cb712e699730485851cce1de1ce9f663484d1e"
+      },
+      "common.select_an_audio_input_to_observe_audio_device_output": {
+        "source": "Select an audio input to observe Audio device output",
+        "source_hash": "c85263402ddb4e3faf75aaaac769f3f2cd27bc33d97f76ec93e470a0acb109ab",
+        "translation_hash": "38d4d9265db1f81a9a40a3e4732b4dadda451713343db7167959a301575acc00"
+      },
+      "common.select_an_input_device_first": {
+        "source": "Select an input device first",
+        "source_hash": "38ec231adf850c6f8cdee0e382b42bd9862e6efff54783f05a423211a5290599",
+        "translation_hash": "58db90f7e720ee717ef216351a8a60db0a31990408d0469b0aab647701e2481e"
+      },
+      "common.select_an_input_source": {
+        "source": "Select an input source",
+        "source_hash": "3150a9f6fe0e0e28c45f3d881e024ef961c095d1cb252ded1bbee3e1c0a5c558",
+        "translation_hash": "de726cf12ff857c3a57da8e85861393411fc21b5574f2beaecef9a2cc8aafc72"
+      },
+      "common.selected_ch_axis": {
+        "source": "Selected CH%{scope_selected} axis. %{display}",
+        "source_hash": "a22eb046b5c99b22aa217f8b2e760affad54f5801fbf21b3436f8e6af289654e",
+        "translation_hash": "ab5106e388634dda71f01f489dcb66eee406ffa4ee039aa12a50f935de9c1430"
+      },
+      "common.selecting_file": {
+        "source": "Selecting file…",
+        "source_hash": "ca83124ad6fc837ff913a6fcd46bff77a044d9b74026fede7a82eb0aa471a9d9",
+        "translation_hash": "664dd670d5f9acb6769235a4fa69fa1d86a20171621a0f325348e7a8ca5f3385"
+      },
+      "common.settings_error": {
+        "source": "Settings error",
+        "source_hash": "79f7c1f169ab67e1f6038df3fca411a1adca918561da116ba9ccbcfc545c9b64",
+        "translation_hash": "d76bf62b848be35cdd75d6b9be596f5073fe979ef940a11df9e2f7fd1fde6086"
+      },
+      "common.settings_failed": {
+        "source": "Settings failed: %{detail}",
+        "source_hash": "a0db56285f71443dd954cbb7552fb87135b2da28c9cfb36b6cf7723fbb611009",
+        "translation_hash": "ceda5c53e12d91c81bda3d014890e1ec0e8753aaa6b6dd153fe763aa9e243970"
+      },
+      "common.settings_json_file_path": {
+        "source": "Settings JSON file path",
+        "source_hash": "abeae0e1aecf5b994e4c423f1a9e4af6418b2f75f4c70190b9913f56beb7f799",
+        "translation_hash": "c6927658a8bb3e00dda087b22ece8c676d386d92a5c83e06a969e01b23deabcc"
+      },
+      "common.settings_restored": {
+        "source": "Settings restored: %{path}. Input stays stopped; press Start input to measure.",
+        "source_hash": "57017907f2500d8bbed5e20e875272da54a26b78136607e700364dfdfef6f242",
+        "translation_hash": "584363d8d5668a6fa657a5e9675172ab33085f6c13ff9a02c84944a214263f8d"
+      },
+      "common.settings_restored_input_stopped": {
+        "source": "Settings restored; input stopped",
+        "source_hash": "588112f92284bfe62feb3195581be604d2b25eb7e791971496b52fa66710fe10",
+        "translation_hash": "0f5460a5bc139c32e3d98bec0d8df9662566089012a765cea71a27d23f82fdea"
+      },
+      "common.settings_saved": {
+        "source": "Settings saved: %{path}",
+        "source_hash": "2e77a343b464fb1c60f4a5c923a0c2729bbae7a0726e48b5a246d4f2504ea76e",
+        "translation_hash": "81ba975f9a333f518de36a5aae9af2c34d18ac5058a146cea0bb19074b1b438b"
+      },
+      "common.settings_status": {
+        "source": "Settings status",
+        "source_hash": "f5b3c443967dcd2ee5cebc0269fa8a0204fac18728ec71af066938f3259fa72f",
+        "translation_hash": "ec5b01f5620d39c5663ebfc339e0ee33e72a1456e0d08e470de91063973bfbae"
+      },
+      "common.sig": {
+        "source": "SIG",
+        "source_hash": "cc71096a4704326ea71ccc01985f841a8219653132992dede069d092971c61ce",
+        "translation_hash": "cc71096a4704326ea71ccc01985f841a8219653132992dede069d092971c61ce"
+      },
+      "common.single_complete_fft_window_was_not_filled": {
+        "source": "Single complete · FFT window was not filled",
+        "source_hash": "68221c5563513db4159ec77891bf6df4dc2673a81887c4f95eb3243a7c9b6f84",
+        "translation_hash": "1793934e9239d10182bc80727e7365af7afc473c820d3a358f9ba0d12db110bf"
+      },
+      "common.software_loopback_ch_ref_ch_dut": {
+        "source": "SOFTWARE LOOPBACK · CH 1 REF / CH 2 DUT",
+        "source_hash": "ef2cf5ffb3b3242425fcbb9e3c20455af2210f6f0f968ba9c4f93bc8f09c56b9",
+        "translation_hash": "60a903f923e18035a3fa739da666f61e7fdd5e6c59cc7b01c01e933a592da9f6"
+      },
+      "common.software_loopback_hz_ref_fs_peak": {
+        "source": "Software Loopback | %{frequency_hz} Hz | REF %{amplitude_peak} FS peak",
+        "source_hash": "eda7e0dd71022d0c9defc1eaede1aa6c492c8e3b16ca3c27516a96e80d8e8928",
+        "translation_hash": "6f5d2a58e293640921a8dfdcf7a005c848825faa2cac9407bbe57a9d93b251e1"
+      },
+      "common.spectrogram_history_ms": {
+        "source": "Spectrogram history %{spectrogram_build_ms} ms",
+        "source_hash": "ecbacae5a05f139219635e2dc37093f296e23c45d301b16b6833afff6401c9d7",
+        "translation_hash": "0e45df306c047d694badbd651145b98af13f36eb05ad6ad070ad3b1a2c862d29"
+      },
+      "common.spectrogram_rows_mib_cpu_storage": {
+        "source": "Spectrogram %{len} / %{spectrogram} rows · %{storage_bytes} MiB CPU storage",
+        "source_hash": "0e3fdc6d841965161f2db946a210a107573651545840d56bf7df8938a5ad0041",
+        "translation_hash": "a695f4c45876d0cead11d8972567f2c25ea93eee671ef75a6491bbd120ea4357"
+      },
+      "common.spectrum_ch_points_dc_removal": {
+        "source": "Spectrum %{state} | CH %{c}\n%{end} | %{size} points | %{name}\n%{mode} | DC removal %{remove_dc} | %{unit}",
+        "source_hash": "2cdb7cb47b5312116d9e8af2f38b67d8825fc722bb9c1c7f91da78c1e51b456e",
+        "translation_hash": "fb048c8467eddcae4900362776b1b90bc64379f71af7cd6dfdb1a4b18966e56c"
+      },
+      "common.spectrum_definitions_or_known_stationary_excitation_differ_inspect_each": {
+        "source": "Spectrum definitions or known stationary excitation differ; inspect each result's bins and band independently.",
+        "source_hash": "b7ea0ccbcfd7c5fd0b7eec71d10e215ce5d557af049bced5538b69c61e5390cc",
+        "translation_hash": "e6b90e7a8f11f17da6198baddad90195b719d0961eed4bebc4feb67edd078f17"
+      },
+      "common.spectrum_linear_values_bin_position": {
+        "source": "Spectrum linear values · bin position",
+        "source_hash": "768951bb5c0d0586d801d68f8e7571cbc4f94b872d01dd75e8f45c7f60d4fb3b",
+        "translation_hash": "8def2ce0109dcf3507332a2a83e1ba8a7e029b6af50feb8f42cf209c74ffe063"
+      },
+      "common.spectrum_prep_ms": {
+        "source": "Spectrum prep %{spectrum_build_ms} ms",
+        "source_hash": "75e602c0b70d7b7ddd3248468c42752b4d115089bd99fc4ee3b83404717e0fc4",
+        "translation_hash": "d9310669c2da4ff4c96c71ca1c383d0353e6de269b4079c99182852f499b3d50"
+      },
+      "common.spectrum_windows_missing": {
+        "source": "Spectrum %{mode} · %{updates} windows · missing %{missing_windows}",
+        "source_hash": "0a8af565d00d2b41520ab2966435dd5b35538563538378f10ee08070c16ca94b",
+        "translation_hash": "5e76e6e141b9a2b10c5fa50034bac589368f519eb786d8785f9dba4a8f29194d"
+      },
+      "common.start_input_to_begin_acquisition": {
+        "source": "Start input to begin acquisition",
+        "source_hash": "512194cd0ab6b2929c7d7448b04cfded03ed34e0a802615f208e56e90b8b1544",
+        "translation_hash": "09beddf39913980e0ab94ebc6d07da52dbd7500f1d84c984a2b97e7a738c1500"
+      },
+      "common.stft_ch_n_hop_samples": {
+        "source": "STFT CH %{channel} · N %{size} / hop %{hop} · samples %{start}..%{end}",
+        "source_hash": "363659324b6bd75aabb396c5dc9eeb039677adcb34725d2a7af22f329ded9157",
+        "translation_hash": "3a7e04e347fd268f1343a6a55f04ff2fc7419310a626a85be5a0287c8705ea37"
+      },
+      "common.stft_history_storage_losses_allocated_mib_peak_mib": {
+        "source": "STFT history storage losses %{elaxed} · allocated %{allocated_frame_bytes} MiB / peak %{peak_frame_bytes} MiB",
+        "source_hash": "b6d74cadb73bd1cb9b6604312cc7abb61536bc7ec00ff83a23b59799227166e5",
+        "translation_hash": "4affc28950424e62cc7d4a1990494248e481c770019851cc9f17629902923329"
+      },
+      "common.stft_input_dropped_rows_dropped": {
+        "source": "STFT input dropped %{elaxed} · rows dropped %{elaxed_2}",
+        "source_hash": "cadab3401dcbcc7faa12dd9f60651ae16fe248fc42bd3796059bcd738bcbdd74",
+        "translation_hash": "388692e78bfe9f8e26c0a1a4982f4f7661e96e4c35ccc9bb7c7e9ab72a9b640b"
+      },
+      "common.stft_raster_peak_mib_mib_display_requests_replaced": {
+        "source": "STFT raster peak %{peak_cache_bytes} MiB / 8 MiB · display requests replaced %{elaxed}",
+        "source_hash": "d479e0fe839f287df8883ad2f67a9fefd2a6afe7144319778d0d60a4ad8cc387",
+        "translation_hash": "d34cfc588235c8bc36f1b47d3361037d6ecea92ad68d3a6e1f568f5c540de857"
+      },
+      "common.stft_retention_s_frames_mib_retired": {
+        "source": "STFT retention %{retained_seconds} s · %{len} frames · %{storage_bytes} MiB · retired %{retired}%{else}",
+        "source_hash": "33f5715ad0ec531cdf0b08e53ee81cf79a0b7d18c7c642f2761f4a4c4d4b88d6",
+        "translation_hash": "449624b4eafb1914d08ac9d3f72632083655616b4804d9fcc2a9922134a85bd7"
+      },
+      "common.stop_input_and_output_and_wait_for_pending_operations": {
+        "source": "Stop input and output and wait for pending operations before restoring",
+        "source_hash": "6f108ca2fd55227f7ae57f8af261fd63f3d7eb5d93d99458d09cba114b819597",
+        "translation_hash": "f01fd56ffc14bd4f89870ac3d115e325713f871bb7730f808076345697d2b454"
+      },
+      "common.stop_input_and_wait_for_held_scope_samples": {
+        "source": "Stop input and wait for held Scope samples",
+        "source_hash": "ad7941f70261d43d49ea39f76a06d38bbe06cef5f4be236a219b9ff7ab51058e",
+        "translation_hash": "2ce242b2784dbb7658cab0bb4890d28c4cc99af36aa7254eff05c7cf28d02bdc"
+      },
+      "common.stop_input_and_wait_for_the_held_measurement_results": {
+        "source": "Stop input and wait for the held measurement results",
+        "source_hash": "464908dfc419c3e84ab8c433be386ac584a295c5b776509f725ec606537028dd",
+        "translation_hash": "895476f6c29ea82a8be81b78e8191336d84b3ac546b073fa86241fe1ba1e1626"
+      },
+      "common.stop_input_before_restoring_settings": {
+        "source": "Stop input before restoring settings",
+        "source_hash": "77eebd33de7f6d7fd80dc43c7fb131c3489c1b8b4f30cdfa71023120eb89fd11",
+        "translation_hash": "14e96c17f190350039efeacfd5c0057e81c0a363c0f32cafd12ead2f026029fd"
+      },
+      "common.stop_input_then_export_scope_samples_and_statistics_spectrum": {
+        "source": "Stop input, then export Scope samples and statistics, Spectrum bins and their captured conditions to JSON.",
+        "source_hash": "7482ee09c196830295336ef31e79cb27edc5c15825c8e7ef7dab73dfdfa0f091",
+        "translation_hash": "38bc4607af3e2b8ee95c5a39bdfe70ed01772b051dacb6d4f0975efed6273555"
+      },
+      "common.stop_input_to_compare_the_current_result": {
+        "source": "Stop input to compare the current result.",
+        "source_hash": "e491c955589dc877a3488aae32577a2a9d19f5f75e9c160c542f3e70cb3c7466",
+        "translation_hash": "4f43215817d5fdb6d56b0cea9e0c72ed6e0286d74b773f189e248d9a1e02e21e"
+      },
+      "common.stored_cursor_positions_for_this_view_readings_can_be": {
+        "source": "Stored cursor positions for this view; readings can be unavailable outside the acquired data.",
+        "source_hash": "70080bd63a1e65571a90d161a45b2ae54b5c382544c8ebd3ea8b3adaa24cac5b",
+        "translation_hash": "d706e7353743827b5dab392d23c1f4899f665b2b72c2e9b5a57af384a4b1ffb7"
+      },
+      "common.synchronous_comparison_at_bin_hz": {
+        "source": "Synchronous comparison at bin %{bin} (%{width} Hz)",
+        "source_hash": "ff9199d48398c36b308b8ba07cc762e86a6386898520125d7f080cbc5b4dd967",
+        "translation_hash": "12ad2a64a6b6d66ef01d337215456e4b46c2d0badca0d4bd61f3abcb22ef54b0"
+      },
+      "common.t_ms": {
+        "source": "Δt %{delta} ms",
+        "source_hash": "d1d3446cbc315751d96ac7e519fd1a5174aed646142ab1e1b345aed559cc6282",
+        "translation_hash": "d1d3446cbc315751d96ac7e519fd1a5174aed646142ab1e1b345aed559cc6282"
+      },
+      "common.t_ms_2": {
+        "source": "%{index} T%{sample_rate} ms  ",
+        "source_hash": "83141afef8673ab5e60753a527927ca71f0cf72192495ce2a328e108d4661de0",
+        "translation_hash": "83141afef8673ab5e60753a527927ca71f0cf72192495ce2a328e108d4661de0"
+      },
+      "common.time_ms": {
+        "source": "Time [ms]",
+        "source_hash": "6e37ed90adc0cacb765a134b33da0f1cabd5e52c3137e03e54cd6f7aae5db69d",
+        "translation_hash": "a61d2c774135d12de4baed7a8dde1f429fbe97edcf22294de6cecfc6cf49cd7c"
+      },
+      "common.time_relative_to_the_sweep_reference_t_ms": {
+        "source": "Time relative to the sweep reference (T, 0 ms). %{display}",
+        "source_hash": "6ae27871760701502cd25bf06b74652e80729585fd9856340fce708af3cc0c8f",
+        "translation_hash": "1d48f5bc8bbe015455e59a5695df1774be19d3a6bad3c2e29bbabfa00fc85527"
+      },
+      "common.timings_are_cpu_work_not_gpu_execution": {
+        "source": "Timings are CPU work, not GPU execution.",
+        "source_hash": "ee4c7351f9ffc36329ef27987267ebb6b9831654e8857027327646fa1a581cad",
+        "translation_hash": "2c6432dae02f37bae4d2435f0a99f669981d10a12e71f437ae423aac29a98156"
+      },
+      "common.trace_ch": {
+        "source": "Trace %{i} CH %{channel} %{state} | %{unit}",
+        "source_hash": "3564ac1c375c00a782287a611df148d549f9d0586862dfc003af7bd0304fa479",
+        "translation_hash": "f3f081530f9ad662159f37f10b3817c3f2295c7a1588b6c278faf883e929f487"
+      },
+      "common.trace_current_reference_rms_each_result_s_own_interval": {
+        "source": "Trace %{i}: current − reference RMS %{rms} (each result's own interval)",
+        "source_hash": "61d60337f9c8530bd5222484c0dafe47bd3768169dbabfe99108745a4d6497e0",
+        "translation_hash": "09edaf326447553c02be80c4fb2abe022d06fd30a8060554500401b890253dd2"
+      },
+      "common.trace_differs_in_channel_unit_or_known_stationary_excitation": {
+        "source": "Trace %{i} differs in channel, unit or known stationary excitation; no numeric difference",
+        "source_hash": "efc182e4ddc5a85fd4b1453388039d39ee99bd8afd0f820580a2d13a04dcd248",
+        "translation_hash": "3d5eca97cc1625daaa149f36fb8f71b38c05ebce9cde7fa5e029b714154d200c"
+      },
+      "common.tracking": {
+        "source": "tracking ±10%",
+        "source_hash": "6b6bd8de38116d4798abb5d944d6464cb59c3e3188198b0994066338221111e7",
+        "translation_hash": "360d71dfe7779b397762cbb8616bc412f5d8fa602d5a7d2f29b893dae081f955"
+      },
+      "common.trigger_help": {
+        "source": "T at the top marks the time reference (0 ms); T on the right marks the trigger level in raw FS for its source channel. Without a confirmed trigger, both are settings only.",
+        "source_hash": "dc64076523a8dcbdd239ed8d76cf6e7bf53b28dc83a3d5dff0ef27bcc1c64437",
+        "translation_hash": "da43fd3100ad1d9144d46e7dc4fff79aaeec82c090afd1ad94faeb43c1401a12"
+      },
+      "common.trigger_source_outside_the_input_range": {
+        "source": "Trigger source outside the input range",
+        "source_hash": "0f9bea0380c5582a986c01f533907bc4a0fda7e2075147929bb8f4156af3be0d",
+        "translation_hash": "fa29975aa51ef56c8c754fae8898e420826d410f012e448bf29a7eaa7bb5a46c"
+      },
+      "common.turn_on_a_channel_using_the_checkboxes_below_the": {
+        "source": "Turn on a channel using the checkboxes below the plot.",
+        "source_hash": "9a816422f737f4b1674c421c2e8e9a9ba12981828b09657c52a6b1066560eebc",
+        "translation_hash": "381987d928e4f3eb28e6afd23898e5c4347f26d4e1a19d1d97b862ef69670b5f"
+      },
+      "common.ui_fps": {
+        "source": "UI %{fps} fps",
+        "source_hash": "cd64aa15c2a3341d8f92146459fc385bac6c79dc49c082aec71287d60cd88ce0",
+        "translation_hash": "cd64aa15c2a3341d8f92146459fc385bac6c79dc49c082aec71287d60cd88ce0"
+      },
+      "common.unavailable": {
+        "source": "%{selected} · unavailable",
+        "source_hash": "239d04a4c2cb33f212468178888ee80631a6b1278a72fc42f1509402f17a5550",
+        "translation_hash": "0625b00b071bee68dedc75844c185d3af62298f6a02132562c01f66867b1d5ba"
+      },
+      "common.unavailable_2": {
+        "source": " · %{channel} unavailable",
+        "source_hash": "28cdd1a054ca9d006d3987307336dc094fe13310b132b0ab2bee7ee99ce41af2",
+        "translation_hash": "9b3c15336b641e03d6a852ead8da31a5aef3a40928722b096721b2a5bb285737"
+      },
+      "common.uncalibrated": {
+        "source": "Uncalibrated",
+        "source_hash": "eb8275b5d82680a65b1c610853914477a52f263eb0df6dce1198fa5b44ce5ec7",
+        "translation_hash": "80251b1fa18cf126ab158212aff963d6bde4c48ac5977ebb1d2c73e30f29652f"
+      },
+      "common.uncalibrated_fs": {
+        "source": "Uncalibrated · FS",
+        "source_hash": "1317804467cebc1efab576baaf3bd2e644b7632d05ef84ab69f9e5b4dfe703e1",
+        "translation_hash": "8dc8bf36af0d44e9d20e9b12c1ff7f197a4139a7353041c613dad0c4a74d597a"
+      },
+      "common.uncalibrated_fs_2": {
+        "source": "%{label}: uncalibrated · FS",
+        "source_hash": "0ae2f34b6e68b5303e28aad47c440d4f937bbdbc62c3a5add8de7e0ecb779409",
+        "translation_hash": "1538d2b02dc3f74882f87837905eb466351a0f786f05e60a4c13bf63e9d179a7"
+      },
+      "common.wait_for_the_generator_settings_to_be_applied": {
+        "source": "Wait for the Generator settings to be applied",
+        "source_hash": "a0dd1e2b3c084900881b9c81f31619cc842d1a97d2474950a59a24f628cdcecd",
+        "translation_hash": "1d2bb2506fd486b31ab4e6b0524b9ea61fb160045efe2560e1453d6453bf69b6"
+      },
+      "common.waiting": {
+        "source": "WAITING",
+        "source_hash": "77aaf105c28c4c82ea7b2e0627b92fdff753c249771e7d2ab4a6f7ec6a5f400f",
+        "translation_hash": "5abb716b4f16a5e455779fff872a6e04c401795bd930c401d613db1057ad8f24"
+      },
+      "common.waiting_for_the_final_measurement_acquired_data_will_be": {
+        "source": "Waiting for the final measurement. Acquired data will be retained.",
+        "source_hash": "adc8aecd93bfd79ea5f7515b720bc2c1dc5c2a856a97ecff556fab13fd06f685",
+        "translation_hash": "7a531279829d77a53b0d53137f63ef2a01d5fa96079d22e092b118a212aa1365"
+      },
+      "common.waiting_for_the_input_source_and_its_channel_count": {
+        "source": "Waiting for the input source and its channel count to be ready.",
+        "source_hash": "42abde93b63b51679b446ead2f3701d19358fc60b78f9129e3ff88443efbe596",
+        "translation_hash": "284de8bea3621489faa6ae86c4adb9101f0695a1684257c36c7394ebe0d54aee"
+      },
+      "common.waiting_for_trigger": {
+        "source": "Waiting for trigger",
+        "source_hash": "37123a7026801535dd14ff5c82d4e7c51f8bf6b56533989b9af8cd00a3382f7d",
+        "translation_hash": "75f86ddaff6c9fa2af6f30dda39c1517401d77393e7defde5757b83449110604"
+      },
+      "common.window": {
+        "source": "Window [%{start}, %{end})",
+        "source_hash": "6b32df5ecc7d77d27391ff75eced13c92449341911b8e8ebc3a089edf9b9249d",
+        "translation_hash": "daac805a113f3a34f92c9d07d1bc6e9d6b346bdcc62639e5b2f3d8ce86c8542d"
+      },
+      "common.window_names.blackman_harris": {
+        "source": "Blackman-Harris",
+        "source_hash": "ae77fd496964f4b52faac3f5615226eeb59879425ebf6824b2fd7a5875f6a553",
+        "translation_hash": "ae77fd496964f4b52faac3f5615226eeb59879425ebf6824b2fd7a5875f6a553"
+      },
+      "common.window_names.hann": {
+        "source": "Hann",
+        "source_hash": "90eb8e4fb703f83ebbceb724f570a5ce95a6ac4dbbaab604839c2940e9bcc29e",
+        "translation_hash": "90eb8e4fb703f83ebbceb724f570a5ce95a6ac4dbbaab604839c2940e9bcc29e"
+      },
+      "common.window_names.rectangular": {
+        "source": "Rectangular",
+        "source_hash": "8afbc02f6fcfeadfd3339304396cf8332baf7fad5d8d3c97def0fef1b3f6a7f6",
+        "translation_hash": "88b75a101595a23afc92d9a290b08c542fa4ef661559538ffd7239796476bfea"
+      },
+      "common.worker_fft_ms": {
+        "source": "Worker FFT %{fft_ms} ms",
+        "source_hash": "565beb8dd983aa8afcc0811a5ed8117e7961d9a56e2a4fae2957e44f5815b02b",
+        "translation_hash": "4092093e514f5dfbdd63611c9cd90ede5a0f7273e7c7919963a55cf47d74c58d"
+      },
+      "common.working": {
+        "source": "Working…",
+        "source_hash": "5474eef8d0f179c707cf418e2bbb468c77cc24edc5e9f5f4e137e85e06a8eea0",
+        "translation_hash": "ff6758c17d27339cb8e61ada7d47ae9f4173e29a14754e9c90b7ee96098ab7ed"
+      },
+      "common.x_y_r_leads_ref_gain": {
+        "source": "X %{x} · Y %{y} · R %{amplitude_peak} %{response_unit_peak}\nθ %{phase_degrees}° (leads REF) · Gain %{gain} %{gain_unit}",
+        "source_hash": "31c00d64b5e774ad4653ff590770e7e4cf5a08ff541ebdc0716ca2f12b0fdb28",
+        "translation_hash": "9bf14d869d8e5dd61ddc11637ba0f26070193d0c16a477412fee2ede73880fd7"
+      },
+      "common.xy_prep_ms": {
+        "source": "XY prep %{xy_build_ms} ms",
+        "source_hash": "282ffa3c2fb8a514b9975e1902ff148054824537388239192df43fb3cbad73fd",
+        "translation_hash": "c60b0ca3d244977e6a6528dfdc6a9d5ddec1f7345356391a9625a4f9b6eb0067"
+      },
+      "common.zero_db_readout": {
+        "source": "−∞ %{unit} (zero)",
+        "source_hash": "eb56160655f0bbd9f873fcf4aab746fc84f75b566e8d3f2c294ebccc975ebd3d",
+        "translation_hash": "a1aba95febdfdac7fcadeec7bbf4f9ff13b05dac8582991d05f0a71a1fd675fa"
+      },
+      "io.amplitude": {
+        "source": "AMPLITUDE",
+        "source_hash": "fea6a3e0688f27ee70e47153be5c8da0581a86fc7dcbd61d14e7abf3fbcfab39",
+        "translation_hash": "f18f28ad51c0cd8b0abe4fbad1d5209affdbb5783e551ad6774060caab0857d2"
+      },
+      "io.applies_to_both_while_stopped_held_results_keep_their": {
+        "source": "Applies to both while stopped. Held results keep their rate.",
+        "source_hash": "aa11d59ef178309f869887eb3a30ee2acffc2fe7a4056e704377f70b9188ef79",
+        "translation_hash": "0b27f4652b32a60e8625bf26a506072b3223c0f8f2fa206db5d713a43b32084c"
+      },
+      "io.audio_input": {
+        "source": "Audio input",
+        "source_hash": "627d3bcf7c70c5352bb1efa8f8b075312ba3cb8fa710d302d9b6e062d47b5811",
+        "translation_hash": "3cef7a2ac95cfd8bef57d895990dcab98b31e5dffb1a8916255e2ad8915473b1"
+      },
+      "io.audio_input_no_device_selected": {
+        "source": "Audio input · no device selected",
+        "source_hash": "93e2be7eda574dc3f20787587e6ac31ca95ffec2bd79b6fe9a51015efa32ecdb",
+        "translation_hash": "940f9844e80bbd78a3b84f72433d7cda43d46026bccee3aee99f194062b7d07c"
+      },
+      "io.audio_stream_stopped_check_device_connection_and_microphone_permission": {
+        "source": "Audio stream stopped. Check device connection and microphone permission, then restart.",
+        "source_hash": "bbd7a74729f28493582956c88f06a3d20caeb9f1dc5cc167536aecf79981518e",
+        "translation_hash": "7f8ec6d0b231e34130e6959db164163bfce05c275ecf299cca106c293f6994f4"
+      },
+      "io.available_with_the_internal_loopback_output_device": {
+        "source": "Available with the Internal loopback output device.",
+        "source_hash": "a363b4329de0555846dfe6921764c85a9e86664441f1d614eb758baf4b3f4c1b",
+        "translation_hash": "133c8ba67c4afb8aee849940706eb0cf17829f41d596e2f0e8cbc9665dfe043f"
+      },
+      "io.captured_readout_condition": {
+        "source": "CAPTURED READOUT CONDITION",
+        "source_hash": "d77feace93cdcc076b1f27ff96549ada2af89aca28351d4f9807de0339298d64",
+        "translation_hash": "d668ea1c694e5b3c5236961dc4c6864ef962b0a815bc45489afe758afaf3f3c8"
+      },
+      "io.ch": {
+        "source": "%{channels}ch · %{label}",
+        "source_hash": "687840fed99d4ecefeb3236fc69432af4dc6b90b072c96b1f6a7c91dd600af9a",
+        "translation_hash": "687840fed99d4ecefeb3236fc69432af4dc6b90b072c96b1f6a7c91dd600af9a"
+      },
+      "io.ch_gain": {
+        "source": "CH 2 gain",
+        "source_hash": "d1fd5a10db8fb21235f45a23d6e44d2eed25a71a8c190990a63145a79120d1f8",
+        "translation_hash": "b98df53bcf952627093cb281e5f542c3ff537518b369e516a1a22b695db55816"
+      },
+      "io.ch_phase_gain": {
+        "source": "CH 2 PHASE / GAIN",
+        "source_hash": "9e2bfa7b76dd0672ec34a9bffb6b2ed12144472de8caadb7c804d6dfe411186b",
+        "translation_hash": "3371eb035440473081cc7f95826dcf97f957d16ac11e6a444471bf4ff99afb0c"
+      },
+      "io.channel_unavailable_in_the_current_input": {
+        "source": "Channel unavailable in the current input",
+        "source_hash": "ab31d6a01d0bce9f8c72825738dd86500bf33733b0c7093c9f1a0ada1f398dc0",
+        "translation_hash": "9a40a334b0c9f116baffd6c4faeb22c9937d4d12465242144a44a9e9ed08b973"
+      },
+      "io.channels_pcm": {
+        "source": "CHANNELS / PCM",
+        "source_hash": "b0f3b27322d23a0f0865b65e7003fe9053c8baa6f7c00a0e5926ad9e9b446fbb",
+        "translation_hash": "98795338d32ab5e5134c892d66baebde5ff080b15352267fd2909703884dc612"
+      },
+      "io.default": {
+        "source": "%{name} (default)",
+        "source_hash": "615efcb976c44fb21b85907ddfb1a3c7739b1f1ffb3f8697050365b94f8ace77",
+        "translation_hash": "398bddb8c4b3ec1dfc4a4815f83cf3153a56d72b3ae0b221d59495e09fe2aaf1"
+      },
+      "io.degrees": {
+        "source": "degrees",
+        "source_hash": "67e565733661bf1a7d36500840e4ecf4a844436fdebfd57eab8518b57a19ae0c",
+        "translation_hash": "e24a9725df827422266bd1e2b4562bad7ba91c9e5c16d72eeae5332a0953cf70"
+      },
+      "io.demo_harmonics": {
+        "source": "Sine + harmonics",
+        "source_hash": "e6e577f66f2e9a75d9d9868d4ec6b9f5e329aa143170241ab99c3ba21f7b5c22",
+        "translation_hash": "c225f0265413b501264cc7760d40097649b52b2ec98502a8772afedb72bbd1ef"
+      },
+      "io.demo_signal_qa": {
+        "source": "Demo signal (QA)",
+        "source_hash": "fc3436546ba8dbc60b181221de75b51c3d60a550dd3f1640cc8b3aa5116db594",
+        "translation_hash": "b2187576cd512cca1bd188c66deb1ed1dc9d0662e1a997acb21ce17b85eec00f"
+      },
+      "io.demo_square": {
+        "source": "Band-limited square",
+        "source_hash": "72548c449c7cc0605c3a6b97b1122708d6140206d371207b490e1c271d5658c8",
+        "translation_hash": "b462b68d9475b66224663512adb78e40114198763796a688f249159db0b15345"
+      },
+      "io.device": {
+        "source": "DEVICE",
+        "source_hash": "f92fc83b9b091613e91ecc85224bcb51bf5db2942d4114847725de79158366dd",
+        "translation_hash": "9b0623bd111c5e4a1daf1684549c1461e5a5c6becdc8763ed3f20b323df8de2d"
+      },
+      "io.device_default": {
+        "source": "Device default",
+        "source_hash": "aa46c3735f0740e749e2aaa790ac6dd73024064e5fa22fb6bdf6618213f01edb",
+        "translation_hash": "d1dd08fe28c7ce2cf02947c4df3736c07306cf78cd8f37d47d5a92ec90c433c3"
+      },
+      "io.device_default_khz": {
+        "source": "Device default (%{sample_rate} kHz)",
+        "source_hash": "74083ae991dde7d11e1f7ec9ea1ec214d614a9043f303efe87ac43266a216712",
+        "translation_hash": "b8e7989c9329d3bc4fc56ac1a1d2d46b29973adddf67169d2f16589a79e6059b"
+      },
+      "io.equal_amplitude_noise_free_sine_signals_for_xy_in": {
+        "source": "Equal-amplitude, noise-free sine signals for XY: in-phase, quadrature or opposite phase.",
+        "source_hash": "b3491024884c6272fe33abf070e4340413e8c326dd644d735d37d06e355facf0",
+        "translation_hash": "a0fe8a8076f9b69edf4be53ee4a7a20da44feebaa4d7863827f3a20b5e9cff84"
+      },
+      "io.frequency": {
+        "source": "FREQUENCY",
+        "source_hash": "c77d231aa6d343b0ed6bf72e5df23b248708e5c9d063e568bd8634372702592d",
+        "translation_hash": "7b859ce43fbedfc5aae738193a37a59bb34acbd3f892e0708e2178006d40b20d"
+      },
+      "io.fs_peak": {
+        "source": "FS peak",
+        "source_hash": "01b235bba7e50652d1ed8da638a700765826bc2d93e5e295878a9063d5c20674",
+        "translation_hash": "195abe134dfd532b90bde64ce70ec85359f668d9b2ec73b5e99ec12ad21bd620"
+      },
+      "io.gain": {
+        "source": "Gain",
+        "source_hash": "4e125a3ef68a00b029459c9aa8aa94aa07e74cc54188ffef7f60f38f016e61ca",
+        "translation_hash": "db5725afb30aa822bdbbaf9e7d1c74c8d3ec47489b5d350b503384ffc4f4502f"
+      },
+      "io.generator_input_stopped_check_output_status_stop_input_and": {
+        "source": "Generator input stopped. Check output status, stop input and reset output before restarting.",
+        "source_hash": "34ddab5d2296a578934af2c220bdb7f90337ae5ee29cd0e1aed0e7500fa9a989",
+        "translation_hash": "2debd61218dafe1125abac7ca96f4aa11c8ec1d1f0732ffa407b9531e9567d70"
+      },
+      "io.generator_loopback": {
+        "source": "Generator loopback",
+        "source_hash": "dd792ce6ea80277040304b50213ed8d0170cb66e722637de9ab9e32e6091aa77",
+        "translation_hash": "04ccc32d1df36629651d1083ef0bde020abe14d816debd4ae86249e5a3541c0a"
+      },
+      "io.generator_loopback_out": {
+        "source": "Generator loopback · OUT 1 / 2",
+        "source_hash": "2cb554a548ac054c3f337b26eb5e00836786bfd14fcd58b42622931aae00d653",
+        "translation_hash": "f95900431d1dd7957fb4e2282c751c3f13f05f487d4741141f68bd6ecc1af014"
+      },
+      "io.hz_2": {
+        "source": "%{r} Hz",
+        "source_hash": "34a9607478a566a17ce3f8b5334df350a3a0232be765be883eb1984b38ac9f9d",
+        "translation_hash": "34a9607478a566a17ce3f8b5334df350a3a0232be765be883eb1984b38ac9f9d"
+      },
+      "io.hz_3": {
+        "source": "%{rate} Hz",
+        "source_hash": "9a2852cf0c807d06c8c28a629b5579b6ad76962224c66c32fea476380e301800",
+        "translation_hash": "9a2852cf0c807d06c8c28a629b5579b6ad76962224c66c32fea476380e301800"
+      },
+      "io.hz_4": {
+        "source": "%{rate} Hz · %{format}",
+        "source_hash": "312a0311d310b7f38bc8ac343b80421b10b305f0e4c12402ae956cb77a8a11f6",
+        "translation_hash": "312a0311d310b7f38bc8ac343b80421b10b305f0e4c12402ae956cb77a8a11f6"
+      },
+      "io.input": {
+        "source": "Input",
+        "source_hash": "36ecb4f8669133ce744c21982ba4abe2ecd7086e1dc2226ccd6f266f3a5005f8",
+        "translation_hash": "c52a9d8f5ddd26ae6eb35c8c071785ee3720b6b2fed8508d289ecf2a39a3f6cf"
+      },
+      "io.input_channel": {
+        "source": "INPUT CHANNEL",
+        "source_hash": "87454b78339b5c43e64c0665ad88a682e0cf008edbef5f722c5f7c4c061185d4",
+        "translation_hash": "d4652332cb63addc935670f25c60d8c5f4cf473d4315bbe6d6178b2d31aad041"
+      },
+      "io.input_output_hz": {
+        "source": "Input: %{r} · Output: %{rate} Hz",
+        "source_hash": "103651c56125cbcc0da6a3322dce3593277d283e9aa35aedb5723c16865f4439",
+        "translation_hash": "5bb2420ec794c75deec4decc945a1b4b572a2b24151da9cd518876fca10a332c"
+      },
+      "io.input_source": {
+        "source": "Input source: %{source}",
+        "source_hash": "d14e160a3c04fbb8f70885a42b82c35d45127223b32640fcc74159864665e16b",
+        "translation_hash": "ed4ed66fc70320bcd9d3dfe44dd78c3a230d29b84e57f4fba96739d12d8dd804"
+      },
+      "io.internal_loopback": {
+        "source": "Internal loopback",
+        "source_hash": "b9a87d921926df0d115b3fe524ad35bf23ee57e106ac1875574edd8d9a15bd14",
+        "translation_hash": "7925699918a8f75944cec8833488cbb983f5e1db5a3285a5768d02decc7b8339"
+      },
+      "io.internal_source_no_audio_output": {
+        "source": "Internal source · no audio output",
+        "source_hash": "db16919adab43317836f80fd17edfa1346b6c3acd1f2c81fbcdd4c0ae45e6e3c",
+        "translation_hash": "6e3fba42ca40d8cf9675e896693090587bd2dfcbbfe7f49faf415057d529e75e"
+      },
+      "io.khz": {
+        "source": "%{rate} kHz",
+        "source_hash": "208567bd66c992840649b9125f2654a63ec1405237345f46d8577bac768362ed",
+        "translation_hash": "208567bd66c992840649b9125f2654a63ec1405237345f46d8577bac768362ed"
+      },
+      "io.no_common_rate_for_these_devices_and_output_format": {
+        "source": "No common rate for these devices and output format. Use separate sample rates.",
+        "source_hash": "74a2e66883227dcaaa6158fe9e6143bbe519e21a52ef7cfea2afe60387f1db23",
+        "translation_hash": "4f6be2dff98e94885f4afd42104a4c64690b4535bbc467eb89bfe26e0eaca49d"
+      },
+      "io.no_input_device": {
+        "source": "No input device",
+        "source_hash": "bc9d3f9c177edaead524282306dcf075bcfc183a9c77782f03d8ad2b35441e4a",
+        "translation_hash": "7e822b89906ef12668f1ff744e5fd105faaadafa19755954003ab5ab9cfcbff4"
+      },
+      "io.noise": {
+        "source": "Noise",
+        "source_hash": "9ada8e83c1186cd632fb2ac8195abc11596b4a6cea30900c55d23a44c2724770",
+        "translation_hash": "968bddbc2afd2996c64ca4d51bcdab5ccebc4885ba7796e043d8e8f71c97e00a"
+      },
+      "io.noise_2": {
+        "source": "NOISE",
+        "source_hash": "d331ebe20ee3073f359d76dd1f0268d365aa5e6d4c93b1946a749c2fb4f394c8",
+        "translation_hash": "968bddbc2afd2996c64ca4d51bcdab5ccebc4885ba7796e043d8e8f71c97e00a"
+      },
+      "io.noise_amplitude_in_digital_full_scale_fs": {
+        "source": "Noise amplitude in digital full scale (FS).",
+        "source_hash": "6645baa344f7586ad2c529a052e597ee8e073e83f5979a2a56d62df946b5f027",
+        "translation_hash": "8b9799d36f642205a0c54867a59f125bb8fa90fc5cda590945d1ed232d57a198"
+      },
+      "io.offset": {
+        "source": "Offset",
+        "source_hash": "b1a1e8e3cf7c522ed8606c3c3c3f35d3299eca78cb664fec00d9787da111f418",
+        "translation_hash": "7413d78c7e41d72f02683151078a57a15d33c25bc7d9e2208fac43f3ead995b2"
+      },
+      "io.out_ch_out_ch_start_input_and_output_separately": {
+        "source": "OUT 1 → CH 1 · OUT 2 → CH 2 · Start input and output separately.",
+        "source_hash": "d2c21c8a21812df2c14054b209cc0d24d58a2f76be4ce0de0790b31b79c6f307",
+        "translation_hash": "6d0582599499b78b99f8d0e7e332cf2d8d7d04bd42cc5156b8b102432b65251a"
+      },
+      "io.output": {
+        "source": "Output",
+        "source_hash": "b2439bcb8dee14b685f137f294b0e0cb62f5aadf45143ce01d79777d435a93b4",
+        "translation_hash": "d38a2a54cf74a633f873b0b2c8bc3d791f8e6c3489d268e33a9af6a90e637e7d"
+      },
+      "io.output_device": {
+        "source": "OUTPUT DEVICE",
+        "source_hash": "4072269aa3171ed233aafc5474ce4d1bd6be89a5ef4896d08230e9382f73ac73",
+        "translation_hash": "83d4a06ddba451afbdd239f60ad03480fc27c6bdd528c0f7ecd70bf7e7a6c210"
+      },
+      "io.physical_unit_e_g_v_a_pa": {
+        "source": "PHYSICAL UNIT (E.G. V, A, Pa)",
+        "source_hash": "12cffb5c555afdf1aa6ec7a38493951e77a2ab5ed38b9533fe39d40c3636e901",
+        "translation_hash": "9235e1827917556acafc052e4789d0a37754b65b83a61a27a5b464ace9f4460b"
+      },
+      "io.queue_calibration": {
+        "source": "Queue calibration",
+        "source_hash": "d3ca4f6e871290ac0b3251d1e535decf388cb4b1062737486bcaae2799eff42c",
+        "translation_hash": "d37eec1aefa4758607bb00be56dee369a02ecb4b3e9037e244445a5fb6929653"
+      },
+      "io.queue_uncalibrated_fs": {
+        "source": "Queue uncalibrated FS",
+        "source_hash": "560689273504e25d413277279e525954941140ecf3c135f50b98be2aee2c8e43",
+        "translation_hash": "8526c2ce66590e57e85c3e532995621781158a9ecafc7d2f00c7cb653cf905a2"
+      },
+      "io.queued_definitions_apply_on_the_next_start_source_device": {
+        "source": "Queued definitions apply on the next Start. Source/device selection or device refresh clears the queue. Coefficients are supplied by you; reference conditions describe their validity.",
+        "source_hash": "7e98075699f5de2610bd118e18bafd7b7b790aaa3ded0265d383bd84a5e4d6db",
+        "translation_hash": "574ce74291c043688ff785975199ac7c5dc00047b1883f3a82f933e2ebcb09cf"
+      },
+      "io.queued_for_next_start": {
+        "source": "QUEUED FOR NEXT START",
+        "source_hash": "af4a88d2d5dbc7047e4e6cf1af191b6930d2f3c3a167cf7f047bc81bc86a50a3",
+        "translation_hash": "ac69ed252f26af7c3049ab9c951823615e60df208e60be1228c24a5c7d05c8a4"
+      },
+      "io.rate_changes_apply_on_start_held_results_keep_their": {
+        "source": "Rate changes apply on Start. Held results keep their rate.",
+        "source_hash": "452cbb9f3212a33b74fa4155525adf28b3d7930a1138ea50811c20fadcb12dfe",
+        "translation_hash": "5dab5e44297dc64bac22283e0965fd36831997bfc3742d3a5e7aa0e929037809"
+      },
+      "io.reference_conditions": {
+        "source": "REFERENCE CONDITIONS",
+        "source_hash": "fdbc3c417b9e4ceb265203bf092432ba17b23c157dd6fe4ba6004fa37ec268d3",
+        "translation_hash": "324a275956cbb0268e1b11b214aec564c8134bbc8b32744ff30d329d6c215d86"
+      },
+      "io.reference_device_range_date_uncertainty": {
+        "source": "Reference, device/range, date, uncertainty",
+        "source_hash": "008df086ebe894f78d2bf32ef53291ed924f77ff0248a2fc7dd1e80a6db1058a",
+        "translation_hash": "0feb415bc5c1aea6e7d237b261bed8fc1b8befc89a3ac6ab6ac89b7cfc75be4f"
+      },
+      "io.refresh_devices": {
+        "source": "Refresh devices",
+        "source_hash": "67f9239ead4a9b054712087c80f88fd53290cb77295bd9c822871744f03e5db6",
+        "translation_hash": "a4ccd5ecab6236e4d0bc2c4242446e1a5d599e02dbaf697e3117e57c661dc0a8"
+      },
+      "io.sample_rate": {
+        "source": "SAMPLE RATE",
+        "source_hash": "e200e8a2e608fb42ff48cdd21836ed04b1eb804348d82c4c6924dcf607efaf81",
+        "translation_hash": "c0e6f7586c403a8395a0a87c67f5792c8147e6b3abe5d81c585a6d1f84492c5d"
+      },
+      "io.sample_rate_channels_pcm": {
+        "source": "SAMPLE RATE / CHANNELS / PCM",
+        "source_hash": "544013ac8e8c29b22328028c0d43014fc1f59bfe22a85540fed908120be07204",
+        "translation_hash": "45564385f69c36ff029036eb3f3cfbec55555a34fc582a1fdf71bcdcded4eedf"
+      },
+      "io.sample_rate_input_output": {
+        "source": "SAMPLE RATE · INPUT + OUTPUT",
+        "source_hash": "32c5dde3f74817698d1773093e4c14552426a3095584cb2943ee7e11a2015f8e",
+        "translation_hash": "3136d63c197d1789227f1b1d1e0974aceb9041a0f7d5bf6080667893118a0f63"
+      },
+      "io.scope_readouts_and_spectrum_use_y_gain_fs_offset": {
+        "source": "Scope readouts and Spectrum use y = gain × FS + offset. Spectrum Remove DC cancels offset. Scope trace/trigger, Spectrogram and XY axes use FS.",
+        "source_hash": "fd8bd9b0fff4f440a553b500da73838e63263ceb343650c40f8f350c7068c6e5",
+        "translation_hash": "56513ccfa5fdff82cac98c48a8af38c638d2c70188cf1341cc5cb72bad40fbf2"
+      },
+      "io.select_common_rate": {
+        "source": "Select common rate",
+        "source_hash": "81f0e1b7665315cbf53d49c1fa7cf0b8e354f564dac7d441f2d3a6ce130eafd7",
+        "translation_hash": "6ca7cba30cab007b5eb15057638d6ba928bce58561fd35d8c9b6f0b831f0f5ca"
+      },
+      "io.separate_sample_rates": {
+        "source": "Separate sample rates",
+        "source_hash": "33d6cf37687423dde845e5a16b56b16f03013bc7fd8d001fb6ea3f1c59c8f7d4",
+        "translation_hash": "833b3828b5fc17b2c8ec8297e5c025ef48291757fd363875aab70ec06ab3af72"
+      },
+      "io.signal_changes_apply_when_input_restarts_captured_samples_stay": {
+        "source": "Signal changes apply when input restarts. Captured samples stay held.",
+        "source_hash": "48b7c66118bad4a0a08aaa268ad07ffede5e281cb85da9c7eedc90aac1f2217c",
+        "translation_hash": "9d4fd1c02e617acb20533be600e12094ddfa9a0c4253aeb06f64bca780c26224"
+      },
+      "io.software_loopback": {
+        "source": "Software Loopback",
+        "source_hash": "c2333009468d498e94ada080c5edb9758aaef8c48d31eb132599cd9cafde9457",
+        "translation_hash": "96d110c0ae9f8750566a4aeb2defa73017f434f119122ee3bf649caeb8c62812"
+      },
+      "io.source": {
+        "source": "SOURCE",
+        "source_hash": "56ccd012fa61dd4b6697697b49cc06debf68c1876c2fa89750ba35dd2ae875d9",
+        "translation_hash": "bfc3d19250cca46f2626559ef78ed32f4c568b06695e8aab157c128e98482f0b"
+      },
+      "io.start_input": {
+        "source": "▶  Start input",
+        "source_hash": "01511f203284f519f70278238a5df858b2fba01e58f5d620d89b5b538e15de85",
+        "translation_hash": "b09b13d13a80ff2d7f737b4fc313666b70a3a4a9ae6e4c153a4f8b4e9a2a4ee0"
+      },
+      "io.start_input_demo": {
+        "source": "▶  Start input (demo)",
+        "source_hash": "e448a779bd05a482b2de7fde7bb5fc3821dd097392b7911d83c1e6baeb364f01",
+        "translation_hash": "f602e4ccb78235f1764194a7e27a8a2c1ff0c71e88a4cbbdd8f03cfe174cdfaa"
+      },
+      "io.start_or_stop_the_shared_input_for_all_instruments": {
+        "source": "Start or stop the shared input for all instruments; output is independent. Shortcut: Space",
+        "source_hash": "880cfde27bdce047ea67572987c7bc8138d8daba4f509522a99960da7b82e7c4",
+        "translation_hash": "4239fafa12c0607f5004bbe9b17907784014db34a3717a0d01fa20a3decbe7af"
+      },
+      "io.start_stop_is_always_in_the_top_bar": {
+        "source": "Start / stop is always in the top bar.",
+        "source_hash": "83abb54269435843fcee6ba4b6d1766728c5955422984167956ee47835c83ab1",
+        "translation_hash": "aedb9b4379118194b0b767dbd5d8d2f972fb732469b84ac232169b3cdf6e87f3"
+      },
+      "io.stop_input": {
+        "source": "■  Stop input",
+        "source_hash": "eb2a908826c163e5ac733af620673f4e1e9447debf94aa433de1f6b654cfbb47",
+        "translation_hash": "af5c88dbc25aa101e4773c8403e9f7c271d9695cab4703f9fa264cab676963b6"
+      },
+      "io.stop_input_and_output_and_select_a_supported_common": {
+        "source": "Stop input and output and select a supported common rate.",
+        "source_hash": "8cb65970d99c76a2f7963eab10e3f52871bc97f387c4e152136a7eea881d4342",
+        "translation_hash": "2f17a607233f4cad1f95853eff2ee0d417fea835a5b1484e0823c15b4e0d768b"
+      },
+      "io.stop_input_and_output_to_change_the_device_or": {
+        "source": "Stop input and output to change the device or format.",
+        "source_hash": "12dbdb4eba333cf1360fee0d37ae830c061b7139d046919609452809ff26f653",
+        "translation_hash": "2d400ce853e5cc02795fba5c35761ac13aa8ff199fd243f8bcb8869bbcc6fbda"
+      },
+      "io.supported_device_rates_up_to_khz": {
+        "source": "Supported device rates · up to 768 kHz",
+        "source_hash": "9fec62dc6c198fe466ad4ff2c96d601d4e29e886684cab6260f07754ae4e86af",
+        "translation_hash": "54f99fc1bb87c0f5547f25d6bfa71e7f15354afb39ab7d69beba7f20410fc597"
+      },
+      "io.unavailable": {
+        "source": "Unavailable",
+        "source_hash": "ca184496974204a0bd3fd4925e0540bc4b0df6fcc232994d29754272b7183812",
+        "translation_hash": "5eea1bb027d56cc1c0d6b77768bdf11d11d1b31319f9f5bb994cd42a3727cd3e"
+      },
+      "io.unit": {
+        "source": "unit",
+        "source_hash": "385cfdbc00ec32031699460779c15099b2bba3cad0e440fffb08e10df0acb9e1",
+        "translation_hash": "c2c1bfe05a33696722dd853d4b212fedbe9441230dfa804fa755ff9a882466a7"
+      },
+      "io.unit_fs": {
+        "source": "unit/FS",
+        "source_hash": "c5651870d773261e2f52f37ce14fa50b2b2a69caa8bda8ae955db8ddc8f41368",
+        "translation_hash": "1ed8a2d59653ec7f0c281fd120b3248df17d41c8ffa564680bed2ba4e8651c79"
+      },
+      "io.waveform": {
+        "source": "WAVEFORM",
+        "source_hash": "745c4d27a2375ecadfb7da7138ae0235fdc018d90895dd8ae470c122188df924",
+        "translation_hash": "0a40ad0e8d8f5df2808d6b080b2dffb4276ce7bd9378f2aaa8ae31e50c18c348"
+      },
+      "shell.add_an_instrument_to_edit_its_details": {
+        "source": "Add an instrument to edit its details.",
+        "source_hash": "dd8646da505a93475c5aa2e6dc1ed1ddb4a5ec761cf157600b666887c03bcad0",
+        "translation_hash": "9d3205a7cde56d4dcaf1d64a49b6ac209eb406a29b51f1285ee02efed33f4787"
+      },
+      "shell.add_instrument": {
+        "source": "Add instrument…",
+        "source_hash": "abfad93a097b6cfe14f397691747aca437eee0fd368ead24c24d86b8e5485ed2",
+        "translation_hash": "58d25279e3ce7df3fda22e03b48747563d5cc46e9ad7914ddad945198610c04c"
+      },
+      "shell.add_instruments_to_observe_and_generate_signals_together_removing": {
+        "source": "Add instruments to observe and generate signals together. Removing a pane leaves its analysis and output running.",
+        "source_hash": "bee76d8f494778420f66c9d3dc005489c040c0c08167cec2ed6fc80ccf2d6e65",
+        "translation_hash": "e9b1af543a02e4b6f9b8ddfeac123eec492f67be7dd15c64f9bd23fc37b16155"
+      },
+      "shell.analysis_and_output_continue": {
+        "source": "Analysis and output continue",
+        "source_hash": "a4c2541e0a9e6bd69e64cf71a1742674279f1a58674f7c4f1b370b7fe8f33ffd",
+        "translation_hash": "24932affddc3c474786a1ee026b4cff748c46f2ac858795ac0a886203233785f"
+      },
+      "shell.analysis_enabled_input_live": {
+        "source": "Analysis enabled · input live",
+        "source_hash": "8e5ccff9e4156e73355ebd0ce717bc1ba61c2ef42c4843b8c0a19163a0ce61ad",
+        "translation_hash": "e212e62a3141f31c878c298a1a120b3bebb842150b5af951efbc545adbfcc466"
+      },
+      "shell.analysis_enabled_waiting_for_input": {
+        "source": "Analysis enabled · waiting for input",
+        "source_hash": "db368b0d4cd75d6c7f00d9a44350ac003c94a8149ac6f58d9085d74f22e88e50",
+        "translation_hash": "677668a28aed803711610a3cac3b16429a06613b55f9a22e0bc1b87fb5a46238"
+      },
+      "shell.analysis_on": {
+        "source": "ANALYSIS ON",
+        "source_hash": "47f529813c9b9eff980544c5da3d41803d0333a9134bb208789f30182e798aaa",
+        "translation_hash": "e0274fc0c4462e62f3fa3fb70ce6f0bd319958b73da783b0ac6ba03db5daaf67"
+      },
+      "shell.analysis_status": {
+        "source": "Analysis status…",
+        "source_hash": "9c751f225d44f4565e553ee6bb3338936950bcf79a9025307fece0990d4c82bf",
+        "translation_hash": "7af9bffa4ff738f009472501971becf316265ea77204d8badf50fda2f6c04dbc"
+      },
+      "shell.analysis_stopped": {
+        "source": "Analysis · stopped",
+        "source_hash": "d298a39f423fe8985c78ee03e22d3e69087d9f2bed19575cee6650c594f9025f",
+        "translation_hash": "16d717b812f22d711ee567779db57c42d2d66398cb486ec1c1e7dc698391ad7f"
+      },
+      "shell.audio_i_o": {
+        "source": "Audio I/O",
+        "source_hash": "1c60cfccedc02779bd01e0b84d723c42e1838c52eeee94e1b2961d4889dbe854",
+        "translation_hash": "3c9263d45e45e0e6406bf7a2b62fb258000f471aa8cbda4e8db0d18254cf34ee"
+      },
+      "shell.audio_i_o_settings": {
+        "source": "Audio I/O settings",
+        "source_hash": "2b79d942ad68b17cd1260094d43a4168cc9e5c7cccdb2349e4320cd7b3b02d8a",
+        "translation_hash": "3b141f9bc3eb54127a4d47b6c98962a25e3a6a56ee3ec11ebf53844a5df270fe"
+      },
+      "shell.back_to_instruments": {
+        "source": "Back to instruments",
+        "source_hash": "6643c0d211883589ca63f25318f91d6c637d7b35b0fe7247925f0ac78133eba5",
+        "translation_hash": "e0e7b95379cca895b230bc58520bfae305fda2f5ce4c792bf1a501d4076440c6"
+      },
+      "shell.calibration": {
+        "source": "Calibration",
+        "source_hash": "252526ecd4314302d0ed8f0d897d9f453ab7cd10bd81e8979d76bdc4aa192285",
+        "translation_hash": "bf73d1a0a93999d12342bdec5ebebe360edbaece704540b29055af8b54c08c6e"
+      },
+      "shell.compact_sidebar": {
+        "source": "Compact sidebar",
+        "source_hash": "79356a53e6c1f6b62b688f1eb916ba89e738123f8619894729690755511bd51f",
+        "translation_hash": "0b75a7d36bfc57e712c40430d42a8834c601e363b06b9d4785950ad46d528578"
+      },
+      "shell.ctrl_open_an_instrument_ctrl_left_right_select_a": {
+        "source": "Ctrl + 1…7: open an instrument. Ctrl + Left / Right: select a console pane.",
+        "source_hash": "b2563a051b8c0dea33ca9dcf8cbb1f1907ebd6f9b648451d146bddb07fc2984f",
+        "translation_hash": "11d004e4d9743b537c5c6f306c8cce82ff612641188fc915759158dbc8a1824b"
+      },
+      "shell.details": {
+        "source": "Details",
+        "source_hash": "45989de49fb7f66dfe17a8fc26f3a02c7abcd74f7e8e6cf9f39fa0e3775780df",
+        "translation_hash": "9652e7b5f69922bdce983e3534b7b370bd965dce40e4f7ec2f39a443eed006d6"
+      },
+      "shell.display_scale": {
+        "source": "Display scale",
+        "source_hash": "87220d7434f36dc57c9ac78f91ed8bcb911eafbba5f7907e4bd10bbbfca4e401",
+        "translation_hash": "0cff63194ad4907f70fd52b25f4d8b3905c1c6dda39da2c69189051e148a967a"
+      },
+      "shell.display_selection_does_not_start_or_stop_measurement": {
+        "source": "Display selection does not start or stop measurement.",
+        "source_hash": "7767e4689baa8befffb3a98b427aaa573e4958ba3450496697bdd0ec57c72e4c",
+        "translation_hash": "670c79a17ab513e1e28a4ca702bae9f9cd486ed60d39c2d21af4970e1a673fba"
+      },
+      "shell.error": {
+        "source": "! Error",
+        "source_hash": "7325d39bac6b460f7f23e3840f45ca76d5516ccd04ca16e5b67be1676cc8f6ef",
+        "translation_hash": "6ec5e7dee1029b7cc827a40ec664610258cc7f21511807cdaf1c3850beb91d7e"
+      },
+      "shell.escape_cancel_editing_close_the_front_menu_window_then": {
+        "source": "Escape: cancel editing, close the front menu/window, then return from I/O or narrow details.",
+        "source_hash": "08743c68da12200900be78d92edfc4a11d37b09290ecd03c25ab81e8457dd403",
+        "translation_hash": "c3c232101c6a381228bcb83fd4057173ff0f7c81dd89574796e9666182495852"
+      },
+      "shell.expand_sidebar": {
+        "source": "Expand sidebar",
+        "source_hash": "37a5d6485e109bf695382308d0e2cd33913c3e5f7e9ab990e8f1a5f4287b2c6a",
+        "translation_hash": "39d264d4962d85ee8d3e6d0e1f0ba29e0adeb0926c823a1aa08bb42ce8a6f869"
+      },
+      "shell.file_paths_status": {
+        "source": "File paths & status",
+        "source_hash": "12a2e0565a2b42ba9e6514f127cfb115c07fe1f835c975aec03c70ade99108d9",
+        "translation_hash": "6c4646b12be1054e7bf94bba84b7428697a3895983309e5fb7841c9b3e535809"
+      },
+      "shell.find_an_instrument": {
+        "source": "Find an instrument",
+        "source_hash": "28c539ad92111da91e37ba8d2603c5541e74303154fc7bf24b9a0280da652e5c",
+        "translation_hash": "dbaa1561886f538a4923f99ee3e2ed79792cb833704e67285c435040b7cbb806"
+      },
+      "shell.finishing": {
+        "source": "… Finishing",
+        "source_hash": "34d9ad8172b499ad84856a9e6bcfe4130cc460c8007f5d857a6e295ad6b30dad",
+        "translation_hash": "bd0c97255f60b4ce989b076cab629b384603f0c2308e0b2aa868bda42f5d8bf6"
+      },
+      "shell.finishing_2": {
+        "source": "FINISHING",
+        "source_hash": "76aa96241d34f2654f9a9f0921e34878dafdaa94f4175cf991c89a200fa83267",
+        "translation_hash": "13674e35d1ed27530c5933441c84d8b55a5cac6dbf12aa169fe935330d606b38"
+      },
+      "shell.first_pane_share": {
+        "source": "First pane share",
+        "source_hash": "5778fb6d0be2f3ec7faec9eabea1793f855555e52df26d1e6bb15032278aff40",
+        "translation_hash": "40ba10d6dfe14952f0e7a740376c9f5b680e9726da676f7519768e199070c153"
+      },
+      "shell.font_license": {
+        "source": "Noto Sans CJK font license",
+        "source_hash": "a8d5fc68712ffce439aac3e1a5493a475a1c7b235f6e42db48006cb145046f7a",
+        "translation_hash": "380ae8b95aa329323ead0d9d88fab34716a261179e2f22157591a7d88094b99f"
+      },
+      "shell.group.analysis": {
+        "source": "ANALYSIS",
+        "source_hash": "15fd14555fced6b32930b9e8c62b5533f918c2f801af34dccb01ddbbf80c9941",
+        "translation_hash": "fbff7b5046d951dcc0810722f23812d607695edafc2b107034f7252af1b308cd"
+      },
+      "shell.group.monitor": {
+        "source": "MONITOR",
+        "source_hash": "90a94cc5f296be2851beddc2e0c8c3924c9c2138ef72b56cb5902db17c7ef439",
+        "translation_hash": "1780f8d0b5ca3d56781f372cab1e4453a7e7a11b09379f9a47e53cf585c71d63"
+      },
+      "shell.group.signal": {
+        "source": "SIGNAL",
+        "source_hash": "8e1a5272bdd1d3e31686395747952c2384871c7f71f73dc660dcd0999f934582",
+        "translation_hash": "f9ef695d7706e0798163caeebb6c846f0450cc17dc753f31ecadc8bad91ca714"
+      },
+      "shell.help": {
+        "source": "Help",
+        "source_hash": "b79cac926e0b2e347e72cc91d5174037c9e17ae7733fd7bdb570f71b10cd7bfc",
+        "translation_hash": "30672835496bc40946ae5ba5662ad70f4b557fdf2a2f9d529aa4ff56e725b9f2"
+      },
+      "shell.in": {
+        "source": "IN",
+        "source_hash": "fed1d872f6d540f4118582ec694270274e987b12f5dfe2057dddf1e12df2761a",
+        "translation_hash": "fed1d872f6d540f4118582ec694270274e987b12f5dfe2057dddf1e12df2761a"
+      },
+      "shell.input": {
+        "source": "INPUT",
+        "source_hash": "f4262548cb993257ce8409eec8b0382e2836b5dd6d9cec1e8527b458dccd3098",
+        "translation_hash": "c52a9d8f5ddd26ae6eb35c8c071785ee3720b6b2fed8508d289ecf2a39a3f6cf"
+      },
+      "shell.input_finishing_analysis": {
+        "source": "Input · finishing analysis",
+        "source_hash": "63e6f9222b50693e3167731a1929148ad85fb2c8119d98cde0fa98b52a0efc17",
+        "translation_hash": "8e728de352a573e8fd2ab7a3f9778ec97d3a4c41d15e43e7b97c8ef0c45adb0f"
+      },
+      "shell.input_live": {
+        "source": "▶ Input live",
+        "source_hash": "f9fe617534032cc24d5dd39197e9c4d273285093581a96cdfe1dd194c82ae662",
+        "translation_hash": "b8398556a19025f6aff5933312a2a15e32a623c75aae16d5dadb51bba95b3b9e"
+      },
+      "shell.input_opening_device": {
+        "source": "Input · opening device",
+        "source_hash": "3b3af4d15f56a8b42b4bfb08231d645feb7716d31d7c30d2d42a6d6545729e86",
+        "translation_hash": "fbc1ca1d28be68b9942cb2061cc81fc65da6ce99cd906c8c808335fd68926e20"
+      },
+      "shell.input_output": {
+        "source": "Input / output",
+        "source_hash": "9b59a615a34b1a6020ad2d86f6f2455a1730c0f097c3a9af70c0b3718a6b3b40",
+        "translation_hash": "3092135057e58b0472ea217e04cd97aca42730f8760a7ec2f7acb71d01601eaa"
+      },
+      "shell.input_stopped": {
+        "source": "■ Input stopped",
+        "source_hash": "05407bddebb1e4e162e46520e9fdba6ee3ecca170e779bacd528533feb33b5ed",
+        "translation_hash": "8d02bac64f9e3e4390f91355b64d629f148423fa95dcb2ed1757cc24a4b0a0ff"
+      },
+      "shell.instrument": {
+        "source": "Instrument: %{name}",
+        "source_hash": "b1665cc2369580f6e60541b9555f22b9ef9df7308b506c4e2130816b8bbaf828",
+        "translation_hash": "86f9df3bf921ef719393adf9e1d8e0bca9a39001127c2abbeae4eabf7491cec6"
+      },
+      "shell.instrument_names.comparison": {
+        "source": "Synchronous 2ch",
+        "source_hash": "6126fd0403e4955644e00c39b9710febeab6e727acfead83e14dcdaaab2959ad",
+        "translation_hash": "6672bf603131aec0adece527225e6c46b93fcf0d5d461a8fcbfcced86756deb2"
+      },
+      "shell.instrument_names.generator": {
+        "source": "Generator",
+        "source_hash": "1ade60abe93f5cfce908a10bb2d1b474f024779843faba4bb1f2ef06f277d3c7",
+        "translation_hash": "fdfcb7d558a341782f1b10979edebe14d19cec0aa175d450b62c24ceaad7a3c0"
+      },
+      "shell.instrument_names.lockin": {
+        "source": "Lock-in",
+        "source_hash": "e3711ecaf505fe5745276cdd332f955137440a93018d94258063dfba75740318",
+        "translation_hash": "4756e08cec4c6b9de6131d3da83267192bc4a135cbba8c0372d9694872e2f720"
+      },
+      "shell.instrument_names.scope": {
+        "source": "Scope",
+        "source_hash": "b073f6c68ef8721107fd9815b19b2c35ec111d526b75c2123d1111ba64424000",
+        "translation_hash": "4a41286a93ebd5e4c71b88d0c2a7dd89eb109ee80ef7074c25ef2c626845522a"
+      },
+      "shell.instrument_names.spectrogram": {
+        "source": "Spectrogram",
+        "source_hash": "f913745341afc7f6e3e86396a560ebe13ffc1789e4fe750abfc94497d046b49c",
+        "translation_hash": "eb08644effe03b47a9f0d90d58665c41be8c8f9b16c5fe421d02c40dd60a9ebc"
+      },
+      "shell.instrument_names.spectrum": {
+        "source": "Spectrum",
+        "source_hash": "fc457d42d767a3f3eb24df58595fb1955b77c813da138fa1784dc45449cd4ca9",
+        "translation_hash": "7642f1261d50cf485dd65a96f9d3015702d327789af45d12c367b971728ac3bf"
+      },
+      "shell.instrument_names.xy": {
+        "source": "XY",
+        "source_hash": "c07a3de039fbc0914689549f041eae295d621de7f7f647fd863f6d2f8db2080e",
+        "translation_hash": "c07a3de039fbc0914689549f041eae295d621de7f7f647fd863f6d2f8db2080e"
+      },
+      "shell.instruments": {
+        "source": "Instruments",
+        "source_hash": "a81b2bad1f227b6a60753c459455b6f3195db917089d4489c2b8ce900f3a572a",
+        "translation_hash": "e62d456535fcc790bd0ec4b7ca7dc9568ccb1fe90384dbf98be7e9c2237d1eb1"
+      },
+      "shell.instruments_2": {
+        "source": "INSTRUMENTS",
+        "source_hash": "3f6d13ec1050c836b04b3e1deb8541123d6c6741c2da2fb3f915fc5870ab1391",
+        "translation_hash": "e62d456535fcc790bd0ec4b7ca7dc9568ccb1fe90384dbf98be7e9c2237d1eb1"
+      },
+      "shell.language": {
+        "source": "Language",
+        "source_hash": "a4fe65264ef7dbb38d104b1e81eb3350f3142f3d16f32bdec39b1d9b42c1b8d1",
+        "translation_hash": "9682ba3b92f7a96122201caf4478d6d4c414d7d3bbc16cf10101b8df883621d8"
+      },
+      "shell.layout_names.columns": {
+        "source": "Side by side",
+        "source_hash": "a3d7b387c34df52c5a611045b53215ebba668ddb9026a813b5aff0d50599fb3e",
+        "translation_hash": "b3cf9202c9b638359d05aecb4373da2912a0a97edd250ce05176dde5ffd500a1"
+      },
+      "shell.layout_names.grid": {
+        "source": "2 × 2",
+        "source_hash": "31457e743b9f656da45f60cfb92b7589849f4bbac1dd830e409cf4373154807f",
+        "translation_hash": "31457e743b9f656da45f60cfb92b7589849f4bbac1dd830e409cf4373154807f"
+      },
+      "shell.layout_names.rows": {
+        "source": "Stacked",
+        "source_hash": "c2fed746cc0e2142b5a2bb118d3d02721c0800c3bf25385c936a6c846d773f7f",
+        "translation_hash": "fc79cb71232e45b17db5e6c557d95a0538ec02a26ea94c66b5cf9818ccc2c8c1"
+      },
+      "shell.layout_names.tabs": {
+        "source": "Tabs",
+        "source_hash": "8e5ea509893e6dfd39126d7fb98c5237b273db19f11df5be8bca227fc11fe08a",
+        "translation_hash": "8a130ef457e00d3e0cb07884d67e1a6d686e857a9e5e3502a4adfed690fb3d87"
+      },
+      "shell.live": {
+        "source": "LIVE",
+        "source_hash": "35e0d0360a0af6d115f9df30e1b00b5b544ebf4bb93272aa02cd5d64b064a64b",
+        "translation_hash": "eccfefff38f59e4efd1aed0a0eeb1dee91fc438fc005801a8ab5f79f006b12f7"
+      },
+      "shell.live_held_waiting_describe_acquisition_validity_and_calibration_are": {
+        "source": "LIVE / HELD / WAITING describe acquisition; validity and calibration are shown separately.",
+        "source_hash": "749633c49288955d183bf8acd95c17de18212ad715f40cc84468c88367a5bdc1",
+        "translation_hash": "d907aaf4558e23ddf3b2ed100ae2ce85a321f2fe9f99c751e0470722c508ea36"
+      },
+      "shell.lock_in": {
+        "source": "Lock-in · %{enabled}",
+        "source_hash": "d7e6d13dbd460e5a1f6f126ae910e3ee92bbfc5f29426c583ab5b4b568acf5a0",
+        "translation_hash": "ee2f01c5283c7e23357b6883ec27223e2a47195af314f335419ef92ae007e737"
+      },
+      "shell.measurement": {
+        "source": "Measurement",
+        "source_hash": "385165e2ff59804537e732dc51e2b6058a5a11016e0bb01febe8a738614ed728",
+        "translation_hash": "f5c8b8ddbe6b98754ce02ba6cb1f91f55648d5f47b28978712222b1fd061af8d"
+      },
+      "shell.menu": {
+        "source": "Menu",
+        "source_hash": "99af6606ff9d6cd5154d4d4e9c21e325086d3e904677cdb41d363c8a3480f862",
+        "translation_hash": "6f3443ca32a16492ca004f31a9b9534dc5ec9e9cf07633b9aa0be2086f8907c7"
+      },
+      "shell.multi_instrument_arrangement": {
+        "source": "Multi-instrument arrangement",
+        "source_hash": "d502bbba2f8a43e1946d20b117a1824fa35caba0e1308639b5b8b53bedf5c961",
+        "translation_hash": "8a92499cff679f444db13a5a82f2a8f8239978b91e3569e6f6fc7b4a3dc75098"
+      },
+      "shell.multi_instrument_view": {
+        "source": "Multi-instrument view",
+        "source_hash": "20432bb9e1aa2de8fd97d6aaaa0162fb325be640ad90bbeb629087172885b80f",
+        "translation_hash": "e16d1e48d584eacebcb86fda586faf554bb8457344fb72541f2cab8286a21039"
+      },
+      "shell.no_matching_instruments": {
+        "source": "No matching instruments",
+        "source_hash": "ad3831ce8927a98e806641e7422c022d8c0f2d4d327be570343fe7ee5d50b8a0",
+        "translation_hash": "bb876e21841f9890c109540b5e84c00757b805f2ec7dfd7e6b6c2025a3b3649b"
+      },
+      "shell.off": {
+        "source": "■ Off",
+        "source_hash": "f219275b833c57190a949610c05ece5ca61dfcbfa832f8ee99c0e3815e6d6f69",
+        "translation_hash": "5dc5a5eb1513c51215de1c81d3c4f66011259bedb8cf4de6c3028d0d6e55ceac"
+      },
+      "shell.on": {
+        "source": "▶ On",
+        "source_hash": "3a5105004c1b4fc7dea4ba0af55fbcefee7e9c20fc034054e473c815799777bc",
+        "translation_hash": "dcbfd8f57bcba6ec7a3da8cd97ce89fdd076741b4239ade0fe3ff0346c74f9a4"
+      },
+      "shell.open_single": {
+        "source": "Open single",
+        "source_hash": "2c892cecfa045b767d1d53d7bd20f2a9577e4c99689ac531a18dc8cb2672c6fa",
+        "translation_hash": "3ac6fece13b22ea75198c89b8d5ff80d95924814e50852e4e9bf03643514994a"
+      },
+      "shell.opening": {
+        "source": "… Opening",
+        "source_hash": "cef33a37dc4d7f16a1eadb42bc8e1ed0499727cea3ca6a3021fe32c83667060c",
+        "translation_hash": "120b6d4b335b6f836d33135a996545974309b4868ecc755abecfea196ba66cb9"
+      },
+      "shell.opening_2": {
+        "source": "OPENING",
+        "source_hash": "3f65664dc577b44d71f1913e27423f452f75e64614d30d832c79747fd7c13ccb",
+        "translation_hash": "35286207bbe327377bce20a3660b5be65074fec269a25df73acaba34469334a2"
+      },
+      "shell.output_error": {
+        "source": "Output · error",
+        "source_hash": "6358dd7b86fa3b8bd0c9b2baecfa581a6540a2e265b793ec26e3fad411e3a1c4",
+        "translation_hash": "fde27a6e91e1cf40e51a5493f68c5f985598b9264ed175f1a5a73d9776f8962a"
+      },
+      "shell.output_running": {
+        "source": "Output · running",
+        "source_hash": "1ec04b74f1fa7544bab3504592a13cf0cc42d3400251495a01cfb12a26334b11",
+        "translation_hash": "3bada0e0d4a165ddde8b7cbe321acd9a4221d8dc8a970c82f6b57d1b1e535c24"
+      },
+      "shell.output_start_pending": {
+        "source": "Output · start pending",
+        "source_hash": "e9ae14ea92cf0a4b9eb1a4456c7cde4ab98e5e9073afea3bd8c630cc1a57d984",
+        "translation_hash": "6f331897f0703c0ed9368ee949005faacfd2cb0cb2fa1d6be96382eb8146e389"
+      },
+      "shell.output_starting": {
+        "source": "Output · starting",
+        "source_hash": "3305b4c8dcbe1d464924321f760137ba877146d2037f91570690a83efa798c70",
+        "translation_hash": "8ea20e7ee35e200e592bf4198e3d8b66407907976e995a5be9ef533ad85538d6"
+      },
+      "shell.output_stopped": {
+        "source": "Output · stopped",
+        "source_hash": "c25d9730775464e886faf0f693a2730dc2ea6544fef0d1287f495171f10838d5",
+        "translation_hash": "9118dda8afe46b98a892c2ab1d54cb09b0438097012f8eabb8055fe6f1cf3561"
+      },
+      "shell.output_stopping": {
+        "source": "Output · stopping",
+        "source_hash": "fb6933ff2a96858d7f8cb507fb0f382f7deeaa0a4b9e3cfd13c5e7bd835737cd",
+        "translation_hash": "e3eced2829a401a2e2011de757ad83fe7f339802db90337225cbcd6215970591"
+      },
+      "shell.purpose.frequency_changes_over_time": {
+        "source": "Frequency changes over time",
+        "source_hash": "a24b058cceb27595ae54ec334e9c2826341c28a3fae6c53de8738371e6cb3579",
+        "translation_hash": "6effa24b1e2c358cf2e1fdfb7e36f71ed00f0783ca166c1036fdd397422560a0"
+      },
+      "shell.purpose.frequency_levels_and_power": {
+        "source": "Frequency levels and power",
+        "source_hash": "248a24e4f892f8b66f005321782775f66bcb0941987508b103795245aadfd217",
+        "translation_hash": "b8bd140fa18fcfdeff2ad416b33968066f46907238e86b25edbf608dce018adc"
+      },
+      "shell.purpose.generate_signals_on_output_channels": {
+        "source": "Generate signals on output channels",
+        "source_hash": "b5b54e1ade3ad46eeb4f97f28855a7ebef3ec99879d680c47f54bd98163e0fe2",
+        "translation_hash": "c6bff62828ffc1df194b7c43b4131d269b94e4782922673d677446e5f390846c"
+      },
+      "shell.purpose.ref_sig_gain_phase_and_delay": {
+        "source": "REF / SIG gain, phase and delay",
+        "source_hash": "125b41550f62507c981484d5f3af47830c61cdb0979610cac4ca9999b447bef0",
+        "translation_hash": "6b90aae14f6d05ac451ed45dee0bc1ff5b7417bc881dc36de3f558c5f4af218b"
+      },
+      "shell.purpose.tone_amplitude_and_phase_vs_ref": {
+        "source": "Tone amplitude and phase vs REF",
+        "source_hash": "0c13b1b58f07aea7e5240fed19bb2bc450e5f7b09903c42877cd873c2dc63842",
+        "translation_hash": "533561aacf44bd818628f7b0631d82c7eddf8b717b5ef75884f5c0083d31a076"
+      },
+      "shell.purpose.two_channel_x_y_relationship": {
+        "source": "Two-channel X/Y relationship",
+        "source_hash": "31eb5e9b3530856813d9b42f2179f1e9d529cfa6a2759b286d5f37a2a210f739",
+        "translation_hash": "564b673a35e8a376e6f88fd2210028ed8b295048dcb85bd7e73bf824266e5659"
+      },
+      "shell.purpose.waveform_over_time": {
+        "source": "Waveform over time",
+        "source_hash": "452f54c77dc5aba6ceb980c7871a314ed0ea37483d85ad479e40bdda549b3c3d",
+        "translation_hash": "a79754483ef62a27d0b011780acfecc2766b3a211c4d3cb568ae5e0f98248562"
+      },
+      "shell.remove_from_view": {
+        "source": "Remove from view",
+        "source_hash": "ba0f204d873934ac4a133ab7727857c710f1d07e1b30c6d938840ecb1614c76a",
+        "translation_hash": "5147ce7d44d81496236fc94e319658af0fa40adc60fc73d5ac67f2706ae6babf"
+      },
+      "shell.restoring_settings": {
+        "source": "Restoring settings…",
+        "source_hash": "1bb457a804b7c6c1e9931635a816009bdfaa9c3ddfa8505ad815ecdc2bfa5d87",
+        "translation_hash": "8f68deb9588f5bb1ceb672ca0fc0cdcc914e2e3ea1a8900b3c3189634e8b8999"
+      },
+      "shell.running": {
+        "source": "▶ Running",
+        "source_hash": "4166ef5ae9c34ca81ff9b2708033a05ea828a20f10fd25c4214bab45d5d8e04d",
+        "translation_hash": "e9c5ad5d746c50219f5f9cd2945c2333f98a011dd2f9a8ca101f7f29125f1f18"
+      },
+      "shell.scope_settings": {
+        "source": "Scope settings",
+        "source_hash": "4b5d76fa2773790c618284a2e16038c7d29b9e3903982a455ad7a5ebe3ef936d",
+        "translation_hash": "d94a73de849682346d4a5b9b90ce2ffbf39827055dd21489b930c05c9bd48efa"
+      },
+      "shell.scope_spectrum_stft_xy_input_running": {
+        "source": "Scope / Spectrum / STFT / XY · input running",
+        "source_hash": "a4724915ca1d03883ab1e429322366f14cea2aed3b4e1f8cee0f458f97127f4c",
+        "translation_hash": "c02309b55fb7224ac4b1b40c33192665a31b84938ec694b43c9a2bc6af2a0309"
+      },
+      "shell.selected": {
+        "source": "%{name} · Selected",
+        "source_hash": "5e5ec958d02c22a8de0d8ad26b91fc018ce794965a7ee1c61445f535076f5689",
+        "translation_hash": "2704decfd4b225895722374f504a4730455d42b51a2dcb9f61dab41e64f4323d"
+      },
+      "shell.selected_instrument_details": {
+        "source": "Selected instrument details",
+        "source_hash": "d4eae9184ce7fe77728556de0b9beaf7d99d44a5cae33118b63af88b1cf7a302",
+        "translation_hash": "2bfaf17bdd5774a7530496b2a7de05ae455b3b9efa369bd5696892b849257363"
+      },
+      "shell.shared_input": {
+        "source": "Shared input · %{state}",
+        "source_hash": "e7e8e04467973338e62db30313741bffb73f05cf6988e1c083d38732571df4c1",
+        "translation_hash": "385338ce8ea97b86456202ff0e8ffff6d2d5978c75d169a9c6516898dd9d7dab"
+      },
+      "shell.shared_input_for_scope_spectrum_spectrogram_and_xy_acquisition": {
+        "source": "Shared input for Scope, Spectrum, Spectrogram and XY. Acquisition and held results are shown inside each instrument.",
+        "source_hash": "cef3cfe61c93ebb22bbbeb0e0c11880e86c4ae0915700750660095eb59a001df",
+        "translation_hash": "f0f0d2dfa3c335b6cd1bf9bdf85a9aa4affe9f3da337778082ba56912207b5ff"
+      },
+      "shell.shared_input_live": {
+        "source": "Shared input · live",
+        "source_hash": "b4dd7853fd04840aa07166a5cba0f6bba85b18324a730dc3d8e351aa7d865c89",
+        "translation_hash": "f998eeaa2fe7e40a71a0e290857bece3b571c4b32aa43bba324613deda0bd9d1"
+      },
+      "shell.shared_input_stopped": {
+        "source": "Shared input · stopped",
+        "source_hash": "ab0392b7cf5ae971368aa0309fe651589c793172ed3be819920797e4d5164006",
+        "translation_hash": "40352dca194cbfa15d8ba553f23268da41a594b5be01d43b515bea3026652bc4"
+      },
+      "shell.space_start_stop_shared_input_typing_in_an_editor": {
+        "source": "Space: start / stop shared input. Typing in an editor leaves input unchanged.",
+        "source_hash": "7d5e484e9d7d64514912b048ba95337d13b93aff832be8e42b849ea4ed2891db",
+        "translation_hash": "06aa00d18de41c565714094aa453c926c06d17a42f57b79727c1356b57ac920d"
+      },
+      "shell.split_view_with": {
+        "source": "Split view with…",
+        "source_hash": "a04dfc73a7c098e374f3cb3b596892a6822fc49bb3064709ee331aa4b7dd2c05",
+        "translation_hash": "46bd44fb3b1c8c436ed2b0eff5ab607e051cb62f9c0f717b5a50d2bd78799e86"
+      },
+      "shell.starting": {
+        "source": "… Starting",
+        "source_hash": "a6618bbc2160eaa8f2af03840a67ca88e0229b68a904bfdb54c0af6027bd24b9",
+        "translation_hash": "e6a0d86a8495c2a73afaaec616cde3f080f3046d5c6ce7c083999451b352cefa"
+      },
+      "shell.stop_lock_in_analysis": {
+        "source": "Stop Lock-in analysis",
+        "source_hash": "5389e551c6d09c0914ecb837bfc128305cd62366ce2663f133c81f2ebac536d4",
+        "translation_hash": "6a49f35c4502a0f0272aa5718baab8091388aa80518c3cf365b8d6eaf18e1c42"
+      },
+      "shell.stop_synchronous_analysis": {
+        "source": "Stop synchronous analysis",
+        "source_hash": "80118fc3075e54f504e262c881fe9e287699f691e3a3618787da2f1141d74438",
+        "translation_hash": "a301dfa98a1e56d1e9e7fd4d32a78a6052e83d5c0b23398e5c1730381a8e6084"
+      },
+      "shell.stopped": {
+        "source": "■ Stopped",
+        "source_hash": "aa70a7b5bb89bcc8df2d29601bbd08cc7ca1a2564ae9315a4f1533ec164b0d4a",
+        "translation_hash": "81adad1796383057110155370c5d950cb799f2bacad715aec89823102e1209f5"
+      },
+      "shell.stopped_2": {
+        "source": "STOPPED",
+        "source_hash": "133c49456b6509109d9feb7f177f09ed2feca968952482454b134c7b49c4ff06",
+        "translation_hash": "72eea71385de7be63570f44fdbb492b9a0048df0c5f81481be9809017b932e69"
+      },
+      "shell.stopping": {
+        "source": "… Stopping",
+        "source_hash": "173915e8853ba8f14d4295b1fb954c01435f16b6eb8742ba69b399fd62a10639",
+        "translation_hash": "b6db208e3e561c79c4a89a5668bb7d1ac8df4a2de335060bc76a9f4f04f54c81"
+      },
+      "shell.synchronous_ch": {
+        "source": "Synchronous 2ch · %{enabled}",
+        "source_hash": "21e12e1d3ae366a939c9ffa067928b19d8e66b84c8cd038d6c1bdeb73a306c29",
+        "translation_hash": "76229c6831f622466ccae50109e00e78f73e1d2d2c5970b77c9448f9b4028058"
+      },
+      "shell.tab_shift_tab_move_keyboard_focus_enter_space_activate": {
+        "source": "Tab / Shift + Tab: move keyboard focus. Enter / Space: activate a focused control.",
+        "source_hash": "1959e4460d5caeed049121ca82d25e63405c5868f390566ffec33d4bcbe550fa",
+        "translation_hash": "6d225cb6d6800ba0a036ae7df748992b49be80ed7aa107770ed5a888bcede868"
+      },
+      "shell.tabs_keep_controls_and_readings_visible_at_this_size": {
+        "source": "Tabs keep controls and readings visible at this size. The requested arrangement returns when space allows.",
+        "source_hash": "cc906d33a32bebbead217c9a53f916c61a909e2f9fdb8d012f5c790e69b2172c",
+        "translation_hash": "10d6bb5f44f0ef3fa872f00754659a7a4922dd3c126ff75ca9ff2fb6463f346d"
+      },
+      "shell.this_replaces_the_saved_multi_instrument_view_use_undo": {
+        "source": "This replaces the saved multi-instrument view. Use Undo replacement there to restore it.",
+        "source_hash": "c66a70b56e6f835bc2eab7c6a3898527e7746979cae46dcfc472c131dc67c84c",
+        "translation_hash": "f2d27ddf4df325183704afe4a9d5ad216658b58a4c2d42186f5f85d221b3adfe"
+      },
+      "shell.ui_fps_cpu_fft_ms": {
+        "source": "%{adapter} · UI %{fps} fps · CPU FFT %{fft_ms} ms",
+        "source_hash": "1d16cb99321de3bed409e55194c9b0a348f4b4365071b6b9eafa04996aff19b0",
+        "translation_hash": "1d16cb99321de3bed409e55194c9b0a348f4b4365071b6b9eafa04996aff19b0"
+      },
+      "shell.undo_replacement": {
+        "source": "Undo replacement",
+        "source_hash": "69ef9bf0c4982ed056d5312354f5e23622aca29af866269c5b4de72cc1197654",
+        "translation_hash": "0b507dc502b9b0f03e16fbe325d0babc5f34523d0bfbc900e724b7a4a32c0bc6"
+      },
+      "shell.view": {
+        "source": "View",
+        "source_hash": "dcc839a4015c4b7dd9db959a8f757833b8adb92462a751b973386e453c6d58a3",
+        "translation_hash": "17efc6654ed280c70117040bebd3d505951acc41c48335ad31e6c09ba86db84b"
+      },
+      "shell.wait": {
+        "source": "… Wait",
+        "source_hash": "7f7e1ded5831bc231c009fc0efc0855dce2aa8426e205def804d06b52f74c5a8",
+        "translation_hash": "0ef695451f9f68854508c0bf9f79f97f66e5203ff2cfd2180312c0186e0a7847"
+      },
+      "shell.waiting_for_input": {
+        "source": "WAITING FOR INPUT",
+        "source_hash": "454e6b5b0dc6519b4e1cfaf909416026901a0d7573ee60b81598a4cb0b63ac9a",
+        "translation_hash": "dfb83897f8ab66a8c094313f0320959f9557522b6f9324f21d52e4e9a32533bd"
+      }
+    }
+  }
 }
