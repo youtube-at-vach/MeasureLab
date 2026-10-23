@@ -1,0 +1,82 @@
+_version: 1
+comparison.ac_comparison_positive_phase_leads_ref_positive_delay_lags: AC 比较 · 正相位超前
+  REF；正延迟滞后 REF。停止状态下的更改将在下次启动时应用。
+comparison.ac_mean_removed_disjoint_arithmetic_batches_ref_floor_fs: '%{name} · 已移除
+  AC 平均值 · 不相交的算术批次 · REF 下限 %{reference_min_psd_fs2_hz} FS²/Hz · 相干度 ≥%{minimum_coherence}'
+comparison.around_reading: 读数附近
+comparison.average_windows: '平均窗口 '
+comparison.averaged_windows_processed_missing_invalid_samples: 已平均 %{averaged_windows}
+  个窗口 · 已处理 %{processed_windows} 个 · 缺失 %{missing_samples} 个 · 无效 %{invalid_samples}
+  个样本
+comparison.bin_hz: 频点 %{k} · %{bin_width_hz} Hz · %{state}
+comparison.bin_states.averaging: 平均
+comparison.bin_states.incoherent: 非相干
+comparison.bin_states.reference_lost: 参考值丢失
+comparison.bin_states.response_lost: 响应丢失
+comparison.bin_states.valid: 有效
+comparison.captured_conditions: 捕获条件
+comparison.ch_revision_fs: 'CH %{ch}: %{id} / 修订 %{revision} · %{gain} %{unit} / FS'
+comparison.check_ref_sig_channels_fft_and_nominal_fs_settings: 检查 REF / SIG 通道、FFT
+  和标称 Fs 设置。
+comparison.coherence: 相干度 γ²
+comparison.custom: 自定义
+comparison.display_only_captured_analysis_validity_thresholds_and_the_phase: 仅更改显示：捕获的分析、有效性阈值和相位斜率频带均保持不变。对数
+  Hz 不包含 DC。
+comparison.display_range: 显示范围
+comparison.finishing_analysis_before_holding_the_result: 保留结果前正在结束分析。
+comparison.from: '从 '
+comparison.fs_hz: ' FS²/Hz'
+comparison.full_nyquist: 全范围 / Nyquist
+comparison.gain: 增益
+comparison.gain_db: 增益 dB
+comparison.h1_pxy_pxx_scope_spectrum_and_comparison_each_retain: H1 = Pxy/Pxx。Scope、Spectrum
+  和比较各自保留独立区间。斜率拟合假定相邻相位步长小于 π；周期/折返数据无法确定绝对延迟。
+comparison.held_conditions_retained_queued_analysis_settings_apply_on_next: 保留条件已保留
+  · 排队的分析设置将在下次启动时应用
+comparison.hz: '%{selected_hz} Hz'
+comparison.hz_2: '%{fraction} Hz'
+comparison.input_gap_press_start_input_to_acquire_again: 输入间隙 · 按“启动输入”以重新采集。
+comparison.input_gap_waiting_for_a_new_complete_average: 输入间隙 · 正在等待新的完整平均。
+comparison.input_generation_analysis_revision_hz_nominal_f64: 输入代次 %{generation} ·
+  分析修订 %{analysis_revision} · 标称 %{nominal_sample_rate_hz} Hz · f64
+comparison.invalid_input_no_valid_comparison_is_available: 输入无效 · 没有可用的有效比较。
+comparison.linear_hz: 线性 Hz
+comparison.log_hz: 对数 Hz
+comparison.min_coherence: '最小相干度 '
+comparison.min_ref: '最小 REF '
+comparison.nominal_fs_ch_phase_timing_calibration_unverified_delay_wraps: 标称 Fs ·
+  CH 相位/定时校准未验证 · 延迟按 1/f 折返
+comparison.phase: 相位 °
+comparison.phase_lead: 相位超前
+comparison.phase_slope_needs_contiguous_excited_coherent_bins: 相位斜率：— · 需要 ≥8 个连续、受激且相干的频点
+comparison.phase_slope_s_hz_residual_rms: 相位斜率：%{e6} µs · %{bin_width_hz}–%{bin_width_hz_2}
+  Hz · 残差 RMS %{phase_residual_rms_degrees}°
+comparison.press_start_input_to_acquire_a_complete_average: 按“启动输入”以采集完整平均。
+comparison.read_at: 读取位置
+comparison.ref: REF
+comparison.ref_ch_sig_ch_n_f_hz: '%{state} · REF CH %{reference_channel} / SIG CH
+  %{response_channel} · N %{size} × %{averages} · Δf %{bin_width_hz} Hz'
+comparison.samples: '%{size} 个样本'
+comparison.samples_latest_input_end: 样本 %{start}..%{end} · 最新 %{start_2}..%{end_2}
+  · 输入结束 %{input_end}
+comparison.select_ref_sig_channels_then_press_start_analysis: 选择 REF / SIG 通道，然后按“启动分析”。
+comparison.selected_frequency_is_outside_the_captured_result: 所选频率超出捕获结果范围。
+comparison.sig: SIG
+comparison.slope_from: '斜率起点 '
+comparison.slope_to: '斜率终点 '
+comparison.start_analysis: 启动分析
+comparison.state_names.averaging: 平均
+comparison.state_names.disabled: 已禁用
+comparison.state_names.filling: 正在填充
+comparison.state_names.missing: 缺失
+comparison.state_names.non_finite: 非有限值
+comparison.state_names.unavailable: 不可用
+comparison.state_names.valid: 有效
+comparison.stop_analysis: 停止分析
+comparison.synchronous_comparison: 同步比较
+comparison.to: '到 '
+comparison.valid_band: 有效频带
+comparison.valid_transfer_bins_gaps_are_not_interpolated: '%{valid} 个有效传递频点 · 不对间隙进行插值'
+comparison.waiting_for_a_complete_average: 正在等待完整平均。
+comparison.window_averaging: 窗口 / 平均
+comparison.wrapped_delay: 折返延迟
