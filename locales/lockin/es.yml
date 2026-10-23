@@ -1,0 +1,96 @@
+_version: 1
+lockin.all_four: Los cuatro
+lockin.applying_settings_display_retains_its_captured_conditions: Aplicando configuración
+  · la pantalla conserva sus condiciones capturadas
+lockin.averaged_samples_latest_window: Muestras promediadas %{start}..%{end} · última
+  ventana %{start_2}..%{end_2}
+lockin.calibrated: CALIBRADO
+lockin.captured_hint_ref_threshold: Sugerencia capturada %{hz_2} · τ %{s} · umbral
+  REF %{fs}
+lockin.ch_calibration_revision_gain_fs: Calibración CH %{ch} %{id} / revisión %{revision}
+  · ganancia %{gain} %{unit} / FS
+lockin.ch_settings_unavailable: CH / CONFIGURACIÓN NO DISPONIBLE
+lockin.check_sig_ref_channel_availability_and_frequency_against_nominal: Compruebe
+  la disponibilidad de los canales SIG / REF y la frecuencia respecto a Fs nominal.
+lockin.complete_windows_missing_samples: '%{processed_windows} ventanas completas
+  · %{missing_samples} muestras ausentes'
+lockin.disabled: DESHABILITADO
+lockin.display_bars_auto_scale_they_do_not_change_input: Las barras de pantalla escalan
+  automáticamente; no cambian la sensibilidad de entrada. Ajuste Hann periódico +
+  dos polos EMA. REF física / temporización sin verificar.
+lockin.display_scale_only: '%{v} %{unit} · solo escala de pantalla'
+lockin.ema_poles_settling_fundamental_only: 2 polos EMA · estabilización de 10τ ·
+  solo fundamental
+lockin.experimental: EXPERIMENTAL
+lockin.experimental_input_reference: EXPERIMENTAL · REFERENCIA DE ENTRADA
+lockin.f_ref: f REF  %{hz_2}
+lockin.fixed_frequency: FRECUENCIA FIJA
+lockin.frequency_must_be_below_nominal_fs_hz: '%{error}: la frecuencia debe ser inferior
+  a 0,45 × Fs nominal (%{rate} Hz)'
+lockin.fs_rms: ' FS RMS'
+lockin.gain: Ganancia  %{gain}
+lockin.input_failed: FALLO DE ENTRADA
+lockin.input_gap: HUECO DE ENTRADA
+lockin.input_or_calculation_is_nonfinite_no_valid_measurement_is: La entrada o el
+  cálculo no son finitos. No hay una medición válida disponible.
+lockin.input_samples_are_missing_the_filter_clears_and_settles: Faltan muestras de
+  entrada. El filtro se borra y vuelve a estabilizarse tras la recuperación.
+lockin.integration_samples: 'Integración: %{integration_samples} muestras'
+lockin.invalid_input: ENTRADA NO VÁLIDA
+lockin.lock_in_amplifier: Amplificador Lock-in
+lockin.measurement_details: Detalles de medición
+lockin.min_ref: 'Mín. REF '
+lockin.next_start_settings_changed_display_retains_captured_conditions: Configuración
+  para el próximo inicio modificada · la pantalla conserva las condiciones capturadas
+lockin.no_capture: SIN CAPTURA
+lockin.no_valid_reading_no_bar_marker_is_shown: No hay una lectura válida; no se muestra
+  ningún marcador de barra
+lockin.nominal_fs_hz_input_generation: Fs nominal %{sample_rate} Hz · generación de
+  entrada %{input_generation}
+lockin.physical_ref_and_timing_remain_unverified_no_physical_oscillator: La REF física
+  y la temporización siguen sin verificarse. No hay salida de oscilador física ni
+  sensibilidad de hardware seleccionable.
+lockin.poles_n: τ %{s}   ·   2 polos   ·   N %{integration_samples}   ·   %{fixed_frequency}
+lockin.r_x_and_y_are_peak_amplitudes_positive_phase: R, X e Y son amplitudes de pico.
+  La fase positiva adelanta a REF. El filtro tiene dos polos EMA fijos y se estabiliza
+  tras 10τ de muestras válidas. La configuración cambiada mientras está detenido se
+  aplica en el siguiente inicio.
+lockin.ref: REF
+lockin.ref_ac_rms_sinusoid_fit: RMS CA de REF %{fs} · ajuste sinusoidal %{v}
+lockin.ref_and_signal_use_the_same_input_sample_clock: REF y la señal usan el mismo
+  reloj de muestreo de entrada.
+lockin.ref_hint: 'Sugerencia REF '
+lockin.ref_is_below_its_ac_rms_threshold_values_clear: REF está por debajo de su umbral
+  RMS CA. Los valores se borran hasta que REF se recupere.
+lockin.ref_lost: REF PERDIDA
+lockin.ref_needs_cycles_window_sinusoid_fit_and_frequency_within: REF necesita ≥3
+  ciclos/ventana, ≥98 % de ajuste sinusoidal y una frecuencia dentro del rango sugerido.
+lockin.ref_unstable: REF INESTABLE
+lockin.ref_valid: REF VÁLIDA
+lockin.reference_filter: REFERENCIA Y FILTRO
+lockin.reference_validity: VALIDEZ DE REFERENCIA
+lockin.samples: '%{n} muestras'
+lockin.select_sig_ref_channels_press_start_analysis_then_start: Seleccione los canales
+  SIG / REF, pulse Iniciar análisis y luego Iniciar entrada si la entrada está detenida.
+lockin.settling: ESTABILIZANDO
+lockin.settling_of: Estabilización · %{progress} % de 10τ
+lockin.sig: SIG
+lockin.sig_ch_ref_ch: SIG CH %{response_channel}   /   REF CH %{reference_channel}
+lockin.start_analysis: Iniciar análisis
+lockin.start_input_to_acquire_a_synchronous_sig_ref_window: Inicie la entrada para
+  adquirir una ventana síncrona SIG / REF.
+lockin.state_names.disabled: Deshabilitado
+lockin.state_names.missing: Ausente
+lockin.state_names.non_finite: No finito
+lockin.state_names.reference_lost: Referencia perdida
+lockin.state_names.reference_unstable: Referencia inestable
+lockin.state_names.settling: Estabilizando
+lockin.state_names.unavailable: No disponible
+lockin.state_names.valid: Válido
+lockin.stop_analysis: Detener análisis
+lockin.time_constant_presets: Preajustes de constante de tiempo
+lockin.track_input_ref_hint: Seguir REF de entrada (sugerencia ±10 %)
+lockin.track_ref: SEGUIR REF
+lockin.uncalibrated_fs: SIN CALIBRAR · FS
+lockin.waiting_for_a_complete_synchronous_input_window: Esperando una ventana de entrada
+  síncrona completa.

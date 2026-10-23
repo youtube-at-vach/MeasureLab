@@ -1,0 +1,91 @@
+_version: 1
+spectrogram.age_s: Antigüedad / s
+spectrogram.analysis: Análisis
+spectrogram.analysis_changes_apply_when_input_restarts_the_captured_image: Los cambios
+  del análisis se aplican al reiniciar la entrada. La imagen capturada permanece retenida.
+spectrogram.auto_color_range: Rango de color automático
+spectrogram.captured_nominal_hz_window_s_row_ms_bin_hz: 'Capturado: %{sample_rate}
+  Hz nominales · ventana %{sample_rate_2} s · fila %{sample_rate_3} ms · bin %{size}
+  Hz'
+spectrogram.ch_dbfs: CH %{channel} · dBFS
+spectrogram.collecting_a_complete_stft_window: Adquiriendo una ventana STFT completa…
+spectrogram.color_map: MAPA DE COLOR
+spectrogram.color_maps.blue: Azul
+spectrogram.color_maps.copper: Cobre
+spectrogram.color_maps.grayscale: Escala de grises
+spectrogram.color_maps.heat: Calor
+spectrogram.color_maps.hot: Intenso
+spectrogram.color_maps.inferno: Inferno
+spectrogram.color_maps.magma: Magma
+spectrogram.color_maps.turbo: Turbo
+spectrogram.color_maps.viridis: Viridis
+spectrogram.color_range_dbfs: RANGO DE COLOR · dBFS
+spectrogram.display: Pantalla
+spectrogram.end_s_s_retained_n_hop: '%{live} · Final %{sample_rate} s · retenido %{retained_seconds}
+  s · N %{size} / salto %{hop}%{else}'
+spectrogram.fft_length: LONGITUD FFT
+spectrogram.fft_overlap: SOLAPAMIENTO FFT
+spectrogram.frequency_hz: Frecuencia / Hz
+spectrogram.frequency_scale: ESCALA DE FRECUENCIA
+spectrogram.from: Desde
+spectrogram.gestures: 'Spectrogram: use la rueda para acercar la frecuencia; arrastre
+  para desplazar frecuencia/tiempo; Mayús+rueda o rueda sobre el eje temporal para
+  recorrer el historial; haga clic para retener y seleccionar un cuadro; arrastre
+  una línea de cursor para moverla; En vivo libera el historial; doble clic restablece
+  la posición de frecuencia/tiempo.'
+spectrogram.higher_overlap_produces_more_fft_windows_and_uses_history: Un mayor solapamiento
+  produce más ventanas FFT y consume antes la capacidad del historial.
+spectrogram.history_available_s_unavailable_time_stays_blank: 'Historial disponible:
+  %{retained_seconds} / %{spectrogram_seconds} s · el tiempo no disponible queda en
+  blanco'
+spectrogram.history_limited_by_capacity: ' · historial limitado por capacidad'
+spectrogram.hold_action: Retener
+spectrogram.hold_input_running: RETENER · entrada en ejecución
+spectrogram.hold_input_stopped: RETENER · entrada detenida
+spectrogram.hz_dbfs_ch: '%{index} %{size} Hz · %{bin} dBFS
+
+  CH %{channel} · %{start}..%{end}'
+spectrogram.hz_dbfs_samples: '%{size} Hz · %{bin} dBFS · muestras %{start}..%{end}'
+spectrogram.invalid_stft_window_non_finite_input: '%{index} Ventana STFT no válida
+
+  Entrada no finita · %{start}..%{end}'
+spectrogram.invalid_stft_window_non_finite_input_samples: Ventana STFT no válida ·
+  entrada no finita · muestras %{start}..%{end}
+spectrogram.linear_hz: Hz lineal
+spectrogram.live: EN VIVO
+spectrogram.live_action: En vivo
+spectrogram.log_hz: Hz logarítmico
+spectrogram.max: Máx.
+spectrogram.min: Mín.
+spectrogram.min_and_max_must_be_finite_with_min_max: Mín. y Máx. deben ser finitos,
+  con Mín. < Máx. Se conserva el rango anterior.
+spectrogram.no_stft_data_at_this_time_gap_or_unavailable: No hay datos STFT en este
+  momento · hueco o no disponible
+spectrogram.no_stft_row_before_input_began: '%{index} Sin fila STFT
+
+  Antes de iniciar la entrada'
+spectrogram.outside_visible_time_range: '
+
+  Fuera del intervalo de tiempo visible'
+spectrogram.overlap.half: 50 %
+spectrogram.overlap.seven_eighths: 87,5 %
+spectrogram.overlap.three_quarters: 75 %
+spectrogram.per_window_bin_amplitude_uncalibrated_fs_orange_stripes_missing: 'Amplitud
+  del bin por ventana · FS sin calibrar. Franjas naranjas: STFT ausente o no válido.
+  En blanco: historial no disponible.'
+spectrogram.points: '%{size} puntos'
+spectrogram.preparing_history_view: Preparando vista del historial…
+spectrogram.remove_dc_offset: Eliminar desplazamiento de CC
+spectrogram.s_ch: '%{index} −%{age} s
+
+  CH %{channel} · %{start}..%{end}'
+spectrogram.s_no_stft_row_gap_or_unavailable: '%{index} −%{age} s
+
+  Sin fila STFT · hueco o no disponible'
+spectrogram.spectrogram: Spectrogram
+spectrogram.start_input_to_begin_acquisition: Inicie la entrada para comenzar la adquisición
+spectrogram.time_range: RANGO DE TIEMPO
+spectrogram.to: Hasta
+spectrogram.to_uses_nyquist_log_excludes_dc: Hasta = 0 usa Nyquist. La escala logarítmica
+  excluye CC.
+spectrogram.window: VENTANA

@@ -1,0 +1,119 @@
+_version: 1
+generator.add_a_signal_in_the_generator_panel: Añada una señal en el panel Generator.
+generator.add_signal: + Añadir señal
+generator.applied: APLICADO
+generator.applied_fs_hz_nominal_settings_preview_uses_fs_peak: 'Fs aplicado: %{nominal_sample_rate}
+  Hz (nominales). La vista previa usa el pico FS; las muestras medidas se muestran
+  en Scope.'
+generator.applied_hz_dbfs_peak_lead: 'Aplicado: %{frequency_hz} Hz · %{amplitude_dbfs}
+  dBFS pico · adelanto de %{phase_degrees}°'
+generator.applied_output: SALIDA APLICADA
+generator.applied_sample: Muestra aplicada %{applied_sample}
+generator.applied_seed: Semilla aplicada %{noise_seed}
+generator.buttons_up_down_use_this_step_in_hz_dbfs: Los botones ± / Arriba / Abajo
+  usan este paso en Hz, dBFS o grados. Intro / foco aplica; Esc cancela.
+generator.down: Abajo
+generator.duplicate: Duplicar
+generator.edit_step: EDITAR PASO
+generator.enter_a_finite_number_settings_were_not_applied: Introduzca un número finito;
+  no se aplicó la configuración
+generator.enter_focus_to_apply_esc_to_cancel_up_down: Intro / foco para aplicar ·
+  Esc para cancelar · Arriba / Abajo para ajustar
+generator.error: ERROR
+generator.error_reason.already_active: La salida ya está activa
+generator.error_reason.amplitude: 'Tarjeta en posición %{position}: la amplitud debe
+  ser finita y estar entre −120 y 0 dBFS pico'
+generator.error_reason.callback_stalled: El callback de salida de audio agotó el tiempo;
+  se liberó la salida
+generator.error_reason.channel_count: La salida requiere de 1 a 16 canales
+generator.error_reason.counter_exhausted: Se agotó el contador de muestras, generaciones
+  o controles de salida
+generator.error_reason.duplicate_routing: Dos señales no pueden usar el mismo canal
+  de salida
+generator.error_reason.frequency: 'Tarjeta en posición %{position}: la frecuencia
+  debe ser ≥ 0,1 Hz y < 0,45 × Fs de salida'
+generator.error_reason.no_enabled_signals: Seleccione al menos una señal antes de
+  iniciar la salida
+generator.error_reason.non_finite_output: Salida no finita; salida detenida
+generator.error_reason.output_range: La salida supera la escala completa; salida detenida
+generator.error_reason.output_stream: Falló la salida de audio; reinicie la salida
+  antes de volver a iniciarla
+generator.error_reason.phase: 'Tarjeta en posición %{position}: la fase debe ser finita
+  y estar entre −180 y 180°'
+generator.error_reason.producer_suspended: La generación interna estuvo suspendida
+  más de 250 ms; salida detenida
+generator.error_reason.revision: La revisión de configuración debe aumentar
+generator.error_reason.routing: 'Tarjeta en posición %{position}: el canal de salida
+  no está disponible o no está asignado'
+generator.error_reason.routing_while_active: Detenga la salida antes de cambiar tarjetas,
+  detalles de forma de onda o asignaciones de canal
+generator.error_reason.sample_rate: Frecuencia de muestreo nominal de salida no compatible
+generator.error_reason.signal_count: Generator admite como máximo 16 tarjetas
+generator.error_reason.signal_identity: Los ID de tarjeta de Generator deben ser únicos
+  y anteriores al siguiente ID
+generator.error_reason.stopping: Espere a que termine la atenuación de la salida
+generator.error_reason.waveform: 'Tarjeta en posición %{position}: la semilla de ruido
+  debe ser distinta de cero'
+generator.frequency: Frecuencia
+generator.gen: GEN %{id}
+generator.gen_2: GEN %{id} · %{s} · %{off}
+generator.gen_3: GEN %{id} · %{label} · %{s} · %{off}
+generator.gen_4: GEN %{id} · %{label}
+generator.gen_hz_dbfs_peak: GEN %{id} · %{label} · %{signal} · %{off} · %{frequency_hz}
+  Hz · %{amplitude_dbfs} dBFS pico · %{phase_degrees}°
+generator.generation_revision: Generación %{output_generation} · revisión %{revision}
+generator.hide_signal_controls: Ocultar controles de señal
+generator.hz_ch_input_stop_holds_the_measurement_output_continues: '%{label} · %{rate}
+  Hz · %{channels} canales. Detener la entrada mantiene la medición; la salida continúa.'
+generator.hz_ch_nominal_fs: '%{nominal_sample_rate} Hz · %{channels} canales · %{pcm_label}
+  · Fs nominal'
+generator.hz_dbfs_peak_lead: '%{frequency_hz} Hz · %{amplitude_dbfs} dBFS pico · adelanto
+  de %{phase_degrees}°'
+generator.in_use: ' · en uso'
+generator.ms_cycles: '%{frequency_hz} ms / 2 ciclos'
+generator.no_signals_add_a_signal_to_choose_its_waveform: No hay señales. Añada una
+  señal para elegir su forma de onda y salida.
+generator.off: DESACTIVADO
+generator.on: ACTIVADO
+generator.out: OUT %{ch}%{else}
+generator.out_2: OUT %{c}
+generator.out_3: OUT
+generator.output: SALIDA
+generator.output_details: Detalles de salida
+generator.peak_level: Nivel de pico
+generator.pending: PENDIENTE
+generator.phase_lead: Adelanto de fase
+generator.remove: Quitar
+generator.reset_output_stays_off: Reiniciar salida (permanece DESACTIVADA)
+generator.running: EN EJECUCIÓN
+generator.seed: Semilla
+generator.selected_transition_ends: La transición seleccionada termina en %{i}
+generator.settings_preview_fs_ceiling: Vista previa de configuración · límite ±%{amplitude_peak}
+  FS · %{frequency_hz}
+generator.show_signal_controls: Mostrar controles de señal
+generator.start_output: ▶ Iniciar salida
+generator.start_replays_the_seed_frequency_and_phase_do_not: Iniciar vuelve a usar
+  la semilla. La frecuencia y la fase no afectan al ruido.
+generator.starting: INICIANDO
+generator.starting_pending: INICIANDO · pendiente
+generator.stop_generator_output_independently_of_input_and_analysis: Detener la salida
+  de Generator independientemente de la entrada y el análisis
+generator.stop_output: ■ Detener salida
+generator.stop_output_2: Detener salida
+generator.stop_output_to_add_remove_duplicate_reorder_or_change: Detenga la salida
+  para añadir, quitar, duplicar, reordenar o cambiar la forma de onda / el enrutamiento.
+generator.stopped: DETENIDO
+generator.stopping: DETENIENDO
+generator.transition: TRANSICIÓN
+generator.unassigned: Sin asignar
+generator.up: Arriba
+generator.up_to_odd_harmonics_below_fs_peak_level_is: Hasta 16 armónicos impares por
+  debajo de 0,45 Fs. El nivel de pico es el límite de escala completa; el RMS depende
+  de la frecuencia.
+generator.waveform: Forma de onda
+generator.waveform_names.noise: Ruido
+generator.waveform_names.sine: Seno
+generator.waveform_names.square: Cuadrada
+generator.waveform_names.triangle: Triangular
+generator.white_noise: ruido blanco
+generator.white_noise_uniform_peak_bounded: Ruido blanco · uniforme · pico limitado
